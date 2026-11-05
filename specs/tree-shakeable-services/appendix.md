@@ -2,7 +2,10 @@
 
 The evidence behind [the spec](../tree-shakeable-services.md), the later migration phases in detail, and the decisions
 that shaped the design. Every table here is the output of a command on this branch, named above it; nothing in this
-file is normative. The branch point is `git merge-base HEAD origin/v4/next-minor`, `aab47a5070`.
+file is normative. The branch point is `aab47a5070`, the parent of the first spec commit `c7eee6bb90`, and every
+"before" figure was measured there. `git merge-base HEAD origin/v4/next-minor` returns the older `cb679e39ca`,
+because upstream rewrote the 15 commits after it; `packages/effect/src/Context.ts` is the same at both
+(`git diff --quiet aab47a5070 cb679e39ca -- packages/effect/src/Context.ts` exits 0).
 
 ## A. Cost
 
@@ -14,20 +17,23 @@ its scripts.
 
 What each count is, read from the code:
 
-| Row                                          | Count (Map, Weak) | Where                                                                                       |
-| -------------------------------------------- | ----------------- | ------------------------------------------------------------------------------------------- |
-| ordinary read                                | 1, 0              | the branch point's `lookup`: the base map's `get`                                           |
-| ordinary `add`                               | 0, 0              | the branch point's `addUnsafe`, after one brand test                                        |
-| record write into a non-empty context        | 0, 0              | one overlay per slot                                                                        |
-| member read through a record's overlays      | 0, 0              | `lookup` finds the member's overlay                                                         |
-| repeated record read                         | 1, 1              | `positions.has` at the storage, `~views.get`                                                |
-| member override `add`                        | 0, 0              | an ordinary overlay                                                                         |
-| override, then record read                   | 2, 2              | `has` and `~views.get` at the override, `names.get`, `~views.get` below; one copy, not kept |
-| unrelated `add` above an override, then read | 3, 2              | as above, one more `has` for the overlay walked past                                        |
+| Row                                                             | Count (Map, Weak) | Where                                                                                                                                                            |
+| --------------------------------------------------------------- | ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| ordinary read                                                   | 1, 0              | the branch point's `lookup`: the base map's `get`                                                                                                                |
+| ordinary `add`                                                  | 0, 0              | the branch point's `addUnsafe`, after one brand test                                                                                                             |
+| record write into a non-empty context                           | 0, 0              | one overlay per slot                                                                                                                                             |
+| member read through a record's overlays                         | 0, 0              | `lookup` finds the member's overlay                                                                                                                              |
+| first record read from a flat map                               | 4, 2              | one `get` per member (4); `~views.get`, `~views.set`                                                                                                             |
+| first record read after a record write into a non-empty context | 7, 3              | `has` at the top, `names.get`, `has` at the next overlay, one `positions.get` per member overlay walked (4); `~views.get` at the storage and below, `~views.set` |
+| the same, 32 members                                            | 35, 3             | members + 3: linear                                                                                                                                              |
+| repeated record read                                            | 1, 1              | `positions.has` at the storage, `~views.get`: the kept object                                                                                                    |
+| subset written over the full record, repeated record read       | 1, 1              | as above: the kept object, the same each time                                                                                                                    |
+| member override `add`                                           | 0, 0              | an ordinary overlay                                                                                                                                              |
+| override, then record read                                      | 2, 2              | `has` and `~views.get` at the override, `names.get`, `~views.get` below; one copy, not kept                                                                      |
+| unrelated `add` above an override, then read                    | 3, 2              | as above, one more `has` for the overlay walked past                                                                                                             |
 
-Reported, not gated: per-request override then record read, against a plain service's add then read, is 0.7 to 2.3×
-(290 to 600 ns) over three runs of a scratch probe, from 34× (4.9 µs) when every override copy was kept in the
-`WeakMap`. Keeping it bought "one object per storage", which nothing relied on.
+No timing is reported. The figures earlier rounds quoted here (0.7 to 2.3× for a per-request override then record
+read, 34× when every override copy was kept) came from a scratch probe that is not committed; they are not a gate.
 
 ## B. Tree-shaking
 
@@ -79,15 +85,20 @@ OK: every bundle contains exactly the implementations its program uses
 ### The real module and the Node providers
 
 `packages/effect/test/FileSystem/treeShaking.test.ts` is one esbuild build (esm, platform node, es2022, `effect` as
-published: `esbuild.transform` and `babel-plugin-annotate-pure-calls` over the sources) of three roots, asserting the
-`internal/fileSystem` modules, the `effect/FileSystem/*` keys present, that `"effect/FileSystem"` is absent, and the
-Stream bytes. Sizes, minified, measured once with whole-layer controls, not asserted:
+published: `esbuild.transform` and `babel-plugin-annotate-pure-calls` over the sources) of four roots, asserting the
+`internal/fileSystem` or `internal/terminal` modules, the `effect/FileSystem/*` or `effect/Terminal/*` keys present,
+that `"effect/FileSystem"` or `"effect/Terminal"` is absent, and the Stream bytes; `main-terminal.ts` also asserts that
+`readline`, `emitKeypressEvents` and `setRawMode` are absent. Sizes, minified, measured once with whole-layer controls
+(`NodeFileSystem.layer`, `NodeTerminal.layer`), not asserted:
 
-| Root                                                    | Minified | `internal/fileSystem` modules | Stream runtime | Whole `NodeFileSystem.layer` |
-| ------------------------------------------------------- | -------: | ----------------------------- | -------------: | ---------------------------: |
-| `main-node.ts`: `NodeFileSystem.readFile` + `writeFile` |   39,950 | readFile, shared, writeFile   |            0 B |      76,840 (1,287 B Stream) |
-| `main-http-file.ts`: `HttpServerResponse.file`          |   99,645 | open, shared, stat, stream    |        3,897 B |                      123,964 |
-| `main-logger-file.ts`: `Logger.toFile`                  |   64,215 | open, shared                  |            0 B |                            — |
+| Root                                                           | Minified | Implementation modules      | Stream runtime |     Whole layer instead |
+| -------------------------------------------------------------- | -------: | --------------------------- | -------------: | ----------------------: |
+| `main-node.ts`: `NodeFileSystem.readFile` + `writeFile`        |   39,950 | readFile, shared, writeFile |            0 B | 76,840 (1,287 B Stream) |
+| `main-http-file.ts`: `HttpServerResponse.file`                 |   99,645 | open, shared, stat, stream  |        3,897 B |                 123,964 |
+| `main-logger-file.ts`: `Logger.toFile`                         |   64,215 | open, shared                |            0 B |                       — |
+| `main-terminal.ts`: `Terminal.display`, `NodeTerminal.display` |   83,664 | display                     |            0 B |                 110,052 |
+
+Unminified, `main-terminal.ts` is 189,913 B with `NodeTerminal.display` and 247,913 B with `NodeTerminal.layer`.
 
 ## C. Type-level evidence
 
@@ -101,7 +112,7 @@ typetest/errors/displayed-type.ts(8,14): error TS2322: Type 'Stream<Uint8Array<A
 typetest/errors/effect-shape.ts(5,89): error TS2345: Argument of type '"test/readFile"' is not assignable to parameter of type '"The shape returns an Effect: define it with Context.Operation"'.
 typetest/errors/forgotten-override.ts(7,3): error TS2379: Argument of type 'Effect<number, FileSystemError, "effect/FileSystem/writeFile">' is not assignable to parameter of type 'Effect<number, FileSystemError, never>' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
   Type '"effect/FileSystem/writeFile"' is not assignable to type 'never'.
-typetest/errors/generic-unnamed.ts(7,3): error TS2345: Argument of type '"test/parse"' is not assignable to parameter of type '"The shape of \"test/parse\" is generic or overloaded: its result must require \"test/parse\""'.
+typetest/errors/generic-unnamed.ts(7,3): error TS2345: Argument of type '"test/parse"' is not assignable to parameter of type '"The shape of \"test/parse\" is generic: its result must require \"test/parse\""'.
 typetest/errors/missing-requirement.ts(5,19): error TS2379: Argument of type 'Effect<number, FileSystemError, "effect/FileSystem/readFile" | "effect/FileSystem/writeFile">' is not assignable to parameter of type 'Effect<number, FileSystemError, never>' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
   Type '"effect/FileSystem/readFile" | "effect/FileSystem/writeFile"' is not assignable to type 'never'.
     Type '"effect/FileSystem/readFile"' is not assignable to type 'never'.
@@ -119,14 +130,13 @@ typetest/errors/not-an-operation.ts(6,39): error TS2344: Type '(path: string) =>
     Type 'string' is not assignable to type 'Effect<any, any, any>'.
 typetest/errors/not-an-operation.ts(8,40): error TS2344: Type '{ readonly port: number; }' does not satisfy the constraint 'FunctionSignature'.
 typetest/errors/not-an-operation.ts(10,46): error TS2344: Type 'Effect<number, never, never>' does not satisfy the constraint 'FunctionSignature'.
-typetest/errors/one-line-display.ts(12,14): error TS2322: Type 'Of<{ readonly find: Operation<"test/Users/find", (id: string) => Effect<string, never, never>>; readonly create: Operation<"test/Users/create", (name: string) => Effect<void, never, never>>; }>' is not assignable to type 'number'.
-typetest/errors/one-line-display.ts(13,14): error TS2322: Type 'Operations<ReadOnly, ReadOnlyShape> & { exists: Operation<"effect/FileSystem/exists", (path: string) => Effect<boolean, FileSystemError, never>>; readFile: Operation<...>; stat: Operation<...>; }' is not assignable to type 'number'.
-typetest/errors/overloaded-unnamed.ts(8,6): error TS2345: Argument of type '"test/format"' is not assignable to parameter of type '"The shape of \"test/format\" is generic or overloaded: its result must require \"test/format\""'.
+typetest/errors/one-line-display.ts(13,14): error TS2322: Type 'Of<"test/Users", { readonly find: Operation<"test/Users/find", (id: string) => Effect<string, never, never>>; readonly create: Operation<"test/Users/create", (name: string) => Effect<...>>; }>' is not assignable to type 'number'.
+typetest/errors/one-line-display.ts(14,14): error TS2322: Type 'Operations<ReadOnly, ReadOnlyShape> & { exists: Operation<"effect/FileSystem/exists", (path: string) => Effect<boolean, FileSystemError, never>>; readFile: Operation<...>; stat: Operation<...>; }' is not assignable to type 'number'.
 typetest/errors/partial-aggregate.ts(7,14): error TS2375: Type 'Layer<"effect/FileSystem/readFile" | "effect/FileSystem/writeFile", never, never>' is not assignable to type 'Layer<FileSystem, never, never>' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
   Type 'FileSystem' is not assignable to type '"effect/FileSystem/readFile" | "effect/FileSystem/writeFile"'.
     Type '"effect/FileSystem/access"' is not assignable to type '"effect/FileSystem/readFile" | "effect/FileSystem/writeFile"'.
 typetest/errors/partial-record.ts(6,67): error TS2345: Argument of type '{ readFile: () => Effect.Effect<Uint8Array<ArrayBuffer>, never, never>; }' is not assignable to parameter of type 'Shape'.
-  Type '{ readFile: () => Effect.Effect<Uint8Array<ArrayBuffer>, never, never>; }' is missing the following properties from type 'Shape<typeof import("…/src/FileSystem/operations")>': access, chmod, chown, copy, and 25 more.
+  Type '{ readFile: () => Effect.Effect<Uint8Array<ArrayBuffer>, never, never>; }' is missing the following properties from type 'Shape<Members>': access, chmod, chown, copy, and 25 more.
 typetest/errors/partial-subset.ts(6,59): error TS2345: Argument of type '{ readFile: () => Effect.Effect<Uint8Array<ArrayBuffer>, never, never>; }' is not assignable to parameter of type 'ReadOnlyShape'.
   Type '{ readFile: () => Effect.Effect<Uint8Array<ArrayBuffer>, never, never>; }' is missing the following properties from type 'Shape<{ exists: Operation<"effect/FileSystem/exists", (path: string) => Effect<boolean, FileSystemError, never>>; readFile: Operation<"effect/FileSystem/readFile", (path: string) => Effect<...>>; stat: Operation<...>; }>': exists, stat
 typetest/errors/record-requires-all.ts(8,19): error TS2379: Argument of type 'Effect<number, FileSystemError, FileSystem>' is not assignable to parameter of type 'Effect<number, FileSystemError, never>' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
@@ -160,12 +170,18 @@ OK: every file under typetest/errors fails to compile for the documented reason
 ```
 
 `partial-record.ts` and `partial-subset.ts` print the shape by name in the headline (`parameter of type 'Shape'`);
-the elaboration below it prints the base type, truncated, and the missing members. `shared-slot.ts` is the one-name
-rule on an alias, a nested record and two overlapping subsets; `one-line-display.ts` is how the one-line form and a
-named record print.
+the elaboration below it prints the base type and the missing members. For the full record the base type is
+`Shape<Members>`, because the prototype's `src/FileSystem.ts` declares `interface Members extends Readonly<typeof
+members> {}` and `interface Shape extends Context.Operations.Shape<Members> {}`, so no `typeof import("…")` path is
+printed; the subset's members have no such interface and print expanded, truncated. `shared-slot.ts` is the one-name
+rule on an alias, a nested record and two overlapping subsets; `one-line-display.ts` is how the one-line form prints,
+`Of<"test/Users", { … }>` with its key first, and how a named record prints. `generic-unnamed.ts` is a generic
+shape that does not name its key; the overloaded counterpart, `overloaded-unnamed.ts`, compiles now and is deleted (F).
 `record-requires-all.ts(8,19)` is the record program run unprovided, which prints the record's name;
 `record-requires-all.ts(11,3)` is the same program with two of its thirty operations provided, which prints the
-remaining keys, truncated (`missing-twenty.ts(48,19)`, three left, prints three). The positive assertions,
+remaining keys as a union, truncated (`missing-twenty.ts(48,19)`, three left, prints three). TypeScript prints the
+result of `Exclude` over a union as that union; it cannot print it as "FileSystem minus readFile". The mitigation is a
+subset record, which names the members a program uses. The positive assertions,
 `typetest/ok/signatures.ts`, compile under `pnpm --filter tree-shakeable-services-spec check`; the repository's type
 tests are `packages/effect/typetest/Context.tst.ts` and `FileSystem.tst.ts`, under `tstyche`.
 
@@ -180,7 +196,7 @@ cache) at the branch point and on this branch, which carries `Context`, the File
 | Types          | 1,046,206 | 1,055,272 | +0.87 % |
 | Instantiations | 3,801,554 | 3,835,967 | +0.91 % |
 
-Check time is not a criterion.
+These figures were measured in round 12 and not re-measured since: the repository's `tsc` is now `effect-tsgo` 7.0, whose `--extendedDiagnostics` reports no type or instantiation counts, so round 13's `Operation.Derive` and the Terminal migration are not in them. Check time is not a criterion.
 
 ## E. The remaining phases in detail
 
@@ -201,16 +217,19 @@ name and `layer`, whose type and behaviour are unchanged; `@effect/platform-node
 same layout applies (one module per primitive over `Deno.*`, derived operations from `effect/FileSystem`'s layers) and
 is an issue of its own.
 
-**`effect/Terminal` providers (issue 11).** `NodeTerminal` becomes one module per member. `columns`, `rows` and
-`display` are one-liners over `process.stdout`: `Layer.succeed(Terminal.columns, Effect.sync(() =>
-process.stdout.columns ?? 80))`. `readInput`, `readLine` and `size` share the `stdin`/`readline` setup that
-`make(shouldQuit)` does once today; it becomes an internal scoped service, `NodeTerminal/Input` (a `Context.Service`
-whose layer owns the `readline` interface and the keypress listener), and each of the three is
-`Layer.effect(Terminal.readInput, Effect.map(Input, …))` provided with it. A root that only displays never imports
-`Input`, so neither `readline` nor the key-event parser is in its bundle, which the prototype's `main-terminal.ts`
-measures (two of six members). `NodeTerminal.layer` keeps its form, a record layer with `Input` provided inside;
-`NodeTerminal.make(shouldQuit)` keeps its signature. The prototype's `src/Terminal.ts` and `src/node/terminal/` are
-this layout.
+**Done on this branch: `effect/Terminal` providers, Node and Bun (issue 11).** In `packages/platform/node-shared`,
+`src/NodeTerminal.ts` is split into `src/internal/terminal/<member>.ts`, one module per member (6), plus `input.ts`.
+`columns`, `rows`, `size` and `display` are over `process.stdout` only: `Layer.succeed(Terminal.columns,
+Effect.sync(() => process.stdout.columns ?? 0))`, the existing `0` fallback. `readInput` and `readLine` share the
+internal scoped service `Input` (key `"@effect/platform-node-shared/NodeTerminal/Input"`), which owns the `stdin`,
+`readline` and raw-mode setup; each is `Layer.effect(Terminal.readInput, Effect.map(Effect.service(Input.Input),
+make)).pipe(Layer.provide(Input.layer))`, so merged they build one `Input`, by layer memoization by reference, which
+`node-shared/test/NodeTerminal.test.ts` asserts ("merged readInput and readLine build one Input").
+`NodeTerminal.make(shouldQuit)` and `NodeTerminal.layer` keep their signatures and are built from the same modules;
+`@effect/platform-node`'s `NodeTerminal` and `@effect/platform-bun`'s `BunTerminal` re-export the six member layers. A
+root that only displays never imports `Input`: the bundle test's `main-terminal.ts` carries the `display` module alone,
+no `readline`, `emitKeypressEvents` or `setRawMode`, and 0 Stream bytes (B). `DenoTerminal` is untouched and provides
+the record whole.
 
 **`effect/FileSystem` consumers (issue 10).** The 57 `yield* FileSystem` sites inside `effect` move, one commit per
 module: sites that use a few members call them (`ConfigProvider` directory reads, `Logger` file sinks, `cli`
@@ -218,10 +237,12 @@ completions) and expose the precise union, or annotate `FileSystem.ReadOnly` whe
 and stream files (`HttpServerResponse.file`, `HttpStaticServer`) annotate `FileSystem.ReadOnly |
 "effect/FileSystem/stream"`; sites that use many members, or hand the record to other code, keep `yield* FileSystem`.
 
-**`effect/Terminal` consumers (issue 12).** The ten `cli/Prompt.ts` sites read `columns`, `readInput` and `display`;
-the prompt runner takes `Terminal.Shape` by parameter in three places and keeps doing so. Each prompt's requirement
-becomes `Terminal.Interactive`, a subset record over those three exported from `effect/Terminal`, so a CLI that never
-prompts carries no reader.
+**Done on this branch: `effect/Terminal` consumers (issue 12).** `effect/Terminal` exports `Interactive`, the subset
+record `{ columns, readInput, display }`, and its `InteractiveShape`; a `Layer<Terminal>` satisfies it
+(`Terminal.test.ts`). `Prompt.run` reads `Terminal.Interactive`, and the runner (`runWithInput`, `runLoop`) takes
+`Terminal.InteractiveShape` by parameter; the nine `yield* Terminal.Terminal` then `terminal.columns` sites read
+`Terminal.columns`. `Prompt.Environment` and `Command.Environment` stay whole (`Terminal.Terminal`), so user callbacks
+typed against them keep compiling.
 
 ## F. Decisions, and why
 
@@ -242,8 +263,13 @@ In the order an implementer meets them:
   another's shapes so that the wrong one is a message naming the right one, rather than a constraint error naming a type.
 - **The key is written once, in the one place it is used.** A flat form taking the key from an annotation wrote it
   twice; the curried form is what `Context.Service<Self, Shape>()("key")` already does.
-- **A generic or overloaded shape names its key in its result**, checked by `Derivable` at the definition, rather
-  than an escape hatch at every call site.
+- **A generic shape names its key in its result**, checked by `Derivable` at the definition, rather than an escape
+  hatch at every call site: a signature whose type parameter reaches the result cannot be rebuilt with the key added,
+  and the message is `The shape of "<key>" is generic: its result must require "<key>"`. Overloaded shapes, up to
+  four overloads, are derived overload by overload (`Operation.Derive`) and need not name it. A generic overload
+  inside an overload set is derived at its constraint (`unknown`): sound, but less precise, because TypeScript relates
+  overload sets with their type parameters erased, so the definition cannot tell. Such a shape names its key in its
+  results to keep the parameter; `packages/effect/typetest/Context.tst.ts` pins both (`render`, `coerce`).
 - **The record's identity is the union of its members' keys**, declared by the author for libraries so that
   diagnostics keep the name. A prefix type (`` `effect/FileSystem/${string}` ``) prints short but cannot be shown to
   be covered by a merge of member layers; the record interface as the identity, with branded member keys, keeps
@@ -251,8 +277,9 @@ In the order an implementer meets them:
 - **The shape is derived from the operations, and named.** `interface Shape extends Context.Operations.Shape<typeof
   members> {}`: each operation declares its shape once and the record derives the rest, so no hand-written interface
   has to be kept in step. A partial record's headline names `Shape`; the line below prints the base type and the
-  missing members (C). An empty second base, `Context.Operations.Named`, made that line print `Shape` too, at the
-  price of an export that existed only for printing; it is dropped.
+  missing members, `Shape<Members>` where the members are declared as an interface (C). An empty second base,
+  `Context.Operations.Named`, made that line print `Shape` too, at the price of an export that existed only for
+  printing; it is dropped.
 - **The recipe is the floor.** The members cannot come from the shape (types are erased); a helper building operations
   from a table of names would keep every key in every bundle (B, "What a kept key costs"); and TypeScript names a type
   only where a declaration creates it. The member list is the module's export list where the operations have a module,
@@ -262,7 +289,9 @@ In the order an implementer meets them:
   which each operation is branded with the old identity.
 - **The members are properties of the key**, so that the one-line form `Context.Operations("app/Users", { find })`
   gives `Users.find(id)`. A member whose name is a property of every key is rejected on the key argument
-  (`Operations.Reserved`, which includes `name`) and a defect at construction.
+  (`Operations.Reserved`, which includes `name`) and a defect at construction. The one-line form's type is
+  `Operations.Of<Key, Ops>`, which prints its key first (`Of<"test/Users", { … }>`, C), and the key is typed on the
+  value (`Users.key: "test/Users"`).
 - **The record key is a function, like every other key**, recognised by its brand (`OperationsTypeId`), not by being
   the one key that is a plain object; `Context`'s getters test the brand.
 - **A slot has one name in a record.** An alias, a nested record sharing a member, or two overlapping subsets would let
@@ -271,10 +300,10 @@ In the order an implementer meets them:
   the read a function of the slots without re-deriving every path on each override.
 - **A record is its members and nothing else.** A slot of the record's own holding the provided object, returned while
   the members agreed with it, needed an equality check per read, views inheriting from class instances, a bound-method
-  cache and string semantics for the record's own slot, each a seam: a class method calling a sibling through `this`
-  skipped an override; `getOrUndefinedUnsafe` by the record's string returned the provided object after an override;
-  overlays and flat maps followed different rules. A record write is its members' slots and a record read a plain
-  object of them, assembled the same way on every path; `instanceof` and identity do not survive a read.
+  cache and string semantics for the record's own slot, each a seam: `getOrUndefinedUnsafe` by the record's string
+  returned the provided object after an override; overlays and flat maps followed different rules. A record write is
+  its members' slots and a record read a plain object of them, assembled the same way on every path; the provided
+  object's `instanceof` and identity do not survive a read.
 - **A record write is one ordinary overlay per member**, counting as one addition toward `maxDepth`. One overlay
   holding every member by position made `lookup` test every overlay's kind and cost the ordinary read 1.12 to 1.21× in
   a process holding no record; with per-member overlays the `Overlay` type, `lookup`, the flatten and `merge` are the
@@ -284,26 +313,41 @@ In the order an implementer meets them:
   positions and nested records, the slot list, slot positions, direct-member names) is one immutable object; the only
   mutable state is one `WeakMap` from storage to the object built there. The one-entry cache, the template and the
   fiber-cached flags are gone: the costs test showed nothing they bought.
-- **A write's read is kept; an override's read is a copy.** The storage is the topmost overlay holding one of the
-  record's slots, or the base map; overlays above it hold other slots and cannot change the result, so contexts
-  derived by unrelated writes share it. An override's storage is a one-member overlay, and its read is the read below
-  with that member replaced, made each time and not kept: a per-request override leaves nothing in the `WeakMap` and
-  costs one copy (A). "One object per storage" is not promised; nothing relied on it.
+- **A read is kept for its storage, built in one walk; one override over a kept read is a copy.** The storage is the
+  topmost overlay holding one of the record's slots, or the base map; overlays above it hold other slots and cannot
+  change the result, so contexts derived by unrelated writes share it. A read returns the object kept for its storage,
+  or builds one from the slots in one walk and keeps it there. The one shortcut: when the storage is an overlay of one
+  direct member (an override) and the next storage below it already has a kept object, the read is that object with
+  the member replaced, made each time and not kept, so a per-request override leaves nothing in the `WeakMap` and
+  costs one copy (A). When the storage below is the base map, the base map's object is built and kept on the way, so a
+  layer's flat context read only through per-request overrides builds it once. The shortcut never recurses: a record
+  write's own overlays, a subset written over the full record and a stack of overrides are built once, in one walk,
+  and kept. Round 12's shortcut recursed through every overlay of a record write (a first read quadratic in the
+  members; 35 `Map` operations for 32 now) and never cached a subset over the full record (a copy per member overlay on
+  every read; one `has` and one `~views.get` now). "One object per storage" is not promised for an override's read.
 - **Presence is `name in value`.** A member whose value is `undefined` is a member: a record holding an optional
   callback set to `undefined` is complete, and `getOption` is `Some`. Only an absent member is the defect.
 - **A record provided without a member is a defect at the write**, naming the member's key, rather than a record that
   reads back a member no call can use.
-- **Every function member is stored bound to the object it was provided on**, at the write: own property or
-  inherited, plain object or class instance. One rule, so a member runs the same standalone, through the record and
-  through a spread copy, private fields included. A sibling call through `this` therefore reaches the provided object;
-  the recipe calls siblings through the operation, which sees overrides. A callable that is also an Effect is stored
-  as it is, since binding would drop its prototype.
+- **A member is stored exactly as the provided object holds it.** An own property, a plain object's method included,
+  keeps its identity, `name`, own properties and statics, and allocates nothing. The one exception is a method the
+  provided object inherits from its prototype (a class instance's method), stored bound to the instance so that
+  private fields work. A callable that is also an Effect is stored as it is. An own method's `this` is the receiver
+  of its call: through a record read (`(yield* Users).find`), the read, whose members include a test override;
+  through the key (`Users.find(id)`), the key, whose members are the operations, which read the context and so see
+  an override; a bare `find(id)` call has none (`this.x` is a `TypeError` defect). A class instance's inherited
+  method is bound to the instance, so `this.find` inside it calls the instance's own `find` and never sees an
+  override; it calls the sibling through its operation (`Users.find(id)`) instead. Round 12 bound every function
+  member, which lost properties and statics, broke identity (`Context.get(ctx, F) === fn` false, name `"bound …"`)
+  and allocated one function per member per write, while still not letting a class's `this.sibling` see an override.
+  `Context.test.ts` asserts both rules ("stores a member as provided; …" and "keeps a function member's properties,
+  statics and identity through a record write").
 - **A record service reads itself**: `yield*`, `use` and `useSync` on a record key call its read directly instead
   of passing through `Context.get`.
 - **No defaults.** Every reason the overridable design was set aside is a reason not to add a defaulted variant;
   `Context.Reference` remains for values that want one, and may be a member.
 - **The cost gate is counts only, in the normal test suite.** Counts do not depend on the machine; timing on a shared
-  host never decided, so it is reported, not gated, and the benchmark scripts are deleted.
+  host never decided, so it is not gated, and the benchmark scripts are deleted.
 - **Bundle checks assert contents, not sizes**: which implementation modules and keys are present and the Stream
   bytes, in one esbuild build, so they are fast and do not drift with unrelated code.
 
@@ -337,7 +381,7 @@ In the order an implementer meets them:
 - **A `Proxy` as the record read.** Every property read is a trap, and a `Proxy` is one more kind of object a user's
   record can turn into.
 - **Keeping every override's copy in the `WeakMap`.** Bought "one object per storage" for 34× a plain override then
-  read; nothing relied on the identity (F).
+  read, in an uncommitted probe (A); nothing relied on the identity (F).
 - **Dispatching record reads on the miss path of the getters**, so the hit path has no brand test. Measured at the same
   cost, and it makes the record's string a slot again: a `Context.Service` built with it would hide the members
   from `Context.get` while `yield*` kept reading them.

@@ -232,9 +232,9 @@ describe("FileSystem operations", () => {
     Effect.gen(function*() {
       const direct = yield* FileSystem.readFile("a")
       const fs = yield* FileSystem.FileSystem
-      assertBoundMembers(fs, live)
+      assertSameMembers(fs, live)
       assert.deepStrictEqual(Object.keys(fs), Object.keys(FileSystem.FileSystem.members))
-      assert.strictEqual(fs.readFile.name, "bound readFile")
+      assert.strictEqual(fs.readFile, live.readFile)
       assert.deepStrictEqual(direct, text("live"))
       assert.deepStrictEqual(yield* fs.readFile("a"), text("live"))
       assert.isTrue(yield* FileSystem.exists("a"))
@@ -268,18 +268,19 @@ describe("FileSystem operations", () => {
     const context = Context.make(FileSystem.FileSystem, live)
     assert.strictEqual(context.mapUnsafe.size, Object.keys(FileSystem.FileSystem.members).length)
     assert.isFalse(context.mapUnsafe.has("effect/FileSystem"))
-    assert.strictEqual(Context.get(context, FileSystem.readFile).name, "bound readFile")
-    assertBoundMembers(Context.get(context, FileSystem.FileSystem), live)
+    assert.strictEqual(Context.get(context, FileSystem.readFile), live.readFile)
+    assertSameMembers(Context.get(context, FileSystem.FileSystem), live)
     // the members are properties of the key
     assert.strictEqual(FileSystem.FileSystem.readFile, FileSystem.readFile)
     assert.strictEqual(Context.omit(FileSystem.FileSystem)(context).mapUnsafe.size, 0)
   })
 })
 
-/** A record stores each function member bound to the object it was provided on. */
-const assertBoundMembers = (actual: object, expected: object) => {
+/** A record stores each member as the provided object holds it: the read has the same functions, not the object. */
+const assertSameMembers = (actual: object, expected: object) => {
+  assert.notStrictEqual(actual, expected)
   assert.deepStrictEqual(Object.keys(actual).sort(), Object.keys(expected).sort())
   for (const [name, value] of Object.entries(expected)) {
-    assert.strictEqual((actual as any)[name].name, `bound ${value.name}`)
+    assert.strictEqual((actual as any)[name], value)
   }
 }

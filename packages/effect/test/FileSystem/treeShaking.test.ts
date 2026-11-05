@@ -20,6 +20,7 @@ const fixtures = fileURLToPath(new URL("../fixtures/tree-shaking/", import.meta.
 const source = fileURLToPath(new URL("../../src/", import.meta.url))
 const nodeShared = fileURLToPath(new URL("../../../platform/node-shared/src/", import.meta.url))
 const fileSystemModules = path.join(nodeShared, "internal", "fileSystem", path.sep)
+const terminalModules = path.join(nodeShared, "internal", "terminal", path.sep)
 const streamModules = ["Stream.ts", "Channel.ts", "Sink.ts", "internal/stream.ts", "internal/channel.ts"]
   .map((file) => path.join(source, file))
 
@@ -43,7 +44,9 @@ const publish = (file: string) => {
 
 // one build of every fixture
 const bundles = esbuild.build({
-  entryPoints: ["main-node.ts", "main-http-file.ts", "main-logger-file.ts"].map((entry) => path.join(fixtures, entry)),
+  entryPoints: ["main-node.ts", "main-http-file.ts", "main-logger-file.ts", "main-terminal.ts"].map((entry) =>
+    path.join(fixtures, entry)
+  ),
   bundle: true,
   format: "esm",
   platform: "node",
@@ -79,6 +82,10 @@ const bundles = esbuild.build({
         operations: present.filter(([file]) => file.startsWith(fileSystemModules)).map(([file]) =>
           path.basename(file, ".ts")
         ).sort(),
+        // the Node terminal modules in the bundle, by member name
+        terminal: present.filter(([file]) => file.startsWith(terminalModules)).map(([file]) =>
+          path.basename(file, ".ts")
+        ).sort(),
         streamBytes: present.filter(([file]) => streamModules.includes(file)).reduce((total, [, n]) => total + n, 0)
       }]
     })
@@ -112,6 +119,19 @@ describe("tree-shakeable services: the bundle", () => {
     const { operations, streamBytes, text } = (await bundles)["main-logger-file.ts"]
     assert.deepStrictEqual(operations, ["open", "shared"])
     assertKeys(text, ["open"])
+    assert.strictEqual(streamBytes, 0)
+  }, 60_000)
+
+  it("Terminal.display: display alone, no readline", async () => {
+    const { streamBytes, terminal, text } = (await bundles)["main-terminal.ts"]
+    assert.deepStrictEqual(terminal, ["display"])
+    for (const name of ["readline", "emitKeypressEvents", "setRawMode"]) {
+      assert.notInclude(text, name)
+    }
+    const keys = [...text.matchAll(/"effect\/Terminal\/(\w+)"/g)].map(([, name]) => name)
+    assert.deepStrictEqual([...new Set(keys)], ["display"])
+    // the record service is not referenced
+    assert.notInclude(text, "\"effect/Terminal\"")
     assert.strictEqual(streamBytes, 0)
   }, 60_000)
 })

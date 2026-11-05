@@ -38,9 +38,10 @@ naming its key. A record is literally its members: a write is one ordinary overl
 built from the members' slots, a slot has one name in a record, and `lookup`, overlays, flatten and merge are the branch
 point's code. No implementation ships unless a root provides it: there is no default to keep when a test replaces one,
 so services with no sensible default, such as the file system, work the same as any other. The price is stated plainly:
-a record read is not the provided object, so `instanceof` and identity do not survive it, and every function member is
-bound to the object it was provided on, so a method calling a sibling through `this` reaches that object, not an
-override; the recipe calls siblings through the operation (`Users.find(id)`), which sees overrides.
+a record read is not the provided object, so `instanceof` and the object's identity do not survive it (each member's
+does: a member is stored as the object holds it), and a class instance's method is bound to the instance, so its
+`this.find` reaches the instance, not an override; the recipe calls siblings through the operation
+(`Users.find(id)`), which sees overrides from anywhere.
 
 ## The problem and the design
 
@@ -110,20 +111,24 @@ export const FileSystem = Context.Operations<FileSystem, Shape>()("effect/FileSy
 
 - **`Shape`** is an interface so a diagnostic's headline prints `Shape` (`parameter of type 'Shape'`); the line
   below it lists the missing members (`access, chmod, chown, copy, and 25 more`) after the base type, which TypeScript
-  prints in place of an interface with one base and no members of its own, truncated by default. Nothing is added to the
-  recipe to change that.
+  prints in place of an interface with one base and no members of its own, truncated by default. Members imported as a
+  namespace print there as `typeof import("<absolute path>")`; one optional line names them,
+  `export interface Members extends Readonly<typeof members> {}` with `Shape<Members>`, and the line reads
+  `Shape<Members>` (the prototype does this).
 - **`FileSystem`** (the type) is the union of the members' keys, so a merge of all member layers is a
   `Layer<FileSystem>`, and declaring it prints `FileSystem` instead of thirty-two keys.
 - **The one-line form**, `Context.Operations("app/Users", { find, create })`, infers shape and identity, for
-  application code; its type is `Context.Operations.Of<typeof members>` and prints as the record of its members. In
-  both forms the key is a function named after its key, like every other key, with its members as properties:
-  `Users.find(id)` is the operation.
+  application code; its type is `Context.Operations.Of<"app/Users", typeof members>` and prints by its key first,
+  `Of<"app/Users", { readonly find: …; … }>` (`Users.key` is typed `"app/Users"`). In both forms the key is a function
+  named after its key, like every other key, with its members as properties: `Users.find(id)` is the operation.
 - **One name per slot.** A slot reachable under two names (an alias, a nested record sharing a member, two subsets
   that overlap) is rejected on the key argument, naming the slot, and is a defect at run time naming both paths; so a
   write gives each slot one value and a read cannot disagree with the slots.
-- **Sibling calls.** A provided method that calls another member calls the operation, `Users.find(id)`, not
-  `this.find(id)`: the operation reads the context, so a test override of `find` is seen; `this.find` is the
-  provided object's own function. This is in the JSDoc **Gotchas** and pinned by a test.
+- **Sibling calls.** A provided method that calls another member calls the operation, `Users.find(id)`: the
+  operation reads the context, so a test override of `find` is seen wherever the call comes from. A plain object's
+  method may use `this.find(id)`: `this` is the receiver of the call, the record read or the key, both of which see
+  the override (a bare `find(id)` has no receiver). A class instance's method is bound to the instance, so its
+  `this.find` is the instance's own. This is in the JSDoc **Gotchas** and pinned by a test.
 
 The recipe is the floor (appendix F). The constructor checks identity, shape and members against each other, and a
 mismatch is a compile error on the key argument; a member named like a property of every key (`use`, `key`,
@@ -137,8 +142,8 @@ typetest/errors/wrong-self.ts(21,45): error TS2345: Argument of type '"test/Unkn
 typetest/errors/shared-slot.ts(13,41): error TS2345: Argument of type '"test/Shared/Alias"' is not assignable to parameter of type '"\"test/Shared/a\" is reachable under two names: a slot has one name in a record"'.
 typetest/errors/shared-slot.ts(20,40): error TS2345: Argument of type '"test/Shared/Both"' is not assignable to parameter of type '"\"test/Shared/b\" is reachable under two names: a slot has one name in a record"'.
 typetest/errors/partial-record.ts(6,67): error TS2345: Argument of type '{ readFile: () => Effect.Effect<Uint8Array<ArrayBuffer>, never, never>; }' is not assignable to parameter of type 'Shape'.
-  Type '{ readFile: () => Effect.Effect<Uint8Array<ArrayBuffer>, never, never>; }' is missing the following properties from type 'Shape<typeof import("…/src/FileSystem/operations")>': access, chmod, chown, copy, and 25 more.
-typetest/errors/one-line-display.ts(12,14): error TS2322: Type 'Of<{ readonly find: Operation<"test/Users/find", (id: string) => Effect<string, never, never>>; readonly create: Operation<"test/Users/create", (name: string) => Effect<void, never, never>>; }>' is not assignable to type 'number'.
+  Type '{ readFile: () => Effect.Effect<Uint8Array<ArrayBuffer>, never, never>; }' is missing the following properties from type 'Shape<Members>': access, chmod, chown, copy, and 25 more.
+typetest/errors/one-line-display.ts(13,14): error TS2322: Type 'Of<"test/Users", { readonly find: Operation<"test/Users/find", (id: string) => Effect<string, never, never>>; readonly create: Operation<"test/Users/create", (name: string) => Effect<...>>; }>' is not assignable to type 'number'.
 ```
 
 The relations are plain assignability of unions: `Layer<FileSystem>` satisfies `"effect/FileSystem/readFile"`, a member
@@ -216,8 +221,11 @@ typetest/errors/missing-requirement.ts(5,19): error TS2379: Argument of type 'Ef
 A record program run unprovided prints the record's name (`Type 'FileSystem' is not assignable to type 'never'`); one
 _partially_ provided prints the remaining keys, because `Exclude` distributes over the union, truncated by default
 (`"effect/FileSystem/access" | … | ... 22 more ... | "effect/FileSystem/writeFileString"`): the price of letting member
-layers satisfy the record, mitigated by `FileSystem.ReadOnly` (appendix C). The coarse-grained provider,
-the record provided or every member layer merged, is a `Layer<FileSystem>` and bundles everything.
+layers satisfy the record, mitigated by `FileSystem.ReadOnly` (appendix C). A form like `FileSystem minus readFile`
+is out of reach: `Effect.provide`'s `Exclude` resolves eagerly to the remaining union and TypeScript keeps no alias
+for it, so it would take a new requirement type and a change to every `provide`, which this spec declines. The
+coarse-grained provider, the record provided or every member layer merged, is a `Layer<FileSystem>` and bundles
+everything.
 
 ### Overriding one operation in a test
 
@@ -249,9 +257,11 @@ wants "works out of the box" ships a layer.
 ### Generic, overloaded and property-bearing shapes
 
 TypeScript cannot rewrite a generic function type's result without instantiating its type parameters at their
-constraints, cannot see past the last overload, and cannot carry a function's properties onto a value. So, at the
-definition: a shape whose result already requires the key is the call signature unchanged; otherwise the derived
-signature must be as precise as the shape (`Operation.Derivable`) and the shape a bare function.
+constraints, and cannot carry a function's properties onto a value; it can take an overload set apart, up to a fixed
+count. So, at the definition: a shape whose result already requires the key is the call signature unchanged;
+otherwise it is derived (`Operation.Derive`): one signature, or up to four overloads each with the key added to its
+result, and the derivation must be as precise as the shape (`Operation.Derivable`) and the shape a bare function.
+Only a generic shape whose type parameter reaches its result names its key:
 
 ```ts
 export const parse = Context.Operation<
@@ -259,19 +269,23 @@ export const parse = Context.Operation<
 >()("app/parse")
 parse(Number, "42") // Effect<number, never, "app/parse">
 export const format = Context.Operation<{
-  (value: number): Effect.Effect<string, never, "app/format">
-  (value: Date, locale: string): Effect.Effect<string, never, "app/format">
+  (value: number): Effect.Effect<string>
+  (value: Date, locale: string): Effect.Effect<boolean, Error>
 }>()("app/format")
+format(new Date(), "en") // Effect<boolean, Error, "app/format">
 ```
 
 ```
-typetest/errors/generic-unnamed.ts(7,3): error TS2345: Argument of type '"test/parse"' is not assignable to parameter of type '"The shape of \"test/parse\" is generic or overloaded: its result must require \"test/parse\""'.
-typetest/errors/overloaded-unnamed.ts(8,6): error TS2345: Argument of type '"test/format"' is not assignable to parameter of type '"The shape of \"test/format\" is generic or overloaded: its result must require \"test/format\""'.
+typetest/errors/generic-unnamed.ts(7,3): error TS2345: Argument of type '"test/parse"' is not assignable to parameter of type '"The shape of \"test/parse\" is generic: its result must require \"test/parse\""'.
 typetest/errors/shape-with-properties.ts(6,3): error TS2345: Argument of type '"test/double"' is not assignable to parameter of type '"The shape has properties: an operation is a bare function"'.
 ```
 
 `<A>(value: A) => Effect<void>` derives without loss and is accepted unnamed; `<A>(d: (s: string) => A) => Effect<A>`
-does not (`unknown` is not `A`) and must name its key. Call sites are the same either way.
+does not (`unknown` is not `A`) and must name its key. Call sites are the same either way. One hole remains, stated
+and pinned in `typetest/Context.tst.ts`: a generic overload _inside_ an overload set is derived at its constraint
+(`<A>(value: A): Effect<A>` calls as `Effect<unknown, never, key>`), sound but less precise, because TypeScript relates
+overload sets with their type parameters erased and so the definition cannot tell; such a shape names its key in its
+results, as `parse` does.
 
 ## API
 
@@ -343,10 +357,19 @@ export declare namespace Operation {
   export type Signature = FunctionSignature | EffectValue
 
   /** The shape when its result requires the key; a derived signature, or the Effect with the key added, otherwise. */
-  export type Call<Id extends string, Shape extends Signature> = Shape extends
-    (this: infer This, ...args: infer Args) => infer Result ? [Id] extends [Requirements<Result>] ? Shape
-    : (this: This, ...args: Args) => Require<Result, Id>
+  export type Call<Id extends string, Shape extends Signature> = Shape extends (...args: any) => infer Result ?
+    [Id] extends [Requirements<Result>] ? Shape : Derive<Shape, Id>
     : Shape extends Effect<infer A, infer E, infer R> ? [Id] extends [R] ? Shape : Effect<A, E, R | Id>
+    : never
+
+  /** One signature, or two to four overloads, each with the key added to its result; the last signature otherwise. */
+  export type Derive<Shape, Id> = Shape extends (this: infer T, ...args: infer A) => infer R ?
+    [(this: T, ...args: A) => R] extends [Shape] ? (this: T, ...args: A) => Require<R, Id>
+    : Shape extends { (this: infer T1, ...args: infer A1): infer R1; (this: infer T2, ...args: infer A2): infer R2 } ?
+      [((this: T1, ...args: A1) => R1) & ((this: T2, ...args: A2) => R2)] extends [Shape] ?
+        ((this: T1, ...args: A1) => Require<R1, Id>) & ((this: T2, ...args: A2) => Require<R2, Id>)
+      : /* the same for three, then four overloads */ (this: T, ...args: A) => Require<R, Id>
+    : (this: T, ...args: A) => Require<R, Id>
     : never
 
   export type Requirements<Result> = Result extends Effect<infer _A, infer _E, infer R> ? R
@@ -358,10 +381,9 @@ export declare namespace Operation {
     : Result extends Sink<infer A, infer In, infer L, infer E, infer R> ? Sink<A, In, L, E, R | Id>
     : never
 
-  /** True when the signature derived by `infer` is assignable back to the shape: nothing was lost deriving it. */
-  export type Derivable<Shape extends Signature> = Shape extends
-    (this: infer This, ...args: infer Args) => infer Result ?
-    [(this: This, ...args: Args) => Result] extends [Shape] ? true
+  /** True when the derived signature, without the key, is assignable back to the shape: nothing was lost. */
+  export type Derivable<Shape extends Signature> = Shape extends (...args: any) => any ?
+    [Derive<Shape, never>] extends [Shape] ? true
     : false
     : false
 
@@ -381,7 +403,7 @@ export declare namespace Operation {
     (...args: any) => infer Result ?
     [keyof Shape] extends [never] ? [KindOf<Result>] extends [Kind] ? [Id] extends [Requirements<Result>] ? Id
         : Derivable<Shape> extends true ? Id
-        : `The shape of "${Id}" is generic or overloaded: its result must require "${Id}"`
+        : `The shape of "${Id}" is generic: its result must require "${Id}"`
       : Fix[KindOf<Result>]
     : "The shape has properties: an operation is a bare function"
     : Id
@@ -399,10 +421,10 @@ export declare namespace Operation {
 
 ```ts
 export const Operations: {
-  <const Ops extends Operations.Members>(
-    key: Operations.Key<Ops>,
+  <const Name extends string, const Ops extends Operations.Members>(
+    key: Operations.Key<Ops, Name>,
     members: Ops
-  ): Operations.Of<Ops>
+  ): Operations.Of<Name, Ops>
   <Self, Shape = Types.unassigned>(): <const Ops extends Operations.Members>(
     key: Operations.KeyFor<Self, Shape, Ops>,
     members: Ops
@@ -420,7 +442,10 @@ export declare namespace Operations {
   }
   export type Identifier<Ops extends Members> = { [K in keyof Ops]: Service.Identifier<Ops[K]> }[keyof Ops]
   export type Shape<Ops extends Members> = { readonly [K in keyof Ops]: Service.Shape<Ops[K]> }
-  export type Of<Ops extends Members> = Operations<Identifier<Ops>, Shape<Ops>> & Ops
+  // printed key first: Of<"app/Users", { … }>
+  export type Of<Key extends string, Ops extends Members> = Operations<Identifier<Ops>, Shape<Ops>> & Ops & {
+    readonly key: Key
+  }
   export type Reserved<Ops extends Members> = keyof Ops & (keyof Operations<any, any> | "name")
   // the literal identifiers two members share: an alias, a shared nested member, overlapping subsets
   export type Shared<Ops extends Members> = {
@@ -428,7 +453,8 @@ export declare namespace Operations {
       I extends string ? string extends I ? never : Extract<Identifier<Omit<Ops, K>>, I> : never
       : never
   }[keyof Ops]
-  export type Key<Ops extends Members> = [Reserved<Ops>] extends [never] ? [Shared<Ops>] extends [never] ? string
+  export type Key<Ops extends Members, Name extends string = string> = [Reserved<Ops>] extends [never] ?
+    [Shared<Ops>] extends [never] ? Name
     : `"${Shared<Ops> & string}" is reachable under two names: a slot has one name in a record`
     : `Member "${Reserved<Ops> & string}" has the name of a property of the key: rename it`
   export type KeyFor<Self, S, Ops extends Members> = unknown extends Self ?
@@ -510,7 +536,8 @@ define(key, members):                        // Context.Operations
 
 write(context, value):                       // Context.make, Context.add, Effect.provideService, Layer.succeed
   values = collect(value)                    // each member read once, now; present iff name in value (undefined is a
-                                             // member); a function member bound to value, unless it is an Effect;
+                                             // member); stored as value holds it, except a function value inherits
+                                             // (a class's method), bound to value, unless it is an Effect;
                                              // absent: defect "Service not found: <member key> (the object provided
                                              // for <record key> has no member "<name>")"
   if context is empty or at maxDepth: one flat map = context's slots + one entry per slot     // as addUnsafe does
@@ -520,8 +547,9 @@ write(context, value):                       // Context.make, Context.add, Effec
 read(context):                               // Context.get, yield*, use, useSync, getOption, …
   storage = the topmost overlay whose key is one of slots, else the base map
   if views has storage: return it
-  if storage is an overlay of a direct member and read(below it) is found:
-    return { ...below, [name]: overlay.value }                     // an override: one copy, not kept
+  if storage is an overlay of a direct member:                      // an override; never recursive
+    below = views.get(next storage down), or for the base map: build(base), kept
+    if below: return { ...below, [name]: overlay.value }           // one copy, not kept
   object = build(storage)                    // every slot from storage down, one walk; a member record built from
                                              // its own positions; a missing reference reads its default; any other
                                              // missing member: notFound (or the defect), nothing kept
@@ -540,8 +568,10 @@ Invariants, each pinned by a test:
    exactly when every member is (`in`, not `!== undefined`: a member whose value is `undefined` is present).
 3. A record read is a plain object with every member as its own enumerable property, in the record's order, equal to
    the object built from the slots; the same slots read through overlays and through a flat map give the same keys,
-   order and values. Identity is not promised: a storage a write created returns one object, kept in `~views`; an
-   override's read is a fresh copy each time, so a per-request override leaves nothing behind.
+   order and values. Identity is not promised: every other storage returns one object, built in one walk and kept in
+   `~views` (a record write's own overlays, a subset over the full record, a stack of overrides); an override over a
+   kept object reads as a fresh copy each time, so a per-request override leaves nothing behind. The cost of every read
+   is linear in the record's members.
 4. A slot has one name in a record (type and run time), so a write gives each slot one value.
 5. Precedence is ordinary `Context` precedence, slot by slot.
 6. Nothing outside the record key and the contexts it reads is written: no registry, no flag on `Context`, no field on
@@ -553,41 +583,49 @@ The gate is one test, "costs: …" in `packages/effect/test/Context.test.ts`, so
 `Map.get/has/set` and `WeakMap.get/set` calls per operation, which do not depend on the machine's load; timing is
 not gated. Each row is one assertion.
 
-| Measure                                             | Limit (counted)               | Reading | Pass |
-| --------------------------------------------------- | ----------------------------- | ------- | ---- |
-| ordinary key read                                   | 1 Map, 0 Weak                 | 1, 0    | yes  |
-| ordinary key `add`                                  | 0, 0                          | 0, 0    | yes  |
-| record write into a non-empty context               | 0, 0                          | 0, 0    | yes  |
-| member read through a record's overlays             | 0, 0                          | 0, 0    | yes  |
-| repeated record read                                | 1, 1                          | 1, 1    | yes  |
-| member override `add`                               | 0, 0                          | 0, 0    | yes  |
-| member override then record read, per request       | 2, 2 (one copy, kept nowhere) | 2, 2    | yes  |
-| unrelated `add` above an override, then record read | 3, 2                          | 3, 2    | yes  |
+| Measure                                                             | Limit (counted)               | Reading | Pass |
+| ------------------------------------------------------------------- | ----------------------------- | ------- | ---- |
+| ordinary key read                                                   | 1 Map, 0 Weak                 | 1, 0    | yes  |
+| ordinary key `add`                                                  | 0, 0                          | 0, 0    | yes  |
+| record write into a non-empty context                               | 0, 0                          | 0, 0    | yes  |
+| member read through a record's overlays                             | 0, 0                          | 0, 0    | yes  |
+| repeated record read                                                | 1, 1                          | 1, 1    | yes  |
+| member override `add`                                               | 0, 0                          | 0, 0    | yes  |
+| member override then record read, per request                       | 2, 2 (one copy, kept nowhere) | 2, 2    | yes  |
+| unrelated `add` above an override, then record read                 | 3, 2                          | 3, 2    | yes  |
+| first read from a flat map (4 members)                              | members, 2                    | 4, 2    | yes  |
+| first read after a record write into a non-empty context, 4 members | members + 3, 3                | 7, 3    | yes  |
+| the same, 32 members                                                | members + 3, 3                | 35, 3   | yes  |
+| repeated read, a subset written over the full record                | 1, 1 (the same object)        | 1, 1    | yes  |
 
 **`add` and `mergeAll`.** Earlier timing runs showed both over a twin copy of the module. The code says why that is not a cost:
 `mergeAll` is byte for byte the branch point's, and `add` differs by one brand test before the branch point's
 `addUnsafe`; the counts rows equal the branch point's. The excess was the reference machine's noise, the same noise
 that put identical code at 1.0 to 1.5× by run order, which is why timing no longer gates.
 
-**Per-request override, reported.** `Context.add(ctx, readFile, fake)` then `Context.get(…, FileSystem)`, against
-the same for a plain service (copy then read): 0.7 to 2.3× (290 to 600 ns) over three runs on the reference machine,
-from 34× before the override read became an uncached copy. The issue's target was about 3×.
+**First reads.** Round 12's override shortcut recursed through a record write's own overlays, so the first read after
+`provideService(FS, impl)` into a non-empty context was quadratic in the members,
+and a subset over the full record was never kept (a copy per member overlay, per read). The shortcut now looks one
+storage down and never recurses; everything else is one walk and kept, and the last three rows above gate it. No
+timing figure is claimed: the earlier per-request ratio came from a probe that was never committed.
 
 ## Hazards, and what the design does about each
 
-| Hazard                                                      | What the design does                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
-| ----------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Callables that are also Effects                             | Would type as a call in `Effect.andThen(x, op)` (function overload first) and run as an Effect (`isEffect` checked first). A function operation is a `Slot`, not a `Key`: `isEffect` and `isKey` false, so `Effect.andThen`, `tap` and `flatMap` call it and `Layer.succeed(op, impl)` provides it; a value operation is an Effect (`isEffect(columns)` true), so they run it, and it is not callable.                                                                                                                                                                                                                                                   |
-| `isEffect`-dispatching duals                                | Every `dual` with an `isEffect(args[0])` predicate (39 sites in `internal/effect.ts`, `Effect.ts`, `Console.ts`, `Runtime.ts`, `http/HttpServer.ts`, `internal/layer.ts`, `internal/executionPlan.ts`) sees a function; `Effect.map(op, f)` and `yield* op` are type errors (appendix C).                                                                                                                                                                                                                                                                                                                                                                |
-| Stream-returning operations                                 | A call result is one kind, fixed by the constructor, so the 35 `isStream` sites in `Stream.ts` and the checks in `HttpApiBuilder.ts`, `HttpApiClient.ts`, `reactivity/Atom.ts`, `http/Template.ts`, `cluster/Entity.ts` and the child-process spawners cannot misclassify it; a Stream shape given to `Context.Operation` is the error naming `Stream.Operation`.                                                                                                                                                                                                                                                                                        |
-| Receivers                                                   | One rule: every function member is bound to the object it was provided on, at the write, own property or inherited, plain object or class instance (private fields work). So a member runs the same standalone, through the record read and through a spread copy, and a sibling call through `this` reaches the provided object, never an override. The recipe and the JSDoc call siblings through the operation (`Users.find(id)`), which reads the context and sees a test override; a test pins both. `op` itself forwards its `this`: a shape declaring `this` keeps it in the call signature. A callable that is also an Effect is stored unbound. |
-| Function properties                                         | Rejected at the definition, so a type never promises a property the value lacks: `op` has `key`, `name`, `length`, `toJSON` and the brand, nothing else; a value beside a function is a separate key, which may sit in the same record.                                                                                                                                                                                                                                                                                                                                                                                                                  |
-| Identity and `instanceof`                                   | A record read is never the provided object: `instanceof`, `===` and non-member properties do not survive it, and nothing in the repository relied on them; code that needs the instance keeps it as a separate key. Every member is an own enumerable property, so `Object.keys`, `JSON.stringify` and spread list them, overrides in place.                                                                                                                                                                                                                                                                                                             |
-| A partial record                                            | Rejected against `Shape` (pasted above); with types bypassed, the write's defect names the member, where the layer is built. `Layer.mock` is the partial convenience and dies on what it lacks (`effect/FileSystem: Unimplemented method "stat"`); `FileSystem.makeNoop({})` is complete.                                                                                                                                                                                                                                                                                                                                                                |
-| Key collisions, string-keyed access, two copies of `effect` | One string is one slot ("Identity" under "Runtime semantics"), so code reaching in by string cannot make a record disagree with its members; the `<package>/<Service>/<operation>` convention keeps keys unique; a subset shares its members' keys on purpose.                                                                                                                                                                                                                                                                                                                                                                                           |
-| Mutation after the fact                                     | A map mutated after `makeUnsafe` is read live by member reads while a record already assembled for it stays as it was (pinned); a provided object is read once, at the write.                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
-| Misuse that does not compile                                | `Terminal.columns()`: `This expression is not callable`; `Context.Operation("key")`: `Expected 0 arguments, but got 1`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
-| Requirement unions written as type aliases                  | The codemod cannot tell `type Env = FileSystem.FileSystem \| Path.Path` from a value type and rewrites it; two such aliases in the repository were restored by hand; users review the codemod's diff.                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| Hazard                                                      | What the design does                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| ----------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Callables that are also Effects                             | Would type as a call in `Effect.andThen(x, op)` (function overload first) and run as an Effect (`isEffect` checked first). A function operation is a `Slot`, not a `Key`: `isEffect` and `isKey` false, so `Effect.andThen`, `tap` and `flatMap` call it and `Layer.succeed(op, impl)` provides it; a value operation is an Effect (`isEffect(columns)` true), so they run it, and it is not callable.                                                                                                                                                                                                                                                                                                                                                                                         |
+| `isEffect`-dispatching duals                                | Every `dual` with an `isEffect(args[0])` predicate (39 sites in `internal/effect.ts`, `Effect.ts`, `Console.ts`, `Runtime.ts`, `http/HttpServer.ts`, `internal/layer.ts`, `internal/executionPlan.ts`) sees a function; `Effect.map(op, f)` and `yield* op` are type errors (appendix C).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| Stream-returning operations                                 | A call result is one kind, fixed by the constructor, so the 35 `isStream` sites in `Stream.ts` and the checks in `HttpApiBuilder.ts`, `HttpApiClient.ts`, `reactivity/Atom.ts`, `http/Template.ts`, `cluster/Entity.ts` and the child-process spawners cannot misclassify it; a Stream shape given to `Context.Operation` is the error naming `Stream.Operation`.                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| Receivers                                                   | A member is stored as the provided object holds it, so an own method's `this` is its call's receiver: the record read (`(yield* Users).find`) or the key (`Users.find`), both of whose `find` sees a test override; a bare call has none (`this.x` is a defect). A method the object inherits (a class instance's) is bound to the instance at the write, so private fields work standalone, through the read and through a copy, and its `this.find` is the instance's own, never an override. The recipe and the JSDoc call siblings through the operation (`Users.find(id)`), which sees an override from anywhere; a test pins every case. `op` itself forwards its `this`: a shape declaring `this` keeps it in the call signature. A callable that is also an Effect is stored as it is. |
+| Function properties                                         | On an operation, rejected at the definition, so a type never promises a property the value lacks: `op` has `key`, `name`, `length`, `toJSON` and the brand, nothing else; a value beside a function is a separate key, which may sit in the same record. On a member's value (a `Context.Service` member whose shape is a function with properties, or a class with statics), kept: the value is stored as it is, so `Context.get(ctx, member) === value`, `.sep` and statics survive the write (pinned).                                                                                                                                                                                                                                                                                      |
+| Identity and `instanceof`                                   | A record read is never the provided object: `instanceof`, `===` and non-member properties of the object do not survive it, and nothing in the repository relied on them; code that needs the instance keeps it as a separate key. Each member's identity does: `Context.get(ctx, member) === value` and `read.find === impl.find` for an own member (pinned). Every member is an own enumerable property, so `Object.keys`, `JSON.stringify` and spread list them, overrides in place.                                                                                                                                                                                                                                                                                                         |
+| Class constructors as members                               | A member whose value is a class (a `Context.Service<typeof Parser>` member) is a function the provided object owns, so it is stored as it is: `new read.Parser()` constructs and its statics read (pinned). Binding it, as round 12 did, would have kept it constructible but dropped its statics.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| A class's sibling call under an override                    | A class instance's `this.read(path)` calls the instance's own `read` (its methods are bound to it, for private fields), so a test that overrides `read` does not reach it: `size` returns the live length under the override (pinned). The documented recipe is the operation, `read(path)`, which sees the override; a plain object's `this.read` sees it too, through the read or the key.                                                                                                                                                                                                                                                                                                                                                                                                   |
+| A partial record                                            | Rejected against `Shape` (pasted above); with types bypassed, the write's defect names the member, where the layer is built. `Layer.mock` is the partial convenience and dies on what it lacks (`effect/FileSystem: Unimplemented method "stat"`); `FileSystem.makeNoop({})` is complete.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| Key collisions, string-keyed access, two copies of `effect` | One string is one slot ("Identity" under "Runtime semantics"), so code reaching in by string cannot make a record disagree with its members; the `<package>/<Service>/<operation>` convention keeps keys unique; a subset shares its members' keys on purpose.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| Mutation after the fact                                     | A map mutated after `makeUnsafe` is read live by member reads while a record already assembled for it stays as it was (pinned); a provided object is read once, at the write.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| Misuse that does not compile                                | `Terminal.columns()`: `This expression is not callable`; `Context.Operation("key")`: `Expected 0 arguments, but got 1`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| Requirement unions written as type aliases                  | The codemod cannot tell `type Env = FileSystem.FileSystem \| Path.Path` from a value type and rewrites it; two such aliases in the repository were restored by hand; users review the codemod's diff.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
 
 ## Tree-shaking
 
@@ -599,16 +637,17 @@ contract and nothing once published.
 
 The prototype's `pnpm --filter tree-shakeable-services-spec bundle` (esbuild, about 4 s) builds five composition
 roots over its thirty-key fixture contract and fails if an unused implementation appears or a used one is missing.
-`packages/effect/test/FileSystem/treeShaking.test.ts` is one esbuild build of three roots over the real modules, with
+`packages/effect/test/FileSystem/treeShaking.test.ts` is one esbuild build of four roots over the real modules, with
 `effect` as published (fixtures in `packages/effect/test/fixtures/tree-shaking/`), asserting which operation modules
 and keys are in each bundle, that the record key is not, and the Stream bytes. Sizes, minified, measured once and not
 asserted:
 
-| Root                                                | Bundle   | Node operation modules       | Whole `NodeFileSystem.layer` |
-| --------------------------------------------------- | -------- | ---------------------------- | ---------------------------- |
-| `FileSystem.readFile`/`writeFile`, their two layers | 39,950 B | readFile, writeFile, shared  | 76,840 B                     |
-| `HttpServerResponse.file` over `HttpPlatform.layer` | 99,645 B | stat, stream, open, shared   | 123,964 B                    |
-| `Logger.toFile`                                     | 64,215 B | open, shared; no Stream code | not built                    |
+| Root                                                | Bundle   | Node operation modules               | Whole `NodeFileSystem.layer`     |
+| --------------------------------------------------- | -------- | ------------------------------------ | -------------------------------- |
+| `FileSystem.readFile`/`writeFile`, their two layers | 39,950 B | readFile, writeFile, shared          | 76,840 B                         |
+| `HttpServerResponse.file` over `HttpPlatform.layer` | 99,645 B | stat, stream, open, shared           | 123,964 B                        |
+| `Logger.toFile`                                     | 64,215 B | open, shared; no Stream code         | not built                        |
+| `Terminal.display` (a CLI that only displays)       | 83,664 B | display; no readline, no Stream code | 110,052 B (`NodeTerminal.layer`) |
 
 `open` is in the HTTP root because `NodeFileSystem.stream` is `FileSystem.layerStream` over `NodeFileSystem.open`.
 A replaced implementation is never in the bundle: a test that overrides `readFile` provides its own layer, and the root
@@ -625,24 +664,31 @@ and `watch` by `Stream.Operation`, `sink` by `Sink.Operation`; the scoped ones k
 type and the removed `[TypeId]` brand, which nothing read. The six derived operations get public layers
 over the primitives they use: `layerExists` (requires `access`), `layerGlob` (`readDirectoryEntries | stat |
 readLink`), `layerReadFileString` (`readFile`), `layerWriteFileString` (`writeFile`), `layerStream` and `layerSink`
-(`open`). `packages/effect/src/Terminal.ts` is the same with five value operations and one function operation; its
-shape does not change, so `NodeTerminal.make`, `Terminal.make({...})` and the ten `yield* terminal.columns` sites in
-`cli/Prompt.ts` changed only by the codemod, and `yield* Terminal.columns` works under any `Layer<Terminal>`.
+(`open`). `packages/effect/src/Terminal.ts` is the same with five value operations and one function operation, and
+`Terminal.Interactive`, the subset record `{ columns, readInput, display }` a prompt uses; its shape does not change, so
+`Terminal.make({...})` and `Layer<Terminal>` work as before.
 
 **Providers.** `@effect/platform-node-shared`'s `NodeFileSystem.ts` is split into `src/internal/fileSystem/` (32
 operation modules, `shared.ts`, `layer.ts`; appendix E) and exports the 32 layers by member name plus `layer`, their
-merge, unchanged; `@effect/platform-node`'s `NodeFileSystem` and `BunFileSystem` re-export all 33.
+merge, unchanged; `@effect/platform-node`'s `NodeFileSystem` and `BunFileSystem` re-export all 33. `NodeTerminal.ts` is
+split the same way into `src/internal/terminal/`: `columns`, `rows`, `size` and `display` over `process.stdout` alone,
+and `readInput` and `readLine` over an internal scoped service `Input` that owns the `stdin`, `readline` and raw-mode
+setup; each of those two layers provides `Input.layer`, so merged they build one `Input` (layer memoization by
+reference, pinned in `NodeTerminal.test.ts`). `NodeTerminal` exports the six layers by member name; `make(shouldQuit)`
+and `layer` keep their signatures and are built from the same modules; `@effect/platform-node` and `BunTerminal`
+re-export the six. `DenoTerminal` stays whole (out of scope).
 
 **Consumers in `effect`.** The ones that use a few members now require only those, so an HTTP or logging app
 given member layers compiles and bundles only them ("Tree-shaking"); a `Layer<FileSystem>` still satisfies each:
 
-| API                                                           | Requires now                                             | How                                                   |
-| ------------------------------------------------------------- | -------------------------------------------------------- | ----------------------------------------------------- |
-| `HttpPlatform.layer` (`HttpServerResponse.file`)              | `"effect/FileSystem/stat" \| "effect/FileSystem/stream"` | reads both once at layer build (`Effect.service(op)`) |
-| `HttpStaticServer.make`                                       | `"effect/FileSystem/stat" \| Path \| HttpPlatform`       | the same, for `stat`                                  |
-| `Logger.toFile`                                               | `Scope \| "effect/FileSystem/open"`                      | calls `FileSystem.open`                               |
-| `HttpBody.file`, `fileFromInfo`, `HttpClientRequest.bodyFile` | their operations                                         | narrowed requirements                                 |
-| cli `Primitive`, `Prompt` internals                           | unchanged `Environment`                                  | call `exists`/`stat`/`readFileString`/`readDirectory` |
+| API                                                           | Requires now                                             | How                                                      |
+| ------------------------------------------------------------- | -------------------------------------------------------- | -------------------------------------------------------- |
+| `HttpPlatform.layer` (`HttpServerResponse.file`)              | `"effect/FileSystem/stat" \| "effect/FileSystem/stream"` | reads both once at layer build (`Effect.service(op)`)    |
+| `HttpStaticServer.make`                                       | `"effect/FileSystem/stat" \| Path \| HttpPlatform`       | the same, for `stat`                                     |
+| `Logger.toFile`                                               | `Scope \| "effect/FileSystem/open"`                      | calls `FileSystem.open`                                  |
+| `HttpBody.file`, `fileFromInfo`, `HttpClientRequest.bodyFile` | their operations                                         | narrowed requirements                                    |
+| cli `Primitive`, `Prompt` internals                           | unchanged `Environment`                                  | call `exists`/`stat`/`readFileString`/`readDirectory`    |
+| `Prompt.run` and the nine width sites in `cli/Prompt.ts`      | `Terminal.Interactive`; `"effect/Terminal/columns"`      | `yield* Terminal.Interactive`, `yield* Terminal.columns` |
 
 `HttpPlatform.make` reads the operations at layer build because the `fileResponse` shape it fills has `R = never`.
 `NodeHttpPlatform` and `BunHttpPlatform` provide `NodeFileSystem.stat`/`BunFileSystem.stat`. Left whole, with the
@@ -663,14 +709,14 @@ of `Effect`, `Layer`, `Stream`, `Sink`, `Channel`, `Context` and `Effect.fn.Retu
 `Terminal` re-exports were restored by hand. `test/cli/services/MockTerminal.ts` became its own service whose layer
 also provides the terminal record; `test/http/HttpPlatform.test.ts` provides `FileSystem.makeNoop({})`, not `{} as any`.
 
-| User code                                                                          | This branch                                | After issues 11 and 12 |
-| ---------------------------------------------------------------------------------- | ------------------------------------------ | ---------------------- |
-| `yield* FileSystem` or `FileSystem.readFile(p)`, + `NodeFileSystem.layer`          | compiles; whole bundle                     | the same               |
-| `FileSystem.readFile(p)` + `NodeFileSystem.readFile` (or `BunFileSystem.readFile`) | two implementations in the bundle          | the same               |
-| `HttpServerResponse.file` + `NodeFileSystem.stat` and `stream`                     | compiles; those (and `open`) in the bundle | the same               |
-| `Logger.toFile` + `NodeFileSystem.open`                                            | compiles; `open` alone, no Stream code     | the same               |
-| `fs: FileSystem.FileSystem` as a record type                                       | `fs: FileSystem.Shape` (codemod)           |                        |
-| a CLI that displays without prompting, + `NodeTerminal.layer`                      | whole terminal                             | `display` alone        |
+| User code                                                                          | Before this round                          | This branch     |
+| ---------------------------------------------------------------------------------- | ------------------------------------------ | --------------- |
+| `yield* FileSystem` or `FileSystem.readFile(p)`, + `NodeFileSystem.layer`          | compiles; whole bundle                     | the same        |
+| `FileSystem.readFile(p)` + `NodeFileSystem.readFile` (or `BunFileSystem.readFile`) | two implementations in the bundle          | the same        |
+| `HttpServerResponse.file` + `NodeFileSystem.stat` and `stream`                     | compiles; those (and `open`) in the bundle | the same        |
+| `Logger.toFile` + `NodeFileSystem.open`                                            | compiles; `open` alone, no Stream code     | the same        |
+| `fs: FileSystem.FileSystem` as a record type                                       | `fs: FileSystem.Shape` (codemod)           |                 |
+| a CLI that displays without prompting, + `NodeTerminal.display`                    | did not exist: `NodeTerminal.layer` only   | `display` alone |
 
 ## Earlier designs considered
 
@@ -704,8 +750,8 @@ fifteen small synchronous functions over one implementation, is not worth one) a
 ## Implementation plan
 
 Twelve issues, each a PR against `v4/next-minor`. The checklist under each is its acceptance, ready to paste, and
-implies `pnpm check`, `pnpm check-tsc`, `lint`, `circular`, `jsdocs --check` and every existing suite clean; issues
-1 to 10 are on this branch, to be cut at the seams named.
+implies `pnpm check`, `pnpm check-tsc`, `lint`, `circular`, `jsdocs --check` and every existing suite clean; all
+twelve are on this branch, to be cut at the seams named (12 in part: `Command.Environment` stays whole).
 
 1. **`Context.Slot` and the widening**: every parameter under "Existing APIs this touches".
    - [ ] Every existing test passes unchanged; `Effect.service` and `Layer.updateService` return as before.
@@ -725,9 +771,10 @@ implies `pnpm check`, `pnpm check-tsc`, `lint`, `circular`, `jsdocs --check` and
    - [ ] JSDoc **Gotchas**: a record read is an object of the members, not the provided object; call siblings through
          the operation.
 5. **Records: provided objects and receivers**: `collect`, `Layer.mock`'s proxy, `Reserved`.
-   - [ ] A function member is bound at the write: a method reading a private field runs standalone, through the record
-         and through a spread copy.
-   - [ ] A sibling called through the operation sees a test override.
+   - [ ] A member is stored as provided: a function member keeps its identity, properties and statics, and an own
+         method's `this` is its call's receiver; an inherited (class) method is bound, so a private field reads
+         standalone, through the record and through a spread copy.
+   - [ ] A sibling called through the operation sees a test override, from a plain object and from a class.
 6. **Records: `pick`/`omit`, strings, nested, subset and reference members.**
    - [ ] `getOrUndefinedUnsafe(ctx, record.key)` is `undefined` after a record write; a subset shadows the full record
          slot by slot, in both orders.
@@ -747,11 +794,17 @@ implies `pnpm check`, `pnpm check-tsc`, `lint`, `circular`, `jsdocs --check` and
           `Logger.toFile` with `open` only bundles `open` and no Stream code.
     - [ ] `typetest/http/HttpPlatform.tst.ts` and `typetest/Logger.tst.ts` pin the narrowed requirements and that a
           `Layer<FileSystem>` satisfies them; changeset `filesystem-operation-consumers.md` (patch).
-11. **`effect/Terminal` providers** (appendix E): `NodeTerminal` one module per member over an internal `Input`.
-    - [ ] The Terminal and cli suites pass; a fixture that displays without reading carries `display` alone.
+11. **`effect/Terminal` providers** (appendix E): `NodeTerminal` one module per member over an internal `Input`;
+    `NodeTerminal`'s and `BunTerminal`'s six member layers.
+    - [x] `NodeTerminal.test.ts` passes: the six layers merged provide `Terminal`; `readInput` and `readLine` merged
+          build one `Input`.
+    - [x] `treeShaking.test.ts`'s "display alone, no readline": the root bundles the `display` module alone, no
+          `readline`, `emitKeypressEvents` or `setRawMode`, no other member key, 0 Stream bytes (83,664 B minified,
+          against 110,052 B with `NodeTerminal.layer`).
 12. **`effect/Terminal` and cli consumers**: `Terminal.Interactive`, the `cli/Prompt.ts` sites, and a design for
     `Command.Environment` that does not narrow user callbacks.
-    - [ ] The cli suites pass; `Prompt` programs name `Terminal.Interactive` as their requirement.
+    - [x] The cli suites pass; `Prompt.run` reads `Terminal.Interactive`, the width sites `Terminal.columns`.
+    - [ ] `Command.Environment` narrowed without breaking a user callback that requires the whole terminal: open.
 
 ## Test plan
 
@@ -770,8 +823,9 @@ Kept to what pins the contract, so the suites stay fast (the bundle test and the
 5. An override wins for its member, directly and through the record; the other order has the record win;
    `Layer.mock`; an override's read is a copy, a write's read is kept.
 6. A slot under two names is a defect at the definition: alias, nested shared member, overlapping subsets.
-7. Receivers: a function member is bound at the write (class with private fields, plain object, spread copy); a
-   sibling called through the operation sees an override.
+7. Receivers: a member is stored as provided (identity, properties, statics, a class constructor as a value); an own
+   method's `this` is the read or the key; an inherited method is bound (private fields, spread copy); a sibling called
+   through the operation sees an override, and a class's `this.sibling` does not.
 8. Subsets, nested and reference members, `pick`/`omit`, and keys built from a member's string.
 9. Costs: the counted rows under "Cost".
 
@@ -781,8 +835,8 @@ wrong overrides rejected; kind errors; a record's identity is the union of its m
 rejected naming the shape; a slot under two names rejected naming the slot; the one-line form prints as `Of<…>`.
 
 **Migration and bundles**: `test/FileSystem.test.ts`, `test/Terminal.test.ts`,
-`packages/platform/node-shared/test/NodeFileSystem.test.ts`, `test/FileSystem/treeShaking.test.ts` (three roots, one
-build), `typetest/http/HttpPlatform.tst.ts`, `typetest/Logger.tst.ts`, doctests for every new export, and the
+`packages/platform/node-shared/test/NodeFileSystem.test.ts` and `NodeTerminal.test.ts`,
+`test/FileSystem/treeShaking.test.ts` (four roots, one build), `typetest/http/HttpPlatform.tst.ts`, `typetest/Logger.tst.ts`, doctests for every new export, and the
 prototype's `pnpm verify` (`check`, `check-errors`, `bundle`).
 
 ## Acceptance criteria
@@ -795,6 +849,7 @@ prototype's `pnpm verify` (`check`, `check-errors`, `bundle`).
       implementation is not in the bundle.
 - [ ] A `Layer<FileSystem>` satisfies every member requirement; `HttpPlatform.layer` and `Logger.toFile` need only
       their operations.
-- [ ] A slot has one name in a record, enforced at the definition; function members are bound at the write.
+- [ ] A slot has one name in a record, enforced at the definition; a member is stored as provided, an inherited method
+      bound.
 - [ ] The costs test passes in CI; ordinary keys cost what they cost at the branch point.
 - [ ] `pnpm check`, `check-tsc`, `lint`, `circular`, `jsdocs --check` and the suites above are clean.

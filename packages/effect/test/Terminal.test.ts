@@ -55,6 +55,17 @@ describe("Terminal operations", () => {
       assert.match(String(exit), /Service not found: effect\/Terminal\/columns/)
     }))
 
+  it.effect("Interactive is a subset: a Layer<Terminal> satisfies it, and its read is the three members", () => {
+    const full: Layer.Layer<Terminal.Interactive> = Layer.succeed(Terminal.Terminal, live)
+    return Effect.gen(function*() {
+      const interactive = yield* Terminal.Interactive
+      assert.deepStrictEqual(Object.keys(interactive).sort(), ["columns", "display", "readInput"])
+      assert.strictEqual(interactive.columns, live.columns)
+      assert.strictEqual(interactive.readInput, live.readInput)
+      assert.strictEqual(yield* interactive.columns, 80)
+    }).pipe(Effect.provide(full))
+  })
+
   it("is stored as one slot per member and nothing else", () => {
     const context = Context.make(Terminal.Terminal, live)
     assert.strictEqual(context.mapUnsafe.size, Object.keys(Terminal.Terminal.members).length)

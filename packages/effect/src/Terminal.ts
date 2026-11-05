@@ -241,6 +241,55 @@ export const Terminal = Context.Operations<Terminal, Shape>()("effect/Terminal",
  */
 export type Terminal = Context.Operations.Identifier<typeof members>
 
+const interactiveMembers = { columns, readInput, display }
+
+/**
+ * The record of the operations a prompt uses: the shape of {@link Interactive}.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.0.0
+ */
+export interface InteractiveShape extends Context.Operations.Shape<typeof interactiveMembers> {}
+
+/**
+ * The interactive terminal: a record service over the operations a prompt
+ * uses (`columns`, `readInput` and `display`). A program that prompts can
+ * name it as its one requirement; a `Layer<Terminal>` satisfies it, and so do
+ * layers of those three operations, so a program that only displays never
+ * needs an input reader.
+ *
+ * **Example** (A prompt frame with one named requirement)
+ *
+ * ```ts
+ * import { Effect, Terminal } from "effect"
+ *
+ * const frame = (text: string): Effect.Effect<void, never, Terminal.Interactive> =>
+ *   Effect.gen(function*() {
+ *     const columns = yield* Terminal.columns
+ *     yield* Effect.orDie(Terminal.display(text.slice(0, columns)))
+ *   })
+ * ```
+ *
+ * @stability unstable
+ * @category services
+ * @since 4.0.0
+ */
+export const Interactive = Context.Operations<Interactive, InteractiveShape>()(
+  "effect/Terminal/Interactive",
+  interactiveMembers
+)
+
+/**
+ * The identity of the interactive terminal: the union of its three
+ * operations' keys.
+ *
+ * @stability unstable
+ * @category services
+ * @since 4.0.0
+ */
+export type Interactive = Context.Operations.Identifier<typeof interactiveMembers>
+
 /**
  * Creates a `Terminal` service implementation.
  *

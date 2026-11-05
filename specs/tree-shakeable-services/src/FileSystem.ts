@@ -26,7 +26,13 @@ export * from "./FileSystem/Shape.ts"
  * `Layer.succeed(FileSystem, record)` takes it: the operations' shapes by name.
  * An interface, so that diagnostics print `Shape` and name the members it lacks.
  */
-export interface Shape extends Context.Operations.Shape<typeof members> {}
+export interface Shape extends Context.Operations.Shape<Members> {}
+
+/**
+ * The members by name, as an interface, so that a diagnostic about the shape
+ * names it rather than the module the members come from.
+ */
+export interface Members extends Readonly<typeof members> {}
 
 /**
  * The identity of the file system: the union of its operations' keys, which is

@@ -113,7 +113,7 @@ describe("Operation", () => {
     expect(Context.Operation).type.not.toBeCallableWith("TypeTest/noShape")
   })
 
-  it("keeps generic and overloaded shapes that name their key, and rejects those that do not", () => {
+  it("derives overloaded shapes, keeps generic ones that name their key, and rejects those that do not", () => {
     const parse = Context.Operation<
       <A>(decode: (input: string) => A, input: string) => Effect.Effect<A, never, "TypeTest/parse">
     >()("TypeTest/parse")
@@ -124,14 +124,29 @@ describe("Operation", () => {
     }>()("TypeTest/format")
     expect(format(1)).type.toBe<Effect.Effect<string, never, "TypeTest/format">>()
     expect(format(new Date(), "en")).type.toBe<Effect.Effect<string, never, "TypeTest/format">>()
+    // overloads are derived one by one (up to four), so they need not name the key
+    const render = Context.Operation<{
+      (value: number): Effect.Effect<string>
+      (value: Date, locale: string): Effect.Effect<boolean, Error>
+      (value: boolean): Effect.Effect<number>
+    }>()("TypeTest/render")
+    expect(render(1)).type.toBe<Effect.Effect<string, never, "TypeTest/render">>()
+    expect(render(new Date(), "en")).type.toBe<Effect.Effect<boolean, Error, "TypeTest/render">>()
+    expect(render(true)).type.toBe<Effect.Effect<number, never, "TypeTest/render">>()
+    expect(render).type.not.toBeCallableWith("a")
     // a type parameter that appears only in the parameters is derived without loss
     const log = Context.Operation<<A>(value: A) => Effect.Effect<void>>()("TypeTest/log")
     expect(log(1)).type.toBe<Effect.Effect<void, never, "TypeTest/log">>()
     expect(Context.Operation<<A>(decode: (input: string) => A) => Effect.Effect<A>>()).type.not.toBeCallableWith(
       "TypeTest/unnamed"
     )
-    expect(Context.Operation<{ (value: number): Effect.Effect<string>; (value: Date): Effect.Effect<string> }>()).type
-      .not.toBeCallableWith("TypeTest/overloaded")
+    // a generic overload is derived at its constraint: TypeScript relates overload sets with their type parameters
+    // erased, so the definition cannot tell; such a shape names its key in its results to keep the type parameter
+    const coerce = Context.Operation<{
+      <A>(value: A): Effect.Effect<A>
+      (value: Date, locale: string): Effect.Effect<string>
+    }>()("TypeTest/coerce")
+    expect(coerce(1)).type.toBe<Effect.Effect<unknown, never, "TypeTest/coerce">>()
     expect(Context.Operation<((value: number) => Effect.Effect<string>) & { readonly extra: number }>()).type.not
       .toBeCallableWith("TypeTest/properties")
     // a `this` parameter is part of the call signature
@@ -176,6 +191,14 @@ describe("Operation", () => {
       expect<Context.Service.Identifier<typeof Inferred>>().type.toBe<
         "TypeTest/FS/readFile" | "TypeTest/FS/writeFile"
       >()
+      // the one-line form carries its key, which it prints first: `Of<"TypeTest/Inferred", { … }>`
+      expect(Inferred).type.toBe<
+        Context.Operations.Of<
+          "TypeTest/Inferred",
+          { readonly readFile: typeof readFile; readonly writeFile: typeof writeFile }
+        >
+      >()
+      expect(Inferred.key).type.toBe<"TypeTest/Inferred">()
       expect(ReadOnly).type.toBe<
         Context.Operations<ReadOnly, Context.Operations.Shape<typeof readOnlyMembers>> & typeof readOnlyMembers
       >()

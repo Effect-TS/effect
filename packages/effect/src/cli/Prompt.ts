@@ -1257,7 +1257,7 @@ export const run: <Output>(
   Environment
 > = Effect.fnUntraced(
   function*<Output>(self: Prompt<Output>) {
-    const terminal = yield* Terminal.Terminal
+    const terminal = yield* Terminal.Interactive
     const input = yield* Effect.cached(terminal.readInput)
     return yield* runWithInput(self, terminal, input)
   },
@@ -1522,8 +1522,8 @@ const allTupled = <const T extends ArrayLike<Prompt<any>>>(arg: T): Prompt<
 
 const runWithInput = <Output>(
   prompt: Prompt<Output>,
-  terminal: Terminal.Shape,
-  input: Terminal.Shape["readInput"]
+  terminal: Terminal.InteractiveShape,
+  input: Terminal.InteractiveShape["readInput"]
 ): Effect.Effect<Output, NoSuchElementError, Environment | Scope.Scope> =>
   Effect.suspend(() => {
     const op = prompt as PromptPrimitive
@@ -1546,7 +1546,7 @@ const runWithInput = <Output>(
 const runLoop = Effect.fnUntraced(
   function*(
     loop: Loop,
-    terminal: Terminal.Shape,
+    terminal: Terminal.InteractiveShape,
     input: Queue.Dequeue<Terminal.UserInput, Cause.Done>
   ) {
     let state = Effect.isEffect(loop.initialState) ? yield* loop.initialState : loop.initialState
@@ -1637,8 +1637,7 @@ const NEWLINE_REGEXP = /\r?\n/
 
 const handleConfirmClear = (options: ConfirmOptionsReq) => {
   return Effect.fnUntraced(function*(state: ConfirmState, _: Action<ConfirmState, boolean>) {
-    const terminal = yield* Terminal.Terminal
-    const columns = yield* terminal.columns
+    const columns = yield* Terminal.columns
     const figures = yield* getTheme(options)
     const confirmMessage = state.value
       ? options.placeholder.defaultConfirm!
@@ -1715,8 +1714,7 @@ interface DateState {
 
 const handleDateClear = (options: DateOptionsReq) => {
   return Effect.fnUntraced(function*(state: DateState, _: Action<DateState, globalThis.Date>) {
-    const terminal = yield* Terminal.Terminal
-    const columns = yield* terminal.columns
+    const columns = yield* Terminal.columns
     const figures = yield* getTheme(options)
     const resetCurrentLine = Ansi.eraseLine + Ansi.cursorLeft
     const parts = Arr.reduce(state.dateParts, "", (doc, part) => doc + part.toString())
@@ -2352,8 +2350,7 @@ const updateFileState = (
 
 const handleFileClear = (options: FileOptionsReq) => {
   return Effect.fnUntraced(function*(state: FileState, _: Action<FileState, string>) {
-    const terminal = yield* Terminal.Terminal
-    const columns = yield* terminal.columns
+    const columns = yield* Terminal.columns
     const path = yield* Path.Path
     const figures = yield* getTheme(options)
     const currentPath = yield* resolveCurrentPath(state.path, options)
@@ -2907,8 +2904,7 @@ const processSpace = <A>(
 
 const handleMultiSelectClear = <A>(options: SelectOptionsReq<A>) =>
   Effect.fnUntraced(function*(state: MultiSelectState, _: Action<MultiSelectState, Array<A>>) {
-    const terminal = yield* Terminal.Terminal
-    const columns = yield* terminal.columns
+    const columns = yield* Terminal.columns
     const figures = yield* getTheme(options)
     const clearPrompt = Ansi.eraseLine + Ansi.cursorLeft
     const promptText = renderSelectOutput(figures.prefix, figures.pointerSmall, options, figures, { plain: true })
@@ -2979,8 +2975,7 @@ interface NumberState {
 
 const handleNumberClear = (options: IntOptionsReq) => {
   return Effect.fnUntraced(function*(state: NumberState, _: Action<NumberState, number>) {
-    const terminal = yield* Terminal.Terminal
-    const columns = yield* terminal.columns
+    const columns = yield* Terminal.columns
     const figures = yield* getTheme(options)
     const resetCurrentLine = Ansi.eraseLine + Ansi.cursorLeft
     const errorText = renderNumberError(state, figures.pointerSmall, figures, { plain: true })
@@ -3598,8 +3593,7 @@ const handleAutoCompleteRender = <A>(options: AutoCompleteOptionsReq<A>) => {
 
 const handleSelectClear = <A>(options: SelectOptionsReq<A>) =>
   Effect.fnUntraced(function*(state: SelectState, _: Action<SelectState, A>) {
-    const terminal = yield* Terminal.Terminal
-    const columns = yield* terminal.columns
+    const columns = yield* Terminal.columns
     const figures = yield* getTheme(options)
     const clearPrompt = Ansi.eraseLine + Ansi.cursorLeft
     const promptText = renderSelectOutput(figures.prefix, figures.pointerSmall, options, figures, { plain: true })
@@ -3610,8 +3604,7 @@ const handleSelectClear = <A>(options: SelectOptionsReq<A>) =>
 
 const handleAutoCompleteClear = <A>(options: AutoCompleteOptionsReq<A>) =>
   Effect.fnUntraced(function*(state: AutoCompleteState, _: Action<AutoCompleteState, A>) {
-    const terminal = yield* Terminal.Terminal
-    const columns = yield* terminal.columns
+    const columns = yield* Terminal.columns
     const figures = yield* getTheme(options)
     const clearPrompt = Ansi.eraseLine + Ansi.cursorLeft
     const promptText = renderAutoCompleteOutput(
@@ -3722,8 +3715,7 @@ interface TextState {
 }
 
 const renderClearScreen = Effect.fnUntraced(function*(state: TextState, options: TextOptionsReq) {
-  const terminal = yield* Terminal.Terminal
-  const columns = yield* terminal.columns
+  const columns = yield* Terminal.columns
   const figures = yield* getTheme(options)
   const resetCurrentLine = Ansi.eraseLine + Ansi.cursorLeft
   const errorText = renderTextError(state, figures.pointerSmall, figures, { plain: true })
@@ -4019,8 +4011,7 @@ interface ToggleOptionsReq extends OptionsReq<ToggleOptions> {}
 type ToggleState = boolean
 
 const handleToggleClear = Effect.fnUntraced(function*(options: ToggleOptionsReq) {
-  const terminal = yield* Terminal.Terminal
-  const columns = yield* terminal.columns
+  const columns = yield* Terminal.columns
   const figures = yield* getTheme(options)
   const clearPrompt = Ansi.eraseLine + Ansi.cursorLeft
   const toggleText = options.active + " " + separateSymbol(figures.toggleSeparator, options.inactive)

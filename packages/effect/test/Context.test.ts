@@ -402,9 +402,9 @@ describe("Operation", () => {
     ...overrides
   })
   /**
-   * Asserts `actual` is `expected` as a record stores it: a function member is stored bound to the object it was
-   * provided on (`bound <name>`), while a function written to its own slot, and any other value, is stored as it is;
-   * a nested record is compared member by member.
+   * Asserts `actual` is `expected` as a record stores it: a method the provided object inherits (a class
+   * instance's) is stored bound to it (`bound <name>`), every other member as it is; a nested record is compared
+   * member by member.
    */
   const assertMember = (actual: unknown, expected: unknown): void => {
     if (actual === expected) return
@@ -1068,7 +1068,7 @@ describe("Operation", () => {
       strictEqual(Context.get(context, FS), after)
     })
 
-    it("binds every function member to the object it was provided on; a sibling called through its operation sees an override", async () => {
+    it("stores a member as provided; an own method keeps its call's receiver, an inherited one is bound", async () => {
       const read = Context.Operation<(path: string) => Effect.Effect<string>>()("ContextTest/Sibling/read")
       // an operation built on a sibling names the sibling in its requirements, so it reads it where it is called
       const size = Context.Operation<(path: string) => Effect.Effect<number, never, "ContextTest/Sibling/read">>()(
@@ -1085,28 +1085,75 @@ describe("Operation", () => {
         read: viaThis.read,
         size: (path: string) => Effect.map(read(path), (text) => text.length)
       }
+      class Impl {
+        #prefix = "live"
+        read(path: string) {
+          return Effect.succeed(`${this.#prefix} ${path}`)
+        }
+        size(path: string) {
+          return Effect.map(this.read(path), (text) => text.length)
+        }
+      }
       const fake = (path: string) => Effect.succeed(`fake! ${path}`)
       const run = <A>(
         effect: Effect.Effect<A, never, Context.Service.Identifier<typeof Text>>,
         impl: Context.Service.Shape<typeof Text>
       ) => Effect.runPromise(Effect.provide(effect, Layer.succeed(Text, impl)))
-      // a plain object's method runs with the object as `this`: standalone, through the record and through a copy
-      strictEqual(await run(size("a"), viaThis), 6)
-      strictEqual(await run(Effect.flatMap(Text, (text) => text.size("a")), viaThis), 6)
-      strictEqual(await run(Effect.flatMap(Text, (text) => ({ ...text }).size("a")), viaThis), 6)
-      // a test override of `read`: a sibling call through `this` reads the provided sibling, one through the
-      // operation reads the override
-      const overridden = size("a").pipe(Effect.provideService(read, fake))
-      strictEqual(await run(overridden, viaThis), 6)
-      strictEqual(await run(overridden, viaOperation), 7)
-      // a function written to its own slot has no object: it is stored as it is
-      const alone = Context.make(read, fake)
-      strictEqual(Context.get(alone, read), fake)
+      const viaRecord = Effect.flatMap(Text, (text) => text.size("a"))
+      const viaKey = Text.size("a")
+      // an own member is stored as it is: the same function, its name, no allocation
+      const context = Context.make(Text, viaThis)
+      strictEqual(Context.get(context, read), viaThis.read)
+      strictEqual(Context.get(context, Text).size, viaThis.size)
+      strictEqual(Context.get(context, size).name, "size")
+      // an own method's `this` is its call's receiver: the record read, or the key, both of which see an override
+      strictEqual(await run(viaRecord, viaThis), 6)
+      strictEqual(await run(viaKey, viaThis), 6)
+      strictEqual(await run(viaRecord.pipe(Effect.provideService(read, fake)), viaThis), 7)
+      strictEqual(await run(viaKey.pipe(Effect.provideService(read, fake)), viaThis), 7)
+      // a bare call has no receiver: `this.read` is a defect, in a test as in production
+      await dies(Effect.provide(size("a"), Layer.succeed(Text, viaThis)), /Cannot read properties of undefined/)
+      // a class instance's inherited method is bound to the instance: its private field works standalone, through
+      // the record and through a copy, and its `this.read` is the instance's own, never an override
+      const instance = new Impl()
+      strictEqual(await run(size("a"), instance), 6)
+      strictEqual(await run(Effect.flatMap(Text, (text) => ({ ...text }).size("a")), instance), 6)
+      strictEqual(await run(size("a").pipe(Effect.provideService(read, fake)), instance), 6)
+      strictEqual(Context.get(Context.make(Text, instance), size).name, "bound size")
+      // a sibling called through its operation sees the override whatever the receiver
+      strictEqual(await run(size("a").pipe(Effect.provideService(read, fake)), viaOperation), 7)
       // a callable that is also an Effect (here a record key) is a value, stored as it is
       const callable = Context.Operations("ContextTest/Sibling/Callable", {})
       assertTrue(typeof callable === "function" && Effect.isEffect(callable))
       const withCallable = Context.make(Text, { read: callable as never, size: viaOperation.size })
       strictEqual(Context.get(withCallable, read), callable)
+    })
+
+    it("keeps a function member's properties, statics and identity through a record write", () => {
+      // a function with properties, and a class constructor with a static, as members of a record
+      const join = Object.assign((...parts: Array<string>) => parts.join("/"), { sep: "/" })
+      class Parser {
+        static readonly version = 2
+        parse(input: string) {
+          return input.length
+        }
+      }
+      const Join = Context.Service<typeof join>("ContextTest/Lossless/join")
+      const ParserKey = Context.Service<typeof Parser>("ContextTest/Lossless/Parser")
+      const Lossless = Context.Operations("ContextTest/Lossless", { join: Join, Parser: ParserKey })
+      const context = Context.add(Context.make(Context.Service<number>("ContextTest/Other"), 1), Lossless, {
+        join,
+        Parser
+      })
+      const read = Context.get(context, Lossless)
+      strictEqual(Context.get(context, Join), join)
+      strictEqual(read.join, join)
+      strictEqual(read.join.sep, "/")
+      strictEqual(Context.get(context, Join).sep, "/")
+      strictEqual(read.join("a", "b"), "a/b")
+      strictEqual(Context.get(context, ParserKey), Parser)
+      strictEqual(read.Parser.version, 2)
+      strictEqual(new read.Parser().parse("abc"), 3)
     })
 
     it("costs: Map and WeakMap operations per call, the gate for records and for keys beside them", () => {
@@ -1159,6 +1206,25 @@ describe("Operation", () => {
       deepStrictEqual(count(() => Context.add(flat, readFile, fake)), { map: 0, weak: 0 })
       deepStrictEqual(count(() => Context.get(Context.add(flat, readFile, fake), FS)), { map: 2, weak: 2 })
       deepStrictEqual(count(() => Context.get(Context.add(overridden, Other, 3), FS)), { map: 3, weak: 2 })
+      // a first read is one walk, linear in the members: from a flat map, one `get` per member; after a record write
+      // into a non-empty context, one `has` or `get` per overlay walked, kept for the reads after it
+      const fresh = Context.make(FS, live)
+      deepStrictEqual(count(() => Context.get(fresh, FS)), { map: 4, weak: 2 })
+      const written = Context.add(plain, FS, live)
+      deepStrictEqual(count(() => Context.get(written, FS)), { map: 7, weak: 3 })
+      deepStrictEqual(count(() => Context.get(written, FS)), { map: 1, weak: 1 })
+      const names = Array.from({ length: 32 }, (_, i) => `m${i}`)
+      const Wide = (Context.Operations as any)(
+        "ContextTest/Wide",
+        Object.fromEntries(names.map((name) => [name, Context.Service<number>(`ContextTest/Wide/${name}`)]))
+      )
+      const wide = Context.add(plain, Wide, Object.fromEntries(names.map((name, i) => [name, i])))
+      deepStrictEqual(count(() => Context.get(wide, Wide)), { map: 35, weak: 3 })
+      // a subset written over the full record: read in one walk once, then the kept object
+      const over = Context.add(flat, ReadOnly, { readFile: fake, stat: () => Effect.succeed(2) })
+      const first = Context.get(over, FS)
+      deepStrictEqual(count(() => Context.get(over, FS)), { map: 1, weak: 1 })
+      strictEqual(Context.get(over, FS), first)
     })
 
     it("treats a subset record as a record like any other, shadowing the full record slot by slot", async () => {

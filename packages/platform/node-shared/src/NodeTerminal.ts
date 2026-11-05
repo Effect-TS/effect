@@ -7,20 +7,26 @@
  * `make` manages readline and TTY raw mode in a scope, while `layer` provides
  * the default service that ends key input on bare Esc, Ctrl+C, or Ctrl+D.
  *
+ * Each operation of `effect/Terminal` also has its own layer here, named after
+ * the operation, so a program that only calls `Terminal.display` can provide
+ * `NodeTerminal.display` and bundle neither `readline` nor the key input
+ * reader. `readInput` and `readLine` share one `stdin` reader when both are
+ * provided.
+ *
  * @stability unstable
  * @since 4.0.0
  */
-import type * as Cause from "effect/Cause"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
-import * as Option from "effect/Option"
-import { badArgument, type PlatformError } from "effect/PlatformError"
-import * as Predicate from "effect/Predicate"
-import * as Queue from "effect/Queue"
-import * as RcRef from "effect/RcRef"
 import type * as Scope from "effect/Scope"
 import * as Terminal from "effect/Terminal"
-import * as readline from "node:readline"
+import * as Columns from "./internal/terminal/columns.ts"
+import * as Display from "./internal/terminal/display.ts"
+import * as Input from "./internal/terminal/input.ts"
+import * as ReadInput from "./internal/terminal/readInput.ts"
+import * as ReadLine from "./internal/terminal/readLine.ts"
+import * as Rows from "./internal/terminal/rows.ts"
+import * as Size from "./internal/terminal/size.ts"
 
 /**
  * Creates a scoped process-backed `Terminal` using Node `readline`, enabling
@@ -34,167 +40,15 @@ import * as readline from "node:readline"
 export const make: (
   shouldQuit?: (input: Terminal.UserInput) => boolean
 ) => Effect.Effect<Terminal.Shape, never, Scope.Scope> = Effect.fnUntraced(
-  function*(shouldQuit: (input: Terminal.UserInput) => boolean = defaultShouldQuit) {
-    const lines = yield* Queue.make<string, Cause.Done>()
-
-    // stdin "end" fires once per process, so remember end-of-input for readers
-    // created after the event (Bun never sets `readableEnded`).
-    let inputEnded = false
-    let readlineActive = false
-    const onStdinEnd = () => {
-      inputEnded = true
-      if (!readlineActive) {
-        Queue.endUnsafe(lines)
-      }
-    }
-    // Node's stdio getters can set O_NONBLOCK on inherited pipes, so only
-    // access a stream from an operation that uses it.
-    let stdin: typeof process.stdin | undefined
-    const getStdin = () => {
-      if (stdin === undefined) {
-        stdin = process.stdin
-        if (stdin.readableEnded) {
-          onStdinEnd()
-        } else {
-          stdin.once("end", onStdinEnd)
-        }
-      }
-      return stdin
-    }
-    yield* Effect.addFinalizer(() => Effect.sync(() => stdin?.off("end", onStdinEnd)))
-
-    const rlRef = yield* RcRef.make({
-      acquire: Effect.acquireRelease(
-        Effect.sync(() => {
-          const stdin = getStdin()
-          const rl = readline.createInterface({ input: stdin, escapeCodeTimeout: 50 })
-          const onLine = (line: string) => Queue.offerUnsafe(lines, line)
-          const onClose = () => {
-            readlineActive = false
-            Queue.endUnsafe(lines)
-          }
-          readlineActive = true
-          readline.emitKeypressEvents(stdin, rl)
-          rl.on("line", onLine)
-          rl.once("close", onClose)
-          return { rl, onClose, onLine }
-        }),
-        ({ rl, onClose, onLine }) =>
-          Effect.sync(() => {
-            readlineActive = false
-            rl.off("line", onLine)
-            rl.off("close", onClose)
-            rl.close()
-            if (inputEnded) {
-              Queue.endUnsafe(lines)
-            }
-          })
-      ),
-      idleTimeToLive: "10 millis"
-    })
-
-    // Only key input needs raw mode; `readLine` never requests it.
-    const setRawMode = (enabled: boolean) =>
-      Effect.sync(() => {
-        const stdin = getStdin()
-        if (stdin.isTTY) stdin.setRawMode(enabled)
-      })
-    const rawModeRef = yield* RcRef.make({
-      acquire: Effect.acquireRelease(setRawMode(true), () => setRawMode(false)),
-      idleTimeToLive: "10 millis"
-    })
-
-    const columns = Effect.sync(() => process.stdout.columns ?? 0)
-    const rows = Effect.sync(() => process.stdout.rows ?? 0)
-    const size = Effect.gen(function*() {
-      const stdout = process.stdout
-      const queue = yield* Queue.sliding<Terminal.Size, Cause.Done>(1)
-      const onResize = () => Queue.offerUnsafe(queue, { columns: stdout.columns ?? 0, rows: stdout.rows ?? 0 })
-      yield* Effect.addFinalizer(() =>
-        Effect.sync(() => {
-          stdout.off("resize", onResize)
-          Queue.endUnsafe(queue)
-        })
-      )
-      stdout.on("resize", onResize)
-      onResize()
-      return queue
-    })
-
-    const readInput = Effect.gen(function*() {
-      const stdin = getStdin()
-      const queue = yield* Queue.make<Terminal.UserInput, Cause.Done>()
-      const handleKeypress = (s: string | undefined, k: readline.Key) => {
-        const userInput = {
-          input: Option.fromUndefinedOr(s),
-          key: { name: k.name ?? "", ctrl: !!k.ctrl, meta: !!k.meta, shift: !!k.shift }
-        }
-        Queue.offerUnsafe(queue, userInput)
-        if (shouldQuit(userInput)) {
-          Queue.endUnsafe(queue)
-        }
-      }
-      // Deno's `process.stdin` shim does not keep the event loop alive, so a
-      // program blocked on input can exit before `end` is ever delivered. A
-      // timer holds the loop open for as long as this reader is active.
-      const keepAlive = setInterval(() => {}, 2147483647)
-      // Without this, consumers (e.g. `Prompt.run`) hang forever on closed stdin.
-      const handleEnd = () => {
-        clearInterval(keepAlive)
-        Queue.endUnsafe(queue)
-      }
-      yield* Effect.addFinalizer(() =>
-        Effect.sync(() => {
-          clearInterval(keepAlive)
-          stdin.off("keypress", handleKeypress)
-          stdin.off("end", handleEnd)
-        })
-      )
-      stdin.on("keypress", handleKeypress)
-      if (inputEnded) {
-        handleEnd()
-      } else {
-        yield* RcRef.get(rlRef)
-        yield* RcRef.get(rawModeRef)
-        stdin.once("end", handleEnd)
-      }
-      return queue as Queue.Dequeue<Terminal.UserInput, Cause.Done>
-    })
-
-    const readLine = Effect.suspend(() =>
-      Queue.poll(lines).pipe(
-        Effect.flatMap(Option.match({
-          onNone: () => Effect.scoped(Effect.andThen(RcRef.get(rlRef), Queue.take(lines))),
-          onSome: Effect.succeed
-        })),
-        Effect.mapError(() => new Terminal.QuitError({}))
-      )
-    )
-
-    const display = (prompt: string) =>
-      Effect.uninterruptible(
-        Effect.callback<void, PlatformError>((resume) => {
-          process.stdout.write(prompt, (err) =>
-            Predicate.isNullish(err)
-              ? resume(Effect.void)
-              : resume(Effect.fail(
-                badArgument({
-                  module: "Terminal",
-                  method: "display",
-                  description: "Failed to write prompt to stdout",
-                  cause: err
-                })
-              )))
-        })
-      )
-
+  function*(shouldQuit: (input: Terminal.UserInput) => boolean = Input.defaultShouldQuit) {
+    const input = yield* Input.make(shouldQuit)
     return Terminal.make({
-      columns,
-      rows,
-      size,
-      readInput,
-      readLine,
-      display
+      columns: Columns.columns,
+      rows: Rows.rows,
+      size: Size.size,
+      readInput: ReadInput.make(input),
+      readLine: ReadLine.make(input),
+      display: Display.display
     })
   }
 )
@@ -207,10 +61,67 @@ export const make: (
  * @category layers
  * @since 4.0.0
  */
-export const layer: Layer.Layer<Terminal.Terminal> = Layer.effect(Terminal.Terminal, make(defaultShouldQuit))
+export const layer: Layer.Layer<Terminal.Terminal> = Layer.effect(Terminal.Terminal, make(Input.defaultShouldQuit))
 
-function defaultShouldQuit(input: Terminal.UserInput) {
-  const key = input.key
-  return key.name === "escape" ||
-    (key.ctrl && (key.name === "c" || key.name === "d"))
-}
+/**
+ * Layer that provides `Terminal.columns` alone: it reads the column count of
+ * `process.stdout`, or `0` when it is not a TTY.
+ *
+ * @stability unstable
+ * @category layers
+ * @since 4.2.0
+ */
+export const columns: Layer.Layer<"effect/Terminal/columns"> = Columns.layer
+
+/**
+ * Layer that provides `Terminal.rows` alone: it reads the row count of
+ * `process.stdout`, or `0` when it is not a TTY.
+ *
+ * @stability unstable
+ * @category layers
+ * @since 4.2.0
+ */
+export const rows: Layer.Layer<"effect/Terminal/rows"> = Rows.layer
+
+/**
+ * Layer that provides `Terminal.size` alone: it follows the `resize` events
+ * of `process.stdout`.
+ *
+ * @stability unstable
+ * @category layers
+ * @since 4.2.0
+ */
+export const size: Layer.Layer<"effect/Terminal/size"> = Size.layer
+
+/**
+ * Layer that provides `Terminal.readInput` alone: it reads key input from
+ * `process.stdin` with Node `readline`, in TTY raw mode, ending on bare Esc,
+ * Ctrl+C, or Ctrl+D. Merged with {@link readLine}, the two share one `stdin`
+ * reader.
+ *
+ * @stability unstable
+ * @category layers
+ * @since 4.2.0
+ */
+export const readInput: Layer.Layer<"effect/Terminal/readInput"> = ReadInput.layer
+
+/**
+ * Layer that provides `Terminal.readLine` alone: it reads lines from
+ * `process.stdin` with Node `readline`. Merged with {@link readInput}, the
+ * two share one `stdin` reader.
+ *
+ * @stability unstable
+ * @category layers
+ * @since 4.2.0
+ */
+export const readLine: Layer.Layer<"effect/Terminal/readLine"> = ReadLine.layer
+
+/**
+ * Layer that provides `Terminal.display` alone: it writes to
+ * `process.stdout`, without `readline` or `stdin`.
+ *
+ * @stability unstable
+ * @category layers
+ * @since 4.2.0
+ */
+export const display: Layer.Layer<"effect/Terminal/display"> = Display.layer

@@ -1,7 +1,10 @@
+import * as Input from "@effect/platform-node-shared/internal/terminal/input"
 import * as NodeTerminal from "@effect/platform-node-shared/NodeTerminal"
 import { assert, describe, it } from "@effect/vitest"
 import * as Effect from "effect/Effect"
+import * as Layer from "effect/Layer"
 import * as Queue from "effect/Queue"
+import * as Terminal from "effect/Terminal"
 import { spawn, spawnSync } from "node:child_process"
 import { join } from "node:path"
 
@@ -177,5 +180,45 @@ describe("NodeTerminal", { concurrent: false, timeout: 15_000 }, () => {
         Effect.scoped
       )
       assert.strictEqual(process.stdout.listenerCount("resize"), listeners)
+    }))
+
+  it.effect("the six member layers merged provide the Terminal record", () => {
+    const members: Layer.Layer<Terminal.Terminal> = Layer.mergeAll(
+      NodeTerminal.columns,
+      NodeTerminal.rows,
+      NodeTerminal.size,
+      NodeTerminal.readInput,
+      NodeTerminal.readLine,
+      NodeTerminal.display
+    )
+    return Effect.gen(function*() {
+      yield* mockSize(80, 24)
+      const terminal = yield* Terminal.Terminal
+      assert.deepStrictEqual(Object.keys(terminal).sort(), Object.keys(Terminal.Terminal.members).sort())
+      assert.strictEqual(yield* terminal.columns, 80)
+      assert.strictEqual(yield* Terminal.rows, 24)
+    }).pipe(Effect.provide(members))
+  })
+
+  it.effect("merged readInput and readLine build one Input", () =>
+    Effect.gen(function*() {
+      // counts the builds of the Input layer, passing itself to nested builds
+      const memoMap = Layer.makeMemoMapUnsafe()
+      let builds = 0
+      const counting: Layer.MemoMap = {
+        ...memoMap,
+        get: (layer, scope) => memoMap.get(layer, scope),
+        getOrElseMemoize: (layer, scope, build) =>
+          memoMap.getOrElseMemoize(layer, scope, (_, scope) => {
+            if (layer === Input.layer) builds++
+            return build(counting, scope)
+          })
+      }
+      yield* Layer.buildWithMemoMap(
+        Layer.mergeAll(NodeTerminal.readInput, NodeTerminal.readLine),
+        counting,
+        yield* Effect.scope
+      )
+      assert.strictEqual(builds, 1)
     }))
 })

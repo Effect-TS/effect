@@ -32,8 +32,7 @@ const expectations: Record<string, ReadonlyArray<string>> = {
     `is not assignable to parameter of type 'Effect<unknown, unknown, unknown>'`,
     `must have a '[Symbol.iterator]()' method`
   ],
-  "generic-unnamed.ts": [`is generic or overloaded: its result must require \\"test/parse\\"`],
-  "overloaded-unnamed.ts": [`is generic or overloaded: its result must require \\"test/format\\"`],
+  "generic-unnamed.ts": [`is generic: its result must require \\"test/parse\\"`],
   "shape-with-properties.ts": [`has properties: an operation is a bare function`],
   "stream-shape.ts": [
     `is not assignable to parameter of type '"The shape returns a Stream: define it with Stream.Operation"'`
@@ -60,12 +59,15 @@ const expectations: Record<string, ReadonlyArray<string>> = {
     `is not assignable to parameter of type '"\\"test/Shared/b\\" is reachable under two names: a slot has one name in a record"'`
   ],
   "one-line-display.ts": [
-    `Type 'Of<{ readonly find: Operation<"test/Users/find", (id: string) => Effect<string, never, never>>; readonly create: Operation<"test/Users/create", (name: string) => Effect<void, never, never>>; }>' is not assignable to type 'number'`,
+    `Type 'Of<"test/Users", { readonly find: Operation<"test/Users/find"`,
     `Type 'Operations<ReadOnly, ReadOnlyShape> & { exists: Operation<"effect/FileSystem/exists"`
   ],
   "value-shape.ts": [`This expression is not callable`, `does not satisfy the constraint 'Effect<any, any, any>'`],
   "subset-not-full.ts": [`Type 'FileSystem' is not assignable to type 'ReadOnly'`],
-  "partial-record.ts": [`parameter of type 'Shape'`, `>': access, chmod, chown, copy, and 25 more`],
+  "partial-record.ts": [
+    `parameter of type 'Shape'`,
+    `from type 'Shape<Members>': access, chmod, chown, copy, and 25 more`
+  ],
   "displayed-type.ts": [
     `Type 'Operation<"effect/FileSystem/readFile", (path: string) => Effect<Uint8Array<ArrayBufferLike>, FileSystemError, never>>' is not assignable to type 'string'`,
     `Type 'Effect<Uint8Array<ArrayBufferLike>, FileSystemError, "effect/FileSystem/readFile">' is not assignable to type 'string'`,
