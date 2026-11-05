@@ -777,6 +777,25 @@ Missing key
           strictEqual(Hash.hash(a), Hash.hash(b))
         }).pipe(Effect.provideService(UrlParams.CurrentRedactedNames, ["token"]))
       }).pipe(Effect.provideService(HttpClient.TracerPropagationEnabled, false)))
+
+    it.effect("keeps the redaction of an earlier execution when the runner returns the same response", () =>
+      Effect.gen(function*() {
+        const request = HttpClientRequest.get("http://test/path?token=token-secret&key=key-secret")
+        const response = HttpClientResponse.fromWeb(request, new Response("not-json"))
+        const client = HttpClient.make(() => Effect.succeed(response))
+
+        const first = yield* client.execute(request).pipe(
+          Effect.provideService(UrlParams.CurrentRedactedNames, ["token"])
+        )
+        yield* client.execute(request).pipe(
+          Effect.provideService(UrlParams.CurrentRedactedNames, ["key"])
+        )
+        const error = yield* Effect.flip(first.json)
+
+        strictEqual(error.reason._tag, "DecodeError")
+        assert.notInclude(error.message, "token-secret")
+        assert.notInclude(JSON.stringify(error), "token-secret")
+      }))
   })
 
   describe("followRedirects", () => {
