@@ -244,6 +244,66 @@ export const DashboardLayer = Layer.mergeAll(
   `McpSchema.McpRequestContext`. A JSON-RPC id is unique within the stdio process or the HTTP
   session; on 2026-07-28 it is unique only among the client's in-flight requests.
 
+### The page
+
+`McpAppView` is the page's side of the extension. It connects to the host over `postMessage`,
+performs the `ui/initialize` handshake, and exposes the tool call that opened the page and the
+host's services as Effect values. The module is platform-agnostic; `@effect/platform-browser`
+adds the window transport and automatic size reporting.
+
+```typescript
+import * as BrowserMcpAppView from "@effect/platform-browser/BrowserMcpAppView"
+import { Effect, Schema } from "effect"
+import { McpAppView, Tool } from "effect/ai"
+
+// The same definition the server registers, so input and result are typed.
+const ShowDashboard = Tool.make("ShowDashboard", {
+  parameters: Schema.Struct({ runId: Schema.String }),
+  success: Schema.Struct({ rows: Schema.Array(Schema.String) })
+})
+
+const page = Effect.gen(function*() {
+  const view = yield* McpAppView.McpAppView
+  const call = view.toolCall(ShowDashboard)
+  const { runId } = yield* call.input
+  const { rows } = yield* call.result
+  document.body.textContent = `${rows.length} rows for ${runId}`
+  // Poll the server through the host until the host tears the page down.
+  yield* view.callTool(ShowDashboard, { runId }).pipe(
+    Effect.flatMap(({ rows }) => Effect.sync(() => (document.body.textContent = `${rows.length} rows`))),
+    Effect.delay("5 seconds"),
+    Effect.forever
+  )
+})
+
+McpAppView.run(page).pipe(
+  Effect.provide(BrowserMcpAppView.layer({ appInfo: { name: "dashboard", version: "1.0.0" } })),
+  Effect.runFork
+)
+```
+
+- `toolInput`, `toolInputPartial` and `toolResult` carry the call that opened the page; the host may
+  send them before the page reads them. `toolCall(tool)` decodes the input and the result's
+  `structuredContent` with the tool's schemas, and a result with `isError` fails with
+  `McpClientError.ToolError`. A cancelled call fails with `McpAppView.ToolCancelled`.
+- `hostInfo` and `hostCapabilities` are what the host declared; `hostContext` is a `SubscriptionRef`
+  that merges every `host-context-changed` notification into the current context.
+- `callTool` and `readResource` reach the server through the host. `openLink`, `sendMessage`,
+  `updateModelContext`, `requestDisplayMode`, `sendSizeChanged`, `log`, `downloadFile` and
+  `requestTeardown` send the extension's requests and notifications. An operation the host did not
+  declare the capability for fails with `McpAppView.UnsupportedCapability` before anything is sent;
+  a JSON-RPC error from the host is a `McpAppView.HostError`.
+- `McpAppView.run(program)` runs the page until `program` completes or the host sends
+  `ui/resource-teardown`. On teardown the program is interrupted, its finalizers run, and only then
+  is the host answered. `ping` is answered; any other host request gets JSON-RPC `-32601`.
+- `BrowserMcpAppView.layer` posts to `window.parent` with the `"*"` target origin, which is what a
+  sandboxed iframe with an opaque origin needs, and reports the document's size with a
+  `ResizeObserver` unless `autoResize` is `false`. Theme variables and fonts are in
+  `hostContext.styles`; applying them is up to the page.
+- `McpTest.makeAppHost` is an in-memory host for tests. It answers the handshake, records the
+  page's requests and notifications, pushes tool input, results and context changes, and can proxy
+  `tools/call` and `resources/read` to an `McpTest.makeClient` server.
+
 ## Prompts
 
 Prompts define reusable templates that an MCP client can invoke with parameters. They serve as

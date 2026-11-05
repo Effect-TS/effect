@@ -1,5 +1,6 @@
 /**
- * In-memory test client for `McpServer` registrations.
+ * In-memory test client for `McpServer` registrations, and an in-memory host
+ * for `McpAppView` pages.
  *
  * `McpTest.makeClient` runs the MCP server over an in-memory
  * `RpcServer.Protocol`, performs the handshake for the selected protocol
@@ -8,12 +9,18 @@
  * and HTTP transports, so tests reach protocol encoding, list methods,
  * sessions, and notifications without opening a transport.
  *
+ * `McpTest.makeAppHost` plays the host of an MCP App page: it answers
+ * `ui/initialize`, records what the page sends, lets a test push tool input,
+ * results and context changes, and can proxy the page's `tools/call` and
+ * `resources/read` to a `Client`.
+ *
  * @stability unstable
  * @since 4.0.0
  */
 import type * as Arr from "../Array.ts"
 import * as Cause from "../Cause.ts"
 import * as Context from "../Context.ts"
+import * as Deferred from "../Deferred.ts"
 import * as Effect from "../Effect.ts"
 import { identity } from "../Function.ts"
 import * as Layer from "../Layer.ts"
@@ -26,6 +33,7 @@ import * as RpcSerialization from "../rpc/RpcSerialization.ts"
 import * as RpcServer from "../rpc/RpcServer.ts"
 import * as Schema from "../Schema.ts"
 import type * as Scope from "../Scope.ts"
+import type * as McpAppView from "./McpAppView.ts"
 import type * as McpProtocol from "./McpProtocol.ts"
 import * as McpSchema from "./McpSchema.ts"
 import * as McpServer from "./McpServer.ts"
@@ -378,3 +386,204 @@ const orDieClientError = <A, E>(
     (error): error is RpcClientError.RpcClientError => Predicate.isTagged(error, "RpcClientError"),
     Effect.die
   ) as any
+
+/**
+ * An in-memory MCP Apps host connected to one `McpAppView` page.
+ *
+ * **Details**
+ *
+ * `transport` is what `McpAppView.layer` connects to. Every request the page
+ * sends, `ui/initialize` included, is queued on `requests` in arrival order,
+ * and every notification on `notifications`. The host answers `ping`,
+ * `ui/open-link`, `ui/message`, `ui/update-model-context` and
+ * `ui/download-file` with `{}`, echoes the mode of `ui/request-display-mode`,
+ * and proxies `tools/call` and `resources/read` to the `server` given to
+ * `makeAppHost`, or rejects them with method not found without one.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.1.3
+ */
+export interface AppHost {
+  /**
+   * The page's end of the connection.
+   */
+  readonly transport: McpAppView.Transport
+  /**
+   * Requests the page sent, in arrival order.
+   */
+  readonly requests: Queue.Dequeue<McpSchema.JsonRpcRequest>
+  /**
+   * Notifications the page sent, in arrival order.
+   */
+  readonly notifications: Queue.Dequeue<McpSchema.JsonRpcNotification>
+  readonly sendToolInputPartial: (args: Readonly<Record<string, unknown>>) => Effect.Effect<void>
+  readonly sendToolInput: (args: Readonly<Record<string, unknown>>) => Effect.Effect<void>
+  readonly sendToolResult: (result: typeof McpSchema.CallToolResult.Encoded) => Effect.Effect<void>
+  readonly sendToolCancelled: (reason?: string | undefined) => Effect.Effect<void>
+  readonly sendHostContextChanged: (context: Partial<McpAppView.HostContext>) => Effect.Effect<void>
+  /**
+   * Sends a request to the page and waits for its answer. A JSON-RPC error
+   * from the page fails with its `code`, `message` and `data`.
+   */
+  readonly request: (method: string, params?: unknown) => Effect.Effect<unknown, McpSchema.McpErrorBase>
+  /**
+   * Sends `ui/resource-teardown` and waits for the page's answer.
+   */
+  readonly teardown: (reason?: string | undefined) => Effect.Effect<unknown, McpSchema.McpErrorBase>
+}
+
+/**
+ * Creates an in-memory host for an `McpAppView` page.
+ *
+ * **Details**
+ *
+ * `hostInfo`, `hostCapabilities` and `hostContext` are what the host returns
+ * from `ui/initialize`; by default it offers no capability. With `server`,
+ * the page's `tools/call` and `resources/read` reach that client's server, so
+ * a test covers a server tool and the page that calls it in memory.
+ *
+ * The host lives in the surrounding `Scope`.
+ *
+ * **Example** (Delivering a tool result to a page)
+ *
+ * ```ts
+ * import { Effect } from "effect"
+ * import { McpAppView, McpTest } from "effect/ai"
+ *
+ * const program = Effect.gen(function*() {
+ *   const host = yield* McpTest.makeAppHost({ hostInfo: { name: "host", version: "1.0.0" } })
+ *   const page = Effect.gen(function*() {
+ *     const view = yield* McpAppView.McpAppView
+ *     yield* host.sendToolResult({ content: [], structuredContent: { passed: 3 } })
+ *     const result = yield* view.toolResult
+ *     return result.structuredContent
+ *   })
+ *   return yield* page.pipe(
+ *     Effect.provide(McpAppView.layer({ transport: host.transport, appInfo: { name: "page", version: "1.0.0" } }))
+ *   )
+ * }).pipe(Effect.scoped)
+ * ```
+ *
+ * @see {@link AppHost} for what the host records and sends
+ *
+ * @stability unstable
+ * @category constructors
+ * @since 4.1.3
+ */
+export const makeAppHost: (options?: {
+  readonly hostInfo?: McpSchema.Implementation | undefined
+  readonly hostCapabilities?: McpAppView.HostCapabilities | undefined
+  readonly hostContext?: McpAppView.HostContext | undefined
+  readonly server?: Client | undefined
+}) => Effect.Effect<AppHost, never, Scope.Scope> = Effect.fnUntraced(function*(options = {}) {
+  const hostInfo = options.hostInfo ?? defaultHostInfo
+  const hostCapabilities = options.hostCapabilities ?? {}
+  const hostContext = options.hostContext ?? {}
+  const server = options.server
+
+  const listeners = new Set<(message: unknown) => void>()
+  const toPage = (message: object) => Effect.sync(() => listeners.forEach((listener) => listener(message)))
+  const notifyPage = (method: string, params: unknown) => toPage({ jsonrpc: "2.0", method, params })
+
+  const inbox = yield* Queue.unbounded<unknown>()
+  const requests = yield* Queue.unbounded<McpSchema.JsonRpcRequest>()
+  const notifications = yield* Queue.unbounded<McpSchema.JsonRpcNotification>()
+  const pending = new Map<number, Deferred.Deferred<unknown, McpSchema.McpErrorBase>>()
+  let nextId = 1
+
+  const proxy = <A>(
+    call: Effect.Effect<A, McpSchema.McpError> | undefined,
+    encode: (value: A) => unknown
+  ): Effect.Effect<{ readonly result: unknown } | { readonly error: object }> =>
+    call === undefined
+      ? Effect.succeed({ error: { code: McpSchema.METHOD_NOT_FOUND_ERROR_CODE, message: "No server is connected" } })
+      : call.pipe(
+        Effect.map((value) => ({ result: encode(value) })),
+        Effect.catch((error) => Effect.succeed({ error: { code: error.code, message: error.message } }))
+      )
+  const answer = (request: McpSchema.JsonRpcRequest) => {
+    const params = request.params ?? {}
+    switch (request.method) {
+      case "ui/initialize":
+        return Effect.succeed({
+          result: { protocolVersion: "2026-01-26", hostInfo, hostCapabilities, hostContext }
+        })
+      case "tools/call":
+        return proxy(server?.callTool(params as any), encodeCallToolResult)
+      case "resources/read":
+        return proxy(server?.readResource(params as any), encodeReadResourceResult)
+      case "ui/request-display-mode":
+        return Effect.succeed({ result: { mode: params.mode } })
+      case "ping":
+      case "ui/open-link":
+      case "ui/message":
+      case "ui/update-model-context":
+      case "ui/download-file":
+        return Effect.succeed({ result: {} })
+      default:
+        return Effect.succeed({
+          error: { code: McpSchema.METHOD_NOT_FOUND_ERROR_CODE, message: `Method not found: ${request.method}` }
+        })
+    }
+  }
+  const handle = Effect.fnUntraced(function*(message: unknown) {
+    const decoded = yield* decodeJsonRpcMessage(message).pipe(Effect.orDie)
+    if ("method" in decoded) {
+      if (!("id" in decoded)) {
+        yield* Queue.offer(notifications, decoded)
+        return
+      }
+      yield* Queue.offer(requests, decoded)
+      const outcome = yield* answer(decoded)
+      yield* toPage({ jsonrpc: "2.0", id: decoded.id, ...outcome })
+      return
+    }
+    if (typeof decoded.id !== "number") return
+    const deferred = pending.get(decoded.id)
+    if (deferred === undefined) return
+    pending.delete(decoded.id)
+    yield* "error" in decoded
+      ? Deferred.fail(deferred, new McpSchema.McpErrorBase(decoded.error))
+      : Deferred.succeed(deferred, decoded.result)
+  })
+  yield* Queue.take(inbox).pipe(Effect.flatMap(handle), Effect.forever, Effect.forkScoped)
+
+  const request = (method: string, params?: unknown) =>
+    Effect.suspend(() => {
+      const id = nextId++
+      const deferred = Deferred.makeUnsafe<unknown, McpSchema.McpErrorBase>()
+      pending.set(id, deferred)
+      return Effect.andThen(toPage({ jsonrpc: "2.0", id, method, params: params ?? {} }), Deferred.await(deferred))
+    })
+
+  return identity<AppHost>({
+    transport: {
+      postMessage: (message) => {
+        Queue.offerUnsafe(inbox, message)
+      },
+      onMessage: (listener) => {
+        listeners.add(listener)
+        return () => {
+          listeners.delete(listener)
+        }
+      }
+    },
+    requests,
+    notifications,
+    sendToolInputPartial: (args) => notifyPage("ui/notifications/tool-input-partial", { arguments: args }),
+    sendToolInput: (args) => notifyPage("ui/notifications/tool-input", { arguments: args }),
+    sendToolResult: (result) => notifyPage("ui/notifications/tool-result", result),
+    sendToolCancelled: (reason) =>
+      notifyPage("ui/notifications/tool-cancelled", reason === undefined ? {} : { reason }),
+    sendHostContextChanged: (context) => notifyPage("ui/notifications/host-context-changed", context),
+    request,
+    teardown: (reason) => request("ui/resource-teardown", reason === undefined ? {} : { reason })
+  })
+})
+
+const defaultHostInfo: McpSchema.Implementation = { name: "McpTest", version: "1.0.0" }
+
+const decodeJsonRpcMessage = Schema.decodeUnknownEffect(McpSchema.JsonRpcMessage)
+const encodeCallToolResult = Schema.encodeSync(McpSchema.CallToolResult)
+const encodeReadResourceResult = Schema.encodeSync(McpSchema.ReadResourceResult)

@@ -60,6 +60,12 @@ export * as LanguageModel from "./LanguageModel.ts"
 export * as McpApps from "./McpApps.ts"
 
 /**
+ * @stability unstable
+ * @since 4.1.3
+ */
+export * as McpAppView from "./McpAppView.ts"
+
+/**
  * @stability experimental
  * @since 4.0.6
  */
