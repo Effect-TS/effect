@@ -206,11 +206,14 @@ class FakeWorkflowNamespace {
 }
 
 const pollUntil = Effect.fnUntraced(function*<
-  W extends Workflow.Workflow<any, any, any, any>
->(workflow: W, executionId: string, tag: "Complete" | "Suspended") {
+  W extends Workflow.Workflow<any, any, any, any>,
+  Tag extends "Complete" | "Suspended"
+>(workflow: W, executionId: string, tag: Tag) {
   while (true) {
     const result = yield* workflow.poll(executionId)
-    if (Option.isSome(result) && result.value._tag === tag) return result.value
+    if (Option.isSome(result) && result.value._tag === tag) {
+      return result.value as Extract<typeof result.value, { readonly _tag: Tag }>
+    }
     yield* Effect.promise(() => new Promise((resolve) => setTimeout(resolve, 1)))
   }
 })
