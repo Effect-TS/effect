@@ -181,15 +181,20 @@ const TypeId = "~effect/ai/Skill" as const
  * An immutable skill with private file storage, validated frontmatter and the
  * instruction body after the entry document's closing frontmatter delimiter.
  *
+ * **Details**
+ *
+ * `Paths` retains known file keys for typed reads. Use `Skill<string>` for
+ * bundles whose paths are only known at runtime.
+ *
  * @stability unstable
  * @category models
  * @since 4.1.0
  */
-export interface Skill extends Pipeable.Pipeable, Inspectable.Inspectable {
+export interface Skill<out Paths extends string = string> extends Pipeable.Pipeable, Inspectable.Inspectable {
   readonly [TypeId]: typeof TypeId
   readonly frontmatter: Frontmatter
   readonly instructions: string
-  readonly files: ReadonlyArray<FileMetadata>
+  readonly files: ReadonlyArray<FileMetadata & { readonly path: Paths }>
 }
 
 const Proto = Object.freeze({
@@ -328,10 +333,14 @@ const prepareFiles = (
  * @category constructors
  * @since 4.1.0
  */
-export const fromFiles = (
-  files: { readonly "SKILL.md": FileInput } & Readonly<Record<string, FileInput>>,
+export const fromFiles = <const Files extends { readonly "SKILL.md": FileInput } & Readonly<Record<string, FileInput>>>(
+  files: Files,
   options?: { readonly limits?: Limits | undefined }
-): Effect.Effect<Skill, SkillError> => Effect.suspend(() => prepareFiles(files, options?.limits))
+): Effect.Effect<Skill<Extract<keyof Files, string>>, SkillError> =>
+  Effect.suspend(() => prepareFiles(files, options?.limits)) as Effect.Effect<
+    Skill<Extract<keyof Files, string>>,
+    SkillError
+  >
 
 /**
  * Creates a skill from frontmatter, instructions and optional supporting files,
@@ -366,12 +375,12 @@ export const fromFiles = (
  * @category constructors
  * @since 4.1.0
  */
-export const make = (options: {
+export const make = <const Files extends Readonly<Record<string, FileInput>> = {}>(options: {
   readonly frontmatter: Frontmatter
   readonly instructions: string
-  readonly files?: Readonly<Record<string, FileInput>> | undefined
+  readonly files?: Files | undefined
   readonly limits?: Limits | undefined
-}): Effect.Effect<Skill, SkillError> =>
+}): Effect.Effect<Skill<"SKILL.md" | Extract<keyof Files, string>>, SkillError> =>
   Effect.suspend(() => {
     if (Object.hasOwn(options.files ?? {}, "SKILL.md")) {
       return fail("InvalidEntry", "Supporting files cannot define SKILL.md", "SKILL.md")
@@ -394,7 +403,7 @@ export const make = (options: {
       ...files.success,
       "SKILL.md": `---\n${frontmatter.success}\n---\n${options.instructions}`
     }, options.limits)
-  })
+  }) as Effect.Effect<Skill<"SKILL.md" | Extract<keyof Files, string>>, SkillError>
 
 const fileBytes = (self: Skill, path: string): Effect.Effect<Uint8Array, SkillReadError> => {
   if (!Internal.isSafeRelativePath(path)) {
@@ -417,8 +426,12 @@ const fileBytes = (self: Skill, path: string): Effect.Effect<Uint8Array, SkillRe
  * @since 4.1.0
  */
 export const readBytes: {
-  (self: Skill, path: string): Effect.Effect<Uint8Array, SkillReadError>
-  (path: string): (self: Skill) => Effect.Effect<Uint8Array, SkillReadError>
+  <Paths extends string>(self: Skill<Paths>, path: NoInfer<Paths>): Effect.Effect<Uint8Array, SkillReadError>
+  <Path extends string>(
+    path: Path
+  ): <Paths extends string>(
+    self: Skill<Paths> & ([Path] extends [Paths] ? unknown : never)
+  ) => Effect.Effect<Uint8Array, SkillReadError>
 } = dual(
   2,
   (self: Skill, path: string) =>
@@ -435,8 +448,12 @@ export const readBytes: {
  * @since 4.1.0
  */
 export const readText: {
-  (self: Skill, path: string): Effect.Effect<string, SkillReadError>
-  (path: string): (self: Skill) => Effect.Effect<string, SkillReadError>
+  <Paths extends string>(self: Skill<Paths>, path: NoInfer<Paths>): Effect.Effect<string, SkillReadError>
+  <Path extends string>(
+    path: Path
+  ): <Paths extends string>(
+    self: Skill<Paths> & ([Path] extends [Paths] ? unknown : never)
+  ) => Effect.Effect<string, SkillReadError>
 } = dual(2, (self: Skill, path: string) =>
   Effect.suspend(() =>
     Effect.flatMap(fileBytes(self, path), (bytes) => {

@@ -151,7 +151,7 @@ describe("Skill", () => {
 
   it.effect("should resolve literal keys when reading bundle files", () =>
     Effect.gen(function*() {
-      const skill = yield* Skill.fromFiles({
+      const skill: Skill.Skill = yield* Skill.fromFiles({
         "SKILL.md": markdown,
         "refs/a#b?.md": "literal characters",
         "refs/a%2fb.md": "percent text"
