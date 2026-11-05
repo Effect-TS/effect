@@ -2167,6 +2167,9 @@ describe("McpServer", () => {
             }),
             // `Prompt.FilePart` also accepts base64 data as a data URL.
             Prompt.filePart({ mediaType: "image/png", data: "data:image/png;base64,iVBORw==" }),
+            // Data URL payloads are percent-encoded octets, whether or not they are base64.
+            Prompt.filePart({ mediaType: "image/png", data: "data:image/png;base64,iVBORw%3D%3D" }),
+            Prompt.filePart({ mediaType: "image/png", data: "data:image/png,%89PNG" }),
             Prompt.filePart({ mediaType: "application/pdf", fileName: "report q1.pdf", data: new Uint8Array([1, 2]) }),
             Prompt.filePart({ mediaType: "application/octet-stream", data: new Uint8Array([3]) })
           ]
@@ -2187,8 +2190,8 @@ describe("McpServer", () => {
 
         const screenshot = yield* client.callTool({ name: "Screenshot", arguments: {} })
         assert.deepStrictEqual(screenshot.structuredContent, { path: "/home" })
-        const [named, unnamed] = screenshot.content.slice(4)
-        assert.deepStrictEqual(screenshot.content.slice(0, 4), [
+        const [named, unnamed] = screenshot.content.slice(6)
+        assert.deepStrictEqual(screenshot.content.slice(0, 6), [
           { type: "text", text: "Screenshot of /home" },
           { type: "image", mimeType: "image/png", data: new Uint8Array([0x89, 0x50, 0x4e, 0x47]) },
           {
@@ -2197,6 +2200,8 @@ describe("McpServer", () => {
             name: "report.pdf",
             mimeType: "application/pdf"
           },
+          { type: "image", mimeType: "image/png", data: new Uint8Array([0x89, 0x50, 0x4e, 0x47]) },
+          { type: "image", mimeType: "image/png", data: new Uint8Array([0x89, 0x50, 0x4e, 0x47]) },
           { type: "image", mimeType: "image/png", data: new Uint8Array([0x89, 0x50, 0x4e, 0x47]) }
         ])
         // An embedded resource needs an absolute URI, with or without a file name.
