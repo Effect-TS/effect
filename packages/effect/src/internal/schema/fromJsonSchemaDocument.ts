@@ -403,10 +403,13 @@ export function fromJsonSchemaMultiDocument(
           InternalRecord.assignProperty(fields, property.name, property.isOptional ? Schema.optionalKey(type) : type)
         }
         const index = input.indexSignatures[0]
-        // Index signatures also check declared properties, which reject decoded `Redacted` values, so open objects
-        // containing passwords fall back to closed structs.
+        // `Schema.Json` index signatures also check declared properties, which reject decoded `Redacted` values, so
+        // open objects containing passwords fall back to closed structs. Typed rests are kept: a password-valued rest
+        // accepts the decoded values.
         const record = index === undefined ||
-            input.propertySignatures.some((property) => containsPassword(property.type, new Set()))
+            index.parameter === string &&
+              index.type._tag === "Unknown" &&
+              input.propertySignatures.some((property) => containsPassword(property.type, new Set()))
           ? undefined
           : Schema.Record(finalize(index.parameter) as Schema.Record.Key, finalize(index.type))
         schema = record !== undefined

@@ -421,6 +421,8 @@ function compileJsonSchema(
       annotations = rest
     }
     let output = { ...base, ...annotations }
+    // Set while the output still carries the default password format, so only that default is replaced by a check
+    let passwordDefaultFormat = passwordDefault && annotations?.format !== undefined
     if (representation._tag === "String" && representation.content !== undefined) {
       const content = representation.content
       output.contentMediaType = content.mediaType
@@ -433,7 +435,10 @@ function compileJsonSchema(
       const type = typeof output.type === "string" && isJsonSchemaType(output.type) ? output.type : undefined
       const check = compileCheck(representation.checks[index], type, [...path, "checks", index], local)
       if (check === undefined) continue
-      if (passwordDefault && hasFormat(check[0])) delete output.format
+      if (passwordDefaultFormat && hasFormat(check[0])) {
+        delete output.format
+        passwordDefaultFormat = false
+      }
       output = appendJsonSchema(output, ...check)
     }
     compiledRepresentations.set(representation, { schema: output, dependencies: local })

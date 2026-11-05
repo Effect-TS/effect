@@ -3211,8 +3211,10 @@ export function fromRepresentations(
  *   password `$ref` to a nullable string definition is inlined at that use, so other uses keep the shared definition.
  *   Password strings constrained by `enum` or `const` import as plain literals, because their values are already
  *   published in the schema. Property names keep plain string schemas. Open objects whose properties contain a
- *   password import as closed structs, so additional properties are stripped instead of retained, because index
- *   signatures would also check the decoded `Redacted` values.
+ *   password import as closed structs, so additional properties are stripped instead of retained, because
+ *   `Schema.Json` index signatures would also check the decoded `Redacted` values. A password-valued
+ *   `additionalProperties` combined through `allOf` keeps its index signature, so extra properties are retained as
+ *   `Redacted` values.
  * - Property count and name checks run on the decoded object, after excess properties have been stripped.
  * - String `minLength` and `maxLength` checks count Unicode code points, except that `minLength: 1` uses the equivalent
  *   UTF-16 non-empty check. `integer` uses `Schema.isInt`, which requires safe integers.
