@@ -57,11 +57,7 @@ export const TaskAcknowledgement = Schema.StructWithRest(
   [Schema.JsonObject]
 )
 
-/**
- * @internal
- */
-// `taskId` is optional on the wire so a server without task tools answers
-// `Method not found` before validating it.
+// Optional so a server without task tools answers `Method not found` before validating it.
 const taskIdField = { taskId: Schema.optionalKey(Schema.String) }
 
 /**
@@ -146,8 +142,8 @@ export const requireTasks = (
   method: string,
   profile: McpCore.NegotiatedProtocolProfile<string>
 ) =>
-  Effect.flatMap(core.tasks.registered, (registered) => {
-    if (!registered) {
+  Effect.flatMap(core.registrationPresence, ({ tasks }) => {
+    if (!tasks) {
       return Effect.fail(
         new McpProtocol.ProtocolError({ code: Stateless.METHOD_NOT_FOUND, message: `Method not found: ${method}` })
       )
