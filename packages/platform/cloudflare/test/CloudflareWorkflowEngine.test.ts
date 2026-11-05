@@ -375,6 +375,36 @@ describe("CloudflareWorkflowEngine", () => {
     }).pipe(Effect.provide(layer))
   })
 
+  it.effect("closes finalizers registered before suspension on completion", () => {
+    const namespace = new FakeWorkflowNamespace()
+    const Gate = DurableDeferred.make("SuspendedScope/Gate")
+    const finalized: Array<number> = []
+    let runs = 0
+    const Suspends = Workflow.make("SuspendedScope", {
+      payload: { id: Schema.String },
+      idempotencyKey: ({ id }) => id
+    })
+    const layer = Suspends.toLayer(() =>
+      Effect.gen(function*() {
+        const run = ++runs
+        yield* Workflow.addFinalizer(() => Effect.sync(() => finalized.push(run)))
+        yield* DurableDeferred.await(Gate)
+      })
+    ).pipe(Layer.provideMerge(namespace.layer))
+
+    return Effect.gen(function*() {
+      const executionId = yield* Suspends.executionId({ id: "one" })
+      yield* Suspends.execute({ id: "one" }, { discard: true })
+      yield* pollUntil(Suspends, executionId, "Suspended")
+
+      const token = DurableDeferred.tokenFromExecutionId(Gate, { workflow: Suspends, executionId })
+      yield* DurableDeferred.succeed(Gate, { token, value: undefined })
+      yield* pollUntil(Suspends, executionId, "Complete")
+
+      assert.deepStrictEqual(finalized, [2, 1])
+    }).pipe(Effect.provide(layer))
+  })
+
   it.effect("persists an interrupted completion when hard-interrupted mid-activity", () => {
     const namespace = new FakeWorkflowNamespace()
     let release!: () => void
