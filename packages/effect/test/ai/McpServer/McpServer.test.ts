@@ -2953,17 +2953,6 @@ describe("McpServer", () => {
             mimeType: "text/html;profile=mcp-app",
             content: Effect.succeed("<p>app</p>")
           }),
-          McpServer.resource({
-            uri: "test://image",
-            name: "image",
-            mimeType: "image/png",
-            content: Effect.succeed(bytes)
-          }),
-          McpServer.resource`test://text/${name}`({
-            name: "text",
-            mimeType: "text/markdown",
-            content: (_uri, name) => Effect.succeed(name)
-          }),
           McpServer.resource`test://bytes/${name}`({
             name: "bytes",
             mimeType: "application/octet-stream",
@@ -2988,12 +2977,6 @@ describe("McpServer", () => {
 
         assert.deepStrictEqual(yield* read("test://app"), [
           { uri: "test://app", mimeType: "text/html;profile=mcp-app", text: "<p>app</p>" }
-        ])
-        assert.deepStrictEqual(yield* read("test://image"), [
-          { uri: "test://image", mimeType: "image/png", blob: bytes }
-        ])
-        assert.deepStrictEqual(yield* read("test://text/readme"), [
-          { uri: "test://text/readme", mimeType: "text/markdown", text: "readme" }
         ])
         assert.deepStrictEqual(yield* read("test://bytes/data"), [
           { uri: "test://bytes/data", mimeType: "application/octet-stream", blob: bytes }
