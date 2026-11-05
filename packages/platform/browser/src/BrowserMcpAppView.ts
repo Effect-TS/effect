@@ -13,7 +13,7 @@
  * **Example** (Running a page in the browser)
  *
  * ```ts
- * import * as BrowserMcpAppView from "@effect/platform-browser/BrowserMcpAppView"
+ * import { BrowserMcpAppView } from "@effect/platform-browser"
  * import { Effect } from "effect"
  * import { McpAppView } from "effect/ai"
  *
@@ -33,7 +33,9 @@
  * @since 4.1.3
  */
 import * as McpAppView from "effect/ai/McpAppView"
+import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
+import * as Fiber from "effect/Fiber"
 import * as Layer from "effect/Layer"
 
 /**
@@ -45,10 +47,22 @@ import * as Layer from "effect/Layer"
  */
 export interface PageWindow {
   readonly parent: { readonly postMessage: (message: unknown, targetOrigin: string) => void }
-  readonly addEventListener: (type: "message", listener: (event: { readonly data: unknown }) => void) => void
-  readonly removeEventListener: (type: "message", listener: (event: { readonly data: unknown }) => void) => void
+  readonly addEventListener: (type: "message", listener: (event: PageMessageEvent) => void) => void
+  readonly removeEventListener: (type: "message", listener: (event: PageMessageEvent) => void) => void
   readonly document: { readonly documentElement: Element }
   readonly ResizeObserver?: typeof ResizeObserver | undefined
+}
+
+/**
+ * The parts of a `MessageEvent` the transport reads.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.1.3
+ */
+export interface PageMessageEvent {
+  readonly data: unknown
+  readonly source: unknown
 }
 
 /**
@@ -79,7 +93,8 @@ export interface Options {
  *
  * Messages are posted with the `"*"` target origin, the only one that reaches
  * a host from a sandboxed iframe with an opaque origin. Incoming `message`
- * events are passed on by their `data`.
+ * events are passed on by their `data` only when they come from the parent
+ * window; any other frame with a reference to the page is ignored.
  *
  * @stability unstable
  * @category constructors
@@ -88,7 +103,9 @@ export interface Options {
 export const transport = (window: PageWindow = globalThis.window): McpAppView.Transport => ({
   postMessage: (message) => window.parent.postMessage(message, "*"),
   onMessage: (listener) => {
-    const onEvent = (event: { readonly data: unknown }) => listener(event.data)
+    const onEvent = (event: PageMessageEvent) => {
+      if (event.source === window.parent) listener(event.data)
+    }
     window.addEventListener("message", onEvent)
     return () => window.removeEventListener("message", onEvent)
   }
@@ -102,9 +119,10 @@ export const transport = (window: PageWindow = globalThis.window): McpAppView.Tr
  * Connects through {@link transport} and, unless `autoResize` is `false`,
  * observes `document.documentElement` with a `ResizeObserver`, sending its
  * content size to the host as `ui/notifications/size-changed`. The observer
- * is disconnected when the layer's scope closes.
+ * is disconnected when the host tears the page down or the layer's scope
+ * closes, whichever comes first.
  *
- * @stability unstable
+ * @stability experimental
  * @category layers
  * @since 4.1.3
  */
@@ -119,18 +137,31 @@ export const layer = (options: Options): Layer.Layer<McpAppView.McpAppView, McpA
   const Observer = window.ResizeObserver
   const autoResize = Layer.effectDiscard(Effect.gen(function*() {
     const view = yield* McpAppView.McpAppView
-    const observer = yield* Effect.acquireRelease(
-      Effect.sync(() =>
-        new Observer((entries) => {
-          const rect = entries[entries.length - 1]?.contentRect
-          if (rect !== undefined) {
-            Effect.runFork(view.sendSizeChanged({ width: rect.width, height: rect.height }))
-          }
-        })
-      ),
-      (observer) => Effect.sync(() => observer.disconnect())
-    )
-    observer.observe(window.document.documentElement)
+    const observing = yield* Deferred.make<void>()
+    // Observing runs as a page program, so a host teardown stops it like any other.
+    const observation = yield* view.run(Effect.gen(function*() {
+      let active = true
+      const observer = yield* Effect.acquireRelease(
+        Effect.sync(() =>
+          new Observer((entries) => {
+            const rect = entries[entries.length - 1]?.contentRect
+            if (active && rect !== undefined) {
+              Effect.runFork(view.sendSizeChanged({ width: rect.width, height: rect.height }))
+            }
+          })
+        ),
+        (observer) =>
+          Effect.sync(() => {
+            active = false
+            observer.disconnect()
+          })
+      )
+      observer.observe(window.document.documentElement)
+      yield* Deferred.succeed(observing, undefined)
+      return yield* Effect.never
+    })).pipe(Effect.forkScoped)
+    // Ready once the document is observed, or at once when a teardown came first.
+    yield* Effect.raceFirst(Deferred.await(observing), Fiber.join(observation))
   }))
   return Layer.provideMerge(autoResize, view)
 }

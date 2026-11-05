@@ -292,13 +292,19 @@ McpAppView.run(page).pipe(
   `updateModelContext`, `requestDisplayMode`, `sendSizeChanged`, `log`, `downloadFile` and
   `requestTeardown` send the extension's requests and notifications. An operation the host did not
   declare the capability for fails with `McpAppView.UnsupportedCapability` before anything is sent;
-  a JSON-RPC error from the host is a `McpAppView.HostError`.
+  `requestDisplayMode` needs the mode in the host context's `availableDisplayModes`. A JSON-RPC
+  error from the host is a `McpAppView.HostError`. Services the tool's schemas need are required by
+  `toolCall` and `callTool`; a schema mismatch is a defect.
 - `McpAppView.run(program)` runs the page until `program` completes or the host sends
   `ui/resource-teardown`. On teardown the program is interrupted, its finalizers run, and only then
-  is the host answered. `ping` is answered; any other host request gets JSON-RPC `-32601`.
+  is the host answered; `run` returns after the answer is sent, so
+  `McpAppView.run(page).pipe(Effect.provide(layer))` keeps the connection open long enough.
+  Interrupting `run` interrupts the program. `ping` is answered; any other host request gets
+  JSON-RPC `-32601`.
 - `BrowserMcpAppView.layer` posts to `window.parent` with the `"*"` target origin, which is what a
-  sandboxed iframe with an opaque origin needs, and reports the document's size with a
-  `ResizeObserver` unless `autoResize` is `false`. Theme variables and fonts are in
+  sandboxed iframe with an opaque origin needs, and accepts only messages whose source is
+  `window.parent`. It reports the document's size with a `ResizeObserver` unless `autoResize` is
+  `false`, and stops when the host tears the page down. Theme variables and fonts are in
   `hostContext.styles`; applying them is up to the page.
 - `McpTest.makeAppHost` is an in-memory host for tests. It answers the handshake, records the
   page's requests and notifications, pushes tool input, results and context changes, and can proxy

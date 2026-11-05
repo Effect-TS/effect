@@ -250,7 +250,7 @@ export class HostError extends Schema.Error<HostError>("effect/ai/McpAppView/Hos
 /**
  * The tool call that opened the page, typed by the tool's schemas.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
  * @since 4.1.3
  */
@@ -258,13 +258,40 @@ export interface ToolCall<T extends Tool.Any> {
   /**
    * The complete tool arguments, decoded with the tool's parameters schema.
    */
-  readonly input: Effect.Effect<Tool.Parameters<T>>
+  readonly input: Effect.Effect<Tool.Parameters<T>, never, ParametersDecodingServices<T>>
   /**
    * The tool's `structuredContent`, decoded with its success schema. A result
    * with `isError` fails with `ToolError`, keeping the whole result.
    */
-  readonly result: Effect.Effect<Tool.Success<T>, ToolCancelled | ToolError>
+  readonly result: Effect.Effect<Tool.Success<T>, ToolCancelled | ToolError, SuccessDecodingServices<T>>
 }
+
+/**
+ * The services the tool's parameters schema needs to decode its arguments.
+ *
+ * @stability unstable
+ * @category utility types
+ * @since 4.1.3
+ */
+export type ParametersDecodingServices<T extends Tool.Any> = Tool.ParametersSchema<T>["DecodingServices"]
+
+/**
+ * The services the tool's parameters schema needs to encode its arguments.
+ *
+ * @stability unstable
+ * @category utility types
+ * @since 4.1.3
+ */
+export type ParametersEncodingServices<T extends Tool.Any> = Tool.ParametersSchema<T>["EncodingServices"]
+
+/**
+ * The services the tool's success schema needs to decode its result.
+ *
+ * @stability unstable
+ * @category utility types
+ * @since 4.1.3
+ */
+export type SuccessDecodingServices<T extends Tool.Any> = Tool.SuccessSchema<T>["DecodingServices"]
 
 /**
  * The page's connection to its host.
@@ -278,16 +305,17 @@ export interface ToolCall<T extends Tool.Any> {
  *
  * Values are encoded and decoded with the tool's schemas and the MCP result
  * schemas; a mismatch is a defect, as the page and its server share the tool
- * definitions and the host is trusted.
+ * definitions and the host is trusted. Services the tool's schemas need are
+ * required by the effects that encode or decode with them.
  *
  * Operations the stable specification gates on a host capability fail with
  * {@link UnsupportedCapability} without sending the request: `callTool` on
  * `serverTools`, `readResource` on `serverResources`, `openLink` on
  * `openLinks`, `log` on `logging`, `downloadFile` on `downloadFile`, and
- * `requestDisplayMode` on the context's `availableDisplayModes` when the host
- * lists them.
+ * `requestDisplayMode` on the host context's `availableDisplayModes`, which
+ * must list the requested mode.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
  * @since 4.1.3
  */
@@ -327,7 +355,11 @@ export interface Service {
   readonly callTool: <T extends Tool.Any>(
     tool: T,
     params: Tool.Parameters<T>
-  ) => Effect.Effect<Tool.Success<T>, ToolError | HostError | UnsupportedCapability>
+  ) => Effect.Effect<
+    Tool.Success<T>,
+    ToolError | HostError | UnsupportedCapability,
+    ParametersEncodingServices<T> | SuccessDecodingServices<T>
+  >
   /**
    * Reads a server resource through the host.
    */
@@ -382,8 +414,10 @@ export interface Service {
   /**
    * Runs `program` until it completes or the host tears the page down. On
    * `ui/resource-teardown` the program is interrupted, its finalizers run, and
-   * only then does the host get its answer; `run` then succeeds. After a
-   * teardown, `run` returns at once.
+   * only then does the host get its answer; `run` succeeds once the answer is
+   * sent, so a layer provided around `run` stays open long enough. After a
+   * teardown, `run` returns at once. Interrupting `run` interrupts `program`
+   * and waits for its finalizers.
    */
   readonly run: <A, E, R>(program: Effect.Effect<A, E, R>) => Effect.Effect<void, E, Exclude<R, Scope.Scope>>
 }
@@ -391,7 +425,7 @@ export interface Service {
 /**
  * The page's connection to its host, built by {@link layer}.
  *
- * @stability unstable
+ * @stability experimental
  * @category services
  * @since 4.1.3
  */
@@ -423,7 +457,7 @@ export interface Options {
  *
  * @see {@link layer} for the layer-based wrapper
  *
- * @stability unstable
+ * @stability experimental
  * @category constructors
  * @since 4.1.3
  */
@@ -465,6 +499,9 @@ export const make: (options: Options) => Effect.Effect<Service, HostError, Scope
     // Programs started with `run` live here, so a teardown ends them all.
     const owned = yield* Scope.make()
     yield* Effect.addFinalizer(() => Scope.close(owned, Exit.void))
+    // Set once the host asks for a teardown; `replied` completes after the answer is posted.
+    let tearingDown = false
+    const replied = yield* Deferred.make<void>()
 
     const settle = (message: McpSchema.JsonRpcResponse) => {
       if (typeof message.id !== "number") return Effect.void
@@ -489,8 +526,15 @@ export const make: (options: Options) => Effect.Effect<Service, HostError, Scope
         case "ping":
           return reply(id, {})
         case "ui/resource-teardown":
-          // Interrupt every owned program, let the finalizers finish, then answer.
-          return Effect.forkScoped(Effect.andThen(Scope.close(owned, Exit.void), reply(id, {}))).pipe(Effect.asVoid)
+          // Interrupt every owned program, let the finalizers finish, then answer. `run`
+          // waits for the answer, so a layer provided around `run` outlives it.
+          tearingDown = true
+          return Scope.close(owned, Exit.void).pipe(
+            Effect.andThen(reply(id, {})),
+            Effect.andThen(Deferred.succeed(replied, undefined)),
+            Effect.forkScoped,
+            Effect.asVoid
+          )
         default:
           return replyError(id, McpSchema.METHOD_NOT_FOUND_ERROR_CODE, `Method not found: ${method}`)
       }
@@ -542,27 +586,49 @@ export const make: (options: Options) => Effect.Effect<Service, HostError, Scope
     const decodeSuccess = <T extends Tool.Any>(
       tool: T,
       result: McpSchema.CallToolResult
-    ): Effect.Effect<Tool.Success<T>, ToolError> =>
+    ): Effect.Effect<Tool.Success<T>, ToolError, SuccessDecodingServices<T>> =>
       result.isError === true
         ? Effect.fail(new ToolError({ result }))
+        // `Success<T>` is the success schema's `Type`, which TypeScript cannot see for a generic `T`.
         : Effect.orDie(
-          Schema.decodeUnknownEffect(Schema.toCodecJson(tool.successSchema))(result.structuredContent)
-        ) as Effect.Effect<Tool.Success<T>>
+          decodeToolJson(tool.successSchema as Tool.SuccessSchema<T>)(result.structuredContent)
+        ) as Effect.Effect<
+          Tool.Success<T>,
+          never,
+          SuccessDecodingServices<T>
+        >
 
-    const callTool = Effect.fnUntraced(function*<T extends Tool.Any>(tool: T, params: Tool.Parameters<T>) {
-      yield* requireCapability("serverTools")
-      const args = yield* Effect.orDie(Schema.encodeUnknownEffect(Schema.toCodecJson(tool.parametersSchema))(params))
-      const result = yield* decodeCallToolResult(yield* request("tools/call", { name: tool.name, arguments: args }))
-      return yield* decodeSuccess(tool, result)
-    })
+    const callTool = <T extends Tool.Any>(
+      tool: T,
+      params: Tool.Parameters<T>
+    ): Effect.Effect<
+      Tool.Success<T>,
+      ToolError | HostError | UnsupportedCapability,
+      ParametersEncodingServices<T> | SuccessDecodingServices<T>
+    > =>
+      requireCapability("serverTools").pipe(
+        Effect.andThen(Effect.orDie(encodeToolJson(tool.parametersSchema as Tool.ParametersSchema<T>)(params))),
+        Effect.flatMap((args) => request("tools/call", { name: tool.name, arguments: args })),
+        Effect.flatMap(decodeCallToolResult),
+        Effect.flatMap((result) => decodeSuccess(tool, result))
+      )
 
-    const run = <A, E, R>(program: Effect.Effect<A, E, R>) =>
-      Effect.forkIn(Effect.scoped(program), owned).pipe(
-        Effect.flatMap((fiber) => Effect.exit(Fiber.join(fiber))),
-        Effect.flatMap((exit) =>
-          Exit.isSuccess(exit) || Cause.hasInterruptsOnly(exit.cause) ? Effect.void : Effect.failCause(exit.cause)
+    const run = <A, E, R>(program: Effect.Effect<A, E, R>): Effect.Effect<void, E, Exclude<R, Scope.Scope>> =>
+      Effect.uninterruptibleMask((restore) =>
+        Effect.flatMap(
+          Effect.forkIn(restore(Effect.scoped(program)), owned),
+          (fiber) =>
+            restore(Fiber.await(fiber)).pipe(
+              // Interrupting the caller interrupts the program and waits for its finalizers.
+              Effect.onInterrupt(() => Fiber.interrupt(fiber)),
+              Effect.flatMap((exit) => {
+                if (Exit.isSuccess(exit)) return Effect.void
+                if (!Cause.hasInterruptsOnly(exit.cause)) return Effect.failCause(exit.cause)
+                return tearingDown ? restore(Deferred.await(replied)) : Effect.void
+              })
+            )
         )
-      ) as Effect.Effect<void, E, Exclude<R, Scope.Scope>>
+      )
 
     return McpAppView.of({
       hostInfo: initialized.hostInfo,
@@ -571,14 +637,19 @@ export const make: (options: Options) => Effect.Effect<Service, HostError, Scope
       toolInput: Deferred.await(toolInput),
       toolInputPartial: Stream.fromQueue(toolInputPartial),
       toolResult: Deferred.await(toolResult),
-      toolCall: (tool) => ({
+      toolCall: <T extends Tool.Any>(tool: T): ToolCall<T> => ({
         input: Effect.flatMap(
           Deferred.await(toolInput),
-          (input) => Effect.orDie(Schema.decodeUnknownEffect(Schema.toCodecJson(tool.parametersSchema))(input))
-        ) as any,
+          (input) =>
+            Effect.orDie(decodeToolJson(tool.parametersSchema as Tool.ParametersSchema<T>)(input)) as Effect.Effect<
+              Tool.Parameters<T>,
+              never,
+              ParametersDecodingServices<T>
+            >
+        ),
         result: Effect.flatMap(Deferred.await(toolResult), (result) => decodeSuccess(tool, result))
       }),
-      callTool: callTool as any,
+      callTool,
       readResource: (uri) =>
         requireCapability("serverResources").pipe(
           Effect.andThen(request("resources/read", { uri })),
@@ -604,8 +675,8 @@ export const make: (options: Options) => Effect.Effect<Service, HostError, Scope
         Effect.flatMap(
           SubscriptionRef.get(hostContext),
           (context): Effect.Effect<DisplayMode, HostError | UnsupportedCapability> => {
-            const available = context.availableDisplayModes
-            return available !== undefined && !available.includes(mode)
+            // The host offers only the modes it lists; an absent list offers none.
+            return context.availableDisplayModes?.includes(mode) !== true
               ? Effect.fail(new UnsupportedCapability({ capability: "availableDisplayModes" }))
               : Effect.map(request("ui/request-display-mode", { mode }), displayModeOf(mode))
           }
@@ -632,7 +703,7 @@ export const make: (options: Options) => Effect.Effect<Service, HostError, Scope
  *
  * @see {@link make} for the details
  *
- * @stability unstable
+ * @stability experimental
  * @category layers
  * @since 4.1.3
  */
@@ -646,7 +717,7 @@ export const layer = (options: Options): Layer.Layer<McpAppView, HostError> => L
  * The same as `McpAppView.run`: `program` is interrupted and its finalizers
  * run before the host's `ui/resource-teardown` is answered.
  *
- * @stability unstable
+ * @stability experimental
  * @category running
  * @since 4.1.3
  */
@@ -654,6 +725,16 @@ export const run = <A, E, R>(
   program: Effect.Effect<A, E, R>
 ): Effect.Effect<void, E, Exclude<R, Scope.Scope> | McpAppView> =>
   Effect.flatMap(McpAppView, (view) => view.run(program))
+
+// A tool schema's JSON codec keeps the schema's own service requirements.
+const decodeToolJson = <S extends Schema.Constraint>(
+  schema: S
+): (input: unknown) => Effect.Effect<S["Type"], Schema.SchemaError, S["DecodingServices"]> =>
+  Schema.decodeUnknownEffect(Schema.toCodecJson(schema))
+const encodeToolJson = <S extends Schema.Constraint>(
+  schema: S
+): (input: unknown) => Effect.Effect<unknown, Schema.SchemaError, S["EncodingServices"]> =>
+  Schema.encodeUnknownEffect(Schema.toCodecJson(schema))
 
 // The host is trusted and the schemas are shared with the server, so a mismatch is a defect.
 const orDie = <A, E, R>(decode: (input: unknown) => Effect.Effect<A, E, R>) => (input: unknown) =>
