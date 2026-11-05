@@ -94,10 +94,12 @@ const get = (harness: Harness, taskId: string, capabilities?: McpSchema.ClientCa
     Effect.map(({ result }) => result)
   )
 
+const rootsCapabilities = { ...metadata["io.modelcontextprotocol/clientCapabilities"], roots: {} }
+
 const terminal = Effect.fnUntraced(function*(harness: Harness, taskId: string) {
   for (let attempt = 0; attempt < 200; attempt++) {
-    const task = yield* get(harness, taskId)
-    if (task.status !== "working") return task
+    const task = yield* get(harness, taskId, rootsCapabilities)
+    if (task.status !== "working" && task.status !== "input_required") return task
     yield* Effect.yieldNow
   }
   return assert.fail("Task did not finish")
@@ -121,8 +123,6 @@ const server = McpTasks.toolkit(Reports, { owner: "shared" }).pipe(
 ).pipe(Layer.provide(WorkflowEngine.layerMemory), Layer.provideMerge(serverLayer))
 
 const decodeError = Schema.decodeUnknownEffect(Schema.Struct({ error: McpSchema.McpError }))
-
-const rootsCapabilities = { ...metadata["io.modelcontextprotocol/clientCapabilities"], roots: {} }
 
 const waitForInput = Effect.fnUntraced(function*(harness: Harness, taskId: string) {
   for (let attempt = 0; attempt < 100; attempt++) {
@@ -251,13 +251,13 @@ describe("McpTasks", () => {
         Layer.provide(McpTasks.layerMemory(Reports, {
           report: Effect.fnUntraced(function*() {
             const task = yield* McpTasks.TaskContext
-            yield* task.setStatusMessage("choose-roots", "Choose workspace roots")
+            yield* task.setStatusMessage("Choose workspace roots")
             const response = yield* task.requestInput({
               key: "roots",
               request: { method: "roots/list" },
               response: Schema.Struct({ roots: Schema.Array(Schema.Struct({ uri: Schema.String })) })
             })
-            yield* task.setStatusMessage("ready", "Report ready")
+            yield* task.setStatusMessage("Report ready")
             return `Report covers ${response.roots.length} roots`
           }, Effect.orDie)
         })),
@@ -288,29 +288,94 @@ describe("McpTasks", () => {
       }
     }))
 
-  it.effect("should compensate and report cancellation when a Workflow task is cancelled", () =>
+  // Workflow interrupts take effect when the execution next suspends.
+  for (const waits of [true, false]) {
+    it.effect(`should ${waits ? "compensate and cancel a task waiting for input" : "complete a running task"} when it is cancelled`, () =>
+      Effect.gen(function*() {
+        const ledger: Array<string> = []
+        const started = yield* Deferred.make<void>()
+        const release = yield* Deferred.make<void>()
+        const harness = yield* makeHttpHarness(withWorkflow(McpTasks.layerWorkflow(Fallible, {
+          report: Effect.fnUntraced(function*() {
+            yield* Activity.make({ name: "reserve", execute: Effect.sync(() => ledger.push("reserve")) }).pipe(
+              Workflow.withCompensation(() => Effect.sync(() => ledger.push("undo:reserve")))
+            )
+            yield* Deferred.succeed(started, undefined)
+            if (waits) {
+              yield* McpTasks.TaskContext.use((task) =>
+                task.requestInput({ key: "roots", request: { method: "roots/list" }, response: Schema.Unknown })
+              ).pipe(Effect.orDie)
+            } else {
+              yield* Deferred.await(release)
+            }
+            return "finished"
+          })
+        }, { name: "cancel" })))
+        const created = yield* create(harness)
+        yield* Deferred.await(started)
+        if (waits) yield* waitForInput(harness, created.taskId)
+        assertMcpTaskAcknowledgement(yield* post(harness, "tasks/cancel", { taskId: created.taskId }))
+        yield* Deferred.succeed(release, undefined)
+        const task = yield* terminal(harness, created.taskId)
+        assert.strictEqual(task.status, waits ? "cancelled" : "completed")
+        assert.deepStrictEqual(ledger, waits ? ["reserve", "undo:reserve"] : ["reserve"])
+      }))
+  }
+
+  it.effect("should withdraw the losing input and ignore late answers when a durable race resolves", () =>
     Effect.gen(function*() {
-      const ledger: Array<string> = []
-      const started = yield* Deferred.make<void>()
+      const ask = (key: string) =>
+        McpTasks.TaskContext.use((task) =>
+          task.requestInput({ key, request: { method: "roots/list" }, response: McpSchema.ListRootsResult })
+        ).pipe(Effect.orDie, Effect.map(({ roots }) => roots[0]?.name ?? ""))
       const harness = yield* makeHttpHarness(withWorkflow(McpTasks.layerWorkflow(Fallible, {
         report: Effect.fnUntraced(function*() {
-          yield* Activity.make({ name: "reserve", execute: Effect.sync(() => ledger.push("reserve")) }).pipe(
-            Workflow.withCompensation(() => Effect.sync(() => ledger.push("undo:reserve")))
-          )
-          yield* Deferred.succeed(started, undefined)
-          // Suspend durably so the engine can interrupt the execution.
-          yield* DurableDeferred.await(DurableDeferred.make("never"))
-          return "unreachable"
+          const winner = yield* DurableDeferred.raceAll({
+            name: "choice",
+            success: Schema.String,
+            error: Schema.Never,
+            effects: [ask("left"), ask("right")]
+          })
+          return `${winner}:${yield* ask("confirm")}`
         })
-      }, { name: "cancel" })))
+      }, { name: "race" })))
       const created = yield* create(harness)
-      yield* Deferred.await(started)
-      assertMcpTaskAcknowledgement(yield* post(harness, "tasks/cancel", { taskId: created.taskId }))
-      assert.strictEqual((yield* terminal(harness, created.taskId)).status, "cancelled")
-      assert.deepStrictEqual(ledger, ["reserve", "undo:reserve"])
+      const waitFor = Effect.fnUntraced(function*(keys: ReadonlyArray<string>) {
+        for (let attempt = 0; attempt < 100; attempt++) {
+          const task = yield* get(harness, created.taskId, rootsCapabilities)
+          if (task.status === "input_required" && Object.keys(task.inputRequests).sort().join() === keys.join()) return
+          yield* Effect.yieldNow
+        }
+        return assert.fail(`Task did not request ${keys.join()}`)
+      })
+      const answer = (inputResponses: Record<string, string>) =>
+        post(
+          harness,
+          "tasks/update",
+          {
+            taskId: created.taskId,
+            inputResponses: Object.fromEntries(
+              Object.entries(inputResponses).map((
+                [key, name]
+              ) => [key, { roots: [{ uri: "file:///workspace", name }] }])
+            )
+          },
+          undefined,
+          undefined,
+          rootsCapabilities
+        )
+      yield* waitFor(["left", "right"])
+      assertMcpTaskAcknowledgement(yield* answer({ left: "left" }))
+      yield* waitFor(["confirm"])
+      assertMcpTaskAcknowledgement(yield* answer({ right: "late" }))
+      yield* waitFor(["confirm"])
+      assertMcpTaskAcknowledgement(yield* answer({ confirm: "yes" }))
+      const task = yield* terminal(harness, created.taskId)
+      assert.strictEqual(task.status, "completed")
+      if (task.status === "completed") assert.strictEqual(task.result.structuredContent, "left:yes")
     }))
 
-  it.effect("should reject task handles from another owner or with an invalid format", () =>
+  it.effect("should reject task requests from another owner, with an invalid handle, or with a mismatched Mcp-Name", () =>
     Effect.gen(function*() {
       const layer = McpTasks.toolkit(Reports, {
         owner: HttpServerRequest.HttpServerRequest.useSync((request) => request.headers["x-test-owner"] ?? "anonymous")
@@ -336,6 +401,12 @@ describe("McpTasks", () => {
       yield* Schema.decodeUnknownEffect(Schema.Struct({ result: McpTaskSnapshot }))(
         yield* ownedPost("alice", "tasks/get", { taskId: task.taskId })
       )
+      const mismatched = yield* harness.post(request("tasks/get", { taskId: task.taskId }), {
+        ...headers("tasks/get", "another-task"),
+        "x-test-owner": "alice"
+      })
+      assert.strictEqual(mismatched.status, 400)
+      assert.strictEqual((yield* decodeError(yield* readMcpHttpResponse(mismatched))).error.code, -32020)
       for (const [owner, taskId] of [["bob", task.taskId], ["alice", "malformed"]]) {
         for (const method of ["tasks/get", "tasks/update", "tasks/cancel"]) {
           const { error } = yield* decodeError(

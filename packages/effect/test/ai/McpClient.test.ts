@@ -1264,7 +1264,7 @@ const connectTasks = Effect.fnUntraced(function*<R = never>(
   }, { preconnect() {} })
   const client = yield* McpClient.make({
     ...clientInfo,
-    extensions: { tasks: { mode: "poll" } },
+    extensions: { tasks: true },
     ...clientOptions
   }).pipe(
     Effect.provideService(
@@ -1318,7 +1318,7 @@ describe("McpClient tasks", () => {
     Effect.gen(function*() {
       const uri = "skill://acme/reports/SKILL.md"
       const { client, requests } = yield* connectTasks(Effect.succeed("unused"), {
-        extensions: { skills: true, tasks: { mode: "poll" } },
+        extensions: { skills: true, tasks: true },
         input: { elicitation: () => Effect.succeed({ action: "decline" }) },
         registration: McpServer.skill({
           uri,
@@ -1485,7 +1485,7 @@ describe("McpClient tasks", () => {
             lastUpdatedAt: "1970-01-01T00:00:00.000Z",
             ttlMs: null
           })
-          : scriptedReply(McpProtocol.v2026_07_28, message), { extensions: { tasks: { mode: "poll" } } })
+          : scriptedReply(McpProtocol.v2026_07_28, message), { extensions: { tasks: true } })
       const error = yield* client.callTool({ tool: slowTool }).pipe(Effect.flip)
       assert(error.reason._tag === "ProtocolError")
       assert.strictEqual(error.reason.description, "Server returned a task without advertising Tasks support")
