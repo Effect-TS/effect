@@ -32,6 +32,14 @@ const TypeId = "~effect/cli/Primitive"
 /**
  * Represents a primitive type that can parse string input into a typed value.
  *
+ * **Details**
+ *
+ * `R` is the set of services the parser requires. The built-in primitives
+ * infer it precisely: value primitives such as `String` and `Int` require
+ * nothing, and the path and file primitives require only `Path` and the
+ * `FileSystem` operations they call. It defaults to `Command.Environment`,
+ * so an annotation such as `Primitive<string>` accepts any primitive.
+ *
  * **Example** (Parsing values with primitives)
  *
  * ```ts import.meta.vitest
@@ -71,9 +79,9 @@ const TypeId = "~effect/cli/Primitive"
  * @category models
  * @since 4.0.0
  */
-export interface Primitive<out A> extends Primitive.Variance<A> {
+export interface Primitive<out A, out R = Environment> extends Primitive.Variance<A, R> {
   readonly _tag: string
-  readonly parse: (value: string) => Effect.Effect<A, string, Environment>
+  readonly parse: (value: string) => Effect.Effect<A, string, R>
 }
 
 /**
@@ -84,22 +92,25 @@ export interface Primitive<out A> extends Primitive.Variance<A> {
  */
 export declare namespace Primitive {
   /**
-   * Type-level variance marker for the value parsed by a `Primitive`.
+   * Type-level variance marker for the value parsed by a `Primitive` and the
+   * services its parser requires.
    *
    * @stability unstable
    * @category models
    * @since 4.0.0
    */
-  export interface Variance<out A> {
+  export interface Variance<out A, out R = Environment> {
     readonly [TypeId]: {
       readonly _A: Covariant<A>
+      readonly _R: Covariant<R>
     }
   }
 }
 
 const Proto = {
   [TypeId]: {
-    _A: identity
+    _A: identity,
+    _R: identity
   }
 }
 
@@ -116,12 +127,12 @@ export const isFalseLiteral = Schema.is(Schema.FalseLiterals)
 /**
  * @internal
  */
-export const isBoolean = (p: Primitive<unknown>): p is Primitive<boolean> => p._tag === "Boolean"
+export const isBoolean = <R>(p: Primitive<unknown, R>): p is Primitive<boolean, R> => p._tag === "Boolean"
 
-const makePrimitive = <A>(
+const makePrimitive = <A, R = never>(
   tag: string,
-  parse: (value: string) => Effect.Effect<A, string, Environment>
-): Primitive<A> =>
+  parse: (value: string) => Effect.Effect<A, string, R>
+): Primitive<A, R> =>
   Object.assign(Object.create(Proto), {
     _tag: tag,
     parse
@@ -129,8 +140,8 @@ const makePrimitive = <A>(
 
 const makeSchemaPrimitive = <T>(
   tag: string,
-  schema: Schema.ConstraintDecoder<T, Environment>
-): Primitive<T> => {
+  schema: Schema.ConstraintDecoder<T>
+): Primitive<T, never> => {
   const toCodecStringTree = Schema.toCodecStringTree(schema)
   const decode = Schema.decodeUnknownEffect(toCodecStringTree)
   return makePrimitive(tag, (value) => Effect.mapError(decode(value), (error) => error.message))
@@ -184,7 +195,7 @@ const makeSchemaPrimitive = <T>(
  * @category constructors
  * @since 4.0.0
  */
-export const Boolean: Primitive<boolean> = makeSchemaPrimitive(
+export const Boolean: Primitive<boolean, never> = makeSchemaPrimitive(
   "Boolean",
   Schema.BooleanLiterals
 )
@@ -230,7 +241,7 @@ export const Boolean: Primitive<boolean> = makeSchemaPrimitive(
  * @category constructors
  * @since 4.0.0
  */
-export const Finite: Primitive<number> = makeSchemaPrimitive(
+export const Finite: Primitive<number, never> = makeSchemaPrimitive(
   "Finite",
   Schema.Finite
 )
@@ -276,7 +287,7 @@ export const Finite: Primitive<number> = makeSchemaPrimitive(
  * @category constructors
  * @since 4.0.0
  */
-export const Int: Primitive<number> = makeSchemaPrimitive(
+export const Int: Primitive<number, never> = makeSchemaPrimitive(
   "Int",
   Schema.Int
 )
@@ -321,7 +332,7 @@ export const Int: Primitive<number> = makeSchemaPrimitive(
  * @category constructors
  * @since 4.0.0
  */
-export const Date: Primitive<globalThis.Date> = makeSchemaPrimitive(
+export const Date: Primitive<globalThis.Date, never> = makeSchemaPrimitive(
   "Date",
   Schema.Date
 )
@@ -367,7 +378,7 @@ export const Date: Primitive<globalThis.Date> = makeSchemaPrimitive(
  * @category constructors
  * @since 4.0.0
  */
-export const String: Primitive<string> = makePrimitive("String", (value) => Effect.succeed(value))
+export const String: Primitive<string, never> = makePrimitive("String", (value) => Effect.succeed(value))
 
 /**
  * Creates a primitive that accepts only specific choice values mapped to custom types.
@@ -420,10 +431,10 @@ export const String: Primitive<string> = makePrimitive("String", (value) => Effe
  */
 export const Choice = <A>(
   choices: ReadonlyArray<readonly [string, A]>
-): Primitive<A> => {
+): Primitive<A, never> => {
   const choiceMap = new Map(choices)
   const validChoices = choices.map(([key]) => format(key)).join(" | ")
-  const primitive = makePrimitive("Choice", (value) => {
+  const primitive = makePrimitive("Choice", (value): Effect.Effect<A, string> => {
     if (choiceMap.has(value)) {
       return Effect.succeed(choiceMap.get(value)!)
     }
@@ -505,7 +516,7 @@ export type PathType = "file" | "directory" | "either"
 export const Path = (
   pathType: PathType,
   mustExist?: boolean
-): Primitive<string> => {
+): Primitive<string, Path_.Path | "effect/FileSystem/exists" | "effect/FileSystem/stat"> => {
   const primitive = makePrimitive(
     "Path",
     Effect.fnUntraced(function*(value) {
@@ -591,7 +602,7 @@ export const Path = (
  * @category constructors
  * @since 4.0.0
  */
-export const Redacted: Primitive<Redacted_.Redacted<string>> = makePrimitive(
+export const Redacted: Primitive<Redacted_.Redacted<string>, never> = makePrimitive(
   "Redacted",
   (value) => Effect.succeed(Redacted_.make(value))
 )
@@ -640,7 +651,10 @@ export const Redacted: Primitive<Redacted_.Redacted<string>> = makePrimitive(
  * @category constructors
  * @since 4.0.0
  */
-export const FileText: Primitive<string> = makePrimitive(
+export const FileText: Primitive<
+  string,
+  Path_.Path | "effect/FileSystem/exists" | "effect/FileSystem/stat" | "effect/FileSystem/readFileString"
+> = makePrimitive(
   "FileText",
   Effect.fnUntraced(function*(filePath) {
     const path = yield* Path_.Path
@@ -752,7 +766,12 @@ const fileParsers: Record<string, (content: string) => unknown> = {
  * @category constructors
  * @since 4.0.0
  */
-export const FileParse = (options?: FileParseOptions): Primitive<unknown> => {
+export const FileParse = (
+  options?: FileParseOptions
+): Primitive<
+  unknown,
+  Path_.Path | "effect/FileSystem/exists" | "effect/FileSystem/stat" | "effect/FileSystem/readFileString"
+> => {
   return makePrimitive(
     "FileParse",
     Effect.fnUntraced(function*(filePath) {
@@ -835,10 +854,13 @@ export type FileSchemaOptions = Struct.Simplify<
  * @category constructors
  * @since 4.0.0
  */
-export const FileSchema = <A>(
-  schema: Schema.ConstraintDecoder<A, Environment>,
+export const FileSchema = <A, R = never>(
+  schema: Schema.ConstraintDecoder<A, R>,
   options?: FileSchemaOptions | undefined
-): Primitive<A> => {
+): Primitive<
+  A,
+  R | Path_.Path | "effect/FileSystem/exists" | "effect/FileSystem/stat" | "effect/FileSystem/readFileString"
+> => {
   const decode = Schema.decodeUnknownEffect(schema)
   return makePrimitive(
     "FileSchema",
@@ -898,7 +920,7 @@ export const FileSchema = <A>(
  * @category constructors
  * @since 4.0.0
  */
-export const KeyValuePair: Primitive<Record<string, string>> = makePrimitive(
+export const KeyValuePair: Primitive<Record<string, string>, never> = makePrimitive(
   "KeyValuePair",
   Effect.fnUntraced(function*(value) {
     const separator = value.indexOf("=")
@@ -957,7 +979,10 @@ export const KeyValuePair: Primitive<Record<string, string>> = makePrimitive(
  * @category constructors
  * @since 4.0.0
  */
-export const Never: Primitive<never> = makePrimitive("Never", () => Effect.fail("This option does not accept values"))
+export const Never: Primitive<never, never> = makePrimitive(
+  "Never",
+  () => Effect.fail("This option does not accept values")
+)
 
 /**
  * Gets a human-readable type name for a primitive.
@@ -989,7 +1014,7 @@ export const Never: Primitive<never> = makePrimitive("Never", () => Effect.fail(
  * @category getters
  * @since 4.0.0
  */
-export const getTypeName = <A>(primitive: Primitive<A>): string => {
+export const getTypeName = <A, R>(primitive: Primitive<A, R>): string => {
   switch (primitive._tag) {
     case "Boolean":
       return "boolean"
@@ -1025,11 +1050,11 @@ export const getTypeName = <A>(primitive: Primitive<A>): string => {
 /**
  * @internal
  */
-export const getChoiceKeys = (primitive: Primitive<unknown>): ReadonlyArray<string> | undefined =>
+export const getChoiceKeys = (primitive: Primitive<unknown, unknown>): ReadonlyArray<string> | undefined =>
   primitive._tag === "Choice" ? (primitive as any).choiceKeys : undefined
 
 /**
  * @internal
  */
-export const getPathType = (primitive: Primitive<unknown>): PathType | undefined =>
+export const getPathType = (primitive: Primitive<unknown, unknown>): PathType | undefined =>
   primitive._tag === "Path" ? (primitive as any).pathType : undefined

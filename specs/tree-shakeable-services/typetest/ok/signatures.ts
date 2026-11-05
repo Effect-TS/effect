@@ -157,13 +157,6 @@ export const format = Context.Operation<{
 export const formattedNumber: Effect.Effect<string, never, "test/format"> = format(1)
 export const formattedDate: Effect.Effect<string, never, "test/format"> = format(new Date(), "en")
 
-// The receiver of a shape is part of the call signature.
-export const greet = Context.Operation<(this: { readonly prefix: string }, name: string) => Effect.Effect<string>>()(
-  "test/greet"
-)
-export const greeter = { prefix: "hi", greet }
-export const greeting: Effect.Effect<string, never, "test/greet"> = greeter.greet("x")
-
 // A Stream operation is defined with Stream.Operation and its call is a plain Stream.
 export const lines = Stream.Operation<(path: string) => Stream.Stream<string, FileSystem.FileSystemError>>()(
   "test/lines"

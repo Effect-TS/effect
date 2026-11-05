@@ -6,9 +6,9 @@
  * record. Everything here is a key; the implementations live in `./node/`.
  *
  * The recipe, in full: one operation per member, each with its shape
- * (`./FileSystem/operations.ts`), and below, the record service over the
- * operations module imported as a namespace, so the member list is the
- * module's export list and is never written by hand. `Shape`, the record of
+ * (`./FileSystem/operations.ts`), and below, the record service over an
+ * object of the operations, written by name as `effect`'s own modules write
+ * it. `Shape`, the record of
  * implementations, is derived from the operations as an interface, and the
  * identity is a type alias of the union of their keys, so diagnostics print
  * `Shape` and `FileSystem` rather than thirty members or thirty keys.
@@ -16,23 +16,81 @@
  * own derived the same way.
  */
 import * as Context from "effect/Context"
-import * as members from "./FileSystem/operations.ts"
+import {
+  access,
+  chmod,
+  chown,
+  copy,
+  copyFile,
+  exists,
+  glob,
+  link,
+  lstat,
+  makeDirectory,
+  makeTempDirectory,
+  makeTempDirectoryScoped,
+  makeTempFile,
+  makeTempFileScoped,
+  readDirectory,
+  readDirectoryEntries,
+  readFile,
+  readFileString,
+  readLink,
+  realPath,
+  remove,
+  rename,
+  stat,
+  stream,
+  symlink,
+  truncate,
+  utimes,
+  watch,
+  writeFile,
+  writeFileString
+} from "./FileSystem/operations.ts"
 
 export * from "./FileSystem/operations.ts"
 export * from "./FileSystem/Shape.ts"
+
+const members = {
+  access,
+  chmod,
+  chown,
+  copy,
+  copyFile,
+  exists,
+  glob,
+  link,
+  lstat,
+  makeDirectory,
+  makeTempDirectory,
+  makeTempDirectoryScoped,
+  makeTempFile,
+  makeTempFileScoped,
+  readDirectory,
+  readDirectoryEntries,
+  readFile,
+  readFileString,
+  readLink,
+  realPath,
+  remove,
+  rename,
+  stat,
+  stream,
+  symlink,
+  truncate,
+  utimes,
+  watch,
+  writeFile,
+  writeFileString
+}
 
 /**
  * The record of implementations, as `yield* FileSystem` returns it and as
  * `Layer.succeed(FileSystem, record)` takes it: the operations' shapes by name.
  * An interface, so that diagnostics print `Shape` and name the members it lacks.
  */
-export interface Shape extends Context.Operations.Shape<Members> {}
-
-/**
- * The members by name, as an interface, so that a diagnostic about the shape
- * names it rather than the module the members come from.
- */
-export interface Members extends Readonly<typeof members> {}
+export interface Shape extends Context.Operations.Shape<typeof members> {}
 
 /**
  * The identity of the file system: the union of its operations' keys, which is

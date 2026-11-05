@@ -17,7 +17,7 @@ import * as Equal from "./Equal.ts"
 import { dual, type LazyArg } from "./Function.ts"
 import * as Hash from "./Hash.ts"
 import type { Inspectable } from "./Inspectable.ts"
-import { EffectTypeId, exitSucceed, PipeInspectableProto, withFiber, withFiberSucceed } from "./internal/core.ts"
+import { exitSucceed, PipeInspectableProto, withFiber, withFiberSucceed } from "./internal/core.ts"
 import * as Option from "./Option.ts"
 import type { Pipeable } from "./Pipeable.ts"
 import { hasProperty } from "./Predicate.ts"
@@ -532,6 +532,8 @@ interface Overlay {
   readonly key: string
   readonly value: unknown
   readonly parent: Overlay | undefined
+  /** Written by a record write, as one of its slots, rather than by adding the key alone. */
+  readonly write: boolean
 }
 
 // Keep small bases cheap to read; larger bases are worth copying only after
@@ -883,7 +885,7 @@ export const addUnsafe = <Services, I, S>(
   return makeImpl(
     cacheRoot,
     impl.base,
-    { key, value: service, parent: impl.overlay },
+    { key, value: service, parent: impl.overlay, write: false },
     impl.depth + 1,
     impl.maxDepth
   )
@@ -1656,17 +1658,20 @@ export declare namespace Operation {
    * The key parameter of an operation constructor: the key itself when the
    * shape's result is of the constructor's kind and names the key or can be
    * derived from, otherwise a message explaining why the definition is
-   * rejected.
+   * rejected. A shape declaring `this` is rejected: an operation passes no
+   * receiver, so an implementation's `this` is the object that provides it.
    *
    * @category utility types
    * @since 4.0.0
    */
   export type KeyFor<Id extends string, Shape extends Signature, Kind extends ResultKind = "Effect"> = Shape extends
     (...args: any) => infer Result ?
-    [keyof Shape] extends [never] ? [KindOf<Result>] extends [Kind] ? [Id] extends [Requirements<Result>] ? Id
-        : Derivable<Shape> extends true ? Id
-        : `The shape of "${Id}" is generic: its result must require "${Id}"`
-      : Fix[KindOf<Result>]
+    [keyof Shape] extends [never] ?
+      void extends ThisParameterType<Shape> ? [KindOf<Result>] extends [Kind] ? [Id] extends [Requirements<Result>] ? Id
+          : Derivable<Shape> extends true ? Id
+          : `The shape of "${Id}" is generic: its result must require "${Id}"`
+        : Fix[KindOf<Result>]
+      : "The shape declares this: an implementation's receiver is the object that provides it"
     : "The shape has properties: an operation is a bare function"
     : Id
 
@@ -1730,8 +1735,9 @@ export declare namespace Operation {
  * implementation is stored under, and the type that appears in `R` while the
  * operation is unprovided. A call returns the shape's result with the key
  * added to its requirements; the implementation is read from the running
- * fiber's context each time that result runs, and the call's receiver and
- * arguments are forwarded to it. Operations have no default implementation.
+ * fiber's context each time that result runs, and the call's arguments are
+ * forwarded to it, with no receiver. Operations have no default
+ * implementation.
  *
  * An operation is a `Context.Slot`, so it is provided with `Layer.succeed`,
  * `Layer.effect` or `Effect.provideService`, overridden the same way, and read
@@ -1750,7 +1756,8 @@ export declare namespace Operation {
  * inside an overload set is derived at its constraint unless it names its key.
  * A shape returning a Stream is defined with
  * `Stream.Operation`. A shape with properties is rejected: an operation is a
- * bare function.
+ * bare function. A shape declaring `this` is rejected: an implementation's
+ * `this` is the object that provides it, never the caller's.
  *
  * **Example** (Defining, calling and providing an operation)
  *
@@ -1810,8 +1817,12 @@ export const Operation: {
   { value: () => (key: string) => makeValueOperation(key) }
 ) as any
 
-const effectCall = (operation: Operation.Any, receiver: unknown, args: ArrayLike<unknown>) =>
-  withFiber((fiber) => Reflect.apply(getUnsafe(fiber.context, operation) as any, receiver, args))
+// The implementation is called without a receiver, whatever the call site: a
+// record write stores each operation member bound to the object that provides
+// it, so its `this` is that object from a bare call, a destructured member,
+// `Effect.andThen` or a bundled namespace call alike.
+const effectCall = (operation: Operation.Any, args: ArrayLike<unknown>) =>
+  withFiber((fiber) => Reflect.apply(getUnsafe(fiber.context, operation) as any, undefined, args))
 
 // An Effect that reads the implementation stored under its key and continues
 // with it. It carries the operation brand and no `ServiceTypeId`: it is a slot,
@@ -1846,17 +1857,16 @@ const makeValueOperation = (key: string): Operation.Any => {
 }
 
 /**
- * The implementation applied to a call's receiver and arguments, as an Effect
- * of the result. `Stream.Operation` and `Sink.Operation` unwrap it.
+ * The implementation applied to a call's arguments, as an Effect of the
+ * result. `Stream.Operation` and `Sink.Operation` unwrap it.
  *
  * @internal
  */
 export const applyOperation = (
   operation: Operation.Any,
-  receiver: unknown,
   args: ArrayLike<unknown>
 ): Effect<unknown> =>
-  withFiberSucceed((fiber) => Reflect.apply(getUnsafe(fiber.context, operation) as any, receiver, args))
+  withFiberSucceed((fiber) => Reflect.apply(getUnsafe(fiber.context, operation) as any, undefined, args))
 
 const operationToJSON = function(this: Operation.Any) {
   return {
@@ -1868,14 +1878,14 @@ const operationToJSON = function(this: Operation.Any) {
 /** @internal */
 export const makeOperation = (
   key: string,
-  call: (operation: Operation.Any, receiver: unknown, args: ArrayLike<unknown>) => unknown
+  call: (operation: Operation.Any, args: ArrayLike<unknown>) => unknown
 ): Operation.Any => {
   // the computed property names the function after the key without redefining `name`; the brand, `key` and
   // `toJSON` are own properties, so the function keeps `Function.prototype` and `.bind` and friends work. It
   // carries no `ServiceTypeId`: an operation is a slot, not a key.
   const operation = {
-    [key]: function(this: unknown) {
-      return call(operation as any, this, arguments)
+    [key]: function() {
+      return call(operation as any, arguments)
     }
   }[key] as any
   operation[OperationTypeId] = OperationTypeId
@@ -1924,9 +1934,10 @@ export const OperationsTypeId: OperationsTypeId = "~effect/Context/Operations"
  * each member under that member's key and nothing else; reading it returns a
  * plain object with every member as its own property, built from the members'
  * slots, so an override of one member provided on top is in it, nested records
- * included. Each slot has one name in a record. A member is stored as the
- * provided object holds it, so a function keeps its identity and properties;
- * a method a class instance inherits is stored bound to the instance. The
+ * included. Each slot has one name in a record. An operation's
+ * implementation is stored bound to the object that provides it, plain object
+ * or class instance; any other member (a value operation, a service, a class)
+ * is stored as the object holds it, with its identity and properties. The
  * members are also properties of the key, so `Users.find(id)` calls the
  * operation `find` of `Users = Context.Operations("app/Users", { find, … })`.
  * Every `Context`, `Layer` and `Effect` API that takes a key accepts it.
@@ -2097,13 +2108,14 @@ export declare namespace Operations {
  *
  * **Gotchas**
  *
- * A member keeps the receiver of its call: through a record read, `this` is
- * the read (whose members include an override); through the key,
- * `Users.find(id)`, it is the key; a bare `find(id)` has none. A method a
- * class instance inherits is bound to the instance, so its `this.find(id)`
- * calls the instance's own `find`, never a test's override of it. Call a
+ * An operation's implementation is bound to the object that provides it,
+ * plain object or class instance: its `this` is that object from every call
+ * site (`Users.create(x)`, a bare `create(x)`, `const { create } = yield*
+ * Users`, `Effect.andThen(_, Users.create)`), and private fields work. So
+ * `this.find(id)` is the object's own `find`, like a closure calling a
+ * sibling closure, and a test's override of `find` does not reach it. Call a
  * sibling through its operation, `Users.find(id)`, which reads the context
- * and sees an override wherever it is called from.
+ * and sees an override wherever it is provided.
  *
  * **Example** (A record service from two operations)
  *
@@ -2202,15 +2214,17 @@ interface RecordLayout {
 
 // The value of every slot the record writes, by position, from the provided
 // object. A member `value` lacks (`in` is false: a member whose value is
-// `undefined` is a member) is a defect naming its slot. A member is stored as
-// the provided object holds it: an own property is the value itself, so its
-// identity, `name`, own properties and statics survive the write. The one
-// exception is a method the object inherits (a class instance's method, read
-// off its prototype), which is stored bound to the object, as reading
-// `instance.method` off and calling it would otherwise lose `this`; so a
-// method reading a private field runs standalone, through a record read and
-// through a copy alike. A callable that is also an Effect (a key,
-// `Layer.mock`'s unimplemented member) is a value, stored as it is.
+// `undefined` is a member) is a defect naming its slot. One rule for the
+// receiver: the implementation of a function operation is stored bound to the
+// object that provides it, own or inherited, plain object or class instance,
+// so its `this` is that object wherever the operation is called from (a bare
+// call, a destructured member, `Effect.andThen`, a bundled namespace call)
+// and a private field works. Its `this.sibling` is therefore the object's own
+// sibling, as a closure's call of a sibling closure is; calling the operation
+// is what reads the context. Every other member (a value, a value operation, a
+// `Context.Service` member whose shape is a function or a class) is stored as
+// the object holds it, so its identity, `name`, properties and statics
+// survive the write.
 const collect = (
   record: RecordImpl,
   value: any,
@@ -2229,8 +2243,8 @@ const collect = (
       collect(member.record, provided, values, positions ? member.positions.map((p) => positions[p]) : member.positions)
     } else {
       const position = positions ? positions[member.positions[0]] : member.positions[0]
-      values[position] = typeof provided === "function" && !hasOwn.call(value, member.name) &&
-          !(EffectTypeId in provided)
+      values[position] = typeof provided === "function" && typeof member.key === "function" &&
+          OperationTypeId in member.key
         ? bind.call(provided, value)
         : provided
     }
@@ -2238,7 +2252,6 @@ const collect = (
 }
 
 const bind = Function.prototype.bind
-const hasOwn = Object.prototype.hasOwnProperty
 
 const missingMember = (record: RecordImpl, member: RecordLayout["members"][number] | undefined) => {
   const error = new Error(
@@ -2274,7 +2287,7 @@ function writeRecord<Services>(this: RecordImpl, self: Context<Services>, value:
     return makeImpl(cacheRoot, map, undefined, 0, impl.maxDepth)
   }
   let overlay = impl.overlay
-  for (let i = 0; i < slots.length; i++) overlay = { key: slots[i], value: values[i], parent: overlay }
+  for (let i = 0; i < slots.length; i++) overlay = { key: slots[i], value: values[i], parent: overlay, write: true }
   return makeImpl(cacheRoot, impl.base, overlay, impl.depth + 1, impl.maxDepth)
 }
 
@@ -2282,15 +2295,17 @@ function writeRecord<Services>(this: RecordImpl, self: Context<Services>, value:
 // overlay that holds one of them (or the base map, when none does), its
 // storage. Overlays above the storage hold other slots and cannot change the
 // result. A read either returns the object kept for its storage or builds one
-// from the slots in one walk and keeps it there, with one shortcut: an overlay
-// of one direct member (an override) over a storage that already has a kept
-// object is that object with the member replaced. A slot has one name, so the
-// copy is what building would give; it is not kept, so a per-request override
-// costs one copy and leaves nothing behind. The shortcut looks one storage
-// down and never recurses, so a record write's own overlays, a subset written
-// over the full record or a stack of overrides are built once, in one walk,
-// and kept. A missing member makes the result `notFound`, or a defect naming
-// the member when `orThrow` is set, and nothing is kept.
+// from the slots in one walk and keeps it there, with one shortcut: a direct
+// member added alone (an override, not a slot of a record write) is the record
+// of the storage below it, built and kept there first if it was never read,
+// with the member replaced.
+// A slot has one name, so the copy is what building would give; it is not
+// kept, so a per-request override costs one copy and leaves nothing behind,
+// whether or not the storage below was read before. The shortcut looks one
+// storage down and never recurses, so a record write's own overlays, a subset
+// written over the full record or a stack of overrides are built once, in one
+// walk, and kept. A missing member makes the result `notFound`, or a defect
+// naming the member when `orThrow` is set, and nothing is kept.
 function readRecord(this: RecordImpl, self: Context<never>, orThrow: boolean): unknown {
   const impl = self as ContextImpl<never>
   const layout = this["~layout"]
@@ -2301,13 +2316,13 @@ function readRecord(this: RecordImpl, self: Context<never>, orThrow: boolean): u
   const storage: object = scope ?? base
   const known = views.get(storage)
   if (known !== undefined) return known
-  const name = scope === undefined ? undefined : layout.names.get(scope.key)
+  const name = scope === undefined || scope.write ? undefined : layout.names.get(scope.key)
   if (name !== undefined) {
     let below = scope!.parent
     while (below !== undefined && !layout.positions.has(below.key)) below = below.parent
-    // over the base map, its record is built and kept on the way: a layer's flat context may be read through
-    // per-request overrides alone, and each would otherwise build its own
-    const kept = below !== undefined ? views.get(below) : views.get(base) ?? keep(this, base)
+    // the storage below is built and kept on the way: a layer's context may be read through per-request
+    // overrides alone, and each would otherwise build and keep its own
+    const kept = keep(this, below, base)
     if (kept !== undefined) return { ...kept, [name]: scope!.value }
   }
   const view = assemble(this, gather(layout, scope, base), orThrow)
@@ -2315,12 +2330,16 @@ function readRecord(this: RecordImpl, self: Context<never>, orThrow: boolean): u
   return view
 }
 
-// The record of a base map, built and kept, or `undefined` when a member is
-// missing from it.
-const keep = (record: RecordImpl, base: ReadonlyMap<string, any>): object | undefined => {
-  const view = assemble(record, gather(record["~layout"], undefined, base), false)
+// The record of a storage (an overlay, or the base map when `scope` is
+// undefined): the kept object, or one built in one walk and kept, or
+// `undefined` when a member is missing from it.
+const keep = (record: RecordImpl, scope: Overlay | undefined, base: ReadonlyMap<string, any>): object | undefined => {
+  const storage: object = scope ?? base
+  const known = record["~views"].get(storage)
+  if (known !== undefined) return known
+  const view = assemble(record, gather(record["~layout"], scope, base), false)
   if (view === notFound) return undefined
-  record["~views"].set(base, view as object)
+  record["~views"].set(storage, view as object)
   return view as object
 }
 

@@ -34,6 +34,7 @@ const expectations: Record<string, ReadonlyArray<string>> = {
   ],
   "generic-unnamed.ts": [`is generic: its result must require \\"test/parse\\"`],
   "shape-with-properties.ts": [`has properties: an operation is a bare function`],
+  "this-shape.ts": [`declares this: an implementation's receiver is the object that provides it`],
   "stream-shape.ts": [
     `is not assignable to parameter of type '"The shape returns a Stream: define it with Stream.Operation"'`
   ],
@@ -66,7 +67,7 @@ const expectations: Record<string, ReadonlyArray<string>> = {
   "subset-not-full.ts": [`Type 'FileSystem' is not assignable to type 'ReadOnly'`],
   "partial-record.ts": [
     `parameter of type 'Shape'`,
-    `from type 'Shape<Members>': access, chmod, chown, copy, and 25 more`
+    `... 28 more ...; writeFileString: Operation<...>; }>': access, chmod, chown, copy, and 25 more`
   ],
   "displayed-type.ts": [
     `Type 'Operation<"effect/FileSystem/readFile", (path: string) => Effect<Uint8Array<ArrayBufferLike>, FileSystemError, never>>' is not assignable to type 'string'`,

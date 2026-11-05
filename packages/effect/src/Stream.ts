@@ -1764,8 +1764,8 @@ export type Operation<Id extends string, Shape extends Context.Operation.StreamS
   Shape
 >
 
-const streamCall = (operation: Context.Operation.Any, receiver: unknown, args: ArrayLike<unknown>) =>
-  unwrap(Context.applyOperation(operation, receiver, args) as Effect.Effect<Stream<any, any, any>>)
+const streamCall = (operation: Context.Operation.Any, args: ArrayLike<unknown>) =>
+  unwrap(Context.applyOperation(operation, args) as Effect.Effect<Stream<any, any, any>>)
 
 /**
  * Runs a stream that requires `Scope` in a managed scope, ensuring its

@@ -15,6 +15,7 @@ import type * as Config from "../Config.ts"
 import type * as Effect from "../Effect.ts"
 import { dual, type LazyArg } from "../Function.ts"
 import type * as Option from "../Option.ts"
+import type * as Path_ from "../Path.ts"
 import type * as Redacted_ from "../Redacted.ts"
 import type * as Result from "../Result.ts"
 import type * as Schema from "../Schema.ts"
@@ -22,6 +23,7 @@ import type * as CliError from "./CliError.ts"
 import type { Environment } from "./Command.ts"
 import * as Param from "./Param.ts"
 import type * as Primitive from "./Primitive.ts"
+import type * as Prompt from "./Prompt.ts"
 
 // -------------------------------------------------------------------------------------
 // models
@@ -34,7 +36,7 @@ import type * as Primitive from "./Primitive.ts"
  * @category models
  * @since 4.0.0
  */
-export interface Flag<A> extends Param.Param<typeof Param.flagKind, A> {}
+export interface Flag<A, R = Environment> extends Param.Param<typeof Param.flagKind, A, R> {}
 
 // -------------------------------------------------------------------------------------
 // constructors
@@ -57,7 +59,7 @@ export interface Flag<A> extends Param.Param<typeof Param.flagKind, A> {}
  * @category constructors
  * @since 4.0.0
  */
-export const String = (name: string): Flag<string> => Param.String(Param.flagKind, name)
+export const String = (name: string): Flag<string, never> => Param.String(Param.flagKind, name)
 
 /**
  * Creates a boolean flag that can be enabled or disabled.
@@ -77,7 +79,7 @@ export const String = (name: string): Flag<string> => Param.String(Param.flagKin
  * @category constructors
  * @since 4.0.0
  */
-export const Boolean = (name: string): Flag<boolean> => Param.Boolean(Param.flagKind, name)
+export const Boolean = (name: string): Flag<boolean, never> => Param.Boolean(Param.flagKind, name)
 
 /**
  * Creates an integer flag that accepts whole number input.
@@ -96,7 +98,7 @@ export const Boolean = (name: string): Flag<boolean> => Param.Boolean(Param.flag
  * @category constructors
  * @since 4.0.0
  */
-export const Int = (name: string): Flag<number> => Param.Int(Param.flagKind, name)
+export const Int = (name: string): Flag<number, never> => Param.Int(Param.flagKind, name)
 
 /**
  * Creates a float flag that accepts decimal number input.
@@ -115,7 +117,7 @@ export const Int = (name: string): Flag<number> => Param.Int(Param.flagKind, nam
  * @category constructors
  * @since 4.0.0
  */
-export const Finite = (name: string): Flag<number> => Param.Finite(Param.flagKind, name)
+export const Finite = (name: string): Flag<number, never> => Param.Finite(Param.flagKind, name)
 
 /**
  * Creates a date flag that accepts date input in ISO format.
@@ -134,7 +136,7 @@ export const Finite = (name: string): Flag<number> => Param.Finite(Param.flagKin
  * @category constructors
  * @since 4.0.0
  */
-export const Date = (name: string): Flag<globalThis.Date> => Param.Date(Param.flagKind, name)
+export const Date = (name: string): Flag<globalThis.Date, never> => Param.Date(Param.flagKind, name)
 
 /**
  * Constructs option parameters that represent a choice between several inputs.
@@ -164,7 +166,7 @@ export const Date = (name: string): Flag<globalThis.Date> => Param.Date(Param.fl
 export const ChoiceWithValue = <const Choice extends ReadonlyArray<readonly [string, any]>>(
   name: string,
   choices: Choice
-): Flag<Choice[number][1]> => Param.ChoiceWithValue(Param.flagKind, name, choices)
+): Flag<Choice[number][1], never> => Param.ChoiceWithValue(Param.flagKind, name, choices)
 
 /**
  * Accepts one of the provided strings. An empty array rejects all input.
@@ -178,7 +180,7 @@ export const ChoiceWithValue = <const Choice extends ReadonlyArray<readonly [str
 export const Literals = <const Literals extends ReadonlyArray<string>>(
   name: string,
   literals: Literals
-): Flag<Literals[number]> => Param.Literals(Param.flagKind, name, literals)
+): Flag<Literals[number], never> => Param.Literals(Param.flagKind, name, literals)
 
 /**
  * Creates a path flag that accepts file system path input with validation options.
@@ -213,7 +215,8 @@ export const Path = (name: string, options?: {
   readonly pathType?: "file" | "directory" | "either" | undefined
   readonly mustExist?: boolean | undefined
   readonly typeName?: string | undefined
-}): Flag<string> => Param.Path(Param.flagKind, name, options)
+}): Flag<string, Path_.Path | "effect/FileSystem/exists" | "effect/FileSystem/stat"> =>
+  Param.Path(Param.flagKind, name, options)
 
 /**
  * Creates a file path flag that accepts file paths with optional existence validation.
@@ -239,7 +242,8 @@ export const Path = (name: string, options?: {
  */
 export const File = (name: string, options?: {
   readonly mustExist?: boolean | undefined
-}): Flag<string> => Param.File(Param.flagKind, name, options)
+}): Flag<string, Path_.Path | "effect/FileSystem/exists" | "effect/FileSystem/stat"> =>
+  Param.File(Param.flagKind, name, options)
 
 /**
  * Creates a directory path flag that accepts directory paths with optional existence validation.
@@ -265,7 +269,8 @@ export const File = (name: string, options?: {
  */
 export const Directory = (name: string, options?: {
   readonly mustExist?: boolean | undefined
-}): Flag<string> => Param.Directory(Param.flagKind, name, options)
+}): Flag<string, Path_.Path | "effect/FileSystem/exists" | "effect/FileSystem/stat"> =>
+  Param.Directory(Param.flagKind, name, options)
 
 /**
  * Creates a string flag whose parsed value is wrapped in `Redacted.Redacted` so
@@ -318,7 +323,7 @@ export const Directory = (name: string, options?: {
  * @category constructors
  * @since 4.0.0
  */
-export const Redacted = (name: string): Flag<Redacted_.Redacted<string>> => Param.Redacted(Param.flagKind, name)
+export const Redacted = (name: string): Flag<Redacted_.Redacted<string>, never> => Param.Redacted(Param.flagKind, name)
 
 /**
  * Creates a flag that reads and returns file content as a string.
@@ -337,7 +342,12 @@ export const Redacted = (name: string): Flag<Redacted_.Redacted<string>> => Para
  * @category constructors
  * @since 4.0.0
  */
-export const FileText = (name: string): Flag<string> => Param.FileText(Param.flagKind, name)
+export const FileText = (
+  name: string
+): Flag<
+  string,
+  Path_.Path | "effect/FileSystem/exists" | "effect/FileSystem/stat" | "effect/FileSystem/readFileString"
+> => Param.FileText(Param.flagKind, name)
 
 /**
  * Creates a flag that reads and parses the content of the specified file.
@@ -368,7 +378,10 @@ export const FileText = (name: string): Flag<string> => Param.FileText(Param.fla
 export const FileParse = (
   name: string,
   options?: Primitive.FileParseOptions | undefined
-): Flag<unknown> => Param.FileParse(Param.flagKind, name, options)
+): Flag<
+  unknown,
+  Path_.Path | "effect/FileSystem/exists" | "effect/FileSystem/stat" | "effect/FileSystem/readFileString"
+> => Param.FileParse(Param.flagKind, name, options)
 
 /**
  * Creates a flag that reads and validates file content using the specified
@@ -393,11 +406,14 @@ export const FileParse = (
  * @category constructors
  * @since 4.0.0
  */
-export const FileSchema = <A>(
+export const FileSchema = <A, R = never>(
   name: string,
-  schema: Schema.ConstraintDecoder<A, Environment>,
+  schema: Schema.ConstraintDecoder<A, R>,
   options?: Primitive.FileSchemaOptions | undefined
-): Flag<A> => Param.FileSchema(Param.flagKind, name, schema, options)
+): Flag<
+  A,
+  R | Path_.Path | "effect/FileSystem/exists" | "effect/FileSystem/stat" | "effect/FileSystem/readFileString"
+> => Param.FileSchema(Param.flagKind, name, schema, options)
 
 /**
  * Creates a flag that parses key=value pairs.
@@ -426,7 +442,8 @@ export const FileSchema = <A>(
  * @category constructors
  * @since 4.0.0
  */
-export const KeyValuePair = (name: string): Flag<Record<string, string>> => Param.KeyValuePair(Param.flagKind, name)
+export const KeyValuePair = (name: string): Flag<Record<string, string>, never> =>
+  Param.KeyValuePair(Param.flagKind, name)
 
 /**
  * A flag that always fails to parse.
@@ -447,7 +464,7 @@ export const KeyValuePair = (name: string): Flag<Record<string, string>> => Para
  * @category constructors
  * @since 4.0.0
  */
-export const Never: Flag<never> = Param.Never(Param.flagKind)
+export const Never: Flag<never, never> = Param.Never(Param.flagKind)
 
 // -------------------------------------------------------------------------------------
 // combinators
@@ -479,9 +496,9 @@ export const Never: Flag<never> = Param.Never(Param.flagKind)
  * @since 4.0.0
  */
 export const withAlias: {
-  <A>(alias: string): (self: Flag<A>) => Flag<A>
-  <A>(self: Flag<A>, alias: string): Flag<A>
-} = dual(2, <A>(self: Flag<A>, alias: string): Flag<A> => Param.withAlias(self, alias))
+  (alias: string): <A, R>(self: Flag<A, R>) => Flag<A, R>
+  <A, R>(self: Flag<A, R>, alias: string): Flag<A, R>
+} = dual(2, <A, R>(self: Flag<A, R>, alias: string): Flag<A, R> => Param.withAlias(self, alias))
 
 /**
  * Adds a description to a flag for help documentation.
@@ -506,9 +523,9 @@ export const withAlias: {
  * @since 4.0.0
  */
 export const withDescription: {
-  <A>(description: string): (self: Flag<A>) => Flag<A>
-  <A>(self: Flag<A>, description: string): Flag<A>
-} = dual(2, <A>(self: Flag<A>, description: string) => Param.withDescription(self, description))
+  (description: string): <A, R>(self: Flag<A, R>) => Flag<A, R>
+  <A, R>(self: Flag<A, R>, description: string): Flag<A, R>
+} = dual(2, <A, R>(self: Flag<A, R>, description: string) => Param.withDescription(self, description))
 
 /**
  * Lets a flag be given without a value, in which case `value` is used.
@@ -543,9 +560,9 @@ export const withDescription: {
  * @since 4.1.0
  */
 export const withOptionalValue: {
-  (value: string): <A>(self: Flag<A>) => Flag<A>
-  <A>(self: Flag<A>, value: string): Flag<A>
-} = dual(2, <A>(self: Flag<A>, value: string) => Param.withOptionalValue(self, value))
+  (value: string): <A, R>(self: Flag<A, R>) => Flag<A, R>
+  <A, R>(self: Flag<A, R>, value: string): Flag<A, R>
+} = dual(2, <A, R>(self: Flag<A, R>, value: string) => Param.withOptionalValue(self, value))
 
 /**
  * Renames the negated form of a boolean flag, which defaults to `--no-<name>`.
@@ -576,9 +593,9 @@ export const withOptionalValue: {
  * @since 4.1.0
  */
 export const withNegation: {
-  (name: string): <A>(self: Flag<A>) => Flag<A>
-  <A>(self: Flag<A>, name: string): Flag<A>
-} = dual(2, <A>(self: Flag<A>, name: string) => Param.withNegation(self, name))
+  (name: string): <A, R>(self: Flag<A, R>) => Flag<A, R>
+  <A, R>(self: Flag<A, R>, name: string): Flag<A, R>
+} = dual(2, <A, R>(self: Flag<A, R>, name: string) => Param.withNegation(self, name))
 
 /**
  * Removes the negated `--no-<name>` form of a boolean flag.
@@ -606,7 +623,7 @@ export const withNegation: {
  * @category combinators
  * @since 4.1.0
  */
-export const withoutNegation = <A>(self: Flag<A>): Flag<A> => Param.withoutNegation(self)
+export const withoutNegation = <A, R>(self: Flag<A, R>): Flag<A, R> => Param.withoutNegation(self)
 
 // -------------------------------------------------------------------------------------
 // metadata
@@ -643,9 +660,9 @@ export const withoutNegation = <A>(self: Flag<A>): Flag<A> => Param.withoutNegat
  * @since 4.0.0
  */
 export const withMetavar: {
-  <A>(metavar: string): (self: Flag<A>) => Flag<A>
-  <A>(self: Flag<A>, metavar: string): Flag<A>
-} = dual(2, <A>(self: Flag<A>, metavar: string) => Param.withMetavar(self, metavar))
+  (metavar: string): <A, R>(self: Flag<A, R>) => Flag<A, R>
+  <A, R>(self: Flag<A, R>, metavar: string): Flag<A, R>
+} = dual(2, <A, R>(self: Flag<A, R>, metavar: string) => Param.withMetavar(self, metavar))
 
 /**
  * Hides a flag from generated help output and shell completions while keeping
@@ -673,7 +690,7 @@ export const withMetavar: {
  * @category metadata
  * @since 4.0.0
  */
-export const withHidden = <A>(self: Flag<A>): Flag<A> => Param.withHidden(self)
+export const withHidden = <A, R>(self: Flag<A, R>): Flag<A, R> => Param.withHidden(self)
 
 /**
  * Makes a flag optional, returning an Option type that can be None if not provided.
@@ -741,7 +758,7 @@ export const withHidden = <A>(self: Flag<A>): Flag<A> => Param.withHidden(self)
  * @category optionality
  * @since 4.0.0
  */
-export const optional = <A>(param: Flag<A>): Flag<Option.Option<A>> => Param.optional(param)
+export const optional = <A, R>(param: Flag<A, R>): Flag<Option.Option<A>, R> => Param.optional(param)
 
 /**
  * Provides a default value for a flag when it's not specified.
@@ -768,8 +785,13 @@ export const optional = <A>(param: Flag<A>): Flag<Option.Option<A>> => Param.opt
  * @since 4.0.0
  */
 export const withDefault: {
-  <const B>(defaultValue: B | Effect.Effect<B, CliError.CliError, Environment>): <A>(self: Flag<A>) => Flag<A | B>
-  <A, const B>(self: Flag<A>, defaultValue: B | Effect.Effect<B, CliError.CliError, Environment>): Flag<A | B>
+  <const B, R2 = never>(
+    defaultValue: B | Effect.Effect<B, CliError.CliError, R2>
+  ): <A, R>(self: Flag<A, R>) => Flag<A | B, R | R2>
+  <A, R, const B, R2 = never>(
+    self: Flag<A, R>,
+    defaultValue: B | Effect.Effect<B, CliError.CliError, R2>
+  ): Flag<A | B, R | R2>
 } = Param.withDefault
 
 /**
@@ -792,9 +814,9 @@ export const withDefault: {
  * @since 4.0.0
  */
 export const withFallbackConfig: {
-  <B>(config: Config.Config<B>): <A>(self: Flag<A>) => Flag<A | B>
-  <A, B>(self: Flag<A>, config: Config.Config<B>): Flag<A | B>
-} = dual(2, <A, B>(self: Flag<A>, config: Config.Config<B>) => Param.withFallbackConfig(self, config))
+  <B>(config: Config.Config<B>): <A, R>(self: Flag<A, R>) => Flag<A | B, R>
+  <A, R, B>(self: Flag<A, R>, config: Config.Config<B>): Flag<A | B, R>
+} = dual(2, <A, R, B>(self: Flag<A, R>, config: Config.Config<B>) => Param.withFallbackConfig(self, config))
 
 /**
  * Adds a fallback prompt that is shown when a required flag is missing.
@@ -852,9 +874,17 @@ export const withFallbackConfig: {
  * @since 4.0.0
  */
 export const withFallbackPrompt: {
-  <B>(prompt: Param.FallbackPrompt<B>): <A>(self: Flag<A>) => Flag<A | B>
-  <A, B>(self: Flag<A>, prompt: Param.FallbackPrompt<B>): Flag<A | B>
-} = dual(2, <A, B>(self: Flag<A>, prompt: Param.FallbackPrompt<B>) => Param.withFallbackPrompt(self, prompt))
+  <B, R2 = never>(
+    prompt: Param.FallbackPrompt<B, R2>
+  ): <A, R>(self: Flag<A, R>) => Flag<A | B, R | R2 | Prompt.Environment>
+  <A, R, B, R2 = never>(
+    self: Flag<A, R>,
+    prompt: Param.FallbackPrompt<B, R2>
+  ): Flag<A | B, R | R2 | Prompt.Environment>
+} = dual(
+  2,
+  <A, R, B, R2>(self: Flag<A, R>, prompt: Param.FallbackPrompt<B, R2>) => Param.withFallbackPrompt(self, prompt)
+)
 
 /**
  * Transforms the parsed value of a flag using a mapping function.
@@ -881,9 +911,9 @@ export const withFallbackPrompt: {
  * @since 4.0.0
  */
 export const map: {
-  <A, B>(f: (a: A) => B): (self: Flag<A>) => Flag<B>
-  <A, B>(self: Flag<A>, f: (a: A) => B): Flag<B>
-} = dual(2, <A, B>(self: Flag<A>, f: (a: A) => B) => Param.map(self, f))
+  <A, B>(f: (a: A) => B): <R>(self: Flag<A, R>) => Flag<B, R>
+  <A, R, B>(self: Flag<A, R>, f: (a: A) => B): Flag<B, R>
+} = dual(2, <A, R, B>(self: Flag<A, R>, f: (a: A) => B) => Param.map(self, f))
 
 /**
  * Transforms the parsed value using an Effect that can perform IO operations.
@@ -931,16 +961,16 @@ export const map: {
  * @since 4.0.0
  */
 export const mapEffect: {
-  <A, B>(
-    f: (a: A) => Effect.Effect<B, CliError.CliError, Environment>
-  ): (self: Flag<A>) => Flag<B>
-  <A, B>(
-    self: Flag<A>,
-    f: (a: A) => Effect.Effect<B, CliError.CliError, Environment>
-  ): Flag<B>
-} = dual(2, <A, B>(
-  self: Flag<A>,
-  f: (a: A) => Effect.Effect<B, CliError.CliError, Environment>
+  <A, B, R2>(
+    f: (a: A) => Effect.Effect<B, CliError.CliError, R2>
+  ): <R>(self: Flag<A, R>) => Flag<B, R | R2>
+  <A, R, B, R2>(
+    self: Flag<A, R>,
+    f: (a: A) => Effect.Effect<B, CliError.CliError, R2>
+  ): Flag<B, R | R2>
+} = dual(2, <A, R, B, R2>(
+  self: Flag<A, R>,
+  f: (a: A) => Effect.Effect<B, CliError.CliError, R2>
 ) => Param.mapEffect(self, f))
 
 /**
@@ -1001,10 +1031,10 @@ export const mapEffect: {
  * @since 4.0.0
  */
 export const mapTryCatch: {
-  <A, B>(f: (a: A) => B, onError: (error: unknown) => string): (self: Flag<A>) => Flag<B>
-  <A, B>(self: Flag<A>, f: (a: A) => B, onError: (error: unknown) => string): Flag<B>
-} = dual(3, <A, B>(
-  self: Flag<A>,
+  <A, B>(f: (a: A) => B, onError: (error: unknown) => string): <R>(self: Flag<A, R>) => Flag<B, R>
+  <A, R, B>(self: Flag<A, R>, f: (a: A) => B, onError: (error: unknown) => string): Flag<B, R>
+} = dual(3, <A, R, B>(
+  self: Flag<A, R>,
   f: (a: A) => B,
   onError: (error: unknown) => string
 ) => Param.mapTryCatch(self, f, onError))
@@ -1033,9 +1063,9 @@ export const mapTryCatch: {
  * @since 4.0.0
  */
 export const atLeast: {
-  <A>(min: number): (self: Flag<A>) => Flag<ReadonlyArray<A>>
-  <A>(self: Flag<A>, min: number): Flag<ReadonlyArray<A>>
-} = dual(2, <A>(self: Flag<A>, min: number) => Param.atLeast(self, min))
+  (min: number): <A, R>(self: Flag<A, R>) => Flag<ReadonlyArray<A>, R>
+  <A, R>(self: Flag<A, R>, min: number): Flag<ReadonlyArray<A>, R>
+} = dual(2, <A, R>(self: Flag<A, R>, min: number) => Param.atLeast(self, min))
 
 /**
  * Ensures a flag is specified at most a maximum number of times.
@@ -1061,9 +1091,9 @@ export const atLeast: {
  * @since 4.0.0
  */
 export const atMost: {
-  <A>(max: number): (self: Flag<A>) => Flag<ReadonlyArray<A>>
-  <A>(self: Flag<A>, max: number): Flag<ReadonlyArray<A>>
-} = dual(2, <A>(self: Flag<A>, max: number) => Param.atMost(self, max))
+  (max: number): <A, R>(self: Flag<A, R>) => Flag<ReadonlyArray<A>, R>
+  <A, R>(self: Flag<A, R>, max: number): Flag<ReadonlyArray<A>, R>
+} = dual(2, <A, R>(self: Flag<A, R>, max: number) => Param.atMost(self, max))
 
 /**
  * Ensures a flag is specified between a minimum and maximum number of times.
@@ -1089,9 +1119,9 @@ export const atMost: {
  * @since 4.0.0
  */
 export const between: {
-  <A>(min: number, max: number): (self: Flag<A>) => Flag<ReadonlyArray<A>>
-  <A>(self: Flag<A>, min: number, max: number): Flag<ReadonlyArray<A>>
-} = dual(3, <A>(self: Flag<A>, min: number, max: number) => Param.between(self, min, max))
+  (min: number, max: number): <A, R>(self: Flag<A, R>) => Flag<ReadonlyArray<A>, R>
+  <A, R>(self: Flag<A, R>, min: number, max: number): Flag<ReadonlyArray<A>, R>
+} = dual(3, <A, R>(self: Flag<A, R>, min: number, max: number) => Param.between(self, min, max))
 
 /**
  * Transforms and filters a flag value, failing with a custom error if the transformation returns None.
@@ -1125,10 +1155,10 @@ export const between: {
  * @since 4.0.0
  */
 export const filterMap: {
-  <A, B>(f: (a: A) => Option.Option<B>, onNone: (a: A) => string): (self: Flag<A>) => Flag<B>
-  <A, B>(self: Flag<A>, f: (a: A) => Option.Option<B>, onNone: (a: A) => string): Flag<B>
-} = dual(3, <A, B>(
-  self: Flag<A>,
+  <A, B>(f: (a: A) => Option.Option<B>, onNone: (a: A) => string): <R>(self: Flag<A, R>) => Flag<B, R>
+  <A, R, B>(self: Flag<A, R>, f: (a: A) => Option.Option<B>, onNone: (a: A) => string): Flag<B, R>
+} = dual(3, <A, R, B>(
+  self: Flag<A, R>,
   f: (a: A) => Option.Option<B>,
   onNone: (a: A) => string
 ) => Param.filterMap(self, f, onNone))
@@ -1164,10 +1194,10 @@ export const filterMap: {
  * @since 4.0.0
  */
 export const filter: {
-  <A>(predicate: (a: A) => boolean, onFalse: (a: A) => string): (self: Flag<A>) => Flag<A>
-  <A>(self: Flag<A>, predicate: (a: A) => boolean, onFalse: (a: A) => string): Flag<A>
-} = dual(3, <A>(
-  self: Flag<A>,
+  <A>(predicate: (a: A) => boolean, onFalse: (a: A) => string): <R>(self: Flag<A, R>) => Flag<A, R>
+  <A, R>(self: Flag<A, R>, predicate: (a: A) => boolean, onFalse: (a: A) => string): Flag<A, R>
+} = dual(3, <A, R>(
+  self: Flag<A, R>,
   predicate: (a: A) => boolean,
   onFalse: (a: A) => string
 ) => Param.filter(self, predicate, onFalse))
@@ -1199,9 +1229,9 @@ export const filter: {
  * @since 4.0.0
  */
 export const orElse: {
-  <B>(that: LazyArg<Flag<B>>): <A>(self: Flag<A>) => Flag<A | B>
-  <A, B>(self: Flag<A>, that: LazyArg<Flag<B>>): Flag<A | B>
-} = dual(2, <A, B>(self: Flag<A>, that: LazyArg<Flag<B>>) => Param.orElse(self, that))
+  <B, R2>(that: LazyArg<Flag<B, R2>>): <A, R>(self: Flag<A, R>) => Flag<A | B, R | R2>
+  <A, R, B, R2>(self: Flag<A, R>, that: LazyArg<Flag<B, R2>>): Flag<A | B, R | R2>
+} = dual(2, <A, R, B, R2>(self: Flag<A, R>, that: LazyArg<Flag<B, R2>>) => Param.orElse(self, that))
 
 /**
  * Tries to parse with the first flag, then the second, returning a Result that indicates which succeeded.
@@ -1252,9 +1282,9 @@ export const orElse: {
  * @since 4.0.0
  */
 export const orElseResult: {
-  <B>(that: LazyArg<Flag<B>>): <A>(self: Flag<A>) => Flag<Result.Result<A, B>>
-  <A, B>(self: Flag<A>, that: LazyArg<Flag<B>>): Flag<Result.Result<A, B>>
-} = dual(2, <A, B>(self: Flag<A>, that: LazyArg<Flag<B>>) => Param.orElseResult(self, that))
+  <B, R2>(that: LazyArg<Flag<B, R2>>): <A, R>(self: Flag<A, R>) => Flag<Result.Result<A, B>, R | R2>
+  <A, R, B, R2>(self: Flag<A, R>, that: LazyArg<Flag<B, R2>>): Flag<Result.Result<A, B>, R | R2>
+} = dual(2, <A, R, B, R2>(self: Flag<A, R>, that: LazyArg<Flag<B, R2>>) => Param.orElseResult(self, that))
 
 /**
  * Validates and transforms a flag value using a Schema codec.
@@ -1296,9 +1326,9 @@ export const orElseResult: {
  * @since 4.0.0
  */
 export const withSchema: {
-  <A, B>(schema: Schema.ConstraintCodec<B, A, Environment, unknown>): (self: Flag<A>) => Flag<B>
-  <A, B>(self: Flag<A>, schema: Schema.ConstraintCodec<B, A, Environment, unknown>): Flag<B>
+  <A, B, R2>(schema: Schema.ConstraintCodec<B, A, R2, unknown>): <R>(self: Flag<A, R>) => Flag<B, R | R2>
+  <A, R, B, R2>(self: Flag<A, R>, schema: Schema.ConstraintCodec<B, A, R2, unknown>): Flag<B, R | R2>
 } = dual(
   2,
-  <A, B>(self: Flag<A>, schema: Schema.ConstraintCodec<B, A, Environment, unknown>) => Param.withSchema(self, schema)
+  <A, R, B, R2>(self: Flag<A, R>, schema: Schema.ConstraintCodec<B, A, R2, unknown>) => Param.withSchema(self, schema)
 )

@@ -164,7 +164,7 @@ const promptParam = Effect.fnUntraced(
         flags: {},
         arguments: values.map((arg) => arg.value)
       }
-    yield* param.parse(parsed)
+    yield* (param.parse as Param.Parse<unknown, Command.Environment>)(parsed)
     yield* Console.log()
 
     if (single.kind === Param.argumentKind) {
@@ -181,7 +181,7 @@ const promptParam = Effect.fnUntraced(
 )
 
 const promptSingle = (
-  single: Param.Single<Param.ParamKind, unknown>
+  single: Param.Single<Param.ParamKind, unknown, unknown>
 ): Effect.Effect<CommandLineArg, Terminal.QuitError, Command.Environment> => {
   const message = renderParamMessage(single)
   switch (single.primitiveType._tag) {
@@ -228,12 +228,12 @@ const promptSingle = (
 
 const commandLineArg = (value: string, displayValue: string = value): CommandLineArg => ({ value, displayValue })
 
-const formatName = (single: Param.Single<Param.ParamKind, unknown>): string =>
+const formatName = (single: Param.Single<Param.ParamKind, unknown, unknown>): string =>
   single.kind === Param.flagKind ? `--${single.name}` : single.name
 
-const renderParamMessage = (single: Param.Single<Param.ParamKind, unknown>): string => renderParamLabel(single)
+const renderParamMessage = (single: Param.Single<Param.ParamKind, unknown, unknown>): string => renderParamLabel(single)
 
-const renderParamLabel = (single: Param.Single<Param.ParamKind, unknown>): string => {
+const renderParamLabel = (single: Param.Single<Param.ParamKind, unknown, unknown>): string => {
   const description = Option.getOrUndefined(single.description)?.trim()
   const label = single.kind === Param.flagKind && description !== undefined && description.length <= 32
     ? description

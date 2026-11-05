@@ -530,7 +530,7 @@ describe("Operation", () => {
     deepStrictEqual(await Effect.runPromise(collected), ["x", "a", "b"])
   })
 
-  it("is called by Effect.andThen, Effect.tap and Effect.flatMap, and forwards its receiver", async () => {
+  it("is called by Effect.andThen, Effect.tap and Effect.flatMap, and passes no receiver", async () => {
     const live = Layer.succeed(readFile, (path) => Effect.succeed(`read ${path}`))
     const program = Effect.all([
       Effect.andThen(Effect.succeed("a"), readFile),
@@ -538,16 +538,15 @@ describe("Operation", () => {
       Effect.tap(Effect.succeed("c"), readFile)
     ])
     deepStrictEqual(await Effect.runPromise(Effect.provide(program, live)), ["read a", "read b", "c"])
-    const greet = Context.Operation<(this: { name: string }, greeting: string) => Effect.Effect<string>>()(
-      "ContextTest/greet"
-    )
-    const holder = { name: "world", greet }
-    const greeted = holder.greet("hello").pipe(
-      Effect.provideService(greet, function(greeting) {
-        return Effect.succeed(`${greeting} ${this.name}`)
+    // a call through an object holding the operation does not hand that object to the implementation
+    const receiver = Context.Operation<() => Effect.Effect<unknown>>()("ContextTest/receiver")
+    const holder = { name: "world", receiver }
+    const received = holder.receiver().pipe(
+      Effect.provideService(receiver, function(this: unknown) {
+        return Effect.succeed(this)
       })
     )
-    strictEqual(await Effect.runPromise(greeted), "hello world")
+    strictEqual(await Effect.runPromise(received), undefined)
   })
 
   it("keeps a generic signature when the shape names its key, and accepts Effect.fn implementations", async () => {
@@ -714,7 +713,8 @@ describe("Operation", () => {
       // a member write into a context holding the record is an ordinary overlay
       const overridden = Context.add(Context.make(FS, live), readFile, fake)
       strictEqual((overridden as any).overlay.key, "ContextTest/FS/readFile")
-      strictEqual(Object.keys((overridden as any).overlay).join(), "key,value,parent")
+      strictEqual(Object.keys((overridden as any).overlay).join(), "key,value,parent,write")
+      strictEqual((overridden as any).overlay.write, false)
       // the record read is a plain object with every member as its own property, the override among them: a copy of
       // the record below with the member replaced, made on each read and not remembered
       const view = Context.get(overridden, FS)
@@ -899,7 +899,8 @@ describe("Operation", () => {
       // one ordinary overlay per member, the base map the one of the context added to
       const chain: Array<[string, unknown]> = []
       for (let o = (added as any).overlay; o !== undefined; o = o.parent) {
-        strictEqual(Object.keys(o).join(), "key,value,parent")
+        strictEqual(Object.keys(o).join(), "key,value,parent,write")
+        strictEqual(o.write, true)
         chain.unshift([o.key, o.value])
       }
       deepStrictEqual(chain.map(([key]) => key), [
@@ -1068,7 +1069,7 @@ describe("Operation", () => {
       strictEqual(Context.get(context, FS), after)
     })
 
-    it("stores a member as provided; an own method keeps its call's receiver, an inherited one is bound", async () => {
+    it("binds an operation's implementation to the object that provides it, from every call site", async () => {
       const read = Context.Operation<(path: string) => Effect.Effect<string>>()("ContextTest/Sibling/read")
       // an operation built on a sibling names the sibling in its requirements, so it reads it where it is called
       const size = Context.Operation<(path: string) => Effect.Effect<number, never, "ContextTest/Sibling/read">>()(
@@ -1099,34 +1100,36 @@ describe("Operation", () => {
         effect: Effect.Effect<A, never, Context.Service.Identifier<typeof Text>>,
         impl: Context.Service.Shape<typeof Text>
       ) => Effect.runPromise(Effect.provide(effect, Layer.succeed(Text, impl)))
-      const viaRecord = Effect.flatMap(Text, (text) => text.size("a"))
-      const viaKey = Text.size("a")
-      // an own member is stored as it is: the same function, its name, no allocation
-      const context = Context.make(Text, viaThis)
-      strictEqual(Context.get(context, read), viaThis.read)
-      strictEqual(Context.get(context, Text).size, viaThis.size)
-      strictEqual(Context.get(context, size).name, "size")
-      // an own method's `this` is its call's receiver: the record read, or the key, both of which see an override
-      strictEqual(await run(viaRecord, viaThis), 6)
-      strictEqual(await run(viaKey, viaThis), 6)
-      strictEqual(await run(viaRecord.pipe(Effect.provideService(read, fake)), viaThis), 7)
-      strictEqual(await run(viaKey.pipe(Effect.provideService(read, fake)), viaThis), 7)
-      // a bare call has no receiver: `this.read` is a defect, in a test as in production
-      await dies(Effect.provide(size("a"), Layer.succeed(Text, viaThis)), /Cannot read properties of undefined/)
-      // a class instance's inherited method is bound to the instance: its private field works standalone, through
-      // the record and through a copy, and its `this.read` is the instance's own, never an override
-      const instance = new Impl()
-      strictEqual(await run(size("a"), instance), 6)
-      strictEqual(await run(Effect.flatMap(Text, (text) => ({ ...text }).size("a")), instance), 6)
-      strictEqual(await run(size("a").pipe(Effect.provideService(read, fake)), instance), 6)
-      strictEqual(Context.get(Context.make(Text, instance), size).name, "bound size")
-      // a sibling called through its operation sees the override whatever the receiver
-      strictEqual(await run(size("a").pipe(Effect.provideService(read, fake)), viaOperation), 7)
-      // a callable that is also an Effect (here a record key) is a value, stored as it is
+      const sites = [
+        ["key", Text.size("a")],
+        ["bare", size("a")],
+        ["record read", Effect.flatMap(Text, (text) => text.size("a"))],
+        ["destructured", Effect.flatMap(Text, ({ size }) => size("a"))],
+        ["copy", Effect.flatMap(Text, (text) => ({ ...text }).size("a"))],
+        ["andThen", Effect.andThen(Effect.succeed("a"), size)]
+      ] as const
+      // one rule, plain object or class instance: `this` is the object that provides the implementation, whatever
+      // the call site, so `this.read` is the object's own `read` and a private field works
+      for (const impl of [viaThis, new Impl()]) {
+        for (const [site, effect] of sites) {
+          strictEqual(await run(effect, impl), 6, site)
+          // like a closure calling a sibling closure: an override of `read` does not reach `this.read`
+          strictEqual(await run(effect.pipe(Effect.provideService(read, fake)), impl), 6, site)
+        }
+      }
+      // a sibling called through its operation reads the context, and sees the override from every call site
+      for (const [site, effect] of sites) {
+        strictEqual(await run(effect.pipe(Effect.provideService(read, fake)), viaOperation), 7, site)
+      }
+      // the stored member is the bound implementation; a member added alone is stored as it is
+      strictEqual(Context.get(Context.make(Text, viaThis), size).name, "bound size")
+      strictEqual(Context.get(Context.make(read, viaThis.read), read), viaThis.read)
+      // a value operation and a `Context.Service` member are values, stored as they are, callable or not
       const callable = Context.Operations("ContextTest/Sibling/Callable", {})
       assertTrue(typeof callable === "function" && Effect.isEffect(callable))
-      const withCallable = Context.make(Text, { read: callable as never, size: viaOperation.size })
-      strictEqual(Context.get(withCallable, read), callable)
+      const Holder = Context.Service<typeof callable>("ContextTest/Sibling/Holder")
+      const WithHolder = Context.Operations("ContextTest/Sibling/WithHolder", { read, Holder })
+      strictEqual(Context.get(Context.make(WithHolder, { read: viaThis.read, Holder: callable }), Holder), callable)
     })
 
     it("keeps a function member's properties, statics and identity through a record write", () => {
@@ -1211,7 +1214,7 @@ describe("Operation", () => {
       const fresh = Context.make(FS, live)
       deepStrictEqual(count(() => Context.get(fresh, FS)), { map: 4, weak: 2 })
       const written = Context.add(plain, FS, live)
-      deepStrictEqual(count(() => Context.get(written, FS)), { map: 7, weak: 3 })
+      deepStrictEqual(count(() => Context.get(written, FS)), { map: 5, weak: 2 })
       deepStrictEqual(count(() => Context.get(written, FS)), { map: 1, weak: 1 })
       const names = Array.from({ length: 32 }, (_, i) => `m${i}`)
       const Wide = (Context.Operations as any)(
@@ -1219,12 +1222,23 @@ describe("Operation", () => {
         Object.fromEntries(names.map((name) => [name, Context.Service<number>(`ContextTest/Wide/${name}`)]))
       )
       const wide = Context.add(plain, Wide, Object.fromEntries(names.map((name, i) => [name, i])))
-      deepStrictEqual(count(() => Context.get(wide, Wide)), { map: 35, weak: 3 })
+      deepStrictEqual(count(() => Context.get(wide, Wide)), { map: 33, weak: 2 })
       // a subset written over the full record: read in one walk once, then the kept object
       const over = Context.add(flat, ReadOnly, { readFile: fake, stat: () => Effect.succeed(2) })
       const first = Context.get(over, FS)
       deepStrictEqual(count(() => Context.get(over, FS)), { map: 1, weak: 1 })
       strictEqual(Context.get(over, FS), first)
+      // per-request overrides over a record write into a non-empty context that was never read: the first request
+      // builds the record below once and keeps it there (one `WeakMap.set` in all of them); every later one is the
+      // gate above plus one `has` for the write's overlay below, and one copy, keeping nothing
+      const unread = Context.add(plain, FS, live)
+      const requests = Array.from(
+        { length: 8 },
+        () => count(() => Context.get(Context.add(unread, readFile, fake), FS))
+      )
+      deepStrictEqual(requests[0], { map: 7, weak: 3 })
+      for (const request of requests.slice(1)) deepStrictEqual(request, { map: 3, weak: 2 })
+      strictEqual(Context.get(Context.add(unread, readFile, fake), FS).readFile, fake)
     })
 
     it("treats a subset record as a record like any other, shadowing the full record slot by slot", async () => {

@@ -2077,8 +2077,8 @@ export type Operation<Id extends string, Shape extends Context.Operation.SinkSig
   Shape
 >
 
-const sinkCall = (operation: Context.Operation.Any, receiver: unknown, args: ArrayLike<unknown>) =>
-  unwrap(Context.applyOperation(operation, receiver, args) as Effect.Effect<Sink<any, any, any, any, any>>)
+const sinkCall = (operation: Context.Operation.Any, args: ArrayLike<unknown>) =>
+  unwrap(Context.applyOperation(operation, args) as Effect.Effect<Sink<any, any, any, any, any>>)
 
 /**
  * Runs a summary effect when the sink starts and again when it completes.

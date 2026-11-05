@@ -40,7 +40,7 @@ export interface CommandInternal<Name extends string, Input, E, R, ContextInput>
   readonly contextConfig: ConfigInternal
   readonly service: Context.Key<CommandContext<Name>, ContextInput>
   readonly annotations: Context.Context<never>
-  readonly globalFlags: ReadonlyArray<GlobalFlag.GlobalFlag<any>>
+  readonly globalFlags: ReadonlyArray<GlobalFlag.GlobalFlag<any, unknown>>
   readonly parse: (input: ParsedTokens) => Effect.Effect<Input, E | CliError.CliError, Environment>
   readonly parseContext: (input: ParsedTokens) => Effect.Effect<ContextInput, CliError.CliError, Environment>
   readonly handle: (
@@ -95,7 +95,7 @@ export const makeCommand = <const Name extends string, Input, E, R, ContextInput
   readonly contextConfig?: ConfigInternal | undefined
   readonly service?: Context.Key<CommandContext<Name>, ContextInput> | undefined
   readonly annotations?: Context.Context<never> | undefined
-  readonly globalFlags?: ReadonlyArray<GlobalFlag.GlobalFlag<any>> | undefined
+  readonly globalFlags?: ReadonlyArray<GlobalFlag.GlobalFlag<any, unknown>> | undefined
   readonly description?: string | undefined
   readonly shortDescription?: string | undefined
   readonly alias?: string | undefined
@@ -243,7 +243,7 @@ const noExamples = (): ReadonlyArray<Command.Example> => []
  * @internal
  */
 export const toFlagDoc = (
-  single: Param.Single<typeof Param.flagKind, unknown>,
+  single: Param.Single<typeof Param.flagKind, unknown, unknown>,
   metadata: ReturnType<typeof Param.getParamMetadata>
 ): FlagDoc => {
   const formattedAliases = single.aliases.map((alias) => alias.length === 1 ? `-${alias}` : `--${alias}`)
@@ -304,7 +304,10 @@ const parseParams: (parsedArgs: Param.ParsedArgs, params: ReadonlyArray<Param.An
   let currentArguments = parsedArgs.arguments
 
   for (const option of params) {
-    const [remainingArguments, parsed] = yield* option.parse({
+    // The command type tracks each param's requirements; internally every
+    // param is parsed in the full cli environment.
+    const parse = option.parse as Param.Parse<unknown, Environment>
+    const [remainingArguments, parsed] = yield* parse({
       flags: parsedArgs.flags,
       arguments: currentArguments
     })

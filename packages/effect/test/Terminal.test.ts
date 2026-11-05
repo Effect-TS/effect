@@ -19,7 +19,7 @@ describe("Terminal operations", () => {
     Effect.gen(function*() {
       const width = yield* Terminal.columns
       const terminal = yield* Terminal.Terminal
-      assert.deepStrictEqual(terminal, live)
+      assertSameMembers(terminal, live)
       assert.deepStrictEqual(Object.keys(terminal), Object.keys(Terminal.Terminal.members))
       assert.strictEqual(width, 80)
       // the member is the same Effect standalone and through the record
@@ -71,8 +71,19 @@ describe("Terminal operations", () => {
     assert.strictEqual(context.mapUnsafe.size, Object.keys(Terminal.Terminal.members).length)
     assert.isFalse(context.mapUnsafe.has("effect/Terminal"))
     assert.strictEqual(Context.get(context, Terminal.columns), live.columns)
-    assert.deepStrictEqual(Context.get(context, Terminal.Terminal), live)
+    assertSameMembers(Context.get(context, Terminal.Terminal), live)
+    // the one function operation is stored bound to the provided object
+    assert.strictEqual(Context.get(context, Terminal.display).name, "bound display")
     assert.strictEqual(Terminal.Terminal.columns, Terminal.columns)
     assert.strictEqual(Context.omit(Terminal.Terminal)(context).mapUnsafe.size, 0)
   })
 })
+
+/** The value members are the provided Effects; the function member is the provided implementation, bound. */
+const assertSameMembers = (actual: object, expected: object) => {
+  assert.deepStrictEqual(Object.keys(actual).sort(), Object.keys(expected).sort())
+  for (const [name, value] of Object.entries(expected)) {
+    if (typeof value === "function") assert.strictEqual((actual as any)[name].name, `bound ${value.name}`)
+    else assert.strictEqual((actual as any)[name], value)
+  }
+}

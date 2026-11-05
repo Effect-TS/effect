@@ -149,12 +149,16 @@ describe("Operation", () => {
     expect(coerce(1)).type.toBe<Effect.Effect<unknown, never, "TypeTest/coerce">>()
     expect(Context.Operation<((value: number) => Effect.Effect<string>) & { readonly extra: number }>()).type.not
       .toBeCallableWith("TypeTest/properties")
-    // a `this` parameter is part of the call signature
-    const greet = Context.Operation<(this: { name: string }, greeting: string) => Effect.Effect<string>>()(
-      "TypeTest/greet"
-    )
-    expect(greet).type.not.toBeCallableWith("hello")
-    expect(greet.call({ name: "x" }, "hello")).type.toBe<Effect.Effect<string, never, "TypeTest/greet">>()
+    // a `this` parameter is rejected: an operation passes no receiver, so an implementation's `this` is the object
+    // that provides it
+    expect<Context.Operation.KeyFor<"k", (this: { name: string }, greeting: string) => Effect.Effect<string>>>()
+      .type.toBe<"The shape declares this: an implementation's receiver is the object that provides it">()
+    expect(Context.Operation<(this: { name: string }, greeting: string) => Effect.Effect<string>>()).type.not
+      .toBeCallableWith("TypeTest/greet")
+    expect(Stream.Operation<(this: { name: string }) => Stream.Stream<number>>()).type.not.toBeCallableWith("k")
+    // an explicit `this: void` or `this: unknown` says the same as none
+    expect<Context.Operation.KeyFor<"k", (this: unknown) => Effect.Effect<number>>>().type.toBe<"k">()
+    expect<Context.Operation.KeyFor<"k", (this: void) => Effect.Effect<number>>>().type.toBe<"k">()
   })
 
   it("rejects a shape of another result kind on the key argument, naming the constructor to use", () => {

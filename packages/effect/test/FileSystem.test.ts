@@ -234,7 +234,7 @@ describe("FileSystem operations", () => {
       const fs = yield* FileSystem.FileSystem
       assertSameMembers(fs, live)
       assert.deepStrictEqual(Object.keys(fs), Object.keys(FileSystem.FileSystem.members))
-      assert.strictEqual(fs.readFile, live.readFile)
+      assert.strictEqual(fs.readFile.name, "bound readFile")
       assert.deepStrictEqual(direct, text("live"))
       assert.deepStrictEqual(yield* fs.readFile("a"), text("live"))
       assert.isTrue(yield* FileSystem.exists("a"))
@@ -268,19 +268,83 @@ describe("FileSystem operations", () => {
     const context = Context.make(FileSystem.FileSystem, live)
     assert.strictEqual(context.mapUnsafe.size, Object.keys(FileSystem.FileSystem.members).length)
     assert.isFalse(context.mapUnsafe.has("effect/FileSystem"))
-    assert.strictEqual(Context.get(context, FileSystem.readFile), live.readFile)
+    assert.strictEqual(Context.get(context, FileSystem.readFile).name, "bound readFile")
     assertSameMembers(Context.get(context, FileSystem.FileSystem), live)
     // the members are properties of the key
     assert.strictEqual(FileSystem.FileSystem.readFile, FileSystem.readFile)
     assert.strictEqual(Context.omit(FileSystem.FileSystem)(context).mapUnsafe.size, 0)
   })
+
+  describe("make: a derived member calls its primitive through the operation", () => {
+    const real = FileSystem.make({
+      ...FileSystem.makeNoop({}),
+      readFile: () => Effect.succeed(text("live")),
+      access: () => Effect.void
+    })
+    const fakeReadFile = () => Effect.succeed(text("fake"))
+    const fakeAccess = (path: string) => Effect.fail(failure("NotFound", "access", path))
+    const derived = Effect.all([FileSystem.readFileString("a"), FileSystem.exists("a")])
+
+    it.effect("sees an override of the primitive provided above the record", () =>
+      Effect.gen(function*() {
+        assert.deepStrictEqual(yield* derived, ["live", true])
+        assert.deepStrictEqual(
+          yield* derived.pipe(
+            Effect.provideService(FileSystem.readFile, fakeReadFile),
+            Effect.provideService(FileSystem.access, fakeAccess)
+          ),
+          ["fake", false]
+        )
+        // and through the record read and a destructured member alike
+        const { readFileString } = yield* FileSystem.FileSystem
+        assert.strictEqual(
+          yield* readFileString("a").pipe(Effect.provideService(FileSystem.readFile, fakeReadFile)),
+          "fake"
+        )
+      }).pipe(Effect.provide(Layer.succeed(FileSystem.FileSystem, real))))
+
+    it.effect("uses its own primitive where the context has none", () =>
+      Effect.gen(function*() {
+        assert.deepStrictEqual(yield* derived, ["live", true])
+      }).pipe(
+        Effect.provideService(FileSystem.readFileString, real.readFileString),
+        Effect.provideService(FileSystem.exists, real.exists)
+      ))
+
+    it.effect("the per-operation layers likewise, over a primitive provided below them", () =>
+      Effect.gen(function*() {
+        assert.deepStrictEqual(yield* derived, ["live", true])
+        assert.deepStrictEqual(
+          yield* derived.pipe(
+            Effect.provideService(FileSystem.readFile, fakeReadFile),
+            Effect.provideService(FileSystem.access, fakeAccess)
+          ),
+          ["fake", false]
+        )
+      }).pipe(
+        Effect.provide(
+          Layer.mergeAll(FileSystem.layerReadFileString, FileSystem.layerExists).pipe(
+            Layer.provide(
+              Layer.mergeAll(
+                Layer.succeed(FileSystem.readFile, real.readFile),
+                Layer.succeed(FileSystem.access, real.access)
+              )
+            )
+          )
+        )
+      ))
+  })
 })
 
-/** A record stores each member as the provided object holds it: the read has the same functions, not the object. */
+/**
+ * A record stores each operation's implementation bound to the provided object, and any other member as the object
+ * holds it: the read has those members, not the object.
+ */
 const assertSameMembers = (actual: object, expected: object) => {
   assert.notStrictEqual(actual, expected)
   assert.deepStrictEqual(Object.keys(actual).sort(), Object.keys(expected).sort())
   for (const [name, value] of Object.entries(expected)) {
-    assert.strictEqual((actual as any)[name], value)
+    if (typeof value === "function") assert.strictEqual((actual as any)[name].name, `bound ${value.name}`)
+    else assert.strictEqual((actual as any)[name], value)
   }
 }

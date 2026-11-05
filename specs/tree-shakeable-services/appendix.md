@@ -62,8 +62,8 @@ What the rows establish:
   over `dist`, which annotates the outer call of every top-level declaration, curried or not, and esbuild drops the
   whole expression (the second row). This is how every `Context.Service("…")` key in `effect` shakes
   today, and `effect/FileSystem`'s operations shake the same way with no annotation in the source, which the bundle
-  test in `packages/effect` checks against the real module. A namespace import of the operations module (the record
-  module's `import * as members`) does not change this: once the record declaration is dropped, the namespace is unused
+  test in `packages/effect` checks against the real module. A namespace import of the operations module (`import * as
+  members`, which a record module may use) does not change this: once the record declaration is dropped, the namespace is unused
   and the bundler keeps only the operations the program reads.
 
 ### The prototype's bundle check
@@ -73,10 +73,10 @@ What the rows establish:
 
 ```
 $ pnpm --filter tree-shakeable-services-spec bundle
-ok   main.ts (two operation layers)                               90.9 kB  2/30 implementations: readFile, writeFile; Stream runtime 1456 B
-ok   main-readonly.ts (ReadOnly subset)                           91.4 kB  3/30 implementations: exists, readFile, stat; Stream runtime 1456 B
-ok   main-stream.ts (one Stream operation)                        96.7 kB  1/30 implementations: stream; Stream runtime 3838 B
-ok   main-full.ts (the record layer (control))                   103.6 kB  30/30 implementations: all; Stream runtime 3092 B
+ok   main.ts (two operation layers)                               90.9 kB  2/30 implementations: readFile, writeFile; Stream runtime 1436 B
+ok   main-readonly.ts (ReadOnly subset)                           91.3 kB  3/30 implementations: exists, readFile, stat; Stream runtime 1436 B
+ok   main-stream.ts (one Stream operation)                        96.6 kB  1/30 implementations: stream; Stream runtime 3818 B
+ok   main-full.ts (the record layer (control))                   103.5 kB  30/30 implementations: all; Stream runtime 3072 B
 ok   main.ts (two operation layers, contract published)           87.2 kB  2/30 implementations: readFile, writeFile; Stream runtime 0 B
 
 OK: every bundle contains exactly the implementations its program uses
@@ -136,7 +136,7 @@ typetest/errors/partial-aggregate.ts(7,14): error TS2375: Type 'Layer<"effect/Fi
   Type 'FileSystem' is not assignable to type '"effect/FileSystem/readFile" | "effect/FileSystem/writeFile"'.
     Type '"effect/FileSystem/access"' is not assignable to type '"effect/FileSystem/readFile" | "effect/FileSystem/writeFile"'.
 typetest/errors/partial-record.ts(6,67): error TS2345: Argument of type '{ readFile: () => Effect.Effect<Uint8Array<ArrayBuffer>, never, never>; }' is not assignable to parameter of type 'Shape'.
-  Type '{ readFile: () => Effect.Effect<Uint8Array<ArrayBuffer>, never, never>; }' is missing the following properties from type 'Shape<Members>': access, chmod, chown, copy, and 25 more.
+  Type '{ readFile: () => Effect.Effect<Uint8Array<ArrayBuffer>, never, never>; }' is missing the following properties from type 'Shape<{ access: Operation<"effect/FileSystem/access", (path: string, options?: { readonly writable?: boolean; readonly readable?: boolean; } | undefined) => Effect<void, FileSystemError, never>>; ... 28 more ...; writeFileString: Operation<...>; }>': access, chmod, chown, copy, and 25 more.
 typetest/errors/partial-subset.ts(6,59): error TS2345: Argument of type '{ readFile: () => Effect.Effect<Uint8Array<ArrayBuffer>, never, never>; }' is not assignable to parameter of type 'ReadOnlyShape'.
   Type '{ readFile: () => Effect.Effect<Uint8Array<ArrayBuffer>, never, never>; }' is missing the following properties from type 'Shape<{ exists: Operation<"effect/FileSystem/exists", (path: string) => Effect<boolean, FileSystemError, never>>; readFile: Operation<"effect/FileSystem/readFile", (path: string) => Effect<...>>; stat: Operation<...>; }>': exists, stat
 typetest/errors/record-requires-all.ts(8,19): error TS2379: Argument of type 'Effect<number, FileSystemError, FileSystem>' is not assignable to parameter of type 'Effect<number, FileSystemError, never>' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
@@ -153,6 +153,7 @@ typetest/errors/stream-shape.ts(5,88): error TS2345: Argument of type '"test/str
 typetest/errors/subset-not-full.ts(7,14): error TS2375: Type 'Layer<ReadOnly, never, never>' is not assignable to type 'Layer<FileSystem, never, never>' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
   Type 'FileSystem' is not assignable to type 'ReadOnly'.
     Type '"effect/FileSystem/access"' is not assignable to type 'ReadOnly'. Did you mean '"effect/FileSystem/exists"'?
+typetest/errors/this-shape.ts(7,3): error TS2345: Argument of type '"test/greet"' is not assignable to parameter of type '"The shape declares this: an implementation's receiver is the object that provides it"'.
 typetest/errors/value-shape.ts(7,32): error TS2349: This expression is not callable.
   Type 'Effect<number, never, "effect/Terminal/columns"> & Slot<"effect/Terminal/columns", Effect<number, never, never>> & { readonly "~effect/Context/Operation": "~effect/Context/Operation"; readonly key: "effect/Terminal/columns"; }' has no call signatures.
 typetest/errors/value-shape.ts(9,54): error TS2344: Type '() => Effect<number, never, never>' does not satisfy the constraint 'Effect<any, any, any>'.
@@ -166,14 +167,16 @@ typetest/errors/wrong-self.ts(19,5): error TS2345: Argument of type '"test/Wrong
 typetest/errors/wrong-self.ts(21,45): error TS2345: Argument of type '"test/Unknown"' is not assignable to parameter of type '"Give the record its identifier: Context.Operations<Self, Shape>()(key, members)"'.
 typetest/errors/wrong-self.ts(23,42): error TS2554: Expected 0 arguments, but got 1.
 
+
 OK: every file under typetest/errors fails to compile for the documented reason
 ```
 
 `partial-record.ts` and `partial-subset.ts` print the shape by name in the headline (`parameter of type 'Shape'`);
-the elaboration below it prints the base type and the missing members. For the full record the base type is
-`Shape<Members>`, because the prototype's `src/FileSystem.ts` declares `interface Members extends Readonly<typeof
-members> {}` and `interface Shape extends Context.Operations.Shape<Members> {}`, so no `typeof import("…")` path is
-printed; the subset's members have no such interface and print expanded, truncated. `shared-slot.ts` is the one-name
+the elaboration below it prints the base type, expanded and truncated by TypeScript, and ends with the missing
+members. Round 13's prototype printed `Shape<Members>` there through `interface Members extends Readonly<typeof
+members> {}`, a line kept only for printing; round 14 drops it, so the prototype is the recipe as `effect` writes it,
+members by name, and both errors read the same way. `this-shape.ts` is a shape declaring `this`, rejected because an
+operation passes no receiver. `shared-slot.ts` is the one-name
 rule on an alias, a nested record and two overlapping subsets; `one-line-display.ts` is how the one-line form prints,
 `Of<"test/Users", { … }>` with its key first, and how a named record prints. `generic-unnamed.ts` is a generic
 shape that does not name its key; the overloaded counterpart, `overloaded-unnamed.ts`, compiles now and is deleted (F).
@@ -228,8 +231,8 @@ make)).pipe(Layer.provide(Input.layer))`, so merged they build one `Input`, by l
 `NodeTerminal.make(shouldQuit)` and `NodeTerminal.layer` keep their signatures and are built from the same modules;
 `@effect/platform-node`'s `NodeTerminal` and `@effect/platform-bun`'s `BunTerminal` re-export the six member layers. A
 root that only displays never imports `Input`: the bundle test's `main-terminal.ts` carries the `display` module alone,
-no `readline`, `emitKeypressEvents` or `setRawMode`, and 0 Stream bytes (B). `DenoTerminal` is untouched and provides
-the record whole.
+no `readline`, `emitKeypressEvents` or `setRawMode`, and 0 Stream bytes (B). `DenoTerminal` is untouched, out of scope, and provides
+the record whole; its implementation is `NodeTerminal`'s, whose six layers a Deno root can import.
 
 **`effect/FileSystem` consumers (issue 10).** The 57 `yield* FileSystem` sites inside `effect` move, one commit per
 module: sites that use a few members call them (`ConfigProvider` directory reads, `Logger` file sinks, `cli`
@@ -242,7 +245,8 @@ record `{ columns, readInput, display }`, and its `InteractiveShape`; a `Layer<T
 (`Terminal.test.ts`). `Prompt.run` reads `Terminal.Interactive`, and the runner (`runWithInput`, `runLoop`) takes
 `Terminal.InteractiveShape` by parameter; the nine `yield* Terminal.Terminal` then `terminal.columns` sites read
 `Terminal.columns`. `Prompt.Environment` and `Command.Environment` stay whole (`Terminal.Terminal`), so user callbacks
-typed against them keep compiling.
+typed against them keep compiling; a command instead carries the requirements of its own params and handler, and
+`Command.run` requires those and `Stdio | Terminal.Interactive` ("`Command.Environment`" in the spec).
 
 ## F. Decisions, and why
 
@@ -276,14 +280,14 @@ In the order an implementer meets them:
   today's names but member layers can never satisfy it.
 - **The shape is derived from the operations, and named.** `interface Shape extends Context.Operations.Shape<typeof
   members> {}`: each operation declares its shape once and the record derives the rest, so no hand-written interface
-  has to be kept in step. A partial record's headline names `Shape`; the line below prints the base type and the
-  missing members, `Shape<Members>` where the members are declared as an interface (C). An empty second base,
-  `Context.Operations.Named`, made that line print `Shape` too, at the price of an export that existed only for
-  printing; it is dropped.
+  has to be kept in step. A partial record's headline names `Shape`; the line below prints the base type, truncated,
+  and ends with the missing members (C). Every way found to print `Shape` there too exists only for printing: an
+  empty second base, `Context.Operations.Named` (round 12), a `Members` interface (round 13), or a dummy optional
+  member on `Shape`. None is kept. The headline and the member list are the two facts a reader acts on.
 - **The recipe is the floor.** The members cannot come from the shape (types are erased); a helper building operations
   from a table of names would keep every key in every bundle (B, "What a kept key costs"); and TypeScript names a type
-  only where a declaration creates it. The member list is the module's export list where the operations have a module,
-  and written out otherwise; a namespace import keeps nothing a written list does not.
+  only where a declaration creates it. The member list is written out, as an object of the operations; a namespace import
+  would save the list, but it prints `typeof import("<absolute path>")` in diagnostics.
 - **No branded phase for unstable modules.** `FileSystem` and `Terminal` are `@stability unstable`, whose policy
   allows a breaking minor, so the identity change ships directly with the codemod and `ReadOnly`, without a period in
   which each operation is branded with the old identity.
@@ -329,19 +333,19 @@ In the order an implementer meets them:
   callback set to `undefined` is complete, and `getOption` is `Some`. Only an absent member is the defect.
 - **A record provided without a member is a defect at the write**, naming the member's key, rather than a record that
   reads back a member no call can use.
-- **A member is stored exactly as the provided object holds it.** An own property, a plain object's method included,
-  keeps its identity, `name`, own properties and statics, and allocates nothing. The one exception is a method the
-  provided object inherits from its prototype (a class instance's method), stored bound to the instance so that
-  private fields work. A callable that is also an Effect is stored as it is. An own method's `this` is the receiver
-  of its call: through a record read (`(yield* Users).find`), the read, whose members include a test override;
-  through the key (`Users.find(id)`), the key, whose members are the operations, which read the context and so see
-  an override; a bare `find(id)` call has none (`this.x` is a `TypeError` defect). A class instance's inherited
-  method is bound to the instance, so `this.find` inside it calls the instance's own `find` and never sees an
-  override; it calls the sibling through its operation (`Users.find(id)`) instead. Round 12 bound every function
-  member, which lost properties and statics, broke identity (`Context.get(ctx, F) === fn` false, name `"bound …"`)
-  and allocated one function per member per write, while still not letting a class's `this.sibling` see an override.
-  `Context.test.ts` asserts both rules ("stores a member as provided; …" and "keeps a function member's properties,
-  statics and identity through a record write").
+- **One receiver rule.** An operation calls its implementation with no receiver, whatever the call site, and a record
+  write binds each function operation's implementation to the object that provides it, plain object or class
+  instance; every other member (a value operation, a service, a class constructor) is stored as the object holds it,
+  with its identity, `name`, properties and statics. Round 13 had two rules, an own method's `this` being its call's
+  receiver and an inherited one bound, so the same `this.find` read the override through a record read, the
+  operation through the key, the instance's own through a class, and failed on a bare call. Now `this` is the object
+  that provides the implementation from every call site, private fields work, and `this.find` is the object's own,
+  never an override, as one closure calls another; a sibling that must see an override is called through its
+  operation (`Users.find(id)`). An operation member read back is a bound copy (`"bound find"`), the price of the
+  rule; a shape declaring `this` is rejected at the definition, so no type promises a receiver the call does not
+  pass. `Context.test.ts` asserts it ("binds an operation's implementation to the object that provides it, from
+  every call site", and "keeps a function member's properties, statics and identity through a record write" for the
+  other members), and `treeShaking.test.ts` runs the matrix from a bundle (`main-receiver.ts`).
 - **A record service reads itself**: `yield*`, `use` and `useSync` on a record key call its read directly instead
   of passing through `Context.get`.
 - **No defaults.** Every reason the overridable design was set aside is a reason not to add a defaulted variant;

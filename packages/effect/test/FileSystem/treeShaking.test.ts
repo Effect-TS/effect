@@ -12,7 +12,9 @@
 import * as babel from "@babel/core"
 import { assert, describe, it } from "@effect/vitest"
 import * as esbuild from "esbuild"
+import { execFileSync } from "node:child_process"
 import * as fs from "node:fs"
+import * as os from "node:os"
 import * as path from "node:path"
 import { fileURLToPath } from "node:url"
 
@@ -44,9 +46,16 @@ const publish = (file: string) => {
 
 // one build of every fixture
 const bundles = esbuild.build({
-  entryPoints: ["main-node.ts", "main-http-file.ts", "main-logger-file.ts", "main-terminal.ts"].map((entry) =>
-    path.join(fixtures, entry)
-  ),
+  entryPoints: [
+    "main-node.ts",
+    "main-http-file.ts",
+    "main-logger-file.ts",
+    "main-terminal.ts",
+    "main-receiver.ts",
+    "main-cli.ts"
+  ].map((
+    entry
+  ) => path.join(fixtures, entry)),
   bundle: true,
   format: "esm",
   platform: "node",
@@ -133,5 +142,46 @@ describe("tree-shakeable services: the bundle", () => {
     // the record service is not referenced
     assert.notInclude(text, "\"effect/Terminal\"")
     assert.strictEqual(streamBytes, 0)
+  }, 60_000)
+
+  it("the receiver: one rule from a bundled namespace call, a destructured member and Effect.andThen", async () => {
+    const { text } = (await bundles)["main-receiver.ts"]
+    // the namespace call `Users.create("x")` is a bare call in the bundle
+    assert.notMatch(text, /\.create\("x"\)/)
+    assert.match(text, /\bcreate\("x"\)/)
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "effect-receiver-"))
+    try {
+      fs.writeFileSync(path.join(dir, "main.mjs"), text)
+      const results = JSON.parse(execFileSync(process.execPath, [path.join(dir, "main.mjs")], { encoding: "utf8" }))
+      const live = "created live x"
+      const fake = "created fake x"
+      // per implementation, three call sites, each without and with an override of `find`: `this.find` is the
+      // providing object's own, for a plain object and a class instance alike; `Users.find` sees the override
+      assert.deepStrictEqual(results, [
+        ...Array(6).fill(live),
+        ...Array(6).fill(live),
+        live,
+        fake,
+        live,
+        fake,
+        live,
+        fake
+      ])
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true })
+    }
+  }, 60_000)
+
+  it("Command.run: no file system, three terminal members", async () => {
+    const { operations, terminal, text } = (await bundles)["main-cli.ts"]
+    assert.deepStrictEqual(operations, [])
+    assert.notInclude(text, "\"effect/FileSystem/")
+    // `input` is the key reader of `readInput`
+    assert.deepStrictEqual(terminal, ["columns", "display", "input", "readInput"])
+    const keys = [...text.matchAll(/"effect\/Terminal\/(\w+)"/g)].map(([, name]) => name)
+    // the three operations, and the `Terminal.Interactive` record the prompts read them through
+    assert.deepStrictEqual([...new Set(keys)].sort(), ["Interactive", "columns", "display", "readInput"])
+    // the full terminal record service is not referenced
+    assert.notInclude(text, "\"effect/Terminal\"")
   }, 60_000)
 })

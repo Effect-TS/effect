@@ -1,3 +1,4 @@
+import type { FileSystem, Layer, Path, Stdio, Terminal } from "effect"
 import { Context, Effect } from "effect"
 import type { CliError } from "effect/cli"
 import { Argument, Command, Flag, GlobalFlag } from "effect/cli"
@@ -157,7 +158,7 @@ describe("Command", () => {
 
     it("accepts only flags", () => {
       Command.make("root").pipe(
-        // @ts-expect-error Type 'Argument<string>' is not assignable
+        // @ts-expect-error Type 'Argument<string, never>' is not assignable
         Command.withSharedFlags({ file: Argument.String("file") })
       )
     })
@@ -224,6 +225,81 @@ describe("Command", () => {
       )
 
       expect(command).type.toBe<Command.Command<"example", {}, {}, never, never>>()
+    })
+  })
+
+  describe("run requirements", () => {
+    it("requires only RunRequirements for string and int flags", () => {
+      const command = Command.make("greet", {
+        name: Flag.String("name"),
+        count: Flag.Int("count")
+      }, () => Effect.void)
+
+      expect<Command.Services<typeof command>>().type.toBe<never>()
+      expect(Command.run(command, { version: "1.0.0" })).type.toBe<
+        Effect.Effect<void, CliError.CliError, Command.RunRequirements>
+      >()
+    })
+
+    it("adds exactly the keys a file path flag uses", () => {
+      const command = Command.make("read", { file: Flag.File("file") }, () => Effect.void)
+
+      expect(Command.run(command, { version: "1.0.0" })).type.toBe<
+        Effect.Effect<
+          void,
+          CliError.CliError,
+          Command.RunRequirements | Path.Path | "effect/FileSystem/exists" | "effect/FileSystem/stat"
+        >
+      >()
+    })
+
+    it("adds the services of a mapEffect", () => {
+      const command = Command.make("read", {
+        name: Flag.String("name").pipe(
+          Flag.mapEffect((name) => Effect.succeed(name) as Effect.Effect<string, never, FileSystem.FileSystem>)
+        )
+      }, () => Effect.void)
+
+      expect(Command.run(command, { version: "1.0.0" })).type.toBe<
+        Effect.Effect<void, CliError.CliError, Command.RunRequirements | FileSystem.FileSystem>
+      >()
+    })
+
+    it("keeps parameter services after the handler is provided", () => {
+      class Api extends Context.Service<Api, string>()("Api") {}
+      const command = Command.make("read", {
+        name: Flag.String("name").pipe(
+          Flag.mapEffect((name) => Effect.succeed(name) as Effect.Effect<string, never, FileSystem.FileSystem>)
+        )
+      }, () => Effect.void as Effect.Effect<void, never, Api | FileSystem.FileSystem>).pipe(
+        Command.provide({} as Layer.Layer<Api | FileSystem.FileSystem>)
+      )
+
+      expect<Command.Services<typeof command>>().type.toBe<FileSystem.FileSystem>()
+    })
+
+    it("contributes Environment for an annotated flag", () => {
+      const name: Flag.Flag<string> = Flag.String("name")
+      const command = Command.make("greet", { name }, () => Effect.void)
+
+      expect(Command.run(command, { version: "1.0.0" })).type.toBe<
+        Effect.Effect<void, CliError.CliError, Command.Environment | Command.RunRequirements>
+      >()
+    })
+
+    it("is satisfied by a full terminal environment", () => {
+      const name: Flag.Flag<string> = Flag.String("name")
+      const annotated = Command.make("greet", { name }, () => Effect.void)
+      const file = Command.make("read", { file: Flag.File("file") }, () => Effect.void)
+
+      expect(
+        Command.run(annotated, { version: "1.0.0" }).pipe(Effect.provide({} as Layer.Layer<Command.Environment>))
+      ).type.toBe<Effect.Effect<void, CliError.CliError>>()
+      expect(
+        Command.run(file, { version: "1.0.0" }).pipe(
+          Effect.provide({} as Layer.Layer<Terminal.Terminal | Stdio.Stdio | FileSystem.FileSystem | Path.Path>)
+        )
+      ).type.toBe<Effect.Effect<void, CliError.CliError>>()
     })
   })
 })

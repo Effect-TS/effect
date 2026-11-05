@@ -904,6 +904,12 @@ export interface DirectoryEntry {
  * the tree with `readDirectoryEntries`, using `stat` and `readLink` for entries
  * whose type is `"Unknown"`.
  *
+ * A derived member calls its primitives through their operations: each call
+ * runs the `access`, `readFile`, `open`, ... in the calling fiber's context,
+ * and `impl`'s own only when the context has none. So a test that overrides
+ * `readFile` above `Layer.succeed(FileSystem, make(...))` reaches
+ * `readFileString` too, as it reaches every other caller of `readFile`.
+ *
  * @see {@link makeNoop} for a testing stub that accepts method overrides without requiring a complete implementation
  * @see {@link layerNoop} for providing a no-op `FileSystem` as a `Layer` in tests
  *
@@ -913,16 +919,40 @@ export interface DirectoryEntry {
  */
 export const make = (
   impl: Omit<Shape, "exists" | "glob" | "readFileString" | "stream" | "sink" | "writeFileString">
-): Shape =>
-  FileSystem.of({
+): Shape => {
+  const primitives = {
+    access: current(access, impl.access),
+    open: current(open, impl.open),
+    readDirectoryEntries: current(readDirectoryEntries, impl.readDirectoryEntries),
+    readFile: current(readFile, impl.readFile),
+    readLink: current(readLink, impl.readLink),
+    stat: current(stat, impl.stat),
+    writeFile: current(writeFile, impl.writeFile)
+  }
+  return FileSystem.of({
     ...impl,
-    glob: Glob.make(impl),
-    exists: makeExists(impl),
-    readFileString: makeReadFileString(impl),
-    stream: makeStream(impl),
-    sink: makeSink(impl),
-    writeFileString: makeWriteFileString(impl)
+    glob: Glob.make(primitives),
+    exists: makeExists(primitives),
+    readFileString: makeReadFileString(primitives),
+    stream: makeStream(primitives),
+    sink: makeSink(primitives),
+    writeFileString: makeWriteFileString(primitives)
   })
+}
+
+// A primitive as a derived member calls it: the implementation in the calling
+// fiber's context, so an override provided above the record or the layer
+// reaches the derived member as it reaches any other caller, or `own` when
+// the context has none (a layer provided its primitive with `Layer.provide`,
+// or a derived member written without its primitive).
+const current = <F extends (...args: Array<any>) => Effect.Effect<any, any, any>>(
+  operation: Context.Slot<any, F>,
+  own: F
+): F =>
+  ((...args: Array<any>) =>
+    Effect.contextWith((context: Context.Context<never>) =>
+      (Context.getOrUndefined(context, operation) ?? own)(...args)
+    )) as F
 
 const makeExists = (impl: Pick<Shape, "access">): Shape["exists"] => (path) =>
   pipe(
@@ -1019,7 +1049,7 @@ const makeWriteFileString = (impl: Pick<Shape, "writeFile">): Shape["writeFileSt
  */
 export const layerExists: Layer.Layer<"effect/FileSystem/exists", never, "effect/FileSystem/access"> = Layer.effect(
   exists,
-  Effect.map(Effect.service(access), (access) => makeExists({ access }))
+  Effect.map(Effect.service(access), (own) => makeExists({ access: current(access, own) }))
 )
 
 /**
@@ -1043,9 +1073,12 @@ export const layerGlob: Layer.Layer<
   glob,
   Effect.map(
     Effect.all({
-      readDirectoryEntries: Effect.service(readDirectoryEntries),
-      stat: Effect.service(stat),
-      readLink: Effect.service(readLink)
+      readDirectoryEntries: Effect.map(
+        Effect.service(readDirectoryEntries),
+        (own) => current(readDirectoryEntries, own)
+      ),
+      stat: Effect.map(Effect.service(stat), (own) => current(stat, own)),
+      readLink: Effect.map(Effect.service(readLink), (own) => current(readLink, own))
     }),
     Glob.make
   )
@@ -1070,7 +1103,7 @@ export const layerReadFileString: Layer.Layer<
   "effect/FileSystem/readFile"
 > = Layer.effect(
   readFileString,
-  Effect.map(Effect.service(readFile), (readFile) => makeReadFileString({ readFile }))
+  Effect.map(Effect.service(readFile), (own) => makeReadFileString({ readFile: current(readFile, own) }))
 )
 
 /**
@@ -1088,7 +1121,7 @@ export const layerReadFileString: Layer.Layer<
  */
 export const layerStream: Layer.Layer<"effect/FileSystem/stream", never, "effect/FileSystem/open"> = Layer.effect(
   stream,
-  Effect.map(Effect.service(open), (open) => makeStream({ open }))
+  Effect.map(Effect.service(open), (own) => makeStream({ open: current(open, own) }))
 )
 
 /**
@@ -1106,7 +1139,7 @@ export const layerStream: Layer.Layer<"effect/FileSystem/stream", never, "effect
  */
 export const layerSink: Layer.Layer<"effect/FileSystem/sink", never, "effect/FileSystem/open"> = Layer.effect(
   sink,
-  Effect.map(Effect.service(open), (open) => makeSink({ open }))
+  Effect.map(Effect.service(open), (own) => makeSink({ open: current(open, own) }))
 )
 
 /**
@@ -1128,7 +1161,7 @@ export const layerWriteFileString: Layer.Layer<
   "effect/FileSystem/writeFile"
 > = Layer.effect(
   writeFileString,
-  Effect.map(Effect.service(writeFile), (writeFile) => makeWriteFileString({ writeFile }))
+  Effect.map(Effect.service(writeFile), (own) => makeWriteFileString({ writeFile: current(writeFile, own) }))
 )
 
 const notFound = (method: string, path: string) =>

@@ -13,10 +13,10 @@ import * as Param from "../Param.ts"
 import { toFlagDoc, toImpl } from "./command.ts"
 
 const dedupeGlobalFlags = (
-  flags: ReadonlyArray<GlobalFlag.GlobalFlag<any>>
-): ReadonlyArray<GlobalFlag.GlobalFlag<any>> => {
-  const seen = new Set<GlobalFlag.GlobalFlag<any>>()
-  const deduped: Array<GlobalFlag.GlobalFlag<any>> = []
+  flags: ReadonlyArray<GlobalFlag.GlobalFlag<any, unknown>>
+): ReadonlyArray<GlobalFlag.GlobalFlag<any, unknown>> => {
+  const seen = new Set<GlobalFlag.GlobalFlag<any, unknown>>()
+  const deduped: Array<GlobalFlag.GlobalFlag<any, unknown>> = []
   for (const flag of flags) {
     if (seen.has(flag)) {
       continue
@@ -67,8 +67,8 @@ export const getCommandsForCommandPath = <Name extends string, Input, E, R, Cont
 export const getGlobalFlagsForCommandPath = <Name extends string, Input, E, R, ContextInput>(
   command: Command<Name, Input, ContextInput, E, R>,
   commandPath: ReadonlyArray<string>,
-  builtIns: ReadonlyArray<GlobalFlag.GlobalFlag<any>>
-): ReadonlyArray<GlobalFlag.GlobalFlag<any>> => {
+  builtIns: ReadonlyArray<GlobalFlag.GlobalFlag<any, unknown>>
+): ReadonlyArray<GlobalFlag.GlobalFlag<any, unknown>> => {
   const commands = getCommandsForCommandPath(command, commandPath)
   const declared = commands.flatMap((current) => toImpl(current).globalFlags)
   return dedupeGlobalFlags([
@@ -77,8 +77,8 @@ export const getGlobalFlagsForCommandPath = <Name extends string, Input, E, R, C
   ])
 }
 
-const collectDeclaredGlobalFlags = (command: Command.Any): ReadonlyArray<GlobalFlag.GlobalFlag<any>> => {
-  const collected: Array<GlobalFlag.GlobalFlag<any>> = []
+const collectDeclaredGlobalFlags = (command: Command.Any): ReadonlyArray<GlobalFlag.GlobalFlag<any, unknown>> => {
+  const collected: Array<GlobalFlag.GlobalFlag<any, unknown>> = []
 
   const visit = (current: Command.Any): void => {
     const impl = toImpl(current)
@@ -134,8 +134,8 @@ const getInheritedFlagsForCommandPath = (
  */
 export const getGlobalFlagsForCommandTree = <Name extends string, Input, E, R, ContextInput>(
   command: Command<Name, Input, ContextInput, E, R>,
-  builtIns: ReadonlyArray<GlobalFlag.GlobalFlag<any>>
-): ReadonlyArray<GlobalFlag.GlobalFlag<any>> =>
+  builtIns: ReadonlyArray<GlobalFlag.GlobalFlag<any, unknown>>
+): ReadonlyArray<GlobalFlag.GlobalFlag<any, unknown>> =>
   dedupeGlobalFlags([
     ...builtIns,
     ...collectDeclaredGlobalFlags(command)
@@ -149,7 +149,7 @@ export const getGlobalFlagsForCommandTree = <Name extends string, Input, E, R, C
 export const getHelpForCommandPath = <Name extends string, Input, E, R, ContextInput>(
   command: Command<Name, Input, ContextInput, E, R>,
   commandPath: ReadonlyArray<string>,
-  builtIns: ReadonlyArray<GlobalFlag.GlobalFlag<any>>
+  builtIns: ReadonlyArray<GlobalFlag.GlobalFlag<any, unknown>>
 ): Effect.Effect<HelpDoc, never, never> =>
   Effect.gen(function*() {
     const commands = getCommandsForCommandPath(command, commandPath)
