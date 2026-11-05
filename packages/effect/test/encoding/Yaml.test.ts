@@ -1,6 +1,8 @@
 import { assert, describe, it } from "@effect/vitest"
 import { Result } from "effect"
 import * as Yaml from "effect/encoding/Yaml"
+import { execFileSync } from "node:child_process"
+import { fileURLToPath } from "node:url"
 import * as YAML from "yaml"
 
 const parse = (input: string): unknown => Result.getOrThrow(Yaml.parse(input))
@@ -1111,6 +1113,15 @@ items:
         assert.match(failureMessage(nested(deep)), /depth/i)
       }
     )
+
+    // A fresh process runs the parser before the JIT compiles it, when its stack frames are largest.
+    it("parses 700 nested mappings with anchors on their own lines in a fresh process", () => {
+      const output = execFileSync(process.execPath, [
+        fileURLToPath(new URL("./fixtures/yaml-split-anchors.ts", import.meta.url)),
+        "700"
+      ], { encoding: "utf8" })
+      assert.strictEqual(output, "1\n")
+    }, 20_000)
   })
 
   // YAML 1.2.2 §5.5: only spaces and tabs are white space; NBSP and U+2028 are content.
@@ -1385,6 +1396,14 @@ nested:
         Result.getOrThrow(Yaml.stringify({ a: replaced(), b: [replaced()] })),
         "a: text\nb:\n  - text\n"
       )
+    })
+
+    it("prints only the items an array had before their toJSON ran", () => {
+      // As JSON.stringify, which reads an array's length once: an item that appends to its
+      // own array would otherwise keep extending the output.
+      const items: Array<unknown> = []
+      items.push({ toJSON: () => (items.push(2), 1) })
+      assert.strictEqual(Result.getOrThrow(Yaml.stringify(items)), "- 1\n")
     })
 
     it("indents nested collections by the indent option", () => {
