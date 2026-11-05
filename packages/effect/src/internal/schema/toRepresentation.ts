@@ -31,28 +31,32 @@ interface Content {
 
 const passwordStrings = new WeakMap<SchemaAST.AST, SchemaAST.AST>()
 
-// A string reached through a `Redacted` declaration is represented with the `password` format, unless it already
-// specifies a format. The codec ASTs keep the original string, so only representations (and the JSON Schema and code
-// generated from them) see the format.
-function toEncodedString(declaration: SchemaAST.AST, to: SchemaAST.AST): SchemaAST.AST {
+function isRedactedDeclaration(ast: SchemaAST.AST): boolean {
+  return (ast.annotations?.representation as { readonly id?: unknown } | undefined)?.id === "effect/schema/Redacted"
+}
+
+// The wire string of a `Redacted` value is represented with the `password` format, unless it already specifies a
+// format. The codec ASTs keep the original string, so only representations (and the JSON Schema and code generated
+// from them) see the format. The marker lets a format supplied by a check take precedence when exporting.
+function toPasswordString(ast: SchemaAST.AST): SchemaAST.AST {
   if (
-    to._tag !== "String" ||
-    to.encoding !== undefined ||
-    (declaration.annotations?.representation as { readonly id?: unknown } | undefined)?.id !==
-      "effect/schema/Redacted" ||
-    to.annotations?.format !== undefined ||
-    to.checks?.some((check) => check.annotations?.format !== undefined)
+    ast._tag !== "String" ||
+    ast.annotations?.format !== undefined ||
+    ast.checks?.some((check) => check.annotations?.format !== undefined)
   ) {
-    return to
+    return ast
   }
-  let password = passwordStrings.get(to)
+  let password = passwordStrings.get(ast)
   if (password === undefined) {
     // Annotate the string itself rather than its last check, so the format is exported next to `type`.
     password = SchemaAST.replaceChecks(
-      SchemaAST.annotate(SchemaAST.replaceChecks(to, undefined), { format: "password" }),
-      to.checks
+      SchemaAST.annotate(SchemaAST.replaceChecks(ast, undefined), {
+        format: "password",
+        [InternalAnnotations.PASSWORD_FORMAT_DEFAULT_KEY]: true
+      }),
+      ast.checks
     )
-    passwordStrings.set(to, password)
+    passwordStrings.set(ast, password)
   }
   return password
 }
@@ -139,7 +143,10 @@ export function toRepresentations(
   ): ReferenceCandidate {
     let ast = input
     let content: Content | undefined
+    // Whether the chain passed through a `Redacted` declaration followed only by string-to-string encodings
+    let redacted = false
     while (ast.encoding !== undefined && encodingLength > 0) {
+      redacted = isRedactedDeclaration(ast) || redacted && ast._tag === "String"
       const last = ast.encoding[encodingLength - 1]
       // Only retain content when this operation produces the final string.
       if (last.to.encoding === undefined && last.to._tag === "String") {
@@ -151,9 +158,10 @@ export function toRepresentations(
           }
         }
       }
-      ast = toEncodedString(ast, last.to)
+      ast = last.to
       encodingLength = ast.encoding?.length ?? 0
     }
+    if (redacted && ast !== input) ast = toPasswordString(ast)
     const owner = SchemaAST.getContextOwner(ast)
     let identifier = InternalAnnotations.resolveIdentifier(ast)
     const fallback = identifier === undefined

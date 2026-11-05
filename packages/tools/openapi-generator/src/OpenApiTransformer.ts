@@ -981,10 +981,16 @@ const encodeRequestSource = `const __encodeRequest = (
       ([params, payload]) => ({ ...options, params, payload })
     )`
 
-// Only emitted for payloads whose schemas contain `Redacted` fields, so the schema section already imports `Redacted`
-const unwrapRedactedSource = `const __unwrapRedacted = (payload: Record<string, unknown>) =>
+// Only emitted for payloads whose schemas contain `Redacted` fields, so the schema section already imports `Redacted`.
+// Array values are unwrapped element by element, since multipart sends them as repeated fields.
+const unwrapRedactedSource =
+  `const __unwrapRedactedValue = (value: unknown) => Redacted.isRedacted(value) ? Redacted.value(value) : value
+  const __unwrapRedacted = (payload: Record<string, unknown>) =>
     Object.fromEntries(
-      Object.entries(payload).map(([key, value]) => [key, Redacted.isRedacted(value) ? Redacted.value(value) : value])
+      Object.entries(payload).map(([key, value]) => [
+        key,
+        Array.isArray(value) ? value.map(__unwrapRedactedValue) : __unwrapRedactedValue(value)
+      ])
     )`
 
 const commaUrlParamsSource =

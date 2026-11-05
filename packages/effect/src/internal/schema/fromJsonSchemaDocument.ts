@@ -134,6 +134,23 @@ function isPasswordString(input: ImportedKeyword<"String">): boolean {
   return input.annotations?.format === "password"
 }
 
+// `{ type: ["string", "null"], format: "password" }` (or OpenAPI 3.0 `nullable: true`) annotates the union, so the
+// password format moves to its string members. Literal members, such as those from `enum` or `const`, stay plain.
+function movePasswordFormatToStrings(input: ImportedJsonSchemaRepresentation): ImportedJsonSchemaRepresentation {
+  if (input._tag !== "Union" || input.annotations?.format !== "password") return input
+  let moved = false
+  const types = input.types.map((type): ImportedJsonSchemaRepresentation => {
+    if (type._tag === "String" && type.annotations?.format === undefined) {
+      moved = true
+      return { ...type, annotations: { ...type.annotations, format: "password" } }
+    }
+    return type
+  })
+  if (!moved) return input
+  const { format: _, ...annotations } = input.annotations
+  return { ...input, types, annotations: Object.keys(annotations).length === 0 ? undefined : annotations }
+}
+
 function isObject(input: unknown): input is Record<string, unknown> {
   return typeof input === "object" && input !== null && !Array.isArray(input)
 }
@@ -1172,7 +1189,7 @@ export function fromJsonSchemaMultiDocument(
       }
     }
     inNestedResource = wasInNestedResource
-    return representation
+    return movePasswordFormatToStrings(representation)
   }
 
   function translateType(

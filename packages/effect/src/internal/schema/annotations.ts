@@ -57,9 +57,18 @@ export const getExpected = memoize((ast: SchemaAST.AST): string => {
   return ast.getExpected(getExpected)
 })
 
+/**
+ * Marks a `format: "password"` annotation added by default to a string wrapped in `Redacted`, so a format supplied
+ * by one of its checks takes precedence.
+ *
+ * @internal
+ */
+export const PASSWORD_FORMAT_DEFAULT_KEY = "~passwordFormatDefault"
+
 /** @internal */
 export const annotationExcludedKeys = new Set([
   SENTINELS_ANNOTATION_KEY,
+  PASSWORD_FORMAT_DEFAULT_KEY,
   STRUCTURAL_ANNOTATION_KEY,
   "representation",
   "arbitraryConstraint",

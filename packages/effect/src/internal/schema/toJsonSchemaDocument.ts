@@ -410,10 +410,21 @@ function compileJsonSchema(
         output.contentSchema = recur(content.schema, [...path, "content", "schema"], [])
       }
     }
-    for (let index = 0; index < representation.checks.length; index++) {
+    if (representation.annotations?.[InternalAnnotations.PASSWORD_FORMAT_DEFAULT_KEY] === true) {
+      // The default password format of a `Redacted` string gives way to a format supplied by a check
       const type = typeof output.type === "string" && isJsonSchemaType(output.type) ? output.type : undefined
-      const check = compileCheck(representation.checks[index], type, [...path, "checks", index], local)
-      if (check !== undefined) output = appendJsonSchema(output, ...check)
+      const checks = representation.checks.flatMap((check, index) => {
+        const compiled = compileCheck(check, type, [...path, "checks", index], local)
+        return compiled === undefined ? [] : [compiled]
+      })
+      if (checks.some(([schema]) => hasFormat(schema))) delete output.format
+      for (const check of checks) output = appendJsonSchema(output, ...check)
+    } else {
+      for (let index = 0; index < representation.checks.length; index++) {
+        const type = typeof output.type === "string" && isJsonSchemaType(output.type) ? output.type : undefined
+        const check = compileCheck(representation.checks[index], type, [...path, "checks", index], local)
+        if (check !== undefined) output = appendJsonSchema(output, ...check)
+      }
     }
     compiledRepresentations.set(representation, { schema: output, dependencies: local })
     return registerPendingOneOf(output)
@@ -744,6 +755,11 @@ function compileJsonSchema(
       }
     }
   }
+}
+
+function hasFormat(schema: JsonSchema.JsonSchema): boolean {
+  return typeof schema.format === "string" ||
+    Array.isArray(schema.allOf) && schema.allOf.some((member) => typeof member === "object" && hasFormat(member))
 }
 
 function isJsonSchemaType(input: string): input is JsonSchema.Type {
