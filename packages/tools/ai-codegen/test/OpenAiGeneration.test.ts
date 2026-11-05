@@ -11,6 +11,7 @@ import * as HttpClient from "effect/http/HttpClient"
 import * as HttpClientResponse from "effect/http/HttpClientResponse"
 import * as Layer from "effect/Layer"
 import * as Path from "effect/Path"
+import * as Result from "effect/Result"
 import * as Schema from "effect/Schema"
 import { gzipSync } from "node:zlib"
 
@@ -277,9 +278,9 @@ const cases: ReadonlyArray<Case> = [
 
 const openAiConfig = Effect.gen(function*() {
   const fs = yield* FileSystem.FileSystem
-  const config = Schema.decodeUnknownSync(Config.CodegenConfig)(Yaml.parse(
+  const config = Schema.decodeUnknownSync(Config.CodegenConfig)(Result.getOrThrow(Yaml.parse(
     yield* fs.readFileString(new URL("../../../ai/openai/codegen.yaml", import.meta.url).pathname)
-  ))
+  )))
   // Patches addressing individual OpenAI components cannot apply to these fixtures,
   // but document-level patches (such as the OpenAPI version) still shape generation.
   const patches = config.patchList.filter((patch) => !patch.includes("\"/components/"))

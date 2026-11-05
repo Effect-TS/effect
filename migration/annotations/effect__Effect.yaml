@@ -479,8 +479,8 @@ effect/Effect#summarized:
   replacement: "Effect.gen"
   note: "Run the summary Effect before and after the target Effect and combine the two measurements explicitly. Adapt arguments and imports to the v4 API."
 effect/Effect#supervised:
-  replacement: "FiberSet"
-  note: "Track explicitly forked Fibers in a scoped `FiberSet` instead of installing a runtime Supervisor. Adapt arguments and imports to the v4 API."
+  replacement: "Effect.withSupervisor"
+  note: "`Effect.withSupervisor` adds a Supervisor for an effect, but now runs the effect in a new child fiber and joins it, so the effect's own fiber is observed too. To track fibers you fork yourself, use a scoped `FiberSet`."
 effect/Effect#Tag:
   replacement: "Context.Service"
   note: "Define services with `Context.Service`; use the generated `.use` helper for accessors. Adapt arguments and imports to the v4 API."
