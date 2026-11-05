@@ -126,9 +126,8 @@ export interface Doctype {
  * a decoded map gets `Object.prototype` back. A self-closing tag such as
  * `<br/>` is decoded as a `StartElement` followed by an `EndElement`.
  *
- * When decoded with `positions: true`, `line` and `column` locate the
- * tag's `<` as an `XmlError` would. Otherwise they are absent, and the
- * encoder ignores them.
+ * With `positions: true`, `line` and `column` locate the tag's `<` as an
+ * `XmlError` would. Otherwise they are absent. The encoders ignore them.
  *
  * @stability experimental
  * @category models
@@ -139,13 +138,14 @@ export interface StartElement {
   readonly name: string
   readonly attributes: Readonly<Record<string, string>>
   /**
-   * One-based line of the tag's `<`, present when decoded with `positions: true`.
+   * One-based line of the tag's `<`, with `positions: true`.
    *
    * @since 4.1.3
    */
   readonly line?: number | undefined
   /**
-   * One-based column of the tag's `<` in UTF-16 code units, present when decoded with `positions: true`.
+   * One-based column of the tag's `<` in UTF-16 code units, with
+   * `positions: true`.
    *
    * @since 4.1.3
    */
@@ -258,10 +258,9 @@ export interface Element {
  *   sections. Defaults to 10 MiB; `Infinity` disables the limit.
  * - `maxDepth`: the maximum number of nested elements. Defaults to 1024;
  *   `Infinity` disables the limit.
- * - `positions`: adds the one-based `line` and `column` of each start tag's
- *   `<` to its `StartElement`, counted as in `XmlError`, and for `decode`
- *   in UTF-16 code units of the decoded text. Defaults to `false`, which leaves
- *   the fields absent.
+ * - `positions`: adds the `line` and `column` of each start tag's `<` to its
+ *   `StartElement`, counted as for `XmlError`. Defaults to `false`, which
+ *   leaves the fields absent.
  *
  * Memory per token and for open element names is bounded by `maxTokenSize`.
  * Invalid options throw when the channel is created.
@@ -274,7 +273,7 @@ export interface DecodeOptions {
   readonly maxTokenSize?: number | undefined
   readonly maxDepth?: number | undefined
   /**
-   * Adds `line` and `column` to `StartElement` events. Defaults to `false`.
+   * Adds `line` and `column` to `StartElement` events.
    *
    * @since 4.1.3
    */
@@ -644,8 +643,7 @@ const makeChannel = <In, Out, IE, Done>(
 const makeParser = (options: DecodeOptions | undefined, bytes: boolean): () => Parser => {
   const maxTokenSize = checkLimit("maxTokenSize", options?.maxTokenSize, defaultMaxTokenSize)
   const maxDepth = checkLimit("maxDepth", options?.maxDepth, defaultMaxDepth)
-  const positions = options?.positions === true
-  return () => new Parser(maxTokenSize, maxDepth, bytes, positions)
+  return () => new Parser(maxTokenSize, maxDepth, bytes, options?.positions === true)
 }
 
 const textEncoder = new TextEncoder()
@@ -995,9 +993,9 @@ class Parser {
   private line = 1
   private lineStart = 0
   private counted = 0
-  // Document offsets of the next CR and LF in `buf` from `counted`, or of the
-  // end of `buf` if there is none, so that counting to each start tag of a
-  // long line does not search to its end each time. Below `counted` if stale.
+  // Indexes in `buf` of the next CR and LF from `counted`, or `buf.length`
+  // if there is none, so that counting to each start tag of a long line does
+  // not search to its end again. -1 until `count` has run on `buf`.
   private nextCR = -1
   private nextLF = -1
 
@@ -1070,25 +1068,25 @@ class Parser {
 
   error(kind: XmlError["kind"], message: string, at: number): XmlError {
     if (at > this.counted) {
-      // The text counted here need not be `buf`
-      this.nextCR = this.nextLF = -1
-      if (this.pending !== undefined) this.count(this.pending.join(""), this.pendingStart, at - this.pendingStart)
-      else this.count(this.buf, this.base, at - this.base)
+      // The parser is not used after an error, so `buf` can be replaced
+      if (this.pending !== undefined) this.load(this.pending.join(""), this.pendingStart)
+      this.count(at - this.base)
     }
     const line = this.line
     const column = at - this.lineStart + 1
     return new XmlError({ kind, message: `${message} at line ${line}, column ${column}`, line, column })
   }
 
-  // Advances the line count from `counted` to `to`, an index of `s`, which
-  // starts at document offset `base`. Counting resumes only where parsing
-  // stopped, which is never between a CR and an LF. `s` is `buf`, except in
-  // `error`.
-  private count(s: string, base: number, to: number): void {
+  // Advances the line count from `counted` to `to`, an index of `buf`.
+  // Counting resumes only where parsing stopped, which is never between a CR
+  // and an LF.
+  private count(to: number): void {
+    const s = this.buf
+    const base = this.base
     const i = this.counted - base
     if (i >= to) return
-    let cr = this.nextCR < this.counted ? indexOrEnd(s, "\r", i) : this.nextCR - base
-    let lf = this.nextLF < this.counted ? indexOrEnd(s, "\n", i) : this.nextLF - base
+    let cr = this.nextCR === -1 ? indexOrEnd(s, "\r", i) : this.nextCR
+    let lf = this.nextLF === -1 ? indexOrEnd(s, "\n", i) : this.nextLF
     while (true) {
       if (cr < to && cr < lf) {
         this.line++
@@ -1103,8 +1101,8 @@ class Parser {
         break
       }
     }
-    this.nextCR = base + cr
-    this.nextLF = base + lf
+    this.nextCR = cr
+    this.nextLF = lf
     this.counted = base + to
   }
 
@@ -1204,7 +1202,7 @@ class Parser {
       }
       i = end
     }
-    this.count(s, this.base, i)
+    this.count(i)
     this.buf = ""
     if (i < n) {
       const rest = i === 0 ? s : s.slice(i)
@@ -1409,8 +1407,7 @@ class Parser {
     }
     this.flushText()
     if (this.positions) {
-      // `s` can be a prefix of `buf`, which keeps the line breaks found in it
-      this.count(this.buf, this.base, i)
+      this.count(i)
       this.out.push({
         _tag: "StartElement",
         name,
