@@ -1745,10 +1745,10 @@ export const unwrap = <A, E2, R2, E, R>(
  * @category services
  * @since 4.0.0
  */
-export const Operation = <Shape extends Context.Operation.StreamSignature, Brand = unknown>(): <
+export const Operation = <Shape extends Context.Operation.FunctionSignature, Brand = unknown>(): <
   const Id extends string
 >(
-  key: Context.Operation.KeyFor<Id, Shape>
+  key: Context.Operation.KeyFor<Id, Shape, "Stream">
 ) => Context.Operation<Id & Brand, Shape> =>
 (key) => Context.makeOperation(key as string, streamCall) as any
 

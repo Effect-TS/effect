@@ -671,29 +671,39 @@ describe("Operation", () => {
       )
     })
 
-    it("overrides a member as an overlay, and reads the record as a copy with the override, once per storage", () => {
+    it("overrides a member as an overlay, and reads the record as an object inheriting from the provided one, once per storage", () => {
       const live = record({ readFile: () => Effect.succeed("live") })
       const fake = () => Effect.succeed("fake")
       const Other = Context.Service<number>("ContextTest/Other")
       // a member write into a context holding the record is an ordinary overlay; the record's slot keeps the provided object
       const overridden = Context.add(Context.make(FS, live), readFile, fake)
       strictEqual((overridden as any).overlay.key, "ContextTest/FS/readFile")
+      strictEqual((overridden as any).overlay.record, undefined)
       strictEqual(overridden.mapUnsafe.get("ContextTest/FS"), live)
       strictEqual(Context.getOrUndefinedUnsafe(overridden, "ContextTest/FS"), live)
-      // the record read is a copy of the provided object with the override, the same object on every read
+      // the record read inherits from the provided object and carries the override as its own property; it is built
+      // on each read, so two reads are two equal objects
       const view = Context.get(overridden, FS)
       assert.notStrictEqual(view, live)
+      strictEqual(Object.getPrototypeOf(view), live)
       strictEqual(view.readFile, fake)
       strictEqual(view.writeFile, live.writeFile)
-      strictEqual(Context.get(overridden, FS), view)
-      // contexts derived by unrelated writes share it; the original context still reads the provided object
+      deepStrictEqual(Object.keys(view), ["readFile"])
+      deepStrictEqual(Object.keys({ ...view }), ["readFile"])
+      const again = Context.get(overridden, FS)
+      assert.notStrictEqual(again, view)
+      strictEqual(Object.getPrototypeOf(again), live)
+      deepStrictEqual(Object.keys(again), ["readFile"])
+      // contexts derived by unrelated writes read the same; the original context still reads the provided object
       let context = overridden
-      strictEqual(Context.get(Context.add(context, Other, 0), FS), view)
+      strictEqual(Context.get(Context.add(context, Other, 0), FS).readFile, fake)
       strictEqual(Context.get(Context.make(FS, live), FS), live)
-      // a context rebased into a new flat map by deep additions reads the same members from it
+      // a context rebased into a new flat map by deep additions reads the same members from it, as a view assembled
+      // once per map
       for (let i = 0; i < 12; i++) context = Context.add(context, Other, i)
       assertTrue(context.mapUnsafe.get("ContextTest/FS/readFile") === fake)
       const flat = Context.get(context, FS)
+      strictEqual(Object.getPrototypeOf(flat), live)
       strictEqual(flat.readFile, fake)
       strictEqual(flat.writeFile, live.writeFile)
       strictEqual(Context.get(context, FS), flat)
@@ -736,11 +746,12 @@ describe("Operation", () => {
       const [read, size, fs] = await Effect.runPromise(
         program.pipe(Effect.provideService(writeFile, () => Effect.void), Effect.provide(Layer.succeed(FS, instance)))
       )
-      // the view is a copy with the instance's prototype and own properties, so `this` keeps working
+      // the view inherits from the instance, so `instanceof`, the instance's fields and `this` keep working
       strictEqual(read, "instance:x")
       strictEqual(size, 10)
       assertTrue(fs instanceof Impl)
       assert.notStrictEqual(fs, instance)
+      strictEqual(Object.getPrototypeOf(fs), instance)
       strictEqual(fs.prefix, "instance:")
       // with nothing overridden, the record read is the instance itself
       strictEqual(await Effect.runPromise(FS.pipe(Effect.provide(Layer.succeed(FS, instance)))), instance)
@@ -751,6 +762,111 @@ describe("Operation", () => {
         ),
         "instance:y"
       )
+    })
+
+    it("stores a method found on the provided object's prototype bound to it, so a standalone call keeps `this`", async () => {
+      class Impl {
+        readonly prefix = "instance:"
+        readFile(path: string) {
+          return Effect.succeed(this.prefix + path)
+        }
+        writeFile = (_path: string, _data: string) => Effect.void
+        stat(path: string) {
+          return Effect.map(this.readFile(path), (contents) => contents.length)
+        }
+        lines(_path: string) {
+          return Stream.empty
+        }
+      }
+      const instance = new Impl()
+      const context = Context.make(FS, instance)
+      // the slot holds a bound function for a prototype method, and the own arrow property as it is
+      assert.notStrictEqual(Context.get(context, readFile), Impl.prototype.readFile)
+      strictEqual(Context.get(context, writeFile), instance.writeFile)
+      strictEqual(
+        await Effect.runPromise(readFile("x").pipe(Effect.provide(Layer.succeed(FS, instance)))),
+        "instance:x"
+      )
+      strictEqual(await Effect.runPromise(stat("x").pipe(Effect.provide(Layer.succeed(FS, instance)))), 10)
+      // a bound member counts as the member the record wrote: with no override, the record read is the instance
+      strictEqual(Context.get(context, FS), instance)
+      strictEqual(Context.get(Context.add(context, Context.Service<number>("ContextTest/Other"), 1), FS), instance)
+      // the same through an overlay, and after the overlay is flattened into a new map
+      let added = Context.add(Context.make(Context.Service<number>("ContextTest/Other"), 0), FS, instance)
+      strictEqual(Context.get(added, FS), instance)
+      strictEqual(await Effect.runPromise(Effect.provide(readFile("y"), added)), "instance:y")
+      for (let i = 0; i < 12; i++) added = Context.add(added, Context.Service<number>("ContextTest/Other"), i)
+      strictEqual(Context.get(added, FS), instance)
+      // the bound method reads `this` from the instance, so standalone it does not see an override of another member,
+      // while the record view, whose `this` is the view, does
+      const overridden = Context.add(context, readFile, () => Effect.succeed("fake!"))
+      strictEqual(await Effect.runPromise(Effect.provide(stat("x"), overridden)), 10)
+      strictEqual(await Effect.runPromise(Effect.provide(Effect.flatMap(FS, (fs) => fs.stat("x")), overridden)), 5)
+      // Layer.mock's proxy has no prototype methods: its members are stored as the proxy returns them
+      const mocked = Layer.mock(FS, { readFile: () => Effect.succeed("mocked") })
+      strictEqual(await Effect.runPromise(readFile("a").pipe(Effect.provide(mocked))), "mocked")
+    })
+
+    it("writes a record added to a context as one overlay, whatever the context's size", () => {
+      const live = record({ readFile: () => Effect.succeed("live") })
+      const Other = Context.Service<number>("ContextTest/Other")
+      const small = Context.make(Other, 1)
+      const added = Context.add(small, FS, live)
+      // one overlay, holding the provided object and the members; the base map is the one of the context added to
+      const overlay = (added as any).overlay
+      strictEqual(overlay.key, "ContextTest/FS")
+      strictEqual(overlay.value, live)
+      strictEqual(overlay.parent, undefined)
+      strictEqual(overlay.record.key, FS)
+      strictEqual((added as any).base, (small as any).base)
+      strictEqual(added.mapUnsafe.size, 6)
+      strictEqual(Context.get(added, FS), live)
+      strictEqual(Context.get(added, readFile), live.readFile)
+      strictEqual(Context.get(added, Other), 1)
+      strictEqual(Context.get(Context.add(added, Other, 2), Other), 2)
+      // into three hundred slots: the same overlay, no copy of the map
+      const big = Context.mergeAll(
+        ...Array.from({ length: 300 }, (_, i) => Context.make(Context.Service<number>(`ContextTest/Wide/${i}`), i))
+      )
+      const bigAdded = Context.add(big, FS, live)
+      strictEqual((bigAdded as any).base, (big as any).base)
+      strictEqual((bigAdded as any).overlay.record.key, FS)
+      strictEqual(Context.get(bigAdded, FS), live)
+      strictEqual(bigAdded.mapUnsafe.size, 305)
+      // an empty context and a context at its overlay depth take the record as a flat map, as `make` does
+      strictEqual((Context.make(FS, live) as any).overlay, undefined)
+      let deep: Context.Context<any> = small
+      for (let i = 0; i < 8; i++) deep = Context.add(deep, Context.Service<number>(`ContextTest/Deep/${i}`), i)
+      const flattened = Context.add(deep, FS, live)
+      strictEqual((flattened as any).overlay, undefined)
+      strictEqual(Context.get(flattened, FS), live)
+      strictEqual(flattened.mapUnsafe.size, 14)
+      // a record overlay is seen by `pick`, `omit`, `merge` and the string-keyed readers like a flat write
+      strictEqual(Context.getOrUndefinedUnsafe(added, "ContextTest/FS/readFile"), live.readFile)
+      strictEqual(Context.omit(FS)(added).mapUnsafe.size, 1)
+      strictEqual(Context.pick(readFile)(added).mapUnsafe.size, 1)
+      strictEqual(Context.get(Context.merge(Context.make(Other, 3), added), FS), live)
+    })
+
+    it("owns the map given to makeUnsafe: a record view is assembled from it once", () => {
+      const live = record({ readFile: () => Effect.succeed("live") })
+      const fake = () => Effect.succeed("fake")
+      // a copy of a context's map reads as the original
+      const map = new Map(Context.make(FS, live).mapUnsafe)
+      const copied = Context.makeUnsafe<FS>(map)
+      strictEqual(Context.get(copied, FS), live)
+      strictEqual(Context.get(copied, readFile), live.readFile)
+      // the map is the context's storage: a slot changed behind it is read by the member, while the record view
+      // assembled for that storage stays what it was. Contexts are not mutated after construction.
+      map.set("ContextTest/FS/readFile", fake)
+      strictEqual(Context.get(copied, readFile), fake)
+      strictEqual(Context.get(copied, FS), live)
+      // a map mutated before the first read is read as it stands
+      const fresh = new Map(Context.make(FS, live).mapUnsafe)
+      const late = Context.makeUnsafe<FS>(fresh)
+      fresh.set("ContextTest/FS/readFile", fake)
+      strictEqual(Context.get(late, FS).readFile, fake)
+      strictEqual(Object.getPrototypeOf(Context.get(late, FS)), live)
     })
 
     it("accepts services, references and records as members", async () => {
@@ -812,13 +928,13 @@ describe("Operation", () => {
       assertFalse(base.mapUnsafe.has("ContextTest/FS/ReadOnly"))
       // a derived context whose members are the same values shares the object
       strictEqual(Context.get(Context.add(base, Other, 1), ReadOnly), first)
-      // a member written on top is seen by the assembly of that context
+      // a member written on top is a view over the assembled object
       const fake = () => Effect.succeed("two")
       const replaced = Context.add(base, readFile, fake)
       const second = Context.get(replaced, ReadOnly)
       strictEqual(second.readFile, fake)
       strictEqual(second.stat, first.stat)
-      strictEqual(Context.get(replaced, ReadOnly), second)
+      strictEqual(Object.getPrototypeOf(second), first)
       strictEqual(Context.get(base, ReadOnly), first)
     })
 
@@ -934,7 +1050,7 @@ describe("Operation", () => {
       const context = Context.make(FS, value)
       strictEqual(Context.get(context, Again), value)
       strictEqual(Context.get(Context.make(Again, value), FS), value)
-      // a member override is seen through either object; each remembers a copy of its own
+      // a member override is seen through either object, as equal views
       const write = () => Effect.void
       const shadowed = Context.add(context, writeFile, write)
       strictEqual(shadowed.mapUnsafe.size, 5)

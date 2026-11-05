@@ -39,6 +39,8 @@ describe("Operation", () => {
   const readOnlyMembers = { readFile }
   type ReadOnly = Context.Operations.Identifier<typeof readOnlyMembers>
   const ReadOnly = Context.Operations<ReadOnly>()("TypeTest/FS/ReadOnly", readOnlyMembers)
+  type ReadOnlyShape = Pick<Shape, "readFile">
+  const ReadOnlyNamed = Context.Operations<ReadOnly, ReadOnlyShape>()("TypeTest/FS/ReadOnlyNamed", readOnlyMembers)
   const fsLayer = null as unknown as Layer.Layer<FS>
   const readFileLayer = null as unknown as Layer.Layer<"TypeTest/FS/readFile">
   const writeFileLayer = null as unknown as Layer.Layer<"TypeTest/FS/writeFile">
@@ -140,6 +142,22 @@ describe("Operation", () => {
     expect(greet.call({ name: "x" }, "hello")).type.toBe<Effect.Effect<string, never, "TypeTest/greet">>()
   })
 
+  it("rejects a shape of another result kind on the key argument, naming the constructor to use", () => {
+    expect<Context.Operation.KeyFor<"k", (path: string) => Stream.Stream<number>>>().type.toBe<
+      "The shape returns a Stream: define it with Stream.Operation"
+    >()
+    expect<Context.Operation.KeyFor<"k", (path: string) => Sink.Sink<number, string>>>().type.toBe<
+      "The shape returns a Sink: define it with Sink.Operation"
+    >()
+    expect<Context.Operation.KeyFor<"k", () => Effect.Effect<number>, "Stream">>().type.toBe<
+      "The shape returns an Effect: define it with Context.Operation"
+    >()
+    expect<Context.Operation.KeyFor<"k", (path: string) => Stream.Stream<number>, "Stream">>().type.toBe<"k">()
+    expect(Context.Operation<(path: string) => Stream.Stream<number>>()).type.not.toBeCallableWith("k")
+    expect(Stream.Operation<() => Effect.Effect<number>>()).type.not.toBeCallableWith("k")
+    expect(Sink.Operation<(path: string) => Stream.Stream<number>>()).type.not.toBeCallableWith("k")
+  })
+
   describe("Operations", () => {
     it("has the union of its members' identifiers as identity and the record of their shapes as shape", () => {
       expect<FS>().type.toBe<
@@ -201,6 +219,15 @@ describe("Operation", () => {
       >()
       expect(readFile("a").pipe(Effect.provide(legacyLayer))).type.toBe<Effect.Effect<Uint8Array, Error>>()
       expect(readFileLayer).type.not.toBeAssignableTo<Layer.Layer<Legacy | ReadOnly>>()
+    })
+
+    it("takes a Pick of the shape as a subset record's shape, keeping the alias in the type", () => {
+      expect(ReadOnlyNamed).type.toBe<Context.Operations<ReadOnly, ReadOnlyShape>>()
+      expect(ReadOnlyNamed).type.toBeAssignableTo<Effect.Effect<ReadOnlyShape, never, ReadOnly>>()
+      expect(Layer.succeed(ReadOnlyNamed, { readFile: (_: string) => Effect.succeed(new Uint8Array()) })).type.toBe<
+        Layer.Layer<ReadOnly>
+      >()
+      expect(Layer.succeed(ReadOnlyNamed)).type.not.toBeCallableWith({})
     })
 
     it("treats a subset record as a record like any other", () => {
