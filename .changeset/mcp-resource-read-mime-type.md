@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Fix `McpServer.resource` and `McpServer.registerResource` dropping the registered `mimeType` when reading a resource whose handler returns a string or bytes.
+Fix `McpServer.resource` and `McpServer.registerResource` omitting the registered `mimeType` from `resources/read` contents when the handler returns a string or `Uint8Array`. The type was only listed by `resources/list`, so MCP Apps hosts could not render UI resources served as `text/html;profile=mcp-app`.
