@@ -1193,7 +1193,10 @@ class YamlParser {
     // Resolved before the value, which may redefine the anchor.
     const { key, merge } = this.parseBlockKey(text.slice(0, separator), fail)
     const rawValue = trimWhiteStart(text.slice(separator + 1))
-    const value = this.parseNodeValue(rawValue, indent, true)
+    // An empty value goes straight to the lines below, which keeps deep nesting off the stack.
+    const value = rawValue.length === 0
+      ? this.parseBlockValue(indent, true)
+      : this.parseNodeValue(rawValue, indent, true)
     if (merge) mapping.merge(value, fail)
     else mapping.set(key, value, fail)
   }
@@ -1255,7 +1258,9 @@ class YamlParser {
     // was, so the entry's separator is the item's, shifted by the indicator.
     const itemSeparator = separator === -1 ? -1 : separator - offset
     const nested = isSequenceEntry(item)
-    if (!nested && itemSeparator === -1) return this.parseNodeValue(item, indent)
+    if (!nested && itemSeparator === -1) {
+      return item.length === 0 ? this.parseBlockValue(indent, false) : this.parseNodeValue(item, indent)
+    }
     if (entry.slice(1, offset).includes("\t")) this.fail(line, "Tabs cannot be used for YAML indentation")
     return nested
       ? this.parseSequence(indent + offset, { text: item, separator: itemSeparator, line })
@@ -1283,7 +1288,8 @@ class YamlParser {
     if (anchor === undefined && tag === undefined) return this.parseValue(rest, parentIndent, allowIndentless)
     // YAML 1.2.2 §7.1: an alias has no properties.
     if (rest.startsWith("*")) fail(tag === undefined ? "An alias cannot have an anchor" : "An alias cannot have a tag")
-    if (isSeparationOnly(rest)) {
+    const empty = isSeparationOnly(rest)
+    if (empty) {
       // YAML 1.2.2 §6.9: the properties may be followed by the node's scalar content on the
       // next line, where more properties of the same node may appear.
       const next = this.scalarContinuation(parentIndent)
@@ -1292,14 +1298,12 @@ class YamlParser {
         return this.parseNodeValue(next.text, parentIndent, allowIndentless, { anchor, tag })
       }
     }
-    let value: unknown
-    if (tag === undefined) {
-      value = this.parseValue(rest, parentIndent, allowIndentless)
-    } else {
-      this.plainText = undefined
-      const node = this.parseValue(rest, parentIndent, allowIndentless)
-      value = resolveTag(tag, node, this.plainText, fail)
-    }
+    if (tag !== undefined) this.plainText = undefined
+    // Properties alone on their line take the node from the lines below, as `parseValue` would.
+    const node = empty
+      ? this.parseBlockValue(parentIndent, allowIndentless)
+      : this.parseValue(rest, parentIndent, allowIndentless)
+    const value = tag === undefined ? node : resolveTag(tag, node, this.plainText, fail)
     // Recorded once the whole node, with its tag, is resolved.
     if (anchor !== undefined) this.anchors.set(anchor, value)
     return value
@@ -1316,16 +1320,7 @@ class YamlParser {
 
   private parseValue(value: string, parentIndent: number, allowIndentless: boolean): unknown {
     const text = trimWhiteEnd(value)
-    if (text.length === 0) {
-      this.skipIgnored()
-      const next = this.lineAt(this.index)
-      if (next === undefined) return null
-      if (next.indent > parentIndent) return this.parseNode(next.indent, parentIndent, allowIndentless)
-      if (allowIndentless && next.indent === parentIndent && isSequenceEntry(next.text)) {
-        return this.parseSequence(parentIndent)
-      }
-      return null
-    }
+    if (text.length === 0) return this.parseBlockValue(parentIndent, allowIndentless)
     if (text.startsWith("!")) throw new SyntaxError("Multiple tags on one node")
     if (isExplicitKey(text)) throw new SyntaxError(explicitKeyError)
     // YAML 1.2.2 §8.2.1: a block sequence never starts after a key or an anchor on the same line.
@@ -1346,6 +1341,18 @@ class YamlParser {
     // The untrimmed value keeps an escaped trailing space before a quoted line break.
     if (text.startsWith("[") || text.startsWith("{")) return this.parseFlowValue(value, parentIndent)
     return this.parsePlainValue(text, parentIndent)
+  }
+
+  // The node on the lines after a value that is empty on its own line.
+  private parseBlockValue(parentIndent: number, allowIndentless: boolean): unknown {
+    this.skipIgnored()
+    const next = this.lineAt(this.index)
+    if (next === undefined) return null
+    if (next.indent > parentIndent) return this.parseNode(next.indent, parentIndent, allowIndentless)
+    if (allowIndentless && next.indent === parentIndent && isSequenceEntry(next.text)) {
+      return this.parseSequence(parentIndent)
+    }
+    return null
   }
 
   private parseFlowValue(text: string, parentIndent: number): unknown {
@@ -1884,8 +1891,9 @@ class Printer {
       this.ancestors.add(value)
       const column = prefix === "" ? indentation : indentation + this.step
       if (prefix !== "") this.line(indentation, prefix, "")
-      // Index iteration keeps the positions of sparse arrays.
-      for (let index = 0; index < value.length; index++) {
+      // Index iteration keeps the positions of sparse arrays. The length is read once, as in
+      // JSON.stringify, so a toJSON that appends to the array cannot extend the output.
+      for (let index = 0, length = value.length; index < length; index++) {
         this.trail.push(index)
         this.node(applyToJson(value[index], String(index)) ?? null, column, "-")
         this.trail.pop()
