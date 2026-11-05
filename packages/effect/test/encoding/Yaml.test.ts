@@ -393,7 +393,13 @@ development:
         ["hash on a quoted continuation line", "a: [\"x\n  # y\"]\n", { a: ["x # y"] }],
         ["escaped single quote across lines", "a: ['it''s\n  ok']\n", { a: ["it's ok"] }],
         ["white space around a quoted line break", "a: [\"x  \n  \ty\"]\n", { a: ["x y"] }],
-        ["quoted continuation at the collection's indentation", "a:\n  [\"x\n  y\"]\n", { a: ["x y"] }]
+        ["quoted continuation at the collection's indentation", "a:\n  [\"x\n  y\"]\n", { a: ["x y"] }],
+        // YAML 1.2.2 §6.6: a comment ends a plain scalar, so a quote on its continuation line is text.
+        ["single quote starting a plain continuation", "a: [b\n  'c # end\n  ]\n", { a: ["b 'c"] }],
+        ["double quote starting a plain continuation", "a: [b\n  \"c # end\n  ]\n", { a: ["b \"c"] }],
+        ["comma on the line after a comment", "a: [b # end\n  , c]\n", { a: ["b", "c"] }],
+        ["quoted item on the line after a comma", "a: [b,\n  'c # d']\n", { a: ["b", "c # d"] }],
+        ["quoted value on the line after its key", "a: {k:\n  'v # x'}\n", { a: { k: "v # x" } }]
       ] as const
     )("parses %s", (_, source, expected) => {
       assert.deepStrictEqual(parse(source), expected)
@@ -406,7 +412,11 @@ development:
       ["quoted continuation at the parent indentation", "a: [\"x\ny\"]\n"],
       ["unterminated multiline quoted item", "a: [\"x\n  y]\n"],
       ["quoted hash at the parent indentation", "a: [\"x\n# y\"]\n"],
-      ["quoted bracket at the parent indentation", "a: [\"x\n]y\"]\n"]
+      ["quoted bracket at the parent indentation", "a: [\"x\n]y\"]\n"],
+      // YAML 1.2.2 §6.6: a plain scalar cannot continue after a comment.
+      ["continuation after an inline comment", "a: [b # end\n  c]\n"],
+      ["continuation after a comment line", "a: [b\n  # end\n  c]\n"],
+      ["key continuation after an inline comment", "a: {b # end\n  c: 1}\n"]
     ])("rejects %s", (_, source) => {
       failureMessage(source)
     })
@@ -1409,6 +1419,31 @@ nested:
         Result.getOrThrow(Yaml.stringify([shared, shared])),
         "- port: 1\n- port: 1\n"
       )
+    })
+
+    it("fails with the path of collections nested deeper than parse accepts", () => {
+      const nest = (depth: number, inner: unknown, wrap: (value: unknown) => unknown) => {
+        let value = inner
+        for (let index = 0; index < depth; index++) value = wrap(value)
+        return value
+      }
+      // 1000 collections, counting the empty innermost one, as `parse` does.
+      const deepest = nest(999, [], (value) => [value])
+      assert.deepStrictEqual(parse(Result.getOrThrow(Yaml.stringify(deepest))), deepest)
+      for (
+        const [value, path] of [
+          [nest(1000, [], (value) => [value]), `value${"[0]".repeat(1000)}`],
+          [nest(1000, {}, (value) => ({ a: value })), `value${".a".repeat(1000)}`],
+          // Deep enough to overflow the stack, but fails at the same collection.
+          [nest(100_000, 1, (value) => [value]), `value${"[0]".repeat(1000)}`]
+        ] as const
+      ) {
+        const result = Yaml.stringify(value)
+        assert.isTrue(Result.isFailure(result))
+        const message = Result.isFailure(result) ? result.failure.message : ""
+        assert.match(message, /depth/i)
+        assert.isTrue(message.endsWith(` at ${path}`), message.slice(-60))
+      }
     })
   })
 
