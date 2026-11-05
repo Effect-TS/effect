@@ -650,6 +650,16 @@ describe("toJsonSchemaDocument", () => {
       deepStrictEqual(Schema.toJsonSchemaDocument(Schema.RedactedFromValue(id)), Schema.toJsonSchemaDocument(id))
       const suspended = Schema.suspend(() => uuid)
       deepStrictEqual(Schema.toJsonSchemaDocument(Schema.Redacted(suspended)), Schema.toJsonSchemaDocument(suspended))
+      const formats = Schema.String.check(
+        Schema.makeFilter<string>(() => true, { toJsonSchema: () => ({ format: "uri" }) }),
+        Schema.makeFilter<string>(() => true, { toJsonSchema: () => ({ format: "uri-reference" }) })
+      )
+      deepStrictEqual(Schema.toJsonSchemaDocument(formats).schema, {
+        "type": "string",
+        "format": "uri",
+        "allOf": [{ "format": "uri-reference" }]
+      })
+      deepStrictEqual(Schema.toJsonSchemaDocument(Schema.Redacted(formats)), Schema.toJsonSchemaDocument(formats))
       assertJsonSchemaDocument(Schema.Redacted(Schema.Finite), {
         schema: { "type": "number" }
       })

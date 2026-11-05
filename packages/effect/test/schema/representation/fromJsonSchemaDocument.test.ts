@@ -1290,6 +1290,25 @@ describe("fromJsonSchemaDocument", () => {
       assert.strictEqual(Redacted.value(decoded.password), "hunter2")
       deepStrictEqual(Schema.encodeUnknownSync(Schema.toCodecJson(schema))(decoded), { password: "hunter2" })
     })
+
+    it("keeps a password-valued rest and its extra properties", () => {
+      const schema = importCodec({
+        type: "object",
+        properties: { secret: { type: "string", format: "password" } },
+        required: ["secret"],
+        allOf: [{ type: "object", additionalProperties: { type: "string", format: "password" } }]
+      })
+      const decoded = Schema.decodeUnknownSync(schema)({ secret: "secret", extra: "keep" }) as Record<
+        string,
+        Redacted.Redacted<string>
+      >
+      assert.strictEqual(Redacted.value(decoded.secret), "secret")
+      assert.strictEqual(Redacted.value(decoded.extra), "keep")
+      deepStrictEqual(Schema.encodeUnknownSync(Schema.toCodecJson(schema))(decoded), {
+        secret: "secret",
+        extra: "keep"
+      })
+    })
   })
 
   describe("$ref", () => {
