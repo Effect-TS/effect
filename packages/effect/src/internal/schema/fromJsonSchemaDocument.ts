@@ -274,17 +274,26 @@ export function fromJsonSchemaMultiDocument(
   // A password is a string, or a reference to a plain string definition, annotated with `format: "password"`
   function isPassword(input: ImportedJsonSchemaRepresentation): boolean {
     if (input.annotations?.format !== "password") return false
-    return input._tag === "String" || input._tag === "Reference" && isPlainStringReference(input, new Set())
+    return input._tag === "String" || input._tag === "Reference" && isPlainStringReference(input)
   }
 
-  function isPlainStringReference(input: ImportedReference, seen: Set<string>): boolean {
-    // Definitions still being translated are recursive, so they cannot be plain strings
-    if (seen.has(input.$ref) || definitionCache.get(input.$ref) === null) return false
-    seen.add(input.$ref)
-    const definition = translateDefinition(input.$ref, input.path)
-    if (definition.annotations?.format !== undefined) return false
-    return definition._tag === "String" ||
-      definition._tag === "Reference" && isPlainStringReference(definition, seen)
+  function isPlainStringReference(input: ImportedReference): boolean {
+    return resolveUnformattedDefinition(input)?._tag === "String"
+  }
+
+  // Follows alias references to the definition a password reference can apply to: one without its own format that
+  // is not still being translated, since those are recursive and so never strings
+  function resolveUnformattedDefinition(input: ImportedReference): ImportedJsonSchemaRepresentation | undefined {
+    const seen = new Set<string>()
+    let reference = input
+    while (!seen.has(reference.$ref) && definitionCache.get(reference.$ref) !== null) {
+      seen.add(reference.$ref)
+      const definition = translateDefinition(reference.$ref, reference.path)
+      if (definition.annotations?.format !== undefined) return undefined
+      if (definition._tag !== "Reference") return definition
+      reference = definition
+    }
+    return undefined
   }
 
   // `{ type: ["string", "null"], format: "password" }` (or OpenAPI 3.0 `nullable: true`) annotates the union, so the
@@ -295,7 +304,7 @@ export function fromJsonSchemaMultiDocument(
     const types = input.types.map((type): ImportedJsonSchemaRepresentation => {
       if (
         type.annotations?.format === undefined &&
-        (type._tag === "String" || type._tag === "Reference" && isPlainStringReference(type, new Set()))
+        (type._tag === "String" || type._tag === "Reference" && isPlainStringReference(type))
       ) {
         moved = true
         return { ...type, annotations: { ...type.annotations, format: "password" } }
@@ -311,24 +320,13 @@ export function fromJsonSchemaMultiDocument(
   // to the union's string members, so other uses of the definition stay plain
   function passwordUnionDefinition(input: ImportedReference): ImportedJsonSchemaRepresentation | undefined {
     if (input.annotations?.format !== "password") return undefined
-    const seen = new Set<string>()
-    let reference = input
-    while (!seen.has(reference.$ref) && definitionCache.get(reference.$ref) !== null) {
-      seen.add(reference.$ref)
-      const definition = translateDefinition(reference.$ref, reference.path)
-      if (definition.annotations?.format !== undefined) return undefined
-      if (definition._tag === "Reference") {
-        reference = definition
-        continue
-      }
-      if (definition._tag !== "Union") return undefined
-      const union = movePasswordFormatToStrings({
-        ...definition,
-        annotations: { ...definition.annotations, format: "password" }
-      })
-      return union.annotations?.format === "password" ? undefined : union
-    }
-    return undefined
+    const definition = resolveUnformattedDefinition(input)
+    if (definition?._tag !== "Union") return undefined
+    const union = movePasswordFormatToStrings({
+      ...definition,
+      annotations: { ...definition.annotations, format: "password" }
+    })
+    return union.annotations?.format === "password" ? undefined : union
   }
 
   function finalize(input: ImportedJsonSchemaRepresentation): Schema.Top {
@@ -405,13 +403,10 @@ export function fromJsonSchemaMultiDocument(
           InternalRecord.assignProperty(fields, property.name, property.isOptional ? Schema.optionalKey(type) : type)
         }
         const index = input.indexSignatures[0]
-        // `Schema.Json` index signatures also check declared properties, which reject decoded `Redacted` values,
-        // so open objects containing passwords fall back to closed structs.
+        // Index signatures also check declared properties, which reject decoded `Redacted` values, so open objects
+        // containing passwords fall back to closed structs.
         const record = index === undefined ||
-            input.propertySignatures.length > 0 &&
-              index.parameter === string &&
-              index.type._tag === "Unknown" &&
-              input.propertySignatures.some((property) => containsPassword(property.type, new Set()))
+            input.propertySignatures.some((property) => containsPassword(property.type, new Set()))
           ? undefined
           : Schema.Record(finalize(index.parameter) as Schema.Record.Key, finalize(index.type))
         schema = record !== undefined

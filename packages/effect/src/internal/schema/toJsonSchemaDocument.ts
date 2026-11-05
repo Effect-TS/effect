@@ -413,11 +413,10 @@ function compileJsonSchema(
     dependencies.push(local)
     const base = on(representation, path, local)
     let annotations = collectJsonSchemaAnnotations(representation.annotations, options)
-    if (
-      representation.annotations?.[InternalAnnotations.PASSWORD_FORMAT_DEFAULT_KEY] === true &&
-      annotations !== undefined && exportsFormat(base)
-    ) {
-      // The default password format of a `Redacted` string gives way to a format the string already exports
+    // The default password format of a `Redacted` string gives way to a format the string already exports, or to
+    // one supplied by its checks
+    const passwordDefault = representation.annotations?.[InternalAnnotations.PASSWORD_FORMAT_DEFAULT_KEY] === true
+    if (passwordDefault && annotations !== undefined && exportsFormat(base)) {
       const { format: _, ...rest } = annotations
       annotations = rest
     }
@@ -430,21 +429,12 @@ function compileJsonSchema(
         output.contentSchema = recur(content.schema, [...path, "content", "schema"], [])
       }
     }
-    if (representation.annotations?.[InternalAnnotations.PASSWORD_FORMAT_DEFAULT_KEY] === true) {
-      // The default password format of a `Redacted` string gives way to a format supplied by a check
+    for (let index = 0; index < representation.checks.length; index++) {
       const type = typeof output.type === "string" && isJsonSchemaType(output.type) ? output.type : undefined
-      const checks = representation.checks.flatMap((check, index) => {
-        const compiled = compileCheck(check, type, [...path, "checks", index], local)
-        return compiled === undefined ? [] : [compiled]
-      })
-      if (checks.some(([schema]) => hasFormat(schema))) delete output.format
-      for (const check of checks) output = appendJsonSchema(output, ...check)
-    } else {
-      for (let index = 0; index < representation.checks.length; index++) {
-        const type = typeof output.type === "string" && isJsonSchemaType(output.type) ? output.type : undefined
-        const check = compileCheck(representation.checks[index], type, [...path, "checks", index], local)
-        if (check !== undefined) output = appendJsonSchema(output, ...check)
-      }
+      const check = compileCheck(representation.checks[index], type, [...path, "checks", index], local)
+      if (check === undefined) continue
+      if (passwordDefault && hasFormat(check[0])) delete output.format
+      output = appendJsonSchema(output, ...check)
     }
     compiledRepresentations.set(representation, { schema: output, dependencies: local })
     return registerPendingOneOf(output)

@@ -37,16 +37,10 @@ function isRedactedDeclaration(ast: SchemaAST.AST): boolean {
 
 // The wire string of a `Redacted` value is represented with the `password` format, unless it already specifies a
 // format. The codec ASTs keep the original string, so only representations (and the JSON Schema and code generated
-// from them) see the format. The marker lets a format supplied by a check take precedence when exporting.
+// from them) see the format. The marker lets a format exported by the string or its checks take precedence.
 function toPasswordString(ast: SchemaAST.AST): SchemaAST.AST {
   const target = resolveWireString(ast)
-  if (
-    target === undefined ||
-    target.annotations?.format !== undefined ||
-    target.checks?.some((check) => check.annotations?.format !== undefined)
-  ) {
-    return ast
-  }
+  if (target === undefined || target.annotations?.format !== undefined) return ast
   let password = passwordStrings.get(ast)
   if (password === undefined) {
     const annotations = { format: "password", [InternalAnnotations.PASSWORD_FORMAT_DEFAULT_KEY]: true }
