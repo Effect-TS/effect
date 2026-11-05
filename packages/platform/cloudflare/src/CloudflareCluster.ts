@@ -325,6 +325,8 @@ const make = Effect.fnUntraced(function*(options: LayerOptions) {
               : { replyTo }
             // A pinned caller receives the scheduled reply pushed over its own
             // Durable Object's `deliverReply` RPC, which completes this waiter.
+            // The destination stores this request id with the reply target and
+            // pushes under it, so registering before the send closes the race.
             const pushedReply = delivery?.replyTo !== undefined && replyRegistry !== undefined
               ? Deferred.makeUnsafe<string>()
               : undefined
@@ -353,9 +355,6 @@ const make = Effect.fnUntraced(function*(options: LayerOptions) {
                     )
                   case "Success": {
                     entry.storageRequestId = result.requestId
-                    if (pushedReply !== undefined && result.requestId !== clientRequestId) {
-                      replyRegistry!.register(result.requestId, pushedReply)
-                    }
                     if (!discard && persisted) {
                       setWithEviction(requestTargets, clientRequestId, {
                         resolve: target.resolve,
@@ -392,10 +391,7 @@ const make = Effect.fnUntraced(function*(options: LayerOptions) {
             )
             return pushedReply === undefined ? send : Effect.ensuring(
               send,
-              Effect.sync(() => {
-                replyRegistry!.unregister(clientRequestId, pushedReply)
-                replyRegistry!.unregister(entry.storageRequestId, pushedReply)
-              })
+              Effect.sync(() => replyRegistry!.unregister(clientRequestId, pushedReply))
             )
           })
         }

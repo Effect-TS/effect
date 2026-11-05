@@ -683,7 +683,7 @@ describe("EntityManager", () => {
         TestClock.withLive
       )
       assert.strictEqual(next.length, 1)
-      assert.deepStrictEqual(JSON.parse(next[0]).values, [2])
+      assert.strictEqual(JSON.parse(next[0]).sequence, 1)
     }))
 
   it.effect("answers the first request after a restart without waiting for a replayed ask", () =>

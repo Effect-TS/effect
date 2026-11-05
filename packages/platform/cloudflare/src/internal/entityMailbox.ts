@@ -81,7 +81,10 @@ export const persistRequest = (
     if (existing !== undefined) {
       if (replyTo !== null && existing.discard === 0 && existing.processed === 0) {
         const replyTos = decodeReplyTargets(existing.reply_to)
-        if (!replyTos.includes(replyTo)) replyTos.push(replyTo)
+        const requestId = envelope.requestId
+        if (!replyTos.some((target) => target.replyTo === replyTo && target.requestId === requestId)) {
+          replyTos.push({ replyTo, requestId })
+        }
         sql.exec(
           "UPDATE cluster_messages SET reply_to = ? WHERE request_id = ?",
           JSON.stringify(replyTos),
@@ -122,7 +125,7 @@ export const persistRequest = (
       envelopeText,
       discard ? 1 : 0,
       deliverAt,
-      replyTo === null ? null : JSON.stringify([replyTo])
+      replyTo === null ? null : JSON.stringify([{ replyTo, requestId: envelope.requestId }])
     )
     return Effect.succeed<PersistResult>({ _tag: "Success" })
   })
@@ -167,6 +170,18 @@ export const saveReply = (sql: SqlStorage, replyText: string): Effect.Effect<voi
     return Effect.void
   })
 
+/**
+ * A pinned caller of a scheduled ask: the reply is pushed to the `replyTo`
+ * entity under the caller's own request id, which it registered before
+ * sending, so the push cannot arrive ahead of the registration.
+ *
+ * @internal
+ */
+export interface ReplyTarget {
+  readonly replyTo: string
+  readonly requestId: string
+}
+
 /** @internal */
 export interface StoredMessage {
   readonly requestId: string
@@ -174,7 +189,7 @@ export interface StoredMessage {
   readonly lastSentChunk: string | undefined
   readonly discard: boolean
   readonly deliverAt?: number | undefined
-  readonly replyTos?: ReadonlyArray<string> | undefined
+  readonly replyTos?: ReadonlyArray<ReplyTarget> | undefined
 }
 
 type StoredMessageRow = {
@@ -186,11 +201,16 @@ type StoredMessageRow = {
   readonly last_reply: string | null
 }
 
-const decodeReplyTargets = (value: unknown): Array<string> => {
+const isReplyTarget = (item: unknown): item is ReplyTarget =>
+  typeof item === "object" && item !== null &&
+  typeof (item as ReplyTarget).replyTo === "string" &&
+  typeof (item as ReplyTarget).requestId === "string"
+
+const decodeReplyTargets = (value: unknown): Array<ReplyTarget> => {
   if (typeof value !== "string") return []
   try {
     const decoded = JSON.parse(value)
-    if (Array.isArray(decoded) && decoded.every((item) => typeof item === "string")) return decoded
+    if (Array.isArray(decoded) && decoded.every(isReplyTarget)) return decoded
   } catch {
     // Malformed rows deliver nowhere instead of poisoning the replay.
   }
