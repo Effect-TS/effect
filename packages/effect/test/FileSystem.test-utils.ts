@@ -1265,6 +1265,16 @@ export const testGlob = <E>(layer: Layer.Layer<Fs.FileSystem, E>) => {
         ]
         expect(yield* fs.glob(pattern)).toEqual(expected)
         expect(yield* fs.glob(pattern, { root: `${root}/a` })).toEqual(expected)
+        // the part after the literal prefix keeps its positive, relative meaning
+        yield* fs.makeDirectory(`${root}/!src`)
+        yield* fs.writeFileString(`${root}/!src/wanted.ts`, "")
+        expect(yield* fs.glob(`${Glob.escape(root)}/!src/*.ts`)).toEqual([`${root}/!src/wanted.ts`])
+        // Windows cannot create a directory named `C:`
+        if (globalThis.process?.platform !== "win32") {
+          yield* fs.makeDirectory(`${root}/C:`)
+          yield* fs.writeFileString(`${root}/C:/file.ts`, "")
+          expect(yield* fs.glob(`${Glob.escape(root)}/C:/*`)).toEqual([`${root}/C:/file.ts`])
+        }
       }).pipe(Effect.scoped)
     ))
 
@@ -1372,13 +1382,17 @@ export const testGlob = <E>(layer: Layer.Layer<Fs.FileSystem, E>) => {
     runPromise(
       Effect.gen(function*() {
         const fs = yield* Fs.FileSystem
-        const root = yield* globFixture
+        const root = posix(yield* globFixture)
+        yield* fs.makeDirectory(`${root}/a/b`)
+        yield* fs.writeFileString(`${root}/a/b/file.ts`, "")
         for (
           const pattern of [
             "//server/share",
             "../a/*.ts",
             "src/../a/*.ts",
             "src\\/index.ts",
+            // an escaped separator in an absolute pattern's literal prefix
+            `${Glob.escape(root)}/a\\/b/file.ts`,
             // compiling discards a branch with `.` after `**`, which must not hide it
             "{**/src\\/index.ts/.,README.md}"
           ]

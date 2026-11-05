@@ -233,6 +233,18 @@ describe("FileSystem", () => {
         assert.isTrue(Exit.hasDies(yield* Effect.exit(fs.glob("**"))))
       }))
 
+    it.effect.each<{ readonly pattern: string; readonly expected: ReadonlyArray<string> }>([
+      { pattern: "/", expected: ["/"] },
+      { pattern: "/**", expected: ["/", "/a", "/a/x.ts"] },
+      { pattern: "C:/", expected: ["C:/"] },
+      { pattern: "C:/**", expected: ["C:/", "C:/b", "C:/b/x.ts"] },
+      { pattern: "Z:/", expected: [] }
+    ])("returns the filesystem root for $pattern", ({ expected, pattern }) =>
+      Effect.gen(function*() {
+        const fs = makeFileSystem({ directories: { "/": ["a"], "/a": ["x.ts"], "C:/": ["b"], "C:/b": ["x.ts"] } })
+        assert.deepStrictEqual(yield* fs.glob(pattern, { root: "missing" }), expected)
+      }))
+
     const inherited = ["d", "d/other", "d/other/x.ts", "d/sub", "d/sub/keep", "d/sub/x.ts", "d/x.ts"]
     it.effect.each<{
       readonly name: string
