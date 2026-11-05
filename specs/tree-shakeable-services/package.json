@@ -12,7 +12,8 @@
     "bundle": "node scripts/check-bundle.ts",
     "bench": "node ../../packages/effect/benchmark/context/operations.ts",
     "verify": "pnpm check && pnpm check-errors && pnpm test && pnpm bundle && pnpm bench:check",
-    "bench:check": "node ../../packages/effect/benchmark/context/operations.ts --ordinary --check && node ../../packages/effect/benchmark/context/operations.ts --check"
+    "bench:check": "node scripts/bench-check.ts",
+    "bench:counts": "node ../../packages/effect/benchmark/context/counts.ts"
   },
   "devDependencies": {
     "@babel/core": "^8.0.10",

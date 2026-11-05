@@ -409,9 +409,23 @@ describe("Operations", () => {
     assert.isTrue(context.mapUnsafe.has("effect/FileSystem/readFile"))
     assert.isTrue(context.mapUnsafe.has("effect/FileSystem"))
     assert.strictEqual(context.mapUnsafe.get("effect/FileSystem/readFile"), live.readFile)
+    // added to a context that holds something, it is one overlay over the same base map, whatever the map's size
+    const Other = Context.Service<number>("test/Other")
+    const wide = Context.mergeAll(
+      ...Array.from({ length: 300 }, (_, i) => Context.make(Context.Service<number>(`test/Wide/${i}`), i))
+    )
+    for (const base of [Context.make(Other, 1), wide]) {
+      const added = Context.add(base, FileSystem.FileSystem, live)
+      assert.strictEqual((added as any).base, (base as any).base)
+      assert.strictEqual((added as any).overlay.key, "effect/FileSystem")
+      assert.strictEqual((added as any).overlay.record.key, FileSystem.FileSystem)
+      assert.strictEqual(Context.get(added, FileSystem.FileSystem), live)
+      assert.strictEqual(Context.get(added, FileSystem.readFile), live.readFile)
+      assert.strictEqual(added.mapUnsafe.size, base.mapUnsafe.size + 31)
+    }
   })
 
-  it("overrides a member as an overlay, and reads the record as a copy with the override, once per storage", () => {
+  it("overrides a member as an overlay, and reads the record as an object inheriting from the provided one, once per storage", () => {
     const live = record({ readFile: () => Effect.succeed(bytes("live")) })
     const fake = () => Effect.succeed(bytes("fake"))
     const Other = Context.Service<number>("test/Other")
@@ -419,15 +433,19 @@ describe("Operations", () => {
     const overridden = Context.add(Context.make(FileSystem.FileSystem, live), FileSystem.readFile, fake)
     assert.strictEqual((overridden as any).overlay.key, "effect/FileSystem/readFile")
     assert.strictEqual(overridden.mapUnsafe.get("effect/FileSystem"), live)
-    // the record read is a copy of the provided object with the override, the same object on every read
+    // the record read inherits from the provided object and carries the override as its own property; it is built on
+    // each read, so two reads are two equal objects
     const view = Context.get(overridden, FileSystem.FileSystem)
     assert.notStrictEqual(view, live)
+    assert.strictEqual(Object.getPrototypeOf(view), live)
     assert.strictEqual(view.readFile, fake)
     assert.strictEqual(view.writeFile, live.writeFile)
-    assert.strictEqual(Context.get(overridden, FileSystem.FileSystem), view)
-    // contexts derived by unrelated additions share it
+    assert.deepStrictEqual(Object.keys(view), ["readFile"])
+    assert.notStrictEqual(Context.get(overridden, FileSystem.FileSystem), view)
+    assert.deepStrictEqual(Context.get(overridden, FileSystem.FileSystem), view)
+    // contexts derived by unrelated additions read the same
     let context = overridden
-    assert.strictEqual(Context.get(Context.add(context, Other, 0), FileSystem.FileSystem), view)
+    assert.strictEqual(Context.get(Context.add(context, Other, 0), FileSystem.FileSystem).readFile, fake)
     for (let i = 0; i < 12; i++) context = Context.add(context, Other, i)
     assert.strictEqual(Context.get(context, FileSystem.FileSystem).readFile, fake)
     assert.strictEqual(Context.get(context, FileSystem.readFile), fake)
@@ -476,10 +494,18 @@ describe("Operations", () => {
         Effect.provide(Layer.succeed(FileSystem.FileSystem, instance))
       )
     )
-    // the view is a copy with the instance's prototype and own properties, so `this` keeps working
+    // the view inherits from the instance, so `instanceof` and `this` keep working
     assert.strictEqual(text, "instance:x")
     assert.isTrue(fs instanceof Impl)
     assert.notStrictEqual(fs, instance)
+    assert.strictEqual(Object.getPrototypeOf(fs), instance)
+    // a method found on the prototype is stored bound to the instance, so the standalone call keeps `this` too
+    assert.strictEqual(
+      await Effect.runPromise(
+        FileSystem.readFileString("z").pipe(Effect.provide(Layer.succeed(FileSystem.FileSystem, instance)))
+      ),
+      "instance:z"
+    )
     // with nothing overridden, the record read is the instance itself
     assert.strictEqual(
       await Effect.runPromise(
@@ -849,7 +875,7 @@ describe("a record never written", () => {
     const second = Context.get(replaced, FileSystem.ReadOnly)
     assert.strictEqual(second.readFile, fake)
     assert.strictEqual(second.stat, first.stat)
-    assert.strictEqual(Context.get(replaced, FileSystem.ReadOnly), second)
+    assert.strictEqual(Object.getPrototypeOf(second), first)
     assert.strictEqual(Context.get(fromMembers, FileSystem.ReadOnly), first)
   })
 })

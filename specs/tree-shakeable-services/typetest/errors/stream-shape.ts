@@ -1,4 +1,4 @@
-// A shape returning a Stream is not accepted by Context.Operation; it is defined with Stream.Operation.
+// A shape returning a Stream given to Context.Operation is rejected on the key argument, naming the constructor to use.
 import * as Context from "effect/Context"
 import type * as Stream from "effect/Stream"
 
