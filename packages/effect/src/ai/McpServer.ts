@@ -3250,11 +3250,28 @@ const decodeFileData = (data: string): Uint8Array => {
 }
 
 // https://url.spec.whatwg.org/#percent-decode: UTF-8 encode the input, then replace each `%XX` escape with its byte.
-// The intermediate string holds one byte per character.
+// Payloads can be megabytes, so this stays a single pass over byte buffers.
 const percentDecode = (input: string): Uint8Array => {
-  const bytes = Array.from(new TextEncoder().encode(input), (byte) => String.fromCharCode(byte)).join("")
-  const decoded = bytes.replace(/%([0-9a-f]{2})/gi, (_, hex: string) => String.fromCharCode(parseInt(hex, 16)))
-  return Uint8Array.from(decoded, (char) => char.charCodeAt(0))
+  const bytes = new TextEncoder().encode(input)
+  const output = new Uint8Array(bytes.length)
+  let length = 0
+  for (let i = 0; i < bytes.length; i++) {
+    const high = bytes[i] === 0x25 ? hexDigit(bytes[i + 1]) : -1
+    const low = high === -1 ? -1 : hexDigit(bytes[i + 2])
+    if (low === -1) {
+      output[length++] = bytes[i]
+    } else {
+      output[length++] = high * 16 + low
+      i += 2
+    }
+  }
+  return output.subarray(0, length)
+}
+
+// The value of an ASCII hex digit, or -1.
+const hexDigit = (byte: number | undefined): number => {
+  const digit = byte === undefined ? Number.NaN : Number.parseInt(String.fromCharCode(byte), 16)
+  return Number.isNaN(digit) ? -1 : digit
 }
 
 /**
