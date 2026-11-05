@@ -12,7 +12,7 @@ import * as TestClock from "effect/testing/TestClock"
 import * as NFS from "node:fs"
 import * as Path from "node:path"
 import { afterEach, beforeEach, vi } from "vitest"
-import { testGlob, testLayer } from "../../../effect/test/FileSystem.test-utils.ts"
+import { testGlob, testLayer, testPositionedWrites } from "../../../effect/test/FileSystem.test-utils.ts"
 
 const startWatch = Effect.fnUntraced(function*<E, R>(
   fs: FileSystem.FileSystem,
@@ -66,6 +66,7 @@ describe("FileSystem without typed directory listings", { concurrent: false }, (
 
 describe("FileSystem", { concurrent: false }, () => {
   testLayer(NodeFileSystem.layer, { noFollow: process.platform !== "win32" })
+  testPositionedWrites(NodeFileSystem.layer)
 
   it.effect("realPath resolves a directory alias to its physical target", () =>
     Effect.gen(function*() {
