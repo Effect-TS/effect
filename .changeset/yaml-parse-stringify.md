@@ -15,6 +15,7 @@ Some input that `Yaml.parse` and `Yaml.parseAll` used to accept now gives a diff
 - An unquoted `[` or `{` inside a plain scalar in a flow collection fails, so `[a[, b]` no longer gives `["a[", "b"]` and `{b: a{}` no longer gives `{b: "a{"}`. Quote the scalar to keep the bracket.
 - An anchored merge key (`&m <<: *base`) merges like `<<: *base` instead of giving the literal key `"&m <<"`.
 - An alias used as a key (`*name : value`) uses the anchored scalar as the key instead of the text `*name`, and an alias to a collection used as a key fails.
+- A quoted block key followed by more text before its `:` fails, so `"a" "b": 1` and `"a"b: 1` no longer give keys that keep the quote characters. Quote the whole key.
 - Plain keys in flow mappings are converted like block keys, so `{0x10: 1}` gives the key `"16"` and `{null: 1}` gives `""`. Quote flow keys to keep their spelling.
 - A tab after a block sequence `-` is separation, so `-\tvalue` is a sequence entry instead of the string `"-\tvalue"`, and `-\t- value` and `-\tkey: value` fail.
 - No-break spaces, U+2028 and other characters that are not YAML white space are kept in scalars and keys instead of being trimmed.
