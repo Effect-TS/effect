@@ -10,7 +10,7 @@ const M = "node/FileSystem/stream"
  * The Node implementation of `FileSystem.stream`, as a layer for its operation.
  */
 export const stream = Layer.succeed(
-  FileSystem.stream.service,
+  FileSystem.stream,
   (path, options) =>
     Stream.fromAsyncIterable(
       createReadStream(path, { highWaterMark: options?.chunkSize ?? 64 * 1024 }),

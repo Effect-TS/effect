@@ -10,6 +10,6 @@ const M = "node/FileSystem/makeDirectory"
  * The Node implementation of `FileSystem.makeDirectory`, as a layer for its operation.
  */
 export const makeDirectory = Layer.succeed(
-  FileSystem.makeDirectory.service,
+  FileSystem.makeDirectory,
   (path, options) => tryFs(M, () => fs.mkdir(path, { recursive: options?.recursive ?? false })).pipe(Effect.asVoid)
 )

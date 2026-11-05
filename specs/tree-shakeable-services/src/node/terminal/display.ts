@@ -4,7 +4,7 @@ import * as Terminal from "../../Terminal.ts"
 
 /** The Node implementation of `Terminal.display`. */
 export const display = Layer.succeed(
-  Terminal.display.service,
+  Terminal.display,
   (text) =>
     Effect.callback<void, Terminal.TerminalError>((resume) => {
       process.stdout.write(text, (cause) =>

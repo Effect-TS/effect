@@ -11,6 +11,6 @@ const M = "node/FileSystem/makeTempDirectory"
  * The Node implementation of `FileSystem.makeTempDirectory`, as a layer for its operation.
  */
 export const makeTempDirectory = Layer.succeed(
-  FileSystem.makeTempDirectory.service,
+  FileSystem.makeTempDirectory,
   (options) => tryFs(M, () => fs.mkdtemp(Path.join(os.tmpdir(), options?.prefix ?? "effect-")))
 )

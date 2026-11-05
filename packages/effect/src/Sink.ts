@@ -2034,23 +2034,19 @@ export const unwrap = <A, In, L, E, R, R2>(
  *
  * **Details**
  *
- * The Sink counterpart of `Context.Operation`: the same key, the same
- * service, the same two call forms and the same call signature, but a call
- * returns a Sink that looks the implementation up from the context of the
- * fiber that runs it, through `Sink.unwrap`. Providing and overriding go
- * through `.service` exactly as for an Effect operation. A shape that is a
- * Sink rather than a function is called with no arguments.
+ * The Sink counterpart of `Context.Operation`: the same key, the same call
+ * signature, provided and overridden the same way, but a call returns a Sink
+ * that looks the implementation up from the context of the fiber that runs it,
+ * through `Sink.unwrap`.
  *
  * **Example** (A Sink operation)
  *
  * ```ts import.meta.vitest
  * import { Effect, Layer, Sink, Stream } from "effect"
  *
- * const collect: Sink.Operation<"app/collect", (label: string) => Sink.Sink<Array<string>, string>> = Sink.Operation(
- *   "app/collect"
- * )
+ * const collect = Sink.Operation<(label: string) => Sink.Sink<Array<string>, string>>()("app/collect")
  *
- * const live = Layer.succeed(collect.service, (label) => Sink.map(Sink.collect<string>(), (items) => items.map((item) => `${label}:${item}`)))
+ * const live = Layer.succeed(collect, (label) => Sink.map(Sink.collect<string>(), (items) => items.map((item) => `${label}:${item}`)))
  *
  * const program = Stream.run(Stream.make("a", "b"), collect("x"))
  * Effect.runSync(Effect.provide(program, live)) // => ["x:a", "x:b"]
@@ -2062,19 +2058,12 @@ export const unwrap = <A, In, L, E, R, R2>(
  * @category services
  * @since 4.0.0
  */
-/* @__NO_SIDE_EFFECTS__ */
-export const Operation: {
-  <Shape extends Context.Operation.SinkSignature>(): <const Key extends string>(
-    key: Context.Operation.KeyFor<Key, Shape>
-  ) => Context.Operation<Key, Shape>
-  <const Key extends string, Shape extends Context.Operation.SinkSignature = never>(
-    key: Context.Operation.KeyFor<Key, Shape>
-  ): Context.Operation<Key, Shape>
-} = function() {
-  return arguments.length === 0
-    ? (key: string) => Context.makeOperation(key, sinkCall)
-    : Context.makeOperation(arguments[0], sinkCall)
-} as any
+export const Operation = <Shape extends Context.Operation.SinkSignature, Brand = unknown>(): <
+  const Id extends string
+>(
+  key: Context.Operation.KeyFor<Id, Shape>
+) => Context.Operation<Id & Brand, Shape> =>
+(key) => Context.makeOperation(key as string, sinkCall) as any
 
 /**
  * The type of a Sink operation: `Context.Operation` with a Sink shape.
@@ -2083,17 +2072,13 @@ export const Operation: {
  * @category models
  * @since 4.0.0
  */
-export type Operation<Key extends string, Shape extends Context.Operation.SinkSignature> = Context.Operation<
-  Key,
+export type Operation<Id extends string, Shape extends Context.Operation.SinkSignature> = Context.Operation<
+  Id,
   Shape
 >
 
-const sinkCall = (service: Context.Service<any, any>, receiver: unknown, args: ArrayLike<unknown>) =>
-  unwrap(
-    service.useSync((implementation) =>
-      isSink(implementation) ? implementation : Reflect.apply(implementation, receiver, args)
-    )
-  )
+const sinkCall = (operation: Context.Operation.Any, receiver: unknown, args: ArrayLike<unknown>) =>
+  unwrap(Context.applyOperation(operation, receiver, args) as Effect.Effect<Sink<any, any, any, any, any>>)
 
 /**
  * Runs a summary effect when the sink starts and again when it completes.

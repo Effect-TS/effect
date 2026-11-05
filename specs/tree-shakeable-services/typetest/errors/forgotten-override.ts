@@ -5,6 +5,6 @@ import { backup } from "../../src/program.ts"
 
 Effect.runPromise(
   backup("a.txt").pipe(
-    Effect.provideService(FileSystem.readFile.service, () => Effect.succeed(new Uint8Array()))
+    Effect.provideService(FileSystem.readFile, () => Effect.succeed(new Uint8Array()))
   )
 )

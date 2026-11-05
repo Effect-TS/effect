@@ -2,13 +2,20 @@
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
+import type * as Queue from "effect/Queue"
 import type * as Scope from "effect/Scope"
+import * as Sink from "effect/Sink"
 import * as Stream from "effect/Stream"
 import * as FileSystem from "../../src/FileSystem.ts"
+import { exists as nodeExists } from "../../src/node/exists.ts"
 import { layer as nodeLayer } from "../../src/node/layer.ts"
+import { readFile as nodeReadFile } from "../../src/node/readFile.ts"
+import { stat as nodeStat } from "../../src/node/stat.ts"
+import { sizeOf } from "../../src/program-readonly.ts"
 import { backupViaRecord } from "../../src/program-record.ts"
 import { exercise } from "../../src/program-twenty.ts"
 import { backup } from "../../src/program.ts"
+import * as Terminal from "../../src/Terminal.ts"
 
 // A call adds the operation's key to R and keeps everything else from the shape.
 export const read: Effect.Effect<Uint8Array, FileSystem.FileSystemError, "effect/FileSystem/readFile"> = FileSystem
@@ -21,6 +28,17 @@ export const scoped: Effect.Effect<
 export const stream: Stream.Stream<Uint8Array, FileSystem.FileSystemError, "effect/FileSystem/stream"> = FileSystem
   .stream("a.txt")
 
+// An operation is a key: its identifier is its key string and its shape is the implementation type.
+export const asKey: Context.Key<
+  "effect/FileSystem/readFile",
+  (path: string) => Effect.Effect<Uint8Array, FileSystem.FileSystemError>
+> = FileSystem.readFile
+export const keyString: "effect/FileSystem/readFile" = FileSystem.readFile.key
+export type ReadFileId = Context.Service.Identifier<typeof FileSystem.readFile> // "effect/FileSystem/readFile"
+export const readFileId: ReadFileId = "effect/FileSystem/readFile"
+export type ReadFileShape = Context.Service.Shape<typeof FileSystem.readFile>
+export const readFileShape: ReadFileShape = () => Effect.succeed(new Uint8Array())
+
 // A program's R is the union of the operations it calls.
 export const program: Effect.Effect<
   number,
@@ -32,19 +50,40 @@ export const program: Effect.Effect<
 // internal call is added, and callers must provide the whole file system.
 export const stable: Effect.Effect<number, FileSystem.FileSystemError, FileSystem.FileSystem> = backup("a.txt")
 
-// Providing an operation's service removes exactly its key.
+// Providing an operation removes exactly its key; the operation is the key.
 export const provided: Effect.Effect<number, FileSystem.FileSystemError, "effect/FileSystem/writeFile"> = backup(
   "a.txt"
 ).pipe(
-  Effect.provideService(FileSystem.readFile.service, () => Effect.succeed(new Uint8Array()))
+  Effect.provideService(FileSystem.readFile, () => Effect.succeed(new Uint8Array()))
 )
 export const layer: Layer.Layer<"effect/FileSystem/readFile"> = Layer.succeed(
-  FileSystem.readFile.service,
+  FileSystem.readFile,
   () => Effect.succeed(new Uint8Array())
 )
-export const runnable: Effect.Effect<number, FileSystem.FileSystemError, never> = backup("a.txt").pipe(
-  Effect.provide(Layer.mergeAll(layer, Layer.succeed(FileSystem.writeFile.service, () => Effect.void)))
+export const effectLayer: Layer.Layer<"effect/FileSystem/readFile"> = Layer.effect(
+  FileSystem.readFile,
+  Effect.succeed(() => Effect.succeed(new Uint8Array()))
 )
+export const runnable: Effect.Effect<number, FileSystem.FileSystemError, never> = backup("a.txt").pipe(
+  Effect.provide(Layer.mergeAll(layer, Layer.succeed(FileSystem.writeFile, () => Effect.void)))
+)
+export const updated: Effect.Effect<number, FileSystem.FileSystemError, "effect/FileSystem/writeFile"> = provided.pipe(
+  Effect.updateService(FileSystem.writeFile, (write) => write)
+)
+declare const context: Context.Context<"effect/FileSystem/readFile">
+export const fromContext: (path: string) => Effect.Effect<Uint8Array, FileSystem.FileSystemError> = Context.get(
+  context,
+  FileSystem.readFile
+)
+export const picked: Context.Context<"effect/FileSystem/readFile"> = Context.pick(FileSystem.readFile)(context)
+export const omitted: Context.Context<never> = Context.omit(FileSystem.readFile)(context)
+
+// Yielding the implementation as a value goes through Effect.service, as for any key.
+export const implementation: Effect.Effect<
+  (path: string) => Effect.Effect<Uint8Array, FileSystem.FileSystemError>,
+  never,
+  "effect/FileSystem/readFile"
+> = Effect.service(FileSystem.readFile)
 
 // The record service: yielding it gives the record, and its requirement is the identity of the whole file system.
 export const record: Effect.Effect<FileSystem.Shape, never, FileSystem.FileSystem> = FileSystem.FileSystem
@@ -69,6 +108,7 @@ export const succeeded: Layer.Layer<FileSystem.FileSystem> = Layer.succeed(
 export const mocked: Layer.Layer<FileSystem.FileSystem> = Layer.mock(FileSystem.FileSystem, {
   readFile: () => Effect.succeed(new Uint8Array())
 })
+export const members: Context.Key<any, FileSystem.Shape["readFile"]> = FileSystem.FileSystem.members.readFile
 
 // Twenty operations: the inferred requirement lists them all.
 export const twenty: Effect.Effect<
@@ -95,13 +135,6 @@ export const twenty: Effect.Effect<
   | "effect/FileSystem/writeFile"
   | "effect/FileSystem/writeFileString"
 > = exercise("/")
-
-// Yielding the service gives the implementation, typed as the shape.
-export const implementation: Effect.Effect<
-  (path: string) => Effect.Effect<Uint8Array, FileSystem.FileSystemError>,
-  never,
-  "effect/FileSystem/readFile"
-> = Effect.map(FileSystem.readFile.service, (current) => current)
 
 // A generic shape that names its key keeps its type parameter.
 export const parse = Context.Operation<
@@ -134,16 +167,10 @@ export const lines = Stream.Operation<(path: string) => Stream.Stream<string, Fi
   "test/lines"
 )
 export const lineStream: Stream.Stream<string, FileSystem.FileSystemError, "test/lines"> = lines("a.txt")
+export const linesLayer: Layer.Layer<"test/lines"> = Layer.succeed(lines, () => Stream.make("a"))
 
 // Subset records. `ReadOnly` is a record over three of FileSystem's members; the facts below hold by assignability
 // of unions, with no rule added for them.
-import type * as Queue from "effect/Queue"
-import * as Sink from "effect/Sink"
-import { exists as nodeExists } from "../../src/node/exists.ts"
-import { readFile as nodeReadFile } from "../../src/node/readFile.ts"
-import { stat as nodeStat } from "../../src/node/stat.ts"
-import { sizeOf } from "../../src/program-readonly.ts"
-import * as Terminal from "../../src/Terminal.ts"
 
 // 1. the full record satisfies the subset
 export const readOnlyFromFull: Layer.Layer<FileSystem.ReadOnly> = nodeLayer
@@ -168,8 +195,8 @@ export const readOnlySucceeded: Layer.Layer<FileSystem.ReadOnly> = Layer.succeed
   {} as FileSystem.ReadOnlyShape
 )
 
-// Value shapes: a member that is an Effect is an operation called with no arguments. The record keeps the member as
-// the Effect it is, so an implementation and `(yield* Terminal).columns` are unchanged.
+// Zero-argument operations: a member that is an Effect in today's record is a function of no arguments, so it reads
+// the same standalone and through the record, and its implementation is a function in both.
 export const width: Effect.Effect<number, never, "effect/Terminal/columns"> = Terminal.columns()
 export const input: Effect.Effect<
   Queue.Dequeue<Terminal.UserInput>,
@@ -177,10 +204,10 @@ export const input: Effect.Effect<
   Scope.Scope | "effect/Terminal/readInput"
 > = Terminal.readInput()
 export const terminalRecord: Effect.Effect<Terminal.Shape, never, Terminal.Terminal> = Terminal.Terminal
-export const columnsMember: Terminal.Shape["columns"] = Effect.succeed(80)
+export const columnsMember: Terminal.Shape["columns"] = () => Effect.succeed(80)
 export const columnsLayer: Layer.Layer<"effect/Terminal/columns"> = Layer.succeed(
-  Terminal.columns.service,
-  Effect.succeed(80)
+  Terminal.columns,
+  () => Effect.succeed(80)
 )
 export const terminalProgram: Effect.Effect<number, Terminal.TerminalError, Terminal.Terminal> = Effect.gen(
   function*() {
@@ -192,19 +219,15 @@ export const terminalProgram: Effect.Effect<number, Terminal.TerminalError, Term
 
 // A mixed record: a plain value and a synchronous function are ordinary services, an Effect-returning function is an
 // operation, and the record is over all three. The record's identity and shape are what they would be for any key.
-export const sep: Context.Service<"test/Path/sep", string> = Context.Service("test/Path/sep")
-export const join: Context.Service<"test/Path/join", (...parts: ReadonlyArray<string>) => string> = Context.Service(
-  "test/Path/join"
-)
-export const fromFileUrl: Context.Operation<"test/Path/fromFileUrl", (url: URL) => Effect.Effect<string, Error>> =
-  Context.Operation("test/Path/fromFileUrl")
+export const sep = Context.Service<string>("test/Path/sep")
+export const join = Context.Service<(...parts: ReadonlyArray<string>) => string>("test/Path/join")
+export const fromFileUrl = Context.Operation<(url: URL) => Effect.Effect<string, Error>>()("test/Path/fromFileUrl")
 const pathMembers = { sep, join, fromFileUrl }
 export type Path = Context.Operations.Identifier<typeof pathMembers>
 export interface PathShape extends Context.Operations.Shape<typeof pathMembers> {}
 export const Path: Context.Operations<Path, PathShape> = Context.Operations("test/Path", pathMembers)
-export const pathIdentity: Path = "test/Path/sep" as "test/Path/sep" | "test/Path/join" | "test/Path/fromFileUrl"
-export const separator: Effect.Effect<string, never, "test/Path/sep"> = sep
-export const joined: Effect.Effect<string, never, "test/Path/join"> = Effect.map(join, (f) => f("a", "b"))
+export const pathIdentity: Path = "test/Path/fromFileUrl" as string | "test/Path/fromFileUrl"
+export const separator: Effect.Effect<string, never, string> = sep
 export const converted: Effect.Effect<string, Error, "test/Path/fromFileUrl"> = fromFileUrl(new URL("file:///a"))
 export const pathRecord: Effect.Effect<
   {
@@ -223,7 +246,7 @@ export const pathLayer: Layer.Layer<Path> = Layer.succeed(Path, {
 export const pathFromMembers: Layer.Layer<Path> = Layer.mergeAll(
   Layer.succeed(sep, "/"),
   Layer.succeed(join, (...parts) => parts.join("/")),
-  Layer.succeed(fromFileUrl.service, (url) => Effect.succeed(url.pathname))
+  Layer.succeed(fromFileUrl, (url) => Effect.succeed(url.pathname))
 )
 
 // A record may be a member of a record: its slots are spread the same way, and the identity is the union.
@@ -240,13 +263,45 @@ export const platformUnderParts: Effect.Effect<PlatformShape, never, never> = Pl
   Effect.provide(Layer.succeed(Terminal.Terminal, {} as Terminal.Shape))
 )
 
-// The curried form still infers the key from its argument, for code that does not annotate declarations.
-export const curried = Context.Operation<(x: number) => Effect.Effect<number>>()("test/curried")
-export const curriedCall: Effect.Effect<number, never, "test/curried"> = curried(1)
-export const curriedValue = Context.Operation<Effect.Effect<Date>>()("test/now")
-export const curriedValueCall: Effect.Effect<Date, never, "test/now"> = curriedValue()
+// Without declared names, the record's identifier and shape are inferred from the members.
+export const Inferred = Context.Operations("test/Inferred", {
+  readFile: FileSystem.readFile,
+  exists: FileSystem.exists
+})
+export const inferredIdentity: Context.Service.Identifier<typeof Inferred> = "effect/FileSystem/exists" as
+  | "effect/FileSystem/readFile"
+  | "effect/FileSystem/exists"
+export const inferredShape: Context.Service.Shape<typeof Inferred> = {
+  readFile: () => Effect.succeed(new Uint8Array()),
+  exists: () => Effect.succeed(true)
+}
+export const inferredFromMembers: Layer.Layer<Context.Service.Identifier<typeof Inferred>> = Layer.mergeAll(
+  nodeReadFile,
+  nodeExists
+)
+
+// A declared identifier may be wider than the members' union: the record keeps an identity of its own, which the
+// member layers do not satisfy, while a layer of the record still satisfies every member. This is the phase 0 shape
+// of an existing record service.
+export interface Legacy {
+  readonly _: unique symbol
+}
+export const Legacy: Context.Operations<Legacy | FileSystem.ReadOnly, FileSystem.ReadOnlyShape> = Context.Operations(
+  "test/Legacy",
+  { exists: FileSystem.exists, readFile: FileSystem.readFile, stat: FileSystem.stat }
+)
+export const legacyLayer: Layer.Layer<Legacy | FileSystem.ReadOnly> = Layer.succeed(
+  Legacy,
+  {} as FileSystem.ReadOnlyShape
+)
+export const legacySatisfiesMember: Effect.Effect<Uint8Array, FileSystem.FileSystemError, never> = FileSystem
+  .readFile("a").pipe(Effect.provide(legacyLayer))
+export const legacySatisfiesOldRequirement: Effect.Effect<FileSystem.ReadOnlyShape, never, never> = Legacy.pipe(
+  Effect.provide(legacyLayer)
+)
+declare const legacyRequirement: Effect.Effect<void, never, Legacy>
+export const legacyOld: Effect.Effect<void, never, never> = legacyRequirement.pipe(Effect.provide(legacyLayer))
 
 // A Sink operation, from Sink.Operation.
-export const collect: Sink.Operation<"test/collect", (label: string) => Sink.Sink<Array<string>, string>> = Sink
-  .Operation("test/collect")
+export const collect = Sink.Operation<(label: string) => Sink.Sink<Array<string>, string>>()("test/collect")
 export const collected: Sink.Sink<Array<string>, string, never, never, "test/collect"> = collect("x")

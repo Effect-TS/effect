@@ -10,7 +10,7 @@ const M = "node/FileSystem/glob"
  * The Node implementation of `FileSystem.glob`, as a layer for its operation.
  */
 export const glob = Layer.succeed(
-  FileSystem.glob.service,
+  FileSystem.glob,
   (pattern, options) =>
     Stream.fromAsyncIterable(
       fs.glob(pattern, { cwd: options?.cwd ?? process.cwd() }),

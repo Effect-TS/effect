@@ -3,16 +3,15 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "description": "Prototype for specs/tree-shakeable-services.md: per-operation service keys and the esbuild check",
+  "description": "Prototype for specs/tree-shakeable-services.md: operations as keys, record services, the bundle check and the benchmark",
   "sideEffects": false,
   "scripts": {
     "check": "tsc -p tsconfig.json",
     "check-errors": "node scripts/check-errors.ts",
-    "check-annotations": "node scripts/check-annotations.ts",
     "test": "vitest run",
     "bundle": "node scripts/check-bundle.ts",
     "bench": "node scripts/bench.ts",
-    "verify": "pnpm check && pnpm check-errors && pnpm check-annotations && pnpm test && pnpm bundle"
+    "verify": "pnpm check && pnpm check-errors && pnpm test && pnpm bundle"
   },
   "devDependencies": {
     "@babel/core": "^8.0.10",
@@ -21,7 +20,6 @@
     "effect": "workspace:*",
     "esbuild": "^0.28.2",
     "rolldown": "^1.2.16",
-    "tinybench": "^6.2.2",
     "typescript": "^7.0.2",
     "vitest": "^5.0.5"
   }

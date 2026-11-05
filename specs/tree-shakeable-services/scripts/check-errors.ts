@@ -23,7 +23,11 @@ const expectations: Record<string, ReadonlyArray<string>> = {
     `Type 'string' is not assignable to type 'number'`,
     `Type '{ readonly value: number; }' is not assignable to type 'never'`
   ],
-  "not-an-operation.ts": [`does not satisfy the constraint 'EffectSignature'`],
+  "not-an-operation.ts": [
+    `Type '(path: string) => string' does not satisfy the constraint 'EffectSignature'`,
+    `Type '{ readonly port: number; }' does not satisfy the constraint 'EffectSignature'`,
+    `Type 'Effect<number, never, never>' does not satisfy the constraint 'EffectSignature'`
+  ],
   "not-an-effect.ts": [
     `is not assignable to parameter of type 'Effect<unknown, unknown, unknown>'`,
     `must have a '[Symbol.iterator]()' method`
@@ -38,17 +42,14 @@ const expectations: Record<string, ReadonlyArray<string>> = {
     `Type '"effect/FileSystem/rename" | "effect/FileSystem/stat" | "effect/FileSystem/utimes"' is not assignable to type 'never'`
   ],
   "wrong-self.ts": [
-    `"Self differs from the members' identifier at": "effect/FileSystem/writeFile"`,
+    `"Self lacks the identifier of": "effect/FileSystem/writeFile"`,
     `"Shape differs from the members' shape at": "writeFile"`,
     `"Annotate the declaration: Context.Operations<Self, Shape>"`,
-    `Annotate the declaration: Context.Operation<Key, Shape>, or pass the shape: Context.Operation<Shape>()(key)`
+    `Expected 0 arguments, but got 1`
   ],
   "value-shape.ts": [`Expected 0 arguments, but got 1`, `must have a '[Symbol.iterator]()' method`],
   "subset-not-full.ts": [`Type 'FileSystem' is not assignable to type 'ReadOnly'`],
-  "layer-succeed-operation.ts": [
-    `is not assignable to parameter of type 'Key<`,
-    `is not assignable to parameter of type 'Shape'`
-  ],
+  "partial-record.ts": [`is not assignable to parameter of type 'Shape'`],
   "displayed-type.ts": [
     `Type 'Operation<"effect/FileSystem/readFile", (path: string) => Effect<Uint8Array<ArrayBufferLike>, FileSystemError, never>>' is not assignable to type 'string'`,
     `Type 'Effect<Uint8Array<ArrayBufferLike>, FileSystemError, "effect/FileSystem/readFile">' is not assignable to type 'string'`,

@@ -9,6 +9,6 @@ const M = "node/FileSystem/realPath"
  * The Node implementation of `FileSystem.realPath`, as a layer for its operation.
  */
 export const realPath = Layer.succeed(
-  FileSystem.realPath.service,
+  FileSystem.realPath,
   (path) => tryFs(M, () => fs.realpath(path))
 )
