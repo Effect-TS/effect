@@ -443,13 +443,23 @@ console.log("\nWhat Context.ts costs a bundle with no record and no operation\n"
     bundle.root.entry === "main-plain.ts" && bundle.root.context === "baseline"
   )!
   const delta = plain.bytes - baseline.bytes
-  // the `record` check in `lookup` and `applyOverlays`, the write of a record overlay into a flat map, and the
-  // `typeof` dispatch in `make`, `add` and the getters
-  const ok = delta <= 1024
+  // the record-overlay branch in `lookup` and `applyOverlays` and the `isRecordKey` dispatch in `make`, `add`,
+  // `pick`, `omit` and the getters. The gate is on the minified bundles, the form a bundle ships in; the difference
+  // as esbuild prints it (indentation and line breaks included) is reported beside it.
+  const minified = async (text: string) => Buffer.byteLength((await esbuild.transform(text, { minify: true })).code)
+  const plainMinified = await minified(plain.text)
+  const baselineMinified = await minified(baseline.text)
+  const deltaMinified = plainMinified - baselineMinified
+  const ok = deltaMinified <= 512
   if (!ok) failures++
-  console.log(`  ${pad("this branch", 20)} ${kb(plain.bytes).padStart(9)}`)
-  console.log(`  ${pad("branch point", 20)} ${kb(baseline.bytes).padStart(9)}`)
-  console.log(`  ${pad("difference", 20)} ${`${delta} B`.padStart(9)}  limit 1024 B${ok ? "" : "   <-- unexpected"}`)
+  console.log(`  ${pad("", 20)} ${"as printed".padStart(11)} ${"minified".padStart(11)}`)
+  console.log(`  ${pad("this branch", 20)} ${kb(plain.bytes).padStart(11)} ${kb(plainMinified).padStart(11)}`)
+  console.log(`  ${pad("branch point", 20)} ${kb(baseline.bytes).padStart(11)} ${kb(baselineMinified).padStart(11)}`)
+  console.log(
+    `  ${pad("difference", 20)} ${`${delta} B`.padStart(11)} ${
+      `${deltaMinified} B`.padStart(11)
+    }  limit 512 B minified${ok ? "" : "   <-- unexpected"}`
+  )
 }
 
 console.log("\nContract constants the bundler kept in the two-operation bundle\n")

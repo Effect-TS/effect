@@ -718,14 +718,14 @@ const byName = Order.mapInput(Order.String, (entry: FileSystem.DirectoryEntry) =
 
 /** @internal */
 export const make = (
-  fs: Pick<FileSystem.FileSystem, "readDirectoryEntries" | "stat" | "readLink">
-): FileSystem.FileSystem["glob"] =>
+  fs: Pick<FileSystem.Shape, "readDirectoryEntries" | "stat" | "readLink">
+): FileSystem.Shape["glob"] =>
 (pattern, options) => walk(fs, compile([pattern], options?.dot ?? false), options)
 
 // Named directories (the root and those reached only through leading literal
 // segments) must be readable; unreadable wildcard-reached ones are skipped.
 const walk = Effect.fnUntraced(function*(
-  fs: Pick<FileSystem.FileSystem, "readDirectoryEntries" | "stat" | "readLink">,
+  fs: Pick<FileSystem.Shape, "readDirectoryEntries" | "stat" | "readLink">,
   compiled: Compiled,
   options?: {
     readonly root?: string | undefined

@@ -221,7 +221,7 @@ describe("FileSystem", () => {
   })
 })
 
-describe("FileSystem operations (phase 0)", () => {
+describe("FileSystem operations", () => {
   const text = (value: string) => new TextEncoder().encode(value)
   const live = FileSystem.makeNoop({
     readFile: () => Effect.succeed(text("live")),

@@ -295,7 +295,7 @@ export const run: (options: {
  * watching fails for any other reason, e.g. when the system runs out of
  * inotify watches.
  */
-export const fileSystemWatch = (fs: FileSystem.FileSystem, path: Path.Path) =>
+export const fileSystemWatch = (fs: FileSystem.Shape, path: Path.Path) =>
 (
   target: string,
   kind: "file" | "directory",
@@ -315,7 +315,7 @@ export const fileSystemWatch = (fs: FileSystem.FileSystem, path: Path.Path) =>
  * `fs.watch`.
  */
 const watchDirectory = (
-  fs: FileSystem.FileSystem,
+  fs: FileSystem.Shape,
   directory: string,
   onReady: () => void
 ): Stream.Stream<FileSystem.WatchEvent, PlatformError.PlatformError> => {
@@ -342,7 +342,7 @@ const watchDirectory = (
 }
 
 const watchTree = (
-  fs: FileSystem.FileSystem,
+  fs: FileSystem.Shape,
   path: Path.Path,
   root: string,
   onReady: () => void

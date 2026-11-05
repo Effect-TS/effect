@@ -2,4 +2,6 @@
 "effect": minor
 ---
 
-`effect/FileSystem` exports one operation per member (`FileSystem.readFile(path)`, `Effect.provideService(FileSystem.readFile, fake)`), all satisfied by any `Layer<FileSystem>`, and `FileSystem.Shape` as the name of the record type. Write `FileSystem.Shape` where you use `FileSystem.FileSystem` as the type of an implementation; the next minor makes `FileSystem.FileSystem` the identity of the whole service. The `[TypeId]` brand is gone from the interface; nothing read it.
+**Breaking** (`@stability unstable`): `effect/FileSystem` is a record service over one operation per member. Each member is exported as a key that is called like a function (`FileSystem.readFile(path)`), provided alone (`Layer.succeed(FileSystem.readFile, impl)`) and overridden alone (`Effect.provideService(FileSystem.readFile, fake)`); any `Layer<FileSystem>` satisfies every operation, and the merge of the operations' layers is a `Layer<FileSystem>`. `FileSystem.ReadOnly` is a record service over the ten reading operations, for programs that only read.
+
+The _type_ `FileSystem.FileSystem` is now the identity of the whole service (the union of its 32 operation keys), not the record of implementations: code that used it as the type of an implementation writes `FileSystem.Shape` (`pnpm codemod:shape --module FileSystem <paths>` rewrites it). Requirements, layers, `yield* FileSystem.FileSystem`, `make`, `makeNoop` and `layerNoop` are unchanged. The `[TypeId]` brand is gone from the record; nothing read it.

@@ -205,7 +205,7 @@ describe("Operation", () => {
         >()
       ).type.not.toBeCallableWith("TypeTest/WrongShape", { readFile, writeFile })
       expect(Context.Operations()).type.not.toBeCallableWith("TypeTest/Unknown", members)
-      // a wider identifier is accepted: the phase 0 shape of an existing record service
+      // a declared identifier wider than the union is accepted
       interface Legacy {
         readonly _: unique symbol
       }
@@ -242,24 +242,6 @@ describe("Operation", () => {
       // a nested record's identity is the union of its members' identities
       const Platform = Context.Operations("TypeTest/Platform", { fs: ReadOnly, columns })
       expect<Context.Service.Identifier<typeof Platform>>().type.toBe<ReadOnly | "TypeTest/Terminal/columns">()
-    })
-
-    it("accepts branded operations for the phase 0 of a migration", () => {
-      interface Brand {
-        readonly readFile: (path: string) => Effect.Effect<string>
-        readonly writeFile: (path: string, data: string) => Effect.Effect<void>
-      }
-      const readFile = Context.Operation<Brand["readFile"], Brand>()("TypeTest/Brand/readFile")
-      const writeFile = Context.Operation<Brand["writeFile"], Brand>()("TypeTest/Brand/writeFile")
-      const Brand = Context.Operations<Brand, Brand>()("TypeTest/Brand", { readFile, writeFile })
-      const brandLayer = null as unknown as Layer.Layer<Brand>
-      expect(readFile("a")).type.toBe<Effect.Effect<string, never, "TypeTest/Brand/readFile" & Brand>>()
-      expect(readFile("a").pipe(Effect.provide(brandLayer))).type.toBe<Effect.Effect<string>>()
-      expect(Brand.pipe(Effect.provide(brandLayer))).type.toBe<Effect.Effect<Brand>>()
-      expect(Layer.succeed(readFile, () => Effect.succeed(""))).type.not.toBeAssignableTo<Layer.Layer<Brand>>()
-      expect(
-        writeFile("a", "b").pipe(Effect.provide(Layer.succeed(readFile, () => Effect.succeed(""))))
-      ).type.not.toBeAssignableTo<Effect.Effect<void>>()
     })
   })
 })

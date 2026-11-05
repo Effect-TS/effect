@@ -33,7 +33,7 @@ import * as readline from "node:readline"
  */
 export const make: (
   shouldQuit?: (input: Terminal.UserInput) => boolean
-) => Effect.Effect<Terminal.Terminal, never, Scope.Scope> = Effect.fnUntraced(
+) => Effect.Effect<Terminal.Shape, never, Scope.Scope> = Effect.fnUntraced(
   function*(shouldQuit: (input: Terminal.UserInput) => boolean = defaultShouldQuit) {
     const lines = yield* Queue.make<string, Cause.Done>()
 

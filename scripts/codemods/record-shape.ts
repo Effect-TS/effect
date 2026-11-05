@@ -12,7 +12,9 @@ import type * as cs from "jscodeshift"
  * The module is taken from the `module` option (default `FileSystem`); the same
  * transform serves `Terminal`. Imports are recognised as `import * as X from
  * "effect/<module>"`, `import { <module> } from "effect"` and `import * as X
- * from "effect"` followed by `X.<module>.<module>`.
+ * from "effect"` followed by `X.<module>.<module>`, and a relative import of
+ * the module's own file (`import * as X from "../<module>.ts"`), which is how
+ * the repository imports it.
  *
  *   pnpm codemod:shape --module FileSystem packages/platform/node-shared/src
  */
@@ -29,10 +31,14 @@ export default function transformer(file: cs.FileInfo, api: cs.API, options: { r
   // or `import { FileSystem } from "effect"`; `Effect.FileSystem`-style access through a namespace import of "effect".
   const namespaces = new Set<string>()
   const roots = new Set<string>()
+  // the module's own repository imports it by relative path: `import * as FileSystem from "../FileSystem.ts"`
+  const isModuleSource = (source: unknown): boolean =>
+    source === `effect/${module}` || (typeof source === "string" && /^\.\.?\//.test(source) &&
+      (source.endsWith(`/${module}.ts`) || source.endsWith(`/${module}.js`) || source.endsWith(`/${module}`)))
   root.find(j.ImportDeclaration).forEach((path) => {
     const source = path.node.source.value
     for (const specifier of path.node.specifiers ?? []) {
-      if (source === `effect/${module}` && j.ImportNamespaceSpecifier.check(specifier)) {
+      if (isModuleSource(source) && j.ImportNamespaceSpecifier.check(specifier)) {
         namespaces.add(specifier.local!.name)
       } else if (source === "effect" && j.ImportSpecifier.check(specifier) && specifier.imported.name === module) {
         namespaces.add(specifier.local?.name ?? module)

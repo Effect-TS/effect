@@ -246,7 +246,7 @@ interface FileEntry {
  * inside itself is walked once. An absolute pattern is a `ConfigError`.
  */
 const listFiles = Effect.fnUntraced(function*(
-  fs: FileSystem.FileSystem,
+  fs: FileSystem.Shape,
   path: Path.Path,
   cwd: string,
   patterns: ReadonlyArray<string>
