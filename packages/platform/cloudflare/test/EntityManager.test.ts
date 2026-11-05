@@ -7,7 +7,7 @@ import { makeEntityManager } from "@effect/platform-cloudflare/internal/entityRu
 import type { EntityManager, EntityManagerOptions } from "@effect/platform-cloudflare/internal/entityRuntime"
 import { ensureEntityStorage } from "@effect/platform-cloudflare/internal/entityStorage"
 import { afterAll, assert, beforeAll, describe, it, vi } from "@effect/vitest"
-import { Context, Deferred, Effect, Exit, Fiber, Schema, Stream } from "effect"
+import { Context, Deferred, Effect, Exit, Fiber, Option, Schema, Stream } from "effect"
 import { ClusterSchema, Entity, EntityAddress, EntityId, EntityType, ShardId } from "effect/cluster"
 import { Rpc, RpcSchema } from "effect/rpc"
 import { TestClock } from "effect/testing"
@@ -33,9 +33,11 @@ const registration: EntityRegistration = {
   entity: Mailbox,
   keepAliveHeartbeat: 30_000,
   build: Effect.succeed(Mailbox.of({
-    Watch: ({ address }) => {
+    Watch: ({ address, lastSentChunkValue }) => {
       streamRuns.set(address.entityId, (streamRuns.get(address.entityId) ?? 0) + 1)
-      return Stream.fromIterable([1, 2]).pipe(Stream.rechunk(1))
+      // Resumes after the last value the caller was sent, as a handler must.
+      const last = Option.getOrElse(lastSentChunkValue, () => 0)
+      return Stream.fromIterable([1, 2].filter((value) => value > last)).pipe(Stream.rechunk(1))
     },
     Add: ({ address }) =>
       Effect.sync(() => {
@@ -683,7 +685,60 @@ describe("EntityManager", () => {
         TestClock.withLive
       )
       assert.strictEqual(next.length, 1)
-      assert.strictEqual(JSON.parse(next[0]).sequence, 1)
+      assert.deepStrictEqual(JSON.parse(next[0]).values, [2])
+    }))
+
+  it.effect("returns the next chunk for a stream acknowledged while its replay is producing it", () =>
+    Effect.gen(function*() {
+      const replaying = yield* Deferred.make<void>()
+      const release = yield* Deferred.make<void>()
+      const entity = Entity.make("GatedReplay", [
+        Rpc.make("Watch", {
+          success: RpcSchema.Stream(Schema.Number, Schema.Never)
+        }).annotate(ClusterSchema.Persisted, true),
+        Rpc.make("Ping", { success: Schema.String })
+      ])
+      const handlers: EntityRegistration = {
+        entity,
+        keepAliveHeartbeat: 30_000,
+        build: Effect.succeed(entity.of({
+          Watch: ({ lastSentChunkValue }) =>
+            Option.match(lastSentChunkValue, {
+              onNone: () => Stream.make(1),
+              onSome: (last) =>
+                Stream.fromEffect(
+                  Effect.andThen(Deferred.succeed(replaying, undefined), Deferred.await(release))
+                ).pipe(Stream.as(last + 1))
+            }),
+          Ping: () => Rpc.fork(Effect.succeed("pong"))
+        })),
+        options: undefined,
+        context: Context.empty()
+      }
+      yield* Effect.acquireRelease(
+        Effect.sync(() => registerEntity(entity.type, handlers)),
+        () => Effect.sync(() => unregisterEntity(entity.type, handlers))
+      )
+      const { envelope, manager, restart } = yield* makeMailbox("replaying", entity.type)
+      const requestId = nextRequestId()
+      const first = yield* manager.invoke(envelope("Watch", null, requestId), false)
+      assert(first._tag === "Success")
+      const chunk = JSON.parse(first.replies[0])
+
+      // Another request replays the stream after the restart, so it has a
+      // session before the caller's acknowledgement arrives.
+      const restarted = restart()
+      yield* admitted(restarted, envelope)
+      yield* Deferred.await(replaying)
+      const acknowledged = yield* Effect.forkChild(restarted.acknowledge(requestId, chunk.id), {
+        startImmediately: true
+      })
+      yield* settle
+      yield* Deferred.succeed(release, undefined)
+      const next = yield* Fiber.join(acknowledged).pipe(Effect.timeout("1 second"), TestClock.withLive)
+
+      assert.strictEqual(next.length, 1)
+      assert.deepStrictEqual(JSON.parse(next[0]).values, [2])
     }))
 
   it.effect("answers the first request after a restart without waiting for a replayed ask", () =>
