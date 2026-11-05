@@ -82,4 +82,18 @@ describe("Rpc", () => {
       expect<Rpc.SuccessChunk<typeof StreamEvents | typeof Fails>>().type.toBe<string>()
     })
   })
+
+  describe("ExtractTag", () => {
+    it("selects every RPC matching a union of tags", () => {
+      expect<Rpc.ExtractTag<Mixed | typeof Fails, "GetUser" | "Fails">>().type.toBe<typeof GetUser | typeof Fails>()
+    })
+
+    it("selects every RPC for a string tag", () => {
+      expect<Rpc.ExtractTag<Mixed, string>>().type.toBe<Mixed>()
+    })
+
+    it("returns never for an unknown tag", () => {
+      expect<Rpc.ExtractTag<Mixed, "Missing">>().type.toBe<never>()
+    })
+  })
 })
