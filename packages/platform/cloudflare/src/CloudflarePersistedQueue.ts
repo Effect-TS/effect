@@ -19,10 +19,9 @@
  * This backs the `DurableQueue` user API; `CloudflareCluster.layer` already
  * includes this layer.
  *
- * Retries wait for the configured delay after leasing the item and before
- * delivering it to the handler. The lease is refreshed during this wait;
- * interruption releases it and refunds the attempt. An element that fails to
- * decode is marked failed immediately.
+ * A failed item stays hidden on the object for the configured retry delay, so
+ * it does not hold a consumer while other items are ready. An element that
+ * fails to decode is marked failed immediately.
  *
  * `PersistedQueue.layerCleanup` is unsupported because the namespace binding
  * cannot enumerate queue objects. Completed and failed rows remain retained for
@@ -63,7 +62,13 @@ interface QueueStub {
   readonly take: (takerId: string, maxAttempts: number, leaseMillis: number) => Promise<QueueItem>
   readonly cancelTake: (takerId: string) => Promise<void>
   readonly complete: (id: string, takerId: string) => Promise<void>
-  readonly fail: (id: string, lastFailure: string, takerId: string, terminal?: boolean) => Promise<void>
+  readonly fail: (
+    id: string,
+    lastFailure: string,
+    takerId: string,
+    terminal?: boolean,
+    retryDelayMillis?: number
+  ) => Promise<void>
   readonly release: (id: string, takerId: string) => Promise<void>
   readonly extend: (id: string, leaseMillis: number, takerId: string) => Promise<void>
 }
@@ -139,9 +144,13 @@ export const make = (options: LayerOptions): PersistedQueue.PersistedQueueStore[
             onFailure: (cause) =>
               Cause.hasInterruptsOnly(cause)
                 ? finalize(() => stubFor(name).release(item.id, takerId))
-                : finalize(() =>
-                  stubFor(name).fail(item.id, Cause.pretty(cause), takerId, PersistedQueue.isDeadLetterCause(cause))
-                ),
+                : PersistedQueue.isDeadLetterCause(cause)
+                ? finalize(() => stubFor(name).fail(item.id, Cause.pretty(cause), takerId, true))
+                : Effect.flatMap(retryDelay(item.attempts + 1), (delay) =>
+                  // The delay follows the attempt count including this one.
+                  finalize(() =>
+                    stubFor(name).fail(item.id, Cause.pretty(cause), takerId, false, Duration.toMillis(delay))
+                  )),
             onSuccess: () => finalize(() => stubFor(name).complete(item.id, takerId))
           }))
           yield* Effect.promise(() => stubFor(name).extend(item.id, leaseMillis, takerId)).pipe(
@@ -151,9 +160,6 @@ export const make = (options: LayerOptions): PersistedQueue.PersistedQueueStore[
             Effect.forkScoped,
             Effect.interruptible
           )
-          if (item.attempts > 0) {
-            yield* restore(Effect.flatMap(retryDelay(item.attempts), Effect.sleep))
-          }
           return {
             id: item.id,
             attempts: item.attempts + 1,

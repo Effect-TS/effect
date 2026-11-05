@@ -367,7 +367,13 @@ export type ClusterDurableQueueProgram = {
   readonly take: (takerId: string, maxAttempts: number, leaseMillis: number) => Effect.Effect<DurableQueueItem>
   readonly cancelTake: (takerId: string) => Effect.Effect<void>
   readonly complete: (id: string, takerId: string) => Effect.Effect<void>
-  readonly fail: (id: string, lastFailure: string, takerId: string, terminal?: boolean) => Effect.Effect<void>
+  readonly fail: (
+    id: string,
+    lastFailure: string,
+    takerId: string,
+    terminal?: boolean,
+    retryDelayMillis?: number
+  ) => Effect.Effect<void>
   readonly release: (id: string, takerId: string) => Effect.Effect<void>
   readonly extend: (id: string, leaseMillis: number, takerId: string) => Effect.Effect<void>
   readonly alarm: () => Effect.Effect<void>
@@ -412,8 +418,8 @@ export const makeClusterDurableQueueProgram = Effect.fnUntraced(function*(state:
     take: (takerId, maxAttempts, leaseMillis) => Effect.promise(() => runtime.take(takerId, maxAttempts, leaseMillis)),
     cancelTake: (takerId) => Effect.promise(() => runtime.cancelTake(takerId)),
     complete: (id, takerId) => Effect.promise(() => runtime.complete(id, takerId)),
-    fail: (id, lastFailure, takerId, terminal) =>
-      Effect.promise(() => runtime.fail(id, lastFailure, takerId, terminal)),
+    fail: (id, lastFailure, takerId, terminal, retryDelayMillis) =>
+      Effect.promise(() => runtime.fail(id, lastFailure, takerId, terminal, retryDelayMillis)),
     release: (id, takerId) => Effect.promise(() => runtime.release(id, takerId)),
     extend: (id, leaseMillis, takerId) => Effect.promise(() => runtime.extend(id, leaseMillis, takerId)),
     alarm: () => Effect.promise(() => runtime.runAlarm())

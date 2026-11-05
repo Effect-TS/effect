@@ -22,6 +22,8 @@
  * used the row's last attempt the row moves to the failed state (2). A release
  * refunds the attempt. A recorded failure or release clears the owner, so a
  * retried `fail` or `release` cannot settle the same attempt twice.
+ * A recorded failure that leaves the row pending stores its retry delay in
+ * `lease_until` with no owner, the same delayed visibility an offer uses.
  *
  * @internal
  */
@@ -128,6 +130,21 @@ export const leaseNextItem = (
   return row
 }
 
+/**
+ * The item still leased to `owner` under a live lease, so a retried take can
+ * return it. `attempts` counts earlier attempts, as `leaseNextItem` returns.
+ *
+ * @internal
+ */
+export const leasedItem = (sql: SqlStorage, id: string, owner: string, now: number): QueueItem | undefined =>
+  sql.exec<QueueItemRow>(
+    `SELECT id, element, attempts - 1 AS attempts FROM queue_items
+     WHERE id = ? AND lease_owner = ? AND completed = 0 AND lease_until > ?`,
+    id,
+    owner,
+    now
+  ).toArray()[0]
+
 /** @internal */
 export const completeItem = (sql: SqlStorage, id: string, owner: string): void => {
   sql.exec("UPDATE queue_items SET completed = 1, lease_until = NULL WHERE id = ? AND lease_owner = ?", id, owner)
@@ -138,6 +155,7 @@ export const completeItem = (sql: SqlStorage, id: string, owner: string): void =
  * reaches the `max_attempts` stored with the lease, or the failure is
  * `terminal`, the row moves to the failed state (2). A row that is already
  * completed is left alone, even when the caller was its last owner.
+ * A row that stays pending is hidden until `visibleAt` (null for no delay).
  * Clearing `lease_owner` makes a replayed call a no-op until the next lease
  * assigns a new owner.
  *
@@ -148,14 +166,18 @@ export const failItem = (
   id: string,
   lastFailure: string,
   owner: string,
-  terminal: boolean
+  terminal: boolean,
+  visibleAt: number | null
 ): void => {
+  const failed = "? OR attempts >= max_attempts"
   sql.exec(
     `UPDATE queue_items
-     SET lease_until = NULL, lease_owner = NULL, last_failure = ?,
-         completed = CASE WHEN ? OR attempts >= max_attempts THEN 2 ELSE 0 END,
+     SET lease_until = CASE WHEN ${failed} THEN NULL ELSE ? END, lease_owner = NULL, last_failure = ?,
+         completed = CASE WHEN ${failed} THEN 2 ELSE 0 END,
          position = (SELECT IFNULL(MAX(position), 0) + 1 FROM queue_items)
      WHERE id = ? AND lease_owner = ? AND completed = 0`,
+    terminal ? 1 : 0,
+    visibleAt,
     lastFailure,
     terminal ? 1 : 0,
     id,
