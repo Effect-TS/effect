@@ -441,6 +441,16 @@ export const makeHandlers = (
       request: typeof McpSchema.SubscriptionsListen.payloadSchema.Type,
       { client, requestId }: { readonly client: Rpc.ServerClient; readonly requestId: RpcMessage.RequestId }
     ) {
+      // Task notifications are not sent, but requesting them still requires the extension.
+      if (
+        request.notifications.taskIds !== undefined &&
+        !McpTasks.supportsTasks({
+          protocolVersion: McpSchema.protocolVersion,
+          clientCapabilities: request._meta["io.modelcontextprotocol/clientCapabilities"]
+        })
+      ) {
+        return yield* new McpProtocol.ProtocolError(McpTasks.missingCapability)
+      }
       if (sendNotification === undefined) {
         return yield* new McpProtocol.ProtocolError({
           code: McpSchema.METHOD_NOT_FOUND,

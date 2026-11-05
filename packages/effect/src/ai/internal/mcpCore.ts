@@ -252,16 +252,28 @@ export interface TaskOperations {
 }
 
 /**
- * Routes task handles to the operations of the tool that created them. Routes
- * outlive tool replacement, so existing handles keep working.
+ * The registration a task handle routes back to. `generation` counts earlier
+ * task registrations of the same tool, so it is stable across restarts that
+ * register tools in the same way.
+ *
+ * @internal
+ */
+export interface TaskRoute {
+  readonly toolName: string
+  readonly generation: number
+}
+
+/**
+ * Routes task handles to the operations of the registration that created
+ * them. Routes outlive tool replacement, so existing handles keep working.
  *
  * @internal
  */
 export interface Tasks {
-  readonly register: (toolName: string, operations: TaskOperations) => Effect.Effect<void>
+  readonly register: (toolName: string, operations: TaskOperations) => Effect.Effect<TaskRoute>
   readonly registered: Effect.Effect<boolean>
-  // Wraps an execution task ID in a handle that routes back to its tool.
-  readonly handle: (toolName: string, taskId: string) => string
+  // Wraps an execution task ID in a handle that routes back to its registration.
+  readonly handle: (route: TaskRoute, taskId: string) => string
   readonly get: (handle: string, invocation: McpInvocation) => Effect.Effect<McpTasks.Task, TaskError>
   readonly update: (
     handle: string,
@@ -578,7 +590,9 @@ export interface McpCore {
 }
 
 const decodeTaskHandle = Schema.decodeUnknownOption(
-  Schema.StringFromBase64Url.pipe(Schema.decodeTo(Schema.fromJsonString(Schema.Tuple([Schema.String, Schema.String]))))
+  Schema.StringFromBase64Url.pipe(
+    Schema.decodeTo(Schema.fromJsonString(Schema.Tuple([Schema.String, Schema.Int, Schema.String])))
+  )
 )
 
 /**
@@ -783,22 +797,27 @@ export const make: Effect.Effect<McpCore> = Effect.sync(() => {
     })
   }
 
-  const taskRoutes = new Map<string, TaskOperations>()
+  const taskRoutes = new Map<string, Array<TaskOperations>>()
   const route = (handle: string) =>
     Effect.suspend(() => {
       const decoded = decodeTaskHandle(handle)
-      const operations = decoded._tag === "Some" ? taskRoutes.get(decoded.value[0]) : undefined
-      return decoded._tag === "Some" && operations !== undefined
-        ? Effect.succeed({ operations, taskId: decoded.value[1] })
-        : Effect.fail(new TaskError({ code: McpSchema.INVALID_PARAMS_ERROR_CODE, message: "Unknown taskId" }))
+      if (decoded._tag === "Some") {
+        const [toolName, generation, taskId] = decoded.value
+        const operations = taskRoutes.get(toolName)?.[generation]
+        if (operations !== undefined) return Effect.succeed({ operations, taskId })
+      }
+      return Effect.fail(new TaskError({ code: McpSchema.INVALID_PARAMS_ERROR_CODE, message: "Unknown taskId" }))
     })
   const tasks: Tasks = {
     register: (toolName, operations) =>
       Effect.sync(() => {
-        taskRoutes.set(toolName, operations)
+        const generations = taskRoutes.get(toolName) ?? []
+        generations.push(operations)
+        taskRoutes.set(toolName, generations)
+        return { toolName, generation: generations.length - 1 }
       }),
     registered: Effect.sync(() => taskRoutes.size > 0),
-    handle: (toolName, taskId) => Base64Url.encode(JSON.stringify([toolName, taskId])),
+    handle: (route, taskId) => Base64Url.encode(JSON.stringify([route.toolName, route.generation, taskId])),
     get: (handle, invocation) =>
       Effect.flatMap(
         route(handle),

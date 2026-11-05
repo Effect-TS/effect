@@ -235,12 +235,12 @@ export const toolkit = <Tools extends Record<string, Tool.Any>, R = never>(
     const reject = (failure: TaskFailure) =>
       Effect.fail(new McpCore.RequestRejected({ ...failure, error: new McpSchema.McpErrorBase(failure) }))
 
-    const create = Effect.fnUntraced(function*(toolName: string, args: unknown) {
+    const create = Effect.fnUntraced(function*(route: McpCore.TaskRoute, args: unknown) {
       const request = yield* McpSchema.McpRequestContext
       // Check before creating so clients without Tasks never start work.
       if (!McpTasksWire.supportsTasks(request)) return yield* reject(McpTasksWire.missingCapability)
       const task = yield* execution.create({
-        toolName,
+        toolName: route.toolName,
         arguments: (args ?? {}) as Schema.JsonObject,
         ownerId: yield* owner(request),
         requestContext: {
@@ -251,13 +251,13 @@ export const toolkit = <Tools extends Record<string, Tool.Any>, R = never>(
           ...(request.requestMetadata === undefined ? {} : { requestMetadata: request.requestMetadata })
         }
       }).pipe(Effect.catchTag("TaskError", reject))
-      return new McpCore.TaskCreated({ task: { ...task, taskId: core.tasks.handle(toolName, task.taskId) } })
+      return new McpCore.TaskCreated({ task: { ...task, taskId: core.tasks.handle(route, task.taskId) } })
     })
 
     for (const tool of Object.values(tools.tools)) {
       const { tool: descriptor, annotations } = yield* McpServerTools.toolDescriptor(tool)
       const enabledWhen = Context.getOrUndefined(annotations, McpSchema.EnabledWhen)
-      yield* core.tasks.register(tool.name, operations)
+      const route = yield* core.tasks.register(tool.name, operations)
       yield* registry.addTool({
         tool: descriptor,
         annotations: Context.add(
@@ -269,7 +269,7 @@ export const toolkit = <Tools extends Record<string, Tool.Any>, R = never>(
         ),
         services,
         // McpServer passes TaskCreated and RequestRejected through to the protocol adapter.
-        handle: (args) => create(tool.name, args) as Effect.Effect<never>
+        handle: (args) => create(route, args) as Effect.Effect<never>
       })
     }
   }))
