@@ -289,10 +289,10 @@ describe("CloudflareCluster", () => {
       }).pipe(Effect.provide(CloudflareCluster.layer(options)))
     })
 
-    it.effect("delivers a deduplicated delayed reply to every pinned caller", () => {
+    it.effect("delivers a deduplicated delayed reply pushed before the invoke result to every pinned caller", () => {
       const registry = makeReplyRegistry()
       const pending: Array<(value: any) => void> = []
-      let storageRequestId = ""
+      const clientRequestIds: Array<string> = []
       let bothInvoked!: () => void
       const invoked = new Promise<void>((resolve) => {
         bothInvoked = resolve
@@ -300,8 +300,7 @@ describe("CloudflareCluster", () => {
       const stub = {
         invoke(envelopeText: string, _discard: boolean, delivery: { readonly replyTo?: string }) {
           assert.strictEqual(delivery.replyTo, "6:Callerone")
-          const envelope = JSON.parse(envelopeText)
-          if (storageRequestId === "") storageRequestId = envelope.requestId
+          clientRequestIds.push(JSON.parse(envelopeText).requestId)
           return new Promise<any>((resolve) => {
             pending.push(resolve)
             if (pending.length === 2) bothInvoked()
@@ -331,19 +330,23 @@ describe("CloudflareCluster", () => {
         const first = yield* Effect.forkChild(pinned(client.Ask(request)))
         const second = yield* Effect.forkChild(pinned(client.Ask(request)))
         yield* Effect.promise(() => invoked)
+        const storageRequestId = clientRequestIds[0]
+        // The destination pushes under each caller's own request id, possibly
+        // before the caller has seen its invoke result.
+        for (const requestId of clientRequestIds) {
+          const delivered = registry.deliver(
+            requestId,
+            JSON.stringify({
+              _tag: "WithExit",
+              requestId: storageRequestId,
+              id: "terminal",
+              exit: { _tag: "Success", value: "callback" }
+            })
+          )
+          assert.isTrue(delivered)
+        }
         for (const resolve of pending) resolve({ _tag: "Success", requestId: storageRequestId, replies: [] })
-        yield* Effect.promise(() => new Promise((resolve) => setTimeout(resolve, 0)))
-        const delivered = registry.deliver(
-          storageRequestId,
-          JSON.stringify({
-            _tag: "WithExit",
-            requestId: storageRequestId,
-            id: "terminal",
-            exit: { _tag: "Success", value: "callback" }
-          })
-        )
 
-        assert.isTrue(delivered)
         assert.deepStrictEqual(yield* Fiber.join(first), "callback")
         assert.deepStrictEqual(yield* Fiber.join(second), "callback")
       }).pipe(Effect.provide(CloudflareCluster.layer(options)))
