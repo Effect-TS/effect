@@ -2146,7 +2146,7 @@ export const updateService: {
     layer: Layer<A1, E1, R1>,
     service: Context.Key<I, A>,
     f: (a: Types.NoInfer<A>) => A
-  ): Layer<A1, E1, I | R1> => provide(layer, effect(service, internalEffect.map(service, f)))
+  ): Layer<A1, E1, I | R1> => provide(layer, effect(service, internalEffect.map(internalEffect.service(service), f)))
 )
 
 /**

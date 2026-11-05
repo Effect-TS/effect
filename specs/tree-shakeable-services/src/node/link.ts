@@ -9,6 +9,6 @@ const M = "node/FileSystem/link"
  * The Node implementation of `FileSystem.link`, as a layer for its operation.
  */
 export const link = Layer.succeed(
-  FileSystem.link.service,
+  FileSystem.link,
   (from, to) => tryFs(M, () => fs.link(from, to))
 )

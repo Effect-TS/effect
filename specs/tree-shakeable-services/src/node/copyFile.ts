@@ -9,6 +9,6 @@ const M = "node/FileSystem/copyFile"
  * The Node implementation of `FileSystem.copyFile`, as a layer for its operation.
  */
 export const copyFile = Layer.succeed(
-  FileSystem.copyFile.service,
+  FileSystem.copyFile,
   (from, to) => tryFs(M, () => fs.copyFile(from, to))
 )

@@ -9,7 +9,7 @@ const M = "node/FileSystem/access"
  * The Node implementation of `FileSystem.access`, as a layer for its operation.
  */
 export const access = Layer.succeed(
-  FileSystem.access.service,
+  FileSystem.access,
   (path, options) =>
     tryFs(
       M,

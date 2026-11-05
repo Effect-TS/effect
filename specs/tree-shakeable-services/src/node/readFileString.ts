@@ -9,6 +9,6 @@ const M = "node/FileSystem/readFileString"
  * The Node implementation of `FileSystem.readFileString`, as a layer for its operation.
  */
 export const readFileString = Layer.succeed(
-  FileSystem.readFileString.service,
+  FileSystem.readFileString,
   (path, encoding) => tryFs(M, () => fs.readFile(path, { encoding: encoding ?? "utf8" }))
 )

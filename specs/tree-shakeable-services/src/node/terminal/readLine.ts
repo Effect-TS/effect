@@ -5,13 +5,14 @@ import * as Terminal from "../../Terminal.ts"
 
 /** The Node implementation of `Terminal.readLine`: reads one line from standard input. */
 export const readLine = Layer.succeed(
-  Terminal.readLine.service,
-  Effect.callback<string, Terminal.QuitError>((resume) => {
-    const rl = readline.createInterface({ input: process.stdin, terminal: false })
-    rl.once("line", (line) => {
-      rl.close()
-      resume(Effect.succeed(line))
+  Terminal.readLine,
+  () =>
+    Effect.callback<string, Terminal.QuitError>((resume) => {
+      const rl = readline.createInterface({ input: process.stdin, terminal: false })
+      rl.once("line", (line) => {
+        rl.close()
+        resume(Effect.succeed(line))
+      })
+      rl.once("close", () => resume(Effect.fail(new Terminal.QuitError())))
     })
-    rl.once("close", () => resume(Effect.fail(new Terminal.QuitError())))
-  })
 )

@@ -10,6 +10,6 @@ const M = "node/FileSystem/lstat"
  * The Node implementation of `FileSystem.lstat`, as a layer for its operation.
  */
 export const lstat = Layer.succeed(
-  FileSystem.lstat.service,
+  FileSystem.lstat,
   (path) => tryFs(M, () => fs.lstat(path)).pipe(Effect.map(toInfo))
 )

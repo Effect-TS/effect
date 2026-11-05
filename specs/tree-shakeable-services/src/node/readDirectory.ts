@@ -9,6 +9,6 @@ const M = "node/FileSystem/readDirectory"
  * The Node implementation of `FileSystem.readDirectory`, as a layer for its operation.
  */
 export const readDirectory = Layer.succeed(
-  FileSystem.readDirectory.service,
+  FileSystem.readDirectory,
   (path) => tryFs(M, () => fs.readdir(path))
 )

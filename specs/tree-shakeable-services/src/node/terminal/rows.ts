@@ -3,4 +3,4 @@ import * as Layer from "effect/Layer"
 import * as Terminal from "../../Terminal.ts"
 
 /** The Node implementation of `Terminal.rows`. */
-export const rows = Layer.succeed(Terminal.rows.service, Effect.sync(() => process.stdout.rows ?? 24))
+export const rows = Layer.succeed(Terminal.rows, () => Effect.sync(() => process.stdout.rows ?? 24))

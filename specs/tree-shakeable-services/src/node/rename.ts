@@ -9,6 +9,6 @@ const M = "node/FileSystem/rename"
  * The Node implementation of `FileSystem.rename`, as a layer for its operation.
  */
 export const rename = Layer.succeed(
-  FileSystem.rename.service,
+  FileSystem.rename,
   (from, to) => tryFs(M, () => fs.rename(from, to))
 )

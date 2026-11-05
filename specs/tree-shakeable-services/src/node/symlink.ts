@@ -9,6 +9,6 @@ const M = "node/FileSystem/symlink"
  * The Node implementation of `FileSystem.symlink`, as a layer for its operation.
  */
 export const symlink = Layer.succeed(
-  FileSystem.symlink.service,
+  FileSystem.symlink,
   (target, path) => tryFs(M, () => fs.symlink(target, path))
 )

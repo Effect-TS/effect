@@ -9,6 +9,6 @@ const M = "node/FileSystem/readLink"
  * The Node implementation of `FileSystem.readLink`, as a layer for its operation.
  */
 export const readLink = Layer.succeed(
-  FileSystem.readLink.service,
+  FileSystem.readLink,
   (path) => tryFs(M, () => fs.readlink(path))
 )

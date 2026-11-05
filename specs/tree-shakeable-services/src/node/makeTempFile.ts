@@ -11,7 +11,7 @@ const M = "node/FileSystem/makeTempFile"
  * The Node implementation of `FileSystem.makeTempFile`, as a layer for its operation.
  */
 export const makeTempFile = Layer.succeed(
-  FileSystem.makeTempFile.service,
+  FileSystem.makeTempFile,
   (options) =>
     tryFs(M, async () => {
       const directory = await fs.mkdtemp(Path.join(os.tmpdir(), options?.prefix ?? "effect-"))

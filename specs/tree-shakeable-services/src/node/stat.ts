@@ -10,6 +10,6 @@ const M = "node/FileSystem/stat"
  * The Node implementation of `FileSystem.stat`, as a layer for its operation.
  */
 export const stat = Layer.succeed(
-  FileSystem.stat.service,
+  FileSystem.stat,
   (path) => tryFs(M, () => fs.stat(path)).pipe(Effect.map(toInfo))
 )

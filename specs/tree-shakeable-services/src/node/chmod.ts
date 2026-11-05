@@ -9,6 +9,6 @@ const M = "node/FileSystem/chmod"
  * The Node implementation of `FileSystem.chmod`, as a layer for its operation.
  */
 export const chmod = Layer.succeed(
-  FileSystem.chmod.service,
+  FileSystem.chmod,
   (path, mode) => tryFs(M, () => fs.chmod(path, mode))
 )

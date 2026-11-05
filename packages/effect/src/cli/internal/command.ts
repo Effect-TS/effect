@@ -77,7 +77,7 @@ export const Proto: Effect.Effect<any, never, any> = {
   ...Effectable.Prototype<Command.Any>({
     label: "Command",
     evaluate() {
-      return toImpl(this).service
+      return Effect.service(toImpl(this).service)
     }
   })
 }

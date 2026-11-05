@@ -9,7 +9,7 @@ const M = "node/FileSystem/exists"
  * The Node implementation of `FileSystem.exists`, as a layer for its operation.
  */
 export const exists = Layer.succeed(
-  FileSystem.exists.service,
+  FileSystem.exists,
   (path) =>
     tryFs(M, () =>
       fs.access(path).then(() => true, (error) => {

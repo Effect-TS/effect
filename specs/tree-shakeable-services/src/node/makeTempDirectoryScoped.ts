@@ -12,7 +12,7 @@ const M = "node/FileSystem/makeTempDirectoryScoped"
  * The Node implementation of `FileSystem.makeTempDirectoryScoped`, as a layer for its operation.
  */
 export const makeTempDirectoryScoped = Layer.succeed(
-  FileSystem.makeTempDirectoryScoped.service,
+  FileSystem.makeTempDirectoryScoped,
   (options) =>
     Effect.acquireRelease(
       tryFs(M, () => fs.mkdtemp(Path.join(os.tmpdir(), options?.prefix ?? "effect-"))),
