@@ -27,8 +27,6 @@ import type { Scope } from "./Scope.ts"
 import * as Sink from "./Sink.ts"
 import * as Stream from "./Stream.ts"
 
-const TypeId = "~effect/FileSystem"
-
 /**
  * Core interface for file system operations in Effect.
  *
@@ -79,8 +77,6 @@ const TypeId = "~effect/FileSystem"
  * @since 4.0.0
  */
 export interface FileSystem {
-  readonly [TypeId]: typeof TypeId
-
   /**
    * Checks whether a file can be accessed.
    * You can optionally specify the level of access to check for.
@@ -481,6 +477,655 @@ export type OpenFlag =
   | "a+"
   | "ax+"
 
+// -----------------------------------------------------------------------------
+// Operations
+// -----------------------------------------------------------------------------
+
+/**
+ * Checks whether a file can be accessed.
+ * You can optionally specify the level of access to check for.
+ *
+ * @stability unstable
+ * @category operations
+ * @since 4.0.0
+ */
+export const access = Context.Operation<
+  (
+    path: string,
+    options?: {
+      readonly ok?: boolean | undefined
+      readonly readable?: boolean | undefined
+      readonly writable?: boolean | undefined
+    }
+  ) => Effect.Effect<void, PlatformError>,
+  FileSystem
+>()("effect/FileSystem/access")
+
+/**
+ * Copy a file or directory from `fromPath` to `toPath`.
+ *
+ * **Details**
+ *
+ * Equivalent to `cp -r`.
+ *
+ * @stability unstable
+ * @category operations
+ * @since 4.0.0
+ */
+export const copy = Context.Operation<
+  (
+    fromPath: string,
+    toPath: string,
+    options?: {
+      readonly overwrite?: boolean | undefined
+      readonly preserveTimestamps?: boolean | undefined
+    }
+  ) => Effect.Effect<void, PlatformError>,
+  FileSystem
+>()("effect/FileSystem/copy")
+
+/**
+ * Copy a file from `fromPath` to `toPath`.
+ *
+ * @stability unstable
+ * @category operations
+ * @since 4.0.0
+ */
+export const copyFile = Context.Operation<
+  (
+    fromPath: string,
+    toPath: string
+  ) => Effect.Effect<void, PlatformError>,
+  FileSystem
+>()("effect/FileSystem/copyFile")
+
+/**
+ * Change the permissions of a file.
+ *
+ * @stability unstable
+ * @category operations
+ * @since 4.0.0
+ */
+export const chmod = Context.Operation<
+  (
+    path: string,
+    mode: number
+  ) => Effect.Effect<void, PlatformError>,
+  FileSystem
+>()("effect/FileSystem/chmod")
+
+/**
+ * Change the owner and group of a file.
+ *
+ * @stability unstable
+ * @category operations
+ * @since 4.0.0
+ */
+export const chown = Context.Operation<
+  (
+    path: string,
+    uid: number,
+    gid: number
+  ) => Effect.Effect<void, PlatformError>,
+  FileSystem
+>()("effect/FileSystem/chown")
+
+/**
+ * Finds paths under `root` that match a glob pattern.
+ *
+ * **Details**
+ *
+ * Patterns follow `Glob.make`: wildcards skip names that start with `.`
+ * unless the pattern segment starts with `.` or `dot` is `true`, and
+ * `dir/**` includes `dir` itself. Results are `/`-separated paths relative
+ * to `root` (or absolute for an absolute pattern), visited depth-first with
+ * each directory's entries sorted by name. `**` does not traverse symbolic
+ * links to directories, but a link named by another segment is followed.
+ * Paths that match an `exclude` pattern are dropped, and excluded
+ * directories are not read. Entries whose type cannot be determined, such
+ * as broken links, are treated as files.
+ *
+ * Read failures at the root or a leading literal directory propagate. Missing
+ * paths return an empty result; unreadable wildcard-reached directories are
+ * skipped.
+ *
+ * **Gotchas**
+ *
+ * Wildcard matching is case-sensitive. Leading literal segments use `stat`,
+ * so their case sensitivity follows the file system and results retain the
+ * pattern's spelling.
+ *
+ * @stability unstable
+ * @category operations
+ * @since 4.0.0
+ */
+export const glob = Context.Operation<
+  (
+    pattern: string,
+    options?: {
+      readonly root?: string | undefined
+      readonly exclude?: ReadonlyArray<string> | undefined
+      readonly dot?: boolean | undefined
+    }
+  ) => Effect.Effect<Array<string>, PlatformError>,
+  FileSystem
+>()("effect/FileSystem/glob")
+
+/**
+ * Checks whether a path exists.
+ *
+ * @stability unstable
+ * @category operations
+ * @since 4.0.0
+ */
+export const exists = Context.Operation<
+  (
+    path: string
+  ) => Effect.Effect<boolean, PlatformError>,
+  FileSystem
+>()("effect/FileSystem/exists")
+
+/**
+ * Create a hard link from `fromPath` to `toPath`.
+ *
+ * @stability unstable
+ * @category operations
+ * @since 4.0.0
+ */
+export const link = Context.Operation<
+  (
+    fromPath: string,
+    toPath: string
+  ) => Effect.Effect<void, PlatformError>,
+  FileSystem
+>()("effect/FileSystem/link")
+
+/**
+ * Get information about a file at `path` without following symbolic links.
+ * See `File.Info` for metadata limits.
+ *
+ * @stability unstable
+ * @category operations
+ * @since 4.0.0
+ */
+export const lstat = Context.Operation<
+  (
+    path: string
+  ) => Effect.Effect<File.Info, PlatformError>,
+  FileSystem
+>()("effect/FileSystem/lstat")
+
+/**
+ * Create a directory at `path`. You can optionally specify the mode and
+ * whether to recursively create nested directories.
+ *
+ * @stability unstable
+ * @category operations
+ * @since 4.0.0
+ */
+export const makeDirectory = Context.Operation<
+  (
+    path: string,
+    options?: {
+      readonly recursive?: boolean | undefined
+      readonly mode?: number | undefined
+    }
+  ) => Effect.Effect<void, PlatformError>,
+  FileSystem
+>()("effect/FileSystem/makeDirectory")
+
+/**
+ * Create a temporary directory.
+ *
+ * **Details**
+ *
+ * By default the directory will be created inside the system's default
+ * temporary directory, but you can specify a different location by setting
+ * the `directory` option.
+ *
+ * You can also specify a prefix for the directory name by setting the
+ * `prefix` option.
+ *
+ * @stability unstable
+ * @category operations
+ * @since 4.0.0
+ */
+export const makeTempDirectory = Context.Operation<
+  (options?: {
+    readonly directory?: string | undefined
+    readonly prefix?: string | undefined
+  }) => Effect.Effect<string, PlatformError>,
+  FileSystem
+>()("effect/FileSystem/makeTempDirectory")
+
+/**
+ * Create a temporary directory inside a scope.
+ *
+ * **Details**
+ *
+ * Functionally equivalent to `makeTempDirectory`, but the directory will be
+ * automatically deleted when the scope is closed.
+ *
+ * @stability unstable
+ * @category operations
+ * @since 4.0.0
+ */
+export const makeTempDirectoryScoped = Context.Operation<
+  (options?: {
+    readonly directory?: string | undefined
+    readonly prefix?: string | undefined
+  }) => Effect.Effect<string, PlatformError, Scope>,
+  FileSystem
+>()("effect/FileSystem/makeTempDirectoryScoped")
+
+/**
+ * Create a temporary file.
+ * The directory creation is functionally equivalent to `makeTempDirectory`.
+ * The file name will be a randomly generated string.
+ *
+ * @stability unstable
+ * @category operations
+ * @since 4.0.0
+ */
+export const makeTempFile = Context.Operation<
+  (options?: {
+    readonly directory?: string | undefined
+    readonly prefix?: string | undefined
+    readonly suffix?: string | undefined
+  }) => Effect.Effect<string, PlatformError>,
+  FileSystem
+>()("effect/FileSystem/makeTempFile")
+
+/**
+ * Create a temporary file inside a scope.
+ *
+ * **Details**
+ *
+ * Functionally equivalent to `makeTempFile`, but the file will be
+ * automatically deleted when the scope is closed.
+ *
+ * @stability unstable
+ * @category operations
+ * @since 4.0.0
+ */
+export const makeTempFileScoped = Context.Operation<
+  (options?: {
+    readonly directory?: string | undefined
+    readonly prefix?: string | undefined
+    readonly suffix?: string | undefined
+  }) => Effect.Effect<string, PlatformError, Scope>,
+  FileSystem
+>()("effect/FileSystem/makeTempFileScoped")
+
+/**
+ * Open a file at `path` with the specified `options`.
+ *
+ * **Details**
+ *
+ * The file handle will be automatically closed when the scope is closed.
+ *
+ * `noFollow` rejects symlinks at the final path component, not in parent
+ * directories. Node and Bun support it on POSIX; unsupported platforms,
+ * including Windows and Deno, fail with `BadArgument`.
+ *
+ * @stability unstable
+ * @category operations
+ * @since 4.0.0
+ */
+export const open = Context.Operation<
+  (
+    path: string,
+    options?: {
+      readonly flag?: OpenFlag | undefined
+      readonly mode?: number | undefined
+      readonly noFollow?: boolean | undefined
+    }
+  ) => Effect.Effect<File, PlatformError, Scope>,
+  FileSystem
+>()("effect/FileSystem/open")
+
+/**
+ * List the contents of a directory.
+ *
+ * **Details**
+ *
+ * You can recursively list the contents of nested directories by setting the
+ * `recursive` option.
+ *
+ * @stability unstable
+ * @category operations
+ * @since 4.0.0
+ */
+export const readDirectory = Context.Operation<
+  (
+    path: string,
+    options?: {
+      readonly recursive?: boolean | undefined
+    }
+  ) => Effect.Effect<Array<string>, PlatformError>,
+  FileSystem
+>()("effect/FileSystem/readDirectory")
+
+/**
+ * Lists a directory with the type of each entry.
+ *
+ * **Details**
+ *
+ * Returns the same bare names as `readDirectory(path)`, excluding `.` and
+ * `..`, in no particular order. Types describe entries, not symlink targets.
+ * `"Unknown"` is allowed when the listing cannot determine the type, and
+ * `glob` then falls back to `stat`.
+ *
+ * **Gotchas**
+ *
+ * Wrappers that change `readDirectory`, such as by prefixing paths, must
+ * apply the same change here for `glob` to list the correct directory.
+ *
+ * @stability unstable
+ * @category operations
+ * @since 4.0.0
+ */
+export const readDirectoryEntries = Context.Operation<
+  (path: string) => Effect.Effect<ReadonlyArray<DirectoryEntry>, PlatformError>,
+  FileSystem
+>()("effect/FileSystem/readDirectoryEntries")
+
+/**
+ * Read the contents of a file.
+ *
+ * @stability unstable
+ * @category operations
+ * @since 4.0.0
+ */
+export const readFile = Context.Operation<
+  (
+    path: string
+  ) => Effect.Effect<Uint8Array, PlatformError>,
+  FileSystem
+>()("effect/FileSystem/readFile")
+
+/**
+ * Read the contents of a file.
+ *
+ * @stability unstable
+ * @category operations
+ * @since 4.0.0
+ */
+export const readFileString = Context.Operation<
+  (
+    path: string,
+    encoding?: string
+  ) => Effect.Effect<string, PlatformError>,
+  FileSystem
+>()("effect/FileSystem/readFileString")
+
+/**
+ * Read the destination of a symbolic link.
+ *
+ * @stability unstable
+ * @category operations
+ * @since 4.0.0
+ */
+export const readLink = Context.Operation<
+  (
+    path: string
+  ) => Effect.Effect<string, PlatformError>,
+  FileSystem
+>()("effect/FileSystem/readLink")
+
+/**
+ * Resolve a path to its canonicalized absolute pathname.
+ *
+ * @stability unstable
+ * @category operations
+ * @since 4.0.0
+ */
+export const realPath = Context.Operation<
+  (
+    path: string
+  ) => Effect.Effect<string, PlatformError>,
+  FileSystem
+>()("effect/FileSystem/realPath")
+
+/**
+ * Remove a file or directory.
+ *
+ * @stability unstable
+ * @category operations
+ * @since 4.0.0
+ */
+export const remove = Context.Operation<
+  (
+    path: string,
+    options?: {
+      /**
+       * When `true`, you can recursively remove nested directories.
+       */
+      readonly recursive?: boolean | undefined
+      /**
+       * When `true`, exceptions will be ignored if `path` does not exist.
+       */
+      readonly force?: boolean | undefined
+    }
+  ) => Effect.Effect<void, PlatformError>,
+  FileSystem
+>()("effect/FileSystem/remove")
+
+/**
+ * Rename a file or directory.
+ *
+ * @stability unstable
+ * @category operations
+ * @since 4.0.0
+ */
+export const rename = Context.Operation<
+  (
+    oldPath: string,
+    newPath: string
+  ) => Effect.Effect<void, PlatformError>,
+  FileSystem
+>()("effect/FileSystem/rename")
+
+/**
+ * Create a writable `Sink` for the specified `path`.
+ *
+ * @stability unstable
+ * @category operations
+ * @since 4.0.0
+ */
+export const sink = Sink.Operation<
+  (
+    path: string,
+    options?: {
+      readonly flag?: OpenFlag | undefined
+      readonly mode?: number | undefined
+    }
+  ) => Sink.Sink<void, Uint8Array, never, PlatformError>,
+  FileSystem
+>()("effect/FileSystem/sink")
+
+/**
+ * Get information about a file at `path`. See `File.Info` for metadata limits.
+ *
+ * @stability unstable
+ * @category operations
+ * @since 4.0.0
+ */
+export const stat = Context.Operation<
+  (
+    path: string
+  ) => Effect.Effect<File.Info, PlatformError>,
+  FileSystem
+>()("effect/FileSystem/stat")
+
+/**
+ * Create a readable `Stream` for the specified `path`.
+ *
+ * **Details**
+ *
+ * Changing the `bufferSize` option will change the internal buffer size of
+ * the stream. It defaults to `4`.
+ *
+ * The `chunkSize` option will change the size of the chunks emitted by the
+ * stream. It defaults to 64kb.
+ *
+ * Changing `offset` and `bytesToRead` will change the offset and the number
+ * of bytes to read from the file.
+ *
+ * @stability unstable
+ * @category operations
+ * @since 4.0.0
+ */
+export const stream = Stream.Operation<
+  (
+    path: string,
+    options?: {
+      readonly bytesToRead?: ByteSize.Input | undefined
+      readonly chunkSize?: number | undefined
+      readonly offset?: ByteSize.Input | undefined
+    }
+  ) => Stream.Stream<Uint8Array, PlatformError>,
+  FileSystem
+>()("effect/FileSystem/stream")
+
+/**
+ * Create a symbolic link from `fromPath` to `toPath`.
+ *
+ * @stability unstable
+ * @category operations
+ * @since 4.0.0
+ */
+export const symlink = Context.Operation<
+  (
+    fromPath: string,
+    toPath: string
+  ) => Effect.Effect<void, PlatformError>,
+  FileSystem
+>()("effect/FileSystem/symlink")
+
+/**
+ * Truncate a file to a specified length. If the `length` is not specified,
+ * the file will be truncated to length `0`.
+ *
+ * @stability unstable
+ * @category operations
+ * @since 4.0.0
+ */
+export const truncate = Context.Operation<
+  (
+    path: string,
+    length?: number
+  ) => Effect.Effect<void, PlatformError>,
+  FileSystem
+>()("effect/FileSystem/truncate")
+
+/**
+ * Change the file system timestamps of the file at `path`.
+ *
+ * @stability unstable
+ * @category operations
+ * @since 4.0.0
+ */
+export const utimes = Context.Operation<
+  (
+    path: string,
+    atime: Date | number,
+    mtime: Date | number
+  ) => Effect.Effect<void, PlatformError>,
+  FileSystem
+>()("effect/FileSystem/utimes")
+
+/**
+ * Watch a directory or file for changes.
+ *
+ * **Details**
+ *
+ * By default, only changes to the direct children of the directory are
+ * reported. Set the `recursive` option to `true` to watch for changes in
+ * subdirectories as well.
+ *
+ * @stability unstable
+ * @category operations
+ * @since 4.0.0
+ */
+export const watch = Stream.Operation<
+  (path: string, options?: WatchOptions) => Stream.Stream<WatchEvent, PlatformError>,
+  FileSystem
+>()("effect/FileSystem/watch")
+
+/**
+ * Write data to a file at `path`.
+ *
+ * @stability unstable
+ * @category operations
+ * @since 4.0.0
+ */
+export const writeFile = Context.Operation<
+  (
+    path: string,
+    data: Uint8Array,
+    options?: {
+      readonly flag?: OpenFlag | undefined
+      readonly mode?: number | undefined
+    }
+  ) => Effect.Effect<void, PlatformError>,
+  FileSystem
+>()("effect/FileSystem/writeFile")
+
+/**
+ * Write a string to a file at `path`.
+ *
+ * @stability unstable
+ * @category operations
+ * @since 4.0.0
+ */
+export const writeFileString = Context.Operation<
+  (
+    path: string,
+    data: string,
+    options?: {
+      readonly flag?: OpenFlag | undefined
+      readonly mode?: number | undefined
+    }
+  ) => Effect.Effect<void, PlatformError>,
+  FileSystem
+>()("effect/FileSystem/writeFileString")
+
+const members = {
+  access,
+  copy,
+  copyFile,
+  chmod,
+  chown,
+  glob,
+  exists,
+  link,
+  lstat,
+  makeDirectory,
+  makeTempDirectory,
+  makeTempDirectoryScoped,
+  makeTempFile,
+  makeTempFileScoped,
+  open,
+  readDirectory,
+  readDirectoryEntries,
+  readFile,
+  readFileString,
+  readLink,
+  realPath,
+  remove,
+  rename,
+  sink,
+  stat,
+  stream,
+  symlink,
+  truncate,
+  utimes,
+  watch,
+  writeFile,
+  writeFileString
+}
+
 /**
  * Service tag for platform file-system operations.
  *
@@ -523,7 +1168,20 @@ export type OpenFlag =
  * @category services
  * @since 4.0.0
  */
-export const FileSystem: Context.Service<FileSystem, FileSystem> = Context.Service("effect/FileSystem")
+export const FileSystem: Context.Operations<FileSystem, FileSystem> = Context.Operations("effect/FileSystem", members)
+
+/**
+ * The record of file system implementations: today an alias of the
+ * `FileSystem` interface, which the next release makes the sole name of the
+ * record type while `FileSystem` becomes the identity of the whole service.
+ * Code that uses `FileSystem.FileSystem` as the type of an implementation
+ * (`fs: FileSystem.FileSystem`) should write `FileSystem.Shape` now.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.0.0
+ */
+export type Shape = FileSystem
 
 /**
  * A directory entry with its type, independent of any symlink target.
@@ -565,11 +1223,10 @@ export interface DirectoryEntry {
  * @since 4.0.0
  */
 export const make = (
-  impl: Omit<FileSystem, typeof TypeId | "exists" | "glob" | "readFileString" | "stream" | "sink" | "writeFileString">
+  impl: Omit<FileSystem, "exists" | "glob" | "readFileString" | "stream" | "sink" | "writeFileString">
 ): FileSystem =>
   FileSystem.of({
     ...impl,
-    [TypeId]: TypeId,
     glob: Glob.make(impl),
     exists: (path) =>
       pipe(
@@ -711,7 +1368,6 @@ const notFound = (method: string, path: string) =>
  */
 export const makeNoop = (fileSystem: Partial<FileSystem>): FileSystem =>
   FileSystem.of({
-    [TypeId]: TypeId,
     access(path) {
       return Effect.fail(notFound("access", path))
     },

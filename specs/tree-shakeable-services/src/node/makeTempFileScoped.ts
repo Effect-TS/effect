@@ -12,7 +12,7 @@ const M = "node/FileSystem/makeTempFileScoped"
  * The Node implementation of `FileSystem.makeTempFileScoped`, as a layer for its operation.
  */
 export const makeTempFileScoped = Layer.succeed(
-  FileSystem.makeTempFileScoped.service,
+  FileSystem.makeTempFileScoped,
   (options) =>
     Effect.acquireRelease(
       tryFs(M, async () => {

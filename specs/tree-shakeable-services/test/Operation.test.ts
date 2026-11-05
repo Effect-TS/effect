@@ -20,16 +20,16 @@ const bytes = (text: string) => new TextEncoder().encode(text)
 /** An in-memory file system: a map, and one layer per operation over it. */
 const memory = () => {
   const files = new Map<string, Uint8Array>()
-  const readFile = Layer.succeed(FileSystem.readFile.service, (path) =>
+  const readFile = Layer.succeed(FileSystem.readFile, (path) =>
     files.has(path)
       ? Effect.succeed(files.get(path)!)
       : Effect.fail(new FileSystem.FileSystemError({ operation: "memory/readFile", cause: "ENOENT" })))
-  const writeFile = Layer.succeed(FileSystem.writeFile.service, (path, data) =>
+  const writeFile = Layer.succeed(FileSystem.writeFile, (path, data) =>
     Effect.sync(() => {
       files.set(path, data)
     }))
   const stream = Layer.succeed(
-    FileSystem.stream.service,
+    FileSystem.stream,
     (path) =>
       files.has(path)
         ? Stream.make(files.get(path)!)
@@ -48,22 +48,42 @@ const record = (members: Partial<FileSystem.Shape>): FileSystem.Shape => {
 }
 
 describe("Operation", () => {
-  it("is a function with its key as its name, and neither an Effect nor a key", () => {
+  it("is a function with its key as its name, a key, and not an Effect", () => {
     assert.strictEqual(typeof FileSystem.readFile, "function")
     assert.strictEqual(FileSystem.readFile.name, "effect/FileSystem/readFile")
+    assert.strictEqual(FileSystem.readFile.key, "effect/FileSystem/readFile")
     assert.isTrue(Context.isOperation(FileSystem.readFile))
+    assert.isTrue(Context.isKey(FileSystem.readFile))
+    assert.isFalse(Context.isOperations(FileSystem.readFile))
+    assert.isFalse(Context.isReference(FileSystem.readFile))
     assert.isFalse(Effect.isEffect(FileSystem.readFile))
-    assert.isFalse(Context.isKey(FileSystem.readFile))
-    assert.isTrue(Context.isKey(FileSystem.readFile.service))
-    assert.strictEqual(FileSystem.readFile.service.key, "effect/FileSystem/readFile")
+    assert.deepStrictEqual(JSON.parse(JSON.stringify(FileSystem.readFile)), {
+      _id: "Operation",
+      key: "effect/FileSystem/readFile"
+    })
+    // Function.prototype is still in the chain
+    assert.strictEqual(typeof FileSystem.readFile.bind, "function")
   })
 
-  it("runs the implementation provided for its service", async () => {
+  it("runs the implementation provided for it", async () => {
     const fs = memory()
     fs.files.set("a.txt", bytes("hello"))
     const size = await Effect.runPromise(backup("a.txt").pipe(Effect.provide(fs.layer)))
     assert.strictEqual(size, 5)
     assert.deepStrictEqual(fs.files.get("a.txt.bak"), bytes("hello"))
+  })
+
+  it("is provided, read and removed like any key", () => {
+    const impl = () => Effect.succeed(bytes("x"))
+    const context = Context.make(FileSystem.readFile, impl)
+    assert.strictEqual(context.mapUnsafe.size, 1)
+    assert.strictEqual(Context.get(context, FileSystem.readFile), impl)
+    assert.strictEqual(Context.getOrUndefined(context, FileSystem.stat), undefined)
+    assert.isTrue(Option.isSome(Context.getOption(context, FileSystem.readFile)))
+    assert.strictEqual(Context.omit(FileSystem.readFile)(context).mapUnsafe.size, 0)
+    assert.strictEqual(Context.pick(FileSystem.readFile)(context).mapUnsafe.size, 1)
+    // the implementation as a value, inside an Effect
+    assert.strictEqual(Effect.runSync(Effect.service(FileSystem.readFile).pipe(Effect.provide(context))), impl)
   })
 
   it("fails with a defect naming the key when the implementation is missing at run time", async () => {
@@ -77,7 +97,7 @@ describe("Operation", () => {
     const fs = memory()
     fs.files.set("a.txt", bytes("hello"))
     const seen: Array<string> = []
-    const fakeRead = Layer.succeed(FileSystem.readFile.service, (path) =>
+    const fakeRead = Layer.succeed(FileSystem.readFile, (path) =>
       Effect.sync(() => {
         seen.push(path)
         return bytes("faked")
@@ -94,13 +114,13 @@ describe("Operation", () => {
     // The same override through Effect.provideService, no layer needed.
     await Effect.runPromise(
       backup("a.txt").pipe(
-        Effect.provideService(FileSystem.readFile.service, () => Effect.succeed(bytes("service"))),
+        Effect.provideService(FileSystem.readFile, () => Effect.succeed(bytes("service"))),
         Effect.provide(fs.layer)
       )
     )
     assert.deepStrictEqual(fs.files.get("a.txt.bak"), bytes("service"))
 
-    // Layer.provide composes the same way: the override is merged on top of the full layer.
+    // Layer.provideMerge composes the same way: the override is merged on top of the full layer.
     await Effect.runPromise(
       backup("a.txt").pipe(Effect.provide(Layer.provideMerge(fakeRead, fs.layer)))
     )
@@ -109,8 +129,8 @@ describe("Operation", () => {
 
   it("looks the implementation up each time the result runs, not when the operation is called", async () => {
     const read = FileSystem.readFile("a.txt")
-    const first = read.pipe(Effect.provideService(FileSystem.readFile.service, () => Effect.succeed(bytes("first"))))
-    const second = read.pipe(Effect.provideService(FileSystem.readFile.service, () => Effect.succeed(bytes("second"))))
+    const first = read.pipe(Effect.provideService(FileSystem.readFile, () => Effect.succeed(bytes("first"))))
+    const second = read.pipe(Effect.provideService(FileSystem.readFile, () => Effect.succeed(bytes("second"))))
     assert.deepStrictEqual(await Effect.runPromise(first), bytes("first"))
     assert.deepStrictEqual(await Effect.runPromise(second), bytes("second"))
     assert.deepStrictEqual(await Effect.runPromise(first), bytes("first"))
@@ -125,7 +145,7 @@ describe("Operation", () => {
     const call = FileSystem.stream("a.txt").pipe(Stream.map((chunk) => chunk.length))
     const overridden = await Effect.runPromise(
       Stream.runCollect(call).pipe(
-        Effect.provideService(FileSystem.stream.service, () => Stream.make(bytes("a"), bytes("bc")))
+        Effect.provideService(FileSystem.stream, () => Stream.make(bytes("a"), bytes("bc")))
       )
     )
     assert.deepStrictEqual(overridden, [1, 2])
@@ -142,7 +162,7 @@ describe("Operation", () => {
     assert.isFalse(Effect.isEffect(streamCall))
   })
 
-  it("is called by Effect.andThen and Effect.tap, since it is not an Effect", async () => {
+  it("is called by Effect.andThen, Effect.tap and Effect.flatMap, since it is not an Effect", async () => {
     const fs = memory()
     fs.files.set("a.txt", bytes("hello"))
     const viaAndThen = await Effect.runPromise(
@@ -164,7 +184,7 @@ describe("Operation", () => {
     const holder = { prefix: "hi ", greet: op }
     const result = await Effect.runPromise(
       holder.greet("x").pipe(
-        Effect.provideService(op.service, function(this: { prefix: string }, name) {
+        Effect.provideService(op, function(this: { prefix: string }, name) {
           return Effect.succeed(this.prefix + name)
         })
       )
@@ -177,7 +197,7 @@ describe("Operation", () => {
       <A>(decode: (input: string) => A, input: string) => Effect.Effect<A, never, "test/parse">
     >()("test/parse")
     const result: number = await Effect.runPromise(
-      parse(Number, "42").pipe(Effect.provideService(parse.service, (decode, input) => Effect.succeed(decode(input))))
+      parse(Number, "42").pipe(Effect.provideService(parse, (decode, input) => Effect.succeed(decode(input))))
     )
     assert.strictEqual(result, 42)
   })
@@ -187,7 +207,7 @@ describe("Operation", () => {
       return bytes(`fn:${path}`)
     })
     const result = await Effect.runPromise(
-      FileSystem.readFile("a.txt").pipe(Effect.provide(Layer.succeed(FileSystem.readFile.service, implementation)))
+      FileSystem.readFile("a.txt").pipe(Effect.provide(Layer.succeed(FileSystem.readFile, implementation)))
     )
     assert.deepStrictEqual(result, bytes("fn:a.txt"))
   })
@@ -221,7 +241,9 @@ describe("Operations", () => {
   it("is a key whose members are the operations", () => {
     assert.isTrue(Context.isKey(FileSystem.FileSystem))
     assert.isTrue(Context.isOperations(FileSystem.FileSystem))
+    assert.isFalse(Context.isOperation(FileSystem.FileSystem))
     assert.isFalse(Context.isReference(FileSystem.FileSystem))
+    assert.isTrue(Effect.isEffect(FileSystem.FileSystem))
     assert.strictEqual(FileSystem.FileSystem.key, "effect/FileSystem")
     assert.strictEqual(FileSystem.FileSystem.members.readFile, FileSystem.readFile)
     assert.strictEqual(Object.keys(FileSystem.FileSystem.members).length, 30)
@@ -244,6 +266,28 @@ describe("Operations", () => {
     assert.deepStrictEqual(files.get("a.txt.bak"), bytes("record"))
     // ...and so does the program that yields the record.
     assert.strictEqual(await Effect.runPromise(backupViaRecord("a.txt").pipe(Effect.provide(live))), 6)
+  })
+
+  it("returns the provided record itself when it is read", async () => {
+    const live = record({ readFile: () => Effect.succeed(bytes("one")) })
+    // through a layer
+    const viaLayer = await Effect.runPromise(
+      FileSystem.FileSystem.pipe(Effect.provide(Layer.succeed(FileSystem.FileSystem, live)))
+    )
+    assert.strictEqual(viaLayer, live)
+    // through provideService
+    assert.strictEqual(
+      await Effect.runPromise(Effect.provideService(FileSystem.FileSystem, FileSystem.FileSystem, live)),
+      live
+    )
+    // through Context directly, and under further unrelated additions
+    const context = Context.make(FileSystem.FileSystem, live)
+    assert.strictEqual(Context.get(context, FileSystem.FileSystem), live)
+    const Other = Context.Service<number>("test/Other")
+    let derived = context
+    for (let i = 0; i < 12; i++) derived = Context.add(derived, Other, i)
+    assert.strictEqual(Context.get(derived, FileSystem.FileSystem), live)
+    assert.strictEqual(Context.getOrUndefinedUnsafe(context, "effect/FileSystem"), live)
   })
 
   it("assembles the record from operation layers, so yield* works under per-operation providers", async () => {
@@ -275,30 +319,41 @@ describe("Operations", () => {
   })
 
   it("lets a single operation be overridden on top of a record, and the record view sees the override", async () => {
-    const live = Layer.succeed(
-      FileSystem.FileSystem,
-      record({
-        readFile: () => Effect.succeed(bytes("live")),
-        writeFile: () => Effect.void
-      })
-    )
+    const liveRecord = record({
+      readFile: () => Effect.succeed(bytes("live")),
+      writeFile: () => Effect.void
+    })
+    const live = Layer.succeed(FileSystem.FileSystem, liveRecord)
     const fake = () => Effect.succeed(bytes("fake"))
     const direct = await Effect.runPromise(
-      FileSystem.readFile("a.txt").pipe(Effect.provideService(FileSystem.readFile.service, fake), Effect.provide(live))
+      FileSystem.readFile("a.txt").pipe(Effect.provideService(FileSystem.readFile, fake), Effect.provide(live))
     )
     assert.deepStrictEqual(direct, bytes("fake"))
     const viaRecord = await Effect.runPromise(
-      Effect.flatMap(FileSystem.FileSystem, (fs) => fs.readFile("a.txt")).pipe(
-        Effect.provideService(FileSystem.readFile.service, fake),
+      Effect.map(FileSystem.FileSystem, (fs) => fs).pipe(
+        Effect.provideService(FileSystem.readFile, fake),
         Effect.provide(live)
       )
     )
-    assert.deepStrictEqual(viaRecord, bytes("fake"))
-    // Ordinary precedence: with the record provided closer to the program, the record's member wins.
+    // the view is assembled, since the provided record is no longer current
+    assert.notStrictEqual(viaRecord, liveRecord)
+    assert.strictEqual(viaRecord.readFile, fake)
+    assert.strictEqual(viaRecord.stat, liveRecord.stat)
+    // Ordinary precedence: with the record provided closer to the program, the record's member wins and the
+    // record read is the provided object.
     const inner = await Effect.runPromise(
-      FileSystem.readFile("a.txt").pipe(Effect.provide(live), Effect.provideService(FileSystem.readFile.service, fake))
+      Effect.map(FileSystem.FileSystem, (fs) => fs).pipe(
+        Effect.provide(live),
+        Effect.provideService(FileSystem.readFile, fake)
+      )
     )
-    assert.deepStrictEqual(inner, bytes("live"))
+    assert.strictEqual(inner, liveRecord)
+    assert.deepStrictEqual(
+      await Effect.runPromise(
+        FileSystem.readFile("a.txt").pipe(Effect.provide(live), Effect.provideService(FileSystem.readFile, fake))
+      ),
+      bytes("live")
+    )
   })
 
   it("supports Layer.mock for a partial record: provided members run, the rest die as unimplemented", async () => {
@@ -327,75 +382,127 @@ describe("Operations", () => {
     assert.deepStrictEqual(updated, bytes("two"))
 
     const context = Context.make(FileSystem.FileSystem, live)
-    assert.strictEqual(context.mapUnsafe.size, 30)
-    assert.strictEqual(Context.get(context, FileSystem.readFile.service), live.readFile)
-    assert.strictEqual(Context.get(context, FileSystem.FileSystem).readFile, live.readFile)
+    assert.strictEqual(context.mapUnsafe.size, 31)
+    assert.strictEqual(Context.get(context, FileSystem.readFile), live.readFile)
+    assert.strictEqual(Context.get(context, FileSystem.FileSystem), live)
     assert.isTrue(Option.isSome(Context.getOption(context, FileSystem.FileSystem)))
 
-    const one = Context.make(FileSystem.readFile.service, live.readFile)
+    const one = Context.make(FileSystem.readFile, live.readFile)
     assert.isTrue(Option.isNone(Context.getOption(one, FileSystem.FileSystem)))
+    assert.strictEqual(Context.getOrUndefined(one, FileSystem.FileSystem), undefined)
     assert.throws(() => Context.get(one, FileSystem.FileSystem as any), /Service not found: effect\/FileSystem\/access/)
 
-    assert.strictEqual(Context.pick(FileSystem.FileSystem)(context).mapUnsafe.size, 30)
+    assert.strictEqual(Context.pick(FileSystem.FileSystem)(context).mapUnsafe.size, 31)
     assert.strictEqual(Context.omit(FileSystem.FileSystem)(context).mapUnsafe.size, 0)
-    assert.strictEqual(Context.omit(FileSystem.readFile.service)(context).mapUnsafe.size, 29)
-    assert.strictEqual(Context.pick(FileSystem.readFile.service, FileSystem.stat.service)(context).mapUnsafe.size, 2)
+    // omitting a member also drops the record, which no longer agrees with its slots
+    const without = Context.omit(FileSystem.readFile)(context)
+    assert.strictEqual(without.mapUnsafe.size, 29)
+    assert.isFalse(without.mapUnsafe.has("effect/FileSystem"))
+    assert.strictEqual(Context.pick(FileSystem.readFile, FileSystem.stat)(context).mapUnsafe.size, 2)
   })
 
-  it("stores a record under its members' keys and never under its own", () => {
+  it("stores a record under its own key and its members' keys", () => {
     const live = record({})
     const context = Context.add(Context.empty(), FileSystem.FileSystem, live)
-    assert.strictEqual(context.mapUnsafe.size, 30)
+    assert.strictEqual(context.mapUnsafe.size, 31)
     assert.isTrue(context.mapUnsafe.has("effect/FileSystem/readFile"))
+    assert.isTrue(context.mapUnsafe.has("effect/FileSystem"))
+    assert.strictEqual(context.mapUnsafe.get("effect/FileSystem/readFile"), live.readFile)
+  })
+
+  it("drops a record that no longer agrees with its slots when a context is flattened or merged", () => {
+    const live = record({ readFile: () => Effect.succeed(bytes("live")) })
+    const fake = () => Effect.succeed(bytes("fake"))
+    const Other = Context.Service<number>("test/Other")
+    // an override as an overlay, then enough additions to flatten the overlays into the base
+    let context = Context.add(Context.make(FileSystem.FileSystem, live), FileSystem.readFile, fake)
+    for (let i = 0; i < 12; i++) context = Context.add(context, Other, i)
     assert.isFalse(context.mapUnsafe.has("effect/FileSystem"))
+    assert.strictEqual(Context.get(context, FileSystem.FileSystem).readFile, fake)
+    assert.strictEqual(Context.get(context, FileSystem.readFile), fake)
+    // merge: the right-hand context wins slot by slot, so a member on the right drops the record on the left...
+    const merged = Context.merge(Context.make(FileSystem.FileSystem, live), Context.make(FileSystem.readFile, fake))
+    assert.isFalse(merged.mapUnsafe.has("effect/FileSystem"))
+    assert.strictEqual(Context.get(merged, FileSystem.FileSystem).readFile, fake)
+    // ...and a record on the right replaces a member on the left
+    const reversed = Context.merge(Context.make(FileSystem.readFile, fake), Context.make(FileSystem.FileSystem, live))
+    assert.strictEqual(Context.get(reversed, FileSystem.FileSystem), live)
+    assert.strictEqual(Context.get(reversed, FileSystem.readFile), live.readFile)
+    const all = Context.mergeAll(Context.make(FileSystem.FileSystem, live), Context.make(FileSystem.readFile, fake))
+    assert.strictEqual(Context.get(all, FileSystem.FileSystem).readFile, fake)
   })
 })
 
-describe("value-shaped operations", () => {
+describe("string-keyed and structural keys", () => {
+  it("keeps the storage invariant for writes by string", () => {
+    const live = record({ readFile: () => Effect.succeed(bytes("live")) })
+    const fake = () => Effect.succeed(bytes("fake"))
+    // a record written by its string is spread like a keyed write
+    const spread = Context.addUnsafe(Context.empty(), "effect/FileSystem", live)
+    assert.strictEqual(spread.mapUnsafe.size, 31)
+    assert.strictEqual(
+      Context.get(spread as Context.Context<FileSystem.FileSystem>, FileSystem.readFile),
+      live.readFile
+    )
+    // a member written by its string marks the records spanning it
+    const shadowed = Context.addUnsafe(spread, "effect/FileSystem/readFile", fake)
+    assert.strictEqual(Context.getOrUndefinedUnsafe(shadowed, "effect/FileSystem"), undefined)
+    assert.strictEqual(
+      Context.get(shadowed as Context.Context<FileSystem.FileSystem>, FileSystem.FileSystem).readFile,
+      fake
+    )
+    assert.isFalse(shadowed.mapUnsafe.has("effect/FileSystem"))
+    assert.strictEqual(Context.getOrUndefinedUnsafe(spread, "effect/FileSystem"), live)
+  })
+
+  it("gives a key built structurally one-slot semantics", () => {
+    // `internal/core.ts` builds its cause annotation keys this way
+    const Duck = { key: "test/duck" } as unknown as Context.Service<"test/duck", number>
+    const context = Context.make(Duck, 1)
+    assert.strictEqual(context.mapUnsafe.size, 1)
+    assert.strictEqual(Context.get(context, Duck), 1)
+    assert.strictEqual(Context.get(Context.add(context, Duck, 2), Duck), 2)
+    assert.isTrue(Option.isNone(Context.getOption(Context.empty(), Duck)))
+    assert.throws(
+      () => Context.get(Context.empty() as Context.Context<"test/duck">, Duck),
+      /Service not found: test\/duck/
+    )
+    assert.strictEqual(Context.pick(Duck)(context).mapUnsafe.size, 1)
+    assert.strictEqual(Context.omit(Duck)(context).mapUnsafe.size, 0)
+  })
+})
+
+describe("zero-argument operations", () => {
   const fake = (columns: number, lines: Array<string>) =>
     Layer.mergeAll(
-      Layer.succeed(Terminal.columns.service, Effect.succeed(columns)),
-      Layer.succeed(Terminal.display.service, (text) =>
+      Layer.succeed(Terminal.columns, () => Effect.succeed(columns)),
+      Layer.succeed(Terminal.display, (text) =>
         Effect.sync(() => {
           lines.push(text)
         }))
     )
 
-  it("is called with no arguments and runs the Effect provided as its implementation", async () => {
+  it("is called with no arguments and runs the implementation", async () => {
     const lines: Array<string> = []
     const width = await Effect.runPromise(banner("hi").pipe(Effect.provide(fake(12, lines))))
     assert.strictEqual(width, 12)
     assert.deepStrictEqual(lines, ["======\n  hi\n======\n"])
   })
 
-  it("is a function and not an Effect, like every operation", () => {
-    assert.strictEqual(typeof Terminal.columns, "function")
-    assert.isFalse(Effect.isEffect(Terminal.columns))
-    assert.isTrue(Effect.isEffect(Terminal.columns()))
-    assert.isTrue(Context.isOperation(Terminal.columns))
-  })
-
-  it("looks the implementation up each time the call result runs", async () => {
-    const call = Terminal.columns()
-    const a = await Effect.runPromise(call.pipe(Effect.provideService(Terminal.columns.service, Effect.succeed(1))))
-    const b = await Effect.runPromise(call.pipe(Effect.provideService(Terminal.columns.service, Effect.succeed(2))))
-    assert.deepStrictEqual([a, b], [1, 2])
-  })
-
-  it("keeps the member as an Effect in the record, so the record view and the implementation are unchanged", async () => {
+  it("reads the same standalone and through the record", async () => {
     const lines: Array<string> = []
     const viaRecord = Effect.gen(function*() {
       const terminal = yield* Terminal.Terminal
-      const columns = yield* terminal.columns
+      const columns = yield* terminal.columns()
       yield* terminal.display(String(columns))
       return columns
     })
     const record: Terminal.Shape = {
-      columns: Effect.succeed(40),
-      rows: Effect.succeed(10),
-      size: Effect.die("unused"),
-      readInput: Effect.die("unused"),
-      readLine: Effect.succeed("line"),
+      columns: () => Effect.succeed(40),
+      rows: () => Effect.succeed(10),
+      size: () => Effect.die("unused"),
+      readInput: () => Effect.die("unused"),
+      readLine: () => Effect.succeed("line"),
       display: (text) =>
         Effect.sync(() => {
           lines.push(text)
@@ -420,14 +527,9 @@ describe("value-shaped operations", () => {
 })
 
 describe("mixed and nested records", () => {
-  const sep: Context.Service<"test/Path/sep", string> = Context.Service("test/Path/sep")
-  const join: Context.Service<"test/Path/join", (...parts: ReadonlyArray<string>) => string> = Context.Service(
-    "test/Path/join"
-  )
-  const fromFileUrl: Context.Operation<"test/Path/fromFileUrl", (url: URL) => Effect.Effect<string>> = Context
-    .Operation(
-      "test/Path/fromFileUrl"
-    )
+  const sep = Context.Service<string>("test/Path/sep")
+  const join = Context.Service<(...parts: ReadonlyArray<string>) => string>("test/Path/join")
+  const fromFileUrl = Context.Operation<(url: URL) => Effect.Effect<string>>()("test/Path/fromFileUrl")
   const indent = Context.Reference<number>("test/Path/indent", { defaultValue: () => 2 })
   const pathMembers = { sep, join, fromFileUrl, indent }
   type Path = Context.Operations.Identifier<typeof pathMembers>
@@ -457,7 +559,7 @@ describe("mixed and nested records", () => {
     const members = Layer.mergeAll(
       Layer.succeed(sep, "\\"),
       Layer.succeed(join, (...parts) => parts.join("\\")),
-      Layer.succeed(fromFileUrl.service, (url) => Effect.succeed(url.pathname.replaceAll("/", "\\")))
+      Layer.succeed(fromFileUrl, (url) => Effect.succeed(url.pathname.replaceAll("/", "\\")))
     )
     const windows = await Effect.runPromise(program.pipe(Effect.provide(members)))
     assert.strictEqual(windows.joined, "a\\b")
@@ -489,14 +591,29 @@ describe("mixed and nested records", () => {
       readFile: () => Effect.succeed(bytes("x")),
       stat: () => Effect.die("unused")
     }
-    const context = Context.make(Platform, { fs, path: posix })
-    assert.strictEqual(context.mapUnsafe.size, 7)
+    const platform = { fs, path: posix }
+    const context = Context.make(Platform, platform)
+    // three leaves and the ReadOnly record, four leaves and the Path record, and the Platform record
+    assert.strictEqual(context.mapUnsafe.size, 10)
     assert.isTrue(context.mapUnsafe.has("effect/FileSystem/readFile"))
     assert.isTrue(context.mapUnsafe.has("test/Path/sep"))
-    assert.isFalse(context.mapUnsafe.has("test/Platform"))
-    assert.strictEqual(Context.get(context, Platform).path.sep, "/")
-    assert.strictEqual(Context.get(context, FileSystem.readFile.service), fs.readFile)
+    assert.isTrue(context.mapUnsafe.has("test/Platform"))
+    assert.strictEqual(Context.get(context, Platform), platform)
+    assert.strictEqual(Context.get(context, FileSystem.ReadOnly), fs)
+    assert.strictEqual(Context.get(context, FileSystem.readFile), fs.readFile)
     assert.strictEqual(Context.omit(Platform)(context).mapUnsafe.size, 0)
+    // a member written deeper down shadows every record spanning it
+    const fake = () => Effect.succeed(bytes("fake"))
+    const shadowed = Context.add(context, FileSystem.readFile, fake)
+    assert.strictEqual(Context.get(shadowed, Platform).fs.readFile, fake)
+    assert.strictEqual(Context.get(shadowed, FileSystem.ReadOnly).readFile, fake)
+    assert.strictEqual(Context.get(shadowed, Platform).path, posix)
+    // a nested record written on top shadows the outer record and wins for its members
+    const inner: FileSystem.ReadOnlyShape = { ...fs, readFile: fake }
+    const rewritten = Context.add(context, FileSystem.ReadOnly, inner)
+    assert.strictEqual(Context.get(rewritten, FileSystem.ReadOnly), inner)
+    assert.strictEqual(Context.get(rewritten, Platform).fs, inner)
+    assert.strictEqual(Context.get(rewritten, FileSystem.readFile), fake)
   })
 })
 
@@ -505,10 +622,10 @@ describe("subset records", () => {
     const fs = memory()
     fs.files.set("a.txt", bytes("twelve bytes"))
     const stat = Layer.succeed(
-      FileSystem.stat.service,
+      FileSystem.stat,
       (path) => Effect.succeed({ type: "File" as const, size: fs.files.get(path)?.length ?? 0, mtime: new Date() })
     )
-    const exists = Layer.succeed(FileSystem.exists.service, (path) => Effect.succeed(fs.files.has(path)))
+    const exists = Layer.succeed(FileSystem.exists, (path) => Effect.succeed(fs.files.has(path)))
     const members = Layer.mergeAll(fs.readFile, stat, exists)
     assert.strictEqual(await Effect.runPromise(sizeOf("a.txt").pipe(Effect.provide(members))), 12)
     assert.strictEqual(await Effect.runPromise(sizeOf("missing").pipe(Effect.provide(members))), 0)
@@ -532,42 +649,59 @@ describe("subset records", () => {
       await Effect.runPromise(FileSystem.readFile("x").pipe(Effect.provide(readOnly))),
       bytes("three")
     )
-    assert.strictEqual(Context.make(FileSystem.ReadOnly, {} as FileSystem.ReadOnlyShape).mapUnsafe.size, 3)
+    assert.strictEqual(Context.make(FileSystem.ReadOnly, {} as FileSystem.ReadOnlyShape).mapUnsafe.size, 4)
+  })
+
+  it("is shadowed by the full record and shadows it, slot by slot", () => {
+    const full = record({ readFile: () => Effect.succeed(bytes("full")) })
+    const subset: FileSystem.ReadOnlyShape = {
+      exists: () => Effect.succeed(true),
+      readFile: () => Effect.succeed(bytes("subset")),
+      stat: () => Effect.die("unused")
+    }
+    const fullThenSubset = Context.add(Context.make(FileSystem.FileSystem, full), FileSystem.ReadOnly, subset)
+    assert.strictEqual(Context.get(fullThenSubset, FileSystem.ReadOnly), subset)
+    assert.strictEqual(Context.get(fullThenSubset, FileSystem.readFile), subset.readFile)
+    assert.strictEqual(Context.get(fullThenSubset, FileSystem.FileSystem).readFile, subset.readFile)
+    assert.strictEqual(Context.get(fullThenSubset, FileSystem.FileSystem).writeFile, full.writeFile)
+    const subsetThenFull = Context.add(Context.make(FileSystem.ReadOnly, subset), FileSystem.FileSystem, full)
+    assert.strictEqual(Context.get(subsetThenFull, FileSystem.FileSystem), full)
+    assert.strictEqual(Context.get(subsetThenFull, FileSystem.ReadOnly).readFile, full.readFile)
   })
 })
 
 describe("record cache", () => {
-  it("returns the same record for two reads of one context, and a new one once a member is replaced", () => {
-    const live = record({ readFile: () => Effect.succeed(bytes("one")) })
-    const context = Context.make(FileSystem.FileSystem, live)
-    const first = Context.get(context, FileSystem.FileSystem)
-    assert.strictEqual(Context.get(context, FileSystem.FileSystem), first)
-    assert.strictEqual(first.readFile, live.readFile)
-    const replaced = Context.add(context, FileSystem.readFile.service, () => Effect.succeed(bytes("two")))
-    const second = Context.get(replaced, FileSystem.FileSystem)
-    assert.notStrictEqual(second, first)
-    assert.notStrictEqual(second.readFile, live.readFile)
-    assert.strictEqual(second.stat, live.stat)
-    // the curried form builds the same kind of operation as the flat form the contract uses
-    const curried = Context.Operation<(x: number) => Effect.Effect<number>>()("test/curried")
-    assert.isTrue(Context.isOperation(curried))
-    assert.strictEqual(curried.name, "test/curried")
-    assert.strictEqual(
-      Effect.runSync(curried(1).pipe(Effect.provideService(curried.service, (x) => Effect.succeed(x + 1)))),
-      2
+  it("shares one assembled record across contexts derived from one base, and rebuilds it when a member changes", () => {
+    const Other = Context.Service<number>("test/Other")
+    const fromMembers = Context.mergeAll(
+      Context.make(FileSystem.exists, () => Effect.succeed(true)),
+      Context.make(FileSystem.readFile, () => Effect.succeed(bytes("one"))),
+      Context.make(FileSystem.stat, () => Effect.die("unused"))
     )
+    const first = Context.get(fromMembers, FileSystem.ReadOnly)
+    assert.strictEqual(Context.get(fromMembers, FileSystem.ReadOnly), first)
+    // a context derived by adding an unrelated service shares the base, so it shares the assembly
+    assert.strictEqual(Context.get(Context.add(fromMembers, Other, 1), FileSystem.ReadOnly), first)
+    assert.strictEqual(Context.get(Context.add(fromMembers, Other, 2), FileSystem.ReadOnly), first)
+    // replacing a member gives a new record with the replacement and the other members unchanged
+    const fake = () => Effect.succeed(bytes("two"))
+    const replaced = Context.add(fromMembers, FileSystem.readFile, fake)
+    const second = Context.get(replaced, FileSystem.ReadOnly)
+    assert.notStrictEqual(second, first)
+    assert.strictEqual(second.readFile, fake)
+    assert.strictEqual(second.stat, first.stat)
+    assert.strictEqual(Context.get(replaced, FileSystem.ReadOnly), second)
   })
 })
 
 describe("Sink.Operation", () => {
-  const collect: Sink.Operation<"test/collect", (label: string) => Sink.Sink<Array<string>, string>> = Sink
-    .Operation("test/collect")
+  const collect = Sink.Operation<(label: string) => Sink.Sink<Array<string>, string>>()("test/collect")
 
   it("returns a Sink that runs the implementation looked up from the running fiber", async () => {
     assert.isTrue(Sink.isSink(collect("x")))
     assert.isFalse(Effect.isEffect(collect("x")))
     const live = Layer.succeed(
-      collect.service,
+      collect,
       (label) => Sink.map(Sink.collect<string>(), (items) => items.map((item) => `${label}:${item}`))
     )
     const result = await Effect.runPromise(Stream.run(Stream.make("a", "b"), collect("x")).pipe(Effect.provide(live)))

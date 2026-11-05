@@ -11,8 +11,8 @@ Effect.runPromise(
   backupViaRecord("a.txt").pipe(
     Effect.provide(
       Layer.mergeAll(
-        Layer.succeed(FileSystem.readFile.service, () => Effect.succeed(new Uint8Array())),
-        Layer.succeed(FileSystem.writeFile.service, () => Effect.void)
+        Layer.succeed(FileSystem.readFile, () => Effect.succeed(new Uint8Array())),
+        Layer.succeed(FileSystem.writeFile, () => Effect.void)
       )
     )
   )

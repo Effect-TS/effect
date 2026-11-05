@@ -9,6 +9,6 @@ const M = "node/FileSystem/truncate"
  * The Node implementation of `FileSystem.truncate`, as a layer for its operation.
  */
 export const truncate = Layer.succeed(
-  FileSystem.truncate.service,
+  FileSystem.truncate,
   (path, length) => tryFs(M, () => fs.truncate(path, length))
 )

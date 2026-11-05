@@ -11,7 +11,7 @@ const M = "node/FileSystem/watch"
  * The Node implementation of `FileSystem.watch`, as a layer for its operation.
  */
 export const watch = Layer.succeed(
-  FileSystem.watch.service,
+  FileSystem.watch,
   (path) =>
     Stream.fromAsyncIterable(fs.watch(path), (cause) => new FileSystemError({ operation: M, cause })).pipe(
       Stream.map((event) => ({

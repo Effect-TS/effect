@@ -2288,7 +2288,8 @@ export const exitFindErrorOption = <A, E>(self: Exit.Exit<A, E>): Option.Option<
 // ----------------------------------------------------------------------------
 
 /** @internal */
-export const service = <I, S>(service: Context.Key<I, S>): Effect.Effect<S, never, I> => service
+export const service = <I, S>(service: Context.Key<I, S>): Effect.Effect<S, never, I> =>
+  withFiber((fiber) => succeed(Context.getUnsafe(fiber.context, service)))
 
 /** @internal */
 export const serviceOption = <I, S>(

@@ -9,6 +9,6 @@ const M = "node/FileSystem/chown"
  * The Node implementation of `FileSystem.chown`, as a layer for its operation.
  */
 export const chown = Layer.succeed(
-  FileSystem.chown.service,
+  FileSystem.chown,
   (path, uid, gid) => tryFs(M, () => fs.chown(path, uid, gid))
 )

@@ -10,7 +10,7 @@ const M = "node/FileSystem/readDirectoryEntries"
  * The Node implementation of `FileSystem.readDirectoryEntries`, as a layer for its operation.
  */
 export const readDirectoryEntries = Layer.succeed(
-  FileSystem.readDirectoryEntries.service,
+  FileSystem.readDirectoryEntries,
   (path) =>
     tryFs(M, () => fs.readdir(path, { withFileTypes: true })).pipe(
       Effect.map((entries) =>

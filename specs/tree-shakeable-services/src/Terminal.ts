@@ -1,12 +1,14 @@
 /**
  * The contract of a terminal, modelled on `effect/Terminal` in v4: the second
- * worked migration in the spec, and the one whose members are mostly values.
+ * worked migration in the spec, and the one whose members are mostly values
+ * today.
  *
- * Five of the six members are Effects rather than functions (`columns`,
- * `rows`, `size`, `readInput`, `readLine`); only `display` takes arguments.
- * A member whose shape is an Effect is still an operation: it is called with
- * no arguments, `yield* Terminal.columns()`, and the record keeps the member
- * as the Effect it is today, `(yield* Terminal).columns`.
+ * Five of the six members of `effect/Terminal` are Effects rather than
+ * functions (`columns`, `rows`, `size`, `readInput`, `readLine`); only
+ * `display` takes arguments. An operation is a function, so each of the five
+ * becomes a function of no arguments: `yield* Terminal.columns()` standalone,
+ * `yield* terminal.columns()` through the record. The two forms read alike,
+ * and an implementation is a function in both.
  */
 import * as Context from "effect/Context"
 import * as Data from "effect/Data"
@@ -31,36 +33,27 @@ export interface UserInput {
   readonly key: { readonly name: string; readonly ctrl: boolean }
 }
 
-export const columns: Context.Operation<"effect/Terminal/columns", Effect.Effect<number>> = /* @__PURE__ */ Context
-  .Operation("effect/Terminal/columns")
+export const columns = Context.Operation<() => Effect.Effect<number>>()("effect/Terminal/columns")
 
-export const rows: Context.Operation<"effect/Terminal/rows", Effect.Effect<number>> = /* @__PURE__ */ Context
-  .Operation("effect/Terminal/rows")
+export const rows = Context.Operation<() => Effect.Effect<number>>()("effect/Terminal/rows")
 
-export const size: Context.Operation<
-  "effect/Terminal/size",
-  Effect.Effect<Queue.Dequeue<Size>, never, Scope.Scope>
-> = /* @__PURE__ */ Context.Operation("effect/Terminal/size")
+export const size = Context.Operation<() => Effect.Effect<Queue.Dequeue<Size>, never, Scope.Scope>>()(
+  "effect/Terminal/size"
+)
 
-export const readInput: Context.Operation<
-  "effect/Terminal/readInput",
-  Effect.Effect<Queue.Dequeue<UserInput>, never, Scope.Scope>
-> = /* @__PURE__ */ Context.Operation("effect/Terminal/readInput")
+export const readInput = Context.Operation<() => Effect.Effect<Queue.Dequeue<UserInput>, never, Scope.Scope>>()(
+  "effect/Terminal/readInput"
+)
 
-export const readLine: Context.Operation<"effect/Terminal/readLine", Effect.Effect<string, QuitError>> =
-  /* @__PURE__ */ Context.Operation("effect/Terminal/readLine")
+export const readLine = Context.Operation<() => Effect.Effect<string, QuitError>>()("effect/Terminal/readLine")
 
-export const display: Context.Operation<
-  "effect/Terminal/display",
-  (text: string) => Effect.Effect<void, TerminalError>
-> = /* @__PURE__ */ Context.Operation("effect/Terminal/display")
+export const display = Context.Operation<(text: string) => Effect.Effect<void, TerminalError>>()(
+  "effect/Terminal/display"
+)
 
 const members = { columns, rows, size, readInput, readLine, display }
 
 export type Terminal = Context.Operations.Identifier<typeof members>
 export interface Shape extends Context.Operations.Shape<typeof members> {}
 
-export const Terminal: Context.Operations<Terminal, Shape> = /* @__PURE__ */ Context.Operations(
-  "effect/Terminal",
-  members
-)
+export const Terminal: Context.Operations<Terminal, Shape> = Context.Operations("effect/Terminal", members)
