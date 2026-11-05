@@ -696,7 +696,9 @@ export type IsStream<R extends Any, Tag extends string> = R extends Rpc<
  * @category utility types
  * @since 4.0.0
  */
-export type ExtractTag<R extends Any, Tag extends string> = ByTag<R>[Tag & keyof ByTag<R>]
+export type ExtractTag<R extends Any, Tag extends string> = [R["_tag"]] extends [LiteralTag<R>] ?
+  ByTag<R>[Tag & LiteralTag<R>]
+  : ExtractTagDistributive<R, Tag>
 
 /**
  * Indexes the RPCs of a union by their tag.
@@ -711,6 +713,22 @@ export type ExtractTag<R extends Any, Tag extends string> = ByTag<R>[Tag & keyof
  * @since 4.1.3
  */
 export type ByTag<R extends Any> = { readonly [Current in R as Current["_tag"]]: Current }
+
+// The tags of RPCs whose tag is a literal, leaving out `string` and template
+// literal pattern tags.
+type LiteralTag<R extends Any> = R extends Any ? {} extends Record<R["_tag"], unknown> ? never : R["_tag"] : never
+
+// Tests every RPC in the union. Used when some RPC has a `string` or pattern
+// tag, which `ByTag` cannot index without hiding the literal RPCs it matches.
+type ExtractTagDistributive<R extends Any, Tag extends string> = R extends Rpc<
+  infer _Tag extends Tag,
+  infer _Payload,
+  infer _Success,
+  infer _Error,
+  infer _Middleware,
+  infer _Requires
+> ? R :
+  never
 
 /**
  * Extracts the services provided by middleware on the RPC with the specified

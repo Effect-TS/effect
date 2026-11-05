@@ -1,14 +1,14 @@
 {
   "flat-client-calls-100": {
-    "maxInstantiationsDelta": 508931,
-    "maxTypesDelta": 17315
+    "maxInstantiationsDelta": 423637,
+    "maxTypesDelta": 17917
   },
   "atom-rpc-query-calls-100": {
-    "maxInstantiationsDelta": 509189,
-    "maxTypesDelta": 16975
+    "maxInstantiationsDelta": 423895,
+    "maxTypesDelta": 17575
   },
   "atom-rpc-mutation-calls-100": {
-    "maxInstantiationsDelta": 250311,
-    "maxTypesDelta": 16884
+    "maxInstantiationsDelta": 255424,
+    "maxTypesDelta": 17484
   }
 }

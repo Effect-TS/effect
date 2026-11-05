@@ -212,7 +212,7 @@ export const Service = <Self>() =>
     }>()(
       Effect.fnUntraced(function*({ headers, payload, reactivityKeys }) {
         const client = yield* self
-        const effect = client(tag, payload, { headers } as any)
+        const effect = client(tag, payload, { headers } as any) as any as Effect.Effect<any>
         return yield* (reactivityKeys
           ? Reactivity.mutation(effect, reactivityKeys) as Effect.Effect<any>
           : effect as any as Effect.Effect<any>)
