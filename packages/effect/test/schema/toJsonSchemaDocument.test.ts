@@ -639,11 +639,17 @@ describe("toJsonSchemaDocument", () => {
       assertJsonSchemaDocument(Schema.Redacted(Schema.String), password)
       assertJsonSchemaDocument(Schema.RedactedFromValue(Schema.String), password)
       assertJsonSchemaDocument(Schema.RedactedFromValue(Schema.Trim), password)
+      assertJsonSchemaDocument(Schema.RedactedFromValue(Schema.suspend(() => Schema.Trim)), password)
       assertJsonSchemaDocument(Schema.Redacted(Schema.String.annotate({ format: "uuid" })), {
         schema: { "type": "string", "format": "uuid" }
       })
       const uuid = Schema.String.check(Schema.isUUID())
       deepStrictEqual(Schema.toJsonSchemaDocument(Schema.Redacted(uuid)), Schema.toJsonSchemaDocument(uuid))
+      const id = uuid.annotate({ identifier: "Id" })
+      deepStrictEqual(Schema.toJsonSchemaDocument(Schema.Redacted(id)), Schema.toJsonSchemaDocument(id))
+      deepStrictEqual(Schema.toJsonSchemaDocument(Schema.RedactedFromValue(id)), Schema.toJsonSchemaDocument(id))
+      const suspended = Schema.suspend(() => uuid)
+      deepStrictEqual(Schema.toJsonSchemaDocument(Schema.Redacted(suspended)), Schema.toJsonSchemaDocument(suspended))
       assertJsonSchemaDocument(Schema.Redacted(Schema.Finite), {
         schema: { "type": "number" }
       })

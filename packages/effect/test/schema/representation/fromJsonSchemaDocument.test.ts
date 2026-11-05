@@ -1248,6 +1248,28 @@ describe("fromJsonSchemaDocument", () => {
         { ...decoded, nullable: null }
       )
       throws(() => Schema.decodeUnknownSync(schema)({ secret: "hunter2", nullable: null, plain: "hunter22" }))
+
+      const nullableDefinition = importCodec({
+        type: "object",
+        properties: { secret: { $ref: "#/$defs/Text", format: "password" }, plain: { $ref: "#/$defs/Text" } },
+        required: ["secret", "plain"],
+        additionalProperties: false,
+        $defs: { Text: { type: ["string", "null"], minLength: 8 } }
+      })
+      const decodedNullable = Schema.decodeUnknownSync(nullableDefinition)({
+        secret: "hunter22",
+        plain: "hunter22"
+      }) as {
+        readonly secret: unknown
+        readonly plain: unknown
+      }
+      assert.isTrue(Redacted.isRedacted(decodedNullable.secret))
+      assert.strictEqual(decodedNullable.plain, "hunter22")
+      deepStrictEqual(Schema.decodeUnknownSync(nullableDefinition)({ secret: null, plain: null }), {
+        secret: null,
+        plain: null
+      })
+      throws(() => Schema.decodeUnknownSync(nullableDefinition)({ secret: "hunter2", plain: null }))
     })
 
     it("keeps password property names as plain string keys", () => {
