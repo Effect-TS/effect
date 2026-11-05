@@ -1089,6 +1089,60 @@ describe("Arbitrary", () => {
         }
       }))
 
+    describe("deletes failure-irrelevant String units anywhere", () => {
+      const cases: ReadonlyArray<{
+        readonly name: string
+        readonly schema: Schema.Codec<string>
+        readonly property: (value: string) => boolean
+        readonly expected: string
+      }> = [
+        { name: "two spaces", schema: Schema.String, property: (s) => s.split(" ").length < 3, expected: "  " },
+        { name: "an ASCII digit", schema: Schema.String, property: (s) => !/\d/.test(s), expected: "0" },
+        { name: "a lowercase letter", schema: Schema.String, property: (s) => !/[a-z]/.test(s), expected: "a" },
+        {
+          name: "a digit before a lowercase letter",
+          schema: Schema.String,
+          property: (s) => !/\d.*[a-z]/.test(s),
+          expected: "0a"
+        },
+        {
+          name: "a leading digit and a trailing lowercase letter within a minimum length",
+          schema: Schema.String.check(Schema.isMinLength(3)),
+          property: (s) => !/^\d.*[a-z]$/.test(s),
+          expected: "0\0a"
+        },
+        {
+          name: "two x within a pattern",
+          schema: Schema.String.check(Schema.isPattern(/^[a-z]*$/)),
+          property: (s) => s.split("x").length < 3,
+          expected: "xx"
+        },
+        {
+          name: "two spaces within code point bounds",
+          schema: Schema.String.check(Schema.isMinCodePoints(1)),
+          property: (s) => s.split(" ").length < 3,
+          expected: "  "
+        }
+      ]
+      for (const { expected, name, property, schema } of cases) {
+        it.effect(name, () =>
+          Effect.gen(function*() {
+            const evaluated: Array<string> = []
+            const result = yield* Arbitrary.checkEffect(Arbitrary.schema(schema), (value) => {
+              evaluated.push(value)
+              return property(value)
+            }, { seed: `string-deletion:${name}`, size: 100 })
+
+            assert.strictEqual(result._tag, "Falsified")
+            assert.isTrue(evaluated.every(Schema.is(schema)))
+            if (result._tag === "Falsified") {
+              assert.isFalse(result.initialInput.startsWith(expected))
+              assert.strictEqual(result.shrunkInput, expected)
+            }
+          }))
+      }
+    })
+
     it.effect("structurally shrinks regular-expression repetitions", () =>
       Effect.gen(function*() {
         const schema = Schema.String.check(Schema.isPattern(/^a*b$/), Schema.isMinLength(1), Schema.isMaxLength(8))

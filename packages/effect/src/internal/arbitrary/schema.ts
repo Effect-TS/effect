@@ -11,6 +11,7 @@ import * as SchemaAST from "../../SchemaAST.ts"
 import * as SchemaGetter from "../../SchemaGetter.ts"
 import * as SchemaParser from "../../SchemaParser.ts"
 import * as InternalArray from "../array.ts"
+import { done } from "../core.ts"
 import { effectIsExit } from "../effect.ts"
 import { errorWithPath } from "../errors.ts"
 import * as InternalRecord from "../record.ts"
@@ -714,25 +715,78 @@ const generateRepeatedUniqueValues = (
   return loop()
 }
 
-function shrinkString(value: string, minimum: number): ReadonlyArray<string> {
-  const values = value.length <= minimum
-    ? []
-    : [
-      value.slice(0, minimum),
-      value.slice(0, Math.max(minimum, Math.floor(value.length / 2))),
-      value.slice(0, -1)
-    ]
-  // fast-check v4.9.0 builds strings from shrinkable units (MIT). Effect keeps UTF-16 code units as its string domain
-  // and applies its integer-halving shrink toward the Effect-owned null-unit target.
-  // https://github.com/dubzzz/fast-check/blob/v4.9.0/packages/fast-check/src/arbitrary/string.ts
-  for (let index = 0; index < value.length; index++) {
-    for (const candidate of shrinkInteger(value.charCodeAt(index), 0, true)) {
-      values.push(
-        value.slice(0, index) + globalThis.String.fromCharCode(candidate.value) + value.slice(index + 1)
-      )
+interface StringShrink {
+  /** The minimum UTF-16 length. */
+  readonly minimum: number
+  /** The minimum number of units: code points when `codePoints` is set, UTF-16 code units otherwise. */
+  readonly minimumUnits: number
+  readonly codePoints: boolean
+  readonly pattern: Regexp.Compiled | undefined
+}
+
+function stringSample(value: string, shrink: StringShrink, start = 0, limit = infinity): Model.Sample<string> {
+  if (value === "") return Model.makeSample(value)
+  return Model.makeSampleWithLazyShrinks(value, () => {
+    const candidates = stringShrinks(value, shrink, start, limit)
+    return Effect.suspend(() => {
+      const next = candidates.next()
+      return next.done === true ? done() : Effect.succeed(next.value)
+    })
+  })
+}
+
+// Deletions adapt the removal order of `array.ts` (itself from fast-check v4.9.0's ArrayArbitrary, MIT): at each unit,
+// remove the longest allowed run starting there, then halve it down to a single unit, then simplify that unit.
+// A shrunk candidate resumes at the unit it changed (`start`), so units already found necessary are not retried, and
+// a successful deletion caps the next deletions at that unit at its own size (`limit`). Suffix truncations are only
+// tried from the start: past it, each one is either the first deletion at a later unit or removes a necessary unit.
+function* stringShrinks(
+  value: string,
+  shrink: StringShrink,
+  start: number,
+  limit: number
+): Generator<Model.Sample<string>> {
+  const { codePoints, minimum, minimumUnits, pattern } = shrink
+  const seen = new Set([value])
+  const accept = (candidate: string) => {
+    if (seen.has(candidate) || pattern !== undefined && !pattern.test(candidate)) return false
+    seen.add(candidate)
+    return true
+  }
+  if (pattern !== undefined) {
+    for (const candidate of pattern.shrink(value, minimum)) {
+      if (accept(candidate)) yield stringSample(candidate, shrink)
     }
   }
-  return [...new Set(values)].filter((candidate) => candidate !== value)
+  const offsets = [0]
+  for (let offset = 0; offset < value.length;) {
+    offset += codePoints && value.codePointAt(offset)! > 0xffff ? 2 : 1
+    offsets.push(offset)
+  }
+  const units = offsets.length - 1
+  if (start === 0) {
+    for (let count = units - minimumUnits; count > 0; count = Math.floor(count / 2)) {
+      const candidate = value.slice(0, offsets[units - count])
+      if (candidate.length >= minimum && accept(candidate)) yield stringSample(candidate, shrink, 0, limit)
+    }
+  }
+  for (let index = Math.min(start, units); index < units; index++) {
+    let count = Math.min(units - index, units - minimumUnits, index === start ? limit : infinity)
+    for (; count > 0; count = Math.floor(count / 2)) {
+      const candidate = value.slice(0, offsets[index]) + value.slice(offsets[index + count])
+      if (candidate.length >= minimum && accept(candidate)) yield stringSample(candidate, shrink, index, count)
+    }
+    if (pattern !== undefined) continue
+    // fast-check v4.9.0 builds strings from shrinkable units (MIT). Effect keeps UTF-16 code units as its string domain
+    // and applies its integer-halving shrink toward the Effect-owned null-unit target.
+    // https://github.com/dubzzz/fast-check/blob/v4.9.0/packages/fast-check/src/arbitrary/string.ts
+    for (let offset = offsets[index]; offset < offsets[index + 1]; offset++) {
+      for (const code of shrinkInteger(value.charCodeAt(offset), 0, true)) {
+        const candidate = value.slice(0, offset) + globalThis.String.fromCharCode(code.value) + value.slice(offset + 1)
+        if (accept(candidate)) yield stringSample(candidate, shrink, index, 0)
+      }
+    }
+  }
 }
 
 // Edge-case injection is inspired by fast-check v4.9.0's cached dangerous slices (MIT). The concrete corpus is
@@ -1091,12 +1145,12 @@ export function compile<S extends Schema.Constraint>(schema: S): Model.Compiled<
               : randomString(state, minimum, upper)
             if (value === undefined) return Model.discarded
             return state.shrinks
-              ? Model.sampleFromShrink(
-                value,
-                pattern === undefined
-                  ? (value) => shrinkString(value, minimum)
-                  : (value) => pattern.shrink(value, minimum)
-              )
+              ? stringSample(value, {
+                minimum,
+                minimumUnits: hasCodePoints ? minCodePoints : minimum,
+                codePoints: hasCodePoints,
+                pattern
+              })
               : Model.makeSample(value)
           }
         )
