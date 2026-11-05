@@ -8,6 +8,7 @@ import * as HttpClient from "effect/http/HttpClient"
 import * as HttpClientRequest from "effect/http/HttpClientRequest"
 import * as HttpClientResponse from "effect/http/HttpClientResponse"
 import type * as JsonSchema from "effect/JsonSchema"
+import * as Redacted from "effect/Redacted"
 import * as Schema from "effect/Schema"
 import { spawn } from "node:child_process"
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs"
@@ -812,6 +813,84 @@ const cookieParameterSpec: OpenAPISpec = {
   components: { schemas: {}, securitySchemes: {} },
   security: [],
   tags: [{ name: "Greeting" }]
+}
+
+const password = { type: "string", format: "password" } as const
+
+const passwordSpec: OpenAPISpec = {
+  openapi: "3.1.0",
+  info: { title: "Password API", version: "1.0.0" },
+  paths: {
+    "/login": {
+      post: {
+        operationId: "login",
+        parameters: [{ name: "x-api-key", in: "header", required: true, schema: password }],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                properties: { password: { ...password, examples: ["hunter2"] } },
+                required: ["password"],
+                additionalProperties: false
+              }
+            }
+          }
+        },
+        responses: { "204": { description: "Logged in" } },
+        tags: ["Auth"],
+        security: []
+      }
+    },
+    "/upload": {
+      post: {
+        operationId: "upload",
+        parameters: [],
+        requestBody: {
+          required: true,
+          content: {
+            "multipart/form-data": {
+              schema: {
+                type: "object",
+                properties: { file: { type: "string", format: "binary" }, password },
+                required: ["file", "password"],
+                additionalProperties: false
+              }
+            }
+          }
+        },
+        responses: { "204": { description: "Uploaded" } },
+        tags: ["Auth"],
+        security: []
+      }
+    },
+    "/echo": {
+      post: {
+        operationId: "echo",
+        parameters: [],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                properties: { name: { type: "string" } },
+                required: ["name"],
+                additionalProperties: false
+              }
+            }
+          }
+        },
+        responses: { "204": { description: "Echoed" } },
+        tags: ["Auth"],
+        security: []
+      }
+    }
+  },
+  components: { schemas: {}, securitySchemes: {} },
+  security: [],
+  tags: [{ name: "Auth" }]
 }
 
 describe("OpenApiGenerator", () => {
@@ -3645,6 +3724,84 @@ export const withoutLocale = client.getGreeting({ params: {} })
         assert.strictEqual(requests.length, 1)
         assert.strictEqual(requests[0].headers["cookie"], "locale=en-US")
       }).pipe(Effect.scoped, Effect.provide(OpenApiGenerator.layerTransformerSchema)))
+
+    describe("password format", () => {
+      it.effect("generates Redacted schemas for runtime formats and plain strings for type-only clients", () =>
+        Effect.gen(function*() {
+          yield* assertRuntimeIncludes(passwordSpec, [
+            `import * as Redacted from "effect/Redacted"`,
+            `export type LoginParams = { readonly "x-api-key": Redacted.Redacted<string> }`,
+            `export type LoginRequestJson = { readonly "password": Redacted.Redacted<string> }`,
+            `"password": Schema.Redacted(Schema.String`,
+            `"examples": ["hunter2"]`,
+            `"echo": (options: Parameters<TestClient["echo"]>[0]) => HttpClientRequest.post("/echo").pipe(
+      HttpClientRequest.bodyJsonUnsafe(options.payload),`
+          ])
+          yield* assertTypeOnlyIncludes(passwordSpec, [
+            `export type LoginParams = { readonly "x-api-key": string }`,
+            `export type LoginRequestJson = { readonly "password": string }`
+          ], [`effect/Redacted`])
+          yield* assertHttpApiIncludes(passwordSpec, [
+            `export type LoginRequestJson = { readonly "password": Redacted.Redacted<string> }`,
+            `"password": Schema.Redacted(Schema.String`
+          ])
+        }))
+
+      itGeneratedClientsCompile("types password fields as Redacted in generated clients", passwordSpec, {
+        formats: ["httpclient"],
+        usage: `export const payload: LoginRequestJson = { password: Redacted.make("hunter2") }
+// @ts-expect-error Password fields do not accept plain strings.
+export const plain: LoginRequestJson = { password: "hunter2" }
+`
+      })
+
+      it.effect("sends the underlying password values over the wire", () =>
+        Effect.gen(function*() {
+          const generator = yield* OpenApiGenerator.OpenApiGenerator
+          const source = yield* generator.generate(passwordSpec, { name: "TestClient", format: "httpclient" })
+          const directory = yield* Effect.acquireRelease(
+            Effect.sync(() => mkdtempSync(join(dirname(fileURLToPath(import.meta.url)), ".generated-clients-"))),
+            (directory) => Effect.sync(() => rmSync(directory, { recursive: true, force: true }))
+          )
+          const path = join(directory, "Client.ts")
+          writeFileSync(path, source)
+          const { make }: {
+            make: (client: HttpClient.HttpClient) => {
+              login: (options: {
+                params: { "x-api-key": Redacted.Redacted<string> }
+                payload: { password: Redacted.Redacted<string> }
+              }) => Effect.Effect<unknown, unknown>
+              upload: (options: {
+                payload: { file: Blob; password: Redacted.Redacted<string> }
+              }) => Effect.Effect<unknown, unknown>
+            }
+          } = yield* Effect.promise(() => import(path))
+          const requests: Array<HttpClientRequest.HttpClientRequest> = []
+          const client = make(
+            HttpClient.make((request) => {
+              requests.push(request)
+              return Effect.succeed(HttpClientResponse.fromWeb(request, new Response(null, { status: 204 })))
+            }).pipe(HttpClient.mapRequest(HttpClientRequest.prependUrl("http://api.test")))
+          )
+
+          yield* client.login({
+            params: { "x-api-key": Redacted.make("key") },
+            payload: { password: Redacted.make("hunter2") }
+          })
+          yield* client.upload({ payload: { file: new Blob(["data"]), password: Redacted.make("hunter2") } })
+
+          const [login, upload] = requests
+          assert.strictEqual(login.headers["x-api-key"], "key")
+          assert.strictEqual(login.body._tag, "Uint8Array")
+          if (login.body._tag === "Uint8Array") {
+            assert.strictEqual(new TextDecoder().decode(login.body.body), `{"password":"hunter2"}`)
+          }
+          assert.strictEqual(upload.body._tag, "FormData")
+          if (upload.body._tag === "FormData") {
+            assert.strictEqual(upload.body.formData.get("password"), "hunter2")
+          }
+        }).pipe(Effect.scoped, Effect.provide(OpenApiGenerator.layerTransformerSchema)))
+    })
 
     it.effect("escapes spec-controlled names in generated source", () =>
       Effect.gen(function*() {

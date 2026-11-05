@@ -634,6 +634,18 @@ describe("toJsonSchemaDocument", () => {
       })
     })
 
+    it("Redacted strings export the password format", () => {
+      const password = { schema: { "type": "string", "format": "password" } } as const
+      assertJsonSchemaDocument(Schema.Redacted(Schema.String), password)
+      assertJsonSchemaDocument(Schema.RedactedFromValue(Schema.String), password)
+      assertJsonSchemaDocument(Schema.Redacted(Schema.String.annotate({ format: "uuid" })), {
+        schema: { "type": "string", "format": "uuid" }
+      })
+      assertJsonSchemaDocument(Schema.Redacted(Schema.Finite), {
+        schema: { "type": "number" }
+      })
+    })
+
     it("Duration", () => {
       const schema = Schema.Duration
       assertJsonSchemaDocument(schema, {

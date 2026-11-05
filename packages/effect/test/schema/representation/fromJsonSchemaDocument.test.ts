@@ -1,5 +1,5 @@
 import { assert } from "@effect/vitest"
-import { JsonSchema, Schema, SchemaRepresentation } from "effect"
+import { JsonSchema, Redacted, Schema, SchemaRepresentation } from "effect"
 import { TestSchema } from "effect/testing"
 import { describe, it } from "vitest"
 import { deepStrictEqual, throws } from "../../utils/assert.ts"
@@ -1197,6 +1197,39 @@ describe("fromJsonSchemaDocument", () => {
         )
       }
     )
+  })
+
+  describe("format: password", () => {
+    const importCodec = (schema: JsonSchema.JsonSchema) =>
+      toSchemaFromJsonSchemaDocument(JsonSchema.fromSchemaDraft2020_12(schema)) as Schema.Codec<unknown>
+
+    it("decodes password strings to Redacted and encodes them back", () => {
+      const schema = importCodec({ type: "string", format: "password", minLength: 8 })
+      const decoded = Schema.decodeUnknownSync(schema)("hunter22")
+      assert.isTrue(Redacted.isRedacted(decoded))
+      assert.strictEqual(Redacted.value(decoded as Redacted.Redacted<string>), "hunter22")
+      assert.strictEqual(Schema.encodeUnknownSync(schema)(decoded), "hunter22")
+      throws(() => Schema.decodeUnknownSync(schema)("hunter2"))
+    })
+
+    it("keeps password property names as plain string keys", () => {
+      const schema = importCodec({ type: "object", propertyNames: { type: "string", format: "password" } })
+      deepStrictEqual(Schema.decodeUnknownSync(schema)({ secret: 1 }), { secret: 1 })
+    })
+
+    it("imports open objects with password properties as closed structs that strip extra properties", () => {
+      const schema = importCodec({
+        type: "object",
+        properties: { password: { type: "string", format: "password" } },
+        required: ["password"]
+      })
+      const decoded = Schema.decodeUnknownSync(schema)({ password: "hunter2", extra: 1 }) as {
+        readonly password: Redacted.Redacted<string>
+      }
+      deepStrictEqual(Object.keys(decoded), ["password"])
+      assert.strictEqual(Redacted.value(decoded.password), "hunter2")
+      deepStrictEqual(Schema.encodeUnknownSync(Schema.toCodecJson(schema))(decoded), { password: "hunter2" })
+    })
   })
 
   describe("$ref", () => {
