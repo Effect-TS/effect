@@ -8,7 +8,6 @@ import type * as Tool from "effect/ai/Tool"
 import type * as HttpClient from "effect/http/HttpClient"
 import type * as Layer from "effect/Layer"
 import type * as Scope from "effect/Scope"
-
 import { describe, expect, it } from "tstyche"
 
 const client = {} as McpClient.McpClient
