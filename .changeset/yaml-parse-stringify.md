@@ -2,7 +2,7 @@
 "effect": minor
 ---
 
-Add `Yaml.stringify` and `Yaml.stringifyAll`, and extend `Yaml.parse` and `Yaml.parseAll` with YAML 1.2 core schema tags, compact nested sequences (`- - value`), multiline quoted scalars in flow collections, single pairs in flow sequences (`[a: 1]`), flow mapping keys without values (`{a, b: 1}`), anchored and aliased keys, and escaped literal tabs.
+Add `Yaml.stringify` and `Yaml.stringifyAll`, and extend `Yaml.parse` and `Yaml.parseAll` with YAML 1.2 core schema tags, compact nested sequences (`- - value`), multiline quoted scalars in flow collections, single pairs in flow sequences (`[a: 1]`), flow mapping keys without values (`{a, b: 1}`), and escaped literal tabs.
 
 ### Breaking changes
 
@@ -14,8 +14,7 @@ Some input that `Yaml.parse` and `Yaml.parseAll` used to accept now gives a diff
 - In flow collections, `:` separates a key from its value. `[a: 1]` gives `[{a: 1}]` instead of `["a: 1"]`, `{a, b: 1}` gives `{a: null, b: 1}` instead of the key `"a, b"`, and `{http://x: 1}` gives the key `"http://x"` instead of `"http"`. A second separator, as in `{a: b: c}`, fails instead of giving the value `"b: c"`, and so does a key without a value that contains `:`, such as `{a:1}`. Write `{a: 1}` with a space, or quote the scalar.
 - An unquoted `[` or `{` inside a plain scalar in a flow collection fails, so `[a[, b]` no longer gives `["a[", "b"]` and `{b: a{}` no longer gives `{b: "a{"}`. A flow collection used as a flow mapping key fails too, so `{[1]: x}` no longer gives the key `"[1]"`. Quote the scalar to keep the bracket.
 - In a flow collection, a comment ends a plain scalar, so `[b # note` followed by `c]` fails instead of giving `["b c"]`, and a quote that starts a continuation line is text, so `[b` followed by `'c # note` and `]` gives `["b 'c"]` instead of keeping the comment.
-- An anchored merge key (`&m <<: *base`) merges like `<<: *base` instead of giving the literal key `"&m <<"`.
-- An alias used as a key (`*name : value`) uses the anchored scalar as the key instead of the text `*name`, and an alias to a collection used as a key fails.
+- Mapping keys cannot carry anchors, tags or aliases, so `&m <<: *base`, `!!str 1: x` and `*name : value` fail instead of giving the keys `"&m <<"`, `"!!str 1"` and `"*name"`. Quote the key to keep its text.
 - A quoted block key followed by more text before its `:` fails, so `"a" "b": 1` and `"a"b: 1` no longer give keys that keep the quote characters. Quote the whole key.
 - Plain keys in flow mappings are converted like block keys, so `{0x10: 1}` gives the key `"16"` and `{null: 1}` gives `""`. Quote flow keys to keep their spelling.
 - A tab after a block sequence `-` is separation, so `-\tvalue` is a sequence entry instead of the string `"-\tvalue"`, and `-\t- value` and `-\tkey: value` fail.
