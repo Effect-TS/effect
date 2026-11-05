@@ -2,4 +2,4 @@
 "@effect/platform-node-shared": patch
 ---
 
-Fix unused `NodeTerminal` layers changing piped stdio flags and causing truncated output in programs started with `process.execve`.
+Fix `NodeTerminal` accessing stdio streams it does not use, which could make inherited pipes non-blocking and truncate output after `process.execve`.

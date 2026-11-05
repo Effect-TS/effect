@@ -47,8 +47,8 @@ export const make: (
         Queue.endUnsafe(lines)
       }
     }
-    // Accessing Node's stdio getters can set O_NONBLOCK on inherited pipes, so
-    // each stream is only read by the operations that use it.
+    // Node's stdio getters can set O_NONBLOCK on inherited pipes, so only
+    // access a stream from an operation that uses it.
     let stdin: typeof process.stdin | undefined
     const getStdin = () => {
       if (stdin === undefined) {
