@@ -2,8 +2,7 @@ import { describe, it, test } from "@effect/vitest"
 import { deepStrictEqual, strictEqual } from "@effect/vitest/utils"
 import { Cause, Context, Effect, Exit, Option, References, Scope, Stream, Tracer } from "effect"
 import { identity } from "effect/Function"
-import { HttpEffect, HttpServerRequest, HttpServerResponse } from "effect/http"
-import { appendPreResponseHandlerUnsafe, requestPreResponseHandlers } from "effect/http/internal/preResponseHandler"
+import { HttpEffect, HttpRouter, HttpServerRequest, HttpServerResponse } from "effect/http"
 import * as Layer from "effect/Layer"
 
 const TestValue = Context.Reference<number>("test/TestValue", { defaultValue: () => 0 })
@@ -321,17 +320,31 @@ describe("HttpEffect", () => {
       strictEqual(await response.text(), "420")
     })
 
-    test("pre-response handlers are keyed by request source", () => {
-      const request = HttpServerRequest.fromWeb(new Request("http://localhost:3000/"))
-      const modified = request.modify({ url: "/updated" })
-      const handler = (
-        _request: HttpServerRequest.HttpServerRequest,
-        response: HttpServerResponse.HttpServerResponse
-      ) => Effect.succeed(response)
+    test("runs pre-response handlers registered in a prefix-sliced route", async () => {
+      const { dispose, handler } = HttpRouter.toWebHandler(
+        HttpRouter.use((router) =>
+          router.prefixed("/api").add(
+            "GET",
+            "/hello",
+            Effect.gen(function*() {
+              const request = yield* HttpServerRequest.HttpServerRequest
+              yield* HttpEffect.appendPreResponseHandler((_request, response) =>
+                Effect.succeed(HttpServerResponse.setHeader(response, "x-pre-response", "applied"))
+              )
+              return HttpServerResponse.text(request.url)
+            })
+          )
+        ),
+        { disableLogger: true }
+      )
 
-      appendPreResponseHandlerUnsafe(request, handler)
-
-      strictEqual(requestPreResponseHandlers.get(modified.source), handler)
+      try {
+        const response = await handler(new Request("http://localhost/api/hello"))
+        strictEqual(await response.text(), "/hello")
+        strictEqual(response.headers.get("x-pre-response"), "applied")
+      } finally {
+        await dispose()
+      }
     })
   })
 

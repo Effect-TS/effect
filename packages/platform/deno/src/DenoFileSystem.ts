@@ -4,7 +4,7 @@
  * @stability unstable
  * @since 4.0.0
  */
-import { copy as denoCopy, expandGlob, walk } from "@std/fs"
+import { copy as denoCopy, walk } from "@std/fs"
 import { relative } from "@std/path"
 import * as ByteSize from "effect/ByteSize"
 import * as Effect from "effect/Effect"
@@ -77,16 +77,6 @@ const chmod: FileSystem.FileSystem["chmod"] = (path, mode) => tryPromise("chmod"
 const chown: FileSystem.FileSystem["chown"] = (path, uid, gid) =>
   tryPromise("chown", path, () => Deno.chown(path, uid, gid))
 
-const glob: FileSystem.FileSystem["glob"] = (pattern, options) =>
-  Effect.map(
-    collectAsyncIterable("glob", pattern, () =>
-      expandGlob(pattern, {
-        root: options?.root ?? Deno.cwd(),
-        exclude: options?.exclude ? [...options.exclude] : []
-      })),
-    (entries) => entries.map((entry) => entry.path)
-  )
-
 const link: FileSystem.FileSystem["link"] = (existingPath, newPath) =>
   tryPromise("link", existingPath, () => Deno.link(existingPath, newPath))
 
@@ -122,7 +112,7 @@ const remove = removeFactory("remove")
 const makeTempDirectoryScoped: FileSystem.FileSystem["makeTempDirectoryScoped"] = (options) =>
   Effect.acquireRelease(
     makeTempDirectoryFactory("makeTempDirectoryScoped")(options),
-    (directory) => Effect.orDie(removeFactory("makeTempDirectoryScoped")(directory, { recursive: true }))
+    (directory) => Effect.orDie(removeFactory("makeTempDirectoryScoped")(directory, { recursive: true, force: true }))
   )
 
 const openOptions = (flag: FileSystem.OpenFlag = "r", mode?: number): Deno.OpenOptions => {
@@ -151,22 +141,28 @@ const openOptions = (flag: FileSystem.OpenFlag = "r", mode?: number): Deno.OpenO
   }
 }
 
-const makeFileInfo = (info: Deno.FileInfo): FileSystem.File.Info => ({
-  type: info.isFile ?
+// `Deno.DirEntry` only reports the first three flags
+const fileType = (info: Deno.DirEntry | Deno.FileInfo): FileSystem.File.Type => {
+  const flags: Partial<Deno.FileInfo> = info
+  return info.isFile ?
     "File" :
     info.isDirectory ?
     "Directory" :
     info.isSymlink ?
     "SymbolicLink" :
-    info.isBlockDevice ?
+    flags.isBlockDevice ?
     "BlockDevice" :
-    info.isCharDevice ?
+    flags.isCharDevice ?
     "CharacterDevice" :
-    info.isFifo ?
+    flags.isFifo ?
     "FIFO" :
-    info.isSocket ?
+    flags.isSocket ?
     "Socket" :
-    "Unknown",
+    "Unknown"
+}
+
+const makeFileInfo = (info: Deno.FileInfo): FileSystem.File.Info => ({
+  type: fileType(info),
   mtime: Option.fromNullishOr(info.mtime),
   atime: Option.fromNullishOr(info.atime),
   birthtime: Option.fromNullishOr(info.birthtime),
@@ -412,6 +408,12 @@ const readDirectory: FileSystem.FileSystem["readDirectory"] = (path, options) =>
   )
 }
 
+const readDirectoryEntries = (path: string) =>
+  Effect.map(
+    collectAsyncIterable("readDirectoryEntries", path, () => Deno.readDir(path)),
+    (entries) => entries.map((entry): FileSystem.DirectoryEntry => ({ name: entry.name, type: fileType(entry) }))
+  )
+
 const readFile: FileSystem.FileSystem["readFile"] = (path) =>
   tryPromise("readFile", path, (signal) => Deno.readFile(path, { signal }))
 
@@ -421,6 +423,12 @@ const realPath: FileSystem.FileSystem["realPath"] = (path) => tryPromise("realPa
 
 const rename: FileSystem.FileSystem["rename"] = (oldPath, newPath) =>
   tryPromise("rename", oldPath, () => Deno.rename(oldPath, newPath))
+
+const lstat: FileSystem.FileSystem["lstat"] = (path) =>
+  Effect.map(
+    tryPromise("lstat", path, () => Deno.lstat(path)),
+    makeFileInfo
+  )
 
 const stat: FileSystem.FileSystem["stat"] = (path) =>
   Effect.map(
@@ -519,8 +527,8 @@ const makeFileSystem = Effect.map(Effect.serviceOption(FileSystem.WatchBackend),
     chown,
     copy,
     copyFile,
-    glob,
     link,
+    lstat,
     makeDirectory,
     makeTempDirectory,
     makeTempDirectoryScoped,
@@ -528,6 +536,7 @@ const makeFileSystem = Effect.map(Effect.serviceOption(FileSystem.WatchBackend),
     makeTempFileScoped,
     open,
     readDirectory,
+    readDirectoryEntries,
     readFile,
     readLink,
     realPath,

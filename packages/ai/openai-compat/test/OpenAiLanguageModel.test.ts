@@ -741,6 +741,77 @@ describe("OpenAiLanguageModel", () => {
         ])
       }))
 
+    const modelOutputCases = [
+      {
+        label: "as text with file placeholders",
+        modelOutput: [
+          Prompt.textPart({ text: "Screenshot" }),
+          Prompt.filePart({ mediaType: "image/png", fileName: "screenshot.png", data: "iVBORw0KGgo=" })
+        ],
+        content: "Screenshot\n[image/png screenshot.png omitted]"
+      },
+      { label: "as an empty string when it is empty", modelOutput: [], content: "" }
+    ]
+
+    for (const { content, label, modelOutput } of modelOutputCases) {
+      it.effect(`sends tool result model output ${label}`, () =>
+        Effect.gen(function*() {
+          let capturedRequest: HttpClientRequest.HttpClientRequest | undefined
+
+          const layer = OpenAiClient.layer({ apiKey: Redacted.make("sk-test-key") }).pipe(
+            Layer.provide(Layer.succeed(
+              HttpClient.HttpClient,
+              makeHttpClient((request) => {
+                capturedRequest = request
+                return Effect.succeed(jsonResponse(request, makeChatCompletion()))
+              })
+            ))
+          )
+
+          yield* LanguageModel.generateText({
+            prompt: Prompt.make([
+              {
+                role: "assistant",
+                content: [Prompt.toolCallPart({
+                  id: "call_1",
+                  name: "TestTool",
+                  params: { input: "screenshot" },
+                  providerExecuted: false
+                })]
+              },
+              {
+                role: "tool",
+                content: [Prompt.toolResultPart({
+                  id: "call_1",
+                  name: "TestTool",
+                  isFailure: false,
+                  result: { output: "APPLICATION_ONLY" },
+                  modelOutput,
+                  providerExecuted: false
+                })]
+              }
+            ]),
+            toolkit: TestToolkit,
+            disableToolCallResolution: true
+          }).pipe(
+            Effect.provide(OpenAiLanguageModel.model("gpt-4o-mini")),
+            Effect.provide(layer)
+          )
+
+          assert.isDefined(capturedRequest)
+          if (capturedRequest === undefined) {
+            return
+          }
+
+          const requestBody = yield* getRequestBody(capturedRequest)
+          assert.deepStrictEqual(requestBody.messages[1], {
+            role: "tool",
+            tool_call_id: "call_1",
+            content
+          })
+        }))
+    }
+
     it.effect("echoes tool call extra_content in follow-up requests", () =>
       Effect.gen(function*() {
         const extraContent = { google: { thought_signature: "signature-1" } }
@@ -850,6 +921,24 @@ describe("OpenAiLanguageModel", () => {
         assert.isDefined(functionTool)
         assert.strictEqual(functionTool.function.description, "A dynamic tool")
         assert.deepStrictEqual(functionTool.function.parameters, inputSchema)
+      }))
+
+    it.effect("names the tool when its parameters are not an object schema", () =>
+      Effect.gen(function*() {
+        const error = yield* LanguageModel.generateText({
+          prompt: "Use the tool",
+          toolkit: Toolkit.make(Tool.make("NoParams", { parameters: Schema.Struct({}) })),
+          disableToolCallResolution: true
+        }).pipe(
+          Effect.provide(OpenAiLanguageModel.model("gpt-4o-mini")),
+          Effect.provide(OpenAiClient.layer({ apiKey: Redacted.make("sk-test-key") })),
+          Effect.provideService(HttpClient.HttpClient, makeHttpClient(() => Effect.die("unexpected request"))),
+          Effect.flip
+        )
+
+        assert.strictEqual(error.reason._tag, "UnsupportedSchemaError")
+        assert.include(error.message, `"NoParams"`)
+        assert.include(error.message, "Tool.EmptyParams")
       }))
 
     it.effect("maps provider apply_patch function call back to custom provider-defined tool", () =>
@@ -2466,15 +2555,14 @@ const sseResponse = (
     })
   )
 
-const getRequestBody = (request: HttpClientRequest.HttpClientRequest) =>
-  Effect.gen(function*() {
-    const body = request.body
-    if (body._tag === "Uint8Array") {
-      const text = new TextDecoder().decode(body.body)
-      return JSON.parse(text)
-    }
-    return yield* Effect.die(new Error("Expected Uint8Array body"))
-  })
+const getRequestBody = Effect.fnUntraced(function*(request: HttpClientRequest.HttpClientRequest) {
+  const body = request.body
+  if (body._tag === "Uint8Array") {
+    const text = new TextDecoder().decode(body.body)
+    return JSON.parse(text)
+  }
+  return yield* Effect.die(new Error("Expected Uint8Array body"))
+})
 
 const decodeToolParamsFromStream = (
   parts: ReadonlyArray<any>,

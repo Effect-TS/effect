@@ -1,6 +1,6 @@
 import { PgConnection } from "@effect/sql-pg"
 import { assert, describe, it } from "@effect/vitest"
-import { Effect, Fiber, Redacted } from "effect"
+import { Effect, Exit, Fiber, Option, Redacted, Scheduler, Scope, Stream } from "effect"
 import * as TestClock from "effect/testing/TestClock"
 import { mkdtemp, rm } from "node:fs/promises"
 import * as Net from "node:net"
@@ -523,6 +523,43 @@ describe("PgConnection in-process server", () => {
       assert.isFalse(socket.destroyed)
     }))
 
+  it.live.each(["statement", "stream"] as const)(
+    "does not start a %s while its pin is being released",
+    (kind) =>
+      Effect.gen(function*() {
+        // Each budget makes the work first yield at a later step of its admission,
+        // so the pin release lands in every gap. Budgets below 3 make no progress.
+        for (let budget = 3; budget <= 40; budget++) {
+          yield* Effect.scoped(Effect.gen(function*() {
+            let writes = 0
+            // Answers startup and never answers a statement.
+            const socket: Duplex = new Duplex({
+              read() {},
+              write(_chunk: Buffer, _encoding, callback) {
+                if (++writes === 1) {
+                  queueMicrotask(() => socket.push(Buffer.concat([authenticationOk, backendKeyData, readyForQuery])))
+                }
+                callback()
+              }
+            })
+            const connection = yield* PgConnection.make({ username: "test", stream: () => socket })
+            const scope = yield* Scope.make()
+            const pinned = yield* Scope.provide(connection.pin, scope)
+            const work = kind === "statement" ? pinned.query("SELECT 1") : Stream.runDrain(pinned.stream("SELECT 1"))
+            const fiber = yield* Effect.forkChild(Effect.provideService(work, Scheduler.MaxOpsBeforeYield, budget), {
+              startImmediately: true
+            })
+            const closing = yield* Effect.forkDetach(Scope.close(scope, Exit.void))
+            const closed = yield* Fiber.await(closing).pipe(Effect.timeoutOption("2 seconds"))
+            if (Option.isNone(closed)) socket.destroy()
+            assert.isTrue(Option.isSome(closed), `pin release waited on a ${kind} at budget ${budget}`)
+            const exit = yield* Fiber.await(fiber).pipe(Effect.timeoutOption("2 seconds"))
+            assert.isTrue(Option.isSome(exit) && Exit.isFailure(exit.value), `${kind} did not end at budget ${budget}`)
+          }))
+        }
+      })
+  )
+
   describe("TLS servername", () => {
     const cases: ReadonlyArray<{
       readonly name: string
@@ -901,6 +938,32 @@ describe("PgConnection in-process server", () => {
       if (error.reason._tag === "UniqueViolation") {
         assert.strictEqual(error.reason.constraint, "users_email_key")
       }
+    })))
+
+  it.live("preserves a FATAL ErrorResponse sent before the server closes the connection", () =>
+    Effect.scoped(Effect.gen(function*() {
+      const { port } = yield* withTcpServer((socket) => {
+        consumeFrontend(socket, (tag) => {
+          if (tag === undefined) {
+            socket.write(Buffer.concat([authenticationOk, backendKeyData, readyForQuery]))
+          } else if (tag === "S") {
+            socket.end(errorResponse([
+              ["S", "FATAL"],
+              ["C", "25P04"],
+              ["M", "terminating connection due to transaction timeout"]
+            ]))
+          }
+        })
+      })
+      const connection = yield* PgConnection.make({ host: "127.0.0.1", port, username: "test" })
+
+      const error = yield* Effect.flip(connection.query("SELECT pg_sleep(1)"))
+
+      assert.strictEqual(error.reason._tag, "UnknownError")
+      assert.strictEqual(error.reason.message, "PgConnection: Query failed")
+      assert.instanceOf(error.reason.cause, Error)
+      assert.strictEqual(error.reason.cause.message, "terminating connection due to transaction timeout")
+      assert.strictEqual((error.reason.cause as { readonly code?: string }).code, "25P04")
     })))
 
   it.live("sends Terminate when the connection scope closes", () =>

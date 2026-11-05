@@ -24,7 +24,7 @@ import * as Scope from "../Scope.ts"
 import * as Tracer from "../Tracer.ts"
 import type * as Types from "../Types.ts"
 import * as FindMyWay from "./FindMyWay.ts"
-import { getClosingParenthensePosition } from "./FindMyWay/internal/router.ts"
+import { getClosingParenthensePosition, getMaxParamLengthExceeded } from "./FindMyWay/internal/router.ts"
 import * as HttpEffect from "./HttpEffect.ts"
 import * as HttpIncomingMessage from "./HttpIncomingMessage.ts"
 import type * as HttpMethod from "./HttpMethod.ts"
@@ -213,13 +213,19 @@ export const make = Effect.gen(function*() {
         let context = fiber.context
         const request = Context.getUnsafe(context, HttpServerRequest.HttpServerRequest)
         let result = router.find(request.method, request.url)
+        let paramLimit = result === undefined ? getMaxParamLengthExceeded(router) : undefined
         if (result === undefined && request.method === "HEAD") {
           result = router.find("GET", request.url)
+          paramLimit ??= getMaxParamLengthExceeded(router)
         }
         if (result === undefined) {
           return Effect.fail(
             new HttpServerError.HttpServerError({
-              reason: new HttpServerError.RouteNotFound({ request })
+              reason: new HttpServerError.RouteNotFound(
+                paramLimit === undefined
+                  ? { request }
+                  : { request, description: `path parameter is longer than maxParamLength (${paramLimit})` }
+              )
             })
           )
         }
@@ -278,7 +284,8 @@ function sliceRequestUrl(
     }
     while (index < url.length && !"/?;#".includes(url[index])) index++
   }
-  return request.modify({ url: index < url.length ? url.slice(index) : "/" })
+  const rest = url.slice(index)
+  return request.modify({ url: rest.startsWith("/") ? rest : "/" + rest })
 }
 
 function countSegments(prefix: string, ignoreDuplicateSlashes: boolean) {

@@ -24,22 +24,20 @@ const decoder = new TextDecoder()
 const text = (datagrams: ReadonlyArray<DatagramSocket.Datagram>) =>
   datagrams.map((datagram) => decoder.decode(datagram.payload))
 
-const open = (options?: NodeDatagramSocket.Options) =>
-  Effect.gen(function*() {
-    const socket = yield* NodeDatagramSocket.make(options)
-    const reader = yield* socket.reader
-    const writer = yield* socket.writer
-    return { reader, writer }
-  })
+const open = Effect.fnUntraced(function*(options?: NodeDatagramSocket.Options) {
+  const socket = yield* NodeDatagramSocket.make(options)
+  const reader = yield* socket.reader
+  const writer = yield* socket.writer
+  return { reader, writer }
+})
 
 // Pulls until `count` datagrams arrived. A lost packet fails the timeout
 // instead of hanging the test.
-const pullN = (reader: DatagramSocket.Reader, count: number) =>
-  Effect.gen(function*() {
-    const received: Array<DatagramSocket.Datagram> = []
-    while (received.length < count) received.push(...(yield* reader.pull))
-    return received
-  }).pipe(Effect.timeout("2 seconds"))
+const pullN = Effect.fnUntraced(function*(reader: DatagramSocket.Reader, count: number) {
+  const received: Array<DatagramSocket.Datagram> = []
+  while (received.length < count) received.push(...(yield* reader.pull))
+  return received
+}, Effect.timeout("2 seconds"))
 
 describe("NodeDatagramSocket", () => {
   it.live("IPv4 round trip, replying through the received datagram", () =>

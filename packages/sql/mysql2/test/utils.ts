@@ -32,16 +32,30 @@ export class MysqlContainer extends Context.Service<
     )
   )
 
-  static client = Layer.unwrap(
+  static clientWith = (options: { readonly maxConnections?: number }) =>
+    Layer.unwrap(
+      Effect.gen(function*() {
+        const container = yield* MysqlContainer
+        return MysqlClient.layer({
+          ...options,
+          url: Redacted.make(container.getConnectionUri())
+        })
+      })
+    )
+
+  static client = this.clientWith({})
+
+  static layerClient = this.client.pipe(Layer.provide(this.layer))
+
+  // Root can inspect other connections' lock waits.
+  static layerClientRoot = Layer.unwrap(
     Effect.gen(function*() {
       const container = yield* MysqlContainer
       return MysqlClient.layer({
-        url: Redacted.make(container.getConnectionUri())
+        url: Redacted.make(container.getConnectionUri(true))
       })
     })
-  )
-
-  static layerClient = this.client.pipe(Layer.provide(this.layer))
+  ).pipe(Layer.provide(this.layer))
 
   static clientWithTransforms = Layer.unwrap(
     Effect.gen(function*() {

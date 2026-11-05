@@ -22,6 +22,10 @@ describe("Hex", () => {
     assert.strictEqual(Result.getOrThrow(Hex.decodeString("f09f918b")), "👋")
   })
 
+  it("preserves a leading U+FEFF when round-tripping strings", () => {
+    assert.strictEqual(Result.getOrThrow(Hex.decodeString(Hex.encode("\uFEFFa"))), "\uFEFFa")
+  })
+
   it("rejects odd lengths and non-hexadecimal characters", () => {
     const oddLength = Hex.decode("abc")
     assert.isTrue(Result.isFailure(oddLength))

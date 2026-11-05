@@ -292,6 +292,28 @@ describe("OtlpMetrics", () => {
         assert.strictEqual(secondMetric?.sum?.dataPoints[0].asDouble, 3)
       }).pipe(Effect.provide(TestLayerDelta)))
 
+    it.effect("reports a removed and recreated series from zero", () =>
+      Effect.gen(function*() {
+        const counter = Metric.counter("delta_removed_counter_test")
+        const histogram = Metric.histogram("delta_removed_histogram_test", { boundaries: [10] })
+
+        yield* Metric.update(counter, 5)
+        yield* Metric.update(histogram, 5)
+        yield* triggerExport
+        yield* Metric.remove(counter)
+        yield* Metric.remove(histogram)
+        yield* triggerExport
+        yield* Metric.update(counter, 7)
+        yield* Metric.update(histogram, 7)
+        yield* triggerExport
+
+        const requests = yield* MockHttpClient.requests
+        const last = requests[requests.length - 1]
+        assert.strictEqual(findMetric(last, "delta_removed_counter_test")?.sum?.dataPoints[0].asDouble, 7)
+        const histogramPoint = findMetric(last, "delta_removed_histogram_test")?.histogram?.dataPoints[0]
+        assert.deepStrictEqual([histogramPoint?.count, histogramPoint?.sum], [1, 7])
+      }).pipe(Effect.provide(TestLayerDelta), Effect.provideService(Metric.MetricRegistry, new Map())))
+
     it.effect("reports histogram count and sum deltas across export intervals", () =>
       Effect.gen(function*() {
         const metricName = "delta_histogram_test"
@@ -421,11 +443,15 @@ describe("OtlpMetrics", () => {
     Effect.gen(function*() {
       yield* Metric.update(Metric.timer("unit_timer_test", { boundaries: [10, 100] }), Duration.millis(5))
       yield* Metric.update(Metric.gauge("unit_custom_test", { attributes: { unit: "{request}" } }), 1)
+      yield* Metric.update(Metric.gauge("unit_dimensionless_test", { attributes: { unit: "1" } }), 1)
+      yield* Metric.update(Metric.gauge("unit_unspecified_test"), 1)
       yield* triggerExport
 
       const [request] = yield* MockHttpClient.requests
       assert.strictEqual(findMetric(request, "unit_timer_test")?.unit, "ms")
       assert.strictEqual(findMetric(request, "unit_custom_test")?.unit, "{request}")
+      assert.strictEqual(findMetric(request, "unit_dimensionless_test")?.unit, "1")
+      assert.strictEqual(findMetric(request, "unit_unspecified_test")?.unit, "")
     }).pipe(Effect.provide(TestLayerCumulative), Effect.provideService(Metric.MetricRegistry, new Map())))
 
   it.effect("keeps bigint precision beyond 2^53", () =>

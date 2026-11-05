@@ -1,6 +1,7 @@
 import { D1Client } from "@effect/sql-d1"
 import { assert, describe, it } from "@effect/vitest"
 import { Cause, Effect } from "effect"
+import * as Arr from "effect/Array"
 import * as Schema from "effect/Schema"
 import { SqlError, SqlResolver } from "effect/sql"
 import { D1Miniflare } from "./utils.ts"
@@ -19,7 +20,9 @@ const seededClient = Effect.gen(function*() {
   return sql
 })
 
-describe("Resolver", () => {
+// Each test starts its own Miniflare instance. Concurrent startups compete for
+// CPU and share one running timeout, so run them one at a time.
+describe("Resolver", { concurrent: false, timeout: 30_000 }, () => {
   describe("ordered", () => {
     it.effect("insert", () =>
       Effect.gen(function*() {
@@ -30,7 +33,7 @@ describe("Resolver", () => {
           Result: Schema.Struct({ id: Schema.Number, name: Schema.String }),
           execute: (names) => {
             batches.push(names)
-            return sql`INSERT INTO test ${sql.insert(names.map((name) => ({ name })))} RETURNING *`
+            return sql`INSERT INTO test ${sql.insert(Arr.map(names, (name) => ({ name })))} RETURNING *`
           }
         })
         const execute = SqlResolver.request(Insert)

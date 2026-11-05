@@ -24,39 +24,37 @@ export interface Generated {
   readonly file: (relative: string) => string
 }
 
-const collect = (cwd: string, config: Config.Config) =>
-  Effect.gen(function*() {
-    const path = yield* Path.Path
-    const result = yield* Generator.generate(config, { cwd })
-    const byPath = new Map<string, string>()
-    for (const file of result.files) {
-      byPath.set(path.relative(cwd, path.resolve(cwd, file.path)).split(path.sep).join("/"), file.contents)
+const collect = Effect.fnUntraced(function*(cwd: string, config: Config.Config) {
+  const path = yield* Path.Path
+  const result = yield* Generator.generate(config, { cwd })
+  const byPath = new Map<string, string>()
+  for (const file of result.files) {
+    byPath.set(path.relative(cwd, path.resolve(cwd, file.path)).split(path.sep).join("/"), file.contents)
+  }
+  const generated: Generated = {
+    result,
+    paths: Array.from(byPath.keys()).sort(),
+    file: (relative) => {
+      const contents = byPath.get(relative)
+      assert(contents !== undefined, `expected ${relative} among ${JSON.stringify(Array.from(byPath.keys()))}`)
+      return contents
     }
-    const generated: Generated = {
-      result,
-      paths: Array.from(byPath.keys()).sort(),
-      file: (relative) => {
-        const contents = byPath.get(relative)
-        assert(contents !== undefined, `expected ${relative} among ${JSON.stringify(Array.from(byPath.keys()))}`)
-        return contents
-      }
-    }
-    return generated
-  })
+  }
+  return generated
+})
 
 /** Writes `inputs` (cwd-relative path to contents) to a fresh temporary directory and generates there. */
-export const generateIn = (inputs: Readonly<Record<string, string>>, config: Config.Config) =>
-  Effect.gen(function*() {
-    const fs = yield* FileSystem.FileSystem
-    const path = yield* Path.Path
-    const cwd = yield* fs.makeTempDirectoryScoped({ prefix: "graphql-generator-" })
-    for (const [relative, body] of Object.entries(inputs)) {
-      const file = path.join(cwd, relative)
-      yield* fs.makeDirectory(path.dirname(file), { recursive: true })
-      yield* fs.writeFileString(file, body)
-    }
-    return yield* collect(cwd, config)
-  })
+export const generateIn = Effect.fnUntraced(function*(inputs: Readonly<Record<string, string>>, config: Config.Config) {
+  const fs = yield* FileSystem.FileSystem
+  const path = yield* Path.Path
+  const cwd = yield* fs.makeTempDirectoryScoped({ prefix: "graphql-generator-" })
+  for (const [relative, body] of Object.entries(inputs)) {
+    const file = path.join(cwd, relative)
+    yield* fs.makeDirectory(path.dirname(file), { recursive: true })
+    yield* fs.writeFileString(file, body)
+  }
+  return yield* collect(cwd, config)
+})
 
 /** The directory holding the GitHub schema subset and `documents/`. */
 export const githubFixtureDir = fileURLToPath(new URL("../fixtures/github", import.meta.url))
@@ -256,18 +254,17 @@ export const generateTasks = (
  * directory inside the package (so `effect` resolves) and imports the module
  * at `relative`. The directory is removed when the scope closes.
  */
-export const importGenerated = (generated: Generated, relative: string) =>
-  Effect.gen(function*() {
-    const fs = yield* FileSystem.FileSystem
-    const path = yield* Path.Path
-    const root = fileURLToPath(new URL("../.tmp", import.meta.url))
-    yield* fs.makeDirectory(root, { recursive: true })
-    const dir = yield* fs.makeTempDirectoryScoped({ directory: root, prefix: "import-" })
-    for (const file of generated.paths) {
-      const target = path.join(dir, file)
-      yield* fs.makeDirectory(path.dirname(target), { recursive: true })
-      yield* fs.writeFileString(target, generated.file(file))
-    }
-    const url = pathToFileURL(path.join(dir, relative)).href
-    return yield* Effect.promise(() => import(/* @vite-ignore */ url) as Promise<Record<string, any>>)
-  })
+export const importGenerated = Effect.fnUntraced(function*(generated: Generated, relative: string) {
+  const fs = yield* FileSystem.FileSystem
+  const path = yield* Path.Path
+  const root = fileURLToPath(new URL("../.tmp", import.meta.url))
+  yield* fs.makeDirectory(root, { recursive: true })
+  const dir = yield* fs.makeTempDirectoryScoped({ directory: root, prefix: "import-" })
+  for (const file of generated.paths) {
+    const target = path.join(dir, file)
+    yield* fs.makeDirectory(path.dirname(target), { recursive: true })
+    yield* fs.writeFileString(target, generated.file(file))
+  }
+  const url = pathToFileURL(path.join(dir, relative)).href
+  return yield* Effect.promise(() => import(/* @vite-ignore */ url) as Promise<Record<string, any>>)
+})

@@ -5,6 +5,7 @@
  * @since 4.0.0
  */
 import type * as Brand from "../Brand.ts"
+import * as Bytes from "../Bytes.ts"
 import * as Data from "../Data.ts"
 import * as Equal from "../Equal.ts"
 import { dual } from "../Function.ts"
@@ -726,7 +727,7 @@ const MacProto = {
   _tag: "MacAddress",
   [TypeId]: TypeId,
   [Equal.symbol](this: MacAddress, that: Equal.Equal): boolean {
-    return isMacAddress(that) && bytesEqual(getMacBytes(this), getMacBytes(that))
+    return isMacAddress(that) && Bytes.Equivalence(getMacBytes(this), getMacBytes(that))
   },
   [Hash.symbol](this: MacAddress): number {
     return Hash.combine(macHashSeed, Hash.array(getMacBytes(this)))
@@ -737,14 +738,6 @@ const MacProto = {
   toJSON(this: MacAddress): string {
     return this.toString()
   }
-}
-
-const bytesEqual = (self: Uint8Array, that: Uint8Array): boolean => {
-  if (self.length !== that.length) return false
-  for (let index = 0; index < self.length; index++) {
-    if (self[index] !== that[index]) return false
-  }
-  return true
 }
 
 const ipv4HashSeed = Hash.string("Ipv4Address")

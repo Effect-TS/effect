@@ -47,6 +47,34 @@ describe("Sink", () => {
         deepStrictEqual(Cause.squash(abortReason as Cause.Cause<Error>), error)
       }))
 
+    it.effect("fromWritableStream - pipeThrough aborts with the upstream failure", () =>
+      Effect.gen(function*() {
+        const error = new Error("upstream failed")
+        let abortReason: unknown = undefined
+        let closes = 0
+        const writable = new WritableStream<number>({
+          close() {
+            closes++
+          },
+          abort(reason) {
+            abortReason = reason
+          }
+        })
+        const exit = yield* Stream.make(1).pipe(
+          Stream.concat(Stream.fail(error)),
+          Stream.pipeThrough(Sink.fromWritableStream({
+            evaluate: () => writable,
+            onError: (cause) => cause
+          })),
+          Stream.runDrain,
+          Effect.exit
+        )
+
+        assertExitFailure(exit, Cause.fail(error))
+        strictEqual(closes, 0)
+        deepStrictEqual(abortReason, Cause.fail(error))
+      }))
+
     it.effect("fromWritableStream - aborts instead of closing on interruption", () =>
       Effect.gen(function*() {
         const started = yield* Deferred.make<void>()

@@ -91,6 +91,36 @@ describe("Iterable", () => {
       deepStrictEqual(pipe(new Set([2, 4]), Iter.takeWhile(f), toArray), [2, 4])
     })
 
+    it("takeWhile stays done after completion", () => {
+      let pulls = 0
+      const source = {
+        [Symbol.iterator]() {
+          const iterator = [2, 3, 4][Symbol.iterator]()
+          return {
+            next() {
+              pulls++
+              return iterator.next()
+            }
+          }
+        }
+      }
+
+      const failed = Iter.takeWhile(source, (n) => n % 2 === 0)[Symbol.iterator]()
+      deepStrictEqual(failed.next(), { done: false, value: 2 })
+      deepStrictEqual(failed.next(), { done: true, value: undefined })
+      deepStrictEqual(failed.next(), { done: true, value: undefined })
+      strictEqual(pulls, 2)
+
+      pulls = 0
+      const exhausted = Iter.takeWhile(source, () => true)[Symbol.iterator]()
+      for (const value of [2, 3, 4]) {
+        deepStrictEqual(exhausted.next(), { done: false, value })
+      }
+      deepStrictEqual(exhausted.next(), { done: true, value: undefined })
+      deepStrictEqual(exhausted.next(), { done: true, value: undefined })
+      strictEqual(pulls, 4)
+    })
+
     it("drop", () => {
       deepStrictEqual(pipe(Iter.empty(), Iter.drop(0), toArray), [])
       deepStrictEqual(pipe([1, 2], Iter.drop(0), toArray), [1, 2])
@@ -273,6 +303,20 @@ describe("Iterable", () => {
     deepStrictEqual(toArray(as), [5, 4, 3, 2, 1])
   })
 
+  it("unfold stays done after completion", () => {
+    let calls = 0
+    const as = Iter.unfold(0, (n) => {
+      calls++
+      return calls === 2 ? Option.none() : Option.some([n, n + 1])
+    })
+    const iterator = as[Symbol.iterator]()
+    deepStrictEqual(iterator.next(), { done: false, value: 0 })
+    deepStrictEqual(iterator.next(), { done: true, value: undefined })
+    deepStrictEqual(iterator.next(), { done: true, value: undefined })
+    strictEqual(calls, 2)
+    deepStrictEqual(as[Symbol.iterator]().next(), { done: false, value: 0 })
+  })
+
   it("map", () => {
     deepStrictEqual(
       pipe([1, 2, 3], Iter.map((n) => n * 2), toArray),
@@ -341,6 +385,38 @@ describe("Iterable", () => {
     )
   })
 
+  it("filterMapWhile stays done after completion", () => {
+    let pulls = 0
+    const source = {
+      [Symbol.iterator]() {
+        const iterator = [1, 2, 3][Symbol.iterator]()
+        return {
+          next() {
+            pulls++
+            return iterator.next()
+          }
+        }
+      }
+    }
+
+    const failed = Iter.filterMapWhile(source, (n) => n % 2 === 1 ? Result.succeed(n) : Result.failVoid)[
+      Symbol.iterator
+    ]()
+    deepStrictEqual(failed.next(), { done: false, value: 1 })
+    deepStrictEqual(failed.next(), { done: true, value: undefined })
+    deepStrictEqual(failed.next(), { done: true, value: undefined })
+    strictEqual(pulls, 2)
+
+    pulls = 0
+    const exhausted = Iter.filterMapWhile(source, Result.succeed)[Symbol.iterator]()
+    for (const value of [1, 2, 3]) {
+      deepStrictEqual(exhausted.next(), { done: false, value })
+    }
+    deepStrictEqual(exhausted.next(), { done: true, value: undefined })
+    deepStrictEqual(exhausted.next(), { done: true, value: undefined })
+    strictEqual(pulls, 4)
+  })
+
   it("getFailures", () => {
     deepStrictEqual(toArray(Iter.getFailures([])), [])
     deepStrictEqual(toArray(Iter.getFailures([Result.succeed(1), Result.fail("err"), Result.fail("nope")])), [
@@ -406,6 +482,13 @@ describe("Iterable", () => {
     input.push([1])
 
     deepStrictEqual(toArray(Iter.flatten(input)), [1])
+  })
+
+  it("dedupeAdjacent is stack safe across long runs of duplicates", () => {
+    const input = Array.from({ length: 20_000 }, () => 1)
+    input.push(2)
+
+    deepStrictEqual(toArray(Iter.dedupeAdjacent(input)), [1, 2])
   })
 
   it("cartesianWith", () => {

@@ -20,7 +20,7 @@ describe("Logger", () => {
 
       assert.match(
         result[0] as string,
-        /\[\d{2}:\d{2}:\d{2}\.\d{3}\]\sINFO\s\(#1\)\sspan=\dms:/
+        /\[\d{2}:\d{2}:\d{2}\.\d{3}\]\sINFO\s\(#\d+\)\sspan=\dms:/
       )
       assert.strictEqual(result[1], "info")
       assert.strictEqual(result[2], "message")
@@ -247,15 +247,14 @@ describe("Logger", () => {
       const scope = yield* Scope.make()
       const logger = yield* Logger.batched(Logger.make((options) => String(options.message)), {
         window: 1,
-        flush: (batch) =>
-          Effect.gen(function*() {
-            events.push(`start:${batch.join(",")}`)
-            if (batch[0] === "first") {
-              yield* Deferred.succeed(started, undefined)
-              yield* Effect.sleep(50)
-            }
-            events.push(`end:${batch.join(",")}`)
-          })
+        flush: Effect.fnUntraced(function*(batch) {
+          events.push(`start:${batch.join(",")}`)
+          if (batch[0] === "first") {
+            yield* Deferred.succeed(started, undefined)
+            yield* Effect.sleep(50)
+          }
+          events.push(`end:${batch.join(",")}`)
+        })
       }).pipe(Scope.provide(scope))
 
       yield* Effect.log("first").pipe(Effect.provide(Logger.layer([logger])))

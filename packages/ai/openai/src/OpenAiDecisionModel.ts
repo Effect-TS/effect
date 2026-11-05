@@ -9,7 +9,6 @@ import type * as Decision from "effect/ai/Decision"
 import * as DecisionModel from "effect/ai/DecisionModel"
 import * as AiModel from "effect/ai/Model"
 import * as Effect from "effect/Effect"
-import * as Base64 from "effect/encoding/Base64"
 import * as Layer from "effect/Layer"
 import * as Record from "effect/Record"
 import { OpenAiClient } from "./OpenAiClient.ts"
@@ -41,9 +40,10 @@ export const model = (
  * **Details**
  *
  * String state is sent as `input` unchanged, and other state is sent as JSON.
- * With images, `input` becomes one user message with the state as text
- * followed by the images. Byte arrays and base64 strings are sent as `data:`
- * URLs, and `data:` URLs are sent unchanged.
+ * With images, `input` becomes one user message with the state as text,
+ * followed by each image after a label naming the reference that replaces it
+ * in the state. Base64 data is sent as `data:` URLs, and `data:` URLs are sent
+ * unchanged.
  *
  * Probability criteria are appended to the question instructions, and each
  * rating level is sent with its label and description.
@@ -54,9 +54,8 @@ export const model = (
  *
  * - Remote URLs fail with `AiError.InvalidUserInputError` because OpenAI only
  *   accepts inline images.
- * - If OpenAI refuses any decision, the whole call fails with
- *   `AiError.ContentPolicyError`. The refused names are in
- *   `metadata.openai.refusedDecisions`.
+ * - Refusals yield `"Refused"` with `decideSettled`; `decide` fails with
+ *   `AiError.ContentPolicyError` naming the refused decisions.
  *
  * @stability unstable
  * @category constructors
@@ -71,7 +70,7 @@ export const make = Effect.fnUntraced(
       probabilityPrecision: 2,
       supportsImages: true,
       decide: Effect.fnUntraced(function*({ state, decisions, images }) {
-        if (images?.some((image) => image.data instanceof URL && image.data.protocol !== "data:")) {
+        if (images?.some(({ image }) => image.data instanceof URL && image.data.protocol !== "data:")) {
           return yield* invalidUserInput("OpenAI decisions accept base64 or data URL images, not remote URLs")
         }
         const questions: Array<typeof OpenAiSchema.DecisionQuestion.Encoded> = []
@@ -85,17 +84,20 @@ export const make = Effect.fnUntraced(
             role: "user",
             content: [
               { type: "input_text", text },
-              ...images.map((image) => ({ type: "input_image" as const, image_url: encodeImage(image) }))
+              ...images.flatMap(({ reference, image }) => [
+                { type: "input_text" as const, text: `Image ${reference}:` },
+                { type: "input_image" as const, image_url: encodeImage(image) }
+              ])
             ]
           }],
           questions
         })
         const answers: Record<string, DecisionModel.ProviderAnswer> = Object.create(null)
-        const refused: Array<string> = []
         for (const answer of response.answers) {
+          if (answers[answer.name]?._tag === "Refusal") continue
           switch (answer.type) {
             case "refusal":
-              refused.push(answer.name)
+              answers[answer.name] = { _tag: "Refusal" }
               break
             case "choice":
               answers[answer.name] = {
@@ -107,10 +109,10 @@ export const make = Effect.fnUntraced(
               break
             case "score": {
               const decision = decisions[answer.name]
-              if (decision?._tag !== "Rate") break
+              const levels = decision?._tag === "Rate" ? decision.criteria : []
               const probabilities: Record<string, number> = Object.create(null)
               for (const { value, probability } of answer.probabilities) {
-                const level = decision.criteria[value]
+                const level = levels[value]
                 if (level !== undefined) probabilities[level.label] = probability
               }
               answers[answer.name] = {
@@ -125,16 +127,6 @@ export const make = Effect.fnUntraced(
               answers[answer.name] = { _tag: "Probability", probability: answer.probability }
               break
           }
-        }
-        if (refused.length > 0) {
-          return yield* Effect.fail(AiError.make({
-            module: "OpenAiDecisionModel",
-            method: "decide",
-            reason: new AiError.ContentPolicyError({
-              description: `OpenAI refused to answer: ${refused.join(", ")}`,
-              metadata: { openai: { errorCode: null, errorType: null, requestId: null, refusedDecisions: refused } }
-            })
-          }))
         }
         return {
           answers,
@@ -154,7 +146,7 @@ const invalidUserInput = (description: string) =>
 
 const encodeQuestion = (
   name: string,
-  decision: Decision.Any
+  decision: Exclude<Decision.Any, Decision.Locate>
 ): typeof OpenAiSchema.DecisionQuestion.Encoded => {
   const instructions = encodeDescription(decision.instructions)
   switch (decision._tag) {
@@ -190,10 +182,8 @@ const encodeQuestion = (
 const encodeDescription = (description: Decision.Description | null): string =>
   typeof description === "string" ? description : JSON.stringify(description)
 
-const encodeImage = (image: DecisionModel.Image): string =>
-  image.data instanceof URL
-    ? image.data.href
-    : `data:${image.mediaType};base64,${typeof image.data === "string" ? image.data : Base64.encode(image.data)}`
+const encodeImage = (image: DecisionModel.ProviderImage["image"]): string =>
+  image.data instanceof URL ? image.data.href : `data:${image.mediaType};base64,${image.data}`
 
 /**
  * Provides DecisionModel using an existing OpenAiClient.

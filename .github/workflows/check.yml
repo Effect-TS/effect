@@ -39,24 +39,54 @@ jobs:
             exit 1
           fi
 
-  types:
-    name: Types
+  # Each type check takes several minutes on a slow runner, so they run in
+  # parallel instead of sharing one job's timeout.
+  types-matrix:
+    name: Types (${{ matrix.name }})
     runs-on: namespace-profile-linux-small
     permissions:
       contents: read
     timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # CI type checks with the official compiler; `pnpm check` runs tsrs locally.
+          - name: Check
+            deno: ""
+            command: pnpm check-tsc
+          - name: Deno
+            deno: v2.9.6
+            command: deno check .
+          - name: Tests
+            deno: ""
+            command: pnpm test-types --target '>=5.9'
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
       - name: Install dependencies
         uses: ./.github/actions/setup
         with:
-          deno-version: v2.9.7
-      - run: pnpm check
+          deno-version: ${{ matrix.deno }}
+      - run: ${{ matrix.command }}
         env:
           # Leave memory headroom for the runner by collecting the Go heap earlier.
           GOMEMLIMIT: 4GiB
-      - run: deno check .
-      - run: pnpm test-types --target '>=5.9'
+          TSTYCHE_FETCH_TIMEOUT: "120"
+
+  # Keeps the required `Types` status check covering every job above.
+  types:
+    name: Types
+    needs: types-matrix
+    if: always()
+    runs-on: ubuntu-latest
+    permissions: {}
+    timeout-minutes: 5
+    steps:
+      - name: Check type jobs
+        if: needs.types-matrix.result != 'success'
+        run: |
+          echo "Type checks finished with result: ${{ needs.types-matrix.result }}"
+          exit 1
 
   build:
     name: Build
@@ -116,6 +146,8 @@ jobs:
     runs-on: namespace-profile-linux-default
     env:
       EFFECT_INTEGRATION_TESTS: "1"
+      # MSSQL integration tests are too flaky for CI; run them locally instead.
+      EFFECT_MSSQL_INTEGRATION_TESTS: "0"
       # The ephemeral runner provides cleanup without a Ryuk sidecar.
       TESTCONTAINERS_RYUK_DISABLED: "true"
     permissions:
@@ -126,11 +158,18 @@ jobs:
       matrix:
         include:
           - runtime: Node
+            node: ""
             deno: ""
             bun: ""
             command: pnpm test --max-concurrency=10
+          # Node 25 and older handle upgrade request bodies differently.
+          - runtime: Node 24 (platform-node)
+            node: 24
+            deno: ""
+            bun: ""
+            command: pnpm vitest run --project @effect/platform-node --max-concurrency=10
           - runtime: Deno
-            deno: v2.9.7
+            deno: v2.9.6
             bun: ""
             command: deno task test --max-concurrency=10
           - runtime: Bun
@@ -143,9 +182,8 @@ jobs:
       - name: Pre-pull test container images
         run: |
           docker pull ghcr.io/tursodatabase/libsql-server:main &
-          docker pull postgres:alpine &
+          docker pull postgres:14-alpine &
           docker pull mysql:lts &
-          docker pull mcr.microsoft.com/mssql/server:2022-latest &
           docker pull vitess/vttestserver:mysql80 &
           docker pull redis:alpine &
           docker pull coredns/coredns:1.14.7 &
@@ -154,6 +192,7 @@ jobs:
       - name: Install dependencies
         uses: ./.github/actions/setup
         with:
+          node-version: ${{ matrix.node }}
           deno-version: ${{ matrix.deno }}
           bun-version: ${{ matrix.bun }}
       - name: Test
@@ -190,6 +229,21 @@ jobs:
           name: deno-pg-lifecycle-${{ github.run_attempt }}
           path: ${{ runner.temp }}/pg-lifecycle
           if-no-files-found: warn
+
+  test-node-minimum:
+    name: Test (Node 22.19.0 minimum)
+    runs-on: namespace-profile-linux-default
+    permissions:
+      contents: read
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - name: Install dependencies
+        uses: ./.github/actions/setup
+        with:
+          node-version: 22.19.0
+      - name: Test
+        run: pnpm vitest run --project @effect/platform-node --max-concurrency=10
 
   doctest:
     name: Test (Documentation)

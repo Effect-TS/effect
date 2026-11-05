@@ -465,9 +465,15 @@ export interface FilePartEncoded extends BasePartEncoded<"file", FilePartOptions
    */
   readonly fileName?: string | undefined
   /**
-   * File data as base64 string of data, a byte array, or a URL.
+   * File data as a base64 string, a byte array, a URL, or the tagged JSON
+   * form that encoding produces for byte arrays and URLs.
    */
-  readonly data: string | Uint8Array | URL
+  readonly data:
+    | string
+    | Uint8Array
+    | URL
+    | { readonly _tag: "Uint8Array"; readonly base64: string }
+    | { readonly _tag: "URL"; readonly href: string }
 }
 
 /**
@@ -480,6 +486,13 @@ export interface FilePartEncoded extends BasePartEncoded<"file", FilePartOptions
  */
 export interface FilePartOptions extends ProviderOptions {}
 
+const TaggedURL = Schema.TaggedStruct("URL", { href: Schema.URLFromString })
+
+const urlFromTaggedURL = SchemaTransformation.transform<URL, typeof TaggedURL.Type>({
+  decode: ({ href }) => href,
+  encode: (href) => ({ _tag: "URL", href }) as const
+})
+
 /**
  * Schema for validation and encoding of file parts.
  *
@@ -491,7 +504,18 @@ export const FilePart: Schema.Struct<{
   readonly type: Schema.Literal<"file">
   readonly mediaType: Schema.String
   readonly fileName: Schema.optional<Schema.String>
-  readonly data: Schema.Union<readonly [Schema.String, Schema.Uint8Array, Schema.URL]>
+  readonly data: Schema.Union<
+    readonly [
+      Schema.String,
+      Schema.decodeTo<
+        Schema.Uint8Array,
+        Schema.TaggedStruct<"Uint8Array", { readonly base64: Schema.Uint8ArrayFromBase64 }>
+      >,
+      Schema.decodeTo<Schema.URL, Schema.TaggedStruct<"URL", { readonly href: Schema.URLFromString }>>,
+      Schema.Uint8Array,
+      Schema.URL
+    ]
+  >
   readonly "~effect/ai/Prompt/Part": Schema.withDecodingDefaultKey<Schema.Literal<"~effect/ai/Prompt/Part">>
   readonly options: Schema.withDecodingDefault<
     Schema.$Record<
@@ -504,7 +528,25 @@ export const FilePart: Schema.Struct<{
   type: Schema.Literal("file"),
   mediaType: Schema.String,
   fileName: Schema.optional(Schema.String),
-  data: Schema.Union([Schema.String, Schema.Uint8Array, Schema.URL])
+  // The tagged members come first so that encoding produces JSON-safe data,
+  // while the raw members keep decoding byte arrays and URLs directly
+  data: Schema.Union([
+    Schema.String,
+    Schema.TaggedStruct("Uint8Array", { base64: Schema.Uint8ArrayFromBase64 }).pipe(Schema.decodeTo(
+      Schema.Uint8Array,
+      SchemaTransformation.transform({
+        decode: ({ base64 }) => base64,
+        encode: (base64) => ({ _tag: "Uint8Array", base64 }) as const
+      })
+    )),
+    TaggedURL.pipe(Schema.decodeTo(Schema.URL, urlFromTaggedURL)),
+    Schema.Uint8Array,
+    // Under the JSON and binary codecs a raw `URL` would serialize as a plain
+    // string, indistinguishable from the `Schema.String` member. Serialize it
+    // through the same `TaggedURL` instance instead, so the codecs see a
+    // single `{ _tag: "URL" }` member rather than two
+    Schema.URL.annotate({ toCodecJson: () => Schema.link<URL>()(TaggedURL, urlFromTaggedURL) })
+  ])
 }).annotate({ identifier: "FilePart" })
 
 /**
@@ -647,6 +689,60 @@ export const toolCallPart = (params: PartConstructorParams<ToolCallPart>): ToolC
 // =============================================================================
 
 /**
+ * A part returned by a tool's `toModelOutput` mapping and sent to the model in
+ * place of the serialized tool result.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.0.0
+ */
+export type ToolModelOutputPart = TextPart | FilePart
+
+/**
+ * Schema for validation and encoding of tool model output parts.
+ *
+ * @stability unstable
+ * @category schemas
+ * @since 4.0.0
+ */
+export const ToolModelOutputPart: Schema.Union<readonly [typeof TextPart, typeof FilePart]> = Schema.Union([
+  TextPart,
+  FilePart
+])
+
+/**
+ * Converts tool model output to text for providers that only accept text tool
+ * results.
+ *
+ * **Details**
+ *
+ * Joins text parts with newlines and replaces each file part with a placeholder
+ * naming its media type and file name.
+ *
+ * **Example** (Converting tool model output to text)
+ *
+ * ```ts import.meta.vitest
+ * import { Prompt } from "effect/ai"
+ *
+ * const text = Prompt.toolModelOutputToText([
+ *   Prompt.textPart({ text: "Screenshot" }),
+ *   Prompt.filePart({ mediaType: "image/png", fileName: "screenshot.png", data: "iVBORw0KGgo=" })
+ * ])
+ * text // => "Screenshot\n[image/png screenshot.png omitted]"
+ * ```
+ *
+ * @stability unstable
+ * @category combinators
+ * @since 4.0.0
+ */
+export const toolModelOutputToText = (parts: ReadonlyArray<ToolModelOutputPart>): string =>
+  parts.map((part) =>
+    part.type === "text"
+      ? part.text
+      : `[${part.mediaType}${part.fileName === undefined ? "" : ` ${part.fileName}`} omitted]`
+  ).join("\n")
+
+/**
  * Content part representing the result of a tool call.
  *
  * **Example** (Creating tool result parts)
@@ -686,9 +782,15 @@ export interface ToolResultPart extends BasePart<"tool-result", ToolResultPartOp
    */
   readonly isFailure: boolean
   /**
-   * The result returned by the tool execution.
+   * The result returned by the tool execution. Results of locally handled
+   * tools hold their JSON encoding; provider-executed tools keep the
+   * provider's payload.
    */
   readonly result: unknown
+  /**
+   * Content sent to the model in place of the serialized `result`.
+   */
+  readonly modelOutput?: ReadonlyArray<ToolModelOutputPart> | undefined
   /**
    * Whether the tool was executed by the provider (true) or framework (false).
    */
@@ -716,9 +818,15 @@ export interface ToolResultPartEncoded extends BasePartEncoded<"tool-result", To
    */
   readonly isFailure: boolean
   /**
-   * The result returned by the tool execution.
+   * The result returned by the tool execution. Results of locally handled
+   * tools hold their JSON encoding; provider-executed tools keep the
+   * provider's payload.
    */
   readonly result: unknown
+  /**
+   * Content sent to the model in place of the serialized `result`.
+   */
+  readonly modelOutput?: ReadonlyArray<TextPartEncoded | FilePartEncoded> | undefined
   /**
    * Whether the tool was executed by the provider (true) or framework (false).
    */
@@ -748,6 +856,7 @@ export const ToolResultPart: Schema.Struct<{
   readonly name: Schema.String
   readonly isFailure: Schema.Boolean
   readonly result: Schema.Unknown
+  readonly modelOutput: Schema.optional<Schema.$Array<typeof ToolModelOutputPart>>
   readonly providerExecuted: Schema.withDecodingDefault<Schema.Boolean>
   readonly "~effect/ai/Prompt/Part": Schema.withDecodingDefaultKey<Schema.Literal<"~effect/ai/Prompt/Part">>
   readonly options: Schema.withDecodingDefault<
@@ -763,6 +872,7 @@ export const ToolResultPart: Schema.Struct<{
   name: Schema.String,
   isFailure: Schema.Boolean,
   result: Schema.Unknown,
+  modelOutput: Schema.optional(Schema.Array(ToolModelOutputPart)),
   providerExecuted: Schema.Boolean.pipe(Schema.withDecodingDefault(Effect.succeed(false)))
 }).annotate({ identifier: "ToolResultPart" })
 
@@ -1407,36 +1517,7 @@ export const UserMessage: Schema.Struct<{
         never,
         never
       >,
-      Schema.$Array<
-        Schema.Union<
-          readonly [
-            Schema.Struct<{
-              readonly type: Schema.Literal<"text">
-              readonly text: Schema.String
-              readonly "~effect/ai/Prompt/Part": Schema.withDecodingDefaultKey<Schema.Literal<"~effect/ai/Prompt/Part">>
-              readonly options: Schema.withDecodingDefault<
-                Schema.$Record<
-                  Schema.String,
-                  Schema.NullOr<Schema.Codec<Schema.Json>>
-                >
-              >
-            }>,
-            Schema.Struct<{
-              readonly type: Schema.Literal<"file">
-              readonly mediaType: Schema.String
-              readonly fileName: Schema.optional<Schema.String>
-              readonly data: Schema.Union<readonly [Schema.String, Schema.Uint8Array, Schema.URL]>
-              readonly "~effect/ai/Prompt/Part": Schema.withDecodingDefaultKey<Schema.Literal<"~effect/ai/Prompt/Part">>
-              readonly options: Schema.withDecodingDefault<
-                Schema.$Record<
-                  Schema.String,
-                  Schema.NullOr<Schema.Codec<Schema.Json>>
-                >
-              >
-            }>
-          ]
-        >
-      >
+      Schema.$Array<Schema.Union<readonly [typeof TextPart, typeof FilePart]>>
     ]
   >
   readonly "~effect/ai/Prompt/Message": Schema.withDecodingDefaultKey<Schema.Literal<"~effect/ai/Prompt/Message">>
@@ -2258,6 +2339,7 @@ export const fromResponseParts = (parts: ReadonlyArray<Response.AnyPart>): Promp
             name: part.name,
             isFailure: part.isFailure,
             result: part.encodedResult,
+            ...(part.modelOutput !== undefined ? { modelOutput: part.modelOutput } : undefined),
             providerExecuted: part.providerExecuted ?? false,
             options: part.metadata
           }))

@@ -1,4 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
+import { assertNone } from "@effect/vitest/utils"
 import { Context, Effect, Stream } from "effect"
 import { Cookies, HttpBody, HttpClientRequest, HttpClientResponse, HttpServerResponse } from "effect/http"
 
@@ -139,6 +140,25 @@ describe("HttpServerResponse", () => {
     )
 
     it.each([
+      HttpServerResponse.text("body", { status: 204 }),
+      HttpServerResponse.raw(new Response("body", { headers: { "content-length": "4" } }), { status: 205 })
+    ])("drops content-length for status $status", (response) => {
+      assert.strictEqual(HttpServerResponse.toWeb(response).headers.get("content-length"), null)
+    })
+
+    it.each([
+      { status: 204, headers: undefined },
+      { status: 205, headers: { "x-outer": "outer" } }
+    ])("drops content-length from a raw Response with status $status", ({ status, headers }) => {
+      const raw = new Response(null, { status, headers: { "content-length": "4" } })
+      const web = HttpServerResponse.toWeb(HttpServerResponse.raw(raw, { headers }))
+
+      assert.strictEqual(web.status, status)
+      assert.strictEqual(web.headers.get("content-length"), null)
+      assert.strictEqual(raw.headers.get("content-length"), "4")
+    })
+
+    it.each([
       { status: 200, withoutBody: true },
       { status: 204, withoutBody: false },
       { status: 205, withoutBody: false },
@@ -218,6 +238,10 @@ describe("HttpServerResponse", () => {
         assert.strictEqual(yield* HttpServerResponse.toClientResponse(response).text, "hello")
         assert.strictEqual(yield* Effect.promise(() => HttpServerResponse.toWeb(response).text()), "hello")
       }))
+
+    it("has no Web Response for HttpClientResponse.toWeb", () => {
+      assertNone(HttpClientResponse.toWeb(HttpServerResponse.toClientResponse(HttpServerResponse.text("hello"))))
+    })
   })
 
   it.effect("fromClientResponse preserves status, headers, cookies, and json", () =>

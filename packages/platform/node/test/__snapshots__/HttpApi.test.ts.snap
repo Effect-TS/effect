@@ -372,7 +372,7 @@ exports[`HttpApi > original tests > OpenAPI spec > fixture 1`] = `
             "name": "page",
             "required": false,
             "schema": {
-              "pattern": "^[+-]?\\d*\\.?\\d+(?:[Ee][+-]?\\d+)?$",
+              "pattern": "^[+-]?(?:\\d+(?:\\.\\d+)?|\\.\\d+)(?:[Ee][+-]?\\d+)?$",
               "type": "string",
             },
           },
@@ -384,9 +384,6 @@ exports[`HttpApi > original tests > OpenAPI spec > fixture 1`] = `
               "anyOf": [
                 {
                   "type": "string",
-                },
-                {
-                  "type": "null",
                 },
               ],
               "description": "search query",
@@ -436,7 +433,7 @@ exports[`HttpApi > original tests > OpenAPI spec > fixture 1`] = `
             "name": "id",
             "required": true,
             "schema": {
-              "pattern": "^[+-]?\\d*\\.?\\d+(?:[Ee][+-]?\\d+)?$",
+              "pattern": "^[+-]?(?:\\d+(?:\\.\\d+)?|\\.\\d+)(?:[Ee][+-]?\\d+)?$",
               "type": "string",
             },
           },
@@ -511,14 +508,7 @@ exports[`HttpApi > original tests > OpenAPI spec > fixture 1`] = `
             "name": "0",
             "required": true,
             "schema": {
-              "anyOf": [
-                {
-                  "type": "string",
-                },
-                {
-                  "type": "null",
-                },
-              ],
+              "type": "string",
             },
           },
         ],
@@ -649,7 +639,7 @@ exports[`HttpApi > original tests > OpenAPI spec > fixture 1`] = `
             "name": "id",
             "required": true,
             "schema": {
-              "pattern": "^[+-]?\\d*\\.?\\d+(?:[Ee][+-]?\\d+)?$",
+              "pattern": "^[+-]?(?:\\d+(?:\\.\\d+)?|\\.\\d+)(?:[Ee][+-]?\\d+)?$",
               "type": "string",
             },
           },

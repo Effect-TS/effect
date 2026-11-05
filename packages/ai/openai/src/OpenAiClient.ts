@@ -573,13 +573,8 @@ const makeSocket = Effect.gen(function*() {
                 method: "createResponseStream",
                 reason: new AiError.NetworkError({
                   reason: "TransportError",
-                  request: {
-                    method: "POST",
-                    url: request.url,
-                    urlParams: [],
-                    hash: undefined,
-                    headers: request.headers
-                  },
+                  method: request.method,
+                  url: request.url,
                   description: "Failed to send message over WebSocket"
                 })
               })
@@ -630,14 +625,7 @@ const makeSocket = Effect.gen(function*() {
                   : status,
                 metadata: error as any,
                 http: {
-                  body: json,
-                  request: {
-                    method: "POST",
-                    url: request.url,
-                    urlParams: [],
-                    hash: undefined,
-                    headers: request.headers
-                  }
+                  body: json
                 }
               })
             }))
@@ -670,13 +658,8 @@ const makeSocket = Effect.gen(function*() {
             method: "createResponseStream",
             reason: new AiError.NetworkError({
               reason: "TransportError",
-              request: {
-                method: "POST",
-                url: request.url,
-                urlParams: [],
-                hash: undefined,
-                headers: request.headers
-              },
+              method: request.method,
+              url: request.url,
               description: error.message
             })
           })),
@@ -773,7 +756,8 @@ const decodeEvent = Schema.decodeUnknownSync(Schema.fromJsonString(AllEvents))
  *
  * This only works with the following WebSocket constructor layers:
  *
- * - `NodeSocket.layerWebSocketConstructorWS`
+ * - `NodeSocket.layerWebSocketConstructor`
+ * - `NodeWS.layerWebSocketConstructor`
  * - `BunSocket.layerWebSocketConstructor`
  *
  * These constructor layers support the non-standard options needed to set the
@@ -812,7 +796,8 @@ export const withWebSocketMode = <A, E, R>(
  *
  * This only works with the following WebSocket constructor layers:
  *
- * - `NodeSocket.layerWebSocketConstructorWS`
+ * - `NodeSocket.layerWebSocketConstructor`
+ * - `NodeWS.layerWebSocketConstructor`
  * - `BunSocket.layerWebSocketConstructor`
  *
  * These constructor layers support the non-standard options needed to set the

@@ -1,7 +1,7 @@
 import { assert, describe, it } from "@effect/vitest"
 import { Effect, Layer, Predicate, Ref, Schema, Stream } from "effect"
 import { Chat, IdGenerator, Prompt, Tool, Toolkit } from "effect/ai"
-import { Persistence } from "effect/persistence"
+import { KeyValueStore, Persistence } from "effect/persistence"
 import { TestClock } from "effect/testing"
 import * as TestUtils from "./utils.ts"
 
@@ -16,6 +16,62 @@ const PersistenceLayer = Layer.provideMerge(
 )
 
 describe("Chat", () => {
+  for (
+    const [name, data] of [
+      ["bytes", new Uint8Array([0, 137, 255, 65])],
+      ["string", "dGVzdA=="],
+      ["URL", new URL("https://example.com/file.txt")]
+    ] as const
+  ) {
+    const makePrompt = () =>
+      Prompt.make([{
+        role: "user",
+        content: [{ type: "file", mediaType: "text/plain", data }]
+      }])
+
+    it.effect(`round-trips file ${name} through exportJson/fromJson`, () =>
+      Effect.gen(function*() {
+        const prompt = makePrompt()
+        const chat = yield* Chat.fromPrompt(prompt)
+        const restored = yield* Chat.fromJson(yield* chat.exportJson)
+
+        assert.deepStrictEqual(yield* Ref.get(restored.history), prompt)
+      }))
+
+    it.effect(`round-trips file ${name} through JSON-serialized export/fromExport`, () =>
+      Effect.gen(function*() {
+        const prompt = makePrompt()
+        const chat = yield* Chat.fromPrompt(prompt)
+        const restored = yield* Chat.fromExport(JSON.parse(JSON.stringify(yield* chat.export)))
+
+        assert.deepStrictEqual(yield* Ref.get(restored.history), prompt)
+      }))
+
+    it.effect(`round-trips file ${name} through JSON-backed persistence`, () =>
+      Effect.gen(function*() {
+        const persistence = yield* Chat.Persistence
+        const chat = yield* persistence.getOrCreate("1")
+
+        yield* chat.generateText({ prompt: makePrompt() }).pipe(
+          TestUtils.withLanguageModel({ generateText: [{ type: "text", text: "Received" }] })
+        )
+
+        const expected = yield* Ref.get(chat.history)
+        const restored = yield* persistence.get("1")
+        const reopened = yield* persistence.getOrCreate("1")
+
+        assert.deepStrictEqual(yield* Ref.get(restored.history), expected)
+        assert.deepStrictEqual(yield* Ref.get(reopened.history), expected)
+      }).pipe(
+        Effect.provide(
+          Chat.layerPersisted({ storeId: "chat" }).pipe(
+            Layer.provide(Persistence.layerBackingKvs),
+            Layer.provide(KeyValueStore.layerMemory)
+          )
+        )
+      ))
+  }
+
   it.effect("keeps partial assistant text when streamText is interrupted", () =>
     Effect.gen(function*() {
       const chat = yield* Chat.empty
@@ -43,6 +99,35 @@ describe("Chat", () => {
         ])
       )
     }))
+
+  it.effect("exports tool results with non-JSON types through exportJson", () => {
+    const toolkit = Toolkit.make(Tool.make("Count", {
+      success: Schema.Struct({ total: Schema.BigInt })
+    }))
+
+    return Effect.gen(function*() {
+      const chat = yield* Chat.empty
+      yield* chat.generateText({ prompt: "Count", toolkit }).pipe(
+        TestUtils.withLanguageModel({
+          generateText: [{ type: "tool-call", id: "count-call", name: "Count", params: {} }]
+        })
+      )
+      const restored = yield* Chat.fromJson(yield* chat.exportJson)
+      const toolMessage = (yield* Ref.get(restored.history)).content.find((message) => message.role === "tool")
+
+      assert.deepStrictEqual(
+        toolMessage?.content[0],
+        Prompt.toolResultPart({
+          id: "count-call",
+          name: "Count",
+          isFailure: false,
+          result: { total: "1" },
+          providerExecuted: false,
+          options: {}
+        })
+      )
+    }).pipe(Effect.provide(toolkit.toLayer({ Count: () => Effect.succeed({ total: 1n }) })))
+  })
 
   it.effect("does not replay a completed approved tool", () => {
     let executions = 0
@@ -208,5 +293,18 @@ describe("Chat", () => {
 
       assert.instanceOf(result, Chat.ChatNotFoundError)
       assert.strictEqual(result.chatId, "chat-321")
+    }).pipe(Effect.provide(PersistenceLayer)))
+
+  it.effect("should raise an error when retrieving a chat with invalid history", () =>
+    Effect.gen(function*() {
+      const backing = yield* Persistence.BackingPersistence
+      const persistence = yield* Chat.Persistence
+
+      const store = yield* backing.make("chat")
+      yield* store.set("1", { content: [{ role: "unknown" }] }, undefined)
+
+      const result = yield* Effect.flip(persistence.get("1"))
+
+      assert.instanceOf(result, Persistence.PersistenceError)
     }).pipe(Effect.provide(PersistenceLayer)))
 })

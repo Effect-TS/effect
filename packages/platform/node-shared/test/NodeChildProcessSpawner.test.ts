@@ -29,6 +29,19 @@ ChildProcessSpawnerTest.suite("NodeChildProcessSpawner", NodeServices, {
   processGroups: true
 })
 
+describe.skipIf(process.platform === "win32")("error descriptions", () => {
+  it.effect("quote arguments and escape control characters", () =>
+    Effect.gen(function*() {
+      const error = yield* Effect.flip(ChildProcess.make("nonexistent-command-12345", ["a b", "it's", "\u001b[2J"]))
+
+      assert.strictEqual(error.reason._tag, "NotFound")
+      assert.strictEqual(
+        error.reason._tag === "NotFound" ? error.reason.pathOrDescriptor : undefined,
+        "nonexistent-command-12345 'a b' 'it'\\''s' '\\u001b[2J'"
+      )
+    }).pipe(Effect.provide(NodeServices)))
+})
+
 describe("Windows cleanup", { concurrent: false }, () => {
   for (const signal of [false, true]) {
     it.skipIf(signal && process.platform === "win32")(
@@ -67,6 +80,100 @@ describe("Windows cleanup", { concurrent: false }, () => {
       }
     )
   }
+})
+
+describe.skipIf(process.platform === "win32")("non-detached exit cleanup", { concurrent: false }, () => {
+  for (const signal of [false, true]) {
+    it.live(
+      `does not signal the process group of a ${
+        signal ? "signal-terminated" : "failed"
+      } child during exit, kill or scope release`,
+      () =>
+        Effect.gen(function*() {
+          const kill = vi.spyOn(process, "kill")
+          yield* Effect.addFinalizer(() => Effect.sync(() => kill.mockRestore()))
+          let pid = 0
+          yield* Effect.scoped(Effect.gen(function*() {
+            const handle = yield* ChildProcess.make(process.execPath, [
+              "-e",
+              signal ? "process.kill(process.pid, 'SIGTERM')" : "process.exit(1)"
+            ], { detached: false, forceKillAfter: "100 millis" })
+            pid = handle.pid
+            if (signal) {
+              assert.isTrue(Exit.isFailure(yield* Effect.exit(handle.exitCode)))
+            } else {
+              assert.strictEqual(yield* handle.exitCode, 1)
+            }
+            // The exited child's PID may now lead an unrelated process group.
+            yield* Effect.ignore(handle.kill())
+          }))
+          assert.deepStrictEqual(kill.mock.calls.filter(([target]) => target === -pid), [])
+        }).pipe(Effect.scoped, Effect.provide(NodeServices))
+    )
+  }
+
+  it.live("does not poll or force kill the process group of a child that exits during scope release", () =>
+    Effect.gen(function*() {
+      const kill = vi.spyOn(process, "kill")
+      yield* Effect.addFinalizer(() => Effect.sync(() => kill.mockRestore()))
+      let pid = 0
+      yield* Effect.scoped(Effect.gen(function*() {
+        const handle = yield* ChildProcess.make(process.execPath, ["-e", "setInterval(() => {}, 1000)"], {
+          detached: false,
+          forceKillAfter: "1 second"
+        })
+        pid = handle.pid
+      }))
+      // Signalling the live child is fine; polling or escalating after it exits is not.
+      assert.deepStrictEqual(kill.mock.calls.filter(([target, signal]) => target === -pid && signal !== "SIGTERM"), [])
+    }).pipe(Effect.scoped, Effect.provide(NodeServices)))
+})
+
+const zombieProbes = 3
+
+// macOS answers EPERM rather than ESRCH while the group's remaining members are zombies.
+const stubZombieProcessGroup = Effect.fnUntraced(function*() {
+  const nativeKill = process.kill.bind(process)
+  const group = { pid: 0, probes: 0, signals: [] as Array<string | number | undefined> }
+  const kill = vi.spyOn(process, "kill").mockImplementation((target, signal) => {
+    if (group.pid === 0 || target !== -group.pid) {
+      return nativeKill(target, signal)
+    }
+    if (signal === 0) {
+      group.probes++
+    } else {
+      group.signals.push(signal)
+    }
+    throw Object.assign(new Error("kill"), { code: group.probes <= zombieProbes ? "EPERM" : "ESRCH" })
+  })
+  yield* Effect.addFinalizer(() => Effect.sync(() => kill.mockRestore()))
+  return group
+})
+
+describe.skipIf(process.platform === "win32")("detached exit cleanup", { concurrent: false }, () => {
+  it.live("kill waits for a process group that exists but cannot be signalled", () =>
+    Effect.gen(function*() {
+      const group = yield* stubZombieProcessGroup()
+      const handle = yield* ChildProcess.make(process.execPath, ["-e", "setInterval(() => {}, 1000)"])
+      group.pid = handle.pid
+
+      yield* handle.kill()
+
+      assert.strictEqual(group.probes, zombieProbes + 1)
+    }).pipe(Effect.scoped, Effect.provide(NodeServices)))
+
+  it.live("kill escalates and waits for a process group whose exited leader left only zombies", () =>
+    Effect.gen(function*() {
+      const group = yield* stubZombieProcessGroup()
+      const handle = yield* ChildProcess.make(process.execPath, ["-e", ""])
+      group.pid = handle.pid
+      assert.strictEqual(yield* handle.exitCode, 0)
+
+      yield* handle.kill({ forceKillAfter: "0 millis" })
+
+      assert.deepStrictEqual(group.signals, ["SIGTERM", "SIGKILL"])
+      assert.strictEqual(group.probes, zombieProbes + 1)
+    }).pipe(Effect.scoped, Effect.provide(NodeServices)))
 })
 
 // Synchronous fixture runs must not block other tests with active timeout budgets.
@@ -185,33 +292,32 @@ const liveSleep = (millis: number) =>
 const liveTimeout = (millis: number) => <A, E, R>(effect: Effect.Effect<A, E, R>) =>
   Effect.raceFirst(effect, liveSleep(millis).pipe(Effect.andThen(Effect.die(new Error("timed out")))))
 
-const startProcessGroup = (
+const startProcessGroup = Effect.fnUntraced(function*(
   mode: "exit-on-signal" | "ignore-signal",
   options?: ChildProcess.CommandOptions,
   delays: { readonly leader: number; readonly descendant: number } = { leader: 0, descendant: 200 }
-) =>
-  Effect.gen(function*() {
-    const fs = yield* FileSystem.FileSystem
-    const directory = yield* fs.makeTempDirectoryScoped()
-    const marker = `${directory}/marker`
-    const scope = yield* Scope.fork(yield* Effect.scope)
-    const handle = yield* Scope.provide(scope)(ChildProcess.make(
-      process.execPath,
-      [processGroupFixture, "leader", mode, marker, String(delays.leader), String(delays.descendant)],
-      { stdin: "ignore", ...options }
-    ))
-    const ready = yield* Deferred.make<number>()
-    yield* handle.stdout.pipe(
-      Stream.decodeText,
-      Stream.splitLines,
-      Stream.runForEach((line) =>
-        line.startsWith("READY ") ? Deferred.succeed(ready, Number(line.slice("READY ".length))) : Effect.void
-      ),
-      Effect.forkScoped
-    )
-    const descendantPid = yield* Deferred.await(ready).pipe(liveTimeout(5_000))
-    return { handle, descendantPid, marker, scope }
-  })
+) {
+  const fs = yield* FileSystem.FileSystem
+  const directory = yield* fs.makeTempDirectoryScoped()
+  const marker = `${directory}/marker`
+  const scope = yield* Scope.fork(yield* Effect.scope)
+  const handle = yield* Scope.provide(scope)(ChildProcess.make(
+    process.execPath,
+    [processGroupFixture, "leader", mode, marker, String(delays.leader), String(delays.descendant)],
+    { stdin: "ignore", ...options }
+  ))
+  const ready = yield* Deferred.make<number>()
+  yield* handle.stdout.pipe(
+    Stream.decodeText,
+    Stream.splitLines,
+    Stream.runForEach((line) =>
+      line.startsWith("READY ") ? Deferred.succeed(ready, Number(line.slice("READY ".length))) : Effect.void
+    ),
+    Effect.forkScoped
+  )
+  const descendantPid = yield* Deferred.await(ready).pipe(liveTimeout(5_000))
+  return { handle, descendantPid, marker, scope }
+})
 
 const killDescendant = (pid: number) =>
   Effect.sync(() => {
@@ -220,21 +326,19 @@ const killDescendant = (pid: number) =>
     } catch {}
   })
 
-const assertHeartbeatStopped = (marker: string) =>
-  Effect.gen(function*() {
-    const fs = yield* FileSystem.FileSystem
-    const sizeAfterKill = (yield* fs.stat(marker)).size
-    yield* liveSleep(100)
-    const finalSize = (yield* fs.stat(marker)).size
-    assert.strictEqual(finalSize, sizeAfterKill)
-  })
+const assertHeartbeatStopped = Effect.fnUntraced(function*(marker: string) {
+  const fs = yield* FileSystem.FileSystem
+  const sizeAfterKill = (yield* fs.stat(marker)).size
+  yield* liveSleep(100)
+  const finalSize = (yield* fs.stat(marker)).size
+  assert.strictEqual(finalSize, sizeAfterKill)
+})
 
-const timed = <A, E, R>(effect: Effect.Effect<A, E, R>) =>
-  Effect.gen(function*() {
-    const start = Date.now()
-    yield* effect
-    return Date.now() - start
-  })
+const timed = Effect.fnUntraced(function*<A, E, R>(effect: Effect.Effect<A, E, R>) {
+  const start = Date.now()
+  yield* effect
+  return Date.now() - start
+})
 
 describe.skipIf(process.platform === "win32")("process group cleanup", () => {
   it.live("scope release cleans descendants after the leader exits successfully", () =>
@@ -366,6 +470,20 @@ it.live("scope release returns when stdout is unread and backpressured", () =>
         "process.stdout.write(\"x\".repeat(1024 * 1024)); setInterval(() => {}, 1000)"
       ], { stdin: "ignore" })
       yield* Effect.sleep("100 millis")
+    })))
+
+    assert.isBelow(releaseMillis, 2_000)
+  }).pipe(Effect.provide(NodeServices)))
+
+it.live("scope release closes stdin for a child that drains it on the kill signal", () =>
+  Effect.gen(function*() {
+    const releaseMillis = yield* timed(Effect.scoped(Effect.gen(function*() {
+      const handle = yield* ChildProcess.make(process.execPath, [
+        "-e",
+        // Exits with EOF on SIGTERM, or after 3 seconds if stdin stays open.
+        "process.on(\"SIGTERM\", () => process.stdin.on(\"end\", () => process.exit(0)).resume()); console.log(\"READY\"); setTimeout(() => process.exit(1), 3_000)"
+      ], { stdin: Stream.never })
+      yield* Stream.runHead(handle.stdout)
     })))
 
     assert.isBelow(releaseMillis, 2_000)

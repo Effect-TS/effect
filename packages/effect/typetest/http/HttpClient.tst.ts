@@ -1,10 +1,12 @@
-import { type Effect, Redacted } from "effect"
+import { Effect, type Exit, Layer, Redacted } from "effect"
 import { HttpClient, type HttpClientError, HttpClientRequest, type HttpClientResponse } from "effect/http"
-import type { RateLimiter } from "effect/persistence"
+import type { CircuitBreaker, RateLimiter } from "effect/persistence"
 import { describe, expect, it } from "tstyche"
 
 declare const client: HttpClient.HttpClient
 declare const limiter: RateLimiter.RateLimiter
+declare const breaker: CircuitBreaker.CircuitBreaker
+declare const classified: Effect.Effect<CircuitBreaker.Outcome, never, "Classifier">
 declare const failingClient: HttpClient.HttpClient.With<"error">
 declare const recoverNumber: (error: "error") => Effect.Effect<number>
 declare const recoverResponse: (error: "error") => Effect.Effect<HttpClientResponse.HttpClientResponse>
@@ -133,6 +135,21 @@ describe("HttpClient", () => {
     })
   })
 
+  describe("timeout", () => {
+    it("should preserve the HttpClient service type", () => {
+      expect(client.pipe(HttpClient.timeout("5 seconds"))).type.toBe<HttpClient.HttpClient>()
+      expect(HttpClient.timeout(client, "5 seconds")).type.toBe<HttpClient.HttpClient>()
+      expect(Layer.effect(HttpClient.HttpClient, Effect.map(HttpClient.HttpClient, HttpClient.timeout("5 seconds"))))
+        .type.toBe<Layer.Layer<HttpClient.HttpClient, never, HttpClient.HttpClient>>()
+    })
+
+    it("should preserve custom errors", () => {
+      expect(failingClient.pipe(HttpClient.timeout("5 seconds"))).type.toBe<
+        HttpClient.HttpClient.With<"error" | HttpClientError.HttpClientError>
+      >()
+    })
+  })
+
   describe("withRateLimiter", () => {
     it("should support data-last and data-first usage", () => {
       const options = {
@@ -159,6 +176,39 @@ describe("HttpClient", () => {
         HttpClient.HttpClient.With<
           HttpClientError.HttpClientError | RateLimiter.RateLimiterError
         >
+      >()
+    })
+  })
+
+  describe("withCircuitBreaker", () => {
+    it("should add R2 from an effectful classifier in both forms", () => {
+      const options = {
+        breaker,
+        classify: (_exit: Exit.Exit<HttpClientResponse.HttpClientResponse, HttpClientError.HttpClientError>) =>
+          classified
+      }
+
+      expect(client.pipe(HttpClient.withCircuitBreaker(options))).type.toBe<
+        HttpClient.HttpClient.With<HttpClientError.HttpClientError | CircuitBreaker.CircuitBreakerError, "Classifier">
+      >()
+      expect(HttpClient.withCircuitBreaker(client, options)).type.toBe<
+        HttpClient.HttpClient.With<HttpClientError.HttpClientError | CircuitBreaker.CircuitBreakerError, "Classifier">
+      >()
+    })
+
+    it("should infer the exit and probe context and delegate to circuitBreakerClassifier", () => {
+      const delegated = HttpClient.withCircuitBreaker(client, {
+        breaker,
+        classify: (exit, { probe }) => {
+          expect(exit).type.toBe<Exit.Exit<HttpClientResponse.HttpClientResponse, HttpClientError.HttpClientError>>()
+          expect(probe).type.toBe<boolean>()
+          expect(HttpClient.circuitBreakerClassifier(exit)).type.toBe<Effect.Effect<CircuitBreaker.Outcome>>()
+          return HttpClient.circuitBreakerClassifier(exit)
+        }
+      })
+
+      expect(delegated).type.toBe<
+        HttpClient.HttpClient.With<HttpClientError.HttpClientError | CircuitBreaker.CircuitBreakerError>
       >()
     })
   })

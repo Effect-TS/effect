@@ -13,6 +13,7 @@
 import type * as ByteSize from "../ByteSize.ts"
 import * as Context from "../Context.ts"
 import * as Effect from "../Effect.ts"
+import * as Base64 from "../encoding/Base64.ts"
 import type * as FileSystem from "../FileSystem.ts"
 import { dual } from "../Function.ts"
 import * as Inspectable from "../Inspectable.ts"
@@ -55,7 +56,11 @@ export const isHttpClientRequest = (u: unknown): u is HttpClientRequest => hasPr
  */
 export interface HttpClientRequest extends Inspectable.Inspectable, Pipeable {
   readonly [TypeId]: typeof TypeId
-  readonly method: HttpMethod
+  /**
+   * The request method, which may be a method outside the known `HttpMethod`
+   * literals when the request was converted from a Web or server request.
+   */
+  readonly method: string
   readonly url: string
   readonly urlParams: UrlParams.UrlParams
   readonly hash: Option.Option<string>
@@ -125,7 +130,7 @@ const Proto = {
  * @since 4.0.0
  */
 export function makeWith(
-  method: HttpMethod,
+  method: string,
   url: string,
   urlParams: UrlParams.Input,
   hash: Option.Option<string>,
@@ -399,7 +404,8 @@ export const removeHeader: {
 )
 
 /**
- * Sets the `Authorization` header using HTTP Basic authentication credentials.
+ * Sets the `Authorization` header using HTTP Basic authentication credentials,
+ * encoded as UTF-8 before base64 encoding.
  *
  * @stability unstable
  * @category combinators
@@ -422,7 +428,11 @@ export const basicAuth: {
     username: string | Redacted.Redacted,
     password: string | Redacted.Redacted
   ): HttpClientRequest =>
-    setHeader(self, "Authorization", `Basic ${btoa(`${stringOrRedacted(username)}:${stringOrRedacted(password)}`)}`)
+    setHeader(
+      self,
+      "Authorization",
+      `Basic ${Base64.encode(`${stringOrRedacted(username)}:${stringOrRedacted(password)}`)}`
+    )
 )
 
 /**
@@ -461,6 +471,58 @@ export const accept: {
  * @since 4.0.0
  */
 export const acceptJson: (self: HttpClientRequest) => HttpClientRequest = accept("application/json")
+
+/**
+ * Asks the server to switch the connection to another protocol by setting the
+ * `Connection: Upgrade` and `Upgrade` headers.
+ *
+ * **When to use**
+ *
+ * Use to switch an HTTP/1.1 connection to a raw byte stream, such as Docker's
+ * `Upgrade: tcp` for container attach. For WebSocket, use `Socket.makeWebSocket`.
+ *
+ * **Details**
+ *
+ * The request is otherwise ordinary, so client transforms such as base URLs,
+ * authentication, and tracing apply to it. When the server answers `101
+ * Switching Protocols`, `HttpClientResponse.upgrade` hands over the
+ * connection as a `Socket`. Any other response is read as usual.
+ *
+ * **Example** (Attaching to a Docker container)
+ *
+ * ```ts
+ * import { Effect } from "effect"
+ * import { HttpClient, HttpClientRequest } from "effect/http"
+ *
+ * const program = Effect.gen(function*() {
+ *   const client = yield* HttpClient.HttpClient
+ *   const response = yield* client.execute(
+ *     HttpClientRequest.post("/containers/abc/attach?stream=1&stdout=1").pipe(
+ *       HttpClientRequest.upgrade("tcp")
+ *     )
+ *   )
+ *   const socket = yield* response.upgrade
+ *   const reader = yield* socket.reader
+ *   return yield* reader.pull
+ * })
+ * ```
+ *
+ * @stability unstable
+ * @category combinators
+ * @since 4.0.6
+ */
+export const upgrade: {
+  (protocol: string): (self: HttpClientRequest) => HttpClientRequest
+  (self: HttpClientRequest, protocol: string): HttpClientRequest
+} = dual(2, (self: HttpClientRequest, protocol: string): HttpClientRequest =>
+  makeWith(
+    self.method,
+    self.url,
+    self.urlParams,
+    self.hash,
+    Headers.set(Headers.set(self.headers, "connection", "Upgrade"), "upgrade", protocol),
+    self.body
+  ))
 
 /**
  * Sets the request URL. When given a `URL`, its search parameters and hash are extracted into the request's structured fields.
@@ -754,7 +816,7 @@ export interface CompressionOptions {
  * `Content-Length`. The compressed body does not retain the original lazy text.
  * Stream bodies are compressed lazily and have their content length removed.
  * They still require a client runtime that supports streaming request bodies
- * (Fetch requires `duplex: "half"`, which Safari and Firefox do not support).
+ * (stable Safari and Firefox do not; see `FetchHttpClient.StreamBodyFallback`).
  *
  * Returns the original request unchanged for empty, FormData, and raw bodies,
  * bodies with a known length below `options.minSize`, or requests with any
@@ -797,7 +859,15 @@ export const compressBody: {
     }
     return Effect.map(
       compression.compressBody(self.body, algorithm, options),
-      (body) => body === self.body ? self : setHeader(setBody(self, body), "content-encoding", algorithm)
+      (body) =>
+        body === self.body ? self : makeWith(
+          self.method,
+          self.url,
+          self.urlParams,
+          self.hash,
+          Headers.set(bodyInternal.updateContentLength(self.headers, body), "content-encoding", algorithm),
+          body
+        )
     )
   }
 )
@@ -1052,16 +1122,15 @@ export function toUrl(self: HttpClientRequest): Option.Option<URL> {
  * @since 4.0.0
  */
 export const fromWeb = (request: globalThis.Request): HttpClientRequest => {
-  const method = request.method.toUpperCase() as HttpMethod
-  return modify(empty, {
-    method,
+  const method = request.method.toUpperCase()
+  return modify(makeWith(method, "", UrlParams.empty, Option.none(), Headers.empty, HttpBody.empty), {
     url: new URL(request.url),
     headers: request.headers,
     body: fromWebBody(request, method)
   })
 }
 
-const fromWebBody = (request: globalThis.Request, method: HttpMethod): HttpBody.HttpBody => {
+const fromWebBody = (request: globalThis.Request, method: string): HttpBody.HttpBody => {
   if (!hasBody(method) || request.body === null) {
     return HttpBody.empty
   }

@@ -7,6 +7,7 @@
  * @internal
  */
 import type * as Completions from "../../Completions.ts"
+import { negatedName } from "./descriptor.ts"
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -22,15 +23,16 @@ const escapeZshChoice = (s: string): string => s.replace(/[^A-Za-z0-9_.,/@%+-]/g
 const sanitize = (s: string): string => s.replace(/[^a-zA-Z0-9_]/g, "_")
 
 /**
- * All forms of a flag (--name, -alias, --no-name) for the exclusion group.
+ * All forms of a flag (--name, -alias, negation) for the exclusion group.
  */
 const allForms = (flag: Completions.FlagDescriptor): Array<string> => {
   const forms: Array<string> = [`--${flag.name}`]
   for (const alias of flag.aliases) {
     forms.push(alias.length === 1 ? `-${alias}` : `--${alias}`)
   }
-  if (flag.type._tag === "Boolean") {
-    forms.push(`--no-${flag.name}`)
+  const negation = negatedName(flag)
+  if (negation !== undefined) {
+    forms.push(`--${negation}`)
   }
   return forms
 }
@@ -89,9 +91,10 @@ const flagSpecs = (flag: Completions.FlagDescriptor): Array<string> => {
   }
 
   // Boolean negation
-  if (flag.type._tag === "Boolean") {
+  const negation = negatedName(flag)
+  if (negation !== undefined) {
     const negDesc = flag.description ? `[${escapeZshExplanation(`Disable ${flag.name}`)}]` : ""
-    specs.push(`'${excl}--no-${flag.name}${negDesc}'`)
+    specs.push(`'${excl}--${negation}${negDesc}'`)
   }
 
   return specs

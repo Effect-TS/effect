@@ -245,7 +245,17 @@ export const readerBytes = (
  *
  * **Details**
  *
- * The `TextDecoder` is created once per acquisition.
+ * Each acquisition has its own streaming decoder. Characters may span binary
+ * frames and pulls; each frame produces one string, possibly empty. A string
+ * frame flushes incomplete characters as U+FFFD before its text. Close code 1000
+ * flushes remaining text once before propagating the close error; other failures
+ * do not flush.
+ *
+ * **Gotchas**
+ *
+ * Binary WebSocket messages share decoder state: incomplete characters carry
+ * into the next binary frame, and BOM handling resets only after a flush. Use
+ * `readerBytes` and decode each frame separately for per-message decoding.
  *
  * @stability unstable
  * @category combinators
@@ -261,14 +271,31 @@ export const readerString = (
 > =>
   Effect.map(self.reader, ({ pull }) => {
     const decoder = new TextDecoder(encoding)
+    const streamOptions = { stream: true }
+    let needsFlush = false
     return Effect.map(pull, (chunk) => {
       const out = new Array<string>(chunk.length)
       for (let i = 0; i < chunk.length; i++) {
         const item = chunk[i]
-        out[i] = typeof item === "string" ? item : decoder.decode(item)
+        if (typeof item === "string") {
+          out[i] = needsFlush ? decoder.decode() + item : item
+          needsFlush = false
+        } else {
+          out[i] = decoder.decode(item, streamOptions)
+          needsFlush = true
+        }
       }
       return out as unknown as NonEmptyReadonlyArray<string>
-    })
+    }).pipe(
+      Effect.catch((error) => {
+        if (needsFlush && error.reason._tag === "SocketCloseError" && error.reason.code === 1000) {
+          needsFlush = false
+          const last = decoder.decode()
+          if (last.length > 0) return Effect.succeed([last] as const)
+        }
+        return Effect.fail(error)
+      })
+    )
   })
 
 const CloseEventTypeId = "~effect/socket/Socket/CloseEvent"
@@ -641,6 +668,10 @@ export const toChannel = <IE = never>(
 /**
  * Converts a `Socket` into a bidirectional string `Channel`, decoding binary
  * frames with the optional text encoding.
+ *
+ * **Details**
+ *
+ * Uses `readerString` for decoding and close handling.
  *
  * @stability unstable
  * @category combinators
@@ -1047,6 +1078,8 @@ export const fromWebSocket = <RO, WS extends WebSocketLike>(
           // resume a pull blocked in another fiber before detaching
           fail(closeError(1006))
           ws.removeEventListener("message", onMessage)
+          // Keep late errors handled when release aborts a pending ws handshake.
+          ws.addEventListener("error", constVoid)
           ws.removeEventListener("error", onError)
           ws.removeEventListener("close", onClose)
           // let the close handshake proceed once nothing is pulling

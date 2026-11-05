@@ -223,6 +223,25 @@ describe("RpcSerialization", () => {
     assert.deepStrictEqual(parser.decode(encoded), [{ _tag, requestId }])
   })
 
+  it.each(
+    [
+      ["jsonRpc", RpcSerialization.jsonRpc({ controlMessages: false }), ""],
+      ["ndJsonRpc", RpcSerialization.ndJsonRpc({ controlMessages: false }), "\n"]
+    ] as const
+  )("%s decodes control methods as notifications when controlMessages is false", (_, serialization, delimiter) => {
+    const parser = serialization.makeUnsafe()
+    const encoded = JSON.stringify({ jsonrpc: "2.0", method: "@effect/rpc/Eof" }) + delimiter
+
+    assert.deepStrictEqual(parser.decode(encoded), [{
+      _tag: "Request",
+      id: "",
+      tag: "@effect/rpc/Eof",
+      payload: null,
+      headers: [],
+      isNotification: true
+    }])
+  })
+
   describe("jsonRpc inherited properties", { concurrent: false }, () => {
     afterEach(() => {
       delete objectPrototype["method"]
@@ -295,11 +314,32 @@ describe("RpcSerialization", () => {
     assert.deepStrictEqual(parser.decode(bytes.slice(split)), [message])
   })
 
-  it("ndjson skips lines that are not JSON and keeps decoding", () => {
+  it("ndjson uses the application/x-ndjson content type", () => {
+    assert.strictEqual(RpcSerialization.makeNdjson().contentType, "application/x-ndjson")
+    assert.strictEqual(RpcSerialization.ndjson.contentType, "application/x-ndjson")
+  })
+
+  it("ndjson fails with NdjsonDecodeError and a SyntaxError cause for a malformed non-empty line", () => {
     const parser = RpcSerialization.ndjson.makeUnsafe()
 
-    assert.deepStrictEqual(parser.decode("{\"id\":1}\nnot json\n{\"id\":2}\n"), [{ id: 1 }, { id: 2 }])
-    assert.deepStrictEqual(parser.decode("{\"id\":4}\n"), [{ id: 4 }])
+    let error: unknown
+    try {
+      parser.decode("{\"id\":1}\nnot json\n{\"id\":2}\n")
+    } catch (cause) {
+      error = cause
+    }
+    assert.instanceOf(error, RpcSerialization.NdjsonDecodeError)
+    assert.strictEqual(error._tag, "NdjsonDecodeError")
+    assert.instanceOf(error.cause, SyntaxError)
+  })
+
+  it.each(["\n", "\r\n"])("ndjson skips blank lines with %j line endings", (newline) => {
+    const parser = RpcSerialization.ndjson.makeUnsafe()
+
+    assert.deepStrictEqual(parser.decode(`${newline}{"id":1}${newline}${newline}{"id":2}${newline}`), [
+      { id: 1 },
+      { id: 2 }
+    ])
   })
 
   it.effect("layerNdjsonWith forwards maxBufferSize to its decoder", () =>
@@ -368,6 +408,22 @@ describe("RpcSerialization", () => {
         id: 2,
         result: "two"
       }
+    ])
+  })
+
+  it("jsonRpc emits stream chunks of a batched request immediately", () => {
+    const parser = RpcSerialization.jsonRpc().makeUnsafe()
+    parser.decode(
+      "[{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"users.stream\"},{\"jsonrpc\":\"2.0\",\"id\":2,\"method\":\"users.get\"}]"
+    )
+
+    const chunk = parser.encode({ _tag: "Chunk", requestId: 1, values: ["a"] })
+    assert.deepStrictEqual(JSON.parse(chunk as string), { jsonrpc: "2.0", chunk: true, id: 1, result: ["a"] })
+    assert.strictEqual(parser.encode(responseExitSuccess(1, null)), undefined)
+    const exits = parser.encode(responseExitSuccess(2, "two"))
+    assert.deepStrictEqual(JSON.parse(exits as string), [
+      { jsonrpc: "2.0", id: 1, result: null },
+      { jsonrpc: "2.0", id: 2, result: "two" }
     ])
   })
 

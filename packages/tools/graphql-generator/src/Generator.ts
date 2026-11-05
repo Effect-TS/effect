@@ -104,7 +104,9 @@ export { ConfigError } from "./internal/Generate.ts"
  *   a last member built with `GraphQL.otherTypename`.
  * - `@skip` / `@include` with a variable condition make the fields they cover
  *   optional keys; literal conditions are folded.
- * - Recursive input objects produce error diagnostics.
+ * - Input objects on a cycle, such as filters with `and` / `or`, are
+ *   `Schema.Codec` consts annotated with written-out Type and Encoded
+ *   interfaces, and reference the cycle through `Schema.suspend`.
  *
  * @stability experimental
  * @category generation

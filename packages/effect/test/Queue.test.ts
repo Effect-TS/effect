@@ -8,13 +8,12 @@ describe("Queue", () => {
     const withYield = <A, E>(effect: Effect.Effect<A, E>) =>
       Effect.provideService(effect, Scheduler.MaxOpsBeforeYield, 3)
 
-    const assertCompletes = (fiber: Fiber.Fiber<unknown, unknown>) =>
-      Effect.gen(function*() {
-        for (let i = 0; i < 200 && fiber.pollUnsafe() === undefined; i++) yield* Effect.yieldNow
-        const done = fiber.pollUnsafe() !== undefined
-        yield* Fiber.interrupt(fiber)
-        assert.isTrue(done, "lost wake-up")
-      })
+    const assertCompletes = Effect.fnUntraced(function*(fiber: Fiber.Fiber<unknown, unknown>) {
+      for (let i = 0; i < 200 && fiber.pollUnsafe() === undefined; i++) yield* Effect.yieldNow
+      const done = fiber.pollUnsafe() !== undefined
+      yield* Fiber.interrupt(fiber)
+      assert.isTrue(done, "lost wake-up")
+    })
 
     it.effect("offerAll does not park beside available capacity", () =>
       Effect.gen(function*() {
@@ -78,6 +77,15 @@ describe("Queue", () => {
 
       // Verify it's recognized as a dequeue
       assert.isTrue(Queue.isDequeue(dequeue))
+    }))
+
+  it.effect("offerAll does not retain the input array", () =>
+    Effect.gen(function*() {
+      const queue = yield* Queue.unbounded<number>()
+      const buffer = [1, 2, 3]
+      yield* Queue.offerAll(queue, buffer)
+      buffer[0] = 0
+      assert.deepStrictEqual(yield* Queue.takeAll(queue), [1, 2, 3])
     }))
 
   it.effect("bounded offerAll waits until capacity is released", () =>
@@ -424,6 +432,38 @@ describe("Queue", () => {
       const result = yield* Queue.offer(queue, 5)
       assert.isTrue(result)
       assert.deepStrictEqual(yield* Queue.takeAll(queue), [4, 5])
+    }))
+
+  it.effect("offer sliding with zero capacity only hands off to waiting takers", () =>
+    Effect.gen(function*() {
+      const queue = yield* Queue.sliding<number>(0)
+      assert.isTrue(yield* Queue.offer(queue, 0))
+      assert.strictEqual(yield* Queue.size(queue), 0)
+      const taker = yield* Effect.forkChild(Queue.take(queue), { startImmediately: true })
+      assert.isTrue(yield* Queue.offer(queue, 1))
+      assert.strictEqual(yield* Fiber.join(taker), 1)
+    }))
+
+  it.effect("offerAll sliding with zero capacity hands the newest messages to waiting takers", () =>
+    Effect.gen(function*() {
+      const queue = yield* Queue.sliding<number>(0)
+      const taker = yield* Effect.forkChild(Queue.take(queue), { startImmediately: true })
+      assert.deepStrictEqual(yield* Queue.offerAll(queue, [1, 2]), [])
+      assert.isTrue(yield* Queue.offer(queue, 3))
+      assert.strictEqual(yield* Fiber.join(taker), 3)
+      assert.strictEqual(yield* Queue.size(queue), 0)
+    }))
+
+  it.effect("offer sliding with zero capacity trims to the takers left after an interruption", () =>
+    Effect.gen(function*() {
+      const queue = yield* Queue.sliding<number>(0)
+      const taker = yield* Effect.forkChild(Queue.take(queue), { startImmediately: true })
+      const interrupted = yield* Effect.forkChild(Queue.take(queue), { startImmediately: true })
+      assert.deepStrictEqual(yield* Queue.offerAll(queue, [1, 2]), [])
+      yield* Fiber.interrupt(interrupted)
+      assert.isTrue(yield* Queue.offer(queue, 3))
+      assert.strictEqual(yield* Fiber.join(taker), 3)
+      assert.strictEqual(yield* Queue.size(queue), 0)
     }))
 
   it.effect("offerAll can be interrupted", () =>
@@ -888,6 +928,25 @@ describe("Queue", () => {
       result = yield* Fiber.join(fiber)
       assert.strictEqual(result, 2)
     }))
+
+  it.effect.each(["offer", "offerAll"] as const)(
+    "zero-capacity %s after offerAll waits for another taker",
+    (method) =>
+      Effect.gen(function*() {
+        const queue = yield* Queue.bounded<number>(0)
+        const taker = yield* Queue.take(queue).pipe(Effect.forkChild({ startImmediately: true }))
+        assert.deepStrictEqual(yield* Queue.offerAll(queue, [1]), [])
+        const producer = yield* Effect.forkChild(
+          method === "offer" ? Queue.offer(queue, 2) : Queue.offerAll(queue, [2]),
+          { startImmediately: true }
+        )
+
+        assert.strictEqual(yield* Fiber.join(taker), 1)
+        assert.isUndefined(producer.pollUnsafe())
+        assert.strictEqual(yield* Queue.take(queue), 2)
+        assert.isDefined(producer.pollUnsafe())
+      })
+  )
 
   it.effect("zero-capacity takeAll consumes buffered messages before pending offers", () =>
     Effect.gen(function*() {

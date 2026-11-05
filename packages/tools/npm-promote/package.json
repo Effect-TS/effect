@@ -22,8 +22,8 @@
   },
   "devDependencies": {
     "@effect/vitest": "workspace:^",
-    "@types/node": "^26.6.5",
-    "@types/semver": "^7.7.1",
-    "vitest": "^5.0.3"
+    "@types/node": "^26.6.6",
+    "@types/semver": "^7.8.0",
+    "vitest": "^5.0.5"
   }
 }

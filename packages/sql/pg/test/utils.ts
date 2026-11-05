@@ -1,9 +1,9 @@
 import { PgClient, type PgConnection } from "@effect/sql-pg"
 import { PostgreSqlContainer } from "@testcontainers/postgresql"
-import { Clock, Context, Data, Effect, Layer, Redacted, type Scope, String } from "effect"
+import { Clock, Context, Data, type Duration, Effect, Layer, Redacted, type Scope, String } from "effect"
 import * as Fs from "node:fs"
 import { inspect } from "node:util"
-import { getContainerRuntimeClient } from "testcontainers"
+import { getContainerRuntimeClient, Wait } from "testcontainers"
 
 export class ContainerError extends Data.TaggedError("ContainerError")<{
   cause: unknown
@@ -73,11 +73,14 @@ const instrumentClient = <A, E, R>(
   )
 
 // Shared with the regression tests so they exercise the real container finalizer.
-export const releasePgContainer = (container: {
-  getId(): string
-  stop(options: { remove: boolean }): Promise<unknown>
-}) =>
-  Effect.gen(function*() {
+export const releasePgContainer = Effect.fnUntraced(
+  function*(container: {
+    getId(): string
+    stop(options: { remove: boolean }): Promise<unknown>
+  }, options?: {
+    // Lets the regression tests exhaust the retries without waiting 15 seconds.
+    readonly waitTimeout?: Duration.Input | undefined
+  }) {
     const id = container.getId()
     lifecycleLog(id, "container-release", "start", 0)
     yield* Effect.promise(() => lifecycle(id, "stop", () => container.stop({ remove: false })))
@@ -88,25 +91,36 @@ export const releasePgContainer = (container: {
     // timed-out request and retry this read-only wait, never the whole release.
     yield* Effect.tryPromise((signal) =>
       lifecycle(id, "wait-not-running", () => handle.wait({ condition: "not-running", abortSignal: signal }), signal)
-    ).pipe(Effect.timeout("5 seconds"), Effect.retry({ times: 2 }))
+    ).pipe(Effect.timeout(options?.waitTimeout ?? "5 seconds"), Effect.retry({ times: 2 }))
     yield* Effect.promise(() => lifecycle(id, "remove", () => client.container.remove(handle, { removeVolumes: true })))
     lifecycleLog(id, "container-release", "done", 0)
-  }).pipe(
-    // Bound the entire release below the existing 30s hook limit, including
-    // stop and removal. Exhausted retries and timeouts remain visible defects.
-    Effect.timeout("20 seconds"),
-    Effect.orDie,
-    // Fixture finalizers inherit TestClock from it.layer; cleanup must use real deadlines.
-    Effect.provideService(Clock.Clock, Clock.Clock.defaultValue())
-  )
+  },
+  // Bound the entire release below the existing 30s hook limit, including
+  // stop and removal. Exhausted retries and timeouts remain visible defects.
+  Effect.timeout("20 seconds"),
+  (_) => Effect.orDie(_),
+  // Fixture finalizers inherit TestClock from it.layer; cleanup must use real deadlines.
+  Effect.provideService(Clock.Clock, Clock.Clock.defaultValue())
+)
+
+// PostgreSqlContainer also waits for listening ports, probing them with
+// `docker exec` calls that have no timeout. In Deno CI one probe never exited,
+// stalling startup past the 30s hook limit while the container was healthy.
+// Its pg_isready health check already requires a TCP listener on localhost.
+export const pgWaitStrategy = () => Wait.forHealthCheck()
 
 export class PgContainer extends Context.Service<PgContainer>()("test/PgContainer", {
   make: Effect.acquireRelease(
     Effect.tryPromise({
-      try: () => lifecycle("new", "container-start", () => new PostgreSqlContainer("postgres:alpine").start()),
+      try: () =>
+        lifecycle(
+          "new",
+          "container-start",
+          () => new PostgreSqlContainer("postgres:14-alpine").withWaitStrategy(pgWaitStrategy()).start()
+        ),
       catch: (cause) => new ContainerError({ cause })
     }).pipe(Effect.tap((container) => marker(container.getId(), "container-started"))),
-    releasePgContainer
+    (container) => releasePgContainer(container)
   )
 }) {
   static readonly layer = Layer.effect(this)(this.make)
@@ -201,8 +215,8 @@ export class PgContainer extends Context.Service<PgContainer>()("test/PgContaine
 export const realSleep = Effect.promise(() => new Promise((resolve) => setTimeout(resolve, 10)))
 const activeTimeoutMs = 10_000
 
-export const waitUntilActive = (observer: PgConnection.PgConnection, pid: number, advisoryLock = false) =>
-  Effect.gen(function*() {
+export const waitUntilActive = Effect.fnUntraced(
+  function*(observer: PgConnection.PgConnection, pid: number, advisoryLock = false) {
     const startedAt = Date.now()
     while (Date.now() - startedAt < activeTimeoutMs) {
       const active = yield* observer.query(
@@ -221,7 +235,8 @@ export const waitUntilActive = (observer: PgConnection.PgConnection, pid: number
         } within 10 seconds`
       )
     )
-  })
+  }
+)
 
 // Parse can report active before Execute starts. Cancellation needs the query to be waiting on the lock.
 export const waitUntilAdvisoryLock = (observer: PgConnection.PgConnection, pid: number) =>

@@ -1,5 +1,6 @@
 import { assert, it } from "@effect/vitest"
-import { Context, Effect, Exit, Layer, Redacted, Ref, Schema } from "effect"
+import { Clock, Context, Effect, Exit, Layer, Redacted, Ref, Schema } from "effect"
+import * as WebCrypto from "effect/crypto/WebCrypto"
 import * as EventGroup from "effect/eventlog/EventGroup"
 import * as EventJournal from "effect/eventlog/EventJournal"
 import * as EventLog from "effect/eventlog/EventLog"
@@ -8,7 +9,11 @@ import * as EventLogMessage from "effect/eventlog/EventLogMessage"
 import * as EventLogServerUnencrypted from "effect/eventlog/EventLogServerUnencrypted"
 import * as EventLogSessionAuth from "effect/eventlog/EventLogSessionAuth"
 import { makeGetIdentityRootSecretMaterial } from "effect/eventlog/internal/identityRootSecretDerivation"
+import * as RpcClient from "effect/rpc/RpcClient"
+import type * as RpcMessage from "effect/rpc/RpcMessage"
+import * as RpcServer from "effect/rpc/RpcServer"
 import * as RpcTest from "effect/rpc/RpcTest"
+import { TestClock } from "effect/testing"
 import * as RegressionTest from "./EventLogServerUnencryptedRegressionTest.ts"
 
 RegressionTest.suite("memory", EventLogServerUnencrypted.layerStorageMemory)
@@ -19,6 +24,11 @@ const ReproGroup = EventGroup.empty.add({
   payload: Schema.Struct({ key: Schema.String, value: Schema.Number })
 })
 const event = ReproGroup.events.ReproEvent
+const OpaqueReproGroup = EventGroup.empty.add({
+  tag: "ReproEvent",
+  primaryKey: (payload) => payload.key,
+  payload: Schema.Struct({ key: Schema.String })
+})
 const storeId = EventLogMessage.StoreId.make("repro-store")
 const getIdentityRootSecretMaterial = makeGetIdentityRootSecretMaterial(globalThis.crypto)
 
@@ -118,6 +128,96 @@ it.effect("indexes conflicts from the sliced history", () =>
     assert.isDefined(originBConflicts)
     assert.deepStrictEqual(originBConflicts.map((entry) => entry.idString), [newerSameKey.idString])
   }).pipe(Effect.provide(EventLogEncryption.layerSubtle)))
+
+it.effect("compactBacklog keeps forwarded entries in batch order", () =>
+  Effect.gen(function*() {
+    const makeEntry = Effect.fnUntraced(function*(key: string, value?: number) {
+      return new EventJournal.Entry({
+        id: EventJournal.makeEntryIdUnsafe(),
+        event: "ReproEvent",
+        primaryKey: key,
+        payload: value === undefined
+          ? yield* Schema.encodeUnknownEffect(OpaqueReproGroup.events.ReproEvent.payloadSchemaBinary)({ key })
+          : yield* Schema.encodeUnknownEffect(event.payloadSchemaBinary)({ key, value })
+      }, { disableChecks: true })
+    })
+    // The opaque entry lacks `value`, so the compactor cannot decode it.
+    const entries = [
+      yield* makeEntry("a", 0),
+      yield* makeEntry("a"),
+      yield* makeEntry("b", 2),
+      yield* makeEntry("a", 3)
+    ]
+    const remoteEntries = entries.map((entry, remoteSequence) =>
+      new EventJournal.RemoteEntry({ remoteSequence, entry })
+    )
+    // Output is written with the opaque entry first, then grouped by key.
+    const compaction = EventLog.groupCompaction(
+      ReproGroup,
+      ({ entries, forward }) => Effect.forEach(entries, forward, { discard: true })
+    )
+
+    const compacted = yield* Effect.gen(function*() {
+      const registry = yield* EventLog.Registry
+      return yield* EventLogServerUnencrypted.compactBacklog({ remoteEntries, compactors: registry.compactors })
+    }).pipe(Effect.provide(compaction.pipe(Layer.provideMerge(EventLog.layerRegistry))))
+
+    const fields = (remoteEntry: EventJournal.RemoteEntry) =>
+      [remoteEntry.remoteSequence, remoteEntry.entry.idString, remoteEntry.entry.payload] as const
+    assert.deepStrictEqual(compacted.map(fields), remoteEntries.map(fields))
+  }))
+
+for (const fallback of [false, true]) {
+  it.effect(
+    `compactBacklog handles large groups with ${fallback ? "fallback" : "projection"}`,
+    () =>
+      Effect.gen(function*() {
+        // Exceeds the argument limit of the former spread-based append.
+        const count = 150_000
+        const payload = new Uint8Array()
+        const remoteEntries = Array.from({ length: count }, (_, index) =>
+          new EventJournal.RemoteEntry({
+            remoteSequence: index + 1,
+            entry: new EventJournal.Entry({
+              id: EventJournal.makeEntryIdUnsafe({ msecs: index }),
+              event: event.tag,
+              primaryKey: "large-group",
+              payload
+            }, { disableChecks: true })
+          }, { disableChecks: true }))
+        const registry = yield* EventLog.Registry
+        yield* registry.registerCompaction({
+          events: [event.tag],
+          effect: Effect.fnUntraced(function*({ entries, write }) {
+            for (let index = fallback ? 0 : 1; index < entries.length; index++) {
+              yield* write(entries[index])
+            }
+            // More outputs than inputs cannot be projected onto remote sequences.
+            if (fallback) yield* write(entries[0])
+          })
+        })
+
+        const compacted = yield* EventLogServerUnencrypted.compactBacklog({
+          remoteEntries,
+          compactors: registry.compactors
+        })
+
+        assert.strictEqual(compacted.length, fallback ? count : count - 1)
+        let mismatches = 0
+        for (let index = 0; index < compacted.length; index++) {
+          if (
+            compacted[index].entry !== remoteEntries[fallback ? index : index + 1].entry ||
+            compacted[index].remoteSequence !== (!fallback && index === compacted.length - 1 ? count : index + 1)
+          ) {
+            mismatches++
+          }
+        }
+        assert.strictEqual(mismatches, 0)
+      }).pipe(Effect.provide(EventLog.layerRegistry)),
+    { timeout: 30_000, concurrent: false }
+  )
+}
+
 const makeAuthClient = (options: {
   readonly storage: EventLogServerUnencrypted.Storage["Service"]
   readonly authorization: EventLogServerUnencrypted.EventLogServerAuthorization["Service"]
@@ -293,3 +393,219 @@ it.effect("Authenticate re-checks identity authorization on a cached binding", (
     assert.deepStrictEqual(yield* Ref.get(policyCalls), [identity.publicKey, identity.publicKey])
     assert.strictEqual(yield* Ref.get(bindingCalls), 1)
   }).pipe(Effect.provide(EventLogEncryption.layerSubtle)))
+
+const allowAll: EventLogServerUnencrypted.EventLogServerAuthorization["Service"] = {
+  authorizeWrite: () => Effect.void,
+  authorizeRead: () => Effect.void,
+  authorizeIdentity: () => Effect.void
+}
+
+it.effect("Authenticate does not bind a signing key whose signature fails verification", () =>
+  Effect.gen(function*() {
+    const { storage, bindingCalls } = yield* makeRecordingStorage
+    const client = yield* makeAuthClient({ storage, authorization: allowAll })
+    const owner = yield* EventLog.makeIdentity
+    const other = yield* EventLog.makeIdentity
+    const hello = yield* client["EventLog.Hello"]()
+    const request = yield* authenticate({
+      identity: { publicKey: owner.publicKey, privateKey: other.privateKey },
+      challenge: hello.challenge,
+      remoteId: hello.remoteId
+    })
+    const error = yield* client["EventLog.Authenticate"](
+      new EventLogMessage.Authenticate({ ...request, signature: new Uint8Array(64) })
+    ).pipe(Effect.flip)
+    assert.strictEqual(error.code, "Forbidden")
+    assert.strictEqual(yield* Ref.get(bindingCalls), 0)
+
+    const ownerHello = yield* client["EventLog.Hello"]()
+    yield* client["EventLog.Authenticate"](
+      yield* authenticate({ identity: owner, challenge: ownerHello.challenge, remoteId: ownerHello.remoteId })
+    )
+    assert.strictEqual(yield* Ref.get(bindingCalls), 1)
+  }).pipe(Effect.provide(EventLogEncryption.layerSubtle)))
+
+it.effect("Authenticate rejects a validly signed key that differs from the identity's binding", () =>
+  Effect.gen(function*() {
+    const { storage } = yield* makeRecordingStorage
+    const client = yield* makeAuthClient({ storage, authorization: allowAll })
+    const owner = yield* EventLog.makeIdentity
+    const other = yield* EventLog.makeIdentity
+    const hello = yield* client["EventLog.Hello"]()
+    yield* client["EventLog.Authenticate"](
+      yield* authenticate({ identity: owner, challenge: hello.challenge, remoteId: hello.remoteId })
+    )
+
+    const otherHello = yield* client["EventLog.Hello"]()
+    const error = yield* client["EventLog.Authenticate"](
+      yield* authenticate({
+        identity: { publicKey: owner.publicKey, privateKey: other.privateKey },
+        challenge: otherHello.challenge,
+        remoteId: otherHello.remoteId
+      })
+    ).pipe(Effect.flip)
+    assert.strictEqual(error.code, "Forbidden")
+
+    const ownerHello = yield* client["EventLog.Hello"]()
+    yield* client["EventLog.Authenticate"](
+      yield* authenticate({ identity: owner, challenge: ownerHello.challenge, remoteId: ownerHello.remoteId })
+    )
+  }).pipe(Effect.provide(EventLogEncryption.layerSubtle)))
+
+it.effect("Authenticate passes the presented signing key to identity authorization", () =>
+  Effect.gen(function*() {
+    const { storage, bindingCalls } = yield* makeRecordingStorage
+    const owner = yield* EventLog.makeIdentity
+    const other = yield* EventLog.makeIdentity
+    const ownerSigningPublicKey = yield* EventLogSessionAuth.deriveSigningPublicKey(owner)
+    const otherSigningPublicKey = yield* EventLogSessionAuth.deriveSigningPublicKey(other)
+    const policyCalls = yield* Ref.make<ReadonlyArray<Uint8Array | undefined>>([])
+    const client = yield* makeAuthClient({
+      storage,
+      authorization: {
+        ...allowAll,
+        authorizeIdentity: ({ publicKey, signingPublicKey }) =>
+          Ref.update(policyCalls, (calls) => [...calls, signingPublicKey]).pipe(
+            Effect.andThen(
+              signingPublicKey !== undefined &&
+                signingPublicKey.every((byte, index) => byte === ownerSigningPublicKey[index])
+                ? Effect.void
+                : Effect.fail(
+                  new EventLogServerUnencrypted.EventLogServerAuthError({
+                    reason: "Forbidden",
+                    publicKey,
+                    message: "Signing key not provisioned"
+                  })
+                )
+            )
+          )
+      }
+    })
+    const hello = yield* client["EventLog.Hello"]()
+    const error = yield* client["EventLog.Authenticate"](
+      yield* authenticate({
+        identity: { publicKey: owner.publicKey, privateKey: other.privateKey },
+        challenge: hello.challenge,
+        remoteId: hello.remoteId
+      })
+    ).pipe(Effect.flip)
+    assert.strictEqual(error.code, "Forbidden")
+    assert.strictEqual(yield* Ref.get(bindingCalls), 0)
+
+    const ownerHello = yield* client["EventLog.Hello"]()
+    yield* client["EventLog.Authenticate"](
+      yield* authenticate({ identity: owner, challenge: ownerHello.challenge, remoteId: ownerHello.remoteId })
+    )
+    assert.deepStrictEqual(yield* Ref.get(policyCalls), [otherSigningPublicKey, ownerSigningPublicKey])
+    assert.strictEqual(yield* Ref.get(bindingCalls), 1)
+  }).pipe(Effect.provide(EventLogEncryption.layerSubtle)))
+
+const makeConnections = Effect.gen(function*() {
+  const handlers = yield* Layer.build(EventLogServerUnencrypted.layerRpcHandlers.pipe(
+    Layer.provide(EventLogServerUnencrypted.layerStorageMemory),
+    Layer.provide(EventLog.layerRegistry),
+    Layer.provide(Layer.succeed(EventLogServerUnencrypted.StoreMapping, {
+      resolve: ({ storeId }) => Effect.succeed(storeId),
+      hasStore: () => Effect.succeed(true)
+    })),
+    Layer.provide(Layer.succeed(EventLogServerUnencrypted.EventLogServerAuthorization, allowAll))
+  ))
+  const clients = new Map<number, (response: RpcMessage.FromServer<any>) => Effect.Effect<void>>()
+  const server = yield* RpcServer.makeNoSerialization(EventLogMessage.EventLogRemoteRpcs, {
+    onFromServer: (response) => clients.get(response.clientId)?.(response) ?? Effect.void
+  }).pipe(Effect.provideContext(handlers))
+  const connect = Effect.fnUntraced(function*(clientId: number) {
+    const client = yield* RpcClient.makeNoSerialization(EventLogMessage.EventLogRemoteRpcs, {
+      supportsAck: true,
+      onFromClient: ({ message }) => server.write(clientId, message)
+    })
+    clients.set(clientId, client.write)
+    return client.client
+  })
+  return { connect, disconnect: server.disconnect }
+})
+
+it.effect("Authenticate rejects a challenge issued to a disconnected client", () =>
+  Effect.gen(function*() {
+    const { connect, disconnect } = yield* makeConnections
+    const identity = yield* EventLog.makeIdentity
+    const hello = yield* (yield* connect(1))["EventLog.Hello"]()
+    yield* disconnect(1)
+
+    const result = yield* (yield* connect(1))["EventLog.Authenticate"](
+      yield* authenticate({ identity, challenge: hello.challenge, remoteId: hello.remoteId })
+    ).pipe(Effect.catch((error) => Effect.succeed(error.message)))
+    assert.strictEqual(result, "Session auth challenge has expired")
+  }).pipe(Effect.provide(EventLogEncryption.layerSubtle)))
+
+it.effect("Authenticate rejects a challenge older than its time to live", () =>
+  Effect.gen(function*() {
+    const { connect } = yield* makeConnections
+    const identity = yield* EventLog.makeIdentity
+    const client = yield* connect(1)
+    const hello = yield* client["EventLog.Hello"]()
+    yield* TestClock.adjust(EventLogSessionAuth.SessionAuthChallengeTimeToLiveMillis)
+
+    const result = yield* client["EventLog.Authenticate"](
+      yield* authenticate({ identity, challenge: hello.challenge, remoteId: hello.remoteId })
+    ).pipe(Effect.catch((error) => Effect.succeed(error.message)))
+    assert.strictEqual(result, "Session auth challenge has expired")
+  }).pipe(Effect.provide(EventLogEncryption.layerSubtle)))
+
+it.effect("Authenticate accepts the challenge from an earlier overlapping Hello", () =>
+  Effect.gen(function*() {
+    const client = yield* makeAuthClient({
+      storage: yield* EventLogServerUnencrypted.makeStorageMemory,
+      authorization: allowAll
+    })
+    const identity = yield* EventLog.makeIdentity
+    const hello = yield* client["EventLog.Hello"]()
+    yield* client["EventLog.Hello"]()
+
+    yield* client["EventLog.Authenticate"](
+      yield* authenticate({ identity, challenge: hello.challenge, remoteId: hello.remoteId })
+    )
+  }).pipe(Effect.provide(EventLogEncryption.layerSubtle)))
+
+it.effect("Hello measures a challenge's time to live from after it was generated", () =>
+  Clock.clockWith((testClock) => {
+    // The clock only advances while the challenge bytes are drawn, like a Hello
+    // fiber that is descheduled for a long time inside challenge generation.
+    let skew = 0
+    let advanceOnNextDraw = false
+    const currentTimeMillisUnsafe = () => testClock.currentTimeMillisUnsafe() + skew
+    const clock: Clock.Clock = {
+      ...testClock,
+      currentTimeMillisUnsafe,
+      currentTimeMillis: Effect.sync(currentTimeMillisUnsafe)
+    }
+    const crypto = {
+      subtle: globalThis.crypto.subtle,
+      randomUUID: () => globalThis.crypto.randomUUID(),
+      getRandomValues: (array: Uint8Array) => {
+        if (advanceOnNextDraw) {
+          advanceOnNextDraw = false
+          skew += EventLogSessionAuth.SessionAuthChallengeTimeToLiveMillis
+        }
+        return globalThis.crypto.getRandomValues(array)
+      }
+    } as typeof globalThis.crypto
+    return Effect.gen(function*() {
+      const client = yield* makeAuthClient({
+        storage: yield* EventLogServerUnencrypted.makeStorageMemory,
+        authorization: allowAll
+      })
+      const identity = yield* EventLog.makeIdentity
+      advanceOnNextDraw = true
+      const hello = yield* client["EventLog.Hello"]()
+      assert.isFalse(advanceOnNextDraw)
+
+      yield* client["EventLog.Authenticate"](
+        yield* authenticate({ identity, challenge: hello.challenge, remoteId: hello.remoteId })
+      )
+    }).pipe(
+      Effect.provide(EventLogEncryption.layerSubtle),
+      Effect.provideService(Clock.Clock, clock),
+      Effect.provideService(WebCrypto.WebCrypto, crypto)
+    )
+  }))

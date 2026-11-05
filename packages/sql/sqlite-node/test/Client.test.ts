@@ -37,7 +37,9 @@ const makeLockedDatabase = Effect.gen(function*() {
   return { filename, unlock: () => lock.exec("ROLLBACK") }
 }).pipe(Effect.provide(NodeFileSystem.layer))
 
-describe("Client", () => {
+// node:sqlite blocks the Vitest worker; concurrent tests would share a running
+// timeout while waiting for each other's queries.
+describe("Client", { concurrent: false }, () => {
   it.effect("releases completed nested savepoints", () =>
     Effect.gen(function*() {
       const sql = yield* makeClient
@@ -168,6 +170,87 @@ describe("Client", () => {
       assert.deepStrictEqual(rows, [{ id: 1, name: "hello" }])
     }))
 
+  it.effect.each(["ABORT", "ROLLBACK", "nested ROLLBACK"] as const)(
+    "preserves a typed constraint failure and reuses the connection after %s",
+    (mode) =>
+      Effect.gen(function*() {
+        const sql = yield* SqliteClient.make({ filename: ":memory:" }).pipe(Effect.provide(Reactivity.layer))
+        yield* sql`CREATE TABLE items (id INTEGER PRIMARY KEY)`
+        yield* sql`INSERT INTO items VALUES (1)`
+
+        const insert = mode === "ABORT"
+          ? sql`INSERT INTO items VALUES (1)`
+          : sql`INSERT OR ROLLBACK INTO items VALUES (1)`
+        const transaction = sql.withTransaction(
+          mode === "nested ROLLBACK" ? sql.withTransaction(insert) : insert
+        )
+        const exit = yield* Effect.exit(transaction)
+        assert.isTrue(Exit.isFailure(exit))
+        if (!Exit.isFailure(exit)) return
+        assert.isFalse(
+          Cause.hasDies(exit.cause),
+          `expected only a typed constraint failure:\n${Cause.pretty(exit.cause)}`
+        )
+        const error = Option.getOrThrow(Cause.findErrorOption(exit.cause))
+        assert.strictEqual(error._tag, "SqlError")
+        assert.strictEqual(error.reason._tag, "ConstraintError")
+
+        const recovered = yield* transaction.pipe(
+          Effect.as(false),
+          Effect.catchTag("SqlError", () => Effect.succeed(true))
+        )
+        assert.isTrue(recovered)
+        yield* sql.withTransaction(sql`INSERT INTO items VALUES (2)`)
+        assert.deepStrictEqual(yield* sql`SELECT id FROM items ORDER BY id`, [{ id: 1 }, { id: 2 }])
+      })
+  )
+
+  it.effect.each(["missing savepoint", "unrelated cleanup error"] as const)(
+    "keeps a %s as a defect and rolls back the outer transaction",
+    (mode) =>
+      Effect.gen(function*() {
+        const sql = yield* SqliteClient.make({ filename: ":memory:" }).pipe(Effect.provide(Reactivity.layer))
+        yield* sql`CREATE TABLE items (id INTEGER PRIMARY KEY)`
+        const error = new SqlError({
+          reason: new ConnectionError({
+            message: "injected cleanup failure",
+            operation: "rollback",
+            cause: new Error("injected cleanup failure")
+          })
+        })
+        if (mode === "unrelated cleanup error") {
+          const conn = yield* Effect.scoped(sql.reserve)
+          const executeUnprepared = conn.executeUnprepared
+          Object.defineProperty(conn, "executeUnprepared", {
+            configurable: true,
+            value: (...args: Parameters<typeof executeUnprepared>) =>
+              args[0].startsWith("ROLLBACK TO SAVEPOINT")
+                ? Effect.fail(error)
+                : executeUnprepared(...args)
+          })
+        }
+
+        const exit = yield* Effect.exit(sql.withTransaction(
+          sql.withTransaction(Effect.gen(function*() {
+            yield* sql`INSERT INTO items VALUES (1)`
+            if (mode === "missing savepoint") {
+              yield* sql`RELEASE SAVEPOINT effect_sql_1`.unprepared
+            }
+            return yield* Effect.fail(error)
+          })).pipe(Effect.catchTag("SqlError", () => Effect.void))
+        ))
+
+        assert.deepStrictEqual(yield* sql`SELECT id FROM items`, [])
+        assert.isTrue(Exit.isFailure(exit))
+        if (!Exit.isFailure(exit)) return
+        assert.isTrue(Cause.hasDies(exit.cause))
+        assert.match(
+          Cause.pretty(exit.cause),
+          mode === "missing savepoint" ? /no such savepoint/i : /injected cleanup failure/i
+        )
+      })
+  )
+
   it.effect("recovers a failed deferred commit without losing an in-memory database", () =>
     Effect.gen(function*() {
       const sql = yield* SqliteClient.make({ filename: ":memory:" }).pipe(Effect.provide(Reactivity.layer))
@@ -293,6 +376,26 @@ describe("Client", () => {
           yield* Fiber.join(plain)
           yield* Fiber.join(transaction)
           assert.deepStrictEqual(yield* sql`SELECT kind FROM race`, [{ kind: "plain" }])
+        }))
+      }
+    }), { timeout: 30_000 })
+
+  it.effect("releases the connection when a queued transaction is interrupted", () =>
+    Effect.gen(function*() {
+      // Sweep the interrupt across the gap between taking the connection and registering its release.
+      for (let delay = 0; delay < 31; delay++) {
+        yield* Effect.scoped(Effect.gen(function*() {
+          const sql = yield* SqliteClient.make({ filename: ":memory:" }).pipe(Effect.provide(Reactivity.layer))
+          const holder = yield* Effect.forkChild(sql`SELECT 1`)
+          const queued = yield* sql.withTransaction(sql`SELECT 2`).pipe(
+            Effect.provideService(References.MaxOpsBeforeYield, 3),
+            Effect.forkChild
+          )
+          for (let i = 0; i < delay; i++) yield* Effect.yieldNow
+          yield* Fiber.interrupt(queued)
+          yield* Fiber.join(holder)
+          const next = yield* Effect.forkChild(sql`SELECT 3`, { startImmediately: true })
+          assert.isDefined(next.pollUnsafe(), `connection leaked at delay ${delay}`)
         }))
       }
     }))

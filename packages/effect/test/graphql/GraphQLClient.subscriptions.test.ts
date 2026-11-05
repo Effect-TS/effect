@@ -14,20 +14,19 @@ const lost = (fields?: Partial<ConstructorParameters<typeof TransportError>[0]>)
  * A protocol whose `subscribe` hands out one scripted stream per attempt and
  * counts the attempts.
  */
-const scriptedLayer = (attempts: ReadonlyArray<Stream.Stream<unknown, TransportError>>) =>
-  Effect.gen(function*() {
-    const count = yield* Ref.make(0)
-    const layer = protocolLayer({
-      subscribe: () =>
-        Stream.unwrap(
-          Effect.map(
-            Ref.updateAndGet(count, (n) => n + 1),
-            (n) => Stream.map(attempts[n - 1] ?? Stream.die(`attempt ${n} not scripted`), (body) => ({ body }))
-          )
+const scriptedLayer = Effect.fnUntraced(function*(attempts: ReadonlyArray<Stream.Stream<unknown, TransportError>>) {
+  const count = yield* Ref.make(0)
+  const layer = protocolLayer({
+    subscribe: () =>
+      Stream.unwrap(
+        Effect.map(
+          Ref.updateAndGet(count, (n) => n + 1),
+          (n) => Stream.map(attempts[n - 1] ?? Stream.die(`attempt ${n} not scripted`), (body) => ({ body }))
         )
-    })
-    return { layer, attempts: Ref.get(count) }
+      )
   })
+  return { layer, attempts: Ref.get(count) }
+})
 
 const subscribe = (
   layer: Layer.Layer<any>,

@@ -3,8 +3,6 @@
  *
  * This module is independent of the public compatibility-oriented McpSchema
  * surface and is frozen as a dated delta from v2025-03-26.
- *
- * @internal
  */
 import * as Rpc from "../../../rpc/Rpc.ts"
 import * as RpcGroup from "../../../rpc/RpcGroup.ts"
@@ -19,8 +17,8 @@ export * from "./v2025_03_26.ts"
 export const protocolVersion = "2025-06-18"
 
 const optional = Previous.optional
-const JsonObject = Schema.JsonObject
-const Meta = optional(JsonObject)
+const UnknownObject = Previous.UnknownObject
+const Meta = optional(UnknownObject)
 
 /**
  * @internal
@@ -218,10 +216,10 @@ export class Initialize extends Rpc.make("initialize", {
 const ToolJsonSchema = Schema.StructWithRest(
   Schema.Struct({
     type: Schema.Literal("object"),
-    properties: optional(Schema.Record(Schema.String, JsonObject)),
+    properties: optional(Schema.Record(Schema.String, Schema.Union([UnknownObject, Schema.Boolean]))),
     required: optional(Schema.Array(Schema.String))
   }),
-  [Schema.JsonObject]
+  [UnknownObject]
 )
 
 /**
@@ -243,7 +241,7 @@ export const Tool = Schema.Struct({
 export const CallToolResult = Schema.Struct({
   ...Previous.ResultMeta.fields,
   content: Schema.Array(ContentBlock),
-  structuredContent: optional(JsonObject),
+  structuredContent: optional(UnknownObject),
   isError: optional(Schema.Boolean)
 })
 
@@ -273,7 +271,7 @@ export class CreateMessage extends Rpc.make("sampling/createMessage", {
     temperature: optional(Schema.Finite),
     maxTokens: Schema.Finite,
     stopSequences: optional(Schema.Array(Schema.String)),
-    metadata: optional(JsonObject)
+    metadata: optional(UnknownObject)
   }
 }) {}
 
@@ -433,7 +431,7 @@ export class CallTool extends Rpc.make("tools/call", {
   payload: {
     ...Previous.RequestMeta.fields,
     name: Schema.String,
-    arguments: optional(JsonObject)
+    arguments: optional(UnknownObject)
   }
 }) {}
 

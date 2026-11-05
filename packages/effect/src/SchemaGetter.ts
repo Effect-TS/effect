@@ -992,7 +992,8 @@ export function Boolean<E>(): Getter<boolean, E> {
  * **Details**
  *
  * - Delegates to `globalThis.BigInt`.
- * - Throws at runtime if the input cannot be converted (e.g. non-numeric string).
+ * - Fails with `SchemaIssue.InvalidValue` if the input cannot be converted
+ *   (e.g. a non-numeric string or a non-integer number).
  *
  * **Example** (Coercing to a bigint)
  *
@@ -1008,7 +1009,19 @@ export function Boolean<E>(): Getter<boolean, E> {
  * @since 4.0.0
  */
 export function BigInt<E extends string | number | bigint | boolean>(): Getter<bigint, E> {
-  return transform(globalThis.BigInt)
+  return transformEffect((input, options) => {
+    try {
+      return Effect.succeed(globalThis.BigInt(input))
+    } catch {
+      return Effect.fail(
+        new SchemaIssue.InvalidValue(
+          { expected: "a value that can be converted to a bigint" },
+          input,
+          options
+        )
+      )
+    }
+  })
 }
 
 /**
@@ -1355,7 +1368,10 @@ export function stringifyJson(options?: StringifyJsonOptions): Getter<string, un
  * The getter is pure and never fails. It splits the string by `separator`
  * (default `,`) and then each pair at the first `keyValueSeparator` (default `=`),
  * preserving the rest of the value. An empty `keyValueSeparator` uses the first
- * two characters as the key and value. Pairs missing a key or value are skipped.
+ * two characters as the key and value. Pairs without a `keyValueSeparator` or
+ * with an empty key are skipped. Pairs with an empty value are skipped unless
+ * `keepEmptyValues` is `true`, in which case the value is `""`. When `trim` is
+ * `true`, keys and values are trimmed before these checks.
  *
  * **Example** (Parsing a key-value string)
  *
@@ -1377,23 +1393,32 @@ export function stringifyJson(options?: StringifyJsonOptions): Getter<string, un
 export function splitKeyValue<E extends string>(options?: {
   readonly separator?: string | undefined
   readonly keyValueSeparator?: string | undefined
+  readonly trim?: boolean | undefined
+  readonly keepEmptyValues?: boolean | undefined
 }): Getter<Record<string, string>, E> {
   const separator = options?.separator ?? ","
   const keyValueSeparator = options?.keyValueSeparator ?? "="
+  const trim = options?.trim ?? false
+  const keepEmptyValues = options?.keepEmptyValues ?? false
   return transform((input) =>
     input.split(separator).reduce((acc, pair) => {
+      let key: string
+      let value: string
       if (keyValueSeparator === "") {
-        const [key, value] = pair.split("")
-        if (key && value) InternalRecord.assignProperty(acc, key, value)
-        return acc
+        key = pair.slice(0, 1)
+        value = pair.slice(1, 2)
+      } else {
+        const index = pair.indexOf(keyValueSeparator)
+        if (index === -1) return acc
+        key = pair.slice(0, index)
+        value = pair.slice(index + keyValueSeparator.length)
       }
-      const index = pair.indexOf(keyValueSeparator)
-      if (index <= 0) return acc
-      const key = pair.slice(0, index)
-      const value = pair.slice(index + keyValueSeparator.length)
-      if (value) {
-        InternalRecord.assignProperty(acc, key, value)
+      if (trim) {
+        key = key.trim()
+        value = value.trim()
       }
+      if (key === "" || (value === "" && !keepEmptyValues)) return acc
+      InternalRecord.assignProperty(acc, key, value)
       return acc
     }, {} as Record<string, string>)
   )
@@ -1510,7 +1535,8 @@ export function encodeBase64<E extends Uint8Array | string>(): Getter<string, E>
  *
  * **Details**
  *
- * The getter is pure and never fails.
+ * The getter is pure and never fails. The output is unpadded unless
+ * `padding` is `true`.
  *
  * **Example** (Encoding to Base64Url)
  *
@@ -1530,8 +1556,11 @@ export function encodeBase64<E extends Uint8Array | string>(): Getter<string, E>
  * @category encoding
  * @since 4.0.0
  */
-export function encodeBase64Url<E extends Uint8Array | string>(): Getter<string, E> {
-  return transform(Base64Url.encode)
+export function encodeBase64Url<E extends Uint8Array | string>(options?: {
+  /** Keep the `=` padding. Defaults to `false`. */
+  readonly padding?: boolean | undefined
+}): Getter<string, E> {
+  return transform(options?.padding ? Base64Url.encodePadded : Base64Url.encode)
 }
 
 /**
@@ -2087,7 +2116,11 @@ function bracketPathToTokens(bracketPath: string): Array<string | number> {
     return [""]
   }
 
-  const replaced = bracketPath.replace(/\[(.*?)\]/g, ".$1")
+  // Consume unmatched bracket runs too, avoiding repeated scans for a closing bracket.
+  const replaced = bracketPath.replace(
+    /\[([^\]\r\n\u2028\u2029]*)(\])?/g,
+    (match, content, closing) => closing ? `.${content}` : match
+  )
   const parts = replaced.split(".")
   // if bracket path started with "[...]" we get ".foo" => ["", "foo"]; drop the synthetic first ""
   const start = replaced.startsWith(".") ? 1 : 0

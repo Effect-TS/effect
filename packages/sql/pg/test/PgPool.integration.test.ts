@@ -1,6 +1,6 @@
 import { PgConnection, PgPool, PgTypes } from "@effect/sql-pg"
 import { assert, it } from "@effect/vitest"
-import { Effect, Exit, Fiber, Queue, Redacted, Result, Scope, Stream } from "effect"
+import { Effect, Exit, Fiber, Latch, Queue, Redacted, Result, Scope, Stream } from "effect"
 import * as Net from "node:net"
 import { Duplex } from "node:stream"
 import { PgContainer, realSleep, waitUntilActive, waitUntilAdvisoryLock } from "./utils.ts"
@@ -102,17 +102,16 @@ class CancelRequestGate {
   }
 }
 
-const lateCancelPoolConfig = (gate: CancelRequestGate) =>
-  Effect.gen(function*() {
-    const container = yield* PgContainer
-    const host = container.getHost()
-    const port = container.getMappedPort(5432)
-    return {
-      ...(yield* poolConfig),
-      maxConnections: 1,
-      stream: () => new LateCancelProxy(host, port, gate)
-    }
-  })
+const lateCancelPoolConfig = Effect.fnUntraced(function*(gate: CancelRequestGate) {
+  const container = yield* PgContainer
+  const host = container.getHost()
+  const port = container.getMappedPort(5432)
+  return {
+    ...(yield* poolConfig),
+    maxConnections: 1,
+    stream: () => new LateCancelProxy(host, port, gate)
+  }
+})
 
 const blockedStream = `
   SELECT n FROM generate_series(1, 1000) AS g(n)
@@ -704,10 +703,20 @@ it.layer(PgContainer.layer, { timeout: "30 seconds", concurrent: false })("PgPoo
         multiplex: true,
         multiplexConcurrency: 2
       })
+      // Every checkout stays held until all eight are in, so a slot freed on
+      // an early connection can't serve a waiter while a slow connect is
+      // still in flight.
+      const allHeld = yield* Latch.make()
+      let held = 0
       const processIds = yield* Effect.all(
         Array.from({ length: 8 }, () =>
-          Effect.scoped(Effect.flatMap(pool.get, (connection) =>
-            Effect.as(connection.query("SELECT pg_sleep(0.05)"), connection.processId)))),
+          Effect.scoped(Effect.gen(function*() {
+            const connection = yield* pool.get
+            yield* connection.query("SELECT 1")
+            if (++held === 8) yield* allHeld.open
+            yield* allHeld.await
+            return connection.processId
+          }))),
         { concurrency: "unbounded" }
       )
       assert.strictEqual(new Set(processIds).size, 4)

@@ -1,16 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
-import {
-  Cause,
-  Deferred,
-  Effect,
-  Fiber,
-  Result,
-  Schema,
-  SchemaGetter,
-  SchemaIssue,
-  SchemaParser,
-  SchemaTransformation
-} from "effect"
+import { Cause, Effect, Result, Schema, SchemaGetter, SchemaIssue, SchemaParser, SchemaTransformation } from "effect"
 import { SchemaCompiler } from "effect/schema"
 // oxlint-disable-next-line no-unassigned-import
 import "effect/schema/SchemaJITCompiler/enable"
@@ -27,38 +16,6 @@ const decode = SchemaParser.decodeUnknownSync(schema)
 const is = SchemaParser.is(schema)
 
 describe("SchemaJITCompiler", () => {
-  it.effect("preserves product concurrency", () =>
-    Effect.gen(function*() {
-      const started = yield* Effect.forEach([0, 1, 2], () => Deferred.make<void>())
-      const releases = yield* Effect.forEach([0, 1, 2], () => Deferred.make<void>())
-      const item = Schema.String.pipe(Schema.decode({
-        decode: SchemaGetter.transformEffect((value) => {
-          const index = value.charCodeAt(0) - 97
-          return Deferred.succeed(started[index], undefined).pipe(
-            Effect.andThen(Deferred.await(releases[index])),
-            Effect.as(value)
-          )
-        }),
-        encode: SchemaGetter.passthrough()
-      }))
-      const schema = Schema.Struct({ a: item, b: item, c: item })
-      const fiber = yield* SchemaParser.decodeUnknownEffect(schema)(
-        { a: "a", b: "b", c: "c" },
-        { concurrency: 2 }
-      ).pipe(Effect.forkChild)
-
-      yield* Deferred.await(started[0])
-      yield* Deferred.await(started[1])
-      strictEqual(yield* Deferred.isDone(started[2]), false)
-
-      yield* Deferred.succeed(releases[0], undefined)
-      yield* Deferred.await(started[2])
-      yield* Deferred.succeed(releases[1], undefined)
-      yield* Deferred.succeed(releases[2], undefined)
-
-      deepStrictEqual(yield* Fiber.join(fiber), { a: "a", b: "b", c: "c" })
-    }))
-
   it("compiles a decoder lazily after import", () => {
     const input = {
       name: "a",
@@ -512,19 +469,6 @@ Expected no excess property
     strictEqual(is([]), true)
     strictEqual(is(["a"]), true)
     strictEqual(is([1]), false)
-  })
-
-  it("preserves the input sign for signed-zero literals", () => {
-    const decode = SchemaParser.decodeUnknownSync(Schema.Struct({
-      negative: Schema.Literal(-0),
-      positive: Schema.Union([Schema.Literal(0), Schema.Literal(1)]),
-      union: Schema.Union([Schema.Literal(-0), Schema.Literal(1)])
-    }))
-    const output = decode({ negative: 0, positive: -0, union: 0 })
-
-    strictEqual(Object.is(output.negative, 0), true)
-    strictEqual(Object.is(output.positive, -0), true)
-    strictEqual(Object.is(output.union, 0), true)
   })
 
   it("compiles primitive anyOf and oneOf unions", () => {

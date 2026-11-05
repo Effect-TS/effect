@@ -25,6 +25,7 @@ import * as CliError from "./CliError.ts"
 import type { Environment } from "./Command.ts"
 import * as Primitive from "./Primitive.ts"
 import * as Prompt from "./Prompt.ts"
+import * as TerminalCapabilities from "./TerminalCapabilities.ts"
 
 const TypeId = "~effect/cli/Param"
 
@@ -217,6 +218,11 @@ export interface Single<Kind extends ParamKind, out A> extends Param<Kind, A> {
    * Raw value used for a bare flag. See `withOptionalValue`.
    */
   readonly optionalValue?: string | undefined
+  /**
+   * Long name that sets a boolean flag to `false`. `undefined` means the
+   * default `no-<name>`, `false` means no negated form. See `withNegation`.
+   */
+  readonly negation?: string | false | undefined
 }
 
 /**
@@ -367,6 +373,7 @@ export const makeSingle = <const Kind extends ParamKind, A>(params: {
   readonly aliases?: ReadonlyArray<string> | undefined
   readonly hidden?: boolean | undefined
   readonly optionalValue?: string | undefined
+  readonly negation?: string | false | undefined
 }): Single<Kind, A> => {
   const parse: Parse<A> = (args) =>
     params.kind === argumentKind
@@ -1139,6 +1146,7 @@ const transform = <Kind extends ParamKind, A, B>(
  *   Layer.succeed(Terminal.Terminal, Terminal.make({
  *     columns: Effect.succeed(80),
  *     rows: Effect.succeed(24),
+ *     size: Effect.die("unused"),
  *     readInput: Effect.die("unused"),
  *     readLine: Effect.die("unused"),
  *     display: () => Effect.void
@@ -1216,6 +1224,7 @@ export const mapEffect: {
  *   Layer.succeed(Terminal.Terminal, Terminal.make({
  *     columns: Effect.succeed(80),
  *     rows: Effect.succeed(24),
+ *     size: Effect.die("unused"),
  *     readInput: Effect.die("unused"),
  *     readLine: Effect.die("unused"),
  *     display: () => Effect.void
@@ -1462,6 +1471,9 @@ export const withFallbackConfig: {
  *
  * This only handles missing options and missing arguments. Invalid values do not
  * prompt, and prompt cancellation re-fails with the original missing error.
+ * When `TerminalCapabilities.canPrompt` is `false`, the fallback is skipped
+ * entirely: no prompt is built or shown, and the original missing error is
+ * returned.
  *
  * @see {@link FallbackPrompt} for accepted fallback prompt forms
  * @see {@link withFallbackConfig} for loading a fallback from config
@@ -1478,11 +1490,16 @@ export const withFallbackPrompt: {
   self: Param<Kind, A>,
   prompt: FallbackPrompt<B>
 ): Param<Kind, A | B> => {
-  const runPrompt = (error: CliError.MissingOption | CliError.MissingArgument, args: ParsedArgs) =>
-    Effect.flatMap(Prompt.isPrompt(prompt) ? Effect.succeed(prompt) : prompt, Prompt.run).pipe(
-      Effect.map((value) => [args.arguments, value as A | B] as const),
-      Effect.catchTag("QuitError", () => Effect.fail(error))
-    )
+  const runPrompt = Effect.fnUntraced(function*(
+    error: CliError.MissingOption | CliError.MissingArgument,
+    args: ParsedArgs
+  ) {
+    const { canPrompt } = yield* TerminalCapabilities.TerminalCapabilities
+    if (!canPrompt) return yield* Effect.fail(error)
+    const built = Prompt.isPrompt(prompt) ? prompt : yield* prompt
+    const value = yield* Effect.catchTag(Prompt.run(built), "QuitError", () => Effect.fail(error))
+    return [args.arguments, value as A | B] as const
+  })
   return transform(
     self,
     (parse) => (args) =>
@@ -1868,6 +1885,74 @@ export const withOptionalValue: {
     })))
 
 /**
+ * Renames the negated form of a boolean flag, which defaults to `--no-<name>`.
+ *
+ * **Details**
+ *
+ * The new name replaces the default, so `--no-<name>` is no longer accepted.
+ * Has no effect on non-boolean flags.
+ *
+ * **Example** (Renaming a boolean flag's negation)
+ *
+ * ```ts import.meta.vitest
+ * import { Param } from "effect/cli"
+ *
+ * // --validate sets true, --skip-validate sets false
+ * const validate = Param.Boolean(Param.flagKind, "validate").pipe(
+ *   Param.withNegation("skip-validate")
+ * )
+ * validate.kind // => "flag"
+ * ```
+ *
+ * @stability unstable
+ * @category combinators
+ * @since 4.1.0
+ */
+export const withNegation: {
+  (name: string): <A>(self: Param<typeof flagKind, A>) => Param<typeof flagKind, A>
+  <A>(self: Param<typeof flagKind, A>, name: string): Param<typeof flagKind, A>
+} = dual(2, <A>(
+  self: Param<typeof flagKind, A>,
+  name: string
+) =>
+  transformSingle(self, (single) =>
+    makeSingle({
+      ...single,
+      negation: name
+    })))
+
+/**
+ * Removes the negated `--no-<name>` form of a boolean flag.
+ *
+ * **Details**
+ *
+ * The negated form is then rejected as an unrecognized flag and left out of
+ * shell completions. Has no effect on non-boolean flags.
+ *
+ * **Example** (Disabling a boolean flag's negation)
+ *
+ * ```ts import.meta.vitest
+ * import { Param } from "effect/cli"
+ *
+ * // --unsafe sets true, --no-unsafe is rejected
+ * const unsafe = Param.Boolean(Param.flagKind, "unsafe").pipe(
+ *   Param.withoutNegation
+ * )
+ * unsafe.kind // => "flag"
+ * ```
+ *
+ * @stability unstable
+ * @category combinators
+ * @since 4.1.0
+ */
+export const withoutNegation = <A>(self: Param<typeof flagKind, A>): Param<typeof flagKind, A> =>
+  transformSingle(self, (single) =>
+    makeSingle({
+      ...single,
+      negation: false
+    }))
+
+/**
  * Validates parsed values against a Schema, providing detailed error messages.
  *
  * **Example** (Validating with schemas)
@@ -2052,7 +2137,15 @@ const parseFlag: <A>(
     return yield* new CliError.MissingOption({ option: name })
   }
 
-  // Parse the first value (later we can handle multiple)
+  if (providedValues.length > 1) {
+    return yield* new CliError.InvalidValue({
+      option: name,
+      value: `${providedValues.length} occurrences`,
+      expected: "at most 1 value",
+      kind: "flag"
+    })
+  }
+
   const arg = providedValues[0]
   const value = yield* Effect.mapError(
     primitiveType.parse(arg),

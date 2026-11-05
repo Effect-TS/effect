@@ -96,11 +96,47 @@ input RoomBy @oneOf {
   slug: String
 }
 
+"""
+An instant, as an ISO-8601 string.
+"""
+scalar DateTime
+
+"""
+Filters messages.
+"""
+input MessageFilter {
+  postedAfter: DateTime
+  member: MemberMatch
+  "Any of these filters."
+  or: [MessageFilter!]
+  "A type named like a TypeScript global, which generated code must not shadow."
+  shadow: ReadonlyArray
+}
+
+enum ReadonlyArray {
+  ANY
+}
+
+"""
+Exactly one way to match a member.
+"""
+input MemberMatch @oneOf {
+  id: ID
+  """
+  Members who posted a matching message.
+  """
+  posted: MessageFilter
+}
+
 type Query {
   """
   Looks up a room.
   """
   room(by: RoomBy!): Room
+  """
+  Messages that match a filter.
+  """
+  messages(filter: MessageFilter!): [MessagePosted!]!
 }
 
 type Subscription {

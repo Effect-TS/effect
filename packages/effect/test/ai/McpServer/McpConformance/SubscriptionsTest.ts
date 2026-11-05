@@ -318,17 +318,16 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
               PubSub.subscribe(events),
               () => Deferred.succeed(released, undefined)
             ),
-            sendNotification: (_protocolVersion, _clientId, notification) =>
-              Effect.gen(function*() {
-                if (notification.tag === McpSchema2026.SubscriptionsAcknowledgedNotification._tag) {
-                  yield* Deferred.succeed(acknowledgmentStarted, undefined)
-                  yield* Deferred.await(releaseAcknowledgment)
-                }
-                yield* Queue.offer(sent, notification)
-              }),
+            sendNotification: Effect.fnUntraced(function*(_protocolVersion, _clientId, notification) {
+              if (notification.tag === McpSchema2026.SubscriptionsAcknowledgedNotification._tag) {
+                yield* Deferred.succeed(acknowledgmentStarted, undefined)
+                yield* Deferred.await(releaseAcknowledgment)
+              }
+              yield* Queue.offer(sent, notification)
+            }),
             supportedVersions: [McpSchema2026.protocolVersion],
             serverInfo: { name: "SubscriptionConformance", version: "1.0.0" },
-            registrationPresence: Effect.succeed({ tools: true, resources: false, prompts: false })
+            registrationPresence: Effect.succeed({ tools: true, resources: false, prompts: false, skills: false })
           })
           const listener = yield* handlers["subscriptions/listen"](
             { notifications: { toolsListChanged: true }, _meta: httpMetadata(protocol) },
@@ -385,7 +384,7 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
             sendNotification: () => Effect.void,
             supportedVersions: [McpSchema2026.protocolVersion],
             serverInfo: { name: "SubscriptionConformance", version: "1.0.0" },
-            registrationPresence: Effect.succeed({ tools: true, resources: false, prompts: false })
+            registrationPresence: Effect.succeed({ tools: true, resources: false, prompts: false, skills: false })
           })
           const listener = yield* handlers["subscriptions/listen"](
             { notifications: { toolsListChanged: true }, _meta: httpMetadata(protocol) },

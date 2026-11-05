@@ -229,126 +229,54 @@ describe("Chunk", () => {
         assertNone(pipe(chunk, Chunk.get(4)))
       })
     })
+
+    describe("Given a singleton Chunk and a fractional index in range", () => {
+      const chunk = Chunk.make(1)
+
+      it("should return the value at the floored index", () => {
+        assertSome(Chunk.get(chunk, 0.5), 1)
+      })
+    })
+
+    describe("Given a non-finite index", () => {
+      it("should return a None", () => {
+        assertNone(Chunk.get(Chunk.empty(), Number.NaN))
+        assertNone(Chunk.get(Chunk.make(1), Number.NaN))
+        assertNone(Chunk.get(Chunk.make(1, 2, 3), Number.NaN))
+      })
+    })
   })
 
   describe("getUnsafe", () => {
-    describe("Given an empty Chunk and an index", () => {
-      const chunk = Chunk.empty()
-      const index = 4
-
-      it("should throw", () => {
-        throws(() => pipe(chunk, Chunk.getUnsafe(index)))
-      })
+    it("returns the element at an in-bounds index", () => {
+      strictEqual(Chunk.getUnsafe(Chunk.make(1), 0), 1)
+      strictEqual(Chunk.getUnsafe(Chunk.fromArrayUnsafe([1, 2, 3]), 1), 2)
+      strictEqual(pipe(Chunk.empty(), Chunk.prepend(2), Chunk.prepend(1), Chunk.getUnsafe(1)), 2)
+      strictEqual(pipe(Chunk.empty(), Chunk.append(1), Chunk.append(2), Chunk.getUnsafe(1)), 2)
+      fc.assert(fc.property(fc.array(fc.anything()), fc.array(fc.anything()), (a, b) => {
+        const c = [...a, ...b]
+        const d = Chunk.appendAll(Chunk.fromArrayUnsafe(b))(Chunk.fromArrayUnsafe(a))
+        for (let i = 0; i < c.length; i++) {
+          deepStrictEqual(Chunk.getUnsafe(i)(d), c[i])
+        }
+      }))
     })
 
-    describe("Given an appended Chunk and an index out of bounds", () => {
-      const chunk = pipe(Chunk.empty(), Chunk.append(1))
-      const index = 4
-
-      it("should throw", () => {
-        throws(() => pipe(chunk, Chunk.getUnsafe(index)))
-      })
+    it("floors a fractional index", () => {
+      strictEqual(Chunk.getUnsafe(Chunk.make(1), 0.5), 1)
     })
 
-    describe("Given an appended Chunk and an index in bounds", () => {
-      it("should return the value", () => {
-        const chunk = pipe(Chunk.make(0, 1, 2), Chunk.append(3))
-        strictEqual(Chunk.getUnsafe(1)(chunk), 1)
-      })
-    })
-
-    describe("Given a prepended Chunk and an index out of bounds", () => {
-      it("should throw", () => {
-        fc.assert(fc.property(fc.array(fc.anything()), (array) => {
-          let chunk: Chunk.Chunk<unknown> = Chunk.empty()
-          array.forEach((e) => {
-            chunk = pipe(chunk, Chunk.prepend(e))
-          })
-          throws(() => pipe(chunk, Chunk.getUnsafe(array.length)))
-        }))
-      })
-    })
-
-    describe("Given a prepended Chunk and an index in bounds", () => {
-      it("should return the value", () => {
-        const chunk = pipe(Chunk.make(0, 1, 2), Chunk.prepend(3))
-        strictEqual(Chunk.getUnsafe(1)(chunk), 0)
-      })
-    })
-
-    describe("Given a singleton Chunk and an index out of bounds", () => {
-      const chunk = Chunk.make(1)
-      const index = 4
-
-      it("should throw", () => {
-        throws(() => pipe(chunk, Chunk.getUnsafe(index)))
-      })
-    })
-
-    describe("Given an array Chunk and an index out of bounds", () => {
-      const chunk = Chunk.fromArrayUnsafe([1, 2])
-      const index = 4
-
-      it("should throw", () => {
-        throws(() => pipe(chunk, Chunk.getUnsafe(index)))
-      })
-    })
-
-    describe("Given a concat Chunk and an index out of bounds", () => {
-      it("should throw", () => {
-        fc.assert(fc.property(fc.array(fc.anything()), fc.array(fc.anything()), (arr1, arr2) => {
-          const chunk: Chunk.Chunk<unknown> = Chunk.appendAll(Chunk.fromIterable(arr2))(Chunk.fromArrayUnsafe(arr1))
-          throws(() => pipe(chunk, Chunk.getUnsafe(arr1.length + arr2.length)))
-        }))
-      })
-    })
-
-    describe("Given an appended Chunk and an index in bounds", () => {
-      const chunk = pipe(Chunk.empty(), Chunk.append(1), Chunk.append(2))
-      const index = 1
-
-      it("should return the value", () => {
-        strictEqual(pipe(chunk, Chunk.getUnsafe(index)), 2)
-      })
-    })
-
-    describe("Given a prepended Chunk and an index in bounds", () => {
-      const chunk = pipe(Chunk.empty(), Chunk.prepend(2), Chunk.prepend(1))
-      const index = 1
-
-      it("should return the value", () => {
-        strictEqual(pipe(chunk, Chunk.getUnsafe(index)), 2)
-      })
-    })
-
-    describe("Given a singleton Chunk and an index in bounds", () => {
-      const chunk = Chunk.make(1)
-      const index = 0
-
-      it("should return the value", () => {
-        strictEqual(pipe(chunk, Chunk.getUnsafe(index)), 1)
-      })
-    })
-
-    describe("Given an array Chunk and an index in bounds", () => {
-      const chunk = pipe(Chunk.fromArrayUnsafe([1, 2, 3]))
-      const index = 1
-
-      it("should return the value", () => {
-        strictEqual(pipe(chunk, Chunk.getUnsafe(index)), 2)
-      })
-    })
-
-    describe("Given a concat Chunk and an index in bounds", () => {
-      it("should return the value", () => {
-        fc.assert(fc.property(fc.array(fc.anything()), fc.array(fc.anything()), (a, b) => {
-          const c = [...a, ...b]
-          const d = Chunk.appendAll(Chunk.fromArrayUnsafe(b))(Chunk.fromArrayUnsafe(a))
-          for (let i = 0; i < c.length; i++) {
-            deepStrictEqual(Chunk.getUnsafe(i)(d), c[i])
-          }
-        }))
-      })
+    it("throws for an out-of-bounds or non-finite index", () => {
+      for (
+        const chunk of [Chunk.empty(), Chunk.append(Chunk.empty(), 1), Chunk.make(1), Chunk.fromArrayUnsafe([1, 2])]
+      ) {
+        throws(() => pipe(chunk, Chunk.getUnsafe(4)))
+      }
+      throws(() => Chunk.getUnsafe(Chunk.make(1, 2), Number.NaN))
+      fc.assert(fc.property(fc.array(fc.anything()), fc.array(fc.anything()), (arr1, arr2) => {
+        const chunk: Chunk.Chunk<unknown> = Chunk.appendAll(Chunk.fromIterable(arr2))(Chunk.fromArrayUnsafe(arr1))
+        throws(() => pipe(chunk, Chunk.getUnsafe(arr1.length + arr2.length)))
+      }))
     })
   })
 
@@ -972,5 +900,66 @@ describe("Chunk", () => {
     assertEquals(Chunk.difference(Chunk.empty(), curr), Chunk.empty())
     assertEquals(Chunk.difference(curr, Chunk.empty()), curr)
     assertEquals(Chunk.difference(curr, curr), Chunk.empty())
+  })
+
+  it("fromNonEmptyArrayUnsafe", () => {
+    assertEquals(Chunk.fromNonEmptyArrayUnsafe([1, 2]), Chunk.make(1, 2))
+  })
+
+  it("isNonEmpty", () => {
+    assertFalse(Chunk.isNonEmpty(Chunk.empty()))
+    assertTrue(Chunk.isNonEmpty(Chunk.make(1)))
+  })
+
+  it("head", () => {
+    assertNone(Chunk.head(Chunk.empty()))
+    assertSome(Chunk.head(Chunk.make(1, 2)), 1)
+  })
+
+  it("headUnsafe", () => {
+    strictEqual(Chunk.headUnsafe(Chunk.make(1, 2)), 1)
+    throws(() => Chunk.headUnsafe(Chunk.empty()), new Error("Index out of bounds: 0"))
+  })
+
+  it("headNonEmpty / lastNonEmpty / tailNonEmpty", () => {
+    const chunk = Chunk.make(1, 2, 3)
+    strictEqual(Chunk.headNonEmpty(chunk), 1)
+    strictEqual(Chunk.lastNonEmpty(chunk), 3)
+    assertEquals(Chunk.tailNonEmpty(chunk), Chunk.make(2, 3))
+  })
+
+  it("sort", () => {
+    const chunk = Chunk.make(3, 1, 2)
+    assertEquals(Chunk.sort(chunk, Order.Number), Chunk.make(1, 2, 3))
+    assertEquals(chunk, Chunk.make(3, 1, 2))
+  })
+
+  it("contains", () => {
+    assertTrue(Chunk.contains(Chunk.make(1, 2), 2))
+    assertFalse(Chunk.contains(Chunk.make(1, 2), 3))
+  })
+
+  it("containsWith", () => {
+    const containsMod3 = Chunk.containsWith<number>((a, b) => a % 3 === b % 3)
+    assertTrue(containsMod3(Chunk.make(1, 2), 4))
+    assertFalse(containsMod3(Chunk.make(1, 2), 3))
+  })
+
+  it("findFirst", () => {
+    assertSome(Chunk.findFirst(Chunk.make(1, 2, 3, 4), (n) => n > 2), 3)
+    assertNone(Chunk.findFirst(Chunk.make(1, 2), (n) => n > 2))
+  })
+
+  it("findFirstIndex", () => {
+    assertSome(Chunk.findFirstIndex(Chunk.make(1, 2, 3, 4), (n) => n > 2), 2)
+    assertNone(Chunk.findFirstIndex(Chunk.make(1, 2), (n) => n > 2))
+  })
+
+  it("reduce", () => {
+    strictEqual(Chunk.reduce(Chunk.make("a", "b"), "", (acc, s, i) => `${acc}${i}${s}`), "0a1b")
+  })
+
+  it("reduceRight", () => {
+    strictEqual(Chunk.reduceRight(Chunk.make("a", "b"), "", (acc, s, i) => `${acc}${i}${s}`), "1b0a")
   })
 })

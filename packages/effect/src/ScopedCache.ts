@@ -29,8 +29,8 @@ import * as MutableHashMap from "./MutableHashMap.ts"
 import * as Option from "./Option.ts"
 import type { Pipeable } from "./Pipeable.ts"
 import * as Predicate from "./Predicate.ts"
-import { UnhandledLogLevel } from "./References.ts"
 import * as Scope from "./Scope.ts"
+import * as Tracer from "./Tracer.ts"
 
 const TypeId = "~effect/ScopedCache"
 
@@ -136,6 +136,11 @@ export interface Entry<A, E> {
  * `requireServicesAt` controls whether lookup services are captured at
  * construction time or required when lookup operations run.
  *
+ * Lookups do not inherit the span active when `get` or `refresh` runs them,
+ * because a cached entry is shared by every later request. Spans created inside
+ * a lookup are children of the span active when the cache was constructed, if
+ * any.
+ *
  * @see {@link make} for creating a scoped cache with one fixed time-to-live
  *
  * @stability stable
@@ -164,7 +169,9 @@ export const makeWith = <
     self.lookup = (key: Key): Effect.Effect<A, E> =>
       effect.updateContext(
         options.lookup(key),
-        (input) => Context.merge(context, input)
+        // Entry finalizers capture this context until the entry is removed, so
+        // drop the requester's span to avoid retaining it and its exit value.
+        (input) => Context.merge(context, omitParentSpan(input))
       )
     const map = MutableHashMap.empty<Key, Entry<A, E>>()
     self.state = { _tag: "Open", map }
@@ -184,6 +191,8 @@ export const makeWith = <
     )
   })
 
+const omitParentSpan = Context.omit(Tracer.ParentSpan)
+
 /**
  * Creates a `ScopedCache` with a fixed time-to-live for every lookup result.
  *
@@ -199,6 +208,8 @@ export const makeWith = <
  * entry scopes are closed when entries are invalidated, are evicted, or when
  * the cache's owning scope closes. Expiry cleanup is lazy: expired entries close
  * on access to that key or a `keys`/`values`/`entries` scan, not in the background.
+ * Lookups do not inherit the span active when `get` or `refresh` runs them;
+ * they use the span active when the cache was constructed, if any.
  *
  * @see {@link makeWith} for computing time-to-live from each lookup result and key
  *
@@ -363,12 +374,9 @@ const hasExpired = <A, E>(entry: Entry<A, E>, fiber: Fiber.Fiber<unknown, unknow
 
 // Expiry and capacity eviction report cleanup failures without failing unrelated readers.
 const closeEvicted = <A, E>(entry: Entry<A, E>): Effect.Effect<void> =>
-  effect.catchCause(Scope.close(entry.scope, effect.exitVoid), reportUnhandledError)
-
-const reportUnhandledError = <E>(cause: Cause.Cause<E>): Effect.Effect<void> =>
-  core.withFiber((fiber) => {
-    const level = fiber.getRef(UnhandledLogLevel)
-    return level ? effect.logWithLevel(level)("Unhandled error in ScopedCache finalizer", cause) : effect.void
+  effect.ignoreCause(Scope.close(entry.scope, effect.exitVoid), {
+    log: "Unhandled",
+    message: "Unhandled error in ScopedCache finalizer"
   })
 
 const checkCapacity = <K, A, E>(
@@ -775,11 +783,11 @@ const invalidateAllImpl = <Key, A, E>(
   // Detach the batch before finalizers can reenter the cache.
   const entries = Array.from(MutableHashMap.values(map))
   MutableHashMap.clear(map)
-  const fibers = Arr.empty<Fiber.Fiber<unknown, unknown>>()
+  const fibers = Arr.empty<Fiber.Fiber<void>>()
   for (const entry of entries) {
     fibers.push(effect.forkUnsafe(parent as any, Scope.close(entry.scope, effect.exitVoid), true, true))
   }
-  return effect.fiberAwaitAll(fibers)
+  return effect.flatMap(effect.fiberAwaitAll(fibers), Exit.asVoidAll)
 }
 
 /**
@@ -832,7 +840,7 @@ export const keys = <Key, A, E, R>(self: ScopedCache<Key, A, E, R>): Effect.Effe
         keys.push(key)
       } else {
         MutableHashMap.remove(state.map, key)
-        fibers.push(effect.forkUnsafe(fiber, Scope.close(entry.scope, effect.exitVoid), true, true))
+        fibers.push(effect.forkUnsafe(fiber, closeEvicted(entry), true, true))
       }
     }
     return fibers.length === 0 ? effect.succeed(keys) : effect.as(effect.fiberAwaitAll(fibers), keys)
@@ -897,7 +905,7 @@ export const entries = <Key, A, E, R>(self: ScopedCache<Key, A, E, R>): Effect.E
         }
       } else {
         MutableHashMap.remove(state.map, key)
-        fibers.push(effect.forkUnsafe(fiber, Scope.close(entry.scope, effect.exitVoid), true, true))
+        fibers.push(effect.forkUnsafe(fiber, closeEvicted(entry), true, true))
       }
     }
     return fibers.length === 0

@@ -1,7 +1,25 @@
+import * as NodeTerminal from "@effect/platform-node-shared/NodeTerminal"
 import { assert, describe, it } from "@effect/vitest"
 import * as Effect from "effect/Effect"
+import * as Queue from "effect/Queue"
 import { spawn, spawnSync } from "node:child_process"
 import { join } from "node:path"
+
+const resize = (columns: number, rows: number) =>
+  Effect.sync(() => {
+    Object.assign(process.stdout, { columns, rows })
+    process.stdout.emit("resize")
+  })
+
+const mockSize = (columns: number, rows: number) =>
+  Effect.acquireRelease(
+    Effect.sync(() => {
+      const original = { columns: process.stdout.columns, rows: process.stdout.rows }
+      Object.assign(process.stdout, { columns, rows })
+      return original
+    }),
+    (original) => Effect.sync(() => Object.assign(process.stdout, original))
+  )
 
 const fixture = join(__dirname, "fixtures", "node-terminal.ts")
 
@@ -96,8 +114,12 @@ describe("NodeTerminal", { concurrent: false, timeout: 15_000 }, () => {
       assert.include(stderr, "RESULT \"apple\"")
     }))
 
-  it("does not install a readline interface until the terminal is used", () => {
-    assertResult("unused", "", "{\"dataListeners\":0}")
+  it("does not access stdio when building or disposing an unused layer", () => {
+    assertResult("unused", "", "{\"stdin\":0,\"stdout\":0}")
+  })
+
+  it("does not access stdin for output-only operations", () => {
+    assertResult("output", "", "{\"stdin\":0}")
   })
 
   it("fails a prompt with QuitError after piped input is exhausted", () => {
@@ -120,10 +142,40 @@ describe("NodeTerminal", { concurrent: false, timeout: 15_000 }, () => {
     assertResult("read-line-after-end", "", "\"QuitError\"")
   })
 
+  it("leaves a TTY in cooked mode for readLine", () => {
+    assertResult("tty-read-line", "line\n", "{\"line\":\"line\",\"rawMode\":[]}")
+  })
+
+  it("enables raw mode on a TTY while reading key input", () => {
+    assertResult("tty-read-input", "y", "{\"input\":\"y\",\"rawMode\":[true,false]}")
+  })
+
   it.effect("disposes readline after its idle TTL", () =>
     assertOpenResult(
       "read-line-disposed",
       "line\n",
       "{\"line\":\"line\",\"duringTtl\":1,\"dataListeners\":0}"
     ))
+
+  it.effect("size offers the current size, then only the latest resize", () =>
+    Effect.gen(function*() {
+      yield* mockSize(80, 24)
+      const terminal = yield* NodeTerminal.make()
+      const sizes = yield* terminal.size
+      assert.deepStrictEqual(yield* Queue.take(sizes), { columns: 80, rows: 24 })
+      yield* resize(100, 30)
+      yield* resize(120, 50)
+      assert.deepStrictEqual(yield* Queue.takeAll(sizes), [{ columns: 120, rows: 50 }])
+    }))
+
+  it.effect("size removes its resize listener when the scope closes", () =>
+    Effect.gen(function*() {
+      const terminal = yield* NodeTerminal.make()
+      const listeners = process.stdout.listenerCount("resize")
+      yield* terminal.size.pipe(
+        Effect.tap(() => Effect.sync(() => assert.strictEqual(process.stdout.listenerCount("resize"), listeners + 1))),
+        Effect.scoped
+      )
+      assert.strictEqual(process.stdout.listenerCount("resize"), listeners)
+    }))
 })

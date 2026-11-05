@@ -1,9 +1,11 @@
 import type { DurableObjectStorage, SqlStorage } from "@cloudflare/workers-types"
 import { SqliteClient, SqliteMigrator } from "@effect/sql-sqlite-do"
 import { assert, describe, it } from "@effect/vitest"
-import { Deferred, Effect, Exit, Fiber, Stream } from "effect"
+import { Deferred, Effect, Exit, Fiber, Schema, Stream } from "effect"
+import * as Arr from "effect/Array"
 import * as Reactivity from "effect/reactivity/Reactivity"
 import * as SqlClient from "effect/sql/SqlClient"
+import * as SqlResolver from "effect/sql/SqlResolver"
 
 class FakeCursor {
   readonly columnNames: ReadonlyArray<string>
@@ -503,6 +505,30 @@ describe("Client", () => {
       assert.strictEqual(storage.rollbackCalls, 1)
       assert.deepStrictEqual(storage.snapshots, [])
       assert.strictEqual(hasForbiddenTransactionSql(storage.sql), false)
+    }))
+
+  it.effect("SqlResolver keeps requests outside a storage-backed transaction out of its batch", () =>
+    Effect.gen(function*() {
+      const storage = new FakeDurableObjectStorage()
+      const sql = yield* makeClient({ storage: storage as unknown as DurableObjectStorage })
+      const batches: Array<Array<number>> = []
+      const insert = SqlResolver.request(SqlResolver.void({
+        Request: Schema.Number,
+        execute: (ids) => {
+          batches.push(ids)
+          return sql`INSERT INTO test ${sql.insert(Arr.map(ids, (id) => ({ id })))}`
+        }
+      }))
+
+      yield* sql`CREATE TABLE test (id INTEGER PRIMARY KEY)`
+      yield* Effect.all([
+        Effect.exit(sql.withTransaction(Effect.andThen(insert(1), Effect.fail("rollback")))),
+        insert(2)
+      ], { concurrency: "unbounded" })
+      const rows = yield* sql`SELECT * FROM test`
+
+      assert.deepStrictEqual(batches, [[2], [1]])
+      assert.deepStrictEqual(rows, [{ id: 2 }])
     }))
 
   it.effect("SqliteMigrator.run works with storage-backed transactions", () =>

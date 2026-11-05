@@ -11,32 +11,38 @@
  * `layer`, `layerWith`, `make`, and `makeEncoded` run the migrations before
  * building the storage. To run migrations with a different connection, such as
  * a schema owner in a deploy step, use `layerMigrations` there and
- * `layerStorage` in the runtime.
+ * `layerStorage` or `makeEncodedStorage` in the runtime.
  *
  * Request deduplication keys that exceed the 255-character `message_id`
- * column are hashed with the `Crypto` service before they are written, so
+ * column are hashed with the `Digest.Digest` service before they are written, so
  * composed keys of any length are supported; shorter keys are stored as
  * plaintext, byte-compatible with rows written by previous versions.
+ *
+ * On MySQL, `deleteProcessed` needs MySQL 8.0.1+ or MariaDB 10.6+ for
+ * `SKIP LOCKED`. It runs at READ COMMITTED, which needs `binlog_format` `ROW`
+ * or `MIXED`. Inside a caller's transaction it keeps that transaction's
+ * isolation level, which must also be READ COMMITTED on MySQL before 8.0.20
+ * and on MariaDB, or it can deadlock with a concurrent reply.
  *
  * @stability unstable
  * @since 4.0.0
  */
 // eslint-disable effect/no-bigint-literals
 import * as Arr from "../Array.ts"
-import * as Crypto from "../Crypto.ts"
+import * as Digest from "../crypto/Digest.ts"
 import * as Effect from "../Effect.ts"
-import * as Hex from "../encoding/Hex.ts"
+import { identity } from "../Function.ts"
 import * as Layer from "../Layer.ts"
 import * as Option from "../Option.ts"
-import type * as PlatformError from "../PlatformError.ts"
 import * as Migrator from "../sql/Migrator.ts"
 import * as SqlClient from "../sql/SqlClient.ts"
 import type { Row } from "../sql/SqlConnection.ts"
-import { isSqlError, type SqlError } from "../sql/SqlError.ts"
+import { isSqlError, SqlError, UnknownError } from "../sql/SqlError.ts"
 import type { Fragment } from "../sql/Statement.ts"
 import { PersistenceError } from "./ClusterError.ts"
 import type * as EntityAddress from "./EntityAddress.ts"
 import type * as Envelope from "./Envelope.ts"
+import * as MachineId from "./MachineId.ts"
 import * as MessageStorage from "./MessageStorage.ts"
 import { SaveResultEncoded } from "./MessageStorage.ts"
 import type * as Reply from "./Reply.ts"
@@ -66,6 +72,7 @@ const withTracerDisabled = Effect.withTracerEnabled(false)
  * tables, including the migration history table.
  *
  * @see {@link make} for the decoded `MessageStorage` constructor
+ * @see {@link makeEncodedStorage} for construction without migrations
  *
  * @stability unstable
  * @category constructors
@@ -76,19 +83,53 @@ export const makeEncoded: (options?: {
 }) => Effect.Effect<
   MessageStorage.Encoded,
   never,
-  SqlClient.SqlClient | Crypto.Crypto
+  SqlClient.SqlClient | Digest.Digest
 > = (options) => Effect.andThen(runMessageMigrations(options), makeEncodedStorage(options))
 
-const makeEncodedStorage = Effect.fnUntraced(function*(
-  options: {
+/**
+ * Creates a SQL-backed encoded message storage driver without running migrations
+ * or executing startup SQL.
+ *
+ * **When to use**
+ *
+ * Use when composing a custom encoded adapter with a runtime SQL connection
+ * that does not have schema-management privileges.
+ *
+ * **Details**
+ *
+ * The optional `prefix` controls the message and reply table names; when omitted,
+ * `cluster` is used.
+ *
+ * **Gotchas**
+ *
+ * Run `layerMigrations` separately with the same prefix before using the driver.
+ * This constructor does not create tables or check that the schema is up to date.
+ *
+ * @see {@link makeEncoded} for construction that runs migrations
+ * @see {@link layerMigrations} for running migrations separately
+ * @see {@link layerStorage} for providing decoded storage without migrations
+ *
+ * @stability unstable
+ * @category constructors
+ * @since 4.1.0
+ */
+export const makeEncodedStorage: (options?: {
+  readonly prefix?: string | undefined
+}) => Effect.Effect<
+  MessageStorage.Encoded,
+  never,
+  SqlClient.SqlClient | Digest.Digest
+> = Effect.fnUntraced(function*(
+  options?: {
     readonly prefix?: string | undefined
-  } | undefined
+  }
 ) {
   const sql = (yield* SqlClient.SqlClient).withoutTransforms()
-  const crypto = yield* Crypto.Crypto
+  const digest = yield* Digest.Digest
   const prefix = options?.prefix ?? "cluster"
   const table = (name: string) => `${prefix}_${name}`
 
+  const messageKindRequest = sql.literal(String(messageKind.Request))
   const messageKindAckChunk = sql.literal(String(messageKind.AckChunk))
   const messageKindInterrupt = sql.literal(String(messageKind.Interrupt))
   const replyKindWithExit = sql.literal(String(replyKind.WithExit))
@@ -108,10 +149,10 @@ const makeEncodedStorage = Effect.fnUntraced(function*(
   // birthday bound). Digests never contain "/" while composed keys always do,
   // so the two encodings cannot collide.
   const encoder = new TextEncoder()
-  const messageIdForPrimaryKey = (primaryKey: string): Effect.Effect<string, PlatformError.PlatformError> =>
+  const messageIdForPrimaryKey = (primaryKey: string): Effect.Effect<string> =>
     primaryKey.length <= 255
       ? Effect.succeed(primaryKey)
-      : Effect.map(crypto.digest("SHA-256", encoder.encode(primaryKey)), Hex.encode)
+      : digest.digestHex(Digest.sha256, encoder.encode(primaryKey))
 
   const messageIdEnforcesWidth = sql.onDialectOrElse({
     mssql: () => true,
@@ -277,76 +318,106 @@ const makeEncodedStorage = Effect.fnUntraced(function*(
   const sqlFalse = sql.literal(supportsBooleans ? "FALSE" : "0")
   const sqlTrue = sql.literal(supportsBooleans ? "TRUE" : "1")
 
+  // Read SQLite IDs as text to avoid rounding on number-returning drivers
+  // such as Durable Objects.
+  const idsAsText = sql.onDialectOrElse({
+    sqlite: () => true,
+    orElse: () => false
+  })
+  const idAs = (column: string, alias: string) =>
+    idsAsText ? `CAST(${column} AS TEXT) AS ${alias}` : `${column} AS ${alias}`
+  const replyJoinColumns = "r.kind as reply_kind, r.payload as reply_payload, r.sequence as reply_sequence"
+  const messageColumns = idsAsText
+    ? `${idAs("m.id", "id")}, m.message_id, m.shard_id, m.entity_type, m.entity_id, m.kind, m.tag, m.payload, ` +
+      `m.headers, m.trace_id, m.span_id, m.sampled, m.processed, ${idAs("m.request_id", "request_id")}, ` +
+      `${idAs("m.reply_id", "reply_id")}, ${idAs("m.last_reply_id", "last_reply_id")}, m.last_read, m.deliver_at`
+    : "m.*"
+
+  const idColumn = sql.literal(idAs("id", "id"))
+  const replyColumns = sql.literal(
+    `${idAs("id", "id")}, kind, ${idAs("request_id", "request_id")}, payload, sequence`
+  )
+  const duplicateColumns = sql.literal(
+    `${idAs("m.id", "id")}, ${idAs("r.id", "reply_id")}, ${replyJoinColumns}`
+  )
+  const messageJoinColumns = sql.literal(
+    `${messageColumns}, ${idAs("r.id", "reply_reply_id")}, ${replyJoinColumns}`
+  )
+
   const selectByMessageId = (message_id: string): Effect.Effect<ReadonlyArray<Row>, SqlError> =>
     sql`
-      SELECT m.id, r.id as reply_id, r.kind as reply_kind, r.payload as reply_payload, r.sequence as reply_sequence
+      SELECT ${duplicateColumns}
       FROM ${messagesTableSql} m
       LEFT JOIN ${repliesTableSql} r ON r.id = m.last_reply_id
       WHERE m.message_id = ${message_id}
     `
+  const maxInsertAttempts = 3
+  // Runs an insert that reports whether it stored the row, returning the
+  // existing row with the same message_id when it did not
+  const insertUnlessExists = (
+    insert: (row: MessageRow, message_id: string) => Effect.Effect<boolean, SqlError>
+  ) =>
+  (row: MessageRow, message_id: string): Effect.Effect<ReadonlyArray<Row>, SqlError> => {
+    // deleteProcessed can delete the existing row before it is read, so insert
+    // again rather than report a save that stored nothing
+    const loop = (attempt: number): Effect.Effect<ReadonlyArray<Row>, SqlError> =>
+      Effect.flatMap(
+        insert(row, message_id),
+        (inserted) =>
+          inserted ? Effect.succeed([]) : Effect.flatMap(selectByMessageId(message_id), (rows) => {
+            if (rows.length > 0) return Effect.succeed(rows)
+            if (attempt < maxInsertAttempts) return loop(attempt + 1)
+            return Effect.fail(
+              new SqlError({
+                reason: new UnknownError({
+                  cause: undefined,
+                  message: `Message ${message_id} conflicted with a row that was deleted before it could be read`,
+                  operation: "saveEnvelope"
+                })
+              })
+            )
+          })
+      )
+    return loop(1)
+  }
 
   const insertEnvelope: (
     row: MessageRow,
     message_id: string
   ) => Effect.Effect<ReadonlyArray<Row>, SqlError> = sql.onDialectOrElse({
-    pg: () => (row, message_id) =>
-      sql`
-        INSERT INTO ${messagesTableSql} ${sql.insert(row)}
-        ON CONFLICT (message_id) DO NOTHING
-        RETURNING id
-      `.pipe(Effect.flatMap((rows) => {
-        // inserted a new row
-        if (rows.length > 0) return Effect.succeed([])
-        return selectByMessageId(message_id)
-      })),
-    mysql: () => (row, message_id) =>
-      Effect.flatMap(
-        sql`INSERT IGNORE INTO ${messagesTableSql} ${sql.insert(row)}`.raw,
-        (row: any) => {
-          if (row.affectedRows > 0) {
-            return Effect.succeed([])
-          }
-          return selectByMessageId(message_id)
-        }
+    pg: () =>
+      insertUnlessExists((row) =>
+        Effect.map(
+          sql`
+            INSERT INTO ${messagesTableSql} ${sql.insert(row)}
+            ON CONFLICT (message_id) DO NOTHING
+            RETURNING id
+          `,
+          (rows) => rows.length > 0
+        )
       ),
-    mssql: () => (row, message_id) =>
-      sql`
-        MERGE ${messagesTableSql} WITH (HOLDLOCK) AS target
-        USING (SELECT ${message_id} as message_id) AS source
-        ON target.message_id = source.message_id
-        WHEN NOT MATCHED THEN
-          INSERT ${sql.insert(row)}
-        OUTPUT
-          inserted.id,
-          CASE
-            WHEN inserted.id IS NULL THEN (
-              SELECT r.id, r.kind, r.payload
-              FROM ${repliesTableSql} r
-              WHERE r.id = target.last_reply_id
-            )
-          END as reply_id,
-          CASE
-            WHEN inserted.id IS NULL THEN (
-              SELECT r.kind
-              FROM ${repliesTableSql} r
-              WHERE r.id = target.last_reply_id
-            )
-          END as reply_kind,
-          CASE
-            WHEN inserted.id IS NULL THEN (
-              SELECT r.payload
-              FROM ${repliesTableSql} r
-              WHERE r.id = target.last_reply_id
-            )
-          END as reply_payload,
-          CASE
-            WHEN inserted.id IS NULL THEN (
-              SELECT r.sequence
-              FROM ${repliesTableSql} r
-              WHERE r.id = target.last_reply_id
-            )
-          END as reply_sequence;
-      `,
+    mysql: () =>
+      insertUnlessExists((row) =>
+        Effect.map(
+          sql`INSERT IGNORE INTO ${messagesTableSql} ${sql.insert(row)}`.raw,
+          (result: any) => result.affectedRows > 0
+        )
+      ),
+    mssql: () =>
+      insertUnlessExists((row, message_id) =>
+        Effect.map(
+          sql`
+            MERGE ${messagesTableSql} WITH (HOLDLOCK) AS target
+            USING (SELECT ${message_id} as message_id) AS source
+            ON target.message_id = source.message_id
+            WHEN NOT MATCHED THEN
+              INSERT ${sql.insert(row)}
+            OUTPUT inserted.id;
+          `,
+          (rows) => rows.length > 0
+        )
+      ),
+    // SQLite has a single writer, so no delete can run between read and insert
     orElse: () => (row, message_id) =>
       selectByMessageId(message_id).pipe(
         Effect.tap(sql`INSERT OR IGNORE INTO ${messagesTableSql} ${sql.insert(row)}`),
@@ -374,8 +445,115 @@ const makeEncodedStorage = Effect.fnUntraced(function*(
     orElse: () => (s: string) => `'${s}'`
   })
   const forUpdate = sql.onDialectOrElse({
+    mssql: () => sql.literal(""),
     sqlite: () => sql.literal(""),
     orElse: () => sql.literal("FOR UPDATE")
+  })
+  // mssql locks claimed rows with a table hint instead of FOR UPDATE
+  const updateLock = sql.onDialectOrElse({
+    mssql: () => sql.literal("WITH (UPDLOCK)"),
+    orElse: () => sql.literal("")
+  })
+  // Like updateLock and forUpdate, but skips locked rows. REPEATABLEREAD keeps
+  // mssql's READPAST valid at any session isolation level.
+  const skipLockedHint = sql.onDialectOrElse({
+    mssql: () => sql.literal("WITH (UPDLOCK, READPAST, REPEATABLEREAD)"),
+    orElse: () => sql.literal("")
+  })
+  const forUpdateSkipLocked = sql.onDialectOrElse({
+    mssql: () => sql.literal(""),
+    sqlite: () => sql.literal(""),
+    orElse: () => sql.literal("FOR UPDATE SKIP LOCKED")
+  })
+  // Writes to a request's replies lock its row first, in deleteProcessed's
+  // order, so they cannot deadlock. An empty result means it was deleted.
+  const lockRequest = (requestId: string) =>
+    sql`SELECT 1 FROM ${messagesTableSql} ${updateLock} WHERE id = ${requestId} ${forUpdate}`
+  // mssql can scan the clustered index on small tables and deadlock on other
+  // requests' rows, so these statements force the request_id indexes
+  const markAcksProcessed: (requestId: string) => Effect.Effect<unknown, SqlError> = sql.onDialectOrElse({
+    mssql: () => (requestId) =>
+      sql`
+        UPDATE m SET processed = ${sqlTrue}
+        FROM ${messagesTableSql} m WITH (INDEX(${sql(messagesTable + "_request_id_idx")}))
+        WHERE m.processed = ${sqlFalse} AND m.request_id = ${requestId} AND m.kind = ${messageKindAckChunk}
+      `,
+    orElse: () => (requestId) =>
+      sql`
+        UPDATE ${messagesTableSql} SET processed = ${sqlTrue}
+        WHERE processed = ${sqlFalse} AND request_id = ${requestId} AND kind = ${messageKindAckChunk}
+      `
+  })
+  const deleteRequests: (ids: Fragment) => Effect.Effect<unknown, SqlError> = sql.onDialectOrElse({
+    mssql: () => (ids) =>
+      Effect.andThen(
+        sql`
+          DELETE r FROM ${repliesTableSql} r WITH (INDEX(${sql(repliesTable + "_request_lookup_idx")}))
+          WHERE r.request_id IN (${ids})
+        `,
+        sql`
+          DELETE m FROM ${messagesTableSql} m WITH (INDEX(${sql(messagesTable + "_request_id_idx")}))
+          WHERE m.request_id IN (${ids})
+        `
+      ),
+    // A scanning DELETE locks every row it reads and can deadlock. MySQL
+    // ignores FORCE INDEX here, so an optimizer hint keeps it on the index.
+    // Servers without hints (before 8.0.20, MariaDB) rely on cleanupIsolation.
+    mysql: () => (ids) =>
+      Effect.andThen(
+        sql`
+          DELETE /*+ INDEX(${repliesTableSql} ${sql(repliesTable + "_request_lookup_idx")}) */
+          FROM ${repliesTableSql} WHERE request_id IN (${ids})
+        `,
+        sql`
+          DELETE /*+ INDEX(${messagesTableSql} ${sql(messagesTable + "_request_id_idx")}) */
+          FROM ${messagesTableSql} WHERE request_id IN (${ids})
+        `
+      ),
+    orElse: () => (ids) =>
+      Effect.andThen(
+        sql`DELETE FROM ${repliesTableSql} WHERE request_id IN (${ids})`,
+        sql`DELETE FROM ${messagesTableSql} WHERE request_id IN (${ids})`
+      )
+  })
+  // Gap locks at MySQL's default REPEATABLE READ let a scanning DELETE
+  // deadlock with saveReply. READ COMMITTED takes none, but the server rejects
+  // it with binlog_format STATEMENT. A caller's transaction keeps its level.
+  const cleanupIsolation: <A, E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R> = sql
+    .onDialectOrElse({
+      mysql: () => Effect.provideService(SqlClient.BeginTransaction, "SET TRANSACTION ISOLATION LEVEL READ COMMITTED"),
+      orElse: () => identity
+    })
+  // Locks up to limit eligible requests, skipping locked ones, since waiting
+  // can deadlock on MySQL gap locks. Ordering by last_reply_id keeps the
+  // query on the retention index.
+  const lockDeletable: (
+    eligible: Fragment,
+    limit: number
+  ) => Effect.Effect<ReadonlyArray<{ id: string | bigint }>, SqlError> = sql.onDialectOrElse({
+    // A MySQL locking scan also locks ineligible rows, in the opposite order
+    // to lockRequest, so find candidates unlocked, then lock them by id and
+    // recheck them
+    mysql: () => (eligible, limit) =>
+      Effect.flatMap(
+        sql<{ id: string | bigint }>`
+          SELECT id FROM ${messagesTableSql} WHERE ${eligible} ORDER BY last_reply_id ASC ${limitFragment(limit)}
+        `,
+        (candidates) =>
+          candidates.length === 0 ? Effect.succeed(candidates) : sql<{ id: string | bigint }>`
+            SELECT id FROM ${messagesTableSql} FORCE INDEX (id)
+            WHERE id IN (${sql.literal(candidates.map((row) => String(row.id)).join(","))}) AND ${eligible}
+            FOR UPDATE SKIP LOCKED
+          `
+      ),
+    orElse: () => (eligible, limit) =>
+      sql<{ id: string | bigint }>`
+        SELECT ${idColumn} FROM ${messagesTableSql} ${skipLockedHint}
+        WHERE ${eligible}
+        ORDER BY last_reply_id ASC
+        ${limitFragment(limit)}
+        ${forUpdateSkipLocked}
+      `
   })
 
   const emptyFragment = sql.literal("")
@@ -459,8 +637,8 @@ const makeEncodedStorage = Effect.fnUntraced(function*(
       `,
     orElse: () => (shardIds: ReadonlyArray<string>, now: number, filters: UnprocessedFilters) =>
       sql<MessageJoinRow>`
-        SELECT m.*, r.id as reply_reply_id, r.kind as reply_kind, r.payload as reply_payload, r.sequence as reply_sequence
-        FROM ${messagesTableSql} m
+        SELECT ${messageJoinColumns}
+        FROM ${messagesTableSql} m ${updateLock}
         LEFT JOIN ${repliesTableSql} r ON r.id = m.last_reply_id
         WHERE m.shard_id IN (${sql.literal(shardIds.map(wrapString).join(","))})
         ${filters.addressFilter}
@@ -523,7 +701,7 @@ const makeEncodedStorage = Effect.fnUntraced(function*(
   const encoded: MessageStorage.Encoded = {
     saveEnvelope: ({ deliverAt, envelope, primaryKey }) =>
       Effect.suspend(() => {
-        let insert: Effect.Effect<ReadonlyArray<Row>, SqlError | PlatformError.PlatformError>
+        let insert: Effect.Effect<ReadonlyArray<Row>, SqlError>
         if (primaryKey !== null) {
           insert = Effect.flatMap(messageIdForPrimaryKey(primaryKey), (messageId) => {
             const row = envelopeToRow(envelope, messageId, deliverAt)
@@ -537,16 +715,21 @@ const makeEncodedStorage = Effect.fnUntraced(function*(
           })
         } else {
           const row = envelopeToRow(envelope, null, deliverAt)
-          insert = Effect.as(sql`INSERT INTO ${messagesTableSql} ${sql.insert(row)}`.unprepared, [])
-          if (envelope._tag === "AckChunk") {
-            insert = sql`UPDATE ${repliesTableSql} SET acked = ${sqlTrue} WHERE id = ${envelope.replyId}`.pipe(
-              Effect.andThen(
-                sql`UPDATE ${messagesTableSql} SET processed = ${sqlTrue} WHERE processed = ${sqlFalse} AND request_id = ${envelope.requestId} AND kind = ${messageKindAckChunk}`
-              ),
-              Effect.andThen(insert),
-              sql.withTransaction
-            )
-          }
+          const insertRow = Effect.as(sql`INSERT INTO ${messagesTableSql} ${sql.insert(row)}`.unprepared, [])
+          insert = envelope._tag === "Request" ? insertRow : lockRequest(envelope.requestId).pipe(
+            Effect.flatMap((request) =>
+              // the request was deleted, so there is nothing left to acknowledge or interrupt
+              request.length === 0 ?
+                Effect.succeed([]) :
+                envelope._tag === "Interrupt" ?
+                insertRow :
+                sql`UPDATE ${repliesTableSql} SET acked = ${sqlTrue} WHERE id = ${envelope.replyId}`.pipe(
+                  Effect.andThen(markAcksProcessed(envelope.requestId)),
+                  Effect.andThen(insertRow)
+                )
+            ),
+            sql.withTransaction
+          )
         }
         return insert.pipe(
           Effect.map((rows) => {
@@ -604,6 +787,7 @@ const makeEncodedStorage = Effect.fnUntraced(function*(
     clearReplies: Effect.fnUntraced(
       function*(requestId, options) {
         const expectedReplyId = options?.expectedReplyId
+        yield* lockRequest(String(requestId))
         if (expectedReplyId === undefined) {
           yield* sql`DELETE FROM ${repliesTableSql} WHERE request_id = ${String(requestId)} AND kind = 0`
           yield* sql`DELETE FROM ${messagesTableSql} WHERE request_id = ${
@@ -630,11 +814,11 @@ const makeEncodedStorage = Effect.fnUntraced(function*(
     requestIdForPrimaryKey: (primaryKey) =>
       messageIdForPrimaryKey(primaryKey).pipe(
         Effect.flatMap((messageId) =>
-          sql<{ id: string | bigint }>`SELECT id FROM ${messagesTableSql} WHERE message_id = ${messageId}`
+          sql<{ id: string | bigint }>`SELECT ${idColumn} FROM ${messagesTableSql} WHERE message_id = ${messageId}`
         ),
         Effect.flatMap((rows) =>
           rows.length === 0 && mayHaveLegacyRow(primaryKey)
-            ? sql<{ id: string | bigint }>`SELECT id FROM ${messagesTableSql} WHERE message_id = ${primaryKey}`
+            ? sql<{ id: string | bigint }>`SELECT ${idColumn} FROM ${messagesTableSql} WHERE message_id = ${primaryKey}`
             : Effect.succeed(rows)
         ),
         Effect.map((rows) => Option.map(Option.fromNullishOr(rows[0]?.id), Snowflake.Snowflake)),
@@ -649,7 +833,7 @@ const makeEncodedStorage = Effect.fnUntraced(function*(
       // - the kind is WithExit
       // - or the kind is Chunk and has not been acked yet
       sql<ReplyRow>`
-        SELECT id, kind, request_id, payload, sequence
+        SELECT ${replyColumns}
         FROM ${repliesTableSql}
         WHERE request_id IN (${sql.literal(requestIds.join(","))})
         AND (
@@ -669,7 +853,7 @@ const makeEncodedStorage = Effect.fnUntraced(function*(
 
     repliesForUnfiltered: (requestIds) =>
       sql<ReplyRow>`
-        SELECT id, kind, request_id, payload, sequence
+        SELECT ${replyColumns}
         FROM ${repliesTableSql}
         WHERE request_id IN (${sql.literal(requestIds.join(","))})
         ORDER BY rowid ASC
@@ -705,7 +889,7 @@ const makeEncodedStorage = Effect.fnUntraced(function*(
     unprocessedMessagesById(ids, now) {
       const idArr = Array.from(ids, (id) => String(id))
       return sql<MessageRow & ReplyJoinRow>`
-        SELECT m.*, r.id as reply_reply_id, r.kind as reply_kind, r.payload as reply_payload, r.sequence as reply_sequence
+        SELECT ${messageJoinColumns}
         FROM ${messagesTableSql} m
         LEFT JOIN ${repliesTableSql} r ON r.id = m.last_reply_id
         WHERE m.id IN (${sql.literal(idArr.join(","))})
@@ -781,6 +965,39 @@ const makeEncodedStorage = Effect.fnUntraced(function*(
         withTracerDisabled
       ),
 
+    deleteProcessed: Effect.fnUntraced(
+      function*({ completedBefore, entityType, limit }) {
+        // No signed snowflake id is at or before this. Also covers -Infinity and NaN.
+        if (!(completedBefore > Snowflake.constEpochMillis - 2 ** 41)) return 0
+        // Reply timestamps are whole milliseconds, so round up. Every signed
+        // snowflake id is below the cap, which also covers Infinity.
+        const cutoff = Snowflake.make({
+          timestamp: Math.min(Math.ceil(completedBefore), Snowflake.constEpochMillis + 2 ** 41),
+          machineId: MachineId.make(0),
+          sequence: 0
+        })
+        // Locked so a concurrent clearReplies cannot reset them first
+        const rows = yield* lockDeletable(
+          sql`
+            entity_type = ${entityType}
+            AND kind = ${messageKindRequest}
+            AND processed = ${sqlTrue}
+            AND last_reply_id < ${sql.literal(String(cutoff))}
+          `,
+          limit
+        )
+        if (rows.length === 0) return 0
+        const ids = sql.literal(rows.map((row) => String(row.id)).join(","))
+        yield* deleteRequests(ids)
+        return rows.length
+      },
+      sql.withTransaction,
+      cleanupIsolation,
+      Effect.provideService(SqlClient.SafeIntegers, true),
+      PersistenceError.refail,
+      withTracerDisabled
+    ),
+
     resetShards: (shardIds) =>
       resetUnprocessed(sql`shard_id IN (${sql.literal(shardIds.map(wrapString).join(","))})`).pipe(
         Effect.asVoid,
@@ -809,7 +1026,7 @@ export const make: (options?: {
 }) => Effect.Effect<
   MessageStorage.MessageStorage["Service"],
   never,
-  SqlClient.SqlClient | Snowflake.Generator | Crypto.Crypto
+  SqlClient.SqlClient | Snowflake.Generator | Digest.Digest
 > = (options) => Effect.flatMap(makeEncoded(options), MessageStorage.makeEncoded)
 
 /**
@@ -840,6 +1057,8 @@ export const migrations = (options?: {
       const messagesTableSql = sql(messagesTable)
       const repliesTableSql = sql(repliesTable)
 
+      // mssql UNIQUE constraints treat NULLs as equal, so nullable keys use
+      // filtered unique indexes instead
       yield* sql.onDialectOrElse({
         mssql: () =>
           sql`
@@ -853,8 +1072,8 @@ export const migrations = (options?: {
               entity_id VARCHAR(255) NOT NULL,
               kind INT NOT NULL,
               tag VARCHAR(50),
-              payload TEXT,
-              headers TEXT,
+              payload NVARCHAR(MAX),
+              headers NVARCHAR(MAX),
               trace_id VARCHAR(32),
               span_id VARCHAR(16),
               sampled BIT,
@@ -864,7 +1083,7 @@ export const migrations = (options?: {
               last_reply_id BIGINT,
               last_read DATETIME,
               deliver_at BIGINT,
-              UNIQUE (message_id)
+              INDEX ${sql(messagesTable + "_message_id_idx")} UNIQUE (message_id) WHERE message_id IS NOT NULL
             )
           `,
         mysql: () =>
@@ -951,11 +1170,11 @@ export const migrations = (options?: {
       yield* sql.onDialectOrElse({
         mssql: () =>
           sql`
-            IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = ${shardLookupIndex})
+            IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = ${shardLookupIndex} AND object_id = OBJECT_ID(${messagesTable}))
             CREATE INDEX ${sql(shardLookupIndex)} 
             ON ${messagesTableSql} (shard_id, processed, last_read, deliver_at);
 
-            IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = ${requestIdLookupIndex})
+            IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = ${requestIdLookupIndex} AND object_id = OBJECT_ID(${messagesTable}))
             CREATE INDEX ${sql(requestIdLookupIndex)}
             ON ${messagesTableSql} (request_id);
           `,
@@ -967,17 +1186,16 @@ export const migrations = (options?: {
             CREATE INDEX ${sql(requestIdLookupIndex)}
             ON ${messagesTableSql} (request_id);
           `.unprepared.pipe(Effect.ignore),
-        pg: () =>
-          Effect.gen(function*() {
-            yield* sql`
+        pg: Effect.fnUntraced(function*() {
+          yield* sql`
               CREATE INDEX IF NOT EXISTS ${sql(shardLookupIndex)}
               ON ${messagesTableSql} (shard_id, processed, last_read, deliver_at)
             `
-            yield* sql`
+          yield* sql`
               CREATE INDEX IF NOT EXISTS ${sql(requestIdLookupIndex)}
               ON ${messagesTableSql} (request_id)
             `
-          }),
+        }),
         orElse: () =>
           // sqlite
           Effect.all([
@@ -1001,11 +1219,11 @@ export const migrations = (options?: {
               rowid BIGINT IDENTITY(1,1),
               kind INT,
               request_id BIGINT NOT NULL,
-              payload TEXT NOT NULL,
+              payload NVARCHAR(MAX) NOT NULL,
               sequence INT,
               acked BIT NOT NULL DEFAULT 0,
-              CONSTRAINT ${sql(repliesTable + "_one_exit")} UNIQUE (request_id, kind),
-              CONSTRAINT ${sql(repliesTable + "_sequence")} UNIQUE (request_id, sequence)
+              INDEX ${sql(repliesTable + "_one_exit")} UNIQUE (request_id, kind) WHERE kind IS NOT NULL,
+              INDEX ${sql(repliesTable + "_sequence")} UNIQUE (request_id, sequence) WHERE sequence IS NOT NULL
             )
           `,
         mysql: () =>
@@ -1058,7 +1276,7 @@ export const migrations = (options?: {
       yield* sql.onDialectOrElse({
         mssql: () =>
           sql`
-            IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = ${replyLookupIndex})
+            IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = ${replyLookupIndex} AND object_id = OBJECT_ID(${repliesTable}))
             CREATE INDEX ${sql(replyLookupIndex)}
             ON ${repliesTableSql} (request_id, kind, acked);
           `,
@@ -1116,6 +1334,53 @@ export const migrations = (options?: {
           `,
         orElse: () => Effect.void
       })
+    }),
+
+    // 0001 looked mssql indexes up by name alone, so a same-named index on
+    // another table skipped them. Writes force them, so create any missing.
+    "0004_mssql_lookup_indexes": Effect.gen(function*() {
+      const sql = (yield* SqlClient.SqlClient).withoutTransforms()
+      const ensureIndex = (index: string, table: string, columns: string) =>
+        sql`
+          IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = ${index} AND object_id = OBJECT_ID(${table}))
+          CREATE INDEX ${sql(index)} ON ${sql(table)} (${sql.literal(columns)})
+        `
+      yield* sql.onDialectOrElse({
+        mssql: () =>
+          Effect.all([
+            ensureIndex(`${messagesTable}_shard_idx`, messagesTable, "shard_id, processed, last_read, deliver_at"),
+            ensureIndex(`${messagesTable}_request_id_idx`, messagesTable, "request_id"),
+            ensureIndex(`${repliesTable}_request_lookup_idx`, repliesTable, "request_id, kind, acked")
+          ], { discard: true }),
+        orElse: () => Effect.void
+      })
+    }),
+
+    // Serves deleteProcessed's lookup by entity type and final reply id
+    "0005_retention_index": Effect.gen(function*() {
+      const sql = (yield* SqlClient.SqlClient).withoutTransforms()
+      const messagesTableSql = sql(messagesTable)
+      const retentionIndex = `${messagesTable}_retention_idx`
+      const columns = sql.literal("entity_type, processed, last_reply_id")
+      yield* sql.onDialectOrElse({
+        mssql: () =>
+          sql`
+            IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = ${retentionIndex} AND object_id = OBJECT_ID(${messagesTable}))
+            CREATE INDEX ${sql(retentionIndex)} ON ${messagesTableSql} (${columns})
+          `,
+        mysql: () =>
+          sql`
+            SELECT 1 FROM information_schema.statistics
+            WHERE table_schema = DATABASE() AND table_name = ${messagesTable} AND index_name = ${retentionIndex}
+          `.pipe(
+            Effect.flatMap((rows) =>
+              rows.length > 0
+                ? Effect.void
+                : sql`CREATE INDEX ${sql(retentionIndex)} ON ${messagesTableSql} (${columns})`.unprepared
+            )
+          ),
+        orElse: () => sql`CREATE INDEX IF NOT EXISTS ${sql(retentionIndex)} ON ${messagesTableSql} (${columns})`
+      })
     })
   })
 }
@@ -1162,7 +1427,7 @@ export const layerMigrations = (options: {
  */
 export const layerStorage = (options: {
   readonly prefix?: string | undefined
-}): Layer.Layer<MessageStorage.MessageStorage, never, SqlClient.SqlClient | ShardingConfig | Crypto.Crypto> =>
+}): Layer.Layer<MessageStorage.MessageStorage, never, SqlClient.SqlClient | ShardingConfig | Digest.Digest> =>
   Layer.effect(
     MessageStorage.MessageStorage,
     Effect.flatMap(makeEncodedStorage(options), MessageStorage.makeEncoded)
@@ -1185,7 +1450,7 @@ export const layerStorage = (options: {
  */
 export const layerWith = (options: {
   readonly prefix?: string | undefined
-}): Layer.Layer<MessageStorage.MessageStorage, never, SqlClient.SqlClient | ShardingConfig | Crypto.Crypto> =>
+}): Layer.Layer<MessageStorage.MessageStorage, never, SqlClient.SqlClient | ShardingConfig | Digest.Digest> =>
   layerStorage(options).pipe(
     Layer.provide(layerMigrations(options))
   )
@@ -1207,7 +1472,7 @@ export const layerWith = (options: {
 export const layer: Layer.Layer<
   MessageStorage.MessageStorage,
   never,
-  SqlClient.SqlClient | ShardingConfig | Crypto.Crypto
+  SqlClient.SqlClient | ShardingConfig | Digest.Digest
 > = layerWith({})
 
 // -------------------------------------------------------------------------------------------------

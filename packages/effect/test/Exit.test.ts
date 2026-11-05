@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Exit } from "effect"
+import { Cause, Exit } from "effect"
 import { inspect } from "node:util"
 
 describe("Exit", () => {
@@ -21,5 +21,22 @@ describe("Exit", () => {
     assert.strictEqual(Exit.die("error").toString(), `Failure(Cause([Die("error")]))`)
     assert.strictEqual(Exit.interrupt(1).toString(), `Failure(Cause([Interrupt(1)]))`)
     assert.strictEqual(Exit.interrupt(undefined).toString(), `Failure(Cause([Interrupt(undefined)]))`)
+  })
+
+  it("error mapping keeps defects and interrupts", () => {
+    const defect = new Error("boom")
+    const self = Exit.failCause(Cause.fromReasons([
+      Cause.makeFailReason("error"),
+      Cause.makeInterruptReason(1),
+      Cause.makeDieReason(defect)
+    ]))
+    const onFailure = () => "mapped"
+    const expected = Exit.failCause(Cause.fromReasons([
+      Cause.makeFailReason("mapped"),
+      Cause.makeInterruptReason(1),
+      Cause.makeDieReason(defect)
+    ]))
+    assert.deepStrictEqual(Exit.mapError(self, onFailure), expected)
+    assert.deepStrictEqual(Exit.mapBoth(self, { onFailure, onSuccess: (a) => a }), expected)
   })
 })

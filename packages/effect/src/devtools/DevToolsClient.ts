@@ -49,6 +49,7 @@ const makeEffect = Effect.gen(function*() {
   const socket = yield* Socket.Socket
   const services = yield* Effect.context<never>()
   const requests = yield* Queue.unbounded<DevToolsSchema.Request>()
+  yield* Queue.offer(requests, { _tag: "Ping" })
   const connected = yield* Deferred.make<void>()
   let closing = false
   let writable = false
@@ -218,6 +219,7 @@ const makeTracerEffect = Effect.gen(function*() {
       client.sendUnsafe(spanSnapshot(span))
       const oldEvent = span.event
       span.event = function(this: Tracer.Span, name, startTime, attributes) {
+        if (span.status._tag === "Ended") return
         client.sendUnsafe({
           _tag: "SpanEvent",
           traceId: span.traceId,
@@ -231,6 +233,7 @@ const makeTracerEffect = Effect.gen(function*() {
 
       const oldEnd = span.end
       span.end = function(this: Tracer.Span, endTime, exit) {
+        if (span.status._tag === "Ended") return
         oldEnd.call(this, endTime, exit)
         client.sendUnsafe(spanSnapshot(span))
       }

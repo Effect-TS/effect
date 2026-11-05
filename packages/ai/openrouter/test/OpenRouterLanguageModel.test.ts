@@ -2,7 +2,7 @@ import { Generated, OpenRouterClient, OpenRouterLanguageModel } from "@effect/ai
 import { assert, describe, it } from "@effect/vitest"
 import { deepStrictEqual, strictEqual } from "@effect/vitest/utils"
 import { Array, Context, Effect, Layer, Redacted, Ref, Schema, Stream } from "effect"
-import { LanguageModel, Prompt, Tool, Toolkit } from "effect/ai"
+import { LanguageModel, Model, Prompt, Tool, Toolkit } from "effect/ai"
 import { HttpClient, type HttpClientError, type HttpClientRequest, HttpClientResponse } from "effect/http"
 
 describe("OpenRouterLanguageModel", () => {
@@ -75,6 +75,14 @@ describe("OpenRouterLanguageModel", () => {
         assert.notProperty(body, "strictJsonSchema")
       }).pipe(Effect.provide(makeStreamTestLayer([]))))
   })
+
+  it.effect("model provides openrouter provider metadata", () =>
+    Effect.gen(function*() {
+      strictEqual(yield* Model.ProviderName, "openrouter")
+    }).pipe(
+      Effect.provide(OpenRouterLanguageModel.model("google/gemini-2.5-flash")),
+      Effect.provide(makeTestLayer())
+    ))
 
   describe("generateText", () => {
     describe("message preparation", () => {
@@ -277,19 +285,173 @@ describe("OpenRouterLanguageModel", () => {
           assert.isDefined(toolResult)
           strictEqual(toolResult.content, "PLAIN_TEXT_SENTINEL\n")
         }).pipe(Effect.provide(makeTestLayer())))
+
+      const modelOutputCases = [
+        {
+          label: "as text with file placeholders",
+          modelOutput: [
+            Prompt.textPart({ text: "Screenshot" }),
+            Prompt.filePart({ mediaType: "image/png", fileName: "screenshot.png", data: "iVBORw0KGgo=" })
+          ],
+          content: "Screenshot\n[image/png screenshot.png omitted]"
+        },
+        { label: "as an empty string when it is empty", modelOutput: [], content: "" }
+      ]
+
+      for (const { content, label, modelOutput } of modelOutputCases) {
+        it.effect(`sends tool result model output ${label}`, () =>
+          Effect.gen(function*() {
+            yield* LanguageModel.generateText({
+              prompt: Prompt.make([
+                { role: "user", content: "Use the tool" },
+                {
+                  role: "assistant",
+                  content: [Prompt.toolCallPart({
+                    id: "call_image",
+                    name: "image_tool",
+                    params: {},
+                    providerExecuted: false
+                  })]
+                },
+                {
+                  role: "tool",
+                  content: [Prompt.toolResultPart({
+                    id: "call_image",
+                    name: "image_tool",
+                    result: { output: "APPLICATION_ONLY" },
+                    modelOutput,
+                    isFailure: false,
+                    providerExecuted: false
+                  })]
+                }
+              ]),
+              disableToolCallResolution: true
+            }).pipe(Effect.provide(OpenRouterLanguageModel.model("google/gemini-2.5-flash")))
+
+            const requests = yield* MockHttpClient.requests
+            const body = yield* getRequestBody(requests[0])
+            const toolResult = body.messages.find((message: any) => message.role === "tool")
+
+            assert.isDefined(toolResult)
+            strictEqual(toolResult.content, content)
+          }).pipe(Effect.provide(makeTestLayer())))
+      }
+
+      describe("cache control", () => {
+        const ephemeral = { type: "ephemeral" } as const
+        const oneHour = { type: "ephemeral", ttl: "1h" } as const
+        const cached = { openrouter: { cacheControl: ephemeral } }
+        const partCached = { openrouter: { cacheControl: oneHour } }
+
+        it.effect("sends cached void tool results without throwing", () =>
+          Effect.gen(function*() {
+            yield* LanguageModel.generateText({
+              prompt: Prompt.make([{
+                role: "tool",
+                content: [Prompt.toolResultPart({
+                  id: "call_void",
+                  name: "void_tool",
+                  result: undefined,
+                  isFailure: false,
+                  providerExecuted: false
+                })],
+                options: cached
+              }]),
+              disableToolCallResolution: true
+            }).pipe(Effect.provide(OpenRouterLanguageModel.model("anthropic/claude-sonnet-4.5")))
+
+            const requests = yield* MockHttpClient.requests
+            const body = yield* getRequestBody(requests[0])
+            const toolResult = body.messages.find((message: any) => message.role === "tool")
+            strictEqual(toolResult.tool_call_id, "call_void")
+          }).pipe(Effect.provide(makeTestLayer())))
+
+        for (const partLevel of [false, true]) {
+          it.effect(
+            partLevel
+              ? "preserves part breakpoints and prefers them to message breakpoints"
+              : "puts message breakpoints on the last assistant text and tool result",
+            () =>
+              Effect.gen(function*() {
+                yield* LanguageModel.generateText({
+                  prompt: Prompt.make([
+                    { role: "user", content: "Look up both" },
+                    {
+                      role: "assistant",
+                      content: [
+                        Prompt.reasoningPart({ text: "Thinking" }),
+                        Prompt.textPart({ text: "First", options: partLevel ? partCached : undefined }),
+                        Prompt.textPart({ text: "Second" }),
+                        Prompt.textPart({ text: "Last", options: partLevel ? partCached : undefined }),
+                        ...["a", "b", "c"].map((id) =>
+                          Prompt.toolCallPart({ id, name: "lookup", params: {}, providerExecuted: false })
+                        )
+                      ],
+                      options: cached
+                    },
+                    {
+                      role: "tool",
+                      content: [
+                        ...["a", "b", "c"].map((id) =>
+                          Prompt.toolResultPart({
+                            id,
+                            name: "lookup",
+                            result: id === "c" ? { value: 42 } : id,
+                            isFailure: false,
+                            providerExecuted: false,
+                            options: partLevel && id !== "b" ? partCached : undefined
+                          })
+                        ),
+                        Prompt.toolApprovalResponsePart({ approvalId: "approval", approved: true })
+                      ],
+                      options: cached
+                    }
+                  ]),
+                  disableToolCallResolution: true
+                }).pipe(Effect.provide(OpenRouterLanguageModel.model("anthropic/claude-sonnet-4.5")))
+
+                const requests = yield* MockHttpClient.requests
+                const body = yield* getRequestBody(requests[0])
+                const assistant = body.messages.find((message: any) => message.role === "assistant")
+                deepStrictEqual(assistant.content, [
+                  partLevel
+                    ? { type: "text", text: "First", cache_control: oneHour }
+                    : { type: "text", text: "First" },
+                  { type: "text", text: "Second" },
+                  { type: "text", text: "Last", cache_control: partLevel ? oneHour : ephemeral }
+                ])
+                strictEqual(assistant.reasoning, "Thinking")
+                deepStrictEqual(assistant.tool_calls, [
+                  { id: "a", type: "function", function: { name: "lookup", arguments: "{}" } },
+                  { id: "b", type: "function", function: { name: "lookup", arguments: "{}" } },
+                  { id: "c", type: "function", function: { name: "lookup", arguments: "{}" } }
+                ])
+                deepStrictEqual(body.messages.filter((message: any) => message.role === "tool"), [
+                  {
+                    role: "tool",
+                    tool_call_id: "a",
+                    content: partLevel ? [{ type: "text", text: "a", cache_control: oneHour }] : "a"
+                  },
+                  { role: "tool", tool_call_id: "b", content: "b" },
+                  {
+                    role: "tool",
+                    tool_call_id: "c",
+                    content: [{ type: "text", text: "{\"value\":42}", cache_control: partLevel ? oneHour : ephemeral }]
+                  }
+                ])
+              }).pipe(Effect.provide(makeTestLayer()))
+          )
+        }
+      })
     })
 
     describe("tool preparation", () => {
       it.effect("passes raw JSON schema for dynamic tools", () =>
         Effect.gen(function*() {
           const inputSchema = {
-            type: "object",
             properties: {
-              query: { type: "string" },
-              limit: { type: "number" }
-            },
-            required: ["query"],
-            additionalProperties: false
+              query: { type: "string" }
+            }
           } as const
 
           const DynamicTool = Tool.dynamic("DynamicTool", {
@@ -312,6 +474,53 @@ describe("OpenRouterLanguageModel", () => {
           assert.isDefined(tool)
           strictEqual(tool.function.description, "A dynamic tool")
           deepStrictEqual(tool.function.parameters, inputSchema)
+        }).pipe(Effect.provide(makeTestLayer())))
+
+      it.effect("passes object union parameters through", () =>
+        Effect.gen(function*() {
+          const UnionTool = Tool.make("UnionTool", {
+            parameters: Schema.Union([
+              Schema.Struct({ query: Schema.String }).annotate({ identifier: "Query" }),
+              Schema.Struct({ id: Schema.String })
+            ])
+          })
+
+          yield* LanguageModel.generateText({
+            prompt: "Use the tool",
+            toolkit: Toolkit.make(UnionTool),
+            disableToolCallResolution: true
+          }).pipe(Effect.provide(OpenRouterLanguageModel.model("google/gemini-2.5-flash")))
+
+          const requests = yield* MockHttpClient.requests
+          const body = yield* getRequestBody(requests[0])
+
+          deepStrictEqual(body.tools[0].function.parameters, {
+            anyOf: [
+              { $ref: "#/$defs/Query" },
+              { type: "object", properties: { id: { type: "string" } }, required: ["id"], additionalProperties: true }
+            ],
+            $defs: {
+              Query: {
+                type: "object",
+                properties: { query: { type: "string" } },
+                required: ["query"],
+                additionalProperties: true
+              }
+            }
+          })
+        }).pipe(Effect.provide(makeTestLayer())))
+
+      it.effect("names the tool when its parameters are not an object schema", () =>
+        Effect.gen(function*() {
+          const error = yield* LanguageModel.generateText({
+            prompt: "Use the tool",
+            toolkit: Toolkit.make(Tool.make("NoParams", { parameters: Schema.Struct({}) })),
+            disableToolCallResolution: true
+          }).pipe(Effect.provide(OpenRouterLanguageModel.model("google/gemini-2.5-flash")), Effect.flip)
+
+          strictEqual(error.reason._tag, "UnsupportedSchemaError")
+          assert.include(error.message, `"NoParams"`)
+          assert.include(error.message, "Tool.EmptyParams")
         }).pipe(Effect.provide(makeTestLayer())))
     })
 
@@ -506,6 +715,55 @@ describe("OpenRouterLanguageModel", () => {
         deepStrictEqual(reasoningEnd?.metadata, { openrouter: { reasoningDetails } })
       }))
 
+    it.effect("keeps streamed reasoning in one part when content deltas are empty", () =>
+      Effect.gen(function*() {
+        const parts = yield* LanguageModel.streamText({ prompt: "reason then answer" }).pipe(
+          Stream.runCollect,
+          Effect.provide(OpenRouterLanguageModel.model("deepseek/deepseek-v4-flash")),
+          Effect.provide(makeStreamTestLayer([
+            {
+              id: "response-1",
+              object: "chat.completion.chunk",
+              model: "deepseek/deepseek-v4-flash",
+              created: 1,
+              choices: [{ index: 0, delta: { content: "", reasoning: "Thinking" } }]
+            },
+            {
+              id: "response-1",
+              object: "chat.completion.chunk",
+              model: "deepseek/deepseek-v4-flash",
+              created: 1,
+              choices: [{ index: 0, delta: { content: "", reasoning: " it over" } }]
+            },
+            {
+              id: "response-1",
+              object: "chat.completion.chunk",
+              model: "deepseek/deepseek-v4-flash",
+              created: 1,
+              choices: [{ index: 0, finish_reason: "stop", delta: { content: "Answer" } }],
+              usage: { prompt_tokens: 5, completion_tokens: 3, total_tokens: 8 }
+            }
+          ]))
+        )
+
+        deepStrictEqual(
+          parts.flatMap((part) =>
+            part.type.startsWith("reasoning-") || part.type.startsWith("text-")
+              ? ["delta" in part ? `${part.type}:${part.delta}` : part.type]
+              : []
+          ),
+          [
+            "reasoning-start",
+            "reasoning-delta:Thinking",
+            "reasoning-delta: it over",
+            "reasoning-end",
+            "text-start",
+            "text-delta:Answer",
+            "text-end"
+          ]
+        )
+      }))
+
     it.effect("emits incremental tool parameter fragments", () =>
       Effect.gen(function*() {
         const ProbeTool = Tool.make("ProbeTool", {
@@ -653,15 +911,14 @@ const makeTestLayer = (options: {
     }))
   )
 
-const getRequestBody = (request: HttpClientRequest.HttpClientRequest) =>
-  Effect.gen(function*() {
-    const body = request.body
-    if (body._tag === "Uint8Array") {
-      const text = new TextDecoder().decode(body.body)
-      return JSON.parse(text)
-    }
-    return yield* Effect.die(new Error("Expected Uint8Array body"))
-  })
+const getRequestBody = Effect.fnUntraced(function*(request: HttpClientRequest.HttpClientRequest) {
+  const body = request.body
+  if (body._tag === "Uint8Array") {
+    const text = new TextDecoder().decode(body.body)
+    return JSON.parse(text)
+  }
+  return yield* Effect.die(new Error("Expected Uint8Array body"))
+})
 
 const makeStreamTestLayer = (events: ReadonlyArray<typeof Generated.ChatStreamChunk.Encoded>) => {
   const body = events.map((event) => `data: ${JSON.stringify(event)}\n\n`).join("") + "data: [DONE]\n\n"

@@ -402,6 +402,98 @@ describe("Multipart", () => {
     deepStrictEqual(fields, expectedFields)
   })
 
+  it.each<{
+    disposition: string
+    expected: Array<readonly [string, string | undefined]>
+  }>([
+    {
+      disposition: `filename*=UTF-8'en'%E2%82%AC.txt`,
+      expected: [["file", "€.txt"]]
+    },
+    {
+      disposition: `filename*=iso-8859-1''%E4.txt`,
+      expected: [["file", "ä.txt"]]
+    },
+    {
+      disposition: `filename*=UTF-8''%E2%82%AC.txt; filename="fallback.txt"`,
+      expected: [["file", "€.txt"]]
+    },
+    {
+      disposition: `filename=my file.txt`,
+      expected: [["error", "InvalidDisposition"]]
+    },
+    {
+      disposition: `filename*=UTF-8''%ZZ.txt`,
+      expected: [["error", "InvalidDisposition"]]
+    },
+    {
+      disposition: `\tfilename = "file.txt"`,
+      expected: [["file", "file.txt"]]
+    },
+    {
+      disposition: `filename="first.txt"; FILENAME="second.txt"`,
+      expected: [["error", "InvalidDisposition"]]
+    },
+    {
+      disposition: `filename="a\tb\\\tc.txt"`,
+      expected: [["file", "a\tb\\\tc.txt"]]
+    }
+  ])("parses Content-Disposition parameters: $disposition", ({ disposition, expected }) => {
+    const boundary = "----testboundary"
+    const events: Array<readonly [string, string | undefined]> = []
+    const parser = MultipartParser.make({
+      headers: { "content-type": `multipart/form-data; boundary=${boundary}` },
+      onField(info) {
+        events.push(["field", info.name])
+      },
+      onFile(info) {
+        events.push(["file", info.filename])
+        return () => {}
+      },
+      onError(error) {
+        events.push(["error", error._tag])
+      },
+      onDone() {}
+    })
+
+    parser.write(
+      new TextEncoder().encode(
+        `--${boundary}\r\nContent-Disposition: form-data; name="upload"; ${disposition}\r\n\r\n` +
+          `content\r\n--${boundary}--\r\n`
+      )
+    )
+    parser.end()
+
+    deepStrictEqual(events, expected)
+  })
+
+  it("parses tabs in quoted Content-Type parameters", () => {
+    const boundary = "----testboundary"
+    const events: Array<readonly [string, string | undefined]> = []
+    const parser = MultipartParser.make({
+      headers: { "content-type": `multipart/form-data; boundary=${boundary}` },
+      onField() {},
+      onFile(info) {
+        events.push([info.contentType, info.contentTypeParameters.x])
+        return () => {}
+      },
+      onError(error) {
+        events.push(["error", error._tag])
+      },
+      onDone() {}
+    })
+
+    parser.write(
+      new TextEncoder().encode(
+        `--${boundary}\r\nContent-Disposition: form-data; name="upload"; filename="a.txt"\r\n` +
+          `Content-Type: text/plain; x="a\tb\\\tc"\r\n\r\ncontent\r\n--${boundary}--\r\n`
+      )
+    )
+    parser.end()
+
+    deepStrictEqual(events, [["text/plain", "a\tb\tc"]])
+  })
+
   it("handles the final boundary delimiter split between the trailing hyphens", () => {
     const boundary = "----testboundary"
     const encoder = new TextEncoder()

@@ -1797,6 +1797,8 @@ A record schema describes an object whose keys are dynamic (not known ahead of t
 
 Properties that are not selected by the key schema are ignored by that record. For example, `Schema.Record(Schema.String.check(Schema.isPattern(/^a/)), Schema.Number)` decodes only string keys that start with `"a"`.
 
+Dynamic records already allow keys to be absent, so their value schemas cannot use `Schema.optionalKey` or `Schema.optional`. Use `Schema.UndefinedOr` when a present property may contain `undefined`. Records with finite literal keys become struct-like schemas and may use the optional combinators.
+
 ### Key Transformations
 
 `Schema.Record` supports transforming keys during decoding and encoding. This can be useful when working with different naming conventions.
@@ -2174,7 +2176,7 @@ This helper has some advantages over a dedicated constructor:
 - You can choose among multiple possible tag fields if present.
 - It supports unions that include nested unions.
 
-Each member must have a unique discriminant property key. `toTaggedUnion` rejects overlapping discriminant types in known member tuples at compile time, including nested unions. It also throws when it encounters a duplicate at runtime. Numeric and string values that resolve to the same property key, such as `1` and `"1"`, are considered duplicates.
+Each member must have a unique discriminant property key. `toTaggedUnion` throws when it encounters a duplicate at runtime, including in nested unions. Numeric and string values that resolve to the same property key, such as `1` and `"1"`, are considered duplicates.
 
 **Note**. If the tag is the standard `_tag` field, you can use `Schema.TaggedUnion` instead.
 
@@ -2204,7 +2206,7 @@ const Tags = Schema.Literals(tagged.discriminants)
 
 #### Checking Membership in a Subset of Tags
 
-The `isAnyOf` method lets you check if a value belongs to a selected subset of tags.
+The `isAnyOf` method lets you check if a value belongs to a selected subset of tags. It only accepts tags of the union, and narrows the value in both branches based on the tags in the key list's type. For a tag list only known at runtime, use a plain boolean check such as `names.includes(value.type)` instead, because the false branch would also exclude tags the list does not contain at runtime.
 
 **Example** (Checking membership in a subset of union tags)
 
@@ -2586,7 +2588,9 @@ The default formatter chooses the error label from the level that failed:
 
 An `identifier` does not name a failed filter. Use `expected` to name the
 filter in the default formatter, or `message` to replace the filter failure
-message completely.
+message completely. A filter's `message` annotation also overrides messages
+returned by the filter, whether they are returned directly or attached to a
+nested path. Without a `message` annotation, returned messages are preserved.
 
 **Example** (Schema identifier versus filter expected message)
 
@@ -4406,6 +4410,8 @@ console.log(A.ast.annotations?.title)
 #### extend
 
 Use `extend` to create a subclass that adds fields to the base schema. Instance fields declared on the base class are also available on the subclass.
+
+To subclass a `Schema.Class`, use `Base.extend<Self>(...)`, even when only adding methods or getters. Pass `{}` for the fields when none are added. Plain `class Child extends Base` is unsupported.
 
 Fields with the same name replace inherited fields. Use this to refine validation or change encoding. Effect does not check compatibility; the caller must ensure the replacement preserves the base class contract.
 
@@ -6316,6 +6322,13 @@ If a `oneOf` branch contains a known approximation, the compiler emits `anyOf`.
 This prevents the approximation from rejecting values by making multiple
 branches match. Unions whose branches are all exact retain `oneOf`.
 
+Checks on individual `Schema.TemplateLiteral` segments are omitted from the
+generated pattern. These omissions count as approximations, including checks in
+named segments, nested templates, and unions. Checks on the whole template are
+compiled normally. Nonempty segment unions using `oneOf` are also approximated,
+because regular expression alternatives do not require exactly one branch to match.
+Empty segment unions produce a pattern that matches no strings.
+
 The default `onExcessProperty: "ignore"` emits
 `additionalProperties: true`; use `onExcessProperty: "error"` in both
 generation and decoding to reject unmatched properties whenever the key space
@@ -6387,9 +6400,10 @@ The input is assumed to be a valid Draft 2020-12 document and is not validated
 against the meta-schema. Instance validation assumes JSON-compatible JavaScript
 values produced by `JSON.parse`.
 
-Only direct local references to top-level definitions in the form `#/$defs/<escaped-token>` are supported. Root
-references, external references, and pointers below a definition are rejected with the supported reference format.
-Missing definitions are reported by name. References reached inside a nested schema
+Local references to top-level definitions in the form `#/$defs/<escaped-token>` are supported, including pointers
+below a definition. Pointer targets are shared and can recurse through object properties or array items;
+circular pointer aliases are rejected. Root and external references are rejected with the supported reference format.
+Missing definitions are reported by name, and missing pointer targets include the full reference. References reached inside a nested schema
 resource introduced by `$id` are rejected with their path instead of being resolved against the top-level definitions.
 A root `$id`, or a nested `$id` without reached references, is supported.
 
@@ -6465,7 +6479,8 @@ alternatives or unreachable children is discarded. The resulting schema can have
 retaining annotations does not provide a lossless round trip or enforce custom validation rules.
 
 Intersections of overlapping unions are limited to disjoint root-type partitions and finite primitive `anyOf` literal
-sets. Other union intersections, including cases that would duplicate a nested choice, are rejected.
+sets, which may also be duplicated across branches. Other union intersections, including cases that would duplicate any
+other nested choice, are rejected.
 
 Regular expression constraints reached during translation are rejected by default because imported patterns use the
 runtime's native regular expression engine and may block validation for an unbounded amount of time. Set

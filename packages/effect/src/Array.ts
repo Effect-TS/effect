@@ -3252,13 +3252,22 @@ const hashBucketsHas = (buckets: HashBuckets, value: unknown): boolean => {
 }
 
 /**
- * Computes the union of two arrays using a custom equivalence, removing
- * duplicates.
+ * Computes the union of two iterables using a custom equivalence.
  *
  * **When to use**
  *
  * Use when you need the union of two arrays but duplicate detection must use a
  * custom equivalence instead of the default `Equal.asEquivalence()`.
+ *
+ * **Details**
+ *
+ * Keeps the elements of `self`, then appends elements of `that` that have no
+ * equivalent in `self`. Calls `isEquivalent` with an element from `self` first
+ * and an element from `that` second.
+ *
+ * **Gotchas**
+ *
+ * Each input must already be deduplicated.
  *
  * **Example** (Computing unions with custom equality)
  *
@@ -3292,13 +3301,21 @@ export const unionWith: {
     isEquivalent: (self: A, that: B) => boolean
   ): NonEmptyArray<A | B>
   <A, B>(self: Iterable<A>, that: Iterable<B>, isEquivalent: (self: A, that: B) => boolean): Array<A | B>
-} = dual(3, <A>(self: Iterable<A>, that: Iterable<A>, isEquivalent: (self: A, that: A) => boolean): Array<A> => {
+} = dual(3, <A, B>(self: Iterable<A>, that: Iterable<B>, isEquivalent: (self: A, that: B) => boolean): Array<A | B> => {
   const a = fromIterable(self)
   const b = fromIterable(that)
   if (isReadonlyArrayNonEmpty(a)) {
     if (isReadonlyArrayNonEmpty(b)) {
-      const dedupe = dedupeWith(isEquivalent)
-      return dedupe(appendAll(a, b))
+      const out: Array<A | B> = [...a]
+      next: for (const value of b) {
+        for (const candidate of a) {
+          if (isEquivalent(candidate, value)) {
+            continue next
+          }
+        }
+        out.push(value)
+      }
+      return out
     }
     return a
   }
@@ -3306,8 +3323,12 @@ export const unionWith: {
 })
 
 /**
- * Computes the union of two arrays, removing duplicates using
- * `Equal.asEquivalence()`.
+ * Computes the union of two iterables using `Equal.asEquivalence()`.
+ *
+ * **Gotchas**
+ *
+ * Each input must already be deduplicated. Use {@link dedupe} to remove
+ * duplicates from an input first.
  *
  * **Example** (Computing array unions)
  *

@@ -37,14 +37,21 @@ const program = DecisionModel.decide(Triage, {
 }).pipe(Effect.provide(Clef))
 ```
 
-Pass `images` to include pictures with the input. Clef shows them to the model before the state:
+Declare images as input fields with `Decision.Image`. Clef shows them to the model before the state, and the state lists each image's reference in order:
 
 ```ts
 declare const screenshotBytes: Uint8Array
 
-const withScreenshot = DecisionModel.decide(Triage, {
-  input: "Customers report this checkout error.",
-  images: [{ mediaType: "image/png", data: screenshotBytes }]
+const ScreenshotTriage = Decision.make({
+  input: Schema.Struct({ report: Schema.String, screenshot: Decision.Image }),
+  decisions: Triage.decisions
+})
+
+const withScreenshot = DecisionModel.decide(ScreenshotTriage, {
+  input: {
+    report: "Customers report the error in `screenshot`.",
+    screenshot: { mediaType: "image/png", data: screenshotBytes }
+  }
 })
 ```
 
@@ -57,3 +64,7 @@ Instructions and descriptions can be strings, JSON objects, or JSON arrays. A ra
 The client unwraps Cloudflare's REST envelope and maps failures to `AiError`. It does not retry automatically. Rate-limit errors include `Retry-After` when provided. The decision model validates answers and rescales small probability drift from four-decimal rounding.
 
 Cloudflare limits each request to 64 questions, classification to 2–255 choices, and ratings to 2–10 levels. See the [Clef API documentation](https://developers.cloudflare.com/workers-ai/models/clef/) for request limits.
+
+## AI Gateway
+
+Set `CLOUDFLARE_AI_GATEWAY_ID` when using `CloudflareClient.layerConfig()` to route requests through a Cloudflare AI Gateway. You can also pass `gatewayId` to `CloudflareClient.layer`. The client adds the `cf-aig-gateway-id` header. Use `transformClient` to add other `cf-aig-*` headers.

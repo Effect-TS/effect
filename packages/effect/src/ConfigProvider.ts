@@ -1127,11 +1127,12 @@ function interpolate(
   parsed: Record<string, string>,
   seen: ReadonlySet<string>
 ): string {
-  const reference = /(?<!\\)\${?(\w+)/g
+  const reference = /\${?(\w+)/g
   let result = ""
   let cursor = 0
   let match: RegExpExecArray | null
   while ((match = reference.exec(envValue)) != null) {
+    if (match.index > 0 && envValue[match.index - 1] === "\\") continue
     const [, name] = match
     let end = reference.lastIndex
     let defaultValue = ""

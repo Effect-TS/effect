@@ -1336,15 +1336,14 @@ describe("Prompt.Custom", () => {
         const calls: Array<string> = []
         const clear = `${escape}[2K\r`
         const prompt = Prompt.Custom<number, number>(0, {
-          render: (state, action) =>
-            Effect.gen(function*() {
-              calls.push(`render ${state} ${action._tag}`)
-              if (action._tag === transition && (state > 0 || action._tag === "Submit")) {
-                yield* Deferred.succeed(rendering, undefined)
-                yield* Deferred.await(resume)
-              }
-              return action._tag === "Submit" ? `Done ${state}` : action._tag === "Beep" ? bell : `Frame ${state}`
-            }),
+          render: Effect.fnUntraced(function*(state, action) {
+            calls.push(`render ${state} ${action._tag}`)
+            if (action._tag === transition && (state > 0 || action._tag === "Submit")) {
+              yield* Deferred.succeed(rendering, undefined)
+              yield* Deferred.await(resume)
+            }
+            return action._tag === "Submit" ? `Done ${state}` : action._tag === "Beep" ? bell : `Frame ${state}`
+          }),
           clear: (state, action) =>
             Effect.sync(() => {
               calls.push(`clear ${state} ${action._tag}`)

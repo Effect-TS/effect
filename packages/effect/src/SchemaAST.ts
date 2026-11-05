@@ -814,7 +814,13 @@ export const Declaration: new(
     let run: ReturnType<typeof this.run>
     return (input, options) => {
       if (input === InternalParser.missing) return InternalParser.missingExit
-      return (run ??= this.run(this.typeParameters))(input, this, options)
+      // Keep this declaration's initialization errors outside its callback catch.
+      run ??= this.run(this.typeParameters)
+      try {
+        return run(input, this, options)
+      } catch (error) {
+        return Effect.die(error)
+      }
     }
   }
   private _rebuild(
@@ -2435,7 +2441,7 @@ export const Arrays: new(
         input,
         len,
         tailThreshold: Math.max(elementLen, len - tailLen),
-        output: new globalThis.Array(len),
+        output: [],
         issues: undefined,
         options
       }
@@ -2599,9 +2605,12 @@ const wrapPropertyKeyIssue = (
 
 /**
  * floating point or integer, with optional exponent
+ *
+ * The mantissa alternation keeps rejection linear: `\d*\.?\d+` retries
+ * every split of a long digit run.
  * @internal
  */
-export const FINITE_PATTERN = "[+-]?\\d*\\.?\\d+(?:[Ee][+-]?\\d+)?"
+export const FINITE_PATTERN = "[+-]?(?:\\d+(?:\\.\\d+)?|\\.\\d+)(?:[Ee][+-]?\\d+)?"
 
 /**
  * Returns the object keys that match the index signature parameter schema.
@@ -2730,8 +2739,10 @@ function isIndexSignatureParameter(ast: AST): ast is IndexSignatureParameter {
  *
  * **Gotchas**
  *
- * Using `Schema.optionalKey` on the value type is not allowed for index
- * signatures (throws at construction); use `Schema.optional` instead.
+ * Using `Schema.optionalKey` or `Schema.optional` on the value type is not
+ * allowed for index signatures (throws at construction). Index signatures
+ * already allow keys to be absent; use `Schema.UndefinedOr` to allow
+ * `undefined` values.
  *
  * @see {@link Objects}
  * @see {@link PropertySignature}
@@ -2764,8 +2775,10 @@ export const IndexSignature: new(parameter: AST, type: AST) => IndexSignature = 
     }
     this.parameter = parameter
     this.type = type
-    if (isOptional(type) && !containsUndefined(type)) {
-      throw new Error("Cannot use `Schema.optionalKey` with index signatures, use `Schema.optional` instead.")
+    if (isOptional(type) || (type.encoding !== undefined && isOptional(toEncoded(type)))) {
+      throw new Error(
+        "Cannot use `Schema.optionalKey` or `Schema.optional` with index signatures. Index signatures already allow keys to be absent; use `Schema.UndefinedOr` to allow `undefined` values."
+      )
     }
   }
 }
@@ -3101,12 +3114,14 @@ export const Objects: new(
     // Resumes at the property whose parser suspended, without replaying the
     // properties already parsed.
     const resume = (
-      state: ObjectParserState,
+      snapshot: ObjectParserState,
       index: number,
       pending: Effect.Effect<unknown, SchemaIssue.Issue, any>
     ): Effect.Effect<unknown, SchemaIssue.Issue, any> => {
       const property = properties![index]
-      return Effect.flatMap(Effect.exit(pending), (exit) => {
+      return Effect.flatMap(Effect.exit(pending), (exit): Effect.Effect<unknown, SchemaIssue.Issue, any> => {
+        // Copy the parsed prefix per execution so reruns cannot overwrite earlier results.
+        const state: ObjectParserState = { ...snapshot, out: { ...snapshot.out } }
         const terminal = stepProperty(state, property, exit)
         if (terminal) return terminal
         const done = () => InternalParser.succeed(state.out)
@@ -4587,16 +4602,24 @@ function parseParameter(ast: AST): {
 } {
   const literals: Array<PropertyKey> = []
   const parameters: Array<AST> = []
+  function addLiteral(literal: PropertyKey) {
+    if (!literals.includes(literal)) {
+      literals.push(literal)
+    }
+  }
   function go(ast: AST) {
     switch (ast._tag) {
       case "Literal":
-        if (Predicate.isPropertyKey(ast.literal) && !literals.includes(ast.literal)) {
-          literals.push(ast.literal)
+        if (Predicate.isPropertyKey(ast.literal)) {
+          addLiteral(ast.literal)
         }
         return
       case "UniqueSymbol":
-        if (!literals.includes(ast.symbol)) {
-          literals.push(ast.symbol)
+        addLiteral(ast.symbol)
+        return
+      case "Enum":
+        for (const [, value] of ast.enums) {
+          addLiteral(value)
         }
         return
       case "Never":
@@ -4800,18 +4823,6 @@ export const flip = memoize((ast: AST): AST => {
   }
   return "flip" in ast ? ast.flip(flip) : "recur" in ast ? ast.recur(flip) : ast
 })
-
-/** @internal */
-export function containsUndefined(ast: AST): boolean {
-  switch (ast._tag) {
-    case "Undefined":
-      return true
-    case "Union":
-      return ast.types.some(containsUndefined)
-    default:
-      return false
-  }
-}
 
 function fromConst<const T>(
   ast: AST,

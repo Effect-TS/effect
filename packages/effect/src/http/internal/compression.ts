@@ -155,13 +155,12 @@ const acceptMember = /^([a-z0-9!#$%&'*+.^_`|~-]+)(?:;q=(0(?:\.[0-9]{0,3})?|1(?:\
  * @internal
  */
 export const parseAcceptEncoding = (header: string): ReadonlyMap<string, number> | undefined => {
-  const trimmed = header.trim()
-  if (trimmed === "") {
-    return undefined
-  }
   const accepted = new Map<string, number>()
-  for (const part of trimmed.split(",")) {
+  for (const part of header.split(",")) {
     const member = part.trim().toLowerCase().replace(/[ \t]*;[ \t]*/g, ";")
+    if (member === "") {
+      continue
+    }
     const match = acceptMember.exec(member)
     if (match === null) {
       return undefined

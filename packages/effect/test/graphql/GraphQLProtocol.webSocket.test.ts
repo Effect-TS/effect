@@ -32,14 +32,13 @@ const makeProtocol = (server: Effect.Success<typeof wsServer>, options?: Options
   GraphQLProtocol.makeWebSocket({ url, ...options }).pipe(Effect.provide(server.layer))
 
 /** Starts a subscription and accepts its connection, returning the failure fiber. */
-const acceptedSubscription = (server: Effect.Success<typeof wsServer>, options?: Options) =>
-  Effect.gen(function*() {
-    const protocol = yield* makeProtocol(server, options)
-    const fiber = yield* protocol.subscribe(subscription("A")).pipe(Stream.runDrain, Effect.flip, Effect.forkChild)
-    const { connection } = yield* server.accept
-    const subscribe = yield* Queue.take(connection.received)
-    return { fiber, connection, subscribe }
-  })
+const acceptedSubscription = Effect.fnUntraced(function*(server: Effect.Success<typeof wsServer>, options?: Options) {
+  const protocol = yield* makeProtocol(server, options)
+  const fiber = yield* protocol.subscribe(subscription("A")).pipe(Stream.runDrain, Effect.flip, Effect.forkChild)
+  const { connection } = yield* server.accept
+  const subscribe = yield* Queue.take(connection.received)
+  return { fiber, connection, subscribe }
+})
 
 describe("GraphQLProtocol.makeWebSocket", () => {
   it.effect("subscribes only after connection_ack and routes events by operation id", () =>

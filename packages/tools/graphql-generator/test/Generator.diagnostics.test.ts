@@ -50,21 +50,6 @@ describe("Generator diagnostics", () => {
       assert.deepStrictEqual(generated.result.files, [])
     }).pipe(Effect.provide(NodeServices.layer)))
 
-  it.effect("a variable reaching a recursive input object is a located error", () =>
-    Effect.gen(function*() {
-      const generated = yield* generateIn({
-        "schema.graphql": "input Tree { child: Tree name: String }\ntype Query { tree(t: Tree): Int }",
-        "src/ops.graphql": "query E($t: Tree) { tree(t: $t) }"
-      }, { schema: "./schema.graphql", documents: ["src/*.graphql"] })
-      assert.deepStrictEqual(located(generated), [{
-        severity: "error",
-        line: 1,
-        column: 9,
-        message: `Variable "$t" uses the recursive input object "Tree"; recursive input objects are not supported yet.`
-      }])
-      assert.deepStrictEqual(generated.result.files, [])
-    }).pipe(Effect.provide(NodeServices.layer)))
-
   it.effect("a definition named like a binding of the generated module is a located error", () =>
     Effect.gen(function*() {
       const generated = yield* generateTasks({ "src/ops.graphql": "query Schema { tasks { id } }" })

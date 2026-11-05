@@ -2,9 +2,9 @@
 
 # v3 to v4 Migration Reference
 
-Base: `e730f59d29db5f1e312be6476a95d07bcad45788` (`e730f59d29db5f1e312be6476a95d07bcad45788`)
+Base: `cab7f2e3493e4a3dceda27cb1b6d28c4599cb939` (`cab7f2e3493e4a3dceda27cb1b6d28c4599cb939`)
 
-Head: `4839c601bdda845d9a54d77f578f64372475ab04` (`4839c601bdda845d9a54d77f578f64372475ab04`)
+Head: `origin/main` (`cb679e39cabeeadc5b40a5e20da311b9e4054a1b`)
 
 This file is generated from the API diff and `migration/annotations/*.yaml`.
 
@@ -490,7 +490,7 @@ effect/rpc/Utils (barrel: effect/rpc)
 - `@effect/opentelemetry/OtlpSerialization` -> `effect/observability/OtlpSerialization`
 - `@effect/opentelemetry/OtlpTracer` -> `effect/observability/OtlpTracer`
 - `@effect/opentelemetry/Tracer`: No single module replacement; follow the curated per-API guidance below.
-- `@effect/opentelemetry/index` -> `@effect/opentelemetry`: The explicit /index entrypoint was removed; import the same namespaces from the @effect/opentelemetry package root or import specific modules directly.
+- `@effect/opentelemetry/index` -> `@effect/opentelemetry`: The explicit /index entrypoint was removed; import the same namespaces from the @effect/opentelemetry package root or import specific modules directly. NodeSdk and WebSdk are no longer in the root barrel; import them from @effect/opentelemetry/NodeSdk and @effect/opentelemetry/WebSdk.
 - `@effect/platform` -> `none`: The @effect/platform package was folded into the effect package: core services live in effect root modules (e.g. effect/FileSystem, effect/Path) and HTTP in effect/http; follow the Import Map for each module.
 - `@effect/platform-browser/index` -> `@effect/platform-browser`: The explicit /index entrypoint was removed; import the same namespaces from the @effect/platform-browser package root or import specific modules directly.
 - `@effect/platform-bun/BunCommandExecutor`: No single module replacement; follow the curated per-API guidance below.
@@ -617,7 +617,7 @@ effect/rpc/Utils (barrel: effect/rpc)
 - `@effect/sql-sqlite-react-native/index` -> `@effect/sql-sqlite-react-native`: The explicit /index entrypoint was removed; import the same namespaces from the @effect/sql-sqlite-react-native package root or import specific modules directly.
 - `@effect/sql-sqlite-wasm/index` -> `@effect/sql-sqlite-wasm`: The explicit /index entrypoint was removed; import the same namespaces from the @effect/sql-sqlite-wasm package root or import specific modules directly.
 - `@effect/sql/Migrator` -> `effect/sql/Migrator`
-- `@effect/sql/Migrator/FileSystem` -> `effect/sql/Migrator`: fromFileSystem was merged into the main Migrator module with the same (directory) signature; use Migrator.fromFileSystem as the loader.
+- `@effect/sql/Migrator/FileSystem` -> `effect/sql/MigratorFileSystem`: Same `(directory)` signature. Import `fromFileSystem` from there; it is not exported from `effect/sql/Migrator` or the `effect/sql` barrel.
 - `@effect/sql/Model` -> `effect/schema/Model`, `effect/sql/SqlModel`
 - `@effect/sql/SqlClient` -> `effect/sql/SqlClient`
 - `@effect/sql/SqlConnection` -> `effect/sql/SqlConnection`
@@ -1511,6 +1511,8 @@ effect/rpc/Utils (barrel: effect/rpc)
 - `Generated.UploadFileV1FilesPostParams` -> `Generated.UploadFileV1FilesPostParams`: Still generated in v4 from the current Anthropic specification; re-check the schema's Type/Encoded shape because the generated definition changed.
 
 - `Generated.UploadFileV1FilesPostRequest` -> `Generated.UploadFileV1FilesPostRequestFormData`: Regenerated in v4 under this name; update the identifier and re-check the schema's Type/Encoded shape because the generated definition changed.
+
+- `Generated.Usage` -> `Generated.Usage`: Still generated in v4 from the current Anthropic specification; re-check the schema's Type/Encoded shape because the generated definition changed.
 
 - `Generated.UsageServiceTierEnum` -> `none`: Removed or inlined when the Anthropic specification client was regenerated; use the current Generated request/response schema for the relevant endpoint instead of this old snapshot helper.
 
@@ -3590,6 +3592,8 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `Generated.SubmitToolOutputsRunRequest` -> `Generated.SubmitToolOutputsRunRequest`: Still generated in v4 from the current OpenAI specification; re-check the schema's Type/Encoded shape because the generated definition changed.
 
+- `Generated.Summary` -> `Generated.SummaryTextContent`: Reasoning summary parts are generated as SummaryTextContent. It is a Schema.Struct rather than a class, so type must be supplied as "summary\_text" instead of defaulting in a constructor.
+
 - `Generated.SummaryTextContent` -> `Generated.SummaryTextContent`: Still generated in v4 from the current OpenAI specification; re-check the schema's Type/Encoded shape because the generated definition changed.
 
 - `Generated.SummaryTextContentType` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
@@ -4910,15 +4914,15 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `AiError.AiError` -> `AiError.AiError`: Moved to effect/ai/AiError and redesigned from a union of separately tagged errors into one AiError wrapper with a semantic reason. Construct it with AiError.make({ module, method, reason }) and match error.reason rather than the old top-level tags.
 
-- `AiError.HttpRequestDetails` -> `AiError.HttpRequestDetails`: Retained in effect/ai/AiError and also re-exported as Response.HttpRequestDetails. Hash is an optional string instead of Option, headers may contain Redacted strings, and method includes TRACE.
+- `AiError.HttpRequestDetails` -> `none`: Removed. NetworkError carries only the request method and url, and HttpContext and response metadata parts no longer record the request.
 
 - `AiError.HttpRequestError` -> `AiError.make + AiError.NetworkError`: Replace the old top-level request error with an AiError whose reason is NetworkError. NetworkError.fromRequestError converts a v4 HttpClientError.RequestError.
 
-- `AiError.HttpResponseError` -> `AiError.make + AiError.reasonFromHttpStatus / AiError.InvalidOutputError`: There is no single v4 response-error class. Wrap a semantic reason with AiError.make: use reasonFromHttpStatus for status failures and InvalidOutputError for decode or empty-body failures.
+- `AiError.HttpResponseError` -> `AiError.make + AiError.reasonFromHttpStatus / AiError.InvalidResponseError / AiError.InvalidOutputError`: There is no single v4 response-error class. Wrap a semantic reason with AiError.make: use reasonFromHttpStatus for status failures. Provider response-schema and SSE decoding failures use non-retryable InvalidResponseError. Lower-level HTTP client DecodeError and EmptyBodyError still map to retryable InvalidOutputError in provider adapters.
 
 - `AiError.MalformedInput` -> `AiError.make + AiError.InvalidUserInputError`: Replace the old top-level input error with an AiError whose reason is InvalidUserInputError. Use InvalidRequestError when the provider request parameters themselves are malformed.
 
-- `AiError.MalformedOutput` -> `AiError.make + AiError.InvalidOutputError`: Replace the old top-level output error with an AiError whose reason is InvalidOutputError. The old fromParseError helper becomes InvalidOutputError.fromSchemaError.
+- `AiError.MalformedOutput` -> `AiError.make + AiError.InvalidOutputError / AiError.InvalidResponseError`: Replace the old top-level output error with an AiError wrapper. Use retryable InvalidOutputError for invalid model-generated output and non-retryable InvalidResponseError for incompatible provider response formats, including response-schema and SSE decoding failures. Replace fromParseError with InvalidOutputError.fromSchemaError or InvalidResponseError.fromSchemaError according to what was being decoded; pass module and method to AiError.make.
 
 - `AiError.TypeId` -> `AiError.isAiError`: The AiError brand is private in v4. Use isAiError for runtime narrowing, or isAiErrorReason for a reason, instead of inspecting or constructing the type id.
 
@@ -4970,27 +4974,27 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `McpServer.McpServer` -> `McpServer.McpServer`: The service is now a Context.Service. initializedClients and notificationsMailbox are no longer exposed. Registration callbacks use McpSchema.McpRequestContext; McpServerClient is only supplied for initialized stateful requests. Prefer registerToolkit, registerResource, and registerPrompt over implementing the registry shape directly.
 
-- `McpServer.layer` -> `McpServer.layer`: Moved to effect/ai/McpServer. Pass a non-empty protocols array of adapters, such as [McpProtocol.v2025\_06\_18], imported with McpProtocol from effect/ai; it still runs over a caller-provided RpcServer.Protocol.
+- `McpServer.layer` -> `McpServer.layer`: Moved to effect/ai/McpServer. Pass a non-empty protocols array of adapters, such as [McpProtocol.v2025\_06\_18], imported with McpProtocol from effect/ai; it still runs over a caller-provided RpcServer.Protocol. Pass registration layers as the registrations option to build them before the server starts.
 
-- `McpServer.layerHttp` -> `McpServer.layerHttp`: Moved to effect/ai/McpServer and the unified HttpRouter. Pass a non-empty protocols array of adapters, such as [McpProtocol.v2025\_06\_18], imported with McpProtocol from effect/ai.
+- `McpServer.layerHttp` -> `McpServer.layerHttp`: Moved to effect/ai/McpServer and the unified HttpRouter. Pass a non-empty protocols array of adapters, such as [McpProtocol.v2025\_06\_18], imported with McpProtocol from effect/ai. Pass registration layers as the registrations option; request-level dependencies it doesn't supply become HttpRouter request requirements that HttpRouter.middleware can provide.
 
-- `McpServer.layerHttpRouter` -> `McpServer.layerHttp`: Renamed and consolidated. V4 layerHttp registers the Streamable HTTP endpoint in the unified HttpRouter; pass a non-empty protocols array of adapters, such as [McpProtocol.v2025\_06\_18], imported with McpProtocol from effect/ai.
+- `McpServer.layerHttpRouter` -> `McpServer.layerHttp`: Renamed and consolidated. V4 layerHttp registers the Streamable HTTP endpoint in the unified HttpRouter; pass a non-empty protocols array of adapters, such as [McpProtocol.v2025\_06\_18], imported with McpProtocol from effect/ai, and registration layers as the registrations option.
 
-- `McpServer.layerStdio` -> `McpServer.layerStdio`: Moved to effect/ai/McpServer. Pass a non-empty protocols array of adapters, such as [McpProtocol.v2025\_06\_18], imported with McpProtocol from effect/ai.
+- `McpServer.layerStdio` -> `McpServer.layerStdio`: Moved to effect/ai/McpServer. Pass a non-empty protocols array of adapters, such as [McpProtocol.v2025\_06\_18], imported with McpProtocol from effect/ai, and registration layers as the registrations option.
 
-- `McpServer.prompt` -> `McpServer.prompt`: Moved to effect/ai/McpServer. The registration layer excludes McpSchema.McpRequestContext from prompt decoding, handler, and completion callback requirements instead of McpServerClient.
+- `McpServer.prompt` -> `McpServer.prompt`: Moved to effect/ai/McpServer. The layer now requires McpServer. Services read by prompt and completion handlers are request-level, provided with McpServer.middleware; read construction-time services in Layer.unwrap and close over them.
 
-- `McpServer.registerPrompt` -> `McpServer.registerPrompt`: Moved to effect/ai/McpServer. Prompt decoding, handler, and completion callback requirements now exclude McpSchema.McpRequestContext instead of McpServerClient; use the request context for protocol-neutral client metadata.
+- `McpServer.registerPrompt` -> `McpServer.registerPrompt`: Moved to effect/ai/McpServer. Services read by prompt and completion handlers are request-level, provided per request with McpServer.middleware; parameter decoding services are still required at registration. McpSchema.McpRequestContext is always provided.
 
-- `McpServer.registerResource` -> `McpServer.registerResource`: Moved to effect/ai/McpServer. Resource and completion handler requirements now exclude McpSchema.McpRequestContext instead of McpServerClient; use the request context for protocol-neutral client metadata.
+- `McpServer.registerResource` -> `McpServer.registerResource`: Moved to effect/ai/McpServer. Services read by resource and completion handlers are request-level, provided per request with McpServer.middleware; read construction-time services in the enclosing effect and close over them. McpSchema.McpRequestContext is always provided.
 
-- `McpServer.registerToolkit` -> `McpServer.registerToolkit`: Moved to effect/ai/McpServer. Requirements from every tool handler are propagated, excluding McpSchema.McpRequestContext instead of McpServerClient; provide the remaining handler services. Strict tools reject excess input properties; raw JSON Schema dynamic tools cannot use strict mode. Declared handler failures produce isError results, while parameter validation fails with InvalidParams.
+- `McpServer.registerToolkit` -> `McpServer.registerToolkit`: Moved to effect/ai/McpServer. Services a tool declares with dependencies or Tool.addDependency are request-level: provide them per request with McpServer.middleware instead of at registration. Parameter decoding and result encoding services are still required at registration. Strict tools reject excess input properties; raw JSON Schema dynamic tools cannot use strict mode. Declared handler failures produce isError results, while parameter validation fails with InvalidParams.
 
-- `McpServer.resource` -> `McpServer.resource`: Moved to effect/ai/McpServer. The registration layer excludes McpSchema.McpRequestContext from resource and completion handler requirements instead of McpServerClient.
+- `McpServer.resource` -> `McpServer.resource`: Moved to effect/ai/McpServer. The layer now requires McpServer. Services read by resource and completion handlers are request-level, provided with McpServer.middleware; read construction-time services in Layer.unwrap and close over them instead of using Layer.provide.
 
 - `McpServer.run` -> `McpServer.run`: Moved to effect/ai/McpServer. Pass a non-empty protocols array of adapters, such as [McpProtocol.v2025\_06\_18], imported with McpProtocol from effect/ai; it remains the Effect-level runner over RpcServer.Protocol.
 
-- `McpServer.toolkit` -> `McpServer.toolkit`: Moved to effect/ai/McpServer. The registration layer supplies McpSchema.McpRequestContext to handlers instead of excluding McpServerClient from requirements. Its requirements include services from every tool handler. Strict tools reject excess properties and require an Effect Schema rather than raw dynamic JSON Schema.
+- `McpServer.toolkit` -> `McpServer.toolkit`: Moved to effect/ai/McpServer. The layer now requires McpServer; pass it to a transport through the registrations option. Services a tool declares with dependencies are request-level and are provided with McpServer.middleware. Strict tools reject excess properties and require an Effect Schema rather than raw dynamic JSON Schema.
 
 ### `@effect/ai/Model`
 
@@ -4998,7 +5002,9 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 ### `@effect/ai/Prompt`
 
-- `Prompt.FilePart` -> `Prompt.FilePart`: Moved to effect/ai/Prompt with the same file-part model and schema; update the module import.
+- `Prompt.FilePart` -> `Prompt.FilePart`: Moved to effect/ai/Prompt with the same file-part model; update the module import. Encoding now writes Uint8Array and URL data as JSON-safe { \_tag: "Uint8Array", base64 } and { \_tag: "URL", href } objects; decoding still accepts strings, raw Uint8Array, and URL values.
+
+- `Prompt.FilePartEncoded` -> `Prompt.FilePartEncoded`: Moved to effect/ai/Prompt; update the module import. data additionally accepts the tagged { \_tag: "Uint8Array", base64 } and { \_tag: "URL", href } forms, which the schema now produces when encoding byte arrays and URLs.
 
 - `Prompt.FromJson` -> `Schema.fromJsonString(Prompt.Prompt)`: The module-specific JSON schema was removed. Compose the general v4 JSON-string codec with the public Prompt codec.
 
@@ -5052,7 +5058,7 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `Response.reasoningStartPart` -> `Response.makePart("reasoning-start", params)`: The lowercase convenience constructor was removed; construct the retained ReasoningStartPart through Response.makePart.
 
-- `Response.responseMetadataPart` -> `Response.makePart("response-metadata", params)`: The lowercase convenience constructor was removed. V4 id, modelId, and timestamp are optional raw values rather than Option values, and optional HTTP request details were added.
+- `Response.responseMetadataPart` -> `Response.makePart("response-metadata", params)`: The lowercase convenience constructor was removed. V4 id, modelId, and timestamp are optional raw values rather than Option values.
 
 - `Response.textDeltaPart` -> `Response.makePart("text-delta", params)`: The lowercase convenience constructor was removed; construct the retained TextDeltaPart through Response.makePart.
 
@@ -5450,7 +5456,7 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `Options.Options` -> `Flag.Flag`: Options was renamed to Flag in effect/cli.
 
-- `Options.Options.BooleanOptionsConfig` -> `Flag.Boolean + Flag.withAlias + Flag.map`: The config object was removed; aliases and value inversion are combinators, while custom negation names need application logic.
+- `Options.Options.BooleanOptionsConfig` -> `Flag.Boolean + Flag.withAlias + Flag.withNegation + Flag.map`: The config object was removed; aliases, the negation name, and value inversion are combinators. Flag.withNegation replaces --no-name with a single custom name and Flag.withoutNegation removes it; additional negation names need application logic.
 
 - `Options.Options.PathOptionsConfig` -> `{ readonly mustExist?: boolean }`: Path options are inline; true replaces exists=yes and omission replaces either. exists=no has no exact replacement.
 
@@ -5466,7 +5472,7 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `Options.between` -> `Flag.between`: Use the moved combinator; v4 validates bounds when constructing the parameter.
 
-- `Options.boolean` -> `Flag.Boolean + Flag.withDefault`: Use Flag.Boolean(name).pipe(Flag.withDefault(false)) to preserve v3's omitted-flag default; bare Flag.Boolean is now required. --no-name is automatic and aliases are added with Flag.withAlias.
+- `Options.boolean` -> `Flag.Boolean + Flag.withDefault`: Use Flag.Boolean(name).pipe(Flag.withDefault(false)) to preserve v3's omitted-flag default; bare Flag.Boolean is now required. --no-name is automatic; rename it with Flag.withNegation or remove it with Flag.withoutNegation. Aliases are added with Flag.withAlias.
 
 - `Options.choice` -> `Flag.Literals`: Use the moved constructor.
 
@@ -5696,7 +5702,7 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 ### `@effect/cluster/ClusterCron`
 
-- `ClusterCron.make` -> `effect/cluster/ClusterCron#make`: Moved into core Effect. The constructor remains; Duration.DurationInput is now Duration.Input.
+- `ClusterCron.make` -> `effect/cluster/ClusterCron#make`: Moved into core Effect. The constructor remains; Duration.DurationInput is now Duration.Input. Read the scheduled run time inside execute from the ClusterCron.CurrentScheduledTime service instead of parsing Entity.CurrentAddress, whose entity ID no longer encodes it when calculateNextRunFromPrevious is true.
 
 ### `@effect/cluster/ClusterError`
 
@@ -5705,6 +5711,8 @@ effect/rpc/Utils (barrel: effect/rpc)
 ### `@effect/cluster/ClusterSchema`
 
 - `ClusterSchema.ClientTracingEnabled` -> `effect/cluster/ClusterSchema#ClientTracingEnabled`: Moved into core Effect and changed from a Context.Tag subclass to a Context.Reference value.
+
+- `ClusterSchema.InterruptOnTermination`: TODO: needs guidance
 
 - `ClusterSchema.Persisted` -> `effect/cluster/ClusterSchema#Persisted`: Moved into core Effect and changed from a Context.Tag subclass to a Context.Reference value with the same false default.
 
@@ -5848,7 +5856,7 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 ### `@effect/cluster/SingleRunner`
 
-- `SingleRunner.layer` -> `effect/cluster/SingleRunner#layer`: Moved into core Effect. V4 additionally requires Crypto.Crypto because SQL message storage hashes long deduplication keys.
+- `SingleRunner.layer` -> `effect/cluster/SingleRunner#layer`: Moved into core Effect. V4 additionally requires the `Digest` service from `effect/crypto/Digest` because SQL message storage hashes long deduplication keys.
 
 ### `@effect/cluster/SingletonAddress`
 
@@ -5862,11 +5870,11 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 ### `@effect/cluster/SqlMessageStorage`
 
-- `SqlMessageStorage.layer` -> `effect/cluster/SqlMessageStorage#layer`: Moved into core Effect. V4 adds a Crypto.Crypto requirement for hashing long deduplication keys.
+- `SqlMessageStorage.layer` -> `effect/cluster/SqlMessageStorage#layer`: Moved into core Effect. V4 adds a requirement on the `Digest` service from `effect/crypto/Digest` for hashing long deduplication keys.
 
-- `SqlMessageStorage.layerWith` -> `effect/cluster/SqlMessageStorage#layerWith`: Moved into core Effect with the same optional table prefix; v4 additionally requires Crypto.Crypto.
+- `SqlMessageStorage.layerWith` -> `effect/cluster/SqlMessageStorage#layerWith`: Moved into core Effect with the same optional table prefix; v4 additionally requires the `Digest` service from `effect/crypto/Digest`.
 
-- `SqlMessageStorage.make` -> `effect/cluster/SqlMessageStorage#make`: Moved into core Effect with the same prefix option; v4 additionally requires Crypto.Crypto.
+- `SqlMessageStorage.make` -> `effect/cluster/SqlMessageStorage#make`: Moved into core Effect with the same prefix option; v4 additionally requires the `Digest` service from `effect/crypto/Digest`.
 
 ### `@effect/cluster/SqlRunnerStorage`
 
@@ -5948,9 +5956,11 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `EventJournal.ErrorTypeId` -> `none`: The v4 error marker is private; narrow with EventJournalError instead.
 
+- `EventJournal.EventJournal` -> `effect/eventlog/EventJournal#EventJournal`: Custom journal services must implement entriesById, writeMany, and writeRemoteAcks. writeFromRemote.effect now receives one array of entry/conflicts pairs per batch, not one pair per callback. Read conflicts before invoking it and commit the batch only after it succeeds. Replay entries in entry-id order; conflicts are stored entries with strictly greater ids, also in id order. Compaction replacements use the source entry as their ordering and conflict anchor.
+
 - `EventJournal.RemoteIdTypeId` -> `effect/eventlog/EventJournal#RemoteIdTypeId`: Import RemoteIdTypeId from the v4 EventJournal module; it is now a string brand.
 
-- `EventJournal.makeEntryId` -> `effect/eventlog/EventJournal#makeEntryIdUnsafe`: The unchecked EntryId constructor was renamed to makeEntryIdUnsafe.
+- `EventJournal.makeEntryId` -> `effect/eventlog/EventJournal#makeEntryIdUnsafe`: The unchecked EntryId constructor was renamed to makeEntryIdUnsafe. Without explicit msecs, ids advance monotonically within the process using a logical millisecond and counter, so their timestamp can exceed wall-clock time when the clock stalls or moves backwards. Explicit msecs bypasses this sequence.
 
 - `EventJournal.makeMemory` -> `effect/eventlog/EventJournal#makeMemory`: The in-memory constructor moved into core Effect and now returns the Context.Service implementation through its Service projection.
 
@@ -5958,7 +5968,7 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 ### `@effect/experimental/EventLog`
 
-- `EventLog.Handlers` -> `effect/eventlog/EventLog#Handlers`: Import Handlers from the v4 EventLog module; handlers now also receive storeId.
+- `EventLog.Handlers` -> `effect/eventlog/EventLog#Handlers`: Import Handlers from the v4 EventLog module; handlers now also receive storeId. Remote decode or handler failures leave the entire batch uncommitted and retry it after backoff instead of logging and committing past the failure. Replay handlers must tolerate repeated execution. Conflicts are stored entries with strictly greater ids, in id order; compacted replacements use their source entry as the conflict anchor.
 
 - `EventLog.HandlersTypeId` -> `effect/eventlog/EventLog#HandlersTypeId`: Import HandlersTypeId from the v4 EventLog module.
 
@@ -5966,17 +5976,29 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `EventLog.group` -> `effect/eventlog/EventLog#group`: Import group from the v4 EventLog module; it now requires the shared Registry service.
 
+- `EventLog.groupCompaction` -> `effect/eventlog/EventLog#groupCompaction`: Use forward(entry) to retain an input entry unchanged rather than writing a replacement. Entries neither forwarded nor replaced are dropped; undecodable entries are preserved automatically. Replacements are anchored to the first decoded entry for the primary key and replayed in anchor-id order, then write order, with conflicts newer than that anchor. Collapsing entries across an intervening stored entry for the same event and primary key can break convergence.
+
 - `EventLog.layer` -> `effect/eventlog/EventLog#layer`: The v4 layer takes both the schema and handler layer; use layerEventLog for runtime only.
 
 - `EventLog.layerIdentityKvs` -> `none`: Compose KeyValueStore.toSchemaStore, EventLog.IdentitySchema, EventLog.makeIdentity, and Layer.effect manually.
 
+- `EventLog.makeClient` -> `effect/eventlog/EventLog#makeClient`: The returned client now takes one { event, payload } object instead of separate event and payload arguments. The payload remains paired with its event tag, and each call delegates to EventLog.write; use EventLog.writeMany for an atomic batch of events.
+
+### `@effect/experimental/EventLogEncryption`
+
+- `EventLogEncryption.EncryptedEntry` -> `effect/eventlog/EventLogEncryption#EncryptedBatch`: Replace per-entry encrypted records with batches containing entryIds, iv, and encryptedBatch. Each batch encrypts multiple entries as one message and authenticates the store id and ordered entry ids; existing per-entry ciphertext is not compatible with this format.
+
+- `EventLogEncryption.EncryptedRemoteEntry` -> `effect/eventlog/EventLogEncryption#EncryptedRemoteBatch`: Remote encrypted records are now batches with entryIds, iv, and encryptedBatch. sequence is the first entry sequence; subsequent entries have consecutive sequences. Existing per-entry ciphertext is not compatible with the batch format.
+
+- `EventLogEncryption.EventLogEncryption` -> `effect/eventlog/EventLogEncryption#EventLogEncryption`: Use the Context.Service and its Service projection. encrypt and decrypt now take storeId after identity. encrypt returns EncryptedBatch records rather than an iv/encryptedEntries object; decrypt takes EncryptedRemoteBatch records and returns RemoteEntry records. Encryption authenticates the store id and ordered entry ids, so old per-entry ciphertext cannot be supplied as a batch.
+
 ### `@effect/experimental/EventLogRemote`
 
-- `EventLogRemote.Ack` -> `none`: A write acknowledgement is now the void success of EventLogMessage.WriteSingleRpc or WriteChunkedRpc.
+- `EventLogRemote.Ack` -> `effect/eventlog/EventLogMessage#WriteAck`: Write RPCs now return arrays of entryId/sequence acknowledgements in request order. WriteSingleRpc returns them directly; WriteChunkedRpc returns them on the completing chunk, with empty arrays for earlier chunks.
 
-- `EventLogRemote.Changes` -> `effect/eventlog/EventLogMessage#ChangesRpc`: ChangesRpc replaces the separate request and response models with one streaming RPC.
+- `EventLogRemote.Changes` -> `effect/eventlog/EventLogMessage#ChangesRpc`: ChangesRpc replaces the separate request and response models with one streaming RPC. Encrypted changes carry EncryptedRemoteBatch records. Built-in servers acknowledge writes from this connection instead of echoing them through changes.
 
-- `EventLogRemote.EventLogRemote` -> `effect/eventlog/EventLogRemote#EventLogRemote`: Use the v4 Context.Service; methods now take storeId-aware options.
+- `EventLogRemote.EventLogRemote` -> `effect/eventlog/EventLogRemote#EventLogRemote`: Use the v4 Context.Service; methods now take storeId-aware options. write may return entryId/sequence acknowledgement arrays; custom remotes can still return void when confirming uploads through changes instead.
 
 - `EventLogRemote.Hello` -> `effect/eventlog/EventLogMessage#HelloResponse`: HelloResponse replaces Hello and includes the v4 authentication challenge; HelloRpc defines the endpoint.
 
@@ -5996,6 +6018,8 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `EventLogRemote.StopChanges` -> `none`: Interrupt the ChangesRpc stream instead of sending a StopChanges message.
 
+- `EventLogRemote.WriteEntries` -> `effect/eventlog/EventLogMessage#WriteEntries`: Use the storeId-aware write payload with batches of EncryptedBatch instead of iv and encryptedEntries. Each batch contains entryIds, iv, and encryptedBatch; it is not compatible with the old per-entry ciphertext format.
+
 - `EventLogRemote.decodeRequest` -> `effect/eventlog/EventLogMessage#EventLogRemoteRpcs`: Generic RPC framing and RpcSerialization.layerSchemaBinary replace the module-specific request decoder.
 
 - `EventLogRemote.decodeResponse` -> `effect/eventlog/EventLogMessage#EventLogRemoteRpcs`: Generic RPC framing and RpcSerialization.layerSchemaBinary replace the module-specific response decoder.
@@ -6012,7 +6036,9 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 ### `@effect/experimental/EventLogServer`
 
-- `EventLogServer.Storage` -> `effect/eventlog/EventLogServerEncrypted#Storage`: Use the encrypted server Storage service, which is storeId- and session-aware.
+- `EventLogServer.PersistedEntry` -> `effect/eventlog/EventLogEncryption#EncryptedBatch`: The per-entry class was removed; encrypted storage now accepts batch records containing entryIds, iv, and encryptedBatch. The class encoding helpers and entryIdString getter are not retained. Old per-entry ciphertext cannot be reused as an encrypted batch.
+
+- `EventLogServer.Storage` -> `effect/eventlog/EventLogServerEncrypted#Storage`: Use the storeId- and session-aware encrypted server Storage service. write and changes now operate on encrypted batches. write returns newly stored batches and skips a batch only when all its entry ids are already known. Custom storage must implement entrySequences to look up acknowledgements for skipped batches; each batch owns consecutive sequences starting at its sequence.
 
 - `EventLogServer.layerStorageMemory` -> `effect/eventlog/EventLogServerEncrypted#layerStorageMemory`: Use the encrypted server memory storage layer; storage is now storeId- and session-aware.
 
@@ -6068,13 +6094,13 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `Persistence.ResultPersistenceTypeId` -> `none`: The ResultPersistence brand is no longer publicly exported in v4.
 
-- `Persistence.layerKeyValueStore` -> `effect/persistence/Persistence#layerBackingKvs`: The KeyValueStore backing layer was renamed to layerBackingKvs.
+- `Persistence.layerKeyValueStore` -> `effect/persistence/Persistence#layerBackingKvs`: The KeyValueStore backing layer was renamed to layerBackingKvs. Entries are now stored under `<storeId>:<key>` with the store id percent-encoded, so entries written by v3 under `<storeId><key>` are not read back and are recomputed; clearing a store removes only its own entries.
 
 - `Persistence.layerMemory` -> `effect/persistence/Persistence#layerBackingMemory`: Use layerBackingMemory for the old backing service; v4 layerMemory creates the higher-level Persistence service.
 
 - `Persistence.layerResult` -> `effect/persistence/Persistence#layer`: The ResultPersistence service layer was renamed to layer.
 
-- `Persistence.layerResultKeyValueStore` -> `effect/persistence/Persistence#layerKvs`: The combined KeyValueStore-backed result layer was renamed to layerKvs.
+- `Persistence.layerResultKeyValueStore` -> `effect/persistence/Persistence#layerKvs`: The combined KeyValueStore-backed result layer was renamed to layerKvs. Entries are now stored under `<storeId>:<key>` with the store id percent-encoded, so entries written by v3 under `<storeId><key>` are not read back and are recomputed.
 
 - `Persistence.layerResultMemory` -> `effect/persistence/Persistence#layerMemory`: The combined memory-backed result layer was renamed to layerMemory.
 
@@ -6118,7 +6144,9 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `Reactivity.make` -> `effect/reactivity/Reactivity#make`: Import make from the v4 unstable Reactivity module.
 
-- `Reactivity.query`: TODO: needs guidance
+- `Reactivity.query` -> `effect/reactivity/Reactivity#query`: Import query from the v4 unstable Reactivity module. It returns a Queue.Dequeue instead of a Mailbox.ReadonlyMailbox; read results with Queue operations or Stream.fromQueue. Keys stay untyped unless you augment Reactivity.Keys, which then restricts key names and IDs.
+
+- `Reactivity.stream` -> `effect/reactivity/Reactivity#stream`: Import stream from the v4 unstable Reactivity module.
 
 ### `@effect/experimental/RequestResolver`
 
@@ -6274,7 +6302,7 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 ### `@effect/platform-bun/BunContext`
 
-- `BunContext.BunContext` -> `BunServices.BunServices`: The aggregate was renamed and now provides ChildProcessSpawner, Crypto, FileSystem, Path, Stdio, and Terminal; add BunWorker separately when needed.
+- `BunContext.BunContext` -> `BunServices.BunServices`: The aggregate was renamed and now provides ChildProcessSpawner, FileSystem, Path, Stdio, and Terminal. It provides no crypto services: add `BunCrypto.layer` for every `effect/crypto` family, or the `BunCrypto.layer*` layer for each family you use, and add BunWorker separately when needed.
 
 - `BunContext.layer` -> `BunServices.layer`: Use the renamed aggregate layer; worker services are no longer included.
 
@@ -6288,7 +6316,7 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 ### `@effect/platform-bun/BunHttpServer`
 
-- `BunHttpServer.ServeOptions` -> `BunHttpServer.ServeOptions<R>`: The alias remains, but R is now a route-key string union and routes uses Bun.Serve.Routes; update old route-map generic arguments or infer R from routes.
+- `BunHttpServer.ServeOptions` -> `BunHttpServer.ServeOptions<R>`: The alias remains, but R is now a route-key string union and routes uses Bun.Serve.Routes; update old route-map generic arguments or infer R from routes. Bun's 10 second idleTimeout is now disabled unless idleTimeout is set, so directly exposed servers should set it.
 
 - `BunHttpServer.layerContext` -> `BunHttpServer.layerHttpServices`: Direct rename; it provides HttpPlatform, Etag.Generator, and BunServices.
 
@@ -6386,9 +6414,9 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 ### `@effect/platform-node/NodeContext`
 
-- `NodeContext.NodeContext` -> `NodeServices.NodeServices`: Use the renamed service union; it replaces CommandExecutor with ChildProcessSpawner, adds Crypto and Stdio, and omits WorkerManager.
+- `NodeContext.NodeContext` -> `NodeServices.NodeServices`: Use the renamed service union; it replaces CommandExecutor with ChildProcessSpawner, adds Stdio, and omits WorkerManager. It includes no crypto services.
 
-- `NodeContext.layer` -> `NodeServices.layer`: The aggregate was renamed and now provides ChildProcessSpawner, Crypto, FileSystem, Path, Stdio, and Terminal; add NodeWorker separately when needed.
+- `NodeContext.layer` -> `NodeServices.layer`: The aggregate was renamed and now provides ChildProcessSpawner, FileSystem, Path, Stdio, and Terminal. It provides no crypto services: add `NodeCrypto.layer` for every `effect/crypto` family, or the `NodeCrypto.layer*` layer for each family you use, and add NodeWorker separately when needed.
 
 ### `@effect/platform-node/NodeFileSystem/ParcelWatcher`
 
@@ -6508,6 +6536,8 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `Undici.errors` -> `undici.errors`: Import the upstream errors object directly; individual classes follow the Undici 8 API.
 
+- `Undici.errors.ResponseError`: TODO: needs guidance
+
 - `Undici.errors.ResponseStatusCodeError` -> `undici.errors.ResponseError`: Undici 8 replaced ResponseStatusCodeError with ResponseError; construct it with message, statusCode, and the headers/body object.
 
 - `Undici.interceptors` -> `undici.interceptors`: Import the upstream interceptors object and apply returned interceptors with dispatcher.compose(...).
@@ -6517,6 +6547,8 @@ effect/rpc/Utils (barrel: effect/rpc)
 - `Undici.interceptors.DNSInterceptorOriginRecords` -> `undici.interceptors.DNSInterceptorOriginRecords`: Import the same namespace type, but adopt Undici 8's shape with IPv4 and IPv6 entries nested under records.
 
 - `Undici.interceptors.RedirectInterceptorOpts` -> `undici.interceptors.RedirectInterceptorOpts`: Import the same namespace type; Undici 8 adds throwOnMaxRedirect and redirect header-stripping options.
+
+- `Undici.interceptors.ResponseErrorInterceptorOpts`: TODO: needs guidance
 
 ### `@effect/platform/ChannelSchema`
 
@@ -6546,7 +6578,7 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `Command.lines` -> `ChildProcessSpawner.ChildProcessSpawner.lines`: Output collection moved onto the ChildProcessSpawner service.
 
-- `Command.runInShell` -> `ChildProcess.CommandOptions["shell"]`: Set shell when calling ChildProcess.make; there is no post-construction shell combinator.
+- `Command.runInShell` -> `ChildProcess.CommandOptions["shell"]`: Set shell when calling ChildProcess.make; there is no post-construction shell combinator. With shell set, the command string is the whole script: extra arguments fail with BadArgument and templates cannot interpolate ${} values, so build the script with CommandLine.join or CommandLine.quote.
 
 - `Command.start` -> `ChildProcessSpawner.ChildProcessSpawner.spawn`: Use the spawner service, or yield the Effectable ChildProcess.Command directly, to obtain a ChildProcessHandle.
 
@@ -6676,7 +6708,7 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `FileSystem.layerNoop` -> `FileSystem.layerNoop`: The helper remains after moving the module to effect/FileSystem.
 
-- `FileSystem.make` -> `FileSystem.make`: The constructor remains after moving the module to effect/FileSystem; adapt the implementation to the v4 service shape.
+- `FileSystem.make` -> `FileSystem.make`: The constructor remains after moving the module to effect/FileSystem; adapt the implementation to the v4 service shape, which also requires lstat to return File.Info without following symbolic links and readDirectoryEntries to list { name, type } entries (map readDirectory names to type "Unknown" if types are unavailable). glob is derived and cannot be passed; override it afterward with FileSystem.of({ ...fs, glob }).
 
 ### `@effect/platform/Headers`
 
@@ -6888,11 +6920,15 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `HttpApiMiddleware.HttpApiMiddleware.Provides` -> `effect/http-api/HttpApiMiddleware#Provides`: Same name and reads the expanded v4 middleware ID metadata.
 
+- `HttpApiMiddleware.HttpApiMiddleware.Without` -> `Exclude<R, HttpApiMiddleware.AnyId>`: The helper was removed because middleware IDs are explicit; use Exclude when the direct filter is still needed.
+
 - `HttpApiMiddleware.SecurityTypeId` -> `none`: The marker is private; use HttpApiMiddleware.isSecurity.
 
 - `HttpApiMiddleware.Tag` -> `effect/http-api/HttpApiMiddleware#Service`: Renamed and redesigned; use error, requires, provides, clientError, and requiredForClient configuration.
 
 - `HttpApiMiddleware.TagClass` -> `effect/http-api/HttpApiMiddleware#ServiceClass`: Renamed class type with the new two-stage type configuration and wrapping service shape.
+
+- `HttpApiMiddleware.TagClass.Base` -> `effect/http-api/HttpApiMiddleware#ServiceClass`: The shared base interface was folded into ServiceClass; there is no separate public base interface.
 
 - `HttpApiMiddleware.TagClass.BaseSecurity` -> `effect/http-api/HttpApiMiddleware#ServiceClass`: Security is conditional metadata on ServiceClass; there is no separate public base interface.
 
@@ -7080,6 +7116,8 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `HttpClient.transform` -> `effect/http/HttpClient#transform`: Moved to the v4 HTTP module with the same request-aware transformation shape.
 
+- `HttpClient.withCookiesRef` -> `HttpClient.withCookiesRef`: Pass a Ref\<ReadonlyArray\<Cookies.Cookie\>\> instead of a Ref\<Cookies\>. Stored cookies are sent only to a matching host, path and scheme, and a cookie without a domain is never sent; seed the ref with Cookies.mergeIntoArray for the target URL or with cookies that set a domain.
+
 - `HttpClient.withSpanNameGenerator` -> `HttpClient.transformResponse(Effect.provideService(HttpClient.SpanNameGenerator, f))`: The convenience combinator was removed; provide the reference around response effects.
 
 - `HttpClient.withTracerDisabledWhen` -> `HttpClient.transformResponse(Effect.provideService(HttpClient.TracerDisabledWhen, predicate))`: The convenience combinator was removed; provide the reference around response effects.
@@ -7095,6 +7133,8 @@ effect/rpc/Utils (barrel: effect/rpc)
 - `HttpClientError.TypeId` -> `HttpClientError.isHttpClientError`: The brand key is private in v4; use the public runtime refinement.
 
 ### `@effect/platform/HttpClientRequest`
+
+- `HttpClientRequest.HttpClientRequest` -> `HttpClientRequest.HttpClientRequest`: method is now typed as string because requests converted from Web or server requests can carry methods outside the HttpMethod literals; exhaustive matches need a fallback or an HttpMethod.isHttpMethod guard.
 
 - `HttpClientRequest.Options.NoBody` -> `HttpClientRequest.Options.NoUrl`: NoBody was removed; v4 method helpers uniformly omit only url.
 
@@ -7116,7 +7156,7 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 ### `@effect/platform/HttpClientResponse`
 
-- `HttpClientResponse.HttpClientResponse` -> `HttpClientResponse.HttpClientResponse`: Custom implementations must supply the required url string. It represents the resolved URL including query parameters and excluding the hash, uses the final URL after redirects, and is empty when unknown.
+- `HttpClientResponse.HttpClientResponse` -> `HttpClientResponse.HttpClientResponse`: Custom implementations must supply the required url string and an upgrade effect. url represents the resolved URL including query parameters and excluding the hash, uses the final URL after redirects, and is empty when unknown. upgrade returns the upgraded Socket and should fail with an HttpClientError when the backend cannot hand over the connection.
 
 - `HttpClientResponse.TypeId` -> `typeof HttpClientResponse.TypeId`: TypeId remains public but is now a string constant; use typeof in type position.
 
@@ -7150,6 +7190,8 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `HttpLayerRouter.FindMyWay.make` -> `FindMyWay.make`: Import FindMyWay from effect/http.
 
+- `HttpLayerRouter.Middleware` -> `HttpRouter.Middleware`: Moved with the layer-oriented router into the consolidated HttpRouter module. McpServer.Middleware is a separate type for MCP request middleware.
+
 - `HttpLayerRouter.MiddlewareTypeId` -> `none`: The middleware type id is internal in v4; use HttpRouter.Middleware.
 
 - `HttpLayerRouter.PathInput` -> `HttpRouter.PathInput`: Moved to the consolidated v4 router.
@@ -7157,6 +7199,8 @@ effect/rpc/Utils (barrel: effect/rpc)
 - `HttpLayerRouter.Request.From` -> `HttpRouter.Request.From`: Moved with the layer-oriented router into the consolidated HttpRouter module.
 
 - `HttpLayerRouter.Request.Only` -> `HttpRouter.Request.Only`: Moved with the layer-oriented router into the consolidated HttpRouter module.
+
+- `HttpLayerRouter.Request.Without` -> `HttpRouter.Request.Without`: Moved with the layer-oriented router into the consolidated HttpRouter module. McpServer.McpRequest.Without is the MCP counterpart.
 
 - `HttpLayerRouter.Route.Context` -> `HttpRouter.Route.Context`: Moved with the Route helper types into the consolidated HttpRouter module.
 
@@ -7182,6 +7226,10 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `HttpLayerRouter.make` -> `HttpRouter.make`: The layer-oriented router became the sole v4 HttpRouter implementation.
 
+- `HttpLayerRouter.middleware.Fn` -> `HttpRouter.middleware.Fn`: Moved with the layer-oriented router into the consolidated HttpRouter module. McpServer.middleware.Fn is a separate type for MCP request middleware.
+
+- `HttpLayerRouter.middleware.Make` -> `HttpRouter.middleware.Make`: Moved with the layer-oriented router into the consolidated HttpRouter module. McpServer.middleware.Make is a separate type for MCP request middleware.
+
 - `HttpLayerRouter.schemaJson` -> `HttpRouter.schemaJson`: Moved to the consolidated router with v4 Schema and error types.
 
 - `HttpLayerRouter.schemaNoBody` -> `HttpRouter.schemaNoBody`: Moved to the consolidated router with v4 Schema types.
@@ -7191,6 +7239,10 @@ effect/rpc/Utils (barrel: effect/rpc)
 - `HttpLayerRouter.toHttpEffect` -> `HttpRouter.toHttpEffect`: Moved to the consolidated HttpRouter; route-not-found failures now use HttpServerError.HttpServerError.
 
 - `HttpLayerRouter.toWebHandler` -> `HttpRouter.toWebHandler`: Moved to the consolidated router for building a Fetch handler and disposer.
+
+### `@effect/platform/HttpMethod`
+
+- `HttpMethod.hasBody` -> `HttpMethod.hasBody`: Retained and now narrows an HttpMethod to HttpMethod.WithBody. An overload also accepts any string, such as a received request method, and returns a plain boolean.
 
 ### `@effect/platform/HttpMiddleware`
 
@@ -7209,6 +7261,8 @@ effect/rpc/Utils (barrel: effect/rpc)
 - `HttpMiddleware.withTracerDisabledWhen` -> `Layer.provide(layer, Layer.succeed(HttpMiddleware.TracerDisabledWhen)(predicate))`: Provide the TracerDisabledWhen reference to the target layer.
 
 - `HttpMiddleware.withTracerDisabledWhenEffect` -> `Effect.provideService(effect, HttpMiddleware.TracerDisabledWhen, predicate)`: Provide the TracerDisabledWhen reference locally to the effect.
+
+- `HttpMiddleware.xForwardedHeaders` -> `HttpMiddleware.xForwardedHeaders({ trustedProxies })`: Now requires a trusted proxy policy; headers from untrusted peers are ignored and X-Forwarded-For is read from the right. HttpServerRequest.toURL no longer reads x-forwarded-proto directly.
 
 ### `@effect/platform/HttpPlatform`
 
@@ -7326,6 +7380,8 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 ### `@effect/platform/HttpServerRequest`
 
+- `HttpServerRequest.HttpServerRequest` -> `HttpServerRequest.HttpServerRequest`: Custom implementations must also supply upgradeWith({ headers }), which upgrades the connection and sends the given headers on the 101 response; upgrade is equivalent to upgradeWith({}). WebSocket upgrades fail when headers are given. method is now typed as string because received methods such as PROPFIND are kept as is; exhaustive matches need a fallback or an HttpMethod.isHttpMethod guard.
+
 - `HttpServerRequest.ParsedSearchParams` -> `HttpServerRequest.ParsedSearchParams`: The marker and tag became one Context.Service class.
 
 - `HttpServerRequest.TypeId` -> `typeof HttpServerRequest.TypeId`: TypeId remains public but is now a string constant; use typeof in type position.
@@ -7343,6 +7399,8 @@ effect/rpc/Utils (barrel: effect/rpc)
 - `HttpServerRequest.toWeb` -> `HttpServerRequest.toWeb`: Retained and captures the current Context for streamed bodies.
 
 - `HttpServerRequest.toWebEither` -> `HttpServerRequest.toWebResult`: Either became Result, and the optional Runtime became an optional Context.
+
+- `HttpServerRequest.upgrade` -> `HttpServerRequest.HttpServerRequest.use((request) => request.upgrade)`: The top-level accessor was removed; read upgrade from the request service. It fails with HttpServerError instead of RequestError. HttpServerRequest.upgradeChannel remains for channel-based WebSocket handling.
 
 ### `@effect/platform/HttpServerRespondable`
 
@@ -7388,9 +7446,9 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `KeyValueStore.layerSchema` -> `KeyValueStore.toSchemaStore`: Schema stores are now derived with toSchemaStore; define the desired Context.Service and layer explicitly.
 
-- `KeyValueStore.make` -> `KeyValueStore.make`: The constructor remains in the moved module with v4 MakeOptions.
+- `KeyValueStore.make` -> `KeyValueStore.make`: The constructor remains in the moved module with v4 MakeOptions. Custom stores must now also provide keys, an effect returning a snapshot of the stored keys; clearPrefix is derived from keys and remove when omitted.
 
-- `KeyValueStore.prefix` -> `KeyValueStore.prefix`: The prefixed-store combinator remains in the moved module.
+- `KeyValueStore.prefix` -> `KeyValueStore.prefix`: The prefixed-store combinator remains in the moved module. Unlike v3, clear, size and isEmpty now apply only to keys under the prefix, and keys returns them with the prefix removed.
 
 ### `@effect/platform/MsgPack`
 
@@ -7794,6 +7852,10 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `RpcClient.currentHeaders` -> `effect/rpc/RpcClient#CurrentHeaders`: Renamed and changed from FiberRef to Context.Reference; prefer RpcClient.withHeaders for scoped overrides.
 
+- `RpcClient.layerProtocolHttp` -> `effect/rpc/RpcClient#layerProtocolHttp`: Retained; it provides the v4 Protocol from HttpClient and RpcSerialization.
+
+- `RpcClient.makeNoSerialization` -> `effect/rpc/RpcClient#makeNoSerialization`: Retained, but onFromClient no longer receives a discard flag; a discarded call is a Request message with discard: true. Discarded calls now complete when the server acknowledges them rather than when the request is written.
+
 - `RpcClient.makeProtocolHttp` -> `effect/rpc/RpcClient#makeProtocolHttp`: Retained; it creates the Protocol service implementation from an HttpClient.
 
 - `RpcClient.withHeadersEffect` -> `Effect.flatMap(headers, (value) => RpcClient.withHeaders(effect, value))`: withHeaders now accepts Headers.Input synchronously; evaluate effectful headers first and then scope the client effect.
@@ -7827,6 +7889,8 @@ effect/rpc/Utils (barrel: effect/rpc)
 - `RpcMiddleware.Tag` -> `effect/rpc/RpcMiddleware#Service`: Renamed and redesigned with explicit requires, provides, clientError, error, and requiredForClient configuration.
 
 - `RpcMiddleware.TagClass` -> `effect/rpc/RpcMiddleware#ServiceClass`: Renamed class type for the v4 Context.Service-based middleware declaration.
+
+- `RpcMiddleware.TagClass.Base` -> `effect/rpc/RpcMiddleware#ServiceClass`: The shared base interface was folded into ServiceClass; there is no separate public base interface.
 
 - `RpcMiddleware.TagClass.Failure` -> `effect/rpc/RpcMiddleware#Error`: Failure terminology became error; apply the extractor to the middleware ID.
 
@@ -7916,7 +7980,7 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 ### `@effect/sql-clickhouse/ClickhouseClient`
 
-- `ClickhouseClient.ClickhouseClient` -> `@effect/sql-clickhouse/ClickhouseClient#ClickhouseClient`: Retained; the service value is now a Context.Service rather than a GenericTag.
+- `ClickhouseClient.ClickhouseClient` -> `@effect/sql-clickhouse/ClickhouseClient#ClickhouseClient`: Retained; the service value is now a Context.Service rather than a GenericTag. The ClickhouseClient interface no longer extends SqlClient.SqlClient. Yielding the service still gives ClickhouseClient & SqlClient, but an effect that requires ClickhouseClient no longer type-checks against a SqlClient requirement annotation, and a SqlClient-only layer no longer satisfies ClickhouseClient. Annotate a layer chosen between drivers as Layer.Layer\<SqlClient.SqlClient, E\>.
 
 - `ClickhouseClient.currentClickhouseSettings` -> `@effect/sql-clickhouse/ClickhouseClient#ClickhouseSettings`: Renamed and changed from FiberRef to Context.Reference; prefer client.withClickhouseSettings or provide the reference as a service.
 
@@ -7929,6 +7993,8 @@ effect/rpc/Utils (barrel: effect/rpc)
 - `ClickhouseMigrator.MigrationError` -> `@effect/sql-clickhouse/ClickhouseMigrator#MigrationError`: Retained via effect/sql/Migrator; migrate reason and its lowercase values to kind with PascalCase values.
 
 ### `@effect/sql-d1/D1Client`
+
+- `D1Client.D1Client` -> `@effect/sql-d1/D1Client#D1Client`: Retained; the service value is now a Context.Service, and v4 adds batch for atomic D1 batches. The D1Client interface no longer extends SqlClient.SqlClient. Yielding the service still gives D1Client & SqlClient, but an effect that requires D1Client no longer type-checks against a SqlClient requirement annotation, and a SqlClient-only layer no longer satisfies D1Client. Annotate a layer chosen between drivers as Layer.Layer\<SqlClient.SqlClient, E\>.
 
 - `D1Client.D1ClientConfig` -> `@effect/sql-d1/D1Client#D1ClientConfig`: Retained; prepareCacheTTL now uses Duration.Input.
 
@@ -7968,9 +8034,13 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `Sqlite.makeWithConfig` -> `matching drizzle-orm Effect SQLite module#makeWithDefaults`: The generic constructor was removed; select the concrete backend and use makeWithDefaults(config), or make(config) with explicit services.
 
+### `@effect/sql-libsql/LibsqlClient`
+
+- `LibsqlClient.LibsqlClient` -> `@effect/sql-libsql/LibsqlClient#LibsqlClient`: Retained; the service value is now a Context.Service. The LibsqlClient interface no longer extends SqlClient.SqlClient. Yielding the service still gives LibsqlClient & SqlClient, but an effect that requires LibsqlClient no longer type-checks against a SqlClient requirement annotation, and a SqlClient-only layer no longer satisfies LibsqlClient. Annotate a layer chosen between drivers as Layer.Layer\<SqlClient.SqlClient, E\>.
+
 ### `@effect/sql-mssql/MssqlClient`
 
-- `MssqlClient.MssqlClient` -> `@effect/sql-mssql/MssqlClient#MssqlClient`: Retained; the service value is now a Context.Service rather than a GenericTag.
+- `MssqlClient.MssqlClient` -> `@effect/sql-mssql/MssqlClient#MssqlClient`: Retained; the service value is now a Context.Service rather than a GenericTag. The MssqlClient interface no longer extends SqlClient.SqlClient. Yielding the service still gives MssqlClient & SqlClient, but an effect that requires MssqlClient no longer type-checks against a SqlClient requirement annotation, and a SqlClient-only layer no longer satisfies MssqlClient. Annotate a layer chosen between drivers as Layer.Layer\<SqlClient.SqlClient, E\>.
 
 - `MssqlClient.MssqlClientConfig` -> `@effect/sql-mssql/MssqlClient#MssqlClientConfig`: Retained; durations use Duration.Input, parameterTypes is keyed by Statement.PrimitiveKind, and v4 adds retry and timeout options.
 
@@ -7988,13 +8058,15 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 ### `@effect/sql-mysql2/MysqlClient`
 
+- `MysqlClient.MysqlClient` -> `@effect/sql-mysql2/MysqlClient#MysqlClient`: Retained; the service value is now a Context.Service. The MysqlClient interface no longer extends SqlClient.SqlClient. Yielding the service still gives MysqlClient & SqlClient, but an effect that requires MysqlClient no longer type-checks against a SqlClient requirement annotation, and a SqlClient-only layer no longer satisfies MysqlClient. Annotate a layer chosen between drivers as Layer.Layer\<SqlClient.SqlClient, E\>.
+
 - `MysqlClient.MysqlClientConfig` -> `@effect/sql-mysql2/MysqlClient#MysqlClientConfig`: Retained; connectionTTL uses Duration.Input and v4 adds disablePreparedStatements.
 
 ### `@effect/sql-pg/PgClient`
 
-- `PgClient.PgClient` -> `@effect/sql-pg/PgClient#PgClient`: Retained; the service value is now a Context.Service. The listen method returns a scoped Effect acquiring a Queue.Dequeue\<PgConnection.Notification, SqlError\>; consume it with Queue operations or Stream.fromQueue and read each notification's payload. Connection failures after registration fail the queue with the original SqlError; scope closure interrupts consumers.
+- `PgClient.PgClient` -> `@effect/sql-pg/PgClient#PgClient`: Retained; the service value is now a Context.Service. The listen method returns a scoped Effect acquiring a Queue.Dequeue\<PgConnection.Notification, SqlError\>; consume it with Queue operations or Stream.fromQueue and read each notification's payload. Connection failures after registration fail the queue with the original SqlError; scope closure interrupts consumers. The PgClient interface no longer extends SqlClient.SqlClient. Yielding the service still gives PgClient & SqlClient, but an effect that requires PgClient no longer type-checks against a SqlClient requirement annotation, and a SqlClient-only layer no longer satisfies PgClient. Annotate a layer chosen between drivers as Layer.Layer\<SqlClient.SqlClient, E\>.
 
-- `PgClient.PgClientConfig` -> `@effect/sql-pg/PgClient#PgClientConfig / PgPoolConfig`: Use PgClientConfig for base settings and PgPoolConfig for make/layer; pool sizing, idle timeout, and connection TTL moved to PgPoolConfig. The types option takes a PgTypes.Registry rather than node-pg custom types. Timestamp and timestamptz results (including array elements) are Date values with millisecond precision; infinity, -infinity, and out-of-range values become invalid Dates. Numeric readers can use getTime() or register numeric codecs. Date parameters bind as timestamptz; use PgTypes.timestamp(value) to preserve UTC fields when writing a timestamp column instead of applying the session TimeZone.
+- `PgClient.PgClientConfig` -> `@effect/sql-pg/PgClient#PgClientConfig / PgPoolConfig`: Use PgClientConfig for base settings and PgPoolConfig for make/layer; pool sizing, idle timeout, and connection TTL moved to PgPoolConfig. v3 connectTimeout also bounded waits for a free pooled connection through node-pg; v4 connectTimeout covers only opening a connection, so set acquireTimeout to fail with ConnectionError when the pool stays exhausted. The types option takes a PgTypes.Registry rather than node-pg custom types. Timestamp and timestamptz results (including array elements) are Date values with millisecond precision; infinity, -infinity, and out-of-range values become invalid Dates. Numeric readers can use getTime() or register numeric codecs. Date parameters bind as timestamptz; use PgTypes.timestamp(value) to preserve UTC fields when writing a timestamp column instead of applying the session TimeZone.
 
 - `PgClient.PgClientFromPoolOptions` -> `none`: The node-pg Pool wrapper options were removed with fromPool. Use PgClient.PgPoolConfig with PgClient.make or PgClient.layer.
 
@@ -8004,7 +8076,7 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 ### `@effect/sql-sqlite-bun/SqliteClient`
 
-- `SqliteClient.SqliteClient` -> `@effect/sql-sqlite-bun/SqliteClient#SqliteClient`: Retained; the service value is now a Context.Service.
+- `SqliteClient.SqliteClient` -> `@effect/sql-sqlite-bun/SqliteClient#SqliteClient`: Retained; the service value is now a Context.Service. The SqliteClient interface no longer extends SqlClient.SqlClient. Yielding the service still gives SqliteClient & SqlClient, but an effect that requires SqliteClient no longer type-checks against a SqlClient requirement annotation, and a SqlClient-only layer no longer satisfies SqliteClient. Annotate a layer chosen between drivers as Layer.Layer\<SqlClient.SqlClient, E\>.
 
 - `SqliteClient.layer` -> `SqliteClient.layer`: The layer now has a SqlError error channel for database opening and initialization failures. Handle setup failures, or use Layer.orDie when they should remain fatal.
 
@@ -8014,11 +8086,13 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 ### `@effect/sql-sqlite-do/SqliteClient`
 
+- `SqliteClient.SqliteClient` -> `@effect/sql-sqlite-do/SqliteClient#SqliteClient`: Retained; the service value is now a Context.Service. The SqliteClient interface no longer extends SqlClient.SqlClient. Yielding the service still gives SqliteClient & SqlClient, but an effect that requires SqliteClient no longer type-checks against a SqlClient requirement annotation, and a SqlClient-only layer no longer satisfies SqliteClient. Annotate a layer chosen between drivers as Layer.Layer\<SqlClient.SqlClient, E\>.
+
 - `SqliteClient.SqliteClientConfig` -> `@effect/sql-sqlite-do/SqliteClient#SqliteClientConfig`: Retained; db is optional and storage may be supplied, but one of db or storage is required at runtime.
 
 ### `@effect/sql-sqlite-node/SqliteClient`
 
-- `SqliteClient.SqliteClient` -> `@effect/sql-sqlite-node/SqliteClient#SqliteClient`: Retained on node:sqlite, but the byte-export member was removed; use backup(destination) for file backup.
+- `SqliteClient.SqliteClient` -> `@effect/sql-sqlite-node/SqliteClient#SqliteClient`: Retained on node:sqlite, but the byte-export member was removed; use backup(destination) for file backup. The SqliteClient interface no longer extends SqlClient.SqlClient. Yielding the service still gives SqliteClient & SqlClient, but an effect that requires SqliteClient no longer type-checks against a SqlClient requirement annotation, and a SqlClient-only layer no longer satisfies SqliteClient. Annotate a layer chosen between drivers as Layer.Layer\<SqlClient.SqlClient, E\>.
 
 - `SqliteClient.SqliteClientConfig` -> `@effect/sql-sqlite-node/SqliteClient#SqliteClientConfig`: Retained; prepareCacheTTL now uses Duration.Input.
 
@@ -8030,6 +8104,8 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 ### `@effect/sql-sqlite-react-native/SqliteClient`
 
+- `SqliteClient.SqliteClient` -> `@effect/sql-sqlite-react-native/SqliteClient#SqliteClient`: Retained; the service value is now a Context.Service. The SqliteClient interface no longer extends SqlClient.SqlClient. Yielding the service still gives SqliteClient & SqlClient, but an effect that requires SqliteClient no longer type-checks against a SqlClient requirement annotation, and a SqlClient-only layer no longer satisfies SqliteClient. Annotate a layer chosen between drivers as Layer.Layer\<SqlClient.SqlClient, E\>.
+
 - `SqliteClient.asyncQuery` -> `@effect/sql-sqlite-react-native/SqliteClient#AsyncQuery`: Renamed and changed from FiberRef to Context.Reference; prefer withAsyncQuery or provide AsyncQuery as a service.
 
 ### `@effect/sql-sqlite-wasm/OpfsWorker`
@@ -8038,9 +8114,13 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 ### `@effect/sql-sqlite-wasm/SqliteClient`
 
-- `SqliteClient.SqliteClient` -> `@effect/sql-sqlite-wasm/SqliteClient#SqliteClient`: Retained with the same export/import surface; the service value is now a Context.Service.
+- `SqliteClient.SqliteClient` -> `@effect/sql-sqlite-wasm/SqliteClient#SqliteClient`: Retained with the same export/import surface; the service value is now a Context.Service. The SqliteClient interface no longer extends SqlClient.SqlClient. Yielding the service still gives SqliteClient & SqlClient, but an effect that requires SqliteClient no longer type-checks against a SqlClient requirement annotation, and a SqlClient-only layer no longer satisfies SqliteClient. Annotate a layer chosen between drivers as Layer.Layer\<SqlClient.SqlClient, E\>.
 
 - `SqliteClient.currentTransferables` -> `@effect/sql-sqlite-wasm/SqliteClient#Transferables`: Renamed and changed from FiberRef to Context.Reference; prefer withTransferables or provide Transferables as a service.
+
+### `@effect/sql/Migrator`
+
+- `Migrator.make` -> `effect/sql/Migrator#make`: Moved with the same curried make({ dumpSchema })(options) pattern.
 
 ### `@effect/sql/Model`
 
@@ -8070,7 +8150,7 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `SqlClient.SafeIntegers` -> `effect/sql/SqlClient#SafeIntegers`: Moved and changed from a Reference subclass to a Context.Reference value; provide it as a service.
 
-- `SqlClient.SqlClient` -> `effect/sql/SqlClient#SqlClient`: Moved into core Effect. Custom service implementations must expose driver, a string identifying the driver independently of its SQL dialect; SqlClient.make sets it from MakeOptions.driver.
+- `SqlClient.SqlClient` -> `effect/sql/SqlClient#SqlClient`: Moved into core Effect. Custom service implementations must expose driver and afterCommit; SqlClient.make supplies both. driver identifies the driver independently of its SQL dialect. afterCommit registers effects to run after the outermost successful commit and connection release attempt, discarding rolled-back work. withTransaction now also defers contextual Reactivity.invalidate and mutation invalidations until that commit. Transactions bypassing makeWithTransaction, such as sqlite-do transactions, run callbacks and invalidations immediately. Driver-specific client interfaces should extend SqlClient.Base rather than SqlClient, so providing a generic SqlClient does not also remove the driver requirement.
 
 - `SqlClient.SqlClient.MakeOptions` -> `effect/sql/SqlClient#SqlClient.MakeOptions`: Moved; driver is now required and conventionally names the driver package without @effect/sql-, for example pg or pglite. Rename reactiveMailbox to reactiveQueue; transactionService is optional.
 
@@ -8079,6 +8159,8 @@ effect/rpc/Utils (barrel: effect/rpc)
 - `SqlClient.TypeId` -> `none`: The brand is private in v4; do not inspect or attach it, and obtain clients through SqlClient or SqlClient.make.
 
 - `SqlClient.make` -> `effect/sql/SqlClient#make`: Moved; custom clients must supply MakeOptions.driver, rename reactiveMailbox to reactiveQueue, and may supply transactionService. Driver names conventionally omit the @effect/sql- prefix, for example pg or pglite.
+
+- `SqlClient.makeWithTransaction` -> `effect/sql/SqlClient#makeWithTransaction`: Rename transactionTag to transactionService. acquireConnection is now a function receiving restore and returning Effect\<Connection, SqlError, Scope\>, rather than an effect returning a scope/connection pair. Register releases in the provided scope and wrap interruptible connection waits with restore; the wrapper closes the scope on transaction completion or failed acquisition.
 
 ### `@effect/sql/SqlConnection`
 
@@ -8096,9 +8178,11 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 ### `@effect/sql/SqlEventLogServer`
 
-- `SqlEventLogServer.layerStorage` -> `effect/eventlog/SqlEventLogServerEncrypted#layerStorage`: Moved to the encrypted server module with the same options and EventLogEncryption requirement.
+- `SqlEventLogServer.layerStorage` -> `effect/eventlog/SqlEventLogServerEncrypted#layerStorage`: Moved to the encrypted server module; remove insertBatchSize. entryTablePrefix and remoteIdTable remain. It requires the `Digest` service from `effect/crypto/Digest` instead of EventLogEncryption, which hashed the table names in v3. Storage uses encrypted batch tables and entry-id lookup tables, not the old per-entry ciphertext schema; existing encrypted tables are not automatically converted.
 
-- `SqlEventLogServer.makeStorage` -> `effect/eventlog/SqlEventLogServerEncrypted#makeStorage`: Moved to the encrypted server module with the same SQL, encryption, and scope requirements.
+- `SqlEventLogServer.layerStorageSubtle` -> `effect/eventlog/SqlEventLogServerEncrypted#layerStorageSubtle`: Moved to the encrypted server module; remove insertBatchSize. The layer supplies the Web Crypto `Digest` layer. Storage now uses encrypted batch tables and entry-id lookup tables; existing per-entry ciphertext tables are not automatically converted.
+
+- `SqlEventLogServer.makeStorage` -> `effect/eventlog/SqlEventLogServerEncrypted#makeStorage`: Moved to the encrypted server module; remove insertBatchSize. SQL and scope requirements remain; the EventLogEncryption requirement is replaced by the `Digest` service from `effect/crypto/Digest`. Storage uses encrypted batch tables and entry-id lookup tables, not the old per-entry ciphertext schema; existing encrypted tables are not automatically converted.
 
 ### `@effect/sql/SqlPersistedQueue`
 
@@ -8124,9 +8208,11 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 ### `@effect/sql/Statement`
 
-- `Statement.Fragment`: TODO: needs guidance
+- `Statement.Constructor` -> `effect/sql/Statement#Constructor`: Moved to core Effect. sql.updateValues now escapes its alias as an identifier without applying name transforms; pass a bare alias such as "data" rather than pre-quoted SQL, and quote mixed-case PostgreSQL aliases where the query references them. sql.insert and sql.updateValues now require a non-empty array of rows; narrow array inputs with Array.isReadonlyArrayNonEmpty first.
 
-- `Statement.FragmentId` -> `none`: The v4 fragment brand is private; use Fragment, fragment, and isFragment instead of direct type-id access.
+- `Statement.Fragment` -> `effect/sql/Statement#Fragment`: Moved with the same segments field, but the brand key is now Statement.FragmentTypeId and its value is the symbol itself rather than a function. Build fragments with the sql template or Statement.fragment and check them with Statement.isFragment; sql interpolation binds unbranded objects as parameters.
+
+- `Statement.FragmentId` -> `effect/sql/Statement#FragmentTypeId`: Renamed to FragmentTypeId, now with a different Symbol.for key. Fragment values store the symbol itself under this key instead of a function; prefer Statement.isFragment for runtime checks.
 
 - `Statement.Statement` -> `effect/sql/Statement#Statement`: Moved; the nested Transformer type is now top-level and its callback receives Fiber.Fiber rather than FiberRefs.FiberRefs.
 
@@ -8140,7 +8226,7 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `Statement.make` -> `effect/sql/Statement#make`: Moved with the same constructor inputs.
 
-- `Statement.makeCompiler` -> `effect/sql/Statement#makeCompiler`: Moved to core Effect; the constructor options are exposed as Statement.CompilerOptions and retain the dialect-specific callbacks.
+- `Statement.makeCompiler` -> `effect/sql/Statement#makeCompiler`: Moved to core Effect; the constructor options are exposed as Statement.CompilerOptions and retain the dialect-specific callbacks. onRecordUpdate now receives the updateValues alias already escaped with onIdentifier(alias, true); insert it as is.
 
 - `Statement.setTransformer` -> `Layer.succeed(Statement.CurrentTransformer, transformer)`: The helper was removed; provide the CurrentTransformer reference as a layer.
 
@@ -8690,6 +8776,10 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `index.WorkerRPC` -> `none`: The concrete worker RPC composition is internal. Use public Vitest RuntimeRPC, RunnerRPC, ContextRPC, or WorkerRequest types only when their narrower contract fits.
 
+- `index.beforeAll` -> `@effect/vitest#beforeAll`: Still accepts Vitest callbacks. A callback may also return an Effect, which runs with a Scope that closes after the suite's afterAll hooks; the Effect must not require other services.
+
+- `index.beforeEach` -> `@effect/vitest#beforeEach`: Still accepts Vitest callbacks. A callback may also return an Effect, which runs with a Scope that closes when the test finishes; the Effect must not require other services.
+
 - `index.bench` -> `vitest#test`: Vitest 5 removes the top-level bench export. Destructure bench from a regular test's context and await bench(name, fn).run(); use skip, only, or todo on the enclosing test.
 
 - `index.chai.Should` -> `vitest#chai.Should`: This was a Vitest re-export, not Effect API. Import it directly from vitest; @effect/vitest/index is not a valid v4 route.
@@ -8698,7 +8788,9 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `index.expect` -> `vitest#expect`: This was a Vitest re-export, not Effect API. Import it directly from vitest; @effect/vitest/index is not a valid v4 route.
 
-- `index.it` -> `@effect/vitest#it`: Effect helpers retain their calling convention. Vitest 5 removes it.sequential; pass { concurrent: false } to the native test or as the Effect helper's third argument.
+- `index.it` -> `@effect/vitest#it`: Vitest 5 removes it.sequential; pass { concurrent: false } to the native test or as the Effect helper's third argument. Synchronous it.prop callbacks must return boolean or void: true and undefined pass, false falsifies, and other values (including Effects and Promises) throw TypeError. Use it.effect.prop for Effect callbacks.
+
+- `index.prop` -> `@effect/vitest#prop`: Synchronous property callbacks must return boolean or void: true and undefined pass, false falsifies, and other values (including Effects and Promises) throw TypeError. Move Effect callbacks to it.effect.prop instead of returning an Effect from prop.
 
 - `index.scoped` -> `@effect/vitest#effect`: V4 effect tests are scoped and provide the test environment. Replace scoped(...) with effect(...), and it.scoped(...) with it.effect(...).
 
@@ -8998,7 +9090,7 @@ Arbitrary.schema(schema)
 
 ### `effect/Cause`
 
-- `Cause.Cause` -> `Cause.Cause`: The name remains, but v4 Cause\<E\> is a wrapper with readonly reasons: ReadonlyArray\<Cause.Reason\<E\>\>, not the v3 Empty/Fail/Die/Interrupt/Sequential/Parallel tree.
+- `Cause.Cause` -> `Cause.Cause`: V4 Cause\<E\> wraps readonly reasons: ReadonlyArray\<Cause.Reason\<E\>\>, replacing the v3 cause tree. Finalizer and concurrent failure aggregation can convert typed errors to defects when a defect is present; Cause.combine itself does not perform this conversion.
 
 - `Cause.Cause.Variance` -> `none`: The public variance helper was removed. Cause.Cause is directly branded by Cause.TypeId; application code should not reproduce the old variance member.
 
@@ -9162,7 +9254,7 @@ Arbitrary.schema(schema)
 
 - `Channel.bufferChunk` -> `none`: The inferred Channel.fromChunk match is not equivalent. Rebuild the buffered upstream-pull transform with Channel.fromTransform and Channel.toTransform.
 
-- `Channel.catchAll` -> `Channel.catch`: Renamed to catch for typed-error recovery.
+- `Channel.catchAll` -> `Channel.catch`: Rename to Channel.catch. Causes containing defects skip typed recovery and convert typed errors to defects; interruptions alongside typed errors do not block recovery. Use Channel.catchCause for full-cause handling.
 
 - `Channel.catchAllCause` -> `Channel.catchCause`: Renamed to catchCause for full-cause recovery.
 
@@ -9208,6 +9300,8 @@ Arbitrary.schema(schema)
 
 - `Channel.isChannelException` -> `none`: Removed implementation artifact. Channel.pipeToOrFail now handles upstream failures without exposing the v3 exception wrapper.
 
+- `Channel.mapError` -> `Channel.mapError`: Maps every typed error in the cause, preserving defects, interruptions and reason order. Unlike typed recovery, mapping does not convert errors to defects.
+
 - `Channel.mapErrorCause` -> `Channel.catchCause`: Use Channel.catchCause(self, (cause) =\> Channel.failCause(f(cause))).
 
 - `Channel.mapInputContext` -> `Channel.updateContext`: Renamed to updateContext for transforming the channel requirement Context.
@@ -9240,9 +9334,11 @@ Arbitrary.schema(schema)
 
 - `Channel.mergeWith` -> `Channel.merge`: Use Channel.merge with haltStrategy left, right, both, or either for standard policies. Custom MergeDecision effects require a Pull-level redesign.
 
-- `Channel.orDieWith` -> `Channel.catch`: Use Channel.catch(self, (error) =\> Channel.die(f(error))); v4 Channel.orDie has no mapping callback.
+- `Channel.orDie` -> `Channel.orDie`: Converts typed errors to defects. If a defect is already present, every typed error is converted to a defect, preserving reason order and interruptions.
 
-- `Channel.orElse` -> `Channel.catch`: Use Channel.catch(self, () =\> that()) and keep the fallback lazy.
+- `Channel.orDieWith` -> `Channel.mapError + Channel.orDie`: Use self.pipe(Channel.mapError(f), Channel.orDie). Mapping transforms every typed error while preserving existing defects and interruptions; Channel.catch skips the mapper for causes containing defects.
+
+- `Channel.orElse` -> `Channel.catch`: Use Channel.catch(self, () =\> that()) and keep the fallback lazy. Causes containing defects skip the fallback and convert typed errors to defects; interruptions alongside typed errors do not block recovery.
 
 - `Channel.provideLayer` -> `Channel.provide`: Both collapse into provide. V4 removes services supplied by the layer and retains remaining requirements; use options.local when a fresh layer instance is needed.
 
@@ -9612,6 +9708,8 @@ Arbitrary.schema(schema)
 
 - `Data.TaggedEnum` -> `Data.TaggedEnum`: Still exported with the same record-to-discriminated-union role.
 
+- `Data.TaggedEnum.Constructor` -> `Data.TaggedEnum.Constructor`: Still the type of the object Data.taggedEnum returns for a non-generic enum, now a named intersection instead of a flattened object type. $match no longer rejects extra case keys at compile time. Annotate constructors for generic enums with Data.TaggedEnum.GenericConstructor.
+
 - `Data.TaggedEnum.GenericMatchers` -> `Data.TaggedEnum.GenericMatchers`: Still exported with $is and $match helpers.
 
 - `Data.array` -> `none`: Use a normal copied array such as [...values]; v4 compares plain arrays structurally.
@@ -9798,9 +9896,9 @@ Arbitrary.schema(schema)
 
 - `Duration.decodeUnknown` -> `Duration.fromInput`: The safe decoder was renamed and accepts Duration.Input, returning Option\<Duration\>.
 
-- `Duration.formatIso` -> `none`: ISO 8601 duration formatting was removed from the v4 Duration module. The v4 source and migration guides expose no direct replacement; retain a local formatter when this wire format is required.
+- `Duration.formatIso` -> `Duration.formatIso`: Available again from 4.1. The output is balanced into days, hours, minutes and seconds and never contains weeks, months or years; infinite durations return Option.none().
 
-- `Duration.fromIso` -> `none`: ISO 8601 duration parsing was removed from the v4 Duration module. The v4 source and migration guides expose no direct replacement; use a dedicated ISO parser and pass the resulting parts to Duration.fromInput.
+- `Duration.fromIso` -> `Duration.fromIso`: Available again from 4.1 for exact units only (weeks, days, hours, minutes and seconds). Years and months are rejected instead of approximated. Use Schema.DurationFromIsoString for a Schema codec.
 
 - `Duration.greaterThan` -> `Duration.isGreaterThan`: The comparison was renamed with the is prefix.
 
@@ -9814,7 +9912,7 @@ Arbitrary.schema(schema)
 
 - `Duration.unsafeDivide` -> `Duration.divideUnsafe`: The unsafe prefix moved to the end of the division function name.
 
-- `Duration.unsafeFormatIso` -> `none`: ISO 8601 duration formatting was removed from v4. The v4 Duration exports and migration guides contain no direct unsafe formatter; retain a local formatter if required.
+- `Duration.unsafeFormatIso` -> `none`: There is no throwing variant. Use Duration.formatIso and handle Option.none() for infinite durations.
 
 - `Duration.unsafeToNanos` -> `Duration.toNanosUnsafe`: The unsafe prefix moved to the end of the nanosecond conversion name.
 
@@ -9922,19 +10020,25 @@ Arbitrary.schema(schema)
 
 - `Effect.cachedFunction` -> `none`: The function memoizer was removed; use `Cache` for keyed effectful caching. No direct public replacement exists in v4; rewrite the call site around the stated v4 primitive.
 
-- `Effect.catch` -> `Effect.catch`: Still exported in v4; update call sites for the revised signature, options, and channel inference.
+- `Effect.catch` -> `Effect.catch`: Typed recovery skips causes containing defects and converts their typed errors to defects, preserving reason order and interruptions. An interruption alongside a typed error does not block recovery; use Effect.catchCause for full-cause handling.
 
-- `Effect.catchAll` -> `Effect.catch`: Use the shortened v4 error-handler name. Adapt arguments and imports to the v4 API.
+- `Effect.catchAll` -> `Effect.catch`: Rename to Effect.catch. Causes containing defects skip typed recovery and convert typed errors to defects; interruptions alongside typed errors do not block recovery. Use Effect.catchCause for full-cause handling.
 
 - `Effect.catchAllCause` -> `Effect.catchCause`: Use the shortened v4 cause-handler name. Adapt arguments and imports to the v4 API.
 
 - `Effect.catchAllDefect` -> `Effect.catchDefect`: Use the shortened v4 defect-handler name. Adapt arguments and imports to the v4 API.
 
-- `Effect.catchSome` -> `Effect.catchFilter`: Replace the Option-returning partial function with a `Filter` and handler. Adapt arguments and imports to the v4 API.
+- `Effect.catchIf` -> `Effect.catchIf`: Causes containing defects skip typed recovery and convert typed errors to defects, preserving reason order and interruptions. An interruption alongside a typed error does not block recovery.
+
+- `Effect.catchSome` -> `Effect.catchFilter`: Replace the Option-returning partial function with a Filter and handler. Causes containing defects skip typed recovery and convert typed errors to defects; interruptions alongside typed errors do not block recovery.
 
 - `Effect.catchSomeCause` -> `Effect.catchCauseFilter`: Replace the Option-returning partial function with a cause `Filter` and handler. Adapt arguments and imports to the v4 API.
 
 - `Effect.catchSomeDefect` -> `none`: Use `Effect.catchDefect` and branch explicitly, re-dying for unmatched defects. No direct public replacement exists in v4; rewrite the call site around the stated v4 primitive.
+
+- `Effect.catchTag` -> `Effect.catchTag`: Causes containing defects skip typed recovery and convert typed errors to defects, preserving reason order and interruptions. An interruption alongside a typed error does not block recovery.
+
+- `Effect.catchTags` -> `Effect.catchTags`: Causes containing defects skip typed recovery and convert typed errors to defects, preserving reason order and interruptions. An interruption alongside a typed error does not block recovery.
 
 - `Effect.cause` -> `Effect.exit`: Inspect `Exit.Failure.cause`; v4 no longer exposes an Effect-only cause extractor. Adapt arguments and imports to the v4 API.
 
@@ -9972,7 +10076,7 @@ Arbitrary.schema(schema)
 
 - `Effect.dropWhile` -> `none`: Use an explicit `Effect.gen` loop, or `Array.dropWhile` when the predicate is pure. No direct public replacement exists in v4; rewrite the call site around the stated v4 primitive.
 
-- `Effect.either` -> `Effect.result`: V4 represents typed success/failure as `Result` instead of `Either`. Adapt arguments and imports to the v4 API.
+- `Effect.either` -> `Effect.result`: V4 represents typed success/failure as `Result` instead of `Either`. Adapt arguments and imports to the v4 API. Causes containing defects are not captured as Result failures and propagate with typed errors converted to defects; interruptions alongside typed errors do not block typed recovery.
 
 - `Effect.ensureErrorType` -> `Effect.satisfiesErrorType`: Use the renamed compile-time channel constraint. Adapt arguments and imports to the v4 API.
 
@@ -10032,7 +10136,9 @@ Arbitrary.schema(schema)
 
 - `Effect.if` -> `Effect.suspend`: Select the branch lazily with a JavaScript conditional inside `Effect.suspend`. Adapt arguments and imports to the v4 API.
 
-- `Effect.ignoreLogged` -> `Effect.ignore`: Pass `{ log: true }` to the consolidated ignore combinator. Adapt arguments and imports to the v4 API.
+- `Effect.ignore` -> `Effect.ignore`: Ignores recoverable typed errors only. Causes containing defects propagate with typed errors converted to defects; interruptions alongside typed errors do not prevent ignoring them.
+
+- `Effect.ignoreLogged` -> `Effect.ignore`: Use Effect.ignore(self, { log: true }). Causes containing defects are not ignored and propagate with typed errors converted to defects; interruptions alongside typed errors do not block typed recovery.
 
 - `Effect.inheritFiberRefs` -> `none`: Bulk FiberRef inheritance was removed; propagate required context references explicitly. No direct public replacement exists in v4; rewrite the call site around the stated v4 primitive.
 
@@ -10070,9 +10176,17 @@ Arbitrary.schema(schema)
 
 - `Effect.mapAccum` -> `Effect.reduce`: Carry `[state, output]` through an effectful reduction. Adapt arguments and imports to the v4 API.
 
+- `Effect.mapBoth` -> `Effect.mapBoth`: Maps every typed error in the cause, preserving defects, interruptions and reason order. Unlike typed recovery, mapping does not convert errors to defects.
+
+- `Effect.mapError` -> `Effect.mapError`: Maps every typed error in the cause, preserving defects, interruptions and reason order. Unlike typed recovery, mapping does not convert errors to defects.
+
 - `Effect.mapErrorCause` -> `Effect.catchCause + Effect.failCause`: Transform the Cause in a cause handler and fail with the mapped Cause. Adapt arguments and imports to the v4 API.
 
 - `Effect.mapInputContext` -> `Effect.contextWith + Effect.provide`: Build the required context from the incoming context and provide it explicitly. Adapt arguments and imports to the v4 API.
+
+- `Effect.match` -> `Effect.match`: Causes containing defects skip typed recovery and convert typed errors to defects, preserving reason order and interruptions. An interruption alongside a typed error does not block recovery.
+
+- `Effect.matchEffect` -> `Effect.matchEffect`: Causes containing defects skip typed recovery and convert typed errors to defects, preserving reason order and interruptions. An interruption alongside a typed error does not block recovery.
 
 - `Effect.merge` -> `Effect.catch`: Recover each typed error with `Effect.succeed` so both channels become success values. Adapt arguments and imports to the v4 API.
 
@@ -10086,13 +10200,19 @@ Arbitrary.schema(schema)
 
 - `Effect.once` -> `Effect.cached`: Create the cached Effect once, then execute the returned Effect repeatedly. Adapt arguments and imports to the v4 API.
 
+- `Effect.option` -> `Effect.option`: Causes containing defects skip typed recovery and convert typed errors to defects, preserving reason order and interruptions. An interruption alongside a typed error does not block recovery.
+
 - `Effect.optionFromOptional` -> `Effect.catchTag`: Map success to `Option.some` and recover `NoSuchElementError` with `Option.none`. Adapt arguments and imports to the v4 API.
+
+- `Effect.orDie` -> `Effect.orDie`: Converts typed errors to defects. If a defect is already present, every typed error is converted to a defect, preserving reason order and interruptions.
 
 - `Effect.orDieWith` -> `Effect.mapError + Effect.orDie`: Map the typed error to the desired defect, then convert failures to defects. Adapt arguments and imports to the v4 API.
 
-- `Effect.orElse` -> `Effect.catch`: Ignore the caught error and evaluate the fallback Effect. Adapt arguments and imports to the v4 API.
+- `Effect.orElse` -> `Effect.catch`: Use Effect.catch(self, () =\> that()). Causes containing defects skip the fallback and convert typed errors to defects; interruptions alongside typed errors do not block recovery.
 
 - `Effect.orElseFail` -> `Effect.mapError`: Replace every typed error with the lazily produced failure value. Adapt arguments and imports to the v4 API.
+
+- `Effect.orElseSucceed` -> `Effect.orElseSucceed`: Causes containing defects skip typed recovery and convert typed errors to defects, preserving reason order and interruptions. An interruption alongside a typed error does not block recovery.
 
 - `Effect.parallelErrors` -> `Effect.all`: Use `{ mode: "result", concurrency: "unbounded" }` and collect failures explicitly. Adapt arguments and imports to the v4 API.
 
@@ -10116,7 +10236,15 @@ Arbitrary.schema(schema)
 
 - `Effect.reduceWhile` -> `none`: Use an explicit `Effect.gen` loop that checks the accumulator before each step. No direct public replacement exists in v4; rewrite the call site around the stated v4 primitive.
 
+- `Effect.repeat` -> `Effect.repeat`: If the source or policy fails with a cause containing defects, typed errors are converted to defects. An interruption alongside a typed error does not block the typed failure path.
+
 - `Effect.repeatN` -> `Effect.repeat`: Pass `{ times: n }` to the consolidated repeat combinator. Adapt arguments and imports to the v4 API.
+
+- `Effect.repeatOrElse` -> `Effect.repeatOrElse`: The fallback receives Option\<Schedule.Metadata\<B, A\>\> instead of Option\<B\>. Read metadata.output for the previous schedule output and metadata.attempt for the attempt count. The error also includes schedule failures. Causes containing defects from either the source or policy skip the fallback and convert typed errors to defects. Interruptions alongside typed errors do not block the fallback.
+
+- `Effect.retry` -> `Effect.retry`: Retries typed source errors, including those alongside interruptions. A source cause containing a defect is not retried and propagates with typed errors converted to defects.
+
+- `Effect.retryOrElse` -> `Effect.retryOrElse`: A source cause containing a defect skips retries and the fallback, converting typed errors to defects. Interruptions alongside typed errors do not block retries. Policy failures propagate unchanged.
 
 - `Effect.runRequestBlock` -> `none`: The request-runtime block runner is internal; submit requests with `Effect.request`. No direct public replacement exists in v4; rewrite the call site around the stated v4 primitive.
 
@@ -10493,6 +10621,10 @@ Arbitrary.schema(schema)
 - `Exit.getOrElse` -> `Exit.match`: Use Exit.match(self, { onFailure: orElse, onSuccess: identity }); onFailure still receives the full Cause.
 
 - `Exit.isInterrupted` -> `Exit.hasInterrupts`: Direct semantic rename; true for a Failure whose Cause contains at least one Interrupt reason, false for Success.
+
+- `Exit.mapBoth` -> `Exit.mapBoth`: Maps every typed error in the cause, preserving defects, interruptions and reason order. Unlike typed recovery, mapping does not convert errors to defects.
+
+- `Exit.mapError` -> `Exit.mapError`: Maps every typed error in the cause, preserving defects, interruptions and reason order. Unlike typed recovery, mapping does not convert errors to defects.
 
 - `Exit.mapErrorCause` -> `Exit.match + Exit.failCause / Exit.succeed`: No direct v4 combinator. Use Exit.match(self, { onFailure: cause =\> Exit.failCause(f(cause)), onSuccess: Exit.succeed }); f now receives the flattened v4 Cause representation. Cause.map is only equivalent when f merely maps typed errors.
 
@@ -11007,6 +11139,8 @@ Depend on fast-check and import it directly. Pass the former character arbitrary
 ```ts
 FastCheck.string({ ...constraints, unit: arbitrary })
 ```
+
+- `FastCheck.stringify`: TODO: needs guidance
 
 - `FastCheck.subarray`: TODO: needs guidance
 
@@ -12521,13 +12655,13 @@ Effect.callback<number>((resume) => resume(Effect.succeed(1)))
 
 - `Micro.exitInterrupt` -> `Exit.interrupt`: MicroExit was replaced by the unified effect/Exit module in v4. Takes an optional fiber id.
 
-- `Micro.exitIsDie` -> `Exit.hasDies`: v4 exits carry a multi-reason Cause, so tag refinements become reason queries: Exit.hasDies checks the failure cause for Die reasons.
+- `Micro.exitIsDie` -> `Exit.hasDies`: v4 exits carry a multi-reason Cause, so tag refinements become reason queries: Exit.hasDies checks the failure cause for Die reasons. It returns boolean and does not narrow the Exit; check Exit.isFailure first to read the cause.
 
-- `Micro.exitIsFail` -> `Exit.hasFails`: v4 exits carry a multi-reason Cause, so tag refinements become reason queries: Exit.hasFails checks the failure cause for Fail reasons.
+- `Micro.exitIsFail` -> `Exit.hasFails`: v4 exits carry a multi-reason Cause, so tag refinements become reason queries: Exit.hasFails checks the failure cause for Fail reasons. It returns boolean and does not narrow the Exit; check Exit.isFailure first to read the cause.
 
 - `Micro.exitIsFailure` -> `Exit.isFailure`: Same refinement in the unified effect/Exit module.
 
-- `Micro.exitIsInterrupt` -> `Exit.hasInterrupts`: v4 exits carry a multi-reason Cause, so tag refinements become reason queries: Exit.hasInterrupts checks the failure cause for Interrupt reasons.
+- `Micro.exitIsInterrupt` -> `Exit.hasInterrupts`: v4 exits carry a multi-reason Cause, so tag refinements become reason queries: Exit.hasInterrupts checks the failure cause for Interrupt reasons. It returns boolean and does not narrow the Exit; check Exit.isFailure first to read the cause.
 
 - `Micro.exitIsSuccess` -> `Exit.isSuccess`: Same refinement in the unified effect/Exit module.
 
@@ -13869,6 +14003,18 @@ Schema.toFormatter(schema)
 
 - `STM.mergeAll` -> `Effect.reduce`: Reduce the input Effects sequentially and combine each produced value with the accumulator.
 
+#### `STM.negate`
+
+**Replacement:** `Effect.map`
+
+STM values are now ordinary Effects and there is no negate combinator; map the boolean with Boolean.not. Run the complete transaction with Effect.tx.
+
+**Example**
+
+```ts
+Effect.map(self, Boolean.not)
+```
+
 - `STM.none` -> `Effect.matchEffect + Option.match`: Recreate the Option success/error shuffle explicitly; no dedicated helper remains.
 
 - `STM.option` -> `Effect.option`: The combinator keeps its name, but STM values are now ordinary Effects. Run the complete transaction with Effect.tx. V4 Tx operations return ordinary Effects; compose multiple operations under one outer Effect.tx to keep them atomic.
@@ -14205,7 +14351,7 @@ Schema.toFormatter(schema)
 
 - `Schema.Annotations.GenericSchema` -> `none`: The v3 helper/protocol type was removed by the v4 Schema model rewrite. Use the public v4 constructor and infer its result types instead.
 
-- `Schema.Annotations.Schema` -> `none`: The v3 helper/protocol type was removed by the v4 Schema model rewrite. Use the public v4 constructor and infer its result types instead.
+- `Schema.Annotations.Schema` -> `none`: The v3 helper/protocol type was removed by the v4 Schema model rewrite. Schema.annotate accepts any string key, so the removed concurrency, batching, and parseOptions keys still type-check but are ignored at runtime. Pass concurrency and other parse options at runtime through SchemaAST.ParseOptions when creating or calling a parser; requests from sibling children share a batch only when that concurrency lets them be pending together, although requests started concurrently inside a transformation or by other fibers can still batch.
 
 - `Schema.Any` -> `Schema.Any`: The API remains public in v4, but its type/value declaration was consolidated; use the v4 declaration and update inferred types/signature as needed.
 
@@ -15101,9 +15247,9 @@ Schema.toFormatter(schema)
 
 - `SchemaAST.ArbitraryAnnotationId` -> `Schema.Annotations.ToArbitrary`: Symbol annotation IDs were removed. Declarations use the toCodecArbitrary annotation; filters use arbitraryConstraint.
 
-- `SchemaAST.BatchingAnnotation` -> `none`: Per-schema batching annotations were removed. They have no direct replacement. ParseOptions.concurrency controls product child parsing only; configure request batching separately.
+- `SchemaAST.BatchingAnnotation` -> `none`: Per-schema batching annotations were removed and have no direct replacement; Schema.annotate accepts the key but ignores it. A RequestResolver batches requests that are pending when its delay ends, so pass concurrency in runtime ParseOptions to let requests from sibling children share a batch. With sequential parsing, the default, children that each await one request send them in separate batches; requests started concurrently inside a transformation, or by other fibers using the same resolver, can still share a batch. Bound batch sizes with the resolver (for example RequestResolver.batchN), not with the parse option.
 
-- `SchemaAST.BatchingAnnotationId` -> `none`: Symbol annotation IDs were removed and batching is no longer a schema annotation.
+- `SchemaAST.BatchingAnnotationId` -> `none`: Symbol annotation IDs were removed and batching is no longer a schema annotation. Requests from sibling children share a batch only when ParseOptions.concurrency lets them be pending together; requests started concurrently inside a transformation or by other fibers can still batch.
 
 - `SchemaAST.BigIntKeyword` -> `SchemaAST.BigInt`: The v4 SchemaAST redesign renamed this primitive, collection, or guard while preserving its role.
 
@@ -15273,7 +15419,7 @@ Schema.toFormatter(schema)
 
 - `SchemaAST.getAnnotation` -> `SchemaAST.resolveAt`: Resolve string-keyed annotations with resolveAt, or use resolveIdentifier, resolveTitle, and resolveDescription.
 
-- `SchemaAST.getBatchingAnnotation` -> `none`: Batching annotations were removed. ParseOptions.concurrency controls product child parsing only; configure request batching separately.
+- `SchemaAST.getBatchingAnnotation` -> `none`: Batching annotations were removed. Requests from sibling children share a batch only when ParseOptions.concurrency lets them be pending together; with sequential parsing, children that each await one request send them in separate batches. Requests started concurrently inside a transformation or by other fibers using the same resolver can still batch.
 
 - `SchemaAST.getBrandAnnotation` -> `none`: Runtime brand inspection was removed because Schema.brand is type-only and does not store brand metadata in the AST.
 
@@ -15563,21 +15709,25 @@ Schema.toFormatter(schema)
 
 - `Sink.leftover` -> `Sink.succeed`: Removed as a standalone constructor; Sink.succeed now takes optional leftovers: Sink.succeed(void 0, leftovers) where leftovers is a NonEmptyReadonlyArray\<L\> instead of Chunk\<L\>.
 
+- `Sink.mapError` -> `Sink.mapError`: Maps every typed error in the cause, preserving defects, interruptions and reason order. Unlike typed recovery, mapping does not convert errors to defects.
+
 - `Sink.mapInputChunks` -> `Sink.mapInputArray`: Renamed; f maps NonEmptyReadonlyArray\<In0\> =\> NonEmptyReadonlyArray\<In\> (must stay non-empty) instead of Chunk =\> Chunk.
 
 - `Sink.mapInputChunksEffect` -> `Sink.mapInputArrayEffect`: Renamed; f maps NonEmptyReadonlyArray\<In0\> =\> Effect\<NonEmptyReadonlyArray\<In\>\> (must stay non-empty) instead of Chunk =\> Effect\<Chunk\>.
 
 - `Sink.mkString` -> `Sink.reduceArray`: Removed as a built-in; equivalent one-liner: Sink.reduceArray(() =\> "", (s, arr) =\> s + arr.join("")).
 
+- `Sink.orElse` -> `Sink.orElse`: Causes containing defects skip the fallback and convert typed errors to defects; interruptions alongside typed errors do not block typed recovery.
+
 - `Sink.race` -> `none`: Sink racing (race/raceBoth/raceWith) was removed from v4; broadcast the stream (Stream.broadcast) into two consumers and race the resulting run effects with Effect.race, or write a custom Channel.
 
-- `Sink.raceBoth` -> `none`: Removed with the race family; broadcast the stream and use Effect.raceBoth (or Effect.race) on the two Stream.run effects to learn which side won.
+- `Sink.raceBoth` -> `none`: Removed with the race family; broadcast the stream and tag each Stream.run effect's result before combining them with Effect.race to learn which side succeeded first.
 
-- `Sink.raceWith` -> `none`: Removed, along with the MergeDecision type it depended on; the closest is broadcasting the stream and combining the two run effects manually (Effect.raceWith on the run effects).
+- `Sink.raceWith` -> `none`: Removed, along with the MergeDecision type it depended on; broadcast the stream and combine the two run effects manually. Use Effect.race for the first success or Effect.raceFirst for the first completion; custom completion and interruption handling requires explicit fibers.
 
-- `Sink.refineOrDie` -> `Sink.catch`: Removed; rebuild with the typed-error handler: Sink.catch(self, (e) =\> Option.match(pf(e), { onSome: Effect.fail, onNone: () =\> Effect.die(e) })) — note Sink.catch replaces the result on recovery, so refined errors must be re-failed as shown.
+- `Sink.refineOrDie` -> `Sink.catch`: For recoverable typed errors, use Sink.catch(self, (e) =\> Option.match(pf(e), { onSome: Effect.fail, onNone: () =\> Effect.die(e) })). Causes containing defects skip pf and convert typed errors to defects; use Sink.catchCause for full-cause handling.
 
-- `Sink.refineOrDieWith` -> `Sink.catch`: Removed; same pattern as refineOrDie but die with the mapped defect: Sink.catch(self, (e) =\> Option.match(pf(e), { onSome: Effect.fail, onNone: () =\> Effect.die(f(e)) })).
+- `Sink.refineOrDieWith` -> `Sink.catch`: Use the refineOrDie recipe with Effect.die(f(e)) for unrefined errors. Causes containing defects skip pf and f and convert typed errors to defects; use Sink.catchCause for full-cause handling.
 
 - `Sink.splitWhere` -> `none`: Removed; it re-chunked input so the sink stopped before the first later element matching the predicate — closest v4 options are pre-splitting the stream (Stream.split / Stream.takeWhile) or a custom Sink.fromTransform that cuts pulled arrays at the predicate boundary and returns the rest as leftovers.
 
@@ -15711,7 +15861,7 @@ Schema.toFormatter(schema)
 
 - `Stream.async` -> `Stream.callback`: Stream.callback((queue) =\> Effect | void, { bufferSize?, strategy? }) replaces the Emit-based async; push with Queue.offer/offerAll, end with Queue.end, fail with Queue.fail.
 
-- `Stream.asyncEffect` -> `Stream.callback`: The register function of Stream.callback may return an Effect (run before the stream starts pulling), covering asyncEffect; signal end/failure through the provided Queue.
+- `Stream.asyncEffect` -> `Stream.callback`: The register function of Stream.callback may return an Effect, covering asyncEffect. Unlike v3, it is started before the stream pulls but not awaited: it runs synchronously until its first async boundary, so asynchronous setup may still be in progress when pulling begins. Signal end/failure through the provided Queue.
 
 - `Stream.asyncPush` -> `Stream.callback`: Stream.callback's register effect can use Scope for acquire/release of the external subscription, replacing asyncPush; the Emit ops helpers become plain Queue operations.
 
@@ -15741,15 +15891,17 @@ Stream.unwrap(Effect.map(Stream.peel(self, Sink.take(n)), ([head, rest]) => f(he
 
 - `Stream.bufferChunks` -> `Stream.bufferArray`: Chunk-\>Array rename; buffers whole arrays (chunks) up to capacity with the same strategy options.
 
-- `Stream.catchAll` -> `Stream.catch`: Renamed to Stream.catch (exported keyword-style); same (error) =\> Stream handler for all typed failures.
+- `Stream.catchAll` -> `Stream.catch`: Rename to Stream.catch with an (error) =\> Stream handler. Causes containing defects skip typed recovery and convert typed errors to defects; interruptions alongside typed errors do not block recovery. Use Stream.catchCause for full-cause handling.
 
 - `Stream.catchAllCause` -> `Stream.catchCause`: Renamed; handler receives the full Cause\<E\> and returns a recovery stream, identical semantics.
 
-- `Stream.catchSome` -> `Stream.catchFilter`: Option-returning partial handler replaced by the Filter API: Stream.catchFilter(filter, f, orElse?) recovers matched errors, unmatched failures pass through (Stream.catchIf for refinement/predicate matching).
+- `Stream.catchSome` -> `Stream.catchFilter`: Use Stream.catchFilter(filter, f, orElse?) instead of an Option-returning partial handler. Causes containing defects skip typed recovery and convert typed errors to defects; interruptions alongside typed errors do not block recovery.
 
 - `Stream.catchSomeCause` -> `Stream.catchCauseFilter`: Option-returning cause handler replaced by Stream.catchCauseFilter(filter, f, orElse?) using a Filter on the Cause (Stream.catchCauseIf for refinements).
 
-- `Stream.catchTags` -> `Stream.catchTags`: Only keys present in the tagged error union are accepted; remove handlers for tags the stream cannot fail with. Untagged errors remain in the error channel.
+- `Stream.catchTag` -> `Stream.catchTag`: Causes containing defects skip typed recovery and convert typed errors to defects, preserving reason order and interruptions. An interruption alongside a typed error does not block recovery.
+
+- `Stream.catchTags` -> `Stream.catchTags`: Only keys in the tagged error union are accepted; untagged errors remain in the error channel. Causes containing defects skip handlers and convert typed errors to defects; interruptions alongside typed errors do not block recovery.
 
 - `Stream.chunksWith` -> `Stream.flattenArray(f(Stream.chunks(self)))`: No dedicated combinator; expose chunk structure with Stream.chunks (Stream\<NonEmptyReadonlyArray\<A\>\>), transform, then re-flatten with Stream.flattenArray.
 
@@ -15777,7 +15929,7 @@ Stream.unwrap(Effect.map(Stream.peel(self, Sink.take(n)), ([head, rest]) => f(he
 
 - `Stream.distributedWithDynamic` -> `none`: Dynamic predicate-routed fan-out removed with distributedWith. Use Stream.broadcast/Stream.share for dynamic mirrors plus per-subscriber Stream.filter, or hand-roll routing into Queues via Stream.runForEach.
 
-- `Stream.either` -> `Stream.result`: Either is replaced by Result in v4: Stream.result yields Stream\<Result.Result\<A, E\>, never, R\> (element -\> Result.succeed, first error -\> Result.fail and the stream ends, as before).
+- `Stream.either` -> `Stream.result`: Either is replaced by Result in v4: Stream.result yields Stream\<Result.Result\<A, E\>, never, R\> (element -\> Result.succeed, first error -\> Result.fail and the stream ends, as before). Causes containing defects are not emitted as Result failures and propagate with typed errors converted to defects; interruptions alongside typed errors do not block typed recovery.
 
 - `Stream.ensuringWith` -> `Stream.onExit`: Renamed; Stream.onExit runs the finalizer with the Exit\<unknown, E\> of the stream, identical shape.
 
@@ -15827,7 +15979,7 @@ Stream.unwrap(Effect.map(Stream.peel(self, Sink.take(n)), ([head, rest]) => f(he
 
 - `Stream.let` -> `Stream.let`: Retained in v4 and aligned with Effect.let: the field name may re-bind an existing key (the computed value replaces it) and the record type is Simplify\<Omit\<A, N\> & Record\<N, B\>\>.
 
-- `Stream.mapBoth` -> `Stream.mapBoth`: Rename the options onSuccess to onElement and onFailure to onError. The callbacks still transform emitted elements and typed errors respectively.
+- `Stream.mapBoth` -> `Stream.mapBoth`: Rename the options onSuccess to onElement and onFailure to onError. The callbacks still transform emitted elements and typed errors respectively. Maps every typed error in the cause, preserving defects, interruptions and reason order. Unlike typed recovery, mapping does not convert errors to defects.
 
 - `Stream.mapChunks` -> `Stream.mapArray`: Chunk-\>Array rename; transforms each emitted chunk as a NonEmptyReadonlyArray.
 
@@ -15840,6 +15992,8 @@ Stream.unwrap(Effect.map(Stream.peel(self, Sink.take(n)), ([head, rest]) => f(he
 - `Stream.mapConcatChunkEffect` -> `Stream.flattenArray(Stream.mapEffect(self, f))`: Removed; effectfully map each element to a ReadonlyArray and flatten with Stream.flattenArray.
 
 - `Stream.mapConcatEffect` -> `Stream.flattenIterable(Stream.mapEffect(self, f))`: Removed; effectfully map each element to an Iterable and flatten with Stream.flattenIterable.
+
+- `Stream.mapError` -> `Stream.mapError`: Maps every typed error in the cause, preserving defects, interruptions and reason order. Unlike typed recovery, mapping does not convert errors to defects.
 
 - `Stream.mapErrorCause` -> `Stream.catchCause((cause) => Stream.failCause(f(cause)))`: Removed; transform the full Cause by catching it and re-failing with the mapped cause.
 
@@ -15863,17 +16017,21 @@ Stream.mergeAll(Object.entries(streams).map(([_tag, s]) => Stream.map(s, (value)
 
 - `Stream.onDone` -> `Stream.onEnd`: Renamed; v4 onEnd takes an Effect value (not a () =\> Effect thunk) run when the stream ends successfully, and its error type may add to the stream's.
 
+- `Stream.orDie` -> `Stream.orDie`: Converts typed errors to defects. If a defect is already present, every typed error is converted to a defect, preserving reason order and interruptions.
+
 - `Stream.orDieWith` -> `Stream.orDie`: orDieWith removed; transform the error first, then convert failures to defects: `self.pipe(Stream.mapError(f), Stream.orDie)`.
 
-- `Stream.orElse` -> `Stream.catch`: v3 catchAll was renamed to Stream.catch in v4; orElse ignored the error, so write `Stream.catch(self, () => that())`.
+- `Stream.orElse` -> `Stream.catch`: Use Stream.catch(self, () =\> that()). Causes containing defects skip the fallback and convert typed errors to defects; interruptions alongside typed errors do not block recovery.
 
-- `Stream.orElseEither` -> `Stream.catch`: Removed; Either is replaced by Result in v4. Emulate: `Stream.map(self, Result.succeed).pipe(Stream.catch(() => Stream.map(that(), Result.fail)))` (same encoding v4 Stream.mergeResult uses).
+- `Stream.orElseEither` -> `Stream.catch`: Replace Either with Result: Stream.map(self, Result.succeed).pipe(Stream.catch(() =\> Stream.map(that(), Result.fail))). Causes containing defects skip the fallback and convert typed errors to defects; interruptions alongside typed errors do not block recovery.
 
-- `Stream.orElseFail` -> `Stream.mapError`: Removed; it only replaced the failure value: `Stream.mapError(self, () => error())` or `Stream.catch(self, () => Stream.fail(error()))`.
+- `Stream.orElseFail` -> `Stream.mapError`: Use Stream.mapError(self, () =\> error()) to replace each typed error while preserving existing defects and interruptions. Stream.catch is not equivalent for causes containing defects because it skips typed recovery.
 
 - `Stream.orElseIfEmptyChunk` -> `Stream.orElseIfEmpty`: Folded into Stream.orElseIfEmpty, which now takes a lazy fallback Stream: `Stream.orElseIfEmpty(self, () => Stream.fromArray(array))`; Chunk is replaced by plain arrays.
 
 - `Stream.orElseIfEmptyStream` -> `Stream.orElseIfEmpty`: Direct rename: v4 Stream.orElseIfEmpty takes a LazyArg\<Stream\> fallback, identical semantics.
+
+- `Stream.orElseSucceed` -> `Stream.orElseSucceed`: Causes containing defects skip typed recovery and convert typed errors to defects, preserving reason order and interruptions. An interruption alongside a typed error does not block recovery.
 
 - `Stream.paginateChunk` -> `Stream.paginate`: v4 Stream.paginate is effectful and array-based: `paginate(s, (s) => Effect<readonly [ReadonlyArray<A>, Option<S>]>)`; wrap the pure step in Effect.succeed and use an array instead of a Chunk.
 
@@ -15893,9 +16051,9 @@ Stream.mergeAll(Object.entries(streams).map(([_tag, s]) => Stream.map(s, (value)
 
 - `Stream.provideSomeLayer` -> `Stream.provide`: v4 Stream.provide accepts a Layer (or Context) and excludes only the provided services from R — same partial-provision semantics.
 
-- `Stream.refineOrDie` -> `Stream.catch`: Removed; emulate with `Stream.catch(self, (e) => { const r = pf(e); return Option.isSome(r) ? Stream.fail(r.value) : Stream.die(e) })` — refail refined errors, die on the rest.
+- `Stream.refineOrDie` -> `Stream.catch`: For recoverable typed errors, use Stream.catch(self, (e) =\> { const r = pf(e); return Option.isSome(r) ? Stream.fail(r.value) : Stream.die(e) }). Causes containing defects skip pf and convert typed errors to defects; use Stream.catchCause for full-cause handling.
 
-- `Stream.refineOrDieWith` -> `Stream.catch`: Removed; same as refineOrDie but die with the mapped defect: `Stream.die(f(e))` for unrefined errors.
+- `Stream.refineOrDieWith` -> `Stream.catch`: Use the refineOrDie recipe with Stream.die(f(e)) for unrefined errors. Causes containing defects skip pf and f and convert typed errors to defects; use Stream.catchCause for full-cause handling.
 
 - `Stream.repeatEffect` -> `Stream.fromEffectRepeat`: Renamed; repeats the effect forever emitting each result.
 
@@ -15914,6 +16072,8 @@ Stream.mergeAll(Object.entries(streams).map(([_tag, s]) => Stream.map(s, (value)
 - `Stream.repeatValue` -> `Stream.fromEffectRepeat`: Removed; use `Stream.fromEffectRepeat(Effect.succeed(value))` or `Stream.forever(Stream.succeed(value))`.
 
 - `Stream.repeatWith` -> `none`: Removed; v4 Stream.repeat(schedule) covers the repetition but drops the schedule outputs and the onElement/onSchedule unification. Hand-roll if schedule outputs must appear in the stream.
+
+- `Stream.retry` -> `Stream.retry`: Retries typed source errors, including those alongside interruptions. A source cause containing a defect is not retried and propagates with typed errors converted to defects.
 
 - `Stream.runFoldScoped` -> `Stream.runFold`: Scoped run variants are gone; v4 run functions manage the stream's scope internally and the initial value is now a LazyArg: `Stream.runFold(self, () => s, f)`. For enclosing-scope control, pull manually via `Stream.toPull` (Effect\<Pull, never, R | Scope\>).
 
