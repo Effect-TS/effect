@@ -73,7 +73,7 @@ it("should retain application requirements when memory handlers receive the task
   const execution = McpTasks.layerMemory(reports, {
     report: Effect.fnUntraced(function*() {
       const task = yield* McpTasks.TaskContext
-      yield* task.setStatusMessage("approval", "Waiting for approval")
+      yield* task.setStatusMessage("Waiting for approval")
       yield* task.requestInput({
         key: "approval",
         request: { method: "elicitation/create", params: {} },

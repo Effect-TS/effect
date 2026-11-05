@@ -159,7 +159,7 @@ describe("SQL reconstruction", () => {
       const handler = Effect.gen(function*() {
         const task = yield* McpTasks.TaskContext
         yield* Activity.make({ name: "prepare", execute: Effect.sync(() => checkpoints++) })
-        yield* task.setStatusMessage("choose-roots", "Choose workspace roots")
+        yield* task.setStatusMessage("Choose workspace roots")
         const roots = yield* task.requestInput({
           key: "roots",
           request: { method: "roots/list" },
