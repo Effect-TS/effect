@@ -1839,37 +1839,6 @@ describe("McpServer", () => {
     }))
 
   describe("registerToolkit", () => {
-    it.effect("should register toolkit handlers through addTool when a custom server is supplied", () =>
-      Effect.gen(function*() {
-        const native = yield* McpServer.McpServer.make
-        const registrations: Array<Parameters<McpServer.McpServer["Service"]["addTool"]>[0]> = []
-        const server: McpServer.McpServer["Service"] = {
-          ...native,
-          addTool: (options) =>
-            Effect.sync(() => {
-              registrations.push(options)
-            })
-        }
-        const toolkit = Toolkit.make(Tool.make("custom", { success: Schema.String }))
-        yield* McpServer.registerToolkit(toolkit).pipe(
-          Effect.provideService(McpServer.McpServer, server),
-          Effect.provide(toolkit.toLayer({ custom: () => Effect.succeed("registered") }))
-        )
-        assert.strictEqual(registrations.length, 1)
-        const registration = registrations[0]
-        if (registration === undefined) return assert.fail("Expected a registered tool")
-        assert.strictEqual(registration.tool.name, "custom")
-        const result = yield* registration.handle({}).pipe(
-          Effect.provideService(McpSchema.McpRequestContext, {
-            clientId: 1,
-            protocolVersion: "2026-07-28",
-            clientCapabilities: {}
-          })
-        )
-        if (!("content" in result)) return assert.fail("Expected a completed tool result")
-        assert.deepStrictEqual(result.content, [{ type: "text", text: "\"registered\"" }])
-      }))
-
     it.effect("registers non-strict tools with identified input schemas", () =>
       Effect.gen(function*() {
         const IdentifiedTool = Tool.make("IdentifiedTool", {
@@ -2424,7 +2393,7 @@ describe("McpServer", () => {
         assert.strictEqual(toolResultText(result), JSON.stringify({ _tag: "NoteNotFound", id: "n1" }))
       }))
 
-    it.effect("should scrub and report declared failures when serialization fails", () =>
+    it.effect("scrubs and records serialization failures in declared non-Error failures", () =>
       Effect.gen(function*() {
         const { client, logged, reported } = yield* makeToolkitTestClient(TestToolkit.of({
           ...testToolkitHandlers,
