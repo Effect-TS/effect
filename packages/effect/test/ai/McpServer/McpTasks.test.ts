@@ -15,6 +15,7 @@ import * as Layer from "effect/Layer"
 import * as Schema from "effect/Schema"
 import * as Scope from "effect/Scope"
 import * as Activity from "effect/workflow/Activity"
+import * as DurableClock from "effect/workflow/DurableClock"
 import * as DurableDeferred from "effect/workflow/DurableDeferred"
 import * as Workflow from "effect/workflow/Workflow"
 import * as WorkflowEngine from "effect/workflow/WorkflowEngine"
@@ -349,20 +350,26 @@ describe("McpTasks", () => {
             name: "choice",
             success: Schema.String,
             error: Schema.Never,
-            effects: [setStatus("Choosing").pipe(Effect.andThen(ask("left"))), ask("right")]
+            effects: [
+              setStatus("Choosing").pipe(Effect.andThen(setStatus("Picking")), Effect.andThen(ask("left"))),
+              ask("right")
+            ]
           })
-          // Later replays skip the "Choosing" arm, so the status must come from the recorded log.
+          // Later replays skip the winning arm, so its status must come from the recorded log.
           const followUp = yield* DurableDeferred.raceAll({
             name: "follow-up",
             success: Schema.String,
             error: Schema.Never,
             effects: [ask("confirm").pipe(Effect.andThen(ask("details"))), ask("skip")]
           })
-          yield* setStatus("Reviewing")
+          // The first setter after the races reuses a message the skipped arm set before "Picking".
+          yield* setStatus("Choosing")
           const review = yield* ask("review")
+          yield* setStatus("Reviewing")
+          const approve = yield* ask("approve")
           // Reusing an earlier message is a new status change.
           yield* setStatus("Choosing")
-          return [winner, followUp, review, yield* ask("final")].join(":")
+          return [winner, followUp, review, approve, yield* ask("final")].join(":")
         })
       }, { name: "race" })))
       const created = yield* create(harness)
@@ -396,19 +403,111 @@ describe("McpTasks", () => {
       assertMcpTaskAcknowledgement(yield* answer({ left: "left" }))
       yield* waitFor(["confirm", "skip"])
       assertMcpTaskAcknowledgement(yield* answer({ right: "late" }))
-      assert.strictEqual((yield* waitFor(["confirm", "skip"])).statusMessage, "Choosing")
+      assert.strictEqual((yield* waitFor(["confirm", "skip"])).statusMessage, "Picking")
       assertMcpTaskAcknowledgement(yield* answer({ confirm: "yes" }))
       // The pending "skip" branch replays its recorded change before "details" is appended.
-      assert.strictEqual((yield* waitFor(["details", "skip"])).statusMessage, "Choosing", "after a replayed change")
+      assert.strictEqual((yield* waitFor(["details", "skip"])).statusMessage, "Picking", "after a replayed change")
       assertMcpTaskAcknowledgement(yield* answer({ details: "details" }))
-      assert.strictEqual((yield* waitFor(["review"])).statusMessage, "Reviewing")
+      assert.strictEqual((yield* waitFor(["review"])).statusMessage, "Choosing", "after skipped setters")
       assertMcpTaskAcknowledgement(yield* answer({ review: "review" }))
+      assert.strictEqual((yield* waitFor(["approve"])).statusMessage, "Reviewing")
+      assertMcpTaskAcknowledgement(yield* answer({ approve: "approve" }))
       assert.strictEqual((yield* waitFor(["final"])).statusMessage, "Choosing", "after reusing a skipped message")
       assertMcpTaskAcknowledgement(yield* answer({ final: "final" }))
       const task = yield* terminal(harness, created.taskId)
       assert.strictEqual(task.status, "completed")
-      if (task.status === "completed") assert.strictEqual(task.result.structuredContent, "left:details:review:final")
+      if (task.status === "completed") {
+        assert.strictEqual(task.result.structuredContent, "left:details:review:approve:final")
+      }
       assert.strictEqual(task.statusMessage, "Choosing")
+    }))
+
+  it.effect("should keep the latest status when replay reorders concurrent setters", () =>
+    Effect.gen(function*() {
+      const setStatus = (message: string) => McpTasks.TaskContext.use((task) => task.setStatusMessage(message))
+      const harness = yield* makeHttpHarness(withWorkflow(McpTasks.layerWorkflow(Fallible, {
+        report: Effect.fnUntraced(function*() {
+          // The first run finishes "a" after "b"; replay reuses both Activity results and finishes "a" first.
+          const step = (name: string, yields: number) =>
+            Activity.make({
+              name,
+              execute: Effect.gen(function*() {
+                for (let index = 0; index < yields; index++) yield* Effect.yieldNow
+              })
+            }).pipe(Effect.andThen(setStatus(name)))
+          yield* Effect.all([step("a", 20), step("b", 0)], { concurrency: "unbounded" })
+          yield* DurableDeferred.raceAll({
+            name: "latest",
+            success: Schema.Void,
+            error: Schema.Never,
+            effects: [setStatus("Latest"), Effect.never]
+          })
+          return yield* McpTasks.TaskContext.use((task) =>
+            task.requestInput({ key: "gate", request: { method: "roots/list" }, response: Schema.Unknown })
+          ).pipe(Effect.orDie, Effect.as("done"))
+        })
+      }, { name: "concurrent-status" })))
+      const created = yield* create(harness)
+      const waiting = yield* waitForInput(harness, created.taskId)
+      assert.strictEqual(waiting.statusMessage, "Latest")
+      assertMcpTaskAcknowledgement(
+        yield* post(
+          harness,
+          "tasks/update",
+          {
+            taskId: created.taskId,
+            inputResponses: { gate: { roots: [] } }
+          },
+          undefined,
+          undefined,
+          rootsCapabilities
+        )
+      )
+      const completed = yield* terminal(harness, created.taskId)
+      assert.strictEqual(completed.status, "completed")
+      assert.strictEqual(completed.statusMessage, "Latest")
+    }))
+
+  it.effect("should withdraw a lost race input when the task next waits on a durable clock", () =>
+    Effect.gen(function*() {
+      const ask = (key: string) =>
+        McpTasks.TaskContext.use((task) =>
+          task.requestInput({ key, request: { method: "roots/list" }, response: Schema.Unknown })
+        ).pipe(Effect.orDie, Effect.as(key))
+      const harness = yield* makeHttpHarness(withWorkflow(McpTasks.layerWorkflow(Fallible, {
+        report: Effect.fnUntraced(function*() {
+          const winner = yield* DurableDeferred.raceAll({
+            name: "choice",
+            success: Schema.String,
+            error: Schema.Never,
+            effects: [ask("left"), ask("right")]
+          })
+          // Replay resolves the race without starting the losing branch, then suspends on the clock.
+          yield* DurableClock.sleep({ name: "pause", duration: "1 hour" })
+          return winner
+        })
+      }, { name: "race-then-clock" })))
+      const created = yield* create(harness)
+      yield* waitForInput(harness, created.taskId)
+      assertMcpTaskAcknowledgement(
+        yield* post(
+          harness,
+          "tasks/update",
+          {
+            taskId: created.taskId,
+            inputResponses: { left: { roots: [] } }
+          },
+          undefined,
+          undefined,
+          rootsCapabilities
+        )
+      )
+      let task = yield* get(harness, created.taskId, rootsCapabilities)
+      for (let attempt = 0; task.status !== "working" && attempt < 100; attempt++) {
+        yield* Effect.yieldNow
+        task = yield* get(harness, created.taskId, rootsCapabilities)
+      }
+      assert.strictEqual(task.status, "working", JSON.stringify(task))
     }))
 
   it.effect("should reject task requests from another owner, with an invalid handle, or with a mismatched Mcp-Name", () =>
