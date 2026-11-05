@@ -1,9 +1,9 @@
 /**
- * Decides which `/`-separated, root-relative paths to exclude with an ordered
+ * Decides which `/`-separated, root-relative paths to keep with an ordered
  * list of exclusion and inclusion rules, without accessing the file system.
- * Pass a `PathFilter`, or just its rules, as the `filter` option of
- * `FileSystem.glob` to apply it to a walk, or build one from ignore files with
- * `IgnoreFile`.
+ * Pass a `PathFilter`, a pattern or a list of patterns and rules to
+ * `FileSystem.glob` to find the paths it keeps, or build one from ignore files
+ * with `IgnoreFile`.
  *
  * **Details**
  *
@@ -21,6 +21,11 @@
  *   so far, such as the second `d` in `d`, `!d/keep`, `d`, does not.
  * - `self`: the paths inside are left to their own rules, as with Git `!`
  *   inclusions.
+ *
+ * A path no rule decides gets the filter's `default`. Filters built from
+ * rules or ignore files keep such paths; {@link select} builds a selection,
+ * which drops them. {@link restrict} combines a selection with ignore rules,
+ * so that a path must pass both.
  *
  * **Gotchas**
  *
@@ -45,12 +50,16 @@ const TypeId = Engine.TypeId
  *
  * **Details**
  *
- * Later rules take precedence, subject to ancestor barriers. Test paths with
- * {@link match} or {@link excludes}, or pass the filter as the `filter` option
- * of `FileSystem.glob`.
+ * Later rules take precedence, subject to ancestor barriers, and `default`
+ * decides the paths no rule matches. `restrictions` holds the further
+ * filters added by {@link restrict}, which a path must also pass. Test paths
+ * with {@link match} or {@link excludes}, or pass the filter to
+ * `FileSystem.glob`.
  *
  * @see {@link make} for building a filter from rules
- * @see {@link concat} for combining filters
+ * @see {@link select} for building a selection
+ * @see {@link concat} for combining rules
+ * @see {@link restrict} for intersecting filters
  *
  * @stability unstable
  * @category models
@@ -59,6 +68,10 @@ const TypeId = Engine.TypeId
 export interface PathFilter extends Pipeable, Inspectable {
   readonly [TypeId]: typeof TypeId
   readonly rules: ReadonlyArray<Rule>
+  /** The result for a path no rule decides. */
+  readonly default: "include" | "exclude"
+  /** Further filters a path must also pass, added by {@link restrict}. */
+  readonly restrictions: ReadonlyArray<PathFilter>
 }
 
 /**
@@ -159,10 +172,12 @@ export type Match =
 
 const PathFilterProto = {
   [TypeId]: TypeId,
-  toJSON(this: PathFilter) {
+  toJSON(this: PathFilter): unknown {
     return {
       _id: "PathFilter",
-      rules: this.rules.map(({ _tag, directoryOnly, scope, subtree }) => ({ _tag, directoryOnly, scope, subtree }))
+      rules: this.rules.map(({ _tag, directoryOnly, scope, subtree }) => ({ _tag, directoryOnly, scope, subtree })),
+      default: this.default,
+      restrictions: this.restrictions.map((restriction) => restriction.toJSON())
     }
   },
   toString(this: PathFilter) {
@@ -186,17 +201,28 @@ const PathFilterProto = {
 export const isPathFilter = (u: unknown): u is PathFilter => Engine.isFilter(u)
 
 /**
- * Values accepted wherever a filter is expected: a filter or its rules.
+ * Values accepted wherever a filter is expected: a filter, a pattern, or a
+ * list of patterns and rules.
+ *
+ * **Details**
+ *
+ * A string is a pattern that includes paths, or excludes them after a leading
+ * `!`. As soon as an input holds one including string it is a selection,
+ * which drops the paths no rule decides; otherwise it keeps them.
  *
  * @see {@link fromInput} for converting inputs
  * @stability unstable
  * @category models
  * @since 4.0.0
  */
-export type Input = PathFilter | Iterable<Rule>
+export type Input = PathFilter | string | Iterable<string | Rule>
 
 /**
  * Creates a filter from rules, with later rules taking precedence.
+ *
+ * **Details**
+ *
+ * Paths no rule decides are kept.
  *
  * **Example** (Including a file inside an excluded directory)
  *
@@ -216,14 +242,22 @@ export type Input = PathFilter | Iterable<Rule>
  * @category constructors
  * @since 4.0.0
  */
-export const make = (rules: Iterable<Rule>): PathFilter => {
+export const make = (rules: Iterable<Rule>): PathFilter => makeFilter(Array.from(rules), "include", [])
+
+const makeFilter = (
+  rules: ReadonlyArray<Rule>,
+  defaultResult: "include" | "exclude",
+  restrictions: ReadonlyArray<PathFilter>
+): PathFilter => {
   const self = Object.create(PathFilterProto)
-  self.rules = Array.from(rules)
+  self.rules = rules
+  self.default = defaultResult
+  self.restrictions = restrictions
   return self
 }
 
 /**
- * A filter without rules, which excludes nothing.
+ * A filter without rules, which keeps every path.
  *
  * @stability unstable
  * @category constructors
@@ -232,35 +266,94 @@ export const make = (rules: Iterable<Rule>): PathFilter => {
 export const empty: PathFilter = make([])
 
 /**
- * Converts a filter or its rules into a `PathFilter`.
+ * Converts an {@link Input} into a `PathFilter`.
  *
  * **Details**
  *
- * Filters are returned unchanged and rules are passed to {@link make}.
+ * Filters are returned unchanged, keeping their default. Strings become
+ * {@link include} rules, whose wildcards skip names that start with `.`, or
+ * {@link exclude} rules after a leading `!`, which match those names; write
+ * `\!` for a literal `!`. An input with at least one including string drops
+ * the paths no rule decides, as with {@link select}. Any other input keeps
+ * them, as with {@link make}.
  *
- * **Example** (Converting rules into a filter)
+ * **Gotchas**
+ *
+ * An invalid pattern is a defect, as in {@link exclude}.
+ *
+ * **Example** (Converting patterns and rules)
  *
  * ```ts import.meta.vitest
  * import { PathFilter } from "effect"
  *
- * const filter = PathFilter.fromInput([PathFilter.exclude("dist")])
+ * const sources = PathFilter.fromInput(["src/**\/*.ts", "!**\/*.test.ts"])
+ * const ignored = PathFilter.fromInput([PathFilter.exclude("dist")])
  *
- * PathFilter.excludes(filter, "dist/index.js") // => true
- * PathFilter.fromInput(filter) === filter // => true
+ * PathFilter.excludes(sources, "README.md") // => true
+ * PathFilter.excludes(ignored, "README.md") // => false
+ * PathFilter.fromInput(ignored) === ignored // => true
  * ```
  *
  * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
-export const fromInput = (input: Input): PathFilter => isPathFilter(input) ? input : make(input)
+export const fromInput = (input: Input): PathFilter => {
+  if (isPathFilter(input)) {
+    return input
+  }
+  const items = typeof input === "string" ? [input] : Array.from(input)
+  const selects = items.some((item) => typeof item === "string" && !item.startsWith("!"))
+  return makeFilter(toRules(items, false), selects ? "exclude" : "include", [])
+}
+
+/**
+ * Creates a filter that keeps only the paths its rules include.
+ *
+ * **Details**
+ *
+ * A path no rule decides is excluded. Strings are patterns that include
+ * paths, or exclude them after a leading `!`; write `\!` for a literal `!`.
+ * `dot` says whether the wildcards of include strings match names that start
+ * with `.`, and defaults to `false`. `!` strings and rules match those names
+ * unless built with `dot: false`.
+ *
+ * **Example** (Selecting source files)
+ *
+ * ```ts import.meta.vitest
+ * import { PathFilter } from "effect"
+ *
+ * const sources = PathFilter.select(["src/**\/*.ts", "!**\/*.test.ts"])
+ *
+ * PathFilter.excludes(sources, "src/index.ts") // => false
+ * PathFilter.excludes(sources, "src/index.test.ts") // => true
+ * PathFilter.excludes(sources, "README.md") // => true
+ * PathFilter.excludes(sources, "src/.cache/x.ts") // => true
+ * ```
+ *
+ * @see {@link restrict} for removing ignored paths from a selection
+ *
+ * @stability unstable
+ * @category constructors
+ * @since 4.0.0
+ */
+export const select = (rules: string | Iterable<string | Rule>, options?: {
+  /** Whether the wildcards of include strings match names that start with `.`. */
+  readonly dot?: boolean | undefined
+}): PathFilter =>
+  makeFilter(toRules(typeof rules === "string" ? [rules] : Array.from(rules), options?.dot ?? false), "exclude", [])
+
+const toRules = (items: ReadonlyArray<string | Rule>, dot: boolean): Array<Rule> =>
+  items.map((item) =>
+    typeof item !== "string" ? item : item.startsWith("!") ? exclude(item.slice(1)) : include(item, { dot })
+  )
 
 const toMatcher = (pattern: string | PathMatcher, dot: boolean | undefined): PathMatcher => {
   if (typeof pattern !== "string") {
     return pattern
   }
-  if (!Glob.isRelativePattern(pattern, true)) {
-    throw new Error(`PathFilter patterns must be relative and must not contain ".." segments: ${pattern}`)
+  if (!Glob.isRelativePattern(pattern, false)) {
+    throw new Error(`PathFilter patterns must be relative, without ".." segments or escaped "/": ${pattern}`)
   }
   return Glob.pathMatcher(Glob.compile([pattern], dot ?? true))
 }
@@ -282,8 +375,9 @@ const toMatcher = (pattern: string | PathMatcher, dot: boolean | undefined): Pat
  *
  * **Gotchas**
  *
- * An absolute pattern, a pattern with a `..` segment, and a scope with an
- * empty, `.` or `..` segment are defects.
+ * An absolute pattern, a pattern with a `..` segment or an escaped `/`, and a
+ * scope with an empty, `.` or `..` segment are defects. A pattern naming only
+ * the root, such as `.`, never matches.
  *
  * **Example** (Choosing what an excluded directory means for its contents)
  *
@@ -305,7 +399,28 @@ const toMatcher = (pattern: string | PathMatcher, dot: boolean | undefined): Pat
  * @category constructors
  * @since 4.0.0
  */
-export const exclude = (pattern: string | PathMatcher, options?: {
+export const exclude: {
+  (pattern: PathMatcher, options?: {
+    /** Whether the rule only matches directories. */
+    readonly directoryOnly?: boolean | undefined
+    /** The directory the rule applies below, relative to the root. */
+    readonly scope?: string | undefined
+    /** What matching a directory means for the paths inside it. */
+    readonly subtree?: "barrier" | "inherit" | "self" | undefined
+    /** Whether wildcards in a string pattern match names that start with `.`. */
+    readonly dot?: boolean | undefined
+  }): ExcludeRule
+  (pattern: string | PathMatcher, options?: {
+    /** Whether the rule only matches directories. */
+    readonly directoryOnly?: boolean | undefined
+    /** The directory the rule applies below, relative to the root. */
+    readonly scope?: string | undefined
+    /** What matching a directory means for the paths inside it. */
+    readonly subtree?: "barrier" | "inherit" | "self" | undefined
+    /** Whether wildcards in a string pattern match names that start with `.`. */
+    readonly dot?: boolean | undefined
+  }): ExcludeRule
+} = (pattern: string | PathMatcher, options?: {
   /** Whether the rule only matches directories. */
   readonly directoryOnly?: boolean | undefined
   /** The directory the rule applies below, relative to the root. */
@@ -337,8 +452,8 @@ export const exclude = (pattern: string | PathMatcher, options?: {
  * **Gotchas**
  *
  * An inclusion cannot override a `barrier` exclusion of an ancestor
- * directory. An absolute pattern, a pattern with a `..` segment, and a scope
- * with an empty, `.` or `..` segment are defects.
+ * directory. An absolute pattern, a pattern with a `..` segment or an escaped
+ * `/`, and a scope with an empty, `.` or `..` segment are defects.
  *
  * @see {@link exclude} for the opposite rule
  *
@@ -346,7 +461,28 @@ export const exclude = (pattern: string | PathMatcher, options?: {
  * @category constructors
  * @since 4.0.0
  */
-export const include = (pattern: string | PathMatcher, options?: {
+export const include: {
+  (pattern: PathMatcher, options?: {
+    /** Whether the rule only matches directories. */
+    readonly directoryOnly?: boolean | undefined
+    /** The directory the rule applies below, relative to the root. */
+    readonly scope?: string | undefined
+    /** What matching a directory means for the paths inside it. */
+    readonly subtree?: "inherit" | "self" | undefined
+    /** Whether wildcards in a string pattern match names that start with `.`. */
+    readonly dot?: boolean | undefined
+  }): IncludeRule
+  (pattern: string | PathMatcher, options?: {
+    /** Whether the rule only matches directories. */
+    readonly directoryOnly?: boolean | undefined
+    /** The directory the rule applies below, relative to the root. */
+    readonly scope?: string | undefined
+    /** What matching a directory means for the paths inside it. */
+    readonly subtree?: "inherit" | "self" | undefined
+    /** Whether wildcards in a string pattern match names that start with `.`. */
+    readonly dot?: boolean | undefined
+  }): IncludeRule
+} = (pattern: string | PathMatcher, options?: {
   /** Whether the rule only matches directories. */
   readonly directoryOnly?: boolean | undefined
   /** The directory the rule applies below, relative to the root. */
@@ -364,11 +500,20 @@ export const include = (pattern: string | PathMatcher, options?: {
 })
 
 /**
- * Combines two filters, with the rules of `that` taking precedence.
+ * Combines the rules of two filters, with the rules of `that` taking
+ * precedence.
  *
  * **Details**
  *
- * Either side may also be a list of rules, as accepted by {@link fromInput}.
+ * Either side may be any {@link Input}. Both must have the same `default`,
+ * which the result keeps, so two selections combine into one selection.
+ *
+ * **Gotchas**
+ *
+ * Combining filters with different defaults, or a filter that has
+ * restrictions, is a defect. Use {@link restrict} to remove ignored paths from
+ * a selection; in a single list, an ignore file's `!` lines would add paths to
+ * it.
  *
  * **Example** (Layering a nested filter)
  *
@@ -390,7 +535,57 @@ export const include = (pattern: string | PathMatcher, options?: {
 export const concat: {
   (that: Input): (self: Input) => PathFilter
   (self: Input, that: Input): PathFilter
-} = dual(2, (self: Input, that: Input): PathFilter => make([...fromInput(self).rules, ...fromInput(that).rules]))
+} = dual(2, (self: Input, that: Input): PathFilter => {
+  const left = fromInput(self)
+  const right = fromInput(that)
+  if (left.restrictions.length > 0 || right.restrictions.length > 0) {
+    throw new Error("PathFilter.concat cannot combine restricted filters; restrict the combined rules instead")
+  }
+  if (left.default !== right.default) {
+    throw new Error(
+      `PathFilter.concat requires filters with the same default, not ${left.default} and ${right.default}`
+    )
+  }
+  return makeFilter([...left.rules, ...right.rules], left.default, [])
+})
+
+/**
+ * Keeps the paths that `self` keeps and `by` does not exclude.
+ *
+ * **Details**
+ *
+ * Either side may be any {@link Input}. The two are evaluated separately, so
+ * an inclusion in `by`, such as a `!keep.log` line in an ignore file, cannot
+ * add a path `self` drops. Restrictions nest: every one of them must keep a
+ * path. The curried form is `restrict(by)(self)`.
+ *
+ * **Example** (Selecting files that are not ignored)
+ *
+ * ```ts import.meta.vitest
+ * import { IgnoreFile, PathFilter } from "effect"
+ *
+ * const ignored = IgnoreFile.gitignore("*.log\n!keep.log\n")
+ * const filter = PathFilter.restrict("**\/*.ts", ignored)
+ *
+ * PathFilter.excludes(filter, "src/index.ts") // => false
+ * PathFilter.excludes(filter, "keep.log") // => true
+ * ```
+ *
+ * @see {@link select} for building a selection
+ *
+ * @stability unstable
+ * @category combining
+ * @since 4.0.0
+ */
+export const restrict: {
+  (by: Input): (self: Input) => PathFilter
+  (self: Input, by: Input): PathFilter
+} = dual(2, (self: Input, by: Input): PathFilter => {
+  const left = fromInput(self)
+  const right = fromInput(by)
+  const head = right.restrictions.length === 0 ? right : makeFilter(right.rules, right.default, [])
+  return makeFilter(left.rules, left.default, [...left.restrictions, head, ...right.restrictions])
+})
 
 const none: Match = { _tag: "None" }
 
@@ -412,6 +607,11 @@ const segmentsOf = (path: string): Array<string> => {
  * that decides it.
  *
  * **Details**
+ *
+ * `None` means no rule decided the path, which then gets the filter's
+ * `default`. For a restricted filter, the last restriction that excludes the
+ * path decides it, even through its default, and otherwise the filter itself
+ * does.
  *
  * Empty and `.` segments are dropped, so a trailing `/` does not mark a
  * directory; pass `directory: true` instead. Every ancestor of the path is
@@ -453,22 +653,38 @@ export const match: {
 } = dual(
   (args) => isPathFilter(args[0]),
   (self: PathFilter, path: string, options?: { readonly directory?: boolean | undefined }): Match => {
-    const decision = Engine.evaluate(Engine.evaluator(self), segmentsOf(path), options?.directory ?? false)
-    if (decision === -1) {
-      return none
+    const segments = segmentsOf(path)
+    const directory = options?.directory ?? false
+    // the last restriction that excludes the path decides it, then `self`
+    for (let i = self.restrictions.length - 1; i >= 0; i--) {
+      const restriction = self.restrictions[i]
+      const evaluator = Engine.evaluator(restriction)
+      const decision = Engine.evaluate(evaluator, segments, directory)
+      if (evaluator.excluded(decision)) {
+        return toMatch(restriction, decision)
+      }
     }
-    const rule = self.rules[decision]
-    return rule._tag === "Exclude" ? { _tag: "Exclude", rule } : { _tag: "Include", rule }
+    return toMatch(self, Engine.evaluate(Engine.evaluator(self), segments, directory))
   }
 )
+
+const toMatch = (filter: PathFilter, decision: number): Match => {
+  if (decision < 0) {
+    return none
+  }
+  const rule = filter.rules[decision]
+  return rule._tag === "Exclude" ? { _tag: "Exclude", rule } : { _tag: "Include", rule }
+}
 
 /**
  * Tests whether a filter excludes a `/`-separated path relative to the root.
  *
  * **Details**
  *
- * Paths are read as in {@link match}: pass `directory: true` for a directory,
- * and every ancestor is treated as a directory.
+ * A path is excluded when the filter or one of its restrictions excludes it,
+ * applying each one's `default` to paths no rule decides. Paths are read as
+ * in {@link match}: pass `directory: true` for a directory, and every
+ * ancestor is treated as a directory.
  *
  * **Example** (Testing directories)
  *
@@ -499,6 +715,12 @@ export const excludes: {
   }): boolean
 } = dual(
   (args) => isPathFilter(args[0]),
-  (self: PathFilter, path: string, options?: { readonly directory?: boolean | undefined }): boolean =>
-    match(self, path, options)._tag === "Exclude"
+  (self: PathFilter, path: string, options?: { readonly directory?: boolean | undefined }): boolean => {
+    const segments = segmentsOf(path)
+    const directory = options?.directory ?? false
+    return Engine.leaves(self).some((leaf) => {
+      const evaluator = Engine.evaluator(leaf)
+      return evaluator.excluded(Engine.evaluate(evaluator, segments, directory))
+    })
+  }
 )

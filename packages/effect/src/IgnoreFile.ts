@@ -1,7 +1,8 @@
 /**
  * Parses `.gitignore` and `.dockerignore` files into a `PathFilter`, which
- * matches root-relative paths without accessing the file system or can be
- * passed as the `filter` option of `FileSystem.glob`.
+ * matches root-relative paths without accessing the file system. To find the
+ * paths an ignore file keeps, pass it to `FileSystem.glob`, or restrict a
+ * selection with it through `PathFilter.restrict`.
  *
  * **Details**
  *
