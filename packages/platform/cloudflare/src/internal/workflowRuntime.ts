@@ -92,15 +92,19 @@ export const makeWorkflowRuntime = (options: WorkflowRuntimeOptions): WorkflowRu
   let resumeRequested: WorkflowStorage.WakeMode | undefined
   // Parent of every attempt's scope. As in the memory engine, scopes of
   // attempts that suspended stay open under it, so their finalizers and
-  // resources last until the execution completes.
-  const executionScope = Scope.makeUnsafe()
+  // resources last until the execution completes or an attempt defects.
+  let executionScope = Scope.makeUnsafe()
 
   // The final attempt's scope has already closed with the real exit. Closing
   // the parent closes earlier attempts' scopes in reverse order with
-  // `Exit.void`, so their superseded compensations are skipped.
-  const closeExecutionScope = Scope.close(executionScope, Exit.void).pipe(
-    Effect.catchCause((cause) => Effect.logError("Workflow finalizer failed", cause))
-  )
+  // `Exit.void`, so their superseded compensations are skipped. A fresh
+  // parent is swapped in first: a later replay must not fork from a closed
+  // scope, which would run its finalizers as soon as they are registered.
+  const closeExecutionScope = Effect.suspend(() => {
+    const closing = executionScope
+    executionScope = Scope.makeUnsafe()
+    return Scope.close(closing, Exit.void)
+  })
 
   const detach = (promise: Promise<unknown>): void => {
     options.waitUntil(promise.then(() => undefined, () => undefined))
@@ -160,6 +164,21 @@ export const makeWorkflowRuntime = (options: WorkflowRuntimeOptions): WorkflowRu
     )
   })
 
+  // No auto-replay after a defect: it would hot-loop a defecting workflow.
+  // The next external contact replays from storage.
+  const failAttempt = (cause: Cause.Cause<unknown>): Promise<never> => {
+    inflight = undefined
+    resumeRequested = undefined
+    WorkflowStorage.setResumePending(sql, undefined)
+    const parent = WorkflowStorage.loadExecution(sql)?.parent
+    if (parent !== undefined) {
+      options.waitUntil(Effect.runPromise(resumeParent(parent).pipe(Effect.catchCause(logResumeParentFailure))))
+    }
+    return Effect.runPromise(Effect.logError("Workflow execution failed", cause)).then(() =>
+      Promise.reject(Cause.squash(cause))
+    )
+  }
+
   const startAttempt = (row: WorkflowStorage.ExecutionRow): Promise<string> => {
     const registration = getWorkflowRegistration(workflowName)
     if (registration === undefined) {
@@ -191,7 +210,7 @@ export const makeWorkflowRuntime = (options: WorkflowRuntimeOptions): WorkflowRu
       Effect.provideService(DurableClock.InMemoryThreshold, Duration.zero),
       Effect.provideService(CurrentExecutionHandle, runtime)
     )
-    const finish = ({ result, text }: {
+    const persist = ({ result, text }: {
       readonly result: Workflow.Result<unknown, unknown>
       readonly text: string
     }): Promise<string> =>
@@ -206,7 +225,6 @@ export const makeWorkflowRuntime = (options: WorkflowRuntimeOptions): WorkflowRu
           // Stay in flight until the result is saved so a concurrent resume
           // queues behind this attempt instead of replaying alongside it.
           if (result._tag === "Complete") {
-            yield* closeExecutionScope
             WorkflowStorage.saveCompletion(sql, text, parent !== undefined)
             inflight = undefined
             resumeRequested = undefined
@@ -227,6 +245,17 @@ export const makeWorkflowRuntime = (options: WorkflowRuntimeOptions): WorkflowRu
           })
         ))
       )
+    const finish = (attempt: {
+      readonly result: Workflow.Result<unknown, unknown>
+      readonly text: string
+    }): Promise<string> => {
+      if (attempt.result._tag !== "Complete") return persist(attempt)
+      // Close retained scopes before saving, so a durable completion never
+      // has unrun finalizers. A dying finalizer fails the attempt instead.
+      return Effect.runPromise(Effect.exit(closeExecutionScope)).then((closed) =>
+        Exit.isSuccess(closed) ? persist(attempt) : failAttempt(closed.cause)
+      )
+    }
     const fiber = Effect.runFork(execute)
     const promise = Effect.runPromise(Fiber.await(fiber)).then((exit) => {
       if (Exit.isSuccess(exit)) return finish(exit.value)
@@ -240,17 +269,10 @@ export const makeWorkflowRuntime = (options: WorkflowRuntimeOptions): WorkflowRu
         return Effect.runPromise(encodeResult(workflow, result, registration.context))
           .then((text) => finish({ result, text }))
       }
-      // No auto-replay after a defect: it would hot-loop a defecting
-      // workflow. The next external contact replays from storage.
-      inflight = undefined
-      resumeRequested = undefined
-      WorkflowStorage.setResumePending(sql, undefined)
-      const parent = WorkflowStorage.loadExecution(sql)?.parent
-      if (parent !== undefined) {
-        options.waitUntil(Effect.runPromise(resumeParent(parent).pipe(Effect.catchCause(logResumeParentFailure))))
-      }
-      return Effect.runPromise(Effect.logError("Workflow execution failed", exit.cause)).then(() =>
-        Promise.reject(Cause.squash(exit.cause))
+      // A defect ends every retained attempt; a replay starts in fresh scopes.
+      // Stay in flight while closing so cleanup precedes any replay.
+      return Effect.runPromise(Effect.exit(closeExecutionScope)).then((closed) =>
+        failAttempt(Exit.isSuccess(closed) ? exit.cause : Cause.combine(exit.cause, closed.cause))
       )
     })
     inflight = { instance, fiber, promise }
