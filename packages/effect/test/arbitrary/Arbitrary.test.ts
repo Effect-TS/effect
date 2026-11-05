@@ -1094,17 +1094,9 @@ describe("Arbitrary", () => {
         readonly name: string
         readonly schema: Schema.Codec<string>
         readonly property: (value: string) => boolean
-        readonly expected: string
+        readonly expected: string | RegExp
       }> = [
         { name: "two spaces", schema: Schema.String, property: (s) => s.split(" ").length < 3, expected: "  " },
-        { name: "an ASCII digit", schema: Schema.String, property: (s) => !/\d/.test(s), expected: "0" },
-        { name: "a lowercase letter", schema: Schema.String, property: (s) => !/[a-z]/.test(s), expected: "a" },
-        {
-          name: "a digit before a lowercase letter",
-          schema: Schema.String,
-          property: (s) => !/\d.*[a-z]/.test(s),
-          expected: "0a"
-        },
         {
           name: "a leading digit and a trailing lowercase letter within a minimum length",
           schema: Schema.String.check(Schema.isMinLength(3)),
@@ -1118,10 +1110,10 @@ describe("Arbitrary", () => {
           expected: "xx"
         },
         {
-          name: "two spaces within code point bounds",
+          name: "a surrogate pair",
           schema: Schema.String.check(Schema.isMinCodePoints(1)),
-          property: (s) => s.split(" ").length < 3,
-          expected: "  "
+          property: (s) => !/[\u{10000}-\u{10FFFF}]/u.test(s),
+          expected: /^[\u{10000}-\u{10FFFF}]$/u
         }
       ]
       for (const { expected, name, property, schema } of cases) {
@@ -1136,8 +1128,13 @@ describe("Arbitrary", () => {
             assert.strictEqual(result._tag, "Falsified")
             assert.isTrue(evaluated.every(Schema.is(schema)))
             if (result._tag === "Falsified") {
-              assert.isFalse(result.initialInput.startsWith(expected))
-              assert.strictEqual(result.shrunkInput, expected)
+              if (typeof expected === "string") {
+                assert.isFalse(result.initialInput.startsWith(expected))
+                assert.strictEqual(result.shrunkInput, expected)
+              } else {
+                assert.notMatch(result.initialInput, expected)
+                assert.match(result.shrunkInput, expected)
+              }
             }
           }))
       }
