@@ -12,6 +12,7 @@
  * @since 4.0.0
  */
 import type { DurableObjectStorage } from "@cloudflare/workers-types"
+import * as Cause from "effect/Cause"
 import * as Clock from "effect/Clock"
 import * as ClusterMetrics from "effect/cluster/ClusterMetrics"
 import * as EntityAddress from "effect/cluster/EntityAddress"
@@ -428,9 +429,28 @@ export const makeClusterDurableQueueProgram = Effect.fnUntraced(function*(state:
  * @since 4.0.0
  */
 export type ClusterSingletonProgram = {
-  readonly wake: () => Effect.Effect<void>
+  readonly wake: () => Effect.Effect<SingletonWakeResult>
   readonly alarm: () => Effect.Effect<void>
 }
+
+/**
+ * How one singleton wake ended.
+ *
+ * **Details**
+ *
+ * A failed singleton run resolves `wake()` with a `Failure` instead of
+ * rejecting it, so a rejected `wake()` always means the call itself failed in
+ * transit and is safe to retry. Retrying a failed run would rerun user code.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.0.0
+ */
+export type SingletonWakeResult =
+  | { readonly _tag: "Success" }
+  | { readonly _tag: "Failure"; readonly message: string }
+
+const wakeSuccess: SingletonWakeResult = { _tag: "Success" }
 
 /**
  * Creates the program behind one cluster singleton Durable Object.
@@ -498,7 +518,16 @@ export const makeClusterSingletonProgram = Effect.fnUntraced(function*(state: Du
     yield* armAlarm(state.storage, stored.wakeAt)
   }
   const program: ClusterSingletonProgram = {
-    wake: () => Effect.promise(() => getRuntime().wake()),
+    wake: () =>
+      Effect.promise(() => getRuntime().wake()).pipe(
+        Effect.as(wakeSuccess),
+        Effect.catchCause((cause) =>
+          Effect.as(
+            Effect.logError("Singleton run failed", cause),
+            { _tag: "Failure", message: Cause.pretty(cause) } as const
+          )
+        )
+      ),
     alarm: () =>
       Effect.suspend(() =>
         loadSingletonState(sql).wakeAt === undefined ? Effect.void : Effect.promise(() => getRuntime().runAlarm())
