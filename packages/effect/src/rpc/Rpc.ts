@@ -696,7 +696,7 @@ export type IsStream<R extends Any, Tag extends string> = R extends Rpc<
  * @category utility types
  * @since 4.0.0
  */
-export type ExtractTag<R extends Any, Tag extends string> = [R["_tag"]] extends [LiteralTag<R>] ?
+export type ExtractTag<R extends Any, Tag extends string> = [NonLiteralTagged<R>] extends [never] ?
   ByTag<R>[Tag & LiteralTag<R>]
   : ExtractTagDistributive<R, Tag>
 
@@ -718,8 +718,16 @@ export type ByTag<R extends Any> = { readonly [Current in R as Current["_tag"]]:
 // literal pattern tags.
 type LiteralTag<R extends Any> = R extends Any ? {} extends Record<R["_tag"], unknown> ? never : R["_tag"] : never
 
-// Tests every RPC in the union. Used when some RPC has a `string` or pattern
-// tag, which `ByTag` cannot index without hiding the literal RPCs it matches.
+// The RPCs whose tag is not a single literal: `string`, a template literal
+// pattern, or a union of tags.
+type NonLiteralTagged<R extends Any> = R extends Any ? IsSingleLiteral<R["_tag"]> extends true ? never : R : never
+
+type IsSingleLiteral<T, All = T> = {} extends Record<T & string, unknown> ? false
+  : T extends unknown ? [All] extends [T] ? true : false
+  : never
+
+// Tests every RPC in the union. Used when some RPC's tag is not a single
+// literal, which `ByTag` cannot index without changing which RPCs match.
 type ExtractTagDistributive<R extends Any, Tag extends string> = R extends Rpc<
   infer _Tag extends Tag,
   infer _Payload,
