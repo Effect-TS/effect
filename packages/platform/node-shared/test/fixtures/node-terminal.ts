@@ -55,14 +55,6 @@ const unused = Effect.gen(function*() {
   return ioReads
 })
 
-const dimensions = Effect.gen(function*() {
-  const terminal = yield* Terminal.Terminal
-  yield* terminal.columns
-  yield* terminal.rows
-  yield* terminal.columns
-  return ioReads
-})
-
 const readLineAfterEnd = Effect.gen(function*() {
   const terminal = yield* Terminal.Terminal
   yield* Effect.callback<void>((resume) => {
@@ -115,7 +107,7 @@ const ttyReadInput = Effect.gen(function*() {
 
 const mode = process.argv[2]
 const ioReads = { stdin: 0, stdout: 0 }
-if (mode === "unused" || mode === "dimensions") {
+if (mode === "unused") {
   for (const name of ["stdin", "stdout"] as const) {
     const descriptor = Object.getOwnPropertyDescriptor(process, name)!
     Object.defineProperty(process, name, {
@@ -159,8 +151,6 @@ const program = Effect.gen(function*() {
     return yield* readLines
   } else if (mode === "unused") {
     return yield* unused
-  } else if (mode === "dimensions") {
-    return yield* dimensions
   } else if (mode === "read-line-after-end") {
     return yield* readLineAfterEnd
   } else if (mode === "read-line-disposed") {

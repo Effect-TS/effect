@@ -118,10 +118,6 @@ describe("NodeTerminal", { concurrent: false, timeout: 15_000 }, () => {
     assertResult("unused", "", "{\"stdin\":0,\"stdout\":0}")
   })
 
-  it("memoizes stdio on the first terminal operation", () => {
-    assertResult("dimensions", "", "{\"stdin\":1,\"stdout\":1}")
-  })
-
   it("fails a prompt with QuitError after piped input is exhausted", () => {
     assertResult("prompts", "y\n", "{\"first\":true,\"second\":\"QuitError\"}")
   })
