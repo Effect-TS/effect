@@ -161,17 +161,15 @@ export const make: (
       return queue as Queue.Dequeue<Terminal.UserInput, Cause.Done>
     })
 
-    const readLine = Effect.suspend(() => {
-      // Ends `lines` first if stdin was already exhausted before first use.
-      getStdin()
-      return Queue.poll(lines).pipe(
+    const readLine = Effect.suspend(() =>
+      Queue.poll(lines).pipe(
         Effect.flatMap(Option.match({
           onNone: () => Effect.scoped(Effect.andThen(RcRef.get(rlRef), Queue.take(lines))),
           onSome: Effect.succeed
         })),
         Effect.mapError(() => new Terminal.QuitError({}))
       )
-    })
+    )
 
     const display = (prompt: string) =>
       Effect.uninterruptible(
