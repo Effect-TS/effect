@@ -11,7 +11,7 @@ Effect.gen(function*() {
   const result = yield* view.toolResult
   yield* view.sendSizeChanged({ height: result.content.length })
 }).pipe(
-  Effect.provide(McpAppView.layer({ transport, appInfo: { name: "page", version: "1.0.0" } })),
   McpAppView.run,
+  Effect.provide(McpAppView.layer({ transport, appInfo: { name: "page", version: "1.0.0" } })),
   Effect.runPromise
 )
