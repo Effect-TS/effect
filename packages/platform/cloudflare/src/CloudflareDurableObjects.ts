@@ -67,9 +67,10 @@ interface InitializationAttempt {
 
 // Durable Object waiters run inside `blockConcurrencyWhile`, which Cloudflare
 // cancels after 30 seconds. A build still pending after 15 seconds is treated
-// as abandoned, and only a Durable Object waiter that has itself waited less
-// than 15 seconds takes it over. The first build and any replacement therefore
-// both get at least 15 seconds.
+// as abandoned. Only a Durable Object waiter that has itself waited less than
+// 15 seconds starts a build, whether it takes over a stale one or retries after
+// a failure. The first build and any replacement therefore both get at least
+// 15 seconds.
 const staleInitializationMillis = 15_000
 const durableObjectTakeoverMillis = 15_000
 const initializationPollMillis = 20
@@ -90,9 +91,9 @@ let initialization: InitializationAttempt | undefined
  * next cold caller runs the initializer again. The initializer must complete
  * within 15 seconds. A build still pending after that is treated as abandoned,
  * and a waiter runs the initializer itself, so a build can run more than once
- * in an isolate. A Durable Object waiter takes over only while it has waited
- * less than 15 seconds, so the replacement keeps at least 15 seconds of the
- * 30 second `blockConcurrencyWhile` limit. The returned function joins the
+ * in an isolate. A Durable Object waiter starts a build only while it has
+ * waited less than 15 seconds, so any replacement keeps at least 15 seconds of
+ * the 30 second `blockConcurrencyWhile` limit. The returned function joins the
  * same readiness state from Worker handlers.
  *
  * @stability unstable
@@ -112,15 +113,22 @@ export const setInitializer = <Env, A>(handler: Initializer<Env, A>): (env: Env)
 const waitForInitialization = async (env: unknown, takeoverMillis: number): Promise<unknown> => {
   if (initializer === undefined) return
   const waitStartedAt = Date.now()
-  const canTakeOver = (attempt: InitializationAttempt): boolean =>
-    isStale(attempt) && Date.now() - waitStartedAt < takeoverMillis
+  const isFresh = (): boolean => Date.now() - waitStartedAt < takeoverMillis
+  const canTakeOver = (attempt: InitializationAttempt): boolean => isStale(attempt) && isFresh()
   // A waiter too old to take over keeps following the current attempt.
   const keepsWaiting = (attempt: InitializationAttempt): boolean =>
     attempt.exit === undefined && initialization === attempt && !canTakeOver(attempt)
   while (true) {
     const attempt = initialization
-    if (attempt === undefined || canTakeOver(attempt)) {
+    if (attempt === undefined ? isFresh() : canTakeOver(attempt)) {
       return runInitializer(initializer, env)
+    }
+    if (attempt === undefined) {
+      // The attempt this waiter followed was replaced by one that already
+      // failed. A waiter this old leaves the retry to a fresher caller and
+      // follows the attempt that caller starts.
+      await scheduler.wait(initializationPollMillis)
+      continue
     }
     // Cloudflare promises belong to the request context that created them. A
     // fresh wait in this context observes the shared plain-JavaScript state

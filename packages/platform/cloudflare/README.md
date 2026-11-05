@@ -112,8 +112,9 @@ is returned to every caller waiting on that build, and the next cold object
 runs the initializer again. Because the initializer runs inside a Durable
 Object constructor's `blockConcurrencyWhile`, which Cloudflare cancels after 30
 seconds, it must complete within 15 seconds. A build still pending after 15
-seconds is treated as abandoned, and an object that has waited less than 15
-seconds runs the initializer itself, so the replacement also gets at least 15
+seconds is treated as abandoned. Only an object that has waited less than 15
+seconds runs the initializer itself, whether it replaces a stalled build or
+retries after a failure, so any replacement also gets at least 15
 seconds. A slow build can therefore run more than once in an isolate, and the
 initializer must tolerate that. The example above keeps the first runtime to
 finish and disposes any other.
