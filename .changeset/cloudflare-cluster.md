@@ -1,5 +1,5 @@
 ---
-"effect": patch
+"@effect/platform-cloudflare": patch
 ---
 
 Add the `@effect/platform-cloudflare` package, running Effect Cluster on

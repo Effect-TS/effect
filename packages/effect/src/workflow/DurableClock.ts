@@ -75,7 +75,7 @@ const InstanceTag = Context.Service<
  *
  * @stability unstable
  * @category services
- * @since 4.0.0
+ * @since 4.1.3
  */
 export const InMemoryThreshold = Context.Reference<Duration.Duration>(
   "effect/workflow/DurableClock/InMemoryThreshold",

@@ -29,7 +29,7 @@
  * with a new element, which keeps only the latest failure.
  *
  * @stability unstable
- * @since 4.0.0
+ * @since 4.1.3
  */
 import * as Cause from "effect/Cause"
 import * as Duration from "effect/Duration"
@@ -46,7 +46,7 @@ import type { QueueItem } from "./internal/queueStorage.ts"
  *
  * @stability unstable
  * @category layers
- * @since 4.0.0
+ * @since 4.1.3
  */
 export interface LayerOptions {
   readonly queueNamespace: DurableObjectNamespace
@@ -90,7 +90,7 @@ const finalize = (run: () => Promise<void>): Effect.Effect<void> => Effect.orDie
  *
  * @stability unstable
  * @category constructors
- * @since 4.0.0
+ * @since 4.1.3
  */
 export const make = (options: LayerOptions): PersistedQueue.PersistedQueueStore["Service"] => {
   const stubFor = (name: string): QueueStub =>
@@ -181,7 +181,7 @@ export const make = (options: LayerOptions): PersistedQueue.PersistedQueueStore[
  *
  * @stability unstable
  * @category layers
- * @since 4.0.0
+ * @since 4.1.3
  */
 export const layer = (options: LayerOptions): Layer.Layer<PersistedQueue.PersistedQueueFactory> =>
   PersistedQueue.layer.pipe(

@@ -9,7 +9,7 @@
  * class methods to the returned handles.
  *
  * @stability unstable
- * @since 4.0.0
+ * @since 4.1.3
  */
 import type { DurableObjectStorage } from "@cloudflare/workers-types"
 import * as Cause from "effect/Cause"
@@ -52,7 +52,7 @@ import { earliestClockWakeUp, ensureWorkflowStorage, loadExecution } from "./int
  *
  * @stability unstable
  * @category models
- * @since 4.0.0
+ * @since 4.1.3
  */
 export interface DurableObjectProgramState {
   readonly id: { readonly name?: string | undefined }
@@ -74,7 +74,7 @@ const exportedNamespace = <Stub>(
  *
  * @stability unstable
  * @category models
- * @since 4.0.0
+ * @since 4.1.3
  */
 export interface EntityDeliveryOptions {
   readonly deliverAt?: number | undefined
@@ -87,7 +87,7 @@ export interface EntityDeliveryOptions {
  *
  * @stability unstable
  * @category models
- * @since 4.0.0
+ * @since 4.1.3
  */
 export type EntityInvokeResult = {
   readonly _tag: "Success"
@@ -112,7 +112,7 @@ export type EntityInvokeResult = {
  *
  * @stability unstable
  * @category models
- * @since 4.0.0
+ * @since 4.1.3
  */
 export type ClusterEntityProgram = {
   readonly alarm: () => Effect.Effect<void>
@@ -149,7 +149,7 @@ export type ClusterEntityProgram = {
  *
  * @stability unstable
  * @category constructors
- * @since 4.0.0
+ * @since 4.1.3
  */
 export const makeClusterEntityProgram = Effect.fnUntraced(function*(state: DurableObjectProgramState) {
   const sql = state.storage.sql
@@ -221,7 +221,7 @@ export const makeClusterEntityProgram = Effect.fnUntraced(function*(state: Durab
  *
  * @stability unstable
  * @category models
- * @since 4.0.0
+ * @since 4.1.3
  */
 export interface ClusterWorkflowRunOptions {
   readonly discard: boolean
@@ -236,7 +236,7 @@ export interface ClusterWorkflowRunOptions {
  *
  * @stability unstable
  * @category models
- * @since 4.0.0
+ * @since 4.1.3
  */
 export type ClusterWorkflowWakeMode = "explicit" | "automatic"
 
@@ -245,7 +245,7 @@ export type ClusterWorkflowWakeMode = "explicit" | "automatic"
  *
  * @stability unstable
  * @category models
- * @since 4.0.0
+ * @since 4.1.3
  */
 export type ClusterWorkflowProgram = {
   readonly run: (payload: string, options: ClusterWorkflowRunOptions) => Effect.Effect<string>
@@ -278,7 +278,7 @@ export type ClusterWorkflowProgram = {
  *
  * @stability unstable
  * @category constructors
- * @since 4.0.0
+ * @since 4.1.3
  */
 export const makeClusterWorkflowProgram = Effect.fnUntraced(function*(state: DurableObjectProgramState) {
   const clock = yield* Clock.Clock
@@ -342,7 +342,7 @@ export const makeClusterWorkflowProgram = Effect.fnUntraced(function*(state: Dur
  *
  * @stability unstable
  * @category models
- * @since 4.0.0
+ * @since 4.1.3
  */
 export interface DurableQueueItem {
   readonly id: string
@@ -355,7 +355,7 @@ export interface DurableQueueItem {
  *
  * @stability unstable
  * @category models
- * @since 4.0.0
+ * @since 4.1.3
  */
 export type ClusterDurableQueueProgram = {
   readonly offer: (
@@ -396,7 +396,7 @@ export type ClusterDurableQueueProgram = {
  *
  * @stability unstable
  * @category constructors
- * @since 4.0.0
+ * @since 4.1.3
  */
 export const makeClusterDurableQueueProgram = Effect.fnUntraced(function*(state: DurableObjectProgramState) {
   const clock = yield* Clock.Clock
@@ -432,7 +432,7 @@ export const makeClusterDurableQueueProgram = Effect.fnUntraced(function*(state:
  *
  * @stability unstable
  * @category models
- * @since 4.0.0
+ * @since 4.1.3
  */
 export type ClusterSingletonProgram = {
   readonly wake: () => Effect.Effect<SingletonWakeResult>
@@ -450,7 +450,7 @@ export type ClusterSingletonProgram = {
  *
  * @stability unstable
  * @category models
- * @since 4.0.0
+ * @since 4.1.3
  */
 export type SingletonWakeResult =
   | { readonly _tag: "Success" }
@@ -476,7 +476,7 @@ const wakeSuccess: SingletonWakeResult = { _tag: "Success" }
  *
  * @stability unstable
  * @category constructors
- * @since 4.0.0
+ * @since 4.1.3
  */
 export const makeClusterSingletonProgram = Effect.fnUntraced(function*(state: DurableObjectProgramState) {
   const clock = yield* Clock.Clock

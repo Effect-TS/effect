@@ -34,25 +34,6 @@ patchedDependencies:
   '@changesets/cli@3.0.3': patches/@changesets__cli@3.0.3.patch
   '@changesets/get-github-info@1.0.1': patches/@changesets__get-github-info@1.0.1.patch
 
-minimumReleaseAgeExclude:
-  - '@effect/tsgo-darwin-arm64@0.51.0'
-  - '@effect/tsgo-darwin-x64@0.51.0'
-  - '@effect/tsgo-linux-arm64@0.51.0'
-  - '@effect/tsgo-linux-arm@0.51.0'
-  - '@effect/tsgo-linux-x64@0.51.0'
-  - '@effect/tsgo-win32-arm64@0.51.0'
-  - '@effect/tsgo-win32-x64@0.51.0'
-  - '@effect/tsgo@0.51.0'
-  - '@alchemy.run/*'
-  - alchemy
-  - '@effect/platform-bun@4.0.0-rc.116 || 4.0.0 || 4.0.7 || 4.1.2'
-  - '@effect/platform-node-shared@4.0.0-rc.116 || 4.0.0 || 4.0.7 || 4.1.2'
-  - '@effect/platform-node@4.0.0-rc.116 || 4.0.0 || 4.0.7 || 4.1.2'
-  - '@effect/sql-mysql2@4.0.0-rc.116 || 4.0.0 || 4.0.7 || 4.1.2'
-  - '@effect/sql-pg@4.0.0-rc.116 || 4.0.0 || 4.0.7 || 4.1.2'
-  - '@effect/sql-libsql@4.0.7 || 4.1.2'
-  - '@effect/vitest@4.0.7 || 4.1.2'
-
 overrides:
   # jsdom 30.1.0 fails under Bun when Vitest installs its window error handler.
   # Remove after a later jsdom release passes the Atom React and Solid suites under Bun.

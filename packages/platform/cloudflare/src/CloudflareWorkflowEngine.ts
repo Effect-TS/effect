@@ -13,7 +13,7 @@
  * alarm.
  *
  * @stability unstable
- * @since 4.0.0
+ * @since 4.1.3
  */
 import { Clock } from "effect/Clock"
 import * as Context from "effect/Context"
@@ -41,7 +41,7 @@ import { decodeExit, decodeResult, encodeExit, encodePayload } from "./internal/
  *
  * @stability unstable
  * @category layers
- * @since 4.0.0
+ * @since 4.1.3
  */
 export interface LayerOptions {
   readonly workflowNamespace: DurableObjectNamespace
@@ -65,7 +65,7 @@ const retryPolicy = Schedule.min([
  *
  * @stability unstable
  * @category constructors
- * @since 4.0.0
+ * @since 4.1.3
  */
 export const make = Effect.fnUntraced(function*(options: LayerOptions) {
   const clock = yield* Clock
@@ -214,7 +214,7 @@ export const make = Effect.fnUntraced(function*(options: LayerOptions) {
  *
  * @stability unstable
  * @category layers
- * @since 4.0.0
+ * @since 4.1.3
  */
 export const layer = (options: LayerOptions): Layer.Layer<WorkflowEngine.WorkflowEngine> =>
   Layer.effect(WorkflowEngine.WorkflowEngine)(make(options))
