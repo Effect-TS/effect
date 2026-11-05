@@ -7,7 +7,7 @@ import { makeEntityManager } from "@effect/platform-cloudflare/internal/entityRu
 import type { EntityManager, EntityManagerOptions } from "@effect/platform-cloudflare/internal/entityRuntime"
 import { ensureEntityStorage } from "@effect/platform-cloudflare/internal/entityStorage"
 import { afterAll, assert, beforeAll, describe, it, vi } from "@effect/vitest"
-import { Context, Deferred, Effect, Fiber, Schema, Stream } from "effect"
+import { Context, Deferred, Effect, Exit, Fiber, Schema, Stream } from "effect"
 import { ClusterSchema, Entity, EntityAddress, EntityId, EntityType, ShardId } from "effect/cluster"
 import { Rpc, RpcSchema } from "effect/rpc"
 import { TestClock } from "effect/testing"
@@ -579,7 +579,7 @@ describe("EntityManager", () => {
       assert.deepStrictEqual(retried, original)
     }))
 
-  it.effect("pushes a running scheduled reply to a reply target added after it started", () =>
+  it.effect("pushes a deduplicated scheduled reply to each caller under its own request id", () =>
     Effect.gen(function*() {
       const { entity, release, started } = yield* makeGatedAsk("ScheduledReplyTargets")
       const pushed: Array<{ readonly replyTo: string; readonly requestId: string; readonly reply: string }> = []
@@ -591,11 +591,16 @@ describe("EntityManager", () => {
           }
         })
       }))
-      const requestId = nextRequestId()
-      yield* manager.invoke(envelope("Add", { operationId: "same" }, requestId), false, {
-        deliverAt: Date.now() + 20,
-        primaryKey: `${entity.type}/targets/Add/same`,
+      const delivery = { deliverAt: Date.now() + 20, primaryKey: `${entity.type}/targets/Add/same` }
+      const callers = [nextRequestId(), nextRequestId(), nextRequestId()]
+      yield* manager.invoke(envelope("Add", { operationId: "same" }, callers[0]), false, {
+        ...delivery,
         replyTo: "6:Callerone"
+      })
+      // Deduplicated onto the stored row before its deadline.
+      yield* manager.invoke(envelope("Add", { operationId: "same" }, callers[1]), false, {
+        ...delivery,
+        replyTo: "6:Callertwo"
       })
       yield* pastDeadline
       const alarm = yield* Effect.forkChild(manager.alarm)
@@ -603,7 +608,7 @@ describe("EntityManager", () => {
 
       // A pinned caller retrying after the deadline sends only its reply target.
       const duplicate = yield* Effect.forkChild(
-        manager.invoke(envelope("Add", { operationId: "same" }), false, { replyTo: "6:Callertwo" }),
+        manager.invoke(envelope("Add", { operationId: "same" }, callers[2]), false, { replyTo: "6:Callerthree" }),
         { startImmediately: true }
       )
       yield* admitted(manager, envelope)
@@ -611,10 +616,19 @@ describe("EntityManager", () => {
       yield* Fiber.join(duplicate)
       yield* Fiber.join(alarm)
 
-      const targets = pushed.map((delivery) => delivery.replyTo).sort()
-      assert.deepStrictEqual(targets, ["6:Callerone", "6:Callertwo"])
+      // The reply goes to each target under the id that caller registered
+      // before sending, so it cannot arrive ahead of the registration.
+      assert.deepStrictEqual(
+        pushed.map(({ replyTo, requestId }) => ({ replyTo, requestId })).sort((a, b) =>
+          a.replyTo.localeCompare(b.replyTo)
+        ),
+        [
+          { replyTo: "6:Callerone", requestId: callers[0] },
+          { replyTo: "6:Callerthree", requestId: callers[2] },
+          { replyTo: "6:Callertwo", requestId: callers[1] }
+        ]
+      )
       for (const delivery of pushed) {
-        assert.strictEqual(delivery.requestId, requestId)
         assert.deepStrictEqual(exitOf(delivery.reply), { _tag: "Success", value: 1 })
       }
     }))
@@ -651,5 +665,82 @@ describe("EntityManager", () => {
       assert(original._tag === "Success")
       assert.deepStrictEqual(exitOf(original.replies[0]), { _tag: "Success", value: 1 })
       assert.deepStrictEqual(retried, original)
+    }))
+
+  it.effect("returns the next chunk for a stream acknowledged after a restart", () =>
+    Effect.gen(function*() {
+      const { envelope, manager, restart } = yield* makeMailbox("restartedAck")
+      const requestId = nextRequestId()
+      const first = yield* manager.invoke(envelope("Watch", null, requestId), false)
+      assert(first._tag === "Success")
+      const chunk = JSON.parse(first.replies[0])
+      assert.deepStrictEqual(chunk.values, [1])
+
+      // The new instance has no session for the stream, and its second chunk
+      // has not been produced yet.
+      const next = yield* restart().acknowledge(requestId, chunk.id).pipe(
+        Effect.timeout("1 second"),
+        TestClock.withLive
+      )
+      assert.strictEqual(next.length, 1)
+      assert.deepStrictEqual(JSON.parse(next[0]).values, [2])
+    }))
+
+  it.effect("answers the first request after a restart without waiting for a replayed ask", () =>
+    Effect.gen(function*() {
+      const { entity, release, started } = yield* makeGatedAsk("RestartReplay")
+      const { envelope, manager, restart } = yield* makeMailbox("replay", entity.type)
+      yield* Effect.forkChild(manager.invoke(envelope("Add", { operationId: "same" }), false))
+      yield* Deferred.await(started)
+
+      // The restarted instance replays the blocked ask; Ping forks past its permit.
+      const restarted = restart()
+      const ping = yield* Effect.exit(admitted(restarted, envelope))
+      yield* Deferred.succeed(release, undefined)
+      assert.isTrue(Exit.isSuccess(ping), "The first request waited for the replayed ask")
+    }))
+
+  it.effect("resumes a stream retried before its first chunk", () =>
+    Effect.gen(function*() {
+      const started = yield* Deferred.make<void>()
+      const release = yield* Deferred.make<void>()
+      const entity = Entity.make("GatedStream", [
+        Rpc.make("Watch", {
+          success: RpcSchema.Stream(Schema.Number, Schema.Never)
+        }).annotate(ClusterSchema.Persisted, true),
+        Rpc.make("Ping", { success: Schema.String })
+      ])
+      const handlers: EntityRegistration = {
+        entity,
+        keepAliveHeartbeat: 30_000,
+        build: Effect.succeed(entity.of({
+          Watch: () =>
+            Stream.fromEffect(Effect.andThen(Deferred.succeed(started, undefined), Deferred.await(release))).pipe(
+              Stream.as(1)
+            ),
+          Ping: () => Rpc.fork(Effect.succeed("pong"))
+        })),
+        options: undefined,
+        context: Context.empty()
+      }
+      yield* Effect.acquireRelease(
+        Effect.sync(() => registerEntity(entity.type, handlers)),
+        () => Effect.sync(() => unregisterEntity(entity.type, handlers))
+      )
+      const { envelope, manager } = yield* makeMailbox("retried", entity.type)
+      const request = envelope("Watch")
+      const first = yield* Effect.forkChild(manager.invoke(request, false))
+      yield* Deferred.await(started)
+
+      // A transport retry resends the same envelope while the first chunk is pending.
+      const retried = yield* Effect.forkChild(manager.invoke(request, false), { startImmediately: true })
+      yield* admitted(manager, envelope)
+      yield* Deferred.succeed(release, undefined)
+      const original = yield* Fiber.join(first)
+      const duplicate = yield* Fiber.join(retried).pipe(Effect.timeout("1 second"), TestClock.withLive)
+
+      assert(original._tag === "Success")
+      assert.deepStrictEqual(JSON.parse(original.replies[0]).values, [1])
+      assert.deepStrictEqual(duplicate, original)
     }))
 })

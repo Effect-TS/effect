@@ -48,24 +48,6 @@ const fillUnprocessed = (sql: SqliteStorage["sql"], count: number) => {
 }
 
 describe("EntityMailbox", () => {
-  it.effect("preserves every reply target when a scheduled request is deduplicated", () =>
-    Effect.gen(function*() {
-      const sql = yield* makeMailbox
-      const primaryKey = "Counter/one/Increment/scheduled"
-      yield* persistRequest(sql, envelope, primaryKey, false, 2_000, "7:Callerfirst")
-      yield* persistRequest(
-        sql,
-        withRequestId("0198bd72-6a81-72f1-8d87-5e9b5cf1e001"),
-        primaryKey,
-        false,
-        null,
-        "7:Callersecond"
-      )
-
-      const [row] = yield* loadUnprocessed(sql, 2_000)
-      assert.deepStrictEqual(row.replyTos, ["7:Callerfirst", "7:Callersecond"])
-    }))
-
   it.effect("rejects the 4097th unprocessed request", () =>
     Effect.gen(function*() {
       const sql = yield* makeMailbox
