@@ -5,6 +5,14 @@ export const getAllObjectKeys = (obj: object): Set<PropertyKey> => {
 
   if (obj instanceof Error) {
     keys.delete("stack")
+    // JavaScriptCore exposes construction-site metadata as non-enumerable own
+    // properties. Like stack, these are not part of the error's structure.
+    const declared: unknown = Reflect.get(obj, Symbol.for("effect/Data/Error/plainArgs"))
+    for (const key of ["line", "column", "sourceURL", "originalLine", "originalColumn"]) {
+      // Data / Schema payloads and enumerable user fields remain structural.
+      if (declared !== null && typeof declared === "object" && Object.hasOwn(declared, key)) continue
+      if (Object.getOwnPropertyDescriptor(obj, key)?.enumerable === false) keys.delete(key)
+    }
   }
 
   const proto = Object.getPrototypeOf(obj)
