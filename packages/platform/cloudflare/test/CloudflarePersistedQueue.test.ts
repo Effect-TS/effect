@@ -214,6 +214,20 @@ describe("CloudflarePersistedQueue", () => {
     })
   })
 
+  it.effect("a take retried after a restart returns the item already leased to its taker", () => {
+    const namespace = new FakeQueueNamespace()
+    const name = objectName("restarted-lease")
+    return Effect.gen(function*() {
+      const runtime = namespace.getByName(name)
+      yield* Effect.promise(() => runtime.offer("a", "\"first\""))
+      const first = yield* Effect.promise(() => runtime.take("taker", 10, 500))
+      // The object restarted before the lease reached the Worker.
+      namespace.crash()
+      const retried = yield* takeNow(namespace.getByName(name), "taker")
+      assert.deepStrictEqual({ ...retried }, { ...first })
+    })
+  })
+
   it.effect("requeues a failed item behind later offers", () => {
     const namespace = new FakeQueueNamespace()
     return Effect.gen(function*() {
