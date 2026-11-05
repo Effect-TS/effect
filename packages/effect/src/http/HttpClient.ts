@@ -683,7 +683,7 @@ const Proto = {
  *
  * The runner receives the request, resolved URL, abort signal, and current fiber. The client wrapper handles URL construction failures, tracing and propagation, header redaction, aborting the signal when the request is interrupted before a response arrives, and attaching each request to the scope of an enclosing `withScope`.
  *
- * `HttpClientError` reasons redact their URL with the `UrlParams.CurrentRedactedNames` of the fiber that executed the request, even when they are created in callbacks that run outside it. This covers errors the runner fails with, and errors built from the response the client returns or the response the runner produced. Rendering an error then adds the names of the rendering fiber.
+ * `HttpClientError` reasons redact their URL with the `UrlParams.CurrentRedactedNames` of the fiber that executed the request, even when they are created in callbacks that run outside it. This covers errors the runner fails with, and errors built from the response the client returns or the response the runner produced. Rendering an error then adds the names of the rendering fiber. If the runner returns the same response object to more than one execution, errors from that response redact the names of every execution that received it.
  *
  * @stability unstable
  * @category constructors
