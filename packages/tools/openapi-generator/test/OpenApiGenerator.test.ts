@@ -853,8 +853,12 @@ const passwordSpec: OpenAPISpec = {
             "multipart/form-data": {
               schema: {
                 type: "object",
-                properties: { file: { type: "string", format: "binary" }, password },
-                required: ["file", "password"],
+                properties: {
+                  file: { type: "string", format: "binary" },
+                  password,
+                  passwords: { type: "array", items: password }
+                },
+                required: ["file", "password", "passwords"],
                 additionalProperties: false
               }
             }
@@ -3772,7 +3776,11 @@ export const plain: LoginRequestJson = { password: "hunter2" }
                 payload: { password: Redacted.Redacted<string> }
               }) => Effect.Effect<unknown, unknown>
               upload: (options: {
-                payload: { file: Blob; password: Redacted.Redacted<string> }
+                payload: {
+                  file: Blob
+                  password: Redacted.Redacted<string>
+                  passwords: ReadonlyArray<Redacted.Redacted<string>>
+                }
               }) => Effect.Effect<unknown, unknown>
             }
           } = yield* Effect.promise(() => import(path))
@@ -3788,7 +3796,13 @@ export const plain: LoginRequestJson = { password: "hunter2" }
             params: { "x-api-key": Redacted.make("key") },
             payload: { password: Redacted.make("hunter2") }
           })
-          yield* client.upload({ payload: { file: new Blob(["data"]), password: Redacted.make("hunter2") } })
+          yield* client.upload({
+            payload: {
+              file: new Blob(["data"]),
+              password: Redacted.make("hunter2"),
+              passwords: [Redacted.make("a"), Redacted.make("b")]
+            }
+          })
 
           const [login, upload] = requests
           assert.strictEqual(login.headers["x-api-key"], "key")
@@ -3799,6 +3813,10 @@ export const plain: LoginRequestJson = { password: "hunter2" }
           assert.strictEqual(upload.body._tag, "FormData")
           if (upload.body._tag === "FormData") {
             assert.strictEqual(upload.body.formData.get("password"), "hunter2")
+            assert.deepStrictEqual(upload.body.formData.getAll("passwords"), ["a", "b"])
+            const file = upload.body.formData.get("file")
+            assert.instanceOf(file, Blob)
+            assert.strictEqual(yield* Effect.promise(() => file.text()), "data")
           }
         }).pipe(Effect.scoped, Effect.provide(OpenApiGenerator.layerTransformerSchema)))
     })

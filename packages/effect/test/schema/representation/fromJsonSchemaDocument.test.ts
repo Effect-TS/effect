@@ -1212,6 +1212,13 @@ describe("fromJsonSchemaDocument", () => {
       throws(() => Schema.decodeUnknownSync(schema)("hunter2"))
     })
 
+    it("decodes nullable password strings to Redacted", () => {
+      const schema = importCodec({ type: ["string", "null"], format: "password", minLength: 8 })
+      assert.isTrue(Redacted.isRedacted(Schema.decodeUnknownSync(schema)("hunter22")))
+      assert.isNull(Schema.decodeUnknownSync(schema)(null))
+      throws(() => Schema.decodeUnknownSync(schema)("hunter2"))
+    })
+
     it("keeps password property names as plain string keys", () => {
       const schema = importCodec({ type: "object", propertyNames: { type: "string", format: "password" } })
       deepStrictEqual(Schema.decodeUnknownSync(schema)({ secret: 1 }), { secret: 1 })
