@@ -30,7 +30,7 @@ import {
   type WorkflowStub
 } from "./workflowRegistry.ts"
 import * as WorkflowStorage from "./workflowStorage.ts"
-import { decodePayload, encodeExit, encodeResult } from "./workflowWire.ts"
+import { decodePayload, encodeDefectResult, encodeExit, encodeResult } from "./workflowWire.ts"
 
 /** @internal */
 export const InterruptSignalName = "Workflow/InterruptSignal"
@@ -164,25 +164,30 @@ export const makeWorkflowRuntime = (options: WorkflowRuntimeOptions): WorkflowRu
     )
   })
 
-  // No auto-replay after a defect: it would hot-loop a defecting workflow.
-  // The next external contact replays from storage.
-  const failAttempt = (cause: Cause.Cause<unknown>): Promise<never> => {
-    inflight = undefined
-    resumeRequested = undefined
-    WorkflowStorage.setResumePending(sql, undefined)
-    const parent = WorkflowStorage.loadExecution(sql)?.parent
-    if (parent !== undefined) {
-      options.waitUntil(Effect.runPromise(resumeParent(parent).pipe(Effect.catchCause(logResumeParentFailure))))
-    }
-    return Effect.runPromise(Effect.logError("Workflow execution failed", cause)).then(() =>
-      Promise.reject(Cause.squash(cause))
-    )
-  }
+  // An attempt the machinery cannot finish (a defect with `CaptureDefects`
+  // off, a payload that no longer decodes, a result that fails to encode, a
+  // dying finalizer, a missing registration) completes the execution with the
+  // defect, as `ClusterWorkflowEngine` stores an exhausted defect retry. The
+  // object never rejects `run` for such a reason, so a caller can tell the
+  // child's own defect from a transport failure, and a parent replaying a
+  // discarded child finds the result instead of restarting it.
+  const failAttempt = (cause: Cause.Cause<unknown>): Promise<string> =>
+    Effect.runPromise(Effect.gen(function*() {
+      yield* Effect.logError("Workflow execution failed", cause)
+      const text = yield* encodeDefectResult(Cause.squash(cause))
+      const parent = WorkflowStorage.loadExecution(sql)?.parent
+      if (parent !== undefined) yield* armResumeGuard
+      WorkflowStorage.saveCompletion(sql, text, parent !== undefined)
+      inflight = undefined
+      resumeRequested = undefined
+      if (parent !== undefined) options.waitUntil(Effect.runPromise(deliverParentWake))
+      return text
+    }))
 
   const startAttempt = (row: WorkflowStorage.ExecutionRow): Promise<string> => {
     const registration = getWorkflowRegistration(workflowName)
     if (registration === undefined) {
-      return Promise.reject(new Error(`No workflow registered for name: ${workflowName}`))
+      return failAttempt(Cause.die(new Error(`No workflow registered for name: ${workflowName}`)))
     }
     const workflow = registration.workflow
     const instance = WorkflowEngine.WorkflowInstance.initial(workflow, executionId, {
@@ -290,13 +295,19 @@ export const makeWorkflowRuntime = (options: WorkflowRuntimeOptions): WorkflowRu
       WorkflowStorage.setParent(sql, opts.parent)
       row = { ...row, parent: opts.parent }
     }
+    if (inflight !== undefined) return opts.discard ? Promise.resolve("") : inflight.promise
+    if (row.result !== undefined) return Promise.resolve(opts.discard ? "" : row.result)
+    // The attempt stays pending under the guard alarm until it persists a
+    // result, so an attempt lost with this object is replayed even when no
+    // caller awaits it.
+    WorkflowStorage.setResumePending(sql, mergeWake(row.resumePending, "automatic"))
+    const attempt = startAttempt(row)
+    const armed = Effect.runPromise(armResumeGuard)
     if (opts.discard) {
-      if (inflight === undefined && row.result === undefined) detach(startAttempt(row))
-      return Promise.resolve("")
+      detach(attempt)
+      return armed.then(() => "")
     }
-    if (inflight !== undefined) return inflight.promise
-    if (row.result !== undefined) return Promise.resolve(row.result)
-    return startAttempt(row)
+    return Promise.all([attempt, armed]).then(([text]) => text)
   }
 
   const startPending = (): void => {
@@ -388,7 +399,9 @@ export const makeWorkflowRuntime = (options: WorkflowRuntimeOptions): WorkflowRu
         const row = WorkflowStorage.loadExecution(sql)
         const mode = row?.resumePending
         const pending = mode !== undefined && !isUnwakeable(row?.result, mode)
-        return (pending ? resume(mode) : Promise.resolve()).then(() => {
+        // A live attempt is not lost: only re-arm the guard. Requesting a wake
+        // would replay the attempt once it suspends, for no reason.
+        return (pending && inflight === undefined ? resume(mode) : Promise.resolve()).then(() => {
           // While a resume is pending a guard alarm stays armed, so a replay
           // lost with this isolate is retried instead of sleeping forever.
           const targets = [
@@ -396,7 +409,9 @@ export const makeWorkflowRuntime = (options: WorkflowRuntimeOptions): WorkflowRu
             pending ? options.now() + resumeGuardMillis : undefined
           ].filter((target) => target !== undefined)
           if (targets.length === 0) return undefined
-          return Effect.runPromise(armAlarm(options.alarm, Math.min(...targets)))
+          // The alarm that fired is spent, so set the next one outright:
+          // `armAlarm` only ever moves an alarm earlier.
+          return options.alarm.setAlarm(Math.min(...targets))
         })
       })
     }).then(() => Effect.runPromise(deliverParentWake)).then(() => undefined)

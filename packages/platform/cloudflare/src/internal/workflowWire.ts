@@ -1,7 +1,7 @@
 /** @internal */
-import type * as Context from "effect/Context"
+import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
-import type * as Exit from "effect/Exit"
+import * as Exit from "effect/Exit"
 import * as Schema from "effect/Schema"
 import * as Workflow from "effect/workflow/Workflow"
 import { runWith } from "./entityWire.ts"
@@ -48,6 +48,24 @@ const resultCodec = cachedCodec((workflow) =>
     error: workflow.errorSchema as any
   }))
 )
+
+const defectResultCodec = Schema.toCodecJson(Workflow.Result({ success: AnyOrVoid, error: AnyOrVoid }))
+
+/**
+ * Encodes a terminal `Complete(Die)` result. A defect never touches the
+ * workflow's success or error schema, so this works without the workflow
+ * definition, for example when none is registered.
+ *
+ * @internal
+ */
+export const encodeDefectResult = (defect: unknown): Effect.Effect<string> =>
+  runWith(
+    Effect.map(
+      Schema.encodeUnknownEffect(defectResultCodec)(new Workflow.Complete({ exit: Exit.die(defect) })),
+      (encoded) => JSON.stringify(encoded)
+    ),
+    Context.empty()
+  )
 
 const payloadCodec = cachedCodec((workflow) => Schema.toCodecJson(workflow.payloadSchema))
 
