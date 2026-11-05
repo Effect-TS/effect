@@ -20,6 +20,7 @@ import * as Data from "../Data.ts"
 import * as Deferred from "../Deferred.ts"
 import * as Duration from "../Duration.ts"
 import * as Effect from "../Effect.ts"
+import * as Base64 from "../encoding/Base64.ts"
 import * as ErrorReporter from "../ErrorReporter.ts"
 import * as Exit from "../Exit.ts"
 import * as Fiber from "../Fiber.ts"
@@ -53,6 +54,7 @@ import * as Stream from "../Stream.ts"
 import * as Tracer from "../Tracer.ts"
 import type * as Types from "../Types.ts"
 import * as AiError from "./AiError.ts"
+import * as McpApps from "./internal/mcpApps.ts"
 import * as McpCore from "./internal/mcpCore.ts"
 import * as McpProtocolInternal from "./internal/mcpProtocol.ts"
 import * as McpRuntime from "./internal/mcpRuntime.ts"
@@ -94,6 +96,7 @@ import type {
   ReadResourceResult,
   ServerCapabilities
 } from "./McpSchema.ts"
+import type * as AiPrompt from "./Prompt.ts"
 import * as Tool from "./Tool.ts"
 import * as Toolkit from "./Toolkit.ts"
 
@@ -1270,10 +1273,10 @@ export class McpServer extends Context.Service<McpServer, {
         yield* notifications.client["notifications/tools/list_changed"]({})
       }),
       callTool: Effect.fnUntraced(function*(request) {
-        const client = yield* McpServerClient
+        const invocation = yield* McpProtocolInternal.clientInvocation
         const result = yield* internalCore.tools.call(
           request,
-          McpProtocolInternal.invocationFromClient(client)
+          invocation
         ).pipe(
           Effect.catch((error) =>
             error._tag === "RequestRejected" ? rejectedError(error) : Effect.fail(
@@ -1354,10 +1357,10 @@ export class McpServer extends Context.Service<McpServer, {
         }
       ),
       findResource: Effect.fnUntraced(function*(uri) {
-        const client = yield* McpServerClient
+        const invocation = yield* McpProtocolInternal.clientInvocation
         return yield* internalCore.resources.read(
           uri,
-          McpProtocolInternal.invocationFromClient(client)
+          invocation
         ).pipe(
           Effect.catchTags({
             ResourceNotFound: (error) =>
@@ -1415,11 +1418,11 @@ export class McpServer extends Context.Service<McpServer, {
         yield* notifications.client["notifications/prompts/list_changed"]({})
       }),
       getPromptResult: Effect.fnUntraced(function*({ arguments: params, name }) {
-        const client = yield* McpServerClient
+        const invocation = yield* McpProtocolInternal.clientInvocation
         const outcome = yield* internalCore.prompts.get(
           name,
           params ?? {},
-          McpProtocolInternal.invocationFromClient(client)
+          invocation
         ).pipe(
           Effect.catchTags({
             PromptNotFound: () => new InvalidParams({ message: `Prompt '${name}' not found` }),
@@ -1431,7 +1434,7 @@ export class McpServer extends Context.Service<McpServer, {
           : yield* new InvalidParams({ message: "Client input is not supported by this MCP protocol" })
       }),
       completion: Effect.fnUntraced(function*(complete) {
-        const client = yield* McpServerClient
+        const invocation = yield* McpProtocolInternal.clientInvocation
         const ref = complete.ref
         const result = yield* internalCore.completions.complete({
           reference: ref.type === "ref/resource"
@@ -1439,7 +1442,7 @@ export class McpServer extends Context.Service<McpServer, {
             : { type: "prompt", name: ref.name },
           argument: complete.argument,
           context: complete.context
-        }, McpProtocolInternal.invocationFromClient(client)).pipe(
+        }, invocation).pipe(
           Effect.catchTag("RequestRejected", rejectedError)
         )
         return {
@@ -1959,7 +1962,7 @@ const runWithRuntime = Effect.fnUntraced(function*(
     idleTimeToLive: 10000
   })
 
-  const clientMiddleware = McpServerClientMiddleware.of((effect, { client, headers, payload, rpc }) => {
+  const clientMiddleware = McpServerClientMiddleware.of((effect, { client, headers, payload, requestId, rpc }) => {
     const session = runtime.resolveRequest(client.id, headers)
     const isInitialize = rpc._tag.endsWith("/initialize")
     if (!isInitialize && !session) {
@@ -1994,6 +1997,9 @@ const runWithRuntime = Effect.fnUntraced(function*(
     if (clientState !== undefined) clientState.profile = profile
     const requestContext = McpRequestContext.of({
       clientId: client.id,
+      // RpcServer gives notifications a synthetic id; JSON-RPC notifications have none.
+      requestId: runtime.methodForInternalTag(rpc._tag).startsWith("notifications/") ? undefined : requestId,
+      sessionId: session === undefined ? undefined : headers[MCP_SESSION_ID_HEADER],
       protocolVersion: profile.protocolVersion,
       clientCapabilities: profile.clientCapabilities,
       clientInfo: profile.clientInfo,
@@ -3193,6 +3199,30 @@ const toolErrorResult = (message: string): CallToolResult =>
 const toolResultContent = (encoded: unknown): CallToolResult["content"] =>
   encoded === undefined ? [] : [{ type: "text", text: JSON.stringify(encoded) }]
 
+// The inverse of how `McpClient.toolkit` maps tool content to model output.
+const modelOutputContent = (parts: ReadonlyArray<AiPrompt.ToolModelOutputPart>): CallToolResult["content"] =>
+  parts.map((part): CallToolResult["content"][number] => {
+    if (part.type === "text") {
+      return { type: "text", text: part.text }
+    }
+    if (part.data instanceof URL) {
+      return {
+        type: "resource_link",
+        uri: part.data.href,
+        name: part.fileName ?? part.data.href,
+        mimeType: part.mediaType
+      }
+    }
+    const data = typeof part.data === "string" ? Result.getOrThrow(Base64.decode(part.data)) : part.data
+    if (part.mediaType.startsWith("image/")) {
+      return { type: "image", data, mimeType: part.mediaType }
+    }
+    if (part.mediaType.startsWith("audio/")) {
+      return { type: "audio", data, mimeType: part.mediaType }
+    }
+    return { type: "resource", resource: { uri: part.fileName ?? "file", mimeType: part.mediaType, blob: data } }
+  })
+
 /**
  * The requirements of a toolkit registration.
  *
@@ -3225,6 +3255,18 @@ type RegistrationRequirements<SchemaServices, RequestServices> =
  *
  * The MCP middleware in the current context, provided with
  * `Effect.provide(middleware.layer)`, runs around every call to the toolkit.
+ *
+ * A successful result is sent as `structuredContent` with its JSON encoding.
+ * The `content` the model reads is the JSON text, unless the tool defines
+ * `toModelOutput`: its parts then become the content, reversing how
+ * `McpClient.toolkit` maps content to model output. A text part becomes
+ * `text`; a file part with a `URL` becomes a `resource_link`; any other file
+ * part becomes `image` or `audio` by its media type, otherwise an embedded blob
+ * resource named by its `fileName`. An empty `toModelOutput` keeps the JSON
+ * text.
+ *
+ * `Tool.Meta` is sent as the tool's `_meta`, merged with the
+ * `McpApps.ToolUi` annotation as `_meta.ui`.
  *
  * @see {@link ToolkitRequirements} for which services are request-level
  *
@@ -3280,7 +3322,15 @@ export const registerToolkit: <Tools extends Record<string, Tool.Any>>(
       errors: "all"
     }
     const annotations = tool.annotations
-    const toolMeta = Context.getOrUndefined(annotations, Tool.Meta)
+    const merged = McpApps.mergeToolMeta(
+      tool.name,
+      Context.getOrUndefined(annotations, Tool.Meta),
+      Context.getOrUndefined(annotations, McpApps.ToolUiReader)
+    )
+    if ("error" in merged) {
+      return yield* Effect.die(merged.error)
+    }
+    const toolMeta = merged.meta
     const isDeclaredFailure = Schema.is(tool.failureSchema)
     // MCP content is JSON. Failures raised in "error" mode skip the Toolkit's encoding, so they use the JSON codec here.
     const encodeFailureJson = Schema.encodeUnknownEffect(Schema.toCodecJson(tool.failureSchema)) as (
@@ -3303,11 +3353,12 @@ export const registerToolkit: <Tools extends Record<string, Tool.Any>>(
       error instanceof Error && error.message !== ""
         ? Effect.succeed(toolErrorResult(error.message))
         : Effect.map(encodeFailure(error), failureResult)
-    const successResult = (structuredContent: unknown) =>
+    // `toModelOutput` replaces the JSON text the model reads; `structuredContent` keeps the encoded result.
+    const successResult = (structuredContent: unknown, modelOutput: ReadonlyArray<AiPrompt.ToolModelOutputPart> = []) =>
       new CallToolResult({
         isError: false,
         structuredContent,
-        content: toolResultContent(structuredContent)
+        content: modelOutput.length > 0 ? modelOutputContent(modelOutput) : toolResultContent(structuredContent)
       })
     const handleCause = (cause: Cause.Cause<unknown>) => {
       const failure = Cause.findFail(cause)
@@ -3374,8 +3425,8 @@ export const registerToolkit: <Tools extends Record<string, Tool.Any>>(
               // An absent result, such as `Schema.Void`, has no structured form.
               return Effect.succeed(
                 result.result === undefined
-                  ? new CallToolResult({ isError: false, content: [] })
-                  : successResult(result.encodedResult)
+                  ? new CallToolResult({ isError: false, content: modelOutputContent(result.modelOutput ?? []) })
+                  : successResult(result.encodedResult, result.modelOutput)
               )
             }
             // Declared failures return their encoded payload; anything else is classified by origin.
@@ -3577,7 +3628,14 @@ export type PromptRequirements<Params extends Schema.Struct.Fields, R, Completio
 /**
  * Registers an MCP resource or resource template from an Effect program.
  *
+ * **Details**
+ *
+ * `_meta` is sent with the `resources/list` or `resources/templates/list`
+ * entry. When `content` yields a string or bytes, the content item carries
+ * `mimeType`; a `ReadResourceResult` is sent as returned.
+ *
  * @see {@link resource} for the layer-based resource registration wrapper
+ * @see `McpApps.registerResource` for MCP App HTML resources
  *
  * @stability unstable
  * @category handlers
@@ -3589,6 +3647,7 @@ export const registerResource: {
     readonly name: string
     readonly description?: string | undefined
     readonly mimeType?: string | undefined
+    readonly _meta?: Readonly<Record<string, unknown>> | undefined
     readonly audience?: ReadonlyArray<"user" | "assistant"> | undefined
     readonly priority?: number | undefined
     readonly content: Effect.Effect<
@@ -3606,6 +3665,7 @@ export const registerResource: {
     readonly name: string
     readonly description?: string | undefined
     readonly mimeType?: string | undefined
+    readonly _meta?: Readonly<Record<string, unknown>> | undefined
     readonly audience?: ReadonlyArray<"user" | "assistant"> | undefined
     readonly priority?: number | undefined
     readonly completion?: ValidateCompletions<Completions, keyof ResourceCompletions<Schemas>> | undefined
@@ -3623,6 +3683,7 @@ export const registerResource: {
       readonly name: string
       readonly description?: string | undefined
       readonly mimeType?: string | undefined
+      readonly _meta?: Readonly<Record<string, unknown>> | undefined
       readonly audience?: ReadonlyArray<"user" | "assistant"> | undefined
       readonly priority?: number | undefined
       readonly content: Effect.Effect<ReadResourceResult | string | Uint8Array, any, any>
@@ -3638,7 +3699,7 @@ export const registerResource: {
         }),
         services,
         handle: options.content.pipe(
-          Effect.map((content) => resolveResourceContent(options.uri, content)),
+          Effect.map((content) => resolveResourceContent(options.uri, content, options.mimeType)),
           Effect.catchCause(handlerFailureToInternalError)
         ),
         annotations: options.annotations ?? Context.empty()
@@ -3655,6 +3716,7 @@ export const registerResource: {
     readonly name: string
     readonly description?: string | undefined
     readonly mimeType?: string | undefined
+    readonly _meta?: Readonly<Record<string, unknown>> | undefined
     readonly audience?: ReadonlyArray<"user" | "assistant"> | undefined
     readonly priority?: number | undefined
     readonly completion?:
@@ -3702,7 +3764,7 @@ export const registerResource: {
           Effect.mapError((error) => new InvalidParams({ message: error.message })),
           Effect.flatMap((params: any) =>
             options.content(uri, ...params).pipe(
-              Effect.map((content) => resolveResourceContent(uri, content)),
+              Effect.map((content) => resolveResourceContent(uri, content, options.mimeType)),
               Effect.catchCause(handlerFailureToInternalError)
             )
           )
@@ -3734,6 +3796,7 @@ export const resource: {
     readonly name: string
     readonly description?: string | undefined
     readonly mimeType?: string | undefined
+    readonly _meta?: Readonly<Record<string, unknown>> | undefined
     readonly audience?: ReadonlyArray<"user" | "assistant"> | undefined
     readonly priority?: number | undefined
     readonly content: Effect.Effect<
@@ -3750,6 +3813,7 @@ export const resource: {
     readonly name: string
     readonly description?: string | undefined
     readonly mimeType?: string | undefined
+    readonly _meta?: Readonly<Record<string, unknown>> | undefined
     readonly audience?: ReadonlyArray<"user" | "assistant"> | undefined
     readonly priority?: number | undefined
     readonly completion?: ValidateCompletions<Completions, keyof ResourceCompletions<Schemas>> | undefined
@@ -4194,22 +4258,13 @@ const compileUriTemplate = (segments: TemplateStringsArray, ...schemas: Readonly
 
 const resolveResourceContent = (
   uri: string,
-  content: ReadResourceResult | string | Uint8Array
+  content: ReadResourceResult | string | Uint8Array,
+  mimeType: string | undefined
 ): ReadResourceResult => {
   if (typeof content === "string") {
-    return {
-      contents: [{
-        uri,
-        text: content
-      }]
-    }
+    return { contents: [mimeType === undefined ? { uri, text: content } : { uri, mimeType, text: content }] }
   } else if (content instanceof Uint8Array) {
-    return {
-      contents: [{
-        uri,
-        blob: content
-      }]
-    }
+    return { contents: [mimeType === undefined ? { uri, blob: content } : { uri, mimeType, blob: content }] }
   }
   return content
 }

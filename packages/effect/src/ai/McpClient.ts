@@ -33,6 +33,7 @@ import type * as Rpc from "../rpc/Rpc.ts"
 import * as Schema from "../Schema.ts"
 import type * as Scope from "../Scope.ts"
 import * as Stream from "../Stream.ts"
+import * as McpApps from "./internal/mcpApps.ts"
 import { BASE64_SENTINEL_PREFIX, BASE64_SENTINEL_SUFFIX } from "./internal/mcpProtocol.ts"
 import * as McpSkills from "./internal/mcpSkills.ts"
 import {
@@ -261,6 +262,10 @@ export const isMcpClient = (value: unknown): value is McpClient => Predicate.has
  *
  * **Gotchas**
  *
+ * With `ui: true` it declares that the host renders MCP Apps (the
+ * `io.modelcontextprotocol/ui` extension) with the `text/html;profile=mcp-app`
+ * MIME type, on every protocol revision. Rendering the apps is up to the host.
+ *
  * The Skills extension requires protocol 2026-07-28. With `skills: true` on an
  * earlier protocol, construction fails with an `UnsupportedError`.
  *
@@ -282,6 +287,7 @@ export const make: (options: {
   } | undefined
   readonly extensions?: {
     readonly skills?: boolean | undefined
+    readonly ui?: boolean | undefined
   } | undefined
 }) => Effect.Effect<
   McpClient,
@@ -321,7 +327,11 @@ export const make: (options: {
 
   // Modern requests carry the client identity in every request.
   // https://modelcontextprotocol.io/specification/2026-07-28/basic/index
-  const clientCapabilities = skillsEnabled ? { extensions: { [McpSkills.EXTENSION_ID]: {} } } : {}
+  const extensions = {
+    ...(skillsEnabled ? { [McpSkills.EXTENSION_ID]: {} } : {}),
+    ...(options.extensions?.ui === true ? { [McpApps.EXTENSION_ID]: { mimeTypes: [McpApps.MIME_TYPE] } } : {})
+  }
+  const clientCapabilities = Object.keys(extensions).length === 0 ? {} : { extensions }
   const meta = {
     "io.modelcontextprotocol/protocolVersion": version,
     "io.modelcontextprotocol/clientInfo": clientInfo,
@@ -717,6 +727,9 @@ export type RemoteTool<
  * the failed result. Type arguments that select a non-default mode require the
  * matching option.
  *
+ * Tools whose `_meta.ui.visibility` omits `"model"` are meant only for an MCP
+ * App and are left out; `listTools` still returns them.
+ *
  * `timeout` bounds each tool call. `trustAnnotations` copies server hints into
  * tool annotations but never sets approval. `transformTool` receives each
  * annotated tool before binding and must return a tool derived from it, e.g.
@@ -776,6 +789,7 @@ export function toolkit(
     > = Object.create(null)
 
     for (const descriptor of descriptors) {
+      if (!isModelVisible(descriptor)) continue
       const name = `${config.prefix ?? ""}${descriptor.name}`
       if (!/^[a-zA-Z0-9_-]{1,64}$/.test(name) || Object.hasOwn(handlers, name)) {
         return yield* fail(new ConfigurationError({ description: `Invalid or duplicate MCP model tool name: ${name}` }))
@@ -1020,6 +1034,7 @@ export const layerStdio: (options: {
   } | undefined
   readonly extensions?: {
     readonly skills?: boolean | undefined
+    readonly ui?: boolean | undefined
   } | undefined
   readonly command: ChildProcess.Command
   readonly protocol: McpProtocol.ProtocolAdapter<ProtocolVersion>
@@ -1261,6 +1276,7 @@ export const layerHttp: (options: {
   } | undefined
   readonly extensions?: {
     readonly skills?: boolean | undefined
+    readonly ui?: boolean | undefined
   } | undefined
   readonly url: string | URL
   readonly protocol: McpProtocol.ProtocolAdapter<ProtocolVersion>
@@ -1543,6 +1559,13 @@ interface ToolkitConfig {
   readonly transformTool?:
     | ((tool: RemoteTool<"text" | "complete", Tool.FailureMode>, descriptor: McpSchema.Tool) => Tool.Any)
     | undefined
+}
+
+// https://github.com/modelcontextprotocol/ext-apps/blob/main/specification/2026-01-26/apps.mdx
+const isModelVisible = (descriptor: McpSchema.Tool): boolean => {
+  const ui = descriptor._meta?.ui
+  const visibility = isRecord(ui) ? ui.visibility : undefined
+  return !Array.isArray(visibility) || visibility.includes("model")
 }
 
 const toModelOutput = (result: McpSchema.CallToolResult): Array<Prompt.ToolModelOutputPart> => {

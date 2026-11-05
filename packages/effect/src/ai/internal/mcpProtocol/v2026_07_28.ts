@@ -20,6 +20,7 @@ import * as Scope from "../../../Scope.ts"
 import type * as Types from "../../../Types.ts"
 import type * as PublicMcpProtocol from "../../McpProtocol.ts"
 import * as PublicMcpSchema from "../../McpSchema.ts"
+import * as McpApps from "../mcpApps.ts"
 import * as McpCore from "../mcpCore.ts"
 import * as McpProtocol from "../mcpProtocol.ts"
 import * as McpSchema from "../mcpSchema/v2026_07_28.ts"
@@ -338,7 +339,10 @@ export const makeHandlers = (
   }
   const getDiscovery = Effect.map(context.registrationPresence, (presence) => {
     const capabilities: Types.Mutable<typeof McpSchema.ServerCapabilities.Type> = { completions: {}, logging: {} }
-    const declared = McpSkills.declareExtension(extensions, presence.skills)
+    const declared = McpApps.declareExtension(
+      McpSkills.declareExtension(extensions, presence.skills),
+      presence.apps === true
+    )
     if (declared !== undefined) capabilities.extensions = declared
     if (presence.tools) capabilities.tools = { listChanged: supportsSubscriptions }
     if (presence.resources) {

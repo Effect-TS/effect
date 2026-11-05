@@ -4,6 +4,7 @@ import * as Base64 from "../../encoding/Base64.ts"
 import type * as Headers from "../../http/Headers.ts"
 import type * as LogLevel from "../../LogLevel.ts"
 import * as Match from "../../Match.ts"
+import * as Option from "../../Option.ts"
 import * as Predicate from "../../Predicate.ts"
 import type * as PubSub from "../../PubSub.ts"
 import * as Result from "../../Result.ts"
@@ -82,12 +83,15 @@ export const profileFromClient = (
  * @internal
  */
 export const invocationFromClient = (
-  request: PublicMcpSchema.McpServerClient["Service"]
+  request: PublicMcpSchema.McpServerClient["Service"],
+  current?: PublicMcpSchema.McpRequestContext["Service"] | undefined
 ): McpCore.McpInvocation => ({
   clientId: request.clientId,
   protocol: profileFromClient(request),
   requestContext: PublicMcpSchema.McpRequestContext.of({
     clientId: request.clientId,
+    requestId: current?.requestId,
+    sessionId: current?.sessionId,
     protocolVersion: request.protocolVersion,
     clientCapabilities: request.clientCapabilities,
     clientInfo: request.clientInfo,
@@ -97,6 +101,19 @@ export const invocationFromClient = (
 })
 
 /**
+ * The invocation of the current legacy request, keeping the request identity
+ * from the request context.
+ *
+ * @internal
+ */
+export const clientInvocation: Effect.Effect<McpCore.McpInvocation, never, PublicMcpSchema.McpServerClient> = Effect
+  .gen(function*() {
+    const request = yield* PublicMcpSchema.McpServerClient
+    const current = yield* Effect.serviceOption(PublicMcpSchema.McpRequestContext)
+    return invocationFromClient(request, Option.getOrUndefined(current))
+  })
+
+/**
  * Runs a core list operation for the legacy client of the current request.
  *
  * @internal
@@ -104,9 +121,7 @@ export const invocationFromClient = (
 export const listForClient = <A>(
   list: (invocation: McpCore.McpInvocation) => Effect.Effect<A, McpCore.RequestRejected>
 ): Effect.Effect<A, ProtocolError, PublicMcpSchema.McpServerClient> =>
-  PublicMcpSchema.McpServerClient.use((request) =>
-    list(invocationFromClient(request)).pipe(Effect.mapError(ProtocolError.fromFeature))
-  )
+  Effect.flatMap(clientInvocation, (invocation) => list(invocation).pipe(Effect.mapError(ProtocolError.fromFeature)))
 
 /**
  * @internal
@@ -465,6 +480,8 @@ export interface HandlerInstallationContext {
     readonly resources: boolean
     readonly prompts: boolean
     readonly skills: boolean
+    // Absent means no MCP App is registered.
+    readonly apps?: boolean | undefined
   }>
 }
 

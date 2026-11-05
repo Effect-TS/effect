@@ -8,6 +8,7 @@ import * as Data from "../../Data.ts"
 import * as Effect from "../../Effect.ts"
 import type * as McpProtocol from "../McpProtocol.ts"
 import * as McpSchema from "../McpSchema.ts"
+import * as McpApps from "./mcpApps.ts"
 
 /**
  * @internal
@@ -514,6 +515,8 @@ export interface McpCore {
     readonly resources: boolean
     readonly prompts: boolean
     readonly skills: boolean
+    // Whether an MCP App resource or app tool is registered.
+    readonly apps: boolean
   }>
 }
 
@@ -723,7 +726,10 @@ export const make: Effect.Effect<McpCore> = Effect.sync(() => {
     tools: registrations.size > 0,
     resources: resourceRegistrations.length > 0 || resourceTemplateRegistrations.length > 0,
     prompts: promptRegistrations.size > 0,
-    skills: skillRegistrations.size > 0
+    skills: skillRegistrations.size > 0,
+    apps: resourceRegistrations.some((entry) => McpApps.isAppResource(entry.descriptor)) ||
+      resourceTemplateRegistrations.some((entry) => McpApps.isAppResource(entry.descriptor)) ||
+      Array.from(registrations.values()).some((entry) => McpApps.isAppTool(entry.descriptor))
   }))
 
   return { tools, resources, prompts, completions, skills, registrationPresence }

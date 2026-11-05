@@ -21,6 +21,7 @@ import type * as Scope from "../../Scope.ts"
 import type * as Types from "../../Types.ts"
 import type * as PublicMcpProtocol from "../McpProtocol.ts"
 import * as PublicMcpSchema from "../McpSchema.ts"
+import * as McpApps from "./mcpApps.ts"
 import type * as McpCore from "./mcpCore.ts"
 import * as McpProtocol from "./mcpProtocol.ts"
 import * as McpProtocolRegistry from "./mcpProtocolRegistry.ts"
@@ -382,6 +383,7 @@ export const make = Effect.fnUntraced(function*(
       }
       const requestContext = PublicMcpSchema.McpRequestContext.of({
         clientId,
+        requestId: request.isNotification === true ? undefined : request.id,
         protocolVersion: profile.protocolVersion,
         clientCapabilities: profile.clientCapabilities,
         clientInfo: profile.clientInfo,
@@ -558,7 +560,9 @@ export const make = Effect.fnUntraced(function*(
                   : {}),
                 ...(presence.prompts ? { prompts: { listChanged: true } } : {})
               }
-              if (sessionfulExtensions !== undefined) capabilities.extensions = sessionfulExtensions
+              // Unlike Skills, Apps is negotiated on every revision.
+              const extensions = McpApps.declareExtension(sessionfulExtensions, presence.apps)
+              if (extensions !== undefined) capabilities.extensions = extensions
               const initializePayload = PublicMcpSchema.Initialize.payloadSchema.make({
                 protocolVersion,
                 capabilities: profile.clientCapabilities,

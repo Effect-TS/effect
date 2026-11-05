@@ -135,6 +135,11 @@ function defines how the resource's data is generated at runtime—in this case,
 string containing the provided `id`. The `mimeType` specifies the format of the resource, while the
 `audience` property determines who can access it (either `"assistant"` and/or `"user"`).
 
+When `content` returns a string or bytes, the content item carries the resource's `mimeType`. A
+`McpSchema.ReadResourceResult` is sent as returned. `_meta` adds metadata to the resource's
+`resources/list` or `resources/templates/list` entry; listings carry it on protocol 2025-06-18 and
+later.
+
 ## Skills
 
 Skills publish [Agent Skills](https://agentskills.io/) under the MCP Skills extension
@@ -166,8 +171,9 @@ Read references/policy.md before issuing a refund.
 - Clients list skills with `skills/list`, look one up with `skills/get`, and browse directories with
   `resources/directory/read`. Each entry lists every file with the SHA-256 digest and size of the
   bytes served. The bytes are copied at registration.
-- The server declares the `io.modelcontextprotocol/skills` extension once a skill is registered, on
-  every protocol revision. Under `v2026_07_28` the `skills` cache hint applies to these results.
+- The server declares the `io.modelcontextprotocol/skills` extension once a skill is registered. The
+  extension requires protocol 2026-07-28, so sessionful revisions neither declare nor serve it.
+  Under `v2026_07_28` the `skills` cache hint applies to these results.
 - Building the layer fails with `IllegalArgumentError` when the skill breaks the extension's rules:
   a name other than the last URI segment, a `SKILL.md` without frontmatter, frontmatter that is not
   valid `McpSchema.SkillFrontmatter` (the Agent Skills specification's fields, such as string-only
@@ -175,6 +181,66 @@ Read references/policy.md before issuing a refund.
 - Skills cannot nest: registering a skill whose directory contains or lies inside another skill's
   fails. So does registering a skill with a file whose URI is already a resource, and registering a
   resource at the URI of a skill's file afterwards is a defect.
+
+## MCP Apps
+
+[MCP Apps](https://github.com/modelcontextprotocol/ext-apps) (the `io.modelcontextprotocol/ui`
+extension) let a tool come with an HTML page that the host renders in a sandboxed iframe. The
+`McpApps` module publishes the page and links tools to it.
+
+```typescript
+import { Effect, Layer, Schema } from "effect"
+import { McpApps, McpServer, Prompt, Tool, Toolkit } from "effect/ai"
+
+const Dashboard = McpApps.resource({
+  uri: "ui://dashboard/view.html",
+  name: "Dashboard",
+  meta: { csp: { connectDomains: ["https://api.example.com"] }, prefersBorder: true },
+  content: Effect.succeed("<!doctype html><html><body>...</body></html>")
+})
+
+const ShowDashboard = Tool.make("ShowDashboard", {
+  success: Schema.Struct({ rows: Schema.Array(Schema.String) }),
+  // The model reads this summary; the page receives the rows as `structuredContent`.
+  toModelOutput: ({ rows }) => [Prompt.textPart({ text: `Showing ${rows.length} rows` })]
+}).annotate(McpApps.ToolUi, { resourceUri: "ui://dashboard/view.html" })
+
+// Only the page can call this tool; it is hidden from the model.
+const Refresh = Tool.make("Refresh", {
+  success: Schema.Struct({ rows: Schema.Array(Schema.String) })
+}).annotate(McpApps.ToolUi, { visibility: ["app"] })
+
+const DashboardToolkit = Toolkit.make(ShowDashboard, Refresh)
+
+export const DashboardLayer = Layer.mergeAll(
+  Dashboard,
+  McpServer.toolkit(DashboardToolkit).pipe(
+    Layer.provideMerge(DashboardToolkit.toLayer({
+      ShowDashboard: () => Effect.succeed({ rows: ["a", "b"] }),
+      Refresh: () => Effect.succeed({ rows: ["a", "b", "c"] })
+    }))
+  )
+)
+```
+
+- `McpApps.resource` and `McpApps.registerResource` take the options of `McpServer.resource`,
+  without `mimeType`. The URI must start with `ui://`; static URIs are checked at compile time and
+  others die with `IllegalArgumentError`. The listing and every content item carry the
+  `text/html;profile=mcp-app` MIME type and the `meta` options as `_meta.ui`.
+- `McpApps.ToolUi` sets the tool's `_meta.ui`, next to any other `Tool.Meta` keys. Registering the
+  toolkit dies when `Tool.Meta` already sets `ui` or `resourceUri` is not a `ui://` URI.
+  `visibility` defaults to `["model", "app"]`; `McpClient.toolkit` leaves out tools whose
+  visibility omits `"model"`.
+- The server declares the extension once an app resource or app tool is registered, on every
+  protocol revision. An explicit entry for `io.modelcontextprotocol/ui` in the server's
+  `extensions` option takes precedence.
+- Tool and listing `_meta` reach the client only on protocol 2025-06-18 and later; content items
+  carry their `_meta` on every revision.
+- `McpApps.isSupported(capabilities)` tells whether a client renders apps, for example in a
+  `McpSchema.EnabledWhen` annotation.
+- To match calls from the page with the call that opened it, read `requestId` and `sessionId` from
+  `McpSchema.McpRequestContext`. A JSON-RPC id is unique within the stdio process or the HTTP
+  session; on 2026-07-28 it is unique only among the client's in-flight requests.
 
 ## Prompts
 
@@ -257,6 +323,12 @@ A tool result is sent to the client in its JSON encoding, the same encoding its 
 `Schema.Void` field as `null`. Declared failures are sent as text in the JSON encoding of their
 `failure` schema. In the default `"error"` failure mode, a declared `Error` with a non-empty
 `message` is sent as that message instead.
+
+The result is also sent as text content, which is what most models read. When the tool defines
+`toModelOutput`, its parts are sent as the content instead, while `structuredContent` keeps the
+encoded result: a text part becomes `text`, a file part with a `URL` becomes a `resource_link`, an
+image or audio file becomes `image` or `audio`, and any other file becomes an embedded resource
+named by its `fileName`. An empty `toModelOutput` falls back to the JSON text.
 
 ## Request-level dependencies
 
@@ -766,6 +838,9 @@ export const readRemoteReport = (client: McpClient.McpClient) =>
   })
 ```
 
+Tools whose `_meta.ui.visibility` omits `"model"` are meant only for an MCP App and are left out of
+the toolkit; `listTools` still returns them.
+
 The toolkit is a snapshot: build a new one to pick up changes on the server. For custom naming,
 validation, approval or result conversion, define tools with `Tool.make` or `Tool.dynamic` and
 call `client.callTool` from their handlers.
@@ -835,3 +910,10 @@ export const loadSkill = (client: McpClient.McpClient, name: string) =>
     return yield* client.readSkillResource({ skill, uri: skill.uri })
   })
 ```
+
+### MCP Apps
+
+Pass `extensions: { ui: true }` when the host renders [MCP Apps](https://github.com/modelcontextprotocol/ext-apps).
+The client then declares the `io.modelcontextprotocol/ui` extension with the
+`text/html;profile=mcp-app` MIME type, on every protocol revision. Reading the `ui://` resource a
+tool names in `_meta.ui.resourceUri` and rendering it is left to the host.

@@ -191,8 +191,8 @@ export const protocol = McpProtocol.make({
           Effect.map((resourceTemplates) => McpSchema.ListResourceTemplatesResult.make({ resourceTemplates }))
         ),
       "resources/read": Effect.fnUntraced(function*({ uri }) {
-        const request = yield* PublicMcpSchema.McpServerClient
-        const result = yield* core.resources.read(uri, McpProtocol.invocationFromClient(request)).pipe(
+        const invocation = yield* McpProtocol.clientInvocation
+        const result = yield* core.resources.read(uri, invocation).pipe(
           Effect.mapError(McpProtocol.ProtocolError.fromFeature)
         )
         return McpSchema.ReadResourceResult.make({
@@ -210,8 +210,8 @@ export const protocol = McpProtocol.make({
             Effect.map((prompts) => McpSchema.ListPromptsResult.make({ prompts }))
           ),
       "prompts/get": Effect.fnUntraced(function*({ arguments: args, name }) {
-        const request = yield* PublicMcpSchema.McpServerClient
-        const outcome = yield* core.prompts.get(name, args ?? {}, McpProtocol.invocationFromClient(request)).pipe(
+        const invocation = yield* McpProtocol.clientInvocation
+        const outcome = yield* core.prompts.get(name, args ?? {}, invocation).pipe(
           Effect.mapError(McpProtocol.ProtocolError.fromFeature)
         )
         if (outcome._tag === "InputRequired") {
@@ -235,7 +235,7 @@ export const protocol = McpProtocol.make({
         })
       }),
       "completion/complete": Effect.fnUntraced(function*(completeRequest) {
-        const request = yield* PublicMcpSchema.McpServerClient
+        const invocation = yield* McpProtocol.clientInvocation
         const result = yield* core.completions.complete({
           reference: completeRequest.ref.type === "ref/prompt"
             ? {
@@ -249,7 +249,7 @@ export const protocol = McpProtocol.make({
             ? undefined
             : { arguments: completeRequest.context.arguments },
           metadata: completeRequest._meta
-        }, McpProtocol.invocationFromClient(request)).pipe(Effect.mapError(McpProtocol.ProtocolError.fromFeature))
+        }, invocation).pipe(Effect.mapError(McpProtocol.ProtocolError.fromFeature))
         return McpSchema.CompleteResult.make({
           completion: {
             values: Array.from(result.values),
@@ -286,10 +286,10 @@ export const protocol = McpProtocol.make({
         })
       }),
       "tools/call": Effect.fnUntraced(function*(call) {
-        const request = yield* PublicMcpSchema.McpServerClient
+        const invocation = yield* McpProtocol.clientInvocation
         const result = yield* core.tools.call(
           { ...call, arguments: call.arguments ?? {} },
-          McpProtocol.invocationFromClient(request)
+          invocation
         ).pipe(
           Effect.flatMap((outcome) => McpProtocol.requireCompleteOperation(McpSchema.protocolVersion, outcome)),
           Effect.mapError(McpProtocol.ProtocolError.fromTool)

@@ -3196,12 +3196,34 @@ export interface McpReverseClient {
  * Unlike `McpServerClient`, this service does not imply an initialized session
  * or support for server-initiated requests.
  *
+ * `requestId` and `sessionId` correlate work across requests, for example an
+ * MCP App polling a tool while the call that opened it is still running. A
+ * JSON-RPC id is unique only within its scope: the process on stdio, the
+ * session on sessionful HTTP, and the sender's in-flight requests on
+ * 2026-07-28. Combine it with `sessionId` when one is present, and do not
+ * treat a 2026-07-28 id as unique once its request has completed.
+ *
  * @stability unstable
  * @category services
  * @since 4.0.0
  */
 export class McpRequestContext extends Context.Service<McpRequestContext, {
+  /**
+   * Identifies the transport connection the request arrived on. Over HTTP
+   * every POST is a new connection, so this does not identify a session or a
+   * client across requests; use `sessionId` for that. It is `0` on stdio.
+   */
   readonly clientId: number
+  /**
+   * The JSON-RPC id of the request, as sent by the client. Absent for
+   * notifications and for direct calls to the `McpServer` service.
+   */
+  readonly requestId?: RequestId | undefined
+  /**
+   * The `Mcp-Session-Id` of a sessionful HTTP request. Absent on stdio, on
+   * stateless 2026-07-28 requests and before a session is initialized.
+   */
+  readonly sessionId?: string | undefined
   readonly protocolVersion: string
   readonly clientCapabilities: ClientCapabilities
   readonly clientInfo?: Implementation | undefined

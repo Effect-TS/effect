@@ -54,6 +54,12 @@ export * as IdGenerator from "./IdGenerator.ts"
 export * as LanguageModel from "./LanguageModel.ts"
 
 /**
+ * @stability unstable
+ * @since 4.1.3
+ */
+export * as McpApps from "./McpApps.ts"
+
+/**
  * @stability experimental
  * @since 4.0.6
  */
