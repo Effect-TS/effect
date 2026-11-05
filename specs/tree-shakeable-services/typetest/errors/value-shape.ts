@@ -1,10 +1,9 @@
-// A value-shaped operation is called with no arguments; its result is the shape with the key added. Passing an
-// argument, or yielding the operation itself, is rejected like any other arity or type mistake.
-import * as Effect from "effect/Effect"
+// A value operation is an Effect, not a function: it is yielded, not called. Its constructor takes an Effect shape;
+// a function shape belongs to `Context.Operation`.
+import * as Context from "effect/Context"
+import type * as Effect from "effect/Effect"
 import * as Terminal from "../../src/Terminal.ts"
 
-export const tooMany = Terminal.columns(80)
+export const called = Terminal.columns()
 
-export const notYielded = Effect.gen(function*() {
-  return yield* Terminal.columns
-})
+export const functionShape = Context.Operation.value<() => Effect.Effect<number>>()("test/columns")

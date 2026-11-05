@@ -20,8 +20,6 @@ import type * as Queue from "./Queue.ts"
 import * as Schema from "./Schema.ts"
 import type * as Scope from "./Scope.ts"
 
-const TypeId = "~effect/Terminal"
-
 /**
  * A `Terminal` represents a command-line interface which can read input from a
  * user and display messages to a user.
@@ -31,8 +29,6 @@ const TypeId = "~effect/Terminal"
  * @since 4.0.0
  */
 export interface Terminal {
-  readonly [TypeId]: typeof TypeId
-
   /**
    * The number of columns available on the platform's terminal interface.
    */
@@ -177,6 +173,69 @@ export class QuitError extends Schema.Error<QuitError>("QuitError")({
 export const isQuitError = (u: unknown): u is QuitError => Predicate.hasProperty(u, QuitErrorTypeId)
 
 /**
+ * The number of columns available on the platform's terminal interface, as an
+ * operation: `yield* Terminal.columns` reads the implementation provided for
+ * the terminal, or for this member alone.
+ *
+ * @stability unstable
+ * @category operations
+ * @since 4.0.0
+ */
+export const columns = Context.Operation.value<Terminal["columns"], Terminal>()("effect/Terminal/columns")
+
+/**
+ * The number of rows available on the platform's terminal interface, as an
+ * operation.
+ *
+ * @stability unstable
+ * @category operations
+ * @since 4.0.0
+ */
+export const rows = Context.Operation.value<Terminal["rows"], Terminal>()("effect/Terminal/rows")
+
+/**
+ * Subscribes to terminal size changes, as an operation. The queue starts with
+ * the current dimensions, receives each resize until the scope closes, and
+ * keeps only the latest size.
+ *
+ * @stability unstable
+ * @category operations
+ * @since 4.0.0
+ */
+export const size = Context.Operation.value<Terminal["size"], Terminal>()("effect/Terminal/size")
+
+/**
+ * Reads input events from the default standard input, as an operation.
+ *
+ * @stability unstable
+ * @category operations
+ * @since 4.0.0
+ */
+export const readInput = Context.Operation.value<Terminal["readInput"], Terminal>()("effect/Terminal/readInput")
+
+/**
+ * Reads a single line from the default standard input, as an operation.
+ *
+ * @stability unstable
+ * @category operations
+ * @since 4.0.0
+ */
+export const readLine = Context.Operation.value<Terminal["readLine"], Terminal>()("effect/Terminal/readLine")
+
+/**
+ * Displays text to the default standard output, as an operation:
+ * `yield* Terminal.display(text)` calls the implementation provided for the
+ * terminal, or for this member alone.
+ *
+ * @stability unstable
+ * @category operations
+ * @since 4.0.0
+ */
+export const display = Context.Operation<Terminal["display"], Terminal>()("effect/Terminal/display")
+
+const members = { columns, rows, size, readInput, readLine, display }
+
+/**
  * Service tag for command-line input and output services.
  *
  * **When to use**
@@ -188,7 +247,20 @@ export const isQuitError = (u: unknown): u is QuitError => Predicate.hasProperty
  * @category services
  * @since 4.0.0
  */
-export const Terminal: Context.Service<Terminal, Terminal> = Context.Service("effect/Terminal")
+export const Terminal = Context.Operations<Terminal, Terminal>()("effect/Terminal", members)
+
+/**
+ * The record of terminal implementations: today an alias of the `Terminal`
+ * interface, which the next release makes the sole name of the record type
+ * while `Terminal` becomes the identity of the whole service. Code that uses
+ * `Terminal.Terminal` as the type of an implementation (`terminal:
+ * Terminal.Terminal`) should write `Terminal.Shape` now.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.0.0
+ */
+export type Shape = Terminal
 
 /**
  * Creates a `Terminal` service implementation.
@@ -202,13 +274,11 @@ export const Terminal: Context.Service<Terminal, Terminal> = Context.Service("ef
  * **Details**
  *
  * The implementation object supplies `columns`, `rows`, `size`, `readInput`,
- * `readLine`, and `display`; `make` attaches the `Terminal` service marker so
- * the result can be provided through the `Terminal` context service.
+ * `readLine`, and `display`, and is the record provided through the `Terminal`
+ * context service.
  *
  * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
-export const make = (
-  impl: Omit<Terminal, typeof TypeId>
-): Terminal => Terminal.of({ ...impl, [TypeId]: TypeId })
+export const make = (impl: Terminal): Terminal => impl

@@ -30,7 +30,8 @@ describe("Operation", () => {
   const scoped = Context.Operation<() => Effect.Effect<string, Error, Scope.Scope>>()("TypeTest/FS/scoped")
   const stream = Stream.Operation<(path: string) => Stream.Stream<Uint8Array, Error>>()("TypeTest/FS/stream")
   const collect = Sink.Operation<(label: string) => Sink.Sink<Array<string>, string>>()("TypeTest/FS/collect")
-  const columns = Context.Operation<() => Effect.Effect<number>>()("TypeTest/Terminal/columns")
+  const columns = Context.Operation.value<Effect.Effect<number>>()("TypeTest/Terminal/columns")
+  const display = Context.Operation<(text: string) => Effect.Effect<void>>()("TypeTest/Terminal/display")
   const members = { readFile, writeFile, scoped, stream }
   type FS = Context.Operations.Identifier<typeof members>
   interface Shape extends Context.Operations.Shape<typeof members> {}
@@ -49,8 +50,34 @@ describe("Operation", () => {
     expect(scoped()).type.toBe<Effect.Effect<string, Error, Scope.Scope | "TypeTest/FS/scoped">>()
     expect(stream("a")).type.toBe<Stream.Stream<Uint8Array, Error, "TypeTest/FS/stream">>()
     expect(collect("x")).type.toBe<Sink.Sink<Array<string>, string, never, never, "TypeTest/FS/collect">>()
-    expect(columns()).type.toBe<Effect.Effect<number, never, "TypeTest/Terminal/columns">>()
-    expect(columns).type.not.toBeCallableWith(80)
+  })
+
+  it("is the Effect itself, with the key added to R, when the shape is an Effect", () => {
+    expect(columns).type.toBeAssignableTo<Effect.Effect<number, never, "TypeTest/Terminal/columns">>()
+    expect(columns).type.toBeAssignableTo<Context.Slot<"TypeTest/Terminal/columns", Effect.Effect<number>>>()
+    expect(columns).type.not.toBeAssignableTo<Context.Key<any, any>>()
+    expect(columns.key).type.toBe<"TypeTest/Terminal/columns">()
+    expect(Effect.map(columns, (width) => width * 2)).type.toBe<
+      Effect.Effect<number, never, "TypeTest/Terminal/columns">
+    >()
+    expect(Layer.succeed(columns, Effect.succeed(80))).type.toBe<Layer.Layer<"TypeTest/Terminal/columns">>()
+    expect(Layer.succeed).type.not.toBeCallableWith(columns, () => Effect.succeed(80))
+    expect(columns.pipe(Effect.provideService(columns, Effect.succeed(80)))).type.toBe<Effect.Effect<number>>()
+    expect(Effect.service(columns)).type.toBe<
+      Effect.Effect<Effect.Effect<number>, never, "TypeTest/Terminal/columns">
+    >()
+    // in a record the member is the Effect, as it is today
+    const Terminal = Context.Operations("TypeTest/Terminal", { columns, display })
+    expect<Context.Service.Shape<typeof Terminal>>().type.toBe<{
+      readonly columns: Effect.Effect<number>
+      readonly display: (text: string) => Effect.Effect<void>
+    }>()
+    expect<Context.Service.Identifier<typeof Terminal>>().type.toBe<
+      "TypeTest/Terminal/columns" | "TypeTest/Terminal/display"
+    >()
+    // a shape that already requires the key is kept as is
+    const named = Context.Operation.value<Effect.Effect<number, never, "TypeTest/named">>()("TypeTest/named")
+    expect(named).type.toBeAssignableTo<Effect.Effect<number, never, "TypeTest/named">>()
   })
 
   it("is a slot and not a key: provided as itself, read as a value, never yielded", () => {

@@ -667,17 +667,26 @@ describe("Operation", () => {
       assertTrue(Option.isNone(Context.getOption(withoutStat, FS)))
     })
 
-    it("never stores a record that disagrees with its slots in a flat map", () => {
+    it("rebuilds a stored record when a member it spans is written, so the slot always agrees", () => {
       const live = record({ readFile: () => Effect.succeed("live") })
       const fake = () => Effect.succeed("fake")
       const Other = Context.Service<number>("ContextTest/Other")
-      let context = Context.add(Context.make(FS, live), readFile, fake)
+      // a member write into a context holding the record is a flat write: the record is rebuilt in place
+      const overridden = Context.add(Context.make(FS, live), readFile, fake)
+      strictEqual((overridden as any).overlay, undefined)
+      const rebuilt = overridden.mapUnsafe.get("ContextTest/FS") as Shape
+      assert.notStrictEqual(rebuilt, live)
+      strictEqual(rebuilt.readFile, fake)
+      strictEqual(rebuilt.writeFile, live.writeFile)
+      strictEqual(Context.get(overridden, FS), rebuilt)
+      // unrelated writes are overlays and never touch the record; the same object is read before and after flattening
+      let context = overridden
       for (let i = 0; i < 12; i++) context = Context.add(context, Other, i)
-      assertFalse(context.mapUnsafe.has("ContextTest/FS"))
-      strictEqual(Context.get(context, FS).readFile, fake)
-      // merge: a member on the right drops the record on the left; a record on the right replaces a member
+      strictEqual(Context.get(context, FS), rebuilt)
+      strictEqual(context.mapUnsafe.get("ContextTest/FS"), rebuilt)
+      // merge: a member on the right rebuilds the record on the left; a record on the right replaces a member
       const merged = Context.merge(Context.make(FS, live), Context.make(readFile, fake))
-      assertFalse(merged.mapUnsafe.has("ContextTest/FS"))
+      strictEqual((merged.mapUnsafe.get("ContextTest/FS") as Shape).readFile, fake)
       strictEqual(Context.get(merged, FS).readFile, fake)
       const reversed = Context.merge(Context.make(readFile, fake), Context.make(FS, live))
       strictEqual(Context.get(reversed, FS), live)
@@ -686,10 +695,8 @@ describe("Operation", () => {
         Context.get(Context.mergeAll(Context.make(FS, live), Context.make(readFile, fake)), FS).readFile,
         fake
       )
-      // a marker never reaches mapUnsafe
-      for (const value of Context.add(Context.make(FS, live), readFile, fake).mapUnsafe.values()) {
-        assertFalse(typeof value === "symbol")
-      }
+      // every value in a flat map is a service: there are no markers
+      for (const value of context.mapUnsafe.values()) assertFalse(typeof value === "symbol")
     })
 
     it("accepts services, references and records as members", async () => {
@@ -715,13 +722,10 @@ describe("Operation", () => {
       const live = record({ readFile: () => Effect.succeed("full"), stat: () => Effect.succeed(1) })
       const subset = { readFile: () => Effect.succeed("subset"), stat: () => Effect.succeed(2) }
       // satisfied by the full record and by member layers
-      const debug = await Effect.runPromise(
+      const viaFull = await Effect.runPromise(
         Effect.map(ReadOnly, (fs) => fs).pipe(Effect.provide(Layer.succeed(FS, live)))
       )
-      process.stdout.write(
-        "DEBUG " + JSON.stringify(Object.keys(debug)) + " " + JSON.stringify(Object.keys(ReadOnly.members)) + "\n"
-      )
-      strictEqual(debug.readFile, live.readFile)
+      strictEqual(viaFull.readFile, live.readFile)
       const fs = memory()
       fs.files.set("a", "xyz")
       strictEqual(
@@ -740,27 +744,97 @@ describe("Operation", () => {
       strictEqual(Context.get(under, ReadOnly).readFile, live.readFile)
     })
 
-    it("shares one assembly across contexts on one base and rebuilds it when a member changes", () => {
+    it("assembles a record that was never written once per context, from the members' slots", () => {
       const Other = Context.Service<number>("ContextTest/Other")
       const base = Context.mergeAll(
         Context.make(readFile, () => Effect.succeed("one")),
         Context.make(stat, () => Effect.succeed(1))
       )
+      // no slot: the record is not in the map, and a read assembles it
+      assertFalse(base.mapUnsafe.has("ContextTest/FS/ReadOnly"))
       const first = Context.get(base, ReadOnly)
       strictEqual(Context.get(base, ReadOnly), first)
+      strictEqual(first.readFile, Context.get(base, readFile))
+      assertFalse(base.mapUnsafe.has("ContextTest/FS/ReadOnly"))
+      // a derived context whose members are the same values shares the object
       strictEqual(Context.get(Context.add(base, Other, 1), ReadOnly), first)
-      strictEqual(Context.get(Context.add(base, Other, 2), ReadOnly), first)
+      // a member written on top is seen by the assembly of that context
       const fake = () => Effect.succeed("two")
       const replaced = Context.add(base, readFile, fake)
       const second = Context.get(replaced, ReadOnly)
-      assert.notStrictEqual(second, first)
       strictEqual(second.readFile, fake)
       strictEqual(second.stat, first.stat)
       strictEqual(Context.get(replaced, ReadOnly), second)
-      // a context whose overlays touch a member never shares the base's assembly
-      const touched = Context.add(Context.add(base, readFile, fake), Other, 3)
-      strictEqual(Context.get(touched, ReadOnly).readFile, fake)
-      strictEqual(Context.get(Context.add(base, Other, 4), ReadOnly), first)
+      strictEqual(Context.get(base, ReadOnly), first)
+    })
+
+    it("depends only on the records a context holds, not on which records exist or when they were built", () => {
+      const fake = () => Effect.succeed("fake")
+      const live = record({ readFile: () => Effect.succeed("live") })
+      // a member written before any record is in the context is a plain slot; a record written later wins slot by slot
+      const early = Context.add(Context.make(readFile, fake), FS, live)
+      strictEqual(Context.get(early, FS), live)
+      strictEqual(Context.get(early, readFile), live.readFile)
+      // a record constructed after the context exists reads it like any other
+      const Late = Context.Operations("ContextTest/Late", { readFile, stat })
+      const members = Context.mergeAll(Context.make(readFile, fake), Context.make(stat, () => Effect.succeed(2)))
+      strictEqual(Context.get(members, Late).readFile, fake)
+      strictEqual(Context.get(Context.add(members, Late, { readFile: fake, stat: live.stat }), stat), live.stat)
+      // constructing records does nothing to contexts that do not hold them: a member write into a context
+      // holding `FS` rebuilds `FS` and nothing else, however many records over `readFile` exist
+      const subsets = Array.from({ length: 50 }, (_, i) => Context.Operations(`ContextTest/Subset/${i}`, { readFile }))
+      strictEqual(subsets.length, 50)
+      const context = Context.add(Context.make(FS, live), readFile, fake)
+      strictEqual(context.mapUnsafe.size, 5)
+      strictEqual((context as any).records.byKey.size, 1)
+      strictEqual(Context.get(context, FS).readFile, fake)
+      // and a context holding one record is unaffected by writes into a context holding another
+      const other = Context.add(Context.make(ReadOnly, { readFile: fake, stat: live.stat }), readFile, live.readFile)
+      strictEqual(Context.get(other, ReadOnly).readFile, live.readFile)
+      strictEqual(Context.get(context, FS).readFile, fake)
+    })
+  })
+
+  describe("Operation.value", () => {
+    const columns = Context.Operation.value<Effect.Effect<number>>()("ContextTest/Terminal/columns")
+    const display = Context.Operation<(text: string) => Effect.Effect<void>>()("ContextTest/Terminal/display")
+    const Terminal = Context.Operations("ContextTest/Terminal", { columns, display })
+
+    it("is an Effect and a slot, not a function and not a Context.Key", () => {
+      assertTrue(Effect.isEffect(columns))
+      assertFalse(Stream.isStream(columns))
+      assertTrue(Context.isOperation(columns))
+      assertFalse(Context.isKey(columns))
+      assertFalse(typeof columns === "function")
+      strictEqual(columns.key, "ContextTest/Terminal/columns")
+      deepStrictEqual(JSON.parse(JSON.stringify(columns)), { _id: "Operation", key: "ContextTest/Terminal/columns" })
+    })
+
+    it("runs the Effect stored under its key, standalone and through the record, where it is that Effect", async () => {
+      const width = Effect.succeed(80)
+      strictEqual(await Effect.runPromise(columns.pipe(Effect.provide(Layer.succeed(columns, width)))), 80)
+      strictEqual(await Effect.runPromise(Effect.provideService(columns, columns, Effect.succeed(40))), 40)
+      const terminal = { columns: width, display: () => Effect.void }
+      const program = Effect.gen(function*() {
+        const record = yield* Terminal
+        return [yield* columns, yield* record.columns, record.columns] as const
+      })
+      const [standalone, viaRecord, member] = await Effect.runPromise(
+        program.pipe(Effect.provide(Layer.succeed(Terminal, terminal)))
+      )
+      strictEqual(standalone, 80)
+      strictEqual(viaRecord, 80)
+      strictEqual(member, width)
+      // overridden on top of the record like any slot, and seen by the record view
+      const [overridden, viaRecordOverridden] = await Effect.runPromise(
+        program.pipe(
+          Effect.provideService(columns, Effect.succeed(120)),
+          Effect.provide(Layer.succeed(Terminal, terminal))
+        )
+      )
+      strictEqual(overridden, 120)
+      strictEqual(viaRecordOverridden, 120)
+      await dies(columns as unknown as Effect.Effect<number>, /Service not found: ContextTest\/Terminal\/columns/)
     })
   })
 
@@ -777,56 +851,56 @@ describe("Operation", () => {
       strictEqual(Context.get(context, readFile), fake)
     })
 
-    it("treats a Context.Service with a member's or a record's string as that member or record", () => {
+    it("treats a Context.Service with a member's string as that member, and one with a record's string as a slot", () => {
       const Plain = Context.Service<"ContextTest/FS/readFile", Shape["readFile"]>("ContextTest/FS/readFile")
       const context = Context.add(Context.make(FS, live()), Plain, fake)
       strictEqual(Context.get(context, FS).readFile, fake)
       strictEqual(Context.get(context, readFile), fake)
-      assertFalse(context.mapUnsafe.has("ContextTest/FS"))
+      strictEqual((context.mapUnsafe.get("ContextTest/FS") as Shape).readFile, fake)
+      // a key that is not a record service carries no member list, so it writes one slot; the record key reads it
       const PlainRecord = Context.Service<FS, Shape>("ContextTest/FS")
       const value = live()
-      const spread = Context.make(PlainRecord, value)
-      strictEqual(spread.mapUnsafe.size, 5)
-      strictEqual(Context.get(spread, readFile), value.readFile)
-      strictEqual(Context.get(spread, PlainRecord), value)
-      strictEqual(Context.get(Context.add(spread, readFile, fake), PlainRecord).readFile, fake)
+      const one = Context.make(PlainRecord, value)
+      strictEqual(one.mapUnsafe.size, 1)
+      strictEqual(Context.get(one, PlainRecord), value)
+      strictEqual(Context.get(one, FS), value)
+      assertTrue(Option.isNone(Context.getOption(one, readFile)))
+      // written over a stored record, it replaces the record's slot, which is then a plain slot
+      const replaced = Context.add(Context.make(FS, live()), PlainRecord, value)
+      strictEqual(Context.get(replaced, FS), value)
+      strictEqual((replaced as any).records, undefined)
     })
 
-    it("replaces a record's registration when it is constructed again under its string", () => {
+    it("treats a record constructed again under its string as the same record", () => {
       const Again = Context.Operations<FS, Shape>()("ContextTest/FS", { ...members })
-      try {
-        assert.notStrictEqual(Again, FS)
-        const value = live()
-        const context = Context.make(FS, value)
-        strictEqual(Context.get(context, Again), value)
-        strictEqual(Context.get(Context.make(Again, value), FS), value)
-        // `writeFile` is a member of `FS` alone: a write lays the member and one marker, not one per construction
-        const shadowed = Context.add(context, writeFile, () => Effect.void)
-        let depth = 0
-        for (let overlay = (shadowed as any).overlay; overlay; overlay = overlay.parent) depth++
-        strictEqual(depth, 2)
-        // `readFile` is a member of `FS` and `ReadOnly`: two markers
-        depth = 0
-        for (let overlay = (Context.add(context, readFile, fake) as any).overlay; overlay; overlay = overlay.parent) {
-          depth++
-        }
-        strictEqual(depth, 3)
-      } finally {
-        // restore the original object as the registered record
-        const restored = Context.Operations<FS, Shape>()("ContextTest/FS", members)
-        strictEqual(restored.key, FS.key)
-      }
+      assert.notStrictEqual(Again, FS)
+      const value = live()
+      const context = Context.make(FS, value)
+      strictEqual(Context.get(context, Again), value)
+      strictEqual(Context.get(Context.make(Again, value), FS), value)
+      // a member write rebuilds the record held by the context once, whichever object wrote or reads it
+      const write = () => Effect.void
+      const shadowed = Context.add(context, writeFile, write)
+      strictEqual(shadowed.mapUnsafe.size, 5)
+      strictEqual(Context.get(shadowed, Again).writeFile, write)
+      strictEqual(Context.get(shadowed, FS), Context.get(shadowed, Again))
+      strictEqual(Context.get(Context.add(Context.make(Again, value), readFile, fake), FS).readFile, fake)
     })
 
-    it("keeps the storage invariants for writes and reads by string", () => {
+    it("treats a write by string as a write of that one slot", () => {
       const value = live()
-      const spread = Context.addUnsafe(Context.empty(), "ContextTest/FS", value)
-      strictEqual(spread.mapUnsafe.size, 5)
-      strictEqual(Context.get(spread as Context.Context<FS>, readFile), value.readFile)
-      const shadowed = Context.addUnsafe(spread, "ContextTest/FS/readFile", fake)
-      assertFalse(shadowed.mapUnsafe.has("ContextTest/FS"))
+      // a record's string written by `addUnsafe` has no member list: one slot, which the record key reads
+      const one = Context.addUnsafe(Context.empty(), "ContextTest/FS", value)
+      strictEqual(one.mapUnsafe.size, 1)
+      strictEqual(Context.get(one as Context.Context<FS>, FS), value)
+      assertTrue(Option.isNone(Context.getOption(one, readFile)))
+      // a member's string written by `addUnsafe` rebuilds the records spanning it, as `add` does
+      const shadowed = Context.addUnsafe(Context.make(FS, value), "ContextTest/FS/readFile", fake)
       strictEqual(Context.getOrUndefinedUnsafe<Shape>(shadowed, "ContextTest/FS")!.readFile, fake)
-      strictEqual(Context.getOrUndefinedUnsafe(spread, "ContextTest/FS"), value)
+      strictEqual(Context.get(shadowed, FS).readFile, fake)
+      // a read by string is the slot: a record never written has none
+      strictEqual(Context.getOrUndefinedUnsafe(Context.make(FS, value), "ContextTest/FS"), value)
+      strictEqual(Context.getOrUndefinedUnsafe(Context.make(readFile, fake), "ContextTest/FS/ReadOnly"), undefined)
     })
 
     it("gives a key built structurally one-slot semantics", () => {

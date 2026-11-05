@@ -489,17 +489,7 @@ export type OpenFlag =
  * @category operations
  * @since 4.0.0
  */
-export const access = Context.Operation<
-  (
-    path: string,
-    options?: {
-      readonly ok?: boolean | undefined
-      readonly readable?: boolean | undefined
-      readonly writable?: boolean | undefined
-    }
-  ) => Effect.Effect<void, PlatformError>,
-  FileSystem
->()("effect/FileSystem/access")
+export const access = Context.Operation<FileSystem["access"], FileSystem>()("effect/FileSystem/access")
 
 /**
  * Copy a file or directory from `fromPath` to `toPath`.
@@ -512,17 +502,7 @@ export const access = Context.Operation<
  * @category operations
  * @since 4.0.0
  */
-export const copy = Context.Operation<
-  (
-    fromPath: string,
-    toPath: string,
-    options?: {
-      readonly overwrite?: boolean | undefined
-      readonly preserveTimestamps?: boolean | undefined
-    }
-  ) => Effect.Effect<void, PlatformError>,
-  FileSystem
->()("effect/FileSystem/copy")
+export const copy = Context.Operation<FileSystem["copy"], FileSystem>()("effect/FileSystem/copy")
 
 /**
  * Copy a file from `fromPath` to `toPath`.
@@ -531,13 +511,7 @@ export const copy = Context.Operation<
  * @category operations
  * @since 4.0.0
  */
-export const copyFile = Context.Operation<
-  (
-    fromPath: string,
-    toPath: string
-  ) => Effect.Effect<void, PlatformError>,
-  FileSystem
->()("effect/FileSystem/copyFile")
+export const copyFile = Context.Operation<FileSystem["copyFile"], FileSystem>()("effect/FileSystem/copyFile")
 
 /**
  * Change the permissions of a file.
@@ -546,13 +520,7 @@ export const copyFile = Context.Operation<
  * @category operations
  * @since 4.0.0
  */
-export const chmod = Context.Operation<
-  (
-    path: string,
-    mode: number
-  ) => Effect.Effect<void, PlatformError>,
-  FileSystem
->()("effect/FileSystem/chmod")
+export const chmod = Context.Operation<FileSystem["chmod"], FileSystem>()("effect/FileSystem/chmod")
 
 /**
  * Change the owner and group of a file.
@@ -561,14 +529,7 @@ export const chmod = Context.Operation<
  * @category operations
  * @since 4.0.0
  */
-export const chown = Context.Operation<
-  (
-    path: string,
-    uid: number,
-    gid: number
-  ) => Effect.Effect<void, PlatformError>,
-  FileSystem
->()("effect/FileSystem/chown")
+export const chown = Context.Operation<FileSystem["chown"], FileSystem>()("effect/FileSystem/chown")
 
 /**
  * Finds paths under `root` that match a glob pattern.
@@ -599,17 +560,7 @@ export const chown = Context.Operation<
  * @category operations
  * @since 4.0.0
  */
-export const glob = Context.Operation<
-  (
-    pattern: string,
-    options?: {
-      readonly root?: string | undefined
-      readonly exclude?: ReadonlyArray<string> | undefined
-      readonly dot?: boolean | undefined
-    }
-  ) => Effect.Effect<Array<string>, PlatformError>,
-  FileSystem
->()("effect/FileSystem/glob")
+export const glob = Context.Operation<FileSystem["glob"], FileSystem>()("effect/FileSystem/glob")
 
 /**
  * Checks whether a path exists.
@@ -618,12 +569,7 @@ export const glob = Context.Operation<
  * @category operations
  * @since 4.0.0
  */
-export const exists = Context.Operation<
-  (
-    path: string
-  ) => Effect.Effect<boolean, PlatformError>,
-  FileSystem
->()("effect/FileSystem/exists")
+export const exists = Context.Operation<FileSystem["exists"], FileSystem>()("effect/FileSystem/exists")
 
 /**
  * Create a hard link from `fromPath` to `toPath`.
@@ -632,13 +578,7 @@ export const exists = Context.Operation<
  * @category operations
  * @since 4.0.0
  */
-export const link = Context.Operation<
-  (
-    fromPath: string,
-    toPath: string
-  ) => Effect.Effect<void, PlatformError>,
-  FileSystem
->()("effect/FileSystem/link")
+export const link = Context.Operation<FileSystem["link"], FileSystem>()("effect/FileSystem/link")
 
 /**
  * Get information about a file at `path` without following symbolic links.
@@ -648,12 +588,7 @@ export const link = Context.Operation<
  * @category operations
  * @since 4.0.0
  */
-export const lstat = Context.Operation<
-  (
-    path: string
-  ) => Effect.Effect<File.Info, PlatformError>,
-  FileSystem
->()("effect/FileSystem/lstat")
+export const lstat = Context.Operation<FileSystem["lstat"], FileSystem>()("effect/FileSystem/lstat")
 
 /**
  * Create a directory at `path`. You can optionally specify the mode and
@@ -663,16 +598,9 @@ export const lstat = Context.Operation<
  * @category operations
  * @since 4.0.0
  */
-export const makeDirectory = Context.Operation<
-  (
-    path: string,
-    options?: {
-      readonly recursive?: boolean | undefined
-      readonly mode?: number | undefined
-    }
-  ) => Effect.Effect<void, PlatformError>,
-  FileSystem
->()("effect/FileSystem/makeDirectory")
+export const makeDirectory = Context.Operation<FileSystem["makeDirectory"], FileSystem>()(
+  "effect/FileSystem/makeDirectory"
+)
 
 /**
  * Create a temporary directory.
@@ -690,13 +618,9 @@ export const makeDirectory = Context.Operation<
  * @category operations
  * @since 4.0.0
  */
-export const makeTempDirectory = Context.Operation<
-  (options?: {
-    readonly directory?: string | undefined
-    readonly prefix?: string | undefined
-  }) => Effect.Effect<string, PlatformError>,
-  FileSystem
->()("effect/FileSystem/makeTempDirectory")
+export const makeTempDirectory = Context.Operation<FileSystem["makeTempDirectory"], FileSystem>()(
+  "effect/FileSystem/makeTempDirectory"
+)
 
 /**
  * Create a temporary directory inside a scope.
@@ -710,13 +634,9 @@ export const makeTempDirectory = Context.Operation<
  * @category operations
  * @since 4.0.0
  */
-export const makeTempDirectoryScoped = Context.Operation<
-  (options?: {
-    readonly directory?: string | undefined
-    readonly prefix?: string | undefined
-  }) => Effect.Effect<string, PlatformError, Scope>,
-  FileSystem
->()("effect/FileSystem/makeTempDirectoryScoped")
+export const makeTempDirectoryScoped = Context.Operation<FileSystem["makeTempDirectoryScoped"], FileSystem>()(
+  "effect/FileSystem/makeTempDirectoryScoped"
+)
 
 /**
  * Create a temporary file.
@@ -727,14 +647,9 @@ export const makeTempDirectoryScoped = Context.Operation<
  * @category operations
  * @since 4.0.0
  */
-export const makeTempFile = Context.Operation<
-  (options?: {
-    readonly directory?: string | undefined
-    readonly prefix?: string | undefined
-    readonly suffix?: string | undefined
-  }) => Effect.Effect<string, PlatformError>,
-  FileSystem
->()("effect/FileSystem/makeTempFile")
+export const makeTempFile = Context.Operation<FileSystem["makeTempFile"], FileSystem>()(
+  "effect/FileSystem/makeTempFile"
+)
 
 /**
  * Create a temporary file inside a scope.
@@ -748,14 +663,9 @@ export const makeTempFile = Context.Operation<
  * @category operations
  * @since 4.0.0
  */
-export const makeTempFileScoped = Context.Operation<
-  (options?: {
-    readonly directory?: string | undefined
-    readonly prefix?: string | undefined
-    readonly suffix?: string | undefined
-  }) => Effect.Effect<string, PlatformError, Scope>,
-  FileSystem
->()("effect/FileSystem/makeTempFileScoped")
+export const makeTempFileScoped = Context.Operation<FileSystem["makeTempFileScoped"], FileSystem>()(
+  "effect/FileSystem/makeTempFileScoped"
+)
 
 /**
  * Open a file at `path` with the specified `options`.
@@ -772,17 +682,7 @@ export const makeTempFileScoped = Context.Operation<
  * @category operations
  * @since 4.0.0
  */
-export const open = Context.Operation<
-  (
-    path: string,
-    options?: {
-      readonly flag?: OpenFlag | undefined
-      readonly mode?: number | undefined
-      readonly noFollow?: boolean | undefined
-    }
-  ) => Effect.Effect<File, PlatformError, Scope>,
-  FileSystem
->()("effect/FileSystem/open")
+export const open = Context.Operation<FileSystem["open"], FileSystem>()("effect/FileSystem/open")
 
 /**
  * List the contents of a directory.
@@ -796,15 +696,9 @@ export const open = Context.Operation<
  * @category operations
  * @since 4.0.0
  */
-export const readDirectory = Context.Operation<
-  (
-    path: string,
-    options?: {
-      readonly recursive?: boolean | undefined
-    }
-  ) => Effect.Effect<Array<string>, PlatformError>,
-  FileSystem
->()("effect/FileSystem/readDirectory")
+export const readDirectory = Context.Operation<FileSystem["readDirectory"], FileSystem>()(
+  "effect/FileSystem/readDirectory"
+)
 
 /**
  * Lists a directory with the type of each entry.
@@ -825,10 +719,9 @@ export const readDirectory = Context.Operation<
  * @category operations
  * @since 4.0.0
  */
-export const readDirectoryEntries = Context.Operation<
-  (path: string) => Effect.Effect<ReadonlyArray<DirectoryEntry>, PlatformError>,
-  FileSystem
->()("effect/FileSystem/readDirectoryEntries")
+export const readDirectoryEntries = Context.Operation<FileSystem["readDirectoryEntries"], FileSystem>()(
+  "effect/FileSystem/readDirectoryEntries"
+)
 
 /**
  * Read the contents of a file.
@@ -837,12 +730,7 @@ export const readDirectoryEntries = Context.Operation<
  * @category operations
  * @since 4.0.0
  */
-export const readFile = Context.Operation<
-  (
-    path: string
-  ) => Effect.Effect<Uint8Array, PlatformError>,
-  FileSystem
->()("effect/FileSystem/readFile")
+export const readFile = Context.Operation<FileSystem["readFile"], FileSystem>()("effect/FileSystem/readFile")
 
 /**
  * Read the contents of a file.
@@ -851,13 +739,9 @@ export const readFile = Context.Operation<
  * @category operations
  * @since 4.0.0
  */
-export const readFileString = Context.Operation<
-  (
-    path: string,
-    encoding?: string
-  ) => Effect.Effect<string, PlatformError>,
-  FileSystem
->()("effect/FileSystem/readFileString")
+export const readFileString = Context.Operation<FileSystem["readFileString"], FileSystem>()(
+  "effect/FileSystem/readFileString"
+)
 
 /**
  * Read the destination of a symbolic link.
@@ -866,12 +750,7 @@ export const readFileString = Context.Operation<
  * @category operations
  * @since 4.0.0
  */
-export const readLink = Context.Operation<
-  (
-    path: string
-  ) => Effect.Effect<string, PlatformError>,
-  FileSystem
->()("effect/FileSystem/readLink")
+export const readLink = Context.Operation<FileSystem["readLink"], FileSystem>()("effect/FileSystem/readLink")
 
 /**
  * Resolve a path to its canonicalized absolute pathname.
@@ -880,12 +759,7 @@ export const readLink = Context.Operation<
  * @category operations
  * @since 4.0.0
  */
-export const realPath = Context.Operation<
-  (
-    path: string
-  ) => Effect.Effect<string, PlatformError>,
-  FileSystem
->()("effect/FileSystem/realPath")
+export const realPath = Context.Operation<FileSystem["realPath"], FileSystem>()("effect/FileSystem/realPath")
 
 /**
  * Remove a file or directory.
@@ -894,22 +768,7 @@ export const realPath = Context.Operation<
  * @category operations
  * @since 4.0.0
  */
-export const remove = Context.Operation<
-  (
-    path: string,
-    options?: {
-      /**
-       * When `true`, you can recursively remove nested directories.
-       */
-      readonly recursive?: boolean | undefined
-      /**
-       * When `true`, exceptions will be ignored if `path` does not exist.
-       */
-      readonly force?: boolean | undefined
-    }
-  ) => Effect.Effect<void, PlatformError>,
-  FileSystem
->()("effect/FileSystem/remove")
+export const remove = Context.Operation<FileSystem["remove"], FileSystem>()("effect/FileSystem/remove")
 
 /**
  * Rename a file or directory.
@@ -918,13 +777,7 @@ export const remove = Context.Operation<
  * @category operations
  * @since 4.0.0
  */
-export const rename = Context.Operation<
-  (
-    oldPath: string,
-    newPath: string
-  ) => Effect.Effect<void, PlatformError>,
-  FileSystem
->()("effect/FileSystem/rename")
+export const rename = Context.Operation<FileSystem["rename"], FileSystem>()("effect/FileSystem/rename")
 
 /**
  * Create a writable `Sink` for the specified `path`.
@@ -933,16 +786,7 @@ export const rename = Context.Operation<
  * @category operations
  * @since 4.0.0
  */
-export const sink = Sink.Operation<
-  (
-    path: string,
-    options?: {
-      readonly flag?: OpenFlag | undefined
-      readonly mode?: number | undefined
-    }
-  ) => Sink.Sink<void, Uint8Array, never, PlatformError>,
-  FileSystem
->()("effect/FileSystem/sink")
+export const sink = Sink.Operation<FileSystem["sink"], FileSystem>()("effect/FileSystem/sink")
 
 /**
  * Get information about a file at `path`. See `File.Info` for metadata limits.
@@ -951,12 +795,7 @@ export const sink = Sink.Operation<
  * @category operations
  * @since 4.0.0
  */
-export const stat = Context.Operation<
-  (
-    path: string
-  ) => Effect.Effect<File.Info, PlatformError>,
-  FileSystem
->()("effect/FileSystem/stat")
+export const stat = Context.Operation<FileSystem["stat"], FileSystem>()("effect/FileSystem/stat")
 
 /**
  * Create a readable `Stream` for the specified `path`.
@@ -976,17 +815,7 @@ export const stat = Context.Operation<
  * @category operations
  * @since 4.0.0
  */
-export const stream = Stream.Operation<
-  (
-    path: string,
-    options?: {
-      readonly bytesToRead?: ByteSize.Input | undefined
-      readonly chunkSize?: number | undefined
-      readonly offset?: ByteSize.Input | undefined
-    }
-  ) => Stream.Stream<Uint8Array, PlatformError>,
-  FileSystem
->()("effect/FileSystem/stream")
+export const stream = Stream.Operation<FileSystem["stream"], FileSystem>()("effect/FileSystem/stream")
 
 /**
  * Create a symbolic link from `fromPath` to `toPath`.
@@ -995,13 +824,7 @@ export const stream = Stream.Operation<
  * @category operations
  * @since 4.0.0
  */
-export const symlink = Context.Operation<
-  (
-    fromPath: string,
-    toPath: string
-  ) => Effect.Effect<void, PlatformError>,
-  FileSystem
->()("effect/FileSystem/symlink")
+export const symlink = Context.Operation<FileSystem["symlink"], FileSystem>()("effect/FileSystem/symlink")
 
 /**
  * Truncate a file to a specified length. If the `length` is not specified,
@@ -1011,13 +834,7 @@ export const symlink = Context.Operation<
  * @category operations
  * @since 4.0.0
  */
-export const truncate = Context.Operation<
-  (
-    path: string,
-    length?: number
-  ) => Effect.Effect<void, PlatformError>,
-  FileSystem
->()("effect/FileSystem/truncate")
+export const truncate = Context.Operation<FileSystem["truncate"], FileSystem>()("effect/FileSystem/truncate")
 
 /**
  * Change the file system timestamps of the file at `path`.
@@ -1026,14 +843,7 @@ export const truncate = Context.Operation<
  * @category operations
  * @since 4.0.0
  */
-export const utimes = Context.Operation<
-  (
-    path: string,
-    atime: Date | number,
-    mtime: Date | number
-  ) => Effect.Effect<void, PlatformError>,
-  FileSystem
->()("effect/FileSystem/utimes")
+export const utimes = Context.Operation<FileSystem["utimes"], FileSystem>()("effect/FileSystem/utimes")
 
 /**
  * Watch a directory or file for changes.
@@ -1048,10 +858,7 @@ export const utimes = Context.Operation<
  * @category operations
  * @since 4.0.0
  */
-export const watch = Stream.Operation<
-  (path: string, options?: WatchOptions) => Stream.Stream<WatchEvent, PlatformError>,
-  FileSystem
->()("effect/FileSystem/watch")
+export const watch = Stream.Operation<FileSystem["watch"], FileSystem>()("effect/FileSystem/watch")
 
 /**
  * Write data to a file at `path`.
@@ -1060,17 +867,7 @@ export const watch = Stream.Operation<
  * @category operations
  * @since 4.0.0
  */
-export const writeFile = Context.Operation<
-  (
-    path: string,
-    data: Uint8Array,
-    options?: {
-      readonly flag?: OpenFlag | undefined
-      readonly mode?: number | undefined
-    }
-  ) => Effect.Effect<void, PlatformError>,
-  FileSystem
->()("effect/FileSystem/writeFile")
+export const writeFile = Context.Operation<FileSystem["writeFile"], FileSystem>()("effect/FileSystem/writeFile")
 
 /**
  * Write a string to a file at `path`.
@@ -1079,17 +876,9 @@ export const writeFile = Context.Operation<
  * @category operations
  * @since 4.0.0
  */
-export const writeFileString = Context.Operation<
-  (
-    path: string,
-    data: string,
-    options?: {
-      readonly flag?: OpenFlag | undefined
-      readonly mode?: number | undefined
-    }
-  ) => Effect.Effect<void, PlatformError>,
-  FileSystem
->()("effect/FileSystem/writeFileString")
+export const writeFileString = Context.Operation<FileSystem["writeFileString"], FileSystem>()(
+  "effect/FileSystem/writeFileString"
+)
 
 const members = {
   access,
