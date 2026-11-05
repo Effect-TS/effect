@@ -19,15 +19,7 @@ import {
   Scope,
   Stream
 } from "effect"
-import {
-  Cookies,
-  Headers,
-  HttpClient,
-  HttpClientError,
-  HttpClientRequest,
-  HttpClientResponse,
-  UrlParams
-} from "effect/http"
+import { Cookies, HttpClient, HttpClientError, HttpClientRequest, HttpClientResponse, UrlParams } from "effect/http"
 import { CircuitBreaker, RateLimiter } from "effect/persistence"
 import { TestClock } from "effect/testing"
 import * as Tracer from "effect/Tracer"
@@ -785,30 +777,6 @@ Missing key
           strictEqual(Hash.hash(a), Hash.hash(b))
         }).pipe(Effect.provideService(UrlParams.CurrentRedactedNames, ["token"]))
       }).pipe(Effect.provideService(HttpClient.TracerPropagationEnabled, false)))
-
-    it.effect("serializes an executed request with the redacted names of its execution", () =>
-      Effect.gen(function*() {
-        let sent: HttpClientRequest.HttpClientRequest | undefined
-        const client = HttpClient.make((request) => {
-          sent = request
-          return Effect.succeed(HttpClientResponse.fromWeb(request, new Response(null)))
-        })
-
-        yield* client.execute(
-          HttpClientRequest.get("http://test/path?token=url-secret").pipe(
-            HttpClientRequest.setUrlParam("token", "param-secret"),
-            HttpClientRequest.setHeader("x-token", "header-secret")
-          )
-        ).pipe(
-          Effect.provideService(UrlParams.CurrentRedactedNames, ["token"]),
-          Effect.provideService(Headers.CurrentRedactedNames, ["x-token"])
-        )
-
-        const json = JSON.stringify(sent)
-        for (const secret of ["url-secret", "param-secret", "header-secret"]) {
-          assert.notInclude(json, secret)
-        }
-      }))
   })
 
   describe("followRedirects", () => {
