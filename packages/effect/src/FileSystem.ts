@@ -162,9 +162,14 @@ export interface FileSystem {
    *
    * Wildcard matching is case-sensitive. Looked-up names use `stat`, so their
    * case sensitivity follows the file system and results keep the pattern's
-   * spelling. Patterns are relative to `root`: an absolute pattern, a `..`
-   * segment or an escaped `/` makes the effect die, so move such a prefix into
-   * `root`. Use `exists` to check `root` itself.
+   * spelling. Use `exists` to check `root` itself.
+   *
+   * A single absolute pattern, such as `"/abs/dir/**"`, is the one exception
+   * to root-relative results: it ignores `root` and returns absolute paths,
+   * and `dir/**` includes `dir` itself. Everywhere else patterns are relative
+   * to `root`: an absolute pattern inside a list, after `!`, in
+   * `PathFilter.select` or `PathFilter.restrict`, as well as a `..` segment,
+   * an escaped `/` or a UNC path, makes the effect die.
    */
   readonly glob: (
     input: PathFilter.Input,

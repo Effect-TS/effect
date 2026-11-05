@@ -832,15 +832,71 @@ export const make = (
   fromInput: (input: PathFilter.Input) => PathFilter.PathFilter
 ): FileSystem.FileSystem["glob"] =>
 (input, options) => {
+  // A single absolute pattern walks from its leading literal directories and
+  // returns absolute paths, ignoring `root`
+  const absolute = splitAbsolute(input)
   // Convert once per call, so running the effect again does not consume a
   // one-shot iterable again. Invalid patterns are defects of the effect.
   let filter: PathFilter.PathFilter
   try {
-    filter = fromInput(input)
+    filter = fromInput(absolute?.pattern ?? input)
   } catch (error) {
     return Effect.die(error)
   }
-  return walk(fs, filter, options?.root ?? "")
+  if (absolute === undefined) {
+    return walk(fs, filter, options?.root ?? "")
+  }
+  return Effect.map(walk(fs, filter, absolute.root), Arr.map((path) => join(absolute.root, path)))
+}
+
+// The name a pattern segment matches literally, or `undefined` if it has
+// wildcards, a class or braces
+const literalSegment = (segment: string): string | undefined => {
+  let value = ""
+  for (let i = 0; i < segment.length; i++) {
+    const char = segment[i]
+    if (char === "\\" && i + 1 < segment.length) {
+      value += segment[++i]
+    } else if (char === "*" || char === "?" || char === "[" || char === "{") {
+      return undefined
+    } else {
+      value += char
+    }
+  }
+  return value
+}
+
+// Splits a positive absolute string pattern into the directory above its last
+// leading literal segment, which becomes the walk's root, and the rest, so
+// that `dir/**` still returns `dir`. Every other input is relative to `root`;
+// UNC patterns, `..` segments and absolute rules stay defects.
+const splitAbsolute = (
+  input: PathFilter.Input
+): { readonly root: string; readonly pattern: string } | undefined => {
+  if (typeof input !== "string" || !isAbsolute(input) || isUnc(input)) {
+    return undefined
+  }
+  const top = input.startsWith("/") ? "/" : input.slice(0, 3)
+  const segments = splitSegments(input.slice(top.length))
+  const literals: Array<string> = []
+  let last = -1
+  for (let i = 0; i < segments.length; i++) {
+    if (segments[i] === "" || segments[i] === ".") {
+      continue
+    }
+    const literal = literalSegment(segments[i])
+    if (literal === undefined || literal === "..") {
+      break
+    }
+    if (last !== -1) {
+      literals.push(literalSegment(segments[last])!)
+    }
+    last = i
+  }
+  if (last === -1) {
+    return { root: top, pattern: segments.join("/") }
+  }
+  return { root: top + literals.join("/"), pattern: segments.slice(last).join("/") }
 }
 
 // The child names to probe, from any filter the paths must pass, or
