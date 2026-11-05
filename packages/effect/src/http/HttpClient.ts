@@ -681,9 +681,9 @@ const Proto = {
  *
  * **Details**
  *
- * The runner receives a copy of the request, the resolved URL, an abort signal, and the current fiber. The client wrapper handles URL construction failures, tracing and propagation, header redaction, aborting the signal when the request is interrupted before a response arrives, and attaching each request to the scope of an enclosing `withScope`.
+ * The runner receives the request, resolved URL, abort signal, and current fiber. The client wrapper handles URL construction failures, tracing and propagation, header redaction, aborting the signal when the request is interrupted before a response arrives, and attaching each request to the scope of an enclosing `withScope`.
  *
- * Each execution makes a new copy of the request, which carries the `UrlParams.CurrentRedactedNames` and `Headers.CurrentRedactedNames` of the executing fiber. `HttpClientError` reasons that reference that copy, directly or through their response, redact their URL with those names when they are created, even in callbacks that run outside the fiber. Rendering an error, or the request's `toJSON`, then adds the names of the rendering fiber. Build responses from the request passed to the runner: errors for a response built from a different request object only use the names active where they are created and rendered.
+ * `HttpClientError` reasons redact their URL with the `UrlParams.CurrentRedactedNames` of the fiber that executed the request, even when they are created in callbacks that run outside it. This covers errors the runner fails with, and errors built from the response the client returns or the response the runner produced. Rendering an error then adds the names of the rendering fiber.
  *
  * @stability unstable
  * @category constructors
@@ -702,28 +702,13 @@ export const make = (
       Effect.withFiber((fiber) => {
         const scope = fiber.getRef(RequestScope)
         const controller = new AbortController()
-        // Every execution gets its own copy, which stores this fiber's names.
-        // Reusing the caller's request, or executing the copy again, makes a
-        // new copy, so the redaction of earlier errors cannot change.
-        const executed = HttpClientRequest.makeWith(
-          request.method,
-          request.url,
-          request.urlParams,
-          request.hash,
-          request.headers,
-          request.body
-        )
-        redactedNames.setRequestRedactedNames(
-          executed,
-          fiber.getRef(UrlParams.CurrentRedactedNames),
-          fiber.getRef(Headers.CurrentRedactedNames)
-        )
-        const urlResult = Url.make(executed.url, executed.urlParams, Option.getOrUndefined(executed.hash))
+        const urlParamsRedactedNames = fiber.getRef(UrlParams.CurrentRedactedNames)
+        const urlResult = Url.make(request.url, request.urlParams, Option.getOrUndefined(request.hash))
         if (Result.isFailure(urlResult)) {
           return Effect.fail(
             new Error.HttpClientError({
               reason: new Error.InvalidUrlError({
-                request: executed,
+                request,
                 cause: urlResult.failure
               })
             })
@@ -746,7 +731,7 @@ export const make = (
           Effect.uninterruptibleMask((restore) =>
             Effect.matchCauseEffect(restore(send(request)), {
               onSuccess: (response) => {
-                response = trackResponse(response, controller, scope !== undefined)
+                response = trackResponse(response, controller, scope !== undefined, urlParamsRedactedNames)
                 onResponse?.(response)
                 return Effect.succeed(response)
               },
@@ -754,6 +739,7 @@ export const make = (
                 if (Cause.hasInterrupts(cause)) {
                   controller.abort()
                 }
+                redactFailureUrls(cause, urlParamsRedactedNames)
                 return Effect.failCause(cause)
               }
             })
@@ -761,7 +747,7 @@ export const make = (
         const tracerDisabled = fiber.getRef(Tracer.DisablePropagation) ||
           fiber.getRef(TracerDisabledWhen)(request)
         if (tracerDisabled) {
-          return exchange(executed)
+          return exchange(request)
         }
         return Effect.useSpan(
           fiber.getRef(SpanNameGenerator)(request),
@@ -772,25 +758,22 @@ export const make = (
             tracing.addUrlAttributes(
               span,
               url,
-              tracing.redactedNames(request.urlParams, fiber.getRef(UrlParams.CurrentRedactedNames))
+              tracing.redactedNames(request.urlParams, urlParamsRedactedNames)
             )
             const headerFilter = fiber.getRef(TracerHeaderFilter)
             tracing.addHeaderAttributes(span, "request", request.headers, headerFilter, redactedHeaderNames)
-            if (fiber.getRef(TracerPropagationEnabled)) {
-              ;(executed as { headers: Headers.Headers }).headers = Headers.setAll(
-                executed.headers,
-                TraceContext.toHeaders(span)
-              )
-            }
+            request = fiber.getRef(TracerPropagationEnabled)
+              ? HttpClientRequest.setHeaders(request, TraceContext.toHeaders(span))
+              : request
             return Effect.withParentSpan(
-              exchange(executed, (response) => {
+              exchange(request, (response) => {
                 span.attribute("http.response.status_code", response.status)
                 tracing.addHeaderAttributes(span, "response", response.headers, headerFilter, redactedHeaderNames)
                 // OpenTelemetry marks client spans as failed for 4xx and
                 // 5xx responses, while the response itself still succeeds.
                 if (response.status >= 400 && response.status < 600) {
                   span.attribute("error.type", String(response.status))
-                  endSpanWithStatusError(fiber, span, executed, response)
+                  endSpanWithStatusError(fiber, span, request, response)
                 }
               }),
               span,
@@ -818,6 +801,20 @@ const endSpanWithStatusError = (
     fiber.getRef(References.TracerTimingEnabled) ? fiber.getRef(Clock).currentTimeNanosUnsafe() : BigInt(0),
     exit
   )
+}
+
+// A runner may create its error in a callback that runs outside the fiber,
+// with names unrelated to the request. Once the failure is back on the
+// executing fiber, its names are added to the URL each reason redacts.
+const redactFailureUrls = (
+  cause: Cause.Cause<unknown>,
+  names: ReadonlyArray<string | RegExp>
+): void => {
+  for (const reason of cause.reasons) {
+    if (Cause.isFailReason(reason) && Error.isHttpClientError(reason.error)) {
+      redactedNames.addReasonRedactedNames(reason.error.reason, names)
+    }
+  }
 }
 
 /**
@@ -2321,11 +2318,16 @@ const responseControllers = new WeakMap<HttpClientResponse.HttpClientResponse, A
 const trackResponse = (
   response: HttpClientResponse.HttpClientResponse,
   controller: AbortController,
-  scoped: boolean
+  scoped: boolean,
+  urlParamsRedactedNames: ReadonlyArray<string | RegExp>
 ): HttpClientResponse.HttpClientResponse => {
+  // Body readers create errors with the runner's response, while callers hold
+  // the wrapper, so both carry the names of the executing fiber.
+  redactedNames.setResponseRedactedNames(response, urlParamsRedactedNames)
   if (!scoped) {
     responseRegistry.register(response, controller)
     response = new InterruptibleResponse(response, controller)
+    redactedNames.setResponseRedactedNames(response, urlParamsRedactedNames)
   }
   responseControllers.set(response, controller)
   return response

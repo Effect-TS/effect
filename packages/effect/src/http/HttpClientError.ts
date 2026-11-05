@@ -15,7 +15,7 @@ import { hasProperty } from "../Predicate.ts"
 import * as Schema from "../Schema.ts"
 import type * as HttpClientRequest from "./HttpClientRequest.ts"
 import type * as ClientResponse from "./HttpClientResponse.ts"
-import { requestUrlParamsRedactedNames } from "./internal/redactedNames.ts"
+import { reasonRedactedUrl, responseUrlParamsRedactedNames, setReasonRedactedUrl } from "./internal/redactedNames.ts"
 import * as UrlParams from "./UrlParams.ts"
 
 const TypeId = "~effect/http/HttpClientError"
@@ -97,31 +97,21 @@ interface ReasonProps {
 
 // The fiber that renders an error later, such as a span exporter, may not
 // have the `UrlParams.CurrentRedactedNames` of the request. Each reason
-// therefore redacts its URL when it is created, with the names stored on its
-// request and on the request of its response by `HttpClient.make`, plus the
-// names of the current fiber. The current fiber only adds redaction, since it
-// may be unrelated to the request when a transport callback creates the error.
-// The URL is kept outside the reason, so structural `Equal` and `Hash` don't
-// see it. Each entry is written once, by the constructor of its reason.
-const redactedUrls = new WeakMap<object, string>()
-
-const redactWithRequestNames = (url: string, request: HttpClientRequest.HttpClientRequest | undefined): string => {
-  const names = request === undefined ? undefined : requestUrlParamsRedactedNames(request)
-  return names === undefined ? url : UrlParams.redactUrl(url, names)
-}
-
+// therefore redacts its URL when it is created, with the names `HttpClient.make`
+// stored for its response, plus the names of the current fiber. The current
+// fiber only adds redaction, since it may be unrelated to the request when a
+// transport callback creates the error. `HttpClient.make` adds the names of
+// the executing fiber when the error fails its execution.
 const makeRedactedUrl = (props: ReasonProps): string => {
-  let url = redactWithRequestNames(props.request.url, props.request)
-  const responseRequest = props.response?.request
-  if (responseRequest !== props.request) url = redactWithRequestNames(url, responseRequest)
-  return UrlParams.redactUrl(url)
+  const names = props.response === undefined ? undefined : responseUrlParamsRedactedNames(props.response)
+  return UrlParams.redactUrl(names === undefined ? props.request.url : UrlParams.redactUrl(props.request.url, names))
 }
 
 const ReasonError = <Tag extends string>(tag: Tag): ReturnType<typeof Data.TaggedError<Tag>> => {
   class Base extends Data.TaggedError(tag)<ReasonProps> {
     constructor(props: ReasonProps) {
       super(props)
-      redactedUrls.set(this, makeRedactedUrl(props))
+      setReasonRedactedUrl(this, makeRedactedUrl(props))
     }
   }
   return Base as any
@@ -130,7 +120,7 @@ const ReasonError = <Tag extends string>(tag: Tag): ReturnType<typeof Data.Tagge
 // Rendering adds the names of the rendering fiber to the stored URL, so it
 // never redacts less than the names active at either point.
 const redactedUrl = (reason: ReasonProps): string =>
-  UrlParams.redactUrl(redactedUrls.get(reason) ?? makeRedactedUrl(reason))
+  UrlParams.redactUrl(reasonRedactedUrl(reason) ?? makeRedactedUrl(reason))
 
 const formatMethodAndUrl = (reason: ReasonProps): string => `${reason.request.method} ${redactedUrl(reason)}`
 

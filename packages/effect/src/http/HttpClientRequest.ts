@@ -22,7 +22,7 @@ import * as Option from "../Option.ts"
 import { type Pipeable, pipeArguments } from "../Pipeable.ts"
 import type * as PlatformError from "../PlatformError.ts"
 import { hasProperty } from "../Predicate.ts"
-import { currentFiberTypeId, redact } from "../Redactable.ts"
+import { redact } from "../Redactable.ts"
 import type * as Redacted from "../Redacted.ts"
 import * as Result from "../Result.ts"
 import type * as Schema from "../Schema.ts"
@@ -33,7 +33,6 @@ import * as HttpBody from "./HttpBody.ts"
 import { hasBody, type HttpMethod } from "./HttpMethod.ts"
 import * as compression from "./internal/compressionBody.ts"
 import * as bodyInternal from "./internal/httpBody.ts"
-import { requestHeadersRedactedNames, requestUrlParamsRedactedNames } from "./internal/redactedNames.ts"
 import * as Url from "./Url.ts"
 import * as UrlParams from "./UrlParams.ts"
 
@@ -108,26 +107,13 @@ const Proto = {
   [TypeId]: TypeId,
   ...Inspectable.BaseProto,
   toJSON(this: HttpClientRequest): unknown {
-    // A request executed by `HttpClient.make` also redacts the names of the
-    // fiber that executed it.
-    const urlNames = requestUrlParamsRedactedNames(this)
-    const headerNames = requestHeadersRedactedNames(this)
-    const context: Context.Context<never> = (globalThis as any)[currentFiberTypeId]?.context ?? Context.empty()
     return {
       _id: "HttpClientRequest",
       method: this.method,
-      url: UrlParams.redactUrl(urlNames === undefined ? this.url : UrlParams.redactUrl(this.url, urlNames)),
-      urlParams: urlNames === undefined ? this.urlParams : {
-        _id: "UrlParams",
-        params: Object.fromEntries(
-          UrlParams.redact(this.urlParams, [...urlNames, ...Context.get(context, UrlParams.CurrentRedactedNames)])
-        )
-      },
+      url: UrlParams.redactUrl(this.url),
+      urlParams: this.urlParams,
       hash: this.hash,
-      headers: headerNames === undefined ? redact(this.headers) : Headers.redact(this.headers, [
-        ...headerNames,
-        ...Context.get(context, Headers.CurrentRedactedNames)
-      ]),
+      headers: redact(this.headers),
       body: this.body.toJSON()
     }
   },
