@@ -2174,17 +2174,17 @@ export const provideContext: {
  */
 export const provideService: {
   <I, S>(
-    key: Context.Key<I, S>,
+    key: Context.Slot<I, S>,
     value: Types.NoInfer<S>
   ): <A, In, L, E, R>(self: Sink<A, In, L, E, R>) => Sink<A, In, L, E, Exclude<R, I>>
   <A, In, L, E, R, I, S>(
     self: Sink<A, In, L, E, R>,
-    key: Context.Key<I, S>,
+    key: Context.Slot<I, S>,
     value: Types.NoInfer<S>
   ): Sink<A, In, L, E, Exclude<R, I>>
 } = dual(3, <A, In, L, E, R, I, S>(
   self: Sink<A, In, L, E, R>,
-  key: Context.Key<I, S>,
+  key: Context.Slot<I, S>,
   value: Types.NoInfer<S>
 ): Sink<A, In, L, E, Exclude<R, I>> =>
   fromTransform((upstream, scope) =>

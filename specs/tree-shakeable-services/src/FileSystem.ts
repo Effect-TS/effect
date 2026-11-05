@@ -230,7 +230,7 @@ export interface Shape extends Context.Operations.Shape<typeof members> {}
  * record back, and `Effect.provideService(readFile, fake)` on top of either
  * replaces one of them.
  */
-export const FileSystem: Context.Operations<FileSystem, Shape> = Context.Operations("effect/FileSystem", members)
+export const FileSystem = Context.Operations<FileSystem, Shape>()("effect/FileSystem", members)
 
 const readOnlyMembers = { exists, readFile, stat }
 
@@ -251,7 +251,4 @@ export interface ReadOnlyShape extends Context.Operations.Shape<typeof readOnlyM
 /**
  * The read-only file system as a record service.
  */
-export const ReadOnly: Context.Operations<ReadOnly, ReadOnlyShape> = Context.Operations(
-  "effect/FileSystem/ReadOnly",
-  readOnlyMembers
-)
+export const ReadOnly = Context.Operations<ReadOnly, ReadOnlyShape>()("effect/FileSystem/ReadOnly", readOnlyMembers)

@@ -11,7 +11,8 @@
     "test": "vitest run",
     "bundle": "node scripts/check-bundle.ts",
     "bench": "node scripts/bench.ts",
-    "verify": "pnpm check && pnpm check-errors && pnpm test && pnpm bundle"
+    "verify": "pnpm check && pnpm check-errors && pnpm test && pnpm bundle && pnpm bench:check",
+    "bench:check": "node scripts/bench.ts --ordinary --check && node scripts/bench.ts --check"
   },
   "devDependencies": {
     "@babel/core": "^8.0.10",

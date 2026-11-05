@@ -1168,7 +1168,7 @@ const members = {
  * @category services
  * @since 4.0.0
  */
-export const FileSystem: Context.Operations<FileSystem, FileSystem> = Context.Operations("effect/FileSystem", members)
+export const FileSystem = Context.Operations<FileSystem, FileSystem>()("effect/FileSystem", members)
 
 /**
  * The record of file system implementations: today an alias of the

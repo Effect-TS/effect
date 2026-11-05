@@ -388,7 +388,7 @@ export const fromEffect = <A, E, R>(effect: Effect.Effect<A, E, R>): Stream<A, E
  * @category accessors
  * @since 4.0.0
  */
-export const service = <I, S>(service: Context.Key<I, S>): Stream<S, never, I> => fromEffect(Effect.service(service))
+export const service = <I, S>(service: Context.Slot<I, S>): Stream<S, never, I> => fromEffect(Effect.service(service))
 
 /**
  * Optionally accesses a service from the context and emits the result as a
@@ -431,7 +431,7 @@ export const service = <I, S>(service: Context.Key<I, S>): Stream<S, never, I> =
  * @category accessors
  * @since 4.0.0
  */
-export const serviceOption = <I, S>(service: Context.Key<I, S>): Stream<Option.Option<S>> =>
+export const serviceOption = <I, S>(service: Context.Slot<I, S>): Stream<Option.Option<S>> =>
   fromEffect(Effect.serviceOption(service))
 
 /**
@@ -10687,19 +10687,19 @@ export const provideContext: {
  */
 export const provideService: {
   <I, S>(
-    key: Context.Key<I, S>,
+    key: Context.Slot<I, S>,
     service: NoInfer<S>
   ): <A, E, R>(
     self: Stream<A, E, R>
   ) => Stream<A, E, Exclude<R, I>>
   <A, E, R, I, S>(
     self: Stream<A, E, R>,
-    key: Context.Key<I, S>,
+    key: Context.Slot<I, S>,
     service: NoInfer<S>
   ): Stream<A, E, Exclude<R, I>>
 } = dual(3, <A, E, R, I, S>(
   self: Stream<A, E, R>,
-  key: Context.Key<I, S>,
+  key: Context.Slot<I, S>,
   service: NoInfer<S>
 ): Stream<A, E, Exclude<R, I>> => fromChannel(Channel.provideService(self.channel, key, service)))
 
@@ -10740,19 +10740,19 @@ export const provideService: {
  */
 export const provideServiceEffect: {
   <I, S, ES, RS>(
-    key: Context.Key<I, S>,
+    key: Context.Slot<I, S>,
     service: Effect.Effect<NoInfer<S>, ES, RS>
   ): <A, E, R>(
     self: Stream<A, E, R>
   ) => Stream<A, E | ES, Exclude<R, I> | RS>
   <A, E, R, I, S, ES, RS>(
     self: Stream<A, E, R>,
-    key: Context.Key<I, S>,
+    key: Context.Slot<I, S>,
     service: Effect.Effect<NoInfer<S>, ES, RS>
   ): Stream<A, E | ES, Exclude<R, I> | RS>
 } = dual(3, <A, E, R, I, S, ES, RS>(
   self: Stream<A, E, R>,
-  key: Context.Key<I, S>,
+  key: Context.Slot<I, S>,
   service: Effect.Effect<NoInfer<S>, ES, RS>
 ): Stream<A, E | ES, Exclude<R, I> | RS> => fromChannel(Channel.provideServiceEffect(self.channel, key, service)))
 
@@ -10839,19 +10839,19 @@ export const updateContext: {
  */
 export const updateService: {
   <I, S>(
-    key: Context.Key<I, S>,
+    key: Context.Slot<I, S>,
     f: (service: NoInfer<S>) => S
   ): <A, E, R>(
     self: Stream<A, E, R>
   ) => Stream<A, E, R | I>
   <A, E, R, I, S>(
     self: Stream<A, E, R>,
-    key: Context.Key<I, S>,
+    key: Context.Slot<I, S>,
     f: (service: NoInfer<S>) => S
   ): Stream<A, E, R | I>
 } = dual(3, <A, E, R, I, S>(
   self: Stream<A, E, R>,
-  service: Context.Key<I, S>,
+  service: Context.Slot<I, S>,
   f: (service: NoInfer<S>) => S
 ): Stream<A, E, R | I> =>
   updateContext(self, (context) =>

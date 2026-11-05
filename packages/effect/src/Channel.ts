@@ -7776,19 +7776,19 @@ export const provideContext: {
  */
 export const provideService: {
   <I, S>(
-    key: Context.Key<I, S>,
+    key: Context.Slot<I, S>,
     service: NoInfer<S>
   ): <OutElem, OutErr, OutDone, InElem, InErr, InDone, Env>(
     self: Channel<OutElem, OutErr, OutDone, InElem, InErr, InDone, Env>
   ) => Channel<OutElem, OutErr, OutDone, InElem, InErr, InDone, Exclude<Env, I>>
   <OutElem, OutErr, OutDone, InElem, InErr, InDone, Env, I, S>(
     self: Channel<OutElem, OutErr, OutDone, InElem, InErr, InDone, Env>,
-    key: Context.Key<I, S>,
+    key: Context.Slot<I, S>,
     service: NoInfer<S>
   ): Channel<OutElem, OutErr, OutDone, InElem, InErr, InDone, Exclude<Env, I>>
 } = dual(3, <OutElem, OutErr, OutDone, InElem, InErr, InDone, Env, I, S>(
   self: Channel<OutElem, OutErr, OutDone, InElem, InErr, InDone, Env>,
-  key: Context.Key<I, S>,
+  key: Context.Slot<I, S>,
   service: NoInfer<S>
 ): Channel<OutElem, OutErr, OutDone, InElem, InErr, InDone, Exclude<Env, I>> =>
   fromTransform((upstream, scope) =>
@@ -7817,19 +7817,19 @@ export const provideService: {
  */
 export const provideServiceEffect: {
   <I, S, ES, RS>(
-    key: Context.Key<I, S>,
+    key: Context.Slot<I, S>,
     service: Effect.Effect<NoInfer<S>, ES, RS>
   ): <OutElem, OutErr, OutDone, InElem, InErr, InDone, Env>(
     self: Channel<OutElem, OutErr, OutDone, InElem, InErr, InDone, Env>
   ) => Channel<OutElem, OutErr | ES, OutDone, InElem, InErr, InDone, Exclude<Env, I> | RS>
   <OutElem, OutErr, OutDone, InElem, InErr, InDone, Env, I, S, ES, RS>(
     self: Channel<OutElem, OutErr, OutDone, InElem, InErr, InDone, Env>,
-    key: Context.Key<I, S>,
+    key: Context.Slot<I, S>,
     service: Effect.Effect<NoInfer<S>, ES, RS>
   ): Channel<OutElem, OutErr | ES, OutDone, InElem, InErr, InDone, Exclude<Env, I> | RS>
 } = dual(3, <OutElem, OutErr, OutDone, InElem, InErr, InDone, Env, I, S, ES, RS>(
   self: Channel<OutElem, OutErr, OutDone, InElem, InErr, InDone, Env>,
-  key: Context.Key<I, S>,
+  key: Context.Slot<I, S>,
   service: Effect.Effect<NoInfer<S>, ES, RS>
 ): Channel<OutElem, OutErr | ES, OutDone, InElem, InErr, InDone, Exclude<Env, I> | RS> =>
   fromTransform((upstream, scope) =>
@@ -7937,19 +7937,19 @@ export const updateContext: {
  */
 export const updateService: {
   <I, S>(
-    key: Context.Key<I, S>,
+    key: Context.Slot<I, S>,
     f: (service: NoInfer<S>) => S
   ): <OutElem, OutErr, OutDone, InElem, InErr, InDone, Env>(
     self: Channel<OutElem, InElem, OutErr, InErr, OutDone, InDone, Env>
   ) => Channel<OutElem, InElem, OutErr, InErr, OutDone, InDone, Env | I>
   <OutElem, OutErr, OutDone, InElem, InErr, InDone, Env, I, S>(
     self: Channel<OutElem, InElem, OutErr, InErr, OutDone, InDone, Env>,
-    service: Context.Key<I, S>,
+    service: Context.Slot<I, S>,
     f: (service: NoInfer<S>) => S
   ): Channel<OutElem, InElem, OutErr, InErr, OutDone, InDone, Env | I>
 } = dual(3, <OutElem, OutErr, OutDone, InElem, InErr, InDone, Env, I, S>(
   self: Channel<OutElem, InElem, OutErr, InErr, OutDone, InDone, Env>,
-  service: Context.Key<I, S>,
+  service: Context.Slot<I, S>,
   f: (service: NoInfer<S>) => S
 ): Channel<OutElem, InElem, OutErr, InErr, OutDone, InDone, Env | I> =>
   updateContext(self, (context) =>
