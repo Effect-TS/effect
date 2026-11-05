@@ -130,27 +130,6 @@ const primitiveSchemas = {
 const unsupportedStructuredValue = "Only primitive values are supported in \"const\" and \"enum\"."
 const jsonSchemaPatternFlags = "u"
 
-function isPasswordString(input: ImportedKeyword<"String">): boolean {
-  return input.annotations?.format === "password"
-}
-
-// `{ type: ["string", "null"], format: "password" }` (or OpenAPI 3.0 `nullable: true`) annotates the union, so the
-// password format moves to its string members. Literal members, such as those from `enum` or `const`, stay plain.
-function movePasswordFormatToStrings(input: ImportedJsonSchemaRepresentation): ImportedJsonSchemaRepresentation {
-  if (input._tag !== "Union" || input.annotations?.format !== "password") return input
-  let moved = false
-  const types = input.types.map((type): ImportedJsonSchemaRepresentation => {
-    if (type._tag === "String" && type.annotations?.format === undefined) {
-      moved = true
-      return { ...type, annotations: { ...type.annotations, format: "password" } }
-    }
-    return type
-  })
-  if (!moved) return input
-  const { format: _, ...annotations } = input.annotations
-  return { ...input, types, annotations: Object.keys(annotations).length === 0 ? undefined : annotations }
-}
-
 function isObject(input: unknown): input is Record<string, unknown> {
   return typeof input === "object" && input !== null && !Array.isArray(input)
 }
@@ -292,6 +271,42 @@ export function fromJsonSchemaMultiDocument(
   const references = new Map<string, ReferenceSlot>()
   let inNestedResource = false
 
+  // A password is a string, or a reference to a plain string definition, annotated with `format: "password"`
+  function isPassword(input: ImportedJsonSchemaRepresentation): boolean {
+    if (input.annotations?.format !== "password") return false
+    return input._tag === "String" || input._tag === "Reference" && isPlainStringReference(input, new Set())
+  }
+
+  function isPlainStringReference(input: ImportedReference, seen: Set<string>): boolean {
+    // Definitions still being translated are recursive, so they cannot be plain strings
+    if (seen.has(input.$ref) || definitionCache.get(input.$ref) === null) return false
+    seen.add(input.$ref)
+    const definition = translateDefinition(input.$ref, input.path)
+    if (definition.annotations?.format !== undefined) return false
+    return definition._tag === "String" ||
+      definition._tag === "Reference" && isPlainStringReference(definition, seen)
+  }
+
+  // `{ type: ["string", "null"], format: "password" }` (or OpenAPI 3.0 `nullable: true`) annotates the union, so the
+  // password format moves to its string members. Literal members, such as those from `enum` or `const`, stay plain.
+  function movePasswordFormatToStrings(input: ImportedJsonSchemaRepresentation): ImportedJsonSchemaRepresentation {
+    if (input._tag !== "Union" || input.annotations?.format !== "password") return input
+    let moved = false
+    const types = input.types.map((type): ImportedJsonSchemaRepresentation => {
+      if (
+        type.annotations?.format === undefined &&
+        (type._tag === "String" || type._tag === "Reference" && isPlainStringReference(type, new Set()))
+      ) {
+        moved = true
+        return { ...type, annotations: { ...type.annotations, format: "password" } }
+      }
+      return type
+    })
+    if (!moved) return input
+    const { format: _, ...annotations } = input.annotations
+    return { ...input, types, annotations: Object.keys(annotations).length === 0 ? undefined : annotations }
+  }
+
   function finalize(input: ImportedJsonSchemaRepresentation): Schema.Top {
     const annotations = mergeAnnotations(input.annotations, input.customAnnotations)
     if (input._tag === "Reference") {
@@ -302,6 +317,13 @@ export function fromJsonSchemaMultiDocument(
         references.set(input.$ref, slot)
         slot.body = finalize(translateDefinition(input.$ref, input.path)).annotate({ identifier: input.$ref })
       }
+      if (isPassword(input)) {
+        // Wrap this use only, so other references to the same string definition stay plain
+        const { format: _, ...rest } = annotations ?? {}
+        return Schema.RedactedFromValue(
+          Object.keys(rest).length === 0 ? slot.body ?? slot.wrapper : slot.wrapper.annotate(rest)
+        )
+      }
       return annotations === undefined ? slot.body ?? slot.wrapper : slot.wrapper.annotate(annotations)
     }
 
@@ -310,7 +332,7 @@ export function fromJsonSchemaMultiDocument(
       case "Unknown":
         return Schema.Json.annotate({ ...annotations, expected: "JSON value" })
       case "String":
-        if (isPasswordString(input)) {
+        if (isPassword(input)) {
           return finalizePassword(input, annotations)
         }
         schema = Schema.String
@@ -413,7 +435,7 @@ export function fromJsonSchemaMultiDocument(
   function containsPassword(input: ImportedJsonSchemaRepresentation, seen: Set<string>): boolean {
     switch (input._tag) {
       case "String":
-        return isPasswordString(input)
+        return isPassword(input)
       case "Arrays":
         return input.elements.some((element) => containsPassword(element.type, seen)) ||
           input.rest.some((rest) => containsPassword(rest, seen))
@@ -423,6 +445,7 @@ export function fromJsonSchemaMultiDocument(
       case "Union":
         return input.types.some((type) => containsPassword(type, seen))
       case "Reference":
+        if (isPassword(input)) return true
         if (seen.has(input.$ref)) return false
         seen.add(input.$ref)
         return containsPassword(translateDefinition(input.$ref, input.path), seen)

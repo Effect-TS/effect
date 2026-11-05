@@ -39,23 +39,26 @@ function isRedactedDeclaration(ast: SchemaAST.AST): boolean {
 // format. The codec ASTs keep the original string, so only representations (and the JSON Schema and code generated
 // from them) see the format. The marker lets a format supplied by a check take precedence when exporting.
 function toPasswordString(ast: SchemaAST.AST): SchemaAST.AST {
+  let target = ast
+  while (target._tag === "Suspend" && target.annotations?.format === undefined) target = target.thunk()
   if (
-    ast._tag !== "String" ||
-    ast.annotations?.format !== undefined ||
-    ast.checks?.some((check) => check.annotations?.format !== undefined)
+    target._tag !== "String" ||
+    target.encoding !== undefined ||
+    target.annotations?.format !== undefined ||
+    target.checks?.some((check) => check.annotations?.format !== undefined)
   ) {
     return ast
   }
   let password = passwordStrings.get(ast)
   if (password === undefined) {
-    // Annotate the string itself rather than its last check, so the format is exported next to `type`.
-    password = SchemaAST.replaceChecks(
-      SchemaAST.annotate(SchemaAST.replaceChecks(ast, undefined), {
-        format: "password",
-        [InternalAnnotations.PASSWORD_FORMAT_DEFAULT_KEY]: true
-      }),
-      ast.checks
-    )
+    const annotations = { format: "password", [InternalAnnotations.PASSWORD_FORMAT_DEFAULT_KEY]: true }
+    password = ast._tag === "Suspend"
+      ? SchemaAST.annotate(ast, annotations)
+      : InternalAnnotations.resolveIdentifier(ast) !== undefined
+      // A shared definition keeps its own schema, so the format is added to this use site only
+      ? new SchemaAST.Suspend(() => ast, annotations)
+      // Annotate the string itself rather than its last check, so the format is exported next to `type`
+      : SchemaAST.replaceChecks(SchemaAST.annotate(SchemaAST.replaceChecks(ast, undefined), annotations), ast.checks)
     passwordStrings.set(ast, password)
   }
   return password
