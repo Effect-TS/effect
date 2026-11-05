@@ -4,8 +4,8 @@
  * Clients discover tools, prompts, resources and Agent Skills using the protocol revision
  * selected by their transport. `callTool` returns tool-reported errors as results; supplying a schema
  * turns them into a `ToolError` reason that retains the original result. Transport and
- * protocol failures fail the Effect. July Tasks use opt-in polling and application-owned input handlers. Subscriptions,
- * legacy interactive server requests, OAuth and retries are not included.
+ * protocol failures fail the Effect. Tasks (2026-07-28) use opt-in polling and application-owned input
+ * handlers. Subscriptions, legacy interactive server requests, OAuth and retries are not included.
  *
  * @stability experimental
  * @since 4.0.6
@@ -76,7 +76,7 @@ import * as Toolkit from "./Toolkit.ts"
 export type ProtocolVersion = "2025-11-25" | "2026-07-28"
 
 /**
- * Application handlers for July task input and ordinary tool input continuations.
+ * Application handlers for task input and ordinary tool input continuations.
  * Only configured handlers are advertised. Elicitation handlers support both form and URL modes.
  * Handler services are captured when the client is constructed.
  *

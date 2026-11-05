@@ -347,8 +347,8 @@ export const makeHandlers = (
     return hint === undefined ? privateStaleCache : { ttlMs: hint.ttlMs, cacheScope: hint.cacheScope }
   }
   const getDiscovery = Effect.map(
-    Effect.all([context.registrationPresence, core.tasks.registered]),
-    ([presence, tasks]) => {
+    Effect.all([context.registrationPresence, core.registrationPresence]),
+    ([presence, { tasks }]) => {
       const capabilities: Types.Mutable<typeof McpSchema.ServerCapabilities.Type> = { completions: {}, logging: {} }
       const declared = McpSkills.declareExtension(extensions, presence.skills)
       if (tasks) capabilities.extensions = { ...declared, [McpTasks.EXTENSION_ID]: {} }

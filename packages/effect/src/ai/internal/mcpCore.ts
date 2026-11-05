@@ -271,7 +271,6 @@ export interface TaskRoute {
  */
 export interface Tasks {
   readonly register: (toolName: string, operations: TaskOperations) => Effect.Effect<TaskRoute>
-  readonly registered: Effect.Effect<boolean>
   // Wraps an execution task ID in a handle that routes back to its registration.
   readonly handle: (route: TaskRoute, taskId: string) => string
   readonly get: (handle: string, invocation: McpInvocation) => Effect.Effect<McpTasks.Task, TaskError>
@@ -586,6 +585,7 @@ export interface McpCore {
     readonly resources: boolean
     readonly prompts: boolean
     readonly skills: boolean
+    readonly tasks: boolean
   }>
 }
 
@@ -816,7 +816,6 @@ export const make: Effect.Effect<McpCore> = Effect.sync(() => {
         taskRoutes.set(toolName, generations)
         return { toolName, generation: generations.length - 1 }
       }),
-    registered: Effect.sync(() => taskRoutes.size > 0),
     handle: (route, taskId) => Base64Url.encode(JSON.stringify([route.toolName, route.generation, taskId])),
     get: (handle, invocation) =>
       Effect.flatMap(
@@ -834,7 +833,8 @@ export const make: Effect.Effect<McpCore> = Effect.sync(() => {
     tools: registrations.size > 0,
     resources: resourceRegistrations.length > 0 || resourceTemplateRegistrations.length > 0,
     prompts: promptRegistrations.size > 0,
-    skills: skillRegistrations.size > 0
+    skills: skillRegistrations.size > 0,
+    tasks: taskRoutes.size > 0
   }))
 
   return { tools, resources, prompts, completions, skills, tasks, registrationPresence }
