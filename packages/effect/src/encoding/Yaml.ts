@@ -201,13 +201,14 @@ const closingQuote = (input: string, quote: string, start: number): number => {
 
 // `depth` is the number of flow collections already open before `input`. When searching
 // for `#`, `found` receives the first index the search for `:` would return, or -1.
+// `tokenStart` is false when `input` continues a plain scalar, whose quotes are text.
 const findIndicator = (
   input: string,
   indicator: ":" | "#",
   depth = 0,
-  found?: { separator: number }
+  found?: { separator: number },
+  tokenStart = true
 ): number => {
-  let tokenStart = true
   const length = input.length
   for (let index = 0; index < length; index++) {
     const code = input.charCodeAt(index)
@@ -250,8 +251,8 @@ const findIndicator = (
   return -1
 }
 
-const stripComment = (input: string, depth = 0): string => {
-  const index = findIndicator(input, "#", depth)
+const stripComment = (input: string): string => {
+  const index = findIndicator(input, "#")
   return index === -1 ? input : trimWhiteEnd(input.slice(0, index))
 }
 
@@ -594,9 +595,11 @@ class FlowParser {
   private offset = 0
   private readonly anchors: Map<string, unknown>
   private readonly merges: MergeBudget
-  // `quoted` asks for a continuation of an open quoted scalar, returned without
-  // comment removal since `#` inside quotes is content.
-  private readonly nextLine: (depth: number, quoted: boolean) => string | undefined
+  // Returns the next line of the collection, without its indentation or comment removal.
+  // `quoted` asks for a continuation of an open quoted scalar.
+  private readonly nextLine: (quoted: boolean) => string | undefined
+  // Whether a comment ended `line`. YAML 1.2.2 §6.6: a plain scalar cannot continue after one.
+  private comment: boolean
   // Block collections already open around this flow collection.
   private readonly blockDepth: number
   private index = 0
@@ -608,14 +611,16 @@ class FlowParser {
     input: string,
     anchors: Map<string, unknown>,
     merges: MergeBudget,
-    nextLine: (depth: number, quoted: boolean) => string | undefined,
-    blockDepth: number
+    nextLine: (quoted: boolean) => string | undefined,
+    blockDepth: number,
+    comment: boolean
   ) {
     this.line = input
     this.anchors = anchors
     this.merges = merges
     this.nextLine = nextLine
     this.blockDepth = blockDepth
+    this.comment = comment
   }
 
   parse(): unknown {
@@ -855,14 +860,14 @@ class FlowParser {
         if (pieces.length > 1) {
           // The rest of the closing line was read raw, so remove its comment now.
           const rest = this.line.slice(this.index)
-          if (!rest.startsWith("#")) this.line = this.line.slice(0, this.index) + stripComment(rest, this.depth)
+          if (!rest.startsWith("#")) this.line = this.line.slice(0, this.index) + this.stripComment(rest, false)
         }
         return foldQuotedLines(pieces.join(""))
       }
       pieces.push(this.line.slice(start))
       // An escape at the end of the line consumes the next line's "\n".
       const skipped = quote === "\"" && endsWithEscape(this.line) ? 1 : 0
-      if (!this.nextChunk(true)) throw new SyntaxError(`Unterminated quoted scalar at flow offset ${startOffset}`)
+      if (!this.nextChunk("quoted")) throw new SyntaxError(`Unterminated quoted scalar at flow offset ${startOffset}`)
       start = 0
       from = skipped
     }
@@ -887,20 +892,23 @@ class FlowParser {
     return `${token}>`
   }
 
-  // `separator` also stops at a `:` that separates a key from its value.
-  private readUntil(stop: (code: number) => boolean, separator = false): string {
+  // `plain` reads a plain scalar, which also stops at a `:` that separates a key from its
+  // value and at the end of a line a comment ended.
+  private readUntil(stop: (code: number) => boolean, plain = false): string {
     // Only text spanning lines needs pieces; most tokens are one slice of one line.
     let pieces: Array<string> | undefined
     let start = this.index
     while (true) {
       if (this.index === this.line.length) {
         const piece = this.line.slice(start)
-        if (this.depth === 0 || !this.nextChunk(false)) return pieces === undefined ? piece : pieces.join("") + piece
+        if (this.depth === 0 || (plain && this.comment) || !this.nextChunk(plain ? "plain" : "token")) {
+          return pieces === undefined ? piece : pieces.join("") + piece
+        }
         ;(pieces ??= []).push(piece)
         start = 0
       }
       const code = this.line.charCodeAt(this.index)
-      if (stop(code) || (separator && code === 58 && this.isValueSeparator())) break
+      if (stop(code) || (plain && code === 58 && this.isValueSeparator())) break
       this.index++
     }
     const piece = this.line.slice(start, this.index)
@@ -914,20 +922,32 @@ class FlowParser {
     return this.index + 1 >= this.line.length || isWhiteCode(next) || isFlowIndicatorCode(next)
   }
 
-  // Moves to the next line of the flow collection, keeping its leading "\n".
-  private nextChunk(quoted: boolean): boolean {
-    const next = this.nextLine(this.depth, quoted)
+  // Moves to the next line of the flow collection, keeping its leading "\n". `mode` is what
+  // the line continues: an open quoted scalar, whose `#` is content, a plain scalar, whose
+  // quotes are text, or neither.
+  private nextChunk(mode: "quoted" | "plain" | "token"): boolean {
+    const next = this.nextLine(mode === "quoted")
     if (next === undefined) return false
     this.offset += this.line.length
-    this.line = `\n${next}`
+    this.comment = false
+    this.line = `\n${mode === "quoted" ? next : this.stripComment(next, mode === "plain")}`
     this.index = 0
     return true
+  }
+
+  // Removes the comment from the rest of a line, knowing the open collections so a quoted
+  // `#` after a comma is kept.
+  private stripComment(text: string, plain: boolean): string {
+    const index = findIndicator(text, "#", this.depth, undefined, !plain)
+    if (index === -1) return text
+    this.comment = true
+    return trimWhiteEnd(text.slice(0, index))
   }
 
   private skipWhitespace(): void {
     while (true) {
       // As `peek`: inside a collection, the end of the line continues on the next line.
-      if (this.index === this.line.length && (this.depth === 0 || !this.nextChunk(false))) return
+      if (this.index === this.line.length && (this.depth === 0 || !this.nextChunk("token"))) return
       if (!isSeparationCode(this.line.charCodeAt(this.index))) return
       this.index++
     }
@@ -940,7 +960,7 @@ class FlowParser {
 
   private peek(): string {
     // Inside a collection, the end of the line continues on the next line.
-    if (this.index === this.line.length && this.depth > 0) this.nextChunk(false)
+    if (this.index === this.line.length && this.depth > 0) this.nextChunk("token")
     return this.line[this.index] ?? ""
   }
 
@@ -1329,23 +1349,28 @@ class YamlParser {
   }
 
   private parseFlowValue(text: string, parentIndent: number): unknown {
-    return new FlowParser(text, this.anchors, this.merges, (depth, quoted) => {
-      const next = this.lineAt(this.index)
-      if (next === undefined) return undefined
-      if (quoted) {
-        // Inside a quote, `#` and brackets are content: every non-blank line is indented past the parent.
-        if (!isSeparationOnly(next.raw) && next.indent <= parentIndent) return undefined
-      } else {
-        // Continuation lines are more indented than the parent; a closing bracket may sit at its indentation.
-        const content = !isSeparationOnly(next.text)
-        if (content && next.indent < parentIndent) return undefined
-        if (content && next.indent === parentIndent && !/^[\]}]/.test(next.text)) return undefined
-      }
-      this.index++
-      const text = next.raw.slice(next.indent)
-      // Strip comments again knowing the open collections, so quoted `#` after a comma is kept.
-      return quoted ? text : stripComment(text, depth)
-    }, this.depth).parse()
+    return new FlowParser(
+      text,
+      this.anchors,
+      this.merges,
+      (quoted) => {
+        const next = this.lineAt(this.index)
+        if (next === undefined) return undefined
+        if (quoted) {
+          // Inside a quote, `#` and brackets are content: every non-blank line is indented past the parent.
+          if (!isSeparationOnly(next.raw) && next.indent <= parentIndent) return undefined
+        } else {
+          // Continuation lines are more indented than the parent; a closing bracket may sit at its indentation.
+          const content = !isSeparationOnly(next.text)
+          if (content && next.indent < parentIndent) return undefined
+          if (content && next.indent === parentIndent && !/^[\]}]/.test(next.text)) return undefined
+        }
+        this.index++
+        return next.raw.slice(next.indent)
+      },
+      this.depth,
+      this.lines[this.index - 1].comment
+    ).parse()
   }
 
   private parsePlainValue(value: string, parentIndent: number): unknown {
@@ -1802,6 +1827,8 @@ class Printer {
   // The path of the node being printed, formatted only for error messages.
   private readonly root: string
   private readonly trail: Array<string | number> = []
+  // Collections open around the node being printed.
+  private depth = 0
 
   constructor(step: number, root: string) {
     this.step = step
@@ -1844,6 +1871,14 @@ class Printer {
     }
     if (value === null) return this.line(indentation, prefix, "null")
     if (this.ancestors.has(value)) this.fail("Circular reference")
+    // Limited as `parse` limits them, counting empty collections, which also bounds the recursion.
+    if (this.depth === maxDepth) this.fail(depthError)
+    this.depth++
+    this.collection(value, indentation, prefix)
+    this.depth--
+  }
+
+  private collection(value: object, indentation: number, prefix: string): void {
     if (Array.isArray(value)) {
       if (value.length === 0) return this.line(indentation, prefix, "[]")
       this.ancestors.add(value)
@@ -1967,8 +2002,9 @@ const printResult = (input: unknown, print: () => string): Result.Result<string,
  * prints as an ISO string), `undefined` properties are omitted, `undefined`
  * array items print as `null`, and symbol keys are ignored. Any other value,
  * including bigints, functions, symbols, class instances without `toJSON`,
- * and circular references, fails with an `EncodingError` naming the path of
- * the offending value. Keys print as implicit keys, which YAML limits to 1024
+ * circular references, and collections nested more than 1000 levels deep
+ * (counting empty ones), which {@link parse} rejects, fails with an
+ * `EncodingError` naming the path of the offending value. Keys print as implicit keys, which YAML limits to 1024
  * characters including quotes; a longer key fails with the path of its
  * mapping. Shared references are printed in full each time; no anchors are
  * emitted. The output always ends with a line break.
