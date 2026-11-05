@@ -7,7 +7,8 @@
  * wakes the execution, so a replay must not append again: every change has a
  * durable key, written after its snapshot, and a change whose key exists is
  * skipped. Keys name the change rather than its position, so replays that skip
- * work, such as a cached `DurableDeferred.raceAll`, stay consistent. Answers
+ * work, such as a cached `DurableDeferred.raceAll`, stay consistent. A status
+ * set in skipped work is taken from the log when the run next appends. Answers
  * are separate deferreds, one per input key, written by `tasks/update`.
  */
 import * as DateTime from "../../DateTime.ts"
@@ -38,7 +39,8 @@ const Snapshot = Schema.Struct({
   at: Schema.DateTimeUtc
 })
 const snapshot = (index: number) => DurableDeferred.make(`mcp/task/state/${index}`, { success: Snapshot })
-const change = (key: string) => DurableDeferred.make(`mcp/task/change/${key}`)
+// A recorded change holds the index of the snapshot it wrote.
+const change = (key: string) => DurableDeferred.make(`mcp/task/change/${key}`, { success: Schema.Int })
 const answer = (key: string) =>
   DurableDeferred.make(`mcp/task/input/${JSON.stringify(key)}`, { success: Schema.JsonObject })
 
@@ -116,7 +118,8 @@ export const make = <
   const state = Effect.fnUntraced(function*(executionId: string) {
     const { current } = yield* latest(executionId)
     if (Option.isNone(current)) return { inputRequests: {} }
-    const inputRequests: Record<string, McpSchema.McpInputRequest> = {}
+    // Input keys are application strings, including `__proto__`.
+    const inputRequests: Record<string, McpSchema.McpInputRequest> = Object.create(null)
     for (const [key, request] of Object.entries(current.value.inputRequests)) {
       if (Option.isNone(yield* read(executionId, answer(key)))) inputRequests[key] = request
     }
@@ -149,18 +152,31 @@ export const make = <
     const statusCounts = new Map<string | undefined, number>()
     let statusMessage: string | undefined
     let count: number | undefined
+    // The newest snapshot this run has replayed or written.
+    let replayed = -1
 
-    const append = (key: string) =>
+    const append = (key: string, isStatus = false) =>
       lock.withPermits(1)(Effect.gen(function*() {
-        if (Option.isSome(yield* read(executionId, change(key)))) return
+        const recorded = yield* read(executionId, change(key))
+        if (Option.isSome(recorded)) {
+          replayed = Math.max(replayed, recorded.value)
+          return
+        }
         count ??= (yield* latest(executionId)).count
+        // Newer snapshots this run has not replayed come from skipped work,
+        // so their status is the most recent one.
+        if (!isStatus && count - 1 > replayed) {
+          const newest = yield* read(executionId, snapshot(count - 1))
+          if (Option.isSome(newest)) statusMessage = newest.value.statusMessage
+        }
         yield* write(executionId, snapshot(count), {
           ...(statusMessage === undefined ? {} : { statusMessage }),
           inputRequests: Object.fromEntries(inputs),
           at: yield* DateTime.now
         })
+        yield* write(executionId, change(key), count)
+        replayed = count
         count++
-        yield* write(executionId, change(key), undefined)
       }))
 
     const taskContext: McpTasks.TaskContext["Service"] = {
@@ -201,7 +217,7 @@ export const make = <
           const occurrence = (statusCounts.get(message) ?? 0) + 1
           statusCounts.set(message, occurrence)
           statusMessage = message
-          return append(`status/${occurrence}/${Hash.string(JSON.stringify(message ?? null))}`)
+          return append(`status/${occurrence}/${Hash.string(JSON.stringify(message ?? null))}`, true)
         })
     }
 
