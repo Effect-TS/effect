@@ -109,6 +109,12 @@ export * as Prompt from "./Prompt.ts"
 
 /**
  * @stability unstable
+ * @since 4.1.3
+ */
+export * as RealtimeModel from "./RealtimeModel.ts"
+
+/**
+ * @stability unstable
  * @since 4.0.0
  */
 export * as Response from "./Response.ts"
@@ -118,6 +124,12 @@ export * as Response from "./Response.ts"
  * @since 4.0.0
  */
 export * as ResponseIdTracker from "./ResponseIdTracker.ts"
+
+/**
+ * @stability unstable
+ * @since 4.1.3
+ */
+export * as SpeechModel from "./SpeechModel.ts"
 
 /**
  * @stability unstable
@@ -142,3 +154,9 @@ export * as Tool from "./Tool.ts"
  * @since 4.0.0
  */
 export * as Toolkit from "./Toolkit.ts"
+
+/**
+ * @stability unstable
+ * @since 4.1.3
+ */
+export * as TranscriptionModel from "./TranscriptionModel.ts"

@@ -55,9 +55,21 @@ export * as OpenAiLanguageModel from "./OpenAiLanguageModel.ts"
 
 /**
  * @stability unstable
+ * @since 4.1.3
+ */
+export * as OpenAiRealtimeModel from "./OpenAiRealtimeModel.ts"
+
+/**
+ * @stability unstable
  * @since 4.0.0
  */
 export * as OpenAiSchema from "./OpenAiSchema.ts"
+
+/**
+ * @stability unstable
+ * @since 4.1.3
+ */
+export * as OpenAiSpeechModel from "./OpenAiSpeechModel.ts"
 
 /**
  * @stability unstable
@@ -70,3 +82,9 @@ export * as OpenAiTelemetry from "./OpenAiTelemetry.ts"
  * @since 4.0.0
  */
 export * as OpenAiTool from "./OpenAiTool.ts"
+
+/**
+ * @stability unstable
+ * @since 4.1.3
+ */
+export * as OpenAiTranscriptionModel from "./OpenAiTranscriptionModel.ts"
