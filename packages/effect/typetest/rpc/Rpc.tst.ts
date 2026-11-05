@@ -95,5 +95,25 @@ describe("Rpc", () => {
     it("returns never for an unknown tag", () => {
       expect<Rpc.ExtractTag<Mixed, "Missing">>().type.toBe<never>()
     })
+
+    describe("with broad RPC tags", () => {
+      const Dynamic = Rpc.make("Dynamic" as string, { success: Schema.Number })
+      const Pattern = Rpc.make("GetAny" as `Get${string}`, { success: Schema.Boolean })
+      const Specific = Rpc.make("GetSpecific", { success: Schema.String })
+
+      it("keeps literal RPCs matched by a broad tag", () => {
+        expect<Rpc.ExtractTag<typeof Dynamic | typeof Specific, string>>().type.toBe<
+          typeof Dynamic | typeof Specific
+        >()
+        expect<Rpc.ExtractTag<typeof Pattern | typeof Specific, `Get${string}`>>().type.toBe<
+          typeof Pattern | typeof Specific
+        >()
+      })
+
+      it("selects only the literal RPC for its literal tag", () => {
+        expect<Rpc.ExtractTag<typeof Dynamic | typeof Specific, "GetSpecific">>().type.toBe<typeof Specific>()
+        expect<Rpc.ExtractTag<typeof Pattern | typeof Specific, "GetSpecific">>().type.toBe<typeof Specific>()
+      })
+    })
   })
 })

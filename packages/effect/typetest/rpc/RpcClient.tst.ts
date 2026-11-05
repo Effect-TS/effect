@@ -45,6 +45,13 @@ describe("RpcClient.Flat", () => {
     expect(call("A", { id: "a" })).type.toBe<Effect.Effect<number>>()
   })
 
+  it("includes literal RPCs in the result when called with a broad tag", () => {
+    const Dynamic = Rpc.make("Dynamic" as string, { success: Schema.Number })
+    const client = hole<RpcClient.RpcClient.Flat<typeof Dynamic | typeof B>>()
+
+    expect(client(hole<string>(), undefined)).type.toBe<Effect.Effect<number> | Effect.Effect<string>>()
+  })
+
   it("rejects non-string tags when the RPC tag is widened to string", () => {
     const Dynamic = Rpc.make("A" as string, { success: Schema.Number })
     const client = hole<RpcClient.RpcClient.Flat<typeof Dynamic>>()
