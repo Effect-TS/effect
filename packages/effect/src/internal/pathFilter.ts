@@ -1,4 +1,12 @@
-import type { PathMatcher, Rule } from "../PathFilter.ts"
+import type { Input, PathMatcher, Rule } from "../PathFilter.ts"
+import { hasProperty } from "../Predicate.ts"
+
+/** @internal */
+export const TypeId = "~effect/PathFilter"
+
+/** @internal */
+export const isFilter = (u: unknown): u is { readonly [TypeId]: typeof TypeId; readonly rules: ReadonlyArray<Rule> } =>
+  hasProperty(u, TypeId)
 
 /**
  * Incremental evaluation of one matcher: the walk steps each rule's state one
@@ -222,11 +230,14 @@ const make = (rules: ReadonlyArray<Rule>): Evaluator => {
 const evaluators = new WeakMap<object, Evaluator>()
 
 /**
- * The evaluator for a filter, built once per filter.
+ * The evaluator for a filter, built once per filter, or for a list of rules.
  *
  * @internal
  */
-export const evaluator = (filter: { readonly rules: ReadonlyArray<Rule> }): Evaluator => {
+export const evaluator = (filter: Input): Evaluator => {
+  if (!isFilter(filter)) {
+    return make(Array.from(filter))
+  }
   let evaluator = evaluators.get(filter)
   if (evaluator === undefined) {
     evaluator = make(filter.rules)

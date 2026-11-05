@@ -1,8 +1,9 @@
 /**
  * Decides which `/`-separated, root-relative paths to exclude with an ordered
  * list of exclusion and inclusion rules, without accessing the file system.
- * Pass a `PathFilter` as the `filter` option of `FileSystem.glob` to apply
- * it to a walk, or build one from ignore files with `IgnoreFile`.
+ * Pass a `PathFilter`, or just its rules, as the `filter` option of
+ * `FileSystem.glob` to apply it to a walk, or build one from ignore files with
+ * `IgnoreFile`.
  *
  * **Details**
  *
@@ -36,9 +37,8 @@ import { type Inspectable, NodeInspectSymbol } from "./Inspectable.ts"
 import * as Glob from "./internal/glob.ts"
 import * as Engine from "./internal/pathFilter.ts"
 import { type Pipeable, pipeArguments } from "./Pipeable.ts"
-import { hasProperty } from "./Predicate.ts"
 
-const TypeId = "~effect/PathFilter"
+const TypeId = Engine.TypeId
 
 /**
  * An ordered list of rules that decides which paths to exclude.
@@ -183,7 +183,17 @@ const PathFilterProto = {
  * @category guards
  * @since 4.0.0
  */
-export const isPathFilter = (u: unknown): u is PathFilter => hasProperty(u, TypeId)
+export const isPathFilter = (u: unknown): u is PathFilter => Engine.isFilter(u)
+
+/**
+ * Values accepted wherever a filter is expected: a filter or its rules.
+ *
+ * @see {@link fromInput} for converting inputs
+ * @stability unstable
+ * @category models
+ * @since 4.0.0
+ */
+export type Input = PathFilter | Iterable<Rule>
 
 /**
  * Creates a filter from rules, with later rules taking precedence.
@@ -220,6 +230,30 @@ export const make = (rules: Iterable<Rule>): PathFilter => {
  * @since 4.0.0
  */
 export const empty: PathFilter = make([])
+
+/**
+ * Converts a filter or its rules into a `PathFilter`.
+ *
+ * **Details**
+ *
+ * Filters are returned unchanged and rules are passed to {@link make}.
+ *
+ * **Example** (Converting rules into a filter)
+ *
+ * ```ts import.meta.vitest
+ * import { PathFilter } from "effect"
+ *
+ * const filter = PathFilter.fromInput([PathFilter.exclude("dist")])
+ *
+ * PathFilter.excludes(filter, "dist/index.js") // => true
+ * PathFilter.fromInput(filter) === filter // => true
+ * ```
+ *
+ * @stability unstable
+ * @category constructors
+ * @since 4.0.0
+ */
+export const fromInput = (input: Input): PathFilter => isPathFilter(input) ? input : make(input)
 
 const toMatcher = (pattern: string | PathMatcher, dot: boolean | undefined): PathMatcher => {
   if (typeof pattern !== "string") {
@@ -332,6 +366,10 @@ export const include = (pattern: string | PathMatcher, options?: {
 /**
  * Combines two filters, with the rules of `that` taking precedence.
  *
+ * **Details**
+ *
+ * Either side may also be a list of rules, as accepted by {@link fromInput}.
+ *
  * **Example** (Layering a nested filter)
  *
  * ```ts import.meta.vitest
@@ -350,9 +388,9 @@ export const include = (pattern: string | PathMatcher, options?: {
  * @since 4.0.0
  */
 export const concat: {
-  (that: PathFilter): (self: PathFilter) => PathFilter
-  (self: PathFilter, that: PathFilter): PathFilter
-} = dual(2, (self: PathFilter, that: PathFilter): PathFilter => make([...self.rules, ...that.rules]))
+  (that: Input): (self: Input) => PathFilter
+  (self: Input, that: Input): PathFilter
+} = dual(2, (self: Input, that: Input): PathFilter => make([...fromInput(self).rules, ...fromInput(that).rules]))
 
 const none: Match = { _tag: "None" }
 
