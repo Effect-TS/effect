@@ -134,60 +134,110 @@ const open = Effect.fnUntraced(function*(
   return { start, get, request, waitFor, close: Scope.close(scope, Exit.void) }
 })
 
+// Each stage has a wall-clock budget, so a stall fails with the stage's name and
+// the timings of the stages before it. Slow runs log their timings.
+const STAGE_BUDGET_MS = 8_000
+const SLOW_TEST_MS = 4_000
+const TEST_TIMEOUT_MS = 30_000
+
+const makeStages = () => {
+  const timings: Array<string> = []
+  const testStarted = performance.now()
+  const stage = <A, E, R>(name: string, effect: Effect.Effect<A, E, R>) =>
+    Effect.suspend(() => {
+      const started = performance.now()
+      return Effect.raceFirst(
+        effect,
+        TestClock.withLive(Effect.sleep(STAGE_BUDGET_MS)).pipe(
+          Effect.andThen(Effect.die(
+            new Error(
+              `SQL stage "${name}" did not finish within ${STAGE_BUDGET_MS}ms; earlier stages: ${
+                timings.join(", ") || "none"
+              }`
+            )
+          ))
+        )
+      ).pipe(Effect.tap(() => Effect.sync(() => timings.push(`${name} ${Math.round(performance.now() - started)}ms`))))
+    })
+  const report = Effect.suspend(() => {
+    const total = Math.round(performance.now() - testStarted)
+    if (total > SLOW_TEST_MS) process.stderr.write(`SQL stages took ${total}ms: ${timings.join(", ")}\n`)
+    return Effect.void
+  })
+  return { stage, report }
+}
+
 describe("SQL reconstruction", () => {
-  it.effect("should retain the result when a completed task is read by a reconstructed runner", () =>
-    Effect.gen(function*() {
-      const db = yield* database
-      let runs = 0
-      const handler = Effect.sync(() => {
-        runs++
-        return "report ready"
-      })
-      const first = yield* open(db.first, handler)
-      const created = yield* first.start
-      const completed = yield* first.waitFor(created.taskId, "completed")
-      yield* first.close
-      const second = yield* open(db.second, handler)
-      assert.deepStrictEqual(yield* second.get(created.taskId), completed)
-      assert.strictEqual(runs, 1)
-    }))
-
-  it.effect("should resume pending input and status when a reconstructed runner receives the answer", () =>
-    Effect.gen(function*() {
-      const db = yield* database
-      let checkpoints = 0
-      const handler = Effect.gen(function*() {
-        const task = yield* McpTasks.TaskContext
-        yield* Activity.make({ name: "prepare", execute: Effect.sync(() => checkpoints++) })
-        yield* task.setStatusMessage("Choose workspace roots")
-        const roots = yield* task.requestInput({
-          key: "roots",
-          request: { method: "roots/list" },
-          response: Schema.Struct({ roots: Schema.Array(Schema.Struct({ uri: Schema.String })) })
-        }).pipe(Effect.orDie)
-        return roots.roots[0]?.uri ?? "none"
-      })
-      const first = yield* open(db.first, handler)
-      const created = yield* first.start
-      const waiting = yield* first.waitFor(created.taskId, "input_required")
-      assert.strictEqual(waiting.statusMessage, "Choose workspace roots")
-      if (waiting.status === "input_required") {
-        assert.deepStrictEqual(waiting.inputRequests, { roots: { method: "roots/list" } })
-      }
-      yield* first.close
-
-      const second = yield* open(db.second, handler)
-      assert.deepStrictEqual(yield* second.get(created.taskId), waiting)
-      assertMcpTaskAcknowledgement(
-        yield* second.request("tasks/update", {
-          taskId: created.taskId,
-          inputResponses: { roots: { roots: [{ uri: "file:///workspace" }] } }
+  it.effect(
+    "should retain the result when a completed task is read by a reconstructed runner",
+    () =>
+      Effect.gen(function*() {
+        const { stage, report } = makeStages()
+        const db = yield* stage("open database", database)
+        let runs = 0
+        const handler = Effect.sync(() => {
+          runs++
+          return "report ready"
         })
-      )
-      const completed = yield* second.waitFor(created.taskId, "completed")
-      if (completed.status === "completed") {
-        assert.strictEqual(completed.result.structuredContent, "file:///workspace")
-      }
-      assert.strictEqual(checkpoints, 1)
-    }))
+        const first = yield* stage("build first runner", open(db.first, handler))
+        const created = yield* stage("create task", first.start)
+        const completed = yield* stage("poll until completed", first.waitFor(created.taskId, "completed"))
+        yield* stage("close first runner", first.close)
+        const second = yield* stage("build second runner", open(db.second, handler))
+        assert.deepStrictEqual(yield* stage("read on second runner", second.get(created.taskId)), completed)
+        assert.strictEqual(runs, 1)
+        yield* stage("close second runner", second.close)
+        yield* report
+      }),
+    TEST_TIMEOUT_MS
+  )
+
+  it.effect(
+    "should resume pending input and status when a reconstructed runner receives the answer",
+    () =>
+      Effect.gen(function*() {
+        const { stage, report } = makeStages()
+        const db = yield* stage("open database", database)
+        let checkpoints = 0
+        const handler = Effect.gen(function*() {
+          const task = yield* McpTasks.TaskContext
+          yield* Activity.make({ name: "prepare", execute: Effect.sync(() => checkpoints++) })
+          yield* task.setStatusMessage("Choose workspace roots")
+          const roots = yield* task.requestInput({
+            key: "roots",
+            request: { method: "roots/list" },
+            response: Schema.Struct({ roots: Schema.Array(Schema.Struct({ uri: Schema.String })) })
+          }).pipe(Effect.orDie)
+          return roots.roots[0]?.uri ?? "none"
+        })
+        const first = yield* stage("build first runner", open(db.first, handler))
+        const created = yield* stage("create task", first.start)
+        const waiting = yield* stage("poll until input_required", first.waitFor(created.taskId, "input_required"))
+        assert.strictEqual(waiting.statusMessage, "Choose workspace roots")
+        if (waiting.status === "input_required") {
+          assert.deepStrictEqual(waiting.inputRequests, { roots: { method: "roots/list" } })
+        }
+        yield* stage("close first runner", first.close)
+
+        const second = yield* stage("build second runner", open(db.second, handler))
+        assert.deepStrictEqual(yield* stage("read on second runner", second.get(created.taskId)), waiting)
+        assertMcpTaskAcknowledgement(
+          yield* stage(
+            "answer input",
+            second.request("tasks/update", {
+              taskId: created.taskId,
+              inputResponses: { roots: { roots: [{ uri: "file:///workspace" }] } }
+            })
+          )
+        )
+        const completed = yield* stage("poll until completed", second.waitFor(created.taskId, "completed"))
+        if (completed.status === "completed") {
+          assert.strictEqual(completed.result.structuredContent, "file:///workspace")
+        }
+        assert.strictEqual(checkpoints, 1)
+        yield* stage("close second runner", second.close)
+        yield* report
+      }),
+    TEST_TIMEOUT_MS
+  )
 })
