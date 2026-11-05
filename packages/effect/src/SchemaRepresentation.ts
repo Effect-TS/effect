@@ -1557,6 +1557,27 @@ export const isPropertyNamesReviver: FilterReviver<null> = makeReviverFilter(
 )
 
 /**
+ * Reviver for persisted `isDependentRequired` checks.
+ *
+ * **When to use**
+ *
+ * Use when reconstructing documents that may contain checks created by {@link Schema.isDependentRequired}.
+ *
+ * @see {@link Schema.isDependentRequired} for creating the corresponding check
+ *
+ * @stability stable
+ * @category validation
+ * @since 4.1.0
+ */
+export const isDependentRequiredReviver: FilterReviver<{
+  readonly dependentRequired: { readonly [key: string]: ReadonlyArray<string> }
+}> = makeReviverFilter(
+  "effect/schema/isDependentRequired",
+  Schema.Struct({ dependentRequired: Schema.Record(Schema.String, Schema.Array(Schema.String)) }),
+  ({ annotations, payload }) => Schema.isDependentRequired(payload.dependentRequired, annotations)
+)
+
+/**
  * Reviver for persisted `isUnique` checks.
  *
  * **When to use**

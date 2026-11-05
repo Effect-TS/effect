@@ -1,5 +1,5 @@
 import * as Arr from "../../Array.ts"
-import { format, formatPropertyKey } from "../../Formatter.ts"
+import { format, formatObjectLiteralKey, formatPropertyKey } from "../../Formatter.ts"
 import type * as Schema from "../../Schema.ts"
 import type * as SchemaRepresentation from "../../SchemaRepresentation.ts"
 import { errorWithPath } from "../errors.ts"
@@ -14,10 +14,6 @@ type CheckRepresentationAnnotation = SchemaRepresentation.CheckRepresentationAnn
 /** @internal */
 export function makeCode(runtime: string, Type: string): SchemaRepresentation.Code {
   return { runtime, Type }
-}
-
-function formatObjectLiteralKey(key: PropertyKey, formatted = formatPropertyKey(key)): string {
-  return key === "__proto__" ? `[${formatted}]` : formatted
 }
 
 function renderEmittableAnnotation(input: unknown): string | undefined {
