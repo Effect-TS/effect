@@ -1031,10 +1031,7 @@ export const testLayer = <E>(layer: Layer.Layer<Fs.FileSystem, E>, options: Test
         yield* fs.writeFileString(`${root}/src/index.test.ts`, "")
         yield* fs.writeFileString(`${root}/src/readme.md`, "")
 
-        const matches = yield* fs.glob("**/*.ts", {
-          root,
-          filter: PathFilter.make([PathFilter.exclude("**/*.test.ts")])
-        })
+        const matches = yield* fs.glob("**/*.ts", { root, filter: [PathFilter.exclude("**/*.test.ts")] })
 
         assert.strictEqual(matches.length, 1)
         assert.isTrue(posix(matches[0]).endsWith("src/index.ts"))

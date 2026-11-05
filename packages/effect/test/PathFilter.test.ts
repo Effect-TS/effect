@@ -49,6 +49,16 @@ describe("PathFilter", () => {
     assertMatch(PathFilter.match(PathFilter.empty, "a"), "None")
   })
 
+  it("accepts rules wherever an input filter is expected", () => {
+    const exclude = PathFilter.exclude("a")
+    const include = PathFilter.include("a")
+    const filter = PathFilter.make([exclude])
+    assert.strictEqual(PathFilter.fromInput(filter), filter)
+    assertTrue(PathFilter.excludes(PathFilter.fromInput(new Set([exclude])), "a"))
+    assert.deepStrictEqual(PathFilter.concat(filter, [include]).rules, [exclude, include])
+    assert.deepStrictEqual(PathFilter.concat([include], filter).rules, [include, exclude])
+  })
+
   it("keeps the subtree semantics of each format", () => {
     const docker = Result.getOrThrow(IgnoreFile.dockerignore("d\n!d/keep\nd\n"))
     // the third line does not change the result at `d`, so `d/keep` does not inherit it
