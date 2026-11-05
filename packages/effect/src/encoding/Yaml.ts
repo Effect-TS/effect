@@ -251,11 +251,6 @@ const findIndicator = (
   return -1
 }
 
-const stripComment = (input: string): string => {
-  const index = findIndicator(input, "#")
-  return index === -1 ? input : trimWhiteEnd(input.slice(0, index))
-}
-
 const mappingSeparator = (input: string): number => findIndicator(input, ":")
 
 // YAML 1.2.2 §6.2: a space or a tab separates the `-` indicator from the entry.
@@ -1130,8 +1125,13 @@ class YamlParser {
   private parseDocumentContent(start: Line): unknown {
     if (isDocumentStart(start)) {
       // Strip the comment after the marker, so quotes and flow openers are read as token starts.
-      const content = stripComment(start.raw.slice(3).replace(/^[ \t]+/, ""))
+      const rest = start.raw.slice(3).replace(/^[ \t]+/, "")
+      const comment = findIndicator(rest, "#")
+      const content = comment === -1 ? rest : trimWhiteEnd(rest.slice(0, comment))
       if (content.length > 0) {
+        // Plain and flow scalars end at a comment flagged on their line. The marker hid
+        // quotes from the scan that set the flag, so take it from this scan of the content.
+        this.lines[this.index - 1] = { ...start, comment: comment !== -1 }
         // Block collections start on the line after the marker.
         if (isSequenceEntry(content) || mappingSeparator(content) !== -1) {
           this.fail(start, "Block collections cannot start on the document start line")
