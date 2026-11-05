@@ -2,7 +2,7 @@
 import type { DurableObjectStorage } from "@cloudflare/workers-types"
 import * as Cause from "effect/Cause"
 import * as ClusterMetrics from "effect/cluster/ClusterMetrics"
-import { Persisted } from "effect/cluster/ClusterSchema"
+import { isUninterruptibleForServer, Persisted } from "effect/cluster/ClusterSchema"
 import { CurrentAddress, CurrentRunnerAddress, KeepAliveHandler, Request } from "effect/cluster/Entity"
 import type * as EntityAddress from "effect/cluster/EntityAddress"
 import * as Envelope from "effect/cluster/Envelope"
@@ -466,6 +466,9 @@ interface SessionReply {
 interface Session {
   readonly queue: Queue.Queue<SessionReply, Cause.Done>
   readonly completeInterrupt: Effect.Effect<void>
+  // `ClusterSchema.Uninterruptible` is `true` or `"server"`: an interrupt is
+  // ignored and the handler runs to completion.
+  readonly uninterruptible: boolean
   cancelling: boolean
   ack: {
     readonly replyId: string
@@ -838,7 +841,14 @@ export const makeEntityManager = (options: EntityManagerOptions): EntityManager 
           )
       )
       : Effect.void
-    const session: Session = { queue, completeInterrupt, cancelling: false, ack: undefined, fiber: undefined }
+    const session: Session = {
+      queue,
+      completeInterrupt,
+      uninterruptible: isUninterruptibleForServer(rpc.annotations),
+      cancelling: false,
+      ack: undefined,
+      fiber: undefined
+    }
     sessions.set(requestId, session)
     if (persisted) yield* startPersisted
     const permit = makeHandlerPermit(entityRuntime.handlerSemaphore)
@@ -1176,7 +1186,7 @@ export const makeEntityManager = (options: EntityManagerOptions): EntityManager 
         else workerWaiters.set(storageRequestId, remaining)
       }
       const session = sessions.get(storageRequestId)
-      if (session === undefined) return Effect.void
+      if (session === undefined || session.uninterruptible) return Effect.void
       // Keep ownership through handler finalization and the terminal write.
       // A failed write must leave the row owned rather than replayable.
       session.cancelling = true

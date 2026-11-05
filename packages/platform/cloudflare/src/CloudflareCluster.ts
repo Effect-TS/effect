@@ -11,9 +11,10 @@
  * @stability unstable
  * @since 4.0.0
  */
+import * as Cause from "effect/Cause"
 import { Clock } from "effect/Clock"
 import { MailboxFull, PersistenceError } from "effect/cluster/ClusterError"
-import { Persisted, Uninterruptible } from "effect/cluster/ClusterSchema"
+import { isUninterruptibleForClient, Persisted, Uninterruptible } from "effect/cluster/ClusterSchema"
 import * as DeliverAt from "effect/cluster/DeliverAt"
 import type * as Entity from "effect/cluster/Entity"
 import * as EntityAddress from "effect/cluster/EntityAddress"
@@ -50,6 +51,7 @@ import {
 import { CurrentEntityName, CurrentReplyRegistry } from "./internal/entityReply.ts"
 import { decodeInvokeResult, decodeReplyFor, encodeRequest } from "./internal/entityWire.ts"
 import { registerSingleton as registerSingletonHandler, unregisterSingleton } from "./internal/singletonRegistry.ts"
+import { boundedRetry, callDurableObject } from "./internal/transport.ts"
 
 /**
  * A Durable Object name decoded back into its entity address parts.
@@ -132,6 +134,9 @@ const notImplemented = (method: string) =>
     new Error(`CloudflareCluster: ${method} is not implemented yet on the Cloudflare Durable Object path`)
   )
 
+const notSupported = (method: string) =>
+  Effect.die(new Error(`CloudflareCluster: ${method} is not supported on the Cloudflare Durable Object path`))
+
 interface EntityStub {
   readonly invoke: (envelope: string, discard: boolean, delivery?: {
     readonly deliverAt?: number | undefined
@@ -145,7 +150,8 @@ interface EntityStub {
 
 interface ClientTargetValue {
   readonly address: EntityAddress.EntityAddress
-  readonly stub: EntityStub
+  // A stub that threw must not be reused, so every call resolves a fresh one.
+  readonly resolve: () => EntityStub
 }
 
 class ClientTarget extends Context.Service<ClientTarget, ClientTargetValue>()(
@@ -191,7 +197,7 @@ const make = Effect.fnUntraced(function*(options: LayerOptions) {
   }
   const clock = yield* Clock
   const keepAliveHeartbeat = Duration.toMillis(options.keepAliveHeartbeat ?? defaultKeepAliveHeartbeatMillis)
-  const requestTargets = new Map<string, { readonly stub: EntityStub; storageRequestId: string }>()
+  const requestTargets = new Map<string, { readonly resolve: () => EntityStub; storageRequestId: string }>()
 
   const unknownEntity = (entity: Entity.Entity<any, any>) =>
     Effect.die(
@@ -323,7 +329,13 @@ const make = Effect.fnUntraced(function*(options: LayerOptions) {
               ? Deferred.makeUnsafe<string>()
               : undefined
             if (pushedReply !== undefined) replyRegistry!.register(clientRequestId, pushedReply)
-            const send = Effect.promise(() => target.stub.invoke(envelope, discard, delivery)).pipe(
+            // The mailbox dedupes on the request id, so a persisted request is
+            // safe to retry. A non-persisted one may already be running.
+            const send = callDurableObject({
+              resolve: target.resolve,
+              call: (stub) => stub.invoke(envelope, discard, delivery),
+              retry: persisted ? boundedRetry : undefined
+            }).pipe(
               Effect.flatMap(decodeInvokeResult),
               Effect.flatMap((result): Effect.Effect<void, MailboxFull | PersistenceError> => {
                 switch (result._tag) {
@@ -346,7 +358,7 @@ const make = Effect.fnUntraced(function*(options: LayerOptions) {
                     }
                     if (!discard && persisted) {
                       setWithEviction(requestTargets, clientRequestId, {
-                        stub: target.stub,
+                        resolve: target.resolve,
                         storageRequestId: result.requestId
                       }, requestTargetCapacity)
                     }
@@ -368,7 +380,15 @@ const make = Effect.fnUntraced(function*(options: LayerOptions) {
                     return deliverReplies(entry, result.replies)
                   }
                 }
-              })
+              }),
+              // A failed send gets no `Exit` reply, so release its entry here.
+              // An interrupt releases it in the `Interrupt` case instead, which
+              // still needs it to reach the Durable Object.
+              Effect.onExit((exit) =>
+                Exit.isFailure(exit) && !Cause.hasInterruptsOnly(exit.cause)
+                  ? Effect.sync(() => entries.delete(clientRequestId))
+                  : Effect.void
+              )
             )
             return pushedReply === undefined ? send : Effect.ensuring(
               send,
@@ -382,7 +402,12 @@ const make = Effect.fnUntraced(function*(options: LayerOptions) {
         case "Ack": {
           const entry = entries.get(String(message.requestId))
           if (entry === undefined || entry.lastChunkId === undefined) return Effect.void
-          return Effect.promise(() => target.stub.acknowledge(entry.storageRequestId, entry.lastChunkId!)).pipe(
+          const lastChunkId = entry.lastChunkId
+          return callDurableObject({
+            resolve: target.resolve,
+            call: (stub) => stub.acknowledge(entry.storageRequestId, lastChunkId),
+            retry: boundedRetry
+          }).pipe(
             Effect.flatMap((replies) => deliverReplies(entry, replies))
           )
         }
@@ -392,8 +417,12 @@ const make = Effect.fnUntraced(function*(options: LayerOptions) {
           entries.delete(clientRequestId)
           requestTargets.delete(clientRequestId)
           if (entry === undefined) return Effect.void
-          if (Context.get(entry.rpc.annotations, Uninterruptible) === true) return Effect.void
-          return Effect.promise(() => target.stub.interrupt(entry.storageRequestId, clientRequestId))
+          if (isUninterruptibleForClient(entry.rpc.annotations)) return Effect.void
+          return callDurableObject({
+            resolve: target.resolve,
+            call: (stub) => stub.interrupt(entry.storageRequestId, clientRequestId),
+            retry: boundedRetry
+          })
         }
         default:
           return Effect.void
@@ -402,13 +431,14 @@ const make = Effect.fnUntraced(function*(options: LayerOptions) {
 
     return (entityId: string) => {
       const id = EntityId.make(entityId)
+      const name = Internal.encodeName(entity.type, entityId)
       const target = ClientTarget.context({
         address: EntityAddress.make({
           shardId: ShardId.make(entity.getShardGroup(id), 1),
           entityId: id,
           entityType: entity.type
         }),
-        stub: options.entityNamespace.getByName(Internal.encodeName(entity.type, entityId)) as unknown as EntityStub
+        resolve: () => options.entityNamespace.getByName(name) as unknown as EntityStub
       })
       const result: Record<string, unknown> = {}
       for (const tag of entity.protocol.requests.keys()) {
@@ -518,7 +548,9 @@ const make = Effect.fnUntraced(function*(options: LayerOptions) {
     getRegistrationEvents: Stream.never,
     getShardId: (_entityId, group) => ShardId.make(group, 1),
     hasShardId: () => true,
-    getSnowflake: Effect.sync(() => uuidV7(clock.currentTimeMillisUnsafe()) as any),
+    // A Snowflake needs a machine id unique across the fleet, which isolates
+    // do not have.
+    getSnowflake: notSupported("Sharding.getSnowflake"),
     isShutdown: Effect.succeed(false),
     makeClient: makeClient as Sharding["Service"]["makeClient"],
     registerEntity: registerEntity as Sharding["Service"]["registerEntity"],
@@ -529,7 +561,11 @@ const make = Effect.fnUntraced(function*(options: LayerOptions) {
     reset: (requestId) => {
       const target = requestTargets.get(String(requestId))
       if (target === undefined) return Effect.succeed(false)
-      return Effect.as(Effect.promise(() => target.stub.reset(target.storageRequestId)), true)
+      return callDurableObject({
+        resolve: target.resolve,
+        call: (stub) => stub.reset(target.storageRequestId),
+        retry: boundedRetry
+      }).pipe(Effect.orDie, Effect.as(true))
     },
     pollStorage: notImplemented("Sharding.pollStorage"),
     activeEntityCount: Effect.succeed(0)
