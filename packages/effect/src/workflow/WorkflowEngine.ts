@@ -23,6 +23,7 @@ import * as Option from "../Option.ts"
 import * as Schedule from "../Schedule.ts"
 import * as Schema from "../Schema.ts"
 import * as Scope from "../Scope.ts"
+import * as Semaphore from "../Semaphore.ts"
 import type * as Activity from "./Activity.ts"
 import type { DurableClock } from "./DurableClock.ts"
 import type * as DurableDeferred from "./DurableDeferred.ts"
@@ -770,7 +771,14 @@ export const layerMemory: Layer.Layer<WorkflowEngine> = Layer.effect(WorkflowEng
 
     const deferredState = makeDeferredState()
 
-    const resume = Effect.fnUntraced(function*(executionId: string, mode: WakeMode): Effect.fn.Return<void> {
+    // Run setup can yield before `state.fiber` is installed, so concurrent wakes
+    // would otherwise each start a run under the same execution scope.
+    const runSetup = Semaphore.makeUnsafe(1)
+
+    const resume: (executionId: string, mode: WakeMode) => Effect.Effect<void> = Effect.fnUntraced(function*(
+      executionId: string,
+      mode: WakeMode
+    ): Effect.fn.Return<void> {
       const state = executions.get(executionId)
       if (!state) return
       const exit = state.fiber?.pollUnsafe()
@@ -846,7 +854,7 @@ export const layerMemory: Layer.Layer<WorkflowEngine> = Layer.effect(WorkflowEng
         }),
         Effect.forkIn(entry.scope)
       )
-    })
+    }, runSetup.withPermits(1))
 
     const deferredResults = new Map<string, Exit.Exit<any, any>>()
 
