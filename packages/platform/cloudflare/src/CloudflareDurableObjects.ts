@@ -44,8 +44,9 @@ const notExposed = (className: string) => () => {
  * **Details**
  *
  * The initializer runs inside a Durable Object constructor's
- * `blockConcurrencyWhile`, which Cloudflare cancels after 30 seconds, so it
- * must complete well inside 30 seconds.
+ * `blockConcurrencyWhile`, which Cloudflare cancels after 30 seconds. It must
+ * complete within 15 seconds: a build still pending after that is treated as
+ * abandoned, and a waiting object runs the initializer again.
  *
  * @stability unstable
  * @category models
@@ -64,10 +65,13 @@ interface InitializationAttempt {
   } | undefined
 }
 
-// A build still pending after this long is treated as abandoned. It stays
-// under the 30 second `blockConcurrencyWhile` limit so the waiter that takes
-// over still has time to run the initializer itself.
-const staleInitializationMillis = 25_000
+// Durable Object waiters run inside `blockConcurrencyWhile`, which Cloudflare
+// cancels after 30 seconds. A build still pending after 15 seconds is treated
+// as abandoned, and only a Durable Object waiter that has itself waited less
+// than 15 seconds takes it over. The first build and any replacement therefore
+// both get at least 15 seconds.
+const staleInitializationMillis = 15_000
+const durableObjectTakeoverMillis = 15_000
 const initializationPollMillis = 20
 
 let initializer: Initializer | undefined
@@ -83,11 +87,13 @@ let initialization: InitializationAttempt | undefined
  * build used by its request handlers. Every entity, workflow, queue, and
  * singleton object blocks requests and alarms until that build completes. A
  * failure is reported to every caller already waiting on that build, and the
- * next cold caller runs the initializer again. A build still pending after 25
- * seconds is treated as abandoned, and the next waiter runs the initializer
- * itself, so the initializer must complete well inside the 30 second
- * `blockConcurrencyWhile` limit. The returned function joins the same
- * readiness state from Worker handlers.
+ * next cold caller runs the initializer again. The initializer must complete
+ * within 15 seconds. A build still pending after that is treated as abandoned,
+ * and a waiter runs the initializer itself, so a build can run more than once
+ * in an isolate. A Durable Object waiter takes over only while it has waited
+ * less than 15 seconds, so the replacement keeps at least 15 seconds of the
+ * 30 second `blockConcurrencyWhile` limit. The returned function joins the
+ * same readiness state from Worker handlers.
  *
  * @stability unstable
  * @category initialization
@@ -98,20 +104,28 @@ export const setInitializer = <Env, A>(handler: Initializer<Env, A>): (env: Env)
     throw new Error("@effect/platform-cloudflare: the Durable Object initializer is already set")
   }
   initializer = handler as Initializer
-  return (env) => waitForInitialization(env) as Promise<A>
+  // Worker handlers are not bounded by `blockConcurrencyWhile`, so they may
+  // take over a stale build however long they have waited.
+  return (env) => waitForInitialization(env, Infinity) as Promise<A>
 }
 
-const waitForInitialization = async (env: unknown): Promise<unknown> => {
+const waitForInitialization = async (env: unknown, takeoverMillis: number): Promise<unknown> => {
   if (initializer === undefined) return
+  const waitStartedAt = Date.now()
+  const canTakeOver = (attempt: InitializationAttempt): boolean =>
+    isStale(attempt) && Date.now() - waitStartedAt < takeoverMillis
+  // A waiter too old to take over keeps following the current attempt.
+  const keepsWaiting = (attempt: InitializationAttempt): boolean =>
+    attempt.exit === undefined && initialization === attempt && !canTakeOver(attempt)
   while (true) {
     const attempt = initialization
-    if (attempt === undefined || isStale(attempt)) {
+    if (attempt === undefined || canTakeOver(attempt)) {
       return runInitializer(initializer, env)
     }
     // Cloudflare promises belong to the request context that created them. A
     // fresh wait in this context observes the shared plain-JavaScript state
     // without awaiting the first Durable Object's promise from another event.
-    while (attempt.exit === undefined && !isStale(attempt)) {
+    while (keepsWaiting(attempt)) {
       await scheduler.wait(initializationPollMillis)
     }
     if (attempt.exit === undefined) continue
@@ -130,7 +144,7 @@ const runInitializer = async (run: Initializer, env: unknown): Promise<unknown> 
     const value = await run(env)
     attempt.exit = { _tag: "Success", value }
     // An abandoned build that settles late still makes the isolate ready.
-    if (initialization.exit?._tag !== "Success") initialization = attempt
+    if (initialization?.exit?._tag !== "Success") initialization = attempt
     return value
   } catch (error) {
     attempt.exit = { _tag: "Failure", error }
@@ -146,7 +160,7 @@ const blockOnInitialization = (
   after?: (() => Promise<unknown>) | undefined
 ): void => {
   void ctx.blockConcurrencyWhile(async () => {
-    await waitForInitialization(env)
+    await waitForInitialization(env, durableObjectTakeoverMillis)
     if (after !== undefined) await after()
   })
 }

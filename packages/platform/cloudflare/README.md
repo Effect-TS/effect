@@ -83,10 +83,23 @@ const clusterLayer = (env: Env) =>
   )
 
 // Build registration lazily inside the first Worker or Durable Object event.
-// Keep the ManagedRuntime alive for the lifetime of this Worker isolate.
+// Each call builds a fresh ManagedRuntime, so a retry after a failed or
+// stalled build starts over. The first runtime to finish is kept for the
+// lifetime of this Worker isolate.
 let application: ManagedRuntime.ManagedRuntime<any, any> | undefined
-const initialize = CloudflareDurableObjects.setInitializer((env: Env) => {
-  application ??= ManagedRuntime.make(clusterLayer(env))
+const initialize = CloudflareDurableObjects.setInitializer(async (env: Env) => {
+  if (application !== undefined) return application.context()
+  const runtime = ManagedRuntime.make(clusterLayer(env))
+  const context = await runtime.context().catch(async (error) => {
+    await runtime.dispose()
+    throw error
+  })
+  if (application === undefined) {
+    application = runtime
+    return context
+  }
+  // A stalled build finished after a replacement: keep the replacement.
+  await runtime.dispose()
   return application.context()
 })
 ```
@@ -98,9 +111,12 @@ application only once per Worker isolate. If initialization fails, the failure
 is returned to every caller waiting on that build, and the next cold object
 runs the initializer again. Because the initializer runs inside a Durable
 Object constructor's `blockConcurrencyWhile`, which Cloudflare cancels after 30
-seconds, it must complete well inside 30 seconds. A build still pending after
-25 seconds is treated as abandoned, and the next waiting object runs the
-initializer itself.
+seconds, it must complete within 15 seconds. A build still pending after 15
+seconds is treated as abandoned, and an object that has waited less than 15
+seconds runs the initializer itself, so the replacement also gets at least 15
+seconds. A slow build can therefore run more than once in an isolate, and the
+initializer must tolerate that. The example above keeps the first runtime to
+finish and disposes any other.
 Worker request handlers should call the same `initialize(env)` function before
 using `application`.
 
