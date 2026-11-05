@@ -185,8 +185,6 @@ export const make = Effect.fnUntraced(function*(
   // handshake finishes after `close`. Closing them still lets open streams finish.
   let closing = false
   const sessions = new Set<Http2.ServerHttp2Session>()
-  // Upgraded sockets leave Node's HTTP connection list, so closeAllConnections cannot see them.
-  const upgradedSockets = new Set<Duplex>()
   server.on("session", (session: Http2.ServerHttp2Session) => {
     if (closing) {
       return session.close()
@@ -209,15 +207,6 @@ export const make = Effect.fnUntraced(function*(
     closing = true
     for (const session of sessions) {
       session.close()
-    }
-    // Upgraded sockets are removed from Node's connection list, so closeAllConnections does not
-    // destroy them and server.close waits until the peer disconnects.
-    for (const socket of upgradedSockets) {
-      socket.destroy()
-    }
-    // HTTP/2 servers do not implement closeAllConnections.
-    if (typeof server.closeAllConnections === "function") {
-      server.closeAllConnections()
     }
   }).pipe(Effect.cached)
 
@@ -253,10 +242,6 @@ export const make = Effect.fnUntraced(function*(
     Effect.sync(() => new NodeWS.WebSocketServer({ ...options.websocket, noServer: true })),
     (wss) =>
       Effect.callback<void>((resume) => {
-        // noServer mode emits "close" only after clients is empty. A graceful close waits on the peer.
-        for (const client of wss.clients) {
-          client.terminate()
-        }
         wss.close(() => resume(Effect.void))
       })
   ).pipe(
@@ -277,11 +262,17 @@ export const make = Effect.fnUntraced(function*(
         middleware: middleware as any,
         scope
       })
+      // Upgraded connections keep `server.close` pending and never drain on their own, so
+      // shutdown closes them instead of waiting for the graceful shutdown timeout.
+      let upgradesClosed = false
+      const upgradedSockets = new Set<Duplex>()
       const trackedUpgrade = (request: Http.IncomingMessage, socket: Duplex, head: Buffer) => {
+        if (upgradesClosed) {
+          socket.destroy()
+          return
+        }
         upgradedSockets.add(socket)
-        socket.once("close", () => {
-          upgradedSockets.delete(socket)
-        })
+        socket.once("close", () => upgradedSockets.delete(socket))
         upgradeHandler(request, socket, head)
       }
       const checkContinueHandler = (request: Http.IncomingMessage, response: Http.ServerResponse) => {
@@ -290,7 +281,13 @@ export const make = Effect.fnUntraced(function*(
       }
       yield* Scope.addFinalizerExit(serveScope, () =>
         Effect.ensuring(
-          preemptiveShutdown,
+          Effect.suspend(() => {
+            upgradesClosed = true
+            for (const socket of upgradedSockets) {
+              socket.destroy()
+            }
+            return preemptiveShutdown
+          }),
           Effect.sync(() => {
             server.off("request", handler)
             server.off("checkContinue", checkContinueHandler)
