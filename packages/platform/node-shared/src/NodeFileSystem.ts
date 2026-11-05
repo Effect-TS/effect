@@ -425,7 +425,7 @@ const makeFile = (() => {
           this.append ? Effect.succeed(undefined) : positionToNumber(position, "write"),
           (nodePosition) =>
             Effect.map(
-              nodeWrite(this.fd, buffer, undefined, undefined, nodePosition),
+              nodeWrite(this.fd, buffer, 0, buffer.length, nodePosition),
               (bytesWritten) => {
                 if (!this.append) {
                   this.position = position + BigInt(bytesWritten)
@@ -444,7 +444,7 @@ const makeFile = (() => {
           this.append ? Effect.succeed(undefined) : positionToNumber(position, "writeAll"),
           (nodePosition) =>
             Effect.flatMap(
-              nodeWriteAll(this.fd, buffer, undefined, undefined, nodePosition),
+              nodeWriteAll(this.fd, buffer, 0, buffer.length, nodePosition),
               (bytesWritten) => {
                 if (bytesWritten === 0) {
                   return Effect.fail(
