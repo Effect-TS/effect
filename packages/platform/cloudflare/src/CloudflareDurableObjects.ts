@@ -8,7 +8,7 @@
  * direct `fetch` of an object is rejected.
  *
  * @stability unstable
- * @since 4.0.0
+ * @since 4.1.3
  */
 import { DurableObject } from "cloudflare:workers"
 import * as Effect from "effect/Effect"
@@ -50,7 +50,7 @@ const notExposed = (className: string) => () => {
  *
  * @stability unstable
  * @category models
- * @since 4.0.0
+ * @since 4.1.3
  */
 export type Initializer<Env = unknown, A = unknown> = (env: Env) => PromiseLike<A>
 
@@ -98,7 +98,7 @@ let initialization: InitializationAttempt | undefined
  *
  * @stability unstable
  * @category initialization
- * @since 4.0.0
+ * @since 4.1.3
  */
 export const setInitializer = <Env, A>(handler: Initializer<Env, A>): (env: Env) => Promise<A> => {
   if (initializer !== undefined) {
@@ -189,7 +189,7 @@ const blockOnInitialization = (
  *
  * @stability unstable
  * @category durable objects
- * @since 4.0.0
+ * @since 4.1.3
  */
 export class ClusterEntity extends DurableObject<unknown> {
   // blockConcurrencyWhile completes this assignment before any RPC or alarm.
@@ -254,7 +254,7 @@ export class ClusterEntity extends DurableObject<unknown> {
  *
  * @stability unstable
  * @category durable objects
- * @since 4.0.0
+ * @since 4.1.3
  */
 export class ClusterWorkflow extends DurableObject<unknown> {
   // blockConcurrencyWhile completes this assignment before any RPC or alarm.
@@ -323,7 +323,7 @@ export class ClusterWorkflow extends DurableObject<unknown> {
  *
  * @stability unstable
  * @category durable objects
- * @since 4.0.0
+ * @since 4.1.3
  */
 export class ClusterDurableQueue extends DurableObject<unknown> {
   // blockConcurrencyWhile completes this assignment before any RPC or alarm.
@@ -404,7 +404,7 @@ export class ClusterDurableQueue extends DurableObject<unknown> {
  *
  * @stability unstable
  * @category durable objects
- * @since 4.0.0
+ * @since 4.1.3
  */
 export class ClusterSingleton extends DurableObject<unknown> {
   // blockConcurrencyWhile completes this assignment before any RPC or alarm.

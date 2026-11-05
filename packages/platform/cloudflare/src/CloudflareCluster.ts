@@ -9,7 +9,7 @@
  * the Durable Object namespace bindings instead of `Sharding.layer`.
  *
  * @stability unstable
- * @since 4.0.0
+ * @since 4.1.3
  */
 import * as Cause from "effect/Cause"
 import { Clock } from "effect/Clock"
@@ -58,7 +58,7 @@ import { boundedRetry, callDurableObject } from "./internal/transport.ts"
  *
  * @stability unstable
  * @category models
- * @since 4.0.0
+ * @since 4.1.3
  */
 export interface ClusterName {
   readonly type: string
@@ -78,7 +78,7 @@ export interface ClusterName {
  *
  * @stability unstable
  * @category encoding
- * @since 4.0.0
+ * @since 4.1.3
  */
 export const encodeName: (type: string, id: string) => string = Internal.encodeName
 
@@ -94,9 +94,36 @@ export const encodeName: (type: string, id: string) => string = Internal.encodeN
  *
  * @stability unstable
  * @category decoding
- * @since 4.0.0
+ * @since 4.1.3
  */
 export const decodeName: (name: string) => ClusterName | undefined = Internal.decodeName
+
+/**
+ * Returns the singleton name of the seed singleton that `ClusterCron.make`
+ * registers for the cron job with the given name.
+ *
+ * **When to use**
+ *
+ * Use to wake a `ClusterCron` from a Worker Cron Trigger, by passing the
+ * result to `cluster.wake` with Alchemy or by prefixing it with `Singleton/`
+ * for `getByName` on the singleton namespace with Wrangler.
+ *
+ * **Details**
+ *
+ * The result is `"ClusterCron/<name>"`, the singleton name without the
+ * `Singleton/` Durable Object name prefix.
+ *
+ * **Gotchas**
+ *
+ * A singleton runs only when its Durable Object is woken, so a `ClusterCron`
+ * never schedules its first run until a Cron Trigger wakes this singleton.
+ * Each later run is scheduled through a destination alarm.
+ *
+ * @stability unstable
+ * @category encoding
+ * @since 4.1.3
+ */
+export const clusterCronSingletonName = (name: string): string => `ClusterCron/${name}`
 
 /**
  * The Durable Object namespace bindings and entity definitions the cluster
@@ -118,7 +145,7 @@ export const decodeName: (name: string) => ClusterName | undefined = Internal.de
  *
  * @stability unstable
  * @category layers
- * @since 4.0.0
+ * @since 4.1.3
  */
 export interface LayerOptions {
   readonly entities: ReadonlyArray<Entity.Entity<any, any>>
@@ -587,7 +614,7 @@ const make = Effect.fnUntraced(function*(options: LayerOptions) {
  *
  * @stability unstable
  * @category layers
- * @since 4.0.0
+ * @since 4.1.3
  */
 export const layer = (
   options: LayerOptions
@@ -651,7 +678,7 @@ export const layer = (
  *
  * @stability unstable
  * @category services
- * @since 4.0.0
+ * @since 4.1.3
  */
 export class DurableObjectSqlClient extends Context.Service<DurableObjectSqlClient, SqlClient.SqlClient>()(
   "@effect/platform-cloudflare/CloudflareCluster/DurableObjectSqlClient"
@@ -660,7 +687,7 @@ export class DurableObjectSqlClient extends Context.Service<DurableObjectSqlClie
    * Gets the current entity's SQL client, or dies if no client is provided.
    *
    * @stability unstable
-   * @since 4.0.0
+   * @since 4.1.3
    */
   static readonly orDie: Effect.Effect<SqlClient.SqlClient> = Effect.flatMap(
     Effect.serviceOption(DurableObjectSqlClient),

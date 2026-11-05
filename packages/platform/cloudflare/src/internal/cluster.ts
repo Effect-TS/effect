@@ -1,7 +1,7 @@
 /**
  * Shared cluster handle types without the Alchemy dependency graph.
  *
- * @since 4.0.0
+ * @since 4.1.3
  */
 import type * as Context from "effect/Context"
 import type * as Effect from "effect/Effect"
@@ -16,7 +16,7 @@ import type * as Effect from "effect/Effect"
  * `wake` remain inert during planning.
  *
  * @category models
- * @since 4.0.0
+ * @since 4.1.3
  */
 export interface Cluster<in R = never> {
   /**
@@ -28,7 +28,9 @@ export interface Cluster<in R = never> {
   /**
    * A handler that wakes the named singleton, for `Cloudflare.Workers.cron`.
    * The name is the singleton name without the `Singleton/` prefix, and the
-   * returned handler is already context-provided.
+   * returned handler is already context-provided. A `ClusterCron` fires only
+   * once its seed singleton is woken; get its name from
+   * `CloudflareCluster.clusterCronSingletonName`.
    */
   readonly wake: (name: string) => () => Effect.Effect<void>
   /**

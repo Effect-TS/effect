@@ -20,16 +20,22 @@
  * import * as Cloudflare from "@alchemy.run/cloudflare"
  * import { Effect, Layer } from "effect"
  * import { make } from "@effect/platform-cloudflare/AlchemyCloudflareCluster"
+ * import { CloudflareCluster } from "@effect/platform-cloudflare"
  *
  * export default Cloudflare.Worker("MyApp", {
  *   main: import.meta.url
  * }, Effect.gen(function*() {
  *   const cluster = yield* make({
  *     entities: [Counter],
- *     layer: Layer.mergeAll(CounterLayer, MaintenanceLayer)
+ *     layer: Layer.mergeAll(CounterLayer, MaintenanceLayer, NightlyReport)
  *   })
  *
  *   yield* Cloudflare.Workers.cron("0 * * * *", cluster.wake("hourly-maintenance"))
+ *   // A ClusterCron fires only after a Cron Trigger wakes its seed singleton
+ *   yield* Cloudflare.Workers.cron(
+ *     "30 * * * *",
+ *     cluster.wake(CloudflareCluster.clusterCronSingletonName("nightly-report"))
+ *   )
  *
  *   return {
  *     fetch: cluster.provide(handler)
@@ -38,7 +44,7 @@
  * ```
  *
  * @stability unstable
- * @since 4.0.0
+ * @since 4.1.3
  */
 import * as Cloudflare from "@alchemy.run/cloudflare"
 import type * as Entity from "effect/cluster/Entity"
@@ -70,7 +76,7 @@ declare global {
  *
  * @stability unstable
  * @category models
- * @since 4.0.0
+ * @since 4.1.3
  */
 export type ClusterServices = Sharding | WorkflowEngine | PersistedQueueFactory
 
@@ -86,7 +92,7 @@ export type {
    *
    * @stability unstable
    * @category models
-   * @since 4.0.0
+   * @since 4.1.3
    */
   Cluster
 } from "./internal/cluster.ts"
@@ -96,7 +102,7 @@ export type {
  *
  * @stability unstable
  * @category models
- * @since 4.0.0
+ * @since 4.1.3
  */
 export interface MakeOptions<ROut, E, RIn> {
   /**
@@ -178,9 +184,12 @@ const makeUnsafe = Effect.fnUntraced(function*(options: MakeOptions<any, any, an
  * (`Cloudflare.Workers.cron(expr, cluster.wake("name"))`), and the four
  * native namespace bindings as escape hatches.
  *
+ * A `ClusterCron` fires only after a Cron Trigger wakes its seed singleton.
+ * Pass `CloudflareCluster.clusterCronSingletonName(name)` to `wake` for it.
+ *
  * @stability unstable
  * @category constructors
- * @since 4.0.0
+ * @since 4.1.3
  */
 export const make: <ROut, E, RIn>(
   options: MakeOptions<ROut, E, RIn>

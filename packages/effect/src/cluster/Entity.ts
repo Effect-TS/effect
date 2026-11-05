@@ -878,7 +878,7 @@ export class KeepAliveLatch extends Context.Service<KeepAliveLatch, Latch.Latch>
  *
  * @stability unstable
  * @category services
- * @since 4.0.0
+ * @since 4.1.3
  */
 export class KeepAliveHandler extends Context.Service<
   KeepAliveHandler,

@@ -1,5 +1,5 @@
 /**
- * @since 4.0.0
+ * @since 4.1.3
  */
 
 // The index stays free of the optional `alchemy` peer dependency, so the
@@ -9,30 +9,30 @@
 
 /**
  * @stability unstable
- * @since 4.0.0
+ * @since 4.1.3
  */
 export * as CloudflareCluster from "./CloudflareCluster.ts"
 
 /**
  * @stability unstable
- * @since 4.0.0
+ * @since 4.1.3
  */
 export * as CloudflareDurableObjectPrograms from "./CloudflareDurableObjectPrograms.ts"
 
 /**
  * @stability unstable
- * @since 4.0.0
+ * @since 4.1.3
  */
 export * as CloudflareDurableObjects from "./CloudflareDurableObjects.ts"
 
 /**
  * @stability unstable
- * @since 4.0.0
+ * @since 4.1.3
  */
 export * as CloudflarePersistedQueue from "./CloudflarePersistedQueue.ts"
 
 /**
  * @stability unstable
- * @since 4.0.0
+ * @since 4.1.3
  */
 export * as CloudflareWorkflowEngine from "./CloudflareWorkflowEngine.ts"

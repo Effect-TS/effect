@@ -142,6 +142,37 @@ export default {
 
 `Entity.client` stays the user API. The Worker encodes `(type, id)` into the Durable Object name and resolves the object with `getByName`; an unknown entity type fails at the Worker before any Durable Object is contacted.
 
+### Waking a `ClusterCron`
+
+`ClusterCron.make` registers a seed singleton named `ClusterCron/<name>` that
+schedules the first run. On the other cluster backends that singleton starts as
+soon as a runner holds its shard. Here a singleton runs only when something
+wakes it, and nothing seeds it for you, so a `ClusterCron` never fires until a
+Cron Trigger wakes its seed singleton.
+
+`CloudflareCluster.clusterCronSingletonName(name)` returns that singleton name.
+After the first wake each run schedules the next one through a destination
+alarm. Waking it on every trigger is safe: a run already scheduled for the same
+instant is deduplicated, and the wake restarts a schedule that was lost.
+
+```ts
+const NightlyReport = ClusterCron.make({
+  name: "nightly-report",
+  cron: Cron.parseUnsafe("0 2 * * *", "UTC"),
+  execute: Effect.logInfo("Sending the nightly report")
+})
+
+export default {
+  scheduled(_controller: ScheduledController, env: Env, ctx: ExecutionContext) {
+    const name = CloudflareCluster.clusterCronSingletonName("nightly-report")
+    ctx.waitUntil(env.CLUSTER_SINGLETON.getByName(`Singleton/${name}`).wake())
+  }
+}
+```
+
+Merge `NightlyReport` into the layer passed to `CloudflareCluster.layer`, like
+any other singleton.
+
 ## Deploying with Alchemy
 
 [Alchemy](https://alchemy.run) v2 ("Infrastructure as Effects") is the second
@@ -163,6 +194,7 @@ migrations across deploys. Cron Triggers stay user-declared through
 // src/worker.ts
 import * as Cloudflare from "@alchemy.run/cloudflare"
 import * as AlchemyCloudflareCluster from "@effect/platform-cloudflare/AlchemyCloudflareCluster"
+import * as CloudflareCluster from "@effect/platform-cloudflare/CloudflareCluster"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 
@@ -174,10 +206,15 @@ export default Cloudflare.Worker(
   Effect.gen(function*() {
     const cluster = yield* AlchemyCloudflareCluster.make({
       entities: [Counter],
-      layer: Layer.mergeAll(CounterLayer, MaintenanceLayer)
+      layer: Layer.mergeAll(CounterLayer, MaintenanceLayer, NightlyReport)
     })
 
     yield* Cloudflare.Workers.cron("0 * * * *", cluster.wake("hourly-maintenance"))
+    // A ClusterCron fires only after a Cron Trigger wakes its seed singleton
+    yield* Cloudflare.Workers.cron(
+      "30 * * * *",
+      cluster.wake(CloudflareCluster.clusterCronSingletonName("nightly-report"))
+    )
 
     return {
       // routes using Entity.client, etc.
