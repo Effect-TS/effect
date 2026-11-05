@@ -715,6 +715,55 @@ describe("OpenRouterLanguageModel", () => {
         deepStrictEqual(reasoningEnd?.metadata, { openrouter: { reasoningDetails } })
       }))
 
+    it.effect("keeps streamed reasoning in one part when content deltas are empty", () =>
+      Effect.gen(function*() {
+        const parts = yield* LanguageModel.streamText({ prompt: "reason then answer" }).pipe(
+          Stream.runCollect,
+          Effect.provide(OpenRouterLanguageModel.model("deepseek/deepseek-v4-flash")),
+          Effect.provide(makeStreamTestLayer([
+            {
+              id: "response-1",
+              object: "chat.completion.chunk",
+              model: "deepseek/deepseek-v4-flash",
+              created: 1,
+              choices: [{ index: 0, delta: { content: "", reasoning: "Thinking" } }]
+            },
+            {
+              id: "response-1",
+              object: "chat.completion.chunk",
+              model: "deepseek/deepseek-v4-flash",
+              created: 1,
+              choices: [{ index: 0, delta: { content: "", reasoning: " it over" } }]
+            },
+            {
+              id: "response-1",
+              object: "chat.completion.chunk",
+              model: "deepseek/deepseek-v4-flash",
+              created: 1,
+              choices: [{ index: 0, finish_reason: "stop", delta: { content: "Answer" } }],
+              usage: { prompt_tokens: 5, completion_tokens: 3, total_tokens: 8 }
+            }
+          ]))
+        )
+
+        deepStrictEqual(
+          parts.flatMap((part) =>
+            part.type.startsWith("reasoning-") || part.type.startsWith("text-")
+              ? ["delta" in part ? `${part.type}:${part.delta}` : part.type]
+              : []
+          ),
+          [
+            "reasoning-start",
+            "reasoning-delta:Thinking",
+            "reasoning-delta: it over",
+            "reasoning-end",
+            "text-start",
+            "text-delta:Answer",
+            "text-end"
+          ]
+        )
+      }))
+
     it.effect("emits incremental tool parameter fragments", () =>
       Effect.gen(function*() {
         const ProbeTool = Tool.make("ProbeTool", {
