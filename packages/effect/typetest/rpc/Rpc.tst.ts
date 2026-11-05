@@ -115,5 +115,21 @@ describe("Rpc", () => {
         expect<Rpc.ExtractTag<typeof Pattern | typeof Specific, "GetSpecific">>().type.toBe<typeof Specific>()
       })
     })
+
+    describe("with union-valued RPC tags", () => {
+      it("selects only the literal RPC for a tag that a union-tagged RPC also covers", () => {
+        const UnionTagged = Rpc.make("A" as "A" | "B", { success: Schema.Number })
+        const SpecificA = Rpc.make("A", { success: Schema.String })
+
+        expect<Rpc.ExtractTag<typeof UnionTagged | typeof SpecificA, "A">>().type.toBe<typeof SpecificA>()
+      })
+
+      it("keeps literal RPCs matched by a literal and pattern union tag", () => {
+        const Mixed = Rpc.make("A" as "A" | `B${string}`, { success: Schema.Number })
+        const Bee = Rpc.make("Bee", { success: Schema.String })
+
+        expect<Rpc.ExtractTag<typeof Mixed | typeof Bee, "A" | `B${string}`>>().type.toBe<typeof Mixed | typeof Bee>()
+      })
+    })
   })
 })
