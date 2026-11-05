@@ -12298,16 +12298,32 @@ const netAddressFromString = <S extends Constraint>(
 ) => String.pipe(decodeTo(declaration, transformation)).annotate({ identifier })
 
 // Some net schemas share their name with their module (e.g. `IpInterface`),
-// so a namespace import would collide with the generated declaration.
-const netToCode = (name: string) => () => ({
-  runtime: `Schema.${name}`,
-  Type: `Schema.${name}["Type"]`
-})
+// so the generated code reads the type off the schema instead of importing a
+// namespace.
+const netDeclare = <T>(
+  is: (u: unknown) => u is T,
+  options: {
+    readonly identifier: string
+    readonly fromString: SchemaTransformation.Transformation<T, string>
+    readonly format: (value: T) => string
+    readonly arbitrary: () => SchemaAST.Link
+  }
+): declare<T> =>
+  declare(is, {
+    identifier: options.identifier,
+    representation: { id: `effect/schema/${options.identifier}`, payload: null },
+    toCode: () => ({
+      runtime: `Schema.${options.identifier}`,
+      Type: `Schema.${options.identifier}["Type"]`
+    }),
+    toCodecArbitrary: options.arbitrary,
+    toCodecJson: () => link<T>()(String, options.fromString),
+    toFormatter: () => options.format
+  })
 
 const netIntArbitrary = (minimum: number, maximum: number) => Int.check(isBetween({ minimum, maximum }))
 const NetOctetArbitrary = netIntArbitrary(0, 255)
 const NetSegmentArbitrary = netIntArbitrary(0, 0xffff)
-const netPrefixLengthArbitrary = (maximum: number) => netIntArbitrary(0, maximum)
 
 const netIpv4Octets = (first: Int = NetOctetArbitrary, second: Int = NetOctetArbitrary) =>
   Tuple([first, second, NetOctetArbitrary, NetOctetArbitrary])
@@ -12374,20 +12390,11 @@ export interface MacAddress extends declare<NetAddress_.MacAddress> {
  * @category schemas
  * @since 4.0.0
  */
-export const MacAddress: MacAddress = declare(NetAddress_.isMacAddress, {
+export const MacAddress: MacAddress = netDeclare(NetAddress_.isMacAddress, {
   identifier: "MacAddress",
-  representation: {
-    id: "effect/schema/MacAddress",
-    payload: null
-  },
-  toCode: netToCode("MacAddress"),
-  toCodecArbitrary: netMacArbitrary((octet) => octet),
-  toCodecJson: () =>
-    link<NetAddress_.MacAddress>()(
-      String,
-      macAddressFromString
-    ),
-  toFormatter: () => NetAddress_.formatMacAddress
+  fromString: macAddressFromString,
+  format: NetAddress_.formatMacAddress,
+  arbitrary: netMacArbitrary((octet) => octet)
 })
 
 /**
@@ -12437,20 +12444,11 @@ export interface Ipv4Address extends declare<NetAddress_.Ipv4Address> {
  * @category schemas
  * @since 4.0.0
  */
-export const Ipv4Address: Ipv4Address = declare(NetAddress_.isIpv4Address, {
+export const Ipv4Address: Ipv4Address = netDeclare(NetAddress_.isIpv4Address, {
   identifier: "Ipv4Address",
-  representation: {
-    id: "effect/schema/Ipv4Address",
-    payload: null
-  },
-  toCode: netToCode("Ipv4Address"),
-  toCodecArbitrary: netIpArbitrary(netIpv4Octets()),
-  toCodecJson: () =>
-    link<NetAddress_.Ipv4Address>()(
-      String,
-      ipv4AddressFromString
-    ),
-  toFormatter: () => NetAddress_.formatIp
+  fromString: ipv4AddressFromString,
+  format: NetAddress_.formatIp,
+  arbitrary: netIpArbitrary(netIpv4Octets())
 })
 
 /**
@@ -12500,20 +12498,11 @@ export interface Ipv6Address extends declare<NetAddress_.Ipv6Address> {
  * @category schemas
  * @since 4.0.0
  */
-export const Ipv6Address: Ipv6Address = declare(NetAddress_.isIpv6Address, {
+export const Ipv6Address: Ipv6Address = netDeclare(NetAddress_.isIpv6Address, {
   identifier: "Ipv6Address",
-  representation: {
-    id: "effect/schema/Ipv6Address",
-    payload: null
-  },
-  toCode: netToCode("Ipv6Address"),
-  toCodecArbitrary: netIpArbitrary(netIpv6Segments()),
-  toCodecJson: () =>
-    link<NetAddress_.Ipv6Address>()(
-      String,
-      ipv6AddressFromString
-    ),
-  toFormatter: () => NetAddress_.formatIp
+  fromString: ipv6AddressFromString,
+  format: NetAddress_.formatIp,
+  arbitrary: netIpArbitrary(netIpv6Segments())
 })
 
 /**
@@ -13399,24 +13388,15 @@ const ipInterfaceFromString = stringTransformation(IpInterface_.fromString, IpIn
  * @category schemas
  * @since 4.0.0
  */
-export const Ipv4Interface: Ipv4Interface = declare(IpInterface_.isIpv4Interface, {
+export const Ipv4Interface: Ipv4Interface = netDeclare(IpInterface_.isIpv4Interface, {
   identifier: "Ipv4Interface",
-  representation: {
-    id: "effect/schema/Ipv4Interface",
-    payload: null
-  },
-  toCode: netToCode("Ipv4Interface"),
-  toCodecArbitrary: () =>
+  fromString: ipv4InterfaceFromString,
+  format: IpInterface_.format,
+  arbitrary: () =>
     linkDecoding<IpInterface_.Ipv4Interface>()(
-      Tuple([Ipv4Address, netPrefixLengthArbitrary(32)]),
+      Tuple([Ipv4Address, netIntArbitrary(0, 32)]),
       SchemaGetter.transform(([address, prefixLength]) => IpInterface_.makeUnsafe(address, prefixLength))
-    ),
-  toCodecJson: () =>
-    link<IpInterface_.Ipv4Interface>()(
-      String,
-      ipv4InterfaceFromString
-    ),
-  toFormatter: () => IpInterface_.format
+    )
 })
 
 /**
@@ -13466,24 +13446,15 @@ export interface Ipv6Interface extends declare<IpInterface_.Ipv6Interface> {
  * @category schemas
  * @since 4.0.0
  */
-export const Ipv6Interface: Ipv6Interface = declare(IpInterface_.isIpv6Interface, {
+export const Ipv6Interface: Ipv6Interface = netDeclare(IpInterface_.isIpv6Interface, {
   identifier: "Ipv6Interface",
-  representation: {
-    id: "effect/schema/Ipv6Interface",
-    payload: null
-  },
-  toCode: netToCode("Ipv6Interface"),
-  toCodecArbitrary: () =>
+  fromString: ipv6InterfaceFromString,
+  format: IpInterface_.format,
+  arbitrary: () =>
     linkDecoding<IpInterface_.Ipv6Interface>()(
-      Tuple([Ipv6Address, netPrefixLengthArbitrary(128)]),
+      Tuple([Ipv6Address, netIntArbitrary(0, 128)]),
       SchemaGetter.transform(([address, prefixLength]) => IpInterface_.makeUnsafe(address, prefixLength))
-    ),
-  toCodecJson: () =>
-    link<IpInterface_.Ipv6Interface>()(
-      String,
-      ipv6InterfaceFromString
-    ),
-  toFormatter: () => IpInterface_.format
+    )
 })
 
 /**
@@ -13533,24 +13504,15 @@ export interface IpInterface extends declare<IpInterface_.IpInterface> {
  * @category schemas
  * @since 4.0.0
  */
-export const IpInterface: IpInterface = declare(IpInterface_.isIpInterface, {
+export const IpInterface: IpInterface = netDeclare(IpInterface_.isIpInterface, {
   identifier: "IpInterface",
-  representation: {
-    id: "effect/schema/IpInterface",
-    payload: null
-  },
-  toCode: netToCode("IpInterface"),
-  toCodecArbitrary: () =>
+  fromString: ipInterfaceFromString,
+  format: IpInterface_.format,
+  arbitrary: () =>
     linkDecoding<IpInterface_.IpInterface>()(
       Union([Ipv4Interface, Ipv6Interface]),
       SchemaGetter.passthrough()
-    ),
-  toCodecJson: () =>
-    link<IpInterface_.IpInterface>()(
-      String,
-      ipInterfaceFromString
-    ),
-  toFormatter: () => IpInterface_.format
+    )
 })
 
 /**
@@ -13604,24 +13566,15 @@ const ipNetworkFromString = stringTransformation(IpNetwork_.fromString, IpNetwor
  * @category schemas
  * @since 4.0.0
  */
-export const Ipv4Network: Ipv4Network = declare(IpNetwork_.isIpv4Network, {
+export const Ipv4Network: Ipv4Network = netDeclare(IpNetwork_.isIpv4Network, {
   identifier: "Ipv4Network",
-  representation: {
-    id: "effect/schema/Ipv4Network",
-    payload: null
-  },
-  toCode: netToCode("Ipv4Network"),
-  toCodecArbitrary: () =>
+  fromString: ipv4NetworkFromString,
+  format: IpNetwork_.format,
+  arbitrary: () =>
     linkDecoding<IpNetwork_.Ipv4Network>()(
-      Tuple([Ipv4Address, netPrefixLengthArbitrary(32)]),
+      Tuple([Ipv4Address, netIntArbitrary(0, 32)]),
       SchemaGetter.transform(([address, prefixLength]) => IpNetwork_.fromAddressUnsafe(address, prefixLength))
-    ),
-  toCodecJson: () =>
-    link<IpNetwork_.Ipv4Network>()(
-      String,
-      ipv4NetworkFromString
-    ),
-  toFormatter: () => IpNetwork_.format
+    )
 })
 
 /**
@@ -13671,24 +13624,15 @@ export interface Ipv6Network extends declare<IpNetwork_.Ipv6Network> {
  * @category schemas
  * @since 4.0.0
  */
-export const Ipv6Network: Ipv6Network = declare(IpNetwork_.isIpv6Network, {
+export const Ipv6Network: Ipv6Network = netDeclare(IpNetwork_.isIpv6Network, {
   identifier: "Ipv6Network",
-  representation: {
-    id: "effect/schema/Ipv6Network",
-    payload: null
-  },
-  toCode: netToCode("Ipv6Network"),
-  toCodecArbitrary: () =>
+  fromString: ipv6NetworkFromString,
+  format: IpNetwork_.format,
+  arbitrary: () =>
     linkDecoding<IpNetwork_.Ipv6Network>()(
-      Tuple([Ipv6Address, netPrefixLengthArbitrary(128)]),
+      Tuple([Ipv6Address, netIntArbitrary(0, 128)]),
       SchemaGetter.transform(([address, prefixLength]) => IpNetwork_.fromAddressUnsafe(address, prefixLength))
-    ),
-  toCodecJson: () =>
-    link<IpNetwork_.Ipv6Network>()(
-      String,
-      ipv6NetworkFromString
-    ),
-  toFormatter: () => IpNetwork_.format
+    )
 })
 
 /**
@@ -13738,24 +13682,15 @@ export interface IpNetwork extends declare<IpNetwork_.IpNetwork> {
  * @category schemas
  * @since 4.0.0
  */
-export const IpNetwork: IpNetwork = declare(IpNetwork_.isIpNetwork, {
+export const IpNetwork: IpNetwork = netDeclare(IpNetwork_.isIpNetwork, {
   identifier: "IpNetwork",
-  representation: {
-    id: "effect/schema/IpNetwork",
-    payload: null
-  },
-  toCode: netToCode("IpNetwork"),
-  toCodecArbitrary: () =>
+  fromString: ipNetworkFromString,
+  format: IpNetwork_.format,
+  arbitrary: () =>
     linkDecoding<IpNetwork_.IpNetwork>()(
       Union([Ipv4Network, Ipv6Network]),
       SchemaGetter.passthrough()
-    ),
-  toCodecJson: () =>
-    link<IpNetwork_.IpNetwork>()(
-      String,
-      ipNetworkFromString
-    ),
-  toFormatter: () => IpNetwork_.format
+    )
 })
 
 /**
@@ -13832,24 +13767,15 @@ const inetAddressV6FromString = inetAddressFamilyFromString(true, NetAddress_.is
  * @category schemas
  * @since 4.0.0
  */
-export const InetAddressV4: InetAddressV4 = declare(NetAddress_.isInetAddressV4, {
+export const InetAddressV4: InetAddressV4 = netDeclare(NetAddress_.isInetAddressV4, {
   identifier: "InetAddressV4",
-  representation: {
-    id: "effect/schema/InetAddressV4",
-    payload: null
-  },
-  toCode: netToCode("InetAddressV4"),
-  toCodecArbitrary: () =>
+  fromString: inetAddressV4FromString,
+  format: NetAddress_.formatInet,
+  arbitrary: () =>
     linkDecoding<NetAddress_.InetAddressV4>()(
       Tuple([Ipv4Address, Port]),
       SchemaGetter.transform(([address, port]) => Result_.getOrThrow(NetAddress_.inetAddressV4(address, port)))
-    ),
-  toCodecJson: () =>
-    link<NetAddress_.InetAddressV4>()(
-      String,
-      inetAddressV4FromString
-    ),
-  toFormatter: () => NetAddress_.formatInet
+    )
 })
 
 /**
@@ -13875,26 +13801,17 @@ export interface InetAddressV6 extends declare<NetAddress_.InetAddressV6> {
  * @category schemas
  * @since 4.0.0
  */
-export const InetAddressV6: InetAddressV6 = declare(NetAddress_.isInetAddressV6, {
+export const InetAddressV6: InetAddressV6 = netDeclare(NetAddress_.isInetAddressV6, {
   identifier: "InetAddressV6",
-  representation: {
-    id: "effect/schema/InetAddressV6",
-    payload: null
-  },
-  toCode: netToCode("InetAddressV6"),
-  toCodecArbitrary: () =>
+  fromString: inetAddressV6FromString,
+  format: NetAddress_.formatInet,
+  arbitrary: () =>
     linkDecoding<NetAddress_.InetAddressV6>()(
       Tuple([Ipv6Address, Port, Int.check(isBetween({ minimum: 0, maximum: 0xffffffff }))]),
       SchemaGetter.transform(([address, port, scopeId]) =>
         Result_.getOrThrow(NetAddress_.inetAddressV6(address, port, { scopeId }))
       )
-    ),
-  toCodecJson: () =>
-    link<NetAddress_.InetAddressV6>()(
-      String,
-      inetAddressV6FromString
-    ),
-  toFormatter: () => NetAddress_.formatInet
+    )
 })
 
 /**
@@ -13993,24 +13910,15 @@ const unixPathAddressFromPrefixedPath = stringTransformation<NetAddress_.UnixPat
  * @category schemas
  * @since 4.0.0
  */
-export const UnixPathAddress: UnixPathAddress = declare(NetAddress_.isUnixPathAddress, {
+export const UnixPathAddress: UnixPathAddress = netDeclare(NetAddress_.isUnixPathAddress, {
   identifier: "UnixPathAddress",
-  representation: {
-    id: "effect/schema/UnixPathAddress",
-    payload: null
-  },
-  toCode: netToCode("UnixPathAddress"),
-  toCodecArbitrary: () =>
+  fromString: unixPathAddressFromPrefixedPath,
+  format: NetAddress_.formatUnixPath,
+  arbitrary: () =>
     linkDecoding<NetAddress_.UnixPathAddress>()(
       String,
       SchemaGetter.transform(NetAddress_.unixPathAddress)
-    ),
-  toCodecJson: () =>
-    link<NetAddress_.UnixPathAddress>()(
-      String,
-      unixPathAddressFromPrefixedPath
-    ),
-  toFormatter: () => NetAddress_.formatUnixPath
+    )
 })
 
 /**
@@ -14259,24 +14167,15 @@ const hostPortFromString = stringTransformation(Host_.hostPortFromString, Host_.
  * @category schemas
  * @since 4.0.0
  */
-export const HostPort: HostPort = declare(Host_.isHostPort, {
+export const HostPort: HostPort = netDeclare(Host_.isHostPort, {
   identifier: "HostPort",
-  representation: {
-    id: "effect/schema/HostPort",
-    payload: null
-  },
-  toCode: netToCode("HostPort"),
-  toCodecArbitrary: () =>
+  fromString: hostPortFromString,
+  format: Host_.formatHostPort,
+  arbitrary: () =>
     linkDecoding<Host_.HostPort>()(
       Tuple([Host, Port]),
       SchemaGetter.transform(([host, port]) => Host_.hostPortUnsafe(host, port))
-    ),
-  toCodecJson: () =>
-    link<Host_.HostPort>()(
-      String,
-      hostPortFromString
-    ),
-  toFormatter: () => Host_.formatHostPort
+    )
 })
 
 /**
