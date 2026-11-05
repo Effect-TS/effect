@@ -27,8 +27,11 @@
  * Gate. Every ordinary-key operation performs the same operations and
  * allocates the same bytes on this branch as at the branch point. A record
  * written into a context performs no `Map` operation and allocates the same
- * bytes into a context of thirty-three slots and of three hundred. The record
- * rows are checked against the limits in the spec.
+ * bytes into a context of thirty-three slots and of three hundred. A record
+ * read is remembered per storage: no operation and no allocation after the
+ * first read of a storage, and a view (one slot read per member, one object)
+ * once per new override. The record rows are checked against the limits in
+ * the spec.
  */
 /* oxlint-disable no-extend-native -- the counting wrappers replace Map and WeakMap methods for the run */
 import * as Context from "effect/Context"
@@ -271,10 +274,9 @@ for (let i = 0; i < branchRows.length; i++) {
   if (JSON.stringify(a.counts) !== JSON.stringify(b.counts)) {
     failures.push(`${a.name}: this branch performs different Map operations from the branch point`)
   }
-  // the one allocation that may differ: an overlay carries one more field (`record`) than at the branch point. Large
-  // allocations (a map of 33 entries) read with some variance and are reported, not gated.
-  if (Math.max(a.bytes, b.bytes) < 1000 && a.bytes > b.bytes + 8) {
-    failures.push(`${a.name}: this branch allocates more than eight bytes over the branch point`)
+  // Large allocations (a map of 33 entries) read with some variance and are reported, not gated.
+  if (Math.max(a.bytes, b.bytes) < 1000 && a.bytes > b.bytes) {
+    failures.push(`${a.name}: this branch allocates more than the branch point`)
   }
 }
 
@@ -320,13 +322,15 @@ expect(
 )
 expect(
   "add member override then getUnsafe record, per request",
-  (r) => r.counts.has === 1 && r.counts.get === 1 && r.counts.weakGet + r.counts.weakSet === 0 && r.bytes <= 64,
-  "no member read: one slot check, one name lookup, one small view"
+  (r) =>
+    r.counts.get <= 1 && r.counts.has <= 1 && r.counts.weakGet <= 1 && r.counts.weakSet === 0 &&
+    r.bytes <= 16 * (members + 1),
+  "a new override: the record below it looked up (one cache lookup), one copy with the member replaced, no entry kept"
 )
 expect(
   "getUnsafe, record with a member overridden underneath",
-  (r) => r.counts.has === 2 && r.counts.get === 1 && r.counts.weakGet + r.counts.weakSet === 0 && r.bytes <= 64,
-  "one slot check per overlay, one name lookup, one small view"
+  (r) => r.counts.has === 2 && r.counts.get === 0 && r.counts.weakGet + r.counts.weakSet === 0 && r.bytes === 0,
+  "one slot check per overlay walked, then the remembered view"
 )
 expect("make, record (32 members)", (r) => r.counts.set === members + 1, `one Map.set per slot (${members + 1})`)
 expect(

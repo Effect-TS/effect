@@ -7,6 +7,7 @@
  *   node benchmark/context/operations.ts --check      # exit 1 when a median ratio exceeds its limit
  *   node benchmark/context/operations.ts --ordinary   # the ordinary-key pairs alone, in a process that holds no record
  *   BENCH_ROUNDS=31 BENCH_TIME=60 BENCH_BASELINE=<sha> node benchmark/context/operations.ts
+ *   BENCH_SEED=1 node benchmark/context/operations.ts       # the pairs in another order (see below)
  *
  * Method. Every ratio is paired and interleaved: within a round, the two sides
  * of a pair run as A, B, B, A in tight loops of a calibrated iteration count,
@@ -27,6 +28,14 @@
  * not depend on the machine is `counts.ts`, beside this file. Absolute costs
  * are reported and not gated.
  *
+ * Order. The same two closures, in the same process, can differ by a few
+ * nanoseconds depending on the order in which the cases were calibrated,
+ * optimised and laid out, with the A/A control none the wiser (it compares a
+ * closure with itself): on one machine the ordinary read measured 1.32× in
+ * list order and 1.06× with the pairs reversed. `bench-check.ts` therefore
+ * runs each timing mode in three orders (`BENCH_SEED=0,1,2`) and gates the
+ * median of the three medians; `BENCH_JSON=1` prints the summary it reads.
+ *
  * Regimes. The default run is a process that holds record services, reads them
  * and reads ordinary keys through the same getters, which is every process
  * that imports `effect/FileSystem`. V8 compiles a property load for up to four
@@ -34,14 +43,14 @@
  * `Context.add` and the getters read `key.key`, a process that provides a
  * reference, a class-style service, a service with `make` and a plain service
  * already uses four, and an operation and a record service are two more. Both
- * modules are warmed with the same six shapes so the pairs compare like with
- * like. `--ordinary` leaves both at four: the regime of a program that uses no
+ * modules are warmed with the same six shapes, and with references read while
+ * absent, so the pairs compare like with like. `--ordinary` leaves both at four: the regime of a program that uses no
  * operation.
  */
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as FileSystem from "effect/FileSystem"
-import { base, loadBaseline } from "./baseline.ts"
+import { base, loadBaseline, loadTwin } from "./baseline.ts"
 
 const Baseline = await loadBaseline()
 
@@ -69,6 +78,12 @@ const fake = (() => Effect.void) as unknown as FileSystem.Shape["readFile"]
 
 const plainContext = Context.make(Plain, shape)
 const plainBaselineContext = Baseline.make(PlainBaseline, shape)
+// records mode only: a pristine copy of this branch's Context.ts, serving the benchmark's calls alone
+const Twin = ordinary ? Context : await loadTwin()
+const PlainTwin = Twin.Service<FileSystem.Shape>("bench/FileSystem/plain")
+const RequestIdTwin = Twin.Service<number>("bench/RequestId")
+const AbsentTwin = Twin.Reference<number>("bench/Absent", { defaultValue: () => 1 })
+const plainTwinContext = Twin.make(PlainTwin, shape)
 
 const kinds = (ctx: typeof Context) => {
   const Ref = ctx.Reference<number>("bench/Ref", { defaultValue: () => 1 })
@@ -92,6 +107,12 @@ const warm = (ctx: typeof Context, context: Context.Context<never>) => {
     number
   >
   const objectKey = { key: "bench/warm/object" } as unknown as Context.Key<any, number>
+  // references read while absent, as the fiber runtime reads its own through this branch's getters
+  const reference = ctx.Reference<number>("bench/warm/reference", { defaultValue: () => 1 })
+  const cachedReference = ctx.Reference<number>("bench/warm/cachedReference", {
+    defaultValue: () => 1,
+    fiberCached: true
+  })
   const added = ctx.add(ctx.add(context, functionKey, 1), objectKey, 2)
   for (let i = 0; i < 1000; i++) {
     ctx.add(context, functionKey, 1)
@@ -100,11 +121,16 @@ const warm = (ctx: typeof Context, context: Context.Context<never>) => {
     ctx.getUnsafe(added, objectKey)
     ctx.getOption(context, functionKey)
     ctx.getOption(context, objectKey)
+    ctx.getUnsafe(context, reference)
+    ctx.getUnsafe(context, cachedReference)
+    ctx.getOption(context, reference)
+    ctx.getOrElse(context, cachedReference, () => 0)
   }
 }
 if (!ordinary) {
   warm(Context, Context.empty())
   warm(Baseline, Baseline.empty())
+  warm(Twin, Twin.empty())
 }
 const recordContext = ordinary ? Context.empty() as Context.Context<any> : Context.make(FileSystem.FileSystem, shape)
 const membersContext = ordinary
@@ -140,7 +166,7 @@ interface Pair {
   readonly label: string
   readonly a: Case
   readonly b: Case
-  /** The median ratio a/b must not exceed this, widened by the control's envelope. */
+  /** The median ratio a/b must not exceed this, widened by the control's envelope; `Infinity` for a reported row. */
   readonly limit: number
 }
 const c = (name: string, run: () => unknown): Case => ({ name, run })
@@ -156,8 +182,12 @@ const derive = <A>(context: Context.Context<A>, ctx: typeof Context, key: Contex
   return derived
 }
 const memberCount = memberKeys.length
-// an ordinary read is one typeof and, per overlay walked, one more field check than at the branch point
-const ordinaryLimit = 1.25
+// an ordinary read is one typeof and, per overlay walked, one more typeof than at the branch point. The rows against
+// the branch point are gated in a process where both modules serve the same calls (`--ordinary`); in a process that
+// runs fibers, this branch's module serves the whole runtime (every reference, operation and record the program
+// reads) while the copy of the branch point serves the benchmark alone, and the twin rows below measure what that
+// costs a getter with the code held equal, so the rows against the branch point are reported there, not gated.
+const ordinaryLimit = ordinary ? 1.25 : Infinity
 
 const allPairs: ReadonlyArray<Pair> = [
   {
@@ -215,6 +245,34 @@ const allPairs: ReadonlyArray<Pair> = [
     b: c("mergeAll, 33 contexts, baseline", () => Baseline.mergeAll(...wideBaselineParts)),
     limit: ordinaryLimit
   },
+  // this branch against a pristine copy of itself (records mode): what serving the runtime costs, code held equal
+  {
+    label: "getUnsafe, ordinary key: this branch / a pristine copy of this branch",
+    a: c("getUnsafe, ordinary key, this branch (twin pair)", () => Context.getUnsafe(plainContext, Plain)),
+    b: c("getUnsafe, ordinary key, pristine copy of this branch", () => Twin.getUnsafe(plainTwinContext, PlainTwin)),
+    limit: Infinity
+  },
+  {
+    label: "getUnsafe, reference default (slot absent): this branch / a pristine copy of this branch",
+    a: c("getUnsafe, reference default, this branch (twin pair)", () => Context.getUnsafe(plainContext, Absent)),
+    b: c(
+      "getUnsafe, reference default, pristine copy of this branch",
+      () => Twin.getUnsafe(plainTwinContext, AbsentTwin)
+    ),
+    limit: Infinity
+  },
+  {
+    label: "add then getUnsafe, ordinary key: this branch / a pristine copy of this branch",
+    a: c(
+      "add then getUnsafe, ordinary key, this branch (twin pair)",
+      () => Context.getUnsafe(derive(plainContext, Context, RequestId), Plain)
+    ),
+    b: c(
+      "add then getUnsafe, ordinary key, pristine copy of this branch",
+      () => Twin.getUnsafe(derive(plainTwinContext, Twin, RequestIdTwin), PlainTwin)
+    ),
+    limit: Infinity
+  },
   // records against ordinary keys, both on this branch
   {
     label: "record read (provided whole) / ordinary key read, same context",
@@ -249,8 +307,8 @@ const allPairs: ReadonlyArray<Pair> = [
       "add then getUnsafe, ordinary key (override pair)",
       () => Context.getUnsafe(derive(plainContext, Context, RequestId), Plain)
     ),
-    // one slot check per overlay walked, one name lookup and one small object per read
-    limit: 2.0
+    // one slot check per overlay walked, then the view remembered for the override
+    limit: 1.5
   },
   {
     label: "member override into a context holding the record / ordinary add",
@@ -268,8 +326,9 @@ const allPairs: ReadonlyArray<Pair> = [
       "add then getUnsafe, ordinary key (per-request override pair)",
       () => Context.getUnsafe(derive(plainContext, Context, RequestId), Plain)
     ),
-    // the view, one object inheriting from the provided one, is built on each read
-    limit: 3.0
+    // a new override: a copy of the record below it with the member replaced (one object of the members and one
+    // cache lookup), kept in the one-entry cache only
+    limit: 8.0
   },
   {
     label: "record assembled from 32 member layers, context rebuilt per request / ordinary add then read",
@@ -350,8 +409,8 @@ const allPairs: ReadonlyArray<Pair> = [
       "runSync: yield* Plain, context rebuilt per request (per-request override pair)",
       () => runPlain(yieldPlainPerRequest)
     ),
-    // the override is new each request, so each request builds one view
-    limit: 1.5
+    // the override is new each request, so each request copies the record once (one cache lookup, one copy)
+    limit: 3.0
   },
   {
     label: "provideService(FileSystem) then yield* FileSystem / provideService(Plain) then yield* Plain, per request",
@@ -382,11 +441,28 @@ const allPairs: ReadonlyArray<Pair> = [
 
 const only = process.env.BENCH_ONLY
 const skip = process.env.BENCH_SKIP
-const pairs = (ordinary
+const filtered = (ordinary
   ? allPairs.filter((pair) => pair.label.includes("/ baseline") || pair.label.startsWith("control"))
   : allPairs).filter((pair) =>
     (only === undefined || pair.label.includes(only)) && (skip === undefined || !pair.label.includes(skip))
   )
+// BENCH_SEED shuffles the pairs after the control (a deterministic shuffle), which changes the order the cases are
+// calibrated, optimised and laid out in. A difference of a few nanoseconds between two closures is sensitive to that
+// order even when the A/A control is tight, so the runner measures each mode in three orders and takes the median.
+const seed = Number(process.env.BENCH_SEED ?? 0)
+const shuffled = <A>(items: ReadonlyArray<A>): Array<A> => {
+  const out = [...items]
+  let state = seed * 2654435761 + 1
+  for (let i = out.length - 1; i > 0; i--) {
+    state = (Math.imul(state, 1664525) + 1013904223) >>> 0
+    const j = state % (i + 1)
+    ;[out[i], out[j]] = [out[j], out[i]]
+  }
+  return out
+}
+const pairs = (seed === 0 ? filtered : [filtered[0], ...shuffled(filtered.slice(1))])
+  // the twin pairs exist in records mode only
+  .filter((pair) => !ordinary || !pair.label.includes("pristine copy"))
 
 // Absolute costs, in nanoseconds, with no counterpart at the branch point. Reported, not gated.
 const allSingles: ReadonlyArray<Case> = [
@@ -417,6 +493,14 @@ const measure = (run: () => unknown, iterations: number): number => {
   return ((used.user + used.system) * 1e3) / iterations
 }
 const allCases = [...pairs.flatMap((pair) => [pair.a, pair.b]), ...singles]
+// Every case runs a little, round-robin, before any runs enough to be optimised: the optimiser then compiles the
+// getters having seen every key shape and every path, as it would in a program past its start-up, instead of
+// compiling them for the first case alone and recompiling, with more general code, when a later case deoptimises them.
+for (let round = 0; round < 20; round++) {
+  for (const { run } of allCases) {
+    for (let i = 0; i < 25; i++) sink = run()
+  }
+}
 const iterations = new Map<string, number>()
 for (const { name, run } of allCases) {
   measure(run, 2000)
@@ -512,7 +596,7 @@ for (const pair of pairs) {
   console.log(
     `  ${pair.label.padEnd(96)} ${m.toFixed(2).padStart(7)} ${quantile(values, 0.25).toFixed(2).padStart(7)} ${
       quantile(values, 0.75).toFixed(2).padStart(7)
-    } ${limit.toFixed(2).padStart(7)}${ok ? "" : "  EXCEEDED"}`
+    } ${(Number.isFinite(limit) ? limit.toFixed(2) : "reported").padStart(8)}${ok ? "" : "  EXCEEDED"}`
   )
 }
 console.log(`\n  control envelope: ${envelope.toFixed(2)} (added to every limit)`)
@@ -530,6 +614,19 @@ if (singles.length > 0) {
       } ${quantile(values, 0.75).toFixed(0).padStart(7)}`
     )
   }
+}
+if (process.env.BENCH_JSON !== undefined) {
+  const summary = {
+    seed,
+    envelope,
+    skipped: envelope > noise,
+    pairs: pairs.slice(1).map((pair) => ({
+      label: pair.label,
+      median: median(ratios.get(pair.label)!),
+      limit: Number.isFinite(pair.limit) ? pair.limit + envelope : null
+    }))
+  }
+  console.log(`BENCH_JSON ${JSON.stringify(summary)}`)
 }
 if (check) {
   if (envelope > noise) {

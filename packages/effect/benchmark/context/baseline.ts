@@ -17,14 +17,21 @@ const repo = path.resolve(source, "..", "..", "..")
 export const base: string = process.env.BENCH_BASELINE ??
   execFileSync("git", ["merge-base", "HEAD", "origin/v4/next-minor"], { cwd: repo, encoding: "utf8" }).trim()
 
-export const loadBaseline = async (): Promise<typeof Context> => {
-  const directory = fs.mkdtempSync(path.join(os.tmpdir(), "context-baseline-"))
+export const loadBaseline = (): Promise<typeof Context> =>
+  load(execFileSync("git", ["show", `${base}:packages/effect/src/Context.ts`], { cwd: repo, encoding: "utf8" }))
+
+/**
+ * Loads a second, pristine copy of this branch's own `Context.ts`: the same
+ * code as the module the runtime uses, but one that serves nothing but the
+ * benchmark's own calls. The ratio of the live module over its twin is what
+ * serving a whole program costs a getter, whatever the code.
+ */
+export const loadTwin = (): Promise<typeof Context> => load(fs.readFileSync(path.join(source, "Context.ts"), "utf8"))
+
+const load = async (code: string): Promise<typeof Context> => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), "context-copy-"))
   const file = path.join(directory, "Context.ts")
-  fs.writeFileSync(
-    file,
-    execFileSync("git", ["show", `${base}:packages/effect/src/Context.ts`], { cwd: repo, encoding: "utf8" })
-      .replaceAll("from \"./", `from "${source.replaceAll(path.sep, "/")}/`)
-  )
+  fs.writeFileSync(file, code.replaceAll("from \"./", `from "${source.replaceAll(path.sep, "/")}/`))
   try {
     return await import(file)
   } finally {

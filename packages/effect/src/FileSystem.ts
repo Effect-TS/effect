@@ -73,10 +73,10 @@ import * as Stream from "./Stream.ts"
  * ```
  *
  * @stability unstable
- * @category services
+ * @category models
  * @since 4.0.0
  */
-export interface FileSystem {
+export interface Shape {
   /**
    * Checks whether a file can be accessed.
    * You can optionally specify the level of access to check for.
@@ -489,7 +489,7 @@ export type OpenFlag =
  * @category operations
  * @since 4.0.0
  */
-export const access = Context.Operation<FileSystem["access"], FileSystem>()("effect/FileSystem/access")
+export const access = Context.Operation<Shape["access"]>()("effect/FileSystem/access")
 
 /**
  * Copy a file or directory from `fromPath` to `toPath`.
@@ -502,7 +502,7 @@ export const access = Context.Operation<FileSystem["access"], FileSystem>()("eff
  * @category operations
  * @since 4.0.0
  */
-export const copy = Context.Operation<FileSystem["copy"], FileSystem>()("effect/FileSystem/copy")
+export const copy = Context.Operation<Shape["copy"]>()("effect/FileSystem/copy")
 
 /**
  * Copy a file from `fromPath` to `toPath`.
@@ -511,7 +511,7 @@ export const copy = Context.Operation<FileSystem["copy"], FileSystem>()("effect/
  * @category operations
  * @since 4.0.0
  */
-export const copyFile = Context.Operation<FileSystem["copyFile"], FileSystem>()("effect/FileSystem/copyFile")
+export const copyFile = Context.Operation<Shape["copyFile"]>()("effect/FileSystem/copyFile")
 
 /**
  * Change the permissions of a file.
@@ -520,7 +520,7 @@ export const copyFile = Context.Operation<FileSystem["copyFile"], FileSystem>()(
  * @category operations
  * @since 4.0.0
  */
-export const chmod = Context.Operation<FileSystem["chmod"], FileSystem>()("effect/FileSystem/chmod")
+export const chmod = Context.Operation<Shape["chmod"]>()("effect/FileSystem/chmod")
 
 /**
  * Change the owner and group of a file.
@@ -529,7 +529,7 @@ export const chmod = Context.Operation<FileSystem["chmod"], FileSystem>()("effec
  * @category operations
  * @since 4.0.0
  */
-export const chown = Context.Operation<FileSystem["chown"], FileSystem>()("effect/FileSystem/chown")
+export const chown = Context.Operation<Shape["chown"]>()("effect/FileSystem/chown")
 
 /**
  * Finds paths under `root` that match a glob pattern.
@@ -560,7 +560,7 @@ export const chown = Context.Operation<FileSystem["chown"], FileSystem>()("effec
  * @category operations
  * @since 4.0.0
  */
-export const glob = Context.Operation<FileSystem["glob"], FileSystem>()("effect/FileSystem/glob")
+export const glob = Context.Operation<Shape["glob"]>()("effect/FileSystem/glob")
 
 /**
  * Checks whether a path exists.
@@ -569,7 +569,7 @@ export const glob = Context.Operation<FileSystem["glob"], FileSystem>()("effect/
  * @category operations
  * @since 4.0.0
  */
-export const exists = Context.Operation<FileSystem["exists"], FileSystem>()("effect/FileSystem/exists")
+export const exists = Context.Operation<Shape["exists"]>()("effect/FileSystem/exists")
 
 /**
  * Create a hard link from `fromPath` to `toPath`.
@@ -578,7 +578,7 @@ export const exists = Context.Operation<FileSystem["exists"], FileSystem>()("eff
  * @category operations
  * @since 4.0.0
  */
-export const link = Context.Operation<FileSystem["link"], FileSystem>()("effect/FileSystem/link")
+export const link = Context.Operation<Shape["link"]>()("effect/FileSystem/link")
 
 /**
  * Get information about a file at `path` without following symbolic links.
@@ -588,7 +588,7 @@ export const link = Context.Operation<FileSystem["link"], FileSystem>()("effect/
  * @category operations
  * @since 4.0.0
  */
-export const lstat = Context.Operation<FileSystem["lstat"], FileSystem>()("effect/FileSystem/lstat")
+export const lstat = Context.Operation<Shape["lstat"]>()("effect/FileSystem/lstat")
 
 /**
  * Create a directory at `path`. You can optionally specify the mode and
@@ -598,7 +598,7 @@ export const lstat = Context.Operation<FileSystem["lstat"], FileSystem>()("effec
  * @category operations
  * @since 4.0.0
  */
-export const makeDirectory = Context.Operation<FileSystem["makeDirectory"], FileSystem>()(
+export const makeDirectory = Context.Operation<Shape["makeDirectory"]>()(
   "effect/FileSystem/makeDirectory"
 )
 
@@ -618,7 +618,7 @@ export const makeDirectory = Context.Operation<FileSystem["makeDirectory"], File
  * @category operations
  * @since 4.0.0
  */
-export const makeTempDirectory = Context.Operation<FileSystem["makeTempDirectory"], FileSystem>()(
+export const makeTempDirectory = Context.Operation<Shape["makeTempDirectory"]>()(
   "effect/FileSystem/makeTempDirectory"
 )
 
@@ -634,7 +634,7 @@ export const makeTempDirectory = Context.Operation<FileSystem["makeTempDirectory
  * @category operations
  * @since 4.0.0
  */
-export const makeTempDirectoryScoped = Context.Operation<FileSystem["makeTempDirectoryScoped"], FileSystem>()(
+export const makeTempDirectoryScoped = Context.Operation<Shape["makeTempDirectoryScoped"]>()(
   "effect/FileSystem/makeTempDirectoryScoped"
 )
 
@@ -647,7 +647,7 @@ export const makeTempDirectoryScoped = Context.Operation<FileSystem["makeTempDir
  * @category operations
  * @since 4.0.0
  */
-export const makeTempFile = Context.Operation<FileSystem["makeTempFile"], FileSystem>()(
+export const makeTempFile = Context.Operation<Shape["makeTempFile"]>()(
   "effect/FileSystem/makeTempFile"
 )
 
@@ -663,7 +663,7 @@ export const makeTempFile = Context.Operation<FileSystem["makeTempFile"], FileSy
  * @category operations
  * @since 4.0.0
  */
-export const makeTempFileScoped = Context.Operation<FileSystem["makeTempFileScoped"], FileSystem>()(
+export const makeTempFileScoped = Context.Operation<Shape["makeTempFileScoped"]>()(
   "effect/FileSystem/makeTempFileScoped"
 )
 
@@ -682,7 +682,7 @@ export const makeTempFileScoped = Context.Operation<FileSystem["makeTempFileScop
  * @category operations
  * @since 4.0.0
  */
-export const open = Context.Operation<FileSystem["open"], FileSystem>()("effect/FileSystem/open")
+export const open = Context.Operation<Shape["open"]>()("effect/FileSystem/open")
 
 /**
  * List the contents of a directory.
@@ -696,7 +696,7 @@ export const open = Context.Operation<FileSystem["open"], FileSystem>()("effect/
  * @category operations
  * @since 4.0.0
  */
-export const readDirectory = Context.Operation<FileSystem["readDirectory"], FileSystem>()(
+export const readDirectory = Context.Operation<Shape["readDirectory"]>()(
   "effect/FileSystem/readDirectory"
 )
 
@@ -719,7 +719,7 @@ export const readDirectory = Context.Operation<FileSystem["readDirectory"], File
  * @category operations
  * @since 4.0.0
  */
-export const readDirectoryEntries = Context.Operation<FileSystem["readDirectoryEntries"], FileSystem>()(
+export const readDirectoryEntries = Context.Operation<Shape["readDirectoryEntries"]>()(
   "effect/FileSystem/readDirectoryEntries"
 )
 
@@ -730,7 +730,7 @@ export const readDirectoryEntries = Context.Operation<FileSystem["readDirectoryE
  * @category operations
  * @since 4.0.0
  */
-export const readFile = Context.Operation<FileSystem["readFile"], FileSystem>()("effect/FileSystem/readFile")
+export const readFile = Context.Operation<Shape["readFile"]>()("effect/FileSystem/readFile")
 
 /**
  * Read the contents of a file.
@@ -739,7 +739,7 @@ export const readFile = Context.Operation<FileSystem["readFile"], FileSystem>()(
  * @category operations
  * @since 4.0.0
  */
-export const readFileString = Context.Operation<FileSystem["readFileString"], FileSystem>()(
+export const readFileString = Context.Operation<Shape["readFileString"]>()(
   "effect/FileSystem/readFileString"
 )
 
@@ -750,7 +750,7 @@ export const readFileString = Context.Operation<FileSystem["readFileString"], Fi
  * @category operations
  * @since 4.0.0
  */
-export const readLink = Context.Operation<FileSystem["readLink"], FileSystem>()("effect/FileSystem/readLink")
+export const readLink = Context.Operation<Shape["readLink"]>()("effect/FileSystem/readLink")
 
 /**
  * Resolve a path to its canonicalized absolute pathname.
@@ -759,7 +759,7 @@ export const readLink = Context.Operation<FileSystem["readLink"], FileSystem>()(
  * @category operations
  * @since 4.0.0
  */
-export const realPath = Context.Operation<FileSystem["realPath"], FileSystem>()("effect/FileSystem/realPath")
+export const realPath = Context.Operation<Shape["realPath"]>()("effect/FileSystem/realPath")
 
 /**
  * Remove a file or directory.
@@ -768,7 +768,7 @@ export const realPath = Context.Operation<FileSystem["realPath"], FileSystem>()(
  * @category operations
  * @since 4.0.0
  */
-export const remove = Context.Operation<FileSystem["remove"], FileSystem>()("effect/FileSystem/remove")
+export const remove = Context.Operation<Shape["remove"]>()("effect/FileSystem/remove")
 
 /**
  * Rename a file or directory.
@@ -777,7 +777,7 @@ export const remove = Context.Operation<FileSystem["remove"], FileSystem>()("eff
  * @category operations
  * @since 4.0.0
  */
-export const rename = Context.Operation<FileSystem["rename"], FileSystem>()("effect/FileSystem/rename")
+export const rename = Context.Operation<Shape["rename"]>()("effect/FileSystem/rename")
 
 /**
  * Create a writable `Sink` for the specified `path`.
@@ -786,7 +786,7 @@ export const rename = Context.Operation<FileSystem["rename"], FileSystem>()("eff
  * @category operations
  * @since 4.0.0
  */
-export const sink = Sink.Operation<FileSystem["sink"], FileSystem>()("effect/FileSystem/sink")
+export const sink = Sink.Operation<Shape["sink"]>()("effect/FileSystem/sink")
 
 /**
  * Get information about a file at `path`. See `File.Info` for metadata limits.
@@ -795,7 +795,7 @@ export const sink = Sink.Operation<FileSystem["sink"], FileSystem>()("effect/Fil
  * @category operations
  * @since 4.0.0
  */
-export const stat = Context.Operation<FileSystem["stat"], FileSystem>()("effect/FileSystem/stat")
+export const stat = Context.Operation<Shape["stat"]>()("effect/FileSystem/stat")
 
 /**
  * Create a readable `Stream` for the specified `path`.
@@ -815,7 +815,7 @@ export const stat = Context.Operation<FileSystem["stat"], FileSystem>()("effect/
  * @category operations
  * @since 4.0.0
  */
-export const stream = Stream.Operation<FileSystem["stream"], FileSystem>()("effect/FileSystem/stream")
+export const stream = Stream.Operation<Shape["stream"]>()("effect/FileSystem/stream")
 
 /**
  * Create a symbolic link from `fromPath` to `toPath`.
@@ -824,7 +824,7 @@ export const stream = Stream.Operation<FileSystem["stream"], FileSystem>()("effe
  * @category operations
  * @since 4.0.0
  */
-export const symlink = Context.Operation<FileSystem["symlink"], FileSystem>()("effect/FileSystem/symlink")
+export const symlink = Context.Operation<Shape["symlink"]>()("effect/FileSystem/symlink")
 
 /**
  * Truncate a file to a specified length. If the `length` is not specified,
@@ -834,7 +834,7 @@ export const symlink = Context.Operation<FileSystem["symlink"], FileSystem>()("e
  * @category operations
  * @since 4.0.0
  */
-export const truncate = Context.Operation<FileSystem["truncate"], FileSystem>()("effect/FileSystem/truncate")
+export const truncate = Context.Operation<Shape["truncate"]>()("effect/FileSystem/truncate")
 
 /**
  * Change the file system timestamps of the file at `path`.
@@ -843,7 +843,7 @@ export const truncate = Context.Operation<FileSystem["truncate"], FileSystem>()(
  * @category operations
  * @since 4.0.0
  */
-export const utimes = Context.Operation<FileSystem["utimes"], FileSystem>()("effect/FileSystem/utimes")
+export const utimes = Context.Operation<Shape["utimes"]>()("effect/FileSystem/utimes")
 
 /**
  * Watch a directory or file for changes.
@@ -858,7 +858,7 @@ export const utimes = Context.Operation<FileSystem["utimes"], FileSystem>()("eff
  * @category operations
  * @since 4.0.0
  */
-export const watch = Stream.Operation<FileSystem["watch"], FileSystem>()("effect/FileSystem/watch")
+export const watch = Stream.Operation<Shape["watch"]>()("effect/FileSystem/watch")
 
 /**
  * Write data to a file at `path`.
@@ -867,7 +867,7 @@ export const watch = Stream.Operation<FileSystem["watch"], FileSystem>()("effect
  * @category operations
  * @since 4.0.0
  */
-export const writeFile = Context.Operation<FileSystem["writeFile"], FileSystem>()("effect/FileSystem/writeFile")
+export const writeFile = Context.Operation<Shape["writeFile"]>()("effect/FileSystem/writeFile")
 
 /**
  * Write a string to a file at `path`.
@@ -876,7 +876,7 @@ export const writeFile = Context.Operation<FileSystem["writeFile"], FileSystem>(
  * @category operations
  * @since 4.0.0
  */
-export const writeFileString = Context.Operation<FileSystem["writeFileString"], FileSystem>()(
+export const writeFileString = Context.Operation<Shape["writeFileString"]>()(
   "effect/FileSystem/writeFileString"
 )
 
@@ -957,20 +957,74 @@ const members = {
  * @category services
  * @since 4.0.0
  */
-export const FileSystem = Context.Operations<FileSystem, FileSystem>()("effect/FileSystem", members)
+export const FileSystem = Context.Operations<FileSystem, Shape>()("effect/FileSystem", members)
 
 /**
- * The record of file system implementations: today an alias of the
- * `FileSystem` interface, which the next release makes the sole name of the
- * record type while `FileSystem` becomes the identity of the whole service.
- * Code that uses `FileSystem.FileSystem` as the type of an implementation
- * (`fs: FileSystem.FileSystem`) should write `FileSystem.Shape` now.
+ * The identity of the file system service: the union of its operations' keys.
+ * A `Layer<FileSystem>` provides every operation, and the merge of every
+ * operation's layer is a `Layer<FileSystem>`. The record of implementations
+ * is {@link Shape}.
+ *
+ * @stability unstable
+ * @category services
+ * @since 4.0.0
+ */
+export type FileSystem = Context.Operations.Identifier<typeof members>
+
+const readOnlyMembers = {
+  access,
+  exists,
+  lstat,
+  readDirectory,
+  readDirectoryEntries,
+  readFile,
+  readFileString,
+  readLink,
+  realPath,
+  stat
+}
+
+/**
+ * The record of the read-only operations: the shape of {@link ReadOnly}.
  *
  * @stability unstable
  * @category models
  * @since 4.0.0
  */
-export type Shape = FileSystem
+export type ReadOnlyShape = Pick<Shape, keyof typeof readOnlyMembers>
+
+/**
+ * The read-only file system: a record service over the operations that read
+ * files and directories (`access`, `exists`, `lstat`, `readDirectory`,
+ * `readDirectoryEntries`, `readFile`, `readFileString`, `readLink`,
+ * `realPath` and `stat`). A program that only reads can name it as its one
+ * requirement; a `Layer<FileSystem>` satisfies it, and so do layers of those
+ * ten operations.
+ *
+ * **Example** (A reader with one named requirement)
+ *
+ * ```ts
+ * import { Effect, FileSystem } from "effect"
+ *
+ * const sizeOf = (path: string): Effect.Effect<number, FileSystem.PlatformError, FileSystem.ReadOnly> =>
+ *   Effect.map(FileSystem.stat(path), (info) => Number(info.size))
+ * ```
+ *
+ * @stability unstable
+ * @category services
+ * @since 4.0.0
+ */
+export const ReadOnly = Context.Operations<ReadOnly, ReadOnlyShape>()("effect/FileSystem/ReadOnly", readOnlyMembers)
+
+/**
+ * The identity of the read-only file system: the union of its ten operations'
+ * keys.
+ *
+ * @stability unstable
+ * @category services
+ * @since 4.0.0
+ */
+export type ReadOnly = Context.Operations.Identifier<typeof readOnlyMembers>
 
 /**
  * A directory entry with its type, independent of any symlink target.
@@ -1012,8 +1066,8 @@ export interface DirectoryEntry {
  * @since 4.0.0
  */
 export const make = (
-  impl: Omit<FileSystem, "exists" | "glob" | "readFileString" | "stream" | "sink" | "writeFileString">
-): FileSystem =>
+  impl: Omit<Shape, "exists" | "glob" | "readFileString" | "stream" | "sink" | "writeFileString">
+): Shape =>
   FileSystem.of({
     ...impl,
     glob: Glob.make(impl),
@@ -1155,7 +1209,7 @@ const notFound = (method: string, path: string) =>
  * @category constructors
  * @since 4.0.0
  */
-export const makeNoop = (fileSystem: Partial<FileSystem>): FileSystem =>
+export const makeNoop = (fileSystem: Partial<Shape>): Shape =>
   FileSystem.of({
     access(path) {
       return Effect.fail(notFound("access", path))
@@ -1290,7 +1344,7 @@ export const makeNoop = (fileSystem: Partial<FileSystem>): FileSystem =>
  * @category layers
  * @since 4.0.0
  */
-export const layerNoop = (fileSystem: Partial<FileSystem>): Layer.Layer<FileSystem> =>
+export const layerNoop = (fileSystem: Partial<Shape>): Layer.Layer<FileSystem> =>
   Layer.succeed(FileSystem)(makeNoop(fileSystem))
 
 /**

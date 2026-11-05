@@ -671,29 +671,26 @@ describe("Operation", () => {
       )
     })
 
-    it("overrides a member as an overlay, and reads the record as an object inheriting from the provided one, once per storage", () => {
+    it("overrides a member as an overlay, and reads the record as a view with every member its own, once per storage", () => {
       const live = record({ readFile: () => Effect.succeed("live") })
       const fake = () => Effect.succeed("fake")
       const Other = Context.Service<number>("ContextTest/Other")
       // a member write into a context holding the record is an ordinary overlay; the record's slot keeps the provided object
       const overridden = Context.add(Context.make(FS, live), readFile, fake)
       strictEqual((overridden as any).overlay.key, "ContextTest/FS/readFile")
-      strictEqual((overridden as any).overlay.record, undefined)
+      strictEqual(Object.keys((overridden as any).overlay).join(), "key,value,parent")
       strictEqual(overridden.mapUnsafe.get("ContextTest/FS"), live)
       strictEqual(Context.getOrUndefinedUnsafe(overridden, "ContextTest/FS"), live)
-      // the record read inherits from the provided object and carries the override as its own property; it is built
-      // on each read, so two reads are two equal objects
+      // the record read is a view: a plain object carrying every member as its own property, so it spreads and
+      // copies as the provided object would; it is assembled once for the overlay and remembered
       const view = Context.get(overridden, FS)
       assert.notStrictEqual(view, live)
-      strictEqual(Object.getPrototypeOf(view), live)
+      strictEqual(Object.getPrototypeOf(view), Object.prototype)
       strictEqual(view.readFile, fake)
       strictEqual(view.writeFile, live.writeFile)
-      deepStrictEqual(Object.keys(view), ["readFile"])
-      deepStrictEqual(Object.keys({ ...view }), ["readFile"])
-      const again = Context.get(overridden, FS)
-      assert.notStrictEqual(again, view)
-      strictEqual(Object.getPrototypeOf(again), live)
-      deepStrictEqual(Object.keys(again), ["readFile"])
+      deepStrictEqual(Object.keys(view), ["readFile", "writeFile", "stat", "lines"])
+      deepStrictEqual({ ...view }, { ...live, readFile: fake })
+      strictEqual(Context.get(overridden, FS), view)
       // contexts derived by unrelated writes read the same; the original context still reads the provided object
       let context = overridden
       strictEqual(Context.get(Context.add(context, Other, 0), FS).readFile, fake)
@@ -703,7 +700,7 @@ describe("Operation", () => {
       for (let i = 0; i < 12; i++) context = Context.add(context, Other, i)
       assertTrue(context.mapUnsafe.get("ContextTest/FS/readFile") === fake)
       const flat = Context.get(context, FS)
-      strictEqual(Object.getPrototypeOf(flat), live)
+      strictEqual(Object.getPrototypeOf(flat), Object.prototype)
       strictEqual(flat.readFile, fake)
       strictEqual(flat.writeFile, live.writeFile)
       strictEqual(Context.get(context, FS), flat)
@@ -797,11 +794,13 @@ describe("Operation", () => {
       strictEqual(await Effect.runPromise(Effect.provide(readFile("y"), added)), "instance:y")
       for (let i = 0; i < 12; i++) added = Context.add(added, Context.Service<number>("ContextTest/Other"), i)
       strictEqual(Context.get(added, FS), instance)
-      // the bound method reads `this` from the instance, so standalone it does not see an override of another member,
-      // while the record view, whose `this` is the view, does
+      // a bound method reads `this` from the instance, so a sibling call through `this` reads the instance's member and
+      // not an override of it, standalone and through the record view alike: the view's members are the same bound
+      // functions
       const overridden = Context.add(context, readFile, () => Effect.succeed("fake!"))
       strictEqual(await Effect.runPromise(Effect.provide(stat("x"), overridden)), 10)
-      strictEqual(await Effect.runPromise(Effect.provide(Effect.flatMap(FS, (fs) => fs.stat("x")), overridden)), 5)
+      strictEqual(await Effect.runPromise(Effect.provide(Effect.flatMap(FS, (fs) => fs.stat("x")), overridden)), 10)
+      strictEqual(Context.get(overridden, FS).stat, Context.get(context, stat))
       // Layer.mock's proxy has no prototype methods: its members are stored as the proxy returns them
       const mocked = Layer.mock(FS, { readFile: () => Effect.succeed("mocked") })
       strictEqual(await Effect.runPromise(readFile("a").pipe(Effect.provide(mocked))), "mocked")
@@ -812,12 +811,13 @@ describe("Operation", () => {
       const Other = Context.Service<number>("ContextTest/Other")
       const small = Context.make(Other, 1)
       const added = Context.add(small, FS, live)
-      // one overlay, holding the provided object and the members; the base map is the one of the context added to
+      // one overlay, whose key is the record and whose value is every slot it writes by position, the provided object
+      // last; the base map is the one of the context added to
       const overlay = (added as any).overlay
-      strictEqual(overlay.key, "ContextTest/FS")
-      strictEqual(overlay.value, live)
+      strictEqual(overlay.key, FS)
+      deepStrictEqual(overlay.value, [live.readFile, live.writeFile, live.stat, live.lines, live])
       strictEqual(overlay.parent, undefined)
-      strictEqual(overlay.record.key, FS)
+      strictEqual(Object.keys(overlay).join(), "key,value,parent")
       strictEqual((added as any).base, (small as any).base)
       strictEqual(added.mapUnsafe.size, 6)
       strictEqual(Context.get(added, FS), live)
@@ -830,7 +830,7 @@ describe("Operation", () => {
       )
       const bigAdded = Context.add(big, FS, live)
       strictEqual((bigAdded as any).base, (big as any).base)
-      strictEqual((bigAdded as any).overlay.record.key, FS)
+      strictEqual((bigAdded as any).overlay.key, FS)
       strictEqual(Context.get(bigAdded, FS), live)
       strictEqual(bigAdded.mapUnsafe.size, 305)
       // an empty context and a context at its overlay depth take the record as a flat map, as `make` does
@@ -866,7 +866,7 @@ describe("Operation", () => {
       const late = Context.makeUnsafe<FS>(fresh)
       fresh.set("ContextTest/FS/readFile", fake)
       strictEqual(Context.get(late, FS).readFile, fake)
-      strictEqual(Object.getPrototypeOf(Context.get(late, FS)), live)
+      deepStrictEqual(Context.get(late, FS), { ...live, readFile: fake })
     })
 
     it("accepts services, references and records as members", async () => {
@@ -928,14 +928,159 @@ describe("Operation", () => {
       assertFalse(base.mapUnsafe.has("ContextTest/FS/ReadOnly"))
       // a derived context whose members are the same values shares the object
       strictEqual(Context.get(Context.add(base, Other, 1), ReadOnly), first)
-      // a member written on top is a view over the assembled object
+      // a member written on top is assembled again for its overlay: a plain object of the members, remembered
       const fake = () => Effect.succeed("two")
       const replaced = Context.add(base, readFile, fake)
       const second = Context.get(replaced, ReadOnly)
       strictEqual(second.readFile, fake)
       strictEqual(second.stat, first.stat)
-      strictEqual(Object.getPrototypeOf(second), first)
+      strictEqual(Object.getPrototypeOf(second), Object.prototype)
+      deepStrictEqual(Object.keys(second), ["readFile", "stat"])
+      strictEqual(Context.get(replaced, ReadOnly), second)
       strictEqual(Context.get(base, ReadOnly), first)
+    })
+
+    it("assembles members provided as separate overlays, in every mix of overlay, flat map and record overlay", async () => {
+      const Other = Context.Service<number>("ContextTest/Other")
+      const one = () => Effect.succeed("one")
+      const two = () => Effect.succeed("two")
+      const size = () => Effect.succeed(1)
+      const live = record({ readFile: one, stat: size })
+      // two member overlays and no record: the read collects both
+      const overlays = Context.add(Context.add(Context.empty(), readFile, one), stat, size)
+      deepStrictEqual(Context.get(overlays, ReadOnly), { readFile: one, stat: size })
+      // a member in the flat map and one as an overlay
+      const mixed = Context.add(Context.make(readFile, one), stat, size)
+      deepStrictEqual(Context.get(mixed, ReadOnly), { readFile: one, stat: size })
+      // a member overlay above a record overlay, and below one
+      const above = Context.add(Context.add(Context.make(Other, 0), FS, live), readFile, two)
+      strictEqual(Context.get(above, FS).readFile, two)
+      strictEqual(Context.get(above, FS).stat, size)
+      strictEqual(Context.get(above, ReadOnly).readFile, two)
+      const below = Context.add(Context.add(Context.make(Other, 0), readFile, two), FS, live)
+      strictEqual(Context.get(below, FS), live)
+      strictEqual(Context.get(below, readFile), one)
+      // a subset record overlay above the full record, and the full record above the subset
+      const subsetAbove = Context.add(Context.make(FS, live), ReadOnly, { readFile: two, stat: size })
+      strictEqual(Context.get(subsetAbove, FS).readFile, two)
+      strictEqual(Context.get(subsetAbove, FS).writeFile, live.writeFile)
+      deepStrictEqual(Context.get(subsetAbove, FS), { ...live, readFile: two, stat: size })
+      const fullAbove = Context.add(Context.make(ReadOnly, { readFile: two, stat: size }), FS, live)
+      strictEqual(Context.get(fullAbove, FS), live)
+      strictEqual(Context.get(fullAbove, ReadOnly).readFile, one)
+      // in a fiber: provideService chains, with no record ever provided
+      const program = Effect.gen(function*() {
+        const fs = yield* ReadOnly
+        return [yield* fs.readFile("a"), yield* fs.stat("a"), yield* readFile("a")] as const
+      })
+      deepStrictEqual(
+        await Effect.runPromise(
+          program.pipe(Effect.provideService(readFile, one), Effect.provideService(stat, size))
+        ),
+        ["one", 1, "one"]
+      )
+      deepStrictEqual(
+        await Effect.runPromise(
+          program.pipe(
+            Effect.provideService(readFile, two),
+            Effect.provide(Layer.mergeAll(Layer.succeed(readFile, one), Layer.succeed(stat, size)))
+          )
+        ),
+        ["two", 1, "two"]
+      )
+    })
+
+    it("spreads, copies and re-provides a view as the record it stands for", async () => {
+      const live = record({ readFile: () => Effect.succeed("live"), stat: () => Effect.succeed(1) })
+      const fake = () => Effect.succeed("fake")
+      const program = Effect.gen(function*() {
+        const fs = yield* FS
+        return [yield* fs.readFile("a"), yield* fs.stat("a"), Object.keys(fs).length] as const
+      })
+      // a spread decorator through updateService over a view: every member survives, and the override is kept
+      deepStrictEqual(
+        await Effect.runPromise(
+          program.pipe(
+            Effect.updateService(FS, (fs) => ({ ...fs, stat: () => Effect.succeed(2) })),
+            Effect.provideService(readFile, fake),
+            Effect.provide(Layer.succeed(FS, live))
+          )
+        ),
+        ["fake", 2, 4]
+      )
+      // the same through a Layer.effect decorator built on the record
+      const decorated = Layer.effect(FS, Effect.map(FS, (fs) => ({ ...fs })))
+      deepStrictEqual(
+        await Effect.runPromise(
+          program.pipe(
+            Effect.provide(decorated),
+            Effect.provideService(readFile, fake),
+            Effect.provide(Layer.succeed(FS, live))
+          )
+        ),
+        ["fake", 1, 4]
+      )
+      // Effect.updateService over a view, standalone call afterwards
+      strictEqual(
+        await Effect.runPromise(
+          readFile("a").pipe(
+            Effect.updateService(FS, (fs) => ({ ...fs })),
+            Effect.provideService(readFile, fake),
+            Effect.provide(Layer.succeed(FS, live))
+          )
+        ),
+        "fake"
+      )
+    })
+
+    it("keeps a class with private fields working after one member is overridden", async () => {
+      class Impl {
+        #count = 0
+        readFile(path: string) {
+          this.#count++
+          return Effect.succeed(`${path}:${this.#count}`)
+        }
+        writeFile(_path: string, _data: string) {
+          return Effect.void
+        }
+        stat(_path: string) {
+          return Effect.succeed(this.#count)
+        }
+        lines(_path: string) {
+          return Stream.empty
+        }
+      }
+      const instance = new Impl()
+      const program = Effect.gen(function*() {
+        const fs = yield* FS
+        const read = yield* fs.readFile("a")
+        const copy = { ...fs }
+        return [read, yield* fs.stat("a"), yield* stat("a"), yield* copy.stat("a"), fs instanceof Impl] as const
+      })
+      deepStrictEqual(
+        await Effect.runPromise(
+          program.pipe(Effect.provideService(writeFile, () => Effect.void), Effect.provide(Layer.succeed(FS, instance)))
+        ),
+        ["a:1", 1, 1, 1, true]
+      )
+    })
+
+    it("dies naming the missing member when a record is provided without one", async () => {
+      const partial = { readFile: () => Effect.succeed("live") } as unknown as Shape
+      assert.throws(
+        () => Context.make(FS, partial),
+        /Service not found: ContextTest\/FS\/writeFile \(the object provided for ContextTest\/FS has no member "writeFile"\)/
+      )
+      assert.throws(
+        () => Context.add(Context.make(Context.Service<number>("ContextTest/Other"), 1), FS, partial),
+        /writeFile/
+      )
+      // a layer built from the record writes it when the layer is built, so the defect is raised there
+      assert.throws(() => Layer.succeed(FS, partial), /ContextTest\/FS\/writeFile/)
+      await dies(
+        Effect.provide(readFile("a"), Layer.effect(FS, Effect.succeed(partial))),
+        /ContextTest\/FS\/writeFile/
+      )
     })
 
     it("depends only on the records a context holds, not on which records exist or when they were built", () => {

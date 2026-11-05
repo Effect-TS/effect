@@ -417,15 +417,17 @@ describe("Operations", () => {
     for (const base of [Context.make(Other, 1), wide]) {
       const added = Context.add(base, FileSystem.FileSystem, live)
       assert.strictEqual((added as any).base, (base as any).base)
-      assert.strictEqual((added as any).overlay.key, "effect/FileSystem")
-      assert.strictEqual((added as any).overlay.record.key, FileSystem.FileSystem)
+      // the overlay's key is the record and its value every slot it writes by position, the provided object last
+      assert.strictEqual((added as any).overlay.key, FileSystem.FileSystem)
+      assert.strictEqual((added as any).overlay.value.at(-1), live)
+      assert.strictEqual((added as any).overlay.value.length, 31)
       assert.strictEqual(Context.get(added, FileSystem.FileSystem), live)
       assert.strictEqual(Context.get(added, FileSystem.readFile), live.readFile)
       assert.strictEqual(added.mapUnsafe.size, base.mapUnsafe.size + 31)
     }
   })
 
-  it("overrides a member as an overlay, and reads the record as an object inheriting from the provided one, once per storage", () => {
+  it("overrides a member as an overlay, and reads the record as a view with every member its own, once per storage", () => {
     const live = record({ readFile: () => Effect.succeed(bytes("live")) })
     const fake = () => Effect.succeed(bytes("fake"))
     const Other = Context.Service<number>("test/Other")
@@ -433,16 +435,16 @@ describe("Operations", () => {
     const overridden = Context.add(Context.make(FileSystem.FileSystem, live), FileSystem.readFile, fake)
     assert.strictEqual((overridden as any).overlay.key, "effect/FileSystem/readFile")
     assert.strictEqual(overridden.mapUnsafe.get("effect/FileSystem"), live)
-    // the record read inherits from the provided object and carries the override as its own property; it is built on
-    // each read, so two reads are two equal objects
+    // the record read is a view: a plain object carrying every member as its own property, so it spreads as the
+    // provided object would; it is assembled once for the overlay and remembered
     const view = Context.get(overridden, FileSystem.FileSystem)
     assert.notStrictEqual(view, live)
-    assert.strictEqual(Object.getPrototypeOf(view), live)
+    assert.strictEqual(Object.getPrototypeOf(view), Object.prototype)
     assert.strictEqual(view.readFile, fake)
     assert.strictEqual(view.writeFile, live.writeFile)
-    assert.deepStrictEqual(Object.keys(view), ["readFile"])
-    assert.notStrictEqual(Context.get(overridden, FileSystem.FileSystem), view)
-    assert.deepStrictEqual(Context.get(overridden, FileSystem.FileSystem), view)
+    assert.deepStrictEqual(Object.keys(view).sort(), Object.keys(live).sort())
+    assert.deepStrictEqual({ ...view }, { ...live, readFile: fake })
+    assert.strictEqual(Context.get(overridden, FileSystem.FileSystem), view)
     // contexts derived by unrelated additions read the same
     let context = overridden
     assert.strictEqual(Context.get(Context.add(context, Other, 0), FileSystem.FileSystem).readFile, fake)
@@ -833,7 +835,23 @@ describe("subset records", () => {
       await Effect.runPromise(FileSystem.readFile("x").pipe(Effect.provide(readOnly))),
       bytes("three")
     )
-    assert.strictEqual(Context.make(FileSystem.ReadOnly, {} as FileSystem.ReadOnlyShape).mapUnsafe.size, 4)
+    assert.strictEqual(
+      Context.make(FileSystem.ReadOnly, {
+        exists: () => Effect.succeed(true),
+        readFile: () => Effect.succeed(bytes("three")),
+        stat: () => Effect.die("unused")
+      }).mapUnsafe.size,
+      4
+    )
+    // a record provided without one of its members is a defect naming the member's key
+    assert.throws(
+      () =>
+        Context.make(
+          FileSystem.ReadOnly,
+          { exists: () => Effect.succeed(true) } as unknown as FileSystem.ReadOnlyShape
+        ),
+      /Service not found: effect\/FileSystem\/readFile/
+    )
   })
 
   it("is shadowed by the full record and shadows it, slot by slot", () => {
@@ -869,13 +887,15 @@ describe("a record never written", () => {
     assert.isFalse(fromMembers.mapUnsafe.has("effect/FileSystem/ReadOnly"))
     // a derived context whose members are the same values shares the object
     assert.strictEqual(Context.get(Context.add(fromMembers, Other, 1), FileSystem.ReadOnly), first)
-    // replacing a member gives a record with the replacement and the other members unchanged
+    // replacing a member gives a record with the replacement and the other members unchanged, assembled again
+    // for the new overlay: a plain object, remembered
     const fake = () => Effect.succeed(bytes("two"))
     const replaced = Context.add(fromMembers, FileSystem.readFile, fake)
     const second = Context.get(replaced, FileSystem.ReadOnly)
     assert.strictEqual(second.readFile, fake)
     assert.strictEqual(second.stat, first.stat)
-    assert.strictEqual(Object.getPrototypeOf(second), first)
+    assert.strictEqual(Object.getPrototypeOf(second), Object.prototype)
+    assert.strictEqual(Context.get(replaced, FileSystem.ReadOnly), second)
     assert.strictEqual(Context.get(fromMembers, FileSystem.ReadOnly), first)
   })
 })
