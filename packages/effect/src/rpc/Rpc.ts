@@ -697,7 +697,7 @@ export type IsStream<R extends Any, Tag extends string> = R extends Rpc<
  * @since 4.0.0
  */
 export type ExtractTag<R extends Any, Tag extends string> = [NonLiteralTagged<R>] extends [never] ?
-  ByTag<R>[Tag & LiteralTag<R>]
+  ByTag<R>[Tag & Exclude<R, NonLiteralTagged<R>>["_tag"]]
   : ExtractTagDistributive<R, Tag>
 
 /**
@@ -714,16 +714,15 @@ export type ExtractTag<R extends Any, Tag extends string> = [NonLiteralTagged<R>
  */
 export type ByTag<R extends Any> = { readonly [Current in R as Current["_tag"]]: Current }
 
-// The tags of RPCs whose tag is a literal, leaving out `string` and template
-// literal pattern tags.
-type LiteralTag<R extends Any> = R extends Any ? {} extends Record<R["_tag"], unknown> ? never : R["_tag"] : never
+// The RPCs whose tag is not a single literal. `ByTag` cannot index a union
+// containing one: a `string`, template literal pattern or union-valued tag
+// would change which RPCs a tag matches.
+type NonLiteralTagged<R extends Any> = R extends Any ? IsLiteral<R["_tag"]> extends true ? never : R : never
 
-// The RPCs whose tag is not a single literal: `string`, a template literal
-// pattern, or a union of tags.
-type NonLiteralTagged<R extends Any> = R extends Any ? IsSingleLiteral<R["_tag"]> extends true ? never : R : never
-
-type IsSingleLiteral<T, All = T> = {} extends Record<T & string, unknown> ? false
-  : T extends unknown ? [All] extends [T] ? true : false
+// `true` when `T` is one string literal: not `string`, not a template literal
+// pattern and not a union.
+type IsLiteral<T extends string, Each = T> = {} extends Record<T, unknown> ? false
+  : Each extends unknown ? [T] extends [Each] ? true : false
   : never
 
 // Tests every RPC in the union. Used when some RPC's tag is not a single
