@@ -5,8 +5,10 @@ import * as McpServer from "effect/ai/McpServer"
 import * as McpTest from "effect/ai/McpTest"
 import * as Tool from "effect/ai/Tool"
 import * as Toolkit from "effect/ai/Toolkit"
+import * as Cause from "effect/Cause"
 import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
+import * as Exit from "effect/Exit"
 import * as Fiber from "effect/Fiber"
 import * as Layer from "effect/Layer"
 import * as Queue from "effect/Queue"
@@ -290,6 +292,29 @@ describe("McpAppView", () => {
       const teardown = yield* Effect.forkChild(host.teardown("conversation closed").pipe(Effect.timeout("1 second")))
       yield* Fiber.join(running)
       yield* TestClock.adjust("1 second")
+      assert.deepStrictEqual(yield* Fiber.join(teardown), {})
+    }))
+
+  it.effect("answers teardown before run fails with a finalizer's defect", () =>
+    Effect.gen(function*() {
+      const host = yield* McpTest.makeAppHost({ hostInfo })
+      const registered = yield* Deferred.make<void>()
+      const program = Effect.gen(function*() {
+        yield* Effect.addFinalizer(() => Effect.die("cleanup failed"))
+        yield* Deferred.succeed(registered, undefined)
+        return yield* Effect.never
+      })
+
+      // The documented entrypoint: the layer lives only as long as `run`.
+      const running = yield* Effect.forkChild(McpAppView.run(program).pipe(Effect.provide(view(host))))
+      yield* Deferred.await(registered)
+      const teardown = yield* Effect.forkChild(host.teardown("conversation closed").pipe(Effect.timeout("1 second")))
+      const exit = yield* Fiber.await(running)
+      yield* TestClock.adjust("1 second")
+      // The defect still reaches the caller of `run`...
+      assert.isTrue(Exit.isFailure(exit) && Cause.hasDies(exit.cause))
+      assert.include(Cause.pretty((exit as Exit.Failure<void, never>).cause), "cleanup failed")
+      // ...but only after the host has its answer.
       assert.deepStrictEqual(yield* Fiber.join(teardown), {})
     }))
 
