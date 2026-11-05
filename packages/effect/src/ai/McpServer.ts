@@ -3238,14 +3238,45 @@ const modelOutputContent = (parts: ReadonlyArray<AiPrompt.ToolModelOutputPart>):
   })
 
 // `Prompt.FilePart` string data is base64, either bare or as a `data:` URL.
+// https://fetch.spec.whatwg.org/#data-url-processor
 const decodeFileData = (data: string): Uint8Array => {
   const dataUrl = /^data:([^,]*),/.exec(data)
   if (dataUrl === null) return Result.getOrThrow(Base64.decode(data))
-  const payload = data.slice(dataUrl[0].length)
-  return dataUrl[1].endsWith(";base64")
-    ? Result.getOrThrow(Base64.decode(payload))
-    : new TextEncoder().encode(decodeURIComponent(payload))
+  // The payload is percent-encoded octets, also when it is base64.
+  const octets = percentDecode(data.slice(dataUrl[0].length))
+  return /;\s*base64\s*$/i.test(dataUrl[1])
+    ? Result.getOrThrow(Base64.decode(new TextDecoder().decode(octets)))
+    : octets
 }
+
+// https://url.spec.whatwg.org/#percent-decode
+const percentDecode = (input: string): Uint8Array => {
+  const bytes = new TextEncoder().encode(input)
+  const output = new Uint8Array(bytes.length)
+  let length = 0
+  for (let i = 0; i < bytes.length; i++) {
+    const high = bytes[i] === 0x25 ? hexValue(bytes[i + 1]) : -1
+    const low = high === -1 ? -1 : hexValue(bytes[i + 2])
+    if (low === -1) {
+      output[length++] = bytes[i]
+    } else {
+      output[length++] = high * 16 + low
+      i += 2
+    }
+  }
+  return output.subarray(0, length)
+}
+
+const hexValue = (byte: number | undefined): number =>
+  byte === undefined ?
+    -1
+    : byte >= 0x30 && byte <= 0x39 ?
+    byte - 0x30
+    : byte >= 0x41 && byte <= 0x46 ?
+    byte - 0x37
+    : byte >= 0x61 && byte <= 0x66 ?
+    byte - 0x57
+    : -1
 
 /**
  * The requirements of a toolkit registration.
