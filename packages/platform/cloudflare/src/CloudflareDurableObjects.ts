@@ -25,7 +25,8 @@ import {
   makeClusterDurableQueueProgram,
   makeClusterEntityProgram,
   makeClusterSingletonProgram,
-  makeClusterWorkflowProgram
+  makeClusterWorkflowProgram,
+  type SingletonWakeResult
 } from "./CloudflareDurableObjectPrograms.ts"
 
 const notExposed = (className: string) => () => {
@@ -336,7 +337,9 @@ export class ClusterDurableQueue extends DurableObject<unknown> {
  * The constructor opens SQLite, ensures the singleton state table, and
  * re-arms the watchdog alarm for a wake interrupted by isolate loss. `wake()`
  * runs the registered effect once and returns; it never appends
- * `Effect.never`, so Cloudflare may hibernate the object afterward. Requests
+ * `Effect.never`, so Cloudflare may hibernate the object afterward. A failed
+ * run is logged and resolves `wake()` with a `Failure`, so only a transport
+ * failure rejects it. Requests
  * and alarms wait for the registered {@link setInitializer} callback before
  * consulting the singleton registry.
  *
@@ -356,7 +359,7 @@ export class ClusterSingleton extends DurableObject<unknown> {
   }
 
   /** @internal Runs one Cron Trigger fire, coalescing a concurrent duplicate. */
-  wake(): Promise<void> {
+  wake(): Promise<SingletonWakeResult> {
     return Effect.runPromise(this.#program.wake())
   }
 

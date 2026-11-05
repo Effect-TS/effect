@@ -13,7 +13,14 @@ import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import * as Scope from "effect/Scope"
 import * as CloudflareCluster from "../CloudflareCluster.ts"
+import type { SingletonWakeResult } from "../CloudflareDurableObjectPrograms.ts"
 import type { Cluster } from "./cluster.ts"
+import { boundedRetry, callDurableObject } from "./transport.ts"
+
+interface SingletonStub {
+  // An object still on an older deploy resolves `undefined` on success.
+  readonly wake: () => Promise<SingletonWakeResult | undefined>
+}
 
 /** @internal */
 export interface ClusterHandleOptions {
@@ -55,11 +62,20 @@ export const makeClusterHandle = Effect.fnUntraced(function*(options: ClusterHan
 
   const handle: Cluster<never> = {
     provide: (effect) => Effect.provideContext(effect, context),
+    // Only a transport failure rejects `wake()`, so retrying never reruns a
+    // failed singleton. A failed run still fails the Cron Trigger.
     wake: (name) => () =>
-      Effect.promise(() =>
-        (singletonNamespace.getByName(`Singleton/${name}`) as unknown as {
-          readonly wake: () => Promise<void>
-        }).wake()
+      callDurableObject({
+        resolve: () => singletonNamespace.getByName(`Singleton/${name}`) as unknown as SingletonStub,
+        call: (stub) => stub.wake(),
+        retry: boundedRetry
+      }).pipe(
+        Effect.orDie,
+        Effect.flatMap((result) =>
+          result?._tag === "Failure"
+            ? Effect.die(new Error(`Singleton "${name}" failed: ${result.message}`))
+            : Effect.void
+        )
       ),
     entityNamespace,
     workflowNamespace,

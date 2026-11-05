@@ -105,7 +105,9 @@ Asynchronous layer builds must register one before serving traffic.
 
 The Cron Trigger wakes the named singleton through its same-Worker binding.
 The call returns after one run, allowing the Durable Object to hibernate; do
-not make the singleton effect a forever loop.
+not make the singleton effect a forever loop. A failed run is logged by the
+singleton object and resolves `wake()` with `{ _tag: "Failure", message }`, so
+a rejected `wake()` means the call failed in transit and can be retried.
 
 ```ts
 export default {
