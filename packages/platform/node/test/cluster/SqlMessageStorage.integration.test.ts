@@ -130,12 +130,13 @@ describe("SqlMessageStorage", () => {
       })
     )
   })
-  ;([
+  const backends: ReadonlyArray<readonly ["pg" | "mysql" | "mssql" | "sqlite", Layer.Layer<SqlClient.SqlClient>]> = [
     ["pg", Layer.orDie(PgContainer.layerClient)],
     ["mysql", Layer.orDie(MysqlContainer.layerClient)],
     ["mssql", Layer.orDie(MssqlContainer.layerClient)],
     ["sqlite", Layer.orDie(SqliteLayer)]
-  ] as const).forEach(([label, layer]) => {
+  ]
+  backends.forEach(([label, layer]) => {
     // Tests truncate this backend's shared tables.
     it.layer(StorageLayer.pipe(Layer.provideMerge(layer)), {
       concurrent: false,

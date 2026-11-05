@@ -33,16 +33,22 @@ import * as Statement from "./Statement.ts"
 const TypeId = "~effect/sql/SqlClient"
 
 /**
- * SQL client service interface, combining the statement constructor API with
+ * SQL client operations shared by every client, without the generic
+ * `SqlClient` type id. It combines the statement constructor API with
  * connection reservation, transaction handling, and reactive query helpers.
+ *
+ * **When to use**
+ *
+ * Use when declaring a driver-specific client service. Extend `Base` rather
+ * than {@link SqlClient}: a driver client that extends `SqlClient` is
+ * assignable to it, so providing a generic `SqlClient` would also remove the
+ * driver requirement from an effect's types.
  *
  * @stability unstable
  * @category models
- * @since 4.0.0
+ * @since 4.1.3
  */
-export interface SqlClient extends Constructor {
-  readonly [TypeId]: typeof TypeId
-
+export interface Base extends Constructor {
   /**
    * Copy of the client for safeql etc.
    */
@@ -188,6 +194,18 @@ export interface SqlClient extends Constructor {
     keys: KeysInput,
     effect: Effect.Effect<A, E, R>
   ) => Effect.Effect<Queue.Dequeue<A, E>, never, R | Scope.Scope>
+}
+
+/**
+ * SQL client service interface: the {@link Base} client operations plus the
+ * generic `SqlClient` type id.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.0.0
+ */
+export interface SqlClient extends Base {
+  readonly [TypeId]: typeof TypeId
 }
 
 /**
