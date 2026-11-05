@@ -228,11 +228,13 @@ describe("FileSystem operations", () => {
     exists: () => Effect.succeed(true)
   })
 
-  it.effect("calls an operation under a Layer<FileSystem>, and the record is the provided object", () =>
+  it.effect("calls an operation under a Layer<FileSystem>, and the record read is an object of the members", () =>
     Effect.gen(function*() {
       const direct = yield* FileSystem.readFile("a")
       const fs = yield* FileSystem.FileSystem
-      assert.strictEqual(fs, live)
+      assert.deepStrictEqual(fs, live)
+      assert.deepStrictEqual(Object.keys(fs), Object.keys(FileSystem.FileSystem.members))
+      assert.strictEqual(fs.readFile, live.readFile)
       assert.deepStrictEqual(direct, text("live"))
       assert.deepStrictEqual(yield* fs.readFile("a"), text("live"))
       assert.isTrue(yield* FileSystem.exists("a"))
@@ -262,11 +264,14 @@ describe("FileSystem operations", () => {
       )
     ))
 
-  it("is stored as one slot per member beside the record", () => {
+  it("is stored as one slot per member and nothing else", () => {
     const context = Context.make(FileSystem.FileSystem, live)
-    assert.strictEqual(context.mapUnsafe.size, Object.keys(FileSystem.FileSystem.members).length + 1)
+    assert.strictEqual(context.mapUnsafe.size, Object.keys(FileSystem.FileSystem.members).length)
+    assert.isFalse(context.mapUnsafe.has("effect/FileSystem"))
     assert.strictEqual(Context.get(context, FileSystem.readFile), live.readFile)
-    assert.strictEqual(Context.get(context, FileSystem.FileSystem), live)
+    assert.deepStrictEqual(Context.get(context, FileSystem.FileSystem), live)
+    // the members are properties of the key
+    assert.strictEqual(FileSystem.FileSystem.readFile, FileSystem.readFile)
     assert.strictEqual(Context.omit(FileSystem.FileSystem)(context).mapUnsafe.size, 0)
   })
 })

@@ -10,17 +10,17 @@ on the commit whose `packages/` tree is the one reviewed; nothing in this file i
 
 Three measurements, run in order by `pnpm --filter tree-shakeable-services-spec bench:check`
 (`specs/tree-shakeable-services/scripts/bench-check.ts`), each against the `Context.ts` of the branch point
-(`git merge-base HEAD origin/v4/next-minor`, `7997bf786b`), loaded beside this branch's in the same process so both run
+(`git merge-base HEAD origin/v4/next-minor`, `a2b1be040d`), loaded beside this branch's in the same process so both run
 against the same `effect` runtime:
 
-1. **Counts** (`packages/effect/benchmark/context/counts.ts --check`). `Map.prototype.get`, `has` and `set`, and
-   `WeakMap.prototype.get` and `set`, are replaced by counting wrappers for the duration of one call, after a warm-up
-   call and, for operations with a per-storage cache, after the first call so that the steady state is counted. A `Map`
-   copied with `new Map(map)` calls the replaced `set` once per entry, so a copy of a context's map counts as its size.
-   Bytes are the growth of the heap over four thousand calls whose results are kept, after a full collection and with
-   none in between (a run in which one happens is discarded), per call, after a hundred thousand warm-up calls so the
-   code is optimized; the smallest of five runs, rounded to eight bytes. Counts do not depend on the machine's load.
-   This is the gate a continuous integration runner applies.
+1. **Counts** (`packages/effect/benchmark/context/counts.ts --check`). `Map.prototype.get`, `has` and `set`,
+   `Set.prototype.has`, and `WeakMap.prototype.get` and `set`, are replaced by counting wrappers for the duration of
+   one call, after a warm-up call and, for operations with a per-storage cache, after the first call so that the
+   steady state is counted. A `Map` copied with `new Map(map)` calls the replaced `set` once per entry, so a copy of a
+   context's map counts as its size. Bytes are the growth of the heap over four thousand calls whose results are kept,
+   after a full collection and with none in between (a run in which one happens is discarded), per call, after a
+   hundred thousand warm-up calls so the code is optimized; the smallest of five runs, rounded to eight bytes. Counts
+   do not depend on the machine's load. This is the gate a continuous integration runner applies.
 2. **Timing, ordinary keys** (`operations.ts --ordinary`), in a process that holds no record.
 3. **Timing, records** (`operations.ts`), in a process that holds records and reads them, and runs fibers.
 
@@ -33,356 +33,357 @@ median's distance from 1.00 and its interquartile range) is added to every limit
 is repeated once with ten more rounds; if the control is still outside, the run reports SKIPPED: the machine cannot be
 read, nothing has been shown either way, and the runner continues with the next mode. Before anything is calibrated,
 every case runs a little, round-robin, so that the optimiser compiles the getters having seen every key shape and
-every path, as it would in a program past its start-up. Both modules are warmed with the same six key shapes, and with
-references read while absent. Absolute costs are reported and not gated.
+every path. Both modules are warmed with the same key shapes and with references read while absent; in the records
+mode this branch's getters are also warmed with a record key, since they will meet one, and a pristine copy of this
+branch's own `Context.ts` (the twin) is loaded to serve the benchmark's calls alone. Absolute costs are reported and
+not gated.
 
 **Three orders.** The same two closures, in the same process, can differ by a few nanoseconds depending on the order
-in which the cases were calibrated, optimised and laid out, with the A/A control none the wiser, since it compares a
-closure with itself. So the runner measures each timing mode in three processes with the pairs in three orders
-(`BENCH_SEED=0,1,2`, a deterministic shuffle after the control) and gates the median of the three medians, with the
-limits widened by the largest envelope of the readable runs; a mode whose three controls are all too noisy is SKIPPED.
-The per-order tables are in the run's output; the combined tables are pasted below with one full order each.
+in which the cases were calibrated, optimised and laid out, with the A/A control none the wiser. So the runner
+measures each timing mode in three processes with the pairs in three orders (`BENCH_SEED=0,1,2`) and gates the median
+of the readable runs' medians, with the limits widened by the largest envelope of the readable runs; a mode whose
+three controls are all too noisy is SKIPPED.
 
 **What is gated where.** The rows that compare this branch with itself (a record read against an ordinary read, a
 record write against an ordinary write, `yield*` of a record against `yield*` of a plain service) are gated in both
-modes. The rows that compare this branch with the branch point are gated in the ordinary-keys mode, where both modules
-serve the same calls, and reported in the records mode, where this branch's module serves the whole runtime while the
-copy of the branch point serves the benchmark alone; the records mode measures that asymmetry directly, with the code
-held equal, by loading a second, pristine copy of this branch's own `Context.ts` ("a pristine copy of this branch")
-and comparing the live module with it. The reasoning and the experiments behind this are under "The ordinary rows in
-the records process".
+modes. The rows that compare this branch with the branch point are gated at 1.05 in the ordinary-keys mode, where
+both modules serve the same calls and nothing else, and at 1.25 in the records mode, where this branch's module serves
+the whole runtime (every reference the fibers read, every operation and record) while the copy of the branch point
+serves the benchmark alone; the twin rows beside them measure that asymmetry with the code held equal, and are
+reported. The reasoning and the readings are under "The ordinary rows in the records process".
 
-The runner's summary lists each mode as OK, SKIPPED or EXCEEDED; the gate fails only on EXCEEDED. The run pasted below
-is the whole gate on a shared eight-core machine, where the controls of the ordinary mode were readable in one order
-of three (0.04; the others 0.06 and 0.12 after their retry) and those of the records mode in all three (0.02 to 0.03).
+The run pasted below is the whole gate on a shared eight-core machine. Two orders of the ordinary mode (controls 0.14
+and 0.13 after their retries) and one of the records mode (0.07) were too noisy to read and are SKIPPED by the gate's
+own rule; the readable orders are what is pasted.
 
 ### Counts
 
 ```
 $ node benchmark/context/counts.ts --check
-baseline: 7997bf786b; operations and bytes per call
+baseline: a2b1be040d; operations and bytes per call
 
 ordinary keys, this branch over the branch point (each pair must be identical)
 
-  case                                                                              Map.get  Map.has  Map.set  Weak.get  Weak.set   bytes
-  getUnsafe, ordinary key, flat context, this branch                                      1        0        0         0         0       0
-  getUnsafe, ordinary key, flat context, baseline                                         1        0        0         0         0       0
-  getUnsafe, ordinary key, through one overlay, this branch                               1        0        0         0         0       0
-  getUnsafe, ordinary key, through one overlay, baseline                                  1        0        0         0         0       0
-  getUnsafe, reference default (slot absent), this branch                                 1        1        0         0         0       0
-  getUnsafe, reference default (slot absent), baseline                                    1        1        0         0         0       0
-  getOption, absent key, this branch                                                      1        1        0         0         0       0
-  getOption, absent key, baseline                                                         1        1        0         0         0       0
-  add, ordinary key to 33 slots, this branch                                              0        0        0         0         0     144
-  add, ordinary key to 33 slots, baseline                                                 0        0        0         0         0     144
-  add then getUnsafe, ordinary key, this branch                                           1        0        0         0         0     144
-  add then getUnsafe, ordinary key, baseline                                              1        0        0         0         0     144
-  make, ordinary key, this branch                                                         0        0        1         0         0     528
-  make, ordinary key, baseline                                                            0        0        1         0         0     528
-  mergeAll, 33 one-slot contexts, this branch                                             0        0       33         0         0    3032
-  mergeAll, 33 one-slot contexts, baseline                                                0        0       33         0         0    5696
+  case                                                                              Map.get  Map.has  Map.set  Set.has  Weak.get  Weak.set   bytes
+  getUnsafe, ordinary key, flat context, this branch                                      1        0        0        0         0         0       0
+  getUnsafe, ordinary key, flat context, baseline                                         1        0        0        0         0         0       0
+  getUnsafe, ordinary key, through one overlay, this branch                               1        0        0        0         0         0       0
+  getUnsafe, ordinary key, through one overlay, baseline                                  1        0        0        0         0         0       0
+  getUnsafe, reference default (slot absent), this branch                                 1        1        0        0         0         0       0
+  getUnsafe, reference default (slot absent), baseline                                    1        1        0        0         0         0       0
+  getOption, absent key, this branch                                                      1        1        0        0         0         0       0
+  getOption, absent key, baseline                                                         1        1        0        0         0         0       0
+  add, ordinary key to 33 slots, this branch                                              0        0        0        1         0         0     144
+  add, ordinary key to 33 slots, baseline                                                 0        0        0        1         0         0     144
+  add then getUnsafe, ordinary key, this branch                                           1        0        0        1         0         0     144
+  add then getUnsafe, ordinary key, baseline                                              1        0        0        1         0         0     144
+  make, ordinary key, this branch                                                         0        0        1        0         0         0     528
+  make, ordinary key, baseline                                                            0        0        1        0         0         0     528
+  mergeAll, 33 one-slot contexts, this branch                                             0        0       33        0         0         0    3040
+  mergeAll, 33 one-slot contexts, baseline                                                0        0       33        0         0         0    5696
 
 records, this branch
 
-  case                                                                              Map.get  Map.has  Map.set  Weak.get  Weak.set   bytes
-  add, record (32 members) to 33 slots                                                    0        0        0         0         0     456
-  add, record (32 members) to 300 slots                                                   0        0        0         0         0     456
-  make, record (32 members)                                                               0        0       33         0         0    4192
-  getUnsafe, member through a record overlay                                              1        0        0         0         0       0
-  getUnsafe, record through a record overlay                                              0        0        0         0         0       0
-  getUnsafe, record in a flat map, same context                                           0        0        0         0         0       0
-  getUnsafe, record in a flat map, through one overlay                                    0        1        0         0         0       0
-  add then getUnsafe, record in a flat map, context rebuilt per request                   0        1        0         0         0       0
-  add, member override to a context holding the record                                    0        0        0         0         0     144
-  getUnsafe, record with a member overridden underneath, through one overlay              0        2        0         0         0       0
-  add member override then getUnsafe record, per request (new override each time)         1        1        0         1         0     312
-  getUnsafe, record never written, first read of a storage                                0        1        0         0         0       0
-  getUnsafe, record never written, later read                                             0        0        0         0         0       0
+  case                                                                              Map.get  Map.has  Map.set  Set.has  Weak.get  Weak.set   bytes
+  add, record (32 members) to 33 slots                                                    0        0        0        0         0         1    2216
+  add, record (32 members) to 300 slots                                                   0        0        0        0         0         1    2216
+  make, record (32 members)                                                               0        0       32        0         0         1    2632
+  getUnsafe, member through a record's overlays                                           0        0        0        0         0         0       0
+  getUnsafe, record through a record's overlays                                           0        0        0        1         0         0       0
+  getUnsafe, record in a flat map, same context                                           0        0        0        0         0         0       0
+  getUnsafe, record in a flat map, through one overlay                                    0        0        0        1         0         0       0
+  add then getUnsafe, record in a flat map, context rebuilt per request                   0        0        0        1         0         0       0
+  add, member override to a context holding the record                                    0        0        0        1         0         0     144
+  getUnsafe, record with a member overridden underneath, through one overlay              0        0        0        2         0         0       0
+  add member override then getUnsafe record, per request (new override each time)         1        0        0        1         2         0     312
+  getUnsafe, record never written, first read of a storage                                1        0        0        1         2         0     312
+  getUnsafe, record never written, later read                                             0        0        0        0         0         0       0
 
 OK: every count is as stated
 ```
 
-Readings. Every ordinary-key operation performs the same `Map` operations and allocates the same bytes on this branch
-as at the branch point; an ordinary overlay is the branch point's 144 bytes again (round 8 carried a `record` field on
-every overlay, 152 bytes). The `mergeAll` bytes differ between the two modules (3,032 against 5,696) in every run of
-every round, on this branch and at the branch point alike, and are reported, not gated: the row copies thirty-three
-one-entry maps into one, and the heap growth of a `Map` of that size is what the allocator happens to reserve for it,
-which differs between the two module instances. A record written into a context performs no `Map` operation: one
-overlay (144 bytes) with an array of the thirty-three slots, 456 bytes in all, into 33 slots and into 300 alike (840
-bytes in round 8, when the overlay held a second object). `make` of a record is 33 `Map.set`, one per slot of the fresh
-flat map. A member read through a record overlay is one `Map.get` (the member's position). A record read from a record
-overlay performs no lookup at all; from a flat map it is one `Map.has` per overlay walked (the check that the overlay
-does not hold one of the record's slots) and then the remembered object, with nothing allocated; with a member
-overridden underneath, one `Map.has` for the per-request overlay and one for the override, then the remembered view. A
-new override followed by a record read is one `Map.get` (the member's name), one `Map.has`, one `WeakMap.get` (the
-record below the override) and one copy of the record, 312 bytes with the overlay, and no `WeakMap.set`: the view is
-kept in the key's one-entry cache only.
+Readings. Every ordinary-key operation performs the same `Map` and `Set` operations and allocates the same bytes on
+this branch as at the branch point: the ordinary path is the branch point's code. (The `mergeAll` bytes differ between
+the two module instances in every run, on this branch and at the branch point alike, and are reported, not gated: the
+heap growth of a `Map` of that size is what the allocator happens to reserve for it.) A record written into a context
+performs no `Map` operation: one ordinary overlay per member and the object the read returns, remembered for the
+topmost overlay with one `WeakMap.set`, 2,216 bytes in all, into 33 slots and into 300 alike. `make` of a record is 32
+`Map.set`, one per slot of the fresh flat map. A member read through a record's overlays is found in the overlays, as
+any overlay's slot is, with no `Map` operation. A record read is one `Set.has` per overlay walked above its storage
+(the check that the overlay does not hold one of the record's slots) and then the remembered object, with nothing
+allocated: none from the same flat context, one through a record's own overlays or one unrelated overlay, two with a
+member overridden underneath and a per-request overlay above. A new override followed by a record read is one `Map.get`
+(the member's name), one `Set.has`, two `WeakMap.get` (the override's storage, a miss, and the record below it) and one
+copy of the record, 312 bytes with the overlay, and no `WeakMap.set`: the copy is kept in the key's one-entry cache
+only.
 
 ### Timing, ordinary keys
 
-The combined table, and the one readable order in full:
+The combined table, and the readable order in full:
 
 ```
-=== timing, ordinary keys: the median of the 1 readable runs (orders 1)
+=== timing, ordinary keys: the median of the 1 readable runs (orders 2)
 
   ratio (median over runs of the median per run)                                                    median                 runs   limit
-  getUnsafe, ordinary key: this branch / baseline                                                     1.18                 1.18     1.29
-  getUnsafe, mixed key kinds: this branch / baseline                                                  1.06                 1.06     1.29
-  getUnsafe, reference default (slot absent): this branch / baseline                                  1.07                 1.07     1.29
-  add, ordinary key to 33 slots: this branch / baseline                                               0.95                 0.95     1.29
-  add, mixed key kinds: this branch / baseline                                                        1.09                 1.09     1.29
-  add then getUnsafe, ordinary key: this branch / baseline                                            1.07                 1.07     1.29
-  mergeAll, 33 one-slot contexts: this branch / baseline                                              1.00                 1.00     1.29
+  getUnsafe, ordinary key: this branch / baseline                                                     1.01                 1.01     1.10
+  getUnsafe, mixed key kinds: this branch / baseline                                                  1.01                 1.01     1.10
+  getUnsafe, reference default (slot absent): this branch / baseline                                  0.98                 0.98     1.10
+  add, ordinary key to 33 slots: this branch / baseline                                               1.04                 1.04     1.10
+  add, mixed key kinds: this branch / baseline                                                        0.93                 0.93     1.10
+  add then getUnsafe, ordinary key: this branch / baseline                                            1.05                 1.05     1.10
+  mergeAll, 33 one-slot contexts: this branch / baseline                                              0.99                 0.99     1.10
 
-  largest control envelope: 0.04 (added to every limit)
+  largest control envelope: 0.05 (added to every limit)
 
 OK: every median ratio is within its limit
 ```
 
 ```
-=== timing, ordinary keys, order 1: BENCH_SEED=1 node operations.ts --ordinary
+=== timing, ordinary keys, order 2: BENCH_SEED=2 node operations.ts --ordinary
 
-baseline: 7997bf786b; 21 rounds, each loop about 30 ms of CPU time, A/B/B/A within a round; ns/op; ordinary keys only (no record is held or read in this process)
+baseline: a2b1be040d; 21 rounds, each loop about 30 ms of CPU time, A/B/B/A within a round; ns/op; ordinary keys only (no record is held or read in this process)
 
   case                                                                            median       min       max
-  control A: getUnsafe, ordinary key, this branch                                   14.2      13.1      25.2
-  control B: getUnsafe, ordinary key, this branch                                   14.1      13.0      34.2
-  add, ordinary key, this branch                                                    25.9      22.4      58.1
-  add, ordinary key, baseline                                                       26.0      19.8     140.1
-  getUnsafe, ordinary key, this branch                                              14.7      13.8      28.6
-  getUnsafe, ordinary key, baseline                                                 12.4      11.7      22.8
-  add, mixed key kinds, this branch                                                 31.6      29.5      62.0
-  add, mixed key kinds, baseline                                                    29.3      27.9      52.2
-  mergeAll, 33 contexts, this branch                                              1468.4    1424.1    2961.2
-  mergeAll, 33 contexts, baseline                                                 1463.0    1434.2    2902.6
-  getUnsafe, mixed key kinds, this branch                                           20.7      20.3      39.6
-  getUnsafe, mixed key kinds, baseline                                              19.7      19.0      34.8
-  getUnsafe, reference default, this branch                                         15.3      14.4      23.9
-  getUnsafe, reference default, baseline                                            14.4      12.1      69.9
-  add then getUnsafe, ordinary key, this branch                                     41.4      36.9      80.7
-  add then getUnsafe, ordinary key, baseline                                        38.3      35.4      81.0
+  control A: getUnsafe, ordinary key, this branch                                   18.1      11.7      45.5
+  control B: getUnsafe, ordinary key, this branch                                   15.9      11.6      78.7
+  getUnsafe, ordinary key, this branch                                              19.9      11.5      34.5
+  getUnsafe, ordinary key, baseline                                                 20.0      11.3      48.9
+  getUnsafe, reference default, this branch                                         22.1      13.5      57.3
+  getUnsafe, reference default, baseline                                            22.5      13.2      57.3
+  mergeAll, 33 contexts, this branch                                              2520.5    1473.2    3144.7
+  mergeAll, 33 contexts, baseline                                                 2584.8    1501.8    3637.4
+  add, ordinary key, this branch                                                    33.2      22.2      75.1
+  add, ordinary key, baseline                                                       32.8      22.3      74.6
+  add, mixed key kinds, this branch                                                 49.5      31.7      69.7
+  add, mixed key kinds, baseline                                                    53.8      34.8      67.2
+  getUnsafe, mixed key kinds, this branch                                           27.4      19.3      44.3
+  getUnsafe, mixed key kinds, baseline                                              27.3      19.2      42.9
+  add then getUnsafe, ordinary key, this branch                                     72.4      40.2      95.2
+  add then getUnsafe, ordinary key, baseline                                        66.7      36.8     132.9
 
   ratio (median of per-round ratios)                                                                median     p25     p75   limit
-  control, getUnsafe ordinary key: this branch / this branch                                          1.01    0.99    1.03     1.05
-  add, ordinary key to 33 slots: this branch / baseline                                               0.95    0.90    1.03     1.29
-  getUnsafe, ordinary key: this branch / baseline                                                     1.18    1.15    1.20     1.29
-  add, mixed key kinds: this branch / baseline                                                        1.09    1.06    1.13     1.29
-  mergeAll, 33 one-slot contexts: this branch / baseline                                              1.00    0.99    1.01     1.29
-  getUnsafe, mixed key kinds: this branch / baseline                                                  1.06    1.05    1.08     1.29
-  getUnsafe, reference default (slot absent): this branch / baseline                                  1.07    1.04    1.11     1.29
-  add then getUnsafe, ordinary key: this branch / baseline                                            1.07    1.05    1.10     1.29
+  control, getUnsafe ordinary key: this branch / this branch                                          1.03    1.00    1.04     1.05
+  getUnsafe, ordinary key: this branch / baseline                                                     1.01    0.98    1.04     1.10
+  getUnsafe, reference default (slot absent): this branch / baseline                                  0.98    0.97    1.00     1.10
+  mergeAll, 33 one-slot contexts: this branch / baseline                                              0.99    0.95    1.07     1.10
+  add, ordinary key to 33 slots: this branch / baseline                                               1.04    0.97    1.07     1.10
+  add, mixed key kinds: this branch / baseline                                                        0.93    0.90    1.01     1.10
+  getUnsafe, mixed key kinds: this branch / baseline                                                  1.01    0.97    1.04     1.10
+  add then getUnsafe, ordinary key: this branch / baseline                                            1.05    1.00    1.13     1.10
 
-  control envelope: 0.04 (added to every limit)
+  control envelope: 0.05 (added to every limit)
 ```
 
-Readings. The ordinary paths are the branch point's code plus one `typeof` per read in the getters and one `typeof`
-per overlay walked in `lookup`: 0.95 to 1.18 against a limit of 1.25 plus the control's envelope, with the flat read
-(12.4 against 14.7 ns, about two nanoseconds) the largest. `mergeAll` is unchanged (1.00). The two unreadable orders
-of this run (controls 0.06 and 0.12 after their retries) had the same rows between 1.05 and 1.14 and 1.09 and 1.19.
+Readings. The ordinary paths are the branch point's code behind one `typeof` of the key in `make`, `add` and the
+getters: 1.00 to 1.05 against a limit of 1.05 plus the control's envelope. Round 9 read 1.12 to 1.21 on the flat read
+in this mode, with the record overlay's branch in `lookup` and a `read` helper shared by every getter; both are gone.
 
 ### Timing, records
 
 The combined table, and order 0 in full:
 
 ```
-=== timing, records: the median of the 3 readable runs (orders 0, 1, 2)
+=== timing, records: the median of the 2 readable runs (orders 0, 2)
 
   ratio (median over runs of the median per run)                                                    median                 runs   limit
-  getUnsafe, ordinary key: this branch / baseline                                                     1.41       1.49 1.41 1.18 reported
-  getUnsafe, mixed key kinds: this branch / baseline                                                  1.09       1.09 1.10 1.07 reported
-  getUnsafe, reference default (slot absent): this branch / baseline                                  1.47       1.49 1.47 1.10 reported
-  add, ordinary key to 33 slots: this branch / baseline                                               1.13       1.17 1.13 1.08 reported
-  add, mixed key kinds: this branch / baseline                                                        1.08       1.09 1.08 1.07 reported
-  add then getUnsafe, ordinary key: this branch / baseline                                            1.22       1.22 1.24 1.14 reported
-  mergeAll, 33 one-slot contexts: this branch / baseline                                              1.00       1.00 1.05 1.00 reported
-  getUnsafe, ordinary key: this branch / a pristine copy of this branch                               1.27       1.29 1.27 1.01 reported
-  getUnsafe, reference default (slot absent): this branch / a pristine copy of this branch            1.50       1.50 1.52 1.05 reported
-  add then getUnsafe, ordinary key: this branch / a pristine copy of this branch                      1.21       1.23 1.21 1.14 reported
-  record read (provided whole) / ordinary key read, same context                                      0.69       0.65 0.69 0.87     1.28
-  record read (provided whole) / ordinary key read, context rebuilt per request                       0.98       0.93 0.98 1.01     1.28
-  record read (member overridden underneath) / ordinary key read, context rebuilt per request         1.07       1.01 1.07 1.08     1.53
-  member override into a context holding the record / ordinary add                                    1.05       1.02 1.05 1.08 reported
-  member override then record read, per request / ordinary add then read                              2.58       2.58 2.58 2.74     8.03
-  record assembled from 32 member layers, context rebuilt per request / ordinary add then read        0.97       0.91 0.97 0.99     1.53
-  record write / ordinary write, into 33 slots                                                       17.80    19.82 17.25 17.80    33.03
-  record write / ordinary write, into 300 slots                                                      18.06    19.44 18.06 17.81    33.03
-  record write into 300 slots / into 33 slots                                                         0.99       0.99 1.01 0.99     1.18
-  record write / mergeAll of 33 one-slot contexts                                                     0.32       0.32 0.32 0.31     1.03
-  yield* FileSystem / yield* Plain, same context                                                      1.02       1.00 1.02 1.03     1.28
-  yield* FileSystem / yield* Plain, context rebuilt per request                                       1.02       1.01 1.02 1.03     1.28
-  yield* FileSystem, member overridden underneath / yield* Plain, context rebuilt per request         1.09       1.07 1.09 1.09     1.53
-  yield* FileSystem, member overridden per request / yield* Plain, context rebuilt per request        2.78       2.79 2.78 2.76     3.03
-  provideService(FileSystem) then yield* FileSystem / provideService(Plain) then yield* Plain, per request    1.85       1.83 1.89 1.85     3.03
-  yield* FileSystem from member layers (assembled) / yield* Plain, context rebuilt per request        1.05       1.00 1.05 1.05     1.53
-  operation call / method call on a yielded plain record                                              0.84       0.84 0.87 0.83     1.03
-  method call on the record service / on a plain record                                               1.01       1.01 1.02 1.01 reported
+  getUnsafe, ordinary key: this branch / baseline                                                     1.07            1.10 1.07     1.30
+  getUnsafe, mixed key kinds: this branch / baseline                                                  1.03            1.05 1.03     1.30
+  getUnsafe, reference default (slot absent): this branch / baseline                                  1.04            1.06 1.04     1.30
+  add, ordinary key to 33 slots: this branch / baseline                                               1.22            1.22 1.65     1.30
+  add, mixed key kinds: this branch / baseline                                                        1.06            1.07 1.06     1.30
+  add then getUnsafe, ordinary key: this branch / baseline                                            1.09            1.09 1.27     1.30
+  mergeAll, 33 one-slot contexts: this branch / baseline                                              1.00            1.00 1.14     1.30
+  getUnsafe, ordinary key: this branch / a pristine copy of this branch                               1.11            1.11 1.19 reported
+  getUnsafe, reference default (slot absent): this branch / a pristine copy of this branch            1.03            1.03 1.07 reported
+  add, ordinary key to 33 slots: this branch / a pristine copy of this branch                         1.08            1.28 1.08 reported
+  add then getUnsafe, ordinary key: this branch / a pristine copy of this branch                      1.10            1.10 1.13 reported
+  record read (provided whole) / ordinary key read, same context                                      0.74            0.75 0.74     1.30
+  record read (provided whole) / ordinary key read, context rebuilt per request                       1.00            1.02 1.00     1.55
+  record read (member overridden underneath) / ordinary key read, context rebuilt per request         1.11            1.26 1.11     1.55
+  member override into a context holding the record / ordinary add                                    1.02            1.12 1.02     1.30
+  member override then record read, per request / ordinary add then read                              3.24            3.54 3.24     5.05
+  record assembled from 32 member layers, context rebuilt per request / ordinary add then read        1.00            1.00 1.04     1.55
+  record write / ordinary write, into 33 slots                                                       39.75          39.75 43.77    64.05
+  record write / ordinary write, into 300 slots                                                      37.21          37.21 47.50    64.05
+  record write into 300 slots / into 33 slots                                                         0.96            0.96 1.00     1.20
+  record write / mergeAll of 33 one-slot contexts                                                     1.00            1.02 1.00     1.30
+  yield* FileSystem / yield* Plain, same context                                                      1.02            1.11 1.02     1.30
+  yield* FileSystem / yield* Plain, context rebuilt per request                                       1.02            1.02 1.04     1.55
+  yield* FileSystem, member overridden underneath / yield* Plain, context rebuilt per request         1.12            1.16 1.12     1.55
+  yield* FileSystem, member overridden per request / yield* Plain, context rebuilt per request        1.22            1.28 1.22     3.05
+  provideService(FileSystem) then yield* FileSystem / provideService(Plain) then yield* Plain, per request    3.61            3.70 3.61     5.05
+  yield* FileSystem from member layers (assembled) / yield* Plain, context rebuilt per request        1.04            1.06 1.04     1.55
+  operation call / method call on a yielded plain record                                              0.85            0.85 0.85     1.05
+  method call on the record service / on a plain record                                               1.03            1.05 1.03     1.30
 
-  largest control envelope: 0.03 (added to every limit)
+  largest control envelope: 0.05 (added to every limit)
 
 OK: every median ratio is within its limit
 ```
 
 ```
-=== timing, records, order 0: BENCH_SEED=0 node operations.ts
+=== timing, records, order 0: BENCH_SEED=0 node operations.ts 
 
-baseline: 7997bf786b; 21 rounds, each loop about 30 ms of CPU time, A/B/B/A within a round; ns/op; records held and read in this process
+baseline: a2b1be040d; 21 rounds, each loop about 30 ms of CPU time, A/B/B/A within a round; ns/op; records held and read in this process
 
   case                                                                            median       min       max
-  control A: getUnsafe, ordinary key, this branch                                   18.2      16.5      35.0
-  control B: getUnsafe, ordinary key, this branch                                   18.4      16.8      30.8
-  getUnsafe, ordinary key, this branch                                              17.8      16.6      35.9
-  getUnsafe, ordinary key, baseline                                                 11.9      11.0     131.6
-  getUnsafe, mixed key kinds, this branch                                           21.5      20.9      43.7
-  getUnsafe, mixed key kinds, baseline                                              19.6      17.9      92.7
-  getUnsafe, reference default, this branch                                         23.2      20.5      48.2
-  getUnsafe, reference default, baseline                                            15.6      13.2      87.7
-  add, ordinary key, this branch                                                    27.4      21.5      60.8
-  add, ordinary key, baseline                                                       22.3      20.8      56.2
-  add, mixed key kinds, this branch                                                 32.6      31.0      61.1
-  add, mixed key kinds, baseline                                                    30.4      28.4      58.2
-  add then getUnsafe, ordinary key, this branch                                     45.6      41.3     142.4
-  add then getUnsafe, ordinary key, baseline                                        36.8      34.2     136.1
-  mergeAll, 33 contexts, this branch                                              1487.9    1428.7    2848.3
-  mergeAll, 33 contexts, baseline                                                 1490.2    1428.8    2886.8
-  getUnsafe, ordinary key, this branch (twin pair)                                  18.1      16.4      30.9
-  getUnsafe, ordinary key, pristine copy of this branch                             14.0      13.1      43.0
-  getUnsafe, reference default, this branch (twin pair)                             23.5      20.6      59.8
-  getUnsafe, reference default, pristine copy of this branch                        15.6      13.3     116.1
-  add then getUnsafe, ordinary key, this branch (twin pair)                         46.9      43.0     114.9
-  add then getUnsafe, ordinary key, pristine copy of this branch                    38.7      34.4     289.5
-  getUnsafe, record provided whole, same context                                    11.6      11.2      23.8
-  getUnsafe, ordinary key (record context)                                          17.7      16.4      31.4
-  add then getUnsafe, record provided whole                                         42.5      38.2     111.9
-  add then getUnsafe, ordinary key (record pair)                                    47.0      42.9     104.8
-  add then getUnsafe, record with a member overridden underneath                    47.3      41.7     114.0
-  add then getUnsafe, ordinary key (override pair)                                  46.1      42.9     109.9
-  add, member override to the record context                                        24.1      22.3      65.7
-  add, ordinary key (override pair)                                                 23.6      22.4      55.9
-  add member override then getUnsafe record, per request                           116.3     108.4     355.8
-  add then getUnsafe, ordinary key (per-request override pair)                      45.3      42.6     101.7
-  add then getUnsafe, record from 32 member layers (assembled)                      41.2      38.4      85.2
-  add then getUnsafe, ordinary key (members pair)                                   45.4      42.3      96.3
-  add, record (32 members) to 33 slots                                             484.8     467.7     990.7
-  add, ordinary key to 33 slots (write pair)                                        25.0      21.8      91.7
-  add, record (32 members) to 300 slots                                            486.9     468.0     902.8
-  add, ordinary key to 300 slots                                                    25.3      21.4      68.8
-  add, record (32 members) to 300 slots (size pair)                                486.1     469.9     940.6
-  add, record (32 members) to 33 slots (size pair)                                 490.8     469.4     909.4
-  add, record (32 members) to 33 slots (merge pair)                                492.2     471.1    1141.7
-  mergeAll, 33 contexts (merge pair)                                              1521.6    1460.6    2991.1
-  runSync: yield* FileSystem (record service)                                      437.0     416.9     968.7
-  runSync: yield* Plain (today's record service)                                   437.3     422.1     898.5
-  runSync: yield* FileSystem, context rebuilt per request                          625.5     591.1    1239.9
-  runSync: yield* Plain, context rebuilt per request                               619.9     603.5     983.0
-  runSync: yield* FileSystem with a member overridden underneath, per request      659.2     637.6    1387.7
-  runSync: yield* Plain, context rebuilt per request (override pair)               619.4     586.6    1306.7
-  runSync: provideService(readFile) then yield* FileSystem                        1745.9    1656.6    3511.1
-  runSync: yield* Plain, context rebuilt per request (per-request override pair)     625.3     600.2    1198.1
-  runSync: provideService(FileSystem, record) then yield* FileSystem              1112.8    1064.3    1956.1
-  runSync: provideService(Plain, record) then yield* Plain                         610.7     591.8    1262.7
-  runSync: yield* FileSystem from member layers, per request                       638.3     600.8    1300.5
-  runSync: yield* Plain, context rebuilt per request (members pair)                631.7     598.5    1255.3
-  runSync: readFile(path) operation call                                           447.6     433.7     924.2
-  runSync: (yield* Plain).readFile(path)                                           534.0     510.6    1025.7
-  runSync: (yield* FileSystem).readFile(path)                                      544.6     523.3    1120.3
-  runSync: (yield* Plain).readFile(path) (record pair)                             534.1     520.0    1142.1
-  getUnsafe, operation key (1 of 33 slots)                                          18.1      17.0      27.8
-  make, record (32 members)                                                       1723.3    1518.4    3339.2
-  add, record (32 members): one overlay                                            489.2     471.5     921.6
-  add a member override to a context holding the record (overlay)                   26.8      22.8      93.3
-  first record read after a member override (one view built)                       117.9     112.5     246.7
-  record read, never written, remembered per flat map                               41.1      38.6      82.1
+  control A: getUnsafe, ordinary key, this branch                                   13.7      12.4      88.5
+  control B: getUnsafe, ordinary key, this branch                                   13.4      12.5      59.6
+  getUnsafe, ordinary key, this branch                                              13.2      12.4      39.5
+  getUnsafe, ordinary key, baseline                                                 12.6      11.7      24.2
+  getUnsafe, mixed key kinds, this branch                                           21.9      19.9      37.5
+  getUnsafe, mixed key kinds, baseline                                              20.7      19.3      36.9
+  getUnsafe, reference default, this branch                                         17.0      15.1      32.2
+  getUnsafe, reference default, baseline                                            15.5      14.1      52.7
+  add, ordinary key, this branch                                                    38.2      33.2      65.7
+  add, ordinary key, baseline                                                       30.8      28.7      54.8
+  add, mixed key kinds, this branch                                                 41.7      36.5      64.3
+  add, mixed key kinds, baseline                                                    37.8      34.0      57.0
+  add then getUnsafe, ordinary key, this branch                                     41.6      36.4     184.1
+  add then getUnsafe, ordinary key, baseline                                        38.0      35.2     137.1
+  mergeAll, 33 contexts, this branch                                              1813.2    1668.3    3004.6
+  mergeAll, 33 contexts, baseline                                                 1904.8    1675.0    3005.3
+  getUnsafe, ordinary key, this branch (twin pair)                                  13.3      12.7      24.7
+  getUnsafe, ordinary key, pristine copy of this branch                             12.0      11.4      32.0
+  getUnsafe, reference default, this branch (twin pair)                             15.9      14.1      45.2
+  getUnsafe, reference default, pristine copy of this branch                        15.5      13.4      32.1
+  add, ordinary key, this branch (twin pair)                                        37.6      34.4      60.1
+  add, ordinary key, pristine copy of this branch                                   29.0      26.9     122.9
+  add then getUnsafe, ordinary key, this branch (twin pair)                         40.8      38.2      73.4
+  add then getUnsafe, ordinary key, pristine copy of this branch                    36.3      34.1      83.4
+  getUnsafe, record provided whole, same context                                     9.9       9.4      39.7
+  getUnsafe, ordinary key (record context)                                          13.0      12.4      42.1
+  add then getUnsafe, record provided whole                                         42.0      37.7     111.9
+  add then getUnsafe, ordinary key (record pair)                                    41.8      37.9      80.3
+  add then getUnsafe, record with a member overridden underneath                    49.6      42.6     114.1
+  add then getUnsafe, ordinary key (override pair)                                  39.8      38.0      73.7
+  add, member override to the record context                                        38.3      33.1      61.5
+  add, ordinary key (override pair)                                                 33.9      32.0      49.4
+  add member override then getUnsafe record, per request                           151.8     135.9     269.7
+  add then getUnsafe, ordinary key (per-request override pair)                      43.5      37.5      67.1
+  add then getUnsafe, record from 32 member layers (assembled)                      42.8      39.0      91.6
+  add then getUnsafe, ordinary key (members pair)                                   43.7      37.7      73.5
+  add, record (32 members) to 33 slots                                            1868.4    1472.0    3130.6
+  add, ordinary key to 33 slots (write pair)                                        46.8      34.5     101.7
+  add, record (32 members) to 300 slots                                           1904.7    1419.1    3558.2
+  add, ordinary key to 300 slots                                                    48.1      33.4     101.3
+  add, record (32 members) to 300 slots (size pair)                               2047.5    1636.5    3451.6
+  add, record (32 members) to 33 slots (size pair)                                2098.3    1360.9    3497.8
+  add, record (32 members) to 33 slots (merge pair)                               1805.2    1485.6    3625.4
+  mergeAll, 33 contexts (merge pair)                                              1922.4    1665.5    3052.3
+  runSync: yield* FileSystem (record service)                                      552.5     455.8    1097.8
+  runSync: yield* Plain (today's record service)                                   481.9     428.9     988.2
+  runSync: yield* FileSystem, context rebuilt per request                          660.5     625.3    1693.7
+  runSync: yield* Plain, context rebuilt per request                               699.9     616.5    1295.1
+  runSync: yield* FileSystem with a member overridden underneath, per request      754.9     672.5    1387.2
+  runSync: yield* Plain, context rebuilt per request (override pair)               663.2     615.4    1265.5
+  runSync: provideService(readFile) then yield* FileSystem                         879.0     771.8    1682.3
+  runSync: yield* Plain, context rebuilt per request (per-request override pair)     663.9     618.4    1318.4
+  runSync: provideService(FileSystem, record) then yield* FileSystem              2928.3    2429.4    4523.2
+  runSync: provideService(Plain, record) then yield* Plain                         752.8     625.6    1328.7
+  runSync: yield* FileSystem from member layers, per request                       723.5     636.0    1495.7
+  runSync: yield* Plain, context rebuilt per request (members pair)                698.1     618.6    1436.9
+  runSync: readFile(path) operation call                                           481.8     448.6     936.5
+  runSync: (yield* Plain).readFile(path)                                           591.9     526.2    1117.4
+  runSync: (yield* FileSystem).readFile(path)                                      589.5     541.7    1162.5
+  runSync: (yield* Plain).readFile(path) (record pair)                             559.7     524.4    1110.8
+  getUnsafe, operation key (1 of 33 slots)                                          14.7      13.9      30.0
+  make, record (32 members)                                                       2611.2    1969.6    5066.3
+  add, record (32 members): one overlay per member                                2176.1    1667.7    3046.7
+  add a member override to a context holding the record (overlay)                   48.2      37.8      76.0
+  first record read after a member override (one copy)                             154.5     138.3     323.6
+  record read, never written, remembered per flat map                               46.0      39.4     131.7
 
   ratio (median of per-round ratios)                                                                median     p25     p75   limit
-  control, getUnsafe ordinary key: this branch / this branch                                          1.01    0.99    1.02     1.05
-  getUnsafe, ordinary key: this branch / baseline                                                     1.49    1.44    1.51 reported
-  getUnsafe, mixed key kinds: this branch / baseline                                                  1.09    1.04    1.13 reported
-  getUnsafe, reference default (slot absent): this branch / baseline                                  1.49    1.45    1.58 reported
-  add, ordinary key to 33 slots: this branch / baseline                                               1.17    1.09    1.20 reported
-  add, mixed key kinds: this branch / baseline                                                        1.09    1.06    1.11 reported
-  add then getUnsafe, ordinary key: this branch / baseline                                            1.22    1.17    1.27 reported
-  mergeAll, 33 one-slot contexts: this branch / baseline                                              1.00    0.99    1.02 reported
-  getUnsafe, ordinary key: this branch / a pristine copy of this branch                               1.29    1.27    1.32 reported
-  getUnsafe, reference default (slot absent): this branch / a pristine copy of this branch            1.50    1.46    1.60 reported
-  add then getUnsafe, ordinary key: this branch / a pristine copy of this branch                      1.23    1.19    1.27 reported
-  record read (provided whole) / ordinary key read, same context                                      0.65    0.64    0.68     1.28
-  record read (provided whole) / ordinary key read, context rebuilt per request                       0.93    0.89    0.96     1.28
-  record read (member overridden underneath) / ordinary key read, context rebuilt per request         1.01    0.99    1.03     1.53
-  member override into a context holding the record / ordinary add                                    1.02    1.01    1.04 reported
-  member override then record read, per request / ordinary add then read                              2.58    2.51    2.60     8.03
-  record assembled from 32 member layers, context rebuilt per request / ordinary add then read        0.91    0.90    0.95     1.53
-  record write / ordinary write, into 33 slots                                                       19.82   18.15   20.33    33.03
-  record write / ordinary write, into 300 slots                                                      19.44   18.23   20.38    33.03
-  record write into 300 slots / into 33 slots                                                         0.99    0.98    1.01     1.18
-  record write / mergeAll of 33 one-slot contexts                                                     0.32    0.32    0.33     1.03
-  yield* FileSystem / yield* Plain, same context                                                      1.00    0.99    1.01     1.28
-  yield* FileSystem / yield* Plain, context rebuilt per request                                       1.01    0.99    1.01     1.28
-  yield* FileSystem, member overridden underneath / yield* Plain, context rebuilt per request         1.07    1.05    1.08     1.53
-  yield* FileSystem, member overridden per request / yield* Plain, context rebuilt per request        2.79    2.76    2.85     3.03
-  provideService(FileSystem) then yield* FileSystem / provideService(Plain) then yield* Plain, per request    1.83    1.80    1.84     3.03
-  yield* FileSystem from member layers (assembled) / yield* Plain, context rebuilt per request        1.00    0.99    1.03     1.53
-  operation call / method call on a yielded plain record                                              0.84    0.83    0.85     1.03
-  method call on the record service / on a plain record                                               1.01    0.99    1.04 reported
+  control, getUnsafe ordinary key: this branch / this branch                                          1.02    0.99    1.04     1.05
+  getUnsafe, ordinary key: this branch / baseline                                                     1.10    1.05    1.13     1.30
+  getUnsafe, mixed key kinds: this branch / baseline                                                  1.05    1.03    1.14     1.30
+  getUnsafe, reference default (slot absent): this branch / baseline                                  1.06    1.03    1.10     1.30
+  add, ordinary key to 33 slots: this branch / baseline                                               1.22    1.18    1.28     1.30
+  add, mixed key kinds: this branch / baseline                                                        1.07    1.04    1.13     1.30
+  add then getUnsafe, ordinary key: this branch / baseline                                            1.09    1.05    1.16     1.30
+  mergeAll, 33 one-slot contexts: this branch / baseline                                              1.00    0.92    1.04     1.30
+  getUnsafe, ordinary key: this branch / a pristine copy of this branch                               1.11    1.08    1.18 reported
+  getUnsafe, reference default (slot absent): this branch / a pristine copy of this branch            1.03    0.99    1.09 reported
+  add, ordinary key to 33 slots: this branch / a pristine copy of this branch                         1.28    1.20    1.34 reported
+  add then getUnsafe, ordinary key: this branch / a pristine copy of this branch                      1.10    1.05    1.15 reported
+  record read (provided whole) / ordinary key read, same context                                      0.75    0.72    0.77     1.30
+  record read (provided whole) / ordinary key read, context rebuilt per request                       1.02    0.98    1.05     1.55
+  record read (member overridden underneath) / ordinary key read, context rebuilt per request         1.26    1.15    1.32     1.55
+  member override into a context holding the record / ordinary add                                    1.12    1.10    1.17     1.30
+  member override then record read, per request / ordinary add then read                              3.54    3.24    3.66     5.05
+  record assembled from 32 member layers, context rebuilt per request / ordinary add then read        1.00    0.98    1.05     1.55
+  record write / ordinary write, into 33 slots                                                       39.75   35.72   47.27    64.05
+  record write / ordinary write, into 300 slots                                                      37.21   34.15   42.72    64.05
+  record write into 300 slots / into 33 slots                                                         0.96    0.94    1.02     1.20
+  record write / mergeAll of 33 one-slot contexts                                                     1.02    0.91    1.06     1.30
+  yield* FileSystem / yield* Plain, same context                                                      1.11    1.08    1.14     1.30
+  yield* FileSystem / yield* Plain, context rebuilt per request                                       1.02    0.98    1.13     1.55
+  yield* FileSystem, member overridden underneath / yield* Plain, context rebuilt per request         1.16    1.10    1.20     1.55
+  yield* FileSystem, member overridden per request / yield* Plain, context rebuilt per request        1.28    1.23    1.40     3.05
+  provideService(FileSystem) then yield* FileSystem / provideService(Plain) then yield* Plain, per request    3.70    3.31    4.02     5.05
+  yield* FileSystem from member layers (assembled) / yield* Plain, context rebuilt per request        1.06    1.01    1.15     1.55
+  operation call / method call on a yielded plain record                                              0.85    0.77    0.90     1.05
+  method call on the record service / on a plain record                                               1.05    1.00    1.10     1.30
 
-  control envelope: 0.03 (added to every limit)
+  control envelope: 0.05 (added to every limit)
 
   absolute (median ns, reported, not gated)                                                         median     p25     p75
-  getUnsafe, operation key (1 of 33 slots)                                                              18      18      18
-  make, record (32 members)                                                                           1723    1565    1824
-  add, record (32 members): one overlay                                                                489     477     498
-  add a member override to a context holding the record (overlay)                                       27      25      30
-  first record read after a member override (one view built)                                           118     115     122
-  record read, never written, remembered per flat map                                                   41      40      42
+  getUnsafe, operation key (1 of 33 slots)                                                              15      14      20
+  make, record (32 members)                                                                           2611    2204    3184
+  add, record (32 members): one overlay per member                                                    2176    1918    2556
+  add a member override to a context holding the record (overlay)                                       48      43      61
+  first record read after a member override (one copy)                                                 154     144     218
+  record read, never written, remembered per flat map                                                   46      41      54
 ```
 
-Readings, the gated rows first. A record read from a flat map is 0.69× an ordinary read from the same context (the
-one-entry cache answers it) and 0.98× from a context rebuilt per request (one slot check for the request's overlay);
-with a member overridden underneath it is 1.07× (one slot check per overlay, then the remembered view), where round 8
-measured 1.55×. A member override into a context holding the record is an ordinary add (1.05). A new override followed
-by a record read is 2.58× an ordinary add followed by a read: 118 ns for a copy of the thirty-two members (one `WeakMap`
-lookup for the record beneath, one copy, no entry kept), where round 8's view of one own property cost 98 ns and did not
-spread. A record write is 18× an ordinary write (one property read per member and one array: 485 ns for 32 members), the
-same into 300 slots as into 33 (0.99), and 0.32× `mergeAll` of 33 one-slot contexts, the branch point's way of
-providing 33 slots at once. In a fiber, `yield* FileSystem` costs what `yield* Plain` costs (1.02, 1.02), 1.09× with a
-member overridden underneath, 2.78× with the override per request (one copy of the record per request; round 7 copied
-every member and measured 2.41× before the view existed), 1.05× assembled from member layers, and providing the whole
-record per request is 1.85× providing a plain service per request. An operation call is 0.84× a method call on a
-yielded plain record; a method call on the record service is 1.01× one on a plain record.
+Readings, the record rows first. A record read from the same context is 0.74× an ordinary read: the key's one-entry
+cache answers before any `Map` is touched. From a context rebuilt per request it is 1.00× (one `Set.has` for the
+per-request overlay, then the remembered object), with a member overridden underneath 1.11×, and from thirty-two
+member layers 1.00×. A new override followed by a record read is 3.2× an ordinary write followed by a read (the copy
+of the record below it, kept in the one-entry cache only). A record write is 37 to 40 ordinary writes for 32 members,
+into 33 slots and into 300 alike (0.96× between the sizes), one overlay per member plus the assembled object, and the
+same cost as `mergeAll` of 33 one-slot contexts (1.00×), the branch point's way of providing 33 slots at once. In a
+fiber, `yield*` of a record is 1.02× `yield*` of a plain record service from the same context and from a context
+rebuilt per request, 1.12× with a member overridden underneath, 1.22× with the override per request, 1.04× from member
+layers, and 3.6× when the whole record is provided per request (its write per request); an operation call is 0.85× a
+method call on a yielded plain record, and a method call on a record read is 1.03× one on a plain record. The absolute
+costs: a record write of 32 members is about 1.9 µs as an overlay chain and 2.2 µs as a flat map; a first read after an
+override about 120 ns; a record read remembered per flat map about 50 ns.
+
+The ordinary rows in this process read 1.03 to 1.22 against the branch point, with the twin rows (identical code,
+serving the benchmark alone) at 1.03 to 1.11 beside them; the next section is about those.
 
 ### The ordinary rows in the records process
 
-In the records process the ordinary rows against the branch point read 1.41× for a flat read and 1.47× for a reference
-default, where the same rows in the ordinary process read 1.18× and 1.07×. Round 8 reported this as a regression of
-the ordinary path once a record is held. The experiments of this round, all on this code, all with tight controls:
+In the ordinary process, where both modules serve the same calls, the ordinary rows are at parity (1.00 to 1.05). In
+the records process they read 1.03 to 1.22, and the same rows against a pristine copy of this branch's own `Context.ts`
+read 1.03 to 1.11 in the same run: identical code, one copy serving the fibers' reads of every reference, operation
+and record the program uses and compiled for all of them, the other serving four shapes from the benchmark. Round 9's
+gap in this process was 1.42 on the flat read, of which the twin explained 1.27; the rest was the record overlay's
+branch in `lookup` and the getters' shared `read` helper, which loaded `key.key` at one site for every kind of key.
+Round 10 removed both, and the experiment that settled whether the remaining `typeof` costs anything: with the record
+dispatch moved to the miss path of `getUnsafe` (no `typeof` on the hit path at all) the flat read measured 1.05 and
+1.05 in two orders, and with the `typeof` 0.96 and 0.97 in the same two orders, in a process holding records but with
+the record-reading cases filtered out. The `typeof` is not what the records process pays; serving the runtime is, and
+the branch point's `Context.ts` would pay it in the live role, where it cannot be put since the runtime is bound to
+this branch's.
 
-| Experiment (records mode)                                                                                                      | `getUnsafe`, ordinary key | reference default |
-| ------------------------------------------------------------------------------------------------------------------------------ | ------------------------: | ----------------: |
-| pairs in list order                                                                                                            |                      1.32 |              1.47 |
-| the same pairs, order reversed                                                                                                 |                      1.06 |              1.03 |
-| list order, the record read taken out of the getters' bodies (dispatch split into two functions)                               |                      1.28 |              1.53 |
-| list order, `yield*` of a record no longer passing through `getUnsafe` (the record's own `evaluate`)                           |                      1.32 |              1.55 |
-| list order, without the warm-up of both modules                                                                                |                      1.32 |              1.58 |
-| list order, every case primed round-robin before calibration (what the gate does now), two orders                              |                1.34, 1.34 |        1.55, 1.49 |
-| primed, **this branch against a pristine copy of its own `Context.ts`** (identical code, the copy serving the benchmark alone) |                      1.25 |              1.65 |
-| primed, the ordinary process (no fibers, no records)                                                                           |                      1.09 |              1.05 |
+Consequences for the gate: the ordinary rows against the branch point are gated at 1.05 in the ordinary process, where
+both modules are in the same role, and bounded at 1.25 in the records process with the twin rows reported beside
+them; the counts gate, which does not depend on code layout or load, is identical for every ordinary row.
 
-The last two rows settle it. With the code held equal, the module that serves the runtime reads an ordinary key 1.25×
-slower than a copy of itself that serves nothing but the benchmark's calls, and a reference default 1.65× slower; the
-difference between this branch and the branch point in the same process is the same size. So the records-process rows
-measure what serving a whole program costs a getter, not a difference between the two codes: the live module's getters
-see every key the fibers read (references with and without a cached default, class keys, operations, records) and are
-compiled for all of them, while a module serving the benchmark alone is compiled for four shapes. The branch point's
-`Context.ts` would pay the same in the live role; it cannot be put there, since the runtime is bound to this branch's.
-What was ruled out on the way: the shape of the dispatch (a `typeof` in the getter or a split into two functions), the
-record read passing through the getters, the warm-up, inline-cache state at the `key` loads (`--log-ic` shows both
-modules' loads reach the same megamorphic state), dictionary-mode properties on the keys or contexts (none), and
-deoptimisation loops (`--trace-deopt` shows a handful of one-time deoptimisations). The order sensitivity without
-priming is the optimiser compiling the getters for the first cases alone and recompiling, with more general code, when
-the record and fiber cases arrive; priming every case before calibration removes it, which is why the gate primes.
+### Summary of the run
 
-Consequences for the gate: the ordinary rows against the branch point are gated in the ordinary process, where both
-modules are in the same role, and reported in the records process beside the twin rows; the counts gate, which does
-not depend on code layout, is identical for every ordinary row; the limits stay at 1.25.
+```
+=== summary
+
+  counts (load-insensitive gate)           OK
+  timing, ordinary keys                    OK
+  timing, records                          OK
+
+the cost gate holds: every mode is OK or SKIPPED (unreadable machine)
+```
 
 ## B. Tree-shaking
 
@@ -395,13 +396,13 @@ publishing it does, under esbuild and Rolldown, with `effect` itself bundled as 
 
 | Root (`main.ts`, two operations)                              |     Size | Keys kept           | Stream code |
 | ------------------------------------------------------------- | -------: | ------------------- | ----------: |
-| contract as written, esbuild                                  |  91.1 kB | all 30              |      1456 B |
-| contract annotated `@__PURE__`, esbuild                       |  87.4 kB | readFile, writeFile |         0 B |
-| contract published (`annotate-pure-calls`), esbuild           |  87.4 kB | readFile, writeFile |         0 B |
-| contract as written, Rolldown                                 |  80.2 kB | all 30              |      1564 B |
-| contract annotated `@__PURE__`, Rolldown                      |  77.4 kB | readFile, writeFile |         0 B |
-| contract as written, `effect` from source, esbuild            | 439.0 kB | all 30              |    103.8 kB |
-| contract annotated `@__PURE__`, `effect` from source, esbuild | 233.7 kB | readFile, writeFile |         0 B |
+| contract as written, esbuild                                  |  90.9 kB | all 30              |      1456 B |
+| contract annotated `@__PURE__`, esbuild                       |  87.2 kB | readFile, writeFile |         0 B |
+| contract published (`annotate-pure-calls`), esbuild           |  87.1 kB | readFile, writeFile |         0 B |
+| contract as written, Rolldown                                 |  79.8 kB | all 30              |      1564 B |
+| contract annotated `@__PURE__`, Rolldown                      |  77.1 kB | readFile, writeFile |         0 B |
+| contract as written, `effect` from source, esbuild            | 437.5 kB | all 30              |    103.8 kB |
+| contract annotated `@__PURE__`, `effect` from source, esbuild | 232.1 kB | readFile, writeFile |         0 B |
 
 What the rows establish:
 
@@ -429,27 +430,25 @@ What the rows establish:
 
 ```
 $ pnpm --filter tree-shakeable-services-spec bundle
+$ node scripts/check-bundle.ts
 Bundle sizes (esm, unminified; effect as published unless noted)
-
-  main.ts (two operation layers)                                               91.1 kB
-  main-namespace.ts (two layers off a namespace)                               91.1 kB
-  main-readonly.ts (ReadOnly subset, three member layers)                      91.5 kB
-  main-stream.ts (one Stream operation)                                        96.8 kB
-  main-twenty.ts (twenty operation layers)                                     97.1 kB
-  main-record.ts (yield* FileSystem, record layer)                            113.0 kB
-  main-full.ts (two operations, record layer)                                 103.7 kB
-  main-terminal.ts (two terminal layers)                                       94.7 kB
-  main-plain.ts (no record, no operation)                                      84.5 kB
+  main.ts (two operation layers)                                               90.9 kB
+  main-namespace.ts (two layers off a namespace)                               90.9 kB
+  main-readonly.ts (ReadOnly subset, three member layers)                      91.4 kB
+  main-stream.ts (one Stream operation)                                        96.7 kB
+  main-twenty.ts (twenty operation layers)                                     97.0 kB
+  main-record.ts (yield* FileSystem, record layer)                            111.9 kB
+  main-full.ts (two operations, record layer)                                 103.5 kB
+  main-terminal.ts (two terminal layers)                                       93.5 kB
+  main-plain.ts (no record, no operation)                                      84.3 kB
   main-plain.ts (no record, no operation, branch point Context.ts)             83.9 kB
-  main.ts (contract annotated @__PURE__, esbuild)                              87.4 kB
-  main.ts (contract published (annotate-pure-calls), esbuild)                  87.4 kB
-  main.ts (contract as written, rolldown)                                      80.2 kB
-  main.ts (contract annotated @__PURE__, rolldown)                             77.4 kB
-  main.ts (contract as written, effect from source, esbuild)                  439.0 kB
-  main.ts (contract annotated @__PURE__, effect from source, esbuild)         233.7 kB
-
+  main.ts (contract annotated @__PURE__, esbuild)                              87.2 kB
+  main.ts (contract published (annotate-pure-calls), esbuild)                  87.1 kB
+  main.ts (contract as written, rolldown)                                      79.8 kB
+  main.ts (contract annotated @__PURE__, rolldown)                             77.1 kB
+  main.ts (contract as written, effect from source, esbuild)                  437.5 kB
+  main.ts (contract annotated @__PURE__, effect from source, esbuild)         232.1 kB
 Implementation modules and markers in each bundle
-
   operation                 main.ts           main-readonly.ts  main-stream.ts    main-twenty.ts    main-full.ts      
   access                    absent            absent            absent            present           present           
   chmod                     absent            absent            absent            absent            present           
@@ -481,7 +480,6 @@ Implementation modules and markers in each bundle
   watch                     absent            absent            absent            absent            present           
   writeFile                 present           absent            absent            present           present           
   writeFileString           absent            absent            absent            present           present           
-
   main.ts                                                            contains 2 of 30 implementations: readFile, writeFile
   main-namespace.ts                                                  contains 2 of 30 implementations: readFile, writeFile
   main-readonly.ts                                                   contains 3 of 30 implementations: exists, readFile, stat
@@ -498,13 +496,9 @@ Implementation modules and markers in each bundle
   main.ts [contract annotated @__PURE__, rolldown]                   contains 2 of 30 implementations: readFile, writeFile
   main.ts [contract as written, effect from source, esbuild]         contains 2 of 30 implementations: readFile, writeFile
   main.ts [contract annotated @__PURE__, effect from source, esbuild] contains 2 of 30 implementations: readFile, writeFile
-
 Terminal implementation modules in each bundle
-
   main-terminal.ts                                                   contains 2 of 6: columns, display
-
 Stream runtime bytes in each bundle (Stream.ts, Channel.ts, Sink.ts and their internals; wrapper = under 2 kB)
-
   main.ts                                                            31 effect modules       1456 B  expected wrapper (Stream.ts, Channel.ts, internal/stream.ts)
   main-namespace.ts                                                  31 effect modules       1456 B  expected wrapper (Stream.ts, Channel.ts, internal/stream.ts)
   main-readonly.ts                                                   31 effect modules       1456 B  expected wrapper (Stream.ts, Channel.ts, internal/stream.ts)
@@ -521,16 +515,12 @@ Stream runtime bytes in each bundle (Stream.ts, Channel.ts, Sink.ts and their in
   main.ts [contract annotated @__PURE__, rolldown]                   28 effect modules          0 B  expected none
   main.ts [contract as written, effect from source, esbuild]         77 effect modules     103.8 kB  expected used (Stream.ts, Channel.ts, Sink.ts, internal/stream.ts)
   main.ts [contract annotated @__PURE__, effect from source, esbuild] 53 effect modules          0 B  expected none
-
 What Context.ts costs a bundle with no record and no operation
-
                         as printed    minified
-  this branch              84.5 kB     48.0 kB
+  this branch              84.3 kB     47.9 kB
   branch point             83.9 kB     47.6 kB
-  difference                 636 B       390 B  limit 512 B minified
-
+  difference                 408 B       275 B  limit 512 B minified
 Contract constants the bundler kept in the two-operation bundle
-
   main.ts                                                            keys: all 30; record service: absent
   main.ts [contract annotated @__PURE__, esbuild]                    keys: readFile, writeFile; record service: absent
   main.ts [contract published (annotate-pure-calls), esbuild]        keys: readFile, writeFile; record service: absent
@@ -538,17 +528,11 @@ Contract constants the bundler kept in the two-operation bundle
   main.ts [contract annotated @__PURE__, rolldown]                   keys: readFile, writeFile; record service: absent
   main.ts [contract as written, effect from source, esbuild]         keys: all 30; record service: absent
   main.ts [contract annotated @__PURE__, effect from source, esbuild] keys: readFile, writeFile; record service: absent
-
   node dist/main.js <file>: backed up 6 bytes of <file>
-
   node dist/main-stream.js <file>: <file> has 6 bytes
-
   node dist/main-readonly.js <file>: <file> is 6 bytes
-
   node dist/main-terminal.js <file>: displayed at 80 columns
-
   node dist/main-plain.js <file>: hello, <file>
-
 OK: every bundle contains exactly the implementations its program uses, Effect-only roots carry at most a retained wrapper of the Stream runtime, and the shaken bundles run
 ```
 
@@ -591,8 +575,10 @@ typetest/errors/overloaded-unnamed.ts(8,6): error TS2345: Argument of type '"tes
 typetest/errors/partial-aggregate.ts(7,14): error TS2375: Type 'Layer<"effect/FileSystem/readFile" | "effect/FileSystem/writeFile", never, never>' is not assignable to type 'Layer<FileSystem, never, never>' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
   Type 'FileSystem' is not assignable to type '"effect/FileSystem/readFile" | "effect/FileSystem/writeFile"'.
     Type '"effect/FileSystem/access"' is not assignable to type '"effect/FileSystem/readFile" | "effect/FileSystem/writeFile"'.
-typetest/errors/partial-record.ts(6,67): error TS2740: Type '{ readFile: () => Effect.Effect<Uint8Array<ArrayBuffer>, never, never>; }' is missing the following properties from type 'Shape': access, chmod, chown, copy, and 25 more.
-typetest/errors/partial-subset.ts(6,59): error TS2739: Type '{ readFile: () => Effect.Effect<Uint8Array<ArrayBuffer>, never, never>; }' is missing the following properties from type 'ReadOnlyShape': exists, stat
+typetest/errors/partial-record.ts(6,67): error TS2345: Argument of type '{ readFile: () => Effect.Effect<Uint8Array<ArrayBuffer>, never, never>; }' is not assignable to parameter of type 'Shape'.
+  Type '{ readFile: () => Effect.Effect<Uint8Array<ArrayBuffer>, never, never>; }' is missing the following properties from type 'Shape<typeof import("…/src/FileSystem/operations")>': access, chmod, chown, copy, and 25 more.
+typetest/errors/partial-subset.ts(6,59): error TS2345: Argument of type '{ readFile: () => Effect.Effect<Uint8Array<ArrayBuffer>, never, never>; }' is not assignable to parameter of type 'ReadOnlyShape'.
+  Type '{ readFile: () => Effect.Effect<Uint8Array<ArrayBuffer>, never, never>; }' is missing the following properties from type 'Shape<{ exists: Operation<"effect/FileSystem/exists", (path: string) => Effect<boolean, FileSystemError, never>>; readFile: Operation<"effect/FileSystem/readFile", (path: string) => Effect<Uint8Array<ArrayBufferLike>, FileSystemError, never>>; stat: Operation<"effect/FileSystem/stat", (path: string) => Effect<Info, FileSystemError, never>>; }>': exists, stat
 typetest/errors/record-requires-all.ts(8,19): error TS2379: Argument of type 'Effect<number, FileSystemError, FileSystem>' is not assignable to parameter of type 'Effect<number, FileSystemError, never>' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
   Type 'FileSystem' is not assignable to type 'never'.
     Type '"effect/FileSystem/access"' is not assignable to type 'never'.
@@ -613,10 +599,9 @@ typetest/errors/wrong-override.ts(11,3): error TS2345: Argument of type '(path: 
 typetest/errors/wrong-override.ts(16,13): error TS2375: Type 'Effect<Uint8Array<ArrayBuffer>, never, { readonly value: number; }>' is not assignable to type 'Effect<Uint8Array<ArrayBufferLike>, FileSystemError, never>' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
   Type '{ readonly value: number; }' is not assignable to type 'never'.
 typetest/errors/wrong-self.ts(11,82): error TS2345: Argument of type '"test/Partial"' is not assignable to parameter of type '"Self lacks the identifier of \"effect/FileSystem/writeFile\""'.
-typetest/errors/wrong-self.ts(19,5): error TS2345: Argument of type '"test/WrongShape"' is not assignable to parameter of type '"Shape differs from the members' shape at \"writeFile\""'.
+typetest/errors/wrong-self.ts(19,5): error TS2345: Argument of type '"test/WrongShape"' is not assignable to parameter of type '"Shape is not the members' shape: declare it as interface Shape extends Context.Operations.Shape<typeof members> {}"'.
 typetest/errors/wrong-self.ts(21,45): error TS2345: Argument of type '"test/Unknown"' is not assignable to parameter of type '"Give the record its identifier: Context.Operations<Self, Shape>()(key, members)"'.
 typetest/errors/wrong-self.ts(23,42): error TS2554: Expected 0 arguments, but got 1.
-
 OK: every file under typetest/errors fails to compile for the documented reason
 ```
 
@@ -625,21 +610,22 @@ program run unprovided, which prints the record's name, and `record-requires-all
 two of its thirty operations provided, which prints the twenty-eight remaining keys in full (`missing-twenty.ts(48,19)`
 is the twenty-operation program with three left, which prints three). The positive assertions, 322 lines of
 `typetest/ok/signatures.ts`, compile under `pnpm --filter tree-shakeable-services-spec check`; the repository's own
-type tests are `packages/effect/typetest/Context.tst.ts` (13 tests) and `FileSystem.tst.ts` (3 tests), 103 assertions
+type tests are `packages/effect/typetest/Context.tst.ts` (13 tests) and `FileSystem.tst.ts` (3 tests), 110 assertions
 under `tstyche`.
 
 ## D. Compile cost
 
-`tsc --extendedDiagnostics` (the repository's TypeScript, 7.0.2 with the `effect-tsgo` patch,
-`packages/effect/tsconfig.json`, `--noEmit`, no incremental cache) at the branch point and on this branch, which carries
-`Context`, the FileSystem and Terminal migrations with `ReadOnly`, and their tests:
+`tsc --extendedDiagnostics` (the repository's TypeScript, `packages/effect/tsconfig.json`, `--noEmit`, no incremental
+cache) at the branch point and on this branch, which carries `Context`, the FileSystem and Terminal migrations with
+`ReadOnly`, and their tests:
 
 | Metric         |    before |     after |  change |
 | -------------- | --------: | --------: | ------: |
-| Types          | 1,046,206 | 1,060,233 | +1.34 % |
-| Instantiations | 3,801,554 | 3,879,949 | +2.06 % |
+| Types          | 1,046,206 | 1,055,272 | +0.87 % |
+| Instantiations | 3,801,554 | 3,835,967 | +0.91 % |
 
-Check time is 5.3 s against 5.2 s and is not a criterion.
+Round 9 measured +1.34 % and +2.06 % with the hand-written `Shape` interfaces and `ShapeDifference`; deriving the
+shapes from the operations is cheaper. Check time is not a criterion.
 
 ## E. Phases 2 and 3 in detail
 
@@ -685,7 +671,7 @@ subset record over those three exported from `effect/Terminal`, so a CLI that ne
 
 ## F. Decisions, and why
 
-The design went through nine rounds of review. What each settled, in the order an implementer meets it:
+The design went through ten rounds of review. What each settled, in the order an implementer meets it:
 
 - **An operation is a `Context.Slot` that is a function, not a `Context.Key`.** A key is an Effect, and a value that
   is both callable and an Effect types one way and runs the other under every `isEffect` dispatch (the first hazard).
@@ -706,117 +692,123 @@ The design went through nine rounds of review. What each settled, in the order a
   diagnostics keep the name. A prefix type (`` `effect/FileSystem/${string}` ``) prints short but cannot be shown to
   be covered by a merge of member layers; the record interface as the identity, with branded member keys, keeps
   today's names but member layers can never satisfy it.
+- **The shape is derived from the operations** (round 10): `interface Shape extends Context.Operations.Shape<typeof
+  members> {}`. Rounds 7 to 9 wrote the interface by hand and took each operation's shape from it (`Shape["readFile"]`),
+  with a `ShapeDifference` type to keep the two in step; now each operation declares its shape once and the record
+  derives the rest, so `ShapeDifference` and one declaration are gone. The price, measured and pasted in C: TypeScript
+  reports an interface with no members of its own by its one base type when listing missing members, so a partial
+  record's second line names `Shape<typeof import(…)>` (or the member list, truncated) where a hand-written interface
+  printed `Shape`. The first line, the parameter type, prints `Shape` in both. Two bases or a redeclared member would
+  restore the name and were rejected as warts.
 - **No branded phase for unstable modules** (round 9). Rounds 7 and 8 shipped `FileSystem` and `Terminal` first under
-  their old identity, each operation branded with it (`"effect/FileSystem/readFile" & FileSystem` in every user's `R`
-  for one release), with a `Brand` type argument on every constructor for that purpose. Both modules are `@stability
-  unstable`, whose policy allows a breaking minor, so round 9 ships the identity change directly with the codemod and
-  `ReadOnly`, and removes `Brand`: nothing used it, and a stable module's migration, if one ever happens, adds it back
-  in one line.
+  their old identity, each operation branded with it, with a `Brand` type argument on every constructor for that
+  purpose. Both modules are `@stability unstable`, whose policy allows a breaking minor, so round 9 ships the identity
+  change directly with the codemod and `ReadOnly`, and removes `Brand`.
 - **The member list is the module's export list where the operations have a module**, and written out otherwise
   (round 8). A `members` helper building the operations from a table of names and kinds would keep every key in every
-  bundle (measured under "What a kept key costs"); a namespace import keeps nothing a written list does not. A subset's
-  shape is a `Pick` alias, which prints by name.
-- **A record service is stored as one overlay when added to a context, and as its members' slots plus one slot
-  holding the provided object in a flat map; a member override is an ordinary overlay.** Rounds 3 to 6 tried
-  assembling on every read (three to six times a plain read), write behaviour on the key object (two keys with one
-  string behaved differently), a module-level registry of records (a `Context` whose behaviour depended on what the
-  process had constructed), and a per-context record index with the record rebuilt on every member write (a second
-  storage system, 3.5 kB in every bundle, a flat copy per override, and class instances losing `this`). Round 7 wrote a
-  record as a fresh flat map, a copy of the context's: correct, but a write whose cost grew with the context (27 µs at
-  300 slots). Round 8 made the write one overlay holding the members by position, which `lookup` reads with one more
-  check per overlay, so the write is O(members) and the context is never copied. Round 9 kept that and gave the
-  record overlay the ordinary overlay's shape (the record key as its `key`, the slots as its `value`), so an ordinary
-  `add` allocates what it did at the branch point and the check in `lookup` is a `typeof` on a value it already holds.
-  What survives is the least of each: the key knows its slots, the context knows nothing but that an overlay's key may
-  be a record, the record's slot is checked against the members on the first read of each storage and the result is
-  remembered.
-- **A view has every member as an own property** (round 9). Round 8's view inherited the members it did not override
-  and carried the override alone, one small object per read; it broke every spread decorator
-  (`Effect.updateService(FileSystem, (fs) => ({ ...fs, x }))` produced a record missing every other member), threw a
-  `TypeError` from a class with private fields once another member was overridden, and could not be remembered without
-  costing more than it saved. A view is now a copy of the record's template with every member set, a plain object for a
-  plain record and an object inheriting from a provided class instance otherwise (its methods own and bound to the
-  instance, so private fields work), built once per storage from the slots or incrementally from the record beneath an
-  override. `Object.create(provided)` and `Object.setPrototypeOf` were measured and rejected for plain records: the
-  first leaves the view in dictionary mode (every property read a hash lookup), the second costs a microsecond per
-  view; a copy of a fixed template is fast-mode and costs 120 ns for thirty-two members.
-- **Assembly is incremental over member overlays and remembered per storage otherwise** (round 9). The record as seen
-  from an overlay holding one plain member is the record as seen from the overlay below with that member replaced,
-  so an override per request copies the record once instead of reading every member; the copy is kept in the key's
-  one-entry cache and not in the `WeakMap`, since an entry per request lives until the next collection and showed up
-  as 10× the ordinary cost under garbage-collector pressure where the copy alone is 2.6×. Views built from the slots (a
-  flat map, a record never provided whole, a foreign record overlay) are remembered per storage in the `WeakMap`; they
-  are built once per storage, not per request.
+  bundle (measured under "What a kept key costs"); a namespace import keeps nothing a written list does not.
+- **The members are properties of the key** (round 10), so that the one-line form `Context.Operations("app/Users", {
+  find })` gives `Users.find(id)`, in both forms. A member whose name is a property of every key is rejected on the
+  key argument (`Operations.Reserved`) and a defect at construction. They sit on a prototype of the key's own: an
+  object given thirty properties one by one by keyed stores falls into V8's dictionary mode, and the key's own
+  properties are read on every record read (measured: a dictionary-mode key read 39 ns where a fast one reads 6).
+- **A record is its members and nothing else** (round 10). Rounds 3 to 9 gave the record a slot of its own holding
+  the provided object, returned it from a read while the members still agreed with it, and otherwise built a view:
+  an equality check per read, views inheriting from class instances, a template, a bound-method cache, and string
+  semantics for the record's own slot, each a seam (a class method calling a sibling through `this` skipped an
+  override; `getOrUndefinedUnsafe` by the record's string returned the provided object after an override; the view
+  was one rule over overlays and another over flat maps). Round 10 drops the slot and the rule: a record write is its
+  members' slots, a record read is a plain object of the members, assembled the same way on every path, and
+  `instanceof` and identity do not survive a read. `FileSystem` and `Terminal` are unstable and nothing in the
+  repository relied on either.
+- **A record write is one ordinary overlay per member** (round 10), counting as one addition toward `maxDepth`.
+  Rounds 8 and 9 wrote one overlay whose key was the record and whose value the slots by position, which `lookup`
+  read with one more check per overlay walked; the ordinary read paid 1.12 to 1.21× in a process holding no record
+  and 1.42× in one holding records, because `lookup` and a shared `read` helper were compiled for both kinds of
+  overlay and key. With per-member overlays the `Overlay` type, `lookup`, the flatten and `merge` are the branch
+  point's code, the one `typeof` is in `make`, `add`, `pick`, `omit` and the getters, and each getter loads `key.key`
+  at a site of its own: the ordinary rows read 0.99 to 1.06× in the ordinary process (A). The price is the write:
+  about two ordinary writes per member (one overlay and one property of the assembled object each) where round 9's
+  single overlay was about one.
+- **The assembled object is remembered per storage, with the last one read in front** (rounds 9 and 10). The storage
+  is the topmost overlay holding one of the record's slots, or the base map; overlays above it hold other slots and
+  cannot change the result, so contexts derived by unrelated writes share it. An object built by copying the record
+  below an overlay holding one member (an override per request) is kept in the one-entry cache alone: round 9
+  measured an entry per request in the `WeakMap` at 10× the ordinary cost under collector pressure where the copy
+  alone is 2.6×, and round 10's first gate run saw the same row at 16× in one order with the entry and 2.9× without.
+  Every object is copied from a per-record template (`Object.fromEntries` once per record) so that it has fast
+  properties: an object given thirty properties one by one has not, and a member read through it would be a hash
+  lookup.
 - **A record provided without a member is a defect at the write** (round 9), naming the member's key, rather than a
-  record that reads back a member no call can use. Two tests in the repository that provided `{} as any` as the file
-  system now provide `FileSystem.makeNoop({})`.
-- **A method found on a provided object's prototype is stored bound to the object** (round 8), once per object and
-  method, so that a class-based implementation works standalone as it does through the record, and a record written
-  twice stores the same functions. With every member an own property of a view (round 9), the standalone and
-  through-the-record forms agree in every case, including a sibling call through `this`, which reads the instance's
-  member in both.
-- **A record service reads itself** (round 9): `yield*`, `use` and `useSync` on a record key call its `read` directly
-  instead of passing through `Context.get`, so the fiber path for a record is one method on one prototype and the
-  getters' dispatch is reached only by `Context.get` and `Effect.service` on a record.
+  record that reads back a member no call can use.
+- **A method found on a provided object's prototype is stored bound to the object** (round 8), at the write, so that
+  a class-based implementation works standalone as it does through the record, private fields included. Round 9
+  cached the bound functions per object so that a record written twice stored the same functions, for the identity
+  check; round 10 has no identity check and binds once per write.
+- **A record service reads itself** (round 9): `yield*`, `use` and `useSync` on a record key call its read directly
+  instead of passing through `Context.get`, so the fiber path for a record is one method on one prototype.
 - **No defaults.** Every reason the overridable design was set aside is a reason not to add a defaulted variant;
   `Context.Reference` remains for values that want one, and may be a member.
-- **The cost gate counts first and times second** (round 8), **in three orders, primed, with a twin** (round 9).
-  Earlier gates took ratios of separately run medians, then wall-clock paired ratios with fixed limits that failed on a
-  loaded runner without a regression in the code, then CPU-time paired ratios with an A/A control that exited 1 when
-  the control was noisy, which on a loaded runner it usually was. The counts (`Map` and `WeakMap` operations, bytes per
-  call) do not depend on the machine and are the gate; the timing runs report, widen their limits by the control's
-  envelope, retry once with more rounds, and report SKIPPED rather than fail when the machine cannot be read; the
-  runner runs every mode whatever the previous one reported. Round 9 found the same two closures reading 1.32× in one
-  order of the pairs and 1.06× in another, with tight controls, and that the ordinary rows of the records process
-  measure the cost of serving the runtime rather than a difference between the codes (under "The ordinary rows in the
-  records process"); so every case is primed before calibration, each mode runs in three orders and is gated on the
-  median, the branch-point rows are gated where both modules serve the same calls and reported beside a pristine twin
-  of this branch where they do not, and the counts remain the gate that cannot be argued with.
-- **The bundle gate is on the minified bundle** (round 9), the form a bundle ships in, with the number as esbuild
-  prints it reported beside it. Round 8 gated the printed form and had widened the limit from 512 bytes to 1 kB to
-  fit 837; this round prints 636 and ships 390, and the gate is 512 bytes minified.
+- **The cost gate counts first and times second** (round 8), **in three orders, primed** (round 9), **and gates the
+  ordinary rows in both processes** (round 10). The counts (`Map`, `Set` and `WeakMap` operations, bytes per call) do
+  not depend on the machine and are the gate; the timing runs report, widen their limits by the control's envelope,
+  retry once with more rounds, and report SKIPPED rather than fail when the machine cannot be read. Round 10's
+  ordinary rows are gated at 1.05 in the ordinary process and in the records process alike; in the latter this
+  branch's getters are warmed with a record before anything is optimised, so that both modules are compiled for the
+  shapes they will see, and the rows against a pristine twin of this branch's own code are reported beside them as the
+  measure of what serving the runtime costs with the code held equal.
+- **The bundle gate is on the minified bundle** (round 9), the form a bundle ships in. Round 10's no-record root is
+  275 bytes over the branch point minified (390 in round 9), the `typeof` dispatch and nothing else.
 
 ## G. Alternatives rejected within this design
 
 - **A `members` helper** that builds the operations from a table of names and kinds. Removes the key strings and the
   member list from a contract, and keeps every key and the Stream wrapper in every bundle that uses one; measured
-  under "What a kept key costs". The recipe under "The library recipe" is the floor.
+  under "What a kept key costs". The recipe under "The contract recipe" is the floor.
+- **A hand-written `Shape` interface** with the operations taking their shapes from it (rounds 7 to 9). Two
+  declarations of every member's type, kept in step by a `ShapeDifference` check; the derived interface writes each
+  once, at the cost of the second line of one diagnostic (F).
 - **Storing the record only under its own key, with members reading through it.** Would let `Layer.succeed(FileSystem,
   record)` write one slot, but a member read would walk every record spanning it and a member provided outside a
   record would lose to it: the precedence bug of slices.
-- **Writing a record as a fresh flat map** (round 7) instead of one overlay. Correct and simple, but every
-  `Effect.provideService(FileSystem, impl)` copied the context's map: 3.6 µs at 33 slots, 27 µs at 300. The overlay
-  costs `lookup` one `typeof` per overlay walked, which the ordinary timing rows and the counts measure.
-- **Member slots as thirty-two separate overlays.** Every ordinary read through such a context would walk thirty-two
-  overlays before reaching its slot, and `maxDepth` would flatten the chain at once; one overlay holding the members by
-  position is the same write cost with one comparison for the walk.
+- **A slot of the record's own beside the members'** (rounds 3 to 9), holding the provided object so that a read could
+  return it while the members agreed. The identity it bought cost an equality check per read, a second rule for
+  views, a string that was sometimes a slot, and a bound-method cache; and the record's own `lookup` branch was the
+  ordinary path's tax. Dropped in round 10.
+- **One overlay holding every member by position** (rounds 8 and 9) instead of one per member. A cheaper write
+  (one allocation) and a dearer everything else: `lookup` tested every overlay's kind, the flatten knew the record,
+  and the getters shared one helper, compiled for both kinds of key. Per-member overlays are what the branch point
+  already does for any slot; a chain of thirty-two is walked by a read of a slot below it, one comparison each, as
+  every overlay is, and the branch point's flatten after enough base hits applies unchanged.
+- **Writing a record as a fresh flat map** (round 7). Correct and simple, but every `Effect.provideService(FileSystem,
+  impl)` copied the context's map: 3.6 µs at 33 slots, 27 µs at 300. Per-member overlays cost the same into either.
 - **A view with the overriding members only** (round 8), inheriting the rest from the provided object. One small
   object per read, and wrong under every operation that enumerates own properties: spread, `Object.keys`,
   `JSON.stringify`, `Effect.updateService` with a spread, `Layer.effect` over `yield* FileSystem`; and a `TypeError`
-  from a class with private fields. Replaced by a view with every member its own.
-- **A `Proxy` as the view**, with `ownKeys` and `getOwnPropertyDescriptor` traps listing every member and a `get` trap
-  returning bound methods. Cheap to create and correct under reflection, but every property read through it is a trap,
-  a method called on it with the proxy as `this` still cannot read a private field unless the trap binds it, and a
-  `Proxy` is one more kind of object a user's record can turn into. A copy with every member its own is a plain object.
-- **Remembering every view in the `WeakMap`**, incremental views included. An entry per new override lives until the
-  next collection; under the per-request pattern the collector's work on the growing table made the view 10× an
-  ordinary read where the copy alone is 2.6×. The one-entry cache keeps the common case (a context read repeatedly)
-  free and leaves nothing behind.
-- **Rebuilding the record on every member write** (round 6) instead of checking on read. Keeps the record read at
-  one lookup with no overlay scan, at the price of a flat copy and a thirty-member rebuild on every override, a
-  per-context index of records, and a record read that was not the provided object after any override.
+  from a class with private fields.
+- **A `Proxy` as the record read**, with traps listing every member and binding methods. Every property read through
+  it is a trap, and a `Proxy` is one more kind of object a user's record can turn into. A plain object is a plain
+  object.
+- **Remembering every assembled object in the `WeakMap`**, copies over an override included. An entry per new
+  override lives until the next collection; under the per-request pattern the collector's work on the growing table
+  made the read 10× (round 9) and 16× in one order (round 10) where the copy alone is 3×.
+- **Building the assembled object without a template.** `{}` plus thirty keyed stores is a dictionary-mode object
+  (V8 normalises after twelve keyed additions), and so is a key given its members the same way: a member read through
+  it is a hash lookup, and a record read through such a key took 39 ns where a fast one takes 6. `Object.fromEntries`
+  per read costs 2.3 µs; a spread of a template built by it once costs 120 ns and is fast.
+- **Dispatching record reads on the miss path of the getters** (round 10), so that the hit path has no `typeof` at
+  all: `lookup(self, key.key)` first, and the record read only when the slot is absent. Measured at the same cost as
+  the `typeof` (the typeof is not what the records process pays, A), and it makes the record's string a slot again: a
+  `Context.Service` built with it would hide the members from `Context.get`, while `yield*` kept reading them.
+- **Rebuilding the record on every member write** (round 6) instead of reading on demand. A flat copy and a
+  thirty-member rebuild on every override, and a per-context index of records.
 - **Class-style operations** (`class ReadFile extends Context.Operation<…>()("…") {}`). A class cannot be called
   without `new`.
 - **An identifier type parameter for operations** (`Operation<Self, Shape>`). Two operations with the same shape
-  would alias in `R` unless each carried a brand; the key string is already unique and already nominal, and it prints
-  better in errors.
+  would alias in `R` unless each carried a brand; the key string is already unique and already nominal.
 - **A `read` method on every key's prototype as the getters' dispatch.** A key built structurally (`{ key }`), which
-  the spec keeps working, has no prototype of ours, so the getter would still test for the method before calling it, and
-  the method call is a second polymorphic property load on every read where the `typeof` costs none.
-- **Gating the ordinary rows of the records process at 1.25 against the branch point.** The rows measure the live
-  module against an idle copy; a pristine copy of this branch's own code fails that comparison by the same margin
-  (under "The ordinary rows in the records process"). The rows are reported, the twin rows beside them, and the gate
-  for the ordinary path is the ordinary process and the counts.
+  the spec keeps working, has no prototype of ours, so the getter would still test for the method before calling it,
+  and the method call is a polymorphic property load on every read where the `typeof` costs none.
 - **The key in the wrong-kind message** (`The shape of "test/stream" returns a Stream…`). TypeScript infers the key
   literal only from a branch of `KeyFor` that is the type parameter itself; a message built from it printed `${string}`
   in the key's place, so the message names the constructor to use and not the key.

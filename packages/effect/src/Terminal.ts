@@ -22,42 +22,16 @@ import type * as Scope from "./Scope.ts"
 
 /**
  * The record of terminal implementations: a command-line interface which can
- * read input from a user and display messages to a user. The service's
- * identity is {@link Terminal}, the union of its members' keys.
+ * read input from a user and display messages to a user. It is derived from
+ * the operations below, so each member's type is written once, on its
+ * operation; the service's identity is {@link Terminal}, the union of the
+ * operations' keys.
  *
  * @stability unstable
  * @category models
  * @since 4.0.0
  */
-export interface Shape {
-  /**
-   * The number of columns available on the platform's terminal interface.
-   */
-  readonly columns: Effect.Effect<number>
-  /**
-   * The number of rows available on the platform's terminal interface.
-   */
-
-  readonly rows: Effect.Effect<number>
-  /**
-   * Subscribes to terminal size changes. The queue starts with the current
-   * dimensions, receives each resize until the scope closes, and keeps only the
-   * latest size.
-   */
-  readonly size: Effect.Effect<Queue.Dequeue<Size, Cause.Done>, never, Scope.Scope>
-  /**
-   * Reads input events from the default standard input.
-   */
-  readonly readInput: Effect.Effect<Queue.Dequeue<UserInput, Cause.Done>, never, Scope.Scope>
-  /**
-   * Reads a single line from the default standard input.
-   */
-  readonly readLine: Effect.Effect<string, QuitError>
-  /**
-   * Displays text to the default standard output.
-   */
-  readonly display: (text: string) => Effect.Effect<void, PlatformError>
-}
+export interface Shape extends Context.Operations.Shape<typeof members> {}
 
 /**
  * Terminal dimensions measured in character cells.
@@ -182,7 +156,7 @@ export const isQuitError = (u: unknown): u is QuitError => Predicate.hasProperty
  * @category operations
  * @since 4.0.0
  */
-export const columns = Context.Operation.value<Shape["columns"]>()("effect/Terminal/columns")
+export const columns = Context.Operation.value<Effect.Effect<number>>()("effect/Terminal/columns")
 
 /**
  * The number of rows available on the platform's terminal interface, as an
@@ -192,7 +166,7 @@ export const columns = Context.Operation.value<Shape["columns"]>()("effect/Termi
  * @category operations
  * @since 4.0.0
  */
-export const rows = Context.Operation.value<Shape["rows"]>()("effect/Terminal/rows")
+export const rows = Context.Operation.value<Effect.Effect<number>>()("effect/Terminal/rows")
 
 /**
  * Subscribes to terminal size changes, as an operation. The queue starts with
@@ -203,7 +177,9 @@ export const rows = Context.Operation.value<Shape["rows"]>()("effect/Terminal/ro
  * @category operations
  * @since 4.0.0
  */
-export const size = Context.Operation.value<Shape["size"]>()("effect/Terminal/size")
+export const size = Context.Operation.value<Effect.Effect<Queue.Dequeue<Size, Cause.Done>, never, Scope.Scope>>()(
+  "effect/Terminal/size"
+)
 
 /**
  * Reads input events from the default standard input, as an operation.
@@ -212,7 +188,9 @@ export const size = Context.Operation.value<Shape["size"]>()("effect/Terminal/si
  * @category operations
  * @since 4.0.0
  */
-export const readInput = Context.Operation.value<Shape["readInput"]>()("effect/Terminal/readInput")
+export const readInput = Context.Operation.value<
+  Effect.Effect<Queue.Dequeue<UserInput, Cause.Done>, never, Scope.Scope>
+>()("effect/Terminal/readInput")
 
 /**
  * Reads a single line from the default standard input, as an operation.
@@ -221,7 +199,7 @@ export const readInput = Context.Operation.value<Shape["readInput"]>()("effect/T
  * @category operations
  * @since 4.0.0
  */
-export const readLine = Context.Operation.value<Shape["readLine"]>()("effect/Terminal/readLine")
+export const readLine = Context.Operation.value<Effect.Effect<string, QuitError>>()("effect/Terminal/readLine")
 
 /**
  * Displays text to the default standard output, as an operation:
@@ -232,7 +210,9 @@ export const readLine = Context.Operation.value<Shape["readLine"]>()("effect/Ter
  * @category operations
  * @since 4.0.0
  */
-export const display = Context.Operation<Shape["display"]>()("effect/Terminal/display")
+export const display = Context.Operation<(text: string) => Effect.Effect<void, PlatformError>>()(
+  "effect/Terminal/display"
+)
 
 const members = { columns, rows, size, readInput, readLine, display }
 

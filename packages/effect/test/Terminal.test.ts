@@ -15,11 +15,12 @@ describe("Terminal operations", () => {
       })
   })
 
-  it.effect("yields a value operation under a Layer<Terminal>, and the record is the provided object", () =>
+  it.effect("yields a value operation under a Layer<Terminal>, and the record read is an object of the members", () =>
     Effect.gen(function*() {
       const width = yield* Terminal.columns
       const terminal = yield* Terminal.Terminal
-      assert.strictEqual(terminal, live)
+      assert.deepStrictEqual(terminal, live)
+      assert.deepStrictEqual(Object.keys(terminal), Object.keys(Terminal.Terminal.members))
       assert.strictEqual(width, 80)
       // the member is the same Effect standalone and through the record
       assert.strictEqual(terminal.columns, live.columns)
@@ -54,11 +55,13 @@ describe("Terminal operations", () => {
       assert.match(String(exit), /Service not found: effect\/Terminal\/columns/)
     }))
 
-  it("is stored as one slot per member beside the record", () => {
+  it("is stored as one slot per member and nothing else", () => {
     const context = Context.make(Terminal.Terminal, live)
-    assert.strictEqual(context.mapUnsafe.size, Object.keys(Terminal.Terminal.members).length + 1)
+    assert.strictEqual(context.mapUnsafe.size, Object.keys(Terminal.Terminal.members).length)
+    assert.isFalse(context.mapUnsafe.has("effect/Terminal"))
     assert.strictEqual(Context.get(context, Terminal.columns), live.columns)
-    assert.strictEqual(Context.get(context, Terminal.Terminal), live)
+    assert.deepStrictEqual(Context.get(context, Terminal.Terminal), live)
+    assert.strictEqual(Terminal.Terminal.columns, Terminal.columns)
     assert.strictEqual(Context.omit(Terminal.Terminal)(context).mapUnsafe.size, 0)
   })
 })
