@@ -1,784 +1,358 @@
 /**
  * Shared Node-compatible implementation of Effect's `FileSystem` service.
  *
- * This module adapts Node's `node:fs`, `node:os`, and `node:path` APIs into a
- * `FileSystem` layer for Effect programs running on Node-compatible runtimes.
+ * This module adapts Node's `node:fs`, `node:os`, and `node:path` APIs into
+ * `FileSystem` layers for Effect programs running on Node-compatible runtimes.
  * Platform packages use it to provide file and directory I/O, permissions,
  * links, metadata, temporary files and directories, and file watching through
  * the shared `FileSystem` service.
  *
+ * Each operation of `effect/FileSystem` has its own layer here, named after
+ * the operation, so a program that calls `FileSystem.readFile` and
+ * `FileSystem.writeFile` can provide `NodeFileSystem.readFile` and
+ * `NodeFileSystem.writeFile` and bundle only those two implementations.
+ * `layer` provides every operation.
+ *
  * @stability unstable
  * @since 4.0.0
  */
-import * as BI from "effect/BigInt"
-import * as ByteSize from "effect/ByteSize"
-import * as Cause from "effect/Cause"
-import * as Effect from "effect/Effect"
-import { effectify } from "effect/Effect"
-import * as FileSystem from "effect/FileSystem"
-import { pipe } from "effect/Function"
-import * as Layer from "effect/Layer"
-import * as Option from "effect/Option"
-import * as Error from "effect/PlatformError"
-import * as Queue from "effect/Queue"
-import * as Stream from "effect/Stream"
-import * as Crypto from "node:crypto"
-import * as NFS from "node:fs"
-import * as OS from "node:os"
-import * as Path from "node:path"
-import { handleErrnoException } from "./internal/utils.ts"
-
-const handleBadArgument = (method: string) => (err: unknown) =>
-  Error.badArgument({
-    module: "FileSystem",
-    method,
-    description: (err as Error).message ?? String(err)
-  })
-
-const bigintToNumber = (value: bigint, field: string): number => {
-  const number = Number(value)
-  if (!Number.isSafeInteger(number)) {
-    throw new RangeError(`${field} exceeds the safe integer range: ${value}`)
-  }
-  return number
-}
-
-const bigintToNumberOption = (value: bigint | undefined): Option.Option<number> =>
-  Option.flatMap(Option.fromNullishOr(value), BI.toNumber)
-
-// Node fills bigint stats from a BigInt64Array, so unsigned 64-bit values such
-// as dev_t and ino_t at or above 2^63 are reported as negative.
-const toUint64 = (value: bigint): bigint => BigInt.asUintN(64, value)
-
-const toUint64Option = (value: bigint | undefined): Option.Option<bigint> =>
-  Option.map(Option.fromNullishOr(value), toUint64)
-
-// fs.write ignores bigint positions.
-const positionToNumber = (position: bigint, method: string) =>
-  Effect.try({
-    try: () => bigintToNumber(position, "position"),
-    catch: handleBadArgument(method)
-  })
-
-// == access
-
-const access = ((): FileSystem.Shape["access"] => {
-  const nodeAccess = effectify(
-    NFS.access,
-    handleErrnoException("FileSystem", "access"),
-    handleBadArgument("access")
-  )
-  return (path, options) => {
-    let mode = NFS.constants.F_OK
-    if (options?.readable) {
-      mode |= NFS.constants.R_OK
-    }
-    if (options?.writable) {
-      mode |= NFS.constants.W_OK
-    }
-    return nodeAccess(path, mode)
-  }
-})()
-
-// == copy
-
-const copy = ((): FileSystem.Shape["copy"] => {
-  const nodeCp = effectify(
-    NFS.cp,
-    handleErrnoException("FileSystem", "copy"),
-    handleBadArgument("copy")
-  )
-  return (fromPath, toPath, options) =>
-    nodeCp(fromPath, toPath, {
-      force: options?.overwrite ?? false,
-      preserveTimestamps: options?.preserveTimestamps ?? false,
-      recursive: true
-    })
-})()
-
-// == copyFile
-
-const copyFile = (() => {
-  const nodeCopyFile = effectify(
-    NFS.copyFile,
-    handleErrnoException("FileSystem", "copyFile"),
-    handleBadArgument("copyFile")
-  )
-  return (fromPath: string, toPath: string) => nodeCopyFile(fromPath, toPath)
-})()
-
-// == chmod
-
-const chmod = (() => {
-  const nodeChmod = effectify(
-    NFS.chmod,
-    handleErrnoException("FileSystem", "chmod"),
-    handleBadArgument("chmod")
-  )
-  return (path: string, mode: number) => nodeChmod(path, mode)
-})()
-
-// == chown
-
-const chown = (() => {
-  const nodeChown = effectify(
-    NFS.chown,
-    handleErrnoException("FileSystem", "chown"),
-    handleBadArgument("chown")
-  )
-  return (path: string, uid: number, gid: number) => nodeChown(path, uid, gid)
-})()
-
-// == link
-
-const link = (() => {
-  const nodeLink = effectify(
-    NFS.link,
-    handleErrnoException("FileSystem", "link"),
-    handleBadArgument("link")
-  )
-  return (existingPath: string, newPath: string) => nodeLink(existingPath, newPath)
-})()
-
-// == makeDirectory
-
-const makeDirectory = ((): FileSystem.Shape["makeDirectory"] => {
-  const nodeMkdir = effectify(
-    NFS.mkdir,
-    handleErrnoException("FileSystem", "makeDirectory"),
-    handleBadArgument("makeDirectory")
-  )
-  return (path, options) =>
-    nodeMkdir(path, {
-      recursive: options?.recursive ?? false,
-      mode: options?.mode
-    })
-})()
-
-// == makeTempDirectory
-
-const makeTempDirectoryFactory = (method: string): FileSystem.Shape["makeTempDirectory"] => {
-  const nodeMkdtemp = effectify(
-    NFS.mkdtemp,
-    handleErrnoException("FileSystem", method),
-    handleBadArgument(method)
-  )
-  return (options) =>
-    Effect.suspend(() => {
-      const prefix = options?.prefix ?? ""
-      const directory = typeof options?.directory === "string"
-        ? Path.join(options.directory, ".")
-        : OS.tmpdir()
-
-      return nodeMkdtemp(prefix ? Path.join(directory, prefix) : directory + "/")
-    })
-}
-const makeTempDirectory = makeTempDirectoryFactory("makeTempDirectory")
-
-// == remove
-
-const removeFactory = (method: string): FileSystem.Shape["remove"] => {
-  const nodeRm = effectify(
-    NFS.rm,
-    handleErrnoException("FileSystem", method),
-    handleBadArgument(method)
-  )
-  return (path, options) =>
-    nodeRm(
-      path,
-      { recursive: options?.recursive ?? false, force: options?.force ?? false }
-    )
-}
-const remove = removeFactory("remove")
-
-// == makeTempDirectoryScoped
-
-const makeTempDirectoryScoped = ((): FileSystem.Shape["makeTempDirectoryScoped"] => {
-  const makeDirectory = makeTempDirectoryFactory("makeTempDirectoryScoped")
-  const removeDirectory = removeFactory("makeTempDirectoryScoped")
-  return (options) =>
-    Effect.acquireRelease(
-      makeDirectory(options),
-      (directory) => Effect.orDie(removeDirectory(directory, { recursive: true, force: true }))
-    )
-})()
-
-// == open
-
-const openFlagBits = (flag: FileSystem.OpenFlag): number => {
-  const { O_APPEND, O_CREAT, O_EXCL, O_RDONLY, O_RDWR, O_TRUNC, O_WRONLY } = NFS.constants
-  switch (flag) {
-    case "r":
-      return O_RDONLY
-    case "r+":
-      return O_RDWR
-    case "w":
-      return O_TRUNC | O_CREAT | O_WRONLY
-    case "wx":
-      return O_TRUNC | O_CREAT | O_WRONLY | O_EXCL
-    case "w+":
-      return O_TRUNC | O_CREAT | O_RDWR
-    case "wx+":
-      return O_TRUNC | O_CREAT | O_RDWR | O_EXCL
-    case "a":
-      return O_APPEND | O_CREAT | O_WRONLY
-    case "ax":
-      return O_APPEND | O_CREAT | O_WRONLY | O_EXCL
-    case "a+":
-      return O_APPEND | O_CREAT | O_RDWR
-    case "ax+":
-      return O_APPEND | O_CREAT | O_RDWR | O_EXCL
-  }
-}
-
-// Reject unsupported platforms: libuv silently ignores unknown flags on Windows.
-const noFollowFlags = (method: string, flag: FileSystem.OpenFlag) =>
-  Effect.suspend(() => {
-    const { O_NOFOLLOW } = NFS.constants
-    if (process.platform === "win32" || typeof O_NOFOLLOW !== "number" || O_NOFOLLOW === 0) {
-      return Effect.fail(Error.badArgument({
-        module: "FileSystem",
-        method,
-        description: "noFollow is not supported on this platform"
-      }))
-    }
-    return Effect.succeed(openFlagBits(flag) | O_NOFOLLOW)
-  })
-
-const openFactory = (method: string): FileSystem.Shape["open"] => {
-  const nodeOpen = effectify(
-    NFS.open,
-    handleErrnoException("FileSystem", method),
-    handleBadArgument(method)
-  )
-  const nodeClose = effectify(
-    NFS.close,
-    handleErrnoException("FileSystem", method),
-    handleBadArgument(method)
-  )
-
-  return (path, options) =>
-    pipe(
-      Effect.acquireRelease(
-        options?.noFollow === true
-          ? Effect.flatMap(noFollowFlags(method, options.flag ?? "r"), (flags) => nodeOpen(path, flags, options.mode))
-          : nodeOpen(path, options?.flag ?? "r", options?.mode),
-        (fd) => Effect.orDie(nodeClose(fd))
-      ),
-      Effect.map((fd) => makeFile(fd, options?.flag?.startsWith("a") ?? false))
-    )
-}
-const open = openFactory("open")
-
-const negativePosition = (method: string) =>
-  Error.badArgument({
-    module: "FileSystem",
-    method,
-    description: "Cannot read before the start of the file"
-  })
-
-const makeFile = (() => {
-  const nodeReadFactory = (method: string) =>
-    effectify(
-      NFS.read,
-      handleErrnoException("FileSystem", method),
-      handleBadArgument(method)
-    )
-  const nodeRead = nodeReadFactory("read")
-  const nodeReadAlloc = nodeReadFactory("readAlloc")
-  const nodeStat = effectify(
-    NFS.fstat,
-    handleErrnoException("FileSystem", "stat"),
-    handleBadArgument("stat")
-  )
-  const nodeTruncate = effectify(
-    NFS.ftruncate,
-    handleErrnoException("FileSystem", "truncate"),
-    handleBadArgument("truncate")
-  )
-
-  const nodeSync = effectify(
-    NFS.fsync,
-    handleErrnoException("FileSystem", "sync"),
-    handleBadArgument("sync")
-  )
-
-  const nodeWriteFactory = (method: string) =>
-    effectify(
-      NFS.write,
-      handleErrnoException("FileSystem", method),
-      handleBadArgument(method)
-    )
-  const nodeWrite = nodeWriteFactory("write")
-  const nodeWriteAll = nodeWriteFactory("writeAll")
-
-  class FileImpl implements FileSystem.File {
-    readonly [FileSystem.FileTypeId]: typeof FileSystem.FileTypeId
-    readonly fd: number
-    private readonly append: boolean
-
-    private position: bigint = BigInt(0)
-
-    constructor(
-      fd: number,
-      append: boolean
-    ) {
-      this[FileSystem.FileTypeId] = FileSystem.FileTypeId
-      this.fd = fd
-      this.append = append
-    }
-
-    get stat() {
-      return Effect.flatMap(nodeStat(this.fd, { bigint: true }), makeFileInfo)
-    }
-
-    get sync() {
-      return nodeSync(this.fd)
-    }
-
-    seek(offset: bigint, from: FileSystem.SeekMode) {
-      return Effect.suspend(() => {
-        const position = from === "start" ? offset : this.position + offset
-        if (position < BigInt(0)) {
-          return Effect.fail(Error.badArgument({
-            module: "FileSystem",
-            method: "seek",
-            description: "Cannot seek before the start of the file"
-          }))
-        }
-        this.position = position
-        return Effect.succeed(position)
-      })
-    }
-
-    read(buffer: Uint8Array, options?: FileSystem.File.ReadOptions) {
-      return Effect.suspend(() => {
-        const explicit = options?.position
-        if (explicit !== undefined) {
-          return explicit < BigInt(0)
-            ? Effect.fail(negativePosition("read"))
-            : nodeRead(this.fd, { buffer, position: explicit })
-        }
-        const position = this.position
-        return Effect.map(
-          nodeRead(this.fd, { buffer, position }),
-          (bytesRead) => {
-            this.position = position + BigInt(bytesRead)
-            return bytesRead
-          }
-        )
-      })
-    }
-
-    readAlloc(size: number, options?: FileSystem.File.ReadOptions) {
-      return Effect.suspend(() => {
-        try {
-          if (!Number.isInteger(size) || size < 0) {
-            throw new RangeError("size must be a non-negative integer")
-          }
-          const explicit = options?.position
-          if (explicit !== undefined && explicit < BigInt(0)) {
-            return Effect.fail(negativePosition("readAlloc"))
-          }
-          const buffer = Buffer.allocUnsafeSlow(size)
-          const position = explicit ?? this.position
-          return Effect.map(
-            nodeReadAlloc(this.fd, { buffer, position }),
-            (bytesRead): Option.Option<Buffer> => {
-              if (bytesRead === 0) {
-                return Option.none()
-              }
-
-              if (explicit === undefined) {
-                this.position = position + BigInt(bytesRead)
-              }
-              if (bytesRead === size) {
-                return Option.some(buffer)
-              }
-
-              const dst = Buffer.allocUnsafeSlow(bytesRead)
-              buffer.copy(dst, 0, 0, bytesRead)
-              return Option.some(dst)
-            }
-          )
-        } catch (cause) {
-          return Effect.fail(handleBadArgument("readAlloc")(cause))
-        }
-      })
-    }
-
-    truncate(length?: number) {
-      return Effect.map(nodeTruncate(this.fd, length || undefined), () => {
-        if (!this.append) {
-          const len = BigInt(length ?? 0)
-          if (this.position > len) {
-            this.position = len
-          }
-        }
-      })
-    }
-
-    write(buffer: Uint8Array) {
-      return Effect.suspend(() => {
-        const position = this.position
-        return Effect.flatMap(
-          this.append ? Effect.succeed(undefined) : positionToNumber(position, "write"),
-          (nodePosition) =>
-            Effect.map(
-              nodeWrite(this.fd, buffer, undefined, undefined, nodePosition),
-              (bytesWritten) => {
-                if (!this.append) {
-                  this.position = position + BigInt(bytesWritten)
-                }
-                return bytesWritten
-              }
-            )
-        )
-      })
-    }
-
-    private writeAllChunk(buffer: Uint8Array): Effect.Effect<void, Error.PlatformError> {
-      return Effect.suspend(() => {
-        const position = this.position
-        return Effect.flatMap(
-          this.append ? Effect.succeed(undefined) : positionToNumber(position, "writeAll"),
-          (nodePosition) =>
-            Effect.flatMap(
-              nodeWriteAll(this.fd, buffer, undefined, undefined, nodePosition),
-              (bytesWritten) => {
-                if (bytesWritten === 0) {
-                  return Effect.fail(
-                    Error.systemError({
-                      module: "FileSystem",
-                      method: "writeAll",
-                      _tag: "WriteZero",
-                      pathOrDescriptor: this.fd,
-                      description: "write returned 0 bytes written"
-                    })
-                  )
-                }
-
-                if (!this.append) {
-                  this.position = position + BigInt(bytesWritten)
-                }
-
-                return bytesWritten < buffer.length ? this.writeAllChunk(buffer.subarray(bytesWritten)) : Effect.void
-              }
-            )
-        )
-      })
-    }
-
-    writeAll(buffer: Uint8Array) {
-      return buffer.length === 0 ? Effect.void : this.writeAllChunk(buffer)
-    }
-  }
-
-  return (fd: number, append: boolean): FileSystem.File => new FileImpl(fd, append)
-})()
-
-// == makeTempFile
-
-const makeTempFileFactory = (method: string): FileSystem.Shape["makeTempFile"] => {
-  const makeDirectory = makeTempDirectoryFactory(method)
-  return Effect.fnUntraced(function*(options) {
-    const directory = yield* makeDirectory(options)
-    const random = Crypto.randomBytes(6).toString("hex")
-    const name = Path.join(directory, options?.suffix ? `${random}${options.suffix}` : random)
-    yield* writeFile(name, new Uint8Array(0))
-    return name
-  })
-}
-const makeTempFile = makeTempFileFactory("makeTempFile")
-
-// == makeTempFileScoped
-
-const makeTempFileScoped = ((): FileSystem.Shape["makeTempFileScoped"] => {
-  const makeFile = makeTempFileFactory("makeTempFileScoped")
-  const removeDirectory = removeFactory("makeTempFileScoped")
-  return (options) =>
-    Effect.acquireRelease(
-      makeFile(options),
-      (file) => Effect.orDie(removeDirectory(Path.dirname(file), { recursive: true, force: true }))
-    )
-})()
-
-// == readDirectory
-
-const readDirectory: FileSystem.Shape["readDirectory"] = (path, options) =>
-  Effect.tryPromise({
-    try: () => NFS.promises.readdir(path, options),
-    catch: (err) => handleErrnoException("FileSystem", "readDirectory")(err as any, [path])
-  })
-
-const readDirectoryEntries = (path: string) =>
-  Effect.tryPromise({
-    try: () => NFS.promises.readdir(path, { withFileTypes: true }),
-    catch: (err) => handleErrnoException("FileSystem", "readDirectoryEntries")(err as any, [path])
-  }).pipe(
-    Effect.map((entries) =>
-      entries.map((entry): FileSystem.DirectoryEntry => ({ name: entry.name, type: fileType(entry) }))
-    )
-  )
-
-// == readFile
-
-const readFile = (path: string) =>
-  Effect.callback<Uint8Array, Error.PlatformError>((resume, signal) => {
-    try {
-      NFS.readFile(path, { signal }, (err, data) => {
-        if (err) {
-          resume(Effect.fail(handleErrnoException("FileSystem", "readFile")(err, [path])))
-        } else {
-          resume(Effect.succeed(data))
-        }
-      })
-    } catch (err) {
-      resume(Effect.fail(handleBadArgument("readFile")(err)))
-    }
-  })
-
-// == readLink
-
-const readLink = (() => {
-  const nodeReadLink = effectify(
-    NFS.readlink,
-    handleErrnoException("FileSystem", "readLink"),
-    handleBadArgument("readLink")
-  )
-  return (path: string) => nodeReadLink(path)
-})()
-
-// == realPath
-
-const realPath = (() => {
-  const nodeRealPath = effectify(
-    process.platform === "win32" ? NFS.realpath.native : NFS.realpath,
-    handleErrnoException("FileSystem", "realPath"),
-    handleBadArgument("realPath")
-  )
-  return (path: string) => nodeRealPath(path)
-})()
-
-// == rename
-
-const rename = (() => {
-  const nodeRename = effectify(
-    NFS.rename,
-    handleErrnoException("FileSystem", "rename"),
-    handleBadArgument("rename")
-  )
-  return (oldPath: string, newPath: string) => nodeRename(oldPath, newPath)
-})()
-
-// == stat
-
-const fileType = (stat: NFS.BigIntStats | NFS.Dirent): FileSystem.File.Type =>
-  stat.isFile() ?
-    "File" :
-    stat.isDirectory() ?
-    "Directory" :
-    stat.isSymbolicLink() ?
-    "SymbolicLink" :
-    stat.isBlockDevice() ?
-    "BlockDevice" :
-    stat.isCharacterDevice() ?
-    "CharacterDevice" :
-    stat.isFIFO() ?
-    "FIFO" :
-    stat.isSocket() ?
-    "Socket" :
-    "Unknown"
-
-const makeFileInfo = (
-  stat: NFS.BigIntStats,
-  method = "stat"
-): Effect.Effect<FileSystem.File.Info, Error.PlatformError> =>
-  Effect.try({
-    try: (): FileSystem.File.Info => ({
-      type: fileType(stat),
-      mtime: Option.fromNullishOr(stat.mtime),
-      atime: Option.fromNullishOr(stat.atime),
-      birthtime: Option.fromNullishOr(stat.birthtime),
-      dev: toUint64(stat.dev),
-      rdev: toUint64Option(stat.rdev),
-      ino: toUint64Option(stat.ino),
-      mode: bigintToNumber(stat.mode, "mode"),
-      nlink: toUint64Option(stat.nlink),
-      uid: bigintToNumberOption(stat.uid),
-      gid: bigintToNumberOption(stat.gid),
-      size: ByteSize.bytes(stat.size),
-      blksize: stat.blksize !== undefined ? Option.some(ByteSize.bytes(stat.blksize)) : Option.none(),
-      blocks: Option.fromNullishOr(stat.blocks)
-    }),
-    catch: handleBadArgument(method)
-  })
-const statFactory = (method: string, nodeStatFn: typeof NFS.stat) => {
-  const nodeStat = effectify(
-    nodeStatFn,
-    handleErrnoException("FileSystem", method),
-    handleBadArgument(method)
-  )
-  return (path: string) => Effect.flatMap(nodeStat(path, { bigint: true }), (stat) => makeFileInfo(stat, method))
-}
-const stat = statFactory("stat", NFS.stat)
-const lstat = statFactory("lstat", NFS.lstat)
-
-// == symlink
-
-const symlink = (() => {
-  const nodeSymlink = effectify(
-    NFS.symlink,
-    handleErrnoException("FileSystem", "symlink"),
-    handleBadArgument("symlink")
-  )
-  return (target: string, path: string) => nodeSymlink(target, path)
-})()
-
-// == truncate
-
-const truncate = (() => {
-  const nodeTruncate = effectify(
-    NFS.truncate,
-    handleErrnoException("FileSystem", "truncate"),
-    handleBadArgument("truncate")
-  )
-  return (path: string, length?: number) => nodeTruncate(path, length)
-})()
-
-// == utimes
-
-const utimes = (() => {
-  const nodeUtimes = effectify(
-    NFS.utimes,
-    handleErrnoException("FileSystem", "utime"),
-    handleBadArgument("utime")
-  )
-  return (path: string, atime: number | Date, mtime: number | Date) => nodeUtimes(path, atime, mtime)
-})()
-
-// == watch
-
-const watchNode = (path: string, info: FileSystem.File.Info, options?: FileSystem.WatchOptions) =>
-  Stream.callback<FileSystem.WatchEvent, Error.PlatformError>((queue) =>
-    Effect.acquireRelease(
-      Effect.sync(() => {
-        const directory = info.type === "Directory" ? path : Path.dirname(path)
-        const watcher = NFS.watch(path, {
-          recursive: options?.recursive ?? false
-        }, (event, path) => {
-          if (!path) return
-          switch (event) {
-            case "rename": {
-              Effect.runFork(Effect.matchEffect(stat(Path.resolve(directory, path)), {
-                onSuccess: (_) => Queue.offer(queue, { _tag: "Create", path }),
-                onFailure: (_) => Queue.offer(queue, { _tag: "Remove", path })
-              }))
-              return
-            }
-            case "change": {
-              Queue.offerUnsafe(queue, { _tag: "Update", path })
-              return
-            }
-          }
-        })
-        watcher.on("error", (error) => {
-          Queue.failCauseUnsafe(
-            queue,
-            Cause.fail(
-              Error.systemError({
-                module: "FileSystem",
-                _tag: "Unknown",
-                method: "watch",
-                pathOrDescriptor: path,
-                cause: error
-              })
-            )
-          )
-        })
-        watcher.on("close", () => {
-          Queue.endUnsafe(queue)
-        })
-        return watcher
-      }),
-      (watcher) => Effect.sync(() => watcher.close())
-    ).pipe(Effect.tap(() => Effect.sync(() => options?.onReady?.())))
-  )
-
-const watch = (
-  backend: Option.Option<FileSystem.WatchBackend["Service"]>,
-  path: string,
-  options?: FileSystem.WatchOptions
-) =>
-  Effect.all([stat(path), Effect.serviceOption(FileSystem.WatchBackend)]).pipe(
-    Effect.map(([stat, callerBackend]) =>
-      Option.orElse(callerBackend, () => backend).pipe(
-        Option.flatMap((_) => _.register(path, stat, options)),
-        Option.getOrElse(() => watchNode(path, stat, options))
-      )
-    ),
-    Stream.unwrap
-  )
-
-// == writeFile
-
-const writeFile: FileSystem.Shape["writeFile"] = (path, data, options) =>
-  Effect.callback<void, Error.PlatformError>((resume, signal) => {
-    try {
-      NFS.writeFile(path, data, {
-        signal,
-        flag: options?.flag,
-        mode: options?.mode
-      }, (err) => {
-        if (err) {
-          resume(Effect.fail(handleErrnoException("FileSystem", "writeFile")(err, [path])))
-        } else {
-          resume(Effect.void)
-        }
-      })
-    } catch (err) {
-      resume(Effect.fail(handleBadArgument("writeFile")(err)))
-    }
-  })
-
-const makeFileSystem = Effect.map(Effect.serviceOption(FileSystem.WatchBackend), (backend) =>
-  FileSystem.make({
-    access,
-    chmod,
-    chown,
-    copy,
-    copyFile,
-    link,
-    lstat,
-    makeDirectory,
-    makeTempDirectory,
-    makeTempDirectoryScoped,
-    makeTempFile,
-    makeTempFileScoped,
-    open,
-    readDirectory,
-    readDirectoryEntries,
-    readFile,
-    readLink,
-    realPath,
-    remove,
-    rename,
-    stat,
-    symlink,
-    truncate,
-    utimes,
-    watch(path, options) {
-      return watch(backend, path, options)
-    },
-    writeFile
-  }))
+import type * as FileSystem from "effect/FileSystem"
+import type * as Layer from "effect/Layer"
+import * as Access from "./internal/fileSystem/access.ts"
+import * as Chmod from "./internal/fileSystem/chmod.ts"
+import * as Chown from "./internal/fileSystem/chown.ts"
+import * as Copy from "./internal/fileSystem/copy.ts"
+import * as CopyFile from "./internal/fileSystem/copyFile.ts"
+import * as Exists from "./internal/fileSystem/exists.ts"
+import * as Glob from "./internal/fileSystem/glob.ts"
+import * as All from "./internal/fileSystem/layer.ts"
+import * as Link from "./internal/fileSystem/link.ts"
+import * as Lstat from "./internal/fileSystem/lstat.ts"
+import * as MakeDirectory from "./internal/fileSystem/makeDirectory.ts"
+import * as MakeTempDirectory from "./internal/fileSystem/makeTempDirectory.ts"
+import * as MakeTempDirectoryScoped from "./internal/fileSystem/makeTempDirectoryScoped.ts"
+import * as MakeTempFile from "./internal/fileSystem/makeTempFile.ts"
+import * as MakeTempFileScoped from "./internal/fileSystem/makeTempFileScoped.ts"
+import * as Open from "./internal/fileSystem/open.ts"
+import * as ReadDirectory from "./internal/fileSystem/readDirectory.ts"
+import * as ReadDirectoryEntries from "./internal/fileSystem/readDirectoryEntries.ts"
+import * as ReadFile from "./internal/fileSystem/readFile.ts"
+import * as ReadFileString from "./internal/fileSystem/readFileString.ts"
+import * as ReadLink from "./internal/fileSystem/readLink.ts"
+import * as RealPath from "./internal/fileSystem/realPath.ts"
+import * as Remove from "./internal/fileSystem/remove.ts"
+import * as Rename from "./internal/fileSystem/rename.ts"
+import * as Sink from "./internal/fileSystem/sink.ts"
+import * as Stat from "./internal/fileSystem/stat.ts"
+import * as Stream from "./internal/fileSystem/stream.ts"
+import * as Symlink from "./internal/fileSystem/symlink.ts"
+import * as Truncate from "./internal/fileSystem/truncate.ts"
+import * as Utimes from "./internal/fileSystem/utimes.ts"
+import * as Watch from "./internal/fileSystem/watch.ts"
+import * as WriteFile from "./internal/fileSystem/writeFile.ts"
+import * as WriteFileString from "./internal/fileSystem/writeFileString.ts"
 
 /**
  * Provides the `FileSystem` service backed by Node filesystem APIs, including
  * file operations, directory operations, links, metadata, and file watching.
  *
+ * **Details**
+ *
+ * This is the merge of every operation layer in this module, so it bundles
+ * every implementation. A program that calls a few operations can provide
+ * their layers instead.
+ *
  * @stability unstable
  * @category layers
  * @since 4.0.0
  */
-export const layer: Layer.Layer<FileSystem.FileSystem> = Layer.effect(FileSystem.FileSystem)(makeFileSystem)
+export const layer: Layer.Layer<FileSystem.FileSystem> = All.layer
+
+/**
+ * Layer that provides `FileSystem.access` alone: it checks access to a path with Node's `fs.access`.
+ *
+ * @stability unstable
+ * @category layers
+ * @since 4.2.0
+ */
+export const access: Layer.Layer<"effect/FileSystem/access"> = Access.layer
+
+/**
+ * Layer that provides `FileSystem.chmod` alone: it changes a path's permissions with Node's `fs.chmod`.
+ *
+ * @stability unstable
+ * @category layers
+ * @since 4.2.0
+ */
+export const chmod: Layer.Layer<"effect/FileSystem/chmod"> = Chmod.layer
+
+/**
+ * Layer that provides `FileSystem.chown` alone: it changes a path's owner and group with Node's `fs.chown`.
+ *
+ * @stability unstable
+ * @category layers
+ * @since 4.2.0
+ */
+export const chown: Layer.Layer<"effect/FileSystem/chown"> = Chown.layer
+
+/**
+ * Layer that provides `FileSystem.copy` alone: it copies a file or directory recursively with Node's `fs.cp`.
+ *
+ * @stability unstable
+ * @category layers
+ * @since 4.2.0
+ */
+export const copy: Layer.Layer<"effect/FileSystem/copy"> = Copy.layer
+
+/**
+ * Layer that provides `FileSystem.copyFile` alone: it copies a file with Node's `fs.copyFile`.
+ *
+ * @stability unstable
+ * @category layers
+ * @since 4.2.0
+ */
+export const copyFile: Layer.Layer<"effect/FileSystem/copyFile"> = CopyFile.layer
+
+/**
+ * Layer that provides `FileSystem.exists` alone: it checks whether a path exists, derived from this module's `access`.
+ *
+ * @stability unstable
+ * @category layers
+ * @since 4.2.0
+ */
+export const exists: Layer.Layer<"effect/FileSystem/exists"> = Exists.layer
+
+/**
+ * Layer that provides `FileSystem.glob` alone: it matches paths against a glob pattern, derived from this module's `readDirectoryEntries`, `stat` and `readLink`.
+ *
+ * @stability unstable
+ * @category layers
+ * @since 4.2.0
+ */
+export const glob: Layer.Layer<"effect/FileSystem/glob"> = Glob.layer
+
+/**
+ * Layer that provides `FileSystem.link` alone: it creates a hard link with Node's `fs.link`.
+ *
+ * @stability unstable
+ * @category layers
+ * @since 4.2.0
+ */
+export const link: Layer.Layer<"effect/FileSystem/link"> = Link.layer
+
+/**
+ * Layer that provides `FileSystem.lstat` alone: it reads a path's metadata without following symbolic links, with Node's `fs.lstat`.
+ *
+ * @stability unstable
+ * @category layers
+ * @since 4.2.0
+ */
+export const lstat: Layer.Layer<"effect/FileSystem/lstat"> = Lstat.layer
+
+/**
+ * Layer that provides `FileSystem.makeDirectory` alone: it creates a directory with Node's `fs.mkdir`.
+ *
+ * @stability unstable
+ * @category layers
+ * @since 4.2.0
+ */
+export const makeDirectory: Layer.Layer<"effect/FileSystem/makeDirectory"> = MakeDirectory.layer
+
+/**
+ * Layer that provides `FileSystem.makeTempDirectory` alone: it creates a temporary directory with Node's `fs.mkdtemp`.
+ *
+ * @stability unstable
+ * @category layers
+ * @since 4.2.0
+ */
+export const makeTempDirectory: Layer.Layer<"effect/FileSystem/makeTempDirectory"> = MakeTempDirectory.layer
+
+/**
+ * Layer that provides `FileSystem.makeTempDirectoryScoped` alone: it creates a temporary directory with Node's `fs.mkdtemp` and removes it when the scope closes.
+ *
+ * @stability unstable
+ * @category layers
+ * @since 4.2.0
+ */
+export const makeTempDirectoryScoped: Layer.Layer<"effect/FileSystem/makeTempDirectoryScoped"> =
+  MakeTempDirectoryScoped.layer
+
+/**
+ * Layer that provides `FileSystem.makeTempFile` alone: it creates an empty file in a new temporary directory.
+ *
+ * @stability unstable
+ * @category layers
+ * @since 4.2.0
+ */
+export const makeTempFile: Layer.Layer<"effect/FileSystem/makeTempFile"> = MakeTempFile.layer
+
+/**
+ * Layer that provides `FileSystem.makeTempFileScoped` alone: it creates an empty file in a new temporary directory and removes the directory when the scope closes.
+ *
+ * @stability unstable
+ * @category layers
+ * @since 4.2.0
+ */
+export const makeTempFileScoped: Layer.Layer<"effect/FileSystem/makeTempFileScoped"> = MakeTempFileScoped.layer
+
+/**
+ * Layer that provides `FileSystem.open` alone: it opens a file handle with Node's `fs.open` and closes it when the scope closes.
+ *
+ * @stability unstable
+ * @category layers
+ * @since 4.2.0
+ */
+export const open: Layer.Layer<"effect/FileSystem/open"> = Open.layer
+
+/**
+ * Layer that provides `FileSystem.readDirectory` alone: it lists a directory with Node's `fs.promises.readdir`.
+ *
+ * @stability unstable
+ * @category layers
+ * @since 4.2.0
+ */
+export const readDirectory: Layer.Layer<"effect/FileSystem/readDirectory"> = ReadDirectory.layer
+
+/**
+ * Layer that provides `FileSystem.readDirectoryEntries` alone: it lists a directory with entry types, with Node's `fs.promises.readdir`.
+ *
+ * @stability unstable
+ * @category layers
+ * @since 4.2.0
+ */
+export const readDirectoryEntries: Layer.Layer<"effect/FileSystem/readDirectoryEntries"> = ReadDirectoryEntries.layer
+
+/**
+ * Layer that provides `FileSystem.readFile` alone: it reads a whole file with Node's `fs.readFile`.
+ *
+ * @stability unstable
+ * @category layers
+ * @since 4.2.0
+ */
+export const readFile: Layer.Layer<"effect/FileSystem/readFile"> = ReadFile.layer
+
+/**
+ * Layer that provides `FileSystem.readFileString` alone: it reads a file as text, derived from this module's `readFile`.
+ *
+ * @stability unstable
+ * @category layers
+ * @since 4.2.0
+ */
+export const readFileString: Layer.Layer<"effect/FileSystem/readFileString"> = ReadFileString.layer
+
+/**
+ * Layer that provides `FileSystem.readLink` alone: it reads a symbolic link's target with Node's `fs.readlink`.
+ *
+ * @stability unstable
+ * @category layers
+ * @since 4.2.0
+ */
+export const readLink: Layer.Layer<"effect/FileSystem/readLink"> = ReadLink.layer
+
+/**
+ * Layer that provides `FileSystem.realPath` alone: it resolves a path to its canonical form with Node's `fs.realpath`.
+ *
+ * @stability unstable
+ * @category layers
+ * @since 4.2.0
+ */
+export const realPath: Layer.Layer<"effect/FileSystem/realPath"> = RealPath.layer
+
+/**
+ * Layer that provides `FileSystem.remove` alone: it removes a file or directory with Node's `fs.rm`.
+ *
+ * @stability unstable
+ * @category layers
+ * @since 4.2.0
+ */
+export const remove: Layer.Layer<"effect/FileSystem/remove"> = Remove.layer
+
+/**
+ * Layer that provides `FileSystem.rename` alone: it renames a path with Node's `fs.rename`.
+ *
+ * @stability unstable
+ * @category layers
+ * @since 4.2.0
+ */
+export const rename: Layer.Layer<"effect/FileSystem/rename"> = Rename.layer
+
+/**
+ * Layer that provides `FileSystem.sink` alone: it writes a stream of bytes to a file, derived from this module's `open`.
+ *
+ * @stability unstable
+ * @category layers
+ * @since 4.2.0
+ */
+export const sink: Layer.Layer<"effect/FileSystem/sink"> = Sink.layer
+
+/**
+ * Layer that provides `FileSystem.stat` alone: it reads a path's metadata with Node's `fs.stat`.
+ *
+ * @stability unstable
+ * @category layers
+ * @since 4.2.0
+ */
+export const stat: Layer.Layer<"effect/FileSystem/stat"> = Stat.layer
+
+/**
+ * Layer that provides `FileSystem.stream` alone: it reads a file as a stream of chunks, derived from this module's `open`.
+ *
+ * @stability unstable
+ * @category layers
+ * @since 4.2.0
+ */
+export const stream: Layer.Layer<"effect/FileSystem/stream"> = Stream.layer
+
+/**
+ * Layer that provides `FileSystem.symlink` alone: it creates a symbolic link with Node's `fs.symlink`.
+ *
+ * @stability unstable
+ * @category layers
+ * @since 4.2.0
+ */
+export const symlink: Layer.Layer<"effect/FileSystem/symlink"> = Symlink.layer
+
+/**
+ * Layer that provides `FileSystem.truncate` alone: it truncates a file with Node's `fs.truncate`.
+ *
+ * @stability unstable
+ * @category layers
+ * @since 4.2.0
+ */
+export const truncate: Layer.Layer<"effect/FileSystem/truncate"> = Truncate.layer
+
+/**
+ * Layer that provides `FileSystem.utimes` alone: it changes a path's access and modification times with Node's `fs.utimes`.
+ *
+ * @stability unstable
+ * @category layers
+ * @since 4.2.0
+ */
+export const utimes: Layer.Layer<"effect/FileSystem/utimes"> = Utimes.layer
+
+/**
+ * Layer that provides `FileSystem.watch` alone: it watches a path with Node's `fs.watch`, or with a provided `FileSystem.WatchBackend`.
+ *
+ * @stability unstable
+ * @category layers
+ * @since 4.2.0
+ */
+export const watch: Layer.Layer<"effect/FileSystem/watch"> = Watch.layer
+
+/**
+ * Layer that provides `FileSystem.writeFile` alone: it writes a whole file with Node's `fs.writeFile`.
+ *
+ * @stability unstable
+ * @category layers
+ * @since 4.2.0
+ */
+export const writeFile: Layer.Layer<"effect/FileSystem/writeFile"> = WriteFile.layer
+
+/**
+ * Layer that provides `FileSystem.writeFileString` alone: it writes text to a file, derived from this module's `writeFile`.
+ *
+ * @stability unstable
+ * @category layers
+ * @since 4.2.0
+ */
+export const writeFileString: Layer.Layer<"effect/FileSystem/writeFileString"> = WriteFileString.layer

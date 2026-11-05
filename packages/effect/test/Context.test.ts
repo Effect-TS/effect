@@ -375,7 +375,7 @@ describe("Operation", () => {
   const collect = Sink.Operation<(label: string) => Sink.Sink<Array<string>, string>>()("ContextTest/FS/collect")
   const members = { readFile, writeFile, stat, lines }
   type FS = Context.Operations.Identifier<typeof members>
-  interface Shape extends Context.Operations.Shape<typeof members> {}
+  interface Shape extends Context.Operations.Shape<typeof members>, Context.Operations.Named {}
   const FS = Context.Operations<FS, Shape>()("ContextTest/FS", members)
   const readOnlyMembers = { readFile, stat }
   type ReadOnly = Context.Operations.Identifier<typeof readOnlyMembers>
@@ -733,6 +733,49 @@ describe("Operation", () => {
       )
       // every value in a flat map is a service: there are no markers
       for (const value of context.mapUnsafe.values()) assertFalse(typeof value === "symbol")
+    })
+
+    it("returns one object per storage when reads of two override contexts alternate", () => {
+      const live = record({ readFile: () => Effect.succeed("live") })
+      const base = Context.make(FS, live)
+      // two requests, each with its own override over the same record
+      const first = Context.add(base, readFile, () => Effect.succeed("first"))
+      const second = Context.add(base, readFile, () => Effect.succeed("second"))
+      const a = Context.get(first, FS)
+      const b = Context.get(second, FS)
+      assert.notStrictEqual(a, b)
+      // the copy made for each overlay is remembered under it, not only in the one-entry cache
+      for (let i = 0; i < 3; i++) {
+        strictEqual(Context.get(first, FS), a)
+        strictEqual(Context.get(second, FS), b)
+      }
+      strictEqual(Context.get(base, FS), Context.get(base, FS))
+      strictEqual(a.writeFile, live.writeFile)
+      strictEqual(b.writeFile, live.writeFile)
+    })
+
+    it("accepts a member whose value is undefined", async () => {
+      const Optional = Context.Service<string | undefined>("ContextTest/Optional/value")
+      const run = Context.Operation<() => Effect.Effect<string>>()("ContextTest/Optional/run")
+      const Rec = Context.Operations("ContextTest/Optional", { value: Optional, run })
+      const provided = { value: undefined, run: () => Effect.succeed("ran") }
+      // written as a flat map and as overlays, read back with the member present and undefined
+      const flat = Context.make(Rec, provided)
+      const overlaid = Context.add(Context.make(Context.Service<number>("ContextTest/Other"), 1), Rec, provided)
+      for (const context of [flat, overlaid]) {
+        const view = Context.get(context, Rec)
+        assertTrue(Object.hasOwn(view, "value"))
+        strictEqual(view.value, undefined)
+        strictEqual(Context.get(context, Optional), undefined)
+        assertTrue(Option.isSome(Context.getOption(context, Rec)))
+        strictEqual(context.mapUnsafe.has("ContextTest/Optional/value"), true)
+      }
+      strictEqual(await Effect.runPromise(Effect.provide(run(), Layer.succeed(Rec, provided))), "ran")
+      // an absent member is still a defect: `in`, not `=== undefined`
+      assert.throws(
+        () => Context.make(Rec, { run: provided.run } as unknown as typeof provided),
+        /Service not found: ContextTest\/Optional\/value/
+      )
     })
 
     it("stores a method found on the provided object's prototype bound to it, and reads the members, not the instance", async () => {

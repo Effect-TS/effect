@@ -227,7 +227,7 @@ export const join = Context.Service<(...parts: ReadonlyArray<string>) => string>
 export const fromFileUrl = Context.Operation<(url: URL) => Effect.Effect<string, Error>>()("test/Path/fromFileUrl")
 const pathMembers = { sep, join, fromFileUrl }
 export type Path = Context.Operations.Identifier<typeof pathMembers>
-export interface PathShape extends Context.Operations.Shape<typeof pathMembers> {}
+export interface PathShape extends Context.Operations.Shape<typeof pathMembers>, Context.Operations.Named {}
 export const Path = Context.Operations<Path, PathShape>()("test/Path", pathMembers)
 export const pathIdentity: Path = "test/Path/fromFileUrl" as string | "test/Path/fromFileUrl"
 export const separator: Effect.Effect<string, never, string> = sep
@@ -255,7 +255,7 @@ export const pathFromMembers: Layer.Layer<Path> = Layer.mergeAll(
 // A record may be a member of a record: its slots are spread the same way, and the identity is the union.
 const platformMembers = { fs: FileSystem.ReadOnly, terminal: Terminal.Terminal }
 export type Platform = Context.Operations.Identifier<typeof platformMembers>
-export interface PlatformShape extends Context.Operations.Shape<typeof platformMembers> {}
+export interface PlatformShape extends Context.Operations.Shape<typeof platformMembers>, Context.Operations.Named {}
 export const Platform = Context.Operations<Platform, PlatformShape>()("test/Platform", platformMembers)
 export const platformIdentity: Platform = "effect/Terminal/rows" as FileSystem.ReadOnly | Terminal.Terminal
 export const platformUnderParts: Effect.Effect<PlatformShape, never, never> = Platform.pipe(

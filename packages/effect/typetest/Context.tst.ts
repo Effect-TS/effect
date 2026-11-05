@@ -34,7 +34,7 @@ describe("Operation", () => {
   const display = Context.Operation<(text: string) => Effect.Effect<void>>()("TypeTest/Terminal/display")
   const members = { readFile, writeFile, scoped, stream }
   type FS = Context.Operations.Identifier<typeof members>
-  interface Shape extends Context.Operations.Shape<typeof members> {}
+  interface Shape extends Context.Operations.Shape<typeof members>, Context.Operations.Named {}
   const FS = Context.Operations<FS, Shape>()("TypeTest/FS", members)
   const readOnlyMembers = { readFile }
   type ReadOnly = Context.Operations.Identifier<typeof readOnlyMembers>
@@ -218,7 +218,7 @@ describe("Operation", () => {
         "Member \"use\" has the name of a property of the key: rename it"
       >()
       expect<Context.Operations.KeyFor<FS, { readonly readFile: Shape["readFile"] }, typeof members>>().type.toBe<
-        "Shape is not the members' shape: declare it as interface Shape extends Context.Operations.Shape<typeof members> {}"
+        "Shape is not the members' shape: declare it as interface Shape extends Context.Operations.Shape<typeof members>, Context.Operations.Named {}"
       >()
       expect<Context.Operations.KeyFor<"TypeTest/FS/readFile", Shape, typeof members>>().type.toBe<
         | `Self lacks the identifier of "TypeTest/FS/writeFile"`

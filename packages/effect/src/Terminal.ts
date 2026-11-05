@@ -31,7 +31,7 @@ import type * as Scope from "./Scope.ts"
  * @category models
  * @since 4.0.0
  */
-export interface Shape extends Context.Operations.Shape<typeof members> {}
+export interface Shape extends Context.Operations.Shape<typeof members>, Context.Operations.Named {}
 
 /**
  * Terminal dimensions measured in character cells.

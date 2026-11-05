@@ -80,7 +80,7 @@ import * as Stream from "./Stream.ts"
  * @category models
  * @since 4.0.0
  */
-export interface Shape extends Context.Operations.Shape<typeof members> {}
+export interface Shape extends Context.Operations.Shape<typeof members>, Context.Operations.Named {}
 
 /**
  * File open flags that determine how a file is opened and what operations are allowed.
@@ -837,7 +837,7 @@ const readOnlyMembers = {
  * @category models
  * @since 4.0.0
  */
-export type ReadOnlyShape = Pick<Shape, keyof typeof readOnlyMembers>
+export interface ReadOnlyShape extends Context.Operations.Shape<typeof readOnlyMembers>, Context.Operations.Named {}
 
 /**
  * The read-only file system: a record service over the operations that read
@@ -917,81 +917,219 @@ export const make = (
   FileSystem.of({
     ...impl,
     glob: Glob.make(impl),
-    exists: (path) =>
-      pipe(
-        impl.access(path),
-        Effect.as(true),
-        Effect.catchTag(
-          "PlatformError",
-          (e) => e.reason._tag === "NotFound" ? Effect.succeed(false) : Effect.fail(e)
-        )
-      ),
-    readFileString: (path, encoding) =>
-      Effect.flatMap(impl.readFile(path), (_) =>
-        Effect.try({
-          try: () => new TextDecoder(encoding).decode(_),
-          catch: (cause) =>
-            badArgument({
-              module: "FileSystem",
-              method: "readFileString",
-              description: "invalid encoding",
-              cause
-            })
-        })),
-    stream: Effect.fnUntraced(function*(path, options) {
-      const file = yield* impl.open(path, { flag: "r" })
-      const offset = options?.offset === undefined ? undefined : ByteSize.fromInputUnsafe(options.offset)
-      if (offset) {
-        yield* file.seek(offset, "start")
-      }
-      const bytesToRead = options?.bytesToRead === undefined
-        ? undefined
-        : ByteSize.fromInputUnsafe(options.bytesToRead)
-      let totalBytesRead = BigInt(0)
-      // Validate chunk sizes even for zero-byte reads.
-      const chunkSize = Number(BigInt(options?.chunkSize ?? 64 * 1024))
-      const readChunk = file.readAlloc(chunkSize)
-      return Stream.fromPull(Effect.succeed(
-        Effect.flatMap(
-          Effect.suspend((): Pull.Pull<Option.Option<Uint8Array>, PlatformError> => {
-            if (bytesToRead !== undefined && bytesToRead <= totalBytesRead) {
-              return Cause.done()
-            }
-            return bytesToRead !== undefined && (bytesToRead - totalBytesRead) < chunkSize
-              ? file.readAlloc(Number(bytesToRead - totalBytesRead))
-              : readChunk
-          }),
-          Option.match({
-            onNone: () => Cause.done(),
-            onSome: (buf) => {
-              totalBytesRead += BigInt(buf.length)
-              return Effect.succeed(Arr.of(buf))
-            }
-          })
-        )
-      ))
-    }, Stream.unwrap),
-    sink: (path, options) =>
-      pipe(
-        impl.open(path, { ...options, flag: options?.flag ?? "w" }),
-        Effect.map((file) => Sink.forEach((_: Uint8Array) => file.writeAll(_))),
-        Sink.unwrap
-      ),
-    writeFileString: (path, data, options) =>
-      Effect.flatMap(
-        Effect.try({
-          try: () => new TextEncoder().encode(data),
-          catch: (cause) =>
-            badArgument({
-              module: "FileSystem",
-              method: "writeFileString",
-              description: "could not encode string",
-              cause
-            })
-        }),
-        (_) => impl.writeFile(path, _, options)
-      )
+    exists: makeExists(impl),
+    readFileString: makeReadFileString(impl),
+    stream: makeStream(impl),
+    sink: makeSink(impl),
+    writeFileString: makeWriteFileString(impl)
   })
+
+const makeExists = (impl: Pick<Shape, "access">): Shape["exists"] => (path) =>
+  pipe(
+    impl.access(path),
+    Effect.as(true),
+    Effect.catchTag(
+      "PlatformError",
+      (e) => e.reason._tag === "NotFound" ? Effect.succeed(false) : Effect.fail(e)
+    )
+  )
+
+const makeReadFileString = (impl: Pick<Shape, "readFile">): Shape["readFileString"] => (path, encoding) =>
+  Effect.flatMap(impl.readFile(path), (_) =>
+    Effect.try({
+      try: () => new TextDecoder(encoding).decode(_),
+      catch: (cause) =>
+        badArgument({
+          module: "FileSystem",
+          method: "readFileString",
+          description: "invalid encoding",
+          cause
+        })
+    }))
+
+const makeStream = (impl: Pick<Shape, "open">): Shape["stream"] =>
+  Effect.fnUntraced(function*(path, options) {
+    const file = yield* impl.open(path, { flag: "r" })
+    const offset = options?.offset === undefined ? undefined : ByteSize.fromInputUnsafe(options.offset)
+    if (offset) {
+      yield* file.seek(offset, "start")
+    }
+    const bytesToRead = options?.bytesToRead === undefined
+      ? undefined
+      : ByteSize.fromInputUnsafe(options.bytesToRead)
+    let totalBytesRead = BigInt(0)
+    // Validate chunk sizes even for zero-byte reads.
+    const chunkSize = Number(BigInt(options?.chunkSize ?? 64 * 1024))
+    const readChunk = file.readAlloc(chunkSize)
+    return Stream.fromPull(Effect.succeed(
+      Effect.flatMap(
+        Effect.suspend((): Pull.Pull<Option.Option<Uint8Array>, PlatformError> => {
+          if (bytesToRead !== undefined && bytesToRead <= totalBytesRead) {
+            return Cause.done()
+          }
+          return bytesToRead !== undefined && (bytesToRead - totalBytesRead) < chunkSize
+            ? file.readAlloc(Number(bytesToRead - totalBytesRead))
+            : readChunk
+        }),
+        Option.match({
+          onNone: () => Cause.done(),
+          onSome: (buf) => {
+            totalBytesRead += BigInt(buf.length)
+            return Effect.succeed(Arr.of(buf))
+          }
+        })
+      )
+    ))
+  }, Stream.unwrap)
+
+const makeSink = (impl: Pick<Shape, "open">): Shape["sink"] => (path, options) =>
+  pipe(
+    impl.open(path, { ...options, flag: options?.flag ?? "w" }),
+    Effect.map((file) => Sink.forEach((_: Uint8Array) => file.writeAll(_))),
+    Sink.unwrap
+  )
+
+const makeWriteFileString = (impl: Pick<Shape, "writeFile">): Shape["writeFileString"] => (path, data, options) =>
+  Effect.flatMap(
+    Effect.try({
+      try: () => new TextEncoder().encode(data),
+      catch: (cause) =>
+        badArgument({
+          module: "FileSystem",
+          method: "writeFileString",
+          description: "could not encode string",
+          cause
+        })
+    }),
+    (_) => impl.writeFile(path, _, options)
+  )
+
+/**
+ * Layer that provides {@link exists} over {@link access}: `true` when `access`
+ * succeeds, `false` when it fails with `NotFound`, as {@link make} derives it.
+ *
+ * **When to use**
+ *
+ * Use to build a platform's `exists` layer: provide it with that platform's
+ * `access`, so a program that only calls `exists` bundles only the two.
+ *
+ * @stability unstable
+ * @category layers
+ * @since 4.2.0
+ */
+export const layerExists: Layer.Layer<"effect/FileSystem/exists", never, "effect/FileSystem/access"> = Layer.effect(
+  exists,
+  Effect.map(Effect.service(access), (access) => makeExists({ access }))
+)
+
+/**
+ * Layer that provides {@link glob} over {@link readDirectoryEntries},
+ * {@link stat} and {@link readLink}, as {@link make} derives it.
+ *
+ * **When to use**
+ *
+ * Use to build a platform's `glob` layer: provide it with that platform's
+ * primitives.
+ *
+ * @stability unstable
+ * @category layers
+ * @since 4.2.0
+ */
+export const layerGlob: Layer.Layer<
+  "effect/FileSystem/glob",
+  never,
+  "effect/FileSystem/readDirectoryEntries" | "effect/FileSystem/stat" | "effect/FileSystem/readLink"
+> = Layer.effect(
+  glob,
+  Effect.map(
+    Effect.all({
+      readDirectoryEntries: Effect.service(readDirectoryEntries),
+      stat: Effect.service(stat),
+      readLink: Effect.service(readLink)
+    }),
+    Glob.make
+  )
+)
+
+/**
+ * Layer that provides {@link readFileString} over {@link readFile}, decoding
+ * the bytes with `TextDecoder`, as {@link make} derives it.
+ *
+ * **When to use**
+ *
+ * Use to build a platform's per-operation layer: provide it with that
+ * platform's `readFile`.
+ *
+ * @stability unstable
+ * @category layers
+ * @since 4.2.0
+ */
+export const layerReadFileString: Layer.Layer<
+  "effect/FileSystem/readFileString",
+  never,
+  "effect/FileSystem/readFile"
+> = Layer.effect(
+  readFileString,
+  Effect.map(Effect.service(readFile), (readFile) => makeReadFileString({ readFile }))
+)
+
+/**
+ * Layer that provides {@link stream} over {@link open}, reading the opened
+ * file in chunks, as {@link make} derives it.
+ *
+ * **When to use**
+ *
+ * Use to build a platform's per-operation layer: provide it with that
+ * platform's `open`.
+ *
+ * @stability unstable
+ * @category layers
+ * @since 4.2.0
+ */
+export const layerStream: Layer.Layer<"effect/FileSystem/stream", never, "effect/FileSystem/open"> = Layer.effect(
+  stream,
+  Effect.map(Effect.service(open), (open) => makeStream({ open }))
+)
+
+/**
+ * Layer that provides {@link sink} over {@link open}, writing every chunk to
+ * the opened file, as {@link make} derives it.
+ *
+ * **When to use**
+ *
+ * Use to build a platform's per-operation layer: provide it with that
+ * platform's `open`.
+ *
+ * @stability unstable
+ * @category layers
+ * @since 4.2.0
+ */
+export const layerSink: Layer.Layer<"effect/FileSystem/sink", never, "effect/FileSystem/open"> = Layer.effect(
+  sink,
+  Effect.map(Effect.service(open), (open) => makeSink({ open }))
+)
+
+/**
+ * Layer that provides {@link writeFileString} over {@link writeFile},
+ * encoding the string with `TextEncoder`, as {@link make} derives it.
+ *
+ * **When to use**
+ *
+ * Use to build a platform's per-operation layer: provide it with that
+ * platform's `writeFile`.
+ *
+ * @stability unstable
+ * @category layers
+ * @since 4.2.0
+ */
+export const layerWriteFileString: Layer.Layer<
+  "effect/FileSystem/writeFileString",
+  never,
+  "effect/FileSystem/writeFile"
+> = Layer.effect(
+  writeFileString,
+  Effect.map(Effect.service(writeFile), (writeFile) => makeWriteFileString({ writeFile }))
+)
 
 const notFound = (method: string, path: string) =>
   systemError({

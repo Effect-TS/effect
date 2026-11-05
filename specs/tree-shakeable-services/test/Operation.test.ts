@@ -733,7 +733,7 @@ describe("mixed and nested records", () => {
   const indent = Context.Reference<number>("test/Path/indent", { defaultValue: () => 2 })
   const pathMembers = { sep, join, fromFileUrl, indent }
   type Path = Context.Operations.Identifier<typeof pathMembers>
-  interface PathShape extends Context.Operations.Shape<typeof pathMembers> {}
+  interface PathShape extends Context.Operations.Shape<typeof pathMembers>, Context.Operations.Named {}
   const Path: Context.Operations<Path, PathShape> = Context.Operations("test/Path", pathMembers)
   const posix: PathShape = {
     sep: "/",
@@ -784,7 +784,7 @@ describe("mixed and nested records", () => {
   it("spreads a record that is a member of a record, and reads it back", () => {
     const platformMembers = { fs: FileSystem.ReadOnly, path: Path }
     type Platform = Context.Operations.Identifier<typeof platformMembers>
-    interface PlatformShape extends Context.Operations.Shape<typeof platformMembers> {}
+    interface PlatformShape extends Context.Operations.Shape<typeof platformMembers>, Context.Operations.Named {}
     const Platform: Context.Operations<Platform, PlatformShape> = Context.Operations("test/Platform", platformMembers)
     const fs: FileSystem.ReadOnlyShape = {
       exists: () => Effect.succeed(true),

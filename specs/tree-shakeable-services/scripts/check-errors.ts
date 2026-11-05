@@ -41,13 +41,9 @@ const expectations: Record<string, ReadonlyArray<string>> = {
   "effect-shape.ts": [
     `is not assignable to parameter of type '"The shape returns an Effect: define it with Context.Operation"'`
   ],
-  // the parameter prints by its name; the list of missing members names the members' shape, since TypeScript reports an
-  // interface with no members of its own by its one base type
-  "partial-subset.ts": [
-    `is not assignable to parameter of type 'ReadOnlyShape'`,
-    `is missing the following properties from type 'Shape<{ exists: Operation<"effect/FileSystem/exists"`,
-    `: exists, stat`
-  ],
+  // the shape prints by its name, and so does the list of missing members: the interface has a second base,
+  // `Context.Operations.Named`, so TypeScript does not report it by its one base type
+  "partial-subset.ts": [`is missing the following properties from type 'ReadOnlyShape': exists, stat`],
   "record-requires-all.ts": [`Type 'FileSystem' is not assignable to type 'never'`],
   "partial-aggregate.ts": [`is not assignable to type 'Layer<FileSystem, never, never>'`],
   "missing-twenty.ts": [
@@ -55,16 +51,14 @@ const expectations: Record<string, ReadonlyArray<string>> = {
   ],
   "wrong-self.ts": [
     `is not assignable to parameter of type '"Self lacks the identifier of \\"effect/FileSystem/writeFile\\""'`,
-    `is not assignable to parameter of type '"Shape is not the members' shape: declare it as interface Shape extends Context.Operations.Shape<typeof members> {}"'`,
+    `is not assignable to parameter of type '"Shape is not the members' shape: declare it as interface Shape extends Context.Operations.Shape<typeof members>, Context.Operations.Named {}"'`,
     `is not assignable to parameter of type '"Give the record its identifier: Context.Operations<Self, Shape>()(key, members)"'`,
     `Expected 0 arguments, but got 1`
   ],
   "value-shape.ts": [`This expression is not callable`, `does not satisfy the constraint 'Effect<any, any, any>'`],
   "subset-not-full.ts": [`Type 'FileSystem' is not assignable to type 'ReadOnly'`],
   "partial-record.ts": [
-    `is not assignable to parameter of type 'Shape'`,
-    `is missing the following properties from type 'Shape<typeof import("`,
-    `: access, chmod, chown, copy, and 25 more`
+    `is missing the following properties from type 'Shape': access, chmod, chown, copy, and 25 more`
   ],
   "displayed-type.ts": [
     `Type 'Operation<"effect/FileSystem/readFile", (path: string) => Effect<Uint8Array<ArrayBufferLike>, FileSystemError, never>>' is not assignable to type 'string'`,

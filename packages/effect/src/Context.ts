@@ -1332,7 +1332,7 @@ export const pick = <S extends ReadonlyArray<Slot<any, any>>>(
     return makeImpl(undefined, map, undefined, 0, (self as ContextImpl<any>).maxDepth)
   }
   // a record service keeps every slot it writes
-  const keep = new Set(services.flatMap((key) => isRecordKey(key) ? key["~slotList"] : [key.key]))
+  const keep = new Set(services.flatMap((key) => isRecordKey(key) ? key["~layout"].slotList : [key.key]))
   return withFlat(self, (map) =>
     map.forEach((_, key) => {
       if (!keep.has(key)) map.delete(key)
@@ -1378,7 +1378,7 @@ export const omit = <S extends ReadonlyArray<Slot<any, any>>>(
   withFlat(self, (map) => {
     for (const key of keys) {
       // a record service deletes every slot it writes
-      for (const slot of isRecordKey(key) ? key["~slotList"] : [key.key]) map.delete(slot)
+      for (const slot of isRecordKey(key) ? key["~layout"].slotList : [key.key]) map.delete(slot)
     }
   })
 
@@ -1925,12 +1925,37 @@ export declare namespace Operations {
   /**
    * The shape of a record service: the record of its members' shapes. A
    * contract names it with an interface so diagnostics print the name:
-   * `interface Shape extends Context.Operations.Shape<typeof members> {}`.
+   * `interface Shape extends Context.Operations.Shape<typeof members>,
+   * Context.Operations.Named {}`.
    *
    * @category utility types
    * @since 4.0.0
    */
   export type Shape<Ops extends Members> = { readonly [K in keyof Ops]: Service.Shape<Ops[K]> }
+
+  /**
+   * The second base of a record's shape interface. It has no members: an
+   * interface with exactly one base and no members of its own is reported by
+   * TypeScript under its base's name, so a partial record would list the
+   * missing members of `Shape<typeof members>` rather than of `Shape`. With
+   * this base beside it, the interface is reported by its own name.
+   *
+   * **Example** (Naming a record's shape)
+   *
+   * ```ts
+   * import { Context, Effect } from "effect"
+   *
+   * const find = Context.Operation<(id: string) => Effect.Effect<string>>()("app/Users/find")
+   * const members = { find }
+   * export interface Shape extends Context.Operations.Shape<typeof members>, Context.Operations.Named {}
+   * export type Users = Context.Operations.Identifier<typeof members>
+   * export const Users = Context.Operations<Users, Shape>()("app/Users", members)
+   * ```
+   *
+   * @category utility types
+   * @since 4.0.0
+   */
+  export interface Named {}
 
   /**
    * The member names that are also properties of every key (`use`, `key`,
@@ -1964,8 +1989,8 @@ export declare namespace Operations {
     "Give the record its identifier: Context.Operations<Self, Shape>()(key, members)"
     : [Identifier<Ops>] extends [Self] ? [S] extends [Types.unassigned] ? Key<Ops>
       : [S] extends [Shape<Ops>] ? [Shape<Ops>] extends [S] ? Key<Ops>
-        : "Shape is not the members' shape: declare it as interface Shape extends Context.Operations.Shape<typeof members> {}"
-      : "Shape is not the members' shape: declare it as interface Shape extends Context.Operations.Shape<typeof members> {}"
+        : "Shape is not the members' shape: declare it as interface Shape extends Context.Operations.Shape<typeof members>, Context.Operations.Named {}"
+      : "Shape is not the members' shape: declare it as interface Shape extends Context.Operations.Shape<typeof members>, Context.Operations.Named {}"
     : `Self lacks the identifier of "${Exclude<Identifier<Ops>, Self> & string}"`
 
   /**
@@ -1996,7 +2021,7 @@ export declare namespace Operations {
  * members are properties of the key. A library names both, with the curried
  * form, as `Context.Service<Self, Shape>()` does: `type Self =
  * Context.Operations.Identifier<typeof members>`, `interface Shape extends
- * Context.Operations.Shape<typeof members> {}`, and `const Self =
+ * Context.Operations.Shape<typeof members>, Context.Operations.Named {}`, and `const Self =
  * Context.Operations<Self, Shape>()(key, members)`; diagnostics then print
  * `Self` and `Shape` instead of the members. The `Shape` argument is optional.
  * A declared identifier may be wider than the members' union; one that lacks a
@@ -2038,8 +2063,8 @@ export declare namespace Operations {
  *   return [direct, viaKey, viaRecord]
  * })
  *
- * Effect.runSync(Effect.provide(program, live))
- * // => ["contents of a.txt", "contents of b.txt", "contents of c.txt"]
+ * const result = Effect.runSync(Effect.provide(program, live))
+ * result // => ["contents of a.txt", "contents of b.txt", "contents of c.txt"]
  * ```
  *
  * @see {@link Operation} for defining a member
@@ -2078,54 +2103,65 @@ export const Operations: {
 // dispatch on the key, with one `typeof`; everything else is in this section.
 
 interface RecordImpl extends Operations<any, any> {
+  /** What the record writes and reads, fixed when the key is constructed. */
+  readonly "~layout": RecordLayout
+  /** What the record has assembled and decided since, the one mutable piece. */
+  readonly "~cache": RecordCache
+  readonly "~write": <Services>(self: Context<Services>, value: unknown) => Context<any>
+  readonly "~read": (self: Context<never>, orThrow: boolean) => unknown
+}
+
+interface RecordLayout {
   /**
    * The members in declaration order: the name each is read at, its slot, and
-   * the positions its slots take in `~slotList` (one for a plain member, every
+   * the positions its slots take in `slotList` (one for a plain member, every
    * slot of a member that is a record).
    */
-  readonly "~slots": ReadonlyArray<{
+  readonly members: ReadonlyArray<{
     readonly name: string
     readonly key: Slot<any, any>
     readonly positions: ReadonlyArray<number>
   }>
   /** Every slot the record writes, in writing order. */
-  readonly "~slotList": ReadonlyArray<string>
+  readonly slotList: ReadonlyArray<string>
   /** The same, as a set. */
-  readonly "~index": ReadonlySet<string>
+  readonly index: ReadonlySet<string>
   /** The member name of each slot that belongs to a member that is not a record. */
-  readonly "~plain": ReadonlyMap<string, string>
+  readonly plain: ReadonlyMap<string, string>
   /**
    * Every member name, `undefined`: what an assembled object is copied from,
    * so that every object a record read returns has one shape with fast
    * properties (an object given thirty properties one by one has not).
    */
-  readonly "~template": Record<string, undefined>
-  /** The objects assembled for storages, by base map or overlay; see `readFrom`. */
-  readonly "~views": WeakMap<object, object>
-  /** The last storage read and its object: the one-entry cache in front of `~views`. */
-  "~lastStorage": object | undefined
-  "~lastView": object | undefined
-  /** Whether one of the record's slots is fiber-cached, as of `cacheKeys` having `~cachedAt` entries. */
-  "~cached": boolean
-  "~cachedAt": number
-  readonly "~write": <Services>(self: Context<Services>, value: unknown) => Context<any>
-  readonly "~read": (self: Context<never>, orThrow: boolean) => unknown
+  readonly template: Record<string, undefined>
+}
+
+interface RecordCache {
+  /** The object assembled for each storage (a base map or an overlay); see `readFrom`. */
+  readonly views: WeakMap<object, object>
+  /** The last storage read and its object: a one-entry cache in front of `views`. */
+  storage: object | undefined
+  view: object | undefined
+  /** Whether one of the record's slots is fiber-cached, as of `cacheKeys` having `cachedAt` entries. */
+  cached: boolean
+  cachedAt: number
 }
 
 // The members of `value` as the record stores them: a plain object with every
 // member as its own property (a member that is a record: such an object of its
 // own), and `values`, the value of every slot the record writes, by position. A
-// member `value` lacks is a defect naming its slot: the record would otherwise
-// hold a member no read can use.
+// member `value` lacks (`in` is false: a member whose value is `undefined` is
+// a member) is a defect naming its slot: the record would otherwise hold a
+// member no read can use.
 const collect = (record: RecordImpl, value: any, values: Array<unknown>): Record<string, unknown> => {
   const object = value !== null && (typeof value === "object" || typeof value === "function")
   const methods = object && hasMethods(value)
-  const members: Record<string, unknown> = { ...record["~template"] }
-  const slots = record["~slots"]
-  for (let i = 0; i < slots.length; i++) {
-    const { key, name, positions } = slots[i]
-    const member = object ? memberOf(value, name, methods) : undefined
-    if (member === undefined) throw missingMember(record, name, key)
+  const layout = record["~layout"]
+  const members: Record<string, unknown> = { ...layout.template }
+  for (let i = 0; i < layout.members.length; i++) {
+    const { key, name, positions } = layout.members[i]
+    if (!object || !(name in value)) throw missingMember(record, name, key)
+    const member = memberOf(value, name, methods)
     if (isRecordKey(key)) {
       const nested = new Array<unknown>(positions.length)
       members[name] = collect(key, member, nested)
@@ -2170,25 +2206,26 @@ const memberOf = (value: any, name: string, methods: boolean): unknown => {
 // slots starts a new cache root, as its own write would.
 function addRecord<Services>(this: RecordImpl, self: Context<Services>, value: unknown): Context<any> {
   const impl = self as ContextImpl<Services>
-  const slots = this["~slotList"]
+  const slots = this["~layout"].slotList
+  const cache = this["~cache"]
   const values = new Array<unknown>(slots.length)
   const members = collect(this, value, values)
   // `cacheKeys` only grows, so its size says whether the answer may have changed
-  if (this["~cachedAt"] !== cacheKeys.size) {
-    this["~cached"] = slots.some((slot) => cacheKeys.has(slot))
-    this["~cachedAt"] = cacheKeys.size
+  if (cache.cachedAt !== cacheKeys.size) {
+    cache.cached = slots.some((slot) => cacheKeys.has(slot))
+    cache.cachedAt = cacheKeys.size
   }
-  const cacheRoot = this["~cached"] ? undefined : impl.cacheRoot
+  const cacheRoot = cache.cached ? undefined : impl.cacheRoot
   if (impl.depth >= impl.maxDepth || (impl.overlay === undefined && impl.base.size === 0)) {
     const map = new Map(impl._flat ?? impl.base)
     if (!impl._flat) applyOverlays(map, impl.overlay)
     for (let i = 0; i < slots.length; i++) map.set(slots[i], values[i])
-    remember(this, map, members)
+    remember(cache, map, members)
     return makeImpl(cacheRoot, map, undefined, 0, impl.maxDepth)
   }
   let overlay = impl.overlay
   for (let i = 0; i < slots.length; i++) overlay = { key: slots[i], value: values[i], parent: overlay }
-  remember(this, overlay!, members)
+  remember(cache, overlay!, members)
   return makeImpl(cacheRoot, impl.base, overlay, impl.depth + 1, impl.maxDepth)
 }
 
@@ -2201,10 +2238,10 @@ function readRecord(this: RecordImpl, self: Context<never>, orThrow: boolean): u
 // from the topmost overlay that holds one of them (or the base map, when none
 // does), which is the storage the result is remembered for. Overlays above it
 // hold other slots and cannot change the result, so contexts derived from one
-// another by unrelated writes share it. An object built by copying the record
-// below an overlay holding one member is kept in the one-entry cache alone, so
-// that an override per request costs one copy and leaves no entry behind; an
-// object built from the slots is remembered for its storage in the `WeakMap`.
+// another by unrelated writes share it. Every object returned is remembered
+// for its storage, so every read of one storage returns one object: an
+// overlay holding one member over a record already known is a copy of that
+// record with the member replaced, any other storage is built from the slots.
 // A missing member makes the result `notFound`, or a defect naming the member
 // when `orThrow` is set, and nothing is remembered.
 const readFrom = (
@@ -2213,38 +2250,38 @@ const readFrom = (
   base: ReadonlyMap<string, any>,
   orThrow: boolean
 ): unknown => {
+  const layout = record["~layout"]
+  const cache = record["~cache"]
   let scope = overlay
-  while (scope !== undefined && !record["~index"].has(scope.key)) scope = scope.parent
+  while (scope !== undefined && !layout.index.has(scope.key)) scope = scope.parent
   const storage: object = scope ?? base
-  if (record["~lastStorage"] === storage) return record["~lastView"]
-  const cached = record["~views"].get(storage)
-  if (cached !== undefined) {
-    record["~lastStorage"] = storage
-    record["~lastView"] = cached
-    return cached
+  if (cache.storage === storage) return cache.view
+  const known = cache.views.get(storage)
+  if (known !== undefined) {
+    cache.storage = storage
+    cache.view = known
+    return known
   }
   if (scope !== undefined) {
-    const name = record["~plain"].get(scope.key)
+    const name = layout.plain.get(scope.key)
     if (name !== undefined) {
       // without throwing: a member missing below is provided by this overlay or one above
       const below = readFrom(record, scope.parent, base, false)
       if (below !== notFound) {
         const members = { ...(below as Record<string, unknown>) }
         members[name] = scope.value
-        record["~lastStorage"] = storage
-        record["~lastView"] = members
-        return members
+        return remember(cache, storage, members)
       }
     }
   }
   const members = build(record, scope, base, orThrow)
-  return members === notFound ? notFound : remember(record, storage, members as object)
+  return members === notFound ? notFound : remember(cache, storage, members as object)
 }
 
-const remember = (record: RecordImpl, storage: object, members: object): object => {
-  record["~views"].set(storage, members)
-  record["~lastStorage"] = storage
-  record["~lastView"] = members
+const remember = (cache: RecordCache, storage: object, members: object): object => {
+  cache.views.set(storage, members)
+  cache.storage = storage
+  cache.view = members
   return members
 }
 
@@ -2259,10 +2296,10 @@ const build = (
   base: ReadonlyMap<string, any>,
   orThrow: boolean
 ): unknown => {
-  const members: Record<string, unknown> = { ...record["~template"] }
-  const slots = record["~slots"]
-  for (let i = 0; i < slots.length; i++) {
-    const { key, name } = slots[i]
+  const layout = record["~layout"]
+  const members: Record<string, unknown> = { ...layout.template }
+  for (let i = 0; i < layout.members.length; i++) {
+    const { key, name } = layout.members[i]
     let member = isRecordKey(key) ? readFrom(key, scope, base, orThrow) : peekFrom(scope, base, key.key)
     if (member === notFound) {
       if (isReference(key)) member = getDefaultValue(key)
@@ -2314,20 +2351,7 @@ const OperationsProto = Object.assign({}, ServiceProto, {
 })
 
 // The names of the key's own state, which a member cannot have either.
-const recordState = [
-  "key",
-  "members",
-  "~slots",
-  "~slotList",
-  "~index",
-  "~plain",
-  "~template",
-  "~views",
-  "~lastStorage",
-  "~lastView",
-  "~cached",
-  "~cachedAt"
-]
+const recordState = ["key", "members", "~layout", "~cache"]
 
 const makeOperations = (key: string, members: Operations.Members): Operations<any, any> => {
   // The members are properties of the key, so that `Record.member(...)` is the
@@ -2345,6 +2369,12 @@ const makeOperations = (key: string, members: Operations.Members): Operations<an
   const self: Types.Mutable<RecordImpl> = Object.create(proto)
   self.key = key
   self.members = members
+  self["~layout"] = makeLayout(members)
+  self["~cache"] = { views: new WeakMap(), storage: undefined, view: undefined, cached: false, cachedAt: -1 }
+  return self
+}
+
+const makeLayout = (members: Operations.Members): RecordLayout => {
   // a slot two members share (two subset records over one member) has one position, which the later member writes
   const slotList: Array<string> = []
   const index = new Set<string>()
@@ -2356,22 +2386,19 @@ const makeOperations = (key: string, members: Operations.Members): Operations<an
     }
     return slotList.indexOf(slot)
   }
-  self["~slots"] = Object.keys(members).map((name) => {
-    const member = members[name]
-    if (isRecordKey(member)) return { name, key: member, positions: member["~slotList"].map(position) }
-    plain.set(member.key, name)
-    return { name, key: member, positions: [position(member.key)] }
-  })
-  self["~slotList"] = slotList
-  self["~index"] = index
-  self["~plain"] = plain
-  self["~template"] = Object.fromEntries(Object.keys(members).map((name) => [name, undefined]))
-  self["~views"] = new WeakMap()
-  self["~lastStorage"] = undefined
-  self["~lastView"] = undefined
-  self["~cached"] = false
-  self["~cachedAt"] = -1
-  return self
+  const names = Object.keys(members)
+  return {
+    members: names.map((name) => {
+      const member = members[name]
+      if (isRecordKey(member)) return { name, key: member, positions: member["~layout"].slotList.map(position) }
+      plain.set(member.key, name)
+      return { name, key: member, positions: [position(member.key)] }
+    }),
+    slotList,
+    index,
+    plain,
+    template: Object.fromEntries(names.map((name) => [name, undefined]))
+  }
 }
 
 /**

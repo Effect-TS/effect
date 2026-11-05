@@ -10,6 +10,7 @@ import * as Option from "effect/Option"
 import * as Stream from "effect/Stream"
 import * as TestClock from "effect/testing/TestClock"
 import * as NFS from "node:fs"
+import * as OS from "node:os"
 import * as Path from "node:path"
 import { afterEach, beforeEach, vi } from "vitest"
 import { testGlob, testLayer } from "../../../effect/test/FileSystem.test-utils.ts"
@@ -197,6 +198,120 @@ describe("FileSystem", { concurrent: false }, () => {
     }).pipe(
       Effect.provide(NodeFileSystem.layer)
     ))
+})
+
+const operations = [
+  "access",
+  "chmod",
+  "chown",
+  "copy",
+  "copyFile",
+  "exists",
+  "glob",
+  "link",
+  "lstat",
+  "makeDirectory",
+  "makeTempDirectory",
+  "makeTempDirectoryScoped",
+  "makeTempFile",
+  "makeTempFileScoped",
+  "open",
+  "readDirectory",
+  "readDirectoryEntries",
+  "readFile",
+  "readFileString",
+  "readLink",
+  "realPath",
+  "remove",
+  "rename",
+  "sink",
+  "stat",
+  "stream",
+  "symlink",
+  "truncate",
+  "utimes",
+  "watch",
+  "writeFile",
+  "writeFileString"
+] as const
+
+const tempDirectory = Effect.acquireRelease(
+  Effect.sync(() => NFS.mkdtempSync(Path.join(OS.tmpdir(), "node-file-system-"))),
+  (directory) => Effect.sync(() => NFS.rmSync(directory, { recursive: true, force: true }))
+)
+
+describe("NodeFileSystem operation layers", { concurrent: false }, () => {
+  it.effect("readFile and writeFile run with only their two layers", () =>
+    Effect.gen(function*() {
+      const directory = yield* tempDirectory
+      const path = Path.join(directory, "input.txt")
+      NFS.writeFileSync(path, "shaken")
+      const bytes = yield* FileSystem.readFile(path)
+      yield* FileSystem.writeFile(`${path}.bak`, bytes)
+      assert.strictEqual(NFS.readFileSync(`${path}.bak`, "utf8"), "shaken")
+    }).pipe(Effect.provide(Layer.mergeAll(NodeFileSystem.readFile, NodeFileSystem.writeFile))))
+
+  it.effect("a derived operation's layer provides the primitive it is derived from", () =>
+    Effect.gen(function*() {
+      const directory = yield* tempDirectory
+      const path = Path.join(directory, "text.txt")
+      NFS.writeFileSync(path, "text")
+      assert.strictEqual(yield* FileSystem.exists(path), true)
+      assert.strictEqual(yield* FileSystem.exists(Path.join(directory, "missing")), false)
+      assert.strictEqual(yield* FileSystem.readFileString(path), "text")
+    }).pipe(Effect.provide(Layer.mergeAll(NodeFileSystem.exists, NodeFileSystem.readFileString))))
+
+  it.effect("layer provides every operation, as the merge of the operation layers does", () =>
+    Effect.gen(function*() {
+      const fromLayer = yield* Effect.provide(Effect.service(FileSystem.FileSystem), NodeFileSystem.layer)
+      // the merge of the operation layers is a `Layer<FileSystem>`
+      const merged: Layer.Layer<FileSystem.FileSystem> = Layer.mergeAll(
+        NodeFileSystem.access,
+        NodeFileSystem.chmod,
+        NodeFileSystem.chown,
+        NodeFileSystem.copy,
+        NodeFileSystem.copyFile,
+        NodeFileSystem.exists,
+        NodeFileSystem.glob,
+        NodeFileSystem.link,
+        NodeFileSystem.lstat,
+        NodeFileSystem.makeDirectory,
+        NodeFileSystem.makeTempDirectory,
+        NodeFileSystem.makeTempDirectoryScoped,
+        NodeFileSystem.makeTempFile,
+        NodeFileSystem.makeTempFileScoped,
+        NodeFileSystem.open,
+        NodeFileSystem.readDirectory,
+        NodeFileSystem.readDirectoryEntries,
+        NodeFileSystem.readFile,
+        NodeFileSystem.readFileString,
+        NodeFileSystem.readLink,
+        NodeFileSystem.realPath,
+        NodeFileSystem.remove,
+        NodeFileSystem.rename,
+        NodeFileSystem.sink,
+        NodeFileSystem.stat,
+        NodeFileSystem.stream,
+        NodeFileSystem.symlink,
+        NodeFileSystem.truncate,
+        NodeFileSystem.utimes,
+        NodeFileSystem.watch,
+        NodeFileSystem.writeFile,
+        NodeFileSystem.writeFileString
+      )
+      const fromMerge = yield* Effect.provide(Effect.service(FileSystem.FileSystem), merged)
+      assert.deepStrictEqual(Object.keys(fromLayer).sort(), [...operations].sort())
+      assert.deepStrictEqual(Object.keys(fromMerge).sort(), [...operations].sort())
+      for (const operation of operations) {
+        assert.strictEqual(typeof fromLayer[operation], "function", operation)
+      }
+
+      const directory = yield* tempDirectory
+      const path = Path.join(directory, "file.txt")
+      yield* fromLayer.writeFileString(path, "record")
+      assert.strictEqual(yield* fromMerge.readFileString(path), "record")
+      assert.strictEqual(yield* fromLayer.exists(path), true)
+    }))
 })
 
 const state = vi.hoisted(() => ({

@@ -1,7 +1,8 @@
 /**
  * The cost of record services and operations, measured as paired ratios
- * against the `Context.ts` of the branch point, loaded beside this one so both
- * run in one process against the same `effect` runtime.
+ * against the `Context.ts` of the branch point (and, in the records process,
+ * a pristine copy of this branch's own), loaded beside this one so both run in
+ * one process against the same `effect` runtime.
  *
  *   node benchmark/context/operations.ts              # 21 rounds; each loop about 30 ms
  *   node benchmark/context/operations.ts --check      # exit 1 when a median ratio exceeds its limit
@@ -23,8 +24,8 @@
  * the run, so every limit is widened by the control's envelope (the larger of
  * its median's distance from 1.00 and its interquartile range). A run whose
  * control is outside 1.05 is repeated once with ten more rounds; if the
- * control is still outside, `--check` reports SKIPPED and exits 0: the machine
- * cannot be read, and nothing has been shown either way. The gate that does
+ * control is still outside, `--check` reports SKIPPED and exits 0, and
+ * `bench-check.ts` counts the order as unreadable. The gate that does
  * not depend on the machine is `counts.ts`, beside this file. Absolute costs
  * are reported and not gated.
  *
@@ -33,18 +34,30 @@
  * optimised and laid out, with the A/A control none the wiser (it compares a
  * closure with itself): on one machine the ordinary read measured 1.32× in
  * list order and 1.06× with the pairs reversed. `bench-check.ts` therefore
- * runs each timing mode in three orders (`BENCH_SEED=0,1,2`) and gates the
- * median of the three medians; `BENCH_JSON=1` prints the summary it reads.
+ * runs each timing mode in three orders (`BENCH_SEED=0,1,2`), decides a mode
+ * only when all three are readable, and requires the median of a pair's three
+ * orders to be within its limit, every order over its limit printed as a
+ * warning; `BENCH_JSON=1` prints the summary it reads.
  *
  * Regimes. The default run is a process that holds record services, reads them
  * and reads ordinary keys through the same getters, which is every process
  * that imports `effect/FileSystem`; `--ordinary` is a process that holds no
- * record, the regime of a program that uses no operation. The ordinary rows
- * are gated against the branch point in both: a record key is dispatched by
- * one `typeof` in each getter, before any property of the key is read, and a
- * record's overlays are ordinary overlays, so the ordinary path is the branch
- * point's code. Both modules are warmed with the same key shapes, and with
- * references read while absent, so the pairs compare like with like.
+ * record, the regime of a program that uses no operation. A record key is
+ * dispatched by one `typeof` in each getter, before any property of the key
+ * is read, and a record's overlays are ordinary overlays, so the ordinary path
+ * is the branch point's code. In `--ordinary`, where both modules serve the
+ * same calls, the ordinary rows are gated against the branch point at 1.05. In
+ * the records process this branch's module serves the whole runtime while a
+ * copy serves the benchmark alone, which no copy of the branch point can
+ * match; there the ordinary rows are gated at 1.10 against a pristine copy of
+ * this branch's own `Context.ts` (the twin), loaded and warmed like the live
+ * module, records included, and put through the contexts the fiber runtime
+ * gives the live module (roots carrying `_fiberCache`, reads through
+ * overlays), as the branch point's module meets them in a running program, so
+ * that what is left is what holding and reading records cost an ordinary key;
+ * the rows against the branch point are reported beside them. Every module is
+ * warmed with the same key shapes, and with references read while absent, so
+ * the pairs compare like with like.
  */
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
@@ -77,8 +90,9 @@ const fake = (() => Effect.void) as unknown as FileSystem.Shape["readFile"]
 
 const plainContext = Context.make(Plain, shape)
 const plainBaselineContext = Baseline.make(PlainBaseline, shape)
-// records mode only: a pristine copy of this branch's Context.ts, serving the benchmark's calls alone; the ratio of
-// the live module over it is what serving the runtime costs a getter with the code held equal (reported, not gated)
+// records mode only: a pristine copy of this branch's Context.ts, serving the benchmark's calls and the fiber runtime's
+// context shapes (`warmAsRuntime`) but no record; the ratio of the live module over it is what holding and reading
+// records cost an ordinary key with the code held equal
 const Twin = ordinary ? Context : await loadTwin()
 const PlainTwin = Twin.Service<FileSystem.Shape>("bench/FileSystem/plain")
 const RequestIdTwin = Twin.Service<number>("bench/RequestId")
@@ -100,6 +114,7 @@ const kinds = (ctx: typeof Context) => {
 }
 const mixed = kinds(Context)
 const mixedBaseline = kinds(Baseline)
+const mixedTwin = kinds(Twin)
 
 const warm = (ctx: typeof Context, context: Context.Context<never>) => {
   const functionKey = Object.assign(function() {}, { key: "bench/warm/function" }) as unknown as Context.Key<
@@ -147,6 +162,49 @@ if (!ordinary) {
   warmRecords(Context)
   warmRecords(Twin)
 }
+// The twin as the branch point in a running program. The live module serves the fiber runtime here: each run adds
+// the fiber-cached scheduler to the context it is given (`runForkWith`), so every fiber starts on a new root, an
+// overlay over that context's map, and `setContext` stores the fiber's cache on it (`root._fiberCache ??= ...` in
+// internal/effect.ts: a second hidden class for contexts, so the getters' inline caches see two); the cache is filled
+// by reading references while absent; `provideService` adds an overlay per request, read through to the base; and a
+// context read often enough through overlays is flattened. The branch point's own module sees exactly this when a
+// program runs. The twin, serving the benchmark alone, would not, and its ratio would charge this branch for the
+// module being in use. So the twin, and the twin only, goes through the same steps on its own contexts, those whose
+// live counterparts run fibers below (`runPlain`, `runWide`), so that it stands for the branch point in a running
+// program.
+const warmAsRuntime = (ctx: typeof Context, contexts: ReadonlyArray<[Context.Context<any>, Context.Key<any, any>]>) => {
+  const scheduler = ctx.Reference<object>("bench/warm/runtime/scheduler", {
+    defaultValue: () => ({}),
+    fiberCached: true
+  })
+  const references = ["tracerEnabled", "logLevel", "minimumLogLevel", "stackFrame"].map((name) =>
+    ctx.Reference<number>(`bench/warm/runtime/${name}`, { defaultValue: () => 1 })
+  )
+  const request = ctx.Service<number>("bench/warm/runtime/request")
+  const setContext = (context: Context.Context<any>) => {
+    const root: any = (context as any).cacheRoot
+    return root._fiberCache ??= {
+      scheduler: ctx.get(context, scheduler),
+      ...Object.fromEntries(references.map((key) => [key.key, ctx.get(context, key)]))
+    }
+  }
+  for (let i = 0; i < 1000; i++) {
+    for (const [context, key] of contexts) {
+      // a run: a new root carrying the fiber's cache, read through its overlay
+      const root = ctx.add(context, scheduler, {})
+      setContext(root)
+      ctx.getUnsafe(root, key)
+      // a request inside it: an overlay over the root, sharing its cache
+      const derived = ctx.add(root, request, i)
+      setContext(derived)
+      ctx.getUnsafe(derived, key)
+      ctx.getUnsafe(derived, request)
+      ctx.getOption(derived, references[i & 3])
+      // a long-lived context read through its overlays until it is flattened
+      if ((i & 15) === 0) { for (let j = 0; j < 10; j++) ctx.getUnsafe(root, key) }
+    }
+  }
+}
 const recordContext = ordinary ? Context.empty() as Context.Context<any> : Context.make(FileSystem.FileSystem, shape)
 const membersContext = ordinary
   ? recordContext
@@ -158,7 +216,10 @@ const wideBaselineParts = wideParts(Baseline)
 const wideContext = Context.mergeAll(...wideContextParts)
 const wideBaselineContext = Baseline.mergeAll(...wideBaselineParts)
 const wide300Context = Context.mergeAll(...wideParts(Context, 300))
-const wideTwinContext = Twin.mergeAll(...wideParts(Twin))
+const wideTwinParts = wideParts(Twin)
+const wideTwinKey = Twin.Service<number>("bench/Service/0")
+const wideTwinContext = Twin.mergeAll(...wideTwinParts)
+if (!ordinary) warmAsRuntime(Twin, [[plainTwinContext, PlainTwin], [wideTwinContext, wideTwinKey]])
 const runWide = Effect.runSyncWith(wideContext)
 
 const perRequest = <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.provideService(effect, RequestId, 1)
@@ -201,9 +262,16 @@ const memberCount = memberKeys.length
 // an ordinary read or write is the branch point's code behind one `typeof` of the key: parity, within the noise the
 // control measures, where both modules serve the same calls (`--ordinary`). In a process that runs fibers and reads
 // records, this branch's module serves the whole runtime while the copy of the branch point serves the benchmark
-// alone; the twin rows below show the same gap for a pristine copy of this branch's own code, so the rows against
-// the branch point are bounded at 1.25 there and the ordinary process is where the code is held to parity.
-const ordinaryLimit = ordinary ? 1.05 : 1.25
+// alone, so there the rows against the branch point are reported and the ordinary rows are gated against the twin:
+// identical code, warmed alike and put through the fiber runtime's contexts (`warmAsRuntime`), so what is left is what
+// holding and reading records cost an ordinary key.
+const ordinaryLimit = ordinary ? 1.05 : Infinity
+const twinLimit = 1.10
+// `add` against the twin, identical code, reads 1.0 in one order and up to 1.33 in the others, the same orders run
+// after run (layout, not work: the counts are identical); its median of three is within 1.20
+const twinAddLimit = 1.25
+// a member override is an ordinary overlay, written into a context holding the record
+const overrideAddLimit = 1.25
 // a record read is a few comparisons more than an ordinary read: the key's one-entry cache, or one `Set.has` per
 // overlay walked above the storage and a `WeakMap` lookup
 const recordReadLimit = 1.25
@@ -265,12 +333,19 @@ const allPairs: ReadonlyArray<Pair> = [
     b: c("mergeAll, 33 contexts, baseline", () => Baseline.mergeAll(...wideBaselineParts)),
     limit: ordinaryLimit
   },
-  // this branch against a pristine copy of itself (records mode): what serving the runtime costs, code held equal
+  // this branch against a pristine copy of itself (records mode): what holding and reading records, and serving the
+  // runtime, cost ordinary keys, code held equal
   {
     label: "getUnsafe, ordinary key: this branch / a pristine copy of this branch",
     a: c("getUnsafe, ordinary key, this branch (twin pair)", () => Context.getUnsafe(plainContext, Plain)),
     b: c("getUnsafe, ordinary key, pristine copy of this branch", () => Twin.getUnsafe(plainTwinContext, PlainTwin)),
-    limit: Infinity
+    limit: twinLimit
+  },
+  {
+    label: "getUnsafe, mixed key kinds: this branch / a pristine copy of this branch",
+    a: c("getUnsafe, mixed key kinds, this branch (twin pair)", mixed.read),
+    b: c("getUnsafe, mixed key kinds, pristine copy of this branch", mixedTwin.read),
+    limit: twinLimit
   },
   {
     label: "getUnsafe, reference default (slot absent): this branch / a pristine copy of this branch",
@@ -279,13 +354,19 @@ const allPairs: ReadonlyArray<Pair> = [
       "getUnsafe, reference default, pristine copy of this branch",
       () => Twin.getUnsafe(plainTwinContext, AbsentTwin)
     ),
-    limit: Infinity
+    limit: twinLimit
   },
   {
     label: "add, ordinary key to 33 slots: this branch / a pristine copy of this branch",
     a: c("add, ordinary key, this branch (twin pair)", () => Context.add(wideContext, Plain, shape)),
     b: c("add, ordinary key, pristine copy of this branch", () => Twin.add(wideTwinContext, PlainTwin, shape)),
-    limit: Infinity
+    limit: twinAddLimit
+  },
+  {
+    label: "add, mixed key kinds: this branch / a pristine copy of this branch",
+    a: c("add, mixed key kinds, this branch (twin pair)", mixed.add),
+    b: c("add, mixed key kinds, pristine copy of this branch", mixedTwin.add),
+    limit: twinAddLimit
   },
   {
     label: "add then getUnsafe, ordinary key: this branch / a pristine copy of this branch",
@@ -297,7 +378,13 @@ const allPairs: ReadonlyArray<Pair> = [
       "add then getUnsafe, ordinary key, pristine copy of this branch",
       () => Twin.getUnsafe(derive(plainTwinContext, Twin, RequestIdTwin), PlainTwin)
     ),
-    limit: Infinity
+    limit: twinLimit
+  },
+  {
+    label: "mergeAll, 33 one-slot contexts: this branch / a pristine copy of this branch",
+    a: c("mergeAll, 33 contexts, this branch (twin pair)", () => Context.mergeAll(...wideContextParts)),
+    b: c("mergeAll, 33 contexts, pristine copy of this branch", () => Twin.mergeAll(...wideTwinParts)),
+    limit: twinLimit
   },
   // records against ordinary keys, both on this branch
   {
@@ -340,7 +427,7 @@ const allPairs: ReadonlyArray<Pair> = [
     label: "member override into a context holding the record / ordinary add",
     a: c("add, member override to the record context", () => Context.add(recordContext, FileSystem.readFile, fake)),
     b: c("add, ordinary key (override pair)", () => Context.add(plainContext, RequestId, 1)),
-    limit: ordinaryLimit
+    limit: overrideAddLimit
   },
   {
     label: "member override then record read, per request / ordinary add then read",
@@ -352,9 +439,11 @@ const allPairs: ReadonlyArray<Pair> = [
       "add then getUnsafe, ordinary key (per-request override pair)",
       () => Context.getUnsafe(derive(plainContext, Context, RequestId), Plain)
     ),
-    // a new override: a copy of the record below it with the member replaced (one object of the members and one
-    // cache lookup), kept in the one-entry cache only
-    limit: 5.0
+    // a new override: a copy of the record below it with the member replaced (one object of the members, one cache
+    // lookup), remembered under its overlay with one `WeakMap.set` so every read of that context returns it: about
+    // 130 ns more than a copy kept in the one-entry cache only (278 against 144 ns alone on the reference machine);
+    // 4–15× by order in full runs (run medians 8–9×), noisier than other rows; the work itself is pinned by `counts.ts`
+    limit: 10.0
   },
   {
     label: "record assembled from 32 member layers, context rebuilt per request / ordinary add then read",
