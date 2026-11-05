@@ -111,7 +111,8 @@ export const fromCommand = (
       args.push({
         name: single.name,
         description: Option.getOrUndefined(single.description),
-        required: !metadata.isOptional,
+        required: !metadata.isOptional &&
+          (!metadata.isVariadic || Option.exists(metadata.variadicMin, (min) => min > 0)),
         variadic: metadata.isVariadic,
         type: toArgumentType(single as Param.Single<"argument", unknown>)
       })
