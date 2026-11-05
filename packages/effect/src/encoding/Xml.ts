@@ -126,6 +126,10 @@ export interface Doctype {
  * a decoded map gets `Object.prototype` back. A self-closing tag such as
  * `<br/>` is decoded as a `StartElement` followed by an `EndElement`.
  *
+ * When decoded with `positions: true`, `line` and `column` locate the
+ * tag's `<` as an `XmlError` would. Otherwise they are absent, and the
+ * encoder ignores them.
+ *
  * @stability experimental
  * @category models
  * @since 4.0.6
@@ -134,6 +138,18 @@ export interface StartElement {
   readonly _tag: "StartElement"
   readonly name: string
   readonly attributes: Readonly<Record<string, string>>
+  /**
+   * One-based line of the tag's `<`, present when decoded with `positions: true`.
+   *
+   * @since 4.1.3
+   */
+  readonly line?: number | undefined
+  /**
+   * One-based column of the tag's `<` in UTF-16 code units, present when decoded with `positions: true`.
+   *
+   * @since 4.1.3
+   */
+  readonly column?: number | undefined
 }
 
 /**
@@ -242,6 +258,10 @@ export interface Element {
  *   sections. Defaults to 10 MiB; `Infinity` disables the limit.
  * - `maxDepth`: the maximum number of nested elements. Defaults to 1024;
  *   `Infinity` disables the limit.
+ * - `positions`: adds the one-based `line` and `column` of each start tag's
+ *   `<` to its `StartElement`, counted as in `XmlError`, and for `decode`
+ *   in UTF-16 code units of the decoded text. Defaults to `false`, which leaves
+ *   the fields absent.
  *
  * Memory per token and for open element names is bounded by `maxTokenSize`.
  * Invalid options throw when the channel is created.
@@ -253,6 +273,12 @@ export interface Element {
 export interface DecodeOptions {
   readonly maxTokenSize?: number | undefined
   readonly maxDepth?: number | undefined
+  /**
+   * Adds `line` and `column` to `StartElement` events. Defaults to `false`.
+   *
+   * @since 4.1.3
+   */
+  readonly positions?: boolean | undefined
 }
 
 /**
@@ -618,7 +644,8 @@ const makeChannel = <In, Out, IE, Done>(
 const makeParser = (options: DecodeOptions | undefined, bytes: boolean): () => Parser => {
   const maxTokenSize = checkLimit("maxTokenSize", options?.maxTokenSize, defaultMaxTokenSize)
   const maxDepth = checkLimit("maxDepth", options?.maxDepth, defaultMaxDepth)
-  return () => new Parser(maxTokenSize, maxDepth, bytes)
+  const positions = options?.positions === true
+  return () => new Parser(maxTokenSize, maxDepth, bytes, positions)
 }
 
 const textEncoder = new TextEncoder()
@@ -968,6 +995,11 @@ class Parser {
   private line = 1
   private lineStart = 0
   private counted = 0
+  // Document offsets of the next CR and LF in `buf` from `counted`, or of the
+  // end of `buf` if there is none, so that counting to each start tag of a
+  // long line does not search to its end each time. Below `counted` if stale.
+  private nextCR = -1
+  private nextLF = -1
 
   private state = PROLOG
   private readonly stack: Array<string> = []
@@ -986,12 +1018,14 @@ class Parser {
   private readonly maxTokenSize: number
   private readonly maxDepth: number
   private readonly bytes: boolean
+  private readonly positions: boolean
   private ascii = false
 
-  constructor(maxTokenSize: number, maxDepth: number, bytes: boolean) {
+  constructor(maxTokenSize: number, maxDepth: number, bytes: boolean, positions: boolean) {
     this.maxTokenSize = maxTokenSize
     this.maxDepth = maxDepth
     this.bytes = bytes
+    this.positions = positions
   }
 
   // `force` parses a pending token without waiting for its end, so that an
@@ -1036,6 +1070,8 @@ class Parser {
 
   error(kind: XmlError["kind"], message: string, at: number): XmlError {
     if (at > this.counted) {
+      // The text counted here need not be `buf`
+      this.nextCR = this.nextLF = -1
       if (this.pending !== undefined) this.count(this.pending.join(""), this.pendingStart, at - this.pendingStart)
       else this.count(this.buf, this.base, at - this.base)
     }
@@ -1046,26 +1082,29 @@ class Parser {
 
   // Advances the line count from `counted` to `to`, an index of `s`, which
   // starts at document offset `base`. Counting resumes only where parsing
-  // stopped, which is never between a CR and an LF.
+  // stopped, which is never between a CR and an LF. `s` is `buf`, except in
+  // `error`.
   private count(s: string, base: number, to: number): void {
     const i = this.counted - base
     if (i >= to) return
-    let cr = s.indexOf("\r", i)
-    let lf = s.indexOf("\n", i)
+    let cr = this.nextCR < this.counted ? indexOrEnd(s, "\r", i) : this.nextCR - base
+    let lf = this.nextLF < this.counted ? indexOrEnd(s, "\n", i) : this.nextLF - base
     while (true) {
-      if (cr !== -1 && cr < to && (lf === -1 || cr < lf)) {
+      if (cr < to && cr < lf) {
         this.line++
         this.lineStart = base + cr + 1
-        cr = s.indexOf("\r", cr + 1)
-      } else if (lf !== -1 && lf < to) {
+        cr = indexOrEnd(s, "\r", cr + 1)
+      } else if (lf < to) {
         // The LF of a CRLF does not start a new line
         if (!(lf > 0 && s.charCodeAt(lf - 1) === CR)) this.line++
         this.lineStart = base + lf + 1
-        lf = s.indexOf("\n", lf + 1)
+        lf = indexOrEnd(s, "\n", lf + 1)
       } else {
         break
       }
     }
+    this.nextCR = base + cr
+    this.nextLF = base + lf
     this.counted = base + to
   }
 
@@ -1106,6 +1145,7 @@ class Parser {
   private load(buf: string, base: number): void {
     this.buf = buf
     this.base = base
+    this.nextCR = this.nextLF = -1
   }
 
   // Fails an incomplete token over maxTokenSize, preferring an error in the
@@ -1368,7 +1408,19 @@ class Parser {
       throw this.error("Limit", `open element names exceed maxTokenSize of ${this.maxTokenSize}`, this.base + i)
     }
     this.flushText()
-    this.out.push({ _tag: "StartElement", name, attributes: attributes ?? emptyAttributes })
+    if (this.positions) {
+      // `s` can be a prefix of `buf`, which keeps the line breaks found in it
+      this.count(this.buf, this.base, i)
+      this.out.push({
+        _tag: "StartElement",
+        name,
+        attributes: attributes ?? emptyAttributes,
+        line: this.line,
+        column: this.base + i - this.lineStart + 1
+      })
+    } else {
+      this.out.push({ _tag: "StartElement", name, attributes: attributes ?? emptyAttributes })
+    }
     if (selfClosing) {
       this.out.push({ _tag: "EndElement", name })
       if (this.stack.length === 0) this.state = EPILOG
