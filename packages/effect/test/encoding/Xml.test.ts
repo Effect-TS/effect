@@ -244,6 +244,32 @@ describe("Xml", () => {
         }))
     }
 
+    it.effect("reports start element positions when enabled", () =>
+      Effect.gen(function*() {
+        // Positions match XmlError: the start tag's "<", one-based UTF-16 columns, LF, CR and CRLF line endings, and a
+        // leading BOM excluded
+        const xml = BOM + "<a>\r\n <b x='1'/>\r😀<c>\n\t<d/></c></a>"
+        const expected: ReadonlyArray<Xml.Event> = [
+          { _tag: "StartElement", name: "a", attributes: {}, line: 1, column: 1 },
+          text("\n "),
+          { _tag: "StartElement", name: "b", attributes: { x: "1" }, line: 2, column: 2 },
+          end("b"),
+          text("\n😀"),
+          { _tag: "StartElement", name: "c", attributes: {}, line: 3, column: 3 },
+          text("\n\t"),
+          { _tag: "StartElement", name: "d", attributes: {}, line: 4, column: 2 },
+          end("d"),
+          end("c"),
+          end("a")
+        ]
+        for (const chunks of splits(xml)) {
+          assert.deepStrictEqual(yield* decodeString(chunks, { positions: true }), expected, JSON.stringify(chunks))
+        }
+        for (const chunks of byteSplits(textEncoder.encode(xml))) {
+          assert.deepStrictEqual(yield* decodeBytes(chunks, { positions: true }), expected)
+        }
+      }))
+
     it.effect("fails on malformed documents with positions", () =>
       Effect.gen(function*() {
         const cases: ReadonlyArray<readonly [string, Xml.XmlError["kind"], number, number]> = [
