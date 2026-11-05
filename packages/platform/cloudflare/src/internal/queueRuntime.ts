@@ -7,6 +7,9 @@
  * RPCs are retried from the Worker side. An interrupted taker cancels its wait
  * by taker id, releasing an item that was already leased to it.
  *
+ * `take` is idempotent per taker id: a retried take replaces the taker's
+ * waiter, or returns the item still leased to it.
+ *
  * @internal
  */
 import type { SqlStorage } from "@cloudflare/workers-types"
@@ -20,6 +23,7 @@ import {
   expireLeases,
   extendLease,
   failItem,
+  leasedItem,
   leaseNextItem,
   offerItem,
   type QueueItem,
@@ -44,7 +48,13 @@ export interface QueueRuntime {
   readonly take: (takerId: string, maxAttempts: number, leaseMillis: number) => Promise<QueueItem>
   readonly cancelTake: (takerId: string) => Promise<void>
   readonly complete: (id: string, takerId: string) => Promise<void>
-  readonly fail: (id: string, lastFailure: string, takerId: string, terminal?: boolean) => Promise<void>
+  readonly fail: (
+    id: string,
+    lastFailure: string,
+    takerId: string,
+    terminal?: boolean,
+    retryDelayMillis?: number
+  ) => Promise<void>
   readonly release: (id: string, takerId: string) => Promise<void>
   readonly extend: (id: string, leaseMillis: number, takerId: string) => Promise<void>
   readonly runAlarm: () => Promise<void>
@@ -54,7 +64,7 @@ interface Waiter {
   readonly takerId: string
   readonly maxAttempts: number
   readonly leaseMillis: number
-  readonly resolve: (item: QueueItem) => void
+  resolve: (item: QueueItem) => void
 }
 
 const deliveredCapacity = 4096
@@ -107,8 +117,18 @@ export const makeQueueRuntime = (options: QueueRuntimeOptions): QueueRuntime => 
     // The taker joins the waiter list and the shared wake pass leases to it,
     // so an immediate take and a woken one follow the same code path.
     take: (takerId, maxAttempts, leaseMillis) => {
+      // A broken take RPC is retried with the same taker id. The retry must
+      // not leave a second waiter that leases an item nobody handles.
+      const leasedId = delivered.get(takerId)
+      const leased = leasedId === undefined ? undefined : leasedItem(sql, leasedId, takerId, options.now())
+      if (leased !== undefined) return Promise.resolve(leased)
+      const existing = waiters.find((waiter) => waiter.takerId === takerId)
       const item = new Promise<QueueItem>((resolve) => {
-        waiters.push({ takerId, maxAttempts, leaseMillis, resolve })
+        if (existing === undefined) {
+          waiters.push({ takerId, maxAttempts, leaseMillis, resolve })
+        } else {
+          existing.resolve = resolve
+        }
       })
       return Effect.runPromise(wakeWaiters).then(() => item)
     },
@@ -129,9 +149,16 @@ export const makeQueueRuntime = (options: QueueRuntimeOptions): QueueRuntime => 
 
     complete: (id, takerId) => Promise.resolve(completeItem(sql, id, takerId)),
 
-    fail: (id, lastFailure, takerId, terminal = false) =>
+    fail: (id, lastFailure, takerId, terminal = false, retryDelayMillis = 0) =>
       mutateAndWake(() => {
-        failItem(sql, id, lastFailure, takerId, terminal)
+        failItem(
+          sql,
+          id,
+          lastFailure,
+          takerId,
+          terminal,
+          retryDelayMillis > 0 ? options.now() + retryDelayMillis : null
+        )
       }),
 
     release: (id, takerId) =>

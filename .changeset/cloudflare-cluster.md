@@ -15,7 +15,8 @@ same-Worker namespace bindings. The `Entity`, `Workflow`, `Activity`,
 unchanged on this path; every `DurableClock` is durable through the object's
 alarm.
 
-Queue handlers receive one-based attempt metadata. Retried items wait for the
-configured retry delay while leased, before handler delivery. Global queue
-cleanup is explicitly unsupported; completed and failed rows remain retained for
-deduplication until a `deduplicate: "untilExecuted"` offer replaces them.
+Queue handlers receive one-based attempt metadata. A failed item stays hidden
+on the queue object for the configured retry delay, so other items are
+delivered in the meantime. Global queue cleanup is explicitly unsupported;
+completed and failed rows remain retained for deduplication until a
+`deduplicate: "untilExecuted"` offer replaces them.
