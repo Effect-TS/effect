@@ -2606,6 +2606,18 @@ const layerWithRuntime = (options: {
  * live in one layer graph as long as each is provided its own `Stdio`. They
  * still share the memoized `McpServer` registry.
  *
+ * `onStdinEnd` controls shutdown when the client closes stdin. With
+ * `"drain"`, the default, active requests run to completion and their
+ * responses are written before the server exits. With `"interrupt"`, active
+ * requests, including tool handlers, are interrupted without responses and
+ * the server exits once their finalizers have run.
+ *
+ * **Gotchas**
+ *
+ * With the default `"drain"`, a tool handler that never completes keeps the
+ * process alive after the client closes stdin. Use `onStdinEnd: "interrupt"`
+ * when the server must exit as soon as the client goes away.
+ *
  * @see {@link layer} for running over an existing `RpcServer.Protocol`
  * @see {@link layerHttp} for the single-endpoint HTTP transport
  *
@@ -2629,6 +2641,7 @@ export const layerStdio = <
   readonly extensions?: ServerExtensions | undefined
   readonly cacheHints?: CacheHints | undefined
   readonly registrations?: Layer.Layer<RA, RE, RR> | undefined
+  readonly onStdinEnd?: "drain" | "interrupt" | undefined
 }): Layer.Layer<
   McpServer | McpRequest.From<"Requires", ProvidedServices<Protocols>>,
   Cause.IllegalArgumentError | RE,
@@ -2638,11 +2651,7 @@ export const layerStdio = <
 > =>
   layerWithRuntime(options, "stdio").pipe(
     Layer.provide(McpRuntime.layer(options.protocols)),
-    // Build a fresh protocol layer per call. `RpcServer.layerProtocolStdio` is
-    // a module-level constant, and layers are memoized by reference, so two
-    // `layerStdio` servers in one layer graph would otherwise share a single
-    // protocol bound to whichever `Stdio` was built first.
-    Layer.provide(Layer.effect(RpcServer.Protocol, RpcServer.makeProtocolStdio)),
+    Layer.provide(RpcServer.layerProtocolStdio({ onStdinEnd: options.onStdinEnd })),
     Layer.provide(Layer.succeed(
       RpcSerialization.RpcSerialization,
       mcpStdioSerialization(options.protocols)

@@ -344,7 +344,7 @@ describe("RpcServer", () => {
               Effect.andThen(Deferred.await(finishRequest)),
               Effect.as("finished")
             ))),
-          Layer.provide(RpcServer.layerProtocolStdio),
+          Layer.provide(RpcServer.layerProtocolStdio()),
           Layer.provide(RpcSerialization.layerNdjson),
           Layer.provide(Stdio.layerTest({
             stdin: Stream.make(
@@ -428,7 +428,7 @@ describe("RpcServer", () => {
       const server = yield* Layer.launch(
         RpcServer.layer(group).pipe(
           Layer.provide(group.toLayerHandler("hello", () => Effect.succeed("world"))),
-          Layer.provide(RpcServer.layerProtocolStdio),
+          Layer.provide(RpcServer.layerProtocolStdio()),
           Layer.provide(RpcSerialization.layerNdjson),
           Layer.provide(Stdio.layerTest({
             stdin: Stream.make(
@@ -459,7 +459,7 @@ describe("RpcServer", () => {
       const output: Array<string> = []
       const server = yield* Layer.launch(
         RpcServer.layer(RpcGroup.make()).pipe(
-          Layer.provide(RpcServer.layerProtocolStdio),
+          Layer.provide(RpcServer.layerProtocolStdio()),
           Layer.provide(RpcSerialization.layerNdjson),
           Layer.provide(Stdio.layerTest({
             stdin: Stream.make(new TextEncoder().encode(`{"_tag":"Ping"}\n`)),
@@ -704,7 +704,7 @@ describe("RpcServer", () => {
             ),
           ping: () => Effect.succeed("pong")
         })),
-        Layer.provide(RpcServer.layerProtocolStdio),
+        Layer.provide(RpcServer.layerProtocolStdio()),
         Layer.provide(RpcSerialization.layerNdJsonRpc()),
         Layer.provide(Stdio.layerTest({
           stdin: Stream.make(
@@ -767,7 +767,7 @@ describe("RpcServer", () => {
           )
       })
       yield* Effect.gen(function*() {
-        const protocol = yield* RpcServer.makeProtocolStdio
+        const protocol = yield* RpcServer.makeProtocolStdio()
         yield* Deferred.succeed(protocolReady, protocol)
         return yield* protocol.run(() => Effect.void)
       }).pipe(
