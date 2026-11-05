@@ -412,9 +412,33 @@ managing the flow of a CLI application.
 
 ## Working with AI modules
 
-Effect's AI modules provide a provider-agnostic interface for language models.
-You can generate text, decode structured objects with `Schema` and stream partial
-responses.
+Effect's AI modules provide provider-agnostic services for language models,
+speech synthesis, recorded-audio transcription and realtime conversations. You
+can generate text, decode structured objects with `Schema`, stream speech, or
+compose a recording → transcription → language model → speech workflow.
+
+The voice examples below run from the repository root with Node.js and an
+`OPENAI_API_KEY` supplied through your environment or secret manager. They read
+credentials with `Config.Redacted`; never place a key in an example or browser
+bundle. `OpenAiClientGenerated` provides speech and recorded transcription,
+while `OpenAiClient` provides language generation and Realtime. Both require an
+HTTP client; server-side Realtime also requires a WebSocket constructor such as
+`NodeWS.layerWebSocketConstructor`.
+
+Run `node ai-docs/src/71_ai/40_speech.ts` to write `announcement.mp3`, or configure
+`VOICE_INPUT_FILE` with the path to a WAV recording and run
+`node ai-docs/src/71_ai/50_voice-pipeline.ts` to write `voice-answer.wav`. Run
+`node ai-docs/src/71_ai/60_realtime.ts` to write headerless PCM16LE mono audio at
+24 kHz to `realtime-answer.pcm`. `VOICE_TEXT` and `VOICE_OUTPUT_FILE` customize the
+applicable examples.
+
+Recorded transcription uploads a complete audio file. Realtime uses a scoped,
+bidirectional session; it does not supply microphone capture or speaker
+playback. Audio generation completion and audible playback completion are
+different boundaries. Applications own playback queues, interruption, tool
+authorization and durable conversation records. No example automatically
+retries business actions or executes a tool merely because the model requested
+it.
 
 - **[Using LanguageModel for text, objects, and streams](./ai-docs/src/71_ai/10_language-model.ts)**:
   Configure a provider once, then use `LanguageModel` for plain text
@@ -425,6 +449,17 @@ responses.
 - **[Stateful chat sessions](./ai-docs/src/71_ai/30_chat.ts)**:
   The AI `Chat` module maintains conversation history automatically. Build
   AI agents or chat assistants.
+- **[Generating and streaming speech](./ai-docs/src/71_ai/40_speech.ts)**:
+  Configure an OpenAI speech model, expose it through an application service,
+  and stream encoded audio to a file without collecting the response in memory.
+- **[Composing a recorded voice pipeline](./ai-docs/src/71_ai/50_voice-pipeline.ts)**:
+  Transcribe a WAV recording, answer it with LanguageModel, and synthesize the
+  answer using SpeechModel. Keep provider configuration separate from the
+  application service so each stage can be replaced independently.
+- **[Connecting to realtime voice models](./ai-docs/src/71_ai/60_realtime.ts)**:
+  Acquire a scoped OpenAI Realtime session, send explicit conversation commands,
+  and consume its reliable event stream. Save a spoken response as raw PCM
+  without buffering the whole answer or imposing a playback-duration limit.
 
 ## Building distributed applications with cluster
 
