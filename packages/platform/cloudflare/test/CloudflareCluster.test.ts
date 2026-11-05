@@ -5,10 +5,14 @@ import {
   makeReplyRegistry
 } from "@effect/platform-cloudflare/internal/entityReply"
 import { assert, describe, it } from "@effect/vitest"
-import { DateTime, Effect, Exit, Fiber, Layer, PrimaryKey, Schema, Stream } from "effect"
+import { Cause, Context, DateTime, Effect, Exit, Fiber, Layer, PrimaryKey, Schema, Stream } from "effect"
 import { ClusterSchema, DeliverAt, Entity, EntityProxy, EntityProxyServer, Sharding } from "effect/cluster"
+import { PersistenceError } from "effect/cluster/ClusterError"
 import { Headers } from "effect/http"
 import { Rpc, RpcMiddleware, RpcSchema, RpcTest } from "effect/rpc"
+import { TestClock } from "effect/testing"
+import * as v8 from "node:v8"
+import * as vm from "node:vm"
 
 const User = Entity.make("User", [
   Rpc.make("Ping", { success: Schema.String })
@@ -16,6 +20,10 @@ const User = Entity.make("User", [
 
 const PersistedUser = Entity.make("PersistedUser", [
   Rpc.make("Ping", { success: Schema.String }).annotate(ClusterSchema.Persisted, true)
+])
+
+const ClientUninterruptible = Entity.make("ClientUninterruptible", [
+  Rpc.make("Ping", { success: Schema.String }).annotate(ClusterSchema.Uninterruptible, "client")
 ])
 
 const Counter = Entity.make("Counter", [
@@ -75,6 +83,36 @@ class FakeNamespace {
     return this.stub
   }
 }
+
+// Resolves a new stub for every `getByName`, as a real namespace does.
+class FreshNamespace {
+  readonly stubs: Array<object> = []
+  constructor(readonly makeStub: () => object) {}
+
+  getByName() {
+    const stub = this.makeStub()
+    this.stubs.push(stub)
+    return stub
+  }
+}
+
+const transportError = () => Object.assign(new Error("Network connection lost."), { retryable: true })
+
+// Advances the TestClock until the effect completes, so retry backoff runs
+// without real waiting.
+const withTestClock = Effect.fnUntraced(function*<A, E>(effect: Effect.Effect<A, E>) {
+  const fiber = yield* Effect.forkChild(effect)
+  for (let index = 0; index < 1000 && fiber.pollUnsafe() === undefined; index++) {
+    yield* TestClock.adjust("1 minute")
+    yield* Effect.promise(() => new Promise((resolve) => setTimeout(resolve, 0)))
+  }
+  return yield* Fiber.join(fiber)
+})
+
+v8.setFlagsFromString("--expose-gc")
+const gc = vm.runInNewContext("gc") as () => void
+
+class Marker extends Context.Service<Marker, object>()("CloudflareClusterTest/Marker") {}
 
 const makeOptions = (stub?: object) => {
   const entityNamespace = new FakeNamespace(stub)
@@ -408,6 +446,127 @@ describe("CloudflareCluster", () => {
         assert.deepStrictEqual(resets, [requestIds.at(-1)])
       }).pipe(Effect.provide(CloudflareCluster.layer(options)))
     })
+
+    it.effect("retries a persisted request on a fresh stub, then fails with a PersistenceError", () => {
+      const invokedOn: Array<object> = []
+      const entityNamespace = new FreshNamespace(() => {
+        const stub = {
+          invoke() {
+            invokedOn.push(stub)
+            return Promise.reject(transportError())
+          }
+        }
+        return stub
+      })
+      const options: CloudflareCluster.LayerOptions = {
+        ...makeOptions().options,
+        entities: [PersistedUser],
+        entityNamespace: entityNamespace as any
+      }
+
+      return Effect.gen(function*() {
+        const makeClient = yield* PersistedUser.client
+        const error = yield* withTestClock(Effect.flip(makeClient("42").Ping(void 0)))
+
+        assert.instanceOf(error, PersistenceError)
+        assert.isAbove(invokedOn.length, 1)
+        assert.strictEqual(new Set(invokedOn).size, invokedOn.length)
+      }).pipe(Effect.provide(CloudflareCluster.layer(options)))
+    })
+
+    it.effect("fails a non-persisted request with a PersistenceError without retrying", () => {
+      let invoked = 0
+      const stub = {
+        invoke() {
+          invoked++
+          return Promise.reject(transportError())
+        }
+      }
+
+      return Effect.gen(function*() {
+        const makeClient = yield* User.client
+        const error = yield* withTestClock(Effect.flip(makeClient("42").Ping(void 0)))
+
+        assert.instanceOf(error, PersistenceError)
+        assert.strictEqual(invoked, 1)
+      }).pipe(Effect.provide(CloudflareCluster.layer(makeOptions(stub).options)))
+    })
+
+    it.effect("does not interrupt the Durable Object for a client-uninterruptible request", () => {
+      const interrupts: Array<string> = []
+      let accepted!: () => void
+      const acceptedPromise = new Promise<void>((resolve) => {
+        accepted = resolve
+      })
+      const stub = {
+        invoke(envelopeText: string) {
+          accepted()
+          // Accepted, with the reply still pending.
+          return Promise.resolve({ _tag: "Success", requestId: JSON.parse(envelopeText).requestId, replies: [] })
+        },
+        interrupt(requestId: string) {
+          interrupts.push(requestId)
+          return Promise.resolve()
+        }
+      }
+      const options: CloudflareCluster.LayerOptions = {
+        ...makeOptions().options,
+        entities: [ClientUninterruptible],
+        entityNamespace: new FakeNamespace(stub) as any
+      }
+
+      return Effect.gen(function*() {
+        const makeClient = yield* ClientUninterruptible.client
+        const fiber = yield* Effect.forkChild(makeClient("42").Ping(void 0))
+        yield* Effect.promise(() => acceptedPromise)
+        yield* Effect.promise(() => new Promise((resolve) => setTimeout(resolve, 0)))
+        yield* Fiber.interrupt(fiber)
+
+        assert.deepStrictEqual(interrupts, [])
+      }).pipe(Effect.provide(CloudflareCluster.layer(options)))
+    })
+
+    it.effect("releases a request's client state when its send fails", () => {
+      const outcomes: Array<(requestId: string) => Promise<unknown>> = [
+        () => Promise.resolve({ _tag: "MailboxFull" }),
+        () => Promise.reject(transportError()),
+        (requestId) => Promise.resolve({ _tag: "Success", requestId, replies: ["not a reply"] })
+      ]
+      let call = 0
+      const stub = {
+        invoke(envelopeText: string) {
+          return outcomes[call++](JSON.parse(envelopeText).requestId)
+        }
+      }
+
+      return Effect.gen(function*() {
+        const makeClient = yield* User.client
+        const client = makeClient("42")
+        // Each request carries a context that only it references.
+        const refs: Array<WeakRef<object>> = []
+        const tracked = () => {
+          const marker = {}
+          refs.push(new WeakRef(marker))
+          return Context.make(Marker, marker)
+        }
+        for (let index = 0; index < outcomes.length; index++) {
+          assert.isTrue(Exit.isFailure(yield* Effect.exit(client.Ping(void 0, { context: tracked() }))))
+        }
+        yield* Effect.promise(() => new Promise((resolve) => setTimeout(resolve, 0)))
+        gc()
+
+        assert.deepStrictEqual(refs.map((ref) => ref.deref() === undefined), [true, true, true])
+      }).pipe(Effect.provide(CloudflareCluster.layer(makeOptions(stub).options)))
+    })
+
+    it.effect("dies on getSnowflake as not supported", () =>
+      Effect.gen(function*() {
+        const sharding = yield* Sharding.Sharding
+        const exit = yield* Effect.exit(sharding.getSnowflake)
+
+        assert.isTrue(Exit.isFailure(exit) && Cause.hasDies(exit.cause))
+        assert.match(String(Cause.squash((exit as Exit.Failure<never, never>).cause)), /not supported/)
+      }).pipe(Effect.provide(CloudflareCluster.layer(makeOptions().options))))
 
     it.effect("fails for an entity type not bound at Worker init", () =>
       Effect.gen(function*() {
