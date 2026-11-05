@@ -2014,7 +2014,7 @@ export const RationalReviver: DeclarationReviver<null> = makeFixedDeclarationRev
  * @see {@link Schema.MacAddress} for the corresponding schema
  * @stability unstable
  * @category schemas
- * @since 4.1.3
+ * @since 4.2.0
  */
 export const MacAddressReviver: DeclarationReviver<null> = makeFixedDeclarationReviver(
   "effect/schema/MacAddress",
@@ -2027,7 +2027,7 @@ export const MacAddressReviver: DeclarationReviver<null> = makeFixedDeclarationR
  * @see {@link Schema.Ipv4Address} for the corresponding schema
  * @stability unstable
  * @category schemas
- * @since 4.1.3
+ * @since 4.2.0
  */
 export const Ipv4AddressReviver: DeclarationReviver<null> = makeFixedDeclarationReviver(
   "effect/schema/Ipv4Address",
@@ -2040,7 +2040,7 @@ export const Ipv4AddressReviver: DeclarationReviver<null> = makeFixedDeclaration
  * @see {@link Schema.Ipv6Address} for the corresponding schema
  * @stability unstable
  * @category schemas
- * @since 4.1.3
+ * @since 4.2.0
  */
 export const Ipv6AddressReviver: DeclarationReviver<null> = makeFixedDeclarationReviver(
   "effect/schema/Ipv6Address",
@@ -2053,7 +2053,7 @@ export const Ipv6AddressReviver: DeclarationReviver<null> = makeFixedDeclaration
  * @see {@link Schema.Ipv4Interface} for the corresponding schema
  * @stability unstable
  * @category schemas
- * @since 4.1.3
+ * @since 4.2.0
  */
 export const Ipv4InterfaceReviver: DeclarationReviver<null> = makeFixedDeclarationReviver(
   "effect/schema/Ipv4Interface",
@@ -2066,7 +2066,7 @@ export const Ipv4InterfaceReviver: DeclarationReviver<null> = makeFixedDeclarati
  * @see {@link Schema.Ipv6Interface} for the corresponding schema
  * @stability unstable
  * @category schemas
- * @since 4.1.3
+ * @since 4.2.0
  */
 export const Ipv6InterfaceReviver: DeclarationReviver<null> = makeFixedDeclarationReviver(
   "effect/schema/Ipv6Interface",
@@ -2079,7 +2079,7 @@ export const Ipv6InterfaceReviver: DeclarationReviver<null> = makeFixedDeclarati
  * @see {@link Schema.IpInterface} for the corresponding schema
  * @stability unstable
  * @category schemas
- * @since 4.1.3
+ * @since 4.2.0
  */
 export const IpInterfaceReviver: DeclarationReviver<null> = makeFixedDeclarationReviver(
   "effect/schema/IpInterface",
@@ -2092,7 +2092,7 @@ export const IpInterfaceReviver: DeclarationReviver<null> = makeFixedDeclaration
  * @see {@link Schema.Ipv4Network} for the corresponding schema
  * @stability unstable
  * @category schemas
- * @since 4.1.3
+ * @since 4.2.0
  */
 export const Ipv4NetworkReviver: DeclarationReviver<null> = makeFixedDeclarationReviver(
   "effect/schema/Ipv4Network",
@@ -2105,7 +2105,7 @@ export const Ipv4NetworkReviver: DeclarationReviver<null> = makeFixedDeclaration
  * @see {@link Schema.Ipv6Network} for the corresponding schema
  * @stability unstable
  * @category schemas
- * @since 4.1.3
+ * @since 4.2.0
  */
 export const Ipv6NetworkReviver: DeclarationReviver<null> = makeFixedDeclarationReviver(
   "effect/schema/Ipv6Network",
@@ -2118,7 +2118,7 @@ export const Ipv6NetworkReviver: DeclarationReviver<null> = makeFixedDeclaration
  * @see {@link Schema.IpNetwork} for the corresponding schema
  * @stability unstable
  * @category schemas
- * @since 4.1.3
+ * @since 4.2.0
  */
 export const IpNetworkReviver: DeclarationReviver<null> = makeFixedDeclarationReviver(
   "effect/schema/IpNetwork",
@@ -2131,7 +2131,7 @@ export const IpNetworkReviver: DeclarationReviver<null> = makeFixedDeclarationRe
  * @see {@link Schema.InetAddressV4} for the corresponding schema
  * @stability unstable
  * @category schemas
- * @since 4.1.3
+ * @since 4.2.0
  */
 export const InetAddressV4Reviver: DeclarationReviver<null> = makeFixedDeclarationReviver(
   "effect/schema/InetAddressV4",
@@ -2144,7 +2144,7 @@ export const InetAddressV4Reviver: DeclarationReviver<null> = makeFixedDeclarati
  * @see {@link Schema.InetAddressV6} for the corresponding schema
  * @stability unstable
  * @category schemas
- * @since 4.1.3
+ * @since 4.2.0
  */
 export const InetAddressV6Reviver: DeclarationReviver<null> = makeFixedDeclarationReviver(
   "effect/schema/InetAddressV6",
@@ -2157,7 +2157,7 @@ export const InetAddressV6Reviver: DeclarationReviver<null> = makeFixedDeclarati
  * @see {@link Schema.UnixPathAddress} for the corresponding schema
  * @stability unstable
  * @category schemas
- * @since 4.1.3
+ * @since 4.2.0
  */
 export const UnixPathAddressReviver: DeclarationReviver<null> = makeFixedDeclarationReviver(
   "effect/schema/UnixPathAddress",
@@ -2170,7 +2170,7 @@ export const UnixPathAddressReviver: DeclarationReviver<null> = makeFixedDeclara
  * @see {@link Schema.HostPort} for the corresponding schema
  * @stability experimental
  * @category schemas
- * @since 4.1.3
+ * @since 4.2.0
  */
 export const HostPortReviver: DeclarationReviver<null> = makeFixedDeclarationReviver(
   "effect/schema/HostPort",
