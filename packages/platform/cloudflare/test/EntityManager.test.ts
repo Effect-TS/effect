@@ -511,6 +511,47 @@ describe("EntityManager", () => {
       assert.strictEqual(exitOf(reply!.reply)._tag, "Failure")
     }))
 
+  it.effect("ignores an interrupt for a server-uninterruptible request", () =>
+    Effect.gen(function*() {
+      const started = yield* Deferred.make<void>()
+      const release = yield* Deferred.make<void>()
+      const entity = Entity.make("ServerUninterruptibleMailbox", [
+        Rpc.make("Critical", { success: Schema.String })
+          .annotate(ClusterSchema.Persisted, true)
+          .annotate(ClusterSchema.Uninterruptible, "server")
+      ])
+      const handlers: EntityRegistration = {
+        entity,
+        keepAliveHeartbeat: 30_000,
+        build: Effect.succeed(entity.of({
+          Critical: Effect.fnUntraced(function*() {
+            yield* Deferred.succeed(started, undefined)
+            yield* Deferred.await(release)
+            return "done"
+          })
+        })),
+        options: undefined,
+        context: Context.empty()
+      }
+      yield* Effect.acquireRelease(
+        Effect.sync(() => registerEntity(entity.type, handlers)),
+        () => Effect.sync(() => unregisterEntity(entity.type, handlers))
+      )
+      const { envelope, exitOf, manager, storage } = yield* makeMailbox("server-uninterruptible", entity.type)
+      const requestId = nextRequestId()
+      const invoke = yield* Effect.forkChild(manager.invoke(envelope("Critical", null, requestId), false))
+      yield* Deferred.await(started)
+
+      const interrupt = yield* Effect.forkChild(manager.interrupt(requestId))
+      yield* settle
+      yield* Deferred.succeed(release, undefined)
+      yield* Fiber.join(interrupt)
+      yield* Fiber.join(invoke)
+
+      const reply = yield* loadNextReply(storage.sql, requestId)
+      assert.deepStrictEqual(exitOf(reply!.reply), { _tag: "Success", value: "done" })
+    }))
+
   it.effect("resumes a running scheduled ask for a duplicate sent after its deadline", () =>
     Effect.gen(function*() {
       const { entity, release, started, state } = yield* makeGatedAsk("ScheduledDuplicate")
