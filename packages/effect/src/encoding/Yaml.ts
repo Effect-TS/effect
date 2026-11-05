@@ -4,9 +4,9 @@
  * Supports YAML 1.2 block and flow collections, compact nested sequences
  * (`- - value`), indentless sequence values, single pairs in flow sequences
  * (`[a: 1]`), flow mapping keys without values (`{a, b: 1}`), multiline plain
- * and quoted scalars (inside flow collections too), block scalars, anchors,
- * aliases, YAML 1.1 merge keys (`<<`), document streams, and the `%YAML 1.2`
- * directive. Plain scalars resolve with the YAML 1.2 core schema. Parsing
+ * and quoted scalars (inside flow collections too), block scalars, anchors
+ * and aliases on values, YAML 1.1 merge keys (`<<`), document streams, and the
+ * `%YAML 1.2` directive. Plain scalars resolve with the YAML 1.2 core schema. Parsing
  * returns a `Result` that fails with an `EncodingError`.
  *
  * Unlike YAML 1.2, the closing bracket of a multiline flow collection may sit
@@ -19,17 +19,24 @@
  * Unsupported input fails rather than being read as text: other tags, including
  * local tags (`!local`), the non-specific tag (`!`), verbatim tags
  * (`!<tag:yaml.org,2002:str>`, even for core tags) and YAML 1.1 tags such as
- * `!!binary`; explicit keys (`? key`), `%TAG` and other directives, YAML
- * versions other than 1.2, recursive aliases, collections nested more than
- * 1000 levels deep, and merges that copy more than 100,000 keys in one
- * document. A block sequence cannot start on the same line as a mapping key
+ * `!!binary`; anchors, tags and aliases on mapping keys; explicit keys
+ * (`? key`), `%TAG` and other directives, YAML versions other than 1.2,
+ * recursive aliases, collections nested more than 1000 levels deep, and merges
+ * that copy more than 100,000 keys in one document. A block sequence cannot start on the same line as a mapping key
  * (`key: - value`), and a flow mapping key without a value cannot contain `:`
  * (`{a:1}`).
  *
- * Mapping keys are JavaScript strings. An alias may be a key when it refers to
- * a scalar. Only spaces and tabs are YAML white space, so characters such as a
- * no-break space (U+00A0) are kept as content. Numbers use JavaScript number
- * semantics, so integers beyond `Number.MAX_SAFE_INTEGER` lose precision.
+ * Mapping keys are JavaScript strings, read from plain or quoted scalars. Only
+ * spaces and tabs are YAML white space, so characters such as a no-break space
+ * (U+00A0) are kept as content. Numbers use JavaScript number semantics, so
+ * integers beyond `Number.MAX_SAFE_INTEGER` lose precision.
+ *
+ * Known limits: an anchor name reused inside the node it is defined on refers
+ * to the outer node once that node is complete, so in `a: &x` followed by
+ * `  b: &x 1` and `c: *x`, `c` is `{ b: 1 }` where YAML 1.2.2 gives `1`. Deep
+ * nesting with node properties on their own lines can reach the JavaScript
+ * engine's stack limit before 1000 levels in some runtimes, and then fails with
+ * an `EncodingError`.
  *
  * Printing turns JSON-like values into block-style YAML that `parse` reads
  * back unchanged. Comments and source formatting are not retained.
@@ -392,8 +399,7 @@ const isExplicitKey = (text: string): boolean =>
 
 const explicitKeyError = "YAML explicit keys (`?`) are not supported"
 
-// A mapping key with its properties resolved. `merge` is true only for a plain `<<`,
-// with or without an anchor, so quoted keys and aliases resolving to `<<` stay ordinary keys.
+// A mapping key. `merge` is true only for a plain `<<`, so a quoted `"<<"` stays an ordinary key.
 type MappingKey = {
   readonly key: string
   readonly merge: boolean
@@ -405,35 +411,15 @@ const maxDepth = 1000
 
 const depthError = `YAML collections exceed the maximum nesting depth of ${maxDepth}`
 
-// YAML 1.2.2 §7.1: an alias may be a mapping key. Keys are strings, so only scalars qualify.
-const aliasKey = (anchors: Map<string, unknown>, name: string, fail: (message: string) => never): string => {
-  if (!anchors.has(name)) fail(`Unknown alias '*${name}'`)
-  const value = anchors.get(name)
-  if (typeof value === "object" && value !== null) fail(`Alias '*${name}' of a collection cannot be a mapping key`)
-  return value === null || value === undefined ? "" : String(value)
-}
+// Mapping keys are plain or quoted scalars. Anchors, tags and aliases on keys are valid YAML
+// but not supported.
+const keyPropertyError = "Mapping keys cannot carry an anchor, tag or alias"
 
-// Resolves a scalar key, recording its anchor. Only a plain `<<` merges, so a
-// quoted key keeps its quotes in `text` and stays ordinary.
-// `text` is the key's source; a tagged key resolves its tag instead and never merges.
-const scalarKey = (
-  anchors: Map<string, unknown>,
-  anchor: string | undefined,
-  tag: string | undefined,
-  text: string,
-  fail: (message: string) => never
-): MappingKey => {
-  if (tag === undefined) {
-    if (anchor !== undefined) anchors.set(anchor, parseScalar(text))
-    return { key: parseKey(text), merge: text === "<<" }
-  }
-  const quoted = text.startsWith("\"") || text.startsWith("'")
-  // A flow collection used as a key is not a scalar, whatever its source looks like.
-  if (!quoted && (text.startsWith("[") || text.startsWith("{"))) fail(`A collection does not match the YAML tag ${tag}`)
-  const value = resolveScalarTag(tag, quoted ? parseScalar(text) as string : text, fail)
-  if (anchor !== undefined) anchors.set(anchor, value)
-  return { key: value === null ? "" : String(value), merge: false }
-}
+// `&`, `!` and `*` start an anchor, a tag and an alias.
+const isPropertyIndicatorCode = (code: number): boolean => code === 38 || code === 33 || code === 42
+
+// `text` is the key's source, so a quoted key keeps its quotes and never merges.
+const scalarKey = (text: string): MappingKey => ({ key: parseKey(text), merge: text === "<<" })
 
 const foldLineBreak = (blankLines: number): string => blankLines === 0 ? " " : "\n".repeat(blankLines)
 
@@ -745,7 +731,7 @@ class FlowParser {
     if (this.peek() !== ":") return value
     if (collection) this.fail("A flow collection cannot be a mapping key")
     if (this.offset !== offset) this.fail("A flow sequence pair must start on the line of its key")
-    // Read again as a key, which converts and anchors differently from a value.
+    // Read again as a key, which converts differently from a value and rejects properties.
     this.index = start
     if (this.blockDepth + ++this.depth > maxDepth) this.fail(depthError)
     const mapping = new MappingBuilder(this.merges)
@@ -794,50 +780,21 @@ class FlowParser {
   }
 
   private parseKey(): MappingKey {
-    const fail = (message: string) => this.fail(message)
     this.skipWhitespace()
-    let anchor: string | undefined
-    if (this.peek() === "&") {
-      this.index++
-      anchor = this.readUntil(isFlowNameEnd)
-      if (anchor === "") this.fail("Invalid anchor")
-      this.skipWhitespace()
-    }
-    let tag: string | undefined
-    if (this.peek() === "!") {
-      tag = this.readFlowTag(fail)
-      this.skipWhitespace()
-      if (anchor === undefined && this.peek() === "&") {
-        this.index++
-        anchor = this.readUntil(isFlowNameEnd)
-        if (anchor === "") this.fail("Invalid anchor")
-        this.skipWhitespace()
-      }
-      if (this.peek() === "!") this.fail("Multiple tags on one node")
-    }
-    if (anchor !== undefined && this.peek() === "&") this.fail("Multiple anchors on one node")
     const character = this.peek()
-    if (character === "*") {
-      if (anchor !== undefined) this.fail("An alias cannot have an anchor")
-      if (tag !== undefined) this.fail("An alias cannot have a tag")
-      this.index++
-      return { key: aliasKey(this.anchors, this.readUntil(isFlowNameEnd), fail), merge: false }
-    }
+    if (isPropertyIndicatorCode(character.charCodeAt(0))) this.fail(keyPropertyError)
     // Converted like a block key, so `null` and `0x10` give the same keys in both styles.
-    if (character === "\"" || character === "'") {
-      return scalarKey(this.anchors, anchor, tag, this.readQuoted(character), fail)
-    }
+    if (character === "\"" || character === "'") return scalarKey(this.readQuoted(character))
     const text = this.readPlain(isFlowPlainEnd)
     if (this.peek() !== ":") {
-      // A tag or anchor makes an empty key a node of its own, so only a bare empty entry needs ':'.
-      if (text === "" && anchor === undefined && tag === undefined) this.expect(":")
+      if (text === "") this.expect(":")
       // `{a:1}` is the key `a:1` without a value under YAML 1.2.2 §7.3.3, but reads as `{a: 1}` in
       // JSON-like syntax, so it fails rather than giving either.
       if (text.includes(":")) {
         this.fail(`Flow mapping key '${text}' has no value, add a space after ':' or quote the key`)
       }
     }
-    return scalarKey(this.anchors, anchor, tag, text, fail)
+    return scalarKey(text)
   }
 
   // Reads a quoted scalar, pulling continuation lines until its closing quote.
@@ -1190,7 +1147,6 @@ class YamlParser {
     line: Line
   ): void {
     const fail = (message: string) => this.fail(line, message)
-    // Resolved before the value, which may redefine the anchor.
     const { key, merge } = this.parseBlockKey(text.slice(0, separator), fail)
     const rawValue = trimWhiteStart(text.slice(separator + 1))
     // An empty value goes straight to the lines below, which keeps deep nesting off the stack.
@@ -1203,26 +1159,18 @@ class YamlParser {
 
   // `raw` is the key text before the `:` separator.
   private parseBlockKey(raw: string, fail: (message: string) => never): MappingKey {
-    const { anchor, tag, rest: text } = nodeProperties(trimWhite(raw), fail)
+    const text = trimWhite(raw)
+    if (isPropertyIndicatorCode(text.charCodeAt(0))) fail(keyPropertyError)
     if (text.startsWith("%")) fail(directiveIndicatorError)
     // YAML 1.2.2 §7.3.3: `?` directly before the `:` separator starts a plain key. `raw` ends at
     // the separator, so it ends with `?` only then.
     if (isExplicitKey(text) && !(text === "?" && raw.endsWith("?"))) fail(explicitKeyError)
-    if (text.startsWith("*")) {
-      if (anchor !== undefined) fail("An alias cannot have an anchor")
-      if (tag !== undefined) fail("An alias cannot have a tag")
-      // `:` may be part of an alias name, so the separator must follow white space.
-      if (!isWhiteCode(raw.charCodeAt(raw.length - 1))) {
-        fail("An alias used as a mapping key must be followed by a space before ':'")
-      }
-      return { key: aliasKey(this.anchors, text.slice(1), fail), merge: false }
-    }
     // YAML 1.2.2 §7.3: a quoted key ends at its closing quote, and only white space may follow it.
     const quote = text[0]
     if ((quote === "\"" || quote === "'") && closingQuote(text, quote, 1) !== text.length - 1) {
       fail("Unexpected content after quoted YAML key")
     }
-    return scalarKey(this.anchors, anchor, tag, text, fail)
+    return scalarKey(text)
   }
 
   // `first` is the entry of a compact nested sequence (`- - item`), which starts on its parent entry's line.
@@ -1582,9 +1530,8 @@ const decode = <A>(input: string, f: (parser: YamlParser) => A): Result.Result<A
  * The core schema's shorthand tags resolve against the scalar as written, so
  * `!!str 0x10` is the string `"0x10"` and `!!int "42"` is the number `42`.
  * Other tags, including verbatim and non-specific tags, fail, as do explicit
- * keys (`? key`) and collections nested more than 1000 levels deep. An alias
- * may be used as a mapping key when it refers to a scalar, whose string form
- * becomes the key.
+ * keys (`? key`), anchors, tags and aliases on mapping keys, and collections
+ * nested more than 1000 levels deep.
  *
  * YAML 1.1 merge keys are always enabled. An unquoted `<<` key merges a
  * mapping, or a sequence of mappings, into the enclosing mapping. Explicit
@@ -1673,33 +1620,27 @@ const hasNonPrintable = (text: string): boolean => {
   return false
 }
 
-// Spellings that the core schema reads as strings but YAML 1.1 and lenient parsers read as other
-// types: any letter case of `null`, `true`, `false`, the YAML 1.1 booleans `y`, `n`, `yes`,
-// `no`, `on` and `off`, `.inf` and `.nan`; YAML 1.1 timestamps; and numbers with `_`
-// separators, an uppercase or signed `0X` or `0O` prefix, a `0b` prefix, sexagesimal `:`
-// groups, a leading `+`, a `.` without digits, or an exponent without a mantissa, which
-// YAML 1.1 parsers such as `yaml` read as floats. The printer quotes them.
+// A fixed list of common YAML 1.1 spellings that the core schema reads as strings but YAML 1.1
+// parsers read as other types, which the printer quotes: any letter case of `null`, `~`, `true`,
+// `false`, `y`, `n`, `yes`, `no`, `on`, `off`, `.inf` and `.nan`; numbers with `_` separators or
+// an uppercase or signed `0X` or `0O` prefix; and `YYYY-MM-DD` dates with an optional full
+// `HH:MM:SS` time, fraction and time zone. Other spellings that only YAML 1.1 parsers read as
+// other types, such as `1:20` or `0b101`, print plain.
 const lenientNonString = /^(?:null|~|true|false|y|n|yes|no|on|off|[-+]?\.inf|\.nan)$/i
 
 const lenientTimestamp =
-  /^[0-9]{4}-[0-9]{1,2}-[0-9]{1,2}(?:(?:[Tt]|[ \t]+)[0-9]{1,2}:[0-9]{1,2}:[0-9]{1,2}(?:\.[0-9]*)?(?:[ \t]*(?:Z|[-+][0-9]{1,2}(?::[0-9]{2})?))?)?$/
+  /^[0-9]{4}-[0-9]{2}-[0-9]{2}(?:(?:[Tt]|[ \t]+)[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\.[0-9]*)?(?:[ \t]*(?:Z|[-+][0-9]{1,2}(?::[0-9]{2})?))?)?$/
 
-const lenientNumber =
-  /^[-+]?(?:0x[0-9a-f]+|0o[0-7]+|0b[01]+|[0-9]+(?::[0-5]?[0-9])+(?:\.[0-9]*)?|(?:[0-9]+(?:\.[0-9]*)?|\.[0-9]*)(?:e[-+]?[0-9]+)?)$/i
-
-// Tested before removing `_`: an exponent cannot contain separators, so `e_1` stays a string.
-const lenientExponent = /^[-+]?e[-+]?[0-9]+$/i
+const lenientNumber = /^[-+]?(?:0x[0-9a-f]+|0o[0-7]+|(?:[0-9]+(?:\.[0-9]*)?|\.[0-9]+)(?:e[-+]?[0-9]+)?)$/i
 
 const isLenientNonString = (text: string): boolean =>
-  lenientNonString.test(text) || lenientTimestamp.test(text) || lenientExponent.test(text) ||
-  lenientNumber.test(text.replace(/_/g, ""))
+  lenientNonString.test(text) || lenientTimestamp.test(text) || lenientNumber.test(text.replace(/_/g, ""))
 
-// `_` can start a lenient number once its separators are removed, `e` and `E` start an exponent
-// without a mantissa, and `y`, `Y`, `o` and `O` start YAML 1.1 booleans. Other first characters
-// outside `mayBeCoreNonString` cannot start a lenient spelling.
+// `_` can start a lenient number once its separators are removed, and `y`, `Y`, `o` and `O` start
+// YAML 1.1 booleans. Other first characters outside `mayBeCoreNonString` cannot start a lenient
+// spelling.
 const mayBeLenientNonString = (code: number): boolean =>
-  mayBeCoreNonString(code) || code === 95 || code === 101 || code === 69 || code === 121 || code === 89 ||
-  code === 111 || code === 79
+  mayBeCoreNonString(code) || code === 95 || code === 121 || code === 89 || code === 111 || code === 79
 
 // A code unit JavaScript's `\s` matches.
 const isSpaceCode = (code: number): boolean =>
@@ -1999,16 +1940,22 @@ const printResult = (input: unknown, print: () => string): Result.Result<string,
  * Collections print in block style with keys in insertion order, empty ones
  * as `{}` and `[]`. Strings print plain when `parse` would read them back
  * unchanged and double-quoted otherwise, so `"true"`, `"1"`, `"a: b"`, and
- * the merge key `"<<"` stay strings. Strings that other YAML parsers may read
- * differently are quoted too, such as `"tRuE"`, `"1_000"` and `"---x"`.
- * Non-printable characters are escaped.
+ * the merge key `"<<"` stay strings. As a convenience for YAML 1.1 readers, a
+ * fixed list of spellings they read as other types is quoted too: any letter
+ * case of `null`, `true`, `false`, `yes`, `no`, `on`, `off`, `y` and `n`,
+ * numbers such as `1_000` and `0X1F`, and dates such as `2024-01-01`. This is
+ * not a guarantee about every other parser. Strings that start with `---` or
+ * `...` are quoted. Non-printable characters are escaped.
  * Multiline strings print as literal block scalars when their lines have no
  * surrounding whitespace. Non-finite numbers print as `.inf`, `-.inf`, and
  * `.nan`.
  *
  * As with `JSON.stringify`, a `toJSON` method is applied first (so a `Date`
  * prints as an ISO string), `undefined` properties are omitted, `undefined`
- * array items print as `null`, and symbol keys are ignored. Any other value,
+ * array items print as `null`, and symbol keys are ignored. Each value's
+ * `toJSON` is called once, with its key. The order of those calls across
+ * sibling values, and whether a change one of them makes to another value
+ * shows up in the output, are unspecified. Any other value,
  * including bigints, functions, symbols, class instances without `toJSON`,
  * circular references, and collections nested more than 1000 levels deep
  * (counting empty ones), which {@link parse} rejects, fails with an
