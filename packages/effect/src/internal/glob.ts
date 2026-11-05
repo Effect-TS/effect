@@ -831,9 +831,17 @@ export const make = (
   fs: Pick<FileSystem.FileSystem, "readDirectoryEntries" | "stat" | "readLink">,
   fromInput: (input: PathFilter.Input) => PathFilter.PathFilter
 ): FileSystem.FileSystem["glob"] =>
-(input, options) =>
-  // invalid patterns in `input` are defects of the returned effect
-  Effect.suspend(() => walk(fs, fromInput(input), options?.root ?? ""))
+(input, options) => {
+  // Convert once per call, so running the effect again does not consume a
+  // one-shot iterable again. Invalid patterns are defects of the effect.
+  let filter: PathFilter.PathFilter
+  try {
+    filter = fromInput(input)
+  } catch (error) {
+    return Effect.die(error)
+  }
+  return walk(fs, filter, options?.root ?? "")
+}
 
 // The child names to probe, from any filter the paths must pass, or
 // `undefined` to list the directory
@@ -864,8 +872,8 @@ const walk = Effect.fnUntraced(function*(
   const toFsPath = (relative: string): string => relative === "" ? (root === "" ? "." : root) : join(root, relative)
 
   // Keep broken links so literal probes agree with directory listings. `stat`
-  // follows links, so report a directory link as a link for rules that
-  // depend on the entry's own type.
+  // follows links, so report a directory link as a link: a candidate may come
+  // from a restriction while the selection reached the name through `**`.
   const probe = (
     parent: string,
     name: string
@@ -880,7 +888,7 @@ const walk = Effect.fnUntraced(function*(
         )),
       Effect.catchIf(isMissing, () => Effect.succeed(undefined)),
       Effect.flatMap((type) =>
-        type === "Directory" && needsDirectory
+        type === "Directory"
           ? fs.readLink(path).pipe(
             Effect.as("SymbolicLink" as const),
             Effect.catchIf(isNotLink, () => Effect.succeed(type))
