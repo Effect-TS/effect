@@ -1024,6 +1024,58 @@ describe("McpServer protocol adapters", () => {
           ]
         )
       }))
+
+    // A JSON-RPC id is unique within an HTTP session, but only among one sender's in-flight requests on 2026-07-28.
+    // https://modelcontextprotocol.io/specification/2026-07-28/basic#requests
+    it.effect("should expose the JSON-RPC request id and the HTTP session id to handlers", () =>
+      Effect.gen(function*() {
+        const identityToolkit = Toolkit.make(Tool.make("identity", {
+          success: Schema.Struct({
+            requestId: Schema.NullOr(Schema.Union([Schema.String, Schema.Number])),
+            sessionId: Schema.NullOr(Schema.String)
+          }),
+          dependencies: [McpSchema.McpRequestContext]
+        }))
+        const harness = yield* makeHttpHarness(
+          McpServer.toolkit(identityToolkit).pipe(
+            Layer.provideMerge(identityToolkit.toLayer({
+              identity: () =>
+                McpSchema.McpRequestContext.useSync((context) => ({
+                  requestId: context.requestId ?? null,
+                  sessionId: context.sessionId ?? null
+                }))
+            })),
+            Layer.provideMerge(makeServerLayer({
+              name: "RequestIdentity",
+              protocols: [McpProtocol.v2026_07_28, McpProtocol.v2025_06_18]
+            }))
+          )
+        )
+        const initialized = yield* harness.post({
+          jsonrpc: "2.0",
+          id: 1,
+          method: "initialize",
+          params: { protocolVersion: "2025-06-18", capabilities: {}, clientInfo: { name: "Alice", version: "1" } }
+        })
+        yield* readMcpHttpResponse(initialized)
+        const sessionId = initialized.headers.get("mcp-session-id")
+        assert.isNotNull(sessionId)
+        const legacyHeaders = { "mcp-session-id": sessionId, "mcp-protocol-version": "2025-06-18" }
+        yield* harness.post({ jsonrpc: "2.0", method: "notifications/initialized" }, legacyHeaders)
+        const sessionful = yield* harness.post({
+          jsonrpc: "2.0",
+          id: 7,
+          method: "tools/call",
+          params: { name: "identity" }
+        }, legacyHeaders).pipe(Effect.flatMap(readMcpHttpResponse))
+        assert.deepNestedPropertyVal(sessionful, "result.structuredContent", { requestId: 7, sessionId })
+
+        const stateless = yield* harness.post(
+          modernRequest(8, "tools/call", { name: "identity" }),
+          { ...modernHeaders("tools/call"), "Mcp-Name": "identity" }
+        ).pipe(Effect.flatMap(readMcpHttpResponse))
+        assert.deepNestedPropertyVal(stateless, "result.structuredContent", { requestId: 8, sessionId: null })
+      }))
   })
 
   it.effect("should isolate interleaved stateful and stateless request contexts", () =>

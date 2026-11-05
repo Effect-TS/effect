@@ -9,6 +9,7 @@ import * as McpProtocol from "effect/ai/McpProtocol"
 import * as McpSchema from "effect/ai/McpSchema"
 import * as McpServer from "effect/ai/McpServer"
 import * as McpTest from "effect/ai/McpTest"
+import * as Prompt from "effect/ai/Prompt"
 import * as Tool from "effect/ai/Tool"
 import * as Toolkit from "effect/ai/Toolkit"
 import * as Cause from "effect/Cause"
@@ -2149,6 +2150,53 @@ describe("McpServer", () => {
           type: "text",
           text: JSON.stringify(["first", "second"])
         }])
+      }))
+
+    // https://modelcontextprotocol.io/specification/2025-06-18/server/tools#structured-content
+    it.effect("returns model output as content while keeping the encoded result as structured content", () =>
+      Effect.gen(function*() {
+        const Screenshot = Tool.make("Screenshot", {
+          success: Schema.Struct({ path: Schema.String }),
+          toModelOutput: (result) => [
+            Prompt.textPart({ text: `Screenshot of ${result.path}` }),
+            Prompt.filePart({ mediaType: "image/png", data: new Uint8Array([0x89, 0x50, 0x4e, 0x47]) }),
+            Prompt.filePart({
+              mediaType: "application/pdf",
+              fileName: "report.pdf",
+              data: new URL("https://example.com/report.pdf")
+            })
+          ]
+        })
+        // Content must stay meaningful, so an empty model output keeps the JSON text.
+        const Silent = Tool.make("Silent", {
+          success: Schema.Struct({ path: Schema.String }),
+          toModelOutput: () => []
+        })
+        const toolkit = Toolkit.make(Screenshot, Silent)
+        const client = yield* McpTest.makeClient(
+          McpServer.toolkit(toolkit).pipe(Layer.provideMerge(toolkit.toLayer({
+            Screenshot: () => Effect.succeed({ path: "/home" }),
+            Silent: () => Effect.succeed({ path: "/home" })
+          }))),
+          { protocols: [McpProtocol.v2025_06_18] }
+        )
+
+        const screenshot = yield* client.callTool({ name: "Screenshot", arguments: {} })
+        assert.deepStrictEqual(screenshot.structuredContent, { path: "/home" })
+        assert.deepStrictEqual(screenshot.content, [
+          { type: "text", text: "Screenshot of /home" },
+          { type: "image", mimeType: "image/png", data: new Uint8Array([0x89, 0x50, 0x4e, 0x47]) },
+          {
+            type: "resource_link",
+            uri: "https://example.com/report.pdf",
+            name: "report.pdf",
+            mimeType: "application/pdf"
+          }
+        ])
+
+        const silent = yield* client.callTool({ name: "Silent", arguments: {} })
+        assert.deepStrictEqual(silent.structuredContent, { path: "/home" })
+        assert.deepStrictEqual(silent.content, [{ type: "text", text: JSON.stringify({ path: "/home" }) }])
       }))
 
     it.effect("returns schema-validated messages for declared handler failures", () =>

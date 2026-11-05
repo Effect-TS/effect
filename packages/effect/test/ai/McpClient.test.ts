@@ -759,7 +759,7 @@ const scriptedHttp = Effect.fnUntraced(function*(
     readonly protocol?: McpProtocol.ProtocolAdapter<McpClient.ProtocolVersion> | undefined
     readonly filterStatusOk?: boolean | undefined
     readonly discoveryLimits?: Parameters<typeof McpClient.make>[0]["discoveryLimits"]
-    readonly extensions?: { readonly skills?: boolean | undefined } | undefined
+    readonly extensions?: Parameters<typeof McpClient.make>[0]["extensions"]
   } = {}
 ) {
   const sent: Array<{
@@ -1196,5 +1196,56 @@ describe("McpClient skills", () => {
       const unlisted = yield* client.readSkillResource({ skill, uri: "skill://refunds/extra.md" }).pipe(Effect.flip)
       assert.strictEqual(unlisted.reason._tag, "ValidationError")
       assert.isFalse(sent.some(({ message }) => methodOf(message) === "resources/read"))
+    }))
+})
+
+// https://github.com/modelcontextprotocol/ext-apps/blob/main/specification/2026-01-26/apps.mdx
+describe("McpClient apps", () => {
+  const sentRequest = (
+    sent: ReadonlyArray<{ readonly message?: McpSchema.JsonRpcMessage | undefined }>,
+    method: string
+  ) => sent.map(({ message }) => message).find((message) => methodOf(message) === method) as McpSchema.JsonRpcRequest
+
+  // Unlike Skills, Apps support is negotiated on every revision.
+  it.effect("should declare Apps support on modern and legacy handshakes when enabled", () =>
+    Effect.gen(function*() {
+      const ui = { "io.modelcontextprotocol/ui": { mimeTypes: ["text/html;profile=mcp-app"] } }
+      const modern = yield* scriptedHttp(
+        (message) => scriptedReply(McpProtocol.v2026_07_28, message),
+        { extensions: { skills: true, ui: true } }
+      )
+      const discover = sentRequest(modern.sent, "server/discover")
+      assert.deepStrictEqual(
+        (discover.params!._meta as Record<string, unknown>)["io.modelcontextprotocol/clientCapabilities"],
+        { extensions: { "io.modelcontextprotocol/skills": {}, ...ui } }
+      )
+
+      const legacy = yield* scriptedHttp(
+        (message) => scriptedReply(McpProtocol.v2025_11_25, message),
+        { protocol: McpProtocol.v2025_11_25, extensions: { ui: true } }
+      )
+      const initialize = sentRequest(legacy.sent, "initialize")
+      assert.deepStrictEqual((initialize.params as Record<string, unknown>).capabilities, { extensions: ui })
+    }))
+
+  it.effect("should keep app-only tools out of the model toolkit while still listing them", () =>
+    Effect.gen(function*() {
+      const descriptor = (name: string, visibility?: ReadonlyArray<string>) => ({
+        name,
+        inputSchema: { type: "object" },
+        ...(visibility === undefined ? {} : { _meta: { ui: { visibility } } })
+      })
+      const { client } = yield* scriptedHttp((message) =>
+        message.method === "tools/list"
+          ? jsonRpcResult(message, {
+            ...discoverResult,
+            tools: [descriptor("chat"), descriptor("both", ["model", "app"]), descriptor("refresh", ["app"])]
+          })
+          : scriptedReply(McpProtocol.v2026_07_28, message)
+      )
+
+      const toolkit = yield* McpClient.toolkit(client)
+      assert.deepStrictEqual(Object.keys(toolkit.tools).sort(), ["both", "chat"])
+      assert.deepStrictEqual((yield* client.listTools()).map((tool) => tool.name), ["chat", "both", "refresh"])
     }))
 })

@@ -592,6 +592,37 @@ it.layer(testLayer)(`Mcp Conformance (${protocol.protocolVersion})`, (it) => {
         assert.deepStrictEqual(prompts.prompts, [{ name: "PlainPrompt", icons: [icon] }])
       }))
 
+    // https://modelcontextprotocol.io/specification/2026-07-28/server/resources#resource
+    it.effect("should list resource metadata and give text contents the resource MIME type", () =>
+      Effect.gen(function*() {
+        const harness = yield* makeHttpHarness(
+          McpServer.resource({
+            uri: "file:///readme",
+            name: "Readme",
+            mimeType: "text/markdown",
+            _meta: { "example/owner": "docs" },
+            content: Effect.succeed("# Readme")
+          }).pipe(Layer.provideMerge(makeServerLayer({ name: "ResourceMetaServer", protocols: [protocol] })))
+        )
+        const send = Effect.fnUntraced(function*(method: string, params: Record<string, unknown> = {}) {
+          const response = yield* harness.post(request(method, method, params), headers(method, params.uri as string))
+          return Schema.decodeUnknownSync(Schema.Struct({ result: Schema.JsonObject }))(
+            yield* readMcpHttpResponse(response)
+          ).result
+        })
+
+        const listed = yield* send("resources/list")
+        assert.deepStrictEqual(listed.resources, [{
+          uri: "file:///readme",
+          name: "Readme",
+          mimeType: "text/markdown",
+          annotations: {},
+          _meta: { "example/owner": "docs" }
+        }])
+        const read = yield* send("resources/read", { uri: "file:///readme" })
+        assert.deepStrictEqual(read.contents, [{ uri: "file:///readme", mimeType: "text/markdown", text: "# Readme" }])
+      }))
+
     // SEP-2549 cache hints are server-advertised freshness; omitted families and resource reads keep the stale default.
     it.effect("should advertise configured cache hints and keep defaults for other results", () =>
       Effect.gen(function*() {
