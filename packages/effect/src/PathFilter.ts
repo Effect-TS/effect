@@ -348,6 +348,19 @@ const toRules = (items: ReadonlyArray<string | Rule>, dot: boolean): Array<Rule>
     typeof item !== "string" ? item : item.startsWith("!") ? exclude(item.slice(1)) : include(item, { dot })
   )
 
+// The `PathMatcher` overload lets `{ match: (path) => ... }` infer `path`,
+// which a `string | PathMatcher` parameter cannot, since `String` has `match`.
+interface RuleOptions<Subtree> {
+  /** Whether the rule only matches directories. */
+  readonly directoryOnly?: boolean | undefined
+  /** The directory the rule applies below, relative to the root. */
+  readonly scope?: string | undefined
+  /** What matching a directory means for the paths inside it. */
+  readonly subtree?: Subtree | undefined
+  /** Whether wildcards in a string pattern match names that start with `.`. */
+  readonly dot?: boolean | undefined
+}
+
 const toMatcher = (pattern: string | PathMatcher, dot: boolean | undefined): PathMatcher => {
   if (typeof pattern !== "string") {
     return pattern
@@ -400,36 +413,9 @@ const toMatcher = (pattern: string | PathMatcher, dot: boolean | undefined): Pat
  * @since 4.0.0
  */
 export const exclude: {
-  (pattern: PathMatcher, options?: {
-    /** Whether the rule only matches directories. */
-    readonly directoryOnly?: boolean | undefined
-    /** The directory the rule applies below, relative to the root. */
-    readonly scope?: string | undefined
-    /** What matching a directory means for the paths inside it. */
-    readonly subtree?: "barrier" | "inherit" | "self" | undefined
-    /** Whether wildcards in a string pattern match names that start with `.`. */
-    readonly dot?: boolean | undefined
-  }): ExcludeRule
-  (pattern: string | PathMatcher, options?: {
-    /** Whether the rule only matches directories. */
-    readonly directoryOnly?: boolean | undefined
-    /** The directory the rule applies below, relative to the root. */
-    readonly scope?: string | undefined
-    /** What matching a directory means for the paths inside it. */
-    readonly subtree?: "barrier" | "inherit" | "self" | undefined
-    /** Whether wildcards in a string pattern match names that start with `.`. */
-    readonly dot?: boolean | undefined
-  }): ExcludeRule
-} = (pattern: string | PathMatcher, options?: {
-  /** Whether the rule only matches directories. */
-  readonly directoryOnly?: boolean | undefined
-  /** The directory the rule applies below, relative to the root. */
-  readonly scope?: string | undefined
-  /** What matching a directory means for the paths inside it. */
-  readonly subtree?: "barrier" | "inherit" | "self" | undefined
-  /** Whether wildcards in a string pattern match names that start with `.`. */
-  readonly dot?: boolean | undefined
-}): ExcludeRule => ({
+  (pattern: PathMatcher, options?: RuleOptions<ExcludeRule["subtree"]>): ExcludeRule
+  (pattern: string | PathMatcher, options?: RuleOptions<ExcludeRule["subtree"]>): ExcludeRule
+} = (pattern: string | PathMatcher, options?: RuleOptions<ExcludeRule["subtree"]>): ExcludeRule => ({
   _tag: "Exclude",
   matcher: toMatcher(pattern, options?.dot),
   directoryOnly: options?.directoryOnly ?? false,
@@ -462,36 +448,9 @@ export const exclude: {
  * @since 4.0.0
  */
 export const include: {
-  (pattern: PathMatcher, options?: {
-    /** Whether the rule only matches directories. */
-    readonly directoryOnly?: boolean | undefined
-    /** The directory the rule applies below, relative to the root. */
-    readonly scope?: string | undefined
-    /** What matching a directory means for the paths inside it. */
-    readonly subtree?: "inherit" | "self" | undefined
-    /** Whether wildcards in a string pattern match names that start with `.`. */
-    readonly dot?: boolean | undefined
-  }): IncludeRule
-  (pattern: string | PathMatcher, options?: {
-    /** Whether the rule only matches directories. */
-    readonly directoryOnly?: boolean | undefined
-    /** The directory the rule applies below, relative to the root. */
-    readonly scope?: string | undefined
-    /** What matching a directory means for the paths inside it. */
-    readonly subtree?: "inherit" | "self" | undefined
-    /** Whether wildcards in a string pattern match names that start with `.`. */
-    readonly dot?: boolean | undefined
-  }): IncludeRule
-} = (pattern: string | PathMatcher, options?: {
-  /** Whether the rule only matches directories. */
-  readonly directoryOnly?: boolean | undefined
-  /** The directory the rule applies below, relative to the root. */
-  readonly scope?: string | undefined
-  /** What matching a directory means for the paths inside it. */
-  readonly subtree?: "inherit" | "self" | undefined
-  /** Whether wildcards in a string pattern match names that start with `.`. */
-  readonly dot?: boolean | undefined
-}): IncludeRule => ({
+  (pattern: PathMatcher, options?: RuleOptions<IncludeRule["subtree"]>): IncludeRule
+  (pattern: string | PathMatcher, options?: RuleOptions<IncludeRule["subtree"]>): IncludeRule
+} = (pattern: string | PathMatcher, options?: RuleOptions<IncludeRule["subtree"]>): IncludeRule => ({
   _tag: "Include",
   matcher: toMatcher(pattern, options?.dot),
   directoryOnly: options?.directoryOnly ?? false,
