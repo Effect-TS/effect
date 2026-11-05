@@ -3287,6 +3287,63 @@ describe("McpServer", () => {
         strictEqual(responseB.result.serverInfo.name, "B")
       }))
 
+    it.effect("should interrupt active tool handlers and exit when stdin ends with onStdinEnd interrupt", () =>
+      Effect.gen(function*() {
+        const stdin = yield* Queue.unbounded<Uint8Array, Cause.Done>()
+        const output: Array<string> = []
+        const started = yield* Deferred.make<void>()
+        const encoder = new TextEncoder()
+        const decoder = new TextDecoder()
+        let interrupted = false
+        const tools = Toolkit.make(Tool.make("hold", { success: Schema.String }))
+        const handlers = tools.toLayer({
+          hold: () =>
+            Deferred.succeed(started, undefined).pipe(
+              Effect.andThen(Effect.never),
+              Effect.onInterrupt(() =>
+                Effect.sync(() => {
+                  interrupted = true
+                })
+              )
+            )
+        })
+        const server = yield* Layer.launch(
+          McpServer.layerStdio({
+            name: "TestServer",
+            version: "1.0.0",
+            protocols: [McpProtocol.v2025_06_18],
+            registrations: McpServer.toolkit(tools).pipe(Layer.provide(handlers)),
+            onStdinEnd: "interrupt"
+          }).pipe(Layer.provide(Stdio.layerTest({
+            stdin: Stream.fromQueue(stdin),
+            stdout: () =>
+              Sink.forEach((chunk) =>
+                Effect.sync(() => output.push(typeof chunk === "string" ? chunk : decoder.decode(chunk)))
+              )
+          })))
+        ).pipe(Effect.forkScoped)
+        const write = (message: unknown) => Queue.offer(stdin, encoder.encode(`${JSON.stringify(message)}\n`))
+
+        yield* write({
+          jsonrpc: "2.0",
+          id: 1,
+          method: "initialize",
+          params: {
+            protocolVersion: "2025-06-18",
+            capabilities: {},
+            clientInfo: { name: "TestClient", version: "1.0.0" }
+          }
+        })
+        yield* write({ jsonrpc: "2.0", method: "notifications/initialized" })
+        yield* write({ jsonrpc: "2.0", id: 2, method: "tools/call", params: { name: "hold", arguments: {} } })
+        yield* Deferred.await(started)
+        yield* Queue.end(stdin)
+
+        yield* Fiber.await(server)
+        assertTrue(interrupted)
+        assert.deepStrictEqual(output.join("").trim().split("\n").map((line) => JSON.parse(line).id), [1])
+      }))
+
     it.effect("should deliver stateless request notifications over stdio", () =>
       Effect.gen(function*() {
         const fixture = yield* makeMcpStdioHarness(McpProtocol.v2026_07_28)
