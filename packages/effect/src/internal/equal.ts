@@ -11,7 +11,7 @@ export const getAllObjectKeys = (obj: object): Set<PropertyKey> => {
   if (obj instanceof Error) {
     keys.delete("stack")
     for (const key of errorSiteKeys) {
-      if (keys.has(key) && !Object.prototype.propertyIsEnumerable.call(obj, key)) keys.delete(key)
+      if (!Object.prototype.propertyIsEnumerable.call(obj, key)) keys.delete(key)
     }
   }
 
