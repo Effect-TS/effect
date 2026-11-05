@@ -1273,14 +1273,34 @@ nested:
         custom: { toJSON: () => ({ replaced: true }) },
         [Symbol("ignored")]: 1
       }
+      // `toJSON` replaces the Date with a string, which is quoted like any other string that
+      // yaml 2.9.1 with version "1.1" and js-yaml 4.3.2 read as a timestamp.
       assert.strictEqual(
         Result.getOrThrow(Yaml.stringify(value)),
-        "items:\n  - null\n  - 1\ndate: 2024-01-02T03:04:05.000Z\ncustom:\n  replaced: true\n"
+        "items:\n  - null\n  - 1\ndate: \"2024-01-02T03:04:05.000Z\"\ncustom:\n  replaced: true\n"
       )
       const sparse: Array<number> = []
       sparse[1] = 1
       assert.strictEqual(Result.getOrThrow(Yaml.stringify(sparse)), "- null\n- 1\n")
       assert.strictEqual(Result.getOrThrow(Yaml.stringify(new Array(2))), "- null\n- null\n")
+    })
+
+    it("does not inspect a value after its toJSON has replaced it", () => {
+      // JSON.stringify gives "text" for each: it never reads the revoked proxy after toJSON.
+      const replaced = () => {
+        const { proxy, revoke } = Proxy.revocable({
+          toJSON() {
+            revoke()
+            return "text"
+          }
+        }, {})
+        return proxy
+      }
+      assert.strictEqual(Result.getOrThrow(Yaml.stringify(replaced())), "text\n")
+      assert.strictEqual(
+        Result.getOrThrow(Yaml.stringify({ a: replaced(), b: [replaced()] })),
+        "a: text\nb:\n  - text\n"
+      )
     })
 
     it("indents nested collections by the indent option", () => {
