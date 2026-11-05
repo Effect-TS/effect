@@ -405,6 +405,82 @@ describe("CloudflareWorkflowEngine", () => {
     }).pipe(Effect.provide(layer))
   })
 
+  it.effect("closes suspended attempt scopes when an attempt defects", () => {
+    const namespace = new FakeWorkflowNamespace()
+    const Gate = DurableDeferred.make("SuspendedScopeDefect/Gate")
+    const events: Array<number | string> = []
+    let runs = 0
+    const Defects = Workflow.make("SuspendedScopeDefect", {
+      payload: { id: Schema.String },
+      idempotencyKey: ({ id }) => id
+    }).annotate(Workflow.CaptureDefects, false)
+    const layer = Defects.toLayer(() =>
+      Effect.gen(function*() {
+        const run = ++runs
+        yield* Workflow.addFinalizer(() => Effect.sync(() => events.push(run)))
+        yield* DurableDeferred.await(Gate)
+        if (run === 2) return yield* Effect.die("boom")
+        events.push(`end-${run}`)
+      })
+    ).pipe(Layer.provideMerge(namespace.layer))
+
+    return Effect.gen(function*() {
+      const executionId = yield* Defects.executionId({ id: "one" })
+      yield* Defects.execute({ id: "one" }, { discard: true })
+      yield* pollUntil(Defects, executionId, "Suspended")
+
+      const token = DurableDeferred.tokenFromExecutionId(Gate, { workflow: Defects, executionId })
+      yield* DurableDeferred.succeed(Gate, { token, value: undefined })
+      yield* namespace.settle()
+      assert.deepStrictEqual(events, [2, 1], "a defect must close earlier attempts' scopes")
+
+      // The replay's scope must be live, so its finalizer waits for completion.
+      yield* Defects.resume(executionId)
+      yield* pollUntil(Defects, executionId, "Complete")
+      assert.deepStrictEqual(events, [2, 1, "end-3", 3])
+    }).pipe(Effect.provide(layer))
+  })
+
+  it.effect("surfaces a defect when a suspended attempt's finalizer dies", () => {
+    const namespace = new FakeWorkflowNamespace()
+    const Gate = DurableDeferred.make("SuspendedFinalizerDefect/Gate")
+    const finalized: Array<number> = []
+    let runs = 0
+    const Suspends = Workflow.make("SuspendedFinalizerDefect", {
+      payload: { id: Schema.String },
+      idempotencyKey: ({ id }) => id
+    })
+    const layer = Suspends.toLayer(() =>
+      Effect.gen(function*() {
+        const run = ++runs
+        yield* Workflow.addFinalizer(() =>
+          Effect.gen(function*() {
+            finalized.push(run)
+            if (run === 1) return yield* Effect.die("finalizer defect")
+          })
+        )
+        yield* DurableDeferred.await(Gate)
+      })
+    ).pipe(Layer.provideMerge(namespace.layer))
+
+    return Effect.gen(function*() {
+      const executionId = yield* Suspends.executionId({ id: "one" })
+      yield* Suspends.execute({ id: "one" }, { discard: true })
+      yield* pollUntil(Suspends, executionId, "Suspended")
+
+      const token = DurableDeferred.tokenFromExecutionId(Gate, { workflow: Suspends, executionId })
+      yield* DurableDeferred.succeed(Gate, { token, value: undefined })
+      yield* namespace.settle()
+
+      const result = yield* Suspends.poll(executionId)
+      assert(
+        Option.isNone(result) || result.value._tag !== "Complete",
+        "a dying finalizer must not be stored as success"
+      )
+      assert.deepStrictEqual(finalized, [2, 1])
+    }).pipe(Effect.provide(layer))
+  })
+
   it.effect("persists an interrupted completion when hard-interrupted mid-activity", () => {
     const namespace = new FakeWorkflowNamespace()
     let release!: () => void
