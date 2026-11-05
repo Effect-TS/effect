@@ -3249,34 +3249,13 @@ const decodeFileData = (data: string): Uint8Array => {
     : octets
 }
 
-// https://url.spec.whatwg.org/#percent-decode
+// https://url.spec.whatwg.org/#percent-decode: UTF-8 encode the input, then replace each `%XX` escape with its byte.
+// The intermediate string holds one byte per character.
 const percentDecode = (input: string): Uint8Array => {
-  const bytes = new TextEncoder().encode(input)
-  const output = new Uint8Array(bytes.length)
-  let length = 0
-  for (let i = 0; i < bytes.length; i++) {
-    const high = bytes[i] === 0x25 ? hexValue(bytes[i + 1]) : -1
-    const low = high === -1 ? -1 : hexValue(bytes[i + 2])
-    if (low === -1) {
-      output[length++] = bytes[i]
-    } else {
-      output[length++] = high * 16 + low
-      i += 2
-    }
-  }
-  return output.subarray(0, length)
+  const bytes = Array.from(new TextEncoder().encode(input), (byte) => String.fromCharCode(byte)).join("")
+  const decoded = bytes.replace(/%([0-9a-f]{2})/gi, (_, hex: string) => String.fromCharCode(parseInt(hex, 16)))
+  return Uint8Array.from(decoded, (char) => char.charCodeAt(0))
 }
-
-const hexValue = (byte: number | undefined): number =>
-  byte === undefined ?
-    -1
-    : byte >= 0x30 && byte <= 0x39 ?
-    byte - 0x30
-    : byte >= 0x41 && byte <= 0x46 ?
-    byte - 0x37
-    : byte >= 0x61 && byte <= 0x66 ?
-    byte - 0x57
-    : -1
 
 /**
  * The requirements of a toolkit registration.
@@ -3381,7 +3360,7 @@ export const registerToolkit: <Tools extends Record<string, Tool.Any>>(
     const merged = McpApps.mergeToolMeta(
       tool.name,
       Context.getOrUndefined(annotations, Tool.Meta),
-      Context.getOrUndefined(annotations, McpApps.ToolUiReader)
+      Context.getOrUndefined(annotations, McpApps.ToolUi)
     )
     if ("error" in merged) {
       return yield* Effect.die(merged.error)

@@ -264,7 +264,8 @@ export const isSupported = (capabilities: McpSchema.ClientCapabilities): boolean
     settings.mimeTypes.includes(MIME_TYPE)
 }
 
-// The key must match `TOOL_UI_KEY` in the internal module, which `McpServer` reads.
+const toolUiKey = Internal.ToolUi.key
+
 /**
  * Tool annotation that links a tool to an MCP App.
  *
@@ -293,7 +294,7 @@ export const isSupported = (capabilities: McpSchema.ClientCapabilities): boolean
  * @category annotations
  * @since 4.1.3
  */
-export class ToolUi extends Context.Service<ToolUi, ToolMeta>()("effect/ai/McpApps/ToolUi") {}
+export class ToolUi extends Context.Service<ToolUi, ToolMeta>()(toolUiKey) {}
 
 /**
  * Options for {@link registerResource} and {@link resource}.
@@ -323,6 +324,8 @@ export interface ResourceOptions<E, R> {
 
 const encodeResourceMeta = Schema.encodeSync(ResourceMeta)
 
+type ResourceContents = McpSchema.ReadResourceResult["contents"][number]
+
 /**
  * Registers an MCP App HTML resource from an Effect program.
  *
@@ -350,18 +353,14 @@ export const registerResource = <E, R>(
     }
     const ui = options.meta === undefined ? undefined : encodeResourceMeta(options.meta)
     const _meta = ui === undefined ? undefined : { ui }
-    const item = (fields: { readonly text: string } | { readonly blob: Uint8Array }) => ({
-      uri,
-      mimeType: MIME_TYPE,
-      ...fields,
-      ...(_meta === undefined ? {} : { _meta })
-    })
-    // The fields an item sets itself win, as the host reads the item before the listing.
-    const mergeItemMeta = (meta: Readonly<Record<string, unknown>> | undefined) =>
-      ui === undefined ? meta : {
-        ...meta,
-        ui: Predicate.isReadonlyObject(meta?.ui) ? { ...ui, ...meta.ui } : ui
+    // Every item carries the Apps MIME type and `meta`. The fields an item sets itself win, as the host reads the item before the listing.
+    const normalize = (entry: ResourceContents): ResourceContents => {
+      const meta = ui === undefined ? entry._meta : {
+        ...entry._meta,
+        ui: Predicate.isReadonlyObject(entry._meta?.ui) ? { ...ui, ...entry._meta.ui } : ui
       }
+      return { ...entry, mimeType: MIME_TYPE, ...(meta === undefined ? {} : { _meta: meta }) }
+    }
     return McpServer.registerResource({
       uri,
       name: options.name,
@@ -372,15 +371,12 @@ export const registerResource = <E, R>(
       _meta,
       annotations: options.annotations,
       content: Effect.map(options.content, (content): McpSchema.ReadResourceResult => {
-        if (typeof content === "string") return { contents: [item({ text: content })] }
-        if (content instanceof Uint8Array) return { contents: [item({ blob: content })] }
-        return {
-          ...content,
-          contents: content.contents.map((entry) => {
-            const meta = mergeItemMeta(entry._meta)
-            return { ...entry, mimeType: MIME_TYPE, ...(meta === undefined ? {} : { _meta: meta }) }
-          })
-        }
+        const result: McpSchema.ReadResourceResult = typeof content === "string"
+          ? { contents: [{ uri, text: content }] }
+          : content instanceof Uint8Array
+          ? { contents: [{ uri, blob: content }] }
+          : content
+        return { ...result, contents: result.contents.map(normalize) }
       })
     })
   })

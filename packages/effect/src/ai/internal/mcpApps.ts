@@ -23,24 +23,20 @@ export interface ToolMeta {
   readonly visibility?: ReadonlyArray<"model" | "app"> | undefined
 }
 
-/**
- * The key of the public `McpApps.ToolUi` annotation. `Context` looks services
- * up by key, so `McpServer` reads the annotation through {@link ToolUiReader}
- * without importing the public module, which imports `McpServer`.
- *
- * @internal
- */
-export const TOOL_UI_KEY = "effect/ai/McpApps/ToolUi" as const
-
-interface ToolUiReaderId {
+interface ToolUiId {
   readonly _: unique symbol
 }
 
 /**
+ * The key of the public `McpApps.ToolUi` annotation, which derives its id from
+ * this one. `Context` looks services up by key, so `McpServer` reads the
+ * annotation through this key without importing the public module, which
+ * imports `McpServer`.
+ *
  * @internal
  */
-export const ToolUiReader: Context.Service<ToolUiReaderId, ToolMeta> = Context.Service<ToolUiReaderId, ToolMeta>(
-  TOOL_UI_KEY
+export const ToolUi: Context.Service<ToolUiId, ToolMeta> = Context.Service<ToolUiId, ToolMeta>(
+  "effect/ai/McpApps/ToolUi"
 )
 
 /**
