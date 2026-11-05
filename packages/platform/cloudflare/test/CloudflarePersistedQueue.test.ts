@@ -172,6 +172,36 @@ describe("CloudflarePersistedQueue", () => {
     })
   })
 
+  it.effect("a cancel after a restart releases the item leased to its taker", () => {
+    const namespace = new FakeQueueNamespace()
+    const name = objectName("restarted-cancel")
+    return Effect.gen(function*() {
+      yield* Effect.promise(() => namespace.getByName(name).offer("a", "\"first\""))
+      yield* Effect.promise(() => namespace.getByName(name).take("taker", 1, 500))
+      namespace.crash()
+      const runtime = namespace.getByName(name)
+      yield* Effect.promise(() => runtime.cancelTake("taker"))
+      // The cancel refunded the only attempt, so another taker gets the item now.
+      assert.strictEqual((yield* takeNow(runtime, "next", 1))?.id, "a")
+    })
+  })
+
+  it.effect("a cancel does not refund an expired earlier lease of its taker", () => {
+    const namespace = new FakeQueueNamespace()
+    return Effect.gen(function*() {
+      const runtime = namespace.getByName(objectName("expired-cancel"))
+      yield* Effect.promise(() => runtime.offer("a", "\"first\""))
+      yield* Effect.promise(() => runtime.take("taker", 1, 500))
+      yield* Effect.promise(() => runtime.offer("b", "\"second\""))
+      // The lease on "a" expires before its alarm runs; the retried take gets "b".
+      namespace.now = 600
+      assert.strictEqual((yield* Effect.promise(() => runtime.take("taker", 1, 500))).id, "b")
+      yield* Effect.promise(() => runtime.cancelTake("taker"))
+      // "a" spent its only attempt, so only "b" is available again.
+      assert.strictEqual((yield* takeNow(runtime, "next", 1))?.id, "b")
+    })
+  })
+
   it.effect("an interrupted last attempt can be taken again", () => {
     const namespace = new FakeQueueNamespace()
     return Effect.gen(function*() {
