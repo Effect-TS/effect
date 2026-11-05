@@ -136,7 +136,7 @@ export const makeQueueRuntime = (options: QueueRuntimeOptions): QueueRuntime => 
       // The cancel can race the delivery; release an item already leased to
       // the taker instead of stranding it.
       return mutateAndWake(() => {
-        releaseOwnedItem(sql, takerId)
+        releaseOwnedItem(sql, takerId, options.now())
       })
     },
 
