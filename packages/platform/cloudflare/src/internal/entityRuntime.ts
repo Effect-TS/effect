@@ -38,6 +38,7 @@ import {
   loadUnprocessed,
   persistRequest,
   type PersistResult,
+  type ReplyTarget,
   saveReply,
   type StoredMessage
 } from "./entityMailbox.ts"
@@ -475,6 +476,9 @@ interface Session {
     readonly deferred: Deferred.Deferred<void>
   } | undefined
   fiber: Fiber.Fiber<void> | undefined
+  // Completed when the handler saves its next reply or exits, for duplicates
+  // of a persisted stream that arrived before that reply existed.
+  saved: Deferred.Deferred<void> | undefined
 }
 
 interface WorkerWaiter {
@@ -482,14 +486,9 @@ interface WorkerWaiter {
   readonly deferred: Deferred.Deferred<EntityInvokeResult>
 }
 
-interface ReplayFiber {
-  readonly discard: boolean
-  readonly fiber: Fiber.Fiber<void>
-}
-
 interface RunOptions {
   readonly scheduled?: boolean
-  readonly replyTos?: ReadonlyArray<string> | undefined
+  readonly replyTos?: ReadonlyArray<ReplyTarget> | undefined
 }
 
 /** @internal */
@@ -671,6 +670,31 @@ export const makeEntityManager = (options: EntityManagerOptions): EntityManager 
     if (!session.cancelling && sessions.get(requestId) === session) sessions.delete(requestId)
   }
 
+  const signalSaved = (session: Session) => {
+    const saved = session.saved
+    if (saved === undefined) return
+    session.saved = undefined
+    Deferred.doneUnsafe(saved, Effect.void)
+  }
+
+  const storedNextReply = (requestId: string): Effect.Effect<ReadonlyArray<string>> =>
+    Effect.map(loadNextReply(sql, requestId), (nextReply) => nextReply === undefined ? [] : [nextReply.reply])
+
+  // Reads the next stored reply of a running persisted stream, waiting for
+  // the handler to save one when there is none yet. The waiter is registered
+  // before reading storage, so a reply saved in between still wakes it.
+  const awaitStoredReply = (requestId: string, session: Session): Effect.Effect<Effect.Effect<ReadonlyArray<string>>> =>
+    Effect.suspend(() => {
+      const saved = session.saved ??= Deferred.makeUnsafe<void>()
+      return Effect.map(
+        loadNextReply(sql, requestId),
+        (nextReply) =>
+          nextReply === undefined
+            ? Effect.andThen(Deferred.await(saved), storedNextReply(requestId))
+            : Effect.succeed([nextReply.reply])
+      )
+    })
+
   const takeReply = (requestId: string, session: Session): Effect.Effect<ReadonlyArray<string>> =>
     Queue.take(session.queue).pipe(
       Effect.map((reply) => {
@@ -687,8 +711,8 @@ export const makeEntityManager = (options: EntityManagerOptions): EntityManager 
   const settleScheduledReply = (
     requestId: string,
     reply: string,
-    replyTos: ReadonlyArray<string> | undefined
-  ): Effect.Effect<ReadonlyArray<string> | undefined> =>
+    replyTos: ReadonlyArray<ReplyTarget> | undefined
+  ): Effect.Effect<ReadonlyArray<ReplyTarget> | undefined> =>
     Effect.map(loadMessage(sql, requestId), (message) => {
       const waiters = workerWaiters.get(requestId)
       if (waiters !== undefined) {
@@ -701,9 +725,8 @@ export const makeEntityManager = (options: EntityManagerOptions): EntityManager 
     })
 
   const pushScheduledReply = (
-    requestId: string,
     reply: string,
-    replyTos: ReadonlyArray<string> | undefined
+    replyTos: ReadonlyArray<ReplyTarget> | undefined
   ): Effect.Effect<void> =>
     Effect.suspend(() => {
       if (replyTos === undefined) return Effect.void
@@ -716,7 +739,7 @@ export const makeEntityManager = (options: EntityManagerOptions): EntityManager 
       }
       return Effect.forEach(
         replyTos,
-        (replyTo) =>
+        ({ replyTo, requestId }) =>
           Effect.promise(() => namespace.getByName(replyTo).deliverReply(requestId, reply)).pipe(
             Effect.flatMap((delivered) =>
               delivered
@@ -735,11 +758,11 @@ export const makeEntityManager = (options: EntityManagerOptions): EntityManager 
   const deliverScheduledReply = (
     requestId: string,
     reply: string,
-    replyTos: ReadonlyArray<string> | undefined
+    replyTos: ReadonlyArray<ReplyTarget> | undefined
   ): Effect.Effect<void> =>
     Effect.flatMap(
       settleScheduledReply(requestId, reply, replyTos),
-      (targets) => pushScheduledReply(requestId, reply, targets)
+      (targets) => pushScheduledReply(reply, targets)
     )
 
   // Runs one request under the entry permit up to forking its handler fiber,
@@ -765,12 +788,14 @@ export const makeEntityManager = (options: EntityManagerOptions): EntityManager 
     if (!discard) {
       const active = sessions.get(requestId)
       if (active !== undefined) {
+        // A stream duplicate resumes from storage, as on other runners.
+        if (persisted && RpcSchema.isStreamSchema(rpc.successSchema)) {
+          return yield* awaitStoredReply(requestId, active)
+        }
         const nextReply = persisted ? yield* loadNextReply(sql, requestId) : undefined
         if (nextReply !== undefined) return Effect.succeed([nextReply.reply])
         const fiber = active.fiber
-        if (!persisted || fiber === undefined || RpcSchema.isStreamSchema(rpc.successSchema)) {
-          return Effect.succeed([])
-        }
+        if (!persisted || fiber === undefined) return Effect.succeed([])
         // A unary duplicate waits for the handler outside the entry permit and
         // then reads its stored reply, which wins even when post-reply handler
         // cleanup failed.
@@ -804,7 +829,7 @@ export const makeEntityManager = (options: EntityManagerOptions): EntityManager 
             semaphore,
             Effect.andThen(save, settleScheduledReply(requestId, encoded, runOptions?.replyTos))
           )
-          yield* pushScheduledReply(requestId, encoded, replyTos)
+          yield* pushScheduledReply(encoded, replyTos)
         }))
       const fiber = yield* Effect.forkDetach(
         execute.pipe(
@@ -847,7 +872,8 @@ export const makeEntityManager = (options: EntityManagerOptions): EntityManager 
       uninterruptible: isUninterruptibleForServer(rpc.annotations),
       cancelling: false,
       ack: undefined,
-      fiber: undefined
+      fiber: undefined,
+      saved: undefined
     }
     sessions.set(requestId, session)
     if (persisted) yield* startPersisted
@@ -856,6 +882,7 @@ export const makeEntityManager = (options: EntityManagerOptions): EntityManager 
       const encoded = yield* encodeReplyFor(registration, rpc, reply)
       if (persisted) {
         yield* Effect.orDie(write(saveReply(sql, encoded)))
+        signalSaved(session)
       }
       if (reply._tag === "Chunk") {
         const acknowledged = Deferred.makeUnsafe<void>()
@@ -878,6 +905,7 @@ export const makeEntityManager = (options: EntityManagerOptions): EntityManager 
             if (Queue.sizeUnsafe(queue) === 0 && session.ack === undefined) {
               removeSession(requestId, session)
             }
+            signalSaved(session)
           })
           return persisted
             ? Semaphore.withPermit(semaphore, Effect.andThen(cleanup, finishPersisted))
@@ -943,7 +971,7 @@ export const makeEntityManager = (options: EntityManagerOptions): EntityManager 
     registration: EntityRegistration,
     entityRuntime: EntityRuntime,
     rows: ReadonlyArray<StoredMessage>
-  ): Effect.Effect<Array<ReplayFiber>> =>
+  ): Effect.Effect<Array<Fiber.Fiber<void>>> =>
     rows.length === 0 ? Effect.succeed([]) : Effect.forEach(
       rows,
       (row) =>
@@ -963,14 +991,11 @@ export const makeEntityManager = (options: EntityManagerOptions): EntityManager 
             }
         ).pipe(
           Effect.flatMap((continuation) =>
-            Effect.map(
-              Effect.forkDetach(
-                Effect.catchCause(
-                  Effect.asVoid(continuation),
-                  (cause) => completeReplayFailure(registration, row, cause)
-                )
-              ),
-              (fiber): ReplayFiber => ({ discard: row.discard, fiber })
+            Effect.forkDetach(
+              Effect.catchCause(
+                Effect.asVoid(continuation),
+                (cause) => completeReplayFailure(registration, row, cause)
+              )
             )
           ),
           Effect.catchCause((cause) => Effect.as(completeReplayFailure(registration, row, cause), undefined))
@@ -979,7 +1004,7 @@ export const makeEntityManager = (options: EntityManagerOptions): EntityManager 
       Effect.map((entries) => entries.filter((entry) => entry !== undefined)),
       Effect.tap((entries) =>
         Effect.sync(() => {
-          if (entries.length > 0) options.waitUntil(Fiber.awaitAll(entries.map((entry) => entry.fiber)))
+          if (entries.length > 0) options.waitUntil(Fiber.awaitAll(entries))
         })
       )
     )
@@ -1013,22 +1038,16 @@ export const makeEntityManager = (options: EntityManagerOptions): EntityManager 
     }
     return Effect.gen(function*() {
       const entityRuntime = yield* getRuntime(registration)
-      const replayed = yield* Effect.flatMap(
+      // Replayed rows run on their own fibers. The handler semaphore already
+      // orders them ahead of this request, so the caller does not wait for them.
+      yield* Effect.flatMap(
         loadUnprocessed(sql),
         (rows) => replayRows(registration, entityRuntime, rows)
       )
-      // Preserves the pre-split ordering for asks: the invoke result is
-      // delivered only after the replayed ask rows this entry kicked off
-      // have finished. Replayed tells complete through their own fibers and
-      // must not delay other callers.
-      const replayFibers = replayed.filter((entry) => !entry.discard).map((entry) => entry.fiber)
       const finish = (
         requestId: string,
         continuation: Effect.Effect<ReadonlyArray<string>>
-      ): Effect.Effect<EntityInvokeResult> =>
-        Effect.andThen(Fiber.awaitAll(replayFibers), continuation).pipe(
-          Effect.map((replies) => success(requestId, replies))
-        )
+      ): Effect.Effect<EntityInvokeResult> => Effect.map(continuation, (replies) => success(requestId, replies))
       // A persisted tell must not pin its caller: the row is durable, so the
       // invoke result is complete once the handler is forked. Failures of the
       // forked machinery leave the row unprocessed for replay on a later
@@ -1156,6 +1175,32 @@ export const makeEntityManager = (options: EntityManagerOptions): EntityManager 
   ): Effect.Effect<EntityInvokeResult> =>
     Effect.flatten(Semaphore.withPermit(semaphore, invokeEntry(envelopeText, discard, delivery)))
 
+  // An acknowledgement with no session comes after a restart. The stream is
+  // replayed from its last acknowledged chunk so the caller gets its next
+  // reply instead of waiting on an alarm replay that waits for this ack.
+  const resumeAcknowledged = (requestId: string): Effect.Effect<ReadonlyArray<string>> =>
+    Effect.flatten(Semaphore.withPermit(
+      semaphore,
+      Effect.gen(function*() {
+        const nextReply = yield* loadNextReply(sql, requestId)
+        if (nextReply !== undefined) return Effect.succeed([nextReply.reply])
+        const registration = getEntityRegistration(options.address.entityType)
+        if (registration === undefined) return Effect.succeed([])
+        // A session started since the ack was written owns the request.
+        const session = sessions.get(requestId)
+        if (session !== undefined) return yield* awaitStoredReply(requestId, session)
+        if (pendingRuns.has(requestId)) return Effect.succeed([])
+        const row = (yield* loadUnprocessed(sql)).find((row) => row.requestId === requestId)
+        if (row === undefined || row.discard || row.deliverAt !== undefined) return Effect.succeed([])
+        const entityRuntime = yield* getRuntime(registration)
+        return yield* runStored(registration, entityRuntime, row.envelope, row.lastSentChunk, false).pipe(
+          Effect.catchCause((cause) =>
+            Effect.as(completeReplayFailure(registration, row, cause), storedNextReply(requestId))
+          )
+        )
+      })
+    ))
+
   const acknowledge = (requestId: string, replyId: string): Effect.Effect<ReadonlyArray<string>> =>
     write(ackChunk(sql, requestId, replyId)).pipe(
       Effect.flatMap(() => {
@@ -1166,10 +1211,7 @@ export const makeEntityManager = (options: EntityManagerOptions): EntityManager 
           Deferred.doneUnsafe(acknowledged, Effect.void)
           return takeReply(requestId, session)
         }
-        return Effect.map(
-          loadNextReply(sql, requestId),
-          (nextReply) => nextReply === undefined ? [] : [nextReply.reply]
-        )
+        return session === undefined ? resumeAcknowledged(requestId) : storedNextReply(requestId)
       })
     )
 
@@ -1235,9 +1277,9 @@ export const makeEntityManager = (options: EntityManagerOptions): EntityManager 
         // rebuild the entity; the `ensuring` below still settles the alarm.
         if (rows.length === 0 && !keepAlive) return Effect.void
         const entityRuntime = yield* getRuntime(registration)
-        const entries = yield* replayRows(registration, entityRuntime, rows)
+        const fibers = yield* replayRows(registration, entityRuntime, rows)
         yield* rearm
-        const awaitReplays = Effect.asVoid(Fiber.awaitAll(entries.map((entry) => entry.fiber)))
+        const awaitReplays = Effect.asVoid(Fiber.awaitAll(fibers))
         if (!keepAlive) return awaitReplays
         // The hold is never awaited: it does not resolve while held.
         return Effect.andThen(
