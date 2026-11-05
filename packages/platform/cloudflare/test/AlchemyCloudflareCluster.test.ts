@@ -44,8 +44,10 @@ describe("AlchemyCloudflareCluster", () => {
   // Loads the full module graph of the example stack (alchemy, the Cloudflare
   // provider, and this package's alchemy glue) without credentials. It fails
   // when the pinned alchemy release imports a module this `effect` lacks. The
-  // URL import keeps alchemy's types out of the tests project.
-  it("loads the example alchemy stack", { timeout: 60_000 }, async () => {
+  // URL import keeps alchemy's types out of the tests project. The import
+  // blocks the event loop for seconds, so it runs alone rather than alongside
+  // the timer-driven tests below.
+  it("loads the example alchemy stack", { timeout: 60_000, concurrent: false }, async () => {
     const stack = await import(
       /* @vite-ignore */ new URL("../examples/alchemy/alchemy.run.ts", import.meta.url).href
     )

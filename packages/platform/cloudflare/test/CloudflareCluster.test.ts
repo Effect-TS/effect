@@ -109,8 +109,19 @@ const withTestClock = Effect.fnUntraced(function*<A, E>(effect: Effect.Effect<A,
   return yield* Fiber.join(fiber)
 })
 
-v8.setFlagsFromString("--expose-gc")
-const gc = vm.runInNewContext("gc") as () => void
+// Forces a full collection where the runtime allows it: `Bun.gc` on Bun, and
+// V8's `gc` exposed at runtime on Node and Deno. Without one, the test that
+// needs it is skipped.
+const forceGc = ((): (() => void) | undefined => {
+  const bun = (globalThis as { readonly Bun?: { readonly gc: (force: boolean) => void } }).Bun
+  if (bun !== undefined) return () => bun.gc(true)
+  try {
+    v8.setFlagsFromString("--expose-gc")
+    return vm.runInNewContext("gc") as () => void
+  } catch {
+    return undefined
+  }
+})()
 
 class Marker extends Context.Service<Marker, object>()("CloudflareClusterTest/Marker") {}
 
@@ -526,7 +537,7 @@ describe("CloudflareCluster", () => {
       }).pipe(Effect.provide(CloudflareCluster.layer(options)))
     })
 
-    it.effect("releases a request's client state when its send fails", () => {
+    it.effect.skipIf(forceGc === undefined)("releases a request's client state when its send fails", () => {
       const outcomes: Array<(requestId: string) => Promise<unknown>> = [
         () => Promise.resolve({ _tag: "MailboxFull" }),
         () => Promise.reject(transportError()),
@@ -553,7 +564,7 @@ describe("CloudflareCluster", () => {
           assert.isTrue(Exit.isFailure(yield* Effect.exit(client.Ping(void 0, { context: tracked() }))))
         }
         yield* Effect.promise(() => new Promise((resolve) => setTimeout(resolve, 0)))
-        gc()
+        forceGc!()
 
         assert.deepStrictEqual(refs.map((ref) => ref.deref() === undefined), [true, true, true])
       }).pipe(Effect.provide(CloudflareCluster.layer(makeOptions(stub).options)))
