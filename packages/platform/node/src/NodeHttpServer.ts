@@ -115,10 +115,11 @@ export interface Options extends Net.ListenOptions {
   readonly disablePreemptiveShutdown?: boolean | undefined
   /**
    * Bounds how long shutdown waits for the server to close its connections
-   * before it interrupts the remaining request fibers. Handlers run
-   * uninterruptibly unless wrapped in `Effect.interruptible` or served by
-   * interruptible `HttpRouter` routes, so shutdown still waits for them after
-   * the timeout.
+   * before it interrupts the remaining request fibers. Upgraded connections
+   * such as WebSockets are closed as soon as shutdown starts, since they never
+   * drain on their own. Handlers run uninterruptibly unless wrapped in
+   * `Effect.interruptible` or served by interruptible `HttpRouter` routes, so
+   * shutdown still waits for them after the timeout.
    *
    * @default "20 seconds"
    */
@@ -262,8 +263,8 @@ export const make = Effect.fnUntraced(function*(
         middleware: middleware as any,
         scope
       })
-      // Upgraded connections keep `server.close` pending and never drain on their own, so
-      // shutdown closes them instead of waiting for the graceful shutdown timeout.
+      // `server.close` waits for upgraded connections, which never drain on their own, so
+      // shutdown destroys them before the graceful wait.
       let upgradesClosed = false
       const upgradedSockets = new Set<Duplex>()
       const trackedUpgrade = (request: Http.IncomingMessage, socket: Duplex, head: Buffer) => {
@@ -279,21 +280,20 @@ export const make = Effect.fnUntraced(function*(
         pendingContinue.add(request)
         handler(request, response)
       }
-      yield* Scope.addFinalizerExit(serveScope, () =>
-        Effect.ensuring(
-          Effect.suspend(() => {
-            upgradesClosed = true
-            for (const socket of upgradedSockets) {
-              socket.destroy()
-            }
-            return preemptiveShutdown
-          }),
+      yield* Scope.addFinalizerExit(serveScope, () => {
+        upgradesClosed = true
+        for (const socket of upgradedSockets) {
+          socket.destroy()
+        }
+        return Effect.ensuring(
+          preemptiveShutdown,
           Effect.sync(() => {
             server.off("request", handler)
             server.off("checkContinue", checkContinueHandler)
             server.off("upgrade", trackedUpgrade)
           })
-        ))
+        )
+      })
       server.on("request", handler)
       server.on("checkContinue", checkContinueHandler)
       server.on("upgrade", trackedUpgrade)

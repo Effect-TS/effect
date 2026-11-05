@@ -2,4 +2,4 @@
 "@effect/platform-node": patch
 ---
 
-Fix `NodeHttpServer` shutdown waiting for the graceful shutdown timeout and WebSocket closing handshakes while upgraded connections stay open.
+Close upgraded connections such as WebSockets when `NodeHttpServer` shuts down, so it no longer waits out `gracefulShutdownTimeout` and the WebSocket closing handshake.
