@@ -95,8 +95,97 @@ describe("PathFilter", () => {
       assert.throws(() => PathFilter.exclude("x", { scope }))
       assert.throws(() => PathFilter.include("x", { scope }))
     }
-    for (const pattern of ["/a", "../a", "a/../b"]) {
-      assert.throws(() => PathFilter.exclude(pattern))
+    // validation precedes compilation, which drops a branch with `.` after `**`
+    for (
+      const pattern of [
+        "/a",
+        "//server/share",
+        "../a",
+        "a/../b",
+        "**/../x",
+        "src\\/x",
+        "{**/src\\/x/.,a}",
+        "**/\\.\\./."
+      ]
+    ) {
+      assert.throws(() => PathFilter.exclude(pattern), undefined, undefined, pattern)
+      assert.throws(() => PathFilter.include(pattern), undefined, undefined, pattern)
     }
+  })
+
+  it("decides unmatched paths with the filter's default", () => {
+    const selection = PathFilter.select("a")
+    assert.strictEqual(selection.default, "exclude")
+    assertMatch(PathFilter.match(selection, "b"), "None")
+    assertTrue(PathFilter.excludes(selection, "b"))
+    for (const filter of [PathFilter.empty, PathFilter.make([]), IgnoreFile.gitignore("")]) {
+      assert.strictEqual(filter.default, "include")
+      assertMatch(PathFilter.match(filter, "b"), "None")
+      assertFalse(PathFilter.excludes(filter, "b"))
+    }
+    // the root is not a path, so a rule naming only the root never matches
+    assertMatch(PathFilter.match(PathFilter.make([PathFilter.exclude(".")]), "a"), "None")
+  })
+
+  it("reads strings as include patterns, or exclude patterns after `!`", () => {
+    const selection = PathFilter.fromInput("src/**")
+    assert.strictEqual(selection.default, "exclude")
+    assertFalse(PathFilter.excludes(selection, "src/a"))
+    assertTrue(PathFilter.excludes(selection, "b"))
+    // only `!` strings keep unmatched paths
+    const negated = PathFilter.fromInput(["!**/*.test.ts"])
+    assert.strictEqual(negated.default, "include")
+    assertTrue(PathFilter.excludes(negated, "a.test.ts"))
+    assertFalse(PathFilter.excludes(negated, "a.ts"))
+    // include strings skip dot names, `!` strings match them
+    assertTrue(PathFilter.excludes(PathFilter.fromInput("*.log"), ".x.log"))
+    assertTrue(PathFilter.excludes(negated, ".x.test.ts"))
+    // `\!` is a literal `!`
+    const literal = PathFilter.fromInput("\\!name")
+    assertFalse(PathFilter.excludes(literal, "!name"))
+    assertTrue(PathFilter.excludes(literal, "name"))
+    // one include string makes a mixed input a selection
+    const mixed = PathFilter.fromInput(["a/**", PathFilter.exclude("a/b")])
+    assert.strictEqual(mixed.default, "exclude")
+    assertTrue(PathFilter.excludes(mixed, "a/b"))
+    assertFalse(PathFilter.excludes(mixed, "a/c"))
+    assert.strictEqual(PathFilter.fromInput([PathFilter.include("a")]).default, "include")
+    // an existing filter keeps its default
+    const selected = PathFilter.select([PathFilter.include("a")])
+    assert.strictEqual(PathFilter.fromInput(selected), selected)
+  })
+
+  it("concat appends rules of filters with the same default", () => {
+    const both = PathFilter.concat(PathFilter.select("a"), PathFilter.select("b"))
+    assert.strictEqual(both.default, "exclude")
+    assert.strictEqual(both.rules.length, 2)
+    assertFalse(PathFilter.excludes(both, "a"))
+    assertFalse(PathFilter.excludes(both, "b"))
+    assertTrue(PathFilter.excludes(both, "c"))
+    const [x, y, z] = ["x", "y", "z"].map((pattern) => PathFilter.make([PathFilter.exclude(pattern)]))
+    assert.deepStrictEqual(
+      PathFilter.concat(PathFilter.concat(x, y), z).rules,
+      PathFilter.concat(x, PathFilter.concat(y, z)).rules
+    )
+    assert.throws(() => PathFilter.concat(PathFilter.select("a"), PathFilter.empty))
+    assert.throws(() => PathFilter.concat(PathFilter.restrict(PathFilter.select("a"), PathFilter.empty), x))
+    assert.throws(() => PathFilter.concat(x, PathFilter.restrict(PathFilter.select("a"), PathFilter.empty)))
+  })
+
+  it("restrict keeps paths both operands keep", () => {
+    // the blocking operand decides `match`, even through its default
+    const blocked = PathFilter.restrict(PathFilter.select("a"), PathFilter.select("b"))
+    assertTrue(PathFilter.excludes(blocked, "a"))
+    assertMatch(PathFilter.match(blocked, "a"), "None")
+    const kept = PathFilter.restrict(PathFilter.empty, PathFilter.select("a"))
+    assertFalse(PathFilter.excludes(kept, "a"))
+    assertMatch(PathFilter.match(kept, "a"), "None")
+    // `!keep.log` restores the selection's verdict rather than selecting the file
+    const gitignore = IgnoreFile.gitignore("*.log\n!keep.log\n")
+    const sources = PathFilter.restrict("**/*.ts", gitignore)
+    assertTrue(PathFilter.excludes(sources, "keep.log"))
+    assertMatch(PathFilter.match(sources, "keep.log"), "None")
+    assertMatch(PathFilter.match(sources, "x.log"), "Exclude", gitignore.rules[0])
+    assertFalse(PathFilter.excludes(sources, "a/x.ts"))
   })
 })
