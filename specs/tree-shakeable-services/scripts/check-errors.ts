@@ -53,11 +53,6 @@ const expectations: Record<string, ReadonlyArray<string>> = {
     `is not assignable to parameter of type '"Give the record its identifier: Context.Operations<Self, Shape>()(key, members)"'`,
     `Expected 0 arguments, but got 1`
   ],
-  "branded.ts": [
-    `Type '"test/Legacy/readFile" & Legacy' is not assignable to type 'never'`,
-    `Type 'Layer<"test/Legacy/readFile" & Legacy, never, never>' is not assignable to type 'Layer<Legacy, never, never>'`,
-    `Type '"test/Legacy/writeFile" & Legacy' is not assignable to type 'never'`
-  ],
   "value-shape.ts": [`This expression is not callable`, `does not satisfy the constraint 'Effect<any, any, any>'`],
   "subset-not-full.ts": [`Type 'FileSystem' is not assignable to type 'ReadOnly'`],
   "partial-record.ts": [

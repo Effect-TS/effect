@@ -180,7 +180,7 @@ describe("graphqlgen --watch", () => {
         const rootEvents = yield* PubSub.unbounded<FileSystem.WatchEvent>()
         const parentEvents = yield* PubSub.unbounded<FileSystem.WatchEvent>()
         let nestedStats = 0
-        const gatedFs: FileSystem.FileSystem = {
+        const gatedFs: FileSystem.Shape = {
           ...fs,
           watch: (directory, options) =>
             Stream.unwrap(Effect.gen(function*() {

@@ -15,7 +15,7 @@ import { afterEach, beforeEach, vi } from "vitest"
 import { testGlob, testLayer } from "../../../effect/test/FileSystem.test-utils.ts"
 
 const startWatch = Effect.fnUntraced(function*<E, R>(
-  fs: FileSystem.FileSystem,
+  fs: FileSystem.Shape,
   root: string,
   watch: () => Stream.Stream<FileSystem.WatchEvent, E, R>
 ) {

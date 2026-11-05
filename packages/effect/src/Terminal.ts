@@ -21,14 +21,15 @@ import * as Schema from "./Schema.ts"
 import type * as Scope from "./Scope.ts"
 
 /**
- * A `Terminal` represents a command-line interface which can read input from a
- * user and display messages to a user.
+ * The record of terminal implementations: a command-line interface which can
+ * read input from a user and display messages to a user. The service's
+ * identity is {@link Terminal}, the union of its members' keys.
  *
  * @stability unstable
- * @category services
+ * @category models
  * @since 4.0.0
  */
-export interface Terminal {
+export interface Shape {
   /**
    * The number of columns available on the platform's terminal interface.
    */
@@ -181,7 +182,7 @@ export const isQuitError = (u: unknown): u is QuitError => Predicate.hasProperty
  * @category operations
  * @since 4.0.0
  */
-export const columns = Context.Operation.value<Terminal["columns"], Terminal>()("effect/Terminal/columns")
+export const columns = Context.Operation.value<Shape["columns"]>()("effect/Terminal/columns")
 
 /**
  * The number of rows available on the platform's terminal interface, as an
@@ -191,7 +192,7 @@ export const columns = Context.Operation.value<Terminal["columns"], Terminal>()(
  * @category operations
  * @since 4.0.0
  */
-export const rows = Context.Operation.value<Terminal["rows"], Terminal>()("effect/Terminal/rows")
+export const rows = Context.Operation.value<Shape["rows"]>()("effect/Terminal/rows")
 
 /**
  * Subscribes to terminal size changes, as an operation. The queue starts with
@@ -202,7 +203,7 @@ export const rows = Context.Operation.value<Terminal["rows"], Terminal>()("effec
  * @category operations
  * @since 4.0.0
  */
-export const size = Context.Operation.value<Terminal["size"], Terminal>()("effect/Terminal/size")
+export const size = Context.Operation.value<Shape["size"]>()("effect/Terminal/size")
 
 /**
  * Reads input events from the default standard input, as an operation.
@@ -211,7 +212,7 @@ export const size = Context.Operation.value<Terminal["size"], Terminal>()("effec
  * @category operations
  * @since 4.0.0
  */
-export const readInput = Context.Operation.value<Terminal["readInput"], Terminal>()("effect/Terminal/readInput")
+export const readInput = Context.Operation.value<Shape["readInput"]>()("effect/Terminal/readInput")
 
 /**
  * Reads a single line from the default standard input, as an operation.
@@ -220,7 +221,7 @@ export const readInput = Context.Operation.value<Terminal["readInput"], Terminal
  * @category operations
  * @since 4.0.0
  */
-export const readLine = Context.Operation.value<Terminal["readLine"], Terminal>()("effect/Terminal/readLine")
+export const readLine = Context.Operation.value<Shape["readLine"]>()("effect/Terminal/readLine")
 
 /**
  * Displays text to the default standard output, as an operation:
@@ -231,7 +232,7 @@ export const readLine = Context.Operation.value<Terminal["readLine"], Terminal>(
  * @category operations
  * @since 4.0.0
  */
-export const display = Context.Operation<Terminal["display"], Terminal>()("effect/Terminal/display")
+export const display = Context.Operation<Shape["display"]>()("effect/Terminal/display")
 
 const members = { columns, rows, size, readInput, readLine, display }
 
@@ -247,20 +248,18 @@ const members = { columns, rows, size, readInput, readLine, display }
  * @category services
  * @since 4.0.0
  */
-export const Terminal = Context.Operations<Terminal, Terminal>()("effect/Terminal", members)
+export const Terminal = Context.Operations<Terminal, Shape>()("effect/Terminal", members)
 
 /**
- * The record of terminal implementations: today an alias of the `Terminal`
- * interface, which the next release makes the sole name of the record type
- * while `Terminal` becomes the identity of the whole service. Code that uses
- * `Terminal.Terminal` as the type of an implementation (`terminal:
- * Terminal.Terminal`) should write `Terminal.Shape` now.
+ * The identity of the terminal service: the union of its six members' keys. A
+ * `Layer<Terminal>` provides every member, and the merge of every member's
+ * layer is a `Layer<Terminal>`. The record of implementations is {@link Shape}.
  *
  * @stability unstable
- * @category models
+ * @category services
  * @since 4.0.0
  */
-export type Shape = Terminal
+export type Terminal = Context.Operations.Identifier<typeof members>
 
 /**
  * Creates a `Terminal` service implementation.
@@ -281,4 +280,4 @@ export type Shape = Terminal
  * @category constructors
  * @since 4.0.0
  */
-export const make = (impl: Terminal): Terminal => impl
+export const make = (impl: Shape): Shape => impl

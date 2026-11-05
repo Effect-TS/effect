@@ -1,7 +1,7 @@
 import { assert, describe, it } from "@effect/vitest"
 import { Context, Effect, Exit, Layer, Terminal } from "effect"
 
-describe("Terminal operations (phase 0)", () => {
+describe("Terminal operations", () => {
   const displayed: Array<string> = []
   const live = Terminal.make({
     columns: Effect.succeed(80),
