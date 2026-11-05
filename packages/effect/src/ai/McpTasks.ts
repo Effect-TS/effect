@@ -169,9 +169,15 @@ export class Execution extends Context.Service<Execution, {
  * handler; another input round needs a new key. Clear the status message with
  * `undefined`. The last status message remains on terminal tasks.
  *
+ * Keys identify steps, like the names of Workflow Activities. A Workflow replay
+ * of the same keyed step is recognized and not recorded again, so the reported
+ * status is always the latest step that ran, even when replay skips or
+ * reorders work.
+ *
  * **Gotchas**
  *
- * Input keys must be unique across the task lifetime; reusing one is a defect.
+ * Distinct calls must use distinct keys. Input keys and status keys must each
+ * be unique across the task lifetime; reusing one within a run is a defect.
  * Status changes are visible through polling; there are no notifications.
  *
  * @stability unstable
@@ -184,7 +190,7 @@ export class TaskContext extends Context.Service<TaskContext, {
     readonly request: McpSchema.McpInputRequest
     readonly response: Schema.Decoder<A, R>
   }) => Effect.Effect<A, Schema.SchemaError, R>
-  readonly setStatusMessage: (message: string | undefined) => Effect.Effect<void>
+  readonly setStatusMessage: (key: string, message: string | undefined) => Effect.Effect<void>
 }>()("effect/ai/McpTasks/TaskContext") {}
 
 /**
@@ -338,9 +344,11 @@ const isToolFailure = Schema.is(ToolFailure)
  * **Gotchas**
  *
  * Keep `TaskContext` calls and response decoders in the handler, not in
- * Activities, and replay-safe. An input withdrawn by a lost race can stay
- * visible if the runner stops before recording the withdrawal; answers to it
- * are ignored.
+ * Activities, and replay-safe. Each time the execution suspends, inputs it is
+ * no longer waiting for are withdrawn, so an input from a lost race can stay
+ * visible until then; answers to it are ignored. An input whose branch has not
+ * reached `requestInput` when the execution suspends is withdrawn and requested
+ * again when the branch runs.
  *
  * @stability unstable
  * @category layers
@@ -392,14 +400,14 @@ export const layerWorkflow = <
           if (run === undefined) {
             return yield* Effect.fail({ code: McpSchema.INVALID_PARAMS_ERROR_CODE, message: "Unknown tool" })
           }
-          const { taskContext, finish } = yield* state.context
+          const { taskContext, finish, suspended } = yield* state.context
           yield* Workflow.addFinalizer(() => finish)
           const result = yield* run({
             toolName: payload.tool,
             arguments: payload.arguments,
             ownerId: payload.ownerId,
             requestContext: payload.request
-          }).pipe(Effect.provideService(TaskContext, taskContext))
+          }).pipe(Effect.provideService(TaskContext, taskContext), Effect.onInterrupt(() => suspended))
           // Tool errors fail the Workflow so its compensations run.
           return result.isError === true ? yield* Effect.fail(ToolFailure.make({ result })) : result
         }).pipe(Effect.provideService(WorkflowEngine.WorkflowEngine, engine)))
@@ -523,6 +531,7 @@ export const layerMemory = <
         task: Task
         fiber?: Fiber.Fiber<void>
         readonly inputKeys: Set<string>
+        readonly statusKeys: Set<string>
         readonly pending: Map<string, PendingInput>
       }
       const tasks = new Map<string, Entry>()
@@ -574,12 +583,15 @@ export const layerMemory = <
                 }))
           )
         }),
-        setStatusMessage: (message) =>
+        setStatusMessage: (key, message) =>
           Effect.flatMap(DateTime.now, (now) =>
-            Effect.sync(() => {
-              if (!isActive(entry)) return
+            Effect.suspend(() => {
+              if (entry.statusKeys.has(key)) return Effect.die(new Error("Task status keys must be unique"))
+              entry.statusKeys.add(key)
+              if (!isActive(entry)) return Effect.void
               const { statusMessage: _, ...task } = entry.task
               entry.task = { ...task, ...(message === undefined ? {} : { statusMessage: message }), lastUpdatedAt: now }
+              return Effect.void
             }))
       })
 
@@ -601,7 +613,13 @@ export const layerMemory = <
             ttlMs: null,
             status: "working"
           }
-          const entry: Entry = { ownerId: request.ownerId, task, inputKeys: new Set(), pending: new Map() }
+          const entry: Entry = {
+            ownerId: request.ownerId,
+            task,
+            inputKeys: new Set(),
+            statusKeys: new Set(),
+            pending: new Map()
+          }
           tasks.set(task.taskId, entry)
           entry.fiber = yield* run(request).pipe(
             Effect.provideService(TaskContext, taskContext(entry)),

@@ -896,7 +896,7 @@ Both layers provide `McpTasks.TaskContext` to handlers:
 ```ts
 const workspace_report = Effect.fnUntraced(function*({ workspaceId }: { readonly workspaceId: string }) {
   const task = yield* McpTasks.TaskContext
-  yield* task.setStatusMessage("Waiting for approval")
+  yield* task.setStatusMessage("approval", "Waiting for approval")
   const approval = yield* task.requestInput({
     key: "approval",
     request: {
@@ -905,14 +905,16 @@ const workspace_report = Effect.fnUntraced(function*({ workspaceId }: { readonly
     },
     response: Schema.Struct({ action: Schema.String })
   }).pipe(Effect.orDie)
-  yield* task.setStatusMessage(undefined)
+  yield* task.setStatusMessage("approved", undefined)
   return approval.action === "accept" ? `Report for ${workspaceId}` : "Declined"
 })
 ```
 
-`requestInput` asks for roots, sampling or elicitation input and decodes the answer. Input keys must be unique for the life of the task, and the first answer for a key wins. Handle decoding failures in the handler; a new attempt needs a new key. `setStatusMessage` publishes a message through polling, and `undefined` clears it.
+`requestInput` asks for roots, sampling or elicitation input and decodes the answer. The first answer for a key wins. Handle decoding failures in the handler; a new attempt needs a new key. `setStatusMessage` publishes a message through polling, and `undefined` clears it.
 
-In a Workflow handler, call `TaskContext` from the handler rather than inside Activities. Inputs from the losing branches of a durable race, such as `DurableDeferred.raceAll`, are withdrawn when the race resolves.
+Keys identify steps, like the names of Workflow Activities. Distinct calls must use distinct keys: input keys and status keys must each be unique for the life of the task. A Workflow replay of the same keyed step is recognized and not recorded again, so the reported status is the latest step that ran even when replay skips or reorders work.
+
+In a Workflow handler, call `TaskContext` from the handler rather than inside Activities. Inputs from the losing branches of a durable race, such as `DurableDeferred.raceAll`, are withdrawn when the race resolves or, if replay resolves it without running them, the next time the task suspends.
 
 ### External jobs
 
