@@ -205,15 +205,18 @@ export const releaseItem = (sql: SqlStorage, id: string, owner: string): void =>
 }
 
 /**
- * Releases whatever pending item `owner` still holds, as `releaseItem` does.
+ * Releases the item `owner` holds under a live lease, as `releaseItem` does.
+ * An expired lease can still carry the same owner until its alarm runs; it
+ * keeps its spent attempt so it can fail on its own.
  *
  * @internal
  */
-export const releaseOwnedItem = (sql: SqlStorage, owner: string): void => {
+export const releaseOwnedItem = (sql: SqlStorage, owner: string, now: number): void => {
   sql.exec(
     `UPDATE queue_items SET attempts = attempts - 1, lease_until = NULL, lease_owner = NULL
-     WHERE lease_owner = ? AND completed = 0`,
-    owner
+     WHERE lease_owner = ? AND completed = 0 AND lease_until > ?`,
+    owner,
+    now
   )
 }
 
