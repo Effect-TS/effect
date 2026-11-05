@@ -1,10 +1,8 @@
 import { Exit, Option } from "effect"
 import type * as Schema from "effect/Schema"
 import { describe, expect, it, vi } from "vitest"
-import type * as InternalParser from "../../src/internal/schema/parser.ts"
 
 const SCHEMA_MODULE_PATH = "../../src/Schema.ts"
-const PARSER_MODULE_PATH = "../../src/internal/schema/parser.ts"
 
 describe("HMR", () => {
   it("sanity check: reload produces distinct constructors", async () => {
@@ -57,25 +55,14 @@ describe("HMR", () => {
     expect(mod2.isSchemaError(schemaError)).toBe(true)
   })
 
-  it.each(["", false])("encodes %j across module copies", async (input) => {
+  it("parses fields from another module copy", async () => {
     const mod1 = await vi.importActual<typeof Schema>(SCHEMA_MODULE_PATH)
-    const parser1 = await vi.importActual<typeof InternalParser>(PARSER_MODULE_PATH)
     vi.resetModules()
     const mod2 = await vi.importActual<typeof Schema>(SCHEMA_MODULE_PATH)
-    const parser2 = await vi.importActual<typeof InternalParser>(PARSER_MODULE_PATH)
 
-    expect(mod1).not.toBe(mod2)
-    expect(parser1).not.toBe(parser2)
-
-    for (const [creator, consumer] of [[mod1, mod2], [mod2, mod1]]) {
-      const schema = typeof input === "string" ? creator.String : creator.Boolean
-      expect(consumer.encodeSync(schema)(input)).toBe(input)
-      expect(consumer.decodeUnknownSync(schema)(input)).toBe(input)
-    }
-
-    expect(parser1.missing).toBe(parser2.missing)
-    expect(parser1.missingExit).toBe(parser2.missingExit)
-    expect(parser1.sameExit).toBe(parser2.sameExit)
+    const encode = mod2.encodeSync(mod2.Struct({ a: mod1.optionalKey(mod1.String) }))
+    expect(encode({ a: "" })).toStrictEqual({ a: "" })
+    expect(encode({})).toStrictEqual({})
   })
 
   it("Schema.Class", async () => {
