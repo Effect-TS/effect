@@ -581,7 +581,6 @@ let initializationStarted = false
 let initializationCompleted = false
 let initializationFailure = false
 let initializationOpen = true
-let initializationHangsOnce = false
 const initializationCallsStarted = new Set<string>()
 const initializationCallsCompleted = new Set<string>()
 const isInitializationOpen = () => initializationOpen
@@ -597,12 +596,6 @@ const initializeApp = CloudflareDurableObjects.setInitializer(async (env) => {
   initializationStarted = true
   if (initializationFailure) {
     throw new Error("deliberate Cloudflare application initialization failure")
-  }
-  if (initializationHangsOnce) {
-    // Models a first caller whose request context is torn down mid-build:
-    // its await never resumes, so it never records Success or Failure.
-    initializationHangsOnce = false
-    await new Promise<never>(() => {})
   }
   while (!isInitializationOpen()) await waitForInitializationControl()
   const context = await ensureApp(env)
@@ -986,11 +979,6 @@ export default {
     if (url.pathname === "/initialization/recover") {
       initializationFailure = false
       return Response.json({ failing: false })
-    }
-    if (url.pathname === "/initialization/hang") {
-      initializationStarted = false
-      initializationHangsOnce = true
-      return Response.json({ hanging: true })
     }
     if (url.pathname === "/initialization/state") {
       return Response.json({

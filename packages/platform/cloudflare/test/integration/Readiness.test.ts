@@ -71,21 +71,39 @@ describe("Cloudflare cluster integration | initialization readiness", () => {
       )
     }), 60_000)
 
-  it.effect("lets the next cold caller take over an initialization that never settles", () =>
-    Effect.gen(function*() {
-      const cluster = yield* makeCluster
-      yield* cluster.fetchJson("/initialization/hang")
+  it.effect(
+    "lets the next cold caller take over a stalled initialization and keeps its late success",
+    () =>
+      Effect.gen(function*() {
+        const cluster = yield* makeCluster
+        yield* cluster.fetchJson("/initialization/block")
 
-      const abandoned = Effect.runPromise(cluster.fetchJson("/initialization/call?kind=entity")).catch(String)
-      yield* cluster.waitUntil(
-        "The first cold Durable Object did not start application initialization",
-        Effect.map(cluster.fetchJson("/initialization/state"), (state) => state.started)
-      )
+        const stalled = Effect.runPromise(cluster.fetchJson("/initialization/call?kind=entity")).catch(String)
+        yield* cluster.waitUntil(
+          "The first cold Durable Object did not start application initialization",
+          Effect.map(cluster.fetchJson("/initialization/state"), (state) => state.started)
+        )
 
-      const next = yield* cluster.fetchJson("/initialization/call?kind=workflow")
-      assert.deepStrictEqual(next, { ok: true }, "The next cold caller did not take over the stale initialization")
-      yield* Effect.promise(() => abandoned)
-    }), 60_000)
+        yield* cluster.fetchJson("/initialization/fail")
+        const replacement = yield* cluster.fetchJson("/initialization/call?kind=workflow")
+        assert.isFalse(replacement.ok)
+        assert.include(
+          replacement.error,
+          "deliberate Cloudflare application initialization failure",
+          "The next cold caller did not run the initializer itself after the first build stalled"
+        )
+
+        yield* cluster.fetchJson("/initialization/recover")
+        yield* cluster.fetchJson("/initialization/open")
+        const late = yield* Effect.promise(() => stalled)
+        assert.deepStrictEqual(
+          late,
+          { ok: true },
+          "The stalled build's late success was lost after the replacement failed"
+        )
+      }),
+    60_000
+  )
 
   it.effect(
     "reports an initialization failure to every cold caller and retries on the next cold call",
