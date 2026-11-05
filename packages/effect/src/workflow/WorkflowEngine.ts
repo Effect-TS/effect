@@ -759,7 +759,7 @@ export const layerMemory: Layer.Layer<WorkflowEngine> = Layer.effect(WorkflowEng
       // Parent of every run's scope. Scopes of runs that suspended stay open
       // under it, so their finalizers and resources last until the execution
       // finishes.
-      readonly scope: Scope.Closeable
+      scope: Scope.Closeable
     }
     const executions = new Map<string, ExecutionState>()
 
@@ -794,10 +794,17 @@ export const layerMemory: Layer.Layer<WorkflowEngine> = Layer.effect(WorkflowEng
       }
 
       const entry = workflows.get(state.instance.workflow._tag)!
+      // A run that ended without suspending (e.g. a defect) closed the
+      // execution scope. Forking from it would close the new run's scope
+      // immediately, so a resumed execution starts a fresh one.
+      if (state.scope.state._tag === "Closed") {
+        state.scope = Scope.makeUnsafe()
+      }
+      const executionScope = state.scope
       // Like the cluster engine, each run gets a fresh scope, so replays rebuild
       // compensations instead of registering them again.
       const instance = WorkflowInstance.initial(state.instance.workflow, state.instance.executionId, {
-        scope: Scope.forkUnsafe(state.scope)
+        scope: Scope.forkUnsafe(executionScope)
       })
       state.instance = instance
       state.fiber = yield* state.execute(state.payload, state.instance.executionId).pipe(
@@ -833,7 +840,7 @@ export const layerMemory: Layer.Layer<WorkflowEngine> = Layer.effect(WorkflowEng
           // superseded compensations are skipped, which means their finalizers
           // also observe success rather than the outcome.
           return Effect.andThen(
-            Scope.close(state.scope, Exit.void),
+            Scope.close(executionScope, Exit.void),
             Exit.isSuccess(exit) && exit.value._tag === "Complete" ? Deferred.succeed(state.done, void 0) : Effect.void
           )
         }),
