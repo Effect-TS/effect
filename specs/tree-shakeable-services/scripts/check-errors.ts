@@ -52,9 +52,11 @@ const expectations: Record<string, ReadonlyArray<string>> = {
     `Type 'Layer<"test/Legacy/readFile" & Legacy, never, never>' is not assignable to type 'Layer<Legacy, never, never>'`,
     `Type '"test/Legacy/writeFile" & Legacy' is not assignable to type 'never'`
   ],
-  "value-shape.ts": [`Expected 0 arguments, but got 1`, `must have a '[Symbol.iterator]()' method`],
+  "value-shape.ts": [`This expression is not callable`, `does not satisfy the constraint 'Effect<any, any, any>'`],
   "subset-not-full.ts": [`Type 'FileSystem' is not assignable to type 'ReadOnly'`],
-  "partial-record.ts": [`is not assignable to parameter of type 'Shape'`],
+  "partial-record.ts": [
+    `is missing the following properties from type 'Shape': access, chmod, chown, copy, and 25 more`
+  ],
   "displayed-type.ts": [
     `Type 'Operation<"effect/FileSystem/readFile", (path: string) => Effect<Uint8Array<ArrayBufferLike>, FileSystemError, never>>' is not assignable to type 'string'`,
     `Type 'Effect<Uint8Array<ArrayBufferLike>, FileSystemError, "effect/FileSystem/readFile">' is not assignable to type 'string'`,
