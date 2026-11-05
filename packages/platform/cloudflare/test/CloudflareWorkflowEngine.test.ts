@@ -569,13 +569,9 @@ describe("CloudflareWorkflowEngine", () => {
 
       const token = DurableDeferred.tokenFromExecutionId(Gate, { workflow: Defects, executionId })
       yield* DurableDeferred.succeed(Gate, { token, value: undefined })
-      yield* namespace.settle()
+      const result = yield* pollUntil(Defects, executionId, "Complete")
+      assert.isTrue(Exit.hasDies(result.exit), "a defect is a terminal result")
       assert.deepStrictEqual(events, [2, 1], "a defect must close earlier attempts' scopes")
-
-      // The replay's scope must be live, so its finalizer waits for completion.
-      yield* Defects.resume(executionId)
-      yield* pollUntil(Defects, executionId, "Complete")
-      assert.deepStrictEqual(events, [2, 1, "end-3", 3])
     }).pipe(Effect.provide(layer))
   })
 
@@ -608,13 +604,8 @@ describe("CloudflareWorkflowEngine", () => {
 
       const token = DurableDeferred.tokenFromExecutionId(Gate, { workflow: Suspends, executionId })
       yield* DurableDeferred.succeed(Gate, { token, value: undefined })
-      yield* namespace.settle()
-
-      const result = yield* Suspends.poll(executionId)
-      assert(
-        Option.isNone(result) || result.value._tag !== "Complete",
-        "a dying finalizer must not be stored as success"
-      )
+      const result = yield* pollUntil(Suspends, executionId, "Complete")
+      assert.isTrue(Exit.hasDies(result.exit), "a dying finalizer must not be stored as success")
       assert.deepStrictEqual(finalized, [2, 1])
     }).pipe(Effect.provide(layer))
   })

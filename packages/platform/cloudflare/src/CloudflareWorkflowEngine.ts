@@ -21,9 +21,11 @@ import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
+import * as Schedule from "effect/Schedule"
 import * as Workflow from "effect/workflow/Workflow"
 import * as WorkflowEngine from "effect/workflow/WorkflowEngine"
 import { encodeName } from "./internal/clusterName.ts"
+import { callDurableObject } from "./internal/transport.ts"
 import {
   CurrentExecutionHandle,
   registerWorkflow,
@@ -45,6 +47,11 @@ export interface LayerOptions {
   readonly workflowNamespace: DurableObjectNamespace
 }
 
+const retryPolicy = Schedule.min([
+  Schedule.exponential(200, 1.5),
+  Schedule.spaced("1 minute")
+])
+
 /**
  * Creates the `WorkflowEngine` service backed by the workflow Durable Object
  * namespace binding.
@@ -65,13 +72,30 @@ export const make = Effect.fnUntraced(function*(options: LayerOptions) {
 
   // Inside a run the execution's own handle avoids a self-RPC; every other
   // target resolves to its Durable Object stub through the namespace binding.
-  const stubFor = Effect.fnUntraced(function*(workflowName: string, executionId: string) {
-    const handle = yield* Effect.serviceOption(CurrentExecutionHandle)
-    if (Option.isSome(handle) && handle.value.executionId === executionId) {
-      return handle.value as WorkflowStub
-    }
-    return options.workflowNamespace.getByName(encodeName(workflowName, executionId)) as unknown as WorkflowStub
-  })
+  //
+  // As in `ClusterWorkflowEngine`, a transport failure is retried on an
+  // exponential schedule capped at one minute and only then becomes a defect:
+  // every call here is idempotent by key, and a permanently unreachable object
+  // stalls the caller instead of failing a workflow for good. The object never
+  // rejects for application reasons, so a child's own defect arrives as its
+  // stored `Complete` result and is never retried.
+  const callExecution = <A>(
+    workflowName: string,
+    executionId: string,
+    call: (stub: WorkflowStub) => Promise<A>
+  ): Effect.Effect<A> =>
+    Effect.flatMap(Effect.serviceOption(CurrentExecutionHandle), (handle) => {
+      if (Option.isSome(handle) && handle.value.executionId === executionId) {
+        const local = handle.value as WorkflowStub
+        return Effect.promise(() => call(local))
+      }
+      const name = encodeName(workflowName, executionId)
+      return callDurableObject({
+        resolve: () => options.workflowNamespace.getByName(name) as unknown as WorkflowStub,
+        call,
+        retry: retryPolicy
+      }).pipe(Effect.orDie)
+    })
 
   const localHandle = Effect.fnUntraced(function*(operation: string) {
     const instance = yield* WorkflowEngine.WorkflowInstance
@@ -99,33 +123,33 @@ export const make = Effect.fnUntraced(function*(options: LayerOptions) {
     execute: Effect.fnUntraced(function*(workflow, opts) {
       const context = yield* Effect.context<never>()
       const payload = yield* encodePayload(workflow, opts.payload, context)
-      const stub = yield* stubFor(workflow._tag, opts.executionId)
       // A detached child keeps no parent, so neither its completion nor a
       // failed run wakes the parent.
       const parent = opts.parent === undefined || opts.detached
         ? undefined
         : { workflowName: opts.parent.workflow._tag, executionId: opts.parent.executionId }
-      const text = yield* Effect.promise(() => stub.run(payload, { discard: opts.discard, parent }))
+      const text = yield* callExecution(
+        workflow._tag,
+        opts.executionId,
+        (stub) => stub.run(payload, { discard: opts.discard, parent })
+      )
       if (opts.discard) return undefined
       return yield* decodeResult(workflow, text, context)
     }) as WorkflowEngine.Encoded["execute"],
 
     poll: Effect.fnUntraced(function*(workflow, executionId) {
       const context = yield* Effect.context<never>()
-      const stub = yield* stubFor(workflow._tag, executionId)
-      const text = yield* Effect.promise(() => stub.poll())
+      const text = yield* callExecution(workflow._tag, executionId, (stub) => stub.poll())
       if (text === undefined) return Option.none()
       return Option.some(yield* decodeResult(workflow, text, context))
     }),
 
-    interrupt: (workflow, executionId) =>
-      Effect.flatMap(stubFor(workflow._tag, executionId), (stub) => Effect.promise(() => stub.interrupt())),
+    interrupt: (workflow, executionId) => callExecution(workflow._tag, executionId, (stub) => stub.interrupt()),
 
     interruptUnsafe: (workflow, executionId) =>
-      Effect.flatMap(stubFor(workflow._tag, executionId), (stub) => Effect.promise(() => stub.interruptUnsafe())),
+      callExecution(workflow._tag, executionId, (stub) => stub.interruptUnsafe()),
 
-    resume: (workflow, executionId) =>
-      Effect.flatMap(stubFor(workflow._tag, executionId), (stub) => Effect.promise(() => stub.resume())),
+    resume: (workflow, executionId) => callExecution(workflow._tag, executionId, (stub) => stub.resume()),
 
     activityExecute: Effect.fnUntraced(function*(activity, attempt) {
       const { handle, instance } = yield* localHandle("Activity execution")
@@ -165,14 +189,16 @@ export const make = Effect.fnUntraced(function*(options: LayerOptions) {
       if (Option.isSome(handle) && handle.value.executionId === executionId) {
         return yield* handle.value.completeOwnDeferred(deferredName, text)
       }
-      const stub = yield* stubFor(workflowName, executionId)
-      yield* Effect.promise(() => stub.deferredDone(deferredName, text))
+      yield* callExecution(workflowName, executionId, (stub) => stub.deferredDone(deferredName, text))
     }),
 
     scheduleClock: Effect.fnUntraced(function*(workflow, opts) {
       const wakeUp = clock.currentTimeMillisUnsafe() + Math.ceil(Duration.toMillis(opts.clock.duration))
-      const stub = yield* stubFor(workflow._tag, opts.executionId)
-      yield* Effect.promise(() => stub.scheduleClock(opts.clock.name, opts.clock.deferred.name, wakeUp))
+      yield* callExecution(
+        workflow._tag,
+        opts.executionId,
+        (stub) => stub.scheduleClock(opts.clock.name, opts.clock.deferred.name, wakeUp)
+      )
     })
   })
 })
