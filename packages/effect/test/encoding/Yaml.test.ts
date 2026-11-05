@@ -447,6 +447,17 @@ development:
       assert.deepStrictEqual(parse(source), expected)
       assert.deepStrictEqual(parseAll(source), [expected])
     })
+
+    // YAML 1.2.2 §7.4 (productions 145 and 159): a key may be an empty scalar with only a tag or an
+    // anchor, and its value may be omitted. An empty key without properties still needs a value.
+    it("parses empty keys with only properties and no value", () => {
+      const source = "x: {!!str , a: 1}\ny: {!!str &k , b: *k}\nz: {&m , c: *m}\n"
+      const expected = { x: { "": null, a: 1 }, y: { "": null, b: "" }, z: { "": null, c: null } }
+      assert.deepStrictEqual(parse(source), expected)
+      assert.deepStrictEqual(parseAll(source), [expected])
+      failureMessage("x: {, a: 1}\n")
+      failureMessage("x: {, a: 1}\n", Yaml.parseAll)
+    })
   })
 
   // YAML 1.2.2 §7.3.3 (ns-plain-first): a plain scalar may start with `-` only when a
