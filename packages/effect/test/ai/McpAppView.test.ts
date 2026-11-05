@@ -5,6 +5,7 @@ import * as McpServer from "effect/ai/McpServer"
 import * as McpTest from "effect/ai/McpTest"
 import * as Tool from "effect/ai/Tool"
 import * as Toolkit from "effect/ai/Toolkit"
+import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
 import * as Fiber from "effect/Fiber"
 import * as Layer from "effect/Layer"
@@ -219,6 +220,16 @@ describe("McpAppView", () => {
 
       yield* Queue.take(host.requests) // ui/initialize
       assert.strictEqual(yield* Queue.size(host.requests), 0)
+
+      // A host that lists no display modes has not offered any.
+      const silent = yield* McpTest.makeAppHost({ hostInfo, hostContext: {} })
+      const unlisted = yield* withView(
+        silent,
+        Effect.flatMap(McpAppView.McpAppView, (view) => Effect.flip(view.requestDisplayMode("fullscreen")))
+      )
+      assert.deepInclude(unlisted, { _tag: "UnsupportedCapability", capability: "availableDisplayModes" })
+      yield* Queue.take(silent.requests) // ui/initialize
+      assert.strictEqual(yield* Queue.size(silent.requests), 0)
     }))
 
   it.effect("answers ping and rejects other host requests with method not found", () =>
@@ -267,6 +278,42 @@ describe("McpAppView", () => {
         })
       )
       assert.deepStrictEqual(log, ["finalized", "replied"])
+    }))
+
+  it.effect("answers teardown when run alone keeps the layer alive", () =>
+    Effect.gen(function*() {
+      const host = yield* McpTest.makeAppHost({ hostInfo })
+
+      // The documented entrypoint: the layer lives only as long as `run`.
+      const running = yield* Effect.forkChild(McpAppView.run(Effect.never).pipe(Effect.provide(view(host))))
+      yield* Queue.take(host.requests) // ui/initialize: the page is connected
+      const teardown = yield* Effect.forkChild(host.teardown("conversation closed").pipe(Effect.timeout("1 second")))
+      yield* Fiber.join(running)
+      yield* TestClock.adjust("1 second")
+      assert.deepStrictEqual(yield* Fiber.join(teardown), {})
+    }))
+
+  it.effect("interrupts the program when the caller of run is interrupted", () =>
+    Effect.gen(function*() {
+      const host = yield* McpTest.makeAppHost({ hostInfo })
+      const log: Array<string> = []
+
+      yield* withView(
+        host,
+        Effect.gen(function*() {
+          const view = yield* McpAppView.McpAppView
+          const started = yield* Deferred.make<void>()
+          const program = Effect.gen(function*() {
+            yield* Effect.addFinalizer(() => Effect.sync(() => log.push("finalized")))
+            yield* Deferred.succeed(started, undefined)
+            return yield* Effect.never
+          })
+          const fiber = yield* Effect.forkChild(view.run(program))
+          yield* Deferred.await(started)
+          yield* Fiber.interrupt(fiber)
+          assert.deepStrictEqual(log, ["finalized"])
+        })
+      )
     }))
 
   it.effect("sends size changes, teardown requests and downloads to the host", () =>
