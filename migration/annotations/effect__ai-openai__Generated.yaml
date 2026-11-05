@@ -3100,6 +3100,9 @@
 "@effect/ai-openai/Generated#SubmitToolOutputsRunRequest":
   replacement: "Generated.SubmitToolOutputsRunRequest"
   note: "Still generated in v4 from the current OpenAI specification; re-check the schema's Type/Encoded shape because the generated definition changed."
+"@effect/ai-openai/Generated#Summary":
+  replacement: "Generated.SummaryTextContent"
+  note: "Reasoning summary parts are generated as SummaryTextContent. It is a Schema.Struct rather than a class, so type must be supplied as \"summary_text\" instead of defaulting in a constructor."
 "@effect/ai-openai/Generated#SummaryTextContent":
   replacement: "Generated.SummaryTextContent"
   note: "Still generated in v4 from the current OpenAI specification; re-check the schema's Type/Encoded shape because the generated definition changed."
