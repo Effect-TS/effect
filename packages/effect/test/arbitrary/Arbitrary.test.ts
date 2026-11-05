@@ -1140,6 +1140,37 @@ describe("Arbitrary", () => {
       }
     })
 
+    it.effect("keeps narrowing String deletions after suffix truncations", () =>
+      Effect.gen(function*() {
+        const result = yield* Arbitrary.checkEffect(
+          Arbitrary.schema(Schema.String),
+          (s) => s[Math.floor(s.length / 2)] !== "a",
+          { runs: 1, seed: 135, size: 100, maxShrinks: 150 }
+        )
+
+        assert.strictEqual(result._tag, "Falsified")
+        if (result._tag === "Falsified") {
+          assert.notStrictEqual(result.initialInput, "a")
+          assert.strictEqual(result.shrunkInput, "a")
+        }
+      }))
+
+    it.effect("simplifies whole code points within code point bounds", () =>
+      Effect.gen(function*() {
+        const schema = Schema.String.check(Schema.isMinLength(2), Schema.isMaxCodePoints(1))
+        const result = yield* Arbitrary.checkEffect(Arbitrary.schema(schema), () => false, {
+          runs: 1,
+          seed: "astral-regression",
+          size: 100
+        })
+
+        assert.strictEqual(result._tag, "Falsified")
+        if (result._tag === "Falsified") {
+          assert.notStrictEqual(result.initialInput, "\u{10000}")
+          assert.strictEqual(result.shrunkInput, "\u{10000}")
+        }
+      }))
+
     it.effect("structurally shrinks regular-expression repetitions", () =>
       Effect.gen(function*() {
         const schema = Schema.String.check(Schema.isPattern(/^a*b$/), Schema.isMinLength(1), Schema.isMaxLength(8))
