@@ -226,7 +226,8 @@ export const DashboardLayer = Layer.mergeAll(
 - `McpApps.resource` and `McpApps.registerResource` take the options of `McpServer.resource`,
   without `mimeType`. The URI must start with `ui://`; static URIs are checked at compile time and
   others die with `IllegalArgumentError`. The listing and every content item carry the
-  `text/html;profile=mcp-app` MIME type and the `meta` options as `_meta.ui`.
+  `text/html;profile=mcp-app` MIME type, even when `content` returns a full `ReadResourceResult`,
+  and the `meta` options as `_meta.ui`. A content item's own `_meta.ui` fields take precedence.
 - `McpApps.ToolUi` sets the tool's `_meta.ui`, next to any other `Tool.Meta` keys. Registering the
   toolkit dies when `Tool.Meta` already sets `ui` or `resourceUri` is not a `ui://` URI.
   `visibility` defaults to `["model", "app"]`; `McpClient.toolkit` leaves out tools whose
@@ -234,8 +235,9 @@ export const DashboardLayer = Layer.mergeAll(
 - The server declares the extension once an app resource or app tool is registered, on every
   protocol revision. An explicit entry for `io.modelcontextprotocol/ui` in the server's
   `extensions` option takes precedence.
-- Tool and listing `_meta` reach the client only on protocol 2025-06-18 and later; content items
-  carry their `_meta` on every revision.
+- `_meta`, on tools, listings and content items alike, reaches the client only on protocol
+  2025-06-18 and later, so 2024-11-05 and 2025-03-26 clients receive no `_meta.ui`. Every MCP Apps
+  host speaks 2025-06-18 or later.
 - `McpApps.isSupported(capabilities)` tells whether a client renders apps, for example in a
   `McpSchema.EnabledWhen` annotation.
 - To match calls from the page with the call that opened it, read `requestId` and `sessionId` from
@@ -328,7 +330,8 @@ The result is also sent as text content, which is what most models read. When th
 `toModelOutput`, its parts are sent as the content instead, while `structuredContent` keeps the
 encoded result: a text part becomes `text`, a file part with a `URL` becomes a `resource_link`, an
 image or audio file becomes `image` or `audio`, and any other file becomes an embedded resource
-named by its `fileName`. An empty `toModelOutput` falls back to the JSON text.
+with the URI `file:///<fileName>` (`file:///attachment` when it has no name). String file data may
+be bare base64 or a `data:` URL. An empty `toModelOutput` falls back to the JSON text.
 
 ## Request-level dependencies
 

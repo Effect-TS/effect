@@ -13,9 +13,9 @@
  * revision. An explicit `extensions` entry for the extension in the server
  * options takes precedence.
  *
- * Tool `_meta` and resource listing `_meta` reach the wire only on protocol
- * 2025-06-18 and later; every MCP Apps host speaks one of those. The `_meta`
- * of resource contents is sent on every revision.
+ * `_meta`, on tools, resource listings and resource contents alike, reaches
+ * the wire only on protocol 2025-06-18 and later, so `_meta.ui` is not sent on
+ * 2024-11-05 or 2025-03-26. Every MCP Apps host speaks 2025-06-18 or later.
  *
  * Use {@link isSupported} to check whether a client can render apps, for
  * example in a tool's `EnabledWhen` annotation.
@@ -329,9 +329,10 @@ const encodeResourceMeta = Schema.encodeSync(ResourceMeta)
  * **Details**
  *
  * The listing and every content item carry {@link MIME_TYPE} and, when `meta`
- * is set, `_meta.ui`. For a `ReadResourceResult`, an item's own MIME type and
- * `_meta.ui` fields take precedence, as the host reads them first. A `uri`
- * that does not start with `ui://` dies with `IllegalArgumentError`.
+ * is set, `_meta.ui`. For a `ReadResourceResult`, every item's MIME type is
+ * replaced with {@link MIME_TYPE}, and an item's own `_meta.ui` fields take
+ * precedence over `meta`, as the host reads the item first. A `uri` that does
+ * not start with `ui://` dies with `IllegalArgumentError`.
  *
  * @see {@link resource} for the layer-based wrapper
  *
@@ -377,7 +378,7 @@ export const registerResource = <E, R>(
           ...content,
           contents: content.contents.map((entry) => {
             const meta = mergeItemMeta(entry._meta)
-            return { ...entry, mimeType: entry.mimeType ?? MIME_TYPE, ...(meta === undefined ? {} : { _meta: meta }) }
+            return { ...entry, mimeType: MIME_TYPE, ...(meta === undefined ? {} : { _meta: meta }) }
           })
         }
       })

@@ -1481,6 +1481,11 @@ export class McpServer extends Context.Service<McpServer, {
 }
 
 const MCP_SESSION_ID_HEADER = "mcp-session-id"
+
+// Whether the client message being dispatched is a JSON-RPC notification, which carries no id.
+const DispatchingNotification = Context.Reference<boolean>("effect/ai/McpServer/DispatchingNotification", {
+  defaultValue: () => false
+})
 const MCP_PROTOCOL_VERSION_HEADER = "mcp-protocol-version"
 const MCP_INVALID_BATCH_METHOD = "invalid/json-rpc-batch"
 const cancelledResponses = new WeakMap<object, string | number>()
@@ -1963,6 +1968,7 @@ const runWithRuntime = Effect.fnUntraced(function*(
   })
 
   const clientMiddleware = McpServerClientMiddleware.of((effect, { client, headers, payload, requestId, rpc }) => {
+    const fiberContext = Fiber.getCurrent()!.context
     const session = runtime.resolveRequest(client.id, headers)
     const isInitialize = rpc._tag.endsWith("/initialize")
     if (!isInitialize && !session) {
@@ -1997,8 +2003,8 @@ const runWithRuntime = Effect.fnUntraced(function*(
     if (clientState !== undefined) clientState.profile = profile
     const requestContext = McpRequestContext.of({
       clientId: client.id,
-      // RpcServer gives notifications a synthetic id; JSON-RPC notifications have none.
-      requestId: runtime.methodForInternalTag(rpc._tag).startsWith("notifications/") ? undefined : requestId,
+      // RpcServer gives a JSON-RPC notification a synthetic id, which the client never sent.
+      requestId: Context.get(fiberContext, DispatchingNotification) ? undefined : requestId,
       sessionId: session === undefined ? undefined : headers[MCP_SESSION_ID_HEADER],
       protocolVersion: profile.protocolVersion,
       clientCapabilities: profile.clientCapabilities,
@@ -2208,9 +2214,11 @@ const runWithRuntime = Effect.fnUntraced(function*(
                       headers
                     }) as any as Effect.Effect<void>
                     : Effect.void
-                  return yield* prepared.requestContext === undefined
+                  return yield* (prepared.requestContext === undefined
                     ? handled
-                    : Effect.provideService(handled, McpRequestContext, prepared.requestContext)
+                    : Effect.provideService(handled, McpRequestContext, prepared.requestContext)).pipe(
+                      Effect.provideService(DispatchingNotification, true)
+                    )
                 }).pipe(Effect.ignoreCause)
               }
               if (!rpc || isClientNotification) {
@@ -2239,7 +2247,11 @@ const runWithRuntime = Effect.fnUntraced(function*(
                 })
                 activeRequests.set(clientId, requests)
               }
-              const handled = f(clientId, routedRequest)
+              const handled = Effect.provideService(
+                f(clientId, routedRequest),
+                DispatchingNotification,
+                request.isNotification === true
+              )
               return yield* prepared.requestContext === undefined
                 ? handled
                 : Effect.provideService(handled, McpRequestContext, prepared.requestContext)
@@ -3213,15 +3225,27 @@ const modelOutputContent = (parts: ReadonlyArray<AiPrompt.ToolModelOutputPart>):
         mimeType: part.mediaType
       }
     }
-    const data = typeof part.data === "string" ? Result.getOrThrow(Base64.decode(part.data)) : part.data
+    const data = typeof part.data === "string" ? decodeFileData(part.data) : part.data
     if (part.mediaType.startsWith("image/")) {
       return { type: "image", data, mimeType: part.mediaType }
     }
     if (part.mediaType.startsWith("audio/")) {
       return { type: "audio", data, mimeType: part.mediaType }
     }
-    return { type: "resource", resource: { uri: part.fileName ?? "file", mimeType: part.mediaType, blob: data } }
+    // An embedded resource needs an absolute URI; the content travels with it, so it is never read.
+    const uri = `file:///${encodeURIComponent(part.fileName ?? "attachment")}`
+    return { type: "resource", resource: { uri, mimeType: part.mediaType, blob: data } }
   })
+
+// `Prompt.FilePart` string data is base64, either bare or as a `data:` URL.
+const decodeFileData = (data: string): Uint8Array => {
+  const dataUrl = /^data:([^,]*),/.exec(data)
+  if (dataUrl === null) return Result.getOrThrow(Base64.decode(data))
+  const payload = data.slice(dataUrl[0].length)
+  return dataUrl[1].endsWith(";base64")
+    ? Result.getOrThrow(Base64.decode(payload))
+    : new TextEncoder().encode(decodeURIComponent(payload))
+}
 
 /**
  * The requirements of a toolkit registration.
@@ -3262,8 +3286,9 @@ type RegistrationRequirements<SchemaServices, RequestServices> =
  * `McpClient.toolkit` maps content to model output. A text part becomes
  * `text`; a file part with a `URL` becomes a `resource_link`; any other file
  * part becomes `image` or `audio` by its media type, otherwise an embedded blob
- * resource named by its `fileName`. An empty `toModelOutput` keeps the JSON
- * text.
+ * resource with the URI `file:///<fileName>` (`file:///attachment` without a
+ * name). String file data may be bare base64 or a `data:` URL. An empty
+ * `toModelOutput` keeps the JSON text.
  *
  * `Tool.Meta` is sent as the tool's `_meta`, merged with the
  * `McpApps.ToolUi` annotation as `_meta.ui`.
