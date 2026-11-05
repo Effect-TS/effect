@@ -1227,6 +1227,29 @@ export const testGlob = <E>(layer: Layer.Layer<Fs.FileSystem, E>) => {
       }).pipe(Effect.scoped)
     ))
 
+  it("glob converts an iterable input once per call", () =>
+    runPromise(
+      Effect.gen(function*() {
+        const fs = yield* Fs.FileSystem
+        const root = yield* globFixture
+        // running the effect again does not consume a one-shot iterable again
+        const walk = fs.glob(
+          (function*() {
+            yield "src/index.ts"
+          })(),
+          { root }
+        )
+        expect(yield* walk).toEqual(["src/index.ts"])
+        expect(yield* walk).toEqual(["src/index.ts"])
+        // a later call sees a changed iterable
+        const patterns = new Set(["src/index.ts"])
+        expect(yield* fs.glob(patterns, { root })).toEqual(["src/index.ts"])
+        patterns.delete("src/index.ts")
+        patterns.add("a/x.ts")
+        expect(yield* fs.glob(patterns, { root })).toEqual(["a/x.ts"])
+      }).pipe(Effect.scoped)
+    ))
+
   it("glob returns paths relative to an absolute root, without the root itself", () =>
     runPromise(
       Effect.gen(function*() {
@@ -1298,6 +1321,10 @@ export const testGlob = <E>(layer: Layer.Layer<Fs.FileSystem, E>) => {
         ])
         // the link itself is not a directory
         expect(yield* fs.glob("link/", { root })).toEqual([])
+        // a restriction can supply `link` as a probed name, but `**` still does not follow it
+        expect(yield* fs.glob(PathFilter.restrict(["link/file.ts", "**/*.ts"], "link/*"), { root })).toEqual([
+          "link/file.ts"
+        ])
       }).pipe(Effect.scoped)
     ))
 
