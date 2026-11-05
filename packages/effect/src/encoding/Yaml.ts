@@ -1649,10 +1649,8 @@ const lenientTimestamp =
 const lenientNumber =
   /^[-+]?(?:0x[0-9a-f]+|0o[0-7]+|0b[01]+|[0-9]+(?::[0-5]?[0-9])+(?:\.[0-9]*)?|(?:[0-9]+(?:\.[0-9]*)?|\.[0-9]+)(?:e[-+]?[0-9]+)?)$/i
 
-// `date`: `text` is the `toJSON` result of a `Date`, which prints plain so that YAML 1.1 parsers read
-// a timestamp, as the printers of js-yaml and of yaml with version "1.1" do.
-const isLenientNonString = (text: string, date: boolean): boolean =>
-  lenientNonString.test(text) || (!date && lenientTimestamp.test(text)) ||
+const isLenientNonString = (text: string): boolean =>
+  lenientNonString.test(text) || lenientTimestamp.test(text) ||
   lenientNumber.test(text.replace(/_/g, ""))
 
 // `_` can start a lenient number once its separators are removed, and `y`, `Y`, `o` and `O` start
@@ -1666,7 +1664,7 @@ const isSpaceCode = (code: number): boolean =>
   (code >= 0x2000 && code <= 0x200a) || code === 0x2028 || code === 0x2029 || code === 0x202f ||
   code === 0x205f || code === 0x3000 || code === 0xfeff
 
-const isPlainSafe = (text: string, date: boolean): boolean => {
+const isPlainSafe = (text: string): boolean => {
   if (text.length === 0 || text.trim() !== text) return false
   if (/^[,[\]{}#&*!|>'"%@`]/.test(text) || /^[-?:](?:\s|$)/.test(text)) return false
   // Not a document marker under §9.1.3, but js-yaml reads `---x` at the start of a line as one.
@@ -1683,7 +1681,7 @@ const isPlainSafe = (text: string, date: boolean): boolean => {
   // Quoted when `parse` or a lenient parser would read the spelling as another type.
   const first = text.charCodeAt(0)
   if (!mayBeLenientNonString(first)) return true
-  return typeof resolvePlain(text) === "string" && !isLenientNonString(text, date)
+  return typeof resolvePlain(text) === "string" && !isLenientNonString(text)
 }
 
 const doubleQuoteEscapes: Record<string, string> = {
@@ -1738,14 +1736,14 @@ const doubleQuote = (text: string): string => {
 
 class PrintError extends Error {}
 
-const printSingleLine = (text: string, date: boolean): string => isPlainSafe(text, date) ? text : doubleQuote(text)
+const printSingleLine = (text: string): string => isPlainSafe(text) ? text : doubleQuote(text)
 
 // YAML 1.2.2 §7.4.2 limits an implicit key to 1024 characters, including quotes.
 const implicitKeyLimit = 1024
 
 // The unquoted merge key would be processed by `parse`, so it is always quoted.
 const printKey = (key: string, path: () => string): string => {
-  const printed = key === "<<" ? doubleQuote(key) : printSingleLine(key, false)
+  const printed = key === "<<" ? doubleQuote(key) : printSingleLine(key)
   if (printed.length > implicitKeyLimit) {
     throw new PrintError(
       `Cannot print a mapping key of ${printed.length} characters (implicit keys are limited to ${implicitKeyLimit}) at ${path()}`
@@ -1817,11 +1815,11 @@ class Printer {
 
   // Prints `value`, with `toJSON` already applied, after `prefix` (`""` at the
   // root, `-` for a sequence item, or `key:` for a mapping entry) placed at
-  // `indentation`. `date` is whether `value` came from a `Date`.
-  node(value: unknown, indentation: number, prefix: string, date: boolean): void {
+  // `indentation`.
+  node(value: unknown, indentation: number, prefix: string): void {
     switch (typeof value) {
       case "string":
-        return this.scalar(value, indentation, prefix, date)
+        return this.scalar(value, indentation, prefix)
       case "number":
         return this.line(indentation, prefix, printNumber(value))
       case "boolean":
@@ -1843,8 +1841,7 @@ class Printer {
       // Index iteration keeps the positions of sparse arrays.
       for (let index = 0; index < value.length; index++) {
         this.trail.push(index)
-        const item = value[index]
-        this.node(applyToJson(item, String(index)) ?? null, column, "-", item instanceof Date)
+        this.node(applyToJson(value[index], String(index)) ?? null, column, "-")
         this.trail.pop()
       }
       this.ancestors.delete(value)
@@ -1859,13 +1856,10 @@ class Printer {
     }
     const keys = Object.keys(value)
     const entries: Array<unknown> = []
-    const dates: Array<boolean> = []
     let count = 0
     for (let index = 0; index < keys.length; index++) {
-      const raw = (value as YamlRecord)[keys[index]]
-      const entry = applyToJson(raw, keys[index])
+      const entry = applyToJson((value as YamlRecord)[keys[index]], keys[index])
       entries.push(entry)
-      dates.push(raw instanceof Date)
       if (entry !== undefined) count++
     }
     if (count === 0) return this.line(indentation, prefix, "{}")
@@ -1883,16 +1877,16 @@ class Printer {
       const key = keys[index]
       const printed = printKey(key, path)
       this.trail.push(key)
-      this.node(entry, column, `${printed}:`, dates[index])
+      this.node(entry, column, `${printed}:`)
       this.trail.pop()
     }
     if (item) this.lines[start] = `${pad(indentation)}- ${this.lines[start].slice(column)}`
     this.ancestors.delete(value)
   }
 
-  private scalar(text: string, indentation: number, prefix: string, date: boolean): void {
+  private scalar(text: string, indentation: number, prefix: string): void {
     const block = text.includes("\n") ? literalBlock(text) : undefined
-    if (block === undefined) return this.line(indentation, prefix, printSingleLine(text, date))
+    if (block === undefined) return this.line(indentation, prefix, printSingleLine(text))
     this.line(indentation, prefix, block.header)
     const indent = pad(indentation + this.step)
     for (const line of block.lines) this.lines.push(line.length === 0 ? "" : indent + line)
@@ -1924,7 +1918,7 @@ const indentStep = (options: { readonly indent?: number | undefined } | undefine
 
 const printDocument = (value: unknown, path: string, step: number): string => {
   const printer = new Printer(step, path)
-  printer.node(applyToJson(value, ""), 0, "", value instanceof Date)
+  printer.node(applyToJson(value, ""), 0, "")
   return `${printer.lines.join("\n")}\n`
 }
 
