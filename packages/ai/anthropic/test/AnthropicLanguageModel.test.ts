@@ -1038,6 +1038,68 @@ describe("AnthropicLanguageModel", () => {
         assert.strictEqual(result.isFailure, false)
       }))
 
+    it.effect("decodes citations for documents that were not uploaded to the Files API", () =>
+      Effect.gen(function*() {
+        const layer = AnthropicClient.layer({ apiKey: Redacted.make("sk-test-key") }).pipe(
+          Layer.provide(Layer.succeed(
+            HttpClient.HttpClient,
+            makeHttpClient((request) =>
+              Effect.succeed(jsonResponse(request, {
+                id: "msg_test_1",
+                type: "message",
+                role: "assistant",
+                model: "claude-sonnet-4-20250514",
+                content: [{
+                  type: "text",
+                  text: "Returns are accepted within 30 days.",
+                  citations: [{
+                    type: "char_location",
+                    cited_text: "30 days",
+                    document_index: 0,
+                    document_title: "Return policy",
+                    start_char_index: 24,
+                    end_char_index: 31
+                  }]
+                }],
+                stop_reason: "end_turn",
+                stop_sequence: null,
+                usage: { input_tokens: 3, output_tokens: 5 }
+              }))
+            )
+          ))
+        )
+
+        const prompt = Prompt.make([{
+          role: "user",
+          content: [
+            {
+              type: "file",
+              mediaType: "text/plain",
+              data: new TextEncoder().encode("Returns are accepted within 30 days."),
+              fileName: "policy.txt",
+              options: { anthropic: { citations: { enabled: true } } }
+            },
+            { type: "text", text: "What is the return window?" }
+          ]
+        }])
+
+        const response = yield* LanguageModel.generateText({ prompt }).pipe(
+          Effect.provide(AnthropicLanguageModel.model("claude-sonnet-4-20250514")),
+          Effect.provide(layer)
+        )
+        const source = response.content.find((part) => part.type === "source")
+        assertDefined(source)
+        const metadata = source.metadata.anthropic
+        assert.isDefined(metadata)
+        assert.deepStrictEqual(metadata, {
+          source: "document",
+          type: "char_location",
+          citedText: "30 days",
+          startCharIndex: 24,
+          endCharIndex: 31
+        })
+      }))
+
     it.effect("decodes a response container without skills", () =>
       Effect.gen(function*() {
         const container = { id: "container_1", expires_at: "2026-11-04T12:00:00.000000Z" }

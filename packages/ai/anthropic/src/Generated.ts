@@ -2088,7 +2088,7 @@ export type ResponseCharLocationCitation = {
   readonly "document_index": number
   readonly "document_title": string | null
   readonly "end_char_index": number
-  readonly "file_id": string | null
+  readonly "file_id"?: string | null
   readonly "start_char_index": number
   readonly "type": "char_location"
 }
@@ -2101,7 +2101,9 @@ export const ResponseCharLocationCitation = Schema.Struct({
   "end_char_index": Schema.Number.annotate({ "title": "End Char Index" }).check(
     Schema.isInt().annotate({ "expected": "an integer" })
   ),
-  "file_id": Schema.Union([Schema.String, Schema.Null]).annotate({ "title": "File Id", "default": null }),
+  "file_id": Schema.optionalKey(
+    Schema.Union([Schema.String, Schema.Null]).annotate({ "title": "File Id", "default": null })
+  ),
   "start_char_index": Schema.Number.annotate({ "title": "Start Char Index" }).check(
     Schema.isInt().annotate({ "expected": "an integer" })
   ).check(Schema.isGreaterThanOrEqualTo(0).annotate({ "expected": "a value greater than or equal to 0" })),
@@ -2112,7 +2114,7 @@ export type ResponsePageLocationCitation = {
   readonly "document_index": number
   readonly "document_title": string | null
   readonly "end_page_number": number
-  readonly "file_id": string | null
+  readonly "file_id"?: string | null
   readonly "start_page_number": number
   readonly "type": "page_location"
 }
@@ -2125,7 +2127,9 @@ export const ResponsePageLocationCitation = Schema.Struct({
   "end_page_number": Schema.Number.annotate({ "title": "End Page Number" }).check(
     Schema.isInt().annotate({ "expected": "an integer" })
   ),
-  "file_id": Schema.Union([Schema.String, Schema.Null]).annotate({ "title": "File Id", "default": null }),
+  "file_id": Schema.optionalKey(
+    Schema.Union([Schema.String, Schema.Null]).annotate({ "title": "File Id", "default": null })
+  ),
   "start_page_number": Schema.Number.annotate({ "title": "Start Page Number" }).check(
     Schema.isInt().annotate({ "expected": "an integer" })
   ).check(Schema.isGreaterThanOrEqualTo(1).annotate({ "expected": "a value greater than or equal to 1" })),
@@ -2136,7 +2140,7 @@ export type ResponseContentBlockLocationCitation = {
   readonly "document_index": number
   readonly "document_title": string | null
   readonly "end_block_index": number
-  readonly "file_id": string | null
+  readonly "file_id"?: string | null
   readonly "start_block_index": number
   readonly "type": "content_block_location"
 }
@@ -2155,7 +2159,9 @@ export const ResponseContentBlockLocationCitation = Schema.Struct({
     "description":
       "Exclusive 0-based end index of the cited block range in the source's `content` array.\n\nAlways greater than `start_block_index`; a single-block citation has `end_block_index = start_block_index + 1`."
   }).check(Schema.isInt().annotate({ "expected": "an integer" })),
-  "file_id": Schema.Union([Schema.String, Schema.Null]).annotate({ "title": "File Id", "default": null }),
+  "file_id": Schema.optionalKey(
+    Schema.Union([Schema.String, Schema.Null]).annotate({ "title": "File Id", "default": null })
+  ),
   "start_block_index": Schema.Number.annotate({
     "title": "Start Block Index",
     "description": "0-based index of the first cited block in the source's `content` array."
@@ -5196,7 +5202,7 @@ export type BetaResponseCharLocationCitation = {
   readonly "document_index": number
   readonly "document_title": string | null
   readonly "end_char_index": number
-  readonly "file_id": string | null
+  readonly "file_id"?: string | null
   readonly "start_char_index": number
   readonly "type": "char_location"
 }
@@ -5209,7 +5215,9 @@ export const BetaResponseCharLocationCitation = Schema.Struct({
   "end_char_index": Schema.Number.annotate({ "title": "End Char Index" }).check(
     Schema.isInt().annotate({ "expected": "an integer" })
   ),
-  "file_id": Schema.Union([Schema.String, Schema.Null]).annotate({ "title": "File Id", "default": null }),
+  "file_id": Schema.optionalKey(
+    Schema.Union([Schema.String, Schema.Null]).annotate({ "title": "File Id", "default": null })
+  ),
   "start_char_index": Schema.Number.annotate({ "title": "Start Char Index" }).check(
     Schema.isInt().annotate({ "expected": "an integer" })
   ).check(Schema.isGreaterThanOrEqualTo(0).annotate({ "expected": "a value greater than or equal to 0" })),
@@ -5220,7 +5228,7 @@ export type BetaResponsePageLocationCitation = {
   readonly "document_index": number
   readonly "document_title": string | null
   readonly "end_page_number": number
-  readonly "file_id": string | null
+  readonly "file_id"?: string | null
   readonly "start_page_number": number
   readonly "type": "page_location"
 }
@@ -5233,7 +5241,9 @@ export const BetaResponsePageLocationCitation = Schema.Struct({
   "end_page_number": Schema.Number.annotate({ "title": "End Page Number" }).check(
     Schema.isInt().annotate({ "expected": "an integer" })
   ),
-  "file_id": Schema.Union([Schema.String, Schema.Null]).annotate({ "title": "File Id", "default": null }),
+  "file_id": Schema.optionalKey(
+    Schema.Union([Schema.String, Schema.Null]).annotate({ "title": "File Id", "default": null })
+  ),
   "start_page_number": Schema.Number.annotate({ "title": "Start Page Number" }).check(
     Schema.isInt().annotate({ "expected": "an integer" })
   ).check(Schema.isGreaterThanOrEqualTo(1).annotate({ "expected": "a value greater than or equal to 1" })),
@@ -5244,7 +5254,7 @@ export type BetaResponseContentBlockLocationCitation = {
   readonly "document_index": number
   readonly "document_title": string | null
   readonly "end_block_index": number
-  readonly "file_id": string | null
+  readonly "file_id"?: string | null
   readonly "start_block_index": number
   readonly "type": "content_block_location"
 }
@@ -5263,7 +5273,9 @@ export const BetaResponseContentBlockLocationCitation = Schema.Struct({
     "description":
       "Exclusive 0-based end index of the cited block range in the source's `content` array.\n\nAlways greater than `start_block_index`; a single-block citation has `end_block_index = start_block_index + 1`."
   }).check(Schema.isInt().annotate({ "expected": "an integer" })),
-  "file_id": Schema.Union([Schema.String, Schema.Null]).annotate({ "title": "File Id", "default": null }),
+  "file_id": Schema.optionalKey(
+    Schema.Union([Schema.String, Schema.Null]).annotate({ "title": "File Id", "default": null })
+  ),
   "start_block_index": Schema.Number.annotate({
     "title": "Start Block Index",
     "description": "0-based index of the first cited block in the source's `content` array."
