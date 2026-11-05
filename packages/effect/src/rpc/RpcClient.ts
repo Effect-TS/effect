@@ -111,14 +111,14 @@ export declare namespace RpcClient {
    * @since 4.0.0
    */
   export type Flat<Rpcs extends Rpc.Any, E = never> = <
-    const Tag extends keyof Rpc.ByTag<Rpcs>,
+    const Tag extends Rpcs["_tag"],
     const AsQueue extends boolean = false,
     const Discard = false
   >(
     tag: Tag,
-    payload: Rpc.PayloadConstructor<Rpc.ByTag<Rpcs>[Tag]>,
-    options?: Options<Rpc.ByTag<Rpcs>[Tag], AsQueue, Discard>
-  ) => Result<Rpc.ByTag<Rpcs>[Tag], E, AsQueue, Discard>
+    payload: Rpc.PayloadConstructor<Rpc.ExtractTag<Rpcs, Tag>>,
+    options?: Options<Rpc.ExtractTag<Rpcs, Tag>, AsQueue, Discard>
+  ) => Result<Rpc.ExtractTag<Rpcs, Tag>, E, AsQueue, Discard>
 
   /**
    * The options accepted by a client call for the given RPC(s).

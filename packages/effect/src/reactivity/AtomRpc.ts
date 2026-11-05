@@ -54,18 +54,18 @@ export interface AtomRpcClient<Self, Id extends string, Rpcs extends Rpc.Any> ex
 
   readonly runtime: Atom.AtomRuntime<Self>
 
-  readonly mutation: <Tag extends keyof Rpc.ByTag<Rpcs>>(arg: Tag) => Mutation<Rpc.ByTag<Rpcs>[Tag]>
+  readonly mutation: <Tag extends Rpc.Tag<Rpcs>>(arg: Tag) => Mutation<Rpc.ExtractTag<Rpcs, Tag>>
 
-  readonly query: <Tag extends keyof Rpc.ByTag<Rpcs>>(
+  readonly query: <Tag extends Rpc.Tag<Rpcs>>(
     tag: Tag,
-    payload: Rpc.PayloadConstructor<Rpc.ByTag<Rpcs>[Tag]>,
+    payload: Rpc.PayloadConstructor<Rpc.ExtractTag<Rpcs, Tag>>,
     options?: {
       readonly headers?: Headers.Input | undefined
       readonly reactivityKeys?: Reactivity.KeysInput | undefined
       readonly timeToLive?: Duration.Input | undefined
       readonly serializationKey?: string | undefined
     }
-  ) => Query<Rpc.ByTag<Rpcs>[Tag]>
+  ) => Query<Rpc.ExtractTag<Rpcs, Tag>>
 }
 
 /**
@@ -203,10 +203,10 @@ export const Service = <Self>() =>
       Layer.provide(layer, Layer.orDie(options.protocol))
   )
 
-  self.mutation = Atom.family(<Tag extends keyof Rpc.ByTag<Rpcs>>(tag: Tag) => {
+  self.mutation = Atom.family(<Tag extends Rpc.Tag<Rpcs>>(tag: Tag) => {
     const rpc = options.group.requests.get(tag)! as any as Rpc.AnyWithProps
     return self.runtime.fn<{
-      readonly payload: Rpc.PayloadConstructor<Rpc.ByTag<Rpcs>[Tag]>
+      readonly payload: Rpc.PayloadConstructor<Rpc.ExtractTag<Rpcs, Tag>>
       readonly reactivityKeys?: Reactivity.KeysInput | undefined
       readonly headers?: Headers.Input | undefined
     }>()(
@@ -267,9 +267,9 @@ export const Service = <Self>() =>
     }
   )
 
-  self.query = <Tag extends keyof Rpc.ByTag<Rpcs>>(
+  self.query = <Tag extends Rpc.Tag<Rpcs>>(
     tag: Tag,
-    payload: Rpc.PayloadConstructor<Rpc.ByTag<Rpcs>[Tag]>,
+    payload: Rpc.PayloadConstructor<Rpc.ExtractTag<Rpcs, Tag>>,
     options?: {
       readonly headers?: Headers.Input | undefined
       readonly reactivityKeys?: Reactivity.KeysInput | undefined
