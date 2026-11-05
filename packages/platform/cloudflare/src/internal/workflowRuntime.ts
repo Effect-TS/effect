@@ -16,6 +16,7 @@ import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
 import * as Fiber from "effect/Fiber"
 import * as Schedule from "effect/Schedule"
+import * as Scope from "effect/Scope"
 import * as DurableClock from "effect/workflow/DurableClock"
 import * as Workflow from "effect/workflow/Workflow"
 import * as WorkflowEngine from "effect/workflow/WorkflowEngine"
@@ -89,6 +90,17 @@ export const makeWorkflowRuntime = (options: WorkflowRuntimeOptions): WorkflowRu
 
   let inflight: Inflight | undefined
   let resumeRequested: WorkflowStorage.WakeMode | undefined
+  // Parent of every attempt's scope. As in the memory engine, scopes of
+  // attempts that suspended stay open under it, so their finalizers and
+  // resources last until the execution completes.
+  const executionScope = Scope.makeUnsafe()
+
+  // The final attempt's scope has already closed with the real exit. Closing
+  // the parent closes earlier attempts' scopes in reverse order with
+  // `Exit.void`, so their superseded compensations are skipped.
+  const closeExecutionScope = Scope.close(executionScope, Exit.void).pipe(
+    Effect.catchCause((cause) => Effect.logError("Workflow finalizer failed", cause))
+  )
 
   const detach = (promise: Promise<unknown>): void => {
     options.waitUntil(promise.then(() => undefined, () => undefined))
@@ -154,7 +166,9 @@ export const makeWorkflowRuntime = (options: WorkflowRuntimeOptions): WorkflowRu
       return Promise.reject(new Error(`No workflow registered for name: ${workflowName}`))
     }
     const workflow = registration.workflow
-    const instance = WorkflowEngine.WorkflowInstance.initial(workflow, executionId)
+    const instance = WorkflowEngine.WorkflowInstance.initial(workflow, executionId, {
+      scope: Scope.forkUnsafe(executionScope)
+    })
     const execute = decodePayload(workflow, row.payload, registration.context).pipe(
       Effect.flatMap((payload) => registration.execute(payload, executionId) as Effect.Effect<unknown, unknown>),
       Effect.onExit((exit) => {
@@ -192,6 +206,7 @@ export const makeWorkflowRuntime = (options: WorkflowRuntimeOptions): WorkflowRu
           // Stay in flight until the result is saved so a concurrent resume
           // queues behind this attempt instead of replaying alongside it.
           if (result._tag === "Complete") {
+            yield* closeExecutionScope
             WorkflowStorage.saveCompletion(sql, text, parent !== undefined)
             inflight = undefined
             resumeRequested = undefined
