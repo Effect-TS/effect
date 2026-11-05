@@ -17,10 +17,11 @@ export const succeed = Exit.succeed as <A>(value: A) => Success<A>
 /** @internal */
 export const missingExit = succeed(missing)
 
-// Shared success for a present input returned unchanged. It must be resolved
-// before crossing an asynchronous or transformation boundary. Parsers can come
-// from another module copy, so its identity is shared through globalThis.
 const sameExitKey = Symbol.for("effect/schema/parser/sameExit")
+
+// Shared success for a present input returned unchanged. It must be resolved
+// before crossing an asynchronous or transformation boundary. Kept on
+// globalThis so that module copies share its identity.
 /** @internal */
 export const sameExit: Success<unknown> = (globalThis as any)[sameExitKey] ??= succeed(missing)
 

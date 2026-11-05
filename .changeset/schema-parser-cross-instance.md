@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Share Schema parser sentinels across module copies so encoding and decoding a schema created by another copy preserve unchanged values instead of returning an internal symbol.
+Fix Schema encoding and decoding of schemas created by another copy of `effect`, which could return an internal symbol instead of the input or reject a missing optional key; both copies must include this fix.
