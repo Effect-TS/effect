@@ -204,7 +204,11 @@ interface Bundle {
   readonly output: string
 }
 
-const contracts = [path.join(root, "src", "FileSystem.ts"), path.join(root, "src", "Terminal.ts")]
+const contracts = [
+  path.join(root, "src", "FileSystem.ts"),
+  path.join(root, "src", "FileSystem", "operations.ts"),
+  path.join(root, "src", "Terminal.ts")
+]
 
 const annotatePureCalls = async (code: string): Promise<string> => {
   const result = await babel.transformAsync(code, {
@@ -286,7 +290,7 @@ const buildEsbuild = async (entry: Root): Promise<Bundle> => {
               : undefined)
         }
         if (contract !== "unannotated") {
-          build.onLoad({ filter: /src[\\/](FileSystem|Terminal)\.ts$/ }, async (args) => {
+          build.onLoad({ filter: /src[\\/](FileSystem|Terminal|FileSystem[\\/]operations)\.ts$/ }, async (args) => {
             if (!contracts.includes(args.path)) return undefined
             const loaded = await loadContract(args.path, contract)
             return { contents: loaded.code, loader: loaded.loader, resolveDir: path.dirname(args.path) }
@@ -439,11 +443,13 @@ console.log("\nWhat Context.ts costs a bundle with no record and no operation\n"
     bundle.root.entry === "main-plain.ts" && bundle.root.context === "baseline"
   )!
   const delta = plain.bytes - baseline.bytes
-  const ok = delta <= 512
+  // the `record` check in `lookup` and `applyOverlays`, the write of a record overlay into a flat map, and the
+  // `typeof` dispatch in `make`, `add` and the getters
+  const ok = delta <= 1024
   if (!ok) failures++
   console.log(`  ${pad("this branch", 20)} ${kb(plain.bytes).padStart(9)}`)
   console.log(`  ${pad("branch point", 20)} ${kb(baseline.bytes).padStart(9)}`)
-  console.log(`  ${pad("difference", 20)} ${`${delta} B`.padStart(9)}  limit 512 B${ok ? "" : "   <-- unexpected"}`)
+  console.log(`  ${pad("difference", 20)} ${`${delta} B`.padStart(9)}  limit 1024 B${ok ? "" : "   <-- unexpected"}`)
 }
 
 console.log("\nContract constants the bundler kept in the two-operation bundle\n")

@@ -24,9 +24,9 @@ const expectations: Record<string, ReadonlyArray<string>> = {
     `Type '{ readonly value: number; }' is not assignable to type 'never'`
   ],
   "not-an-operation.ts": [
-    `Type '(path: string) => string' does not satisfy the constraint 'EffectSignature'`,
-    `Type '{ readonly port: number; }' does not satisfy the constraint 'EffectSignature'`,
-    `Type 'Effect<number, never, never>' does not satisfy the constraint 'EffectSignature'`
+    `Type '(path: string) => string' does not satisfy the constraint 'FunctionSignature'`,
+    `Type '{ readonly port: number; }' does not satisfy the constraint 'FunctionSignature'`,
+    `Type 'Effect<number, never, never>' does not satisfy the constraint 'FunctionSignature'`
   ],
   "not-an-effect.ts": [
     `is not assignable to parameter of type 'Effect<unknown, unknown, unknown>'`,
@@ -35,7 +35,13 @@ const expectations: Record<string, ReadonlyArray<string>> = {
   "generic-unnamed.ts": [`is generic or overloaded: its result must require \\"test/parse\\"`],
   "overloaded-unnamed.ts": [`is generic or overloaded: its result must require \\"test/format\\"`],
   "shape-with-properties.ts": [`has properties: an operation is a bare function`],
-  "stream-shape.ts": [`does not satisfy the constraint 'EffectSignature'`],
+  "stream-shape.ts": [
+    `is not assignable to parameter of type '"The shape returns a Stream: define it with Stream.Operation"'`
+  ],
+  "effect-shape.ts": [
+    `is not assignable to parameter of type '"The shape returns an Effect: define it with Context.Operation"'`
+  ],
+  "partial-subset.ts": [`is missing the following properties from type 'ReadOnlyShape': exists, stat`],
   "record-requires-all.ts": [`Type 'FileSystem' is not assignable to type 'never'`],
   "partial-aggregate.ts": [`is not assignable to type 'Layer<FileSystem, never, never>'`],
   "missing-twenty.ts": [

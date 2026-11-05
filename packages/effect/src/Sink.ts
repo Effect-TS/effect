@@ -2058,10 +2058,10 @@ export const unwrap = <A, In, L, E, R, R2>(
  * @category services
  * @since 4.0.0
  */
-export const Operation = <Shape extends Context.Operation.SinkSignature, Brand = unknown>(): <
+export const Operation = <Shape extends Context.Operation.FunctionSignature, Brand = unknown>(): <
   const Id extends string
 >(
-  key: Context.Operation.KeyFor<Id, Shape>
+  key: Context.Operation.KeyFor<Id, Shape, "Sink">
 ) => Context.Operation<Id & Brand, Shape> =>
 (key) => Context.makeOperation(key as string, sinkCall) as any
 
