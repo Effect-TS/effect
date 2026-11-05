@@ -10,6 +10,7 @@ import * as Effect from "effect/Effect"
 import * as HttpServerRequest from "effect/http/HttpServerRequest"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
+import * as Queue from "effect/Queue"
 import { CurrentLogLevel } from "effect/References"
 import * as RpcClient from "effect/rpc/RpcClient"
 import type * as RpcSerialization from "effect/rpc/RpcSerialization"
@@ -1036,6 +1037,8 @@ describe("McpServer protocol adapters", () => {
           }),
           dependencies: [McpSchema.McpRequestContext]
         }))
+        // A JSON-RPC notification gets no response, so the handler also reports what it saw here.
+        const seen = yield* Queue.unbounded<{ readonly requestId: unknown; readonly sessionId: unknown }>()
         const harness = yield* makeHttpHarness(
           McpServer.toolkit(identityToolkit).pipe(
             Layer.provideMerge(identityToolkit.toLayer({
@@ -1043,7 +1046,7 @@ describe("McpServer protocol adapters", () => {
                 McpSchema.McpRequestContext.useSync((context) => ({
                   requestId: context.requestId ?? null,
                   sessionId: context.sessionId ?? null
-                }))
+                })).pipe(Effect.tap((identity) => Queue.offer(seen, identity)))
             })),
             Layer.provideMerge(makeServerLayer({
               name: "RequestIdentity",
@@ -1075,6 +1078,11 @@ describe("McpServer protocol adapters", () => {
           { ...modernHeaders("tools/call"), "Mcp-Name": "identity" }
         ).pipe(Effect.flatMap(readMcpHttpResponse))
         assert.deepNestedPropertyVal(stateless, "result.structuredContent", { requestId: 8, sessionId: null })
+
+        // An id-less call is a notification: there is no client-supplied id to expose.
+        yield* Queue.clear(seen)
+        yield* harness.post({ jsonrpc: "2.0", method: "tools/call", params: { name: "identity" } }, legacyHeaders)
+        assert.deepStrictEqual(yield* Queue.take(seen), { requestId: null, sessionId })
       }))
   })
 

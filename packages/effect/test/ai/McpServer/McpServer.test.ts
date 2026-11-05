@@ -2164,7 +2164,11 @@ describe("McpServer", () => {
               mediaType: "application/pdf",
               fileName: "report.pdf",
               data: new URL("https://example.com/report.pdf")
-            })
+            }),
+            // `Prompt.FilePart` also accepts base64 data as a data URL.
+            Prompt.filePart({ mediaType: "image/png", data: "data:image/png;base64,iVBORw==" }),
+            Prompt.filePart({ mediaType: "application/pdf", fileName: "report q1.pdf", data: new Uint8Array([1, 2]) }),
+            Prompt.filePart({ mediaType: "application/octet-stream", data: new Uint8Array([3]) })
           ]
         })
         // Content must stay meaningful, so an empty model output keeps the JSON text.
@@ -2183,7 +2187,8 @@ describe("McpServer", () => {
 
         const screenshot = yield* client.callTool({ name: "Screenshot", arguments: {} })
         assert.deepStrictEqual(screenshot.structuredContent, { path: "/home" })
-        assert.deepStrictEqual(screenshot.content, [
+        const [named, unnamed] = screenshot.content.slice(4)
+        assert.deepStrictEqual(screenshot.content.slice(0, 4), [
           { type: "text", text: "Screenshot of /home" },
           { type: "image", mimeType: "image/png", data: new Uint8Array([0x89, 0x50, 0x4e, 0x47]) },
           {
@@ -2191,8 +2196,21 @@ describe("McpServer", () => {
             uri: "https://example.com/report.pdf",
             name: "report.pdf",
             mimeType: "application/pdf"
-          }
+          },
+          { type: "image", mimeType: "image/png", data: new Uint8Array([0x89, 0x50, 0x4e, 0x47]) }
         ])
+        // An embedded resource needs an absolute URI, with or without a file name.
+        for (
+          const [block, mimeType, blob] of [[named, "application/pdf", [1, 2]], [unnamed, "application/octet-stream", [
+            3
+          ]]] as const
+        ) {
+          assertTrue(block?.type === "resource" && "blob" in block.resource, "Expected an embedded blob resource")
+          assert.strictEqual(block.resource.mimeType, mimeType)
+          assert.deepStrictEqual(block.resource.blob, new Uint8Array(blob))
+          assert.isTrue(URL.canParse(block.resource.uri), block.resource.uri)
+        }
+        assert.include((named as McpSchema.EmbeddedResource).resource.uri, encodeURIComponent("report q1.pdf"))
 
         const silent = yield* client.callTool({ name: "Silent", arguments: {} })
         assert.deepStrictEqual(silent.structuredContent, { path: "/home" })

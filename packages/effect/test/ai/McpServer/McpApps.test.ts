@@ -42,11 +42,29 @@ const initialize = (protocolVersion: string) => ({
 describe("McpApps", () => {
   it.effect("serves an app resource and declares the extension on the stateless revision", () =>
     Effect.gen(function*() {
-      const harness = yield* makeHttpHarness(Dashboard.pipe(Layer.provideMerge(makeServerLayer({
-        name: "AppsServer",
-        protocols: [modern],
-        extensions: { "example/other": {} }
-      }))))
+      // A full result must still be served as an App, keeping the item's own `_meta.ui` fields.
+      const FullResult = McpApps.resource({
+        uri: "ui://dashboard/full.html",
+        name: "FullResult",
+        meta: resourceMeta.ui,
+        content: Effect.succeed({
+          contents: [{
+            uri: "ui://dashboard/full.html",
+            mimeType: "text/html",
+            text: "<html></html>",
+            _meta: { ui: { prefersBorder: false } }
+          }]
+        })
+      })
+      const harness = yield* makeHttpHarness(
+        Layer.mergeAll(Dashboard, FullResult).pipe(
+          Layer.provideMerge(makeServerLayer({
+            name: "AppsServer",
+            protocols: [modern],
+            extensions: { "example/other": {} }
+          }))
+        )
+      )
       const send = Effect.fnUntraced(function*(method: string, params: Record<string, unknown> = {}) {
         const response = yield* harness.post(
           { jsonrpc: "2.0", id: 1, method, params: { ...params, _meta: metadata } },
@@ -66,7 +84,7 @@ describe("McpApps", () => {
       })
 
       const listed = yield* send("resources/list")
-      const [resource] = listed.result.resources
+      const resource = listed.result.resources.find((resource: any) => resource.uri === "ui://dashboard/view.html")
       assert.strictEqual(resource.uri, "ui://dashboard/view.html")
       assert.strictEqual(resource.mimeType, "text/html;profile=mcp-app")
       assert.deepStrictEqual(resource._meta, resourceMeta)
@@ -77,6 +95,14 @@ describe("McpApps", () => {
         mimeType: "text/html;profile=mcp-app",
         text: "<html></html>",
         _meta: resourceMeta
+      }])
+
+      const full = yield* send("resources/read", { uri: "ui://dashboard/full.html" })
+      assert.deepStrictEqual(full.result.contents, [{
+        uri: "ui://dashboard/full.html",
+        mimeType: "text/html;profile=mcp-app",
+        text: "<html></html>",
+        _meta: { ui: { ...resourceMeta.ui, prefersBorder: false } }
       }])
     }))
 
