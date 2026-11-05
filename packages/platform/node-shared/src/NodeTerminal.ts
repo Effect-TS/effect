@@ -47,28 +47,26 @@ export const make: (
         Queue.endUnsafe(lines)
       }
     }
-    let io: { stdin: typeof process.stdin; stdout: typeof process.stdout } | undefined
-    // Accessing Node's stdio getters can set O_NONBLOCK on inherited pipes.
-    // Leave them untouched until a terminal operation actually runs.
-    const getIo = () => {
-      if (io === undefined) {
-        const stdin = process.stdin
-        const stdout = process.stdout
-        inputEnded = stdin.readableEnded
-        stdin.once("end", onStdinEnd)
-        if (inputEnded) {
-          Queue.endUnsafe(lines)
+    // Accessing Node's stdio getters can set O_NONBLOCK on inherited pipes, so
+    // each stream is only read by the operations that use it.
+    let stdin: typeof process.stdin | undefined
+    const getStdin = () => {
+      if (stdin === undefined) {
+        stdin = process.stdin
+        if (stdin.readableEnded) {
+          onStdinEnd()
+        } else {
+          stdin.once("end", onStdinEnd)
         }
-        io = { stdin, stdout }
       }
-      return io
+      return stdin
     }
-    yield* Effect.addFinalizer(() => Effect.sync(() => io?.stdin.off("end", onStdinEnd)))
+    yield* Effect.addFinalizer(() => Effect.sync(() => stdin?.off("end", onStdinEnd)))
 
     const rlRef = yield* RcRef.make({
       acquire: Effect.acquireRelease(
         Effect.sync(() => {
-          const { stdin } = getIo()
+          const stdin = getStdin()
           const rl = readline.createInterface({ input: stdin, escapeCodeTimeout: 50 })
           const onLine = (line: string) => Queue.offerUnsafe(lines, line)
           const onClose = () => {
@@ -98,7 +96,7 @@ export const make: (
     // Only key input needs raw mode; `readLine` never requests it.
     const setRawMode = (enabled: boolean) =>
       Effect.sync(() => {
-        const { stdin } = getIo()
+        const stdin = getStdin()
         if (stdin.isTTY) stdin.setRawMode(enabled)
       })
     const rawModeRef = yield* RcRef.make({
@@ -106,10 +104,10 @@ export const make: (
       idleTimeToLive: "10 millis"
     })
 
-    const columns = Effect.sync(() => getIo().stdout.columns ?? 0)
-    const rows = Effect.sync(() => getIo().stdout.rows ?? 0)
+    const columns = Effect.sync(() => process.stdout.columns ?? 0)
+    const rows = Effect.sync(() => process.stdout.rows ?? 0)
     const size = Effect.gen(function*() {
-      const { stdout } = getIo()
+      const stdout = process.stdout
       const queue = yield* Queue.sliding<Terminal.Size, Cause.Done>(1)
       const onResize = () => Queue.offerUnsafe(queue, { columns: stdout.columns ?? 0, rows: stdout.rows ?? 0 })
       yield* Effect.addFinalizer(() =>
@@ -124,7 +122,7 @@ export const make: (
     })
 
     const readInput = Effect.gen(function*() {
-      const { stdin } = getIo()
+      const stdin = getStdin()
       const queue = yield* Queue.make<Terminal.UserInput, Cause.Done>()
       const handleKeypress = (s: string | undefined, k: readline.Key) => {
         const userInput = {
@@ -164,7 +162,8 @@ export const make: (
     })
 
     const readLine = Effect.suspend(() => {
-      getIo()
+      // Ends `lines` first if stdin was already exhausted before first use.
+      getStdin()
       return Queue.poll(lines).pipe(
         Effect.flatMap(Option.match({
           onNone: () => Effect.scoped(Effect.andThen(RcRef.get(rlRef), Queue.take(lines))),
@@ -177,8 +176,7 @@ export const make: (
     const display = (prompt: string) =>
       Effect.uninterruptible(
         Effect.callback<void, PlatformError>((resume) => {
-          const { stdout } = getIo()
-          stdout.write(prompt, (err) =>
+          process.stdout.write(prompt, (err) =>
             Predicate.isNullish(err)
               ? resume(Effect.void)
               : resume(Effect.fail(
