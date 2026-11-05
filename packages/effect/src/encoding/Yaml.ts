@@ -696,9 +696,12 @@ class FlowParser {
       if (this.index + 1 >= this.line.length || isWhiteCode(next) || isFlowIndicatorCode(next)) this.fail(flowDashError)
     }
     const start = this.offset + this.index
-    const text = trimWhite(foldFlowLines(this.readUntil(stop, true)))
+    const raw = this.readUntil(stop, true)
+    const text = trimWhite(foldFlowLines(raw))
     if (text.startsWith("%")) this.fail(directiveIndicatorError)
-    if (isExplicitKey(text)) this.fail(explicitKeyError)
+    // YAML 1.2.2 §7.3.3: `?` directly before a `:` starts a plain scalar. Checked in the source,
+    // since the separating `:` is not part of the text.
+    if (isExplicitKey(text) && !(raw === "?" && this.peek() === ":")) this.fail(explicitKeyError)
     // YAML 1.2.2 §7.3.3 (ns-plain-safe-in): a plain scalar in a flow collection cannot contain a
     // flow indicator. `,`, `]` and `}` end it, and `[` or `{` inside it fails.
     if (/[[{]/.test(text)) {
@@ -1179,7 +1182,9 @@ class YamlParser {
   private parseBlockKey(raw: string, fail: (message: string) => never): MappingKey {
     const { anchor, tag, rest: text } = nodeProperties(trimWhite(raw), fail)
     if (text.startsWith("%")) fail(directiveIndicatorError)
-    if (isExplicitKey(text)) fail(explicitKeyError)
+    // YAML 1.2.2 §7.3.3: `?` directly before the `:` separator starts a plain key. `raw` ends at
+    // the separator, so it ends with `?` only then.
+    if (isExplicitKey(text) && !(text === "?" && raw.endsWith("?"))) fail(explicitKeyError)
     if (text.startsWith("*")) {
       if (anchor !== undefined) fail("An alias cannot have an anchor")
       if (tag !== undefined) fail("An alias cannot have a tag")
@@ -1640,14 +1645,15 @@ const hasNonPrintable = (text: string): boolean => {
 // types: any letter case of `null`, `true`, `false`, the YAML 1.1 booleans `y`, `n`, `yes`,
 // `no`, `on` and `off`, `.inf` and `.nan`; YAML 1.1 timestamps; and numbers with `_`
 // separators, an uppercase or signed `0X` or `0O` prefix, a `0b` prefix, sexagesimal `:`
-// groups, or a leading `+`. The printer quotes them.
+// groups, a leading `+`, or a `.` without digits, which YAML 1.1 reads as a float. The printer
+// quotes them.
 const lenientNonString = /^(?:null|~|true|false|y|n|yes|no|on|off|[-+]?\.inf|\.nan)$/i
 
 const lenientTimestamp =
-  /^[0-9]{4}-[0-9]{1,2}-[0-9]{1,2}(?:(?:[Tt]|[ \t]+)[0-9]{1,2}:[0-9]{2}:[0-9]{2}(?:\.[0-9]*)?(?:[ \t]*(?:Z|[-+][0-9]{1,2}(?::[0-9]{2})?))?)?$/
+  /^[0-9]{4}-[0-9]{1,2}-[0-9]{1,2}(?:(?:[Tt]|[ \t]+)[0-9]{1,2}:[0-9]{1,2}:[0-9]{1,2}(?:\.[0-9]*)?(?:[ \t]*(?:Z|[-+][0-9]{1,2}(?::[0-9]{2})?))?)?$/
 
 const lenientNumber =
-  /^[-+]?(?:0x[0-9a-f]+|0o[0-7]+|0b[01]+|[0-9]+(?::[0-5]?[0-9])+(?:\.[0-9]*)?|(?:[0-9]+(?:\.[0-9]*)?|\.[0-9]+)(?:e[-+]?[0-9]+)?)$/i
+  /^[-+]?(?:0x[0-9a-f]+|0o[0-7]+|0b[01]+|[0-9]+(?::[0-5]?[0-9])+(?:\.[0-9]*)?|(?:[0-9]+(?:\.[0-9]*)?|\.[0-9]*)(?:e[-+]?[0-9]+)?)$/i
 
 const isLenientNonString = (text: string): boolean =>
   lenientNonString.test(text) || lenientTimestamp.test(text) ||
@@ -1899,13 +1905,11 @@ class Printer {
 }
 
 // Mirrors `JSON.stringify`: objects and bigints carrying a `toJSON` method are
-// replaced by its result before printing.
+// replaced by its result before printing. The method is read once and called on `value`.
 const applyToJson = (value: unknown, key: string): unknown => {
-  if (
-    (typeof value === "object" && value !== null || typeof value === "bigint") &&
-    typeof (value as { toJSON?: unknown }).toJSON === "function"
-  ) {
-    return (value as { toJSON: (key: string) => unknown }).toJSON(key)
+  if (typeof value === "object" && value !== null || typeof value === "bigint") {
+    const toJSON = (value as { readonly toJSON?: unknown }).toJSON
+    if (typeof toJSON === "function") return toJSON.call(value, key)
   }
   return value
 }
