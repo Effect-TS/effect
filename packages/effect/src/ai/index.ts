@@ -103,7 +103,7 @@ export * as McpServer from "./McpServer.ts"
 
 /**
  * @stability unstable
- * @since 4.1.0
+ * @since 4.1.3
  */
 export * as McpTasks from "./McpTasks.ts"
 

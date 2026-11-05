@@ -836,76 +836,13 @@ export const loadSkill = (client: McpClient.McpClient, name: string) =>
   })
 ```
 
-## Client task polling
-
-Enable polling with `extensions.tasks` when constructing a client with the July protocol. Set `extensions.skills: true` alongside it to enable Skills too. Input handlers stay in the top-level `input` option. `callTool` returns the final result whether the server completes the call immediately or creates a task:
-
-```ts
-import { Effect, Schema } from "effect"
-import { McpClient, McpProtocol } from "effect/ai"
-
-const ClientLive = McpClient.layerHttp({
-  name: "report-app",
-  version: "1.0.0",
-  url: "http://localhost:3000/mcp",
-  protocol: McpProtocol.v2026_07_28,
-  extensions: { tasks: { mode: "poll" } }
-})
-
-const report = Effect.gen(function*() {
-  const client = yield* McpClient.McpClient
-  const tool = (yield* client.listTools()).find((tool) => tool.name === "workspace_report")
-  if (tool === undefined) return yield* Effect.die("Missing workspace_report tool")
-  return yield* client.callTool({ tool, arguments: { workspaceId: "demo" }, schema: Schema.String })
-})
-```
-
-Provide an `HttpClient` implementation to `ClientLive` as in the HTTP client examples above. Task polling requires `2026-07-28`; November Tasks is a different protocol and is not implemented by this client.
-
-Use `startTool` for explicit cancellation:
-
-```ts
-const execution = yield * client.startTool({ tool, schema: Schema.String })
-const waiting = yield * execution.awaitResult().pipe(Effect.forkChild)
-
-// In response to an application cancellation action:
-yield * execution.cancel()
-```
-
-`taskId` is undefined for an immediate result. A task-backed execution shares one polling worker across all waiters. The client scope owns that worker. Interrupting or timing out a waiter leaves remote work running. Closing the client scope stops local polling without requesting remote cancellation.
-
-`cancel()` acknowledges intent. `awaitResult()` observes the actual outcome and fails with `McpClientError` reason `TaskCancelled` only when the server confirms cancellation. If completion wins the race, it returns the result instead. Cancelling while an input handler is active interrupts that handler after the server acknowledges the cancellation request.
-
-Configure application-owned input handlers through the constructor or transport layer:
-
-```ts
-const client = yield * McpClient.make({
-  name: "report-app",
-  version: "1.0.0",
-  extensions: { tasks: { mode: "poll", requestTimeout: "30 seconds" } },
-  input: {
-    elicitation: showPrompt,
-    roots: listAllowedRoots,
-    sampling: sampleWithApproval
-  }
-})
-```
-
-`showPrompt`, `listAllowedRoots`, and `sampleWithApproval` are application functions returning Effects with the matching MCP response. Elicitation handlers accept both form and URL requests. The client captures their service requirements during construction and advertises them during discovery and on requests that support client input. Prompt and resource input continuations are not supported. A handler failure becomes `InputError` with its original cause. User actions such as `decline` and `cancel` are input responses; they do not themselves cancel the task.
-
-The client keeps polling while input handlers run in separate scopes. It submits ready answers through `tasks/update` without waiting for other prompts, and sends each acknowledged answer once. Withdrawn inputs and terminal task states interrupt pending handlers and release their resources. Ordinary tool input continuations use these handlers too, with the server's opaque `requestState` returned unchanged. Automatic retries of failed creation or polling requests are not included.
-
-`extensions.tasks.pollInterval` supplies the fallback interval when the server omits one. Server-provided intervals take precedence and may change. `extensions.tasks.requestTimeout` bounds each follow-up request and defaults to the client's discovery timeout. A `callTool` timeout bounds the whole call. A `startTool` timeout bounds creation and ordinary input continuations; `awaitResult` has its own optional timeout. Schema decoding requirements belong to `awaitResult`'s caller, while input-handler services belong to client construction.
-
-The existing `McpClient.toolkit` integration also waits for task-backed calls before returning model tool output. Task subscriptions, persisted recovery, and November task support are not included.
-
 ## Tasks
 
-`McpTasks.toolkit(tools, { owner })` registers task-only tools. Provide an
-`McpTasks.Execution` layer to create, retrieve, update, and cancel tasks. Ordinary
-inline tools use `McpServer.toolkit`.
+Tasks let a tool call return a handle that the client polls, answers and cancels, following the [Tasks extension](https://github.com/modelcontextprotocol/ext-tasks/blob/main/specification/2026-07-28/tasks.md) for `2026-07-28`. The older `2025-11-25` experimental tasks are a different protocol and are not supported.
 
-### Workflow execution
+### Task tools
+
+`McpTasks.toolkit(tools, { owner })` registers task-only tools. Provide an `McpTasks.Execution` layer to run them: `layerWorkflow` for durable execution, `layerMemory` for development and tests, or an application job service. Ordinary tools keep using `McpServer.toolkit`.
 
 ```ts
 import { Effect, Layer, Schema } from "effect"
@@ -917,44 +854,32 @@ const Reports = Toolkit.make(Tool.make("workspace_report", {
   success: Schema.String
 }))
 
-const ReportsLive = McpTasks.toolkit(Reports, { owner: "shared" }, (tools) =>
-  McpTasks.layerWorkflow(tools, {
+const ReportsLive = McpTasks.toolkit(Reports, { owner: "shared" }).pipe(
+  Layer.provide(McpTasks.layerWorkflow(Reports, {
     workspace_report: ({ workspaceId }) =>
       Activity.make({
         name: "build-report",
         success: Schema.String,
         execute: Effect.succeed(`Report for ${workspaceId}`)
       })
-  }, { name: "workspace-reports-v1" })).pipe(Layer.provide(WorkflowEngine.layerMemory))
+  }, { name: "workspace-reports-v1" })),
+  Layer.provide(WorkflowEngine.layerMemory)
+)
 
 // Provide McpServer when composing ReportsLive with the server layer.
 ```
 
-The optional callback receives the toolkit and returns a layer providing
-`Execution`. It runs once when constructing the registration layer. The
-execution layer uses ordinary Layer scope and dependency management. The
-two-argument form remains available for separately composed execution layers:
+Task tools are listed only to `2026-07-28` clients, and calling one requires the client to declare the Tasks extension; otherwise the call fails before any work starts. The server declares the extension, and answers `tasks/get`, `tasks/update` and `tasks/cancel`, only while a task tool is registered.
 
-```ts
-const ReportsLive = McpTasks.toolkit(Reports, { owner: "shared" }).pipe(
-  Layer.provide(ReportsExecution)
-)
-```
+`owner: "shared"` lets every client access every task. For isolation, pass an Effect that resolves a trusted principal from the request. Client-provided names and metadata are not proof of identity. The owner is resolved on every task method, and a task from another owner reads as unknown.
 
-The example uses Workflow's memory engine for tests. For durable recovery, provide
-an existing SQL-backed `ClusterWorkflowEngine`. Keep the Workflow name stable for
-compatible handlers and change it for replay-incompatible changes. Completed
-Activities reuse their recorded results. Code outside Activities can run again.
+### Workflow execution
 
-Workflow owns execution, results, interruption, and history cleanup. Task input
-and status survive runner reconstruction. Creation waits until the task is
-readable before returning its handle. Accepted submissions are not reported as
-retryable creation failures. A read can report a retryable error while a terminal
-outcome becomes available.
+Each task is a Workflow execution, so handlers can use Activities, durable clocks and deferreds. Tool failures and defects run Workflow compensations and complete the task with an `isError` result. Keep the `name` stable for compatible handlers and change it when handlers become replay-incompatible. Use Workflow's memory engine for tests and an SQL-backed `ClusterWorkflowEngine` for durable recovery. Task input and status survive runner restarts.
+
+Cancellation interrupts the execution and runs its compensations. Like any Workflow interruption, it takes effect when the handler next suspends, for example while it waits for input or a durable clock. A handler that never suspends runs to completion, and the task reports that outcome.
 
 ### Memory execution
-
-For process-local execution, provide scoped Effect fibers instead:
 
 ```ts
 const ReportsExecution = McpTasks.layerMemory(Reports, {
@@ -962,35 +887,36 @@ const ReportsExecution = McpTasks.layerMemory(Reports, {
 })
 ```
 
-This layer has no Workflow dependency. It interrupts its fibers and clears task
-records when its scope closes. It does not survive a restart or provide durable
-task creation, so use it for development and tests.
+Handlers run in fibers owned by the layer. Cancellation interrupts the fiber immediately. Tasks are lost when the layer closes.
 
 ### Handler input and status
 
-`layerMemory` and `layerWorkflow` provide `McpTasks.TaskContext` to each handler.
-Use `requestInput` to request roots, sampling, or elicitation input and decode the
-client's response. Updates acknowledge receipt without waiting for handler decoding.
-The first received response wins, including when decoding fails. Handle the
-`SchemaError` in the handler or use `Effect.orDie` to treat invalid input as a
-handler defect. Another input round needs a new key. Request keys must be unique
-within the task.
+Both layers provide `McpTasks.TaskContext` to handlers:
 
-Use `setStatusMessage(key, message)` to publish a message through task polling.
-Give each status checkpoint a stable, unique key, such as
-`setStatusMessage("building", "Building report")`. Passing `undefined` as the
-message clears it. Workflow retains responses and status across runner
-reconstruction, including when completed Activities are skipped during replay.
-Memory execution retains them only while its layer is open.
+```ts
+const workspace_report = Effect.fnUntraced(function*({ workspaceId }: { readonly workspaceId: string }) {
+  const task = yield* McpTasks.TaskContext
+  yield* task.setStatusMessage("Waiting for approval")
+  const approval = yield* task.requestInput({
+    key: "approval",
+    request: {
+      method: "elicitation/create",
+      params: { mode: "form", message: `Build ${workspaceId}?`, requestedSchema: { type: "object", properties: {} } }
+    },
+    response: Schema.Struct({ action: Schema.String })
+  }).pipe(Effect.orDie)
+  yield* task.setStatusMessage(undefined)
+  return approval.action === "accept" ? `Report for ${workspaceId}` : "Declined"
+})
+```
 
-Use `McpTasks.workflowRace` when racing input against other work in a Workflow.
-Inputs from losing branches are withdrawn, including when replay uses a recorded
-race outcome. Keep handler code and response decoders replay-safe.
+`requestInput` asks for roots, sampling or elicitation input and decodes the answer. Input keys must be unique for the life of the task, and the first answer for a key wins. Handle decoding failures in the handler; a new attempt needs a new key. `setStatusMessage` publishes a message through polling, and `undefined` clears it.
+
+In a Workflow handler, call `TaskContext` from the handler rather than inside Activities. Inputs from the losing branches of a durable race, such as `DurableDeferred.raceAll`, are withdrawn when the race resolves.
 
 ### External jobs
 
-Applications can implement `Execution` directly. Its methods accept serializable
-requests and have no Workflow requirements:
+Applications can implement `Execution` directly. Its methods take serializable requests and have no Workflow requirements:
 
 ```ts
 const ReportsExecution = Layer.effect(
@@ -1007,40 +933,36 @@ const ReportsExecution = Layer.effect(
 )
 ```
 
-Here `ReportJobs` is an application service, and `toTask` maps its state to an
-`McpTasks.Task`. The application owns durable creation, unguessable task IDs,
-retention, and authorization on every operation. A completed task contains an MCP
-`CallToolResult`. A failed task contains a JSON-RPC error. Tool failures expressed
-as `isError: true` remain completed results.
+`ReportJobs` is an application service and `toTask` maps its state to an `McpTasks.Task`. The application owns durable creation, unguessable task IDs, retention and authorization on every operation. A completed task carries a `CallToolResult`; a failed task carries a JSON-RPC error.
 
-The tested example in `test/ai/McpServer/TestUtils/McpExternalJobs.ts` maps a job
-API to MCP, including an input request and a response through `tasks/update`.
-It runs without a Workflow engine.
+### Client
 
-### Ownership and protocol behavior
+Enable tasks with `extensions.tasks`. `callTool` returns the final result whether the server completes the call immediately or creates a task:
 
-`owner: "shared"` allows every client to access tasks. For isolation, supply an
-Effect resolving a trusted application principal. Client-provided names and
-metadata are not proof of identity. The resolver runs for creation, retrieval,
-updates, and cancellation. Execution implementations must enforce the resolved
-owner. The protocol routes opaque handles to the registered tool and backend,
-without interpreting backend-specific identifiers.
+```ts
+import { Effect, Schema } from "effect"
+import { McpClient, McpProtocol } from "effect/ai"
 
-The July client must declare the Tasks extension on each request. Earlier clients
-do not see task tools. Creation returns a handle only after the backend accepts
-the task and makes it readable. Repeated tool calls are separate creations, with
-no automatic request deduplication.
+const ClientLive = McpClient.layerHttp({
+  name: "report-app",
+  version: "1.0.0",
+  url: "http://localhost:3000/mcp",
+  protocol: McpProtocol.v2026_07_28,
+  extensions: { skills: true, tasks: true },
+  input: {
+    elicitation: (request) => Effect.succeed({ action: "accept", content: {} })
+  }
+})
 
-The full `Task` union supports `working`, `input_required`, `completed`, `failed`,
-and `cancelled`. Input-required tasks expose `inputRequests`. `tasks/update`
-forwards keyed responses to the execution service. Workflow and memory handlers
-can issue these requests through `TaskContext`. Both layers acknowledge receipt
-without waiting for application decoding and ignore responses for unknown,
-answered, or withdrawn input keys. Authorization still applies to every update.
+const report = Effect.gen(function*() {
+  const client = yield* McpClient.McpClient
+  const tool = (yield* client.listTools()).find((tool) => tool.name === "workspace_report")
+  if (tool === undefined) return yield* Effect.die("Missing workspace_report tool")
+  const execution = yield* client.startTool({ tool, arguments: { workspaceId: "demo" }, schema: Schema.String })
+  return yield* execution.awaitResult()
+})
+```
 
-Cancellation acknowledges intent. It does not guarantee termination, and later
-reads report the actual outcome. Each backend supplies `ttlMs`, optional
-`pollIntervalMs`, and optional `statusMessage`. Workflow and memory layers use
-`ttlMs: null`. Workflow history retention still determines handle availability.
-Notifications, automatic inline fallback, and task-specific deadlines remain
-outside this implementation.
+`startTool` returns controls for one execution. `awaitResult` waits for the result; all waiters share one polling worker owned by the client scope. Interrupting a waiter leaves the remote work running. `cancel` asks the server to cancel; `awaitResult` then fails with the `TaskCancelled` reason, or returns the result if completion won. Immediate results have no `taskId`.
+
+`input` handlers answer the server's input requests, for tasks and for ordinary tool calls that return `input_required`. The client advertises only the configured handlers. A handler failure becomes an `InputError` with its cause. Pass `tasks: { pollInterval, requestTimeout }` to set the polling interval used when the server gives none (one second by default) and the timeout of each follow-up request.

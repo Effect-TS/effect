@@ -6,8 +6,11 @@ import * as Arr from "../../Array.ts"
 import * as Cause from "../../Cause.ts"
 import * as Data from "../../Data.ts"
 import * as Effect from "../../Effect.ts"
+import * as Base64Url from "../../encoding/Base64Url.ts"
+import * as Schema from "../../Schema.ts"
 import type * as McpProtocol from "../McpProtocol.ts"
 import * as McpSchema from "../McpSchema.ts"
+import type * as McpTasks from "../McpTasks.ts"
 
 /**
  * @internal
@@ -35,6 +38,18 @@ export const OperationOutcome = {
     ...fields
   })
 }
+
+/**
+ * A tool call that created a task instead of returning a result.
+ *
+ * @internal
+ */
+export class TaskCreated extends Data.TaggedClass("Task")<{ readonly task: McpTasks.Task }> {}
+
+/**
+ * @internal
+ */
+export type ToolOutcome = OperationOutcome<McpSchema.CallToolResult> | TaskCreated
 
 /**
  * @internal
@@ -187,7 +202,7 @@ export interface ToolRegistration {
     // Runs after request-level visibility accepts the tool, and before its handler.
     beforeHandle: Effect.Effect<void, RequestRejected>
   ) => Effect.Effect<
-    OperationOutcome<McpSchema.CallToolResult>,
+    ToolOutcome,
     ToolNotFound | InvalidToolInput | InvalidToolContinuation | ToolExecutionError | RequestRejected,
     never
   >
@@ -197,10 +212,6 @@ export interface ToolRegistration {
  * @internal
  */
 export interface Tools {
-  readonly get: (name: string) => Effect.Effect<ToolRegistration | undefined>
-
-  readonly decorate: (name: string, f: (registration: ToolRegistration) => ToolRegistration) => Effect.Effect<void>
-
   readonly register: (
     registration: ToolRegistration
   ) => Effect.Effect<void>
@@ -209,9 +220,52 @@ export interface Tools {
   ) => Effect.Effect<ReadonlyArray<McpSchema.Tool>, RequestRejected>
   readonly call: (
     call: typeof McpSchema.CallTool.payloadSchema.Type,
-    invocation: McpInvocation,
-    beforeHandle?: ((tool: McpSchema.Tool) => Effect.Effect<void, RequestRejected>) | undefined
-  ) => Effect.Effect<OperationOutcome<McpSchema.CallToolResult>, ToolError>
+    invocation: McpInvocation
+  ) => Effect.Effect<ToolOutcome, ToolError>
+}
+
+/**
+ * Failure to create, read, update, or cancel a task.
+ *
+ * @stability unstable
+ * @category errors
+ * @since 4.1.3
+ */
+export class TaskError extends Data.TaggedError("TaskError")<McpTasks.TaskFailure> {}
+
+/**
+ * Reads and controls the tasks created by one task tool.
+ *
+ * @internal
+ */
+export interface TaskOperations {
+  readonly get: (taskId: string, invocation: McpInvocation) => Effect.Effect<McpTasks.Task, TaskError>
+  readonly update: (
+    taskId: string,
+    inputResponses: Readonly<Record<string, McpSchema.McpInputResponse>>,
+    invocation: McpInvocation
+  ) => Effect.Effect<void, TaskError>
+  readonly cancel: (taskId: string, invocation: McpInvocation) => Effect.Effect<void, TaskError>
+}
+
+/**
+ * Routes task handles to the operations of the tool that created them. Routes
+ * outlive tool replacement, so existing handles keep working.
+ *
+ * @internal
+ */
+export interface Tasks {
+  readonly register: (toolName: string, operations: TaskOperations) => Effect.Effect<void>
+  readonly registered: Effect.Effect<boolean>
+  // Wraps an execution task ID in a handle that routes back to its tool.
+  readonly handle: (toolName: string, taskId: string) => string
+  readonly get: (handle: string, invocation: McpInvocation) => Effect.Effect<McpTasks.Task, TaskError>
+  readonly update: (
+    handle: string,
+    inputResponses: Readonly<Record<string, McpSchema.McpInputResponse>>,
+    invocation: McpInvocation
+  ) => Effect.Effect<void, TaskError>
+  readonly cancel: (handle: string, invocation: McpInvocation) => Effect.Effect<void, TaskError>
 }
 
 /**
@@ -511,6 +565,7 @@ export interface McpCore {
   readonly prompts: Prompts
   readonly completions: Completions
   readonly skills: Skills
+  readonly tasks: Tasks
   readonly registrationPresence: Effect.Effect<{
     readonly tools: boolean
     readonly resources: boolean
@@ -518,6 +573,10 @@ export interface McpCore {
     readonly skills: boolean
   }>
 }
+
+const decodeTaskHandle = Schema.decodeUnknownOption(
+  Schema.StringFromBase64Url.pipe(Schema.decodeTo(Schema.fromJsonString(Schema.Tuple([Schema.String, Schema.String]))))
+)
 
 /**
  * Runs the request-level visibility checks of a registration on a list
@@ -568,18 +627,7 @@ export const make: Effect.Effect<McpCore> = Effect.sync(() => {
       (entries) => entries.map((entry) => entry.descriptor)
     )
 
-  const runTool: Tools["call"] = (call, invocation) =>
-    Effect.suspend((): Effect.Effect<OperationOutcome<McpSchema.CallToolResult>, ToolError> => {
-      const registration = registrations.get(call.name)
-
-      if (registration === undefined || !registration.isVisible(invocation.protocol)) {
-        return new ToolNotFound({ name: call.name })
-      }
-
-      return registration.handle(call, invocation)
-    })
   const tools: Tools = {
-    get: (name) => Effect.sync(() => registrations.get(name)),
     register: (registration) =>
       Effect.sync(() => {
         registrations.set(registration.descriptor.name, registration)
@@ -589,12 +637,16 @@ export const make: Effect.Effect<McpCore> = Effect.sync(() => {
       const registration = registrations.get(name)
       return registration !== undefined && registration.isVisible(profile) ? registration.descriptor : undefined
     },
-    call: runTool,
-    decorate: (name, f) =>
-      Effect.sync(() => {
-        const registration = registrations.get(name)
-
-        if (registration !== undefined) registrations.set(name, f(registration))
+    call: (call, invocation) =>
+      Effect.suspend((): Effect.Effect<ToolOutcome, ToolError> => {
+        const registration = registrations.get(call.name)
+        if (registration === undefined) {
+          return new ToolNotFound({ name: call.name })
+        }
+        if (!registration.isVisible(invocation.protocol)) {
+          return new ToolNotFound({ name: call.name })
+        }
+        return registration.handle(call, invocation)
       })
   }
 
@@ -612,7 +664,6 @@ export const make: Effect.Effect<McpCore> = Effect.sync(() => {
         const index = resourceTemplateRegistrations.findIndex(
           (entry) => entry.descriptor.uriTemplate === registration.descriptor.uriTemplate
         )
-
         if (index === -1) {
           resourceTemplateRegistrations.push(registration)
         } else {
@@ -623,19 +674,15 @@ export const make: Effect.Effect<McpCore> = Effect.sync(() => {
     listTemplates: (invocation) => filterList(resourceTemplateRegistrations, invocation),
     read: Effect.fnUntraced(function*(uri, invocation) {
       const resource = resourceRegistrations.find((entry) => entry.descriptor.uri === uri)
-
       if (resource !== undefined && resource.isVisible(invocation.protocol)) {
         return yield* resource.read(invocation)
       }
-
       for (const template of resourceTemplateRegistrations) {
         const params = template.match(uri)
-
         if (params !== undefined && template.isVisible(invocation.protocol)) {
           return yield* template.read(uri, params, invocation)
         }
       }
-
       return yield* new ResourceNotFound({ uri })
     })
   }
@@ -648,11 +695,9 @@ export const make: Effect.Effect<McpCore> = Effect.sync(() => {
     list: (invocation) => filterList(promptRegistrations.values(), invocation),
     get: Effect.fnUntraced(function*(name, args, invocation) {
       const registration = promptRegistrations.get(name)
-
       if (registration === undefined || !registration.isVisible(invocation.protocol)) {
         return yield* new PromptNotFound({ name })
       }
-
       return yield* registration.get(args, invocation)
     })
   }
@@ -666,16 +711,12 @@ export const make: Effect.Effect<McpCore> = Effect.sync(() => {
       const key = request.reference.type === "prompt"
         ? `prompt/${request.reference.name}/${request.argument.name}`
         : `resource/${request.reference.uriTemplate}/${request.argument.name}`
-
       const complete = completionRegistrations.get(key)
-
       if (complete === undefined) {
         return yield* new McpSchema.InvalidParams({ message: "Unknown completion reference or argument" })
       }
-
       const result = yield* complete(request, invocation)
       const values = Arr.take(result.values, 100)
-
       return {
         ...result,
         values,
@@ -739,6 +780,34 @@ export const make: Effect.Effect<McpCore> = Effect.sync(() => {
     })
   }
 
+  const taskRoutes = new Map<string, TaskOperations>()
+  const route = (handle: string) =>
+    Effect.suspend(() => {
+      const decoded = decodeTaskHandle(handle)
+      const operations = decoded._tag === "Some" ? taskRoutes.get(decoded.value[0]) : undefined
+      return decoded._tag === "Some" && operations !== undefined
+        ? Effect.succeed({ operations, taskId: decoded.value[1] })
+        : Effect.fail(new TaskError({ code: McpSchema.INVALID_PARAMS_ERROR_CODE, message: "Unknown taskId" }))
+    })
+  const tasks: Tasks = {
+    register: (toolName, operations) =>
+      Effect.sync(() => {
+        taskRoutes.set(toolName, operations)
+      }),
+    registered: Effect.sync(() => taskRoutes.size > 0),
+    handle: (toolName, taskId) => Base64Url.encode(JSON.stringify([toolName, taskId])),
+    get: (handle, invocation) =>
+      Effect.flatMap(
+        route(handle),
+        ({ operations, taskId }) =>
+          Effect.map(operations.get(taskId, invocation), (task): McpTasks.Task => ({ ...task, taskId: handle }))
+      ),
+    update: (handle, inputResponses, invocation) =>
+      Effect.flatMap(route(handle), ({ operations, taskId }) => operations.update(taskId, inputResponses, invocation)),
+    cancel: (handle, invocation) =>
+      Effect.flatMap(route(handle), ({ operations, taskId }) => operations.cancel(taskId, invocation))
+  }
+
   const registrationPresence = Effect.sync(() => ({
     tools: registrations.size > 0,
     resources: resourceRegistrations.length > 0 || resourceTemplateRegistrations.length > 0,
@@ -746,5 +815,5 @@ export const make: Effect.Effect<McpCore> = Effect.sync(() => {
     skills: skillRegistrations.size > 0
   }))
 
-  return { tools, resources, prompts, completions, skills, registrationPresence }
+  return { tools, resources, prompts, completions, skills, tasks, registrationPresence }
 })
