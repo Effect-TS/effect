@@ -826,7 +826,8 @@ class FlowParser {
     }
     const text = this.readPlain(isFlowPlainEnd)
     if (this.peek() !== ":") {
-      if (text === "") this.expect(":")
+      // A tag or anchor makes an empty key a node of its own, so only a bare empty entry needs ':'.
+      if (text === "" && anchor === undefined && tag === undefined) this.expect(":")
       // `{a:1}` is the key `a:1` without a value under YAML 1.2.2 §7.3.3, but reads as `{a: 1}` in
       // JSON-like syntax, so it fails rather than giving either.
       if (text.includes(":")) {
