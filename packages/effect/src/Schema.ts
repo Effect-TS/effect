@@ -17076,6 +17076,8 @@ export interface RedactedFromValue<S extends Constraint> extends decodeTo<Redact
  * expects the input to already be a `Redacted` instance, this schema decodes
  * the raw value and wraps it.
  *
+ * **Details**
+ *
  * When the wrapped schema is a string without a `format` annotation, the generated JSON Schema
  * uses `format: "password"`.
  *
