@@ -1154,3 +1154,67 @@ export const testGlob = <E>(layer: Layer.Layer<Fs.FileSystem, E>) => {
       }).pipe(Effect.scoped)
     ))
 }
+
+// Exercise both shared write paths against the file's logical cursor.
+export const testPositionedWrites = (layer: Layer.Layer<Fs.FileSystem>) => {
+  const runPromise = runWith(layer)
+
+  it.each(["write", "writeAll"] as const)("%s honors a backward seek", (method) =>
+    runPromise(
+      Effect.gen(function*() {
+        const fs = yield* Fs.FileSystem
+        const path = yield* fs.makeTempFileScoped()
+        const file = yield* fs.open(path, { flag: "w+" })
+        yield* file.writeAll(new TextEncoder().encode("abcdefghij"))
+        assert.strictEqual(yield* file.seek(BigInt(-7), "current"), BigInt(3))
+
+        yield* file[method](new TextEncoder().encode("XYZ12"))
+
+        assert.strictEqual(yield* fs.readFileString(path), "abcXYZ12ij")
+        assert.strictEqual((yield* file.stat).size, BigInt(10))
+        assert.strictEqual(yield* file.seek(BigInt(0), "current"), BigInt(8))
+        const remaining = new Uint8Array(2)
+        assert.strictEqual(yield* file.read(remaining), 2)
+        assert.deepStrictEqual([...remaining], [105, 106])
+      }).pipe(Effect.scoped)
+    ))
+
+  it.each(["write", "writeAll"] as const)(
+    "%s writes only an offset view at the logical cursor",
+    (method) =>
+      runPromise(
+        Effect.gen(function*() {
+          const fs = yield* Fs.FileSystem
+          const path = yield* fs.makeTempFileScoped()
+          const file = yield* fs.open(path, { flag: "w+" })
+          yield* file.writeAll(new TextEncoder().encode("ABC"))
+          yield* file.seek(BigInt(1), "start")
+          const backing = new Uint8Array([255, 120, 121, 122, 254])
+          yield* file[method](new Uint8Array(backing.buffer, 1, 3))
+
+          assert.deepStrictEqual([...(yield* fs.readFile(path))], [65, 120, 121, 122])
+          assert.strictEqual((yield* file.stat).size, BigInt(4))
+          assert.strictEqual(yield* file.seek(BigInt(0), "current"), BigInt(4))
+        }).pipe(Effect.scoped)
+      )
+  )
+
+  it("append writes preserve the independent read cursor", () =>
+    runPromise(
+      Effect.gen(function*() {
+        const fs = yield* Fs.FileSystem
+        const path = yield* fs.makeTempFileScoped()
+        yield* fs.writeFileString(path, "abcdef")
+        const file = yield* fs.open(path, { flag: "a+" })
+        yield* file.seek(BigInt(1), "start")
+        assert.strictEqual(yield* file.write(new TextEncoder().encode("XY")), 2)
+        yield* file.writeAll(new TextEncoder().encode("Z"))
+        yield* file.writeAll(new Uint8Array(0))
+        assert.strictEqual(yield* fs.readFileString(path), "abcdefXYZ")
+        assert.strictEqual(yield* file.seek(BigInt(0), "current"), BigInt(1))
+        const remaining = new Uint8Array(2)
+        assert.strictEqual(yield* file.read(remaining), 2)
+        assert.deepStrictEqual([...remaining], [98, 99])
+      }).pipe(Effect.scoped)
+    ))
+}
