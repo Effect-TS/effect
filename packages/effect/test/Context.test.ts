@@ -660,34 +660,47 @@ describe("Operation", () => {
       )
       strictEqual(Context.pick(readFile)(context).mapUnsafe.size, 1)
       strictEqual(Context.omit(FS)(context).mapUnsafe.size, 0)
-      // omitting a member drops the record's own slot: the record no longer agrees with its slots
+      // omitting a member leaves the record's own slot, which is never read without its members: the record is absent
       const withoutStat = Context.omit(stat)(context)
-      strictEqual(withoutStat.mapUnsafe.size, 3)
-      assertFalse(withoutStat.mapUnsafe.has("ContextTest/FS"))
+      strictEqual(withoutStat.mapUnsafe.size, 4)
+      assertTrue(withoutStat.mapUnsafe.has("ContextTest/FS"))
       assertTrue(Option.isNone(Context.getOption(withoutStat, FS)))
+      assert.throws(
+        () => Context.get(withoutStat as Context.Context<FS>, FS),
+        /Service not found: ContextTest\/FS\/stat/
+      )
     })
 
-    it("rebuilds a stored record when a member it spans is written, so the slot always agrees", () => {
+    it("overrides a member as an overlay, and reads the record as a copy with the override, once per storage", () => {
       const live = record({ readFile: () => Effect.succeed("live") })
       const fake = () => Effect.succeed("fake")
       const Other = Context.Service<number>("ContextTest/Other")
-      // a member write into a context holding the record is a flat write: the record is rebuilt in place
+      // a member write into a context holding the record is an ordinary overlay; the record's slot keeps the provided object
       const overridden = Context.add(Context.make(FS, live), readFile, fake)
-      strictEqual((overridden as any).overlay, undefined)
-      const rebuilt = overridden.mapUnsafe.get("ContextTest/FS") as Shape
-      assert.notStrictEqual(rebuilt, live)
-      strictEqual(rebuilt.readFile, fake)
-      strictEqual(rebuilt.writeFile, live.writeFile)
-      strictEqual(Context.get(overridden, FS), rebuilt)
-      // unrelated writes are overlays and never touch the record; the same object is read before and after flattening
+      strictEqual((overridden as any).overlay.key, "ContextTest/FS/readFile")
+      strictEqual(overridden.mapUnsafe.get("ContextTest/FS"), live)
+      strictEqual(Context.getOrUndefinedUnsafe(overridden, "ContextTest/FS"), live)
+      // the record read is a copy of the provided object with the override, the same object on every read
+      const view = Context.get(overridden, FS)
+      assert.notStrictEqual(view, live)
+      strictEqual(view.readFile, fake)
+      strictEqual(view.writeFile, live.writeFile)
+      strictEqual(Context.get(overridden, FS), view)
+      // contexts derived by unrelated writes share it; the original context still reads the provided object
       let context = overridden
+      strictEqual(Context.get(Context.add(context, Other, 0), FS), view)
+      strictEqual(Context.get(Context.make(FS, live), FS), live)
+      // a context rebased into a new flat map by deep additions reads the same members from it
       for (let i = 0; i < 12; i++) context = Context.add(context, Other, i)
-      strictEqual(Context.get(context, FS), rebuilt)
-      strictEqual(context.mapUnsafe.get("ContextTest/FS"), rebuilt)
-      // merge: a member on the right rebuilds the record on the left; a record on the right replaces a member
+      assertTrue(context.mapUnsafe.get("ContextTest/FS/readFile") === fake)
+      const flat = Context.get(context, FS)
+      strictEqual(flat.readFile, fake)
+      strictEqual(flat.writeFile, live.writeFile)
+      strictEqual(Context.get(context, FS), flat)
+      // merge: a member on the right overrides the record on the left; a record on the right wins over a member
       const merged = Context.merge(Context.make(FS, live), Context.make(readFile, fake))
-      strictEqual((merged.mapUnsafe.get("ContextTest/FS") as Shape).readFile, fake)
       strictEqual(Context.get(merged, FS).readFile, fake)
+      strictEqual(Context.get(merged, FS).writeFile, live.writeFile)
       const reversed = Context.merge(Context.make(readFile, fake), Context.make(FS, live))
       strictEqual(Context.get(reversed, FS), live)
       strictEqual(Context.get(reversed, readFile), live.readFile)
@@ -697,6 +710,47 @@ describe("Operation", () => {
       )
       // every value in a flat map is a service: there are no markers
       for (const value of context.mapUnsafe.values()) assertFalse(typeof value === "symbol")
+    })
+
+    it("keeps a record provided as a class instance working after one member is overridden", async () => {
+      class Impl {
+        readonly prefix = "instance:"
+        readFile(path: string) {
+          return Effect.succeed(this.prefix + path)
+        }
+        writeFile(_path: string, _data: string) {
+          return Effect.void
+        }
+        stat(path: string) {
+          return Effect.map(this.readFile(path), (contents) => contents.length)
+        }
+        lines(_path: string) {
+          return Stream.empty
+        }
+      }
+      const instance = new Impl()
+      const program = Effect.gen(function*() {
+        const fs = yield* FS
+        return [yield* fs.readFile("x"), yield* fs.stat("x"), fs] as const
+      })
+      const [read, size, fs] = await Effect.runPromise(
+        program.pipe(Effect.provideService(writeFile, () => Effect.void), Effect.provide(Layer.succeed(FS, instance)))
+      )
+      // the view is a copy with the instance's prototype and own properties, so `this` keeps working
+      strictEqual(read, "instance:x")
+      strictEqual(size, 10)
+      assertTrue(fs instanceof Impl)
+      assert.notStrictEqual(fs, instance)
+      strictEqual(fs.prefix, "instance:")
+      // with nothing overridden, the record read is the instance itself
+      strictEqual(await Effect.runPromise(FS.pipe(Effect.provide(Layer.succeed(FS, instance)))), instance)
+      // an operation forwards the call's receiver, so a method that reads `this` is called through the record, or bound
+      strictEqual(
+        await Effect.runPromise(
+          Effect.flatMap(FS, (fs) => fs.readFile("y")).pipe(Effect.provide(Layer.succeed(FS, instance)))
+        ),
+        "instance:y"
+      )
     })
 
     it("accepts services, references and records as members", async () => {
@@ -786,7 +840,6 @@ describe("Operation", () => {
       strictEqual(subsets.length, 50)
       const context = Context.add(Context.make(FS, live), readFile, fake)
       strictEqual(context.mapUnsafe.size, 5)
-      strictEqual((context as any).records.byKey.size, 1)
       strictEqual(Context.get(context, FS).readFile, fake)
       // and a context holding one record is unaffected by writes into a context holding another
       const other = Context.add(Context.make(ReadOnly, { readFile: fake, stat: live.stat }), readFile, live.readFile)
@@ -856,19 +909,22 @@ describe("Operation", () => {
       const context = Context.add(Context.make(FS, live()), Plain, fake)
       strictEqual(Context.get(context, FS).readFile, fake)
       strictEqual(Context.get(context, readFile), fake)
-      strictEqual((context.mapUnsafe.get("ContextTest/FS") as Shape).readFile, fake)
-      // a key that is not a record service carries no member list, so it writes one slot; the record key reads it
+      // a key that is not a record service carries no member list: it writes one slot, which it reads back and which
+      // the record key does not read without the members
       const PlainRecord = Context.Service<FS, Shape>("ContextTest/FS")
       const value = live()
       const one = Context.make(PlainRecord, value)
       strictEqual(one.mapUnsafe.size, 1)
       strictEqual(Context.get(one, PlainRecord), value)
-      strictEqual(Context.get(one, FS), value)
+      assertTrue(Option.isNone(Context.getOption(one, FS)))
+      assert.throws(() => Context.get(one, FS), /Service not found: ContextTest\/FS\/readFile/)
       assertTrue(Option.isNone(Context.getOption(one, readFile)))
-      // written over a stored record, it replaces the record's slot, which is then a plain slot
-      const replaced = Context.add(Context.make(FS, live()), PlainRecord, value)
-      strictEqual(Context.get(replaced, FS), value)
-      strictEqual((replaced as any).records, undefined)
+      // written over a stored record, it replaces the record's slot; the members' slots are what the record key reads
+      const stored = live()
+      const replaced = Context.add(Context.make(FS, stored), PlainRecord, value)
+      strictEqual(Context.get(replaced, PlainRecord), value)
+      strictEqual(Context.get(replaced, FS).readFile, stored.readFile)
+      strictEqual(Context.get(replaced, FS).writeFile, stored.writeFile)
     })
 
     it("treats a record constructed again under its string as the same record", () => {
@@ -878,27 +934,30 @@ describe("Operation", () => {
       const context = Context.make(FS, value)
       strictEqual(Context.get(context, Again), value)
       strictEqual(Context.get(Context.make(Again, value), FS), value)
-      // a member write rebuilds the record held by the context once, whichever object wrote or reads it
+      // a member override is seen through either object; each remembers a copy of its own
       const write = () => Effect.void
       const shadowed = Context.add(context, writeFile, write)
       strictEqual(shadowed.mapUnsafe.size, 5)
       strictEqual(Context.get(shadowed, Again).writeFile, write)
-      strictEqual(Context.get(shadowed, FS), Context.get(shadowed, Again))
+      deepStrictEqual(Context.get(shadowed, FS), Context.get(shadowed, Again))
       strictEqual(Context.get(Context.add(Context.make(Again, value), readFile, fake), FS).readFile, fake)
     })
 
     it("treats a write by string as a write of that one slot", () => {
       const value = live()
-      // a record's string written by `addUnsafe` has no member list: one slot, which the record key reads
+      // a record's string written by `addUnsafe` is one slot, which the record key does not read without the members
       const one = Context.addUnsafe(Context.empty(), "ContextTest/FS", value)
       strictEqual(one.mapUnsafe.size, 1)
-      strictEqual(Context.get(one as Context.Context<FS>, FS), value)
+      strictEqual(Context.getOrUndefinedUnsafe(one, "ContextTest/FS"), value)
+      assertTrue(Option.isNone(Context.getOption(one, FS)))
       assertTrue(Option.isNone(Context.getOption(one, readFile)))
-      // a member's string written by `addUnsafe` rebuilds the records spanning it, as `add` does
+      // a member's string written by `addUnsafe` is that member, in the member read and in the record read
       const shadowed = Context.addUnsafe(Context.make(FS, value), "ContextTest/FS/readFile", fake)
-      strictEqual(Context.getOrUndefinedUnsafe<Shape>(shadowed, "ContextTest/FS")!.readFile, fake)
+      strictEqual(Context.get(shadowed, readFile), fake)
       strictEqual(Context.get(shadowed, FS).readFile, fake)
-      // a read by string is the slot: a record never written has none
+      // a read by string is the slot: the provided object for a record provided whole, overridden members or not,
+      // and nothing for a record never written
+      strictEqual(Context.getOrUndefinedUnsafe(shadowed, "ContextTest/FS"), value)
       strictEqual(Context.getOrUndefinedUnsafe(Context.make(FS, value), "ContextTest/FS"), value)
       strictEqual(Context.getOrUndefinedUnsafe(Context.make(readFile, fake), "ContextTest/FS/ReadOnly"), undefined)
     })

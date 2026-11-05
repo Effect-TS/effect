@@ -81,6 +81,8 @@ const twenty = [
 type Contract = "unannotated" | "annotated" | "published"
 type Bundler = "esbuild" | "rolldown"
 type EffectMode = "published" | "source"
+/** Which `Context.ts` the bundle gets: this branch's, or the branch point's, for the no-record comparison. */
+type ContextMode = "branch" | "baseline"
 // none: 0 bytes. wrapper: the `Stream.Operation` constructor and the `unwrap` it closes over, kept because a
 // retained key references them; under 2 kB. used: whatever the program's own Stream code needs beyond that.
 type StreamBand = "none" | "wrapper" | "used"
@@ -99,6 +101,7 @@ interface Root {
   readonly contract?: Contract
   readonly bundler?: Bundler
   readonly effect?: EffectMode
+  readonly context?: ContextMode
 }
 
 const roots: ReadonlyArray<Root> = [
@@ -125,6 +128,16 @@ const roots: ReadonlyArray<Root> = [
     uses: [],
     terminal: ["columns", "display"],
     stream: "none"
+  },
+  // A program with no record and no operation, with this branch's `Context.ts` and with the branch point's: the
+  // difference is what the record-service code costs a bundle that never uses it.
+  { entry: "main-plain.ts", label: "no record, no operation", uses: [], stream: "none" },
+  {
+    entry: "main-plain.ts",
+    label: "no record, no operation, branch point Context.ts",
+    uses: [],
+    stream: "none",
+    context: "baseline"
   },
   // The annotation matrix: the two-operation root (above, with the contract as written) with the contract
   // annotated, and published.
@@ -203,14 +216,25 @@ const annotatePureCalls = async (code: string): Promise<string> => {
   return result!.code!
 }
 
+// The branch point's `Context.ts`, from git, for the no-record comparison.
+const base = spawnSync("git", ["merge-base", "HEAD", "origin/v4/next-minor"], { cwd: repo, encoding: "utf8" })
+  .stdout.trim()
+const baselineContext = spawnSync("git", ["show", `${base}:packages/effect/src/Context.ts`], {
+  cwd: repo,
+  encoding: "utf8"
+}).stdout
+const contextFile = path.join(effectSource, "Context.ts")
+
 // `effect` as published: TypeScript stripped, then every top-level call annotated, as the package build does.
 const published = new Map<string, Promise<string>>()
-const publish = (file: string): Promise<string> => {
-  let result = published.get(file)
+const publish = (file: string, context: ContextMode = "branch"): Promise<string> => {
+  const id = `${context}:${file}`
+  let result = published.get(id)
   if (result === undefined) {
-    result = esbuild.transform(fs.readFileSync(file, "utf8"), { loader: "ts", format: "esm", target: "es2022" })
+    const code = context === "baseline" && file === contextFile ? baselineContext : fs.readFileSync(file, "utf8")
+    result = esbuild.transform(code, { loader: "ts", format: "esm", target: "es2022" })
       .then((js) => annotatePureCalls(js.code))
-    published.set(file, result)
+    published.set(id, result)
   }
   return result
 }
@@ -236,7 +260,7 @@ const outfileFor = (entry: Root) =>
     outdir,
     `${entry.entry.slice(0, -3)}${entry.contract ? `-${entry.contract}` : ""}${
       entry.effect === "source" ? "-source" : ""
-    }${entry.bundler === "rolldown" ? "-rolldown" : ""}.js`
+    }${entry.bundler === "rolldown" ? "-rolldown" : ""}${entry.context === "baseline" ? "-baseline" : ""}.js`
   )
 
 const buildEsbuild = async (entry: Root): Promise<Bundle> => {
@@ -258,7 +282,7 @@ const buildEsbuild = async (entry: Root): Promise<Bundle> => {
         if (entry.effect !== "source") {
           build.onLoad({ filter: /packages[\\/]effect[\\/]src[\\/].*\.ts$/ }, async (args) =>
             isEffectSource(args.path)
-              ? { contents: await publish(args.path), loader: "js", resolveDir: path.dirname(args.path) }
+              ? { contents: await publish(args.path, entry.context), loader: "js", resolveDir: path.dirname(args.path) }
               : undefined)
         }
         if (contract !== "unannotated") {
@@ -408,6 +432,20 @@ for (const bundle of bundles) {
   )
 }
 
+console.log("\nWhat Context.ts costs a bundle with no record and no operation\n")
+{
+  const plain = bundles.find((bundle) => bundle.root.entry === "main-plain.ts" && bundle.root.context !== "baseline")!
+  const baseline = bundles.find((bundle) =>
+    bundle.root.entry === "main-plain.ts" && bundle.root.context === "baseline"
+  )!
+  const delta = plain.bytes - baseline.bytes
+  const ok = delta <= 512
+  if (!ok) failures++
+  console.log(`  ${pad("this branch", 20)} ${kb(plain.bytes).padStart(9)}`)
+  console.log(`  ${pad("branch point", 20)} ${kb(baseline.bytes).padStart(9)}`)
+  console.log(`  ${pad("difference", 20)} ${`${delta} B`.padStart(9)}  limit 512 B${ok ? "" : "   <-- unexpected"}`)
+}
+
 console.log("\nContract constants the bundler kept in the two-operation bundle\n")
 for (const bundle of bundles.filter((bundle) => bundle.root.entry === "main.ts")) {
   const keys = operations.filter((operation) => bundle.text.includes(`effect/FileSystem/${operation}"`))
@@ -433,11 +471,12 @@ const runs = [
   },
   { entry: "main-stream.ts", expect: (out: string) => out.includes("has 6 bytes") },
   { entry: "main-readonly.ts", expect: (out: string) => out.includes("is 6 bytes") },
-  { entry: "main-terminal.ts", expect: (out: string) => out.includes("displayed at") }
+  { entry: "main-terminal.ts", expect: (out: string) => out.includes("displayed at") },
+  { entry: "main-plain.ts", expect: (out: string) => out.includes("hello, ") }
 ]
 let ran = true
 for (const { entry, expect } of runs) {
-  const bundle = bundles.find((bundle) => bundle.root.entry === entry && !bundle.root.contract)!
+  const bundle = bundles.find((bundle) => bundle.root.entry === entry && !bundle.root.contract && !bundle.root.context)!
   const run = spawnSync(process.execPath, [bundle.output, file], { encoding: "utf8" })
   const ok = run.status === 0 && expect(run.stdout)
   ran &&= ok
