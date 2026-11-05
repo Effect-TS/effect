@@ -163,7 +163,10 @@ describe("Operation", () => {
       expect<FS>().type.toBe<
         "TypeTest/FS/readFile" | "TypeTest/FS/writeFile" | "TypeTest/FS/scoped" | "TypeTest/FS/stream"
       >()
-      expect(FS).type.toBe<Context.Operations<FS, Shape>>()
+      expect(FS).type.toBe<Context.Operations<FS, Shape> & typeof members>()
+      // the members are properties of the key
+      expect(FS.readFile).type.toBe<typeof readFile>()
+      expect(FS.readFile("a")).type.toBe<Effect.Effect<Uint8Array, Error, "TypeTest/FS/readFile">>()
       expect(FS).type.toBeAssignableTo<Context.Key<FS, Shape>>()
       expect<Context.Service.Identifier<typeof FS>>().type.toBe<FS>()
       expect<Context.Service.Shape<typeof FS>>().type.toBe<Shape>()
@@ -173,7 +176,9 @@ describe("Operation", () => {
       expect<Context.Service.Identifier<typeof Inferred>>().type.toBe<
         "TypeTest/FS/readFile" | "TypeTest/FS/writeFile"
       >()
-      expect(ReadOnly).type.toBe<Context.Operations<ReadOnly, Context.Operations.Shape<typeof readOnlyMembers>>>()
+      expect(ReadOnly).type.toBe<
+        Context.Operations<ReadOnly, Context.Operations.Shape<typeof readOnlyMembers>> & typeof readOnlyMembers
+      >()
     })
 
     it("is satisfied by the merge of every member layer and satisfies each member", () => {
@@ -205,6 +210,21 @@ describe("Operation", () => {
         >()
       ).type.not.toBeCallableWith("TypeTest/WrongShape", { readFile, writeFile })
       expect(Context.Operations()).type.not.toBeCallableWith("TypeTest/Unknown", members)
+      // a member whose name is a property of every key is rejected on the key argument, in both forms
+      const use = Context.Operation<() => Effect.Effect<void>>()("TypeTest/Bad/use")
+      expect(Context.Operations).type.not.toBeCallableWith("TypeTest/Bad", { use })
+      expect(Context.Operations<"TypeTest/Bad/use">()).type.not.toBeCallableWith("TypeTest/Bad", { use })
+      expect<Context.Operations.Key<{ use: typeof use }>>().type.toBe<
+        "Member \"use\" has the name of a property of the key: rename it"
+      >()
+      expect<Context.Operations.KeyFor<FS, { readonly readFile: Shape["readFile"] }, typeof members>>().type.toBe<
+        "Shape is not the members' shape: declare it as interface Shape extends Context.Operations.Shape<typeof members> {}"
+      >()
+      expect<Context.Operations.KeyFor<"TypeTest/FS/readFile", Shape, typeof members>>().type.toBe<
+        | `Self lacks the identifier of "TypeTest/FS/writeFile"`
+        | `Self lacks the identifier of "TypeTest/FS/scoped"`
+        | `Self lacks the identifier of "TypeTest/FS/stream"`
+      >()
       // a declared identifier wider than the union is accepted
       interface Legacy {
         readonly _: unique symbol
@@ -215,14 +235,14 @@ describe("Operation", () => {
       )
       const legacyLayer = null as unknown as Layer.Layer<Legacy | ReadOnly>
       expect(Legacy).type.toBe<
-        Context.Operations<Legacy | ReadOnly, Context.Operations.Shape<typeof readOnlyMembers>>
+        Context.Operations<Legacy | ReadOnly, Context.Operations.Shape<typeof readOnlyMembers>> & typeof readOnlyMembers
       >()
       expect(readFile("a").pipe(Effect.provide(legacyLayer))).type.toBe<Effect.Effect<Uint8Array, Error>>()
       expect(readFileLayer).type.not.toBeAssignableTo<Layer.Layer<Legacy | ReadOnly>>()
     })
 
     it("takes a Pick of the shape as a subset record's shape, keeping the alias in the type", () => {
-      expect(ReadOnlyNamed).type.toBe<Context.Operations<ReadOnly, ReadOnlyShape>>()
+      expect(ReadOnlyNamed).type.toBe<Context.Operations<ReadOnly, ReadOnlyShape> & typeof readOnlyMembers>()
       expect(ReadOnlyNamed).type.toBeAssignableTo<Effect.Effect<ReadOnlyShape, never, ReadOnly>>()
       expect(Layer.succeed(ReadOnlyNamed, { readFile: (_: string) => Effect.succeed(new Uint8Array()) })).type.toBe<
         Layer.Layer<ReadOnly>

@@ -301,15 +301,11 @@ export const Service: {
   return arguments.length > 0 ? init(arguments[0], arguments[1]) : init
 } as any
 
-// The read every getter starts with: one `lookup` of the key's slot, as at
-// the branch point, or, for a record service, the read its key defines (see
-// "Record services" at the end of this module). `orThrow` only matters to a
-// record whose member is missing: it names the member in the error.
-const read = (self: Context<never>, key: Slot<any, any>, orThrow: boolean): unknown =>
-  isRecordKey(key) ? key.read(self, orThrow) : lookup(self, key.key)
-
 // A record service is the one kind of key that is a plain object with the
-// `Operations` brand; every function key answers in the `typeof`.
+// `Operations` brand: every function key answers in the `typeof`, and no
+// getter loads a property of a key before `lookup`, as at the branch point.
+// Each getter tests this inline, so that the loads of `key.key` stay one per
+// getter, as they are at the branch point, rather than one site shared by all.
 const isRecordKey = (key: Slot<any, any>): key is RecordImpl =>
   typeof key === "object" && (key as any)[OperationsTypeId] !== undefined
 
@@ -532,11 +528,8 @@ interface ContextImpl<in Services> extends Context<Services> {
   maxDepth: number
 }
 
-// One slot, as at the branch point, or, written by a record service, the
-// record key with the values of every slot it writes by position (see "Record
-// services" at the end of this module). The shape is the same either way.
 interface Overlay {
-  readonly key: string | RecordImpl
+  readonly key: string
   readonly value: unknown
   readonly parent: Overlay | undefined
 }
@@ -566,8 +559,7 @@ const makeImpl = <Services>(
 const applyOverlays = (map: Map<string, any>, overlay: Overlay | undefined): void => {
   if (!overlay) return
   applyOverlays(map, overlay.parent)
-  if (typeof overlay.key === "string") map.set(overlay.key, overlay.value)
-  else overlay.key.spill(map, overlay.value as ReadonlyArray<unknown>)
+  map.set(overlay.key, overlay.value)
 }
 
 const flatten = (self: ContextImpl<any>): ReadonlyMap<string, any> => {
@@ -588,16 +580,10 @@ const withFlat = <B>(self: Context<any>, f: (map: Map<string, any>) => void): Co
 // A private symbol so user code cannot forge a value that reads as absent
 const notFound = Symbol()
 
-const lookup = (self: Context<never>, key: string): unknown => {
+const lookup = (self: Context<any>, key: string): unknown => {
   const impl = self as ContextImpl<any>
   for (let overlay = impl.overlay; overlay; overlay = overlay.parent) {
-    const slot = overlay.key
-    if (slot === key) return overlay.value
-    // a record overlay: the key is the record, and the slot is found by position
-    if (typeof slot !== "string") {
-      const i = slot.index.get(key)
-      if (i !== undefined) return (overlay.value as ReadonlyArray<unknown>)[i]
-    }
+    if (overlay.key === key) return overlay.value
   }
   const value = impl.base.get(key)
   // Misses must not advance the counter: reference-default lookups miss the
@@ -817,7 +803,7 @@ const emptyContext = makeUnsafe(new Map())
 export const make = <I, S>(
   key: Slot<I, S>,
   service: Types.NoInfer<S>
-): Context<I> => isRecordKey(key) ? key.write(emptyContext, service) : makeUnsafe(new Map([[key.key, service]]))
+): Context<I> => isRecordKey(key) ? key["~write"](emptyContext, service) : makeUnsafe(new Map([[key.key, service]]))
 
 /**
  * Adds a service to a given `Context`.
@@ -870,7 +856,7 @@ export const add: {
   self: Context<Services>,
   key: Slot<I, S>,
   service: Types.NoInfer<S>
-): Context<Services | I> => isRecordKey(key) ? key.write(self, service) : addUnsafe(self, key.key, service))
+): Context<Services | I> => isRecordKey(key) ? key["~write"](self, service) : addUnsafe(self, key.key, service))
 
 /**
  * Adds a service by key to a given `Context` using a string key.
@@ -1010,7 +996,7 @@ export const getOrElse: {
   <S, I, B>(key: Slot<I, S>, orElse: LazyArg<B>): <Services>(self: Context<Services>) => S | B
   <Services, S, I, B>(self: Context<Services>, key: Slot<I, S>, orElse: LazyArg<B>): S | B
 } = dual(3, <Services, S, I, B>(self: Context<Services>, key: Slot<I, S>, orElse: LazyArg<B>): S | B => {
-  const value = read(self, key, false)
+  const value = isRecordKey(key) ? key["~read"](self, false) : lookup(self, key.key)
   if (value !== notFound) return value as any
   return isReference(key) ? getDefaultValue(key) : orElse()
 })
@@ -1041,7 +1027,7 @@ export const getOrUndefined: {
 } = dual(
   2,
   <Services, S, I>(self: Context<Services>, key: Slot<I, S>): S | undefined => {
-    const value = read(self, key, false)
+    const value = isRecordKey(key) ? key["~read"](self, false) : lookup(self, key.key)
     return value === notFound ? undefined : value as S
   }
 )
@@ -1094,7 +1080,7 @@ export const getUnsafe: {
 } = dual(
   2,
   <Services, I extends Services, S>(self: Context<Services>, service: Slot<I, S>): S => {
-    const value = read(self, service, true)
+    const value = isRecordKey(service) ? service["~read"](self, true) : lookup(self, service.key)
     if (value === notFound) {
       if (isReference(service)) return getDefaultValue(service as any)
       throw serviceNotFoundError(service)
@@ -1199,7 +1185,7 @@ export const getOption: {
   <S, I>(service: Slot<I, S>): <Services>(self: Context<Services>) => Option.Option<S>
   <Services, S, I>(self: Context<Services>, service: Slot<I, S>): Option.Option<S>
 } = dual(2, <Services, I extends Services, S>(self: Context<Services>, service: Slot<I, S>): Option.Option<S> => {
-  const value = read(self, service, false)
+  const value = isRecordKey(service) ? service["~read"](self, false) : lookup(self, service.key)
   if (value !== notFound) return Option.some(value as any)
   return isReference(service) ? Option.some(getDefaultValue(service as any)) : Option.none()
 })
@@ -1346,7 +1332,7 @@ export const pick = <S extends ReadonlyArray<Slot<any, any>>>(
     return makeImpl(undefined, map, undefined, 0, (self as ContextImpl<any>).maxDepth)
   }
   // a record service keeps every slot it writes
-  const keep = new Set(services.flatMap((key) => isRecordKey(key) ? key.slotList : [key.key]))
+  const keep = new Set(services.flatMap((key) => isRecordKey(key) ? key["~slotList"] : [key.key]))
   return withFlat(self, (map) =>
     map.forEach((_, key) => {
       if (!keep.has(key)) map.delete(key)
@@ -1392,7 +1378,7 @@ export const omit = <S extends ReadonlyArray<Slot<any, any>>>(
   withFlat(self, (map) => {
     for (const key of keys) {
       // a record service deletes every slot it writes
-      for (const slot of isRecordKey(key) ? key.slotList : [key.key]) map.delete(slot)
+      for (const slot of isRecordKey(key) ? key["~slotList"] : [key.key]) map.delete(slot)
     }
   })
 
@@ -1878,19 +1864,20 @@ export type OperationsTypeId = "~effect/Context/Operations"
 export const OperationsTypeId: OperationsTypeId = "~effect/Context/Operations"
 
 /**
- * A record service: a `Context.Service` whose members are keys, stored one
- * slot each beside the record itself.
+ * A record service: a `Context.Service` whose members are keys, and which is
+ * nothing but its members.
  *
  * **Details**
  *
  * An `Operations` key's shape is the record of its members' shapes and its
  * identifier is the union of its members' identifiers. Providing it writes
- * each member under that member's key and the record under its own; reading it
- * returns the provided record while every member's slot still holds the member
- * it came with, and otherwise an object inheriting from it that carries the
- * overriding members as its own properties. A member that is a method on the
- * provided object's prototype is stored bound to the object, so it runs with
- * the object as `this` standalone as well as through the record.
+ * each member under that member's key and nothing else; reading it returns a
+ * plain object with every member as its own property, read from the members'
+ * slots, so an override of one member provided on top is in it. A method found
+ * on the provided object's prototype is stored bound to the object, so it runs
+ * with the object as `this` standalone and through the record alike. The
+ * members are also properties of the key, so `Users.find(id)` calls the
+ * operation `find` of `Users = Context.Operations("app/Users", { find, … })`.
  * Every `Context`, `Layer` and `Effect` API that takes a key accepts it.
  *
  * @see {@link Operations} for creating one
@@ -1936,7 +1923,9 @@ export declare namespace Operations {
   export type Identifier<Ops extends Members> = { [K in keyof Ops]: Service.Identifier<Ops[K]> }[keyof Ops]
 
   /**
-   * The shape of a record service: the record of its members' shapes.
+   * The shape of a record service: the record of its members' shapes. A
+   * contract names it with an interface so diagnostics print the name:
+   * `interface Shape extends Context.Operations.Shape<typeof members> {}`.
    *
    * @category utility types
    * @since 4.0.0
@@ -1944,35 +1933,39 @@ export declare namespace Operations {
   export type Shape<Ops extends Members> = { readonly [K in keyof Ops]: Service.Shape<Ops[K]> }
 
   /**
-   * The names at which two record shapes differ.
+   * The member names that are also properties of every key (`use`, `key`,
+   * `members`, …), which a record cannot expose as properties of its own.
    *
    * @category utility types
    * @since 4.0.0
    */
-  export type ShapeDifference<A, B> = {
-    [K in keyof A | keyof B]: K extends keyof A ?
-      K extends keyof B ? [A[K]] extends [B[K]] ? [B[K]] extends [A[K]] ? never
-          : K
-        : K
-      : K
-      : K
-  }[keyof A | keyof B]
+  export type Reserved<Ops extends Members> = keyof Ops & keyof Operations<any, any>
+
+  /**
+   * The key parameter of `Context.Operations(key, members)`: `string`, or a
+   * message naming a member whose name is a property of every key.
+   *
+   * @category utility types
+   * @since 4.0.0
+   */
+  export type Key<Ops extends Members> = [Reserved<Ops>] extends [never] ? string
+    : `Member "${Reserved<Ops> & string}" has the name of a property of the key: rename it`
 
   /**
    * The key parameter of `Context.Operations<Self, Shape>()`: `string` when
-   * `Self` contains every member's identifier and `Shape`, if given, is
-   * exactly the members' shape; otherwise a message naming the difference, so
-   * the error lands on the key argument and reads as a sentence.
+   * `Self` contains every member's identifier and `Shape`, if given, is the
+   * members' shape; otherwise a message naming the difference, so the error
+   * lands on the key argument and reads as a sentence.
    *
    * @category utility types
    * @since 4.0.0
    */
   export type KeyFor<Self, S, Ops extends Members> = unknown extends Self ?
     "Give the record its identifier: Context.Operations<Self, Shape>()(key, members)"
-    : [Identifier<Ops>] extends [Self] ? [S] extends [Types.unassigned] ? string
-      : [S] extends [Shape<Ops>] ? [Shape<Ops>] extends [S] ? string
-        : `Shape differs from the members' shape at "${ShapeDifference<S, Shape<Ops>> & string}"`
-      : `Shape differs from the members' shape at "${ShapeDifference<S, Shape<Ops>> & string}"`
+    : [Identifier<Ops>] extends [Self] ? [S] extends [Types.unassigned] ? Key<Ops>
+      : [S] extends [Shape<Ops>] ? [Shape<Ops>] extends [S] ? Key<Ops>
+        : "Shape is not the members' shape: declare it as interface Shape extends Context.Operations.Shape<typeof members> {}"
+      : "Shape is not the members' shape: declare it as interface Shape extends Context.Operations.Shape<typeof members> {}"
     : `Self lacks the identifier of "${Exclude<Identifier<Ops>, Self> & string}"`
 
   /**
@@ -1987,7 +1980,7 @@ export declare namespace Operations {
 
 /**
  * Creates a record service: a key whose members are keys, stored one slot per
- * member beside the record itself.
+ * member and nothing else.
  *
  * **When to use**
  *
@@ -1999,26 +1992,25 @@ export declare namespace Operations {
  * **Details**
  *
  * `Context.Operations(key, members)` infers the identifier (the union of the
- * members' identifiers) and the shape (the record of their shapes). A library
- * gives them names that diagnostics print, with the curried form, as
- * `Context.Service<Self, Shape>()` does: the operations in a module of their
- * own, imported as a namespace for the member list (`import * as members from
- * "./operations.ts"`), `type Self = Context.Operations.Identifier<typeof
- * members>`, the interface the operations take their shapes from as `Shape`,
- * and `const Self = Context.Operations<Self, Shape>()(key, members)`. A record
- * over some of the members takes `Pick<Shape, "a" | "b">` as its shape. The
- * `Shape` argument is optional. A declared identifier may be wider than the
- * members' union, which is how a record service keeps an existing identity
- * while its members become keys; a declared identifier that lacks a member, or
- * a shape that differs from the members', is a compile error on the key
- * argument that names the difference.
+ * members' identifiers) and the shape (the record of their shapes), and the
+ * members are properties of the key. A library names both, with the curried
+ * form, as `Context.Service<Self, Shape>()` does: `type Self =
+ * Context.Operations.Identifier<typeof members>`, `interface Shape extends
+ * Context.Operations.Shape<typeof members> {}`, and `const Self =
+ * Context.Operations<Self, Shape>()(key, members)`; diagnostics then print
+ * `Self` and `Shape` instead of the members. The `Shape` argument is optional.
+ * A declared identifier may be wider than the members' union; one that lacks a
+ * member, a shape that is not the members' shape, or a member whose name is a
+ * property of every key, is a compile error on the key argument that names it.
  *
- * At run time, a record added to a context is one overlay holding the provided
- * object and its members, whatever the context's size; reading it returns the
- * provided object, or, once a member has been provided on top, an object
- * inheriting from it with the overriding members as its own properties, built
- * on each read, so `Object.keys` and a spread of that object list the
- * overriding members only.
+ * At run time a record is its members: providing it writes each member's slot
+ * and no slot of its own, so `Layer.succeed(Record, impl)` and the merge of one
+ * layer per member are the same context. Reading it returns a plain object
+ * with every member as its own property, read from the slots, assembled once
+ * per context storage and remembered; it is not the provided object, so
+ * `instanceof` and identity do not survive a record read, and a method of a
+ * provided class instance is stored bound to the instance. A member missing
+ * from the provided object is a defect naming the member's key.
  *
  * **Example** (A record service from two operations)
  *
@@ -2037,15 +2029,17 @@ export declare namespace Operations {
  *   writeFile: () => Effect.void
  * })
  *
- * // A member can be called on its own, or the record can be yielded
+ * // A member can be called on its own or through the key, or the record can be yielded
  * const program = Effect.gen(function*() {
  *   const direct = yield* readFile("a.txt")
+ *   const viaKey = yield* FileSystem.readFile("b.txt")
  *   const fs = yield* FileSystem
- *   const viaRecord = yield* fs.readFile("b.txt")
- *   return [direct, viaRecord]
+ *   const viaRecord = yield* fs.readFile("c.txt")
+ *   return [direct, viaKey, viaRecord]
  * })
  *
- * Effect.runSync(Effect.provide(program, live)) // => ["contents of a.txt", "contents of b.txt"]
+ * Effect.runSync(Effect.provide(program, live))
+ * // => ["contents of a.txt", "contents of b.txt", "contents of c.txt"]
  * ```
  *
  * @see {@link Operation} for defining a member
@@ -2056,13 +2050,13 @@ export declare namespace Operations {
  */
 export const Operations: {
   <const Ops extends Operations.Members>(
-    key: string,
+    key: Operations.Key<Ops>,
     members: Ops
-  ): Operations<Operations.Identifier<Ops>, Operations.Shape<Ops>>
+  ): Operations<Operations.Identifier<Ops>, Operations.Shape<Ops>> & Ops
   <Self, Shape = Types.unassigned>(): <const Ops extends Operations.Members>(
     key: Operations.KeyFor<Self, Shape, Ops>,
     members: Ops
-  ) => Operations<Self, Operations.ShapeOf<Shape, Ops>>
+  ) => Operations<Self, Operations.ShapeOf<Shape, Ops>> & Ops
 } = function() {
   return arguments.length === 0
     ? (key: string, members: Operations.Members) => makeOperations(key, members)
@@ -2073,81 +2067,75 @@ export const Operations: {
 // Record services
 // -----------------------------------------------------------------------------
 //
-// A record service writes its members' slots and one more, its own, which
-// holds the object that was provided. Added to a context, it is one overlay
-// whose key is the record key and whose value is the array of every slot it
-// writes, by position; in a flat map it is one entry per slot. The members'
-// slots are the truth: a member provided on top of the record is an ordinary
-// overlay, written and read like any other slot. Reading the record returns
-// the provided object while the members' slots still hold what the record
-// wrote, and otherwise a view: an object inheriting from the provided one that
-// carries every member as its own property, assembled once per storage and
-// remembered on the key. Nothing about this lives outside the record key and
-// the contexts it reads, except the methods bound to the objects they were
-// found on (below): `Context` keeps no index of records, and only this section
-// and the record-overlay branches of `lookup` and `applyOverlays` know the
-// rules.
+// A record service is its members and nothing else. Written into a context, it
+// is one ordinary overlay per slot it writes (one per member; a member that is
+// a record contributes its own slots), or one flat map when the context is
+// empty or at `maxDepth`: no overlay, map or getter knows what a record is, and
+// `lookup` is the branch point's. Reading it returns a plain object with every
+// member as its own property, read from the slots as seen from the topmost
+// overlay that holds one of them (its storage), assembled once per storage and
+// remembered on the key. Only `make`, `add`, `pick`, `omit` and the getters
+// dispatch on the key, with one `typeof`; everything else is in this section.
 
 interface RecordImpl extends Operations<any, any> {
   /**
    * The members in declaration order: the name each is read at, its slot, and
-   * the positions its slots take in a snapshot (one for a plain member, every
+   * the positions its slots take in `~slotList` (one for a plain member, every
    * slot of a member that is a record).
    */
-  readonly slots: ReadonlyArray<{
+  readonly "~slots": ReadonlyArray<{
     readonly name: string
     readonly key: Slot<any, any>
     readonly positions: ReadonlyArray<number>
   }>
+  /** Every slot the record writes, in writing order. */
+  readonly "~slotList": ReadonlyArray<string>
+  /** The same, as a set. */
+  readonly "~index": ReadonlySet<string>
+  /** The member name of each slot that belongs to a member that is not a record. */
+  readonly "~plain": ReadonlyMap<string, string>
   /**
-   * Every slot the record writes, by position in a snapshot: its members'
-   * slots (a member record's slots, then that record's own) and, last, its
-   * own.
+   * Every member name, `undefined`: what an assembled object is copied from,
+   * so that every object a record read returns has one shape with fast
+   * properties (an object given thirty properties one by one has not).
    */
-  readonly index: ReadonlyMap<string, number>
-  /** The slots of `index` by position. */
-  readonly slotList: ReadonlyArray<string>
-  /** The name of the member each slot of a member that is not a record belongs to. */
-  readonly plain: ReadonlyMap<string, string>
-  /** The position of the record's own slot: the last. */
-  readonly own: number
-  /** Every member name, `undefined`: what a view is copied from, so that it is built in one shape. */
-  readonly template: Record<string, undefined>
-  /** The objects assembled for storages, by base map or overlay; see `assemble`. */
-  readonly views: WeakMap<object, object>
-  /** The last storage read and its object: the one-entry cache in front of `views`. */
-  lastStorage: object | undefined
-  lastView: object | undefined
-  /** Whether one of the record's slots is fiber-cached, as of `cacheKeys` having `cachedAt` entries. */
-  cached: boolean
-  cachedAt: number
-  readonly write: <Services>(self: Context<Services>, value: unknown) => Context<any>
-  readonly read: (self: Context<never>, orThrow: boolean) => unknown
-  /** Writes a snapshot into a flat map, one slot per position. */
-  readonly spill: (map: Map<string, any>, values: ReadonlyArray<unknown>) => void
+  readonly "~template": Record<string, undefined>
+  /** The objects assembled for storages, by base map or overlay; see `readFrom`. */
+  readonly "~views": WeakMap<object, object>
+  /** The last storage read and its object: the one-entry cache in front of `~views`. */
+  "~lastStorage": object | undefined
+  "~lastView": object | undefined
+  /** Whether one of the record's slots is fiber-cached, as of `cacheKeys` having `~cachedAt` entries. */
+  "~cached": boolean
+  "~cachedAt": number
+  readonly "~write": <Services>(self: Context<Services>, value: unknown) => Context<any>
+  readonly "~read": (self: Context<never>, orThrow: boolean) => unknown
 }
 
-// The values of every slot the record writes, by position, read off `value`
-// once, now; a member that is a record contributes its own snapshot. A member
-// `value` lacks is a defect naming its slot: the record would otherwise hold
-// a member no read can use.
-const snapshot = (record: RecordImpl, value: any): Array<unknown> => {
-  const values = new Array<unknown>(record.slotList.length)
-  const slots = record.slots
-  const methods = hasMethods(value)
+// The members of `value` as the record stores them: a plain object with every
+// member as its own property (a member that is a record: such an object of its
+// own), and `values`, the value of every slot the record writes, by position. A
+// member `value` lacks is a defect naming its slot: the record would otherwise
+// hold a member no read can use.
+const collect = (record: RecordImpl, value: any, values: Array<unknown>): Record<string, unknown> => {
+  const object = value !== null && (typeof value === "object" || typeof value === "function")
+  const methods = object && hasMethods(value)
+  const members: Record<string, unknown> = { ...record["~template"] }
+  const slots = record["~slots"]
   for (let i = 0; i < slots.length; i++) {
     const { key, name, positions } = slots[i]
-    const member = memberOf(value, name, methods)
+    const member = object ? memberOf(value, name, methods) : undefined
     if (member === undefined) throw missingMember(record, name, key)
     if (isRecordKey(key)) {
-      const nested = snapshot(key, member)
+      const nested = new Array<unknown>(positions.length)
+      members[name] = collect(key, member, nested)
       for (let j = 0; j < positions.length; j++) values[positions[j]] = nested[j]
     } else {
+      members[name] = member
       values[positions[0]] = member
     }
   }
-  values[record.own] = value
-  return values
+  return members
 }
 
 const missingMember = (record: RecordImpl, name: string, key: Slot<any, any>) => {
@@ -2167,200 +2155,123 @@ const hasMethods = (value: object): boolean => {
 // The member `name` of `value` as the record stores it: the property as it is,
 // except a method found on the object's prototype chain, which is stored bound
 // to the object so that the member called standalone runs with the object as
-// `this`, as it does through the record. The bound function is made once per
-// object and method, so two writes of one object store the same members and
-// a flat map holding them reads as the object.
-const boundMethods = new WeakMap<object, Map<string, Function>>()
+// `this`, as it does through the record.
 const memberOf = (value: any, name: string, methods: boolean): unknown => {
   const member = value[name]
-  if (
-    !methods || typeof member !== "function" || Object.hasOwn(value, name) ||
-    !(name in Object.getPrototypeOf(value))
-  ) {
-    return member
-  }
-  let bound = boundMethods.get(value)
-  if (bound === undefined) boundMethods.set(value, bound = new Map())
-  let fn = bound.get(name)
-  if (fn === undefined) bound.set(name, fn = member.bind(value))
-  return fn
+  return methods && typeof member === "function" && !Object.hasOwn(value, name) ? member.bind(value) : member
 }
 
-function spillRecord(this: RecordImpl, map: Map<string, any>, values: ReadonlyArray<unknown>): void {
-  const slots = this.slotList
-  for (let i = 0; i < slots.length; i++) map.set(slots[i], values[i])
-}
-
-// `Context.make` and `Context.add` for a record service. Into a context that
-// holds nothing, or one whose overlays have reached `maxDepth`, the record is
-// written as a flat map, as any key is. Otherwise it is one overlay holding
-// the snapshot, which costs the snapshot and nothing of the context's size. A
-// fiber-cached key among its slots starts a new cache root, as its own write
-// would.
+// `Context.make` and `Context.add` for a record service: the members' slots,
+// written as a flat map into a context that holds nothing or whose overlays
+// have reached `maxDepth`, and as one ordinary overlay per slot otherwise,
+// counting as one `add` toward `maxDepth`. The object assembled from the
+// provided value is what a read of the new context returns, so it is
+// remembered for the storage the write created. A fiber-cached key among the
+// slots starts a new cache root, as its own write would.
 function addRecord<Services>(this: RecordImpl, self: Context<Services>, value: unknown): Context<any> {
   const impl = self as ContextImpl<Services>
-  const values = snapshot(this, value)
+  const slots = this["~slotList"]
+  const values = new Array<unknown>(slots.length)
+  const members = collect(this, value, values)
   // `cacheKeys` only grows, so its size says whether the answer may have changed
-  if (this.cachedAt !== cacheKeys.size) {
-    this.cached = this.slotList.some((slot) => cacheKeys.has(slot))
-    this.cachedAt = cacheKeys.size
+  if (this["~cachedAt"] !== cacheKeys.size) {
+    this["~cached"] = slots.some((slot) => cacheKeys.has(slot))
+    this["~cachedAt"] = cacheKeys.size
   }
-  const cacheRoot = this.cached ? undefined : impl.cacheRoot
+  const cacheRoot = this["~cached"] ? undefined : impl.cacheRoot
   if (impl.depth >= impl.maxDepth || (impl.overlay === undefined && impl.base.size === 0)) {
     const map = new Map(impl._flat ?? impl.base)
     if (!impl._flat) applyOverlays(map, impl.overlay)
-    this.spill(map, values)
+    for (let i = 0; i < slots.length; i++) map.set(slots[i], values[i])
+    remember(this, map, members)
     return makeImpl(cacheRoot, map, undefined, 0, impl.maxDepth)
   }
-  return makeImpl(
-    cacheRoot,
-    impl.base,
-    { key: this, value: values, parent: impl.overlay },
-    impl.depth + 1,
-    impl.maxDepth
-  )
+  let overlay = impl.overlay
+  for (let i = 0; i < slots.length; i++) overlay = { key: slots[i], value: values[i], parent: overlay }
+  remember(this, overlay!, members)
+  return makeImpl(cacheRoot, impl.base, overlay, impl.depth + 1, impl.maxDepth)
 }
 
 function readRecord(this: RecordImpl, self: Context<never>, orThrow: boolean): unknown {
   const impl = self as ContextImpl<never>
-  const value = readFrom(this, impl.overlay, impl.base, orThrow)
-  if (value === notFound && orThrow) throw serviceNotFoundError(this)
-  return value
+  return readFrom(this, impl.overlay, impl.base, orThrow)
 }
 
-// The record as seen from `overlay` down to `base`. Walking down, the topmost
-// overlay that touches the record decides: the overlay that wrote this record
-// holds the provided object, intact, since nothing above it touched the
-// record; any other overlay that holds one of the record's slots (a member,
-// its own slot by string) or was written by another record means the record
-// is assembled from that overlay down; when no overlay touches it, from the
-// base map.
+// The record as seen from `overlay` down to `base`: the members' slots read
+// from the topmost overlay that holds one of them (or the base map, when none
+// does), which is the storage the result is remembered for. Overlays above it
+// hold other slots and cannot change the result, so contexts derived from one
+// another by unrelated writes share it. An object built by copying the record
+// below an overlay holding one member is kept in the one-entry cache alone, so
+// that an override per request costs one copy and leaves no entry behind; an
+// object built from the slots is remembered for its storage in the `WeakMap`.
+// A missing member makes the result `notFound`, or a defect naming the member
+// when `orThrow` is set, and nothing is remembered.
 const readFrom = (
   record: RecordImpl,
   overlay: Overlay | undefined,
   base: ReadonlyMap<string, any>,
   orThrow: boolean
 ): unknown => {
-  let o = overlay
-  for (; o !== undefined; o = o.parent) {
-    const key = o.key
-    if (typeof key !== "string") {
-      if (key === record) return (o.value as ReadonlyArray<unknown>)[record.own]
-      break
-    }
-    if (record.index.has(key)) break
-  }
-  return assemble(record, o, base, orThrow)
-}
-
-// The record from `scope` (an overlay, or the base map when undefined) down.
-// An overlay holding one plain member of the record is that member set on the
-// record as seen from the overlay below it: the same object when the member is
-// unchanged, otherwise a copy with the member replaced, kept in the key's
-// one-entry cache (the last storage read) and not in the `WeakMap`, so that an
-// override per request costs one copy and no entry that lives until the next
-// collection. The record's own overlay is the provided object. Any other
-// storage is built from the slots (`build`) and remembered per storage. A
-// missing member makes the result `notFound`, or a defect when `orThrow` is
-// set, and nothing is remembered.
-const assemble = (
-  record: RecordImpl,
-  scope: Overlay | undefined,
-  base: ReadonlyMap<string, any>,
-  orThrow: boolean
-): unknown => {
+  let scope = overlay
+  while (scope !== undefined && !record["~index"].has(scope.key)) scope = scope.parent
   const storage: object = scope ?? base
-  if (record.lastStorage === storage) return record.lastView
-  if (scope !== undefined && typeof scope.key === "string") {
-    const name = record.plain.get(scope.key)
+  if (record["~lastStorage"] === storage) return record["~lastView"]
+  const cached = record["~views"].get(storage)
+  if (cached !== undefined) {
+    record["~lastStorage"] = storage
+    record["~lastView"] = cached
+    return cached
+  }
+  if (scope !== undefined) {
+    const name = record["~plain"].get(scope.key)
     if (name !== undefined) {
-      // without throwing: a member missing below may be provided by this overlay or one above
-      const below = assemble(record, scope.parent, base, false)
+      // without throwing: a member missing below is provided by this overlay or one above
+      const below = readFrom(record, scope.parent, base, false)
       if (below !== notFound) {
-        let result = below as Record<string, unknown>
-        if (result[name] !== scope.value) {
-          if (hasMethods(result)) return remember(record, storage, build(record, scope, base, orThrow))
-          result = { ...result }
-          result[name] = scope.value
-        }
-        record.lastStorage = storage
-        record.lastView = result
-        return result
+        const members = { ...(below as Record<string, unknown>) }
+        members[name] = scope.value
+        record["~lastStorage"] = storage
+        record["~lastView"] = members
+        return members
       }
     }
   }
-  const cached = record.views.get(storage)
-  if (cached !== undefined) {
-    record.lastStorage = storage
-    record.lastView = cached
-    return cached
-  }
-  const result = scope !== undefined && scope.key === record
-    ? (scope.value as ReadonlyArray<unknown>)[record.own]
-    : build(record, scope, base, orThrow)
-  return remember(record, storage, result)
+  const members = build(record, scope, base, orThrow)
+  return members === notFound ? notFound : remember(record, storage, members as object)
 }
 
-const remember = (record: RecordImpl, storage: object, result: unknown): unknown => {
-  if (result === notFound) return notFound
-  record.views.set(storage, result as object)
-  record.lastStorage = storage
-  record.lastView = result as object
-  return result
+const remember = (record: RecordImpl, storage: object, members: object): object => {
+  record["~views"].set(storage, members)
+  record["~lastStorage"] = storage
+  record["~lastView"] = members
+  return members
 }
 
-// The record from `scope` down, built from the slots: the provided object when
-// every member's slot holds what the record stores for it, otherwise a view
-// (below) of the members. A missing member that is a reference reads its
-// default; any other missing member is `Service not found: <member key>` when
-// `orThrow` is set and `notFound` otherwise.
+// The members as seen from `scope` (an overlay, or the base map when
+// undefined) down, each read from its slot: a plain object with every member
+// as its own property. A missing member that is a reference reads its default;
+// any other missing member is `Service not found: <member key>` when `orThrow`
+// is set and `notFound` otherwise.
 const build = (
   record: RecordImpl,
   scope: Overlay | undefined,
   base: ReadonlyMap<string, any>,
   orThrow: boolean
 ): unknown => {
-  const slots = record.slots
-  const members = new Array<unknown>(slots.length)
+  const members: Record<string, unknown> = { ...record["~template"] }
+  const slots = record["~slots"]
   for (let i = 0; i < slots.length; i++) {
-    const key = slots[i].key
+    const { key, name } = slots[i]
     let member = isRecordKey(key) ? readFrom(key, scope, base, orThrow) : peekFrom(scope, base, key.key)
     if (member === notFound) {
       if (isReference(key)) member = getDefaultValue(key)
       else if (orThrow) throw serviceNotFoundError(key)
       else return notFound
     }
-    members[i] = member
+    members[name] = member
   }
-  const stored = peekFrom(scope, base, record.key)
-  const provided = typeof stored === "object" && stored !== null ? stored : undefined
-  return provided !== undefined && agrees(record, provided, members) ? provided : view(record, provided, members)
-}
-
-// Whether every member's slot holds what the record stores for `provided`.
-const agrees = (record: RecordImpl, provided: object, members: ReadonlyArray<unknown>): boolean => {
-  const slots = record.slots
-  const methods = hasMethods(provided)
-  for (let i = 0; i < slots.length; i++) {
-    if (memberOf(provided, slots[i].name, methods) !== members[i]) return false
-  }
-  return true
-}
-
-// A view: an object with every member as an own property, so that it spreads,
-// copies and re-provides as the provided object would. It is copied from the
-// record's template so that every view has one shape, with the members'
-// properties in place before they are written. A provided object that is not
-// a plain object (a class instance) becomes the view's prototype, so that
-// `instanceof`, the instance's fields and its other methods keep working;
-// its methods are own properties of the view bound to the instance, so
-// private fields work too.
-const view = (record: RecordImpl, provided: object | undefined, members: ReadonlyArray<unknown>): object => {
-  const view: Record<string, unknown> = { ...record.template }
-  if (provided !== undefined && hasMethods(provided)) Object.setPrototypeOf(view, provided)
-  const slots = record.slots
-  for (let i = 0; i < slots.length; i++) view[slots[i].name] = members[i]
-  return view
+  return members
 }
 
 // `lookup` from a given overlay down, without the flatten counter: the reads
@@ -2368,12 +2279,7 @@ const view = (record: RecordImpl, provided: object | undefined, members: Readonl
 // context that reads a record would copy its base map.
 const peekFrom = (overlay: Overlay | undefined, base: ReadonlyMap<string, any>, key: string): unknown => {
   for (let o = overlay; o !== undefined; o = o.parent) {
-    const slot = o.key
-    if (slot === key) return o.value
-    if (typeof slot !== "string") {
-      const i = slot.index.get(key)
-      if (i !== undefined) return (o.value as ReadonlyArray<unknown>)[i]
-    }
+    if (o.key === key) return o.value
   }
   const value = base.get(key)
   return value === undefined && !base.has(key) ? notFound : value
@@ -2384,9 +2290,8 @@ const peekFrom = (overlay: Overlay | undefined, base: ReadonlyMap<string, any>, 
 // record drops it with the prototype.
 const OperationsProto = Object.assign({}, ServiceProto, {
   "~effect/Context/Operations": OperationsTypeId,
-  write: addRecord,
-  read: readRecord,
-  spill: spillRecord,
+  "~write": addRecord,
+  "~read": readRecord,
   // `yield*`, `use` and `useSync` read the record as its key defines, without
   // passing through the getters: the record path stays out of the code the
   // optimiser compiles for ordinary keys.
@@ -2408,35 +2313,64 @@ const OperationsProto = Object.assign({}, ServiceProto, {
   }
 })
 
+// The names of the key's own state, which a member cannot have either.
+const recordState = [
+  "key",
+  "members",
+  "~slots",
+  "~slotList",
+  "~index",
+  "~plain",
+  "~template",
+  "~views",
+  "~lastStorage",
+  "~lastView",
+  "~cached",
+  "~cachedAt"
+]
+
 const makeOperations = (key: string, members: Operations.Members): Operations<any, any> => {
+  // The members are properties of the key, so that `Record.member(...)` is the
+  // member. They sit on a prototype of the key's own: a key with thirty keyed
+  // stores on it would fall into dictionary mode, and the key's own properties
+  // are read on every record read.
+  const proto = Object.create(OperationsProto)
+  for (const name of Object.keys(members)) {
+    if (name in OperationsProto || recordState.includes(name)) {
+      throw new Error(`Context.Operations: member "${name}" of ${key} has the name of a property of the key: rename it`)
+    }
+    proto[name] = members[name]
+  }
   // a plain object, not a function like other keys: see `isRecordKey`
-  const self: Types.Mutable<RecordImpl> = Object.create(OperationsProto)
+  const self: Types.Mutable<RecordImpl> = Object.create(proto)
   self.key = key
   self.members = members
   // a slot two members share (two subset records over one member) has one position, which the later member writes
-  const index = new Map<string, number>()
+  const slotList: Array<string> = []
+  const index = new Set<string>()
   const plain = new Map<string, string>()
   const position = (slot: string): number => {
-    let i = index.get(slot)
-    if (i === undefined) index.set(slot, i = index.size)
-    return i
+    if (!index.has(slot)) {
+      index.add(slot)
+      slotList.push(slot)
+    }
+    return slotList.indexOf(slot)
   }
-  self.slots = Object.keys(members).map((name) => {
+  self["~slots"] = Object.keys(members).map((name) => {
     const member = members[name]
-    if (!isRecordKey(member)) plain.set(member.key, name)
-    const positions = isRecordKey(member) ? member.slotList.map(position) : [position(member.key)]
-    return { name, key: member, positions }
+    if (isRecordKey(member)) return { name, key: member, positions: member["~slotList"].map(position) }
+    plain.set(member.key, name)
+    return { name, key: member, positions: [position(member.key)] }
   })
-  self.own = position(key)
-  self.plain = plain
-  self.template = Object.fromEntries(self.slots.map(({ name }) => [name, undefined]))
-  self.index = index
-  self.slotList = [...index.keys()]
-  self.views = new WeakMap()
-  self.lastStorage = undefined
-  self.lastView = undefined
-  self.cached = false
-  self.cachedAt = -1
+  self["~slotList"] = slotList
+  self["~index"] = index
+  self["~plain"] = plain
+  self["~template"] = Object.fromEntries(Object.keys(members).map((name) => [name, undefined]))
+  self["~views"] = new WeakMap()
+  self["~lastStorage"] = undefined
+  self["~lastView"] = undefined
+  self["~cached"] = false
+  self["~cachedAt"] = -1
   return self
 }
 
