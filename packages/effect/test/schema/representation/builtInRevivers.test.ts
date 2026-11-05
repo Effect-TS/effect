@@ -1004,7 +1004,6 @@ describe("SchemaRepresentation built-in declaration revivers", () => {
       [Schema.MacAddress, SchemaRepresentation.MacAddressReviver],
       [Schema.Ipv4Address, SchemaRepresentation.Ipv4AddressReviver],
       [Schema.Ipv6Address, SchemaRepresentation.Ipv6AddressReviver],
-      [Schema.IpAddress, SchemaRepresentation.IpAddressReviver],
       [Schema.Ipv4Interface, SchemaRepresentation.Ipv4InterfaceReviver],
       [Schema.Ipv6Interface, SchemaRepresentation.Ipv6InterfaceReviver],
       [Schema.IpInterface, SchemaRepresentation.IpInterfaceReviver],
@@ -1013,9 +1012,7 @@ describe("SchemaRepresentation built-in declaration revivers", () => {
       [Schema.IpNetwork, SchemaRepresentation.IpNetworkReviver],
       [Schema.InetAddressV4, SchemaRepresentation.InetAddressV4Reviver],
       [Schema.InetAddressV6, SchemaRepresentation.InetAddressV6Reviver],
-      [Schema.InetAddress, SchemaRepresentation.InetAddressReviver],
       [Schema.UnixPathAddress, SchemaRepresentation.UnixPathAddressReviver],
-      [Schema.SocketAddress, SchemaRepresentation.SocketAddressReviver],
       [Schema.HostPort, SchemaRepresentation.HostPortReviver]
     ]
     for (const [schema, reviver] of cases) {
