@@ -1250,6 +1250,24 @@ export const testGlob = <E>(layer: Layer.Layer<Fs.FileSystem, E>) => {
       }).pipe(Effect.scoped)
     ))
 
+  it("glob returns absolute paths for an absolute pattern, whatever the root", () =>
+    runPromise(
+      Effect.gen(function*() {
+        const fs = yield* Fs.FileSystem
+        const root = posix(yield* globFixture)
+        const pattern = `${Glob.escape(root)}/src/**`
+        const expected = [
+          `${root}/src`,
+          `${root}/src/index.ts`,
+          `${root}/src/sub`,
+          `${root}/src/sub/deep.js`,
+          `${root}/src/sub/deep.ts`
+        ]
+        expect(yield* fs.glob(pattern)).toEqual(expected)
+        expect(yield* fs.glob(pattern, { root: `${root}/a` })).toEqual(expected)
+      }).pipe(Effect.scoped)
+    ))
+
   it("glob returns paths relative to an absolute root, without the root itself", () =>
     runPromise(
       Effect.gen(function*() {
@@ -1350,14 +1368,13 @@ export const testGlob = <E>(layer: Layer.Layer<Fs.FileSystem, E>) => {
       }).pipe(Effect.scoped)
     ))
 
-  it("glob dies on an absolute pattern, a .. segment or an escaped separator", () =>
+  it("glob dies on a UNC path, a .. segment or an escaped separator", () =>
     runPromise(
       Effect.gen(function*() {
         const fs = yield* Fs.FileSystem
-        const root = posix(yield* globFixture)
+        const root = yield* globFixture
         for (
           const pattern of [
-            `${Glob.escape(root)}/src/*.ts`,
             "//server/share",
             "../a/*.ts",
             "src/../a/*.ts",
