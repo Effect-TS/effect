@@ -33,4 +33,22 @@ describe("RpcClient.Flat", () => {
     expect(client).type.not.toBeCallableWith("Missing", undefined)
     expect(client).type.not.toBeCallableWith("A", undefined)
   })
+
+  it("accepts a tag and payload forwarded from a generic caller", () => {
+    type Rpcs = typeof A | typeof B
+    const client = hole<RpcClient.RpcClient.Flat<Rpcs>>()
+    const call = <Tag extends Rpc.Tag<Rpcs>>(
+      tag: Tag,
+      payload: Rpc.PayloadConstructor<Rpc.ExtractTag<Rpcs, Tag>>
+    ) => client(tag, payload)
+
+    expect(call("A", { id: "a" })).type.toBe<Effect.Effect<number>>()
+  })
+
+  it("rejects non-string tags when the RPC tag is widened to string", () => {
+    const Dynamic = Rpc.make("A" as string, { success: Schema.Number })
+    const client = hole<RpcClient.RpcClient.Flat<typeof Dynamic>>()
+
+    expect(client).type.not.toBeCallableWith(123, undefined)
+  })
 })

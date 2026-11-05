@@ -68,6 +68,27 @@ describe("AtomRpc", () => {
     expect(registry.set).type.not.toBeCallableWith(client.mutation("A"), { payload: { name: "b" } })
   })
 
+  it("query accepts a tag and payload forwarded from a generic caller", () => {
+    const A = Rpc.make("A", { payload: { id: Schema.String }, success: Schema.Number })
+    const B = Rpc.make("B", { success: Schema.String })
+    type Rpcs = typeof A | typeof B
+    const client = hole<AtomRpc.AtomRpcClient<unknown, "Client", Rpcs>>()
+    const query = <Tag extends Rpc.Tag<Rpcs>>(
+      tag: Tag,
+      payload: Rpc.PayloadConstructor<Rpc.ExtractTag<Rpcs, Tag>>
+    ) => client.query(tag, payload)
+
+    expect<Atom.Success<ReturnType<typeof query<"A">>>>().type.toBe<number>()
+  })
+
+  it("query and mutation reject non-string tags when the RPC tag is widened to string", () => {
+    const Dynamic = Rpc.make("A" as string, { success: Schema.Number })
+    const client = hole<AtomRpc.AtomRpcClient<unknown, "Client", typeof Dynamic>>()
+
+    expect(client.query).type.not.toBeCallableWith(123, undefined)
+    expect(client.mutation).type.not.toBeCallableWith(123)
+  })
+
   it("accepts any reactivity keys when no keys are declared", () => {
     const GetUser = Rpc.make("GetUser", { payload: { id: Schema.Number } })
     const client = hole<AtomRpc.AtomRpcClient<unknown, "Client", typeof GetUser>>()
