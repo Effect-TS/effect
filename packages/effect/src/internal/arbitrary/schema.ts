@@ -756,7 +756,7 @@ function stringShrinker(
     if (start === 0) {
       for (let count = length - minimumUnits; count > 0; count = Math.floor(count / 2)) {
         const candidate = splice(length - count, count)
-        if (accept(candidate)) yield sample(candidate)
+        if (accept(candidate)) yield sample(candidate, 0, limit)
       }
     }
     for (let index = start, cap = limit; index < length; index++, cap = infinity) {
