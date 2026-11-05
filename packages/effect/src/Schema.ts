@@ -12297,9 +12297,9 @@ const netAddressFromString = <S extends Constraint>(
   identifier: string
 ) => String.pipe(decodeTo(declaration, transformation)).annotate({ identifier })
 
-// Some net schemas share their name with their module (e.g. `IpInterface`),
-// so the generated code reads the type off the schema instead of importing a
-// namespace.
+// `toCode` reads the type off the schema (`Schema.X["Type"]`) because some net
+// schemas share their name with their module, such as `IpInterface`, and a
+// namespace import would collide with the generated declaration.
 const netDeclare = <T>(
   is: (u: unknown) => u is T,
   options: {
@@ -12545,7 +12545,8 @@ export interface IpAddress extends Union<readonly [Ipv4Address, Ipv6Address]> {
  *
  * **Details**
  *
- * The JSON and StringTree codecs encode an address as a canonical string.
+ * A union of {@link Ipv4Address} and {@link Ipv6Address}. The JSON and
+ * StringTree codecs encode an address as its canonical string.
  *
  * @see {@link IpAddressFromString}
  * @stability unstable
@@ -12580,9 +12581,10 @@ export const IpAddressFromString: IpAddressFromString = netAddressFromString(
 
 type NetArbitrary = () => SchemaAST.Link
 
-// Replaces the generators of the base declarations (one per union member) so
-// that values are generated inside the refined set instead of being filtered
-// out of it. `toCodecArbitrary` is only read on declarations.
+// Attaches a generator to each base declaration (one per union member), so a
+// refinement generates values inside its set instead of filtering them out.
+// `toCodecArbitrary` is only read on declarations. The union is rebuilt by hand
+// because `Union.recur` drops the encoding of the `*FromString` schemas.
 const withNetArbitraries = (ast: SchemaAST.AST, arbitraries: ReadonlyArray<NetArbitrary>): SchemaAST.AST =>
   SchemaAST.isUnion(ast)
     ? new SchemaAST.Union(
@@ -13830,8 +13832,8 @@ export interface InetAddress extends Union<readonly [InetAddressV4, InetAddressV
  *
  * **Details**
  *
- * The JSON and StringTree codecs encode an address as `address:port` or
- * `[address]:port`.
+ * A union of {@link InetAddressV4} and {@link InetAddressV6}. The JSON and
+ * StringTree codecs encode an address as `address:port` or `[address]:port`.
  *
  * @see {@link InetAddressFromString}
  * @stability unstable
@@ -13961,9 +13963,9 @@ export interface SocketAddress extends Union<readonly [InetAddress, UnixPathAddr
  *
  * **Details**
  *
- * The JSON and StringTree codecs encode an internet address like
- * {@link InetAddress} and a Unix-domain address like {@link UnixPathAddress},
- * as `unix://<path>`.
+ * A union of {@link InetAddress} and {@link UnixPathAddress}. The JSON and
+ * StringTree codecs encode an internet address as `address:port` or
+ * `[address]:port`, and a Unix-domain address as `unix://<path>`.
  *
  * @stability unstable
  * @category schemas
