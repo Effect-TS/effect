@@ -1048,9 +1048,21 @@ items:
     it.each([
       ["block scalar key", "? a\n: 1\n"],
       ["block collection key", "? [a, b]\n: 1\n"],
-      ["flow mapping key", "{? a : 1}\n"]
+      ["flow mapping key", "{? a : 1}\n"],
+      ["empty block key", "? : 1\n"]
     ])("rejects a %s", (_, source) => {
       assert.match(failureMessage(source), /explicit key/i)
+    })
+
+    // YAML 1.2.2 §7.3.3: `?` starts a plain scalar before a plain-safe character such as `:`.
+    // yaml 2.9.1 and js-yaml 4.3.2 give these values.
+    it.each([
+      ["?: 1\n", { "?": 1 }],
+      ["x: {?: 1}\n", { x: { "?": 1 } }],
+      ["x: [?: 1]\n", { x: [{ "?": 1 }] }]
+    ])("reads ? before an adjacent colon as a plain key in %j", (source, expected) => {
+      assert.deepStrictEqual(parse(source), expected)
+      assert.deepStrictEqual(parseAll(source), [expected])
     })
   })
 
@@ -1191,13 +1203,51 @@ nested:
     // and binary integers. js-yaml 4.3.2 also reads the timestamps and binary integers, and its own
     // printer quotes all of them.
     it("quotes strings and keys that YAML 1.1 parsers read as other types", () => {
-      const values = ["no", "Yes", "ON", "off", "y", "N", "2024-01-01", "2001-12-14t21:59:43.10-05:00", "1:20", "0b101"]
+      const values = [
+        "no",
+        "Yes",
+        "ON",
+        "off",
+        "y",
+        "N",
+        "2024-01-01",
+        "2001-12-14t21:59:43.10-05:00",
+        "1:20",
+        "0b101",
+        // Floats without digits and one-digit time fields, which yaml 2.9.1 with version "1.1" reads
+        // as NaN and a Date.
+        ".",
+        "+.",
+        "-.",
+        "._",
+        ".e1",
+        "2024-1-1T1:1:1"
+      ]
       for (const value of values) {
         const output = Result.getOrThrow(Yaml.stringify({ [value]: value }))
         assert.strictEqual(output, `"${value}": "${value}"\n`)
         assert.deepStrictEqual(YAML.parse(output, { version: "1.1" }), { [value]: value })
         assert.deepStrictEqual(parse(output), { [value]: value })
       }
+    })
+
+    it("reads toJSON once and calls it with its receiver and key", () => {
+      // A toJSON accessor that returns a different method on a second read.
+      const value = () => {
+        let reads = 0
+        return {
+          name: "first",
+          get toJSON() {
+            return ++reads === 1
+              ? function(this: { readonly name: string }, key: string) {
+                return `${this.name}-${key}`
+              }
+              : () => "second"
+          }
+        }
+      }
+      assert.strictEqual(JSON.stringify({ a: value() }), "{\"a\":\"first-a\"}")
+      assert.strictEqual(Result.getOrThrow(Yaml.stringify({ a: value() })), "a: first-a\n")
     })
 
     it("quotes the merge key so it stays a literal key", () => {
