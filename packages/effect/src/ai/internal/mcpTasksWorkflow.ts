@@ -8,12 +8,10 @@
  *
  * Writing a deferred wakes the execution, so a replay must not append changes
  * it already recorded, even when it skips work such as a cached
- * `DurableDeferred.raceAll`. Input changes are identified by their unique key,
- * and a suspending run withdraws recorded inputs it no longer waits for.
- * Status messages have no identity, so a run matches each one against the
- * recorded status changes after the last one it matched, and appends only
- * messages it cannot match. Status set concurrently from several fibers may
- * therefore be recorded again in a different order.
+ * `DurableDeferred.raceAll` or reorders concurrent work. Input and status
+ * changes are identified by their keys, so a replay of the same keyed step is
+ * skipped and the log keeps the order in which each step first ran. When a run
+ * suspends, it withdraws recorded inputs it is no longer waiting for.
  */
 import * as DateTime from "../../DateTime.ts"
 import * as Effect from "../../Effect.ts"
@@ -39,7 +37,12 @@ const decodeResponse = Schema.decodeUnknownEffect(Schema.JsonObject)
 const Change = Schema.Union([
   Schema.Struct({ kind: Schema.Literal("input"), key: Schema.String, request: InputRequest, at: Schema.DateTimeUtc }),
   Schema.Struct({ kind: Schema.Literal("withdrawn"), key: Schema.String, at: Schema.DateTimeUtc }),
-  Schema.Struct({ kind: Schema.Literal("status"), message: Schema.optionalKey(Schema.String), at: Schema.DateTimeUtc }),
+  Schema.Struct({
+    kind: Schema.Literal("status"),
+    key: Schema.String,
+    message: Schema.optionalKey(Schema.String),
+    at: Schema.DateTimeUtc
+  }),
   Schema.Struct({ kind: Schema.Literal("finished"), at: Schema.DateTimeUtc })
 ])
 type Change = typeof Change.Type
@@ -150,10 +153,9 @@ export const make = <
     const executionId = instance.executionId
     const lock = Semaphore.makeUnsafe(1)
     const inputKeys = new Set<string>()
+    const statusKeys = new Set<string>()
     // The recorded log, loaded on first use; only this run appends to it.
     let log: Array<Change> | undefined
-    // Position after the last recorded status change this run has matched or written.
-    let statusCursor = 0
 
     const append = Effect.fnUntraced(function*(entry: ChangeInput) {
       const current = log ??= yield* readLog(executionId)
@@ -186,9 +188,9 @@ export const make = <
         yield* append(entry)
       }))
 
-    // When the run suspends it is waiting for exactly the inputs in `awaiting`. Withdraw
-    // recorded inputs it no longer waits for, such as the losing branch of a race that
-    // replay resolved without starting that branch.
+    // When the run suspends it is waiting for exactly the inputs in `awaiting`, whatever it
+    // suspended on. Withdraw recorded inputs it no longer waits for, such as the losing
+    // branch of a race that replay resolved without starting that branch.
     const reconcile = lock.withPermits(1)(Effect.gen(function*() {
       const current = log ??= yield* readLog(executionId)
       const recorded = new Set<string>()
@@ -224,9 +226,8 @@ export const make = <
         awaiting.add(options.key)
         const response = yield* DurableDeferred.await(answer(options.key)).pipe(
           Effect.onInterrupt(() => {
-            // Cancellation keeps the input, suspension keeps every awaited input, and a lost race withdraws it.
-            if (instance.interrupted) return Effect.void
-            if (current.suspended || instance.suspended) return reconcile
+            // Cancellation and suspension keep the input; `suspended` withdraws the rest. A lost race withdraws it.
+            if (instance.interrupted || current.suspended || instance.suspended) return Effect.void
             awaiting.delete(options.key)
             return recordInput({ kind: "withdrawn", key: options.key })
           }),
@@ -236,18 +237,16 @@ export const make = <
         awaiting.delete(options.key)
         return yield* Schema.decodeUnknownEffect(options.response)(response)
       }),
-      setStatusMessage: (message) =>
-        lock.withPermits(1)(Effect.gen(function*() {
-          const current = log ??= yield* readLog(executionId)
-          for (let index = statusCursor; index < current.length; index++) {
-            const recorded = current[index]
-            if (recorded.kind === "status" && recorded.message === message) {
-              statusCursor = index + 1
-              return
-            }
-          }
-          statusCursor = (yield* append(message === undefined ? { kind: "status" } : { kind: "status", message })) + 1
-        }))
+      setStatusMessage: (key, message) =>
+        Effect.suspend(() => {
+          if (statusKeys.has(key)) return Effect.die(new Error("Task status keys must be unique"))
+          statusKeys.add(key)
+          return lock.withPermits(1)(Effect.gen(function*() {
+            const current = log ??= yield* readLog(executionId)
+            if (current.some((recorded) => recorded.kind === "status" && recorded.key === key)) return
+            yield* append(message === undefined ? { kind: "status", key } : { kind: "status", key, message })
+          }))
+        })
     }
 
     // The final change records when the task finished and clears its inputs.
@@ -256,7 +255,10 @@ export const make = <
       if (!current.some((recorded) => recorded.kind === "finished")) yield* append({ kind: "finished" })
     }))
 
-    return { taskContext, finish }
+    // Runs when the engine interrupts the run, including every kind of suspension.
+    const suspended = Effect.suspend(() => instance.suspended && !instance.interrupted ? reconcile : Effect.void)
+
+    return { taskContext, finish, suspended }
   })
 
   return { context, state, update, read, write }
