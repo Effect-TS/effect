@@ -22,6 +22,7 @@ import * as Arr from "effect/Array"
 import * as JsonSchema from "effect/JsonSchema"
 import * as Rec from "effect/Record"
 import * as Schema from "effect/Schema"
+import * as SchemaAST from "effect/SchemaAST"
 import * as SchemaRepresentation from "effect/SchemaRepresentation"
 
 type Source = "openapi-3.0" | "openapi-3.1"
@@ -29,6 +30,11 @@ interface GenerateOptions {
   readonly onEnter?: ((js: JsonSchema.JsonSchema) => JsonSchema.JsonSchema) | undefined
   readonly multipartSchemaRefs?: MultipartSchemaRefs | undefined
   readonly includeSchemas?: ReadonlyArray<string> | undefined
+  /**
+   * Called with each registered schema whose decoded values differ from its wire values, such as password strings
+   * decoded to `Redacted`. Values of these schemas must be encoded before they are sent.
+   */
+  readonly onEncodedSchema?: ((name: string) => void) | undefined
 }
 
 interface HttpApiMultipartSchemaRefs {
@@ -72,7 +78,7 @@ function makeWithRepresentation() {
     typeOnly: boolean,
     options?: GenerateOptions
   ) {
-    const generated = makeCodeDocument(source, components, options)
+    const generated = makeCodeDocument(source, components, typeOnly, options)
     if (generated === undefined) {
       return ""
     }
@@ -133,7 +139,7 @@ function makeWithRepresentation() {
     components: JsonSchema.Definitions,
     options?: GenerateOptions
   ) {
-    const generated = makeCodeDocument(source, components, options)
+    const generated = makeCodeDocument(source, components, false, options)
     if (generated === undefined) {
       return ""
     }
@@ -183,6 +189,7 @@ function makeWithRepresentation() {
   function makeCodeDocument(
     source: Source,
     components: JsonSchema.Definitions,
+    typeOnly: boolean,
     options?: GenerateOptions
   ): {
     readonly nameMap: Array<string>
@@ -246,7 +253,8 @@ function makeWithRepresentation() {
       for (let i = 0; i < schemasWithExamples.length; i++) {
         const node = schemasWithExamples[i]
         const examples = node.examples as ReadonlyArray<unknown>
-        const validExamples = examples.filter(Schema.is(exampleSchemas[i]))
+        // Examples are wire values, so validate them against the encoded side (e.g. plain strings for passwords)
+        const validExamples = examples.filter(Schema.is(Schema.toEncoded(exampleSchemas[i])))
         if (validExamples.length === examples.length) continue
         if (validExamples.length === 0) {
           delete node.examples
@@ -256,8 +264,17 @@ function makeWithRepresentation() {
       }
       rootSchemas = SchemaRepresentation.fromJsonSchemaMultiDocument(document, importerOptions)
     }
+    if (!typeOnly && options?.onEncodedSchema !== undefined) {
+      for (let i = 0; i < nameMap.length; i++) {
+        if (hasEncoding(rootSchemas[i].ast, new Set())) options.onEncodedSchema(nameMap[i])
+      }
+    }
+    // Runtime schemas are generated from the decoded side, so password strings become `Redacted` values.
+    // Type-only clients have no runtime decoding and keep the wire types.
     const codeDocument = SchemaRepresentation.toCodeDocument(
-      SchemaRepresentation.toRepresentations(Arr.map(rootSchemas, (schema) => schema.ast))
+      SchemaRepresentation.toRepresentations(
+        Arr.map(rootSchemas, (schema) => typeOnly ? schema.ast : SchemaAST.toType(schema.ast))
+      )
     )
 
     return {
@@ -272,6 +289,27 @@ function makeWithRepresentation() {
     generateHttpApi,
     schemas: store as Readonly<Record<string, JsonSchema.JsonSchema>>
   } as const
+}
+
+function hasEncoding(ast: SchemaAST.AST, seen: Set<SchemaAST.AST>): boolean {
+  if (ast.encoding !== undefined) return true
+  switch (ast._tag) {
+    case "Declaration":
+      return ast.typeParameters.some((type) => hasEncoding(type, seen))
+    case "Arrays":
+      return ast.elements.some((type) => hasEncoding(type, seen)) || ast.rest.some((type) => hasEncoding(type, seen))
+    case "Objects":
+      return ast.propertySignatures.some((property) => hasEncoding(property.type, seen)) ||
+        ast.indexSignatures.some((index) => hasEncoding(index.type, seen))
+    case "Union":
+      return ast.types.some((type) => hasEncoding(type, seen))
+    case "Suspend":
+      if (seen.has(ast)) return false
+      seen.add(ast)
+      return hasEncoding(ast.thunk(), seen)
+    default:
+      return false
+  }
 }
 
 function fromSchemaOpenApi(source: Source, jsonSchema: JsonSchema.JsonSchema) {

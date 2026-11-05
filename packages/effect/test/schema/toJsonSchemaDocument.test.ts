@@ -634,6 +634,37 @@ describe("toJsonSchemaDocument", () => {
       })
     })
 
+    it("Redacted strings export the password format", () => {
+      const password = { schema: { "type": "string", "format": "password" } } as const
+      assertJsonSchemaDocument(Schema.Redacted(Schema.String), password)
+      assertJsonSchemaDocument(Schema.RedactedFromValue(Schema.String), password)
+      assertJsonSchemaDocument(Schema.RedactedFromValue(Schema.Trim), password)
+      assertJsonSchemaDocument(Schema.RedactedFromValue(Schema.suspend(() => Schema.Trim)), password)
+      assertJsonSchemaDocument(Schema.Redacted(Schema.String.annotate({ format: "uuid" })), {
+        schema: { "type": "string", "format": "uuid" }
+      })
+      const uuid = Schema.String.check(Schema.isUUID())
+      deepStrictEqual(Schema.toJsonSchemaDocument(Schema.Redacted(uuid)), Schema.toJsonSchemaDocument(uuid))
+      const id = uuid.annotate({ identifier: "Id" })
+      deepStrictEqual(Schema.toJsonSchemaDocument(Schema.Redacted(id)), Schema.toJsonSchemaDocument(id))
+      deepStrictEqual(Schema.toJsonSchemaDocument(Schema.RedactedFromValue(id)), Schema.toJsonSchemaDocument(id))
+      const suspended = Schema.suspend(() => uuid)
+      deepStrictEqual(Schema.toJsonSchemaDocument(Schema.Redacted(suspended)), Schema.toJsonSchemaDocument(suspended))
+      const formats = Schema.String.check(
+        Schema.makeFilter<string>(() => true, { toJsonSchema: () => ({ format: "uri" }) }),
+        Schema.makeFilter<string>(() => true, { toJsonSchema: () => ({ format: "uri-reference" }) })
+      )
+      deepStrictEqual(Schema.toJsonSchemaDocument(formats).schema, {
+        "type": "string",
+        "format": "uri",
+        "allOf": [{ "format": "uri-reference" }]
+      })
+      deepStrictEqual(Schema.toJsonSchemaDocument(Schema.Redacted(formats)), Schema.toJsonSchemaDocument(formats))
+      assertJsonSchemaDocument(Schema.Redacted(Schema.Finite), {
+        schema: { "type": "number" }
+      })
+    })
+
     it("Duration", () => {
       const schema = Schema.Duration
       assertJsonSchemaDocument(schema, {

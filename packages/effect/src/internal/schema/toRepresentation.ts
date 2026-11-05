@@ -29,6 +29,53 @@ interface Content {
   readonly schema?: ReferenceCandidate | undefined
 }
 
+const passwordStrings = new WeakMap<SchemaAST.AST, SchemaAST.AST>()
+
+function isRedactedDeclaration(ast: SchemaAST.AST): boolean {
+  return (ast.annotations?.representation as { readonly id?: unknown } | undefined)?.id === "effect/schema/Redacted"
+}
+
+// The wire string of a `Redacted` value is represented with the `password` format, unless it already specifies a
+// format. The codec ASTs keep the original string, so only representations (and the JSON Schema and code generated
+// from them) see the format. The marker lets a format exported by the string or its checks take precedence.
+function toPasswordString(ast: SchemaAST.AST): SchemaAST.AST {
+  const target = resolveWireString(ast)
+  if (target === undefined || target.annotations?.format !== undefined) return ast
+  let password = passwordStrings.get(ast)
+  if (password === undefined) {
+    const annotations = { format: "password", [InternalAnnotations.PASSWORD_FORMAT_DEFAULT_KEY]: true }
+    password = ast._tag === "Suspend"
+      ? SchemaAST.annotate(ast, annotations)
+      : InternalAnnotations.resolveIdentifier(ast) !== undefined
+      // A shared definition keeps its own schema, so the format is added to this use site only
+      ? new SchemaAST.Suspend(() => ast, annotations)
+      // Annotate the string itself rather than its last check, so the format is exported next to `type`
+      : SchemaAST.replaceChecks(SchemaAST.annotate(SchemaAST.replaceChecks(ast, undefined), annotations), ast.checks)
+    passwordStrings.set(ast, password)
+  }
+  return password
+}
+
+// Follows suspensions and string-to-string encodings to the string sent on the wire
+function resolveWireString(ast: SchemaAST.AST): SchemaAST.AST | undefined {
+  const seen = new Set<SchemaAST.AST>()
+  let target = ast
+  while (!seen.has(target)) {
+    seen.add(target)
+    if (target._tag === "Suspend") {
+      if (target.annotations?.format !== undefined) return undefined
+      target = target.thunk()
+    } else if (target._tag !== "String") {
+      return undefined
+    } else if (target.encoding !== undefined) {
+      target = target.encoding[target.encoding.length - 1].to
+    } else {
+      return target
+    }
+  }
+  return undefined
+}
+
 function annotationsField<A>(annotations: A | undefined): { readonly annotations: A } | undefined {
   return annotations === undefined ? undefined : { annotations }
 }
@@ -111,7 +158,10 @@ export function toRepresentations(
   ): ReferenceCandidate {
     let ast = input
     let content: Content | undefined
+    // Whether the chain passed through a `Redacted` declaration followed only by string-to-string encodings
+    let redacted = false
     while (ast.encoding !== undefined && encodingLength > 0) {
+      redacted = isRedactedDeclaration(ast) || redacted && ast._tag === "String"
       const last = ast.encoding[encodingLength - 1]
       // Only retain content when this operation produces the final string.
       if (last.to.encoding === undefined && last.to._tag === "String") {
@@ -126,6 +176,7 @@ export function toRepresentations(
       ast = last.to
       encodingLength = ast.encoding?.length ?? 0
     }
+    if (redacted && ast !== input) ast = toPasswordString(ast)
     const owner = SchemaAST.getContextOwner(ast)
     let identifier = InternalAnnotations.resolveIdentifier(ast)
     const fallback = identifier === undefined

@@ -207,20 +207,32 @@ export const make = Effect.gen(function*() {
 
       const multipart = makeMultipartSchemas(spec, options.format, resolveRef)
 
-      const parsed = parseOpenApi(spec, generator, resolveRef, options.format, emitWarning, multipart.transform)
+      let parsed = parseOpenApi(spec, generator, resolveRef, options.format, emitWarning, multipart.transform)
       multipart.finish(generator.schemas)
 
       // TODO: make a CLI option ?
       const importName = "Schema"
       const source = getDialect(spec)
+      const encodedSchemas = new Set<string>()
       const schemaOptions = {
         onEnter: options.onEnter,
         multipartSchemaRefs: multipart.refs,
-        includeSchemas: options.includeSchemas
+        includeSchemas: options.includeSchemas,
+        onEncodedSchema: (name: string) => encodedSchemas.add(name)
       }
       const generation = options.format === "httpapi"
         ? generator.generateHttpApi(source, multipart.definitions, schemaOptions)
         : generator.generate(source, multipart.definitions, options.format === "httpclient-type-only", schemaOptions)
+      if (encodedSchemas.size > 0) {
+        parsed = {
+          ...parsed,
+          operations: parsed.operations.map((operation) => {
+            const encodeParams = operation.params !== undefined && encodedSchemas.has(operation.params)
+            const encodePayload = operation.payload !== undefined && encodedSchemas.has(operation.payload)
+            return encodeParams || encodePayload ? { ...operation, encodeParams, encodePayload } : operation
+          })
+        }
+      }
 
       if (options.format === "httpapi") {
         const needsMultipartImport = generation.includes("Multipart.")

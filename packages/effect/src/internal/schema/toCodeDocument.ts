@@ -63,9 +63,12 @@ function renderAnnotations(
   annotations: Schema.Annotations.Annotations | undefined
 ): string | undefined {
   if (annotations === undefined) return undefined
+  // The default password format of a `Redacted` string is not rendered, because it would take precedence over a
+  // format supplied by a check once the generated schema is exported.
+  const isPasswordDefault = annotations[InternalAnnotations.PASSWORD_FORMAT_DEFAULT_KEY] === true
   const entries: Array<string> = []
   for (const [key, value] of Object.entries(annotations)) {
-    if (InternalAnnotations.annotationExcludedKeys.has(key)) continue
+    if (InternalAnnotations.annotationExcludedKeys.has(key) || isPasswordDefault && key === "format") continue
     const rendered = renderEmittableAnnotation(value)
     if (rendered !== undefined) entries.push(`${formatObjectLiteralKey(key)}: ${rendered}`)
   }

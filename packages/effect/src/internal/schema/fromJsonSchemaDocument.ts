@@ -271,15 +271,85 @@ export function fromJsonSchemaMultiDocument(
   const references = new Map<string, ReferenceSlot>()
   let inNestedResource = false
 
+  // A password is a string, or a reference to a plain string definition, annotated with `format: "password"`
+  function isPassword(input: ImportedJsonSchemaRepresentation): boolean {
+    if (input.annotations?.format !== "password") return false
+    return input._tag === "String" || input._tag === "Reference" && isPlainStringReference(input)
+  }
+
+  function isPlainStringReference(input: ImportedReference): boolean {
+    return resolveUnformattedDefinition(input)?._tag === "String"
+  }
+
+  // Follows alias references to the definition a password reference can apply to: one without its own format that
+  // is not still being translated, since those are recursive and so never strings
+  function resolveUnformattedDefinition(input: ImportedReference): ImportedJsonSchemaRepresentation | undefined {
+    const seen = new Set<string>()
+    let reference = input
+    while (!seen.has(reference.$ref) && definitionCache.get(reference.$ref) !== null) {
+      seen.add(reference.$ref)
+      const definition = translateDefinition(reference.$ref, reference.path)
+      if (definition.annotations?.format !== undefined) return undefined
+      if (definition._tag !== "Reference") return definition
+      reference = definition
+    }
+    return undefined
+  }
+
+  // `{ type: ["string", "null"], format: "password" }` (or OpenAPI 3.0 `nullable: true`) annotates the union, so the
+  // password format moves to its string members. Literal members, such as those from `enum` or `const`, stay plain.
+  function movePasswordFormatToStrings(input: ImportedJsonSchemaRepresentation): ImportedJsonSchemaRepresentation {
+    if (input._tag !== "Union" || input.annotations?.format !== "password") return input
+    let moved = false
+    const types = input.types.map((type): ImportedJsonSchemaRepresentation => {
+      if (
+        type.annotations?.format === undefined &&
+        (type._tag === "String" || type._tag === "Reference" && isPlainStringReference(type))
+      ) {
+        moved = true
+        return { ...type, annotations: { ...type.annotations, format: "password" } }
+      }
+      return type
+    })
+    if (!moved) return input
+    const { format: _, ...annotations } = input.annotations
+    return { ...input, types, annotations: Object.keys(annotations).length === 0 ? undefined : annotations }
+  }
+
+  // A password reference to a union definition, such as a nullable string, is inlined with the password format moved
+  // to the union's string members, so other uses of the definition stay plain
+  function passwordUnionDefinition(input: ImportedReference): ImportedJsonSchemaRepresentation | undefined {
+    if (input.annotations?.format !== "password") return undefined
+    const definition = resolveUnformattedDefinition(input)
+    if (definition?._tag !== "Union") return undefined
+    const union = movePasswordFormatToStrings({
+      ...definition,
+      annotations: { ...definition.annotations, format: "password" }
+    })
+    return union.annotations?.format === "password" ? undefined : union
+  }
+
   function finalize(input: ImportedJsonSchemaRepresentation): Schema.Top {
     const annotations = mergeAnnotations(input.annotations, input.customAnnotations)
     if (input._tag === "Reference") {
       if (annotations !== undefined) resolveReference(input, input.path)
+      const union = passwordUnionDefinition(input)
+      if (union !== undefined) {
+        const { format: _, ...rest } = annotations ?? {}
+        return finalize({ ...union, annotations: mergeAnnotations(union.annotations, rest) })
+      }
       let slot = references.get(input.$ref)
       if (slot === undefined) {
         slot = new ReferenceSlot(input.$ref)
         references.set(input.$ref, slot)
         slot.body = finalize(translateDefinition(input.$ref, input.path)).annotate({ identifier: input.$ref })
+      }
+      if (isPassword(input)) {
+        // Wrap this use only, so other references to the same string definition stay plain
+        const { format: _, ...rest } = annotations ?? {}
+        return Schema.RedactedFromValue(
+          Object.keys(rest).length === 0 ? slot.body ?? slot.wrapper : slot.wrapper.annotate(rest)
+        )
       }
       return annotations === undefined ? slot.body ?? slot.wrapper : slot.wrapper.annotate(annotations)
     }
@@ -288,9 +358,14 @@ export function fromJsonSchemaMultiDocument(
     switch (input._tag) {
       case "Unknown":
         return Schema.Json.annotate({ ...annotations, expected: "JSON value" })
+      case "String":
+        if (isPassword(input)) {
+          return finalizePassword(input, annotations)
+        }
+        schema = Schema.String
+        break
       case "Never":
       case "Null":
-      case "String":
       case "Number":
       case "Boolean":
         schema = primitiveSchemas[input._tag]
@@ -328,7 +403,13 @@ export function fromJsonSchemaMultiDocument(
           InternalRecord.assignProperty(fields, property.name, property.isOptional ? Schema.optionalKey(type) : type)
         }
         const index = input.indexSignatures[0]
-        const record = index === undefined
+        // `Schema.Json` index signatures also check declared properties, which reject decoded `Redacted` values, so
+        // open objects containing passwords fall back to closed structs. Typed rests are kept: a password-valued rest
+        // accepts the decoded values.
+        const record = index === undefined ||
+            index.parameter === string &&
+              index.type._tag === "Unknown" &&
+              input.propertySignatures.some((property) => containsPassword(property.type, new Set()))
           ? undefined
           : Schema.Record(finalize(index.parameter) as Schema.Record.Key, finalize(index.type))
         schema = record !== undefined
@@ -354,8 +435,50 @@ export function fromJsonSchemaMultiDocument(
         check.annotations
       )
     }
-    const filter = check._tag === "PropertyNames" ? Schema.isPropertyNames(finalize(check.type)) : check.filter
+    const filter = check._tag === "PropertyNames" ? Schema.isPropertyNames(finalizeKey(check.type)) : check.filter
     return check.annotations === undefined ? filter : filter.annotate(check.annotations)
+  }
+
+  // Property names are always plain strings, even when their schema uses the password format.
+  function finalizeKey(input: ImportedJsonSchemaRepresentation): Schema.Top {
+    const schema = finalize(input)
+    return containsPassword(input, new Set()) ? Schema.toEncoded(schema) : schema
+  }
+
+  function finalizePassword(
+    input: ImportedKeyword<"String">,
+    annotations: Schema.Annotations.Annotations | undefined
+  ): Schema.Top {
+    // Representations of `Redacted` strings restore `format: "password"`. Other annotations stay on the inner
+    // string, because annotations on the `Redacted` wrapper are not exported.
+    const { format: _, ...rest } = annotations ?? {}
+    const value = Object.keys(rest).length === 0 ? Schema.String : Schema.String.annotate(rest)
+    const checks = input.checks.map(finalizeCheck)
+    return Schema.RedactedFromValue(
+      checks.length > 0 ? value.check(...checks as [InternalAST.Check<any>]) : value
+    )
+  }
+
+  function containsPassword(input: ImportedJsonSchemaRepresentation, seen: Set<string>): boolean {
+    switch (input._tag) {
+      case "String":
+        return isPassword(input)
+      case "Arrays":
+        return input.elements.some((element) => containsPassword(element.type, seen)) ||
+          input.rest.some((rest) => containsPassword(rest, seen))
+      case "Objects":
+        return input.propertySignatures.some((property) => containsPassword(property.type, seen)) ||
+          input.indexSignatures.some((index) => containsPassword(index.type, seen))
+      case "Union":
+        return input.types.some((type) => containsPassword(type, seen))
+      case "Reference":
+        if (isPassword(input) || passwordUnionDefinition(input) !== undefined) return true
+        if (seen.has(input.$ref)) return false
+        seen.add(input.$ref)
+        return containsPassword(translateDefinition(input.$ref, input.path), seen)
+      default:
+        return false
+    }
   }
 
   function annotate(
@@ -1116,7 +1239,7 @@ export function fromJsonSchemaMultiDocument(
       }
     }
     inNestedResource = wasInNestedResource
-    return representation
+    return movePasswordFormatToStrings(representation)
   }
 
   function translateType(

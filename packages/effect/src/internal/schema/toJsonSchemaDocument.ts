@@ -300,6 +300,19 @@ function compileJsonSchema(
     return result
   }
 
+  // Whether a compiled schema, or the definition it references, exports a format
+  function exportsFormat(schema: JsonSchema.JsonSchema, seen = new Set<string>()): boolean {
+    if (hasFormat(schema)) return true
+    if (typeof schema.$ref !== "string") return false
+    const pointer = decodeUriFragment(schema.$ref)
+    if (pointer === undefined || !pointer.startsWith("/$defs/") || pointer.indexOf("/", 7) >= 0) return false
+    const key = unescapeToken(pointer.slice(7))
+    if (seen.has(key)) return false
+    seen.add(key)
+    const definition = compiledDefinitions.get(key)?.schema
+    return definition !== undefined && exportsFormat(definition, seen)
+  }
+
   function finalizeJsonSchema(schema: JsonSchema.JsonSchema): JsonSchema.JsonSchema {
     return rewriteRefs(schema, ($ref) => {
       const pointer = decodeUriFragment($ref)
@@ -398,10 +411,18 @@ function compileJsonSchema(
 
     const local: Array<Exactness> = []
     dependencies.push(local)
-    let output = {
-      ...on(representation, path, local),
-      ...collectJsonSchemaAnnotations(representation.annotations, options)
+    const base = on(representation, path, local)
+    let annotations = collectJsonSchemaAnnotations(representation.annotations, options)
+    // The default password format of a `Redacted` string gives way to a format the string already exports, or to
+    // one supplied by its checks
+    const passwordDefault = representation.annotations?.[InternalAnnotations.PASSWORD_FORMAT_DEFAULT_KEY] === true
+    if (passwordDefault && annotations !== undefined && exportsFormat(base)) {
+      const { format: _, ...rest } = annotations
+      annotations = rest
     }
+    let output = { ...base, ...annotations }
+    // Set while the output still carries the default password format, so only that default is replaced by a check
+    let passwordDefaultFormat = passwordDefault && annotations?.format !== undefined
     if (representation._tag === "String" && representation.content !== undefined) {
       const content = representation.content
       output.contentMediaType = content.mediaType
@@ -413,7 +434,12 @@ function compileJsonSchema(
     for (let index = 0; index < representation.checks.length; index++) {
       const type = typeof output.type === "string" && isJsonSchemaType(output.type) ? output.type : undefined
       const check = compileCheck(representation.checks[index], type, [...path, "checks", index], local)
-      if (check !== undefined) output = appendJsonSchema(output, ...check)
+      if (check === undefined) continue
+      if (passwordDefaultFormat && hasFormat(check[0])) {
+        delete output.format
+        passwordDefaultFormat = false
+      }
+      output = appendJsonSchema(output, ...check)
     }
     compiledRepresentations.set(representation, { schema: output, dependencies: local })
     return registerPendingOneOf(output)
@@ -744,6 +770,11 @@ function compileJsonSchema(
       }
     }
   }
+}
+
+function hasFormat(schema: JsonSchema.JsonSchema): boolean {
+  return typeof schema.format === "string" ||
+    Array.isArray(schema.allOf) && schema.allOf.some((member) => typeof member === "object" && hasFormat(member))
 }
 
 function isJsonSchemaType(input: string): input is JsonSchema.Type {
