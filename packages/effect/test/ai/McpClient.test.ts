@@ -453,14 +453,17 @@ describe("McpClient", () => {
       assert.strictEqual(error.reason._tag, "ValidationError")
     }))
 
-  // A single page larger than the item limit must fail with LimitError, not exceed the call argument limit.
+  // A single page larger than the item limit must fail with LimitError before its items are collected.
   it.effect("should fail with LimitError when one discovery page exceeds the item limit", () =>
     Effect.gen(function*() {
-      const prompts = Array.from({ length: 150_000 }, () => ({ name: "p" }))
+      const prompts = Array.from({ length: 11 }, () => ({ name: "p" }))
       const { client } = yield* scriptedHttp((message) =>
         message.method === "prompts/list"
           ? jsonRpcResult(message, { prompts })
-          : scriptedReply(McpProtocol.v2025_11_25, message), { protocol: McpProtocol.v2025_11_25 })
+          : scriptedReply(McpProtocol.v2025_11_25, message), {
+        protocol: McpProtocol.v2025_11_25,
+        discoveryLimits: { maxItems: 10 }
+      })
       const error = yield* client.listPrompts().pipe(Effect.flip)
       assert.strictEqual(error.reason._tag, "LimitError")
     }))
