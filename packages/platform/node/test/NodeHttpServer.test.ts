@@ -1430,6 +1430,96 @@ describe("HttpServer", () => {
     )
   })
 
+  it.live("shuts down while a WebSocket client stays connected", () =>
+    Effect.gen(function*() {
+      const server = Http.createServer()
+      const scope = yield* Scope.make()
+      yield* HttpRouter.add(
+        "GET",
+        "/ws",
+        Effect.gen(function*() {
+          const request = yield* HttpServerRequest.HttpServerRequest
+          yield* request.upgrade
+          yield* Effect.never
+          return HttpServerResponse.empty()
+        })
+      ).pipe(
+        (layer) => HttpRouter.serve(layer, { disableListenLog: true }),
+        Layer.provide(NodeHttpServer.layer(() => server, {
+          host: "127.0.0.1",
+          port: 0,
+          gracefulShutdownTimeout: "2 seconds"
+        })),
+        Layer.buildWithScope(scope)
+      )
+      const port = tcpPort(server)
+      const connect = (key: string) =>
+        Effect.callback<Net.Socket, Error>((resume) => {
+          const socket = Net.connect(port, "127.0.0.1", () => {
+            socket.write(
+              "GET /ws HTTP/1.1\r\n" +
+                "Host: 127.0.0.1\r\n" +
+                "Upgrade: websocket\r\n" +
+                "Connection: Upgrade\r\n" +
+                `Sec-WebSocket-Key: ${key}\r\n` +
+                "Sec-WebSocket-Version: 13\r\n\r\n"
+            )
+          })
+          socket.once("data", () => {
+            socket.pause()
+            resume(Effect.succeed(socket))
+          })
+          socket.once("error", (error) => resume(Effect.fail(error)))
+        })
+      const sockets = yield* Effect.all([
+        connect("dGhlIHNhbXBsZSBub25jZQ=="),
+        connect("AQIDBAUGBwgJCgsMDQ4PEC==")
+      ], { concurrency: "unbounded" })
+      const started = Date.now()
+      const closed = yield* Effect.forkDetach(Scope.close(scope, Exit.void))
+      yield* Fiber.join(closed).pipe(Effect.timeout("2 seconds"))
+      assert.isTrue(Date.now() - started < 500)
+      yield* Effect.forEach(sockets, (socket) => untilDestroyed(socket))
+      assert.isTrue(sockets.every((socket) => socket.destroyed))
+    }))
+
+  it.live("shuts down while a keep-alive HTTP connection stays open", () =>
+    Effect.gen(function*() {
+      const server = Http.createServer()
+      server.keepAliveTimeout = 5000
+      const scope = yield* Scope.make()
+      yield* HttpRouter.add("GET", "/", Effect.succeed(HttpServerResponse.text("ok"))).pipe(
+        (layer) => HttpRouter.serve(layer, { disableListenLog: true }),
+        Layer.provide(NodeHttpServer.layer(() => server, {
+          host: "127.0.0.1",
+          port: 0,
+          gracefulShutdownTimeout: "2 seconds"
+        })),
+        Layer.buildWithScope(scope)
+      )
+      const port = tcpPort(server)
+      const socket = yield* Effect.callback<Net.Socket, Error>((resume) => {
+        const connection = Net.connect(port, "127.0.0.1", () => {
+          connection.write("GET / HTTP/1.1\r\nHost: 127.0.0.1\r\nConnection: keep-alive\r\n\r\n")
+        })
+        let received = ""
+        connection.on("data", (chunk) => {
+          received += chunk.toString()
+          if (received.includes("\r\n\r\nok")) {
+            connection.pause()
+            resume(Effect.succeed(connection))
+          }
+        })
+        connection.once("error", (error) => resume(Effect.fail(error)))
+      })
+      const started = Date.now()
+      const closed = yield* Effect.forkDetach(Scope.close(scope, Exit.void))
+      yield* Fiber.join(closed).pipe(Effect.timeout("2 seconds"))
+      assert.isTrue(Date.now() - started < 500)
+      yield* untilDestroyed(socket)
+      assert.isTrue(socket.destroyed)
+    }))
+
   it.live("closes idle HTTP/2 sessions on shutdown", () =>
     Effect.gen(function*() {
       const server = Http2.createServer()
@@ -2452,6 +2542,14 @@ const getStatusText = (port: number) =>
     request.on("error", (error) => resume(Effect.fail(error)))
     return Effect.sync(() => request.destroy())
   })
+
+const untilDestroyed = (socket: Net.Socket) =>
+  Effect.callback<void>((resume) => {
+    if (socket.destroyed) {
+      return resume(Effect.void)
+    }
+    socket.once("close", () => resume(Effect.void))
+  }).pipe(Effect.timeout("500 millis"))
 
 const tcpPort = (server: Net.Server): number => {
   const address = server.address()
