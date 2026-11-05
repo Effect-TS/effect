@@ -197,23 +197,24 @@ export const readOnlySucceeded: Layer.Layer<FileSystem.ReadOnly> = Layer.succeed
   {} as FileSystem.ReadOnlyShape
 )
 
-// Zero-argument operations: a member that is an Effect in today's record is a function of no arguments, so it reads
-// the same standalone and through the record, and its implementation is a function in both.
-export const width: Effect.Effect<number, never, "effect/Terminal/columns"> = Terminal.columns()
+// Value operations: a member that is an Effect keeps its shape, and the standalone form is that Effect with the key
+// added, so it reads the same standalone and through the record, and its implementation is an Effect in both.
+export const width: Effect.Effect<number, never, "effect/Terminal/columns"> = Terminal.columns
 export const input: Effect.Effect<
   Queue.Dequeue<Terminal.UserInput>,
   never,
   Scope.Scope | "effect/Terminal/readInput"
-> = Terminal.readInput()
+> = Terminal.readInput
+export const widthSlot: Context.Slot<"effect/Terminal/columns", Effect.Effect<number>> = Terminal.columns
 export const terminalRecord: Effect.Effect<Terminal.Shape, never, Terminal.Terminal> = Terminal.Terminal
-export const columnsMember: Terminal.Shape["columns"] = () => Effect.succeed(80)
-export const columnsLayer: Layer.Layer<"effect/Terminal/columns"> = Layer.succeed(
-  Terminal.columns,
-  () => Effect.succeed(80)
+export const columnsMember: Terminal.Shape["columns"] = Effect.succeed(80)
+export const columnsLayer: Layer.Layer<"effect/Terminal/columns"> = Layer.succeed(Terminal.columns, Effect.succeed(80))
+export const columnsOverride: Effect.Effect<number> = Terminal.columns.pipe(
+  Effect.provideService(Terminal.columns, Effect.succeed(80))
 )
 export const terminalProgram: Effect.Effect<number, Terminal.TerminalError, Terminal.Terminal> = Effect.gen(
   function*() {
-    const columns = yield* Terminal.columns()
+    const columns = yield* Terminal.columns
     yield* Terminal.display("x")
     return columns
   }

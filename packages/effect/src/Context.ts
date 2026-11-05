@@ -294,31 +294,47 @@ export const Service: {
       ;(self as any).make = options.make
     }
     if (options?.fiberCached) {
-      spanOf(key).cached = true
+      cacheKeys.add(key)
+      watched.add(key)
     }
     return self
   }
   return arguments.length > 0 ? init(arguments[0], arguments[1]) : init
 } as any
 
-// The read every getter starts with: one `lookup` of the slot. Only a slot
-// that holds no current value goes further, to `readMiss`.
+// The read every getter starts with: one `lookup` of the slot. Only an empty
+// slot goes further, to `readMiss`.
 const readKey = (self: Context<never>, key: Slot<any, any>, orThrow: boolean): unknown => {
   const value = lookup(self, key.key)
-  return value !== notFound && value !== assembling ? value : readMiss(self, key, value, orThrow)
+  if (value !== notFound) return value
+  // a reference's default, as at the branch point; callers that pass
+  // `orThrow: false` resolve references themselves, as the branch point's
+  // getters do
+  if (orThrow && isReference(key)) return getDefaultValue(key)
+  return readMiss(self, key, orThrow)
 }
 
-// A reference's default, as at the branch point; a record service's string
-// assembles the record from its members' slots; anything else is `notFound`
-// or `Service not found`. Callers that pass `orThrow: false` resolve
-// references themselves, as the branch point's getters do.
-const readMiss = (self: Context<never>, key: Slot<any, any>, found: unknown, orThrow: boolean): unknown => {
-  if (orThrow && isReference(key)) return getDefaultValue(key)
-  const record = hasRecords ? spans.get(key.key)?.record : undefined
-  if (record !== undefined) return assemble(record, self, found, orThrow)
+// An empty slot that is not a reference: a record service assembles the
+// record from its members' slots; anything else is `notFound` or `Service not
+// found`.
+const readMiss = (self: Context<never>, key: Slot<any, any>, orThrow: boolean): unknown => {
+  if (isRecordKey(key)) return assemble(key, self, orThrow)
   if (!orThrow) return notFound
   throw serviceNotFoundError(key)
 }
+
+// The strings of the keys fibers cache, as at the branch point: a write to one
+// starts a new cache root.
+const cacheKeys = new Set<string>()
+
+// The strings a write may have to do more for than store a slot: the keys
+// fibers cache, and the strings of every record service this module has
+// constructed and of every slot one of them spans. `add` consults it in the one
+// `Set` read the branch point spent on `cacheKeys`; a string outside it is
+// written by the branch point's code, one inside it is checked against the key
+// and the context, which alone decide what happens. The set changes no result:
+// a context can only hold a record whose strings are in it.
+const watched = new Set<string>()
 
 const ServiceProto: any = {
   [ServiceTypeId]: ServiceTypeId,
@@ -529,6 +545,8 @@ export interface Context<in Services> extends Equal.Equal, Pipeable, Inspectable
 interface ContextImpl<in Services> extends Context<Services> {
   cacheRoot: ContextImpl<any> | undefined
   base: ReadonlyMap<string, any>
+  /** The record services written into `base` through their keys; see "Storage". */
+  records: RecordIndex | undefined
   baseHits: number
   overlay: Overlay | undefined
   depth: number
@@ -546,59 +564,42 @@ interface Overlay {
 // enough fall-throughs to amortize the copy.
 const FlattenAfterBaseHits = 8
 
-const makeImpl = <Services>(
+// A constructor rather than `Object.create(Proto)`: V8 gives an object built by
+// a constructor an in-object slot for every field it assigns, where an object
+// created from a prototype gets four and keeps the rest in a side array that
+// is reallocated past seven.
+function ContextClass(
+  this: ContextImpl<any>,
   cacheRoot: ContextImpl<any> | undefined,
   base: ReadonlyMap<string, any>,
+  records: RecordIndex | undefined,
   overlay: Overlay | undefined,
   depth: number,
   maxDepth: number
-): ContextImpl<Services> => {
-  const self: ContextImpl<Services> = Object.create(Proto)
-  self.cacheRoot = cacheRoot ?? self
-  self.base = base
-  self.overlay = overlay
-  self.depth = depth
-  self._flat = undefined
-  self.baseHits = 0
-  self.maxDepth = maxDepth
-  return self
+) {
+  this.cacheRoot = cacheRoot ?? this
+  this.base = base
+  this.records = records
+  this.overlay = overlay
+  this.depth = depth
+  this._flat = undefined
+  this.baseHits = 0
+  this.maxDepth = maxDepth
 }
 
-// Flattening replays overlays into a copy of the base. An overlay is a value,
-// or the `assembling` marker a member write leaves over the slot of every
-// record spanning the member; the marker deletes the record's slot, so a flat
-// map never holds a marker or a record that disagrees with its members. No
-// registry is consulted: the overlays already say what to do.
+const makeImpl = <Services>(
+  cacheRoot: ContextImpl<any> | undefined,
+  base: ReadonlyMap<string, any>,
+  records: RecordIndex | undefined,
+  overlay: Overlay | undefined,
+  depth: number,
+  maxDepth: number
+): ContextImpl<Services> => new (ContextClass as any)(cacheRoot, base, records, overlay, depth, maxDepth)
+
 const applyOverlays = (map: Map<string, any>, overlay: Overlay | undefined): void => {
   if (!overlay) return
   applyOverlays(map, overlay.parent)
-  writeFlat(map, overlay.key, overlay.value)
-}
-
-const writeFlat = (map: Map<string, any>, key: string, value: unknown): void => {
-  if (value === assembling) map.delete(key)
-  else map.set(key, value)
-}
-
-// Slot writes that bring values in from another flat map (`merge`, `mergeAll`)
-// or remove them (`omit`) have no overlays to say which records they shadow,
-// so they ask the registry: the slot of every record spanning the key is
-// dropped. A program with no record service skips the registry.
-const setSlot = (map: Map<string, any>, key: string, value: unknown): void => {
-  map.set(key, value)
-  if (hasRecords) dropParents(map, key)
-}
-
-const deleteSlot = (map: Map<string, any>, key: string): void => {
-  map.delete(key)
-  if (hasRecords) dropParents(map, key)
-}
-
-const dropParents = (map: Map<string, any>, key: string): void => {
-  const span = spans.get(key)
-  if (span !== undefined) {
-    for (const parent of span.parents) map.delete(parent)
-  }
+  map.set(overlay.key, overlay.value)
 }
 
 const flatten = (self: ContextImpl<any>): ReadonlyMap<string, any> => {
@@ -609,19 +610,20 @@ const flatten = (self: ContextImpl<any>): ReadonlyMap<string, any> => {
   return self._flat = map
 }
 
-const withFlat = <B>(self: Context<never>, f: (map: Map<string, any>) => void): Context<B> => {
+// A fresh flat context: a copy of `self`'s map and record index, edited by `f`,
+// which returns the index the result keeps.
+const withFlat = <B>(
+  self: Context<never>,
+  f: (map: Map<string, any>, records: Map<string, RecordImpl> | undefined) => RecordIndex | undefined
+): Context<B> => {
+  const impl = self as ContextImpl<never>
   const map = new Map(self.mapUnsafe)
-  f(map)
-  return makeImpl(undefined, map, undefined, 0, (self as ContextImpl<any>).maxDepth)
+  const records = impl.records === undefined ? undefined : new Map(impl.records.byKey)
+  return makeImpl(undefined, map, f(map, records), undefined, 0, impl.maxDepth)
 }
 
 // A private symbol so user code cannot forge a value that reads as absent
 const notFound = Symbol()
-// Written over a record service's slot, as an overlay, when one of its members
-// is written on top of it: the stored record is no longer current and a read
-// assembles one from the members' slots. Never reaches a flat map (flattening
-// deletes the record's slot instead), so `mapUnsafe` never shows it.
-const assembling = Symbol()
 
 const lookup = (self: Context<never>, key: string): unknown => {
   const impl = self as ContextImpl<any>
@@ -694,12 +696,19 @@ export const makeUnsafe = <Services = never>(
 ): Context<Services> => {
   const maxDepth = options?.maxDepth
   // NaN or Infinity would never trigger a rebase, so fall back to the default
-  return makeImpl(undefined, mapUnsafe, undefined, 0, Number.isInteger(maxDepth) && maxDepth! >= 0 ? maxDepth! : 8)
+  return makeImpl(
+    undefined,
+    mapUnsafe,
+    undefined,
+    undefined,
+    0,
+    Number.isInteger(maxDepth) && maxDepth! >= 0 ? maxDepth! : 8
+  )
 }
 
 const Proto: Omit<
   ContextImpl<never>,
-  "cacheRoot" | "base" | "overlay" | "depth" | "_flat" | "baseHits" | "maxDepth"
+  "cacheRoot" | "base" | "records" | "overlay" | "depth" | "_flat" | "baseHits" | "maxDepth"
 > = {
   get mapUnsafe() {
     return flatten(this as any as ContextImpl<any>)
@@ -822,6 +831,7 @@ export const isReference = <I, S>(u: Slot<I, S>): u is Reference<S> => !!(u as R
  * @since 2.0.0
  */
 export const empty = (): Context<never> => emptyContext
+ContextClass.prototype = Proto
 const emptyContext = makeUnsafe(new Map())
 
 /**
@@ -847,11 +857,11 @@ export const make = <I, S>(
   key: Slot<I, S>,
   service: Types.NoInfer<S>
 ): Context<I> => {
-  const record = hasRecords ? spans.get(key.key)?.record : undefined
-  if (record === undefined) return makeUnsafe(new Map([[key.key, service]]))
+  if (!isRecordKey(key)) return makeUnsafe(new Map([[key.key, service]]))
   const map = new Map<string, any>()
-  writeRecord(map, record, service)
-  return makeUnsafe(map)
+  const records = new Map<string, RecordImpl>()
+  writeRecord(map, records, key, service, new Set())
+  return makeImpl(undefined, map, indexOf(records), undefined, 0, 8)
 }
 
 /**
@@ -905,7 +915,10 @@ export const add: {
   self: Context<Services>,
   key: Slot<I, S>,
   service: Types.NoInfer<S>
-): Context<Services | I> => addUnsafe(self, key.key, service))
+): Context<Services | I> =>
+  watched.has(key.key)
+    ? isRecordKey(key) ? addRecord(self, key, service) : addWatched(self, key.key, service)
+    : addPlain(self, key.key, service, (self as ContextImpl<Services>).cacheRoot))
 
 /**
  * Adds a service by key to a given `Context` using a string key.
@@ -918,72 +931,66 @@ export const addUnsafe = <Services, I, S>(
   self: Context<Services>,
   key: string,
   service: Types.NoInfer<S>
+): Context<Services | I> =>
+  watched.has(key)
+    ? addWatched(self, key, service)
+    : addPlain(self, key, service, (self as ContextImpl<Services>).cacheRoot)
+
+// One slot, as at the branch point: an overlay, or a fresh flat map once the
+// overlays are deep enough. `cacheRoot` is `undefined` for the keys fibers
+// cache, whose write starts a new cache root.
+const addPlain = <Services, I, S>(
+  self: Context<Services>,
+  key: string,
+  service: S,
+  cacheRoot: ContextImpl<any> | undefined
 ): Context<Services | I> => {
-  // One registry read says what the string is, in place of the branch
-  // point's `cacheKeys.has`. Most strings are one slot: the code below is the
-  // branch point's.
-  const span = spans.get(key)
-  if (span !== undefined) return addSpan(self, key, service, span)
   const impl = self as ContextImpl<Services>
   if (impl.depth >= impl.maxDepth) {
     // Avoid mapUnsafe: it would flatten the parent before copying.
     const map = new Map(impl._flat ?? impl.base)
     if (!impl._flat) applyOverlays(map, impl.overlay)
     map.set(key, service)
-    return makeImpl(impl.cacheRoot, map, undefined, 0, impl.maxDepth)
+    return makeImpl(cacheRoot, map, impl.records, undefined, 0, impl.maxDepth)
   }
-  return makeImpl(
-    impl.cacheRoot,
-    impl.base,
-    { key, value: service, parent: impl.overlay },
-    impl.depth + 1,
-    impl.maxDepth
-  )
-}
-
-// A string the registry knows: a record service (its members' slots and its
-// own, in a fresh flat map), a member of one or more records (the slot, then
-// one marker over the slot of every record spanning it), or a fiber-cached key
-// (one slot and a new cache root).
-const addSpan = <Services, I, S>(
-  self: Context<Services>,
-  key: string,
-  service: S,
-  span: Span
-): Context<Services | I> => {
-  if (span.record !== undefined) return withFlat(self, (map) => writeRecord(map, span.record!, service))
-  let context = addSlot(self, key, service, !span.cached)
-  for (const parent of span.parents) context = addSlot(context, parent, assembling, true)
-  return context
-}
-
-// Writes one slot as an overlay, or into a fresh flat map once the overlays
-// are deep enough. `keepCache` is false for the keys fibers cache, whose write
-// starts a new cache root.
-const addSlot = <Services, I, S>(
-  self: Context<Services>,
-  key: string,
-  service: S,
-  keepCache: boolean
-): Context<Services | I> => {
-  const impl = self as ContextImpl<Services>
-  const cacheRoot = keepCache ? impl.cacheRoot : undefined
-  if (impl.depth >= impl.maxDepth) {
-    // Avoid mapUnsafe: it would flatten the parent before copying.
-    const map = new Map(impl._flat ?? impl.base)
-    if (!impl._flat) applyOverlays(map, impl.overlay)
-    writeFlat(map, key, service)
-    return makeImpl(cacheRoot, map, undefined, 0, impl.maxDepth)
-  }
-
   return makeImpl(
     cacheRoot,
     impl.base,
+    impl.records,
     { key, value: service, parent: impl.overlay },
     impl.depth + 1,
     impl.maxDepth
   )
 }
+
+// A watched string: a slot a record in this context spans is written into a
+// fresh flat map, where the record is rebuilt (see "Storage"); a fiber-cached
+// key starts a new cache root; anything else is one slot.
+const addWatched = <Services, I, S>(self: Context<Services>, key: string, service: S): Context<Services | I> => {
+  const impl = self as ContextImpl<Services>
+  if (impl.records !== undefined && impl.records.spanned.has(key)) return addSpanned(self, key, service)
+  return addPlain(self, key, service, cacheKeys.has(key) ? undefined : impl.cacheRoot)
+}
+
+// A write to a slot a record present spans: a fresh flat map with the slot
+// written and the record rebuilt from its slots.
+const addSpanned = <Services, I, S>(self: Context<Services>, key: string, service: S): Context<Services | I> =>
+  withFlat(self, (map, records) => {
+    map.set(key, service)
+    settle(map, records!, [key], undefined)
+    return indexOf(records!)
+  })
+
+// A record service is written into a fresh flat map: its members' slots, its
+// own, and the rebuild of any other record present that spans a slot it wrote.
+const addRecord = <Services, I, S>(self: Context<Services>, record: RecordImpl, service: S): Context<Services | I> =>
+  withFlat(self, (map, records) => {
+    const written = new Set<string>()
+    const byKey = records ?? new Map<string, RecordImpl>()
+    writeRecord(map, byKey, record, service, written)
+    settle(map, byKey, written, written)
+    return indexOf(byKey)
+  })
 
 /**
  * Adds or removes a service depending on an `Option`.
@@ -1131,11 +1138,7 @@ export const getOrUndefined: {
 /** @internal */
 export const getOrUndefinedUnsafe = <A, Services = never>(self: Context<Services>, key: string): A | undefined => {
   const value = lookup(self, key)
-  if (value !== notFound && value !== assembling) return value as A
-  const record = hasRecords ? spans.get(key)?.record : undefined
-  if (record === undefined) return undefined
-  const assembled = assemble(record, self, value, false)
-  return assembled === notFound ? undefined : assembled as A
+  return value === notFound ? undefined : value as A
 }
 
 /**
@@ -1181,7 +1184,9 @@ export const getUnsafe: {
   2,
   <Services, I extends Services, S>(self: Context<Services>, service: Slot<I, S>): S => {
     const value = lookup(self, service.key)
-    return value !== notFound && value !== assembling ? value as S : readMiss(self, service, value, true) as S
+    if (value !== notFound) return value as S
+    if (isReference(service)) return getDefaultValue(service)
+    return readMiss(self, service, true) as S
   }
 )
 
@@ -1327,8 +1332,28 @@ export const merge: {
 } = dual(2, <Services, R1>(self: Context<Services>, that: Context<R1>): Context<Services | R1> => {
   if (self.mapUnsafe.size === 0) return that as any
   if (that.mapUnsafe.size === 0) return self as any
-  return withFlat(self, (map) => that.mapUnsafe.forEach((value, key) => setSlot(map, key, value)))
+  return withFlat(self, (map, records) => indexOf(mergeInto(map, records, that as ContextImpl<R1>)))
 })
+
+// Copies `that`'s slots over `map`. A record of `map` that spans a slot `that`
+// writes is rebuilt, unless `that` writes the record itself; the records of
+// `that` are current, since they were current in `that`'s flat map.
+const mergeInto = (
+  map: Map<string, any>,
+  records: Map<string, RecordImpl> | undefined,
+  that: ContextImpl<any>
+): Map<string, RecordImpl> | undefined => {
+  const thatMap = that.mapUnsafe
+  thatMap.forEach((value, key) => map.set(key, value))
+  if (that.records === undefined) {
+    if (records !== undefined) settle(map, records, thatMap.keys(), undefined)
+    return records
+  }
+  const byKey = records ?? new Map<string, RecordImpl>()
+  that.records.byKey.forEach((record, key) => byKey.set(key, record))
+  if (records !== undefined) settle(map, records, thatMap.keys(), that.records.byKey)
+  return byKey
+}
 
 /**
  * Merges any number of `Context`s into one.
@@ -1374,12 +1399,14 @@ export const mergeAll = <T extends Array<unknown>>(
   ...ctxs: [...{ [K in keyof T]: Context<T[K]> }]
 ): Context<T[number]> => {
   const map = new Map()
+  let records: Map<string, RecordImpl> | undefined
   for (let i = 0; i < ctxs.length; i++) {
-    ctxs[i].mapUnsafe.forEach((value, key) => {
-      setSlot(map, key, value)
-    })
+    const impl = ctxs[i] as ContextImpl<any>
+    // a context holding no record is copied slot by slot, as at the branch point
+    if (records === undefined && impl.records === undefined) impl.mapUnsafe.forEach((value, key) => map.set(key, value))
+    else records = mergeInto(map, records, impl)
   }
-  return makeUnsafe(map)
+  return makeImpl(undefined, map, indexOf(records), undefined, 0, 8)
 }
 
 /**
@@ -1418,31 +1445,34 @@ export const pick = <S extends ReadonlyArray<Slot<any, any>>>(
   ...services: S
 ) =>
 <Services>(self: Context<Services>): Context<Services & Service.Identifier<S[number]>> => {
-  const keep: Array<string> = []
-  for (let i = 0; i < services.length; i++) slotsOf(services[i].key, keep)
-  if (keep.length <= 1) {
+  const impl = self as ContextImpl<any>
+  if (services.length <= 1 && (services.length === 0 || !isRecordKey(services[0]))) {
+    // one plain key: one lookup, which leaves the source's flat cache alone
     const map = new Map<string, unknown>()
-    if (keep.length === 1) {
-      const value = lookup(self, keep[0])
-      if (value !== notFound && value !== assembling) map.set(keep[0], value)
+    if (services.length === 1) {
+      const value = lookup(self, services[0].key)
+      if (value !== notFound) map.set(services[0].key, value)
     }
-    return makeImpl(undefined, map, undefined, 0, (self as ContextImpl<any>).maxDepth)
+    return makeImpl(undefined, map, undefined, undefined, 0, impl.maxDepth)
   }
-  const wanted = new Set(keep)
-  return withFlat(self, (map) =>
+  // the wanted slots: each key's own and, for a record service, every slot it
+  // spans, kept in the source's order; the index keeps the records whose own
+  // slot is kept
+  const wanted = new Set<string>()
+  for (let i = 0; i < services.length; i++) {
+    const key = services[i]
+    if (isRecordKey(key)) key.spanned.forEach((slot) => wanted.add(slot))
+    wanted.add(key.key)
+  }
+  return withFlat(self, (map, records) => {
     map.forEach((_, key) => {
       if (!wanted.has(key)) map.delete(key)
-    }))
-}
-
-// The slots a string occupies: itself, and for a record service its members'
-// slots, recursively.
-const slotsOf = (key: string, into: Array<string>): void => {
-  into.push(key)
-  const record = hasRecords ? spans.get(key)?.record : undefined
-  if (record !== undefined) {
-    for (let i = 0; i < record.slots.length; i++) slotsOf(record.slots[i].key.key, into)
-  }
+    })
+    records?.forEach((_, key) => {
+      if (!map.has(key)) records.delete(key)
+    })
+    return indexOf(records)
+  })
 }
 
 /**
@@ -1481,18 +1511,28 @@ export const omit = <S extends ReadonlyArray<Slot<any, any>>>(
   ...keys: S
 ) =>
 <Services>(self: Context<Services>): Context<Exclude<Services, Service.Identifier<S[number]>>> =>
-  withFlat(self, (map) => {
-    for (let i = 0; i < keys.length; i++) deleteKey(map, keys[i].key)
+  withFlat(self, (map, records) => {
+    const deleted = new Set<string>()
+    for (let i = 0; i < keys.length; i++) deleteKey(map, records, keys[i], deleted)
+    if (records !== undefined) settle(map, records, deleted, undefined)
+    return indexOf(records)
   })
 
-// Deletes the slots a string occupies, and the slot of every record spanning
-// any of them.
-const deleteKey = (map: Map<string, any>, key: string): void => {
-  const record = hasRecords ? spans.get(key)?.record : undefined
-  if (record !== undefined) {
-    for (let i = 0; i < record.slots.length; i++) deleteKey(map, record.slots[i].key.key)
+// Deletes the slots a key occupies: its own and, for a record service, its
+// members', recursively. A record present that spanned one of them is settled
+// afterwards, and dropped, since a member it needs is gone.
+const deleteKey = (
+  map: Map<string, any>,
+  records: Map<string, RecordImpl> | undefined,
+  key: Slot<any, any>,
+  deleted: Set<string>
+): void => {
+  if (isRecordKey(key)) {
+    for (let i = 0; i < key.slots.length; i++) deleteKey(map, records, key.slots[i].key, deleted)
+    records?.delete(key.key)
   }
-  deleteSlot(map, key)
+  map.delete(key.key)
+  deleted.add(key.key)
 }
 
 /**
@@ -1575,16 +1615,18 @@ export type OperationTypeId = "~effect/Context/Operation"
 export const OperationTypeId: OperationTypeId = "~effect/Context/Operation"
 
 /**
- * A callable key: a `Context.Key` whose shape is a function, and which can be
- * called in place of the implementation stored under it.
+ * A slot that stands in for its implementation: for a function shape, a
+ * function that is called in place of the implementation stored under it; for
+ * an Effect shape, an Effect that runs the one stored under it.
  *
  * **Details**
  *
- * `Operation<Id, Shape>` is the call signature of `Shape` with the key added
- * to the requirements of its result, intersected with `Key<Id, Shape>`. It is
- * provided, overridden, read, picked and omitted like any key, with the
- * existing `Context`, `Layer` and `Effect` APIs. It is a plain function, not
- * an Effect: `Effect.isEffect` is false and it cannot be yielded.
+ * `Operation<Id, Shape>` is the shape with the key added to the requirements
+ * of its result, intersected with `Slot<Id, Shape>`. It is provided,
+ * overridden, read, picked and omitted like any key, with the existing
+ * `Context`, `Layer` and `Effect` APIs. An operation with a function shape is
+ * a plain function, not an Effect: `Effect.isEffect` is false and it cannot be
+ * yielded. One with an Effect shape is an Effect and is yielded.
  *
  * @see {@link Operation} for creating an operation whose result is an Effect
  * @see {@link Operations} for grouping keys into a record service
@@ -1638,7 +1680,17 @@ export declare namespace Operation {
    * @category utility types
    * @since 4.0.0
    */
-  export type Signature = EffectSignature | StreamSignature | SinkSignature
+  export type Signature = EffectSignature | StreamSignature | SinkSignature | EffectValue
+
+  /**
+   * A shape `Context.Operation.value` accepts: an Effect. The operation is that
+   * Effect with the key added to its requirements; running it runs the
+   * implementation stored under the key.
+   *
+   * @category utility types
+   * @since 4.0.0
+   */
+  export type EffectValue = Effect<any, any, any>
 
   /**
    * The call signature of an operation.
@@ -1656,6 +1708,7 @@ export declare namespace Operation {
   export type Call<Id extends string, Shape extends Signature> = Shape extends
     (this: infer This, ...args: infer Args) => infer Result ? [Id] extends [Requirements<Result>] ? Shape
     : (this: This, ...args: Args) => Require<Result, Id>
+    : Shape extends Effect<infer A, infer E, infer R> ? [Id] extends [R] ? Shape : Effect<A, E, R | Id>
     : never
 
   /**
@@ -1703,12 +1756,12 @@ export declare namespace Operation {
    * @category utility types
    * @since 4.0.0
    */
-  export type KeyFor<Id extends string, Shape extends Signature> = [keyof Shape] extends [never] ?
-    Shape extends (...args: any) => infer Result ? [Id] extends [Requirements<Result>] ? Id
+  export type KeyFor<Id extends string, Shape extends Signature> = Shape extends (...args: any) => infer Result ?
+    [keyof Shape] extends [never] ? [Id] extends [Requirements<Result>] ? Id
       : Derivable<Shape> extends true ? Id
       : `The shape of "${Id}" is generic or overloaded: its result must require "${Id}"`
-    : never
     : "The shape has properties: an operation is a bare function"
+    : Id
 
   /**
    * Any operation.
@@ -1739,9 +1792,14 @@ export declare namespace Operation {
  * fiber's context each time that result runs, and the call's receiver and
  * arguments are forwarded to it. Operations have no default implementation.
  *
- * An operation is a `Context.Key`, so it is provided with `Layer.succeed`,
+ * An operation is a `Context.Slot`, so it is provided with `Layer.succeed`,
  * `Layer.effect` or `Effect.provideService`, overridden the same way, and read
  * as a value with `Effect.service` or `Context.get`.
+ *
+ * A member whose shape is an Effect rather than a function (`columns:
+ * Effect<number>`) is defined with `Context.Operation.value`: the operation is
+ * then that Effect with the key in its requirements, and running it runs the
+ * implementation stored under the key.
  *
  * The optional `Brand` type argument intersects an existing identity into the
  * operation's: `Context.Operation<Shape, FileSystem>()("effect/FileSystem/readFile")`
@@ -1753,8 +1811,8 @@ export declare namespace Operation {
  *
  * A generic or overloaded shape names its key in its result, otherwise the
  * definition does not compile. A shape returning a Stream is defined with
- * `Stream.Operation`. A member that is an Effect rather than a function is
- * written as a function of no arguments.
+ * `Stream.Operation`. A shape with properties is rejected: an operation is a
+ * bare function.
  *
  * **Example** (Defining, calling and providing an operation)
  *
@@ -1772,19 +1830,76 @@ export declare namespace Operation {
  * Effect.runSync(Effect.provide(program, live)) // => "hello world"
  * ```
  *
+ * **Example** (A member that is an Effect)
+ *
+ * ```ts import.meta.vitest
+ * import { Context, Effect, Layer } from "effect"
+ *
+ * // The shape is an Effect, so the operation is one: it is yielded, not called
+ * const columns = Context.Operation.value<Effect.Effect<number>>()("app/Terminal/columns")
+ *
+ * // Effect<number, never, "app/Terminal/columns">
+ * const program = Effect.map(columns, (width) => width * 2)
+ *
+ * // The implementation is the Effect itself
+ * const live = Layer.succeed(columns, Effect.succeed(40))
+ *
+ * Effect.runSync(Effect.provide(program, live)) // => 80
+ * ```
+ *
  * @see {@link Operations} for grouping keys into a record service
  *
  * @stability unstable
  * @category services
  * @since 4.0.0
  */
-export const Operation = <Shape extends Operation.EffectSignature, Brand = unknown>(): <const Id extends string>(
-  key: Operation.KeyFor<Id, Shape>
-) => Operation<Id & Brand, Shape> =>
-(key) => makeOperation(key as string, effectCall) as any
+export const Operation: {
+  <Shape extends Operation.EffectSignature, Brand = unknown>(): <const Id extends string>(
+    key: Operation.KeyFor<Id, Shape>
+  ) => Operation<Id & Brand, Shape>
+  /**
+   * Creates an operation whose shape is an Effect: the Effect itself with the
+   * key added to its requirements. Running it reads the implementation from
+   * the running fiber's context and runs that.
+   *
+   * @since 4.0.0
+   */
+  readonly value: <Shape extends Operation.EffectValue, Brand = unknown>() => <const Id extends string>(
+    key: Id
+  ) => Operation<Id & Brand, Shape>
+} = Object.assign(
+  () => (key: string) => makeOperation(key, effectCall),
+  { value: () => (key: string) => makeValueOperation(key) }
+) as any
 
 const effectCall = (operation: Operation.Any, receiver: unknown, args: ArrayLike<unknown>) =>
   withFiber((fiber) => Reflect.apply(readKey(fiber.context, operation, true) as any, receiver, args))
+
+// An Effect that reads the implementation stored under its key and continues
+// with it. It carries the operation brand and no `ServiceTypeId`: it is a slot,
+// an Effect, and not a `Context.Key`, whose evaluation would return the
+// implementation rather than run it.
+const ValueOperationProto = {
+  ...Effectable.Prototype<Effect<unknown>>({
+    label: "Operation",
+    evaluate(fiber) {
+      return readKey(fiber.context, this as any, true) as Effect<unknown>
+    }
+  }),
+  [OperationTypeId]: OperationTypeId,
+  toJSON(this: Operation.Any) {
+    return {
+      _id: "Operation",
+      key: this.key
+    }
+  }
+}
+
+const makeValueOperation = (key: string): Operation.Any => {
+  const operation = Object.create(ValueOperationProto)
+  operation.key = key
+  return operation
+}
 
 /**
  * The implementation applied to a call's receiver and arguments, as an Effect
@@ -2041,108 +2156,196 @@ export const Operations: {
 // Storage
 // -----------------------------------------------------------------------------
 //
-// Every value is stored under a string, and the string decides what a write
-// does. Most strings are one slot. A record service's string is written as its
-// members' slots and its own; a member's string, when written, marks every
-// record spanning it; a fiber-cached key's string starts a new cache root. The
-// registry below records which, by string, so that every key with the same
-// string behaves the same way, and `add` learns it in the one `Map` read the
-// branch point spent on its set of cached keys.
+// A record service is stored as its members' slots and its own. The key object
+// carries the member list, so every write that needs it has it, and a context
+// remembers which records were written into it (`records`, by string, beside
+// the flat map), so a later write knows which records it touches. Nothing is
+// kept outside the context: two contexts built the same way behave the same
+// way whatever else the process has constructed.
 //
-// Invariants, which together make a record read one lookup:
+// Invariants:
 //
-// 1. A flat map holds a record service's own slot only while that record
-//    agrees with its members' slots. Writing a record writes the members first
-//    and the record last; writing or deleting any other slot drops the slot of
-//    every record spanning it.
-// 2. The `assembling` marker appears only in overlays, written directly above
-//    a member's overlay, one per record spanning the member. Flattening deletes
-//    the record's slot where it meets a marker, so no flat map holds one.
-// 3. A read that finds a value returns it. A read that finds a marker assembles
-//    the record from its members' slots and caches it on the context; a read
-//    that finds nothing assembles and caches it on the base map, shared by
-//    every context on that base whose overlays touch no member.
-//
-// Lifecycle: the registry is a module-level map, one per loaded copy of this
-// module, filled as contracts are constructed and never emptied. A record
-// constructed twice with one string (a module re-evaluated under HMR, a test
-// that builds contracts per case) replaces its entry and adds no duplicate
-// parent. Two copies of `effect` in one process keep two registries: a key
-// from one copy written through the other's `Context.add` is one slot.
-
-interface Span {
-  cached: boolean
-  record: RecordImpl | undefined
-  readonly parents: Set<string>
-}
-const spans = new Map<string, Span>()
-let hasRecords = false
-
-const spanOf = (key: string): Span => {
-  let span = spans.get(key)
-  if (span === undefined) spans.set(key, span = { cached: false, record: undefined, parents: new Set() })
-  return span
-}
+// 1. A flat map holds a record service's slot only while every slot the record
+//    spans is present, and the value there agrees with those slots. The record
+//    is written members first, then itself; a write or removal of a slot a
+//    present record spans goes into a fresh flat map, where the record is
+//    rebuilt from the slots (`add`, `merge`, `mergeAll`) or dropped when a
+//    member is gone (`omit`). Overlays therefore never cover a slot a present
+//    record spans, and a read of a present record is one lookup.
+// 2. A record that was never written into a context (its members were
+//    provided one by one) has no slot: a read through its key assembles it
+//    from the members' slots, once per context, and a missing non-reference
+//    member is `Service not found: <member key>`.
+// 3. `records` lists exactly the records whose slot is present, so a program
+//    that holds no record pays one field read per `add`, and `mergeAll` of
+//    plain contexts consults nothing.
 
 interface RecordImpl extends Operations<any, any> {
   readonly slots: ReadonlyArray<{ readonly name: string; readonly key: Slot<any, any> }>
-  /** Every slot the record spans, transitively, for the overlay check in `assemble`. */
-  readonly spanned: Set<string>
-  /** Assembled records, by context or by base map; see invariant 3. */
-  readonly assembled: WeakMap<object, unknown>
-  /** The most recent entry of `assembled`, so a server reading per request on one base compares one field. */
-  lastKey: object | undefined
-  lastValue: unknown
+  /** Every slot the record spans, transitively through member records. */
+  readonly spanned: ReadonlySet<string>
+  /** An object with every member name and no values: cloning it is the cheap way to build a record. */
+  readonly template: Record<string, undefined>
+  /** Records assembled for contexts that hold no slot for this record (invariant 2), by context. */
+  readonly assembled: WeakMap<object, Record<string, unknown>>
+  /** The members and the object of the latest assembly, reused by a context whose members are the same values. */
+  latest: { readonly values: ReadonlyArray<unknown>; readonly value: Record<string, unknown> } | undefined
 }
+
+// What a context knows about the records written into it: the records by
+// string, and every slot one of them spans or occupies, which is the set a
+// write consults in one lookup.
+interface RecordIndex {
+  readonly byKey: ReadonlyMap<string, RecordImpl>
+  readonly spanned: ReadonlySet<string>
+}
+
+const indexOf = (byKey: Map<string, RecordImpl> | undefined): RecordIndex | undefined => {
+  if (byKey === undefined || byKey.size === 0) return undefined
+  const spanned = new Set<string>()
+  byKey.forEach((record, key) => {
+    spanned.add(key)
+    record.spanned.forEach((slot) => spanned.add(slot))
+  })
+  return { byKey, spanned }
+}
+
+// A record service is the one kind of key that is not a function, so every
+// function-shaped key answers in one `typeof`, whatever mix of key shapes the
+// process holds.
+const isRecordKey = (key: Slot<any, any>): key is RecordImpl =>
+  typeof key === "object" && (key as any)[OperationsTypeId] !== undefined
 
 // Writes a record into a flat map: each member under its slot (a member that
-// is itself a record is spread the same way), then the record under its own.
-const writeRecord = (map: Map<string, any>, record: RecordImpl, value: any): void => {
-  const slots = record.slots
-  for (let i = 0; i < slots.length; i++) {
-    const key = slots[i].key.key
-    const nested = spans.get(key)?.record
-    if (nested !== undefined) writeRecord(map, nested, value[slots[i].name])
-    else setSlot(map, key, value[slots[i].name])
-  }
-  setSlot(map, record.key, value)
-}
-
-const assemble = (record: RecordImpl, self: Context<never>, found: unknown, orThrow: boolean): unknown => {
-  const impl = self as ContextImpl<never>
-  const cacheKey: object = found === assembling || overlaysTouch(record, impl) ? self : impl.base
-  if (cacheKey === record.lastKey) return record.lastValue
-  const cached = record.assembled.get(cacheKey)
-  if (cached !== undefined) {
-    record.lastKey = cacheKey
-    record.lastValue = cached
-    return cached
-  }
-  const value: Record<string, unknown> = {}
+// is itself a record is written the same way), then the record under its own,
+// which the index then lists. `written` collects every slot touched.
+const writeRecord = (
+  map: Map<string, any>,
+  records: Map<string, RecordImpl>,
+  record: RecordImpl,
+  value: any,
+  written: Set<string>
+): void => {
   const slots = record.slots
   for (let i = 0; i < slots.length; i++) {
     const key = slots[i].key
-    let member = readKey(self, key, false)
-    if (member === notFound) {
-      if (isReference(key)) member = getDefaultValue(key)
-      else if (orThrow) throw serviceNotFoundError(key)
-      else return notFound
+    if (isRecordKey(key)) writeRecord(map, records, key, value[slots[i].name], written)
+    else {
+      map.set(key.key, value[slots[i].name])
+      written.add(key.key)
     }
-    value[slots[i].name] = member
   }
-  record.assembled.set(cacheKey, value)
-  record.lastKey = cacheKey
-  record.lastValue = value
+  map.set(record.key, value)
+  records.set(record.key, record)
+  written.add(record.key)
+}
+
+// Restores invariant 1 after the slots in `written` changed: every record in
+// `records` spanning one of them, other than those in `fresh` (written whole by
+// this same operation), is rebuilt from the slots, or dropped when a member it
+// needs is absent. A record whose own slot was overwritten by a plain write
+// leaves the index: the slot is a plain slot now. Member records are settled
+// before the records containing them, so the latter read settled slots.
+const settle = (
+  map: Map<string, any>,
+  records: Map<string, RecordImpl>,
+  written: Iterable<string>,
+  fresh: { has(key: string): boolean } | undefined
+): void => {
+  let touched: Array<RecordImpl> | undefined
+  for (const key of written) {
+    for (const record of records.values()) {
+      if (fresh !== undefined && fresh.has(record.key)) continue
+      if (record.key === key) records.delete(key)
+      else if (record.spanned.has(key) && !(touched ??= []).includes(record)) touched.push(record)
+    }
+  }
+  if (touched !== undefined) {
+    touched.sort((a, b) => a.spanned.size - b.spanned.size)
+    for (let i = 0; i < touched.length; i++) {
+      const record = touched[i]
+      const value = assembleFrom(map, record)
+      if (value === notFound) {
+        map.delete(record.key)
+        records.delete(record.key)
+      } else map.set(record.key, value)
+    }
+  }
+}
+
+// The record assembled from a flat map's slots, or `notFound` when a member it
+// needs is absent. A member record without a slot of its own is assembled the
+// same way; a reference member falls back to its default.
+const assembleFrom = (map: ReadonlyMap<string, any>, record: RecordImpl): unknown => {
+  const slots = record.slots
+  const values: Array<unknown> = new Array(slots.length)
+  for (let i = 0; i < slots.length; i++) {
+    const key = slots[i].key
+    let member: unknown
+    if (map.has(key.key)) member = map.get(key.key)
+    else if (isRecordKey(key)) member = assembleFrom(map, key)
+    else if (isReference(key)) member = getDefaultValue(key)
+    else return notFound
+    if (member === notFound) return notFound
+    values[i] = member
+  }
+  return build(record, values)
+}
+
+// A record object from its members' values: a clone of the record's template,
+// so every store is to a property the object already has, which costs a third
+// of building the object property by property.
+const build = (record: RecordImpl, values: ReadonlyArray<unknown>): Record<string, unknown> => {
+  const value: Record<string, unknown> = { ...record.template }
+  const slots = record.slots
+  for (let i = 0; i < slots.length; i++) value[slots[i].name] = values[i]
   return value
 }
 
-// A member written as an overlay before its record existed carries no marker;
-// such a context must not share the base's assembly.
-const overlaysTouch = (record: RecordImpl, impl: ContextImpl<never>): boolean => {
-  for (let overlay = impl.overlay; overlay; overlay = overlay.parent) {
-    if (record.spanned.has(overlay.key)) return true
+// Invariant 2: the record read through its key from a context that holds no
+// slot for it, assembled from the members' slots and remembered for that
+// context, so every read of one context returns one object. Contexts whose
+// members are the same values share the object.
+const assemble = (record: RecordImpl, self: Context<never>, orThrow: boolean): unknown => {
+  const cached = record.assembled.get(self)
+  if (cached !== undefined) return cached
+  const slots = record.slots
+  const values: Array<unknown> = new Array(slots.length)
+  for (let i = 0; i < slots.length; i++) {
+    const key = slots[i].key
+    let member = peek(self as ContextImpl<never>, key.key)
+    if (member === notFound) {
+      if (isRecordKey(key)) member = assemble(key, self, orThrow)
+      else if (isReference(key)) member = getDefaultValue(key)
+      else if (orThrow) throw serviceNotFoundError(key)
+      else return notFound
+      if (member === notFound) return notFound
+    }
+    values[i] = member
   }
-  return false
+  let value: Record<string, unknown>
+  const latest = record.latest
+  if (latest !== undefined && sameValues(latest.values, values)) value = latest.value
+  else record.latest = { values, value: value = build(record, values) }
+  record.assembled.set(self, value)
+  return value
+}
+
+const sameValues = (a: ReadonlyArray<unknown>, b: ReadonlyArray<unknown>): boolean => {
+  for (let i = 0; i < a.length; i++) {
+    if (a[i] !== b[i]) return false
+  }
+  return true
+}
+
+// `lookup` without the flatten counter: the thirty reads of one assembly must
+// not count as thirty fall-throughs to the base, or every context that assembles
+// a record would copy its base map.
+const peek = (impl: ContextImpl<never>, key: string): unknown => {
+  for (let overlay = impl.overlay; overlay; overlay = overlay.parent) {
+    if (overlay.key === key) return overlay.value
+  }
+  return impl.base.has(key) ? impl.base.get(key) : notFound
 }
 
 const OperationsProto = {
@@ -2158,26 +2361,25 @@ const OperationsProto = {
 }
 
 const makeOperations = (key: string, members: Operations.Members): Operations<any, any> => {
-  const self = Service<any, any>(key) as any as Types.Mutable<RecordImpl>
-  Object.setPrototypeOf(self, OperationsProto)
+  // a plain object, not a function like other keys: see `isRecordKey`
+  const self: Types.Mutable<RecordImpl> = Object.create(OperationsProto)
+  self.key = key
   self.members = members
   self.slots = Object.keys(members).map((name) => ({ name, key: members[name] }))
-  self.spanned = new Set()
-  self.assembled = new WeakMap()
-  self.lastKey = undefined
-  self.lastValue = undefined
-  // Rebuilding a record with the same string replaces its registration.
-  spanOf(key).record = self
-  const span = (member: string): void => {
-    self.spanned.add(member)
-    const memberSpan = spanOf(member)
-    memberSpan.parents.add(key)
-    if (memberSpan.record !== undefined) {
-      for (let i = 0; i < memberSpan.record.slots.length; i++) span(memberSpan.record.slots[i].key.key)
-    }
+  const spanned = new Set<string>()
+  for (let i = 0; i < self.slots.length; i++) {
+    const member = self.slots[i].key
+    spanned.add(member.key)
+    if (isRecordKey(member)) member.spanned.forEach((slot) => spanned.add(slot))
   }
-  for (let i = 0; i < self.slots.length; i++) span(self.slots[i].key.key)
-  hasRecords = true
+  self.spanned = spanned
+  watched.add(key)
+  spanned.forEach((slot) => watched.add(slot))
+  const template: Record<string, undefined> = {}
+  for (let i = 0; i < self.slots.length; i++) template[self.slots[i].name] = undefined
+  self.template = template
+  self.assembled = new WeakMap()
+  self.latest = undefined
   return self
 }
 
