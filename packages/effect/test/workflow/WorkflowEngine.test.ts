@@ -1057,6 +1057,43 @@ describe("WorkflowEngine", () => {
       }).pipe(Effect.provide(layer))
     }))
 
+  it.effect("layerMemory defers finalizers of a replay after a defect until completion", () =>
+    Effect.gen(function*() {
+      const gate = DurableDeferred.make("WorkflowEngine/ReplayAfterDefect/Gate")
+      const finalized: Array<number> = []
+      let runs = 0
+      const Replays = Workflow.make("WorkflowEngine/ReplayAfterDefect", {
+        payload: {},
+        idempotencyKey: () => "one"
+      }).annotate(Workflow.CaptureDefects, false)
+      const layer = Replays.toLayer(() =>
+        Effect.gen(function*() {
+          const run = ++runs
+          if (run === 1) return yield* Effect.die("boom")
+          yield* Workflow.addFinalizer(() => Effect.sync(() => finalized.push(run)))
+          yield* DurableDeferred.await(gate)
+        })
+      ).pipe(Layer.provideMerge(WorkflowEngine.layerMemory))
+
+      yield* Effect.gen(function*() {
+        const executionId = yield* Replays.executionId({})
+        assert(Exit.isFailure(yield* Effect.exit(Replays.execute({}))), "first run must die")
+
+        yield* Replays.resume(executionId)
+        let result = yield* Replays.poll(executionId)
+        while (Option.isNone(result) || result.value._tag !== "Suspended") {
+          yield* Effect.yieldNow
+          result = yield* Replays.poll(executionId)
+        }
+        assert.deepStrictEqual(finalized, [], "a suspended replay must keep its finalizers")
+
+        const token = DurableDeferred.tokenFromExecutionId(gate, { workflow: Replays, executionId })
+        yield* DurableDeferred.succeed(gate, { token, value: void 0 })
+        yield* Replays.execute({})
+        assert.deepStrictEqual(finalized, [3, 2])
+      }).pipe(Effect.provide(layer))
+    }))
+
   it.effect("layerMemory hides deposited interrupts from body finalizers", () =>
     Effect.gen(function*() {
       const gate = DurableDeferred.make("WorkflowEngine/InterruptBodyFinalizer/Gate")
