@@ -1,5 +1,16 @@
 import { assert, describe, it } from "@effect/vitest"
-import { ByteSize, Effect, Exit, FileSystem, IgnoreFile, Latch, Option, PlatformError, Result } from "effect"
+import {
+  ByteSize,
+  Effect,
+  Exit,
+  FileSystem,
+  IgnoreFile,
+  Latch,
+  Option,
+  PathFilter,
+  PlatformError,
+  Result
+} from "effect"
 
 const info = (type: FileSystem.File.Type): FileSystem.File.Info => ({
   type,
@@ -93,15 +104,18 @@ describe("FileSystem", () => {
         assert.deepStrictEqual(yield* fs.glob("**"), ["a", "a/x.ts"])
       }))
 
-    it.effect.each([".", "../*", "/x"])(
-      "fails when probing %s fails unexpectedly",
-      (pattern) =>
+    it.effect.each<{ readonly pattern: string; readonly root?: string; readonly path: string }>([
+      { pattern: "a", path: "a" },
+      { pattern: "x", root: "/", path: "/x" }
+    ])(
+      "fails when probing $path fails unexpectedly",
+      ({ path, pattern, root }) =>
         Effect.gen(function*() {
-          const error = failure("Unknown", "stat", pattern)
+          const error = failure("Unknown", "stat", path)
           const fs = makeFileSystem({
-            stat: (path) => [".", "..", "/"].includes(path) ? Effect.fail(error) : undefined
+            stat: (probed) => probed === path ? Effect.fail(error) : undefined
           })
-          assert.deepStrictEqual(yield* Effect.exit(fs.glob(pattern)), Exit.fail(error))
+          assert.deepStrictEqual(yield* Effect.exit(fs.glob(pattern, { root })), Exit.fail(error))
         })
     )
 
@@ -114,8 +128,8 @@ describe("FileSystem", () => {
 
     it.effect("propagates defects from probing stat", () =>
       Effect.gen(function*() {
-        const fs = makeFileSystem({ stat: (path) => path === "." ? Effect.die("boom") : undefined })
-        assert.isTrue(Exit.hasDies(yield* Effect.exit(fs.glob("."))))
+        const fs = makeFileSystem({ stat: (path) => path === "a" ? Effect.die("boom") : undefined })
+        assert.isTrue(Exit.hasDies(yield* Effect.exit(fs.glob("a"))))
       }))
 
     it.effect.each<{ readonly pattern: string; readonly root?: string }>([
@@ -219,23 +233,66 @@ describe("FileSystem", () => {
         assert.isTrue(Exit.hasDies(yield* Effect.exit(fs.glob("**"))))
       }))
 
-    it.effect.each([
-      { name: "gitignore", filter: IgnoreFile.gitignore("d\n!d/sub/keep\n"), expected: [], reads: ["."] },
+    const inherited = ["d", "d/other", "d/other/x.ts", "d/sub", "d/sub/keep", "d/sub/x.ts", "d/x.ts"]
+    it.effect.each<{
+      readonly name: string
+      readonly input: () => PathFilter.Input
+      readonly expected: ReadonlyArray<string>
+      readonly reads: ReadonlyArray<string>
+    }>([
       {
-        name: "dockerignore",
-        filter: Result.getOrThrow(IgnoreFile.dockerignore("d\n!d/sub/keep\n")),
+        name: "a gitignore restriction",
+        input: () => PathFilter.restrict("**", IgnoreFile.gitignore("d\n!d/sub/keep\n")),
+        expected: [],
+        reads: ["."]
+      },
+      {
+        name: "a dockerignore restriction",
+        input: () => PathFilter.restrict("**", Result.getOrThrow(IgnoreFile.dockerignore("d\n!d/sub/keep\n"))),
         expected: ["d/sub/keep"],
         reads: [".", "d", "d/sub"]
       },
       {
-        name: "dockerignore with a repeated exclusion",
-        filter: Result.getOrThrow(IgnoreFile.dockerignore("d\n!d/sub/keep\nd\n")),
+        name: "a dockerignore restriction with a repeated exclusion",
+        input: () => PathFilter.restrict("**", Result.getOrThrow(IgnoreFile.dockerignore("d\n!d/sub/keep\nd\n"))),
         expected: ["d/sub/keep"],
         reads: [".", "d", "d/sub"]
+      },
+      // literal prefixes are probed, not listed
+      { name: "a literal path", input: () => "d/x.ts", expected: ["d/x.ts"], reads: [] },
+      {
+        name: "two literal paths",
+        input: () => ["d/x.ts", "d/sub/x.ts"],
+        expected: ["d/sub/x.ts", "d/x.ts"],
+        reads: []
+      },
+      { name: "a literal directory", input: () => "d", expected: ["d"], reads: [] },
+      {
+        name: "a custom matcher",
+        input: () => PathFilter.select([PathFilter.include({ match: (path) => path === "d/x.ts" })]),
+        expected: ["d/x.ts"],
+        reads: [".", "d", "d/other", "d/sub"]
+      },
+      // an inheriting inclusion selects everything below the directory
+      {
+        name: "an inheriting inclusion",
+        input: () => PathFilter.select([PathFilter.include("d", { subtree: "inherit" })]),
+        expected: inherited,
+        reads: ["d", "d/other", "d/sub"]
+      },
+      {
+        name: "an inheriting inclusion after an exclusion",
+        input: () =>
+          PathFilter.select([
+            PathFilter.exclude("d", { subtree: "self" }),
+            PathFilter.include("d", { subtree: "inherit" })
+          ]),
+        expected: inherited,
+        reads: ["d", "d/other", "d/sub"]
       }
     ])(
-      "reads only directories a $name filter could include from",
-      ({ expected, filter, reads }) =>
+      "reads only directories $name could include from",
+      ({ expected, input, reads }) =>
         Effect.gen(function*() {
           const read: Array<string> = []
           const fs = makeFileSystem({
@@ -246,7 +303,7 @@ describe("FileSystem", () => {
             },
             stat: (path) => path === "d/sub/keep" ? Effect.succeed(info("File")) : undefined
           })
-          assert.deepStrictEqual(yield* fs.glob("**", { filter }), expected)
+          assert.deepStrictEqual(yield* fs.glob(input()), expected)
           assert.deepStrictEqual(read.sort(), reads)
         })
     )
