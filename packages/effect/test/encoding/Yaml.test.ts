@@ -1214,13 +1214,16 @@ nested:
         "2001-12-14t21:59:43.10-05:00",
         "1:20",
         "0b101",
-        // Floats without digits and one-digit time fields, which yaml 2.9.1 with version "1.1" reads
-        // as NaN and a Date.
+        // Floats without digits, exponents without a mantissa and one-digit time fields, which
+        // yaml 2.9.1 with version "1.1" reads as NaN and a Date.
         ".",
         "+.",
         "-.",
         "._",
         ".e1",
+        "e1",
+        "E1",
+        "-e+1",
         "2024-1-1T1:1:1"
       ]
       for (const value of values) {
@@ -1229,6 +1232,9 @@ nested:
         assert.deepStrictEqual(YAML.parse(output, { version: "1.1" }), { [value]: value })
         assert.deepStrictEqual(parse(output), { [value]: value })
       }
+      // Not a number in any of these readers, so it stays plain.
+      assert.deepStrictEqual(YAML.parse("e1x: e1x\n", { version: "1.1" }), { e1x: "e1x" })
+      assert.strictEqual(Result.getOrThrow(Yaml.stringify({ e1x: "e1x" })), "e1x: e1x\n")
     })
 
     it("reads toJSON once and calls it with its receiver and key", () => {
@@ -1248,6 +1254,10 @@ nested:
       }
       assert.strictEqual(JSON.stringify({ a: value() }), "{\"a\":\"first-a\"}")
       assert.strictEqual(Result.getOrThrow(Yaml.stringify({ a: value() })), "a: first-a\n")
+      // The method's own `call` property is not used to invoke it.
+      const shadowed = { toJSON: Object.assign(() => "text", { call: () => "wrong" }) }
+      assert.strictEqual(JSON.stringify({ a: shadowed }), "{\"a\":\"text\"}")
+      assert.strictEqual(Result.getOrThrow(Yaml.stringify({ a: shadowed })), "a: text\n")
     })
 
     it("quotes the merge key so it stays a literal key", () => {
