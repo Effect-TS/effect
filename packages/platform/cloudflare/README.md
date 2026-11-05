@@ -95,7 +95,12 @@ The initializer is the readiness contract shared by all four Durable Object
 classes. Each cold object waits for it through `blockConcurrencyWhile` before
 handling a request or alarm, and concurrent cold objects still build the
 application only once per Worker isolate. If initialization fails, the failure
-is cached and returned to every waiter instead of leaving an event blocked.
+is returned to every caller waiting on that build, and the next cold object
+runs the initializer again. Because the initializer runs inside a Durable
+Object constructor's `blockConcurrencyWhile`, which Cloudflare cancels after 30
+seconds, it must complete well inside 30 seconds. A build still pending after
+25 seconds is treated as abandoned, and the next waiting object runs the
+initializer itself.
 Worker request handlers should call the same `initialize(env)` function before
 using `application`.
 

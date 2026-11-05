@@ -38,7 +38,14 @@ const notExposed = (className: string) => () => {
 /**
  * Initializes the Worker application before a Cloudflare cluster Durable
  * Object handles requests or alarms. The initializer is shared by all four
- * Durable Object classes and runs at most once per Worker isolate.
+ * Durable Object classes and runs once per Worker isolate unless a build fails
+ * or stalls.
+ *
+ * **Details**
+ *
+ * The initializer runs inside a Durable Object constructor's
+ * `blockConcurrencyWhile`, which Cloudflare cancels after 30 seconds, so it
+ * must complete well inside 30 seconds.
  *
  * @stability unstable
  * @category models
@@ -46,16 +53,25 @@ const notExposed = (className: string) => () => {
  */
 export type Initializer<Env = unknown, A = unknown> = (env: Env) => PromiseLike<A>
 
+interface InitializationAttempt {
+  readonly startedAt: number
+  exit: {
+    readonly _tag: "Success"
+    readonly value: unknown
+  } | {
+    readonly _tag: "Failure"
+    readonly error: unknown
+  } | undefined
+}
+
+// A build still pending after this long is treated as abandoned. It stays
+// under the 30 second `blockConcurrencyWhile` limit so the waiter that takes
+// over still has time to run the initializer itself.
+const staleInitializationMillis = 25_000
+const initializationPollMillis = 20
+
 let initializer: Initializer | undefined
-let initialization: {
-  readonly _tag: "Pending"
-} | {
-  readonly _tag: "Success"
-  readonly value: unknown
-} | {
-  readonly _tag: "Failure"
-  readonly error: unknown
-} | undefined
+let initialization: InitializationAttempt | undefined
 
 /**
  * Registers the Worker application initializer used by the Cloudflare cluster
@@ -66,8 +82,12 @@ let initialization: {
  * Call this once from the Worker entry module with the same lazy application
  * build used by its request handlers. Every entity, workflow, queue, and
  * singleton object blocks requests and alarms until that build completes. A
- * failure is cached and propagated to every waiter in the isolate. The
- * returned function joins the same readiness state from Worker handlers.
+ * failure is reported to every caller already waiting on that build, and the
+ * next cold caller runs the initializer again. A build still pending after 25
+ * seconds is treated as abandoned, and the next waiter runs the initializer
+ * itself, so the initializer must complete well inside the 30 second
+ * `blockConcurrencyWhile` limit. The returned function joins the same
+ * readiness state from Worker handlers.
  *
  * @stability unstable
  * @category initialization
@@ -83,25 +103,41 @@ export const setInitializer = <Env, A>(handler: Initializer<Env, A>): (env: Env)
 
 const waitForInitialization = async (env: unknown): Promise<unknown> => {
   if (initializer === undefined) return
-  if (initialization === undefined) {
-    initialization = { _tag: "Pending" }
-    try {
-      const value = await initializer(env)
-      initialization = { _tag: "Success", value }
-      return value
-    } catch (error) {
-      initialization = { _tag: "Failure", error }
-      throw error
+  while (true) {
+    const attempt = initialization
+    if (attempt === undefined || isStale(attempt)) {
+      return runInitializer(initializer, env)
     }
+    // Cloudflare promises belong to the request context that created them. A
+    // fresh wait in this context observes the shared plain-JavaScript state
+    // without awaiting the first Durable Object's promise from another event.
+    while (attempt.exit === undefined && !isStale(attempt)) {
+      await scheduler.wait(initializationPollMillis)
+    }
+    if (attempt.exit === undefined) continue
+    if (attempt.exit._tag === "Failure") throw attempt.exit.error
+    return attempt.exit.value
   }
-  // Cloudflare promises belong to the request context that created them. A
-  // fresh wait in this context observes the shared plain-JavaScript state
-  // without awaiting the first Durable Object's promise from another event.
-  while (initialization._tag === "Pending") {
-    await scheduler.wait(1)
+}
+
+const isStale = (attempt: InitializationAttempt): boolean =>
+  attempt.exit === undefined && Date.now() - attempt.startedAt >= staleInitializationMillis
+
+const runInitializer = async (run: Initializer, env: unknown): Promise<unknown> => {
+  const attempt: InitializationAttempt = { startedAt: Date.now(), exit: undefined }
+  initialization = attempt
+  try {
+    const value = await run(env)
+    attempt.exit = { _tag: "Success", value }
+    // An abandoned build that settles late still makes the isolate ready.
+    if (initialization.exit?._tag !== "Success") initialization = attempt
+    return value
+  } catch (error) {
+    attempt.exit = { _tag: "Failure", error }
+    // Waiters holding this attempt see the failure; the next cold caller retries.
+    if (initialization === attempt) initialization = undefined
+    throw error
   }
-  if (initialization._tag === "Failure") throw initialization.error
-  return initialization.value
 }
 
 const blockOnInitialization = (
