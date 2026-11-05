@@ -410,6 +410,7 @@ The status vocabulary is **maps 1:1**, **adapted**, and **out of scope**.
 | `clearReplies` / `reset`                                                      | maps 1:1     | Same re-run semantics                                                                                       |
 | `DeliverAt` mailbox delivery                                                  | adapted      | Destination due column and alarm instead of storage polling                                                 |
 | Ask + future `DeliverAt`                                                      | adapted      | Destination may hibernate through `replyTo`; ask pins its caller, and a Worker ask pins the destination too |
+| Worker to Durable Object transport failures                                   | adapted      | Typed `PersistenceError`; persisted requests retry retryable errors on a fresh stub, others fail at once    |
 | `MailboxFull` / 4096 cap / 2 MB row rejection                                 | maps 1:1     | Same limits; the SQLite row is the hard ceiling                                                             |
 | `defectRetryPolicy` then terminal defect                                      | adapted      | Rebuilds handlers in the wake; crash or deployment wipes memory and replays unprocessed rows                |
 | `Entity.toLayer` `concurrency`                                                | maps 1:1     | Same per-entity handler interleaving contract; storage entry stays serialized at any setting                |
@@ -426,6 +427,7 @@ The status vocabulary is **maps 1:1**, **adapted**, and **out of scope**.
 | `Singleton`                                                                   | adapted      | Named Durable Object; runs once per wake and then may hibernate                                             |
 | `ClusterCron`                                                                 | adapted      | Per-fire entity ids, `DeliverAt` destination alarms, and a singleton seed                                   |
 | Address `(EntityType, EntityId)`                                              | adapted      | Length-prefixed Durable Object name; cold first contact is normal                                           |
+| `Sharding.getSnowflake`                                                       | out of scope | Dies; isolates have no fleet-unique machine id. Request ids are uuidv7                                      |
 | `ShardId` / shard locks / runner ring                                         | out of scope | One-instance-per-id replaces ownership                                                                      |
 | `MessageStorage` / `RunnerStorage` / `RunnerHealth` / `Runners` as user seams | out of scope | The Durable Object path owns persistence and alarms internally                                              |
 | `HttpRunner` / `SocketRunner` / peer runner fleet                             | out of scope | Worker edge only                                                                                            |
