@@ -420,6 +420,20 @@ development:
     ])("rejects %s", (_, source) => {
       failureMessage(source)
     })
+
+    // The marker is not part of the flow text, so a quote after it starts a token and only a
+    // comment outside quotes ends a plain scalar.
+    it("keeps a quoted hash and continues a plain scalar after a document start marker", () => {
+      const source = "--- ['q # z', b\n  c]\n"
+      assert.deepStrictEqual(parse(source), ["q # z", "b c"])
+      assert.deepStrictEqual(parseAll(source), [["q # z", "b c"]])
+    })
+
+    it("rejects a plain scalar continuing after a comment on a document start line", () => {
+      const source = "--- ['a: \"q', b # end\n  c]\n"
+      failureMessage(source)
+      failureMessage(source, Yaml.parseAll)
+    })
   })
 
   // YAML 1.2.2 §7.4: a flow sequence entry may be a single `key: value` pair, read as a
