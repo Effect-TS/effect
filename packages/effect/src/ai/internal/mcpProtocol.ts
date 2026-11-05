@@ -129,11 +129,16 @@ export const invocationFromRequestContext = (
  */
 export const requireCompleteOperation = <A>(
   protocolVersion: PublicMcpProtocol.ProtocolVersion,
-  outcome: McpCore.OperationOutcome<A>
+  outcome: McpCore.OperationOutcome<A> | McpCore.TaskCreated
 ): Effect.Effect<A, McpCore.UnsupportedByProtocol> =>
   outcome._tag === "Complete"
     ? Effect.succeed(outcome.value)
-    : Effect.fail(new McpCore.UnsupportedByProtocol({ protocolVersion, feature: "Client input" }))
+    : Effect.fail(
+      new McpCore.UnsupportedByProtocol({
+        protocolVersion,
+        feature: outcome._tag === "Task" ? "Tasks" : "Client input"
+      })
+    )
 
 /**
  * Projects boolean property schemas to equivalent objects for pre-June adapters.
@@ -536,7 +541,6 @@ export interface ProtocolAdapter<
   readonly serverRequestRpcs: RpcGroup.RpcGroup<ServerRequestRpcs>
   readonly serverNotificationRpcs: RpcGroup.RpcGroup<ServerNotificationRpcs>
   readonly payloadCodecs: (rpc: Rpc.AnyWithProps) => PublicMcpProtocol.PayloadCodecs
-  readonly isMethodAvailable?: ((core: McpCore.McpCore, method: string) => boolean) | undefined
   readonly handlerRpcs?: RpcGroup.RpcGroup<HandlerRpcs> | undefined
   readonly installHandlers: (
     core: McpCore.McpCore,
@@ -580,7 +584,6 @@ export const make = <
   readonly clientNotificationRpcs: RpcGroup.RpcGroup<ClientNotificationRpcs>
   readonly serverRequestRpcs: RpcGroup.RpcGroup<ServerRequestRpcs>
   readonly serverNotificationRpcs: RpcGroup.RpcGroup<ServerNotificationRpcs>
-  readonly isMethodAvailable?: ((core: McpCore.McpCore, method: string) => boolean) | undefined
   readonly handlerRpcs?: RpcGroup.RpcGroup<HandlerRpcs> | undefined
   readonly makeHandlers?:
     | ((
