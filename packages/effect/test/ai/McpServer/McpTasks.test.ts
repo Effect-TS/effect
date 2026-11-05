@@ -21,6 +21,7 @@ import * as WorkflowEngine from "effect/workflow/WorkflowEngine"
 import { initializeHttpSession, makeHttpHarness } from "./TestUtils/McpHttpHarness.ts"
 import {
   assertMcpTaskAcknowledgement,
+  makeMcpSseReader,
   McpCreatedTask,
   McpTaskSnapshot,
   readMcpHttpResponse
@@ -195,6 +196,19 @@ describe("McpTasks", () => {
       assert.strictEqual(runs, 0)
       const polled = yield* decodeError(yield* post(harness, "tasks/get", { taskId: "unknown" }, undefined, false))
       assert.strictEqual(polled.error.code, -32021)
+      // https://github.com/modelcontextprotocol/ext-tasks/blob/main/specification/2026-07-28/tasks.md#task-status-notifications
+      const subscribed = yield* harness.post(
+        request("subscriptions/listen", { notifications: { taskIds: ["unknown"] } }, undefined, false),
+        headers("subscriptions/listen")
+      )
+      const body = subscribed.headers.get("content-type")?.includes("text/event-stream")
+        ? yield* Effect.acquireUseRelease(
+          Effect.sync(() => makeMcpSseReader(subscribed)),
+          (reader) => reader.take(),
+          (reader) => reader.cancel
+        )
+        : yield* readMcpHttpResponse(subscribed)
+      assert.strictEqual((yield* decodeError(body)).error.code, -32021)
     }))
 
   it.effect("should return the result when a Workflow task completes", () =>
@@ -334,7 +348,10 @@ describe("McpTasks", () => {
             name: "choice",
             success: Schema.String,
             error: Schema.Never,
-            effects: [ask("left"), ask("right")]
+            effects: [
+              McpTasks.TaskContext.use((task) => task.setStatusMessage("Choosing")).pipe(Effect.andThen(ask("left"))),
+              ask("right")
+            ]
           })
           return `${winner}:${yield* ask("confirm")}`
         })
@@ -373,6 +390,8 @@ describe("McpTasks", () => {
       const task = yield* terminal(harness, created.taskId)
       assert.strictEqual(task.status, "completed")
       if (task.status === "completed") assert.strictEqual(task.result.structuredContent, "left:yes")
+      // The status set in the winning arm survives replays that reuse the recorded race result.
+      assert.strictEqual(task.statusMessage, "Choosing")
     }))
 
   it.effect("should reject task requests from another owner, with an invalid handle, or with a mismatched Mcp-Name", () =>
@@ -420,7 +439,7 @@ describe("McpTasks", () => {
       }
     }))
 
-  it.effect("should dispatch to an inline tool that replaces a task tool while existing tasks continue", () =>
+  it.effect("should keep existing task handles when an inline or task tool replaces a task tool", () =>
     Effect.gen(function*() {
       const release = yield* Deferred.make<void>()
       const registry = yield* Deferred.make<McpServer.McpServer["Service"]>()
@@ -445,10 +464,60 @@ describe("McpTasks", () => {
         yield* post(harness, "tools/call", { name: "report", arguments: {} })
       )
       assert.strictEqual(called.result.structuredContent, "replacement result")
+      yield* Layer.build(
+        McpTasks.toolkit(Reports, { owner: "shared" }).pipe(
+          Layer.provide(McpTasks.layerMemory(Reports, { report: () => Effect.succeed("replacement task") })),
+          Layer.provide(Layer.succeed(McpServer.McpServer, server))
+        )
+      )
+      const replaced = yield* create(harness)
+      assert.strictEqual(yield* get(harness, first.taskId).pipe(Effect.map((task) => task.status)), "working")
       yield* Deferred.succeed(release, undefined)
-      const completed = yield* terminal(harness, first.taskId)
-      assert.strictEqual(completed.status, "completed")
-      if (completed.status === "completed") assert.strictEqual(completed.result.structuredContent, "original task")
+      for (const [taskId, expected] of [[first.taskId, "original task"], [replaced.taskId, "replacement task"]]) {
+        const completed = yield* terminal(harness, taskId)
+        assert.strictEqual(completed.status, "completed")
+        if (completed.status === "completed") assert.strictEqual(completed.result.structuredContent, expected)
+      }
+    }))
+
+  it.effect("should keep a Workflow input outstanding until answered when its key is __proto__", () =>
+    Effect.gen(function*() {
+      const context = yield* Layer.build(
+        McpTasks.layerWorkflow(Reports, {
+          report: () =>
+            McpTasks.TaskContext.use((task) =>
+              task.requestInput({
+                key: "__proto__",
+                request: { method: "roots/list" },
+                response: McpSchema.ListRootsResult
+              })
+            ).pipe(Effect.orDie, Effect.map(({ roots }) => roots[0]?.uri ?? "none"))
+        }, { name: "proto-key" }).pipe(Layer.provide(WorkflowEngine.layerMemory))
+      )
+      const execution = Context.get(context, McpTasks.Execution)
+      const { taskId } = yield* execution.create({
+        toolName: "report",
+        arguments: {},
+        ownerId: "owner",
+        requestContext: { clientId: 1, protocolVersion: "2026-07-28", clientCapabilities: {} }
+      })
+      const waitFor = Effect.fnUntraced(function*(status: McpTasks.Task["status"]) {
+        for (let attempt = 0; attempt < 100; attempt++) {
+          const task = yield* execution.get({ taskId, ownerId: "owner" })
+          if (task.status === status) return task
+          yield* Effect.yieldNow
+        }
+        return assert.fail(`Task did not reach ${status}`)
+      })
+      const waiting = yield* waitFor("input_required")
+      if (waiting.status === "input_required") assert.isTrue(Object.hasOwn(waiting.inputRequests, "__proto__"))
+      yield* execution.update({
+        taskId,
+        ownerId: "owner",
+        inputResponses: JSON.parse(`{"__proto__":{"roots":[{"uri":"file:///workspace"}]}}`)
+      })
+      const completed = yield* waitFor("completed")
+      if (completed.status === "completed") assert.strictEqual(completed.result.structuredContent, "file:///workspace")
     }))
 
   it.effect("should interrupt memory handlers and discard records when the execution layer closes", () =>
