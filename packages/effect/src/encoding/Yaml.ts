@@ -1645,8 +1645,8 @@ const hasNonPrintable = (text: string): boolean => {
 // types: any letter case of `null`, `true`, `false`, the YAML 1.1 booleans `y`, `n`, `yes`,
 // `no`, `on` and `off`, `.inf` and `.nan`; YAML 1.1 timestamps; and numbers with `_`
 // separators, an uppercase or signed `0X` or `0O` prefix, a `0b` prefix, sexagesimal `:`
-// groups, a leading `+`, or a `.` without digits, which YAML 1.1 reads as a float. The printer
-// quotes them.
+// groups, a leading `+`, a `.` without digits, or an exponent without a mantissa, which
+// YAML 1.1 parsers such as `yaml` read as floats. The printer quotes them.
 const lenientNonString = /^(?:null|~|true|false|y|n|yes|no|on|off|[-+]?\.inf|\.nan)$/i
 
 const lenientTimestamp =
@@ -1655,14 +1655,19 @@ const lenientTimestamp =
 const lenientNumber =
   /^[-+]?(?:0x[0-9a-f]+|0o[0-7]+|0b[01]+|[0-9]+(?::[0-5]?[0-9])+(?:\.[0-9]*)?|(?:[0-9]+(?:\.[0-9]*)?|\.[0-9]*)(?:e[-+]?[0-9]+)?)$/i
 
+// Tested before removing `_`: an exponent cannot contain separators, so `e_1` stays a string.
+const lenientExponent = /^[-+]?e[-+]?[0-9]+$/i
+
 const isLenientNonString = (text: string): boolean =>
-  lenientNonString.test(text) || lenientTimestamp.test(text) ||
+  lenientNonString.test(text) || lenientTimestamp.test(text) || lenientExponent.test(text) ||
   lenientNumber.test(text.replace(/_/g, ""))
 
-// `_` can start a lenient number once its separators are removed, and `y`, `Y`, `o` and `O` start
-// YAML 1.1 booleans. Other first characters outside `mayBeCoreNonString` cannot start a lenient spelling.
+// `_` can start a lenient number once its separators are removed, `e` and `E` start an exponent
+// without a mantissa, and `y`, `Y`, `o` and `O` start YAML 1.1 booleans. Other first characters
+// outside `mayBeCoreNonString` cannot start a lenient spelling.
 const mayBeLenientNonString = (code: number): boolean =>
-  mayBeCoreNonString(code) || code === 95 || code === 121 || code === 89 || code === 111 || code === 79
+  mayBeCoreNonString(code) || code === 95 || code === 101 || code === 69 || code === 121 || code === 89 ||
+  code === 111 || code === 79
 
 // A code unit JavaScript's `\s` matches.
 const isSpaceCode = (code: number): boolean =>
@@ -1905,11 +1910,12 @@ class Printer {
 }
 
 // Mirrors `JSON.stringify`: objects and bigints carrying a `toJSON` method are
-// replaced by its result before printing. The method is read once and called on `value`.
+// replaced by its result before printing. The method is read once and called on `value`
+// without reading its own `call` property.
 const applyToJson = (value: unknown, key: string): unknown => {
   if (typeof value === "object" && value !== null || typeof value === "bigint") {
     const toJSON = (value as { readonly toJSON?: unknown }).toJSON
-    if (typeof toJSON === "function") return toJSON.call(value, key)
+    if (typeof toJSON === "function") return Reflect.apply(toJSON, value, [key])
   }
   return value
 }
