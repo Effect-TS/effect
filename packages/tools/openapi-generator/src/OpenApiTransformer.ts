@@ -114,6 +114,28 @@ const paramsToPipeline = (operation: ParsedOperation): Array<string> => {
   return pipeline
 }
 
+// Multipart payloads cannot use the JSON codec because of their file fields, so only top-level `Redacted` fields are
+// unwrapped.
+const formDataPayload = (operation: ParsedOperation, payload: string): string =>
+  operation.encodePayload ? `__unwrapRedacted(${payload})` : payload
+
+// Whether params or a non-multipart payload must be encoded with the JSON codec before the request is built
+const encodesRequest = (operation: ParsedOperation): boolean =>
+  operation.encodeParams === true || operation.encodePayload === true && !operation.payloadFormData
+
+// Builds the request from encoded options, so values such as `Redacted` passwords are sent as their wire values
+const encodeRequestToImpl = (operation: ParsedOperation, impl: string, streaming = false): string => {
+  if (!encodesRequest(operation)) {
+    return impl
+  }
+  const params = operation.encodeParams ? operation.params : "undefined"
+  const payload = operation.encodePayload && !operation.payloadFormData ? operation.payload : "undefined"
+  const encoded = `__encodeRequest(options, ${params}, ${payload})`
+  return streaming
+    ? `Stream.unwrap(Effect.map(${encoded}, (options) => ${impl}))`
+    : `Effect.flatMap(${encoded}, (options) => ${impl})`
+}
+
 const requestToImpl = (operation: ParsedOperation, pipeline: Array<string>, streaming = false): string => {
   const request = `HttpClientRequest.${operation.method}`
   const pipe = `.pipe(\n      ${pipeline.join(",\n      ")}\n    )`
@@ -271,7 +293,10 @@ ${clientErrorSource(name)}`
     const jsdoc = Utils.toComment(operation.description)
     const methodKey = `readonly ${JSON.stringify(`${operation.id}Stream`)}`
     const parameters = args.join(", ")
-    const returnType = `Stream.Stream<Uint8Array, E | HttpClientError.HttpClientError, R>`
+    const errors = encodesRequest(operation)
+      ? "E | HttpClientError.HttpClientError | SchemaError"
+      : "E | HttpClientError.HttpClientError"
+    const returnType = `Stream.Stream<Uint8Array, ${errors}, R>`
     return `${jsdoc}${methodKey}: (${parameters}) => ${returnType}`
   }
 
@@ -301,6 +326,12 @@ ${clientErrorSource(name)}`
     }
     if (operations.some((operation) => operation.cookies.length > 0)) {
       helpers.push(cookieHeaderSource)
+    }
+    if (operations.some(encodesRequest)) {
+      helpers.push(encodeRequestSource)
+    }
+    if (operations.some((operation) => operation.payloadFormData && operation.encodePayload)) {
+      helpers.push(unwrapRedactedSource)
     }
     if (requiresStreaming(requirements)) {
       helpers.push(executeStreamRequestSource)
@@ -373,7 +404,7 @@ export const make = <E, R>(
 
     const payloadVarName = "options.payload"
     if (operation.payloadFormData) {
-      pipeline.push(`HttpClientRequest.bodyFormDataRecord(${payloadVarName} as any)`)
+      pipeline.push(`HttpClientRequest.bodyFormDataRecord(${formDataPayload(operation, payloadVarName)} as any)`)
     } else if (operation.payloadFormUrlEncoded) {
       pipeline.push(`HttpClientRequest.bodyUrlParams(${payloadVarName} as any)`)
     } else if (operation.payload) {
@@ -405,7 +436,7 @@ export const make = <E, R>(
 
     return (
       `${JSON.stringify(operation.id)}: (${params}) => ` +
-      requestToImpl(operation, pipeline)
+      encodeRequestToImpl(operation, requestToImpl(operation, pipeline))
     )
   }
 
@@ -423,7 +454,7 @@ export const make = <E, R>(
     pipeline.push(...paramsToPipeline(operation))
 
     if (operation.payloadFormData) {
-      pipeline.push(`HttpClientRequest.bodyFormDataRecord(options.payload as any)`)
+      pipeline.push(`HttpClientRequest.bodyFormDataRecord(${formDataPayload(operation, "options.payload")} as any)`)
     } else if (operation.payloadFormUrlEncoded) {
       pipeline.push(`HttpClientRequest.bodyUrlParams(options.payload as any)`)
     } else if (operation.payload) {
@@ -434,7 +465,7 @@ export const make = <E, R>(
 
     return (
       `${JSON.stringify(`${operation.id}Sse`)}: (${params}) => ` +
-      requestToImpl(operation, pipeline, true)
+      encodeRequestToImpl(operation, requestToImpl(operation, pipeline, true), true)
     )
   }
 
@@ -451,7 +482,7 @@ export const make = <E, R>(
     pipeline.push(...paramsToPipeline(operation))
 
     if (operation.payloadFormData) {
-      pipeline.push(`HttpClientRequest.bodyFormDataRecord(options.payload as any)`)
+      pipeline.push(`HttpClientRequest.bodyFormDataRecord(${formDataPayload(operation, "options.payload")} as any)`)
     } else if (operation.payloadFormUrlEncoded) {
       pipeline.push(`HttpClientRequest.bodyUrlParams(options.payload as any)`)
     } else if (operation.payload) {
@@ -462,7 +493,7 @@ export const make = <E, R>(
 
     return (
       `${JSON.stringify(`${operation.id}Stream`)}: (${params}) => ` +
-      requestToImpl(operation, pipeline, true)
+      encodeRequestToImpl(operation, requestToImpl(operation, pipeline, true), true)
     )
   }
 
@@ -932,6 +963,29 @@ const pathRequestSource = `const __encodePathParam = encodeURIComponent
     }
     return Effect.succeed(method(path))
   })`
+
+const encodeRequestSource = `const __encodeRequest = (
+    options: any,
+    params: Schema.Codec<any, any> | undefined,
+    payload: Schema.Codec<any, any> | undefined
+  ): Effect.Effect<any, SchemaError> =>
+    Effect.map(
+      Effect.all([
+        params === undefined || options?.params === undefined
+          ? Effect.succeed(options?.params)
+          : Schema.encodeUnknownEffect(Schema.toCodecJson(params))(options.params),
+        payload === undefined
+          ? Effect.succeed(options?.payload)
+          : Schema.encodeUnknownEffect(Schema.toCodecJson(payload))(options.payload)
+      ]),
+      ([params, payload]) => ({ ...options, params, payload })
+    )`
+
+// Only emitted for payloads whose schemas contain `Redacted` fields, so the schema section already imports `Redacted`
+const unwrapRedactedSource = `const __unwrapRedacted = (payload: Record<string, unknown>) =>
+    Object.fromEntries(
+      Object.entries(payload).map(([key, value]) => [key, Redacted.isRedacted(value) ? Redacted.value(value) : value])
+    )`
 
 const commaUrlParamsSource =
   `const __joinComma = (value: unknown) => Array.isArray(value) && value.length > 0 ? value.join(",") : value`

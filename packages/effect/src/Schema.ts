@@ -16972,6 +16972,9 @@ type NormalizedRedactedOptions =
  *   into JSON, it will fail with an error. This is useful when the wrapped schema is
  *   sensitive and should not be exposed in JSON.
  *
+ * When the wrapped schema is a string without a `format` annotation, the generated JSON Schema
+ * uses `format: "password"`.
+ *
  * @see {@link RedactedFromValue} for decoding raw values and wrapping them in `Redacted`.
  * @stability stable
  * @category schemas
@@ -17072,6 +17075,9 @@ export interface RedactedFromValue<S extends Constraint> extends decodeTo<Redact
  * Decodes a value and wraps it in `Redacted<A>`. Unlike {@link Redacted} which
  * expects the input to already be a `Redacted` instance, this schema decodes
  * the raw value and wraps it.
+ *
+ * When the wrapped schema is a string without a `format` annotation, the generated JSON Schema
+ * uses `format: "password"`.
  *
  * @see {@link Redacted} for schemas whose input is already a `Redacted` value.
  * @stability stable

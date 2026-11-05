@@ -233,6 +233,18 @@ export interface ParsedOperation {
   readonly headers: ReadonlyArray<string>
   readonly cookies: ReadonlyArray<string>
   readonly payload?: string
+  /**
+   * Whether the params schema decodes values that differ from their wire
+   * values, such as password strings decoded to `Redacted`, so params must be
+   * encoded before they are sent.
+   */
+  readonly encodeParams?: boolean | undefined
+  /**
+   * Whether the payload schema decodes values that differ from their wire
+   * values, such as password strings decoded to `Redacted`, so the payload must
+   * be encoded before it is sent.
+   */
+  readonly encodePayload?: boolean | undefined
   readonly payloadFormData: boolean
   readonly payloadFormUrlEncoded: boolean
   readonly pathSchema: string | undefined

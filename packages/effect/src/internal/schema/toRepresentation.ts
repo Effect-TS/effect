@@ -29,6 +29,34 @@ interface Content {
   readonly schema?: ReferenceCandidate | undefined
 }
 
+const passwordStrings = new WeakMap<SchemaAST.AST, SchemaAST.AST>()
+
+// A string reached through a `Redacted` declaration is represented with the `password` format, unless it already
+// specifies a format. The codec ASTs keep the original string, so only representations (and the JSON Schema and code
+// generated from them) see the format.
+function toEncodedString(declaration: SchemaAST.AST, to: SchemaAST.AST): SchemaAST.AST {
+  if (
+    to._tag !== "String" ||
+    to.encoding !== undefined ||
+    (declaration.annotations?.representation as { readonly id?: unknown } | undefined)?.id !==
+      "effect/schema/Redacted" ||
+    to.annotations?.format !== undefined ||
+    to.checks?.some((check) => check.annotations?.format !== undefined)
+  ) {
+    return to
+  }
+  let password = passwordStrings.get(to)
+  if (password === undefined) {
+    // Annotate the string itself rather than its last check, so the format is exported next to `type`.
+    password = SchemaAST.replaceChecks(
+      SchemaAST.annotate(SchemaAST.replaceChecks(to, undefined), { format: "password" }),
+      to.checks
+    )
+    passwordStrings.set(to, password)
+  }
+  return password
+}
+
 function annotationsField<A>(annotations: A | undefined): { readonly annotations: A } | undefined {
   return annotations === undefined ? undefined : { annotations }
 }
@@ -123,7 +151,7 @@ export function toRepresentations(
           }
         }
       }
-      ast = last.to
+      ast = toEncodedString(ast, last.to)
       encodingLength = ast.encoding?.length ?? 0
     }
     const owner = SchemaAST.getContextOwner(ast)

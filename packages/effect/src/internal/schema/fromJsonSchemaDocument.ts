@@ -130,6 +130,10 @@ const primitiveSchemas = {
 const unsupportedStructuredValue = "Only primitive values are supported in \"const\" and \"enum\"."
 const jsonSchemaPatternFlags = "u"
 
+function isPasswordString(input: ImportedKeyword<"String">): boolean {
+  return input.annotations?.format === "password"
+}
+
 function isObject(input: unknown): input is Record<string, unknown> {
   return typeof input === "object" && input !== null && !Array.isArray(input)
 }
@@ -288,9 +292,14 @@ export function fromJsonSchemaMultiDocument(
     switch (input._tag) {
       case "Unknown":
         return Schema.Json.annotate({ ...annotations, expected: "JSON value" })
+      case "String":
+        if (isPasswordString(input)) {
+          return finalizePassword(input, annotations)
+        }
+        schema = Schema.String
+        break
       case "Never":
       case "Null":
-      case "String":
       case "Number":
       case "Boolean":
         schema = primitiveSchemas[input._tag]
@@ -328,7 +337,13 @@ export function fromJsonSchemaMultiDocument(
           InternalRecord.assignProperty(fields, property.name, property.isOptional ? Schema.optionalKey(type) : type)
         }
         const index = input.indexSignatures[0]
-        const record = index === undefined
+        // `Schema.Json` index signatures also check declared properties, which reject decoded `Redacted` values,
+        // so open objects containing passwords fall back to closed structs.
+        const record = index === undefined ||
+            input.propertySignatures.length > 0 &&
+              index.parameter === string &&
+              index.type._tag === "Unknown" &&
+              input.propertySignatures.some((property) => containsPassword(property.type, new Set()))
           ? undefined
           : Schema.Record(finalize(index.parameter) as Schema.Record.Key, finalize(index.type))
         schema = record !== undefined
@@ -354,8 +369,49 @@ export function fromJsonSchemaMultiDocument(
         check.annotations
       )
     }
-    const filter = check._tag === "PropertyNames" ? Schema.isPropertyNames(finalize(check.type)) : check.filter
+    const filter = check._tag === "PropertyNames" ? Schema.isPropertyNames(finalizeKey(check.type)) : check.filter
     return check.annotations === undefined ? filter : filter.annotate(check.annotations)
+  }
+
+  // Property names are always plain strings, even when their schema uses the password format.
+  function finalizeKey(input: ImportedJsonSchemaRepresentation): Schema.Top {
+    const schema = finalize(input)
+    return containsPassword(input, new Set()) ? Schema.toEncoded(schema) : schema
+  }
+
+  function finalizePassword(
+    input: ImportedKeyword<"String">,
+    annotations: Schema.Annotations.Annotations | undefined
+  ): Schema.Top {
+    // Representations of `Redacted` strings restore `format: "password"`. Other annotations stay on the inner
+    // string, because annotations on the `Redacted` wrapper are not exported.
+    const { format: _, ...rest } = annotations ?? {}
+    const value = Object.keys(rest).length === 0 ? Schema.String : Schema.String.annotate(rest)
+    const checks = input.checks.map(finalizeCheck)
+    return Schema.RedactedFromValue(
+      checks.length > 0 ? value.check(...checks as [InternalAST.Check<any>]) : value
+    )
+  }
+
+  function containsPassword(input: ImportedJsonSchemaRepresentation, seen: Set<string>): boolean {
+    switch (input._tag) {
+      case "String":
+        return isPasswordString(input)
+      case "Arrays":
+        return input.elements.some((element) => containsPassword(element.type, seen)) ||
+          input.rest.some((rest) => containsPassword(rest, seen))
+      case "Objects":
+        return input.propertySignatures.some((property) => containsPassword(property.type, seen)) ||
+          input.indexSignatures.some((index) => containsPassword(index.type, seen))
+      case "Union":
+        return input.types.some((type) => containsPassword(type, seen))
+      case "Reference":
+        if (seen.has(input.$ref)) return false
+        seen.add(input.$ref)
+        return containsPassword(translateDefinition(input.$ref, input.path), seen)
+      default:
+        return false
+    }
   }
 
   function annotate(
