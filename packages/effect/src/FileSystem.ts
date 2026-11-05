@@ -20,7 +20,7 @@ import { pipe } from "./Function.ts"
 import * as Glob from "./internal/glob.ts"
 import * as Layer from "./Layer.ts"
 import * as Option from "./Option.ts"
-import type { PathFilter } from "./PathFilter.ts"
+import type * as PathFilter from "./PathFilter.ts"
 import { badArgument, type PlatformError, systemError } from "./PlatformError.ts"
 import { hasProperty } from "./Predicate.ts"
 import type * as Pull from "./Pull.ts"
@@ -149,11 +149,11 @@ export interface FileSystem {
    * paths return an empty result; unreadable wildcard-reached directories are
    * skipped.
    *
-   * The `filter` option drops results that a `PathFilter` excludes, matched
-   * against paths relative to `root`. Rules never see the `.` entry, so
-   * `glob(".")` returns `"."` whatever the filter. It only removes results:
-   * an inclusion never restores a path dropped by the pattern, `dot` or the
-   * symbolic link rules. A directory excluded by a `barrier` rule is never
+   * The `filter` option, a `PathFilter` or a list of its rules, drops results
+   * that the filter excludes, matched against paths relative to `root`. Rules
+   * never see the `.` entry, so `glob(".")` returns `"."` whatever the
+   * filter. It only removes results: an inclusion never restores a path
+   * dropped by the pattern, `dot` or the symbolic link rules. A directory excluded by a `barrier` rule is never
    * read. Any other excluded directory is skipped only when its contents
    * inherit an exclusion and no inclusion after that exclusion could match
    * inside it. Rules see each entry's own type, so a `directoryOnly` rule
@@ -172,7 +172,7 @@ export interface FileSystem {
     options?: {
       readonly root?: string | undefined
       readonly dot?: boolean | undefined
-      readonly filter?: PathFilter | undefined
+      readonly filter?: PathFilter.Input | undefined
     }
   ) => Effect.Effect<Array<string>, PlatformError>
   /**
