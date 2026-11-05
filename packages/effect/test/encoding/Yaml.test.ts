@@ -180,6 +180,24 @@ development:
     failureMessage("root:\n   child: true\n  sibling: false\n")
   })
 
+  // YAML 1.2.2 §7.3: a quoted key ends at its closing quote, so only white space may follow it
+  // before the ':'. yaml 2.9.1 and js-yaml 4.3.2 reject each of these keys.
+  it("rejects block keys with content after their closing quote", () => {
+    for (
+      const source of [
+        "\"a\" \"b\": 1\n",
+        "'a' x 'b': 1\n",
+        "\"a\"b: 1\n",
+        "!!str \"a\" x: 1\n",
+        "x:\n  - \"a\" b: 1\n"
+      ]
+    ) {
+      failureMessage(source)
+      failureMessage(source, Yaml.parseAll)
+    }
+    assert.deepStrictEqual(parse("\"a\" : 1\n'b''c' : 2\n"), { a: 1, "b'c": 2 })
+  })
+
   it("allows tabs on comment and blank lines outside scalars", () => {
     assert.deepStrictEqual(parse("a: 1\n\t# comment\n\t\nb: 2\n"), { a: 1, b: 2 })
   })
@@ -1167,6 +1185,19 @@ nested:
       const output = Result.getOrThrow(Yaml.stringify(value))
       assert.strictEqual(output, "\"1\": 2\n\"true\": 1\n\"a: b\": 3\n\"\": 4\n")
       assert.deepStrictEqual(oracle(output), value)
+    })
+
+    // yaml 2.9.1 with version "1.1" reads these plain as booleans, timestamps, sexagesimal numbers
+    // and binary integers. js-yaml 4.3.2 also reads the timestamps and binary integers, and its own
+    // printer quotes all of them.
+    it("quotes strings and keys that YAML 1.1 parsers read as other types", () => {
+      const values = ["no", "Yes", "ON", "off", "y", "N", "2024-01-01", "2001-12-14t21:59:43.10-05:00", "1:20", "0b101"]
+      for (const value of values) {
+        const output = Result.getOrThrow(Yaml.stringify({ [value]: value }))
+        assert.strictEqual(output, `"${value}": "${value}"\n`)
+        assert.deepStrictEqual(YAML.parse(output, { version: "1.1" }), { [value]: value })
+        assert.deepStrictEqual(parse(output), { [value]: value })
+      }
     })
 
     it("quotes the merge key so it stays a literal key", () => {
