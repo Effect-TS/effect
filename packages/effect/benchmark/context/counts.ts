@@ -11,8 +11,8 @@
  * (`operations.ts`) reports ratios and skips its gate when its control is too
  * noisy to read.
  *
- * Method. `Map.prototype.get`, `has` and `set`, and `WeakMap.prototype.get`
- * and `set`, are replaced by counting wrappers for the duration of one call,
+ * Method. `Map.prototype.get`, `has` and `set`, `Set.prototype.has`, and
+ * `WeakMap.prototype.get` and `set`, are replaced by counting wrappers for the duration of one call,
  * after a warm-up call and, for operations with a per-storage cache, after
  * the first call so that the steady state is counted. A `Map` copied with
  * `new Map(map)` calls the replaced `set` once per entry, so a copy of a
@@ -26,12 +26,15 @@
  *
  * Gate. Every ordinary-key operation performs the same operations and
  * allocates the same bytes on this branch as at the branch point. A record
- * written into a context performs no `Map` operation and allocates the same
- * bytes into a context of thirty-three slots and of three hundred. A record
- * read is remembered per storage: no operation and no allocation after the
- * first read of a storage, and a view (one slot read per member, one object)
- * once per new override. The record rows are checked against the limits in
- * the spec.
+ * written into a context performs no `Map` operation (one `WeakMap.set`, the
+ * object it assembled remembered for the storage it created) and allocates the
+ * same bytes into a context of thirty-three slots and of three hundred. A
+ * member read through a record's overlays performs no `Map` operation. A
+ * record read is remembered per storage: one `Set.has` per overlay walked above
+ * the storage and nothing else after the first read of a storage, and one
+ * object (a copy with the member replaced, kept in the one-entry cache and
+ * not in the `WeakMap`) once per new override. The record rows are checked
+ * against the limits in the spec.
  */
 /* oxlint-disable no-extend-native -- the counting wrappers replace Map and WeakMap methods for the run */
 import * as Context from "effect/Context"
@@ -109,16 +112,18 @@ interface Counts {
   readonly get: number
   readonly has: number
   readonly set: number
+  readonly setHas: number
   readonly weakGet: number
   readonly weakSet: number
 }
-const zero: Counts = { get: 0, has: 0, set: 0, weakGet: 0, weakSet: 0 }
+const zero: Counts = { get: 0, has: 0, set: 0, setHas: 0, weakGet: 0, weakSet: 0 }
 let counting = false
 let counts = { ...zero }
 const original = {
   get: Map.prototype.get,
   has: Map.prototype.has,
   set: Map.prototype.set,
+  setHas: Set.prototype.has,
   weakGet: WeakMap.prototype.get,
   weakSet: WeakMap.prototype.set
 }
@@ -133,6 +138,10 @@ Map.prototype.has = function(this: Map<unknown, unknown>, key: unknown) {
 Map.prototype.set = function(this: Map<unknown, unknown>, key: unknown, value: unknown) {
   if (counting) counts.set++
   return original.set.call(this, key, value)
+}
+Set.prototype.has = function(this: Set<unknown>, key: unknown) {
+  if (counting) counts.setHas++
+  return original.setHas.call(this, key)
 }
 WeakMap.prototype.get = function(this: WeakMap<object, unknown>, key: object) {
   if (counting) counts.weakGet++
@@ -211,8 +220,8 @@ const records: ReadonlyArray<Case> = [
   steady("add, record (32 members) to 33 slots", () => Context.add(wide33, FileSystem.FileSystem, shape)),
   steady("add, record (32 members) to 300 slots", () => Context.add(wide300, FileSystem.FileSystem, shape)),
   steady("make, record (32 members)", () => Context.make(FileSystem.FileSystem, shape)),
-  steady("getUnsafe, member through a record overlay", () => Context.getUnsafe(recordAdded, FileSystem.readFile)),
-  steady("getUnsafe, record through a record overlay", () => Context.getUnsafe(recordAdded, FileSystem.FileSystem)),
+  steady("getUnsafe, member through a record's overlays", () => Context.getUnsafe(recordAdded, FileSystem.readFile)),
+  steady("getUnsafe, record through a record's overlays", () => Context.getUnsafe(recordAdded, FileSystem.FileSystem)),
   steady(
     "getUnsafe, record in a flat map, same context",
     () => Context.getUnsafe(recordContext, FileSystem.FileSystem)
@@ -241,7 +250,7 @@ const records: ReadonlyArray<Case> = [
   ),
   first(
     "getUnsafe, record never written, first read of a storage",
-    () => Context.add(membersContext, RequestId, 1),
+    () => Context.add(membersContext, FileSystem.stat, fake as unknown as FileSystem.Shape["stat"]),
     (context) => Context.getUnsafe(context, FileSystem.FileSystem)
   ),
   steady("getUnsafe, record never written, later read", () => Context.getUnsafe(membersContext, FileSystem.FileSystem))
@@ -253,14 +262,14 @@ const recordRows = records.map(measure)
 void sink
 
 const header = `  ${"case".padEnd(80)} ${"Map.get".padStart(8)} ${"Map.has".padStart(8)} ${"Map.set".padStart(8)} ${
-  "Weak.get".padStart(9)
-} ${"Weak.set".padStart(9)} ${"bytes".padStart(7)}`
+  "Set.has".padStart(8)
+} ${"Weak.get".padStart(9)} ${"Weak.set".padStart(9)} ${"bytes".padStart(7)}`
 const line = (row: Row, name = row.name) =>
   `  ${name.padEnd(80)} ${String(row.counts.get).padStart(8)} ${String(row.counts.has).padStart(8)} ${
     String(row.counts.set).padStart(8)
-  } ${String(row.counts.weakGet).padStart(9)} ${String(row.counts.weakSet).padStart(9)} ${
-    row.bytes.toFixed(0).padStart(7)
-  }`
+  } ${String(row.counts.setHas).padStart(8)} ${String(row.counts.weakGet).padStart(9)} ${
+    String(row.counts.weakSet).padStart(9)
+  } ${row.bytes.toFixed(0).padStart(7)}`
 
 console.log(`baseline: ${base.slice(0, 10)}; operations and bytes per call\n`)
 console.log("ordinary keys, this branch over the branch point (each pair must be identical)\n")
@@ -290,10 +299,11 @@ const expect = (name: string, predicate: (row: Row) => boolean, text: string) =>
 }
 const add33 = row("add, record (32 members) to 33 slots")
 const add300 = row("add, record (32 members) to 300 slots")
+const noMapOps = (r: Row) => r.counts.get + r.counts.has + r.counts.set === 0
 expect(
   "add, record (32 members) to 33 slots",
-  (r) => r.counts.set === 0 && r.counts.get === 0,
-  "a record write must perform no Map operation"
+  (r) => noMapOps(r) && r.counts.weakSet === 1,
+  "a record write performs no Map operation: one overlay per slot, and one WeakMap.set to remember the object"
 )
 expect(
   "add, record (32 members) to 300 slots",
@@ -301,41 +311,45 @@ expect(
   "a record write into 300 slots must cost what one into 33 slots costs"
 )
 expect(
-  "getUnsafe, member through a record overlay",
-  (r) => r.counts.get === 1 && r.counts.has === 0,
-  "one Map.get, the position of the member"
+  "getUnsafe, member through a record's overlays",
+  noMapOps,
+  "the member is found in the overlays: no Map operation, as for any overlay"
 )
 expect(
-  "getUnsafe, record through a record overlay",
-  (r) => r.counts.get + r.counts.has + r.counts.weakGet === 0 && r.bytes === 0,
-  "no lookup and no allocation: the overlay holds the provided object"
+  "getUnsafe, record through a record's overlays",
+  (r) => noMapOps(r) && r.counts.setHas === 1 && r.counts.weakGet === 0 && r.bytes === 0,
+  "one slot check for the topmost overlay, which is the storage, then remembered: no lookup and no allocation"
 )
 expect(
   "getUnsafe, record in a flat map, same context",
-  (r) => r.counts.get + r.counts.has + r.counts.weakGet === 0 && r.bytes === 0,
+  (r) => noMapOps(r) && r.counts.setHas + r.counts.weakGet === 0 && r.bytes === 0,
   "remembered in the key's one-entry cache"
 )
 expect(
   "getUnsafe, record in a flat map, through one overlay",
-  (r) => r.counts.has === 1 && r.counts.get === 0 && r.counts.weakGet === 0 && r.bytes === 0,
+  (r) => noMapOps(r) && r.counts.setHas === 1 && r.counts.weakGet === 0 && r.bytes === 0,
   "one slot check for the overlay, then remembered"
 )
 expect(
   "add member override then getUnsafe record, per request",
   (r) =>
-    r.counts.get <= 1 && r.counts.has <= 1 && r.counts.weakGet <= 1 && r.counts.weakSet === 0 &&
-    r.bytes <= 16 * (members + 1),
-  "a new override: the record below it looked up (one cache lookup), one copy with the member replaced, no entry kept"
+    r.counts.get <= 1 && r.counts.has + r.counts.set === 0 && r.counts.weakGet <= 2 && r.counts.weakSet === 0 &&
+    r.bytes <= 16 * (members + 1) + 64,
+  "a new override: the record below it looked up, one copy with the member replaced, kept in the one-entry cache only"
 )
 expect(
   "getUnsafe, record with a member overridden underneath",
-  (r) => r.counts.has === 2 && r.counts.get === 0 && r.counts.weakGet + r.counts.weakSet === 0 && r.bytes === 0,
-  "one slot check per overlay walked, then the remembered view"
+  (r) => noMapOps(r) && r.counts.setHas === 2 && r.counts.weakGet + r.counts.weakSet === 0 && r.bytes === 0,
+  "one slot check per overlay walked, then the remembered object"
 )
-expect("make, record (32 members)", (r) => r.counts.set === members + 1, `one Map.set per slot (${members + 1})`)
+expect(
+  "make, record (32 members)",
+  (r) => r.counts.set === members && r.counts.weakSet === 1,
+  `one Map.set per slot (${members}) and one WeakMap.set`
+)
 expect(
   "getUnsafe, record never written, later read",
-  (r) => r.counts.get + r.counts.has + r.counts.weakGet === 0 && r.bytes === 0,
+  (r) => noMapOps(r) && r.counts.setHas + r.counts.weakGet === 0 && r.bytes === 0,
   "remembered"
 )
 void add300

@@ -38,14 +38,13 @@
  *
  * Regimes. The default run is a process that holds record services, reads them
  * and reads ordinary keys through the same getters, which is every process
- * that imports `effect/FileSystem`. V8 compiles a property load for up to four
- * receiver shapes and falls back to a slower generic lookup past that;
- * `Context.add` and the getters read `key.key`, a process that provides a
- * reference, a class-style service, a service with `make` and a plain service
- * already uses four, and an operation and a record service are two more. Both
- * modules are warmed with the same six shapes, and with references read while
- * absent, so the pairs compare like with like. `--ordinary` leaves both at four: the regime of a program that uses no
- * operation.
+ * that imports `effect/FileSystem`; `--ordinary` is a process that holds no
+ * record, the regime of a program that uses no operation. The ordinary rows
+ * are gated against the branch point in both: a record key is dispatched by
+ * one `typeof` in each getter, before any property of the key is read, and a
+ * record's overlays are ordinary overlays, so the ordinary path is the branch
+ * point's code. Both modules are warmed with the same key shapes, and with
+ * references read while absent, so the pairs compare like with like.
  */
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
@@ -78,7 +77,8 @@ const fake = (() => Effect.void) as unknown as FileSystem.Shape["readFile"]
 
 const plainContext = Context.make(Plain, shape)
 const plainBaselineContext = Baseline.make(PlainBaseline, shape)
-// records mode only: a pristine copy of this branch's Context.ts, serving the benchmark's calls alone
+// records mode only: a pristine copy of this branch's Context.ts, serving the benchmark's calls alone; the ratio of
+// the live module over it is what serving the runtime costs a getter with the code held equal (reported, not gated)
 const Twin = ordinary ? Context : await loadTwin()
 const PlainTwin = Twin.Service<FileSystem.Shape>("bench/FileSystem/plain")
 const RequestIdTwin = Twin.Service<number>("bench/RequestId")
@@ -127,10 +127,25 @@ const warm = (ctx: typeof Context, context: Context.Context<never>) => {
     ctx.getOrElse(context, cachedReference, () => 0)
   }
 }
+// this branch's getters also meet record keys and the fiber runtime's reads in a records process: give them that
+// feedback before anything is optimised, so that the ordinary pairs compare code optimised for the same shapes
+const warmRecords = (ctx: typeof Context) => {
+  const a = ctx.Operation<() => Effect.Effect<void>>()("bench/warm/a")
+  const Record = ctx.Operations("bench/warm/Record", { a })
+  const context = ctx.add(ctx.make(Record, { a: () => Effect.void }), a, () => Effect.void)
+  for (let i = 0; i < 1000; i++) {
+    ctx.getUnsafe(context, Record)
+    ctx.getUnsafe(context, a)
+    ctx.getOption(context, Record)
+    ctx.add(context, Record, { a: () => Effect.void })
+  }
+}
 if (!ordinary) {
   warm(Context, Context.empty())
   warm(Baseline, Baseline.empty())
   warm(Twin, Twin.empty())
+  warmRecords(Context)
+  warmRecords(Twin)
 }
 const recordContext = ordinary ? Context.empty() as Context.Context<any> : Context.make(FileSystem.FileSystem, shape)
 const membersContext = ordinary
@@ -143,6 +158,7 @@ const wideBaselineParts = wideParts(Baseline)
 const wideContext = Context.mergeAll(...wideContextParts)
 const wideBaselineContext = Baseline.mergeAll(...wideBaselineParts)
 const wide300Context = Context.mergeAll(...wideParts(Context, 300))
+const wideTwinContext = Twin.mergeAll(...wideParts(Twin))
 const runWide = Effect.runSyncWith(wideContext)
 
 const perRequest = <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.provideService(effect, RequestId, 1)
@@ -182,12 +198,16 @@ const derive = <A>(context: Context.Context<A>, ctx: typeof Context, key: Contex
   return derived
 }
 const memberCount = memberKeys.length
-// an ordinary read is one typeof and, per overlay walked, one more typeof than at the branch point. The rows against
-// the branch point are gated in a process where both modules serve the same calls (`--ordinary`); in a process that
-// runs fibers, this branch's module serves the whole runtime (every reference, operation and record the program
-// reads) while the copy of the branch point serves the benchmark alone, and the twin rows below measure what that
-// costs a getter with the code held equal, so the rows against the branch point are reported there, not gated.
-const ordinaryLimit = ordinary ? 1.25 : Infinity
+// an ordinary read or write is the branch point's code behind one `typeof` of the key: parity, within the noise the
+// control measures, where both modules serve the same calls (`--ordinary`). In a process that runs fibers and reads
+// records, this branch's module serves the whole runtime while the copy of the branch point serves the benchmark
+// alone; the twin rows below show the same gap for a pristine copy of this branch's own code, so the rows against
+// the branch point are bounded at 1.25 there and the ordinary process is where the code is held to parity.
+const ordinaryLimit = ordinary ? 1.05 : 1.25
+// a record read is a few comparisons more than an ordinary read: the key's one-entry cache, or one `Set.has` per
+// overlay walked above the storage and a `WeakMap` lookup
+const recordReadLimit = 1.25
+const recordReadRebuiltLimit = 1.5
 
 const allPairs: ReadonlyArray<Pair> = [
   {
@@ -262,6 +282,12 @@ const allPairs: ReadonlyArray<Pair> = [
     limit: Infinity
   },
   {
+    label: "add, ordinary key to 33 slots: this branch / a pristine copy of this branch",
+    a: c("add, ordinary key, this branch (twin pair)", () => Context.add(wideContext, Plain, shape)),
+    b: c("add, ordinary key, pristine copy of this branch", () => Twin.add(wideTwinContext, PlainTwin, shape)),
+    limit: Infinity
+  },
+  {
     label: "add then getUnsafe, ordinary key: this branch / a pristine copy of this branch",
     a: c(
       "add then getUnsafe, ordinary key, this branch (twin pair)",
@@ -282,7 +308,7 @@ const allPairs: ReadonlyArray<Pair> = [
     ),
     b: c("getUnsafe, ordinary key (record context)", () => Context.getUnsafe(plainContext, Plain)),
     // a record in a flat map is remembered on the key: one check of the last storage read
-    limit: 1.25
+    limit: recordReadLimit
   },
   {
     label: "record read (provided whole) / ordinary key read, context rebuilt per request",
@@ -295,7 +321,7 @@ const allPairs: ReadonlyArray<Pair> = [
       () => Context.getUnsafe(derive(plainContext, Context, RequestId), Plain)
     ),
     // one slot check for the overlay, then the remembered object
-    limit: 1.25
+    limit: recordReadRebuiltLimit
   },
   {
     label: "record read (member overridden underneath) / ordinary key read, context rebuilt per request",
@@ -307,8 +333,8 @@ const allPairs: ReadonlyArray<Pair> = [
       "add then getUnsafe, ordinary key (override pair)",
       () => Context.getUnsafe(derive(plainContext, Context, RequestId), Plain)
     ),
-    // one slot check per overlay walked, then the view remembered for the override
-    limit: 1.5
+    // one slot check per overlay walked, then the object remembered for the override
+    limit: recordReadRebuiltLimit
   },
   {
     label: "member override into a context holding the record / ordinary add",
@@ -328,7 +354,7 @@ const allPairs: ReadonlyArray<Pair> = [
     ),
     // a new override: a copy of the record below it with the member replaced (one object of the members and one
     // cache lookup), kept in the one-entry cache only
-    limit: 8.0
+    limit: 5.0
   },
   {
     label: "record assembled from 32 member layers, context rebuilt per request / ordinary add then read",
@@ -341,21 +367,22 @@ const allPairs: ReadonlyArray<Pair> = [
       () => Context.getUnsafe(derive(plainContext, Context, RequestId), Plain)
     ),
     // assembled once per flat map and remembered
-    limit: 1.5
+    limit: recordReadRebuiltLimit
   },
-  // record writes: one overlay holding a snapshot of the members, whatever the context's size
+  // record writes: one ordinary overlay per member and the object the read returns, whatever the context's size
   {
     label: "record write / ordinary write, into 33 slots",
     a: c("add, record (32 members) to 33 slots", () => Context.add(wideContext, FileSystem.FileSystem, shape)),
     b: c("add, ordinary key to 33 slots (write pair)", () => Context.add(wideContext, Plain, shape)),
-    // one property read per member and one snapshot; at most one ordinary write per slot written
-    limit: memberCount + 1
+    // one property read, one overlay and one property of the assembled object per member: two ordinary writes per
+    // slot written
+    limit: 2 * memberCount
   },
   {
     label: "record write / ordinary write, into 300 slots",
     a: c("add, record (32 members) to 300 slots", () => Context.add(wide300Context, FileSystem.FileSystem, shape)),
     b: c("add, ordinary key to 300 slots", () => Context.add(wide300Context, Plain, shape)),
-    limit: memberCount + 1
+    limit: 2 * memberCount
   },
   {
     label: "record write into 300 slots / into 33 slots",
@@ -378,20 +405,20 @@ const allPairs: ReadonlyArray<Pair> = [
     ),
     b: c("mergeAll, 33 contexts (merge pair)", () => Context.mergeAll(...wideContextParts)),
     // the branch point's way of providing 33 slots at once
-    limit: 1.0
+    limit: 1.25
   },
   // fiber paths
   {
     label: "yield* FileSystem / yield* Plain, same context",
     a: c("runSync: yield* FileSystem (record service)", () => runRecord(FileSystem.FileSystem)),
     b: c("runSync: yield* Plain (today's record service)", () => runPlain(Plain)),
-    limit: 1.25
+    limit: recordReadLimit
   },
   {
     label: "yield* FileSystem / yield* Plain, context rebuilt per request",
     a: c("runSync: yield* FileSystem, context rebuilt per request", () => runRecord(yieldRecordPerRequest)),
     b: c("runSync: yield* Plain, context rebuilt per request", () => runPlain(yieldPlainPerRequest)),
-    limit: 1.25
+    limit: recordReadRebuiltLimit
   },
   {
     label: "yield* FileSystem, member overridden underneath / yield* Plain, context rebuilt per request",
@@ -400,7 +427,7 @@ const allPairs: ReadonlyArray<Pair> = [
       () => runOverridden(yieldRecordPerRequest)
     ),
     b: c("runSync: yield* Plain, context rebuilt per request (override pair)", () => runPlain(yieldPlainPerRequest)),
-    limit: 1.5
+    limit: recordReadRebuiltLimit
   },
   {
     label: "yield* FileSystem, member overridden per request / yield* Plain, context rebuilt per request",
@@ -416,14 +443,14 @@ const allPairs: ReadonlyArray<Pair> = [
     label: "provideService(FileSystem) then yield* FileSystem / provideService(Plain) then yield* Plain, per request",
     a: c("runSync: provideService(FileSystem, record) then yield* FileSystem", () => runWide(provideRecordPerRequest)),
     b: c("runSync: provideService(Plain, record) then yield* Plain", () => runWide(providePlainPerRequest)),
-    // a record provided per request pays its snapshot per request
-    limit: 3.0
+    // a record provided per request pays one overlay per member and the assembled object per request
+    limit: 5.0
   },
   {
     label: "yield* FileSystem from member layers (assembled) / yield* Plain, context rebuilt per request",
     a: c("runSync: yield* FileSystem from member layers, per request", () => runMembers(yieldRecordPerRequest)),
     b: c("runSync: yield* Plain, context rebuilt per request (members pair)", () => runPlain(yieldPlainPerRequest)),
-    limit: 1.5
+    limit: recordReadRebuiltLimit
   },
   {
     label: "operation call / method call on a yielded plain record",
@@ -435,7 +462,8 @@ const allPairs: ReadonlyArray<Pair> = [
     label: "method call on the record service / on a plain record",
     a: c("runSync: (yield* FileSystem).readFile(path)", () => runRecord(viaRecord)),
     b: c("runSync: (yield* Plain).readFile(path) (record pair)", () => runPlain(viaPlain)),
-    limit: ordinaryLimit
+    // a record read and a method call on it
+    limit: recordReadLimit
   }
 ]
 
@@ -468,13 +496,13 @@ const pairs = (seed === 0 ? filtered : [filtered[0], ...shuffled(filtered.slice(
 const allSingles: ReadonlyArray<Case> = [
   c("getUnsafe, operation key (1 of 33 slots)", () => Context.getUnsafe(recordContext, FileSystem.readFile)),
   c("make, record (32 members)", () => Context.make(FileSystem.FileSystem, shape)),
-  c("add, record (32 members): one overlay", () => Context.add(wideContext, FileSystem.FileSystem, shape)),
+  c("add, record (32 members): one overlay per member", () => Context.add(wideContext, FileSystem.FileSystem, shape)),
   c(
     "add a member override to a context holding the record (overlay)",
     () => Context.add(recordContext, FileSystem.readFile, fake)
   ),
   c(
-    "first record read after a member override (one view built)",
+    "first record read after a member override (one copy)",
     () => Context.getUnsafe(Context.add(recordContext, FileSystem.readFile, fake), FileSystem.FileSystem)
   ),
   c(
