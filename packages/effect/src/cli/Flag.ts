@@ -678,6 +678,27 @@ export const withHidden = <A>(self: Flag<A>): Flag<A> => Param.withHidden(self)
 /**
  * Makes a flag optional, returning an Option type that can be None if not provided.
  *
+ * **When to use**
+ *
+ * Use when the handler or a `Command.validate` rule needs to know whether the
+ * flag was passed at all, for example to reject `--force=false` together with
+ * another flag while ignoring an omitted `--force`.
+ *
+ * **Details**
+ *
+ * An omitted flag gives `Option.none()`. A flag passed with any value gives
+ * `Option.some`, including `--flag=false`, `--flag false` and `--no-flag`
+ * for boolean flags. Apply the default afterwards with `Option.getOrElse`.
+ * Help output is the same as with `withDefault`.
+ *
+ * **Gotchas**
+ *
+ * Presence is lost once a default or fallback has filled the value in.
+ * `withDefault(...)` followed by `optional` always gives `Option.some`, and
+ * so does `withFallbackConfig(...)` followed by `optional` when the config
+ * has a value. `optional` followed by `withFallbackConfig(...)` never reads
+ * the config, because `optional` already handled the missing flag.
+ *
  * **Example** (Making flags optional)
  *
  * ```ts import.meta.vitest

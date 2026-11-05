@@ -41,7 +41,7 @@ export interface CommandInternal<Name extends string, Input, E, R, ContextInput>
   readonly service: Context.Key<CommandContext<Name>, ContextInput>
   readonly annotations: Context.Context<never>
   readonly globalFlags: ReadonlyArray<GlobalFlag.GlobalFlag<any>>
-  readonly parse: (input: ParsedTokens) => Effect.Effect<Input, CliError.CliError, Environment>
+  readonly parse: (input: ParsedTokens) => Effect.Effect<Input, E | CliError.CliError, Environment>
   readonly parseContext: (input: ParsedTokens) => Effect.Effect<ContextInput, CliError.CliError, Environment>
   readonly handle: (
     input: Input,
@@ -102,7 +102,7 @@ export const makeCommand = <const Name extends string, Input, E, R, ContextInput
   readonly unlisted?: boolean | undefined
   readonly resolveExamples?: ((commandPath: ReadonlyArray<string>) => ReadonlyArray<Command.Example>) | undefined
   readonly subcommands?: ReadonlyArray<SubcommandGroup> | undefined
-  readonly parse?: ((input: ParsedTokens) => Effect.Effect<Input, CliError.CliError, Environment>) | undefined
+  readonly parse?: ((input: ParsedTokens) => Effect.Effect<Input, E | CliError.CliError, Environment>) | undefined
   readonly parseContext?:
     | ((input: ParsedTokens) => Effect.Effect<ContextInput, CliError.CliError, Environment>)
     | undefined

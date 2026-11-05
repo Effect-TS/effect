@@ -1216,6 +1216,72 @@ describe("Command", () => {
         ])
         assert.deepStrictEqual(seen, [["after subcommands", ["useApi"]]])
       }).pipe(Effect.provide(TestLayer)))
+
+    it.effect("passes domain errors through like handler failures, without help", () =>
+      Effect.gen(function*() {
+        class Conflict extends Schema.TaggedError<Conflict>()("Conflict", {
+          flags: Schema.Array(Schema.String)
+        }) {
+          override get [CliError.userMessage]() {
+            return `${this.flags.join(" and ")} are mutually exclusive`
+          }
+        }
+        // A fresh instance per run, because rendering marks the error as reported
+        let raised: Conflict | undefined
+        const command = Command.make("download", {
+          useApi: Flag.Boolean("use-api").pipe(Flag.withDefault(false)),
+          useDocker: Flag.Boolean("use-docker").pipe(Flag.withDefault(false))
+        }, () => Effect.void).pipe(
+          Command.validate(({ useApi, useDocker }) =>
+            useApi && useDocker
+              ? Effect.suspend(() => Effect.fail(raised = new Conflict({ flags: ["--use-api", "--use-docker"] })))
+              : Effect.void
+          )
+        )
+
+        const rendered = yield* Effect.flip(
+          Command.runWith(command, { version: "1.0.0" })(["--use-api", "--use-docker"])
+        )
+        assert.strictEqual(rendered, raised)
+        assert.isFalse(Runtime.getErrorReported(rendered))
+        assert.deepStrictEqual(yield* TestConsole.errorLines, [
+          "\nERROR\n  --use-api and --use-docker are mutually exclusive"
+        ])
+        assert.isEmpty(yield* TestConsole.logLines)
+
+        const silent = yield* Effect.flip(
+          Command.runWith(command, { version: "1.0.0", renderErrors: false })(["--use-api", "--use-docker"])
+        )
+        assert.strictEqual(silent, raised)
+        assert.isTrue(Runtime.getErrorReported(silent))
+        assert.lengthOf(yield* TestConsole.errorLines, 1)
+      }).pipe(Effect.provide(TestLayer)))
+
+    it.effect("fails a subcommand run with a parent's domain error, rendering nothing without userMessage", () =>
+      Effect.gen(function*() {
+        class LinkedAndLocal extends Schema.TaggedError<LinkedAndLocal>()("LinkedAndLocal", {}) {}
+        const handled: Array<string> = []
+        const push = Command.make("push", {}, () =>
+          Effect.sync(() => {
+            handled.push("push")
+          }))
+        const db = Command.make("db").pipe(
+          Command.withSharedFlags({
+            linked: Flag.Boolean("linked").pipe(Flag.withDefault(false)),
+            local: Flag.Boolean("local").pipe(Flag.withDefault(false))
+          }),
+          Command.withSubcommands([push]),
+          Command.validate(({ linked, local }) => linked && local ? Effect.fail(new LinkedAndLocal()) : Effect.void)
+        )
+
+        const error = yield* Effect.flip(Command.runWith(db, { version: "1.0.0" })(["--linked", "--local", "push"]))
+
+        assert.instanceOf(error, LinkedAndLocal)
+        assert.isTrue(Runtime.getErrorReported(error))
+        assert.deepStrictEqual(handled, [])
+        assert.isEmpty(yield* TestConsole.errorLines)
+        assert.isEmpty(yield* TestConsole.logLines)
+      }).pipe(Effect.provide(TestLayer)))
   })
 
   describe("withSubcommands", () => {
