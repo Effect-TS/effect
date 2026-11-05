@@ -1,9 +1,10 @@
+import * as CloudflareCluster from "@effect/platform-cloudflare/CloudflareCluster"
 import type { DurableObjectProgramState } from "@effect/platform-cloudflare/CloudflareDurableObjectPrograms"
 import { makeClusterSingletonProgram } from "@effect/platform-cloudflare/CloudflareDurableObjectPrograms"
 import { inertClusterHandle, makeClusterHandle } from "@effect/platform-cloudflare/internal/alchemyCluster"
 import { assert, describe, it } from "@effect/vitest"
-import { Context, Effect, Exit, Fiber } from "effect"
-import { Singleton } from "effect/cluster"
+import { Context, Cron, Effect, Exit, Fiber } from "effect"
+import { ClusterCron, Singleton } from "effect/cluster"
 import { Sharding } from "effect/cluster/Sharding"
 import { TestClock } from "effect/testing"
 import { DatabaseSync } from "node:sqlite"
@@ -124,6 +125,35 @@ describe("AlchemyCloudflareCluster", () => {
 
       assert.strictEqual(wokenOn.length, 2)
       assert.notStrictEqual(wokenOn[0], wokenOn[1])
+    }))
+
+  it.effect("wakes a ClusterCron's seed singleton by its helper name", () =>
+    Effect.gen(function*() {
+      const resolved: Array<string> = []
+      const woken: Array<string> = []
+      const singletonNamespace = {
+        getByName: (name: string) => {
+          resolved.push(name)
+          return {
+            wake: () => {
+              woken.push(name)
+              return Promise.resolve()
+            }
+          }
+        }
+      }
+      const cron = ClusterCron.make({
+        name: "nightly",
+        cron: Cron.parseUnsafe("0 0 * * *", "UTC"),
+        execute: Effect.void
+      })
+      const cluster = yield* makeHandle(cron, singletonNamespace)
+
+      yield* cluster.wake(CloudflareCluster.clusterCronSingletonName("nightly"))()
+
+      // The ClusterCron registered its seed singleton under the same object.
+      assert.include(resolved, "Singleton/ClusterCron/nightly")
+      assert.deepStrictEqual(woken, ["Singleton/ClusterCron/nightly"])
     }))
 
   it.effect("does not retry a wake whose singleton failed, even with a retryable-looking error", () =>
