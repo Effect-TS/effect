@@ -1211,7 +1211,10 @@ export const makeEntityManager = (options: EntityManagerOptions): EntityManager 
           Deferred.doneUnsafe(acknowledged, Effect.void)
           return takeReply(requestId, session)
         }
-        return session === undefined ? resumeAcknowledged(requestId) : storedNextReply(requestId)
+        if (session === undefined) return resumeAcknowledged(requestId)
+        // A session this ack does not match may be a replay that has not saved
+        // its next reply yet; the caller will not ask again, so wait for it.
+        return Effect.flatten(awaitStoredReply(requestId, session))
       })
     )
 
