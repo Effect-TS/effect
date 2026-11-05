@@ -715,12 +715,10 @@ const generateRepeatedUniqueValues = (
   return loop()
 }
 
-// Deletions adapt the removal order of `array.ts` (itself from fast-check v4.9.0's ArrayArbitrary, MIT): at each unit,
-// remove the longest allowed run starting there, then halve it down to a single unit, then simplify that unit.
-// A shrunk candidate resumes at the unit it changed (`start`), so units already found necessary are not retried, and
-// a successful deletion caps the next deletions at that unit at its own size (`limit`). Suffix truncations are only
-// tried from the start: past it, each one is either the first deletion at a later unit or removes a necessary unit.
-// Units are code points when `codePoints` is set, so deletions and simplifications never split a surrogate pair.
+// Follows the removal order of `array.ts` (fast-check v4.9.0's ArrayArbitrary, MIT): at each unit, delete the longest
+// allowed run starting there, halve it down to one unit, then simplify that unit. A shrunk candidate resumes at the
+// unit it changed (`start`) and caps the first deletions there at the accepted size (`limit`). Suffix truncations only
+// run from the start. Units are code points under code point bounds, so surrogate pairs stay whole.
 function stringShrinker(
   minimum: number,
   minimumUnits: number,
@@ -740,8 +738,8 @@ function stringShrinker(
     const length = units.length
     const splice = (index: number, count: number, insert = "") =>
       units.slice(0, index).join("") + insert + units.slice(index + count).join("")
-    // Testing the pattern here is only a budget optimisation: filters would discard the candidate, but each discard
-    // still counts against `maxShrinks`. `seen` drops the duplicates that deletions produce after simplification.
+    // Pattern testing only saves budget: filters would discard the candidate, but discards still count against
+    // `maxShrinks`. `seen` drops duplicate deletions, which are common once units have been simplified.
     const seen = new Set([value])
     const accept = (candidate: string) => {
       if (candidate.length < minimum || seen.has(candidate) || pattern?.test(candidate) === false) return false
@@ -764,10 +762,9 @@ function stringShrinker(
         const candidate = splice(index, count)
         if (accept(candidate)) yield sample(candidate, index, count)
       }
-      // Structural pattern shrinks already canonicalise characters, and a simplified unit rarely keeps the match.
+      // Structural pattern candidates already canonicalise characters.
       if (pattern !== undefined) continue
-      // fast-check v4.9.0 builds strings from shrinkable units (MIT). Effect applies its integer-halving shrink to each
-      // unit toward the Effect-owned null-unit target.
+      // Unit simplification follows fast-check v4.9.0's string arbitrary (MIT), halving toward the null unit.
       // https://github.com/dubzzz/fast-check/blob/v4.9.0/packages/fast-check/src/arbitrary/string.ts
       for (const code of shrinkInteger(units[index].codePointAt(0)!, 0, true)) {
         const candidate = splice(index, 1, globalThis.String.fromCodePoint(code.value))
