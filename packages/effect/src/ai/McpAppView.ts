@@ -414,8 +414,9 @@ export interface Service {
   /**
    * Runs `program` until it completes or the host tears the page down. On
    * `ui/resource-teardown` the program is interrupted, its finalizers run, and
-   * only then does the host get its answer; `run` succeeds once the answer is
-   * sent, so a layer provided around `run` stays open long enough. After a
+   * only then does the host get its answer; `run` returns once the answer is
+   * sent, so a layer provided around `run` stays open long enough. A
+   * finalizer's failure still fails `run`, after the answer. After a
    * teardown, `run` returns at once. Interrupting `run` interrupts `program`
    * and waits for its finalizers.
    */
@@ -622,9 +623,12 @@ export const make: (options: Options) => Effect.Effect<Service, HostError, Scope
               // Interrupting the caller interrupts the program and waits for its finalizers.
               Effect.onInterrupt(() => Fiber.interrupt(fiber)),
               Effect.flatMap((exit) => {
-                if (Exit.isSuccess(exit)) return Effect.void
-                if (!Cause.hasInterruptsOnly(exit.cause)) return Effect.failCause(exit.cause)
-                return tearingDown ? restore(Deferred.await(replied)) : Effect.void
+                const done = Exit.isSuccess(exit) || Cause.hasInterruptsOnly(exit.cause)
+                  ? Effect.void
+                  : Effect.failCause(exit.cause)
+                // During a teardown the host is answered first, even when a finalizer failed,
+                // so a layer provided around `run` stays open for the reply.
+                return tearingDown ? Effect.andThen(restore(Deferred.await(replied)), done) : done
               })
             )
         )

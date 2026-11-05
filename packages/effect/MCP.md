@@ -298,8 +298,8 @@ McpAppView.run(page).pipe(
 - `McpAppView.run(program)` runs the page until `program` completes or the host sends
   `ui/resource-teardown`. On teardown the program is interrupted, its finalizers run, and only then
   is the host answered; `run` returns after the answer is sent, so
-  `McpAppView.run(page).pipe(Effect.provide(layer))` keeps the connection open long enough.
-  Interrupting `run` interrupts the program. `ping` is answered; any other host request gets
+  `McpAppView.run(page).pipe(Effect.provide(layer))` keeps the connection open long enough. A
+  failing finalizer still fails `run`, after the answer. Interrupting `run` interrupts the program. `ping` is answered; any other host request gets
   JSON-RPC `-32601`.
 - `BrowserMcpAppView.layer` posts to `window.parent` with the `"*"` target origin, which is what a
   sandboxed iframe with an opaque origin needs, and accepts only messages whose source is
