@@ -307,10 +307,39 @@ export function fromJsonSchemaMultiDocument(
     return { ...input, types, annotations: Object.keys(annotations).length === 0 ? undefined : annotations }
   }
 
+  // A password reference to a union definition, such as a nullable string, is inlined with the password format moved
+  // to the union's string members, so other uses of the definition stay plain
+  function passwordUnionDefinition(input: ImportedReference): ImportedJsonSchemaRepresentation | undefined {
+    if (input.annotations?.format !== "password") return undefined
+    const seen = new Set<string>()
+    let reference = input
+    while (!seen.has(reference.$ref) && definitionCache.get(reference.$ref) !== null) {
+      seen.add(reference.$ref)
+      const definition = translateDefinition(reference.$ref, reference.path)
+      if (definition.annotations?.format !== undefined) return undefined
+      if (definition._tag === "Reference") {
+        reference = definition
+        continue
+      }
+      if (definition._tag !== "Union") return undefined
+      const union = movePasswordFormatToStrings({
+        ...definition,
+        annotations: { ...definition.annotations, format: "password" }
+      })
+      return union.annotations?.format === "password" ? undefined : union
+    }
+    return undefined
+  }
+
   function finalize(input: ImportedJsonSchemaRepresentation): Schema.Top {
     const annotations = mergeAnnotations(input.annotations, input.customAnnotations)
     if (input._tag === "Reference") {
       if (annotations !== undefined) resolveReference(input, input.path)
+      const union = passwordUnionDefinition(input)
+      if (union !== undefined) {
+        const { format: _, ...rest } = annotations ?? {}
+        return finalize({ ...union, annotations: mergeAnnotations(union.annotations, rest) })
+      }
       let slot = references.get(input.$ref)
       if (slot === undefined) {
         slot = new ReferenceSlot(input.$ref)
@@ -445,7 +474,7 @@ export function fromJsonSchemaMultiDocument(
       case "Union":
         return input.types.some((type) => containsPassword(type, seen))
       case "Reference":
-        if (isPassword(input)) return true
+        if (isPassword(input) || passwordUnionDefinition(input) !== undefined) return true
         if (seen.has(input.$ref)) return false
         seen.add(input.$ref)
         return containsPassword(translateDefinition(input.$ref, input.path), seen)

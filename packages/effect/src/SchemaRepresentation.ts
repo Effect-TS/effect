@@ -3207,7 +3207,8 @@ export function fromRepresentations(
  * - Strings with `format: "password"` import as `Schema.RedactedFromValue(Schema.String)`: they decode to `Redacted`
  *   values and encode back to the plain string. Their other annotations and constraints apply to the inner string.
  *   This includes the string member of nullable schemas such as `{ type: ["string", "null"], format: "password" }`,
- *   and `$ref` uses of plain string definitions annotated with `format: "password"`, which wrap that use only.
+ *   and `$ref` uses of plain string definitions annotated with `format: "password"`, which wrap that use only. A
+ *   password `$ref` to a nullable string definition is inlined at that use, so other uses keep the shared definition.
  *   Password strings constrained by `enum` or `const` import as plain literals, because their values are already
  *   published in the schema. Property names keep plain string schemas. Open objects whose properties contain a password import as closed
  *   structs, so additional properties are stripped instead of retained, because `Schema.Json` index signatures would

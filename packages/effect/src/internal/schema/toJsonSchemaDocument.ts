@@ -300,6 +300,19 @@ function compileJsonSchema(
     return result
   }
 
+  // Whether a compiled schema, or the definition it references, exports a format
+  function exportsFormat(schema: JsonSchema.JsonSchema, seen = new Set<string>()): boolean {
+    if (hasFormat(schema)) return true
+    if (typeof schema.$ref !== "string") return false
+    const pointer = decodeUriFragment(schema.$ref)
+    if (pointer === undefined || !pointer.startsWith("/$defs/") || pointer.indexOf("/", 7) >= 0) return false
+    const key = unescapeToken(pointer.slice(7))
+    if (seen.has(key)) return false
+    seen.add(key)
+    const definition = compiledDefinitions.get(key)?.schema
+    return definition !== undefined && exportsFormat(definition, seen)
+  }
+
   function finalizeJsonSchema(schema: JsonSchema.JsonSchema): JsonSchema.JsonSchema {
     return rewriteRefs(schema, ($ref) => {
       const pointer = decodeUriFragment($ref)
@@ -398,10 +411,17 @@ function compileJsonSchema(
 
     const local: Array<Exactness> = []
     dependencies.push(local)
-    let output = {
-      ...on(representation, path, local),
-      ...collectJsonSchemaAnnotations(representation.annotations, options)
+    const base = on(representation, path, local)
+    let annotations = collectJsonSchemaAnnotations(representation.annotations, options)
+    if (
+      representation.annotations?.[InternalAnnotations.PASSWORD_FORMAT_DEFAULT_KEY] === true &&
+      annotations !== undefined && exportsFormat(base)
+    ) {
+      // The default password format of a `Redacted` string gives way to a format the string already exports
+      const { format: _, ...rest } = annotations
+      annotations = rest
     }
+    let output = { ...base, ...annotations }
     if (representation._tag === "String" && representation.content !== undefined) {
       const content = representation.content
       output.contentMediaType = content.mediaType

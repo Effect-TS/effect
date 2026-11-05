@@ -39,11 +39,9 @@ function isRedactedDeclaration(ast: SchemaAST.AST): boolean {
 // format. The codec ASTs keep the original string, so only representations (and the JSON Schema and code generated
 // from them) see the format. The marker lets a format supplied by a check take precedence when exporting.
 function toPasswordString(ast: SchemaAST.AST): SchemaAST.AST {
-  let target = ast
-  while (target._tag === "Suspend" && target.annotations?.format === undefined) target = target.thunk()
+  const target = resolveWireString(ast)
   if (
-    target._tag !== "String" ||
-    target.encoding !== undefined ||
+    target === undefined ||
     target.annotations?.format !== undefined ||
     target.checks?.some((check) => check.annotations?.format !== undefined)
   ) {
@@ -62,6 +60,26 @@ function toPasswordString(ast: SchemaAST.AST): SchemaAST.AST {
     passwordStrings.set(ast, password)
   }
   return password
+}
+
+// Follows suspensions and string-to-string encodings to the string sent on the wire
+function resolveWireString(ast: SchemaAST.AST): SchemaAST.AST | undefined {
+  const seen = new Set<SchemaAST.AST>()
+  let target = ast
+  while (!seen.has(target)) {
+    seen.add(target)
+    if (target._tag === "Suspend") {
+      if (target.annotations?.format !== undefined) return undefined
+      target = target.thunk()
+    } else if (target._tag !== "String") {
+      return undefined
+    } else if (target.encoding !== undefined) {
+      target = target.encoding[target.encoding.length - 1].to
+    } else {
+      return target
+    }
+  }
+  return undefined
 }
 
 function annotationsField<A>(annotations: A | undefined): { readonly annotations: A } | undefined {
