@@ -266,13 +266,13 @@ describe("McpTasks", () => {
         Layer.provide(McpTasks.layerMemory(Reports, {
           report: Effect.fnUntraced(function*() {
             const task = yield* McpTasks.TaskContext
-            yield* task.setStatusMessage("Choose workspace roots")
+            yield* task.setStatusMessage("choose", "Choose workspace roots")
             const response = yield* task.requestInput({
               key: "roots",
               request: { method: "roots/list" },
               response: Schema.Struct({ roots: Schema.Array(Schema.Struct({ uri: Schema.String })) })
             })
-            yield* task.setStatusMessage("Report ready")
+            yield* task.setStatusMessage("ready", "Report ready")
             return `Report covers ${response.roots.length} roots`
           }, Effect.orDie)
         })),
@@ -343,7 +343,8 @@ describe("McpTasks", () => {
         McpTasks.TaskContext.use((task) =>
           task.requestInput({ key, request: { method: "roots/list" }, response: McpSchema.ListRootsResult })
         ).pipe(Effect.orDie, Effect.map(({ roots }) => roots[0]?.name ?? ""))
-      const setStatus = (message: string) => McpTasks.TaskContext.use((task) => task.setStatusMessage(message))
+      const setStatus = (key: string, message: string) =>
+        McpTasks.TaskContext.use((task) => task.setStatusMessage(key, message))
       const harness = yield* makeHttpHarness(withWorkflow(McpTasks.layerWorkflow(Fallible, {
         report: Effect.fnUntraced(function*() {
           const winner = yield* DurableDeferred.raceAll({
@@ -351,7 +352,10 @@ describe("McpTasks", () => {
             success: Schema.String,
             error: Schema.Never,
             effects: [
-              setStatus("Choosing").pipe(Effect.andThen(setStatus("Picking")), Effect.andThen(ask("left"))),
+              setStatus("choosing", "Choosing").pipe(
+                Effect.andThen(setStatus("picking", "Picking")),
+                Effect.andThen(ask("left"))
+              ),
               ask("right")
             ]
           })
@@ -363,12 +367,12 @@ describe("McpTasks", () => {
             effects: [ask("confirm").pipe(Effect.andThen(ask("details"))), ask("skip")]
           })
           // The first setter after the races reuses a message the skipped arm set before "Picking".
-          yield* setStatus("Choosing")
+          yield* setStatus("choosing-again", "Choosing")
           const review = yield* ask("review")
-          yield* setStatus("Reviewing")
+          yield* setStatus("reviewing", "Reviewing")
           const approve = yield* ask("approve")
-          // Reusing an earlier message is a new status change.
-          yield* setStatus("Choosing")
+          // Reusing an earlier message under a new key is a new status change.
+          yield* setStatus("choosing-final", "Choosing")
           return [winner, followUp, review, approve, yield* ask("final")].join(":")
         })
       }, { name: "race" })))
@@ -424,7 +428,7 @@ describe("McpTasks", () => {
 
   it.effect("should keep the latest status when replay reorders concurrent setters", () =>
     Effect.gen(function*() {
-      const setStatus = (message: string) => McpTasks.TaskContext.use((task) => task.setStatusMessage(message))
+      const setStatus = (key: string) => McpTasks.TaskContext.use((task) => task.setStatusMessage(key, key))
       const harness = yield* makeHttpHarness(withWorkflow(McpTasks.layerWorkflow(Fallible, {
         report: Effect.fnUntraced(function*() {
           // The first run finishes "a" after "b"; replay reuses both Activity results and finishes "a" first.
