@@ -24,6 +24,8 @@
  * retried `fail` or `release` cannot settle the same attempt twice.
  * A recorded failure that leaves the row pending stores its retry delay in
  * `lease_until` with no owner, the same delayed visibility an offer uses.
+ * Lookups by taker go through `lease_owner`, so a retried take or a cancel
+ * finds its row after the object restarts.
  *
  * @internal
  */
@@ -50,7 +52,10 @@ const ddl = [
   // (completed, position) index cannot serve it and completed rows are
   // retained forever for dedup.
   `CREATE INDEX IF NOT EXISTS queue_items_position_idx
-    ON queue_items (position)`
+    ON queue_items (position)`,
+  // A retried take and a cancel look the taker's row up by owner.
+  `CREATE INDEX IF NOT EXISTS queue_items_owner_idx
+    ON queue_items (lease_owner)`
 ]
 
 /** @internal */
@@ -136,11 +141,11 @@ export const leaseNextItem = (
  *
  * @internal
  */
-export const leasedItem = (sql: SqlStorage, id: string, owner: string, now: number): QueueItem | undefined =>
+export const leasedItem = (sql: SqlStorage, owner: string, now: number): QueueItem | undefined =>
   sql.exec<QueueItemRow>(
     `SELECT id, element, attempts - 1 AS attempts FROM queue_items
-     WHERE id = ? AND lease_owner = ? AND completed = 0 AND lease_until > ?`,
-    id,
+     WHERE lease_owner = ? AND completed = 0 AND lease_until > ?
+     LIMIT 1`,
     owner,
     now
   ).toArray()[0]
@@ -195,6 +200,19 @@ export const releaseItem = (sql: SqlStorage, id: string, owner: string): void =>
     `UPDATE queue_items SET attempts = attempts - 1, lease_until = NULL, lease_owner = NULL
      WHERE id = ? AND lease_owner = ? AND completed = 0`,
     id,
+    owner
+  )
+}
+
+/**
+ * Releases whatever pending item `owner` still holds, as `releaseItem` does.
+ *
+ * @internal
+ */
+export const releaseOwnedItem = (sql: SqlStorage, owner: string): void => {
+  sql.exec(
+    `UPDATE queue_items SET attempts = attempts - 1, lease_until = NULL, lease_owner = NULL
+     WHERE lease_owner = ? AND completed = 0`,
     owner
   )
 }

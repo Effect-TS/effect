@@ -8,13 +8,13 @@
  * by taker id, releasing an item that was already leased to it.
  *
  * `take` is idempotent per taker id: a retried take replaces the taker's
- * waiter, or returns the item still leased to it.
+ * waiter, or returns the item still leased to it. Leases are found by owner in
+ * SQLite, so a retry or cancel still finds its item after a restart.
  *
  * @internal
  */
 import type { SqlStorage } from "@cloudflare/workers-types"
 import * as Effect from "effect/Effect"
-import { setWithEviction } from "./boundedMap.ts"
 import { armAlarm, type EntityAlarm } from "./entityStorage.ts"
 import {
   completeItem,
@@ -27,7 +27,8 @@ import {
   leaseNextItem,
   offerItem,
   type QueueItem,
-  releaseItem
+  releaseItem,
+  releaseOwnedItem
 } from "./queueStorage.ts"
 
 /** @internal */
@@ -67,17 +68,12 @@ interface Waiter {
   resolve: (item: QueueItem) => void
 }
 
-const deliveredCapacity = 4096
-
 /** @internal */
 export const makeQueueRuntime = (options: QueueRuntimeOptions): QueueRuntime => {
   const sql = options.sql
   ensureQueueStorage(sql)
 
   const waiters: Array<Waiter> = []
-  // Which item each taker holds, so a cancel that races the delivery can
-  // release the already-leased item instead of stranding it.
-  const delivered = new Map<string, string>()
 
   // Waiters differ in maxAttempts, so one waiter finding nothing does not mean
   // a later one will; every waiter gets its own lease attempt. Leasing stays
@@ -94,7 +90,6 @@ export const makeQueueRuntime = (options: QueueRuntimeOptions): QueueRuntime => 
         continue
       }
       waiters.splice(index, 1)
-      setWithEviction(delivered, waiter.takerId, item.id, deliveredCapacity)
       waiter.resolve(item)
     }
     // Include initial visibility deadlines even when no taker is waiting.
@@ -119,8 +114,7 @@ export const makeQueueRuntime = (options: QueueRuntimeOptions): QueueRuntime => 
     take: (takerId, maxAttempts, leaseMillis) => {
       // A broken take RPC is retried with the same taker id. The retry must
       // not leave a second waiter that leases an item nobody handles.
-      const leasedId = delivered.get(takerId)
-      const leased = leasedId === undefined ? undefined : leasedItem(sql, leasedId, takerId, options.now())
+      const leased = leasedItem(sql, takerId, options.now())
       if (leased !== undefined) return Promise.resolve(leased)
       const existing = waiters.find((waiter) => waiter.takerId === takerId)
       const item = new Promise<QueueItem>((resolve) => {
@@ -139,11 +133,10 @@ export const makeQueueRuntime = (options: QueueRuntimeOptions): QueueRuntime => 
         waiters.splice(index, 1)
         return Promise.resolve()
       }
-      const itemId = delivered.get(takerId)
-      if (itemId === undefined) return Promise.resolve()
-      delivered.delete(takerId)
+      // The cancel can race the delivery; release an item already leased to
+      // the taker instead of stranding it.
       return mutateAndWake(() => {
-        releaseItem(sql, itemId, takerId)
+        releaseOwnedItem(sql, takerId)
       })
     },
 
