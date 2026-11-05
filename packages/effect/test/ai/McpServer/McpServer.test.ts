@@ -2941,6 +2941,69 @@ describe("McpServer", () => {
       }))
   })
 
+  describe("resources", () => {
+    it.effect("reads string and byte content with the registered MIME type", () =>
+      Effect.gen(function*() {
+        const bytes = new Uint8Array([1, 2, 3])
+        const name = McpSchema.param("name", Schema.String)
+        const registrations = Layer.mergeAll(
+          McpServer.resource({
+            uri: "test://app",
+            name: "app",
+            mimeType: "text/html;profile=mcp-app",
+            content: Effect.succeed("<p>app</p>")
+          }),
+          McpServer.resource({
+            uri: "test://image",
+            name: "image",
+            mimeType: "image/png",
+            content: Effect.succeed(bytes)
+          }),
+          McpServer.resource`test://text/${name}`({
+            name: "text",
+            mimeType: "text/markdown",
+            content: (_uri, name) => Effect.succeed(name)
+          }),
+          McpServer.resource`test://bytes/${name}`({
+            name: "bytes",
+            mimeType: "application/octet-stream",
+            content: () => Effect.succeed(bytes)
+          }),
+          McpServer.resource({
+            uri: "test://plain",
+            name: "plain",
+            content: Effect.succeed("plain")
+          }),
+          McpServer.resource({
+            uri: "test://result",
+            name: "result",
+            mimeType: "text/plain",
+            content: Effect.succeed(McpSchema.ReadResourceResult.make({
+              contents: [{ uri: "test://result#part", text: "part" }]
+            }))
+          })
+        )
+        const client = yield* McpTest.makeClient(registrations, { protocols: [McpProtocol.v2025_11_25] })
+        const read = (uri: string) => client.readResource({ uri }).pipe(Effect.map((result) => result.contents))
+
+        assert.deepStrictEqual(yield* read("test://app"), [
+          { uri: "test://app", mimeType: "text/html;profile=mcp-app", text: "<p>app</p>" }
+        ])
+        assert.deepStrictEqual(yield* read("test://image"), [
+          { uri: "test://image", mimeType: "image/png", blob: bytes }
+        ])
+        assert.deepStrictEqual(yield* read("test://text/readme"), [
+          { uri: "test://text/readme", mimeType: "text/markdown", text: "readme" }
+        ])
+        assert.deepStrictEqual(yield* read("test://bytes/data"), [
+          { uri: "test://bytes/data", mimeType: "application/octet-stream", blob: bytes }
+        ])
+        assert.deepStrictEqual(yield* read("test://plain"), [{ uri: "test://plain", text: "plain" }])
+        // A full result is the handler's own answer and is returned as is.
+        assert.deepStrictEqual(yield* read("test://result"), [{ uri: "test://result#part", text: "part" }])
+      }))
+  })
+
   describe("resource subscriptions", () => {
     // Releasing the upstream listener on overflow is this server's memory-bound policy,
     // not an MCP conformance requirement. Transport writes may stay blocked indefinitely.

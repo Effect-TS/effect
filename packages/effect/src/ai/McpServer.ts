@@ -3638,7 +3638,7 @@ export const registerResource: {
         }),
         services,
         handle: options.content.pipe(
-          Effect.map((content) => resolveResourceContent(options.uri, content)),
+          Effect.map((content) => resolveResourceContent(options.uri, options.mimeType, content)),
           Effect.catchCause(handlerFailureToInternalError)
         ),
         annotations: options.annotations ?? Context.empty()
@@ -3702,7 +3702,7 @@ export const registerResource: {
           Effect.mapError((error) => new InvalidParams({ message: error.message })),
           Effect.flatMap((params: any) =>
             options.content(uri, ...params).pipe(
-              Effect.map((content) => resolveResourceContent(uri, content)),
+              Effect.map((content) => resolveResourceContent(uri, options.mimeType, content)),
               Effect.catchCause(handlerFailureToInternalError)
             )
           )
@@ -4194,21 +4194,16 @@ const compileUriTemplate = (segments: TemplateStringsArray, ...schemas: Readonly
 
 const resolveResourceContent = (
   uri: string,
+  mimeType: string | undefined,
   content: ReadResourceResult | string | Uint8Array
 ): ReadResourceResult => {
   if (typeof content === "string") {
     return {
-      contents: [{
-        uri,
-        text: content
-      }]
+      contents: [mimeType === undefined ? { uri, text: content } : { uri, mimeType, text: content }]
     }
   } else if (content instanceof Uint8Array) {
     return {
-      contents: [{
-        uri,
-        blob: content
-      }]
+      contents: [mimeType === undefined ? { uri, blob: content } : { uri, mimeType, blob: content }]
     }
   }
   return content
