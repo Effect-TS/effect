@@ -80,7 +80,7 @@ import * as Stream from "./Stream.ts"
  * @category models
  * @since 4.0.0
  */
-export interface Shape extends Context.Operations.Shape<typeof members>, Context.Operations.Named {}
+export interface Shape extends Context.Operations.Shape<typeof members> {}
 
 /**
  * File open flags that determine how a file is opened and what operations are allowed.
@@ -837,7 +837,7 @@ const readOnlyMembers = {
  * @category models
  * @since 4.0.0
  */
-export interface ReadOnlyShape extends Context.Operations.Shape<typeof readOnlyMembers>, Context.Operations.Named {}
+export interface ReadOnlyShape extends Context.Operations.Shape<typeof readOnlyMembers> {}
 
 /**
  * The read-only file system: a record service over the operations that read

@@ -2275,30 +2275,28 @@ const showConfirmation = FileConfirm.$is("Show")
 const resolveCurrentPath = (
   path: Option.Option<string>,
   options: FileOptionsReq
-): Effect.Effect<string, never, FileSystem.FileSystem> => {
+): Effect.Effect<string, never, "effect/FileSystem/exists"> => {
   if (Option.isSome(path)) {
     return Effect.succeed(path.value)
   }
   if (Option.isSome(options.startingPath)) {
     const startingPath = options.startingPath.value
-    return Effect.flatMap(FileSystem.FileSystem, (fs) =>
-      // Ensure the user provided starting path exists
-      Effect.orDie(fs.exists(startingPath)).pipe(
-        Effect.flatMap((exists) =>
-          exists ? Effect.void : Effect.die(
-            `The provided starting path '${startingPath}' does not exist`
-          )
-        ),
-        Effect.as(startingPath)
-      ))
+    // Ensure the user provided starting path exists
+    return Effect.orDie(FileSystem.exists(startingPath)).pipe(
+      Effect.flatMap((exists) =>
+        exists ? Effect.void : Effect.die(
+          `The provided starting path '${startingPath}' does not exist`
+        )
+      ),
+      Effect.as(startingPath)
+    )
   }
   return Effect.sync(() => process.cwd())
 }
 
 const getFileList = Effect.fnUntraced(function*(directory: string, options: FileOptionsReq) {
-  const fs = yield* FileSystem.FileSystem
   const path = yield* Path.Path
-  const files = yield* Effect.orDie(fs.readDirectory(directory)).pipe(
+  const files = yield* Effect.orDie(FileSystem.readDirectory(directory)).pipe(
     // Always prepend the `".."` option to the file list but allow it
     // to be filtered out if the user so desires
     Effect.map((files) => ["..", ...files])
@@ -2310,7 +2308,7 @@ const getFileList = Effect.fnUntraced(function*(directory: string, options: File
       : Effect.succeed(result)
     const directoryFilter = options.type === "directory"
       ? Effect.map(
-        Effect.orDie(fs.stat(path.join(directory, file))),
+        Effect.orDie(FileSystem.stat(path.join(directory, file))),
         (info) => info.type === "Directory"
       )
       : Effect.succeed(true)
@@ -2543,7 +2541,7 @@ const handleFileRender = (options: FileOptionsReq) => {
   return (
     state: FileState,
     action: Action<FileState, string>
-  ): Effect.Effect<string, never, Path.Path | FileSystem.FileSystem> => {
+  ): Effect.Effect<string, never, Path.Path | "effect/FileSystem/exists"> => {
     return Action.$match(action, {
       Beep: () => Effect.succeed(renderBeep),
       NextFrame: ({ state }) => renderFileNextFrame(state, options),
@@ -2593,12 +2591,11 @@ const processSelection = Effect.fnUntraced(function*(state: FileState, options: 
   if (state.files.length === 0) {
     return Action.Beep()
   }
-  const fs = yield* FileSystem.FileSystem
   const path = yield* Path.Path
   const currentPath = yield* resolveCurrentPath(state.path, options)
   const selectedPath = state.files[state.cursor]
   const resolvedPath = path.resolve(currentPath, selectedPath)
-  const info = yield* Effect.orDie(fs.stat(resolvedPath))
+  const info = yield* Effect.orDie(FileSystem.stat(resolvedPath))
   if (info.type === "Directory") {
     const files = yield* getFileList(resolvedPath, options)
     const filesWithoutParent = files.filter((file) => file !== "..")

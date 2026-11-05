@@ -155,8 +155,8 @@ export const make = Platform.make({
 })
 
 /**
- * Provides the Node `HttpPlatform` together with the filesystem and ETag
- * services it needs for file responses.
+ * Provides the Node `HttpPlatform` together with the ETag generator and the
+ * one file system operation it needs for file responses, `stat`.
  *
  * @stability unstable
  * @category layers
@@ -164,6 +164,6 @@ export const make = Platform.make({
  */
 export const layer: Layer.Layer<Platform.HttpPlatform> = pipe(
   Layer.effect(Platform.HttpPlatform)(make),
-  Layer.provide(NodeFileSystem.layer),
+  Layer.provide(NodeFileSystem.stat),
   Layer.provide(EtagImpl.layer)
 )

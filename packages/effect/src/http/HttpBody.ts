@@ -593,8 +593,8 @@ const fileContentLength = Effect.fnUntraced(function*(
  *
  * **Details**
  *
- * The effect requires `FileSystem`, stats the file to set the selected content length, and can fail with
- * `PlatformError`.
+ * The effect requires the `FileSystem.stat` and `FileSystem.stream` operations (a `Layer<FileSystem>` satisfies
+ * both), stats the file to set the selected content length, and can fail with `PlatformError`.
  *
  * Range validation and file access are deferred until the effect runs. Numeric range inputs must be
  * non-negative safe integers; bigint and byte-size strings can represent larger values. Malformed strings,
@@ -617,14 +617,18 @@ export const file = (
     readonly offset?: ByteSize.Input | undefined
     readonly contentType?: string | undefined
   }
-): Effect.Effect<Stream, PlatformError.PlatformError, FileSystem.FileSystem> =>
+): Effect.Effect<
+  Stream,
+  PlatformError.PlatformError,
+  "effect/FileSystem/stat" | "effect/FileSystem/stream"
+> =>
   Effect.flatMap(
-    FileSystem.FileSystem,
-    (fs) =>
-      Effect.flatMap(fs.stat(path), (info) =>
+    Effect.service(FileSystem.stream),
+    (openStream) =>
+      Effect.flatMap(FileSystem.stat(path), (info) =>
         Effect.map(fileContentLength(info.size, "file", options), (contentLength) =>
           stream(
-            fs.stream(path, options),
+            openStream(path, options),
             options?.contentType,
             contentLength
           )))
@@ -635,8 +639,8 @@ export const file = (
  *
  * **Details**
  *
- * The effect requires `FileSystem`, uses the provided file size to determine the selected content length, and can
- * fail with `PlatformError`.
+ * The effect requires the `FileSystem.stream` operation (a `Layer<FileSystem>` satisfies it), uses the provided
+ * file size to determine the selected content length, and can fail with `PlatformError`.
  *
  * Like {@link file}, this constructor validates ranges lazily and calculates the EOF-clamped length with exact
  * bigint arithmetic. Invalid range inputs and final lengths above `Number.MAX_SAFE_INTEGER` fail with
@@ -656,13 +660,13 @@ export const fileFromInfo = (
     readonly offset?: ByteSize.Input | undefined
     readonly contentType?: string | undefined
   }
-): Effect.Effect<Stream, PlatformError.PlatformError, FileSystem.FileSystem> =>
+): Effect.Effect<Stream, PlatformError.PlatformError, "effect/FileSystem/stream"> =>
   Effect.flatMap(
-    FileSystem.FileSystem,
-    (fs) =>
+    Effect.service(FileSystem.stream),
+    (openStream) =>
       Effect.map(fileContentLength(info.size, "fileFromInfo", options), (contentLength) =>
         stream(
-          fs.stream(path, options),
+          openStream(path, options),
           options?.contentType,
           contentLength
         ))

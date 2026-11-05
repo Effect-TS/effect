@@ -12,7 +12,6 @@
  */
 import * as NodeHttpCompression from "@effect/platform-node-shared/NodeHttpCompression"
 import type * as Effect from "effect/Effect"
-import type { FileSystem } from "effect/FileSystem"
 import * as Etag from "effect/http/Etag"
 import * as Platform from "effect/http/HttpPlatform"
 import * as Response from "effect/http/HttpServerResponse"
@@ -33,7 +32,7 @@ const compression = NodeHttpCompression.make(Platform.makeCompressionWeb({
 const make: Effect.Effect<
   Platform.HttpPlatform["Service"],
   never,
-  FileSystem | Etag.Generator
+  "effect/FileSystem/stat" | Etag.Generator
 > = Platform.make({
   platform: "bun",
   compression,
@@ -66,6 +65,6 @@ const make: Effect.Effect<
  * @since 4.0.0
  */
 export const layer = Layer.effect(Platform.HttpPlatform)(make).pipe(
-  Layer.provide(BunFileSystem.layer),
+  Layer.provide(BunFileSystem.stat),
   Layer.provide(Etag.layer)
 )

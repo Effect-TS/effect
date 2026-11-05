@@ -55,7 +55,14 @@ export class HttpPlatform extends Context.Service<HttpPlatform, {
 }>()("effect/http/HttpPlatform") {}
 
 /**
- * Creates an `HttpPlatform` service from platform-specific file response constructors, using `FileSystem` and `Etag.Generator`.
+ * Creates an `HttpPlatform` service from platform-specific file response
+ * constructors, using the `FileSystem.stat` operation and `Etag.Generator`.
+ *
+ * **Details**
+ *
+ * The effect requires only the `stat` member of `FileSystem`, so a
+ * `Layer<FileSystem>` satisfies it, and so does a layer of that one
+ * operation.
  *
  * @stability unstable
  * @category constructors
@@ -87,16 +94,16 @@ export const make: (impl: {
 }) => Effect.Effect<
   HttpPlatform["Service"],
   never,
-  Etag.Generator | FileSystem.FileSystem
+  Etag.Generator | "effect/FileSystem/stat"
 > = Effect.fnUntraced(function*(impl) {
-  const fs = yield* FileSystem.FileSystem
+  const stat = yield* Effect.service(FileSystem.stat)
   const etagGen = yield* Etag.Generator
 
   return HttpPlatform.of({
     platform: impl.platform,
     compression: internal.wrapCompression(impl.compression),
     fileResponse: Effect.fnUntraced(function*(path, options) {
-      const info = yield* fs.stat(path)
+      const info = yield* stat(path)
       const etag = yield* etagGen.fromFileInfo(info)
       const requestedOffset = options?.offset === undefined
         ? ByteSize.zero
@@ -178,23 +185,28 @@ const fileResponseNumber = (value: bigint, field: string): Effect.Effect<number,
  *
  * **Details**
  *
- * The layer uses the `FileSystem` and weak ETag services to add file metadata
- * headers such as `etag` and `last-modified`. Missing content types are inferred
- * from the file extension.
+ * The layer reads files with the `FileSystem.stat` and `FileSystem.stream`
+ * operations, which are its only requirements, and uses weak ETags to add
+ * file metadata headers such as `etag` and `last-modified`. Missing content
+ * types are inferred from the file extension.
  *
  * @stability unstable
  * @category layers
  * @since 4.0.0
  */
-export const layer = Layer.effect(HttpPlatform)(
-  Effect.flatMap(FileSystem.FileSystem, (fs) =>
+export const layer: Layer.Layer<
+  HttpPlatform,
+  never,
+  "effect/FileSystem/stat" | "effect/FileSystem/stream"
+> = Layer.effect(HttpPlatform)(
+  Effect.flatMap(Effect.service(FileSystem.stream), (stream) =>
     make({
       platform: "web",
       compression: internal.compressionWeb,
       fileResponse(path, status, statusText, headers, start, end, contentLength) {
         const length = Number(contentLength)
         return Response.stream(
-          fs.stream(path, {
+          stream(path, {
             offset: start,
             bytesToRead: end !== undefined ? end - start : undefined
           }),

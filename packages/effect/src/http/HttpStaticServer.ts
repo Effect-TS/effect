@@ -85,9 +85,9 @@ export const make: (options: {
     HttpServerRequest.HttpServerRequest
   >,
   PlatformError,
-  FileSystem.FileSystem | Path.Path | HttpPlatform.HttpPlatform
+  "effect/FileSystem/stat" | Path.Path | HttpPlatform.HttpPlatform
 > = Effect.fnUntraced(function*(options) {
-  const fileSystem = yield* FileSystem.FileSystem
+  const stat = yield* Effect.service(FileSystem.stat)
   const path = yield* Path.Path
   const platform = yield* HttpPlatform.HttpPlatform
 
@@ -154,7 +154,7 @@ export const make: (options: {
         }
       }
 
-      const resolvedFileSize = fileSize ?? (yield* handlePlatformError(request, fileSystem.stat(filePath))).size
+      const resolvedFileSize = fileSize ?? (yield* handlePlatformError(request, stat(filePath))).size
       const parsedRange = parseRange(rangeHeader, resolvedFileSize)
 
       if (parsedRange === undefined) {
@@ -199,7 +199,7 @@ export const make: (options: {
       return Effect.fail(toRouteNotFoundError(request))
     }
 
-    return Effect.matchEffect(fileSystem.stat(resolvedPath), {
+    return Effect.matchEffect(stat(resolvedPath), {
       onFailure: (error) =>
         error.reason._tag === "NotFound" &&
           spa && index !== undefined && path.extname(resolvedPath) === "" && acceptsHtml(request.headers["accept"])
@@ -268,7 +268,7 @@ export const layer = (options: {
 }): Layer.Layer<
   never,
   PlatformError,
-  HttpRouter.HttpRouter | FileSystem.FileSystem | Path.Path | HttpPlatform.HttpPlatform
+  HttpRouter.HttpRouter | "effect/FileSystem/stat" | Path.Path | HttpPlatform.HttpPlatform
 > =>
   Layer.effectDiscard(Effect.gen(function*() {
     const router = yield* HttpRouter.HttpRouter

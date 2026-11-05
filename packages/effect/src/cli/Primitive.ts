@@ -509,7 +509,6 @@ export const Path = (
   const primitive = makePrimitive(
     "Path",
     Effect.fnUntraced(function*(value) {
-      const fs = yield* FileSystem.FileSystem
       const path = yield* Path_.Path
 
       // Resolve the path to absolute
@@ -517,7 +516,7 @@ export const Path = (
 
       // Check if path exists
       const exists = yield* Effect.mapError(
-        fs.exists(absolutePath),
+        FileSystem.exists(absolutePath),
         (error) => `Failed to check path existence: ${error.message}`
       )
 
@@ -529,7 +528,7 @@ export const Path = (
       // Validate path type if it exists
       if (exists && pathType !== "either") {
         const stat = yield* Effect.mapError(
-          fs.stat(absolutePath),
+          FileSystem.stat(absolutePath),
           (error) => `Failed to stat path: ${error.message}`
         )
 
@@ -644,7 +643,6 @@ export const Redacted: Primitive<Redacted_.Redacted<string>> = makePrimitive(
 export const FileText: Primitive<string> = makePrimitive(
   "FileText",
   Effect.fnUntraced(function*(filePath) {
-    const fs = yield* FileSystem.FileSystem
     const path = yield* Path_.Path
 
     // Resolve to absolute path
@@ -654,7 +652,7 @@ export const FileText: Primitive<string> = makePrimitive(
 
     // Check if file exists
     const exists = yield* Effect.mapError(
-      fs.exists(absolutePath),
+      FileSystem.exists(absolutePath),
       (error) => `Failed to check file existence: ${error.message}`
     )
 
@@ -664,7 +662,7 @@ export const FileText: Primitive<string> = makePrimitive(
 
     // Check if it's actually a file
     const stat = yield* Effect.mapError(
-      fs.stat(absolutePath),
+      FileSystem.stat(absolutePath),
       (error) => `Failed to stat file: ${error.message}`
     )
 
@@ -674,7 +672,7 @@ export const FileText: Primitive<string> = makePrimitive(
 
     // Read file content
     const content = yield* Effect.mapError(
-      fs.readFileString(absolutePath),
+      FileSystem.readFileString(absolutePath),
       (error) => `Failed to read file: ${error.message}`
     )
 

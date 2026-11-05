@@ -14,7 +14,6 @@ import type * as ByteSize from "../ByteSize.ts"
 import * as Context from "../Context.ts"
 import * as Effect from "../Effect.ts"
 import * as Base64 from "../encoding/Base64.ts"
-import type * as FileSystem from "../FileSystem.ts"
 import { dual } from "../Function.ts"
 import * as Inspectable from "../Inspectable.ts"
 import { stringOrRedacted } from "../internal/redacted.ts"
@@ -1070,7 +1069,11 @@ export const bodyFile: {
       readonly offset?: ByteSize.Input | undefined
       readonly contentType?: string
     }
-  ): (self: HttpClientRequest) => Effect.Effect<HttpClientRequest, PlatformError.PlatformError, FileSystem.FileSystem>
+  ): (self: HttpClientRequest) => Effect.Effect<
+    HttpClientRequest,
+    PlatformError.PlatformError,
+    "effect/FileSystem/stat" | "effect/FileSystem/stream"
+  >
   (
     self: HttpClientRequest,
     path: string,
@@ -1080,7 +1083,11 @@ export const bodyFile: {
       readonly offset?: ByteSize.Input | undefined
       readonly contentType?: string
     }
-  ): Effect.Effect<HttpClientRequest, PlatformError.PlatformError, FileSystem.FileSystem>
+  ): Effect.Effect<
+    HttpClientRequest,
+    PlatformError.PlatformError,
+    "effect/FileSystem/stat" | "effect/FileSystem/stream"
+  >
 } = dual(
   (args) => isHttpClientRequest(args[0]),
   (
@@ -1092,7 +1099,11 @@ export const bodyFile: {
       readonly offset?: ByteSize.Input | undefined
       readonly contentType?: string
     }
-  ): Effect.Effect<HttpClientRequest, PlatformError.PlatformError, FileSystem.FileSystem> =>
+  ): Effect.Effect<
+    HttpClientRequest,
+    PlatformError.PlatformError,
+    "effect/FileSystem/stat" | "effect/FileSystem/stream"
+  > =>
     Effect.map(
       HttpBody.file(path, options),
       (body) => setBody(self, body)

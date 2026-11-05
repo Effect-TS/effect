@@ -1082,9 +1082,11 @@ export const layer = <
  *
  * **Details**
  *
- * The returned effect requires `FileSystem` and `Scope`. The file logger batches
- * string output, writes each batch to the specified path, and flushes remaining
- * entries when the scope closes.
+ * The returned effect requires the `FileSystem.open` operation and `Scope`.
+ * A `Layer<FileSystem>` satisfies it, and so does a layer of `open` alone,
+ * such as `NodeFileSystem.open`. The file logger batches string output, writes
+ * each batch to the specified path, and flushes remaining entries when the
+ * scope closes.
  *
  * **Example** (Writing JSON logs to a file)
  *
@@ -1097,7 +1099,6 @@ export const layer = <
  *     writes.push(new TextDecoder().decode(buffer).trim())
  *   })
  * } as unknown as FileSystem.File
- * const fileSystem = FileSystem.makeNoop({ open: () => Effect.succeed(file) })
  * const messageLogger = Logger.make((options) => String(options.message))
  *
  * const program = Effect.scoped(Effect.gen(function*() {
@@ -1105,7 +1106,7 @@ export const layer = <
  *   yield* Effect.log("a").pipe(Effect.provide(Logger.layer([fileLogger])))
  *   yield* Effect.log("b").pipe(Effect.provide(Logger.layer([fileLogger])))
  *   yield* Effect.log("c").pipe(Effect.provide(Logger.layer([fileLogger])))
- * })).pipe(Effect.provideService(FileSystem.FileSystem, fileSystem))
+ * })).pipe(Effect.provideService(FileSystem.open, () => Effect.succeed(file)))
  *
  * await Effect.runPromise(program)
  * writes // => ["a\nb\nc"]
@@ -1152,7 +1153,7 @@ export const toFile = dual<
     } | undefined
   ) => <Message>(
     self: Logger<Message, string>
-  ) => Effect.Effect<Logger<Message, void>, PlatformError, Scope.Scope | FileSystem.FileSystem>,
+  ) => Effect.Effect<Logger<Message, void>, PlatformError, Scope.Scope | "effect/FileSystem/open">,
   <Message>(
     self: Logger<Message, string>,
     path: string,
@@ -1161,13 +1162,12 @@ export const toFile = dual<
       readonly mode?: number | undefined
       readonly batchWindow?: Duration.Input | undefined
     } | undefined
-  ) => Effect.Effect<Logger<Message, void>, PlatformError, Scope.Scope | FileSystem.FileSystem>
+  ) => Effect.Effect<Logger<Message, void>, PlatformError, Scope.Scope | "effect/FileSystem/open">
 >(
   (args) => isLogger(args[0]),
   (self, path, options) =>
     effect.gen(function*() {
-      const fs = yield* FileSystem.FileSystem
-      const logFile = yield* fs.open(path, { flag: "a+", ...options })
+      const logFile = yield* FileSystem.open(path, { flag: "a+", ...options })
       const encoder = new TextEncoder()
       return yield* batched(self, {
         window: options?.batchWindow ?? 1000,

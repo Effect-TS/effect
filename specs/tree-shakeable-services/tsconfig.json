@@ -2,7 +2,6 @@
   "$schema": "https://json.schemastore.org/tsconfig",
   "include": [
     "src/**/*.ts",
-    "test/**/*.ts",
     "typetest/ok/**/*.ts",
     "scripts/**/*.ts"
   ],

@@ -26,7 +26,7 @@ export * from "./FileSystem/Shape.ts"
  * `Layer.succeed(FileSystem, record)` takes it: the operations' shapes by name.
  * An interface, so that diagnostics print `Shape` and name the members it lacks.
  */
-export interface Shape extends Context.Operations.Shape<typeof members>, Context.Operations.Named {}
+export interface Shape extends Context.Operations.Shape<typeof members> {}
 
 /**
  * The identity of the file system: the union of its operations' keys, which is
@@ -58,7 +58,7 @@ export type ReadOnly = Context.Operations.Identifier<typeof readOnlyMembers>
  * The record of a read-only file system's implementations: three members of
  * `Shape`, derived from the three operations and printed by its name.
  */
-export interface ReadOnlyShape extends Context.Operations.Shape<typeof readOnlyMembers>, Context.Operations.Named {}
+export interface ReadOnlyShape extends Context.Operations.Shape<typeof readOnlyMembers> {}
 
 /**
  * The read-only file system as a record service.
