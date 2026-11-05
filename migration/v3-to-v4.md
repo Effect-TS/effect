@@ -4,7 +4,7 @@
 
 Base: `cab7f2e3493e4a3dceda27cb1b6d28c4599cb939` (`cab7f2e3493e4a3dceda27cb1b6d28c4599cb939`)
 
-Head: `origin/main` (`27d644e4b6f3dc02e5e2a06e8ce2b912595772c9`)
+Head: `origin/main` (`cb679e39cabeeadc5b40a5e20da311b9e4054a1b`)
 
 This file is generated from the API diff and `migration/annotations/*.yaml`.
 
@@ -3592,6 +3592,8 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `Generated.SubmitToolOutputsRunRequest` -> `Generated.SubmitToolOutputsRunRequest`: Still generated in v4 from the current OpenAI specification; re-check the schema's Type/Encoded shape because the generated definition changed.
 
+- `Generated.Summary` -> `Generated.SummaryTextContent`: Reasoning summary parts are generated as SummaryTextContent. It is a Schema.Struct rather than a class, so type must be supplied as "summary\_text" instead of defaulting in a constructor.
+
 - `Generated.SummaryTextContent` -> `Generated.SummaryTextContent`: Still generated in v4 from the current OpenAI specification; re-check the schema's Type/Encoded shape because the generated definition changed.
 
 - `Generated.SummaryTextContentType` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
@@ -6926,6 +6928,8 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `HttpApiMiddleware.TagClass` -> `effect/http-api/HttpApiMiddleware#ServiceClass`: Renamed class type with the new two-stage type configuration and wrapping service shape.
 
+- `HttpApiMiddleware.TagClass.Base` -> `effect/http-api/HttpApiMiddleware#ServiceClass`: The shared base interface was folded into ServiceClass; there is no separate public base interface.
+
 - `HttpApiMiddleware.TagClass.BaseSecurity` -> `effect/http-api/HttpApiMiddleware#ServiceClass`: Security is conditional metadata on ServiceClass; there is no separate public base interface.
 
 - `HttpApiMiddleware.TagClass.Failure` -> `effect/http-api/HttpApiMiddleware#Error`: failure terminology became error; apply the extractor to the middleware ID.
@@ -7886,6 +7890,8 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `RpcMiddleware.TagClass` -> `effect/rpc/RpcMiddleware#ServiceClass`: Renamed class type for the v4 Context.Service-based middleware declaration.
 
+- `RpcMiddleware.TagClass.Base` -> `effect/rpc/RpcMiddleware#ServiceClass`: The shared base interface was folded into ServiceClass; there is no separate public base interface.
+
 - `RpcMiddleware.TagClass.Failure` -> `effect/rpc/RpcMiddleware#Error`: Failure terminology became error; apply the extractor to the middleware ID.
 
 - `RpcMiddleware.TagClass.FailureContext` -> `effect/rpc/RpcMiddleware#ErrorServicesEncode / ErrorServicesDecode`: The single schema context split into server encoding and client decoding services.
@@ -7974,7 +7980,7 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 ### `@effect/sql-clickhouse/ClickhouseClient`
 
-- `ClickhouseClient.ClickhouseClient` -> `@effect/sql-clickhouse/ClickhouseClient#ClickhouseClient`: Retained; the service value is now a Context.Service rather than a GenericTag.
+- `ClickhouseClient.ClickhouseClient` -> `@effect/sql-clickhouse/ClickhouseClient#ClickhouseClient`: Retained; the service value is now a Context.Service rather than a GenericTag. The ClickhouseClient interface no longer extends SqlClient.SqlClient. Yielding the service still gives ClickhouseClient & SqlClient, but an effect that requires ClickhouseClient no longer type-checks against a SqlClient requirement annotation, and a SqlClient-only layer no longer satisfies ClickhouseClient. Annotate a layer chosen between drivers as Layer.Layer\<SqlClient.SqlClient, E\>.
 
 - `ClickhouseClient.currentClickhouseSettings` -> `@effect/sql-clickhouse/ClickhouseClient#ClickhouseSettings`: Renamed and changed from FiberRef to Context.Reference; prefer client.withClickhouseSettings or provide the reference as a service.
 
@@ -7987,6 +7993,8 @@ effect/rpc/Utils (barrel: effect/rpc)
 - `ClickhouseMigrator.MigrationError` -> `@effect/sql-clickhouse/ClickhouseMigrator#MigrationError`: Retained via effect/sql/Migrator; migrate reason and its lowercase values to kind with PascalCase values.
 
 ### `@effect/sql-d1/D1Client`
+
+- `D1Client.D1Client` -> `@effect/sql-d1/D1Client#D1Client`: Retained; the service value is now a Context.Service, and v4 adds batch for atomic D1 batches. The D1Client interface no longer extends SqlClient.SqlClient. Yielding the service still gives D1Client & SqlClient, but an effect that requires D1Client no longer type-checks against a SqlClient requirement annotation, and a SqlClient-only layer no longer satisfies D1Client. Annotate a layer chosen between drivers as Layer.Layer\<SqlClient.SqlClient, E\>.
 
 - `D1Client.D1ClientConfig` -> `@effect/sql-d1/D1Client#D1ClientConfig`: Retained; prepareCacheTTL now uses Duration.Input.
 
@@ -8026,9 +8034,13 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `Sqlite.makeWithConfig` -> `matching drizzle-orm Effect SQLite module#makeWithDefaults`: The generic constructor was removed; select the concrete backend and use makeWithDefaults(config), or make(config) with explicit services.
 
+### `@effect/sql-libsql/LibsqlClient`
+
+- `LibsqlClient.LibsqlClient` -> `@effect/sql-libsql/LibsqlClient#LibsqlClient`: Retained; the service value is now a Context.Service. The LibsqlClient interface no longer extends SqlClient.SqlClient. Yielding the service still gives LibsqlClient & SqlClient, but an effect that requires LibsqlClient no longer type-checks against a SqlClient requirement annotation, and a SqlClient-only layer no longer satisfies LibsqlClient. Annotate a layer chosen between drivers as Layer.Layer\<SqlClient.SqlClient, E\>.
+
 ### `@effect/sql-mssql/MssqlClient`
 
-- `MssqlClient.MssqlClient` -> `@effect/sql-mssql/MssqlClient#MssqlClient`: Retained; the service value is now a Context.Service rather than a GenericTag.
+- `MssqlClient.MssqlClient` -> `@effect/sql-mssql/MssqlClient#MssqlClient`: Retained; the service value is now a Context.Service rather than a GenericTag. The MssqlClient interface no longer extends SqlClient.SqlClient. Yielding the service still gives MssqlClient & SqlClient, but an effect that requires MssqlClient no longer type-checks against a SqlClient requirement annotation, and a SqlClient-only layer no longer satisfies MssqlClient. Annotate a layer chosen between drivers as Layer.Layer\<SqlClient.SqlClient, E\>.
 
 - `MssqlClient.MssqlClientConfig` -> `@effect/sql-mssql/MssqlClient#MssqlClientConfig`: Retained; durations use Duration.Input, parameterTypes is keyed by Statement.PrimitiveKind, and v4 adds retry and timeout options.
 
@@ -8046,11 +8058,13 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 ### `@effect/sql-mysql2/MysqlClient`
 
+- `MysqlClient.MysqlClient` -> `@effect/sql-mysql2/MysqlClient#MysqlClient`: Retained; the service value is now a Context.Service. The MysqlClient interface no longer extends SqlClient.SqlClient. Yielding the service still gives MysqlClient & SqlClient, but an effect that requires MysqlClient no longer type-checks against a SqlClient requirement annotation, and a SqlClient-only layer no longer satisfies MysqlClient. Annotate a layer chosen between drivers as Layer.Layer\<SqlClient.SqlClient, E\>.
+
 - `MysqlClient.MysqlClientConfig` -> `@effect/sql-mysql2/MysqlClient#MysqlClientConfig`: Retained; connectionTTL uses Duration.Input and v4 adds disablePreparedStatements.
 
 ### `@effect/sql-pg/PgClient`
 
-- `PgClient.PgClient` -> `@effect/sql-pg/PgClient#PgClient`: Retained; the service value is now a Context.Service. The listen method returns a scoped Effect acquiring a Queue.Dequeue\<PgConnection.Notification, SqlError\>; consume it with Queue operations or Stream.fromQueue and read each notification's payload. Connection failures after registration fail the queue with the original SqlError; scope closure interrupts consumers.
+- `PgClient.PgClient` -> `@effect/sql-pg/PgClient#PgClient`: Retained; the service value is now a Context.Service. The listen method returns a scoped Effect acquiring a Queue.Dequeue\<PgConnection.Notification, SqlError\>; consume it with Queue operations or Stream.fromQueue and read each notification's payload. Connection failures after registration fail the queue with the original SqlError; scope closure interrupts consumers. The PgClient interface no longer extends SqlClient.SqlClient. Yielding the service still gives PgClient & SqlClient, but an effect that requires PgClient no longer type-checks against a SqlClient requirement annotation, and a SqlClient-only layer no longer satisfies PgClient. Annotate a layer chosen between drivers as Layer.Layer\<SqlClient.SqlClient, E\>.
 
 - `PgClient.PgClientConfig` -> `@effect/sql-pg/PgClient#PgClientConfig / PgPoolConfig`: Use PgClientConfig for base settings and PgPoolConfig for make/layer; pool sizing, idle timeout, and connection TTL moved to PgPoolConfig. v3 connectTimeout also bounded waits for a free pooled connection through node-pg; v4 connectTimeout covers only opening a connection, so set acquireTimeout to fail with ConnectionError when the pool stays exhausted. The types option takes a PgTypes.Registry rather than node-pg custom types. Timestamp and timestamptz results (including array elements) are Date values with millisecond precision; infinity, -infinity, and out-of-range values become invalid Dates. Numeric readers can use getTime() or register numeric codecs. Date parameters bind as timestamptz; use PgTypes.timestamp(value) to preserve UTC fields when writing a timestamp column instead of applying the session TimeZone.
 
@@ -8062,7 +8076,7 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 ### `@effect/sql-sqlite-bun/SqliteClient`
 
-- `SqliteClient.SqliteClient` -> `@effect/sql-sqlite-bun/SqliteClient#SqliteClient`: Retained; the service value is now a Context.Service.
+- `SqliteClient.SqliteClient` -> `@effect/sql-sqlite-bun/SqliteClient#SqliteClient`: Retained; the service value is now a Context.Service. The SqliteClient interface no longer extends SqlClient.SqlClient. Yielding the service still gives SqliteClient & SqlClient, but an effect that requires SqliteClient no longer type-checks against a SqlClient requirement annotation, and a SqlClient-only layer no longer satisfies SqliteClient. Annotate a layer chosen between drivers as Layer.Layer\<SqlClient.SqlClient, E\>.
 
 - `SqliteClient.layer` -> `SqliteClient.layer`: The layer now has a SqlError error channel for database opening and initialization failures. Handle setup failures, or use Layer.orDie when they should remain fatal.
 
@@ -8072,11 +8086,13 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 ### `@effect/sql-sqlite-do/SqliteClient`
 
+- `SqliteClient.SqliteClient` -> `@effect/sql-sqlite-do/SqliteClient#SqliteClient`: Retained; the service value is now a Context.Service. The SqliteClient interface no longer extends SqlClient.SqlClient. Yielding the service still gives SqliteClient & SqlClient, but an effect that requires SqliteClient no longer type-checks against a SqlClient requirement annotation, and a SqlClient-only layer no longer satisfies SqliteClient. Annotate a layer chosen between drivers as Layer.Layer\<SqlClient.SqlClient, E\>.
+
 - `SqliteClient.SqliteClientConfig` -> `@effect/sql-sqlite-do/SqliteClient#SqliteClientConfig`: Retained; db is optional and storage may be supplied, but one of db or storage is required at runtime.
 
 ### `@effect/sql-sqlite-node/SqliteClient`
 
-- `SqliteClient.SqliteClient` -> `@effect/sql-sqlite-node/SqliteClient#SqliteClient`: Retained on node:sqlite, but the byte-export member was removed; use backup(destination) for file backup.
+- `SqliteClient.SqliteClient` -> `@effect/sql-sqlite-node/SqliteClient#SqliteClient`: Retained on node:sqlite, but the byte-export member was removed; use backup(destination) for file backup. The SqliteClient interface no longer extends SqlClient.SqlClient. Yielding the service still gives SqliteClient & SqlClient, but an effect that requires SqliteClient no longer type-checks against a SqlClient requirement annotation, and a SqlClient-only layer no longer satisfies SqliteClient. Annotate a layer chosen between drivers as Layer.Layer\<SqlClient.SqlClient, E\>.
 
 - `SqliteClient.SqliteClientConfig` -> `@effect/sql-sqlite-node/SqliteClient#SqliteClientConfig`: Retained; prepareCacheTTL now uses Duration.Input.
 
@@ -8088,6 +8104,8 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 ### `@effect/sql-sqlite-react-native/SqliteClient`
 
+- `SqliteClient.SqliteClient` -> `@effect/sql-sqlite-react-native/SqliteClient#SqliteClient`: Retained; the service value is now a Context.Service. The SqliteClient interface no longer extends SqlClient.SqlClient. Yielding the service still gives SqliteClient & SqlClient, but an effect that requires SqliteClient no longer type-checks against a SqlClient requirement annotation, and a SqlClient-only layer no longer satisfies SqliteClient. Annotate a layer chosen between drivers as Layer.Layer\<SqlClient.SqlClient, E\>.
+
 - `SqliteClient.asyncQuery` -> `@effect/sql-sqlite-react-native/SqliteClient#AsyncQuery`: Renamed and changed from FiberRef to Context.Reference; prefer withAsyncQuery or provide AsyncQuery as a service.
 
 ### `@effect/sql-sqlite-wasm/OpfsWorker`
@@ -8096,7 +8114,7 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 ### `@effect/sql-sqlite-wasm/SqliteClient`
 
-- `SqliteClient.SqliteClient` -> `@effect/sql-sqlite-wasm/SqliteClient#SqliteClient`: Retained with the same export/import surface; the service value is now a Context.Service.
+- `SqliteClient.SqliteClient` -> `@effect/sql-sqlite-wasm/SqliteClient#SqliteClient`: Retained with the same export/import surface; the service value is now a Context.Service. The SqliteClient interface no longer extends SqlClient.SqlClient. Yielding the service still gives SqliteClient & SqlClient, but an effect that requires SqliteClient no longer type-checks against a SqlClient requirement annotation, and a SqlClient-only layer no longer satisfies SqliteClient. Annotate a layer chosen between drivers as Layer.Layer\<SqlClient.SqlClient, E\>.
 
 - `SqliteClient.currentTransferables` -> `@effect/sql-sqlite-wasm/SqliteClient#Transferables`: Renamed and changed from FiberRef to Context.Reference; prefer withTransferables or provide Transferables as a service.
 
@@ -8132,7 +8150,7 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `SqlClient.SafeIntegers` -> `effect/sql/SqlClient#SafeIntegers`: Moved and changed from a Reference subclass to a Context.Reference value; provide it as a service.
 
-- `SqlClient.SqlClient` -> `effect/sql/SqlClient#SqlClient`: Moved into core Effect. Custom service implementations must expose driver and afterCommit; SqlClient.make supplies both. driver identifies the driver independently of its SQL dialect. afterCommit registers effects to run after the outermost successful commit and connection release attempt, discarding rolled-back work. withTransaction now also defers contextual Reactivity.invalidate and mutation invalidations until that commit. Transactions bypassing makeWithTransaction, such as sqlite-do transactions, run callbacks and invalidations immediately.
+- `SqlClient.SqlClient` -> `effect/sql/SqlClient#SqlClient`: Moved into core Effect. Custom service implementations must expose driver and afterCommit; SqlClient.make supplies both. driver identifies the driver independently of its SQL dialect. afterCommit registers effects to run after the outermost successful commit and connection release attempt, discarding rolled-back work. withTransaction now also defers contextual Reactivity.invalidate and mutation invalidations until that commit. Transactions bypassing makeWithTransaction, such as sqlite-do transactions, run callbacks and invalidations immediately. Driver-specific client interfaces should extend SqlClient.Base rather than SqlClient, so providing a generic SqlClient does not also remove the driver requirement.
 
 - `SqlClient.SqlClient.MakeOptions` -> `effect/sql/SqlClient#SqlClient.MakeOptions`: Moved; driver is now required and conventionally names the driver package without @effect/sql-, for example pg or pglite. Rename reactiveMailbox to reactiveQueue; transactionService is optional.
 
@@ -13984,6 +14002,18 @@ Schema.toFormatter(schema)
 - `STM.matchSTM` -> `Effect.matchEffect`: The Effect-returning match combinator no longer has an STM suffix.
 
 - `STM.mergeAll` -> `Effect.reduce`: Reduce the input Effects sequentially and combine each produced value with the accumulator.
+
+#### `STM.negate`
+
+**Replacement:** `Effect.map`
+
+STM values are now ordinary Effects and there is no negate combinator; map the boolean with Boolean.not. Run the complete transaction with Effect.tx.
+
+**Example**
+
+```ts
+Effect.map(self, Boolean.not)
+```
 
 - `STM.none` -> `Effect.matchEffect + Option.match`: Recreate the Option success/error shuffle explicitly; no dedicated helper remains.
 
