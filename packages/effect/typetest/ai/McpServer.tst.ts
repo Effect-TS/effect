@@ -54,6 +54,13 @@ describe("McpServer", () => {
     })
   })
 
+  describe("skills", () => {
+    it("should preserve the raw options tuple when extracting registration parameters", () => {
+      expect<Parameters<typeof McpServer.skill>>().type.toBe<[options: McpServer.SkillOptions]>()
+      expect<Parameters<typeof McpServer.registerSkill>>().type.toBe<[options: McpServer.SkillOptions]>()
+    })
+  })
+
   describe("protocol configuration", () => {
     it("should restrict request-scoped HTTP to stateless protocols without session options", () => {
       const options = {

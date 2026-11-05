@@ -25,6 +25,7 @@ import * as RpcMiddleware from "../rpc/RpcMiddleware.ts"
 import * as Schema from "../Schema.ts"
 import * as SchemaGetter from "../SchemaGetter.ts"
 import type * as Scope from "../Scope.ts"
+import * as InternalSkill from "./internal/skill.ts"
 import type { ProtocolVersion, StatefulProtocolVersion } from "./McpProtocol.ts"
 
 /**
@@ -1429,34 +1430,7 @@ export class SkillResource extends Schema.Class<SkillResource>(
  * @since 4.1.1
  */
 export const SkillFrontmatter = Schema.StructWithRest(
-  Schema.Struct({
-    /**
-     * 1 to 64 lowercase letters, digits and hyphens, with no leading, trailing
-     * or consecutive hyphen. It names the directory holding `SKILL.md`.
-     */
-    name: Schema.String.check(Schema.isMaxLength(64), Schema.isPattern(/^[a-z0-9]+(?:-[a-z0-9]+)*$/)),
-    /**
-     * What the skill does and when to use it, in 1 to 1024 characters.
-     */
-    description: Schema.String.check(Schema.isNonEmpty(), Schema.isMaxLength(1024)),
-    /**
-     * The skill's license, or the name of a bundled license file.
-     */
-    license: Schema.optionalKey(Schema.String),
-    /**
-     * Environment requirements, in 1 to 500 characters.
-     */
-    compatibility: Schema.optionalKey(Schema.String.check(Schema.isNonEmpty(), Schema.isMaxLength(500))),
-    /**
-     * Additional properties not defined by the specification.
-     */
-    metadata: Schema.optionalKey(Schema.Record(Schema.String, Schema.String)),
-    /**
-     * Space-separated tools the skill asks to run without approval. Hosts must
-     * ignore it for a skill served over MCP unless the user approved the grant.
-     */
-    "allowed-tools": Schema.optionalKey(Schema.String)
-  }),
+  InternalSkill.Frontmatter,
   [UnknownObject]
 )
 

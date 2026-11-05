@@ -94,6 +94,7 @@ import type {
   ReadResourceResult,
   ServerCapabilities
 } from "./McpSchema.ts"
+import * as Skill from "./Skill.ts"
 import * as Tool from "./Tool.ts"
 import * as Toolkit from "./Toolkit.ts"
 
@@ -3775,10 +3776,7 @@ export const resource: {
  * @category models
  * @since 4.1.1
  */
-export type SkillFile = string | Uint8Array | {
-  readonly content: string | Uint8Array
-  readonly mimeType?: string | undefined
-}
+export type SkillFile = Skill.FileInput
 
 /**
  * Options for {@link registerSkill} and {@link skill}.
@@ -3800,22 +3798,8 @@ export type SkillFile = string | Uint8Array | {
  */
 export interface SkillOptions {
   readonly uri: string
-  readonly files: { readonly "SKILL.md": SkillFile } & Readonly<Record<string, SkillFile>>
+  readonly files: { readonly "SKILL.md": Skill.FileInput } & Readonly<Record<string, Skill.FileInput>>
   readonly annotations?: Context.Context<never> | undefined
-}
-
-const skillFileEncoder = new TextEncoder()
-
-// Bytes are copied so that later changes by the caller cannot alter what is
-// served under the listed digest. `Buffer#slice` shares memory, so copy with
-// the `Uint8Array` constructor.
-const toSkillSourceFile = (path: string, file: SkillFile): McpSkills.SourceFile => {
-  const { content, mimeType } = typeof file === "string" || file instanceof Uint8Array ? { content: file } : file
-  return {
-    path,
-    content: typeof content === "string" ? skillFileEncoder.encode(content) : new Uint8Array(content),
-    mimeType
-  }
 }
 
 /**
@@ -3839,52 +3823,72 @@ const toSkillSourceFile = (path: string, file: SkillFile): McpSkills.SourceFile 
  * files is already registered as a resource. Registering a resource at the
  * URI of a skill's file afterwards is a defect.
  *
+ * Pass a prepared `Skill.Skill` and separate publication options to share one
+ * local snapshot with MCP. Raw file options prepare the same kind of bundle.
+ * Publication enforces its limits even when local preparation allows more.
  * SHA-256 runs on `crypto.subtle`.
  *
+ * @see {@link Skill.make} for creating a reusable local skill
  * @see {@link skill} for the layer-based skill registration wrapper
  *
  * @stability unstable
  * @category handlers
  * @since 4.1.1
  */
-export const registerSkill: (options: SkillOptions) => Effect.Effect<void, Cause.IllegalArgumentError, McpServer> =
-  Effect.fnUntraced(function*(options: SkillOptions) {
-    const files = Object.entries(options.files).map(([path, file]) => toSkillSourceFile(path, file))
-    const skill = yield* McpSkills.makeStaticSkill({ uri: options.uri, files }).pipe(
-      Effect.provide(Digest.layerWebCrypto)
+export const registerSkill: {
+  (skill: Skill.Skill, options: {
+    readonly uri: string
+    readonly annotations?: Context.Context<never> | undefined
+  }): Effect.Effect<void, Cause.IllegalArgumentError, McpServer>
+  (options: SkillOptions): Effect.Effect<void, Cause.IllegalArgumentError, McpServer>
+} = Effect.fnUntraced(function*(input: SkillOptions | Skill.Skill, publication?: {
+  readonly uri: string
+  readonly annotations?: Context.Context<never> | undefined
+}) {
+  const options = "uri" in input ? input : publication
+  if (options === undefined) {
+    return yield* Effect.fail(new Cause.IllegalArgumentError("A prepared skill requires publication options"))
+  }
+  const prepared = "uri" in input
+    ? yield* Skill.fromFiles(input.files).pipe(
+      Effect.mapError((error) => new Cause.IllegalArgumentError(`Skill ${options.uri}: ${error.message}`))
     )
+    : input
+  const skill = yield* McpSkills.makeStaticSkill({ uri: options.uri, skill: prepared }).pipe(
+    Effect.provide(Digest.layerWebCrypto)
+  )
 
-    const registry = yield* McpServer
-    const { addSkillFile, core, globalMiddleware } = internalState.get(registry)!
-    const services = yield* Effect.context<never>()
-    const annotations = options.annotations ?? Context.empty()
-    const { invoke, visible } = makeInvoke(services, globalMiddleware)
-    // Claims the skill's file URIs before they are registered as resources.
-    yield* core.skills.register({
-      entry: skill.entry,
-      isVisible: isEnabled(annotations),
-      visible: visible("skills/list", options.uri),
-      visibleInDirectories: visible("resources/directory/read", options.uri),
-      get: (invocation) =>
-        invoke(Effect.succeed(skill.entry), invocation, {
-          method: "skills/get",
-          target: options.uri,
-          payload: { uri: options.uri }
-        }),
-      directory: (uri) => skill.directories.get(uri)
-    })
-    for (const { content, resource, text } of skill.files) {
-      const { uri, mimeType } = resource
-      yield* addSkillFile({
-        resource: new Resource(resource),
-        annotations,
-        services,
-        handle: Effect.succeed({
-          contents: [text === undefined ? { uri, mimeType, blob: content } : { uri, mimeType, text }]
-        })
-      })
-    }
+  const registry = yield* McpServer
+  const { addSkillFile, core, globalMiddleware } = internalState.get(registry)!
+  const services = yield* Effect.context<never>()
+  const annotations = options.annotations ?? Context.empty()
+  const { invoke, visible } = makeInvoke(services, globalMiddleware)
+  // Claims the skill's file URIs before they are registered as resources.
+  yield* core.skills.register({
+    entry: skill.entry,
+    isVisible: isEnabled(annotations),
+    visible: visible("skills/list", options.uri),
+    visibleInDirectories: visible("resources/directory/read", options.uri),
+    get: (invocation) =>
+      invoke(Effect.succeed(skill.entry), invocation, {
+        method: "skills/get",
+        target: options.uri,
+        payload: { uri: options.uri }
+      }),
+    directory: (uri) => skill.directories.get(uri)
   })
+  for (const { content, resource, text } of skill.files) {
+    const { uri, mimeType } = resource
+    yield* addSkillFile({
+      resource: new Resource(resource),
+      annotations,
+      services,
+      handle: Effect.sync(() => ({
+        contents: [text === undefined ? { uri, mimeType, blob: new Uint8Array(content) } : { uri, mimeType, text }]
+      }))
+    })
+  }
+})
 
 /**
  * Creates a layer that registers an Agent Skill under the MCP Skills extension
@@ -3920,14 +3924,45 @@ export const registerSkill: (options: SkillOptions) => Effect.Effect<void, Cause
  * )
  * ```
  *
+ * **Example** (Publishing a prepared local skill)
+ *
+ * ```ts
+ * import { Effect, Layer } from "effect"
+ * import { McpServer, Skill } from "effect/ai"
+ *
+ * const Refunds = Layer.unwrap(Effect.gen(function*() {
+ *   const refunds = yield* Skill.make({
+ *     frontmatter: { name: "refunds", description: "Process refund requests" },
+ *     instructions: "Read references/policy.md before issuing a refund.",
+ *     files: { "references/policy.md": "Request approval above CHF 500." }
+ *   })
+ *   return McpServer.skill(refunds, { uri: "skill://billing/refunds/SKILL.md" })
+ * }))
+ * ```
+ *
  * @see {@link registerSkill} for the Effect-level skill registration API
  *
  * @stability unstable
  * @category layers
  * @since 4.1.1
  */
-export const skill = (options: SkillOptions): Layer.Layer<never, Cause.IllegalArgumentError, McpServer> =>
-  Layer.effectDiscard(registerSkill(options))
+export const skill: {
+  (skill: Skill.Skill, options: {
+    readonly uri: string
+    readonly annotations?: Context.Context<never> | undefined
+  }): Layer.Layer<never, Cause.IllegalArgumentError, McpServer>
+  (options: SkillOptions): Layer.Layer<never, Cause.IllegalArgumentError, McpServer>
+} = (input: SkillOptions | Skill.Skill, options?: {
+  readonly uri: string
+  readonly annotations?: Context.Context<never> | undefined
+}) =>
+  Layer.effectDiscard(
+    "uri" in input
+      ? registerSkill(input)
+      : options === undefined
+      ? Effect.fail(new Cause.IllegalArgumentError("A prepared skill requires publication options"))
+      : registerSkill(input, options)
+  )
 
 /**
  * Registers an MCP prompt from an Effect program.
