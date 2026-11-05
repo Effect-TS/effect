@@ -6,6 +6,7 @@ import { makeWorkflowRuntime, type WorkflowRuntime } from "@effect/platform-clou
 import { assert, describe, it } from "@effect/vitest"
 import { Cause, Deferred, Effect, Exit, Fiber, Latch, Layer, Option, Schema } from "effect"
 import { RpcTest } from "effect/rpc"
+import { TestClock } from "effect/testing"
 import {
   Activity,
   DurableClock,
@@ -134,6 +135,8 @@ class FakeWorkflowNamespace {
   readonly stores = new Map<string, { readonly sql: FakeSql; readonly alarm: FakeAlarm }>()
   readonly runtimes = new Map<string, WorkflowRuntime>()
   readonly hungResumes = new Set<string>()
+  /** `${name}/${method}` calls whose next attempt is lost in transit, as Cloudflare rejects them. */
+  readonly lostCalls = new Set<string>()
   readonly background = new Set<Promise<unknown>>()
   now = 0
 
@@ -166,7 +169,15 @@ class FakeWorkflowNamespace {
       })
       this.runtimes.set(name, runtime)
     }
-    return runtime
+    return Object.fromEntries(
+      Object.entries(runtime).map(([method, value]) => [
+        method,
+        typeof value !== "function" ? value : (...args: Array<unknown>) =>
+          this.lostCalls.delete(`${name}/${method}`)
+            ? Promise.reject(Object.assign(new Error("Network connection lost."), { retryable: true }))
+            : value(...args)
+      ])
+    ) as unknown as WorkflowRuntime
   }
 
   /** Waits until no `waitUntil` work remains, so wakes that should not happen have had their chance. */
@@ -336,6 +347,133 @@ describe("CloudflareWorkflowEngine", () => {
       // The result is keyed `${name}/${attempt}` in the execution object.
       const store = namespace.stores.get(encodeName("Crashing", executionId))!
       assert.deepStrictEqual(Array.from(store.sql.activities.keys()), ["compute/1"])
+    }).pipe(Effect.provide(layer))
+  })
+
+  it.effect("restarts a discarded execution from its guard alarm when the object is lost mid-attempt", () => {
+    const namespace = new FakeWorkflowNamespace()
+    let invocations = 0
+    let release!: () => void
+    const started = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    const Lost = Workflow.make("LostDiscarded", {
+      payload: { id: Schema.String },
+      success: Schema.Number,
+      idempotencyKey: ({ id }) => id
+    })
+    const layer = Lost.toLayer(() =>
+      Activity.make({
+        name: "compute",
+        success: Schema.Number,
+        execute: Effect.suspend(() => {
+          if (++invocations > 1) return Effect.succeed(42)
+          release()
+          return Effect.never
+        })
+      })
+    ).pipe(Layer.provideMerge(namespace.layer))
+
+    return Effect.gen(function*() {
+      const executionId = yield* Lost.execute({ id: "one" }, { discard: true })
+      yield* Effect.promise(() => started)
+      const name = encodeName(Lost._tag, executionId)
+
+      // Nobody awaits a discarded run, so only its alarm can bring it back.
+      namespace.crash()
+      assert.strictEqual(namespace.store(name).alarm.current, 60_000)
+      namespace.now = 60_000
+      yield* Effect.promise(() => namespace.getByName(name).runAlarm())
+      const result = yield* pollUntil(Lost, executionId, "Complete")
+      assert.deepStrictEqual(result, new Workflow.Complete({ exit: Exit.succeed(42) }))
+    }).pipe(Effect.provide(layer))
+  })
+
+  it.effect("keeps the guard alarm armed through a long attempt without replaying it", () =>
+    Effect.gen(function*() {
+      const namespace = new FakeWorkflowNamespace()
+      const started = yield* Latch.make()
+      const release = yield* Latch.make()
+      const Gate = DurableDeferred.make("LongAttempt/Gate")
+      let runs = 0
+      const Long = Workflow.make("LongAttempt", { payload: {}, idempotencyKey: () => "long" })
+      const layer = Long.toLayer(Effect.fnUntraced(function*() {
+        runs++
+        yield* Activity.make({ name: "slow", execute: started.open.pipe(Effect.andThen(release.await)) })
+        yield* DurableDeferred.await(Gate)
+      })).pipe(Layer.provideMerge(namespace.layer))
+
+      yield* Effect.gen(function*() {
+        const executionId = yield* Long.execute({}, { discard: true })
+        const name = encodeName(Long._tag, executionId)
+        yield* started.await
+
+        namespace.now = 60_000
+        yield* Effect.promise(() => namespace.getByName(name).runAlarm())
+        assert.strictEqual(namespace.store(name).alarm.current, 120_000)
+
+        yield* release.open
+        yield* pollUntil(Long, executionId, "Suspended")
+        yield* namespace.settle()
+        assert.strictEqual(runs, 1, "a guard alarm during a live attempt must not replay it")
+      }).pipe(Effect.provide(layer))
+    }))
+
+  it.effect("stores a discarded child's defect and wakes its parent once", () => {
+    const namespace = new FakeWorkflowNamespace()
+    let parentRuns = 0
+    const ParentGate = DurableDeferred.make("DefectingChildParent/Gate")
+    const Parent = Workflow.make("DefectingChildParent", { payload: {}, idempotencyKey: () => "parent" })
+    const Child = Workflow.make("DefectingChild", { payload: {}, idempotencyKey: () => "child" })
+      .annotate(Workflow.CaptureDefects, false)
+    const layer = Layer.merge(
+      Parent.toLayer(Effect.fnUntraced(function*() {
+        // Ends a parent/child replay loop, so a regression fails instead of spinning.
+        if (++parentRuns > 3) return
+        yield* Child.execute({}, { discard: true })
+        yield* DurableDeferred.await(ParentGate)
+      })),
+      Child.toLayer(() => Effect.die("boom"))
+    ).pipe(Layer.provideMerge(namespace.layer))
+
+    return Effect.gen(function*() {
+      yield* Parent.execute({}, { discard: true })
+      yield* namespace.settle()
+
+      const child = yield* Child.poll(yield* Child.executionId({}))
+      assert(Option.isSome(child) && child.value._tag === "Complete" && Exit.hasDies(child.value.exit))
+      assert.strictEqual(parentRuns, 2, "the stored defect wakes the parent once")
+    }).pipe(Effect.provide(layer))
+  })
+
+  it.effect("retries a child run lost in transit instead of failing the parent", () => {
+    const namespace = new FakeWorkflowNamespace()
+    const Child = Workflow.make("TransientChild", {
+      payload: {},
+      success: Schema.String,
+      idempotencyKey: () => "child"
+    })
+    const Parent = Workflow.make("TransientParent", {
+      payload: {},
+      success: Schema.String,
+      idempotencyKey: () => "parent"
+    })
+    const layer = Layer.merge(
+      Child.toLayer(() => Effect.succeed("child")),
+      Parent.toLayer(() => Child.execute({}))
+    ).pipe(Layer.provideMerge(namespace.layer))
+
+    return Effect.gen(function*() {
+      namespace.lostCalls.add(`${encodeName(Child._tag, yield* Child.executionId({}))}/run`)
+      const executionId = yield* Parent.execute({}, { discard: true })
+      let result = yield* Parent.poll(executionId)
+      while (Option.isNone(result) || result.value._tag !== "Complete") {
+        // Lets the retry delay elapse.
+        yield* TestClock.adjust("1 minute")
+        yield* Effect.promise(() => new Promise((resolve) => setTimeout(resolve, 1)))
+        result = yield* Parent.poll(executionId)
+      }
+      assert.deepStrictEqual(result.value, new Workflow.Complete({ exit: Exit.succeed("child") }))
     }).pipe(Effect.provide(layer))
   })
 
