@@ -12547,7 +12547,7 @@ export const Ipv6AddressFromString: Ipv6AddressFromString = netAddressFromString
  * @category models
  * @since 4.0.0
  */
-export interface IpAddress extends declare<NetAddress_.IpAddress> {
+export interface IpAddress extends Union<readonly [Ipv4Address, Ipv6Address]> {
   readonly "Rebuild": IpAddress
 }
 
@@ -12563,25 +12563,7 @@ export interface IpAddress extends declare<NetAddress_.IpAddress> {
  * @category schemas
  * @since 4.0.0
  */
-export const IpAddress: IpAddress = declare(NetAddress_.isIpAddress, {
-  identifier: "IpAddress",
-  representation: {
-    id: "effect/schema/IpAddress",
-    payload: null
-  },
-  toCode: netToCode("IpAddress"),
-  toCodecArbitrary: () =>
-    linkDecoding<NetAddress_.IpAddress>()(
-      Union([Ipv4Address, Ipv6Address]),
-      SchemaGetter.passthrough()
-    ),
-  toCodecJson: () =>
-    link<NetAddress_.IpAddress>()(
-      String,
-      ipAddressFromString
-    ),
-  toFormatter: () => NetAddress_.formatIp
-})
+export const IpAddress: IpAddress = Union([Ipv4Address, Ipv6Address]).annotate({ identifier: "IpAddress" })
 
 /**
  * Type-level representation of {@link IpAddressFromString}.
@@ -12607,48 +12589,68 @@ export const IpAddressFromString: IpAddressFromString = netAddressFromString(
   "IpAddressFromString"
 )
 
-// `toCodecArbitrary` replaces the base declaration's generator so that values
-// are generated inside the refined set instead of being filtered out of it.
+type NetArbitrary = () => SchemaAST.Link
+
+// Replaces the generators of the base declarations (one per union member) so
+// that values are generated inside the refined set instead of being filtered
+// out of it. `toCodecArbitrary` is only read on declarations.
+const withNetArbitraries = (ast: SchemaAST.AST, arbitraries: ReadonlyArray<NetArbitrary>): SchemaAST.AST =>
+  SchemaAST.isUnion(ast)
+    ? new SchemaAST.Union(
+      ast.types.map((member, index) => SchemaAST.annotate(member, { toCodecArbitrary: arbitraries[index] })),
+      ast.options,
+      ast.annotations,
+      ast.checks,
+      ast.encoding,
+      ast.context,
+      ast.encodingChecks
+    )
+    : SchemaAST.annotate(ast, { toCodecArbitrary: arbitraries[0] })
+
 const netAddressRefinement = <S extends Top & { readonly "Rebuild": S }, T extends S["Type"]>(
   schema: S,
   guard: (value: S["Type"]) => value is T,
   expected: string,
   identifier: string,
-  toCodecArbitrary?: () => SchemaAST.Link
+  arbitraries?: ReadonlyArray<NetArbitrary>
 ): refine<T, S> =>
   refine(guard, { expected })(
-    toCodecArbitrary === undefined ? schema : schema.rebuild(SchemaAST.annotate(schema.ast, { toCodecArbitrary }))
+    arbitraries === undefined ? schema : schema.rebuild(withNetArbitraries(schema.ast, arbitraries))
   ).annotate({ identifier })
 
-const ipMulticastArbitrary = netIpArbitrary(
-  Union([netIpv4Octets(netIntArbitrary(224, 239)), netIpv6Segments(netIntArbitrary(0xff00, 0xffff))])
-)
-const macMulticastArbitrary = netMacArbitrary((octet) => octet | 0x01)
-const macUnicastArbitrary = netMacArbitrary((octet) => octet & 0xfe)
-const ipv4BroadcastArbitrary = netIpArbitrary(Literal("255.255.255.255"))
-const macBroadcastArbitrary = () =>
+const ipMulticastArbitrary = [
+  netIpArbitrary(netIpv4Octets(netIntArbitrary(224, 239))),
+  netIpArbitrary(netIpv6Segments(netIntArbitrary(0xff00, 0xffff)))
+]
+const macMulticastArbitrary = [netMacArbitrary((octet) => octet | 0x01)]
+const macUnicastArbitrary = [netMacArbitrary((octet) => octet & 0xfe)]
+const ipv4BroadcastArbitrary = [netIpArbitrary(Literal("255.255.255.255"))]
+const macBroadcastArbitrary = [() =>
   linkDecoding<NetAddress_.MacAddress>()(
     Literal("ff:ff:ff:ff:ff:ff"),
     SchemaGetter.transform(NetAddress_.macAddressFromStringUnsafe)
+  )]
+const ipLoopbackArbitrary = [
+  netIpArbitrary(netIpv4Octets(netIntArbitrary(127, 127))),
+  netIpArbitrary(Literal("::1"))
+]
+const ipLinkLocalArbitrary = [
+  netIpArbitrary(netIpv4Octets(netIntArbitrary(169, 169), netIntArbitrary(254, 254))),
+  netIpArbitrary(netIpv6Segments(netIntArbitrary(0xfe80, 0xfebf)))
+]
+const ipUnspecifiedArbitrary = [netIpArbitrary(Literal("0.0.0.0")), netIpArbitrary(Literal("::"))]
+const ipv4PrivateArbitrary = [
+  netIpArbitrary(
+    Union([
+      netIpv4Octets(netIntArbitrary(10, 10)),
+      netIpv4Octets(netIntArbitrary(172, 172), netIntArbitrary(16, 31)),
+      netIpv4Octets(netIntArbitrary(192, 192), netIntArbitrary(168, 168))
+    ])
   )
-const ipLoopbackArbitrary = netIpArbitrary(Union([netIpv4Octets(netIntArbitrary(127, 127)), Literal("::1")]))
-const ipLinkLocalArbitrary = netIpArbitrary(
-  Union([
-    netIpv4Octets(netIntArbitrary(169, 169), netIntArbitrary(254, 254)),
-    netIpv6Segments(netIntArbitrary(0xfe80, 0xfebf))
-  ])
-)
-const ipUnspecifiedArbitrary = netIpArbitrary(Literals(["0.0.0.0", "::"]))
-const ipv4PrivateArbitrary = netIpArbitrary(
-  Union([
-    netIpv4Octets(netIntArbitrary(10, 10)),
-    netIpv4Octets(netIntArbitrary(172, 172), netIntArbitrary(16, 31)),
-    netIpv4Octets(netIntArbitrary(192, 192), netIntArbitrary(168, 168))
-  ])
-)
-const ipv6UniqueLocalArbitrary = netIpArbitrary(netIpv6Segments(netIntArbitrary(0xfc00, 0xfdff)))
-const macLocallyAdministeredArbitrary = netMacArbitrary((octet) => octet | 0x02)
-const macUniversallyAdministeredArbitrary = netMacArbitrary((octet) => octet & 0xfd)
+]
+const ipv6UniqueLocalArbitrary = [netIpArbitrary(netIpv6Segments(netIntArbitrary(0xfc00, 0xfdff)))]
+const macLocallyAdministeredArbitrary = [netMacArbitrary((octet) => octet | 0x02)]
+const macUniversallyAdministeredArbitrary = [netMacArbitrary((octet) => octet & 0xfd)]
 
 /**
  * Type-level representation of {@link IpMulticastAddress}.
@@ -13792,24 +13794,31 @@ export interface InetAddressV4 extends declare<NetAddress_.InetAddressV4> {
 }
 
 const inetAddressFromString = stringTransformation(NetAddress_.inetAddressFromString, NetAddress_.formatInet)
+// Only IPv6 addresses are bracketed, so the family is known before parsing.
+// Rejecting the other family up front keeps `InetAddress` union errors distinct.
 const inetAddressFamilyFromString = <A extends NetAddress_.InetAddress>(
+  bracketed: boolean,
   guard: (address: NetAddress_.InetAddress) => address is A,
   message: string
 ) =>
   stringTransformation<A, NetAddress_.NetAddressError>(
-    (input) =>
-      Result_.flatMap(
-        NetAddress_.inetAddressFromString(input),
-        (address) =>
-          guard(address) ? Result_.succeed(address) : Result_.fail(new NetAddress_.NetAddressError({ input, message }))
-      ),
+    (input) => {
+      const fail = () => Result_.fail(new NetAddress_.NetAddressError({ input, message }))
+      return input.startsWith("[") === bracketed
+        ? Result_.flatMap(
+          NetAddress_.inetAddressFromString(input),
+          (address) => guard(address) ? Result_.succeed(address) : fail()
+        )
+        : fail()
+    },
     NetAddress_.formatInet
   )
 const inetAddressV4FromString = inetAddressFamilyFromString(
+  false,
   NetAddress_.isInetAddressV4,
   "expected an IPv4 address:port"
 )
-const inetAddressV6FromString = inetAddressFamilyFromString(NetAddress_.isInetAddressV6, "expected [IPv6]:port")
+const inetAddressV6FromString = inetAddressFamilyFromString(true, NetAddress_.isInetAddressV6, "expected [IPv6]:port")
 
 /**
  * Schema for already-constructed resolved IPv4 internet addresses.
@@ -13895,7 +13904,7 @@ export const InetAddressV6: InetAddressV6 = declare(NetAddress_.isInetAddressV6,
  * @category models
  * @since 4.0.0
  */
-export interface InetAddress extends declare<NetAddress_.InetAddress> {
+export interface InetAddress extends Union<readonly [InetAddressV4, InetAddressV6]> {
   readonly "Rebuild": InetAddress
 }
 
@@ -13912,25 +13921,7 @@ export interface InetAddress extends declare<NetAddress_.InetAddress> {
  * @category schemas
  * @since 4.0.0
  */
-export const InetAddress: InetAddress = declare(NetAddress_.isInetAddress, {
-  identifier: "InetAddress",
-  representation: {
-    id: "effect/schema/InetAddress",
-    payload: null
-  },
-  toCode: netToCode("InetAddress"),
-  toCodecArbitrary: () =>
-    linkDecoding<NetAddress_.InetAddress>()(
-      Union([InetAddressV4, InetAddressV6]),
-      SchemaGetter.passthrough()
-    ),
-  toCodecJson: () =>
-    link<NetAddress_.InetAddress>()(
-      String,
-      inetAddressFromString
-    ),
-  toFormatter: () => NetAddress_.formatInet
-})
+export const InetAddress: InetAddress = Union([InetAddressV4, InetAddressV6]).annotate({ identifier: "InetAddress" })
 
 /**
  * Type-level representation of {@link InetAddressFromString}.
@@ -13967,17 +13958,35 @@ export interface UnixPathAddress extends declare<NetAddress_.UnixPathAddress> {
   readonly "Rebuild": UnixPathAddress
 }
 
-const unixPathAddressFromString = SchemaTransformation.transform<NetAddress_.UnixPathAddress, string>({
+const unixPathAddressFromRawPath = SchemaTransformation.transform<NetAddress_.UnixPathAddress, string>({
   decode: NetAddress_.unixPathAddress,
   encode: (address) => address.path
 })
+
+const unixPathPrefix = "unix://"
+
+const unixPathAddressFromPrefixedPath = stringTransformation<NetAddress_.UnixPathAddress, NetAddress_.NetAddressError>(
+  (input) =>
+    input.startsWith(unixPathPrefix)
+      ? Result_.succeed(NetAddress_.unixPathAddress(input.slice(unixPathPrefix.length)))
+      : Result_.fail(
+        new NetAddress_.NetAddressError({
+          input,
+          message: `expected a Unix-domain address starting with ${unixPathPrefix}`
+        })
+      ),
+  NetAddress_.formatUnixPath
+)
 
 /**
  * Schema for already-constructed Unix-domain filesystem addresses.
  *
  * **Details**
  *
- * The JSON and StringTree codecs encode an address as its raw path.
+ * The JSON and StringTree codecs encode an address as `unix://<path>` and
+ * require the prefix when decoding, so that a path such as `127.0.0.1:80`
+ * stays distinct from an internet address inside {@link SocketAddress}.
+ * {@link UnixPathAddressFromString} decodes a raw path instead.
  *
  * @see {@link UnixPathAddressFromString}
  * @stability unstable
@@ -13999,9 +14008,9 @@ export const UnixPathAddress: UnixPathAddress = declare(NetAddress_.isUnixPathAd
   toCodecJson: () =>
     link<NetAddress_.UnixPathAddress>()(
       String,
-      unixPathAddressFromString
+      unixPathAddressFromPrefixedPath
     ),
-  toFormatter: () => (address) => address.path
+  toFormatter: () => NetAddress_.formatUnixPath
 })
 
 /**
@@ -14024,7 +14033,7 @@ export interface UnixPathAddressFromString extends decodeTo<UnixPathAddress, Str
  */
 export const UnixPathAddressFromString: UnixPathAddressFromString = netAddressFromString(
   UnixPathAddress,
-  unixPathAddressFromString,
+  unixPathAddressFromRawPath,
   "UnixPathAddressFromString"
 )
 
@@ -14035,27 +14044,9 @@ export const UnixPathAddressFromString: UnixPathAddressFromString = netAddressFr
  * @category models
  * @since 4.0.0
  */
-export interface SocketAddress extends declare<NetAddress_.SocketAddress> {
+export interface SocketAddress extends Union<readonly [InetAddress, UnixPathAddress]> {
   readonly "Rebuild": SocketAddress
 }
-
-const unixSocketAddressPrefix = "unix://"
-
-const socketAddressFromString = stringTransformation<NetAddress_.SocketAddress, NetAddress_.NetAddressError>(
-  (input) =>
-    input.startsWith(unixSocketAddressPrefix)
-      ? Result_.succeed(NetAddress_.unixPathAddress(input.slice(unixSocketAddressPrefix.length)))
-      : Result_.mapError(
-        NetAddress_.inetAddressFromString(input),
-        (error) =>
-          new NetAddress_.NetAddressError({
-            input,
-            message: `${error.message}; Unix-domain addresses must start with ${unixSocketAddressPrefix}`
-          })
-      ),
-  (address) =>
-    address._tag === "UnixPathAddress" ? NetAddress_.formatUnixPath(address) : NetAddress_.formatInet(address)
-)
 
 /**
  * Schema for already-constructed portable concrete socket addresses.
@@ -14063,32 +14054,15 @@ const socketAddressFromString = stringTransformation<NetAddress_.SocketAddress, 
  * **Details**
  *
  * The JSON and StringTree codecs encode an internet address like
- * {@link InetAddress} and a Unix-domain address as `unix://<path>`. Unlike
- * {@link UnixPathAddress}, the prefix keeps a path such as `127.0.0.1:80`
- * distinct from an internet address.
+ * {@link InetAddress} and a Unix-domain address like {@link UnixPathAddress},
+ * as `unix://<path>`.
  *
  * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
-export const SocketAddress: SocketAddress = declare(NetAddress_.isSocketAddress, {
-  identifier: "SocketAddress",
-  representation: {
-    id: "effect/schema/SocketAddress",
-    payload: null
-  },
-  toCode: netToCode("SocketAddress"),
-  toCodecArbitrary: () =>
-    linkDecoding<NetAddress_.SocketAddress>()(
-      Union([InetAddress, UnixPathAddress]),
-      SchemaGetter.passthrough()
-    ),
-  toCodecJson: () =>
-    link<NetAddress_.SocketAddress>()(
-      String,
-      socketAddressFromString
-    ),
-  toFormatter: () => NetAddress_.formatSocketAddress
+export const SocketAddress: SocketAddress = Union([InetAddress, UnixPathAddress]).annotate({
+  identifier: "SocketAddress"
 })
 
 /**
@@ -14120,7 +14094,8 @@ export const DomainName: DomainName = String.check(
     expected: "a normalized domain name",
     arbitraryConstraint: {
       patterns: [{
-        source: "^(?:[a-z0-9_](?:[a-z0-9_-]{0,61}[a-z0-9_])?\\.){0,3}[a-z_](?:[a-z0-9_-]{0,61}[a-z0-9_])?\\.?$",
+        // Labels are capped at 62 characters so four labels stay within 253.
+        source: "^(?:[a-z0-9_](?:[a-z0-9_-]{0,60}[a-z0-9_])?\\.){0,3}[a-z_](?:[a-z0-9_-]{0,60}[a-z0-9_])?\\.?$",
         flags: ""
       }]
     }
