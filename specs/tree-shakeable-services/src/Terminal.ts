@@ -56,4 +56,4 @@ const members = { columns, rows, size, readInput, readLine, display }
 export type Terminal = Context.Operations.Identifier<typeof members>
 export interface Shape extends Context.Operations.Shape<typeof members> {}
 
-export const Terminal: Context.Operations<Terminal, Shape> = Context.Operations("effect/Terminal", members)
+export const Terminal = Context.Operations<Terminal, Shape>()("effect/Terminal", members)

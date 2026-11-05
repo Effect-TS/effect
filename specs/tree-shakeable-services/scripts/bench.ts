@@ -3,22 +3,24 @@
  * the `Context.ts` of the branch point loaded beside this one, so both run in
  * one process against the same `effect` runtime.
  *
- *   pnpm bench                      # 11 rounds of about 100 ms per case
- *   BENCH_ROUNDS=11 BENCH_TIME=300 pnpm bench
+ *   pnpm bench                        # 21 rounds; each case about 25 ms per round
+ *   pnpm bench --check                # exit 1 when a median ratio exceeds its threshold
+ *   BENCH_ROUNDS=31 BENCH_TIME=50 pnpm bench
  *
- * Each case is a tight loop: the iteration count is calibrated once so a
- * round takes about `BENCH_TIME` milliseconds, and the cost per iteration is
- * the loop's wall time divided by the count, so a 10 ns read is measured as
- * 10 ns and not as 10 ns plus a harness. Every case runs in every round, the
- * order of cases rotates by one each round, and the number reported for a
- * case is the median of its per-round costs; the minimum is printed beside
- * it, and ratios are computed from both. On a shared machine the medians
- * carry the noise and the minimums the floor.
+ * Every ratio is paired and interleaved: within a round, the two sides of a
+ * pair run as A, B, B, A in tight loops of a calibrated iteration count, and
+ * the round's ratio is the time of the two A loops over the two B loops. The
+ * number reported for a pair is the median of its per-round ratios, with the
+ * 25th and 75th percentiles beside it. Pairing cancels the drift a shared
+ * machine adds to both sides; the median of ratios is stable where the ratio
+ * of medians is not. The order of pairs rotates each round. Thresholds are
+ * checked against the median ratio.
  *
- * The cases cover: the ordinary-key paths that must not regress (`getUnsafe`,
- * `add`), a record read against a plain record service (today's shape), the
- * same read from a context rebuilt per request, the member-layer and
- * overridden cases that assemble a record, and the fiber path for each.
+ * The pairs cover the ordinary-key paths that must not regress (`getUnsafe`,
+ * reference defaults, `add`, `mergeAll`), a record read against a plain
+ * record service (today's shape) from the same context and from one rebuilt
+ * per request, the member-layer case that assembles a record, and the fiber
+ * path for each.
  */
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
@@ -47,8 +49,12 @@ fs.writeFileSync(
 )
 const Baseline: typeof Context = await import(baselineFile)
 
-const rounds = Number(process.env.BENCH_ROUNDS ?? 11)
-const time = Number(process.env.BENCH_TIME ?? 100)
+const rounds = Number(process.env.BENCH_ROUNDS ?? 21)
+const time = Number(process.env.BENCH_TIME ?? 25)
+const check = process.argv.includes("--check")
+// `--ordinary`: only the pairs against the branch point, in a process that never constructs a record context, so
+// both modules see the same key shapes at every property load (see the note under "ratios" in the output).
+const ordinary = process.argv.includes("--ordinary")
 
 // A thirty-member record. `Plain` stores it the way a record service is stored today: one slot. `FileSystem`
 // stores it as a record service: one slot per member and one for the record.
@@ -59,6 +65,8 @@ const Plain = Context.Service<Record<string, unknown>>("effect/FileSystem/plain"
 const PlainBaseline = Baseline.Service<Record<string, unknown>>("effect/FileSystem/plain")
 const RequestId = Context.Service<number>("bench/RequestId")
 const RequestIdBaseline = Baseline.Service<number>("bench/RequestId")
+const Absent = Context.Reference<number>("bench/Absent", { defaultValue: () => 1 })
+const AbsentBaseline = Baseline.Reference<number>("bench/Absent", { defaultValue: () => 1 })
 const fake = (() => Effect.void) as unknown as FileSystem.Shape["readFile"]
 
 const plainContext = Context.make(Plain, record)
@@ -82,19 +90,19 @@ const kinds = (ctx: typeof Context) => {
 }
 const mixed = kinds(Context)
 const mixedBaseline = kinds(Baseline)
-const recordContext = Context.make(FileSystem.FileSystem, shape)
-const membersContext = Context.mergeAll(
+const recordContext = ordinary ? Context.empty() as Context.Context<any> : Context.make(FileSystem.FileSystem, shape)
+const membersContext = ordinary ? recordContext : Context.mergeAll(
   ...Object.values(FileSystem.FileSystem.members).map((member) =>
-    Context.make(member as Context.Key<any, unknown>, () => Effect.void)
+    Context.make(member as Context.Slot<any, unknown>, () => Effect.void)
   )
 )
-// Thirty-one entries beside the record, so `add` is measured on a context of realistic size.
-const wide = (ctx: typeof Context, make: typeof Context.make) =>
-  Array.from({ length: 31 }, (_, i) => make(ctx.Service<number>(`bench/Service/${i}`), i)).reduce((a, b) =>
-    ctx.merge(a, b)
-  )
-const wideContext = wide(Context, Context.make)
-const wideBaselineContext = wide(Baseline, Baseline.make)
+// Thirty-one one-slot contexts, for `mergeAll`, and their merge, so `add` is measured on a context of realistic size.
+const wideParts = (ctx: typeof Context) =>
+  Array.from({ length: 31 }, (_, i) => ctx.make(ctx.Service<number>(`bench/Service/${i}`), i))
+const wideContextParts = wideParts(Context)
+const wideBaselineParts = wideParts(Baseline)
+const wideContext = Context.mergeAll(...wideContextParts)
+const wideBaselineContext = Baseline.mergeAll(...wideBaselineParts)
 
 // Fiber-path programs, each run by a runner built once over its context (`Effect.runSyncWith`), so a run measures
 // the fiber and the read and not a merge of the context into a fresh fiber. `perRequest` adds one service in front
@@ -109,56 +117,172 @@ const viaOperation = FileSystem.readFile("a")
 const viaRecord = Effect.flatMap(FileSystem.FileSystem, (fs) => fs.readFile("a"))
 const viaPlain = Effect.flatMap(Plain, (fs) => (fs.readFile as () => Effect.Effect<void>)())
 
-const cases: ReadonlyArray<readonly [name: string, run: () => unknown]> = [
-  // ordinary keys: the paths that must not regress
-  ["getUnsafe, mixed key kinds, baseline", mixedBaseline.read],
-  ["getUnsafe, mixed key kinds, this branch", mixed.read],
-  ["add, mixed key kinds, baseline", mixedBaseline.add],
-  ["add, mixed key kinds, this branch", mixed.add],
-  ["getUnsafe, ordinary key, baseline", () => Baseline.getUnsafe(plainBaselineContext, PlainBaseline)],
-  ["getUnsafe, ordinary key, this branch", () => Context.getUnsafe(plainContext, Plain)],
-  ["add, ordinary key, baseline", () => Baseline.add(wideBaselineContext, PlainBaseline, record)],
-  ["add, ordinary key, this branch", () => Context.add(wideContext, Plain, record)],
-  [
-    "add then getUnsafe, ordinary key, baseline",
-    () => Baseline.getUnsafe(Baseline.add(plainBaselineContext, RequestIdBaseline, 1), PlainBaseline)
-  ],
-  [
-    "add then getUnsafe, ordinary key, this branch",
-    () => Context.getUnsafe(Context.add(plainContext, RequestId, 1), Plain)
-  ],
-  // operations and records
-  ["getUnsafe, operation key (1 of 31 slots)", () => Context.getUnsafe(recordContext, FileSystem.readFile)],
-  ["getUnsafe, record provided whole, same context", () => Context.getUnsafe(recordContext, FileSystem.FileSystem)],
-  [
-    "add then getUnsafe, record provided whole",
-    () => Context.getUnsafe(Context.add(recordContext, RequestId, 1), FileSystem.FileSystem)
-  ],
-  [
-    "add then getUnsafe, record from 30 member layers",
-    () => Context.getUnsafe(Context.add(membersContext, RequestId, 1), FileSystem.FileSystem)
-  ],
-  [
-    "add then getUnsafe, ReadOnly (3 of 30) from the full record",
-    () => Context.getUnsafe(Context.add(recordContext, RequestId, 1), FileSystem.ReadOnly)
-  ],
-  [
-    "add a member override, then getUnsafe record (assembled)",
-    () => Context.getUnsafe(Context.add(recordContext, FileSystem.readFile, fake), FileSystem.FileSystem)
-  ],
-  ["make, record (30 members)", () => Context.make(FileSystem.FileSystem, shape)],
-  ["make, ordinary key, baseline", () => Baseline.make(PlainBaseline, record)],
-  ["add, record (30 members) to 31 slots", () => Context.add(wideContext, FileSystem.FileSystem, shape)],
+interface Case {
+  readonly name: string
+  readonly run: () => unknown
+}
+interface Pair {
+  readonly label: string
+  readonly a: Case
+  readonly b: Case
+  /** The median ratio a/b must not exceed this. */
+  readonly threshold: number
+  /**
+   * The limit in the full run, where this process also reads records and operations through the same getters: a
+   * property load that has seen more than four key shapes is megamorphic in V8, which the branch point's side,
+   * seeing four, never is. The `--ordinary` run compares like with like under `threshold`.
+   */
+  readonly thresholdWithRecords?: number
+}
+const c = (name: string, run: () => unknown): Case => ({ name, run })
+const limitOf = (pair: Pair) => (ordinary ? pair.threshold : pair.thresholdWithRecords ?? pair.threshold)
+
+const allPairs: ReadonlyArray<Pair> = [
+  // ordinary keys: this branch over the branch point, which must not regress
+  {
+    label: "getUnsafe, ordinary key: this branch / baseline",
+    a: c("getUnsafe, ordinary key, this branch", () => Context.getUnsafe(plainContext, Plain)),
+    b: c("getUnsafe, ordinary key, baseline", () => Baseline.getUnsafe(plainBaselineContext, PlainBaseline)),
+    threshold: 1.15,
+    thresholdWithRecords: 1.35
+  },
+  {
+    label: "getUnsafe, mixed key kinds: this branch / baseline",
+    a: c("getUnsafe, mixed key kinds, this branch", mixed.read),
+    b: c("getUnsafe, mixed key kinds, baseline", mixedBaseline.read),
+    threshold: 1.15,
+    thresholdWithRecords: 1.35
+  },
+  {
+    label: "getUnsafe, reference default (slot absent): this branch / baseline",
+    a: c("getUnsafe, reference default, this branch", () => Context.getUnsafe(plainContext, Absent)),
+    b: c("getUnsafe, reference default, baseline", () => Baseline.getUnsafe(plainBaselineContext, AbsentBaseline)),
+    threshold: 1.15,
+    thresholdWithRecords: 1.35
+  },
+  {
+    label: "add, ordinary key to 31 slots: this branch / baseline",
+    a: c("add, ordinary key, this branch", () => Context.add(wideContext, Plain, record)),
+    b: c("add, ordinary key, baseline", () => Baseline.add(wideBaselineContext, PlainBaseline, record)),
+    threshold: 1.15,
+    thresholdWithRecords: 1.35
+  },
+  {
+    label: "add, mixed key kinds: this branch / baseline",
+    a: c("add, mixed key kinds, this branch", mixed.add),
+    b: c("add, mixed key kinds, baseline", mixedBaseline.add),
+    threshold: 1.15,
+    thresholdWithRecords: 1.35
+  },
+  {
+    label: "add then getUnsafe, ordinary key: this branch / baseline",
+    a: c(
+      "add then getUnsafe, ordinary key, this branch",
+      () => Context.getUnsafe(Context.add(plainContext, RequestId, 1), Plain)
+    ),
+    b: c(
+      "add then getUnsafe, ordinary key, baseline",
+      () => Baseline.getUnsafe(Baseline.add(plainBaselineContext, RequestIdBaseline, 1), PlainBaseline)
+    ),
+    threshold: 1.15,
+    thresholdWithRecords: 1.35
+  },
+  {
+    label: "mergeAll, 31 one-slot contexts: this branch / baseline",
+    a: c("mergeAll, 31 contexts, this branch", () => Context.mergeAll(...wideContextParts)),
+    b: c("mergeAll, 31 contexts, baseline", () => Baseline.mergeAll(...wideBaselineParts)),
+    threshold: 1.25
+  },
+  // records against ordinary keys, both on this branch
+  {
+    label: "record read (provided whole) / ordinary key read, same context",
+    a: c(
+      "getUnsafe, record provided whole, same context",
+      () => Context.getUnsafe(recordContext, FileSystem.FileSystem)
+    ),
+    b: c("getUnsafe, ordinary key (record context)", () => Context.getUnsafe(plainContext, Plain)),
+    threshold: 1.2
+  },
+  {
+    label: "record read (provided whole) / ordinary key read, context rebuilt",
+    a: c(
+      "add then getUnsafe, record provided whole",
+      () => Context.getUnsafe(Context.add(recordContext, RequestId, 1), FileSystem.FileSystem)
+    ),
+    b: c(
+      "add then getUnsafe, ordinary key (record pair)",
+      () => Context.getUnsafe(Context.add(plainContext, RequestId, 1), Plain)
+    ),
+    threshold: 1.2
+  },
+  {
+    label: "record read (from 30 member layers) / ordinary key read, context rebuilt",
+    a: c(
+      "add then getUnsafe, record from 30 member layers",
+      () => Context.getUnsafe(Context.add(membersContext, RequestId, 1), FileSystem.FileSystem)
+    ),
+    b: c(
+      "add then getUnsafe, ordinary key (members pair)",
+      () => Context.getUnsafe(Context.add(plainContext, RequestId, 1), Plain)
+    ),
+    threshold: 2.0
+  },
   // fiber paths
-  ["runSync: yield* Plain (today's record service)", () => runPlain(Plain)],
-  ["runSync: yield* FileSystem (record service)", () => runRecord(FileSystem.FileSystem)],
-  ["runSync: yield* Plain, context rebuilt per request", () => runPlain(yieldPlainPerRequest)],
-  ["runSync: yield* FileSystem, context rebuilt per request", () => runRecord(yieldRecordPerRequest)],
-  ["runSync: yield* FileSystem from member layers, per request", () => runMembers(yieldRecordPerRequest)],
-  ["runSync: readFile(path) operation call", () => runRecord(viaOperation)],
-  ["runSync: (yield* Plain).readFile(path)", () => runPlain(viaPlain)],
-  ["runSync: (yield* FileSystem).readFile(path)", () => runRecord(viaRecord)]
+  {
+    label: "yield* FileSystem / yield* Plain, same context",
+    a: c("runSync: yield* FileSystem (record service)", () => runRecord(FileSystem.FileSystem)),
+    b: c("runSync: yield* Plain (today's record service)", () => runPlain(Plain)),
+    threshold: 1.15
+  },
+  {
+    label: "yield* FileSystem / yield* Plain, context rebuilt per request",
+    a: c("runSync: yield* FileSystem, context rebuilt per request", () => runRecord(yieldRecordPerRequest)),
+    b: c("runSync: yield* Plain, context rebuilt per request", () => runPlain(yieldPlainPerRequest)),
+    threshold: 1.15
+  },
+  {
+    label: "yield* FileSystem from member layers / yield* Plain, context rebuilt per request",
+    a: c("runSync: yield* FileSystem from member layers, per request", () => runMembers(yieldRecordPerRequest)),
+    b: c("runSync: yield* Plain, context rebuilt per request (members pair)", () => runPlain(yieldPlainPerRequest)),
+    threshold: 1.25
+  },
+  {
+    label: "operation call / method call on a yielded plain record",
+    a: c("runSync: readFile(path) operation call", () => runRecord(viaOperation)),
+    b: c("runSync: (yield* Plain).readFile(path)", () => runPlain(viaPlain)),
+    threshold: 1.0
+  },
+  {
+    label: "method call on the record service / on a plain record",
+    a: c("runSync: (yield* FileSystem).readFile(path)", () => runRecord(viaRecord)),
+    b: c("runSync: (yield* Plain).readFile(path) (record pair)", () => runPlain(viaPlain)),
+    threshold: 1.15
+  }
 ]
+
+const pairs = ordinary ? allPairs.filter((pair) => pair.label.includes("/ baseline")) : allPairs
+
+// Absolute costs, in nanoseconds, with no counterpart at the branch point.
+const allSingles: ReadonlyArray<Case & { readonly threshold: number }> = [
+  {
+    ...c("getUnsafe, operation key (1 of 31 slots)", () => Context.getUnsafe(recordContext, FileSystem.readFile)),
+    threshold: 100
+  },
+  { ...c("make, record (30 members)", () => Context.make(FileSystem.FileSystem, shape)), threshold: 10_000 },
+  {
+    ...c("add, record (30 members) to 31 slots", () => Context.add(wideContext, FileSystem.FileSystem, shape)),
+    threshold: 10_000
+  },
+  {
+    ...c(
+      "add a member override, then getUnsafe record (assembled)",
+      () => Context.getUnsafe(Context.add(recordContext, FileSystem.readFile, fake), FileSystem.FileSystem)
+    ),
+    threshold: 10_000
+  }
+]
+
+const singles = ordinary ? [] : allSingles
 
 let sink: unknown
 const measure = (run: () => unknown, iterations: number): number => {
@@ -167,100 +291,94 @@ const measure = (run: () => unknown, iterations: number): number => {
   return Number(process.hrtime.bigint() - start) / iterations
 }
 // Calibrate: warm each case up, then pick the iteration count that takes about `time` ms.
+const allCases = [...pairs.flatMap((pair) => [pair.a, pair.b]), ...singles]
 const iterations = new Map<string, number>()
-for (const [name, run] of cases) {
+for (const { name, run } of allCases) {
   measure(run, 2000)
   const perIteration = measure(run, 2000)
-  iterations.set(name, Math.max(1000, Math.round((time * 1e6) / perIteration)))
+  iterations.set(name, Math.max(500, Math.round((time * 1e6) / perIteration)))
 }
-const samples = new Map<string, Array<number>>(cases.map(([name]) => [name, []]))
+const timed = (kase: Case) => measure(kase.run, iterations.get(kase.name)!)
+
+const samples = new Map<string, Array<number>>(allCases.map(({ name }) => [name, []]))
+const ratios = new Map<string, Array<number>>(pairs.map(({ label }) => [label, []]))
 for (let round = 0; round < rounds; round++) {
-  const rotated = [...cases.slice(round % cases.length), ...cases.slice(0, round % cases.length)]
-  for (const [name, run] of rotated) samples.get(name)!.push(measure(run, iterations.get(name)!))
+  const offset = round % pairs.length
+  const rotated = [...pairs.slice(offset), ...pairs.slice(0, offset)]
+  for (const pair of rotated) {
+    // A, B, B, A: each side runs once before and once after the other within the round
+    const a1 = timed(pair.a)
+    const b1 = timed(pair.b)
+    const b2 = timed(pair.b)
+    const a2 = timed(pair.a)
+    samples.get(pair.a.name)!.push(a1, a2)
+    samples.get(pair.b.name)!.push(b1, b2)
+    ratios.get(pair.label)!.push((a1 + a2) / (b1 + b2))
+  }
+  for (const single of singles) samples.get(single.name)!.push(timed(single))
   process.stderr.write(`round ${round + 1}/${rounds}\n`)
 }
 void sink
 
-const median = (values: Array<number>) => {
+const quantile = (values: Array<number>, q: number) => {
   const sorted = [...values].sort((a, b) => a - b)
-  const middle = Math.floor(sorted.length / 2)
-  return sorted.length % 2 === 1 ? sorted[middle] : (sorted[middle - 1] + sorted[middle]) / 2
+  const position = (sorted.length - 1) * q
+  const lower = Math.floor(position)
+  const upper = Math.ceil(position)
+  return sorted[lower] + (sorted[upper] - sorted[lower]) * (position - lower)
 }
-const medians = new Map(cases.map(([name]) => [name, median(samples.get(name)!)]))
-const minimums = new Map(cases.map(([name]) => [name, Math.min(...samples.get(name)!)]))
-const ns = (name: string) => medians.get(name)!
+const median = (values: Array<number>) => quantile(values, 0.5)
 
-console.log(`baseline: ${base.slice(0, 10)}; ${rounds} rounds of about ${time} ms per case; ns/op\n`)
-console.log(`  ${"case".padEnd(64)} ${"median".padStart(9)} ${"min".padStart(9)} ${"max".padStart(9)}`)
-for (const [name] of cases) {
+console.log(
+  `baseline: ${
+    base.slice(0, 10)
+  }; ${rounds} rounds, each case about ${time} ms per loop, A/B/B/A within a round; ns/op${
+    ordinary ? "; ordinary keys only (no record service is constructed or read in this process)" : ""
+  }\n`
+)
+console.log(`  ${"case".padEnd(70)} ${"median".padStart(9)} ${"min".padStart(9)} ${"max".padStart(9)}`)
+for (const { name } of allCases) {
   const values = samples.get(name)!
   console.log(
-    `  ${name.padEnd(64)} ${ns(name).toFixed(1).padStart(9)} ${Math.min(...values).toFixed(1).padStart(9)} ${
+    `  ${name.padEnd(70)} ${median(values).toFixed(1).padStart(9)} ${Math.min(...values).toFixed(1).padStart(9)} ${
       Math.max(...values).toFixed(1).padStart(9)
     }`
   )
 }
 
-const ratio = (a: string, b: string) =>
-  `${(ns(a) / ns(b)).toFixed(2).padStart(6)}  ${(minimums.get(a)! / minimums.get(b)!).toFixed(2).padStart(6)}`
-console.log(`\nRatios${" ".repeat(60)}median     min\n`)
-const ratios: ReadonlyArray<readonly [label: string, a: string, b: string]> = [
-  [
-    "mixed-kind getUnsafe, this branch / baseline",
-    "getUnsafe, mixed key kinds, this branch",
-    "getUnsafe, mixed key kinds, baseline"
-  ],
-  ["mixed-kind add, this branch / baseline", "add, mixed key kinds, this branch", "add, mixed key kinds, baseline"],
-  [
-    "ordinary-key getUnsafe, this branch / baseline",
-    "getUnsafe, ordinary key, this branch",
-    "getUnsafe, ordinary key, baseline"
-  ],
-  ["ordinary-key add, this branch / baseline", "add, ordinary key, this branch", "add, ordinary key, baseline"],
-  [
-    "ordinary-key add then getUnsafe, this branch / baseline",
-    "add then getUnsafe, ordinary key, this branch",
-    "add then getUnsafe, ordinary key, baseline"
-  ],
-  [
-    "operation key getUnsafe / ordinary key getUnsafe",
-    "getUnsafe, operation key (1 of 31 slots)",
-    "getUnsafe, ordinary key, this branch"
-  ],
-  [
-    "record read (provided whole) / ordinary key, same context",
-    "getUnsafe, record provided whole, same context",
-    "getUnsafe, ordinary key, this branch"
-  ],
-  [
-    "record read (provided whole) / ordinary key, context rebuilt",
-    "add then getUnsafe, record provided whole",
-    "add then getUnsafe, ordinary key, this branch"
-  ],
-  [
-    "record read (from member layers) / ordinary key, context rebuilt",
-    "add then getUnsafe, record from 30 member layers",
-    "add then getUnsafe, ordinary key, this branch"
-  ],
-  [
-    "yield* FileSystem / yield* Plain, same context",
-    "runSync: yield* FileSystem (record service)",
-    "runSync: yield* Plain (today's record service)"
-  ],
-  [
-    "yield* FileSystem / yield* Plain, context rebuilt per request",
-    "runSync: yield* FileSystem, context rebuilt per request",
-    "runSync: yield* Plain, context rebuilt per request"
-  ],
-  [
-    "operation call / method call on a plain record",
-    "runSync: readFile(path) operation call",
-    "runSync: (yield* Plain).readFile(path)"
-  ],
-  [
-    "method call on the record service / on a plain record",
-    "runSync: (yield* FileSystem).readFile(path)",
-    "runSync: (yield* Plain).readFile(path)"
-  ]
-]
-for (const [label, a, b] of ratios) console.log(`  ${label.padEnd(66)} ${ratio(a, b)}`)
+let failures = 0
+console.log(
+  `\n  ${"ratio (median of per-round ratios)".padEnd(84)} ${"median".padStart(7)} ${"p25".padStart(7)} ${
+    "p75".padStart(7)
+  } ${"limit".padStart(7)}`
+)
+for (const pair of pairs) {
+  const values = ratios.get(pair.label)!
+  const m = median(values)
+  const limit = limitOf(pair)
+  const ok = m <= limit
+  if (!ok) failures++
+  console.log(
+    `  ${pair.label.padEnd(84)} ${m.toFixed(2).padStart(7)} ${quantile(values, 0.25).toFixed(2).padStart(7)} ${
+      quantile(values, 0.75).toFixed(2).padStart(7)
+    } ${limit.toFixed(2).padStart(7)}${ok ? "" : "  EXCEEDED"}`
+  )
+}
+console.log(`\n  ${"absolute (median ns)".padEnd(84)} ${"median".padStart(7)} ${"limit".padStart(15)}`)
+for (const single of singles) {
+  const m = median(samples.get(single.name)!)
+  const ok = m <= single.threshold
+  if (!ok) failures++
+  console.log(
+    `  ${single.name.padEnd(84)} ${m.toFixed(0).padStart(7)} ${single.threshold.toFixed(0).padStart(15)}${
+      ok ? "" : "  EXCEEDED"
+    }`
+  )
+}
+if (check) {
+  if (failures > 0) {
+    console.error(`\n${failures} threshold(s) exceeded`)
+    process.exit(1)
+  }
+  console.log("\nOK: every median ratio and absolute cost is within its threshold")
+}

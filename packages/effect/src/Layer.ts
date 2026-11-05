@@ -849,8 +849,8 @@ export const buildWithScope: {
  * @since 2.0.0
  */
 export const succeed: {
-  <I, S>(service: Context.Key<I, S>): (resource: S) => Layer<I>
-  <I, S>(service: Context.Key<I, S>, resource: Types.NoInfer<S>): Layer<I>
+  <I, S>(service: Context.Slot<I, S>): (resource: S) => Layer<I>
+  <I, S>(service: Context.Slot<I, S>, resource: Types.NoInfer<S>): Layer<I>
 } = function() {
   if (arguments.length === 1) {
     return (resource: any) => succeedContext(Context.make(arguments[0], resource))
@@ -971,8 +971,8 @@ export const empty: Layer<never> = succeedContext(Context.empty())
  * @since 2.0.0
  */
 export const sync: {
-  <I, S>(service: Context.Key<I, S>): (evaluate: LazyArg<S>) => Layer<I>
-  <I, S>(service: Context.Key<I, S>, evaluate: LazyArg<Types.NoInfer<S>>): Layer<I>
+  <I, S>(service: Context.Slot<I, S>): (evaluate: LazyArg<S>) => Layer<I>
+  <I, S>(service: Context.Slot<I, S>, evaluate: LazyArg<Types.NoInfer<S>>): Layer<I>
 } = function() {
   if (arguments.length === 1) {
     return (evaluate: LazyArg<any>) => syncContext(() => Context.make(arguments[0], evaluate()))
@@ -1061,11 +1061,11 @@ export const syncContext = <A>(evaluate: LazyArg<Context.Context<A>>): Layer<A> 
  * @since 2.0.0
  */
 export const effect: {
-  <I, S>(service: Context.Key<I, S>): <E, R>(
+  <I, S>(service: Context.Slot<I, S>): <E, R>(
     effect: Effect<S, E, R>
   ) => Layer<I, E, Exclude<R, Scope.Scope>>
   <I, S, E, R>(
-    service: Context.Key<I, S>,
+    service: Context.Slot<I, S>,
     effect: Effect<Types.NoInfer<S>, E, R>
   ): Layer<I, E, Exclude<R, Scope.Scope>>
 } = function() {
@@ -1076,7 +1076,7 @@ export const effect: {
 } as any
 
 const effectImpl = <I, S, E, R>(
-  service: Context.Key<I, S>,
+  service: Context.Slot<I, S>,
   effect: Effect<S, E, R>
 ): Layer<I, E, Exclude<R, Scope.Scope>> =>
   effectContext(internalEffect.map(effect, (value) => Context.make(service, value)))
@@ -2132,19 +2132,19 @@ export const catchCause: {
  */
 export const updateService: {
   <I, A>(
-    service: Context.Key<I, A>,
+    service: Context.Slot<I, A>,
     f: (a: Types.NoInfer<A>) => A
   ): <A1, E1, R1>(layer: Layer<A1, E1, R1>) => Layer<A1, E1, I | R1>
   <A1, E1, R1, I, A>(
     layer: Layer<A1, E1, R1>,
-    service: Context.Key<I, A>,
+    service: Context.Slot<I, A>,
     f: (a: Types.NoInfer<A>) => A
   ): Layer<A1, E1, I | R1>
 } = dual(
   3,
   <A1, E1, R1, I, A>(
     layer: Layer<A1, E1, R1>,
-    service: Context.Key<I, A>,
+    service: Context.Slot<I, A>,
     f: (a: Types.NoInfer<A>) => A
   ): Layer<A1, E1, I | R1> => provide(layer, effect(service, internalEffect.map(internalEffect.service(service), f)))
 )
@@ -2376,8 +2376,8 @@ type AnyEffectOrStream =
  * @since 3.17.0
  */
 export const mock: {
-  <I, S extends object>(service: Context.Key<I, S>): (implementation: PartialEffectful<S>) => Layer<I>
-  <I, S extends object>(service: Context.Key<I, S>, implementation: Types.NoInfer<PartialEffectful<S>>): Layer<I>
+  <I, S extends object>(service: Context.Slot<I, S>): (implementation: PartialEffectful<S>) => Layer<I>
+  <I, S extends object>(service: Context.Slot<I, S>, implementation: Types.NoInfer<PartialEffectful<S>>): Layer<I>
 } = function() {
   if (arguments.length === 1) {
     return (implementation: any) => mockImpl(arguments[0], implementation)
@@ -2385,7 +2385,7 @@ export const mock: {
   return mockImpl(arguments[0], arguments[1])
 } as any
 
-const mockImpl = <I, S extends object>(service: Context.Key<I, S>, implementation: PartialEffectful<S>): Layer<I> =>
+const mockImpl = <I, S extends object>(service: Context.Slot<I, S>, implementation: PartialEffectful<S>): Layer<I> =>
   succeed(service)(
     new Proxy({ ...implementation as object } as S, {
       get(target, prop, _receiver) {
