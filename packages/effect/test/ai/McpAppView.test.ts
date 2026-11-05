@@ -134,7 +134,7 @@ describe("McpAppView", () => {
           return yield* Effect.flip(view.toolCall(Report).result)
         })
       )
-      assert.strictEqual(error._tag, "ToolError")
+      assert(error._tag === "ToolError")
       assert.deepStrictEqual(error.result.content, failed.content)
     }))
 
@@ -184,8 +184,11 @@ describe("McpAppView", () => {
         })
       )
       assert.deepStrictEqual(seen.passed, { passed: 3 })
-      assert.strictEqual(seen.failed._tag, "ToolError")
-      assert.deepStrictEqual(seen.failed.result.structuredContent, { reason: "unknown run missing" })
+      assert(seen.failed._tag === "ToolError")
+      // A declared failure reaches the page as JSON text content, without `structuredContent`.
+      assert.deepStrictEqual(seen.failed.result.content, [
+        { type: "text", text: JSON.stringify({ reason: "unknown run missing" }) }
+      ])
 
       yield* Queue.take(host.requests) // ui/initialize
       const call = yield* Queue.take(host.requests)
