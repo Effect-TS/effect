@@ -258,40 +258,13 @@ export interface ToolCall<T extends Tool.Any> {
   /**
    * The complete tool arguments, decoded with the tool's parameters schema.
    */
-  readonly input: Effect.Effect<Tool.Parameters<T>, never, ParametersDecodingServices<T>>
+  readonly input: Effect.Effect<Tool.Parameters<T>, never, Tool.ParametersSchema<T>["DecodingServices"]>
   /**
    * The tool's `structuredContent`, decoded with its success schema. A result
    * with `isError` fails with `ToolError`, keeping the whole result.
    */
-  readonly result: Effect.Effect<Tool.Success<T>, ToolCancelled | ToolError, SuccessDecodingServices<T>>
+  readonly result: Effect.Effect<Tool.Success<T>, ToolCancelled | ToolError, Tool.SuccessSchema<T>["DecodingServices"]>
 }
-
-/**
- * The services the tool's parameters schema needs to decode its arguments.
- *
- * @stability unstable
- * @category utility types
- * @since 4.1.3
- */
-export type ParametersDecodingServices<T extends Tool.Any> = Tool.ParametersSchema<T>["DecodingServices"]
-
-/**
- * The services the tool's parameters schema needs to encode its arguments.
- *
- * @stability unstable
- * @category utility types
- * @since 4.1.3
- */
-export type ParametersEncodingServices<T extends Tool.Any> = Tool.ParametersSchema<T>["EncodingServices"]
-
-/**
- * The services the tool's success schema needs to decode its result.
- *
- * @stability unstable
- * @category utility types
- * @since 4.1.3
- */
-export type SuccessDecodingServices<T extends Tool.Any> = Tool.SuccessSchema<T>["DecodingServices"]
 
 /**
  * The page's connection to its host.
@@ -358,7 +331,7 @@ export interface Service {
   ) => Effect.Effect<
     Tool.Success<T>,
     ToolError | HostError | UnsupportedCapability,
-    ParametersEncodingServices<T> | SuccessDecodingServices<T>
+    Tool.ParametersSchema<T>["EncodingServices"] | Tool.SuccessSchema<T>["DecodingServices"]
   >
   /**
    * Reads a server resource through the host.
@@ -584,20 +557,11 @@ export const make: (options: Options) => Effect.Effect<Service, HostError, Scope
         ? Effect.fail(new UnsupportedCapability({ capability }))
         : Effect.void
 
-    const decodeSuccess = <T extends Tool.Any>(
+    const successOf = <T extends Tool.Any>(
       tool: T,
       result: McpSchema.CallToolResult
-    ): Effect.Effect<Tool.Success<T>, ToolError, SuccessDecodingServices<T>> =>
-      result.isError === true
-        ? Effect.fail(new ToolError({ result }))
-        // `Success<T>` is the success schema's `Type`, which TypeScript cannot see for a generic `T`.
-        : Effect.orDie(
-          decodeToolJson(tool.successSchema as Tool.SuccessSchema<T>)(result.structuredContent)
-        ) as Effect.Effect<
-          Tool.Success<T>,
-          never,
-          SuccessDecodingServices<T>
-        >
+    ): Effect.Effect<Tool.Success<T>, ToolError, Tool.SuccessSchema<T>["DecodingServices"]> =>
+      result.isError === true ? Effect.fail(new ToolError({ result })) : decodeSuccess(tool)(result.structuredContent)
 
     const callTool = <T extends Tool.Any>(
       tool: T,
@@ -605,13 +569,13 @@ export const make: (options: Options) => Effect.Effect<Service, HostError, Scope
     ): Effect.Effect<
       Tool.Success<T>,
       ToolError | HostError | UnsupportedCapability,
-      ParametersEncodingServices<T> | SuccessDecodingServices<T>
+      Tool.ParametersSchema<T>["EncodingServices"] | Tool.SuccessSchema<T>["DecodingServices"]
     > =>
       requireCapability("serverTools").pipe(
-        Effect.andThen(Effect.orDie(encodeToolJson(tool.parametersSchema as Tool.ParametersSchema<T>)(params))),
+        Effect.andThen(encodeParameters(tool)(params)),
         Effect.flatMap((args) => request("tools/call", { name: tool.name, arguments: args })),
         Effect.flatMap(decodeCallToolResult),
-        Effect.flatMap((result) => decodeSuccess(tool, result))
+        Effect.flatMap((result) => successOf(tool, result))
       )
 
     const run = <A, E, R>(program: Effect.Effect<A, E, R>): Effect.Effect<void, E, Exclude<R, Scope.Scope>> =>
@@ -642,16 +606,8 @@ export const make: (options: Options) => Effect.Effect<Service, HostError, Scope
       toolInputPartial: Stream.fromQueue(toolInputPartial),
       toolResult: Deferred.await(toolResult),
       toolCall: <T extends Tool.Any>(tool: T): ToolCall<T> => ({
-        input: Effect.flatMap(
-          Deferred.await(toolInput),
-          (input) =>
-            Effect.orDie(decodeToolJson(tool.parametersSchema as Tool.ParametersSchema<T>)(input)) as Effect.Effect<
-              Tool.Parameters<T>,
-              never,
-              ParametersDecodingServices<T>
-            >
-        ),
-        result: Effect.flatMap(Deferred.await(toolResult), (result) => decodeSuccess(tool, result))
+        input: Effect.flatMap(Deferred.await(toolInput), decodeParameters(tool)),
+        result: Effect.flatMap(Deferred.await(toolResult), (result) => successOf(tool, result))
       }),
       callTool,
       readResource: (uri) =>
@@ -730,16 +686,6 @@ export const run = <A, E, R>(
 ): Effect.Effect<void, E, Exclude<R, Scope.Scope> | McpAppView> =>
   Effect.flatMap(McpAppView, (view) => view.run(program))
 
-// A tool schema's JSON codec keeps the schema's own service requirements.
-const decodeToolJson = <S extends Schema.Constraint>(
-  schema: S
-): (input: unknown) => Effect.Effect<S["Type"], Schema.SchemaError, S["DecodingServices"]> =>
-  Schema.decodeUnknownEffect(Schema.toCodecJson(schema))
-const encodeToolJson = <S extends Schema.Constraint>(
-  schema: S
-): (input: unknown) => Effect.Effect<unknown, Schema.SchemaError, S["EncodingServices"]> =>
-  Schema.encodeUnknownEffect(Schema.toCodecJson(schema))
-
 // The host is trusted and the schemas are shared with the server, so a mismatch is a defect.
 const orDie = <A, E, R>(decode: (input: unknown) => Effect.Effect<A, E, R>) => (input: unknown) =>
   Effect.orDie(decode(input))
@@ -748,6 +694,21 @@ const decodeReadResourceResult = orDie(Schema.decodeUnknownEffect(McpSchema.Read
 const decodeImplementation = Schema.decodeUnknownSync(McpSchema.Implementation)
 const encodeContentBlock = orDie(Schema.encodeUnknownEffect(McpSchema.ContentBlock))
 const encodeContentBlocks = orDie(Schema.encodeUnknownEffect(Schema.Array(McpSchema.ContentBlock)))
+
+// Tool values travel as JSON. `Parameters<T>` and `Success<T>` are the schemas' `Type`, which
+// TypeScript cannot see for a generic `T`, so the codecs are asserted once here.
+const decodeParameters = <T extends Tool.Any>(tool: T) =>
+  orDie(Schema.decodeUnknownEffect(Schema.toCodecJson(tool.parametersSchema))) as (
+    input: unknown
+  ) => Effect.Effect<Tool.Parameters<T>, never, Tool.ParametersSchema<T>["DecodingServices"]>
+const encodeParameters = <T extends Tool.Any>(tool: T) =>
+  orDie(Schema.encodeUnknownEffect(Schema.toCodecJson(tool.parametersSchema))) as (
+    params: Tool.Parameters<T>
+  ) => Effect.Effect<unknown, never, Tool.ParametersSchema<T>["EncodingServices"]>
+const decodeSuccess = <T extends Tool.Any>(tool: T) =>
+  orDie(Schema.decodeUnknownEffect(Schema.toCodecJson(tool.successSchema))) as (
+    input: unknown
+  ) => Effect.Effect<Tool.Success<T>, never, Tool.SuccessSchema<T>["DecodingServices"]>
 
 const argumentsOf = (params: unknown): Readonly<Record<string, unknown>> =>
   Predicate.isReadonlyObject(params) && Predicate.isReadonlyObject(params.arguments) ? params.arguments : {}
