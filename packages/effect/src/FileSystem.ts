@@ -153,11 +153,11 @@ export interface FileSystem {
    * that the filter excludes, matched against paths relative to `root`. Rules
    * never see the `.` entry, so `glob(".")` returns `"."` whatever the
    * filter. It only removes results: an inclusion never restores a path
-   * dropped by the pattern, `dot` or the symbolic link rules. A directory excluded by a `barrier` rule is never
-   * read. Any other excluded directory is skipped only when its contents
-   * inherit an exclusion and no inclusion after that exclusion could match
-   * inside it. Rules see each entry's own type, so a `directoryOnly` rule
-   * never matches a link to a directory.
+   * dropped by the pattern, `dot` or the symbolic link rules. A directory
+   * excluded by a `barrier` rule is never read. Any other excluded directory
+   * is skipped only when its contents inherit an exclusion and no inclusion
+   * after that exclusion could match inside it. Rules see each entry's own
+   * type, so a `directoryOnly` rule never matches a link to a directory.
    *
    * **Gotchas**
    *
