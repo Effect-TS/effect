@@ -1,0 +1,18 @@
+Port 22
+HostKey /etc/ssh/ssh_host_ed25519_key
+AuthorizedKeysFile /etc/ssh/authorized_keys
+PermitRootLogin no
+PasswordAuthentication no
+KbdInteractiveAuthentication no
+StrictModes no
+Subsystem echo /bin/cat
+AllowTcpForwarding yes
+AllowStreamLocalForwarding yes
+AllowAgentForwarding yes
+MaxStartups 200
+# Above the default of 10, so tests can run many sessions on one connection.
+MaxSessions 200
+PerSourcePenalties no
+# Probe idle sessions every second, so clients must answer keepalive requests.
+ClientAliveInterval 1
+LogLevel ERROR

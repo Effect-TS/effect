@@ -54,6 +54,12 @@ export * as NodeFileSystem from "./NodeFileSystem.ts"
 export * as NodeHttpCompression from "./NodeHttpCompression.ts"
 
 /**
+ * @stability experimental
+ * @since 4.0.0
+ */
+export * as NodeOpenSsh from "./NodeOpenSsh.ts"
+
+/**
  * @stability unstable
  * @since 4.0.0
  */
