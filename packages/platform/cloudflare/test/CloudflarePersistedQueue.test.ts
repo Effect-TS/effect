@@ -4,7 +4,7 @@ import { armAlarm, type EntityAlarm } from "@effect/platform-cloudflare/internal
 import { makeQueueRuntime, type QueueRuntime } from "@effect/platform-cloudflare/internal/queueRuntime"
 import { earliestLeaseExpiry } from "@effect/platform-cloudflare/internal/queueStorage"
 import { assert, describe, it } from "@effect/vitest"
-import { Clock, Effect, Fiber, Latch, Layer, Schema } from "effect"
+import { Clock, Effect, Fiber, Latch, Layer, Schedule, Schema } from "effect"
 import * as PersistedQueueTest from "effect-test/persistence/PersistedQueueTest"
 import { PersistedQueue } from "effect/persistence"
 import { DatabaseSync } from "node:sqlite"
@@ -187,6 +187,33 @@ describe("CloudflarePersistedQueue", () => {
     }).pipe(Effect.provide(namespace.layer))
   })
 
+  // A broken take RPC is retried by the Worker with the same taker id.
+  it.effect("a retried take replaces the waiting take of its taker", () => {
+    const namespace = new FakeQueueNamespace()
+    return Effect.gen(function*() {
+      const runtime = namespace.getByName(objectName("retried-wait"))
+      void runtime.take("taker", 10, 500)
+      const retried = runtime.take("taker", 10, 500)
+      yield* Effect.promise(() => runtime.offer("a", "\"first\""))
+      yield* Effect.promise(() => runtime.offer("b", "\"second\""))
+      assert.strictEqual((yield* Effect.promise(() => retried)).id, "a")
+      // No stale waiter leased "b" to a taker that will never handle it.
+      assert.strictEqual((yield* takeNow(runtime, "other"))?.id, "b")
+    })
+  })
+
+  it.effect("a retried take returns the item already leased to its taker", () => {
+    const namespace = new FakeQueueNamespace()
+    return Effect.gen(function*() {
+      const runtime = namespace.getByName(objectName("retried-lease"))
+      yield* Effect.promise(() => runtime.offer("a", "\"first\""))
+      yield* Effect.promise(() => runtime.offer("b", "\"second\""))
+      const first = yield* Effect.promise(() => runtime.take("taker", 10, 500))
+      const retried = yield* Effect.promise(() => runtime.take("taker", 10, 500))
+      assert.deepStrictEqual({ ...retried }, { ...first })
+    })
+  })
+
   it.effect("requeues a failed item behind later offers", () => {
     const namespace = new FakeQueueNamespace()
     return Effect.gen(function*() {
@@ -202,6 +229,28 @@ describe("CloudflarePersistedQueue", () => {
       const retried = yield* Effect.promise(() => runtime.take("taker-3", 10, 500))
       assert.strictEqual(retried.id, "a")
     })
+  })
+
+  it.effect("a failed item waits out its retry delay on the object instead of in take", () => {
+    const namespace = new FakeQueueNamespace()
+    return Effect.gen(function*() {
+      const queue = yield* PersistedQueue.make({
+        name: "backoff",
+        schema: Schema.String,
+        retrySchedule: Schedule.spaced("1 minute")
+      })
+      yield* queue.offer("bad", { id: "a" })
+      yield* Effect.flip(queue.take(() => Effect.fail("boom")))
+      yield* queue.offer("fresh", { id: "b" })
+      // The retry stays hidden for its delay, so the fresh item is delivered now.
+      const early = yield* takeNow(namespace.getByName(objectName("backoff")), "early")
+      assert.strictEqual(early?.id, "b")
+
+      namespace.now = 60_000
+      yield* Effect.promise(() => namespace.fireDueAlarms())
+      // The delay has passed, so take delivers the retry without waiting again.
+      assert.strictEqual(yield* queue.take((value) => Effect.succeed(value)), "bad")
+    }).pipe(Effect.provide(namespace.layer))
   })
 
   it.effect("redelivers a leased item after a crash once the lease expires", () => {
