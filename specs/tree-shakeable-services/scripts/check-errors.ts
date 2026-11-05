@@ -42,10 +42,15 @@ const expectations: Record<string, ReadonlyArray<string>> = {
     `Type '"effect/FileSystem/rename" | "effect/FileSystem/stat" | "effect/FileSystem/utimes"' is not assignable to type 'never'`
   ],
   "wrong-self.ts": [
-    `"Self lacks the identifier of": "effect/FileSystem/writeFile"`,
-    `"Shape differs from the members' shape at": "writeFile"`,
-    `"Annotate the declaration: Context.Operations<Self, Shape>"`,
+    `is not assignable to parameter of type '"Self lacks the identifier of \\"effect/FileSystem/writeFile\\""'`,
+    `is not assignable to parameter of type '"Shape differs from the members' shape at \\"writeFile\\""'`,
+    `is not assignable to parameter of type '"Give the record its identifier: Context.Operations<Self, Shape>()(key, members)"'`,
     `Expected 0 arguments, but got 1`
+  ],
+  "branded.ts": [
+    `Type '"test/Legacy/readFile" & Legacy' is not assignable to type 'never'`,
+    `Type 'Layer<"test/Legacy/readFile" & Legacy, never, never>' is not assignable to type 'Layer<Legacy, never, never>'`,
+    `Type '"test/Legacy/writeFile" & Legacy' is not assignable to type 'never'`
   ],
   "value-shape.ts": [`Expected 0 arguments, but got 1`, `must have a '[Symbol.iterator]()' method`],
   "subset-not-full.ts": [`Type 'FileSystem' is not assignable to type 'ReadOnly'`],

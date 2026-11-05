@@ -28,11 +28,13 @@ export const scoped: Effect.Effect<
 export const stream: Stream.Stream<Uint8Array, FileSystem.FileSystemError, "effect/FileSystem/stream"> = FileSystem
   .stream("a.txt")
 
-// An operation is a key: its identifier is its key string and its shape is the implementation type.
-export const asKey: Context.Key<
+// An operation is a slot: its identifier is its key string and its shape is the implementation type. It is not a
+// `Context.Key`, which is a slot that is also an Effect.
+export const asSlot: Context.Slot<
   "effect/FileSystem/readFile",
   (path: string) => Effect.Effect<Uint8Array, FileSystem.FileSystemError>
 > = FileSystem.readFile
+export const recordAsKey: Context.Key<FileSystem.FileSystem, FileSystem.Shape> = FileSystem.FileSystem
 export const keyString: "effect/FileSystem/readFile" = FileSystem.readFile.key
 export type ReadFileId = Context.Service.Identifier<typeof FileSystem.readFile> // "effect/FileSystem/readFile"
 export const readFileId: ReadFileId = "effect/FileSystem/readFile"
@@ -108,7 +110,7 @@ export const succeeded: Layer.Layer<FileSystem.FileSystem> = Layer.succeed(
 export const mocked: Layer.Layer<FileSystem.FileSystem> = Layer.mock(FileSystem.FileSystem, {
   readFile: () => Effect.succeed(new Uint8Array())
 })
-export const members: Context.Key<any, FileSystem.Shape["readFile"]> = FileSystem.FileSystem.members.readFile
+export const members: Context.Slot<any, FileSystem.Shape["readFile"]> = FileSystem.FileSystem.members.readFile
 
 // Twenty operations: the inferred requirement lists them all.
 export const twenty: Effect.Effect<
@@ -225,7 +227,7 @@ export const fromFileUrl = Context.Operation<(url: URL) => Effect.Effect<string,
 const pathMembers = { sep, join, fromFileUrl }
 export type Path = Context.Operations.Identifier<typeof pathMembers>
 export interface PathShape extends Context.Operations.Shape<typeof pathMembers> {}
-export const Path: Context.Operations<Path, PathShape> = Context.Operations("test/Path", pathMembers)
+export const Path = Context.Operations<Path, PathShape>()("test/Path", pathMembers)
 export const pathIdentity: Path = "test/Path/fromFileUrl" as string | "test/Path/fromFileUrl"
 export const separator: Effect.Effect<string, never, string> = sep
 export const converted: Effect.Effect<string, Error, "test/Path/fromFileUrl"> = fromFileUrl(new URL("file:///a"))
@@ -253,10 +255,7 @@ export const pathFromMembers: Layer.Layer<Path> = Layer.mergeAll(
 const platformMembers = { fs: FileSystem.ReadOnly, terminal: Terminal.Terminal }
 export type Platform = Context.Operations.Identifier<typeof platformMembers>
 export interface PlatformShape extends Context.Operations.Shape<typeof platformMembers> {}
-export const Platform: Context.Operations<Platform, PlatformShape> = Context.Operations(
-  "test/Platform",
-  platformMembers
-)
+export const Platform = Context.Operations<Platform, PlatformShape>()("test/Platform", platformMembers)
 export const platformIdentity: Platform = "effect/Terminal/rows" as FileSystem.ReadOnly | Terminal.Terminal
 export const platformUnderParts: Effect.Effect<PlatformShape, never, never> = Platform.pipe(
   Effect.provide(readOnlyFromMembers),
@@ -268,6 +267,20 @@ export const Inferred = Context.Operations("test/Inferred", {
   readFile: FileSystem.readFile,
   exists: FileSystem.exists
 })
+// With the identifier declared and the shape left to the members: the two-declaration form.
+const namedMembers = { readFile: FileSystem.readFile, exists: FileSystem.exists }
+export type Named = Context.Operations.Identifier<typeof namedMembers>
+export const Named = Context.Operations<Named>()("test/Named", namedMembers)
+export const namedShape: Context.Service.Shape<typeof Named> = {
+  readFile: () => Effect.succeed(new Uint8Array()),
+  exists: () => Effect.succeed(true)
+}
+export const namedLayer: Layer.Layer<Named> = Layer.mergeAll(nodeReadFile, nodeExists)
+// The annotated form still works for the inferred identity and a shape interface over the same members.
+export const Annotated: Context.Operations<Named, Context.Operations.Shape<typeof namedMembers>> = Context.Operations(
+  "test/Annotated",
+  namedMembers
+)
 export const inferredIdentity: Context.Service.Identifier<typeof Inferred> = "effect/FileSystem/exists" as
   | "effect/FileSystem/readFile"
   | "effect/FileSystem/exists"
@@ -286,10 +299,11 @@ export const inferredFromMembers: Layer.Layer<Context.Service.Identifier<typeof 
 export interface Legacy {
   readonly _: unique symbol
 }
-export const Legacy: Context.Operations<Legacy | FileSystem.ReadOnly, FileSystem.ReadOnlyShape> = Context.Operations(
-  "test/Legacy",
-  { exists: FileSystem.exists, readFile: FileSystem.readFile, stat: FileSystem.stat }
-)
+export const Legacy = Context.Operations<Legacy | FileSystem.ReadOnly, FileSystem.ReadOnlyShape>()("test/Legacy", {
+  exists: FileSystem.exists,
+  readFile: FileSystem.readFile,
+  stat: FileSystem.stat
+})
 export const legacyLayer: Layer.Layer<Legacy | FileSystem.ReadOnly> = Layer.succeed(
   Legacy,
   {} as FileSystem.ReadOnlyShape
