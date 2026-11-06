@@ -102,11 +102,25 @@ export const invocationFromClient = (
  * @internal
  */
 export const listForClient = <A>(
-  list: (invocation: McpCore.McpInvocation) => Effect.Effect<A, McpCore.RequestRejected>
+  list: (invocation: McpCore.McpInvocation) => Effect.Effect<A, McpCore.RequestRejected>,
+  cursor?: string | undefined
 ): Effect.Effect<A, ProtocolError, PublicMcpSchema.McpServerClient> =>
-  PublicMcpSchema.McpServerClient.use((request) =>
-    list(invocationFromClient(request)).pipe(Effect.mapError(ProtocolError.fromFeature))
+  Effect.andThen(
+    validateListCursor(cursor),
+    PublicMcpSchema.McpServerClient.use((request) =>
+      list(invocationFromClient(request)).pipe(Effect.mapError(ProtocolError.fromFeature))
+    )
   )
+
+/**
+ * Rejects continuation tokens because core lists return all entries without issuing cursors.
+ *
+ * @internal
+ */
+export const validateListCursor = (cursor: string | undefined): Effect.Effect<void, ProtocolError> =>
+  cursor === undefined
+    ? Effect.void
+    : Effect.fail(new ProtocolError({ code: PublicMcpSchema.INVALID_PARAMS_ERROR_CODE, message: "Invalid cursor" }))
 
 /**
  * @internal

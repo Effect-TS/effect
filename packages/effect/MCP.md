@@ -115,6 +115,26 @@ one further second to drain its buffered output before closing the writer. See M
 [cancellation](https://modelcontextprotocol.io/specification/2026-07-28/basic/patterns/cancellation)
 and [graceful subscription closure](https://modelcontextprotocol.io/specification/2026-07-28/basic/patterns/subscriptions#graceful-closure).
 
+## Pagination and sampling validation
+
+Core tool, resource, resource-template, and prompt lists return a single complete page without
+`nextCursor`. Supplying any cursor, including an empty string, returns `-32602 Invalid params`.
+This follows [pagination error handling](https://modelcontextprotocol.io/specification/2026-07-28/server/utilities/pagination#error-handling)
+and applies to every supported revision.
+
+Sampling histories must pair each assistant `tool_use` round with the immediately following
+user message. That message contains only `tool_result` blocks, exactly one for each tool-use ID.
+Unmatched, duplicated, or misplaced results are rejected, as are histories ending before the
+pending results. A later completed round may reuse an ID. See the sampling tool flow in
+[2026](https://modelcontextprotocol.io/specification/2026-07-28/client/sampling#tool-use-and-result-balance) and
+[2025](https://modelcontextprotocol.io/specification/2025-11-25/client/sampling#tool-use-and-result-balance).
+
+On legacy connections, `McpReverseClient.createMessage` rejects an invalid outgoing history
+locally with `McpReverseOperationError`. Modern `InputRequired` sampling requests instead fail
+the originating tool or prompt request with a sanitized `-32603 Internal error` (HTTP 500).
+Client capability errors retain precedence. These checks apply to outgoing request histories;
+a standalone sampling response may still contain tool uses to execute in the next round.
+
 ## Custom transports
 
 Use `McpServer.layerSerialization` with a socket `RpcServer.Protocol` and
@@ -427,7 +447,7 @@ class CurrentUser extends Context.Service<CurrentUser, { readonly id: string }>(
 class Unauthorized extends Schema.Error<Unauthorized>("Unauthorized")({
   ...McpSchema.McpErrorBase.fields,
   _tag: Schema.tag("Unauthorized"),
-  code: Schema.tag(-32001)
+  code: Schema.tag(10001)
 }) {}
 
 const WhoAmI = Tool.make("WhoAmI", { success: Schema.String, dependencies: [CurrentUser] })
@@ -477,8 +497,10 @@ A few rules to know:
   an `HttpRouter` requirement, so an existing `HttpRouter.middleware` that provides `CurrentUser`
   keeps working, and so does its 401 response.
 - Middleware failures must be `McpErrorBase` values and are sent as JSON-RPC errors with their
-  `code`, `message` and `data`, never as tool results. Use codes from the implementation-defined
-  range (-32000 to -32019). Defects are logged, reported and sent as `InternalError`.
+  `code`, `message` and `data`, never as tool results. New application codes should be outside
+  the reserved range -32768 through -32000; the example uses `10001`. Existing numeric codes
+  remain unchanged for compatibility. See MCP [error codes](https://modelcontextprotocol.io/specification/2026-07-28/basic#error-codes).
+  Defects are logged, reported and sent as `InternalError`.
 - Resource and prompt handlers have no `dependencies` option: everything their handler reads is
   request-level. Read construction-time services in `Layer.unwrap` and close over them:
 

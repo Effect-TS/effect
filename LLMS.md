@@ -434,6 +434,9 @@ responses.
 - **[Reporting progress from an MCP tool](./ai-docs/src/71_ai/45_mcp-progress.ts)**:
   Report increasing progress for the calling request while processing a batch
   of documents. The server stops progress when that request ends.
+- **[Continuing an existing MCP sampling tool loop](./ai-docs/src/71_ai/46_mcp-sampling-history.ts)**:
+  Pair assistant tool uses with their matching results before requesting the
+  next sampling turn. Sampling remains supported for existing integrations.
 
 ## Building distributed applications with cluster
 

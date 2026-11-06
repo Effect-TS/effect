@@ -23,6 +23,7 @@ import type * as PublicMcpProtocol from "../../McpProtocol.ts"
 import * as PublicMcpSchema from "../../McpSchema.ts"
 import * as McpCore from "../mcpCore.ts"
 import * as McpProtocol from "../mcpProtocol.ts"
+import { samplingMessageError } from "../mcpSampling.ts"
 import * as McpSchema from "../mcpSchema/v2026_07_28.ts"
 import * as McpSkills from "../mcpSkills.ts"
 
@@ -382,22 +383,29 @@ export const makeHandlers = (
       requestState: request.requestState
     }))
   })
-  const validateInputRequestCapabilities = Effect.fnUntraced(function*(
+  const validateInputRequests = Effect.fnUntraced(function*(
     inputRequired: McpCore.InputRequiredFields,
     capabilities: McpCore.NegotiatedProtocolProfile["clientCapabilities"]
   ) {
     const requiredCapabilities = requiredCapabilitiesForInputRequests(inputRequired.inputRequests, capabilities)
-    if (Object.keys(requiredCapabilities).length === 0) {
-      return
+    if (Object.keys(requiredCapabilities).length > 0) {
+      return yield* failWithHttpStatus(
+        400,
+        new McpProtocol.ProtocolError({
+          code: McpSchema.MISSING_REQUIRED_CLIENT_CAPABILITY,
+          message: "The request requires client capabilities that were not declared",
+          data: { requiredCapabilities }
+        })
+      )
     }
-    return yield* failWithHttpStatus(
-      400,
-      new McpProtocol.ProtocolError({
-        code: McpSchema.MISSING_REQUIRED_CLIENT_CAPABILITY,
-        message: "The request requires client capabilities that were not declared",
-        data: { requiredCapabilities }
-      })
-    )
+    for (const request of Object.values(inputRequired.inputRequests ?? {})) {
+      if (request.method === "sampling/createMessage" && samplingMessageError(request.params) !== undefined) {
+        return yield* failWithHttpStatus(
+          500,
+          new McpProtocol.ProtocolError({ code: PublicMcpSchema.INTERNAL_ERROR_CODE, message: "Internal error" })
+        )
+      }
+    }
   })
   return ({
     "subscriptions/listen": Effect.fnUntraced(function*(
@@ -525,8 +533,9 @@ export const makeHandlers = (
       return yield* decodeDiscoverResult(result)
     }, Effect.catch(projectError)),
     "resources/list": Effect.fnUntraced(function*(
-      _request: typeof McpSchema.ListResources.payloadSchema.Type
+      request: typeof McpSchema.ListResources.payloadSchema.Type
     ) {
+      yield* McpProtocol.validateListCursor(request.cursor)
       const invocation = yield* getInvocation
       const resources = yield* core.resources.list(invocation)
       const result = yield* projectCompleteResult({
@@ -536,8 +545,9 @@ export const makeHandlers = (
       return yield* decodeListResourcesResult(result)
     }, Effect.catch(projectError)),
     "resources/templates/list": Effect.fnUntraced(function*(
-      _request: typeof McpSchema.ListResourceTemplates.payloadSchema.Type
+      request: typeof McpSchema.ListResourceTemplates.payloadSchema.Type
     ) {
+      yield* McpProtocol.validateListCursor(request.cursor)
       const invocation = yield* getInvocation
       const resourceTemplates = yield* core.resources.listTemplates(invocation)
       const result = yield* projectCompleteResult({
@@ -564,7 +574,7 @@ export const makeHandlers = (
       return yield* decodeResourceOutcome(result)
     }, Effect.catch(projectError)),
     "prompts/list": Effect.fnUntraced(function*(
-      _request: typeof McpSchema.ListPrompts.payloadSchema.Type
+      request: typeof McpSchema.ListPrompts.payloadSchema.Type
     ) {
       const presence = yield* context.registrationPresence
       if (!presence.prompts) {
@@ -576,6 +586,7 @@ export const makeHandlers = (
           })
         )
       }
+      yield* McpProtocol.validateListCursor(request.cursor)
       const invocation = yield* getInvocation
       const prompts = yield* core.prompts.list(invocation)
       const projectedPrompts = yield* Effect.forEach(prompts, projectPrompt)
@@ -589,7 +600,7 @@ export const makeHandlers = (
       const invocation = yield* getInputInvocation(request)
       const outcome = yield* core.prompts.get(request.name, request.arguments ?? {}, invocation)
       if (outcome._tag === "InputRequired") {
-        yield* validateInputRequestCapabilities(outcome, invocation.protocol.clientCapabilities)
+        yield* validateInputRequests(outcome, invocation.protocol.clientCapabilities)
         const encodedServerInfo = yield* encodeImplementation(context.serverInfo)
         return yield* decodePromptOutcome(projectInputRequired(outcome, encodedServerInfo))
       }
@@ -630,8 +641,9 @@ export const makeHandlers = (
       return yield* decodeCompleteResult(result)
     }, Effect.catch(projectError)),
     "tools/list": Effect.fnUntraced(function*(
-      _request: typeof McpSchema.ListTools.payloadSchema.Type
+      request: typeof McpSchema.ListTools.payloadSchema.Type
     ) {
+      yield* McpProtocol.validateListCursor(request.cursor)
       const invocation = yield* getInvocation
       const tools = yield* core.tools.list(invocation)
       const projectedTools = yield* Effect.forEach(tools, projectTool)
@@ -693,7 +705,7 @@ export const makeHandlers = (
           )
         )
       if (outcome._tag === "InputRequired") {
-        yield* validateInputRequestCapabilities(outcome, invocation.protocol.clientCapabilities)
+        yield* validateInputRequests(outcome, invocation.protocol.clientCapabilities)
         return yield* projectCallToolOutcome(outcome, context.serverInfo)
       }
       const toolResult = outcome.value

@@ -479,8 +479,9 @@ export interface Middleware<Config extends MiddlewareConfig> {
  *
  * Failures must be `McpErrorBase` values. A middleware failure is sent as a
  * JSON-RPC error with its `code`, `message` and `data`, never as a tool
- * result. Pick custom codes from the implementation-defined range
- * (-32000 to -32019): any numeric `code` is sent as is. Defects are logged,
+ * result. New application codes should be outside the reserved range
+ * -32768 through -32000, following MCP [error codes](https://modelcontextprotocol.io/specification/2026-07-28/basic#error-codes).
+ * Existing numeric codes are still sent unchanged for compatibility. Defects are logged,
  * reported to the `ErrorReporter` and sent as `InternalError("Internal error")`.
  * Interruption propagates.
  *
@@ -500,7 +501,7 @@ export interface Middleware<Config extends MiddlewareConfig> {
  * class Unauthorized extends Schema.Error<Unauthorized>("Unauthorized")({
  *   ...McpSchema.McpErrorBase.fields,
  *   _tag: Schema.tag("Unauthorized"),
- *   code: Schema.tag(-32001)
+ *   code: Schema.tag(10001)
  * }) {}
  *
  * const WhoAmI = Tool.make("WhoAmI", { success: Schema.String, dependencies: [CurrentUser] })
@@ -2682,6 +2683,10 @@ type RegistrationServices<RR> = Exclude<McpRequest.Without<RR>, McpServer>
  * The returned layer forks `run(options)` in the layer scope and merges
  * `McpServer.layer`, so registration layers can use the `McpServer` service
  * while the server is running.
+ * Core tool, resource, template, and prompt lists return all visible entries
+ * in one page. Supplying a cursor returns `InvalidParams`, since the server
+ * never issues continuation cursors. This follows MCP
+ * [pagination error handling](https://modelcontextprotocol.io/specification/2026-07-28/server/utilities/pagination#error-handling).
  *
  * Pass registration layers as `registrations` to build them before the server
  * reads its first request. The transport discharges the request-level
