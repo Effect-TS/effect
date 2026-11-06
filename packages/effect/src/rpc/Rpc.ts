@@ -792,11 +792,8 @@ export type ExcludeProvides<Env, R extends Any, Tag extends string> = Exclude<
  *
  * Streaming RPCs may return a stream or an effect that produces a queue. Other
  * RPCs return an effect that succeeds with the success value or a deferred
- * success value.
- *
- * A handler may also fail with the errors of the RPC's middleware, which the
- * RPC exit schema already encodes. If the handler returns a `Deferred` to
- * complete later, the `Deferred` can still only fail with the RPC's own error.
+ * success value. Handlers may also fail with the errors of the RPC's server
+ * middleware, but a returned `Deferred` can only fail with the RPC's own error.
  *
  * @stability unstable
  * @category utility types
