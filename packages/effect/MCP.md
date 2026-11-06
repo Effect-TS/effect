@@ -130,8 +130,10 @@ pending results. A later completed round may reuse an ID. See the sampling tool 
 [2025](https://modelcontextprotocol.io/specification/2025-11-25/client/sampling#tool-use-and-result-balance).
 
 On legacy connections, `McpReverseClient.createMessage` rejects an invalid outgoing history
-locally with `McpReverseOperationError`. Modern `InputRequired` sampling requests instead fail
-the originating tool or prompt request with a sanitized `-32603 Internal error` (HTTP 500).
+locally with `McpReverseOperationError`. Legacy `InputRequired` handling validates the entire
+round before sending any client input request, including roots or elicitation requests that
+precede sampling. Modern `InputRequired` sampling requests instead fail the originating tool,
+prompt, or resource request with a sanitized `-32603 Internal error` (HTTP 500).
 Client capability errors retain precedence. These checks apply to outgoing request histories;
 a standalone sampling response may still contain tool uses to execute in the next round.
 

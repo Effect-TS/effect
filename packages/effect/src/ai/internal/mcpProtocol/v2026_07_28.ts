@@ -560,7 +560,7 @@ export const makeHandlers = (
       const invocation = yield* getInputInvocation(request)
       const outcome = yield* core.resources.read(request.uri, invocation)
       if (outcome._tag === "InputRequired") {
-        yield* validateInputRequestCapabilities(outcome, invocation.protocol.clientCapabilities)
+        yield* validateInputRequests(outcome, invocation.protocol.clientCapabilities)
         const encodedServerInfo = yield* encodeImplementation(context.serverInfo)
         return yield* decodeResourceOutcome(projectInputRequired(outcome, encodedServerInfo))
       }
