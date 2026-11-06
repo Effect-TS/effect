@@ -3506,7 +3506,9 @@ const getRuntimeType = (input: unknown): Type => input === null ? "null" : Array
  *
  * @internal
  */
-export const requiresOwnProperty = (key: PropertyKey): boolean => Object.hasOwn(Object.prototype, key)
+export const requiresOwnProperty = (key: PropertyKey): boolean =>
+  // Keep __proto__ own-only when its legacy accessor is removed, e.g. by Node's --disable-proto=delete.
+  key === "__proto__" || Object.hasOwn(Object.prototype, key)
 
 // Check own properties first so the name rule only runs for inherited keys.
 const hasPropertySignature = (input: object, key: PropertyKey): boolean =>
