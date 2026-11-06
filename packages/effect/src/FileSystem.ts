@@ -166,7 +166,8 @@ export interface FileSystem {
    *
    * A single absolute pattern, such as `"/abs/dir/**"`, is the one exception
    * to root-relative results: it ignores `root` and returns absolute paths,
-   * and `dir/**` includes `dir` itself. Everywhere else patterns are relative
+   * and `dir/**` includes `dir` itself, as `"/"` and `"/**"` include the
+   * filesystem root. Everywhere else patterns are relative
    * to `root`: an absolute pattern inside a list, after `!`, in
    * `PathFilter.select` or `PathFilter.restrict`, as well as a `..` segment,
    * an escaped `/` or a UNC path, makes the effect die.

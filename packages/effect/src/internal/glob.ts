@@ -846,7 +846,19 @@ export const make = (
   if (absolute === undefined) {
     return walk(fs, filter, options?.root ?? "")
   }
-  return Effect.map(walk(fs, filter, absolute.root), Arr.map((path) => join(absolute.root, path)))
+  const paths = Effect.map(walk(fs, filter, absolute.root), Arr.map((path) => join(absolute.root, path)))
+  if (!absolute.includesRoot) {
+    return paths
+  }
+  // The walk never returns its own root, so look the filesystem root up
+  return Effect.zipWith(
+    fs.stat(absolute.root).pipe(
+      Effect.as(true),
+      Effect.catchIf(isMissing, () => Effect.succeed(false))
+    ),
+    paths,
+    (exists, paths) => exists ? [absolute.root, ...paths] : paths
+  )
 }
 
 // The name a pattern segment matches literally, or `undefined` if it has
@@ -868,24 +880,31 @@ const literalSegment = (segment: string): string | undefined => {
 
 // Splits a positive absolute string pattern into the directory above its last
 // leading literal segment, which becomes the walk's root, and the rest, so
-// that `dir/**` still returns `dir`. Every other input is relative to `root`;
-// UNC patterns, `..` segments and absolute rules stay defects.
+// that `dir/**` still returns `dir`. `includesRoot` marks a pattern that also
+// matches the filesystem root itself, such as `/` or `/**`. Every other input
+// is relative to `root`; UNC patterns, `..` segments, escaped `/` and
+// absolute rules stay defects.
 const splitAbsolute = (
   input: PathFilter.Input
-): { readonly root: string; readonly pattern: string } | undefined => {
+): { readonly root: string; readonly pattern: string; readonly includesRoot: boolean } | undefined => {
   if (typeof input !== "string" || !isAbsolute(input) || isUnc(input)) {
     return undefined
   }
   const top = input.startsWith("/") ? "/" : input.slice(0, 3)
   const segments = splitSegments(input.slice(top.length))
   const literals: Array<string> = []
+  let first = -1
   let last = -1
   for (let i = 0; i < segments.length; i++) {
     if (segments[i] === "" || segments[i] === ".") {
       continue
     }
+    if (first === -1) {
+      first = i
+    }
+    // a decoded `..` or `/` stays in the rest, whose rule then rejects it
     const literal = literalSegment(segments[i])
-    if (literal === undefined || literal === "..") {
+    if (literal === undefined || literal === ".." || literal.includes("/")) {
       break
     }
     if (last !== -1) {
@@ -893,10 +912,28 @@ const splitAbsolute = (
     }
     last = i
   }
-  if (last === -1) {
-    return { root: top, pattern: segments.join("/") }
+  const rest = first === -1 ? [] : segments.slice(last === -1 ? first : last)
+  return {
+    root: top + literals.join("/"),
+    pattern: relativeRest(rest),
+    includesRoot: last === -1 &&
+      rest.every((segment, i) => segment === "**" || (i === rest.length - 1 && (segment === "" || segment === ".")))
   }
-  return { root: top + literals.join("/"), pattern: segments.slice(last).join("/") }
+}
+
+// Joins the rest of an absolute pattern so the `PathFilter.Input` string
+// rules read it as written: a leading `!` or drive-shaped name is literal.
+const relativeRest = (segments: ReadonlyArray<string>): string => {
+  if (segments.length === 0) {
+    return ""
+  }
+  const [head, ...tail] = segments
+  const escaped = head.startsWith("!")
+    ? `\\${head}`
+    : head.length === 2 && drive.test(head)
+    ? `${head[0]}\\:`
+    : head
+  return [escaped, ...tail].join("/")
 }
 
 // The child names to probe, from any filter the paths must pass, or
