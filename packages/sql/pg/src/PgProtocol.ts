@@ -49,9 +49,18 @@ export interface Parser<A = Uint8Array | null> {
   readField: FieldReader<A> | undefined
 
   /**
+   * Receives an error other than `ParseError` thrown by `readField`. The
+   * `DataRow` is fully consumed, so the parser drops it and carries on with
+   * the next message. Without a handler such errors are terminal, like parse
+   * errors. Settable, like `readField`.
+   */
+  onFieldError: ((error: unknown) => void) | undefined
+
+  /**
    * Decodes a chunk and returns every complete message. A partial message is
-   * retained for the next call. Parse and field-reader errors are terminal and
-   * discard messages decoded earlier in the same call.
+   * retained for the next call. Parse errors are terminal and discard
+   * messages decoded earlier in the same call, as are field-reader errors
+   * when no `onFieldError` handler is set.
    *
    * **Details**
    *
@@ -91,6 +100,8 @@ export const makeParser = <A = Uint8Array | null>(options?: {
    * out as a view, which is the default.
    */
   readonly readField?: FieldReader<A> | undefined
+  /** The initial `Parser.onFieldError`. */
+  readonly onFieldError?: ((error: unknown) => void) | undefined
 }): Parser<A> => {
   const maxMessageSize = options?.maxMessageSize ?? defaultMaxMessageSize
   const reader = new Reader()
@@ -129,6 +140,7 @@ export const makeParser = <A = Uint8Array | null>(options?: {
 
   const parser: Parser<A> = {
     readField: options?.readField,
+    onFieldError: options?.onFieldError,
     push(chunk) {
       const messages: Array<BackendMessage<A>> = []
       parser.pushEach(chunk, (message) => {
@@ -160,7 +172,17 @@ export const makeParser = <A = Uint8Array | null>(options?: {
           start = limit
           if (type === BackendType.DataRow) {
             // `buffer` always starts at byte 0 of `store`, so offsets index both.
-            onMessage(decodeDataRow<A>(buffer, store, 0, body, limit, parser.readField))
+            let row: DataRow<A>
+            try {
+              row = decodeDataRow<A>(buffer, store, 0, body, limit, parser.readField)
+            } catch (error) {
+              // `start` is already past the row, so the stream stays framed.
+              const onFieldError = parser.onFieldError
+              if (onFieldError === undefined || error instanceof ParseError) throw error
+              onFieldError(error)
+              continue
+            }
+            onMessage(row)
           } else {
             reader.reset(buffer, body, limit)
             const message = decodeBackend(type, reader)
