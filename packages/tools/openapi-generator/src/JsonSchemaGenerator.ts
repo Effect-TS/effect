@@ -19,7 +19,6 @@
  * @since 4.0.0
  */
 import * as Arr from "effect/Array"
-import * as JsonPointer from "effect/JsonPointer"
 import * as JsonSchema from "effect/JsonSchema"
 import * as Rec from "effect/Record"
 import * as Schema from "effect/Schema"
@@ -31,9 +30,9 @@ interface GenerateOptions {
   readonly multipartSchemaRefs?: MultipartSchemaRefs | undefined
   readonly includeSchemas?: ReadonlyArray<string> | undefined
   /**
-   * Name of the synthetic definition that `type: ["string", "integer"]`,
-   * `format: "int64"` schemas are redirected to. When set, those schemas are
-   * generated as a shared branded `bigint` codec.
+   * Name of the shared codec that `type: ["string", "integer"]`,
+   * `format: "int64"` schemas decode through. When set, those schemas are
+   * generated as bigints branded as `Int64`.
    */
   readonly int64Schema?: string | undefined
 }
@@ -87,9 +86,10 @@ function makeWithRepresentation() {
     const nonRecursiveReferences = generated.codeDocument.references.nonRecursives
     const recursiveReferences = Object.entries(generated.codeDocument.references.recursives)
 
-    const nonRecursives = nonRecursiveReferences.map(({ $ref, code }) =>
-      renderSchemaTypeAndRuntime($ref, code, typeOnly, options)
-    )
+    const nonRecursives = [
+      ...generated.int64Definitions,
+      ...nonRecursiveReferences.map(({ $ref, code }) => renderSchemaTypeAndRuntime($ref, code, typeOnly, options))
+    ]
 
     const recursiveDeclarations: Array<string> = []
     const recursives: Array<string> = []
@@ -113,14 +113,15 @@ function makeWithRepresentation() {
       )
 
       for (const [$ref, code] of recursiveReferences) {
+        const encoded = generated.encodedTypes.get($ref)
         if (recursivelyForwardReferenced.has($ref)) {
           const internalName = recursiveInternalNames.get($ref)!
-          recursiveDeclarations.push(renderRecursiveReferenceDeclaration($ref, code, internalName))
+          recursiveDeclarations.push(renderRecursiveReferenceDeclaration($ref, code, internalName, encoded))
           recursives.push(`const ${internalName} = ${code.runtime}`)
           continue
         }
 
-        recursives.push(renderSchemaTypeAndRuntime($ref, code, false, options))
+        recursives.push(renderSchemaTypeAndRuntime($ref, code, false, options, encoded))
       }
     }
 
@@ -128,7 +129,7 @@ function makeWithRepresentation() {
       renderSchemaTypeAndRuntime(name, generated.codeDocument.codes[i], typeOnly, options)
     )
 
-    return renderImportArtifacts(generated.codeDocument, !typeOnly, options) +
+    return renderImportArtifacts(generated.codeDocument, !typeOnly, generated.int64Definitions.length > 0) +
       render("recursive declarations", recursiveDeclarations) +
       render("non-recursive definitions", nonRecursives) +
       render("recursive definitions", recursives) +
@@ -148,9 +149,10 @@ function makeWithRepresentation() {
     const nonRecursiveReferences = generated.codeDocument.references.nonRecursives
     const recursiveReferences = Object.entries(generated.codeDocument.references.recursives)
 
-    const nonRecursives = nonRecursiveReferences.map(({ $ref, code }) =>
-      renderSchemaTypeAndRuntime($ref, code, false, options)
-    )
+    const nonRecursives = [
+      ...generated.int64Definitions,
+      ...nonRecursiveReferences.map(({ $ref, code }) => renderSchemaTypeAndRuntime($ref, code, false, options))
+    ]
 
     const recursivelyForwardReferenced = collectForwardReferencedRecursives(nonRecursiveReferences, recursiveReferences)
     const recursiveInternalNames = makeRecursiveInternalNameMap(
@@ -166,21 +168,22 @@ function makeWithRepresentation() {
     const recursives: Array<string> = []
 
     for (const [$ref, code] of recursiveReferences) {
+      const encoded = generated.encodedTypes.get($ref)
       if (recursivelyForwardReferenced.has($ref)) {
         const internalName = recursiveInternalNames.get($ref)!
-        recursiveDeclarations.push(renderRecursiveReferenceDeclaration($ref, code, internalName))
+        recursiveDeclarations.push(renderRecursiveReferenceDeclaration($ref, code, internalName, encoded))
         recursives.push(`const ${internalName} = ${code.runtime}`)
         continue
       }
 
-      recursives.push(renderSchemaTypeAndRuntime($ref, code, false, options))
+      recursives.push(renderSchemaTypeAndRuntime($ref, code, false, options, encoded))
     }
 
     const codes = generated.nameMap.map((name, i) =>
       renderSchemaTypeAndRuntime(name, generated.codeDocument.codes[i], false, options)
     )
 
-    return renderImportArtifacts(generated.codeDocument, true, options) +
+    return renderImportArtifacts(generated.codeDocument, true, generated.int64Definitions.length > 0) +
       render("recursive declarations", recursiveDeclarations) +
       render("non-recursive definitions", nonRecursives) +
       render("recursive definitions", recursives) +
@@ -194,6 +197,8 @@ function makeWithRepresentation() {
   ): {
     readonly nameMap: Array<string>
     readonly codeDocument: SchemaRepresentation.CodeDocument
+    readonly int64Definitions: ReadonlyArray<string>
+    readonly encodedTypes: ReadonlyMap<string, EncodedType>
   } | undefined {
     const nameMap: Array<string> = []
     const schemas: Array<JsonSchema.JsonSchema> = []
@@ -202,18 +207,6 @@ function makeWithRepresentation() {
       components,
       (js) => fromSchemaOpenApi(source, js).schema
     )
-    const int64 = options?.int64Schema
-    // The wire shape keeps example filtering consistent; the rendered code is replaced by `int64Code`.
-    const int64Definition: JsonSchema.JsonSchema = { type: ["string", "integer"], format: "int64" }
-    const int64WireNodes = new WeakSet<object>()
-    if (int64 !== undefined) {
-      // Recursive declarations are typed `Schema.Codec<T>`, which requires matching decoded and encoded
-      // types, so definitions in or reachable from a cycle keep the wire type.
-      for (const name of collectRecursivelyReachableDefinitions(definitions)) {
-        collectNodes(definitions[name], int64WireNodes)
-      }
-      Rec.assignProperty(definitions, int64, int64Definition)
-    }
 
     for (const [name, js] of Object.entries(store)) {
       nameMap.push(name)
@@ -239,8 +232,10 @@ function makeWithRepresentation() {
     const schemasWithExamples: Array<JsonSchema.JsonSchema> = []
     const preparedSchemas = new WeakMap<JsonSchema.JsonSchema, JsonSchema.JsonSchema>()
     const preparedOutputs = new WeakSet<JsonSchema.JsonSchema>()
+    const int64 = options?.int64Schema
     const importerOptions: SchemaRepresentation.FromJsonSchemaOptions = {
       patterns: "apply",
+      ...(int64 === undefined ? undefined : { includeAnnotationKey: (key: string) => key === int64Marker }),
       onEnter(js: JsonSchema.JsonSchema) {
         if (preparedOutputs.has(js)) return js
         const cached = preparedSchemas.get(js)
@@ -248,13 +243,8 @@ function makeWithRepresentation() {
 
         const out = { ...js }
         let transformed = { ...(options?.onEnter === undefined ? out : options.onEnter(out)) }
-        if (
-          int64 !== undefined && js !== int64Definition && !int64WireNodes.has(js) &&
-          isStringOrIntegerInt64(transformed)
-        ) {
-          // `default` and `examples` hold wire values, which do not match the decoded bigint annotations.
-          const { default: _default, examples: _examples, format: _format, type: _type, ...siblings } = transformed
-          transformed = { ...siblings, $ref: `#/$defs/${int64}` }
+        if (int64 !== undefined && isStringOrIntegerInt64(transformed)) {
+          transformed = { ...transformed, [int64Marker]: true }
         }
         preparedSchemas.set(js, transformed)
         preparedOutputs.add(transformed)
@@ -283,13 +273,32 @@ function makeWithRepresentation() {
       }
       rootSchemas = SchemaRepresentation.fromJsonSchemaMultiDocument(document, importerOptions)
     }
-    const codeDocument = SchemaRepresentation.toCodeDocument(
-      SchemaRepresentation.toRepresentations(Arr.map(rootSchemas, (schema) => schema.ast))
-    )
+    const representations = SchemaRepresentation.toRepresentations(Arr.map(rootSchemas, (schema) => schema.ast))
+    if (int64 === undefined) {
+      return {
+        nameMap,
+        codeDocument: SchemaRepresentation.toCodeDocument(representations),
+        int64Definitions: [],
+        encodedTypes: new Map()
+      }
+    }
+
+    const rewrite = makeInt64Rewrite(representations, int64, [...Object.keys(definitions), ...nameMap, int64])
+    const codeDocument = SchemaRepresentation.toCodeDocument(rewrite.decoded)
+    const encodedTypes = new Map<string, EncodedType>()
+    if (rewrite.encodedAliases.size > 0) {
+      const encodedDocument = SchemaRepresentation.toCodeDocument(rewrite.encoded)
+      for (const [identifier, alias] of rewrite.encodedAliases) {
+        const code = encodedDocument.references.recursives[identifier]
+        if (code !== undefined) encodedTypes.set(identifier, { alias, Type: code.Type })
+      }
+    }
 
     return {
       nameMap,
-      codeDocument
+      codeDocument,
+      int64Definitions: rewrite.isUsed() ? [renderInt64Definition(int64)] : [],
+      encodedTypes
     }
   }
 
@@ -310,95 +319,18 @@ function fromSchemaOpenApi(source: Source, jsonSchema: JsonSchema.JsonSchema) {
   }
 }
 
-const definitionRefPrefix = "#/$defs/"
-
-// Names of definitions that are part of a reference cycle or reachable from one.
-function collectRecursivelyReachableDefinitions(definitions: JsonSchema.Definitions): Set<string> {
-  const directRefs = new Map<string, Set<string>>()
-  for (const [name, schema] of Object.entries(definitions)) {
-    const refs = new Set<string>()
-    collectDefinitionRefs(schema, refs)
-    directRefs.set(name, refs)
-  }
-  const reachable = (name: string): Set<string> => {
-    const seen = new Set<string>()
-    const stack = [...(directRefs.get(name) ?? [])]
-    while (stack.length > 0) {
-      const next = stack.pop()!
-      if (seen.has(next) || !directRefs.has(next)) continue
-      seen.add(next)
-      stack.push(...directRefs.get(next)!)
-    }
-    return seen
-  }
-  const out = new Set<string>()
-  for (const name of directRefs.keys()) {
-    if (out.has(name)) continue
-    const fromName = reachable(name)
-    if (fromName.has(name)) {
-      for (const reached of fromName) out.add(reached)
-    }
-  }
-  return out
-}
-
-// Every nested `$ref` counts, including ones inside data keywords: an extra edge only keeps more int64
-// schemas on the wire type, while a missed edge would emit code that does not type-check.
-function collectDefinitionRefs(value: unknown, refs: Set<string>): void {
-  if (Array.isArray(value)) {
-    for (const item of value) collectDefinitionRefs(item, refs)
-    return
-  }
-  if (typeof value !== "object" || value === null) return
-  for (const [key, item] of Object.entries(value)) {
-    if (key === "$ref" && typeof item === "string" && item.startsWith(definitionRefPrefix)) {
-      refs.add(JsonPointer.unescapeToken(item.slice(definitionRefPrefix.length)))
-    } else {
-      collectDefinitionRefs(item, refs)
-    }
-  }
-}
-
-function collectNodes(value: unknown, nodes: WeakSet<object>): void {
-  if (typeof value !== "object" || value === null || nodes.has(value)) return
-  nodes.add(value)
-  for (const item of Object.values(value)) collectNodes(item, nodes)
-}
-
-function isStringOrIntegerInt64(js: JsonSchema.JsonSchema): boolean {
-  return js.format === "int64" && Array.isArray(js.type) && js.type.length === 2 &&
-    js.type.includes("string") && js.type.includes("integer")
-}
-
-function int64Code($ref: string): SchemaRepresentation.Code {
-  return {
-    Type: `typeof ${$ref}.Type`,
-    runtime: `Schema.Union([Schema.String.check(Schema.isStringBigInt()), Schema.Int]).pipe(
-  Schema.decodeTo(
-    Schema.BigInt.check(
-      Schema.isBetweenBigInt({ minimum: -9223372036854775808n, maximum: 9223372036854775807n })
-    ).pipe(Schema.brand("Int64")),
-    SchemaTransformation.transform({ decode: (value) => BigInt(value), encode: (value) => String(value) })
-  )
-)`
-  }
-}
-
 function renderSchemaTypeAndRuntime(
   $ref: string,
   code: SchemaRepresentation.Code,
   typeOnly: boolean,
-  options?: GenerateOptions
+  options?: GenerateOptions,
+  encoded?: EncodedType
 ) {
-  if ($ref === options?.int64Schema) {
-    code = int64Code($ref)
-  } else {
-    code = multipartCode($ref, options?.multipartSchemaRefs) ?? code
-    if (options?.int64Schema !== undefined) {
-      code = { ...code, runtime: unsuspendInt64(code.runtime, options.int64Schema) }
-    }
-  }
+  code = multipartCode($ref, options?.multipartSchemaRefs) ?? code
   const strings = [`export type ${$ref} = ${code.Type}`]
+  if (encoded !== undefined) {
+    strings.push(`export type ${encoded.alias} = ${encoded.Type}`)
+  }
   if (!typeOnly) {
     strings.push(`export const ${$ref} = ${code.runtime}`)
   }
@@ -429,19 +361,16 @@ function multipartCode(
 function renderRecursiveReferenceDeclaration(
   $ref: string,
   code: SchemaRepresentation.Code,
-  internalName: string
+  internalName: string,
+  encoded: EncodedType | undefined
 ): string {
   return [
     `export type ${$ref} = ${code.Type}`,
-    `export const ${$ref} = Schema.suspend((): Schema.Codec<${$ref}> => ${internalName})`
+    ...(encoded === undefined ? [] : [`export type ${encoded.alias} = ${encoded.Type}`]),
+    `export const ${$ref} = Schema.suspend((): Schema.Codec<${$ref}${
+      encoded === undefined ? "" : `, ${encoded.alias}`
+    }> => ${internalName})`
   ].join("\n")
-}
-
-// An annotated reference is rendered as `Schema.suspend((): Schema.Codec<T> => T)`, which assumes the encoded
-// and decoded types match. `Int64` is never recursive and is declared before its dependents, so a direct
-// reference is equivalent and keeps the encoded side intact.
-function unsuspendInt64(runtime: string, $ref: string): string {
-  return runtime.replaceAll(`Schema.suspend((): Schema.Codec<${$ref}> => ${$ref})`, $ref)
 }
 
 function render(title: string, as: ReadonlyArray<string>) {
@@ -452,13 +381,13 @@ function render(title: string, as: ReadonlyArray<string>) {
 function renderImportArtifacts(
   codeDocument: SchemaRepresentation.CodeDocument,
   enabled: boolean,
-  options: GenerateOptions | undefined
+  int64: boolean
 ): string {
   if (!enabled) return ""
   const imports = codeDocument.artifacts.flatMap((artifact) =>
     artifact._tag === "Import" ? [artifact.importDeclaration] : []
   )
-  if (codeDocument.references.nonRecursives.some(({ $ref }) => $ref === options?.int64Schema)) {
+  if (int64) {
     imports.push(`import * as SchemaTransformation from "effect/SchemaTransformation"`)
   }
   return imports.length === 0 ? "" : imports.join("\n") + "\n"
@@ -517,4 +446,288 @@ function makeRecursiveInternalNameMap(
   }
 
   return internalNames
+}
+
+// The encoded type of a recursive declaration that differs from its decoded type.
+interface EncodedType {
+  readonly alias: string
+  readonly Type: string
+}
+
+// Carried from the importer to the representation rewrite to mark `type: ["string", "integer"], format: "int64"`.
+const int64Marker = "x-effect-openapi-int64"
+
+function isStringOrIntegerInt64(js: JsonSchema.JsonSchema): boolean {
+  return js.format === "int64" && Array.isArray(js.type) && js.type.length === 2 &&
+    js.type.includes("string") && js.type.includes("integer")
+}
+
+function renderInt64Definition(name: string): string {
+  return `export type ${name} = typeof ${name}.Type
+export const ${name} = Schema.Union([Schema.String.check(Schema.isStringBigInt()), Schema.Int]).pipe(
+  Schema.decodeTo(
+    Schema.BigInt.check(
+      Schema.isBetweenBigInt({ minimum: -9223372036854775808n, maximum: 9223372036854775807n })
+    ).pipe(Schema.brand("Int64")),
+    SchemaTransformation.transform({ decode: (value) => BigInt(value), encode: (value) => String(value) })
+  )
+)`
+}
+
+const plainInt64Wires = new Set([
+  "Schema.Union([Schema.String, Schema.Int])",
+  "Schema.Union([Schema.Int, Schema.String])"
+])
+
+function children(
+  representation: SchemaRepresentation.Representation
+): ReadonlyArray<SchemaRepresentation.Representation> {
+  switch (representation._tag) {
+    case "Declaration":
+      return representation.typeParameters
+    case "Suspend":
+      return [representation.thunk]
+    case "TemplateLiteral":
+      return representation.parts
+    case "Arrays":
+      return [...representation.elements.map((element) => element.type), ...representation.rest]
+    case "Objects":
+      return [
+        ...representation.propertySignatures.map((property) => property.type),
+        ...representation.indexSignatures.flatMap((signature) => [signature.parameter, signature.type])
+      ]
+    case "Union":
+      return representation.types
+    default:
+      return []
+  }
+}
+
+function hasInt64Marker(representation: SchemaRepresentation.Representation): boolean {
+  return representation._tag !== "Reference" && representation.annotations?.[int64Marker] === true
+}
+
+function collectReferences(representation: SchemaRepresentation.Representation, refs: Set<string>): void {
+  if (representation._tag === "Reference") {
+    refs.add(representation.$ref)
+    return
+  }
+  for (const child of children(representation)) collectReferences(child, refs)
+}
+
+// `default` and `examples` hold wire values, which do not type-check against decoded bigints.
+function omitWireValues(annotations: Schema.Annotations.Annotations | undefined) {
+  if (annotations === undefined) return undefined
+  const { default: _default, examples: _examples, [int64Marker]: _marker, ...rest } = annotations
+  return rest
+}
+
+/**
+ * Rewrites marked int64 nodes into the shared `Int64` codec, in two variants of the same document:
+ *
+ * - `decoded` is rendered as the generated schemas.
+ * - `encoded` only provides the encoded types of recursive declarations, which cannot be inferred from
+ *   their runtime values because they are typed through `Schema.suspend`.
+ *
+ * Schemas containing `Int64`, directly or through references, have different decoded and encoded types, so
+ * references to them carry an explicit encoded type wherever the generated code is typed as `Schema.Codec`.
+ */
+function makeInt64Rewrite(
+  document: SchemaRepresentation.MultiDocument,
+  int64: string,
+  reservedNames: ReadonlyArray<string>
+) {
+  const definitionRefs = new Map<string, Set<string>>()
+  const transformedDefinitions = new Set<string>()
+  const containsInt64 = (representation: SchemaRepresentation.Representation): boolean =>
+    hasInt64Marker(representation) || children(representation).some(containsInt64)
+  for (const [$ref, representation] of Object.entries(document.references)) {
+    const refs = new Set<string>()
+    collectReferences(representation, refs)
+    definitionRefs.set($ref, refs)
+    if (containsInt64(representation)) transformedDefinitions.add($ref)
+  }
+  for (let changed = true; changed;) {
+    changed = false
+    for (const [$ref, refs] of definitionRefs) {
+      if (!transformedDefinitions.has($ref) && [...refs].some((ref) => transformedDefinitions.has(ref))) {
+        transformedDefinitions.add($ref)
+        changed = true
+      }
+    }
+  }
+  const reachesItself = ($ref: string): boolean => {
+    const seen = new Set<string>()
+    const stack = [...(definitionRefs.get($ref) ?? [])]
+    while (stack.length > 0) {
+      const next = stack.pop()!
+      if (next === $ref) return true
+      if (seen.has(next)) continue
+      seen.add(next)
+      stack.push(...(definitionRefs.get(next) ?? []))
+    }
+    return false
+  }
+  const recursiveDefinitions = new Set([...transformedDefinitions].filter(reachesItself))
+
+  const usedNames = new Set(reservedNames)
+  const encodedAliases = new Map<string, string>()
+  const encodedAlias = (identifier: string): string => {
+    let alias = encodedAliases.get(identifier)
+    if (alias === undefined) {
+      alias = `${identifier}Encoded`
+      for (let index = 2; usedNames.has(alias); index++) alias = `${identifier}Encoded${index}`
+      usedNames.add(alias)
+      encodedAliases.set(identifier, alias)
+    }
+    return alias
+  }
+
+  const transformed = new WeakMap<SchemaRepresentation.Representation, boolean>()
+  const isTransformed = (representation: SchemaRepresentation.Representation): boolean => {
+    if (representation._tag === "Reference") return transformedDefinitions.has(representation.$ref)
+    let out = transformed.get(representation)
+    if (out === undefined) {
+      out = hasInt64Marker(representation) || children(representation).some(isTransformed)
+      transformed.set(representation, out)
+    }
+    return out
+  }
+
+  let used = false
+  const passthrough: SchemaRepresentation.Generation.Declaration = ({ typeParameters: [code] }) => code
+
+  const make = (mode: "decoded" | "encoded") => {
+    const cache = new WeakMap<SchemaRepresentation.Representation, SchemaRepresentation.Representation>()
+
+    const reference = (representation: SchemaRepresentation.Reference): SchemaRepresentation.Declaration => {
+      const recursive = recursiveDefinitions.has(representation.$ref)
+      return {
+        _tag: "Declaration",
+        typeParameters: [representation],
+        checks: [],
+        annotations: {
+          toCode: ({ typeParameters: [code] }: SchemaRepresentation.Generation.DeclarationInput) => {
+            const identifier = code.Type
+            const encoded = recursive ? encodedAlias(identifier) : `typeof ${identifier}.Encoded`
+            if (mode === "encoded") return { runtime: code.runtime, Type: encoded }
+            // A reference that is not a bare identifier is suspended because it is recursive.
+            return {
+              runtime: code.runtime === identifier
+                ? identifier
+                : `Schema.suspend((): Schema.Codec<${identifier}, ${encoded}> => ${identifier})`,
+              Type: identifier
+            }
+          }
+        }
+      }
+    }
+
+    const int64Node = (
+      representation: Exclude<SchemaRepresentation.Representation, SchemaRepresentation.Reference>
+    ): SchemaRepresentation.Representation => {
+      const { annotations, ...wire } = representation
+      if (mode === "encoded") return wire
+      const { format: _format, ...rest } = omitWireValues(annotations) ?? {}
+      return {
+        _tag: "Declaration",
+        typeParameters: [wire],
+        checks: [],
+        annotations: {
+          ...rest,
+          toCode: ({ typeParameters: [code] }: SchemaRepresentation.Generation.DeclarationInput) => {
+            used = true
+            return {
+              runtime: plainInt64Wires.has(code.runtime) ? int64 : `${code.runtime}.pipe(Schema.decodeTo(${int64}))`,
+              Type: int64
+            }
+          }
+        }
+      }
+    }
+
+    const rewrite = (representation: SchemaRepresentation.Representation): SchemaRepresentation.Representation => {
+      if (!isTransformed(representation)) return representation
+      if (representation._tag === "Reference") return reference(representation)
+      let out = cache.get(representation)
+      if (out === undefined) {
+        out = rewriteNode(representation)
+        cache.set(representation, out)
+      }
+      return out
+    }
+
+    const rewriteNode = (
+      representation: Exclude<SchemaRepresentation.Representation, SchemaRepresentation.Reference>
+    ): SchemaRepresentation.Representation => {
+      if (hasInt64Marker(representation)) return int64Node(representation)
+      const annotations = omitWireValues(representation.annotations)
+      switch (representation._tag) {
+        case "Suspend":
+          // Rendered without the suspension: the generated `Schema.Codec<T>` annotation assumes matching
+          // decoded and encoded types, and recursive references are already suspended by `reference`.
+          return {
+            _tag: "Declaration",
+            typeParameters: [rewrite(representation.thunk)],
+            checks: [],
+            annotations: { ...annotations, toCode: passthrough }
+          }
+        case "Declaration":
+          return { ...representation, annotations, typeParameters: representation.typeParameters.map(rewrite) }
+        case "TemplateLiteral":
+          return { ...representation, annotations, parts: representation.parts.map(rewrite) }
+        case "Arrays":
+          return {
+            ...representation,
+            annotations,
+            elements: representation.elements.map((element) => ({ ...element, type: rewrite(element.type) })),
+            rest: representation.rest.map(rewrite)
+          }
+        case "Union":
+          return { ...representation, annotations, types: representation.types.map(rewrite) }
+        case "Objects": {
+          // Index signatures also check declared keys, so they must accept the transformed property values.
+          const seen = new Set<string>()
+          const transformedTypes: Array<SchemaRepresentation.Representation> = []
+          for (const property of representation.propertySignatures) {
+            if (!isTransformed(property.type)) continue
+            const key = JSON.stringify(property.type)
+            if (seen.has(key)) continue
+            seen.add(key)
+            transformedTypes.push(rewrite(property.type))
+          }
+          return {
+            ...representation,
+            annotations,
+            propertySignatures: representation.propertySignatures.map((property) => ({
+              ...property,
+              type: rewrite(property.type)
+            })),
+            indexSignatures: representation.indexSignatures.map((signature) => ({
+              parameter: rewrite(signature.parameter),
+              type: transformedTypes.length === 0 ? rewrite(signature.type) : {
+                _tag: "Union",
+                types: [rewrite(signature.type), ...transformedTypes],
+                checks: []
+              }
+            }))
+          }
+        }
+        default:
+          return { ...representation, annotations }
+      }
+    }
+
+    return {
+      representations: Arr.map(document.representations, rewrite),
+      references: Rec.map(document.references, rewrite)
+    }
+  }
+
+  return {
+    decoded: make("decoded"),
+    encoded: make("encoded"),
+    isUsed: () => used,
+    encodedAliases: encodedAliases as ReadonlyMap<string, string>
+  }
 }

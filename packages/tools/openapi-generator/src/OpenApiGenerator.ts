@@ -170,11 +170,14 @@ export interface OpenApiGenerateOptions {
    * a decimal string. Numbers beyond `Number.MAX_SAFE_INTEGER` are rejected
    * instead of being rounded, so full-range values must be sent as strings.
    *
+   * Constraints such as `minimum` or `enum` still validate the wire value
+   * before it is decoded. Schemas containing `Int64` drop their `default` and
+   * `examples` annotations, which hold wire values, and recursive components
+   * containing it also export an `<Name>Encoded` type.
+   *
    * Plain `type: "integer"` schemas are unchanged because JSON parsing has
    * already rounded them. The `httpclient-type-only` format does not decode,
-   * so it keeps the `string | number` wire type, as do int64 schemas inside
-   * recursive components and the components they reference, because recursive
-   * schema declarations require matching decoded and encoded types.
+   * so it keeps the `string | number` wire type.
    */
   readonly int64AsBigInt?: boolean | undefined
 }
