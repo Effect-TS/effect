@@ -2,6 +2,7 @@ import { AnthropicLanguageModel, type Generated } from "@effect/ai-anthropic"
 import { describe, expect, it } from "tstyche"
 
 declare const acceptsKnownModel: (model: AnthropicLanguageModel.Model) => void
+declare const effort: Generated.BetaEffortLevel | null
 
 describe("AnthropicLanguageModel", () => {
   describe("Model", () => {
@@ -13,6 +14,15 @@ describe("AnthropicLanguageModel", () => {
   })
 
   describe("Config", () => {
+    it("accepts every generated effort level", () => {
+      expect(AnthropicLanguageModel.model).type.toBeCallableWith("claude-opus-4-8", {
+        output_config: { effort }
+      })
+      expect(AnthropicLanguageModel.model).type.not.toBeCallableWith("claude-opus-4-8", {
+        output_config: { effort: "invalid" }
+      })
+    })
+
     it("accepts the adaptive thinking display setting", () => {
       expect(AnthropicLanguageModel.model).type.toBeCallableWith("claude-opus-4-6", {
         thinking: { type: "adaptive", display: "omitted" }
