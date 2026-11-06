@@ -4,12 +4,14 @@ import { assert, describe, expect, it } from "@effect/vitest"
 import * as Data from "effect/Data"
 import * as Effect from "effect/Effect"
 import * as Sse from "effect/encoding/Sse"
+import * as Exit from "effect/Exit"
 import type { OpenAPISpec } from "effect/http-api/OpenApi"
 import * as HttpClient from "effect/http/HttpClient"
 import * as HttpClientError from "effect/http/HttpClientError"
 import * as HttpClientRequest from "effect/http/HttpClientRequest"
 import * as HttpClientResponse from "effect/http/HttpClientResponse"
 import * as Schema from "effect/Schema"
+import * as SchemaTransformation from "effect/SchemaTransformation"
 import * as Stream from "effect/Stream"
 import { rolldown } from "rolldown"
 
@@ -17,6 +19,7 @@ const modules = {
   "effect/Data": Data,
   "effect/Effect": Effect,
   "effect/Schema": Schema,
+  "effect/SchemaTransformation": SchemaTransformation,
   "effect/Stream": Stream,
   "effect/encoding/Sse": Sse,
   "effect/http/HttpClient": HttpClient,
@@ -25,7 +28,7 @@ const modules = {
   "effect/http/HttpClientResponse": HttpClientResponse
 }
 
-async function loadClient(source: string, httpClient: HttpClient.HttpClient) {
+async function loadModule<Exports>(source: string): Promise<Exports> {
   const bundle = await rolldown({
     input: "client.ts",
     external: (id) => id !== "client.ts",
@@ -39,13 +42,7 @@ async function loadClient(source: string, httpClient: HttpClient.HttpClient) {
   await bundle.close()
   const compiled = output[0]
   assert.strictEqual(compiled.type, "chunk")
-  const exports = {} as {
-    make: (httpClient: HttpClient.HttpClient) => {
-      submit: (options: { payload: { name: string } }) => Effect.Effect<unknown, unknown>
-      submitSse: (options: { payload: { name: string } }) => Stream.Stream<unknown, unknown>
-      submitStream: (options: { payload: { name: string } }) => Stream.Stream<unknown, unknown>
-    }
-  }
+  const exports = {} as Exports
   new Function("require", "exports", compiled.code)(
     (id: keyof typeof modules) => {
       assert.property(modules, id)
@@ -53,6 +50,17 @@ async function loadClient(source: string, httpClient: HttpClient.HttpClient) {
     },
     exports
   )
+  return exports
+}
+
+async function loadClient(source: string, httpClient: HttpClient.HttpClient) {
+  const exports = await loadModule<{
+    make: (httpClient: HttpClient.HttpClient) => {
+      submit: (options: { payload: { name: string } }) => Effect.Effect<unknown, unknown>
+      submitSse: (options: { payload: { name: string } }) => Stream.Stream<unknown, unknown>
+      submitStream: (options: { payload: { name: string } }) => Stream.Stream<unknown, unknown>
+    }
+  }>(source)
   return exports.make(httpClient)
 }
 
@@ -224,4 +232,115 @@ describe("Utils", () => {
       const formData = yield* Effect.promise(() => request.formData())
       assert.deepStrictEqual(Array.from(formData.entries()), [["name", "Ada Lovelace"]])
     }).pipe(Effect.provide(OpenApiGenerator.layerTransformerSchema)))
+
+  describe("int64AsBigInt", () => {
+    const int64Spec: OpenAPISpec = {
+      openapi: "3.1.0",
+      info: { title: "Int64 API", version: "1.0.0" },
+      components: { schemas: {}, securitySchemes: {} },
+      security: [],
+      tags: [],
+      paths: {
+        "/value": {
+          get: {
+            operationId: "getValue",
+            parameters: [],
+            tags: ["Values"],
+            security: [],
+            responses: {
+              "200": {
+                description: "Success",
+                content: {
+                  "application/json": {
+                    schema: {
+                      type: "object",
+                      properties: {
+                        value: { type: ["string", "integer"], format: "int64" },
+                        reversed: { type: ["integer", "string"], format: "int64" }
+                      },
+                      required: ["value", "reversed"]
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+
+    interface Int64Module {
+      readonly Int64: Schema.Codec<bigint, string | number>
+      readonly make: (httpClient: HttpClient.HttpClient) => {
+        readonly getValue: () => Effect.Effect<unknown, unknown>
+      }
+    }
+
+    const loadInt64Module = Effect.fnUntraced(function*() {
+      const generator = yield* OpenApiGenerator.OpenApiGenerator
+      const source = yield* generator.generate(int64Spec, {
+        name: "TestClient",
+        format: "httpclient",
+        int64AsBigInt: true
+      })
+      return yield* Effect.promise(() => loadModule<Int64Module>(source))
+    }, Effect.provide(OpenApiGenerator.layerTransformerSchema))
+
+    const respondWith = (body: string) =>
+      HttpClient.make((request) =>
+        Effect.succeed(HttpClientResponse.fromWeb(
+          request,
+          new Response(body, { headers: { "content-type": "application/json" } })
+        ))
+      ).pipe(HttpClient.mapRequest(HttpClientRequest.prependUrl("https://example.test")))
+
+    it.effect("decodes string and integer responses into bigints in either type order", () =>
+      Effect.gen(function*() {
+        const module = yield* loadInt64Module()
+
+        const fromStrings = yield* module.make(
+          respondWith(`{"value":"9223372036854775807","reversed":"-9223372036854775808"}`)
+        ).getValue()
+        const fromNumbers = yield* module.make(
+          respondWith(`{"value":42,"reversed":-9007199254740991}`)
+        ).getValue()
+
+        assert.deepStrictEqual(fromStrings, { value: 9223372036854775807n, reversed: -9223372036854775808n })
+        assert.deepStrictEqual(fromNumbers, { value: 42n, reversed: -9007199254740991n })
+      }))
+
+    it.effect("rejects out-of-range, fractional, malformed, and unsafe numeric values", () =>
+      Effect.gen(function*() {
+        const { Int64 } = yield* loadInt64Module()
+
+        for (
+          const input of [
+            "9223372036854775808",
+            "-9223372036854775809",
+            "1.5",
+            "1e3",
+            "0x10",
+            " 1",
+            "",
+            1.5,
+            2 ** 53,
+            -(2 ** 53),
+            null
+          ]
+        ) {
+          assert.isTrue(Exit.isFailure(Schema.decodeUnknownExit(Int64)(input)), `expected ${String(input)} to fail`)
+        }
+      }))
+
+    it.effect("encodes values as decimal strings and rejects out-of-range bigints", () =>
+      Effect.gen(function*() {
+        const { Int64 } = yield* loadInt64Module()
+
+        assert.strictEqual(Schema.encodeUnknownSync(Int64)(42n), "42")
+        assert.strictEqual(Schema.encodeUnknownSync(Int64)(9223372036854775807n), "9223372036854775807")
+        assert.strictEqual(Schema.encodeUnknownSync(Int64)(-9223372036854775808n), "-9223372036854775808")
+        assert.isTrue(Exit.isFailure(Schema.encodeUnknownExit(Int64)(9223372036854775808n)))
+        assert.isTrue(Exit.isFailure(Schema.encodeUnknownExit(Int64)(-9223372036854775809n)))
+      }))
+  })
 })

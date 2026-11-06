@@ -83,6 +83,7 @@ const assertTypeOnlyIncludes = Effect.fnUntraced(function*(
 
 interface CompileOptions {
   readonly exactOptionalPropertyTypes?: boolean | undefined
+  readonly int64AsBigInt?: boolean | undefined
   readonly formats?: ReadonlyArray<"httpclient" | "httpclient-type-only"> | undefined
   readonly usage?: string | undefined
 }
@@ -100,7 +101,7 @@ const generateClients = ({ options, spec }: (typeof compileCases)[number]) => {
   ) =>
     Effect.gen(function*() {
       const generator = yield* OpenApiGenerator.OpenApiGenerator
-      return yield* generator.generate(spec, { name: "TestClient", format })
+      return yield* generator.generate(spec, { name: "TestClient", format, int64AsBigInt: options.int64AsBigInt })
     }).pipe(Effect.provide(layer))
 
   const formats = options.formats ?? ["httpclient", "httpclient-type-only"]
@@ -3454,6 +3455,92 @@ export const __HttpApiMultipartFiles = Multipart.FilesSchema`,
           `HttpApiEndpoint.query("search", "/search", { payload: SearchRequestJson, success: HttpApiSchema.Empty(204) })`
         ], ["legacySearch", "LegacySearch"])
       ]))
+  })
+
+  describe("int64AsBigInt", () => {
+    const int64Spec: OpenAPISpec = {
+      openapi: "3.1.0",
+      info: { title: "Int64 API", version: "1.0.0" },
+      components: {
+        schemas: {
+          Value: {
+            type: "object",
+            properties: {
+              value: { type: ["string", "integer"], format: "int64" },
+              reversed: { type: ["integer", "string"], format: "int64" }
+            },
+            required: ["value", "reversed"]
+          }
+        },
+        securitySchemes: {}
+      },
+      security: [],
+      tags: [],
+      paths: {
+        "/value": {
+          get: {
+            operationId: "getValue",
+            parameters: [],
+            tags: ["Values"],
+            security: [],
+            responses: {
+              "200": {
+                description: "Success",
+                content: { "application/json": { schema: { $ref: "#/components/schemas/Value" } } }
+              }
+            }
+          }
+        }
+      }
+    } as unknown as OpenAPISpec
+
+    const generate = Effect.fnUntraced(function*(
+      format: "httpclient" | "httpclient-type-only",
+      int64AsBigInt?: boolean
+    ) {
+      const generator = yield* OpenApiGenerator.OpenApiGenerator
+      return yield* generator.generate(int64Spec, { name: "TestClient", format, int64AsBigInt })
+    })
+
+    it.effect("keeps string-or-integer int64 schemas unchanged by default", () =>
+      Effect.gen(function*() {
+        const result = yield* generate("httpclient")
+
+        assert.include(result, `"value": Schema.Union([Schema.String, Schema.Int]).annotate({ "format": "int64" })`)
+        assert.include(result, `"reversed": Schema.Union([Schema.Int, Schema.String]).annotate({ "format": "int64" })`)
+        assert.notInclude(result, "Int64")
+      }).pipe(Effect.provide(OpenApiGenerator.layerTransformerSchema)))
+
+    it.effect("references a shared Int64 schema for both type orders when enabled", () =>
+      Effect.gen(function*() {
+        const result = yield* generate("httpclient", true)
+
+        assert.include(result, "export type Value = { readonly \"value\": Int64, readonly \"reversed\": Int64 }")
+        assert.include(result, "export const Int64 = ")
+      }).pipe(Effect.provide(OpenApiGenerator.layerTransformerSchema)))
+
+    it.effect("keeps the wire type in type-only output when enabled", () =>
+      Effect.gen(function*() {
+        const result = yield* generate("httpclient-type-only", true)
+
+        assert.include(
+          result,
+          "export type Value = { readonly \"value\": string | number, readonly \"reversed\": number | string }"
+        )
+        assert.notInclude(result, "Int64")
+      }).pipe(Effect.provide(OpenApiGenerator.layerTransformerTs)))
+
+    itGeneratedClientsCompile("types enabled int64 fields as branded bigints", int64Spec, {
+      formats: ["httpclient"],
+      int64AsBigInt: true,
+      usage: `declare const client: TestClient
+export const value = client.getValue(undefined).pipe(Effect.map((value): bigint => value.value))
+export const fromBigInt: Int64 = Int64.makeUnsafe(9223372036854775807n)
+export const encoded: typeof Int64.Encoded = "9223372036854775807"
+// @ts-expect-error a plain bigint is not an Int64
+export const plain: Int64 = 1n
+`
+    })
   })
 
   describe("regression", () => {
