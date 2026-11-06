@@ -400,11 +400,6 @@ const isExplicitKey = (text: string): boolean =>
 const explicitKeyError = "YAML explicit keys (`?`) are not supported"
 
 // A mapping key. `merge` is true only for a plain `<<`, so a quoted `"<<"` stays an ordinary key.
-type MappingKey = {
-  readonly key: string
-  readonly merge: boolean
-}
-
 // Bounds recursion over nested block and flow collections, so deep input fails
 // with an `EncodingError` instead of exhausting the stack.
 const maxDepth = 1000
@@ -418,8 +413,8 @@ const keyPropertyError = "Mapping keys cannot carry an anchor, tag or alias"
 // `&`, `!` and `*` start an anchor, a tag and an alias.
 const isPropertyIndicatorCode = (code: number): boolean => code === 38 || code === 33 || code === 42
 
-// `text` is the key's source, so a quoted key keeps its quotes and never merges.
-const scalarKey = (text: string): MappingKey => ({ key: parseKey(text), merge: text === "<<" })
+// Only the plain spelling merges, so a quoted `"<<"` stays an ordinary key.
+const isMergeKey = (text: string): boolean => text === "<<"
 
 const foldLineBreak = (blankLines: number): string => blankLines === 0 ? " " : "\n".repeat(blankLines)
 
@@ -768,23 +763,24 @@ class FlowParser {
   // YAML 1.2.2 §7.4: a key followed by `,` or the end of the collection has an empty value.
   private parseMappingEntry(mapping: MappingBuilder): void {
     const fail = (message: string) => this.fail(message)
-    const { key, merge } = this.parseKey()
+    const text = this.parseKey()
     this.skipWhitespace()
     let value: unknown = null
     if (!isFlowPlainEnd(this.peek().charCodeAt(0))) {
       this.expect(":")
       value = this.parseValue()
     }
-    if (merge) mapping.merge(value, fail)
-    else mapping.set(key, value, fail)
+    if (isMergeKey(text)) mapping.merge(value, fail)
+    else mapping.set(parseKey(text), value, fail)
   }
 
-  private parseKey(): MappingKey {
+  // The key's source text, which `parseKey` converts like a block key so `null` and `0x10`
+  // give the same keys in both styles.
+  private parseKey(): string {
     this.skipWhitespace()
     const character = this.peek()
     if (isPropertyIndicatorCode(character.charCodeAt(0))) this.fail(keyPropertyError)
-    // Converted like a block key, so `null` and `0x10` give the same keys in both styles.
-    if (character === "\"" || character === "'") return scalarKey(this.readQuoted(character))
+    if (character === "\"" || character === "'") return this.readQuoted(character)
     const text = this.readPlain(isFlowPlainEnd)
     if (this.peek() !== ":") {
       if (text === "") this.expect(":")
@@ -794,7 +790,7 @@ class FlowParser {
         this.fail(`Flow mapping key '${text}' has no value, add a space after ':' or quote the key`)
       }
     }
-    return scalarKey(text)
+    return text
   }
 
   // Reads a quoted scalar, pulling continuation lines until its closing quote.
@@ -1147,18 +1143,18 @@ class YamlParser {
     line: Line
   ): void {
     const fail = (message: string) => this.fail(line, message)
-    const { key, merge } = this.parseBlockKey(text.slice(0, separator), fail)
+    const key = this.parseBlockKey(text.slice(0, separator), fail)
     const rawValue = trimWhiteStart(text.slice(separator + 1))
     // An empty value goes straight to the lines below, which keeps deep nesting off the stack.
     const value = rawValue.length === 0
       ? this.parseBlockValue(indent, true)
       : this.parseNodeValue(rawValue, indent, true)
-    if (merge) mapping.merge(value, fail)
-    else mapping.set(key, value, fail)
+    if (isMergeKey(key)) mapping.merge(value, fail)
+    else mapping.set(parseKey(key), value, fail)
   }
 
-  // `raw` is the key text before the `:` separator.
-  private parseBlockKey(raw: string, fail: (message: string) => never): MappingKey {
+  // The key's source text, from `raw` before the `:` separator.
+  private parseBlockKey(raw: string, fail: (message: string) => never): string {
     const text = trimWhite(raw)
     if (isPropertyIndicatorCode(text.charCodeAt(0))) fail(keyPropertyError)
     if (text.startsWith("%")) fail(directiveIndicatorError)
@@ -1170,7 +1166,7 @@ class YamlParser {
     if ((quote === "\"" || quote === "'") && closingQuote(text, quote, 1) !== text.length - 1) {
       fail("Unexpected content after quoted YAML key")
     }
-    return scalarKey(text)
+    return text
   }
 
   // `first` is the entry of a compact nested sequence (`- - item`), which starts on its parent entry's line.
@@ -1849,34 +1845,26 @@ class Printer {
       const label = typeof name === "string" && name.length > 0 ? name : "object"
       this.fail(`Cannot print a ${label} instance without toJSON`)
     }
-    const keys = Object.keys(value)
-    const entries: Array<unknown> = []
-    let count = 0
-    for (let index = 0; index < keys.length; index++) {
-      const entry = applyToJson((value as YamlRecord)[keys[index]], keys[index])
-      entries.push(entry)
-      if (entry !== undefined) count++
-    }
-    if (count === 0) return this.line(indentation, prefix, "{}")
     this.ancestors.add(value)
     // A mapping starts on the line of its sequence dash and continues two
     // columns in, aligned with its first key.
     const item = prefix === "-"
     const column = prefix === "" ? indentation : item ? indentation + 2 : indentation + this.step
-    if (!item && prefix !== "") this.line(indentation, prefix, "")
     const start = this.lines.length
     const path = () => this.path()
-    for (let index = 0; index < keys.length; index++) {
-      const entry = entries[index]
+    for (const key of Object.keys(value)) {
+      const entry = applyToJson((value as YamlRecord)[key], key)
       if (entry === undefined) continue
-      const key = keys[index]
+      // The header waits for the first printed entry, so a mapping without one prints as `{}`.
+      if (this.lines.length === start && !item && prefix !== "") this.line(indentation, prefix, "")
       const printed = printKey(key, path)
       this.trail.push(key)
       this.node(entry, column, `${printed}:`)
       this.trail.pop()
     }
-    if (item) this.lines[start] = `${pad(indentation)}- ${this.lines[start].slice(column)}`
     this.ancestors.delete(value)
+    if (this.lines.length === start) return this.line(indentation, prefix, "{}")
+    if (item) this.lines[start] = `${pad(indentation)}- ${this.lines[start].slice(column)}`
   }
 
   private scalar(text: string, indentation: number, prefix: string): void {
