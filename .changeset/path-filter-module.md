@@ -18,7 +18,7 @@ Add the unstable `PathFilter` module, make `FileSystem.glob` take a single `Path
 
 To leave out what an ignore file ignores, restrict the selection: `fs.glob(PathFilter.restrict(p, IgnoreFile.gitignore(source)))`.
 
-- A single absolute pattern such as `fs.glob("/abs/dir/**")` works as before: it ignores `root`, returns absolute paths and includes `/abs/dir` itself. Absolute patterns are not accepted anywhere else (in a list, after `!`, in `PathFilter.select` or `PathFilter.restrict`), so `fs.glob("/abs/dir/**", { dot: true })` has no direct replacement; use `fs.glob(PathFilter.select("**", { dot: true }), { root: "/abs/dir" })`, whose results are relative.
+- A single absolute pattern such as `fs.glob("/abs/dir/**")` works as before: it ignores `root`, returns absolute paths and includes `/abs/dir` itself, as `"/"` and `"/**"` include the filesystem root. Absolute patterns are not accepted anywhere else (in a list, after `!`, in `PathFilter.select` or `PathFilter.restrict`), so `fs.glob("/abs/dir/**", { dot: true })` has no direct replacement; use `fs.glob(PathFilter.select("**", { dot: true }), { root: "/abs/dir" })`, whose results are relative.
 - Other results are relative to `root`, and `root` itself is never a result, so a pattern prefix moved into `root` no longer returns that directory.
 - A `..` segment, an escaped `/` or a UNC path in a pattern makes the effect die.
 - A directory-only pattern such as `link/` no longer matches a link to a directory.
