@@ -247,7 +247,8 @@ describe("Utils", () => {
               children: { type: "array", items: { $ref: "#/components/schemas/Node" } }
             },
             required: ["id"]
-          }
+          },
+          Choice: { type: ["string", "integer"], format: "int64", enum: ["1", 2] }
         },
         securitySchemes: {}
       },
@@ -270,7 +271,8 @@ describe("Utils", () => {
                       properties: {
                         id: { $ref: "#/components/schemas/Id" },
                         node: { $ref: "#/components/schemas/Node" },
-                        min: { type: ["string", "integer"], format: "int64", minimum: 0 }
+                        min: { type: ["string", "integer"], format: "int64", minimum: 0 },
+                        choice: { $ref: "#/components/schemas/Choice" }
                       },
                       required: ["id", "node", "min"]
                     }
@@ -310,6 +312,8 @@ describe("Utils", () => {
 
     interface Int64Module {
       readonly Int64: Schema.Codec<bigint, string | number>
+      readonly Node: Schema.Codec<unknown, unknown>
+      readonly Choice: Schema.Codec<unknown, unknown>
       readonly make: (httpClient: HttpClient.HttpClient) => {
         readonly getValue: () => Effect.Effect<unknown, unknown>
         readonly getShapes: () => Effect.Effect<unknown, unknown>
@@ -368,6 +372,33 @@ describe("Utils", () => {
           min: 5n
         })
         assert.isTrue(Exit.isFailure(outOfRange))
+      }))
+
+    it.effect("validates enum values on the wire, so numeric members do not encode", () =>
+      Effect.gen(function*() {
+        const { Choice } = yield* loadInt64Module()
+
+        assert.strictEqual(Schema.decodeUnknownSync(Choice)(2), 2n)
+        assert.strictEqual(Schema.encodeUnknownSync(Choice)(1n), "1")
+        assert.isTrue(Exit.isFailure(Schema.decodeUnknownExit(Choice)(3)))
+        // Encoding always produces a decimal string, which the enum does not allow for `2`.
+        assert.isTrue(Exit.isFailure(Schema.encodeUnknownExit(Choice)(2n)))
+      }))
+
+    it.effect("keeps JSON extra keys on objects with Int64 properties", () =>
+      Effect.gen(function*() {
+        const { Node } = yield* loadInt64Module()
+
+        assert.deepStrictEqual(Schema.decodeUnknownSync(Node)({ id: "1", extra: { id: "7" } }), {
+          id: 1n,
+          extra: { id: "7" }
+        })
+        assert.deepStrictEqual(Schema.encodeUnknownSync(Node)({ id: 1n, extra: { id: "7" } }), {
+          id: "1",
+          extra: { id: "7" }
+        })
+        assert.isTrue(Exit.isFailure(Schema.decodeUnknownExit(Node)({ id: "1", extra: 1n })))
+        assert.isTrue(Exit.isFailure(Schema.encodeUnknownExit(Node)({ id: 1n, extra: Number.NaN })))
       }))
 
     it.effect("rejects out-of-range, fractional, malformed, and unsafe numeric values", () =>

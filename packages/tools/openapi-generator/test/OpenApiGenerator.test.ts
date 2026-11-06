@@ -3560,15 +3560,33 @@ export const plain: Int64 = 1n
             default: { id: "1" },
             examples: [{ id: "1" }]
           },
+          // A cycle that core codegen only partly classifies as recursive when it is reached through `Leaf`.
+          Tree: {
+            type: "object",
+            properties: {
+              id: int64,
+              leaf: { $ref: "#/components/schemas/Leaf" },
+              branch: { $ref: "#/components/schemas/Branch" }
+            },
+            required: ["id"]
+          },
+          Branch: { type: "object", properties: { tree: { $ref: "#/components/schemas/Tree" } } },
+          Leaf: { type: "object", properties: { branch: { $ref: "#/components/schemas/Branch" } } },
+          // Normalized to the generated `Int64` and `NodeEncoded` identifiers.
+          int64: { type: "string" },
+          nodeEncoded: { type: "string" },
           Value: {
             type: "object",
             properties: {
               id: { $ref: "#/components/schemas/Id" },
               node: { $ref: "#/components/schemas/Node" },
               root: { $ref: "#/components/schemas/Root", description: "described root" },
-              min: { ...int64, minimum: 0 }
+              min: { ...int64, minimum: 0 },
+              leaf: { $ref: "#/components/schemas/Leaf" },
+              label: { $ref: "#/components/schemas/int64" },
+              nodeLabel: { $ref: "#/components/schemas/nodeEncoded" }
             },
-            required: ["id", "node", "root", "min"]
+            required: ["id", "node", "root", "min", "leaf", "label", "nodeLabel"]
           }
         },
         securitySchemes: {}
@@ -3587,11 +3605,21 @@ export const plain: Int64 = 1n
     itGeneratedClientsCompile("types Int64 behind aliases, recursion, annotations, and open objects", int64ShapesSpec, {
       formats: ["httpclient", "httpapi"],
       int64AsBigInt: true,
-      usage: `export const root: Root = { id: Int64.make(1n) }
+      usage: `declare const id: Root["id"]
+export const root: Root = { id }
 export const encodedRoot: typeof Root.Encoded = Schema.encodeSync(Root)(root)
-export const node: Node = { id: Int64.make(1n), children: [{ id: Int64.make(2n) }] }
+export const node: Node = { id, children: [{ id }] }
 export const encodedNode: typeof Node.Encoded = Schema.encodeSync(Node)(node)
-export const ids = (value: Value): ReadonlyArray<bigint> => [value.id, value.node.id, value.root.id, value.min]
+export const leaf: Leaf = { branch: { tree: { id, leaf: {} } } }
+export const encodedLeaf: typeof Leaf.Encoded = Schema.encodeSync(Leaf)(leaf)
+export const ids = (value: Value): ReadonlyArray<bigint | undefined> => [
+  value.id,
+  value.node.id,
+  value.root.id,
+  value.min,
+  value.leaf.branch?.tree?.id
+]
+export const labels = (value: Value): ReadonlyArray<string> => [value.label, value.nodeLabel]
 `
     })
   })
