@@ -1480,6 +1480,7 @@ export class McpServer extends Context.Service<McpServer, {
 const MCP_SESSION_ID_HEADER = "mcp-session-id"
 const MCP_PROTOCOL_VERSION_HEADER = "mcp-protocol-version"
 const cancelledResponses = new WeakMap<object, string | number>()
+const invalidRequestIdResponses = new WeakSet<object>()
 const httpPostResponses = new WeakMap<HttpServerRequest.HttpServerRequest, { expected: number }>()
 const requestKey = (requestId: string | number): string => `${typeof requestId}:${requestId}`
 
@@ -1817,16 +1818,20 @@ const runWithRuntime = Effect.fnUntraced(function*(
   const sendRequestError = (
     clientId: number,
     requestId: string | number,
-    { code, data, message }: { readonly code: number; readonly message: string; readonly data?: unknown }
-  ) =>
-    protocol.send(clientId, {
+    { code, data, message }: { readonly code: number; readonly message: string; readonly data?: unknown },
+    invalidRequestId = false
+  ) => {
+    const response: RpcMessage.ResponseExitEncoded = {
       _tag: "Exit",
       requestId,
       exit: {
         _tag: "Failure",
         cause: [{ _tag: "Fail", error: data === undefined ? { code, message } : { code, message, data } }]
       }
-    })
+    }
+    if (invalidRequestId) invalidRequestIdResponses.add(response)
+    return protocol.send(clientId, response)
+  }
   const removeReverseRequestClient = (requestId: string, key: McpClientKey) => {
     const waiting = reverseRequestClients.get(requestId)
     if (waiting === undefined) return
@@ -2104,7 +2109,7 @@ const runWithRuntime = Effect.fnUntraced(function*(
                 HttpServerRequest.HttpServerRequest
               ).headers
               : Headers.fromInput(request.headers)
-            const cancellationRequest = request.tag === "notifications/cancelled" &&
+            const cancellationRequest = request.isNotification === true && request.tag === "notifications/cancelled" &&
                 typeof request.payload === "object" && request.payload !== null && "requestId" in request.payload &&
                 (typeof request.payload.requestId === "string" || typeof request.payload.requestId === "number")
               ? activeRequests.get(clientId)?.get(requestKey(request.payload.requestId))
@@ -2242,7 +2247,8 @@ const runWithRuntime = Effect.fnUntraced(function*(
                     request.id,
                     Predicate.isTagged(error, "ProtocolError")
                       ? McpProtocolInternal.ProtocolError.fromFeature(error)
-                      : new InvalidParams({ message: "Invalid request metadata" })
+                      : new InvalidParams({ message: "Invalid request metadata" }),
+                    McpRuntime.isInvalidRequestIdError(error)
                   )
               )
             )
@@ -2662,7 +2668,10 @@ export const layerStdio = <
  * Defaults to newline-delimited JSON, as recommended for reliable byte streams
  * by the [MCP custom transport specification](https://modelcontextprotocol.io/specification/2026-07-28/basic/transports#custom-transports).
  * Choose `"json"` when the transport delivers complete messages. The configured
- * adapters determine batch support. Malformed JSON produces a parse-error
+ * adapters determine batch support and request-ID requirements. Revisions from
+ * [2025-03-26](https://modelcontextprotocol.io/specification/2025-03-26/basic#requests)
+ * require string or integer request IDs; 2024-11-05 retains finite numeric IDs.
+ * Malformed JSON produces a parse-error
  * response with a null ID, and does not discard adjacent frames. Effect RPC
  * control messages and envelope extensions are not interpreted as MCP controls.
  *
@@ -3067,9 +3076,9 @@ const isEncodedMcpFailureCause = Schema.is(Schema.TaggedStruct("Cause", {
   })])
 }))
 
-const normalizeMcpJsonRpcResponse = (response: unknown): unknown => {
+const normalizeMcpJsonRpcResponse = (response: unknown, invalidRequestIds: Set<unknown>): unknown => {
   if (Array.isArray(response)) {
-    return response.map(normalizeMcpJsonRpcResponse)
+    return response.map((response) => normalizeMcpJsonRpcResponse(response, invalidRequestIds))
   }
   if (!Predicate.isReadonlyObject(response) || !Predicate.hasProperty(response, "error")) {
     return response
@@ -3083,7 +3092,11 @@ const normalizeMcpJsonRpcResponse = (response: unknown): unknown => {
     : { code: McpSchema.INTERNAL_ERROR_CODE, message: "Internal error" }
   return {
     jsonrpc: "2.0",
-    id: isDefect || !Predicate.hasProperty(response, "id") ? null : response.id ?? null,
+    // Keep the original ID internally until batch accounting completes, then
+    // report a malformed fractional request ID as null on the wire.
+    id: isDefect || !Predicate.hasProperty(response, "id") || invalidRequestIds.delete(response.id)
+      ? null
+      : response.id ?? null,
     error: normalized
   }
 }
@@ -3097,10 +3110,12 @@ function mcpJsonRpcSerialization(options?: {
     makeUnsafe: () => {
       const parser = McpSerialization.makeParser(serialization.makeUnsafe())
       const cancelledIds = new Set<string | number>()
+      const invalidRequestIds = new Set<unknown>()
       return {
         decode: parser.decode,
         encode: (response) => {
           if (Predicate.isReadonlyObject(response)) {
+            if (invalidRequestIdResponses.delete(response)) invalidRequestIds.add(response.requestId)
             const cancelledId = cancelledResponses.get(response)
             if (cancelledId !== undefined) {
               cancelledResponses.delete(response)
@@ -3110,7 +3125,7 @@ function mcpJsonRpcSerialization(options?: {
           const encoded = parser.encode(response)
           if (typeof encoded !== "string") return encoded
           if (
-            cancelledIds.size === 0 &&
+            cancelledIds.size === 0 && invalidRequestIds.size === 0 &&
             !encoded.includes("\"_tag\":\"Cause\"") && !encoded.includes("\"_tag\":\"Defect\"")
           ) return encoded
           let message: unknown = JSON.parse(encoded)
@@ -3128,7 +3143,7 @@ function mcpJsonRpcSerialization(options?: {
               return undefined
             }
           }
-          return JSON.stringify(normalizeMcpJsonRpcResponse(message))
+          return JSON.stringify(normalizeMcpJsonRpcResponse(message, invalidRequestIds))
         }
       }
     }

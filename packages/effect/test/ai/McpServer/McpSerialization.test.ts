@@ -2,6 +2,7 @@ import { assert, describe, it } from "@effect/vitest"
 import * as McpProtocol from "effect/ai/McpProtocol"
 import * as McpSchema from "effect/ai/McpSchema"
 import * as McpServer from "effect/ai/McpServer"
+import type * as Arr from "effect/Array"
 import * as Context from "effect/Context"
 import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
@@ -38,7 +39,8 @@ const request = (protocol: McpProtocol.ProtocolAdapter, method: string, id: stri
 
 const makeSocketHarness = Effect.fnUntraced(function*(
   protocol: McpProtocol.ProtocolAdapter,
-  framing: "ndjson" | "json" = "ndjson"
+  framing: "ndjson" | "json" = "ndjson",
+  protocols: Arr.NonEmptyReadonlyArray<McpProtocol.ProtocolAdapter> = [protocol]
 ) {
   const incoming = yield* Queue.unbounded<string | Uint8Array>()
   const outgoing = yield* Queue.unbounded<string>()
@@ -59,10 +61,10 @@ const makeSocketHarness = Effect.fnUntraced(function*(
   })
   const transport = yield* RpcServer.makeProtocolSocketServer.pipe(
     Effect.provideService(SocketServer.SocketServer, sockets),
-    Effect.provide(McpServer.layerSerialization({ protocols: [protocol], framing }))
+    Effect.provide(McpServer.layerSerialization({ protocols, framing }))
   )
   const context = yield* Layer.build(
-    McpServer.layer({ name: "Socket", version: "1", protocols: [protocol] }).pipe(
+    McpServer.layer({ name: "Socket", version: "1", protocols }).pipe(
       Layer.provide(Layer.succeed(RpcServer.Protocol, transport))
     )
   )
@@ -113,13 +115,6 @@ describe("MCP serialization", () => {
           assert.isTrue(messages!.filter((message) => message.id !== null).every((message) => "result" in message))
         }))
 
-      it.live("custom sockets answer malformed JSON without exposing Effect defects", () =>
-        Effect.gen(function*() {
-          const harness = yield* makeSocketHarness(protocol)
-          yield* harness.send("{broken\n")
-          assert.deepStrictEqual(yield* withinDeadline(harness.take), parseError)
-        }))
-
       it.live("HTTP retains null-id ParseError responses", () =>
         Effect.gen(function*() {
           const harness = yield* makeHttpHarness(McpServer.layerHttp({
@@ -154,7 +149,7 @@ describe("MCP serialization", () => {
           Effect.gen(function*() {
             const harness = yield* makeSocketHarness(protocol, framing)
             yield* harness.send(`{broken${framing === "ndjson" ? "\n" : ""}`)
-            assert.deepStrictEqual(yield* harness.take, parseError)
+            assert.deepStrictEqual(yield* withinDeadline(harness.take), parseError)
             yield* harness.initialize
             for (const method of ["Ping", "Ack", "Interrupt", "Eof"]) {
               yield* harness.sendMessage({ jsonrpc: "2.0", method: `@effect/rpc/${method}`, params: { requestId: 0 } })
@@ -227,44 +222,205 @@ describe("MCP serialization", () => {
           assert.deepInclude(replies, parseError)
           assert.property(replies.find((reply) => reply.id === "valid"), "result")
         }))
-
-      it.live("uses the revision's numeric request ID rules over stdio, custom sockets, and HTTP", () =>
-        Effect.gen(function*() {
-          const assertResponse = (response: JsonRpcMessage) => {
-            if (protocol.runtime._tag === "Stateless") {
-              assert.deepStrictEqual(response, {
-                jsonrpc: "2.0",
-                id: null,
-                error: { code: -32600, message: "Invalid Request" }
-              })
-            } else {
-              assert.strictEqual(response.id, 1.5)
-              assert.property(response, "result")
-            }
-          }
-          const message = request(protocol, "tools/list", 1.5)
-          const stdio = yield* makeMcpStdioHarness(protocol)
-          yield* stdio.initialize()
-          yield* stdio.sendRaw(message)
-          assertResponse(yield* stdio.takeMessage)
-          const socket = yield* makeSocketHarness(protocol)
-          yield* socket.initialize
-          yield* socket.sendMessage(message)
-          assertResponse(yield* socket.take)
-          const http = yield* makeHttpHarness(McpServer.layerHttp({
-            name: "Numeric IDs",
-            version: "1",
-            path: "/mcp",
-            protocols: [protocol]
-          }))
-          const headers = protocol.runtime._tag === "Stateless"
-            ? { "MCP-Protocol-Version": protocol.protocolVersion, "Mcp-Method": "tools/list" }
-            : yield* initializeHttpSession(http, protocol)
-          const response = yield* http.post(message, headers)
-          assertResponse(yield* Effect.promise(() => response.json()))
-        }))
     })
   }
+
+  // https://modelcontextprotocol.io/specification/2025-11-25/basic#requests
+  // https://modelcontextprotocol.io/specification/2024-11-05/basic#messages
+  // Only 2024 delegates to JSON-RPC's SHOULD NOT use fractional numeric IDs.
+  describe("numeric request IDs", () => {
+    for (const protocol of [McpProtocol.v2025_11_25, McpProtocol.v2026_07_28]) {
+      it.live(`validates IDs on requests to the cancellation notification method in ${protocol.protocolVersion}`, () =>
+        Effect.gen(function*() {
+          const harness = yield* makeSocketHarness(protocol)
+          const entered = yield* Deferred.make<void>()
+          yield* harness.server.addTool({
+            tool: new McpSchema.Tool({ name: "Wait", inputSchema: { type: "object" } }),
+            annotations: Context.empty(),
+            handle: () => Deferred.succeed(entered, undefined).pipe(Effect.andThen(Effect.never))
+          })
+          yield* harness.initialize
+          yield* harness.sendMessage(request(protocol, "tools/call", "active", { name: "Wait" }))
+          yield* Deferred.await(entered)
+          yield* harness.sendMessage(request(protocol, "notifications/cancelled", 1.5, { requestId: "active" }))
+          assert.deepStrictEqual(yield* harness.take, {
+            jsonrpc: "2.0",
+            id: null,
+            error: { code: -32600, message: "Invalid Request" }
+          })
+        }))
+    }
+
+    for (const transport of ["stdio", "custom sockets"] as const) {
+      it.live(`rejects a fractional modern ID before decoding request metadata over ${transport}`, () =>
+        Effect.gen(function*() {
+          const message = {
+            jsonrpc: "2.0",
+            id: 1.5,
+            method: "tools/list",
+            params: { _meta: { "io.modelcontextprotocol/protocolVersion": "2026-07-28" } }
+          }
+          const response = yield* transport === "stdio"
+            ? Effect.gen(function*() {
+              const harness = yield* makeMcpStdioHarness(McpProtocol.v2026_07_28)
+              yield* harness.sendRaw(message)
+              return yield* harness.takeMessage
+            })
+            : Effect.gen(function*() {
+              const harness = yield* makeSocketHarness(McpProtocol.v2026_07_28)
+              yield* harness.sendMessage(message)
+              return yield* harness.take
+            })
+          assert.deepStrictEqual(response, {
+            jsonrpc: "2.0",
+            id: null,
+            error: { code: -32600, message: "Invalid Request" }
+          })
+        }))
+    }
+
+    it("preserves a valid 2024 fractional ID on application InvalidRequest responses", () => {
+      const parser = McpServer.makeSerialization({ protocols: [McpProtocol.v2024_11_05] }).makeUnsafe()
+      const encoded = parser.encode({
+        _tag: "Exit",
+        requestId: 1.5,
+        exit: { _tag: "Failure", cause: [{ _tag: "Fail", error: { code: -32600, message: "Rejected" } }] }
+      })
+      assert.strictEqual(typeof encoded, "string")
+      assert.deepStrictEqual(JSON.parse(encoded as string), {
+        jsonrpc: "2.0",
+        id: 1.5,
+        error: { code: -32600, message: "Rejected" }
+      })
+    })
+
+    for (
+      const protocol of [
+        McpProtocol.v2024_11_05,
+        McpProtocol.v2025_03_26,
+        McpProtocol.v2025_06_18,
+        McpProtocol.v2025_11_25,
+        McpProtocol.v2026_07_28
+      ]
+    ) {
+      for (const transport of ["stdio", "custom sockets", "HTTP"] as const) {
+        it.live(`applies ${protocol.protocolVersion} integer requirements over ${transport}`, () =>
+          Effect.gen(function*() {
+            const exchange = yield* Effect.gen(function*() {
+              if (transport === "stdio") {
+                const harness = yield* makeMcpStdioHarness(protocol)
+                yield* harness.initialize()
+                return (message: unknown) => harness.sendRaw(message).pipe(Effect.andThen(harness.takeMessage))
+              }
+              if (transport === "custom sockets") {
+                const harness = yield* makeSocketHarness(protocol)
+                yield* harness.initialize
+                return (message: unknown) => harness.sendMessage(message).pipe(Effect.andThen(harness.take))
+              }
+              const harness = yield* makeHttpHarness(McpServer.layerHttp({
+                name: "Numeric IDs",
+                version: "1",
+                path: "/mcp",
+                protocols: [protocol]
+              }))
+              const headers = protocol.runtime._tag === "Stateless"
+                ? { "MCP-Protocol-Version": protocol.protocolVersion, "Mcp-Method": "tools/list" }
+                : yield* initializeHttpSession(harness, protocol)
+              return (message: unknown) =>
+                harness.post(message, headers).pipe(
+                  Effect.flatMap((response) => Effect.promise(() => response.json()))
+                )
+            })
+            for (const id of [1.5, -1.5, 1, "1"]) {
+              const response = yield* exchange(request(protocol, "tools/list", id))
+              if (typeof id === "number" && !Number.isInteger(id) && protocol.protocolVersion !== "2024-11-05") {
+                assert.deepStrictEqual(response, {
+                  jsonrpc: "2.0",
+                  id: null,
+                  error: { code: -32600, message: "Invalid Request" }
+                })
+              } else {
+                assert.strictEqual(response.id, id)
+                assert.property(response, "result")
+              }
+            }
+          }))
+      }
+    }
+
+    for (const transport of ["stdio", "custom sockets", "HTTP"] as const) {
+      for (const offered of ["2024-11-05", "2025-11-25", "unknown"]) {
+        for (const first of [McpProtocol.v2024_11_05, McpProtocol.v2025_11_25]) {
+          it.live(`uses ${first.protocolVersion} fallback for ${offered} initialization over ${transport}`, () =>
+            Effect.gen(function*() {
+              const protocols = [
+                McpProtocol.v2026_07_28,
+                first,
+                first === McpProtocol.v2024_11_05 ? McpProtocol.v2025_11_25 : McpProtocol.v2024_11_05
+              ] as const
+              const selected = offered === "unknown" ? first.protocolVersion : offered
+              const exchange = yield* Effect.gen(function*() {
+                if (transport === "stdio") {
+                  const harness = yield* makeMcpStdioHarness(first, protocols)
+                  return (message: unknown) => harness.sendRaw(message).pipe(Effect.andThen(harness.takeMessage))
+                }
+                if (transport === "custom sockets") {
+                  const harness = yield* makeSocketHarness(first, "ndjson", protocols)
+                  return (message: unknown) => harness.sendMessage(message).pipe(Effect.andThen(harness.take))
+                }
+                const harness = yield* makeHttpHarness(McpServer.layerHttp({
+                  name: "Initialize IDs",
+                  version: "1",
+                  path: "/mcp",
+                  protocols
+                }))
+                return (message: unknown) =>
+                  harness.post(message).pipe(
+                    Effect.flatMap((response) => Effect.promise(() => response.json()))
+                  )
+              })
+              const initialize = (id: string | number) => ({
+                jsonrpc: "2.0",
+                id,
+                method: "initialize",
+                params: { protocolVersion: offered, capabilities: {}, clientInfo: { name: "client", version: "1" } }
+              })
+              const response = yield* exchange(initialize(1.5))
+              if (selected === "2024-11-05") {
+                assert.strictEqual(response.id, 1.5)
+                assert.nestedPropertyVal(response, "result.protocolVersion", selected)
+              } else {
+                assert.deepStrictEqual(response, {
+                  jsonrpc: "2.0",
+                  id: null,
+                  error: { code: -32600, message: "Invalid Request" }
+                })
+                const retry = yield* exchange(initialize("retry"))
+                assert.nestedPropertyVal(retry, "result.protocolVersion", selected)
+              }
+            }))
+        }
+      }
+    }
+
+    it.live("completes a March batch with a fractional ID without conflating string and numeric IDs", () =>
+      Effect.gen(function*() {
+        const protocol = McpProtocol.v2025_03_26
+        const harness = yield* makeSocketHarness(protocol)
+        yield* harness.initialize
+        yield* harness.sendMessage([1.5, 1, "1"].map((id) => request(protocol, "tools/list", id)))
+        const responses = yield* withinDeadline(harness.take)
+        assert.isArray(responses)
+        assert.lengthOf(responses, 3)
+        assert.deepInclude(responses, {
+          jsonrpc: "2.0",
+          id: null,
+          error: { code: -32600, message: "Invalid Request" }
+        })
+        assert.property(responses.find((response: JsonRpcMessage) => response.id === 1), "result")
+        assert.property(responses.find((response: JsonRpcMessage) => response.id === "1"), "result")
+      }))
+  })
 
   it.live("preserves March batch replies, invalid members, and notification suppression", () =>
     Effect.gen(function*() {

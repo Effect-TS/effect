@@ -43,13 +43,10 @@ const messageEnvelope = (message: unknown): Record<string, unknown> | undefined 
   const hasResult = Object.hasOwn(message, "result")
   const hasError = Object.hasOwn(message, "error")
   if (Object.hasOwn(message, "method")) {
-    // Legacy revisions allow finite numeric IDs; the modern request schema
-    // narrows them to integers. Do not apply the modern restriction to sessions.
-    const modern = isRecord(message.params) && isRecord(message.params._meta) &&
-      message.params._meta["io.modelcontextprotocol/protocolVersion"] === "2026-07-28"
+    // The runtime checks integer IDs after selecting the effective adapter.
+    // Only 2024-11-05 retains JSON-RPC's allowance for fractional numeric IDs.
     if (
-      typeof message.method !== "string" || hasResult || hasError || (hasId && !isId(message.id)) ||
-      (modern && typeof message.id === "number" && !Number.isInteger(message.id))
+      typeof message.method !== "string" || hasResult || hasError || (hasId && !isId(message.id))
     ) return undefined
     return {
       jsonrpc: "2.0",
