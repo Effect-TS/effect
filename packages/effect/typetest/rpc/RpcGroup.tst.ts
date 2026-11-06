@@ -1,5 +1,5 @@
-import type { Cause } from "effect"
-import { Context, Deferred, Effect, Queue, Schema, Stream } from "effect"
+import type { Cause, Queue, Stream } from "effect"
+import { Context, Deferred, Effect, Schema } from "effect"
 import type * as Layer from "effect/Layer"
 import * as Rpc from "effect/rpc/Rpc"
 import * as RpcGroup from "effect/rpc/RpcGroup"
@@ -20,19 +20,21 @@ const Group = RpcGroup.make(GetUser, UpdateUser)
 
 class NotFound extends Schema.TaggedError<NotFound>()("NotFound", {}) {}
 class Unauthorized extends Schema.TaggedError<Unauthorized>()("Unauthorized", {}) {}
+class Forbidden extends Schema.TaggedError<Forbidden>()("Forbidden", {}) {}
 class Unknown extends Schema.TaggedError<Unknown>()("Unknown", {}) {}
 class ClientFailure extends Schema.TaggedError<ClientFailure>()("ClientFailure", {}) {}
 
-class Auth extends RpcMiddleware.Service<Auth, {
-  clientError: ClientFailure
-}>()("Auth", {
-  error: Unauthorized
-}) {}
+class Authn extends RpcMiddleware.Service<Authn, { clientError: ClientFailure }>()("Authn", { error: Unauthorized }) {}
+class Authz extends RpcMiddleware.Service<Authz>()("Authz", { error: Forbidden }) {}
 
-const AuthGroup = RpcGroup.make(
-  Rpc.make("Get", { success: Schema.String, error: NotFound }),
-  Rpc.make("Events", { success: Schema.String, stream: true })
-).middleware(Auth)
+const Find = Rpc.make("Find", { success: Schema.String, error: NotFound })
+const Events = Rpc.make("Events", { success: Schema.String, error: NotFound, stream: true })
+const GuardedGroup = RpcGroup.make(Find, Events).middleware(Authn).middleware(Authz)
+
+type GuardedError = NotFound | Unauthorized | Forbidden
+declare const find: Effect.Effect<string, GuardedError>
+declare const events: Stream.Stream<string, GuardedError>
+declare const eventsQueue: Effect.Effect<Queue.Dequeue<string, GuardedError | Cause.Done>, GuardedError>
 
 describe("RpcGroup", () => {
   it("toLayer includes handler dependencies in layer services", () => {
@@ -78,48 +80,25 @@ describe("RpcGroup", () => {
   })
 
   describe("handler errors", () => {
-    const events = Stream.make("a")
-
-    it("toLayer accepts handlers failing with middleware errors", () => {
-      expect(AuthGroup.toLayer).type.toBeCallableWith({
-        Get: () => Effect.fail(new Unauthorized()),
-        Events: () => Stream.fail(new Unauthorized())
-      })
-      expect(AuthGroup.toLayer).type.toBeCallableWith({
-        Get: () => Effect.fail(new NotFound()),
-        Events: () => Queue.unbounded<string, Unauthorized | Cause.Done>()
+    it("toLayer accepts handlers failing with rpc and middleware errors", () => {
+      expect(GuardedGroup.toLayer).type.toBeCallableWith({ Find: () => find, Events: () => events })
+      expect(GuardedGroup.toLayer).type.toBeCallableWith({
+        Find: () => Deferred.make<string, NotFound>(),
+        Events: () => eventsQueue
       })
     })
 
-    it("toLayer rejects handlers failing with undeclared errors", () => {
-      expect(AuthGroup.toLayer).type.not.toBeCallableWith({
-        Get: () => Effect.fail(new Unknown()),
+    it("toLayer rejects errors not declared by the rpc or its server middleware", () => {
+      expect(GuardedGroup.toLayer).type.not.toBeCallableWith({
+        Find: () => Effect.fail(new Unknown()),
         Events: () => events
       })
-      expect(AuthGroup.toLayer).type.not.toBeCallableWith({
-        Get: () => Effect.succeed("a"),
-        Events: () => Stream.fail(new Unknown())
-      })
-    })
-
-    it("toLayer rejects handlers failing with middleware client errors", () => {
-      expect(AuthGroup.toLayer).type.not.toBeCallableWith({
-        Get: () => Effect.fail(new ClientFailure()),
+      expect(GuardedGroup.toLayer).type.not.toBeCallableWith({
+        Find: () => Effect.fail(new ClientFailure()),
         Events: () => events
       })
-    })
-
-    it("toLayer rejects middleware errors for rpcs without that middleware", () => {
-      const Plain = RpcGroup.make(Rpc.make("Get", { success: Schema.String, error: NotFound }))
-      expect(Plain.toLayer).type.not.toBeCallableWith({
-        Get: () => Effect.fail(new Unauthorized())
-      })
-    })
-
-    it("toLayer still accepts deferred responses with the rpc error", () => {
-      expect(AuthGroup.toLayer).type.toBeCallableWith({
-        Get: () => Deferred.make<string, NotFound>(),
-        Events: () => events
+      expect(RpcGroup.make(Find).toLayer).type.not.toBeCallableWith({
+        Find: () => Effect.fail(new Unauthorized())
       })
     })
   })

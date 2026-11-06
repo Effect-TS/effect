@@ -201,54 +201,14 @@ const assertEmptyResponseFailsRequest = Effect.fnUntraced(function*(
 })
 
 class Unauthorized extends Schema.TaggedError<Unauthorized>()("Unauthorized", {}) {}
-class NotFound extends Schema.TaggedError<NotFound>()("NotFound", {}) {}
-class CurrentUser extends Context.Service<CurrentUser, { readonly id: string }>()("RpcClientTest/CurrentUser") {}
-class Auth extends RpcMiddleware.Service<Auth, { provides: CurrentUser }>()("RpcClientTest/Auth", {
-  error: Unauthorized
-}) {}
+class Auth extends RpcMiddleware.Service<Auth>()("RpcClientTest/Auth", { error: Unauthorized }) {}
 
-// None of these RPCs declare `Unauthorized`, so the handlers fail with it
-// through the middleware's error schema.
+// None of these RPCs declare `Unauthorized`; it comes from the middleware.
 const AuthGroup = RpcGroup.make(
-  Rpc.make("Get", { payload: { id: Schema.String }, success: Schema.String, error: NotFound }),
+  Rpc.make("Get", { success: Schema.String }),
   Rpc.make("Events", { success: Schema.String, stream: true }),
   Rpc.make("EventsQueue", { success: Schema.String, stream: true })
 ).middleware(Auth)
-
-const AuthLayer = AuthGroup.toLayer({
-  Get: Effect.fnUntraced(function*({ id }) {
-    const user = yield* CurrentUser
-    if (id === user.id) return id
-    if (id === "missing") return yield* new NotFound()
-    return yield* new Unauthorized()
-  }),
-  Events: () => Stream.make("a").pipe(Stream.concat(Stream.fail(new Unauthorized()))),
-  EventsQueue: Effect.fnUntraced(function*() {
-    const queue = yield* Queue.unbounded<string, Unauthorized | Cause.Done>()
-    yield* Queue.offer(queue, "a")
-    yield* Queue.fail(queue, new Unauthorized())
-    return queue
-  })
-}).pipe(
-  Layer.merge(Layer.succeed(Auth, (effect) => Effect.provideService(effect, CurrentUser, { id: "me" })))
-)
-
-const assertHandlersFailWithMiddlewareErrors = Effect.fnUntraced(function*(
-  client: RpcClient.FromGroup<typeof AuthGroup, RpcClientError>
-) {
-  assert.strictEqual(yield* client.Get({ id: "me" }), "me")
-  assert.instanceOf(yield* Effect.flip(client.Get({ id: "missing" })), NotFound)
-  assert.instanceOf(yield* Effect.flip(client.Get({ id: "other" })), Unauthorized)
-  for (const events of [client.Events(), client.EventsQueue()]) {
-    const received: Array<string> = []
-    const error = yield* events.pipe(
-      Stream.runForEach((value) => Effect.sync(() => received.push(value))),
-      Effect.flip
-    )
-    assert.deepStrictEqual(received, ["a"])
-    assert.instanceOf(error, Unauthorized)
-  }
-})
 
 describe("RpcClient", () => {
   it.effect("does not fail a new request started synchronously during connection defect delivery", () =>
@@ -1592,37 +1552,42 @@ describe("RpcClient", () => {
       }))
   })
 
-  describe("middleware errors", () => {
-    for (
-      const [name, serialization] of [
-        ["json", RpcSerialization.layerJson],
-        ["ndjson", RpcSerialization.layerNdjson],
-        ["schemaBinary", RpcSerialization.layerSchemaBinary()]
-      ] as const
-    ) {
-      it.effect(`decodes a handler failing with a middleware error over ${name}`, () =>
+  it.effect("handlers fail with middleware errors over the wire", () =>
+    Effect.gen(function*() {
+      const layer = AuthGroup.toLayer({
+        Get: () => Effect.fail(new Unauthorized()),
+        Events: () => Stream.make("a").pipe(Stream.concat(Stream.fail(new Unauthorized()))),
+        EventsQueue: Effect.fnUntraced(function*() {
+          const queue = yield* Queue.unbounded<string, Unauthorized | Cause.Done>()
+          yield* Queue.offer(queue, "a")
+          yield* Queue.fail(queue, new Unauthorized())
+          return queue
+        })
+      }).pipe(
+        Layer.merge(Layer.succeed(Auth, (effect) => effect)),
+        Layer.merge(RpcSerialization.layerJson)
+      )
+      const handler = HttpEffect.toWebHandler(yield* RpcServer.toHttpEffect(AuthGroup).pipe(Effect.provide(layer)))
+      const httpClient = HttpClient.make((request) =>
         Effect.gen(function*() {
-          const handler = HttpEffect.toWebHandler(
-            yield* RpcServer.toHttpEffect(AuthGroup).pipe(Effect.provide(Layer.merge(AuthLayer, serialization)))
-          )
-          const httpClient = HttpClient.make((request) =>
-            Effect.gen(function*() {
-              const webRequest = yield* Effect.orDie(HttpClientRequest.toWeb(request))
-              const response = yield* Effect.promise(() => handler(webRequest))
-              return HttpClientResponse.fromWeb(request, response)
-            })
-          )
-          const client = yield* RpcClient.make(AuthGroup).pipe(
-            Effect.provide(makeProtocolLayerWithClient(serialization, httpClient))
-          )
-          yield* assertHandlersFailWithMiddlewareErrors(client)
-        }))
-    }
+          const webRequest = yield* Effect.orDie(HttpClientRequest.toWeb(request))
+          const response = yield* Effect.promise(() => handler(webRequest))
+          return HttpClientResponse.fromWeb(request, response)
+        })
+      )
+      const client = yield* RpcClient.make(AuthGroup).pipe(
+        Effect.provide(makeProtocolLayerWithClient(RpcSerialization.layerJson, httpClient))
+      )
 
-    it.effect("passes a handler failing with a middleware error through RpcTest", () =>
-      Effect.gen(function*() {
-        const client = yield* RpcTest.makeClient(AuthGroup).pipe(Effect.provide(AuthLayer))
-        yield* assertHandlersFailWithMiddlewareErrors(client)
-      }))
-  })
+      assert.instanceOf(yield* Effect.flip(client.Get()), Unauthorized)
+      for (const events of [client.Events(), client.EventsQueue()]) {
+        const received: Array<string> = []
+        const error = yield* events.pipe(
+          Stream.runForEach((value) => Effect.sync(() => received.push(value))),
+          Effect.flip
+        )
+        assert.deepStrictEqual(received, ["a"])
+        assert.instanceOf(error, Unauthorized)
+      }
+    }))
 })

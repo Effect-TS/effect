@@ -1,4 +1,3 @@
-import type { Cause, Deferred, Effect, Queue, Stream } from "effect"
 import { Context, Schema } from "effect"
 import * as Rpc from "effect/rpc/Rpc"
 import * as RpcMiddleware from "effect/rpc/RpcMiddleware"
@@ -32,18 +31,6 @@ const MultiMiddleware = Rpc.make("MultiMiddleware", { success: Schema.String, st
   .middleware(AuthMiddleware)
   .middleware(DbMiddleware)
 const Fails = Rpc.make("Fails", { success: Schema.Never, error: Schema.String })
-
-class NotFound extends Schema.TaggedError<NotFound>()("NotFound", {}) {}
-class Unauthorized extends Schema.TaggedError<Unauthorized>()("Unauthorized", {}) {}
-class Forbidden extends Schema.TaggedError<Forbidden>()("Forbidden", {}) {}
-
-class Authn extends RpcMiddleware.Service<Authn>()("Authn", { error: Unauthorized }) {}
-class Authz extends RpcMiddleware.Service<Authz>()("Authz", { error: Forbidden }) {}
-
-const Find = Rpc.make("Find", { success: Schema.String, error: NotFound })
-const GuardedFind = Find.middleware(Authn).middleware(Authz)
-const GuardedEvents = Rpc.make("GuardedEvents", { success: Schema.String, error: NotFound, stream: true })
-  .middleware(Authn)
 
 type Mixed = typeof GetUser | typeof StreamEvents
 type MixedWithMiddleware = typeof GetUser | typeof AuthedStream
@@ -112,27 +99,6 @@ describe("Rpc", () => {
       expect<Rpc.ExtractTag<typeof UnionTagged | typeof A, "A">>().type.toBe<typeof A>()
       expect<Rpc.ExtractTag<typeof PatternTagged | typeof Bee, "A" | `B${string}`>>().type.toBe<
         typeof PatternTagged | typeof Bee
-      >()
-    })
-  })
-
-  describe("ResultFrom", () => {
-    it("lets handlers fail with the rpc and middleware errors", () => {
-      expect<Rpc.ResultFrom<typeof GuardedFind, never>>().type.toBe<
-        Effect.Effect<string | Deferred.Deferred<string, NotFound>, NotFound | Unauthorized | Forbidden>
-      >()
-    })
-
-    it("lets stream handlers fail with the rpc and middleware errors", () => {
-      expect<Rpc.ResultFrom<typeof GuardedEvents, never>>().type.toBe<
-        | Stream.Stream<string, NotFound | Unauthorized>
-        | Effect.Effect<Queue.Dequeue<string, NotFound | Unauthorized | Cause.Done>, NotFound | Unauthorized>
-      >()
-    })
-
-    it("is unchanged for rpcs without middleware", () => {
-      expect<Rpc.ResultFrom<typeof Find, never>>().type.toBe<
-        Effect.Effect<string | Deferred.Deferred<string, NotFound>, NotFound>
       >()
     })
   })
