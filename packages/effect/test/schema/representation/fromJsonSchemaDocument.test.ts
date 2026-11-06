@@ -1199,6 +1199,59 @@ describe("fromJsonSchemaDocument", () => {
     )
   })
 
+  it.each(["$ref", "$dynamicRef"])("omits contentSchema containing a nested %s", (keyword) => {
+    const schema = toSchemaFromJsonSchemaDocument(JsonSchema.fromSchemaDraft2020_12({
+      type: "string",
+      contentEncoding: "base64",
+      contentMediaType: "application/json",
+      contentSchema: {
+        type: "object",
+        properties: {
+          values: {
+            type: "array",
+            items: { anyOf: [{ [keyword]: "#/$defs/Payload" }] }
+          }
+        }
+      },
+      $defs: { Payload: { type: "number" } }
+    }))
+
+    assertCode(schema, {
+      codes: makeCode(
+        `Schema.String.annotate({ "contentEncoding": "base64", "contentMediaType": "application/json" })`,
+        `string`
+      )
+    })
+    deepStrictEqual(Schema.toJsonSchemaDocument(schema), {
+      dialect: "draft-2020-12",
+      schema: { type: "string", contentEncoding: "base64", contentMediaType: "application/json" },
+      definitions: {}
+    })
+  })
+
+  it("preserves reference-like data inside contentSchema", () => {
+    const data = { $ref: "#/$defs/Payload", $dynamicRef: "#node" }
+    const contentSchema = {
+      type: "object",
+      properties: {
+        $ref: { type: "string" },
+        value: { const: data, enum: [data], default: data, examples: [data] }
+      },
+      examples: [data]
+    }
+    const schema = toSchemaFromJsonSchemaDocument(JsonSchema.fromSchemaDraft2020_12({
+      type: "string",
+      contentMediaType: "application/json",
+      contentSchema
+    }))
+
+    deepStrictEqual(Schema.toJsonSchemaDocument(schema).schema, {
+      type: "string",
+      contentMediaType: "application/json",
+      contentSchema
+    })
+  })
+
   describe("$ref", () => {
     it("rejects local references inside nested resources", () => {
       const reference = { $ref: "#/$defs/X" }
