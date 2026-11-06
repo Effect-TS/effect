@@ -229,6 +229,23 @@ function addNumberCheck(
   }
 }
 
+function hasReferences(schema: unknown): boolean {
+  if (!isObject(schema)) return false
+  if (typeof schema.$ref === "string" || typeof schema.$dynamicRef === "string") return true
+  return Object.entries(schema).some(([keyword, value]) => {
+    switch (InternalJsonSchema.getSubschemaKind(keyword)) {
+      case "schema":
+        return hasReferences(value)
+      case "array":
+        return Array.isArray(value) && value.some(hasReferences)
+      case "map":
+        return isObject(value) && Object.values(value).some(hasReferences)
+      default:
+        return false
+    }
+  })
+}
+
 function jsonSchemaAnnotations(
   schema: JsonSchema.JsonSchema,
   options: SchemaRepresentation.FromJsonSchemaOptions | undefined
@@ -243,7 +260,10 @@ function jsonSchemaAnnotations(
   if (typeof schema.format === "string") annotations.format = schema.format
   if (typeof schema.contentEncoding === "string") annotations.contentEncoding = schema.contentEncoding
   if (typeof schema.contentMediaType === "string") annotations.contentMediaType = schema.contentMediaType
-  if (InternalAST.isJson(schema.contentSchema)) annotations.contentSchema = schema.contentSchema
+  // Referenced definitions are not retained by the annotation.
+  if (InternalAST.isJson(schema.contentSchema) && !hasReferences(schema.contentSchema)) {
+    annotations.contentSchema = schema.contentSchema
+  }
   let customAnnotations: Schema.Annotations.Annotations | undefined
   if (options?.includeAnnotationKey !== undefined) {
     for (const key of Object.keys(schema)) {

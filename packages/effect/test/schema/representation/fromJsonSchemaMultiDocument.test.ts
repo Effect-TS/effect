@@ -187,7 +187,7 @@ describe("SchemaRepresentation.fromJsonSchemaMultiDocument", () => {
     )
   })
 
-  it("preserves contentSchema as an annotation without traversing it", () => {
+  it("omits contentSchema when it contains a reference", () => {
     const schemas = SchemaRepresentation.fromJsonSchemaMultiDocument({
       dialect: "draft-2020-12",
       schemas: [{
@@ -207,7 +207,7 @@ describe("SchemaRepresentation.fromJsonSchemaMultiDocument", () => {
 
     assertCode(schemas, {
       codes: [makeCode(
-        `Schema.String.annotate({ "contentMediaType": "application/json", "contentSchema": { "$ref": "#/$defs/Payload" } })`,
+        `Schema.String.annotate({ "contentMediaType": "application/json" })`,
         `string`
       )]
     })
