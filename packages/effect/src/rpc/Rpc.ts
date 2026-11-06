@@ -794,6 +794,10 @@ export type ExcludeProvides<Env, R extends Any, Tag extends string> = Exclude<
  * RPCs return an effect that succeeds with the success value or a deferred
  * success value.
  *
+ * A handler may also fail with the errors of the RPC's middleware, which the
+ * RPC exit schema already encodes. If the handler returns a `Deferred` to
+ * complete later, the `Deferred` can still only fail with the RPC's own error.
+ *
  * @stability unstable
  * @category utility types
  * @since 4.0.0
@@ -808,17 +812,17 @@ export type ResultFrom<R extends Any, Services> = R extends Rpc<
 > ? [_Success] extends [RpcSchema.Stream<infer _SA, infer _SE>] ?
       | Stream<
         _SA["Type"],
-        _SE["Type"] | _Error["Type"],
+        _SE["Type"] | _Error["Type"] | _Middleware["error"]["Type"],
         Services
       >
       | Effect<
-        Queue.Dequeue<_SA["Type"], _SE["Type"] | _Error["Type"] | Cause.Done>,
-        _SE["Type"] | Schema.Schema.Type<_Error>,
+        Queue.Dequeue<_SA["Type"], _SE["Type"] | _Error["Type"] | _Middleware["error"]["Type"] | Cause.Done>,
+        _SE["Type"] | Schema.Schema.Type<_Error> | _Middleware["error"]["Type"],
         Services
       > :
   Effect<
     _Success["Type"] | Deferred<_Success["Type"], _Error["Type"]>,
-    _Error["Type"],
+    _Error["Type"] | _Middleware["error"]["Type"],
     Services
   > :
   never
