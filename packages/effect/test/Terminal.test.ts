@@ -72,18 +72,15 @@ describe("Terminal operations", () => {
     assert.isFalse(context.mapUnsafe.has("effect/Terminal"))
     assert.strictEqual(Context.get(context, Terminal.columns), live.columns)
     assertSameMembers(Context.get(context, Terminal.Terminal), live)
-    // the one function operation is stored bound to the provided object
-    assert.strictEqual(Context.get(context, Terminal.display).name, "bound display")
+    // the one function operation reads no `this`, so it is stored as provided
+    assert.strictEqual(Context.get(context, Terminal.display), live.display)
     assert.strictEqual(Terminal.Terminal.columns, Terminal.columns)
     assert.strictEqual(Context.omit(Terminal.Terminal)(context).mapUnsafe.size, 0)
   })
 })
 
-/** The value members are the provided Effects; the function member is the provided implementation, bound. */
+/** Every member, the value Effects and the `display` closure, is the one provided. */
 const assertSameMembers = (actual: object, expected: object) => {
   assert.deepStrictEqual(Object.keys(actual).sort(), Object.keys(expected).sort())
-  for (const [name, value] of Object.entries(expected)) {
-    if (typeof value === "function") assert.strictEqual((actual as any)[name].name, `bound ${value.name}`)
-    else assert.strictEqual((actual as any)[name], value)
-  }
+  for (const [name, value] of Object.entries(expected)) assert.strictEqual((actual as any)[name], value)
 }

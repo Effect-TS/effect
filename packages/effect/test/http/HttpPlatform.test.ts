@@ -14,6 +14,16 @@ describe("HttpPlatform", () => {
     stream: () => Stream.empty
   })))
 
+  it.effect("reads its operations when the layer is built: an override provided above the layer does not reach it", () =>
+    Effect.gen(function*() {
+      const platform = yield* HttpPlatform.HttpPlatform
+      const response = yield* platform.fileResponse("file.bin").pipe(
+        Effect.provideService(FileSystem.stat, () => Effect.die("override above the layer"))
+      )
+      // the layer's own stat answered
+      assert.strictEqual(response.headers["content-length"], oversized.toString())
+    }).pipe(Effect.provide(layer)))
+
   it.effect("fileResponse infers the content type from the extension", () =>
     Effect.gen(function*() {
       const platform = yield* HttpPlatform.HttpPlatform

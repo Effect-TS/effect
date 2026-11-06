@@ -108,7 +108,7 @@ export const parseArgs = (
 /* Types                                                                      */
 /* ========================================================================== */
 
-type FlagParam = Param.Single<typeof Param.flagKind, unknown, unknown>
+type FlagParam = Param.Single<typeof Param.flagKind, unknown>
 
 /**
  * Mutable map of flag names to their collected string values.

@@ -44,18 +44,13 @@ export interface HandlerContext {
 /**
  * Action flag: side effect + exit (--help, --version, --completions).
  *
- * **Details**
- *
- * `R` is the set of services parsing the flag requires; it defaults to
- * `Command.Environment`.
- *
  * @stability unstable
  * @category models
  * @since 4.0.0
  */
-export interface Action<A, R = Command.Environment> {
+export interface Action<A> {
   readonly _tag: "Action"
-  readonly flag: Flag.Flag<A, R>
+  readonly flag: Flag.Flag<A>
   readonly run: (
     value: A,
     context: HandlerContext
@@ -65,21 +60,14 @@ export interface Action<A, R = Command.Environment> {
 /**
  * Setting flag: configure command handler's environment (--log-level, --config).
  *
- * **Details**
- *
- * `R` is the set of services parsing the flag requires; it defaults to
- * `Command.Environment`.
- *
  * @stability unstable
  * @category services
  * @since 4.0.0
  */
-export interface Setting<Id extends string, A, R = Command.Environment>
-  extends Context.Service<Setting.Identifier<Id>, A>
-{
+export interface Setting<Id extends string, A> extends Context.Service<Setting.Identifier<Id>, A> {
   readonly _tag: "Setting"
   readonly id: Id
-  readonly flag: Flag.Flag<A, R>
+  readonly flag: Flag.Flag<A>
 }
 
 /**
@@ -101,14 +89,13 @@ export declare namespace Setting {
 }
 
 /**
- * Global flag discriminated union. `R` is the set of services parsing the
- * flag requires; it defaults to `Command.Environment`.
+ * Global flag discriminated union.
  *
  * @stability unstable
  * @category models
  * @since 4.0.0
  */
-export type GlobalFlag<A, R = Command.Environment> = Action<A, R> | Setting<any, A, R>
+export type GlobalFlag<A> = Action<A> | Setting<any, A>
 
 /* ========================================================================== */
 /* Constructors                                                               */
@@ -121,13 +108,13 @@ export type GlobalFlag<A, R = Command.Environment> = Action<A, R> | Setting<any,
  * @category constructors
  * @since 4.0.0
  */
-export const Action = <A, R = never>(options: {
-  readonly flag: Flag.Flag<A, R>
+export const Action = <A>(options: {
+  readonly flag: Flag.Flag<A>
   readonly run: (
     value: A,
     context: HandlerContext
   ) => Effect.Effect<void>
-}): Action<A, R> => ({
+}): Action<A> => ({
   _tag: "Action",
   flag: options.flag,
   run: options.run
@@ -143,9 +130,9 @@ export const Action = <A, R = never>(options: {
 export const Setting = <const Id extends string>(
   id: Id
 ) =>
-<A, R = never>(options: {
-  readonly flag: Flag.Flag<A, R>
-}): Setting<Id, A, R> => {
+<A>(options: {
+  readonly flag: Flag.Flag<A>
+}): Setting<Id, A> => {
   settingIdCounter += 1
   const ref = Context.Service<Setting.Identifier<Id>, A>(
     `effect/cli/GlobalFlag/${id}/${settingIdCounter}`
@@ -174,7 +161,7 @@ let settingIdCounter = 0
  * @category references
  * @since 4.0.0
  */
-export const Help: Action<boolean, never> = Action({
+export const Help: Action<boolean> = Action({
   flag: Flag.Boolean("help").pipe(
     Flag.withAlias("h"),
     Flag.withDescription("Show help information"),
@@ -198,7 +185,7 @@ export const Help: Action<boolean, never> = Action({
  * @category references
  * @since 4.0.0
  */
-export const Version: Action<boolean, never> = Action({
+export const Version: Action<boolean> = Action({
   flag: Flag.Boolean("version").pipe(
     Flag.withAlias("v"),
     Flag.withDescription("Show version information"),
@@ -222,7 +209,7 @@ export const Version: Action<boolean, never> = Action({
  * @category references
  * @since 4.0.0
  */
-export const Wizard: Action<boolean, never> = Action({
+export const Wizard: Action<boolean> = Action({
   flag: Flag.Boolean("wizard").pipe(
     Flag.withDescription("Start wizard mode for a command"),
     Flag.withDefault(false)
@@ -243,7 +230,7 @@ export const Wizard: Action<boolean, never> = Action({
  * @category references
  * @since 4.0.0
  */
-export const Completions: Action<Option.Option<Completions_.Shell>, never> = Action({
+export const Completions: Action<Option.Option<Completions_.Shell>> = Action({
   flag: Flag.ChoiceWithValue(
     "completions",
     [
@@ -280,7 +267,7 @@ export const Completions: Action<Option.Option<Completions_.Shell>, never> = Act
  * @category references
  * @since 4.0.0
  */
-export const LogLevel: Setting<"log-level", Option.Option<LogLevelType>, never> = Setting("log-level")({
+export const LogLevel: Setting<"log-level", Option.Option<LogLevelType>> = Setting("log-level")({
   flag: Flag.ChoiceWithValue(
     "log-level",
     [
@@ -334,11 +321,11 @@ export const LogLevel: Setting<"log-level", Option.Option<LogLevelType>, never> 
  * @since 4.0.0
  */
 export const BuiltIns: readonly [
-  Action<boolean, never>,
-  Action<boolean, never>,
-  Action<boolean, never>,
-  Action<Option.Option<Completions_.Shell>, never>,
-  Setting<"log-level", Option.Option<LogLevelType>, never>
+  Action<boolean>,
+  Action<boolean>,
+  Action<boolean>,
+  Action<Option.Option<Completions_.Shell>>,
+  Setting<"log-level", Option.Option<LogLevelType>>
 ] = [Help, Version, Wizard, Completions, LogLevel]
 
 /**

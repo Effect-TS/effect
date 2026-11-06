@@ -904,11 +904,14 @@ export interface DirectoryEntry {
  * the tree with `readDirectoryEntries`, using `stat` and `readLink` for entries
  * whose type is `"Unknown"`.
  *
- * A derived member calls its primitives through their operations: each call
- * runs the `access`, `readFile`, `open`, ... in the calling fiber's context,
- * and `impl`'s own only when the context has none. So a test that overrides
- * `readFile` above `Layer.succeed(FileSystem, make(...))` reaches
- * `readFileString` too, as it reaches every other caller of `readFile`.
+ * A derived member calls `impl`'s own primitives, as one closure calls
+ * another: the result is closed over `impl` wherever it is called or
+ * provided. An override of `readFile` provided above
+ * `Layer.succeed(FileSystem, make(impl))` replaces `readFile` for its callers
+ * and not `readFileString`, which was built with `impl.readFile`. To fake a
+ * primitive for the derived members too, give the fake where they are built:
+ * `make({ ...impl, readFile: fake })`, or a derived-operation layer such as
+ * {@link layerReadFileString} provided with the fake.
  *
  * @see {@link makeNoop} for a testing stub that accepts method overrides without requiring a complete implementation
  * @see {@link layerNoop} for providing a no-op `FileSystem` as a `Layer` in tests
@@ -919,40 +922,16 @@ export interface DirectoryEntry {
  */
 export const make = (
   impl: Omit<Shape, "exists" | "glob" | "readFileString" | "stream" | "sink" | "writeFileString">
-): Shape => {
-  const primitives = {
-    access: current(access, impl.access),
-    open: current(open, impl.open),
-    readDirectoryEntries: current(readDirectoryEntries, impl.readDirectoryEntries),
-    readFile: current(readFile, impl.readFile),
-    readLink: current(readLink, impl.readLink),
-    stat: current(stat, impl.stat),
-    writeFile: current(writeFile, impl.writeFile)
-  }
-  return FileSystem.of({
+): Shape =>
+  FileSystem.of({
     ...impl,
-    glob: Glob.make(primitives),
-    exists: makeExists(primitives),
-    readFileString: makeReadFileString(primitives),
-    stream: makeStream(primitives),
-    sink: makeSink(primitives),
-    writeFileString: makeWriteFileString(primitives)
+    glob: Glob.make(impl),
+    exists: makeExists(impl),
+    readFileString: makeReadFileString(impl),
+    stream: makeStream(impl),
+    sink: makeSink(impl),
+    writeFileString: makeWriteFileString(impl)
   })
-}
-
-// A primitive as a derived member calls it: the implementation in the calling
-// fiber's context, so an override provided above the record or the layer
-// reaches the derived member as it reaches any other caller, or `own` when
-// the context has none (a layer provided its primitive with `Layer.provide`,
-// or a derived member written without its primitive).
-const current = <F extends (...args: Array<any>) => Effect.Effect<any, any, any>>(
-  operation: Context.Slot<any, F>,
-  own: F
-): F =>
-  ((...args: Array<any>) =>
-    Effect.contextWith((context: Context.Context<never>) =>
-      (Context.getOrUndefined(context, operation) ?? own)(...args)
-    )) as F
 
 const makeExists = (impl: Pick<Shape, "access">): Shape["exists"] => (path) =>
   pipe(
@@ -1043,13 +1022,20 @@ const makeWriteFileString = (impl: Pick<Shape, "writeFile">): Shape["writeFileSt
  * Use to build a platform's `exists` layer: provide it with that platform's
  * `access`, so a program that only calls `exists` bundles only the two.
  *
+ * **Details**
+ *
+ * The layer reads its primitives once, when it is built, like any layer
+ * that depends on another: the primitive it was provided with is the one it
+ * calls, and an override of that primitive provided above the layer does
+ * not reach it.
+ *
  * @stability unstable
  * @category layers
  * @since 4.2.0
  */
 export const layerExists: Layer.Layer<"effect/FileSystem/exists", never, "effect/FileSystem/access"> = Layer.effect(
   exists,
-  Effect.map(Effect.service(access), (own) => makeExists({ access: current(access, own) }))
+  Effect.map(Effect.service(access), (access) => makeExists({ access }))
 )
 
 /**
@@ -1060,6 +1046,13 @@ export const layerExists: Layer.Layer<"effect/FileSystem/exists", never, "effect
  *
  * Use to build a platform's `glob` layer: provide it with that platform's
  * primitives.
+ *
+ * **Details**
+ *
+ * The layer reads its primitives once, when it is built, like any layer
+ * that depends on another: the primitive it was provided with is the one it
+ * calls, and an override of that primitive provided above the layer does
+ * not reach it.
  *
  * @stability unstable
  * @category layers
@@ -1073,12 +1066,9 @@ export const layerGlob: Layer.Layer<
   glob,
   Effect.map(
     Effect.all({
-      readDirectoryEntries: Effect.map(
-        Effect.service(readDirectoryEntries),
-        (own) => current(readDirectoryEntries, own)
-      ),
-      stat: Effect.map(Effect.service(stat), (own) => current(stat, own)),
-      readLink: Effect.map(Effect.service(readLink), (own) => current(readLink, own))
+      readDirectoryEntries: Effect.service(readDirectoryEntries),
+      stat: Effect.service(stat),
+      readLink: Effect.service(readLink)
     }),
     Glob.make
   )
@@ -1093,6 +1083,13 @@ export const layerGlob: Layer.Layer<
  * Use to build a platform's per-operation layer: provide it with that
  * platform's `readFile`.
  *
+ * **Details**
+ *
+ * The layer reads its primitives once, when it is built, like any layer
+ * that depends on another: the primitive it was provided with is the one it
+ * calls, and an override of that primitive provided above the layer does
+ * not reach it.
+ *
  * @stability unstable
  * @category layers
  * @since 4.2.0
@@ -1103,7 +1100,7 @@ export const layerReadFileString: Layer.Layer<
   "effect/FileSystem/readFile"
 > = Layer.effect(
   readFileString,
-  Effect.map(Effect.service(readFile), (own) => makeReadFileString({ readFile: current(readFile, own) }))
+  Effect.map(Effect.service(readFile), (readFile) => makeReadFileString({ readFile }))
 )
 
 /**
@@ -1115,13 +1112,20 @@ export const layerReadFileString: Layer.Layer<
  * Use to build a platform's per-operation layer: provide it with that
  * platform's `open`.
  *
+ * **Details**
+ *
+ * The layer reads its primitives once, when it is built, like any layer
+ * that depends on another: the primitive it was provided with is the one it
+ * calls, and an override of that primitive provided above the layer does
+ * not reach it.
+ *
  * @stability unstable
  * @category layers
  * @since 4.2.0
  */
 export const layerStream: Layer.Layer<"effect/FileSystem/stream", never, "effect/FileSystem/open"> = Layer.effect(
   stream,
-  Effect.map(Effect.service(open), (own) => makeStream({ open: current(open, own) }))
+  Effect.map(Effect.service(open), (open) => makeStream({ open }))
 )
 
 /**
@@ -1133,13 +1137,20 @@ export const layerStream: Layer.Layer<"effect/FileSystem/stream", never, "effect
  * Use to build a platform's per-operation layer: provide it with that
  * platform's `open`.
  *
+ * **Details**
+ *
+ * The layer reads its primitives once, when it is built, like any layer
+ * that depends on another: the primitive it was provided with is the one it
+ * calls, and an override of that primitive provided above the layer does
+ * not reach it.
+ *
  * @stability unstable
  * @category layers
  * @since 4.2.0
  */
 export const layerSink: Layer.Layer<"effect/FileSystem/sink", never, "effect/FileSystem/open"> = Layer.effect(
   sink,
-  Effect.map(Effect.service(open), (own) => makeSink({ open: current(open, own) }))
+  Effect.map(Effect.service(open), (open) => makeSink({ open }))
 )
 
 /**
@@ -1151,6 +1162,13 @@ export const layerSink: Layer.Layer<"effect/FileSystem/sink", never, "effect/Fil
  * Use to build a platform's per-operation layer: provide it with that
  * platform's `writeFile`.
  *
+ * **Details**
+ *
+ * The layer reads its primitives once, when it is built, like any layer
+ * that depends on another: the primitive it was provided with is the one it
+ * calls, and an override of that primitive provided above the layer does
+ * not reach it.
+ *
  * @stability unstable
  * @category layers
  * @since 4.2.0
@@ -1161,7 +1179,7 @@ export const layerWriteFileString: Layer.Layer<
   "effect/FileSystem/writeFile"
 > = Layer.effect(
   writeFileString,
-  Effect.map(Effect.service(writeFile), (own) => makeWriteFileString({ writeFile: current(writeFile, own) }))
+  Effect.map(Effect.service(writeFile), (writeFile) => makeWriteFileString({ writeFile }))
 )
 
 const notFound = (method: string, path: string) =>

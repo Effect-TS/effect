@@ -244,9 +244,10 @@ and stream files (`HttpServerResponse.file`, `HttpStaticServer`) annotate `FileS
 record `{ columns, readInput, display }`, and its `InteractiveShape`; a `Layer<Terminal>` satisfies it
 (`Terminal.test.ts`). `Prompt.run` reads `Terminal.Interactive`, and the runner (`runWithInput`, `runLoop`) takes
 `Terminal.InteractiveShape` by parameter; the nine `yield* Terminal.Terminal` then `terminal.columns` sites read
-`Terminal.columns`. `Prompt.Environment` and `Command.Environment` stay whole (`Terminal.Terminal`), so user callbacks
-typed against them keep compiling; a command instead carries the requirements of its own params and handler, and
-`Command.run` requires those and `Stdio | Terminal.Interactive` ("`Command.Environment`" in the spec).
+`Terminal.columns`. `Prompt.Environment` and `Command.Environment` stay whole, as does every cli type: round 14's
+requirement parameter on `Flag`/`Argument`/`Param`/`Primitive` (about 1,000 lines, a `ParseServices<R>` wrapper
+the `provide` combinators could not discharge, a cast in the runners) is withdrawn from this branch and is the spec's
+follow-up issue, with its own acceptance. It was a change to the cli's types, not to services.
 
 ## F. Decisions, and why
 
@@ -334,18 +335,36 @@ In the order an implementer meets them:
 - **A record provided without a member is a defect at the write**, naming the member's key, rather than a record that
   reads back a member no call can use.
 - **One receiver rule.** An operation calls its implementation with no receiver, whatever the call site, and a record
-  write binds each function operation's implementation to the object that provides it, plain object or class
-  instance; every other member (a value operation, a service, a class constructor) is stored as the object holds it,
-  with its identity, `name`, properties and statics. Round 13 had two rules, an own method's `this` being its call's
+  write binds an implementation that reads `this` (its source names `this` or `super`, scanned once per function
+  and kept in a `WeakMap`) to the object that provides it, plain object or class instance; every other member (a
+  closure, a value operation, a service, a class constructor) is stored as the object holds it, with its identity,
+  `name`, properties and statics. Round 14 bound every function member, which cost closures their identity and one
+  allocation per member per write. A scan's false positive (`this` in a string or a comment) binds a closure, which is
+  harmless; it cannot miss a receiver read, which needs the word. Round 13 had two rules, an own method's `this` being its call's
   receiver and an inherited one bound, so the same `this.find` read the override through a record read, the
   operation through the key, the instance's own through a class, and failed on a bare call. Now `this` is the object
   that provides the implementation from every call site, private fields work, and `this.find` is the object's own,
   never an override, as one closure calls another; a sibling that must see an override is called through its
-  operation (`Users.find(id)`). An operation member read back is a bound copy (`"bound find"`), the price of the
-  rule; a shape declaring `this` is rejected at the definition, so no type promises a receiver the call does not
+  operation (`Users.find(id)`). Only an implementation that reads `this` reads back as a bound copy
+  (`"bound find"`); a method provided alone is called as given, as any method passed as a value is, and the
+  JSDoc gives the record or a closure for it (pinned); a shape declaring `this` is rejected at the definition, so no type promises a receiver the call does not
   pass. `Context.test.ts` asserts it ("binds an operation's implementation to the object that provides it, from
   every call site", and "keeps a function member's properties, statics and identity through a record write" for the
   other members), and `treeShaking.test.ts` runs the matrix from a bundle (`main-receiver.ts`).
+- **One rule for siblings: fixed where provided.** Round 14's `FileSystem.make` called its primitives through the
+  operations, falling back to `impl`'s own (`current(op, own)`): a silent default, and the caller's context beat a
+  `Layer.provide`d primitive, the only place in Effect where it would. `make(impl)` is now closed over `impl` and
+  each derived layer calls the primitive it was built with, like a closure's sibling, `this.find`, and
+  `HttpPlatform.layer`'s build-time `stat`. Following overrides is what a shape's `R` says: a member whose shape
+  requires its sibling's key calls it where it runs.
+- **A record write's overlays are a class, not a flag.** Round 14 added `write: boolean` to every overlay so a read
+  could take its override shortcut only over a key added alone. A record write now makes `RecordSlot`s (the same
+  `key`, `value`, `parent`) and the read tests the class; a key added alone is the branch point's plain overlay
+  again. A per-record set of written overlays was tried and does not work: a subset written over the full record is
+  the full record's storage but the subset's write.
+- **The partial-record diagnostic stays as printed (final).** The headline names `Shape` and the last line names the
+  missing members; the middle expands `Shape`'s base type, cut short at `... 28 more ...`. Only a dummy member on
+  `Shape` would stop the expansion, a line kept for printing; a second interface moves the expansion down.
 - **A record service reads itself**: `yield*`, `use` and `useSync` on a record key call its read directly instead
   of passing through `Context.get`.
 - **No defaults.** Every reason the overridable design was set aside is a reason not to add a defaulted variant;

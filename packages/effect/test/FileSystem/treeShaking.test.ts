@@ -51,8 +51,7 @@ const bundles = esbuild.build({
     "main-http-file.ts",
     "main-logger-file.ts",
     "main-terminal.ts",
-    "main-receiver.ts",
-    "main-cli.ts"
+    "main-receiver.ts"
   ].map((
     entry
   ) => path.join(fixtures, entry)),
@@ -170,18 +169,5 @@ describe("tree-shakeable services: the bundle", () => {
     } finally {
       fs.rmSync(dir, { recursive: true, force: true })
     }
-  }, 60_000)
-
-  it("Command.run: no file system, three terminal members", async () => {
-    const { operations, terminal, text } = (await bundles)["main-cli.ts"]
-    assert.deepStrictEqual(operations, [])
-    assert.notInclude(text, "\"effect/FileSystem/")
-    // `input` is the key reader of `readInput`
-    assert.deepStrictEqual(terminal, ["columns", "display", "input", "readInput"])
-    const keys = [...text.matchAll(/"effect\/Terminal\/(\w+)"/g)].map(([, name]) => name)
-    // the three operations, and the `Terminal.Interactive` record the prompts read them through
-    assert.deepStrictEqual([...new Set(keys)].sort(), ["Interactive", "columns", "display", "readInput"])
-    // the full terminal record service is not referenced
-    assert.notInclude(text, "\"effect/Terminal\"")
   }, 60_000)
 })

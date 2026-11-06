@@ -258,8 +258,8 @@ export declare namespace Command {
    */
   export interface Config {
     readonly [key: string]:
-      | Param.Param<Param.ParamKind, any, any>
-      | ReadonlyArray<Param.Param<Param.ParamKind, any, any> | Config>
+      | Param.Param<Param.ParamKind, any>
+      | ReadonlyArray<Param.Param<Param.ParamKind, any> | Config>
       | Config
   }
 
@@ -276,8 +276,8 @@ export declare namespace Command {
    */
   export interface FlagConfig {
     readonly [key: string]:
-      | Param.Param<typeof Param.flagKind, any, any>
-      | ReadonlyArray<Param.Param<typeof Param.flagKind, any, any> | FlagConfig>
+      | Param.Param<typeof Param.flagKind, any>
+      | ReadonlyArray<Param.Param<typeof Param.flagKind, any> | FlagConfig>
       | FlagConfig
   }
 
@@ -342,80 +342,10 @@ export declare namespace Command {
      * @since 4.0.0
      */
     export type InferValue<A> = A extends ReadonlyArray<any> ? { readonly [Key in keyof A]: InferValue<A[Key]> }
-      : A extends Param.Param<infer _Kind, infer _Value, infer _R> ? _Value
+      : A extends Param.Param<infer _Kind, infer _Value> ? _Value
       : A extends Config ? Infer<A>
       : never
-
-    /**
-     * The union of the services required to parse every parameter in a
-     * `Command.Config` structure, including nested records and arrays.
-     *
-     * **Example** (Reading the requirements of a config)
-     *
-     * ```ts
-     * import { Flag } from "effect/cli"
-     * import type { Command as CliCommand } from "effect/cli"
-     *
-     * const config = {
-     *   name: Flag.String("name"),
-     *   input: { file: Flag.File("file") }
-     * } as const
-     *
-     * // Path | "effect/FileSystem/exists" | "effect/FileSystem/stat"
-     * type Services = CliCommand.Command.Config.Services<typeof config>
-     * ```
-     *
-     * @stability unstable
-     * @category models
-     * @since 4.2.0
-     */
-    export type Services<A> = A extends Param.Param<infer _Kind, infer _Value, infer _R> ? _R
-      : A extends ReadonlyArray<infer _Element> ? Services<_Element>
-      : A extends Config ? { readonly [Key in keyof A]: Services<A[Key]> }[keyof A]
-      : never
   }
-
-  /**
-   * Marks services that a command needs while parsing its input, as opposed to
-   * services its handler needs.
-   *
-   * **Details**
-   *
-   * Parameters, validations and global flags are parsed before the handler
-   * runs, outside the services that `provide`, `provideSync`,
-   * `provideEffect` and `withHandler` give the handler. A command's
-   * requirement type wraps those parsing services in `ParseServices` so that
-   * these combinators keep them, and the runners unwrap them with
-   * {@link Requirements}.
-   *
-   * @stability unstable
-   * @category models
-   * @since 4.2.0
-   */
-  export interface ParseServices<out R> {
-    readonly "~effect/cli/Command/ParseServices": Covariant<R>
-  }
-
-  /**
-   * The requirement contributed by parsing services `R`: `never` when `R`
-   * is `never`, otherwise `ParseServices<R>`.
-   *
-   * @stability unstable
-   * @category models
-   * @since 4.2.0
-   */
-  export type ParseRequirement<R> = [R] extends [never] ? never : ParseServices<R>
-
-  /**
-   * The services that a command requirement `R` stands for when the command
-   * runs: the handler's services together with the parsing services wrapped in
-   * {@link ParseServices}.
-   *
-   * @stability unstable
-   * @category models
-   * @since 4.2.0
-   */
-  export type Requirements<R> = R extends ParseServices<infer _Parse> ? _Parse : R
 
   /**
    * Represents any Command regardless of its type parameters.
@@ -462,46 +392,19 @@ export declare namespace Command {
 }
 
 /**
- * Every service a cli callback may require.
+ * Services required by CLI parsing and execution.
  *
  * **Details**
  *
  * This includes file-system and path services for arguments, terminal and
  * stdio services for running commands, and child-process spawning for
- * process-related CLI features. It is the default requirement of `Param`,
- * `Flag`, `Argument`, `Primitive` and `GlobalFlag`, so a value annotated
- * without a requirement, such as `Flag.Flag<string>`, may require any of
- * them. The runners no longer require it as a whole: see
- * {@link RunRequirements}.
+ * process-related CLI features.
  *
  * @stability unstable
  * @category utility types
  * @since 4.0.0
  */
 export type Environment = FileSystem.FileSystem | Path.Path | Terminal.Terminal | ChildProcessSpawner | Stdio.Stdio
-
-/**
- * The services `run`, `runWith` and `wizard` require in addition to the
- * services of the command itself.
- *
- * **Details**
- *
- * - `Stdio.Stdio`: `run` reads the command-line arguments from it.
- * - `Terminal.Interactive` (`columns`, `readInput` and `display`): the
- *   built-in `--wizard` flag and `wizard` prompt for the command path and
- *   for each parameter, and ask whether to run the result.
- *
- * Help, version, completions and error output are written through `Console`,
- * which has a default, and the `CliConfig`, `CliOutput`, `Prompt.Theme` and
- * `TerminalCapabilities` settings are references with defaults, so they add
- * no requirement. A `Layer<Terminal.Terminal>` provides
- * `Terminal.Interactive`.
- *
- * @stability unstable
- * @category utility types
- * @since 4.2.0
- */
-export type RunRequirements = Stdio.Stdio | Terminal.Interactive
 
 /**
  * A utility type to extract the error type from a `Command`.
@@ -520,16 +423,13 @@ export type Error<C> = C extends Command<
   never
 
 /**
- * A utility type to extract the required services type from a `Command`:
- * the services its handler, parameters, validations and global flags require.
+ * A utility type to extract the required services type from a `Command`.
  *
  * @stability unstable
  * @category utility types
  * @since 4.0.0
  */
-export type Services<C> = Command.Requirements<RequirementType<C>>
-
-type RequirementType<C> = C extends Command<
+export type Services<C> = C extends Command<
   infer _Name,
   infer _Input,
   infer _ContextInput,
@@ -747,19 +647,13 @@ export const make: {
   <Name extends string, const Config extends Command.Config>(
     name: Name,
     config: Config
-  ): Command<Name, Command.Config.Infer<Config>, {}, never, Command.ParseRequirement<Command.Config.Services<Config>>>
+  ): Command<Name, Command.Config.Infer<Config>, {}, never, never>
 
   <Name extends string, const Config extends Command.Config, R, E>(
     name: Name,
     config: Config,
     handler: (config: Command.Config.Infer<Config>) => Effect.Effect<void, E, R>
-  ): Command<
-    Name,
-    Command.Config.Infer<Config>,
-    {},
-    E,
-    Exclude<R, BuiltInSettingContext> | Command.ParseRequirement<Command.Config.Services<Config>>
-  >
+  ): Command<Name, Command.Config.Infer<Config>, {}, E, Exclude<R, BuiltInSettingContext>>
 } = ((
   name: string,
   config?: Command.Config,
@@ -841,15 +735,15 @@ export const withHandler: {
     handler: (value: A) => Effect.Effect<void, E, R>
   ): <Name extends string, XR, XE, ContextInput>(
     self: Command<Name, A, ContextInput, XE, XR>
-  ) => Command<Name, A, ContextInput, XE | E, Exclude<R, BuiltInSettingContext> | ExtractParseServices<XR>>
+  ) => Command<Name, A, ContextInput, XE | E, Exclude<R, BuiltInSettingContext>>
   <Name extends string, A, XR, XE, R, E, ContextInput>(
     self: Command<Name, A, ContextInput, XE, XR>,
     handler: (value: A) => Effect.Effect<void, E, R>
-  ): Command<Name, A, ContextInput, XE | E, Exclude<R, BuiltInSettingContext> | ExtractParseServices<XR>>
+  ): Command<Name, A, ContextInput, XE | E, Exclude<R, BuiltInSettingContext>>
 } = dual(2, <Name extends string, A, XR, XE, R, E, ContextInput>(
   self: Command<Name, A, ContextInput, XE, XR>,
   handler: (value: A) => Effect.Effect<void, E, R>
-): Command<Name, A, ContextInput, XE | E, Exclude<R, BuiltInSettingContext> | ExtractParseServices<XR>> =>
+): Command<Name, A, ContextInput, XE | E, Exclude<R, BuiltInSettingContext>> =>
   makeCommand({ ...toImpl(self), handle: handler } as any))
 
 /**
@@ -994,25 +888,23 @@ export const withHandler: {
  * @since 4.1.0
  */
 export const validate: {
-  <Input, E2 = CliError.CliError, R2 = never>(
-    f: (input: Input) => Effect.Effect<void, E2, R2>
+  <Input, E2 = CliError.CliError>(
+    f: (input: Input) => Effect.Effect<void, E2, Environment>
   ): <Name extends string, ContextInput, E, R>(
     self: Command<Name, Input, ContextInput, E, R>
-  ) => Command<Name, Input, ContextInput, E | Exclude<E2, CliError.CliError>, R | Command.ParseRequirement<R2>>
-  <Name extends string, Input, ContextInput, E, R, E2 = CliError.CliError, R2 = never>(
+  ) => Command<Name, Input, ContextInput, E | Exclude<E2, CliError.CliError>, R>
+  <Name extends string, Input, ContextInput, E, R, E2 = CliError.CliError>(
     self: Command<Name, Input, ContextInput, E, R>,
-    f: (input: Input) => Effect.Effect<void, E2, R2>
-  ): Command<Name, Input, ContextInput, E | Exclude<E2, CliError.CliError>, R | Command.ParseRequirement<R2>>
-} = dual(2, <Name extends string, Input, ContextInput, E, R, E2, R2>(
+    f: (input: Input) => Effect.Effect<void, E2, Environment>
+  ): Command<Name, Input, ContextInput, E | Exclude<E2, CliError.CliError>, R>
+} = dual(2, <Name extends string, Input, ContextInput, E, R, E2>(
   self: Command<Name, Input, ContextInput, E, R>,
-  f: (input: Input) => Effect.Effect<void, E2, R2>
-): Command<Name, Input, ContextInput, E | Exclude<E2, CliError.CliError>, R | Command.ParseRequirement<R2>> => {
+  f: (input: Input) => Effect.Effect<void, E2, Environment>
+): Command<Name, Input, ContextInput, E | Exclude<E2, CliError.CliError>, R> => {
   const impl = toImpl(self)
-  // Validations run while parsing, which is typed in the full cli environment.
-  const validation = f as (input: Input) => Effect.Effect<void, E2, Environment>
   return makeCommand<Name, Input, E | E2 | CliError.CliError, R, ContextInput>({
     ...impl,
-    parse: (raw) => Effect.tap(impl.parse(raw), validation)
+    parse: (raw) => Effect.tap(impl.parse(raw), f)
   }) as any
 })
 
@@ -1268,7 +1160,7 @@ export const withSharedFlags: {
     Simplify<Input & Command.Config.Infer<SharedFlags>>,
     Simplify<ContextInput & Command.Config.Infer<SharedFlags>>,
     E,
-    R | Command.ParseRequirement<Command.Config.Services<SharedFlags>>
+    R
   >
   <Name extends string, Input, E, R, ContextInput, const SharedFlags extends Command.FlagConfig>(
     self: Command<Name, Input, ContextInput, E, R>,
@@ -1278,7 +1170,7 @@ export const withSharedFlags: {
     Simplify<Input & Command.Config.Infer<SharedFlags>>,
     Simplify<ContextInput & Command.Config.Infer<SharedFlags>>,
     E,
-    R | Command.ParseRequirement<Command.Config.Services<SharedFlags>>
+    R
   >
 } = dual(
   2,
@@ -1290,7 +1182,7 @@ export const withSharedFlags: {
     Simplify<Input & Command.Config.Infer<SharedFlags>>,
     Simplify<ContextInput & Command.Config.Infer<SharedFlags>>,
     E,
-    R | Command.ParseRequirement<Command.Config.Services<SharedFlags>>
+    R
   > => {
     const impl = toImpl(self)
     const sharedConfig = parseConfig(sharedFlags)
@@ -1359,34 +1251,22 @@ export const withSharedFlags: {
  * @since 4.0.0
  */
 export const withGlobalFlags: {
-  <const GlobalFlags extends ReadonlyArray<GlobalFlag.GlobalFlag<any, any>>>(
+  <const GlobalFlags extends ReadonlyArray<GlobalFlag.GlobalFlag<any>>>(
     globalFlags: GlobalFlags
   ): <Name extends string, Input, E, R, ContextInput>(
     self: Command<Name, Input, ContextInput, E, R>
-  ) => Command<
-    Name,
-    Input,
-    ContextInput,
-    E,
-    Exclude<R, ExtractGlobalFlagContext<GlobalFlags>> | Command.ParseRequirement<ExtractGlobalFlagServices<GlobalFlags>>
-  >
+  ) => Command<Name, Input, ContextInput, E, Exclude<R, ExtractGlobalFlagContext<GlobalFlags>>>
   <
     Name extends string,
     Input,
     E,
     R,
     ContextInput,
-    const GlobalFlags extends ReadonlyArray<GlobalFlag.GlobalFlag<any, any>>
+    const GlobalFlags extends ReadonlyArray<GlobalFlag.GlobalFlag<any>>
   >(
     self: Command<Name, Input, ContextInput, E, R>,
     globalFlags: GlobalFlags
-  ): Command<
-    Name,
-    Input,
-    ContextInput,
-    E,
-    Exclude<R, ExtractGlobalFlagContext<GlobalFlags>> | Command.ParseRequirement<ExtractGlobalFlagServices<GlobalFlags>>
-  >
+  ): Command<Name, Input, ContextInput, E, Exclude<R, ExtractGlobalFlagContext<GlobalFlags>>>
 } = dual(
   2,
   <
@@ -1395,17 +1275,11 @@ export const withGlobalFlags: {
     E,
     R,
     ContextInput,
-    const GlobalFlags extends ReadonlyArray<GlobalFlag.GlobalFlag<any, any>>
+    const GlobalFlags extends ReadonlyArray<GlobalFlag.GlobalFlag<any>>
   >(
     self: Command<Name, Input, ContextInput, E, R>,
     globalFlags: GlobalFlags
-  ): Command<
-    Name,
-    Input,
-    ContextInput,
-    E,
-    Exclude<R, ExtractGlobalFlagContext<GlobalFlags>> | Command.ParseRequirement<ExtractGlobalFlagServices<GlobalFlags>>
-  > => {
+  ): Command<Name, Input, ContextInput, E, Exclude<R, ExtractGlobalFlagContext<GlobalFlags>>> => {
     const impl = toImpl(self)
     const next = Array.from(new Set([...impl.globalFlags, ...globalFlags]))
     return makeCommand({ ...impl, globalFlags: next }) as any
@@ -1413,23 +1287,16 @@ export const withGlobalFlags: {
 )
 
 // Type extractors for subcommand arrays - T[number] gives union of all elements
-type ExtractGlobalFlagContext<T extends ReadonlyArray<GlobalFlag.GlobalFlag<any, any>>> = T[number] extends infer F
-  ? F extends GlobalFlag.Setting<infer Id, infer _A, infer _R> ? GlobalFlag.Setting.Identifier<Id>
+type ExtractGlobalFlagContext<T extends ReadonlyArray<GlobalFlag.GlobalFlag<any>>> = T[number] extends infer F
+  ? F extends GlobalFlag.Setting<infer Id, infer _A> ? GlobalFlag.Setting.Identifier<Id>
   : never
   : never
-type ExtractGlobalFlagServices<T extends ReadonlyArray<GlobalFlag.GlobalFlag<any, any>>> = T[number] extends infer F
-  ? F extends GlobalFlag.GlobalFlag<infer _A, infer _R> ? _R
-  : never
-  : never
-type ExtractParseServices<R> = Extract<R, Command.ParseServices<unknown>>
 type BuiltInSettingContext = ExtractGlobalFlagContext<typeof GlobalFlag.BuiltIns>
 type ExtractSubcommand<T> = T extends Command<infer _Name, infer _Input, infer _CI, infer _E, infer _R> ? T
   : T extends Command.SubcommandGroup<infer Commands> ? Commands[number]
   : never
 type ExtractSubcommandErrors<T extends ReadonlyArray<Command.SubcommandEntry>> = Error<ExtractSubcommand<T[number]>>
-type ExtractSubcommandContext<T extends ReadonlyArray<Command.SubcommandEntry>> = RequirementType<
-  ExtractSubcommand<T[number]>
->
+type ExtractSubcommandContext<T extends ReadonlyArray<Command.SubcommandEntry>> = Services<ExtractSubcommand<T[number]>>
 
 /**
  * Sets the description for a command.
@@ -2005,21 +1872,12 @@ export const wizard = <Name extends string, Input, E, R, ContextInput>(
   options?: {
     readonly prefix?: ReadonlyArray<string> | undefined
   } | undefined
-): Effect.Effect<
-  Array<string>,
-  CliError.CliError | Terminal.QuitError,
-  Command.Requirements<R> | RunRequirements
-> => requireOnly(Effect.map(Wizard.run(command, options), (result) => result.args))
-
-/**
- * The runners are typed in the full cli environment internally; their public
- * types require only what the command and the runner use.
- */
-const requireOnly = <A, E, R>(effect: Effect.Effect<A, E, any>): Effect.Effect<A, E, R> => effect
+): Effect.Effect<Array<string>, CliError.CliError | Terminal.QuitError, Environment> =>
+  Effect.map(Wizard.run(command, options), (result) => result.args)
 
 const getOutOfScopeGlobalFlagErrors = (
-  allFlags: ReadonlyArray<GlobalFlag.GlobalFlag<any, any>>,
-  activeFlags: ReadonlyArray<GlobalFlag.GlobalFlag<any, any>>,
+  allFlags: ReadonlyArray<GlobalFlag.GlobalFlag<any>>,
+  activeFlags: ReadonlyArray<GlobalFlag.GlobalFlag<any>>,
   flagMap: Record<string, ReadonlyArray<string>>,
   commandPath: ReadonlyArray<string>
 ): ReadonlyArray<CliError.UnrecognizedOption> => {
@@ -2154,21 +2012,21 @@ export const run: {
     readonly renderErrors?: boolean | undefined
   }): <Name extends string, Input, E, R, ContextInput>(
     command: Command<Name, Input, ContextInput, E, R>
-  ) => Effect.Effect<void, E | CliError.CliError, Command.Requirements<R> | RunRequirements>
+  ) => Effect.Effect<void, E | CliError.CliError, R | Environment>
   <Name extends string, Input, E, R, ContextInput>(
     command: Command<Name, Input, ContextInput, E, R>,
     config: {
       readonly version: string
       readonly renderErrors?: boolean | undefined
     }
-  ): Effect.Effect<void, E | CliError.CliError, Command.Requirements<R> | RunRequirements>
+  ): Effect.Effect<void, E | CliError.CliError, R | Environment>
 } = dual(2, <Name extends string, Input, E, R, ContextInput>(
   command: Command<Name, Input, ContextInput, E, R>,
   config: {
     readonly version: string
     readonly renderErrors?: boolean | undefined
   }
-): Effect.Effect<void, E | CliError.CliError, Command.Requirements<R> | RunRequirements> =>
+) =>
   Stdio.Stdio.use(({ args }) =>
     Effect.flatMap(
       args,
@@ -2250,13 +2108,9 @@ export const runWith = <const Name extends string, Input, E, R, ContextInput>(
   }
 ): (
   input: ReadonlyArray<string>
-) => Effect.Effect<
-  void,
-  Exclude<E, Terminal.QuitError> | CliError.CliError,
-  Command.Requirements<R> | RunRequirements
-> => {
+) => Effect.Effect<void, Exclude<E, Terminal.QuitError> | CliError.CliError, R | Environment> => {
   const commandImpl = toImpl(command)
-  const run = Effect.fnUntraced(
+  return Effect.fnUntraced(
     function*(args: ReadonlyArray<string>) {
       const { builtIns } = yield* CliConfig.CliConfig
       const { tokens, trailingOperands } = Lexer.lex(args)
@@ -2385,5 +2239,4 @@ export const runWith = <const Name extends string, Input, E, R, ContextInput>(
       (_) => Effect.interrupt
     )
   )
-  return (args) => requireOnly(run(args))
 }

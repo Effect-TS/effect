@@ -402,9 +402,9 @@ describe("Operation", () => {
     ...overrides
   })
   /**
-   * Asserts `actual` is `expected` as a record stores it: a method the provided object inherits (a class
-   * instance's) is stored bound to it (`bound <name>`), every other member as it is; a nested record is compared
-   * member by member.
+   * Asserts `actual` is `expected` as a record stores it: a function operation's implementation that reads `this`
+   * is stored bound to the object providing it (`bound <name>`), every other member as it is; a nested record is
+   * compared member by member.
    */
   const assertMember = (actual: unknown, expected: unknown): void => {
     if (actual === expected) return
@@ -713,8 +713,9 @@ describe("Operation", () => {
       // a member write into a context holding the record is an ordinary overlay
       const overridden = Context.add(Context.make(FS, live), readFile, fake)
       strictEqual((overridden as any).overlay.key, "ContextTest/FS/readFile")
-      strictEqual(Object.keys((overridden as any).overlay).join(), "key,value,parent,write")
-      strictEqual((overridden as any).overlay.write, false)
+      // the branch point's overlay: a plain object, as `addUnsafe` makes it
+      strictEqual(Object.keys((overridden as any).overlay).join(), "key,value,parent")
+      strictEqual(Object.getPrototypeOf((overridden as any).overlay), Object.prototype)
       // the record read is a plain object with every member as its own property, the override among them: a copy of
       // the record below with the member replaced, made on each read and not remembered
       const view = Context.get(overridden, FS)
@@ -899,8 +900,9 @@ describe("Operation", () => {
       // one ordinary overlay per member, the base map the one of the context added to
       const chain: Array<[string, unknown]> = []
       for (let o = (added as any).overlay; o !== undefined; o = o.parent) {
-        strictEqual(Object.keys(o).join(), "key,value,parent,write")
-        strictEqual(o.write, true)
+        // the same three fields; only the class tells a record's slot from a key added alone
+        strictEqual(Object.keys(o).join(), "key,value,parent")
+        assertTrue(Object.getPrototypeOf(o) !== Object.prototype)
         chain.unshift([o.key, o.value])
       }
       deepStrictEqual(chain.map(([key]) => key), [
@@ -1121,9 +1123,21 @@ describe("Operation", () => {
       for (const [site, effect] of sites) {
         strictEqual(await run(effect.pipe(Effect.provideService(read, fake)), viaOperation), 7, site)
       }
-      // the stored member is the bound implementation; a member added alone is stored as it is
+      // only an implementation that reads `this` is bound: a closure keeps its identity, and a member added alone is
+      // stored as it is
       strictEqual(Context.get(Context.make(Text, viaThis), size).name, "bound size")
+      strictEqual(Context.get(Context.make(Text, viaThis), read), viaThis.read)
+      strictEqual(Context.get(Context.make(Text, viaOperation), size), viaOperation.size)
       strictEqual(Context.get(Context.make(read, viaThis.read), read), viaThis.read)
+      // provided alone, a method is called as given, with no receiver: the recipe is a closure over the object
+      const alone = Layer.mergeAll(
+        Layer.succeed(read, viaThis.read),
+        Layer.succeed(size, (path: string) => viaThis.size(path))
+      )
+      strictEqual(await Effect.runPromise(Effect.provide(Text.size("a"), alone)), 6)
+      // the method itself, provided alone, has no `this`: its `this.read` is a defect where it is called
+      const unbound = Layer.mergeAll(Layer.succeed(read, viaThis.read), Layer.succeed(size, viaThis.size))
+      assertTrue(Exit.hasDies(await Effect.runPromiseExit(Effect.provide(Text.size("a"), unbound))))
       // a value operation and a `Context.Service` member are values, stored as they are, callable or not
       const callable = Context.Operations("ContextTest/Sibling/Callable", {})
       assertTrue(typeof callable === "function" && Effect.isEffect(callable))
@@ -1199,8 +1213,9 @@ describe("Operation", () => {
       // a key beside records costs what it costs at the branch point: one `Map.get` to read, none to add
       deepStrictEqual(count(() => Context.get(plain, Other)), { map: 1, weak: 0 })
       deepStrictEqual(count(() => Context.add(plain, Other, 2)), { map: 0, weak: 0 })
-      // a record write is one overlay per slot, and a member read through them touches no map
-      deepStrictEqual(count(() => Context.add(plain, FS, live)), { map: 0, weak: 0 })
+      // a record write is one overlay per slot, and a member read through them touches no map; the write asks once per
+      // function member whether it reads `this` (one `WeakMap.get`, answered when the function was first written)
+      deepStrictEqual(count(() => Context.add(plain, FS, live)), { map: 0, weak: Object.keys(live).length })
       deepStrictEqual(count(() => Context.get(withRecord, stat)), { map: 0, weak: 0 })
       // a repeated record read: one `has` per overlay walked to its storage and one `WeakMap.get`
       deepStrictEqual(count(() => Context.get(withRecord, FS)), { map: 1, weak: 1 })

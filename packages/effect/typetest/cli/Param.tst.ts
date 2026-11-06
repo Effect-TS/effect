@@ -12,9 +12,9 @@ describe("Param", () => {
     const integerFlag = Flag.String("count").pipe(Flag.withFallbackPrompt(integerPrompt))
     const integerArgument = Argument.String("count").pipe(Argument.withFallbackPrompt(integerPrompt))
 
-    expect(flag).type.toBe<Flag.Flag<string, Prompt.Environment>>()
-    expect(argument).type.toBe<Argument.Argument<string, Prompt.Environment>>()
-    expect(integerFlag).type.toBe<Flag.Flag<string | number, Prompt.Environment>>()
-    expect(integerArgument).type.toBe<Argument.Argument<string | number, Prompt.Environment>>()
+    expect(flag).type.toBe<Flag.Flag<string>>()
+    expect(argument).type.toBe<Argument.Argument<string>>()
+    expect(integerFlag).type.toBe<Flag.Flag<string | number>>()
+    expect(integerArgument).type.toBe<Argument.Argument<string | number>>()
   })
 })

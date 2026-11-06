@@ -234,7 +234,8 @@ describe("FileSystem operations", () => {
       const fs = yield* FileSystem.FileSystem
       assertSameMembers(fs, live)
       assert.deepStrictEqual(Object.keys(fs), Object.keys(FileSystem.FileSystem.members))
-      assert.strictEqual(fs.readFile.name, "bound readFile")
+      // a closure is stored as it is: the record read holds the implementation itself
+      assert.strictEqual(fs.readFile, live.readFile)
       assert.deepStrictEqual(direct, text("live"))
       assert.deepStrictEqual(yield* fs.readFile("a"), text("live"))
       assert.isTrue(yield* FileSystem.exists("a"))
@@ -268,83 +269,99 @@ describe("FileSystem operations", () => {
     const context = Context.make(FileSystem.FileSystem, live)
     assert.strictEqual(context.mapUnsafe.size, Object.keys(FileSystem.FileSystem.members).length)
     assert.isFalse(context.mapUnsafe.has("effect/FileSystem"))
-    assert.strictEqual(Context.get(context, FileSystem.readFile).name, "bound readFile")
+    assert.strictEqual(Context.get(context, FileSystem.readFile), live.readFile)
     assertSameMembers(Context.get(context, FileSystem.FileSystem), live)
     // the members are properties of the key
     assert.strictEqual(FileSystem.FileSystem.readFile, FileSystem.readFile)
     assert.strictEqual(Context.omit(FileSystem.FileSystem)(context).mapUnsafe.size, 0)
   })
 
-  describe("make: a derived member calls its primitive through the operation", () => {
+  describe("make and the derived layers keep the primitive they were given", () => {
     const real = FileSystem.make({
       ...FileSystem.makeNoop({}),
       readFile: () => Effect.succeed(text("live")),
       access: () => Effect.void
     })
+    const mem = FileSystem.make({
+      ...FileSystem.makeNoop({}),
+      readFile: () => Effect.succeed(text("mem")),
+      access: (path) => Effect.fail(failure("NotFound", "access", path))
+    })
     const fakeReadFile = () => Effect.succeed(text("fake"))
-    const fakeAccess = (path: string) => Effect.fail(failure("NotFound", "access", path))
     const derived = Effect.all([FileSystem.readFileString("a"), FileSystem.exists("a")])
 
-    it.effect("sees an override of the primitive provided above the record", () =>
+    it.effect("a make(impl) value is closed over impl, under any context", () =>
       Effect.gen(function*() {
-        assert.deepStrictEqual(yield* derived, ["live", true])
+        // called directly under a live file system, a local value reads its own primitives
+        assert.deepStrictEqual(yield* Effect.all([mem.readFileString("a"), mem.exists("a")]), ["mem", false])
+        // a fake's derived member provided alone, over live, reads the fake's own readFile
         assert.deepStrictEqual(
           yield* derived.pipe(
-            Effect.provideService(FileSystem.readFile, fakeReadFile),
-            Effect.provideService(FileSystem.access, fakeAccess)
+            Effect.provideService(FileSystem.readFileString, mem.readFileString),
+            Effect.provideService(FileSystem.exists, mem.exists)
           ),
-          ["fake", false]
+          ["mem", false]
         )
-        // and through the record read and a destructured member alike
-        const { readFileString } = yield* FileSystem.FileSystem
+      }).pipe(Effect.provide(Layer.succeed(FileSystem.FileSystem, real))))
+
+    it.effect("an override of a primitive replaces it for its callers, not for members built with another", () =>
+      Effect.gen(function*() {
+        const overridden = Effect.provideService(FileSystem.readFile, fakeReadFile)
+        assert.deepStrictEqual(yield* FileSystem.readFile("a").pipe(overridden), text("fake"))
+        assert.strictEqual(yield* FileSystem.readFileString("a").pipe(overridden), "live")
+        // the fake reaches the derived member where the member is built
         assert.strictEqual(
-          yield* readFileString("a").pipe(Effect.provideService(FileSystem.readFile, fakeReadFile)),
+          yield* FileSystem.readFileString("a").pipe(
+            Effect.provide(Layer.succeed(FileSystem.FileSystem, FileSystem.make({ ...real, readFile: fakeReadFile })))
+          ),
           "fake"
         )
       }).pipe(Effect.provide(Layer.succeed(FileSystem.FileSystem, real))))
 
-    it.effect("uses its own primitive where the context has none", () =>
+    it.effect("a fake readFile written over readFileString does not loop", () =>
       Effect.gen(function*() {
-        assert.deepStrictEqual(yield* derived, ["live", true])
+        assert.deepStrictEqual(yield* FileSystem.readFile("a"), text("LIVE"))
       }).pipe(
-        Effect.provideService(FileSystem.readFileString, real.readFileString),
-        Effect.provideService(FileSystem.exists, real.exists)
+        Effect.provide(Layer.effect(
+          FileSystem.readFile,
+          Effect.map(
+            Effect.service(FileSystem.readFileString),
+            (readFileString) => (path) => Effect.map(readFileString(path), (s) => text(s.toUpperCase()))
+          )
+        )),
+        Effect.provide(Layer.succeed(FileSystem.FileSystem, real))
       ))
 
-    it.effect("the per-operation layers likewise, over a primitive provided below them", () =>
+    it.effect("a derived layer calls the primitive it was provided with, not the caller's", () =>
       Effect.gen(function*() {
-        assert.deepStrictEqual(yield* derived, ["live", true])
+        assert.deepStrictEqual(yield* derived, ["mem", false])
         assert.deepStrictEqual(
-          yield* derived.pipe(
-            Effect.provideService(FileSystem.readFile, fakeReadFile),
-            Effect.provideService(FileSystem.access, fakeAccess)
-          ),
-          ["fake", false]
+          yield* derived.pipe(Effect.provideService(FileSystem.readFile, fakeReadFile)),
+          ["mem", false]
         )
       }).pipe(
         Effect.provide(
           Layer.mergeAll(FileSystem.layerReadFileString, FileSystem.layerExists).pipe(
             Layer.provide(
               Layer.mergeAll(
-                Layer.succeed(FileSystem.readFile, real.readFile),
-                Layer.succeed(FileSystem.access, real.access)
+                Layer.succeed(FileSystem.readFile, mem.readFile),
+                Layer.succeed(FileSystem.access, mem.access)
               )
             )
           )
-        )
+        ),
+        // the caller's context has other primitives; the layer was given mem's
+        Effect.provide(Layer.succeed(FileSystem.FileSystem, real))
       ))
   })
 })
 
 /**
- * A record stores each operation's implementation bound to the provided object, and any other member as the object
- * holds it: the read has those members, not the object.
+ * `make`'s members are closures, which read no `this`, so a record stores each as the object holds it: the read has
+ * those members, not the object.
  */
 const assertSameMembers = (actual: object, expected: object) => {
   assert.notStrictEqual(actual, expected)
   assert.deepStrictEqual(Object.keys(actual).sort(), Object.keys(expected).sort())
-  for (const [name, value] of Object.entries(expected)) {
-    if (typeof value === "function") assert.strictEqual((actual as any)[name].name, `bound ${value.name}`)
-    else assert.strictEqual((actual as any)[name], value)
-  }
+  for (const [name, value] of Object.entries(expected)) assert.strictEqual((actual as any)[name], value)
 }

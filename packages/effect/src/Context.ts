@@ -532,8 +532,6 @@ interface Overlay {
   readonly key: string
   readonly value: unknown
   readonly parent: Overlay | undefined
-  /** Written by a record write, as one of its slots, rather than by adding the key alone. */
-  readonly write: boolean
 }
 
 // Keep small bases cheap to read; larger bases are worth copying only after
@@ -885,7 +883,7 @@ export const addUnsafe = <Services, I, S>(
   return makeImpl(
     cacheRoot,
     impl.base,
-    { key, value: service, parent: impl.overlay, write: false },
+    { key, value: service, parent: impl.overlay },
     impl.depth + 1,
     impl.maxDepth
   )
@@ -1818,9 +1816,9 @@ export const Operation: {
 ) as any
 
 // The implementation is called without a receiver, whatever the call site: a
-// record write stores each operation member bound to the object that provides
-// it, so its `this` is that object from a bare call, a destructured member,
-// `Effect.andThen` or a bundled namespace call alike.
+// record write stores a member that reads `this` bound to the object that
+// provides it, so its `this` is that object from a bare call, a destructured
+// member, `Effect.andThen` or a bundled namespace call alike.
 const effectCall = (operation: Operation.Any, args: ArrayLike<unknown>) =>
   withFiber((fiber) => Reflect.apply(getUnsafe(fiber.context, operation) as any, undefined, args))
 
@@ -1935,9 +1933,10 @@ export const OperationsTypeId: OperationsTypeId = "~effect/Context/Operations"
  * plain object with every member as its own property, built from the members'
  * slots, so an override of one member provided on top is in it, nested records
  * included. Each slot has one name in a record. An operation's
- * implementation is stored bound to the object that provides it, plain object
- * or class instance; any other member (a value operation, a service, a class)
- * is stored as the object holds it, with its identity and properties. The
+ * implementation that reads `this` is stored bound to the object that
+ * provides it, plain object or class instance; any other member (a closure, a
+ * value operation, a service, a class) is stored as the object holds it, with
+ * its identity and properties. The
  * members are also properties of the key, so `Users.find(id)` calls the
  * operation `find` of `Users = Context.Operations("app/Users", { find, … })`.
  * Every `Context`, `Layer` and `Effect` API that takes a key accepts it.
@@ -2108,14 +2107,23 @@ export declare namespace Operations {
  *
  * **Gotchas**
  *
- * An operation's implementation is bound to the object that provides it,
- * plain object or class instance: its `this` is that object from every call
- * site (`Users.create(x)`, a bare `create(x)`, `const { create } = yield*
- * Users`, `Effect.andThen(_, Users.create)`), and private fields work. So
- * `this.find(id)` is the object's own `find`, like a closure calling a
- * sibling closure, and a test's override of `find` does not reach it. Call a
- * sibling through its operation, `Users.find(id)`, which reads the context
- * and sees an override wherever it is provided.
+ * One rule for siblings, as for any Effect: what an implementation uses is
+ * fixed where it is provided, unless its shape requires it. `this.find(id)`,
+ * a closure's `find(id)` and a primitive a layer read when it was built are
+ * the implementation's own, so a test's override of `find` does not reach
+ * them. A shape that names the sibling in its requirements, such as
+ * `(name: string) => Effect<User, never, "app/Users/find">`, calls
+ * `Users.find(id)` where it runs, and sees an override provided above it.
+ *
+ * When a record is provided (`Layer.succeed(Users, impl)`), an
+ * implementation that reads `this` is bound to `impl`, plain object or
+ * class instance: its `this` is `impl` from every call site of the
+ * operation (`Users.create(x)`, a bare `create(x)`, `const { create } =
+ * yield* Users`, `Effect.andThen(_, Users.create)`), and private fields
+ * work. A function provided alone, `Layer.succeed(Users.create, f)`, is
+ * called as given, with no receiver, like any function passed as a value:
+ * provide a method through its record, or as a closure,
+ * `Layer.succeed(Users.create, (name) => impl.create(name))`.
  *
  * **Example** (A record service from two operations)
  *
@@ -2215,16 +2223,16 @@ interface RecordLayout {
 // The value of every slot the record writes, by position, from the provided
 // object. A member `value` lacks (`in` is false: a member whose value is
 // `undefined` is a member) is a defect naming its slot. One rule for the
-// receiver: the implementation of a function operation is stored bound to the
-// object that provides it, own or inherited, plain object or class instance,
-// so its `this` is that object wherever the operation is called from (a bare
-// call, a destructured member, `Effect.andThen`, a bundled namespace call)
-// and a private field works. Its `this.sibling` is therefore the object's own
-// sibling, as a closure's call of a sibling closure is; calling the operation
-// is what reads the context. Every other member (a value, a value operation, a
-// `Context.Service` member whose shape is a function or a class) is stored as
-// the object holds it, so its identity, `name`, properties and statics
-// survive the write.
+// receiver: an implementation of a function operation that reads `this` (or
+// `super`), own or inherited, plain object or class instance, is stored bound
+// to the object that provides it, so its `this` is that object wherever the
+// operation is called from (a bare call, a destructured member,
+// `Effect.andThen`, a bundled namespace call) and a private field works. Its
+// `this.sibling` is therefore the object's own sibling, fixed at the write as
+// a closure's sibling closure is. Every other member (an implementation that
+// reads no `this`, a value, a value operation, a `Context.Service` member
+// whose shape is a function or a class) is stored as the object holds it, so
+// its identity, `name`, properties and statics survive the write.
 const collect = (
   record: RecordImpl,
   value: any,
@@ -2244,7 +2252,7 @@ const collect = (
     } else {
       const position = positions ? positions[member.positions[0]] : member.positions[0]
       values[position] = typeof provided === "function" && typeof member.key === "function" &&
-          OperationTypeId in member.key
+          OperationTypeId in member.key && readsThis(provided)
         ? bind.call(provided, value)
         : provided
     }
@@ -2252,6 +2260,22 @@ const collect = (
 }
 
 const bind = Function.prototype.bind
+const functionSource = Function.prototype.toString
+
+// Whether a function's source names `this` or `super`, the two ways a
+// function reads its receiver. A bound or native function prints no source
+// and is stored as it is; an arrow function that names `this` reads its
+// enclosing one and is bound to no effect.
+// Read once per function.
+const readsThis = (f: Function): boolean => {
+  let reads = receiverReads.get(f)
+  if (reads === undefined) {
+    reads = /\b(?:this|super)\b/.test(functionSource.call(f))
+    receiverReads.set(f, reads)
+  }
+  return reads
+}
+const receiverReads = new WeakMap<Function, boolean>()
 
 const missingMember = (record: RecordImpl, member: RecordLayout["members"][number] | undefined) => {
   const error = new Error(
@@ -2263,11 +2287,27 @@ const missingMember = (record: RecordImpl, member: RecordLayout["members"][numbe
   return error
 }
 
+// An overlay written by a record write, as one slot of a record rather than a
+// key added alone: a record read takes its one-member shortcut only over a key
+// added alone. The class is the whole difference; a key added alone is the
+// branch point's plain overlay, and both are read the same way.
+class RecordSlot implements Overlay {
+  readonly key: string
+  readonly value: unknown
+  readonly parent: Overlay | undefined
+  constructor(key: string, value: unknown, parent: Overlay | undefined) {
+    this.key = key
+    this.value = value
+    this.parent = parent
+  }
+}
+
 // `Context.make` and `Context.add` for a record service: the members' slots,
 // written as a flat map into a context that holds nothing or whose overlays
-// have reached `maxDepth`, and as one ordinary overlay per slot otherwise,
+// have reached `maxDepth`, and as one `RecordSlot` per slot otherwise,
 // counting as one `add` toward `maxDepth`. A fiber-cached key among the
 // slots starts a new cache root, as its own write would.
+
 function writeRecord<Services>(this: RecordImpl, self: Context<Services>, value: unknown): Context<any> {
   const impl = self as ContextImpl<Services>
   const slots = this["~layout"].slots
@@ -2287,7 +2327,7 @@ function writeRecord<Services>(this: RecordImpl, self: Context<Services>, value:
     return makeImpl(cacheRoot, map, undefined, 0, impl.maxDepth)
   }
   let overlay = impl.overlay
-  for (let i = 0; i < slots.length; i++) overlay = { key: slots[i], value: values[i], parent: overlay, write: true }
+  for (let i = 0; i < slots.length; i++) overlay = new RecordSlot(slots[i], values[i], overlay)
   return makeImpl(cacheRoot, impl.base, overlay, impl.depth + 1, impl.maxDepth)
 }
 
@@ -2316,7 +2356,7 @@ function readRecord(this: RecordImpl, self: Context<never>, orThrow: boolean): u
   const storage: object = scope ?? base
   const known = views.get(storage)
   if (known !== undefined) return known
-  const name = scope === undefined || scope.write ? undefined : layout.names.get(scope.key)
+  const name = scope === undefined || scope instanceof RecordSlot ? undefined : layout.names.get(scope.key)
   if (name !== undefined) {
     let below = scope!.parent
     while (below !== undefined && !layout.positions.has(below.key)) below = below.parent
