@@ -2913,7 +2913,8 @@ export const Objects: new(
         properties = ast.propertySignatures.map((ps) => ({
           parser: compileField(ps.type),
           name: ps.name,
-          type: ps.type
+          type: ps.type,
+          ownOnly: requiresOwnProperty(ps.name)
         }))
         indexes = indexCount
           ? ast.indexSignatures.map((is) => ({
@@ -3152,7 +3153,7 @@ export const Objects: new(
         for (let index = 0; index < props.length; index++) {
           const property = props[index]
           const name = property.name
-          const hasKey = hasPropertySignature(record, name)
+          const hasKey = property.ownOnly ? Object.hasOwn(record, name) : name in record
           const value = hasKey ? record[name] : InternalParser.missing
           const exit = property.parser(value, options)
           if (!effectIsExit(exit)) {
@@ -3230,6 +3231,7 @@ type ParsedProperty = {
   readonly parser: SchemaParser.Parser
   readonly name: PropertyKey
   readonly type: AST
+  readonly ownOnly: boolean
 }
 
 /** @internal */
@@ -3264,7 +3266,7 @@ export function stepProperty(
 
 const parsePropertiesOptions = {
   onItem(s: ObjectParserState, p: ParsedProperty) {
-    if (!hasPropertySignature(s.input, p.name)) {
+    if (!(p.ownOnly ? Object.hasOwn(s.input, p.name) : p.name in s.input)) {
       return p.parser(InternalParser.missing, s.options)
     }
     const value = s.input[p.name]
@@ -3508,8 +3510,22 @@ const emptyCandidates: ReadonlyArray<never> = Object.freeze([])
 
 const getRuntimeType = (input: unknown): Type => input === null ? "null" : Array.isArray(input) ? "array" : typeof input
 
+// Snapshot once so parser initialization and code generation use the same policy.
+// Keep __proto__ own-only even when Node's --disable-proto=delete removes its accessor.
+// Avoid an iterable spread so bundles that do not use this policy can drop the snapshot.
+const objectPrototypeKeys = new Set<PropertyKey>(Reflect.ownKeys(Object.prototype)).add("__proto__")
+
+/**
+ * Fields named after `Object.prototype` members must be own properties.
+ *
+ * @internal
+ */
+export const requiresOwnProperty = (key: PropertyKey): boolean =>
+  objectPrototypeKeys.has(typeof key === "number" ? globalThis.String(key) : key)
+
+// Check own properties first so the name rule only runs for inherited keys.
 const hasPropertySignature = (input: object, key: PropertyKey): boolean =>
-  key === "__proto__" ? Object.hasOwn(input, key) : key in input
+  Object.hasOwn(input, key) || (key in input && !requiresOwnProperty(key))
 
 /** @internal */
 export function getCandidateIndex(types: ReadonlyArray<AST>): CandidateIndex {
