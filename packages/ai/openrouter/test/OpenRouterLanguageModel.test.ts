@@ -524,14 +524,40 @@ describe("OpenRouterLanguageModel", () => {
         }).pipe(Effect.provide(makeTestLayer())))
     })
 
-    it.effect("reads a refusal as the message text", () =>
+    for (const content of [null, ""] as const) {
+      it.effect(`reads a refusal as the message text when content is ${JSON.stringify(content)}`, () =>
+        Effect.gen(function*() {
+          const result = yield* LanguageModel.generateText({ prompt: "Do something bad" }).pipe(
+            Effect.provide(OpenRouterLanguageModel.model("openai/gpt-4o"))
+          )
+
+          strictEqual(result.text, "I cannot do that")
+          strictEqual(result.finishReason, "stop")
+        }).pipe(Effect.provide(makeTestLayer({
+          body: {
+            choices: [{
+              finish_reason: "stop",
+              index: 0,
+              message: {
+                role: "assistant",
+                content,
+                refusal: "I cannot do that"
+              }
+            }]
+          }
+        }))))
+    }
+
+    it.effect("keeps the content when a message also carries a refusal", () =>
       Effect.gen(function*() {
-        const result = yield* LanguageModel.generateText({ prompt: "Do something bad" }).pipe(
+        const result = yield* LanguageModel.generateText({ prompt: "Answer and then refuse" }).pipe(
           Effect.provide(OpenRouterLanguageModel.model("openai/gpt-4o"))
         )
 
-        strictEqual(result.text, "I cannot do that")
-        strictEqual(result.finishReason, "stop")
+        const textParts = result.content.filter((part) => part.type === "text")
+        strictEqual(textParts.length, 1)
+        strictEqual(textParts[0].text, "The answer is 42.")
+        strictEqual(result.text, "The answer is 42.")
       }).pipe(Effect.provide(makeTestLayer({
         body: {
           choices: [{
@@ -539,7 +565,7 @@ describe("OpenRouterLanguageModel", () => {
             index: 0,
             message: {
               role: "assistant",
-              content: null,
+              content: "The answer is 42.",
               refusal: "I cannot do that"
             }
           }]
@@ -824,6 +850,40 @@ describe("OpenRouterLanguageModel", () => {
               : []
           ),
           ["text-start", "text-delta:I cannot", "text-delta: do that", "text-end"]
+        )
+      }))
+
+    it.effect("streams the content when a delta also carries a refusal", () =>
+      Effect.gen(function*() {
+        const parts = yield* LanguageModel.streamText({ prompt: "Answer and then refuse" }).pipe(
+          Stream.runCollect,
+          Effect.provide(OpenRouterLanguageModel.model("openai/gpt-4o")),
+          Effect.provide(makeStreamTestLayer([
+            {
+              id: "response-1",
+              object: "chat.completion.chunk",
+              model: "openai/gpt-4o",
+              created: 1,
+              choices: [{ index: 0, delta: { content: "The answer", refusal: "I cannot", role: "assistant" } }]
+            },
+            {
+              id: "response-1",
+              object: "chat.completion.chunk",
+              model: "openai/gpt-4o",
+              created: 1,
+              choices: [{ index: 0, finish_reason: "stop", delta: { content: " is 42." } }],
+              usage: { prompt_tokens: 5, completion_tokens: 4, total_tokens: 9 }
+            }
+          ]))
+        )
+
+        deepStrictEqual(
+          parts.flatMap((part) =>
+            part.type.startsWith("text-")
+              ? ["delta" in part ? `${part.type}:${part.delta}` : part.type]
+              : []
+          ),
+          ["text-start", "text-delta:The answer", "text-delta: is 42.", "text-end"]
         )
       }))
 
