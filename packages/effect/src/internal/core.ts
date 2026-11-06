@@ -85,10 +85,9 @@ export const StructuralProto = {
   },
   [Equal.symbol](this: any, that: any): boolean {
     const selfKeys = Object.keys(this)
-    const thatKeys = Object.keys(that)
-    if (selfKeys.length !== thatKeys.length) return false
-    for (let i = 0; i < selfKeys.length; i++) {
-      if (selfKeys[i] !== thatKeys[i] || !Equal.equals(this[selfKeys[i]], that[selfKeys[i]])) {
+    if (selfKeys.length !== Object.keys(that).length) return false
+    for (const key of selfKeys) {
+      if (!Object.prototype.propertyIsEnumerable.call(that, key) || !Equal.equals(this[key], that[key])) {
         return false
       }
     }
