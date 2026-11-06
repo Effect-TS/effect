@@ -1936,6 +1936,7 @@ const runWithRuntime = Effect.fnUntraced(function*(
             if (request._tag === "Interrupt") {
               // A cancelled reverse request may never receive a reply.
               removeReverseRequestClient(requestKey(request.requestId), key)
+              if (disconnectedClients.has(key.clientId)) return Effect.void
               return sendNotification(key.profile.protocolVersion, key.clientId, {
                 tag: "notifications/cancelled",
                 payload: { requestId: request.requestId }
@@ -2032,8 +2033,28 @@ const runWithRuntime = Effect.fnUntraced(function*(
     )
   })
 
+  // A disconnected client cannot receive messages, so cancelling its pending
+  // reverse requests must stay local. Clients are marked before RpcServer
+  // interrupts their requests, and unmarked when RpcServer ends them, which is
+  // after those requests and their interruption finalizers have finished.
+  const disconnectedClients = new Set<number>()
+  const disconnects = yield* Queue.unbounded<number>()
+  yield* Queue.take(protocol.disconnects).pipe(
+    Effect.flatMap((clientId) => {
+      disconnectedClients.add(clientId)
+      return Queue.offer(disconnects, clientId)
+    }),
+    Effect.forever,
+    Effect.forkScoped
+  )
   const patchedProtocol = RpcServer.Protocol.of({
     ...protocol,
+    disconnects,
+    end: (clientId) =>
+      Effect.suspend(() => {
+        disconnectedClients.delete(clientId)
+        return protocol.end(clientId)
+      }),
     send: (clientId, response) => {
       if (response._tag === "Exit") {
         const requests = activeRequests.get(clientId)
