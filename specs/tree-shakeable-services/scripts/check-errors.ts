@@ -63,7 +63,7 @@ const expectations: Record<string, ReadonlyArray<string>> = {
   "subset-not-full.ts": [`Type 'FileSystem' is not assignable to type 'ReadOnly'`],
   "partial-record.ts": [
     `is not assignable to parameter of type 'Shape'`,
-    `is missing the following properties from type 'Shape<typeof import("`,
+    `is missing the following properties from type 'Shape<{ access: Operation<"effect/FileSystem/access"`,
     `: access, chmod, chown, copy, and 25 more`
   ],
   "displayed-type.ts": [

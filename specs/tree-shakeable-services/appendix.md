@@ -389,66 +389,81 @@ the cost gate holds: every mode is OK or SKIPPED (unreadable machine)
 
 ### What a kept key costs
 
-A contract's declarations are calls (`Context.Operation<…>()("…")`), and a bundler keeps a top-level call it cannot
-prove pure. The bundle check's annotation matrix measures the two-operation root with the contract as written, with
-`/* @__PURE__ */` added to each declaration, and with `babel-plugin-annotate-pure-calls` run over the contract as
-publishing it does, under esbuild and Rolldown, with `effect` itself bundled as it is published:
+A contract's declarations are calls (`Context.Operation<…>()("…")`, `Context.Operations(…)`), a provider's are calls
+(`Layer.succeed(key, impl)`, `Layer.mergeAll(…)`), and a bundler keeps a top-level call it cannot prove pure. With a
+contract in one module and a provider in one module, that is the whole question of tree-shaking: an unused export is
+dropped when its initializer is pure, and kept, with everything it references, when it is not. The bundle check's
+annotation matrix measures the two-operation root with the contract, the provider, or both as written, with
+`/* @__PURE__ */` added by hand to each top-level declaration, and with `babel-plugin-annotate-pure-calls` run over the
+module as publishing it does, under esbuild and Rolldown, with `effect` itself bundled as it is published:
 
-| Root (`main.ts`, two operations)                              |     Size | Keys kept           | Stream code |
-| ------------------------------------------------------------- | -------: | ------------------- | ----------: |
-| contract as written, esbuild                                  |  90.9 kB | all 30              |      1456 B |
-| contract annotated `@__PURE__`, esbuild                       |  87.2 kB | readFile, writeFile |         0 B |
-| contract published (`annotate-pure-calls`), esbuild           |  87.1 kB | readFile, writeFile |         0 B |
-| contract as written, Rolldown                                 |  79.8 kB | all 30              |      1564 B |
-| contract annotated `@__PURE__`, Rolldown                      |  77.1 kB | readFile, writeFile |         0 B |
-| contract as written, `effect` from source, esbuild            | 437.5 kB | all 30              |    103.8 kB |
-| contract annotated `@__PURE__`, `effect` from source, esbuild | 232.1 kB | readFile, writeFile |         0 B |
+| Root (`main.ts`, two operations)                          |     Size | Implementations kept | Keys kept           | Record | Stream code |
+| --------------------------------------------------------- | -------: | -------------------- | ------------------- | ------ | ----------: |
+| both published, esbuild (the default row)                 |  87.3 kB | readFile, writeFile  | readFile, writeFile | absent |         0 B |
+| contract as written, esbuild                              |  98.5 kB | readFile, writeFile  | all 30              | kept   |      1456 B |
+| provider as written, esbuild                              | 101.5 kB | all 30               | all 30              | absent |      3092 B |
+| provider annotated `@__PURE__`, esbuild                   |  87.3 kB | readFile, writeFile  | readFile, writeFile | absent |         0 B |
+| both annotated `@__PURE__`, esbuild                       |  87.2 kB | readFile, writeFile  | readFile, writeFile | absent |         0 B |
+| both as written, Rolldown                                 | 101.8 kB | all 30               | all 30              | kept   |      3148 B |
+| both annotated `@__PURE__`, Rolldown                      |  78.3 kB | readFile, writeFile  | readFile, writeFile | absent |         0 B |
+| both published, Rolldown                                  |  76.1 kB | readFile, writeFile  | readFile, writeFile | absent |         0 B |
+| both as written, `effect` from source, esbuild            | 447.0 kB | all 30               | all 30              | kept   |    104.6 kB |
+| both annotated `@__PURE__`, `effect` from source, esbuild | 232.2 kB | readFile, writeFile  | readFile, writeFile | absent |         0 B |
 
 What the rows establish:
 
-- **An unannotated contract costs under 4 kB: the thirty keys and a 1.4 kB wrapper.** The wrapper is
-  `Stream.Operation`, `streamCall` and the `Stream.unwrap` they close over, kept because the three Stream keys are
-  kept; it is not the Stream runtime, which in a published `effect` is itself tree-shaken function by function (the
-  one-Stream-operation root carries 3.8 kB of it). The record service itself is absent from every row: it lives in a
-  module of its own (`src/FileSystem.ts`, the record over the operations module imported as a namespace) whose exports
-  the two-operation root never uses, and the prototype's `package.json` declares `sideEffects: false`, so the bundler
-  drops the module whole. Nothing in the program's behaviour changes, so no rule is needed for shaking to work;
-  annotations are an optimisation worth about 4 kB.
-- **Published contracts shake without user action.** `packages/effect`'s build runs `babel-plugin-annotate-pure-calls`
-  over `dist`, which annotates the outer call of every top-level declaration, curried or not, and esbuild drops the
-  whole expression; the third row equals the second. This is how every `Context.Service("…")` key in `effect` shakes
-  today, and `effect/FileSystem`'s operations shake the same way with no annotation in the source, which the bundle
-  test in `packages/effect` checks against the real module. A namespace import of the operations module (the record
-  module's `import * as members`) does not change this: once the record declaration is dropped, the namespace is unused
-  and the bundler keeps only the operations the program reads.
+- **An unannotated provider keeps every implementation.** `export const chmod = Layer.succeed(…)` is a call at the top
+  level of a module the root imports; nothing marks it pure, so esbuild and Rolldown keep it, and `layer`, which
+  references all thirty, with it: 6.7 kB of `NodeFileSystem.ts` instead of 521 bytes, and the Stream runtime for the
+  three Stream implementations. The annotation, by the build or by hand, removes all of it (rows four and five equal
+  the first). This is the one requirement the design places on a provider module, and it is not a layout
+  requirement: rounds 1 to 10 met it by putting each layer in a file of its own, which a bundler drops whole under
+  `sideEffects: false` without reading the call; one module per provider meets it with the annotation every
+  published package already carries.
+- **An unannotated contract costs about 11 kB: the thirty keys, the two record declarations and a 1.4 kB wrapper.** The
+  wrapper is `Stream.Operation`, `streamCall` and the `Stream.unwrap` they close over, kept because the three Stream
+  keys are kept; it is not the Stream runtime, which in a published `effect` is itself tree-shaken function by function
+  (the one-Stream-operation root carries 3.8 kB of it). The records (`FileSystem`, `ReadOnly`) are kept for the same
+  reason the keys are: their declarations are calls in the one contract module. Rounds 1 to 10 kept the record in a
+  module of its own and this row did not carry it; the 7 kB difference is what a record declaration and the
+  `Operations` constructor cost when nothing drops them. Nothing in the program's behaviour changes, so no rule is
+  needed for shaking to work; the cost is gone once published.
+- **Published modules shake without user action.** `packages/effect`'s build, and every platform package's, runs
+  `babel-plugin-annotate-pure-calls` over `dist`, which annotates the outer call of every top-level declaration,
+  curried or not, and esbuild drops the whole expression. This is how every `Context.Service("…")` key and every
+  `Layer` in `effect` shakes today, and `effect/FileSystem`'s operations and a provider's operation layers shake the
+  same way with no annotation in the source, which the bundle test in `packages/effect` checks against the real
+  contract module and a one-module provider fixture.
 - **Bundling `effect` from source is a different measurement.** The last two rows are the repository's own layout:
   `packages/effect/src/*.ts` has no annotations, so once a module is imported its whole body is kept, and importing
-  anything from `Stream.ts` costs 104 kB. That is a property of unannotated module bodies, not of the design, and it
+  anything from `Stream.ts` costs 105 kB. That is a property of unannotated module bodies, not of the design, and it
   is the same for any `Stream` import today. The matrix keeps the two rows so the difference is on record.
 
 ### The prototype's bundle check
 
 ```
 $ pnpm --filter tree-shakeable-services-spec bundle
-$ node scripts/check-bundle.ts
-Bundle sizes (esm, unminified; effect as published unless noted)
-  main.ts (two operation layers)                                               90.9 kB
-  main-namespace.ts (two layers off a namespace)                               90.9 kB
-  main-readonly.ts (ReadOnly subset, three member layers)                      91.4 kB
-  main-stream.ts (one Stream operation)                                        96.7 kB
-  main-twenty.ts (twenty operation layers)                                     97.0 kB
-  main-record.ts (yield* FileSystem, record layer)                            111.9 kB
-  main-full.ts (two operations, record layer)                                 103.5 kB
-  main-terminal.ts (two terminal layers)                                       93.5 kB
-  main-plain.ts (no record, no operation)                                      84.3 kB
-  main-plain.ts (no record, no operation, branch point Context.ts)             83.9 kB
-  main.ts (contract annotated @__PURE__, esbuild)                              87.2 kB
-  main.ts (contract published (annotate-pure-calls), esbuild)                  87.1 kB
-  main.ts (contract as written, rolldown)                                      79.8 kB
-  main.ts (contract annotated @__PURE__, rolldown)                             77.1 kB
-  main.ts (contract as written, effect from source, esbuild)                  437.5 kB
-  main.ts (contract annotated @__PURE__, effect from source, esbuild)         232.1 kB
-Implementation modules and markers in each bundle
+Bundle sizes (esm, unminified; effect and the prototype's library modules as published unless noted)
+  main.ts (two operation layers, imported by name)                             87.3 kB
+  main-namespace.ts (two operation layers, read off the namespace)             87.3 kB
+  main-readonly.ts (ReadOnly subset, three member layers)                      87.7 kB
+  main-stream.ts (one Stream operation)                                        94.4 kB
+  main-twenty.ts (twenty operation layers)                                     93.4 kB
+  main-record.ts (yield* FileSystem, NodeFileSystem.layer)                    109.1 kB
+  main-full.ts (two operations, NodeFileSystem.layer)                         101.6 kB
+  main-terminal.ts (two terminal layers)                                       86.4 kB
+  main-plain.ts (no record, no operation)                                      84.5 kB
+  main-plain.ts (no record, no operation, branch point Context.ts)             84.1 kB
+  main.ts (contract as written, esbuild)                                       98.5 kB
+  main.ts (provider as written, esbuild)                                      101.5 kB
+  main.ts (provider annotated @__PURE__, esbuild)                              87.3 kB
+  main.ts (both annotated @__PURE__, esbuild)                                  87.2 kB
+  main.ts (both as written, rolldown)                                         101.8 kB
+  main.ts (both annotated @__PURE__, rolldown)                                 78.3 kB
+  main.ts (both published, rolldown)                                           76.1 kB
+  main.ts (both as written, effect from source, esbuild)                      447.0 kB
+  main.ts (both annotated @__PURE__, effect from source, esbuild)             232.2 kB
+Implementation markers in each bundle (all thirty are exports of src/NodeFileSystem.ts)
   operation                 main.ts           main-readonly.ts  main-stream.ts    main-twenty.ts    main-full.ts      
   access                    absent            absent            absent            present           present           
   chmod                     absent            absent            absent            absent            present           
@@ -480,64 +495,73 @@ Implementation modules and markers in each bundle
   watch                     absent            absent            absent            absent            present           
   writeFile                 present           absent            absent            present           present           
   writeFileString           absent            absent            absent            present           present           
-  main.ts                                                            contains 2 of 30 implementations: readFile, writeFile
-  main-namespace.ts                                                  contains 2 of 30 implementations: readFile, writeFile
-  main-readonly.ts                                                   contains 3 of 30 implementations: exists, readFile, stat
-  main-stream.ts                                                     contains 1 of 30 implementations: stream
-  main-twenty.ts                                                     contains 20 of 30 implementations: access, copy, copyFile, exists, lstat, makeDirectory, makeTempDirectory, readDirectory, readDirectoryEntries, readFile, readFileString, realPath, remove, rename, stat, symlink, truncate, utimes, writeFile, writeFileString
-  main-record.ts                                                     contains 30 of 30 implementations: all
-  main-full.ts                                                       contains 30 of 30 implementations: all
-  main-terminal.ts                                                   contains 0 of 30 implementations: none
-  main-plain.ts                                                      contains 0 of 30 implementations: none
-  main-plain.ts                                                      contains 0 of 30 implementations: none
-  main.ts [contract annotated @__PURE__, esbuild]                    contains 2 of 30 implementations: readFile, writeFile
-  main.ts [contract published (annotate-pure-calls), esbuild]        contains 2 of 30 implementations: readFile, writeFile
-  main.ts [contract as written, rolldown]                            contains 2 of 30 implementations: readFile, writeFile
-  main.ts [contract annotated @__PURE__, rolldown]                   contains 2 of 30 implementations: readFile, writeFile
-  main.ts [contract as written, effect from source, esbuild]         contains 2 of 30 implementations: readFile, writeFile
-  main.ts [contract annotated @__PURE__, effect from source, esbuild] contains 2 of 30 implementations: readFile, writeFile
-Terminal implementation modules in each bundle
-  main-terminal.ts                                                   contains 2 of 6: columns, display
+  main.ts                                                            521 B of NodeFileSystem.ts   2 of 30 implementations: readFile, writeFile
+  main-namespace.ts                                                  521 B of NodeFileSystem.ts   2 of 30 implementations: readFile, writeFile
+  main-readonly.ts                                                   875 B of NodeFileSystem.ts   3 of 30 implementations: exists, readFile, stat
+  main-stream.ts                                                     340 B of NodeFileSystem.ts   1 of 30 implementations: stream
+  main-twenty.ts                                                     3933 B of NodeFileSystem.ts  20 of 30 implementations: access, copy, copyFile, exists, lstat, makeDirectory, makeTempDirectory, readDirectory, readDirectoryEntries, readFile, readFileString, realPath, remove, rename, stat, symlink, truncate, utimes, writeFile, writeFileString
+  main-record.ts                                                     6772 B of NodeFileSystem.ts  30 of 30 implementations: all
+  main-full.ts                                                       6772 B of NodeFileSystem.ts  30 of 30 implementations: all
+  main-terminal.ts                                                   0 B of NodeFileSystem.ts     0 of 30 implementations: none
+  main-plain.ts                                                      0 B of NodeFileSystem.ts     0 of 30 implementations: none
+  main-plain.ts [no record, no operation, branch point Context.ts]   0 B of NodeFileSystem.ts     0 of 30 implementations: none
+  main.ts [contract as written, esbuild]                             523 B of NodeFileSystem.ts   2 of 30 implementations: readFile, writeFile
+  main.ts [provider as written, esbuild]                             6654 B of NodeFileSystem.ts  30 of 30 implementations: all
+  main.ts [provider annotated @__PURE__, esbuild]                    521 B of NodeFileSystem.ts   2 of 30 implementations: readFile, writeFile
+  main.ts [both annotated @__PURE__, esbuild]                        521 B of NodeFileSystem.ts   2 of 30 implementations: readFile, writeFile
+  main.ts [both as written, rolldown]                                10.5 kB of NodeFileSystem.ts 30 of 30 implementations: all
+  main.ts [both annotated @__PURE__, rolldown]                       1926 B of NodeFileSystem.ts  2 of 30 implementations: readFile, writeFile
+  main.ts [both published, rolldown]                                 493 B of NodeFileSystem.ts   2 of 30 implementations: readFile, writeFile
+  main.ts [both as written, effect from source, esbuild]             6661 B of NodeFileSystem.ts  30 of 30 implementations: all
+  main.ts [both annotated @__PURE__, effect from source, esbuild]    521 B of NodeFileSystem.ts   2 of 30 implementations: readFile, writeFile
+Terminal implementations in each bundle (all six are exports of src/NodeTerminal.ts)
+  main-terminal.ts                                                   334 B of NodeTerminal.ts     2 of 6: columns, display
 Stream runtime bytes in each bundle (Stream.ts, Channel.ts, Sink.ts and their internals; wrapper = under 2 kB)
-  main.ts                                                            31 effect modules       1456 B  expected wrapper (Stream.ts, Channel.ts, internal/stream.ts)
-  main-namespace.ts                                                  31 effect modules       1456 B  expected wrapper (Stream.ts, Channel.ts, internal/stream.ts)
-  main-readonly.ts                                                   31 effect modules       1456 B  expected wrapper (Stream.ts, Channel.ts, internal/stream.ts)
-  main-stream.ts                                                     35 effect modules       3838 B  expected used (Stream.ts, Channel.ts, internal/stream.ts)
-  main-twenty.ts                                                     31 effect modules       1456 B  expected wrapper (Stream.ts, Channel.ts, internal/stream.ts)
+  main.ts                                                            28 effect modules          0 B  expected none
+  main-namespace.ts                                                  28 effect modules          0 B  expected none
+  main-readonly.ts                                                   28 effect modules          0 B  expected none
+  main-stream.ts                                                     35 effect modules       3837 B  expected used (Stream.ts, Channel.ts, internal/stream.ts)
+  main-twenty.ts                                                     28 effect modules          0 B  expected none
   main-record.ts                                                     32 effect modules       3092 B  expected used (Stream.ts, Channel.ts, internal/stream.ts)
   main-full.ts                                                       32 effect modules       3092 B  expected used (Stream.ts, Channel.ts, internal/stream.ts)
   main-terminal.ts                                                   28 effect modules          0 B  expected none
   main-plain.ts                                                      27 effect modules          0 B  expected none
-  main-plain.ts                                                      27 effect modules          0 B  expected none
-  main.ts [contract annotated @__PURE__, esbuild]                    28 effect modules          0 B  expected none
-  main.ts [contract published (annotate-pure-calls), esbuild]        28 effect modules          0 B  expected none
-  main.ts [contract as written, rolldown]                            31 effect modules       1564 B  expected wrapper (Stream.ts, Channel.ts, internal/stream.ts)
-  main.ts [contract annotated @__PURE__, rolldown]                   28 effect modules          0 B  expected none
-  main.ts [contract as written, effect from source, esbuild]         77 effect modules     103.8 kB  expected used (Stream.ts, Channel.ts, Sink.ts, internal/stream.ts)
-  main.ts [contract annotated @__PURE__, effect from source, esbuild] 53 effect modules          0 B  expected none
+  main-plain.ts [no record, no operation, branch point Context.ts]   27 effect modules          0 B  expected none
+  main.ts [contract as written, esbuild]                             31 effect modules       1456 B  expected wrapper (Stream.ts, Channel.ts, internal/stream.ts)
+  main.ts [provider as written, esbuild]                             32 effect modules       3092 B  expected used (Stream.ts, Channel.ts, internal/stream.ts)
+  main.ts [provider annotated @__PURE__, esbuild]                    28 effect modules          0 B  expected none
+  main.ts [both annotated @__PURE__, esbuild]                        28 effect modules          0 B  expected none
+  main.ts [both as written, rolldown]                                32 effect modules       3148 B  expected used (Stream.ts, Channel.ts, internal/stream.ts)
+  main.ts [both annotated @__PURE__, rolldown]                       28 effect modules          0 B  expected none
+  main.ts [both published, rolldown]                                 28 effect modules          0 B  expected none
+  main.ts [both as written, effect from source, esbuild]             77 effect modules     104.6 kB  expected used (Stream.ts, Channel.ts, Sink.ts, internal/stream.ts)
+  main.ts [both annotated @__PURE__, effect from source, esbuild]    53 effect modules          0 B  expected none
 What Context.ts costs a bundle with no record and no operation
                         as printed    minified
-  this branch              84.3 kB     47.9 kB
-  branch point             83.9 kB     47.6 kB
+  this branch              84.5 kB     48.1 kB
+  branch point             84.1 kB     47.8 kB
   difference                 408 B       275 B  limit 512 B minified
 Contract constants the bundler kept in the two-operation bundle
-  main.ts                                                            keys: all 30; record service: absent
-  main.ts [contract annotated @__PURE__, esbuild]                    keys: readFile, writeFile; record service: absent
-  main.ts [contract published (annotate-pure-calls), esbuild]        keys: readFile, writeFile; record service: absent
-  main.ts [contract as written, rolldown]                            keys: all 30; record service: absent
-  main.ts [contract annotated @__PURE__, rolldown]                   keys: readFile, writeFile; record service: absent
-  main.ts [contract as written, effect from source, esbuild]         keys: all 30; record service: absent
-  main.ts [contract annotated @__PURE__, effect from source, esbuild] keys: readFile, writeFile; record service: absent
+  main.ts                                                            keys: readFile, writeFile; record service: absent
+  main.ts [contract as written, esbuild]                             keys: all 30; record service: present
+  main.ts [provider as written, esbuild]                             keys: all 30; record service: absent
+  main.ts [provider annotated @__PURE__, esbuild]                    keys: readFile, writeFile; record service: absent
+  main.ts [both annotated @__PURE__, esbuild]                        keys: readFile, writeFile; record service: absent
+  main.ts [both as written, rolldown]                                keys: all 30; record service: present
+  main.ts [both annotated @__PURE__, rolldown]                       keys: readFile, writeFile; record service: absent
+  main.ts [both published, rolldown]                                 keys: readFile, writeFile; record service: absent
+  main.ts [both as written, effect from source, esbuild]             keys: all 30; record service: present
+  main.ts [both annotated @__PURE__, effect from source, esbuild]    keys: readFile, writeFile; record service: absent
   node dist/main.js <file>: backed up 6 bytes of <file>
   node dist/main-stream.js <file>: <file> has 6 bytes
   node dist/main-readonly.js <file>: <file> is 6 bytes
   node dist/main-terminal.js <file>: displayed at 80 columns
   node dist/main-plain.js <file>: hello, <file>
-OK: every bundle contains exactly the implementations its program uses, Effect-only roots carry at most a retained wrapper of the Stream runtime, and the shaken bundles run
+OK: every bundle contains exactly the implementations its program uses, read out of one provider module; Effect-only roots carry none of the Stream runtime; and the shaken bundles run
 ```
 
-The no-record root carries 636 bytes of `Context.ts` over the branch point as esbuild prints it (indentation and line
-breaks included) and 390 bytes minified, which is the form a bundle ships in and the one the check gates at 512 bytes:
+The no-record root carries 408 bytes of `Context.ts` over the branch point as esbuild prints it (indentation and line
+breaks included) and 275 bytes minified, which is the form a bundle ships in and the one the check gates at 512 bytes:
 the record-overlay branch in `lookup` and in the flatten, the `isRecordKey` test in `make`, `add`, `pick`, `omit` and
 the getters, and the `OperationsTypeId` string. Round 8 printed 837 bytes and had widened its gate to 1 kB to fit.
 
@@ -576,7 +600,7 @@ typetest/errors/partial-aggregate.ts(7,14): error TS2375: Type 'Layer<"effect/Fi
   Type 'FileSystem' is not assignable to type '"effect/FileSystem/readFile" | "effect/FileSystem/writeFile"'.
     Type '"effect/FileSystem/access"' is not assignable to type '"effect/FileSystem/readFile" | "effect/FileSystem/writeFile"'.
 typetest/errors/partial-record.ts(6,67): error TS2345: Argument of type '{ readFile: () => Effect.Effect<Uint8Array<ArrayBuffer>, never, never>; }' is not assignable to parameter of type 'Shape'.
-  Type '{ readFile: () => Effect.Effect<Uint8Array<ArrayBuffer>, never, never>; }' is missing the following properties from type 'Shape<typeof import("…/src/FileSystem/operations")>': access, chmod, chown, copy, and 25 more.
+  Type '{ readFile: () => Effect.Effect<Uint8Array<ArrayBuffer>, never, never>; }' is missing the following properties from type 'Shape<{ access: Operation<"effect/FileSystem/access", (path: string, options?: { readonly writable?: boolean; readonly readable?: boolean; } | undefined) => Effect<void, FileSystemError, never>>; chmod: Operation<"effect/FileSystem/chmod", (path: string, mode: number) => Effect<void, FileSystemError, never>>; [27 more members, elided here]; writeFileString: Operation<"effect/FileSystem/writeFileString", (path: string, data: string) => Effect<void, FileSystemError, never>>; }>': access, chmod, chown, copy, and 25 more.
 typetest/errors/partial-subset.ts(6,59): error TS2345: Argument of type '{ readFile: () => Effect.Effect<Uint8Array<ArrayBuffer>, never, never>; }' is not assignable to parameter of type 'ReadOnlyShape'.
   Type '{ readFile: () => Effect.Effect<Uint8Array<ArrayBuffer>, never, never>; }' is missing the following properties from type 'Shape<{ exists: Operation<"effect/FileSystem/exists", (path: string) => Effect<boolean, FileSystemError, never>>; readFile: Operation<"effect/FileSystem/readFile", (path: string) => Effect<Uint8Array<ArrayBufferLike>, FileSystemError, never>>; stat: Operation<"effect/FileSystem/stat", (path: string) => Effect<Info, FileSystemError, never>>; }>': exists, stat
 typetest/errors/record-requires-all.ts(8,19): error TS2379: Argument of type 'Effect<number, FileSystemError, FileSystem>' is not assignable to parameter of type 'Effect<number, FileSystemError, never>' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
@@ -631,31 +655,34 @@ shapes from the operations is cheaper. Check time is not a criterion.
 
 The spec states the phases in a paragraph; this is the layout an implementer builds.
 
-**Phase 2, `effect/FileSystem`, Node.** In `packages/platform/node-shared`: one module per primitive operation,
-`src/NodeFileSystem/<op>.ts`, each exporting `Layer.succeed(FileSystem.<op>, impl)` built from the function
-`NodeFileSystem.ts` already has for that member (`watch` is `Layer.effect` over `serviceOption(WatchBackend)`); a
-barrel `src/NodeFileSystem/index.ts` with `export *` so that `import * as NodeFileSystem from
-"@effect/platform-node-shared/NodeFileSystem"` and `NodeFileSystem.readFile` shake as the bundle test's `node/index.ts`
-does. The derived operations (`exists`, `glob`, `readFileString`, `stream`, `sink`, `writeFileString`) are
+**Phase 2, `effect/FileSystem`, Node.** In `packages/platform/node-shared/src/NodeFileSystem.ts`, the one module it
+is today: beside each implementation function the module already has (`const readFile = …`), an exported layer for
+its operation, `export const readFile = Layer.succeed(FileSystem.readFile, readFileImpl)` (`watch` is `Layer.effect`
+over `serviceOption(WatchBackend)`), so that `import * as NodeFileSystem from
+"@effect/platform-node-shared/NodeFileSystem"` and `NodeFileSystem.readFile` shake as the bundle test's one-module
+fixture does. The derived operations (`exists`, `glob`, `readFileString`, `stream`, `sink`, `writeFileString`) are
 platform-independent: `effect/FileSystem` ships each as a layer over the primitives it needs, for example
-`layerReadFileString: Layer<"effect/FileSystem/readFileString", never, "effect/FileSystem/readFile">`, and each
-platform's module for a derived operation is that layer provided with the platform's primitive. `NodeFileSystem.layer`
-keeps its name, type, module and form, `Layer.effect(FileSystem, make({...}))` built from the same per-operation
-functions, which provides the record whole, and lives apart from the barrel so importing one operation does not import
-thirty. After this phase a program that calls two operations and provides `NodeFileSystem.readFile` and
+`layerReadFileString: Layer<"effect/FileSystem/readFileString", never, "effect/FileSystem/readFile">`, and the
+platform's export for a derived operation is that layer provided with the platform's primitive. `NodeFileSystem.layer`
+keeps its name, type, module and form, `Layer.effect(FileSystem, make({...}))` built from the same implementation
+functions, which provides the record whole; being an unused pure binding in a root that imports two operations, it
+costs that root nothing. The package build's `annotate-pure-calls` step is what makes the new exports droppable, as
+it already makes `layer` droppable in a root that does not use it; the `(() => …)()` initializers the module uses for
+its implementation functions are calls like any other and are annotated the same way. No file is added or split.
+After this phase a program that calls two operations and provides `NodeFileSystem.readFile` and
 `NodeFileSystem.writeFile` bundles two implementations; a program that still provides `NodeFileSystem.layer` behaves
-as before. Deno gets the same layout in `DenoFileSystem`; Bun re-exports Node's.
+as before. `DenoFileSystem.ts` gets the same exports; Bun re-exports Node's.
 
-**Phase 2, `effect/Terminal`.** `NodeTerminal` becomes one module per member. `columns`, `rows` and `display` are
-one-liners over `process.stdout`: `Layer.succeed(Terminal.columns, Effect.sync(() => process.stdout.columns ?? 80))`.
-`readInput`, `readLine` and `size` share the `stdin`/`readline` setup that `make(shouldQuit)` does once today; that
-setup becomes an internal scoped service, `NodeTerminal/Input` (a `Context.Service` whose layer owns the `readline`
-interface and the keypress listener), and each of the three members is `Layer.effect(Terminal.readInput,
-Effect.map(Input, …))` provided with it. A root that only displays never imports `Input`, so neither `readline` nor the
-key-event parser is in its bundle, which is what the prototype's `main-terminal.ts` measures (two of six members).
-`NodeTerminal.layer` keeps its form, a record layer, with `Input` provided inside; `NodeTerminal.make(shouldQuit)`
-keeps its signature as the aggregate builder. The prototype's `src/Terminal.ts` and `src/node/terminal/` are this
-layout.
+**Phase 2, `effect/Terminal`.** `NodeTerminal.ts`, one module as today, exports one layer per member. `columns`,
+`rows` and `display` are one-liners over `process.stdout`: `Layer.succeed(Terminal.columns, Effect.sync(() =>
+process.stdout.columns ?? 80))`. `readInput`, `readLine` and `size` share the `stdin`/`readline` setup that
+`make(shouldQuit)` does once today; that setup becomes an internal scoped service, `Input` (a `Context.Service` in the
+same module whose layer owns the `readline` interface and the keypress listener), and each of the three members is
+`Layer.effect(Terminal.readInput, Effect.map(Input, …))` provided with it. A root that only displays never references
+`Input`, so neither `readline` nor the key-event parser is in its bundle, which is what the prototype's
+`main-terminal.ts` measures (two of six members, 334 bytes of `NodeTerminal.ts`). `NodeTerminal.layer` keeps its form,
+a record layer, with `Input` provided inside; `NodeTerminal.make(shouldQuit)` keeps its signature as the aggregate
+builder. The prototype's `src/Terminal.ts` and `src/NodeTerminal.ts` are this layout.
 
 **Phase 3, `effect/FileSystem`.** The 57 `yield* FileSystem` sites inside `effect` move, one commit per module: sites
 that use a few members call them (`ConfigProvider` directory reads, `Logger` file sinks, `cli` completions) and expose
@@ -697,16 +724,23 @@ The design went through ten rounds of review. What each settled, in the order an
   with a `ShapeDifference` type to keep the two in step; now each operation declares its shape once and the record
   derives the rest, so `ShapeDifference` and one declaration are gone. The price, measured and pasted in C: TypeScript
   reports an interface with no members of its own by its one base type when listing missing members, so a partial
-  record's second line names `Shape<typeof import(…)>` (or the member list, truncated) where a hand-written interface
+  record's second line names `Shape<{ access: Operation<…>; … }>`, the member list, where a hand-written interface
   printed `Shape`. The first line, the parameter type, prints `Shape` in both. Two bases or a redeclared member would
   restore the name and were rejected as warts.
 - **No branded phase for unstable modules** (round 9). Rounds 7 and 8 shipped `FileSystem` and `Terminal` first under
   their old identity, each operation branded with it, with a `Brand` type argument on every constructor for that
   purpose. Both modules are `@stability unstable`, whose policy allows a breaking minor, so round 9 ships the identity
   change directly with the codemod and `ReadOnly`, and removes `Brand`.
-- **The member list is the module's export list where the operations have a module**, and written out otherwise
-  (round 8). A `members` helper building the operations from a table of names and kinds would keep every key in every
-  bundle (measured under "What a kept key costs"); a namespace import keeps nothing a written list does not.
+- **One module per contract, one module per provider; the member list is written out** (this revision, at Tim
+  Smart's direction: "for something to be tree shakable it doesn't need to be in a separate file"). Rounds 1 to 10
+  put the prototype's operations in a module of their own, imported as a namespace for the member list, and each
+  implementation layer in a file of its own, so that a bundler dropped unused modules whole; the spec's phase 2
+  split `NodeFileSystem` into thirty files the same way. The layout bought nothing the pure annotation does not: a
+  one-module provider as published carries 521 bytes of its 6.7 kB in the two-operation root, the same two
+  implementations the thirty-file layout carried (measured under "What a kept key costs"), and a thirty-file
+  provider is a worse module to read, maintain and document. A `members` helper building the operations from a table
+  of names and kinds would keep every key in every bundle and was rejected in round 8 for that reason; a namespace
+  import keeps nothing a written list does not, and nothing now needs one.
 - **The members are properties of the key** (round 10), so that the one-line form `Context.Operations("app/Users", {
   find })` gives `Users.find(id)`, in both forms. A member whose name is a property of every key is rejected on the
   key argument (`Operations.Reserved`) and a defect at construction. They sit on a prototype of the key's own: an

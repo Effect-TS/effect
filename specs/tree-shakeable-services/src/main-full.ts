@@ -5,7 +5,7 @@
  * providing per operation and not from the program.
  */
 import * as Effect from "effect/Effect"
-import { layer } from "./node/layer.ts"
+import { layer } from "./NodeFileSystem.ts"
 import { backup } from "./program.ts"
 
 const path = process.argv[2] ?? "package.json"
