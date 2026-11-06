@@ -107,7 +107,7 @@ import * as Toolkit from "./Toolkit.ts"
  * in the server context or middleware. Modern requests are resumed by the client and
  * are unaffected. State-only continuations cannot be translated to legacy MCP.
  *
- * @see [Timeouts](https://modelcontextprotocol.io/specification/2025-11-25/basic/lifecycle#timeouts)
+ * Follows the protocol's [timeout guidance](https://modelcontextprotocol.io/specification/2025-11-25/basic/lifecycle#timeouts).
  *
  * @stability unstable
  * @category references
@@ -124,7 +124,7 @@ export const LegacyInputMaxRounds = McpInput.MaxRounds
  * context or middleware. Interruption cancels pending input; middleware deadlines also
  * cover all rounds together.
  *
- * @see [Timeouts](https://modelcontextprotocol.io/specification/2025-11-25/basic/lifecycle#timeouts)
+ * Follows the protocol's [timeout guidance](https://modelcontextprotocol.io/specification/2025-11-25/basic/lifecycle#timeouts).
  *
  * @stability unstable
  * @category references
@@ -3326,7 +3326,7 @@ export type ToolkitRequirements<Tools extends Record<string, Tool.Any>> = 0 exte
  * is supplied by the server. The final success still uses the tool's success
  * schema; `InputRequired` bypasses that schema and `toModelOutput`.
  *
- * @see [Multi Round-Trip Requests](https://modelcontextprotocol.io/specification/2026-07-28/basic/patterns/mrtr)
+ * Supports [Multi Round-Trip Requests](https://modelcontextprotocol.io/specification/2026-07-28/basic/patterns/mrtr).
  *
  * @stability unstable
  * @category utility types
@@ -3385,10 +3385,13 @@ type RegistrationRequirements<SchemaServices, RequestServices> =
  * The MCP middleware in the current context, provided with
  * `Effect.provide(middleware.layer)`, runs around every call to the toolkit.
  * Pass `{ handlers }` to infer request-level services and allow handlers to
- * return `InputRequired` without changing their success schemas. Existing
- * `Toolkit.toLayer` registrations remain supported.
+ * return `InputRequired` without changing their success schemas. Only this
+ * overload interprets input requirements as protocol control. The one-argument
+ * form preserves ordinary Toolkit result encoding and declared failures.
+ * `MissingRequiredClientCapability` is a protocol failure in both forms.
  *
- * @see [Multi Round-Trip Requests](https://modelcontextprotocol.io/specification/2026-07-28/basic/patterns/mrtr)
+ * Supports [Multi Round-Trip Requests](https://modelcontextprotocol.io/specification/2026-07-28/basic/patterns/mrtr).
+ *
  * @see {@link ToolkitHandlers}
  * @see {@link ToolkitRequirements} for which services are request-level
  *
@@ -3422,9 +3425,13 @@ export const registerToolkit: {
     }
   }
   const built = Toolkit.makeWithHandlers(toolkit.tools, Context.makeUnsafe(handlers), {
-    isControl: (value): value is McpSchema.InputRequired => Predicate.isTagged(value, "InputRequired"),
+    // Existing Toolkit handlers may use InputRequired tags as ordinary data.
+    isControl: options === undefined
+      ? undefined
+      : (value): value is McpSchema.InputRequired => Predicate.isTagged(value, "InputRequired"),
     isProtocolFailure: (error) =>
-      error instanceof InvalidParams || error instanceof McpSchema.MissingRequiredClientCapability
+      error instanceof McpSchema.MissingRequiredClientCapability ||
+      (options !== undefined && error instanceof InvalidParams)
   })
   // Interruption propagates; anything else is logged, reported and scrubbed.
   const internalToolError = (cause: Cause.Cause<unknown>) => {
@@ -3485,7 +3492,10 @@ export const registerToolkit: {
       const failure = Cause.findFail(cause)
       if (Result.isSuccess(failure)) {
         const error = failure.success.error
-        if (error instanceof InvalidParams || error instanceof McpSchema.MissingRequiredClientCapability) {
+        if (
+          error instanceof McpSchema.MissingRequiredClientCapability ||
+          (options !== undefined && error instanceof InvalidParams)
+        ) {
           return Effect.fail(error)
         }
         const origin = Context.get(Cause.reasonAnnotations(failure.success), Toolkit.FailureOrigin)
@@ -3788,7 +3798,8 @@ export type PromptRequirements<Params extends Schema.Struct.Fields, R, Completio
  * Legacy clients supply supported input through reverse requests within the
  * same operation. State-only input requirements are unsupported on legacy MCP.
  *
- * @see [Reading resources](https://modelcontextprotocol.io/specification/2026-07-28/server/resources#reading-resources)
+ * Follows the protocol's [resource reading rules](https://modelcontextprotocol.io/specification/2026-07-28/server/resources#reading-resources).
+ *
  * @see {@link resource} for the layer-based resource registration wrapper
  *
  * @stability unstable
@@ -4153,7 +4164,8 @@ export const skill = (options: SkillOptions): Layer.Layer<never, Cause.IllegalAr
  * String content becomes a user text message. Return `InputRequired` to request
  * client input and read subsequent responses through `McpRequestContext`.
  *
- * @see [Multi Round-Trip Requests](https://modelcontextprotocol.io/specification/2026-07-28/basic/patterns/mrtr)
+ * Supports [Multi Round-Trip Requests](https://modelcontextprotocol.io/specification/2026-07-28/basic/patterns/mrtr).
+ *
  * @see {@link prompt} for the layer-based prompt registration wrapper
  *
  * @stability unstable

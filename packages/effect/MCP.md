@@ -313,7 +313,9 @@ Use `McpServer.toolkit(tools, { handlers })` or
 `McpServer.registerToolkit(tools, { handlers })` when a toolkit handler needs client input.
 These handlers return the tool's success type or `McpSchema.InputRequired`; the latter bypasses
 success encoding and `toModelOutput`. The advertised output schema continues to describe the
-completed result. The existing `Toolkit.toLayer` registration form remains supported.
+completed result. Only the `{ handlers }` form interprets `InputRequired` as a protocol
+continuation. The one-argument form with `Toolkit.toLayer` preserves ordinary result encoding,
+including success data tagged `InputRequired`, and declared `InvalidParams` tool failures.
 
 ```typescript
 import { Effect, Schema } from "effect"

@@ -125,14 +125,14 @@ describe("Toolkit client input", () => {
   }
 
   // https://modelcontextprotocol.io/specification/2026-07-28/basic/patterns/mrtr
-  it.effect("returns toolkit input requirements before encoding the success result", () =>
+  it.effect("uses explicit MCP toolkit handlers before ordinary handlers and success encoding", () =>
     Effect.gen(function*() {
-      const toolkit = Toolkit.make(Tool.make("Wait", { success: Schema.Unknown }))
-      const registrations = McpServer.toolkit(toolkit).pipe(
-        Layer.provide(toolkit.toLayer({
+      const toolkit = Toolkit.make(Tool.make("Wait", { success: Schema.String }))
+      const registrations = McpServer.toolkit(toolkit, {
+        handlers: {
           Wait: () => Effect.succeed(new McpSchema.InputRequired({ requestState: "resume" }))
-        }))
-      )
+        }
+      }).pipe(Layer.provide(toolkit.toLayer({ Wait: () => Effect.succeed("ordinary") })))
       const harness = yield* makeHttpHarness(McpServer.layerHttp({
         name: "ToolkitInput",
         version: "1.0.0",
