@@ -2906,7 +2906,8 @@ export const Objects: new(
         properties = ast.propertySignatures.map((ps) => ({
           parser: compileField(ps.type),
           name: ps.name,
-          type: ps.type
+          type: ps.type,
+          ownOnly: requiresOwnProperty(ps.name)
         }))
         indexes = indexCount
           ? ast.indexSignatures.map((is) => ({
@@ -3145,7 +3146,7 @@ export const Objects: new(
         for (let index = 0; index < props.length; index++) {
           const property = props[index]
           const name = property.name
-          const hasKey = hasPropertySignature(record, name)
+          const hasKey = property.ownOnly ? Object.hasOwn(record, name) : name in record
           const value = hasKey ? record[name] : InternalParser.missing
           const exit = property.parser(value, options)
           if (!effectIsExit(exit)) {
@@ -3223,6 +3224,7 @@ type ParsedProperty = {
   readonly parser: SchemaParser.Parser
   readonly name: PropertyKey
   readonly type: AST
+  readonly ownOnly: boolean
 }
 
 /** @internal */
@@ -3257,7 +3259,7 @@ export function stepProperty(
 
 const parsePropertiesOptions = {
   onItem(s: ObjectParserState, p: ParsedProperty) {
-    if (!hasPropertySignature(s.input, p.name)) {
+    if (!(p.ownOnly ? Object.hasOwn(s.input, p.name) : p.name in s.input)) {
       return p.parser(InternalParser.missing, s.options)
     }
     const value = s.input[p.name]
