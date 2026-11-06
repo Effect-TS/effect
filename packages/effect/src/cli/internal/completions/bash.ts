@@ -327,8 +327,9 @@ const generateFunction = (
       lines.push(`  fi`)
     }
   } else if (descriptor.subcommands.length > 0) {
-    const subNames = descriptor.subcommands.map((s) => s.name)
-    lines.push(`  COMPREPLY=( $(compgen -W '${subNames.join(" ")}' -- "$cur") )`)
+    // The choice helper replaces only the text after a word break such as `:`.
+    const subNames = descriptor.subcommands.map((s) => `'${escapeForBash(s.name)}'`)
+    lines.push(`  ${helpers.choices} "$cur" "$_comp_word" ${subNames.join(" ")}`)
   }
 
   lines.push(`}`)

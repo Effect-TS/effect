@@ -132,7 +132,7 @@ const generateFunction = (
     lines.push(`  commands=(`)
     for (const sub of descriptor.subcommands) {
       const desc = sub.description ? escapeZsh(sub.description) : ""
-      lines.push(`    '${sub.name}:${desc}'`)
+      lines.push(`    '${escapeZsh(sub.name)}:${desc}'`)
     }
     lines.push(`  )`)
     lines.push(``)
