@@ -166,6 +166,15 @@ describe("Request", { concurrent: false }, () => {
     assert.strictEqual(Equal.equals(a, b), false)
   })
 
+  it("compares StructuralProto values regardless of key order", () => {
+    const make = Request.of<Request.Request<void> & { readonly a: number; readonly b: number }>()
+    const a = make({ a: 1, b: 2 })
+    const b = make({ b: 2, a: 1 })
+
+    assert.strictEqual(Hash.hash(a), Hash.hash(b))
+    assert.isTrue(Equal.equals(a, b))
+  })
+
   it.effect(
     "requests are executed correctly",
     Effect.fnUntraced(function*() {
