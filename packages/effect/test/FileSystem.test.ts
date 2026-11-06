@@ -235,13 +235,20 @@ describe("FileSystem", () => {
 
     it.effect.each<{ readonly pattern: string; readonly expected: ReadonlyArray<string> }>([
       { pattern: "/", expected: ["/"] },
-      { pattern: "/**", expected: ["/", "/a", "/a/x.ts"] },
+      { pattern: "/**", expected: ["/", "/C:", "/C:/x.ts", "/a", "/a/x.ts"] },
       { pattern: "C:/", expected: ["C:/"] },
       { pattern: "C:/**", expected: ["C:/", "C:/b", "C:/b/x.ts"] },
-      { pattern: "Z:/", expected: [] }
-    ])("returns the filesystem root for $pattern", ({ expected, pattern }) =>
+      { pattern: "Z:/", expected: [] },
+      // the root is a result exactly when the compiled pattern accepts it
+      { pattern: "/**/.", expected: [] },
+      { pattern: "/{,a}", expected: ["/", "/a"] },
+      // `C:` below `/` is a directory name, not a drive
+      { pattern: "/{C:,a}/x.ts", expected: ["/C:/x.ts", "/a/x.ts"] }
+    ])("matches $pattern from the filesystem root", ({ expected, pattern }) =>
       Effect.gen(function*() {
-        const fs = makeFileSystem({ directories: { "/": ["a"], "/a": ["x.ts"], "C:/": ["b"], "C:/b": ["x.ts"] } })
+        const fs = makeFileSystem({
+          directories: { "/": ["C:", "a"], "/C:": ["x.ts"], "/a": ["x.ts"], "C:/": ["b"], "C:/b": ["x.ts"] }
+        })
         assert.deepStrictEqual(yield* fs.glob(pattern, { root: "missing" }), expected)
       }))
 
