@@ -797,6 +797,30 @@ describe("OpenAiLanguageModel", () => {
             strictEqual(inlineBody.useItemReferences, undefined)
           }).pipe(Effect.provide(makeTestLayer())))
 
+        it.effect("references a stored provider-executed item once when replaying response parts", () =>
+          Effect.gen(function*() {
+            const options = {
+              toolkit: Toolkit.make(OpenAiTool.WebSearch({})),
+              disableToolCallResolution: true
+            } as const
+            const first = yield* LanguageModel.generateText({ ...options, prompt: "Search" })
+
+            yield* LanguageModel.generateText({
+              ...options,
+              prompt: Prompt.concat(Prompt.fromResponseParts(first.content), Prompt.make("Continue"))
+            })
+
+            const body = yield* getRequestBody((yield* MockHttpClient.requests)[1])
+            assert.deepStrictEqual(body.input, [
+              { type: "item_reference", id: "ws_123" },
+              { type: "item_reference", id: "msg_123" },
+              { role: "user", content: [{ type: "input_text", text: "Continue" }] }
+            ])
+          }).pipe(
+            Effect.provide(OpenAiLanguageModel.model("gpt-4o-mini", { store: true })),
+            Effect.provide(makeTestLayer({ body: { output: [makeWebSearchCall(), makeTextOutput("Answer")] } }))
+          ))
+
         it.effect("replays matched provider-executed history inline", () =>
           Effect.gen(function*() {
             yield* LanguageModel.generateText({
