@@ -134,9 +134,7 @@ export interface HandlerInstallationOptions {
   readonly getListChangeRevision?: () => number
   readonly subscribeServerNotifications: McpProtocol.HandlerInstallationContext["subscribeServerNotifications"]
   readonly sendNotification?: NonNullable<McpProtocol.HandlerInstallationContext["sendNotification"]>
-  readonly markSubscriptionCancelled?: NonNullable<
-    McpProtocol.HandlerInstallationContext["markSubscriptionCancelled"]
-  >
+  readonly subscriptionShutdown?: Effect.Effect<void> | undefined
   readonly terminateSubscription?: NonNullable<McpProtocol.HandlerInstallationContext["terminateSubscription"]>
   readonly defaultLogLevel: LogLevel.LogLevel
   readonly serverInfo: {
@@ -553,9 +551,9 @@ export const make = Effect.fnUntraced(function*(
         subscribeServerNotifications: options.subscribeServerNotifications,
         getListChangeRevision: options.getListChangeRevision,
         ...(options.sendNotification === undefined ? {} : { sendNotification: options.sendNotification }),
-        ...(options.markSubscriptionCancelled === undefined
+        ...(options.subscriptionShutdown === undefined
           ? {}
-          : { markSubscriptionCancelled: options.markSubscriptionCancelled }),
+          : { subscriptionShutdown: options.subscriptionShutdown }),
         ...(options.terminateSubscription === undefined
           ? {}
           : { terminateSubscription: options.terminateSubscription }),

@@ -94,6 +94,27 @@ implementation. Finally, a logging layer is added with
 This is essential when using stdio, as any output to `stdout` would interfere with the protocol
 communication.
 
+## Progress and subscription lifetime
+
+Handlers send progress through `McpServer.notifications["notifications/progress"]`, using
+the calling request's `_meta.progressToken`. Values must be finite and strictly increasing;
+floating-point progress is supported. A missing or different token, a repeated or decreasing
+value, and notifications after completion, cancellation, or disconnection are ignored.
+Each request has its own sequence, so a later request may reuse a completed request's token.
+These rules apply to every transport and follow the
+[2026 progress requirements](https://modelcontextprotocol.io/specification/2026-07-28/basic/patterns/progress#behavior-requirements)
+and their [2025 equivalent](https://modelcontextprotocol.io/specification/2025-11-25/basic/utilities/progress#behavior-requirements).
+
+When the server closes a modern subscription because its notification backlog overflows or
+the server scope closes, it sends `notifications/cancelled`, then a successful
+`subscriptions/listen` result. Both carry the subscription ID in `_meta`. The HTTP response
+stream then closes. Client cancellation still stops processing without a result.
+Server shutdown waits up to one second for active subscription deliveries; a disconnected
+or unresponsive peer cannot keep the server alive indefinitely. The stdio transport allows
+one further second to drain its buffered output before closing the writer. See MCP
+[cancellation](https://modelcontextprotocol.io/specification/2026-07-28/basic/patterns/cancellation)
+and [graceful subscription closure](https://modelcontextprotocol.io/specification/2026-07-28/basic/patterns/subscriptions#graceful-closure).
+
 ## Custom transports
 
 Use `McpServer.layerSerialization` with a socket `RpcServer.Protocol` and

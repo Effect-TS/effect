@@ -4,6 +4,7 @@
 import * as Deferred from "../../../Deferred.ts"
 import * as Effect from "../../../Effect.ts"
 import * as Base64 from "../../../encoding/Base64.ts"
+import * as Exit from "../../../Exit.ts"
 import { appendPreResponseHandlerUnsafe } from "../../../http/HttpEffect.ts"
 import * as HttpServerRequest from "../../../http/HttpServerRequest.ts"
 import * as HttpServerResponse from "../../../http/HttpServerResponse.ts"
@@ -460,7 +461,6 @@ export const makeHandlers = (
       }).pipe(
         // Release the upstream listener on overflow even while transport writes remain blocked.
         Scope.use(eventsScope),
-        Effect.andThen(Effect.suspend(() => context.markSubscriptionCancelled?.(client.id, requestId) ?? Effect.void)),
         Effect.andThen(Deferred.succeed(overflowed, undefined)),
         Effect.forkScoped
       )
@@ -476,12 +476,19 @@ export const makeHandlers = (
           Effect.flatMap((notification) => sendNotification(McpSchema.protocolVersion, client.id, notification))
         )
       )
-      yield* Effect.race(deliver, Deferred.await(overflowed))
+      yield* Effect.race(
+        deliver,
+        Effect.race(
+          Deferred.await(overflowed),
+          context.subscriptionShutdown ?? Effect.never
+        )
+      )
+      yield* Scope.close(eventsScope, Exit.void)
       yield* context.terminateSubscription?.(
         McpSchema.protocolVersion,
         client.id,
         requestId,
-        "Pending notification limit exceeded"
+        (yield* Deferred.isDone(overflowed)) ? "Pending notification limit exceeded" : "Server shutdown"
       ) ?? Effect.void
       const encodedServerInfo = yield* encodeImplementation(context.serverInfo)
       return McpSchema.SubscriptionsListenResult.make({

@@ -445,10 +445,7 @@ export interface HandlerInstallationContext {
     requestId: RpcMessage.RequestId,
     reason: string
   ) => Effect.Effect<void>
-  readonly markSubscriptionCancelled?: (
-    clientId: number,
-    requestId: RpcMessage.RequestId
-  ) => Effect.Effect<void>
+  readonly subscriptionShutdown?: Effect.Effect<void> | undefined
   readonly supportedVersions: ReadonlyArray<string>
   readonly serverInfo: {
     readonly name: string

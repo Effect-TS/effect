@@ -106,7 +106,19 @@ interface QueuedServerNotification {
   readonly delivered: Deferred.Deferred<void>
   readonly requestContext?: McpRequestContext["Service"] | undefined
   readonly requestHeaders?: Headers.Headers | undefined
+  readonly progressState?: RequestProgressState | undefined
 }
+
+interface RequestProgressState {
+  active: boolean
+  readonly token: unknown
+  lastProgress: number | undefined
+}
+
+const CurrentProgressState = Context.Reference<RequestProgressState | undefined>(
+  "effect/ai/McpServer/CurrentProgressState",
+  { defaultValue: () => undefined }
+)
 
 const internalState = new WeakMap<object, {
   readonly core: McpCore.McpCore
@@ -186,6 +198,7 @@ const requestServiceKeys = new Set<string>([
   HttpServerRequest.ParsedSearchParams.key,
   HttpRouter.RouteContext.key,
   CurrentLogLevel.key,
+  CurrentProgressState.key,
   Scope.Scope.key,
   Tracer.ParentSpan.key
 ])
@@ -972,6 +985,18 @@ const rejectedError = (rejected: McpCore.RequestRejected) => Effect.fail(rejecte
  * @since 4.0.0
  */
 export class McpServer extends Context.Service<McpServer, {
+  /**
+   * Sends notifications to connected MCP clients.
+   *
+   * **Details**
+   *
+   * Progress notifications use the calling handler's active request and its
+   * `_meta.progressToken`. Values must be finite. A missing or different token,
+   * or a value that does not increase, is ignored. Notifications from a
+   * completed, cancelled, or disconnected request are also ignored.
+   *
+   * This follows the MCP [progress requirements](https://modelcontextprotocol.io/specification/2026-07-28/basic/patterns/progress#behavior-requirements).
+   */
   readonly notifications: RpcClient.RpcClient<RpcGroup.Rpcs<typeof BroadcastServerNotificationRpcs>>
   readonly notifyElicitationComplete: (options: {
     readonly clientId: number
@@ -1116,13 +1141,6 @@ export class McpServer extends Context.Service<McpServer, {
             if (notification === undefined) {
               return Effect.void
             }
-            const queued: QueuedServerNotification = {
-              notification,
-              delivered,
-              requestContext: Context.getOrUndefined(fiber.context, McpRequestContext),
-              requestHeaders: Context.getOrUndefined(fiber.context, HttpServerRequest.HttpServerRequest)?.headers
-            }
-            // write resumes the caller synchronously, so defer it until delivery completes.
             const acknowledge = Effect.suspend(() =>
               notifications.write({
                 clientId: 0,
@@ -1131,6 +1149,26 @@ export class McpServer extends Context.Service<McpServer, {
                 exit: Exit.void
               })
             )
+            const progressState = Context.get(fiber.context, CurrentProgressState)
+            if (notification._tag === "Progress") {
+              // A request owns its progress token and its complete monotonic sequence.
+              if (
+                progressState?.active !== true || progressState.token !== notification.progressToken ||
+                !Number.isFinite(notification.progress) ||
+                (progressState.lastProgress !== undefined && notification.progress <= progressState.lastProgress)
+              ) {
+                return acknowledge
+              }
+              progressState.lastProgress = notification.progress
+            }
+            const queued: QueuedServerNotification = {
+              notification,
+              delivered,
+              requestContext: Context.getOrUndefined(fiber.context, McpRequestContext),
+              requestHeaders: Context.getOrUndefined(fiber.context, HttpServerRequest.HttpServerRequest)?.headers,
+              progressState
+            }
+            // write resumes the caller synchronously, so defer it until delivery completes.
             // A request-scoped endpoint delivers its request's own progress and logs on that request's response.
             const requestQueue = Context.get(fiber.context, RequestNotificationQueue)
             if (
@@ -1489,6 +1527,8 @@ interface ActiveRequest {
   readonly prepared: McpRuntime.PreparedRequest
   readonly cancelled: boolean
   readonly httpPost: { expected: number } | undefined
+  readonly progressState: RequestProgressState
+  readonly subscriptionCompleted?: Deferred.Deferred<void> | undefined
 }
 
 // JSON-RPC errors caused by the request rather than the server: parse error,
@@ -1808,8 +1848,15 @@ const runWithRuntime = Effect.fnUntraced(function*(
     sessionHeaders: Headers.Headers | undefined
   }>()
   const activeRequests = new Map<number, Map<string, ActiveRequest>>()
+  const subscriptionShutdown = yield* Deferred.make<void>()
+  const subscriptionWritesClosed = yield* Deferred.make<void>()
+  let shutdownComplete = false
   const reverseRequestClients = new Map<string, Array<McpClientKey>>()
   const disconnectClient = (clientId: number) => {
+    for (const request of activeRequests.get(clientId)?.values() ?? []) {
+      request.progressState.active = false
+      if (request.subscriptionCompleted !== undefined) Deferred.doneUnsafe(request.subscriptionCompleted, Exit.void)
+    }
     activeRequests.delete(clientId)
     clientStates.delete(clientId)
     runtime.disconnect(clientId)
@@ -1876,6 +1923,7 @@ const runWithRuntime = Effect.fnUntraced(function*(
     if (request === undefined) {
       return false
     }
+    request.progressState.active = false
     requests!.set(key, { ...request, cancelled: true })
     return true
   }
@@ -1886,15 +1934,15 @@ const runWithRuntime = Effect.fnUntraced(function*(
     reason: string
   ): Effect.Effect<void> =>
     Effect.suspend(() => {
-      if (!cancelRequest(clientId, requestId)) {
+      const request = activeRequests.get(clientId)?.get(requestKey(requestId))
+      if (request === undefined || request.cancelled) {
         return Effect.void
       }
-      return isHttp
-        ? protocol.end(clientId)
-        : sendNotification(protocolVersion, clientId, {
-          tag: "notifications/cancelled",
-          payload: { requestId, reason }
-        })
+      // Server closure completes the listen request; only client cancellation suppresses its result.
+      return sendNotification(protocolVersion, clientId, {
+        tag: "notifications/cancelled",
+        payload: { requestId, reason, _meta: { "io.modelcontextprotocol/subscriptionId": requestId } }
+      })
     })
   let writeFromClient!: (clientId: number, message: RpcMessage.FromClientEncoded) => Effect.Effect<void>
   const { core, notificationDelivery, notifications } = internalState.get(server)!
@@ -1904,10 +1952,7 @@ const runWithRuntime = Effect.fnUntraced(function*(
     getListChangeRevision: () => notificationDelivery.listChangeRevision,
     ...(!protocol.supportsNotifications || options.allowSubscriptions === false ? {} : {
       sendNotification,
-      markSubscriptionCancelled: (clientId: number, requestId: RpcMessage.RequestId) =>
-        Effect.sync(() => {
-          cancelRequest(clientId, requestId)
-        }),
+      subscriptionShutdown: Deferred.await(subscriptionShutdown),
       terminateSubscription
     }),
     defaultLogLevel,
@@ -2039,35 +2084,50 @@ const runWithRuntime = Effect.fnUntraced(function*(
   const patchedProtocol = RpcServer.Protocol.of({
     ...protocol,
     send: (clientId, response) => {
+      // After the grace period, interrupting handlers must not start another blocked write.
+      if (shutdownComplete) return Effect.void
+      let completed: Deferred.Deferred<void> | undefined
+      const finish = (write: Effect.Effect<void>) =>
+        completed === undefined
+          ? write
+          : Effect.raceFirst(Effect.interruptible(write), Deferred.await(subscriptionWritesClosed)).pipe(
+            Effect.ensuring(Deferred.succeed(completed, undefined))
+          )
       if (response._tag === "Exit") {
         const requests = activeRequests.get(clientId)
         const key = requestKey(response.requestId)
         const active = requests?.get(key)
+        if (active !== undefined) {
+          active.progressState.active = false
+          completed = active.subscriptionCompleted
+        }
         if (requests !== undefined && requests.delete(key) && requests.size === 0) {
           activeRequests.delete(clientId)
         }
         if (active?.cancelled === true) {
-          if (transport === "custom" && !McpSerialization.isMcpCodec(protocol.codecFor)) return Effect.void
+          if (transport === "custom" && !McpSerialization.isMcpCodec(protocol.codecFor)) return finish(Effect.void)
           if (active.httpPost !== undefined) active.httpPost.expected--
           cancelledResponses.set(response, response.requestId)
-          return protocol.send(clientId, response)
+          return finish(protocol.send(clientId, response))
         }
         if (
           response.exit._tag === "Failure" &&
           !response.exit.cause.some((failure) => failure._tag === "Fail")
         ) {
-          return sendRequestError(clientId, response.requestId, {
-            code: McpSchema.INTERNAL_ERROR_CODE,
-            message: "Internal error"
-          }).pipe(
-            Effect.andThen(CurrentRequestSpan),
-            Effect.map((span) => {
-              if (span !== undefined) recordErrorResponse(span, McpSchema.INTERNAL_ERROR_CODE)
-            })
+          return finish(
+            sendRequestError(clientId, response.requestId, {
+              code: McpSchema.INTERNAL_ERROR_CODE,
+              message: "Internal error"
+            }).pipe(
+              Effect.andThen(CurrentRequestSpan),
+              Effect.map((span) => {
+                if (span !== undefined) recordErrorResponse(span, McpSchema.INTERNAL_ERROR_CODE)
+              })
+            )
           )
         }
       }
-      return protocol.send(clientId, response)
+      return finish(protocol.send(clientId, response))
     },
     run: (f) => {
       writeFromClient = f
@@ -2224,17 +2284,28 @@ const runWithRuntime = Effect.fnUntraced(function*(
                   ? Effect.void
                   : sendRequestError(clientId, request.id, new InvalidParams({ message: "Invalid method parameters" }))
               }
+              const progressState: RequestProgressState = {
+                active: true,
+                token: Predicate.isReadonlyObject(request.payload) && Predicate.isReadonlyObject(request.payload._meta)
+                  ? request.payload._meta.progressToken
+                  : undefined,
+                lastProgress: undefined
+              }
               if (request.isNotification !== true) {
                 const requests = activeRequests.get(clientId) ?? new Map<string, ActiveRequest>()
                 requests.set(requestKey(request.id), {
                   requestId: RpcMessage.RequestId(request.id),
                   prepared,
                   cancelled: false,
-                  httpPost: httpRequest === undefined ? undefined : httpPostResponses.get(httpRequest)
+                  httpPost: httpRequest === undefined ? undefined : httpPostResponses.get(httpRequest),
+                  progressState,
+                  subscriptionCompleted: request.tag === "subscriptions/listen"
+                    ? yield* Deferred.make<void>()
+                    : undefined
                 })
                 activeRequests.set(clientId, requests)
               }
-              const handled = f(clientId, routedRequest)
+              const handled = Effect.provideService(f(clientId, routedRequest), CurrentProgressState, progressState)
               return yield* prepared.requestContext === undefined
                 ? handled
                 : Effect.provideService(handled, McpRequestContext, prepared.requestContext)
@@ -2306,7 +2377,21 @@ const runWithRuntime = Effect.fnUntraced(function*(
             )
           }
         }
-      })
+      }).pipe(Effect.onExit(() =>
+        Effect.gen(function*() {
+          const pending = Array.from(activeRequests.values()).flatMap((requests) =>
+            Array.from(requests.values()).flatMap((request) =>
+              !request.cancelled && request.subscriptionCompleted !== undefined ? [request.subscriptionCompleted] : []
+            )
+          )
+          if (pending.length === 0) return
+          yield* Deferred.succeed(subscriptionShutdown, undefined)
+          // A peer that stops reading must not hold server shutdown indefinitely.
+          yield* Effect.all(pending.map(Deferred.await), { discard: true }).pipe(Effect.timeoutOption("1 second"))
+          shutdownComplete = true
+          yield* Deferred.succeed(subscriptionWritesClosed, undefined)
+        })
+      ))
     }
   })
   if (isHttp) {
@@ -2386,6 +2471,7 @@ const runWithRuntime = Effect.fnUntraced(function*(
         notificationTails.set(clientId, completed)
         const delivery = Effect.gen(function*() {
           if (previous !== undefined) yield* Deferred.await(previous)
+          if (notification._tag === "Progress" && queued.progressState?.active !== true) return
           const projected = yield* selectedProtocol.projectNotification(notification)
           if (projected === undefined) {
             return
@@ -2524,6 +2610,13 @@ type RegistrationServices<RR> = Exclude<McpRequest.Without<RR>, McpServer>
  * reads its first request. The transport discharges the request-level
  * dependencies it supplies (see `ProvidedServices`); any other `McpRequest`
  * marker stays in the layer's requirements and must be met by MCP middleware.
+ * Closing the server scope completes active modern subscriptions with a
+ * correlated cancellation notification and a successful result. Shutdown
+ * allows up to one second for delivery before releasing an unresponsive peer.
+ * The stdio transport additionally allows up to one second to drain buffered
+ * output before closing its writer.
+ * This follows MCP [subscription closure](https://modelcontextprotocol.io/specification/2026-07-28/basic/patterns/subscriptions#graceful-closure)
+ * and [cancellation](https://modelcontextprotocol.io/specification/2026-07-28/basic/patterns/cancellation).
  *
  * **Gotchas**
  *
