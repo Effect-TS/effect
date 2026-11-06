@@ -54,26 +54,7 @@ export interface AtomRpcClient<Self, Id extends string, Rpcs extends Rpc.Any> ex
 
   readonly runtime: Atom.AtomRuntime<Self>
 
-  readonly mutation: <Tag extends Rpc.Tag<Rpcs>>(
-    arg: Tag
-  ) => Rpcs extends Rpc.Rpc<
-    infer _Tag extends Tag,
-    infer _Payload,
-    infer _Success,
-    infer _Error,
-    infer _Middleware,
-    infer _Requires
-  > ? [_Success] extends [RpcSchema.Stream<infer _A, infer _E>] ? never
-    : Atom.AtomResultFn<
-      {
-        readonly payload: Rpc.PayloadConstructor<Rpcs>
-        readonly reactivityKeys?: Reactivity.KeysInput | undefined
-        readonly headers?: Headers.Input | undefined
-      },
-      _Success["Type"],
-      _Error["Type"] | RpcClientError | _Middleware["error"]["Type"] | _Middleware["~ClientError"]
-    >
-    : never
+  readonly mutation: <Tag extends Rpc.Tag<Rpcs>>(arg: Tag) => Mutation<Rpc.ExtractTag<Rpcs, Tag>>
 
   readonly query: <Tag extends Rpc.Tag<Rpcs>>(
     tag: Tag,
@@ -84,28 +65,65 @@ export interface AtomRpcClient<Self, Id extends string, Rpcs extends Rpc.Any> ex
       readonly timeToLive?: Duration.Input | undefined
       readonly serializationKey?: string | undefined
     }
-  ) => Rpcs extends Rpc.Rpc<
-    infer _Tag extends Tag,
-    infer _Payload,
-    infer _Success,
-    infer _Error,
-    infer _Middleware,
-    infer _Requires
-  > ? [_Success] extends [RpcSchema.Stream<infer _A, infer _E>] ? Atom.Writable<
-        Atom.PullResult<
-          _A["Type"],
-          _E["Type"] | _Error["Type"] | RpcClientError | _Middleware["error"]["Type"] | _Middleware["~ClientError"]
-        >,
-        void
-      >
-    : Atom.Atom<
-      AsyncResult.AsyncResult<
-        _Success["Type"],
-        _Error["Type"] | RpcClientError | _Middleware["error"]["Type"] | _Middleware["~ClientError"]
-      >
-    >
-    : never
+  ) => Query<Rpc.ExtractTag<Rpcs, Tag>>
 }
+
+/**
+ * The `AtomResultFn` produced by `mutation` for the given RPC(s). Distributes
+ * over a union of RPCs.
+ *
+ * @stability unstable
+ * @category utility types
+ * @since 4.1.3
+ */
+export type Mutation<Current> = Current extends Rpc.Rpc<
+  infer _Tag,
+  infer _Payload,
+  infer _Success,
+  infer _Error,
+  infer _Middleware,
+  infer _Requires
+> ? [_Success] extends [RpcSchema.Stream<infer _A, infer _E>] ? never
+  : Atom.AtomResultFn<
+    {
+      readonly payload: Rpc.PayloadConstructor<Current>
+      readonly reactivityKeys?: Reactivity.KeysInput | undefined
+      readonly headers?: Headers.Input | undefined
+    },
+    _Success["Type"],
+    _Error["Type"] | RpcClientError | _Middleware["error"]["Type"] | _Middleware["~ClientError"]
+  >
+  : never
+
+/**
+ * The atom produced by `query` for the given RPC(s). Distributes over a union
+ * of RPCs.
+ *
+ * @stability unstable
+ * @category utility types
+ * @since 4.1.3
+ */
+export type Query<Current> = Current extends Rpc.Rpc<
+  infer _Tag,
+  infer _Payload,
+  infer _Success,
+  infer _Error,
+  infer _Middleware,
+  infer _Requires
+> ? [_Success] extends [RpcSchema.Stream<infer _A, infer _E>] ? Atom.Writable<
+      Atom.PullResult<
+        _A["Type"],
+        _E["Type"] | _Error["Type"] | RpcClientError | _Middleware["error"]["Type"] | _Middleware["~ClientError"]
+      >,
+      void
+    >
+  : Atom.Atom<
+    AsyncResult.AsyncResult<
+      _Success["Type"],
+      _Error["Type"] | RpcClientError | _Middleware["error"]["Type"] | _Middleware["~ClientError"]
+    >
+  >
+  : never
 
 declare global {
   interface ErrorConstructor {
@@ -194,10 +212,8 @@ export const Service = <Self>() =>
     }>()(
       Effect.fnUntraced(function*({ headers, payload, reactivityKeys }) {
         const client = yield* self
-        const effect = client(tag, payload, { headers } as any)
-        return yield* (reactivityKeys
-          ? Reactivity.mutation(effect, reactivityKeys) as Effect.Effect<any>
-          : effect as any as Effect.Effect<any>)
+        const effect: Effect.Effect<any> = client(tag, payload, { headers } as any) as any
+        return yield* (reactivityKeys ? Reactivity.mutation(effect, reactivityKeys) : effect)
       })
     ).pipe(
       Atom.serializable({
