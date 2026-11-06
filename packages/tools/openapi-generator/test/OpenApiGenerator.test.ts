@@ -3535,7 +3535,7 @@ export const __HttpApiMultipartFiles = Multipart.FilesSchema`,
       int64AsBigInt: true,
       usage: `declare const client: TestClient
 export const value = client.getValue(undefined).pipe(Effect.map((value): bigint => value.value))
-export const fromBigInt: Int64 = Int64.makeUnsafe(9223372036854775807n)
+export const fromBigInt: Int64 = Int64.make(9223372036854775807n)
 export const encoded: typeof Int64.Encoded = "9223372036854775807"
 // @ts-expect-error a plain bigint is not an Int64
 export const plain: Int64 = 1n
