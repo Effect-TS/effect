@@ -832,7 +832,7 @@ const byName = Order.mapInput(Order.String, (entry: FileSystem.DirectoryEntry) =
 /** @internal */
 export const make = (
   fs: Pick<FileSystem.FileSystem, "readDirectoryEntries" | "stat" | "readLink">,
-  filters: Pick<typeof PathFilter, "fromInput" | "select">
+  filters: Pick<typeof PathFilter, "fromInput" | "include" | "select">
 ): FileSystem.FileSystem["glob"] =>
 (input, options) => {
   // Convert once per call, so running the effect again does not consume a
@@ -841,7 +841,9 @@ export const make = (
   let absolute: AbsolutePattern | undefined
   try {
     absolute = compileAbsolute(input)
-    filter = absolute === undefined ? filters.fromInput(input) : filters.select([absolute.rule])
+    filter = absolute === undefined
+      ? filters.fromInput(input)
+      : filters.select([filters.include(absolute.matcher)])
   } catch (error) {
     return Effect.die(error)
   }
@@ -868,7 +870,7 @@ interface AbsolutePattern {
   /** The filesystem root the pattern starts at, `/` or a drive such as `C:/`. */
   readonly root: string
   /** The pattern below `root`. */
-  readonly rule: PathFilter.IncludeRule
+  readonly matcher: PathFilter.PathMatcher
   /** Whether the pattern matches `root` itself, as `/` and `/**` do. */
   readonly includesRoot: boolean
 }
@@ -891,13 +893,7 @@ const compileAbsolute = (input: PathFilter.Input): AbsolutePattern | undefined =
   const states = union(step(compiled, compiled.initial, root === "/" ? "" : root))
   return {
     root,
-    rule: {
-      _tag: "Include",
-      matcher: pathMatcher(fromNodes(compiled.nodes, new Set(states), false)),
-      directoryOnly: false,
-      scope: [],
-      subtree: "self"
-    },
+    matcher: pathMatcher(fromNodes(compiled.nodes, new Set(states), false)),
     includesRoot: accepts(compiled, states, true)
   }
 }
