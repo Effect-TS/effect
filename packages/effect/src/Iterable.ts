@@ -647,15 +647,18 @@ export const takeWhile: {
   <A>(self: Iterable<A>, predicate: (a: A, i: number) => boolean): Iterable<A>
 } = dual(2, <A>(self: Iterable<A>, predicate: (a: A, i: number) => boolean): Iterable<A> => ({
   [Symbol.iterator]() {
-    const iterator = self[Symbol.iterator]()
+    let iterator: Iterator<A> | undefined = self[Symbol.iterator]()
     let i = 0
     return {
       next() {
-        const result = iterator.next()
-        if (result.done || !predicate(result.value, i++)) {
-          return { done: true, value: undefined }
+        if (iterator !== undefined) {
+          const result = iterator.next()
+          if (!result.done && predicate(result.value, i++)) {
+            return result
+          }
+          iterator = undefined
         }
-        return result
+        return { done: true, value: undefined }
       }
     }
   }
@@ -1734,17 +1737,19 @@ export const filterMapWhile: {
   <A, B, X>(self: Iterable<A>, f: (input: A, i: number) => Result<B, X>): Iterable<B>
 } = dual(2, <A, B, X>(self: Iterable<A>, f: (input: A, i: number) => Result<B, X>) => ({
   [Symbol.iterator]() {
-    const iterator = self[Symbol.iterator]()
+    let iterator: Iterator<A> | undefined = self[Symbol.iterator]()
     let i = 0
     return {
       next() {
-        const result = iterator.next()
-        if (result.done) {
-          return { done: true, value: undefined }
-        }
-        const next = f(result.value, i++)
-        if (R.isSuccess(next)) {
-          return { done: false, value: next.success }
+        if (iterator !== undefined) {
+          const result = iterator.next()
+          if (!result.done) {
+            const next = f(result.value, i++)
+            if (R.isSuccess(next)) {
+              return { done: false, value: next.success }
+            }
+          }
+          iterator = undefined
         }
         return { done: true, value: undefined }
       }
@@ -2098,15 +2103,19 @@ export const some: {
 export const unfold = <B, A>(b: B, f: (b: B) => Option<readonly [A, B]>): Iterable<A> => ({
   [Symbol.iterator]() {
     let next = b
+    let done = false
     return {
       next() {
-        const ab = f(next)
-        if (O.isNone(ab)) {
-          return { done: true, value: undefined }
+        if (!done) {
+          const ab = f(next)
+          if (O.isSome(ab)) {
+            const [a, b] = ab.value
+            next = b
+            return { done: false, value: a }
+          }
+          done = true
         }
-        const [a, b] = ab.value
-        next = b
-        return { done: false, value: a }
+        return { done: true, value: undefined }
       }
     }
   }

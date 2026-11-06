@@ -21,9 +21,12 @@ import * as Option from "effect/Option"
 import type * as Schema from "effect/Schema"
 import type * as Stream from "effect/Stream"
 import type * as Http from "node:http"
+import type { Readable } from "node:stream"
 import * as NodeStream from "./NodeStream.ts"
 
 const textDecoder = new TextDecoder()
+
+const formDecoder = new TextDecoder("utf-8", { ignoreBOM: true })
 
 /**
  * Adapts a Node `IncomingMessage` to Effect HTTP incoming messages.
@@ -55,6 +58,7 @@ export abstract class NodeHttpIncomingMessage<E> extends Inspectable.Class
   readonly onError: (error: unknown) => E
   readonly remoteAddressOverride?: Option.Option<string> | undefined
   protected readonly destroyOnOverflow: boolean = true
+  protected readonly closeOnDone: boolean = true
 
   constructor(
     source: Http.IncomingMessage,
@@ -102,17 +106,27 @@ export abstract class NodeHttpIncomingMessage<E> extends Inspectable.Class
   }
 
   get urlParamsBody(): Effect.Effect<UrlParams.UrlParams, E> {
-    return Effect.flatMap(this.text, (_) =>
+    return Effect.flatMap(this.arrayBuffer, (bytes) =>
       Effect.try({
-        try: () => UrlParams.fromInput(new URLSearchParams(_)),
+        // A leading "?" is form data; URLSearchParams would drop it as a query prefix.
+        try: () => UrlParams.fromInput(new URLSearchParams(formDecoder.decode(bytes).replace(/^\?/, "%3F"))),
         catch: this.onError
       }))
   }
 
+  /**
+   * The readable the body is read from, `source` unless a subclass reads the
+   * body from elsewhere.
+   */
+  protected get bodySource(): Readable {
+    return this.source
+  }
+
   get stream(): Stream.Stream<Uint8Array, E> {
     return NodeStream.fromReadable({
-      evaluate: () => this.source,
-      onError: this.onError
+      evaluate: () => this.bodySource,
+      onError: this.onError,
+      closeOnDone: this.closeOnDone
     })
   }
 
@@ -122,7 +136,7 @@ export abstract class NodeHttpIncomingMessage<E> extends Inspectable.Class
       return this.arrayBufferEffect
     }
     this.arrayBufferEffect = Effect.withFiber((fiber) =>
-      NodeStream.toArrayBuffer(() => this.source, {
+      NodeStream.toArrayBuffer(() => this.bodySource, {
         onError: this.onError,
         destroyOnOverflow: this.destroyOnOverflow,
         maxBytes: fiber.getRef(IncomingMessage.MaxBodySize)

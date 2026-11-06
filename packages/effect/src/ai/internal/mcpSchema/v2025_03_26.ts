@@ -4,8 +4,6 @@
  * This revision is expressed as a frozen delta from the exact 2024-11-05
  * schemas. Transport envelopes (including JSON-RPC batches) are owned by the
  * transport codec rather than Effect RPC payload schemas.
- *
- * @internal
  */
 import * as Rpc from "../../../rpc/Rpc.ts"
 import * as RpcGroup from "../../../rpc/RpcGroup.ts"
@@ -20,6 +18,8 @@ export * from "./v2024_11_05.ts"
 export const protocolVersion = "2025-03-26"
 
 const optional = Previous.optional
+
+const UnknownObject = Previous.UnknownObject
 
 /**
  * @internal
@@ -186,7 +186,7 @@ export class CallTool extends Rpc.make("tools/call", {
   payload: {
     ...Previous.RequestMeta.fields,
     name: Schema.String,
-    arguments: optional(Schema.JsonObject)
+    arguments: optional(UnknownObject)
   }
 }) {}
 
@@ -205,7 +205,7 @@ export class CreateMessage extends Rpc.make("sampling/createMessage", {
     temperature: optional(Schema.Finite),
     maxTokens: Schema.Finite,
     stopSequences: optional(Schema.Array(Schema.String)),
-    metadata: optional(Schema.JsonObject)
+    metadata: optional(UnknownObject)
   }
 }) {}
 

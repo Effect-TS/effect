@@ -30,6 +30,7 @@ const AuthedGetUser = Rpc.make("AuthedGetUser", { success: Schema.String })
 const MultiMiddleware = Rpc.make("MultiMiddleware", { success: Schema.String, stream: true })
   .middleware(AuthMiddleware)
   .middleware(DbMiddleware)
+const Fails = Rpc.make("Fails", { success: Schema.Never, error: Schema.String })
 
 type Mixed = typeof GetUser | typeof StreamEvents
 type MixedWithMiddleware = typeof GetUser | typeof AuthedStream
@@ -69,6 +70,36 @@ describe("Rpc", () => {
 
     it("returns never for non-middleware RPC in mixed group", () => {
       expect<Rpc.ExtractProvides<MixedWithMiddleware, "GetUser">>().type.toBe<never>()
+    })
+  })
+
+  describe("SuccessChunk", () => {
+    it("extracts stream elements from a mixed group", () => {
+      expect<Rpc.SuccessChunk<Mixed>>().type.toBe<string>()
+    })
+
+    it("ignores never-returning RPCs in a group", () => {
+      expect<Rpc.SuccessChunk<typeof StreamEvents | typeof Fails>>().type.toBe<string>()
+    })
+  })
+
+  describe("ExtractTag", () => {
+    it("selects every RPC for a string tag", () => {
+      expect<Rpc.ExtractTag<Mixed, string>>().type.toBe<Mixed>()
+    })
+
+    it("selects the RPCs whose tag the selected tag covers when an RPC tag is not a single literal", () => {
+      const Dynamic = Rpc.make("Dynamic" as string, { success: Schema.Number })
+      const UnionTagged = Rpc.make("A" as "A" | "B", { success: Schema.Number })
+      const PatternTagged = Rpc.make("A" as "A" | `B${string}`, { success: Schema.Number })
+      const A = Rpc.make("A", { success: Schema.String })
+      const Bee = Rpc.make("Bee", { success: Schema.String })
+
+      expect<Rpc.ExtractTag<typeof Dynamic | typeof A, string>>().type.toBe<typeof Dynamic | typeof A>()
+      expect<Rpc.ExtractTag<typeof UnionTagged | typeof A, "A">>().type.toBe<typeof A>()
+      expect<Rpc.ExtractTag<typeof PatternTagged | typeof Bee, "A" | `B${string}`>>().type.toBe<
+        typeof PatternTagged | typeof Bee
+      >()
     })
   })
 })

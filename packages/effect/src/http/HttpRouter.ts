@@ -284,7 +284,8 @@ function sliceRequestUrl(
     }
     while (index < url.length && !"/?;#".includes(url[index])) index++
   }
-  return request.modify({ url: index < url.length ? url.slice(index) : "/" })
+  const rest = url.slice(index)
+  return request.modify({ url: rest.startsWith("/") ? rest : "/" + rest })
 }
 
 function countSegments(prefix: string, ignoreDuplicateSlashes: boolean) {

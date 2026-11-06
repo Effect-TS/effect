@@ -774,12 +774,12 @@ describe("StructWithRest", () => {
     }>()
   })
 
-  it("records mutability and optionality", () => {
+  it("records mutability and undefined values", () => {
     const schema = Schema.StructWithRest(
       Schema.Struct({ a: Schema.Number }),
       [
         Schema.Record(Schema.String, Schema.mutableKey(Schema.Number)),
-        Schema.Record(Schema.Symbol, Schema.optional(Schema.Number))
+        Schema.Record(Schema.Symbol, Schema.UndefinedOr(Schema.Number))
       ]
     )
     expect(Schema.revealCodec(schema)).type.toBe<
@@ -795,7 +795,7 @@ describe("StructWithRest", () => {
         Schema.Struct<{ readonly a: Schema.Number }>,
         readonly [
           Schema.$Record<Schema.String, Schema.mutableKey<Schema.Number>>,
-          Schema.$Record<Schema.Symbol, Schema.optional<Schema.Number>>
+          Schema.$Record<Schema.Symbol, Schema.UndefinedOr<Schema.Number>>
         ]
       >
     >()
@@ -804,7 +804,7 @@ describe("StructWithRest", () => {
         Schema.Struct<{ readonly a: Schema.Number }>,
         readonly [
           Schema.$Record<Schema.String, Schema.mutableKey<Schema.Number>>,
-          Schema.$Record<Schema.Symbol, Schema.optional<Schema.Number>>
+          Schema.$Record<Schema.Symbol, Schema.UndefinedOr<Schema.Number>>
         ]
       >
     >()

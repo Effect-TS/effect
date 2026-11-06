@@ -148,7 +148,20 @@ export interface Entity<
       readonly concurrency?: number | "unbounded" | undefined
       readonly mailboxCapacity?: number | "unbounded" | undefined
       readonly mailboxMetrics?: boolean | undefined
+      /**
+       * When `true`, a handler defect fails only its request instead of
+       * restarting the entity and replaying its in-flight requests.
+       */
       readonly disableFatalDefects?: boolean | undefined
+      /**
+       * Schedule for restarting an entity after a defect and for retrying failed
+       * handler construction.
+       *
+       * Backoff is tracked per entity and resets once a request completes.
+       * When the policy ends, the default (500 ms growing by 1.5x, capped at 10
+       * seconds) continues, so restarts never stop; use `disableFatalDefects` to
+       * avoid them.
+       */
       readonly defectRetryPolicy?: Schedule.Schedule<any, unknown> | undefined
       readonly spanAttributes?: Record<string, string> | undefined
     }
@@ -193,7 +206,20 @@ export interface Entity<
       readonly maxIdleTime?: Duration.Input | undefined
       readonly mailboxCapacity?: number | "unbounded" | undefined
       readonly mailboxMetrics?: boolean | undefined
+      /**
+       * When `true`, a handler defect fails only its request instead of
+       * restarting the entity and replaying its in-flight requests.
+       */
       readonly disableFatalDefects?: boolean | undefined
+      /**
+       * Schedule for restarting an entity after a defect and for retrying failed
+       * handler construction.
+       *
+       * Backoff is tracked per entity and resets once a request completes.
+       * When the policy ends, the default (500 ms growing by 1.5x, capped at 10
+       * seconds) continues, so restarts never stop; use `disableFatalDefects` to
+       * avoid them.
+       */
       readonly defectRetryPolicy?: Schedule.Schedule<any, unknown> | undefined
       readonly spanAttributes?: Record<string, string> | undefined
     }
@@ -290,7 +316,20 @@ const Proto = {
       readonly concurrency?: number | "unbounded" | undefined
       readonly mailboxCapacity?: number | "unbounded" | undefined
       readonly mailboxMetrics?: boolean | undefined
+      /**
+       * When `true`, a handler defect fails only its request instead of
+       * restarting the entity and replaying its in-flight requests.
+       */
       readonly disableFatalDefects?: boolean | undefined
+      /**
+       * Schedule for restarting an entity after a defect and for retrying failed
+       * handler construction.
+       *
+       * Backoff is tracked per entity and resets once a request completes.
+       * When the policy ends, the default (500 ms growing by 1.5x, capped at 10
+       * seconds) continues, so restarts never stop; use `disableFatalDefects` to
+       * avoid them.
+       */
       readonly defectRetryPolicy?: Schedule.Schedule<any, unknown> | undefined
       readonly spanAttributes?: Record<string, string> | undefined
     }
@@ -339,7 +378,20 @@ const Proto = {
       readonly maxIdleTime?: Duration.Input | undefined
       readonly mailboxCapacity?: number | "unbounded" | undefined
       readonly mailboxMetrics?: boolean | undefined
+      /**
+       * When `true`, a handler defect fails only its request instead of
+       * restarting the entity and replaying its in-flight requests.
+       */
       readonly disableFatalDefects?: boolean | undefined
+      /**
+       * Schedule for restarting an entity after a defect and for retrying failed
+       * handler construction.
+       *
+       * Backoff is tracked per entity and resets once a request completes.
+       * When the policy ends, the default (500 ms growing by 1.5x, capped at 10
+       * seconds) continues, so restarts never stop; use `disableFatalDefects` to
+       * avoid them.
+       */
       readonly defectRetryPolicy?: Schedule.Schedule<any, unknown> | undefined
       readonly spanAttributes?: Record<string, string> | undefined
     }

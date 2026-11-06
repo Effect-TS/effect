@@ -20,6 +20,7 @@ import {
   type LogLevel,
   Option,
   Pool,
+  Queue,
   Ref,
   References,
   Result,
@@ -30,8 +31,9 @@ import {
 } from "effect"
 import { constFalse, constTrue, pipe } from "effect/Function"
 import { TestClock } from "effect/testing"
-import { AsyncLocalStorage } from "node:async_hooks"
+import { AsyncLocalStorage, AsyncResource, createHook } from "node:async_hooks"
 import { assertCauseFail } from "./utils/assert.ts"
+import { collectGarbage } from "./utils/gc.ts"
 
 class ATag extends Context.Service<ATag, "A">()("ATag") {}
 
@@ -1566,7 +1568,78 @@ describe("Effect", () => {
         yield* Fiber.await(fiber)
         assert.isTrue(interrupted)
       }))
+
+    it.effect(`${name} interrupts a pending loser before the parent resumes`, () =>
+      Effect.gen(function*() {
+        const tasks: Array<() => void> = []
+        let parent: Fiber.Fiber<unknown, unknown> | undefined
+        let yieldParent = false
+        const scheduler: Scheduler.Scheduler = {
+          executionMode: "async",
+          makeDispatcher: () => ({
+            scheduleTask: (task) => {
+              tasks.push(task)
+            },
+            flush() {}
+          }),
+          shouldYield(fiber) {
+            if (!yieldParent || fiber !== parent) return false
+            yieldParent = false
+            return true
+          }
+        }
+        const winner = yield* Deferred.make<string>()
+        const frame: References.StackFrame = { name: "race", stack: () => undefined, parent: undefined }
+        let loserExit: Exit.Exit<string> | undefined
+        const [queue, fiber] = yield* Effect.gen(function*() {
+          const queue = yield* Queue.unbounded<string>()
+          const fiber = yield* Effect.withFiber((fiber) => {
+            parent = fiber
+            return race(
+              Queue.take(queue).pipe(Effect.onExit((exit) =>
+                Effect.sync(() => {
+                  loserExit = exit
+                })
+              )),
+              Deferred.await(winner)
+            )
+          }).pipe(
+            Effect.provideService(References.CurrentStackFrame, frame),
+            Effect.forkChild({ startImmediately: true })
+          )
+          return [queue, fiber] as const
+        }).pipe(Effect.provideService(Scheduler.Scheduler, scheduler))
+        // Wake the loser via a scheduled task, then settle the race while the
+        // parent yields before it can interrupt the loser.
+        Queue.offerUnsafe(queue, "loser")
+        yieldParent = true
+        Deferred.doneUnsafe(winner, Effect.succeed("winner"))
+        while (tasks.length > 0) tasks.shift()!()
+        assert.strictEqual(yield* Fiber.join(fiber), "winner")
+        assert.strictEqual(yield* Queue.size(queue), 1)
+        if (loserExit?._tag !== "Failure") return assert.fail("expected the loser to be interrupted")
+        const annotations = Cause.reasonAnnotations(loserExit.cause.reasons[0])
+        assert.strictEqual(Context.getOrUndefined(annotations, Cause.InterruptorStackTrace), frame)
+      }))
   }
+
+  describe("schedule", () => {
+    it.effect("schedule and scheduleFrom preserve source Done failures", () =>
+      Effect.gen(function*() {
+        const source = Cause.done(42)
+        const policy = Schedule.recurs(3)
+        assert.deepStrictEqual(yield* Effect.exit(Effect.schedule(source, policy)), Exit.fail(Cause.Done(42)))
+        assert.deepStrictEqual(yield* Effect.exit(Effect.scheduleFrom(source, 0, policy)), Exit.fail(Cause.Done(42)))
+      }))
+
+    it.effect("returns the schedule output without running the source after completion", () =>
+      Effect.gen(function*() {
+        let n = 0
+        const result = yield* Effect.scheduleFrom(Effect.sync(() => ++n), 0, Schedule.recurs(3))
+        assert.strictEqual(result, 3)
+        assert.strictEqual(n, 3)
+      }))
+  })
 
   describe("repeat", () => {
     it.effect("preserves finalizer defects accompanying schedule completion", () =>
@@ -1576,6 +1649,25 @@ describe("Effect", () => {
         )
         const exit = yield* Effect.exit(Effect.repeat(Effect.void, policy))
         assert.deepStrictEqual(exit, Exit.die("cleanup failed"))
+      }))
+
+    it.effect("fails with a Done raised by the repeated effect", () =>
+      Effect.gen(function*() {
+        const exit = yield* Effect.exit(Effect.repeat(Cause.done(42), Schedule.recurs(3)))
+        assert.deepStrictEqual(exit, Exit.fail(Cause.Done(42)))
+      }))
+
+    it.effect("repeatOrElse passes source Done failures and iteration metadata to orElse", () =>
+      Effect.gen(function*() {
+        let n = 0
+        const effect = Effect.suspend(() => ++n < 3 ? Effect.succeed(n) : Cause.done(42))
+        const result = yield* Effect.repeatOrElse(effect, Schedule.recurs(10), (error, meta) => {
+          assert.deepStrictEqual(error, Cause.Done(42))
+          assert.deepStrictEqual(Option.map(meta, (meta) => meta.attempt), Option.some(2))
+          return Effect.succeed(-1)
+        })
+        assert.strictEqual(result, -1)
+        assert.strictEqual(n, 3)
       }))
 
     it.effect("is interruptible", () =>
@@ -2314,6 +2406,24 @@ describe("Effect", () => {
         )
       }))
 
+    it.effect("interrupting a fiber inside spans records the interruption once", () =>
+      Effect.gen(function*() {
+        const inner = Effect.fn("inner")(() => Effect.never)
+        const outer = Effect.fn("outer")(() => inner())
+        for (const effect of [Effect.never.pipe(Effect.withSpan("a"), Effect.withSpan("b")), outer()]) {
+          const fiber = yield* Effect.forkChild(effect)
+          yield* Effect.yieldNow
+          const exit = yield* Fiber.interrupt(fiber).pipe(Effect.andThen(Fiber.await(fiber)))
+          assert.isTrue(Exit.isFailure(exit) && exit.cause.reasons.length === 1)
+        }
+        class Value extends Context.Service<Value, number>()("InterruptValue") {}
+        const fiber = yield* Effect.forkChild(Effect.never.pipe(Effect.withSpan("a"), Effect.withSpan("b")))
+        yield* Effect.yieldNow
+        yield* Fiber.interruptAs(fiber, 123, Context.make(Value, NaN))
+        const exit = yield* Fiber.await(fiber)
+        assert.isTrue(Exit.isFailure(exit) && exit.cause.reasons.length === 1)
+      }))
+
     it.effect("skipped handlers drop failures and keep defects when interrupted", () =>
       Effect.gen(function*() {
         const latch = yield* Latch.make()
@@ -2959,6 +3069,15 @@ describe("Effect", () => {
         yield* Scope.close(scope, Exit.void)
         assert.isTrue(interrupted)
       }))
+
+    it.effect("does not wait for the fiber that closes a parallel scope", () =>
+      Effect.gen(function*() {
+        const scope = yield* Scope.make("parallel")
+        const sibling = yield* Effect.forkIn(Effect.never, scope)
+        const closer = yield* Scope.close(scope, Exit.void).pipe(Effect.as("closed"), Effect.forkIn(scope))
+        assert.deepStrictEqual(yield* Fiber.await(closer), Exit.succeed("closed"))
+        assert.isTrue(Exit.hasInterrupts(yield* Fiber.await(sibling)))
+      }))
   })
 
   describe("forkScoped", () => {
@@ -3290,7 +3409,7 @@ describe("Effect", () => {
   })
 
   describe("Effect.ignore", () => {
-    type IgnoreOptions = { readonly log?: boolean | LogLevel.Severity; readonly message?: string }
+    type IgnoreOptions = { readonly log?: boolean | LogLevel.Severity | "Unhandled"; readonly message?: string }
 
     const makeTestLogger = () => {
       const capturedLogs: Array<{
@@ -3305,7 +3424,11 @@ describe("Effect", () => {
     }
 
     const runIgnore = Effect.fnUntraced(
-      function*(options?: IgnoreOptions, currentLogLevel: LogLevel.Severity = "Info") {
+      function*(
+        options?: IgnoreOptions,
+        currentLogLevel: LogLevel.Severity = "Info",
+        unhandledLogLevel?: LogLevel.Severity
+      ) {
         const { capturedLogs, testLogger } = makeTestLogger()
         const program = options === undefined
           ? Effect.fail("boom").pipe(Effect.ignore)
@@ -3313,7 +3436,8 @@ describe("Effect", () => {
         yield* program.pipe(
           Effect.provide(Logger.layer([testLogger])),
           Effect.provideService(References.MinimumLogLevel, "Trace"),
-          Effect.provideService(References.CurrentLogLevel, currentLogLevel)
+          Effect.provideService(References.CurrentLogLevel, currentLogLevel),
+          Effect.provideService(References.UnhandledLogLevel, unhandledLogLevel)
         )
         return capturedLogs
       }
@@ -3347,6 +3471,21 @@ describe("Effect", () => {
         assertCauseFail(logs[0].cause, "boom")
       }))
 
+    it.effect("logs with the unhandled level and provided message when log is Unhandled", () =>
+      Effect.gen(function*() {
+        const logs = yield* runIgnore({ log: "Unhandled", message: "Ignoring failure" }, "Info", "Warn")
+        assert.strictEqual(logs.length, 1)
+        assert.strictEqual(logs[0].logLevel, "Warn")
+        assert.deepStrictEqual(logs[0].message, ["Ignoring failure"])
+        assertCauseFail(logs[0].cause, "boom")
+      }))
+
+    it.effect("does not log when the unhandled level is undefined", () =>
+      Effect.gen(function*() {
+        const logs = yield* runIgnore({ log: "Unhandled" }, "Info", undefined)
+        assert.strictEqual(logs.length, 0)
+      }))
+
     it.effect("prepends the provided message when logging", () =>
       Effect.gen(function*() {
         const logs = yield* runIgnore({ log: true, message: "Ignoring failure" })
@@ -3357,7 +3496,7 @@ describe("Effect", () => {
   })
 
   describe("Effect.ignoreCause", () => {
-    type IgnoreCauseOptions = { readonly log?: boolean | LogLevel.Severity; readonly message?: string }
+    type IgnoreCauseOptions = { readonly log?: boolean | LogLevel.Severity | "Unhandled"; readonly message?: string }
 
     const makeTestLogger = () => {
       const capturedLogs: Array<{
@@ -3372,7 +3511,11 @@ describe("Effect", () => {
     }
 
     const runIgnoreCause = Effect.fnUntraced(
-      function*(options?: IgnoreCauseOptions, currentLogLevel: LogLevel.Severity = "Info") {
+      function*(
+        options?: IgnoreCauseOptions,
+        currentLogLevel: LogLevel.Severity = "Info",
+        unhandledLogLevel?: LogLevel.Severity
+      ) {
         const { capturedLogs, testLogger } = makeTestLogger()
         const program = options === undefined
           ? Effect.fail("boom").pipe(Effect.ignoreCause)
@@ -3380,7 +3523,8 @@ describe("Effect", () => {
         yield* program.pipe(
           Effect.provide(Logger.layer([testLogger])),
           Effect.provideService(References.MinimumLogLevel, "Trace"),
-          Effect.provideService(References.CurrentLogLevel, currentLogLevel)
+          Effect.provideService(References.CurrentLogLevel, currentLogLevel),
+          Effect.provideService(References.UnhandledLogLevel, unhandledLogLevel)
         )
         return capturedLogs
       }
@@ -3424,6 +3568,21 @@ describe("Effect", () => {
         assert.strictEqual(logs.length, 1)
         assert.strictEqual(logs[0].logLevel, "Error")
         assertCauseFail(logs[0].cause, "boom")
+      }))
+
+    it.effect("logs with the unhandled level and provided message when log is Unhandled", () =>
+      Effect.gen(function*() {
+        const logs = yield* runIgnoreCause({ log: "Unhandled", message: "Ignoring cause" }, "Info", "Warn")
+        assert.strictEqual(logs.length, 1)
+        assert.strictEqual(logs[0].logLevel, "Warn")
+        assert.deepStrictEqual(logs[0].message, ["Ignoring cause"])
+        assertCauseFail(logs[0].cause, "boom")
+      }))
+
+    it.effect("does not log when the unhandled level is undefined", () =>
+      Effect.gen(function*() {
+        const logs = yield* runIgnoreCause({ log: "Unhandled" }, "Info", undefined)
+        assert.strictEqual(logs.length, 0)
       }))
 
     it.effect("prepends the provided message when logging", () =>
@@ -4574,6 +4733,25 @@ describe("Effect", () => {
   })
 
   describe("Effect.fn", () => {
+    it.effect.skipIf(process.versions.bun !== undefined || process.versions.deno !== undefined)(
+      "does not retain arguments in the stack frame of forked fibers",
+      () =>
+        Effect.gen(function*() {
+          const start = Effect.fn("start")(function*(_input: object) {
+            yield* Effect.forkChild(Effect.never)
+          })
+          let reference: WeakRef<object> | undefined
+          const makeInput = () => {
+            const input = {}
+            reference = new WeakRef(input)
+            return input
+          }
+          yield* start(makeInput())
+          yield* collectGarbage
+          assert.isUndefined(reference!.deref())
+        })
+    )
+
     it.effect("should support pipeable arguments", () => {
       const fn = Effect.fn(function*(s: string) {
         return s.length
@@ -4596,6 +4774,20 @@ describe("Effect", () => {
       return Effect.gen(function*() {
         const result = yield* fn("value")
         assert.strictEqual(result, "BOUND:VALUE")
+      })
+    })
+
+    it.effect("untraced should support self with pipeable arguments", () => {
+      const self = { prefix: "bound" }
+      const body = function*(this: typeof self, value: string) {
+        return `${this.prefix}:${value}`
+      }
+      const untraced = Effect.fnUntraced({ self }, body, Effect.map((value) => value.toUpperCase()))
+      const eager = Effect.fnUntracedEager({ self }, body, Effect.map((value) => value.toUpperCase()))
+      return Effect.gen(function*() {
+        assert.strictEqual(untraced.length, 1)
+        assert.strictEqual(yield* untraced("value"), "BOUND:VALUE")
+        assert.strictEqual(yield* eager("value"), "BOUND:VALUE")
       })
     })
 
@@ -5075,6 +5267,57 @@ describe("Effect", () => {
         assert.strictEqual(yield* cached, 3)
         assert.deepStrictEqual(exits, [Exit.fail("boom"), Exit.succeed(2), Exit.succeed(3)])
       }))
+
+    it.effect("keeps existing callers on the invalidated run without letting it replace the new value", () =>
+      Effect.gen(function*() {
+        let runs = 0
+        const release = yield* Deferred.make<void>()
+        const [cached, invalidate] = yield* Effect.cachedInvalidateWithTTL(
+          Effect.gen(function*() {
+            const run = ++runs
+            if (run === 1) yield* Deferred.await(release)
+            return run
+          }),
+          "1 hour"
+        )
+
+        const owner = yield* cached.pipe(Effect.forkChild({ startImmediately: true }))
+        assert.strictEqual(runs, 1)
+        yield* invalidate
+        const fresh = yield* cached.pipe(Effect.forkChild({ startImmediately: true }))
+        assert.strictEqual(runs, 2)
+        assert.strictEqual(yield* Fiber.join(fresh), 2)
+        yield* Deferred.succeed(release, void 0)
+        assert.strictEqual(yield* Fiber.join(owner), 1)
+        assert.strictEqual(yield* cached, 2)
+        assert.strictEqual(runs, 2)
+      }))
+
+    it.effect("interrupts an invalidated run when its last caller is interrupted", () =>
+      Effect.gen(function*() {
+        let runs = 0
+        const interrupted: Array<number> = []
+        const [cached, invalidate] = yield* Effect.cachedInvalidateWithTTL(
+          Effect.suspend(() => {
+            const run = ++runs
+            return Effect.never.pipe(Effect.onInterrupt(() => Effect.sync(() => interrupted.push(run))))
+          }),
+          "1 hour"
+        )
+
+        const first = yield* cached.pipe(Effect.forkChild({ startImmediately: true }))
+        yield* invalidate
+        const second = yield* cached.pipe(Effect.forkChild({ startImmediately: true }))
+        yield* Fiber.interrupt(first)
+        assert.deepStrictEqual(interrupted, [1])
+
+        const third = yield* cached.pipe(Effect.forkChild({ startImmediately: true }))
+        assert.strictEqual(runs, 2)
+        yield* Fiber.interrupt(second)
+        assert.deepStrictEqual(interrupted, [1])
+        yield* Fiber.interrupt(third)
+        assert.deepStrictEqual(interrupted, [1, 2])
+      }))
   })
 
   describe("updateServiceScoped", () => {
@@ -5249,5 +5492,50 @@ describe("Effect", () => {
         })
       })
     }
+
+    // Bun's async_hooks report no trigger ids or destroy events, so any process.nextTick
+    // in the worker, including from concurrent tests, would count as a leak.
+    const itWithAsyncHooks = it.skipIf(process.versions.bun !== undefined)
+
+    itWithAsyncHooks("does not leave async resources open after the effect completes", async () => {
+      // Mirrors vitest's detectAsyncLeaks: track every resource descended from a root scope
+      // and report the ones that are still pending once the effect has completed.
+      const root = new AsyncResource("test-root")
+      const tracked = new Set([root.asyncId()])
+      const pending = new Map<number, { type: string; resource: any }>()
+      let tracking = true
+      const hook = createHook({
+        init(asyncId, type, triggerAsyncId, resource) {
+          if (!tracking || !tracked.has(triggerAsyncId)) return
+          tracked.add(asyncId)
+          pending.set(asyncId, { type, resource })
+        },
+        destroy(asyncId) {
+          if (pending.get(asyncId)?.type !== "PROMISE") pending.delete(asyncId)
+        },
+        promiseResolve(asyncId) {
+          pending.delete(asyncId)
+        }
+      })
+      hook.enable()
+      try {
+        await root.runInAsyncScope(() =>
+          Effect.runPromise(Effect.gen(function*() {
+            yield* Effect.yieldNow
+            const fiber = yield* Effect.forkChild(Effect.yieldNow)
+            yield* Fiber.join(fiber)
+          }))
+        )
+        tracking = false
+        await new Promise((resolve) => setImmediate(resolve))
+      } finally {
+        hook.disable()
+        root.emitDestroy()
+      }
+      const leaks = Array.from(pending.values())
+        .filter(({ resource }) => !("hasRef" in resource) || resource.hasRef())
+        .map(({ type }) => type)
+      assert.deepStrictEqual(leaks, [])
+    })
   })
 })

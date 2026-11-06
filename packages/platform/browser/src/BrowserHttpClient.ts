@@ -148,6 +148,13 @@ const makeXmlHttpRequest = HttpClient.make(
           })
         )
       }
+      if (signal.aborted) {
+        return Effect.fail(
+          new HttpClientError.HttpClientError({
+            reason: new HttpClientError.TransportError({ request, cause: signal.reason })
+          })
+        )
+      }
       const xhr = Context.getOrElse(
         fiber.context,
         XMLHttpRequest,
@@ -224,6 +231,8 @@ const sendBody = (
 }
 
 const encoder = new TextEncoder()
+
+const formDecoder = new TextDecoder("utf-8", { ignoreBOM: true })
 
 abstract class IncomingMessageImpl<E> extends Inspectable.Class implements HttpIncomingMessage.HttpIncomingMessage<E> {
   readonly [HttpIncomingMessage.TypeId]: typeof HttpIncomingMessage.TypeId
@@ -319,9 +328,13 @@ abstract class IncomingMessageImpl<E> extends Inspectable.Class implements HttpI
   }
 
   get urlParamsBody(): Effect.Effect<UrlParams.UrlParams, E> {
-    return Effect.flatMap(this.text, (text) =>
+    const text = this.source.responseType === "arraybuffer"
+      ? Effect.map(this.arrayBuffer, (buffer) => formDecoder.decode(buffer))
+      : this.text
+    return Effect.flatMap(text, (text) =>
       Effect.try({
-        try: () => UrlParams.fromInput(new URLSearchParams(text)),
+        // A leading "?" is form data; URLSearchParams would drop it as a query prefix.
+        try: () => UrlParams.fromInput(new URLSearchParams(text.replace(/^\?/, "%3F"))),
         catch: this.onError
       }))
   }

@@ -64,8 +64,14 @@ describe("ByteSize", () => {
     }
     throws(() => ByteSize.bytes(-1n))
     deepStrictEqual(ByteSize.kilobytes(1.5), ByteSize.bytes(1500))
+    deepStrictEqual(ByteSize.megabytes(2.01), ByteSize.bytes(2_010_000))
+    deepStrictEqual(ByteSize.quettabytes(4e-15), ByteSize.bytes(4_000_000_000_000_000))
+    deepStrictEqual(ByteSize.petabytes(8.00000000000001), ByteSize.bytes(8_000_000_000_000_010))
     deepStrictEqual(ByteSize.kibibytes(0.5), ByteSize.bytes(512))
     throws(() => ByteSize.kibibytes(0.1))
+    throws(() => ByteSize.kilobytes(1.0005))
+    throws(() => ByteSize.yottabytes(9.718626485371681e-10))
+    throws(() => ByteSize.petabytes(9.007199254740993))
   })
 
   it("parses strict SI and IEC strings exactly", () => {

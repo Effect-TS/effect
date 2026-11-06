@@ -22,7 +22,7 @@ import type * as Filter from "./Filter.ts"
 import type { LazyArg } from "./Function.ts"
 import { constant, constTrue, constVoid, dual, identity as identity_ } from "./Function.ts"
 import * as Count from "./internal/count.ts"
-import { ClockRef, endSpan, findRecoverableError } from "./internal/effect.ts"
+import { ClockRef, endSpan, findRecoverableError, ignoreCauseLogger } from "./internal/effect.ts"
 import { addSpanStackTrace } from "./internal/tracer.ts"
 import * as Iterable from "./Iterable.ts"
 import * as Latch from "./Latch.ts"
@@ -1782,8 +1782,9 @@ export const pullIntoWritableStream = <A, IE, E>(options: {
         withClose,
         (cause) => {
           if (Pull.isDoneCause(cause)) return Effect.void
-          options.onAbort?.(cause as Cause.Cause<IE | E>)
-          return Effect.promise(() => writer.abort(cause).catch(constVoid))
+          const reason = unwrapUpstreamFailure(cause) as Cause.Cause<IE | E>
+          options.onAbort?.(reason)
+          return Effect.promise(() => writer.abort(reason).catch(constVoid))
         }
       )
     },
@@ -3342,12 +3343,12 @@ export const repeat: {
       let meta = Schedule.CurrentMetadata.defaultValue()
       return repeatLoop(
         provideServiceEffect(self, Schedule.CurrentMetadata, Effect.sync(() => meta)),
-        (done) =>
-          step(done).pipe(
+        (exit): Pull.Pull<void, OutErr | SE, OutDone, SR> =>
+          Exit.isFailure(exit) ? Effect.failCause(exit.cause) : step(exit.value).pipe(
             Effect.map((meta_) => {
               meta = meta_
             }),
-            Pull.catchDone(() => Cause.done(done))
+            Pull.catchDone(() => Cause.done(exit.value))
           )
       )
     }),
@@ -3356,19 +3357,21 @@ export const repeat: {
 
 const repeatLoop = <OutElem, OutErr, OutDone, InElem, InErr, InDone, Env, E, OutDone2, R>(
   self: Channel<OutElem, OutErr, OutDone, InElem, InErr, InDone, Env>,
-  onDone: (done: OutDone) => Pull.Pull<void, E, OutDone2, R>
-): Channel<OutElem, OutErr | E, OutDone2, InElem, InErr, InDone, Env | R> =>
+  onExit: (exit: Exit.Exit<OutDone, OutErr>, scope: Scope.Scope) => Pull.Pull<void, E, OutDone2, R>
+): Channel<OutElem, E, OutDone2, InElem, InErr, InDone, Env | R> =>
   fromTransform((upstream, scope) =>
     Effect.sync(() => {
-      let currentPull: Pull.Pull<OutElem, OutErr | E, OutDone2, Env | R> | undefined
-      const makePull = (): Pull.Pull<OutElem, OutErr | E, OutDone2, Env | R> => {
+      let currentPull: Pull.Pull<OutElem, E, OutDone2, Env | R> | undefined
+      const makePull = (): Pull.Pull<OutElem, E, OutDone2, Env | R> => {
         const runScope = Scope.forkUnsafe(scope)
         return Effect.flatMap(toTransform(self)(upstream, runScope), (pull) => {
-          currentPull = Pull.catchDone(pull, (done) =>
-            Scope.close(runScope, Exit.void).pipe(
-              Effect.flatMap(() => onDone(done as OutDone)),
+          currentPull = Effect.catchCause(pull, (cause) => {
+            const exit = Pull.doneExitFromCause(cause) as Exit.Exit<OutDone, OutErr>
+            return Scope.close(runScope, exit).pipe(
+              Effect.flatMap(() => onExit(exit, scope)),
               Effect.flatMap(makePull)
-            ))
+            )
+          })
           return currentPull
         })
       }
@@ -3385,7 +3388,8 @@ const repeatLoop = <OutElem, OutErr, OutDone, InElem, InErr, InDone, Env, E, Out
  */
 export const forever = <OutElem, OutErr, OutDone, InElem, InErr, InDone, Env>(
   self: Channel<OutElem, OutErr, OutDone, InElem, InErr, InDone, Env>
-): Channel<OutElem, OutErr, never, InElem, InErr, InDone, Env> => repeatLoop(self, () => Effect.void)
+): Channel<OutElem, OutErr, never, InElem, InErr, InDone, Env> =>
+  repeatLoop(self, (exit) => Exit.isFailure(exit) ? Effect.failCause(exit.cause) : Effect.void)
 
 /**
  * Runs a schedule step for each output element while preserving the emitted
@@ -6081,6 +6085,9 @@ export const orDie = <
  * **Details**
  *
  * Use the `log` option to emit the full {@link Cause} when the channel fails.
+ * Set `log: "Unhandled"` to read `References.UnhandledLogLevel` when the
+ * failure occurs; `undefined` disables logging. Minimum log level filtering
+ * still applies.
  *
  * **Gotchas**
  *
@@ -6095,14 +6102,14 @@ export const orDie = <
  */
 export const ignore: <
   Arg extends Channel<any, any, any, any, any, any, any> | {
-    readonly log?: boolean | Severity | undefined
+    readonly log?: boolean | Severity | "Unhandled" | undefined
   } | undefined = {
-    readonly log?: boolean | Severity | undefined
+    readonly log?: boolean | Severity | "Unhandled" | undefined
   }
 >(
   selfOrOptions: Arg,
   options?: {
-    readonly log?: boolean | Severity | undefined
+    readonly log?: boolean | Severity | "Unhandled" | undefined
   } | undefined
 ) => [Arg] extends
   [Channel<infer OutElem, infer _OutErr, infer OutDone, infer InElem, infer InErr, infer InDone, infer Env>]
@@ -6114,13 +6121,13 @@ export const ignore: <
     <OutElem, OutErr, OutDone, InElem, InErr, InDone, Env>(
       self: Channel<OutElem, OutErr, OutDone, InElem, InErr, InDone, Env>,
       options?: {
-        readonly log?: boolean | Severity | undefined
+        readonly log?: boolean | Severity | "Unhandled" | undefined
       } | undefined
     ): Channel<OutElem, never, OutDone | void, InElem, InErr, InDone, Env> => {
       if (!options?.log) {
         return catch_(self, () => empty)
       }
-      const logEffect = Effect.logWithLevel(options.log === true ? undefined : options.log)
+      const logEffect = ignoreCauseLogger(options.log)
       return catch_(
         tapCause(self, (cause) => Cause.hasFails(cause) ? logEffect(cause) : Effect.void),
         () => empty
@@ -6151,6 +6158,9 @@ const ignoreCause_ = <
  * **Details**
  *
  * Use the `log` option to emit the full {@link Cause} when the channel fails.
+ * Set `log: "Unhandled"` to read `References.UnhandledLogLevel` when the
+ * failure occurs; `undefined` disables logging. Minimum log level filtering
+ * still applies.
  *
  * @stability stable
  * @category error handling
@@ -6158,14 +6168,14 @@ const ignoreCause_ = <
  */
 export const ignoreCause: <
   Arg extends Channel<any, any, any, any, any, any, any> | {
-    readonly log?: boolean | Severity | undefined
+    readonly log?: boolean | Severity | "Unhandled" | undefined
   } | undefined = {
-    readonly log?: boolean | Severity | undefined
+    readonly log?: boolean | Severity | "Unhandled" | undefined
   }
 >(
   selfOrOptions: Arg,
   options?: {
-    readonly log?: boolean | Severity | undefined
+    readonly log?: boolean | Severity | "Unhandled" | undefined
   } | undefined
 ) => [Arg] extends
   [Channel<infer OutElem, infer _OutErr, infer OutDone, infer InElem, infer InErr, infer InDone, infer Env>]
@@ -6176,10 +6186,10 @@ export const ignoreCause: <
     (args) => isChannel(args[0]),
     <OutElem, OutErr, OutDone, InElem, InErr, InDone, Env>(
       self: Channel<OutElem, OutErr, OutDone, InElem, InErr, InDone, Env>,
-      options?: { readonly log?: boolean | Severity | undefined } | undefined
+      options?: { readonly log?: boolean | Severity | "Unhandled" | undefined } | undefined
     ): Channel<OutElem, never, OutDone | void, InElem, InErr, InDone, Env> => {
       if (!options?.log) return ignoreCause_(self)
-      const logEffect = Effect.logWithLevel(options.log === true ? undefined : options.log)
+      const logEffect = ignoreCauseLogger(options.log)
       return ignoreCause_(tapCause(self, (cause) => logEffect(cause)))
     }
   )
@@ -6237,29 +6247,20 @@ export const retry: {
       return Effect.void
     })
     const resolvedSchedule = typeof schedule === "function" ? schedule(identity_) : schedule
-    const loop: Channel<
-      OutElem,
-      OutErr | SE,
-      OutDone,
-      InElem,
-      InErr,
-      InDone,
-      Env | SR
-    > = catch_(
-      withReset,
-      Effect.fnUntraced(
-        function*(error) {
-          if (!step) {
-            step = yield* Schedule.toStepWithMetadata(resolvedSchedule)
-          }
-          meta = yield* step(error)
-          return loop
-        },
-        (effect, error) => Pull.catchDone(effect, () => Effect.succeed(fail(error))),
-        unwrap
+    return repeatLoop(withReset, (exit, scope) => {
+      if (Exit.isSuccess(exit)) return Cause.done(exit.value)
+      const error = findRecoverableError(exit.cause)
+      if (Result.isFailure(error)) return Effect.failCause(error.failure)
+      return Effect.gen(function*() {
+        if (!step) {
+          step = yield* Schedule.toStepWithMetadata(resolvedSchedule)
+        }
+        meta = yield* step(error.success)
+      }).pipe(
+        Pull.catchDone(() => Effect.fail(error.success)),
+        Scope.provide(scope)
       )
-    )
-    return loop
+    })
   }))
 
 /**
@@ -6507,7 +6508,7 @@ export const mergeAll: {
           : Math.max(1, concurrency)
         const semaphore = switch_ ? undefined : Semaphore.makeUnsafe(concurrencyN)
         const doneLatch = yield* Latch.make(true)
-        const fibers = new Set<Fiber.Fiber<any, any>>()
+        const fibers = new Map<Fiber.Fiber<any, any>, Scope.Closeable>()
 
         const queue = yield* Queue.bounded<OutElem, OutErr | OutErr1 | Cause.Done<OutDone>>(
           bufferSize
@@ -6537,10 +6538,14 @@ export const mergeAll: {
             const childPull = yield* toTransform(channel)(upstream, childScope)
 
             while (fibers.size >= concurrencyN) {
-              const fiber = Iterable.headUnsafe(fibers)
+              const [fiber, fiberScope] = Iterable.headUnsafe(fibers)
               fibers.delete(fiber)
               if (fibers.size === 0) yield* doneLatch.open
               yield* Fiber.interrupt(fiber)
+              // A worker interrupted before it starts never closes its own
+              // scope. Finalizer failures of replaced workers are discarded
+              // either way.
+              yield* Effect.ignoreCause(Scope.close(fiberScope, Exit.interrupt()))
             }
 
             const fiber = yield* childPull.pipe(
@@ -6564,7 +6569,7 @@ export const mergeAll: {
             )
 
             doneLatch.closeUnsafe()
-            fibers.add(fiber)
+            fibers.set(fiber, childScope)
           }
         }).pipe(
           Effect.catchCause((cause) => {
@@ -7089,24 +7094,52 @@ export const pipeToOrFail: {
     that: Channel<OutElem2, OutErr2, OutDone2, OutElem, never, OutDone, Env2>
   ): Channel<OutElem2, OutErr | OutErr2, OutDone2, InElem, InErr, InDone, Env2 | Env> =>
     fromTransform((upstream, scope) =>
-      Effect.flatMap(toTransform(self)(upstream, scope), (upstream) => {
-        const upstreamPull = Effect.catchCause(
-          upstream,
-          (cause) => Pull.isDoneCause(cause) ? Effect.failCause(cause) : Effect.die(Cause.Done(cause))
-        ) as Pull.Pull<OutElem, never, OutDone>
-
-        return Effect.map(
-          toTransform(that)(upstreamPull, scope),
-          (pull) =>
-            Effect.catchDefect(
-              pull,
-              (defect) =>
-                Cause.isDone(defect) ? Effect.failCause(defect.value as Cause.Cause<OutErr>) : Effect.die(defect)
-            )
-        )
-      })
+      Effect.flatMap(toTransform(self)(upstream, scope), (upstream) =>
+        Effect.map(
+          toTransform(that)(upstreamFailureToDefect(upstream), scope),
+          restoreUpstreamFailure<OutElem2, OutErr | OutErr2 | Cause.Done<OutDone2>, Env2>
+        ))
     )
 )
+
+// Upstream failures are hidden from downstream error handlers by encoding them
+// as a `Die(Cause.Done(cause))` defect, which is unwrapped again once the
+// downstream has exited.
+const isUpstreamFailure = (
+  reason: Cause.Reason<unknown>
+): reason is Cause.Die & { readonly defect: Cause.Done<Cause.Cause<unknown>> } =>
+  reason._tag === "Die" && Cause.isDone(reason.defect) && Cause.isCause(reason.defect.value)
+
+/** @internal */
+export const hasUpstreamFailure = (cause: Cause.Cause<unknown>): boolean => cause.reasons.some(isUpstreamFailure)
+
+/** @internal */
+export const upstreamFailureToDefect = <A, E, Done, R>(
+  pull: Pull.Pull<A, E, Done, R>
+): Pull.Pull<A, never, Done, R> =>
+  Effect.catchCause(
+    pull,
+    (cause) => Pull.isDoneCause(cause) ? Effect.failCause(cause) : Effect.die(Cause.Done(cause))
+  ) as Pull.Pull<A, never, Done, R>
+
+/** @internal */
+export const unwrapUpstreamFailure = <E>(cause: Cause.Cause<E>): Cause.Cause<unknown> =>
+  hasUpstreamFailure(cause)
+    ? Cause.fromReasons(
+      cause.reasons.flatMap((reason) => isUpstreamFailure(reason) ? reason.defect.value.reasons : [reason])
+    )
+    : cause
+
+/**
+ * The type parameters are explicit because the restored error type includes
+ * the upstream error, which is not part of the input effect's type.
+ *
+ * @internal
+ */
+export const restoreUpstreamFailure = <A, E, R>(
+  effect: Effect.Effect<A, NoInfer<E>, R>
+): Effect.Effect<A, E, R> =>
+  Effect.catchCause(effect, (cause) => Effect.failCause(unwrapUpstreamFailure(cause) as Cause.Cause<E>))
 
 /**
  * Constructs a `Channel` from a scoped effect that will result in a

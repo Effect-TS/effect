@@ -2615,14 +2615,13 @@ export class BackPressureStrategy<in out A> implements PubSub.Strategy<A> {
       if (publisher === MutableList.Empty) {
         keepPolling = false
       } else {
-        const [value, deferred] = publisher
+        const [value, deferred, last] = publisher
         const published = pubsub.publish(value)
-        if (published && publisher[2]) {
-          Deferred.doneUnsafe(deferred, Exit.succeed(true))
-        } else if (!published) {
-          MutableList.prepend(this.publishers, publisher)
-        }
+        if (!published) MutableList.prepend(this.publishers, publisher)
         this.completeSubscribersUnsafe(pubsub, subscribers)
+        // Resuming the publisher can synchronously end the PubSub, so notify
+        // waiting subscribers first.
+        if (published && last) Deferred.doneUnsafe(deferred, Exit.succeed(true))
       }
     }
   }

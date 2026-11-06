@@ -70,9 +70,11 @@ This import enhances the standard `it` function from `vitest` with several power
 | -------------- | --------------------------------------------------------------------------------------------------- |
 | `it.effect`    | Runs a scoped test with test services such as `TestClock` and `TestConsole`.                        |
 | `it.live`      | Runs a scoped test with the live Effect environment.                                                |
-| `it.layer`     | Shares a `Layer` between multiple tests.                                                            |
+| `it.layer`     | Shares a `Layer` between multiple tests, or builds it for each test with `buildPerTest: true`.      |
 | `it.prop`      | Runs property tests using Effect `Schema` and `Arbitrary` values.                                   |
 | `it.flakyTest` | Retries an Effect that might occasionally fail until it succeeds or reaches the configured timeout. |
+
+Pass `{ buildPerTest: true }` to `it.layer` to build its layer once per test instead of once per block. Each test gets new services, released when it finishes, while services from an enclosing `layer` block stay shared. Blocks nested inside a per-test block are built per test as well.
 
 Property tests shrink callbacks that return `false`, throw, or complete with a non-interruption Effect failure. This
 includes failed assertions, typed failures, and defects. Effect interruption still interrupts the test.
@@ -158,7 +160,7 @@ it.effect("test failure as Exit", () =>
 
 ### Using the TestClock
 
-When writing tests with `it.effect`, Effect test services are automatically provided. These include the [`TestClock`](https://effect.website/docs/guides/testing/testclock), which allows you to simulate the passage of time in your tests.
+When writing tests with `it.effect`, Effect test services are automatically provided. These include the [`TestClock`](https://effect.website/docs/testing/testclock/), which allows you to simulate the passage of time in your tests.
 
 **Note**: If you want to use the real-time clock (instead of the simulated one), you can switch to `it.live`.
 

@@ -2,7 +2,6 @@ import * as Effect from "effect/Effect"
 import type * as HttpClient from "effect/http/HttpClient"
 import * as HttpClientRequest from "effect/http/HttpClientRequest"
 import * as HttpClientResponse from "effect/http/HttpClientResponse"
-import * as Option from "effect/Option"
 import * as Schema from "effect/Schema"
 import { type GitHubRepository, makeClient } from "./GitHub.ts"
 import type { Diagnosis } from "./NpmPromote.ts"
@@ -26,14 +25,36 @@ const Issue = Schema.Struct({
   pull_request: Schema.optional(Schema.Unknown)
 })
 
+/**
+ * Lists the open tracking issues, oldest first. The listing can miss an open
+ * issue while GitHub is degraded, so a run may open a duplicate; the oldest
+ * issue is the tracking issue and later ones are duplicates.
+ */
 const findOpen = (client: HttpClient.HttpClient) =>
   client.get("/issues", { urlParams: { state: "open", creator, per_page: "100" } }).pipe(
     Effect.flatMap(HttpClientResponse.schemaBodyJson(Schema.Array(Issue))),
     Effect.map((issues) =>
-      Option.fromUndefinedOr(
-        issues.find((issue) => issue.pull_request === undefined && issue.body?.includes(marker) === true)
-      )
+      issues
+        .filter((issue) => issue.pull_request === undefined && issue.body?.includes(marker) === true)
+        .sort((a, b) => a.number - b.number)
     )
+  )
+
+const closeIssue = (
+  client: HttpClient.HttpClient,
+  number: number,
+  options: { readonly comment: string; readonly reason: "completed" | "duplicate" }
+) =>
+  client.execute(
+    HttpClientRequest.post(`/issues/${number}/comments`).pipe(
+      HttpClientRequest.bodyJsonUnsafe({ body: options.comment })
+    )
+  ).pipe(
+    Effect.andThen(client.execute(
+      HttpClientRequest.patch(`/issues/${number}`).pipe(
+        HttpClientRequest.bodyJsonUnsafe({ state: "closed", state_reason: options.reason })
+      )
+    ))
   )
 
 const githubError = (message: string) => (cause: unknown) => new NpmPromoteError({ message, cause })
@@ -89,6 +110,7 @@ export const render = (overdue: OverdueRelease): { readonly title: string; reado
 
 /**
  * Opens the tracking issue, or updates the open one when its content changed.
+ * Any other open tracking issues are closed as duplicates of it.
  */
 export const upsert = (
   github: GitHubRepository,
@@ -100,14 +122,16 @@ export const upsert = (
 > =>
   Effect.gen(function*() {
     const client = yield* makeClient(github.repository, github.token)
-    const existing = yield* findOpen(client)
-    if (Option.isNone(existing)) {
+    const [issue, ...duplicates] = yield* findOpen(client)
+    if (issue === undefined) {
       const created = yield* client.execute(
         HttpClientRequest.post("/issues").pipe(HttpClientRequest.bodyJsonUnsafe(content))
       ).pipe(Effect.flatMap(HttpClientResponse.schemaBodyJson(Issue)))
       return { action: "created", number: created.number } as const
     }
-    const issue = existing.value
+    for (const duplicate of duplicates) {
+      yield* closeIssue(client, duplicate.number, { comment: `Duplicate of #${issue.number}.`, reason: "duplicate" })
+    }
     if (issue.title === content.title && issue.body === content.body) {
       return { action: "unchanged", number: issue.number } as const
     }
@@ -118,26 +142,18 @@ export const upsert = (
   }).pipe(Effect.mapError(githubError("Could not open or update the tracking issue")))
 
 /**
- * Comments on and closes the open tracking issue, if there is one.
+ * Comments on and closes every open tracking issue. Returns the closed issue
+ * numbers, oldest first.
  */
 export const close = (
   github: GitHubRepository,
   comment: string
-): Effect.Effect<Option.Option<number>, NpmPromoteError, HttpClient.HttpClient> =>
+): Effect.Effect<ReadonlyArray<number>, NpmPromoteError, HttpClient.HttpClient> =>
   Effect.gen(function*() {
     const client = yield* makeClient(github.repository, github.token)
-    const existing = yield* findOpen(client)
-    if (Option.isNone(existing)) {
-      return Option.none()
+    const issues = yield* findOpen(client)
+    for (const issue of issues) {
+      yield* closeIssue(client, issue.number, { comment, reason: "completed" })
     }
-    const number = existing.value.number
-    yield* client.execute(
-      HttpClientRequest.post(`/issues/${number}/comments`).pipe(HttpClientRequest.bodyJsonUnsafe({ body: comment }))
-    )
-    yield* client.execute(
-      HttpClientRequest.patch(`/issues/${number}`).pipe(
-        HttpClientRequest.bodyJsonUnsafe({ state: "closed", state_reason: "completed" })
-      )
-    )
-    return Option.some(number)
+    return issues.map((issue) => issue.number)
   }).pipe(Effect.mapError(githubError("Could not close the tracking issue")))

@@ -15,50 +15,8 @@
 import * as Duration from "../Duration.ts"
 import * as Effect from "../Effect.ts"
 import type * as HttpClientError from "../http/HttpClientError.ts"
-import * as InternalRecord from "../internal/record.ts"
-import * as Option from "../Option.ts"
 import * as Predicate from "../Predicate.ts"
-import { redact } from "../Redactable.ts"
-import * as Redacted from "../Redacted.ts"
 import * as Schema from "../Schema.ts"
-
-/**
- * Schema for HTTP requests to an AI provider.
- *
- * **Example** (Describing an HTTP request)
- *
- * ```ts import.meta.vitest
- * import type { AiError } from "effect/ai"
- *
- * const requestDetails: typeof AiError.HttpRequestDetails.Type = {
- *   method: "POST",
- *   url: "https://api.openai.com/v1/responses",
- *   urlParams: [],
- *   hash: undefined,
- *   headers: { "Content-Type": "application/json" }
- * }
- * const result = [requestDetails.method, requestDetails.urlParams] // => ["POST", []]
- * ```
- *
- * @stability unstable
- * @category schemas
- * @since 4.0.0
- */
-export const HttpRequestDetails = Schema.Struct({
-  method: Schema.Literals(["GET", "POST", "PATCH", "PUT", "DELETE", "HEAD", "OPTIONS", "TRACE", "QUERY"]),
-  url: Schema.String,
-  urlParams: Schema.Array(
-    Schema.Tuple([Schema.String, Schema.Union([Schema.String, Schema.Redacted(Schema.String)])])
-  ),
-  hash: Schema.optional(Schema.String),
-  headers: Schema.Record(
-    Schema.String,
-    Schema.Union([
-      Schema.String,
-      Schema.Redacted(Schema.String)
-    ])
-  )
-}).annotate({ identifier: "HttpRequestDetails" })
 
 /**
  * Schema for HTTP responses from an AI provider.
@@ -101,16 +59,6 @@ const providerMetadataWithDefaults = <Metadata extends ProviderMetadata>() =>
     Schema.withDecodingDefault(Effect.succeed({}))
   )
 
-const redactHeaders = (headers: Record<string, string>): Record<string, string> => {
-  const redacted = redact(headers) as Record<string, string | Redacted.Redacted>
-  const result: Record<string, string> = {}
-  for (const key in redacted) {
-    const value = redacted[key]
-    InternalRecord.assignProperty(result, key, Redacted.isRedacted(value) ? value.toString() : value)
-  }
-  return result
-}
-
 // =============================================================================
 // Http Request Error
 // =============================================================================
@@ -124,6 +72,10 @@ const redactHeaders = (headers: Record<string, string>): Record<string, string> 
  * such as network connectivity problems, request encoding issues, or invalid
  * URLs.
  *
+ * When created with `NetworkError.fromHttpClientError`, `cause` holds the
+ * `HttpClientError` the request failed with. It is stored unchanged, so it
+ * carries the runtime's original error text without redaction.
+ *
  * **Example** (Creating a network error)
  *
  * ```ts import.meta.vitest
@@ -131,13 +83,8 @@ const redactHeaders = (headers: Record<string, string>): Record<string, string> 
  *
  * const error = new AiError.NetworkError({
  *   reason: "TransportError",
- *   request: {
- *     method: "POST",
- *     url: "https://api.openai.com/v1/completions",
- *     urlParams: [],
- *     hash: undefined,
- *     headers: { "Content-Type": "application/json" }
- *   },
+ *   method: "POST",
+ *   url: "https://api.openai.com/v1/completions",
  *   description: "Connection timeout after 30 seconds"
  * })
  *
@@ -153,8 +100,10 @@ export class NetworkError extends Schema.Error<NetworkError>(
 )({
   _tag: Schema.tag("NetworkError"),
   reason: Schema.Literals(["TransportError", "EncodeError", "InvalidUrlError"]),
-  request: HttpRequestDetails,
-  description: Schema.optional(Schema.String)
+  method: Schema.String,
+  url: Schema.String,
+  description: Schema.optional(Schema.String),
+  cause: Schema.optional(Schema.Defect())
 }) {
   /**
    * Marks `NetworkError` as a semantic AI error reason for runtime guards.
@@ -199,18 +148,52 @@ export class NetworkError extends Schema.Error<NetworkError>(
     return new NetworkError({
       description: error.description,
       reason: error._tag,
-      request: {
-        hash: Option.getOrUndefined(error.request.hash),
-        headers: redactHeaders(error.request.headers),
-        method: error.request.method,
-        url: error.request.url,
-        urlParams: Array.from(error.request.urlParams)
-      }
+      method: error.request.method,
+      url: error.request.url
+    })
+  }
+
+  /**
+   * Creates a NetworkError from a platform HttpClientError whose reason is a
+   * request error, keeping the HttpClientError as `cause`.
+   *
+   * **Example** (Creating a network error from an HTTP client error)
+   *
+   * ```ts import.meta.vitest
+   * import { AiError } from "effect/ai"
+   * import { HttpClientError, HttpClientRequest } from "effect/http"
+   *
+   * const platformError = new HttpClientError.HttpClientError({
+   *   reason: new HttpClientError.TransportError({
+   *     request: HttpClientRequest.get("https://example.com/models"),
+   *     description: "Connection refused"
+   *   })
+   * })
+   *
+   * const aiError = AiError.NetworkError.fromHttpClientError(
+   *   platformError as HttpClientError.HttpClientError & { readonly reason: HttpClientError.RequestError }
+   * )
+   * aiError.reason // => "TransportError"
+   * aiError.cause === platformError // => true
+   * ```
+   *
+   * @stability unstable
+   * @since 4.1.0
+   */
+  static fromHttpClientError(
+    error: HttpClientError.HttpClientError & { readonly reason: HttpClientError.RequestError }
+  ): NetworkError {
+    return new NetworkError({
+      description: error.reason.description,
+      reason: error.reason._tag,
+      method: error.reason.request.method,
+      url: error.reason.request.url,
+      cause: error
     })
   }
 
   override get message(): string {
-    const methodAndUrl = `${this.request.method} ${this.request.url}`
+    const methodAndUrl = `${this.method} ${this.url}`
 
     let baseMessage = this.description
       ? `${this.reason}: ${this.description}`
@@ -418,15 +401,9 @@ export const UsageInfo = Schema.Struct({
  *
  * **When to use**
  *
- * Use to attach request details, optional response details, and optional body
- * text to AI provider errors.
+ * Use to attach optional response details and optional body text to AI
+ * provider errors.
  *
- * **Details**
- *
- * Includes the required request details plus optional response details and raw
- * response body.
- *
- * @see {@link HttpRequestDetails} for captured request details
  * @see {@link HttpResponseDetails} for captured response details
  *
  * @stability unstable
@@ -434,7 +411,6 @@ export const UsageInfo = Schema.Struct({
  * @since 4.0.0
  */
 export const HttpContext = Schema.Struct({
-  request: HttpRequestDetails,
   response: Schema.optional(HttpResponseDetails),
   body: Schema.optional(Schema.String)
 }).annotate({ identifier: "HttpContext" })
@@ -849,8 +825,8 @@ export class InternalProviderError extends Schema.Error<InternalProviderError>(
  * **Details**
  *
  * Invalid response errors are not retryable because retrying does not resolve an
- * incompatible provider response format. Optional HTTP context can retain request
- * and response details for diagnosis.
+ * incompatible provider response format. Optional HTTP context can retain response
+ * details for diagnosis.
  *
  * @see {@link InvalidOutputError} for retryable model-generated output failures
  * @stability unstable

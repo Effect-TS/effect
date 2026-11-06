@@ -20,6 +20,7 @@ import * as Schedule from "../../Schedule.ts"
 import * as Schema from "../../Schema.ts"
 import * as SchemaIssue from "../../SchemaIssue.ts"
 import * as Scope from "../../Scope.ts"
+import type { PersistenceError } from "../ClusterError.ts"
 import { AlreadyProcessingMessage, EntityNotAssignedToRunner, MailboxFull, MalformedMessage } from "../ClusterError.ts"
 import * as ClusterMetrics from "../ClusterMetrics.ts"
 import { isUninterruptibleForServer, Persisted, WithTransaction } from "../ClusterSchema.ts"
@@ -37,6 +38,7 @@ import type { ShardId } from "../ShardId.ts"
 import type { Sharding } from "../Sharding.ts"
 import { ShardingConfig } from "../ShardingConfig.ts"
 import * as Snowflake from "../Snowflake.ts"
+import * as ClusterAbandon from "./clusterAbandon.ts"
 import { CurrentActivationScope } from "./entityActivation.ts"
 import { EntityReaper } from "./entityReaper.ts"
 import { acquireEntity, releaseEntity } from "./interruptors.ts"
@@ -114,6 +116,10 @@ export type EntityState = {
     /** Set when the request should not outlive its caller. */
     callerScope?: Scope.Scope | undefined
     transaction?: RequestTransaction | undefined
+    /** Set when an interrupt arrives while no handlers are ready. */
+    interrupted?: boolean | undefined
+    /** The handler generation the remembered interrupt was last sent to. */
+    interruptSentTo?: EntityState["write"] | undefined
   }>
   lastActiveCheck: number
   write: RpcServer.RpcServer<any>["write"]
@@ -144,6 +150,19 @@ export const make = Effect.fnUntraced(function*<
     readonly disableFatalDefects?: boolean | undefined
     readonly defectRetryPolicy?: Schedule.Schedule<any, unknown, never, never> | undefined
     readonly spanAttributes?: Record<string, string> | undefined
+    /**
+     * Called once a retiring entity stops accepting requests, so callers
+     * waiting on requests it has not started can be released.
+     */
+    readonly abandonUndelivered: (
+      address: EntityAddress,
+      isDelivered: (requestId: Snowflake.Snowflake) => boolean
+    ) => Effect.Effect<void>
+    /**
+     * Whether this runner still owns the shard, checked before storing the
+     * final reply of a persisted request.
+     */
+    readonly isShardOwned: (shardId: ShardId) => Effect.Effect<boolean>
   }
 ) {
   const config = yield* ShardingConfig
@@ -157,7 +176,7 @@ export const make = Effect.fnUntraced(function*<
   const defectRetryPolicy = options.defectRetryPolicy
     ? Schedule.concat(options.defectRetryPolicy, defaultRetryPolicy)
     : defaultRetryPolicy
-  const retryDriver = yield* Schedule.toStepWithSleep(defectRetryPolicy)
+  const newRestartStep = Schedule.toStepWithSleep(defectRetryPolicy)
   const entityRpcs = new Map(entity.protocol.requests)
 
   // The series reads the mailbox size on snapshot, so delivery does no extra work.
@@ -248,6 +267,14 @@ export const make = Effect.fnUntraced(function*<
     // Finalizers run in reverse, so the mailbox series and the resident
     // mailbox are removed only after the drain finalizer below has finished.
     const activeRequests: EntityState["activeRequests"] = new Map()
+    // Drops a request that has left this entity, starting the idle timer when
+    // it was the last one.
+    const removeActiveRequest = (requestId: Snowflake.Snowflake) => {
+      activeRequests.delete(requestId)
+      if (activeRequests.size === 0) {
+        state.lastActiveCheck = clock.currentTimeMillisUnsafe()
+      }
+    }
     let mailboxSeries: Metric.Registration | undefined
     yield* Scope.addFinalizer(
       scope,
@@ -271,13 +298,38 @@ export const make = Effect.fnUntraced(function*<
     const retired = Latch.makeUnsafe()
     const isActive = () => !retired.isOpen()
 
+    // Per-activation restart backoff, reset when a request completes.
+    let restartStep: Effect.Success<typeof newRestartStep> | undefined
+    const restartDelay = Effect.gen(function*() {
+      restartStep ??= yield* newRestartStep
+      yield* restartStep(void 0)
+    })
+
+    // An interrupted request is not run again. The server answers the
+    // interrupt as it would for a request without a running handler. Each
+    // generation receives it at most once, and the flag stays so a later
+    // generation still applies it if this one fails first.
+    const writeInterrupt = (
+      request: {
+        readonly message: Message.IncomingRequestLocal<any>
+        interruptSentTo?: EntityState["write"] | undefined
+      },
+      write: EntityState["write"]
+    ): Effect.Effect<void> => {
+      if (request.interruptSentTo === write) return Effect.void
+      request.interruptSentTo = write
+      return write(0, interruptEnvelope(request))
+    }
+
     // Replay previously dispatched requests before admitting new work.
     const replay = Effect.fnUntraced(function*(write: EntityState["write"]) {
       if (!isActive()) return
       for (const request of activeRequests.values()) {
         if (!request.delivered) continue
         request.sentExit = false
-        yield* write(0, requestEnvelope(request), requestWriteOptions(request))
+        yield* request.interrupted
+          ? writeInterrupt(request, write)
+          : write(0, requestEnvelope(request), requestWriteOptions(request))
       }
     })
 
@@ -326,28 +378,31 @@ export const make = Effect.fnUntraced(function*<
                   return Effect.void
                 }
 
-                // For durable messages, ignore interrupts during shutdown.
-                // They will be retried when the entity is restarted.
-                // Also, if the request is uninterruptible, we ignore the
-                // interrupt.
                 const persisted = storageEnabled && Context.get(request.message.annotations, Persisted)
-                if (
-                  persisted &&
-                  Exit.hasInterrupts(response.exit) &&
-                  (isShuttingDown || request.terminating || isUninterruptibleForServer(request.message.annotations))
-                ) {
-                  if (!isShuttingDown && !request.terminating) {
+                if (persisted && Exit.isFailure(response.exit) && Cause.hasInterrupts(response.exit.cause)) {
+                  // A durable request interrupted by shutdown, or abandoned
+                  // because this owner can no longer serve it, is left for
+                  // replay instead of being answered.
+                  const abandoned = ClusterAbandon.isCause(response.exit.cause) &&
+                    (!isActive() || !options.sharding.hasShardId(address.shardId))
+                  if (isShuttingDown || request.terminating || abandoned) {
+                    removeActiveRequest(Snowflake.Snowflake(response.requestId))
+                    return options.storage.unregisterReplyHandler(request.message.envelope.requestId)
+                  }
+                  // An uninterruptible request ignores the interrupt and runs again.
+                  if (isUninterruptibleForServer(request.message.annotations)) {
                     request.sentExit = false
                     return server.write(0, requestEnvelope(request), requestWriteOptions(request)).pipe(
                       Effect.setContext(handlerContext),
                       Effect.forkIn(handlerScope)
                     )
                   }
-                  activeRequests.delete(Snowflake.Snowflake(response.requestId))
-                  return options.storage.unregisterReplyHandler(request.message.envelope.requestId)
                 }
-                const save = retryRespond(
-                  4,
+                // A failed save can abort the request transaction, so a retry
+                // could store a success outside it. Save once and let the
+                // failed transaction replay the request.
+                const write = retryRespond(
+                  persisted && request.transaction && Exit.isSuccess(response.exit) ? 0 : 4,
                   Effect.suspend(() =>
                     request.message.respond(
                       new Reply.WithExit({
@@ -358,18 +413,54 @@ export const make = Effect.fnUntraced(function*<
                     )
                   )
                 )
+                // A runner that lost the shard must not decide the stored
+                // result. A rejection is not retried.
+                let fenced = false
+                const save = !persisted ? write : Effect.flatMap(
+                  options.isShardOwned(address.shardId),
+                  (owned): Effect.Effect<void, MalformedMessage | PersistenceError | EntityNotAssignedToRunner> => {
+                    if (owned) return write
+                    fenced = true
+                    return Effect.fail(new EntityNotAssignedToRunner({ address }))
+                  }
+                )
+                // Leave the request for the shard's owner: release the claim
+                // so its next poll sees it, and let local callers re-route.
+                const abandonFenced = Effect.suspend(() => {
+                  removeActiveRequest(Snowflake.Snowflake(response.requestId))
+                  return Effect.logDebug("Abandoning a request whose shard this runner no longer owns").pipe(
+                    Effect.andThen(options.storage.unregisterReplyHandler(request.message.envelope.requestId)),
+                    Effect.andThen(Effect.ignore(options.storage.resetRequests([request.message.envelope.requestId])))
+                  )
+                })
                 const complete = Effect.sync(() => {
+                  restartStep = undefined
                   if (storageEnabled) {
                     processedRequestIds.add(request.message.envelope.requestId)
                   }
-                  activeRequests.delete(Snowflake.Snowflake(response.requestId))
-
-                  // Start the idle timer when the last request completes.
-                  if (activeRequests.size === 0) {
-                    state.lastActiveCheck = clock.currentTimeMillisUnsafe()
-                  }
+                  removeActiveRequest(Snowflake.Snowflake(response.requestId))
                 })
-                const respond = Effect.orDie(Effect.andThen(save, complete))
+                // Let callers read the saved reply instead of waiting on a
+                // handler that will never be resumed.
+                const completeFromStorage = Effect.andThen(
+                  complete,
+                  options.storage.unregisterReplyHandler(request.message.envelope.requestId)
+                )
+                const respond = Effect.andThen(save, complete).pipe(
+                  Effect.catchTag("EntityNotAssignedToRunner", () => abandonFenced),
+                  // A save can commit and still fail, e.g. when the COMMIT
+                  // acknowledgement is lost. Volatile requests skip the lookup:
+                  // their replies are never stored, and a storage read could
+                  // stall a custom responder's failure.
+                  Effect.catchTag("PersistenceError", (error) =>
+                    persisted
+                      ? Effect.flatMap(
+                        hasStoredExit(request.message.envelope.requestId),
+                        (committed) => committed ? completeFromStorage : Effect.fail(error)
+                      )
+                      : Effect.fail(error)),
+                  Effect.orDie
+                )
                 const transaction = request.transaction
                 if (!transaction) return respond
                 const exit = response.exit
@@ -381,18 +472,17 @@ export const make = Effect.fnUntraced(function*<
                 }
 
                 if (Exit.isSuccess(exit)) {
-                  transaction.settle = (outcome) =>
-                    Exit.isSuccess(outcome) ? complete : Effect.flatMap(
+                  transaction.settle = (outcome) => {
+                    if (Exit.isSuccess(outcome)) return complete
+                    // A rejected save failed the transaction, rolling back the
+                    // handler's writes; the request is left for the owner.
+                    if (fenced) return abandonFenced
+                    // The commit can succeed despite the error.
+                    return Effect.flatMap(
                       hasStoredExit(request.message.envelope.requestId),
-                      (committed) => {
-                        if (!committed) return restartFrom(outcome.cause)
-                        // Commit succeeded despite the error; let callers read the saved reply.
-                        return Effect.andThen(
-                          complete,
-                          options.storage.unregisterReplyHandler(request.message.envelope.requestId)
-                        )
-                      }
+                      (committed) => committed ? completeFromStorage : restartFrom(outcome.cause)
                     )
+                  }
                   return Effect.orDie(save)
                 }
                 transaction.settle = (outcome) =>
@@ -467,10 +557,22 @@ export const make = Effect.fnUntraced(function*<
       address
     )
 
+    // Forward interrupts remembered after their request was replayed, which
+    // the replacement handlers have not seen yet.
+    const forwardInterrupts = Effect.suspend(() => {
+      const write = writeRef.getUnsafe()
+      if (write === undefined) return Effect.void
+      const interrupts: Array<Effect.Effect<void>> = []
+      for (const request of activeRequests.values()) {
+        if (request.interrupted) interrupts.push(writeInterrupt(request, write))
+      }
+      return Effect.all(interrupts, { discard: true })
+    })
+
     function restart(cause: Cause.Cause<unknown>, rebuild: Effect.Effect<void>): Effect.Effect<void> {
       return Effect.logError("Defect in entity, restarting", cause).pipe(
-        Effect.andThen(Effect.ignore(retryDriver(void 0))),
-        Effect.flatMap(() => isActive() ? rebuild : endLatch.open),
+        Effect.andThen(Effect.ignore(restartDelay)),
+        Effect.flatMap(() => isActive() ? Effect.andThen(rebuild, forwardInterrupts) : endLatch.open),
         Effect.annotateLogs({
           module: "EntityManager",
           address,
@@ -492,6 +594,16 @@ export const make = Effect.fnUntraced(function*<
           if (message._tag !== "Request") {
             // Interrupts, acks and EOF reach the handlers even during shutdown.
             const write = writeRef.getUnsafe()
+            if (write === undefined && message._tag === "Interrupt") {
+              // Waiting could stall the sender indefinitely if every rebuild
+              // fails, so remember the interrupt for the next generation.
+              // Uninterruptible requests ignore it.
+              const request = activeRequests.get(Snowflake.Snowflake(message.requestId))
+              if (request && !isUninterruptibleForServer(request.message.annotations)) {
+                request.interrupted = true
+              }
+              return Effect.void
+            }
             return write
               ? write(clientId, message, writeOptions)
               : Effect.flatMap(writeRef.await, (write) => write(clientId, message, writeOptions))
@@ -507,7 +619,7 @@ export const make = Effect.fnUntraced(function*<
           const request = activeRequests.get(Snowflake.Snowflake(message.id))
           if (!request) return Effect.void
           request.delivered = true
-          return write(clientId, message, writeOptions)
+          return request.interrupted ? writeInterrupt(request, write) : write(clientId, message, writeOptions)
         })
       },
       activeRequests,
@@ -539,9 +651,19 @@ export const make = Effect.fnUntraced(function*<
               request.terminating = true
               yield* state.write(0, { _tag: "Interrupt", requestId: requestId as any, interruptors: [] })
             }
+            // A handler this drain waits for may be parked on a request the
+            // retired entity will never start, such as its own queued request.
+            // Release callers before `Eof`, which waits for handler acquisition.
+            yield* options.abandonUndelivered(
+              address,
+              (requestId) => activeRequests.get(requestId)?.delivered === true
+            )
             yield* state.write(0, { _tag: "Eof" })
           }).pipe(
             Effect.andThen(endLatch.await),
+            // A defect restart that finds the entity retired opens `endLatch`
+            // without building handlers, so the writes above may never land.
+            Effect.raceFirst(endLatch.await),
             Effect.timeoutOption(config.entityTerminationTimeout),
             Effect.interruptible
           ),
@@ -921,7 +1043,7 @@ const makeMessageDecode = <Rpcs extends Rpc.Any>(entityRpcs: Map<string, Rpcs>) 
         )
       )
     }
-    return decodeRequest(message, rpc) as Effect.Effect<
+    return decodeRequest(message, rpc) as any as Effect.Effect<
       {
         readonly _tag: "IncomingRequest"
         readonly envelope: Envelope.Request.Any
@@ -944,6 +1066,14 @@ const requestEnvelope = (entry: {
     ...entry.message.envelope,
     lastSentChunk: entry.lastSentChunk
   } as any) as any
+})
+
+const interruptEnvelope = (entry: {
+  readonly message: Message.IncomingRequestLocal<any>
+}): Parameters<EntityState["write"]>[1] => ({
+  _tag: "Interrupt",
+  requestId: entry.message.envelope.requestId as any,
+  interruptors: []
 })
 
 const retryRespond = <A, E, R>(times: number, effect: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> =>

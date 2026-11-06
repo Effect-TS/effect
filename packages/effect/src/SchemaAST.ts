@@ -2441,7 +2441,7 @@ export const Arrays: new(
         input,
         len,
         tailThreshold: Math.max(elementLen, len - tailLen),
-        output: new globalThis.Array(len),
+        output: [],
         issues: undefined,
         options
       }
@@ -2532,7 +2532,7 @@ export function stepArray(
   if (exit._tag === "Failure") {
     return wrapPropertyKeyIssue(s, s.ast, i, exit)
   }
-  const value = exit === InternalParser.sameExit
+  const value = InternalParser.isSameExit(exit)
     ? item
     : (exit as InternalParser.Success<unknown, SchemaIssue.Issue>)[InternalParser.args]
   if (value !== InternalParser.missing) {
@@ -2605,9 +2605,12 @@ const wrapPropertyKeyIssue = (
 
 /**
  * floating point or integer, with optional exponent
+ *
+ * The mantissa alternation keeps rejection linear: `\d*\.?\d+` retries
+ * every split of a long digit run.
  * @internal
  */
-export const FINITE_PATTERN = "[+-]?\\d*\\.?\\d+(?:[Ee][+-]?\\d+)?"
+export const FINITE_PATTERN = "[+-]?(?:\\d+(?:\\.\\d+)?|\\.\\d+)(?:[Ee][+-]?\\d+)?"
 
 /**
  * Returns the object keys that match the index signature parameter schema.
@@ -2736,8 +2739,10 @@ function isIndexSignatureParameter(ast: AST): ast is IndexSignatureParameter {
  *
  * **Gotchas**
  *
- * Using `Schema.optionalKey` on the value type is not allowed for index
- * signatures (throws at construction); use `Schema.optional` instead.
+ * Using `Schema.optionalKey` or `Schema.optional` on the value type is not
+ * allowed for index signatures (throws at construction). Index signatures
+ * already allow keys to be absent; use `Schema.UndefinedOr` to allow
+ * `undefined` values.
  *
  * @see {@link Objects}
  * @see {@link PropertySignature}
@@ -2770,8 +2775,10 @@ export const IndexSignature: new(parameter: AST, type: AST) => IndexSignature = 
     }
     this.parameter = parameter
     this.type = type
-    if (isOptional(type) && !containsUndefined(type)) {
-      throw new Error("Cannot use `Schema.optionalKey` with index signatures, use `Schema.optional` instead.")
+    if (isOptional(type) || (type.encoding !== undefined && isOptional(toEncoded(type)))) {
+      throw new Error(
+        "Cannot use `Schema.optionalKey` or `Schema.optional` with index signatures. Index signatures already allow keys to be absent; use `Schema.UndefinedOr` to allow `undefined` values."
+      )
     }
   }
 }
@@ -2934,7 +2941,7 @@ export const Objects: new(
         if (exitValue._tag === "Failure") {
           return wrapPropertyKeyIssue(s, ast, key, exitValue) ?? Exit.void
         }
-        const value = exitValue === InternalParser.sameExit
+        const value = InternalParser.isSameExit(exitValue)
           ? inputValue
           : (exitValue as InternalParser.Success<unknown, SchemaIssue.Issue>)[InternalParser.args]
         if (k2 !== InternalParser.missing && value !== InternalParser.missing) {
@@ -2962,7 +2969,7 @@ export const Objects: new(
         if (exitKey._tag === "Failure") {
           return wrapPropertyKeyIssue(s, ast, key, exitKey) ?? Exit.void
         }
-        const k2 = exitKey === InternalParser.sameExit
+        const k2 = InternalParser.isSameExit(exitKey)
           ? key
           : (exitKey as InternalParser.Success<PropertyKey, SchemaIssue.Issue>)[InternalParser.args]
         const inputValue = s.input[key]
@@ -3113,7 +3120,7 @@ export const Objects: new(
       pending: Effect.Effect<unknown, SchemaIssue.Issue, any>
     ): Effect.Effect<unknown, SchemaIssue.Issue, any> => {
       const property = properties![index]
-      return Effect.flatMap(Effect.exit(pending), (exit) => {
+      return Effect.flatMap(Effect.exit(pending), (exit): Effect.Effect<unknown, SchemaIssue.Issue, any> => {
         // Copy the parsed prefix per execution so reruns cannot overwrite earlier results.
         const state: ObjectParserState = { ...snapshot, out: { ...snapshot.out } }
         const terminal = stepProperty(state, property, exit)
@@ -3152,7 +3159,7 @@ export const Objects: new(
           if (!effectIsExit(exit)) {
             return resume(state, index, exit)
           }
-          if (exit === InternalParser.sameExit) {
+          if (InternalParser.isSameExit(exit)) {
             if (hasKey) InternalRecord.assignProperty(out, name, value)
             continue
           }
@@ -3236,7 +3243,7 @@ export function stepProperty(
   if (exit._tag === "Failure") {
     return wrapPropertyKeyIssue(s, s.ast, p.name, exit)
   }
-  if (exit === InternalParser.sameExit) return
+  if (InternalParser.isSameExit(exit)) return
   const value = (exit as InternalParser.Success<unknown, SchemaIssue.Issue>)[InternalParser.args]
   if (value !== InternalParser.missing) {
     InternalRecord.assignProperty(s.out, p.name, value)
@@ -3924,8 +3931,7 @@ function resumeUnion(
   state: UnionParserState
 ): Effect.Effect<unknown, SchemaIssue.Issue, any> {
   return Effect.flatMapEager(eff, (_) => {
-    if (state.out === InternalParser.sameExit) return Effect.succeed(state.input)
-    if (state.out) return state.out
+    if (state.out) return InternalParser.isSameExit(state.out) ? Effect.succeed(state.input) : state.out
     return Effect.fail(new SchemaIssue.AnyOf(state.ast, state.issues ?? [], state.input, state.options))
   })
 }
@@ -4607,16 +4613,24 @@ function parseParameter(ast: AST): {
 } {
   const literals: Array<PropertyKey> = []
   const parameters: Array<AST> = []
+  function addLiteral(literal: PropertyKey) {
+    if (!literals.includes(literal)) {
+      literals.push(literal)
+    }
+  }
   function go(ast: AST) {
     switch (ast._tag) {
       case "Literal":
-        if (Predicate.isPropertyKey(ast.literal) && !literals.includes(ast.literal)) {
-          literals.push(ast.literal)
+        if (Predicate.isPropertyKey(ast.literal)) {
+          addLiteral(ast.literal)
         }
         return
       case "UniqueSymbol":
-        if (!literals.includes(ast.symbol)) {
-          literals.push(ast.symbol)
+        addLiteral(ast.symbol)
+        return
+      case "Enum":
+        for (const [, value] of ast.enums) {
+          addLiteral(value)
         }
         return
       case "Never":
@@ -4820,18 +4834,6 @@ export const flip = memoize((ast: AST): AST => {
   }
   return "flip" in ast ? ast.flip(flip) : "recur" in ast ? ast.recur(flip) : ast
 })
-
-/** @internal */
-export function containsUndefined(ast: AST): boolean {
-  switch (ast._tag) {
-    case "Undefined":
-      return true
-    case "Union":
-      return ast.types.some(containsUndefined)
-    default:
-      return false
-  }
-}
 
 function fromConst<const T>(
   ast: AST,

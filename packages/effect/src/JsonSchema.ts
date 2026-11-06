@@ -9,6 +9,7 @@
  * @stability stable
  * @since 4.0.0
  */
+import * as InternalJsonSchema from "./internal/jsonSchema.ts"
 import * as InternalRecord from "./internal/record.ts"
 import { formatUriFragment, parseUriFragment } from "./JsonPointer.ts"
 import * as Predicate from "./Predicate.ts"
@@ -505,9 +506,23 @@ export function fromSchemaOpenApi3_0(schema: JsonSchema): Document<"draft-2020-1
  * @since 4.0.0
  */
 export function toDocumentDraft07(document: Document<"draft-2020-12">): Document<"draft-07"> {
+  return toDocumentDraft07WithDefinitionsPath(document)
+}
+
+/**
+ * Converts to Draft-07 with definitions located at `definitionsPath`, such as
+ * `["components", "schemas"]` after {@link toMultiDocumentComponents}, so
+ * references into them stay in place. Defaults to `$defs` → `definitions`.
+ *
+ * @internal
+ */
+export function toDocumentDraft07WithDefinitionsPath(
+  document: Document<"draft-2020-12">,
+  definitionsPath?: ReadonlyArray<string>
+): Document<"draft-07"> {
   return {
     dialect: "draft-07",
-    ...convertDocument(document, draft07Adapter)
+    ...convertDocument(document, draft07Adapter, undefined, definitionsPath)
   }
 }
 
@@ -619,6 +634,25 @@ export function toDocumentDraft04(document: Document<"draft-2020-12">): Document
  * @since 4.0.0
  */
 export function toMultiDocumentOpenApi3_1(multiDocument: MultiDocument<"draft-2020-12">): MultiDocument<"openapi-3.1"> {
+  return {
+    dialect: "openapi-3.1",
+    ...toMultiDocumentComponents(multiDocument, {
+      target: "OpenAPI 3.1",
+      checkSchema(schema) {
+        rejectKeywordCollisions(schema, OPEN_API_31_TARGET_COLLISIONS, "OpenAPI 3.1", "Draft 2020-12")
+      }
+    })
+  }
+}
+
+/** @internal */
+export function toMultiDocumentComponents(
+  multiDocument: Pick<MultiDocument<"draft-2020-12">, "schemas" | "definitions">,
+  options: {
+    readonly target: string
+    readonly checkSchema?: ((schema: JsonSchema) => void) | undefined
+  }
+): Pick<MultiDocument<"draft-2020-12">, "schemas" | "definitions"> {
   const definitionKeys = Object.keys(multiDocument.definitions)
   const keyMap = new Map<string, string>()
   const usedKeys = new Set(definitionKeys.filter((key) => VALID_OPEN_API_COMPONENTS_SCHEMAS_KEY_REGEXP.test(key)))
@@ -648,7 +682,7 @@ export function toMultiDocumentOpenApi3_1(multiDocument: MultiDocument<"draft-20
     const isRootResource = createsResource(schema.$id)
     const localDefinitions = Predicate.isObject(schema.$defs) ? schema.$defs : undefined
     return transformSchema(schema, (schema, inEmbeddedResource) => {
-      rejectKeywordCollisions(schema, OPEN_API_31_TARGET_COLLISIONS, "OpenAPI 3.1", "Draft 2020-12")
+      options.checkSchema?.(schema)
       rewriteSchemaRef(schema, (reference, keyword) => {
         const path = reference.startsWith("#") ? parseUriFragment(reference) : undefined
         if (path === undefined || path[0] !== "$defs" || path.length < 2) return reference
@@ -660,7 +694,7 @@ export function toMultiDocumentOpenApi3_1(multiDocument: MultiDocument<"draft-20
             Object.hasOwn(multiDocument.definitions, key) &&
             (localDefinitions === undefined || !Object.hasOwn(localDefinitions, key))
           ) {
-            unsupported(keyword, "OpenAPI 3.1", "a schema resource cannot reference the shared definitions pool")
+            unsupported(keyword, options.target, "a schema resource cannot reference the shared definitions pool")
           }
           return reference
         }
@@ -672,7 +706,7 @@ export function toMultiDocumentOpenApi3_1(multiDocument: MultiDocument<"draft-20
   }
 
   const schemas = multiDocument.schemas.map((schema) => rewrite(schema, true)) as unknown as MultiDocument<
-    "openapi-3.1"
+    "draft-2020-12"
   >["schemas"]
   const definitions: Definitions = {}
   for (const key of definitionKeys) {
@@ -684,7 +718,6 @@ export function toMultiDocumentOpenApi3_1(multiDocument: MultiDocument<"draft-20
   }
 
   return {
-    dialect: "openapi-3.1",
     schemas,
     definitions
   }
@@ -725,30 +758,14 @@ function transformSchema(
     for (const key of Object.keys(node)) {
       const value = node[key]
       let transformed = value
-      switch (key) {
-        case "$defs":
-        case "properties":
-        case "patternProperties":
-        case "dependentSchemas":
+      switch (InternalJsonSchema.getSubschemaKind(key)) {
+        case "map":
           transformed = mapObject(value, (value) => walk(value, inEmbeddedResource)) ?? value
           break
-        case "allOf":
-        case "anyOf":
-        case "oneOf":
-        case "prefixItems":
+        case "array":
           transformed = Array.isArray(value) ? value.map((value) => walk(value, inEmbeddedResource)) : value
           break
-        case "not":
-        case "additionalProperties":
-        case "propertyNames":
-        case "unevaluatedProperties":
-        case "items":
-        case "contains":
-        case "unevaluatedItems":
-        case "if":
-        case "then":
-        case "else":
-        case "contentSchema":
+        case "schema":
           transformed = walk(value, inEmbeddedResource)
       }
       InternalRecord.assignProperty(out, key, transformed)
@@ -972,13 +989,19 @@ function convertSchema(root: JsonSchema, adapter: Adapter, options?: ConverterOp
 function convertDocument(
   document: Document<"draft-2020-12">,
   adapter: Adapter,
-  options?: ConverterOptions
+  options?: ConverterOptions,
+  definitionsPath?: Path
 ): { readonly schema: JsonSchema; readonly definitions: Definitions } {
   return runConverter(adapter, { ...options, trackIds: true }, (convert) => ({
     schema: convert(document.schema) as JsonSchema,
     definitions: mapObject(
       document.definitions,
-      (definition, key) => convert(definition, ["$defs", key], ["definitions", key]) as JsonSchema
+      (definition, key) =>
+        convert(
+          definition,
+          [...(definitionsPath ?? ["$defs"]), key],
+          [...(definitionsPath ?? ["definitions"]), key]
+        ) as JsonSchema
     ) as Definitions
   }))
 }
@@ -1236,6 +1259,7 @@ function draft07Adapter(source: JsonSchema, context: Context): JsonSchema {
       case "unevaluatedItems":
         unsupported(key, "Draft-07", "the target dialect has no equivalent")
       case "required":
+      case "enum":
         if (Array.isArray(value) && value.length === 0) break
         InternalRecord.assignProperty(out, key, value)
         break
@@ -1260,6 +1284,8 @@ function draft07Adapter(source: JsonSchema, context: Context): JsonSchema {
 
   convertDependencies(source, out, context, "draft-07")
   convertLegacyId(source, out, "$id", "Draft-07")
+
+  if (Array.isArray(source.enum) && source.enum.length === 0) appendAllOf(out, { not: {} })
 
   convertReference(out, reference, context)
 
@@ -1559,30 +1585,14 @@ function hasSchemaIdentifier(node: unknown): boolean {
   if (Object.hasOwn(node, "$id") || Object.hasOwn(node, "$anchor")) return true
   for (const key of Object.keys(node)) {
     const value = node[key]
-    switch (key) {
-      case "$defs":
-      case "properties":
-      case "patternProperties":
-      case "dependentSchemas":
+    switch (InternalJsonSchema.getSubschemaKind(key)) {
+      case "map":
         if (Predicate.isObject(value) && Object.values(value).some(hasSchemaIdentifier)) return true
         break
-      case "allOf":
-      case "anyOf":
-      case "oneOf":
-      case "prefixItems":
+      case "array":
         if (Array.isArray(value) && value.some(hasSchemaIdentifier)) return true
         break
-      case "not":
-      case "additionalProperties":
-      case "propertyNames":
-      case "unevaluatedProperties":
-      case "items":
-      case "contains":
-      case "unevaluatedItems":
-      case "if":
-      case "then":
-      case "else":
-      case "contentSchema":
+      case "schema":
         if (hasSchemaIdentifier(value)) return true
     }
   }

@@ -1,4 +1,5 @@
 import { isReadonlyArrayNonEmpty, type NonEmptyReadonlyArray } from "../Array.ts"
+import * as Clock from "../Clock.ts"
 import * as Context from "../Context.ts"
 import * as Effect from "../Effect.ts"
 import type * as GraphQL from "../graphql/GraphQL.ts"
@@ -10,10 +11,12 @@ import {
   GraphQLClientError,
   type GraphQLError,
   type Reason,
-  ResponseError
+  ResponseError,
+  TransportError
 } from "../graphql/GraphQLClientError.ts"
 import type { ExecutionResult, GraphQLProtocol, GraphQLRequest } from "../graphql/GraphQLProtocol.ts"
 import * as Schema from "../Schema.ts"
+import { parseRetryAfter } from "./graphqlHeaders.ts"
 
 /**
  * Builds a response error with raw data and transport metadata.
@@ -31,6 +34,10 @@ export const responseError = (
     ...(result?.status === undefined ? {} : { status: result.status }),
     ...(result?.headers === undefined ? {} : { headers: result.headers })
   })
+
+/** A result without an HTTP status, such as a graphql-ws event, counts as 2xx. */
+const isStatusOk = (result: ExecutionResult): boolean =>
+  result.status === undefined || (result.status >= 200 && result.status < 300)
 
 /**
  * Raw responses for partial results, used by resolvers to preserve error
@@ -210,27 +217,38 @@ export const makeCodec = <Op extends GraphQL.Any>(operation: Op) => {
     Effect.catch(decode(data), schemaFail((description) => new DecodeError({ description })))
 
   // GraphQL requires errors when data is null or missing. Check before decoding,
-  // since schemas such as Schema.Json accept null.
+  // since schemas such as Schema.Json accept null. A non-2xx result never
+  // succeeds: without errors it is a TransportError carrying the HTTP metadata.
   const failResponse = (result: ExecutionResult): Effect.Effect<never, GraphQLClientError> => {
     const errors = result.errors ?? []
-    return Effect.fail(fail(
-      isReadonlyArrayNonEmpty(errors)
-        ? responseError(result, errors)
-        : new DecodeError({ description: "data is null or missing without errors" })
-    ))
+    if (isReadonlyArrayNonEmpty(errors)) return Effect.fail(fail(responseError(result, errors)))
+    if (isStatusOk(result)) {
+      return Effect.fail(fail(new DecodeError({ description: "data is null or missing without errors" })))
+    }
+    return Clock.clockWith((clock) =>
+      Effect.fail(fail(
+        new TransportError({
+          description: `HTTP ${result.status} response without GraphQL errors`,
+          status: result.status,
+          headers: result.headers,
+          retryAfter: parseRetryAfter(result.headers?.["retry-after"], clock.currentTimeMillisUnsafe())
+        })
+      ))
+    )
   }
 
   const decodeStrict = (
     result: ExecutionResult
   ): Effect.Effect<GraphQL.Result<Op>, GraphQLClientError, Op["result"]["DecodingServices"]> =>
-    isReadonlyArrayNonEmpty(result.errors ?? []) || result.data === null || result.data === undefined
+    !isStatusOk(result) || isReadonlyArrayNonEmpty(result.errors ?? []) || result.data === null ||
+      result.data === undefined
       ? failResponse(result)
       : decodeData(result.data)
 
   const decodePartial = (
     result: ExecutionResult
   ): Effect.Effect<PartialResult<GraphQL.Result<Op>>, GraphQLClientError, Op["result"]["DecodingServices"]> => {
-    if (result.data === null || result.data === undefined) return failResponse(result)
+    if (!isStatusOk(result) || result.data === null || result.data === undefined) return failResponse(result)
     return Effect.map(decodeData(result.data), (data): PartialResult<GraphQL.Result<Op>> => {
       const partial = { data, errors: result.errors ?? [] }
       partialResponses.set(partial, result)

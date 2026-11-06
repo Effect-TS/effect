@@ -16,6 +16,7 @@ import * as Arr from "../Array.ts"
 import type { Brand } from "../Brand.ts"
 import * as Clock from "../Clock.ts"
 import * as Context from "../Context.ts"
+import * as SecureRandom from "../crypto/SecureRandom.ts"
 import * as Data from "../Data.ts"
 import * as DateTime from "../DateTime.ts"
 import * as Effect from "../Effect.ts"
@@ -250,7 +251,7 @@ export const RemoteId = Schema.Uint8Array.pipe(Schema.brand(RemoteIdTypeId))
  * @category unsafe
  * @since 4.0.0
  */
-export const makeRemoteIdUnsafe = (): RemoteId => Uuid.v4Bytes() as RemoteId
+export const makeRemoteIdUnsafe = (): RemoteId => SecureRandom.uuidV4Unsafe({ format: "bytes" }) as RemoteId
 
 /**
  * Runtime brand identifier used for `EntryId` values.
@@ -321,7 +322,7 @@ const nextEntryId = (sequence: EntryIdSequence, now: number): EntryId => {
   if (sequence.millis > maxEntryIdMillis) {
     throw new RangeError("The entry id sequence has passed the last UUID v7 millisecond")
   }
-  const bytes = Uuid.v7Bytes(sequence.millis)
+  const bytes = Uuid.v7Bytes(sequence.millis, SecureRandom.randomBytesUnsafe(16))
   // The counter replaces the 12 random `rand_a` bits after the version.
   bytes[6] = 0x70 | (sequence.counter >> 8)
   bytes[7] = sequence.counter & 0xff
@@ -387,7 +388,7 @@ const maxEntryId = (ids: Iterable<EntryId>): EntryId | undefined => {
  */
 export const makeEntryIdUnsafe = (options: { msecs?: number } = {}): EntryId =>
   options.msecs !== undefined
-    ? Uuid.v7Bytes(options.msecs) as EntryId
+    ? Uuid.v7Bytes(options.msecs, SecureRandom.randomBytesUnsafe(16)) as EntryId
     : nextEntryId(processEntryIds, Date.now())
 
 // Imported ids further ahead of the local clock than this are logged.

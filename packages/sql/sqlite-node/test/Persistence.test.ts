@@ -5,6 +5,7 @@ import { Duration, Effect, FileSystem, Layer } from "effect"
 import * as PersistedQueueSqlTest from "effect-test/persistence/PersistedQueueSqlTest"
 import * as PersistedQueueTest from "effect-test/persistence/PersistedQueueTest"
 import * as SqlCleanupTest from "effect-test/persistence/SqlCleanupTest"
+import * as Arr from "effect/Array"
 import { PersistedQueue, Persistence } from "effect/persistence"
 import { Reactivity } from "effect/reactivity"
 import * as SqlClient from "effect/sql/SqlClient"
@@ -225,6 +226,7 @@ it.layer(ClientLayer)("Persistence SQL cleanup", (it) => {
         value: "{}",
         expires: SqlCleanupTest.expiredAtEpoch
       }))
+      assert(Arr.isArrayNonEmpty(entries))
       yield* sql`INSERT INTO ${table} ${sql.insert(entries)}`.unprepared
       yield* sql`
         INSERT INTO ${table} (store_id, id, value, expires)

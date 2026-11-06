@@ -36,6 +36,7 @@
     { "path": "packages/tools/api-diff" },
     { "path": "packages/tools/bundle" },
     { "path": "packages/tools/docgen" },
+    { "path": "packages/tools/eventlog-server" },
     { "path": "packages/tools/doctest" },
     { "path": "packages/tools/openapi-generator" },
     { "path": "packages/tools/graphql-generator" },

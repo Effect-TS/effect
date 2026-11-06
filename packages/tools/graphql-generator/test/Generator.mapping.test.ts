@@ -68,6 +68,32 @@ describe("Generator mapping", () => {
       assert.deepStrictEqual(docOf(ops, "first"), ["@default 20"])
     }).pipe(Effect.provide(NodeServices.layer)))
 
+  it.effect("a recursive input object is a Codec, with an Encoded type when a field may transform", () =>
+    Effect.gen(function*() {
+      const generated = yield* generateIn({
+        "schema.graphql": `
+          scalar Stamp
+          input Tree { child: Tree }
+          input Dated { at: Stamp next: Dated }
+          input Unused { self: Unused }
+          type Query { tree(t: Tree, d: Dated, u: Unused): Int }
+        `,
+        "src/ops.graphql": "query Q($t: Tree, $d: Dated) { tree(t: $t, d: $d) }"
+      }, { schema: "./schema.graphql", documents: ["src/*.graphql"], scalars: { Stamp: "./scalars.ts#Stamp" } })
+      assertNoErrors(generated)
+      const shared = generated.file("schema.graphql.ts")
+      assert.deepStrictEqual({
+        Tree: declaration(shared, "Tree"),
+        Dated: declaration(shared, "Dated"),
+        unused: shared.includes("Unused")
+      }, {
+        Tree: "export const Tree: Schema.Codec<Tree> = Schema.Struct({",
+        Dated: "export const Dated: Schema.Codec<Dated, DatedEncoded> = Schema.Struct({",
+        unused: false
+      })
+      assert.include(shared, "export interface DatedEncoded {\n  readonly at?: typeof Stamp.Encoded | null | undefined")
+    }).pipe(Effect.provide(NodeServices.layer)))
+
   it.effect("a scalars entry overrides a built-in", () =>
     Effect.gen(function*() {
       const generated = yield* generateTasks(

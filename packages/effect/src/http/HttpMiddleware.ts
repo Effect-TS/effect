@@ -22,9 +22,12 @@ import { constant, constFalse } from "../Function.ts"
 import * as internalEffect from "../internal/effect.ts"
 import { getStackTraceLimit, setStackTraceLimit } from "../internal/stackTraceLimit.ts"
 import * as Layer from "../Layer.ts"
+import * as IpNetwork from "../net/IpNetwork.ts"
+import * as NetAddress from "../net/NetAddress.ts"
 import * as Option from "../Option.ts"
 import type { Predicate } from "../Predicate.ts"
 import type { ReadonlyRecord } from "../Record.ts"
+import * as Result from "../Result.ts"
 import { nativeTracer, ParentSpan, Tracer } from "../Tracer.ts"
 import * as Headers from "./Headers.ts"
 import { hasBody } from "./HttpMethod.ts"
@@ -41,6 +44,7 @@ import * as decompressionInternal from "./internal/decompression.ts"
 import * as bodyInternal from "./internal/httpBody.ts"
 import { appendPreResponseHandlerUnsafe, CurrentRequestState } from "./internal/requestState.ts"
 import * as tracing from "./internal/tracing.ts"
+import * as internalUrlParams from "./internal/urlParams.ts"
 import * as UrlParams from "./UrlParams.ts"
 
 /**
@@ -76,24 +80,61 @@ export declare namespace HttpMiddleware {
 /**
  * Defines an `HttpMiddleware` while preserving its precise type.
  *
+ * **Gotchas**
+ *
+ * TypeScript cannot infer the `app` parameter of an `Effect.fn` or
+ * `Effect.fnUntraced` generator passed directly to `make`, so `app` becomes
+ * `any` and the middleware loses the app's error and service types. Prefer an
+ * arrow function, as in the first example. To use `Effect.fn`, declare `E`
+ * and `R` type parameters and annotate `app` with them.
+ *
+ * **Example** (Defining middleware)
+ *
+ * ```ts import.meta.vitest
+ * import { Effect } from "effect"
+ * import { HttpMiddleware, HttpServerResponse } from "effect/http"
+ *
+ * const withHeader = HttpMiddleware.make((app) =>
+ *   Effect.gen(function*() {
+ *     const response = yield* app
+ *     return HttpServerResponse.setHeader(response, "x-service", "example")
+ *   })
+ * )
+ *
+ * const app: Effect.Effect<HttpServerResponse.HttpServerResponse, "Unauthorized"> =
+ *   Effect.fail("Unauthorized")
+ *
+ * // Effect<HttpServerResponse, "Unauthorized", HttpServerRequest>
+ * const withHeaderApp = withHeader(app)
+ * ```
+ *
+ * **Example** (Defining middleware with Effect.fn)
+ *
+ * ```ts import.meta.vitest
+ * import { Effect } from "effect"
+ * import { HttpMiddleware, HttpServerResponse } from "effect/http"
+ *
+ * const withHeader = HttpMiddleware.make(
+ *   Effect.fn("withHeader")(function*<E, R>(
+ *     app: Effect.Effect<HttpServerResponse.HttpServerResponse, E, R>
+ *   ) {
+ *     const response = yield* app
+ *     return HttpServerResponse.setHeader(response, "x-service", "example")
+ *   })
+ * )
+ *
+ * const app: Effect.Effect<HttpServerResponse.HttpServerResponse, "Unauthorized"> =
+ *   Effect.fail("Unauthorized")
+ *
+ * // Effect<HttpServerResponse, "Unauthorized", never>
+ * const withHeaderApp = withHeader(app)
+ * ```
+ *
  * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
 export const make = <M extends HttpMiddleware>(middleware: M): M => middleware
-
-const stripSearchAndHash = (url: string): string => {
-  const queryIndex = url.indexOf("?")
-  const hashIndex = url.indexOf("#")
-
-  if (queryIndex === -1) {
-    return hashIndex === -1 ? url : url.slice(0, hashIndex)
-  }
-  if (hashIndex === -1) {
-    return url.slice(0, queryIndex)
-  }
-  return url.slice(0, Math.min(queryIndex, hashIndex))
-}
 
 /**
  * Runs an effect with HTTP response logging disabled for the current server request.
@@ -179,7 +220,7 @@ export const logger: <E, R>(
   Effect.withFiber((fiber) => {
     const request = Context.getUnsafe(fiber.context, HttpServerRequest)
     const state = Context.getOrUndefined(fiber.context, CurrentRequestState)
-    const path = stripSearchAndHash(request.url)
+    const path = internalUrlParams.stripSearchAndHash(request.url)
     return Effect.withLogSpan(
       Effect.flatMap(Effect.exit(httpApp), (exit) => {
         if (state?.loggerDisabled) {
@@ -225,11 +266,18 @@ export const isTracerDisabledUnsafe = (
 
 // OpenTelemetry requires failed server spans for 5xx responses.
 const responseSpanExit = (
+  fiber: Fiber.Fiber<unknown, unknown>,
   request: HttpServerRequest,
   response: HttpServerResponse
 ): Exit.Exit<HttpServerResponse, HttpServerError> => {
   if (!(response.status >= 500 && response.status < 600)) {
     return Exit.succeed(response)
+  }
+  // The message is path-only, but exporters can still read `error.request.url`
+  // after the request-scoped redacted names are gone.
+  const url = UrlParams.redactUrl(request.url, fiber.getRef(UrlParams.CurrentRedactedNames))
+  if (url !== request.url) {
+    request = request.modify({ url })
   }
   const stackTraceLimit = getStackTraceLimit()
   setStackTraceLimit(0)
@@ -266,7 +314,7 @@ export const tracer: <E, R>(
       fiber.setContext(prevServices)
       const endTime = fiber.getRef(Clock).currentTimeNanosUnsafe()
       if (Exit.isSuccess(exit) && (!span.sampled || fiber.getRef(Tracer) === nativeTracer)) {
-        span.end(endTime, responseSpanExit(request, exit.value))
+        span.end(endTime, responseSpanExit(fiber, request, exit.value))
         return undefined
       }
       const redactedHeaderNames = fiber.getRef(Headers.CurrentRedactedNames)
@@ -280,10 +328,10 @@ export const tracer: <E, R>(
         // OpenTelemetry only treats 5xx responses as server span errors; interrupts still fail the span.
         spanExit = Option.isSome(cause) && (response.status >= 500 || Cause.hasInterrupts(cause.value))
           ? Exit.failCause(cause.value)
-          : responseSpanExit(request, response)
+          : responseSpanExit(fiber, request, response)
       } else {
         response = exit.value
-        spanExit = responseSpanExit(request, response)
+        spanExit = responseSpanExit(fiber, request, response)
       }
       if (span.sampled) {
         span.attribute("http.request.method", request.method)
@@ -309,25 +357,133 @@ export const tracer: <E, R>(
 )
 
 /**
- * Middleware that trusts `X-Forwarded-Host` and `X-Forwarded-For`, updating the request host header and remote address.
+ * Options for `xForwardedHeaders`.
+ *
+ * **Details**
+ *
+ * `trustedProxies` is a list of networks or a predicate that decides whether an
+ * address belongs to a proxy you operate. IPv4-mapped IPv6 addresses are
+ * converted to IPv4 before matching.
  *
  * @stability unstable
  * @category proxying
  * @since 4.0.0
  */
-export const xForwardedHeaders = make((httpApp) =>
-  Effect.updateService(httpApp, HttpServerRequest, (request) =>
-    request.headers["x-forwarded-host"]
-      ? request.modify({
-        headers: Headers.set(
-          request.headers,
-          "host",
-          request.headers["x-forwarded-host"]
-        ),
-        remoteAddress: Option.fromNullishOr(request.headers["x-forwarded-for"]?.split(",")[0].trim())
-      })
-      : request)
-)
+export interface TrustedProxyOptions {
+  readonly trustedProxies: ReadonlyArray<IpNetwork.IpNetwork> | Predicate<NetAddress.IpAddress>
+}
+
+/**
+ * Creates middleware that applies `X-Forwarded-For`, `X-Forwarded-Host`, and
+ * `X-Forwarded-Proto` sent by trusted proxies.
+ *
+ * **When to use**
+ *
+ * Use when the app runs behind proxies that append to `X-Forwarded-For`, such
+ * as most load balancers and TLS terminators.
+ *
+ * **Details**
+ *
+ * Headers are ignored unless the original transport peer
+ * (`request.peerAddress`) is trusted. `X-Forwarded-For` is then walked from
+ * the right, skipping trusted proxies. The first untrusted address becomes
+ * `remoteAddress`. When every address is trusted, the leftmost one is used. An
+ * entry that is not an IP address, such as `unknown`, stops the walk and
+ * leaves the request unchanged.
+ *
+ * `X-Forwarded-Host` and `X-Forwarded-Proto` are only used when they list one
+ * value per `X-Forwarded-For` entry; the value at the selected position
+ * replaces the `host` header and sets `protocol` (`http` or `https`), which
+ * `HttpServerRequest.toURL` uses. Otherwise the transport values are kept.
+ *
+ * `request.peerAddress` keeps the transport peer after `remoteAddress` is
+ * replaced.
+ *
+ * **Example** (Reading the client address behind a load balancer)
+ *
+ * ```ts import.meta.vitest
+ * import { Effect, Option } from "effect"
+ * import { HttpMiddleware, HttpServerRequest, HttpServerResponse } from "effect/http"
+ * import { IpNetwork } from "effect/net"
+ *
+ * const app = HttpServerRequest.HttpServerRequest.use((request) =>
+ *   Effect.succeed(HttpServerResponse.text(Option.getOrElse(request.remoteAddress, () => "unknown")))
+ * ).pipe(
+ *   HttpMiddleware.xForwardedHeaders({
+ *     trustedProxies: [IpNetwork.fromStringUnsafe("10.0.0.0/8")]
+ *   })
+ * )
+ *
+ * // The load balancer at 10.0.0.1 appended the client address to a spoofed entry
+ * const request = HttpServerRequest.fromWeb(
+ *   new Request("http://app.test/", { headers: { "x-forwarded-for": "6.6.6.6, 198.51.100.7" } })
+ * ).modify({ remoteAddress: Option.some("10.0.0.1") })
+ *
+ * const response = await Effect.runPromise(
+ *   Effect.provideService(app, HttpServerRequest.HttpServerRequest, request)
+ * )
+ * await HttpServerResponse.toWeb(response).text() // => "198.51.100.7"
+ * ```
+ *
+ * @stability unstable
+ * @category proxying
+ * @since 4.0.0
+ */
+export const xForwardedHeaders = (options: TrustedProxyOptions): <E, R>(
+  httpApp: Effect.Effect<HttpServerResponse, E, HttpServerRequest | R>
+) => Effect.Effect<HttpServerResponse, E, HttpServerRequest | R> => {
+  const { trustedProxies } = options
+  const isTrusted: Predicate<NetAddress.IpAddress> = typeof trustedProxies === "function"
+    ? trustedProxies
+    : (address) => trustedProxies.some((network) => IpNetwork.contains(network, address))
+  return make((httpApp) =>
+    Effect.updateService(httpApp, HttpServerRequest, (request) => applyXForwarded(request, isTrusted))
+  )
+}
+
+const applyXForwarded = (request: HttpServerRequest, isTrusted: Predicate<NetAddress.IpAddress>): HttpServerRequest => {
+  const peer = parseForwardedAddress(Option.getOrUndefined(request.peerAddress))
+  if (peer === undefined || !isTrusted(peer)) return request
+  const addresses = splitList(request.headers["x-forwarded-for"])
+  if (addresses === undefined) return request
+  for (let index = addresses.length - 1; index >= 0; index--) {
+    const address = parseForwardedAddress(addresses[index])
+    if (address === undefined) return request
+    if (index > 0 && isTrusted(address)) continue
+    const host = alignedValue(request.headers["x-forwarded-host"], addresses.length, index)
+    const protocol = alignedValue(request.headers["x-forwarded-proto"], addresses.length, index)?.toLowerCase()
+    return request.modify({
+      remoteAddress: Option.some(NetAddress.formatIp(address)),
+      peerAddress: request.peerAddress,
+      ...(host !== undefined && isValidHost(host) ? { headers: Headers.set(request.headers, "host", host) } : {}),
+      ...(protocol === "http" || protocol === "https" ? { protocol } : {})
+    })
+  }
+  return request
+}
+
+const splitList = (value: string | undefined): Array<string> | undefined => value?.split(",").map((_) => _.trim())
+
+// Host and proto lists are only associated with a hop when they have one value
+// per `X-Forwarded-For` entry.
+const alignedValue = (header: string | undefined, length: number, index: number): string | undefined => {
+  const values = splitList(header)
+  return values?.length === length ? values[index] : undefined
+}
+
+const parseForwardedAddress = (input: string | undefined): NetAddress.IpAddress | undefined => {
+  if (input === undefined) return undefined
+  const ip = NetAddress.ipFromString(input.startsWith("[") && input.endsWith("]") ? input.slice(1, -1) : input)
+  if (Result.isSuccess(ip)) return NetAddress.toCanonical(ip.success)
+  const inet = NetAddress.inetAddressFromString(input)
+  return Result.isSuccess(inet) ? NetAddress.toCanonical(inet.success.address) : undefined
+}
+
+const hostShape = /^(?:\[[0-9a-f:.]+\]|[a-z0-9._-]+)(?::\d{1,5})?$/i
+
+// The shape check rules out paths, userinfo and lists; the URL parser rejects
+// invalid IP literals and out-of-range ports, matching what `toURL` accepts.
+const isValidHost = (host: string): boolean => hostShape.test(host) && URL.canParse(`http://${host}`)
 
 /**
  * Middleware that parses the current request URL's search parameters and provides them as `ParsedSearchParams`.
@@ -381,8 +537,8 @@ export const cors = (options?: {
     : (origin: string) => (opts.allowedOrigins as ReadonlyArray<string>).includes(origin)
 
   const allowOrigin = typeof opts.allowedOrigins === "function" || opts.allowedOrigins.length > 1
-    ? ((originHeader: string): ReadonlyRecord<string, string> => {
-      if (!isAllowedOrigin(originHeader)) return { vary: "Origin" }
+    ? ((originHeader: string | undefined): ReadonlyRecord<string, string> => {
+      if (originHeader === undefined || !isAllowedOrigin(originHeader)) return { vary: "Origin" }
       return {
         "access-control-allow-origin": originHeader,
         vary: "Origin"

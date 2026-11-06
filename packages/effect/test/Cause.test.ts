@@ -631,6 +631,17 @@ describe("Cause", () => {
       assert.throws(() => Cause.prettyErrors(Cause.fail(error)), /stack getter/)
       assert.strictEqual(Error.stackTraceLimit, limit)
     })
+
+    it("stops at a cyclic Error cause", () => {
+      const a = new Error("a")
+      const b = new Error("b", { cause: a })
+      a.cause = b
+      const [error] = Cause.prettyErrors(Cause.fail(a))
+      assert.strictEqual(error.message, "a")
+      assert.ok(error.cause instanceof Error)
+      assert.strictEqual(error.cause.message, "b")
+      assert.strictEqual(error.cause.cause, undefined)
+    })
   })
 
   describe("pretty", () => {
@@ -692,6 +703,13 @@ describe("Cause", () => {
 
     it("does not render internal frames from map", () => {
       assertCleanStack(Effect.map(Effect.succeed(1), userCode))
+    })
+
+    // Bun's Suspend tail call drops the frame the cleaner cuts at, so only V8
+    // runtimes are covered
+    it.skipIf(process.versions.bun !== undefined)("keeps the throw location of defects from sync and suspend", () => {
+      assertCleanStack(Effect.sync(userCode))
+      assertCleanStack(Effect.suspend(userCode))
     })
   })
 

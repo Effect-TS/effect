@@ -6,6 +6,7 @@
 import * as OpenApiGenerator from "@effect/openapi-generator/OpenApiGenerator"
 import * as OpenApiPatch from "@effect/openapi-generator/OpenApiPatch"
 import * as Arr from "effect/Array"
+import * as Console from "effect/Console"
 import * as Context from "effect/Context"
 import * as Data from "effect/Data"
 import * as Effect from "effect/Effect"
@@ -556,12 +557,66 @@ export const layer: Layer.Layer<
     )
   })
 
+  const filterPaths = (spec: Schema.Json, prefixes: ReadonlyArray<string> | undefined): Schema.Json => {
+    const { paths } = spec as { readonly paths?: Record<string, Schema.Json> }
+    if (prefixes === undefined || paths === undefined) {
+      return spec
+    }
+    return {
+      ...spec as Record<string, Schema.Json>,
+      paths: Record.filter(paths, (_, path) => prefixes.some((prefix) => path.startsWith(prefix)))
+    }
+  }
+
+  // Replaces an operation's 4xx and 5xx responses with one `4XX` response that uses the error
+  // envelope component they share. Statuses that narrow the envelope inline are dropped, so any
+  // envelope decodes and the status code decides the error.
+  const collapseOperationErrors = (operation: Schema.Json, method: string, path: string): Schema.Json => {
+    const { responses } = operation as { readonly responses?: Record<string, Schema.Json> }
+    if (responses === undefined) return operation
+    const errors = Object.keys(responses).filter((status) => /^[45]/.test(status))
+    if (errors.length === 0) return operation
+    const refs = new Set(
+      errors
+        .map((status) => (responses[status] as any)?.content?.["application/json"]?.schema?.$ref)
+        .filter(Predicate.isString)
+    )
+    if (refs.size !== 1) {
+      throw new Error(`Expected one shared error envelope for ${method.toUpperCase()} ${path}, found ${refs.size}`)
+    }
+    return {
+      ...operation as Record<string, Schema.Json>,
+      responses: {
+        ...Record.filter(responses, (_, status) => !errors.includes(status)),
+        "4XX": { description: "Error", content: { "application/json": { schema: { $ref: [...refs][0] } } } }
+      }
+    }
+  }
+
+  const collapseErrorResponses = (spec: Schema.Json): Schema.Json => {
+    const { paths } = spec as { readonly paths?: Record<string, Record<string, Schema.Json>> }
+    if (paths === undefined) return spec
+    return {
+      ...spec as Record<string, Schema.Json>,
+      paths: Record.map(
+        paths,
+        (item, path) => Record.map(item, (operation, method) => collapseOperationErrors(operation, method, path))
+      )
+    }
+  }
+
   const generate = Effect.fn("generate")(function*(
     provider: DiscoveredProvider,
     spec: unknown
   ) {
-    // Apply patches if any are configured
-    const patchedSpec = yield* applyPatches(provider, spec as Schema.Json)
+    // Apply patches if any are configured, then keep only the included paths
+    let patchedSpec = filterPaths(yield* applyPatches(provider, spec as Schema.Json), provider.config.includePaths)
+    if (provider.config.collapseErrorResponses) {
+      patchedSpec = yield* Effect.try({
+        try: () => collapseErrorResponses(patchedSpec),
+        catch: (cause) => new GenerationError({ provider: provider.name, cause })
+      })
+    }
 
     const excludeAnnotations = provider.config.excludeAnnotationsList
     const disableAdditionalProperties = provider.config.shouldDisableAdditionalProperties
@@ -576,15 +631,26 @@ export const layer: Layer.Layer<
       return disableAdditionalProperties && shouldClose(out) ? closeObject(out) : out
     }
 
-    return yield* openApiGen
+    const warnings: Array<OpenApiGenerator.OpenApiGeneratorWarning> = []
+    const code = yield* openApiGen
       .generate(patchedSpec as unknown as Parameters<typeof openApiGen.generate>[0], {
         name: provider.config.clientName,
         format: provider.config.isTypeOnly ? "httpclient-type-only" : "httpclient",
-        onEnter
+        includeSchemas: provider.config.includeSchemas,
+        onEnter,
+        onWarning: (warning) => {
+          warnings.push(warning)
+        }
       })
       .pipe(
         Effect.mapError((cause) => new GenerationError({ provider: provider.name, cause }))
       )
+    yield* Effect.forEach(
+      warnings,
+      (warning) => Console.error(OpenApiGenerator.formatWarning(warning)),
+      { discard: true }
+    )
+    return code
   })
 
   return { generate }

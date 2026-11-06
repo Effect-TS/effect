@@ -772,6 +772,14 @@ describe("Serializers", () => {
         })
       })
 
+      it("Record(String, UndefinedOr(Number))", async () => {
+        const schema = Schema.Record(Schema.String, Schema.UndefinedOr(Schema.Number))
+        const asserts = new TestSchema.Asserts(Schema.toCodecJson(schema))
+
+        await asserts.encoding().succeed({ a: 1, b: undefined }, { a: 1, b: null })
+        await asserts.decoding().succeed({ a: 1, b: null }, { a: 1, b: undefined })
+      })
+
       it("Record(Symbol, Date)", async () => {
         const schema = Schema.Record(Schema.Symbol, Schema.Date)
         const asserts = new TestSchema.Asserts(Schema.toCodecJson(schema))
@@ -887,6 +895,21 @@ describe("Serializers", () => {
           ])
           await decoding.succeed([], [])
           await decoding.succeed([null], [undefined])
+        })
+
+        it("omitted trailing optional elements", async () => {
+          const schema = Schema.Tuple([
+            Schema.String,
+            Schema.OptionFromOptionalKey(Schema.String),
+            Schema.String.pipe(Schema.withDecodingDefaultKey(Effect.succeed("c"), { encodingStrategy: "omit" }))
+          ])
+          const asserts = new TestSchema.Asserts(Schema.toCodecJson(schema))
+
+          for (const concurrency of [1, "unbounded"] as const) {
+            const encoding = asserts.encoding({ parseOptions: { concurrency } })
+            await encoding.succeed(["a", Option.some("b"), "c"], ["a", "b"])
+            await encoding.succeed(["a", Option.none(), "c"], ["a"])
+          }
         })
       })
 
@@ -1005,7 +1028,7 @@ describe("Serializers", () => {
         await decoding.succeed({ a: 0 }, new A({ a: 0 }))
       })
 
-      it("Error", async () => {
+      it("Error class", async () => {
         class E extends Schema.Error<E>("E")({
           a: Schema.Finite
         }) {}
@@ -1029,7 +1052,7 @@ describe("Serializers", () => {
         )
       })
 
-      it("Error", async () => {
+      it("ErrorInstance", async () => {
         const schema = Schema.ErrorInstance()
         const asserts = new TestSchema.Asserts(Schema.toCodecJson(schema))
 
@@ -1711,6 +1734,23 @@ describe("Serializers", () => {
   })
 
   describe("toCodecStringTree", () => {
+    it("shares a named reference across required and optional keys when codec derivation rebuilds it", () => {
+      const Value = Schema.Struct({ value: Schema.Unknown }).annotate({ identifier: "Value" })
+      const schema = Schema.Struct({ required: Value, optional: Schema.optionalKey(Value) })
+      const document = Schema.toRepresentation(Schema.toCodecStringTree(schema))
+
+      assert.deepStrictEqual(Object.keys(document.references), ["Value"])
+      assert.deepStrictEqual(document.representation, {
+        _tag: "Objects",
+        propertySignatures: [
+          { name: "required", type: { _tag: "Reference", $ref: "Value" }, isOptional: false, isMutable: false },
+          { name: "optional", type: { _tag: "Reference", $ref: "Value" }, isOptional: true, isMutable: false }
+        ],
+        indexSignatures: [],
+        checks: []
+      })
+    })
+
     it("exposes the source schema", () => {
       const schema = Schema.FiniteFromString
       const serializer = Schema.toCodecStringTree(schema)
@@ -2568,7 +2608,7 @@ Expected "Infinity" | "-Infinity" | "NaN"`
         await decoding.succeed({ a: "0" }, new A({ a: 0 }))
       })
 
-      it("Error", async () => {
+      it("Error class", async () => {
         class E extends Schema.Error<E>("E")({
           a: Schema.Finite
         }) {}
@@ -2592,7 +2632,7 @@ Expected "Infinity" | "-Infinity" | "NaN"`
         )
       })
 
-      it("Error", async () => {
+      it("ErrorInstance", async () => {
         const schema = Schema.ErrorInstance()
         const asserts = new TestSchema.Asserts(Schema.toCodecStringTree(schema))
 
@@ -2733,20 +2773,14 @@ Expected "Infinity" | "-Infinity" | "NaN"`
       })
 
       it("ReadonlySet", async () => {
-        const schema = Schema.ReadonlySet(Schema.Option(Schema.Date))
-        const asserts = new TestSchema.Asserts(Schema.toCodecJson(schema))
+        const schema = Schema.ReadonlySet(Schema.Option(Schema.Finite))
+        const asserts = new TestSchema.Asserts(Schema.toCodecStringTree(schema))
 
         const encoding = asserts.encoding()
-        await encoding.succeed(new Set([Option.some(new Date("2021-01-01"))]), [{
-          _tag: "Some",
-          value: "2021-01-01T00:00:00.000Z"
-        }])
+        await encoding.succeed(new Set([Option.some(1)]), [{ _tag: "Some", value: "1" }])
 
         const decoding = asserts.decoding()
-        await decoding.succeed(
-          [{ _tag: "Some", value: "2021-01-01T00:00:00.000Z" }],
-          new Set([Option.some(new Date("2021-01-01"))])
-        )
+        await decoding.succeed([{ _tag: "Some", value: "1" }], new Set([Option.some(1)]))
       })
 
       it("ReadonlyMap", async () => {

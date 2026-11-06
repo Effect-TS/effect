@@ -94,14 +94,14 @@ function toBaseStandardJSONSchemaV1(
 ): JsonSchema.JsonSchema {
   const doc2020_12 = toJsonSchemaDocument(ast)
   if (target === "draft-2020-12") {
-    const schema = doc2020_12.schema
+    const schema: JsonSchema.JsonSchema = { $schema: JsonSchema.META_SCHEMA_URI_DRAFT_2020_12, ...doc2020_12.schema }
     if (Object.keys(doc2020_12.definitions).length > 0) {
       schema.$defs = doc2020_12.definitions
     }
     return schema
   } else if (target === "draft-07") {
     const doc07 = JsonSchema.toDocumentDraft07(doc2020_12)
-    const schema = doc07.schema
+    const schema: JsonSchema.JsonSchema = { $schema: JsonSchema.META_SCHEMA_URI_DRAFT_07, ...doc07.schema }
     if (Object.keys(doc07.definitions).length > 0) {
       schema.definitions = doc07.definitions
     }

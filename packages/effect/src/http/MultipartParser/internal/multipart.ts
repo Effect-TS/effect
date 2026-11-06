@@ -160,36 +160,21 @@ export function make({
         }
 
         const contentType = CT.parse(result.headers["content-type"] as string)
-        const contentDisposition = CT.parse(
-          result.headers["content-disposition"] as string,
-          true
-        )
+        const contentDisposition = CT.parseDisposition(result.headers["content-disposition"])
 
         if (
-          "form-data" === contentDisposition.value &&
-          !("name" in contentDisposition.parameters)
+          contentDisposition === undefined ||
+          ("form-data" === contentDisposition.value && !("name" in contentDisposition.parameters))
         ) {
           skipBody()
           return onError(errInvalidDisposition)
         }
 
-        let encodedFilename: string | undefined
-        if ("filename*" in contentDisposition.parameters) {
-          const parts = contentDisposition.parameters["filename*"].split("''")
-          if (parts.length === 2) {
-            try {
-              encodedFilename = decodeURIComponent(parts[1])
-            } catch {
-              encodedFilename = parts[1]
-            }
-          }
-        }
-
         state.info = {
           name: contentDisposition.parameters.name ?? "",
-          filename: encodedFilename ?? contentDisposition.parameters.filename,
+          filename: contentDisposition.filename,
           contentType: contentType.value === ""
-            ? contentDisposition.parameters.filename !== undefined
+            ? contentDisposition.filename !== undefined
               ? "application/octet-stream"
               : "text/plain"
             : contentType.value,

@@ -5,6 +5,7 @@ import { HttpBody, HttpClient, HttpClientResponse } from "effect/http"
 import { OtlpSerialization, OtlpTracer } from "effect/observability"
 import { TestClock } from "effect/testing"
 import type { Span } from "effect/Tracer"
+import { collectGarbage } from "./utils/gc.ts"
 
 const getParent = (span: Tracer.Span): Tracer.AnySpan => {
   if (span.parent._tag === "None") {
@@ -230,6 +231,42 @@ describe("Tracer", () => {
       }))
   })
 
+  describe("ended spans", () => {
+    it.effect("ignores mutations after end", () =>
+      Effect.gen(function*() {
+        const span = (yield* Effect.makeSpan("A")) as Tracer.NativeSpan
+        span.end(1n, Exit.void)
+        const ended = span.status
+
+        span.attribute("late", true)
+        span.event("late", 2n)
+        span.end(3n, Exit.fail("late"))
+
+        strictEqual(span.status, ended)
+        strictEqual(span.attributes.has("late"), false)
+        deepStrictEqual(span.events, [])
+      }))
+
+    it.effect.skipIf(process.versions.bun !== undefined || process.versions.deno !== undefined)(
+      "are not retained by finished fibers",
+      () =>
+        Effect.gen(function*() {
+          let fiber: Fiber.Fiber<void> | undefined
+          let reference: WeakRef<object> | undefined
+          yield* Effect.gen(function*() {
+            const value = {}
+            reference = new WeakRef(value)
+            fiber = yield* Effect.forkChild(Effect.void.pipe(Effect.withSpan("child")))
+            yield* Fiber.join(fiber)
+            return value
+          }).pipe(Effect.withSpan("parent"), Effect.asVoid)
+          yield* collectGarbage
+          assert.isDefined(fiber)
+          assert.isUndefined(reference!.deref())
+        })
+    )
+  })
+
   describe("Effect.annotateSpans", () => {
     it.effect("should allow adding span attributes as key/value pairs", () =>
       Effect.gen(function*() {
@@ -340,7 +377,7 @@ describe("Tracer", () => {
   })
 
   describe("OtlpTracer span status", () => {
-    const exportSpan = (exit: Exit.Exit<unknown, unknown>) => {
+    const exportSpan = (exit: Exit.Exit<unknown, unknown>, afterEnd?: (span: Span) => void) => {
       const exported: Array<OtlpTracer.TraceData> = []
       const layer = makeOtlpTracerLayer(Layer.succeed(OtlpSerialization.OtlpSerialization, {
         traces: (data) => {
@@ -353,6 +390,7 @@ describe("Tracer", () => {
       return Effect.gen(function*() {
         const span = yield* Effect.makeSpan("test")
         span.end(span.status.startTime + 1n, exit)
+        afterEnd?.(span)
       }).pipe(
         Effect.provide(layer),
         Effect.map(() => {
@@ -379,6 +417,12 @@ describe("Tracer", () => {
         deepStrictEqual(span.status, { code: 0 })
         deepStrictEqual(span.events, [])
         deepStrictEqual(span.attributes, [{ key: "effect.fiber.interrupted", value: { boolValue: true } }])
+      }))
+
+    it.effect("exports a span once when end is called again", () =>
+      Effect.gen(function*() {
+        const span = yield* exportSpan(Exit.void, (span) => span.end(span.status.startTime + 2n, Exit.fail("late")))
+        deepStrictEqual(span.status, { code: 1 })
       }))
   })
 

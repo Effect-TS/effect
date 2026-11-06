@@ -5,6 +5,16 @@
  * upgrades fail. Serve them with `NodeHttpServer` from
  * `@effect/platform-node`, which runs on Deno's `node:http`.
  *
+ * Over HTTP/1.1, `Deno.serve` can stop delivering the request body once the
+ * handler has returned a streamed response, so a handler that streams its
+ * response while still reading the request payload can stall
+ * (denoland/deno#36966).
+ *
+ * `Deno.serve` negotiates HTTP/2 on its own: over TLS with browsers, and in
+ * cleartext with clients that request it. Deno 2.8.3 to 2.9.2 panic and exit
+ * when an HTTP/2 client cancels a request while its handler is still running
+ * (denoland/deno#36053), so this package requires Deno 2.9.3 or newer.
+ *
  * @stability unstable
  * @since 4.0.0
  */
@@ -81,9 +91,15 @@ export const make = Effect.fnUntraced(function*(
 ) {
   const scope = yield* Effect.scope
   type Handler = (request: Request, info: Deno.ServeHandlerInfo<Deno.NetAddr | Deno.UnixAddr>) => Promise<Response>
-  const notFound: Handler = (_request, _info) => Promise.resolve(new Response("not found", { status: 404 }))
-  const handlerStack: Array<Handler> = [notFound]
-  let currentHandler = notFound
+  const unavailable: Handler = (_request, _info) =>
+    Promise.resolve(
+      new Response("service unavailable", {
+        status: 503,
+        headers: { "cache-control": "no-store", "retry-after": "1" }
+      })
+    )
+  const handlerStack: Array<Handler> = [unavailable]
+  let currentHandler = unavailable
   const {
     disablePreemptiveShutdown,
     gracefulShutdownTimeout,
@@ -160,7 +176,7 @@ export const make = Effect.fnUntraced(function*(
       yield* Scope.addFinalizerExit(serveScope, () => {
         const index = handlerStack.lastIndexOf(handler)
         if (index !== -1) handlerStack.splice(index, 1)
-        currentHandler = handlerStack[handlerStack.length - 1] ?? notFound
+        currentHandler = handlerStack[handlerStack.length - 1]
         return preemptiveShutdown
       })
       handlerStack.push(handler)
@@ -317,6 +333,8 @@ export const layerConfig = (
     layerHttpServices
   )
 
+const formDecoder = new TextDecoder("utf-8", { ignoreBOM: true })
+
 class DenoServerRequest extends Inspectable.Class implements ServerRequest.HttpServerRequest {
   readonly [ServerRequest.TypeId]: typeof ServerRequest.TypeId
   readonly [IncomingMessage.TypeId]: typeof IncomingMessage.TypeId
@@ -327,6 +345,8 @@ class DenoServerRequest extends Inspectable.Class implements ServerRequest.HttpS
   public resolve: (response: Response) => void
   public headersOverride?: Headers.Headers | undefined
   private remoteAddressOverride?: Option.Option<string> | undefined
+  private peerAddressOverride?: Option.Option<string> | undefined
+  readonly protocol: "http" | "https" | undefined
 
   constructor(
     source: Request,
@@ -335,7 +355,9 @@ class DenoServerRequest extends Inspectable.Class implements ServerRequest.HttpS
     url: string,
     websocketOptions: Deno.UpgradeWebSocketOptions | undefined,
     headersOverride?: Headers.Headers,
-    remoteAddressOverride?: Option.Option<string>
+    remoteAddressOverride?: Option.Option<string>,
+    peerAddressOverride?: Option.Option<string>,
+    protocol?: "http" | "https"
   ) {
     super()
     this[ServerRequest.TypeId] = ServerRequest.TypeId
@@ -347,6 +369,8 @@ class DenoServerRequest extends Inspectable.Class implements ServerRequest.HttpS
     this.websocketOptions = websocketOptions
     this.headersOverride = headersOverride
     this.remoteAddressOverride = remoteAddressOverride
+    this.peerAddressOverride = peerAddressOverride
+    this.protocol = protocol
   }
   toJSON(): unknown {
     return IncomingMessage.inspect(this, {
@@ -359,6 +383,8 @@ class DenoServerRequest extends Inspectable.Class implements ServerRequest.HttpS
     readonly url?: string | undefined
     readonly headers?: Headers.Headers | undefined
     readonly remoteAddress?: Option.Option<string> | undefined
+    readonly peerAddress?: Option.Option<string> | undefined
+    readonly protocol?: "http" | "https" | undefined
   }) {
     return new DenoServerRequest(
       this.source,
@@ -367,7 +393,9 @@ class DenoServerRequest extends Inspectable.Class implements ServerRequest.HttpS
       options.url ?? this.url,
       this.websocketOptions,
       options.headers ?? this.headersOverride,
-      "remoteAddress" in options ? options.remoteAddress : this.remoteAddressOverride
+      "remoteAddress" in options ? options.remoteAddress : this.remoteAddressOverride,
+      options.peerAddress ?? this.peerAddressOverride,
+      options.protocol ?? this.protocol
     )
   }
   get method(): HttpMethod {
@@ -380,6 +408,9 @@ class DenoServerRequest extends Inspectable.Class implements ServerRequest.HttpS
     return this.remoteAddressOverride ?? (this.remoteAddr.transport === "tcp"
       ? Option.some(this.remoteAddr.hostname)
       : Option.none())
+  }
+  get peerAddress(): Option.Option<string> {
+    return this.peerAddressOverride ?? this.remoteAddress
   }
   get headers(): Headers.Headers {
     if (this.headersOverride === undefined) {
@@ -418,15 +449,7 @@ class DenoServerRequest extends Inspectable.Class implements ServerRequest.HttpS
 
   private textEffect: Effect.Effect<string, Error.HttpServerError> | undefined
   get text(): Effect.Effect<string, Error.HttpServerError> {
-    return this.textEffect ??= Effect.runSync(Effect.cached(
-      Effect.tryPromise({
-        try: () => this.source.text(),
-        catch: (cause) =>
-          new Error.HttpServerError({
-            reason: new Error.RequestParseError({ request: this, cause })
-          })
-      })
-    ))
+    return this.textEffect ??= Effect.map(this.arrayBuffer, (buffer) => new TextDecoder().decode(buffer))
   }
   get json(): Effect.Effect<Schema.Json, Error.HttpServerError> {
     return Effect.flatMap(this.text, (_) =>
@@ -439,9 +462,10 @@ class DenoServerRequest extends Inspectable.Class implements ServerRequest.HttpS
       }))
   }
   get urlParamsBody(): Effect.Effect<UrlParams.UrlParams, Error.HttpServerError> {
-    return Effect.flatMap(this.text, (_) =>
+    return Effect.flatMap(this.arrayBuffer, (bytes) =>
       Effect.try({
-        try: () => UrlParams.fromInput(new URLSearchParams(_)),
+        // A leading "?" is form data; URLSearchParams would drop it as a query prefix.
+        try: () => UrlParams.fromInput(new URLSearchParams(formDecoder.decode(bytes).replace(/^\?/, "%3F"))),
         catch: (cause) =>
           new Error.HttpServerError({
             reason: new Error.RequestParseError({ request: this, cause })
@@ -467,16 +491,30 @@ class DenoServerRequest extends Inspectable.Class implements ServerRequest.HttpS
   get arrayBuffer(): Effect.Effect<ArrayBuffer, Error.HttpServerError> {
     if (this.arrayBufferEffect) return this.arrayBufferEffect
     this.arrayBufferEffect = Effect.runSync(Effect.cached(
-      Effect.tryPromise({
-        try: () => this.source.arrayBuffer(),
-        catch: (cause) =>
-          new Error.HttpServerError({
-            reason: new Error.RequestParseError({ request: this, cause })
-          })
+      // Reuse the Web reader so that MaxBodySize is enforced.
+      Effect.mapError(ServerRequest.fromWeb(this.source).arrayBuffer, (error) => {
+        if (error.reason._tag !== "RequestParseError") return error
+        const { cause, reason } = error.reason
+        return new Error.HttpServerError({
+          reason: new Error.RequestParseError({ request: this, cause, ...(reason && { reason }) })
+        })
       })
     ))
-    this.textEffect = Effect.map(this.arrayBufferEffect, (_) => new TextDecoder().decode(_))
     return this.arrayBufferEffect
+  }
+
+  upgradeWith(
+    options: { readonly headers?: Headers.Input | undefined }
+  ): Effect.Effect<Socket.Socket, Error.HttpServerError> {
+    if (Object.keys(Headers.fromInput(options.headers)).length === 0) return this.upgrade
+    return Effect.fail(
+      new Error.HttpServerError({
+        reason: new Error.InternalError({
+          request: this,
+          description: "WebSocket upgrades do not support custom response headers"
+        })
+      })
+    )
   }
 
   get upgrade(): Effect.Effect<Socket.Socket, Error.HttpServerError> {

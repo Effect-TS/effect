@@ -1,6 +1,6 @@
 import { LibsqlClient } from "@effect/sql-libsql"
 import { assert, describe, it, layer } from "@effect/vitest"
-import { Cause, Effect, Exit, Fiber, Layer, Option } from "effect"
+import { Cause, Deferred, Effect, Exit, Fiber, Layer, Option } from "effect"
 import * as Reactivity from "effect/reactivity/Reactivity"
 import { SqlError } from "effect/sql/SqlError"
 import { LibsqlContainer } from "./util.ts"
@@ -165,6 +165,68 @@ describe("Client", () => {
         assert.deepStrictEqual(calls, ["rollback", "next body", "commit"])
       }).pipe(Effect.provide(Reactivity.layer)))
   }
+
+  it.effect("overlaps remote statements with each other and open transactions", () =>
+    Effect.gen(function*() {
+      const calls: Array<string> = []
+      const statement = Promise.withResolvers<{ rows: Array<unknown> }>()
+      const transaction = {
+        execute: () => {
+          calls.push("transaction execute")
+          return Promise.resolve({ rows: [] })
+        },
+        commit: () => Promise.resolve(),
+        rollback: () => Promise.resolve()
+      }
+      const liveClient = {
+        protocol: "http",
+        execute: () => {
+          calls.push("execute")
+          return statement.promise
+        },
+        transaction: () => Promise.resolve(transaction)
+      }
+      const client = yield* LibsqlClient.make({ liveClient: liveClient as any })
+      const open = yield* Deferred.make<void>()
+      const release = yield* Deferred.make<void>()
+      const tx = yield* Effect.forkChild(client.withTransaction(
+        Deferred.succeed(open, undefined).pipe(Effect.andThen(Deferred.await(release)))
+      ))
+      yield* Deferred.await(open)
+
+      const statements = yield* Effect.forkChild(
+        Effect.all([client`SELECT 1`, client`SELECT 2`], { concurrency: "unbounded" })
+      )
+      yield* Effect.yieldNow
+      assert.deepStrictEqual(calls, ["execute", "execute"])
+
+      statement.resolve({ rows: [] })
+      yield* Fiber.join(statements)
+      yield* Deferred.succeed(release, undefined)
+      yield* Fiber.join(tx)
+    }).pipe(Effect.provide(Reactivity.layer)))
+
+  it.effect("serializes local statements behind open transactions", () =>
+    Effect.gen(function*() {
+      const sql = yield* LibsqlClient.make({ url: ":memory:" })
+      yield* sql`CREATE TABLE serialized (value INTEGER)`
+      const open = yield* Deferred.make<void>()
+      const release = yield* Deferred.make<void>()
+      const tx = yield* Effect.forkChild(sql.withTransaction(
+        sql`INSERT INTO serialized VALUES (1)`.pipe(
+          Effect.andThen(Deferred.succeed(open, undefined)),
+          Effect.andThen(Deferred.await(release))
+        )
+      ))
+      yield* Deferred.await(open)
+
+      const read = yield* Effect.forkChild(sql`SELECT value FROM serialized`)
+      yield* Effect.yieldNow
+      yield* Deferred.succeed(release, undefined)
+      yield* Fiber.join(tx)
+
+      assert.deepStrictEqual(yield* Fiber.join(read), [{ value: 1 }])
+    }).pipe(Effect.provide(Reactivity.layer)))
 
   // Each test recreates the same tables.
   layer(LibsqlContainer.layerClient, { timeout: "30 seconds", concurrent: false })("shared tables", (it) => {

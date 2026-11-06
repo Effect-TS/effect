@@ -125,7 +125,8 @@ export interface HandlerContext<Tool extends Tool.Any> {
    * **Details**
    *
    * Preliminary results are streamed to the caller before the handler completes,
-   * enabling real-time progress updates for lengthy operations.
+   * enabling real-time progress updates for lengthy operations. Results are
+   * buffered without limit unless the caller provides `PreliminaryBuffer`.
    */
   readonly preliminary: (result: Tool.Success<Tool>) => Effect.Effect<void>
 }
@@ -216,9 +217,9 @@ export interface WithHandler<in out Tools extends Record<string, Tool.Any>> {
      */
     name: Name,
     /**
-     * Encoded parameters to decode and pass to the tool handler.
+     * JSON-encoded parameters to decode and pass to the tool handler.
      */
-    params: Tool.ParametersEncoded<Tools[Name]>,
+    params: Schema.Json,
     /**
      * The unique identifier of the tool call.
      */
@@ -296,8 +297,104 @@ export const FailureOrigin = Context.Reference<Tool.FailureOrigin>("effect/ai/To
   defaultValue: () => "result"
 })
 
+/**
+ * Limits how many preliminary results `Toolkit.handle` buffers per tool call.
+ *
+ * **Details**
+ *
+ * Defaults to `"unbounded"`. Provide it as a positive integer around `handle`,
+ * or around a program that calls it, and `HandlerContext.preliminary` suspends
+ * once that many results are unconsumed. Any other value is a defect.
+ *
+ * The bound only applies to the stream returned by `handle`. Consume that
+ * stream while the handler runs; waiting for the handler before reading it
+ * deadlocks once the buffer fills. `LanguageModel` moves results into its own
+ * buffers, so the bound does not limit memory end to end there.
+ *
+ * **Example** (Bounding preliminary results)
+ *
+ * ```ts import.meta.vitest
+ * import { Effect, Schema, Stream } from "effect"
+ * import { Tool, Toolkit } from "effect/ai"
+ *
+ * const toolkit = Toolkit.make(Tool.make("Progress", { success: Schema.Number }))
+ *
+ * const program = Effect.gen(function*() {
+ *   const handlers = yield* toolkit
+ *   const stream = yield* handlers.handle("Progress", {}).pipe(
+ *     Effect.provideService(Toolkit.PreliminaryBuffer, 16)
+ *   )
+ *   const results = yield* Stream.runCollect(stream)
+ *   return results.length
+ * }).pipe(
+ *   Effect.provide(toolkit.toLayer({
+ *     Progress: Effect.fnUntraced(function*(_, ctx) {
+ *       for (let i = 0; i < 64; i++) yield* ctx.preliminary(i)
+ *       return 64
+ *     })
+ *   }))
+ * )
+ *
+ * await Effect.runPromise(program) // => 65
+ * ```
+ *
+ * @stability unstable
+ * @category services
+ * @since 4.1.0
+ */
+export const PreliminaryBuffer = Context.Reference<number | "unbounded">("effect/ai/Toolkit/PreliminaryBuffer", {
+  defaultValue: () => "unbounded"
+})
+
+/**
+ * Controls whether tool call arguments are recorded on the current span.
+ *
+ * **Details**
+ *
+ * Defaults to `false`: `Toolkit.handle` records only `gen_ai.tool.name` and,
+ * when a call id is given, `gen_ai.tool.call.id`. Provide `true` to also record
+ * the arguments as JSON in `gen_ai.tool.call.arguments`. `McpServer` reads the
+ * same setting for `tools/call` requests.
+ *
+ * **Gotchas**
+ *
+ * Arguments can contain user data. Only enable this where your traces may hold
+ * it.
+ *
+ * **Example** (Recording tool arguments)
+ *
+ * ```ts import.meta.vitest
+ * import { Layer } from "effect"
+ * import { Toolkit } from "effect/ai"
+ *
+ * export const RecordToolArgumentsLive = Layer.succeed(Toolkit.RecordToolArguments, true)
+ * ```
+ *
+ * @stability unstable
+ * @category services
+ * @since 4.1.3
+ */
+export const RecordToolArguments = Context.Reference<boolean>("effect/ai/Toolkit/RecordToolArguments", {
+  defaultValue: () => false
+})
+
+/**
+ * Formats tool arguments for the `gen_ai.tool.call.arguments` span attribute.
+ *
+ * @internal
+ */
+export const stringifyToolArguments = (params: unknown): string => {
+  try {
+    return JSON.stringify(params) ?? "null"
+  } catch {
+    return String(params)
+  }
+}
+
 const failureCause = <E>(error: E, origin: Tool.FailureOrigin): Cause.Cause<E> =>
   Cause.annotate(Cause.fail(error), Context.make(FailureOrigin, origin))
+
+const failureOrigin = (error: unknown): Tool.FailureOrigin => Schema.isSchemaError(error) ? "result" : "handler"
 
 const Proto = {
   ...Effectable.Prototype({
@@ -320,10 +417,10 @@ const Proto = {
         if (Predicate.isUndefined(schemas)) {
           const handler = services.mapUnsafe.get(tool.id)! as Tool.Handler<any>
           const decodeParameters = Schema.isSchema(tool.parametersSchema)
-            ? Schema.decodeUnknownEffect(tool.parametersSchema) as any
+            ? Schema.decodeUnknownEffect(Schema.toCodecJson(tool.parametersSchema)) as any
             : (u: unknown) => Effect.succeed(u)
-          const encodeSuccess = Schema.encodeUnknownEffect(tool.successSchema) as any
-          const encodeFailure = Schema.encodeUnknownEffect(Tool.failureResultSchema(tool)) as any
+          const encodeSuccess = Schema.encodeUnknownEffect(Schema.toCodecJson(tool.successSchema)) as any
+          const encodeFailure = Schema.encodeUnknownEffect(Schema.toCodecJson(Tool.failureResultSchema(tool))) as any
           const encodeResult = (u: unknown, isFailure: boolean) => isFailure ? encodeFailure(u) : encodeSuccess(u)
           schemas = {
             context: handler.context,
@@ -344,10 +441,13 @@ const Proto = {
       ) {
         const tool = Object.hasOwn(tools, name) ? tools[name] : undefined
 
-        yield* Effect.annotateCurrentSpan({
-          tool: name,
-          parameters: params
-        })
+        yield* Effect.annotateCurrentSpan("gen_ai.tool.name", name)
+        if (toolCallId !== undefined) {
+          yield* Effect.annotateCurrentSpan("gen_ai.tool.call.id", toolCallId)
+        }
+        if (yield* RecordToolArguments) {
+          yield* Effect.annotateCurrentSpan("gen_ai.tool.call.arguments", stringifyToolArguments(params))
+        }
 
         if (Predicate.isUndefined(tool)) {
           return yield* AiError.make({
@@ -402,11 +502,15 @@ const Proto = {
         }
         const decodedParams = decodedParamsResult.success
 
+        const capacity = yield* PreliminaryBuffer
+        if (capacity !== "unbounded" && !(Number.isInteger(capacity) && capacity > 0)) {
+          return yield* Effect.die(`Tool "${name}": PreliminaryBuffer must be a positive integer, got ${capacity}`)
+        }
         const queue = yield* Queue.make<{
           readonly result: any
           readonly isFailure: boolean
           readonly preliminary: boolean
-        }, Cause.Done>()
+        }, Cause.Done>(capacity === "unbounded" ? undefined : { capacity })
         const context: HandlerContext<any> = {
           toolCallId,
           preliminary: (result) =>
@@ -448,18 +552,33 @@ const Proto = {
         }
 
         return Stream.fromQueue(queue).pipe(
-          Stream.catch((error) => {
-            const normalizedError = normalizeError(error)
-            const failureOrigin: Tool.FailureOrigin = Schema.isSchemaError(error) ? "result" : "handler"
-            return tool.failureMode === "error"
-              ? Stream.failCause(failureCause(normalizedError, failureOrigin))
-              : Stream.succeed({ result: normalizedError, isFailure: true, failureOrigin, preliminary: false })
-          }),
+          tool.failureMode === "error"
+            ? Stream.catchCause((cause) =>
+              Stream.failCause(Cause.map(
+                Cause.fromReasons(cause.reasons.map((reason) =>
+                  Cause.isFailReason(reason)
+                    ? reason.annotate(Context.make(FailureOrigin, failureOrigin(reason.error)), { overwrite: true })
+                    : reason
+                )),
+                normalizeError
+              ))
+            )
+            : Stream.catch((error) =>
+              Stream.succeed({
+                result: normalizeError(error),
+                isFailure: true,
+                failureOrigin: failureOrigin(error),
+                preliminary: false
+              })
+            ),
           Stream.mapEffect(Effect.fnUntraced(function*(output) {
             const encodedResult = yield* encodeResult(output.result, output.isFailure)
-            return { ...output, encodedResult }
+            if (output.isFailure || output.preliminary || tool.toModelOutput === undefined) {
+              return { ...output, encodedResult }
+            }
+            return { ...output, encodedResult, modelOutput: tool.toModelOutput(output.result) }
           })),
-          Stream.onEnd(Fiber.interrupt(fiber))
+          Stream.ensuring(Fiber.interrupt(fiber))
         ) satisfies Stream.Stream<Tool.HandlerResult<any>, any>
       })
 

@@ -698,7 +698,8 @@ export const offer: {
  * Adds a message to the queue synchronously. Returns `false` without adding the
  * message if the queue is closing or done, or if it is full with a non-sliding
  * strategy (`"suspend"` or `"dropping"`). A queue with non-positive capacity can
- * still accept a message when a taker is waiting.
+ * still accept a message when a taker is waiting. A sliding queue with
+ * non-positive capacity discards the message when no taker is waiting.
  *
  * **When to use**
  *
@@ -739,13 +740,18 @@ export const offerUnsafe = <A, E>(self: Enqueue<A, E>, message: Types.NoInfer<A>
   if (self.state._tag !== "Open") {
     return false
   } else if (self.messages.length >= self.capacity) {
-    if (self.strategy === "sliding") {
-      MutableList.take(self.messages)
+    if (self.capacity <= 0 && self.state.takers.size > (self.strategy === "sliding" ? 0 : self.messages.length)) {
       MutableList.append(self.messages, message)
-      return true
-    } else if (self.capacity <= 0 && self.state.takers.size > 0) {
-      MutableList.append(self.messages, message)
+      if (self.strategy === "sliding") {
+        MutableList.takeNVoid(self.messages, self.messages.length - self.state.takers.size)
+      }
       releaseTakers(self as Queue<A, E>)
+      return true
+    } else if (self.strategy === "sliding") {
+      if (self.capacity > 0) {
+        MutableList.take(self.messages)
+        MutableList.append(self.messages, message)
+      }
       return true
     }
     return false
@@ -850,15 +856,14 @@ export const offerAllUnsafe = <A, E>(self: Enqueue<A, E>, messages: Iterable<A>)
   ) {
     MutableList.appendAll(self.messages, messages)
     if (self.strategy === "sliding") {
-      MutableList.takeN(self.messages, self.messages.length - self.capacity)
+      const capacity = self.capacity <= 0 ? self.state.takers.size : self.capacity
+      MutableList.takeNVoid(self.messages, self.messages.length - capacity)
     }
     scheduleReleaseTaker(self as Queue<A, E>)
     return []
   }
-  const free = self.capacity <= 0
-    ? self.state.takers.size
-    : self.capacity - self.messages.length
-  if (free === 0) {
+  const free = (self.capacity <= 0 ? self.state.takers.size : self.capacity) - self.messages.length
+  if (free <= 0) {
     return Arr.fromIterable(messages)
   }
   const remaining: Array<A> = []

@@ -1,4 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
+import { assertNone } from "@effect/vitest/utils"
 import { Context, Effect, Stream } from "effect"
 import { Cookies, HttpBody, HttpClientRequest, HttpClientResponse, HttpServerResponse } from "effect/http"
 
@@ -237,6 +238,10 @@ describe("HttpServerResponse", () => {
         assert.strictEqual(yield* HttpServerResponse.toClientResponse(response).text, "hello")
         assert.strictEqual(yield* Effect.promise(() => HttpServerResponse.toWeb(response).text()), "hello")
       }))
+
+    it("has no Web Response for HttpClientResponse.toWeb", () => {
+      assertNone(HttpClientResponse.toWeb(HttpServerResponse.toClientResponse(HttpServerResponse.text("hello"))))
+    })
   })
 
   it.effect("fromClientResponse preserves status, headers, cookies, and json", () =>

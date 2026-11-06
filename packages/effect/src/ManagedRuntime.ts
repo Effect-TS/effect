@@ -336,9 +336,11 @@ export const make = <R, ER>(
   // and awaited by its disposal, so they and their child fibers must not wait
   // for it.
   const managedFibers = new WeakSet<Fiber.Fiber<any, any>>()
+  const disposingFibers = new WeakSet<Fiber.Fiber<any, any>>()
   const defaultRunOptions: Effect.RunOptions = {
     onFiberStart(fiber) {
       managedFibers.add(fiber)
+      if (disposingFibers.has(fiber)) return
       Fiber.runIn(fiber, fiberScope)
     }
   }
@@ -366,7 +368,15 @@ export const make = <R, ER>(
               self.cachedContext = context
             })
         ),
-        { ...defaultRunOptions, scheduler: fiber.cache.scheduler }
+        {
+          scheduler: fiber.cache.scheduler,
+          // Unlike requests, the build joins fiberScope even if it disposed the
+          // runtime, so disposal still interrupts it.
+          onFiberStart(fiber) {
+            managedFibers.add(fiber)
+            Fiber.runIn(fiber, fiberScope)
+          }
+        }
       )
     }
     return Effect.flatten(Fiber.await(buildFiber))
@@ -399,9 +409,10 @@ export const make = <R, ER>(
       // Once `disposed` is set the close must run, or later calls would wait forever.
       fiberEnterUninterruptibleUnsafe(fiber)
       const done = disposed = Deferred.makeUnsafe<void>()
-      // Closing fiberScope interrupts and awaits every managed fiber. Skip the
+      // Closing fiberScope interrupts and awaits every managed fiber. Exempt the
       // disposing fiber and its ancestors, which would otherwise await themselves.
       for (let current = fiber as FiberImpl<any, any> | undefined; current; current = current._parent) {
+        disposingFibers.add(current)
         scopeRemoveFinalizerUnsafe(fiberScope, current)
       }
       ;(self as Mutable<ManagedRuntime<R, ER>>).contextEffect = Effect.die("ManagedRuntime disposed")

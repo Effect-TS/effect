@@ -18,6 +18,12 @@ export * as Base64 from "./Base64.ts"
 export * as Base64Url from "./Base64Url.ts"
 
 /**
+ * @stability unstable
+ * @since 4.1.0
+ */
+export * as Csv from "./Csv.ts"
+
+/**
  * @stability stable
  * @since 4.0.0
  */
@@ -37,9 +43,21 @@ export * as Ini from "./Ini.ts"
 
 /**
  * @stability unstable
+ * @since 4.1.2
+ */
+export * as Json5 from "./Json5.ts"
+
+/**
+ * @stability unstable
  * @since 4.0.6
  */
 export * as JsonArray from "./JsonArray.ts"
+
+/**
+ * @stability unstable
+ * @since 4.1.2
+ */
+export * as Jsonc from "./Jsonc.ts"
 
 /**
  * @stability unstable

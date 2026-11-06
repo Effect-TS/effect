@@ -1,11 +1,13 @@
 import * as BrowserHttpClient from "@effect/platform-browser/BrowserHttpClient"
 import { assert, describe, it } from "@effect/vitest"
 import * as Effect from "effect/Effect"
+import * as Exit from "effect/Exit"
 import * as Cookies from "effect/http/Cookies"
 import * as HttpBody from "effect/http/HttpBody"
 import * as HttpClient from "effect/http/HttpClient"
 import * as HttpClientRequest from "effect/http/HttpClientRequest"
 import * as Layer from "effect/Layer"
+import * as Scope from "effect/Scope"
 import * as Stream from "effect/Stream"
 import * as MXHR from "mock-xmlhttprequest"
 
@@ -122,6 +124,17 @@ describe("BrowserHttpClient", () => {
       }]
     }))))
 
+  it.effect("urlParamsBody preserves leading question marks", () =>
+    Effect.gen(function*() {
+      const response = yield* HttpClient.get("http://localhost/form")
+      assert.deepStrictEqual([...yield* response.urlParamsBody], [["??name", "value"], ["next", "ok"]])
+    }).pipe(Effect.provide(layer({
+      get: ["http://localhost/form", {
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: "??name=value&next=ok"
+      }]
+    }))))
+
   it.effect("decodes an XHR response as FormData", () =>
     Effect.gen(function*() {
       const formData = yield* HttpClient.get("http://localhost/form").pipe(
@@ -145,6 +158,23 @@ describe("BrowserHttpClient", () => {
       assert.strictEqual(hits, 0)
     }).pipe(Effect.provide(layer({
       post: ["http://localhost:8080/attach", (request) => {
+        hits++
+        request.respond(200)
+      }]
+    })))
+  })
+
+  it.effect("does not send a request whose scope has already closed", () => {
+    let hits = 0
+    return Effect.gen(function*() {
+      const scope = yield* Scope.make()
+      yield* Scope.close(scope, Exit.void)
+      const client = HttpClient.withScope(yield* HttpClient.HttpClient)
+      const error = yield* client.get("http://localhost:8080/my/url").pipe(Scope.provide(scope), Effect.flip)
+      assert.strictEqual(error.reason._tag, "TransportError")
+      assert.strictEqual(hits, 0)
+    }).pipe(Effect.provide(layer({
+      get: ["http://localhost:8080/my/url", (request) => {
         hits++
         request.respond(200)
       }]

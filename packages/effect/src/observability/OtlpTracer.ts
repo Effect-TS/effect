@@ -281,6 +281,7 @@ class SpanImpl implements Tracer.Span {
   }
 
   end(endTime: bigint, exit: Exit.Exit<unknown, unknown>): void {
+    if (this.status._tag === "Ended") return
     this.status = {
       _tag: "Ended",
       startTime: this.status.startTime,
@@ -291,14 +292,17 @@ class SpanImpl implements Tracer.Span {
   }
 
   attribute(key: string, value: unknown): void {
+    if (this.status._tag === "Ended") return
     this.attributes.set(key, value)
   }
 
   event(name: string, startTime: bigint, attributes?: Record<string, unknown>): void {
+    if (this.status._tag === "Ended") return
     this.events.push([name, startTime, attributes])
   }
 
   addLinks(links: ReadonlyArray<Tracer.SpanLink>): void {
+    if (this.status._tag === "Ended") return
     // oxlint-disable-next-line no-restricted-syntax
     this.links.push(...links)
   }

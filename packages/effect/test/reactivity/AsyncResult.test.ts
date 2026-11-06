@@ -1,5 +1,5 @@
 import { describe, expect, it } from "@effect/vitest"
-import { Cause, Option } from "effect"
+import { Cause, Equal, Hash, Option } from "effect"
 import { AsyncResult } from "effect/reactivity"
 
 describe("AsyncResult", () => {
@@ -10,6 +10,18 @@ describe("AsyncResult", () => {
     expect(AsyncResult.waiting(result, { touch: false }).waiting).toBe(true)
     expect(AsyncResult.waiting()(result).waiting).toBe(true)
     expect(AsyncResult.waiting({ touch: false })(result).waiting).toBe(true)
+  })
+
+  it("is not equal to an unrelated Equal value with the same tag and hash", () => {
+    const result = AsyncResult.initial()
+    const lookalike = {
+      _tag: "Initial",
+      waiting: false,
+      [Equal.symbol]: () => false,
+      [Hash.symbol]: () => Hash.hash(result)
+    }
+
+    expect(Equal.equals(result, lookalike)).toBe(false)
   })
 
   describe("all", () => {

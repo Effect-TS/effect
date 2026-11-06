@@ -56,7 +56,7 @@ export type TypeId = "~@effect/sql-libsql/LibsqlClient"
  * @category services
  * @since 4.0.0
  */
-export interface LibsqlClient extends Client.SqlClient {
+export interface LibsqlClient extends Client.Base {
   readonly [TypeId]: TypeId
   readonly config: LibsqlClientConfig
 }
@@ -72,7 +72,9 @@ export interface LibsqlClient extends Client.SqlClient {
  * @category services
  * @since 4.0.0
  */
-export const LibsqlClient = Context.Service<LibsqlClient>("@effect/sql-libsql/LibsqlClient")
+export const LibsqlClient = Context.Service<LibsqlClient, LibsqlClient & Client.SqlClient>(
+  "@effect/sql-libsql/LibsqlClient"
+)
 
 let clientIdCounter = 0
 
@@ -189,7 +191,7 @@ interface LibsqlConnection extends Connection {
  */
 export const make = (
   options: LibsqlClientConfig
-): Effect.Effect<LibsqlClient, never, Scope.Scope | Reactivity.Reactivity> =>
+): Effect.Effect<LibsqlClient & Client.SqlClient, never, Scope.Scope | Reactivity.Reactivity> =>
   Effect.gen(function*() {
     const LibsqlTransaction = Context.Service<readonly [LibsqlConnection, counter: number]>(
       `@effect/sql-libsql/LibsqlClient/LibsqlTransaction/${clientIdCounter++}`
@@ -312,16 +314,18 @@ export const make = (
         ),
         (sdk) => new LibsqlConnectionImpl(sdk)
       )
-    const semaphore = yield* Semaphore.make(1)
+    // Remote transports run each statement and transaction on its own stream.
+    // Local clients may own a single connection that the SDK refuses to lend
+    // while a transaction holds it, so take turns on it instead.
+    const protocol = (connection.sdk as Libsql.Client).protocol
+    const permit: Effect.Effect<void, never, Scope.Scope> = protocol === "http" || protocol === "ws"
+      ? Effect.void
+      : (yield* Semaphore.make(1)).takeScoped(1)
 
     const withTransaction = Client.makeWithTransaction({
       transactionService: LibsqlTransaction,
       spanAttributes,
-      acquireConnection: Effect.fnUntraced(function*(restore) {
-        yield* restore(semaphore.take(1))
-        yield* Effect.addFinalizer(() => semaphore.release(1))
-        return yield* connection.beginTransaction
-      }),
+      acquireConnection: (restore) => Effect.andThen(restore(permit), connection.beginTransaction),
       begin: () => Effect.void, // already begun in acquireConnection
       savepoint: (conn, id) => conn.executeRaw(`SAVEPOINT effect_sql_${id};`, []),
       releaseSavepoint: (conn, id) => conn.executeRaw(`RELEASE SAVEPOINT effect_sql_${id};`, []),
@@ -332,10 +336,7 @@ export const make = (
 
     // Outside a transaction, hold the permit until the statement's scope
     // closes, so no other fiber can begin a transaction while it runs.
-    const lease = Effect.as(
-      Effect.acquireRelease(semaphore.take(1), () => semaphore.release(1), { interruptible: true }),
-      connection as LibsqlConnection
-    )
+    const lease = Effect.as(permit, connection as LibsqlConnection)
     const acquirer = Effect.flatMap(
       Effect.serviceOption(LibsqlTransaction),
       Option.match({

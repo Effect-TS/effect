@@ -107,6 +107,37 @@ describe("ManagedRuntime", () => {
     assert.deepEqual({ result, released }, { result: "settled", released: true })
   })
 
+  test("a request that disposes the runtime before its first async step keeps running", async () => {
+    let released = false
+    const runtime = ManagedRuntime.make(
+      Layer.effectDiscard(Effect.addFinalizer(() =>
+        Effect.yieldNow.pipe(Effect.andThen(Effect.sync(() => {
+          released = true
+        })))
+      ))
+    )
+    await runtime.runPromise(Effect.void)
+    const result = await runtime.runPromise(Effect.gen(function*() {
+      yield* runtime.disposeEffect
+      yield* Effect.yieldNow
+      return "finished"
+    }))
+    assert.deepEqual({ result, released }, { result: "finished", released: true })
+  })
+
+  test("a layer build that disposes the runtime is interrupted", async () => {
+    const runtime: ManagedRuntime.ManagedRuntime<never, never> = ManagedRuntime.make(Layer.effectDiscard(
+      Effect.suspend(() => runtime.disposeEffect).pipe(Effect.andThen(Effect.never))
+    ))
+
+    // Bound the hang without waiting for the build fiber.
+    const result = await Promise.race([
+      Effect.runPromiseExit(runtime.contextEffect).then(Exit.isFailure),
+      new Promise<string>((resolve) => setTimeout(() => resolve("timed out"), 500))
+    ])
+    strictEqual(result, true)
+  })
+
   test("detached-fiber disposal still interrupts and awaits its former request", async () => {
     const events: Array<string> = []
     const runtime = ManagedRuntime.make(Layer.effectDiscard(Effect.addFinalizer(() =>

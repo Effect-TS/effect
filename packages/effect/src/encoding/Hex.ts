@@ -46,8 +46,9 @@ export const encode: (input: Uint8Array | string) => string = (input) =>
  * coercion rules.
  *
  * This function uses `Math.random()` and is not cryptographically secure. For
- * security-sensitive values, use the `Crypto.Crypto` service's `randomBytes`
- * method and encode the result with {@link encode}.
+ * security-sensitive values, draw bytes with the `randomBytes` method of the
+ * `SecureRandom` service from `effect/crypto/SecureRandom`, and encode them with
+ * {@link encode}.
  *
  * @stability stable
  * @category encoding
@@ -244,7 +245,7 @@ export const decode = (str: string): Result.Result<Uint8Array, EncodingError> =>
 export const decodeString = (str: string) => Result.map(decode(str), (_) => decoder.decode(_))
 
 const encoder = new TextEncoder()
-const decoder = new TextDecoder()
+const decoder = new TextDecoder("utf-8", { ignoreBOM: true })
 
 const byteToHex: Array<string> = Array.from({ length: 256 }, (_, i) => i.toString(16).padStart(2, "0"))
 

@@ -385,9 +385,14 @@ function normalizeStringPosix(path: string, allowAboveRoot: boolean) {
   return res
 }
 
+function formatExt(ext: string | undefined) {
+  if (!ext) return ""
+  return ext.startsWith(".") ? ext : `.${ext}`
+}
+
 function _format(sep: string, pathObject: Partial<Path.Parsed>) {
   const dir = pathObject.dir || pathObject.root
-  const base = pathObject.base || (pathObject.name || "") + (pathObject.ext || "")
+  const base = pathObject.base || (pathObject.name || "") + formatExt(pathObject.ext)
   if (!dir) {
     return base
   }
@@ -430,7 +435,15 @@ function fromFileUrl(url: URL): Effect.Effect<string, BadArgument> {
       }
     }
   }
-  return Effect.succeed(decodeURIComponent(pathname))
+  return Effect.try({
+    try: () => decodeURIComponent(pathname),
+    catch: (cause) =>
+      new BadArgument({
+        module: "Path",
+        method: "fromFileUrl",
+        cause
+      })
+  })
 }
 
 const resolve: Path["resolve"] = function resolve() {

@@ -1,4 +1,4 @@
-import { describe, it } from "@effect/vitest"
+import { describe, expectTypeOf, it } from "@effect/vitest"
 import { assertFalse, assertNone, assertSome, assertTrue, deepStrictEqual, strictEqual } from "@effect/vitest/utils"
 import { ByteSize, Effect, FileSystem, Formatter, Redacted, Stream } from "effect"
 import { Headers, HttpBody, HttpClientRequest } from "effect/http"
@@ -102,6 +102,39 @@ describe("HttpClientRequest", () => {
         strictEqual(gunzipSync(compressed).toString(), text)
       }
     })
+
+    it.each([
+      { name: "bytes", body: HttpBody.uint8Array(bytes, "text/plain") },
+      { name: "stream", body: HttpBody.stream(Stream.make(bytes), "text/plain") }
+    ])("preserves an explicit Content-Type when compressing $name", async ({ body }) => {
+      const request = await Effect.runPromise(
+        HttpClientRequest.post(url).pipe(
+          HttpClientRequest.setBody(body),
+          HttpClientRequest.setHeader("content-type", "application/json"),
+          HttpClientRequest.compressBody("gzip")
+        )
+      )
+      strictEqual(request.headers["content-encoding"], "gzip")
+      strictEqual(request.headers["content-type"], "application/json")
+    })
+
+    it("does not add a Content-Type when compressing a request without one", async () => {
+      const request = await Effect.runPromise(
+        HttpClientRequest.post(url).pipe(
+          HttpClientRequest.bodyText(text),
+          HttpClientRequest.removeHeader("content-type"),
+          HttpClientRequest.compressBody("gzip")
+        )
+      )
+      strictEqual(request.headers["content-encoding"], "gzip")
+      strictEqual(request.headers["content-type"], undefined)
+    })
+  })
+
+  it("preserves an extension method from a web request without claiming it is a known method", () => {
+    const request = HttpClientRequest.fromWeb(new Request("http://localhost/", { method: "PROPFIND" }))
+    expectTypeOf(request.method).toEqualTypeOf<string>()
+    strictEqual(request.method, "PROPFIND")
   })
 
   describe("bodyFile", () => {
