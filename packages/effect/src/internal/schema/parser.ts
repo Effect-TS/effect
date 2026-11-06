@@ -17,13 +17,12 @@ export const succeed = Exit.succeed as <A>(value: A) => Success<A>
 /** @internal */
 export const missingExit = succeed(missing)
 
-const sameExitKey = Symbol.for("effect/schema/parser/sameExit")
-
 // Shared success for a present input returned unchanged. It must be resolved
 // before crossing an asynchronous or transformation boundary. Kept on
-// globalThis so that module copies share its identity.
+// globalThis under the missing symbol so that module copies share its identity.
+// Keep initialization in a call so the build can remove it when unused.
 /** @internal */
-export const sameExit: Success<unknown> = (globalThis as any)[sameExitKey] ??= succeed(missing)
+export const sameExit: Success<unknown> = (() => (globalThis as any)[missing] ??= succeed(missing))()
 
 /** @internal */
 export const toOption = <A>(value: A): Option.Option<A> => value === missing ? Option.none() : Option.some(value as A)
