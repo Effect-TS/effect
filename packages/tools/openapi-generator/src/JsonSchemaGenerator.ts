@@ -30,11 +30,10 @@ interface GenerateOptions {
   readonly multipartSchemaRefs?: MultipartSchemaRefs | undefined
   readonly includeSchemas?: ReadonlyArray<string> | undefined
   /**
-   * Name of the shared codec that `type: ["string", "integer"]`,
-   * `format: "int64"` schemas decode through. When set, those schemas are
-   * generated as bigints branded as `Int64`.
+   * Generate `type: ["string", "integer"]`, `format: "int64"` schemas as
+   * bigints branded as `Int64`, decoded through a shared codec.
    */
-  readonly int64Schema?: string | undefined
+  readonly int64AsBigInt?: boolean | undefined
 }
 
 interface HttpApiMultipartSchemaRefs {
@@ -232,10 +231,10 @@ function makeWithRepresentation() {
     const schemasWithExamples: Array<JsonSchema.JsonSchema> = []
     const preparedSchemas = new WeakMap<JsonSchema.JsonSchema, JsonSchema.JsonSchema>()
     const preparedOutputs = new WeakSet<JsonSchema.JsonSchema>()
-    const int64 = options?.int64Schema
+    const int64 = options?.int64AsBigInt === true
     const importerOptions: SchemaRepresentation.FromJsonSchemaOptions = {
       patterns: "apply",
-      ...(int64 === undefined ? undefined : { includeAnnotationKey: (key: string) => key === int64Marker }),
+      ...(int64 ? { includeAnnotationKey: (key: string) => key === int64Marker } : undefined),
       onEnter(js: JsonSchema.JsonSchema) {
         if (preparedOutputs.has(js)) return js
         const cached = preparedSchemas.get(js)
@@ -243,7 +242,7 @@ function makeWithRepresentation() {
 
         const out = { ...js }
         let transformed = { ...(options?.onEnter === undefined ? out : options.onEnter(out)) }
-        if (int64 !== undefined && isStringOrIntegerInt64(transformed)) {
+        if (int64 && isStringOrIntegerInt64(transformed)) {
           transformed = { ...transformed, [int64Marker]: true }
         }
         preparedSchemas.set(js, transformed)
@@ -274,7 +273,7 @@ function makeWithRepresentation() {
       rootSchemas = SchemaRepresentation.fromJsonSchemaMultiDocument(document, importerOptions)
     }
     const representations = SchemaRepresentation.toRepresentations(Arr.map(rootSchemas, (schema) => schema.ast))
-    if (int64 === undefined) {
+    if (!int64) {
       return {
         nameMap,
         codeDocument: SchemaRepresentation.toCodeDocument(representations),
@@ -283,23 +282,7 @@ function makeWithRepresentation() {
       }
     }
 
-    const rewrite = makeInt64Rewrite(representations, int64, [...Object.keys(definitions), ...nameMap, int64])
-    const codeDocument = SchemaRepresentation.toCodeDocument(rewrite.decoded)
-    const encodedTypes = new Map<string, EncodedType>()
-    if (rewrite.encodedAliases.size > 0) {
-      const encodedDocument = SchemaRepresentation.toCodeDocument(rewrite.encoded)
-      for (const [identifier, alias] of rewrite.encodedAliases) {
-        const code = encodedDocument.references.recursives[identifier]
-        if (code !== undefined) encodedTypes.set(identifier, { alias, Type: code.Type })
-      }
-    }
-
-    return {
-      nameMap,
-      codeDocument,
-      int64Definitions: rewrite.isUsed() ? [renderInt64Definition(int64)] : [],
-      encodedTypes
-    }
+    return { nameMap, ...toInt64CodeDocument(representations, nameMap) }
   }
 
   return {
@@ -523,20 +506,85 @@ function omitWireValues(annotations: Schema.Annotations.Annotations | undefined)
 }
 
 /**
- * Rewrites marked int64 nodes into the shared `Int64` codec, in two variants of the same document:
- *
- * - `decoded` is rendered as the generated schemas.
- * - `encoded` only provides the encoded types of recursive declarations, which cannot be inferred from
- *   their runtime values because they are typed through `Schema.suspend`.
+ * Renders a document whose marked int64 nodes decode through a shared `Int64` codec.
  *
  * Schemas containing `Int64`, directly or through references, have different decoded and encoded types, so
  * references to them carry an explicit encoded type wherever the generated code is typed as `Schema.Codec`.
+ * Recursive declarations get an exported `<Name>Encoded` alias, taken from a second rendering of the same
+ * document in which int64 nodes keep their wire type.
+ *
+ * Which declarations are recursive, and which identifiers are taken, is only known once core codegen has
+ * rendered the document, so the document is rendered again if the generated names have to change.
  */
-function makeInt64Rewrite(
+function toInt64CodeDocument(
   document: SchemaRepresentation.MultiDocument,
-  int64: string,
   reservedNames: ReadonlyArray<string>
-) {
+): {
+  readonly codeDocument: SchemaRepresentation.CodeDocument
+  readonly int64Definitions: ReadonlyArray<string>
+  readonly encodedTypes: ReadonlyMap<string, EncodedType>
+} {
+  const rewrite = makeInt64Rewrite(document)
+  let codeDocument = SchemaRepresentation.toCodeDocument(rewrite.decoded)
+
+  const taken = new Set([
+    ...reservedNames,
+    ...codeDocument.references.nonRecursives.map(({ $ref }) => $ref),
+    ...Object.keys(codeDocument.references.recursives)
+  ])
+  const allocate = (base: string): string => {
+    let name = base
+    for (let index = 2; taken.has(name); index++) name = `${base}${index}`
+    taken.add(name)
+    return name
+  }
+  const int64 = allocate(defaultInt64Name)
+  const encodedAliases = new Map(
+    Object.keys(codeDocument.references.recursives)
+      .filter((identifier) => rewrite.transformedIdentifiers.has(identifier))
+      .map((identifier) => [identifier, allocate(defaultEncodedAlias(identifier))])
+  )
+  if (
+    int64 !== defaultInt64Name ||
+    [...encodedAliases].some(([identifier, alias]) => alias !== defaultEncodedAlias(identifier))
+  ) {
+    rewrite.names.int64 = int64
+    rewrite.names.encodedAliases = encodedAliases
+    codeDocument = SchemaRepresentation.toCodeDocument(rewrite.decoded)
+  }
+  rewrite.names.recursives = new Set(Object.keys(codeDocument.references.recursives))
+
+  const encodedTypes = new Map<string, EncodedType>()
+  if (encodedAliases.size > 0) {
+    const { references } = SchemaRepresentation.toCodeDocument(rewrite.encoded)
+    const types = new Map([
+      ...references.nonRecursives.map(({ $ref, code }) => [$ref, code.Type] as const),
+      ...Object.entries(references.recursives).map(([identifier, code]) => [identifier, code.Type] as const)
+    ])
+    for (const [identifier, alias] of encodedAliases) {
+      encodedTypes.set(identifier, { alias, Type: types.get(identifier)! })
+    }
+  }
+
+  return {
+    codeDocument,
+    int64Definitions: rewrite.isUsed() ? [renderInt64Definition(int64)] : [],
+    encodedTypes
+  }
+}
+
+const defaultInt64Name = "Int64"
+const defaultEncodedAlias = (identifier: string): string => `${identifier}Encoded`
+
+/**
+ * Rewrites marked int64 nodes into `Int64` declarations, in two variants of the same document:
+ *
+ * - `decoded` is rendered as the generated schemas.
+ * - `encoded` only provides the encoded types of recursive declarations.
+ *
+ * Generated names are read from `names` while rendering.
+ */
+function makeInt64Rewrite(document: SchemaRepresentation.MultiDocument) {
   const definitionRefs = new Map<string, Set<string>>()
   const transformedDefinitions = new Set<string>()
   const containsInt64 = (representation: SchemaRepresentation.Representation): boolean =>
@@ -556,32 +604,16 @@ function makeInt64Rewrite(
       }
     }
   }
-  const reachesItself = ($ref: string): boolean => {
-    const seen = new Set<string>()
-    const stack = [...(definitionRefs.get($ref) ?? [])]
-    while (stack.length > 0) {
-      const next = stack.pop()!
-      if (next === $ref) return true
-      if (seen.has(next)) continue
-      seen.add(next)
-      stack.push(...(definitionRefs.get(next) ?? []))
-    }
-    return false
-  }
-  const recursiveDefinitions = new Set([...transformedDefinitions].filter(reachesItself))
 
-  const usedNames = new Set(reservedNames)
-  const encodedAliases = new Map<string, string>()
-  const encodedAlias = (identifier: string): string => {
-    let alias = encodedAliases.get(identifier)
-    if (alias === undefined) {
-      alias = `${identifier}Encoded`
-      for (let index = 2; usedNames.has(alias); index++) alias = `${identifier}Encoded${index}`
-      usedNames.add(alias)
-      encodedAliases.set(identifier, alias)
-    }
-    return alias
-  }
+  const names: {
+    int64: string
+    encodedAliases: ReadonlyMap<string, string>
+    // Identifiers that the decoded rendering declares as recursive.
+    recursives: ReadonlySet<string>
+  } = { int64: defaultInt64Name, encodedAliases: new Map(), recursives: new Set() }
+  const encodedAlias = (identifier: string): string =>
+    names.encodedAliases.get(identifier) ?? defaultEncodedAlias(identifier)
+  const transformedIdentifiers = new Set<string>()
 
   const transformed = new WeakMap<SchemaRepresentation.Representation, boolean>()
   const isTransformed = (representation: SchemaRepresentation.Representation): boolean => {
@@ -600,28 +632,30 @@ function makeInt64Rewrite(
   const make = (mode: "decoded" | "encoded") => {
     const cache = new WeakMap<SchemaRepresentation.Representation, SchemaRepresentation.Representation>()
 
-    const reference = (representation: SchemaRepresentation.Reference): SchemaRepresentation.Declaration => {
-      const recursive = recursiveDefinitions.has(representation.$ref)
-      return {
-        _tag: "Declaration",
-        typeParameters: [representation],
-        checks: [],
-        annotations: {
-          toCode: ({ typeParameters: [code] }: SchemaRepresentation.Generation.DeclarationInput) => {
-            const identifier = code.Type
-            const encoded = recursive ? encodedAlias(identifier) : `typeof ${identifier}.Encoded`
-            if (mode === "encoded") return { runtime: code.runtime, Type: encoded }
-            // A reference that is not a bare identifier is suspended because it is recursive.
+    const reference = (representation: SchemaRepresentation.Reference): SchemaRepresentation.Declaration => ({
+      _tag: "Declaration",
+      typeParameters: [representation],
+      checks: [],
+      annotations: {
+        toCode: ({ typeParameters: [code] }: SchemaRepresentation.Generation.DeclarationInput) => {
+          const identifier = code.Type
+          transformedIdentifiers.add(identifier)
+          if (mode === "encoded") {
             return {
-              runtime: code.runtime === identifier
-                ? identifier
-                : `Schema.suspend((): Schema.Codec<${identifier}, ${encoded}> => ${identifier})`,
-              Type: identifier
+              runtime: code.runtime,
+              Type: names.recursives.has(identifier) ? encodedAlias(identifier) : `typeof ${identifier}.Encoded`
             }
+          }
+          // Core codegen suspends references to the declarations it renders as recursive.
+          return {
+            runtime: code.runtime === identifier
+              ? identifier
+              : `Schema.suspend((): Schema.Codec<${identifier}, ${encodedAlias(identifier)}> => ${identifier})`,
+            Type: identifier
           }
         }
       }
-    }
+    })
 
     const int64Node = (
       representation: Exclude<SchemaRepresentation.Representation, SchemaRepresentation.Reference>
@@ -638,8 +672,10 @@ function makeInt64Rewrite(
           toCode: ({ typeParameters: [code] }: SchemaRepresentation.Generation.DeclarationInput) => {
             used = true
             return {
-              runtime: plainInt64Wires.has(code.runtime) ? int64 : `${code.runtime}.pipe(Schema.decodeTo(${int64}))`,
-              Type: int64
+              runtime: plainInt64Wires.has(code.runtime)
+                ? names.int64
+                : `${code.runtime}.pipe(Schema.decodeTo(${names.int64}))`,
+              Type: names.int64
             }
           }
         }
@@ -727,7 +763,8 @@ function makeInt64Rewrite(
   return {
     decoded: make("decoded"),
     encoded: make("encoded"),
-    isUsed: () => used,
-    encodedAliases: encodedAliases as ReadonlyMap<string, string>
+    names,
+    transformedIdentifiers: transformedIdentifiers as ReadonlySet<string>,
+    isUsed: () => used
   }
 }

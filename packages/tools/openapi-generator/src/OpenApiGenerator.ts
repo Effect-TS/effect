@@ -173,7 +173,17 @@ export interface OpenApiGenerateOptions {
    * Constraints such as `minimum` or `enum` still validate the wire value
    * before it is decoded. Schemas containing `Int64` drop their `default` and
    * `examples` annotations, which hold wire values, and recursive components
-   * containing it also export an `<Name>Encoded` type.
+   * containing it also export an `<Name>Encoded` type. Both generated names
+   * get a numeric suffix when they would collide with another declaration.
+   *
+   * **Gotchas**
+   *
+   * A constrained schema is a partial codec: encoding always produces the
+   * decimal string, so constraints that reject that string also reject
+   * encoding. For example, with `enum: ["1", 2]` the wire value `2` decodes to
+   * `2n`, but `2n` encodes to `"2"`, which the enum does not allow. The same
+   * applies to numeric `const` values and to string constraints such as
+   * `pattern` or `maxLength` that the decimal spelling does not satisfy.
    *
    * Plain `type: "integer"` schemas are unchanged because JSON parsing has
    * already rounded them. The `httpclient-type-only` format does not decode,
@@ -240,9 +250,7 @@ export const make = Effect.gen(function*() {
         onEnter: options.onEnter,
         multipartSchemaRefs: multipart.refs,
         includeSchemas: options.includeSchemas,
-        int64Schema: options.int64AsBigInt === true && options.format !== "httpclient-type-only"
-          ? multipart.allocate("Int64")
-          : undefined
+        int64AsBigInt: options.int64AsBigInt === true && options.format !== "httpclient-type-only"
       }
       const generation = options.format === "httpapi"
         ? generator.generateHttpApi(source, multipart.definitions, schemaOptions)
@@ -1094,7 +1102,7 @@ const makeMultipartSchemas = (
     }
   }
 
-  return { refs, definitions: output, allocate, transform, finish }
+  return { refs, definitions: output, transform, finish }
 }
 
 const toDefinitionRef = (name: string): string => `#/$defs/${name.replaceAll("~", "~0").replaceAll("/", "~1")}`
