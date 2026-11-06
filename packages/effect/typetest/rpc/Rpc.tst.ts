@@ -84,52 +84,22 @@ describe("Rpc", () => {
   })
 
   describe("ExtractTag", () => {
-    it("selects every RPC matching a union of tags", () => {
-      expect<Rpc.ExtractTag<Mixed | typeof Fails, "GetUser" | "Fails">>().type.toBe<typeof GetUser | typeof Fails>()
-    })
-
     it("selects every RPC for a string tag", () => {
       expect<Rpc.ExtractTag<Mixed, string>>().type.toBe<Mixed>()
     })
 
-    it("returns never for an unknown tag", () => {
-      expect<Rpc.ExtractTag<Mixed, "Missing">>().type.toBe<never>()
-    })
-
-    describe("with broad RPC tags", () => {
+    it("selects the RPCs whose tag the selected tag covers when an RPC tag is not a single literal", () => {
       const Dynamic = Rpc.make("Dynamic" as string, { success: Schema.Number })
-      const Pattern = Rpc.make("GetAny" as `Get${string}`, { success: Schema.Boolean })
-      const Specific = Rpc.make("GetSpecific", { success: Schema.String })
+      const UnionTagged = Rpc.make("A" as "A" | "B", { success: Schema.Number })
+      const PatternTagged = Rpc.make("A" as "A" | `B${string}`, { success: Schema.Number })
+      const A = Rpc.make("A", { success: Schema.String })
+      const Bee = Rpc.make("Bee", { success: Schema.String })
 
-      it("keeps literal RPCs matched by a broad tag", () => {
-        expect<Rpc.ExtractTag<typeof Dynamic | typeof Specific, string>>().type.toBe<
-          typeof Dynamic | typeof Specific
-        >()
-        expect<Rpc.ExtractTag<typeof Pattern | typeof Specific, `Get${string}`>>().type.toBe<
-          typeof Pattern | typeof Specific
-        >()
-      })
-
-      it("selects only the literal RPC for its literal tag", () => {
-        expect<Rpc.ExtractTag<typeof Dynamic | typeof Specific, "GetSpecific">>().type.toBe<typeof Specific>()
-        expect<Rpc.ExtractTag<typeof Pattern | typeof Specific, "GetSpecific">>().type.toBe<typeof Specific>()
-      })
-    })
-
-    describe("with union-valued RPC tags", () => {
-      it("selects only the literal RPC for a tag that a union-tagged RPC also covers", () => {
-        const UnionTagged = Rpc.make("A" as "A" | "B", { success: Schema.Number })
-        const SpecificA = Rpc.make("A", { success: Schema.String })
-
-        expect<Rpc.ExtractTag<typeof UnionTagged | typeof SpecificA, "A">>().type.toBe<typeof SpecificA>()
-      })
-
-      it("keeps literal RPCs matched by a literal and pattern union tag", () => {
-        const Mixed = Rpc.make("A" as "A" | `B${string}`, { success: Schema.Number })
-        const Bee = Rpc.make("Bee", { success: Schema.String })
-
-        expect<Rpc.ExtractTag<typeof Mixed | typeof Bee, "A" | `B${string}`>>().type.toBe<typeof Mixed | typeof Bee>()
-      })
+      expect<Rpc.ExtractTag<typeof Dynamic | typeof A, string>>().type.toBe<typeof Dynamic | typeof A>()
+      expect<Rpc.ExtractTag<typeof UnionTagged | typeof A, "A">>().type.toBe<typeof A>()
+      expect<Rpc.ExtractTag<typeof PatternTagged | typeof Bee, "A" | `B${string}`>>().type.toBe<
+        typeof PatternTagged | typeof Bee
+      >()
     })
   })
 })

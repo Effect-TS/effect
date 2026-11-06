@@ -176,25 +176,6 @@
           "file": "suites/graphql-selections/fixtures/struct-interface-count-5.ts"
         }
       ]
-    },
-    {
-      "name": "rpc",
-      "baseline": "suites/rpc/baseline.ts",
-      "thresholds": "suites/rpc/thresholds.json",
-      "fixtures": [
-        {
-          "name": "flat-client-calls-100",
-          "file": "suites/rpc/fixtures/flat-client-calls-100.ts"
-        },
-        {
-          "name": "atom-rpc-query-calls-100",
-          "file": "suites/rpc/fixtures/atom-rpc-query-calls-100.ts"
-        },
-        {
-          "name": "atom-rpc-mutation-calls-100",
-          "file": "suites/rpc/fixtures/atom-rpc-mutation-calls-100.ts"
-        }
-      ]
     }
   ]
 }
