@@ -3510,14 +3510,17 @@ const emptyCandidates: ReadonlyArray<never> = Object.freeze([])
 
 const getRuntimeType = (input: unknown): Type => input === null ? "null" : Array.isArray(input) ? "array" : typeof input
 
+// Snapshot once so parser initialization and code generation use the same policy.
+// Keep __proto__ own-only even when Node's --disable-proto=delete removes its accessor.
+const objectPrototypeKeys = new Set<PropertyKey>(["__proto__", ...Reflect.ownKeys(Object.prototype)])
+
 /**
  * Fields named after `Object.prototype` members must be own properties.
  *
  * @internal
  */
 export const requiresOwnProperty = (key: PropertyKey): boolean =>
-  // Keep __proto__ own-only when its legacy accessor is removed, e.g. by Node's --disable-proto=delete.
-  key === "__proto__" || Object.hasOwn(Object.prototype, key)
+  objectPrototypeKeys.has(typeof key === "number" ? globalThis.String(key) : key)
 
 // Check own properties first so the name rule only runs for inherited keys.
 const hasPropertySignature = (input: object, key: PropertyKey): boolean =>
