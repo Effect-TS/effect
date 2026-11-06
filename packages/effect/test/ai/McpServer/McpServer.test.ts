@@ -3287,7 +3287,7 @@ describe("McpServer", () => {
         strictEqual(responseB.result.serverInfo.name, "B")
       }))
 
-    it.effect("should interrupt active tool handlers and exit when stdin ends with onStdinEnd interrupt", () =>
+    it.effect("should interrupt active tool handlers and exit without remote cancellation when stdin ends with onStdinEnd interrupt", () =>
       Effect.gen(function*() {
         const stdin = yield* Queue.unbounded<Uint8Array, Cause.Done>()
         const output: Array<string> = []
@@ -3295,11 +3295,15 @@ describe("McpServer", () => {
         const encoder = new TextEncoder()
         const decoder = new TextDecoder()
         let interrupted = false
-        const tools = Toolkit.make(Tool.make("hold", { success: Schema.String }))
+        const tools = Toolkit.make(Tool.make("hold", {
+          success: Schema.String,
+          dependencies: [McpSchema.McpServerClient]
+        }))
         const handlers = tools.toLayer({
           hold: () =>
-            Deferred.succeed(started, undefined).pipe(
-              Effect.andThen(Effect.never),
+            McpServer.elicit({ message: "Approve", schema: Schema.Struct({ approved: Schema.Boolean }) }).pipe(
+              Effect.as("done"),
+              Effect.orDie,
               Effect.onInterrupt(() =>
                 Effect.sync(() => {
                   interrupted = true
@@ -3317,9 +3321,11 @@ describe("McpServer", () => {
           }).pipe(Layer.provide(Stdio.layerTest({
             stdin: Stream.fromQueue(stdin),
             stdout: () =>
-              Sink.forEach((chunk) =>
-                Effect.sync(() => output.push(typeof chunk === "string" ? chunk : decoder.decode(chunk)))
-              )
+              Sink.forEach((chunk) => {
+                const line = typeof chunk === "string" ? chunk : decoder.decode(chunk)
+                output.push(line)
+                return line.includes("elicitation/create") ? Deferred.succeed(started, undefined) : Effect.void
+              })
           })))
         ).pipe(Effect.forkScoped)
         const write = (message: unknown) => Queue.offer(stdin, encoder.encode(`${JSON.stringify(message)}\n`))
@@ -3330,7 +3336,7 @@ describe("McpServer", () => {
           method: "initialize",
           params: {
             protocolVersion: "2025-06-18",
-            capabilities: {},
+            capabilities: { elicitation: {} },
             clientInfo: { name: "TestClient", version: "1.0.0" }
           }
         })
@@ -3341,7 +3347,11 @@ describe("McpServer", () => {
 
         yield* Fiber.await(server)
         assertTrue(interrupted)
-        assert.deepStrictEqual(output.join("").trim().split("\n").map((line) => JSON.parse(line).id), [1])
+        // the initialize reply and the pending elicitation, with no notifications/cancelled
+        assert.deepStrictEqual(
+          output.join("").trim().split("\n").map((line) => JSON.parse(line)).map(({ id, method }) => method ?? id),
+          [1, "elicitation/create"]
+        )
       }))
 
     it.effect("should deliver stateless request notifications over stdio", () =>
