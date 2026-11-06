@@ -536,16 +536,16 @@ export const statelessModernSuite = (
           assert.isTrue(Exit.isSuccess(exit) || (Exit.isFailure(exit) && Cause.hasInterruptsOnly(exit.cause)))
         }))
 
-      // MethodNotFound also covers unadvertised capabilities, and modern HTTP maps it to 404.
+      // Unknown methods are mapped to HTTP 404, even when their name resembles a server feature.
       // https://modelcontextprotocol.io/specification/2026-07-28/schema#methodnotfounderror
       // https://modelcontextprotocol.io/specification/2026-07-28/basic/transports/streamable-http#protocol-version-header
-      it.effect("should return HTTP 404 when a request needs an unavailable server capability", () =>
+      it.effect("should return HTTP 404 for an unknown server method", () =>
         Effect.gen(function*() {
           const test = yield* McpConformance
           const discovered = yield* test.initialize()
           assert.isUndefined(discovered.message.result.capabilities.prompts)
 
-          const response = yield* test.post(request("unavailable", "prompts/list"), headers("prompts/list"))
+          const response = yield* test.post(request("unavailable", "prompts/unknown"), headers("prompts/unknown"))
           const error = yield* test.decodeError(response)
           assert.strictEqual(error.id, "unavailable")
           assert.strictEqual(error.error.code, McpSchema.METHOD_NOT_FOUND_ERROR_CODE)

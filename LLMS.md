@@ -428,6 +428,9 @@ responses.
 - **[Serving MCP over a custom socket transport](./ai-docs/src/71_ai/40_mcp-server.ts)**:
   Compose the public MCP serializer with a socket protocol while preserving
   protocol version selection, message framing and connection cleanup.
+- **[Updating MCP resources while the server runs](./ai-docs/src/71_ai/44_mcp-registrations.ts)**:
+  Reflect a workspace's changing document catalog in an MCP server, including
+  resources discovered after clients connect.
 
 ## Building distributed applications with cluster
 

@@ -965,7 +965,13 @@ const rejectedError = (rejected: McpCore.RequestRejected) => Effect.fail(rejecte
  * **Details**
  *
  * Handlers use this service to register capabilities and resolve incoming MCP
- * requests.
+ * requests. Registrations remain until explicitly removed or the server closes.
+ * Replacing a registration with the same name or URI replaces its handler and
+ * completions. Removal does not interrupt handlers already running.
+ *
+ * Successful additions, replacements and removals emit the corresponding
+ * [list-change notification](https://modelcontextprotocol.io/specification/2026-07-28/basic/patterns/subscriptions).
+ * Notifications of the same kind can be coalesced within a scheduling window.
  *
  * @stability unstable
  * @category services
@@ -993,6 +999,15 @@ export class McpServer extends Context.Service<McpServer, {
       McpRequestContext
     >
   }) => Effect.Effect<void>
+  /**
+   * Removes the tool with the given name and notifies clients when it existed.
+   *
+   * Returns `false` without notifying when the name is absent. Existing calls
+   * finish normally; subsequent calls cannot find the removed tool.
+   *
+   * @since 4.2.0
+   */
+  readonly removeTool: (name: string) => Effect.Effect<boolean>
   readonly callTool: (
     requests: typeof CallTool.payloadSchema.Type
   ) => Effect.Effect<CallToolResult, McpErrorBase | InternalError | InvalidParams, McpServerClient>
@@ -1011,6 +1026,19 @@ export class McpServer extends Context.Service<McpServer, {
       McpRequestContext
     >
   }) => Effect.Effect<void>
+  /**
+   * Removes a static resource by URI and notifies clients when it existed.
+   *
+   * Returns `false` without notifying when the URI is absent. Subsequent reads
+   * can resolve a matching live resource template.
+   *
+   * **Gotchas**
+   *
+   * Removing a file owned by a registered skill dies with `IllegalArgumentError`.
+   *
+   * @since 4.2.0
+   */
+  readonly removeResource: (uri: string) => Effect.Effect<boolean>
 
   readonly resourceTemplates: ReadonlyArray<{
     readonly template: ResourceTemplate
@@ -1039,6 +1067,15 @@ export class McpServer extends Context.Service<McpServer, {
       >
     }
   ) => Effect.Effect<void>
+  /**
+   * Removes a resource template and its completions by the exact template URI.
+   *
+   * Notifies clients when the template existed; otherwise returns `false`
+   * without notifying. Subsequent reads can resolve another matching template.
+   *
+   * @since 4.2.0
+   */
+  readonly removeResourceTemplate: (uriTemplate: string) => Effect.Effect<boolean>
 
   readonly findResource: (
     uri: string
@@ -1063,6 +1100,15 @@ export class McpServer extends Context.Service<McpServer, {
       params: Record<string, string>
     ) => Effect.Effect<GetPromptResult | McpSchema.InputRequired, InternalError | InvalidParams, McpRequestContext>
   }) => Effect.Effect<void>
+  /**
+   * Removes a prompt and its completions by name and notifies clients when it existed.
+   *
+   * Returns `false` without notifying when the name is absent. Removing a
+   * replacement never restores the previous registration.
+   *
+   * @since 4.2.0
+   */
+  readonly removePrompt: (name: string) => Effect.Effect<boolean>
   readonly getPromptResult: (
     request: typeof GetPrompt.payloadSchema.Type
   ) => Effect.Effect<GetPromptResult, McpErrorBase | InternalError | InvalidParams, McpServerClient>
@@ -1228,7 +1274,7 @@ export class McpServer extends Context.Service<McpServer, {
           tools[existingIndex] = options
         }
         const { invoke, visible } = makeInvoke(options.services, globalMiddleware)
-        yield* internalCore.tools.register({
+        internalCore.tools.register({
           descriptor: new McpTool({
             ...options.tool,
             title: options.tool.title ?? options.tool.annotations?.title
@@ -1269,6 +1315,12 @@ export class McpServer extends Context.Service<McpServer, {
         })
         yield* notifications.client["notifications/tools/list_changed"]({})
       }),
+      removeTool: (name) =>
+        Effect.suspend(() => {
+          if (!internalCore.tools.remove(name)) return Effect.succeed(false)
+          tools.splice(tools.findIndex(({ tool }) => tool.name === name), 1)
+          return notifications.client["notifications/tools/list_changed"]({}).pipe(Effect.as(true))
+        }),
       callTool: Effect.fnUntraced(function*(request) {
         const client = yield* McpServerClient
         const result = yield* internalCore.tools.call(
@@ -1297,6 +1349,15 @@ export class McpServer extends Context.Service<McpServer, {
         return resourceTemplates
       },
       addResource: (options) => addResource(options, true),
+      removeResource: (uri) =>
+        Effect.suspend(() => {
+          if (internalCore.skills.ownsFile(uri)) {
+            return Effect.die(new Cause.IllegalArgumentError(`Resource ${uri} is a file of a registered skill`))
+          }
+          if (!internalCore.resources.remove(uri)) return Effect.succeed(false)
+          resources.splice(resources.findIndex(({ resource }) => resource.uri === uri), 1)
+          return notifications.client["notifications/resources/list_changed"]({}).pipe(Effect.as(true))
+        }),
       addResourceTemplate: Effect.fnUntraced(
         function*({ annotations, completions, handle, routerPath, services, template }) {
           const existingIndex = resourceTemplates.findIndex(({ template: current }) =>
@@ -1310,10 +1371,30 @@ export class McpServer extends Context.Service<McpServer, {
           const { invoke, visible } = makeInvoke(services, globalMiddleware)
           const templateMatcher = makeUriMatcher<true>()
           templateMatcher.add(routerPath, true)
-          yield* internalCore.resources.registerTemplate({
+          const ownedCompletions = new Map<string, McpCore.CompletionHandler>()
+          for (const [param, handle] of Object.entries(completions)) {
+            ownedCompletions.set(
+              param,
+              (request, invocation) =>
+                invoke(handle(request.argument.value, request.context), invocation, {
+                  method: "completion/complete",
+                  target: template.uriTemplate,
+                  payload: request
+                }).pipe(
+                  Effect.map((result) => ({
+                    values: result.completion.values,
+                    total: result.completion.total,
+                    hasMore: result.completion.hasMore,
+                    metadata: result._meta
+                  }))
+                )
+            )
+          }
+          internalCore.resources.registerTemplate({
             descriptor: template,
             visible: visible("resources/templates/list", template.uriTemplate),
             isVisible: isEnabled(annotations),
+            completions: ownedCompletions,
             match: (uri) => {
               const match = templateMatcher.find(uri)
               if (match === undefined) {
@@ -1332,27 +1413,18 @@ export class McpServer extends Context.Service<McpServer, {
                 payload: { uri }
               })
           })
-          for (const [param, handle] of Object.entries(completions)) {
-            yield* internalCore.completions.register(
-              `resource/${template.uriTemplate}/${param}`,
-              (request, invocation) =>
-                invoke(handle(request.argument.value, request.context), invocation, {
-                  method: "completion/complete",
-                  target: template.uriTemplate,
-                  payload: request
-                }).pipe(
-                  Effect.map((result) => ({
-                    values: result.completion.values,
-                    total: result.completion.total,
-                    hasMore: result.completion.hasMore,
-                    metadata: result._meta
-                  }))
-                )
-            )
-          }
           yield* notifications.client["notifications/resources/list_changed"]({})
         }
       ),
+      removeResourceTemplate: (uriTemplate) =>
+        Effect.suspend(() => {
+          if (!internalCore.resources.removeTemplate(uriTemplate)) return Effect.succeed(false)
+          resourceTemplates.splice(
+            resourceTemplates.findIndex(({ template }) => template.uriTemplate === uriTemplate),
+            1
+          )
+          return notifications.client["notifications/resources/list_changed"]({}).pipe(Effect.as(true))
+        }),
       findResource: Effect.fnUntraced(function*(uri) {
         const client = yield* McpServerClient
         return yield* internalCore.resources.read(
@@ -1377,26 +1449,10 @@ export class McpServer extends Context.Service<McpServer, {
           prompts[existingIndex] = options
         }
         const { invoke, visible } = makeInvoke(options.services, globalMiddleware)
-        yield* internalCore.prompts.register({
-          descriptor: options.prompt,
-          visible: visible("prompts/list", options.prompt.name),
-          isVisible: isEnabled(options.annotations),
-          get: (params, invocation) =>
-            invoke(options.handle(params), invocation, {
-              method: "prompts/get",
-              target: options.prompt.name,
-              payload: { name: options.prompt.name, arguments: params }
-            }).pipe(
-              Effect.map((result) =>
-                Predicate.isTagged(result, "InputRequired")
-                  ? McpCore.OperationOutcome.InputRequired(result)
-                  : McpCore.OperationOutcome.Complete(result)
-              )
-            )
-        })
+        const ownedCompletions = new Map<string, McpCore.CompletionHandler>()
         for (const [param, handle] of Object.entries(options.completions)) {
-          yield* internalCore.completions.register(
-            `prompt/${options.prompt.name}/${param}`,
+          ownedCompletions.set(
+            param,
             (request, invocation) =>
               invoke(handle(request.argument.value, request.context), invocation, {
                 method: "completion/complete",
@@ -1412,8 +1468,32 @@ export class McpServer extends Context.Service<McpServer, {
               )
           )
         }
+        internalCore.prompts.register({
+          descriptor: options.prompt,
+          visible: visible("prompts/list", options.prompt.name),
+          isVisible: isEnabled(options.annotations),
+          completions: ownedCompletions,
+          get: (params, invocation) =>
+            invoke(options.handle(params), invocation, {
+              method: "prompts/get",
+              target: options.prompt.name,
+              payload: { name: options.prompt.name, arguments: params }
+            }).pipe(
+              Effect.map((result) =>
+                Predicate.isTagged(result, "InputRequired")
+                  ? McpCore.OperationOutcome.InputRequired(result)
+                  : McpCore.OperationOutcome.Complete(result)
+              )
+            )
+        })
         yield* notifications.client["notifications/prompts/list_changed"]({})
       }),
+      removePrompt: (name) =>
+        Effect.suspend(() => {
+          if (!internalCore.prompts.remove(name)) return Effect.succeed(false)
+          prompts.splice(prompts.findIndex(({ prompt }) => prompt.name === name), 1)
+          return notifications.client["notifications/prompts/list_changed"]({}).pipe(Effect.as(true))
+        }),
       getPromptResult: Effect.fnUntraced(function*({ arguments: params, name }) {
         const client = yield* McpServerClient
         const outcome = yield* internalCore.prompts.get(
@@ -1696,6 +1776,17 @@ const normalizeCacheHints = (
  * runtime handles protocol lifecycle state and determines which clients receive
  * queued server notifications.
  *
+ * Set `declaredFeatures` to the kinds the server can register later, such as
+ * `["tools", "resources", "prompts"]`. They are advertised before the first
+ * item arrives, so legacy clients and modern list-change listeners can observe
+ * later registrations. Resource templates use the `"resources"` kind. Support
+ * also grows when items are registered and never shrinks on removal. Omitted
+ * kinds remain inferred from registrations. List methods return empty lists
+ * when a kind has no visible items, even without a declaration.
+ *
+ * See MCP's [capability negotiation](https://modelcontextprotocol.io/specification/2025-11-25/basic/lifecycle#capability-negotiation)
+ * and [list-change subscriptions](https://modelcontextprotocol.io/specification/2026-07-28/basic/patterns/subscriptions).
+ *
  * Each request handled by the server runs in a server span that follows the
  * OpenTelemetry MCP semantic conventions. Spans are named after the JSON-RPC
  * method, with the tool or prompt name appended for `tools/call` and
@@ -1718,6 +1809,7 @@ export const run: (options: {
   readonly protocols: Arr.NonEmptyReadonlyArray<McpProtocol.ProtocolAdapter>
   readonly extensions?: ServerExtensions | undefined
   readonly cacheHints?: CacheHints | undefined
+  readonly declaredFeatures?: ReadonlyArray<"tools" | "resources" | "prompts"> | undefined
 }) => Effect.Effect<
   never,
   Cause.IllegalArgumentError,
@@ -1732,6 +1824,7 @@ export const run: (options: {
   readonly protocols: Arr.NonEmptyReadonlyArray<McpProtocol.ProtocolAdapter>
   readonly extensions?: ServerExtensions | undefined
   readonly cacheHints?: CacheHints | undefined
+  readonly declaredFeatures?: ReadonlyArray<"tools" | "resources" | "prompts"> | undefined
 }) {
   const cacheHints = yield* normalizeCacheHints(options.cacheHints)
   const runtimeOption = yield* Effect.serviceOption(McpRuntime.ServerRuntime)
@@ -1751,6 +1844,7 @@ const runWithRuntime = Effect.fnUntraced(function*(
     readonly icons?: ReadonlyArray<McpSchema.Icon> | undefined
     readonly extensions?: ServerExtensions | undefined
     readonly cacheHints?: McpProtocolInternal.CacheHints | undefined
+    readonly declaredFeatures?: ReadonlyArray<"tools" | "resources" | "prompts"> | undefined
     readonly allowSubscriptions?: boolean | undefined
   },
   runtime: McpRuntime.ServerRuntimeShape,
@@ -1898,6 +1992,7 @@ const runWithRuntime = Effect.fnUntraced(function*(
     })
   let writeFromClient!: (clientId: number, message: RpcMessage.FromClientEncoded) => Effect.Effect<void>
   const { core, notificationDelivery, notifications } = internalState.get(server)!
+  core.declareFeatures(options.declaredFeatures ?? [])
   const handlers = requestScoped?.handlers ?? (yield* runtime.installHandlers({
     core,
     subscribeServerNotifications: PubSub.subscribe(serverNotifications),
@@ -2525,6 +2620,10 @@ type RegistrationServices<RR> = Exclude<McpRequest.Without<RR>, McpServer>
  * dependencies it supplies (see `ProvidedServices`); any other `McpRequest`
  * marker stays in the layer's requirements and must be met by MCP middleware.
  *
+ * Use `declaredFeatures` to advertise kinds before their first registration.
+ * Declarations and previously registered kinds remain supported after removal;
+ * see `run` for capability and empty-list behavior.
+ *
  * **Gotchas**
  *
  * Unlike `layerStdio` and `layerHttp`, this layer does not install a concrete
@@ -2553,6 +2652,7 @@ export const layer = <
   readonly protocols: Protocols
   readonly extensions?: ServerExtensions | undefined
   readonly cacheHints?: CacheHints | undefined
+  readonly declaredFeatures?: ReadonlyArray<"tools" | "resources" | "prompts"> | undefined
   readonly registrations?: Layer.Layer<RA, RE, RR> | undefined
 }): Layer.Layer<
   McpServer | McpRequest.From<"Requires", ProvidedServices<Protocols>>,
@@ -2574,6 +2674,7 @@ const layerWithRuntime = (options: {
   readonly icons?: ReadonlyArray<McpSchema.Icon> | undefined
   readonly extensions?: ServerExtensions | undefined
   readonly cacheHints?: CacheHints | undefined
+  readonly declaredFeatures?: ReadonlyArray<"tools" | "resources" | "prompts"> | undefined
   readonly allowSubscriptions?: boolean | undefined
   readonly registrations?: Layer.Layer<any, any, any> | undefined
 }, transport: "custom" | "http" | "stdio") =>
@@ -2608,6 +2709,10 @@ const layerWithRuntime = (options: {
  * dependencies it supplies (see `ProvidedServices`); any other `McpRequest`
  * marker stays in the layer's requirements and must be met by MCP middleware.
  *
+ * Use `declaredFeatures` to advertise kinds before their first registration.
+ * Declarations and previously registered kinds remain supported after removal;
+ * see `run` for capability and empty-list behavior.
+ *
  * Each call builds its own `RpcServer.Protocol`, so several stdio servers can
  * live in one layer graph as long as each is provided its own `Stdio`. They
  * still share the memoized `McpServer` registry.
@@ -2634,6 +2739,7 @@ export const layerStdio = <
   readonly protocols: Protocols
   readonly extensions?: ServerExtensions | undefined
   readonly cacheHints?: CacheHints | undefined
+  readonly declaredFeatures?: ReadonlyArray<"tools" | "resources" | "prompts"> | undefined
   readonly registrations?: Layer.Layer<RA, RE, RR> | undefined
 }): Layer.Layer<
   McpServer | McpRequest.From<"Requires", ProvidedServices<Protocols>>,
@@ -2771,6 +2877,10 @@ export const layerSerialization = (options: {
  * `HttpRouter.middleware` can provide them, for example to authenticate the
  * request and resolve the current user.
  *
+ * Use `declaredFeatures` to advertise kinds before their first registration.
+ * Declarations and previously registered kinds remain supported after removal;
+ * see `run` for capability and empty-list behavior.
+ *
  * `layerHttp` always implements the single-endpoint Streamable HTTP topology.
  * Using `v2024_11_05` here is a custom compatibility transport for that
  * revision's schema. It does not implement the historical two-endpoint
@@ -2804,6 +2914,7 @@ export const layerHttp = <
   readonly protocols: Protocols
   readonly extensions?: ServerExtensions | undefined
   readonly cacheHints?: CacheHints | undefined
+  readonly declaredFeatures?: ReadonlyArray<"tools" | "resources" | "prompts"> | undefined
   readonly allowedOrigins?: ReadonlyArray<string> | undefined
   readonly allowSessionTermination?: boolean | undefined
   readonly allowSubscriptions?: boolean | undefined
@@ -2855,6 +2966,10 @@ export const layerHttp = <
  * are added, and shared by every POST. Remaining `McpRequest` markers become
  * `HttpRouter.Request` markers, as with `layerHttp`.
  *
+ * `declaredFeatures` advertises kinds before their first registration, as with
+ * `layerHttp`. Discovery retains those capabilities after removal, with
+ * `listChanged: false` because this endpoint does not support subscriptions.
+ *
  * @see {@link layerHttp} for the long-lived HTTP transport and HTTP admission policy
  *
  * @stability unstable
@@ -2879,6 +2994,7 @@ export const layerHttpRequestScoped = <
   readonly protocols: Protocols
   readonly extensions?: ServerExtensions | undefined
   readonly cacheHints?: CacheHints | undefined
+  readonly declaredFeatures?: ReadonlyArray<"tools" | "resources" | "prompts"> | undefined
   readonly allowedOrigins?: ReadonlyArray<string> | undefined
   readonly registrations?: Layer.Layer<RA, RE, RR> | undefined
 }): Layer.Layer<
@@ -2899,6 +3015,7 @@ export const layerHttpRequestScoped = <
     const serverOptions = { ...options, cacheHints: yield* normalizeCacheHints(options.cacheHints) }
     const server = yield* McpServer
     const { core, notificationDelivery } = internalState.get(server)!
+    core.declareFeatures(options.declaredFeatures ?? [])
     // Subscriptions are disabled, so handlers hold no per-request state and
     // read registrations from the shared core on every call. Request services
     // still take precedence over the layer context captured here.

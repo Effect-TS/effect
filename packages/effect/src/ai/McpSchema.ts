@@ -3630,8 +3630,22 @@ export function param<const Name extends string, S extends Schema.Constraint>(
 }
 
 /**
- * Annotation to conditionally enable or disable tools based on client
- * information.
+ * Annotation that enables a registration according to the requesting client's
+ * protocol version, capabilities and identity.
+ *
+ * **Details**
+ *
+ * The predicate is evaluated on each list request and each direct tool, prompt
+ * or resource lookup. It applies to tools, prompts, resources and resource
+ * templates, and is not captured during registration or initialization.
+ * Disabled static resources and templates are skipped when resolving a URI.
+ *
+ * **Gotchas**
+ *
+ * Changing external state read by this predicate does not send a list-change
+ * notification. Use explicit registration removal when withdrawing an item
+ * should notify clients. Effectful middleware visibility has its own access
+ * checks; a denied resource does not fall through to another template.
  *
  * @stability unstable
  * @category services

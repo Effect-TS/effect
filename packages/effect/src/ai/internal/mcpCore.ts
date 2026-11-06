@@ -195,9 +195,8 @@ export interface ToolRegistration {
  * @internal
  */
 export interface Tools {
-  readonly register: (
-    registration: ToolRegistration
-  ) => Effect.Effect<void>
+  readonly register: (registration: ToolRegistration) => void
+  readonly remove: (name: string) => boolean
   readonly list: (
     invocation: McpInvocation
   ) => Effect.Effect<ReadonlyArray<McpSchema.Tool>, RequestRejected>
@@ -231,6 +230,7 @@ export interface ResourceTemplateRegistration {
   readonly descriptor: McpSchema.ResourceTemplate
   readonly isVisible: (profile: NegotiatedProtocolProfile<string>) => boolean
   readonly visible?: Visible | undefined
+  readonly completions?: ReadonlyMap<string, CompletionHandler> | undefined
   readonly match: (uri: string) => ReadonlyArray<string> | undefined
   readonly read: (
     uri: string,
@@ -248,7 +248,9 @@ export interface ResourceTemplateRegistration {
 export interface Resources {
   // Synchronous, so a caller can check skill ownership and register in one step.
   readonly register: (registration: ResourceRegistration) => void
-  readonly registerTemplate: (registration: ResourceTemplateRegistration) => Effect.Effect<void>
+  readonly registerTemplate: (registration: ResourceTemplateRegistration) => void
+  readonly remove: (uri: string) => boolean
+  readonly removeTemplate: (uriTemplate: string) => boolean
   readonly list: (
     invocation: McpInvocation
   ) => Effect.Effect<ReadonlyArray<McpSchema.Resource>, RequestRejected>
@@ -363,6 +365,7 @@ export interface PromptRegistration {
   readonly descriptor: McpSchema.Prompt
   readonly isVisible: (profile: NegotiatedProtocolProfile<string>) => boolean
   readonly visible?: Visible | undefined
+  readonly completions?: ReadonlyMap<string, CompletionHandler> | undefined
   readonly get: (
     args: Readonly<Record<string, string>>,
     invocation: McpInvocation
@@ -376,7 +379,8 @@ export interface PromptRegistration {
  * @internal
  */
 export interface Prompts {
-  readonly register: (registration: PromptRegistration) => Effect.Effect<void>
+  readonly register: (registration: PromptRegistration) => void
+  readonly remove: (name: string) => boolean
   readonly list: (
     invocation: McpInvocation
   ) => Effect.Effect<ReadonlyArray<McpSchema.Prompt>, RequestRejected>
@@ -423,14 +427,15 @@ export interface CompletionResult {
 /**
  * @internal
  */
+export type CompletionHandler = (
+  request: CompletionRequest,
+  invocation: McpInvocation
+) => Effect.Effect<CompletionResult, McpSchema.InvalidParams | McpSchema.InternalError | RequestRejected>
+
+/**
+ * @internal
+ */
 export interface Completions {
-  readonly register: (
-    key: string,
-    complete: (
-      request: CompletionRequest,
-      invocation: McpInvocation
-    ) => Effect.Effect<CompletionResult, McpSchema.InvalidParams | McpSchema.InternalError | RequestRejected>
-  ) => Effect.Effect<void>
   readonly complete: (
     request: CompletionRequest,
     invocation: McpInvocation
@@ -509,6 +514,7 @@ export interface McpCore {
   readonly prompts: Prompts
   readonly completions: Completions
   readonly skills: Skills
+  readonly declareFeatures: (features: ReadonlyArray<"tools" | "resources" | "prompts">) => void
   readonly registrationPresence: Effect.Effect<{
     readonly tools: boolean
     readonly resources: boolean
@@ -542,13 +548,9 @@ export const make: Effect.Effect<McpCore> = Effect.sync(() => {
   const promptRegistrations = new Map<string, PromptRegistration>()
   const skillRegistrations = new Map<string, SkillRegistration>()
   const skillFiles = new Set<string>()
-  const completionRegistrations = new Map<
-    string,
-    (
-      request: CompletionRequest,
-      invocation: McpInvocation
-    ) => Effect.Effect<CompletionResult, McpSchema.InvalidParams | McpSchema.InternalError | RequestRejected>
-  >()
+  // Support is independent of inventory: existing clients may have negotiated
+  // a feature before its final registration is removed.
+  const supportedFeatures = new Set<"tools" | "resources" | "prompts">()
 
   const filterList = <D>(
     registrations: Iterable<{
@@ -567,10 +569,11 @@ export const make: Effect.Effect<McpCore> = Effect.sync(() => {
     )
 
   const tools: Tools = {
-    register: (registration) =>
-      Effect.sync(() => {
-        registrations.set(registration.descriptor.name, registration)
-      }),
+    register: (registration) => {
+      supportedFeatures.add("tools")
+      registrations.set(registration.descriptor.name, registration)
+    },
+    remove: (name) => registrations.delete(name),
     list: (invocation) => filterList(registrations.values(), invocation),
     find: (name, profile) => {
       const registration = registrations.get(name)
@@ -591,6 +594,7 @@ export const make: Effect.Effect<McpCore> = Effect.sync(() => {
 
   const resources: Resources = {
     register: (registration) => {
+      supportedFeatures.add("resources")
       const index = resourceRegistrations.findIndex((entry) => entry.descriptor.uri === registration.descriptor.uri)
       if (index === -1) {
         resourceRegistrations.push(registration)
@@ -598,17 +602,29 @@ export const make: Effect.Effect<McpCore> = Effect.sync(() => {
         resourceRegistrations[index] = registration
       }
     },
-    registerTemplate: (registration) =>
-      Effect.sync(() => {
-        const index = resourceTemplateRegistrations.findIndex(
-          (entry) => entry.descriptor.uriTemplate === registration.descriptor.uriTemplate
-        )
-        if (index === -1) {
-          resourceTemplateRegistrations.push(registration)
-        } else {
-          resourceTemplateRegistrations[index] = registration
-        }
-      }),
+    registerTemplate: (registration) => {
+      supportedFeatures.add("resources")
+      const index = resourceTemplateRegistrations.findIndex(
+        (entry) => entry.descriptor.uriTemplate === registration.descriptor.uriTemplate
+      )
+      if (index === -1) {
+        resourceTemplateRegistrations.push(registration)
+      } else {
+        resourceTemplateRegistrations[index] = registration
+      }
+    },
+    remove: (uri) => {
+      const index = resourceRegistrations.findIndex((entry) => entry.descriptor.uri === uri)
+      if (index === -1) return false
+      resourceRegistrations.splice(index, 1)
+      return true
+    },
+    removeTemplate: (uriTemplate) => {
+      const index = resourceTemplateRegistrations.findIndex((entry) => entry.descriptor.uriTemplate === uriTemplate)
+      if (index === -1) return false
+      resourceTemplateRegistrations.splice(index, 1)
+      return true
+    },
     list: (invocation) => filterList(resourceRegistrations, invocation),
     listTemplates: (invocation) => filterList(resourceTemplateRegistrations, invocation),
     read: Effect.fnUntraced(function*(uri, invocation) {
@@ -627,10 +643,11 @@ export const make: Effect.Effect<McpCore> = Effect.sync(() => {
   }
 
   const prompts: Prompts = {
-    register: (registration) =>
-      Effect.sync(() => {
-        promptRegistrations.set(registration.descriptor.name, registration)
-      }),
+    register: (registration) => {
+      supportedFeatures.add("prompts")
+      promptRegistrations.set(registration.descriptor.name, registration)
+    },
+    remove: (name) => promptRegistrations.delete(name),
     list: (invocation) => filterList(promptRegistrations.values(), invocation),
     get: Effect.fnUntraced(function*(name, args, invocation) {
       const registration = promptRegistrations.get(name)
@@ -642,15 +659,12 @@ export const make: Effect.Effect<McpCore> = Effect.sync(() => {
   }
 
   const completions: Completions = {
-    register: (key, complete) =>
-      Effect.sync(() => {
-        completionRegistrations.set(key, complete)
-      }),
     complete: Effect.fnUntraced(function*(request, invocation) {
-      const key = request.reference.type === "prompt"
-        ? `prompt/${request.reference.name}/${request.argument.name}`
-        : `resource/${request.reference.uriTemplate}/${request.argument.name}`
-      const complete = completionRegistrations.get(key)
+      const reference = request.reference
+      const owner = reference.type === "prompt"
+        ? promptRegistrations.get(reference.name)
+        : resourceTemplateRegistrations.find((entry) => entry.descriptor.uriTemplate === reference.uriTemplate)
+      const complete = owner?.completions?.get(request.argument.name)
       if (complete === undefined) {
         return yield* new McpSchema.InvalidParams({ message: "Unknown completion reference or argument" })
       }
@@ -720,11 +734,21 @@ export const make: Effect.Effect<McpCore> = Effect.sync(() => {
   }
 
   const registrationPresence = Effect.sync(() => ({
-    tools: registrations.size > 0,
-    resources: resourceRegistrations.length > 0 || resourceTemplateRegistrations.length > 0,
-    prompts: promptRegistrations.size > 0,
+    tools: supportedFeatures.has("tools"),
+    resources: supportedFeatures.has("resources"),
+    prompts: supportedFeatures.has("prompts"),
     skills: skillRegistrations.size > 0
   }))
 
-  return { tools, resources, prompts, completions, skills, registrationPresence }
+  return {
+    tools,
+    resources,
+    prompts,
+    completions,
+    skills,
+    registrationPresence,
+    declareFeatures: (features) => {
+      for (const feature of features) supportedFeatures.add(feature)
+    }
+  }
 })
