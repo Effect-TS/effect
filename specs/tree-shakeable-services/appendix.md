@@ -428,7 +428,8 @@ What the rows establish:
   module of its own and this row did not carry it; the 7 kB difference is what a record declaration and the
   `Operations` constructor cost when nothing drops them. Nothing in the program's behaviour changes, so no rule is
   needed for shaking to work; the cost is gone once published.
-- **Published modules shake without user action.** `packages/effect`'s build, and every platform package's, runs
+- **Published modules shake without user action.** `packages/effect`'s build, and that of every platform package
+  built to `dist` (`@effect/platform-deno` ships TypeScript source and has none), runs
   `babel-plugin-annotate-pure-calls` over `dist`, which annotates the outer call of every top-level declaration,
   curried or not, and esbuild drops the whole expression. This is how every `Context.Service("â€¦")` key and every
   `Layer` in `effect` shakes today, and `effect/FileSystem`'s operations and a provider's operation layers shake the
@@ -671,7 +672,8 @@ it already makes `layer` droppable in a root that does not use it; the `(() => â
 its implementation functions are calls like any other and are annotated the same way. No file is added or split.
 After this phase a program that calls two operations and provides `NodeFileSystem.readFile` and
 `NodeFileSystem.writeFile` bundles two implementations; a program that still provides `NodeFileSystem.layer` behaves
-as before. `DenoFileSystem.ts` gets the same exports; Bun re-exports Node's.
+as before. `DenoFileSystem.ts` gets the same exports, each written `/* @__PURE__ */` because the Deno package ships
+source with no build step to annotate it; Bun re-exports Node's.
 
 **Phase 2, `effect/Terminal`.** `NodeTerminal.ts`, one module as today, exports one layer per member. `columns`,
 `rows` and `display` are one-liners over `process.stdout`: `Layer.succeed(Terminal.columns, Effect.sync(() =>

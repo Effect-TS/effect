@@ -919,12 +919,14 @@ binding whose initializer is a call (`Context.Operation<…>()("…")`, `Layer.s
 requirements follow, none of them a file-layout rule:
 
 1. **Top-level calls are annotated pure.** A call the bundler cannot see into is a side effect until something says
-   otherwise, and `Layer.succeed(…)` and `Context.Operation(…)` are calls. `packages/effect` and every platform
-   package annotate the outer call of every top-level declaration at build time (`babel-plugin-annotate-pure-calls`
-   over `dist`), which is how every `Context.Service("…")` key and every `Layer` in `effect` shakes today; the
-   operations, records and operation layers shake the same way with nothing written in the source. A provider
-   written in application code, which no build annotates, writes `/* @__PURE__ */` before each top-level layer
-   construction, or the bundler keeps every one (measured below: a provider module as written keeps all thirty).
+   otherwise, and `Layer.succeed(…)` and `Context.Operation(…)` are calls. `packages/effect` and the platform
+   packages built to `dist` (`@effect/platform-node-shared`, `-node`, `-bun`, `-browser`) annotate the outer call of
+   every top-level declaration at build time (`babel-plugin-annotate-pure-calls` over `dist`), which is how every
+   `Context.Service("…")` key and every `Layer` in `effect` shakes today; the operations, records and operation
+   layers shake the same way with nothing written in the source. A provider that no build annotates writes
+   `/* @__PURE__ */` before each top-level layer construction, or the bundler keeps every one (measured below: a
+   provider module as written keeps all thirty). That is a provider in application code, and
+   `@effect/platform-deno`, which ships TypeScript source with no build step.
 2. **No module-level state or side effects.** The helpers a provider's implementations share are plain functions, read
    when an implementation runs; nothing at the top level of a contract or provider module runs for its effect. The
    prototype's `NodeFileSystem.ts` needed nothing changed to meet this; `@effect/platform-node-shared`'s does not
@@ -1142,7 +1144,8 @@ plan"; type test numbers to its second list.
    today, beside `layer`; derived-operation layers in `effect/FileSystem`. No new files.
    - A bundle test in `packages/platform/node-shared`, the shape of issue 7's, provides `NodeFileSystem.readFile` and
      `NodeFileSystem.writeFile` with the package as published and carries two implementations.
-10. **`effect/FileSystem` phase 2, Deno and Bun.** The same exports in `DenoFileSystem.ts`; Bun re-exports Node's.
+10. **`effect/FileSystem` phase 2, Deno and Bun.** The same exports in `DenoFileSystem.ts`, each written with
+    `/* @__PURE__ */`, since the Deno package ships source without the babel step; Bun re-exports Node's.
     - The Deno and Bun suites pass; a bundle fixture over `DenoFileSystem.readFile` carries one implementation.
 11. **`effect/FileSystem` phase 3.** The `yield* FileSystem` sites inside `effect` that use few members moved to
     operation calls or a subset annotation, one commit per module, with the module's tests unchanged.
