@@ -524,6 +524,28 @@ describe("OpenRouterLanguageModel", () => {
         }).pipe(Effect.provide(makeTestLayer())))
     })
 
+    it.effect("reads a refusal as the message text", () =>
+      Effect.gen(function*() {
+        const result = yield* LanguageModel.generateText({ prompt: "Do something bad" }).pipe(
+          Effect.provide(OpenRouterLanguageModel.model("openai/gpt-4o"))
+        )
+
+        strictEqual(result.text, "I cannot do that")
+        strictEqual(result.finishReason, "stop")
+      }).pipe(Effect.provide(makeTestLayer({
+        body: {
+          choices: [{
+            finish_reason: "stop",
+            index: 0,
+            message: {
+              role: "assistant",
+              content: null,
+              refusal: "I cannot do that"
+            }
+          }]
+        }
+      }))))
+
     describe("usage", () => {
       it.effect("derives text and uncached tokens when details are subsets of their totals", () =>
         Effect.gen(function*() {
@@ -761,6 +783,47 @@ describe("OpenRouterLanguageModel", () => {
             "text-delta:Answer",
             "text-end"
           ]
+        )
+      }))
+
+    it.effect("streams a refusal into one text part", () =>
+      Effect.gen(function*() {
+        const parts = yield* LanguageModel.streamText({ prompt: "Do something bad" }).pipe(
+          Stream.runCollect,
+          Effect.provide(OpenRouterLanguageModel.model("openai/gpt-4o")),
+          Effect.provide(makeStreamTestLayer([
+            {
+              id: "response-1",
+              object: "chat.completion.chunk",
+              model: "openai/gpt-4o",
+              created: 1,
+              choices: [{ index: 0, delta: { content: "", refusal: "I cannot", role: "assistant" } }]
+            },
+            {
+              id: "response-1",
+              object: "chat.completion.chunk",
+              model: "openai/gpt-4o",
+              created: 1,
+              choices: [{ index: 0, delta: { content: "", refusal: " do that", role: "assistant" } }]
+            },
+            {
+              id: "response-1",
+              object: "chat.completion.chunk",
+              model: "openai/gpt-4o",
+              created: 1,
+              choices: [{ index: 0, finish_reason: "stop", delta: { content: "" } }],
+              usage: { prompt_tokens: 5, completion_tokens: 4, total_tokens: 9 }
+            }
+          ]))
+        )
+
+        deepStrictEqual(
+          parts.flatMap((part) =>
+            part.type.startsWith("text-")
+              ? ["delta" in part ? `${part.type}:${part.delta}` : part.type]
+              : []
+          ),
+          ["text-start", "text-delta:I cannot", "text-delta: do that", "text-end"]
         )
       }))
 
