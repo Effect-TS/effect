@@ -46,7 +46,6 @@ import * as HttpClientResponse from "./HttpClientResponse.ts"
 import * as HttpIncomingMessage from "./HttpIncomingMessage.ts"
 import * as HttpMethod from "./HttpMethod.ts"
 import * as TraceContext from "./HttpTraceContext.ts"
-import * as redactedNames from "./internal/redactedNames.ts"
 import * as tracing from "./internal/tracing.ts"
 import { getWebSource, WebSourceSymbol } from "./internal/webResponse.ts"
 import * as Url from "./Url.ts"
@@ -683,7 +682,7 @@ const Proto = {
  *
  * The runner receives the request, resolved URL, abort signal, and current fiber. The client wrapper handles URL construction failures, tracing and propagation, header redaction, aborting the signal when the request is interrupted before a response arrives, and attaching each request to the scope of an enclosing `withScope`.
  *
- * `HttpClientError` reasons redact their URL with the `UrlParams.CurrentRedactedNames` of the fiber that executed the request, even when they are created in callbacks that run outside it. This covers errors the runner fails with, and errors built from the response the client returns or the response the runner produced. Rendering an error then adds the names of the rendering fiber. If the runner returns the same response object to more than one execution, errors from that response redact the names of every execution that received it.
+ * `HttpClientError` reasons redact their URL with the `UrlParams.CurrentRedactedNames` of the fiber that executed the request, even when a callback outside that fiber creates them. The client adds those names to the errors the runner fails with and to errors built later from the response. Rendering an error then adds the names of the rendering fiber. A runner that returns one response object to several executions gives its errors the names of all of them.
  *
  * @stability unstable
  * @category constructors
@@ -739,7 +738,7 @@ export const make = (
                 if (Cause.hasInterrupts(cause)) {
                   controller.abort()
                 }
-                redactFailureUrls(cause, urlParamsRedactedNames)
+                Error.addFailureRedactedNames(cause, urlParamsRedactedNames)
                 return Effect.failCause(cause)
               }
             })
@@ -801,20 +800,6 @@ const endSpanWithStatusError = (
     fiber.getRef(References.TracerTimingEnabled) ? fiber.getRef(Clock).currentTimeNanosUnsafe() : BigInt(0),
     exit
   )
-}
-
-// A runner may create its error in a callback that runs outside the fiber,
-// with names unrelated to the request. Once the failure is back on the
-// executing fiber, its names are added to the URL each reason redacts.
-const redactFailureUrls = (
-  cause: Cause.Cause<unknown>,
-  names: ReadonlyArray<string | RegExp>
-): void => {
-  for (const reason of cause.reasons) {
-    if (Cause.isFailReason(reason) && Error.isHttpClientError(reason.error)) {
-      redactedNames.addReasonRedactedNames(reason.error.reason, names)
-    }
-  }
 }
 
 /**
@@ -2323,11 +2308,11 @@ const trackResponse = (
 ): HttpClientResponse.HttpClientResponse => {
   // Body readers create errors with the runner's response, while callers hold
   // the wrapper, so both carry the names of the executing fiber.
-  redactedNames.setResponseRedactedNames(response, urlParamsRedactedNames)
+  Error.addResponseRedactedNames(response, urlParamsRedactedNames)
   if (!scoped) {
     responseRegistry.register(response, controller)
     response = new InterruptibleResponse(response, controller)
-    redactedNames.setResponseRedactedNames(response, urlParamsRedactedNames)
+    Error.addResponseRedactedNames(response, urlParamsRedactedNames)
   }
   responseControllers.set(response, controller)
   return response
