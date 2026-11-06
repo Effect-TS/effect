@@ -44,6 +44,16 @@ const assertThrowsTagged = (tag: string, run: () => unknown) => {
   assert.fail(`Expected ${tag} to be thrown`)
 }
 
+const thrownCodecError = (run: () => unknown): PgTypesResult.CodecError => {
+  try {
+    run()
+  } catch (error) {
+    assert.instanceOf(error, PgTypesResult.CodecError)
+    return error as PgTypesResult.CodecError
+  }
+  return assert.fail("Expected PgTypesCodecError to be thrown")
+}
+
 /** Every value below was produced by PostgreSQL for the encoded parameter. */
 const roundTrips: Array<{
   readonly name: keyof typeof rows
@@ -630,15 +640,15 @@ describe("PgTypes", () => {
       }
     })
 
-    it("rejects invalid UTF-8 with the same codec failure as text", () => {
-      for (const wire of ["ff", "c3", "c328"]) {
-        const expected = PgTypesResult.decode(bytes(wire), PgTypes.OID.text, 1)
-        const actual = PgTypesResult.decode(bytes(wire), 99999, 1)
-        assert.isTrue(Result.isFailure(expected))
-        assert.isTrue(Result.isFailure(actual))
-        if (Result.isFailure(expected) && Result.isFailure(actual)) {
-          assert.strictEqual(actual.failure._tag, "PgTypesCodecError")
-          assert.strictEqual(actual.failure.message, expected.failure.message)
+    it("rejects bytes that cannot be text with a codec failure naming the OID", () => {
+      // `0001000000000000` is pgvector's `'[0]'`: valid UTF-8, but binary data.
+      for (const [wire, reason] of [["ff", "UTF-8"], ["c3", "UTF-8"], ["c328", "UTF-8"], ["0001000000000000", "NUL"]]) {
+        const decoded = PgTypesResult.decode(bytes(wire), 99999, 1)
+        assert.isTrue(Result.isFailure(decoded))
+        if (Result.isFailure(decoded)) {
+          assert.strictEqual(decoded.failure._tag, "PgTypesCodecError")
+          assert.include(decoded.failure.message, reason)
+          assert.include(decoded.failure.message, "99999")
         }
       }
     })
@@ -1132,15 +1142,16 @@ describe("PgTypes", () => {
       assert.deepStrictEqual((messages[0] as PgProtocol.DataRow<unknown>).values, [7, "use_key", "gérer ☃", "", null])
     })
 
-    it("rejects invalid UTF-8 in an unregistered column with a codec error", () => {
-      for (const wire of ["ff", "c3", "c328"]) {
-        const parser = PgProtocol.makeParser({
-          readField: PgTypes.makeFieldReader(binary([PgTypes.OID.int4, 99999]))
-        })
-        assertThrowsTagged(
-          "PgTypesCodecError",
-          () => parser.push(dataRow([PgTypes.encode(7, PgTypes.OID.int4), bytes(wire)]))
-        )
+    it("rejects an unregistered column that cannot be text with a codec error naming it", () => {
+      const columns = [
+        { dataTypeOid: PgTypes.OID.int4, format: 1, name: "id" },
+        { dataTypeOid: 99999, format: 1, name: "embedding" }
+      ]
+      for (const wire of ["ff", "c3", "c328", "0001000000000000"]) {
+        const parser = PgProtocol.makeParser({ readField: PgTypes.makeFieldReader(columns) })
+        const error = thrownCodecError(() => parser.push(dataRow([PgTypes.encode(7, PgTypes.OID.int4), bytes(wire)])))
+        assert.include(error.message, "embedding")
+        assert.include(error.message, "99999")
       }
     })
 

@@ -332,6 +332,23 @@ it.layer(PgContainer.layer, { timeout: "30 seconds" })("PgConnection", (it) => {
       assert.deepStrictEqual(result.rows, [{ count: BigInt(1) }])
     }))
 
+  it.effect("fails rows it cannot decode and keeps the connection usable", () =>
+    Effect.gen(function*() {
+      const connection = yield* makeConnection()
+      const pid = connection.queryValues("SELECT pg_backend_pid()")
+      const before = yield* pid
+      // `point` has no codec: `(0,0)` is sixteen NUL bytes and `(1,2)` is invalid UTF-8.
+      for (const point of ["(0,0)", "(1,2)"]) {
+        const error = yield* connection.query(`SELECT '${point}'::point AS location`).pipe(
+          Effect.andThen((result) => Effect.die(`${point} decoded as ${JSON.stringify(result.rows)}`)),
+          Effect.flip
+        )
+        assert.instanceOf(error.reason.cause, PgTypes.CodecError)
+        assert.include((error.reason.cause as PgTypes.CodecError).message, "location")
+      }
+      assert.deepStrictEqual(yield* pid, before)
+    }))
+
   it.effect("binds untyped strings and integers beyond int4", () =>
     Effect.gen(function*() {
       const connection = yield* makeConnection()
