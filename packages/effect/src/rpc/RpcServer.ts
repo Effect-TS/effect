@@ -1373,25 +1373,27 @@ export const makeProtocolWithHttpEffect: (
     clients.set(id, client)
     clientIds.add(id)
 
-    // @effect-diagnostics-next-line tryCatchInEffectGen:off
-    try {
-      const decoded = parser.decode(data) as ReadonlyArray<FromClientEncoded>
-      for (let i = 0; i < decoded.length; i++) {
-        const message = decoded[i]
-        if (message._tag === "Request") {
-          requestIds.push(RequestId(message.id))
-          ;(message as Types.Mutable<RequestEncoded>).headers = requestHeaders.concat(message.headers)
+    const dispatch = Effect.gen(function*() {
+      // @effect-diagnostics-next-line tryCatchInEffectGen:off
+      try {
+        const decoded = parser.decode(data) as ReadonlyArray<FromClientEncoded>
+        for (let i = 0; i < decoded.length; i++) {
+          const message = decoded[i]
+          if (message._tag === "Request") {
+            requestIds.push(RequestId(message.id))
+            ;(message as Types.Mutable<RequestEncoded>).headers = requestHeaders.concat(message.headers)
+          }
+          yield* writeRequest(id, message)
         }
-        yield* writeRequest(id, message)
+      } catch (cause) {
+        yield* client.write(ResponseDefectEncoded(encodeDefectUnsafe(cause)))
       }
-    } catch (cause) {
-      yield* client.write(ResponseDefectEncoded(encodeDefectUnsafe(cause)))
-    }
+      yield* writeRequest(id, constEof)
+    })
 
-    yield* writeRequest(id, constEof)
-
-    // Allow request aborts during response waits without unmasking response construction.
     if (!includesFraming) {
+      yield* dispatch
+      // Allow request aborts during response waits without unmasking response construction.
       const responses = yield* Effect.interruptible(Queue.collect(queue))
       // Notification-only batches encode without a response body.
       const encoded = parser.encode(responses)
@@ -1399,6 +1401,9 @@ export const makeProtocolWithHttpEffect: (
         contentType: serialization.contentType
       })
     }
+
+    // Framed responses use a bounded queue, so dispatch must run while the response drains it.
+    yield* Effect.forkIn(dispatch, scope, { startImmediately: true })
 
     const initialChunk = yield* Effect.interruptible(Pull.catchDone(
       Queue.takeAll(queue as Queue.Dequeue<Uint8Array, Cause.Done>),

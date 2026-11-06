@@ -872,6 +872,36 @@ describe("RpcServer", () => {
       assert.isBelow(produced, 16)
     }))
 
+  it.effect("drains framed HTTP responses while dispatching a batch larger than the buffer", () =>
+    Effect.gen(function*() {
+      const Rpcs = RpcGroup.make(Rpc.make("ping", { success: Schema.Number }))
+      const Server = RpcServer.layerHttp({
+        group: Rpcs,
+        path: "/rpc",
+        protocol: "http",
+        streamBufferSize: 1
+      }).pipe(
+        Layer.provide(Rpcs.toLayer({ ping: () => Effect.succeed(1) })),
+        Layer.provide(RpcSerialization.layerNdjson)
+      )
+      const { dispose, handler } = HttpRouter.toWebHandler(Server)
+      yield* Effect.addFinalizer(() => Effect.promise(dispose))
+
+      const post = (ids: ReadonlyArray<number>, tag: string) =>
+        Effect.promise(() =>
+          handler(
+            new Request("http://test/rpc", {
+              method: "POST",
+              body: ids.map((id) => `{"_tag":"Request","id":${id},"tag":"${tag}","payload":{},"headers":[]}\n`).join("")
+            })
+          ).then((response) => response.text())
+        )
+      const requestIds = (body: string) => body.trim().split("\n").map((line) => JSON.parse(line).requestId)
+
+      assert.deepStrictEqual(requestIds(yield* post([1], "ping")), [1])
+      assert.deepStrictEqual(requestIds(yield* post([2, 3, 4], "unknown")), [2, 3, 4])
+    }))
+
   it.effect("allows unbounded framed HTTP response buffering", () =>
     Effect.gen(function*() {
       const produced = yield* producedWithoutReadingFramedBody("unbounded")
