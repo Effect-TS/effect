@@ -146,6 +146,7 @@ const makeHarness = (options: {
 const makeClient = (options: {
   readonly acquire?: Effect.Effect<void, never, Scope.Scope> | undefined
   readonly begin?: SqlClient.SqlClient.MakeOptions["begin"]
+  readonly borrow?: boolean | undefined
   readonly commit?: Effect.Effect<void, SqlError.SqlError> | undefined
   readonly prepareTransactionControls?: boolean | undefined
   readonly release?: Effect.Effect<void> | undefined
@@ -178,6 +179,7 @@ const makeClient = (options: {
     spanAttributes: [],
     prepareTransactionControls: options.prepareTransactionControls,
     begin: options.begin,
+    borrower: options.borrow ? (f) => Effect.andThen(record("borrow"), f(connection)) : undefined,
     commit: commit === undefined ? undefined : () => Effect.andThen(record("COMMIT"), commit)
   }).pipe(
     Effect.flatMap((sql) =>
@@ -191,6 +193,13 @@ const makeClient = (options: {
     ),
     Effect.provide(Reactivity.layer)
   )
+}
+
+const isEnded = (exit: Exit.Exit<unknown, unknown>) => {
+  const error = Exit.isFailure(exit) ? Cause.findErrorOption(exit.cause) : Option.none()
+  return Option.isSome(error) && SqlError.isSqlError(error.value) &&
+    error.value.reason._tag === "UnknownError" &&
+    error.value.reason.message === "SqlClient: the transaction has already ended"
 }
 
 const assertTypedFailure = <A, E>(exit: Exit.Exit<A, E>, error: E) => {
@@ -259,6 +268,91 @@ describe("SqlClient", () => {
       yield* sql.withTransaction(record("reused"))
       assert.isTrue(interruptedBeforeRelease, "interruption must complete while the holder still owns the connection")
       assert.deepStrictEqual(calls, ["BEGIN", "COMMIT", "release", "BEGIN", "reused", "COMMIT", "release"])
+    }))
+
+  it.effect.each([false, true])(
+    "fails statements from a fiber that outlives its transaction (borrow: %s)",
+    (borrow) =>
+      Effect.gen(function*() {
+        const { calls, sql } = yield* makeClient({ borrow })
+        const go = yield* Deferred.make<void>()
+        const stale = yield* sql.withTransaction(Effect.forkDetach(Effect.andThen(
+          Deferred.await(go),
+          Effect.all([
+            Effect.exit(sql`SELECT 'stale'`),
+            Effect.exit(sql.withTransaction(sql`SELECT 'stale nested'`))
+          ])
+        )))
+        yield* Deferred.succeed(go, undefined)
+        const [statement, nested] = yield* Fiber.join(stale)
+        assert.isTrue(isEnded(statement))
+        assert.isTrue(isEnded(nested))
+
+        // A fiber forked inside a savepoint can't use the connection once the
+        // savepoint ends, even while the outer transaction is still open.
+        const goNested = yield* Deferred.make<void>()
+        const staleNested = yield* sql.withTransaction(Effect.gen(function*() {
+          const fiber = yield* sql.withTransaction(Effect.forkDetach(Effect.andThen(
+            Deferred.await(goNested),
+            Effect.exit(sql`SELECT 'stale savepoint'`)
+          )))
+          yield* Deferred.succeed(goNested, undefined)
+          return yield* Fiber.join(fiber)
+        }))
+        assert.isTrue(isEnded(staleNested))
+
+        assert.isFalse(calls.some((call) => call.includes("stale")))
+        assert.deepStrictEqual(calls, [
+          "BEGIN",
+          "COMMIT",
+          "release",
+          "BEGIN",
+          "SAVEPOINT effect_sql_1",
+          "COMMIT",
+          "release"
+        ])
+      })
+  )
+
+  it.effect("fails statements from a fiber that runs while its transaction commits", () =>
+    Effect.gen(function*() {
+      const go = yield* Deferred.make<void>()
+      let stale: Fiber.Fiber<Exit.Exit<unknown, SqlError.SqlError>> | undefined
+      const { calls, sql } = yield* makeClient({
+        commit: Effect.suspend(() => Effect.andThen(Deferred.succeed(go, undefined), Fiber.await(stale!))).pipe(
+          Effect.asVoid
+        )
+      })
+      yield* sql.withTransaction(Effect.gen(function*() {
+        stale = yield* Effect.forkDetach(Effect.andThen(Deferred.await(go), Effect.exit(sql`SELECT 'stale'`)))
+      }))
+      assert.isTrue(isEnded(yield* Fiber.join(stale!)))
+      assert.deepStrictEqual(calls, ["BEGIN", "COMMIT", "release"])
+    }))
+
+  it.effect("keeps the error of a nested transaction that fails after its outer one ends", () =>
+    Effect.gen(function*() {
+      const { calls, sql } = yield* makeClient()
+      const started = yield* Deferred.make<void>()
+      const go = yield* Deferred.make<void>()
+      const nested = yield* sql.withTransaction(Effect.gen(function*() {
+        const fiber = yield* Effect.forkDetach(sql.withTransaction(
+          Deferred.succeed(started, undefined).pipe(
+            Effect.andThen(Deferred.await(go)),
+            Effect.andThen(Effect.fail("boom"))
+          )
+        ))
+        yield* Deferred.await(started)
+        return fiber
+      }))
+      yield* Deferred.succeed(go, undefined)
+      const exit = yield* Fiber.await(nested)
+      assert.isTrue(Exit.isFailure(exit))
+      if (Exit.isFailure(exit)) {
+        assert.deepStrictEqual(Cause.findErrorOption(exit.cause), Option.some("boom"))
+      }
+      // The savepoint's ROLLBACK TO would run outside any transaction.
+      assert.deepStrictEqual(calls, ["BEGIN", "SAVEPOINT effect_sql_1", "COMMIT", "release"])
     }))
 
   it.effect("starts only top-level transactions with the BeginTransaction statement, unprepared", () =>
