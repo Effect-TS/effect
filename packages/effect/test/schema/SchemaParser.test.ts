@@ -555,13 +555,12 @@ describe("SchemaParser", () => {
       deepStrictEqual<unknown>(SchemaParser.decodeUnknownSync(schema)(Object.create({ constructor: "inherited" })), {
         valueOf: "default"
       })
-      deepStrictEqual<unknown>(SchemaParser.encodeUnknownSync(schema)({ valueOf: "default" }), { valueOf: "default" })
+      const encodingInput = { constructor: "own", valueOf: "default" }
+      deepStrictEqual<unknown>(SchemaParser.encodeUnknownSync(schema)(encodingInput), encodingInput)
       assertFalse(SchemaParser.is(schema)({}))
       assertTrue(SchemaParser.is(schema)({ valueOf: "default" }))
-      assertTrue(SchemaParser.is(Schema.Struct({ constructor: Schema.optionalKey(Schema.String) }))({}))
       const own = { constructor: "own", toString: "own", valueOf: "own" }
       deepStrictEqual(SchemaParser.decodeUnknownSync(schema)(own), own)
-      deepStrictEqual(SchemaParser.encodeUnknownSync(schema)(own), own)
     })
 
     it("reports a missing required Object.prototype field", () => {

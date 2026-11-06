@@ -129,8 +129,9 @@ describe("SchemaJITCompiler", () => {
     strictEqual(SchemaParser.is(Schema.Struct({ constructor: Schema.optionalKey(Schema.String) }))({}), true)
   })
 
-  it("reports a missing required Object.prototype field", () => {
-    throws(() => SchemaParser.decodeUnknownSync(Schema.Struct({ toString: Schema.String }))({}), (error) => {
+  it("reports an inherited required Object.prototype field as missing", () => {
+    const input = Object.create({ toString: "inherited" })
+    throws(() => SchemaParser.decodeUnknownSync(Schema.Struct({ toString: Schema.String }))(input), (error) => {
       assertSchemaIssueError(error, `Missing key\n  at ["toString"]`)
     })
   })
