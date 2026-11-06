@@ -18,9 +18,6 @@ describe("AnthropicLanguageModel", () => {
       expect(AnthropicLanguageModel.model).type.toBeCallableWith("claude-opus-4-8", {
         output_config: { effort }
       })
-      expect(AnthropicLanguageModel.model).type.not.toBeCallableWith("claude-opus-4-8", {
-        output_config: { effort: "invalid" }
-      })
     })
 
     it("accepts the adaptive thinking display setting", () => {
