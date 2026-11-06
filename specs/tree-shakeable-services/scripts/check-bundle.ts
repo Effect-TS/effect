@@ -5,34 +5,38 @@
  *
  *   pnpm bundle
  *
- * Each root has an expectation: the implementations it must contain, and how
- * much Stream runtime may appear (none, the few hundred bytes of a retained
- * `Stream.Operation` wrapper, or the runtime). The check fails if an
- * implementation the program does not use ends up in a bundle, if one it
- * does use is missing, or if a root's Stream bytes fall outside its band. It
- * then runs four of the bundles to show that they work.
+ * The implementations are top-level exports of one module, `src/NodeFileSystem.ts`
+ * (`src/NodeTerminal.ts` for the terminal), so what the check proves is that a
+ * bundler drops the unused exports of a module it keeps, not that it drops
+ * modules nothing imports. Each root has an expectation: the implementations
+ * it must contain, and how much Stream runtime may appear (none, the few
+ * hundred bytes of a retained `Stream.Operation` wrapper, or the runtime). The
+ * check fails if an implementation the program does not use ends up in a
+ * bundle, if one it does use is missing, or if a root's Stream bytes fall
+ * outside its band. It then runs five of the bundles to show that they work.
  *
- * `effect` is bundled as it is published: every top-level call in
- * `packages/effect/src` is annotated `#__PURE__` the way the package build's
- * `babel-plugin-annotate-pure-calls` step annotates `dist`. Two rows bundle
- * `effect` from source instead, which is how this repository's own bundle
- * tests see it; they show the cost of an unannotated module body, which is
- * not a property of the design.
+ * The prototype's library modules (the two contracts and the two providers)
+ * and `effect` are bundled as they are published: every top-level call is
+ * annotated `#__PURE__` the way the package build's
+ * `babel-plugin-annotate-pure-calls` step annotates `dist`. That annotation
+ * is what lets a bundler drop an unused `export const readFile =
+ * Layer.succeed(…)` from a module it keeps: a call it cannot see into is a
+ * side effect until something says otherwise. The annotation matrix at the
+ * end builds the two-operation root with the contract, the provider, or both
+ * as written (no annotations), annotated by hand, and published, under
+ * esbuild and Rolldown, so the cost of each omission is on record.
  *
  * Evidence is collected two ways, so neither depends on the other:
  *
- * - the bundler's metafile lists every input module of each bundle with its
- *   bytes in the output, so the `src/node/<op>.ts` modules present are the
- *   implementations present, and the bytes from `Stream.ts`, `Channel.ts`,
- *   `Sink.ts` and their internals are the Stream runtime present;
  * - every file system implementation tags its errors with a
- *   `node/FileSystem/<op>` string, so the bundle text is also scanned for
- *   those markers.
- *
- * The last group of roots is the annotation matrix: the two-operation root
- * with the contract as written (no annotations), with `@__PURE__` added to
- * each declaration, and with `annotate-pure-calls` run over the contract as
- * publishing it would, under esbuild and Rolldown.
+ *   `node/FileSystem/<op>` string, so the bundle text is scanned for those
+ *   markers; the terminal implementations are told apart by a fragment of
+ *   source each one alone contains;
+ * - the bundler's metafile reports how many bytes of each input module are in
+ *   the output, so the bytes of `src/NodeFileSystem.ts` in a bundle show how
+ *   much of the thirty-implementation module survived, and the bytes from
+ *   `Stream.ts`, `Channel.ts`, `Sink.ts` and their internals are the Stream
+ *   runtime present.
  */
 import * as babel from "@babel/core"
 import * as esbuild from "esbuild"
@@ -41,19 +45,31 @@ import * as fs from "node:fs"
 import * as os from "node:os"
 import * as path from "node:path"
 import { rolldown } from "rolldown"
+import * as NodeFileSystem from "../src/NodeFileSystem.ts"
+import * as NodeTerminal from "../src/NodeTerminal.ts"
 
 const root = path.resolve(import.meta.dirname, "..")
 const repo = path.resolve(root, "..", "..")
 const effectSource = path.join(repo, "packages", "effect", "src")
 const outdir = path.join(root, "dist")
-const operations = fs.readdirSync(path.join(root, "src", "node"))
-  .filter((file) => file.endsWith(".ts") && !["index.ts", "internal.ts", "layer.ts"].includes(file))
-  .map((file) => file.slice(0, -3))
-  .sort()
-const terminalOperations = fs.readdirSync(path.join(root, "src", "node", "terminal"))
-  .filter((file) => file.endsWith(".ts") && !["index.ts", "layer.ts"].includes(file))
-  .map((file) => file.slice(0, -3))
-  .sort()
+const providerFile = path.join(root, "src", "NodeFileSystem.ts")
+const terminalProviderFile = path.join(root, "src", "NodeTerminal.ts")
+// The implementations are the provider module's exports, less the aggregate.
+const operations = Object.keys(NodeFileSystem).filter((name) => name !== "layer").sort()
+const terminalOperations = Object.keys(NodeTerminal).filter((name) => name !== "layer").sort()
+
+// A fragment of source that only this terminal implementation contains. `size` also reads the columns and rows, so
+// a bundle that carries `size` carries the `columns` and `rows` fragments too; `expectedTerminal` accounts for it.
+const terminalFingerprints: Record<string, string> = {
+  columns: "columns ?? 80",
+  display: "operation: \"display\"",
+  readInput: "\"keypress\"",
+  readLine: "createInterface(",
+  rows: "rows ?? 24",
+  size: "\"resize\""
+}
+const expectedTerminal = (members: ReadonlyArray<string>) =>
+  [...new Set(members.includes("size") ? [...members, "columns", "rows"] : members)].sort()
 
 const twenty = [
   "access",
@@ -78,7 +94,8 @@ const twenty = [
   "writeFileString"
 ]
 
-type Contract = "unannotated" | "annotated" | "published"
+/** How a library module reaches the bundler: as written, with `@__PURE__` on each declaration, or published. */
+type Mode = "unannotated" | "annotated" | "published"
 type Bundler = "esbuild" | "rolldown"
 type EffectMode = "published" | "source"
 /** Which `Context.ts` the bundle gets: this branch's, or the branch point's, for the no-record comparison. */
@@ -98,30 +115,42 @@ interface Root {
   readonly uses: ReadonlyArray<string>
   readonly terminal?: ReadonlyArray<string>
   readonly stream: StreamBand
-  readonly contract?: Contract
+  /** The contract modules' mode; published unless the row says otherwise. */
+  readonly contract?: Mode
+  /** The provider modules' mode; published unless the row says otherwise. */
+  readonly provider?: Mode
   readonly bundler?: Bundler
   readonly effect?: EffectMode
   readonly context?: ContextMode
 }
 
+const isVariant = (entry: Root) =>
+  entry.contract !== undefined || entry.provider !== undefined || entry.bundler !== undefined ||
+  entry.effect !== undefined || entry.context !== undefined
+
 const roots: ReadonlyArray<Root> = [
-  { entry: "main.ts", label: "two operation layers", uses: ["readFile", "writeFile"], stream: "wrapper" },
+  {
+    entry: "main.ts",
+    label: "two operation layers, imported by name",
+    uses: ["readFile", "writeFile"],
+    stream: "none"
+  },
   {
     entry: "main-namespace.ts",
-    label: "two layers off a namespace",
+    label: "two operation layers, read off the namespace",
     uses: ["readFile", "writeFile"],
-    stream: "wrapper"
+    stream: "none"
   },
   {
     entry: "main-readonly.ts",
     label: "ReadOnly subset, three member layers",
     uses: ["exists", "readFile", "stat"],
-    stream: "wrapper"
+    stream: "none"
   },
   { entry: "main-stream.ts", label: "one Stream operation", uses: ["stream"], stream: "used" },
-  { entry: "main-twenty.ts", label: "twenty operation layers", uses: twenty, stream: "wrapper" },
-  { entry: "main-record.ts", label: "yield* FileSystem, record layer", uses: operations, stream: "used" },
-  { entry: "main-full.ts", label: "two operations, record layer", uses: operations, stream: "used" },
+  { entry: "main-twenty.ts", label: "twenty operation layers", uses: twenty, stream: "none" },
+  { entry: "main-record.ts", label: "yield* FileSystem, NodeFileSystem.layer", uses: operations, stream: "used" },
+  { entry: "main-full.ts", label: "two operations, NodeFileSystem.layer", uses: operations, stream: "used" },
   {
     entry: "main-terminal.ts",
     label: "two terminal layers",
@@ -139,53 +168,80 @@ const roots: ReadonlyArray<Root> = [
     stream: "none",
     context: "baseline"
   },
-  // The annotation matrix: the two-operation root (above, with the contract as written) with the contract
-  // annotated, and published.
+  // The annotation matrix: the two-operation root with the contract, the provider, or both as written, annotated
+  // by hand, and published. A provider as written keeps every implementation: its thirty top-level
+  // `Layer.succeed(…)` calls are side effects to the bundler until annotated.
   {
     entry: "main.ts",
-    label: "contract annotated @__PURE__, esbuild",
-    uses: ["readFile", "writeFile"],
-    stream: "none",
-    contract: "annotated"
-  },
-  {
-    entry: "main.ts",
-    label: "contract published (annotate-pure-calls), esbuild",
-    uses: ["readFile", "writeFile"],
-    stream: "none",
-    contract: "published"
-  },
-  {
-    entry: "main.ts",
-    label: "contract as written, rolldown",
+    label: "contract as written, esbuild",
     uses: ["readFile", "writeFile"],
     stream: "wrapper",
+    contract: "unannotated"
+  },
+  {
+    entry: "main.ts",
+    label: "provider as written, esbuild",
+    uses: operations,
+    stream: "used",
+    provider: "unannotated"
+  },
+  {
+    entry: "main.ts",
+    label: "provider annotated @__PURE__, esbuild",
+    uses: ["readFile", "writeFile"],
+    stream: "none",
+    provider: "annotated"
+  },
+  {
+    entry: "main.ts",
+    label: "both annotated @__PURE__, esbuild",
+    uses: ["readFile", "writeFile"],
+    stream: "none",
+    contract: "annotated",
+    provider: "annotated"
+  },
+  {
+    entry: "main.ts",
+    label: "both as written, rolldown",
+    uses: operations,
+    stream: "used",
     contract: "unannotated",
+    provider: "unannotated",
     bundler: "rolldown"
   },
   {
     entry: "main.ts",
-    label: "contract annotated @__PURE__, rolldown",
+    label: "both annotated @__PURE__, rolldown",
     uses: ["readFile", "writeFile"],
     stream: "none",
     contract: "annotated",
+    provider: "annotated",
+    bundler: "rolldown"
+  },
+  {
+    entry: "main.ts",
+    label: "both published, rolldown",
+    uses: ["readFile", "writeFile"],
+    stream: "none",
     bundler: "rolldown"
   },
   // effect bundled from source: the repository's own layout, where a module body is kept whole once any export is used
   {
     entry: "main.ts",
-    label: "contract as written, effect from source, esbuild",
-    uses: ["readFile", "writeFile"],
+    label: "both as written, effect from source, esbuild",
+    uses: operations,
     stream: "used",
     contract: "unannotated",
+    provider: "unannotated",
     effect: "source"
   },
   {
     entry: "main.ts",
-    label: "contract annotated @__PURE__, effect from source, esbuild",
+    label: "both annotated @__PURE__, effect from source, esbuild",
     uses: ["readFile", "writeFile"],
     stream: "none",
     contract: "annotated",
+    provider: "annotated",
     effect: "source"
   }
 ]
@@ -201,14 +257,16 @@ interface Bundle {
   readonly modules: ReadonlyArray<string>
   readonly effectModules: ReadonlyArray<string>
   readonly streamBytes: number
+  readonly providerBytes: number
+  readonly terminalProviderBytes: number
   readonly output: string
 }
 
-const contracts = [
-  path.join(root, "src", "FileSystem.ts"),
-  path.join(root, "src", "FileSystem", "operations.ts"),
-  path.join(root, "src", "Terminal.ts")
-]
+const contracts = [path.join(root, "src", "FileSystem.ts"), path.join(root, "src", "Terminal.ts")]
+const providers = [providerFile, terminalProviderFile]
+const library = [...contracts, ...providers]
+const modeFor = (file: string, entry: Root): Mode =>
+  contracts.includes(file) ? entry.contract ?? "published" : entry.provider ?? "published"
 
 const annotatePureCalls = async (code: string): Promise<string> => {
   const result = await babel.transformAsync(code, {
@@ -243,18 +301,21 @@ const publish = (file: string, context: ContextMode = "branch"): Promise<string>
   return result
 }
 
-// The contract as the root asks for it: as written, with `@__PURE__` on each declaration, or published.
-const loadContract = async (file: string, contract: Contract): Promise<{ code: string; loader: "ts" | "js" }> => {
+// A library module as the row asks for it: as written, with `@__PURE__` on each top-level declaration (a key, a
+// record, or a layer), or published.
+const loadLibrary = async (file: string, mode: Mode): Promise<{ code: string; loader: "ts" | "js" }> => {
   const source = fs.readFileSync(file, "utf8")
-  if (contract === "unannotated") return { code: source, loader: "ts" }
-  if (contract === "annotated") {
+  if (mode === "unannotated") return { code: source, loader: "ts" }
+  if (mode === "annotated") {
     return {
-      code: source.replaceAll(/= ((?:Context|Stream|Sink)\.Operations?[<(])/g, "= /* @__PURE__ */ $1"),
+      code: source.replaceAll(
+        /= ((?:Context|Stream|Sink)\.Operations?[<(]|Layer\.(?:succeed|effect|mergeAll)\()/g,
+        "= /* @__PURE__ */ $1"
+      ),
       loader: "ts"
     }
   }
-  const js = await esbuild.transform(source, { loader: "ts", format: "esm", target: "es2022" })
-  return { code: await annotatePureCalls(js.code), loader: "js" }
+  return { code: await publish(file), loader: "js" }
 }
 
 const isEffectSource = (file: string) => file.startsWith(effectSource + path.sep) && file.endsWith(".ts")
@@ -262,13 +323,14 @@ const isEffectSource = (file: string) => file.startsWith(effectSource + path.sep
 const outfileFor = (entry: Root) =>
   path.join(
     outdir,
-    `${entry.entry.slice(0, -3)}${entry.contract ? `-${entry.contract}` : ""}${
-      entry.effect === "source" ? "-source" : ""
-    }${entry.bundler === "rolldown" ? "-rolldown" : ""}${entry.context === "baseline" ? "-baseline" : ""}.js`
+    `${entry.entry.slice(0, -3)}${entry.contract ? `-contract-${entry.contract}` : ""}${
+      entry.provider ? `-provider-${entry.provider}` : ""
+    }${entry.effect === "source" ? "-source" : ""}${entry.bundler === "rolldown" ? "-rolldown" : ""}${
+      entry.context === "baseline" ? "-baseline" : ""
+    }.js`
   )
 
 const buildEsbuild = async (entry: Root): Promise<Bundle> => {
-  const contract = entry.contract ?? "unannotated"
   const outfile = outfileFor(entry)
   const result = await esbuild.build({
     entryPoints: [path.join(root, "src", entry.entry)],
@@ -281,7 +343,7 @@ const buildEsbuild = async (entry: Root): Promise<Bundle> => {
     metafile: true,
     logLevel: "silent",
     plugins: [{
-      name: "effect-as-published",
+      name: "as-published",
       setup(build) {
         if (entry.effect !== "source") {
           build.onLoad({ filter: /packages[\\/]effect[\\/]src[\\/].*\.ts$/ }, async (args) =>
@@ -289,13 +351,11 @@ const buildEsbuild = async (entry: Root): Promise<Bundle> => {
               ? { contents: await publish(args.path, entry.context), loader: "js", resolveDir: path.dirname(args.path) }
               : undefined)
         }
-        if (contract !== "unannotated") {
-          build.onLoad({ filter: /src[\\/](FileSystem|Terminal|FileSystem[\\/]operations)\.ts$/ }, async (args) => {
-            if (!contracts.includes(args.path)) return undefined
-            const loaded = await loadContract(args.path, contract)
-            return { contents: loaded.code, loader: loaded.loader, resolveDir: path.dirname(args.path) }
-          })
-        }
+        build.onLoad({ filter: /src[\\/](FileSystem|Terminal|NodeFileSystem|NodeTerminal)\.ts$/ }, async (args) => {
+          if (!library.includes(args.path)) return undefined
+          const loaded = await loadLibrary(args.path, modeFor(args.path, entry))
+          return { contents: loaded.code, loader: loaded.loader, resolveDir: path.dirname(args.path) }
+        })
       }
     }]
   })
@@ -306,17 +366,16 @@ const buildEsbuild = async (entry: Root): Promise<Bundle> => {
 }
 
 const buildRolldown = async (entry: Root): Promise<Bundle> => {
-  const contract = entry.contract ?? "unannotated"
   const outfile = outfileFor(entry)
   const bundle = await rolldown({
     input: path.join(root, "src", entry.entry),
     platform: "node",
     logLevel: "silent",
     plugins: [{
-      name: "effect-as-published",
+      name: "as-published",
       load: (id) =>
-        contracts.includes(id) && contract !== "unannotated"
-          ? loadContract(id, contract).then((loaded) => loaded.code)
+        library.includes(id)
+          ? loadLibrary(id, modeFor(id, entry)).then((loaded) => loaded.code)
           : entry.effect !== "source" && isEffectSource(id)
           ? publish(id)
           : null
@@ -338,6 +397,7 @@ const finish = (
 ): Bundle => {
   const relative = inputs.map(([file, size]) => [path.relative(root, path.resolve(root, file)), size] as const)
   const modules = relative.map(([file]) => file).sort()
+  const bytesOf = (file: string) => relative.find(([name]) => name === path.relative(root, file))?.[1] ?? 0
   const effectInputs = relative
     .filter(([file]) => file.includes("packages/effect/src/"))
     .map(([file, size]) =>
@@ -346,19 +406,25 @@ const finish = (
   const streamBytes = effectInputs
     .filter(([file]) => streamModules.includes(file))
     .reduce((total, [, size]) => total + size, 0)
-  return { root: entry, bytes, text, modules, effectModules: effectInputs.map(([file]) => file), streamBytes, output }
+  return {
+    root: entry,
+    bytes,
+    text,
+    modules,
+    effectModules: effectInputs.map(([file]) => file),
+    streamBytes,
+    providerBytes: bytesOf(providerFile),
+    terminalProviderBytes: bytesOf(terminalProviderFile),
+    output
+  }
 }
 
 const build = (entry: Root) => entry.bundler === "rolldown" ? buildRolldown(entry) : buildEsbuild(entry)
 
-const implementationsIn = (bundle: Bundle) =>
-  operations.filter((operation) => bundle.modules.includes(path.join("src", "node", `${operation}.ts`)))
-
-const describe = (bundle: Bundle, operation: string) => {
-  const module = bundle.modules.includes(path.join("src", "node", `${operation}.ts`))
-  const marker = bundle.text.includes(`node/FileSystem/${operation}`)
-  return module && marker ? "present" : !module && !marker ? "absent" : `module=${module} marker=${marker}`
-}
+const hasMarker = (bundle: Bundle, operation: string) => bundle.text.includes(`node/FileSystem/${operation}`)
+const implementationsIn = (bundle: Bundle) => operations.filter((operation) => hasMarker(bundle, operation))
+const terminalImplementationsIn = (bundle: Bundle) =>
+  terminalOperations.filter((member) => bundle.text.includes(terminalFingerprints[member]!))
 
 const bundles: Array<Bundle> = []
 for (const entry of roots) bundles.push(await build(entry))
@@ -366,26 +432,26 @@ for (const entry of roots) bundles.push(await build(entry))
 const kb = (bytes: number) => `${(bytes / 1024).toFixed(1)} kB`
 const size = (bytes: number) => bytes === 0 ? "0 B" : bytes < 10 * 1024 ? `${bytes} B` : kb(bytes)
 const pad = (value: string, width: number) => value.padEnd(width)
-const name = (bundle: Bundle) => `${bundle.root.entry}${bundle.root.contract ? ` [${bundle.root.label}]` : ""}`
+const name = (bundle: Bundle) => `${bundle.root.entry}${isVariant(bundle.root) ? ` [${bundle.root.label}]` : ""}`
 let failures = 0
 
-console.log("Bundle sizes (esm, unminified; effect as published unless noted)\n")
+console.log("Bundle sizes (esm, unminified; effect and the prototype's library modules as published unless noted)\n")
 for (const bundle of bundles) {
   console.log(`  ${pad(`${bundle.root.entry} (${bundle.root.label})`, 74)} ${kb(bundle.bytes).padStart(9)}`)
 }
 
-console.log("\nImplementation modules and markers in each bundle\n")
+console.log("\nImplementation markers in each bundle (all thirty are exports of src/NodeFileSystem.ts)\n")
 const shown = bundles.filter((bundle) =>
-  !bundle.root.contract &&
+  !isVariant(bundle.root) &&
   ["main.ts", "main-readonly.ts", "main-stream.ts", "main-twenty.ts", "main-full.ts"].includes(bundle.root.entry)
 )
 console.log(`  ${pad("operation", 26)}${shown.map((bundle) => pad(bundle.root.entry, 18)).join("")}`)
 for (const operation of operations) {
   const cells = bundles.map((bundle) => {
-    const expected = bundle.root.uses.includes(operation) ? "present" : "absent"
-    const actual = describe(bundle, operation)
+    const expected = bundle.root.uses.includes(operation)
+    const actual = hasMarker(bundle, operation)
     if (actual !== expected) failures++
-    return { bundle, actual, ok: actual === expected }
+    return { bundle, actual: actual ? "present" : "absent", ok: actual === expected }
   })
   const line = shown.map((bundle) => {
     const cell = cells.find((c) => c.bundle === bundle)!
@@ -399,23 +465,23 @@ for (const bundle of bundles) {
   const present = implementationsIn(bundle)
   const summary = present.length === operations.length ? "all" : present.length === 0 ? "none" : present.join(", ")
   console.log(
-    `  ${pad(name(bundle), 66)} contains ${present.length} of ${operations.length} implementations: ${summary}`
+    `  ${pad(name(bundle), 66)} ${
+      pad(`${size(bundle.providerBytes)} of NodeFileSystem.ts`, 28)
+    } ${present.length} of ${operations.length} implementations: ${summary}`
   )
 }
 
-console.log("\nTerminal implementation modules in each bundle\n")
+console.log("\nTerminal implementations in each bundle (all six are exports of src/NodeTerminal.ts)\n")
 for (const bundle of bundles) {
-  const present = terminalOperations.filter((operation) =>
-    bundle.modules.includes(path.join("src", "node", "terminal", `${operation}.ts`))
-  )
-  const expected = bundle.root.terminal ?? []
+  const present = terminalImplementationsIn(bundle)
+  const expected = expectedTerminal(bundle.root.terminal ?? [])
   const ok = present.join() === expected.join()
   if (!ok) failures++
   if (present.length > 0 || expected.length > 0) {
     console.log(
-      `  ${pad(name(bundle), 66)} contains ${present.length} of ${terminalOperations.length}: ${present.join(", ")}${
-        ok ? "" : "   <-- unexpected"
-      }`
+      `  ${pad(name(bundle), 66)} ${
+        pad(`${size(bundle.terminalProviderBytes)} of NodeTerminal.ts`, 28)
+      } ${present.length} of ${terminalOperations.length}: ${present.join(", ")}${ok ? "" : "   <-- unexpected"}`
     )
   }
 }
@@ -492,7 +558,7 @@ const runs = [
 ]
 let ran = true
 for (const { entry, expect } of runs) {
-  const bundle = bundles.find((bundle) => bundle.root.entry === entry && !bundle.root.contract && !bundle.root.context)!
+  const bundle = bundles.find((bundle) => bundle.root.entry === entry && !isVariant(bundle.root))!
   const run = spawnSync(process.execPath, [bundle.output, file], { encoding: "utf8" })
   const ok = run.status === 0 && expect(run.stdout)
   ran &&= ok
@@ -505,5 +571,5 @@ fs.rmSync(directory, { recursive: true, force: true })
 if (!ran) process.exit(1)
 
 console.log(
-  "\nOK: every bundle contains exactly the implementations its program uses, Effect-only roots carry at most a retained wrapper of the Stream runtime, and the shaken bundles run"
+  "\nOK: every bundle contains exactly the implementations its program uses, read out of one provider module; Effect-only roots carry none of the Stream runtime; and the shaken bundles run"
 )

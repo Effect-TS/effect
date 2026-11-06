@@ -1,13 +1,13 @@
 /**
- * The same composition root, importing the implementation namespace and
- * reading the two layers off it. Member access on a namespace import is the
- * one object-property pattern bundlers do shake, so this root bundles the same
- * two implementations as `main.ts`. The bundle check builds it to prove that.
+ * The same composition root, importing the implementation module as a
+ * namespace and reading the two layers off it. Member access on a namespace
+ * import is the one object-property pattern bundlers shake, so this root
+ * bundles the same two implementations as `main.ts`. The bundle check builds
+ * it to prove that.
  */
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
-// oxlint-disable-next-line effect/no-import-from-barrel-package -- this root exists to show that the namespace form tree-shakes too
-import * as NodeFileSystem from "./node/index.ts"
+import * as NodeFileSystem from "./NodeFileSystem.ts"
 import { backup } from "./program.ts"
 
 const live = Layer.mergeAll(NodeFileSystem.readFile, NodeFileSystem.writeFile)

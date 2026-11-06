@@ -12,7 +12,8 @@ in `packages/effect/test/Context.test.ts`, type tests in `packages/effect/typete
 `packages/effect/benchmark/context/` and a bundle test in `packages/effect/test/FileSystem/treeShaking.test.ts`;
 `effect/FileSystem` and `effect/Terminal` migrated to record services over operations, with tests, changesets and a
 codemod; and a prototype under `specs/tree-shakeable-services/` whose bundle check shows which implementations each
-composition root carries.
+composition root carries. A contract is one module and a provider is one module: the thirty operation layers of the
+prototype's `NodeFileSystem.ts` are thirty exports of one file, and a root that imports two carries two.
 
 ## Summary
 
@@ -49,11 +50,11 @@ const width = yield* Terminal.columns
 const fs = yield* FileSystem.FileSystem
 //    Effect<FileSystem.Shape, never, FileSystem>
 
-// an implementation module provides one operation like any key
+// a provider module exports one layer per operation, like any key, and the aggregate beside them
 export const readFile = Layer.succeed(FileSystem.readFile, (path) => Effect.tryPromise(...))
-// an aggregate provides the record like any key, and that provides every operation
-export const layer = Layer.succeed(FileSystem.FileSystem, record) // Layer<FileSystem>
+export const layer = Layer.succeed(FileSystem.FileSystem, record) // Layer<FileSystem>: provides every operation
 // merging the thirty operation layers is also a Layer<FileSystem>, and ten of them a Layer<ReadOnly>; no helper
+// a root that imports readFile and writeFile bundles those two exports; layer and the other 28 are dropped
 
 // a test replaces one operation like any key, on top of either
 program.pipe(Effect.provideService(FileSystem.readFile, () => Effect.succeed(bytes)))
@@ -79,9 +80,10 @@ A service in Effect is a record. `yield* FileSystem` gives the whole record, and
 provides the whole record. A bundler can delete an unused top-level binding, but it cannot delete a property from an
 object it keeps, so every implementation in the record ships even when the program reads two of them. Tests need to
 replace a single operation with a fake, and a program that forgets to provide an implementation should not compile.
-What a bundler can do: drop a top-level export that nothing references, drop a module that nothing imports, and track
-which members of a namespace import are read. So each implementation has to be a binding of its own, the program has
-to reference only the bindings it uses, and the types have to say which ones those are.
+What a bundler can do: drop a top-level binding that nothing references, drop a module that nothing imports, and track
+which members of a namespace import are read. So each implementation has to be a binding of its own (a binding, not a
+file: thirty exports of one module shake as well as thirty modules), the program has to reference only the bindings it
+uses, and the types have to say which ones those are.
 
 ## The design
 
@@ -197,11 +199,10 @@ export type FileSystem = Context.Operations.Identifier<typeof members>
 export const FileSystem = Context.Operations<FileSystem, Shape>()("effect/FileSystem", members)
 ```
 
-A contract whose operations have a module of their own passes the module imported as a namespace instead of writing
-the list (the prototype's layout, `src/FileSystem/operations.ts` and `src/FileSystem.ts`); `effect/FileSystem` and
-`effect/Terminal` keep each service in one module and write the list. Bundling is the same either way: the record
-module's reference to the namespace keeps every operation in a bundle that uses the record, which such a bundle keeps
-anyway, and none in a bundle that uses operations alone.
+A contract is one module: its data types, its operations, the member list, the record and any subset records, as
+`effect/FileSystem`, `effect/Terminal` and the prototype's `src/FileSystem.ts` are written. The member list is written
+once, beside the operations. (`members` accepts a module namespace as well as an object literal, but nothing in this
+design needs a second module, and this spec does not recommend one.)
 
 The one-line form, `Context.Operations("app/Users", { find, create })`, infers the shape and the identity and is right
 for application code; in both forms the key exposes its members as properties, so `Users.find(id)` is the operation. A
@@ -222,12 +223,12 @@ A runtime helper building the operations from a table of names would keep every 
 a kept key costs"). The names cannot be declared after the record either: TypeScript attaches a name to a type only
 when the declaration creates it. The recipe above is the floor. One price remains: TypeScript reports an interface
 that has no members of its own by its one base type when it lists missing members, so a partial record prints the
-parameter by name and the list by the members' shape (`typeof import(…)` with the operations in a module of their own;
-the member list, truncated, otherwise):
+parameter by name and the list by the members' shape, the thirty operations written out (in full under
+`noErrorTruncation`, as the prototype compiles; elided to `...` otherwise):
 
 ```
 typetest/errors/partial-record.ts(6,67): error TS2345: Argument of type '{ readFile: () => Effect.Effect<Uint8Array<ArrayBuffer>, never, never>; }' is not assignable to parameter of type 'Shape'.
-  Type '{ readFile: () => Effect.Effect<Uint8Array<ArrayBuffer>, never, never>; }' is missing the following properties from type 'Shape<typeof import("…/src/FileSystem/operations")>': access, chmod, chown, copy, and 25 more.
+  Type '{ readFile: () => Effect.Effect<Uint8Array<ArrayBuffer>, never, never>; }' is missing the following properties from type 'Shape<{ access: Operation<"effect/FileSystem/access", (path: string, options?: { readonly writable?: boolean; readonly readable?: boolean; } | undefined) => Effect<void, FileSystemError, never>>; chmod: Operation<"effect/FileSystem/chmod", (path: string, mode: number) => Effect<void, FileSystemError, never>>; [27 more members]; writeFileString: Operation<"effect/FileSystem/writeFileString", (path: string, data: string) => Effect<void, FileSystemError, never>>; }>': access, chmod, chown, copy, and 25 more.
 ```
 
 Because the identity is the union of the keys, the relationships a user expects hold by ordinary assignability:
@@ -291,7 +292,8 @@ layers or by the whole file system) or with the full record (`FileSystem`). All 
 
 ### Providing operations
 
-An implementation module provides one operation with the existing layer constructors, and the operation is the key:
+A provider module exports one layer per operation, built with the existing layer constructors, and the operation is
+the key:
 
 ```ts
 export const readFile = Layer.succeed(
@@ -318,7 +320,10 @@ typetest/errors/missing-requirement.ts(5,19): error TS2379: Argument of type 'Ef
 
 The coarse-grained form is a `Layer<FileSystem>`: every operation layer merged, or the record provided
 (`Layer.succeed(FileSystem.FileSystem, record)`, `Layer.effect(FileSystem.FileSystem, makeRecord)`). Either bundles
-every implementation, by construction; a library ships both, each in a module of its own.
+every implementation, by construction. A provider module exports both, the operation layers and the aggregate
+(`NodeFileSystem.readFile`, `NodeFileSystem.layer`); a root that imports two operation layers does not carry the
+aggregate or the twenty-eight it references, because an unused top-level binding is dropped whatever it references
+("Tree-shaking").
 
 **What you provide is a slot, and an operation is a slot.** `Layer.succeed(FileSystem.FileSystem, record)` and
 `Layer.succeed(FileSystem.readFile, fn)` are the one rule applied to two slots, as are `Effect.provideService`,
@@ -908,30 +913,68 @@ appendix.
 
 ## Tree-shaking: what the bundler needs, and what the prototype shows
 
-Three ordinary requirements: one implementation per top-level export in a side-effect-free module; a composition root
-that imports implementation modules, or reads members off their namespace, and never an aggregate unless it wants
-everything; aggregates (`Layer.mergeAll(...)`) in their own module or `/* @__PURE__ */`-annotated, because an unused
-top-level call is retained otherwise. The types enforce the half that matters: `R` names what to import. A key the
-bundler keeps costs about 4 kB for an unannotated thirty-key contract and nothing once published, because
-`packages/effect`'s build annotates every top-level declaration pure (appendix, "What a kept key costs").
+A contract is one module and a provider is one module. Every key, operation layer and aggregate in them is a top-level
+binding whose initializer is a call (`Context.Operation<…>()("…")`, `Layer.succeed(key, impl)`,
+`Layer.mergeAll(…)`), and a bundler drops an unused binding only when it may treat that call as pure. Three ordinary
+requirements follow, none of them a file-layout rule:
+
+1. **Top-level calls are annotated pure.** A call the bundler cannot see into is a side effect until something says
+   otherwise, and `Layer.succeed(…)` and `Context.Operation(…)` are calls. `packages/effect` and every platform
+   package annotate the outer call of every top-level declaration at build time (`babel-plugin-annotate-pure-calls`
+   over `dist`), which is how every `Context.Service("…")` key and every `Layer` in `effect` shakes today; the
+   operations, records and operation layers shake the same way with nothing written in the source. A provider
+   written in application code, which no build annotates, writes `/* @__PURE__ */` before each top-level layer
+   construction, or the bundler keeps every one (measured below: a provider module as written keeps all thirty).
+2. **No module-level state or side effects.** The helpers a provider's implementations share are plain functions, read
+   when an implementation runs; nothing at the top level of a contract or provider module runs for its effect. The
+   prototype's `NodeFileSystem.ts` needed nothing changed to meet this; `@effect/platform-node-shared`'s does not
+   either (its `(() => …)()` initializers are calls like any other and are annotated by the build).
+3. **The root references bindings, never an aggregate unless it wants everything.** The types enforce this half:
+   `R` names what to import. Reading members off a namespace import (`NodeFileSystem.readFile`) and importing them by
+   name are the same to the bundler; the prototype builds both.
+
+`sideEffects: false` in a package's `package.json` lets the bundler drop a module whose used exports are none; it says
+nothing about the unused exports of a module it keeps. The pure annotation is what drops those, and it is the whole
+mechanism: thirty exports of one file shake exactly as thirty files would, and a provider module that gains an export
+costs a root nothing.
 
 The prototype (`specs/tree-shakeable-services/`) models `effect/FileSystem` as 30 operations (three Stream-returning,
-two needing `Scope`) and `effect/Terminal` as six (five value operations), one Node implementation module each, and
-nine composition roots. `pnpm --filter tree-shakeable-services-spec bundle` builds each with esbuild (and the
-annotation matrix with Rolldown), with `effect` bundled as published, and reports which implementation modules and how
-many bytes of the Stream runtime each contains, by metafile and by a per-implementation marker. It fails if an unused
-implementation appears, a used one is missing, a root's Stream bytes fall outside its band, or the no-record root is
-more than 512 bytes larger, minified, than with the branch point's `Context.ts`; then it runs five of the bundles. The
-two-operation root carries two of thirty implementations, the twenty-operation root twenty, the record roots all
-thirty, the terminal root two of six members and no Stream code, and the no-record root 275 bytes of `Context.ts` over
-the branch point.
+two needing `Scope`) in one contract module, `effect/Terminal` as six (five value operations), one Node provider
+module for each (`src/NodeFileSystem.ts` with thirty operation layers and `layer`; `src/NodeTerminal.ts` with six
+and `layer`), and nine composition roots. `pnpm --filter tree-shakeable-services-spec bundle` builds each with esbuild
+(and the annotation matrix with Rolldown), with `effect` and the prototype's four library modules bundled as
+published, and reports which implementations each bundle contains, by a per-implementation marker in the bundle
+text and by the bytes of the provider module the metafile says survived; it fails if an unused implementation
+appears, a used one is missing, a root's Stream bytes fall outside its band, or the no-record root is more than 512
+bytes larger, minified, than with the branch point's `Context.ts`; then it runs five of the bundles. The results
+(appendix, "The prototype's bundle check"):
+
+| Root                                                      |     Size | Implementations |                    Of `NodeFileSystem.ts` |
+| --------------------------------------------------------- | -------: | --------------: | ----------------------------------------: |
+| two operation layers, imported by name                    |  87.3 kB |         2 of 30 |                                     521 B |
+| two operation layers, read off the namespace              |  87.3 kB |         2 of 30 |                                     521 B |
+| `ReadOnly`, three member layers                           |  87.7 kB |         3 of 30 |                                     875 B |
+| twenty operation layers                                   |  93.4 kB |        20 of 30 |                                    3933 B |
+| `yield* FileSystem`, `NodeFileSystem.layer`               | 109.1 kB |        30 of 30 |                                    6772 B |
+| two terminal layers (`columns`, `display`)                |  86.4 kB |          2 of 6 |                334 B of `NodeTerminal.ts` |
+| two operation layers, provider as written (no annotation) | 101.5 kB |        30 of 30 |                                    6654 B |
+| two operation layers, contract as written                 |  98.5 kB |         2 of 30 | 523 B (all 30 keys and both records kept) |
+
+Rolldown agrees on every row it builds. The no-record root is 275 bytes of `Context.ts`, minified, over the branch
+point. The two "as written" rows are the cost of the one requirement above that the design adds: a provider module
+bundled without its build's annotation keeps every implementation, and a contract module bundled without it keeps
+every key and the record declarations (about 11 kB); both are zero once published, and zero in application code with
+the annotation written by hand.
 
 `packages/effect/test/FileSystem/treeShaking.test.ts` is the regression test for the real module: it bundles a root
-that calls `FileSystem.readFile` and `FileSystem.writeFile` and provides two of three implementation layers read off a
-namespace, with `effect` as published (`esbuild.transform` and `babel-plugin-annotate-pure-calls` over
-`packages/effect/src`), and asserts that the `readFile` and `writeFile` markers are in the bundle and `stat` is not,
-that the two keys are in and `"effect/FileSystem/stat"`, `"effect/FileSystem/stream"` and `"effect/FileSystem"` are
-not, that the bundle holds zero bytes of `Stream.ts`, `Channel.ts`, `Sink.ts` and their internals, and that it runs.
+that calls `FileSystem.readFile` and `FileSystem.writeFile` and provides two implementations read off a provider
+module of three (`test/fixtures/tree-shaking/NodeFileSystem.ts`, which also exports `layer`, the three merged), with
+`effect` and the provider module as published (`esbuild.transform` and `babel-plugin-annotate-pure-calls`), and
+asserts that the `readFile` and `writeFile` markers are in the bundle and `stat` is not, that fewer than half the
+provider module's bytes survive, that the two keys are in and `"effect/FileSystem/stat"`, `"effect/FileSystem/stream"`
+and `"effect/FileSystem"` are not, that the bundle holds zero bytes of `Stream.ts`, `Channel.ts`, `Sink.ts` and their
+internals, and that it runs. A fifth test bundles the provider module as written and asserts the `stat` marker is
+present: what the annotation buys, pinned.
 
 ## Migrating `effect/FileSystem` and `effect/Terminal`
 
@@ -971,9 +1014,11 @@ root they pass); `FileSystem.test.ts`, `Terminal.test.ts` and `typetest/FileSyst
 compile cost is in the appendix. Changesets: `.changeset/context-operation.md`, `filesystem-operations.md` and
 `terminal-operations.md`, the last two marked **Breaking** under `@stability unstable`.
 
-**Phases 2 and 3.** Phase 2 splits each provider into one module per operation (`NodeFileSystem/readFile.ts`, …) with
-the aggregate rebuilt as their merge, gives `effect/FileSystem` layers for the derived operations over the primitives
-they are derived from, and makes `NodeTerminal` one module per member over an internal `Input` service. Phase 3 moves
+**Phases 2 and 3.** Phase 2 adds to `NodeFileSystem`, one module as it is today, one exported layer per operation
+(`NodeFileSystem.readFile: Layer<"effect/FileSystem/readFile">`, built over the implementation function the module
+already has) beside `NodeFileSystem.layer`, which keeps its name, type and form; gives `effect/FileSystem` layers for
+the derived operations over the primitives they are derived from; and does the same for `NodeTerminal`, one layer per
+member over an internal `Input` service. No file is added or split. Phase 3 moves
 the consumers inside `effect` that use a few members to operation calls or a subset annotation (`FileSystem.ReadOnly`,
 `FileSystem.ReadOnly | "effect/FileSystem/stream"` for the static file servers, `Terminal.Interactive` for the
 prompts). Each is incremental; the layouts and the consumer list are in the appendix.
@@ -1083,25 +1128,27 @@ plan"; type test numbers to its second list.
    - `getOrUndefinedUnsafe(ctx, record.key)` is `undefined` after a record write; `addUnsafe` with a member's string
      is seen by the record read.
 7. **Bundle regression test.** `packages/effect/test/FileSystem/treeShaking.test.ts` with its fixture under
-   `test/fixtures/tree-shaking/`, as described under "Tree-shaking".
-   - The four assertions pass with `effect` bundled as published.
+   `test/fixtures/tree-shaking/` (one provider module of three layers and an aggregate), as described under
+   "Tree-shaking".
+   - The five tests pass with `effect` and the provider module bundled as published, the fifth with the provider
+     module as written.
 8. **`effect/FileSystem` and `effect/Terminal` phase 1.** The changes on this branch to `FileSystem.ts` and
    `Terminal.ts`, their tests, the codemod `scripts/codemods/record-shape.ts` with its runner, the repository's sites
    rewritten by it (and the two hand-restored aliases), `MockTerminal` as its own service, the two changesets.
    - Every existing suite passes; `FileSystem.test.ts` (4 tests), `Terminal.test.ts` (5 tests) and
      `typetest/FileSystem.tst.ts` pass; type test 14.
    - `pnpm check` over every package is clean after the codemod.
-9. **`effect/FileSystem` phase 2, Node.** Per-operation modules under `NodeFileSystem/`, derived-operation layers in
-   `effect/FileSystem`, the aggregate rebuilt as the merge.
-   - The bundle test from issue 7 passes against a fixture that provides `NodeFileSystem.readFile` and
-     `NodeFileSystem.writeFile`.
-10. **`effect/FileSystem` phase 2, Deno and Bun.** The same layout for `DenoFileSystem`; Bun re-exports Node's.
+9. **`effect/FileSystem` phase 2, Node.** One exported layer per operation in `NodeFileSystem.ts`, the module it is
+   today, beside `layer`; derived-operation layers in `effect/FileSystem`. No new files.
+   - A bundle test in `packages/platform/node-shared`, the shape of issue 7's, provides `NodeFileSystem.readFile` and
+     `NodeFileSystem.writeFile` with the package as published and carries two implementations.
+10. **`effect/FileSystem` phase 2, Deno and Bun.** The same exports in `DenoFileSystem.ts`; Bun re-exports Node's.
     - The Deno and Bun suites pass; a bundle fixture over `DenoFileSystem.readFile` carries one implementation.
 11. **`effect/FileSystem` phase 3.** The `yield* FileSystem` sites inside `effect` that use few members moved to
     operation calls or a subset annotation, one commit per module, with the module's tests unchanged.
     - A bundle fixture using `HttpServerResponse.file` with member layers only compiles and carries those members.
-12. **`effect/Terminal` phase 2.** `NodeTerminal` as one module per member over an internal `Input` service, with
-    `NodeTerminal.layer` as the record layer.
+12. **`effect/Terminal` phase 2.** One exported layer per member in `NodeTerminal.ts` over an internal `Input`
+    service, with `NodeTerminal.layer` as the record layer.
     - The Terminal and cli suites pass; a bundle fixture that displays without reading carries `display` alone.
 13. **`effect/Terminal` phase 3.** `Terminal.Interactive` and the `cli/Prompt.ts` sites.
     - The cli suites pass; `Prompt` programs name `Terminal.Interactive` as their requirement.
@@ -1188,7 +1235,7 @@ file), each mirrored in the prototype's `test/Operation.test.ts` (42 tests). One
 `packages/effect/test/FileSystem.test.ts` (4 tests) and `test/Terminal.test.ts` (5 tests) pin the migrations: an
 operation call under a `Layer<Record>` with `yield* Record` returning an object of the members, a one-member override
 seen by the call and by the record read, `Layer.mock`, the unprovided defect naming the member, and one slot per member
-with the members as properties of the key. `test/FileSystem/treeShaking.test.ts` (4 tests) is the bundle test.
+with the members as properties of the key. `test/FileSystem/treeShaking.test.ts` (5 tests) is the bundle test.
 
 Type tests (`packages/effect/typetest/Context.tst.ts`, 13 tests, and `FileSystem.tst.ts`, 3 tests, with the
 diagnostics' text pinned by the prototype's `check-errors` over its 19 fixtures):
@@ -1298,8 +1345,13 @@ test: `packages/effect/test/FileSystem/treeShaking.test.ts`.
       holding no record, and within 1.25× in the process holding records, or the mode is SKIPPED with its control
       envelopes printed; the twin rows are reported beside the latter.
 - [ ] Every record timing row is within the limit under "Cost" on the median of three orders, or the mode is SKIPPED.
-- [ ] The prototype's bundle check passes, with the no-record root within 512 bytes minified of the branch point.
-- [ ] `packages/effect/test/FileSystem/treeShaking.test.ts` passes.
+- [ ] A contract is one module and a provider is one module; nothing in the spec, the migration or the issues
+      requires or recommends a file per operation. Operation layers and aggregates are top-level exports, and a
+      root that imports some of them carries those alone.
+- [ ] The prototype's bundle check passes: each root carries exactly the implementations it uses, read out of
+      `NodeFileSystem.ts` and `NodeTerminal.ts`, with the no-record root within 512 bytes minified of the branch
+      point.
+- [ ] `packages/effect/test/FileSystem/treeShaking.test.ts` passes, including the as-written provider test.
 - [ ] The 33 runtime tests, 16 type tests (110 assertions), doctests and bundle test in "Test plan" pass.
 - [ ] `pnpm check`, `pnpm lint`, `pnpm jsdocs --check` and `pnpm circular` are clean.
 - [ ] JSDoc on every new export follows the repository conventions, with "Required, not defaulted", the shape rule, "a

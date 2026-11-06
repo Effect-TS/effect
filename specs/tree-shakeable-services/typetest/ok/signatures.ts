@@ -7,10 +7,12 @@ import type * as Scope from "effect/Scope"
 import * as Sink from "effect/Sink"
 import * as Stream from "effect/Stream"
 import * as FileSystem from "../../src/FileSystem.ts"
-import { exists as nodeExists } from "../../src/node/exists.ts"
-import { layer as nodeLayer } from "../../src/node/layer.ts"
-import { readFile as nodeReadFile } from "../../src/node/readFile.ts"
-import { stat as nodeStat } from "../../src/node/stat.ts"
+import {
+  exists as nodeExists,
+  layer as nodeLayer,
+  readFile as nodeReadFile,
+  stat as nodeStat
+} from "../../src/NodeFileSystem.ts"
 import { sizeOf } from "../../src/program-readonly.ts"
 import { backupViaRecord } from "../../src/program-record.ts"
 import { exercise } from "../../src/program-twenty.ts"
@@ -98,7 +100,7 @@ export const underRecord: Effect.Effect<number, FileSystem.FileSystemError, neve
   Effect.provide(nodeLayer)
 )
 // ...and the record program runs under the thirty operation layers merged, because `nodeLayer` is that merge,
-// annotated `Layer<FileSystem>` in `node/layer.ts`.
+// annotated `Layer<FileSystem>` in `NodeFileSystem.ts`.
 export const recordUnderOperations: Effect.Effect<number, FileSystem.FileSystemError, never> = backupViaRecord("a.txt")
   .pipe(Effect.provide(nodeLayer))
 

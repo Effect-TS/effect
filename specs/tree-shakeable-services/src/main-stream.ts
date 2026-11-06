@@ -5,7 +5,7 @@
  * used.
  */
 import * as Effect from "effect/Effect"
-import { stream } from "./node/stream.ts"
+import { stream } from "./NodeFileSystem.ts"
 import { byteCount } from "./program-stream.ts"
 
 const path = process.argv[2] ?? "package.json"

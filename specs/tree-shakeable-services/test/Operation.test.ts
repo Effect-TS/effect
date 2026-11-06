@@ -6,9 +6,9 @@ import * as Sink from "effect/Sink"
 import * as Stream from "effect/Stream"
 import { assert, describe, it } from "vitest"
 import * as FileSystem from "../src/FileSystem.ts"
-import * as NodeFileSystem from "../src/node/index.ts"
-import { layer as nodeLayer } from "../src/node/layer.ts"
-import { layer as nodeTerminal } from "../src/node/terminal/layer.ts"
+import * as NodeFileSystem from "../src/NodeFileSystem.ts"
+import { layer as nodeLayer } from "../src/NodeFileSystem.ts"
+import { layer as nodeTerminal } from "../src/NodeTerminal.ts"
 import { sizeOf } from "../src/program-readonly.ts"
 import { backupViaRecord } from "../src/program-record.ts"
 import { banner } from "../src/program-terminal.ts"
@@ -315,7 +315,7 @@ describe("Operations", () => {
 
   it("dies naming the missing member when the record is read with a member unprovided", async () => {
     const twentyNine = Object.entries(NodeFileSystem)
-      .filter(([name]) => name !== "stat")
+      .filter(([name]) => name !== "stat" && name !== "layer")
       .reduce((layer, [, next]) => Layer.merge(layer, next as Layer.Layer<never>), Layer.empty)
     // The types reject this; the cast shows what the runtime does if they are bypassed.
     const exit = await Effect.runPromiseExit(
