@@ -19,6 +19,7 @@
  * @since 4.0.0
  */
 import * as Arr from "effect/Array"
+import * as JsonPointer from "effect/JsonPointer"
 import * as JsonSchema from "effect/JsonSchema"
 import * as Rec from "effect/Record"
 import * as Schema from "effect/Schema"
@@ -29,6 +30,12 @@ interface GenerateOptions {
   readonly onEnter?: ((js: JsonSchema.JsonSchema) => JsonSchema.JsonSchema) | undefined
   readonly multipartSchemaRefs?: MultipartSchemaRefs | undefined
   readonly includeSchemas?: ReadonlyArray<string> | undefined
+  /**
+   * Name of the synthetic definition that `type: ["string", "integer"]`,
+   * `format: "int64"` schemas are redirected to. When set, those schemas are
+   * generated as a shared branded `bigint` codec.
+   */
+  readonly int64Schema?: string | undefined
 }
 
 interface HttpApiMultipartSchemaRefs {
@@ -121,7 +128,7 @@ function makeWithRepresentation() {
       renderSchemaTypeAndRuntime(name, generated.codeDocument.codes[i], typeOnly, options)
     )
 
-    return renderImportArtifacts(generated.codeDocument, !typeOnly) +
+    return renderImportArtifacts(generated.codeDocument, !typeOnly, options) +
       render("recursive declarations", recursiveDeclarations) +
       render("non-recursive definitions", nonRecursives) +
       render("recursive definitions", recursives) +
@@ -173,7 +180,7 @@ function makeWithRepresentation() {
       renderSchemaTypeAndRuntime(name, generated.codeDocument.codes[i], false, options)
     )
 
-    return renderImportArtifacts(generated.codeDocument, true) +
+    return renderImportArtifacts(generated.codeDocument, true, options) +
       render("recursive declarations", recursiveDeclarations) +
       render("non-recursive definitions", nonRecursives) +
       render("recursive definitions", recursives) +
@@ -195,6 +202,18 @@ function makeWithRepresentation() {
       components,
       (js) => fromSchemaOpenApi(source, js).schema
     )
+    const int64 = options?.int64Schema
+    // The wire shape keeps example filtering consistent; the rendered code is replaced by `int64Code`.
+    const int64Definition: JsonSchema.JsonSchema = { type: ["string", "integer"], format: "int64" }
+    const int64WireNodes = new WeakSet<object>()
+    if (int64 !== undefined) {
+      // Recursive declarations are typed `Schema.Codec<T>`, which requires matching decoded and encoded
+      // types, so definitions in or reachable from a cycle keep the wire type.
+      for (const name of collectRecursivelyReachableDefinitions(definitions)) {
+        collectNodes(definitions[name], int64WireNodes)
+      }
+      Rec.assignProperty(definitions, int64, int64Definition)
+    }
 
     for (const [name, js] of Object.entries(store)) {
       nameMap.push(name)
@@ -228,7 +247,15 @@ function makeWithRepresentation() {
         if (cached !== undefined) return cached
 
         const out = { ...js }
-        const transformed = { ...(options?.onEnter === undefined ? out : options.onEnter(out)) }
+        let transformed = { ...(options?.onEnter === undefined ? out : options.onEnter(out)) }
+        if (
+          int64 !== undefined && js !== int64Definition && !int64WireNodes.has(js) &&
+          isStringOrIntegerInt64(transformed)
+        ) {
+          // `default` and `examples` hold wire values, which do not match the decoded bigint annotations.
+          const { default: _default, examples: _examples, format: _format, type: _type, ...siblings } = transformed
+          transformed = { ...siblings, $ref: `#/$defs/${int64}` }
+        }
         preparedSchemas.set(js, transformed)
         preparedOutputs.add(transformed)
         if (Array.isArray(transformed.examples)) {
@@ -283,13 +310,94 @@ function fromSchemaOpenApi(source: Source, jsonSchema: JsonSchema.JsonSchema) {
   }
 }
 
+const definitionRefPrefix = "#/$defs/"
+
+// Names of definitions that are part of a reference cycle or reachable from one.
+function collectRecursivelyReachableDefinitions(definitions: JsonSchema.Definitions): Set<string> {
+  const directRefs = new Map<string, Set<string>>()
+  for (const [name, schema] of Object.entries(definitions)) {
+    const refs = new Set<string>()
+    collectDefinitionRefs(schema, refs)
+    directRefs.set(name, refs)
+  }
+  const reachable = (name: string): Set<string> => {
+    const seen = new Set<string>()
+    const stack = [...(directRefs.get(name) ?? [])]
+    while (stack.length > 0) {
+      const next = stack.pop()!
+      if (seen.has(next) || !directRefs.has(next)) continue
+      seen.add(next)
+      stack.push(...directRefs.get(next)!)
+    }
+    return seen
+  }
+  const out = new Set<string>()
+  for (const name of directRefs.keys()) {
+    if (out.has(name)) continue
+    const fromName = reachable(name)
+    if (fromName.has(name)) {
+      for (const reached of fromName) out.add(reached)
+    }
+  }
+  return out
+}
+
+// Every nested `$ref` counts, including ones inside data keywords: an extra edge only keeps more int64
+// schemas on the wire type, while a missed edge would emit code that does not type-check.
+function collectDefinitionRefs(value: unknown, refs: Set<string>): void {
+  if (Array.isArray(value)) {
+    for (const item of value) collectDefinitionRefs(item, refs)
+    return
+  }
+  if (typeof value !== "object" || value === null) return
+  for (const [key, item] of Object.entries(value)) {
+    if (key === "$ref" && typeof item === "string" && item.startsWith(definitionRefPrefix)) {
+      refs.add(JsonPointer.unescapeToken(item.slice(definitionRefPrefix.length)))
+    } else {
+      collectDefinitionRefs(item, refs)
+    }
+  }
+}
+
+function collectNodes(value: unknown, nodes: WeakSet<object>): void {
+  if (typeof value !== "object" || value === null || nodes.has(value)) return
+  nodes.add(value)
+  for (const item of Object.values(value)) collectNodes(item, nodes)
+}
+
+function isStringOrIntegerInt64(js: JsonSchema.JsonSchema): boolean {
+  return js.format === "int64" && Array.isArray(js.type) && js.type.length === 2 &&
+    js.type.includes("string") && js.type.includes("integer")
+}
+
+function int64Code($ref: string): SchemaRepresentation.Code {
+  return {
+    Type: `typeof ${$ref}.Type`,
+    runtime: `Schema.Union([Schema.String.check(Schema.isStringBigInt()), Schema.Int]).pipe(
+  Schema.decodeTo(
+    Schema.BigInt.check(
+      Schema.isBetweenBigInt({ minimum: -9223372036854775808n, maximum: 9223372036854775807n })
+    ).pipe(Schema.brand("Int64")),
+    SchemaTransformation.transform({ decode: (value) => BigInt(value), encode: (value) => String(value) })
+  )
+)`
+  }
+}
+
 function renderSchemaTypeAndRuntime(
   $ref: string,
   code: SchemaRepresentation.Code,
   typeOnly: boolean,
   options?: GenerateOptions
 ) {
-  code = multipartCode($ref, options?.multipartSchemaRefs) ?? code
+  if ($ref === options?.int64Schema) {
+    code = int64Code($ref)
+  } else {
+    code = multipartCode($ref, options?.multipartSchemaRefs) ?? code
+    if (options?.int64Schema !== undefined) {
+      code = { ...code, runtime: unsuspendInt64(code.runtime, options.int64Schema) }
+    }
+  }
   const strings = [`export type ${$ref} = ${code.Type}`]
   if (!typeOnly) {
     strings.push(`export const ${$ref} = ${code.runtime}`)
@@ -329,16 +437,30 @@ function renderRecursiveReferenceDeclaration(
   ].join("\n")
 }
 
+// An annotated reference is rendered as `Schema.suspend((): Schema.Codec<T> => T)`, which assumes the encoded
+// and decoded types match. `Int64` is never recursive and is declared before its dependents, so a direct
+// reference is equivalent and keeps the encoded side intact.
+function unsuspendInt64(runtime: string, $ref: string): string {
+  return runtime.replaceAll(`Schema.suspend((): Schema.Codec<${$ref}> => ${$ref})`, $ref)
+}
+
 function render(title: string, as: ReadonlyArray<string>) {
   if (as.length === 0) return ""
   return "// " + title + "\n" + as.join("\n") + "\n"
 }
 
-function renderImportArtifacts(codeDocument: SchemaRepresentation.CodeDocument, enabled: boolean): string {
+function renderImportArtifacts(
+  codeDocument: SchemaRepresentation.CodeDocument,
+  enabled: boolean,
+  options: GenerateOptions | undefined
+): string {
   if (!enabled) return ""
   const imports = codeDocument.artifacts.flatMap((artifact) =>
     artifact._tag === "Import" ? [artifact.importDeclaration] : []
   )
+  if (codeDocument.references.nonRecursives.some(({ $ref }) => $ref === options?.int64Schema)) {
+    imports.push(`import * as SchemaTransformation from "effect/SchemaTransformation"`)
+  }
   return imports.length === 0 ? "" : imports.join("\n") + "\n"
 }
 

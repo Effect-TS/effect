@@ -157,6 +157,26 @@ export interface OpenApiGenerateOptions {
    * Callback to receive non-fatal generation warnings.
    */
   readonly onWarning?: ((warning: OpenApiGeneratorWarning) => void) | undefined
+  /**
+   * Decode `type: ["string", "integer"]` schemas with `format: "int64"` as
+   * bigints branded as `Int64`. Defaults to `false`.
+   *
+   * **Details**
+   *
+   * Matching schemas reference a shared generated `Int64` codec. It decodes
+   * base-10 strings across the full signed 64-bit range and safe integer
+   * numbers, rejects values outside
+   * `-9223372036854775808n..9223372036854775807n`, and always encodes back to
+   * a decimal string. Numbers beyond `Number.MAX_SAFE_INTEGER` are rejected
+   * instead of being rounded, so full-range values must be sent as strings.
+   *
+   * Plain `type: "integer"` schemas are unchanged because JSON parsing has
+   * already rounded them. The `httpclient-type-only` format does not decode,
+   * so it keeps the `string | number` wire type, as do int64 schemas inside
+   * recursive components and the components they reference, because recursive
+   * schema declarations require matching decoded and encoded types.
+   */
+  readonly int64AsBigInt?: boolean | undefined
 }
 
 interface HttpApiMultipartSchemaRefs {
@@ -216,7 +236,10 @@ export const make = Effect.gen(function*() {
       const schemaOptions = {
         onEnter: options.onEnter,
         multipartSchemaRefs: multipart.refs,
-        includeSchemas: options.includeSchemas
+        includeSchemas: options.includeSchemas,
+        int64Schema: options.int64AsBigInt === true && options.format !== "httpclient-type-only"
+          ? multipart.allocate("Int64")
+          : undefined
       }
       const generation = options.format === "httpapi"
         ? generator.generateHttpApi(source, multipart.definitions, schemaOptions)
@@ -1068,7 +1091,7 @@ const makeMultipartSchemas = (
     }
   }
 
-  return { refs, definitions: output, transform, finish }
+  return { refs, definitions: output, allocate, transform, finish }
 }
 
 const toDefinitionRef = (name: string): string => `#/$defs/${name.replaceAll("~", "~0").replaceAll("/", "~1")}`
