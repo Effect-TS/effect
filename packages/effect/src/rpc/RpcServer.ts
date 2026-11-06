@@ -184,7 +184,6 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any>(
       const client = clients.get(clientId)
       if (!client) return Effect.void
       clients.delete(clientId)
-      if (client.fibers.size === 0) return Effect.void
       const fibers = Array.from(client.fibers.values())
       for (const fiber of fibers) {
         fiber.interruptUnsafe(parent.id)
@@ -773,7 +772,7 @@ export const make: <Rpcs extends Rpc.Any>(
           })
         )
         : identity,
-      Effect.andThen(Effect.suspend(() => end(clientId))),
+      Effect.andThen(() => end(clientId)),
       Effect.forkIn(scope, { startImmediately: true })
     )
   yield* Effect.forkChild(
@@ -1678,13 +1677,6 @@ export const makeProtocolStdio = Effect.fnUntraced(function*(options?: {
  * `onStdinEnd` selects whether in-flight requests are drained (the default)
  * or interrupted when stdin ends. See {@link makeProtocolStdio} for the
  * shutdown sequence of each mode.
- *
- * **Gotchas**
- *
- * Layers are memoized by reference within one layer graph. Reusing one
- * `layerProtocolStdio()` value for several servers in the same graph yields
- * one shared `Protocol` bound to the first `Stdio` that was built, so call it
- * once per server.
  *
  * @stability unstable
  * @category layers
