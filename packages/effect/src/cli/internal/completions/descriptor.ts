@@ -84,6 +84,7 @@ export const fromCommand = (
   // Match help's precedence: local flags first, then ancestors root to leaf.
   for (const [index, flag] of [...config.flags, ...inheritedFlags].entries()) {
     const singles = Param.extractSingleParams(flag)
+    const metadata = Param.getParamMetadata(flag)
     for (const single of singles) {
       if (single.kind !== "flag") continue
       // Omit hidden flags from completion scripts so tab-completion in the
@@ -97,6 +98,7 @@ export const fromCommand = (
         description: Option.getOrUndefined(single.description),
         type: toFlagType(single as Param.Single<"flag", unknown>),
         optionalValue: single.optionalValue !== undefined,
+        repeatable: metadata.isVariadic && !Option.exists(metadata.variadicMax, (max) => max <= 1),
         negation: single.negation
       })
     }

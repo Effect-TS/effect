@@ -1164,3 +1164,40 @@ describe("Boolean flags with a custom or disabled negation", () => {
     assert.notInclude(completions, "--validate")
   }, 20_000)
 })
+
+describe("Repeatable flags", () => {
+  const descriptor = fromCommand(Command.make("app", {
+    tag: Flag.String("tag").pipe(Flag.withAlias("t"), Flag.atLeast(1)),
+    label: Flag.String("label").pipe(Flag.atMost(1)),
+    env: Flag.KeyValuePair("env").pipe(Flag.optional),
+    verbose: Flag.Boolean("verbose")
+  }))
+
+  it("stay offered after they are used", () => {
+    assert.deepStrictEqual(descriptor.flags.map((flag) => [flag.name, flag.repeatable]), [
+      ["tag", true],
+      ["label", false],
+      ["env", true],
+      ["verbose", false]
+    ])
+
+    const zsh = Zsh.generate("app", descriptor)
+    assert.include(zsh, "'*--tag:value:'")
+    assert.include(zsh, "'*-t:value:'")
+    assert.include(zsh, "'(--label)--label:value:'")
+
+    const bash = Bash.generate("app", descriptor)
+    assert.include(bash, `\n  _filtered_flags+=" --tag -t"`)
+    assert.include(bash, `[[ -n "$_used_1" ]] || _filtered_flags+=" --label"`)
+
+    const fish = Fish.generate("app", descriptor)
+    assert.notInclude(linesWith(fish, "tag"), "__fish_contains_opt")
+    assert.include(linesWith(fish, "label"), "__fish_contains_opt")
+  })
+
+  it.skipIf(!hasPwsh)("PowerShell replay offers a repeatable flag again", () => {
+    const completions = replayPowerShell(descriptor, "app --tag x --label y -")
+    assert.include(completions, "--tag")
+    assert.notInclude(completions, "--label")
+  }, 20_000)
+})
