@@ -2532,7 +2532,7 @@ export function stepArray(
   if (exit._tag === "Failure") {
     return wrapPropertyKeyIssue(s, s.ast, i, exit)
   }
-  const value = exit === InternalParser.sameExit
+  const value = InternalParser.isSameExit(exit)
     ? item
     : (exit as InternalParser.Success<unknown, SchemaIssue.Issue>)[InternalParser.args]
   if (value !== InternalParser.missing) {
@@ -2940,7 +2940,7 @@ export const Objects: new(
         if (exitValue._tag === "Failure") {
           return wrapPropertyKeyIssue(s, ast, key, exitValue) ?? Exit.void
         }
-        const value = exitValue === InternalParser.sameExit
+        const value = InternalParser.isSameExit(exitValue)
           ? inputValue
           : (exitValue as InternalParser.Success<unknown, SchemaIssue.Issue>)[InternalParser.args]
         if (k2 !== InternalParser.missing && value !== InternalParser.missing) {
@@ -2968,7 +2968,7 @@ export const Objects: new(
         if (exitKey._tag === "Failure") {
           return wrapPropertyKeyIssue(s, ast, key, exitKey) ?? Exit.void
         }
-        const k2 = exitKey === InternalParser.sameExit
+        const k2 = InternalParser.isSameExit(exitKey)
           ? key
           : (exitKey as InternalParser.Success<PropertyKey, SchemaIssue.Issue>)[InternalParser.args]
         const inputValue = s.input[key]
@@ -3158,7 +3158,7 @@ export const Objects: new(
           if (!effectIsExit(exit)) {
             return resume(state, index, exit)
           }
-          if (exit === InternalParser.sameExit) {
+          if (InternalParser.isSameExit(exit)) {
             if (hasKey) InternalRecord.assignProperty(out, name, value)
             continue
           }
@@ -3241,7 +3241,7 @@ export function stepProperty(
   if (exit._tag === "Failure") {
     return wrapPropertyKeyIssue(s, s.ast, p.name, exit)
   }
-  if (exit === InternalParser.sameExit) return
+  if (InternalParser.isSameExit(exit)) return
   const value = (exit as InternalParser.Success<unknown, SchemaIssue.Issue>)[InternalParser.args]
   if (value !== InternalParser.missing) {
     InternalRecord.assignProperty(s.out, p.name, value)
@@ -3919,8 +3919,7 @@ function resumeUnion(
   state: UnionParserState
 ): Effect.Effect<unknown, SchemaIssue.Issue, any> {
   return Effect.flatMapEager(eff, (_) => {
-    if (state.out === InternalParser.sameExit) return Effect.succeed(state.input)
-    if (state.out) return state.out
+    if (state.out) return InternalParser.isSameExit(state.out) ? Effect.succeed(state.input) : state.out
     return Effect.fail(new SchemaIssue.AnyOf(state.ast, state.issues ?? [], state.input, state.options))
   })
 }

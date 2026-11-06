@@ -266,7 +266,7 @@ export const runtime = {
   invalid,
   missing: InternalParser.missing,
   missingExit: InternalParser.missingExit,
-  sameExit: InternalParser.sameExit,
+  isSameExit: InternalParser.isSameExit,
   args: InternalParser.args,
   succeed: InternalParser.succeed,
   effectIsExit,
