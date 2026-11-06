@@ -79,11 +79,18 @@ The server exposes three main parts:
 The registration layers are merged and passed to the server as `registrations`, so they are
 registered before the server reads its first request. Each registration layer requires the
 `McpServer` service, which the transport provides. `McpServer.layerStdio` is used to create a standard I/O–based MCP server identified by its name and
-version. Its ordered, non-empty `protocols` declaration names implemented protocol adapters rather
+version. Every server constructor also accepts an optional human-readable `title`,
+which is included in `serverInfo` ([Implementation](https://modelcontextprotocol.io/specification/2026-07-28/schema#implementation)).
+Its ordered, non-empty `protocols` declaration names implemented protocol adapters rather
 than arbitrary version strings. This release supports `McpProtocol.v2024_11_05`,
 `McpProtocol.v2025_03_26`, `McpProtocol.v2025_06_18`, `McpProtocol.v2025_11_25`, and
 `McpProtocol.v2026_07_28`. Both `layerStdio` and `layerHttp` support all five adapters;
 `layerHttpRequestScoped` supports only the stateless `v2026_07_28` adapter.
+A modern-only server rejects an unversioned legacy `initialize` with `-32022` and
+`data: { supported, requested }`, as specified by
+[UnsupportedProtocolVersionError](https://modelcontextprotocol.io/specification/2026-07-28/schema#unsupportedprotocolversionerror).
+For that unversioned request, a missing or non-string initialization version returns
+`-32602` (`InvalidParams`).
 The `v2024_11_05` adapter implements that revision's RPC schemas and stdio framing, including its
 batch policy. It does not implement the historical two-endpoint HTTP+SSE transport.
 `McpServer.layerHttp` instead offers the 2024 RPC schema through the same single-endpoint HTTP
@@ -474,16 +481,50 @@ const ServerLayer = McpServer.layerHttp({
 ```
 
 - The entries are `discover`, `tools`, `resources`, `resourceTemplates`, `prompts` and `skills`.
-  Omitted entries and `resources/read` keep the default. Earlier protocol revisions ignore the
-  option.
+  Omitted entries keep the default. A resource handler can return a `McpSchema.ReadResourceResult`
+  with optional `ttlMs` and `cacheScope` fields to configure each read. Earlier protocol revisions
+  omit these hints.
 - `ttl` accepts any `Duration.Input` and is sent as whole milliseconds, rounded down. It must be
-  finite and nonnegative, and only `"private"` scope is supported. Otherwise building the layer
-  fails with `IllegalArgumentError`.
+  finite and nonnegative, and scope must be `"private"` or `"public"`. Otherwise building the layer
+  fails with `IllegalArgumentError`. Resource `ttlMs` values must be nonnegative safe integers;
+  invalid handler hints produce an internal protocol error.
 - The hints only tell clients what they may cache. The server still lists registrations, applies
   visibility and checks each call on every request.
-- With a positive `ttl`, a client can keep showing a list after registrations or visibility
-  change, until the hint expires. Private scope does not separate users, so a client shared between
-  users can show one user's list to another.
+- A positive `ttl` permits reuse until expiry or a change notification invalidates the entry.
+  `"private"` caches must be isolated by authorization context; a different access token requires
+  a different cache. Use `"public"` only for data safe to share across users, including when the
+  endpoint itself requires authentication. Access checks still apply on every server request.
+- Reads carrying `inputResponses` or `requestState` are not cacheable. The server sends the
+  default stale, private hints for completed retries; interim input requests carry no hints.
+
+These rules follow [Caching](https://modelcontextprotocol.io/specification/2026-07-28/server/utilities/caching).
+
+## Tool icons and list order
+
+Annotate a toolkit tool with `McpServer.ToolIcons` to include icons in `tools/list`:
+
+```typescript
+import { Schema } from "effect"
+import { McpSchema, McpServer, Tool } from "effect/ai"
+
+const Search = Tool.make("search", {
+  parameters: Schema.Struct({ query: Schema.String }),
+  success: Schema.Array(Schema.String)
+}).annotate(McpServer.ToolIcons, [McpSchema.Icon.make({
+  src: "https://example.com/search.svg",
+  mimeType: "image/svg+xml",
+  sizes: ["any"]
+})])
+```
+
+The adapters include icons in revisions that support them, including `2025-11-25`.
+Tools without the annotation omit `icons`. This follows the
+[Tool definition](https://modelcontextprotocol.io/specification/2026-07-28/server/tools#tool).
+
+Tool, prompt, resource and resource-template lists retain registration order. With unchanged
+registrations and visibility, successive requests return the same order, satisfying the
+[deterministic ordering recommendation](https://modelcontextprotocol.io/specification/2026-07-28/server/tools#capabilities).
+Replacing an existing registration retains its position.
 
 ## Elicitation requests
 

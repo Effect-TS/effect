@@ -664,7 +664,7 @@ it.layer(testLayer)(`Mcp Conformance (${protocol.protocolVersion})`, (it) => {
           { ttl: "Infinity", cacheScope: "private" },
           { ttl: 2 ** 53, cacheScope: "private" },
           { ttl: "soon", cacheScope: "private" },
-          { ttl: 1, cacheScope: "public" }
+          { ttl: 1, cacheScope: "unsupported" }
         ]
         for (const mode of ["server", "request"] as const) {
           for (const tools of invalid) {

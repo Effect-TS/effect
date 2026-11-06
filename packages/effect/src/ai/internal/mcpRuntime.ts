@@ -141,6 +141,7 @@ export interface HandlerInstallationOptions {
   readonly defaultLogLevel: LogLevel.LogLevel
   readonly serverInfo: {
     readonly name: string
+    readonly title?: string | undefined
     readonly version: string
     readonly instructions?: string | undefined
     readonly description?: string | undefined
@@ -356,10 +357,13 @@ export const make = Effect.fnUntraced(function*(
         const offeredVersion = (request.payload as any)?.protocolVersion
         const selected = selectStatefulProtocol(registry.protocols, offeredVersion)
         if (selected === undefined) {
-          return yield* new McpProtocol.ProtocolError({
-            code: PublicMcpSchema.UNSUPPORTED_PROTOCOL_VERSION_ERROR_CODE,
-            message: `initialize is not supported by the configured MCP protocols (requested '${offeredVersion}')`
-          })
+          if (typeof offeredVersion !== "string") {
+            return yield* new McpProtocol.ProtocolError({
+              code: PublicMcpSchema.INVALID_PARAMS_ERROR_CODE,
+              message: "initialize requires a string protocolVersion"
+            })
+          }
+          return yield* new McpProtocol.ProtocolError(unsupportedProtocolVersion(offeredVersion))
         }
         protocol = selected
       } else if (request.tag === "ping") {
@@ -626,6 +630,7 @@ export const make = Effect.fnUntraced(function*(
                 instructions: options.serverInfo.instructions,
                 serverInfo: PublicMcpSchema.Implementation.make({
                   name: options.serverInfo.name,
+                  title: options.serverInfo.title,
                   version: options.serverInfo.version,
                   description: options.serverInfo.description,
                   websiteUrl: options.serverInfo.websiteUrl,

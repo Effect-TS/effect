@@ -965,7 +965,9 @@ const rejectedError = (rejected: McpCore.RequestRejected) => Effect.fail(rejecte
  * **Details**
  *
  * Handlers use this service to register capabilities and resolve incoming MCP
- * requests.
+ * requests. Lists retain registration order, including when replacing an
+ * existing entry, so unchanged registrations and visibility produce a stable
+ * order across requests.
  *
  * @stability unstable
  * @category services
@@ -1615,8 +1617,10 @@ class McpClientKey extends Data.Class<{
  *
  * `ttl` is how long a client may treat the result as fresh. It is sent as a
  * whole number of milliseconds, rounded down, so it must be finite,
- * nonnegative and at most `Number.MAX_SAFE_INTEGER` milliseconds. Only
- * `"private"` scope is supported, so shared caches must not store the result.
+ * nonnegative and at most `Number.MAX_SAFE_INTEGER` milliseconds. Private
+ * caches must be isolated by authorization context. Public scope permits
+ * sharing across users, so use it only for results without user-specific data.
+ * These fields follow [MCP caching](https://modelcontextprotocol.io/specification/2026-07-28/server/utilities/caching).
  *
  * @stability unstable
  * @category models
@@ -1624,7 +1628,7 @@ class McpClientKey extends Data.Class<{
  */
 export interface CacheHint {
   readonly ttl: Duration.Input
-  readonly cacheScope: "private"
+  readonly cacheScope: "private" | "public"
 }
 
 /**
@@ -1636,9 +1640,9 @@ export interface CacheHint {
  * `server/discover`, `tools/list`, `resources/list`,
  * `resources/templates/list` and `prompts/list`. `skills` covers the Skills
  * extension's `skills/list`, `skills/get` and `resources/directory/read`.
- * Omitted entries, and `resources/read` results, keep
- * `{ ttlMs: 0, cacheScope: "private" }`. Earlier protocol revisions have no
- * cache hints and ignore this option.
+ * Omitted entries keep `{ ttlMs: 0, cacheScope: "private" }`. Resource
+ * handlers can set `ttlMs` and `cacheScope` on `McpSchema.ReadResourceResult`.
+ * Earlier protocol revisions have no cache hints and ignore this option.
  *
  * These are hints for clients. The server does not cache results, and
  * visibility and invocation checks still run on every request.
@@ -1646,9 +1650,10 @@ export interface CacheHint {
  * **Gotchas**
  *
  * A positive `ttl` lets a client keep showing a list after registrations or
- * per-request visibility change, until the hint expires. Private scope does
- * not key a client's cache by user, so a client shared between users can
- * reuse one user's list for another.
+ * per-request visibility change, until the hint expires or a change notification
+ * invalidates it. Public scope permits sharing even when the endpoint requires
+ * authentication; it does not replace access checks. Private caches must not
+ * be shared across authorization contexts.
  *
  * @stability unstable
  * @category models
@@ -1668,21 +1673,21 @@ const normalizeCacheHints = (
   cacheHints: CacheHints | undefined
 ): Effect.Effect<McpProtocolInternal.CacheHints | undefined, Cause.IllegalArgumentError> => {
   if (cacheHints === undefined) return Effect.succeed(undefined)
-  const normalized: Record<string, { readonly ttlMs: number; readonly cacheScope: "private" }> = {}
+  const normalized: Record<string, { readonly ttlMs: number; readonly cacheScope: "private" | "public" }> = {}
   for (const [name, hint] of Object.entries(cacheHints)) {
     if (hint === undefined) continue
     const ttlMs = Option.match(Duration.fromInput(hint.ttl), {
       onNone: () => NaN,
       onSome: (ttl) => Math.floor(Duration.toMillis(ttl))
     })
-    if (!Number.isSafeInteger(ttlMs) || ttlMs < 0 || hint.cacheScope !== "private") {
+    if (!Number.isSafeInteger(ttlMs) || ttlMs < 0 || (hint.cacheScope !== "private" && hint.cacheScope !== "public")) {
       return Effect.fail(
         new Cause.IllegalArgumentError(
-          `McpServer cacheHints.${name} must have a finite, nonnegative ttl and a "private" cacheScope`
+          `McpServer cacheHints.${name} must have a finite, nonnegative ttl and a "private" or "public" cacheScope`
         )
       )
     }
-    normalized[name] = { ttlMs, cacheScope: "private" }
+    normalized[name] = { ttlMs, cacheScope: hint.cacheScope }
   }
   return Effect.succeed(normalized)
 }
@@ -1694,7 +1699,8 @@ const normalizeCacheHints = (
  *
  * The server serves registered tools, resources, and prompts. The selected MCP
  * runtime handles protocol lifecycle state and determines which clients receive
- * queued server notifications.
+ * queued server notifications. The optional `title` is a human-readable
+ * server name included in `serverInfo` alongside the programmatic `name`.
  *
  * Each request handled by the server runs in a server span that follows the
  * OpenTelemetry MCP semantic conventions. Spans are named after the JSON-RPC
@@ -1710,6 +1716,7 @@ const normalizeCacheHints = (
  */
 export const run: (options: {
   readonly name: string
+  readonly title?: string | undefined
   readonly version: string
   readonly instructions?: string | undefined
   readonly description?: string | undefined
@@ -1724,6 +1731,7 @@ export const run: (options: {
   McpServer | RpcServer.Protocol
 > = Effect.fnUntraced(function*(options: {
   readonly name: string
+  readonly title?: string | undefined
   readonly version: string
   readonly instructions?: string | undefined
   readonly description?: string | undefined
@@ -1744,6 +1752,7 @@ export const run: (options: {
 const runWithRuntime = Effect.fnUntraced(function*(
   options: {
     readonly name: string
+    readonly title?: string | undefined
     readonly version: string
     readonly instructions?: string | undefined
     readonly description?: string | undefined
@@ -2545,6 +2554,7 @@ export const layer = <
   RR = never
 >(options: {
   readonly name: string
+  readonly title?: string | undefined
   readonly version: string
   readonly instructions?: string | undefined
   readonly description?: string | undefined
@@ -2567,6 +2577,7 @@ export const layer = <
 
 const layerWithRuntime = (options: {
   readonly name: string
+  readonly title?: string | undefined
   readonly version: string
   readonly instructions?: string | undefined
   readonly description?: string | undefined
@@ -2626,6 +2637,7 @@ export const layerStdio = <
   RR = never
 >(options: {
   readonly name: string
+  readonly title?: string | undefined
   readonly version: string
   readonly instructions?: string | undefined
   readonly description?: string | undefined
@@ -2795,6 +2807,7 @@ export const layerHttp = <
   RR = never
 >(options: {
   readonly name: string
+  readonly title?: string | undefined
   readonly version: string
   readonly instructions?: string | undefined
   readonly description?: string | undefined
@@ -2870,6 +2883,7 @@ export const layerHttpRequestScoped = <
   RR = never
 >(options: {
   readonly name: string
+  readonly title?: string | undefined
   readonly version: string
   readonly instructions?: string | undefined
   readonly description?: string | undefined
@@ -3221,6 +3235,27 @@ const toolResultContent = (encoded: unknown): CallToolResult["content"] =>
   encoded === undefined ? [] : [{ type: "text", text: JSON.stringify(encoded) }]
 
 /**
+ * Icons displayed for a toolkit tool by MCP clients.
+ *
+ * **When to use**
+ *
+ * Use with `Tool.make(...).annotate(ToolIcons, icons)` to include icons in
+ * `tools/list`, as described by the [MCP Tool definition](https://modelcontextprotocol.io/specification/2026-07-28/server/tools#tool).
+ *
+ * **Details**
+ *
+ * An empty annotation omits `icons`. Adapters include icons only in protocol
+ * revisions that support them. This annotation does not change tool execution.
+ *
+ * @stability unstable
+ * @category annotations
+ * @since 4.1.3
+ */
+export const ToolIcons = Context.Reference<ReadonlyArray<McpSchema.Icon>>("effect/ai/McpServer/ToolIcons", {
+  defaultValue: () => []
+})
+
+/**
  * The requirements of a toolkit registration.
  *
  * **Details**
@@ -3366,8 +3401,10 @@ export const registerToolkit: <Tools extends Record<string, Tool.Any>>(
               `parameters.\n\n${error.message}`
         ))
     )
+    const icons = Context.get(annotations, ToolIcons)
     const mcpTool = new McpTool({
       name: tool.name,
+      icons: icons.length === 0 ? undefined : icons,
       description: Tool.getDescription(tool),
       inputSchema,
       outputSchema,
