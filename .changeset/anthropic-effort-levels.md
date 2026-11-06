@@ -2,4 +2,4 @@
 "@effect/ai-anthropic": patch
 ---
 
-Accept `xhigh` and `max` in `AnthropicLanguageModel` output effort configuration by reusing the generated Anthropic effort type.
+Allow the `xhigh` and `max` effort levels in `AnthropicLanguageModel` `output_config.effort` configuration.
