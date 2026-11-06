@@ -3512,7 +3512,8 @@ const getRuntimeType = (input: unknown): Type => input === null ? "null" : Array
 
 // Snapshot once so parser initialization and code generation use the same policy.
 // Keep __proto__ own-only even when Node's --disable-proto=delete removes its accessor.
-const objectPrototypeKeys = new Set<PropertyKey>(["__proto__", ...Reflect.ownKeys(Object.prototype)])
+// Avoid an iterable spread so bundles that do not use this policy can drop the snapshot.
+const objectPrototypeKeys = new Set<PropertyKey>(Reflect.ownKeys(Object.prototype)).add("__proto__")
 
 /**
  * Fields named after `Object.prototype` members must be own properties.
