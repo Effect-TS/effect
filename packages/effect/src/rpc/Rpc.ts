@@ -817,7 +817,7 @@ export type ResultFrom<R extends Any, Services> = R extends Rpc<
       >
       | Effect<
         Queue.Dequeue<_SA["Type"], _SE["Type"] | _Error["Type"] | _Middleware["error"]["Type"] | Cause.Done>,
-        _SE["Type"] | Schema.Schema.Type<_Error> | _Middleware["error"]["Type"],
+        _SE["Type"] | _Error["Type"] | _Middleware["error"]["Type"],
         Services
       > :
   Effect<
