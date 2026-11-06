@@ -391,11 +391,23 @@ export const make = Effect.fnUntraced(function*(
     }),
     resolveRequest: (clientId, headers) => stateful?.resolve(clientId, headers),
     admitHttp: (headers, parsed) => {
-      const reject = (status: number, error?: unknown, id: string | number | null = null): HttpAdmission => ({
+      const reject = (
+        status: number,
+        error?: { readonly code: number; readonly message: string; readonly data?: unknown },
+        id: string | number | null = null
+      ): HttpAdmission => ({
         _tag: "Rejected",
         response: error === undefined
           ? HttpServerResponse.empty({ status })
-          : HttpServerResponse.jsonUnsafe({ jsonrpc: "2.0", id, error }, { status })
+          : HttpServerResponse.jsonUnsafe({
+            jsonrpc: "2.0",
+            id,
+            error: {
+              code: error.code,
+              message: error.message,
+              ...(error.data === undefined ? {} : { data: error.data })
+            }
+          }, { status })
       })
       if (Result.isFailure(parsed)) {
         const version = headers[MCP_PROTOCOL_VERSION_HEADER]
