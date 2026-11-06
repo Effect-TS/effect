@@ -365,7 +365,7 @@ const toMatcher = (pattern: string | PathMatcher, dot: boolean | undefined): Pat
   if (typeof pattern !== "string") {
     return pattern
   }
-  if (!Glob.isRelativePattern(pattern, false)) {
+  if (!Glob.isRelativePattern(pattern)) {
     throw new Error(`PathFilter patterns must be relative, without ".." segments or escaped "/": ${pattern}`)
   }
   return Glob.pathMatcher(Glob.compile([pattern], dot ?? true))
