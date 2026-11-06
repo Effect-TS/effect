@@ -792,7 +792,8 @@ export type ExcludeProvides<Env, R extends Any, Tag extends string> = Exclude<
  *
  * Streaming RPCs may return a stream or an effect that produces a queue. Other
  * RPCs return an effect that succeeds with the success value or a deferred
- * success value.
+ * success value. Handlers may also fail with the errors of the RPC's server
+ * middleware, but a returned `Deferred` can only fail with the RPC's own error.
  *
  * @stability unstable
  * @category utility types
@@ -808,17 +809,17 @@ export type ResultFrom<R extends Any, Services> = R extends Rpc<
 > ? [_Success] extends [RpcSchema.Stream<infer _SA, infer _SE>] ?
       | Stream<
         _SA["Type"],
-        _SE["Type"] | _Error["Type"],
+        _SE["Type"] | _Error["Type"] | _Middleware["error"]["Type"],
         Services
       >
       | Effect<
-        Queue.Dequeue<_SA["Type"], _SE["Type"] | _Error["Type"] | Cause.Done>,
-        _SE["Type"] | Schema.Schema.Type<_Error>,
+        Queue.Dequeue<_SA["Type"], _SE["Type"] | _Error["Type"] | _Middleware["error"]["Type"] | Cause.Done>,
+        _SE["Type"] | _Error["Type"] | _Middleware["error"]["Type"],
         Services
       > :
   Effect<
     _Success["Type"] | Deferred<_Success["Type"], _Error["Type"]>,
-    _Error["Type"],
+    _Error["Type"] | _Middleware["error"]["Type"],
     Services
   > :
   never
