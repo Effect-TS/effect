@@ -17,12 +17,14 @@ export const succeed = Exit.succeed as <A>(value: A) => Success<A>
 /** @internal */
 export const missingExit = succeed(missing)
 
-// Shared success for a present input returned unchanged. It must be resolved
-// before crossing an asynchronous or transformation boundary. Kept on
-// globalThis under the missing symbol so that module copies share its identity.
-// Keep initialization in a call so the build can remove it when unused.
+// Cached success for an unchanged input. The missing symbol also brands the
+// result so module copies can recognize it without sharing the Exit object.
+// Resolve it before crossing an asynchronous or transformation boundary.
 /** @internal */
-export const sameExit: Success<unknown> = (() => (globalThis as any)[missing] ??= succeed(missing))()
+export const sameExit: Success<unknown> = Object.assign(succeed(missing), { [missing]: true })
+
+/** @internal */
+export const isSameExit = (result: object): boolean => (result as { readonly [missing]?: boolean })[missing] === true
 
 /** @internal */
 export const toOption = <A>(value: A): Option.Option<A> => value === missing ? Option.none() : Option.some(value as A)
