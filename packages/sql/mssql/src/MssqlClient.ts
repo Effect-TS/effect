@@ -638,10 +638,10 @@ export const make = (
     const transactionService = TransactionConnection(clientIdCounter++)
     // Inside `withTransaction`, statements and procedures use its connection.
     const getConnection = Effect.flatMap(
-      Effect.serviceOption(transactionService),
+      Client.currentTransactionConnection(transactionService),
       Option.match({
         onNone: () => acquireConnection,
-        onSome: ([conn]) => Effect.succeed(conn)
+        onSome: Effect.succeed
       })
     )
 

@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Cause, Duration, Effect, Exit, Fiber } from "effect"
+import { Cause, Deferred, Duration, Effect, Exit, Fiber } from "effect"
 import { Reactivity } from "effect/reactivity"
 import { TestClock } from "effect/testing"
 import { rejects } from "node:assert/strict"
@@ -81,6 +81,27 @@ describe("Client", () => {
         snapshot.close()
       }
     }).pipe(Effect.provide(Reactivity.layer)))
+
+  it.effect.skipIf(!isBun)(
+    "fails exports and statements from a fiber that outlives its transaction",
+    () =>
+      Effect.gen(function*() {
+        const { SqliteClient } = yield* Effect.promise(() => import("@effect/sql-sqlite-bun"))
+        const sql = yield* SqliteClient.make({ filename: ":memory:" })
+        const go = yield* Deferred.make<void>()
+        const stale = yield* sql.withTransaction(Effect.forkChild(Effect.andThen(
+          Deferred.await(go),
+          Effect.all([Effect.exit(sql.export), Effect.exit(sql`SELECT 1`)])
+        )))
+        yield* Deferred.succeed(go, undefined)
+        for (const exit of yield* Fiber.join(stale)) {
+          assert.isTrue(
+            Exit.isFailure(exit) && !Cause.hasDies(exit.cause) &&
+              Cause.pretty(exit.cause).includes("the transaction has already ended")
+          )
+        }
+      }).pipe(Effect.provide(Reactivity.layer))
+  )
 
   it.effect.skipIf(!isBun)(
     "recovers a failed deferred commit without losing an in-memory database",

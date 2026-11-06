@@ -35,6 +35,22 @@ describe("Client", () => {
       assert.deepStrictEqual(yield* active, [false, false])
     }).pipe(Effect.provide(Reactivity.layer)))
 
+  it.effect("fails reserve from a fiber that outlives its transaction", () =>
+    Effect.gen(function*() {
+      const sql = yield* LibsqlClient.make({ url: ":memory:" })
+      const go = yield* Deferred.make<void>()
+      const stale = yield* sql.withTransaction(Effect.forkChild(Effect.andThen(
+        Deferred.await(go),
+        Effect.scoped(Effect.flatMap(sql.reserve, (conn) => conn.executeRaw("SELECT 1", [])))
+      )))
+      yield* Deferred.succeed(go, undefined)
+      const exit = yield* Fiber.await(stale)
+      assert.isTrue(
+        Exit.isFailure(exit) && !Cause.hasDies(exit.cause) &&
+          Cause.pretty(exit.cause).includes("the transaction has already ended")
+      )
+    }).pipe(Effect.provide(Reactivity.layer)))
+
   it.effect("releases completed nested savepoints", () =>
     Effect.gen(function*() {
       const sql = yield* LibsqlClient.make({ url: ":memory:" })

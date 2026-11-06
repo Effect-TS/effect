@@ -567,10 +567,26 @@ const transactionEndedError = (operation: string) =>
   })
 
 /**
- * The connection of the transaction in the fiber's context, or `None` outside
- * a transaction. Fails when that transaction has ended.
+ * Returns the connection of the transaction in the fiber's context, `None`
+ * outside a transaction, or fails with a `SqlError` when that transaction has
+ * already ended.
+ *
+ * **When to use**
+ *
+ * Use when a driver takes the transaction connection from its transaction
+ * service itself rather than through `SqlClient`, so a fiber forked inside a
+ * transaction that outlives it fails instead of using the released connection.
+ *
+ * **Gotchas**
+ *
+ * Only transactions started by `makeWithTransaction` are known to end; a
+ * connection provided to the transaction service directly is always returned.
+ *
+ * @stability unstable
+ * @category transactions
+ * @since 4.1.3
  */
-const currentTransactionConnection = <I, S>(
+export const currentTransactionConnection = <I, S>(
   transactionService: Context.Key<I, readonly [conn: S, counter: number]>
 ): Effect.Effect<Option.Option<S>, SqlError> =>
   Effect.withFiber((fiber) => {

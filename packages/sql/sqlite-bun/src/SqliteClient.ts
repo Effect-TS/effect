@@ -22,6 +22,7 @@ import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import { identity } from "effect/Function"
 import * as Layer from "effect/Layer"
+import * as Option from "effect/Option"
 import * as Reactivity from "effect/reactivity/Reactivity"
 import * as Schedule from "effect/Schedule"
 import type * as Scope from "effect/Scope"
@@ -291,10 +292,14 @@ export const make = (
       {
         [TypeId]: TypeId as TypeId,
         config: options,
-        export: Effect.withFiber((fiber) =>
-          Context.getOption(fiber.context, client.transactionService)._tag === "Some"
-            ? connection.export
-            : Effect.scoped(Effect.flatMap(acquirer, (_) => _.export))
+        export: Effect.suspend(() =>
+          Effect.flatMap(
+            Client.currentTransactionConnection(client.transactionService),
+            Option.match({
+              onNone: () => Effect.scoped(Effect.flatMap(acquirer, (_) => _.export)),
+              onSome: () => connection.export
+            })
+          )
         ),
         loadExtension: (path: string) => Effect.scoped(Effect.flatMap(acquirer, (_) => _.loadExtension(path)))
       }
