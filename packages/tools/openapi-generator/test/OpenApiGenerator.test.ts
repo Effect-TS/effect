@@ -84,7 +84,7 @@ const assertTypeOnlyIncludes = Effect.fnUntraced(function*(
 interface CompileOptions {
   readonly exactOptionalPropertyTypes?: boolean | undefined
   readonly int64AsBigInt?: boolean | undefined
-  readonly formats?: ReadonlyArray<"httpclient" | "httpclient-type-only"> | undefined
+  readonly formats?: ReadonlyArray<OpenApiGenerator.OpenApiGeneratorFormat> | undefined
   readonly usage?: string | undefined
 }
 
@@ -96,7 +96,7 @@ const compileCases: Array<{ readonly spec: OpenAPISpec; readonly options: Compil
 
 const generateClients = ({ options, spec }: (typeof compileCases)[number]) => {
   const generate = (
-    format: "httpclient" | "httpclient-type-only",
+    format: OpenApiGenerator.OpenApiGeneratorFormat,
     layer: typeof OpenApiGenerator.layerTransformerSchema
   ) =>
     Effect.gen(function*() {
@@ -108,9 +108,9 @@ const generateClients = ({ options, spec }: (typeof compileCases)[number]) => {
   return Effect.all(formats.map((format) =>
     generate(
       format,
-      format === "httpclient"
-        ? OpenApiGenerator.layerTransformerSchema
-        : OpenApiGenerator.layerTransformerTs
+      format === "httpclient-type-only"
+        ? OpenApiGenerator.layerTransformerTs
+        : OpenApiGenerator.layerTransformerSchema
     ).pipe(Effect.map((client) => `${client}\n${options.usage ?? ""}`))
   ))
 }
@@ -175,7 +175,7 @@ const typeCheckCases = Effect.fnUntraced(
               skipLibCheck: true,
               strict: true,
               target: "ES2022",
-              types: [],
+              types: ["node"],
               verbatimModuleSyntax: true
             },
             files: caseIndexes.flatMap((caseIndex) => files[caseIndex])
@@ -3539,6 +3539,59 @@ export const fromBigInt: Int64 = Int64.make(9223372036854775807n)
 export const encoded: typeof Int64.Encoded = "9223372036854775807"
 // @ts-expect-error a plain bigint is not an Int64
 export const plain: Int64 = 1n
+`
+    })
+
+    const int64 = { type: ["string", "integer"], format: "int64" }
+    const int64ShapesSpec: OpenAPISpec = {
+      ...int64Spec,
+      components: {
+        schemas: {
+          Id: int64,
+          Node: {
+            type: "object",
+            properties: { id: int64, children: { type: "array", items: { $ref: "#/components/schemas/Node" } } },
+            required: ["id"]
+          },
+          Root: {
+            type: "object",
+            properties: { id: int64 },
+            required: ["id"],
+            default: { id: "1" },
+            examples: [{ id: "1" }]
+          },
+          Value: {
+            type: "object",
+            properties: {
+              id: { $ref: "#/components/schemas/Id" },
+              node: { $ref: "#/components/schemas/Node" },
+              root: { $ref: "#/components/schemas/Root", description: "described root" },
+              min: { ...int64, minimum: 0 }
+            },
+            required: ["id", "node", "root", "min"]
+          }
+        },
+        securitySchemes: {}
+      }
+    } as unknown as OpenAPISpec
+
+    it.effect("keeps annotations on references to schemas containing Int64", () =>
+      Effect.gen(function*() {
+        const result = yield* OpenApiGenerator.OpenApiGenerator.use((generator) =>
+          generator.generate(int64ShapesSpec, { name: "TestClient", format: "httpclient", int64AsBigInt: true })
+        )
+
+        assert.include(result, `"description": "described root"`)
+      }).pipe(Effect.provide(OpenApiGenerator.layerTransformerSchema)))
+
+    itGeneratedClientsCompile("types Int64 behind aliases, recursion, annotations, and open objects", int64ShapesSpec, {
+      formats: ["httpclient", "httpapi"],
+      int64AsBigInt: true,
+      usage: `export const root: Root = { id: Int64.make(1n) }
+export const encodedRoot: typeof Root.Encoded = Schema.encodeSync(Root)(root)
+export const node: Node = { id: Int64.make(1n), children: [{ id: Int64.make(2n) }] }
+export const encodedNode: typeof Node.Encoded = Schema.encodeSync(Node)(node)
+export const ids = (value: Value): ReadonlyArray<bigint> => [value.id, value.node.id, value.root.id, value.min]
 `
     })
   })

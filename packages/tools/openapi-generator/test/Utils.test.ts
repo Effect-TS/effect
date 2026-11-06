@@ -237,10 +237,49 @@ describe("Utils", () => {
     const int64Spec: OpenAPISpec = {
       openapi: "3.1.0",
       info: { title: "Int64 API", version: "1.0.0" },
-      components: { schemas: {}, securitySchemes: {} },
+      components: {
+        schemas: {
+          Id: { type: ["string", "integer"], format: "int64" },
+          Node: {
+            type: "object",
+            properties: {
+              id: { type: ["string", "integer"], format: "int64" },
+              children: { type: "array", items: { $ref: "#/components/schemas/Node" } }
+            },
+            required: ["id"]
+          }
+        },
+        securitySchemes: {}
+      },
       security: [],
       tags: [],
       paths: {
+        "/shapes": {
+          get: {
+            operationId: "getShapes",
+            parameters: [],
+            tags: ["Values"],
+            security: [],
+            responses: {
+              "200": {
+                description: "Success",
+                content: {
+                  "application/json": {
+                    schema: {
+                      type: "object",
+                      properties: {
+                        id: { $ref: "#/components/schemas/Id" },
+                        node: { $ref: "#/components/schemas/Node" },
+                        min: { type: ["string", "integer"], format: "int64", minimum: 0 }
+                      },
+                      required: ["id", "node", "min"]
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
         "/value": {
           get: {
             operationId: "getValue",
@@ -273,6 +312,7 @@ describe("Utils", () => {
       readonly Int64: Schema.Codec<bigint, string | number>
       readonly make: (httpClient: HttpClient.HttpClient) => {
         readonly getValue: () => Effect.Effect<unknown, unknown>
+        readonly getShapes: () => Effect.Effect<unknown, unknown>
       }
     }
 
@@ -307,6 +347,27 @@ describe("Utils", () => {
 
         assert.deepStrictEqual(fromStrings, { value: 9223372036854775807n, reversed: -9223372036854775808n })
         assert.deepStrictEqual(fromNumbers, { value: 42n, reversed: -9007199254740991n })
+      }))
+
+    it.effect("decodes Int64 behind aliases, recursion, and constraints", () =>
+      Effect.gen(function*() {
+        const module = yield* loadInt64Module()
+
+        const decoded = yield* module.make(respondWith(
+          `{"id":"9223372036854775807","node":{"id":"-9223372036854775808","children":[{"id":1}]},"min":"5"}`
+        )).getShapes()
+        const outOfRange = yield* Effect.exit(
+          module.make(respondWith(
+            `{"id":"1","node":{"id":"1","children":[{"id":"9223372036854775808"}]},"min":"5"}`
+          )).getShapes()
+        )
+
+        assert.deepStrictEqual(decoded, {
+          id: 9223372036854775807n,
+          node: { id: -9223372036854775808n, children: [{ id: 1n }] },
+          min: 5n
+        })
+        assert.isTrue(Exit.isFailure(outOfRange))
       }))
 
     it.effect("rejects out-of-range, fractional, malformed, and unsafe numeric values", () =>
