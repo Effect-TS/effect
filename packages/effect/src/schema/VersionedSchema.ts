@@ -60,7 +60,7 @@
  *   workflow's replay with a defect.
  *
  * @stability unstable
- * @since 4.1.0
+ * @since 4.1.4
  */
 import type * as Brand from "../Brand.ts"
 import type * as Context from "../Context.ts"
@@ -115,7 +115,7 @@ const VersionsBrand = "effect/schema/VersionedSchema/Versions"
  *
  * @stability unstable
  * @category errors
- * @since 4.1.0
+ * @since 4.1.4
  */
 export class VersionUnsupported extends Schema.TaggedError<VersionUnsupported>(
   "effect/schema/VersionedSchema/VersionUnsupported"
@@ -161,7 +161,7 @@ export class VersionUnsupported extends Schema.TaggedError<VersionUnsupported>(
  *
  * @stability unstable
  * @category errors
- * @since 4.1.0
+ * @since 4.1.4
  */
 export class Unrepresentable extends Schema.TaggedError<Unrepresentable>(
   "effect/schema/VersionedSchema/Unrepresentable"
@@ -194,7 +194,7 @@ const NoEquivalentTypeId = "~effect/schema/VersionedSchema/NoEquivalent"
  *
  * @stability unstable
  * @category models
- * @since 4.1.0
+ * @since 4.1.4
  */
 export interface NoEquivalent {
   readonly [NoEquivalentTypeId]: typeof NoEquivalentTypeId
@@ -237,7 +237,7 @@ export interface NoEquivalent {
  *
  * @stability unstable
  * @category constructors
- * @since 4.1.0
+ * @since 4.1.4
  */
 export const unrepresentable = (message?: string): NoEquivalent => ({
   [NoEquivalentTypeId]: NoEquivalentTypeId,
@@ -259,7 +259,7 @@ const isNoEquivalent = (u: unknown): u is NoEquivalent => Predicate.hasProperty(
  *
  * @stability unstable
  * @category models
- * @since 4.1.0
+ * @since 4.1.4
  */
 export type Versions = Readonly<Record<string, number>> & Brand.Brand<typeof VersionsBrand>
 
@@ -298,7 +298,7 @@ export type Versions = Readonly<Record<string, number>> & Brand.Brand<typeof Ver
  *
  * @stability unstable
  * @category constructors
- * @since 4.1.0
+ * @since 4.1.4
  */
 export const versions = (...versions: ReadonlyArray<Versions>): Versions =>
   Object.freeze(Object.assign({}, ...versions))
@@ -341,7 +341,7 @@ export const versions = (...versions: ReadonlyArray<Versions>): Versions =>
  *
  * @stability unstable
  * @category references
- * @since 4.1.0
+ * @since 4.1.4
  */
 export const ClientVersions: Context.Reference<Versions> = InternalVersionedSchema.ClientVersions as any
 
@@ -365,7 +365,7 @@ export const ClientVersions: Context.Reference<Versions> = InternalVersionedSche
  *
  * @stability unstable
  * @category constants
- * @since 4.1.0
+ * @since 4.1.4
  */
 export const header: "effect-versions" = InternalVersionedSchema.header
 
@@ -406,7 +406,7 @@ export const header: "effect-versions" = InternalVersionedSchema.header
  *
  * @stability unstable
  * @category getters
- * @since 4.1.0
+ * @since 4.1.4
  */
 export const requestVersion = <Id extends string, Vs extends VersionSchemas>(
   schema: VersionedSchema<Id, Vs>
@@ -456,7 +456,7 @@ export const requestVersion = <Id extends string, Vs extends VersionSchemas>(
  *
  * @stability unstable
  * @category references
- * @since 4.1.0
+ * @since 4.1.4
  */
 export const DefaultVersions: Context.Reference<Versions> = InternalVersionedSchema.DefaultVersions as any
 
@@ -618,7 +618,7 @@ type Contains<S> = 0 extends 1 & S ? false
  *
  * @stability unstable
  * @category utility types
- * @since 4.1.0
+ * @since 4.1.4
  */
 export type NegotiationErrors<S> = true extends Contains<S> ? VersionUnsupported | Unrepresentable : never
 
@@ -638,7 +638,7 @@ export type NegotiationErrors<S> = true extends Contains<S> ? VersionUnsupported
  *
  * @stability unstable
  * @category models
- * @since 4.1.0
+ * @since 4.1.4
  */
 export interface StepBuilder<Prev, Cur, Next> {
   readonly "~current": Cur
@@ -854,7 +854,7 @@ export interface StepBuilder<Prev, Cur, Next> {
  *
  * @stability unstable
  * @category models
- * @since 4.1.0
+ * @since 4.1.4
  */
 export interface VersionedSchema<Id extends string, Vs extends VersionSchemas> extends
   Schema.Codec<
@@ -1433,7 +1433,7 @@ interface NextOptions {
  *
  * @stability unstable
  * @category constructors
- * @since 4.1.0
+ * @since 4.1.4
  */
 export const make = <
   const Id extends string,
@@ -1497,7 +1497,7 @@ export const make = <
  *
  * @stability unstable
  * @category combinators
- * @since 4.1.0
+ * @since 4.1.4
  */
 export const at = <S extends Schema.Top>(
   schema: S,
