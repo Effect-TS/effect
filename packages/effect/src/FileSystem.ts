@@ -585,7 +585,7 @@ export const make = (
   FileSystem.of({
     ...impl,
     [TypeId]: TypeId,
-    glob: Glob.make(impl, PathFilter.fromInput),
+    glob: Glob.make(impl, PathFilter),
     exists: (path) =>
       pipe(
         impl.access(path),
