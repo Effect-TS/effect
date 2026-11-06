@@ -51,8 +51,8 @@ export interface Parser<A = Uint8Array | null> {
   /**
    * Receives an error other than `ParseError` thrown by `readField`. The
    * `DataRow` is fully consumed, so the parser drops it and carries on with
-   * the next message. Without a handler such errors are terminal, like parse
-   * errors. Settable, like `readField`.
+   * the next message. Without a handler, the default, such errors are
+   * terminal, like parse errors.
    */
   onFieldError: ((error: unknown) => void) | undefined
 
@@ -100,8 +100,6 @@ export const makeParser = <A = Uint8Array | null>(options?: {
    * out as a view, which is the default.
    */
   readonly readField?: FieldReader<A> | undefined
-  /** The initial `Parser.onFieldError`. */
-  readonly onFieldError?: ((error: unknown) => void) | undefined
 }): Parser<A> => {
   const maxMessageSize = options?.maxMessageSize ?? defaultMaxMessageSize
   const reader = new Reader()
@@ -140,7 +138,7 @@ export const makeParser = <A = Uint8Array | null>(options?: {
 
   const parser: Parser<A> = {
     readField: options?.readField,
-    onFieldError: options?.onFieldError,
+    onFieldError: undefined,
     push(chunk) {
       const messages: Array<BackendMessage<A>> = []
       parser.pushEach(chunk, (message) => {
