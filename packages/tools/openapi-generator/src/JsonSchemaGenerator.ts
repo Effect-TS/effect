@@ -128,7 +128,7 @@ function makeWithRepresentation() {
       renderSchemaTypeAndRuntime(name, generated.codeDocument.codes[i], typeOnly, options)
     )
 
-    return renderImportArtifacts(generated.codeDocument, !typeOnly, generated.int64Definitions.length > 0) +
+    return renderImportArtifacts(generated.codeDocument, !typeOnly) +
       render("recursive declarations", recursiveDeclarations) +
       render("non-recursive definitions", nonRecursives) +
       render("recursive definitions", recursives) +
@@ -182,7 +182,7 @@ function makeWithRepresentation() {
       renderSchemaTypeAndRuntime(name, generated.codeDocument.codes[i], false, options)
     )
 
-    return renderImportArtifacts(generated.codeDocument, true, generated.int64Definitions.length > 0) +
+    return renderImportArtifacts(generated.codeDocument, true) +
       render("recursive declarations", recursiveDeclarations) +
       render("non-recursive definitions", nonRecursives) +
       render("recursive definitions", recursives) +
@@ -361,18 +361,11 @@ function render(title: string, as: ReadonlyArray<string>) {
   return "// " + title + "\n" + as.join("\n") + "\n"
 }
 
-function renderImportArtifacts(
-  codeDocument: SchemaRepresentation.CodeDocument,
-  enabled: boolean,
-  int64: boolean
-): string {
+function renderImportArtifacts(codeDocument: SchemaRepresentation.CodeDocument, enabled: boolean): string {
   if (!enabled) return ""
   const imports = codeDocument.artifacts.flatMap((artifact) =>
     artifact._tag === "Import" ? [artifact.importDeclaration] : []
   )
-  if (int64) {
-    imports.push(`import * as SchemaTransformation from "effect/SchemaTransformation"`)
-  }
   return imports.length === 0 ? "" : imports.join("\n") + "\n"
 }
 
@@ -444,6 +437,9 @@ function isStringOrIntegerInt64(js: JsonSchema.JsonSchema): boolean {
   return js.format === "int64" && Array.isArray(js.type) && js.type.length === 2 &&
     js.type.includes("string") && js.type.includes("integer")
 }
+
+// Needed by the shared `Int64` definition; emitted through the code document whenever an int64 node is rendered.
+const int64Import = `import * as SchemaTransformation from "effect/SchemaTransformation"`
 
 function renderInt64Definition(name: string): string {
   return `export type ${name} = typeof ${name}.Type
@@ -566,11 +562,10 @@ function toInt64CodeDocument(
     }
   }
 
-  return {
-    codeDocument,
-    int64Definitions: rewrite.isUsed() ? [renderInt64Definition(int64)] : [],
-    encodedTypes
-  }
+  const used = codeDocument.artifacts.some((artifact) =>
+    artifact._tag === "Import" && artifact.importDeclaration === int64Import
+  )
+  return { codeDocument, int64Definitions: used ? [renderInt64Definition(int64)] : [], encodedTypes }
 }
 
 const defaultInt64Name = "Int64"
@@ -626,7 +621,6 @@ function makeInt64Rewrite(document: SchemaRepresentation.MultiDocument) {
     return out
   }
 
-  let used = false
   const passthrough: SchemaRepresentation.Generation.Declaration = ({ typeParameters: [code] }) => code
 
   const make = (mode: "decoded" | "encoded") => {
@@ -669,15 +663,13 @@ function makeInt64Rewrite(document: SchemaRepresentation.MultiDocument) {
         checks: [],
         annotations: {
           ...rest,
-          toCode: ({ typeParameters: [code] }: SchemaRepresentation.Generation.DeclarationInput) => {
-            used = true
-            return {
-              runtime: plainInt64Wires.has(code.runtime)
-                ? names.int64
-                : `${code.runtime}.pipe(Schema.decodeTo(${names.int64}))`,
-              Type: names.int64
-            }
-          }
+          toCode: ({ typeParameters: [code] }: SchemaRepresentation.Generation.DeclarationInput) => ({
+            runtime: plainInt64Wires.has(code.runtime)
+              ? names.int64
+              : `${code.runtime}.pipe(Schema.decodeTo(${names.int64}))`,
+            Type: names.int64,
+            importDeclarations: [int64Import]
+          })
         }
       }
     }
@@ -764,7 +756,6 @@ function makeInt64Rewrite(document: SchemaRepresentation.MultiDocument) {
     decoded: make("decoded"),
     encoded: make("encoded"),
     names,
-    transformedIdentifiers: transformedIdentifiers as ReadonlySet<string>,
-    isUsed: () => used
+    transformedIdentifiers: transformedIdentifiers as ReadonlySet<string>
   }
 }
