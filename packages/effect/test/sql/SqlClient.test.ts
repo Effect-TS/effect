@@ -45,13 +45,15 @@ let harnessIdCounter = 0
  * Savepoint release is opt-in, as it is for drivers: pass `true` to enable it,
  * or a `SqlError` to enable it and have it fail.
  *
- * `acquire` runs before the connection is handed over and `duringBegin` inside
- * `begin`, so a test can make either take time.
+ * `acquire` runs before the connection is handed over, `duringBegin` inside
+ * `begin` and `duringRollbackSavepoint` inside `rollbackSavepoint`, so a test
+ * can make any of them take time.
  */
 const makeHarness = (options: {
   readonly spanAttributes?: ReadonlyArray<readonly [string, unknown]> | undefined
   readonly acquire?: Effect.Effect<void> | undefined
   readonly duringBegin?: Effect.Effect<void> | undefined
+  readonly duringRollbackSavepoint?: Effect.Effect<void> | undefined
   readonly begin?: SqlError.SqlError | undefined
   readonly commit?: (() => Effect.Effect<void, SqlError.SqlError>) | undefined
   readonly onCommitFailure?: (() => Effect.Effect<void, SqlError.SqlError>) | undefined
@@ -120,14 +122,17 @@ const makeHarness = (options: {
           })
           : Effect.fail(sqlError("cannot rollback - no transaction is active"))),
     rollbackSavepoint: (_conn, id) =>
-      Effect.flatMap(record(`rollbackSavepoint(${id})`), () => {
-        if (options.rollbackSavepoint !== undefined) {
-          return Effect.fail(options.rollbackSavepoint)
+      Effect.flatMap(
+        Effect.andThen(record(`rollbackSavepoint(${id})`), options.duringRollbackSavepoint ?? Effect.void),
+        () => {
+          if (options.rollbackSavepoint !== undefined) {
+            return Effect.fail(options.rollbackSavepoint)
+          }
+          return savepoints.includes(id)
+            ? Effect.void
+            : Effect.fail(sqlError(`cannot rollback to savepoint ${id} - it does not exist`))
         }
-        return savepoints.includes(id)
-          ? Effect.void
-          : Effect.fail(sqlError(`cannot rollback to savepoint ${id} - it does not exist`))
-      }),
+      ),
     releaseSavepoint: release === undefined ?
       undefined :
       (_conn, id) =>
@@ -203,6 +208,22 @@ const assertTypedFailure = <A, E>(exit: Exit.Exit<A, E>, error: E) => {
     `expected a typed failure but the cause contains a defect:\n${Cause.pretty(exit.cause)}`
   )
   assert.deepStrictEqual(Cause.findErrorOption(exit.cause), Option.some(error))
+}
+
+/** Asserts the typed failure for using a transaction level that has already ended. */
+const assertTransactionEnded = (exit: Exit.Exit<unknown, SqlError.SqlError>) => {
+  assert.isTrue(Exit.isFailure(exit))
+  if (!Exit.isFailure(exit)) {
+    return
+  }
+  assert.isFalse(
+    Cause.hasDies(exit.cause),
+    `expected a typed failure but the cause contains a defect:\n${Cause.pretty(exit.cause)}`
+  )
+  const { reason } = Option.getOrThrow(Cause.findErrorOption(exit.cause))
+  assert.strictEqual(reason._tag, "ConnectionError")
+  assert.strictEqual(reason.message, "SqlClient: the transaction has already ended")
+  assert.strictEqual(reason.operation, "transaction")
 }
 
 /** Collects every span a traced effect creates, in the order they start. */
@@ -458,6 +479,59 @@ describe("SqlClient", () => {
           "savepoint(1)",
           "rollbackSavepoint(1)",
           "releaseSavepoint(1)",
+          "commit",
+          "closeConnection"
+        ])
+      }))
+
+    it.effect("issues no savepoint rollback or release for a nested transaction that exits after its parent ends", () =>
+      Effect.gen(function*() {
+        // Enters its savepoint while the parent is open, and exits after the parent committed.
+        const exitAfterParent = Effect.fnUntraced(function*<E>(body: Effect.Effect<void, E>) {
+          const harness = makeHarness({ releaseSavepoint: true })
+          const resume = yield* Deferred.make<void>()
+          const nested = yield* harness.withTransaction(
+            Effect.forkDetach(harness.withTransaction(Effect.andThen(Deferred.await(resume), body)), {
+              startImmediately: true
+            })
+          )
+          yield* Deferred.succeed(resume, undefined)
+          return { calls: harness.calls, exit: yield* Fiber.await(nested) }
+        })
+        const ended = ["acquireConnection", "begin", "savepoint(1)", "commit", "closeConnection"]
+
+        const released = yield* exitAfterParent(Effect.void)
+        assert.deepStrictEqual(released.calls, ended)
+        assertTransactionEnded(released.exit)
+
+        const rolledBack = yield* exitAfterParent(Effect.fail("boom"))
+        assert.deepStrictEqual(rolledBack.calls, ended)
+        assert.isTrue(Exit.isFailure(rolledBack.exit))
+
+        // Rolls back while the parent is open, and the parent ends before the rollback completes.
+        const rollingBack = yield* Deferred.make<void>()
+        const finishRollback = yield* Deferred.make<void>()
+        const slowRollback = makeHarness({
+          releaseSavepoint: true,
+          duringRollbackSavepoint: Effect.andThen(
+            Deferred.succeed(rollingBack, undefined),
+            Deferred.await(finishRollback)
+          )
+        })
+        const nested = yield* slowRollback.withTransaction(Effect.gen(function*() {
+          const child = yield* Effect.forkDetach(slowRollback.withTransaction(Effect.fail("boom" as const)), {
+            startImmediately: true
+          })
+          yield* Deferred.await(rollingBack)
+          return child
+        }))
+        yield* Deferred.succeed(finishRollback, undefined)
+        assertTypedFailure(yield* Fiber.await(nested), "boom" as const)
+        assert.deepStrictEqual(slowRollback.calls, [
+          "acquireConnection",
+          "begin",
+          "savepoint(1)",
+          "rollbackSavepoint(1)",
           "commit",
           "closeConnection"
         ])
@@ -825,6 +899,47 @@ describe("SqlClient", () => {
           Exit.isFailure(nestedExit) && Cause.pretty(nestedExit.cause).includes("the transaction has already ended")
         )
         assert.isFalse(calls.some((call) => call.startsWith("after")))
+      }))
+
+    it.effect("fails statements and nested transactions from a fiber that outlives its transaction level", () =>
+      Effect.gen(function*() {
+        const { calls, sql } = yield* makeClient()
+        const resume = yield* Deferred.make<void>()
+        const stale = yield* sql.withTransaction(
+          Effect.forkDetach(Effect.andThen(
+            Deferred.await(resume),
+            Effect.all([Effect.exit(sql`SELECT 1`), Effect.exit(sql.withTransaction(sql`SELECT 2`))])
+          ))
+        )
+        yield* Deferred.succeed(resume, undefined)
+        const [statement, nested] = yield* Fiber.join(stale)
+        assertTransactionEnded(statement)
+        assertTransactionEnded(nested)
+        assert.deepStrictEqual(calls, ["BEGIN", "COMMIT", "release"])
+
+        const savepoint = yield* makeClient()
+        const resumeSavepoint = yield* Deferred.make<void>()
+        const savepointExit = yield* savepoint.sql.withTransaction(Effect.gen(function*() {
+          const child = yield* savepoint.sql.withTransaction(
+            Effect.forkDetach(Effect.andThen(Deferred.await(resumeSavepoint), Effect.exit(savepoint.sql`SELECT 1`)))
+          )
+          yield* Deferred.succeed(resumeSavepoint, undefined)
+          return yield* Fiber.join(child)
+        }))
+        assertTransactionEnded(savepointExit)
+        assert.deepStrictEqual(savepoint.calls, ["BEGIN", "SAVEPOINT effect_sql_1", "COMMIT", "release"])
+
+        // A nested transaction queued behind a sibling's savepoint while its parent ends.
+        const queued = yield* makeClient()
+        const resumeHolder = yield* Deferred.make<void>()
+        const [holder, waiting] = yield* queued.sql.withTransaction(Effect.all([
+          Effect.forkDetach(queued.sql.withTransaction(Deferred.await(resumeHolder)), { startImmediately: true }),
+          Effect.forkDetach(queued.sql.withTransaction(queued.record("queued body")), { startImmediately: true })
+        ]))
+        yield* Deferred.succeed(resumeHolder, undefined)
+        yield* Fiber.await(holder)
+        assertTransactionEnded(yield* Fiber.await(waiting))
+        assert.deepStrictEqual(queued.calls, ["BEGIN", "SAVEPOINT effect_sql_1", "COMMIT", "release"])
       }))
   })
 

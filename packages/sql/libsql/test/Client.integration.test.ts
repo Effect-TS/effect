@@ -228,6 +228,31 @@ describe("Client", () => {
       assert.deepStrictEqual(yield* Fiber.join(read), [{ value: 1 }])
     }).pipe(Effect.provide(Reactivity.layer)))
 
+  it.effect("fails to reserve a connection from a fiber that outlives its savepoint", () =>
+    Effect.gen(function*() {
+      const sql = yield* LibsqlClient.make({ url: ":memory:" })
+      yield* sql`CREATE TABLE stale (who TEXT)`
+      const resume = yield* Deferred.make<void>()
+      const exit = yield* sql.withTransaction(Effect.gen(function*() {
+        const stale = yield* sql.withTransaction(Effect.forkDetach(Effect.andThen(
+          Deferred.await(resume),
+          Effect.exit(Effect.scoped(Effect.flatMap(sql.reserve, (conn) =>
+            conn.executeRaw("INSERT INTO stale VALUES ('stale fiber')", []))))
+        )))
+        yield* Deferred.succeed(resume, undefined)
+        return yield* Fiber.join(stale)
+      }))
+
+      assert.isTrue(Exit.isFailure(exit))
+      if (!Exit.isFailure(exit)) {
+        return
+      }
+      const error = Option.getOrThrow(Cause.findErrorOption(exit.cause))
+      assert.strictEqual(error.reason._tag, "ConnectionError")
+      assert.strictEqual(error.reason.message, "SqlClient: the transaction has already ended")
+      assert.deepStrictEqual(yield* sql`SELECT who FROM stale`, [])
+    }).pipe(Effect.provide(Reactivity.layer)))
+
   // Each test recreates the same tables.
   layer(LibsqlContainer.layerClient, { timeout: "30 seconds", concurrent: false })("shared tables", (it) => {
     it.effect("should work", () =>

@@ -1,7 +1,7 @@
 import { NodeFileSystem } from "@effect/platform-node"
 import { SqliteClient } from "@effect/sql-sqlite-node"
 import { assert, describe, it } from "@effect/vitest"
-import { Cause, Duration, Effect, Exit, Fiber, FileSystem, Option, References } from "effect"
+import { Cause, Deferred, Duration, Effect, Exit, Fiber, FileSystem, Option, References } from "effect"
 import { Reactivity } from "effect/reactivity"
 import { ConnectionError, SqlError } from "effect/sql/SqlError"
 import { TestClock } from "effect/testing"
@@ -379,6 +379,38 @@ describe("Client", { concurrent: false }, () => {
         }))
       }
     }), { timeout: 30_000 })
+
+  it.effect("fails writes from a fiber that outlives its transaction instead of joining another", () =>
+    Effect.gen(function*() {
+      const sql = yield* makeClient
+      yield* sql`CREATE TABLE stale (who TEXT)`
+      const go = yield* Deferred.make<void>()
+      const done = yield* Deferred.make<void>()
+      const stale = yield* sql.withTransaction(Effect.forkChild(Effect.gen(function*() {
+        yield* Deferred.await(go)
+        const insert = yield* Effect.exit(sql`INSERT INTO stale VALUES ('stale fiber')`)
+        const nested = yield* Effect.exit(sql.withTransaction(sql`INSERT INTO stale VALUES ('stale nested')`))
+        yield* Deferred.succeed(done, undefined)
+        return [insert, nested] as const
+      })))
+      const other = yield* sql.withTransaction(Effect.gen(function*() {
+        yield* sql`INSERT INTO stale VALUES ('other transaction')`
+        yield* Deferred.succeed(go, undefined)
+        yield* Deferred.await(done)
+        return yield* Effect.fail("rollback")
+      })).pipe(Effect.ignore, Effect.forkChild)
+      const exits = yield* Fiber.join(stale)
+      yield* Fiber.join(other)
+
+      for (const exit of exits) {
+        assert.isTrue(Exit.isFailure(exit))
+        if (!Exit.isFailure(exit)) return
+        const error = Option.getOrThrow(Cause.findErrorOption(exit.cause))
+        assert.strictEqual(error.reason._tag, "ConnectionError")
+        assert.strictEqual(error.reason.message, "SqlClient: the transaction has already ended")
+      }
+      assert.deepStrictEqual(yield* sql.withTransaction(sql`SELECT who FROM stale`), [])
+    }))
 
   it.effect("releases the connection when a queued transaction is interrupted", () =>
     Effect.gen(function*() {
