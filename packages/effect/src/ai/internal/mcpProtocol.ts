@@ -103,7 +103,7 @@ export const invocationFromClient = (
  */
 export const listForClient = <A>(
   list: (invocation: McpCore.McpInvocation) => Effect.Effect<A, McpCore.RequestRejected>,
-  cursor?: string | undefined
+  cursor: string | undefined
 ): Effect.Effect<A, ProtocolError, PublicMcpSchema.McpServerClient> =>
   Effect.andThen(
     validateListCursor(cursor),
