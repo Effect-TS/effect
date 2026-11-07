@@ -651,7 +651,11 @@ export const currentTransaction = <I, A>(
  * A transaction level ends once its effect exits, before it commits, rolls
  * back or releases its savepoint. A nested transaction entered from a fiber
  * that outlives the level fails with a `ConnectionError`, as do statements
- * that read the level through {@link currentTransaction}.
+ * that read the level through {@link currentTransaction}. This includes a
+ * nested transaction still waiting for a sibling's savepoint to finish. A
+ * nested transaction whose effect exits after a level it is nested in has
+ * ended neither rolls back nor releases its savepoint, and fails with a
+ * `ConnectionError` if its effect succeeded.
  *
  * Each callback below except `acquireConnection` is traced like a statement,
  * in its own client span under the `sql.transaction` span, named after the
@@ -737,9 +741,7 @@ export const makeWithTransaction = <I, S>(options: {
               )
             const connOption = Context.getOption(services, options.transactionService)
             const parent = connOption._tag === "Some" ? afterCommitBuffers.get(connOption.value) : undefined
-            if (parent !== undefined && hasEnded(parent)) {
-              return Effect.fail(transactionEnded())
-            }
+            const parentEnded = () => parent !== undefined && hasEnded(parent)
             const conn: Effect.Effect<readonly [Scope.Closeable | undefined, S], SqlError> = connOption._tag === "Some"
               ? Effect.succeed([undefined, connOption.value[0]] as const)
               : Effect.flatMap(Scope.make(), (scope) =>
@@ -784,6 +786,11 @@ export const makeWithTransaction = <I, S>(options: {
                       ),
                       (exit) => {
                         buffer.open = false
+                        // The connection may already be in use elsewhere, so
+                        // the savepoint can be neither rolled back nor released.
+                        if (parentEnded()) {
+                          return Exit.isSuccess(exit) ? Effect.fail(transactionEnded()) : exit
+                        }
                         let effect: Effect.Effect<void, SqlError>
                         if (Exit.isSuccess(exit)) {
                           if (id === 0) {
@@ -839,7 +846,10 @@ export const makeWithTransaction = <I, S>(options: {
             }, true)
             return id === 0
               ? settled
-              : Context.getUnsafe(services, transactionSemaphore).withPermit(settled)
+              // The parent can end while this waits for a sibling's savepoint.
+              : Context.getUnsafe(services, transactionSemaphore).withPermit(
+                Effect.suspend(() => parentEnded() ? Effect.fail(transactionEnded()) : settled)
+              )
           })
       )
     )
