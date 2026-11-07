@@ -98,6 +98,13 @@ export interface Base extends Constructor {
    * transaction can't defer through it, as with `afterCommit`. Transactions
    * that don't go through `makeWithTransaction` invalidate immediately.
    *
+   * A fiber forked inside the transaction that outlives it fails its
+   * statements and nested transactions with an `UnknownError` instead of
+   * running them on the transaction's connection. Use `afterCommit` for work
+   * that should run once the transaction commits, or remove the transaction
+   * from the fiber's context with `Context.omit(sql.transactionService)` for
+   * work that should run outside it.
+   *
    * Retrying a nested transaction only retries its savepoint, which can't
    * recover an outer transaction the database has aborted. Since a retried
    * effect runs more than once, keep non-transactional side effects in
@@ -526,31 +533,31 @@ const failuresToDefects = <E>(cause: Cause.Cause<E>): Cause.Cause<never> =>
   ))
 
 /**
- * Callbacks registered with `afterCommit` in one transaction level. A
+ * The state of one transaction level. `open` turns false once the level's
+ * body exits. Callbacks registered with `afterCommit` are buffered here: a
  * committed savepoint hands its callbacks to its parent, and the outermost
  * level runs them after it commits.
  */
-interface AfterCommitBuffer {
+interface TransactionLevel {
   readonly callbacks: Array<Effect.Effect<void>>
-  readonly parent: AfterCommitBuffer | undefined
+  readonly parent: TransactionLevel | undefined
   open: boolean
 }
 
 /**
  * Keyed by the transaction service value of each level, so removing the
- * transaction service also hides its buffer, and a transaction that
+ * transaction service also hides its state, and a transaction that
  * `makeWithTransaction` didn't start has none.
  */
-const afterCommitBuffers = new WeakMap<object, AfterCommitBuffer>()
+const transactionLevels = new WeakMap<object, TransactionLevel>()
 
 /**
- * Whether a transaction level, or one of its parents, has ended. A fiber
- * forked inside a transaction keeps the level in its context after the
- * level's body has exited.
+ * Whether a level or one of its parents has ended. A fiber forked inside a
+ * transaction keeps the level in its context after the level's body exits.
  */
-const hasEnded = (level: object): boolean => {
-  for (let current = afterCommitBuffers.get(level); current !== undefined; current = current.parent) {
-    if (!current.open) {
+const hasEnded = (level: TransactionLevel | undefined): boolean => {
+  for (; level !== undefined; level = level.parent) {
+    if (!level.open) {
       return true
     }
   }
@@ -560,7 +567,7 @@ const hasEnded = (level: object): boolean => {
 const transactionEndedError = (operation: string) =>
   new SqlError({
     reason: new UnknownError({
-      cause: new Error("The transaction in the fiber's context is no longer open"),
+      cause: undefined,
       message: "SqlClient: the transaction has already ended",
       operation
     })
@@ -574,11 +581,13 @@ const currentTransactionConnection = <I, S>(
   transactionService: Context.Key<I, readonly [conn: S, counter: number]>
 ): Effect.Effect<Option.Option<S>, SqlError> =>
   Effect.withFiber((fiber) => {
-    const level = Context.getOrUndefined(fiber.context, transactionService)
-    if (level === undefined) {
+    const transaction = Context.getOrUndefined(fiber.context, transactionService)
+    if (transaction === undefined) {
       return Effect.succeedNone
     }
-    return hasEnded(level) ? Effect.fail(transactionEndedError("query")) : Effect.succeedSome(level[0])
+    return hasEnded(transactionLevels.get(transaction))
+      ? Effect.fail(transactionEndedError("query"))
+      : Effect.succeedSome(transaction[0])
   })
 
 const runAfterCommit = <R>(effect: Effect.Effect<void, never, R>): Effect.Effect<void, never, R> =>
@@ -589,18 +598,16 @@ const makeAfterCommit =
   <R>(effect: Effect.Effect<void, never, R>): Effect.Effect<void, never, R> =>
     Effect.withFiber((fiber) => {
       const transaction = Context.getOrUndefined(fiber.context, transactionService)
-      const buffer = transaction && afterCommitBuffers.get(transaction)
+      const level = transaction && transactionLevels.get(transaction)
       // Outside a transaction, or in one that doesn't buffer callbacks.
-      if (buffer === undefined) {
+      if (level === undefined) {
         return runAfterCommit(effect)
       }
-      for (let current: AfterCommitBuffer | undefined = buffer; current !== undefined; current = current.parent) {
-        if (!current.open) {
-          return Effect.die(new Error("SqlClient.afterCommit: the transaction has already ended"))
-        }
+      if (hasEnded(level)) {
+        return Effect.die(new Error("SqlClient.afterCommit: the transaction has already ended"))
       }
       // Runs later with the services in scope now, without the transaction.
-      buffer.callbacks.push(
+      level.callbacks.push(
         Effect.provideContext(effect, Context.omit(transactionService)(fiber.context) as Context.Context<R>)
       )
       return Effect.void
@@ -701,11 +708,16 @@ export const makeWithTransaction = <I, S>(options: {
                 }
               )
             const parent = Context.getOrUndefined(services, options.transactionService)
+            const level: TransactionLevel = {
+              callbacks: [],
+              parent: parent !== undefined ? transactionLevels.get(parent) : undefined,
+              open: true
+            }
             // Checked once the savepoint permit is held, since the outer
             // transaction can end while a nested one waits for it.
             const conn: Effect.Effect<readonly [Scope.Closeable | undefined, S], SqlError> = parent !== undefined
               ? Effect.suspend(() =>
-                hasEnded(parent)
+                hasEnded(level.parent)
                   ? Effect.fail(transactionEndedError("savepoint"))
                   : Effect.succeed([undefined, parent[0]] as const)
               )
@@ -719,11 +731,6 @@ export const makeWithTransaction = <I, S>(options: {
                   Effect.onError((cause) => Scope.close(scope, Exit.failCause(cause)))
                 ))
             const id = parent !== undefined ? parent[1] + 1 : 0
-            const buffer: AfterCommitBuffer = {
-              callbacks: [],
-              parent: parent !== undefined ? afterCommitBuffers.get(parent) : undefined,
-              open: true
-            }
             let committed = false
             const start = (conn: S) =>
               id === 0
@@ -736,13 +743,13 @@ export const makeWithTransaction = <I, S>(options: {
               ) =>
                 start(conn).pipe(
                   Effect.flatMap(() => {
-                    const level = [conn, id] as const
-                    afterCommitBuffers.set(level, buffer)
+                    const service = [conn, id] as const
+                    transactionLevels.set(service, level)
                     return Effect.onExitPrimitive(
                       Effect.provideContext(
                         restore(effect),
                         services.pipe(
-                          Context.add(options.transactionService, level),
+                          Context.add(options.transactionService, service),
                           Context.add(CurrentTransactionService, options.transactionService),
                           reactivity ? Context.add(Reactivity, deferInvalidations(reactivity)) : identity,
                           Context.add(transactionSemaphore, Semaphore.makeUnsafe(1)),
@@ -752,10 +759,10 @@ export const makeWithTransaction = <I, S>(options: {
                       (exit) => {
                         // Fibers forked by the body can outlive it, but not use
                         // the connection once it starts to commit or roll back.
-                        buffer.open = false
+                        level.open = false
                         // A savepoint whose outer transaction has ended is gone,
                         // and the connection may be in another transaction.
-                        if (parent !== undefined && hasEnded(parent)) {
+                        if (hasEnded(level.parent)) {
                           return Exit.isSuccess(exit) ? Effect.fail(transactionEndedError("savepoint")) : exit
                         }
                         let effect: Effect.Effect<void, SqlError>
@@ -802,15 +809,14 @@ export const makeWithTransaction = <I, S>(options: {
             )
             // Runs once the connection is released, whether or not that succeeded.
             const settled = Effect.onExitPrimitive(transaction, () => {
-              buffer.open = false
-              if (!committed || buffer.callbacks.length === 0) {
+              if (!committed || level.callbacks.length === 0) {
                 return undefined
               }
-              if (buffer.parent !== undefined) {
-                buffer.parent.callbacks.push(...buffer.callbacks)
+              if (level.parent !== undefined) {
+                level.parent.callbacks.push(...level.callbacks)
                 return undefined
               }
-              return Effect.forEach(buffer.callbacks, runAfterCommit, { discard: true })
+              return Effect.forEach(level.callbacks, runAfterCommit, { discard: true })
             }, true)
             return id === 0
               ? settled
