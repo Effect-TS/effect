@@ -28,6 +28,7 @@ import * as SchemaParser from "../SchemaParser.ts"
 import * as SchemaTransformation from "../SchemaTransformation.ts"
 import { MalformedMessage } from "./ClusterError.ts"
 import * as Envelope from "./Envelope.ts"
+import * as Versions from "./internal/versions.ts"
 import type { OutgoingRequest } from "./Message.ts"
 import { Snowflake, SnowflakeFromBigInt } from "./Snowflake.ts"
 
@@ -461,13 +462,45 @@ export const Reply = <R extends Rpc.Any>(
 export const serialize = <R extends Rpc.Any>(
   self: ReplyWithContext<R>,
   codecFor: RpcSerialization.CodecFor
-): Effect.Effect<Encoded, MalformedMessage> => {
+): Effect.Effect<Encoded, MalformedMessage> =>
+  Effect.map(serializeWithContext(self, codecFor), (result) => result.encodedReply)
+
+/**
+ * Keeps the runtime fallback with its encoding, so storage notifies waiters
+ * with the same terminal result it persisted.
+ *
+ * @internal
+ */
+export const serializeWithContext = <R extends Rpc.Any>(
+  self: ReplyWithContext<R>,
+  codecFor: RpcSerialization.CodecFor
+): Effect.Effect<{ readonly encodedReply: Encoded; readonly persisted: ReplyWithContext<R> }, MalformedMessage> => {
   const schema = Reply(self.rpc, codecFor)
-  return MalformedMessage.refail(
-    Effect.provideContext(
-      Schema.encodeEffect(schema)(self.reply),
-      self.context
+  const encode = (persisted: ReplyWithContext<R>) =>
+    Effect.map(
+      Effect.provideContext(Schema.encodeEffect(schema)(persisted.reply), persisted.context),
+      (encodedReply) => ({ encodedReply, persisted })
     )
+  return MalformedMessage.refail(Effect.catch(encode(self), (error) => {
+    // A value with no equivalent at the versions the caller reads ends the
+    // reply with `Unrepresentable`, as Rpc does. Failed chunks propagate to
+    // the entity manager, which fences the terminal write and stops the producer.
+    const typed = Versions.typedError(self.rpc, error)
+    if (typed === undefined || self.reply._tag === "Chunk") return Effect.fail(error)
+    return encode(
+      new ReplyWithContext({
+        ...self,
+        reply: new WithExit<R>({
+          id: self.reply.id,
+          requestId: self.reply.requestId,
+          exit: Exit.fail(typed) as any
+        })
+      })
+    )
+  })).pipe(
+    // such as a versioned type no version was negotiated for, which callers
+    // answer with a defect like any reply they can't encode
+    Effect.catchDefect((defect) => Effect.fail(new MalformedMessage({ cause: defect })))
   )
 }
 

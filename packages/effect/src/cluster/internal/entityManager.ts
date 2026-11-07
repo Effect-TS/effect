@@ -10,6 +10,7 @@ import * as Exit from "../../Exit.ts"
 import * as Fiber from "../../Fiber.ts"
 import { constVoid, identity } from "../../Function.ts"
 import { scopeAddFinalizerUnsafe, scopeRemoveFinalizerUnsafe } from "../../internal/effect.ts"
+import * as InternalVersionedSchema from "../../internal/versionedSchema.ts"
 import * as Latch from "../../Latch.ts"
 import * as Metric from "../../Metric.ts"
 import * as Option from "../../Option.ts"
@@ -44,6 +45,7 @@ import { EntityReaper } from "./entityReaper.ts"
 import { acquireEntity, releaseEntity } from "./interruptors.ts"
 import { ResourceMap } from "./resourceMap.ts"
 import { ResourceRef } from "./resourceRef.ts"
+import * as Versions from "./versions.ts"
 
 /**
  * @internal
@@ -364,7 +366,7 @@ export const make = Effect.fnUntraced(function*<
           },
           concurrency: options.concurrency ?? 1,
           disableFatalDefects: options.disableFatalDefects,
-          onFromServer(response): Effect.Effect<void> {
+          onFromServer: function onFromServer(response, encodingFailure?: Cause.Cause<never>): Effect.Effect<void> {
             switch (response._tag) {
               case "Exit": {
                 const request = activeRequests.get(Snowflake.Snowflake(response.requestId))
@@ -487,9 +489,11 @@ export const make = Effect.fnUntraced(function*<
                 }
                 transaction.settle = (outcome) =>
                   // Transaction wrappers can add defects, but not typed errors; interrupts may be repeated.
+                  // A chunk encoder's expected stop cause is not a rollback failure.
                   Exit.isSuccess(outcome) || !outcome.cause.reasons.some((reason) =>
                       Cause.isDieReason(reason) &&
-                      !exit.cause.reasons.some((r) => Cause.isDieReason(r) && r.defect === reason.defect)
+                      !exit.cause.reasons.some((r) => Cause.isDieReason(r) && r.defect === reason.defect) &&
+                      !encodingFailure?.reasons.some((r) => Cause.isDieReason(r) && r.defect === reason.defect)
                     )
                     ? respond
                     : restartFrom(outcome.cause)
@@ -513,7 +517,23 @@ export const make = Effect.fnUntraced(function*<
                       values: response.values
                     })
                     request.lastSentChunk = Option.some(reply)
-                    return request.message.respond(reply)
+                    return request.message.respond(reply).pipe(
+                      Effect.catchTag("MalformedMessage", (error) => {
+                        const typed = Versions.typedError(request.rpc, error.cause)
+                        const cause = Cause.die(error)
+                        // A rejected chunk has no ACK. Finish through the same
+                        // fenced terminal path, then stop RpcServer's producer.
+                        return Effect.andThen(
+                          onFromServer({
+                            _tag: "Exit",
+                            clientId: response.clientId,
+                            requestId: response.requestId,
+                            exit: typed === undefined ? Exit.failCause(cause) : Exit.fail(typed as Rpc.ErrorExit<Rpcs>)
+                          }, cause),
+                          Effect.failCause(cause)
+                        )
+                      })
+                    )
                   })
                 ))
               }
@@ -887,6 +907,21 @@ export const make = Effect.fnUntraced(function*<
 
   const decodeMessage = makeMessageDecode(entityRpcs)
 
+  // Answers a request without running it: with a typed version error, or with
+  // a defect when it can't be read for another reason.
+  const failRequest = (message: Message.IncomingRequest<any>, typed: unknown, defect?: unknown) =>
+    Effect.orDie(message.respond(
+      new Reply.ReplyWithContext({
+        reply: new Reply.WithExit({
+          id: snowflakeGen.nextUnsafe(),
+          requestId: message.envelope.requestId,
+          exit: typed === undefined ? Exit.die(defect) : Exit.fail(typed)
+        }),
+        rpc: entityRpcs.get(message.envelope.tag)!,
+        context: context as any
+      })
+    ))
+
   const runFork = Effect.runForkWith(context)
 
   return identity<EntityManager>({
@@ -944,24 +979,43 @@ export const make = Effect.fnUntraced(function*<
     isResidentUnsafe: (address) => entities.hasUnsafe(address),
     residentAddressesUnsafe: () => entities.keysUnsafe(),
     sendLocal,
-    send: (message) =>
-      decodeMessage(message).pipe(
+    send: (message) => {
+      // Replies are written at the versions negotiated from the request's
+      // header, and a request written at versions this runner can't read is
+      // answered before decoding it. Persisted requests are checked before
+      // they get here, and wait for a runner that can read them.
+      let replyContext = context
+      if (message._tag === "IncomingRequest") {
+        const rpc = entityRpcs.get(message.envelope.tag)
+        const versions = rpc &&
+          Versions.negotiate(
+            rpc,
+            message.envelope.headers,
+            Context.get(context, InternalVersionedSchema.DefaultVersions)
+          )
+        if (versions !== undefined) {
+          const { negotiated, versioning } = versions
+          if (negotiated._tag === "Rejected") {
+            return failRequest(message, new versioning.errors.VersionUnsupported(negotiated.props))
+          }
+          replyContext = Context.add(
+            context,
+            InternalVersionedSchema.Selection,
+            InternalVersionedSchema.selection(versioning, negotiated.versions)
+          )
+        } else if (rpc !== undefined) {
+          replyContext = Context.add(context, InternalVersionedSchema.Selection, noVersions)
+        }
+      }
+      return decodeMessage(message).pipe(
         Effect.matchEffect({
           onFailure: (cause) => {
             if (message._tag === "IncomingEnvelope") {
               return Effect.die(new MalformedMessage({ cause }))
             }
-            return Effect.orDie(message.respond(
-              new Reply.ReplyWithContext({
-                reply: new Reply.WithExit({
-                  id: snowflakeGen.nextUnsafe(),
-                  requestId: message.envelope.requestId,
-                  exit: Exit.die(new MalformedMessage({ cause }))
-                }),
-                rpc: entityRpcs.get(message.envelope.tag)!,
-                context: context as any
-              })
-            ))
+            const rpc = entityRpcs.get(message.envelope.tag)
+            const typed = rpc && Versions.typedError(rpc, cause)
+            return failRequest(message, typed, new MalformedMessage({ cause }))
           },
           onSuccess: (decoded) => {
             if (decoded._tag === "IncomingEnvelope") {
@@ -983,7 +1037,7 @@ export const make = Effect.fnUntraced(function*<
                     new Reply.ReplyWithContext({
                       reply,
                       rpc,
-                      context: context as any
+                      context: replyContext as any
                     })
                   )
               })
@@ -991,10 +1045,15 @@ export const make = Effect.fnUntraced(function*<
           }
         }),
         Effect.provideContext(context as Context.Context<unknown>)
-      ),
+      )
+    },
     activeEntityCount: Effect.sync(() => activeServers.size)
   })
 })
+
+// Replies of rpcs that use no versioned schemas: encoding a versioned type in
+// one is a defect, since none was negotiated.
+const noVersions = InternalVersionedSchema.selection(undefined, undefined)
 
 const defaultRetryPolicy = Schedule.min([
   Schedule.exponential(500, 1.5),

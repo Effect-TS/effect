@@ -24,6 +24,7 @@ import * as HttpClientError from "../http/HttpClientError.ts"
 import * as Layer from "../Layer.ts"
 import * as Schema from "../Schema.ts"
 import type { SchemaError } from "../Schema.ts"
+import type * as VersionedSchema from "../schema/VersionedSchema.ts"
 import type { Mutable, Simplify } from "../Types.ts"
 import * as AsyncResult from "./AsyncResult.ts"
 import * as Atom from "./Atom.ts"
@@ -84,7 +85,7 @@ export interface AtomHttpApiClient<Self, Id extends string, Groups extends HttpA
         }
       >,
       ResponseByMode<Endpoint, ResponseMode>,
-      ErrorByMode<_Error, _Middleware, ResponseMode>
+      ErrorByMode<_Payload, _Success, _Error, _Middleware, ResponseMode>
     >
     : never
 
@@ -137,7 +138,7 @@ export interface AtomHttpApiClient<Self, Id extends string, Groups extends HttpA
   ] ? Atom.Atom<
       AsyncResult.AsyncResult<
         ResponseByMode<Endpoint, ResponseMode>,
-        ErrorByMode<_Error, _Middleware, ResponseMode>
+        ErrorByMode<_Payload, _Success, _Error, _Middleware, ResponseMode>
       >
     >
     : never
@@ -352,10 +353,13 @@ type ResponseByMode<
 >
 
 type ErrorByMode<
+  Payload,
+  Success,
   Error extends Schema.Constraint,
   Middleware,
   ResponseMode extends HttpApiEndpoint.ClientResponseMode
 > =
   | HttpApiMiddleware.Error<Middleware>
   | HttpApiMiddleware.ClientError<Middleware>
+  | VersionedSchema.NegotiationErrors<Payload | Success | Error | HttpApiMiddleware.ErrorSchema<Middleware>>
   | ([ResponseMode] extends ["response-only"] ? never : Error["Type"])
