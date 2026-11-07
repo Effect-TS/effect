@@ -559,6 +559,25 @@ describe("DateTime", () => {
     })
   })
 
+  describe("zoneMakeNamed", () => {
+    it("keeps the name of a renamed zone", () => {
+      const kyiv = DateTime.zoneMakeNamedUnsafe("Europe/Kyiv")
+      strictEqual(DateTime.zoneToString(kyiv), "Europe/Kyiv")
+      strictEqual(
+        DateTime.formatIsoZoned(DateTime.makeZonedUnsafe(0, { timeZone: "Asia/Kolkata" })),
+        "1970-01-01T05:30:00.000+05:30[Asia/Kolkata]"
+      )
+      strictEqual(DateTime.zoneToString(DateTime.zoneMakeNamedUnsafe("europe/london")), "Europe/London")
+    })
+
+    it("treats a renamed zone and its old name as equal", () => {
+      const kyiv = DateTime.zoneMakeNamedUnsafe("Europe/Kyiv")
+      const kiev = DateTime.zoneMakeNamedUnsafe("Europe/Kiev")
+      assertTrue(Equal.equals(kyiv, kiev))
+      strictEqual(Hash.hash(kyiv), Hash.hash(kiev))
+    })
+  })
+
   describe("toUtc", () => {
     it.effect("with a Utc", () =>
       Effect.gen(function*() {

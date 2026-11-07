@@ -75,10 +75,12 @@ const ProtoTimeZoneNamed = {
   ...ProtoTimeZone,
   _tag: "Named",
   [Hash.symbol](this: DateTime.TimeZone.Named) {
-    return Hash.string(`Named:${this.id}`)
+    return Hash.string(`Named:${this.format.resolvedOptions().timeZone}`)
   },
   [Equal.symbol](this: DateTime.TimeZone.Named, that: unknown) {
-    return isTimeZone(that) && that._tag === "Named" && this.id === that.id
+    // Compare the zone Intl resolved to, so that "Asia/Kolkata" and "Asia/Calcutta" are equal
+    return isTimeZone(that) && that._tag === "Named" &&
+      this.format.resolvedOptions().timeZone === that.format.resolvedOptions().timeZone
   },
   toString(this: DateTime.TimeZone.Named) {
     return `TimeZone.Named(${this.id})`
@@ -405,8 +407,10 @@ const formatOptions: Intl.DateTimeFormatOptions = {
   hourCycle: "h23"
 }
 
-const zoneMakeIntl = (format: Intl.DateTimeFormat): DateTime.TimeZone.Named => {
-  const zoneId = format.resolvedOptions().timeZone
+const zoneMakeIntl = (
+  format: Intl.DateTimeFormat,
+  zoneId: string = format.resolvedOptions().timeZone
+): DateTime.TimeZone.Named => {
   const cached = validZoneCache.get(zoneId)
   if (cached !== undefined) {
     return cached
@@ -425,12 +429,14 @@ export const zoneMakeNamedUnsafe = (zoneId: string): DateTime.TimeZone.Named => 
     return cached
   }
   try {
-    const zone = zoneMakeIntl(
-      new Intl.DateTimeFormat("en-US", {
-        ...formatOptions,
-        timeZone: zoneId
-      })
-    )
+    const format = new Intl.DateTimeFormat("en-US", {
+      ...formatOptions,
+      timeZone: zoneId
+    })
+    // V8 resolves renamed zones to their old name ("Asia/Kolkata" to "Asia/Calcutta").
+    // Keep the name that was given, and only take the case from Intl.
+    const resolved = format.resolvedOptions().timeZone
+    const zone = zoneMakeIntl(format, resolved.toLowerCase() === zoneId.toLowerCase() ? resolved : zoneId)
     validZoneCache.set(zoneId, zone)
     return zone
   } catch {
