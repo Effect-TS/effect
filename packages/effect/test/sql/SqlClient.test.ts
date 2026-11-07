@@ -150,6 +150,7 @@ const makeClient = (options: {
   readonly commit?: Effect.Effect<void, SqlError.SqlError> | undefined
   readonly prepareTransactionControls?: boolean | undefined
   readonly release?: Effect.Effect<void> | undefined
+  readonly releaseSavepoint?: boolean | undefined
 } = {}) => {
   const calls: Array<string> = []
   const record = (call: string) =>
@@ -179,6 +180,7 @@ const makeClient = (options: {
     spanAttributes: [],
     prepareTransactionControls: options.prepareTransactionControls,
     begin: options.begin,
+    releaseSavepoint: options.releaseSavepoint ? (name) => `RELEASE SAVEPOINT ${name}` : undefined,
     borrower: options.borrow ? (f) => Effect.andThen(record("borrow"), f(connection)) : undefined,
     commit: commit === undefined ? undefined : () => Effect.andThen(record("COMMIT"), commit)
   }).pipe(
@@ -327,29 +329,38 @@ describe("SqlClient", () => {
       assert.deepStrictEqual(calls, ["BEGIN", "COMMIT", "release"])
     }))
 
-  it.effect("leaves the connection alone for savepoints that outlive their outer transaction", () =>
-    Effect.gen(function*() {
-      const { calls, sql } = yield* makeClient()
-      const holding = yield* Deferred.make<void>()
-      const go = yield* Deferred.make<void>()
-      const [holder, waiter] = yield* sql.withTransaction(Effect.gen(function*() {
-        const holder = yield* Effect.forkDetach(sql.withTransaction(
-          Deferred.succeed(holding, undefined).pipe(
-            Effect.andThen(Deferred.await(go)),
-            Effect.andThen(Effect.fail("boom"))
-          )
-        ))
-        yield* Deferred.await(holding)
-        const waiter = yield* Effect.forkDetach(sql.withTransaction(sql`SELECT 'waiter'`), {
-          startImmediately: true
-        })
-        return [holder, waiter] as const
-      }))
-      yield* Deferred.succeed(go, undefined)
-      assert.strictEqual(yield* Effect.flip(Fiber.join(holder)), "boom")
-      assertEnded(yield* Effect.flip(Fiber.join(waiter)))
-      assert.deepStrictEqual(calls, ["BEGIN", "SAVEPOINT effect_sql_1", "COMMIT", "release"])
-    }))
+  it.effect.each([false, true])(
+    "leaves the connection alone for savepoints that outlive their outer transaction (fails: %s)",
+    (fails) =>
+      Effect.gen(function*() {
+        const { calls, sql } = yield* makeClient({ releaseSavepoint: true })
+        const boom = sqlError("boom")
+        const holding = yield* Deferred.make<void>()
+        const go = yield* Deferred.make<void>()
+        const [holder, waiter] = yield* sql.withTransaction(Effect.gen(function*() {
+          const holder = yield* Effect.forkDetach(sql.withTransaction(
+            Deferred.succeed(holding, undefined).pipe(
+              Effect.andThen(Deferred.await(go)),
+              Effect.andThen(fails ? Effect.fail(boom) : Effect.void)
+            )
+          ))
+          yield* Deferred.await(holding)
+          const waiter = yield* Effect.forkDetach(sql.withTransaction(sql`SELECT 'waiter'`), {
+            startImmediately: true
+          })
+          return [holder, waiter] as const
+        }))
+        yield* Deferred.succeed(go, undefined)
+        const error = yield* Effect.flip(Fiber.join(holder))
+        if (fails) {
+          assert.strictEqual(error, boom)
+        } else {
+          assertEnded(error)
+        }
+        assertEnded(yield* Effect.flip(Fiber.join(waiter)))
+        assert.deepStrictEqual(calls, ["BEGIN", "SAVEPOINT effect_sql_1", "COMMIT", "release"])
+      })
+  )
 
   it.effect("starts only top-level transactions with the BeginTransaction statement, unprepared", () =>
     Effect.gen(function*() {
