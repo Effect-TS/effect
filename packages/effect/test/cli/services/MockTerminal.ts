@@ -12,7 +12,7 @@ import * as Terminal from "effect/Terminal"
 // Models
 // =============================================================================
 
-export interface MockTerminal extends Terminal.Terminal {
+export interface MockTerminal extends Terminal.Shape {
   readonly displayLines: Effect.Effect<ReadonlyArray<string>>
   readonly inputText: (text: string) => Effect.Effect<void>
   readonly inputKey: (key: string, modifiers?: Partial<MockTerminal.Modifiers>) => Effect.Effect<void>
@@ -30,9 +30,9 @@ export declare namespace MockTerminal {
 // Service
 // =============================================================================
 
-export const MockTerminal = Context.Service<Terminal.Terminal, MockTerminal>()(
-  Terminal.Terminal.key
-)
+// Its own service: the terminal record is provided beside it by `layer`, so
+// that the terminal's operations are written as well as the record.
+export const MockTerminal = Context.Service<MockTerminal>("effect/test/MockTerminal")
 
 // =============================================================================
 // Constructors
@@ -91,18 +91,20 @@ export const make = Effect.gen(function*() {
 // Layer
 // =============================================================================
 
-export const layer: Layer.Layer<Terminal.Terminal> = Layer.effect(MockTerminal, make)
+export const layer: Layer.Layer<Terminal.Terminal | MockTerminal> = Layer.effectContext(
+  Effect.map(make, (terminal) => Context.add(Context.make(MockTerminal, terminal), Terminal.Terminal, terminal))
+)
 
 // =============================================================================
 // Accessors
 // =============================================================================
 
-export const columns: Effect.Effect<number, never, Terminal.Terminal> = Effect.flatMap(
+export const columns: Effect.Effect<number, never, MockTerminal> = Effect.flatMap(
   MockTerminal,
   (terminal) => terminal.columns
 )
 
-export const displayLines: Effect.Effect<ReadonlyArray<string>, never, Terminal.Terminal> = Effect.flatMap(
+export const displayLines: Effect.Effect<ReadonlyArray<string>, never, MockTerminal> = Effect.flatMap(
   MockTerminal,
   (terminal) => terminal.displayLines
 )
@@ -110,10 +112,10 @@ export const displayLines: Effect.Effect<ReadonlyArray<string>, never, Terminal.
 export const readInput: Effect.Effect<
   Queue.Dequeue<Terminal.UserInput, Cause.Done>,
   never,
-  Terminal.Terminal | Scope.Scope
+  MockTerminal | Scope.Scope
 > = Effect.flatMap(MockTerminal, (terminal) => terminal.readInput)
 
-export const readLine: Effect.Effect<string, Terminal.QuitError, Terminal.Terminal> = Effect.flatMap(
+export const readLine: Effect.Effect<string, Terminal.QuitError, MockTerminal> = Effect.flatMap(
   MockTerminal,
   (terminal) => terminal.readLine
 )
@@ -121,13 +123,13 @@ export const readLine: Effect.Effect<string, Terminal.QuitError, Terminal.Termin
 export const inputKey = (
   key: string,
   modifiers?: Partial<MockTerminal.Modifiers>
-): Effect.Effect<void, never, Terminal.Terminal> =>
+): Effect.Effect<void, never, MockTerminal> =>
   Effect.flatMap(
     MockTerminal,
     (terminal) => terminal.inputKey(key, modifiers)
   )
 
-export const inputText = (text: string): Effect.Effect<void, never, Terminal.Terminal> =>
+export const inputText = (text: string): Effect.Effect<void, never, MockTerminal> =>
   Effect.flatMap(
     MockTerminal,
     (terminal) => terminal.inputText(text)

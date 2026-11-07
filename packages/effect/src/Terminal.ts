@@ -20,47 +20,18 @@ import type * as Queue from "./Queue.ts"
 import * as Schema from "./Schema.ts"
 import type * as Scope from "./Scope.ts"
 
-const TypeId = "~effect/Terminal"
-
 /**
- * A `Terminal` represents a command-line interface which can read input from a
- * user and display messages to a user.
+ * The record of terminal implementations: a command-line interface which can
+ * read input from a user and display messages to a user. It is derived from
+ * the operations below, so each member's type is written once, on its
+ * operation; the service's identity is {@link Terminal}, the union of the
+ * operations' keys.
  *
  * @stability unstable
- * @category services
+ * @category models
  * @since 4.0.0
  */
-export interface Terminal {
-  readonly [TypeId]: typeof TypeId
-
-  /**
-   * The number of columns available on the platform's terminal interface.
-   */
-  readonly columns: Effect.Effect<number>
-  /**
-   * The number of rows available on the platform's terminal interface.
-   */
-
-  readonly rows: Effect.Effect<number>
-  /**
-   * Subscribes to terminal size changes. The queue starts with the current
-   * dimensions, receives each resize until the scope closes, and keeps only the
-   * latest size.
-   */
-  readonly size: Effect.Effect<Queue.Dequeue<Size, Cause.Done>, never, Scope.Scope>
-  /**
-   * Reads input events from the default standard input.
-   */
-  readonly readInput: Effect.Effect<Queue.Dequeue<UserInput, Cause.Done>, never, Scope.Scope>
-  /**
-   * Reads a single line from the default standard input.
-   */
-  readonly readLine: Effect.Effect<string, QuitError>
-  /**
-   * Displays text to the default standard output.
-   */
-  readonly display: (text: string) => Effect.Effect<void, PlatformError>
-}
+export interface Shape extends Context.Operations.Shape<typeof members> {}
 
 /**
  * Terminal dimensions measured in character cells.
@@ -177,6 +148,75 @@ export class QuitError extends Schema.Error<QuitError>("QuitError")({
 export const isQuitError = (u: unknown): u is QuitError => Predicate.hasProperty(u, QuitErrorTypeId)
 
 /**
+ * The number of columns available on the platform's terminal interface, as an
+ * operation: `yield* Terminal.columns` reads the implementation provided for
+ * the terminal, or for this member alone.
+ *
+ * @stability unstable
+ * @category operations
+ * @since 4.0.0
+ */
+export const columns = Context.Operation.value<Effect.Effect<number>>()("effect/Terminal/columns")
+
+/**
+ * The number of rows available on the platform's terminal interface, as an
+ * operation.
+ *
+ * @stability unstable
+ * @category operations
+ * @since 4.0.0
+ */
+export const rows = Context.Operation.value<Effect.Effect<number>>()("effect/Terminal/rows")
+
+/**
+ * Subscribes to terminal size changes, as an operation. The queue starts with
+ * the current dimensions, receives each resize until the scope closes, and
+ * keeps only the latest size.
+ *
+ * @stability unstable
+ * @category operations
+ * @since 4.0.0
+ */
+export const size = Context.Operation.value<Effect.Effect<Queue.Dequeue<Size, Cause.Done>, never, Scope.Scope>>()(
+  "effect/Terminal/size"
+)
+
+/**
+ * Reads input events from the default standard input, as an operation.
+ *
+ * @stability unstable
+ * @category operations
+ * @since 4.0.0
+ */
+export const readInput = Context.Operation.value<
+  Effect.Effect<Queue.Dequeue<UserInput, Cause.Done>, never, Scope.Scope>
+>()("effect/Terminal/readInput")
+
+/**
+ * Reads a single line from the default standard input, as an operation.
+ *
+ * @stability unstable
+ * @category operations
+ * @since 4.0.0
+ */
+export const readLine = Context.Operation.value<Effect.Effect<string, QuitError>>()("effect/Terminal/readLine")
+
+/**
+ * Displays text to the default standard output, as an operation:
+ * `yield* Terminal.display(text)` calls the implementation provided for the
+ * terminal, or for this member alone.
+ *
+ * @stability unstable
+ * @category operations
+ * @since 4.0.0
+ */
+export const display = Context.Operation<(text: string) => Effect.Effect<void, PlatformError>>()(
+  "effect/Terminal/display"
+)
+
+const members = { columns, rows, size, readInput, readLine, display }
+
+/**
  * Service tag for command-line input and output services.
  *
  * **When to use**
@@ -188,7 +228,18 @@ export const isQuitError = (u: unknown): u is QuitError => Predicate.hasProperty
  * @category services
  * @since 4.0.0
  */
-export const Terminal: Context.Service<Terminal, Terminal> = Context.Service("effect/Terminal")
+export const Terminal = Context.Operations<Terminal, Shape>()("effect/Terminal", members)
+
+/**
+ * The identity of the terminal service: the union of its six members' keys. A
+ * `Layer<Terminal>` provides every member, and the merge of every member's
+ * layer is a `Layer<Terminal>`. The record of implementations is {@link Shape}.
+ *
+ * @stability unstable
+ * @category services
+ * @since 4.0.0
+ */
+export type Terminal = Context.Operations.Identifier<typeof members>
 
 /**
  * Creates a `Terminal` service implementation.
@@ -202,13 +253,11 @@ export const Terminal: Context.Service<Terminal, Terminal> = Context.Service("ef
  * **Details**
  *
  * The implementation object supplies `columns`, `rows`, `size`, `readInput`,
- * `readLine`, and `display`; `make` attaches the `Terminal` service marker so
- * the result can be provided through the `Terminal` context service.
+ * `readLine`, and `display`, and is the record provided through the `Terminal`
+ * context service.
  *
  * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
-export const make = (
-  impl: Omit<Terminal, typeof TypeId>
-): Terminal => Terminal.of({ ...impl, [TypeId]: TypeId })
+export const make = (impl: Shape): Shape => impl

@@ -2274,16 +2274,17 @@ export const exitFindErrorOption = <A, E>(self: Exit.Exit<A, E>): Option.Option<
 // ----------------------------------------------------------------------------
 
 /** @internal */
-export const service = <I, S>(service: Context.Key<I, S>): Effect.Effect<S, never, I> => service
+export const service = <I, S>(service: Context.Slot<I, S>): Effect.Effect<S, never, I> =>
+  withFiber((fiber) => succeed(Context.getUnsafe(fiber.context, service)))
 
 /** @internal */
 export const serviceOption = <I, S>(
-  service: Context.Key<I, S>
+  service: Context.Slot<I, S>
 ): Effect.Effect<Option.Option<S>> => withFiber((fiber) => succeed(Context.getOption(fiber.context, service)))
 
 /** @internal */
 export const serviceOptional = <I, S>(
-  service: Context.Key<I, S>
+  service: Context.Slot<I, S>
 ): Effect.Effect<S, Cause.NoSuchElementError> =>
   withFiber((fiber) => fromOption(Context.getOption(fiber.context, service)))
 
@@ -2318,19 +2319,19 @@ export const updateContext: {
 /** @internal */
 export const updateService: {
   <I, A>(
-    service: Context.Key<I, A>,
+    service: Context.Slot<I, A>,
     f: (value: A) => A
   ): <XA, E, R>(self: Effect.Effect<XA, E, R>) => Effect.Effect<XA, E, R | I>
   <XA, E, R, I, A>(
     self: Effect.Effect<XA, E, R>,
-    service: Context.Key<I, A>,
+    service: Context.Slot<I, A>,
     f: (value: A) => A
   ): Effect.Effect<XA, E, R | I>
 } = dual(
   3,
   <XA, E, R, I, A>(
     self: Effect.Effect<XA, E, R>,
-    service: Context.Key<I, A>,
+    service: Context.Slot<I, A>,
     f: (value: A) => A
   ): Effect.Effect<XA, E, R | I> =>
     updateContext(self, (s) => {
@@ -2343,7 +2344,7 @@ export const updateService: {
 
 /** @internal */
 export const updateServiceScoped = <I, A>(
-  service: Context.Key<I, A>,
+  service: Context.Slot<I, A>,
   update: (value: A) => A,
   options?: {
     readonly reset?: ((original: A, updated: A, current: A) => A) | undefined
@@ -2422,20 +2423,20 @@ export const provideContext: {
 /** @internal */
 export const provideService: {
   <I, S>(
-    service: Context.Key<I, S>
+    service: Context.Slot<I, S>
   ): {
     (implementation: S): <A, E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E, Exclude<R, I>>
     <A, E, R>(self: Effect.Effect<A, E, R>, implementation: S): Effect.Effect<A, E, Exclude<R, I>>
   }
   <I, S>(
-    key: Context.Key<I, S>,
+    key: Context.Slot<I, S>,
     implementation: S
   ): <A, E, R>(
     self: Effect.Effect<A, E, R>
   ) => Effect.Effect<A, E, Exclude<R, I>>
   <A, E, R, I, S>(
     self: Effect.Effect<A, E, R>,
-    service: Context.Key<I, S>,
+    service: Context.Slot<I, S>,
     implementation: S
   ): Effect.Effect<A, E, Exclude<R, I>>
 } = function(this: any) {
@@ -2448,28 +2449,28 @@ export const provideService: {
 
 const provideServiceImpl = <A, E, R, I, S>(
   self: Effect.Effect<A, E, R>,
-  service: Context.Key<I, S>,
+  service: Context.Slot<I, S>,
   implementation: S
 ): Effect.Effect<A, E, Exclude<R, I>> => updateContext(self, Context.add(service, implementation)) as any
 
 /** @internal */
 export const provideServiceEffect: {
   <I, S, E2, R2>(
-    service: Context.Key<I, S>,
+    service: Context.Slot<I, S>,
     acquire: Effect.Effect<S, E2, R2>
   ): <A, E, R>(
     self: Effect.Effect<A, E, R>
   ) => Effect.Effect<A, E | E2, Exclude<R, I> | R2>
   <A, E, R, I, S, E2, R2>(
     self: Effect.Effect<A, E, R>,
-    service: Context.Key<I, S>,
+    service: Context.Slot<I, S>,
     acquire: Effect.Effect<S, E2, R2>
   ): Effect.Effect<A, E | E2, Exclude<R, I> | R2>
 } = dual(
   3,
   <A, E, R, I, S, E2, R2>(
     self: Effect.Effect<A, E, R>,
-    service: Context.Key<I, S>,
+    service: Context.Slot<I, S>,
     acquire: Effect.Effect<S, E2, R2>
   ): Effect.Effect<A, E | E2, Exclude<R, I> | R2> =>
     flatMap(acquire, (implementation) => provideService(self, service, implementation))

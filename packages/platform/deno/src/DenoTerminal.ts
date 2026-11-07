@@ -12,7 +12,7 @@ import * as NodeTerminal from "@effect/platform-node-shared/NodeTerminal"
 import type { Effect } from "effect/Effect"
 import type { Layer } from "effect/Layer"
 import type { Scope } from "effect/Scope"
-import type { Terminal, UserInput } from "effect/Terminal"
+import type { Shape, Terminal, UserInput } from "effect/Terminal"
 
 /**
  * Creates a scoped `Terminal` service backed by process stdin/stdout.
@@ -23,7 +23,7 @@ import type { Terminal, UserInput } from "effect/Terminal"
  * @category constructors
  * @since 4.0.0
  */
-export const make: (shouldQuit?: (input: UserInput) => boolean) => Effect<Terminal, never, Scope> = NodeTerminal.make
+export const make: (shouldQuit?: (input: UserInput) => boolean) => Effect<Shape, never, Scope> = NodeTerminal.make
 
 /**
  * Provides the default process-backed `Terminal` service, ending key input on

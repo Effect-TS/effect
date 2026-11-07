@@ -1,0 +1,28 @@
+{
+  "name": "tree-shakeable-services-spec",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Prototype for specs/tree-shakeable-services.md: operations as keys, record services and the bundle check",
+  "sideEffects": false,
+  "scripts": {
+    "check": "tsc -p tsconfig.json",
+    "check-errors": "node scripts/check-errors.ts",
+    "test": "vitest run",
+    "bundle": "node scripts/check-bundle.ts",
+    "bench": "node ../../packages/effect/benchmark/context/operations.ts",
+    "verify": "pnpm check && pnpm check-errors && pnpm test && pnpm bundle && pnpm bench:check",
+    "bench:check": "node scripts/bench-check.ts",
+    "bench:counts": "node ../../packages/effect/benchmark/context/counts.ts"
+  },
+  "devDependencies": {
+    "@babel/core": "^8.0.10",
+    "@types/node": "^26.6.6",
+    "babel-plugin-annotate-pure-calls": "^0.5.0",
+    "effect": "workspace:*",
+    "esbuild": "^0.28.2",
+    "rolldown": "^1.2.16",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.5"
+  }
+}

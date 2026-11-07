@@ -7,6 +7,7 @@
     "clean": "node scripts/clean.mjs",
     "codegen": "pnpm --recursive --parallel --filter \"./packages/**/*\" run codegen",
     "codemod": "node scripts/codemod.mjs",
+    "codemod:shape": "node scripts/codemod-shape.mjs",
     "build": "tsc -b tsconfig.packages.json && pnpm --recursive --parallel --filter \"./packages/**/*\" run build && node scripts/copy-ai-docs.mjs",
     "bundle-analyze": "bash scripts/bundle-analyze.sh",
     "bundle-compare": "bash scripts/bundle-compare.sh",

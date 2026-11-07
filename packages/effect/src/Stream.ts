@@ -388,7 +388,7 @@ export const fromEffect = <A, E, R>(effect: Effect.Effect<A, E, R>): Stream<A, E
  * @category accessors
  * @since 4.0.0
  */
-export const service = <I, S>(service: Context.Key<I, S>): Stream<S, never, I> => fromEffect(Effect.service(service))
+export const service = <I, S>(service: Context.Slot<I, S>): Stream<S, never, I> => fromEffect(Effect.service(service))
 
 /**
  * Optionally accesses a service from the context and emits the result as a
@@ -431,7 +431,7 @@ export const service = <I, S>(service: Context.Key<I, S>): Stream<S, never, I> =
  * @category accessors
  * @since 4.0.0
  */
-export const serviceOption = <I, S>(service: Context.Key<I, S>): Stream<Option.Option<S>> =>
+export const serviceOption = <I, S>(service: Context.Slot<I, S>): Stream<Option.Option<S>> =>
   fromEffect(Effect.serviceOption(service))
 
 /**
@@ -1715,6 +1715,57 @@ export const never: Stream<never> = fromChannel(Channel.never)
 export const unwrap = <A, E2, R2, E, R>(
   effect: Effect.Effect<Stream<A, E2, R2>, E, R>
 ): Stream<A, E | E2, R2 | Exclude<R, Scope.Scope>> => fromChannel(Channel.unwrap(Effect.map(effect, toChannel)))
+
+/**
+ * Creates an operation whose result is a Stream.
+ *
+ * **Details**
+ *
+ * The Stream counterpart of `Context.Operation`: the same key, the same call
+ * signature, provided and overridden the same way, but a call returns a Stream
+ * that looks the implementation up from the context of the fiber that runs it,
+ * through `Stream.unwrap`.
+ *
+ * **Example** (A Stream operation)
+ *
+ * ```ts import.meta.vitest
+ * import { Effect, Layer, Stream } from "effect"
+ *
+ * const lines = Stream.Operation<(path: string) => Stream.Stream<string>>()("app/lines")
+ *
+ * const live = Layer.succeed(lines, (path) => Stream.make(`${path}:1`, `${path}:2`))
+ *
+ * const program = Stream.runCollect(lines("a.txt"))
+ * Effect.runSync(Effect.provide(program, live)) // => ["a.txt:1", "a.txt:2"]
+ * ```
+ *
+ * @see {@link unwrap} for the primitive this is built on
+ *
+ * @stability unstable
+ * @category services
+ * @since 4.0.0
+ */
+export const Operation = <Shape extends Context.Operation.FunctionSignature>(): <
+  const Id extends string
+>(
+  key: Context.Operation.KeyFor<Id, Shape, "Stream">
+) => Context.Operation<Id, Shape> =>
+(key) => Context.makeOperation(key as string, streamCall) as any
+
+/**
+ * The type of a Stream operation: `Context.Operation` with a Stream shape.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.0.0
+ */
+export type Operation<Id extends string, Shape extends Context.Operation.StreamSignature> = Context.Operation<
+  Id,
+  Shape
+>
+
+const streamCall = (operation: Context.Operation.Any, receiver: unknown, args: ArrayLike<unknown>) =>
+  unwrap(Context.applyOperation(operation, receiver, args) as Effect.Effect<Stream<any, any, any>>)
 
 /**
  * Runs a stream that requires `Scope` in a managed scope, ensuring its
@@ -10636,19 +10687,19 @@ export const provideContext: {
  */
 export const provideService: {
   <I, S>(
-    key: Context.Key<I, S>,
+    key: Context.Slot<I, S>,
     service: NoInfer<S>
   ): <A, E, R>(
     self: Stream<A, E, R>
   ) => Stream<A, E, Exclude<R, I>>
   <A, E, R, I, S>(
     self: Stream<A, E, R>,
-    key: Context.Key<I, S>,
+    key: Context.Slot<I, S>,
     service: NoInfer<S>
   ): Stream<A, E, Exclude<R, I>>
 } = dual(3, <A, E, R, I, S>(
   self: Stream<A, E, R>,
-  key: Context.Key<I, S>,
+  key: Context.Slot<I, S>,
   service: NoInfer<S>
 ): Stream<A, E, Exclude<R, I>> => fromChannel(Channel.provideService(self.channel, key, service)))
 
@@ -10689,19 +10740,19 @@ export const provideService: {
  */
 export const provideServiceEffect: {
   <I, S, ES, RS>(
-    key: Context.Key<I, S>,
+    key: Context.Slot<I, S>,
     service: Effect.Effect<NoInfer<S>, ES, RS>
   ): <A, E, R>(
     self: Stream<A, E, R>
   ) => Stream<A, E | ES, Exclude<R, I> | RS>
   <A, E, R, I, S, ES, RS>(
     self: Stream<A, E, R>,
-    key: Context.Key<I, S>,
+    key: Context.Slot<I, S>,
     service: Effect.Effect<NoInfer<S>, ES, RS>
   ): Stream<A, E | ES, Exclude<R, I> | RS>
 } = dual(3, <A, E, R, I, S, ES, RS>(
   self: Stream<A, E, R>,
-  key: Context.Key<I, S>,
+  key: Context.Slot<I, S>,
   service: Effect.Effect<NoInfer<S>, ES, RS>
 ): Stream<A, E | ES, Exclude<R, I> | RS> => fromChannel(Channel.provideServiceEffect(self.channel, key, service)))
 
@@ -10788,19 +10839,19 @@ export const updateContext: {
  */
 export const updateService: {
   <I, S>(
-    key: Context.Key<I, S>,
+    key: Context.Slot<I, S>,
     f: (service: NoInfer<S>) => S
   ): <A, E, R>(
     self: Stream<A, E, R>
   ) => Stream<A, E, R | I>
   <A, E, R, I, S>(
     self: Stream<A, E, R>,
-    key: Context.Key<I, S>,
+    key: Context.Slot<I, S>,
     f: (service: NoInfer<S>) => S
   ): Stream<A, E, R | I>
 } = dual(3, <A, E, R, I, S>(
   self: Stream<A, E, R>,
-  service: Context.Key<I, S>,
+  service: Context.Slot<I, S>,
   f: (service: NoInfer<S>) => S
 ): Stream<A, E, R | I> =>
   updateContext(self, (context) =>
