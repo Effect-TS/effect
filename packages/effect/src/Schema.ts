@@ -18015,7 +18015,7 @@ export function toFormatter<S extends Constraint>(schema: S, options?: {
     | ((ast: SchemaAST.AST, recur: (ast: SchemaAST.AST) => Formatter<any>) => Formatter<any> | undefined)
     | undefined
 }): Formatter<S["Type"]> {
-  return InternalToFormatter.toFormatter(SchemaAST.toType(schema.ast), options)
+  return InternalToFormatter.toFormatter(schema.ast, options)
 }
 /**
  * Overrides the equivalence derivation for a schema by supplying a custom
@@ -18058,7 +18058,7 @@ export function overrideToEquivalence<S extends Top>(toEquivalence: () => Equiva
  * @since 4.0.0
  */
 export function toEquivalence<T>(schema: Schema<T>): Equivalence.Equivalence<T> {
-  return InternalEquivalence.toEquivalence(SchemaAST.toType(schema.ast))
+  return InternalEquivalence.toEquivalence(schema.ast)
 }
 /**
  * Derives an intermediate `SchemaRepresentation.Document` from the encoded

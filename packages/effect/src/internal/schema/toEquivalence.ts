@@ -8,10 +8,12 @@ import * as SchemaAST from "../../SchemaAST.ts"
 import * as SchemaParser from "../../SchemaParser.ts"
 import * as InternalAnnotations from "./annotations.ts"
 
+const recurMemo = memoize(recur)
+
 /** @internal */
-export const toEquivalence = memoize((ast: SchemaAST.AST): Equivalence.Equivalence<any> => {
-  return recur(ast)
-})
+export const toEquivalence = (ast: SchemaAST.AST): Equivalence.Equivalence<any> => {
+  return recurMemo(SchemaAST.toType(ast))
+}
 
 function recur(ast: SchemaAST.AST): Equivalence.Equivalence<any> {
   // ---------------------------------------------
