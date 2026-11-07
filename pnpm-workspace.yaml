@@ -43,3 +43,7 @@ overrides:
   # binary (Uint8Array) keys throw DataError during comparison in EventJournal.makeIndexedDb.
   # Remove after a later fake-indexeddb release passes the EventJournal IndexedDB suite.
   fake-indexeddb: 6.2.5
+  # alchemy's dependency tree pulls @types/ssh2, whose @types/node@18 would
+  # otherwise join the shared tests compilation and clash with the workspace
+  # @types/node globals.
+  '@types/ssh2>@types/node': ^26.6.5
