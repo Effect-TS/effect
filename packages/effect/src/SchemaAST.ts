@@ -4754,7 +4754,8 @@ export const toType = memoizeIdempotent(<A extends AST>(ast: A): A => {
       : undefined
     return copy(type, {
       encodingChecks: undefined,
-      checks: combineChecks(type.checks, checks)
+      // Match parsing order and preserve annotation precedence for decoded checks.
+      checks: combineChecks(checks, type.checks)
     })
   }
   return type
