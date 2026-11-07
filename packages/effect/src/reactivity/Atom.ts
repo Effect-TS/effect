@@ -253,7 +253,7 @@ const AtomProto = {
       _id: "Atom",
       keepAlive: this.keepAlive,
       lazy: this.lazy,
-      label: this.label
+      label: this.label && [this.label[0], this.label[1]]
     }
   }
 } as const
@@ -1684,11 +1684,17 @@ function makeLabel(name: string, error: Error | undefined): readonly [name: stri
   if (error === undefined) {
     return label
   }
-  let location: string | undefined
+  let location = ""
   Object.defineProperty(label, 1, {
     configurable: true,
     enumerable: true,
-    get: () => location ??= error.stack?.split("\n")[5] ?? ""
+    get: () => {
+      if (error !== undefined) {
+        location = error.stack?.split("\n")[5] ?? ""
+        error = undefined
+      }
+      return location
+    }
   })
   return label
 }
