@@ -135,19 +135,33 @@ describe("stack capture", { concurrent: false }, () => {
     assert.match(frame!.stack()!, /StackCapture\.test\.ts:\d+:\d+/)
   })
 
-  it("atom labels format the stack only when the location is read", () => {
+  it("atom labels format the location once, on first read", () => {
     const [[labeled, serializable], stackReads] = countStackReads(() =>
       [
         Atom.make(0).pipe(Atom.withLabel("counter")),
         Atom.make(0).pipe(Atom.serializable({ key: "count", schema: Schema.Number }))
       ] as const
     )
-    assert.strictEqual(stackReads(), 0)
-    assert.strictEqual(labeled.label![0], "counter")
-    assert.strictEqual(serializable.label![0], "count")
-    assert.strictEqual(stackReads(), 0)
-    assert.strictEqual(labeled.label![1], labeled.label![1])
-    assert.isString(serializable.label![1])
+    assert.deepStrictEqual([labeled.label![0], serializable.label![0], stackReads()], ["counter", "count", 0])
+    const location = labeled.label![1]
+    assert.strictEqual(stackReads(), 1)
+    const serializableLocation = serializable.label![1]
     assert.strictEqual(stackReads(), 2)
+    assert.deepStrictEqual([labeled.label![1], serializable.label![1]], [location, serializableLocation])
+    assert.strictEqual(stackReads(), 2)
+  })
+
+  it("atom labels skip capture at limit zero", () => {
+    const labels: Array<readonly [string, string]> = []
+    const count = withCaptureDisabled(() =>
+      countErrors(() => {
+        labels.push(
+          Atom.make(0).pipe(Atom.withLabel("counter")).label!,
+          Atom.make(0).pipe(Atom.serializable({ key: "count", schema: Schema.Number })).label!
+        )
+      })
+    )
+    assert.strictEqual(count, 0)
+    assert.deepStrictEqual(labels, [["counter", ""], ["count", ""]])
   })
 })

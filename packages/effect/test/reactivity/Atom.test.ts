@@ -20,6 +20,7 @@ import {
 import { KeyValueStore } from "effect/persistence"
 import { AsyncResult, Atom, AtomRegistry, Hydration, Reactivity } from "effect/reactivity"
 import { TestClock } from "effect/testing"
+import { inspect } from "node:util"
 import { collectGarbage, getGc } from "../utils/gc.ts"
 
 declare const global: any
@@ -1388,10 +1389,10 @@ describe("Atom", { concurrent: false }, () => {
     }
   )
 
-  it("label", async () => {
-    expect(
-      Atom.make(0).pipe(Atom.withLabel("counter")).label![1]
-    ).toMatch(/Atom.test.ts:\d+:\d+/)
+  it("label", () => {
+    const makeCounter = () => Atom.make(0).pipe(Atom.withLabel("counter"))
+    const atom = makeCounter()
+    assert.match(inspect(atom), /makeCounter .*Atom\.test\.ts:\d+:\d+/)
   })
 
   it("batching", async () => {
