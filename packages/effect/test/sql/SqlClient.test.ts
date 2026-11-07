@@ -45,13 +45,15 @@ let harnessIdCounter = 0
  * Savepoint release is opt-in, as it is for drivers: pass `true` to enable it,
  * or a `SqlError` to enable it and have it fail.
  *
- * `acquire` runs before the connection is handed over and `duringBegin` inside
- * `begin`, so a test can make either take time.
+ * `acquire` runs before the connection is handed over, `duringBegin` inside
+ * `begin` and `duringRollbackSavepoint` inside `rollbackSavepoint`, so a test
+ * can make any of them take time.
  */
 const makeHarness = (options: {
   readonly spanAttributes?: ReadonlyArray<readonly [string, unknown]> | undefined
   readonly acquire?: Effect.Effect<void> | undefined
   readonly duringBegin?: Effect.Effect<void> | undefined
+  readonly duringRollbackSavepoint?: Effect.Effect<void> | undefined
   readonly begin?: SqlError.SqlError | undefined
   readonly commit?: (() => Effect.Effect<void, SqlError.SqlError>) | undefined
   readonly onCommitFailure?: (() => Effect.Effect<void, SqlError.SqlError>) | undefined
@@ -120,14 +122,17 @@ const makeHarness = (options: {
           })
           : Effect.fail(sqlError("cannot rollback - no transaction is active"))),
     rollbackSavepoint: (_conn, id) =>
-      Effect.flatMap(record(`rollbackSavepoint(${id})`), () => {
-        if (options.rollbackSavepoint !== undefined) {
-          return Effect.fail(options.rollbackSavepoint)
+      Effect.flatMap(
+        Effect.andThen(record(`rollbackSavepoint(${id})`), options.duringRollbackSavepoint ?? Effect.void),
+        () => {
+          if (options.rollbackSavepoint !== undefined) {
+            return Effect.fail(options.rollbackSavepoint)
+          }
+          return savepoints.includes(id)
+            ? Effect.void
+            : Effect.fail(sqlError(`cannot rollback to savepoint ${id} - it does not exist`))
         }
-        return savepoints.includes(id)
-          ? Effect.void
-          : Effect.fail(sqlError(`cannot rollback to savepoint ${id} - it does not exist`))
-      }),
+      ),
     releaseSavepoint: release === undefined ?
       undefined :
       (_conn, id) =>
@@ -502,6 +507,34 @@ describe("SqlClient", () => {
         const rolledBack = yield* exitAfterParent(Effect.fail("boom"))
         assert.deepStrictEqual(rolledBack.calls, ended)
         assert.isTrue(Exit.isFailure(rolledBack.exit))
+
+        // Rolls back while the parent is open, and the parent ends before the rollback completes.
+        const rollingBack = yield* Deferred.make<void>()
+        const finishRollback = yield* Deferred.make<void>()
+        const slowRollback = makeHarness({
+          releaseSavepoint: true,
+          duringRollbackSavepoint: Effect.andThen(
+            Deferred.succeed(rollingBack, undefined),
+            Deferred.await(finishRollback)
+          )
+        })
+        const nested = yield* slowRollback.withTransaction(Effect.gen(function*() {
+          const child = yield* Effect.forkDetach(slowRollback.withTransaction(Effect.fail("boom" as const)), {
+            startImmediately: true
+          })
+          yield* Deferred.await(rollingBack)
+          return child
+        }))
+        yield* Deferred.succeed(finishRollback, undefined)
+        assertTypedFailure(yield* Fiber.await(nested), "boom" as const)
+        assert.deepStrictEqual(slowRollback.calls, [
+          "acquireConnection",
+          "begin",
+          "savepoint(1)",
+          "rollbackSavepoint(1)",
+          "commit",
+          "closeConnection"
+        ])
       }))
 
     it.effect("does not release savepoints when the driver does not opt in", () =>
