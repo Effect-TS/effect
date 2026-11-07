@@ -655,7 +655,8 @@ export const currentTransaction = <I, A>(
  * nested transaction still waiting for a sibling's savepoint to finish. A
  * nested transaction whose effect exits after a level it is nested in has
  * ended neither rolls back nor releases its savepoint, and fails with a
- * `ConnectionError` if its effect succeeded.
+ * `ConnectionError` if its effect succeeded. One whose parent ends while it
+ * rolls back its savepoint skips the release and keeps its effect's failure.
  *
  * Each callback below except `acquireConnection` is traced like a statement,
  * in its own client span under the `sql.transaction` span, named after the
@@ -815,9 +816,11 @@ export const makeWithTransaction = <I, S>(options: {
                           )
                         }
                         if (id > 0 && options.releaseSavepoint) {
+                          const release = Effect.orDie(control("RELEASE SAVEPOINT", options.releaseSavepoint(conn, id)))
                           effect = Effect.andThen(
                             effect,
-                            Effect.orDie(control("RELEASE SAVEPOINT", options.releaseSavepoint(conn, id)))
+                            // The parent can end while the savepoint rolls back.
+                            Effect.suspend(() => parentEnded() ? Effect.void : release)
                           )
                         }
                         return Effect.flatMap(effect, () => {
@@ -829,7 +832,8 @@ export const makeWithTransaction = <I, S>(options: {
                     )
                   }),
                   scope
-                    ? (eff) => Effect.onExitPrimitive(eff, (exit) => Scope.close(scope, exit), true)
+                    ? (eff) =>
+                      Effect.onExitPrimitive(eff, (exit) => Scope.close(scope, exit), true)
                     : identity
                 )
             )
