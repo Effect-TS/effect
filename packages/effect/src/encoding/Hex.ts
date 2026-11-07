@@ -196,11 +196,24 @@ export const decode = (str: string): Result.Result<Uint8Array, EncodingError> =>
   }
   if (length % 2 !== 0) return decodeFailure(str)
   const result = new Uint8Array(length / 2)
+  // Invalid characters map to 255.
+  if (length <= 1024) {
+    for (let i = 0, j = 0; j < length; i++, j += 2) {
+      const a = hexCode(str.charCodeAt(j))
+      const b = hexCode(str.charCodeAt(j + 1))
+      if ((a | b) > 15) return decodeFailure(str)
+      result[i] = (a << 4) | b
+    }
+    return Result.succeed(result)
+  }
+  // For longer inputs, encoding to UTF-8 once and reading bytes beats
+  // `charCodeAt` on V8. Non-ASCII characters encode to bytes above 127, which
+  // also map to 255, and the first one sits at the same index as in `str`.
+  const bytes = encoder.encode(str)
   for (let i = 0, j = 0; j < length; i++, j += 2) {
-    const a = hexCode(str.charCodeAt(j))
-    const b = hexCode(str.charCodeAt(j + 1))
-    // Invalid characters map to 255.
-    if ((a | b) > 15) return decodeFailure(str)
+    const a = hexCodes[bytes[j]]
+    const b = hexCodes[bytes[j + 1]]
+    if ((a | b) > 15) return decodeFailure(str, bytes.length)
     result[i] = (a << 4) | b
   }
   return Result.succeed(result)
@@ -208,9 +221,11 @@ export const decode = (str: string): Result.Result<Uint8Array, EncodingError> =>
 
 // The odd-length message reports the UTF-8 byte length, so non-ASCII input
 // whose UTF-8 encoding has an even length reports "Invalid input" instead.
-const decodeFailure = (str: string): Result.Result<never, EncodingError> => {
-  const byteLength = encoder.encode(str).length
-  return Result.fail(
+const decodeFailure = (
+  str: string,
+  byteLength: number = encoder.encode(str).length
+): Result.Result<never, EncodingError> =>
+  Result.fail(
     new EncodingError({
       module: "Hex",
       kind: "Decode",
@@ -218,7 +233,6 @@ const decodeFailure = (str: string): Result.Result<never, EncodingError> => {
       message: byteLength % 2 !== 0 ? `Length must be a multiple of 2, but is ${byteLength}` : "Invalid input"
     })
   )
-}
 
 /**
  * Decodes a hexadecimal string into a UTF-8 string safely.
@@ -265,10 +279,10 @@ const hexEncodeUint8Array = (bytes: Uint8Array): string => {
   return result
 }
 
-const hexCodes = new Uint8Array(128).fill(255)
+const hexCodes = new Uint8Array(256).fill(255)
 for (let i = 0; i < 16; i++) {
   hexCodes["0123456789abcdef".charCodeAt(i)] = i
   hexCodes["0123456789ABCDEF".charCodeAt(i)] = i
 }
 
-const hexCode = (charCode: number): number => charCode < 128 ? hexCodes[charCode] : 255
+const hexCode = (charCode: number): number => charCode < 256 ? hexCodes[charCode] : 255
