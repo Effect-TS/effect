@@ -761,10 +761,14 @@ export const makeWithTransaction = <I, S>(options: {
               open: true
             }
             let committed = false
-            const start = (conn: S) =>
-              id === 0
-                ? control("BEGIN", options.begin(conn, fiber.getRef(BeginTransaction)))
-                : control("SAVEPOINT", options.savepoint(conn, id))
+            const start = (conn: S) => {
+              if (id === 0) {
+                return control("BEGIN", options.begin(conn, fiber.getRef(BeginTransaction)))
+              }
+              // Runs once the permit is held, so it also catches a parent that
+              // ended while this waited for a sibling's savepoint.
+              return parentEnded() ? Effect.fail(transactionEnded()) : control("SAVEPOINT", options.savepoint(conn, id))
+            }
             const transaction = Effect.flatMap(
               conn,
               (
@@ -850,10 +854,7 @@ export const makeWithTransaction = <I, S>(options: {
             }, true)
             return id === 0
               ? settled
-              // The parent can end while this waits for a sibling's savepoint.
-              : Context.getUnsafe(services, transactionSemaphore).withPermit(
-                Effect.suspend(() => parentEnded() ? Effect.fail(transactionEnded()) : settled)
-              )
+              : Context.getUnsafe(services, transactionSemaphore).withPermit(settled)
           })
       )
     )
