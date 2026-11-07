@@ -97,7 +97,7 @@ communication.
 ## Progress and subscription lifetime
 
 Handlers send progress through `McpServer.notifications["notifications/progress"]`, using
-the calling request's `_meta.progressToken`. Values must be finite and strictly increasing;
+the calling request's `_meta.progressToken`. Values must be strictly increasing;
 floating-point progress is supported. A missing or different token, a repeated or decreasing
 value, and notifications after completion, cancellation, or disconnection are ignored.
 Each request has its own sequence, so a later request may reuse a completed request's token.

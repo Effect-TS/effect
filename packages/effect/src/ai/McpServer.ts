@@ -991,8 +991,8 @@ export class McpServer extends Context.Service<McpServer, {
    * **Details**
    *
    * Progress notifications use the calling handler's active request and its
-   * `_meta.progressToken`. Values must be finite. A missing or different token,
-   * or a value that does not increase, is ignored. Notifications from a
+   * `_meta.progressToken`. A missing or different token, or a value that does
+   * not increase, is ignored. Notifications from a
    * completed, cancelled, or disconnected request are also ignored.
    *
    * This follows the MCP [progress requirements](https://modelcontextprotocol.io/specification/2026-07-28/basic/patterns/progress#behavior-requirements).
@@ -1154,7 +1154,6 @@ export class McpServer extends Context.Service<McpServer, {
               // A request owns its progress token and its complete monotonic sequence.
               if (
                 progressState?.active !== true || progressState.token !== notification.progressToken ||
-                !Number.isFinite(notification.progress) ||
                 (progressState.lastProgress !== undefined && notification.progress <= progressState.lastProgress)
               ) {
                 return acknowledge
@@ -1849,13 +1848,19 @@ const runWithRuntime = Effect.fnUntraced(function*(
   }>()
   const activeRequests = new Map<number, Map<string, ActiveRequest>>()
   const subscriptionShutdown = yield* Deferred.make<void>()
+  // Closed when the shutdown grace period expires, releasing and suppressing blocked writes.
   const subscriptionWritesClosed = yield* Deferred.make<void>()
-  let shutdownComplete = false
+  // A modern subscription stays open until its final result write settles.
+  const openSubscriptions = new Set<Deferred.Deferred<void>>()
+  const settleSubscription = (completed: Deferred.Deferred<void>) => {
+    openSubscriptions.delete(completed)
+    Deferred.doneUnsafe(completed, Exit.void)
+  }
   const reverseRequestClients = new Map<string, Array<McpClientKey>>()
   const disconnectClient = (clientId: number) => {
     for (const request of activeRequests.get(clientId)?.values() ?? []) {
       request.progressState.active = false
-      if (request.subscriptionCompleted !== undefined) Deferred.doneUnsafe(request.subscriptionCompleted, Exit.void)
+      if (request.subscriptionCompleted !== undefined) settleSubscription(request.subscriptionCompleted)
     }
     activeRequests.delete(clientId)
     clientStates.delete(clientId)
@@ -2085,14 +2090,16 @@ const runWithRuntime = Effect.fnUntraced(function*(
     ...protocol,
     send: (clientId, response) => {
       // After the grace period, interrupting handlers must not start another blocked write.
-      if (shutdownComplete) return Effect.void
+      if (Deferred.isDoneUnsafe(subscriptionWritesClosed)) return Effect.void
       let completed: Deferred.Deferred<void> | undefined
-      const finish = (write: Effect.Effect<void>) =>
-        completed === undefined
+      const finish = (write: Effect.Effect<void>) => {
+        const subscription = completed
+        return subscription === undefined
           ? write
           : Effect.raceFirst(Effect.interruptible(write), Deferred.await(subscriptionWritesClosed)).pipe(
-            Effect.ensuring(Deferred.succeed(completed, undefined))
+            Effect.ensuring(Effect.sync(() => settleSubscription(subscription)))
           )
+      }
       if (response._tag === "Exit") {
         const requests = activeRequests.get(clientId)
         const key = requestKey(response.requestId)
@@ -2292,6 +2299,10 @@ const runWithRuntime = Effect.fnUntraced(function*(
                 lastProgress: undefined
               }
               if (request.isNotification !== true) {
+                const subscriptionCompleted = request.tag === "subscriptions/listen"
+                  ? yield* Deferred.make<void>()
+                  : undefined
+                if (subscriptionCompleted !== undefined) openSubscriptions.add(subscriptionCompleted)
                 const requests = activeRequests.get(clientId) ?? new Map<string, ActiveRequest>()
                 requests.set(requestKey(request.id), {
                   requestId: RpcMessage.RequestId(request.id),
@@ -2299,9 +2310,7 @@ const runWithRuntime = Effect.fnUntraced(function*(
                   cancelled: false,
                   httpPost: httpRequest === undefined ? undefined : httpPostResponses.get(httpRequest),
                   progressState,
-                  subscriptionCompleted: request.tag === "subscriptions/listen"
-                    ? yield* Deferred.make<void>()
-                    : undefined
+                  subscriptionCompleted
                 })
                 activeRequests.set(clientId, requests)
               }
@@ -2379,17 +2388,14 @@ const runWithRuntime = Effect.fnUntraced(function*(
         }
       }).pipe(Effect.onExit(() =>
         Effect.gen(function*() {
-          const pending = Array.from(activeRequests.values()).flatMap((requests) =>
-            Array.from(requests.values()).flatMap((request) =>
-              !request.cancelled && request.subscriptionCompleted !== undefined ? [request.subscriptionCompleted] : []
-            )
-          )
-          if (pending.length === 0) return
           yield* Deferred.succeed(subscriptionShutdown, undefined)
+          if (openSubscriptions.size === 0) return
           // A peer that stops reading must not hold server shutdown indefinitely.
-          yield* Effect.all(pending.map(Deferred.await), { discard: true }).pipe(Effect.timeoutOption("1 second"))
-          shutdownComplete = true
-          yield* Deferred.succeed(subscriptionWritesClosed, undefined)
+          const settled = yield* Effect.all(
+            Array.from(openSubscriptions, (completed) => Deferred.await(completed)),
+            { discard: true }
+          ).pipe(Effect.timeoutOption("1 second"))
+          if (Option.isNone(settled)) yield* Deferred.succeed(subscriptionWritesClosed, undefined)
         })
       ))
     }
@@ -2471,7 +2477,6 @@ const runWithRuntime = Effect.fnUntraced(function*(
         notificationTails.set(clientId, completed)
         const delivery = Effect.gen(function*() {
           if (previous !== undefined) yield* Deferred.await(previous)
-          if (notification._tag === "Progress" && queued.progressState?.active !== true) return
           const projected = yield* selectedProtocol.projectNotification(notification)
           if (projected === undefined) {
             return
@@ -2513,6 +2518,8 @@ const runWithRuntime = Effect.fnUntraced(function*(
             return
           }
           const encoded = yield* selectedProtocol.payloadCodecs(rpc).encode(projected.payload)
+          // Cancellation or completion may happen while projection or encoding is suspended.
+          if (notification._tag === "Progress" && queued.progressState?.active !== true) return
           yield* patchedProtocol.send(clientId, {
             _tag: "Request",
             id: "",
