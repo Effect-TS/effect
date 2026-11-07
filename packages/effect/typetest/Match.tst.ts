@@ -297,6 +297,19 @@ describe("Match", () => {
     )
   })
 
+  it("tags removes only the tags with a defined handler from the remaining input", () => {
+    Match.value(taggedInput).pipe(
+      Match.tags({ A: undefined, B: (value) => value.b }),
+      Match.orElse((value) => {
+        expect(value).type.toBe<{ readonly _tag: "A"; readonly a: string }>()
+      })
+    )
+
+    // an `undefined` handler cannot prove a tag handled
+    // @ts-expect-error is not assignable to
+    Match.value(taggedInput).pipe(Match.tags({ A: undefined, B: (value) => value.b }), Match.exhaustive)
+  })
+
   it("literalsExhaustive narrows each literal handler and rejects missing and unknown literals", () => {
     expect(
       Match.value(status).pipe(
