@@ -1416,10 +1416,7 @@ export const makeProtocolWithHttpEffect: (
     ))
     if (queue.state._tag === "Done") {
       // Dispatch may have failed after the initial chunk was taken.
-      const exit = queue.state.exit
-      if (exit._tag === "Failure" && !Pull.isDoneCause(exit.cause)) {
-        return yield* Effect.failCause(exit.cause as Cause.Cause<never>)
-      }
+      yield* Pull.doneExitFromCause<Cause.Done>(queue.state.exit.cause)
       return HttpServerResponse.uint8Array(initialChunk.length === 1 ? initialChunk[0] : Bytes.concat(initialChunk), {
         contentType: serialization.contentType
       })
