@@ -821,6 +821,64 @@ describe("OpenAiLanguageModel", () => {
             Effect.provide(makeTestLayer({ body: { output: [makeWebSearchCall(), makeTextOutput("Answer")] } }))
           ))
 
+        it.effect("references stored provider-executed items by their stored item ID", () =>
+          Effect.gen(function*() {
+            const cases = [
+              {
+                toolkit: McpToolkit,
+                content: [
+                  Prompt.toolCallPart({
+                    id: "mcp_tool_call_1",
+                    name: "OpenAiMcp",
+                    params: { packageName: "effect" },
+                    providerExecuted: true
+                  }),
+                  Prompt.toolResultPart({
+                    id: "mcp_tool_call_1",
+                    name: "OpenAiMcp",
+                    isFailure: false,
+                    result: { type: "mcp_call", name: "CheckPackage", output: "ok" },
+                    providerExecuted: true,
+                    options: { openai: { itemId: "mcp_call_123" } }
+                  })
+                ],
+                expected: [{ type: "item_reference", id: "mcp_call_123" }]
+              },
+              {
+                toolkit: Toolkit.make(OpenAiTool.WebSearch({})),
+                content: [
+                  providerExecutedCall,
+                  Prompt.toolResultPart({
+                    ...providerExecutedResult,
+                    id: "ws_2",
+                    options: { openai: { itemId: "ws_2" } }
+                  })
+                ],
+                expected: [{ type: "item_reference", id: "ws_1" }, { type: "item_reference", id: "ws_2" }]
+              }
+            ]
+
+            yield* Effect.forEach(cases, ({ content, toolkit }) =>
+              LanguageModel.generateText({
+                prompt: Prompt.make([{ role: "assistant", content }]),
+                toolkit,
+                disableToolCallResolution: true
+              }))
+
+            const requests = yield* MockHttpClient.requests
+            const inputs = yield* Effect.forEach(requests, (request) =>
+              getRequestBody(request).pipe(Effect.map((body) => body.input)))
+            assert.deepStrictEqual(
+              inputs,
+              cases.map(({ expected }) =>
+                expected
+              )
+            )
+          }).pipe(
+            Effect.provide(OpenAiLanguageModel.model("gpt-4o-mini", { store: true })),
+            Effect.provide(makeTestLayer())
+          ))
+
         it.effect("replays matched provider-executed history inline", () =>
           Effect.gen(function*() {
             yield* LanguageModel.generateText({
