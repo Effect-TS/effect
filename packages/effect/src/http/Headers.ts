@@ -153,6 +153,10 @@ export const empty: Headers = Object.create(Proto)
  *
  * Header names are normalized to lowercase. Array values in record input and repeated names in iterable input are joined with `", "`, and `undefined` values are omitted.
  *
+ * **Gotchas**
+ *
+ * A comma-joined `Set-Cookie` value is not safe to forward as a single header. Use `response.cookies` for structured cookies on HTTP client responses.
+ *
  * @stability unstable
  * @category constructors
  * @since 4.0.0
