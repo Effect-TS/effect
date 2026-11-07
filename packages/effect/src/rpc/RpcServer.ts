@@ -1356,12 +1356,9 @@ export const makeProtocolWithHttpEffect: (
       end: Queue.end(queue)
     }
 
-    yield* Scope.addFinalizerExit(scope, () => {
-      clients.delete(id)
-      clientIds.delete(id)
-      Queue.offerUnsafe(disconnects, id)
-      if (queue.state._tag === "Done") return Effect.void
-      return Effect.andThen(
+    // Ends the response and interrupts its requests, unless the response has already completed.
+    const terminate = Effect.suspend(() =>
+      queue.state._tag === "Done" ? Effect.void : Effect.andThen(
         Queue.shutdown(queue),
         Effect.forEach(
           requestIds,
@@ -1369,6 +1366,12 @@ export const makeProtocolWithHttpEffect: (
           { discard: true }
         )
       )
+    )
+    yield* Scope.addFinalizerExit(scope, () => {
+      clients.delete(id)
+      clientIds.delete(id)
+      Queue.offerUnsafe(disconnects, id)
+      return terminate
     })
     clients.set(id, client)
     clientIds.add(id)
@@ -1403,7 +1406,8 @@ export const makeProtocolWithHttpEffect: (
     }
 
     // Framed responses use a bounded queue, so dispatch must run while the response drains it.
-    yield* Effect.forkIn(dispatch, scope, { startImmediately: true })
+    // A failed dispatch terminates the response, as it would when run inline.
+    yield* Effect.forkIn(Effect.onError(dispatch, () => terminate), scope, { startImmediately: true })
 
     const initialChunk = yield* Effect.interruptible(Pull.catchDone(
       Queue.takeAll(queue as Queue.Dequeue<Uint8Array, Cause.Done>),
