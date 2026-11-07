@@ -911,7 +911,7 @@ describe("RpcServer", () => {
       )
       const { dispose, handler } = HttpRouter.toWebHandler(Server)
       yield* Effect.addFinalizer(() => Effect.promise(dispose))
-      // completes only with a full, successful body
+      // true only for a successful status and a complete body
       const post = (body: string) =>
         Effect.promise(() =>
           handler(new Request("http://test/rpc", { method: "POST", body })).then((r) =>

@@ -1356,7 +1356,7 @@ export const makeProtocolWithHttpEffect: (
       end: Queue.end(queue)
     }
 
-    // Ends the response with `cause` and interrupts its requests, unless the response has already completed.
+    // Ends an unfinished response, failing it with `cause` when given, and interrupts its requests.
     const terminate = (cause?: Cause.Cause<never>) =>
       Effect.suspend(() => {
         if (queue.state._tag === "Done") return Effect.void
@@ -1406,8 +1406,7 @@ export const makeProtocolWithHttpEffect: (
       })
     }
 
-    // Framed responses use a bounded queue, so dispatch must run while the response drains it.
-    // A failed dispatch fails the response with its cause, as it would when run inline.
+    // Dispatch concurrently so the bounded queue can drain; a failed dispatch fails the response.
     yield* Effect.forkIn(Effect.onError(dispatch, terminate), scope, { startImmediately: true })
 
     const initialChunk = yield* Effect.interruptible(Pull.catchDone(
@@ -1415,7 +1414,7 @@ export const makeProtocolWithHttpEffect: (
       () => Effect.succeed([])
     ))
     if (queue.state._tag === "Done") {
-      // Dispatch may have failed after the initial chunk was taken.
+      // A failed dispatch may have completed the queue after the initial chunk was taken.
       yield* Pull.doneExitFromCause<Cause.Done>(queue.state.exit.cause)
       return HttpServerResponse.uint8Array(initialChunk.length === 1 ? initialChunk[0] : Bytes.concat(initialChunk), {
         contentType: serialization.contentType
