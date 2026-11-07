@@ -1056,7 +1056,7 @@ const prepareMessages = Effect.fnUntraced(
                 }
 
                 const result = part.providerExecuted
-                  ? providerExecutedParts.find((candidate) =>
+                  ? providerExecutedParts.find((candidate): candidate is Prompt.ToolResultPart =>
                     candidate.type === "tool-result" && candidate.id === part.id && candidate.name === part.name
                   )
                   : undefined
@@ -1078,7 +1078,7 @@ const prepareMessages = Effect.fnUntraced(
                   ) {
                     break
                   }
-                  if (Predicate.isUndefined(result) || result.type !== "tool-result") {
+                  if (Predicate.isUndefined(result)) {
                     return yield* unreplayableProviderItem(part.name, part.id)
                   }
                   if (
