@@ -164,6 +164,20 @@ export interface Latch {
 export const makeUnsafe: (open?: boolean | undefined) => Latch = internal.makeLatchUnsafe
 
 /**
+ * Checks whether a value is a `Latch`.
+ *
+ * **When to use**
+ *
+ * Use to validate unknown values at runtime boundaries before treating them as
+ * `Latch` values.
+ *
+ * @stability stable
+ * @category guards
+ * @since 4.1.2
+ */
+export const isLatch: (u: unknown) => u is Latch = internal.isLatch
+
+/**
  * Creates a `Latch` inside `Effect`.
  *
  * **When to use**

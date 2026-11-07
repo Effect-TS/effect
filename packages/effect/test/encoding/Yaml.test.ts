@@ -1,10 +1,23 @@
 import { assert, describe, it } from "@effect/vitest"
+import { Result } from "effect"
 import * as Yaml from "effect/encoding/Yaml"
+
+const parse = (input: string): unknown => Result.getOrThrow(Yaml.parse(input))
+
+const parseAll = (input: string): unknown => Result.getOrThrow(Yaml.parseAll(input))
+
+const failureMessage = (input: string, decode: typeof Yaml.parse | typeof Yaml.parseAll = Yaml.parse): string => {
+  const error = Result.getOrThrow(Result.flip(decode(input)))
+  assert.strictEqual(error.kind, "Decode")
+  assert.strictEqual(error.module, "Yaml")
+  assert.strictEqual(error.input, input)
+  return error.message
+}
 
 describe("Yaml", () => {
   it("parses nested block and flow collections", () => {
     assert.deepStrictEqual(
-      Yaml.parse(`
+      parse(`
 name: effect
 enabled: true
 ports: [3000, 3001]
@@ -33,7 +46,7 @@ database:
 
   it("parses quoted and block scalars", () => {
     assert.deepStrictEqual(
-      Yaml.parse(`
+      parse(`
 quoted: "line\\nvalue"
 literal: |
   first
@@ -52,7 +65,7 @@ folded: >-
 
   it("preserves paragraph and indentation breaks in folded block scalars", () => {
     assert.deepStrictEqual(
-      Yaml.parse(`
+      parse(`
 paragraph: >-
   first
 
@@ -90,7 +103,7 @@ indented: >-
     ["whitespace-only content", "message: |\n  a\n    \n  b\n", "a\n  \nb\n"],
     ["explicit-indicator leading whitespace", "message: |1\n   \n  x\n", "  \n x\n"]
   ])("preserves %s", (_, source, expected) => {
-    assert.deepStrictEqual(Yaml.parse(source), { message: expected })
+    assert.deepStrictEqual(parse(source), { message: expected })
   })
 
   describe.each(["|", ">"])("block scalar chomping (%s)", (style) => {
@@ -103,7 +116,7 @@ indented: >-
       ["empty keep", "+", "", ""],
       ["keep with only empty lines", "+", "\n\n", "\n\n"]
     ])("applies %s before a sibling key", (_, chomp, content, expected) => {
-      assert.deepStrictEqual(Yaml.parse(`message: ${style}${chomp}\n${content}next: 1\n`), {
+      assert.deepStrictEqual(parse(`message: ${style}${chomp}\n${content}next: 1\n`), {
         message: expected,
         next: 1
       })
@@ -115,12 +128,12 @@ indented: >-
       ["keep without a final line break", "+", "  text", "text"],
       ["keep with trailing empty lines", "+", "  text\n\n\n", "text\n\n\n"]
     ])("applies %s at end-of-input", (_, chomp, content, expected) => {
-      assert.deepStrictEqual(Yaml.parse(`message: ${style}${chomp}\n${content}`), { message: expected })
+      assert.deepStrictEqual(parse(`message: ${style}${chomp}\n${content}`), { message: expected })
     })
   })
 
   it("parses YAML 1.2.2 example 8.6 (empty scalar chomping)", () => {
-    assert.deepStrictEqual(Yaml.parse("strip: >-\n\nclip: >\n\nkeep: |+\n\n"), {
+    assert.deepStrictEqual(parse("strip: >-\n\nclip: >\n\nkeep: |+\n\n"), {
       strip: "",
       clip: "",
       keep: "\n"
@@ -128,7 +141,7 @@ indented: >-
   })
 
   it("preserves kept trailing lines in block sequence entries", () => {
-    assert.deepStrictEqual(Yaml.parse("- |+\n  first\n\n- second\n"), ["first\n\n", "second"])
+    assert.deepStrictEqual(parse("- |+\n  first\n\n- second\n"), ["first\n\n", "second"])
   })
 
   it.each([
@@ -136,19 +149,19 @@ indented: >-
     [">-", "\n    first\n    second\n\n", "\nfirst second"],
     ["|2+", "    # text\n\n", "  # text\n\n"]
   ])("ends %s scalars before less-indented comments", (indicator, content, expected) => {
-    assert.deepStrictEqual(Yaml.parse(`message: ${indicator}\n${content} # outside\nnext: 1\n`), {
+    assert.deepStrictEqual(parse(`message: ${indicator}\n${content} # outside\nnext: 1\n`), {
       message: expected,
       next: 1
     })
   })
 
   it("rejects less-indented block scalar content", () => {
-    assert.throws(() => Yaml.parse("message: |\n    first\n  second\nnext: 1\n"), SyntaxError)
+    failureMessage("message: |\n    first\n  second\nnext: 1\n")
   })
 
   it("resolves aliases", () => {
     assert.deepStrictEqual(
-      Yaml.parse(`
+      parse(`
 defaults: &defaults
   host: localhost
   port: 5432
@@ -163,11 +176,11 @@ development:
   })
 
   it("rejects invalid indentation", () => {
-    assert.throws(() => Yaml.parse("root:\n   child: true\n  sibling: false\n"))
+    failureMessage("root:\n   child: true\n  sibling: false\n")
   })
 
   it("allows tabs on comment and blank lines outside scalars", () => {
-    assert.deepStrictEqual(Yaml.parse("a: 1\n\t# comment\n\t\nb: 2\n"), { a: 1, b: 2 })
+    assert.deepStrictEqual(parse("a: 1\n\t# comment\n\t\nb: 2\n"), { a: 1, b: 2 })
   })
 
   it.each([
@@ -177,11 +190,11 @@ development:
     ["single-quoted continuation", "text: 'a\n\tb'\n"],
     ["double-quoted continuation", "text: \"a\n\tb\"\n"]
   ])("rejects tabs in %s", (_, source) => {
-    assert.throws(() => Yaml.parse(source), /Tabs cannot be used for YAML indentation/)
+    assert.match(failureMessage(source), /Tabs cannot be used for YAML indentation/)
   })
 
   it("rejects leading empty lines more indented than the first block content line", () => {
-    assert.throws(() => Yaml.parse("text: |\n    \n  \tx\n"), SyntaxError)
+    failureMessage("text: |\n    \n  \tx\n")
   })
 
   // YAML 1.2.2 §8.2.1: a mapping value's block sequence may be indentless.
@@ -228,7 +241,7 @@ development:
         }
       }
     ])("parses $name", ({ source, expected }) => {
-      assert.deepStrictEqual(Yaml.parse(source), expected)
+      assert.deepStrictEqual(parse(source), expected)
     })
   })
 
@@ -247,18 +260,18 @@ development:
         expected: { items: [{ name: "a", age: 1 }, { name: "b", age: 2 }] }
       }
     ])("parses $name", ({ source, expected }) => {
-      assert.deepStrictEqual(Yaml.parse(source), expected)
+      assert.deepStrictEqual(parse(source), expected)
     })
 
     it.each([
       ["two spaces", "-   name: a\n  age: 1\n"],
       ["three spaces", "-   name: a\n   age: 1\n"]
     ])("rejects a later key indented by %s", (_, source) => {
-      assert.throws(() => Yaml.parse(source), SyntaxError)
+      failureMessage(source)
     })
 
     it("rejects a tab before the first key", () => {
-      assert.throws(() => Yaml.parse("- \tname: a\n   age: 1\n"), /Tabs cannot be used for YAML indentation/)
+      assert.match(failureMessage("- \tname: a\n   age: 1\n"), /Tabs cannot be used for YAML indentation/)
     })
   })
 
@@ -317,20 +330,20 @@ development:
       ["double quote starting a plain continuation", "description: Deploy\n  \"it # end\n", "Deploy \"it"],
       ["bracket and quote inside plain text", "description: plain [ a 'quote # comment\n", "plain [ a 'quote"]
     ])("folds %s", (_, source, expected) => {
-      assert.deepStrictEqual(Yaml.parse(source), { description: expected })
+      assert.deepStrictEqual(parse(source), { description: expected })
       const nested = source.split(/\r?\n/).map((line) => `  ${line}`).join("\n")
-      assert.deepStrictEqual(Yaml.parse(`metadata:\n${nested}`), { metadata: { description: expected } })
+      assert.deepStrictEqual(parse(`metadata:\n${nested}`), { metadata: { description: expected } })
     })
 
     it("ends plain scalars at sibling keys after terminating comments", () => {
       assert.deepStrictEqual(
-        Yaml.parse("description: Deploy\n  and verify. # end\n# between keys\nenabled: true\n"),
+        parse("description: Deploy\n  and verify. # end\n# between keys\nenabled: true\n"),
         { description: "Deploy and verify.", enabled: true }
       )
     })
 
     it("folds plain sequence items", () => {
-      assert.deepStrictEqual(Yaml.parse("- Deploy\n  and verify.\n- Finish\n"), ["Deploy and verify.", "Finish"])
+      assert.deepStrictEqual(parse("- Deploy\n  and verify.\n- Finish\n"), ["Deploy and verify.", "Finish"])
     })
   })
 
@@ -352,7 +365,7 @@ development:
         ["multiline plain values", "a: [b\n  c, d\n\n  e]\n", { a: ["b c", "d\ne"] }]
       ] as const
     )("parses %s", (_, source, expected) => {
-      assert.deepStrictEqual(Yaml.parse(source), expected)
+      assert.deepStrictEqual(parse(source), expected)
     })
 
     it.each([
@@ -360,7 +373,7 @@ development:
       ["unterminated collection before a sibling key", "a: [1,\n  2\nb: 3\n"],
       ["content after the closing bracket", "a: [1,\n  2] extra\n"]
     ])("rejects %s", (_, source) => {
-      assert.throws(() => Yaml.parse(source), SyntaxError)
+      failureMessage(source)
     })
   })
 
@@ -382,12 +395,12 @@ development:
       ["tab-indented scalar", "description:\n\tDeploy\n"],
       ["duplicate key", "description: first\ndescription: second\n"]
     ])("rejects %s", (_, source) => {
-      assert.throws(() => Yaml.parse(source), SyntaxError)
+      failureMessage(source)
     })
 
     it("preserves numeric decoding and quoted colon content", () => {
       assert.deepStrictEqual(
-        Yaml.parse("description: 123\nquoted: 'Use when: deploy'\ntrailing: \"Deploy:\"\n"),
+        parse("description: 123\nquoted: 'Use when: deploy'\ntrailing: \"Deploy:\"\n"),
         { description: 123, quoted: "Use when: deploy", trailing: "Deploy:" }
       )
     })
@@ -408,10 +421,10 @@ development:
       ["invalid mapping indentation", "broken:\n   child: true\n  sibling: false\n"],
       ["duplicate keys", "broken: one\nbroken: two\n"]
     ])("rejects %s alone and before or after valid shapes", (_, malformed) => {
-      assert.throws(() => Yaml.parse(malformed), SyntaxError)
-      for (const [name, source] of shapes) {
-        assert.throws(() => Yaml.parse(malformed + source), SyntaxError, undefined, `before ${name}`)
-        assert.throws(() => Yaml.parse(source + malformed), SyntaxError, undefined, `after ${name}`)
+      failureMessage(malformed)
+      for (const [, source] of shapes) {
+        failureMessage(malformed + source)
+        failureMessage(source + malformed)
       }
     })
   })
@@ -428,7 +441,7 @@ development:
       ["single-line nested sequence", "- - 1\n"],
       ["empty nested entry", "- -\n"]
     ])("rejects %s", (_, source) => {
-      assert.throws(() => Yaml.parse(source), SyntaxError)
+      failureMessage(source)
     })
 
     it.each(
@@ -437,7 +450,7 @@ development:
         ["sequence item", "- one\n  - two\n", ["one - two"]]
       ] as const
     )("preserves a dash in a plain continuation of a %s", (_, source, expected) => {
-      assert.deepStrictEqual(Yaml.parse(source), expected)
+      assert.deepStrictEqual(parse(source), expected)
     })
   })
 
@@ -449,19 +462,98 @@ development:
       ["...", ""],
       ["...", " # comment"]
     ])("preserves indented %s%s as a mapping value", (marker, suffix) => {
-      assert.deepStrictEqual(Yaml.parse(`a:\n  ${marker}${suffix}\n`), { a: marker })
-      assert.deepStrictEqual(Yaml.parse(`metadata:\n  a:\n    ${marker}${suffix}\n`), { metadata: { a: marker } })
+      assert.deepStrictEqual(parse(`a:\n  ${marker}${suffix}\n`), { a: marker })
+      assert.deepStrictEqual(parse(`metadata:\n  a:\n    ${marker}${suffix}\n`), { metadata: { a: marker } })
+    })
+
+    // YAML 1.2.2 §9.2: a stream holds any number of documents. Expected values were checked with yaml 2.9.1.
+    it.each(
+      [
+        ["mappings", "a: 1\n---\nb: 2\n", [{ a: 1 }, { b: 2 }]],
+        ["sequences", "- one\n---\n- two\n", [["one"], ["two"]]],
+        ["plain scalars", "one\n---\ntwo\n", ["one", "two"]],
+        ["explicit initial marker", "---\na: 1\n--- # second document\nb: 2\n", [{ a: 1 }, { b: 2 }]],
+        ["empty first document", "---\n---\nb: 2\n", [null, { b: 2 }]],
+        ["empty trailing document", "a: 1\n---\n", [{ a: 1 }, null]],
+        ["end marker before a start marker", "a: 1\n...\n---\nb: 2\n", [{ a: 1 }, { b: 2 }]],
+        ["bare document after an end marker", "a: 1\n...\nb: 2\n", [{ a: 1 }, { b: 2 }]],
+        ["content on start marker lines", "--- a\n--- [1, 2]\n--- &x {b: 1}\n", ["a", [1, 2], { b: 1 }]],
+        ["start marker content after a mapping", "a: 1\n--- {b: 2}\n--- \"x: y\"\n", [{ a: 1 }, { b: 2 }, "x: y"]],
+        ["an anchored empty document", "--- &a\n--- b\n", [null, "b"]],
+        [
+          "quoted hashes on start marker lines",
+          "--- \"a # b\"\n--- 'a # b'\n--- [\"a # b\"]\n",
+          ["a # b", "a # b", ["a # b"]]
+        ],
+        [
+          "separation whitespace after markers and directives",
+          "a: 1\n... \t\n%YAML\t1.2 \n---\nb: 2\n",
+          [{ a: 1 }, { b: 2 }]
+        ],
+        ["byte order marks in document prefixes", "1\n...\n\uFEFF---\n2\n...\n\uFEFF%YAML 1.2\n---\n3\n", [1, 2, 3]]
+      ] as const
+    )("parses a stream of %s with parseAll and rejects it in parse", (_, source, expected) => {
+      assert.deepStrictEqual(parseAll(source), expected)
+      assert.match(failureMessage(source), /parseAll/)
     })
 
     it.each([
-      ["mappings", "a: 1\n---\nb: 2\n"],
-      ["sequences", "- one\n---\n- two\n"],
-      ["plain scalars", "one\n---\ntwo\n"],
-      ["explicit initial marker", "---\na: 1\n--- # second document\nb: 2\n"],
-      ["empty first document", "---\n---\nb: 2\n"],
-      ["empty trailing document", "a: 1\n---\n"]
-    ])("rejects a document stream containing %s", (_, source) => {
-      assert.throws(() => Yaml.parse(source), SyntaxError)
+      ["empty input", ""],
+      ["comment-only input", "# comment\n\n"]
+    ])("parses %s as an empty stream", (_, source) => {
+      assert.deepStrictEqual(parseAll(source), [])
+    })
+
+    // yaml 2.9.1 reports an extra empty document for example 9.3; the expected values follow the spec.
+    it.each(
+      [
+        [
+          "2.7",
+          "# Ranking of 1998 home runs\n---\n- Mark McGwire\n- Sammy Sosa\n- Ken Griffey\n\n# Team ranking\n---\n- Chicago Cubs\n- St Louis Cardinals\n",
+          [["Mark McGwire", "Sammy Sosa", "Ken Griffey"], ["Chicago Cubs", "St Louis Cardinals"]]
+        ],
+        [
+          "2.8",
+          "---\ntime: 20:03:20\nplayer: Sammy Sosa\naction: strike (miss)\n...\n---\ntime: 20:03:47\nplayer: Sammy Sosa\naction: grand slam\n...\n",
+          [
+            { time: "20:03:20", player: "Sammy Sosa", action: "strike (miss)" },
+            { time: "20:03:47", player: "Sammy Sosa", action: "grand slam" }
+          ]
+        ],
+        ["9.2", "%YAML 1.2\n---\nDocument\n... # Suffix\n", ["Document"]],
+        [
+          "9.3",
+          "Bare\ndocument\n...\n# No document\n...\n|\n%!PS-Adobe-2.0 # Not the first line\n",
+          ["Bare document", "%!PS-Adobe-2.0 # Not the first line\n"]
+        ],
+        ["9.4", "---\n{ matches\n% : 20 }\n...\n---\n# Empty\n...\n", [{ "matches %": 20 }, null]],
+        ["9.5", "%YAML 1.2\n--- |\n%!PS-Adobe-2.0\n...\n%YAML 1.2\n---\n# Empty\n...\n", ["%!PS-Adobe-2.0\n", null]],
+        ["9.6", "Document\n---\n# Empty\n...\n%YAML 1.2\n---\nmatches %: 20\n", ["Document", null, { "matches %": 20 }]]
+      ] as const
+    )("parses YAML 1.2.2 example %s with parseAll", (_, source, expected) => {
+      assert.deepStrictEqual(parseAll(source), expected)
+    })
+
+    it("scopes anchors to their document", () => {
+      assert.deepStrictEqual(parseAll("a: &x 1\nb: *x\n---\nc: &x 2\nd: *x\n"), [{ a: 1, b: 1 }, { c: 2, d: 2 }])
+      assert.match(failureMessage("a: &x 1\n---\nb: *x\n", Yaml.parseAll), /alias/)
+    })
+
+    // YAML 1.2.2 §§6.8 and 9.2: only %YAML 1.2 is processed, and directives must precede a start marker.
+    it.each([
+      ["a directive without a start marker", "%YAML 1.2\na: 1\n"],
+      ["a directive after a bare document", "a: 1\n%YAML 1.2\n---\nb: 2\n"],
+      ["an unsupported YAML version", "%YAML 1.1\n---\na: yes\n"],
+      ["a YAML directive with extra parameters", "%YAML 1.2 x\n---\na\n"],
+      ["a TAG directive", "%TAG !e! tag:example.com,2000:\n---\na: 1\n"],
+      ["an indented plain scalar starting with %", "a:\n  %foo\nb: 1\n"],
+      ["content after an end marker following a mapping", "a: 1\n... trailing: 2\n"],
+      ["a non-separation character after an end marker", "a: 1\n... \u00A0\n"],
+      ["a non-separation character before an end marker comment", "a: 1\n... \u00A0 # tail\n"],
+      ["an unsupported YAML version after a byte order mark", "1\n...\n\uFEFF%YAML 1.1\n---\na: yes\n"]
+    ])("rejects %s", (_, source) => {
+      failureMessage(source)
+      failureMessage(source, Yaml.parseAll)
     })
 
     it.each(
@@ -469,10 +561,12 @@ development:
         ["mapping", "# before\n--- # start\na: 1\n... # end\n# after\n", { a: 1 }],
         ["sequence", "---\n- one\n- two\n...\n", ["one", "two"]],
         ["plain scalar", "---\none\n...\n", "one"],
-        ["empty document", "---\n...\n", null]
+        ["empty document", "---\n...\n", null],
+        ["anchored empty document", "--- &a\n...\n", null],
+        ["%YAML 1.2 directive", "%YAML 1.2\n---\nDocument\n... # Suffix\n", "Document"]
       ] as const
     )("preserves single-document markers around a %s", (_, source, expected) => {
-      assert.deepStrictEqual(Yaml.parse(source), expected)
+      assert.deepStrictEqual(parse(source), expected)
     })
   })
 
@@ -488,7 +582,7 @@ items:
   - <<: *base
     a: 5
 `
-      const result = Yaml.parse(source)
+      const result = parse(source)
       assert.deepStrictEqual(result, {
         base: { a: 1, b: 2 },
         other: { b: 3, c: 4 },
@@ -500,13 +594,13 @@ items:
     })
 
     it("treats quoted merge keys as ordinary keys", () => {
-      assert.deepStrictEqual(Yaml.parse("\"<<\": 1\nflow: {'<<': 2}\n"), { "<<": 1, flow: { "<<": 2 } })
+      assert.deepStrictEqual(parse("\"<<\": 1\nflow: {'<<': 2}\n"), { "<<": 1, flow: { "<<": 2 } })
     })
 
     it.each(["<<: 1\n", "{<<: [{a: 1}, 2]}", "<<: {a: 1}\n<<: {b: 2}\n"])(
       "rejects invalid merge usage in %j",
       (source) => {
-        assert.throws(() => Yaml.parse(source), SyntaxError)
+        failureMessage(source)
       }
     )
   })
@@ -525,34 +619,34 @@ items:
         "Deploy # first # second"
       ]
     ])("resolves anchored multiline %s scalars", (_, source, expected) => {
-      assert.deepStrictEqual(Yaml.parse(source), { description: expected, alias: expected })
+      assert.deepStrictEqual(parse(source), { description: expected, alias: expected })
     })
 
     it("resolves anchored nested indentless sequences", () => {
       assert.deepStrictEqual(
-        Yaml.parse("metadata:\n  tools: &tools\n  - Read\n  - Bash\n  alias: *tools\n"),
+        parse("metadata:\n  tools: &tools\n  - Read\n  - Bash\n  alias: *tools\n"),
         { metadata: { tools: ["Read", "Bash"], alias: ["Read", "Bash"] } }
       )
     })
 
     it("resolves anchors defined inside flow collections", () => {
       assert.deepStrictEqual(
-        Yaml.parse("mapping: {a: &value 1, b: *value}\nsequence: [&item one, *item, &empty, *empty]\nalias: *value\n"),
+        parse("mapping: {a: &value 1, b: *value}\nsequence: [&item one, *item, &empty, *empty]\nalias: *value\n"),
         { mapping: { a: 1, b: 1 }, sequence: ["one", "one", null, null], alias: 1 }
       )
     })
 
     it.each(["{a: &}", "[&item[1]]", "[&first &second 1]"])("rejects invalid flow anchor %s", (source) => {
-      assert.throws(() => Yaml.parse(source), SyntaxError)
+      failureMessage(source)
     })
 
     it("preserves hashes in JSON-style flow strings without colon spacing", () => {
-      assert.deepStrictEqual(Yaml.parse("{\"description\":\"Deploy # now\"} # end\n"), { description: "Deploy # now" })
+      assert.deepStrictEqual(parse("{\"description\":\"Deploy # now\"} # end\n"), { description: "Deploy # now" })
     })
 
     it("preserves hashes in single- and double-quoted flow sequence items", () => {
       assert.deepStrictEqual(
-        Yaml.parse("descriptions: [\"Deploy # now\", 'Verify # later'] # end\n"),
+        parse("descriptions: [\"Deploy # now\", 'Verify # later'] # end\n"),
         { descriptions: ["Deploy # now", "Verify # later"] }
       )
     })
