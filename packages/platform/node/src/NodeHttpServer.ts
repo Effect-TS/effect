@@ -115,10 +115,11 @@ export interface Options extends Net.ListenOptions {
   readonly disablePreemptiveShutdown?: boolean | undefined
   /**
    * Bounds how long shutdown waits for the server to close its connections
-   * before it interrupts the remaining request fibers. Handlers run
-   * uninterruptibly unless wrapped in `Effect.interruptible` or served by
-   * interruptible `HttpRouter` routes, so shutdown still waits for them after
-   * the timeout.
+   * before it interrupts the remaining request fibers. Upgraded connections
+   * such as WebSockets are closed as soon as shutdown starts, since they never
+   * drain on their own. Handlers run uninterruptibly unless wrapped in
+   * `Effect.interruptible` or served by interruptible `HttpRouter` routes, so
+   * shutdown still waits for them after the timeout.
    *
    * @default "20 seconds"
    */
@@ -262,22 +263,40 @@ export const make = Effect.fnUntraced(function*(
         middleware: middleware as any,
         scope
       })
+      // `server.close` waits for upgraded connections, which never drain on their own, so
+      // shutdown destroys them before the graceful wait.
+      let upgradesClosed = false
+      const upgradedSockets = new Set<Duplex>()
+      const trackedUpgrade = (request: Http.IncomingMessage, socket: Duplex, head: Buffer) => {
+        if (upgradesClosed) {
+          socket.destroy()
+          return
+        }
+        upgradedSockets.add(socket)
+        socket.once("close", () => upgradedSockets.delete(socket))
+        upgradeHandler(request, socket, head)
+      }
       const checkContinueHandler = (request: Http.IncomingMessage, response: Http.ServerResponse) => {
         pendingContinue.add(request)
         handler(request, response)
       }
-      yield* Scope.addFinalizerExit(serveScope, () =>
-        Effect.ensuring(
+      yield* Scope.addFinalizerExit(serveScope, () => {
+        upgradesClosed = true
+        for (const socket of upgradedSockets) {
+          socket.destroy()
+        }
+        return Effect.ensuring(
           preemptiveShutdown,
           Effect.sync(() => {
             server.off("request", handler)
             server.off("checkContinue", checkContinueHandler)
-            server.off("upgrade", upgradeHandler)
+            server.off("upgrade", trackedUpgrade)
           })
-        ))
+        )
+      })
       server.on("request", handler)
       server.on("checkContinue", checkContinueHandler)
-      server.on("upgrade", upgradeHandler)
+      server.on("upgrade", trackedUpgrade)
     })
   })
 })

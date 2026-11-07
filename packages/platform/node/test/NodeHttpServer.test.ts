@@ -1430,6 +1430,63 @@ describe("HttpServer", () => {
     )
   })
 
+  it.live.each([
+    { name: "default options", options: {} },
+    { name: "disablePreemptiveShutdown", options: { disablePreemptiveShutdown: true } },
+    { name: "clientTracking disabled", options: { websocket: { clientTracking: false } } }
+  ])(
+    "closes connected WebSocket clients without waiting for the grace period with $name",
+    ({ options }) =>
+      Effect.gen(function*() {
+        const server = Http.createServer()
+        const scope = yield* Scope.make()
+        yield* Effect.addFinalizer(() => Scope.close(scope, Exit.void))
+        yield* HttpRouter.add(
+          "GET",
+          "/ws",
+          Effect.gen(function*() {
+            const request = yield* HttpServerRequest.HttpServerRequest
+            const socket = yield* request.upgrade
+            yield* Stream.runDrain(Socket.toStream(socket)).pipe(Effect.ignore)
+            return HttpServerResponse.empty()
+          })
+        ).pipe(
+          (layer) => HttpRouter.serve(layer, { disableListenLog: true }),
+          Layer.provide(NodeHttpServer.layer(() => server, {
+            host: "127.0.0.1",
+            port: 0,
+            gracefulShutdownTimeout: "10 seconds",
+            ...options
+          })),
+          Layer.buildWithScope(scope)
+        )
+        // A peer that keeps reading but never answers the closing handshake
+        const client = yield* Effect.acquireRelease(
+          Effect.sync(() => Net.connect(tcpPort(server), "127.0.0.1")),
+          (client) => Effect.sync(() => client.destroy())
+        )
+        const clientClosed = Latch.makeUnsafe()
+        client.on("error", constVoid)
+        client.on("close", () => clientClosed.openUnsafe())
+        yield* Effect.callback<string>((resume) => {
+          let received = ""
+          client.write(upgradeRequest("/ws"))
+          client.on("data", (chunk) => {
+            received += chunk.toString("latin1")
+            if (received.includes("\r\n\r\n")) resume(Effect.succeed(received))
+          })
+        }).pipe(
+          Effect.timeout("2 seconds"),
+          Effect.map((head) => assert.match(head, /^HTTP\/1\.1 101 /))
+        )
+
+        // Finalizers are uninterruptible, so the timeout applies to the join
+        const closed = yield* Effect.forkDetach(Scope.close(scope, Exit.void))
+        yield* Fiber.join(closed).pipe(Effect.timeout("2 seconds"))
+        yield* clientClosed.await.pipe(Effect.timeout("1 second"))
+      })
+  )
+
   it.live("closes idle HTTP/2 sessions on shutdown", () =>
     Effect.gen(function*() {
       const server = Http2.createServer()
