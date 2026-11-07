@@ -731,6 +731,20 @@ export const PARSE_ERROR_CODE = -32700 as const
 export const HEADER_MISMATCH_ERROR_CODE = -32020 as const
 
 /**
+ * Represents the MCP error code for a request that requires an unavailable
+ * client capability.
+ *
+ * **Details**
+ *
+ * Defined by the [MCP capability error schema](https://modelcontextprotocol.io/specification/2026-07-28/schema#missingrequiredclientcapabilityerror).
+ *
+ * @stability unstable
+ * @category constants
+ * @since 4.1.3
+ */
+export const MISSING_REQUIRED_CLIENT_CAPABILITY_ERROR_CODE = -32021 as const
+
+/**
  * Represents the MCP error code returned when a server does not support the
  * protocol version requested by a client.
  *
@@ -828,6 +842,35 @@ export class InvalidParams extends Schema.Error<InvalidParams>("effect/ai/McpSch
 }) {}
 
 /**
+ * Represents an MCP request failure identifying the client capabilities needed
+ * to complete the request.
+ *
+ * **When to use**
+ *
+ * Use to fail a handler when the client cannot perform required elicitation,
+ * sampling, or roots requests.
+ *
+ * **Details**
+ *
+ * Carries `data.requiredCapabilities` as specified by the
+ * [MCP capability error schema](https://modelcontextprotocol.io/specification/2026-07-28/schema#missingrequiredclientcapabilityerror).
+ * MCP 2026-07-28 transports preserve error code `-32021`; legacy protocol
+ * adapters report invalid parameters with the same capability requirements.
+ *
+ * @stability unstable
+ * @category errors
+ * @since 4.1.3
+ */
+export class MissingRequiredClientCapability extends Schema.Error<MissingRequiredClientCapability>(
+  "effect/ai/McpSchema/MissingRequiredClientCapability"
+)({
+  ...McpErrorBase.fields,
+  _tag: Schema.tag("MissingRequiredClientCapability"),
+  code: Schema.tag(MISSING_REQUIRED_CLIENT_CAPABILITY_ERROR_CODE),
+  data: Schema.Struct({ requiredCapabilities: ClientCapabilities })
+}) {}
+
+/**
  * Represents an MCP/JSON-RPC error for unexpected internal server failures.
  *
  * **When to use**
@@ -865,6 +908,7 @@ export const McpError = Schema.Union([
   InvalidRequest,
   MethodNotFound,
   InvalidParams,
+  MissingRequiredClientCapability,
   InternalError,
   McpErrorBase
 ])
@@ -1269,12 +1313,27 @@ export class ListResourceTemplates extends Rpc.make("resources/templates/list", 
 /**
  * Schema for the server's response to a resources/read request from the client.
  *
+ * **Details**
+ *
+ * Optional `ttlMs` and `cacheScope` configure [MCP cache hints](https://modelcontextprotocol.io/specification/2026-07-28/server/utilities/caching)
+ * for a completed `2026-07-28` read. The defaults are zero milliseconds and
+ * private scope. Earlier revisions omit both fields. Retries with
+ * `inputResponses` or `requestState` are not cacheable.
+ *
+ * **Gotchas**
+ *
+ * Public scope permits sharing across authorization contexts. Use it only
+ * when the contents are safe to share with every caller. A private cache
+ * must be isolated by authorization context, such as the access token.
+ *
  * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
 export class ReadResourceResult extends Schema.Opaque<ReadResourceResult>()(Schema.Struct({
   ...ResultMeta.fields,
+  ttlMs: optional(Schema.Int.check(Schema.isGreaterThanOrEqualTo(0))),
+  cacheScope: optional(Schema.Literals(["private", "public"])),
   contents: Schema.Array(Schema.Union([TextResourceContents, BlobResourceContents]))
 })) {}
 

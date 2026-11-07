@@ -221,7 +221,10 @@ export interface ResourceRegistration {
   readonly visible?: Visible | undefined
   readonly read: (
     invocation: McpInvocation
-  ) => Effect.Effect<McpSchema.ReadResourceResult, ResourceNotFound | McpSchema.InternalError | RequestRejected>
+  ) => Effect.Effect<
+    OperationOutcome<McpSchema.ReadResourceResult>,
+    ResourceNotFound | McpSchema.InvalidParams | McpSchema.InternalError | RequestRejected
+  >
 }
 
 /**
@@ -237,7 +240,7 @@ export interface ResourceTemplateRegistration {
     params: ReadonlyArray<string>,
     invocation: McpInvocation
   ) => Effect.Effect<
-    McpSchema.ReadResourceResult,
+    OperationOutcome<McpSchema.ReadResourceResult>,
     ResourceNotFound | McpSchema.InvalidParams | McpSchema.InternalError | RequestRejected
   >
 }
@@ -259,7 +262,7 @@ export interface Resources {
     uri: string,
     invocation: McpInvocation
   ) => Effect.Effect<
-    McpSchema.ReadResourceResult,
+    OperationOutcome<McpSchema.ReadResourceResult>,
     ResourceNotFound | McpSchema.InvalidParams | McpSchema.InternalError | RequestRejected
   >
 }
