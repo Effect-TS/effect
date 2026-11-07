@@ -3,19 +3,17 @@
  * static skill.
  */
 import * as Cause from "../../Cause.ts"
-import * as Digest from "../../crypto/Digest.ts"
+import type * as Digest from "../../crypto/Digest.ts"
 import * as Effect from "../../Effect.ts"
-import * as Yaml from "../../encoding/Yaml.ts"
-import * as Mime from "../../http/Mime.ts"
-import * as Option from "../../Option.ts"
-import * as Predicate from "../../Predicate.ts"
 import * as Rpc from "../../rpc/Rpc.ts"
 import * as RpcGroup from "../../rpc/RpcGroup.ts"
 import * as Schema from "../../Schema.ts"
 import * as PublicMcpSchema from "../McpSchema.ts"
+import * as PublicSkill from "../Skill.ts"
 import type * as McpCore from "./mcpCore.ts"
 import * as McpProtocol from "./mcpProtocol.ts"
 import * as Stateless from "./mcpSchema/v2026_07_28.ts"
+import * as InternalSkill from "./skill.ts"
 
 /**
  * @internal
@@ -159,18 +157,6 @@ export const rejectCursor = (cursor: string | undefined) =>
 // =============================================================================
 
 /**
- * A file of a static skill as handed in, `SKILL.md` included, with its path
- * relative to the skill root.
- *
- * @internal
- */
-export interface SourceFile {
-  readonly path: string
-  readonly content: Uint8Array
-  readonly mimeType?: string | undefined
-}
-
-/**
  * A file of a static skill as served through `resources/read`.
  *
  * @internal
@@ -199,16 +185,6 @@ const TEXTUAL_APPLICATION_TYPES: ReadonlySet<string> = new Set([
   "image/svg+xml"
 ])
 
-/**
- * @internal
- */
-export const mimeTypeFor = (path: string): string => {
-  // The standard table maps `.ts` to MPEG transport streams, but a skill's
-  // `.ts` files are TypeScript scripts.
-  if (/\.ts$/i.test(path)) return "text/x-typescript"
-  return Option.getOrElse(Mime.getType(path), () => "application/octet-stream")
-}
-
 // `ignoreBOM` keeps a leading BOM in the decoded text, so re-encoding the text
 // reproduces exactly the bytes the manifest digest covers.
 const utf8 = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true })
@@ -233,26 +209,14 @@ const isSafeRelativePath = (path: string): boolean =>
 // neither leading nor trailing, at most 64 characters.
 const isSkillName = (name: string): boolean => name.length <= 64 && /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(name)
 
-const FRONTMATTER = /^\uFEFF?---\r?\n([\s\S]*?)\r?\n---[ \t]*(?:\r?\n|$)/
-
 /**
- * The YAML frontmatter of a `SKILL.md`, or `undefined` when the file does not
- * begin with a frontmatter block holding a YAML mapping.
+ * The JSON-normalized frontmatter of a skill document, preserving permissive
+ * remote validation independently of local bundle construction.
  *
  * @internal
  */
-export const parseFrontmatter = (markdown: string): Record<string, unknown> | undefined => {
-  const block = FRONTMATTER.exec(markdown)?.[1]
-  if (block === undefined) return undefined
-  try {
-    const parsed = Yaml.parse(block)
-    // The frontmatter is listed as JSON, so keep only what JSON carries:
-    // `.inf` and `.nan` become `null`.
-    return Predicate.isObject(parsed) ? JSON.parse(JSON.stringify(parsed)) : undefined
-  } catch {
-    return undefined
-  }
-}
+export const parseFrontmatter = (markdown: string): Record<string, unknown> | undefined =>
+  InternalSkill.parseDocument(markdown)?.frontmatter
 
 // The directory holding a skill's `SKILL.md`, given the `SKILL.md` URI.
 const skillRoot = (uri: string): string => uri.slice(0, -"/SKILL.md".length)
@@ -310,100 +274,70 @@ export const isDirectChild = (directory: string, child: string): boolean => {
   return name !== "" && name !== "." && name !== ".." && !name.includes("/")
 }
 
-const decodeFrontmatter = Schema.decodeUnknownEffect(PublicMcpSchema.SkillFrontmatter)
-
 /**
- * Validates a static skill against the extension's server requirements and
- * precomputes what the protocol serves: the manifest, with digests over the
- * exact bytes served, each file's resource metadata, and the directory tree
- * from the namespace root down.
+ * Builds protocol resource and directory records for an immutable local skill.
+ * Publication bounds and URI/name checks remain MCP-specific.
  *
  * @internal
  */
-export const makeStaticSkill = (options: {
+export const makeStaticSkill = Effect.fnUntraced(function*(options: {
   readonly uri: string
-  readonly files: ReadonlyArray<SourceFile>
-}): Effect.Effect<StaticSkill, Cause.IllegalArgumentError, Digest.Digest> =>
-  Effect.gen(function*() {
-    const { uri } = options
-    const fail = (reason: string) => Effect.fail(new Cause.IllegalArgumentError(`Skill ${uri}: ${reason}`))
+  readonly skill: PublicSkill.Skill
+}): Effect.fn.Return<StaticSkill, Cause.IllegalArgumentError, Digest.Digest> {
+  const { uri, skill } = options
+  const fail = (reason: string) => Effect.fail(new Cause.IllegalArgumentError(`Skill ${uri}: ${reason}`))
+  const schemeEnd = uri.indexOf("://")
+  if (schemeEnd <= 0 || !uri.endsWith("/SKILL.md")) {
+    return yield* fail("the URI must have the form <scheme>://<skill-path>/SKILL.md")
+  }
+  const scheme = uri.slice(0, schemeEnd + 3)
+  const skillPath = uri.slice(scheme.length, -"/SKILL.md".length)
+  if (!isSafeRelativePath(skillPath)) {
+    return yield* fail("the skill path must have no empty, '.' or '..' segment")
+  }
+  const name = skillPath.split("/").at(-1)!
+  if (skill.frontmatter.name !== name) {
+    return yield* fail(`the frontmatter name ${JSON.stringify(skill.frontmatter.name)} must equal "${name}"`)
+  }
+  if (skill.files.length > MAX_FILES_PER_SKILL) {
+    return yield* fail(`it has ${skill.files.length} files; the limit is ${MAX_FILES_PER_SKILL}`)
+  }
+  const totalBytes = skill.files.reduce((sum, file) => sum + file.size, 0)
+  if (totalBytes > MAX_BYTES_PER_SKILL) {
+    return yield* fail(`it has ${totalBytes} bytes; the limit is ${MAX_BYTES_PER_SKILL}`)
+  }
+  const manifest = yield* PublicSkill.manifest(skill)
+  const resources: Array<McpCore.SkillResource> = []
+  const files: Array<ServedFile> = []
+  const children = new Map<string, Map<string, McpCore.DirectoryChild>>()
+  for (const file of manifest.files) {
+    const fileUri = `${scheme}${skillPath}/${file.path}`
+    const { mimeType, size } = file
+    const content = yield* PublicSkill.readBytes(skill, file.path).pipe(Effect.orDie)
+    const resource: McpCore.DirectoryChild = file.path === "SKILL.md"
+      ? { uri: fileUri, name, description: skill.frontmatter.description, mimeType, size }
+      : { uri: fileUri, name: file.path.split("/").at(-1)!, mimeType, size }
+    files.push({ resource, content, text: decodeText(mimeType, content) })
+    resources.push({ uri: fileUri, digest: file.digest, size })
 
-    const schemeEnd = uri.indexOf("://")
-    if (schemeEnd <= 0 || !uri.endsWith("/SKILL.md")) {
-      return yield* fail("the URI must have the form <scheme>://<skill-path>/SKILL.md")
-    }
-    const scheme = uri.slice(0, schemeEnd + 3)
-    const skillPath = uri.slice(scheme.length, -"/SKILL.md".length)
-    if (!isSafeRelativePath(skillPath)) {
-      return yield* fail("the skill path must have no empty, '.' or '..' segment")
-    }
-    const name = skillPath.split("/").at(-1)!
-    if (options.files.length > MAX_FILES_PER_SKILL) {
-      return yield* fail(`it has ${options.files.length} files; the limit is ${MAX_FILES_PER_SKILL}`)
-    }
-    const totalBytes = options.files.reduce((sum, file) => sum + file.content.byteLength, 0)
-    if (totalBytes > MAX_BYTES_PER_SKILL) {
-      return yield* fail(`it has ${totalBytes} bytes; the limit is ${MAX_BYTES_PER_SKILL}`)
-    }
-    const paths = new Set<string>()
-    for (const file of options.files) {
-      if (!isSafeRelativePath(file.path)) return yield* fail(`the file path "${file.path}" escapes the skill`)
-      if (paths.has(file.path)) return yield* fail(`the file "${file.path}" is given twice`)
-      paths.add(file.path)
-    }
-    const skillMd = options.files.find((file) => file.path === "SKILL.md")
-    if (skillMd === undefined) return yield* fail("SKILL.md is missing")
-
-    // The listed frontmatter is parsed from the served SKILL.md, so the two
-    // cannot differ.
-    const frontmatter = parseFrontmatter(decodeText("text/markdown", skillMd.content) ?? "")
-    if (frontmatter === undefined) return yield* fail("SKILL.md must begin with YAML frontmatter holding a mapping")
-    if (frontmatter.name !== name) {
-      return yield* fail(`the frontmatter name ${JSON.stringify(frontmatter.name)} must equal "${name}"`)
-    }
-    // A skill served over MCP must conform to the Agent Skills specification.
-    const { description } = yield* decodeFrontmatter(frontmatter).pipe(
-      Effect.catch((error) => fail(`the frontmatter is not valid Agent Skills frontmatter: ${error.message}`))
-    )
-
-    const digest = yield* Digest.Digest
-    const sorted = [...options.files].sort((a, b) => a.path < b.path ? -1 : a.path > b.path ? 1 : 0)
-    const resources: Array<McpCore.SkillResource> = []
-    const files: Array<ServedFile> = []
-    const children = new Map<string, Map<string, McpCore.DirectoryChild>>()
-    for (const file of sorted) {
-      const fileUri = `${scheme}${skillPath}/${file.path}`
-      const fileDigest = `sha256:${yield* digest.digestHex(Digest.sha256, file.content)}`
-      const mimeType = file.mimeType ?? mimeTypeFor(file.path)
-      const size = file.content.byteLength
-      const resource: McpCore.DirectoryChild = file.path === "SKILL.md"
-        ? { uri: fileUri, name, description, mimeType, size }
-        : { uri: fileUri, name: file.path.split("/").at(-1)!, mimeType, size }
-      files.push({ resource, content: file.content, text: decodeText(mimeType, file.content) })
-      resources.push({ uri: fileUri, digest: fileDigest, size })
-
-      // Every directory from the namespace root down is readable, including
-      // the prefix directories above the skill root.
-      const segments = `${skillPath}/${file.path}`.split("/")
-      for (let depth = 1; depth < segments.length; depth++) {
-        const directory = `${scheme}${segments.slice(0, depth).join("/")}`
-        const child: McpCore.DirectoryChild = depth === segments.length - 1 ? resource : {
-          uri: `${scheme}${segments.slice(0, depth + 1).join("/")}`,
-          name: segments[depth]!,
-          mimeType: DIRECTORY_MIME_TYPE
-        }
-        let siblings = children.get(directory)
-        if (siblings === undefined) {
-          siblings = new Map()
-          children.set(directory, siblings)
-        }
-        siblings.set(child.uri, child)
+    // Ancestor namespace directories stay readable as well as the skill root.
+    const segments = `${skillPath}/${file.path}`.split("/")
+    for (let depth = 1; depth < segments.length; depth++) {
+      const directory = `${scheme}${segments.slice(0, depth).join("/")}`
+      const child: McpCore.DirectoryChild = depth === segments.length - 1 ? resource : {
+        uri: `${scheme}${segments.slice(0, depth + 1).join("/")}`,
+        name: segments[depth]!,
+        mimeType: DIRECTORY_MIME_TYPE
       }
+      let siblings = children.get(directory)
+      if (siblings === undefined) {
+        siblings = new Map()
+        children.set(directory, siblings)
+      }
+      siblings.set(child.uri, child)
     }
-
-    const directories = new Map<string, ReadonlyArray<McpCore.DirectoryChild>>()
-    for (const [directory, siblings] of children) {
-      directories.set(directory, Array.from(siblings.values()))
-    }
-    return { entry: { uri, frontmatter, resources }, files, directories }
-  })
+  }
+  const directories = new Map<string, ReadonlyArray<McpCore.DirectoryChild>>()
+  for (const [directory, siblings] of children) directories.set(directory, Array.from(siblings.values()))
+  return { entry: { uri, frontmatter: skill.frontmatter, resources }, files, directories }
+})

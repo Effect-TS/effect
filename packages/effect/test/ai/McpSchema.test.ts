@@ -1,6 +1,7 @@
 import { assert, describe, it } from "@effect/vitest"
 import { Schema } from "effect"
 import * as McpSchema from "effect/ai/McpSchema"
+import * as Skill from "effect/ai/Skill"
 
 describe("McpSchema", () => {
   // Property schemas may be objects or booleans.
@@ -40,6 +41,13 @@ describe("McpSchema", () => {
     ) {
       assert.throws(() => decode(invalid), undefined, undefined, JSON.stringify(invalid))
     }
+  })
+
+  it("should preserve legacy extra values when decoding MCP skill frontmatter", () => {
+    const extension = () => "legacy extra value"
+    const frontmatter = { name: "refunds", description: "Process refunds", extension }
+    assert.strictEqual(Schema.decodeUnknownSync(McpSchema.SkillFrontmatter)(frontmatter).extension, extension)
+    assert.throws(() => Schema.decodeUnknownSync(Skill.Frontmatter)(frontmatter))
   })
 
   const decodeCreateMessage = Schema.decodeUnknownSync(McpSchema.CreateMessage.payloadSchema)
