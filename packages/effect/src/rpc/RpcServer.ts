@@ -1356,22 +1356,23 @@ export const makeProtocolWithHttpEffect: (
       end: Queue.end(queue)
     }
 
-    // Ends the response and interrupts its requests, unless the response has already completed.
-    const terminate = Effect.suspend(() =>
-      queue.state._tag === "Done" ? Effect.void : Effect.andThen(
-        Queue.shutdown(queue),
-        Effect.forEach(
+    // Ends the response with `cause` and interrupts its requests, unless the response has already completed.
+    const terminate = (cause?: Cause.Cause<never>) =>
+      Effect.suspend(() => {
+        if (queue.state._tag === "Done") return Effect.void
+        if (cause) Queue.failCauseUnsafe(queue, cause)
+        Queue.shutdownUnsafe(queue)
+        return Effect.forEach(
           requestIds,
           (requestId) => writeRequest(id, { _tag: "Interrupt", requestId }),
           { discard: true }
         )
-      )
-    )
+      })
     yield* Scope.addFinalizerExit(scope, () => {
       clients.delete(id)
       clientIds.delete(id)
       Queue.offerUnsafe(disconnects, id)
-      return terminate
+      return terminate()
     })
     clients.set(id, client)
     clientIds.add(id)
@@ -1406,14 +1407,19 @@ export const makeProtocolWithHttpEffect: (
     }
 
     // Framed responses use a bounded queue, so dispatch must run while the response drains it.
-    // A failed dispatch terminates the response, as it would when run inline.
-    yield* Effect.forkIn(Effect.onError(dispatch, () => terminate), scope, { startImmediately: true })
+    // A failed dispatch fails the response with its cause, as it would when run inline.
+    yield* Effect.forkIn(Effect.onError(dispatch, terminate), scope, { startImmediately: true })
 
     const initialChunk = yield* Effect.interruptible(Pull.catchDone(
       Queue.takeAll(queue as Queue.Dequeue<Uint8Array, Cause.Done>),
       () => Effect.succeed([])
     ))
     if (queue.state._tag === "Done") {
+      // Dispatch may have failed after the initial chunk was taken.
+      const exit = queue.state.exit
+      if (exit._tag === "Failure" && !Pull.isDoneCause(exit.cause)) {
+        return yield* Effect.failCause(exit.cause as Cause.Cause<never>)
+      }
       return HttpServerResponse.uint8Array(initialChunk.length === 1 ? initialChunk[0] : Bytes.concat(initialChunk), {
         contentType: serialization.contentType
       })
