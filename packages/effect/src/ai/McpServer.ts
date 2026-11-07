@@ -56,6 +56,7 @@ import * as AiError from "./AiError.ts"
 import * as McpCore from "./internal/mcpCore.ts"
 import * as McpProtocolInternal from "./internal/mcpProtocol.ts"
 import * as McpRuntime from "./internal/mcpRuntime.ts"
+import * as McpSerialization from "./internal/mcpSerialization.ts"
 import * as McpSkills from "./internal/mcpSkills.ts"
 import * as InternalStructuredOutput from "./internal/structured-output.ts"
 import type * as McpProtocol from "./McpProtocol.ts"
@@ -67,7 +68,6 @@ import {
   GetPromptResult,
   InternalError,
   InvalidParams,
-  InvalidRequest,
   isParam,
   McpRequestContext,
   McpServerClient,
@@ -965,7 +965,9 @@ const rejectedError = (rejected: McpCore.RequestRejected) => Effect.fail(rejecte
  * **Details**
  *
  * Handlers use this service to register capabilities and resolve incoming MCP
- * requests.
+ * requests. Lists retain registration order, including when replacing an
+ * existing entry, so unchanged registrations and visibility produce a stable
+ * order across requests.
  *
  * @stability unstable
  * @category services
@@ -1479,8 +1481,8 @@ export class McpServer extends Context.Service<McpServer, {
 
 const MCP_SESSION_ID_HEADER = "mcp-session-id"
 const MCP_PROTOCOL_VERSION_HEADER = "mcp-protocol-version"
-const MCP_INVALID_BATCH_METHOD = "invalid/json-rpc-batch"
 const cancelledResponses = new WeakMap<object, string | number>()
+const invalidRequestIdResponses = new WeakSet<object>()
 const httpPostResponses = new WeakMap<HttpServerRequest.HttpServerRequest, { expected: number }>()
 const requestKey = (requestId: string | number): string => `${typeof requestId}:${requestId}`
 
@@ -1615,8 +1617,10 @@ class McpClientKey extends Data.Class<{
  *
  * `ttl` is how long a client may treat the result as fresh. It is sent as a
  * whole number of milliseconds, rounded down, so it must be finite,
- * nonnegative and at most `Number.MAX_SAFE_INTEGER` milliseconds. Only
- * `"private"` scope is supported, so shared caches must not store the result.
+ * nonnegative and at most `Number.MAX_SAFE_INTEGER` milliseconds. Private
+ * caches must be isolated by authorization context. Public scope permits
+ * sharing across users, so use it only for results without user-specific data.
+ * These fields follow [MCP caching](https://modelcontextprotocol.io/specification/2026-07-28/server/utilities/caching).
  *
  * @stability unstable
  * @category models
@@ -1624,7 +1628,7 @@ class McpClientKey extends Data.Class<{
  */
 export interface CacheHint {
   readonly ttl: Duration.Input
-  readonly cacheScope: "private"
+  readonly cacheScope: "private" | "public"
 }
 
 /**
@@ -1636,9 +1640,9 @@ export interface CacheHint {
  * `server/discover`, `tools/list`, `resources/list`,
  * `resources/templates/list` and `prompts/list`. `skills` covers the Skills
  * extension's `skills/list`, `skills/get` and `resources/directory/read`.
- * Omitted entries, and `resources/read` results, keep
- * `{ ttlMs: 0, cacheScope: "private" }`. Earlier protocol revisions have no
- * cache hints and ignore this option.
+ * Omitted entries keep `{ ttlMs: 0, cacheScope: "private" }`. Resource
+ * handlers can set `ttlMs` and `cacheScope` on `McpSchema.ReadResourceResult`.
+ * Earlier protocol revisions have no cache hints and ignore this option.
  *
  * These are hints for clients. The server does not cache results, and
  * visibility and invocation checks still run on every request.
@@ -1646,9 +1650,10 @@ export interface CacheHint {
  * **Gotchas**
  *
  * A positive `ttl` lets a client keep showing a list after registrations or
- * per-request visibility change, until the hint expires. Private scope does
- * not key a client's cache by user, so a client shared between users can
- * reuse one user's list for another.
+ * per-request visibility change, until the hint expires or a change notification
+ * invalidates it. Public scope permits sharing even when the endpoint requires
+ * authentication; it does not replace access checks. Private caches must not
+ * be shared across authorization contexts.
  *
  * @stability unstable
  * @category models
@@ -1668,21 +1673,21 @@ const normalizeCacheHints = (
   cacheHints: CacheHints | undefined
 ): Effect.Effect<McpProtocolInternal.CacheHints | undefined, Cause.IllegalArgumentError> => {
   if (cacheHints === undefined) return Effect.succeed(undefined)
-  const normalized: Record<string, { readonly ttlMs: number; readonly cacheScope: "private" }> = {}
+  const normalized: Record<string, { readonly ttlMs: number; readonly cacheScope: "private" | "public" }> = {}
   for (const [name, hint] of Object.entries(cacheHints)) {
     if (hint === undefined) continue
     const ttlMs = Option.match(Duration.fromInput(hint.ttl), {
       onNone: () => NaN,
       onSome: (ttl) => Math.floor(Duration.toMillis(ttl))
     })
-    if (!Number.isSafeInteger(ttlMs) || ttlMs < 0 || hint.cacheScope !== "private") {
+    if (!Number.isSafeInteger(ttlMs) || ttlMs < 0 || (hint.cacheScope !== "private" && hint.cacheScope !== "public")) {
       return Effect.fail(
         new Cause.IllegalArgumentError(
-          `McpServer cacheHints.${name} must have a finite, nonnegative ttl and a "private" cacheScope`
+          `McpServer cacheHints.${name} must have a finite, nonnegative ttl and a "private" or "public" cacheScope`
         )
       )
     }
-    normalized[name] = { ttlMs, cacheScope: "private" }
+    normalized[name] = { ttlMs, cacheScope: hint.cacheScope }
   }
   return Effect.succeed(normalized)
 }
@@ -1694,7 +1699,8 @@ const normalizeCacheHints = (
  *
  * The server serves registered tools, resources, and prompts. The selected MCP
  * runtime handles protocol lifecycle state and determines which clients receive
- * queued server notifications.
+ * queued server notifications. The optional `title` is a human-readable
+ * server name included in `serverInfo` alongside the programmatic `name`.
  *
  * Each request handled by the server runs in a server span that follows the
  * OpenTelemetry MCP semantic conventions. Spans are named after the JSON-RPC
@@ -1710,6 +1716,7 @@ const normalizeCacheHints = (
  */
 export const run: (options: {
   readonly name: string
+  readonly title?: string | undefined
   readonly version: string
   readonly instructions?: string | undefined
   readonly description?: string | undefined
@@ -1724,6 +1731,7 @@ export const run: (options: {
   McpServer | RpcServer.Protocol
 > = Effect.fnUntraced(function*(options: {
   readonly name: string
+  readonly title?: string | undefined
   readonly version: string
   readonly instructions?: string | undefined
   readonly description?: string | undefined
@@ -1744,6 +1752,7 @@ export const run: (options: {
 const runWithRuntime = Effect.fnUntraced(function*(
   options: {
     readonly name: string
+    readonly title?: string | undefined
     readonly version: string
     readonly instructions?: string | undefined
     readonly description?: string | undefined
@@ -1818,16 +1827,20 @@ const runWithRuntime = Effect.fnUntraced(function*(
   const sendRequestError = (
     clientId: number,
     requestId: string | number,
-    { code, data, message }: { readonly code: number; readonly message: string; readonly data?: unknown }
-  ) =>
-    protocol.send(clientId, {
+    { code, data, message }: { readonly code: number; readonly message: string; readonly data?: unknown },
+    invalidRequestId = false
+  ) => {
+    const response: RpcMessage.ResponseExitEncoded = {
       _tag: "Exit",
       requestId,
       exit: {
         _tag: "Failure",
         cause: [{ _tag: "Fail", error: data === undefined ? { code, message } : { code, message, data } }]
       }
-    })
+    }
+    if (invalidRequestId) invalidRequestIdResponses.add(response)
+    return protocol.send(clientId, response)
+  }
   const removeReverseRequestClient = (requestId: string, key: McpClientKey) => {
     const waiting = reverseRequestClients.get(requestId)
     if (waiting === undefined) return
@@ -2043,7 +2056,7 @@ const runWithRuntime = Effect.fnUntraced(function*(
           activeRequests.delete(clientId)
         }
         if (active?.cancelled === true) {
-          if (transport === "custom") return Effect.void
+          if (transport === "custom" && !McpSerialization.isMcpCodec(protocol.codecFor)) return Effect.void
           if (active.httpPost !== undefined) active.httpPost.expected--
           cancelledResponses.set(response, response.requestId)
           return protocol.send(clientId, response)
@@ -2072,6 +2085,10 @@ const runWithRuntime = Effect.fnUntraced(function*(
         const request = request_ as unknown as
           | RpcMessage.FromServerEncoded
           | RpcMessage.FromClientEncoded
+        const decodingError = McpSerialization.getError(request)
+        if (decodingError !== undefined && request._tag === "Request") {
+          return sendRequestError(clientId, request.id, decodingError)
+        }
         const httpRequest = isHttp
           ? Context.getOrUndefined(fiber.context, HttpServerRequest.HttpServerRequest)
           : undefined
@@ -2101,7 +2118,7 @@ const runWithRuntime = Effect.fnUntraced(function*(
                 HttpServerRequest.HttpServerRequest
               ).headers
               : Headers.fromInput(request.headers)
-            const cancellationRequest = request.tag === "notifications/cancelled" &&
+            const cancellationRequest = request.isNotification === true && request.tag === "notifications/cancelled" &&
                 typeof request.payload === "object" && request.payload !== null && "requestId" in request.payload &&
                 (typeof request.payload.requestId === "string" || typeof request.payload.requestId === "number")
               ? activeRequests.get(clientId)?.get(requestKey(request.payload.requestId))
@@ -2130,13 +2147,6 @@ const runWithRuntime = Effect.fnUntraced(function*(
                   ? Headers.fromInput({ [MCP_SESSION_ID_HEADER]: headers[MCP_SESSION_ID_HEADER] })
                   : clientState?.sessionHeaders
               })
-              if (request.tag === MCP_INVALID_BATCH_METHOD) {
-                return yield* sendRequestError(
-                  clientId,
-                  request.id,
-                  new InvalidRequest({ message: "JSON-RPC batches are not supported" })
-                )
-              }
               if (httpRequest !== undefined && session !== undefined) {
                 appendPreResponseHandlerUnsafe(fiber.context, (_, res) =>
                   Effect.succeed(
@@ -2246,7 +2256,8 @@ const runWithRuntime = Effect.fnUntraced(function*(
                     request.id,
                     Predicate.isTagged(error, "ProtocolError")
                       ? McpProtocolInternal.ProtocolError.fromFeature(error)
-                      : new InvalidParams({ message: "Invalid request metadata" })
+                      : new InvalidParams({ message: "Invalid request metadata" }),
+                    McpRuntime.isInvalidRequestIdError(error)
                   )
               )
             )
@@ -2455,6 +2466,10 @@ const runWithRuntime = Effect.fnUntraced(function*(
   return yield* RpcServer.make(runtime.clientRpcs, {
     disableTracing: true,
     disableFatalDefects: true,
+    // Socket transports report connection close through disconnects, without EOF.
+    // HTTP disconnects only remove the request's client; UUID sessions remain live.
+    // https://modelcontextprotocol.io/specification/2025-11-25/basic/lifecycle#shutdown
+    onDisconnect: (clientId) => Effect.sync(() => disconnectClient(clientId)),
     // Wrapped so `RpcServer.make` infers the group's rpcs from `clientRpcs`
     // rather than from `traceRequest`'s parameter type.
     onRequest: (effect, request) => traceRequest(effect, request)
@@ -2539,6 +2554,7 @@ export const layer = <
   RR = never
 >(options: {
   readonly name: string
+  readonly title?: string | undefined
   readonly version: string
   readonly instructions?: string | undefined
   readonly description?: string | undefined
@@ -2561,6 +2577,7 @@ export const layer = <
 
 const layerWithRuntime = (options: {
   readonly name: string
+  readonly title?: string | undefined
   readonly version: string
   readonly instructions?: string | undefined
   readonly description?: string | undefined
@@ -2620,6 +2637,7 @@ export const layerStdio = <
   RR = never
 >(options: {
   readonly name: string
+  readonly title?: string | undefined
   readonly version: string
   readonly instructions?: string | undefined
   readonly description?: string | undefined
@@ -2645,72 +2663,81 @@ export const layerStdio = <
     Layer.provide(Layer.effect(RpcServer.Protocol, RpcServer.makeProtocolStdio)),
     Layer.provide(Layer.succeed(
       RpcSerialization.RpcSerialization,
-      mcpStdioSerialization(options.protocols)
+      makeSerialization({ protocols: options.protocols })
     ))
   ) as any
 
-const mcpStdioSerialization = (
-  protocols: Arr.NonEmptyReadonlyArray<McpProtocol.ProtocolAdapter>
-): RpcSerialization.RpcSerialization["Service"] => {
-  const serialization = mcpJsonRpcSerialization({
-    contentType: "application/json-rpc"
+/**
+ * Creates MCP JSON-RPC serialization for a custom server transport.
+ *
+ * **When to use**
+ *
+ * Use with {@link layer} and an `RpcServer.Protocol` that reads and writes bytes
+ * or strings, including `RpcServer.layerProtocolSocketServer`.
+ *
+ * **Details**
+ *
+ * Defaults to newline-delimited JSON, as recommended for reliable byte streams
+ * by the [MCP custom transport specification](https://modelcontextprotocol.io/specification/2026-07-28/basic/transports#custom-transports).
+ * Choose `"json"` when the transport delivers complete messages. The configured
+ * adapters determine batch support and request-ID requirements. Revisions from
+ * [2025-03-26](https://modelcontextprotocol.io/specification/2025-03-26/basic#requests)
+ * require string or integer request IDs; 2024-11-05 retains finite numeric IDs.
+ * Malformed JSON produces a parse-error
+ * response with a null ID, and does not discard adjacent frames. Effect RPC
+ * control messages and envelope extensions are not interpreted as MCP controls.
+ *
+ * `maxBufferSize` limits a frame's bytes or string code units, defaults to
+ * 16 MiB, and accepts `"unbounded"` to disable the limit. Exceeding it raises
+ * `RpcSerialization.MaxBufferSizeExceeded` so a socket transport can close the
+ * connection. JSON framing applies the same limit to each complete message.
+ *
+ * **Gotchas**
+ *
+ * Create one parser with `makeUnsafe()` per connection and forward its decoded
+ * messages unchanged to `RpcServer.Protocol`'s request callback. Report a closed
+ * connection through the protocol's `disconnects` queue. Serialization does not
+ * implement transport-specific authentication, cancellation, or HTTP headers.
+ *
+ * @see {@link layerSerialization} for providing the serialization as a layer
+ * @see {@link layerStdio} for a transport using the same serialization
+ *
+ * @stability unstable
+ * @category serialization
+ * @since 4.1.3
+ */
+export const makeSerialization = (options: {
+  readonly protocols: Arr.NonEmptyReadonlyArray<McpProtocol.ProtocolAdapter>
+  readonly framing?: "ndjson" | "json" | undefined
+  readonly maxBufferSize?: number | "unbounded" | undefined
+}): RpcSerialization.RpcSerialization["Service"] =>
+  McpSerialization.makeSerialization({
+    ...options,
+    serialization: mcpJsonRpcSerialization({ contentType: "application/json-rpc" }),
+    framing: options.framing ?? "ndjson"
   })
-  return RpcSerialization.RpcSerialization.of({
-    contentType: serialization.contentType,
-    includesFraming: true,
-    codecFor: serialization.codecFor,
-    makeUnsafe: () => {
-      const frames = RpcSerialization.ndjson.makeUnsafe()
-      const parser = serialization.makeUnsafe()
-      let selectedProtocol: McpProtocol.ProtocolAdapter | undefined
-      return {
-        decode: (data) => {
-          const decoded: Array<unknown> = []
-          for (const frame of frames.decode(data)) {
-            if (Array.isArray(frame)) {
-              const acceptsBatch = selectedProtocol?.runtime.transport.jsonRpc.acceptsBatches === true
-              if (
-                !acceptsBatch ||
-                frame.length === 0 ||
-                frame.some(McpRuntime.hasRequestProtocolVersion) ||
-                frame.some(isInitializeJsonRpcMessage)
-              ) {
-                decoded.push({
-                  _tag: "Request",
-                  id: null,
-                  tag: MCP_INVALID_BATCH_METHOD,
-                  payload: null,
-                  headers: []
-                })
-                continue
-              }
-            } else if (isInitializeJsonRpcMessage(frame)) {
-              const offered = getJsonRpcProtocolVersion(frame)
-              selectedProtocol = McpRuntime.selectStatefulProtocol(protocols, offered)
-            }
-            decoded.push(...parser.decode(JSON.stringify(frame)))
-          }
-          return decoded
-        },
-        encode: (response) => {
-          const invalidBatchExit = decodeInvalidBatchExit(response)
-          if (Result.isSuccess(invalidBatchExit)) {
-            return JSON.stringify({
-              jsonrpc: "2.0",
-              id: null,
-              error: {
-                code: McpSchema.INVALID_REQUEST_ERROR_CODE,
-                message: "JSON-RPC batches are not supported"
-              }
-            }) + "\n"
-          }
-          const encoded = parser.encode(response)
-          return encoded === undefined ? undefined : `${encoded}\n`
-        }
-      }
-    }
-  })
-}
+
+/**
+ * Provides MCP JSON-RPC serialization to a custom server transport.
+ *
+ * **Details**
+ *
+ * Uses {@link makeSerialization}, including its framing, parse-error handling,
+ * protocol-dependent batch policy, and buffer limit. Supply the same protocol
+ * adapters to this layer and {@link layer}.
+ *
+ * @see {@link makeSerialization} for the parser contract and custom transport requirements
+ *
+ * @stability unstable
+ * @category layers
+ * @since 4.1.3
+ */
+export const layerSerialization = (options: {
+  readonly protocols: Arr.NonEmptyReadonlyArray<McpProtocol.ProtocolAdapter>
+  readonly framing?: "ndjson" | "json" | undefined
+  readonly maxBufferSize?: number | "unbounded" | undefined
+}): Layer.Layer<RpcSerialization.RpcSerialization> =>
+  Layer.succeed(RpcSerialization.RpcSerialization, makeSerialization(options))
 
 /**
  * Registers a Streamable HTTP MCP endpoint at `options.path`.
@@ -2780,6 +2807,7 @@ export const layerHttp = <
   RR = never
 >(options: {
   readonly name: string
+  readonly title?: string | undefined
   readonly version: string
   readonly instructions?: string | undefined
   readonly description?: string | undefined
@@ -2855,6 +2883,7 @@ export const layerHttpRequestScoped = <
   RR = never
 >(options: {
   readonly name: string
+  readonly title?: string | undefined
   readonly version: string
   readonly instructions?: string | undefined
   readonly description?: string | undefined
@@ -2993,7 +3022,12 @@ const addMcpHttpRoutes = Effect.fnUntraced(function*(
     }
     return Effect.gen(function*() {
       const parsed = yield* Effect.result(
-        Effect.flatMap(request.text, Schema.decodeEffect(Schema.UnknownFromJsonString))
+        // MCP messages must be UTF-8; replacement decoding would execute a
+        // different request when an invalid byte appears inside a JSON string.
+        Effect.flatMap(
+          request.arrayBuffer,
+          (buffer) => Effect.try(() => JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(buffer)))
+        )
       )
       const admission = runtime.admitHttp(request.headers, parsed)
       if (admission._tag === "Rejected") {
@@ -3020,7 +3054,10 @@ const addMcpHttpRoutes = Effect.fnUntraced(function*(
         // Only fully cancelled request POSTs may return an empty SSE response.
         // https://modelcontextprotocol.io/specification/2025-11-25/basic/transports#sending-messages-to-the-server
         return httpPostResponses.get(request)?.expected === 0
-          ? Effect.succeed(HttpServerResponse.stream(Stream.empty, { contentType: "text/event-stream" }))
+          ? Effect.succeed(HttpServerResponse.stream(Stream.empty, {
+            contentType: "text/event-stream",
+            headers: { "x-accel-buffering": "no" }
+          }))
           : Effect.die(new Error("MCP request ended without writing its response"))
       })
     })
@@ -3053,16 +3090,29 @@ const isEncodedMcpFailureCause = Schema.is(Schema.TaggedStruct("Cause", {
   })])
 }))
 
-const normalizeMcpJsonRpcResponse = (response: unknown): unknown => {
+const normalizeMcpJsonRpcResponse = (response: unknown, invalidRequestIds: Set<unknown>): unknown => {
   if (Array.isArray(response)) {
-    return response.map(normalizeMcpJsonRpcResponse)
+    return response.map((response) => normalizeMcpJsonRpcResponse(response, invalidRequestIds))
   }
   if (!Predicate.isReadonlyObject(response) || !Predicate.hasProperty(response, "error")) {
     return response
   }
-  return isEncodedMcpFailureCause(response.error)
-    ? { ...response, error: response.error.data[0].error }
-    : response
+  const error = isEncodedMcpFailureCause(response.error) ? response.error.data[0].error : response.error
+  const isDefect = Predicate.isTagged(response.error, "Defect")
+  const normalized = Predicate.isReadonlyObject(error) &&
+      !Predicate.isTagged(error, "Cause") && !Predicate.isTagged(error, "Defect") &&
+      Number.isInteger(error.code) && typeof error.message === "string"
+    ? { code: error.code, message: error.message, ...(error.data === undefined ? {} : { data: error.data }) }
+    : { code: McpSchema.INTERNAL_ERROR_CODE, message: "Internal error" }
+  return {
+    jsonrpc: "2.0",
+    // Keep the original ID internally until batch accounting completes, then
+    // report a malformed fractional request ID as null on the wire.
+    id: isDefect || !Predicate.hasProperty(response, "id") || invalidRequestIds.delete(response.id)
+      ? null
+      : response.id ?? null,
+    error: normalized
+  }
 }
 
 function mcpJsonRpcSerialization(options?: {
@@ -3072,12 +3122,14 @@ function mcpJsonRpcSerialization(options?: {
   return RpcSerialization.RpcSerialization.of({
     ...serialization,
     makeUnsafe: () => {
-      const parser = serialization.makeUnsafe()
+      const parser = McpSerialization.makeParser(serialization.makeUnsafe())
       const cancelledIds = new Set<string | number>()
+      const invalidRequestIds = new Set<unknown>()
       return {
         decode: parser.decode,
         encode: (response) => {
           if (Predicate.isReadonlyObject(response)) {
+            if (invalidRequestIdResponses.delete(response)) invalidRequestIds.add(response.requestId)
             const cancelledId = cancelledResponses.get(response)
             if (cancelledId !== undefined) {
               cancelledResponses.delete(response)
@@ -3086,7 +3138,10 @@ function mcpJsonRpcSerialization(options?: {
           }
           const encoded = parser.encode(response)
           if (typeof encoded !== "string") return encoded
-          if (cancelledIds.size === 0 && !encoded.includes("\"_tag\":\"Cause\"")) return encoded
+          if (
+            cancelledIds.size === 0 && invalidRequestIds.size === 0 &&
+            !encoded.includes("\"_tag\":\"Cause\"") && !encoded.includes("\"_tag\":\"Defect\"")
+          ) return encoded
           let message: unknown = JSON.parse(encoded)
           if (cancelledIds.size > 0) {
             // Count cancelled completions toward the batch, but never write their responses.
@@ -3102,7 +3157,7 @@ function mcpJsonRpcSerialization(options?: {
               return undefined
             }
           }
-          return JSON.stringify(normalizeMcpJsonRpcResponse(message))
+          return JSON.stringify(normalizeMcpJsonRpcResponse(message, invalidRequestIds))
         }
       }
     }
@@ -3117,7 +3172,8 @@ const toServerSentEvents = (response: HttpServerResponse.HttpServerResponse, kee
   const options = {
     status: response.status,
     statusText: response.statusText,
-    headers: Headers.remove(response.headers, "content-type"),
+    // https://modelcontextprotocol.io/specification/2026-07-28/basic/transports/streamable-http#receiving-messages
+    headers: Headers.set(Headers.remove(response.headers, "content-type"), "x-accel-buffering", "no"),
     cookies: response.cookies,
     contentType: "text/event-stream"
   }
@@ -3136,7 +3192,10 @@ const toServerSentEvents = (response: HttpServerResponse.HttpServerResponse, kee
   if (response.body._tag === "Uint8Array") {
     return HttpServerResponse.uint8Array(frame(response.body.body), options)
   }
-  return HttpServerResponse.setHeader(response, "content-type", "text/event-stream")
+  return HttpServerResponse.setHeaders(response, {
+    "content-type": "text/event-stream",
+    "x-accel-buffering": "no"
+  })
 }
 
 const isAllowedMcpOrigin = (
@@ -3164,24 +3223,6 @@ const mcpMediaTypes = (header: string | undefined): ReadonlyArray<string> =>
       return [mediaType.trim().toLowerCase()]
     })
 
-const InitializeJsonRpcMessage = Schema.Struct({
-  method: Schema.Literal("initialize")
-})
-
-const isInitializeJsonRpcMessage = (message: unknown): boolean =>
-  Result.isSuccess(Schema.decodeUnknownResult(InitializeJsonRpcMessage)(message))
-
-const JsonRpcProtocolVersion = Schema.Struct({
-  params: Schema.Struct({
-    protocolVersion: Schema.String
-  })
-})
-
-const getJsonRpcProtocolVersion = (message: unknown): string | undefined => {
-  const decoded = Schema.decodeUnknownResult(JsonRpcProtocolVersion)(message)
-  return Result.isSuccess(decoded) ? decoded.success.params.protocolVersion : undefined
-}
-
 const INTERNAL_TOOL_ERROR_MESSAGE = "Tool execution failed due to an internal server error."
 
 const toolErrorResult = (message: string): CallToolResult =>
@@ -3192,6 +3233,27 @@ const toolErrorResult = (message: string): CallToolResult =>
 
 const toolResultContent = (encoded: unknown): CallToolResult["content"] =>
   encoded === undefined ? [] : [{ type: "text", text: JSON.stringify(encoded) }]
+
+/**
+ * Icons displayed for a toolkit tool by MCP clients.
+ *
+ * **When to use**
+ *
+ * Use with `Tool.make(...).annotate(ToolIcons, icons)` to include icons in
+ * `tools/list`, as described by the [MCP Tool definition](https://modelcontextprotocol.io/specification/2026-07-28/server/tools#tool).
+ *
+ * **Details**
+ *
+ * An empty annotation omits `icons`. Adapters include icons only in protocol
+ * revisions that support them. This annotation does not change tool execution.
+ *
+ * @stability unstable
+ * @category annotations
+ * @since 4.1.3
+ */
+export const ToolIcons = Context.Reference<ReadonlyArray<McpSchema.Icon>>("effect/ai/McpServer/ToolIcons", {
+  defaultValue: () => []
+})
 
 /**
  * The requirements of a toolkit registration.
@@ -3339,8 +3401,10 @@ export const registerToolkit: <Tools extends Record<string, Tool.Any>>(
               `parameters.\n\n${error.message}`
         ))
     )
+    const icons = Context.get(annotations, ToolIcons)
     const mcpTool = new McpTool({
       name: tool.name,
+      icons: icons.length === 0 ? undefined : icons,
       description: Tool.getDescription(tool),
       inputSchema,
       outputSchema,
@@ -4213,15 +4277,6 @@ const resolveResourceContent = (
   }
   return content
 }
-
-const InvalidBatchExit = Schema.TaggedStruct("Exit", {
-  requestId: Schema.Null,
-  exit: Schema.TaggedStruct("Failure", {
-    cause: Schema.Unknown
-  })
-})
-
-const decodeInvalidBatchExit = Schema.decodeUnknownResult(InvalidBatchExit)
 
 const isProtocolVersion = (version: string): version is McpProtocol.ProtocolVersion =>
   version === "2024-11-05" ||

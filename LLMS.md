@@ -425,6 +425,12 @@ responses.
 - **[Stateful chat sessions](./ai-docs/src/71_ai/30_chat.ts)**:
   The AI `Chat` module maintains conversation history automatically. Build
   AI agents or chat assistants.
+- **[Serving MCP over a custom socket transport](./ai-docs/src/71_ai/40_mcp-server.ts)**:
+  Compose the public MCP serializer with a socket protocol while preserving
+  protocol version selection, message framing and connection cleanup.
+- **[Publishing MCP metadata and cache hints](./ai-docs/src/71_ai/41_mcp-metadata.ts)**:
+  Give tools display icons and advertise freshness for public documentation
+  while retaining private, immediately stale defaults for other results.
 
 ## Building distributed applications with cluster
 

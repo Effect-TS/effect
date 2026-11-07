@@ -1269,12 +1269,27 @@ export class ListResourceTemplates extends Rpc.make("resources/templates/list", 
 /**
  * Schema for the server's response to a resources/read request from the client.
  *
+ * **Details**
+ *
+ * Optional `ttlMs` and `cacheScope` configure [MCP cache hints](https://modelcontextprotocol.io/specification/2026-07-28/server/utilities/caching)
+ * for a completed `2026-07-28` read. The defaults are zero milliseconds and
+ * private scope. Earlier revisions omit both fields. Retries with
+ * `inputResponses` or `requestState` are not cacheable.
+ *
+ * **Gotchas**
+ *
+ * Public scope permits sharing across authorization contexts. Use it only
+ * when the contents are safe to share with every caller. A private cache
+ * must be isolated by authorization context, such as the access token.
+ *
  * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
 export class ReadResourceResult extends Schema.Opaque<ReadResourceResult>()(Schema.Struct({
   ...ResultMeta.fields,
+  ttlMs: optional(Schema.Int.check(Schema.isGreaterThanOrEqualTo(0))),
+  cacheScope: optional(Schema.Literals(["private", "public"])),
   contents: Schema.Array(Schema.Union([TextResourceContents, BlobResourceContents]))
 })) {}
 
