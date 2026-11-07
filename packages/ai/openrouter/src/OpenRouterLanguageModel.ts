@@ -1169,15 +1169,15 @@ const makeResponse = Effect.fnUntraced(
       finishReason = "tool_calls"
     }
 
-    // OpenRouter forwards OpenAI refusals as a sibling of `content`
-    const refusal = Predicate.isNotNullish(message.refusal) && message.refusal.length > 0
-      ? message.refusal
-      : undefined
-    const reason = resolveFinishReason(finishReason)
+    const refusal = message.refusal
+    const hasRefusal = Predicate.isNotNullish(refusal) && refusal.length > 0
+    if (hasRefusal && finishReason === "stop") {
+      finishReason = "content_filter"
+    }
 
     parts.push({
       type: "finish",
-      reason: Predicate.isNotUndefined(refusal) && reason === "stop" ? "content-filter" : reason,
+      reason: resolveFinishReason(finishReason),
       usage: getUsage(rawResponse.usage),
       response: buildHttpResponseDetails(response),
       metadata: {
@@ -1190,7 +1190,7 @@ const makeResponse = Effect.fnUntraced(
           ...(Predicate.hasProperty(rawResponse, "provider") && Predicate.isString(rawResponse.provider)
             ? { provider: rawResponse.provider }
             : undefined),
-          ...(Predicate.isNotUndefined(refusal) ? { refusal } : undefined)
+          ...(hasRefusal ? { refusal } : undefined)
         }
       }
     })
@@ -1233,7 +1233,6 @@ const makeStreamResponse = Effect.fnUntraced(
     // Track file annotations to expose in provider metadata
     const accumulatedFileAnnotations: Array<FileAnnotation> = []
 
-    // Track refusal fragments to expose in provider metadata
     let accumulatedRefusal = ""
 
     const usage: DeepMutable<Response.Usage> = {
