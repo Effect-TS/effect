@@ -874,32 +874,53 @@ describe("RpcServer", () => {
 
   it.effect("drains framed HTTP responses while dispatching a batch larger than the buffer", () =>
     Effect.gen(function*() {
-      const Rpcs = RpcGroup.make(Rpc.make("ping", { success: Schema.Number }))
+      const Rpcs = RpcGroup.make(Rpc.make("ping"))
       const Server = RpcServer.layerHttp({
         group: Rpcs,
         path: "/rpc",
         protocol: "http",
         streamBufferSize: 1
       }).pipe(
-        Layer.provide(Rpcs.toLayer({ ping: () => Effect.succeed(1) })),
+        Layer.provide(Rpcs.toLayer({ ping: () => Effect.void })),
         Layer.provide(RpcSerialization.layerNdjson)
       )
       const { dispose, handler } = HttpRouter.toWebHandler(Server)
       yield* Effect.addFinalizer(() => Effect.promise(dispose))
+      const post = (body: string) =>
+        Effect.promise(() => handler(new Request("http://test/rpc", { method: "POST", body })).then((r) => r.text()))
+      // the first request starts the server's message loop
+      yield* post("")
 
-      const post = (ids: ReadonlyArray<number>, tag: string) =>
-        Effect.promise(() =>
-          handler(
-            new Request("http://test/rpc", {
-              method: "POST",
-              body: ids.map((id) => `{"_tag":"Request","id":${id},"tag":"${tag}","payload":{},"headers":[]}\n`).join("")
-            })
-          ).then((response) => response.text())
-        )
-      const requestIds = (body: string) => body.trim().split("\n").map((line) => JSON.parse(line).requestId)
+      const body = yield* post(
+        `{"_tag":"Request","id":1,"tag":"unknown","payload":{},"headers":[]}\n` +
+          `{"_tag":"Request","id":2,"tag":"unknown","payload":{},"headers":[]}\n`
+      )
 
-      assert.deepStrictEqual(requestIds(yield* post([1], "ping")), [1])
-      assert.deepStrictEqual(requestIds(yield* post([2, 3, 4], "unknown")), [2, 3, 4])
+      assert.deepStrictEqual(body.trim().split("\n").map((line) => JSON.parse(line).requestId), [1, 2])
+    }))
+
+  it.effect("terminates a framed HTTP request that reuses an active request id", () =>
+    Effect.gen(function*() {
+      const finalized = yield* Deferred.make<Exit.Exit<unknown, unknown>>()
+      const Rpcs = RpcGroup.make(Rpc.make("wait", { payload: Schema.Struct({}) }))
+      const Server = RpcServer.layerHttp({ group: Rpcs, path: "/rpc", protocol: "http" }).pipe(
+        Layer.provide(
+          Rpcs.toLayer({ wait: () => Effect.onExit(Effect.never, (exit) => Deferred.succeed(finalized, exit)) })
+        ),
+        Layer.provide(RpcSerialization.layerNdjson)
+      )
+      const { dispose, handler } = HttpRouter.toWebHandler(Server)
+      yield* Effect.addFinalizer(() => Effect.promise(dispose))
+      const post = (body: string) =>
+        Effect.promise(() => handler(new Request("http://test/rpc", { method: "POST", body })).then((r) => r.text()))
+      // the first request starts the server's message loop
+      yield* post("")
+
+      const request = `{"_tag":"Request","id":1,"tag":"wait","payload":{},"headers":[]}\n`
+      yield* post(request + request)
+
+      const exit = yield* Deferred.await(finalized)
+      assert.isTrue(Exit.isFailure(exit) && Cause.hasInterrupts(exit.cause))
     }))
 
   it.effect("allows unbounded framed HTTP response buffering", () =>
