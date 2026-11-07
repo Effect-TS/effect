@@ -15,6 +15,16 @@ describeWithFallback("Base64Url", () => {
     assert.strictEqual(Base64Url.encodePadded(new Uint8Array([251, 255])), "-_8=")
   })
 
+  it("encodes long input exactly with every remainder", () => {
+    const bytes = Uint8Array.from({ length: 257 }, (_, i) => (i * 151 + 1) & 0xff)
+    for (const length of [255, 256, 257]) {
+      const view = bytes.subarray(0, length)
+      const padded = btoa(String.fromCharCode(...view)).replace(/\+/g, "-").replace(/\//g, "_")
+      assert.strictEqual(Base64Url.encodePadded(view), padded, `${length}`)
+      assert.strictEqual(Base64Url.encode(view), padded.replace(/=+$/, ""), `${length}`)
+    }
+  })
+
   it("decodes padded and unpadded input", () => {
     const expected = new Uint8Array([72, 101, 108, 108, 111, 63])
     assert.deepStrictEqual(Result.getOrThrow(Base64Url.decode("SGVsbG8_")), expected)
