@@ -196,15 +196,14 @@ export const decode = (str: string): Result.Result<Uint8Array, EncodingError> =>
   }
   if (length % 2 !== 0) return decodeFailure(str)
   const result = new Uint8Array(length / 2)
-  // Invalid characters map to 255, so any of them leaves `invalid` above 15.
-  let invalid = 0
   for (let i = 0, j = 0; j < length; i++, j += 2) {
     const a = hexCode(str.charCodeAt(j))
     const b = hexCode(str.charCodeAt(j + 1))
-    invalid |= a | b
+    // Invalid characters map to 255.
+    if ((a | b) > 15) return decodeFailure(str)
     result[i] = (a << 4) | b
   }
-  return invalid > 15 ? decodeFailure(str) : Result.succeed(result)
+  return Result.succeed(result)
 }
 
 // The odd-length message reports the UTF-8 byte length, so non-ASCII input
