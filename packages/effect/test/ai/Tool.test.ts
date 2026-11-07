@@ -516,22 +516,30 @@ describe("Tool", () => {
           assertTrue(Latch.isOpen(interrupted))
         }))
 
-      it.effect("should fail the stream when the handler's finalizer dies on early stop", () =>
+      it.effect("should die with every handler finalizer defect on early stop", () =>
         Effect.gen(function*() {
           const toolkit = Toolkit.make(Tool.make("Progress", { success: Schema.Number }))
           const handlers = yield* toolkit.pipe(Effect.provide(toolkit.toLayer({
-            Progress: Effect.fnUntraced(function*(_, ctx) {
-              yield* ctx.preliminary(0)
-              return yield* Effect.never
-            }, Effect.onInterrupt(() => Effect.die("finalizer defect")))
+            Progress: Effect.fnUntraced(
+              function*(_, ctx) {
+                yield* ctx.preliminary(0)
+                return yield* Effect.never
+              },
+              Effect.onInterrupt(() => Effect.die("first")),
+              Effect.onInterrupt(() => Effect.die("second"))
+            )
           })))
 
           const exit = yield* handlers.handle("Progress", {}).pipe(
             Effect.flatMap((stream) => stream.pipe(Stream.take(1), Stream.runCollect)),
             Effect.exit
           )
+
           assertTrue(Exit.isFailure(exit))
-          assertTrue(Exit.isFailure(exit) && Cause.hasDies(exit.cause))
+          deepStrictEqual(
+            exit.cause.reasons.map((reason) => Cause.isDieReason(reason) ? reason.defect : reason._tag),
+            ["first", "second"]
+          )
         }))
 
       it.effect("should buffer preliminary results without limit by default", () =>
