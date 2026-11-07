@@ -141,8 +141,7 @@ export const makeCommand = <const Name extends string, Input, E, R, ContextInput
           name: single.name,
           type: single.typeName ?? Primitive.getTypeName(single.primitiveType),
           description: single.description,
-          required: !metadata.isOptional &&
-            (!metadata.isVariadic || Option.exists(metadata.variadicMin, (min) => min > 0)),
+          required: metadata.isRequired,
           variadic: metadata.isVariadic
         })
       }
