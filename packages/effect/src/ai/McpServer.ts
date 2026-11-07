@@ -990,10 +990,8 @@ export class McpServer extends Context.Service<McpServer, {
    *
    * **Details**
    *
-   * Progress notifications use the calling handler's active request and its
-   * `_meta.progressToken`. A missing or different token, or a value that does
-   * not increase, is ignored. Notifications from a
-   * completed, cancelled, or disconnected request are also ignored.
+   * Progress is only sent for the calling request's `_meta.progressToken`,
+   * with strictly increasing values, while that request is active.
    *
    * This follows the MCP [progress requirements](https://modelcontextprotocol.io/specification/2026-07-28/basic/patterns/progress#behavior-requirements).
    */
@@ -1141,6 +1139,7 @@ export class McpServer extends Context.Service<McpServer, {
             if (notification === undefined) {
               return Effect.void
             }
+            // write resumes the caller synchronously, so defer it until delivery completes.
             const acknowledge = Effect.suspend(() =>
               notifications.write({
                 clientId: 0,
@@ -1151,7 +1150,6 @@ export class McpServer extends Context.Service<McpServer, {
             )
             const progressState = Context.get(fiber.context, CurrentProgressState)
             if (notification._tag === "Progress") {
-              // A request owns its progress token and its complete monotonic sequence.
               if (
                 progressState?.active !== true || progressState.token !== notification.progressToken ||
                 (progressState.lastProgress !== undefined && notification.progress <= progressState.lastProgress)
@@ -1167,7 +1165,6 @@ export class McpServer extends Context.Service<McpServer, {
               requestHeaders: Context.getOrUndefined(fiber.context, HttpServerRequest.HttpServerRequest)?.headers,
               progressState
             }
-            // write resumes the caller synchronously, so defer it until delivery completes.
             // A request-scoped endpoint delivers its request's own progress and logs on that request's response.
             const requestQueue = Context.get(fiber.context, RequestNotificationQueue)
             if (
@@ -1848,9 +1845,9 @@ const runWithRuntime = Effect.fnUntraced(function*(
   }>()
   const activeRequests = new Map<number, Map<string, ActiveRequest>>()
   const subscriptionShutdown = yield* Deferred.make<void>()
-  // Closed when the shutdown grace period expires, releasing and suppressing blocked writes.
+  // Completed when the shutdown grace period expires.
   const subscriptionWritesClosed = yield* Deferred.make<void>()
-  // A modern subscription stays open until its final result write settles.
+  // Each settles once its subscription's final write completes.
   const openSubscriptions = new Set<Deferred.Deferred<void>>()
   const settleSubscription = (completed: Deferred.Deferred<void>) => {
     openSubscriptions.delete(completed)
@@ -1943,7 +1940,7 @@ const runWithRuntime = Effect.fnUntraced(function*(
       if (request === undefined || request.cancelled) {
         return Effect.void
       }
-      // Server closure completes the listen request; only client cancellation suppresses its result.
+      // Unlike client cancellation, server closure still sends the listen result.
       return sendNotification(protocolVersion, clientId, {
         tag: "notifications/cancelled",
         payload: { requestId, reason, _meta: { "io.modelcontextprotocol/subscriptionId": requestId } }
@@ -2089,7 +2086,6 @@ const runWithRuntime = Effect.fnUntraced(function*(
   const patchedProtocol = RpcServer.Protocol.of({
     ...protocol,
     send: (clientId, response) => {
-      // After the grace period, interrupting handlers must not start another blocked write.
       if (Deferred.isDoneUnsafe(subscriptionWritesClosed)) return Effect.void
       if (response._tag !== "Exit") return protocol.send(clientId, response)
       const requests = activeRequests.get(clientId)
@@ -2383,7 +2379,6 @@ const runWithRuntime = Effect.fnUntraced(function*(
       }).pipe(Effect.onExit(() =>
         Effect.gen(function*() {
           yield* Deferred.succeed(subscriptionShutdown, undefined)
-          // A peer that stops reading must not hold server shutdown indefinitely.
           const settled = yield* Effect.all(
             Array.from(openSubscriptions, (completed) => Deferred.await(completed)),
             { discard: true }
@@ -2505,7 +2500,7 @@ const runWithRuntime = Effect.fnUntraced(function*(
             return
           }
           const encoded = yield* selectedProtocol.payloadCodecs(rpc).encode(projected.payload)
-          // Cancellation or completion may happen while projection or encoding is suspended.
+          // The request may have ended while projecting or encoding.
           if (notification._tag === "Progress" && queued.progressState?.active !== true) return
           yield* patchedProtocol.send(clientId, {
             _tag: "Request",
@@ -2604,13 +2599,10 @@ type RegistrationServices<RR> = Exclude<McpRequest.Without<RR>, McpServer>
  * reads its first request. The transport discharges the request-level
  * dependencies it supplies (see `ProvidedServices`); any other `McpRequest`
  * marker stays in the layer's requirements and must be met by MCP middleware.
- * Closing the server scope completes active modern subscriptions with a
- * correlated cancellation notification and a successful result. Shutdown
- * allows up to one second for delivery before releasing an unresponsive peer.
- * The stdio transport additionally allows up to one second to drain buffered
- * output before closing its writer.
- * This follows MCP [subscription closure](https://modelcontextprotocol.io/specification/2026-07-28/basic/patterns/subscriptions#graceful-closure)
- * and [cancellation](https://modelcontextprotocol.io/specification/2026-07-28/basic/patterns/cancellation).
+ *
+ * Closing the server scope sends active modern subscriptions a cancellation
+ * notification and a successful result, waiting up to one second for delivery.
+ * See MCP [subscription closure](https://modelcontextprotocol.io/specification/2026-07-28/basic/patterns/subscriptions#graceful-closure).
  *
  * **Gotchas**
  *

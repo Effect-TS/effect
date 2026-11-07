@@ -1620,7 +1620,7 @@ export const makeProtocolStdio = Effect.gen(function*() {
       Effect.ensuring(Effect.forkDetach(Fiber.interrupt(fiber), { startImmediately: true })),
       Effect.forkScoped
     )
-    // This finalizer runs before the scoped writer's interruption finalizer.
+    // Runs before the writer fiber is interrupted, letting buffered responses drain.
     yield* Effect.addFinalizer(() =>
       Queue.end(queue).pipe(
         Effect.andThen(Fiber.await(writer)),
