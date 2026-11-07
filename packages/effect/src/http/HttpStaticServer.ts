@@ -448,9 +448,8 @@ const stripWeakEtagPrefix = (value: string): string => {
   return /^w\//i.test(trimmed) ? trimmed.slice(2) : trimmed
 }
 
-// If-Match uses strong comparison (RFC 9110 §13.1.1), so weak tags never
-// match. Tags may contain commas, so the list is validated whole rather than
-// split, and a malformed list matches nothing.
+// Tags may contain commas, so the list is validated whole rather than
+// split. A malformed list matches nothing.
 const entityTagList = /^[\s,]*(?:(?:W\/)?"[^"]*"\s*(?:,[\s,]*|$))*$/
 const entityTag = /(?:W\/)?"[^"]*"/g
 
@@ -465,20 +464,14 @@ const matchesIfMatch = (ifMatch: string, etag: string | undefined): boolean => {
 }
 
 const matchesIfNoneMatch = (ifNoneMatch: string, etag: string | undefined): boolean => {
-  const normalizedEtag = etag === undefined ? undefined : stripWeakEtagPrefix(etag)
-  for (const candidate of ifNoneMatch.split(",")) {
-    const value = candidate.trim()
-    if (value === "") {
-      continue
-    }
-    if (value === "*") {
-      return true
-    }
-    if (normalizedEtag !== undefined && stripWeakEtagPrefix(value) === normalizedEtag) {
-      return true
-    }
+  if (ifNoneMatch.trim() === "*") {
+    return true
   }
-  return false
+  if (etag === undefined || !entityTagList.test(ifNoneMatch)) {
+    return false
+  }
+  const normalizedEtag = stripWeakEtagPrefix(etag)
+  return ifNoneMatch.match(entityTag)?.some((candidate) => stripWeakEtagPrefix(candidate) === normalizedEtag) ?? false
 }
 
 // An invalid date on either side disables the precondition (RFC 9110 §13.1.3–4).
