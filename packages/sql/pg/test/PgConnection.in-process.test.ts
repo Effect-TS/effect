@@ -218,15 +218,28 @@ interface KeepAliveConnection {
   readonly options: Net.NetConnectOpts
 }
 
-const withKeepAliveServer = Effect.fnUntraced(function*(options?: { readonly tls?: boolean }) {
+const withKeepAliveServer = Effect.fnUntraced(function*(options?: {
+  readonly tls?: boolean | undefined
+  readonly holdFin?: boolean | undefined
+}) {
+  const peers: Array<Net.Socket> = []
+  const messages: Array<string> = []
   const { port } = yield* withTcpServer((socket) => {
+    socket.allowHalfOpen = options?.holdFin ?? false
+    peers.push(socket)
     consumeFrontend(socket, (tag, message) => {
+      if (tag !== undefined) messages.push(tag)
       if (tag === undefined && message.equals(sslRequest)) socket.write(Buffer.from("S"))
       else if (tag === undefined && message.equals(cancelRequest)) socket.end()
       else if (tag === undefined) socket.write(Buffer.concat([authenticationOk, backendKeyData, readyForQuery]))
       else if (tag === "S") socket.write(emptyQueryResult)
     })
   })
+  yield* Effect.addFinalizer(() =>
+    Effect.sync(() => {
+      for (const peer of peers) peer.destroy()
+    })
+  )
   const connections: Array<KeepAliveConnection> = []
   const original = Net.connect
   yield* Effect.acquireRelease(
@@ -244,11 +257,63 @@ const withKeepAliveServer = Effect.fnUntraced(function*(options?: { readonly tls
     ),
     (spy) => Effect.sync(() => spy.mockRestore())
   )
-  return { config: { host: "127.0.0.1", port, username: "test" }, connections }
+  return { config: { host: "127.0.0.1", port, username: "test" }, connections, messages }
 })
 
 describe("PgConnection in-process server", () => {
-  describe("TCP keepalive", { concurrent: false }, () => {
+  describe("TCP lifecycle", { concurrent: false }, () => {
+    it.live("joins driver-created socket closure", () =>
+      Effect.gen(function*() {
+        const { config, connections, messages } = yield* withKeepAliveServer()
+        yield* Effect.scoped(Effect.gen(function*() {
+          const connection = yield* PgConnection.make(config)
+          const result = yield* connection.query("SELECT 1")
+          assert.deepStrictEqual(result.rows, [])
+        }))
+        assert.strictEqual(connections.length, 1)
+        assert.isTrue(connections[0]!.socket.closed)
+        assert.include(messages, "X")
+      }))
+
+    it.live("waits one second before destroying a driver-created socket when the peer withholds FIN", () =>
+      Effect.gen(function*() {
+        const { config, connections } = yield* withKeepAliveServer({ holdFin: true })
+        const scope = yield* Effect.acquireRelease(
+          Scope.make(),
+          (scope) =>
+            Effect.andThen(
+              Effect.sync(() => connections.forEach(({ socket }) => socket.destroy())),
+              Scope.close(scope, Exit.void)
+            )
+        )
+        yield* Scope.provide(PgConnection.make(config), scope)
+        const socket = connections[0]!.socket
+        yield* Effect.acquireRelease(
+          Effect.sync(() => vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] })),
+          () => Effect.sync(() => vi.useRealTimers())
+        )
+        const closing = yield* Effect.forkDetach(Scope.close(scope, Exit.void), { startImmediately: true })
+        vi.advanceTimersByTime(999)
+        assert.isFalse(socket.destroyed)
+        assert.isUndefined(closing.pollUnsafe())
+        vi.advanceTimersByTime(1)
+        yield* Fiber.join(closing)
+        assert.isTrue(socket.closed)
+      }))
+
+    it.effect("retains caller-supplied stream shutdown behavior", () =>
+      Effect.gen(function*() {
+        const stream = makeSslStream("S", false)
+        yield* Effect.addFinalizer(() => Effect.sync(() => stream.socket.destroy()))
+        yield* Effect.scoped(PgConnection.make({
+          username: "test",
+          ssl: true,
+          stream: () => stream.socket
+        }))
+        assert.strictEqual(stream.writes.at(-1)?.[0], "X".charCodeAt(0))
+        assert.isFalse(stream.socket.destroyed)
+      }))
+
     it.live("leaves keepalives disabled by default", () =>
       Effect.scoped(Effect.gen(function*() {
         const { config, connections } = yield* withKeepAliveServer()

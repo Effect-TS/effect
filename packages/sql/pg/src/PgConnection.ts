@@ -300,7 +300,9 @@ export const PgConnection = Context.Service<PgConnection>("@effect/sql-pg/PgConn
  * Password resolution, transport, optional `SSLRequest`, startup, and
  * authentication run under `connectTimeout` (5 seconds by default). The effect
  * resolves when the backend sends `ReadyForQuery`. Closing the scope sends
- * `Terminate` and ends the socket.
+ * `Terminate` and ends the socket. For driver-created transports, release waits
+ * for closure and destroys the socket if it has not closed within one second.
+ * Caller-supplied streams retain their existing shutdown behavior.
  *
  * Use `sslmode=require` or explicit `ssl: true` to require encryption.
  * Unix sockets and custom streams should set `ssl.servername` explicitly.
@@ -317,7 +319,8 @@ export const make = (options: Config): Effect.Effect<PgConnection, SqlError, Sco
         const session = yield* connect(config, password)
         return new PgConnectionImpl(options, config, session, options.types)
       }),
-      (connection) => Effect.sync(() => connection.closeUnsafe()),
+      (connection) =>
+        config.stream === undefined ? closeDriverSocket(connection) : Effect.sync(() => connection.closeUnsafe()),
       { interruptible: true }
     ).pipe(
       Effect.timeoutOrElse({
@@ -362,6 +365,7 @@ interface PipelineEntry {
 }
 
 const abortDrainTimeoutMillis = 5000
+const socketCloseGraceMillis = 1000
 const abortDrainGraceMillis = 10
 /** PostgreSQL `query_canceled` SQLSTATE. */
 const queryCanceledCode = "57014"
@@ -2297,6 +2301,30 @@ const connect = (config: ResolvedConfig, resolvedPassword: string | undefined): 
       done = true
       socket.destroy()
     })
+  })
+
+const closeDriverSocket = (connection: PgConnectionImpl): Effect.Effect<void> =>
+  Effect.callback<void>((resume) => {
+    const socket = connection.session.socket
+    if (socket.closed) {
+      connection.closeUnsafe()
+      resume(Effect.void)
+      return
+    }
+    const cleanup = () => {
+      clearTimeout(timer)
+      socket.off("close", onClose)
+      socket.off("error", ignoreError)
+    }
+    const onClose = () => {
+      cleanup()
+      resume(Effect.void)
+    }
+    const timer = setTimeout(() => socket.destroy(), socketCloseGraceMillis)
+    socket.once("close", onClose)
+    socket.on("error", ignoreError)
+    connection.closeUnsafe()
+    return Effect.sync(cleanup)
   })
 
 const ignoreError = (_: Error) => {}
