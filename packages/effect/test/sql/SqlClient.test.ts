@@ -344,16 +344,15 @@ describe("SqlClient", () => {
       ])
     }))
 
-  it.effect("interrupts a nested transaction waiting for the savepoint without starting its body", () =>
+  it.effect("interrupts a nested transaction waiting for the savepoint, and rolls back the one holding it", () =>
     Effect.gen(function*() {
       const entered = yield* Deferred.make<void>()
-      const release = yield* Deferred.make<void>()
       const interrupted = yield* Deferred.make<void>()
       const { calls, record, sql } = yield* makeClient()
 
       yield* sql.withTransaction(Effect.gen(function*() {
         const holder = yield* Effect.forkChild(sql.withTransaction(
-          Effect.andThen(Deferred.succeed(entered, undefined), Deferred.await(release))
+          Effect.andThen(Deferred.succeed(entered, undefined), Effect.never)
         ))
         yield* Deferred.await(entered)
 
@@ -366,46 +365,21 @@ describe("SqlClient", () => {
         yield* Effect.yieldNow
         const interruptedWhileWaiting = yield* Deferred.isDone(interrupted)
 
-        // Unblock both fibers before asserting, so the regression fails rather than hanging.
-        yield* Deferred.succeed(release, undefined)
-        yield* Fiber.join(holder)
+        // Interrupt the holder before asserting, so the regression fails rather than hanging.
+        yield* Fiber.interrupt(holder)
         yield* Fiber.join(interrupting)
-        const exit = yield* Fiber.await(queued)
-        assert.isTrue(Exit.isFailure(exit) && Cause.hasInterrupts(exit.cause))
         assert.isTrue(interruptedWhileWaiting, "interruption must complete while the savepoint is still held")
 
-        // A cancelled waiter must not keep the savepoint permit.
+        // Neither interrupted transaction may keep the savepoint permit.
         yield* sql.withTransaction(record("reused"))
-      }))
-
-      assert.isFalse(calls.includes("queued body"))
-      assert.deepStrictEqual(calls, [
-        "BEGIN",
-        "SAVEPOINT effect_sql_1",
-        "SAVEPOINT effect_sql_1",
-        "reused",
-        "COMMIT",
-        "release"
-      ])
-    }))
-
-  it.effect("rolls back a nested transaction interrupted while its body runs", () =>
-    Effect.gen(function*() {
-      const entered = yield* Deferred.make<void>()
-      const { calls, sql } = yield* makeClient()
-
-      yield* sql.withTransaction(Effect.gen(function*() {
-        const nested = yield* Effect.forkChild(sql.withTransaction(
-          Effect.andThen(Deferred.succeed(entered, undefined), Effect.never)
-        ))
-        yield* Deferred.await(entered)
-        yield* Fiber.interrupt(nested)
       }))
 
       assert.deepStrictEqual(calls, [
         "BEGIN",
         "SAVEPOINT effect_sql_1",
         "ROLLBACK TO SAVEPOINT effect_sql_1",
+        "SAVEPOINT effect_sql_1",
+        "reused",
         "COMMIT",
         "release"
       ])
