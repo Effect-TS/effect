@@ -15,6 +15,7 @@ import * as TestClock from "effect/testing/TestClock"
 import { initializeHttpSession, makeHttpHarness } from "./TestUtils/McpHttpHarness.ts"
 import { makeMcpSseReader, readMcpHttpResponse } from "./TestUtils/McpHttpResponse.ts"
 import { makeServerLayer } from "./TestUtils/McpServerLayer.ts"
+import type { JsonRpcMessage } from "./TestUtils/McpStdioHarness.ts"
 
 const protocols = [
   McpProtocol.v2024_11_05,
@@ -401,7 +402,7 @@ describe("Legacy input requests", () => {
       const messages = (response: Response) =>
         response.headers.get("content-type")?.includes("text/event-stream")
           ? makeMcpSseReader(response).drain()
-          : Effect.promise(() => response.json()).pipe(Effect.map((message) => [message]))
+          : Effect.promise<JsonRpcMessage>(() => response.json()).pipe(Effect.map((message) => [message]))
 
       // Missing sampling.tools is reported before the history; an invalid history is a server error.
       for (
