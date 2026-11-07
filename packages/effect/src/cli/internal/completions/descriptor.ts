@@ -70,6 +70,38 @@ const toArgumentType = (single: Param.Single<"argument", unknown>): Completions.
 // ---------------------------------------------------------------------------
 
 /**
+ * Pairs each single flag with whether it may be given more than once. The
+ * outermost variadic decides, and each `orElse` alternative is resolved on its
+ * own branch.
+ */
+const repeatableSingles = (
+  param: Param.Param<"flag", unknown>,
+  repeatable?: boolean
+): Array<readonly [Param.Single<"flag", unknown>, boolean]> => {
+  switch (param._tag) {
+    case "Single":
+      return [[param as Param.Single<"flag", unknown>, repeatable === true]]
+    case "Map":
+    case "Optional":
+      return repeatableSingles((param as Param.Optional<"flag", unknown>).param, repeatable)
+    case "Transform": {
+      const transform = param as Param.Transform<"flag", unknown, unknown>
+      return [
+        ...repeatableSingles(transform.param, repeatable),
+        ...transform.alternatives.flatMap((alternative) => repeatableSingles(alternative(), repeatable))
+      ]
+    }
+    case "Variadic": {
+      const variadic = param as Param.Variadic<"flag", unknown>
+      return repeatableSingles(
+        variadic.param,
+        repeatable ?? !Option.exists(variadic.max, (max) => max <= 1)
+      )
+    }
+  }
+}
+
+/**
  * @internal
  */
 export const fromCommand = (
@@ -83,10 +115,7 @@ export const fromCommand = (
   const seen = new Set<string>()
   // Match help's precedence: local flags first, then ancestors root to leaf.
   for (const [index, flag] of [...config.flags, ...inheritedFlags].entries()) {
-    const singles = Param.extractSingleParams(flag)
-    const metadata = Param.getParamMetadata(flag)
-    for (const single of singles) {
-      if (single.kind !== "flag") continue
+    for (const [single, repeatable] of repeatableSingles(flag)) {
       // Omit hidden flags from completion scripts so tab-completion in the
       // shell does not advertise flags that are absent from --help.
       if (single.hidden) continue
@@ -96,9 +125,9 @@ export const fromCommand = (
         name: single.name,
         aliases: single.aliases,
         description: Option.getOrUndefined(single.description),
-        type: toFlagType(single as Param.Single<"flag", unknown>),
+        type: toFlagType(single),
         optionalValue: single.optionalValue !== undefined,
-        repeatable: metadata.isVariadic && !Option.exists(metadata.variadicMax, (max) => max <= 1),
+        repeatable,
         negation: single.negation
       })
     }
