@@ -770,6 +770,88 @@ it.layer(testLayer)(`Mcp Conformance (${protocol.protocolVersion})`, (it) => {
         }
       }))
 
+    // https://modelcontextprotocol.io/specification/2026-07-28/client/sampling#tool-use-and-result-balance
+    it.effect("should reject an unbalanced sampling history after checking every input capability", () =>
+      Effect.gen(function*() {
+        const sample = {
+          method: "sampling/createMessage",
+          params: {
+            messages: [{ role: "assistant", content: { type: "tool_use", id: "one", name: "weather", input: {} } }],
+            maxTokens: 10
+          }
+        } as const
+        const unbalanced = new McpSchema.InputRequired({ inputRequests: { sample } })
+        const uri = "file:///unbalanced"
+        const registration = Layer.effectDiscard(McpServer.McpServer.use((server) =>
+          Effect.gen(function*() {
+            yield* server.addTool({
+              tool: new McpSchema.Tool({ name: "Unbalanced", inputSchema: { type: "object" } }),
+              annotations: Context.empty(),
+              handle: () => Effect.succeed(unbalanced)
+            })
+            yield* server.addTool({
+              tool: new McpSchema.Tool({ name: "UnbalancedWithRoots", inputSchema: { type: "object" } }),
+              annotations: Context.empty(),
+              handle: () =>
+                Effect.succeed(
+                  new McpSchema.InputRequired({ inputRequests: { sample, roots: { method: "roots/list" } } })
+                )
+            })
+            yield* server.addPrompt({
+              prompt: new McpSchema.Prompt({ name: "Unbalanced" }),
+              annotations: Context.empty(),
+              completions: {},
+              handle: () => Effect.succeed(unbalanced)
+            })
+            yield* server.addResource({
+              resource: { uri, name: "Unbalanced" },
+              annotations: Context.empty(),
+              handle: Effect.succeed(unbalanced)
+            })
+          })
+        ))
+        const harness = yield* makeHttpHarness(registration.pipe(Layer.provideMerge(
+          makeServerLayer({ name: "UnbalancedSampling", protocols: [protocol] })
+        )))
+        const send = (method: string, params: Record<string, unknown>, name: string) =>
+          harness.post({
+            jsonrpc: "2.0",
+            id: 1,
+            method,
+            params: {
+              ...params,
+              _meta: { ...metadata, "io.modelcontextprotocol/clientCapabilities": { sampling: { tools: {} } } }
+            }
+          }, headers(method, name)).pipe(
+            Effect.flatMap((response) =>
+              Effect.map(readMcpHttpResponse(response), (message) => ({ status: response.status, message }))
+            )
+          )
+
+        for (
+          const [method, params, name] of [
+            ["tools/call", { name: "Unbalanced", arguments: {} }, "Unbalanced"],
+            ["prompts/get", { name: "Unbalanced" }, "Unbalanced"],
+            ["resources/read", { uri }, uri]
+          ] as const
+        ) {
+          assert.deepStrictEqual(yield* send(method, params, name), {
+            status: 500,
+            message: { jsonrpc: "2.0", id: 1, error: { code: -32603, message: "Internal error" } }
+          }, method)
+        }
+
+        const missingRoots = yield* send(
+          "tools/call",
+          { name: "UnbalancedWithRoots", arguments: {} },
+          "UnbalancedWithRoots"
+        )
+        const error = Schema.decodeUnknownSync(Schema.Struct({ error: McpSchema.McpError }))(missingRoots.message).error
+        assert.strictEqual(missingRoots.status, 400)
+        assert.strictEqual(error.code, -32021)
+        assert.deepStrictEqual(error.data, { requiredCapabilities: { roots: {} } })
+      }))
+
     // https://modelcontextprotocol.io/specification/2026-07-28/client/elicitation#capabilities
     it.effect("should treat an empty elicitation capability as form support", () =>
       Effect.gen(function*() {

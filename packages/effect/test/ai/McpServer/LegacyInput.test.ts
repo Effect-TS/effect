@@ -360,6 +360,81 @@ describe("Legacy input requests", () => {
       assert.strictEqual(acquired, false)
     }))
 
+  // https://modelcontextprotocol.io/specification/2025-11-25/client/sampling#tool-use-and-result-balance
+  it.effect("validates a later sampling history before sending earlier inputs in the round", () =>
+    Effect.gen(function*() {
+      const protocol = McpProtocol.v2025_11_25
+      const text = { type: "text", text: "Inspected" } as const
+      const toolUse = { role: "assistant", content: { type: "tool_use", id: "inspect", name: "inspect", input: {} } }
+      const histories = {
+        Invalid: [toolUse],
+        Valid: [toolUse, { role: "user", content: { type: "tool_result", toolUseId: "inspect", content: [text] } }]
+      } as const
+      const registration = Layer.effectDiscard(
+        Effect.forEach(
+          Object.entries(histories),
+          ([name, messages]) =>
+            McpServer.McpServer.use((server) =>
+              server.addTool({
+                tool: new McpSchema.Tool({ name, inputSchema: { type: "object" } }),
+                annotations: Context.empty(),
+                handle: () =>
+                  McpSchema.McpRequestContext.useSync((context) =>
+                    context.inputResponses?.sample === undefined
+                      ? new McpSchema.InputRequired({
+                        inputRequests: {
+                          roots: { method: "roots/list" },
+                          sample: { method: "sampling/createMessage", params: { messages, maxTokens: 10 } }
+                        }
+                      })
+                      : new McpSchema.CallToolResult({ content: [text] })
+                  )
+              })
+            )
+        )
+      )
+      const harness = yield* makeHttpHarness(registration.pipe(Layer.provideMerge(
+        makeServerLayer({ name: "LegacySamplingRound", protocols: [protocol] })
+      )))
+      const call = (name: keyof typeof histories, headers: Record<string, string>) =>
+        harness.post({ jsonrpc: "2.0", id: name, method: "tools/call", params: { name, arguments: {} } }, headers)
+      const messages = (response: Response) =>
+        response.headers.get("content-type")?.includes("text/event-stream")
+          ? makeMcpSseReader(response).drain()
+          : Effect.promise(() => response.json()).pipe(Effect.map((message) => [message]))
+
+      // Missing sampling.tools is reported before the history; an invalid history is a server error.
+      for (
+        const [sampling, code] of [[{}, -32602], [{ tools: {} }, -32603]] as const
+      ) {
+        const headers = yield* initializeHttpSession(harness, protocol, { roots: {}, sampling })
+        const sent = yield* messages(yield* call("Invalid", headers))
+        assert.strictEqual(sent.length, 1)
+        assert.strictEqual(sent[0].id, "Invalid")
+        assert.strictEqual(Schema.decodeUnknownSync(McpSchema.McpError)(sent[0].error).code, code)
+      }
+
+      const headers = yield* initializeHttpSession(harness, protocol, { roots: {}, sampling: { tools: {} } })
+      const stream = makeMcpSseReader(yield* call("Valid", headers))
+      yield* Effect.addFinalizer(() => stream.cancel)
+      const methods: Array<string | undefined> = []
+      for (let i = 0; i < 2; i++) {
+        const request = yield* stream.take()
+        methods.push(request.method)
+        yield* harness.post({
+          jsonrpc: "2.0",
+          id: request.id,
+          result: request.method === "roots/list"
+            ? { roots: [] }
+            : { role: "assistant", content: text, model: "test" }
+        }, headers)
+      }
+      assert.deepStrictEqual(methods.sort(), ["roots/list", "sampling/createMessage"])
+      const result = yield* stream.take()
+      assert.strictEqual(result.id, "Valid")
+      assert.deepStrictEqual(result.result, { content: [text] })
+    }))
+
   it.effect("replaces previous input responses and clears omitted state on the next round", () =>
     Effect.gen(function*() {
       const contexts: Array<McpSchema.McpRequestContext["Service"]> = []
