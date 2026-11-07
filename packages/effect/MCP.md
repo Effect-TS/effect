@@ -134,8 +134,11 @@ locally with `McpReverseOperationError`. Legacy `InputRequired` handling validat
 round before sending any client input request, including roots or elicitation requests that
 precede sampling. Modern `InputRequired` sampling requests instead fail the originating tool,
 prompt, or resource request with a sanitized `-32603 Internal error` (HTTP 500).
-Client capability errors retain precedence. These checks apply to outgoing request histories;
-a standalone sampling response may still contain tool uses to execute in the next round.
+Modern `InputRequired` handling checks client capabilities for the entire round before sampling
+histories. Legacy handling checks each input's capabilities and protocol version before that
+input's sampling history. Both validate the entire round before sending any input request.
+These checks apply to outgoing request histories; a standalone sampling response may still
+contain tool uses to execute in the next round.
 
 ## Custom transports
 
