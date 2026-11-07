@@ -247,6 +247,23 @@ describe("mssql", () => {
     })
   }
 
+  it("insert and updateValues helpers bind returning parameters after row values", () => {
+    const returning = sql`INSERTED.id, ${"audit"} AS source`
+    assert.deepStrictEqual(
+      sql`INSERT INTO ${sql("people")} ${sql.insert({ name: "Ada", age: 36 }).returning(returning)}`.compile(),
+      [`INSERT INTO [people] ([name],[age]) OUTPUT INSERTED.id, @3 AS source VALUES (@1,@2)`, ["Ada", 36, "audit"]]
+    )
+    assert.deepStrictEqual(
+      sql`UPDATE people SET name = data.name ${
+        sql.updateValues([{ name: "Ada" }, { name: "Mira" }], "data").returning(returning)
+      }`.compile(),
+      [
+        `UPDATE people SET name = data.name OUTPUT INSERTED.id, @3 AS source FROM (values (@1),(@2)) AS [data]([name])`,
+        ["Ada", "Mira", "audit"]
+      ]
+    )
+  })
+
   it("array helper", () => {
     const [query, params] = sql`SELECT * FROM ${sql("people")} WHERE id IN ${sql.in([1, 2, "string"])}`.compile()
     expect(query).toEqual(`SELECT * FROM [people] WHERE id IN (@1,@2,@3)`)
