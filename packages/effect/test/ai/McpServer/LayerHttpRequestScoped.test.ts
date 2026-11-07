@@ -91,8 +91,8 @@ const toolLayer = (
     Layer.provideMerge(makeServerLayer({ name: "RequestMode", protocols: [protocol], mode: "request" }))
   )
 
-const reportProgress = (server: McpServer.McpServer["Service"]) =>
-  server.notifications["notifications/progress"]({ progressToken, progress: 1 }).pipe(
+const reportProgress = (server: McpServer.McpServer["Service"], progress = 1) =>
+  server.notifications["notifications/progress"]({ progressToken, progress }).pipe(
     Effect.as(new McpSchema.CallToolResult({ content: [{ type: "text", text: "done" }] }))
   )
 
@@ -180,7 +180,7 @@ describe("McpServer.layerHttpRequestScoped", () => {
 
   it.live("should serve each POST when timers from completed requests never fire", () =>
     Effect.gen(function*() {
-      const worker = yield* makeWorkerdHarness(toolLayer("ReportProgress", reportProgress))
+      const worker = yield* makeWorkerdHarness(toolLayer("ReportProgress", (server) => reportProgress(server)))
       // The first request builds the server and completes without serving MCP.
       const first = yield* worker.request(new Request(MCP_ENDPOINT, { method: "GET" }))
       assert.strictEqual(first.status, 405)
@@ -266,8 +266,8 @@ describe("McpServer.layerHttpRequestScoped", () => {
             yield* reportProgress(server)
             yield* Deferred.await(headersSent)
             // Later chunks arrive while the client reads nothing, so the body stops pulling.
-            yield* reportProgress(server)
-            yield* reportProgress(server)
+            yield* reportProgress(server, 2)
+            yield* reportProgress(server, 3)
             yield* Deferred.succeed(backpressured, undefined)
             return yield* Effect.never
           }).pipe(Effect.onInterrupt(() => Deferred.succeed(interrupted, undefined)))),
@@ -335,7 +335,7 @@ describe("McpServer.layerHttpRequestScoped", () => {
   it.live("should keep layerHttp notifications when a request-scoped endpoint shares the server", () =>
     Effect.gen(function*() {
       const harness = yield* makeHttpHarness(
-        toolRegistration("ReportProgress", reportProgress).pipe(
+        toolRegistration("ReportProgress", (server) => reportProgress(server)).pipe(
           Layer.provideMerge(Layer.merge(
             makeServerLayer({ name: "DefaultMode", protocols: [protocol] }),
             McpServer.layerHttpRequestScoped({

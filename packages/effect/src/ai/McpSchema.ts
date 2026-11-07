@@ -731,6 +731,20 @@ export const PARSE_ERROR_CODE = -32700 as const
 export const HEADER_MISMATCH_ERROR_CODE = -32020 as const
 
 /**
+ * Represents the MCP error code for a request that requires an unavailable
+ * client capability.
+ *
+ * **Details**
+ *
+ * Defined by the [MCP capability error schema](https://modelcontextprotocol.io/specification/2026-07-28/schema#missingrequiredclientcapabilityerror).
+ *
+ * @stability unstable
+ * @category constants
+ * @since 4.1.3
+ */
+export const MISSING_REQUIRED_CLIENT_CAPABILITY_ERROR_CODE = -32021 as const
+
+/**
  * Represents the MCP error code returned when a server does not support the
  * protocol version requested by a client.
  *
@@ -828,6 +842,35 @@ export class InvalidParams extends Schema.Error<InvalidParams>("effect/ai/McpSch
 }) {}
 
 /**
+ * Represents an MCP request failure identifying the client capabilities needed
+ * to complete the request.
+ *
+ * **When to use**
+ *
+ * Use to fail a handler when the client cannot perform required elicitation,
+ * sampling, or roots requests.
+ *
+ * **Details**
+ *
+ * Carries `data.requiredCapabilities` as specified by the
+ * [MCP capability error schema](https://modelcontextprotocol.io/specification/2026-07-28/schema#missingrequiredclientcapabilityerror).
+ * MCP 2026-07-28 transports preserve error code `-32021`; legacy protocol
+ * adapters report invalid parameters with the same capability requirements.
+ *
+ * @stability unstable
+ * @category errors
+ * @since 4.1.3
+ */
+export class MissingRequiredClientCapability extends Schema.Error<MissingRequiredClientCapability>(
+  "effect/ai/McpSchema/MissingRequiredClientCapability"
+)({
+  ...McpErrorBase.fields,
+  _tag: Schema.tag("MissingRequiredClientCapability"),
+  code: Schema.tag(MISSING_REQUIRED_CLIENT_CAPABILITY_ERROR_CODE),
+  data: Schema.Struct({ requiredCapabilities: ClientCapabilities })
+}) {}
+
+/**
  * Represents an MCP/JSON-RPC error for unexpected internal server failures.
  *
  * **When to use**
@@ -865,6 +908,7 @@ export const McpError = Schema.Union([
   InvalidRequest,
   MethodNotFound,
   InvalidParams,
+  MissingRequiredClientCapability,
   InternalError,
   McpErrorBase
 ])
@@ -3062,6 +3106,11 @@ export type McpInputResponse = Readonly<Record<string, unknown>>
  * `requestState` is opaque to the client and is returned unchanged with the
  * keyed input responses.
  *
+ * In a sampling input request, each assistant message with tool uses must be
+ * followed immediately by a user message containing exactly its matching tool
+ * results. Otherwise, the originating request fails with `InternalError`. See
+ * MCP [tool use and result balance](https://modelcontextprotocol.io/specification/2026-07-28/client/sampling#tool-use-and-result-balance).
+ *
  * @stability unstable
  * @category models
  * @since 4.0.0
@@ -3180,6 +3229,16 @@ export interface McpReverseClient {
   readonly listRoots: (
     request?: typeof ListRoots.payloadSchema.Type
   ) => Effect.Effect<ListRootsResult, McpReverseOperationError | McpReverseOperationUnsupported>
+  /**
+   * Requests sampling from a legacy client.
+   *
+   * **Details**
+   *
+   * Each assistant message with tool uses must be followed immediately by a
+   * user message containing exactly its matching tool results. Otherwise, the
+   * request fails with `McpReverseOperationError` without being sent. See MCP
+   * [tool use and result balance](https://modelcontextprotocol.io/specification/2025-11-25/client/sampling#tool-use-and-result-balance).
+   */
   readonly createMessage: (
     request: typeof CreateMessage.payloadSchema.Type
   ) => Effect.Effect<CreateMessageResult, McpReverseOperationError | McpReverseOperationUnsupported>

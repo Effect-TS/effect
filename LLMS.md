@@ -425,6 +425,18 @@ responses.
 - **[Stateful chat sessions](./ai-docs/src/71_ai/30_chat.ts)**:
   The AI `Chat` module maintains conversation history automatically. Build
   AI agents or chat assistants.
+- **[Serving MCP over a custom socket transport](./ai-docs/src/71_ai/40_mcp-server.ts)**:
+  Compose the public MCP serializer with a socket protocol while preserving
+  protocol version selection, message framing and connection cleanup.
+- **[Requesting client input from MCP toolkit handlers](./ai-docs/src/71_ai/42_mcp-roundtrips.ts)**:
+  Keep a tool's success schema while returning `InputRequired` for form input.
+  Modern clients resume the operation; legacy clients answer a reverse request.
+- **[Reporting progress from an MCP tool](./ai-docs/src/71_ai/45_mcp-progress.ts)**:
+  Report increasing progress for the calling request while processing a batch
+  of documents. The server stops progress when that request ends.
+- **[Continuing an existing MCP sampling tool loop](./ai-docs/src/71_ai/46_mcp-sampling-history.ts)**:
+  Pair assistant tool uses with their matching results before requesting the
+  next sampling turn. Sampling remains supported for existing integrations.
 
 ## Building distributed applications with cluster
 

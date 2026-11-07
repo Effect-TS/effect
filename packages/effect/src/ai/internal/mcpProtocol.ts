@@ -102,11 +102,25 @@ export const invocationFromClient = (
  * @internal
  */
 export const listForClient = <A>(
-  list: (invocation: McpCore.McpInvocation) => Effect.Effect<A, McpCore.RequestRejected>
+  list: (invocation: McpCore.McpInvocation) => Effect.Effect<A, McpCore.RequestRejected>,
+  cursor: string | undefined
 ): Effect.Effect<A, ProtocolError, PublicMcpSchema.McpServerClient> =>
-  PublicMcpSchema.McpServerClient.use((request) =>
-    list(invocationFromClient(request)).pipe(Effect.mapError(ProtocolError.fromFeature))
+  Effect.andThen(
+    validateListCursor(cursor),
+    PublicMcpSchema.McpServerClient.use((request) =>
+      list(invocationFromClient(request)).pipe(Effect.mapError(ProtocolError.fromFeature))
+    )
   )
+
+/**
+ * Rejects any cursor: core lists return every entry in one page and never issue cursors.
+ *
+ * @internal
+ */
+export const validateListCursor = (cursor: string | undefined): Effect.Effect<void, ProtocolError> =>
+  cursor === undefined
+    ? Effect.void
+    : Effect.fail(new ProtocolError({ code: PublicMcpSchema.INVALID_PARAMS_ERROR_CODE, message: "Invalid cursor" }))
 
 /**
  * @internal
@@ -184,6 +198,56 @@ export const samplingRequestRequiresTools = (request: unknown): boolean => {
     const content = message.content
     return Array.isArray(content) ? content.some(isSamplingToolContent) : isSamplingToolContent(content)
   })
+}
+
+/**
+ * Returns why a sampling history breaks tool-use/result pairing, or `undefined`
+ * if it does not. Unrecognized shapes pass, since dated schemas validate them.
+ *
+ * @internal
+ */
+export const samplingMessageError = (request: unknown): string | undefined => {
+  if (!Predicate.isReadonlyObject(request) || !Array.isArray(request.messages)) return undefined
+
+  // Tool uses from the previous assistant message that still need results.
+  const pending = new Set<string>()
+  for (const [index, message] of request.messages.entries()) {
+    if (!Predicate.isReadonlyObject(message) || (message.role !== "user" && message.role !== "assistant")) {
+      return undefined
+    }
+    const blocks: ReadonlyArray<unknown> = Array.isArray(message.content) ? message.content : [message.content]
+
+    if (pending.size > 0) {
+      if (message.role !== "user") {
+        return `Sampling message ${index} must provide the preceding tool results as a user message`
+      }
+      for (const block of blocks) {
+        if (!Predicate.isReadonlyObject(block)) return undefined
+        if (block.type !== "tool_result") {
+          return `Sampling message ${index} must contain only tool results`
+        }
+        if (typeof block.toolUseId !== "string") return undefined
+        if (!pending.delete(block.toolUseId)) {
+          return `Sampling message ${index} contains an unexpected or repeated tool result`
+        }
+      }
+      if (pending.size > 0) return `Sampling message ${index} is missing a tool result`
+      continue
+    }
+
+    for (const block of blocks) {
+      if (!Predicate.isReadonlyObject(block)) return undefined
+      if (block.type === "tool_result") {
+        return `Sampling message ${index} contains a tool result without a preceding assistant tool use`
+      }
+      if (block.type !== "tool_use") continue
+      if (message.role !== "assistant") return `Sampling message ${index} must use the assistant role for tool uses`
+      if (typeof block.id !== "string") return undefined
+      if (pending.has(block.id)) return `Sampling message ${index} contains a repeated tool use identifier`
+      pending.add(block.id)
+    }
+  }
+  return pending.size > 0 ? "Sampling messages must end after the pending tool results" : undefined
 }
 
 // NOTE: Keep the two codec assertions below as the single documented
@@ -445,10 +509,7 @@ export interface HandlerInstallationContext {
     requestId: RpcMessage.RequestId,
     reason: string
   ) => Effect.Effect<void>
-  readonly markSubscriptionCancelled?: (
-    clientId: number,
-    requestId: RpcMessage.RequestId
-  ) => Effect.Effect<void>
+  readonly subscriptionShutdown?: Effect.Effect<void> | undefined
   readonly supportedVersions: ReadonlyArray<string>
   readonly serverInfo: {
     readonly name: string

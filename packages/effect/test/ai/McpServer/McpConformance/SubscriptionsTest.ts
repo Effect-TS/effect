@@ -695,7 +695,17 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
           }
 
           const remaining = yield* subscription.drain()
-          assert.notInclude(remaining.map((message) => message.method), "notifications/cancelled")
+          const cancellation = remaining.find((message) => message.method === "notifications/cancelled")
+          assert.isDefined(cancellation)
+          assert.strictEqual(subscriptionIdOf(cancellation!), "overflowing-http-subscription")
+          const completion = remaining.at(-1)!
+          assert.strictEqual(completion.id, "overflowing-http-subscription")
+          assert.propertyVal(completion.result, "resultType", "complete")
+          assert.propertyVal(
+            (completion.result as { _meta: Record<string, unknown> })._meta,
+            subscriptionIdKey,
+            "overflowing-http-subscription"
+          )
           assert.strictEqual(clock.activeSleeps(), 0)
 
           const discovery = yield* harness.post({

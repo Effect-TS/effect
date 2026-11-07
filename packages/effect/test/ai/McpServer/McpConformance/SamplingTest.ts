@@ -68,6 +68,37 @@ const samplingRequestWithOptions = McpSchema.CreateMessage.payloadSchema.make({
   metadata: { request: "metadata" }
 })
 
+const toolText = { type: "text", text: "Weather?" } as const
+const toolUse = (id: string) => ({ type: "tool_use", id, name: "weather", input: {} }) as const
+const toolResult = (toolUseId: string) => ({ type: "tool_result", toolUseId, content: [toolText] }) as const
+const assistant = (content: unknown) => ({ role: "assistant", content }) as const
+const user = (content: unknown) => ({ role: "user", content }) as const
+
+const unbalancedToolHistories = {
+  "tool use in a user message": [user(toolUse("one")), user(toolResult("one"))],
+  "tool result without a preceding tool use": [user(toolResult("one"))],
+  "tool results mixed with other content": [assistant(toolUse("one")), user([toolResult("one"), toolText])],
+  "mismatched tool result": [assistant(toolUse("one")), user(toolResult("two"))],
+  "repeated tool result": [assistant(toolUse("one")), user([toolResult("one"), toolResult("one")])],
+  "missing parallel tool result": [assistant([toolUse("one"), toolUse("two")]), user(toolResult("one"))],
+  "duplicate tool use identifier": [assistant([toolUse("one"), toolUse("one")]), user(toolResult("one"))],
+  "message between tool use and result": [assistant(toolUse("one")), assistant(toolText), user(toolResult("one"))],
+  "tool use without a result": [assistant(toolUse("one"))]
+} as const
+
+const balancedToolHistories = {
+  "parallel tool results in any order": [
+    assistant([toolText, toolUse("one"), toolUse("two")]),
+    user([toolResult("two"), toolResult("one")])
+  ],
+  "identifiers reused after a completed round": [
+    assistant(toolUse("one")),
+    user(toolResult("one")),
+    assistant(toolUse("one")),
+    user(toolResult("one"))
+  ]
+} as const
+
 export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConformanceLayer) =>
   it.layer(layer)(`Mcp Conformance (${protocol.protocolVersion})`, (it) => {
     describe("Sampling", () => {
@@ -158,9 +189,10 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
               for (const testCase of requests) {
                 const peer = yield* test.makePeer({ capabilities: { sampling: {} } })
                 const request = Schema.decodeUnknownSync(McpSchema.CreateMessage.payloadSchema)(testCase.request)
-                const exit = yield* Effect.exit(peer.reverseClient.createMessage(request))
+                const error = yield* Effect.flip(peer.reverseClient.createMessage(request))
 
-                assert.strictEqual(exit._tag, "Failure", testCase.name)
+                // The tool_use and tool_result shapes are also invalid histories; the capability check comes first.
+                assert.strictEqual(error._tag, "McpReverseOperationUnsupported", testCase.name)
                 assert.deepStrictEqual(yield* peer.requests, [], testCase.name)
               }
             })
@@ -198,6 +230,47 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
                 { type: "text", text: "First" },
                 { type: "text", text: "Second" }
               ])
+            })
+        )
+
+        // https://modelcontextprotocol.io/specification/2025-11-25/client/sampling#tool-use-and-result-balance
+        it.effect.skipIf(protocol.protocolVersion !== "2025-11-25")(
+          "MUST reject unbalanced tool use histories before sending",
+          () =>
+            Effect.gen(function*() {
+              const test = yield* McpConformance
+              for (const [name, messages] of Object.entries(unbalancedToolHistories)) {
+                const peer = yield* test.makePeer({ capabilities: { sampling: { tools: {} } } })
+                const request = Schema.decodeUnknownSync(McpSchema.CreateMessage.payloadSchema)({
+                  messages,
+                  maxTokens: 64
+                })
+                const error = yield* Effect.flip(peer.reverseClient.createMessage(request))
+
+                assert.strictEqual(error._tag, "McpReverseOperationError", name)
+                assert.deepStrictEqual(yield* peer.requests, [], name)
+              }
+            })
+        )
+
+        it.effect.skipIf(protocol.protocolVersion !== "2025-11-25")(
+          "MUST send balanced tool use histories",
+          () =>
+            Effect.gen(function*() {
+              const test = yield* McpConformance
+              for (const [name, messages] of Object.entries(balancedToolHistories)) {
+                const peer = yield* test.makePeer({
+                  capabilities: { sampling: { tools: {} } },
+                  handlers: { "sampling/createMessage": () => Effect.succeed(textResponse) }
+                })
+                const request = Schema.decodeUnknownSync(McpSchema.CreateMessage.payloadSchema)({
+                  messages,
+                  maxTokens: 64
+                })
+                yield* peer.reverseClient.createMessage(request)
+
+                assert.strictEqual((yield* peer.requests).length, 1, name)
+              }
             })
         )
 

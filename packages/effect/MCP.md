@@ -94,6 +94,103 @@ implementation. Finally, a logging layer is added with
 This is essential when using stdio, as any output to `stdout` would interfere with the protocol
 communication.
 
+## Progress and subscription lifetime
+
+Handlers send progress through `McpServer.notifications["notifications/progress"]`, using
+the calling request's `_meta.progressToken`. Values must be finite and strictly increasing;
+floating-point progress is supported. A missing or different token, a repeated or decreasing
+value, and notifications after completion, cancellation, or disconnection are ignored.
+Each request has its own sequence, so a later request may reuse a completed request's token.
+These rules apply to every transport and follow the
+[2026 progress requirements](https://modelcontextprotocol.io/specification/2026-07-28/basic/patterns/progress#behavior-requirements)
+and their [2025 equivalent](https://modelcontextprotocol.io/specification/2025-11-25/basic/utilities/progress#behavior-requirements).
+
+When the server closes a modern subscription because its notification backlog overflows or
+the server scope closes, it sends `notifications/cancelled`, then a successful
+`subscriptions/listen` result. Both carry the subscription ID in `_meta`. The HTTP response
+stream then closes. Client cancellation still stops processing without a result.
+Server shutdown waits up to one second for active subscription deliveries; a disconnected
+or unresponsive peer cannot keep the server alive indefinitely. The stdio transport allows
+one further second to drain its buffered output before closing the writer. See MCP
+[cancellation](https://modelcontextprotocol.io/specification/2026-07-28/basic/patterns/cancellation)
+and [graceful subscription closure](https://modelcontextprotocol.io/specification/2026-07-28/basic/patterns/subscriptions#graceful-closure).
+
+## Pagination and sampling validation
+
+In every supported revision, core tool, resource, resource-template, and prompt lists return one
+complete page without `nextCursor`. A list request that supplies any cursor, including an empty
+string, fails with `-32602 Invalid params`. See
+[pagination error handling](https://modelcontextprotocol.io/specification/2026-07-28/server/utilities/pagination#error-handling).
+
+In an outgoing sampling history, each assistant message with `tool_use` blocks must be followed
+immediately by a user message containing only `tool_result` blocks, exactly one for each
+tool-use ID. Missing, duplicated, or misplaced results are rejected, as is a history that ends
+before its pending results. A later round may reuse an ID. See tool use and result balance in
+[2026-07-28](https://modelcontextprotocol.io/specification/2026-07-28/client/sampling#tool-use-and-result-balance) and
+[2025-11-25](https://modelcontextprotocol.io/specification/2025-11-25/client/sampling#tool-use-and-result-balance).
+
+Invalid histories are rejected before anything is sent to the client:
+
+- `McpReverseClient.createMessage` fails with `McpReverseOperationError`.
+- Legacy `InputRequired` handling checks each input's capabilities and protocol version, then its
+  sampling history. It validates the whole round first, so roots or elicitation requests that
+  precede an invalid sampling request are not sent either.
+- Modern `InputRequired` handling checks client capabilities for the whole round first. An
+  invalid history then fails the originating tool, prompt, or resource request with a sanitized
+  `-32603 Internal error` (HTTP 500).
+
+Sampling responses are not checked this way: a response may contain tool uses to run in the next
+round.
+
+## Custom transports
+
+Use `McpServer.layerSerialization` with a socket `RpcServer.Protocol` and
+`McpServer.layer` to serve MCP over a custom reliable byte stream:
+
+```typescript
+import { NodeSocketServer } from "@effect/platform-node"
+import { Layer } from "effect"
+import { McpProtocol, McpServer } from "effect/ai"
+import { RpcServer } from "effect/rpc"
+
+const protocols = [McpProtocol.v2026_07_28, McpProtocol.v2025_11_25] as const
+
+const Transport = RpcServer.layerProtocolSocketServer.pipe(
+  Layer.provide(McpServer.layerSerialization({ protocols })),
+  Layer.provide(NodeSocketServer.layer({ host: "127.0.0.1", port: 3001 }))
+)
+
+const Server = McpServer.layer({
+  name: "Local Workspace",
+  version: "1.0.0",
+  protocols
+}).pipe(Layer.provide(Transport))
+```
+
+The serializer uses newline-delimited JSON by default, matching stdio. Use
+`framing: "json"` only when the transport already delivers one complete JSON
+message per frame. `makeSerialization` provides the same serializer without a
+layer; a custom protocol must create a separate `makeUnsafe()` parser for each
+connection, forward decoded messages unchanged, and publish connection closes
+through `Protocol.disconnects`. This lets MCP release the disconnected client's
+session and pending reverse requests without waiting for another notification.
+
+The configured adapters determine batch support: `2026-07-28` and `2025-11-25`
+reject batches, while older adapters retain their own policies. Effect RPC
+control methods are not enabled. Malformed JSON receives a JSON-RPC parse error
+with `id: null`; a malformed newline-delimited frame does not discard adjacent
+valid frames. Unexpected internal failures do not expose Effect causes or
+defects on the wire. The default retained-frame limit is 16 MiB; configure
+`maxBufferSize` when the transport requires a different limit.
+
+These rules implement MCP's
+[custom transport requirements](https://modelcontextprotocol.io/specification/2026-07-28/basic/transports#custom-transports)
+and [JSON-RPC error responses](https://www.jsonrpc.org/specification#response_object).
+Use `layerHttp` for Streamable HTTP: it additionally implements MCP HTTP admission,
+headers and streaming rules. Its SSE responses include `X-Accel-Buffering: no`, as
+recommended by the
+[Streamable HTTP specification](https://modelcontextprotocol.io/specification/2026-07-28/basic/transports/streamable-http).
+
 ## Resources
 
 Resources in the MCP server represent files or data that can be accessed by an MCP client. Each
@@ -258,6 +355,86 @@ A tool result is sent to the client in its JSON encoding, the same encoding its 
 `failure` schema. In the default `"error"` failure mode, a declared `Error` with a non-empty
 `message` is sent as that message instead.
 
+## Client input and multi-round operations
+
+Use `McpServer.toolkit(tools, { handlers })` or
+`McpServer.registerToolkit(tools, { handlers })` when a toolkit handler needs client input.
+These handlers return the tool's success type or `McpSchema.InputRequired`; the latter bypasses
+success encoding and `toModelOutput`. The advertised output schema continues to describe the
+completed result. Only the `{ handlers }` form interprets `InputRequired` as a protocol
+continuation. The one-argument form with `Toolkit.toLayer` preserves ordinary result encoding,
+including success data tagged `InputRequired`, and declared `InvalidParams` tool failures.
+
+```typescript
+import { Effect, Schema } from "effect"
+import { McpSchema, McpServer, Tool, Toolkit } from "effect/ai"
+
+const tools = Toolkit.make(Tool.make("ListWorkspaceRoots", {
+  success: Schema.Array(Schema.String)
+}))
+
+const Registrations = McpServer.toolkit(tools, {
+  handlers: {
+    ListWorkspaceRoots: Effect.fn(function*() {
+      const context = yield* McpSchema.McpRequestContext
+      if (context.inputResponses?.workspace === undefined) {
+        return new McpSchema.InputRequired({
+          inputRequests: { workspace: { method: "roots/list" } }
+        })
+      }
+      const response = yield* Schema.decodeUnknownEffect(Schema.Struct({
+        roots: Schema.Array(Schema.Struct({ uri: Schema.String }))
+      }))(context.inputResponses.workspace).pipe(
+        Effect.mapError((error) => new McpSchema.InvalidParams({ message: error.message }))
+      )
+      return response.roots.map((root) => root.uri)
+    })
+  }
+})
+```
+
+Handler services are inferred as request-level dependencies; the server supplies
+`McpRequestContext` automatically. `ToolkitHandlers<Tools>` describes a reusable handler map,
+and `ToolkitHandlerRequirements<Tools, Handlers>` exposes its registration requirements.
+Read construction-time dependencies while building the registration layer and close over them.
+
+`registerResource`, `resource`, `registerPrompt`, and `prompt` also accept `InputRequired`
+content. Low-level tools, prompts, static resources and resource templates share the same behavior.
+On 2026-07-28, the server returns `input_required`; the client repeats the same method and
+arguments with `requestState` and `inputResponses`. The handler reads both through
+`McpRequestContext`. Each response map belongs to the latest round. Validate responses before
+using them, and perform side effects only after the required input has been accepted. This follows
+[Multi Round-Trip Requests](https://modelcontextprotocol.io/specification/2026-07-28/basic/patterns/mrtr)
+and [resource reading](https://modelcontextprotocol.io/specification/2026-07-28/server/resources#reading-resources).
+
+For legacy protocols the server resolves supported input requests inside the original call,
+using the negotiated revision's reverse requests. Roots and sampling work across all supported
+legacy revisions; form elicitation starts at 2025-06-18 and URL elicitation at 2025-11-25.
+Each whole round is validated before any reverse request is sent. The server preserves
+`accept`, `decline`, and `cancel`, generates a URL elicitation ID when absent, and does not
+interpret URL acceptance as completion. Unsupported requests and state-only continuations
+fail with `InvalidParams`. These translations use the legacy
+[elicitation](https://modelcontextprotocol.io/specification/2025-11-25/client/elicitation),
+[sampling](https://modelcontextprotocol.io/specification/2025-11-25/client/sampling), and
+[roots](https://modelcontextprotocol.io/specification/2025-11-25/client/roots) contracts.
+
+Authentication middleware wraps the entire legacy operation, including every continuation and
+reverse request. Its deadline and finalizers therefore cover the complete exchange. The defaults
+are 16 rounds and a 60-second timeout per reverse request. Override
+`McpServer.LegacyInputMaxRounds` and `McpServer.LegacyInputTimeout` in the server context or MCP
+middleware using `Effect.provideService`. Values must be finite and positive, and the round limit
+must be a safe integer. Interruption cancels the pending request. These bounds implement the
+legacy [timeout guidance](https://modelcontextprotocol.io/specification/2025-11-25/basic/lifecycle#timeouts).
+
+Handlers may fail with `new McpSchema.MissingRequiredClientCapability({ message,
+data: { requiredCapabilities } })`. It stays a JSON-RPC error even for toolkit tools configured
+with `failureMode: "return"`. Modern clients receive code `-32021` and
+`data.requiredCapabilities`; an HTTP response that has not begun streaming uses status 400,
+as required by the [MCP metadata rules](https://modelcontextprotocol.io/specification/2026-07-28/basic#_meta).
+Perform capability checks before emitting progress, since an HTTP status cannot change after
+streaming begins. Legacy clients receive `InvalidParams` (`-32602`) with the same capability
+information. Unexpected defects retain the existing internal-error handling.
+
 ## Request-level dependencies
 
 Some services only exist per request, such as the user a request is made for. A tool declares them
@@ -277,7 +454,7 @@ class CurrentUser extends Context.Service<CurrentUser, { readonly id: string }>(
 class Unauthorized extends Schema.Error<Unauthorized>("Unauthorized")({
   ...McpSchema.McpErrorBase.fields,
   _tag: Schema.tag("Unauthorized"),
-  code: Schema.tag(-32001)
+  code: Schema.tag(10001)
 }) {}
 
 const WhoAmI = Tool.make("WhoAmI", { success: Schema.String, dependencies: [CurrentUser] })
@@ -327,8 +504,10 @@ A few rules to know:
   an `HttpRouter` requirement, so an existing `HttpRouter.middleware` that provides `CurrentUser`
   keeps working, and so does its 401 response.
 - Middleware failures must be `McpErrorBase` values and are sent as JSON-RPC errors with their
-  `code`, `message` and `data`, never as tool results. Use codes from the implementation-defined
-  range (-32000 to -32019). Defects are logged, reported and sent as `InternalError`.
+  `code`, `message` and `data`, never as tool results. Use application codes outside the
+  reserved range -32768 to -32000, such as `10001` in the example; see MCP
+  [error codes](https://modelcontextprotocol.io/specification/2026-07-28/basic#error-codes). Any numeric `code` is
+  sent unchanged. Defects are logged, reported and sent as `InternalError`.
 - Resource and prompt handlers have no `dependencies` option: everything their handler reads is
   request-level. Read construction-time services in `Layer.unwrap` and close over them:
 
