@@ -338,7 +338,7 @@ export const make = (
     // closes, so no other fiber can begin a transaction while it runs.
     const lease = Effect.as(permit, connection as LibsqlConnection)
     const acquirer = Effect.flatMap(
-      Effect.serviceOption(LibsqlTransaction),
+      Client.currentTransaction(LibsqlTransaction),
       Option.match({
         onNone: () => lease,
         onSome: ([conn]) => Effect.succeed(conn)
