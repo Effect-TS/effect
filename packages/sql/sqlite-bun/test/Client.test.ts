@@ -10,6 +10,10 @@ import { pathToFileURL } from "node:url"
 
 const isBun = "bun" in process.versions
 
+const isEnded = (exit: Exit.Exit<unknown, unknown>) =>
+  Exit.isFailure(exit) && !Cause.hasDies(exit.cause) &&
+  Cause.pretty(exit.cause).includes("the transaction has already ended")
+
 const makeLockedDatabase = Effect.gen(function*() {
   const { Database } = yield* Effect.promise(() => import("bun:sqlite"))
   const dir = yield* Effect.acquireRelease(
@@ -95,10 +99,7 @@ describe("Client", () => {
         )))
         yield* Deferred.succeed(go, undefined)
         for (const exit of yield* Fiber.join(stale)) {
-          assert.isTrue(
-            Exit.isFailure(exit) && !Cause.hasDies(exit.cause) &&
-              Cause.pretty(exit.cause).includes("the transaction has already ended")
-          )
+          assert.isTrue(isEnded(exit))
         }
       }).pipe(Effect.provide(Reactivity.layer))
   )

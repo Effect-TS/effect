@@ -326,6 +326,10 @@ const makeClient = MssqlClient.make({
   connectionTTL: "1 hour"
 })
 
+const isEnded = (exit: Exit.Exit<unknown, unknown>) =>
+  Exit.isFailure(exit) && !Cause.hasDies(exit.cause) &&
+  Cause.pretty(exit.cause).includes("the transaction has already ended")
+
 const bounded = <A, E, R>(effect: Effect.Effect<A, E, R>) => effect.pipe(Effect.timeout("2 seconds"))
 
 describe("MssqlClient connection lifecycle", { concurrent: false }, () => {
@@ -368,10 +372,7 @@ describe("MssqlClient connection lifecycle", { concurrent: false }, () => {
       yield* Deferred.succeed(go, undefined)
       const exits = yield* bounded(Fiber.join(stale))
       for (const exit of exits) {
-        assert.isTrue(
-          Exit.isFailure(exit) && !Cause.hasDies(exit.cause) &&
-            Cause.pretty(exit.cause).includes("the transaction has already ended")
-        )
+        assert.isTrue(isEnded(exit))
       }
       const queries = state.connections.flatMap((connection) => connection.queries)
       assert.isFalse(queries.some((query) => query.includes("get_answer") || query === "SELECT 'stale'"))
