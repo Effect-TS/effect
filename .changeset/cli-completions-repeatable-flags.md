@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Keep offering repeatable CLI flags, such as `Flag.atLeast` and `Flag.KeyValuePair`, in shell completions after their first use.
+Shell completions keep suggesting repeatable flags, such as `Flag.atLeast` and `Flag.KeyValuePair`, after their first use.

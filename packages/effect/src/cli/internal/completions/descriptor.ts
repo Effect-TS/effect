@@ -69,35 +69,35 @@ const toArgumentType = (single: Param.Single<"argument", unknown>): Completions.
 // Extraction
 // ---------------------------------------------------------------------------
 
+type FlagParam =
+  | Param.Single<"flag", unknown>
+  | Param.Map<"flag", unknown, unknown>
+  | Param.Transform<"flag", unknown, unknown>
+  | Param.Optional<"flag", unknown>
+  | Param.Variadic<"flag", unknown>
+
 /**
- * Pairs each single flag with whether it may be given more than once. The
- * outermost variadic decides, and each `orElse` alternative is resolved on its
- * own branch.
+ * Pairs each single flag with whether it can be repeated. The outermost
+ * variadic decides, and each `orElse` alternative is resolved separately.
  */
 const repeatableSingles = (
   param: Param.Param<"flag", unknown>,
   repeatable?: boolean
 ): Array<readonly [Param.Single<"flag", unknown>, boolean]> => {
-  switch (param._tag) {
+  const p = param as FlagParam
+  switch (p._tag) {
     case "Single":
-      return [[param as Param.Single<"flag", unknown>, repeatable === true]]
+      return [[p, repeatable === true]]
     case "Map":
     case "Optional":
-      return repeatableSingles((param as Param.Optional<"flag", unknown>).param, repeatable)
-    case "Transform": {
-      const transform = param as Param.Transform<"flag", unknown, unknown>
+      return repeatableSingles(p.param, repeatable)
+    case "Transform":
       return [
-        ...repeatableSingles(transform.param, repeatable),
-        ...transform.alternatives.flatMap((alternative) => repeatableSingles(alternative(), repeatable))
+        ...repeatableSingles(p.param, repeatable),
+        ...p.alternatives.flatMap((alternative) => repeatableSingles(alternative(), repeatable))
       ]
-    }
-    case "Variadic": {
-      const variadic = param as Param.Variadic<"flag", unknown>
-      return repeatableSingles(
-        variadic.param,
-        repeatable ?? !Option.exists(variadic.max, (max) => max <= 1)
-      )
-    }
+    case "Variadic":
+      return repeatableSingles(p.param, repeatable ?? !Option.exists(p.max, (max) => max <= 1))
   }
 }
 
