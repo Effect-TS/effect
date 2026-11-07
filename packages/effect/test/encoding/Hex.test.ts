@@ -38,6 +38,39 @@ describe("Hex", () => {
     assert.isTrue(Result.isFailure(Hex.decode("zz")))
   })
 
+  it("round trips every byte value", () => {
+    const bytes = Uint8Array.from({ length: 256 }, (_, i) => i)
+    const encoded = Hex.encode(bytes)
+    assert.strictEqual(encoded, Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join(""))
+    assert.deepStrictEqual(Result.getOrThrow(Hex.decode(encoded)), bytes)
+    assert.deepStrictEqual(Result.getOrThrow(Hex.decode(encoded.toUpperCase())), bytes)
+  })
+
+  it("reports the decoding failure", () => {
+    const long = "00".repeat(64)
+    const vectors: ReadonlyArray<readonly [string, string]> = [
+      ["abc", "Length must be a multiple of 2, but is 3"],
+      [`${long}0`, "Length must be a multiple of 2, but is 129"],
+      // Lengths count UTF-8 bytes
+      ["\u00e9", "Invalid input"],
+      ["0g", "Invalid input"],
+      ["0 ", "Invalid input"],
+      [`${long}0g`, "Invalid input"]
+    ]
+    for (const [input, message] of vectors) {
+      for (const result of [Hex.decode(input), Hex.decodeString(input)]) {
+        assert.isTrue(Result.isFailure(result), input)
+        if (Result.isFailure(result)) {
+          const { kind, module } = result.failure
+          assert.deepStrictEqual(
+            { kind, module, input: result.failure.input, message: result.failure.message },
+            { kind: "Decode", module: "Hex", input, message }
+          )
+        }
+      }
+    }
+  })
+
   describe("random", () => {
     it("generates lowercase hexadecimal words", () => {
       assertRandom(0, 0)

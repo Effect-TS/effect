@@ -54,6 +54,8 @@ describe("Base64Url", () => {
     }
     for (const encoded of [Base64Url.encode(bytes), Base64Url.encodePadded(bytes)]) {
       assert.deepStrictEqual(Result.getOrThrow(Base64Url.decode(encoded)), bytes)
+      // MIME-style 76-character lines
+      assert.deepStrictEqual(Result.getOrThrow(Base64Url.decode(encoded.replace(/.{76}/g, "$&\r\n"))), bytes)
       assert.strictEqual(
         Result.getOrThrow(Base64Url.decodeString(encoded)),
         new TextDecoder().decode(bytes)
@@ -110,6 +112,12 @@ describe("Base64Url", () => {
     assertFailure("Zm\t9v", "Zm\t9v", unpadded(5))
     for (const input of ["Zm+v", "Zm/v", "Zm9!", "Zm9{", "Zm9\u00e9", "Zm9\u0000", "Zm9\u2028", "Z=g="]) {
       assertFailure(input, input, "Invalid input")
+    }
+    for (const char of [" ", "\t", "\f"]) {
+      assertFailure(`Zm9${char}`, `Zm9${char}`, "Invalid input")
+      // Long enough for size-gated decoders
+      const long = `${"Zm9v".repeat(64)}Zm9${char}`
+      assertFailure(long, long, "Invalid input")
     }
   })
 })
