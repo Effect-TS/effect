@@ -1,0 +1,13 @@
+# Generates effect/protobuf/internal/generated from descriptor-set.binpb, which
+# holds descriptor.proto and plugin.proto of protoc 36.2 with their comments:
+#
+#   protoc --include_source_info --descriptor_set_out=descriptor-set.binpb \
+#     -I <protoc>/include google/protobuf/descriptor.proto google/protobuf/compiler/plugin.proto
+#
+# Run with `pnpm bootstrap` from packages/tools/protobuf-generator.
+version: v2
+plugins:
+  - local: ["node", "src/bin.ts"]
+    out: ../../effect/src/protobuf/internal/generated
+    opt:
+      - import_extension=ts
