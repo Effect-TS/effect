@@ -1055,6 +1055,18 @@ const prepareMessages = Effect.fnUntraced(
                   break
                 }
 
+                const result = part.providerExecuted
+                  ? providerExecutedParts.find((candidate) =>
+                    candidate.type === "tool-result" && candidate.id === part.id && candidate.name === part.name
+                  )
+                  : undefined
+
+                // The call and its result are one stored item, which the
+                // result references
+                if (useItemReferences && Predicate.isNotUndefined(result)) {
+                  break
+                }
+
                 if (useItemReferences && Predicate.isNotNull(id)) {
                   messages.push({ type: "item_reference", id })
                   break
@@ -1066,9 +1078,6 @@ const prepareMessages = Effect.fnUntraced(
                   ) {
                     break
                   }
-                  const result = providerExecutedParts.find((candidate) =>
-                    candidate.type === "tool-result" && candidate.id === part.id && candidate.name === part.name
-                  )
                   if (Predicate.isUndefined(result) || result.type !== "tool-result") {
                     return yield* unreplayableProviderItem(part.name, part.id)
                   }
