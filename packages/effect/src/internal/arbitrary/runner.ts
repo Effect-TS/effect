@@ -57,7 +57,8 @@ const ArbitraryProto = {
   }
 }
 
-function make<A>(generator: Model.Generator<A>): Arbitrary<A> {
+/** @internal */
+export function make<A>(generator: Model.Generator<A>): Arbitrary<A> {
   return Object.create(ArbitraryProto, {
     gen: { value: generator }
   })
