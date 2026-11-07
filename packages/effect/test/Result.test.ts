@@ -498,6 +498,85 @@ describe("Result", () => {
       assertFailure(f, "err")
       assertSuccess(g, "testContext")
     })
+
+    it("gen runs cleanup before returning a short-circuit", () => {
+      const order: Array<string> = []
+      const result = Result.gen(function*() {
+        using resource = { [Symbol.dispose]: () => order.push("dispose") }
+        void resource
+        try {
+          try {
+            yield* Result.fail("boom")
+            order.push("unreachable")
+          } catch {
+            order.push("catch")
+          } finally {
+            order.push("inner")
+            strictEqual(yield* Result.succeed(1), 1)
+          }
+        } finally {
+          order.push("outer")
+        }
+      })
+      assertFailure(result, "boom")
+      deepStrictEqual(order, ["inner", "outer", "dispose"])
+    })
+
+    it("gen lets a cleanup failure replace the original failure", () => {
+      const order: Array<string> = []
+      const result = Result.gen(function*() {
+        try {
+          try {
+            yield* Result.fail("boom")
+          } finally {
+            yield* Result.fail("cleanup")
+            order.push("unreachable")
+          }
+        } finally {
+          order.push("outer")
+        }
+      })
+      assertFailure(result, "cleanup")
+      deepStrictEqual(order, ["outer"])
+    })
+
+    it("gen lets a cleanup failure replace a pending normal return", () => {
+      const result = Result.gen(function*() {
+        try {
+          return 1
+        } finally {
+          yield* Result.fail("cleanup")
+        }
+      })
+      assertFailure(result, "cleanup")
+    })
+
+    it.each([undefined, 1])("gen lets return %s after a cleanup yield replace a short-circuit", (value) => {
+      const result = Result.gen(function*() {
+        try {
+          yield* Result.fail("boom")
+        } finally {
+          yield* Result.succeed(1)
+          // oxlint-disable-next-line no-unsafe-finally
+          return value
+        }
+      })
+      assertSuccess(result, value)
+    })
+
+    it("gen propagates disposal errors on a short-circuit", () => {
+      const error = new Error("dispose")
+      throws(() =>
+        Result.gen(function*() {
+          using resource = {
+            [Symbol.dispose]: () => {
+              throw error
+            }
+          }
+          void resource
+          yield* Result.fail("boom")
+        }), error)
+    })
   })
 
   describe("Transposing", () => {
