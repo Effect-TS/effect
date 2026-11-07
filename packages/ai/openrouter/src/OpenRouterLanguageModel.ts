@@ -504,6 +504,10 @@ declare module "effect/ai/Response" {
        * The OpenRouter provider that served the request, when reported.
        */
       readonly provider?: string | null
+      /**
+       * The refusal explanation returned instead of content.
+       */
+      readonly refusal?: string | null
     } | null
   }
 }
@@ -1165,6 +1169,12 @@ const makeResponse = Effect.fnUntraced(
       finishReason = "tool_calls"
     }
 
+    const refusal = message.refusal
+    const hasRefusal = Predicate.isNotNullish(refusal) && refusal.length > 0
+    if (hasRefusal && finishReason === "stop") {
+      finishReason = "content_filter"
+    }
+
     parts.push({
       type: "finish",
       reason: resolveFinishReason(finishReason),
@@ -1179,7 +1189,8 @@ const makeResponse = Effect.fnUntraced(
             : undefined),
           ...(Predicate.hasProperty(rawResponse, "provider") && Predicate.isString(rawResponse.provider)
             ? { provider: rawResponse.provider }
-            : undefined)
+            : undefined),
+          ...(hasRefusal ? { refusal } : undefined)
         }
       }
     })
@@ -1221,6 +1232,8 @@ const makeStreamResponse = Effect.fnUntraced(
 
     // Track file annotations to expose in provider metadata
     const accumulatedFileAnnotations: Array<FileAnnotation> = []
+
+    let accumulatedRefusal = ""
 
     const usage: DeepMutable<Response.Usage> = {
       inputTokens: {
@@ -1348,6 +1361,10 @@ const makeStreamResponse = Effect.fnUntraced(
             }
           } else if (Predicate.isNotNullish(delta.reasoning)) {
             yield* emitReasoning(delta.reasoning)
+          }
+
+          if (Predicate.isNotNullish(delta.refusal)) {
+            accumulatedRefusal += delta.refusal
           }
 
           const content = delta.content
@@ -1542,6 +1559,10 @@ const makeStreamResponse = Effect.fnUntraced(
             finishReason = "tool-calls"
           }
 
+          if (accumulatedRefusal.length > 0 && finishReason === "stop") {
+            finishReason = "content-filter"
+          }
+
           // Forward any unsent tool calls if finish reason is 'tool-calls'
           if (finishReason === "tool-calls") {
             for (const toolCall of Object.values(activeToolCalls)) {
@@ -1596,7 +1617,8 @@ const makeStreamResponse = Effect.fnUntraced(
               ...(Predicate.hasProperty(event, "provider") && Predicate.isString(event.provider)
                 ? { provider: event.provider }
                 : undefined),
-              ...(accumulatedFileAnnotations.length > 0 ? { annotations: accumulatedFileAnnotations } : undefined)
+              ...(accumulatedFileAnnotations.length > 0 ? { annotations: accumulatedFileAnnotations } : undefined),
+              ...(accumulatedRefusal.length > 0 ? { refusal: accumulatedRefusal } : undefined)
             }
           }
 
