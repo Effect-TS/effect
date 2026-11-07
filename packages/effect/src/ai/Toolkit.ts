@@ -14,6 +14,7 @@ import * as Cause from "../Cause.ts"
 import * as Context from "../Context.ts"
 import * as Effect from "../Effect.ts"
 import * as Effectable from "../Effectable.ts"
+import * as Exit from "../Exit.ts"
 import * as Fiber from "../Fiber.ts"
 import { identity } from "../Function.ts"
 import * as InternalRecord from "../internal/record.ts"
@@ -178,14 +179,14 @@ export type ToolsByName<Tools> = Tools extends Record<string, Tool.Any> ?
  * @category utility types
  * @since 4.0.0
  */
-export type HandlersFrom<Tools extends Record<string, Tool.Any>> = {
+export type HandlersFrom<Tools extends Record<string, Tool.Any>, R = never> = {
   readonly [Name in keyof Tools as Tool.RequiresHandler<Tools[Name]> extends true ? Name : never]: (
     params: Tool.Parameters<Tools[Name]>,
     context: HandlerContext<Tools[Name]>
   ) => Effect.Effect<
     Tool.Success<Tools[Name]>,
     Tool.Failure<Tools[Name]> | AiError.AiError | AiError.AiErrorReason,
-    Tool.HandlerServices<Tools[Name]>
+    Tool.HandlerServices<Tools[Name]> | R
   >
 }
 
@@ -524,10 +525,7 @@ const Proto = {
         const fiber = yield* schemas.handler(decodedParams, context).pipe(
           Effect.flatMap((result) => Queue.offer(queue, { result, isFailure: false, preliminary: false })),
           Effect.updateContext((input) => Context.merge(schemas.context, input)),
-          Effect.matchCauseEffect({
-            onFailure: (cause) => Queue.failCause(queue, cause),
-            onSuccess: () => Queue.end(queue)
-          }),
+          Effect.onExit((exit) => Exit.isFailure(exit) ? Queue.failCause(queue, exit.cause) : Queue.end(queue)),
           Effect.forkChild
         )
 

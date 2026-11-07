@@ -6,8 +6,11 @@ import * as Arr from "../../Array.ts"
 import * as Cause from "../../Cause.ts"
 import * as Data from "../../Data.ts"
 import * as Effect from "../../Effect.ts"
+import * as Base64Url from "../../encoding/Base64Url.ts"
+import * as Schema from "../../Schema.ts"
 import type * as McpProtocol from "../McpProtocol.ts"
 import * as McpSchema from "../McpSchema.ts"
+import type * as McpTasks from "../McpTasks.ts"
 
 /**
  * @internal
@@ -35,6 +38,18 @@ export const OperationOutcome = {
     ...fields
   })
 }
+
+/**
+ * A tool call that created a task instead of returning a result.
+ *
+ * @internal
+ */
+export class TaskCreated extends Data.TaggedClass("Task")<{ readonly task: McpTasks.Task }> {}
+
+/**
+ * @internal
+ */
+export type ToolOutcome = OperationOutcome<McpSchema.CallToolResult> | TaskCreated
 
 /**
  * @internal
@@ -185,7 +200,7 @@ export interface ToolRegistration {
     call: typeof McpSchema.CallTool.payloadSchema.Type,
     invocation: McpInvocation
   ) => Effect.Effect<
-    OperationOutcome<McpSchema.CallToolResult>,
+    ToolOutcome,
     ToolNotFound | InvalidToolInput | InvalidToolContinuation | ToolExecutionError | RequestRejected,
     never
   >
@@ -209,7 +224,62 @@ export interface Tools {
   readonly call: (
     call: typeof McpSchema.CallTool.payloadSchema.Type,
     invocation: McpInvocation
-  ) => Effect.Effect<OperationOutcome<McpSchema.CallToolResult>, ToolError>
+  ) => Effect.Effect<ToolOutcome, ToolError>
+}
+
+/**
+ * Failure to create, read, update, or cancel a task.
+ *
+ * @stability unstable
+ * @category errors
+ * @since 4.1.3
+ */
+export class TaskError extends Data.TaggedError("TaskError")<McpTasks.TaskFailure> {}
+
+/**
+ * Reads and controls the tasks created by one task tool.
+ *
+ * @internal
+ */
+export interface TaskOperations {
+  readonly get: (taskId: string, invocation: McpInvocation) => Effect.Effect<McpTasks.Task, TaskError>
+  readonly update: (
+    taskId: string,
+    inputResponses: Readonly<Record<string, McpSchema.McpInputResponse>>,
+    invocation: McpInvocation
+  ) => Effect.Effect<void, TaskError>
+  readonly cancel: (taskId: string, invocation: McpInvocation) => Effect.Effect<void, TaskError>
+}
+
+/**
+ * The registration a task handle routes back to. `generation` counts earlier
+ * task registrations of the same tool, so it is stable across restarts that
+ * register tools in the same way.
+ *
+ * @internal
+ */
+export interface TaskRoute {
+  readonly toolName: string
+  readonly generation: number
+}
+
+/**
+ * Routes task handles to the operations of the registration that created
+ * them. Routes outlive tool replacement, so existing handles keep working.
+ *
+ * @internal
+ */
+export interface Tasks {
+  readonly register: (toolName: string, operations: TaskOperations) => Effect.Effect<TaskRoute>
+  // Wraps an execution task ID in a handle that routes back to its registration.
+  readonly handle: (route: TaskRoute, taskId: string) => string
+  readonly get: (handle: string, invocation: McpInvocation) => Effect.Effect<McpTasks.Task, TaskError>
+  readonly update: (
+    handle: string,
+    inputResponses: Readonly<Record<string, McpSchema.McpInputResponse>>,
+    invocation: McpInvocation
+  ) => Effect.Effect<void, TaskError>
+  readonly cancel: (handle: string, invocation: McpInvocation) => Effect.Effect<void, TaskError>
 }
 
 /**
@@ -509,13 +579,21 @@ export interface McpCore {
   readonly prompts: Prompts
   readonly completions: Completions
   readonly skills: Skills
+  readonly tasks: Tasks
   readonly registrationPresence: Effect.Effect<{
     readonly tools: boolean
     readonly resources: boolean
     readonly prompts: boolean
     readonly skills: boolean
+    readonly tasks: boolean
   }>
 }
+
+const decodeTaskHandle = Schema.decodeUnknownOption(
+  Schema.StringFromBase64Url.pipe(
+    Schema.decodeTo(Schema.fromJsonString(Schema.Tuple([Schema.String, Schema.Int, Schema.String])))
+  )
+)
 
 /**
  * Runs the request-level visibility checks of a registration on a list
@@ -577,7 +655,7 @@ export const make: Effect.Effect<McpCore> = Effect.sync(() => {
       return registration !== undefined && registration.isVisible(profile) ? registration.descriptor : undefined
     },
     call: (call, invocation) =>
-      Effect.suspend((): Effect.Effect<OperationOutcome<McpSchema.CallToolResult>, ToolError> => {
+      Effect.suspend((): Effect.Effect<ToolOutcome, ToolError> => {
         const registration = registrations.get(call.name)
         if (registration === undefined) {
           return new ToolNotFound({ name: call.name })
@@ -719,12 +797,45 @@ export const make: Effect.Effect<McpCore> = Effect.sync(() => {
     })
   }
 
+  const taskRoutes = new Map<string, Array<TaskOperations>>()
+  const route = (handle: string) =>
+    Effect.suspend(() => {
+      const decoded = decodeTaskHandle(handle)
+      if (decoded._tag === "Some") {
+        const [toolName, generation, taskId] = decoded.value
+        const operations = taskRoutes.get(toolName)?.[generation]
+        if (operations !== undefined) return Effect.succeed({ operations, taskId })
+      }
+      return Effect.fail(new TaskError({ code: McpSchema.INVALID_PARAMS_ERROR_CODE, message: "Unknown taskId" }))
+    })
+  const tasks: Tasks = {
+    register: (toolName, operations) =>
+      Effect.sync(() => {
+        const generations = taskRoutes.get(toolName) ?? []
+        generations.push(operations)
+        taskRoutes.set(toolName, generations)
+        return { toolName, generation: generations.length - 1 }
+      }),
+    handle: (route, taskId) => Base64Url.encode(JSON.stringify([route.toolName, route.generation, taskId])),
+    get: (handle, invocation) =>
+      Effect.flatMap(
+        route(handle),
+        ({ operations, taskId }) =>
+          Effect.map(operations.get(taskId, invocation), (task): McpTasks.Task => ({ ...task, taskId: handle }))
+      ),
+    update: (handle, inputResponses, invocation) =>
+      Effect.flatMap(route(handle), ({ operations, taskId }) => operations.update(taskId, inputResponses, invocation)),
+    cancel: (handle, invocation) =>
+      Effect.flatMap(route(handle), ({ operations, taskId }) => operations.cancel(taskId, invocation))
+  }
+
   const registrationPresence = Effect.sync(() => ({
     tools: registrations.size > 0,
     resources: resourceRegistrations.length > 0 || resourceTemplateRegistrations.length > 0,
     prompts: promptRegistrations.size > 0,
-    skills: skillRegistrations.size > 0
+    skills: skillRegistrations.size > 0,
+    tasks: taskRoutes.size > 0
   }))
 
-  return { tools, resources, prompts, completions, skills, registrationPresence }
+  return { tools, resources, prompts, completions, skills, tasks, registrationPresence }
 })

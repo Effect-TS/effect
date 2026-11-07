@@ -1,5 +1,19 @@
 import { assert, describe, it } from "@effect/vitest"
-import { type Cause, Context, Deferred, Effect, Fiber, Layer, Queue, Schema, Sink, Stream } from "effect"
+import {
+  type Cause,
+  Context,
+  DateTime,
+  Deferred,
+  Effect,
+  Exit,
+  Fiber,
+  Layer,
+  Queue,
+  Schema,
+  Scope,
+  Sink,
+  Stream
+} from "effect"
 import {
   LanguageModel,
   McpClient,
@@ -7,6 +21,7 @@ import {
   McpProtocol,
   McpSchema,
   McpServer,
+  McpTasks,
   Prompt,
   Tool,
   Toolkit
@@ -438,14 +453,17 @@ describe("McpClient", () => {
       assert.strictEqual(error.reason._tag, "ValidationError")
     }))
 
-  // A single page larger than the item limit must fail with LimitError, not exceed the call argument limit.
+  // A single page larger than the item limit must fail with LimitError before its items are collected.
   it.effect("should fail with LimitError when one discovery page exceeds the item limit", () =>
     Effect.gen(function*() {
-      const prompts = Array.from({ length: 150_000 }, () => ({ name: "p" }))
+      const prompts = Array.from({ length: 11 }, () => ({ name: "p" }))
       const { client } = yield* scriptedHttp((message) =>
         message.method === "prompts/list"
           ? jsonRpcResult(message, { prompts })
-          : scriptedReply(McpProtocol.v2025_11_25, message), { protocol: McpProtocol.v2025_11_25 })
+          : scriptedReply(McpProtocol.v2025_11_25, message), {
+        protocol: McpProtocol.v2025_11_25,
+        discoveryLimits: { maxItems: 10 }
+      })
       const error = yield* client.listPrompts().pipe(Effect.flip)
       assert.strictEqual(error.reason._tag, "LimitError")
     }))
@@ -759,7 +777,7 @@ const scriptedHttp = Effect.fnUntraced(function*(
     readonly protocol?: McpProtocol.ProtocolAdapter<McpClient.ProtocolVersion> | undefined
     readonly filterStatusOk?: boolean | undefined
     readonly discoveryLimits?: Parameters<typeof McpClient.make>[0]["discoveryLimits"]
-    readonly extensions?: { readonly skills?: boolean | undefined } | undefined
+    readonly extensions?: McpClient.ClientOptions["extensions"]
   } = {}
 ) {
   const sent: Array<{
@@ -1196,5 +1214,326 @@ describe("McpClient skills", () => {
       const unlisted = yield* client.readSkillResource({ skill, uri: "skill://refunds/extra.md" }).pipe(Effect.flip)
       assert.strictEqual(unlisted.reason._tag, "ValidationError")
       assert.isFalse(sent.some(({ message }) => methodOf(message) === "resources/read"))
+    }))
+})
+
+const Reports = Toolkit.make(Tool.make("report", { success: Schema.String, failure: Schema.String }))
+const Inline = Toolkit.make(Tool.make("inline", { success: Schema.String }))
+
+const ask = (key: string) =>
+  McpTasks.TaskContext.use((task) =>
+    task.requestInput({
+      key,
+      request: {
+        method: "elicitation/create",
+        params: {
+          mode: "form",
+          message: `Enter ${key}`,
+          requestedSchema: { type: "object", properties: { value: { type: "string" } }, required: ["value"] }
+        }
+      },
+      response: Schema.Struct({ action: Schema.Literal("accept"), content: Schema.Struct({ value: Schema.String }) })
+    }).pipe(Effect.map((answer) => answer.content.value), Effect.orDie)
+  )
+
+// Connects to a server exposing the task-backed `report` and the inline `inline` tools.
+const connectTasks = Effect.fnUntraced(function*<R = never>(
+  run: Effect.Effect<string, string, McpTasks.TaskContext>,
+  options: Partial<McpClient.ClientOptions<R>> & {
+    readonly execution?: McpTasks.Execution["Service"] | undefined
+    readonly registration?: Layer.Layer<never, never, McpServer.McpServer> | undefined
+  } = {}
+) {
+  const { execution, registration = Layer.empty, ...clientOptions } = options
+  const server = Layer.mergeAll(
+    registration,
+    McpTasks.toolkit(Reports, { owner: "shared" }).pipe(Layer.provide(
+      execution === undefined
+        ? McpTasks.layerMemory(Reports, { report: () => run })
+        : Layer.succeed(McpTasks.Execution, execution)
+    )),
+    McpServer.toolkit(Inline).pipe(Layer.provide(Inline.toLayer({ inline: () => Effect.succeed("inline result") })))
+  ).pipe(Layer.provideMerge(makeServerLayer({ name: "Tasks", protocols: [McpProtocol.v2026_07_28] })))
+  const { handler } = yield* makeHttpHarness(server)
+  const requests: Array<{ message: McpSchema.JsonRpcRequest; headers: Headers }> = []
+  const observed = yield* Queue.unbounded<string>()
+  const fetch: typeof globalThis.fetch = Object.assign(async (input: RequestInfo | URL, init?: RequestInit) => {
+    const request = new Request(input, init)
+    const message = await request.clone().json() as McpSchema.JsonRpcRequest
+    requests.push({ message, headers: request.headers })
+    const response = await handler(request)
+    Queue.offerUnsafe(observed, message.method)
+    return response
+  }, { preconnect() {} })
+  const client = yield* McpClient.make({
+    ...clientInfo,
+    extensions: { tasks: true },
+    ...clientOptions
+  }).pipe(
+    Effect.provideService(
+      McpClient.Transport,
+      yield* McpClient.http({ url: MCP_ENDPOINT, protocol: McpProtocol.v2026_07_28 }).pipe(
+        Effect.provide(FetchHttpClient.layer),
+        Effect.provideService(FetchHttpClient.Fetch, fetch)
+      )
+    )
+  )
+  const report = yield* findTool(client, "report")
+  const inline = yield* findTool(client, "inline")
+  const next = Effect.fnUntraced(function*(method: string) {
+    while ((yield* Queue.take(observed)) !== method) { /* Ignore unrelated requests. */ }
+  })
+  return { client, report, inline, requests, next }
+})
+
+// Advances the polling clock until the fiber completes.
+const finish = Effect.fnUntraced(function*<A, E>(fiber: Fiber.Fiber<A, E>) {
+  for (let attempt = 0; attempt < 100; attempt++) {
+    if (fiber.pollUnsafe() !== undefined) return yield* Fiber.join(fiber)
+    yield* TestClock.adjust("1 second")
+    yield* Effect.yieldNow
+  }
+  return assert.fail("Execution did not finish after advancing the polling clock")
+})
+
+const taskMetadata = {
+  taskId: "job-42",
+  createdAt: DateTime.makeUnsafe(0),
+  lastUpdatedAt: DateTime.makeUnsafe(0),
+  ttlMs: null
+}
+
+const capabilitiesOf = (message: McpSchema.JsonRpcRequest) => {
+  const meta = message.params?._meta as Record<string, unknown>
+  return meta["io.modelcontextprotocol/clientCapabilities"] as McpSchema.ClientCapabilities
+}
+
+describe("McpClient tasks", () => {
+  it.effect("should return the final result when a call is immediate or task-backed", () =>
+    Effect.gen(function*() {
+      const { client, report, inline } = yield* connectTasks(Effect.succeed("report result"))
+      assert.strictEqual(yield* client.callTool({ tool: inline, schema: Schema.String }), "inline result")
+      const result = yield* client.callTool({ tool: report, schema: Schema.String }).pipe(Effect.forkChild)
+      assert.strictEqual(yield* finish(result), "report result")
+    }))
+
+  it.effect("should declare Skills, Tasks and input capabilities when all are enabled", () =>
+    Effect.gen(function*() {
+      const uri = "skill://acme/reports/SKILL.md"
+      const { client, requests } = yield* connectTasks(Effect.succeed("unused"), {
+        extensions: { skills: true, tasks: true },
+        input: { elicitation: () => Effect.succeed({ action: "decline" }) },
+        registration: McpServer.skill({
+          uri,
+          files: { "SKILL.md": "---\nname: reports\ndescription: Build reports\n---\n" }
+        }).pipe(Layer.orDie)
+      })
+      const [skill] = yield* client.listSkills()
+      yield* client.readSkillResource({ skill, uri })
+      assert.isTrue(requests.some(({ message }) => message.method === "resources/read"))
+      for (const { message } of requests) {
+        const capabilities = capabilitiesOf(message)
+        assert.deepStrictEqual(capabilities.extensions, {
+          "io.modelcontextprotocol/skills": {},
+          "io.modelcontextprotocol/tasks": {}
+        })
+        // Prompt and resource reads cannot continue with input, so they do not offer it.
+        if (message.method === "resources/read") {
+          assert.isUndefined(capabilities.elicitation)
+        } else {
+          assert.isDefined(capabilities.elicitation, message.method)
+        }
+      }
+    }))
+
+  it.effect("should answer task input once through tasks/update when several callers await the execution", () =>
+    Effect.gen(function*() {
+      let prompts = 0
+      const { client, report, requests } = yield* connectTasks(ask("name"), {
+        input: {
+          elicitation: (request) =>
+            Effect.sync(() => {
+              prompts++
+              assert.strictEqual(request.message, "Enter name")
+              return { action: "accept" as const, content: { value: "Alice" } }
+            })
+        }
+      })
+      const execution = yield* client.startTool({ tool: report, schema: Schema.String })
+      const results = yield* Effect.all([execution.awaitResult(), execution.awaitResult()], {
+        concurrency: "unbounded"
+      }).pipe(Effect.forkChild)
+      assert.deepStrictEqual(yield* finish(results), ["Alice", "Alice"])
+      assert.strictEqual(prompts, 1)
+      const followups = requests.filter(({ message }) => message.method.startsWith("tasks/"))
+      assert.isTrue(followups.some(({ message }) => message.method === "tasks/update"))
+      for (const { headers, message } of followups) {
+        assert.strictEqual(message.params?.taskId, execution.taskId)
+        assert.strictEqual(headers.get("mcp-name"), execution.taskId)
+      }
+    }))
+
+  it.effect("should fail with InputError when an input handler fails", () =>
+    Effect.gen(function*() {
+      const { client, report } = yield* connectTasks(ask("name"), {
+        input: { elicitation: () => Effect.fail("UI unavailable") }
+      })
+      const waiting = yield* client.callTool({ tool: report }).pipe(Effect.flip, Effect.forkChild)
+      const error = yield* finish(waiting)
+      assert(error.reason._tag === "InputError")
+      assert.strictEqual(error.reason.cause, "UI unavailable")
+    }))
+
+  it.effect("should fail with TaskCancelled when the server confirms cancellation", () =>
+    Effect.gen(function*() {
+      const { client, report, next } = yield* connectTasks(Effect.never)
+      const execution = yield* client.startTool({ tool: report })
+      yield* next("tasks/get")
+      const waiting = yield* execution.awaitResult().pipe(Effect.flip, Effect.forkChild)
+      yield* execution.cancel()
+      const error = yield* finish(waiting)
+      assert(error.reason._tag === "TaskCancelled")
+      assert.strictEqual(error.reason.taskId, execution.taskId)
+    }))
+
+  it.effect("should return the result when completion wins a cancellation race", () =>
+    Effect.gen(function*() {
+      let finished = false
+      const { client, report } = yield* connectTasks(Effect.never, {
+        execution: {
+          create: () => Effect.succeed({ ...taskMetadata, status: "working" }),
+          get: () =>
+            Effect.succeed(
+              finished
+                ? {
+                  ...taskMetadata,
+                  status: "completed",
+                  result: new McpSchema.CallToolResult({ content: [], structuredContent: "won" })
+                }
+                : { ...taskMetadata, status: "working" }
+            ),
+          update: () => Effect.void,
+          cancel: () =>
+            Effect.sync(() => {
+              finished = true
+            })
+        }
+      })
+      const execution = yield* client.startTool({ tool: report, schema: Schema.String })
+      yield* execution.cancel()
+      const waiting = yield* execution.awaitResult().pipe(Effect.forkChild)
+      assert.strictEqual(yield* finish(waiting), "won")
+    }))
+
+  it.effect("should poll at the interval the server advertises", () =>
+    Effect.gen(function*() {
+      let polls = 0
+      const { client, report, next } = yield* connectTasks(Effect.never, {
+        execution: {
+          create: () => Effect.succeed({ ...taskMetadata, status: "working", pollIntervalMs: 2000 }),
+          get: () =>
+            Effect.sync(() => {
+              polls++
+              return polls < 2
+                ? { ...taskMetadata, status: "working" as const, pollIntervalMs: 3000 }
+                : {
+                  ...taskMetadata,
+                  status: "completed" as const,
+                  result: new McpSchema.CallToolResult({ content: [], structuredContent: "done" })
+                }
+            }),
+          update: () => Effect.void,
+          cancel: () => Effect.void
+        }
+      })
+      const execution = yield* client.startTool({ tool: report, schema: Schema.String })
+      yield* TestClock.adjust("1999 millis")
+      assert.strictEqual(polls, 0)
+      yield* TestClock.adjust("1 millis")
+      yield* next("tasks/get")
+      assert.strictEqual(polls, 1)
+      yield* TestClock.adjust("2999 millis")
+      assert.strictEqual(polls, 1)
+      yield* TestClock.adjust("1 millis")
+      yield* next("tasks/get")
+      assert.strictEqual(polls, 2)
+      assert.strictEqual(yield* execution.awaitResult(), "done")
+    }))
+
+  it.effect("should fail waiters with ClosedError and stop polling when the client scope closes", () =>
+    Effect.gen(function*() {
+      const scope = yield* Scope.make()
+      const { client, report, requests, next } = yield* connectTasks(Effect.never).pipe(
+        Effect.provideService(Scope.Scope, scope)
+      )
+      const execution = yield* client.startTool({ tool: report })
+      yield* next("tasks/get")
+      const waiting = yield* execution.awaitResult().pipe(Effect.flip, Effect.forkChild({ startImmediately: true }))
+      yield* Scope.close(scope, Exit.void)
+      assert.strictEqual((yield* Fiber.join(waiting)).reason._tag, "ClosedError")
+      const count = requests.length
+      yield* TestClock.adjust("10 seconds")
+      assert.strictEqual(requests.length, count)
+    }))
+
+  it.effect("should reject a task result from a server that does not advertise Tasks", () =>
+    Effect.gen(function*() {
+      const { client } = yield* scriptedHttp((message) =>
+        message.method === "tools/call"
+          ? jsonRpcResult(message, {
+            resultType: "task",
+            taskId: "job-42",
+            status: "working",
+            createdAt: "1970-01-01T00:00:00.000Z",
+            lastUpdatedAt: "1970-01-01T00:00:00.000Z",
+            ttlMs: null
+          })
+          : scriptedReply(McpProtocol.v2026_07_28, message), { extensions: { tasks: true } })
+      const error = yield* client.callTool({ tool: slowTool }).pipe(Effect.flip)
+      assert(error.reason._tag === "ProtocolError")
+      assert.strictEqual(error.reason.description, "Server returned a task without advertising Tasks support")
+    }))
+})
+
+describe("McpClient input", () => {
+  it.effect("should resend arguments and opaque state when an ordinary tool call requests input", () =>
+    Effect.gen(function*() {
+      const registration = Layer.effectDiscard(McpServer.McpServer.use((server) =>
+        server.addTool({
+          tool: McpSchema.Tool.make({ name: "interactive", inputSchema: { type: "object" } }),
+          annotations: Context.empty(),
+          handle: () =>
+            McpSchema.McpRequestContext.useSync((context) => {
+              if (context.requestState === "opaque-state" && context.inputResponses?.answer?.action === "accept") {
+                return new McpSchema.CallToolResult({ content: [], structuredContent: "continued" })
+              }
+              return new McpSchema.InputRequired({
+                requestState: "opaque-state",
+                inputRequests: {
+                  answer: {
+                    method: "elicitation/create",
+                    params: {
+                      mode: "form",
+                      message: "Continue?",
+                      requestedSchema: { type: "object", properties: {} }
+                    }
+                  }
+                }
+              })
+            })
+        })
+      ))
+      const { client, requests } = yield* connectTasks(Effect.succeed("unused"), {
+        extensions: undefined,
+        registration,
+        input: { elicitation: () => Effect.succeed({ action: "accept", content: {} }) }
+      })
+      const tool = yield* findTool(client, "interactive")
+      const result = yield* client.callTool({ tool, arguments: { value: 42 }, schema: Schema.String })
+      assert.strictEqual(result, "continued")
+      const calls = requests.filter(({ message }) => message.method === "tools/call").map(({ message }) => message)
+      assert.deepStrictEqual(calls.map((message) => message.params?.arguments), [{ value: 42 }, { value: 42 }])
+      assert.strictEqual(calls[1].params?.requestState, "opaque-state")
+      assert.deepStrictEqual(calls[1].params?.inputResponses, { answer: { action: "accept", content: {} } })
     }))
 })

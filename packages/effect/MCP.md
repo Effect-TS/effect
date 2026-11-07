@@ -835,3 +835,136 @@ export const loadSkill = (client: McpClient.McpClient, name: string) =>
     return yield* client.readSkillResource({ skill, uri: skill.uri })
   })
 ```
+
+## Tasks
+
+Tasks let a tool call return a handle that the client polls, answers and cancels, following the [Tasks extension](https://github.com/modelcontextprotocol/ext-tasks/blob/main/specification/2026-07-28/tasks.md) for `2026-07-28`. The older `2025-11-25` experimental tasks are a different protocol and are not supported.
+
+### Task tools
+
+`McpTasks.toolkit(tools, { owner })` registers task-only tools. Provide an `McpTasks.Execution` layer to run them: `layerWorkflow` for durable execution, `layerMemory` for development and tests, or an application job service. Ordinary tools keep using `McpServer.toolkit`.
+
+```ts
+import { Effect, Layer, Schema } from "effect"
+import { McpTasks, Tool, Toolkit } from "effect/ai"
+import { Activity, WorkflowEngine } from "effect/workflow"
+
+const Reports = Toolkit.make(Tool.make("workspace_report", {
+  parameters: Schema.Struct({ workspaceId: Schema.String }),
+  success: Schema.String
+}))
+
+const ReportsLive = McpTasks.toolkit(Reports, { owner: "shared" }).pipe(
+  Layer.provide(McpTasks.layerWorkflow(Reports, {
+    workspace_report: ({ workspaceId }) =>
+      Activity.make({
+        name: "build-report",
+        success: Schema.String,
+        execute: Effect.succeed(`Report for ${workspaceId}`)
+      })
+  }, { name: "workspace-reports-v1" })),
+  Layer.provide(WorkflowEngine.layerMemory)
+)
+
+// Provide McpServer when composing ReportsLive with the server layer.
+```
+
+Task tools are listed only to `2026-07-28` clients, and calling one requires the client to declare the Tasks extension; otherwise the call fails before any work starts. The server declares the extension, and answers `tasks/get`, `tasks/update` and `tasks/cancel`, only while a task tool is registered.
+
+`owner: "shared"` lets every client access every task. For isolation, pass an Effect that resolves a trusted principal from the request. Client-provided names and metadata are not proof of identity. The owner is resolved on every task method, and a task from another owner reads as unknown.
+
+### Workflow execution
+
+Each task is a Workflow execution, so handlers can use Activities, durable clocks and deferreds. Tool failures and defects run Workflow compensations and complete the task with an `isError` result. Keep the `name` stable for compatible handlers and change it when handlers become replay-incompatible. Use Workflow's memory engine for tests and an SQL-backed `ClusterWorkflowEngine` for durable recovery. Task input and status survive runner restarts.
+
+Cancellation interrupts the execution and runs its compensations. Like any Workflow interruption, it takes effect when the handler next suspends, for example while it waits for input or a durable clock. A handler that never suspends runs to completion, and the task reports that outcome.
+
+### Memory execution
+
+```ts
+const ReportsExecution = McpTasks.layerMemory(Reports, {
+  workspace_report: ({ workspaceId }) => Effect.succeed(`Report for ${workspaceId}`)
+})
+```
+
+Handlers run in fibers owned by the layer. Cancellation interrupts the fiber immediately. Tasks are lost when the layer closes.
+
+### Handler input and status
+
+Both layers provide `McpTasks.TaskContext` to handlers:
+
+```ts
+const workspace_report = Effect.fnUntraced(function*({ workspaceId }: { readonly workspaceId: string }) {
+  const task = yield* McpTasks.TaskContext
+  yield* task.setStatusMessage("approval", "Waiting for approval")
+  const approval = yield* task.requestInput({
+    key: "approval",
+    request: {
+      method: "elicitation/create",
+      params: { mode: "form", message: `Build ${workspaceId}?`, requestedSchema: { type: "object", properties: {} } }
+    },
+    response: Schema.Struct({ action: Schema.String })
+  }).pipe(Effect.orDie)
+  yield* task.setStatusMessage("approved", undefined)
+  return approval.action === "accept" ? `Report for ${workspaceId}` : "Declined"
+})
+```
+
+`requestInput` asks for roots, sampling or elicitation input and decodes the answer. The first answer for a key wins. Handle decoding failures in the handler; a new attempt needs a new key. `setStatusMessage` publishes a message through polling, and `undefined` clears it.
+
+Keys identify steps, like the names of Workflow Activities. Distinct calls must use distinct keys: input keys and status keys must each be unique for the life of the task. A Workflow replay of the same keyed step is recognized and not recorded again, so the reported status is the latest step that ran even when replay skips or reorders work.
+
+In a Workflow handler, call `TaskContext` from the handler rather than inside Activities. Inputs from the losing branches of a durable race, such as `DurableDeferred.raceAll`, are withdrawn when the race resolves or, if replay resolves it without running them, the next time the task suspends.
+
+### External jobs
+
+Applications can implement `Execution` directly. Its methods take serializable requests and have no Workflow requirements:
+
+```ts
+const ReportsExecution = Layer.effect(
+  McpTasks.Execution,
+  Effect.gen(function*() {
+    const jobs = yield* ReportJobs
+    return McpTasks.Execution.of({
+      create: (request) => jobs.submit(request).pipe(Effect.map(toTask)),
+      get: (request) => jobs.getOwned(request).pipe(Effect.map(toTask)),
+      update: (request) => jobs.respondOwned(request),
+      cancel: (request) => jobs.cancelOwned(request)
+    })
+  })
+)
+```
+
+`ReportJobs` is an application service and `toTask` maps its state to an `McpTasks.Task`. The application owns durable creation, unguessable task IDs, retention and authorization on every operation. A completed task carries a `CallToolResult`; a failed task carries a JSON-RPC error.
+
+### Client
+
+Enable tasks with `extensions.tasks`. `callTool` returns the final result whether the server completes the call immediately or creates a task:
+
+```ts
+import { Effect, Schema } from "effect"
+import { McpClient, McpProtocol } from "effect/ai"
+
+const ClientLive = McpClient.layerHttp({
+  name: "report-app",
+  version: "1.0.0",
+  url: "http://localhost:3000/mcp",
+  protocol: McpProtocol.v2026_07_28,
+  extensions: { skills: true, tasks: true },
+  input: {
+    elicitation: (request) => Effect.succeed({ action: "accept", content: {} })
+  }
+})
+
+const report = Effect.gen(function*() {
+  const client = yield* McpClient.McpClient
+  const tool = (yield* client.listTools()).find((tool) => tool.name === "workspace_report")
+  if (tool === undefined) return yield* Effect.die("Missing workspace_report tool")
+  const execution = yield* client.startTool({ tool, arguments: { workspaceId: "demo" }, schema: Schema.String })
+  return yield* execution.awaitResult()
+})
+```
+
+`startTool` returns controls for one execution. `awaitResult` waits for the result; all waiters share one polling worker owned by the client scope. Interrupting a waiter leaves the remote work running. `cancel` asks the server to cancel; `awaitResult` then fails with the `TaskCancelled` reason, or returns the result if completion won. Immediate results have no `taskId`.
+
+`input` handlers answer the server's input requests, for tasks and for ordinary tool calls that return `input_required`. The client advertises only the configured handlers. A handler failure becomes an `InputError` with its cause. Pass `tasks: { pollInterval, requestTimeout }` to set the polling interval used when the server gives none (one second by default) and the timeout of each follow-up request.
