@@ -1164,3 +1164,58 @@ describe("Boolean flags with a custom or disabled negation", () => {
     assert.notInclude(completions, "--validate")
   }, 20_000)
 })
+
+describe("Repeatable flags", () => {
+  const descriptor = Completions.fromCommand(Command.make("app", {
+    tag: Flag.String("tag").pipe(Flag.withAlias("t"), Flag.atLeast(1)),
+    pair: Flag.String("pair").pipe(Flag.between(1, 2)),
+    label: Flag.String("label").pipe(Flag.atMost(1)),
+    env: Flag.KeyValuePair("env").pipe(Flag.optional),
+    verbose: Flag.Boolean("verbose"),
+    source: Flag.String("repo").pipe(Flag.atLeast(1), Flag.orElse(() => Flag.String("file"))),
+    target: Flag.String("url").pipe(Flag.orElse(() => Flag.String("host").pipe(Flag.atLeast(1))))
+  }))
+
+  it("are flags that accept more than one occurrence", () => {
+    assert.deepStrictEqual(descriptor.flags.map((flag) => [flag.name, flag.repeatable === true]), [
+      ["tag", true],
+      ["pair", true],
+      ["label", false],
+      ["env", true],
+      ["verbose", false],
+      ["repo", true],
+      ["file", false],
+      ["url", false],
+      ["host", true]
+    ])
+  })
+
+  it("stay offered after they are used", () => {
+    const zsh = Completions.generate("app", "zsh", descriptor)
+    assert.include(zsh, "'*--tag:value:'")
+    assert.include(zsh, "'*-t:value:'")
+    assert.include(zsh, "'(--label)--label:value:'")
+
+    const bash = Completions.generate("app", "bash", descriptor)
+    assert.strictEqual(linesWith(bash, `_filtered_flags+=" --tag -t"`), `_filtered_flags+=" --tag -t"`)
+    assert.match(linesWith(bash, `_filtered_flags+=" --label"`), /^\[\[ -n "\$_used_\d+" \]\] \|\| /)
+
+    const fish = Completions.generate("app", "fish", descriptor).split("\n")
+    const tagEntries = fish.filter((line) => line.includes("-l tag") || line.includes("-a '--tag'"))
+    assert.strictEqual(tagEntries.length, 2)
+    for (const entry of tagEntries) assert.notInclude(entry, "__fish_contains_opt")
+    const labelEntries = fish.filter((line) => line.includes("-l label") || line.includes("-a '--label'"))
+    assert.strictEqual(labelEntries.length, 2)
+    for (const entry of labelEntries) assert.include(entry, "__fish_contains_opt")
+
+    const powershell = Completions.generate("app", "powershell", descriptor)
+    assert.include(linesWith(powershell, "name = 'tag'"), "repeatable = $true;")
+    assert.notInclude(linesWith(powershell, "name = 'label'"), "repeatable")
+  })
+
+  it.skipIf(!hasPwsh)("PowerShell replay offers a repeatable flag again", () => {
+    const completions = replayPowerShell(descriptor, "app --tag x --label y -")
+    assert.include(completions, "--tag")
+    assert.notInclude(completions, "--label")
+  }, 20_000)
+})
