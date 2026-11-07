@@ -59,8 +59,8 @@ type PartialLiteralHandlers<R, Ret> = {
   readonly [K in LiteralKeys<R>]?: ((_: K) => Ret) | undefined
 }
 
-// Only keys with a defined handler remove a literal from the remaining input.
-type HandledLiterals<P> = { readonly [K in keyof P]-?: undefined extends P[K] ? never : K }[keyof P]
+// Only keys with a defined handler remove a member from the remaining input.
+type HandledKeys<P> = { readonly [K in keyof P]-?: undefined extends P[K] ? never : K }[keyof P]
 
 /**
  * Marker used by `Matcher` to distinguish matchers created with `Match.value`.
@@ -989,8 +989,8 @@ export const discriminators: <D extends string>(
   self: Matcher<I, F, R, A, Pr, Ret>
 ) => Matcher<
   I,
-  Types.AddWithout<F, Extract<R, Record<D, keyof P>>>,
-  Types.ApplyFilters<I, Types.AddWithout<F, Extract<R, Record<D, keyof P>>>>,
+  Types.AddWithout<F, Extract<R, Record<D, HandledKeys<P>>>>,
+  Types.ApplyFilters<I, Types.AddWithout<F, Extract<R, Record<D, HandledKeys<P>>>>>,
   A | ReturnType<P[keyof P] & {}>,
   Pr,
   Ret
@@ -1216,8 +1216,8 @@ export const tags: <
   self: Matcher<I, F, R, A, Pr, Ret>
 ) => Matcher<
   I,
-  Types.AddWithout<F, Extract<R, Record<"_tag", keyof P>>>,
-  Types.ApplyFilters<I, Types.AddWithout<F, Extract<R, Record<"_tag", keyof P>>>>,
+  Types.AddWithout<F, Extract<R, Record<"_tag", HandledKeys<P>>>>,
+  Types.ApplyFilters<I, Types.AddWithout<F, Extract<R, Record<"_tag", HandledKeys<P>>>>>,
   A | ReturnType<P[keyof P] & {}>,
   Pr,
   Ret
@@ -1320,8 +1320,8 @@ export const literals: <
   self: Matcher<I, F, R, A, Pr, Ret>
 ) => Matcher<
   I,
-  Types.AddWithout<F, Extract<R, HandledLiterals<P>>>,
-  Types.ApplyFilters<I, Types.AddWithout<F, Extract<R, HandledLiterals<P>>>>,
+  Types.AddWithout<F, Extract<R, HandledKeys<P>>>,
+  Types.ApplyFilters<I, Types.AddWithout<F, Extract<R, HandledKeys<P>>>>,
   A | ReturnType<P[keyof P] & {}>,
   Pr,
   Ret
