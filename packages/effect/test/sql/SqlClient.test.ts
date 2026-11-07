@@ -870,6 +870,18 @@ describe("SqlClient", () => {
         }))
         assertTransactionEnded(savepointExit)
         assert.deepStrictEqual(savepoint.calls, ["BEGIN", "SAVEPOINT effect_sql_1", "COMMIT", "release"])
+
+        // A nested transaction queued behind a sibling's savepoint while its parent ends.
+        const queued = yield* makeClient()
+        const resumeHolder = yield* Deferred.make<void>()
+        const [holder, waiting] = yield* queued.sql.withTransaction(Effect.all([
+          Effect.forkDetach(queued.sql.withTransaction(Deferred.await(resumeHolder)), { startImmediately: true }),
+          Effect.forkDetach(queued.sql.withTransaction(queued.record("queued body")), { startImmediately: true })
+        ]))
+        yield* Deferred.succeed(resumeHolder, undefined)
+        yield* Fiber.await(holder)
+        assertTransactionEnded(yield* Fiber.await(waiting))
+        assert.deepStrictEqual(queued.calls, ["BEGIN", "SAVEPOINT effect_sql_1", "COMMIT", "release"])
       }))
   })
 
