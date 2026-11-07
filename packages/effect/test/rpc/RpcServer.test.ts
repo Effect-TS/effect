@@ -872,6 +872,88 @@ describe("RpcServer", () => {
       assert.isBelow(produced, 16)
     }))
 
+  it.effect("drains framed HTTP responses while dispatching a batch larger than the buffer", () =>
+    Effect.gen(function*() {
+      const Rpcs = RpcGroup.make(Rpc.make("ping"))
+      const Server = RpcServer.layerHttp({
+        group: Rpcs,
+        path: "/rpc",
+        protocol: "http",
+        streamBufferSize: 1
+      }).pipe(
+        Layer.provide(Rpcs.toLayer({ ping: () => Effect.void })),
+        Layer.provide(RpcSerialization.layerNdjson)
+      )
+      const { dispose, handler } = HttpRouter.toWebHandler(Server)
+      yield* Effect.addFinalizer(() => Effect.promise(dispose))
+      const post = (body: string) =>
+        Effect.promise(() => handler(new Request("http://test/rpc", { method: "POST", body })).then((r) => r.text()))
+      // the first request starts the server's message loop
+      yield* post("")
+
+      const body = yield* post(
+        `{"_tag":"Request","id":1,"tag":"unknown","payload":{},"headers":[]}\n` +
+          `{"_tag":"Request","id":2,"tag":"unknown","payload":{},"headers":[]}\n`
+      )
+
+      assert.deepStrictEqual(body.trim().split("\n").map((line) => JSON.parse(line).requestId), [1, 2])
+    }))
+
+  it.effect("terminates a framed HTTP request that reuses an active request id", () =>
+    Effect.gen(function*() {
+      const finalized = yield* Deferred.make<Exit.Exit<unknown, unknown>>()
+      const Rpcs = RpcGroup.make(Rpc.make("wait", { payload: Schema.Struct({}) }))
+      const Server = RpcServer.layerHttp({ group: Rpcs, path: "/rpc", protocol: "http", streamBufferSize: 1 }).pipe(
+        Layer.provide(
+          Rpcs.toLayer({ wait: () => Effect.onExit(Effect.never, (exit) => Deferred.succeed(finalized, exit)) })
+        ),
+        Layer.provide(RpcSerialization.layerNdjson)
+      )
+      const { dispose, handler } = HttpRouter.toWebHandler(Server)
+      yield* Effect.addFinalizer(() => Effect.promise(dispose))
+      // true only for a successful status and a complete body
+      const post = (body: string) =>
+        Effect.promise(() =>
+          handler(new Request("http://test/rpc", { method: "POST", body })).then((r) =>
+            r.ok && r.text().then(() => true, () => false)
+          )
+        )
+      // the first request starts the server's message loop
+      yield* post("")
+
+      const unknown = (id: number) => `{"_tag":"Request","id":${id},"tag":"unknown","payload":{},"headers":[]}\n`
+      const wait = `{"_tag":"Request","id":100,"tag":"wait","payload":{},"headers":[]}\n`
+      assert.isFalse(yield* post(unknown(1) + unknown(2) + wait + wait))
+
+      const exit = yield* Deferred.await(finalized)
+      assert.isTrue(Exit.isFailure(exit) && Cause.hasInterrupts(exit.cause))
+    }))
+
+  it.effect("fails a framed HTTP request with its dispatch defect", () =>
+    Effect.gen(function*() {
+      const defect = new Error("decode defect")
+      const Rpcs = RpcGroup.make(Rpc.make("boom", {
+        payload: Schema.Struct({ value: Schema.String.pipe(Schema.withDecodingDefaultKey(Effect.die(defect))) })
+      }))
+      const Server = RpcServer.layerHttp({ group: Rpcs, path: "/rpc", protocol: "http", streamBufferSize: 1 }).pipe(
+        Layer.provide(Rpcs.toLayer({ boom: () => Effect.void })),
+        Layer.provide(RpcSerialization.layerNdjson)
+      )
+      const { dispose, handler } = HttpRouter.toWebHandler(Server)
+      yield* Effect.addFinalizer(() => Effect.promise(dispose))
+      const post = (body: string) =>
+        Effect.promise(() => handler(new Request("http://test/rpc", { method: "POST", body })))
+      // the first request starts the server's message loop
+      yield* post("")
+
+      const boom = `{"_tag":"Request","id":100,"tag":"boom","payload":{},"headers":[]}\n`
+      assert.strictEqual((yield* post(boom)).status, 500)
+
+      const unknown = (id: number) => `{"_tag":"Request","id":${id},"tag":"unknown","payload":{},"headers":[]}\n`
+      const streamed = yield* post(unknown(1) + unknown(2) + unknown(3) + boom)
+      assert.strictEqual(yield* Effect.promise(() => streamed.text().then(() => undefined, (error) => error)), defect)
+    }))
+
   it.effect("allows unbounded framed HTTP response buffering", () =>
     Effect.gen(function*() {
       const produced = yield* producedWithoutReadingFramedBody("unbounded")
