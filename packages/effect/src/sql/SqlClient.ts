@@ -26,7 +26,7 @@ import * as Stream from "../Stream.ts"
 import * as Tracer from "../Tracer.ts"
 import type { NoInfer } from "../Types.ts"
 import type * as Connection from "./SqlConnection.ts"
-import { ConnectionError, SqlError } from "./SqlError.ts"
+import { ConnectionError, SqlError, UnknownError } from "./SqlError.ts"
 import type { Compiler, Constructor } from "./Statement.ts"
 import * as Statement from "./Statement.ts"
 
@@ -322,10 +322,10 @@ const ATTR_DB_OPERATION_NAME = "db.operation.name"
 export const make = Effect.fnUntraced(function*(options: SqlClient.MakeOptions) {
   const transactionService = options.transactionService ?? TransactionConnection(clientIdCounter++)
   const getConnection = Effect.flatMap(
-    Effect.serviceOption(transactionService),
+    currentTransactionConnection(transactionService),
     Option.match({
       onNone: () => options.acquirer,
-      onSome: ([conn]) => Effect.succeed(conn)
+      onSome: Effect.succeed
     })
   )
 
@@ -368,10 +368,10 @@ export const make = Effect.fnUntraced(function*(options: SqlClient.MakeOptions) 
   // connection, so borrowing is only for statements that reach the pool.
   const borrower: Connection.Borrower | undefined = options.borrower === undefined ? undefined : (f) =>
     Effect.flatMap(
-      Effect.serviceOption(transactionService),
+      currentTransactionConnection(transactionService),
       Option.match({
         onNone: () => options.borrower!(f),
-        onSome: ([conn]) => f(conn)
+        onSome: f
       })
     )
 
@@ -543,6 +543,62 @@ interface AfterCommitBuffer {
  */
 const afterCommitBuffers = new WeakMap<object, AfterCommitBuffer>()
 
+/**
+ * Whether a transaction level, or one of its parents, has ended. A fiber
+ * forked inside a transaction keeps the level in its context after the
+ * level's body has exited.
+ */
+const hasEnded = (level: object): boolean => {
+  for (let current = afterCommitBuffers.get(level); current !== undefined; current = current.parent) {
+    if (!current.open) {
+      return true
+    }
+  }
+  return false
+}
+
+const transactionEndedError = (operation: string) =>
+  new SqlError({
+    reason: new UnknownError({
+      cause: new Error("The transaction in the fiber's context is no longer open"),
+      message: "SqlClient: the transaction has already ended",
+      operation
+    })
+  })
+
+/**
+ * Looks up the connection of the transaction in the fiber's context. Returns
+ * `None` outside a transaction and fails with a `SqlError` when the transaction
+ * has already ended.
+ *
+ * **When to use**
+ *
+ * Use when a driver reads its transaction service directly instead of going
+ * through `SqlClient`, so a fiber that outlives its transaction fails instead
+ * of using the released connection.
+ *
+ * **Gotchas**
+ *
+ * Only transactions started by `makeWithTransaction` are known to end; a
+ * connection provided to the transaction service directly is always returned.
+ * The check runs once per lookup: holding the returned connection does not
+ * keep the transaction open.
+ *
+ * @stability unstable
+ * @category transactions
+ * @since 4.1.3
+ */
+export const currentTransactionConnection = <I, S>(
+  transactionService: Context.Key<I, readonly [conn: S, counter: number]>
+): Effect.Effect<Option.Option<S>, SqlError> =>
+  Effect.withFiber((fiber) => {
+    const level = Context.getOrUndefined(fiber.context, transactionService)
+    if (level === undefined) {
+      return Effect.succeedNone
+    }
+    return hasEnded(level) ? Effect.fail(transactionEndedError("query")) : Effect.succeedSome(level[0])
+  })
+
 const runAfterCommit = <R>(effect: Effect.Effect<void, never, R>): Effect.Effect<void, never, R> =>
   Effect.ignoreCause(effect, { log: "Unhandled", message: "Unhandled error in SqlClient.afterCommit callback" })
 
@@ -662,9 +718,15 @@ export const makeWithTransaction = <I, S>(options: {
                   return effect
                 }
               )
-            const connOption = Context.getOption(services, options.transactionService)
-            const conn: Effect.Effect<readonly [Scope.Closeable | undefined, S], SqlError> = connOption._tag === "Some"
-              ? Effect.succeed([undefined, connOption.value[0]] as const)
+            const parent = Context.getOrUndefined(services, options.transactionService)
+            // Checked once the savepoint permit is held, since the outer
+            // transaction can end while a nested one waits for it.
+            const conn: Effect.Effect<readonly [Scope.Closeable | undefined, S], SqlError> = parent !== undefined
+              ? Effect.suspend(() =>
+                hasEnded(parent)
+                  ? Effect.fail(transactionEndedError("savepoint"))
+                  : Effect.succeed([undefined, parent[0]] as const)
+              )
               : Effect.flatMap(Scope.make(), (scope) =>
                 Scope.provide(options.acquireConnection(restore), scope).pipe(
                   Effect.provideService(Tracer.ParentSpan, span),
@@ -674,10 +736,10 @@ export const makeWithTransaction = <I, S>(options: {
                   }),
                   Effect.onError((cause) => Scope.close(scope, Exit.failCause(cause)))
                 ))
-            const id = connOption._tag === "Some" ? connOption.value[1] + 1 : 0
+            const id = parent !== undefined ? parent[1] + 1 : 0
             const buffer: AfterCommitBuffer = {
               callbacks: [],
-              parent: connOption._tag === "Some" ? afterCommitBuffers.get(connOption.value) : undefined,
+              parent: parent !== undefined ? afterCommitBuffers.get(parent) : undefined,
               open: true
             }
             let committed = false
@@ -706,6 +768,14 @@ export const makeWithTransaction = <I, S>(options: {
                         )
                       ),
                       (exit) => {
+                        // Fibers forked by the body can outlive it, but not use
+                        // the connection once it starts to commit or roll back.
+                        buffer.open = false
+                        // A savepoint whose outer transaction has ended is gone,
+                        // and the connection may be in another transaction.
+                        if (parent !== undefined && hasEnded(parent)) {
+                          return Exit.isSuccess(exit) ? Effect.fail(transactionEndedError("savepoint")) : exit
+                        }
                         let effect: Effect.Effect<void, SqlError>
                         if (Exit.isSuccess(exit)) {
                           if (id === 0) {
