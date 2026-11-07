@@ -17996,14 +17996,15 @@ export function overrideToFormatter<S extends Top>(toFormatter: () => Formatter<
   return (self: S): S["Rebuild"] => self.annotate({ toFormatter })
 }
 /**
- * Derives a string formatter function from a schema. The formatter converts
- * a value to its human-readable string representation, recursing into structs,
- * arrays, and unions.
+ * Derives a string formatter from the decoded type side of a schema. The
+ * formatter converts decoded values to human-readable strings, recursing into
+ * structs, arrays, and unions.
  *
  * **Details**
  *
- * The optional `onBefore` hook lets you intercept specific AST nodes before
- * the default formatting logic runs.
+ * The optional `onBefore` hook receives type-side AST nodes with encoding
+ * transformations removed, before the default formatting logic runs.
+ * Use {@link toEncoded} before this function to format encoded values.
  *
  * @stability stable
  * @category formatting
@@ -18014,7 +18015,7 @@ export function toFormatter<S extends Constraint>(schema: S, options?: {
     | ((ast: SchemaAST.AST, recur: (ast: SchemaAST.AST) => Formatter<any>) => Formatter<any> | undefined)
     | undefined
 }): Formatter<S["Type"]> {
-  return InternalToFormatter.toFormatter(schema.ast, options)
+  return InternalToFormatter.toFormatter(SchemaAST.toType(schema.ast), options)
 }
 /**
  * Overrides the equivalence derivation for a schema by supplying a custom
@@ -18033,9 +18034,13 @@ export function overrideToEquivalence<S extends Top>(toEquivalence: () => Equiva
   return (self: S): S["Rebuild"] => self.annotate({ toEquivalence })
 }
 /**
- * Derives an `Equivalence` from a schema. Two values are considered equal when
- * every field (and nested field) compares equal according to the schema
- * structure.
+ * Derives an `Equivalence` from the decoded type side of a schema. Two decoded
+ * values are considered equal when every field and nested field compares equal
+ * according to the schema structure.
+ *
+ * **Details**
+ *
+ * Use {@link toEncoded} before this function to compare encoded values.
  *
  * **Example** (Comparing structs)
  *
@@ -18053,7 +18058,7 @@ export function overrideToEquivalence<S extends Top>(toEquivalence: () => Equiva
  * @since 4.0.0
  */
 export function toEquivalence<T>(schema: Schema<T>): Equivalence.Equivalence<T> {
-  return InternalEquivalence.toEquivalence(schema.ast)
+  return InternalEquivalence.toEquivalence(SchemaAST.toType(schema.ast))
 }
 /**
  * Derives an intermediate `SchemaRepresentation.Document` from the encoded

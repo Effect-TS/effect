@@ -93,7 +93,6 @@ function recur(ast: SchemaAST.AST): Equivalence.Equivalence<any> {
       }
       const propertySignatures = ast.propertySignatures.map((ps) => recur(ps.type))
       const indexSignatures = ast.indexSignatures.map((is) => recur(is.type))
-      const parameters = ast.indexSignatures.map((is) => SchemaAST.toType(is.parameter))
       return Equivalence.make((a, b) => {
         if (!Predicate.isObject(a) || !Predicate.isObject(b)) {
           return false
@@ -119,8 +118,9 @@ function recur(ast: SchemaAST.AST): Equivalence.Equivalence<any> {
         // handle index signatures
         // ---------------------------------------------
         for (let i = 0; i < indexSignatures.length; i++) {
-          const aKeys = SchemaAST.getIndexSignatureKeys(a, parameters[i])
-          const bKeys = SchemaAST.getIndexSignatureKeys(b, parameters[i])
+          const is = ast.indexSignatures[i]
+          const aKeys = SchemaAST.getIndexSignatureKeys(a, is.parameter)
+          const bKeys = SchemaAST.getIndexSignatureKeys(b, is.parameter)
 
           if (aKeys.length !== bKeys.length) return false
 
@@ -135,9 +135,9 @@ function recur(ast: SchemaAST.AST): Equivalence.Equivalence<any> {
       })
     }
     case "Union": {
-      const types = SchemaAST.toType(ast).types
+      const types = ast.types
       const index = SchemaAST.getCandidateIndex(types)
-      const compiled = types.map((candidate, i) => [SchemaParser._is(candidate), recur(ast.types[i])] as const)
+      const compiled = types.map((candidate) => [SchemaParser._is(candidate), recur(candidate)] as const)
       return Equivalence.make((a, b) => {
         const candidates = index(a, false)
         for (let i = 0; i < candidates.length; i++) {

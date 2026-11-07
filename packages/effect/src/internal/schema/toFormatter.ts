@@ -187,7 +187,6 @@ export function toFormatter<T>(ast: SchemaAST.AST, options?: {
       case "Objects": {
         const propertySignatures = ast.propertySignatures.map((signature) => recur(signature.type))
         const indexSignatures = ast.indexSignatures.map((signature) => recur(signature.type))
-        const parameters = ast.indexSignatures.map((signature) => SchemaAST.toType(signature.parameter))
         if (ast.propertySignatures.length === 0 && ast.indexSignatures.length === 0) {
           return format
         }
@@ -204,7 +203,7 @@ export function toFormatter<T>(ast: SchemaAST.AST, options?: {
             out.push(`${formatPropertyKey(name)}: ${propertySignatures[i](value[name])}`)
           }
           for (let i = 0; i < indexSignatures.length; i++) {
-            const keys = SchemaAST.getIndexSignatureKeys(value, parameters[i])
+            const keys = SchemaAST.getIndexSignatureKeys(value, ast.indexSignatures[i].parameter)
             for (const key of keys) {
               if (visited.has(key)) {
                 continue
@@ -217,9 +216,9 @@ export function toFormatter<T>(ast: SchemaAST.AST, options?: {
         }
       }
       case "Union": {
-        const types = SchemaAST.toType(ast).types
+        const types = ast.types
         const index = SchemaAST.getCandidateIndex(types)
-        const compiled = types.map((candidate, i) => [SchemaParser._is(candidate), recur(ast.types[i])] as const)
+        const compiled = types.map((candidate) => [SchemaParser._is(candidate), recur(candidate)] as const)
         return (value) => {
           const candidates = index(value, false)
           for (let i = 0; i < candidates.length; i++) {

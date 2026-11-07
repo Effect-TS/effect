@@ -207,18 +207,18 @@ describe("toFormatter", () => {
     strictEqual(format("a"), "A")
   })
 
-  it("preserves Union member encoding metadata for onBefore", () => {
-    const member = Schema.String.pipe(
-      Schema.decode({
-        decode: SchemaGetter.transform((s) => s),
-        encode: SchemaGetter.transform((s) => s)
-      })
-    )
-    const format = Schema.toFormatter(Schema.Union([member, Schema.Number]), {
-      onBefore: (ast) => ast.encoding ? () => "transformed" : undefined
+  it("passes type-side AST nodes to onBefore", () => {
+    const schema = Schema.Struct({ value: Schema.NumberFromString }).pipe(Schema.fromJsonString)
+    const format = Schema.toFormatter(schema, {
+      onBefore: (ast) => {
+        strictEqual(ast.encoding, undefined)
+        if (ast._tag === "Number") {
+          return (value: number) => `number:${value}`
+        }
+      }
     })
 
-    strictEqual(format("a"), "transformed")
+    strictEqual(format({ value: 1 }), `{ "value": number:1 }`)
   })
 
   describe("Tuple", () => {
