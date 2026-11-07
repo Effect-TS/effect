@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Fix `McpServer` cursor validation and reject invalid sampling histories before requesting client input; document application error codes outside MCP's reserved range.
+`McpServer` now rejects list requests that supply a cursor, and rejects sampling requests whose tool results do not match the preceding tool uses before sending any client input request.

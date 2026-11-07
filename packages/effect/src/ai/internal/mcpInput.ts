@@ -100,7 +100,7 @@ const prepare = Effect.fnUntraced(function*(
       yield* validateSampling(request.params, version).pipe(
         Effect.mapError(() => invalid(`Sampling input is not representable by MCP ${version}`))
       )
-      // Validate the encoded history before any earlier input in this round is sent.
+      // Reject the whole round here, before any of its requests is sent.
       if (McpProtocol.samplingMessageError(request.params) !== undefined) {
         return yield* internal("Invalid MCP sampling input request")
       }

@@ -113,7 +113,7 @@ export const listForClient = <A>(
   )
 
 /**
- * Rejects continuation tokens because core lists return all entries without issuing cursors.
+ * Rejects any cursor: core lists return every entry in one page and never issue cursors.
  *
  * @internal
  */
@@ -201,8 +201,8 @@ export const samplingRequestRequiresTools = (request: unknown): boolean => {
 }
 
 /**
- * Reports invalid sampling tool-message ordering. Dated schemas validate the
- * payload shape separately.
+ * Returns why a sampling history breaks tool-use/result pairing, or `undefined`
+ * if it does not. Unrecognized shapes pass, since dated schemas validate them.
  *
  * @internal
  */

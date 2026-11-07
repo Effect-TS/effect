@@ -117,28 +117,30 @@ and [graceful subscription closure](https://modelcontextprotocol.io/specificatio
 
 ## Pagination and sampling validation
 
-Core tool, resource, resource-template, and prompt lists return a single complete page without
-`nextCursor`. Supplying any cursor, including an empty string, returns `-32602 Invalid params`.
-This follows [pagination error handling](https://modelcontextprotocol.io/specification/2026-07-28/server/utilities/pagination#error-handling)
-and applies to every supported revision.
+In every supported revision, core tool, resource, resource-template, and prompt lists return one
+complete page without `nextCursor`. A list request that supplies any cursor, including an empty
+string, fails with `-32602 Invalid params`. See
+[pagination error handling](https://modelcontextprotocol.io/specification/2026-07-28/server/utilities/pagination#error-handling).
 
-Sampling histories must pair each assistant `tool_use` round with the immediately following
-user message. That message contains only `tool_result` blocks, exactly one for each tool-use ID.
-Unmatched, duplicated, or misplaced results are rejected, as are histories ending before the
-pending results. A later completed round may reuse an ID. See the sampling tool flow in
-[2026](https://modelcontextprotocol.io/specification/2026-07-28/client/sampling#tool-use-and-result-balance) and
-[2025](https://modelcontextprotocol.io/specification/2025-11-25/client/sampling#tool-use-and-result-balance).
+In an outgoing sampling history, each assistant message with `tool_use` blocks must be followed
+immediately by a user message containing only `tool_result` blocks, exactly one for each
+tool-use ID. Missing, duplicated, or misplaced results are rejected, as is a history that ends
+before its pending results. A later round may reuse an ID. See tool use and result balance in
+[2026-07-28](https://modelcontextprotocol.io/specification/2026-07-28/client/sampling#tool-use-and-result-balance) and
+[2025-11-25](https://modelcontextprotocol.io/specification/2025-11-25/client/sampling#tool-use-and-result-balance).
 
-On legacy connections, `McpReverseClient.createMessage` rejects an invalid outgoing history
-locally with `McpReverseOperationError`. Legacy `InputRequired` handling validates the entire
-round before sending any client input request, including roots or elicitation requests that
-precede sampling. Modern `InputRequired` sampling requests instead fail the originating tool,
-prompt, or resource request with a sanitized `-32603 Internal error` (HTTP 500).
-Modern `InputRequired` handling checks client capabilities for the entire round before sampling
-histories. Legacy handling checks each input's capabilities and protocol version before that
-input's sampling history. Both validate the entire round before sending any input request.
-These checks apply to outgoing request histories; a standalone sampling response may still
-contain tool uses to execute in the next round.
+Invalid histories are rejected before anything is sent to the client:
+
+- `McpReverseClient.createMessage` fails with `McpReverseOperationError`.
+- Legacy `InputRequired` handling checks each input's capabilities and protocol version, then its
+  sampling history. It validates the whole round first, so roots or elicitation requests that
+  precede an invalid sampling request are not sent either.
+- Modern `InputRequired` handling checks client capabilities for the whole round first. An
+  invalid history then fails the originating tool, prompt, or resource request with a sanitized
+  `-32603 Internal error` (HTTP 500).
+
+Sampling responses are not checked this way: a response may contain tool uses to run in the next
+round.
 
 ## Custom transports
 
@@ -502,10 +504,10 @@ A few rules to know:
   an `HttpRouter` requirement, so an existing `HttpRouter.middleware` that provides `CurrentUser`
   keeps working, and so does its 401 response.
 - Middleware failures must be `McpErrorBase` values and are sent as JSON-RPC errors with their
-  `code`, `message` and `data`, never as tool results. New application codes should be outside
-  the reserved range -32768 through -32000; the example uses `10001`. Existing numeric codes
-  remain unchanged for compatibility. See MCP [error codes](https://modelcontextprotocol.io/specification/2026-07-28/basic#error-codes).
-  Defects are logged, reported and sent as `InternalError`.
+  `code`, `message` and `data`, never as tool results. Use application codes outside the
+  reserved range -32768 to -32000, such as `10001` in the example; see MCP
+  [error codes](https://modelcontextprotocol.io/specification/2026-07-28/basic#error-codes). Any numeric `code` is
+  sent unchanged. Defects are logged, reported and sent as `InternalError`.
 - Resource and prompt handlers have no `dependencies` option: everything their handler reads is
   request-level. Read construction-time services in `Layer.unwrap` and close over them:
 

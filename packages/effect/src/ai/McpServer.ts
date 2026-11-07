@@ -479,10 +479,10 @@ export interface Middleware<Config extends MiddlewareConfig> {
  *
  * Failures must be `McpErrorBase` values. A middleware failure is sent as a
  * JSON-RPC error with its `code`, `message` and `data`, never as a tool
- * result. New application codes should be outside the reserved range
- * -32768 through -32000, following MCP [error codes](https://modelcontextprotocol.io/specification/2026-07-28/basic#error-codes).
- * Existing numeric codes are still sent unchanged for compatibility. Defects are logged,
- * reported to the `ErrorReporter` and sent as `InternalError("Internal error")`.
+ * result. Use application codes outside the reserved range -32768 to -32000;
+ * see MCP [error codes](https://modelcontextprotocol.io/specification/2026-07-28/basic#error-codes). Any
+ * numeric `code` is sent unchanged. Defects are logged, reported to the
+ * `ErrorReporter` and sent as `InternalError("Internal error")`.
  * Interruption propagates.
  *
  * Local middleware runs inside global middleware, and middleware provided both
@@ -2683,9 +2683,10 @@ type RegistrationServices<RR> = Exclude<McpRequest.Without<RR>, McpServer>
  * The returned layer forks `run(options)` in the layer scope and merges
  * `McpServer.layer`, so registration layers can use the `McpServer` service
  * while the server is running.
- * Core tool, resource, template, and prompt lists return all visible entries
- * in one page. Supplying a cursor returns `InvalidParams`, since the server
- * never issues continuation cursors. This follows MCP
+ *
+ * Tool, resource, resource template, and prompt lists return every visible
+ * entry in one page and never issue cursors, so a list request that supplies a
+ * cursor fails with `InvalidParams`. See MCP
  * [pagination error handling](https://modelcontextprotocol.io/specification/2026-07-28/server/utilities/pagination#error-handling).
  *
  * Pass registration layers as `registrations` to build them before the server

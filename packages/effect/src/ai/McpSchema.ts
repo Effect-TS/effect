@@ -3105,10 +3105,11 @@ export type McpInputResponse = Readonly<Record<string, unknown>>
  *
  * `requestState` is opaque to the client and is returned unchanged with the
  * keyed input responses.
- * Sampling input requests must include each assistant tool-use round followed
- * immediately by a user message containing exactly its matching tool results.
- * Invalid sampling histories fail the originating request with `InternalError`.
- * See MCP [sampling tool flow](https://modelcontextprotocol.io/specification/2026-07-28/client/sampling#tool-use-and-result-balance).
+ *
+ * In a sampling input request, each assistant message with tool uses must be
+ * followed immediately by a user message containing exactly its matching tool
+ * results. Otherwise, the originating request fails with `InternalError`. See
+ * MCP [tool use and result balance](https://modelcontextprotocol.io/specification/2026-07-28/client/sampling#tool-use-and-result-balance).
  *
  * @stability unstable
  * @category models
@@ -3233,10 +3234,10 @@ export interface McpReverseClient {
    *
    * **Details**
    *
-   * Each assistant tool-use round must be followed immediately by a user
-   * message containing exactly its matching tool results. Invalid histories
-   * fail locally with `McpReverseOperationError` before a request is sent.
-   * See MCP [sampling tool flow](https://modelcontextprotocol.io/specification/2025-11-25/client/sampling#tool-use-and-result-balance).
+   * Each assistant message with tool uses must be followed immediately by a
+   * user message containing exactly its matching tool results. Otherwise, the
+   * request fails with `McpReverseOperationError` without being sent. See MCP
+   * [tool use and result balance](https://modelcontextprotocol.io/specification/2025-11-25/client/sampling#tool-use-and-result-balance).
    */
   readonly createMessage: (
     request: typeof CreateMessage.payloadSchema.Type

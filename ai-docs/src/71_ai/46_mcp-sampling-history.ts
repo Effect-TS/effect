@@ -6,12 +6,12 @@
  */
 import { McpSchema } from "effect/ai"
 
-// Sampling is deprecated in MCP 2026-07-28. Use this pattern to maintain an
-// existing client-sampling integration; new applications should call a model
-// provider directly. The client must declare sampling.tools support.
+// Sampling is deprecated in MCP 2026-07-28: keep this pattern for existing
+// integrations, and call a model provider directly in new code. The client
+// must declare `sampling.tools`.
 
-// A result belongs to one actual tool-use block from the previous assistant
-// sampling response. Keep the pair together while executing parallel tools.
+// Keep each result with the tool use it answers, even when tools run in
+// parallel.
 interface CompletedToolUse {
   readonly toolUse: McpSchema.ToolUseContent
   readonly resultText: string
@@ -29,10 +29,10 @@ export const requestNextSamplingTurn = (
           maxTokens: 1_024,
           messages: [
             { role: "user", content: { type: "text", text: instruction } },
-            // Include every tool use from the assistant's preceding response.
+            // Every tool use from the preceding assistant response.
             { role: "assistant", content: completed.map(({ toolUse }) => toolUse) },
-            // This immediately following user message contains only results,
-            // exactly one for each ID. Put later instructions in a new message.
+            // Immediately followed by only their results, one per tool-use ID.
+            // Send further instructions in a later message.
             {
               role: "user",
               content: completed.map(({ resultText, toolUse }) => ({
@@ -47,7 +47,7 @@ export const requestNextSamplingTurn = (
     }
   })
 
-// Return this InputRequired from an MCP tool or prompt handler. Modern clients
-// receive it as a multi round-trip input request. When using a legacy reverse
-// client, pass the same message history to McpReverseClient.createMessage.
-// The server rejects incomplete histories before sending them to the client.
+// Return this from an MCP tool or prompt handler; modern clients receive it as
+// an input request. On legacy connections, pass the same messages to
+// `McpReverseClient.createMessage`. Either way, the server rejects an
+// unbalanced history before sending it.
