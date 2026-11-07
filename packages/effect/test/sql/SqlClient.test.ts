@@ -205,6 +205,22 @@ const assertTypedFailure = <A, E>(exit: Exit.Exit<A, E>, error: E) => {
   assert.deepStrictEqual(Cause.findErrorOption(exit.cause), Option.some(error))
 }
 
+/** Asserts the typed failure for using a transaction level that has already ended. */
+const assertTransactionEnded = (exit: Exit.Exit<unknown, SqlError.SqlError>) => {
+  assert.isTrue(Exit.isFailure(exit))
+  if (!Exit.isFailure(exit)) {
+    return
+  }
+  assert.isFalse(
+    Cause.hasDies(exit.cause),
+    `expected a typed failure but the cause contains a defect:\n${Cause.pretty(exit.cause)}`
+  )
+  const { reason } = Option.getOrThrow(Cause.findErrorOption(exit.cause))
+  assert.strictEqual(reason._tag, "ConnectionError")
+  assert.strictEqual(reason.message, "SqlClient: the transaction has already ended")
+  assert.strictEqual(reason.operation, "transaction")
+}
+
 /** Collects every span a traced effect creates, in the order they start. */
 const recording = () => {
   const spans: Array<Tracer.NativeSpan> = []
@@ -825,6 +841,35 @@ describe("SqlClient", () => {
           Exit.isFailure(nestedExit) && Cause.pretty(nestedExit.cause).includes("the transaction has already ended")
         )
         assert.isFalse(calls.some((call) => call.startsWith("after")))
+      }))
+
+    it.effect("fails statements and nested transactions from a fiber that outlives its transaction level", () =>
+      Effect.gen(function*() {
+        const { calls, sql } = yield* makeClient()
+        const resume = yield* Deferred.make<void>()
+        const stale = yield* sql.withTransaction(
+          Effect.forkDetach(Effect.andThen(
+            Deferred.await(resume),
+            Effect.all([Effect.exit(sql`SELECT 1`), Effect.exit(sql.withTransaction(sql`SELECT 2`))])
+          ))
+        )
+        yield* Deferred.succeed(resume, undefined)
+        const [statement, nested] = yield* Fiber.join(stale)
+        assertTransactionEnded(statement)
+        assertTransactionEnded(nested)
+        assert.deepStrictEqual(calls, ["BEGIN", "COMMIT", "release"])
+
+        const savepoint = yield* makeClient()
+        const resumeSavepoint = yield* Deferred.make<void>()
+        const savepointExit = yield* savepoint.sql.withTransaction(Effect.gen(function*() {
+          const child = yield* savepoint.sql.withTransaction(
+            Effect.forkDetach(Effect.andThen(Deferred.await(resumeSavepoint), Effect.exit(savepoint.sql`SELECT 1`)))
+          )
+          yield* Deferred.succeed(resumeSavepoint, undefined)
+          return yield* Fiber.join(child)
+        }))
+        assertTransactionEnded(savepointExit)
+        assert.deepStrictEqual(savepoint.calls, ["BEGIN", "SAVEPOINT effect_sql_1", "COMMIT", "release"])
       }))
   })
 
