@@ -8,7 +8,7 @@ import * as Version from "effect/Version"
 const capture = () => {
   const exports: Array<{
     scope: { name: string; version: string }
-    spans: Array<{ traceId: string; links: Array<{ traceId: string }> }>
+    spans: Array<{ traceId: string; links: Array<{ traceId: string }>; status: { code: number } }>
   }> = []
   const httpClient = HttpClient.makeWith(
     Effect.fnUntraced(function*(requestEffect) {
@@ -38,6 +38,17 @@ describe("OtlpTracer", () => {
       yield* Effect.void.pipe(Effect.withSpan("test"))
       yield* (yield* OtlpExporter.Flusher).flush
       assert.deepStrictEqual(exports[0].scope, { name: "effect", version: Version.getCurrentVersion() })
+    }).pipe(Effect.provide(layer))
+  })
+
+  it.effect("leaves status Unset on successful spans", () => {
+    const { exports, layer } = capture()
+    return Effect.gen(function*() {
+      yield* Effect.void.pipe(Effect.withSpan("test"))
+      yield* (yield* OtlpExporter.Flusher).flush
+      // StatusCode.Ok (1) must not be set by instrumentation; application code is responsible.
+      // See: https://opentelemetry.io/docs/specs/semconv/general/recording-errors/
+      assert.strictEqual(exports[0].spans[0].status.code, 0) // StatusCode.Unset
     }).pipe(Effect.provide(layer))
   })
 
