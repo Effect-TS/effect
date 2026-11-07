@@ -332,6 +332,27 @@ describe("McpServer.layerHttpRequestScoped", () => {
       }
     }))
 
+  it.live("should deliver only increasing progress for the request's token", () =>
+    Effect.gen(function*() {
+      const harness = yield* makeHttpHarness(toolLayer("Progress", (server) =>
+        Effect.gen(function*() {
+          yield* server.notifications["notifications/progress"]({ progressToken: "other", progress: 100 })
+          for (const progress of [0, 1.5, 1.5, 1, 2]) {
+            yield* server.notifications["notifications/progress"]({ progressToken, progress })
+          }
+          return new McpSchema.CallToolResult({ content: [] })
+        })))
+      const { body, headers } = callTool("Progress", 1)
+      const response = yield* harness.post(body, headers)
+      const messages = sseMessages(yield* Effect.promise(() => response.text()))
+      assert.deepStrictEqual(
+        messages.filter((message) => message.method === "notifications/progress").map((message) =>
+          message.params.progress
+        ),
+        [0, 1.5, 2]
+      )
+    }))
+
   it.live("should keep layerHttp notifications when a request-scoped endpoint shares the server", () =>
     Effect.gen(function*() {
       const harness = yield* makeHttpHarness(

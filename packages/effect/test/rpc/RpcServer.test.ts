@@ -25,6 +25,7 @@ import * as EffectRequest from "effect/Request"
 import { Rpc, RpcGroup, RpcMiddleware, RpcSchema, RpcSerialization, RpcServer } from "effect/rpc"
 import * as RpcMessage from "effect/rpc/RpcMessage"
 import { Socket, SocketServer } from "effect/socket"
+import { TestClock } from "effect/testing"
 
 class GetUser extends EffectRequest.Class<{ id: number }, string> {}
 
@@ -740,6 +741,83 @@ describe("RpcServer", () => {
       yield* Fiber.join(overflow)
       assert.strictEqual(yield* Ref.get(writes), 10)
     }))
+
+  describe("makeProtocolStdio shutdown", () => {
+    const response = (id: number) => ({ _tag: "Exit", requestId: id, exit: { _tag: "Success", value: id } } as const)
+    const makeStdioServer = Effect.fnUntraced(function*(write: (chunk: string | Uint8Array) => Effect.Effect<void>) {
+      const ready = yield* Deferred.make<RpcServer.Protocol["Service"]>()
+      const closing = yield* Deferred.make<void>()
+      const stdinFinalized = yield* Deferred.make<void>()
+      const stdoutFinalized = yield* Deferred.make<void>()
+      const server = yield* Effect.gen(function*() {
+        const protocol = yield* RpcServer.makeProtocolStdio
+        yield* Effect.addFinalizer(() => Deferred.succeed(closing, undefined))
+        yield* Deferred.succeed(ready, protocol)
+        return yield* protocol.run(() => Effect.void)
+      }).pipe(
+        Effect.provide(Stdio.layerTest({
+          stdin: Stream.never.pipe(Stream.ensuring(Deferred.succeed(stdinFinalized, undefined))),
+          stdout: () => Sink.forEach(write).pipe(Sink.ensuring(Deferred.succeed(stdoutFinalized, undefined)))
+        })),
+        Effect.provide(RpcSerialization.layerNdjson),
+        Effect.scoped,
+        Effect.forkScoped
+      )
+      const protocol = yield* Deferred.await(ready)
+      // Buffer a second response behind the first write, then start closing the server.
+      const close = Effect.gen(function*() {
+        yield* protocol.send(0, response(2))
+        const fiber = yield* Fiber.interrupt(server).pipe(Effect.forkChild)
+        yield* Deferred.await(closing)
+        return fiber
+      })
+      yield* protocol.send(0, response(1))
+      return { close, stdinFinalized, stdoutFinalized }
+    })
+
+    it.effect("drains buffered responses before closing stdout", () =>
+      Effect.gen(function*() {
+        const firstWriteStarted = yield* Deferred.make<void>()
+        const releaseFirstWrite = yield* Deferred.make<void>()
+        yield* Effect.addFinalizer(() => Deferred.succeed(releaseFirstWrite, undefined))
+        const written: Array<unknown> = []
+        const harness = yield* makeStdioServer(Effect.fnUntraced(function*(chunk) {
+          if (written.length === 0) {
+            yield* Deferred.succeed(firstWriteStarted, undefined)
+            yield* Deferred.await(releaseFirstWrite)
+          }
+          written.push(JSON.parse(typeof chunk === "string" ? chunk : new TextDecoder().decode(chunk)))
+        }))
+        yield* Deferred.await(firstWriteStarted)
+        const closing = yield* harness.close
+        // Let finalization reach the writer before the sink becomes writable.
+        yield* TestClock.adjust("1 milli")
+        yield* Deferred.succeed(releaseFirstWrite, undefined)
+        yield* Fiber.join(closing)
+        assert.deepStrictEqual(written, [response(1), response(2)])
+        assert.isTrue(yield* Deferred.isDone(harness.stdinFinalized))
+        assert.isTrue(yield* Deferred.isDone(harness.stdoutFinalized))
+      }))
+
+    it.effect("bounds the drain of blocked stdout and finalizes both streams", () =>
+      Effect.gen(function*() {
+        const writeStarted = yield* Deferred.make<void>()
+        const releaseWrite = yield* Deferred.make<void>()
+        yield* Effect.addFinalizer(() => Deferred.succeed(releaseWrite, undefined))
+        const harness = yield* makeStdioServer(() =>
+          Deferred.succeed(writeStarted, undefined).pipe(Effect.andThen(Deferred.await(releaseWrite)))
+        )
+        yield* Deferred.await(writeStarted)
+        const closing = yield* harness.close
+        yield* TestClock.adjust("999 millis")
+        assert.isUndefined(closing.pollUnsafe())
+        assert.isFalse(yield* Deferred.isDone(harness.stdoutFinalized))
+        yield* TestClock.adjust("1 milli")
+        yield* Fiber.join(closing)
+        assert.isTrue(yield* Deferred.isDone(harness.stdinFinalized))
+        assert.isTrue(yield* Deferred.isDone(harness.stdoutFinalized))
+      }))
+  })
 
   it.effect("should continue sending to other clients when a backpressured HTTP client disconnects", () =>
     Effect.gen(function*() {

@@ -16,6 +16,7 @@ import * as Context from "effect/Context"
 import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
 import * as ErrorReporter from "effect/ErrorReporter"
+import * as Exit from "effect/Exit"
 import * as Fiber from "effect/Fiber"
 import * as FetchHttpClient from "effect/http/FetchHttpClient"
 import * as HttpClient from "effect/http/HttpClient"
@@ -37,6 +38,7 @@ import * as RpcServer from "effect/rpc/RpcServer"
 import * as Scheduler from "effect/Scheduler"
 import * as Schema from "effect/Schema"
 import * as SchemaGetter from "effect/SchemaGetter"
+import * as Scope from "effect/Scope"
 import * as Sink from "effect/Sink"
 import * as Stdio from "effect/Stdio"
 import * as Stream from "effect/Stream"
@@ -47,7 +49,7 @@ import { makeHeldServerScheduler } from "./TestUtils/McpHeldScheduler.ts"
 import { initializeHttpSession, makeHttpHarness } from "./TestUtils/McpHttpHarness.ts"
 import { makeMcpSseReader, readMcpHttpResponse } from "./TestUtils/McpHttpResponse.ts"
 import { makeServerLayer } from "./TestUtils/McpServerLayer.ts"
-import { makeMcpStdioHarness } from "./TestUtils/McpStdioHarness.ts"
+import { type JsonRpcMessage, makeMcpStdioHarness } from "./TestUtils/McpStdioHarness.ts"
 
 // oxlint-disable-next-line @typescript-eslint/no-require-imports
 const Ajv2020 = require("ajv/dist/2020")
@@ -255,6 +257,129 @@ const toolResultText = (result: McpSchema.CallToolResult): string => {
   assertTrue(content?.type === "text", "Expected text tool-result content")
   return content.text
 }
+
+const mcpRequest = (
+  protocol: McpProtocol.ProtocolAdapter,
+  id: string,
+  method: string,
+  params: Record<string, unknown> = {}
+) => ({
+  jsonrpc: "2.0",
+  id,
+  method,
+  params: {
+    ...params,
+    _meta: {
+      ...(protocol.runtime._tag === "Stateless"
+        ? {
+          "io.modelcontextprotocol/protocolVersion": protocol.protocolVersion,
+          "io.modelcontextprotocol/clientCapabilities": {}
+        }
+        : {}),
+      ...(params._meta as object | undefined)
+    }
+  }
+})
+
+const readThrough = Effect.fnUntraced(function*(take: Effect.Effect<JsonRpcMessage>, id: string) {
+  const messages: Array<JsonRpcMessage> = []
+  while (true) {
+    const message = yield* take
+    messages.push(message)
+    if (message.id === id && message.method === undefined) return messages
+  }
+})
+
+// A custom transport whose writes can be held until `release`.
+const makeCustomTransportHarness = Effect.fnUntraced(function*(protocol: McpProtocol.ProtocolAdapter) {
+  const outbound = yield* Queue.unbounded<JsonRpcMessage>()
+  const blockedWrites = yield* Queue.unbounded<JsonRpcMessage>()
+  const disconnects = yield* Queue.unbounded<number>()
+  const release = yield* Deferred.make<void>()
+  const transportClosed = yield* Deferred.make<void>()
+  const writeRequest = yield* Deferred.make<
+    (clientId: number, message: RpcMessage.FromClientEncoded) => Effect.Effect<void>
+  >()
+  const events: Array<JsonRpcMessage | "Closed"> = []
+  let blockWhen: (message: JsonRpcMessage) => boolean = () => false
+  const serialization = McpServer.makeSerialization({ protocols: [protocol], framing: "json" })
+  const parser = serialization.makeUnsafe()
+  const transport = Layer.effect(RpcServer.Protocol)(Effect.gen(function*() {
+    yield* Effect.addFinalizer(() =>
+      Effect.sync(() => events.push("Closed")).pipe(Effect.andThen(Deferred.succeed(transportClosed, undefined)))
+    )
+    return yield* RpcServer.Protocol.make((write) =>
+      Deferred.succeed(writeRequest, write).pipe(Effect.as({
+        disconnects,
+        send: Effect.fnUntraced(function*(_clientId: number, response: RpcMessage.FromServerEncoded) {
+          const encoded = parser.encode(response)
+          if (encoded === undefined) return
+          const message: JsonRpcMessage = JSON.parse(
+            typeof encoded === "string" ? encoded : new TextDecoder().decode(encoded)
+          )
+          if (blockWhen(message)) {
+            yield* Queue.offer(blockedWrites, message)
+            yield* Deferred.await(release)
+          }
+          events.push(message)
+          yield* Queue.offer(outbound, message)
+        }),
+        end: () => Effect.void,
+        clientIds: Effect.succeed(new Set([0])),
+        initialMessage: Effect.succeedNone,
+        supportsAck: false,
+        supportsTransferables: false,
+        supportsSpanPropagation: false,
+        supportsNotifications: true,
+        codecFor: serialization.codecFor
+      }))
+    )
+  }))
+  const serverScope = yield* Scope.make()
+  yield* Effect.addFinalizer(() => Scope.close(serverScope, Exit.void))
+  yield* Effect.addFinalizer(() => Deferred.succeed(release, undefined))
+  const services = yield* Scope.provide(
+    Layer.build(
+      McpServer.layer({ name: "CustomTransport", version: "1.0.0", protocols: [protocol] }).pipe(
+        Layer.provide(transport)
+      )
+    ),
+    serverScope
+  )
+  const write = yield* Deferred.await(writeRequest)
+  const send = (message: unknown) =>
+    Effect.forEach(
+      parser.decode(JSON.stringify(message)),
+      (decoded) => write(0, decoded as RpcMessage.FromClientEncoded),
+      { discard: true }
+    )
+  const take = Queue.take(outbound)
+  if (protocol.runtime._tag === "Stateful") {
+    yield* send(mcpRequest(protocol, "initialize", "initialize", {
+      protocolVersion: protocol.protocolVersion,
+      capabilities: {},
+      clientInfo: { name: "test", version: "1.0.0" }
+    }))
+    assert.property(yield* take, "result")
+    yield* send({ jsonrpc: "2.0", method: "notifications/initialized" })
+  }
+  return {
+    server: Context.get(services, McpServer.McpServer),
+    send,
+    take,
+    blockWhen: (predicate: (message: JsonRpcMessage) => boolean) =>
+      Effect.sync(() => {
+        blockWhen = predicate
+      }),
+    awaitBlocked: Effect.fnUntraced(function*(predicate: (message: JsonRpcMessage) => boolean) {
+      while (!predicate(yield* Queue.take(blockedWrites))) {}
+    }),
+    release: Deferred.succeed(release, undefined),
+    close: Scope.close(serverScope, Exit.void),
+    closed: Deferred.isDone(transportClosed),
+    events: Effect.sync(() => Array.from(events))
+  }
+})
 
 describe("McpServer", () => {
   // https://modelcontextprotocol.io/specification/2025-11-25/basic/lifecycle
@@ -3532,6 +3657,269 @@ describe("McpServer", () => {
         const tools = yield* read()
         assert.strictEqual(tools.id, 1)
         assert.isArray(tools.result.tools)
+      }))
+  })
+
+  // https://modelcontextprotocol.io/specification/2026-07-28/basic/patterns/progress#behavior-requirements
+  describe("progress", () => {
+    const progressOf = (messages: ReadonlyArray<JsonRpcMessage>) =>
+      messages.flatMap((message) =>
+        message.method === "notifications/progress" ? [(message.params as { progress: number }).progress] : []
+      )
+    const progress = (server: McpServer.McpServer["Service"], progress: number) =>
+      server.notifications["notifications/progress"]({ progressToken: "token", progress })
+    // Captures the calling request's context so progress can be reported after it ends.
+    const captureProgress = (server: McpServer.McpServer["Service"], value: number) =>
+      Effect.contextWith((context: Context.Context<never>) =>
+        Effect.succeed(progress(server, value).pipe(Effect.provideContext(context)))
+      )
+    const addProgressTool = (server: McpServer.McpServer["Service"], handle: () => Effect.Effect<void>) =>
+      server.addTool({
+        tool: new McpSchema.Tool({ name: "Progress", inputSchema: { type: "object" } }),
+        annotations: Context.empty(),
+        handle: () => handle().pipe(Effect.as(new McpSchema.CallToolResult({ content: [] })))
+      })
+    const callProgress = (protocol: McpProtocol.ProtocolAdapter, id: string, progressToken?: string) =>
+      mcpRequest(protocol, id, "tools/call", {
+        name: "Progress",
+        ...(progressToken === undefined ? {} : { _meta: { progressToken } })
+      })
+    const cancel = (protocol: McpProtocol.ProtocolAdapter, requestId: string) => ({
+      jsonrpc: "2.0",
+      method: "notifications/cancelled",
+      params: { requestId, ...mcpRequest(protocol, "", "").params }
+    })
+    const ping = (protocol: McpProtocol.ProtocolAdapter, id: string) =>
+      mcpRequest(protocol, id, protocol.runtime._tag === "Stateful" ? "ping" : "server/discover")
+
+    for (const protocol of [McpProtocol.v2026_07_28, McpProtocol.v2025_11_25]) {
+      it.effect(`${protocol.protocolVersion} emits increasing progress for the active request's token`, () =>
+        Effect.gen(function*() {
+          const harness = yield* makeMcpStdioHarness(protocol)
+          yield* harness.initialize()
+          let previous: Effect.Effect<void> | undefined
+          yield* addProgressTool(harness.server, () =>
+            Effect.gen(function*() {
+              // A context from an earlier request with the same id and token stays inactive.
+              if (previous !== undefined) yield* previous
+              previous = yield* captureProgress(harness.server, 3)
+              yield* harness.server.notifications["notifications/progress"]({ progressToken: "other", progress: 100 })
+              for (const value of [0, 1.5, 1.5, 1, 2]) {
+                yield* progress(harness.server, value)
+              }
+            }))
+          const call = (progressToken?: string) =>
+            harness.sendRaw(callProgress(protocol, "progress", progressToken)).pipe(
+              Effect.andThen(readThrough(harness.takeMessage, "progress")),
+              Effect.map(progressOf)
+            )
+          assert.deepStrictEqual(yield* call("token"), [0, 1.5, 2])
+          assert.deepStrictEqual(yield* call("token"), [0, 1.5, 2])
+          assert.deepStrictEqual(yield* call(), [])
+        }))
+
+      it.effect(`${protocol.protocolVersion} drops queued and later progress after cancellation`, () =>
+        Effect.gen(function*() {
+          const harness = yield* makeCustomTransportHarness(protocol)
+          const interrupted = yield* Deferred.make<void>()
+          const captured = yield* Deferred.make<Effect.Effect<void>>()
+          yield* addProgressTool(harness.server, () =>
+            Effect.gen(function*() {
+              yield* Deferred.succeed(captured, yield* captureProgress(harness.server, 2))
+              yield* progress(harness.server, 1)
+              return yield* Effect.never
+            }).pipe(Effect.onInterrupt(() => Deferred.succeed(interrupted, undefined))))
+          const isFirstProgress = (message: JsonRpcMessage) =>
+            message.method === "notifications/progress" && (message.params as { progress: number }).progress === 1
+          yield* harness.blockWhen(isFirstProgress)
+          yield* harness.send(callProgress(protocol, "cancelled", "token"))
+          yield* harness.awaitBlocked(isFirstProgress)
+          const lateProgress = yield* Deferred.await(captured)
+          // Enqueue behind the blocked write while the request is still active.
+          const queued = yield* lateProgress.pipe(Effect.forkChild({ startImmediately: true }))
+          yield* harness.send(cancel(protocol, "cancelled"))
+          yield* Deferred.await(interrupted)
+          yield* harness.release
+          yield* Fiber.join(queued)
+          yield* lateProgress
+          yield* harness.send(ping(protocol, "after"))
+          assert.deepStrictEqual(progressOf(yield* readThrough(harness.take, "after")), [1])
+        }))
+    }
+
+    it.effect("drops progress when its request is cancelled during projection", () =>
+      Effect.gen(function*() {
+        const projecting = yield* Deferred.make<void>()
+        const release = yield* Deferred.make<void>()
+        const interrupted = yield* Deferred.make<void>()
+        const base = McpProtocol.v2026_07_28
+        const protocol: McpProtocol.ProtocolAdapter = {
+          ...base,
+          projectNotification: (notification) =>
+            notification._tag === "Progress"
+              ? Deferred.succeed(projecting, undefined).pipe(
+                Effect.andThen(Deferred.await(release)),
+                Effect.andThen(base.projectNotification(notification))
+              )
+              : base.projectNotification(notification)
+        }
+        const harness = yield* makeCustomTransportHarness(protocol)
+        let calls = 0
+        yield* addProgressTool(harness.server, () =>
+          calls++ === 0
+            ? progress(harness.server, 1).pipe(
+              Effect.andThen(Effect.never),
+              Effect.onInterrupt(() => Deferred.succeed(interrupted, undefined))
+            )
+            : progress(harness.server, 2))
+        yield* harness.send(callProgress(protocol, "cancelled", "token"))
+        yield* Deferred.await(projecting)
+        yield* harness.send(cancel(protocol, "cancelled"))
+        yield* Deferred.await(interrupted)
+        yield* Deferred.succeed(release, undefined)
+        // Progress from a later request is delivered after the cancelled request's delivery settles.
+        yield* harness.send(callProgress(protocol, "after", "token"))
+        assert.deepStrictEqual(progressOf(yield* readThrough(harness.take, "after")), [2])
+      }))
+  })
+
+  // https://modelcontextprotocol.io/specification/2026-07-28/basic/patterns/subscriptions#graceful-closure
+  describe("subscription shutdown", () => {
+    const protocol = McpProtocol.v2026_07_28
+    const listen = Effect.fnUntraced(function*(
+      harness: Effect.Success<ReturnType<typeof makeCustomTransportHarness>>,
+      id: string,
+      notifications: Record<string, unknown> = {}
+    ) {
+      yield* harness.send(mcpRequest(protocol, id, "subscriptions/listen", { notifications }))
+      const acknowledgment = yield* harness.take
+      assert.strictEqual(acknowledgment.method, "notifications/subscriptions/acknowledged")
+    })
+    const subscriptionIdOf = (message: JsonRpcMessage) =>
+      ((message.params ?? message.result) as { _meta: Record<string, unknown> })
+        ._meta["io.modelcontextprotocol/subscriptionId"]
+
+    it.effect("completes every active subscription before closing a custom transport", () =>
+      Effect.gen(function*() {
+        const harness = yield* makeCustomTransportHarness(protocol)
+        yield* listen(harness, "first")
+        yield* listen(harness, "second")
+        yield* harness.close
+        const events = yield* harness.events
+        assert.strictEqual(events.at(-1), "Closed")
+        for (const id of ["first", "second"]) {
+          const cancellation = events.findIndex((event) =>
+            event !== "Closed" && event.method === "notifications/cancelled" &&
+            (event.params as { requestId: string }).requestId === id
+          )
+          const completion = events.findIndex((event) => event !== "Closed" && event.id === id)
+          assert.isAtLeast(cancellation, 0)
+          assert.isAbove(completion, cancellation)
+          const [cancelled, completed] = [events[cancellation], events[completion]] as Array<JsonRpcMessage>
+          assert.strictEqual(subscriptionIdOf(cancelled), id)
+          assert.strictEqual(subscriptionIdOf(completed), id)
+          assert.deepNestedPropertyVal(completed, "result.resultType", "complete")
+        }
+      }))
+
+    const blockedWrites = {
+      cancellation: (message: JsonRpcMessage) => message.method === "notifications/cancelled",
+      "final result": (message: JsonRpcMessage) => message.id === "blocked"
+    }
+    for (const [name, blocked] of Object.entries(blockedWrites)) {
+      it.effect(`bounds shutdown when the ${name} write blocks`, () =>
+        Effect.gen(function*() {
+          const harness = yield* makeCustomTransportHarness(protocol)
+          yield* listen(harness, "blocked")
+          yield* harness.blockWhen(blocked)
+          const closing = yield* Effect.forkChild(harness.close)
+          yield* harness.awaitBlocked(blocked)
+          yield* TestClock.adjust("2 seconds")
+          assert.isTrue(yield* harness.closed)
+          yield* Fiber.join(closing)
+        }))
+    }
+
+    it.effect("bounds shutdown when a final result write blocked before shutdown", () =>
+      Effect.gen(function*() {
+        const harness = yield* makeCustomTransportHarness(protocol)
+        yield* harness.server.addTool({
+          tool: new McpSchema.Tool({ name: "Listed", inputSchema: { type: "object" } }),
+          annotations: Context.empty(),
+          handle: () => Effect.succeed(new McpSchema.CallToolResult({ content: [] }))
+        })
+        yield* listen(harness, "overflowing", { toolsListChanged: true })
+        const isFinalResult = (message: JsonRpcMessage) => message.id === "overflowing"
+        // A peer that stops reading overflows the backlog, then blocks the final result.
+        yield* harness.blockWhen((message) =>
+          message.method === "notifications/tools/list_changed" || isFinalResult(message)
+        )
+        for (let index = 0; index < 1_000; index++) {
+          yield* harness.server.notifications["notifications/tools/list_changed"]({})
+          yield* Effect.yieldNow
+        }
+        yield* harness.awaitBlocked(isFinalResult)
+        const closing = yield* Effect.forkChild(harness.close)
+        yield* TestClock.adjust("2 seconds")
+        const closed = yield* harness.closed
+        yield* harness.release
+        yield* Fiber.join(closing)
+        assert.isTrue(closed)
+      }))
+
+    it.effect("completes active subscriptions before closing stdio", () =>
+      Effect.gen(function*() {
+        const harness = yield* makeMcpStdioHarness(protocol)
+        const request = yield* harness.startRequest("subscriptions/listen", { notifications: {} }, "closing-stdio")
+        assert.strictEqual((yield* harness.takeMessage).method, "notifications/subscriptions/acknowledged")
+        const messages = yield* Effect.all([harness.takeMessage, request.response], { concurrency: "unbounded" }).pipe(
+          Effect.timeoutOption("1 second"),
+          Effect.forkChild
+        )
+        yield* Fiber.interrupt(harness.serverFiber)
+        yield* TestClock.adjust("2 seconds")
+        const received = yield* Fiber.join(messages)
+        assert.isTrue(Option.isSome(received))
+        if (Option.isNone(received)) return
+        const [cancellation, completion] = received.value
+        assert.strictEqual(cancellation.method, "notifications/cancelled")
+        assert.strictEqual(subscriptionIdOf(cancellation), request.id)
+        assert.strictEqual(completion.id, request.id)
+        assert.deepNestedPropertyVal(completion, "result.resultType", "complete")
+      }))
+
+    it.effect("completes active subscriptions before disposing the HTTP handler", () =>
+      Effect.gen(function*() {
+        const { dispose, handler } = HttpRouter.toWebHandler(
+          McpServer.layerHttp({ name: "SubscriptionShutdown", version: "1.0.0", path: "/mcp", protocols: [protocol] }),
+          { disableLogger: true }
+        )
+        yield* Effect.addFinalizer(() => Effect.promise(() => dispose()))
+        const response = yield* Effect.promise(() =>
+          handler(
+            new Request("http://localhost/mcp", {
+              method: "POST",
+              headers: {
+                accept: "application/json, text/event-stream",
+                "content-type": "application/json",
+                "MCP-Protocol-Version": protocol.protocolVersion,
+                "Mcp-Method": "subscriptions/listen"
+              },
+              body: JSON.stringify(mcpRequest(protocol, "closing-http", "subscriptions/listen", { notifications: {} }))
+            })
+          )
+        )
+        const reader = makeMcpSseReader(response)
+        yield* Effect.addFinalizer(() => reader.cancel)
+        assert.strictEqual((yield* reader.take()).method, "notifications/subscriptions/acknowledged")
+        const drain = yield* Effect.forkChild(reader.drain())
+        yield* Effect.promise(() => dispose())
+        const [cancellation, completion, ...rest] = yield* Fiber.join(drain)
+        assert.lengthOf(rest, 0)
+        assert.strictEqual(cancellation.method, "notifications/cancelled")
+        assert.strictEqual(subscriptionIdOf(cancellation), "closing-http")
+        assert.strictEqual(completion.id, "closing-http")
+        assert.deepNestedPropertyVal(completion, "result.resultType", "complete")
       }))
   })
 
