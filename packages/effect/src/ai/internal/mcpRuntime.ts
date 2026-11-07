@@ -551,9 +551,7 @@ export const make = Effect.fnUntraced(function*(
         subscribeServerNotifications: options.subscribeServerNotifications,
         getListChangeRevision: options.getListChangeRevision,
         ...(options.sendNotification === undefined ? {} : { sendNotification: options.sendNotification }),
-        ...(options.subscriptionShutdown === undefined
-          ? {}
-          : { subscriptionShutdown: options.subscriptionShutdown }),
+        subscriptionShutdown: options.subscriptionShutdown,
         ...(options.terminateSubscription === undefined
           ? {}
           : { terminateSubscription: options.terminateSubscription }),

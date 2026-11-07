@@ -476,13 +476,7 @@ export const makeHandlers = (
           Effect.flatMap((notification) => sendNotification(McpSchema.protocolVersion, client.id, notification))
         )
       )
-      yield* Effect.race(
-        deliver,
-        Effect.race(
-          Deferred.await(overflowed),
-          context.subscriptionShutdown ?? Effect.never
-        )
-      )
+      yield* Effect.raceAll([deliver, Deferred.await(overflowed), context.subscriptionShutdown ?? Effect.never])
       yield* Scope.close(eventsScope, Exit.void)
       yield* context.terminateSubscription?.(
         McpSchema.protocolVersion,

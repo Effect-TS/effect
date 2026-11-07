@@ -2091,48 +2091,42 @@ const runWithRuntime = Effect.fnUntraced(function*(
     send: (clientId, response) => {
       // After the grace period, interrupting handlers must not start another blocked write.
       if (Deferred.isDoneUnsafe(subscriptionWritesClosed)) return Effect.void
-      let completed: Deferred.Deferred<void> | undefined
-      const finish = (write: Effect.Effect<void>) => {
-        const subscription = completed
-        return subscription === undefined
+      if (response._tag !== "Exit") return protocol.send(clientId, response)
+      const requests = activeRequests.get(clientId)
+      const key = requestKey(response.requestId)
+      const active = requests?.get(key)
+      if (active !== undefined) active.progressState.active = false
+      if (requests !== undefined && requests.delete(key) && requests.size === 0) {
+        activeRequests.delete(clientId)
+      }
+      const subscription = active?.subscriptionCompleted
+      const finish = (write: Effect.Effect<void>) =>
+        subscription === undefined
           ? write
           : Effect.raceFirst(Effect.interruptible(write), Deferred.await(subscriptionWritesClosed)).pipe(
             Effect.ensuring(Effect.sync(() => settleSubscription(subscription)))
           )
+      if (active?.cancelled === true) {
+        if (transport === "custom" && !McpSerialization.isMcpCodec(protocol.codecFor)) return finish(Effect.void)
+        if (active.httpPost !== undefined) active.httpPost.expected--
+        cancelledResponses.set(response, response.requestId)
+        return finish(protocol.send(clientId, response))
       }
-      if (response._tag === "Exit") {
-        const requests = activeRequests.get(clientId)
-        const key = requestKey(response.requestId)
-        const active = requests?.get(key)
-        if (active !== undefined) {
-          active.progressState.active = false
-          completed = active.subscriptionCompleted
-        }
-        if (requests !== undefined && requests.delete(key) && requests.size === 0) {
-          activeRequests.delete(clientId)
-        }
-        if (active?.cancelled === true) {
-          if (transport === "custom" && !McpSerialization.isMcpCodec(protocol.codecFor)) return finish(Effect.void)
-          if (active.httpPost !== undefined) active.httpPost.expected--
-          cancelledResponses.set(response, response.requestId)
-          return finish(protocol.send(clientId, response))
-        }
-        if (
-          response.exit._tag === "Failure" &&
-          !response.exit.cause.some((failure) => failure._tag === "Fail")
-        ) {
-          return finish(
-            sendRequestError(clientId, response.requestId, {
-              code: McpSchema.INTERNAL_ERROR_CODE,
-              message: "Internal error"
-            }).pipe(
-              Effect.andThen(CurrentRequestSpan),
-              Effect.map((span) => {
-                if (span !== undefined) recordErrorResponse(span, McpSchema.INTERNAL_ERROR_CODE)
-              })
-            )
+      if (
+        response.exit._tag === "Failure" &&
+        !response.exit.cause.some((failure) => failure._tag === "Fail")
+      ) {
+        return finish(
+          sendRequestError(clientId, response.requestId, {
+            code: McpSchema.INTERNAL_ERROR_CODE,
+            message: "Internal error"
+          }).pipe(
+            Effect.andThen(CurrentRequestSpan),
+            Effect.map((span) => {
+              if (span !== undefined) recordErrorResponse(span, McpSchema.INTERNAL_ERROR_CODE)
+            })
           )
-        }
+        )
       }
       return finish(protocol.send(clientId, response))
     },
@@ -2389,7 +2383,6 @@ const runWithRuntime = Effect.fnUntraced(function*(
       }).pipe(Effect.onExit(() =>
         Effect.gen(function*() {
           yield* Deferred.succeed(subscriptionShutdown, undefined)
-          if (openSubscriptions.size === 0) return
           // A peer that stops reading must not hold server shutdown indefinitely.
           const settled = yield* Effect.all(
             Array.from(openSubscriptions, (completed) => Deferred.await(completed)),
@@ -2479,12 +2472,6 @@ const runWithRuntime = Effect.fnUntraced(function*(
           if (previous !== undefined) yield* Deferred.await(previous)
           const projected = yield* selectedProtocol.projectNotification(notification)
           if (projected === undefined) {
-            return
-          }
-          if (
-            notification._tag === "Progress" && selectedProtocol.runtime._tag === "Stateless" &&
-            requestContext?.requestMetadata?.progressToken !== notification.progressToken
-          ) {
             return
           }
           if (notification._tag === "LoggingMessage" && selectedProtocol.runtime._tag === "Stateless") {
