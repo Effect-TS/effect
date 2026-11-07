@@ -328,6 +328,7 @@ export const make = Effect.fnUntraced(function*(options: SqlClient.MakeOptions) 
       onSome: ([conn]) => Effect.succeed(conn)
     })
   )
+  const getConnectionWithoutTransforms = Effect.suspend(() => getConnection)
 
   const beginTransaction = options.beginTransaction ?? "BEGIN"
   const commit = options.commit ?? "COMMIT"
@@ -386,20 +387,20 @@ export const make = Effect.fnUntraced(function*(options: SqlClient.MakeOptions) 
       reserve: transactionAcquirer,
       driver: options.driver,
       withoutTransforms(): any {
-        if (options.transformRows === undefined) {
-          return this
-        }
         const statement = Statement.make(
-          getConnection,
+          getConnectionWithoutTransforms,
           options.compiler.withoutTransform,
           options.spanAttributes,
           undefined,
           borrower
         )
-        const client = Object.assign(statement, {
-          ...this,
-          ...statement
-        })
+        // Statement.make caches the constructor, so copy it instead of
+        // mutating it and keep the receiver's overrides such as withTransaction.
+        const client = Object.assign(
+          (...args: Array<unknown>) => Reflect.apply(statement, undefined, args),
+          this,
+          statement
+        )
         ;(client as any).safe = client
         ;(client as any).withoutTransforms = () => client
         return client
