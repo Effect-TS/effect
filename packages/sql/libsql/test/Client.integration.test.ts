@@ -39,16 +39,13 @@ describe("Client", () => {
     Effect.gen(function*() {
       const sql = yield* LibsqlClient.make({ url: ":memory:" })
       const go = yield* Deferred.make<void>()
-      const stale = yield* sql.withTransaction(Effect.forkChild(Effect.andThen(
-        Deferred.await(go),
-        Effect.scoped(Effect.flatMap(sql.reserve, (conn) => conn.executeRaw("SELECT 1", [])))
-      )))
-      yield* Deferred.succeed(go, undefined)
-      const exit = yield* Fiber.await(stale)
-      assert.isTrue(
-        Exit.isFailure(exit) && !Cause.hasDies(exit.cause) &&
-          Cause.pretty(exit.cause).includes("the transaction has already ended")
+      const stale = yield* sql.withTransaction(
+        Effect.forkChild(Effect.andThen(Deferred.await(go), Effect.scoped(sql.reserve)))
       )
+      yield* Deferred.succeed(go, undefined)
+      const error = yield* Effect.flip(Fiber.join(stale))
+      assert.instanceOf(error, SqlError)
+      assert.strictEqual(error.reason.message, "SqlClient: the transaction has already ended")
     }).pipe(Effect.provide(Reactivity.layer)))
 
   it.effect("releases completed nested savepoints", () =>

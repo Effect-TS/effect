@@ -185,6 +185,7 @@ const makeClient = (options: {
     Effect.flatMap((sql) =>
       Effect.map(Effect.service(Reactivity.Reactivity), (reactivity) => ({
         sql,
+        connection,
         reactivity,
         calls,
         record,
@@ -310,6 +311,16 @@ describe("SqlClient", () => {
         ])
       })
   )
+
+  it.effect("currentTransactionConnection returns the open transaction's connection", () =>
+    Effect.gen(function*() {
+      const { connection, sql } = yield* makeClient()
+      const current = SqlClient.currentTransactionConnection(sql.transactionService)
+      assert.deepStrictEqual(yield* current, Option.none())
+      const [inside, context] = yield* sql.withTransaction(Effect.all([current, Effect.context<never>()]))
+      assert.deepStrictEqual(inside, Option.some(connection))
+      assertEnded(yield* Effect.flip(Effect.provideContext(current, context)))
+    }))
 
   it.effect("fails statements from a fiber that runs while its transaction commits", () =>
     Effect.gen(function*() {

@@ -1,7 +1,8 @@
 import { MssqlClient, Procedure } from "@effect/sql-mssql"
 import { assert, describe, expect, it } from "@effect/vitest"
-import { Cause, Deferred, Effect, Exit, Fiber } from "effect"
+import { Deferred, Effect, Fiber } from "effect"
 import * as Reactivity from "effect/reactivity/Reactivity"
+import { SqlError } from "effect/sql/SqlError"
 import * as Statement from "effect/sql/Statement"
 import type { EventEmitter } from "node:events"
 import type * as Tedious from "tedious"
@@ -326,10 +327,6 @@ const makeClient = MssqlClient.make({
   connectionTTL: "1 hour"
 })
 
-const isEnded = (exit: Exit.Exit<unknown, unknown>) =>
-  Exit.isFailure(exit) && !Cause.hasDies(exit.cause) &&
-  Cause.pretty(exit.cause).includes("the transaction has already ended")
-
 const bounded = <A, E, R>(effect: Effect.Effect<A, E, R>) => effect.pipe(Effect.timeout("2 seconds"))
 
 describe("MssqlClient connection lifecycle", { concurrent: false }, () => {
@@ -365,14 +362,14 @@ describe("MssqlClient connection lifecycle", { concurrent: false }, () => {
       const stale = yield* bounded(client.withTransaction(Effect.forkDetach(Effect.andThen(
         Deferred.await(go),
         Effect.all([
-          Effect.exit(client.call(Procedure.compile(definition)({}))),
-          Effect.exit(client.withoutTransforms()`SELECT 'stale'`)
+          Effect.flip(client.call(Procedure.compile(definition)({}))),
+          Effect.flip(client.withoutTransforms()`SELECT 'stale'`)
         ])
       ))))
       yield* Deferred.succeed(go, undefined)
-      const exits = yield* bounded(Fiber.join(stale))
-      for (const exit of exits) {
-        assert.isTrue(isEnded(exit))
+      for (const error of yield* bounded(Fiber.join(stale))) {
+        assert.instanceOf(error, SqlError)
+        assert.strictEqual(error.reason.message, "SqlClient: the transaction has already ended")
       }
       const queries = state.connections.flatMap((connection) => connection.queries)
       assert.isFalse(queries.some((query) => query.includes("get_answer") || query === "SELECT 'stale'"))
