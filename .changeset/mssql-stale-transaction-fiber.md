@@ -5,4 +5,6 @@
 "@effect/sql-libsql": patch
 ---
 
-Fail MSSQL stored procedures and `withoutTransforms()` statements, SQLite (Bun) exports and libsql `reserve` from a fiber that outlives its transaction, instead of running them on the transaction's connection once the transaction has ended. Adds `SqlClient.currentTransactionConnection` for drivers that look up the transaction connection themselves.
+Fail MSSQL `call` and `withoutTransforms()` statements, Bun SQLite `export` and libsql `reserve` with a `SqlError` when run from a fiber that outlives its transaction, instead of using the ended transaction's connection.
+
+Add `SqlClient.currentTransactionConnection` for drivers that look up their transaction connection directly.

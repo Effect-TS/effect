@@ -567,20 +567,22 @@ const transactionEndedError = (operation: string) =>
   })
 
 /**
- * Returns the connection of the transaction in the fiber's context, `None`
- * outside a transaction, or fails with a `SqlError` when that transaction has
- * already ended.
+ * Looks up the connection of the transaction in the fiber's context. Returns
+ * `None` outside a transaction and fails with a `SqlError` when the transaction
+ * has already ended.
  *
  * **When to use**
  *
- * Use when a driver takes the transaction connection from its transaction
- * service itself rather than through `SqlClient`, so a fiber forked inside a
- * transaction that outlives it fails instead of using the released connection.
+ * Use in a driver that reads its transaction service directly instead of going
+ * through `SqlClient`, so a fiber that outlives its transaction fails instead
+ * of using the released connection.
  *
  * **Gotchas**
  *
  * Only transactions started by `makeWithTransaction` are known to end; a
  * connection provided to the transaction service directly is always returned.
+ * The check runs once per lookup: holding the returned connection does not
+ * keep the transaction open.
  *
  * @stability unstable
  * @category transactions
