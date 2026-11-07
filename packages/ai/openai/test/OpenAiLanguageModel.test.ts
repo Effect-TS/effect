@@ -846,6 +846,11 @@ describe("OpenAiLanguageModel", () => {
               },
               {
                 toolkit: Toolkit.make(OpenAiTool.WebSearch({})),
+                content: [providerExecutedCall, providerExecutedResult],
+                expected: [{ type: "item_reference", id: "ws_1" }]
+              },
+              {
+                toolkit: Toolkit.make(OpenAiTool.WebSearch({})),
                 content: [
                   providerExecutedCall,
                   Prompt.toolResultPart({
