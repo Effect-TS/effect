@@ -94,6 +94,55 @@ implementation. Finally, a logging layer is added with
 This is essential when using stdio, as any output to `stdout` would interfere with the protocol
 communication.
 
+## Custom transports
+
+Use `McpServer.layerSerialization` with a socket `RpcServer.Protocol` and
+`McpServer.layer` to serve MCP over a custom reliable byte stream:
+
+```typescript
+import { NodeSocketServer } from "@effect/platform-node"
+import { Layer } from "effect"
+import { McpProtocol, McpServer } from "effect/ai"
+import { RpcServer } from "effect/rpc"
+
+const protocols = [McpProtocol.v2026_07_28, McpProtocol.v2025_11_25] as const
+
+const Transport = RpcServer.layerProtocolSocketServer.pipe(
+  Layer.provide(McpServer.layerSerialization({ protocols })),
+  Layer.provide(NodeSocketServer.layer({ host: "127.0.0.1", port: 3001 }))
+)
+
+const Server = McpServer.layer({
+  name: "Local Workspace",
+  version: "1.0.0",
+  protocols
+}).pipe(Layer.provide(Transport))
+```
+
+The serializer uses newline-delimited JSON by default, matching stdio. Use
+`framing: "json"` only when the transport already delivers one complete JSON
+message per frame. `makeSerialization` provides the same serializer without a
+layer; a custom protocol must create a separate `makeUnsafe()` parser for each
+connection, forward decoded messages unchanged, and publish connection closes
+through `Protocol.disconnects`. This lets MCP release the disconnected client's
+session and pending reverse requests without waiting for another notification.
+
+The configured adapters determine batch support: `2026-07-28` and `2025-11-25`
+reject batches, while older adapters retain their own policies. Effect RPC
+control methods are not enabled. Malformed JSON receives a JSON-RPC parse error
+with `id: null`; a malformed newline-delimited frame does not discard adjacent
+valid frames. Unexpected internal failures do not expose Effect causes or
+defects on the wire. The default retained-frame limit is 16 MiB; configure
+`maxBufferSize` when the transport requires a different limit.
+
+These rules implement MCP's
+[custom transport requirements](https://modelcontextprotocol.io/specification/2026-07-28/basic/transports#custom-transports)
+and [JSON-RPC error responses](https://www.jsonrpc.org/specification#response_object).
+Use `layerHttp` for Streamable HTTP: it additionally implements MCP HTTP admission,
+headers and streaming rules. Its SSE responses include `X-Accel-Buffering: no`, as
+recommended by the
+[Streamable HTTP specification](https://modelcontextprotocol.io/specification/2026-07-28/basic/transports/streamable-http).
+
 ## Resources
 
 Resources in the MCP server represent files or data that can be accessed by an MCP client. Each
