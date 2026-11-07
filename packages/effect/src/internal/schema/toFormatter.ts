@@ -187,6 +187,7 @@ export function toFormatter<T>(ast: SchemaAST.AST, options?: {
       case "Objects": {
         const propertySignatures = ast.propertySignatures.map((signature) => recur(signature.type))
         const indexSignatures = ast.indexSignatures.map((signature) => recur(signature.type))
+        const parameters = ast.indexSignatures.map((signature) => SchemaAST.toType(signature.parameter))
         if (ast.propertySignatures.length === 0 && ast.indexSignatures.length === 0) {
           return format
         }
@@ -203,7 +204,7 @@ export function toFormatter<T>(ast: SchemaAST.AST, options?: {
             out.push(`${formatPropertyKey(name)}: ${propertySignatures[i](value[name])}`)
           }
           for (let i = 0; i < indexSignatures.length; i++) {
-            const keys = SchemaAST.getIndexSignatureKeys(value, ast.indexSignatures[i].parameter)
+            const keys = SchemaAST.getIndexSignatureKeys(value, parameters[i])
             for (const key of keys) {
               if (visited.has(key)) {
                 continue

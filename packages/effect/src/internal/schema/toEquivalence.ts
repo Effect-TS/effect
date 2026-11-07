@@ -93,6 +93,7 @@ function recur(ast: SchemaAST.AST): Equivalence.Equivalence<any> {
       }
       const propertySignatures = ast.propertySignatures.map((ps) => recur(ps.type))
       const indexSignatures = ast.indexSignatures.map((is) => recur(is.type))
+      const parameters = ast.indexSignatures.map((is) => SchemaAST.toType(is.parameter))
       return Equivalence.make((a, b) => {
         if (!Predicate.isObject(a) || !Predicate.isObject(b)) {
           return false
@@ -118,9 +119,8 @@ function recur(ast: SchemaAST.AST): Equivalence.Equivalence<any> {
         // handle index signatures
         // ---------------------------------------------
         for (let i = 0; i < indexSignatures.length; i++) {
-          const is = ast.indexSignatures[i]
-          const aKeys = SchemaAST.getIndexSignatureKeys(a, is.parameter)
-          const bKeys = SchemaAST.getIndexSignatureKeys(b, is.parameter)
+          const aKeys = SchemaAST.getIndexSignatureKeys(a, parameters[i])
+          const bKeys = SchemaAST.getIndexSignatureKeys(b, parameters[i])
 
           if (aKeys.length !== bKeys.length) return false
 

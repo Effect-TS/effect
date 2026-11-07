@@ -351,6 +351,17 @@ describe("toFormatter", () => {
       strictEqual(format({ a: Option.some(1), b: Option.some(2) }), `{ "a": some(1) }`)
     })
 
+    it("Record with a transformed key should select keys by the decoded key", () => {
+      const UpperCase = Schema.String.check(Schema.isPattern(/^[a-z]+$/)).pipe(
+        Schema.decodeTo(Schema.String.check(Schema.isPattern(/^[A-Z]+$/)), {
+          decode: SchemaGetter.transform((s: string) => s.toUpperCase()),
+          encode: SchemaGetter.transform((s: string) => s.toLowerCase())
+        })
+      )
+      const format = Schema.toFormatter(Schema.Record(UpperCase, Schema.Option(Schema.Number)))
+      strictEqual(format({ A: Option.some(1) }), `{ "A": some(1) }`)
+    })
+
     it("Record(Symbol, Option(Number))", () => {
       const format = Schema.toFormatter(Schema.Record(Schema.Symbol, Schema.Option(Schema.Number)))
       strictEqual(format({ [Symbol.for("a")]: Option.some(1) }), `{ Symbol(a): some(1) }`)
