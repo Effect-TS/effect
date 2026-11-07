@@ -1,7 +1,7 @@
 import { NodeFileSystem } from "@effect/platform-node"
 import { SqliteClient } from "@effect/sql-sqlite-node"
 import { assert, describe, it } from "@effect/vitest"
-import { Cause, Duration, Effect, Exit, Fiber, FileSystem, Option, References } from "effect"
+import { Cause, Deferred, Duration, Effect, Exit, Fiber, FileSystem, Option, References } from "effect"
 import { Reactivity } from "effect/reactivity"
 import { ConnectionError, SqlError } from "effect/sql/SqlError"
 import { TestClock } from "effect/testing"
@@ -168,6 +168,37 @@ describe("Client", { concurrent: false }, () => {
       yield* sql.withTransaction(sql`INSERT INTO test (name) VALUES ('hello')`)
       const rows = yield* sql`SELECT * FROM test`
       assert.deepStrictEqual(rows, [{ id: 1, name: "hello" }])
+    }))
+
+  it.effect("keeps a fiber that outlives its transaction out of another transaction", () =>
+    Effect.gen(function*() {
+      const sql = yield* makeClient
+      yield* sql`CREATE TABLE t (who TEXT)`
+      const go = yield* Deferred.make<void>()
+      const done = yield* Deferred.make<void>()
+
+      const stale = yield* sql.withTransaction(Effect.forkChild(
+        Effect.andThen(Deferred.await(go), sql`INSERT INTO t VALUES ('stale fiber')`).pipe(
+          Effect.ensuring(Deferred.succeed(done, undefined))
+        )
+      ))
+      const other = yield* Effect.forkChild(Effect.exit(sql.withTransaction(Effect.gen(function*() {
+        yield* sql`INSERT INTO t VALUES ('other transaction')`
+        yield* Deferred.succeed(go, undefined)
+        yield* Deferred.await(done)
+        return yield* Effect.fail("rollback")
+      }))))
+
+      const error = yield* Effect.flip(Fiber.join(stale))
+      yield* Fiber.join(other)
+      assert.deepStrictEqual(
+        [error.reason._tag, error.reason.message],
+        ["UnknownError", "SqlClient: the transaction has already ended"]
+      )
+      assert.deepStrictEqual(yield* sql`SELECT who FROM t`, [])
+      // The connection is still usable for new transactions.
+      yield* sql.withTransaction(sql`INSERT INTO t VALUES ('after')`)
+      assert.deepStrictEqual(yield* sql`SELECT who FROM t`, [{ who: "after" }])
     }))
 
   it.effect.each(["ABORT", "ROLLBACK", "nested ROLLBACK"] as const)(
