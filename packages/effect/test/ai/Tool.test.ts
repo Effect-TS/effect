@@ -516,6 +516,32 @@ describe("Tool", () => {
           assertTrue(Latch.isOpen(interrupted))
         }))
 
+      it.effect("should die with every handler finalizer defect on early stop", () =>
+        Effect.gen(function*() {
+          const toolkit = Toolkit.make(Tool.make("Progress", { success: Schema.Number }))
+          const handlers = yield* toolkit.pipe(Effect.provide(toolkit.toLayer({
+            Progress: Effect.fnUntraced(
+              function*(_, ctx) {
+                yield* ctx.preliminary(0)
+                return yield* Effect.never
+              },
+              Effect.onInterrupt(() => Effect.die("first")),
+              Effect.onInterrupt(() => Effect.die("second"))
+            )
+          })))
+
+          const exit = yield* handlers.handle("Progress", {}).pipe(
+            Effect.flatMap((stream) => stream.pipe(Stream.take(1), Stream.runCollect)),
+            Effect.exit
+          )
+
+          assertTrue(Exit.isFailure(exit))
+          deepStrictEqual(
+            exit.cause.reasons.map((reason) => Cause.isDieReason(reason) ? reason.defect : reason._tag),
+            ["first", "second"]
+          )
+        }))
+
       it.effect("should buffer preliminary results without limit by default", () =>
         Effect.gen(function*() {
           const { done, handlers, state } = yield* makeProgressHandlers
