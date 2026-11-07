@@ -1677,8 +1677,8 @@ export const withLabel: {
     label: makeLabel(name, getStackTraceLimit() === 0 ? undefined : new Error())
   }))
 
-// Reading `stack` formats every frame, which is slow on some engines such as
-// Hermes. Only inspection tools read the location, so format it on first read.
+// Formatting `error.stack` is slow on some engines (e.g. Hermes), so defer it
+// until the location is read.
 function makeLabel(name: string, error: Error | undefined): readonly [name: string, stack: string] {
   const label: [name: string, stack: string] = [name, ""]
   if (error === undefined) {
