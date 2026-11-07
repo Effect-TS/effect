@@ -2,8 +2,9 @@ import { assert, describe, it } from "@effect/vitest"
 import { Result } from "effect"
 import * as Base64 from "effect/encoding/Base64"
 import type * as EncodingError from "effect/encoding/EncodingError"
+import { describeWithFallback } from "../utils/encoding.ts"
 
-describe("Base64", () => {
+describeWithFallback("Base64", () => {
   it("encodes and decodes binary subarrays with and without padding", () => {
     const bytes = new Uint8Array([42, 251, 255, 128, 42])
     const vectors = ["", "+w==", "+/8=", "+/+A"]
@@ -107,7 +108,10 @@ describe("Base64", () => {
 
   it("round trips every byte value", () => {
     const bytes = Uint8Array.from({ length: 256 }, (_, i) => i)
-    assert.deepStrictEqual(Result.getOrThrow(Base64.decode(Base64.encode(bytes))), bytes)
+    const encoded = Base64.encode(bytes)
+    assert.deepStrictEqual(Result.getOrThrow(Base64.decode(encoded)), bytes)
+    // MIME-style 76-character lines
+    assert.deepStrictEqual(Result.getOrThrow(Base64.decode(encoded.replace(/.{76}/g, "$&\r\n"))), bytes)
   })
 
   it("ignores non-zero trailing bits", () => {
@@ -125,8 +129,11 @@ describe("Base64", () => {
     assertFailure("Zg=v", "Zg=v", misplacedPadding)
     assertFailure("=Zg=", "=Zg=", misplacedPadding)
     assertFailure("====", "====", misplacedPadding)
-    for (const char of ["-", "_", "!", "{", "\u00e9"]) {
+    for (const char of ["-", "_", "!", "{", "\u00e9", " ", "\t", "\f"]) {
       assertFailure(`Zm9${char}`, `Zm9${char}`, `Invalid character ${char}`)
+      // Long enough for size-gated decoders
+      const long = `${"Zm9v".repeat(64)}Zm9${char}`
+      assertFailure(long, long, `Invalid character ${char}`)
     }
   })
 })
