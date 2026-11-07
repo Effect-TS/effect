@@ -2,8 +2,9 @@ import { assert, describe, it } from "@effect/vitest"
 import { Result } from "effect"
 import * as Base64 from "effect/encoding/Base64"
 import type * as EncodingError from "effect/encoding/EncodingError"
+import { describeWithFallback } from "../utils/encoding.ts"
 
-describe("Base64", () => {
+describeWithFallback("Base64", () => {
   it("encodes and decodes binary subarrays with and without padding", () => {
     const bytes = new Uint8Array([42, 251, 255, 128, 42])
     const vectors = ["", "+w==", "+/8=", "+/+A"]

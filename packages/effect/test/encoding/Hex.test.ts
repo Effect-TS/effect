@@ -1,6 +1,8 @@
 import { assert, describe, it } from "@effect/vitest"
 import { Result } from "effect"
+import type * as EncodingError from "effect/encoding/EncodingError"
 import * as Hex from "effect/encoding/Hex"
+import { describeWithFallback } from "../utils/encoding.ts"
 
 const assertRandom = (length: number, expectedLength: number): void => {
   const value = Hex.random(length)
@@ -8,7 +10,7 @@ const assertRandom = (length: number, expectedLength: number): void => {
   assert.match(value, /^[0-9a-f]*$/)
 }
 
-describe("Hex", () => {
+describeWithFallback("Hex", () => {
   it("encodes strings and bytes as lowercase hexadecimal", () => {
     assert.strictEqual(Hex.encode("hello"), "68656c6c6f")
     assert.strictEqual(Hex.encode(new Uint8Array([72, 101, 108, 108, 111])), "48656c6c6f")
@@ -58,7 +60,11 @@ describe("Hex", () => {
       [`${long}0g`, "Invalid input"]
     ]
     for (const [input, message] of vectors) {
-      for (const result of [Hex.decode(input), Hex.decodeString(input)]) {
+      const results: ReadonlyArray<Result.Result<unknown, EncodingError.EncodingError>> = [
+        Hex.decode(input),
+        Hex.decodeString(input)
+      ]
+      for (const result of results) {
         assert.isTrue(Result.isFailure(result), input)
         if (Result.isFailure(result)) {
           const { kind, module } = result.failure

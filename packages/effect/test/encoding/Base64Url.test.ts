@@ -1,9 +1,10 @@
-import { assert, describe, it } from "@effect/vitest"
+import { assert, it } from "@effect/vitest"
 import { Result } from "effect"
 import * as Base64Url from "effect/encoding/Base64Url"
 import type * as EncodingError from "effect/encoding/EncodingError"
+import { describeWithFallback } from "../utils/encoding.ts"
 
-describe("Base64Url", () => {
+describeWithFallback("Base64Url", () => {
   it("encodes strings and bytes without padding", () => {
     assert.strictEqual(Base64Url.encode("hello?"), "aGVsbG8_")
     assert.strictEqual(Base64Url.encode(new Uint8Array([251, 255])), "-_8")
