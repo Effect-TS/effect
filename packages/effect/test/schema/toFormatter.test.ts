@@ -1,3 +1,4 @@
+import { assert } from "@effect/vitest"
 import {
   BigDecimal,
   Chunk,
@@ -219,6 +220,18 @@ describe("toFormatter", () => {
     })
 
     strictEqual(format({ value: 1 }), `{ "value": number:1 }`)
+  })
+
+  it("selects decoded Union members when onBefore calls recur with a codec AST", () => {
+    const schema = Schema.Union([Schema.NumberFromString, Schema.Boolean])
+    const format = Schema.toFormatter(Schema.Unknown, {
+      onBefore: (ast, recur) => {
+        if (ast._tag === "Unknown") return recur(schema.ast)
+        if (ast._tag === "Number") return (value: number) => `number:${value}`
+      }
+    })
+
+    assert.strictEqual(format(1), "number:1")
   })
 
   describe("Tuple", () => {

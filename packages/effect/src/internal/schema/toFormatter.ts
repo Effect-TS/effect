@@ -37,9 +37,10 @@ export function toFormatter<T>(ast: SchemaAST.AST, options?: {
     | undefined
 }): Formatter<T> {
   const compiled = new Map<SchemaAST.AST, Formatter<any>>()
-  return recur(SchemaAST.toType(ast))
+  return recur(ast)
 
   function recur(ast: SchemaAST.AST): Formatter<any> {
+    ast = SchemaAST.toType(ast)
     let formatter = compiled.get(ast)
     if (formatter === undefined) {
       formatter = compile(ast)
