@@ -570,7 +570,11 @@ describe("DateTime", () => {
       strictEqual(DateTime.zoneToString(DateTime.zoneMakeNamedUnsafe("europe/london")), "Europe/London")
     })
 
-    it("treats a renamed zone and its old name as equal", () => {
+    // Some runtimes (Bun) keep the name they are given and do not map a renamed zone to its old name
+    const mapsRenamedZones =
+      new Intl.DateTimeFormat("en-US", { timeZone: "Europe/Kyiv" }).resolvedOptions().timeZone === "Europe/Kiev"
+
+    it.runIf(mapsRenamedZones)("treats a renamed zone and its old name as equal", () => {
       const kyiv = DateTime.zoneMakeNamedUnsafe("Europe/Kyiv")
       const kiev = DateTime.zoneMakeNamedUnsafe("Europe/Kiev")
       assertTrue(Equal.equals(kyiv, kiev))
