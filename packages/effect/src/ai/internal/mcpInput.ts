@@ -8,7 +8,6 @@ import * as Schema from "../../Schema.ts"
 import * as McpSchema from "../McpSchema.ts"
 import * as McpCore from "./mcpCore.ts"
 import * as McpProtocol from "./mcpProtocol.ts"
-import { samplingMessageError } from "./mcpSampling.ts"
 import * as V2024 from "./mcpSchema/v2024_11_05.ts"
 import * as March2025 from "./mcpSchema/v2025_03_26.ts"
 import * as June2025 from "./mcpSchema/v2025_06_18.ts"
@@ -102,7 +101,7 @@ const prepare = Effect.fnUntraced(function*(
         Effect.mapError(() => invalid(`Sampling input is not representable by MCP ${version}`))
       )
       // Validate the encoded history before any earlier input in this round is sent.
-      if (samplingMessageError(request.params) !== undefined) {
+      if (McpProtocol.samplingMessageError(request.params) !== undefined) {
         return yield* internal("Invalid MCP sampling input request")
       }
       const params = yield* Schema.decodeUnknownEffect(McpSchema.CreateMessage.payloadSchema)(request.params).pipe(

@@ -7,7 +7,6 @@ import * as PublicMcpSchema from "../../McpSchema.ts"
 import * as McpCore from "../mcpCore.ts"
 import * as McpProtocol from "../mcpProtocol.ts"
 import * as McpRuntime from "../mcpRuntime.ts"
-import { samplingMessageError } from "../mcpSampling.ts"
 import * as McpSchema from "../mcpSchema/v2025_11_25.ts"
 
 // Pings can arrive before initialize and do not require a client session.
@@ -375,7 +374,7 @@ export const protocol = McpProtocol.make({
       ).pipe(
         Effect.mapError(() => unsupported("sampling/createMessage", "Request is not representable by this protocol"))
       )
-      const messageError = samplingMessageError(wireRequest)
+      const messageError = McpProtocol.samplingMessageError(wireRequest)
       if (messageError !== undefined) {
         return yield* new PublicMcpSchema.McpReverseOperationError({
           operation: "sampling/createMessage",

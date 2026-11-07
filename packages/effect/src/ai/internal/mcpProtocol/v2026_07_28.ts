@@ -23,7 +23,6 @@ import type * as PublicMcpProtocol from "../../McpProtocol.ts"
 import * as PublicMcpSchema from "../../McpSchema.ts"
 import * as McpCore from "../mcpCore.ts"
 import * as McpProtocol from "../mcpProtocol.ts"
-import { samplingMessageError } from "../mcpSampling.ts"
 import * as McpSchema from "../mcpSchema/v2026_07_28.ts"
 import * as McpSkills from "../mcpSkills.ts"
 
@@ -399,7 +398,9 @@ export const makeHandlers = (
       )
     }
     for (const request of Object.values(inputRequired.inputRequests ?? {})) {
-      if (request.method === "sampling/createMessage" && samplingMessageError(request.params) !== undefined) {
+      if (
+        request.method === "sampling/createMessage" && McpProtocol.samplingMessageError(request.params) !== undefined
+      ) {
         return yield* failWithHttpStatus(
           500,
           new McpProtocol.ProtocolError({ code: PublicMcpSchema.INTERNAL_ERROR_CODE, message: "Internal error" })
