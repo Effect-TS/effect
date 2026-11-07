@@ -94,6 +94,110 @@ implementation. Finally, a logging layer is added with
 This is essential when using stdio, as any output to `stdout` would interfere with the protocol
 communication.
 
+## Custom transports
+
+Use `McpServer.layerSerialization` with a socket `RpcServer.Protocol` and
+`McpServer.layer` to serve MCP over a custom reliable byte stream:
+
+```typescript
+import { NodeSocketServer } from "@effect/platform-node"
+import { Layer } from "effect"
+import { McpProtocol, McpServer } from "effect/ai"
+import { RpcServer } from "effect/rpc"
+
+const protocols = [McpProtocol.v2026_07_28, McpProtocol.v2025_11_25] as const
+
+const Transport = RpcServer.layerProtocolSocketServer.pipe(
+  Layer.provide(McpServer.layerSerialization({ protocols })),
+  Layer.provide(NodeSocketServer.layer({ host: "127.0.0.1", port: 3001 }))
+)
+
+const Server = McpServer.layer({
+  name: "Local Workspace",
+  version: "1.0.0",
+  protocols
+}).pipe(Layer.provide(Transport))
+```
+
+The serializer uses newline-delimited JSON by default, matching stdio. Use
+`framing: "json"` only when the transport already delivers one complete JSON
+message per frame. `makeSerialization` provides the same serializer without a
+layer; a custom protocol must create a separate `makeUnsafe()` parser for each
+connection, forward decoded messages unchanged, and publish connection closes
+through `Protocol.disconnects`. This lets MCP release the disconnected client's
+session and pending reverse requests without waiting for another notification.
+
+The configured adapters determine batch support: `2026-07-28` and `2025-11-25`
+reject batches, while older adapters retain their own policies. Effect RPC
+control methods are not enabled. Malformed JSON receives a JSON-RPC parse error
+with `id: null`; a malformed newline-delimited frame does not discard adjacent
+valid frames. Unexpected internal failures do not expose Effect causes or
+defects on the wire. The default retained-frame limit is 16 MiB; configure
+`maxBufferSize` when the transport requires a different limit.
+
+These rules implement MCP's
+[custom transport requirements](https://modelcontextprotocol.io/specification/2026-07-28/basic/transports#custom-transports)
+and [JSON-RPC error responses](https://www.jsonrpc.org/specification#response_object).
+Use `layerHttp` for Streamable HTTP: it additionally implements MCP HTTP admission,
+headers and streaming rules. Its SSE responses include `X-Accel-Buffering: no`, as
+recommended by the
+[Streamable HTTP specification](https://modelcontextprotocol.io/specification/2026-07-28/basic/transports/streamable-http).
+
+## Registrations that change at runtime
+
+Registrations can be added, replaced and removed while the server runs. Obtain
+the `McpServer.McpServer` service to remove them by identity:
+
+| Method                                | Identity              | Result            |
+| ------------------------------------- | --------------------- | ----------------- |
+| `removeTool(name)`                    | Tool name             | `Effect<boolean>` |
+| `removeResource(uri)`                 | Static resource URI   | `Effect<boolean>` |
+| `removeResourceTemplate(uriTemplate)` | Resource URI template | `Effect<boolean>` |
+| `removePrompt(name)`                  | Prompt name           | `Effect<boolean>` |
+
+Removal returns `true` when an item existed and `false` otherwise. Additions,
+replacements and successful removals emit the corresponding
+`notifications/*/list_changed` notification; rapid changes can be coalesced.
+Removing an absent item emits no notification. Calls already executing may
+finish, while subsequent lookups use the updated registry. Registering the same
+identity replaces the old item, including its completions; removing the
+replacement never restores an earlier registration. Removing a static resource
+or template allows another matching template to handle its URI. Files owned by
+an existing skill retain their ownership protection and cannot be removed through
+`removeResource`.
+
+Use `declaredFeatures: ["tools", "resources", "prompts"]` on `run`, `layer`,
+`layerStdio`, `layerHttp` or `layerHttpRequestScoped` to advertise the kinds the
+server can populate later. For example, a workspace watcher can declare
+`["resources"]` before discovering any files. Resource templates belong to the
+resources kind. Support is the union of declared kinds and kinds ever registered;
+removing the last item does not remove its capability. Every list method returns
+an empty list when no visible items remain, including kinds never registered.
+
+The declarations allow legacy clients to negotiate capabilities at
+[`initialize`](https://modelcontextprotocol.io/specification/2025-11-25/basic/lifecycle#capability-negotiation)
+and modern clients to receive an acknowledgement for
+[`subscriptions/listen`](https://modelcontextprotocol.io/specification/2026-07-28/basic/patterns/subscriptions#acknowledgment)
+before the first item exists. Without a declaration, a kind first registered
+later is not retroactively added to an existing legacy session's capabilities
+or a modern listener's acknowledged kinds. Request-scoped HTTP endpoints keep
+`listChanged: false` and do not support subscriptions.
+
+Removal notifications follow the stable
+[tools](https://modelcontextprotocol.io/specification/2026-07-28/server/tools#list-changed-notification),
+[resources](https://modelcontextprotocol.io/specification/2026-07-28/server/resources#list-changed-notification)
+and [prompts](https://modelcontextprotocol.io/specification/2026-07-28/server/prompts#list-changed-notification)
+contracts. The same notifications are supported by the
+[2025-11-25 server features](https://modelcontextprotocol.io/specification/2025-11-25/server/tools#list-changed-notification).
+The modern [prompt listing](https://modelcontextprotocol.io/specification/2026-07-28/server/prompts#capabilities)
+contract allows an empty list.
+
+`McpSchema.EnabledWhen` is evaluated on each list or direct item request. It can
+hide a registration for one caller without removing it; changing its result does
+not itself emit a list-change notification. A disabled resource can fall through
+to a matching template. Middleware denial remains a denied request and does not
+fall through. Use explicit removal for withdrawals that should notify clients.
+
 ## Resources
 
 Resources in the MCP server represent files or data that can be accessed by an MCP client. Each
