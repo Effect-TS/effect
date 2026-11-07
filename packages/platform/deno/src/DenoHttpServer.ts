@@ -156,6 +156,14 @@ export const make = Effect.fnUntraced(function*(
         })
       }, middleware)
 
+      // Join the serve scope before the first step. A body can start and exit while
+      // the handler is still running synchronously, and the request scope then
+      // closes when the request finishes, so closing the serve scope must await it.
+      const ownedHttpEffect = Effect.uninterruptible(Effect.withFiber((fiber) => {
+        Fiber.runIn(fiber, scope)
+        return httpEffect
+      }))
+
       function handler(
         request: Request,
         info: Deno.ServeHandlerInfo<Deno.NetAddr | Deno.UnixAddr>
@@ -166,7 +174,7 @@ export const make = Effect.fnUntraced(function*(
             ServerRequest.HttpServerRequest,
             new DenoServerRequest(request, info.remoteAddr, resolve, removeHost(request.url), websocket)
           )
-          const fiber = Fiber.runIn(Effect.runForkWith(context)(httpEffect), scope)
+          const fiber = Effect.runForkWith(context)(ownedHttpEffect)
           request.signal.addEventListener("abort", () => {
             fiber.interruptUnsafe(parent.id, Error.ClientAbort.annotation)
           }, { once: true })
