@@ -479,6 +479,31 @@ describe("SqlClient", () => {
         ])
       }))
 
+    it.effect("issues no savepoint rollback or release for a nested transaction that exits after its parent ends", () =>
+      Effect.gen(function*() {
+        // Enters its savepoint while the parent is open, and exits after the parent committed.
+        const exitAfterParent = Effect.fnUntraced(function*<E>(body: Effect.Effect<void, E>) {
+          const harness = makeHarness({ releaseSavepoint: true })
+          const resume = yield* Deferred.make<void>()
+          const nested = yield* harness.withTransaction(
+            Effect.forkDetach(harness.withTransaction(Effect.andThen(Deferred.await(resume), body)), {
+              startImmediately: true
+            })
+          )
+          yield* Deferred.succeed(resume, undefined)
+          return { calls: harness.calls, exit: yield* Fiber.await(nested) }
+        })
+        const ended = ["acquireConnection", "begin", "savepoint(1)", "commit", "closeConnection"]
+
+        const released = yield* exitAfterParent(Effect.void)
+        assert.deepStrictEqual(released.calls, ended)
+        assertTransactionEnded(released.exit)
+
+        const rolledBack = yield* exitAfterParent(Effect.fail("boom"))
+        assert.deepStrictEqual(rolledBack.calls, ended)
+        assert.isTrue(Exit.isFailure(rolledBack.exit))
+      }))
+
     it.effect("does not release savepoints when the driver does not opt in", () =>
       Effect.gen(function*() {
         const harness = makeHarness()
