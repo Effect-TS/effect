@@ -1061,8 +1061,7 @@ const prepareMessages = Effect.fnUntraced(
                   )
                   : undefined
 
-                // The call and its result are one stored item, which the
-                // result references
+                // The paired result emits the single stored-item reference
                 if (useItemReferences && Predicate.isNotUndefined(result)) {
                   break
                 }
