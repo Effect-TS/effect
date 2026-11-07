@@ -760,10 +760,7 @@ export const makeWithTransaction = <I, S>(options: {
               }
               return Effect.forEach(buffer.callbacks, runAfterCommit, { discard: true })
             }, true)
-            // Like a queued top-level transaction, a nested one can be
-            // interrupted while it waits for the savepoint. Once it holds the
-            // permit, the savepoint and its cleanup stay uninterruptible, since
-            // the finalizers above rely on that.
+            // The savepoint wait is interruptible; the savepoint and its cleanup are not.
             return id === 0
               ? settled
               : restore(Context.getUnsafe(services, transactionSemaphore).withPermit(Effect.uninterruptible(settled)))
