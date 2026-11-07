@@ -24,6 +24,12 @@ const metadata = {
 const resultOf = (message: unknown) =>
   Schema.decodeUnknownSync(Schema.Struct({ result: Schema.JsonObject }))(message).result
 
+const sealedStateOf = (value: unknown, unsealedState: string) => {
+  const state = Schema.decodeUnknownSync(Schema.String)(value)
+  assert.notStrictEqual(state, unsealedState)
+  return state
+}
+
 const makeCustomHarness = Effect.fnUntraced(function*(
   protocol: McpProtocol.ProtocolAdapter,
   registrations: Layer.Layer<never, never, McpServer.McpServer>
@@ -155,7 +161,7 @@ describe("Toolkit client input", () => {
       )
 
       assert.strictEqual(message.result.resultType, "input_required")
-      assert.strictEqual(message.result.requestState, "resume")
+      sealedStateOf(message.result.requestState, "resume")
       assert.isUndefined(message.result.structuredContent)
     }))
 
@@ -213,14 +219,14 @@ describe("Toolkit client input", () => {
       )
       assert.strictEqual(first.resultType, "input_required")
       assert.deepStrictEqual(first.inputRequests, { workspace: { method: "roots/list" } })
-      assert.strictEqual(first.requestState, "count-roots")
+      const requestState = sealedStateOf(first.requestState, "count-roots")
       assert.isUndefined(first.structuredContent)
       const second = resultOf(
         yield* harness.sendRequest("tools/call", {
           name: "CountRoots",
           arguments: { label: "workspace" },
           inputResponses: { workspace: { roots: [{ uri: "file:///workspace" }] } },
-          requestState: first.requestState,
+          requestState,
           _meta: requestMetadata
         })
       )
@@ -251,7 +257,7 @@ describe("Toolkit client input", () => {
         })
       )
       assert.strictEqual(result.resultType, "input_required")
-      assert.strictEqual(result.requestState, "continued")
+      sealedStateOf(result.requestState, "continued")
       assert.isUndefined(result.structuredContent)
     }))
 
@@ -260,14 +266,16 @@ describe("Toolkit client input", () => {
     // https://modelcontextprotocol.io/specification/2025-11-25/client/roots
     it.effect(`resumes toolkit input and reports capability errors over a custom protocol on ${protocol.protocolVersion}`, () =>
       Effect.gen(function*() {
+        const handlerCalls: Array<string> = []
         const toolkit = Toolkit.make(
-          Tool.make("ReadRoots", { success: Schema.String }),
+          Tool.make("ReadRoots", { parameters: Schema.Struct({ label: Schema.String }), success: Schema.String }),
           Tool.make("RequireSampling", { success: Schema.String })
         )
         const registrations = McpServer.toolkit(toolkit, {
           handlers: {
-            ReadRoots: () =>
-              McpSchema.McpRequestContext.useSync((context) => {
+            ReadRoots: ({ label }) => {
+              handlerCalls.push(label)
+              return McpSchema.McpRequestContext.useSync((context) => {
                 if (context.inputResponses?.workspace === undefined) {
                   return new McpSchema.InputRequired({
                     inputRequests: { workspace: { method: "roots/list" } },
@@ -277,7 +285,8 @@ describe("Toolkit client input", () => {
                 assert.strictEqual(context.requestState, "custom-roots")
                 assert.deepStrictEqual(context.inputResponses.workspace, { roots: [{ uri: "file:///workspace" }] })
                 return "read"
-              }),
+              })
+            },
             RequireSampling: () =>
               Effect.fail(
                 new McpSchema.MissingRequiredClientCapability({
@@ -310,22 +319,49 @@ describe("Toolkit client input", () => {
           jsonrpc: "2.0",
           id: "roots",
           method: "tools/call",
-          params: { name: "ReadRoots", arguments: {}, ...requestMetadata }
+          params: { name: "ReadRoots", arguments: { label: "workspace" }, ...requestMetadata }
         })
         const first = yield* harness.take
         if (modern) {
           const input = resultOf(first)
           assert.strictEqual(input.resultType, "input_required")
           assert.deepStrictEqual(input.inputRequests, { workspace: { method: "roots/list" } })
+          const requestState = sealedStateOf(input.requestState, "custom-roots")
+          assert.deepStrictEqual(handlerCalls, ["workspace"])
+          // https://modelcontextprotocol.io/specification/2026-07-28/basic/patterns/mrtr#security-considerations
+          for (
+            const invalid of [
+              { id: "tampered-state", label: "workspace", requestState: `${requestState}:tampered` },
+              { id: "changed-arguments", label: "another-workspace", requestState }
+            ]
+          ) {
+            yield* harness.send({
+              jsonrpc: "2.0",
+              id: invalid.id,
+              method: "tools/call",
+              params: {
+                name: "ReadRoots",
+                arguments: { label: invalid.label },
+                ...requestMetadata,
+                requestState: invalid.requestState,
+                inputResponses: { workspace: { roots: [{ uri: "file:///workspace" }] } }
+              }
+            })
+            const rejected = yield* harness.take
+            assert.strictEqual(rejected.id, invalid.id)
+            assert.propertyVal(rejected.error, "code", -32602)
+            assert.isUndefined(rejected.result)
+            assert.deepStrictEqual(handlerCalls, ["workspace"])
+          }
           yield* harness.send({
             jsonrpc: "2.0",
-            id: "roots",
+            id: "roots-resumed",
             method: "tools/call",
             params: {
               name: "ReadRoots",
-              arguments: {},
+              arguments: { label: "workspace" },
               ...requestMetadata,
-              requestState: input.requestState,
+              requestState,
               inputResponses: { workspace: { roots: [{ uri: "file:///workspace" }] } }
             }
           })
@@ -333,8 +369,13 @@ describe("Toolkit client input", () => {
           assert.strictEqual(first.method, "roots/list")
           yield* harness.send({ jsonrpc: "2.0", id: first.id, result: { roots: [{ uri: "file:///workspace" }] } })
         }
-        const completed = resultOf(yield* harness.take)
+        const completedMessage = yield* harness.take
+        assert.strictEqual(completedMessage.id, modern ? "roots-resumed" : "roots")
+        const completed = resultOf(completedMessage)
         assert.deepStrictEqual(completed.content, [{ type: "text", text: modern ? "\"read\"" : "read" }])
+        if (modern) {
+          assert.deepStrictEqual(handlerCalls, ["workspace", "workspace"])
+        }
         yield* harness.send({
           jsonrpc: "2.0",
           id: "sampling",

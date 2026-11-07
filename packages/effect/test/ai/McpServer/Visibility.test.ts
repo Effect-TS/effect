@@ -241,7 +241,7 @@ describe("McpServer visibility", () => {
       const second = yield* harness.sendRequest("tools/call", {
         name: "Approve",
         arguments: {},
-        requestState: "round",
+        requestState: (first.result as { readonly requestState: string }).requestState,
         inputResponses: { roots: { roots: [] } },
         _meta
       })

@@ -202,7 +202,7 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
             Effect.flatMap((message) => decodeInputRequired(message.result))
           )
 
-          assert.strictEqual(first.requestState, mrtrRequestState)
+          assert.notStrictEqual(first.requestState, mrtrRequestState)
           assert.deepStrictEqual(first.inputRequests, {
             approval: {
               method: "elicitation/create",
@@ -284,44 +284,41 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
             )
           )
 
-          assert.strictEqual(result.requestState, mrtrRequestState)
+          assert.notStrictEqual(result.requestState, mrtrRequestState)
           assert.isUndefined(result.inputRequests)
         }))
 
-      it.effect("should remain input-required when continuation keys or request state do not match", () =>
+      it.effect("should remain input-required when continuation input keys do not match", () =>
         Effect.gen(function*() {
           const test = yield* McpConformance
           const initialized = yield* test.initialize({ server: "features" })
-          const cases = [
-            {
+          const firstResponse = yield* test.send(initialized, {
+            jsonrpc: "2.0",
+            id: 10,
+            method: "tools/call",
+            params: { name: MrtrToolName, arguments: {} }
+          })
+          const first = yield* test.decodeResult(firstResponse).pipe(
+            Effect.flatMap((message) => decodeInputRequired(message.result))
+          )
+          const response = yield* test.send(initialized, {
+            jsonrpc: "2.0",
+            id: 11,
+            method: "tools/call",
+            params: {
+              name: MrtrToolName,
+              arguments: {},
               inputResponses: { other: { action: "accept", content: { approved: true } } },
-              requestState: mrtrRequestState
-            },
-            {
-              inputResponses,
-              requestState: `${mrtrRequestState}:mismatch`
+              requestState: first.requestState
             }
-          ] as const
-
-          for (const [index, continuation] of cases.entries()) {
-            const response = yield* test.send(initialized, {
-              jsonrpc: "2.0",
-              id: index + 10,
-              method: "tools/call",
-              params: {
-                name: MrtrToolName,
-                arguments: {},
-                ...continuation
-              }
-            })
-            const result = yield* test.decodeResult(response).pipe(
-              Effect.flatMap((message) => decodeInputRequired(message.result))
-            )
-            assert.strictEqual(result.requestState, mrtrRequestState)
-          }
+          })
+          const result = yield* test.decodeResult(response).pipe(
+            Effect.flatMap((message) => decodeInputRequired(message.result))
+          )
+          assert.notStrictEqual(result.requestState, mrtrRequestState)
         }))
 
-      // https://modelcontextprotocol.io/specification/2026-07-28/basic/patterns/mrtr#server-requirements-validation-and-security
+      // https://modelcontextprotocol.io/specification/2026-07-28/basic/patterns/mrtr#server-requirements-basic-workflow
       it.effect("should reject a continuation when its input responses or request state are malformed", () =>
         Effect.gen(function*() {
           const test = yield* McpConformance

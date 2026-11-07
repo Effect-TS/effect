@@ -539,6 +539,43 @@ const Registrations = Layer.mergeAll(
 - `list_changed` notifications are not sent when visibility changes; clients see the change on
   their next list request.
 
+### Continuation state
+
+For 2026-07-28 multi round-trip requests, handlers return their own strings in
+`McpSchema.InputRequired.requestState`. `McpServer` sends an authenticated, encrypted token to the
+client and restores the original string in `McpRequestContext.requestState` on a valid retry.
+Tokens are bound to the method and semantic parameters, including the tool or prompt name or
+resource URI. Object member order, the new JSON-RPC request ID, metadata, and input responses do
+not change that binding. Malformed, tampered, expired, and mismatched tokens fail with
+`InvalidParams` before the operation runs. Input responses still require application validation.
+
+Every endpoint generates a random key that lives as long as the endpoint, including across POSTs
+on `layerHttpRequestScoped`. The default token lifetime is five minutes. Pass `requestState` to
+`run`, `layer`, `layerStdio`, `layerHttp`, or `layerHttpRequestScoped` to configure a finite positive
+`ttl` and `keys: [{ id, key }]`, where each key is an `Aead.Key` for `Aead.xchacha20Poly1305`.
+The 192-bit nonce space supports independent random nonces across instances. Other algorithms
+fail configuration validation. Use the same key ring on all
+instances accepting retries. The first key issues tokens and all keys verify them, so keep old
+keys until their tokens expire. IDs must be non-empty and unique.
+
+Authentication middleware must provide `McpServer.RequestStatePrincipal` around its handler
+effect with a stable, verified user and tenant identity. Verification runs inside that middleware,
+so a different principal cannot reuse the token. Refreshing an access token does not invalidate
+state when the authenticated identity remains the same. Never derive the principal from
+unverified request metadata. When the reference is unset, HTTP tokens bind to the `Authorization`
+header if present; otherwise they use an anonymous identity. This fallback does not authenticate
+credentials and rejects a retry after the header changes. Cookie and custom-header authentication
+require the verified principal reference too. Credential contents never appear in tokens or errors.
+
+This follows the MCP [MRTR server requirements](https://modelcontextprotocol.io/specification/2026-07-28/basic/patterns/mrtr#server-requirements-basic-workflow).
+Expiry and request binding limit replay; one-time consumption still requires an atomic
+application-side check. Legacy adapters keep any continuation state on the server.
+
+**Migration:** previously issued raw state strings are rejected. Clients must start a new operation
+after upgrading and echo newly issued tokens unchanged. Handlers continue to read and return their
+original strings. Configure persistent keys before deploying across instances or restarting a server
+whose in-flight continuations must survive.
+
 ### Cache hints
 
 Under `v2026_07_28`, discovery, list and resource-read results tell clients how long they may
@@ -656,9 +693,7 @@ const ArchiveNote = Tool.make("ArchiveNote", {
 
 const NotesToolkit = Toolkit.make(ArchiveNote)
 
-// For example an HMAC from `effect/crypto/Mac`, with a key shared by every server instance.
-declare const signState: (noteId: string) => Effect.Effect<string>
-declare const verifyState: (state: string, noteId: string) => Effect.Effect<boolean>
+// The server seals this state and binds it to the method, arguments and caller.
 declare const archiveNote: (noteId: string) => Effect.Effect<void>
 
 const isAccepted = Schema.is(McpSchema.ElicitAcceptResult)
@@ -667,8 +702,7 @@ const NotesLayer = McpServer.toolkit(NotesToolkit).pipe(
   Layer.provide(NotesToolkit.toLayer({
     ArchiveNote: Effect.fnUntraced(function*({ noteId }) {
       const request = yield* McpSchema.McpRequestContext
-      const verified = request.requestState !== undefined &&
-        (yield* verifyState(request.requestState, noteId))
+      const verified = request.requestState === "archive-note"
       const answer = request.inputResponses?.confirm
       const confirmed = isAccepted(answer) && answer.content?.confirmed === true
       if (!verified || !confirmed) {
@@ -687,7 +721,7 @@ const NotesLayer = McpServer.toolkit(NotesToolkit).pipe(
                 }
               }
             },
-            requestState: yield* signState(noteId)
+            requestState: "archive-note"
           })
         )
       }
@@ -705,13 +739,15 @@ result. On the retry, the handler reads the answer and the state from `McpReques
   fail with `Effect.fail(new McpSchema.InputRequired(...))`. It can also be one member of a union
   failure schema. For a tool you do not own, widen its failure with
   `tool.setFailure(Schema.Union([...]))` before building the toolkit.
-- Protocols before `v2026_07_28` reject the result with an `InvalidParams` error ("Client input is
-  not supported by this MCP protocol"), as they do for `addTool`.
+- Earlier protocols resolve supported input through server-to-client requests and rerun the
+  handler with the responses. An unavailable capability or input unsupported by the selected
+  protocol produces `InvalidParams`, as it does for `addTool`.
 - The client must declare the capability each input request needs, such as `elicitation`.
   Otherwise the call fails with error `-32021` and HTTP status 400.
-- `requestState` passes through the client and the retry may reach another instance, so sign it with
-  a shared key, bind it to the call's arguments and verify it before acting. A client can repeat a
-  retry, so make the side effect idempotent.
+- `McpServer` protects `requestState` automatically. Configure `requestState.keys` when retries
+  can reach another instance, and provide `RequestStatePrincipal` from authentication middleware
+  for a verified, stable identity. See [Continuation state](#continuation-state).
+  A client can repeat a valid retry, so make the side effect idempotent or record consumed state.
 
 ## Complete Working Example
 

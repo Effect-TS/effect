@@ -434,6 +434,9 @@ responses.
 - **[Requesting client input from MCP toolkit handlers](./ai-docs/src/71_ai/42_mcp-roundtrips.ts)**:
   Keep a tool's success schema while returning `InputRequired` for form input.
   Modern clients resume the operation; legacy clients answer a reverse request.
+- **[Protecting MCP continuation state across instances](./ai-docs/src/71_ai/43_mcp-state.ts)**:
+  Bind multi round-trip state to an authenticated principal, share keys between
+  server instances, and keep old keys available during a rolling rotation.
 
 ## Building distributed applications with cluster
 

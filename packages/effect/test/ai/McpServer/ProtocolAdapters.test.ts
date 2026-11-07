@@ -881,8 +881,7 @@ describe("McpServer protocol adapters", () => {
     Effect.gen(function*() {
       const fixture = yield* makeFixture()
       const continuation = {
-        inputResponses: { roots: { roots: [{ uri: "file:///workspace" }] } },
-        requestState: "round-2"
+        inputResponses: { roots: { roots: [{ uri: "file:///workspace" }] } }
       }
       const cases = [
         {
@@ -1245,7 +1244,6 @@ describe("McpServer protocol adapters", () => {
 
       assert.strictEqual(result.resultType, "complete")
       assert.strictEqual(result.isError, true)
-
     }))
 
   it.effect("should reject prompt content when the negotiated schema cannot represent it", () =>

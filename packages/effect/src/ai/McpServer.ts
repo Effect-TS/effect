@@ -15,6 +15,7 @@ import * as Arr from "../Array.ts"
 import * as Cause from "../Cause.ts"
 import * as Clock from "../Clock.ts"
 import * as Context from "../Context.ts"
+import type * as Aead from "../crypto/Aead.ts"
 import * as Digest from "../crypto/Digest.ts"
 import * as Data from "../Data.ts"
 import * as Deferred from "../Deferred.ts"
@@ -56,6 +57,7 @@ import * as AiError from "./AiError.ts"
 import * as McpCore from "./internal/mcpCore.ts"
 import * as McpInput from "./internal/mcpInput.ts"
 import * as McpProtocolInternal from "./internal/mcpProtocol.ts"
+import * as McpRequestState from "./internal/mcpRequestState.ts"
 import * as McpRuntime from "./internal/mcpRuntime.ts"
 import * as McpSerialization from "./internal/mcpSerialization.ts"
 import * as McpSkills from "./internal/mcpSkills.ts"
@@ -216,6 +218,8 @@ const middlewareKeyPrefix = "effect/ai/McpServer/Middleware-"
 // Do not capture request services or middleware stacks at registration.
 const requestServiceKeys = new Set<string>([
   McpRequestContext.key,
+  McpRequestState.Principal.key,
+  McpRequestState.Protector.key,
   McpServerClient.key,
   HttpServerRequest.HttpServerRequest.key,
   HttpServerRequest.ParsedSearchParams.key,
@@ -903,7 +907,7 @@ const runMiddleware = <A, E>(
   // Input continuations remain inside authentication, deadlines, and finalizers.
   const operation = request.method === "tools/call" || request.method === "prompts/get" ||
       request.method === "resources/read"
-    ? McpInput.resolve(handler, invocation)
+    ? McpRequestState.protect(McpInput.resolve(handler, invocation), invocation, request)
     : handler
   const effect = middleware.length === 0 ? operation : Effect.withFiber((fiber) => {
     const headers = Context.getOrUndefined(fiber.context, HttpServerRequest.HttpServerRequest)?.headers ??
@@ -1688,6 +1692,77 @@ class McpClientKey extends Data.Class<{
 }> {}
 
 /**
+ * Configuration for authenticated, expiring multi round-trip request state.
+ *
+ * **When to use**
+ *
+ * Use to share state across server instances, rotate keys, or change the
+ * five-minute lifetime of continuation tokens.
+ *
+ * **Details**
+ *
+ * Each server endpoint creates a random XChaCha20-Poly1305 key by default.
+ * The first configured key issues tokens; every configured key can verify
+ * them. Every key must use `Aead.xchacha20Poly1305` and have a unique,
+ * non-empty ID. Its 192-bit nonce space supports independent random nonces
+ * across server instances. The TTL must be finite and
+ * positive. Handlers read and return their original state strings while the
+ * transport carries authenticated ciphertext bound to the method, arguments,
+ * and {@link RequestStatePrincipal}.
+ *
+ * **Gotchas**
+ *
+ * The default key is lost on restart. Configure the same key ring on every
+ * instance that accepts a retry. Retain old keys until their tokens expire.
+ * Expiry limits replay but does not ensure single use; enforce one-time
+ * consumption in application storage. Clients must echo tokens unchanged.
+ *
+ * @see {@link RequestStatePrincipal} for binding state to an authenticated identity
+ * @stability unstable
+ * @category models
+ * @since 4.2.0
+ */
+export interface RequestStateOptions {
+  readonly ttl?: Duration.Input | undefined
+  readonly keys?:
+    | Arr.NonEmptyReadonlyArray<{
+      readonly id: string
+      readonly key: Aead.Key
+    }>
+    | undefined
+}
+
+/**
+ * Reference identifying the authenticated principal bound to continuation state.
+ *
+ * **When to use**
+ *
+ * Use with authentication middleware to bind a multi round-trip request to
+ * the same user, tenant, and authorization context on every attempt.
+ *
+ * **Details**
+ *
+ * Provide a stable, server-verified identity around the handler effect using
+ * `Effect.provideService`. State verification runs inside the middleware and
+ * rejects tokens issued for a different identity before invoking the handler.
+ * When unset, HTTP tokens are bound to the `Authorization` header if present;
+ * requests without that header use an anonymous identity. Header binding does
+ * not authenticate credentials and rejects tokens after a credential changes.
+ *
+ * **Gotchas**
+ *
+ * Do not populate this reference from unverified client metadata. Include the
+ * tenant or other security boundary when a user ID alone is not unique. Cookie
+ * or custom-header authentication requires this reference too.
+ *
+ * @see {@link RequestStateOptions} for token lifetime and key rotation
+ * @stability unstable
+ * @category references
+ * @since 4.2.0
+ */
+export const RequestStatePrincipal = McpRequestState.Principal
+
+/**
  * A client cache hint for one kind of `v2026_07_28` result.
  *
  * **Details**
@@ -1802,6 +1877,7 @@ export const run: (options: {
   readonly protocols: Arr.NonEmptyReadonlyArray<McpProtocol.ProtocolAdapter>
   readonly extensions?: ServerExtensions | undefined
   readonly cacheHints?: CacheHints | undefined
+  readonly requestState?: RequestStateOptions | undefined
 }) => Effect.Effect<
   never,
   Cause.IllegalArgumentError,
@@ -1817,13 +1893,15 @@ export const run: (options: {
   readonly protocols: Arr.NonEmptyReadonlyArray<McpProtocol.ProtocolAdapter>
   readonly extensions?: ServerExtensions | undefined
   readonly cacheHints?: CacheHints | undefined
+  readonly requestState?: RequestStateOptions | undefined
 }) {
   const cacheHints = yield* normalizeCacheHints(options.cacheHints)
   const runtimeOption = yield* Effect.serviceOption(McpRuntime.ServerRuntime)
   const runtime = Option.isSome(runtimeOption)
     ? runtimeOption.value
     : yield* McpRuntime.make(options.protocols)
-  return yield* runWithRuntime({ ...options, cacheHints }, runtime, "custom")
+  const requestStateProtection = yield* McpRequestState.make(options.requestState)
+  return yield* runWithRuntime({ ...options, cacheHints, requestStateProtection }, runtime, "custom")
 })
 
 const runWithRuntime = Effect.fnUntraced(function*(
@@ -1837,6 +1915,7 @@ const runWithRuntime = Effect.fnUntraced(function*(
     readonly icons?: ReadonlyArray<McpSchema.Icon> | undefined
     readonly extensions?: ServerExtensions | undefined
     readonly cacheHints?: McpProtocolInternal.CacheHints | undefined
+    readonly requestStateProtection: McpRequestState.Protection
     readonly allowSubscriptions?: boolean | undefined
   },
   runtime: McpRuntime.ServerRuntimeShape,
@@ -2549,10 +2628,12 @@ const runWithRuntime = Effect.fnUntraced(function*(
     onDisconnect: (clientId) => Effect.sync(() => disconnectClient(clientId)),
     // Wrapped so `RpcServer.make` infers the group's rpcs from `clientRpcs`
     // rather than from `traceRequest`'s parameter type.
-    onRequest: (effect, request) => traceRequest(effect, request)
+    onRequest: (effect, request) =>
+      traceRequest(Effect.provideService(effect, McpRequestState.Protector, options.requestStateProtection), request)
   }).pipe(
     Effect.provideService(RpcServer.Protocol, patchedProtocol),
     Effect.provideService(McpServerClientMiddleware, clientMiddleware),
+    Effect.provideService(McpRequestState.Protector, options.requestStateProtection),
     Effect.provide(handlers)
   )
 }, Effect.scoped)
@@ -2640,6 +2721,7 @@ export const layer = <
   readonly protocols: Protocols
   readonly extensions?: ServerExtensions | undefined
   readonly cacheHints?: CacheHints | undefined
+  readonly requestState?: RequestStateOptions | undefined
   readonly registrations?: Layer.Layer<RA, RE, RR> | undefined
 }): Layer.Layer<
   McpServer | McpRequest.From<"Requires", ProvidedServices<Protocols>>,
@@ -2662,6 +2744,7 @@ const layerWithRuntime = (options: {
   readonly icons?: ReadonlyArray<McpSchema.Icon> | undefined
   readonly extensions?: ServerExtensions | undefined
   readonly cacheHints?: CacheHints | undefined
+  readonly requestState?: RequestStateOptions | undefined
   readonly allowSubscriptions?: boolean | undefined
   readonly registrations?: Layer.Layer<any, any, any> | undefined
 }, transport: "custom" | "http" | "stdio") =>
@@ -2669,7 +2752,8 @@ const layerWithRuntime = (options: {
     Effect.gen(function*() {
       const cacheHints = yield* normalizeCacheHints(options.cacheHints)
       const runtime = yield* McpRuntime.ServerRuntime
-      yield* Effect.forkScoped(runWithRuntime({ ...options, cacheHints }, runtime, transport))
+      const requestStateProtection = yield* McpRequestState.make(options.requestState)
+      yield* Effect.forkScoped(runWithRuntime({ ...options, cacheHints, requestStateProtection }, runtime, transport))
     })
   ).pipe(
     Layer.provide(options.registrations ?? Layer.empty),
@@ -2723,6 +2807,7 @@ export const layerStdio = <
   readonly protocols: Protocols
   readonly extensions?: ServerExtensions | undefined
   readonly cacheHints?: CacheHints | undefined
+  readonly requestState?: RequestStateOptions | undefined
   readonly registrations?: Layer.Layer<RA, RE, RR> | undefined
 }): Layer.Layer<
   McpServer | McpRequest.From<"Requires", ProvidedServices<Protocols>>,
@@ -2894,6 +2979,7 @@ export const layerHttp = <
   readonly protocols: Protocols
   readonly extensions?: ServerExtensions | undefined
   readonly cacheHints?: CacheHints | undefined
+  readonly requestState?: RequestStateOptions | undefined
   readonly allowedOrigins?: ReadonlyArray<string> | undefined
   readonly allowSessionTermination?: boolean | undefined
   readonly allowSubscriptions?: boolean | undefined
@@ -2970,6 +3056,7 @@ export const layerHttpRequestScoped = <
   readonly protocols: Protocols
   readonly extensions?: ServerExtensions | undefined
   readonly cacheHints?: CacheHints | undefined
+  readonly requestState?: RequestStateOptions | undefined
   readonly allowedOrigins?: ReadonlyArray<string> | undefined
   readonly registrations?: Layer.Layer<RA, RE, RR> | undefined
 }): Layer.Layer<
@@ -2987,7 +3074,11 @@ export const layerHttpRequestScoped = <
         `McpServer.layerHttpRequestScoped does not support the sessionful MCP protocol ${stateful.protocolVersion}`
       )
     }
-    const serverOptions = { ...options, cacheHints: yield* normalizeCacheHints(options.cacheHints) }
+    const serverOptions = {
+      ...options,
+      cacheHints: yield* normalizeCacheHints(options.cacheHints),
+      requestStateProtection: yield* McpRequestState.make(options.requestState)
+    }
     const server = yield* McpServer
     const { core, notificationDelivery } = internalState.get(server)!
     // Subscriptions are disabled, so handlers hold no per-request state and

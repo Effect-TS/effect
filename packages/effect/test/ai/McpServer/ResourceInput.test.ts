@@ -13,6 +13,7 @@ import { makeMcpStdioHarness } from "./TestUtils/McpStdioHarness.ts"
 
 const protocol = McpProtocol.v2026_07_28
 const uri = "file:///approval/report"
+const otherUri = "file:///approval/other"
 const inputRequests = {
   approval: {
     method: "elicitation/create",
@@ -27,38 +28,53 @@ const inputRequests = {
   }
 } as const
 
-const registrations = (kind: "static" | "template", fail = false) =>
+const registrations = (
+  kind: "static" | "template",
+  fail = false,
+  invocations?: Array<string | undefined> | undefined,
+  factoryInvocations?: Array<string> | undefined
+) =>
   Layer.effectDiscard(Effect.gen(function*() {
     const server = yield* McpServer.McpServer
-    const handle = fail ?
-      Effect.fail(
-        new McpSchema.MissingRequiredClientCapability({
-          message: "This report needs approval",
-          data: { requiredCapabilities: { elicitation: { form: {} } } }
+    const handle = (resolvedUri: string) =>
+      fail ?
+        Effect.fail(
+          new McpSchema.MissingRequiredClientCapability({
+            message: "This report needs approval",
+            data: { requiredCapabilities: { elicitation: { form: {} } } }
+          })
+        ) :
+        McpSchema.McpRequestContext.useSync((context) => {
+          invocations?.push(context.requestState)
+          const approval = context.inputResponses?.approval
+          if (approval?.action === "accept") {
+            assert.strictEqual(context.requestState, "resource-approval")
+            return McpSchema.ReadResourceResult.make({
+              contents: [{ uri: resolvedUri, text: "Approved report" }],
+              ttlMs: 60_000,
+              cacheScope: "public"
+            })
+          }
+          return new McpSchema.InputRequired({ inputRequests, requestState: "resource-approval" })
         })
-      ) :
-      McpSchema.McpRequestContext.useSync((context) => {
-        const approval = context.inputResponses?.approval
-        return context.requestState === "resource-approval" && approval?.action === "accept"
-          ? McpSchema.ReadResourceResult.make({ contents: [{ uri, text: "Approved report" }] })
-          : new McpSchema.InputRequired({ inputRequests, requestState: "resource-approval" })
-      })
     if (kind === "static") {
-      yield* server.addResource({
-        resource: { uri, name: "Report" },
-        annotations: Context.empty(),
-        handle
-      })
+      for (const resourceUri of [uri, otherUri]) {
+        yield* server.addResource({
+          resource: { uri: resourceUri, name: "Report" },
+          annotations: Context.empty(),
+          handle: handle(resourceUri)
+        })
+      }
     } else {
       yield* server.addResourceTemplate({
         template: { uriTemplate: "file:///approval/{name}", name: "Report" },
         annotations: Context.empty(),
         routerPath: "file::///approval/:0",
         completions: {},
-        handle: (_uri, params) => {
-          assert.strictEqual(_uri, uri)
-          assert.deepStrictEqual(params, ["report"])
-          return handle
+        handle: (resolvedUri, params) => {
+          factoryInvocations?.push(resolvedUri)
+          assert.deepStrictEqual(params, [resolvedUri === uri ? "report" : "other"])
+          return handle(resolvedUri)
         }
       })
     }
@@ -84,13 +100,16 @@ describe("resource input", () => {
   for (const kind of ["static", "template"] as const) {
     it.effect(`supports ${kind} resource helper input and preserves invalid continuation errors`, () =>
       Effect.gen(function*() {
+        const invocations: Array<string | undefined> = []
         const content = Effect.gen(function*() {
           const context = yield* McpSchema.McpRequestContext
+          invocations.push(context.requestState)
           if (context.inputResponses?.approval === undefined) {
             return new McpSchema.InputRequired({ inputRequests, requestState: "helper-approval" })
           }
-          if (context.requestState !== "helper-approval") {
-            return yield* new McpSchema.InvalidParams({ message: "The approval state is invalid" })
+          assert.strictEqual(context.requestState, "helper-approval")
+          if (context.inputResponses.approval.action !== "accept") {
+            return yield* new McpSchema.InvalidParams({ message: "The approval was not accepted" })
           }
           return kind === "static"
             ? McpSchema.ReadResourceResult.make({ contents: [{ uri, text: "Approved report" }] })
@@ -110,6 +129,10 @@ describe("resource input", () => {
         const first = result(yield* harness.sendRequest("resources/read", params()))
         assert.strictEqual(first.resultType, "input_required")
         assert.deepStrictEqual(first.inputRequests, inputRequests)
+        const state = Schema.decodeUnknownSync(Schema.String)(first.requestState)
+        assert.notStrictEqual(state, "helper-approval")
+        assert.notInclude(state, "helper-approval")
+        assert.deepStrictEqual(invocations, [undefined])
         const invalid = yield* harness.sendRequest(
           "resources/read",
           params({
@@ -119,56 +142,108 @@ describe("resource input", () => {
         )
         const { error } = Schema.decodeUnknownSync(Schema.Struct({ error: McpSchema.McpError }))(invalid)
         assert.strictEqual(error.code, -32602)
-        assert.strictEqual(error.message, "The approval state is invalid")
+        assert.strictEqual(error.message, "Invalid requestState")
+        assert.deepStrictEqual(invocations, [undefined])
+        const declined = yield* harness.sendRequest(
+          "resources/read",
+          params({
+            requestState: state,
+            inputResponses: { approval: { action: "decline" } }
+          })
+        )
+        const declinedError = Schema.decodeUnknownSync(Schema.Struct({ error: McpSchema.McpError }))(declined).error
+        assert.strictEqual(declinedError.code, -32602)
+        assert.strictEqual(declinedError.message, "The approval was not accepted")
+        assert.deepStrictEqual(invocations, [undefined, "helper-approval"])
         const completed = result(
           yield* harness.sendRequest(
             "resources/read",
             params({
-              requestState: first.requestState,
+              requestState: state,
               inputResponses: { approval: { action: "accept", content: { approved: true } } }
             })
           )
         )
         assert.strictEqual(completed.resultType, "complete")
         assert.deepStrictEqual(completed.contents, [{ uri, text: "Approved report" }])
+        assert.deepStrictEqual(invocations, [undefined, "helper-approval", "helper-approval"])
       }))
 
-    for (const transport of ["stdio", "http"] as const) {
-      it.effect(`supports ${kind} resource input and continuation over ${transport}`, () =>
+    for (const transport of ["stdio", "http", "http-request"] as const) {
+      // https://modelcontextprotocol.io/specification/2026-07-28/basic/patterns/mrtr#server-requirements-basic-workflow
+      // https://modelcontextprotocol.io/specification/2026-07-28/server/utilities/caching#cache-key
+      it.effect(`seals ${kind} resource input and prevents caching its continuation over ${transport}`, () =>
         Effect.gen(function*() {
+          const invocations: Array<string | undefined> = []
+          const factoryInvocations: Array<string> = []
+          const registration = registrations(kind, false, invocations, factoryInvocations)
           const send = transport === "stdio"
-            ? (yield* makeMcpStdioHarness(protocol, [protocol], registrations(kind))).sendRequest
+            ? (yield* makeMcpStdioHarness(protocol, [protocol], registration)).sendRequest
             : yield* Effect.gen(function*() {
               const harness = yield* makeHttpHarness(
-                registrations(kind).pipe(Layer.provideMerge(makeServerLayer({
+                registration.pipe(Layer.provideMerge(makeServerLayer({
                   name: "ResourceInputServer",
-                  protocols: [protocol]
+                  protocols: [protocol],
+                  mode: transport === "http" ? "server" : "request"
                 })))
               )
-              return (method: string, params?: unknown, id?: string | number) =>
-                harness.post({ jsonrpc: "2.0", id, method, params }, {
+              return (method: string, parameters: ReturnType<typeof params>, id: string | number) =>
+                harness.post({ jsonrpc: "2.0", id, method, params: parameters }, {
                   "Mcp-Protocol-Version": protocol.protocolVersion,
                   "Mcp-Method": method,
-                  "Mcp-Name": uri
+                  "Mcp-Name": parameters.uri
                 }).pipe(Effect.flatMap(readMcpHttpResponse))
             })
 
           const first = result(yield* send("resources/read", params(), "first"))
           assert.strictEqual(first.resultType, "input_required")
           assert.deepStrictEqual(first.inputRequests, inputRequests)
-          assert.strictEqual(first.requestState, "resource-approval")
+          const state = Schema.decodeUnknownSync(Schema.String)(first.requestState)
+          assert.notStrictEqual(state, "resource-approval")
+          assert.notInclude(state, "resource-approval")
+          assert.notProperty(first, "ttlMs")
+          assert.notProperty(first, "cacheScope")
+          assert.deepStrictEqual(invocations, [undefined])
+          const stateIndex = Math.floor(state.length / 2)
+          const tampered = state.slice(0, stateIndex) + (state[stateIndex] === "A" ? "B" : "A") +
+            state.slice(stateIndex + 1)
+          for (
+            const [index, continuation] of [
+              { requestState: "invalid-state" },
+              { requestState: tampered },
+              { requestState: state, uri: otherUri }
+            ].entries()
+          ) {
+            const invalid = yield* send(
+              "resources/read",
+              params({
+                ...continuation,
+                inputResponses: { approval: { action: "accept", content: { approved: true } } }
+              }),
+              `invalid-${index}`
+            )
+            const { error } = Schema.decodeUnknownSync(Schema.Struct({ error: McpSchema.McpError }))(invalid)
+            assert.strictEqual(error.code, -32602)
+            assert.strictEqual(error.message, "Invalid requestState")
+            assert.deepStrictEqual(invocations, [undefined])
+            assert.deepStrictEqual(factoryInvocations, kind === "template" ? [uri] : [])
+          }
           const second = result(
             yield* send(
               "resources/read",
               params({
                 inputResponses: { approval: { action: "accept", content: { approved: true } } },
-                requestState: first.requestState
+                requestState: state
               }),
               "second"
             )
           )
           assert.strictEqual(second.resultType, "complete")
           assert.deepStrictEqual(second.contents, [{ uri, text: "Approved report" }])
+          assert.strictEqual(second.ttlMs, 0)
+          assert.strictEqual(second.cacheScope, "private")
+          assert.deepStrictEqual(invocations, [undefined, "resource-approval"])
+          assert.deepStrictEqual(factoryInvocations, kind === "template" ? [uri, uri] : [])
         }))
     }
 

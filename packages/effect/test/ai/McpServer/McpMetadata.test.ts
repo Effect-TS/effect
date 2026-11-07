@@ -281,16 +281,45 @@ describe("MCP metadata", () => {
         Effect.gen(function*() {
           const uri = "file:///continuation"
           const harness = yield* makeHttpHarness(
-            resource(uri, { ttlMs: 60_000, cacheScope: "public" }).pipe(
-              Layer.provideMerge(makeModernLayer(mode))
-            )
+            McpServer.resource({
+              uri,
+              name: uri,
+              content: Effect.gen(function*() {
+                const context = yield* McpSchema.McpRequestContext
+                if (context.requestState === undefined && context.inputResponses === undefined) {
+                  return new McpSchema.InputRequired({ requestState: "opaque-state" })
+                }
+                if (context.requestState !== undefined) {
+                  assert.strictEqual(context.requestState, "opaque-state")
+                }
+                return McpSchema.ReadResourceResult.make({
+                  contents: [{ uri, text: "resource content" }],
+                  ttlMs: 60_000,
+                  cacheScope: "public"
+                })
+              })
+            }).pipe(Layer.provideMerge(makeModernLayer(mode)))
           )
-          for (const continuation of [{ inputResponses: {} }, { requestState: "opaque-state" }]) {
+          const initial = yield* harness.post(
+            request("initial", "resources/read", { uri }),
+            headers("resources/read", uri)
+          )
+          const initialMessage = yield* readMcpHttpResponse(initial)
+          assert.notProperty(initialMessage, "error", JSON.stringify(initialMessage))
+          const issued = decodeResult(initialMessage).result
+          assert.strictEqual(issued.resultType, "input_required")
+          const requestState = Schema.decodeUnknownSync(Schema.String)(issued.requestState)
+          assert.notStrictEqual(requestState, "opaque-state")
+          assert.notProperty(issued, "ttlMs")
+          assert.notProperty(issued, "cacheScope")
+          for (const continuation of [{ inputResponses: {} }, { requestState }]) {
             const response = yield* harness.post(
               request("retry", "resources/read", { uri, ...continuation }),
               headers("resources/read", uri)
             )
-            const { result } = decodeResult(yield* readMcpHttpResponse(response))
+            const message = yield* readMcpHttpResponse(response)
+            assert.notProperty(message, "error", JSON.stringify(message))
+            const { result } = decodeResult(message)
             assert.deepStrictEqual({ ttlMs: result.ttlMs, cacheScope: result.cacheScope }, {
               ttlMs: 0,
               cacheScope: "private"

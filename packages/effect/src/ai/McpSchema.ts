@@ -3128,8 +3128,10 @@ export type McpInputResponse = Readonly<Record<string, unknown>>
  *
  * **Details**
  *
- * `requestState` is opaque to the client and is returned unchanged with the
- * keyed input responses.
+ * `McpServer` authenticates and encrypts `requestState` before sending it to
+ * the client. Clients echo the opaque token unchanged with their keyed input
+ * responses; handlers receive the original string through `McpRequestContext`.
+ * Configure the server's `requestState` option for shared keys and token expiry.
  *
  * `InputRequired` is also a schema, so a toolkit tool can declare it as its
  * `failure`. The constructor validates its fields and throws when they are
