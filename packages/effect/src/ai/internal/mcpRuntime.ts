@@ -33,6 +33,13 @@ const MCP_METHOD_HEADER = "mcp-method"
 const MCP_NAME_HEADER = "mcp-name"
 const PROTOCOL_VERSION_METADATA_KEY = "io.modelcontextprotocol/protocolVersion"
 const CLIENT_CAPABILITIES_METADATA_KEY = "io.modelcontextprotocol/clientCapabilities"
+const invalidRequestIdErrors = new WeakSet<object>()
+
+/**
+ * @internal
+ */
+export const isInvalidRequestIdError = (error: unknown): boolean =>
+  typeof error === "object" && error !== null && invalidRequestIdErrors.has(error)
 
 const asRecord = (input: unknown): Record<string, unknown> | undefined =>
   typeof input === "object" && input !== null ? input as Record<string, unknown> : undefined
@@ -134,6 +141,7 @@ export interface HandlerInstallationOptions {
   readonly defaultLogLevel: LogLevel.LogLevel
   readonly serverInfo: {
     readonly name: string
+    readonly title?: string | undefined
     readonly version: string
     readonly instructions?: string | undefined
     readonly description?: string | undefined
@@ -349,10 +357,13 @@ export const make = Effect.fnUntraced(function*(
         const offeredVersion = (request.payload as any)?.protocolVersion
         const selected = selectStatefulProtocol(registry.protocols, offeredVersion)
         if (selected === undefined) {
-          return yield* new McpProtocol.ProtocolError({
-            code: PublicMcpSchema.UNSUPPORTED_PROTOCOL_VERSION_ERROR_CODE,
-            message: `initialize is not supported by the configured MCP protocols (requested '${offeredVersion}')`
-          })
+          if (typeof offeredVersion !== "string") {
+            return yield* new McpProtocol.ProtocolError({
+              code: PublicMcpSchema.INVALID_PARAMS_ERROR_CODE,
+              message: "initialize requires a string protocolVersion"
+            })
+          }
+          return yield* new McpProtocol.ProtocolError(unsupportedProtocolVersion(offeredVersion))
         }
         protocol = selected
       } else if (request.tag === "ping") {
@@ -360,6 +371,20 @@ export const make = Effect.fnUntraced(function*(
         protocol = selectStatefulProtocol(registry.protocols, undefined) ?? registry.protocols[0]
       } else {
         protocol = registry.protocols[0]
+      }
+      // https://modelcontextprotocol.io/specification/2025-11-25/basic#requests
+      // Validate after adapter selection, before request metadata decoding.
+      // Only 2024 retains JSON-RPC's allowance for fractional numeric IDs.
+      if (
+        request.isNotification !== true && typeof request.id === "number" &&
+        !Number.isInteger(request.id) && protocol.protocolVersion !== "2024-11-05"
+      ) {
+        const error = new McpProtocol.ProtocolError({
+          code: PublicMcpSchema.INVALID_REQUEST_ERROR_CODE,
+          message: "Invalid Request"
+        })
+        invalidRequestIdErrors.add(error)
+        return yield* error
       }
       if (protocol.runtime._tag === "Stateful") {
         return { protocol, binding }
@@ -391,11 +416,23 @@ export const make = Effect.fnUntraced(function*(
     }),
     resolveRequest: (clientId, headers) => stateful?.resolve(clientId, headers),
     admitHttp: (headers, parsed) => {
-      const reject = (status: number, error?: unknown, id: string | number | null = null): HttpAdmission => ({
+      const reject = (
+        status: number,
+        error?: { readonly code: number; readonly message: string; readonly data?: unknown },
+        id: string | number | null = null
+      ): HttpAdmission => ({
         _tag: "Rejected",
         response: error === undefined
           ? HttpServerResponse.empty({ status })
-          : HttpServerResponse.jsonUnsafe({ jsonrpc: "2.0", id, error }, { status })
+          : HttpServerResponse.jsonUnsafe({
+            jsonrpc: "2.0",
+            id,
+            error: {
+              code: error.code,
+              message: error.message,
+              ...(error.data === undefined ? {} : { data: error.data })
+            }
+          }, { status })
       })
       if (Result.isFailure(parsed)) {
         const version = headers[MCP_PROTOCOL_VERSION_HEADER]
@@ -593,6 +630,7 @@ export const make = Effect.fnUntraced(function*(
                 instructions: options.serverInfo.instructions,
                 serverInfo: PublicMcpSchema.Implementation.make({
                   name: options.serverInfo.name,
+                  title: options.serverInfo.title,
                   version: options.serverInfo.version,
                   description: options.serverInfo.description,
                   websiteUrl: options.serverInfo.websiteUrl,

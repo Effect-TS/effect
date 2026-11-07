@@ -187,6 +187,99 @@ describe("McpServer", () => {
     expect<Layer.Services<typeof layer>>().type.toBe<Requirements>()
   })
 
+  describe("MCP toolkit handlers", () => {
+    class CurrentUser extends Context.Service<CurrentUser, string>()("ToolkitInput/CurrentUser") {}
+    const toolkit = Toolkit.make(Tool.make("Ask", {
+      parameters: Schema.Struct({ label: Schema.String }),
+      success: Schema.Number
+    }))
+
+    it("should infer parameters and request services without ordinary toolkit handlers", () => {
+      const registered = McpServer.registerToolkit(toolkit, {
+        handlers: {
+          Ask: (params, context) => {
+            expect(params).type.toBe<{ readonly label: string }>()
+            expect(context.preliminary).type.toBeCallableWith(1)
+            expect(context.preliminary).type.not.toBeCallableWith("wrong")
+            expect(context.preliminary).type.not.toBeCallableWith(
+              new McpSchema.InputRequired({ requestState: "retry" })
+            )
+            return Effect.gen(function*() {
+              yield* CurrentUser
+              const request = yield* McpSchema.McpRequestContext
+              return request.inputResponses === undefined
+                ? new McpSchema.InputRequired({ requestState: params.label })
+                : 42
+            })
+          }
+        }
+      })
+      expect<Effect.Services<typeof registered>>().type.toBe<McpServer.McpServer | Requires<CurrentUser>>()
+
+      const layer = McpServer.toolkit(toolkit, {
+        handlers: {
+          Ask: () => Effect.as(CurrentUser, 42)
+        }
+      })
+      expect<Layer.Services<typeof layer>>().type.toBe<McpServer.McpServer | Requires<CurrentUser>>()
+      const provided = layer.pipe(Layer.provide(Layer.succeed(CurrentUser, "registration")))
+      expect<Layer.Services<typeof provided>>().type.toBe<McpServer.McpServer | Requires<CurrentUser>>()
+      const auth = McpServer.middleware<{ provides: CurrentUser }>()((effect) =>
+        Effect.provideService(effect, CurrentUser, "request")
+      )
+      const authenticated = layer.pipe(Layer.provide(auth.layer))
+      expect<Layer.Services<typeof authenticated>>().type.toBe<McpServer.McpServer>()
+    })
+
+    it("should reject results outside the success schema or input requirement", () => {
+      expect({ Ask: () => Effect.succeed("wrong") }).type.not.toBeAssignableTo<
+        McpServer.ToolkitHandlers<typeof toolkit.tools>
+      >()
+      expect({ Ask: () => Effect.fail("wrong") }).type.not.toBeAssignableTo<
+        McpServer.ToolkitHandlers<typeof toolkit.tools>
+      >()
+      expect({}).type.not.toBeAssignableTo<McpServer.ToolkitHandlers<typeof toolkit.tools>>()
+      expect({ Ask: () => Effect.succeed(new McpSchema.InputRequired({ requestState: "retry" })) }).type
+        .toBeAssignableTo<McpServer.ToolkitHandlers<typeof toolkit.tools>>()
+      expect({
+        Ask: () =>
+          Effect.fail(
+            new McpSchema.MissingRequiredClientCapability({
+              message: "Elicitation is required",
+              data: { requiredCapabilities: { elicitation: { form: {} } } }
+            })
+          )
+      }).type.toBeAssignableTo<McpServer.ToolkitHandlers<typeof toolkit.tools>>()
+    })
+
+    it("should retain schema services until a handler or tool makes them request-level", () => {
+      class IdCodec extends Context.Service<IdCodec, string>()("ToolkitInput/IdCodec") {}
+      class TagEncoder extends Context.Service<TagEncoder, string>()("ToolkitInput/TagEncoder") {}
+      const Id = hole<Schema.Codec<string, string, IdCodec, never>>()
+      const Tag = hole<Schema.Codec<string, string, never, TagEncoder>>()
+      const tools = Toolkit.make(Tool.make("Read", {
+        parameters: Schema.Struct({ id: Id }),
+        success: Tag
+      }))
+      const registration = McpServer.registerToolkit(tools, { handlers: { Read: ({ id }) => Effect.succeed(id) } })
+      expect<Effect.Services<typeof registration>>().type.toBe<McpServer.McpServer | IdCodec | TagEncoder>()
+      const layer = McpServer.toolkit(tools, {
+        handlers: { Read: ({ id }) => Effect.as(IdCodec, id) }
+      })
+      expect<Layer.Services<typeof layer>>().type.toBe<McpServer.McpServer | Requires<IdCodec> | TagEncoder>()
+    })
+
+    it("should preserve explicitly declared request services with direct handlers", () => {
+      const declared = Toolkit.make(Tool.make("Fetch", {
+        dependencies: [HttpClient.HttpClient, McpSchema.McpRequestContext]
+      }))
+      const registration = McpServer.registerToolkit(declared, { handlers: { Fetch: () => Effect.void } })
+      const layer = McpServer.toolkit(declared, { handlers: { Fetch: () => Effect.void } })
+      expect<Effect.Services<typeof registration>>().type.toBe<McpServer.McpServer | Requires<HttpClient.HttpClient>>()
+      expect<Layer.Services<typeof layer>>().type.toBe<McpServer.McpServer | Requires<HttpClient.HttpClient>>()
+    })
+  })
+
   it("should keep toolkit schema services registration-time unless a tool declares them", () => {
     class IdCodec extends Context.Service<IdCodec, { readonly n: number }>()("IdCodec") {}
     class TagEncoder extends Context.Service<TagEncoder, { readonly n: number }>()("TagEncoder") {}

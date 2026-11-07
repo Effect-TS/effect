@@ -396,196 +396,213 @@ const failureCause = <E>(error: E, origin: Tool.FailureOrigin): Cause.Cause<E> =
 
 const failureOrigin = (error: unknown): Tool.FailureOrigin => Schema.isSchemaError(error) ? "result" : "handler"
 
+/** @internal */
+export const makeWithHandlers = <Control = never>(
+  tools: Record<string, Tool.Any>,
+  services: Context.Context<never>,
+  hooks?: {
+    readonly isControl?: ((value: unknown) => value is Control) | undefined
+    readonly isProtocolFailure?: ((error: unknown) => boolean) | undefined
+  }
+) => {
+  const schemasCache = new WeakMap<any, {
+    readonly context: Context.Context<never>
+    readonly handler: Tool.Handler<any>["handler"]
+    readonly decodeParameters: (
+      u: unknown,
+      options?: SchemaAST.ParseOptions
+    ) => Effect.Effect<unknown, Schema.SchemaError>
+    readonly encodeResult: (u: unknown, isFailure: boolean) => Effect.Effect<unknown, Schema.SchemaError>
+  }>()
+
+  const getSchemas = (tool: Tool.Any) => {
+    let schemas = schemasCache.get(tool)
+    if (Predicate.isUndefined(schemas)) {
+      const handler = services.mapUnsafe.get(tool.id)! as Tool.Handler<any>
+      const decodeParameters = Schema.isSchema(tool.parametersSchema)
+        ? Schema.decodeUnknownEffect(Schema.toCodecJson(tool.parametersSchema)) as any
+        : (u: unknown) => Effect.succeed(u)
+      const encodeSuccess = Schema.encodeUnknownEffect(Schema.toCodecJson(tool.successSchema)) as any
+      const encodeFailure = Schema.encodeUnknownEffect(Schema.toCodecJson(Tool.failureResultSchema(tool))) as any
+      const encodeResult = (u: unknown, isFailure: boolean) => isFailure ? encodeFailure(u) : encodeSuccess(u)
+      schemas = {
+        context: handler.context,
+        handler: handler.handler,
+        decodeParameters,
+        encodeResult
+      }
+      schemasCache.set(tool, schemas)
+    }
+    return schemas
+  }
+
+  const handle = Effect.fnUntraced(function*(
+    name: string,
+    params: unknown,
+    toolCallId?: string,
+    options?: SchemaAST.ParseOptions
+  ) {
+    const tool = Object.hasOwn(tools, name) ? tools[name] : undefined
+
+    yield* Effect.annotateCurrentSpan("gen_ai.tool.name", name)
+    if (toolCallId !== undefined) {
+      yield* Effect.annotateCurrentSpan("gen_ai.tool.call.id", toolCallId)
+    }
+    if (yield* RecordToolArguments) {
+      yield* Effect.annotateCurrentSpan("gen_ai.tool.call.arguments", stringifyToolArguments(params))
+    }
+
+    if (Predicate.isUndefined(tool)) {
+      return yield* AiError.make({
+        module: "Toolkit",
+        method: `${name}.handle`,
+        reason: new AiError.ToolNotFoundError({
+          toolName: name,
+          availableTools: Object.keys(tools)
+        })
+      })
+    }
+
+    const schemas = getSchemas(tool)
+
+    const encodeResult = (result: any, isFailure: boolean) =>
+      schemas.encodeResult(result, isFailure).pipe(
+        Effect.mapError((cause) =>
+          AiError.make({
+            module: "Toolkit",
+            method: `${name}.handle`,
+            reason: new AiError.ToolResultEncodingError({
+              toolName: name,
+              toolResult: result,
+              description: cause.message
+            })
+          })
+        )
+      )
+
+    const decodedParamsResult = yield* Effect.result(schemas.decodeParameters(params, options))
+    if (Result.isFailure(decodedParamsResult)) {
+      const error = AiError.make({
+        module: "Toolkit",
+        method: `${name}.handle`,
+        reason: new AiError.ToolParameterValidationError({
+          toolName: name,
+          description: decodedParamsResult.failure.message
+        })
+      })
+      if (tool.failureMode === "error") {
+        return yield* Effect.failCause(failureCause(error, "parameters"))
+      }
+      return Stream.fromEffect(
+        Effect.map(encodeResult(error, true), (encodedResult) => ({
+          result: error,
+          isFailure: true,
+          failureOrigin: "parameters" as const,
+          preliminary: false,
+          encodedResult
+        }))
+      ) satisfies Stream.Stream<Tool.HandlerResult<any>, any>
+    }
+    const decodedParams = decodedParamsResult.success
+
+    const capacity = yield* PreliminaryBuffer
+    if (capacity !== "unbounded" && !(Number.isInteger(capacity) && capacity > 0)) {
+      return yield* Effect.die(`Tool "${name}": PreliminaryBuffer must be a positive integer, got ${capacity}`)
+    }
+    const queue = yield* Queue.make<{
+      readonly result: any
+      readonly isFailure: boolean
+      readonly preliminary: boolean
+    }, Cause.Done>(capacity === "unbounded" ? undefined : { capacity })
+    const context: HandlerContext<any> = {
+      toolCallId,
+      preliminary: (result) =>
+        Effect.asVoid(Queue.offer(queue, {
+          result,
+          isFailure: false,
+          preliminary: true
+        }))
+    }
+
+    const fiber = yield* schemas.handler(decodedParams, context).pipe(
+      Effect.flatMap((result) => Queue.offer(queue, { result, isFailure: false, preliminary: false })),
+      Effect.updateContext((input) => Context.merge(schemas.context, input)),
+      Effect.matchCauseEffect({
+        onFailure: (cause) => Queue.failCause(queue, cause),
+        onSuccess: () => Queue.end(queue)
+      }),
+      Effect.forkChild
+    )
+
+    const normalizeError = (error: unknown) => {
+      const normalizedError = Schema.isSchemaError(error)
+        ? AiError.make({
+          module: "Toolkit",
+          method: `${name}.handle`,
+          reason: new AiError.InvalidToolResultError({
+            toolName: name,
+            description: `Tool handler returned invalid result: ${error.message}`
+          })
+        })
+        : AiError.isAiErrorReason(error)
+        ? AiError.make({
+          module: "Toolkit",
+          method: `${name}.handle`,
+          reason: error
+        })
+        : error
+      return normalizedError
+    }
+
+    return Stream.fromQueue(queue).pipe(
+      tool.failureMode === "error"
+        ? Stream.catchCause((cause) =>
+          Stream.failCause(Cause.map(
+            Cause.fromReasons(cause.reasons.map((reason) =>
+              Cause.isFailReason(reason)
+                ? reason.annotate(Context.make(FailureOrigin, failureOrigin(reason.error)), { overwrite: true })
+                : reason
+            )),
+            normalizeError
+          ))
+        )
+        : Stream.catch((error) =>
+          hooks?.isProtocolFailure?.(error) ? Stream.fail(error) : Stream.succeed({
+            result: normalizeError(error),
+            isFailure: true,
+            failureOrigin: failureOrigin(error),
+            preliminary: false
+          })
+        ),
+      Stream.mapEffect(Effect.fnUntraced(function*(output) {
+        if (!output.isFailure && !output.preliminary && hooks?.isControl?.(output.result)) {
+          return output.result as Control
+        }
+        const encodedResult = yield* encodeResult(output.result, output.isFailure)
+        if (output.isFailure || output.preliminary || tool.toModelOutput === undefined) {
+          return { ...output, encodedResult }
+        }
+        return { ...output, encodedResult, modelOutput: tool.toModelOutput(output.result) }
+      })),
+      Stream.ensuring(Fiber.interrupt(fiber))
+    ) satisfies Stream.Stream<Tool.HandlerResult<any> | Control, any>
+  })
+  return {
+    tools,
+    handle: handle as (
+      name: string,
+      params: unknown,
+      toolCallId?: string,
+      options?: SchemaAST.ParseOptions
+    ) => Effect.Effect<Stream.Stream<Tool.HandlerResult<any> | Control, any>, any>
+  }
+}
+
 const Proto = {
   ...Effectable.Prototype({
     label: "Toolkit",
     evaluate: Effect.fnUntraced(function*(this: Toolkit<Record<string, Tool.Any>>, parent) {
-      const tools = this.tools
-      const services = parent.context
-      const schemasCache = new WeakMap<any, {
-        readonly context: Context.Context<never>
-        readonly handler: Tool.Handler<any>["handler"]
-        readonly decodeParameters: (
-          u: unknown,
-          options?: SchemaAST.ParseOptions
-        ) => Effect.Effect<unknown, Schema.SchemaError>
-        readonly encodeResult: (u: unknown, isFailure: boolean) => Effect.Effect<unknown, Schema.SchemaError>
-      }>()
-
-      const getSchemas = (tool: Tool.Any) => {
-        let schemas = schemasCache.get(tool)
-        if (Predicate.isUndefined(schemas)) {
-          const handler = services.mapUnsafe.get(tool.id)! as Tool.Handler<any>
-          const decodeParameters = Schema.isSchema(tool.parametersSchema)
-            ? Schema.decodeUnknownEffect(Schema.toCodecJson(tool.parametersSchema)) as any
-            : (u: unknown) => Effect.succeed(u)
-          const encodeSuccess = Schema.encodeUnknownEffect(Schema.toCodecJson(tool.successSchema)) as any
-          const encodeFailure = Schema.encodeUnknownEffect(Schema.toCodecJson(Tool.failureResultSchema(tool))) as any
-          const encodeResult = (u: unknown, isFailure: boolean) => isFailure ? encodeFailure(u) : encodeSuccess(u)
-          schemas = {
-            context: handler.context,
-            handler: handler.handler,
-            decodeParameters,
-            encodeResult
-          }
-          schemasCache.set(tool, schemas)
-        }
-        return schemas
-      }
-
-      const handle = Effect.fnUntraced(function*(
-        name: string,
-        params: unknown,
-        toolCallId?: string,
-        options?: SchemaAST.ParseOptions
-      ) {
-        const tool = Object.hasOwn(tools, name) ? tools[name] : undefined
-
-        yield* Effect.annotateCurrentSpan("gen_ai.tool.name", name)
-        if (toolCallId !== undefined) {
-          yield* Effect.annotateCurrentSpan("gen_ai.tool.call.id", toolCallId)
-        }
-        if (yield* RecordToolArguments) {
-          yield* Effect.annotateCurrentSpan("gen_ai.tool.call.arguments", stringifyToolArguments(params))
-        }
-
-        if (Predicate.isUndefined(tool)) {
-          return yield* AiError.make({
-            module: "Toolkit",
-            method: `${name}.handle`,
-            reason: new AiError.ToolNotFoundError({
-              toolName: name,
-              availableTools: Object.keys(tools)
-            })
-          })
-        }
-
-        const schemas = getSchemas(tool)
-
-        const encodeResult = (result: any, isFailure: boolean) =>
-          schemas.encodeResult(result, isFailure).pipe(
-            Effect.mapError((cause) =>
-              AiError.make({
-                module: "Toolkit",
-                method: `${name}.handle`,
-                reason: new AiError.ToolResultEncodingError({
-                  toolName: name,
-                  toolResult: result,
-                  description: cause.message
-                })
-              })
-            )
-          )
-
-        const decodedParamsResult = yield* Effect.result(schemas.decodeParameters(params, options))
-        if (Result.isFailure(decodedParamsResult)) {
-          const error = AiError.make({
-            module: "Toolkit",
-            method: `${name}.handle`,
-            reason: new AiError.ToolParameterValidationError({
-              toolName: name,
-              description: decodedParamsResult.failure.message
-            })
-          })
-          if (tool.failureMode === "error") {
-            return yield* Effect.failCause(failureCause(error, "parameters"))
-          }
-          return Stream.fromEffect(
-            Effect.map(encodeResult(error, true), (encodedResult) => ({
-              result: error,
-              isFailure: true,
-              failureOrigin: "parameters" as const,
-              preliminary: false,
-              encodedResult
-            }))
-          ) satisfies Stream.Stream<Tool.HandlerResult<any>, any>
-        }
-        const decodedParams = decodedParamsResult.success
-
-        const capacity = yield* PreliminaryBuffer
-        if (capacity !== "unbounded" && !(Number.isInteger(capacity) && capacity > 0)) {
-          return yield* Effect.die(`Tool "${name}": PreliminaryBuffer must be a positive integer, got ${capacity}`)
-        }
-        const queue = yield* Queue.make<{
-          readonly result: any
-          readonly isFailure: boolean
-          readonly preliminary: boolean
-        }, Cause.Done>(capacity === "unbounded" ? undefined : { capacity })
-        const context: HandlerContext<any> = {
-          toolCallId,
-          preliminary: (result) =>
-            Effect.asVoid(Queue.offer(queue, {
-              result,
-              isFailure: false,
-              preliminary: true
-            }))
-        }
-
-        const fiber = yield* schemas.handler(decodedParams, context).pipe(
-          Effect.flatMap((result) => Queue.offer(queue, { result, isFailure: false, preliminary: false })),
-          Effect.updateContext((input) => Context.merge(schemas.context, input)),
-          Effect.matchCauseEffect({
-            onFailure: (cause) => Queue.failCause(queue, cause),
-            onSuccess: () => Queue.end(queue)
-          }),
-          Effect.forkChild
-        )
-
-        const normalizeError = (error: unknown) => {
-          const normalizedError = Schema.isSchemaError(error)
-            ? AiError.make({
-              module: "Toolkit",
-              method: `${name}.handle`,
-              reason: new AiError.InvalidToolResultError({
-                toolName: name,
-                description: `Tool handler returned invalid result: ${error.message}`
-              })
-            })
-            : AiError.isAiErrorReason(error)
-            ? AiError.make({
-              module: "Toolkit",
-              method: `${name}.handle`,
-              reason: error
-            })
-            : error
-          return normalizedError
-        }
-
-        return Stream.fromQueue(queue).pipe(
-          tool.failureMode === "error"
-            ? Stream.catchCause((cause) =>
-              Stream.failCause(Cause.map(
-                Cause.fromReasons(cause.reasons.map((reason) =>
-                  Cause.isFailReason(reason)
-                    ? reason.annotate(Context.make(FailureOrigin, failureOrigin(reason.error)), { overwrite: true })
-                    : reason
-                )),
-                normalizeError
-              ))
-            )
-            : Stream.catch((error) =>
-              Stream.succeed({
-                result: normalizeError(error),
-                isFailure: true,
-                failureOrigin: failureOrigin(error),
-                preliminary: false
-              })
-            ),
-          Stream.mapEffect(Effect.fnUntraced(function*(output) {
-            const encodedResult = yield* encodeResult(output.result, output.isFailure)
-            if (output.isFailure || output.preliminary || tool.toModelOutput === undefined) {
-              return { ...output, encodedResult }
-            }
-            return { ...output, encodedResult, modelOutput: tool.toModelOutput(output.result) }
-          })),
-          Stream.ensuring(Fiber.interrupt(fiber))
-        ) satisfies Stream.Stream<Tool.HandlerResult<any>, any>
-      })
-
-      return {
-        tools,
-        handle: handle as any
-      } satisfies WithHandler<Record<string, any>>
+      return makeWithHandlers(this.tools, parent.context) as WithHandler<Record<string, any>>
     })
   }),
   [TypeId]: TypeId,
