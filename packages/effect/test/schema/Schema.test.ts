@@ -35,6 +35,7 @@ import {
   Struct,
   Tuple
 } from "effect"
+import * as NetAddress from "effect/net/NetAddress"
 import { TestSchema } from "effect/testing"
 import { produce } from "immer"
 import { deepStrictEqual, fail, strictEqual } from "node:assert"
@@ -6009,6 +6010,70 @@ Expected a value between -2147483648 and 2147483647`
       `Invalid SemVer range "^v1": major must be a non-negative integer without leading zeros, received "v1"`
     )
     await asserts.encoding().succeed(SemVerRange.parseUnsafe("1.2.3 - 2.x"), "1.2.3 - 2")
+  })
+
+  describe("effect/net", () => {
+    it("IpAddress, InetAddress and SocketAddress are unions of their members", () => {
+      assert.deepStrictEqual(Schema.IpAddress.members, [Schema.Ipv4Address, Schema.Ipv6Address])
+      assert.deepStrictEqual(Schema.InetAddress.members, [Schema.InetAddressV4, Schema.InetAddressV6])
+      assert.deepStrictEqual(Schema.SocketAddress.members, [Schema.InetAddress, Schema.UnixPathAddress])
+    })
+
+    it("JSON and StringTree codecs encode canonical strings", async () => {
+      const cases: ReadonlyArray<readonly [Schema.Codec<unknown>, string, string]> = [
+        [Schema.MacAddress, "02:0A:0b:0C:0d:0E", "02:0a:0b:0c:0d:0e"],
+        [Schema.IpAddress, "2001:0DB8:0:0:0:0:0:1", "2001:db8::1"],
+        [Schema.IpInterface, "192.0.2.1", "192.0.2.1/32"],
+        [Schema.IpNetwork, "2001:DB8::/32", "2001:db8::/32"],
+        [Schema.InetAddress, "[fe80::1%3]:443", "[fe80::1%3]:443"],
+        [Schema.SocketAddress, "[0:0:0:0:0:0:0:1]:80", "[::1]:80"],
+        [Schema.HostPort, "DB.internal:5432", "db.internal:5432"]
+      ]
+      for (const [schema, input, encoded] of cases) {
+        for (const codec of [Schema.toCodecJson(schema), Schema.toCodecStringTree(schema)]) {
+          strictEqual(Schema.encodeSync(codec)(Schema.decodeUnknownSync(codec)(input)), encoded)
+          await new TestSchema.Asserts(codec).verifyRoundTrip()
+        }
+      }
+    })
+
+    it("Unix-domain addresses require the unix:// prefix", async () => {
+      const path = NetAddress.unixPathAddress("127.0.0.1:80")
+      for (const schema of [Schema.UnixPathAddress, Schema.SocketAddress]) {
+        for (const codec of [Schema.toCodecJson(schema), Schema.toCodecStringTree(schema)]) {
+          const asserts = new TestSchema.Asserts(codec)
+          await asserts.decoding().succeed("unix://127.0.0.1:80", path)
+          await asserts.encoding().succeed(path, "unix://127.0.0.1:80")
+          await asserts.verifyRoundTrip()
+        }
+      }
+      assert.throws(
+        () => Schema.decodeUnknownSync(Schema.toCodecJson(Schema.UnixPathAddress))("/tmp/a.sock"),
+        "unix://"
+      )
+      assert.throws(() => Schema.decodeUnknownSync(Schema.toCodecJson(Schema.SocketAddress))("/tmp/a.sock"))
+      assert.throws(() => Schema.decodeUnknownSync(Schema.toCodecJson(Schema.SocketAddress))("localhost:80"))
+    })
+
+    it("refined address arbitraries generate without discards", () => {
+      const schemas: ReadonlyArray<Schema.Codec<unknown>> = [
+        Schema.IpLoopbackAddress,
+        Schema.IpUnspecifiedAddress,
+        Schema.IpLinkLocalAddress,
+        Schema.IpMulticastAddress,
+        Schema.Ipv4BroadcastAddress,
+        Schema.Ipv4PrivateAddress,
+        Schema.Ipv6UniqueLocalAddress,
+        Schema.MacMulticastAddress,
+        Schema.MacUnicastAddress,
+        Schema.MacBroadcastAddress,
+        Schema.MacLocallyAdministeredAddress,
+        Schema.MacUniversallyAdministeredAddress
+      ]
+      for (const schema of schemas) {
+        new TestSchema.Asserts(schema).arbitrary().verifyGeneration({ runs: 100, maxDiscards: 0 })
+      }
+    })
   })
 
   it("BigDecimal", async () => {
