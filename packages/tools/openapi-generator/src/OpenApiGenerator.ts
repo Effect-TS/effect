@@ -157,6 +157,39 @@ export interface OpenApiGenerateOptions {
    * Callback to receive non-fatal generation warnings.
    */
   readonly onWarning?: ((warning: OpenApiGeneratorWarning) => void) | undefined
+  /**
+   * Decode `type: ["string", "integer"]` schemas with `format: "int64"` as
+   * bigints branded as `Int64`. Defaults to `false`.
+   *
+   * **Details**
+   *
+   * Matching schemas reference a shared generated `Int64` codec. It decodes
+   * base-10 strings across the full signed 64-bit range and safe integer
+   * numbers, rejects values outside
+   * `-9223372036854775808n..9223372036854775807n`, and always encodes back to
+   * a decimal string. Numbers beyond `Number.MAX_SAFE_INTEGER` are rejected
+   * instead of being rounded, so full-range values must be sent as strings.
+   *
+   * Constraints such as `minimum` or `enum` still validate the wire value
+   * before it is decoded. Schemas containing `Int64` drop their `default` and
+   * `examples` annotations, which hold wire values, and recursive components
+   * containing it also export an `<Name>Encoded` type. Both generated names
+   * get a numeric suffix when they would collide with another declaration.
+   *
+   * **Gotchas**
+   *
+   * A constrained schema is a partial codec: encoding always produces the
+   * decimal string, so constraints that reject that string also reject
+   * encoding. For example, with `enum: ["1", 2]` the wire value `2` decodes to
+   * `2n`, but `2n` encodes to `"2"`, which the enum does not allow. The same
+   * applies to numeric `const` values and to string constraints such as
+   * `pattern` or `maxLength` that the decimal spelling does not satisfy.
+   *
+   * Plain `type: "integer"` schemas are unchanged because JSON parsing has
+   * already rounded them. The `httpclient-type-only` format does not decode,
+   * so it keeps the `string | number` wire type.
+   */
+  readonly int64AsBigInt?: boolean | undefined
 }
 
 interface HttpApiMultipartSchemaRefs {
@@ -216,7 +249,8 @@ export const make = Effect.gen(function*() {
       const schemaOptions = {
         onEnter: options.onEnter,
         multipartSchemaRefs: multipart.refs,
-        includeSchemas: options.includeSchemas
+        includeSchemas: options.includeSchemas,
+        int64AsBigInt: options.int64AsBigInt === true && options.format !== "httpclient-type-only"
       }
       const generation = options.format === "httpapi"
         ? generator.generateHttpApi(source, multipart.definitions, schemaOptions)

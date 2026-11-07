@@ -83,7 +83,8 @@ const assertTypeOnlyIncludes = Effect.fnUntraced(function*(
 
 interface CompileOptions {
   readonly exactOptionalPropertyTypes?: boolean | undefined
-  readonly formats?: ReadonlyArray<"httpclient" | "httpclient-type-only"> | undefined
+  readonly int64AsBigInt?: boolean | undefined
+  readonly formats?: ReadonlyArray<OpenApiGenerator.OpenApiGeneratorFormat> | undefined
   readonly usage?: string | undefined
 }
 
@@ -95,21 +96,21 @@ const compileCases: Array<{ readonly spec: OpenAPISpec; readonly options: Compil
 
 const generateClients = ({ options, spec }: (typeof compileCases)[number]) => {
   const generate = (
-    format: "httpclient" | "httpclient-type-only",
+    format: OpenApiGenerator.OpenApiGeneratorFormat,
     layer: typeof OpenApiGenerator.layerTransformerSchema
   ) =>
     Effect.gen(function*() {
       const generator = yield* OpenApiGenerator.OpenApiGenerator
-      return yield* generator.generate(spec, { name: "TestClient", format })
+      return yield* generator.generate(spec, { name: "TestClient", format, int64AsBigInt: options.int64AsBigInt })
     }).pipe(Effect.provide(layer))
 
   const formats = options.formats ?? ["httpclient", "httpclient-type-only"]
   return Effect.all(formats.map((format) =>
     generate(
       format,
-      format === "httpclient"
-        ? OpenApiGenerator.layerTransformerSchema
-        : OpenApiGenerator.layerTransformerTs
+      format === "httpclient-type-only"
+        ? OpenApiGenerator.layerTransformerTs
+        : OpenApiGenerator.layerTransformerSchema
     ).pipe(Effect.map((client) => `${client}\n${options.usage ?? ""}`))
   ))
 }
@@ -174,7 +175,7 @@ const typeCheckCases = Effect.fnUntraced(
               skipLibCheck: true,
               strict: true,
               target: "ES2022",
-              types: [],
+              types: ["node"],
               verbatimModuleSyntax: true
             },
             files: caseIndexes.flatMap((caseIndex) => files[caseIndex])
@@ -3454,6 +3455,173 @@ export const __HttpApiMultipartFiles = Multipart.FilesSchema`,
           `HttpApiEndpoint.query("search", "/search", { payload: SearchRequestJson, success: HttpApiSchema.Empty(204) })`
         ], ["legacySearch", "LegacySearch"])
       ]))
+  })
+
+  describe("int64AsBigInt", () => {
+    const int64Spec: OpenAPISpec = {
+      openapi: "3.1.0",
+      info: { title: "Int64 API", version: "1.0.0" },
+      components: {
+        schemas: {
+          Value: {
+            type: "object",
+            properties: {
+              value: { type: ["string", "integer"], format: "int64" },
+              reversed: { type: ["integer", "string"], format: "int64" }
+            },
+            required: ["value", "reversed"]
+          }
+        },
+        securitySchemes: {}
+      },
+      security: [],
+      tags: [],
+      paths: {
+        "/value": {
+          get: {
+            operationId: "getValue",
+            parameters: [],
+            tags: ["Values"],
+            security: [],
+            responses: {
+              "200": {
+                description: "Success",
+                content: { "application/json": { schema: { $ref: "#/components/schemas/Value" } } }
+              }
+            }
+          }
+        }
+      }
+    } as unknown as OpenAPISpec
+
+    const generate = Effect.fnUntraced(function*(
+      format: "httpclient" | "httpclient-type-only",
+      int64AsBigInt?: boolean
+    ) {
+      const generator = yield* OpenApiGenerator.OpenApiGenerator
+      return yield* generator.generate(int64Spec, { name: "TestClient", format, int64AsBigInt })
+    })
+
+    it.effect("keeps string-or-integer int64 schemas unchanged by default", () =>
+      Effect.gen(function*() {
+        const result = yield* generate("httpclient")
+
+        assert.include(result, `"value": Schema.Union([Schema.String, Schema.Int]).annotate({ "format": "int64" })`)
+        assert.include(result, `"reversed": Schema.Union([Schema.Int, Schema.String]).annotate({ "format": "int64" })`)
+        assert.notInclude(result, "Int64")
+      }).pipe(Effect.provide(OpenApiGenerator.layerTransformerSchema)))
+
+    it.effect("references a shared Int64 schema for both type orders when enabled", () =>
+      Effect.gen(function*() {
+        const result = yield* generate("httpclient", true)
+
+        assert.include(result, "export type Value = { readonly \"value\": Int64, readonly \"reversed\": Int64 }")
+        assert.include(result, "export const Int64 = ")
+      }).pipe(Effect.provide(OpenApiGenerator.layerTransformerSchema)))
+
+    it.effect("keeps the wire type in type-only output when enabled", () =>
+      Effect.gen(function*() {
+        const result = yield* generate("httpclient-type-only", true)
+
+        assert.include(
+          result,
+          "export type Value = { readonly \"value\": string | number, readonly \"reversed\": number | string }"
+        )
+        assert.notInclude(result, "Int64")
+      }).pipe(Effect.provide(OpenApiGenerator.layerTransformerTs)))
+
+    itGeneratedClientsCompile("types enabled int64 fields as branded bigints", int64Spec, {
+      formats: ["httpclient"],
+      int64AsBigInt: true,
+      usage: `declare const client: TestClient
+export const value = client.getValue(undefined).pipe(Effect.map((value): bigint => value.value))
+export const fromBigInt: Int64 = Int64.make(9223372036854775807n)
+export const encoded: typeof Int64.Encoded = "9223372036854775807"
+// @ts-expect-error a plain bigint is not an Int64
+export const plain: Int64 = 1n
+`
+    })
+
+    const int64 = { type: ["string", "integer"], format: "int64" }
+    const int64ShapesSpec: OpenAPISpec = {
+      ...int64Spec,
+      components: {
+        schemas: {
+          Id: int64,
+          Node: {
+            type: "object",
+            properties: { id: int64, children: { type: "array", items: { $ref: "#/components/schemas/Node" } } },
+            required: ["id"]
+          },
+          Root: {
+            type: "object",
+            properties: { id: int64 },
+            required: ["id"],
+            default: { id: "1" },
+            examples: [{ id: "1" }]
+          },
+          // A cycle that core codegen only partly classifies as recursive when it is reached through `Leaf`.
+          Tree: {
+            type: "object",
+            properties: {
+              id: int64,
+              leaf: { $ref: "#/components/schemas/Leaf" },
+              branch: { $ref: "#/components/schemas/Branch" }
+            },
+            required: ["id"]
+          },
+          Branch: { type: "object", properties: { tree: { $ref: "#/components/schemas/Tree" } } },
+          Leaf: { type: "object", properties: { branch: { $ref: "#/components/schemas/Branch" } } },
+          // Normalized to the generated `Int64` and `NodeEncoded` identifiers.
+          int64: { type: "string" },
+          nodeEncoded: { type: "string" },
+          Value: {
+            type: "object",
+            properties: {
+              id: { $ref: "#/components/schemas/Id" },
+              node: { $ref: "#/components/schemas/Node" },
+              root: { $ref: "#/components/schemas/Root", description: "described root" },
+              min: { ...int64, minimum: 0 },
+              leaf: { $ref: "#/components/schemas/Leaf" },
+              label: { $ref: "#/components/schemas/int64" },
+              nodeLabel: { $ref: "#/components/schemas/nodeEncoded" }
+            },
+            required: ["id", "node", "root", "min", "leaf", "label", "nodeLabel"]
+          }
+        },
+        securitySchemes: {}
+      }
+    } as unknown as OpenAPISpec
+
+    it.effect("keeps annotations on references to schemas containing Int64", () =>
+      Effect.gen(function*() {
+        const result = yield* OpenApiGenerator.OpenApiGenerator.use((generator) =>
+          generator.generate(int64ShapesSpec, { name: "TestClient", format: "httpclient", int64AsBigInt: true })
+        )
+
+        assert.include(result, `"description": "described root"`)
+      }).pipe(Effect.provide(OpenApiGenerator.layerTransformerSchema)))
+
+    itGeneratedClientsCompile("types Int64 behind aliases, recursion, annotations, and open objects", int64ShapesSpec, {
+      formats: ["httpclient", "httpapi"],
+      int64AsBigInt: true,
+      usage: `declare const id: Root["id"]
+export const root: Root = { id }
+export const encodedRoot: typeof Root.Encoded = Schema.encodeSync(Root)(root)
+export const node: Node = { id, children: [{ id }] }
+export const encodedNode: typeof Node.Encoded = Schema.encodeSync(Node)(node)
+export const leaf: Leaf = { branch: { tree: { id, leaf: {} } } }
+export const encodedLeaf: typeof Leaf.Encoded = Schema.encodeSync(Leaf)(leaf)
+export const ids = (value: Value): ReadonlyArray<bigint | undefined> => [
+  value.id,
+  value.node.id,
+  value.root.id,
+  value.min,
+  value.leaf.branch?.tree?.id
+]
+export const labels = (value: Value): ReadonlyArray<string> => [value.label, value.nodeLabel]
+`
+    })
   })
 
   describe("regression", () => {
