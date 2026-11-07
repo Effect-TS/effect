@@ -239,15 +239,6 @@ export function mapAttempt<A, B>(self: Attempt<A>, f: (sample: Sample<A>) => Sam
 }
 
 /** @internal */
-export function sampleFromShrink<A>(value: A, shrink: (value: A) => ReadonlyArray<A>): Sample<A> {
-  const values = shrink(value)
-  return makeSample(
-    value,
-    values.length === 0 ? undefined : Effect.map(pullFromArray(values), (value) => sampleFromShrink(value, shrink))
-  )
-}
-
-/** @internal */
 export function sampleFromValidatedShrink<A>(
   value: A,
   shrink: (value: A) => ReadonlyArray<A>,

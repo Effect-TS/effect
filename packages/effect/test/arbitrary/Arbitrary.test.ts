@@ -1089,6 +1089,88 @@ describe("Arbitrary", () => {
         }
       }))
 
+    describe("deletes failure-irrelevant String units anywhere", () => {
+      const cases: ReadonlyArray<{
+        readonly name: string
+        readonly schema: Schema.Codec<string>
+        readonly property: (value: string) => boolean
+        readonly expected: string | RegExp
+      }> = [
+        { name: "two spaces", schema: Schema.String, property: (s) => s.split(" ").length < 3, expected: "  " },
+        {
+          name: "a leading digit and a trailing lowercase letter within a minimum length",
+          schema: Schema.String.check(Schema.isMinLength(3)),
+          property: (s) => !/^\d.*[a-z]$/.test(s),
+          expected: "0\0a"
+        },
+        {
+          name: "two x within a pattern",
+          schema: Schema.String.check(Schema.isPattern(/^[a-z]*$/)),
+          property: (s) => s.split("x").length < 3,
+          expected: "xx"
+        },
+        {
+          name: "a surrogate pair",
+          schema: Schema.String.check(Schema.isMinCodePoints(1)),
+          property: (s) => !/[\u{10000}-\u{10FFFF}]/u.test(s),
+          expected: /^[\u{10000}-\u{10FFFF}]$/u
+        }
+      ]
+      for (const { expected, name, property, schema } of cases) {
+        it.effect(name, () =>
+          Effect.gen(function*() {
+            const evaluated: Array<string> = []
+            const result = yield* Arbitrary.checkEffect(Arbitrary.schema(schema), (value) => {
+              evaluated.push(value)
+              return property(value)
+            }, { seed: `string-deletion:${name}`, size: 100 })
+
+            assert.strictEqual(result._tag, "Falsified")
+            assert.isTrue(evaluated.every(Schema.is(schema)))
+            if (result._tag === "Falsified") {
+              if (typeof expected === "string") {
+                assert.isFalse(result.initialInput.startsWith(expected))
+                assert.strictEqual(result.shrunkInput, expected)
+              } else {
+                assert.notMatch(result.initialInput, expected)
+                assert.match(result.shrunkInput, expected)
+              }
+            }
+          }))
+      }
+    })
+
+    it.effect("keeps narrowing String deletions after suffix truncations", () =>
+      Effect.gen(function*() {
+        const result = yield* Arbitrary.checkEffect(
+          Arbitrary.schema(Schema.String),
+          (s) => s[Math.floor(s.length / 2)] !== "a",
+          { runs: 1, seed: 135, size: 100, maxShrinks: 150 }
+        )
+
+        assert.strictEqual(result._tag, "Falsified")
+        if (result._tag === "Falsified") {
+          assert.notStrictEqual(result.initialInput, "a")
+          assert.strictEqual(result.shrunkInput, "a")
+        }
+      }))
+
+    it.effect("simplifies whole code points within code point bounds", () =>
+      Effect.gen(function*() {
+        const schema = Schema.String.check(Schema.isMinLength(2), Schema.isMaxCodePoints(1))
+        const result = yield* Arbitrary.checkEffect(Arbitrary.schema(schema), () => false, {
+          runs: 1,
+          seed: "astral-regression",
+          size: 100
+        })
+
+        assert.strictEqual(result._tag, "Falsified")
+        if (result._tag === "Falsified") {
+          assert.notStrictEqual(result.initialInput, "\u{10000}")
+          assert.strictEqual(result.shrunkInput, "\u{10000}")
+        }
+      }))
+
     it.effect("structurally shrinks regular-expression repetitions", () =>
       Effect.gen(function*() {
         const schema = Schema.String.check(Schema.isPattern(/^a*b$/), Schema.isMinLength(1), Schema.isMaxLength(8))
