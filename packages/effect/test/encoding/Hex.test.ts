@@ -41,15 +41,20 @@ describeWithFallback("Hex", () => {
   })
 
   it("round trips every byte value", () => {
-    const bytes = Uint8Array.from({ length: 256 }, (_, i) => i)
-    const encoded = Hex.encode(bytes)
-    assert.strictEqual(encoded, Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join(""))
-    assert.deepStrictEqual(Result.getOrThrow(Hex.decode(encoded)), bytes)
-    assert.deepStrictEqual(Result.getOrThrow(Hex.decode(encoded.toUpperCase())), bytes)
+    // 600 bytes encode to more than 1,024 characters, the long-input decoder cutoff
+    for (const length of [256, 600]) {
+      const bytes = Uint8Array.from({ length }, (_, i) => i & 0xff)
+      const encoded = Hex.encode(bytes)
+      assert.strictEqual(encoded, Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join(""))
+      assert.deepStrictEqual(Result.getOrThrow(Hex.decode(encoded)), bytes)
+      assert.deepStrictEqual(Result.getOrThrow(Hex.decode(encoded.toUpperCase())), bytes)
+    }
   })
 
   it("reports the decoding failure", () => {
     const long = "00".repeat(64)
+    // Past the long-input decoder cutoff
+    const longer = "00".repeat(600)
     const vectors: ReadonlyArray<readonly [string, string]> = [
       ["abc", "Length must be a multiple of 2, but is 3"],
       [`${long}0`, "Length must be a multiple of 2, but is 129"],
@@ -57,7 +62,9 @@ describeWithFallback("Hex", () => {
       ["\u00e9", "Invalid input"],
       ["0g", "Invalid input"],
       ["0 ", "Invalid input"],
-      [`${long}0g`, "Invalid input"]
+      [`${long}0g`, "Invalid input"],
+      [`${longer}0g`, "Invalid input"],
+      [`${longer}\u00e90`, "Length must be a multiple of 2, but is 1203"]
     ]
     for (const [input, message] of vectors) {
       const results: ReadonlyArray<Result.Result<unknown, EncodingError.EncodingError>> = [
