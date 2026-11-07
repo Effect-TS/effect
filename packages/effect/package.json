@@ -55,6 +55,7 @@
     "./sql": "./src/sql/index.ts",
     "./workflow": "./src/workflow/index.ts",
     "./workers": "./src/workers/index.ts",
+    "./virtual-file-system": "./src/virtual-file-system/index.ts",
     "./*": "./src/*.ts",
     "./ai/internal/*": null,
     "./cli/internal/*": null,
@@ -69,6 +70,7 @@
     "./observability/internal/*": null,
     "./rpc/internal/*": null,
     "./workflow/internal/*": null,
+    "./virtual-file-system/internal/*": null,
     "./internal/*": null,
     "./index": null,
     "./*/index": null
@@ -113,6 +115,7 @@
       "./sql": "./dist/sql/index.js",
       "./workflow": "./dist/workflow/index.js",
       "./workers": "./dist/workers/index.js",
+      "./virtual-file-system": "./dist/virtual-file-system/index.js",
       "./*": "./dist/*.js",
       "./internal/*": null,
       "./cli/internal/*": null,
@@ -128,6 +131,7 @@
       "./observability/internal/*": null,
       "./rpc/internal/*": null,
       "./workflow/internal/*": null,
+      "./virtual-file-system/internal/*": null,
       "./index": null,
       "./*/index": null
     }
