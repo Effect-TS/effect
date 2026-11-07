@@ -183,11 +183,13 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any>(
     Effect.withFiber((parent) => {
       const client = clients.get(clientId)
       if (!client) return Effect.void
-      for (const fiber of client.fibers.values()) {
+      clients.delete(clientId)
+      const fibers = Array.from(client.fibers.values())
+      for (const fiber of fibers) {
         fiber.interruptUnsafe(parent.id)
       }
-      clients.delete(clientId)
-      return Effect.void
+      // wait for the interrupted requests to run their finalizers
+      return Effect.asVoid(Fiber.awaitAll(fibers))
     })
 
   const write: RpcServer<Rpcs>["write"] = (clientId, message, opts) =>
@@ -643,15 +645,15 @@ const applyMiddleware = <A, E, R>(
  * span unless tracing is disabled.
  *
  * `onDisconnect` is called for each disconnect reported by the `Protocol`,
- * after the server has requested interruption of that client's in-flight
- * requests. It does not wait for those requests to finish. It is not called
- * when a client ends its input normally, or for clients still connected when
- * the server stops.
+ * after that client's in-flight requests have been interrupted and have
+ * finished. It is not called when a client ends its input normally, or for
+ * clients still connected when the server stops. Once the callback completes,
+ * the server calls `Protocol.end` for the disconnected client.
  *
- * Each callback runs in its own fiber, so a slow callback does not delay
- * cleanup for other clients, and callbacks may run concurrently. Pending
- * callbacks are interrupted when the server stops. Failures are ignored and
- * logged at `References.UnhandledLogLevel`.
+ * Each disconnect is handled in its own fiber, so a slow callback or request
+ * finalizer does not delay cleanup for other clients, and callbacks may run
+ * concurrently. Pending callbacks are interrupted when the server stops.
+ * Failures are ignored and logged at `References.UnhandledLogLevel`.
  *
  * **Gotchas**
  *
@@ -758,16 +760,21 @@ export const make: <Rpcs extends Rpc.Any>(
 
   // handle disconnects
   const onDisconnect = options?.onDisconnect
-  const handleDisconnect = onDisconnect
-    ? (clientId: number) =>
-      Effect.andThen(
-        server.disconnect(clientId),
-        Effect.ignoreCause(Effect.suspend(() => onDisconnect(clientId)), {
-          log: "Unhandled",
-          message: "RpcServer onDisconnect hook failed"
-        }).pipe(Effect.forkIn(scope))
-      )
-    : server.disconnect
+  // The client's output ends only after its interrupted requests and the
+  // onDisconnect hook have finished.
+  const handleDisconnect = (clientId: number) =>
+    server.disconnect(clientId).pipe(
+      onDisconnect
+        ? Effect.andThen(
+          Effect.ignoreCause(Effect.suspend(() => onDisconnect(clientId)), {
+            log: "Unhandled",
+            message: "RpcServer onDisconnect hook failed"
+          })
+        )
+        : identity,
+      Effect.andThen(() => end(clientId)),
+      Effect.forkIn(scope, { startImmediately: true })
+    )
   yield* Effect.forkChild(
     Effect.whileLoop({
       while: constTrue,
@@ -1578,11 +1585,29 @@ export const toHttpEffectWebsocket: <Rpcs extends Rpc.Any>(
  * Creates a server `Protocol` that reads RPC messages from `Stdio.stdin` and
  * writes encoded responses to `Stdio.stdout`.
  *
+ * **Details**
+ *
+ * The protocol serves a single client with id `0`. When stdout ends, the
+ * fiber that created the protocol is interrupted.
+ *
+ * `onStdinEnd` controls what happens when stdin ends. With `"drain"`, the
+ * default, in-flight requests run to completion and their responses are
+ * written before stdout ends. With `"interrupt"`, the protocol reports a
+ * disconnect for client `0`, so in-flight requests are interrupted without
+ * responses, the server's `onDisconnect` callback runs, and stdout then ends.
+ *
+ * **Gotchas**
+ *
+ * With `"drain"`, a request that never completes, such as a long-running
+ * tool call, keeps stdout open and the process alive after stdin ends.
+ *
  * @stability unstable
  * @category protocols
  * @since 4.0.0
  */
-export const makeProtocolStdio = Effect.gen(function*() {
+export const makeProtocolStdio = Effect.fnUntraced(function*(options?: {
+  readonly onStdinEnd?: "drain" | "interrupt" | undefined
+}) {
   const stdio = yield* Stdio
   const fiber = Fiber.getCurrent()!
   const serialization = yield* RpcSerialization.RpcSerialization
@@ -1590,6 +1615,8 @@ export const makeProtocolStdio = Effect.gen(function*() {
   return yield* Protocol.make(Effect.fnUntraced(function*(writeRequest) {
     const queue = yield* Queue.bounded<Uint8Array | string, Cause.Done>(8)
     const parser = serialization.makeUnsafe()
+    const disconnects = yield* Queue.make<number>()
+    const interruptOnStdinEnd = options?.onStdinEnd === "interrupt"
 
     yield* stdio.stdin.pipe(
       Stream.runForEach((data) => {
@@ -1605,7 +1632,9 @@ export const makeProtocolStdio = Effect.gen(function*() {
       Effect.sandbox,
       Effect.tapError(Effect.logError),
       Effect.retry(Schedule.spaced(500)),
-      Effect.andThen(() => writeRequest(0, constEof)),
+      // In "interrupt" mode the server interrupts in-flight requests for a
+      // disconnect, then ends stdout.
+      Effect.andThen(() => interruptOnStdinEnd ? Queue.offer(disconnects, 0) : writeRequest(0, constEof)),
       Effect.forkScoped
     )
 
@@ -1617,7 +1646,7 @@ export const makeProtocolStdio = Effect.gen(function*() {
     )
 
     return {
-      disconnects: yield* Queue.make<number>(),
+      disconnects,
       send(_clientId, response) {
         const responseEncoded = parser.encode(response)
         if (responseEncoded === undefined) {
@@ -1643,23 +1672,23 @@ export const makeProtocolStdio = Effect.gen(function*() {
  * Provides a server `Protocol` that reads RPC messages from `Stdio.stdin` and
  * writes encoded responses to `Stdio.stdout`.
  *
- * **Gotchas**
+ * **Details**
  *
- * This layer is a module-level constant, and layers are memoized by reference
- * within one layer graph. Providing it to several servers in the same graph
- * yields one shared `Protocol` bound to the first `Stdio` that was built. To
- * run more than one stdio server in a graph, wrap it in `Layer.fresh` or build
- * a separate `Layer.effect(Protocol, makeProtocolStdio)` per server.
+ * `onStdinEnd` selects whether in-flight requests are drained (the default)
+ * or interrupted when stdin ends. See {@link makeProtocolStdio} for the
+ * shutdown sequence of each mode.
  *
  * @stability unstable
  * @category layers
  * @since 4.0.0
  */
-export const layerProtocolStdio: Layer.Layer<
+export const layerProtocolStdio = (options?: {
+  readonly onStdinEnd?: "drain" | "interrupt" | undefined
+}): Layer.Layer<
   Protocol,
   never,
   RpcSerialization.RpcSerialization | Stdio
-> = Layer.effect(Protocol, makeProtocolStdio)
+> => Layer.effect(Protocol, makeProtocolStdio(options))
 
 /**
  * Creates a server `Protocol` backed by `WorkerRunnerPlatform`, routing worker

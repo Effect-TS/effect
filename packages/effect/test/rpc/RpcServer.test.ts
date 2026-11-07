@@ -344,7 +344,7 @@ describe("RpcServer", () => {
               Effect.andThen(Deferred.await(finishRequest)),
               Effect.as("finished")
             ))),
-          Layer.provide(RpcServer.layerProtocolStdio),
+          Layer.provide(RpcServer.layerProtocolStdio()),
           Layer.provide(RpcSerialization.layerNdjson),
           Layer.provide(Stdio.layerTest({
             stdin: Stream.make(
@@ -364,6 +364,82 @@ describe("RpcServer", () => {
       ])
     }))
 
+  it.effect("should interrupt active requests and disconnect when stdin ends with onStdinEnd interrupt", () =>
+    Effect.gen(function*() {
+      const started = yield* Deferred.make<void>()
+      const helloWritten = yield* Deferred.make<void>()
+      const disconnected: Array<number> = []
+      const output: Array<string> = []
+      let interrupted = false
+      const group = RpcGroup.make(
+        Rpc.make("hello", { payload: Schema.Struct({}), success: Schema.String }),
+        Rpc.make("wait", { payload: Schema.Struct({}), success: Schema.String })
+      )
+      const server = yield* Layer.launch(
+        RpcServer.layer(group, { onDisconnect: (clientId) => Effect.sync(() => disconnected.push(clientId)) }).pipe(
+          Layer.provide(group.toLayer({
+            hello: () => Effect.succeed("world"),
+            wait: () =>
+              Deferred.succeed(started, undefined).pipe(
+                Effect.andThen(Effect.never),
+                Effect.onInterrupt(() =>
+                  Effect.sync(() => {
+                    interrupted = true
+                  })
+                )
+              )
+          })),
+          Layer.provide(RpcServer.layerProtocolStdio({ onStdinEnd: "interrupt" })),
+          Layer.provide(RpcSerialization.layerNdjson),
+          Layer.provide(Stdio.layerTest({
+            stdin: Stream.make(
+              new TextEncoder().encode(
+                `{"_tag":"Request","id":1,"tag":"hello","payload":{},"headers":[]}\n` +
+                  `{"_tag":"Request","id":2,"tag":"wait","payload":{},"headers":[]}\n`
+              )
+            ).pipe(Stream.concat(
+              Stream.fromEffect(Effect.andThen(Deferred.await(started), Deferred.await(helloWritten))).pipe(
+                Stream.drain
+              )
+            )),
+            stdout: () =>
+              Sink.forEach((data) =>
+                Effect.sync(() => output.push(String(data))).pipe(
+                  Effect.andThen(Deferred.succeed(helloWritten, undefined))
+                )
+              )
+          }))
+        )
+      ).pipe(Effect.forkScoped)
+      yield* Fiber.await(server)
+      assert.isTrue(interrupted)
+      assert.deepStrictEqual(disconnected, [0])
+      assert.deepStrictEqual(output.join("").trim().split("\n").map((line) => JSON.parse(line)), [
+        { _tag: "Exit", requestId: 1, exit: { _tag: "Success", value: "world" } }
+      ])
+    }))
+
+  it.effect("should disconnect and shut down when stdin ends idle with onStdinEnd interrupt", () =>
+    Effect.gen(function*() {
+      const disconnected: Array<number> = []
+      const output: Array<string> = []
+      const server = yield* Layer.launch(
+        RpcServer.layer(RpcGroup.make(), {
+          onDisconnect: (clientId) => Effect.sync(() => disconnected.push(clientId))
+        }).pipe(
+          Layer.provide(RpcServer.layerProtocolStdio({ onStdinEnd: "interrupt" })),
+          Layer.provide(RpcSerialization.layerNdjson),
+          Layer.provide(Stdio.layerTest({
+            stdin: Stream.empty,
+            stdout: () => Sink.forEach((data) => Effect.sync(() => output.push(String(data))))
+          }))
+        )
+      ).pipe(Effect.forkScoped)
+      yield* Fiber.await(server)
+      assert.deepStrictEqual(disconnected, [0])
+      assert.deepStrictEqual(output, [])
+    }))
+
   it.effect("should shut down when stdin ends after the STDIO response is written", () =>
     Effect.gen(function*() {
       const responseWritten = yield* Deferred.make<void>()
@@ -373,7 +449,7 @@ describe("RpcServer", () => {
       const server = yield* Layer.launch(
         RpcServer.layer(group).pipe(
           Layer.provide(group.toLayerHandler("hello", () => Effect.succeed("world"))),
-          Layer.provide(RpcServer.layerProtocolStdio),
+          Layer.provide(RpcServer.layerProtocolStdio()),
           Layer.provide(RpcSerialization.layerNdjson),
           Layer.provide(Stdio.layerTest({
             stdin: Stream.make(
@@ -404,7 +480,7 @@ describe("RpcServer", () => {
       const output: Array<string> = []
       const server = yield* Layer.launch(
         RpcServer.layer(RpcGroup.make()).pipe(
-          Layer.provide(RpcServer.layerProtocolStdio),
+          Layer.provide(RpcServer.layerProtocolStdio()),
           Layer.provide(RpcSerialization.layerNdjson),
           Layer.provide(Stdio.layerTest({
             stdin: Stream.make(new TextEncoder().encode(`{"_tag":"Ping"}\n`)),
@@ -649,7 +725,7 @@ describe("RpcServer", () => {
             ),
           ping: () => Effect.succeed("pong")
         })),
-        Layer.provide(RpcServer.layerProtocolStdio),
+        Layer.provide(RpcServer.layerProtocolStdio()),
         Layer.provide(RpcSerialization.layerNdJsonRpc()),
         Layer.provide(Stdio.layerTest({
           stdin: Stream.make(
@@ -712,7 +788,7 @@ describe("RpcServer", () => {
           )
       })
       yield* Effect.gen(function*() {
-        const protocol = yield* RpcServer.makeProtocolStdio
+        const protocol = yield* RpcServer.makeProtocolStdio()
         yield* Deferred.succeed(protocolReady, protocol)
         return yield* protocol.run(() => Effect.void)
       }).pipe(
@@ -854,6 +930,62 @@ describe("RpcServer", () => {
 
       assert.deepStrictEqual([yield* Queue.take(interrupted), yield* Queue.take(interrupted)], [1, 2])
       assert.deepStrictEqual([yield* Queue.take(observed), yield* Queue.take(observed)], [1, 2])
+    }))
+
+  it.effect("ends a disconnected client after its request finalizers and onDisconnect have finished", () =>
+    Effect.gen(function*() {
+      const group = RpcGroup.make(Rpc.make("wait", { payload: Schema.Struct({}) }))
+      const events: Array<string> = []
+      const started = yield* Deferred.make<void>()
+      const finalizerStarted = yield* Deferred.make<void>()
+      const releaseFinalizer = yield* Deferred.make<void>()
+      const ended = yield* Deferred.make<number>()
+      const disconnects = yield* Queue.unbounded<number>()
+      let writeRequest!: (clientId: number, message: RpcMessage.FromClientEncoded) => Effect.Effect<void>
+      const protocol = yield* RpcServer.Protocol.make((writeRequest_) => {
+        writeRequest = writeRequest_
+        return Effect.succeed({
+          disconnects,
+          send: () => Effect.void,
+          end: (clientId) =>
+            Effect.sync(() => events.push("end")).pipe(Effect.andThen(Deferred.succeed(ended, clientId))),
+          clientIds: Effect.succeed(new Set([1])),
+          initialMessage: Effect.succeedNone,
+          supportsAck: false,
+          supportsTransferables: false,
+          supportsSpanPropagation: false,
+          supportsNotifications: false,
+          codecFor: RpcSerialization.json.codecFor
+        })
+      })
+      yield* RpcServer.make(group, {
+        onDisconnect: () => Effect.sync(() => events.push("onDisconnect"))
+      }).pipe(
+        Effect.provideService(RpcServer.Protocol, protocol),
+        Effect.provide(group.toLayer({
+          wait: () =>
+            Deferred.succeed(started, undefined).pipe(
+              Effect.andThen(Effect.never),
+              Effect.onInterrupt(() =>
+                Deferred.succeed(finalizerStarted, undefined).pipe(
+                  Effect.andThen(Deferred.await(releaseFinalizer)),
+                  Effect.andThen(Effect.sync(() => events.push("finalizer")))
+                )
+              )
+            )
+        })),
+        Effect.forkScoped
+      )
+
+      yield* writeRequest(1, { _tag: "Request", id: "1", tag: "wait", payload: {}, headers: [] })
+      yield* Deferred.await(started)
+      yield* Queue.offer(disconnects, 1)
+      yield* Deferred.await(finalizerStarted)
+      yield* Effect.yieldNow
+      assert.deepStrictEqual(events, [])
+      yield* Deferred.succeed(releaseFinalizer, undefined)
+      assert.strictEqual(yield* Deferred.await(ended), 1)
+      assert.deepStrictEqual(events, ["finalizer", "onDisconnect", "end"])
     }))
 
   it.effect("applies backpressure to framed HTTP responses by default", () =>
