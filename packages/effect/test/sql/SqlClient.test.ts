@@ -344,6 +344,47 @@ describe("SqlClient", () => {
       ])
     }))
 
+  it.effect("interrupts a nested transaction waiting for the savepoint, and rolls back the one holding it", () =>
+    Effect.gen(function*() {
+      const entered = yield* Deferred.make<void>()
+      const interrupted = yield* Deferred.make<void>()
+      const { calls, record, sql } = yield* makeClient()
+
+      yield* sql.withTransaction(Effect.gen(function*() {
+        const holder = yield* Effect.forkChild(sql.withTransaction(
+          Effect.andThen(Deferred.succeed(entered, undefined), Effect.never)
+        ))
+        yield* Deferred.await(entered)
+
+        const queued = yield* Effect.forkChild(sql.withTransaction(record("queued body")), {
+          startImmediately: true
+        })
+        const interrupting = yield* Effect.forkChild(
+          Effect.andThen(Fiber.interrupt(queued), Deferred.succeed(interrupted, undefined))
+        )
+        yield* Effect.yieldNow
+        const interruptedWhileWaiting = yield* Deferred.isDone(interrupted)
+
+        // Interrupt the holder before asserting, so the regression fails rather than hanging.
+        yield* Fiber.interrupt(holder)
+        yield* Fiber.join(interrupting)
+        assert.isTrue(interruptedWhileWaiting, "interruption must complete while the savepoint is still held")
+
+        // Neither interrupted transaction may keep the savepoint permit.
+        yield* sql.withTransaction(record("reused"))
+      }))
+
+      assert.deepStrictEqual(calls, [
+        "BEGIN",
+        "SAVEPOINT effect_sql_1",
+        "ROLLBACK TO SAVEPOINT effect_sql_1",
+        "SAVEPOINT effect_sql_1",
+        "reused",
+        "COMMIT",
+        "release"
+      ])
+    }))
+
   describe("makeWithTransaction", () => {
     it.effect("recovers a failed commit with catchTag after successful cleanup", () =>
       Effect.gen(function*() {
