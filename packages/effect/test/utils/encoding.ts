@@ -9,10 +9,11 @@ const natives = [
 ] as const
 
 // Registers `suite` twice: once as is, and once with the native methods
-// removed, so the fallbacks are covered on runtimes that ship them.
+// removed, so the fallbacks are covered on runtimes that ship them. The copies
+// run sequentially, since the removal is global and the tests run concurrently.
 export const describeWithFallback = (name: string, suite: () => void): void => {
-  describe(name, suite)
-  describe(`${name} without native methods`, () => {
+  describe(name, { concurrent: false }, suite)
+  describe(`${name} without native methods`, { concurrent: false }, () => {
     const descriptors = natives.map(([target, key]) => Object.getOwnPropertyDescriptor(target, key))
     beforeAll(() => {
       for (const [target, key] of natives) Reflect.deleteProperty(target, key)
