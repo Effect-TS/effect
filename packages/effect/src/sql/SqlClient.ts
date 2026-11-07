@@ -573,7 +573,7 @@ const transactionEndedError = (operation: string) =>
  *
  * **When to use**
  *
- * Use in a driver that reads its transaction service directly instead of going
+ * Use when a driver reads its transaction service directly instead of going
  * through `SqlClient`, so a fiber that outlives its transaction fails instead
  * of using the released connection.
  *
