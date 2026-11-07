@@ -431,6 +431,9 @@ responses.
 - **[Requesting client input from MCP toolkit handlers](./ai-docs/src/71_ai/42_mcp-roundtrips.ts)**:
   Keep a tool's success schema while returning `InputRequired` for form input.
   Modern clients resume the operation; legacy clients answer a reverse request.
+- **[Reporting progress from an MCP tool](./ai-docs/src/71_ai/45_mcp-progress.ts)**:
+  Report increasing progress for the calling request while processing a batch
+  of documents. The server stops progress when that request ends.
 
 ## Building distributed applications with cluster
 

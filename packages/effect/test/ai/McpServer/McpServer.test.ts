@@ -2951,7 +2951,6 @@ describe("McpServer", () => {
           const events = yield* PubSub.unbounded<McpProtocolInternal.CanonicalServerNotification>()
           const acknowledgmentStarted = yield* Deferred.make<void>()
           const releaseWrite = yield* Deferred.make<void>()
-          const overflowed = yield* Deferred.make<void>()
           const subscriptionReleased = yield* Deferred.make<void>()
           const sent = yield* Queue.unbounded<"acknowledged" | "cancelled">()
           const handlers = McpProtocol2026.makeHandlers(core, undefined, {
@@ -2967,7 +2966,6 @@ describe("McpServer", () => {
                   Effect.asVoid
                 )
                 : Effect.never,
-            markSubscriptionCancelled: () => Deferred.succeed(overflowed, undefined).pipe(Effect.asVoid),
             terminateSubscription: () =>
               (blockedWrite === "cancellation" ? Deferred.await(releaseWrite) : Effect.void).pipe(
                 Effect.andThen(Queue.offer(sent, "cancelled")),
@@ -2995,7 +2993,7 @@ describe("McpServer", () => {
             })
             yield* Effect.yieldNow
           }
-          yield* Deferred.await(overflowed)
+          yield* Deferred.await(subscriptionReleased)
           assert.isTrue(yield* Deferred.isDone(subscriptionReleased))
           yield* Deferred.succeed(releaseWrite, undefined)
 
@@ -3517,6 +3515,9 @@ describe("McpServer", () => {
         }
         assert.strictEqual(cancellation.method, "notifications/cancelled")
         assert.strictEqual(cancellation.params.requestId, "slow-subscription")
+        assert.deepStrictEqual(cancellation.params._meta, {
+          "io.modelcontextprotocol/subscriptionId": "slow-subscription"
+        })
 
         yield* write({
           jsonrpc: "2.0",
@@ -3524,6 +3525,10 @@ describe("McpServer", () => {
           method: "tools/list",
           params: { _meta: metadata }
         })
+        const completion = yield* read()
+        assert.strictEqual(completion.id, "slow-subscription")
+        assert.strictEqual(completion.result.resultType, "complete")
+        assert.strictEqual(completion.result._meta["io.modelcontextprotocol/subscriptionId"], "slow-subscription")
         const tools = yield* read()
         assert.strictEqual(tools.id, 1)
         assert.isArray(tools.result.tools)
