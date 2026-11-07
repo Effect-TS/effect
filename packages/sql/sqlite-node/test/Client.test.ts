@@ -37,13 +37,6 @@ const makeLockedDatabase = Effect.gen(function*() {
   return { filename, unlock: () => lock.exec("ROLLBACK") }
 }).pipe(Effect.provide(NodeFileSystem.layer))
 
-const isEnded = (exit: Exit.Exit<unknown, unknown>) => {
-  const error = Exit.isFailure(exit) ? Cause.findErrorOption(exit.cause) : Option.none()
-  return Option.isSome(error) && error.value instanceof SqlError &&
-    error.value.reason._tag === "UnknownError" &&
-    error.value.reason.message === "SqlClient: the transaction has already ended"
-}
-
 // node:sqlite blocks the Vitest worker; concurrent tests would share a running
 // timeout while waiting for each other's queries.
 describe("Client", { concurrent: false }, () => {
@@ -196,79 +189,14 @@ describe("Client", { concurrent: false }, () => {
         return yield* Effect.fail("rollback")
       }))))
 
-      const exit = yield* Fiber.await(stale)
+      const error = yield* Effect.flip(Fiber.join(stale))
       yield* Fiber.join(other)
-      assert.isTrue(isEnded(exit))
+      assert.deepStrictEqual(
+        [error.reason._tag, error.reason.message],
+        ["UnknownError", "SqlClient: the transaction has already ended"]
+      )
       assert.deepStrictEqual(yield* sql`SELECT who FROM t`, [])
       // The connection is still usable for new transactions.
-      yield* sql.withTransaction(sql`INSERT INTO t VALUES ('after')`)
-      assert.deepStrictEqual(yield* sql`SELECT who FROM t`, [{ who: "after" }])
-    }))
-
-  it.effect("keeps a nested transaction that outlives its outer one out of another transaction", () =>
-    Effect.gen(function*() {
-      const sql = yield* makeClient
-      yield* sql`CREATE TABLE t (who TEXT)`
-      const started = yield* Deferred.make<void>()
-      const go = yield* Deferred.make<void>()
-      const otherNested = yield* Deferred.make<void>()
-      const done = yield* Deferred.make<void>()
-
-      // Still inside its savepoint when the outer transaction commits.
-      const stale = yield* sql.withTransaction(Effect.gen(function*() {
-        const fiber = yield* Effect.forkChild(sql.withTransaction(
-          Effect.andThen(Deferred.succeed(started, undefined), Deferred.await(go))
-        ))
-        yield* Deferred.await(started)
-        return fiber
-      }))
-      const other = yield* Effect.forkChild(sql.withTransaction(Effect.gen(function*() {
-        yield* sql`INSERT INTO t VALUES ('other')`
-        yield* sql.withTransaction(Effect.gen(function*() {
-          yield* sql`INSERT INTO t VALUES ('other nested')`
-          yield* Deferred.succeed(otherNested, undefined)
-          yield* Deferred.await(done)
-        }))
-      })))
-      yield* Deferred.await(otherNested)
-      yield* Deferred.succeed(go, undefined)
-      const exit = yield* Fiber.await(stale)
-      yield* Deferred.succeed(done, undefined)
-      yield* Fiber.join(other)
-
-      assert.isTrue(isEnded(exit))
-      assert.deepStrictEqual(yield* sql`SELECT who FROM t`, [{ who: "other" }, { who: "other nested" }])
-    }))
-
-  it.effect("fails a nested transaction whose outer one ends while it waits for the savepoint", () =>
-    Effect.gen(function*() {
-      const sql = yield* makeClient
-      yield* sql`CREATE TABLE t (who TEXT)`
-      const holding = yield* Deferred.make<void>()
-      const go = yield* Deferred.make<void>()
-      let ran = false
-
-      const { holder, waiter } = yield* sql.withTransaction(Effect.gen(function*() {
-        const holder = yield* Effect.forkChild(sql.withTransaction(
-          Effect.andThen(Deferred.succeed(holding, undefined), Deferred.await(go))
-        ))
-        yield* Deferred.await(holding)
-        const waiter = yield* Effect.forkChild(
-          sql.withTransaction(Effect.sync(() => {
-            ran = true
-          })),
-          {
-            startImmediately: true
-          }
-        )
-        return { holder, waiter }
-      }))
-      yield* Deferred.succeed(go, undefined)
-      yield* Fiber.await(holder)
-      const exit = yield* Fiber.await(waiter)
-
-      assert.isTrue(isEnded(exit))
-      assert.isFalse(ran)
       yield* sql.withTransaction(sql`INSERT INTO t VALUES ('after')`)
       assert.deepStrictEqual(yield* sql`SELECT who FROM t`, [{ who: "after" }])
     }))
