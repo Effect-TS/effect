@@ -408,6 +408,7 @@ const decodeRecords = <IE, Done>(options: DecodeOptions | undefined): Channel.Ch
       // header would set the prototype instead of a property.
       let assignable = false
       let done: Pull.Pull<never, never, Done> | undefined
+      let failure: CsvError | undefined
 
       const toRecord = (row: Parsed): Decoded => {
         if (!useHeaders) return { value: row.cells, record: row.record }
@@ -435,6 +436,11 @@ const decodeRecords = <IE, Done>(options: DecodeOptions | undefined): Channel.Ch
         const out: Array<Decoded> = []
         try {
           run(rows)
+        } catch (error) {
+          if (!isCsvError(error)) throw error
+          failure = error
+        }
+        try {
           for (const row of rows) {
             if (useHeaders && headers === undefined) {
               if (new Set(row.cells).size !== row.cells.length) {
@@ -453,13 +459,16 @@ const decodeRecords = <IE, Done>(options: DecodeOptions | undefined): Channel.Ch
             }
           }
         } catch (error) {
-          if (isCsvError(error)) return Effect.fail(error)
-          throw error
+          if (!isCsvError(error)) throw error
+          // The failing row precedes the parser error in the input.
+          failure = error
         }
-        return Arr.isArrayNonEmpty(out) ? Effect.succeed(out) : pull
+        if (Arr.isArrayNonEmpty(out)) return Effect.succeed(out)
+        return failure !== undefined ? Effect.fail(failure) : pull
       }
 
       const pull: Pull.Pull<Arr.NonEmptyReadonlyArray<Decoded>, IE | CsvError, Done> = Effect.suspend(() => {
+        if (failure !== undefined) return Effect.fail(failure)
         if (done !== undefined) return done
         return Pull.matchEffect(upstream, {
           onSuccess: (texts) =>
