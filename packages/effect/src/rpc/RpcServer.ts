@@ -1578,6 +1578,11 @@ export const toHttpEffectWebsocket: <Rpcs extends Rpc.Any>(
  * Creates a server `Protocol` that reads RPC messages from `Stdio.stdin` and
  * writes encoded responses to `Stdio.stdout`.
  *
+ * **Details**
+ *
+ * Closing the protocol's scope drains buffered responses for up to one second
+ * before interrupting an unresponsive output stream.
+ *
  * @stability unstable
  * @category protocols
  * @since 4.0.0
@@ -1609,11 +1614,19 @@ export const makeProtocolStdio = Effect.gen(function*() {
       Effect.forkScoped
     )
 
-    yield* Stream.fromQueue(queue).pipe(
+    const writer = yield* Stream.fromQueue(queue).pipe(
       Stream.run(stdio.stdout()),
       Effect.retry(Schedule.spaced(500)),
       Effect.ensuring(Effect.forkDetach(Fiber.interrupt(fiber), { startImmediately: true })),
       Effect.forkScoped
+    )
+    // Runs before the writer fiber is interrupted, letting buffered responses drain.
+    yield* Effect.addFinalizer(() =>
+      Queue.end(queue).pipe(
+        Effect.andThen(Fiber.await(writer)),
+        Effect.timeoutOption("1 second"),
+        Effect.asVoid
+      )
     )
 
     return {

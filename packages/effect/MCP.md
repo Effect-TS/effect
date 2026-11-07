@@ -94,6 +94,76 @@ implementation. Finally, a logging layer is added with
 This is essential when using stdio, as any output to `stdout` would interfere with the protocol
 communication.
 
+## Progress and subscription lifetime
+
+Handlers send progress through `McpServer.notifications["notifications/progress"]`, using
+the calling request's `_meta.progressToken`. Values must be strictly increasing;
+floating-point progress is supported. A missing or different token, a repeated or decreasing
+value, and notifications after completion, cancellation, or disconnection are ignored.
+Each request has its own sequence, so a later request may reuse a completed request's token.
+These rules apply to every transport and follow the
+[2026 progress requirements](https://modelcontextprotocol.io/specification/2026-07-28/basic/patterns/progress#behavior-requirements)
+and their [2025 equivalent](https://modelcontextprotocol.io/specification/2025-11-25/basic/utilities/progress#behavior-requirements).
+
+When the server closes a modern subscription because its notification backlog overflows or
+the server scope closes, it sends `notifications/cancelled`, then a successful
+`subscriptions/listen` result. Both carry the subscription ID in `_meta`. The HTTP response
+stream then closes. Client cancellation still stops processing without a result.
+Server shutdown waits up to one second for active subscription deliveries; a disconnected
+or unresponsive peer cannot keep the server alive indefinitely. The stdio transport allows
+one further second to drain its buffered output before closing the writer. See MCP
+[cancellation](https://modelcontextprotocol.io/specification/2026-07-28/basic/patterns/cancellation)
+and [graceful subscription closure](https://modelcontextprotocol.io/specification/2026-07-28/basic/patterns/subscriptions#graceful-closure).
+
+## Custom transports
+
+Use `McpServer.layerSerialization` with a socket `RpcServer.Protocol` and
+`McpServer.layer` to serve MCP over a custom reliable byte stream:
+
+```typescript
+import { NodeSocketServer } from "@effect/platform-node"
+import { Layer } from "effect"
+import { McpProtocol, McpServer } from "effect/ai"
+import { RpcServer } from "effect/rpc"
+
+const protocols = [McpProtocol.v2026_07_28, McpProtocol.v2025_11_25] as const
+
+const Transport = RpcServer.layerProtocolSocketServer.pipe(
+  Layer.provide(McpServer.layerSerialization({ protocols })),
+  Layer.provide(NodeSocketServer.layer({ host: "127.0.0.1", port: 3001 }))
+)
+
+const Server = McpServer.layer({
+  name: "Local Workspace",
+  version: "1.0.0",
+  protocols
+}).pipe(Layer.provide(Transport))
+```
+
+The serializer uses newline-delimited JSON by default, matching stdio. Use
+`framing: "json"` only when the transport already delivers one complete JSON
+message per frame. `makeSerialization` provides the same serializer without a
+layer; a custom protocol must create a separate `makeUnsafe()` parser for each
+connection, forward decoded messages unchanged, and publish connection closes
+through `Protocol.disconnects`. This lets MCP release the disconnected client's
+session and pending reverse requests without waiting for another notification.
+
+The configured adapters determine batch support: `2026-07-28` and `2025-11-25`
+reject batches, while older adapters retain their own policies. Effect RPC
+control methods are not enabled. Malformed JSON receives a JSON-RPC parse error
+with `id: null`; a malformed newline-delimited frame does not discard adjacent
+valid frames. Unexpected internal failures do not expose Effect causes or
+defects on the wire. The default retained-frame limit is 16 MiB; configure
+`maxBufferSize` when the transport requires a different limit.
+
+These rules implement MCP's
+[custom transport requirements](https://modelcontextprotocol.io/specification/2026-07-28/basic/transports#custom-transports)
+and [JSON-RPC error responses](https://www.jsonrpc.org/specification#response_object).
+Use `layerHttp` for Streamable HTTP: it additionally implements MCP HTTP admission,
+headers and streaming rules. Its SSE responses include `X-Accel-Buffering: no`, as
+recommended by the
+[Streamable HTTP specification](https://modelcontextprotocol.io/specification/2026-07-28/basic/transports/streamable-http).
+
 ## Resources
 
 Resources in the MCP server represent files or data that can be accessed by an MCP client. Each
