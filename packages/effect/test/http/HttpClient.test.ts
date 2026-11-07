@@ -6,8 +6,10 @@ import {
   Deferred,
   Duration,
   Effect,
+  Equal,
   Exit,
   Fiber,
+  Hash,
   Layer,
   Option,
   Redacted,
@@ -665,6 +667,135 @@ Missing key
 
         strictEqual(error.message, "Transport error (GET http://test/path?token=REDACTED&sig=sig-visible)")
       }).pipe(Effect.provideService(UrlParams.CurrentRedactedNames, ["token"])))
+
+    it.effect("redacts query params using the redacted names active when the error is created", () =>
+      Effect.gen(function*() {
+        const request = HttpClientRequest.get("http://test/path?token=token-secret")
+        const error = yield* Effect.sync(() =>
+          new HttpClientError.HttpClientError({
+            reason: new HttpClientError.TransportError({ request })
+          })
+        ).pipe(Effect.provideService(UrlParams.CurrentRedactedNames, ["token"]))
+
+        strictEqual(error.message, "Transport error (GET http://test/path?token=REDACTED)")
+        assert.notInclude(JSON.stringify(error), "token-secret")
+      }))
+    it.live("keeps the redaction of an earlier execution when the request is reused", () =>
+      Effect.gen(function*() {
+        // Fails from a timer callback, outside the request fiber, like native
+        // transports do.
+        const client = HttpClient.make((request) =>
+          Effect.callback<never, HttpClientError.HttpClientError>((resume) => {
+            setTimeout(() =>
+              resume(Effect.fail(
+                new HttpClientError.HttpClientError({
+                  reason: new HttpClientError.TransportError({ request })
+                })
+              )), 0)
+          })
+        )
+        const request = HttpClientRequest.get("http://test/path?token=token-secret")
+        const message = "Transport error (GET http://test/path?token=REDACTED)"
+
+        const error = yield* client.execute(request).pipe(
+          Effect.flip,
+          Effect.provideService(UrlParams.CurrentRedactedNames, ["token"])
+        )
+        strictEqual(error.message, message)
+
+        yield* client.execute(request).pipe(Effect.flip)
+
+        strictEqual(error.message, message)
+        assert.notInclude(JSON.stringify(error), "token-secret")
+      }).pipe(Effect.provideService(HttpClient.TracerPropagationEnabled, false)))
+
+    it.live("adds the redacted names of the fiber that renders the error", () =>
+      Effect.gen(function*() {
+        const client = HttpClient.make((request) =>
+          Effect.callback<never, HttpClientError.HttpClientError>((resume) => {
+            setTimeout(() =>
+              resume(Effect.fail(
+                new HttpClientError.HttpClientError({
+                  reason: new HttpClientError.TransportError({ request })
+                })
+              )), 0)
+          })
+        )
+        const error = yield* client.get("http://test/path?token=token-secret&key=key-secret").pipe(
+          Effect.flip,
+          Effect.provideService(UrlParams.CurrentRedactedNames, ["token"])
+        )
+
+        const [message, json] = yield* Effect.sync(() => [error.message, JSON.stringify(error)]).pipe(
+          Effect.provideService(UrlParams.CurrentRedactedNames, ["key"])
+        )
+        strictEqual(message, "Transport error (GET http://test/path?token=REDACTED&key=REDACTED)")
+        assert.notInclude(json, "token-secret")
+        assert.notInclude(json, "key-secret")
+      }))
+
+    it.effect("compares errors equal when only the redacted names of their executions differ", () =>
+      Effect.gen(function*() {
+        const client = HttpClient.make((request) =>
+          Effect.fail(new HttpClientError.HttpClientError({ reason: new HttpClientError.TransportError({ request }) }))
+        )
+        const request = HttpClientRequest.get("http://test/path")
+
+        const a = yield* client.execute(request).pipe(
+          Effect.flip,
+          Effect.provideService(UrlParams.CurrentRedactedNames, ["foo"])
+        )
+        const b = yield* client.execute(request).pipe(
+          Effect.flip,
+          Effect.provideService(UrlParams.CurrentRedactedNames, ["bar"])
+        )
+
+        strictEqual(a.message, b.message)
+        assert.isTrue(Equal.equals(a, b))
+        strictEqual(Hash.hash(a), Hash.hash(b))
+      }).pipe(Effect.provideService(HttpClient.TracerPropagationEnabled, false)))
+
+    it.effect("compares errors equal when the names of the fiber that renders them redact them the same", () =>
+      Effect.gen(function*() {
+        const client = HttpClient.make((request) =>
+          Effect.fail(new HttpClientError.HttpClientError({ reason: new HttpClientError.TransportError({ request }) }))
+        )
+        const request = HttpClientRequest.get("http://test/path?token=token-secret")
+
+        const a = yield* client.execute(request).pipe(
+          Effect.flip,
+          Effect.provideService(UrlParams.CurrentRedactedNames, ["token"])
+        )
+        const b = yield* client.execute(request).pipe(
+          Effect.flip,
+          Effect.provideService(UrlParams.CurrentRedactedNames, [])
+        )
+
+        yield* Effect.sync(() => {
+          strictEqual(a.message, b.message)
+          assert.isTrue(Equal.equals(a, b))
+          strictEqual(Hash.hash(a), Hash.hash(b))
+        }).pipe(Effect.provideService(UrlParams.CurrentRedactedNames, ["token"]))
+      }).pipe(Effect.provideService(HttpClient.TracerPropagationEnabled, false)))
+
+    it.effect("keeps the redaction of an earlier execution when the runner returns the same response", () =>
+      Effect.gen(function*() {
+        const request = HttpClientRequest.get("http://test/path?token=token-secret&key=key-secret")
+        const response = HttpClientResponse.fromWeb(request, new Response("not-json"))
+        const client = HttpClient.make(() => Effect.succeed(response))
+
+        const first = yield* client.execute(request).pipe(
+          Effect.provideService(UrlParams.CurrentRedactedNames, ["token"])
+        )
+        yield* client.execute(request).pipe(
+          Effect.provideService(UrlParams.CurrentRedactedNames, ["key"])
+        )
+        const error = yield* Effect.flip(first.json)
+
+        strictEqual(error.reason._tag, "DecodeError")
+        assert.notInclude(error.message, "token-secret")
+        assert.notInclude(JSON.stringify(error), "token-secret")
+      }))
   })
 
   describe("followRedirects", () => {
