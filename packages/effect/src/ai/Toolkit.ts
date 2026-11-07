@@ -581,8 +581,10 @@ const Proto = {
           })),
           Stream.ensuring(Effect.flatMap(
             Effect.andThen(Fiber.interrupt(fiber), Fiber.await(fiber)),
-            (exit) =>
-              Exit.isFailure(exit) && Cause.hasDies(exit.cause) ? Effect.die(Cause.squash(exit.cause)) : Effect.void
+            (exit) => {
+              const dies = Exit.isFailure(exit) ? exit.cause.reasons.filter(Cause.isDieReason) : []
+              return dies.length > 0 ? Effect.failCause(Cause.fromReasons(dies)) : Effect.void
+            }
           ))
         ) satisfies Stream.Stream<Tool.HandlerResult<any>, any>
       })
