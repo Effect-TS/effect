@@ -179,6 +179,32 @@ describe("ScopedCache", () => {
           assert.strictEqual(cache.state._tag, "Closed")
           assert.isTrue(Exit.hasInterrupts(yield* Effect.exit(ScopedCache.get(cache, "test"))))
         }))
+
+      it.effect("pending gets interrupt when scope closes during lookup", () =>
+        Effect.gen(function*() {
+          const owner = yield* Scope.make()
+          const started = yield* Deferred.make<void>()
+          const proceed = yield* Deferred.make<void>()
+          const cache = yield* ScopedCache.make({
+            capacity: 10,
+            lookup: (_key: string) =>
+              Deferred.succeed(started, void 0).pipe(
+                Effect.andThen(Deferred.await(proceed)),
+                Effect.as(1)
+              )
+          }).pipe(Scope.provide(owner))
+
+          const get = yield* ScopedCache.get(cache, "key").pipe(Effect.forkChild({ startImmediately: true }))
+          const getOption = yield* ScopedCache.getOption(cache, "key").pipe(
+            Effect.forkChild({ startImmediately: true })
+          )
+          yield* Deferred.await(started)
+          yield* Scope.close(owner, Exit.void)
+          yield* Deferred.succeed(proceed, void 0)
+
+          assert.isTrue(Exit.hasInterrupts(yield* Fiber.await(get)))
+          assert.isTrue(Exit.hasInterrupts(yield* Fiber.await(getOption)))
+        }))
     })
 
     describe("makeWith", () => {

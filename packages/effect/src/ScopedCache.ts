@@ -317,6 +317,11 @@ export const get: {
                   Deferred.doneUnsafe(deferred, exit)
                   return Scope.close(scope, exit)
                 }
+                // Owner close has already released this entry's scope.
+                if (self.state._tag === "Closed") {
+                  Deferred.doneUnsafe(deferred, effect.exitInterrupt())
+                  return Scope.close(scope, effect.exitVoid)
+                }
                 try {
                   const ttl = self.timeToLive(exit, key)
                   if (Duration.isFinite(ttl)) {
