@@ -903,7 +903,7 @@ describe("RpcServer", () => {
     Effect.gen(function*() {
       const finalized = yield* Deferred.make<Exit.Exit<unknown, unknown>>()
       const Rpcs = RpcGroup.make(Rpc.make("wait", { payload: Schema.Struct({}) }))
-      const Server = RpcServer.layerHttp({ group: Rpcs, path: "/rpc", protocol: "http" }).pipe(
+      const Server = RpcServer.layerHttp({ group: Rpcs, path: "/rpc", protocol: "http", streamBufferSize: 1 }).pipe(
         Layer.provide(
           Rpcs.toLayer({ wait: () => Effect.onExit(Effect.never, (exit) => Deferred.succeed(finalized, exit)) })
         ),
@@ -911,16 +911,47 @@ describe("RpcServer", () => {
       )
       const { dispose, handler } = HttpRouter.toWebHandler(Server)
       yield* Effect.addFinalizer(() => Effect.promise(dispose))
+      // completes only with a full, successful body
       const post = (body: string) =>
-        Effect.promise(() => handler(new Request("http://test/rpc", { method: "POST", body })).then((r) => r.text()))
+        Effect.promise(() =>
+          handler(new Request("http://test/rpc", { method: "POST", body })).then((r) =>
+            r.ok && r.text().then(() => true, () => false)
+          )
+        )
       // the first request starts the server's message loop
       yield* post("")
 
-      const request = `{"_tag":"Request","id":1,"tag":"wait","payload":{},"headers":[]}\n`
-      yield* post(request + request)
+      const unknown = (id: number) => `{"_tag":"Request","id":${id},"tag":"unknown","payload":{},"headers":[]}\n`
+      const wait = `{"_tag":"Request","id":100,"tag":"wait","payload":{},"headers":[]}\n`
+      assert.isFalse(yield* post(unknown(1) + unknown(2) + wait + wait))
 
       const exit = yield* Deferred.await(finalized)
       assert.isTrue(Exit.isFailure(exit) && Cause.hasInterrupts(exit.cause))
+    }))
+
+  it.effect("fails a framed HTTP request with its dispatch defect", () =>
+    Effect.gen(function*() {
+      const defect = new Error("decode defect")
+      const Rpcs = RpcGroup.make(Rpc.make("boom", {
+        payload: Schema.Struct({ value: Schema.String.pipe(Schema.withDecodingDefaultKey(Effect.die(defect))) })
+      }))
+      const Server = RpcServer.layerHttp({ group: Rpcs, path: "/rpc", protocol: "http", streamBufferSize: 1 }).pipe(
+        Layer.provide(Rpcs.toLayer({ boom: () => Effect.void })),
+        Layer.provide(RpcSerialization.layerNdjson)
+      )
+      const { dispose, handler } = HttpRouter.toWebHandler(Server)
+      yield* Effect.addFinalizer(() => Effect.promise(dispose))
+      const post = (body: string) =>
+        Effect.promise(() => handler(new Request("http://test/rpc", { method: "POST", body })))
+      // the first request starts the server's message loop
+      yield* post("")
+
+      const boom = `{"_tag":"Request","id":100,"tag":"boom","payload":{},"headers":[]}\n`
+      assert.strictEqual((yield* post(boom)).status, 500)
+
+      const unknown = (id: number) => `{"_tag":"Request","id":${id},"tag":"unknown","payload":{},"headers":[]}\n`
+      const streamed = yield* post(unknown(1) + unknown(2) + unknown(3) + boom)
+      assert.strictEqual(yield* Effect.promise(() => streamed.text().then(() => undefined, (error) => error)), defect)
     }))
 
   it.effect("allows unbounded framed HTTP response buffering", () =>
