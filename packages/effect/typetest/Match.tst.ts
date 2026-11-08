@@ -15,6 +15,7 @@ declare const discriminatedInput:
   | { readonly kind: "A"; readonly a: string }
   | { readonly kind: "B"; readonly b: number }
 declare const status: "draft" | "review" | "published"
+declare const enabled: boolean
 declare const renamedTransfer: { readonly _tag: "Transfer"; readonly renamedValue: "foo" } | null
 
 describe("Match", () => {
@@ -297,17 +298,22 @@ describe("Match", () => {
     )
   })
 
-  it("tags removes only the tags with a defined handler from the remaining input", () => {
-    Match.value(taggedInput).pipe(
-      Match.tags({ A: undefined, B: (value) => value.b }),
-      Match.orElse((value) => {
-        expect(value).type.toBe<{ readonly _tag: "A"; readonly a: string }>()
-      })
-    )
+  it("tags and discriminators retain cases not handled in every handler-map alternative", () => {
+    const fields = enabled
+      ? { A: () => "A", B: () => 1 }
+      : { A: undefined, B: () => 1 }
+    const tags = Match.value(taggedInput).pipe(Match.tags(fields))
+    const discriminators = Match.value(discriminatedInput).pipe(Match.discriminators("kind")(fields))
 
-    // an `undefined` handler cannot prove a tag handled
-    // @ts-expect-error is not assignable to
-    Match.value(taggedInput).pipe(Match.tags({ A: undefined, B: (value) => value.b }), Match.exhaustive)
+    tags.pipe(Match.orElse((value) => {
+      expect(value).type.toBe<{ readonly _tag: "A"; readonly a: string }>()
+    }))
+    discriminators.pipe(Match.orElse((value) => {
+      expect(value).type.toBe<{ readonly kind: "A"; readonly a: string }>()
+    }))
+
+    expect(Match.exhaustive).type.not.toBeCallableWith(tags)
+    expect(Match.exhaustive).type.not.toBeCallableWith(discriminators)
   })
 
   it("literalsExhaustive narrows each literal handler and rejects missing and unknown literals", () => {
