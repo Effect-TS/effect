@@ -500,6 +500,11 @@ development:
         ["an apostrophe after a colon in a sequence item", "x: [it:'s # note\n  ]\n", { x: ["it:'s"] }],
         ["a quoted key directly followed by a quoted value", "x: {\"a\":'b' # note\n  }\n", { x: { a: "b" } }],
         [
+          "a multiline quoted key directly followed by a quoted value",
+          "x: {\"a\n  b\":'c # d'}\ny: {'e\n  f':\"g # h\"}\n",
+          { x: { "a b": "c # d" }, y: { "e f": "g # h" } }
+        ],
+        [
           "a comment between a key with a colon and its value",
           "x: {http://example.com # endpoint\n  : 1}\n",
           { x: { "http://example.com": 1 } }
