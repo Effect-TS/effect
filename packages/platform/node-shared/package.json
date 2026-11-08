@@ -73,7 +73,7 @@
     "effect": "workspace:^",
     "tar": "^7.5.22",
     "testcontainers": "^12.2.1",
-    "tinybench": "^6.2.2"
+    "tinybench": "^6.2.3"
   },
   "dependencies": {
     "@types/ws": "^8.18.2",

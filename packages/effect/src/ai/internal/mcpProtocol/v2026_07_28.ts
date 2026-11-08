@@ -740,8 +740,7 @@ export const protocol = McpProtocol.make({
   }),
   projectNotification: (notification) =>
     McpProtocol.isSubscriptionServerNotification(notification)
-      // @effect-diagnostics-next-line effectSucceedWithVoid:off the projector requires the value `undefined`
-      ? Effect.succeed(undefined)
+      ? Effect.undefined
       : McpProtocol.makeNotificationProjector({
         supportsProgressMessage: true
       }, notification),
