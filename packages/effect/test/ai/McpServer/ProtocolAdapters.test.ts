@@ -1148,13 +1148,13 @@ describe("McpServer protocol adapters", () => {
       }
     }))
 
-  it.effect("should reject client input when the selected protocol cannot encode it", () =>
+  it.effect("should reject legacy input when the client lacks its required capability", () =>
     Effect.gen(function*() {
       const fixture = yield* makeFixture()
       const legacy = yield* initialize(fixture.post, "2025-11-25")
       const legacyError = errorOf(yield* legacy.request("tools/call", { name: MrtrTool.name, arguments: {} }))
       assert.strictEqual(legacyError.code, McpSchema.INVALID_PARAMS_ERROR_CODE)
-      assert.match(legacyError.message, /Client input is not supported/)
+      assert.match(legacyError.message, /Client did not advertise the roots capability/)
     }))
 
   it.effect("should reject prompt content when the negotiated schema cannot represent it", () =>

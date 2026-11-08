@@ -193,6 +193,7 @@ export const protocol = McpProtocol.make({
       "resources/read": Effect.fnUntraced(function*({ uri }) {
         const request = yield* PublicMcpSchema.McpServerClient
         const result = yield* core.resources.read(uri, McpProtocol.invocationFromClient(request)).pipe(
+          Effect.flatMap((outcome) => McpProtocol.requireCompleteOperation(McpSchema.protocolVersion, outcome)),
           Effect.mapError(McpProtocol.ProtocolError.fromFeature)
         )
         return McpSchema.ReadResourceResult.make({
