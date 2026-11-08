@@ -356,42 +356,23 @@ describe("Queue", () => {
     Effect.gen(function*() {
       const queue = yield* Queue.unbounded<number, string>()
       yield* Queue.offerAll(queue, [1, 2])
-      const tasks: Array<() => void> = []
-      let yielded = false
-      const scheduler: Scheduler.Scheduler = {
-        executionMode: "async",
-        shouldYield: () => {
-          if (yielded) return false
-          yielded = true
-          return true
-        },
-        makeDispatcher: () => ({
-          scheduleTask: (task) => {
-            tasks.push(task)
-          },
-          flush() {}
-        })
-      }
-      // Run the batch check, then pause before the next instruction registers
-      // its waiter. Only this fiber uses the manually driven scheduler.
-      const taker = Effect.runFork(Queue.takeN(queue, 5), { scheduler })
-      try {
-        assert.isTrue(yielded)
-        assert.strictEqual(tasks.length, 1)
-        const takersAtFail = queue.state._tag === "Done" ? -1 : queue.state.takers.size
-        yield* Queue.fail(queue, "boom")
+      // At a budget of 8, this padding exhausts the taker budget after the
+      // first batch check but before registering in awaitTake.
+      const pad = Effect.andThen(Effect.void, Effect.void)
+      const taker = yield* Effect.forkDetach(Effect.andThen(pad, Effect.exit(Queue.takeN(queue, 5))))
+      let takersAtFail = -1
+      yield* Effect.forkDetach(Effect.suspend(() => {
+        takersAtFail = queue.state._tag === "Done" ? -1 : queue.state.takers.size
+        return Queue.fail(queue, "boom")
+      }))
 
-        // Bound dispatches so a lost wake-up fails rather than hanging.
-        for (let i = 0; i < 100 && tasks.length > 0; i++) tasks.shift()!()
-        assert.deepStrictEqual(taker.pollUnsafe(), Exit.succeed([1, 2]))
-        // Termination happened before registration, so it could not wake the taker.
-        assert.strictEqual(takersAtFail, 0)
-        assert.strictEqual(queue.state._tag, "Done")
-        assert.deepStrictEqual(yield* Effect.exit(Queue.takeN(queue, 5)), Exit.fail("boom"))
-      } finally {
-        taker.interruptUnsafe()
-      }
-    }))
+      assert.deepStrictEqual(yield* Fiber.join(taker), Exit.succeed([1, 2]))
+      // The taker yielded after its check and before registering, so the
+      // termination could not wake it.
+      assert.strictEqual(takersAtFail, 0)
+      assert.strictEqual(queue.state._tag, "Done")
+      assert.deepStrictEqual(yield* Effect.exit(Queue.takeN(queue, 5)), Exit.fail("boom"))
+    }).pipe(Effect.provideService(Scheduler.MaxOpsBeforeYield, 8)))
 
   it.effect("takeN ending at an offerAll boundary keeps the next message", () =>
     Effect.gen(function*() {

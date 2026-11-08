@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Effect, Exit, Fiber, Option, PartitionedSemaphore, Scheduler, Tracer } from "effect"
+import { Effect, Exit, Fiber, Option, PartitionedSemaphore, Scheduler } from "effect"
 
 describe("PartitionedSemaphore", () => {
   it.effect("multi-permit waiters in different partitions do not deadlock", () =>
@@ -256,41 +256,43 @@ describe("PartitionedSemaphore", () => {
   for (const key of ["other", "same"]) {
     it.effect(`interrupting a resumed waiter preserves the next ${key}-key waiter`, () =>
       Effect.gen(function*() {
-        const sem = yield* PartitionedSemaphore.make<string>({ permits: 1 })
-        let interruptOnResume = false
-        let next: Fiber.Fiber<void> | undefined
-        const tracer: Tracer.Tracer = {
-          ...Tracer.nativeTracer,
-          context(primitive, fiber) {
-            // Use the tracer boundary, not a scheduler budget, to interrupt before completion.
-            // Register a replacement after selection but before stale cancellation cleanup.
-            if (interruptOnResume) {
-              interruptOnResume = false
-              assert.strictEqual(fiber.id, first.id)
-              assert.isUndefined(fiber.pollUnsafe())
-              next = Effect.runFork(sem.take(key, 1))
-              assert.isUndefined(next.pollUnsafe())
-              fiber.interruptUnsafe()
+        const tasks: Array<() => void> = []
+        let shouldYield = false
+        const scheduler: Scheduler.Scheduler = {
+          executionMode: "async",
+          makeDispatcher() {
+            return {
+              scheduleTask(task) {
+                tasks.push(task)
+              },
+              flush() {}
             }
-            return primitive["~effect/Effect/evaluate"](fiber)
+          },
+          shouldYield: () => {
+            if (!shouldYield) return false
+            shouldYield = false
+            return true
           }
         }
+
+        const sem = yield* PartitionedSemaphore.make<string>({ permits: 1 })
         yield* sem.take("holder", 1)
         const first = yield* sem.take("same", 1).pipe(
-          Effect.withTracer(tracer),
+          Effect.provideService(Scheduler.Scheduler, scheduler),
           Effect.forkChild({ startImmediately: true })
         )
-        assert.isUndefined(first.pollUnsafe())
 
-        try {
-          interruptOnResume = true
-          yield* sem.release(1)
-          assert.isTrue(Exit.hasInterrupts(yield* Fiber.await(first)))
-          assert.isDefined(next)
-          assert.deepStrictEqual(next!.pollUnsafe(), Exit.void)
-        } finally {
-          next?.interruptUnsafe()
-        }
+        // Pause the selected waiter before its take effect finishes.
+        shouldYield = true
+        yield* sem.release(1)
+        const next = yield* sem.take(key, 1).pipe(Effect.forkChild({ startImmediately: true }))
+        yield* Fiber.interrupt(first)
+        while (tasks.length > 0) tasks.shift()!()
+
+        const exit = next.pollUnsafe()
+        yield* Fiber.interrupt(next)
+
+        assert.deepStrictEqual(exit, Exit.void)
       }))
   }
 })

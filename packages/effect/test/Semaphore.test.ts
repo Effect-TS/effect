@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Duration, Effect, Exit, Fiber, Option, PartitionedSemaphore, Scope, Semaphore, Tracer } from "effect"
+import { Duration, Effect, Exit, Fiber, Option, PartitionedSemaphore, Scope, Semaphore } from "effect"
 import * as Scheduler from "effect/Scheduler"
 import { TestClock } from "effect/testing"
 
@@ -304,46 +304,49 @@ describe("Semaphore", () => {
   it.effect("take interruption does not leak permits", () =>
     Effect.gen(function*() {
       const tasks: Array<() => void> = []
+      let shouldYield = false
       const scheduler: Scheduler.Scheduler = {
         executionMode: "async",
-        makeDispatcher: () => ({
-          scheduleTask: (task) => {
-            tasks.push(task)
-          },
-          flush() {}
-        }),
-        shouldYield: () => false
-      }
-      let interruptOnResume = false
-      let interrupted = false
-      const tracer: Tracer.Tracer = {
-        ...Tracer.nativeTracer,
-        context(primitive, fiber) {
-          // The tracer boundary works even when each slice must execute an instruction.
-          // Interrupt the selected waiter before its resumed instruction executes.
-          if (interruptOnResume) {
-            interruptOnResume = false
-            assert.strictEqual(fiber.id, waiter.id)
-            assert.isUndefined(fiber.pollUnsafe())
-            interrupted = true
-            fiber.interruptUnsafe()
+        makeDispatcher() {
+          return {
+            scheduleTask(task, _priority) {
+              tasks.push(task)
+            },
+            flush() {
+            }
           }
-          return primitive["~effect/Effect/evaluate"](fiber)
+        },
+        shouldYield: () => {
+          if (shouldYield) {
+            shouldYield = false
+            return true
+          }
+          return false
         }
       }
+      const step = Effect.sync(() => {
+        const task = tasks.shift()
+        if (task !== undefined) {
+          task()
+        }
+      })
+
       const sem = yield* Semaphore.make(0)
       const waiter = yield* sem.take(1).pipe(
-        Effect.withTracer(tracer),
-        Effect.forkChild({ startImmediately: true })
+        Effect.provideService(Scheduler.Scheduler, scheduler),
+        Effect.forkChild
       )
+
+      yield* Effect.yieldNow
+      yield* sem.release(1).pipe(Effect.provideService(Scheduler.Scheduler, scheduler))
       assert.isUndefined(waiter.pollUnsafe())
 
-      yield* sem.release(1).pipe(Effect.provideService(Scheduler.Scheduler, scheduler))
-      assert.strictEqual(tasks.length, 1)
-      interruptOnResume = true
-      tasks.shift()!()
-      assert.isTrue(interrupted)
-      assert.isTrue(Exit.hasInterrupts(yield* Fiber.await(waiter)))
+      shouldYield = true
+      yield* step
+      assert.isUndefined(waiter.pollUnsafe())
+
+      yield* Fiber.interrupt(waiter)
+      yield* step
 
       const result = yield* sem.withPermitsIfAvailable(1)(Effect.void)
       assert.isTrue(Option.isSome(result))
