@@ -12,6 +12,7 @@ import {
   type Scope,
   Semaphore,
   Stream,
+  String,
   Tracer
 } from "effect"
 import { Reactivity } from "effect/reactivity"
@@ -865,6 +866,77 @@ describe("SqlClient", () => {
 
         assert.deepStrictEqual(calls.slice(-3), ["COMMIT", "release", "invalidate(users)"])
         assert.isFalse(calls.includes("invalidate(dropped)"))
+      }))
+  })
+
+  describe("batch", () => {
+    /**
+     * A client whose connection answers each statement with `[{ user_id }]`,
+     * taken from the statement's first parameter, and records what it ran.
+     */
+    const makeBatchClient = (withExecuteBatch: boolean) => {
+      const calls: Array<unknown> = []
+      let acquired = 0
+      const rowsFor = (params: ReadonlyArray<unknown>) => [{ user_id: params[0] }]
+      const unused = () => Effect.die("unused")
+      const connection: SqlConnection.Connection = {
+        execute: (sql, params, transformRows) =>
+          Effect.sync(() => {
+            calls.push(["execute", sql, params])
+            return transformRows === undefined ? rowsFor(params) : transformRows(rowsFor(params))
+          }),
+        executeRaw: unused,
+        executeValues: unused,
+        executeUnprepared: unused,
+        executeValuesUnprepared: unused,
+        executeStream: () => Stream.die("unused"),
+        ...(withExecuteBatch
+          ? {
+            executeBatch: (statements: ReadonlyArray<readonly [string, ReadonlyArray<unknown>]>) =>
+              Effect.sync(() => {
+                calls.push(["executeBatch", statements])
+                return statements.map(([, params]) => rowsFor(params))
+              })
+          }
+          : {})
+      }
+      return SqlClient.make({
+        driver: "test",
+        acquirer: Effect.sync(() => {
+          acquired++
+          return connection
+        }),
+        compiler: Statement.makeCompilerSqlite(String.camelToSnake),
+        spanAttributes: [],
+        transformRows: Statement.defaultTransforms(String.snakeToCamel).array
+      }).pipe(
+        Effect.map((sql) => ({ sql, calls, acquired: () => acquired })),
+        Effect.provide(Reactivity.layer)
+      )
+    }
+
+    it.effect("runs each statement in order on one connection without executeBatch", () =>
+      Effect.gen(function*() {
+        const { acquired, calls, sql } = yield* makeBatchClient(false)
+        const raw = sql.withoutTransforms()
+
+        const results = yield* sql.batch([sql`SELECT ${1}`, raw`SELECT ${2}`])
+
+        assert.deepStrictEqual(results, [[{ userId: 1 }], [{ user_id: 2 }]])
+        assert.deepStrictEqual(calls, [["execute", "SELECT ?", [1]], ["execute", "SELECT ?", [2]]])
+        assert.strictEqual(acquired(), 1)
+      }))
+
+    it.effect("prefers executeBatch and transforms each statement's rows", () =>
+      Effect.gen(function*() {
+        const { calls, sql } = yield* makeBatchClient(true)
+        const raw = sql.withoutTransforms()
+
+        const results = yield* sql.batch([sql`SELECT ${1}`, raw`SELECT ${2}`])
+        assert.deepStrictEqual(yield* sql.batch([]), [])
+
+        assert.deepStrictEqual(results, [[{ userId: 1 }], [{ user_id: 2 }]])
+        assert.deepStrictEqual(calls, [["executeBatch", [["SELECT ?", [1]], ["SELECT ?", [2]]]]])
       }))
   })
 })

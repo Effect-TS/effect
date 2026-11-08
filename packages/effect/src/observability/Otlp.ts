@@ -60,6 +60,13 @@ export const layer = (options: {
   readonly metricsExportInterval?: Duration.Input | undefined
   readonly metricsTemporality?: AggregationTemporality | undefined
   readonly tracerExportInterval?: Duration.Input | undefined
+  /**
+   * Passed to `OtlpTracer.layer` as `sampler`.
+   */
+  readonly tracerSampler?: {
+    readonly ratio: number
+    readonly parentBased?: boolean | undefined
+  } | undefined
   readonly shutdownTimeout?: Duration.Input | undefined
 }): Layer.Layer<OtlpExporter.Flusher, never, HttpClient.HttpClient | OtlpSerialization.OtlpSerialization> => {
   const base = HttpClientRequest.get(options.baseUrl)
@@ -93,7 +100,8 @@ export const layer = (options: {
       exportInterval: options.tracerExportInterval,
       maxBatchSize: options.maxBatchSize,
       context: options.tracerContext,
-      shutdownTimeout: options.shutdownTimeout
+      shutdownTimeout: options.shutdownTimeout,
+      sampler: options.tracerSampler
     })
   )
 }
@@ -103,6 +111,18 @@ export const layer = (options: {
  * OpenTelemetry configuration.
  *
  * **Details**
+ *
+ * Each signal is exported only when an endpoint is set and its own exporter
+ * variable includes `otlp`. Unlike the OpenTelemetry SDK specification, the
+ * exporter variables have no default, so an endpoint alone exports nothing.
+ * To export all three signals:
+ *
+ * ```sh
+ * export OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318
+ * export OTEL_TRACES_EXPORTER=otlp
+ * export OTEL_METRICS_EXPORTER=otlp
+ * export OTEL_LOGS_EXPORTER=otlp
+ * ```
  *
  * The layer provides the `OtlpExporter.Flusher` shared by all enabled signals.
  * It is provided even when configuration disables every signal, in which case
@@ -170,6 +190,13 @@ export const layerJson: (options: {
   readonly metricsExportInterval?: Duration.Input | undefined
   readonly metricsTemporality?: AggregationTemporality | undefined
   readonly tracerExportInterval?: Duration.Input | undefined
+  /**
+   * Passed to `OtlpTracer.layer` as `sampler`.
+   */
+  readonly tracerSampler?: {
+    readonly ratio: number
+    readonly parentBased?: boolean | undefined
+  } | undefined
   readonly shutdownTimeout?: Duration.Input | undefined
 }) => Layer.Layer<OtlpExporter.Flusher, never, HttpClient.HttpClient> = flow(
   layer,
@@ -205,6 +232,13 @@ export const layerProtobuf: (options: {
   readonly metricsExportInterval?: Duration.Input | undefined
   readonly metricsTemporality?: AggregationTemporality | undefined
   readonly tracerExportInterval?: Duration.Input | undefined
+  /**
+   * Passed to `OtlpTracer.layer` as `sampler`.
+   */
+  readonly tracerSampler?: {
+    readonly ratio: number
+    readonly parentBased?: boolean | undefined
+  } | undefined
   readonly shutdownTimeout?: Duration.Input | undefined
 }) => Layer.Layer<OtlpExporter.Flusher, never, HttpClient.HttpClient> = flow(
   layer,

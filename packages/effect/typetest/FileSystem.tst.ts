@@ -1,4 +1,4 @@
-import type { ByteSize, Effect, FileSystem, PlatformError } from "effect"
+import type { ByteSize, Effect, FileSystem, PathFilter, PlatformError } from "effect"
 import { describe, expect, it } from "tstyche"
 
 describe("FileSystem", () => {
@@ -13,5 +13,15 @@ describe("FileSystem", () => {
     expect<ReturnType<FileSystem.File["seek"]>>().type.toBe<Effect.Effect<bigint, PlatformError.PlatformError>>()
     expect<Effect.Success<ReturnType<FileSystem.File["read"]>>>().type.toBe<number>()
     expect<Effect.Success<ReturnType<FileSystem.File["write"]>>>().type.toBe<number>()
+  })
+
+  it("glob takes one PathFilter input and only a root", () => {
+    const glob = {} as FileSystem.FileSystem["glob"]
+    const filter = {} as PathFilter.PathFilter
+    expect(glob("src/**/*.ts")).type.toBe<Effect.Effect<Array<string>, PlatformError.PlatformError>>()
+    expect(glob).type.toBeCallableWith(["**/*.ts", "!**/*.test.ts"], { root: "src" })
+    expect(glob).type.toBeCallableWith(filter, { root: "src" })
+    expect(glob).type.not.toBeCallableWith("a", { dot: true })
+    expect(glob).type.not.toBeCallableWith("a", { filter })
   })
 })
