@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
-import { assertNone } from "@effect/vitest/utils"
+import { assertNone, assertSome } from "@effect/vitest/utils"
 import { Context, Effect, Stream } from "effect"
 import { Cookies, HttpBody, HttpClientRequest, HttpClientResponse, HttpServerResponse } from "effect/http"
 
@@ -267,7 +267,7 @@ describe("HttpServerResponse", () => {
       assert.strictEqual(response.headers["content-type"], "application/json")
       assert.strictEqual(response.headers["x-test"], "ok")
       assert.strictEqual(response.headers["set-cookie"], undefined)
-      assert.strictEqual(response.cookies.cookies.session?.value, "123")
+      assertSome(Cookies.getValue(response.cookies, "session"), "123")
       assert.deepStrictEqual(yield* roundTrip.json, { foo: "bar" })
     }))
 
