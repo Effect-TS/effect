@@ -300,9 +300,9 @@ export const PgConnection = Context.Service<PgConnection>("@effect/sql-pg/PgConn
  * Password resolution, transport, optional `SSLRequest`, startup, and
  * authentication run under `connectTimeout` (5 seconds by default). The effect
  * resolves when the backend sends `ReadyForQuery`. Closing the scope sends
- * `Terminate`, ends the socket, and destroys the transport once the message has
- * been flushed, with a 1-second backstop if flushing stalls. Scope release does
- * not wait for transport closure or the peer. This also applies to custom streams.
+ * `Terminate`, ends the socket, and destroys the transport (a custom `stream`
+ * included) once the message has flushed, or after one second if the flush
+ * stalls. Release does not wait for the peer.
  *
  * Use `sslmode=require` or explicit `ssl: true` to require encryption.
  * Unix sockets and custom streams should set `ssl.servername` explicitly.
@@ -523,14 +523,13 @@ class PgConnectionImpl implements PgConnection {
     let destroySocket = true
     if (this.deadWith === undefined && socket.writable) {
       try {
-        const destroy = () => socket.destroy()
-        const timeout = setTimeout(destroy, terminateTimeoutMillis)
+        // Once Terminate and our FIN have reached the kernel there is nothing
+        // left to read, so the descriptor is released without waiting for the
+        // peer's FIN, which a half-open proxy may never send.
+        const timeout = setTimeout(() => socket.destroy(), terminateTimeoutMillis)
         timeout.unref()
-        socket.once("close", () => {
-          clearTimeout(timeout)
-          socket.off("finish", destroy)
-        })
-        socket.once("finish", destroy)
+        socket.once("finish", () => socket.destroy())
+        socket.once("close", () => clearTimeout(timeout))
         socket.end(PgProtocol.encodeTerminate())
         destroySocket = false
       } catch {
