@@ -673,7 +673,6 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
     ;(globalThis as any)[currentFiberTypeId] = this
     const prevRunning = this._running
     this._running = true
-    let yielding = false
     let current: Primitive | Yield = effect
     this.currentOpCount = 0
     try {
@@ -686,18 +685,19 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
           this.currentOpCount++
           // Refresh the cache because a primitive can replace the fiber context.
           const cache = this.cache
+          // Always execute the first instruction of a slice so even tiny budgets
+          // make progress. Resume directly without a counted yield continuation.
           if (
-            !yielding &&
+            this.currentOpCount > 1 &&
             !cache.preventYield &&
             cache.scheduler.shouldYield(this as any)
           ) {
-            yielding = true
-            const prev = current
-            current = flatMap(yieldNow, () => prev as any) as any
+            current = this.yieldNow(current as Primitive)
+          } else {
+            current = cache.tracerContext
+              ? cache.tracerContext(current as any, this)
+              : (current as any)[evaluate](this)
           }
-          current = cache.tracerContext
-            ? cache.tracerContext(current as any, this)
-            : (current as any)[evaluate](this)
           if (current === Yield) {
             const yielded = this._yielded!
             if (ExitTypeId in yielded) {
@@ -759,6 +759,16 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
   yieldWith(value: Exit.Exit<any, any> | (() => void)): Yield {
     this._yielded = value
     return Yield
+  }
+  yieldNow(effect: Primitive, priority = 0): Yield {
+    let resumed = false
+    this.currentDispatcher.scheduleTask(() => {
+      if (resumed) return
+      this.evaluate(effect)
+    }, priority)
+    return this.yieldWith(() => {
+      resumed = true
+    })
   }
   children(): Set<Fiber.Fiber<any, any>> {
     return (this._children ??= new Set())
@@ -1070,14 +1080,7 @@ export const fromNullishOr = <A>(value: A): Effect.Effect<NonNullable<A>, Cause.
 export const yieldNowWith: (priority?: number) => Effect.Effect<void> = makePrimitive({
   op: "Yield",
   [evaluate](fiber) {
-    let resumed = false
-    fiber.currentDispatcher.scheduleTask(() => {
-      if (resumed) return
-      fiber.evaluate(exitVoid as any)
-    }, this[args] ?? 0)
-    return fiber.yieldWith(() => {
-      resumed = true
-    })
+    return fiber.yieldNow(exitVoid as any, this[args] ?? 0)
   }
 })
 
