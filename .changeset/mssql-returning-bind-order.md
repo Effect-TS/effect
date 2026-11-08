@@ -2,4 +2,4 @@
 "@effect/sql-mssql": patch
 ---
 
-Fix `sql.insert` and `sql.updateValues` with a `returning` fragment that has parameters binding every placeholder to the wrong value on SQL Server.
+Fix `sql.insert` and `sql.updateValues` binding parameters in the wrong order on SQL Server when the `returning` fragment has parameters.
