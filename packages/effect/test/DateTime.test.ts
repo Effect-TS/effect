@@ -561,18 +561,19 @@ describe("DateTime", () => {
 
   describe("zoneMakeNamed", () => {
     it("keeps the name of a renamed zone", () => {
-      const kyiv = DateTime.zoneMakeNamedUnsafe("Europe/Kyiv")
-      strictEqual(DateTime.zoneToString(kyiv), "Europe/Kyiv")
+      for (const name of ["Europe/Kiev", "Europe/Kyiv", "Europe/Kiev", "Europe/Kyiv"]) {
+        strictEqual(DateTime.zoneToString(DateTime.zoneMakeNamedUnsafe(name)), name)
+      }
       strictEqual(
-        DateTime.formatIsoZoned(DateTime.makeZonedUnsafe(0, { timeZone: "Asia/Kolkata" })),
-        "1970-01-01T05:30:00.000+05:30[Asia/Kolkata]"
+        DateTime.formatIsoZoned(DateTime.makeZonedUnsafe("2024-01-01T00:00:00Z", { timeZone: "Europe/Kyiv" })),
+        "2024-01-01T02:00:00.000+02:00[Europe/Kyiv]"
       )
       strictEqual(DateTime.zoneToString(DateTime.zoneMakeNamedUnsafe("europe/london")), "Europe/London")
     })
 
-    // Some runtimes (Bun) keep the name they are given and do not map a renamed zone to its old name
     const mapsRenamedZones =
-      new Intl.DateTimeFormat("en-US", { timeZone: "Europe/Kyiv" }).resolvedOptions().timeZone === "Europe/Kiev"
+      new Intl.DateTimeFormat("en-US", { timeZone: "Europe/Kyiv" }).resolvedOptions().timeZone ===
+        new Intl.DateTimeFormat("en-US", { timeZone: "Europe/Kiev" }).resolvedOptions().timeZone
 
     it.runIf(mapsRenamedZones)("treats a renamed zone and its old name as equal", () => {
       const kyiv = DateTime.zoneMakeNamedUnsafe("Europe/Kyiv")
