@@ -59,8 +59,10 @@ type PartialLiteralHandlers<R, Ret> = {
   readonly [K in LiteralKeys<R>]?: ((_: K) => Ret) | undefined
 }
 
-// Only keys with a defined handler remove a member from the remaining input.
-type HandledKeys<P> = { readonly [K in keyof P]-?: undefined extends P[K] ? never : K }[keyof P]
+// Map keys separately so handler-map unions do not distribute.
+type HandledKeys<P, Keys extends keyof P = keyof P> = {
+  readonly [K in Keys]-?: undefined extends P[K] ? never : K
+}[Keys]
 
 /**
  * Marker used by `Matcher` to distinguish matchers created with `Match.value`.
