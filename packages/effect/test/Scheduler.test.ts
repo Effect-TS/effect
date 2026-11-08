@@ -104,6 +104,33 @@ describe("Scheduler", () => {
       assert.strictEqual(calls, 0)
     }))
 
+  for (const budget of [1, 2, 3]) {
+    it(`concurrent forEach completes with MaxOpsBeforeYield ${budget}`, () => {
+      const tasks: Array<() => void> = []
+      const scheduler = new Scheduler.MixedScheduler("async", (task) => {
+        let cancelled = false
+        tasks.push(() => {
+          if (!cancelled) task()
+        })
+        return () => {
+          cancelled = true
+        }
+      })
+      const fiber = Effect.runFork(
+        Effect.forEach([1, 2, 3], Effect.succeed, { concurrency: "unbounded" }).pipe(
+          Effect.provideService(Scheduler.MaxOpsBeforeYield, budget)
+        ),
+        { scheduler }
+      )
+
+      // Bound dispatches so a yielding livelock fails instead of hanging the test.
+      for (let i = 0; i < 1000 && tasks.length > 0; i++) {
+        tasks.shift()!()
+      }
+      assert.deepStrictEqual(fiber.pollUnsafe(), Exit.succeed([1, 2, 3]))
+    })
+  }
+
   it.effect("inlined map steps count against MaxOpsBeforeYield", () =>
     Effect.gen(function*() {
       const order: Array<string> = []
