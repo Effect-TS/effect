@@ -38,21 +38,13 @@ const TypeId = "~effect/http/Cookies"
 export const isCookies = (u: unknown): u is Cookies => Predicate.hasProperty(u, TypeId)
 
 /**
- * Immutable collection of HTTP cookies keyed by cookie name.
+ * Immutable collection of HTTP cookies.
  *
  * **Details**
  *
- * `fromSetCookie` keeps every parsed cookie, including cookies with the same
- * name but a different domain or path. The cookie set last for a name is
- * stored under the name, and earlier cookies with that name under a separate
- * key. Adding, expiring or merging a cookie replaces every cookie with its
- * name.
- *
- * **Gotchas**
- *
- * `Object.values(cookies.cookies)` does not list a name's cookies in the order
- * they were set, so use `toSetCookieHeaders` to list every cookie in order.
- * Changing the record directly can leave it inconsistent.
+ * `all` lists every cookie in order, including cookies with the same name but
+ * a different domain or path. `cookies` indexes the last of them for each
+ * name, and `toJSON` shows that index.
  *
  * @stability unstable
  * @category models
@@ -61,6 +53,7 @@ export const isCookies = (u: unknown): u is Cookies => Predicate.hasProperty(u, 
 export interface Cookies extends Pipeable, Inspectable.Inspectable {
   readonly [TypeId]: typeof TypeId
   readonly cookies: Record.ReadonlyRecord<string, Cookie>
+  readonly all: ReadonlyArray<Cookie>
 }
 
 const CookieTypeId = "~effect/http/Cookies/Cookie"
@@ -179,7 +172,7 @@ export class CookiesError extends Data.TaggedError("CookiesError")<{
  */
 export const isCookiesError = (u: unknown): u is CookiesError => Predicate.hasProperty(u, CookieErrorTypeId)
 
-const Proto: Omit<Cookies, "cookies"> = {
+const Proto: Omit<Cookies, "cookies" | "all"> = {
   [TypeId]: TypeId,
   ...Inspectable.BaseProto,
   toJSON(this: Cookies) {
@@ -193,6 +186,21 @@ const Proto: Omit<Cookies, "cookies"> = {
   }
 }
 
+const make = (cookies: Record.ReadonlyRecord<string, Cookie>, all: ReadonlyArray<Cookie>): Cookies => {
+  const self = Object.create(Proto)
+  self.cookies = cookies
+  self.all = all
+  return self
+}
+
+const fromArray = (all: ReadonlyArray<Cookie>): Cookies => {
+  const record: Record<string, Cookie> = {}
+  for (const cookie of all) {
+    InternalRecord.assignProperty(record, cookie.name, cookie)
+  }
+  return make(record, all)
+}
+
 /**
  * Creates a `Cookies` collection from an existing readonly record of cookies keyed by cookie name.
  *
@@ -200,25 +208,32 @@ const Proto: Omit<Cookies, "cookies"> = {
  * @category constructors
  * @since 4.0.0
  */
-export const fromReadonlyRecord = (cookies: Record.ReadonlyRecord<string, Cookie>): Cookies => {
-  const self = Object.create(Proto)
-  self.cookies = cookies
-  return self
-}
+export const fromReadonlyRecord = (cookies: Record.ReadonlyRecord<string, Cookie>): Cookies =>
+  make(cookies, Object.values(cookies))
 
 /**
  * Create a Cookies object from an Iterable
+ *
+ * **Details**
+ *
+ * Cookies with the same name but a different domain or path are all kept. A
+ * later cookie replaces an earlier one with the same name, domain and path,
+ * and takes its later position. The domain ignores a leading dot and letter
+ * case, the name and path are case-sensitive, and a missing domain or path is
+ * distinct from any value.
  *
  * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
 export const fromIterable = (cookies: Iterable<Cookie>): Cookies => {
-  const record: Record<string, Cookie> = {}
+  const byScope = new Map<string, Cookie>()
   for (const cookie of cookies) {
-    InternalRecord.assignProperty(record, cookie.name, cookie)
+    const scope = JSON.stringify([cookie.name, cookieDomain(cookie), cookie.options?.path])
+    byScope.delete(scope)
+    byScope.set(scope, cookie)
   }
-  return fromReadonlyRecord(record)
+  return fromArray(Array.from(byScope.values()))
 }
 
 /**
@@ -226,10 +241,8 @@ export const fromIterable = (cookies: Iterable<Cookie>): Cookies => {
  *
  * **Details**
  *
- * Cookies with the same name but a different `Domain` or `Path` are all kept.
- * A later header replaces an earlier one with the same name, domain and path.
- * The domain ignores a leading dot and letter case, while the name and path are
- * case-sensitive, and a missing domain or path is distinct from any value.
+ * Keeps cookies with the same name but a different `Domain` or `Path`, as
+ * described in `fromIterable`.
  *
  * @stability unstable
  * @category constructors
@@ -237,84 +250,16 @@ export const fromIterable = (cookies: Iterable<Cookie>): Cookies => {
  */
 export const fromSetCookie = (headers: Iterable<string> | string): Cookies => {
   const arrayHeaders = typeof headers === "string" ? [headers] : headers
-  const record: Record<string, Cookie> = {}
+  const cookies: Array<Cookie> = []
   for (const header of arrayHeaders) {
     const cookie = parseSetCookie(header.trim())
     if (cookie) {
-      assignCookie(record, cookie)
+      cookies.push(cookie)
     }
   }
 
-  return fromReadonlyRecord(record)
+  return fromIterable(cookies)
 }
-
-const cookieDomain = (cookie: Cookie): string | undefined =>
-  cookie.options?.domain?.replace(/^\./, "").toLowerCase() || undefined
-
-const cookieIdentity = (cookie: Cookie): string =>
-  `${cookie.name}; Domain=${cookieDomain(cookie) ?? ""}; Path=${cookie.options?.path ?? ""}`
-
-// The latest cookie with a name is stored under the name. Earlier cookies with
-// that name and a different domain or path are stored under their identity,
-// which can never be a cookie name, in the order they were last set.
-const isEarlier = (key: string, cookie: Cookie): boolean => key !== cookie.name && key === cookieIdentity(cookie)
-
-const assignCookie = (record: Record<string, Cookie>, cookie: Cookie): void => {
-  const previous = Object.hasOwn(record, cookie.name) ? record[cookie.name] : undefined
-  if (previous !== undefined && cookieIdentity(previous) !== cookieIdentity(cookie)) {
-    delete record[cookieIdentity(cookie)]
-    InternalRecord.assignProperty(record, cookieIdentity(previous), previous)
-  }
-  InternalRecord.assignProperty(record, cookie.name, cookie)
-}
-
-const setByName = (record: Record<string, Cookie>, cookie: Cookie): void => {
-  for (const [key, existing] of Object.entries(record)) {
-    if (existing.name === cookie.name && isEarlier(key, existing)) {
-      delete record[key]
-    }
-  }
-  InternalRecord.assignProperty(record, cookie.name, cookie)
-}
-
-// Lists every cookie, placing the earlier cookies with a name just before the
-// latest one so they can be applied in order.
-const cookieValues = (self: Cookies): Array<Cookie> => {
-  const entries = Object.entries(self.cookies)
-  const earlier = new Map<string, Array<Cookie>>()
-  for (const [key, cookie] of entries) {
-    if (isEarlier(key, cookie)) {
-      const cookies = earlier.get(cookie.name)
-      if (cookies === undefined) {
-        earlier.set(cookie.name, [cookie])
-      } else {
-        cookies.push(cookie)
-      }
-    }
-  }
-  if (earlier.size === 0) {
-    return entries.map(([, cookie]) => cookie)
-  }
-  const values: Array<Cookie> = []
-  for (const [key, cookie] of entries) {
-    if (isEarlier(key, cookie)) {
-      continue
-    }
-    const cookies = key === cookie.name ? earlier.get(key) : undefined
-    if (cookies !== undefined) {
-      values.push(...cookies)
-      earlier.delete(key)
-    }
-    values.push(cookie)
-  }
-  for (const cookies of earlier.values()) {
-    values.push(...cookies)
-  }
-  return values
-}
-
-const latestValues = (self: Cookies): Array<Cookie> =>
-  Object.entries(self.cookies).flatMap(([key, cookie]) => isEarlier(key, cookie) ? [] : [cookie])
 
 function parseSetCookie(header: string): Cookie | undefined {
   const parts = header.split(";").map((_) => _.trim()).filter((_) => _ !== "")
@@ -460,7 +405,7 @@ export const empty: Cookies = fromIterable([])
  * @category predicates
  * @since 4.0.0
  */
-export const isEmpty = (self: Cookies): boolean => Record.isEmptyRecord(self.cookies)
+export const isEmpty = (self: Cookies): boolean => self.all.length === 0
 
 // oxlint-disable-next-line no-control-regex
 const fieldContentRegExp = /^[\u0009\u0020-\u007e\u0080-\u00ff]+$/
@@ -551,7 +496,7 @@ export const makeCookieUnsafe = (
 ): Cookie => Result.getOrThrow(makeCookie(name, value, options))
 
 /**
- * Adds a cookie to a Cookies object
+ * Adds a cookie to a Cookies object, replacing every cookie with its name
  *
  * @stability unstable
  * @category combinators
@@ -560,14 +505,17 @@ export const makeCookieUnsafe = (
 export const setCookie: {
   (cookie: Cookie): (self: Cookies) => Cookies
   (self: Cookies, cookie: Cookie): Cookies
-} = dual(2, (self: Cookies, cookie: Cookie) => {
-  const record = { ...self.cookies }
-  setByName(record, cookie)
-  return fromReadonlyRecord(record)
-})
+} = dual(2, (self: Cookies, cookie: Cookie) => fromArray(appendByName(self.all, cookie)))
+
+const appendByName = (all: ReadonlyArray<Cookie>, cookie: Cookie): Array<Cookie> => {
+  const out = all.filter((existing) => existing.name !== cookie.name)
+  out.push(cookie)
+  return out
+}
 
 /**
- * Adds multiple cookies to a Cookies object
+ * Adds multiple cookies to a Cookies object, each replacing every cookie with
+ * its name
  *
  * @stability unstable
  * @category combinators
@@ -577,19 +525,16 @@ export const setAllCookie: {
   (cookies: Iterable<Cookie>): (self: Cookies) => Cookies
   (self: Cookies, cookies: Iterable<Cookie>): Cookies
 } = dual(2, (self: Cookies, cookies: Iterable<Cookie>) => {
-  const record = { ...self.cookies }
+  let all = self.all
   for (const cookie of cookies) {
-    setByName(record, cookie)
+    all = appendByName(all, cookie)
   }
-  return fromReadonlyRecord(record)
+  return fromArray(all)
 })
 
 /**
- * Combines two Cookies objects, removing duplicates from the first
- *
- * **Details**
- *
- * Every cookie in the first with a name that appears in the second is removed.
+ * Combines two Cookies objects, removing every cookie from the first with a
+ * name that appears in the second
  *
  * @stability unstable
  * @category combinators
@@ -599,11 +544,8 @@ export const merge: {
   (that: Cookies): (self: Cookies) => Cookies
   (self: Cookies, that: Cookies): Cookies
 } = dual(2, (self: Cookies, that: Cookies) => {
-  const names = new Set(Object.values(that.cookies).map((cookie) => cookie.name))
-  return fromReadonlyRecord({
-    ...Record.filter(self.cookies, (cookie, key) => !(names.has(cookie.name) && isEarlier(key, cookie))),
-    ...that.cookies
-  })
+  const names = new Set(that.all.map((cookie) => cookie.name))
+  return fromArray([...self.all.filter((cookie) => !names.has(cookie.name)), ...that.all])
 })
 
 /**
@@ -616,20 +558,14 @@ export const merge: {
 export const remove: {
   (name: string): (self: Cookies) => Cookies
   (self: Cookies, name: string): Cookies
-} = dual(
-  2,
-  (self: Cookies, name: string) =>
-    fromReadonlyRecord(
-      Record.filter(self.cookies, (cookie, key) => key !== name && !(cookie.name === name && isEarlier(key, cookie)))
-    )
-)
+} = dual(2, (self: Cookies, name: string) => fromArray(self.all.filter((cookie) => cookie.name !== name)))
 
 /**
  * Gets a cookie from a Cookies object safely.
  *
  * **Gotchas**
  *
- * When several cookies share the name, returns the one set last.
+ * When several cookies share the name, returns the last one.
  *
  * @stability unstable
  * @category combinators
@@ -653,7 +589,7 @@ export const get: {
  *
  * **Gotchas**
  *
- * When several cookies share the name, returns the value of the one set last.
+ * When several cookies share the name, returns the value of the last one.
  *
  * @stability unstable
  * @category combinators
@@ -668,7 +604,8 @@ export const getValue: {
 )
 
 /**
- * Creates and adds a cookie safely by name and value.
+ * Creates and adds a cookie safely by name and value, replacing every cookie
+ * with that name.
  *
  * **Details**
  *
@@ -697,7 +634,8 @@ export const set: {
 )
 
 /**
- * Creates and adds a cookie by name and value, throwing if the cookie fields are invalid.
+ * Creates and adds a cookie by name and value, replacing every cookie with that
+ * name and throwing if the cookie fields are invalid.
  *
  * @stability unstable
  * @category combinators
@@ -812,15 +750,15 @@ export const setAll: {
     self: Cookies,
     cookies: Iterable<readonly [name: string, value: string, options?: Cookie["options"]]>
   ): Result.Result<Cookies, CookiesError> => {
-    const record: Record<string, Cookie> = { ...self.cookies }
+    let all = self.all
     for (const [name, value, options] of cookies) {
       const result = makeCookie(name, value, options)
       if (Result.isFailure(result)) {
         return result as Result.Failure<never, CookiesError>
       }
-      setByName(record, result.success)
+      all = appendByName(all, result.success)
     }
-    return Result.succeed(fromReadonlyRecord(record))
+    return Result.succeed(fromArray(all))
   }
 )
 
@@ -932,8 +870,8 @@ export function serializeCookie(self: Cookie): string {
  *
  * **Gotchas**
  *
- * When several cookies share the name, only the one set last is included. To
- * send the cookies that match a request URL, use `mergeIntoArray` and
+ * When several cookies share the name, only the last one is included. To send
+ * the cookies that match a request URL, use `mergeIntoArray` and
  * `toRequestCookieHeader`.
  *
  * @stability unstable
@@ -941,14 +879,14 @@ export function serializeCookie(self: Cookie): string {
  * @since 4.0.0
  */
 export const toCookieHeader = (self: Cookies): string =>
-  latestValues(self).map((cookie) => `${cookie.name}=${cookie.valueEncoded}`).join("; ")
+  Object.values(self.cookies).map((cookie) => `${cookie.name}=${cookie.valueEncoded}`).join("; ")
 
 /**
  * Converts a `Cookies` collection to a record of decoded cookie values keyed by cookie name.
  *
  * **Gotchas**
  *
- * When several cookies share the name, uses the value of the one set last.
+ * When several cookies share the name, uses the value of the last one.
  *
  * @stability unstable
  * @category encoding
@@ -956,7 +894,7 @@ export const toCookieHeader = (self: Cookies): string =>
  */
 export const toRecord = (self: Cookies): Record<string, string> => {
   const record: Record<string, string> = {}
-  const cookies = latestValues(self)
+  const cookies = Object.values(self.cookies)
   for (let index = 0; index < cookies.length; index++) {
     const cookie = cookies[index]
     InternalRecord.assignProperty(record, cookie.name, cookie.value)
@@ -969,13 +907,13 @@ export const toRecord = (self: Cookies): Record<string, string> => {
  *
  * **Details**
  *
- * Cookies with the same name are listed in the order they were last set.
+ * Lists every cookie in `all`, in order.
  *
  * @stability unstable
  * @category encoding
  * @since 4.0.0
  */
-export const toSetCookieHeaders = (self: Cookies): Array<string> => cookieValues(self).map(serializeCookie)
+export const toSetCookieHeaders = (self: Cookies): Array<string> => self.all.map(serializeCookie)
 
 /**
  * Merges cookies set by `url` into an array of client cookies, returning a new
@@ -1019,7 +957,7 @@ export const mergeIntoArray: {
     return self
   }
   const stored = self.slice()
-  for (const cookie of cookieValues(cookies)) {
+  for (const cookie of cookies.all) {
     const scoped = scopeCookie(parsed, cookie, now)
     if (scoped === undefined) {
       continue
@@ -1091,6 +1029,9 @@ const parseUrl = (url: string): URL | undefined => {
     return undefined
   }
 }
+
+const cookieDomain = (cookie: Cookie): string | undefined =>
+  cookie.options?.domain?.replace(/^\./, "").toLowerCase() || undefined
 
 const cookiePath = (cookie: Cookie): string => cookie.options?.path?.startsWith("/") ? cookie.options.path : "/"
 

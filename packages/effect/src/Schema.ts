@@ -16434,6 +16434,12 @@ export interface Cookies extends
  * JSON encoding uses `Set-Cookie` header strings, while isomorphic encoding uses
  * a readonly record of cookie values.
  *
+ * **Gotchas**
+ *
+ * The isomorphic encoding is the `cookies` record, which keeps only the last
+ * cookie for each name. Cookies with the same name but a different domain or
+ * path survive only the JSON encoding.
+ *
  * @stability unstable
  * @category schemas
  * @since 4.0.0
