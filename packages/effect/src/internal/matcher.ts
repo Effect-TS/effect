@@ -34,7 +34,6 @@ type ValueTagHandlers<I> = {
   readonly [Tag in Types.Tags<"_tag", I> & string]: (_: Extract<I, { readonly _tag: Tag }>) => any
 }
 
-// Map keys separately so handler-map unions do not distribute.
 type HandledKeys<P, Keys extends keyof P = keyof P> = {
   readonly [K in Keys]-?: undefined extends P[K] ? never : K
 }[Keys]

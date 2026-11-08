@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Fix `Match.tags` and `Match.discriminators` throwing on an input whose handler is explicitly `undefined` instead of leaving it for later cases.
+Skip undefined handlers in `Match.tags` and `Match.discriminators`, and correct exhaustiveness checks for conditional handler maps, including `Match.literals`.
