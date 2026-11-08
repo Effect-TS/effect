@@ -3,6 +3,6 @@
 "@effect/opentelemetry": patch
 ---
 
-Leave successful spans and failures without errors Unset instead of Ok in `OtlpTracer` and `OtelTracer`, preserving explicit application statuses.
+`OtlpTracer` and `OtelTracer` now leave the span status Unset instead of Ok when a span succeeds, or fails without a reportable error. `OtelTracer` no longer overwrites a status set directly on the span in those cases.
 
-Update dashboards and queries filtering on Ok to include Unset for these spans.
+Queries and dashboards that filter on Ok should also match Unset.
