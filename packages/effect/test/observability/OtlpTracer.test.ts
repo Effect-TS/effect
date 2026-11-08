@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Effect, Layer, Tracer } from "effect"
+import { Cause, Effect, Layer, Tracer } from "effect"
 import { HttpClient, HttpClientResponse } from "effect/http"
 import type { HttpClientError } from "effect/http"
 import { OtlpExporter, OtlpSerialization, OtlpTracer } from "effect/observability"
@@ -41,14 +41,15 @@ describe("OtlpTracer", () => {
     }).pipe(Effect.provide(layer))
   })
 
-  it.effect("leaves status Unset on successful spans", () => {
+  it.effect.each([
+    { name: "success", effect: Effect.void },
+    { name: "failure without errors", effect: Effect.failCause(Cause.empty) }
+  ])("leaves $name status Unset", ({ effect }) => {
     const { exports, layer } = capture()
     return Effect.gen(function*() {
-      yield* Effect.void.pipe(Effect.withSpan("test"))
+      yield* Effect.exit(effect.pipe(Effect.withSpan("test")))
       yield* (yield* OtlpExporter.Flusher).flush
-      // StatusCode.Ok (1) must not be set by instrumentation; application code is responsible.
-      // See: https://opentelemetry.io/docs/specs/semconv/general/recording-errors/
-      assert.strictEqual(exports[0].spans[0].status.code, 0) // StatusCode.Unset
+      assert.deepStrictEqual(exports[0].spans[0].status, { code: 0 })
     }).pipe(Effect.provide(layer))
   })
 
