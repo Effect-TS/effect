@@ -20,6 +20,7 @@ import { pipe } from "./Function.ts"
 import * as Glob from "./internal/glob.ts"
 import * as Layer from "./Layer.ts"
 import * as Option from "./Option.ts"
+import * as PathFilter from "./PathFilter.ts"
 import { badArgument, type PlatformError, systemError } from "./PlatformError.ts"
 import { hasProperty } from "./Predicate.ts"
 import type * as Pull from "./Pull.ts"
@@ -131,36 +132,50 @@ export interface FileSystem {
     gid: number
   ) => Effect.Effect<void, PlatformError>
   /**
-   * Finds paths under `root` that match a glob pattern.
+   * Finds the paths under `root` that a `PathFilter` keeps.
    *
    * **Details**
    *
-   * Patterns follow `Glob.make`: wildcards skip names that start with `.`
-   * unless the pattern segment starts with `.` or `dot` is `true`, and
-   * `dir/**` includes `dir` itself. Results are `/`-separated paths relative
-   * to `root` (or absolute for an absolute pattern), visited depth-first with
-   * each directory's entries sorted by name. `**` does not traverse symbolic
-   * links to directories, but a link named by another segment is followed.
-   * Paths that match an `exclude` pattern are dropped, and excluded
-   * directories are not read. Entries whose type cannot be determined, such
-   * as broken links, are treated as files.
+   * `input` is any `PathFilter.Input`. A string such as `"src/**\/*.ts"` is a
+   * `Glob` pattern that selects paths, a `!` string excludes them, and a list
+   * mixes both, so `["**\/*.ts", "!**\/*.test.ts"]` finds the `.ts` files
+   * outside tests. Wildcards in selecting strings skip names that start with
+   * `.` unless the pattern segment does; build the selection with
+   * `PathFilter.select` and `dot: true` to include them. Combine a selection
+   * with ignore files through `PathFilter.restrict`.
    *
-   * Read failures at the root or a leading literal directory propagate. Missing
-   * paths return an empty result; unreadable wildcard-reached directories are
+   * Results are `/`-separated paths relative to `root`, visited depth-first
+   * with each directory's entries sorted by name; `root` itself is never a
+   * result. Directories are only read where a rule could keep something
+   * inside, and leading literal names, such as `src` in `src/**\/*.ts`, are
+   * looked up rather than listed. A link to a directory is followed only by
+   * a rule that names it through literal or wildcard segments, never through
+   * `**` or an inherited inclusion. Rules see each entry's own type, so `link/`
+   * never matches a link to a directory. Entries whose type cannot be
+   * determined, such as broken links, are treated as files.
+   *
+   * Read failures at the root or a looked-up directory propagate. A missing
+   * root returns an empty result; unreadable directories found by listing are
    * skipped.
    *
    * **Gotchas**
    *
-   * Wildcard matching is case-sensitive. Leading literal segments use `stat`,
-   * so their case sensitivity follows the file system and results retain the
-   * pattern's spelling.
+   * Wildcard matching is case-sensitive. Looked-up names use `stat`, so their
+   * case sensitivity follows the file system and results keep the pattern's
+   * spelling. Use `exists` to check `root` itself.
+   *
+   * A single absolute pattern, such as `"/abs/dir/**"`, is the one exception
+   * to root-relative results: it ignores `root` and returns absolute paths,
+   * and `dir/**` includes `dir` itself, as `"/"` and `"/**"` include the
+   * filesystem root. Everywhere else patterns are relative
+   * to `root`: an absolute pattern inside a list, after `!`, in
+   * `PathFilter.select` or `PathFilter.restrict`, as well as a `..` segment,
+   * an escaped `/` or a UNC path, makes the effect die.
    */
   readonly glob: (
-    pattern: string,
+    input: PathFilter.Input,
     options?: {
       readonly root?: string | undefined
-      readonly exclude?: ReadonlyArray<string> | undefined
-      readonly dot?: boolean | undefined
     }
   ) => Effect.Effect<Array<string>, PlatformError>
   /**
@@ -570,7 +585,7 @@ export const make = (
   FileSystem.of({
     ...impl,
     [TypeId]: TypeId,
-    glob: Glob.make(impl),
+    glob: Glob.make(impl, PathFilter),
     exists: (path) =>
       pipe(
         impl.access(path),
@@ -727,8 +742,8 @@ export const makeNoop = (fileSystem: Partial<FileSystem>): FileSystem =>
     copyFile(path) {
       return Effect.fail(notFound("copyFile", path))
     },
-    glob(pattern) {
-      return Effect.fail(notFound("glob", pattern))
+    glob(_, options) {
+      return Effect.fail(notFound("glob", options?.root ?? "."))
     },
     exists() {
       return Effect.succeed(false)
