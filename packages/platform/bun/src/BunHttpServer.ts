@@ -552,9 +552,10 @@ class BunServerRequest extends Inspectable.Class implements ServerRequest.HttpSe
   }
 
   get stream(): Stream.Stream<Uint8Array, Error.HttpServerError> {
-    return this.source.body
+    const body = this.source.body
+    return body
       ? BunStream.fromReadableStream({
-        evaluate: () => this.source.body as any,
+        evaluate: () => body,
         onError: (cause) =>
           new Error.HttpServerError({
             reason: new Error.RequestParseError({

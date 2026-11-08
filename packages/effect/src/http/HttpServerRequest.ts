@@ -594,9 +594,10 @@ class ServerRequestImpl extends Inspectable.Class implements HttpServerRequest {
   }
 
   get stream(): Stream.Stream<Uint8Array, HttpServerError> {
-    return this.source.body
+    const body = this.source.body
+    return body
       ? Stream.fromReadableStream({
-        evaluate: () => this.source.body as any,
+        evaluate: () => body,
         onError: (cause) =>
           new HttpServerError({
             reason: new RequestParseError({
