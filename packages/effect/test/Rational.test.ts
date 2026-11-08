@@ -83,6 +83,8 @@ describe("Rational", () => {
             Rational.makeUnsafe(a.numerator * b.denominator, a.denominator * b.numerator)
           )
         }
+        assertEquals(Rational.subtract(a, a), zero)
+        assertEquals(Rational.sum(a, Rational.negate(a)), zero)
       })
     )
   })
