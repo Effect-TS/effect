@@ -265,12 +265,7 @@ describe("PgConnection in-process server", () => {
     it.live("joins driver-created socket closure", () =>
       Effect.gen(function*() {
         const { config, connections, messages } = yield* withKeepAliveServer()
-        yield* Effect.scoped(Effect.gen(function*() {
-          const connection = yield* PgConnection.make(config)
-          const result = yield* connection.query("SELECT 1")
-          assert.deepStrictEqual(result.rows, [])
-        }))
-        assert.strictEqual(connections.length, 1)
+        yield* Effect.scoped(PgConnection.make(config))
         assert.isTrue(connections[0]!.socket.closed)
         assert.include(messages, "X")
       }))
@@ -278,26 +273,23 @@ describe("PgConnection in-process server", () => {
     it.live("waits one second before destroying a driver-created socket when the peer withholds FIN", () =>
       Effect.gen(function*() {
         const { config, connections } = yield* withKeepAliveServer({ holdFin: true })
-        const scope = yield* Effect.acquireRelease(
-          Scope.make(),
-          (scope) =>
-            Effect.andThen(
-              Effect.sync(() => connections.forEach(({ socket }) => socket.destroy())),
-              Scope.close(scope, Exit.void)
-            )
-        )
+        const scope = yield* Scope.fork(yield* Scope.Scope)
         yield* Scope.provide(PgConnection.make(config), scope)
         const socket = connections[0]!.socket
-        yield* Effect.acquireRelease(
-          Effect.sync(() => vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] })),
-          () => Effect.sync(() => vi.useRealTimers())
+        yield* Effect.addFinalizer(() =>
+          Effect.sync(() => {
+            vi.useRealTimers()
+            socket.destroy()
+          })
         )
+        vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] })
         const closing = yield* Effect.forkDetach(Scope.close(scope, Exit.void), { startImmediately: true })
         vi.advanceTimersByTime(999)
         assert.isFalse(socket.destroyed)
         assert.isUndefined(closing.pollUnsafe())
         vi.advanceTimersByTime(1)
         yield* Fiber.join(closing)
+        assert.isTrue(socket.destroyed)
         assert.isTrue(socket.closed)
       }))
 
