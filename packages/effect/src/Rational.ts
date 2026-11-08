@@ -107,6 +107,26 @@ const reduce = (numerator: bigint, denominator: bigint): Rational => {
   return canonical(numerator / divisor, denominator / divisor)
 }
 
+// Both pairs must already be coprime with positive denominators. The sum can only
+// share factors with the denominators' gcd (Knuth, TAOCP vol. 2, §4.5.1).
+const sumCoprime = (n1: bigint, d1: bigint, n2: bigint, d2: bigint): Rational => {
+  const g = BI.gcd(d1, d2)
+  if (g === bigint1) {
+    return canonical(n1 * d2 + n2 * d1, d1 * d2)
+  }
+  const t = n1 * (d2 / g) + n2 * (d1 / g)
+  const e = BI.gcd(t, g)
+  return canonical(t / e, (d1 / g) * (d2 / e))
+}
+
+// Both pairs must already be coprime with positive denominators. Canonical fractions share factors
+// only crosswise, so cancelling those first leaves the products coprime (Knuth, TAOCP vol. 2, §4.5.1).
+const multiplyCoprime = (n1: bigint, d1: bigint, n2: bigint, d2: bigint): Rational => {
+  const g1 = BI.gcd(n1, d2)
+  const g2 = BI.gcd(n2, d1)
+  return canonical((n1 / g1) * (n2 / g2), (d1 / g2) * (d2 / g1))
+}
+
 const zero = canonical(bigint0, bigint1)
 const one = canonical(bigint1, bigint1)
 
@@ -381,7 +401,7 @@ export const sum: {
 } = dual(
   2,
   (self: Rational, that: Rational): Rational =>
-    reduce(self.numerator * that.denominator + that.numerator * self.denominator, self.denominator * that.denominator)
+    sumCoprime(self.numerator, self.denominator, that.numerator, that.denominator)
 )
 
 /**
@@ -430,7 +450,7 @@ export const subtract: {
 } = dual(
   2,
   (self: Rational, that: Rational): Rational =>
-    reduce(self.numerator * that.denominator - that.numerator * self.denominator, self.denominator * that.denominator)
+    sumCoprime(self.numerator, self.denominator, -that.numerator, that.denominator)
 )
 
 /**
@@ -454,7 +474,7 @@ export const multiply: {
 } = dual(
   2,
   (self: Rational, that: Rational): Rational =>
-    reduce(self.numerator * that.numerator, self.denominator * that.denominator)
+    multiplyCoprime(self.numerator, self.denominator, that.numerator, that.denominator)
 )
 
 /**
@@ -512,7 +532,11 @@ export const divide: {
   (self: Rational, that: Rational): Option.Option<Rational> =>
     that.numerator === bigint0
       ? Option.none()
-      : Option.some(reduce(self.numerator * that.denominator, self.denominator * that.numerator))
+      : Option.some(
+        that.numerator < bigint0
+          ? multiplyCoprime(self.numerator, self.denominator, -that.denominator, -that.numerator)
+          : multiplyCoprime(self.numerator, self.denominator, that.denominator, that.numerator)
+      )
 )
 
 /**

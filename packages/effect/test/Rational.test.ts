@@ -56,6 +56,17 @@ describe("Rational", () => {
     throws(() => Rational.divideUnsafe(third, zero), new RangeError("Division by zero"))
   })
 
+  it("arithmetic preserves canonical fractions with shared factors, signs and zero", () => {
+    assertRational(Rational.sum($("1/6"), $("1/10")), 4n, 15n)
+    assertRational(Rational.subtract($("1/6"), $("1/10")), 1n, 15n)
+    assertRational(Rational.sum(third, $("-1/3")), 0n, 1n)
+    assertRational(Rational.subtract(third, third), 0n, 1n)
+    assertRational(Rational.multiply($("6/35"), $("14/15")), 4n, 25n)
+    assertRational(Rational.divideUnsafe($("6/35"), $("-15/14")), -4n, 25n)
+    assertRational(Rational.multiply(zero, third), 0n, 1n)
+    assertRational(Rational.divideUnsafe(zero, $("-2/3")), 0n, 1n)
+  })
+
   it("pow takes integer exponents, inverting for negative ones", () => {
     // Twelve pure fifths overshoot seven octaves by the Pythagorean comma.
     const twelveFifths = Rational.powUnsafe($("3/2"), 12)
