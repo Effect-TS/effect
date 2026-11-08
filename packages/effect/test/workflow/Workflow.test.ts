@@ -50,7 +50,8 @@ describe("Workflow.intoResult", () => {
         yield* Deferred.succeed(started, undefined)
         return yield* Effect.never
       }).pipe(Effect.onExit(() =>
-        Effect.sync(() => {
+        Effect.gen(function*() {
+          yield* Effect.yieldNow
           order.push("handler")
         })
       ))
