@@ -4,4 +4,4 @@
 "@effect/platform-deno": patch
 ---
 
-`HttpServerRequest.stream` now yields an empty stream for requests with a null body instead of failing with "can not create stream from empty body".
+Fix `HttpServerRequest.stream` failing on requests with no body; return an empty stream instead.
