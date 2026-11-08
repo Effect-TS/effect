@@ -217,13 +217,19 @@ const findIndicator = (
   tokenStart = true
 ): number => {
   const length = input.length
+  // Set after a quoted scalar or a flow collection closes, where a `:` directly after it
+  // separates a JSON-like key from its value (YAML 1.2.2 §7.4.2).
+  let afterJsonNode = false
   for (let index = 0; index < length; index++) {
     const code = input.charCodeAt(index)
+    const jsonKeyEnd = afterJsonNode
+    if (!isWhiteCode(code)) afterJsonNode = false
     if (tokenStart && (code === 39 || code === 34)) {
       // `'` or `"`
       index = closingQuote(input, code === 39 ? "'" : "\"", index + 1)
       if (index === -1) return -1
       tokenStart = false
+      afterJsonNode = true
     } else if (tokenStart && (code === 38 || code === 42 || code === 33)) {
       // `&`, `*` or `!`: anchor and alias names and tags may contain `:`, and the node after
       // a property still starts a token.
@@ -240,15 +246,18 @@ const findIndicator = (
     } else if (depth > 0 && (code === 93 || code === 125)) {
       depth--
       tokenStart = false
+      afterJsonNode = true
     } else if (depth > 0 && code === 44) {
       tokenStart = true
     } else if (code === 58 && (depth > 0 || index + 1 === length || isWhiteCode(input.charCodeAt(index + 1)))) {
-      // `:`
+      // `:`. In a flow collection, one inside a plain scalar (`a:'b`) is text, so the quote
+      // after it does not start a token.
       if (depth === 0) {
         if (indicator === ":") return index
         if (found !== undefined && found.separator === -1) found.separator = index
       }
-      tokenStart = true
+      const next = input.charCodeAt(index + 1)
+      tokenStart = depth === 0 || jsonKeyEnd || index + 1 === length || isWhiteCode(next) || isFlowIndicatorCode(next)
     } else if (tokenStart && code === 45 && isWhiteCode(input.charCodeAt(index + 1))) {
       continue
     } else if (!isWhiteCode(code)) {
@@ -782,6 +791,8 @@ class FlowParser {
     if (isPropertyIndicatorCode(character.charCodeAt(0))) this.fail(keyPropertyError)
     if (character === "\"" || character === "'") return this.readQuoted(character)
     const text = this.readPlain(isFlowPlainEnd)
+    // A comment or line break may separate the key from its `:`.
+    this.skipWhitespace()
     if (this.peek() !== ":") {
       if (text === "") this.expect(":")
       // `{a:1}` is the key `a:1` without a value under YAML 1.2.2 §7.3.3, but reads as `{a: 1}` in
