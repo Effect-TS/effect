@@ -463,8 +463,7 @@ const decodeRecords = <IE, Done>(options: DecodeOptions | undefined): Channel.Ch
           // The failing row precedes the parser error in the input.
           failure = error
         }
-        if (Arr.isArrayNonEmpty(out)) return Effect.succeed(out)
-        return failure !== undefined ? Effect.fail(failure) : pull
+        return Arr.isArrayNonEmpty(out) ? Effect.succeed(out) : pull
       }
 
       const pull: Pull.Pull<Arr.NonEmptyReadonlyArray<Decoded>, IE | CsvError, Done> = Effect.suspend(() => {
