@@ -32,9 +32,9 @@ describe("persisted ids", () => {
 })
 
 describe("Workflow.intoResult", () => {
-  it.effect("waits for handler cleanup before workflow finalizers on immediate interruption", () =>
+  it.effect("joins early-interrupted handler cleanup before closing the workflow scope", () =>
     Effect.gen(function*() {
-      const workflow = Workflow.make("CleanupOrder", {
+      const workflow = Workflow.make("EarlyInterruption", {
         payload: {},
         idempotencyKey: () => "one"
       })
@@ -44,14 +44,14 @@ describe("Workflow.intoResult", () => {
       const handler = Effect.gen(function*() {
         yield* Workflow.addFinalizer(() =>
           Effect.sync(() => {
-            order.push("workflow-finalizer")
+            order.push("workflow")
           })
         )
         yield* Deferred.succeed(started, undefined)
         return yield* Effect.never
       }).pipe(Effect.onExit(() =>
         Effect.sync(() => {
-          order.push("handler-finalizer")
+          order.push("handler")
         })
       ))
       const running = yield* handler.pipe(
@@ -59,11 +59,11 @@ describe("Workflow.intoResult", () => {
         Effect.provideService(WorkflowInstance, instance),
         Effect.forkChild
       )
+
       yield* Deferred.await(started)
-      // Do not yield between startup and interruption: that would hide the race.
-      order.push("interrupt")
       yield* Fiber.interrupt(running)
-      assert.deepStrictEqual(order, ["interrupt", "handler-finalizer", "workflow-finalizer"])
+
+      assert.deepStrictEqual(order, ["handler", "workflow"])
     }))
 })
 

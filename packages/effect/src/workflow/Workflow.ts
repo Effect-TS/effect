@@ -716,13 +716,14 @@ export const intoResult = <A, E, R>(
     const instance = Context.get(context, InstanceTag)
     const captureDefects = Context.get(instance.workflow.annotations, CaptureDefects)
     const suspendOnFailure = Context.get(instance.workflow.annotations, SuspendOnFailure)
-    return effect.pipe(
-      Effect.forkChild({ startImmediately: true }),
-      // The outer uninterruptible region protects the fork and cancellation hook.
-      // Only the join is interruptible, so suspension waits for handler cleanup.
-      Effect.flatMap((fiber) =>
-        Effect.onInterrupt(Effect.interruptible(Fiber.join(fiber)), () => Fiber.interrupt(fiber))
-      ),
+    return Effect.uninterruptibleMask((restore) =>
+      effect.pipe(
+        // so we can use external interruption to suspend the workflow
+        Effect.forkChild({ startImmediately: true }),
+        Effect.flatMap((fiber) => Effect.onInterrupt(restore(Fiber.join(fiber)), () => Fiber.interrupt(fiber)))
+      )
+    ).pipe(
+      Effect.interruptible,
       suspendOnFailure
         ? Effect.catchCause((cause) => {
           if (instance.abandoned || instance.interrupted) {
