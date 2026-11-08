@@ -104,6 +104,30 @@ describe("Scheduler", () => {
       assert.strictEqual(calls, 0)
     }))
 
+  it("automatic dispatch failures terminate the fiber with a defect", () => {
+    const defect = new Error("dispatch failed")
+    const tasks: Array<() => void> = []
+    let attempts = 0
+    const scheduler: Scheduler.Scheduler = {
+      executionMode: "async",
+      shouldYield: (fiber) => fiber.currentOpCount >= 2,
+      makeDispatcher: () => ({
+        scheduleTask: (task) => {
+          // Bound failures so a runtime that retries dispatch cannot spin forever.
+          if (++attempts <= 5) throw defect
+          tasks.push(task)
+        },
+        flush() {}
+      })
+    }
+    const fiber = Effect.runFork(
+      Effect.forEach([1, 2, 3], Effect.succeed, { concurrency: "unbounded" }),
+      { scheduler }
+    )
+
+    assert.deepStrictEqual(fiber.pollUnsafe(), Exit.die(defect))
+  })
+
   for (const budget of [1, 2, 3]) {
     it(`concurrent forEach completes with MaxOpsBeforeYield ${budget}`, () => {
       const tasks: Array<() => void> = []
