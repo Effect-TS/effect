@@ -533,6 +533,7 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
     this._children = undefined
     this._interruptedCause = undefined
     this._yielded = undefined
+    this._autoYielded = false
     this._running = false
     this._deferredInterrupt = false
     this._parent = undefined
@@ -553,6 +554,7 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
   declare _children: Set<FiberImpl<any, any>> | undefined
   declare _interruptedCause: Cause.Cause<never> | undefined
   declare _yielded: Exit.Exit<any, any> | (() => void) | undefined
+  declare _autoYielded: boolean
   declare _running: boolean
   declare _deferredInterrupt: boolean
   declare _parent: FiberImpl<any, any> | undefined
@@ -674,8 +676,11 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
     const prevRunning = this._running
     this._running = true
     let yielding = false
+    let resuming = this._autoYielded
+    this._autoYielded = false
     let current: Primitive | Yield = effect
-    this.currentOpCount = 0
+    // Count the resumption as the exitVoid instruction it replaces.
+    this.currentOpCount = resuming ? 1 : 0
     try {
       while (true) {
         try {
@@ -686,18 +691,19 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
           this.currentOpCount++
           // Refresh the cache because a primitive can replace the fiber context.
           const cache = this.cache
-          // Always execute the first instruction of a slice so even tiny budgets
-          // make progress. Resume directly without a counted yield continuation.
+          // Only automatic resumptions must run their saved instruction before
+          // checking the budget; other slices retain their existing yield points.
           if (
+            !resuming &&
             !yielding &&
-            this.currentOpCount > 1 &&
             !cache.preventYield &&
             cache.scheduler.shouldYield(this as any)
           ) {
             // If dispatch throws, evaluate its defect instead of retrying the yield.
             yielding = true
-            current = this.yieldNow(current as Primitive)
+            current = this.yieldNow(current as Primitive, 0, true)
           } else {
+            resuming = false
             current = cache.tracerContext
               ? cache.tracerContext(current as any, this)
               : (current as any)[evaluate](this)
@@ -764,10 +770,11 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
     this._yielded = value
     return Yield
   }
-  yieldNow(effect: Primitive, priority = 0): Yield {
+  yieldNow(effect: Primitive, priority = 0, automatic = false): Yield {
     let resumed = false
     this.currentDispatcher.scheduleTask(() => {
       if (resumed) return
+      this._autoYielded = automatic
       this.evaluate(effect)
     }, priority)
     return this.yieldWith(() => {
