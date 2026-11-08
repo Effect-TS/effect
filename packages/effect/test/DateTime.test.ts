@@ -581,6 +581,26 @@ describe("DateTime", () => {
       assertTrue(Equal.equals(kyiv, kiev))
       strictEqual(Hash.hash(kyiv), Hash.hash(kiev))
     })
+
+    it("treats a zone from an older copy of effect as equal", () => {
+      const zone = DateTime.zoneMakeNamedUnsafe("Europe/London")
+      // Older copies store Intl's resolved identifier in `id` and have no `resolvedId`
+      const older = {
+        "~effect/DateTime/TimeZone": "~effect/DateTime/TimeZone",
+        _tag: "Named",
+        id: "Europe/London",
+        format: new Intl.DateTimeFormat("en-US", { timeZone: "Europe/London" }),
+        [Hash.symbol]() {
+          return Hash.string(`Named:${this.id}`)
+        },
+        [Equal.symbol](that: unknown) {
+          return DateTime.isTimeZoneNamed(that) && this.id === that.id
+        }
+      }
+      assertTrue(Equal.equals(older, zone))
+      assertTrue(Equal.equals(zone, older))
+      strictEqual(Hash.hash(zone), Hash.hash(older))
+    })
   })
 
   describe("toUtc", () => {
