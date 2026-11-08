@@ -328,7 +328,6 @@ export const make = Effect.fnUntraced(function*(options: SqlClient.MakeOptions) 
       onSome: ([conn]) => Effect.succeed(conn)
     })
   )
-  const getConnectionWithoutTransforms = Effect.suspend(() => getConnection)
 
   const beginTransaction = options.beginTransaction ?? "BEGIN"
   const commit = options.commit ?? "COMMIT"
@@ -376,6 +375,15 @@ export const make = Effect.fnUntraced(function*(options: SqlClient.MakeOptions) 
       })
     )
 
+  // A distinct acquirer, so Statement.make caches a separate constructor for the copy.
+  const statementWithoutTransforms = Statement.make(
+    Effect.suspend(() => getConnection),
+    options.compiler.withoutTransform,
+    options.spanAttributes,
+    undefined,
+    borrower
+  )
+
   const client: SqlClient = Object.assign(
     Statement.make(getConnection, options.compiler, options.spanAttributes, options.transformRows, borrower),
     {
@@ -387,19 +395,11 @@ export const make = Effect.fnUntraced(function*(options: SqlClient.MakeOptions) 
       reserve: transactionAcquirer,
       driver: options.driver,
       withoutTransforms(): any {
-        const statement = Statement.make(
-          getConnectionWithoutTransforms,
-          options.compiler.withoutTransform,
-          options.spanAttributes,
-          undefined,
-          borrower
-        )
-        // Statement.make caches the constructor, so copy it instead of
-        // mutating it and keep the receiver's overrides such as withTransaction.
+        // Copy rather than mutate the cached constructor, so each receiver keeps its own overrides.
         const client = Object.assign(
-          (...args: Array<unknown>) => Reflect.apply(statement, undefined, args),
+          (...args: Array<unknown>) => Reflect.apply(statementWithoutTransforms, undefined, args),
           this,
-          statement
+          statementWithoutTransforms
         )
         ;(client as any).safe = client
         ;(client as any).withoutTransforms = () => client
