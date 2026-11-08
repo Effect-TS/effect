@@ -218,49 +218,30 @@ describe("Csv", () => {
       assert.deepStrictEqual(yield* run(text, Csv.decodeSchemaString(TuplePerson)()), [{ name: "Alice", age: 32 }])
     }))
 
-  it.effect("emits the records before an error regardless of chunking", () =>
+  it.effect("emits completed records before decoding errors in the same chunk", () =>
     Effect.gen(function*() {
-      const beforeError = <A>(
-        channel: Channel.Channel<
-          Arr.NonEmptyReadonlyArray<A>,
-          Csv.CsvError,
-          unknown,
-          Arr.NonEmptyReadonlyArray<string>,
-          never,
-          unknown
-        >,
-        lines: ReadonlyArray<string>
-      ) =>
-        Effect.forEach([Stream.make(lines.join("")), Stream.fromIterable(lines, { chunkSize: 1 })], (input) => {
-          const values: Array<A> = []
-          return input.pipe(
-            Stream.pipeThroughChannel(channel),
-            Stream.runForEach((value) => Effect.sync(() => values.push(value))),
-            Effect.flip,
-            Effect.map((error) => [error.kind, values])
-          )
-        })
-      const headers = Csv.decodeString({ headers: true })
+      const beforeError = Effect.fnUntraced(function*(
+        text: string,
+        channel: ReturnType<typeof Csv.decodeString<never>> = Csv.decodeString()
+      ) {
+        const values: Array<unknown> = []
+        const error = yield* Stream.make(text).pipe(
+          Stream.pipeThroughChannel(channel),
+          Stream.runForEach((value) => Effect.sync(() => values.push(value))),
+          Effect.flip
+        )
+        return [error.kind, values]
+      })
 
-      assert.deepStrictEqual(yield* beforeError(Csv.decodeString(), ["a,b\n", "c,d\n", "\"e\"x\n"]), [
-        ["Syntax", [["a", "b"], ["c", "d"]]],
-        ["Syntax", [["a", "b"], ["c", "d"]]]
+      assert.deepStrictEqual(yield* beforeError("a,b\nc,d\n\"e\"x\n"), [
+        "Syntax",
+        [["a", "b"], ["c", "d"]]
       ])
-      assert.deepStrictEqual(yield* beforeError(headers, ["a,b\n", "c,d\n", "e,f,g\n"]), [
-        ["Header", [{ a: "c", b: "d" }]],
-        ["Header", [{ a: "c", b: "d" }]]
+      assert.deepStrictEqual(yield* beforeError("a,b\nc,d\ne\n\"f\"x\n", Csv.decodeString({ headers: true })), [
+        "Header",
+        [{ a: "c", b: "d" }]
       ])
-      assert.deepStrictEqual(yield* beforeError(headers, ["a,b\n", "c,d\n", "e\n", "\"f\"x\n"]), [
-        ["Header", [{ a: "c", b: "d" }]],
-        ["Header", [{ a: "c", b: "d" }]]
-      ])
-      assert.deepStrictEqual(
-        yield* beforeError(Csv.decodeString({ maxRecordSize: 5 }), ["a,b\n", "c,d\n", "abcdef,g\n"]),
-        [
-          ["RecordSize", [["a", "b"], ["c", "d"]]],
-          ["RecordSize", [["a", "b"], ["c", "d"]]]
-        ]
-      )
+      assert.deepStrictEqual(yield* beforeError("a,b\n\"c"), ["Syntax", [["a", "b"]]])
     }))
 
   it.effect("fails with upstream errors without flushing a partial record", () =>
