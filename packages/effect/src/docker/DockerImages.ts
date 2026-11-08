@@ -748,11 +748,13 @@ export class DockerImages extends Context.Service<DockerImages, {
    *
    * [Engine API: ImageBuild](https://docs.docker.com/reference/api/engine/version/v1.52/#tag/Image/operation/ImageBuild).
    * The context is a tar, sent byte for byte: plain, or compressed with gzip,
-   * bzip2, xz or zstd (the Engine decompresses it). The client doesn't
-   * assemble it and applies no `.dockerignore`. Put the Dockerfile in it, and
-   * name it with `dockerfile` when it isn't `Dockerfile`; for BuildKit, make
-   * it the first entry, with a short ASCII path (a plain USTAR header), since
-   * without a session BuildKit only recognizes such a context.
+   * bzip2, xz or zstd (the Engine decompresses it). The Engine applies no
+   * `.dockerignore`: `DockerBuildContext.fromDirectory` makes the tar from a
+   * directory and its `.dockerignore`, as `docker build` does. Put the
+   * Dockerfile in it, and name it with `dockerfile` when it isn't
+   * `Dockerfile`; for BuildKit, make it the first entry, with a short ASCII
+   * path (a plain USTAR header), since without a session BuildKit only
+   * recognizes such a context.
    *
    * The context can also be a URL the Engine fetches, redacted in spans: a Git
    * repository (`https://github.com/org/repo.git#ref:dir`, `git@…`), or the

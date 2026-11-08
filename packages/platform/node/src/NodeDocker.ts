@@ -2,9 +2,9 @@
  * The Node.js layer for `effect/docker`.
  *
  * {@link layerFromEnv} provides `DockerEngine`, `DockerRegistryAuth` and every
- * `effect/docker` service, configured as the Docker CLI is (see
- * `DockerConfig.ResolvedConfig`), and {@link layer} provides them over the
- * `DockerConfig` you provide.
+ * `effect/docker` service, `DockerBuildContext` included, configured as the
+ * Docker CLI is (see `DockerConfig.ResolvedConfig`), and {@link layer}
+ * provides them over the `DockerConfig` you provide.
  *
  * **Example** (Reading the Engine's information)
  *
@@ -27,6 +27,7 @@
  * @since 4.2.0
  */
 import * as Docker from "effect/docker/Docker"
+import * as DockerBuildContext from "effect/docker/DockerBuildContext"
 import * as DockerConfig from "effect/docker/DockerConfig"
 import * as DockerEngine from "effect/docker/DockerEngine"
 import * as DockerRegistryAuth from "effect/docker/DockerRegistryAuth"
@@ -61,10 +62,10 @@ const tlsOptions = (endpoint: typeof DockerConfig.Endpoint.cases.Tcp.Type, tls: 
   rejectUnauthorized: tls.verify
 })
 
+const fileSystemLayer = Layer.mergeAll(NodeFileSystem.layer, NodePath.layer)
+
 // runs registry credential helpers
-const spawnerLayer = NodeChildProcessSpawner.layer.pipe(
-  Layer.provide(Layer.mergeAll(NodeFileSystem.layer, NodePath.layer))
-)
+const spawnerLayer = NodeChildProcessSpawner.layer.pipe(Layer.provide(fileSystemLayer))
 
 /**
  * Builds a `DockerEngine` on Node.js from the `DockerConfig` in the context,
@@ -103,15 +104,15 @@ export const make: Effect.Effect<
 })
 
 /**
- * Provides `DockerEngine`, `DockerRegistryAuth` and every service of
- * `Docker.layer` on Node.js, built with {@link make} from the `DockerConfig`
- * it requires.
+ * Provides `DockerEngine`, `DockerRegistryAuth`, every service of
+ * `Docker.layer` and `DockerBuildContext` on Node.js, built with {@link make}
+ * from the `DockerConfig` it requires.
  *
  * **Details**
  *
  * Registry credentials resolve as the Docker CLI resolves them
  * (`DockerRegistryAuth.layer`), with credential helpers run as Node.js child
- * processes. To resolve them another way, provide `Docker.layer` with
+ * processes. Build contexts read directories from Node.js's file system. To resolve them another way, provide `Docker.layer` with
  * {@link make}'s engine and a `DockerRegistryAuth` of your own.
  *
  * Provide the configuration as its own layer: `DockerConfig.layer(config)`
@@ -124,19 +125,24 @@ export const make: Effect.Effect<
  * @since 4.2.0
  */
 export const layer: Layer.Layer<
-  DockerEngine.DockerEngine | DockerRegistryAuth.DockerRegistryAuth | Docker.Docker,
+  | DockerEngine.DockerEngine
+  | DockerRegistryAuth.DockerRegistryAuth
+  | Docker.Docker
+  | DockerBuildContext.DockerBuildContext,
   never,
   DockerConfig.DockerConfig
 > = Docker.layer.pipe(
   Layer.provideMerge(Layer.mergeAll(
     Layer.effect(DockerEngine.DockerEngine, make),
-    DockerRegistryAuth.layer.pipe(Layer.provide(spawnerLayer))
+    DockerRegistryAuth.layer.pipe(Layer.provide(spawnerLayer)),
+    DockerBuildContext.layer.pipe(Layer.provide(fileSystemLayer))
   ))
 )
 
 /**
- * Provides `DockerEngine`, `DockerRegistryAuth` and every service of
- * `Docker.layer` on Node.js, configured as a bare `docker` invocation is:
+ * Provides `DockerEngine`, `DockerRegistryAuth`, every service of
+ * `Docker.layer` and `DockerBuildContext` on Node.js, configured as a bare
+ * `docker` invocation is:
  * {@link layer} over `DockerConfig.layerFromEnv(overrides)`, with the
  * platform's defaults: on Windows, the config directory in `%USERPROFILE%`
  * and the named pipe `//./pipe/docker_engine`; elsewhere, the config
@@ -161,7 +167,10 @@ export const layer: Layer.Layer<
 export const layerFromEnv = (
   overrides?: Partial<DockerConfig.ResolvedConfig> | undefined
 ): Layer.Layer<
-  DockerEngine.DockerEngine | DockerRegistryAuth.DockerRegistryAuth | Docker.Docker,
+  | DockerEngine.DockerEngine
+  | DockerRegistryAuth.DockerRegistryAuth
+  | Docker.Docker
+  | DockerBuildContext.DockerBuildContext,
   DockerConfig.DockerConfigError
 > =>
   layer.pipe(

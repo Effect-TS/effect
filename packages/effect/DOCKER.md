@@ -76,10 +76,11 @@ An endpoint is a unix socket, a Windows named pipe or TCP, with TLS material as 
 | `DockerSwarm`, `DockerNodes`, `DockerServices`, `DockerTasks` | a Swarm, its nodes, services and their tasks                                 |
 | `DockerSecrets`, `DockerSwarmConfigs`                         | Swarm secrets and configs                                                    |
 | `DockerPlugins`                                               | managed plugins, with `install`                                              |
+| `DockerBuildContext`                                          | build contexts made from a directory and its `.dockerignore`                 |
 
 Each takes and returns the Engine's own models, generated into `DockerSchema` (PascalCase, as the Engine writes them), or `DockerApi`'s where they differ, such as secrets as `Redacted`. Every Swarm object with an `update` also has `modify`, which reads the object, applies a function to its spec and writes it back at the version read, starting over while the write is out of sequence.
 
-`NodeDocker`'s layers provide every service. With an `HttpClient` of your own, build the engine with `DockerEngine.make` and add the services with `Docker.layer`, which also needs a `DockerRegistryAuth`.
+`NodeDocker`'s layers provide every service. With an `HttpClient` of your own, build the engine with `DockerEngine.make` and add the services with `Docker.layer`, which also needs a `DockerRegistryAuth`. `DockerBuildContext.layer` needs a `FileSystem` and a `Path` instead of the Engine.
 
 ## Streams and handles
 
@@ -105,6 +106,22 @@ const program = Effect.gen(function*() {
 ```
 
 `DockerExec.run` creates, starts and collects in one call.
+
+## Builds
+
+`DockerImages.build` takes the build context as a tar stream, or a URL the Engine fetches. `DockerBuildContext.fromDirectory` makes the tar from a directory as `docker build <directory>` does: without what the `.dockerignore` excludes (the Dockerfile's own `<Dockerfile>.dockerignore` first), with the Dockerfile and the ignore file always sent and the Dockerfile first, as BuildKit needs:
+
+```ts
+import { Effect } from "effect"
+import { DockerBuildContext, DockerImages } from "effect/docker"
+
+const program = Effect.gen(function*() {
+  const contexts = yield* DockerBuildContext.DockerBuildContext
+  const images = yield* DockerImages.DockerImages
+  const context = yield* contexts.fromDirectory("./app")
+  return yield* images.build(context, { tags: ["my-app:dev"] })
+})
+```
 
 ## Registry credentials
 
@@ -140,7 +157,7 @@ Every operation fails with `DockerError`. Its `reason` says what went wrong, and
 - An Engine response by its status, as moby maps its errors: `BadRequest`, `Unauthorized`, `Forbidden`, `NotFound`, `Conflict`, `PreconditionFailed`, `TooManyRequests`, `ServerError`, `NotImplemented`, `Unavailable`, and `UnexpectedStatus` for any other. A Swarm endpoint's `503` is `SwarmUnavailable`: the node isn't a manager, or not in a Swarm.
 - `ConnectionFailed`, with a hint for the common causes (no socket, permission denied, TLS mismatch).
 - `InvalidResponse` for a response that doesn't decode, `StreamFailed` for a failure inside a stream.
-- Client-side checks: `UnsupportedApiVersion`, `InvalidReference`, `StdinNotAttached`, `CredentialsUnavailable`.
+- Client-side checks: `UnsupportedApiVersion`, `InvalidReference`, `InvalidBuildContext`, `StdinNotAttached`, `CredentialsUnavailable`.
 
 ```ts
 import { Effect } from "effect"

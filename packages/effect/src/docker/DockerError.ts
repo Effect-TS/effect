@@ -632,6 +632,36 @@ export class InvalidReference extends Data.TaggedError("InvalidReference")<{
 }
 
 /**
+ * A directory couldn't be made a build context by
+ * `DockerBuildContext.fromDirectory`: its ignore file is malformed (the
+ * `issue` names the line), or a file failed to read or changed size while it
+ * was sent. `path` is the file, as the file system names it. Nothing is sent
+ * when the ignore file is at fault.
+ *
+ * @stability unstable
+ * @category errors
+ * @since 4.2.0
+ */
+export class InvalidBuildContext extends Data.TaggedError("InvalidBuildContext")<{
+  readonly path: string
+  readonly issue: string
+  readonly cause?: unknown
+}> {
+  /**
+   * Whether retrying may succeed: never for this reason.
+   *
+   * @stability unstable
+   * @since 4.2.0
+   */
+  get isRetryable(): boolean {
+    return false
+  }
+  override get message() {
+    return `Invalid build context ${JSON.stringify(this.path)}: ${this.issue}`
+  }
+}
+
+/**
  * A stream reported an error in-band: a systemerr frame in logs, exec or
  * attach output, or a multiplexed stream that ends inside a frame. It is also
  * the reason when the entries given to `copyTo` (`DockerContainers`) fail to
@@ -729,6 +759,7 @@ export type DockerErrorReason =
   | InvalidResponse
   | UnsupportedApiVersion
   | InvalidReference
+  | InvalidBuildContext
   | StreamFailed
   | StdinNotAttached
   | CredentialsUnavailable

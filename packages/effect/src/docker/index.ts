@@ -21,6 +21,12 @@ export * as DockerApi from "./DockerApi.ts"
  * @stability unstable
  * @since 4.2.0
  */
+export * as DockerBuildContext from "./DockerBuildContext.ts"
+
+/**
+ * @stability unstable
+ * @since 4.2.0
+ */
 export * as DockerConfig from "./DockerConfig.ts"
 
 /**

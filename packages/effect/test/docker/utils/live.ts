@@ -5,11 +5,20 @@
  */
 import { NodeDocker } from "@effect/platform-node"
 import { Effect, type Layer, Stream } from "effect"
-import { type Docker, type DockerConfig, DockerContainers, type DockerEngine, DockerImages } from "effect/docker"
+import {
+  type Docker,
+  type DockerBuildContext,
+  type DockerConfig,
+  DockerContainers,
+  type DockerEngine,
+  DockerImages
+} from "effect/docker"
 
-/** The `DockerEngine` and `Docker` layer. */
-export const layer: Layer.Layer<DockerEngine.DockerEngine | Docker.Docker, DockerConfig.DockerConfigError> = NodeDocker
-  .layerFromEnv()
+/** The `DockerEngine`, `Docker` and `DockerBuildContext` layer. */
+export const layer: Layer.Layer<
+  DockerEngine.DockerEngine | Docker.Docker | DockerBuildContext.DockerBuildContext,
+  DockerConfig.DockerConfigError
+> = NodeDocker.layerFromEnv()
 
 /** The label on everything the suites create. */
 export const labels = { "effect-docker-test": "1" }

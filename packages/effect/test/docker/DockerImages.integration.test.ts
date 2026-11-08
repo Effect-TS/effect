@@ -1,6 +1,7 @@
+import * as NodeServices from "@effect/platform-node/NodeServices"
 import { assert, it } from "@effect/vitest"
-import { Effect, Redacted, Schedule, Stream } from "effect"
-import { DockerContainers, DockerImages } from "effect/docker"
+import { Effect, FileSystem, Path, Redacted, Schedule, Stream } from "effect"
+import { DockerBuildContext, DockerContainers, DockerImages } from "effect/docker"
 import { Tar } from "effect/encoding"
 import { ensureImage, image, layer, scopedContainer, scopedImages } from "./utils/live.ts"
 
@@ -55,6 +56,27 @@ it.layer(layer, { timeout: "300 seconds", excludeTestServices: true })("Images (
         assert.strictEqual((yield* images.inspect(built.id)).Config?.Labels?.built, "1")
       }
     }), 120_000)
+
+  it.effect("builds a directory without what its .dockerignore excludes", () =>
+    Effect.gen(function*() {
+      const images = yield* Images
+      const contexts = yield* DockerBuildContext.DockerBuildContext
+      const { labels } = yield* scopedImages
+      const fs = yield* FileSystem.FileSystem
+      const path = yield* Path.Path
+      yield* ensureImage(image)
+      const root = yield* fs.makeTempDirectoryScoped()
+      yield* fs.writeFileString(path.join(root, ".dockerignore"), "secret.txt\n")
+      yield* fs.writeFileString(path.join(root, "keep.txt"), "keep")
+      yield* fs.writeFileString(path.join(root, "secret.txt"), "secret")
+      const buildCopying = Effect.fnUntraced(function*(file: string) {
+        yield* fs.writeFileString(path.join(root, "Dockerfile"), `FROM ${image}\nCOPY ${file} /\n`)
+        return yield* images.build(yield* contexts.fromDirectory(root), { builder: "buildkit", labels })
+      })
+      assert.match((yield* buildCopying("keep.txt")).id, /^sha256:/)
+      const failed = yield* Effect.flip(buildCopying("secret.txt"))
+      assert(failed.reason._tag === "StreamFailed", failed.message)
+    }).pipe(Effect.provide(NodeServices.layer)), 120_000)
 
   it.effect("round-trips a private registry: push and pull with credentials", () =>
     Effect.gen(function*() {
