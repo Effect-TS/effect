@@ -47,7 +47,7 @@ const TestFileSystem = Layer.effect(
     const path = yield* Path.Path
     const context = yield* Effect.context<never>()
     const docgenJson = Option.getOrElse(Context.getOption(context, DocgenJsonTag), () => ({} as DocgenJson))
-    const readFileString: FileSystem.FileSystem["readFileString"] = (filePath) => {
+    const readFileString: FileSystem.Shape["readFileString"] = (filePath) => {
       const fileName = path.basename(filePath)
       if (fileName === "package.json") {
         return Effect.succeed(JSON.stringify({ name: "name", homepage: "homepage" }))
@@ -56,7 +56,7 @@ const TestFileSystem = Layer.effect(
       }
       return Effect.die(`file not found: ${filePath}`)
     }
-    const exists: FileSystem.FileSystem["exists"] = (filePath) => {
+    const exists: FileSystem.Shape["exists"] = (filePath) => {
       const fileName = path.basename(filePath)
       if (fileName === "invalid-json.txt") {
         return Effect.succeed(true)
@@ -66,7 +66,7 @@ const TestFileSystem = Layer.effect(
       }
       return Effect.succeed(false)
     }
-    const stat: FileSystem.FileSystem["stat"] = (filePath) =>
+    const stat: FileSystem.Shape["stat"] = (filePath) =>
       path.basename(filePath) === "invalid-json.txt" ? Effect.succeed(fileInfo) : Effect.die("file not found")
     return FileSystem.makeNoop({ exists, readFileString, stat })
   })

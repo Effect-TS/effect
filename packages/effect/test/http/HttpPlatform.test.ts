@@ -83,7 +83,7 @@ describe("HttpPlatform", () => {
       }
     }).pipe(
       Effect.provide(HttpPlatform.layer),
-      Effect.provideService(FileSystem.FileSystem, {} as any)
+      Effect.provideService(FileSystem.FileSystem, FileSystem.makeNoop({}))
     ))
 
   for (
@@ -113,7 +113,7 @@ describe("HttpPlatform", () => {
         }
       }).pipe(
         Effect.provide(HttpPlatform.layer),
-        Effect.provideService(FileSystem.FileSystem, {} as any)
+        Effect.provideService(FileSystem.FileSystem, FileSystem.makeNoop({}))
       ))
   }
 
@@ -129,7 +129,7 @@ describe("HttpPlatform", () => {
       }
     }).pipe(
       Effect.provide(HttpPlatform.layer),
-      Effect.provideService(FileSystem.FileSystem, {} as any)
+      Effect.provideService(FileSystem.FileSystem, FileSystem.makeNoop({}))
     ))
 
   it.effect("keeps the source chunking by default", () =>
@@ -143,6 +143,6 @@ describe("HttpPlatform", () => {
       }
     }).pipe(
       Effect.provide(HttpPlatform.layer),
-      Effect.provideService(FileSystem.FileSystem, {} as any)
+      Effect.provideService(FileSystem.FileSystem, FileSystem.makeNoop({}))
     ))
 })

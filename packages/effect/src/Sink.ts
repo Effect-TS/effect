@@ -15,7 +15,7 @@ import * as Arr from "./Array.ts"
 import * as Cause from "./Cause.ts"
 import * as Channel from "./Channel.ts"
 import * as Clock from "./Clock.ts"
-import type * as Context from "./Context.ts"
+import * as Context from "./Context.ts"
 import * as Duration from "./Duration.ts"
 import * as Effect from "./Effect.ts"
 import * as Exit from "./Exit.ts"
@@ -2030,6 +2030,57 @@ export const unwrap = <A, In, L, E, R, R2>(
 ): Sink<A, In, L, E, Exclude<R, Scope.Scope> | R2> => fromChannel(Channel.unwrap(Effect.map(effect, toChannel)))
 
 /**
+ * Creates an operation whose result is a Sink.
+ *
+ * **Details**
+ *
+ * The Sink counterpart of `Context.Operation`: the same key, the same call
+ * signature, provided and overridden the same way, but a call returns a Sink
+ * that looks the implementation up from the context of the fiber that runs it,
+ * through `Sink.unwrap`.
+ *
+ * **Example** (A Sink operation)
+ *
+ * ```ts import.meta.vitest
+ * import { Effect, Layer, Sink, Stream } from "effect"
+ *
+ * const collect = Sink.Operation<(label: string) => Sink.Sink<Array<string>, string>>()("app/collect")
+ *
+ * const live = Layer.succeed(collect, (label) => Sink.map(Sink.collect<string>(), (items) => items.map((item) => `${label}:${item}`)))
+ *
+ * const program = Stream.run(Stream.make("a", "b"), collect("x"))
+ * Effect.runSync(Effect.provide(program, live)) // => ["x:a", "x:b"]
+ * ```
+ *
+ * @see {@link unwrap} for the primitive this is built on
+ *
+ * @stability unstable
+ * @category services
+ * @since 4.0.0
+ */
+export const Operation = <Shape extends Context.Operation.FunctionSignature>(): <
+  const Id extends string
+>(
+  key: Context.Operation.KeyFor<Id, Shape, "Sink">
+) => Context.Operation<Id, Shape> =>
+(key) => Context.makeOperation(key as string, sinkCall) as any
+
+/**
+ * The type of a Sink operation: `Context.Operation` with a Sink shape.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.0.0
+ */
+export type Operation<Id extends string, Shape extends Context.Operation.SinkSignature> = Context.Operation<
+  Id,
+  Shape
+>
+
+const sinkCall = (operation: Context.Operation.Any, receiver: unknown, args: ArrayLike<unknown>) =>
+  unwrap(Context.applyOperation(operation, receiver, args) as Effect.Effect<Sink<any, any, any, any, any>>)
+
+/**
  * Runs a summary effect when the sink starts and again when it completes.
  *
  * @stability stable
@@ -2123,17 +2174,17 @@ export const provideContext: {
  */
 export const provideService: {
   <I, S>(
-    key: Context.Key<I, S>,
+    key: Context.Slot<I, S>,
     value: Types.NoInfer<S>
   ): <A, In, L, E, R>(self: Sink<A, In, L, E, R>) => Sink<A, In, L, E, Exclude<R, I>>
   <A, In, L, E, R, I, S>(
     self: Sink<A, In, L, E, R>,
-    key: Context.Key<I, S>,
+    key: Context.Slot<I, S>,
     value: Types.NoInfer<S>
   ): Sink<A, In, L, E, Exclude<R, I>>
 } = dual(3, <A, In, L, E, R, I, S>(
   self: Sink<A, In, L, E, R>,
-  key: Context.Key<I, S>,
+  key: Context.Slot<I, S>,
   value: Types.NoInfer<S>
 ): Sink<A, In, L, E, Exclude<R, I>> =>
   fromTransform((upstream, scope) =>

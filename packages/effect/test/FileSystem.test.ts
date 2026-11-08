@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
-import { ByteSize, Effect, Exit, FileSystem, Latch, Option, PlatformError } from "effect"
+import { ByteSize, Context, Effect, Exit, FileSystem, Latch, Layer, Option, PlatformError, Sink } from "effect"
 
 const info = (type: FileSystem.File.Type): FileSystem.File.Info => ({
   type,
@@ -218,5 +218,60 @@ describe("FileSystem", () => {
         const fs = makeFileSystem({ readLink: () => Effect.die("boom") })
         assert.isTrue(Exit.hasDies(yield* Effect.exit(fs.glob("**"))))
       }))
+  })
+})
+
+describe("FileSystem operations", () => {
+  const text = (value: string) => new TextEncoder().encode(value)
+  const live = FileSystem.makeNoop({
+    readFile: () => Effect.succeed(text("live")),
+    exists: () => Effect.succeed(true)
+  })
+
+  it.effect("calls an operation under a Layer<FileSystem>, and the record read is an object of the members", () =>
+    Effect.gen(function*() {
+      const direct = yield* FileSystem.readFile("a")
+      const fs = yield* FileSystem.FileSystem
+      assert.deepStrictEqual(fs, live)
+      assert.deepStrictEqual(Object.keys(fs), Object.keys(FileSystem.FileSystem.members))
+      assert.strictEqual(fs.readFile, live.readFile)
+      assert.deepStrictEqual(direct, text("live"))
+      assert.deepStrictEqual(yield* fs.readFile("a"), text("live"))
+      assert.isTrue(yield* FileSystem.exists("a"))
+    }).pipe(Effect.provide(Layer.succeed(FileSystem.FileSystem, live))))
+
+  it.effect("overrides one operation on top of the record, for the call and for the record view", () =>
+    Effect.gen(function*() {
+      const direct = yield* FileSystem.readFile("a")
+      const fs = yield* FileSystem.FileSystem
+      assert.deepStrictEqual(direct, text("fake"))
+      assert.deepStrictEqual(yield* fs.readFile("a"), text("fake"))
+      assert.isTrue(yield* fs.exists("a"))
+      assert.notStrictEqual(fs, live)
+    }).pipe(
+      Effect.provideService(FileSystem.readFile, () => Effect.succeed(text("fake"))),
+      Effect.provide(FileSystem.layerNoop(live))
+    ))
+
+  it.effect("runs an operation under Layer.mock and dies on the members the mock lacks", () =>
+    Effect.gen(function*() {
+      assert.deepStrictEqual(yield* FileSystem.readFile("a"), text("mocked"))
+      const exit = yield* Effect.exit(FileSystem.exists("a"))
+      assert.isTrue(Exit.isFailure(exit))
+    }).pipe(
+      Effect.provide(
+        Layer.mock(FileSystem.FileSystem, { readFile: () => Effect.succeed(text("mocked")), sink: () => Sink.drain })
+      )
+    ))
+
+  it("is stored as one slot per member and nothing else", () => {
+    const context = Context.make(FileSystem.FileSystem, live)
+    assert.strictEqual(context.mapUnsafe.size, Object.keys(FileSystem.FileSystem.members).length)
+    assert.isFalse(context.mapUnsafe.has("effect/FileSystem"))
+    assert.strictEqual(Context.get(context, FileSystem.readFile), live.readFile)
+    assert.deepStrictEqual(Context.get(context, FileSystem.FileSystem), live)
+    // the members are properties of the key
+    assert.strictEqual(FileSystem.FileSystem.readFile, FileSystem.readFile)
+    assert.strictEqual(Context.omit(FileSystem.FileSystem)(context).mapUnsafe.size, 0)
   })
 })

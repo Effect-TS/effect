@@ -62,7 +62,7 @@ const positionToNumber = (position: bigint, method: string) =>
 
 // == access
 
-const access = ((): FileSystem.FileSystem["access"] => {
+const access = ((): FileSystem.Shape["access"] => {
   const nodeAccess = effectify(
     NFS.access,
     handleErrnoException("FileSystem", "access"),
@@ -82,7 +82,7 @@ const access = ((): FileSystem.FileSystem["access"] => {
 
 // == copy
 
-const copy = ((): FileSystem.FileSystem["copy"] => {
+const copy = ((): FileSystem.Shape["copy"] => {
   const nodeCp = effectify(
     NFS.cp,
     handleErrnoException("FileSystem", "copy"),
@@ -142,7 +142,7 @@ const link = (() => {
 
 // == makeDirectory
 
-const makeDirectory = ((): FileSystem.FileSystem["makeDirectory"] => {
+const makeDirectory = ((): FileSystem.Shape["makeDirectory"] => {
   const nodeMkdir = effectify(
     NFS.mkdir,
     handleErrnoException("FileSystem", "makeDirectory"),
@@ -157,7 +157,7 @@ const makeDirectory = ((): FileSystem.FileSystem["makeDirectory"] => {
 
 // == makeTempDirectory
 
-const makeTempDirectoryFactory = (method: string): FileSystem.FileSystem["makeTempDirectory"] => {
+const makeTempDirectoryFactory = (method: string): FileSystem.Shape["makeTempDirectory"] => {
   const nodeMkdtemp = effectify(
     NFS.mkdtemp,
     handleErrnoException("FileSystem", method),
@@ -177,7 +177,7 @@ const makeTempDirectory = makeTempDirectoryFactory("makeTempDirectory")
 
 // == remove
 
-const removeFactory = (method: string): FileSystem.FileSystem["remove"] => {
+const removeFactory = (method: string): FileSystem.Shape["remove"] => {
   const nodeRm = effectify(
     NFS.rm,
     handleErrnoException("FileSystem", method),
@@ -193,7 +193,7 @@ const remove = removeFactory("remove")
 
 // == makeTempDirectoryScoped
 
-const makeTempDirectoryScoped = ((): FileSystem.FileSystem["makeTempDirectoryScoped"] => {
+const makeTempDirectoryScoped = ((): FileSystem.Shape["makeTempDirectoryScoped"] => {
   const makeDirectory = makeTempDirectoryFactory("makeTempDirectoryScoped")
   const removeDirectory = removeFactory("makeTempDirectoryScoped")
   return (options) =>
@@ -245,7 +245,7 @@ const noFollowFlags = (method: string, flag: FileSystem.OpenFlag) =>
     return Effect.succeed(openFlagBits(flag) | O_NOFOLLOW)
   })
 
-const openFactory = (method: string): FileSystem.FileSystem["open"] => {
+const openFactory = (method: string): FileSystem.Shape["open"] => {
   const nodeOpen = effectify(
     NFS.open,
     handleErrnoException("FileSystem", method),
@@ -483,7 +483,7 @@ const makeFile = (() => {
 
 // == makeTempFile
 
-const makeTempFileFactory = (method: string): FileSystem.FileSystem["makeTempFile"] => {
+const makeTempFileFactory = (method: string): FileSystem.Shape["makeTempFile"] => {
   const makeDirectory = makeTempDirectoryFactory(method)
   return Effect.fnUntraced(function*(options) {
     const directory = yield* makeDirectory(options)
@@ -497,7 +497,7 @@ const makeTempFile = makeTempFileFactory("makeTempFile")
 
 // == makeTempFileScoped
 
-const makeTempFileScoped = ((): FileSystem.FileSystem["makeTempFileScoped"] => {
+const makeTempFileScoped = ((): FileSystem.Shape["makeTempFileScoped"] => {
   const makeFile = makeTempFileFactory("makeTempFileScoped")
   const removeDirectory = removeFactory("makeTempFileScoped")
   return (options) =>
@@ -509,7 +509,7 @@ const makeTempFileScoped = ((): FileSystem.FileSystem["makeTempFileScoped"] => {
 
 // == readDirectory
 
-const readDirectory: FileSystem.FileSystem["readDirectory"] = (path, options) =>
+const readDirectory: FileSystem.Shape["readDirectory"] = (path, options) =>
   Effect.tryPromise({
     try: () => NFS.promises.readdir(path, options),
     catch: (err) => handleErrnoException("FileSystem", "readDirectory")(err as any, [path])
@@ -726,7 +726,7 @@ const watch = (
 
 // == writeFile
 
-const writeFile: FileSystem.FileSystem["writeFile"] = (path, data, options) =>
+const writeFile: FileSystem.Shape["writeFile"] = (path, data, options) =>
   Effect.callback<void, Error.PlatformError>((resume, signal) => {
     try {
       NFS.writeFile(path, data, {
