@@ -594,19 +594,7 @@ class ServerRequestImpl extends Inspectable.Class implements HttpServerRequest {
   }
 
   get stream(): Stream.Stream<Uint8Array, HttpServerError> {
-    const body = this.source.body
-    return body
-      ? Stream.fromReadableStream({
-        evaluate: () => body,
-        onError: (cause) =>
-          new HttpServerError({
-            reason: new RequestParseError({
-              request: this,
-              cause
-            })
-          })
-      })
-      : Stream.empty
+    return streamFromReadable(this, this.source.body)
   }
 
   private textEffect: Effect.Effect<string, HttpServerError> | undefined
