@@ -56,6 +56,37 @@ describe("Rational", () => {
     throws(() => Rational.divideUnsafe(third, zero), new RangeError("Division by zero"))
   })
 
+  it("arithmetic matches reducing the full cross products", () => {
+    // Common factors make operands share divisors, as running sums and products do.
+    const integer = fc.tuple(
+      fc.bigInt({ min: -(1n << 80n), max: 1n << 80n }),
+      fc.constantFrom(1n, 2n, 3n, 5n, 6n, 7n, 780n, 781n, 1n << 64n)
+    ).map(([n, factor]) => n * factor)
+    const rational = fc.tuple(integer, integer.filter((d) => d !== 0n)).map(([n, d]) => Rational.makeUnsafe(n, d))
+    fc.assert(
+      fc.property(rational, rational, (a, b) => {
+        assertEquals(
+          Rational.sum(a, b),
+          Rational.makeUnsafe(a.numerator * b.denominator + b.numerator * a.denominator, a.denominator * b.denominator)
+        )
+        assertEquals(
+          Rational.subtract(a, b),
+          Rational.makeUnsafe(a.numerator * b.denominator - b.numerator * a.denominator, a.denominator * b.denominator)
+        )
+        assertEquals(
+          Rational.multiply(a, b),
+          Rational.makeUnsafe(a.numerator * b.numerator, a.denominator * b.denominator)
+        )
+        if (b.numerator !== 0n) {
+          assertSome(
+            Rational.divide(a, b),
+            Rational.makeUnsafe(a.numerator * b.denominator, a.denominator * b.numerator)
+          )
+        }
+      })
+    )
+  })
+
   it("pow takes integer exponents, inverting for negative ones", () => {
     // Twelve pure fifths overshoot seven octaves by the Pythagorean comma.
     const twelveFifths = Rational.powUnsafe($("3/2"), 12)

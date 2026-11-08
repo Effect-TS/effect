@@ -2,7 +2,7 @@
 "effect": patch
 ---
 
-Add `Rational`, an exact fraction type alongside `BigDecimal`, with `Schema.Rational` and `Schema.RationalFromString`.
+Add `Rational`, an exact fraction type alongside `BigDecimal`, with `Schema.Rational` and `Schema.RationalFromString`. Arithmetic cancels common factors before multiplying (Knuth, TAOCP vol. 2, §4.5.1), so it stays fast as numerators and denominators grow.
 
 ```ts
 import { BigDecimal, Rational } from "effect"
