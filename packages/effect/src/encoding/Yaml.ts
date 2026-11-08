@@ -209,7 +209,8 @@ const closingQuote = (input: string, quote: string, start: number): number => {
 // `depth` is the number of flow collections already open before `input`. When searching
 // for `#`, `found` receives the first index the search for `:` would return, or -1.
 // `tokenStart` is false when `input` continues a plain scalar, whose quotes are text.
-// `afterJsonNode` carries the closed-node context when rescanning after a multiline quote.
+// `afterJsonNode` is true when `input` starts right after a quoted scalar or flow collection
+// closed on an earlier line.
 const findIndicator = (
   input: string,
   indicator: ":" | "#",
@@ -586,6 +587,10 @@ class FlowParser {
   private readonly nextLine: (quoted: boolean) => string | undefined
   // Whether a comment ended `line`. YAML 1.2.2 §6.6: a plain scalar cannot continue after one.
   private comment: boolean
+  // Whether the last token read was a quoted scalar or a flow collection, so that a `:` directly
+  // after it on a later line separates a JSON-like key from its value (YAML 1.2.2 §7.4.2).
+  // The comment scan of each line read later starts from it.
+  private afterJsonNode = false
   // Block collections already open around this flow collection.
   private readonly blockDepth: number
   private index = 0
@@ -625,6 +630,7 @@ class FlowParser {
       if (this.blockDepth + ++this.depth > maxDepth) this.fail(depthError)
       const collection = character === "[" ? this.parseSequence() : this.parseMapping()
       this.depth--
+      this.afterJsonNode = true
       return collection
     }
     if (character === "\"" || character === "'") return parseScalar(this.readQuoted(character))
@@ -817,11 +823,11 @@ class FlowParser {
       if (end !== -1) {
         this.index = end + 1
         pieces.push(this.line.slice(start, this.index))
+        this.afterJsonNode = true
         if (pieces.length > 1) {
-          // The rest of the closing line was read raw. Remove its comment, retaining the
-          // just-closed quoted node so an adjacent `:` starts the value token.
+          // The rest of the closing line was read raw, so remove its comment now.
           const rest = this.line.slice(this.index)
-          if (!rest.startsWith("#")) this.line = this.line.slice(0, this.index) + this.stripComment(rest, false, true)
+          if (!rest.startsWith("#")) this.line = this.line.slice(0, this.index) + this.stripComment(rest, false)
         }
         return foldQuotedLines(pieces.join(""))
       }
@@ -856,6 +862,7 @@ class FlowParser {
   // `plain` reads a plain scalar, which also stops at a `:` that separates a key from its
   // value and at the end of a line a comment ended.
   private readUntil(stop: (code: number) => boolean, plain = false): string {
+    this.afterJsonNode = false
     // Only text spanning lines needs pieces; most tokens are one slice of one line.
     let pieces: Array<string> | undefined
     let start = this.index
@@ -898,8 +905,8 @@ class FlowParser {
 
   // Removes the comment from the rest of a line, knowing the open collections so a quoted
   // `#` after a comma is kept.
-  private stripComment(text: string, plain: boolean, afterJsonNode = false): string {
-    const index = findIndicator(text, "#", this.depth, undefined, !plain, afterJsonNode)
+  private stripComment(text: string, plain: boolean): string {
+    const index = findIndicator(text, "#", this.depth, undefined, !plain, !plain && this.afterJsonNode)
     if (index === -1) return text
     this.comment = true
     return trimWhiteEnd(text.slice(0, index))
@@ -917,6 +924,7 @@ class FlowParser {
   private expect(character: string): void {
     if (this.peek() !== character) this.fail(`Expected '${character}'`)
     this.index++
+    this.afterJsonNode = false
   }
 
   private peek(): string {
