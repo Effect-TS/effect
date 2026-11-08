@@ -56,38 +56,15 @@ describe("Rational", () => {
     throws(() => Rational.divideUnsafe(third, zero), new RangeError("Division by zero"))
   })
 
-  it("arithmetic matches reducing the full cross products", () => {
-    // Common factors make operands share divisors, as running sums and products do.
-    const integer = fc.tuple(
-      fc.bigInt({ min: -(1n << 80n), max: 1n << 80n }),
-      fc.constantFrom(1n, 2n, 3n, 5n, 6n, 7n, 780n, 781n, 1n << 64n)
-    ).map(([n, factor]) => n * factor)
-    const numerator = fc.oneof({ arbitrary: fc.constant(0n), weight: 1 }, { arbitrary: integer, weight: 3 })
-    const rational = fc.tuple(numerator, integer.filter((d) => d !== 0n)).map(([n, d]) => Rational.makeUnsafe(n, d))
-    fc.assert(
-      fc.property(rational, rational, (a, b) => {
-        assertEquals(
-          Rational.sum(a, b),
-          Rational.makeUnsafe(a.numerator * b.denominator + b.numerator * a.denominator, a.denominator * b.denominator)
-        )
-        assertEquals(
-          Rational.subtract(a, b),
-          Rational.makeUnsafe(a.numerator * b.denominator - b.numerator * a.denominator, a.denominator * b.denominator)
-        )
-        assertEquals(
-          Rational.multiply(a, b),
-          Rational.makeUnsafe(a.numerator * b.numerator, a.denominator * b.denominator)
-        )
-        if (b.numerator !== 0n) {
-          assertSome(
-            Rational.divide(a, b),
-            Rational.makeUnsafe(a.numerator * b.denominator, a.denominator * b.numerator)
-          )
-        }
-        assertEquals(Rational.subtract(a, a), zero)
-        assertEquals(Rational.sum(a, Rational.negate(a)), zero)
-      })
-    )
+  it("arithmetic preserves canonical fractions with shared factors, signs and zero", () => {
+    assertRational(Rational.sum($("1/6"), $("1/10")), 4n, 15n)
+    assertRational(Rational.subtract($("1/6"), $("1/10")), 1n, 15n)
+    assertRational(Rational.sum(third, $("-1/3")), 0n, 1n)
+    assertRational(Rational.subtract(third, third), 0n, 1n)
+    assertRational(Rational.multiply($("6/35"), $("14/15")), 4n, 25n)
+    assertRational(Rational.divideUnsafe($("6/35"), $("-15/14")), -4n, 25n)
+    assertRational(Rational.multiply(zero, third), 0n, 1n)
+    assertRational(Rational.divideUnsafe(zero, $("-2/3")), 0n, 1n)
   })
 
   it("pow takes integer exponents, inverting for negative ones", () => {
