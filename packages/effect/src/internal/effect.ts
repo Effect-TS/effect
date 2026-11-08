@@ -673,6 +673,7 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
     ;(globalThis as any)[currentFiberTypeId] = this
     const prevRunning = this._running
     this._running = true
+    let yielding = false
     let current: Primitive | Yield = effect
     this.currentOpCount = 0
     try {
@@ -688,10 +689,13 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
           // Always execute the first instruction of a slice so even tiny budgets
           // make progress. Resume directly without a counted yield continuation.
           if (
+            !yielding &&
             this.currentOpCount > 1 &&
             !cache.preventYield &&
             cache.scheduler.shouldYield(this as any)
           ) {
+            // If dispatch throws, evaluate its defect instead of retrying the yield.
+            yielding = true
             current = this.yieldNow(current as Primitive)
           } else {
             current = cache.tracerContext
