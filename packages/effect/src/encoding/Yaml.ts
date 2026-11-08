@@ -209,17 +209,18 @@ const closingQuote = (input: string, quote: string, start: number): number => {
 // `depth` is the number of flow collections already open before `input`. When searching
 // for `#`, `found` receives the first index the search for `:` would return, or -1.
 // `tokenStart` is false when `input` continues a plain scalar, whose quotes are text.
+// `afterJsonNode` carries the closed-node context when rescanning after a multiline quote.
 const findIndicator = (
   input: string,
   indicator: ":" | "#",
   depth = 0,
   found?: { separator: number },
-  tokenStart = true
+  tokenStart = true,
+  afterJsonNode = false
 ): number => {
   const length = input.length
   // Set after a quoted scalar or a flow collection closes, where a `:` directly after it
   // separates a JSON-like key from its value (YAML 1.2.2 §7.4.2).
-  let afterJsonNode = false
   for (let index = 0; index < length; index++) {
     const code = input.charCodeAt(index)
     const jsonKeyEnd = afterJsonNode
@@ -817,9 +818,10 @@ class FlowParser {
         this.index = end + 1
         pieces.push(this.line.slice(start, this.index))
         if (pieces.length > 1) {
-          // The rest of the closing line was read raw, so remove its comment now.
+          // The rest of the closing line was read raw. Remove its comment, retaining the
+          // just-closed quoted node so an adjacent `:` starts the value token.
           const rest = this.line.slice(this.index)
-          if (!rest.startsWith("#")) this.line = this.line.slice(0, this.index) + this.stripComment(rest, false)
+          if (!rest.startsWith("#")) this.line = this.line.slice(0, this.index) + this.stripComment(rest, false, true)
         }
         return foldQuotedLines(pieces.join(""))
       }
@@ -896,8 +898,8 @@ class FlowParser {
 
   // Removes the comment from the rest of a line, knowing the open collections so a quoted
   // `#` after a comma is kept.
-  private stripComment(text: string, plain: boolean): string {
-    const index = findIndicator(text, "#", this.depth, undefined, !plain)
+  private stripComment(text: string, plain: boolean, afterJsonNode = false): string {
+    const index = findIndicator(text, "#", this.depth, undefined, !plain, afterJsonNode)
     if (index === -1) return text
     this.comment = true
     return trimWhiteEnd(text.slice(0, index))
