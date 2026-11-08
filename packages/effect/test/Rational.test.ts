@@ -62,7 +62,8 @@ describe("Rational", () => {
       fc.bigInt({ min: -(1n << 80n), max: 1n << 80n }),
       fc.constantFrom(1n, 2n, 3n, 5n, 6n, 7n, 780n, 781n, 1n << 64n)
     ).map(([n, factor]) => n * factor)
-    const rational = fc.tuple(integer, integer.filter((d) => d !== 0n)).map(([n, d]) => Rational.makeUnsafe(n, d))
+    const numerator = fc.oneof({ arbitrary: fc.constant(0n), weight: 1 }, { arbitrary: integer, weight: 3 })
+    const rational = fc.tuple(numerator, integer.filter((d) => d !== 0n)).map(([n, d]) => Rational.makeUnsafe(n, d))
     fc.assert(
       fc.property(rational, rational, (a, b) => {
         assertEquals(
