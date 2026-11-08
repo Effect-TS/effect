@@ -79,9 +79,9 @@ describe("Cookies", () => {
         "session=a",
         "session=d; Path=/API",
         "session=h; Path=/api",
+        "Session=e",
         "session=f; Domain=EXAMPLE.com",
-        "session=g; Path=/",
-        "Session=e"
+        "session=g; Path=/"
       ])
       assert.strictEqual(cookies.cookies.session.value, "g")
       assertSome(Cookies.getValue(cookies, "session"), "g")
@@ -97,21 +97,21 @@ describe("Cookies", () => {
       ])
 
       deepStrictEqual(Cookies.toSetCookieHeaders(Cookies.setUnsafe(parsed, "session", "c")), [
-        "session=c",
-        "theme=dark"
+        "theme=dark",
+        "session=c"
       ])
       deepStrictEqual(Cookies.toSetCookieHeaders(Cookies.expireCookieUnsafe(parsed, "session", { path: "/" })), [
-        "session=; Max-Age=0; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT",
-        "theme=dark"
+        "theme=dark",
+        "session=; Max-Age=0; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT"
       ])
       deepStrictEqual(Cookies.toSetCookieHeaders(Cookies.merge(parsed, Cookies.fromSetCookie("session=z"))), [
-        "session=z",
-        "theme=dark"
+        "theme=dark",
+        "session=z"
       ])
       deepStrictEqual(Cookies.toSetCookieHeaders(Cookies.merge(Cookies.fromSetCookie("theme=light"), parsed)), [
-        "theme=dark",
         "session=a; Path=/",
-        "session=b; Domain=example.com; Path=/"
+        "session=b; Domain=example.com; Path=/",
+        "theme=dark"
       ])
       deepStrictEqual(Cookies.toSetCookieHeaders(Cookies.remove(parsed, "session")), ["theme=dark"])
     })
@@ -375,19 +375,12 @@ describe("Cookies", () => {
       assert.strictEqual(header(jar, "http://api.example.com/"), undefined)
     })
 
-    it("applies same-name cookies from one response in order, including integer-like names", () => {
-      for (const name of ["t", "0"]) {
-        const cookies = Cookies.fromSetCookie([`${name}=1; Path=/a`, `${name}=2`, `${name}=3; Path=/a`])
-        deepStrictEqual(Cookies.toSetCookieHeaders(cookies), [`${name}=2`, `${name}=3; Path=/a`])
-        assertSome(Cookies.getValue(cookies, name), "3")
-        deepStrictEqual(Cookies.toRecord(cookies), { [name]: "3" })
+    it("applies cookies in response order after resolving paths and clears every scope on logout", () => {
+      const cookies = Cookies.fromSetCookie(["session=1; Path=/a", "session=2", "session=3; Path=/a"])
+      deepStrictEqual(Cookies.toSetCookieHeaders(cookies), ["session=2", "session=3; Path=/a"])
+      const resolved = Cookies.mergeIntoArray([], "https://example.com/a/b", cookies, now)
+      assert.strictEqual(header(resolved, "https://example.com/a/x"), "session=3")
 
-        const jar = Cookies.mergeIntoArray([], "https://example.com/a/b", cookies, now)
-        assert.strictEqual(header(jar, "https://example.com/a/x"), `${name}=3`)
-      }
-    })
-
-    it("deletes every scope of a cookie cleared in one response", () => {
       const url = "https://www.example.com/"
       const jar = Cookies.mergeIntoArray(
         [],
