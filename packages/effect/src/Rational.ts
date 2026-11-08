@@ -107,9 +107,8 @@ const reduce = (numerator: bigint, denominator: bigint): Rational => {
   return canonical(numerator / divisor, denominator / divisor)
 }
 
-// Both pairs must already be coprime with positive denominators. The gcd of
-// the denominators is the only common factor the sum can gain
-// (Knuth, TAOCP vol. 2, §4.5.1).
+// Both pairs must already be coprime with positive denominators. The sum can only
+// share factors with the denominators' gcd (Knuth, TAOCP vol. 2, §4.5.1).
 const sumCoprime = (n1: bigint, d1: bigint, n2: bigint, d2: bigint): Rational => {
   const g = BI.gcd(d1, d2)
   if (g === bigint1) {
@@ -120,9 +119,8 @@ const sumCoprime = (n1: bigint, d1: bigint, n2: bigint, d2: bigint): Rational =>
   return canonical(t / e, (d1 / g) * (d2 / e))
 }
 
-// Both pairs must already be coprime with positive denominators. Canonical
-// fractions can only share factors crosswise, so cancelling those first leaves
-// the products coprime (Knuth, TAOCP vol. 2, §4.5.1).
+// Both pairs must already be coprime with positive denominators. Canonical fractions share factors
+// only crosswise, so cancelling those first leaves the products coprime (Knuth, TAOCP vol. 2, §4.5.1).
 const multiplyCoprime = (n1: bigint, d1: bigint, n2: bigint, d2: bigint): Rational => {
   const g1 = BI.gcd(n1, d2)
   const g2 = BI.gcd(n2, d1)
