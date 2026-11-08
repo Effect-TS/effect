@@ -396,6 +396,7 @@ class PgConnectionImpl implements PgConnection {
   consumer: Consumer | undefined
   deadWith: SqlError | undefined
   closed = false
+  socketCloseObserved = false
   cancelPending = false
   /** Reported by the latest `ReadyForQuery`. */
   transactionStatus: PgProtocol.TransactionStatus = "I"
@@ -447,8 +448,10 @@ class PgConnectionImpl implements PgConnection {
   private readonly onSocketError = (cause: Error): void =>
     this.fatal(connectionQueryError(cause, "PgConnection: Socket error"))
 
-  private readonly onSocketClose = (): void =>
+  private readonly onSocketClose = (): void => {
+    this.socketCloseObserved = true
     this.fatal(connectionQueryError(new Error("Connection closed"), "PgConnection: Connection closed"))
+  }
 
   private readonly dispatch = (message: PgProtocol.BackendMessage<unknown>): void => {
     if (this.deadWith !== undefined) return
@@ -2307,13 +2310,14 @@ const connect = (config: ResolvedConfig, resolvedPassword: string | undefined): 
 const closeDriverSocket = (connection: PgConnectionImpl): Effect.Effect<void> =>
   Effect.callback<void>((resume) => {
     const socket = connection.session.socket
-    if (socket.closed) {
+    if (connection.socketCloseObserved) {
       connection.closeUnsafe()
       resume(Effect.void)
       return
     }
     const timer = setTimeout(() => socket.destroy(), socketCloseGraceMillis)
     socket.once("close", () => {
+      connection.socketCloseObserved = true
       clearTimeout(timer)
       resume(Effect.void)
     })
