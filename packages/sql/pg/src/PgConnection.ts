@@ -301,8 +301,9 @@ export const PgConnection = Context.Service<PgConnection>("@effect/sql-pg/PgConn
  * authentication run under `connectTimeout` (5 seconds by default). The effect
  * resolves when the backend sends `ReadyForQuery`. Closing the scope sends
  * `Terminate` and ends the socket. For driver-created transports, release waits
- * for closure and destroys the socket if it has not closed within one second.
- * Caller-supplied streams retain their existing shutdown behavior.
+ * for the socket to close. If it remains open after one second, release destroys
+ * it and waits for closure. Caller-supplied streams are ended without waiting
+ * for closure or applying this grace-period fallback.
  *
  * Use `sslmode=require` or explicit `ssl: true` to require encryption.
  * Unix sockets and custom streams should set `ssl.servername` explicitly.
@@ -2311,20 +2312,12 @@ const closeDriverSocket = (connection: PgConnectionImpl): Effect.Effect<void> =>
       resume(Effect.void)
       return
     }
-    const cleanup = () => {
-      clearTimeout(timer)
-      socket.off("close", onClose)
-      socket.off("error", ignoreError)
-    }
-    const onClose = () => {
-      cleanup()
-      resume(Effect.void)
-    }
     const timer = setTimeout(() => socket.destroy(), socketCloseGraceMillis)
-    socket.once("close", onClose)
-    socket.on("error", ignoreError)
+    socket.once("close", () => {
+      clearTimeout(timer)
+      resume(Effect.void)
+    })
     connection.closeUnsafe()
-    return Effect.sync(cleanup)
   })
 
 const ignoreError = (_: Error) => {}
