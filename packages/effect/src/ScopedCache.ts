@@ -320,7 +320,7 @@ export const get: {
                 // Owner close has already released this entry's scope.
                 if (self.state._tag === "Closed") {
                   Deferred.doneUnsafe(deferred, effect.exitInterrupt())
-                  return Scope.close(scope, effect.exitVoid)
+                  return effect.void
                 }
                 try {
                   const ttl = self.timeToLive(exit, key)
