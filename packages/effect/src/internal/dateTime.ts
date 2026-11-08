@@ -78,7 +78,9 @@ const ProtoTimeZoneNamed = {
     return Hash.string(`Named:${this.resolvedId}`)
   },
   [Equal.symbol](this: DateTime.TimeZone.Named, that: unknown) {
-    return isTimeZone(that) && that._tag === "Named" && this.resolvedId === that.resolvedId
+    // Zones from older copies of effect have no `resolvedId`; their `id` is the resolved one
+    return isTimeZone(that) && that._tag === "Named" &&
+      this.resolvedId === (that.resolvedId ?? that.id)
   },
   toString(this: DateTime.TimeZone.Named) {
     return `TimeZone.Named(${this.id})`
