@@ -350,6 +350,8 @@ export declare namespace TimeZone {
     readonly _tag: "Named"
     readonly id: string
     /** @internal */
+    readonly resolvedId: string
+    /** @internal */
     readonly format: Intl.DateTimeFormat
   }
 }

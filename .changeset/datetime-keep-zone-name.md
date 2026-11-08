@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Keep the name of a renamed time zone, such as `Europe/Kyiv` or `Asia/Kolkata`, instead of the old name V8 resolves it to (`Europe/Kiev`, `Asia/Calcutta`). Both names still compare equal on runtimes whose Intl maps one to the other.
+Preserve the supplied time zone identifier in `DateTime` named zones, such as `Europe/Kyiv` instead of the `Europe/Kiev` alias Intl resolves it to.
