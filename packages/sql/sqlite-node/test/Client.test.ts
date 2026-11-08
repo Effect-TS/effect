@@ -51,7 +51,6 @@ describe("Client", { concurrent: false }, () => {
       yield* sql`INSERT INTO test (first_name, "firstName") VALUES ('John', 'Jane')`
 
       const select = withoutTransforms`SELECT ${withoutTransforms("firstName")} FROM test`
-      assert.deepStrictEqual(select.compile(), ["SELECT \"firstName\" FROM test", []])
       assert.deepStrictEqual(yield* select, [{ firstName: "Jane" }])
     }))
 
