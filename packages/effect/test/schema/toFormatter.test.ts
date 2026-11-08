@@ -12,6 +12,7 @@ import {
   Schema,
   SchemaGetter
 } from "effect"
+import * as NetAddress from "effect/net/NetAddress"
 import { describe, it } from "vitest"
 import { strictEqual } from "../utils/assert.ts"
 
@@ -582,6 +583,12 @@ describe("toFormatter", () => {
   it("URL", () => {
     const format = Schema.toFormatter(Schema.URL)
     strictEqual(format(new URL("https://www.example.com")), "https://www.example.com/")
+  })
+
+  it("UnixPathAddress", () => {
+    const address = NetAddress.unixPathAddress("/var/run/docker.sock")
+    strictEqual(Schema.toFormatter(Schema.UnixPathAddress)(address), "unix:///var/run/docker.sock")
+    strictEqual(Schema.toFormatter(Schema.SocketAddress)(address), "unix:///var/run/docker.sock")
   })
 
   it("RegExp", () => {
