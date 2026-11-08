@@ -407,8 +407,7 @@ const decodeRecords = <IE, Done>(options: DecodeOptions | undefined): Channel.Ch
       // Plain assignment is faster than `Object.fromEntries`, but a `__proto__`
       // header would set the prototype instead of a property.
       let assignable = false
-      let done: Pull.Pull<never, never, Done> | undefined
-      let failure: CsvError | undefined
+      let next: Pull.Pull<never, CsvError, Done> | undefined
 
       const toRecord = (row: Parsed): Decoded => {
         if (!useHeaders) return { value: row.cells, record: row.record }
@@ -438,7 +437,7 @@ const decodeRecords = <IE, Done>(options: DecodeOptions | undefined): Channel.Ch
           run(rows)
         } catch (error) {
           if (!isCsvError(error)) throw error
-          failure = error
+          next = Effect.fail(error)
         }
         try {
           for (const row of rows) {
@@ -460,15 +459,14 @@ const decodeRecords = <IE, Done>(options: DecodeOptions | undefined): Channel.Ch
           }
         } catch (error) {
           if (!isCsvError(error)) throw error
-          // The failing row precedes the parser error in the input.
-          failure = error
+          // The failing row precedes any parser error in the input.
+          next = Effect.fail(error)
         }
         return Arr.isArrayNonEmpty(out) ? Effect.succeed(out) : pull
       }
 
       const pull: Pull.Pull<Arr.NonEmptyReadonlyArray<Decoded>, IE | CsvError, Done> = Effect.suspend(() => {
-        if (failure !== undefined) return Effect.fail(failure)
-        if (done !== undefined) return done
+        if (next !== undefined) return next
         return Pull.matchEffect(upstream, {
           onSuccess: (texts) =>
             emit((out) => {
@@ -476,7 +474,7 @@ const decodeRecords = <IE, Done>(options: DecodeOptions | undefined): Channel.Ch
             }),
           onFailure: Effect.failCause,
           onDone: (value) => {
-            done = Cause.done(value)
+            next = Cause.done(value)
             return emit((out) => parser.end(out))
           }
         })

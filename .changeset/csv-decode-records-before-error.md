@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Fix `Csv.decode` and `Csv.decodeString` dropping the records parsed from an input chunk before a `CsvError` in that chunk.
+Fix `Csv.decode` and `Csv.decodeString` dropping records completed before a `CsvError` in the same input chunk.
