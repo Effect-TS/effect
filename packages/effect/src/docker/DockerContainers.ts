@@ -39,15 +39,16 @@ import type * as Duration from "../Duration.ts"
 import * as Effect from "../Effect.ts"
 import * as Tar from "../encoding/Tar.ts"
 import * as Fiber from "../Fiber.ts"
+import * as HttpApi from "../http-api/HttpApi.ts"
+import * as HttpApiClient from "../http-api/HttpApiClient.ts"
 import * as Layer from "../Layer.ts"
-import * as Schema from "../Schema.ts"
 import type * as Scope from "../Scope.ts"
 import * as Stream from "../Stream.ts"
 import * as DockerApi from "./DockerApi.ts"
 import { DockerEngine } from "./DockerEngine.ts"
 import { DockerError, InvalidResponse, StreamFailed } from "./DockerError.ts"
 import type { Handle } from "./DockerExec.ts"
-import * as DockerSchema from "./DockerSchema.ts"
+import type * as DockerSchema from "./DockerSchema.ts"
 import { withProxyEnv } from "./internal/config.ts"
 import { apiClient, filterStatus, toDockerError, withOperation, withStreamOperation } from "./internal/engine.ts"
 import { contentTypeOf, frames, logsQuery, makeHandle, releaseOnFailure } from "./internal/stream.ts"
@@ -65,7 +66,6 @@ export interface LogFrame {
   readonly data: Uint8Array
 }
 
-const decodeWaitResponse = Schema.decodeUnknownEffect(Schema.toCodecGoJson(DockerSchema.ContainerWaitResponse))
 
 /**
  * The containers API.
@@ -551,6 +551,11 @@ export class DockerContainers extends Context.Service<DockerContainers, {
 export const make: Effect.Effect<DockerContainers["Service"], never, DockerEngine> = Effect.gen(function*() {
   const engine = yield* DockerEngine
   const api = yield* apiClient(engine, DockerApi.Containers, "docker.Containers")
+  // the body of a wait that answered with its head, decoded as the endpoint declares it
+  const decodeWait = HttpApiClient.decodeResponse(HttpApi.make("docker").add(DockerApi.Containers), {
+    group: "containers",
+    endpoint: "wait"
+  })
 
   const inspect: DockerContainers["Service"]["inspect"] = (id, options) =>
     api.inspect({ params: { id }, query: options ?? {} })
@@ -622,8 +627,7 @@ export const make: Effect.Effect<DockerContainers["Service"], never, DockerEngin
           responseMode: "response-only"
         }).pipe(Effect.flatMap(filterStatus("docker.Containers.attach")))
         const exitCode = yield* Effect.forkScoped(
-          wait.json.pipe(
-            Effect.flatMap(decodeWaitResponse),
+          decodeWait(wait).pipe(
             Effect.map((result) => result.StatusCode),
             Effect.mapError(toDockerError(engine, "docker.Containers.attach"))
           )
