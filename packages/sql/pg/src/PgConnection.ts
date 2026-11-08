@@ -300,7 +300,9 @@ export const PgConnection = Context.Service<PgConnection>("@effect/sql-pg/PgConn
  * Password resolution, transport, optional `SSLRequest`, startup, and
  * authentication run under `connectTimeout` (5 seconds by default). The effect
  * resolves when the backend sends `ReadyForQuery`. Closing the scope sends
- * `Terminate` and ends the socket.
+ * `Terminate`, ends the socket, and destroys the transport once the message has
+ * been flushed, with a 1-second backstop if flushing stalls. Scope release does
+ * not wait for transport closure or the peer. This also applies to custom streams.
  *
  * Use `sslmode=require` or explicit `ssl: true` to require encryption.
  * Unix sockets and custom streams should set `ssl.servername` explicitly.
@@ -366,6 +368,7 @@ const abortDrainGraceMillis = 10
 /** PostgreSQL `query_canceled` SQLSTATE. */
 const queryCanceledCode = "57014"
 const cancelRequestTimeoutMillis = 5000
+const terminateTimeoutMillis = 1000
 const unlistenTimeoutMillis = 5000
 /** How many statements a multiplexed session keeps on the wire at once. */
 const maxPipelineDepth = 128
@@ -516,10 +519,19 @@ class PgConnectionImpl implements PgConnection {
 
   closeUnsafe(): void {
     this.closed = true
+    const socket = this.session.socket
     let destroySocket = true
-    if (this.deadWith === undefined && this.session.socket.writable) {
+    if (this.deadWith === undefined && socket.writable) {
       try {
-        this.session.socket.end(PgProtocol.encodeTerminate())
+        const destroy = () => socket.destroy()
+        const timeout = setTimeout(destroy, terminateTimeoutMillis)
+        timeout.unref()
+        socket.once("close", () => {
+          clearTimeout(timeout)
+          socket.off("finish", destroy)
+        })
+        socket.once("finish", destroy)
+        socket.end(PgProtocol.encodeTerminate())
         destroySocket = false
       } catch {
         // Fall back to the fatal path's immediate destroy below.
@@ -535,7 +547,6 @@ class PgConnectionImpl implements PgConnection {
       }),
       destroySocket
     )
-    const socket = this.session.socket
     socket.off("data", this.onData)
     socket.off("error", this.onSocketError)
     socket.off("close", this.onSocketClose)
