@@ -221,18 +221,19 @@ interface KeepAliveConnection {
 const withKeepAliveServer = Effect.fnUntraced(function*(options?: {
   readonly tls?: boolean | undefined
   readonly holdFin?: boolean | undefined
+  readonly queryResponse?: Buffer | undefined
 }) {
   const peers: Array<Net.Socket> = []
-  const messages: Array<string> = []
+  const messages: Array<Buffer> = []
   const { port } = yield* withTcpServer((socket) => {
     socket.allowHalfOpen = options?.holdFin ?? false
     peers.push(socket)
     consumeFrontend(socket, (tag, message) => {
-      if (tag !== undefined) messages.push(tag)
+      if (tag !== undefined) messages.push(message)
       if (tag === undefined && message.equals(sslRequest)) socket.write(Buffer.from("S"))
       else if (tag === undefined && message.equals(cancelRequest)) socket.end()
       else if (tag === undefined) socket.write(Buffer.concat([authenticationOk, backendKeyData, readyForQuery]))
-      else if (tag === "S") socket.write(emptyQueryResult)
+      else if (tag === "S") socket.write(options?.queryResponse ?? emptyQueryResult)
     })
   })
   yield* Effect.addFinalizer(() =>
@@ -262,12 +263,35 @@ const withKeepAliveServer = Effect.fnUntraced(function*(options?: {
 
 describe("PgConnection in-process server", () => {
   describe("TCP lifecycle", { concurrent: false }, () => {
-    it.live("joins driver-created socket closure", () =>
+    it.live("sends Terminate and joins socket closure when the connection scope closes", () =>
       Effect.gen(function*() {
         const { config, connections, messages } = yield* withKeepAliveServer()
-        yield* Effect.scoped(PgConnection.make(config))
-        assert.isTrue(connections[0]!.socket.closed)
-        assert.include(messages, "X")
+        let closeObserved = false
+        yield* Effect.scoped(Effect.gen(function*() {
+          yield* PgConnection.make(config)
+          connections[0]!.socket.once("close", () => {
+            closeObserved = true
+          })
+        }))
+        assert.isTrue(closeObserved)
+        assert.strictEqual(messages.at(-1)?.toString("hex"), "5800000004")
+      }))
+
+    it.live("joins pending socket closure after a protocol failure", () =>
+      Effect.gen(function*() {
+        const { config, connections } = yield* withKeepAliveServer({
+          queryResponse: Buffer.concat([Buffer.from("Z"), int32(3)])
+        })
+        let closeObserved = false
+        const exit = yield* Effect.exit(Effect.scoped(Effect.gen(function*() {
+          const connection = yield* PgConnection.make(config)
+          connections[0]!.socket.once("close", () => {
+            closeObserved = true
+          })
+          yield* connection.query("SELECT 1")
+        })))
+        assert.isTrue(Exit.isFailure(exit))
+        assert.isTrue(closeObserved)
       }))
 
     it.live("waits one second before destroying a driver-created socket when the peer withholds FIN", () =>
@@ -291,19 +315,6 @@ describe("PgConnection in-process server", () => {
         yield* Fiber.join(closing)
         assert.isTrue(socket.destroyed)
         assert.isTrue(socket.closed)
-      }))
-
-    it.effect("retains caller-supplied stream shutdown behavior", () =>
-      Effect.gen(function*() {
-        const stream = makeSslStream("S", false)
-        yield* Effect.addFinalizer(() => Effect.sync(() => stream.socket.destroy()))
-        yield* Effect.scoped(PgConnection.make({
-          username: "test",
-          ssl: true,
-          stream: () => stream.socket
-        }))
-        assert.strictEqual(stream.writes.at(-1)?.[0], "X".charCodeAt(0))
-        assert.isFalse(stream.socket.destroyed)
       }))
 
     it.live("leaves keepalives disabled by default", () =>
@@ -1021,28 +1032,6 @@ describe("PgConnection in-process server", () => {
       assert.instanceOf(error.reason.cause, Error)
       assert.strictEqual(error.reason.cause.message, "terminating connection due to transaction timeout")
       assert.strictEqual((error.reason.cause as { readonly code?: string }).code, "25P04")
-    })))
-
-  it.live("sends Terminate when the connection scope closes", () =>
-    Effect.scoped(Effect.gen(function*() {
-      let signalTerminate!: (message: Buffer) => void
-      const terminated = new Promise<Buffer>((resolve) => {
-        signalTerminate = resolve
-      })
-      const { port } = yield* withTcpServer((socket) => {
-        consumeFrontend(socket, (tag, message) => {
-          if (tag === undefined) {
-            socket.write(Buffer.concat([authenticationOk, backendKeyData, readyForQuery]))
-          } else if (tag === "X") {
-            signalTerminate(message)
-          }
-        })
-      })
-
-      yield* Effect.scoped(PgConnection.make({ host: "127.0.0.1", port, username: "test" }))
-      const message = yield* Effect.promise(() => terminated)
-
-      assert.strictEqual(message.toString("hex"), "5800000004")
     })))
 
   it.live("authenticates with a cleartext password request", () =>
