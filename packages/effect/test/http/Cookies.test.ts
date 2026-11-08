@@ -41,6 +41,22 @@ describe("Cookies", () => {
   })
 
   describe("fromSetCookie", () => {
+    it("preserves scopes and replaces normalized identities in place", () => {
+      const cookies = Cookies.fromSetCookie([
+        "token=root; Path=/",
+        "token=api; Path=/api",
+        "token=x; Domain=.Example.COM",
+        "token=y; Domain=example.com"
+      ])
+
+      deepStrictEqual(Cookies.toSetCookieHeaders(cookies), [
+        "token=root; Path=/",
+        "token=api; Path=/api",
+        "token=y; Domain=example.com"
+      ])
+      assertSome(Cookies.getValue(cookies, "token"), "y")
+    })
+
     it("trims cookie pairs and ignores invalid cookie names", () => {
       const cookies = Cookies.fromSetCookie([
         "bad name=value",
@@ -121,16 +137,14 @@ describe("Cookies", () => {
 
   describe("Schema.Cookies", () => {
     it("serializerIso annotation", () => {
-      const _sessionId = Schema.toIso(Schema.Cookies).at("sessionId")
       const cookies = Cookies.fromSetCookie([
         "sessionId=abc123; Path=/; HttpOnly; Secure",
-        "theme=dark; Path=/; Max-Age=3600",
-        "language=en; Domain=.example.com; SameSite=Lax"
+        "sessionId=api; Path=/api"
       ])
-      assertSuccess(
-        _sessionId.getResult(cookies),
-        Cookies.makeCookieUnsafe("sessionId", "abc123", { path: "/", httpOnly: true, secure: true })
-      )
+      deepStrictEqual(Schema.encodeSync(Schema.toCodecIso(Schema.Cookies))(cookies), [
+        Cookies.makeCookieUnsafe("sessionId", "abc123", { path: "/", httpOnly: true, secure: true }),
+        Cookies.makeCookieUnsafe("sessionId", "api", { path: "/api" })
+      ])
     })
 
     it("toCodecJson", async () => {
@@ -184,9 +198,50 @@ describe("Cookies", () => {
     assert.isFalse(Cookies.isCookiesError(null))
   })
 
+  it("sets and expires individual scopes, and removes every scope by name", () => {
+    const cookies = Cookies.empty.pipe(
+      Cookies.setCookie(Cookies.makeCookieUnsafe("token", "root", { path: "/" })),
+      Cookies.setCookie(Cookies.makeCookieUnsafe("token", "api", { path: "/api" }))
+    )
+    deepStrictEqual(Cookies.toSetCookieHeaders(cookies), ["token=root; Path=/", "token=api; Path=/api"])
+
+    const expired = Cookies.expireCookieUnsafe(cookies, "token", { path: "/" })
+    deepStrictEqual(Cookies.toSetCookieHeaders(expired), [
+      "token=; Max-Age=0; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT",
+      "token=api; Path=/api"
+    ])
+    assert.isTrue(Cookies.isEmpty(Cookies.remove(expired, "token")))
+  })
+
   describe("scoped storage", () => {
     const now = Date.parse("2026-10-20T00:00:00Z")
     const header = (jar: ReadonlyArray<Cookies.Cookie>, url: string) => Cookies.toRequestCookieHeader(jar, url, now)
+
+    it("stores and expires host-only and domain sessions from the same response", () => {
+      const url = "https://www.example.com/"
+      const jar = Cookies.mergeIntoArray(
+        [],
+        url,
+        Cookies.fromSetCookie([
+          "session=host; Path=/",
+          "session=domain; Domain=example.com; Path=/"
+        ]),
+        now
+      )
+      assert.strictEqual(header(jar, url), "session=host; session=domain")
+      assert.strictEqual(header(jar, "https://api.example.com/"), "session=domain")
+
+      const expired = Cookies.mergeIntoArray(
+        jar,
+        url,
+        Cookies.fromSetCookie([
+          "session=; Max-Age=0; Path=/",
+          "session=; Max-Age=0; Domain=example.com; Path=/"
+        ]),
+        now
+      )
+      deepStrictEqual(expired, [])
+    })
 
     it("isolates host-only cookies without overwriting another host's session", () => {
       const api = Cookies.mergeIntoArray(

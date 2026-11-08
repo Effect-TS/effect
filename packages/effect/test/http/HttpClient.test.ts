@@ -2306,6 +2306,30 @@ Missing key
       assert.deepStrictEqual(seen, [undefined, undefined, "session=secret", "session=attacker"])
     }))
 
+  it.effect("preserves same-name response cookies and sends them in matching path order", () =>
+    Effect.gen(function*() {
+      const jar = yield* Ref.make<ReadonlyArray<Cookies.Cookie>>([])
+      const seen: Array<string | undefined> = []
+      const client = HttpClient.withCookiesRef(
+        HttpClient.make((request) => {
+          seen.push(request.headers.cookie)
+          const headers = new Headers()
+          if (request.url === "https://example.com/login") {
+            headers.append("set-cookie", "token=root; Path=/")
+            headers.append("set-cookie", "token=api; Path=/api")
+          }
+          return Effect.succeed(HttpClientResponse.fromWeb(request, new Response(null, { headers })))
+        }),
+        jar
+      )
+
+      yield* client.get("https://example.com/login")
+      yield* client.get("https://example.com/api/users")
+      yield* client.get("https://example.com/")
+
+      assert.deepStrictEqual(seen, [undefined, "token=api; token=root", "token=root"])
+    }))
+
   it.effect("stores cookies using the final response host and default path", () =>
     Effect.gen(function*() {
       const jar = yield* Ref.make<ReadonlyArray<Cookies.Cookie>>([])
