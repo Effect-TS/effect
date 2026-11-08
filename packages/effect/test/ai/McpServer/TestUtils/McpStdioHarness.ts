@@ -71,7 +71,10 @@ const requestKey = (id: string | number) => `${typeof id}:${id}`
 export const makeMcpStdioHarness = Effect.fnUntraced(function*<A>(
   protocol: McpProtocol.ProtocolAdapter,
   protocols: Arr.NonEmptyReadonlyArray<McpProtocol.ProtocolAdapter> = [protocol],
-  registrations?: Layer.Layer<A, never, McpServer.McpServer>
+  registrations?: Layer.Layer<A, never, McpServer.McpServer>,
+  options?: {
+    readonly declaredFeatures?: ReadonlyArray<"tools" | "resources" | "prompts"> | undefined
+  }
 ) {
   const stdin = yield* Queue.unbounded<Uint8Array, Cause.Done>()
   const stdout = yield* Queue.unbounded<string | Uint8Array>()
@@ -95,6 +98,7 @@ export const makeMcpStdioHarness = Effect.fnUntraced(function*<A>(
   const ready = yield* Deferred.make<McpServer.McpServer["Service"]>()
   const serverFiber = yield* Effect.gen(function*() {
     const serverLayer = McpServer.layerStdio({
+      ...options,
       name: "McpConformance",
       version: "1.0.0",
       protocols

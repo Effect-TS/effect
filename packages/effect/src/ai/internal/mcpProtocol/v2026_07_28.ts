@@ -540,16 +540,6 @@ export const makeHandlers = (
     "prompts/list": Effect.fnUntraced(function*(
       _request: typeof McpSchema.ListPrompts.payloadSchema.Type
     ) {
-      const presence = yield* context.registrationPresence
-      if (!presence.prompts) {
-        return yield* failWithHttpStatus(
-          404,
-          new McpProtocol.ProtocolError({
-            code: PublicMcpSchema.METHOD_NOT_FOUND_ERROR_CODE,
-            message: "Method not found"
-          })
-        )
-      }
       const invocation = yield* getInvocation
       const prompts = yield* core.prompts.list(invocation)
       const projectedPrompts = yield* Effect.forEach(prompts, projectPrompt)
