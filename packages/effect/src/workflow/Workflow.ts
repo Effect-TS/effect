@@ -716,9 +716,10 @@ export const intoResult = <A, E, R>(
     const instance = Context.get(context, InstanceTag)
     const captureDefects = Context.get(instance.workflow.annotations, CaptureDefects)
     const suspendOnFailure = Context.get(instance.workflow.annotations, SuspendOnFailure)
+    // Fork so external interruption can suspend the workflow. The mask ensures
+    // the cancellation hook is registered before an interrupt can be observed.
     return Effect.uninterruptibleMask((restore) =>
       effect.pipe(
-        // so we can use external interruption to suspend the workflow
         Effect.forkChild({ startImmediately: true }),
         Effect.flatMap((fiber) => Effect.onInterrupt(restore(Fiber.join(fiber)), () => Fiber.interrupt(fiber)))
       )
