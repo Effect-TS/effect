@@ -2,21 +2,22 @@
 "effect": minor
 ---
 
-Add `Yaml.stringify` and `Yaml.stringifyAll`, and extend `Yaml.parse` and `Yaml.parseAll` with YAML 1.2 core schema tags, compact nested sequences (`- - value`), multiline quoted scalars in flow collections, single pairs in flow sequences (`[a: 1]`), flow mapping keys without values (`{a, b: 1}`), and escaped literal tabs.
+Add `Yaml.stringify` and `Yaml.stringifyAll`, plus YAML 1.2 core tags, compact sequences, multiline flow scalars, flow pairs, valueless flow keys, and escaped literal tabs to parsing.
 
 ### Breaking changes
 
-Some input that `Yaml.parse` and `Yaml.parseAll` used to accept now gives a different value or fails:
+`Yaml.parse` and `Yaml.parseAll` now interpret or reject these inputs differently:
 
-- Plain scalars resolve with the YAML 1.2 core schema, so only its spellings are typed. `tRuE`, `nULL`, `.iNf`, `0X1F`, `0O17`, signed hexadecimal such as `-0x10` and `+0x1`, `1_000` and `_1` are now strings, and `012`, `0644`, `5.` and `.5e3` are now the numbers `12`, `644`, `5` and `500`. Quote a scalar to keep it as a string.
-- The core tags `!!str`, `!!int`, `!!float`, `!!bool`, `!!null`, `!!seq` and `!!map` are resolved instead of kept as text, so `a: !!int 42` gives `42` rather than `"!!int 42"`, and content that does not match its tag fails. All other tags fail, such as `!custom x`, `!!binary` and verbatim tags. Quote a tagged scalar to keep its text.
-- `key: - value`, explicit keys (`- ? a`, `{? a : 1}`), a lone `?` value (`a: ?`), an empty anchor (`a: &`), a second anchor for the same node on the next line (`a: &x` followed by `&y 1`), flow entries starting with `-` and white space (`[- 1]`, `[1, -]`), a leading comma in a flow mapping (`{, a: 1}`), and a blank or comment-only line that holds a byte order mark after the content fail. A byte order mark at the start of a later content line is kept as text, so `\uFEFFb: 2` gives the key `"\uFEFFb"` instead of `"b"`. Quote the scalar to keep it as a string.
-- In flow collections, `:` separates a key from its value. `[a: 1]` gives `[{a: 1}]` instead of `["a: 1"]`, `{a, b: 1}` gives `{a: null, b: 1}` instead of the key `"a, b"`, and `{http://x: 1}` gives the key `"http://x"` instead of `"http"`. A second separator, as in `{a: b: c}`, fails instead of giving the value `"b: c"`, and so does a key without a value that contains `:`, such as `{a:1}`. Write `{a: 1}` with a space, or quote the scalar.
-- An unquoted `[` or `{` inside a plain scalar in a flow collection fails, so `[a[, b]` no longer gives `["a[", "b"]` and `{b: a{}` no longer gives `{b: "a{"}`. A flow collection used as a flow mapping key fails too, so `{[1]: x}` no longer gives the key `"[1]"`. Quote the scalar to keep the bracket.
-- In a flow collection, a comment ends a plain scalar, so `[b # note` followed by `c]` fails instead of giving `["b c"]`, and a quote that starts a continuation line is text, so `[b` followed by `'c # note` and `]` gives `["b 'c"]` instead of keeping the comment.
-- Mapping keys cannot carry anchors, tags or aliases, so `&m <<: *base`, `!!str 1: x` and `*name : value` fail instead of giving the keys `"&m <<"`, `"!!str 1"` and `"*name"`. Quote the key to keep its text.
-- A quoted block key followed by more text before its `:` fails, so `"a" "b": 1` and `"a"b: 1` no longer give keys that keep the quote characters. Quote the whole key.
-- Plain keys in flow mappings are converted like block keys, so `{0x10: 1}` gives the key `"16"` and `{null: 1}` gives `""`. Quote flow keys to keep their spelling.
-- A tab after a block sequence `-` is separation, so `-\tvalue` is a sequence entry instead of the string `"-\tvalue"`, and `-\t- value` and `-\tkey: value` fail.
-- No-break spaces, U+2028 and other characters that are not YAML white space are kept in scalars and keys instead of being trimmed.
-- Collections nested more than 1000 levels deep fail, and so do merges that copy more than 100,000 keys in one document.
+- **Core schema:** `tRuE`, `nULL`, `.iNf`, `0X1F`, `0O17`, `-0x10`, `+0x1`, `1_000` and `_1` are strings. `012`, `0644`, `5.` and `.5e3` are numbers (`12`, `644`, `5`, `500`). Quote scalars to preserve strings.
+- **Tags:** `!!str`, `!!int`, `!!float`, `!!bool`, `!!null`, `!!seq` and `!!map` resolve instead of remaining text; mismatched content and other tags (including local, non-specific and verbatim tags) fail. Quote tagged scalars to preserve their text.
+- **Unsupported syntax now fails:** `key: - value`, explicit keys (`- ? a`, `{? a : 1}`), lone `?` values, empty anchors, multiple anchors on one node, flow entries starting with `-` followed by whitespace or a flow delimiter (`[- 1]`, `[1, -]`), and leading flow-mapping commas (`{, a: 1}`). Use supported collection syntax or quote literal text.
+- **Byte order marks:** a BOM on a blank or comment-only line after content fails. A BOM at the start of a later content line is preserved: `\uFEFFb: 2` has the key `"\uFEFFb"`, not `"b"`. Remove unintended BOMs.
+- **Flow separators:** `[a: 1]` gives `[{a: 1}]`, not `["a: 1"]`; `{a, b: 1}` gives `{a: null, b: 1}`, not a key `"a, b"`; `{http://x: 1}` preserves the key `"http://x"`, not `"http"`. Extra separators (`{a: b: c}`) and colon-containing keys without values (`{a:1}`) fail. Write `{a: 1}` or quote literal text.
+- **Flow brackets:** unquoted `[` or `{` within flow plain scalars fail (`[a[, b]`, `{b: a{}`), as do collection keys (`{[1]: x}`). Quote these scalars or keys.
+- **Flow comments:** a comment ends a plain scalar, so `[b # note` followed by `c]` fails instead of giving `["b c"]`. Quotes on plain continuation lines are literal: `[b` / `'c # note` / `]` gives `["b 'c"]`. Quote the whole scalar to include a hash or fold across lines after it.
+- **Key properties:** anchors, tags and aliases on keys fail: `&m <<: *base`, `!!str 1: x` and `*name : value` no longer produce literal keys. Quote the key to preserve its text.
+- **Quoted block keys:** trailing text before `:` fails (`"a" "b": 1`, `"a"b: 1`). Quote the whole key.
+- **Flow key conversion:** `{0x10: 1}` has key `"16"` and `{null: 1}` has key `""`, matching block keys. Quote keys to preserve their spelling.
+- **Tabs after sequence dashes:** `-\tvalue` is an entry, not a string; `-\t- value` and `-\tkey: value` fail. Use spaces to indent nested collections or quote literal text.
+- **Whitespace:** no-break spaces, U+2028 and other non-YAML whitespace remain in scalars and keys instead of being trimmed. Remove them if unintended.
+- **Resource limits:** nesting beyond 1000 collection levels and merges copying more than 100,000 keys per document fail. Reduce nesting or merge expansion.

@@ -12,31 +12,26 @@
  * Unlike YAML 1.2, the closing bracket of a multiline flow collection may sit
  * at its parent's indentation.
  *
- * The shorthand tags of the YAML 1.2 core schema resolve: `!!str`, `!!int`,
- * `!!float`, `!!bool`, `!!null`, `!!seq` and `!!map`. A tagged node whose
- * content does not match its tag fails.
+ * Resolves core tags `!!str`, `!!int`, `!!float`, `!!bool`, `!!null`, `!!seq`
+ * and `!!map`; content that does not match its tag fails.
  *
- * Unsupported input fails rather than being read as text: other tags, including
- * local tags (`!local`), the non-specific tag (`!`), verbatim tags
- * (`!<tag:yaml.org,2002:str>`, even for core tags) and YAML 1.1 tags such as
- * `!!binary`; anchors, tags and aliases on mapping keys; explicit keys
- * (`? key`), `%TAG` and other directives, YAML versions other than 1.2,
- * recursive aliases, collections nested more than 1000 levels deep, and merges
- * that copy more than 100,000 keys in one document. A block sequence cannot start on the same line as a mapping key
- * (`key: - value`), and a flow mapping key without a value cannot contain `:`
- * (`{a:1}`).
+ * Rejects other tags (local, non-specific, verbatim and YAML 1.1 tags), mapping
+ * key properties (anchors, tags and aliases), explicit keys (`? key`), other
+ * directives and YAML versions, and recursive aliases. Nesting is limited to
+ * 1000 collection levels; merges may copy at most 100,000 keys per document.
+ * Block sequences cannot start on a mapping key's line (`key: - value`), and
+ * valueless flow keys cannot contain `:` (`{a:1}`).
  *
  * Mapping keys are JavaScript strings, read from plain or quoted scalars. Only
  * spaces and tabs are YAML white space, so characters such as a no-break space
  * (U+00A0) are kept as content. Numbers use JavaScript number semantics, so
  * integers beyond `Number.MAX_SAFE_INTEGER` lose precision.
  *
- * Known limits: an anchor name reused inside the node it is defined on refers
- * to the outer node once that node is complete, so in `a: &x` followed by
- * `  b: &x 1` and `c: *x`, `c` is `{ b: 1 }` where YAML 1.2.2 gives `1`. Deep
- * nesting with node properties on their own lines can reach the JavaScript
- * engine's stack limit before 1000 levels in some runtimes, and then fails with
- * an `EncodingError`.
+ * Known limits: reusing an anchor name inside its own node leaves the outer
+ * binding when that node completes. In `a: &x` / `  b: &x 1` / `c: *x`, `c`
+ * is `{ b: 1 }`, not the YAML 1.2.2 result `1`. Properties on separate lines
+ * can also exhaust the runtime stack below 1000 levels, failing with an
+ * `EncodingError`.
  *
  * Printing turns JSON-like values into block-style YAML that `parse` reads
  * back unchanged. Comments and source formatting are not retained.
@@ -82,9 +77,7 @@ type Line = {
 
 const hasOwn = Object.prototype.hasOwnProperty
 
-// Defines `key` as an own data property, so `__proto__` and keys that name inherited
-// accessors stay ordinary keys. A key found nowhere on the prototype chain cannot reach
-// a setter, so plain assignment, which is much cheaper, defines the same property.
+// Avoid inherited setters (including `__proto__`); new keys can use faster plain assignment.
 const setProperty = (record: YamlRecord, key: string, value: unknown): void => {
   if (!(key in record)) {
     record[key] = value
@@ -103,8 +96,7 @@ const isMapping = (value: unknown): value is YamlRecord =>
 
 const maxMergedKeys = 100_000
 
-// Each merge copies its sources' keys, so a chain of merges grows the output quadratically in
-// the input. Merges in one document may visit at most `maxMergedKeys` source keys.
+// Bound merge expansion per document: chains can grow quadratically in the input.
 class MergeBudget {
   private remaining = maxMergedKeys
 
@@ -183,7 +175,6 @@ const trimWhite = (text: string): string => {
   return start === 0 && end === text.length ? text : text.slice(start, end)
 }
 
-// Whether `trimWhite(text)` is empty, without building it.
 const isSeparationOnly = (text: string): boolean => {
   for (let index = 0; index < text.length; index++) {
     if (!isSeparationCode(text.charCodeAt(index))) return false
@@ -209,8 +200,7 @@ const closingQuote = (input: string, quote: string, start: number): number => {
 // `depth` is the number of flow collections already open before `input`. When searching
 // for `#`, `found` receives the first index the search for `:` would return, or -1.
 // `tokenStart` is false when `input` continues a plain scalar, whose quotes are text.
-// `afterJsonNode` is true when `input` starts right after a quoted scalar or flow collection
-// closed on an earlier line.
+// `afterJsonNode` preserves a closed quoted scalar or collection across line scans.
 const findIndicator = (
   input: string,
   indicator: ":" | "#",
@@ -220,28 +210,23 @@ const findIndicator = (
   afterJsonNode = false
 ): number => {
   const length = input.length
-  // Set after a quoted scalar or a flow collection closes, where a `:` directly after it
-  // separates a JSON-like key from its value (YAML 1.2.2 §7.4.2).
   for (let index = 0; index < length; index++) {
     const code = input.charCodeAt(index)
     const jsonKeyEnd = afterJsonNode
     if (!isWhiteCode(code)) afterJsonNode = false
     if (tokenStart && (code === 39 || code === 34)) {
-      // `'` or `"`
       index = closingQuote(input, code === 39 ? "'" : "\"", index + 1)
       if (index === -1) return -1
       tokenStart = false
       afterJsonNode = true
     } else if (tokenStart && (code === 38 || code === 42 || code === 33)) {
-      // `&`, `*` or `!`: anchor and alias names and tags may contain `:`, and the node after
-      // a property still starts a token.
+      // Anchor/alias names and tags may contain `:`; properties leave the next token open.
       while (index + 1 < length) {
         const next = input.charCodeAt(index + 1)
         if (isWhiteCode(next) || isFlowIndicatorCode(next)) break
         index++
       }
     } else if (code === 35 && (index === 0 || isWhiteCode(input.charCodeAt(index - 1)))) {
-      // `#`
       return indicator === "#" ? index : -1
     } else if (tokenStart && (code === 91 || code === 123)) {
       depth++
@@ -252,8 +237,8 @@ const findIndicator = (
     } else if (depth > 0 && code === 44) {
       tokenStart = true
     } else if (code === 58 && (depth > 0 || index + 1 === length || isWhiteCode(input.charCodeAt(index + 1)))) {
-      // `:`. In a flow collection, one inside a plain scalar (`a:'b`) is text, so the quote
-      // after it does not start a token.
+      // A plain colon (`a:'b`) keeps quotes literal; after a JSON-like node it separates
+      // the value even without whitespace (YAML 1.2.2 §7.4.2).
       if (depth === 0) {
         if (indicator === ":") return index
         if (found !== undefined && found.separator === -1) found.separator = index
@@ -282,11 +267,8 @@ const isDocumentMarker = (line: Line): boolean =>
 
 const isDocumentStart = (line: Line): boolean => isDocumentMarker(line) && line.raw.startsWith("---")
 
-// YAML 1.2.2 §5.3: `%` is the directive indicator and cannot start a plain scalar.
 const directiveIndicatorError = "Plain scalars cannot start with '%'"
 
-// YAML 1.2.2 §6.9.1: `!` starts a tag. Only the shorthand tags of the core schema
-// (§10.3) resolve; every other tag fails rather than being read as text.
 const coreTags = new Set(["!!str", "!!int", "!!float", "!!bool", "!!null", "!!seq", "!!map"])
 
 // The tag token at the start of `text`, which must be a core tag.
@@ -328,9 +310,7 @@ const coreFloat = (text: string): number | undefined => {
   return undefined
 }
 
-// Whether a scalar starting with `code` may match a `coreSchema` pattern: `~`, the first
-// letters of `null`, `true` and `false` in each case, a sign, `.` or a digit. Other scalars
-// are strings without testing every pattern.
+// Skip schema regexes when the first character cannot start a non-string scalar.
 const mayBeCoreNonString = (code: number): boolean => {
   switch (code) {
     case 126: // ~
@@ -410,15 +390,11 @@ const isExplicitKey = (text: string): boolean =>
 
 const explicitKeyError = "YAML explicit keys (`?`) are not supported"
 
-// A mapping key. `merge` is true only for a plain `<<`, so a quoted `"<<"` stays an ordinary key.
-// Bounds recursion over nested block and flow collections, so deep input fails
-// with an `EncodingError` instead of exhausting the stack.
+// Bound combined block/flow nesting before excessive recursion.
 const maxDepth = 1000
 
 const depthError = `YAML collections exceed the maximum nesting depth of ${maxDepth}`
 
-// Mapping keys are plain or quoted scalars. Anchors, tags and aliases on keys are valid YAML
-// but not supported.
 const keyPropertyError = "Mapping keys cannot carry an anchor, tag or alias"
 
 // `&`, `!` and `*` start an anchor, a tag and an alias.
@@ -429,8 +405,7 @@ const isMergeKey = (text: string): boolean => text === "<<"
 
 const foldLineBreak = (blankLines: number): string => blankLines === 0 ? " " : "\n".repeat(blankLines)
 
-// Folds the line breaks of a multiline plain flow scalar. Scans line by line, since
-// a white-space regex would backtrack quadratically on long runs without a break.
+// Fold plain flow scalars line by line to avoid quadratic whitespace-regex backtracking.
 const foldFlowLines = (input: string): string => {
   if (!input.includes("\n")) return input
   const lines = input.split("\n")
@@ -463,8 +438,7 @@ const trimFoldedEnd = (line: string, quote: string): string => {
   return line.slice(0, end + (escaped ? 1 : 0))
 }
 
-// Folds the line breaks of a multiline quoted scalar read inside a flow collection,
-// following the same rules as quoted block values. The result keeps its quotes.
+// Fold quoted flow scalars like block values, keeping the surrounding quotes.
 const foldQuotedLines = (raw: string): string => {
   const lines = raw.split("\n")
   if (lines.length === 1) return raw
@@ -573,10 +547,8 @@ const isVerbatimTagEnd = (code: number): boolean => code === 62
 const flowDashError = "A flow plain scalar cannot start with '-' followed by white space or a flow indicator"
 
 class FlowParser {
-  // The flow collection is read one line at a time. Each line after the first
-  // starts with the "\n" that separates it from the previous one, so offsets and
-  // multiline text match a single joined string without ever building one:
-  // appending to and indexing a growing string is quadratic.
+  // Prefix continuation lines with "\n" to preserve offsets without growing a joined string,
+  // whose repeated appends and indexing would be quadratic.
   private line: string
   // Length of the lines before `line`, for error offsets.
   private offset = 0
@@ -587,9 +559,8 @@ class FlowParser {
   private readonly nextLine: (quoted: boolean) => string | undefined
   // Whether a comment ended `line`. YAML 1.2.2 §6.6: a plain scalar cannot continue after one.
   private comment: boolean
-  // Whether the last token read was a quoted scalar or a flow collection, so that a `:` directly
-  // after it on a later line separates a JSON-like key from its value (YAML 1.2.2 §7.4.2).
-  // The comment scan of each line read later starts from it.
+  // Preserve a closed JSON-like node across comment scans: its `:` needs no following space
+  // (YAML 1.2.2 §7.4.2). Delimiters and non-JSON tokens reset this state.
   private afterJsonNode = false
   // Block collections already open around this flow collection.
   private readonly blockDepth: number
@@ -790,8 +761,7 @@ class FlowParser {
     else mapping.set(parseKey(text), value, fail)
   }
 
-  // The key's source text, which `parseKey` converts like a block key so `null` and `0x10`
-  // give the same keys in both styles.
+  // Return source text for the same key conversion used in block mappings.
   private parseKey(): string {
     this.skipWhitespace()
     const character = this.peek()
@@ -802,8 +772,7 @@ class FlowParser {
     this.skipWhitespace()
     if (this.peek() !== ":") {
       if (text === "") this.expect(":")
-      // `{a:1}` is the key `a:1` without a value under YAML 1.2.2 §7.3.3, but reads as `{a: 1}` in
-      // JSON-like syntax, so it fails rather than giving either.
+      // Reject `{a:1}` rather than choose between a YAML valueless key and a JSON-like pair.
       if (text.includes(":")) {
         this.fail(`Flow mapping key '${text}' has no value, add a space after ':' or quote the key`)
       }
@@ -811,8 +780,7 @@ class FlowParser {
     return text
   }
 
-  // Reads a quoted scalar, pulling continuation lines until its closing quote.
-  // Each line is scanned once, so long scalars stay linear.
+  // Read a quoted scalar one line at a time to keep scanning linear.
   private readQuoted(quote: string): string {
     const startOffset = this.offset + this.index
     const pieces: Array<string> = []
@@ -890,9 +858,8 @@ class FlowParser {
     return this.index + 1 >= this.line.length || isWhiteCode(next) || isFlowIndicatorCode(next)
   }
 
-  // Moves to the next line of the flow collection, keeping its leading "\n". `mode` is what
-  // the line continues: an open quoted scalar, whose `#` is content, a plain scalar, whose
-  // quotes are text, or neither.
+  // Preserve "\n" on continuation lines. Inside quotes, `#` is content; inside plain scalars,
+  // quotes are content. Token mode permits new quoted scalars.
   private nextChunk(mode: "quoted" | "plain" | "token"): boolean {
     const next = this.nextLine(mode === "quoted")
     if (next === undefined) return false
@@ -903,8 +870,7 @@ class FlowParser {
     return true
   }
 
-  // Removes the comment from the rest of a line, knowing the open collections so a quoted
-  // `#` after a comma is kept.
+  // Scan comments with the parser's collection and token context, preserving quoted hashes.
   private stripComment(text: string, plain: boolean): string {
     const index = findIndicator(text, "#", this.depth, undefined, !plain, !plain && this.afterJsonNode)
     if (index === -1) return text
@@ -941,9 +907,7 @@ class FlowParser {
 const makeLine = (raw: string, number: number): Line => {
   let indentation = 0
   while (raw.charCodeAt(indentation) === 32) indentation++
-  // Scanning the indentation too finds the same comment and separator, since spaces
-  // neither start a token nor end one, and gives indices into `raw`, so the text is sliced
-  // once. The separator search stops at the comment, which `text` no longer holds.
+  // Scan `raw` once, including indentation, so comment and separator indices share an origin.
   const found = { separator: -1 }
   const comment = findIndicator(raw, "#", 0, found)
   return {
@@ -1166,7 +1130,7 @@ class YamlParser {
     const fail = (message: string) => this.fail(line, message)
     const key = this.parseBlockKey(text.slice(0, separator), fail)
     const rawValue = trimWhiteStart(text.slice(separator + 1))
-    // An empty value goes straight to the lines below, which keeps deep nesting off the stack.
+    // Bypass scalar parsing for empty values to reduce per-level stack use.
     const value = rawValue.length === 0
       ? this.parseBlockValue(indent, true)
       : this.parseNodeValue(rawValue, indent, true)
@@ -1219,8 +1183,7 @@ class YamlParser {
     // A compact nested sequence or mapping is indented to its first character,
     // which may sit more than one space after the dash.
     const offset = entry.length - item.length
-    // The `-` indicator and the white space after it leave the separator search where it
-    // was, so the entry's separator is the item's, shifted by the indicator.
+    // Removing the dash and separation shifts the separator without changing its meaning.
     const itemSeparator = separator === -1 ? -1 : separator - offset
     const nested = isSequenceEntry(item)
     if (!nested && itemSeparator === -1) {
@@ -1255,8 +1218,7 @@ class YamlParser {
     if (rest.startsWith("*")) fail(tag === undefined ? "An alias cannot have an anchor" : "An alias cannot have a tag")
     const empty = isSeparationOnly(rest)
     if (empty) {
-      // YAML 1.2.2 §6.9: the properties may be followed by the node's scalar content on the
-      // next line, where more properties of the same node may appear.
+      // YAML 1.2.2 §6.9: properties and scalar content may continue on later lines.
       const next = this.scalarContinuation(parentIndent)
       if (next !== undefined) {
         this.index++
@@ -1264,7 +1226,6 @@ class YamlParser {
       }
     }
     if (tag !== undefined) this.plainText = undefined
-    // Properties alone on their line take the node from the lines below, as `parseValue` would.
     const node = empty
       ? this.parseBlockValue(parentIndent, allowIndentless)
       : this.parseValue(rest, parentIndent, allowIndentless)
@@ -1296,7 +1257,6 @@ class YamlParser {
     if ((first === 124 || first === 62) && /^[|>](?:[1-9]?[+-]?|[+-]?[1-9]?)$/.test(text)) {
       return this.parseBlockScalar(text, parentIndent)
     }
-    // Keep escaped trailing whitespace in quoted values.
     if (value.startsWith("\"") || value.startsWith("'")) return this.parseQuotedValue(value, parentIndent)
     if (text.startsWith("*")) {
       const name = trimWhite(text.slice(1))
@@ -1530,11 +1490,9 @@ const decode = <A>(input: string, f: (parser: YamlParser) => A): Result.Result<A
  *
  * **Details**
  *
- * Returns `Result.succeed` with the parsed value, or `Result.fail` with an
- * `EncodingError` when the input is not valid YAML or uses an unsupported
- * feature. Empty input, or input holding only comments, parses to `null`.
- * Input holding more than one document fails; use {@link parseAll} for
- * document streams.
+ * Returns the parsed value in a `Result`, or fails with an `EncodingError`
+ * for invalid or unsupported input. Empty or comment-only input parses to
+ * `null`. Multiple documents fail; use {@link parseAll} for streams.
  *
  * Plain scalars resolve with the YAML 1.2 core schema, so booleans, nulls, and
  * numbers are decoded while date-like values remain strings. Only the core
@@ -1614,10 +1572,7 @@ export const parse = (input: string): Result.Result<unknown, EncodingError> =>
 export const parseAll = (input: string): Result.Result<Array<unknown>, EncodingError> =>
   decode(input, (parser) => parser.parseStream())
 
-// YAML 1.2.2 §5.1: characters outside the printable set must be escaped on
-// output. Line and paragraph separators are included to stay on the safe side
-// of YAML 1.1 line break handling, and the byte order mark because §5.4
-// excludes it from content characters.
+// Escape YAML 1.2 non-printables (§5.1), BOM (§5.4), and YAML 1.1 line/paragraph separators.
 const isNonPrintableCode = (code: number): boolean =>
   (code < 0x20 && code !== 0x09 && code !== 0x0a && code !== 0x0d) || (code >= 0x7f && code <= 0x9f) ||
   code === 0x2028 || code === 0x2029 || code === 0xfeff || code === 0xfffe || code === 0xffff
@@ -1637,12 +1592,9 @@ const hasNonPrintable = (text: string): boolean => {
   return false
 }
 
-// A fixed list of common YAML 1.1 spellings that the core schema reads as strings but YAML 1.1
-// parsers read as other types, which the printer quotes: any letter case of `null`, `~`, `true`,
-// `false`, `y`, `n`, `yes`, `no`, `on`, `off`, `.inf` and `.nan`; numbers with `_` separators or
-// an uppercase or signed `0X` or `0O` prefix; and `YYYY-MM-DD` dates with an optional full
-// `HH:MM:SS` time, fraction and time zone. Other spellings that only YAML 1.1 parsers read as
-// other types, such as `1:20` or `0b101`, print plain.
+// Closed YAML 1.1 quoting list: case-insensitive nulls/booleans/non-finite numbers,
+// numeric separators and base prefixes, and full-width dates/times. This is not general
+// YAML 1.1 compatibility: `1:20` and `0b101`, for example, remain plain.
 const lenientNonString = /^(?:null|~|true|false|y|n|yes|no|on|off|[-+]?\.inf|\.nan)$/i
 
 const lenientTimestamp =
@@ -1653,9 +1605,7 @@ const lenientNumber = /^[-+]?(?:0x[0-9a-f]+|0o[0-7]+|(?:[0-9]+(?:\.[0-9]*)?|\.[0
 const isLenientNonString = (text: string): boolean =>
   lenientNonString.test(text) || lenientTimestamp.test(text) || lenientNumber.test(text.replace(/_/g, ""))
 
-// `_` can start a lenient number once its separators are removed, and `y`, `Y`, `o` and `O` start
-// YAML 1.1 booleans. Other first characters outside `mayBeCoreNonString` cannot start a lenient
-// spelling.
+// Extend the core prefilter for `_`-prefixed numbers and YAML 1.1 booleans.
 const mayBeLenientNonString = (code: number): boolean =>
   mayBeCoreNonString(code) || code === 95 || code === 121 || code === 89 || code === 111 || code === 79
 
@@ -1679,7 +1629,6 @@ const isPlainSafe = (text: string): boolean => {
       return false
     }
   }
-  // Quoted when `parse` or a lenient parser would read the spelling as another type.
   const first = text.charCodeAt(0)
   if (!mayBeLenientNonString(first)) return true
   return typeof resolvePlain(text) === "string" && !isLenientNonString(text)
@@ -1766,9 +1715,7 @@ const printNumber = (value: number): string => {
   return String(value)
 }
 
-// A multiline string prints as a literal block scalar when every line can be
-// written as-is: no control characters besides tabs and line breaks, and no
-// leading or trailing whitespace on any line.
+// Use a literal block only when lines need no escaping or surrounding-whitespace preservation.
 const literalBlock = (text: string): { readonly header: string; readonly lines: Array<string> } | undefined => {
   // A backward scan, since a trailing `\n+` pattern retries from every newline of an interior run.
   let end = text.length
@@ -1816,9 +1763,7 @@ class Printer {
     throw new PrintError(`${message} at ${this.path()}`)
   }
 
-  // Prints `value`, with `toJSON` already applied, after `prefix` (`""` at the
-  // root, `-` for a sequence item, or `key:` for a mapping entry) placed at
-  // `indentation`.
+  // Print an already-converted value after `prefix`: "" at root, "-" for items, or "key:".
   node(value: unknown, indentation: number, prefix: string): void {
     switch (typeof value) {
       case "string":
@@ -1836,7 +1781,7 @@ class Printer {
     }
     if (value === null) return this.line(indentation, prefix, "null")
     if (this.ancestors.has(value)) this.fail("Circular reference")
-    // Limited as `parse` limits them, counting empty collections, which also bounds the recursion.
+    // Count empty collections too, matching `parse` and bounding recursion.
     if (this.depth === maxDepth) this.fail(depthError)
     this.depth++
     this.collection(value, indentation, prefix)
@@ -1849,8 +1794,7 @@ class Printer {
       this.ancestors.add(value)
       const column = prefix === "" ? indentation : indentation + this.step
       if (prefix !== "") this.line(indentation, prefix, "")
-      // Index iteration keeps the positions of sparse arrays. The length is read once, as in
-      // JSON.stringify, so a toJSON that appends to the array cannot extend the output.
+      // Preserve sparse positions; snapshot length so `toJSON` cannot extend iteration.
       for (let index = 0, length = value.length; index < length; index++) {
         this.trail.push(index)
         this.node(applyToJson(value[index], String(index)) ?? null, column, "-")
@@ -1902,9 +1846,7 @@ class Printer {
   }
 }
 
-// Mirrors `JSON.stringify`: objects and bigints carrying a `toJSON` method are
-// replaced by its result before printing. The method is read once and called on `value`
-// without reading its own `call` property.
+// Read `toJSON` once and preserve its receiver without consulting the method's `call` property.
 const applyToJson = (value: unknown, key: string): unknown => {
   if (typeof value === "object" && value !== null || typeof value === "bigint") {
     const toJSON = (value as { readonly toJSON?: unknown }).toJSON
@@ -1959,19 +1901,16 @@ const printResult = (input: unknown, print: () => string): Result.Result<string,
  * surrounding whitespace. Non-finite numbers print as `.inf`, `-.inf`, and
  * `.nan`.
  *
- * As with `JSON.stringify`, a `toJSON` method is applied first (so a `Date`
- * prints as an ISO string), `undefined` properties are omitted, `undefined`
- * array items print as `null`, and symbol keys are ignored. Each value's
- * `toJSON` is called once, with its key. The order of those calls across
- * sibling values, and whether a change one of them makes to another value
- * shows up in the output, are unspecified. Any other value,
- * including bigints, functions, symbols, class instances without `toJSON`,
- * circular references, and collections nested more than 1000 levels deep
- * (counting empty ones), which {@link parse} rejects, fails with an
- * `EncodingError` naming the path of the offending value. Keys print as implicit keys, which YAML limits to 1024
- * characters including quotes; a longer key fails with the path of its
- * mapping. Shared references are printed in full each time; no anchors are
- * emitted. The output always ends with a line break.
+ * Like `JSON.stringify`, applies `toJSON` (so dates print as ISO strings),
+ * omits `undefined` properties, prints `undefined` array items as `null`, and
+ * ignores symbol keys. Each value's `toJSON` is called once with its key;
+ * sibling callback order and visibility of sibling mutations are unspecified.
+ * Unsupported values (bigints, functions, symbols and class instances without
+ * `toJSON`), cycles, and nesting beyond 1000 collections (including empty
+ * ones, as in {@link parse}) fail with an `EncodingError` naming the value's
+ * path. Implicit keys are limited to 1024 characters including quotes; longer
+ * keys fail with their mapping's path. Shared references print in full,
+ * without anchors. Output ends with a line break.
  *
  * **Example** (Printing a configuration object)
  *
