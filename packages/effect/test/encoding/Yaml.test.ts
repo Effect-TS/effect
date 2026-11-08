@@ -490,6 +490,26 @@ development:
       assert.deepStrictEqual(parseAll(source), [expected])
     })
 
+    // A `:` inside a plain scalar does not start a token, so a quote after it is text and a comment
+    // after it still ends the scalar. A comment may also separate a key from its `:` (YAML 1.2.2
+    // §7.4.2). Expected values were checked with yaml 2.9.1; js-yaml 4.3.2 agrees on the quote rows.
+    it.each(
+      [
+        ["an apostrophe after a colon in a key", "x: {a:'b: # note\n  42}\n", { x: { "a:'b": 42 } }],
+        ["a double quote after a colon in a key", "x: {a:\"b: # note\n  42}\n", { x: { "a:\"b": 42 } }],
+        ["an apostrophe after a colon in a sequence item", "x: [it:'s # note\n  ]\n", { x: ["it:'s"] }],
+        ["a quoted key directly followed by a quoted value", "x: {\"a\":'b' # note\n  }\n", { x: { a: "b" } }],
+        [
+          "a comment between a key with a colon and its value",
+          "x: {http://example.com # endpoint\n  : 1}\n",
+          { x: { "http://example.com": 1 } }
+        ]
+      ] as const
+    )("reads %s with parse and parseAll", (_, source, expected) => {
+      assert.deepStrictEqual(parse(source), expected)
+      assert.deepStrictEqual(parseAll(source), [expected])
+    })
+
     it("rejects an empty key without a value", () => {
       failureMessage("x: {, a: 1}\n")
       failureMessage("x: {, a: 1}\n", Yaml.parseAll)
