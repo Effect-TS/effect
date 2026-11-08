@@ -4,8 +4,10 @@ import * as Effect from "../Effect.ts"
 import * as Fiber from "../Fiber.ts"
 import type * as FileSystem from "../FileSystem.ts"
 import * as Order from "../Order.ts"
+import type * as PathFilter from "../PathFilter.ts"
 import type { PlatformError } from "../PlatformError.ts"
 import * as Predicate from "../Predicate.ts"
+import * as PathFilterEngine from "./pathFilter.ts"
 
 /** @internal */
 export type Token =
@@ -79,6 +81,16 @@ export const compile = (patterns: ReadonlyArray<string>, dot: boolean): Compiled
       }
     }
   }
+  return fromNodes(nodes, starts, dot)
+}
+
+/**
+ * Builds an automaton from nodes laid out as `compile` does, starting at
+ * `starts`.
+ *
+ * @internal
+ */
+export const fromNodes = (nodes: ReadonlyArray<Node>, starts: Set<number>, dot: boolean): Compiled => {
   const initial = closure(nodes, starts)
   return { nodes, initial, dot, masks: nodes.length <= 32 ? compileMasks(nodes, initial) : undefined }
 }
@@ -222,14 +234,16 @@ const compileSegment = (chars: ReadonlyArray<string>): Node => {
       tokens.push({ _tag: "Char", code: char.codePointAt(0)! })
     }
   }
-  if (!magic) {
-    return { _tag: "Literal", value: literal }
-  }
+  return magic ? makeWildcard(tokens) : { _tag: "Literal", value: literal }
+}
+
+/** @internal */
+export const makeWildcard = (tokens: ReadonlyArray<Token>): Node => {
   const first = tokens[0]
   return {
     _tag: "Wildcard",
     tokens,
-    leadingDot: first._tag === "Char" && first.code === 0x2e,
+    leadingDot: first?._tag === "Char" && first.code === 0x2e,
     affixes: compileAffixes(tokens)
   }
 }
@@ -258,7 +272,8 @@ const compileAffixes = (
   return suffix === undefined ? undefined : { prefix, suffix }
 }
 
-const range = (from: string, to: string): Array<number> => [from.codePointAt(0)!, to.codePointAt(0)!]
+/** @internal */
+export const range = (from: string, to: string): Array<number> => [from.codePointAt(0)!, to.codePointAt(0)!]
 
 const posixClasses: Record<string, ReadonlyArray<number>> = {
   alnum: [...range("0", "9"), ...range("A", "Z"), ...range("a", "z")],
@@ -468,7 +483,8 @@ const expandSequence = (sequence: BraceSequence): Array<string> => {
 // matching
 // -----------------------------------------------------------------------------
 
-const matchToken = (token: Token, code: number): boolean => {
+/** @internal */
+export const matchToken = (token: Token, code: number): boolean => {
   switch (token._tag) {
     case "Char":
       return token.code === code
@@ -609,19 +625,17 @@ const canDescend = (compiled: Compiled, states: States): boolean => {
   return false
 }
 
-const needsDirectory = (compiled: Compiled, states: States): boolean => {
-  for (const state of states) {
-    const node = compiled.nodes[state]
-    if (node._tag === "End" && node.directoryOnly) {
-      return true
-    }
-  }
-  return false
-}
-
 // `step` and `union` over bitmasks; a `**` node's successor is the next bit
-const stepMasks = (compiled: Compiled, masks: Masks, states: number, name: string, root: boolean): number => {
-  let next = !root && name !== "." && name !== ".." && (compiled.dot || !name.startsWith("."))
+// `explicit` leaves out states reached by a `**` consuming the name
+const stepMasks = (
+  compiled: Compiled,
+  masks: Masks,
+  states: number,
+  name: string,
+  root: boolean,
+  explicit = false
+): number => {
+  let next = !explicit && !root && name !== "." && name !== ".." && (compiled.dot || !name.startsWith("."))
     ? states & masks.globstar
     : 0
   // the remaining states are `Literal` and `Wildcard` nodes
@@ -694,6 +708,105 @@ export const match = (compiled: Compiled, path: string): boolean => {
 }
 
 // -----------------------------------------------------------------------------
+// path filter matchers
+// -----------------------------------------------------------------------------
+
+// The names a set of states can step through, when every live state is a
+// literal segment
+const literalNames = (compiled: Compiled, states: Iterable<number>): Array<string> | undefined => {
+  const names: Array<string> = []
+  for (const state of states) {
+    const node = compiled.nodes[state]
+    if (node._tag === "Literal") {
+      names.push(node.value)
+    } else if (node._tag !== "End") {
+      return undefined
+    }
+  }
+  return names
+}
+
+const bits = function*(mask: number): Generator<number> {
+  while (mask !== 0) {
+    const bit = mask & -mask
+    mask ^= bit
+    yield 31 - Math.clz32(bit)
+  }
+}
+
+// Names stepped here come from canonical paths, so none is an absolute root
+const incremental = (compiled: Compiled): PathFilterEngine.Incremental<any> => {
+  const { masks } = compiled
+  if (masks !== undefined) {
+    return {
+      initial: masks.initial,
+      step: (states: number, name: string) => stepMasks(compiled, masks, states, name, false),
+      stepExplicit: (states: number, name: string) => stepMasks(compiled, masks, states, name, false, true),
+      accepts: (states: number, directory: boolean) => (states & (directory ? masks.end : masks.endFile)) !== 0,
+      matchesBelow: (states: number) => (states & ~masks.end) !== 0,
+      literals: (states: number) => literalNames(compiled, bits(states)),
+      directory: masks.end !== masks.endFile
+    }
+  }
+  return {
+    initial: compiled.initial,
+    step: (states: States, name: string) => union(step(compiled, states, name)),
+    stepExplicit: (states: States, name: string) => step(compiled, states, name).explicit,
+    accepts: (states: States, directory: boolean) => accepts(compiled, states, directory),
+    matchesBelow: (states: States) => canDescend(compiled, states),
+    literals: (states: States) => literalNames(compiled, states),
+    directory: compiled.nodes.some((node) => node._tag === "End" && node.directoryOnly)
+  }
+}
+
+/**
+ * A `PathMatcher` backed by an automaton, which a filter steps one segment
+ * at a time and whose `matchesBelow` answers from the live states.
+ *
+ * @internal
+ */
+export const pathMatcher = (compiled: Compiled): PathFilter.PathMatcher => {
+  const machine = incremental(compiled)
+  const run = (path: string): { readonly state: unknown; readonly empty: boolean } => {
+    let state = machine.initial
+    let empty = true
+    for (const name of path.split("/")) {
+      if (name !== "" && name !== ".") {
+        state = machine.step(state, name)
+        empty = false
+      }
+    }
+    return { state, empty }
+  }
+  return PathFilterEngine.register({
+    match: (path: string, directory: boolean) => {
+      const { empty, state } = run(path)
+      return !empty && machine.accepts(state, directory)
+    },
+    matchesBelow: (directory: string) => machine.matchesBelow(run(directory).state)
+  }, machine)
+}
+
+/**
+ * Whether every brace expansion of `pattern` is relative, so that it names one
+ * path segment per entry below the root.
+ *
+ * @internal
+ */
+export const isRelativePattern = (pattern: string): boolean => namesSegments(pattern, false)
+
+// Whether no brace expansion has a `..` segment or an escaped `/`, and unless
+// `absolute` is allowed, none is absolute
+const namesSegments = (pattern: string, absolute: boolean): boolean =>
+  expandBraces(pattern).every((expanded) =>
+    (absolute || !isAbsolute(expanded)) &&
+    splitSegments(expanded).every((segment) => {
+      const decoded = segment.replace(/\\(.)/gsu, "$1")
+      return decoded !== ".." && !decoded.includes("/")
+    })
+  )
+
+// -----------------------------------------------------------------------------
 // file system walk
 // -----------------------------------------------------------------------------
 
@@ -718,38 +831,107 @@ const byName = Order.mapInput(Order.String, (entry: FileSystem.DirectoryEntry) =
 
 /** @internal */
 export const make = (
-  fs: Pick<FileSystem.FileSystem, "readDirectoryEntries" | "stat" | "readLink">
+  fs: Pick<FileSystem.FileSystem, "readDirectoryEntries" | "stat" | "readLink">,
+  filters: Pick<typeof PathFilter, "fromInput" | "include" | "select">
 ): FileSystem.FileSystem["glob"] =>
-(pattern, options) => walk(fs, compile([pattern], options?.dot ?? false), options)
+(input, options) => {
+  // Convert once per call, so running the effect again does not consume a
+  // one-shot iterable again. Invalid patterns are defects of the effect.
+  let filter: PathFilter.PathFilter
+  let absolute: AbsolutePattern | undefined
+  try {
+    absolute = compileAbsolute(input)
+    filter = absolute === undefined
+      ? filters.fromInput(input)
+      : filters.select([filters.include(absolute.matcher)])
+  } catch (error) {
+    return Effect.die(error)
+  }
+  if (absolute === undefined) {
+    return walk(fs, filter, options?.root ?? "")
+  }
+  const { includesRoot, root } = absolute
+  const paths = Effect.map(walk(fs, filter, root), Arr.map((path) => join(root, path)))
+  if (!includesRoot) {
+    return paths
+  }
+  // The walk never returns its own root, so look the filesystem root up
+  return Effect.zipWith(
+    fs.stat(root).pipe(
+      Effect.as(true),
+      Effect.catchIf(isMissing, () => Effect.succeed(false))
+    ),
+    paths,
+    (exists, paths) => exists ? [root, ...paths] : paths
+  )
+}
 
-// Named directories (the root and those reached only through leading literal
-// segments) must be readable; unreadable wildcard-reached ones are skipped.
+interface AbsolutePattern {
+  /** The filesystem root the pattern starts at, `/` or a drive such as `C:/`. */
+  readonly root: string
+  /** The pattern below `root`. */
+  readonly matcher: PathFilter.PathMatcher
+  /** Whether the pattern matches `root` itself, as `/` and `/**` do. */
+  readonly includesRoot: boolean
+}
+
+// A single positive absolute string pattern keeps its meaning from before
+// `glob` took filters: it is compiled whole, so braces and normalization work
+// as for `Glob`, then stepped past its filesystem root to select the paths
+// below. Every other input is relative to `root`; UNC patterns stay defects.
+const compileAbsolute = (input: PathFilter.Input): AbsolutePattern | undefined => {
+  if (typeof input !== "string" || !isAbsolute(input) || isUnc(input)) {
+    return undefined
+  }
+  // as for filter rules, except that the pattern is absolute
+  if (!namesSegments(input, true)) {
+    throw new Error(`FileSystem.glob patterns must not contain ".." segments or escaped "/": ${input}`)
+  }
+  const root = input.startsWith("/") ? "/" : input.slice(0, 3)
+  const compiled = compile([input], false)
+  // only the pattern's root literal matches a root name
+  const states = union(step(compiled, compiled.initial, root === "/" ? "" : root))
+  return {
+    root,
+    matcher: pathMatcher(fromNodes(compiled.nodes, new Set(states), false)),
+    includesRoot: accepts(compiled, states, true)
+  }
+}
+
+// The child names to probe, from any filter the paths must pass, or
+// `undefined` to list the directory
+const candidatesOf = (belows: ReadonlyArray<PathFilterEngine.Below>): ReadonlyArray<string> | undefined => {
+  for (const below of belows) {
+    if (below.candidates !== undefined) {
+      return below.candidates
+    }
+  }
+  return undefined
+}
+
+// Named directories (the root and those reached only through probed literal
+// names) must be readable; unreadable listed-into ones are skipped.
 const walk = Effect.fnUntraced(function*(
   fs: Pick<FileSystem.FileSystem, "readDirectoryEntries" | "stat" | "readLink">,
-  compiled: Compiled,
-  options?: {
-    readonly root?: string | undefined
-    readonly exclude?: ReadonlyArray<string> | undefined
-  }
+  filter: PathFilter.PathFilter,
+  root: string
 ): Effect.fn.Return<Array<string>, PlatformError> {
-  if (compiled.initial.size === 0) {
+  // a path must pass the filter and each of its restrictions
+  const evaluators = PathFilterEngine.leaves(filter).map(PathFilterEngine.evaluator)
+  const roots = evaluators.map((evaluator) => evaluator.root)
+  if (roots.some((below) => below.prune)) {
     return []
   }
-  const root = options?.root ?? ""
-  const excludes = compile(options?.exclude ?? [], true)
-  const excludeNeedsDirectory = excludes.nodes.some((node) => node._tag === "End" && node.directoryOnly)
+  const needsDirectory = evaluators.some((evaluator) => evaluator.needsDirectory)
 
-  const toFsPath = (relative: string): string =>
-    isAbsolute(relative) ? relative : relative === "" ? (root === "" ? "." : root) : join(root, relative)
+  const toFsPath = (relative: string): string => relative === "" ? (root === "" ? "." : root) : join(root, relative)
 
-  // Listings never contain `.`, `..`, or the root of an absolute pattern
-  const isUnlisted = (value: string): boolean => value === "." || value === ".." || isRoot(value)
-
-  // Keep broken links so literal probes agree with directory listings.
+  // Keep broken links so literal probes agree with directory listings. `stat`
+  // follows links, so report a directory link as a link: a candidate may come
+  // from a restriction while the selection reached the name through `**`.
   const probe = (
     parent: string,
-    name: string,
-    named: boolean
+    name: string
   ): Effect.Effect<FileSystem.DirectoryEntry | undefined, PlatformError> => {
     const path = toFsPath(join(parent, name))
     return fs.stat(path).pipe(
@@ -759,103 +941,98 @@ const walk = Effect.fnUntraced(function*(
           Effect.as("SymbolicLink" as const),
           Effect.catchIf(isNotLink, () => Effect.succeed(undefined))
         )),
-      Effect.catchIf(named ? isMissing : isIgnorable, () => Effect.succeed(undefined)),
+      Effect.catchIf(isMissing, () => Effect.succeed(undefined)),
+      Effect.flatMap((type) =>
+        type === "Directory"
+          ? fs.readLink(path).pipe(
+            Effect.as("SymbolicLink" as const),
+            Effect.catchIf(isNotLink, () => Effect.succeed(type))
+          )
+          : Effect.succeed(type)
+      ),
       Effect.map((type) => type === undefined ? undefined : { name, type })
     )
   }
 
-  // Probe leading literals without requiring permission to list their parent.
+  // Probe the candidate names of a named directory without requiring
+  // permission to list it; list every other directory.
   const entries = (
     relative: string,
-    states: States,
+    candidates: ReadonlyArray<string> | undefined,
     named: boolean
-  ): Effect.Effect<{ readonly entries: Array<FileSystem.DirectoryEntry>; readonly named: boolean }, PlatformError> => {
-    const literals = new Set<string>()
-    let listed = !named
-    for (const state of states) {
-      const node = compiled.nodes[state]
-      if (node._tag === "Literal") {
-        literals.add(node.value)
-      } else if (node._tag !== "End") {
-        listed = true
-      }
-    }
-    const probed = listed ? [...literals].filter(isUnlisted) : [...literals]
-    return Effect.zipWith(
-      listed
-        ? Effect.catchIf(
+  ): Effect.Effect<{ readonly entries: Array<FileSystem.DirectoryEntry>; readonly named: boolean }, PlatformError> =>
+    named && candidates !== undefined
+      ? Effect.map(
+        Effect.forEach(new Set(candidates), (name) => probe(relative, name), { concurrency: 16 }),
+        (found) => ({ entries: Arr.sort(found.filter(Predicate.isNotUndefined), byName), named: true })
+      )
+      : Effect.map(
+        Effect.catchIf(
           fs.readDirectoryEntries(toFsPath(relative)),
           named ? isMissing : isIgnorable,
           () => Effect.succeed([])
-        )
-        : Effect.succeed([]),
-      Effect.forEach(probed, (name) => probe(relative, name, named), { concurrency: 16 }),
-      (listing, found) => ({
-        entries: Arr.sort([...listing, ...found.filter(Predicate.isNotUndefined)], byName),
-        named: named && !listed
-      })
-    )
-  }
+        ),
+        (listing) => ({ entries: Arr.sort(listing, byName), named: false })
+      )
 
   interface Child {
     readonly relative: string
     readonly accepted: boolean
-    readonly excluded: States
-    readonly next: States | undefined
+    readonly states: ReadonlyArray<PathFilterEngine.State>
+    readonly descend: boolean
+    readonly candidates: ReadonlyArray<string> | undefined
   }
 
   // Synchronous unless the entry type must be resolved through `stat` / `readLink`
   const visit = (
     { name, type }: FileSystem.DirectoryEntry,
     parent: string,
-    states: States,
-    excluded: States
+    states: ReadonlyArray<PathFilterEngine.State>
   ): Child | undefined | Effect.Effect<Child | undefined, PlatformError> => {
-    const result = step(compiled, states, name)
-    const next = union(result)
-    if (next.size === 0) {
-      return undefined
-    }
     const relative = join(parent, name)
-    const nextExcluded = union(step(excludes, excluded, name))
-    const descend = canDescend(compiled, next)
-    const child = (isDirectory: boolean, link: boolean): Child | undefined => {
-      const accepted = accepts(compiled, next, isDirectory)
-      if ((!accepted && (!isDirectory || !descend)) || accepts(excludes, nextExcluded, isDirectory)) {
+    // `own` is the entry's own type: a link is never a directory to the rules
+    const step = (own: boolean, link: boolean) =>
+      evaluators.map((evaluator, i) => evaluator.step(states[i], name, own, link))
+    const child = (visits: ReadonlyArray<PathFilterEngine.Visit>, isDirectory: boolean, link: boolean) => {
+      const accepted = visits.every((visit) => !visit.excluded)
+      // A link is only followed for a rule that reached it explicitly
+      const descend = isDirectory && visits.every((visit) => !visit.prune) &&
+        (!link || visits.some((visit) => visit.reached))
+      if (!accepted && !descend) {
         return undefined
       }
       return {
         relative,
         accepted,
-        excluded: nextExcluded,
-        next: !isDirectory || !descend
-          ? undefined
-          : !link || result.globstar.size === 0
-          ? next
-          // Follow symlinks only through explicit segments, not `**`.
-          : canDescend(compiled, result.explicit)
-          ? result.explicit
-          : undefined
+        states: visits.map((visit) => visit.state),
+        descend,
+        candidates: descend ? candidatesOf(visits) : undefined
       }
     }
-    if (!descend && !needsDirectory(compiled, next) && !excludeNeedsDirectory) {
-      return child(false, false)
+    if (type === "Directory" || type === "File") {
+      return child(step(type === "Directory", false), type === "Directory", false)
     }
-    if (type !== "Unknown" && type !== "SymbolicLink") {
-      return child(type === "Directory", false)
+    if (!needsDirectory) {
+      // Without directory rules the type only matters for descending
+      const visits = step(false, false)
+      if (visits.some((visit) => visit.prune)) {
+        return child(visits, false, false)
+      }
     }
     const path = toFsPath(relative)
     return fs.stat(path).pipe(
       Effect.map((info) => info.type === "Directory"),
       Effect.catchIf(isIgnorable, () => Effect.succeed(false)),
       Effect.flatMap((isDirectory) => {
-        const resolved = child(isDirectory, type === "SymbolicLink")
-        if (type === "SymbolicLink" || resolved?.next === undefined || result.globstar.size === 0) {
-          return Effect.succeed(resolved)
+        if (!isDirectory) {
+          return Effect.succeed(child(step(false, false), false, false))
+        }
+        if (type === "SymbolicLink") {
+          return Effect.succeed(child(step(false, true), true, true))
         }
         return fs.readLink(path).pipe(
-          Effect.as(child(isDirectory, true)),
-          Effect.catchIf(isNotLink, () => Effect.succeed(resolved))
+          Effect.as(child(step(false, true), true, true)),
+          Effect.catchIf(isNotLink, () => Effect.succeed(child(step(true, false), true, false)))
         )
       })
     )
@@ -887,15 +1064,15 @@ const walk = Effect.fnUntraced(function*(
 
   const directory = Effect.fnUntraced(function*(
     relative: string,
-    states: States,
-    excluded: States,
+    states: ReadonlyArray<PathFilterEngine.State>,
+    candidates: ReadonlyArray<string> | undefined,
     named: boolean
   ): Effect.fn.Return<Array<string>, PlatformError> {
-    const listing = yield* entries(relative, states, named)
+    const listing = yield* entries(relative, candidates, named)
     const children: Array<Child | undefined> = []
     const pending: Array<Effect.Effect<void, PlatformError>> = []
     for (const entry of listing.entries) {
-      const child = visit(entry, relative, states, excluded)
+      const child = visit(entry, relative, states)
       if (Effect.isEffect(child)) {
         const index = children.push(undefined) - 1
         pending.push(Effect.map(child, (child) => {
@@ -910,8 +1087,8 @@ const walk = Effect.fnUntraced(function*(
     }
     const subtrees: Array<Effect.Effect<Array<string>, PlatformError>> = []
     for (const child of children) {
-      if (child?.next !== undefined) {
-        const walk = directory(child.relative, child.next, child.excluded, listing.named)
+      if (child?.descend) {
+        const walk = directory(child.relative, child.states, child.candidates, listing.named)
         if (slots > 0) {
           slots--
           subtrees.push(Fiber.join(yield* fork(walk)))
@@ -930,7 +1107,7 @@ const walk = Effect.fnUntraced(function*(
       if (child.accepted) {
         out.push(child.relative)
       }
-      if (child.next !== undefined) {
+      if (child.descend) {
         for (const path of yield* subtrees[index++]) {
           out.push(path)
         }
@@ -942,7 +1119,7 @@ const walk = Effect.fnUntraced(function*(
   // The losing walk is interrupted along with every fiber it forked
   return yield* Effect.raceFirst(
     Effect.ensuring(
-      directory("", compiled.initial, excludes.initial, true),
+      directory("", evaluators.map((evaluator) => evaluator.initial), candidatesOf(roots), true),
       Effect.sync(() => {
         finishing = true
       })
