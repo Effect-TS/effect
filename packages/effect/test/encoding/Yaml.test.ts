@@ -505,6 +505,11 @@ development:
           { x: { "a b": "c # d" }, y: { "e f": "g # h" } }
         ],
         [
+          "a quoted key whose adjacent quoted value starts the next line",
+          "x: {\"a\"\n  :'b # c'}\ny: {'d' # k\n  :\"e # f\"}\n",
+          { x: { a: "b # c" }, y: { d: "e # f" } }
+        ],
+        [
           "a comment between a key with a colon and its value",
           "x: {http://example.com # endpoint\n  : 1}\n",
           { x: { "http://example.com": 1 } }
