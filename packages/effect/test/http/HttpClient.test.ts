@@ -2470,6 +2470,46 @@ Missing key
       assert.isTrue(signal.aborted)
     }))
 
+  it("keeps response cookies with the same name and a different domain or path", () => {
+    const headers = new Headers()
+    headers.append("set-cookie", "session=; Max-Age=0")
+    headers.append("set-cookie", "session=; Domain=example.com; Max-Age=0")
+    headers.append("set-cookie", "token=root; Path=/")
+    headers.append("set-cookie", "token=api; Path=/api")
+    const response = HttpClientResponse.fromWeb(
+      HttpClientRequest.get("https://example.com/logout"),
+      new Response(null, { headers })
+    )
+    assert.deepStrictEqual(Cookies.toSetCookieHeaders(response.cookies), [
+      "session=; Max-Age=0",
+      "session=; Max-Age=0; Domain=example.com",
+      "token=root; Path=/",
+      "token=api; Path=/api"
+    ])
+  })
+
+  it.effect("withCookiesRef stores same-name cookies set for different paths in one response", () =>
+    Effect.gen(function*() {
+      const jar = yield* Ref.make<ReadonlyArray<Cookies.Cookie>>([])
+      const seen: Array<string | undefined> = []
+      const client = HttpClient.withCookiesRef(
+        HttpClient.make((request) => {
+          seen.push(request.headers.cookie)
+          const headers = new Headers()
+          headers.append("set-cookie", "token=root; Path=/")
+          headers.append("set-cookie", "token=api; Path=/api")
+          return Effect.succeed(HttpClientResponse.fromWeb(request, new Response(null, { headers })))
+        }),
+        jar
+      )
+
+      yield* client.get("https://example.com/login")
+      yield* client.get("https://example.com/api/users")
+      yield* client.get("https://example.com/")
+
+      assert.deepStrictEqual(seen, [undefined, "token=api; token=root", "token=root"])
+    }))
+
   it("reads cookies when Headers has no getSetCookie", () => {
     // React Native's Headers implementation does not provide getSetCookie.
     const source = new Response(null, { headers: { "content-type": "text/plain" } })

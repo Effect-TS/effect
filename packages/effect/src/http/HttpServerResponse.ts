@@ -599,7 +599,8 @@ export const setHeaders: {
 )
 
 /**
- * Returns a response with the cookie of the specified name removed.
+ * Returns a response with every cookie of the specified name removed, whatever
+ * its domain and path.
  *
  * @stability unstable
  * @category combinators
@@ -639,6 +640,11 @@ export const replaceCookies: {
  *
  * The effect fails with `CookiesError` if the cookie name, value, or options are
  * invalid.
+ *
+ * **Gotchas**
+ *
+ * An existing cookie is replaced only when its name, domain and path match, so
+ * pass the same `domain` and `path` to override or expire it.
  *
  * @stability unstable
  * @category combinators
@@ -684,6 +690,11 @@ export const setCookie: {
  * Returns an effect because cookie encoding can fail. The original response is not
  * mutated; the effect succeeds with a response containing the updated cookie set.
  *
+ * **Gotchas**
+ *
+ * An existing cookie is replaced only when its name, domain and path match, so
+ * pass the same `domain` and `path` to override or expire it.
+ *
  * @stability unstable
  * @category combinators
  * @since 4.0.0
@@ -726,6 +737,11 @@ export const expireCookie: {
  * Use when you need to set one trusted cookie and want encoding failures to
  * throw instead of being represented as `CookiesError` failures.
  *
+ * **Gotchas**
+ *
+ * An existing cookie is replaced only when its name, domain and path match, so
+ * pass the same `domain` and `path` to override or expire it.
+ *
  * @stability unstable
  * @category combinators
  * @since 4.0.0
@@ -764,6 +780,11 @@ export const setCookieUnsafe: {
  *
  * Use when you need to expire one trusted cookie and want encoding failures to
  * throw instead of being represented as `CookiesError` failures.
+ *
+ * **Gotchas**
+ *
+ * An existing cookie is replaced only when its name, domain and path match, so
+ * pass the same `domain` and `path` to override or expire it.
  *
  * @stability unstable
  * @category combinators
@@ -834,6 +855,10 @@ export const updateCookies: {
  * The original response is not mutated; a new response is returned with the merged
  * cookie collection.
  *
+ * **Gotchas**
+ *
+ * An existing cookie is replaced only when its name, domain and path match.
+ *
  * @stability unstable
  * @category combinators
  * @since 4.0.0
@@ -854,6 +879,11 @@ export const mergeCookies: {
  *
  * Each input entry contains a cookie name, value, and optional cookie options. The
  * returned effect fails with `CookiesError` if any cookie cannot be encoded.
+ *
+ * **Gotchas**
+ *
+ * An existing cookie is replaced only when its name, domain and path match, so
+ * pass the same `domain` and `path` to override or expire it.
  *
  * @stability unstable
  * @category combinators
@@ -908,6 +938,11 @@ export const setCookies: {
  *
  * Use when you need to set multiple trusted cookies and want encoding failures
  * to throw instead of being represented as `CookiesError` failures.
+ *
+ * **Gotchas**
+ *
+ * An existing cookie is replaced only when its name, domain and path match, so
+ * pass the same `domain` and `path` to override or expire it.
  *
  * @stability unstable
  * @category combinators
