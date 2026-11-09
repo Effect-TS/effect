@@ -212,37 +212,27 @@ export const fromReadonlyRecord = (cookies: Record.ReadonlyRecord<string, Cookie
   make(cookies, Object.values(cookies))
 
 /**
- * Create a Cookies object from an Iterable
+ * Creates a `Cookies` collection from an iterable, preserving every cookie in input order.
  *
  * **Details**
  *
- * Cookies with the same name but a different domain or path are all kept. A
- * later cookie replaces an earlier one with the same name, domain and path,
- * and takes its later position. The domain ignores a leading dot and letter
- * case, the name and path are case-sensitive, and a missing domain or path is
- * distinct from any value.
+ * The `cookies` record and name-based readers use the last cookie for each
+ * name. `mergeIntoArray` applies every cookie in order, resolving scopes using
+ * the request URL before replacing stored cookies.
  *
  * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
-export const fromIterable = (cookies: Iterable<Cookie>): Cookies => {
-  const byScope = new Map<string, Cookie>()
-  for (const cookie of cookies) {
-    const scope = JSON.stringify([cookie.name, cookieDomain(cookie), cookie.options?.path])
-    byScope.delete(scope)
-    byScope.set(scope, cookie)
-  }
-  return fromArray(Array.from(byScope.values()))
-}
+export const fromIterable = (cookies: Iterable<Cookie>): Cookies => fromArray(Array.from(cookies))
 
 /**
- * Create a Cookies object from a set of Set-Cookie headers
+ * Creates a `Cookies` collection from `Set-Cookie` headers in input order.
  *
  * **Details**
  *
- * Keeps cookies with the same name but a different `Domain` or `Path`, as
- * described in `fromIterable`.
+ * Keeps every successfully parsed cookie, including repeated names and scopes,
+ * as described in `fromIterable`.
  *
  * @stability unstable
  * @category constructors
