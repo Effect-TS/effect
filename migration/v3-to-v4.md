@@ -4,7 +4,7 @@
 
 Base: `cab7f2e3493e4a3dceda27cb1b6d28c4599cb939` (`cab7f2e3493e4a3dceda27cb1b6d28c4599cb939`)
 
-Head: `origin/main` (`cb679e39cabeeadc5b40a5e20da311b9e4054a1b`)
+Head: `origin/main` (`175113ea18f412ec3199e8710ad773b0c081289e`)
 
 This file is generated from the API diff and `migration/annotations/*.yaml`.
 
@@ -5008,6 +5008,8 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `Prompt.FromJson` -> `Schema.fromJsonString(Prompt.Prompt)`: The module-specific JSON schema was removed. Compose the general v4 JSON-string codec with the public Prompt codec.
 
+- `Prompt.Message` -> `Prompt.Message`: Use the Message type and codec from effect/ai/Prompt for model conversation messages. AgUiSchema.Message describes AG-UI wire messages and is not a replacement for Prompt.Message.
+
 - `Prompt.MessageContentFromString` -> `Prompt.ContentFromString`: Renamed in effect/ai/Prompt. It still decodes a string to a non-empty array containing one TextPart and encodes the first part's text.
 
 - `Prompt.MessageTypeId` -> `Prompt.isMessage`: The message type id is private in v4. Use the public isMessage guard for runtime refinement instead of importing or inspecting the marker.
@@ -6494,9 +6496,13 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `Undici.Dispatcher.DispatchOptions` -> `undici.Dispatcher.DispatchOptions`: Import the same namespace type; Undici 8 removes throwOnError, adds typeOfService, and handles redirects through composed interceptors.
 
+- `Undici.Dispatcher.HttpMethod` -> `undici.Dispatcher.HttpMethod`: Import the upstream Dispatcher namespace type. Undici 8 accepts custom method strings as well as the standard methods; do not treat HttpMethod as a closed union for exhaustive matching.
+
 - `Undici.Dispatcher.RequestOptions` -> `undici.Dispatcher.RequestOptions`: Import the same namespace type; Undici 8 removes maxRedirections and redirectionLimitReached, so compose a redirect interceptor when needed.
 
 - `Undici.Dispatcher.UpgradeOptions` -> `undici.Dispatcher.UpgradeOptions`: Import the same namespace type; Undici 8 removes maxRedirections and redirectionLimitReached.
+
+- `Undici.FormData` -> `undici.FormData`: Import the upstream FormData constructor directly. It remains the multipart form-data implementation; append and set accept values with an optional filename, and get returns a string or File, or null for a missing key.
 
 - `Undici.H2CClient` -> `undici.H2CClient`: Import the upstream cleartext HTTP/2 client directly; callbacks follow Undici 8's handler API.
 
