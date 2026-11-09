@@ -11,6 +11,7 @@
  * @since 4.0.0
  */
 import * as Cause from "effect/Cause"
+import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
 import { constVoid, dual } from "effect/Function"
@@ -64,6 +65,25 @@ export interface Teardown {
 }
 
 /**
+ * Annotation specifying the exit code for an interruption handled by
+ * {@link defaultTeardown}.
+ *
+ * **Details**
+ *
+ * Attach this service to interrupt reason annotations, not the running effect's
+ * context. When every reason is an annotated interruption, the largest code is
+ * used. Any unannotated interruption preserves the default exit code of 130.
+ *
+ * @see {@link defaultTeardown}
+ * @stability stable
+ * @category annotations
+ * @since 4.1.3
+ */
+export class InterruptExitCode
+  extends Context.Service<InterruptExitCode, number>()("effect/Runtime/InterruptExitCode")
+{}
+
+/**
  * The default teardown function that determines exit codes from an Effect exit.
  *
  * **When to use**
@@ -76,7 +96,8 @@ export interface Teardown {
  * This teardown follows these exit-code rules:
  *
  * - `0` for successful completion.
- * - `130` for interruption-only failures.
+ * - The largest {@link InterruptExitCode} when every reason is an annotated interruption.
+ * - `130` for interruption-only failures with any unannotated reason.
  * - The squashed error's {@link errorExitCode} value for other failures when
  *   present.
  * - `1` for other failures.
@@ -84,7 +105,8 @@ export interface Teardown {
  * **Gotchas**
  *
  * The `130` code is used only when the Cause contains interruptions and no
- * other failure reasons. Mixed causes use the squashed error path instead.
+ * other failure reasons and at least one interruption is unannotated. Causes
+ * containing errors or defects use the squashed error path instead.
  *
  * **Example** (Referencing default teardown)
  *
@@ -134,7 +156,15 @@ export const defaultTeardown: Teardown = <E, A>(
   onExit: (code: number) => void
 ) => {
   if (Exit.isSuccess(exit)) return onExit(0)
-  if (Cause.hasInterruptsOnly(exit.cause)) return onExit(130)
+  if (Cause.hasInterruptsOnly(exit.cause)) {
+    let code = -Infinity
+    for (const reason of exit.cause.reasons) {
+      const annotated = Context.getOrUndefined(Cause.reasonAnnotations(reason), InterruptExitCode)
+      if (annotated === undefined) return onExit(130)
+      code = Math.max(code, annotated)
+    }
+    return onExit(code)
+  }
   return onExit(getErrorExitCode(Cause.squash(exit.cause)))
 }
 

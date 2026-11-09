@@ -31,6 +31,7 @@ import * as Option from "../Option.ts"
 import * as Predicate from "../Predicate.ts"
 import * as Pull from "../Pull.ts"
 import * as Queue from "../Queue.ts"
+import * as Runtime from "../Runtime.ts"
 import * as Schedule from "../Schedule.ts"
 import * as Schema from "../Schema.ts"
 import * as SchemaIssue from "../SchemaIssue.ts"
@@ -1612,7 +1613,10 @@ export const makeProtocolStdio = Effect.gen(function*() {
     yield* Stream.fromQueue(queue).pipe(
       Stream.run(stdio.stdout()),
       Effect.retry(Schedule.spaced(500)),
-      Effect.ensuring(Effect.forkDetach(Fiber.interrupt(fiber), { startImmediately: true })),
+      Effect.andThen(Effect.forkDetach(
+        Fiber.interruptAs(fiber, undefined, Context.make(Runtime.InterruptExitCode, 0)),
+        { startImmediately: true }
+      )),
       Effect.forkScoped
     )
 
