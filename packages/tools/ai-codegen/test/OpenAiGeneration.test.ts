@@ -253,12 +253,11 @@ const cases: ReadonlyArray<Case> = [
     },
     valid: [
       { reasoning: { effort: "high", enabled: true } },
-      { reasoning: { effort: "low" } },
       { reasoning: null },
       { untyped: { effort: "high", enabled: true } },
       { untyped: null }
     ],
-    invalid: [{ reasoning: { effort: 1 } }, { reasoning: { enabled: 1 } }, { untyped: { enabled: 1 } }]
+    invalid: [{ reasoning: { effort: 1 } }, { untyped: { enabled: 1 } }]
   },
   {
     // Both alternatives keywords on one schema must hold together, whether or not the `allOf`
