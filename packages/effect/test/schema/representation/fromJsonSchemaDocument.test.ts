@@ -2120,7 +2120,12 @@ describe("fromJsonSchemaDocument", () => {
     it("intersects a recursive $ref with itself", () => {
       const schema = toSchemaFromJsonSchemaDocument(JsonSchema.fromSchemaDraft2020_12({
         allOf: [{ $ref: "#/$defs/Node", description: "site" }, { $ref: "#/$defs/Node" }],
-        $defs: { Node: { type: "object", properties: { next: { $ref: "#/$defs/Node" } } } }
+        $defs: {
+          Node: {
+            type: "object",
+            properties: { next: { allOf: [{ $ref: "#/$defs/Node" }, { $ref: "#/$defs/Node" }] } }
+          }
+        }
       }))
       assertCode(schema, {
         codes: makeCode(`Schema.suspend((): Schema.Codec<Node> => Node).annotate({ "description": "site" })`, `Node`),
@@ -2133,6 +2138,24 @@ describe("fromJsonSchemaDocument", () => {
           }
         }
       })
+    })
+
+    it.each([
+      {
+        title: "at the root",
+        schema: { allOf: [{ $ref: "#/$defs/A" }, { $ref: "#/$defs/A" }], $defs: { A: { $ref: "#/$defs/A" } } },
+        path: `["schema"]["allOf"][1]`
+      },
+      {
+        title: "inside its own definition",
+        schema: { $ref: "#/$defs/A", $defs: { A: { allOf: [{ $ref: "#/$defs/A" }, { $ref: "#/$defs/A" }] } } },
+        path: `["definitions"]["A"]["allOf"][1]`
+      }
+    ])("rejects intersecting a circular alias with itself $title", ({ path, schema }) => {
+      throws(
+        () => SchemaRepresentation.fromJsonSchemaDocument(JsonSchema.fromSchemaDraft2020_12(schema)),
+        `Definition "A" is a circular alias.\n  at ${path}["$ref"]`
+      )
     })
 
     it("rejects intersections of distinct recursive objects", () => {
