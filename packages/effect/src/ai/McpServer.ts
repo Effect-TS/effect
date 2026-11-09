@@ -107,6 +107,7 @@ interface QueuedServerNotification {
   readonly delivered: Deferred.Deferred<void>
   readonly requestContext?: McpRequestContext["Service"] | undefined
   readonly requestHeaders?: Headers.Headers | undefined
+  readonly requestLiveness?: { active: boolean } | undefined
 }
 
 const internalState = new WeakMap<object, {
@@ -122,6 +123,10 @@ const internalState = new WeakMap<object, {
 // that request's server instead of the shared notification queue.
 const RequestNotificationQueue = Context.Reference<Queue.Queue<QueuedServerNotification> | undefined>(
   "effect/ai/McpServer/RequestNotificationQueue",
+  { defaultValue: () => undefined }
+)
+const RequestLiveness = Context.Reference<{ active: boolean } | undefined>(
+  "effect/ai/McpServer/RequestLiveness",
   { defaultValue: () => undefined }
 )
 // Progress and logs belong to the request that emitted them.
@@ -1120,6 +1125,7 @@ export class McpServer extends Context.Service<McpServer, {
             const queued: QueuedServerNotification = {
               notification,
               delivered,
+              requestLiveness: Context.get(fiber.context, RequestLiveness),
               requestContext: Context.getOrUndefined(fiber.context, McpRequestContext),
               requestHeaders: Context.getOrUndefined(fiber.context, HttpServerRequest.HttpServerRequest)?.headers
             }
@@ -1488,6 +1494,7 @@ const requestKey = (requestId: string | number): string => `${typeof requestId}:
 interface ActiveRequest {
   readonly requestId: RpcMessage.RequestId
   readonly prepared: McpRuntime.PreparedRequest
+  readonly liveness: { active: boolean }
   readonly cancelled: boolean
   readonly httpPost: { expected: number } | undefined
 }
@@ -1814,6 +1821,7 @@ const runWithRuntime = Effect.fnUntraced(function*(
   const stdioEnd = transport === "stdio" ? Latch.makeUnsafe() : undefined
   const reverseRequestClients = new Map<string, Array<McpClientKey>>()
   const disconnectClient = (clientId: number) => {
+    for (const request of activeRequests.get(clientId)?.values() ?? []) request.liveness.active = false
     activeRequests.delete(clientId)
     clientStates.delete(clientId)
     runtime.disconnect(clientId)
@@ -1876,6 +1884,7 @@ const runWithRuntime = Effect.fnUntraced(function*(
     if (request === undefined) {
       return false
     }
+    request.liveness.active = false
     requests!.set(key, { ...request, cancelled: true })
     return true
   }
@@ -2044,6 +2053,7 @@ const runWithRuntime = Effect.fnUntraced(function*(
         const requests = activeRequests.get(clientId)
         const key = requestKey(response.requestId)
         const active = requests?.get(key)
+        if (active !== undefined) active.liveness.active = false
         if (requests !== undefined && requests.delete(key) && requests.size === 0) {
           activeRequests.delete(clientId)
         }
@@ -2228,17 +2238,19 @@ const runWithRuntime = Effect.fnUntraced(function*(
                   ? Effect.void
                   : sendRequestError(clientId, request.id, new InvalidParams({ message: "Invalid method parameters" }))
               }
+              const liveness = { active: true }
               if (request.isNotification !== true) {
                 const requests = activeRequests.get(clientId) ?? new Map<string, ActiveRequest>()
                 requests.set(requestKey(request.id), {
                   requestId: RpcMessage.RequestId(request.id),
                   prepared,
+                  liveness,
                   cancelled: false,
                   httpPost: httpRequest === undefined ? undefined : httpPostResponses.get(httpRequest)
                 })
                 activeRequests.set(clientId, requests)
               }
-              const handled = f(clientId, routedRequest)
+              const handled = Effect.provideService(f(clientId, routedRequest), RequestLiveness, liveness)
               return yield* prepared.requestContext === undefined
                 ? handled
                 : Effect.provideService(handled, McpRequestContext, prepared.requestContext)
@@ -2431,6 +2443,12 @@ const runWithRuntime = Effect.fnUntraced(function*(
             return
           }
           const encoded = yield* selectedProtocol.payloadCodecs(rpc).encode(projected.payload)
+          // Projection and encoding can suspend after the request has ended.
+          if (notification._tag === "Progress") {
+            // The disconnect hook may still be scheduled when an interrupted handler resumes delivery.
+            if (!(yield* patchedProtocol.clientIds).has(clientId)) return
+            if (queued.requestLiveness?.active === false) return
+          }
           yield* patchedProtocol.send(clientId, {
             _tag: "Request",
             id: "",
@@ -2461,6 +2479,7 @@ const runWithRuntime = Effect.fnUntraced(function*(
   return yield* RpcServer.make(runtime.clientRpcs, {
     disableTracing: true,
     disableFatalDefects: true,
+    onDisconnect: (clientId) => Effect.sync(() => disconnectClient(clientId)),
     // Wrapped so `RpcServer.make` infers the group's rpcs from `clientRpcs`
     // rather than from `traceRequest`'s parameter type.
     onRequest: (effect, request) => traceRequest(effect, request)
