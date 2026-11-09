@@ -1167,7 +1167,7 @@ const makeResponse = Effect.fnUntraced(
 
     parts.push({
       type: "finish",
-      reason: resolveFinishReason(finishReason),
+      reason: resolveFinishReason(finishReason, hasToolCalls),
       usage: getUsage(rawResponse.usage),
       response: buildHttpResponseDetails(response),
       metadata: {
@@ -1203,7 +1203,7 @@ const makeStreamResponse = Effect.fnUntraced(
     let reasoningStarted = false
     let responseMetadataEmitted = false
     let reasoningDetailsAttachedToToolCall = false
-    let finishReason: Response.FinishReason = "other"
+    let finishReason: Response.FinishReason | undefined = undefined
     let openRouterResponseId: string | undefined = undefined
     let activeReasoningId: string | undefined = undefined
     let activeTextId: string | undefined = undefined
@@ -1265,7 +1265,7 @@ const makeStreamResponse = Effect.fnUntraced(
         const choice = event.choices[0]
         if (Predicate.isNotUndefined(choice)) {
           if (Predicate.isNotNullish(choice.finish_reason)) {
-            finishReason = resolveFinishReason(choice.finish_reason)
+            finishReason = resolveFinishReason(choice.finish_reason, false)
           }
 
           const delta = choice.delta
@@ -1532,6 +1532,11 @@ const makeStreamResponse = Effect.fnUntraced(
         // Usage is only emitted by the last part of the stream, so we need to
         // handle flushing any remaining text / reasoning / tool calls
         if (Predicate.isNotUndefined(event.usage)) {
+          finishReason ??= resolveFinishReason(
+            undefined,
+            totalToolCalls > 0 || Object.keys(activeToolCalls).length > 0
+          )
+
           // Fix for Gemini 3 thoughtSignature: when there are tool calls with encrypted
           // reasoning (thoughtSignature), the model returns 'stop' but expects continuation.
           // Override to 'tool-calls' so the SDK knows to continue the conversation.
