@@ -1534,7 +1534,7 @@ const makeStreamResponse = Effect.fnUntraced(
         if (Predicate.isNotUndefined(event.usage)) {
           finishReason ??= resolveFinishReason(
             undefined,
-            totalToolCalls > 0 || Object.keys(activeToolCalls).length > 0
+            totalToolCalls > 0 && Object.keys(activeToolCalls).length === 0
           )
 
           // Fix for Gemini 3 thoughtSignature: when there are tool calls with encrypted
