@@ -27,11 +27,14 @@
 import * as Cause from "../Cause.ts"
 import * as Context from "../Context.ts"
 import * as Effect from "../Effect.ts"
+import * as InternalToCodec from "../internal/schema/toCodec.ts"
 import * as Layer from "../Layer.ts"
 import * as Queue from "../Queue.ts"
 import * as Redacted from "../Redacted.ts"
 import * as Schedule from "../Schedule.ts"
 import * as Schema from "../Schema.ts"
+import * as SchemaAST from "../SchemaAST.ts"
+import * as SchemaGetter from "../SchemaGetter.ts"
 import * as Socket from "../socket/Socket.ts"
 import type * as Command from "./Command.ts"
 import type * as Component from "./Component.ts"
@@ -529,6 +532,29 @@ export interface Encoder {
   readonly encode: (entry: Entry) => WireEntry
 }
 
+const isRedactedAST = (ast: SchemaAST.AST): boolean =>
+  ast._tag === "Declaration" &&
+  (ast.annotations?.representation as { readonly id?: unknown } | undefined)?.id === "effect/schema/Redacted"
+
+const redactedLink = Schema.link<Redacted.Redacted<unknown>>()(
+  Schema.Struct({ "~redacted": Schema.Literal(true) }),
+  {
+    decode: SchemaGetter.forbidden(() => "a redacted value was sent as a placeholder and can't be decoded"),
+    encode: SchemaGetter.transform(() => ({ "~redacted": true as const }))
+  }
+)
+
+/**
+ * The JSON codec a component Schema is sent through. Every `Schema.Redacted`
+ * node, including one that already has an encoding (`RedactedFromValue`),
+ * encodes to `{ "~redacted": true }` whatever its own codec would do.
+ */
+const toWireAST = InternalToCodec.makeToCodecJsonAST((ast) => {
+  if (!isRedactedAST(ast)) return undefined
+  const out = SchemaAST.replaceEncoding(ast, [redactedLink])
+  return ast.context === undefined ? out : SchemaAST.replaceContextLastLink(out, ast.context)
+})
+
 /**
  * Makes an encoder. `onWarning` is called once per component and field the
  * first time its Schema fails to encode a value, which is sent as a
@@ -549,7 +575,7 @@ export const makeEncoder = (options?: {
     const schema = component[field] as Schema.Top
     let encode = encoders.get(schema)
     if (encode === undefined) {
-      encode = Schema.encodeUnknownSync(Schema.toCodecJson(schema as Schema.Codec<unknown, unknown>))
+      encode = Schema.encodeUnknownSync(Schema.make<Schema.Codec<unknown, unknown>>(toWireAST(schema.ast)))
       encoders.set(schema, encode)
     }
     try {
