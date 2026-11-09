@@ -1310,7 +1310,7 @@ export const make: (params: {
         .filter((part): part is Response.ToolCallPartEncoded =>
           part.type === "tool-call" &&
           part.providerExecuted !== true &&
-          toolkit.tools[part.name] !== undefined
+          resolvableTool(toolkit, part.name) !== undefined
         )
         .map((part) => makeInterruptedToolResult(part, incompleteFinishReason) as ToolResolutionResult<Tools>)
       : yield* resolveToolCalls(
@@ -1651,7 +1651,7 @@ export const make: (params: {
 
     // Helper function to handle tool calls with approval logic
     const handleToolCall = Effect.fnUntraced(function*(part: Response.ToolCallPartEncoded) {
-      const tool = toolkit.tools[part.name]
+      const tool = resolvableTool(toolkit, part.name)
       if (!tool) return
 
       const needsApproval = yield* isApprovalNeeded(
@@ -1747,7 +1747,7 @@ export const make: (params: {
           // the stream - use the raw chunk for encoded params
           for (const part of chunk) {
             if (part.type === "tool-call" && part.providerExecuted !== true) {
-              if (toolkit.tools[part.name] !== undefined) {
+              if (resolvableTool(toolkit, part.name) !== undefined) {
                 pendingToolCalls.set(part.id, part.name)
               }
               bufferedToolCalls.push(part)
@@ -2362,6 +2362,16 @@ type ToolResolutionResult<Tools extends Record<string, Tool.Any>> =
   >
   | Response.ToolApprovalRequestPart
 
+// Returns the tool whose handler resolves calls to `name`. Calls to unknown
+// and client-executed tools are left for the caller to answer.
+const resolvableTool = (
+  toolkit: { readonly tools: Record<string, Tool.Any> },
+  name: string
+): Tool.Any | undefined => {
+  const tool = toolkit.tools[name]
+  return tool === undefined || Tool.isClientExecuted(tool) ? undefined : tool
+}
+
 const resolveToolCalls = <Tools extends Record<string, Tool.Any>>(
   content: ReadonlyArray<Response.AllPartsEncoded>,
   toolkit: Toolkit.WithHandler<Tools>,
@@ -2393,7 +2403,7 @@ const resolveToolCalls = <Tools extends Record<string, Tool.Any>>(
 
   const streams = toolCalls.map((toolCall) =>
     Effect.gen(function*() {
-      const tool = toolkit.tools[toolCall.name]
+      const tool = resolvableTool(toolkit, toolCall.name)
       if (!tool) {
         return Stream.empty
       }

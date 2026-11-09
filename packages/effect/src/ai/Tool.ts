@@ -216,7 +216,8 @@ export interface Tool<
     readonly failure: Schema.Constraint
     readonly failureMode: FailureMode
   },
-  out Requirements = never
+  out Requirements = never,
+  out ExecutionMode extends Execution = Execution
 > {
   readonly [TypeId]: {
     readonly _Config: Types.Covariant<Config>
@@ -298,11 +299,23 @@ export interface Tool<
   readonly toModelOutput?: ((result: any) => ReadonlyArray<Prompt.ToolModelOutputPart>) | undefined
 
   /**
+   * Where calls to this tool are executed.
+   *
+   * **Details**
+   *
+   * When `"client"`, the application that sent the request executes the tool
+   * and answers in a later request. `LanguageModel` emits its tool calls but
+   * never resolves them, and the tool needs no handler. When `undefined` or
+   * `"server"`, the tool's handler resolves its calls.
+   */
+  readonly execution?: ExecutionMode | undefined
+
+  /**
    * Set whether user approval is required before executing this tool.
    */
   setNeedsApproval(
     needsApproval: NeedsApproval<Config["parameters"]>
-  ): Tool<Name, Config, Requirements>
+  ): Tool<Name, Config, Requirements, ExecutionMode>
 
   /**
    * Adds a _request-level_ dependency which must be provided before the tool
@@ -316,7 +329,7 @@ export interface Tool<
    */
   addDependency<Identifier, Service>(
     tag: Context.Key<Identifier, Service>
-  ): Tool<Name, Config, Identifier | Requirements>
+  ): Tool<Name, Config, Identifier | Requirements, ExecutionMode>
 
   /**
    * Set the schema to use to validate the result of a tool call when successful.
@@ -331,7 +344,8 @@ export interface Tool<
       readonly failure: Config["failure"]
       readonly failureMode: Config["failureMode"]
     },
-    Requirements
+    Requirements,
+    ExecutionMode
   >
 
   /**
@@ -347,7 +361,8 @@ export interface Tool<
       readonly failure: FailureSchema
       readonly failureMode: Config["failureMode"]
     },
-    Requirements
+    Requirements,
+    ExecutionMode
   >
 
   /**
@@ -363,18 +378,19 @@ export interface Tool<
       readonly failure: Config["failure"]
       readonly failureMode: Config["failureMode"]
     },
-    Requirements
+    Requirements,
+    ExecutionMode
   >
 
   /**
    * Add an annotation to the tool.
    */
-  annotate<I, S>(tag: Context.Key<I, S>, value: S): Tool<Name, Config, Requirements>
+  annotate<I, S>(tag: Context.Key<I, S>, value: S): Tool<Name, Config, Requirements, ExecutionMode>
 
   /**
    * Add many annotations to the tool.
    */
-  annotateMerge<I>(context: Context.Context<I>): Tool<Name, Config, Requirements>
+  annotateMerge<I>(context: Context.Context<I>): Tool<Name, Config, Requirements, ExecutionMode>
 }
 
 /**
@@ -611,7 +627,8 @@ export interface Dynamic<
     readonly failure: Schema.Constraint
     readonly failureMode: FailureMode
   },
-  out Requirements = never
+  out Requirements = never,
+  out ExecutionMode extends Execution = Execution
 > extends
   Tool<
     Name,
@@ -621,7 +638,8 @@ export interface Dynamic<
       readonly failure: Config["failure"]
       readonly failureMode: Config["failureMode"]
     },
-    Requirements
+    Requirements,
+    ExecutionMode
   >
 {
   readonly [DynamicTypeId]: typeof DynamicTypeId
@@ -754,6 +772,58 @@ export const isProviderDefined = (
  * @since 4.0.0
  */
 export const isDynamic = (u: unknown): u is Dynamic<string, any> => Predicate.hasProperty(u, DynamicTypeId)
+
+/**
+ * Returns whether calls to a tool are executed by the application that sent
+ * the request rather than by a handler.
+ *
+ * **Details**
+ *
+ * Narrows the tool to the same type with execution mode `"client"`, so it and
+ * the tools its combinators return need no handler.
+ *
+ * @stability unstable
+ * @category guards
+ * @since 4.1.0
+ */
+export const isClientExecuted = <T extends Any>(tool: T): tool is ClientExecutedOf<T> => tool.execution === "client"
+
+// The type of `T` with execution mode `"client"`, rebuilt from its members so
+// that interfaces extending `Tool` or `Dynamic`, such as `AnyDynamic`, narrow
+// too. Tools that rebuilding does not cover keep their type with a client
+// `execution`.
+type ClientExecutedOf<T extends Any> = RebuiltClientTool<T> extends T ? RebuiltClientTool<T>
+  : T & { readonly execution: "client" }
+
+type RebuiltClientTool<T extends Any> = T extends { readonly [DynamicTypeId]: typeof DynamicTypeId } ? Dynamic<
+    T["name"],
+    {
+      readonly parameters: T extends { readonly jsonSchema: undefined } ? T["parametersSchema"]
+        : JsonSchema.JsonSchema
+      readonly success: T["successSchema"]
+      readonly failure: T["failureSchema"]
+      readonly failureMode: FailureModeOf<T>
+    },
+    RequirementsOf<T>,
+    "client"
+  > :
+  Tool<
+    T["name"],
+    {
+      readonly parameters: T["parametersSchema"]
+      readonly success: T["successSchema"]
+      readonly failure: T["failureSchema"]
+      readonly failureMode: FailureModeOf<T>
+    },
+    RequirementsOf<T>,
+    "client"
+  >
+
+type RequirementsOf<T extends Any> = T[TypeId]["_Requirements"] extends Types.Covariant<infer R> ? R : never
+
+// The `failureMode` member is typed as any `FailureMode`, so the configured
+// mode is read from the type arguments where they can be inferred
+type FailureModeOf<T extends Any> = T extends Tool<any, infer Config, any, any> ? Config["failureMode"] : FailureMode
 
 // =============================================================================
 // utility types
@@ -1234,7 +1304,30 @@ export type RequiresHandler<Tool extends Any> = Tool extends ProviderDefined<
   infer _RequiresHandler,
   infer _Requirements
 > ? [_RequiresHandler] extends [false] ? false : true
+  // A tool type that allows either mode, such as `Tool.Any`, requires a handler
+  : Tool extends { readonly execution?: "client" | undefined } ? false
   : true
+
+/**
+ * Where calls to a tool are executed: by its handler on the `"server"`, or
+ * by the application that sent the request on the `"client"`.
+ *
+ * **Details**
+ *
+ * A tool's type records its execution mode as its last type parameter, which
+ * defaults to either mode. Tools created with `execution: "client"` carry
+ * `"client"` through every combinator, so they keep needing no handler.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.1.0
+ */
+export type Execution = "server" | "client"
+
+// Only an execution that is definitely given records its mode. One that may
+// be `undefined` creates a server-executed tool when it is, so it records
+// either mode, which keeps the handler requirement.
+type ExecutionFrom<E extends Execution | undefined> = undefined extends E ? Execution : Exclude<E, undefined>
 
 // =============================================================================
 // Constructors
@@ -1300,6 +1393,7 @@ const userDefinedProto = <
   readonly failureMode: Mode
   readonly needsApproval?: NeedsApproval<Parameters> | undefined
   readonly toModelOutput?: ((result: any) => ReadonlyArray<Prompt.ToolModelOutputPart>) | undefined
+  readonly execution?: Execution | undefined
 }): Tool<
   Name,
   {
@@ -1364,6 +1458,7 @@ const dynamicProto = <
   readonly needsApproval?: NeedsApproval<any> | undefined
   readonly toModelOutput?: ((result: any) => ReadonlyArray<Prompt.ToolModelOutputPart>) | undefined
   readonly jsonSchema: JsonSchema.JsonSchema | undefined
+  readonly execution?: Execution | undefined
 }): Dynamic<
   Name,
   {
@@ -1378,44 +1473,17 @@ const dynamicProto = <
   return self
 }
 
-/**
- * Creates a user-defined tool with the specified name and configuration.
- *
- * **Details**
- *
- * This is the primary constructor for creating custom tools that AI models
- * can call. The tool definition includes parameter validation, success/failure
- * schemas, and optional service dependencies.
- *
- * If a tool accepts no parameters but still needs an explicit empty object
- * schema, use {@link EmptyParams}.
- *
- * **Example** (Creating a tool without parameters)
- *
- * ```ts import.meta.vitest
- * import { Schema } from "effect"
- * import { Tool } from "effect/ai"
- *
- * // Simple tool with no parameters
- * const GetCurrentTime = Tool.make("GetCurrentTime", {
- *   description: "Returns the current timestamp",
- *   success: Schema.Number
- * })
- * GetCurrentTime.name // => "GetCurrentTime"
- * ```
- *
- * @stability unstable
- * @category constructors
- * @since 4.0.0
- */
-export const make = <
-  const Name extends string,
-  Parameters extends Schema.Constraint = typeof EmptyParams,
-  Success extends Schema.Constraint = typeof Schema.Void,
-  Failure extends Schema.Constraint = typeof Schema.Never,
-  Mode extends FailureMode | undefined = undefined,
-  Dependencies extends Array<Context.Key<any, any> | Context.Key<never, any>> = []
->(name: Name, options?: {
+// Options accepted by `Tool.make`. When the options object may be absent, the
+// second overload records either execution mode, since absent options create
+// a server-executed tool.
+interface MakeOptions<
+  Parameters extends Schema.Constraint,
+  Success extends Schema.Constraint,
+  Failure extends Schema.Constraint,
+  Mode extends FailureMode | undefined,
+  Dependencies extends Array<Context.Key<any, any> | Context.Key<never, any>>,
+  Exec extends Execution | undefined
+> {
   /**
    * An optional description explaining what the tool does.
    */
@@ -1468,16 +1536,103 @@ export const make = <
    * receives the typed result.
    */
   readonly toModelOutput?: ((result: Success["Type"]) => ReadonlyArray<Prompt.ToolModelOutputPart>) | undefined
-}): Tool<
-  Name,
-  {
-    readonly parameters: Parameters
-    readonly success: Success
-    readonly failure: Failure
-    readonly failureMode: Mode extends undefined ? "error" : Mode
-  },
-  Context.Service.Identifier<Dependencies[number]>
-> => {
+  /**
+   * Where calls to this tool are executed.
+   *
+   * **Details**
+   *
+   * Set to `"client"` for a tool the application that sent the request
+   * executes, such as a frontend tool. Its calls are emitted but never
+   * resolved, and it needs no handler. Defaults to `"server"`.
+   */
+  readonly execution?: Exec
+}
+
+/**
+ * Creates a user-defined tool with the specified name and configuration.
+ *
+ * **Details**
+ *
+ * This is the primary constructor for creating custom tools that AI models
+ * can call. The tool definition includes parameter validation, success/failure
+ * schemas, and optional service dependencies.
+ *
+ * If a tool accepts no parameters but still needs an explicit empty object
+ * schema, use {@link EmptyParams}.
+ *
+ * **Example** (Creating a tool without parameters)
+ *
+ * ```ts import.meta.vitest
+ * import { Schema } from "effect"
+ * import { Tool } from "effect/ai"
+ *
+ * // Simple tool with no parameters
+ * const GetCurrentTime = Tool.make("GetCurrentTime", {
+ *   description: "Returns the current timestamp",
+ *   success: Schema.Number
+ * })
+ * GetCurrentTime.name // => "GetCurrentTime"
+ * ```
+ *
+ * @stability unstable
+ * @category constructors
+ * @since 4.0.0
+ */
+export const make: {
+  <
+    const Name extends string,
+    Parameters extends Schema.Constraint = typeof EmptyParams,
+    Success extends Schema.Constraint = typeof Schema.Void,
+    Failure extends Schema.Constraint = typeof Schema.Never,
+    Mode extends FailureMode | undefined = undefined,
+    Dependencies extends Array<Context.Key<any, any> | Context.Key<never, any>> = [],
+    const Exec extends Execution | undefined = undefined
+  >(
+    name: Name,
+    options: MakeOptions<Parameters, Success, Failure, Mode, Dependencies, Exec>
+  ): Tool<
+    Name,
+    {
+      readonly parameters: Parameters
+      readonly success: Success
+      readonly failure: Failure
+      readonly failureMode: Mode extends undefined ? "error" : Mode
+    },
+    Context.Service.Identifier<Dependencies[number]>,
+    ExecutionFrom<Exec>
+  >
+  <
+    const Name extends string,
+    Parameters extends Schema.Constraint = typeof EmptyParams,
+    Success extends Schema.Constraint = typeof Schema.Void,
+    Failure extends Schema.Constraint = typeof Schema.Never,
+    Mode extends FailureMode | undefined = undefined,
+    Dependencies extends Array<Context.Key<any, any> | Context.Key<never, any>> = []
+  >(
+    name: Name,
+    options?: MakeOptions<Parameters, Success, Failure, Mode, Dependencies, Execution | undefined> | undefined
+  ): Tool<
+    Name,
+    {
+      readonly parameters: Parameters
+      readonly success: Success
+      readonly failure: Failure
+      readonly failureMode: Mode extends undefined ? "error" : Mode
+    },
+    Context.Service.Identifier<Dependencies[number]>,
+    Execution
+  >
+} = (
+  name: string,
+  options?: MakeOptions<
+    Schema.Constraint,
+    Schema.Constraint,
+    Schema.Constraint,
+    FailureMode | undefined,
+    any,
+    Execution | undefined
+  >
+): any => {
   const successSchema = options?.success ?? Schema.Void
   const failureSchema = options?.failure ?? Schema.Never
   return userDefinedProto({
@@ -1489,7 +1644,8 @@ export const make = <
     failureMode: options?.failureMode ?? "error",
     annotations: Context.empty(),
     needsApproval: options?.needsApproval as any,
-    toModelOutput: options?.toModelOutput
+    toModelOutput: options?.toModelOutput,
+    execution: options?.execution
   }) as any
 }
 
@@ -1541,46 +1697,22 @@ export const make = <
  * @since 4.0.0
  */
 export const dynamic: {
-  <
-    const Name extends string,
-    const Options extends {
-      readonly description?: string | undefined
-      readonly parameters?: Schema.Constraint | JsonSchema.JsonSchema | undefined
-      readonly success?: Schema.Constraint | undefined
-      readonly failure?: Schema.Constraint | undefined
-      readonly failureMode?: FailureMode | undefined
-      readonly needsApproval?: NeedsApproval<any> | undefined
-      readonly toModelOutput?: ((result: any) => ReadonlyArray<Prompt.ToolModelOutputPart>) | undefined
-    }
-  >(
+  <const Name extends string, const Options extends DynamicOptions>(
     name: Name,
-    options?: Options
+    options: Options
   ): Dynamic<
     Name,
-    {
-      readonly parameters: Options extends { readonly parameters: infer P } ? P extends Schema.Constraint ? P
-        : P extends JsonSchema.JsonSchema ? P
-        : typeof Schema.Unknown
-        : typeof Schema.Unknown
-      readonly success: Options extends { readonly success: infer S extends Schema.Constraint } ? S
-        : typeof Schema.Unknown
-      readonly failure: Options extends { readonly failure: infer F extends Schema.Constraint } ? F
-        : typeof Schema.Never
-      readonly failureMode: Options extends { readonly failureMode: infer M extends FailureMode } ? M : "error"
-    }
+    DynamicConfig<Options>,
+    never,
+    Options extends { readonly execution: infer E extends Execution } ? E : Execution
   >
-} = <
-  const Name extends string,
-  const Options extends {
-    readonly description?: string | undefined
-    readonly parameters?: Schema.Constraint | JsonSchema.JsonSchema | undefined
-    readonly success?: Schema.Constraint | undefined
-    readonly failure?: Schema.Constraint | undefined
-    readonly failureMode?: FailureMode | undefined
-    readonly needsApproval?: NeedsApproval<any> | undefined
-    readonly toModelOutput?: ((result: any) => ReadonlyArray<Prompt.ToolModelOutputPart>) | undefined
-  }
->(name: Name, options?: Options): any => {
+  // When the options object may be absent, either execution mode is recorded,
+  // since absent options create a server-executed tool
+  <const Name extends string, const Options extends DynamicOptions>(
+    name: Name,
+    options?: Options | undefined
+  ): Dynamic<Name, DynamicConfig<Options>, never, Execution>
+} = (name: string, options?: DynamicOptions): any => {
   const successSchema = options?.success ?? Schema.Unknown
   const failureSchema = options?.failure ?? Schema.Never
   const rawParameters = options?.parameters ?? Schema.Unknown
@@ -1597,8 +1729,34 @@ export const dynamic: {
     annotations: Context.empty(),
     needsApproval: options?.needsApproval,
     toModelOutput: options?.toModelOutput,
-    jsonSchema
+    jsonSchema,
+    execution: options?.execution
   })
+}
+
+// The tool configuration `Tool.dynamic` derives from its options
+type DynamicConfig<Options extends DynamicOptions> = {
+  readonly parameters: Options extends { readonly parameters: infer P } ? P extends Schema.Constraint ? P
+    : P extends JsonSchema.JsonSchema ? P
+    : typeof Schema.Unknown
+    : typeof Schema.Unknown
+  readonly success: Options extends { readonly success: infer S extends Schema.Constraint } ? S
+    : typeof Schema.Unknown
+  readonly failure: Options extends { readonly failure: infer F extends Schema.Constraint } ? F
+    : typeof Schema.Never
+  readonly failureMode: Options extends { readonly failureMode: infer M extends FailureMode } ? M : "error"
+}
+
+// Options accepted by `Tool.dynamic`
+interface DynamicOptions {
+  readonly description?: string | undefined
+  readonly parameters?: Schema.Constraint | JsonSchema.JsonSchema | undefined
+  readonly success?: Schema.Constraint | undefined
+  readonly failure?: Schema.Constraint | undefined
+  readonly failureMode?: FailureMode | undefined
+  readonly needsApproval?: NeedsApproval<any> | undefined
+  readonly toModelOutput?: ((result: any) => ReadonlyArray<Prompt.ToolModelOutputPart>) | undefined
+  readonly execution?: Execution | undefined
 }
 
 /**
