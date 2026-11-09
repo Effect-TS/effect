@@ -1844,13 +1844,14 @@ const tryToolJsonSchema = <T extends Tool.Any>(tool: T, method: string, transfor
       if (Tool.isDynamic(tool) && tool.jsonSchema !== undefined) {
         return { parameters: tool.jsonSchema, codec: undefined }
       }
-      // Normalize only the JSON encoding; application decoders belong to the toolkit.
-      const { codec, jsonSchema } = transformer(Schema.toEncoded(Schema.toCodecJson(tool.parametersSchema)))
+      // Preserve transformation metadata in the advertised schema.
+      const { jsonSchema } = transformer(tool.parametersSchema)
       return {
         parameters: jsonSchema,
         codec: transformer === LanguageModel.defaultCodecTransformer
           ? undefined
-          : codec
+          // Normalize only the JSON encoding; application decoders belong to the toolkit.
+          : transformer(Schema.toEncoded(Schema.toCodecJson(tool.parametersSchema))).codec
       }
     },
     catch: (error) => toolParametersError(tool, error, method)
