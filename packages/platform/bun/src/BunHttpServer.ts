@@ -552,9 +552,10 @@ class BunServerRequest extends Inspectable.Class implements ServerRequest.HttpSe
   }
 
   get stream(): Stream.Stream<Uint8Array, Error.HttpServerError> {
-    return this.source.body
+    const body = this.source.body
+    return body
       ? BunStream.fromReadableStream({
-        evaluate: () => this.source.body ?? emptyReadbleStream,
+        evaluate: () => body,
         onError: (cause) =>
           new Error.HttpServerError({
             reason: new Error.RequestParseError({
@@ -563,14 +564,7 @@ class BunServerRequest extends Inspectable.Class implements ServerRequest.HttpSe
             })
           })
       })
-      : Stream.fail(
-        new Error.HttpServerError({
-          reason: new Error.RequestParseError({
-            request: this,
-            description: "can not create stream from empty body"
-          })
-        })
-      )
+      : Stream.empty
   }
 
   private textEffect: Effect.Effect<string, Error.HttpServerError> | undefined
@@ -810,13 +804,6 @@ class BunServerRequest extends Inspectable.Class implements ServerRequest.HttpSe
 
 const closeCode = (exit: Exit.Exit<unknown, unknown>): number =>
   Exit.isSuccess(exit) ? 1000 : Cause.hasInterruptsOnly(exit.cause) ? 1001 : 1011
-
-const emptyReadbleStream = new ReadableStream({
-  start(controller) {
-    controller.enqueue(new Uint8Array())
-    controller.close()
-  }
-})
 
 const removeHost = (url: string) => {
   if (url[0] === "/") {

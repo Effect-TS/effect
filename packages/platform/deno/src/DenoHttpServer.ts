@@ -429,22 +429,16 @@ class DenoServerRequest extends Inspectable.Class implements ServerRequest.HttpS
   }
 
   get stream(): Stream.Stream<Uint8Array, Error.HttpServerError> {
-    return this.source.body
+    const body = this.source.body
+    return body
       ? Stream.fromReadableStream({
-        evaluate: () => this.source.body ?? emptyReadableStream,
+        evaluate: () => body,
         onError: (cause) =>
           new Error.HttpServerError({
             reason: new Error.RequestParseError({ request: this, cause })
           })
       })
-      : Stream.fail(
-        new Error.HttpServerError({
-          reason: new Error.RequestParseError({
-            request: this,
-            description: "can not create stream from empty body"
-          })
-        })
-      )
+      : Stream.empty
   }
 
   private textEffect: Effect.Effect<string, Error.HttpServerError> | undefined
@@ -649,13 +643,6 @@ const cancelResponseBody = (body: HttpBody.HttpBody): Effect.Effect<void> => {
 const cancelStreamUnsafe = (stream: ReadableStream): void => {
   void stream.cancel().catch(constVoid)
 }
-
-const emptyReadableStream = new ReadableStream<Uint8Array>({
-  start(controller) {
-    controller.enqueue(new Uint8Array())
-    controller.close()
-  }
-})
 
 const authorityPattern = /^[^:/?#]+:\/\/([^/?#]*)/
 const urlAuthority = (url: string): string | undefined => authorityPattern.exec(url)?.[1]
