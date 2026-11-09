@@ -1578,11 +1578,31 @@ export const toHttpEffectWebsocket: <Rpcs extends Rpc.Any>(
  * Creates a server `Protocol` that reads RPC messages from `Stdio.stdin` and
  * writes encoded responses to `Stdio.stdout`.
  *
+ * **Details**
+ *
+ * The protocol serves a single client with id `0`. When stdout ends, the
+ * fiber that created the protocol is interrupted.
+ *
+ * `onStdinEnd` controls what happens when stdin ends. With `"drain"`, the
+ * default, in-flight requests run to completion and their responses are
+ * written before stdout ends. With `"interrupt"`, queued output is flushed
+ * and stdout ends, stopping the server and interrupting in-flight requests.
+ * Shutdown waits for their finalizers without sending further responses or
+ * remote cancellation notifications. This stops the server rather than
+ * reporting a client disconnect, so `onDisconnect` is not called.
+ *
+ * **Gotchas**
+ *
+ * With `"drain"`, a request that never completes, such as a long-running
+ * tool call, keeps stdout open and the process alive after stdin ends.
+ *
  * @stability unstable
  * @category protocols
  * @since 4.0.0
  */
-export const makeProtocolStdio = Effect.gen(function*() {
+export const makeProtocolStdio = Effect.fnUntraced(function*(options?: {
+  readonly onStdinEnd?: "drain" | "interrupt" | undefined
+}) {
   const stdio = yield* Stdio
   const fiber = Fiber.getCurrent()!
   const serialization = yield* RpcSerialization.RpcSerialization
@@ -1605,7 +1625,7 @@ export const makeProtocolStdio = Effect.gen(function*() {
       Effect.sandbox,
       Effect.tapError(Effect.logError),
       Effect.retry(Schedule.spaced(500)),
-      Effect.andThen(() => writeRequest(0, constEof)),
+      Effect.andThen(() => options?.onStdinEnd === "interrupt" ? Queue.end(queue) : writeRequest(0, constEof)),
       Effect.forkScoped
     )
 
@@ -1643,23 +1663,23 @@ export const makeProtocolStdio = Effect.gen(function*() {
  * Provides a server `Protocol` that reads RPC messages from `Stdio.stdin` and
  * writes encoded responses to `Stdio.stdout`.
  *
- * **Gotchas**
+ * **Details**
  *
- * This layer is a module-level constant, and layers are memoized by reference
- * within one layer graph. Providing it to several servers in the same graph
- * yields one shared `Protocol` bound to the first `Stdio` that was built. To
- * run more than one stdio server in a graph, wrap it in `Layer.fresh` or build
- * a separate `Layer.effect(Protocol, makeProtocolStdio)` per server.
+ * `onStdinEnd` selects whether in-flight requests are drained (the default)
+ * or interrupted when stdin ends. See {@link makeProtocolStdio} for the
+ * shutdown sequence of each mode.
  *
  * @stability unstable
  * @category layers
  * @since 4.0.0
  */
-export const layerProtocolStdio: Layer.Layer<
+export const layerProtocolStdio = (options?: {
+  readonly onStdinEnd?: "drain" | "interrupt" | undefined
+}): Layer.Layer<
   Protocol,
   never,
   RpcSerialization.RpcSerialization | Stdio
-> = Layer.effect(Protocol, makeProtocolStdio)
+> => Layer.effect(Protocol, makeProtocolStdio(options))
 
 /**
  * Creates a server `Protocol` backed by `WorkerRunnerPlatform`, routing worker

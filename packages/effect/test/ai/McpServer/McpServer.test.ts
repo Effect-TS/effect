@@ -3287,6 +3287,73 @@ describe("McpServer", () => {
         strictEqual(responseB.result.serverInfo.name, "B")
       }))
 
+    it.effect("should interrupt active tool handlers and exit without remote cancellation when stdin ends with onStdinEnd interrupt", () =>
+      Effect.gen(function*() {
+        const stdin = yield* Queue.unbounded<Uint8Array, Cause.Done>()
+        const output: Array<string> = []
+        const started = yield* Deferred.make<void>()
+        const encoder = new TextEncoder()
+        const decoder = new TextDecoder()
+        let interrupted = false
+        const tools = Toolkit.make(Tool.make("hold", {
+          success: Schema.String,
+          dependencies: [McpSchema.McpServerClient]
+        }))
+        const handlers = tools.toLayer({
+          hold: () =>
+            McpServer.elicit({ message: "Approve", schema: Schema.Struct({ approved: Schema.Boolean }) }).pipe(
+              Effect.as("done"),
+              Effect.orDie,
+              Effect.onInterrupt(() =>
+                Effect.sync(() => {
+                  interrupted = true
+                })
+              )
+            )
+        })
+        const server = yield* Layer.launch(
+          McpServer.layerStdio({
+            name: "TestServer",
+            version: "1.0.0",
+            protocols: [McpProtocol.v2025_06_18],
+            registrations: McpServer.toolkit(tools).pipe(Layer.provide(handlers)),
+            onStdinEnd: "interrupt"
+          }).pipe(Layer.provide(Stdio.layerTest({
+            stdin: Stream.fromQueue(stdin),
+            stdout: () =>
+              Sink.forEach((chunk) => {
+                const line = typeof chunk === "string" ? chunk : decoder.decode(chunk)
+                output.push(line)
+                return line.includes("elicitation/create") ? Deferred.succeed(started, undefined) : Effect.void
+              })
+          })))
+        ).pipe(Effect.forkScoped)
+        const write = (message: unknown) => Queue.offer(stdin, encoder.encode(`${JSON.stringify(message)}\n`))
+
+        yield* write({
+          jsonrpc: "2.0",
+          id: 1,
+          method: "initialize",
+          params: {
+            protocolVersion: "2025-06-18",
+            capabilities: { elicitation: {} },
+            clientInfo: { name: "TestClient", version: "1.0.0" }
+          }
+        })
+        yield* write({ jsonrpc: "2.0", method: "notifications/initialized" })
+        yield* write({ jsonrpc: "2.0", id: 2, method: "tools/call", params: { name: "hold", arguments: {} } })
+        yield* Deferred.await(started)
+        yield* Queue.end(stdin)
+
+        yield* Fiber.await(server)
+        assertTrue(interrupted)
+        // the initialize reply and the pending elicitation, with no notifications/cancelled
+        assert.deepStrictEqual(
+          output.join("").trim().split("\n").map((line) => JSON.parse(line)).map(({ id, method }) => method ?? id),
+          [1, "elicitation/create"]
+        )
+      }))
+
     it.effect("should deliver stateless request notifications over stdio", () =>
       Effect.gen(function*() {
         const fixture = yield* makeMcpStdioHarness(McpProtocol.v2026_07_28)
