@@ -152,6 +152,33 @@ const classifierCases: ReadonlyArray<{
 ]
 
 describe("HttpClient", () => {
+  describe("HttpClientErrorSchema", () => {
+    it("falls back to the kind when the cause message is missing or empty", () => {
+      for (const props of [{}, { cause: {} }, { cause: { message: "" } }]) {
+        const error = new HttpClientError.HttpClientErrorSchema({ kind: "TransportError", ...props })
+        assert.strictEqual(error.message, "TransportError")
+      }
+    })
+
+    it("preserves the encoded fields without adding a message field", () => {
+      const error = new HttpClientError.HttpClientErrorSchema({
+        kind: "TransportError",
+        cause: { message: "connection refused" }
+      })
+      const encoded = Schema.encodeSync(HttpClientError.HttpClientErrorSchema)(error)
+
+      assert.deepStrictEqual(encoded, {
+        _tag: "HttpError",
+        kind: "TransportError",
+        cause: { message: "connection refused" }
+      })
+      assert.strictEqual(
+        Schema.decodeSync(HttpClientError.HttpClientErrorSchema)(encoded).message,
+        "connection refused"
+      )
+    })
+  })
+
   it.effect("preserves the response stream after JSON serialization", () =>
     Effect.gen(function*() {
       const response = HttpClientResponse.fromWeb(
