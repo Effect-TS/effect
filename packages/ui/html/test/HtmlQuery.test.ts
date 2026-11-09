@@ -102,6 +102,12 @@ describe("HtmlQuery", () => {
       expect(HtmlQuery.getByRole(tree, "heading", { name: /two$/ })).toBeDefined()
     })
 
+    it("a label that both wraps and names a control counts once", () => {
+      const container = document.createElement("div")
+      container.innerHTML = `<label for="agreed">Agree <input id="agreed" type="checkbox"></label>`
+      expect(HtmlQuery.getByRole(container, "checkbox", { name: "Agree" })).toBeDefined()
+    })
+
     it("getByRole lists what's there when nothing matches", () => {
       const tree = el("div", {}, el("button", {}, text("Save")), el("a", { href: "/" }, text("Home")))
       expect(() => HtmlQuery.getByRole(tree, "button", { name: "Cancel" })).toThrow(
@@ -139,6 +145,17 @@ describe("HtmlQuery", () => {
         expect(HtmlQuery.queryAllByRole(root.container, "checkbox", { checked: true })).toEqual([box])
         expect(root.all(HtmlQuery.role("listitem"))).toHaveLength(1)
       }).pipe(Effect.scoped, Effect.provide(TestHost.layer())))
+
+    it("roots that aren't elements: a document, a fragment, a structural wrapper", () => {
+      const doc = document.implementation.createHTMLDocument("")
+      doc.body.innerHTML = "<button>One</button>"
+      const fragment = document.createDocumentFragment()
+      fragment.append(document.createElement("button"))
+      const wrapper: Query.Node = { children: [el("button", {}, text("Two"))] }
+      expect(HtmlQuery.queryAllByRole(doc, "button").map((node) => node.textContent)).toEqual(["One"])
+      expect(HtmlQuery.queryAllByRole(fragment, "button")).toHaveLength(1)
+      expect(HtmlQuery.getByRole(wrapper, "button", { name: "Two" })).toBe(wrapper.children![0])
+    })
 
     it("the DOM", () => {
       const container = document.createElement("div")
