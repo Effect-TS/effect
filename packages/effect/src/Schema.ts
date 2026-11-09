@@ -78,7 +78,6 @@ import * as Order from "./Order.ts"
 import * as Pipeable from "./Pipeable.ts"
 import * as Predicate from "./Predicate.ts"
 import * as Rational_ from "./Rational.ts"
-import type * as Record_ from "./Record.ts"
 import * as Redacted_ from "./Redacted.ts"
 import * as RegExp_ from "./RegExp.ts"
 import * as Result_ from "./Result.ts"
@@ -16208,7 +16207,7 @@ export const Cookie: Cookie = declare(
 export interface Cookies extends
   declare<
     Cookies_.Cookies,
-    Record_.ReadonlyRecord<string, Cookies_.Cookie>
+    ReadonlyArray<Cookies_.Cookie>
   >
 {
   readonly "Rebuild": Cookies
@@ -16220,7 +16219,7 @@ export interface Cookies extends
  * **Details**
  *
  * JSON encoding uses `Set-Cookie` header strings, while isomorphic encoding uses
- * a readonly record of cookie values.
+ * the ordered array of cookies.
  *
  * @stability unstable
  * @category schemas
@@ -16244,9 +16243,9 @@ export const Cookies: Cookies = declare(
       ),
     toCodecIso: () =>
       link<Cookies_.Cookies>()(
-        Record(String, Cookie),
+        ArraySchema(Cookie),
         SchemaTransformation.transform({
-          decode: Cookies_.fromReadonlyRecord,
+          decode: Cookies_.fromIterable,
           encode: (cookies) => cookies.cookies
         })
       )
