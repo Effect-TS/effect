@@ -115,10 +115,20 @@ export interface Host<Node> {
  * `adopted`, if given, is called once every slot has adopted, with the head
  * the tree had at adoption: each instance's entries and child instances as
  * they were when it mounted (a waiting slot's when it adopted), merged in
- * tree order. Updates since then, including removed instances, don't count.
- * Title templates reuse the results the live merge computed. Because `head`
- * is pure and the Model is adopted, it equals the server's merged head, so a
- * host or a test can check one against the other.
+ * tree order. An instance that failed in the flush it mounted in, a title
+ * template that throws included, contributes nothing, as on the server.
+ * Updates since then, including removed instances, don't count. Title
+ * templates reuse the results the client's live merges computed. A template
+ * no live merge ever applied to that title, because an ancestor rendered
+ * again while the slot holding the title waited, is called once for the
+ * report; with `head` pure, as it must be, that gives the adoption-time
+ * result. Because `head` is pure and the Model is adopted, the head equals
+ * the server's merged head, so a host or a test can check one against the
+ * other.
+ *
+ * It's called after the live head merge of the flush that finished adoption
+ * and before that flush commits, so the document head may not show it yet.
+ * `root.adopted` completes after it.
  *
  * @stability experimental
  * @category models
@@ -304,8 +314,10 @@ export interface Root<out Model, in Msg> {
   readonly send: (message: Msg) => void
   /**
    * Completes once every slot has adopted the server's nodes, at once
-   * without hydration. Head sync and the router's announcements start after
-   * it.
+   * without hydration. Head sync and the router's announcements start with
+   * the commit of the flush that finished adoption, which may still be
+   * running when this completes, so don't expect the document head to show
+   * the adopted head yet.
    */
   readonly adopted: Effect.Effect<void>
 }

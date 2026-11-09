@@ -572,4 +572,98 @@ describe("HtmlServer", { concurrent: false }, () => {
       expect(differs.calls()).toBe(2)
       expect(error.problems).toEqual(["head title: the server has \"server\", the client \"client\""])
     }).pipe(Effect.scoped))
+  it.effect("leaves an instance its own title template fails out of the adoption head, as the server does", () =>
+    Effect.gen(function*() {
+      const Leaf = Component.make({
+        name: "Leaf",
+        model: Schema.Struct({}),
+        message: Schema.Never,
+        elements: Html,
+        init: () => ({}),
+        update: (model) => model,
+        head: () => [Head.title("leaf")],
+        view: (_, h) => h.p("leaf")
+      })
+      const Broken = Component.make({
+        name: "Broken",
+        model: Schema.Struct({}),
+        message: Schema.Never,
+        elements: Html,
+        init: () => ({}),
+        update: (model) => model,
+        head: () => [
+          Head.titleTemplate(() => {
+            throw new Error("template")
+          })
+        ],
+        view: (_, h) => h.div(h.child(Leaf, { key: "l", props: {} }))
+      })
+      const Parent = Component.make({
+        name: "Parent",
+        model: Schema.Struct({}),
+        message: Schema.Never,
+        elements: Html,
+        init: () => ({}),
+        update: (model) => model,
+        view: (_, h) => h.div(h.child(Broken, { key: "b", props: {}, fallback: () => h.p("fallback") }))
+      })
+      const result = yield* ssr(Parent, {})
+      expect(result.head.title).toBeUndefined()
+      expect(result.state["~deferred"]).toEqual(["/Parent/Broken[b]"])
+      // The client's merge fails Broken too; its fallback renders in the next flush.
+      yield* Effect.promise(() => Promise.resolve())
+      expect(result.container.textContent).toBe("fallback")
+    }).pipe(Effect.scoped))
+
+  it.live("keeps no template results outside an adoption report", () =>
+    Effect.gen(function*() {
+      let calls = 0
+      // One entry shared by every head evaluation, so a cache keyed on entries would keep it.
+      const template = Head.titleTemplate((title) => {
+        calls++
+        return `${title} - App`
+      })
+      const Leaf = Component.make({
+        name: "Leaf",
+        model: Schema.Struct({}),
+        message: Schema.Never,
+        elements: Html,
+        init: () => ({}),
+        update: (model) => model,
+        head: () => [Head.title("leaf")],
+        view: (_, h) => h.p("leaf")
+      })
+      const Message = Schema.TaggedUnion({ Bump: {} })
+      const Layout = Component.make({
+        name: "Layout",
+        model: Schema.Number,
+        message: Message,
+        elements: Html,
+        init: () => 0,
+        update: (count) => count + 1,
+        head: () => [template],
+        view: (count, h) => h.div(h.p(String(count)), h.child(Leaf, { key: "l", props: {} }))
+      })
+      const bumpThrice = Effect.fnUntraced(function*(root: { readonly send: (message: typeof Message.Type) => void }) {
+        for (let i = 0; i < 3; i++) {
+          root.send(Message.make({ _tag: "Bump" }))
+          yield* tick
+        }
+      })
+
+      // A plain mount: each of the four merges (mount and three updates) calls the template.
+      const app = yield* container("")
+      const mounted = yield* BrowserHost.mount(Layout, {}, app)
+      yield* bumpThrice(mounted)
+      expect(calls).toBe(4)
+
+      // Hydration: one call on the server's merge, one on the client's, then one per update once
+      // the report is made.
+      calls = 0
+      const result = yield* ssr(Layout, {})
+      expect(calls).toBe(2)
+      yield* bumpThrice(result.root)
+      expect(calls).toBe(5)
+      expect(result.document.title).toBe("leaf - App")
+    }).pipe(Effect.scoped))
 })
