@@ -188,6 +188,51 @@ describe("Cookies", () => {
       )
     })
 
+    it("preserves record keys through the iso codec and collection operations", () => {
+      const input = {
+        host: Cookies.makeCookieUnsafe("session", "host", { path: "/" }),
+        domain: Cookies.makeCookieUnsafe("session", "domain", { domain: "example.com", path: "/" })
+      }
+      const codec = Schema.toCodecIso(Schema.Cookies)
+      const cookies = Schema.decodeSync(codec)(input)
+      deepStrictEqual(Schema.encodeSync(codec)(cookies), input)
+      assertSome(Cookies.getValue(cookies, "host"), "host")
+      assertSome(Cookies.getValue(cookies, "domain"), "domain")
+      assertNone(Cookies.get(cookies, "session"))
+
+      deepStrictEqual(Cookies.toSetCookieHeaders(Cookies.remove(cookies, "host")), [
+        "session=domain; Domain=example.com; Path=/"
+      ])
+      deepStrictEqual(Schema.encodeSync(codec)(Cookies.remove(cookies, "session")), input)
+      deepStrictEqual(Cookies.toSetCookieHeaders(Cookies.setUnsafe(cookies, "host", "x")), [
+        "session=domain; Domain=example.com; Path=/",
+        "host=x"
+      ])
+      const added = Cookies.setUnsafe(cookies, "session", "x")
+      deepStrictEqual(Schema.encodeSync(codec)(added), {
+        ...input,
+        session: Cookies.makeCookieUnsafe("session", "x")
+      })
+      deepStrictEqual(Cookies.toSetCookieHeaders(added), [
+        "session=host; Path=/",
+        "session=domain; Domain=example.com; Path=/",
+        "session=x"
+      ])
+
+      const theme = Cookies.makeCookieUnsafe("theme", "dark")
+      deepStrictEqual(
+        Schema.encodeSync(codec)(Cookies.merge(cookies, Cookies.fromIterable([theme]))),
+        { ...input, theme }
+      )
+      const replacement = Cookies.makeCookieUnsafe("session", "updated", { path: "/" })
+      const merged = Cookies.merge(cookies, Cookies.fromReadonlyRecord({ host: replacement }))
+      deepStrictEqual(Schema.encodeSync(codec)(merged), { domain: input.domain, host: replacement })
+      deepStrictEqual(Cookies.toSetCookieHeaders(merged), [
+        "session=domain; Domain=example.com; Path=/",
+        "session=updated; Path=/"
+      ])
+    })
+
     it("toCodecJson", async () => {
       const schema = Schema.Cookies
       const asserts = new TestSchema.Asserts(Schema.toCodecJson(Schema.toType(schema)))
