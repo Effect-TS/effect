@@ -488,4 +488,88 @@ describe("HtmlServer", { concurrent: false }, () => {
         "head title: the server has \"Inner (server)\", the client \"Inner (client)\""
       ])
     }).pipe(Effect.scoped))
+  it.live("snapshots the instances adoption saw, so removing one while a slot waits isn't a mismatch", () =>
+    Effect.gen(function*() {
+      class Slow extends Context.Service<Slow, string>()("test/Slow") {}
+      const Waiting = Component.make({
+        name: "Waiting",
+        model: Schema.Struct({}),
+        message: Schema.Never,
+        elements: Html,
+        init: () => ({}),
+        update: (model) => model,
+        view: (_, h) => h.p("waiting")
+      }).pipe(Component.provide(Layer.effect(Slow, Effect.as(Effect.sleep("30 millis"), "ready"))))
+      const Titled = Component.make({
+        name: "Titled",
+        model: Schema.Struct({}),
+        message: Schema.Never,
+        elements: Html,
+        init: () => ({}),
+        update: (model) => model,
+        head: () => [Head.title("title")],
+        view: (_, h) => h.p("titled")
+      })
+      const Message = Schema.TaggedUnion({ Mounted: {} })
+      const Page = Component.make({
+        name: "Page",
+        model: Schema.Boolean,
+        message: Message,
+        elements: Html,
+        init: () => true,
+        update: () => false,
+        view: (showTitled, h) =>
+          h.div(
+            showTitled ? h.child(Titled, { key: "t", props: {} }) : h.p("gone"),
+            h.child(Waiting, { key: "w", props: {} })
+          ).onMount("hide", () => Effect.succeed(Message.make({ _tag: "Mounted" })))
+      })
+      const result = yield* ssr(Page, {})
+      expect(result.head.title).toBe("title")
+      expect(result.adopted).toEqual(["/Page", "/Page/Titled[t]", "/Page/Waiting[w]"])
+      yield* tick
+      expect(result.container.textContent).toBe("gonewaiting")
+    }).pipe(Effect.scoped))
+
+  it.effect("reports the template results the client's merge computed, without calling templates again", () =>
+    Effect.gen(function*() {
+      const Leaf = Component.make({
+        name: "Leaf",
+        model: Schema.Struct({}),
+        message: Schema.Never,
+        elements: Html,
+        init: () => ({}),
+        update: (model) => model,
+        head: () => [Head.title("leaf")],
+        view: (_, h) => h.p("leaf")
+      })
+      const withTemplate = (template: (calls: number) => string) => {
+        let calls = 0
+        const Parent = Component.make({
+          name: "Parent",
+          model: Schema.Struct({}),
+          message: Schema.Never,
+          elements: Html,
+          init: () => ({}),
+          update: (model) => model,
+          head: () => [Head.titleTemplate(() => template(calls++))],
+          view: (_, h) => h.div(h.child(Leaf, { key: "l", props: {} }))
+        })
+        return { Parent, calls: () => calls }
+      }
+
+      // One call on the server's merge and one on the client's; reporting adds none. Both return
+      // "server", which is what the client shows, so hydration agrees.
+      const agrees = withTemplate((calls) => calls < 2 ? "server" : "client")
+      const result = yield* ssr(agrees.Parent, {})
+      expect(agrees.calls()).toBe(2)
+      expect(result.head.title).toBe("server")
+      expect(result.document.title).toBe("server")
+
+      // The client's one call differs from the server's, and the report shows the client's.
+      const differs = withTemplate((calls) => calls < 1 ? "server" : "client")
+      const error = yield* Effect.flip(ssr(differs.Parent, {}))
+      expect(differs.calls()).toBe(2)
+      expect(error.problems).toEqual(["head title: the server has \"server\", the client \"client\""])
+    }).pipe(Effect.scoped))
 })

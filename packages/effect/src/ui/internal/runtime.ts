@@ -164,8 +164,8 @@ export interface Instance {
   waiting: boolean
   /** Hydration: whether this instance's children may adopt the server's Models. */
   adoptsChildren: boolean
-  /** Hydration: the head entries the instance contributed when it mounted, before any later update. */
-  adoptionHead: ReadonlyArray<Head.Entry> | undefined
+  /** Hydration: the instance's head entries and child instances as they were when it mounted. */
+  readonly snapshot: Snapshot | undefined
   /** On the server: the client builds this instance fresh, because its Layer wasn't built. */
   deferred: boolean
   /** On the server: positions of `init`'s server Commands that haven't completed. */
@@ -263,6 +263,12 @@ let sessions = 0
 
 /** Components and Commands already warned about being dropped on the server, so each warns once. */
 const warnedDrops = new Set<string>()
+
+/** Hydration: what an instance contributed to the head when it mounted, and its child instances then. */
+interface Snapshot {
+  entries: ReadonlyArray<Head.Entry>
+  children: ReadonlyArray<Snapshot>
+}
 
 /** The server's nodes for one instance: between its two markers. */
 interface Range {
@@ -389,8 +395,9 @@ const start = (
     if (adoptedDone) return
     adoptedDone = true
     hydrating = undefined
-    reportAdoption()
-    for (const f of adoptedWaiters.splice(0)) f()
+    // Reported after this flush's live merge, so it reuses the templates that merge applied. `adopted`
+    // completes with the report.
+    reportPending = true
     // Head sync starts with the flush after adoption.
     headDirty = true
     wake()
@@ -467,6 +474,7 @@ const start = (
       // A title template that throws fails its instance, so the fallback renders and the head is merged again.
       mergeHead()
     } while (dirty.size > 0 || deferred.length > 0)
+    if (reportPending) reportAdoption()
     host.commit?.()
     afterCommitHooks()
     rendering = false
@@ -512,9 +520,36 @@ const start = (
     headDirty = true
   }
 
+  /**
+   * A title template's results, kept per entry and title. The entries change
+   * whenever `head` runs again, so this only saves calling the same template
+   * on the same title twice: a live merge after an unrelated render, or the
+   * adoption report.
+   */
+  const templates = new WeakMap<Head.TitleTemplate, Head.TitleTemplate>()
+  const memoized = (entries: ReadonlyArray<Head.Entry>): ReadonlyArray<Head.Entry> =>
+    entries.map((entry) => {
+      if (entry._tag !== "TitleTemplate") return entry
+      let found = templates.get(entry)
+      if (found === undefined) {
+        const results = new Map<string, string>()
+        found = {
+          _tag: "TitleTemplate",
+          apply: (title) => {
+            if (results.has(title)) return results.get(title)!
+            const result = entry.apply(title)
+            results.set(title, result)
+            return result
+          }
+        }
+        templates.set(entry, found)
+      }
+      return found
+    })
+
   /** The head entries in document order. A slot's fallback contributes none. */
   const headTree = (inst: Instance): Head.Tree => ({
-    entries: inst.closed || inst.failure !== undefined ? [] : inst.head,
+    entries: inst.closed || inst.failure !== undefined ? [] : memoized(inst.head),
     children: inst.closed || inst.failure !== undefined ? [] : inst.rendered.flatMap(headChildren),
     // A throwing title template fails the instance that declared it.
     onError: (error) => failInstance(inst, Cause.die(error), "head")
@@ -526,27 +561,35 @@ const start = (
       ? rendered.children.flatMap(headChildren)
       : []
 
-  /**
-   * The head the tree had at adoption: the live tree's structure, with each
-   * instance's entries as evaluated when it mounted. Updates since, such as
-   * one an `onMount` sent while another slot waited, don't count. A template
-   * that throws is skipped here; the live merge fails its instance.
-   */
-  const adoptionTree = (inst: Instance): Head.Tree => ({
-    entries: inst.closed || inst.failure !== undefined ? [] : inst.adoptionHead ?? inst.head,
-    children: inst.closed || inst.failure !== undefined ? [] : inst.rendered.flatMap(adoptionChildren),
+  /** The child instances an instance rendered, as their snapshots. A failed slot has none. */
+  const snapshotChildren = (rendered: Rendered): Array<Snapshot> =>
+    rendered._tag === "Child"
+      ? rendered.inst.snapshot === undefined || rendered.inst.failure !== undefined ? [] : [rendered.inst.snapshot]
+      : rendered._tag === "Element"
+      ? rendered.children.flatMap(snapshotChildren)
+      : []
+  const snapshotTree = (snapshot: Snapshot): Head.Tree => ({
+    entries: memoized(snapshot.entries),
+    children: snapshot.children.map(snapshotTree),
     onError: () => {}
   })
-  const adoptionChildren = (rendered: Rendered): Array<Head.Tree> =>
-    rendered._tag === "Child"
-      ? [adoptionTree(rendered.inst)]
-      : rendered._tag === "Element"
-      ? rendered.children.flatMap(adoptionChildren)
-      : []
+
+  /**
+   * Reports the head the tree had at adoption: each instance's entries and
+   * children as they were when it mounted, a waiting slot's from when it
+   * adopted. It runs after the live merge of the flush that finished
+   * adoption, whose template results it reuses. A template is only called for
+   * the report when no live merge applied it to that title, which happens
+   * when an ancestor rendered again while the slot holding the title waited.
+   */
+  let reportPending = false
   const reportAdoption = () => {
-    if (hydration?.adopted !== undefined && rootInstance !== undefined) {
-      hydration.adopted(Head.merge(adoptionTree(rootInstance)))
+    reportPending = false
+    const root = rootInstance
+    if (hydration?.adopted !== undefined && root?.snapshot !== undefined) {
+      hydration.adopted(root.failure !== undefined ? Head.empty : Head.merge(snapshotTree(root.snapshot)))
     }
+    for (const f of adoptedWaiters.splice(0)) f()
   }
 
   const buildsPendingSince = (flush: number) => {
@@ -767,7 +810,7 @@ const start = (
       closed: false,
       waiting: false,
       adoptsChildren: false,
-      adoptionHead: undefined,
+      snapshot: hydrating === undefined ? undefined : { entries: [], children: [] },
       deferred: false,
       serverPending: new Set(),
       runs: [],
@@ -1007,7 +1050,11 @@ const start = (
       }
       inst.rendered = [rendered]
       updateHead(inst)
-      if (hydrating !== undefined) inst.adoptionHead = inst.head
+      // Frozen at mount: later updates, removals and re-keys don't change what adoption looked like.
+      if (inst.snapshot !== undefined) {
+        inst.snapshot.entries = inst.head
+        inst.snapshot.children = inst.rendered.flatMap(snapshotChildren)
+      }
       if (inst.failure !== undefined) return
       if (Option.isSome(adopted)) {
         apply(inst, { model: inst.model, commands: [], events: [] }, mountedSeq, true)
@@ -1796,9 +1843,10 @@ const start = (
   if (waiting === 0 && !adoptedDone) {
     adoptedDone = true
     hydrating = undefined
-    reportAdoption()
+    reportPending = true
   }
   mergeHead()
+  if (reportPending) reportAdoption()
   host.commit?.()
 
   const snapshot = (): Record<string, unknown> => {
@@ -1907,7 +1955,7 @@ const start = (
     buildsPendingSince,
     head: () => merged,
     adopted: Effect.callback<void>((resume) => {
-      if (adoptedDone) resume(Effect.void)
+      if (adoptedDone && !reportPending) resume(Effect.void)
       else adoptedWaiters.push(() => resume(Effect.void))
     }),
     whenIdle: (f) => {
