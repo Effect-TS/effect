@@ -317,7 +317,9 @@ describe("SqlClient", () => {
     Effect.gen(function*() {
       const { sql } = yield* makeClient()
       const transaction = yield* sql.withTransaction(Effect.gen(function*() {
-        const transaction = yield* sql.transactionService
+        const current = yield* Effect.serviceOption(sql.transactionService)
+        assert.isTrue(Option.isSome(current))
+        const transaction = Option.getOrThrow(current)
         assert.strictEqual(yield* SqlClient.activeTransactionConnection(transaction), transaction[0])
         return transaction
       }))
