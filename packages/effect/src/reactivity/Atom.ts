@@ -253,7 +253,7 @@ const AtomProto = {
       _id: "Atom",
       keepAlive: this.keepAlive,
       lazy: this.lazy,
-      label: this.label
+      label: this.label && [this.label[0], this.label[1]]
     }
   }
 } as const
@@ -1674,8 +1674,30 @@ export const withLabel: {
 >(2, (self, name) =>
   Object.assign(Object.create(Object.getPrototypeOf(self)), {
     ...self,
-    label: [name, getStackTraceLimit() === 0 ? "" : new Error().stack?.split("\n")[5] ?? ""]
+    label: makeLabel(name, getStackTraceLimit() === 0 ? undefined : new Error())
   }))
+
+// Formatting `error.stack` is slow on some engines (e.g. Hermes), so defer it
+// until the location is read.
+function makeLabel(name: string, error: Error | undefined): readonly [name: string, stack: string] {
+  const label: [name: string, stack: string] = [name, ""]
+  if (error === undefined) {
+    return label
+  }
+  let location = ""
+  Object.defineProperty(label, 1, {
+    configurable: true,
+    enumerable: true,
+    get: () => {
+      if (error !== undefined) {
+        location = error.stack?.split("\n")[5] ?? ""
+        error = undefined
+      }
+      return location
+    }
+  })
+  return label
+}
 
 /**
  * Options for seeding an effect or stream atom through registry initial values
@@ -2684,7 +2706,7 @@ export const serializable: {
   const codecJson = Schema.toCodecJson(options.schema)
   return Object.assign(Object.create(Object.getPrototypeOf(self)), {
     ...self,
-    label: self.label ?? [options.key, getStackTraceLimit() === 0 ? "" : new Error().stack?.split("\n")[5] ?? ""],
+    label: self.label ?? makeLabel(options.key, getStackTraceLimit() === 0 ? undefined : new Error()),
     [SerializableTypeId]: {
       key: options.key,
       encode: Schema.encodeSync(codecJson),
