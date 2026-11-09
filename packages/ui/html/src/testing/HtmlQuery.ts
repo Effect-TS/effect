@@ -10,6 +10,10 @@
  * Hidden elements (`hidden`, `aria-hidden="true"`, `<input type="hidden">`)
  * and everything inside them are left out unless `hidden: true` is passed.
  *
+ * On a structural tree a match is typed `Query.Node`, since it can be any
+ * node of the tree. On `TestHost`, `root.all(HtmlQuery.role(...))` keeps the
+ * host's node type. On the DOM a match is an `HTMLElement`.
+ *
  * **Example** (Finding a button by its name)
  *
  * ```ts import.meta.vitest
@@ -249,7 +253,13 @@ const buildIndex = <N>(root: N): Index<N> => {
   }
   const entries = index.entries as Array<Entry<N>>
   const walk = (node: N, hidden: boolean, labels: ReadonlyArray<N>, inSection: boolean) => {
-    if (!reader.isElement(node)) return
+    if (!reader.isElement(node)) {
+      // A document, a fragment or a structural wrapper isn't indexed, but what it holds is.
+      if (reader.text(node) === undefined) {
+        for (const child of reader.children(node)) walk(child, hidden, labels, inSection)
+      }
+      return
+    }
     const tag = reader.tag(node)
     const isHiddenHere = hidden || isHidden(reader, node)
     const explicit = reader.attr(node, "role")?.trim().split(/\s+/)[0]
@@ -367,7 +377,8 @@ const computeName = <N>(index: Index<N>, entry: Entry<N>): string => {
   if (tag === "input" && type === "image") return normalize(reader.attr(node, "alt") ?? "")
   if (tag === "input" || tag === "select" || tag === "textarea" || tag === "meter" || tag === "progress") {
     const id = reader.attr(node, "id")
-    const labels = [...(id === undefined ? [] : index.labelsFor.get(id) ?? []), ...entry.labels]
+    // A label can both name the control by `for` and wrap it: it counts once.
+    const labels = [...new Set([...(id === undefined ? [] : index.labelsFor.get(id) ?? []), ...entry.labels])]
     const fromLabels = normalize(labels.map((l) => contentText(index, l, node, false)).join(" "))
     if (fromLabels !== "") return fromLabels
   }
@@ -477,7 +488,7 @@ const select = <N>(index: Index<N>, role: string, options: RoleOptions | undefin
  */
 export const queryAllByRole: {
   (root: globalThis.Node, role: string, options?: RoleOptions): ReadonlyArray<HTMLElement>
-  <N extends Query.Node>(root: N, role: string, options?: RoleOptions): ReadonlyArray<N>
+  (root: Query.Node, role: string, options?: RoleOptions): ReadonlyArray<Query.Node>
 } = (root: any, role: string, options?: RoleOptions): ReadonlyArray<any> => select(buildIndex(root), role, options)
 
 /**
@@ -490,7 +501,7 @@ export const queryAllByRole: {
  */
 export const getByRole: {
   (root: globalThis.Node, role: string, options?: RoleOptions): HTMLElement
-  <N extends Query.Node>(root: N, role: string, options?: RoleOptions): N
+  (root: Query.Node, role: string, options?: RoleOptions): Query.Node
 } = (root: any, role: string, options?: RoleOptions): any => {
   const index = buildIndex(root)
   const found = select(index, role, options)
@@ -519,7 +530,7 @@ const describeIndex = <N>(index: Index<N>): string => {
  */
 export const roleOf: {
   (root: globalThis.Node, node: globalThis.Node): string | undefined
-  <N extends Query.Node>(root: N, node: N): string | undefined
+  (root: Query.Node, node: Query.Node): string | undefined
 } = (root: any, node: any): string | undefined => buildIndex(root).byNode.get(node)?.role
 
 /**
@@ -534,7 +545,7 @@ export const roleOf: {
  */
 export const nameOf: {
   (root: globalThis.Node, node: globalThis.Node): string
-  <N extends Query.Node>(root: N, node: N): string
+  (root: Query.Node, node: Query.Node): string
 } = (root: any, node: any): string => {
   const index = buildIndex(root)
   const entry = index.byNode.get(node)

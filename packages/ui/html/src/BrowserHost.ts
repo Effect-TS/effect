@@ -6,8 +6,8 @@
  * document, and each element stores its handlers as data, so re-rendering
  * never touches listeners. An event goes to the innermost element with a
  * handler for it, and its handler gets a plain payload built from the DOM
- * event, never the event itself. `submit` always prevents the browser's own
- * submission.
+ * event, never the event itself. A form the app renders never submits
+ * natively, whether or not it has a `submit` handler.
  *
  * `value`, `checked`, `selected` and `open` are controlled. The host sets them
  * after the element's children exist, skips a no-op so the caret doesn't jump,
@@ -97,7 +97,10 @@ const ownEvents: ReadonlySet<string> = new Set([
 ])
 
 /** Events after which a controlled property may differ from what the Model says. */
-const changeEvents: ReadonlyArray<string> = ["input", "change", "toggle", "close"]
+const changeEvents: ReadonlyArray<string> = ["input", "change", "toggle", "close", "reset"]
+
+/** Events the host listens to whether or not a handler wants them. */
+const alwaysEvents: ReadonlyArray<string> = [...changeEvents, "submit"]
 
 const controlled: ReadonlySet<string> = new Set(["value", "checked", "selected", "open"])
 
@@ -120,12 +123,13 @@ const fieldsOf = (form: HTMLFormElement, submitter: HTMLElement | null) => {
   } catch {
     data = new FormData(form)
   }
-  const fields: Record<string, string> = {}
+  // No prototype, so fields named `constructor` or `__proto__` are kept like any other.
+  const fields: Record<string, string> = Object.create(null)
   const entries: Array<readonly [string, string]> = []
   data.forEach((value, name) => {
     if (typeof value !== "string") return
     entries.push([name, value])
-    if (!(name in fields)) fields[name] = value
+    if (!Object.hasOwn(fields, name)) fields[name] = value
   })
   return { fields, entries }
 }
@@ -205,6 +209,31 @@ export const makeHost = (document: Document): Renderer.Host<globalThis.Node> & {
       if (element[name] !== value) element[name] = value
     }
   }
+  /** Restores `node` and what changing it also changes. */
+  const restoreAffected = (node: globalThis.Node): void => {
+    restoreNode(node)
+    const element = node as HTMLInputElement
+    switch (element.localName) {
+      case "input": {
+        // A radio button unchecks the others in its group.
+        if (element.type !== "radio" || element.name === "") return
+        const root = element.form ?? element.ownerDocument
+        for (const other of root.querySelectorAll(`input[type="radio"]`)) {
+          if ((other as HTMLInputElement).name === element.name) restoreNode(other)
+        }
+        return
+      }
+      case "select": {
+        for (const option of (node as HTMLSelectElement).options) restoreNode(option)
+        return
+      }
+      case "form": {
+        // A reset puts every control back to its default without firing input or change.
+        for (const control of (node as HTMLFormElement).elements) restoreAffected(control)
+        return
+      }
+    }
+  }
   let restoring: Set<globalThis.Node> | undefined
   /**
    * Puts controlled properties back once the event and the flush it caused
@@ -218,25 +247,17 @@ export const makeHost = (document: Document): Renderer.Host<globalThis.Node> & {
       later(() => {
         const nodes = restoring!
         restoring = undefined
-        for (const node of nodes) {
-          restoreNode(node)
-          const element = node as HTMLInputElement
-          // A radio button unchecks the others in its group, and a select changes its options.
-          if (element.localName === "input" && element.type === "radio" && element.name !== "") {
-            const root = element.form ?? element.ownerDocument
-            for (const other of root.querySelectorAll(`input[type="radio"]`)) {
-              if ((other as HTMLInputElement).name === element.name) restoreNode(other)
-            }
-          } else if (element.localName === "select") {
-            for (const option of (node as HTMLSelectElement).options) restoreNode(option)
-          }
-        }
+        for (const node of nodes) restoreAffected(node)
       })
     }
     restoring.add(target as globalThis.Node)
   }
 
   const listener = (name: string) => (event: Event) => {
+    // The app owns its forms' submissions, handled or not. Other forms in the document are left alone.
+    if (name === "submit" && event.target !== null && bound.has(event.target as globalThis.Node)) {
+      event.preventDefault()
+    }
     const path = event.composedPath()
     const own = ownEvents.has(name)
     for (let i = 0; i < path.length; i++) {
@@ -259,7 +280,7 @@ export const makeHost = (document: Document): Renderer.Host<globalThis.Node> & {
     listening.set(name, f)
     document.addEventListener(name, f, { capture: true })
   }
-  for (const name of changeEvents) listen(name)
+  for (const name of alwaysEvents) listen(name)
 
   return {
     createElement: (tag) => svgTags.has(tag) ? document.createElementNS(SVG, tag) : document.createElement(tag),
