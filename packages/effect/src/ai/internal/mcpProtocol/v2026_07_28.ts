@@ -511,8 +511,9 @@ export const makeHandlers = (
       return yield* decodeDiscoverResult(result)
     }, Effect.mapError(projectError)),
     "resources/list": Effect.fnUntraced(function*(
-      _request: typeof McpSchema.ListResources.payloadSchema.Type
+      request: typeof McpSchema.ListResources.payloadSchema.Type
     ) {
+      yield* McpProtocol.rejectCursor(request.cursor)
       const invocation = yield* getInvocation
       const resources = yield* core.resources.list(invocation)
       const result = yield* projectCompleteResult({
@@ -522,8 +523,9 @@ export const makeHandlers = (
       return yield* decodeListResourcesResult(result)
     }, Effect.mapError(projectError)),
     "resources/templates/list": Effect.fnUntraced(function*(
-      _request: typeof McpSchema.ListResourceTemplates.payloadSchema.Type
+      request: typeof McpSchema.ListResourceTemplates.payloadSchema.Type
     ) {
+      yield* McpProtocol.rejectCursor(request.cursor)
       const invocation = yield* getInvocation
       const resourceTemplates = yield* core.resources.listTemplates(invocation)
       const result = yield* projectCompleteResult({
@@ -544,7 +546,7 @@ export const makeHandlers = (
       return yield* decodeReadResourceResult(result)
     }, Effect.mapError(projectError)),
     "prompts/list": Effect.fnUntraced(function*(
-      _request: typeof McpSchema.ListPrompts.payloadSchema.Type
+      request: typeof McpSchema.ListPrompts.payloadSchema.Type
     ) {
       const presence = yield* context.registrationPresence
       if (!presence.prompts) {
@@ -556,6 +558,7 @@ export const makeHandlers = (
           })
         )
       }
+      yield* McpProtocol.rejectCursor(request.cursor)
       const invocation = yield* getInvocation
       const prompts = yield* core.prompts.list(invocation)
       const projectedPrompts = yield* Effect.forEach(prompts, projectPrompt)
@@ -610,8 +613,9 @@ export const makeHandlers = (
       return yield* decodeCompleteResult(result)
     }, Effect.mapError(projectError)),
     "tools/list": Effect.fnUntraced(function*(
-      _request: typeof McpSchema.ListTools.payloadSchema.Type
+      request: typeof McpSchema.ListTools.payloadSchema.Type
     ) {
+      yield* McpProtocol.rejectCursor(request.cursor)
       const invocation = yield* getInvocation
       const tools = yield* core.tools.list(invocation)
       const projectedTools = yield* Effect.forEach(tools, projectTool)
@@ -690,7 +694,7 @@ export const makeHandlers = (
     }, Effect.mapError(projectError)),
     "skills/list": Effect.fnUntraced(function*(request: typeof McpSkills.ListSkills.payloadSchema.Type) {
       yield* requireSkills("skills/list")
-      yield* McpSkills.rejectCursor(request.cursor)
+      yield* McpProtocol.rejectCursor(request.cursor)
       const skills = yield* core.skills.list(yield* getInvocation)
       const result = yield* projectCompleteResult({ ...cacheHint("skills"), skills }, context.serverInfo)
       return yield* decodeListSkillsResult(result)
@@ -705,7 +709,7 @@ export const makeHandlers = (
       request: typeof McpSkills.ReadResourceDirectory.payloadSchema.Type
     ) {
       yield* requireSkills("resources/directory/read")
-      yield* McpSkills.rejectCursor(request.cursor)
+      yield* McpProtocol.rejectCursor(request.cursor)
       const resources = yield* core.skills.readDirectory(request.uri, yield* getInvocation)
       const result = yield* projectCompleteResult({ ...cacheHint("skills"), resources }, context.serverInfo)
       return yield* decodeReadResourceDirectoryResult(result)
