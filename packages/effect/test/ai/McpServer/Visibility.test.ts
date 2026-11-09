@@ -214,6 +214,12 @@ describe("McpServer visibility", () => {
                 return current === "admin"
               })
             )
+            const Audit = McpServer.middleware()((effect, { method, payload }) =>
+              Effect.andThen(
+                Effect.sync(() => calls.push({ stage: "audit", method, payload })),
+                effect
+              )
+            )
             const registrations = Layer.effectDiscard(Effect.gen(function*() {
               const server = yield* McpServer.McpServer
               yield* server.addTool({
@@ -233,7 +239,7 @@ describe("McpServer visibility", () => {
                     return new McpSchema.CallToolResult({ content: [] })
                   })
               })
-            })).pipe(Layer.provide(Visible.combine(Auth).layer))
+            })).pipe(Layer.provide(Audit.combine(Visible.combine(Auth)).layer))
             const protocol = McpProtocol.v2026_07_28
             const harness = yield* makeHttpHarness(McpServer.layerHttp({
               name: "VisibilityServer",
@@ -290,7 +296,14 @@ describe("McpServer visibility", () => {
                 stage: "visibility",
                 method: "tools/call",
                 payload: { name: "HeaderTool", arguments: { region: "eu" } }
-              }
+              },
+              ...(user === "admin"
+                ? [{
+                  stage: "audit",
+                  method: "tools/call",
+                  payload: { name: "HeaderTool", arguments: { region: "eu" } }
+                }]
+                : [])
             ])
           })
       )
