@@ -15,6 +15,7 @@ import * as Effect from "../Effect.ts"
 import * as Exit from "../Exit.ts"
 import { identity } from "../Function.ts"
 import { CurrentTransactionService, recordConnectionWait, waitClock } from "../internal/sql.ts"
+import * as Option from "../Option.ts"
 import { hasProperty } from "../Predicate.ts"
 import type * as Queue from "../Queue.ts"
 import { type KeysInput, Reactivity } from "../reactivity/Reactivity.ts"
@@ -325,7 +326,13 @@ const ATTR_DB_OPERATION_NAME = "db.operation.name"
  */
 export const make = Effect.fnUntraced(function*(options: SqlClient.MakeOptions) {
   const transactionService = options.transactionService ?? TransactionConnection(clientIdCounter++)
-  const getConnection = withTransactionConnection(transactionService, () => options.acquirer, Effect.succeed)
+  const getConnection = Effect.flatMap(
+    Effect.serviceOption(transactionService),
+    Option.match({
+      onNone: () => options.acquirer,
+      onSome: transactionConnection
+    })
+  )
 
   const beginTransaction = options.beginTransaction ?? "BEGIN"
   const commit = options.commit ?? "COMMIT"
@@ -364,9 +371,14 @@ export const make = Effect.fnUntraced(function*(options: SqlClient.MakeOptions) 
   const reactivity = yield* Reactivity
   // A statement inside a transaction has to run on that transaction's
   // connection, so borrowing is only for statements that reach the pool.
-  const borrower: Connection.Borrower | undefined = options.borrower === undefined ?
-    undefined :
-    (f) => withTransactionConnection(transactionService, () => options.borrower!(f), f)
+  const borrower: Connection.Borrower | undefined = options.borrower === undefined ? undefined : (f) =>
+    Effect.flatMap(
+      Effect.serviceOption(transactionService),
+      Option.match({
+        onNone: () => options.borrower!(f),
+        onSome: (transaction) => Effect.flatMap(transactionConnection(transaction), f)
+      })
+    )
 
   const client: SqlClient = Object.assign(
     Statement.make(getConnection, options.compiler, options.spanAttributes, options.transformRows, borrower),
@@ -519,63 +531,48 @@ const failuresToDefects = <E>(cause: Cause.Cause<E>): Cause.Cause<never> =>
   ))
 
 /**
- * State of one transaction level. `open` is false once the level's body
- * exits. A committed savepoint hands its `afterCommit` callbacks to its
- * parent, and the outermost level runs them after it commits.
+ * Callbacks registered with `afterCommit` in one transaction level. A
+ * committed savepoint hands its callbacks to its parent, and the outermost
+ * level runs them after it commits. `open` is false once the level's body
+ * exits.
  */
-interface TransactionLevel {
+interface AfterCommitBuffer {
   readonly callbacks: Array<Effect.Effect<void>>
-  readonly parent: TransactionLevel | undefined
+  readonly parent: AfterCommitBuffer | undefined
   open: boolean
 }
 
 /**
  * Keyed by the transaction service value of each level, so removing the
- * transaction service also hides its state, and a transaction that
+ * transaction service also hides its buffer, and a transaction that
  * `makeWithTransaction` didn't start has none.
  */
-const transactionLevels = new WeakMap<object, TransactionLevel>()
+const afterCommitBuffers = new WeakMap<object, AfterCommitBuffer>()
 
 /**
  * Whether a level or one of its parents has ended. Forked fibers keep a level
  * in their context after it ends.
  */
-const hasEnded = (level: TransactionLevel | undefined): boolean => {
-  for (; level !== undefined; level = level.parent) {
-    if (!level.open) {
+const hasEnded = (buffer: AfterCommitBuffer | undefined): boolean => {
+  for (; buffer !== undefined; buffer = buffer.parent) {
+    if (!buffer.open) {
       return true
     }
   }
   return false
 }
 
-const transactionEndedError = (operation: string) =>
-  new SqlError({
-    reason: new UnknownError({
-      cause: undefined,
-      message: "SqlClient: the transaction has already ended",
-      operation
+const transactionEnded = Effect.suspend(() =>
+  Effect.fail(
+    new SqlError({
+      reason: new UnknownError({ cause: undefined, message: "SqlClient: the transaction has already ended" })
     })
-  })
+  )
+)
 
-/**
- * Runs `onSome` with the connection of the transaction in the fiber's context,
- * or `onNone` outside a transaction. Fails when that transaction has ended.
- */
-const withTransactionConnection = <I, S, A, E, R>(
-  transactionService: Context.Key<I, readonly [conn: S, counter: number]>,
-  onNone: () => Effect.Effect<A, E, R>,
-  onSome: (conn: S) => Effect.Effect<A, E, R>
-): Effect.Effect<A, E | SqlError, R> =>
-  Effect.withFiber<A, E | SqlError, R>((fiber) => {
-    const transaction = Context.getOrUndefined(fiber.context, transactionService)
-    if (transaction === undefined) {
-      return onNone()
-    }
-    return hasEnded(transactionLevels.get(transaction))
-      ? Effect.fail(transactionEndedError("query"))
-      : onSome(transaction[0])
-  })
+/** The connection of a transaction level, failing once the level has ended. */
+const transactionConnection = <S>(transaction: readonly [conn: S, counter: number]): Effect.Effect<S, SqlError> =>
+  hasEnded(afterCommitBuffers.get(transaction)) ? transactionEnded : Effect.succeed(transaction[0])
 
 const runAfterCommit = <R>(effect: Effect.Effect<void, never, R>): Effect.Effect<void, never, R> =>
   Effect.ignoreCause(effect, { log: "Unhandled", message: "Unhandled error in SqlClient.afterCommit callback" })
@@ -585,16 +582,16 @@ const makeAfterCommit =
   <R>(effect: Effect.Effect<void, never, R>): Effect.Effect<void, never, R> =>
     Effect.withFiber((fiber) => {
       const transaction = Context.getOrUndefined(fiber.context, transactionService)
-      const level = transaction && transactionLevels.get(transaction)
+      const buffer = transaction && afterCommitBuffers.get(transaction)
       // Outside a transaction, or in one that doesn't buffer callbacks.
-      if (level === undefined) {
+      if (buffer === undefined) {
         return runAfterCommit(effect)
       }
-      if (hasEnded(level)) {
+      if (hasEnded(buffer)) {
         return Effect.die(new Error("SqlClient.afterCommit: the transaction has already ended"))
       }
       // Runs later with the services in scope now, without the transaction.
-      level.callbacks.push(
+      buffer.callbacks.push(
         Effect.provideContext(effect, Context.omit(transactionService)(fiber.context) as Context.Context<R>)
       )
       return Effect.void
@@ -694,18 +691,12 @@ export const makeWithTransaction = <I, S>(options: {
                   return effect
                 }
               )
-            const parent = Context.getOrUndefined(services, options.transactionService)
-            const level: TransactionLevel = {
-              callbacks: [],
-              parent: parent !== undefined ? transactionLevels.get(parent) : undefined,
-              open: true
-            }
-            // Checked under the savepoint permit: the parent can end while we wait.
-            const conn: Effect.Effect<readonly [Scope.Closeable | undefined, S], SqlError> = parent !== undefined
-              ? Effect.suspend(() =>
-                hasEnded(level.parent)
-                  ? Effect.fail(transactionEndedError("savepoint"))
-                  : Effect.succeed([undefined, parent[0]] as const)
+            const connOption = Context.getOption(services, options.transactionService)
+            const conn: Effect.Effect<readonly [Scope.Closeable | undefined, S], SqlError> = connOption._tag === "Some"
+              // Checked under the savepoint permit: the parent can end while we wait.
+              ? Effect.map(
+                Effect.suspend(() => transactionConnection(connOption.value)),
+                (conn) => [undefined, conn] as const
               )
               : Effect.flatMap(Scope.make(), (scope) =>
                 Scope.provide(options.acquireConnection(restore), scope).pipe(
@@ -716,7 +707,12 @@ export const makeWithTransaction = <I, S>(options: {
                   }),
                   Effect.onError((cause) => Scope.close(scope, Exit.failCause(cause)))
                 ))
-            const id = parent !== undefined ? parent[1] + 1 : 0
+            const id = connOption._tag === "Some" ? connOption.value[1] + 1 : 0
+            const buffer: AfterCommitBuffer = {
+              callbacks: [],
+              parent: connOption._tag === "Some" ? afterCommitBuffers.get(connOption.value) : undefined,
+              open: true
+            }
             let committed = false
             const start = (conn: S) =>
               id === 0
@@ -729,13 +725,13 @@ export const makeWithTransaction = <I, S>(options: {
               ) =>
                 start(conn).pipe(
                   Effect.flatMap(() => {
-                    const service = [conn, id] as const
-                    transactionLevels.set(service, level)
+                    const level = [conn, id] as const
+                    afterCommitBuffers.set(level, buffer)
                     return Effect.onExitPrimitive(
                       Effect.provideContext(
                         restore(effect),
                         services.pipe(
-                          Context.add(options.transactionService, service),
+                          Context.add(options.transactionService, level),
                           Context.add(CurrentTransactionService, options.transactionService),
                           reactivity ? Context.add(Reactivity, deferInvalidations(reactivity)) : identity,
                           Context.add(transactionSemaphore, Semaphore.makeUnsafe(1)),
@@ -743,11 +739,11 @@ export const makeWithTransaction = <I, S>(options: {
                         )
                       ),
                       (exit) => {
-                        level.open = false
+                        buffer.open = false
                         // The savepoint ended with its parent, and the connection
                         // may already be in another transaction.
-                        if (hasEnded(level.parent)) {
-                          return Exit.isSuccess(exit) ? Effect.fail(transactionEndedError("savepoint")) : exit
+                        if (hasEnded(buffer.parent)) {
+                          return Exit.isSuccess(exit) ? transactionEnded : exit
                         }
                         let effect: Effect.Effect<void, SqlError>
                         if (Exit.isSuccess(exit)) {
@@ -793,14 +789,14 @@ export const makeWithTransaction = <I, S>(options: {
             )
             // Runs once the connection is released, whether or not that succeeded.
             const settled = Effect.onExitPrimitive(transaction, () => {
-              if (!committed || level.callbacks.length === 0) {
+              if (!committed || buffer.callbacks.length === 0) {
                 return undefined
               }
-              if (level.parent !== undefined) {
-                level.parent.callbacks.push(...level.callbacks)
+              if (buffer.parent !== undefined) {
+                buffer.parent.callbacks.push(...buffer.callbacks)
                 return undefined
               }
-              return Effect.forEach(level.callbacks, runAfterCommit, { discard: true })
+              return Effect.forEach(buffer.callbacks, runAfterCommit, { discard: true })
             }, true)
             return id === 0
               ? settled
