@@ -317,9 +317,9 @@ export const get: {
                   Deferred.doneUnsafe(deferred, exit)
                   return Scope.close(scope, exit)
                 }
-                // Owner close has already released this entry's scope.
                 if (self.state._tag === "Closed") {
                   Deferred.doneUnsafe(deferred, effect.exitInterrupt())
+                  // Detached entries may not have been closed by owner shutdown.
                   return Scope.close(scope, effect.exitVoid)
                 }
                 try {
