@@ -31,6 +31,7 @@
     "packages/platform/node/",
     "packages/platform/node-shared/",
     "packages/tools/",
+    "packages/ui/",
     "packages/sql"
   ]
 }
