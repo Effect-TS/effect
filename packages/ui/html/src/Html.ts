@@ -698,7 +698,7 @@ const withElement = <A>(
         : Effect.map(Effect.service(Host), (host) => Option.some(f(host, node.value as globalThis.Element)))))
 
 /**
- * The Command behind `focus`, for `Story.resolve(Html.Focus, { found })`.
+ * The Command behind `focus`, for a story's `.resolve(Html.Focus, { found })`.
  *
  * @stability experimental
  * @category refs

@@ -185,7 +185,7 @@ const target = (route: { readonly _tag: string }): Target => ({ [TargetTypeId]: 
 
 /**
  * The Command behind `push`. Use `push`, which types the route value; the
- * class is what a Layer fake or `Story.resolve` names.
+ * class is what a Layer fake or a story's `resolve` step names.
  *
  * @stability experimental
  * @category commands
@@ -198,7 +198,7 @@ export class Push extends Command.Service<Push>()(
 
 /**
  * The Command behind `replace`. Use `replace`, which types the route value;
- * the class is what a Layer fake or `Story.resolve` names.
+ * the class is what a Layer fake or a story's `resolve` step names.
  *
  * @stability experimental
  * @category commands

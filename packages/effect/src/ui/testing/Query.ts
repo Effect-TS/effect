@@ -211,8 +211,8 @@ export interface Firable extends Node {
  * **Details**
  *
  * Payloads are plain data shaped by the vocabulary, such as `{ value }` for
- * `input`. A story's view value has no host, so story tests use
- * `Story.fire` instead.
+ * `input`. A story's view value has no host, so story tests use the
+ * `fire` and `click` steps of `Story.Steps` instead.
  *
  * @stability experimental
  * @category events

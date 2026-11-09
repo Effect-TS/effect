@@ -30,12 +30,8 @@ const Counter = Component.make({
     h.el("div", h.el("button", "+").on("click", Message.make({ _tag: "Increment" })), String(model.count))
 })
 
-Story.make(
-  Counter,
-  {},
-  Story.click("+"),
-  Story.model((model) => {
+Story.make(Counter, {}, (s) =>
+  s.click("+").model((model) => {
     if (model.count !== 1) throw new Error("expected 1")
-  })
-)
+  }))
 ```
