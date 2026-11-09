@@ -4526,7 +4526,7 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `Generated.OpenAIResponsesTruncation` -> `Generated.OpenAIResponsesTruncation`: Still generated in v4 from the current OpenRouter specification; re-check the schema's Type/Encoded shape because the generated definition changed.
 
-- `Generated.OpenAIResponsesUsage` -> `Generated.OpenAIResponsesUsage`: Still generated in v4 from the current OpenRouter specification; re-check the schema's Type/Encoded shape because the generated definition changed.
+- `Generated.OpenAIResponsesUsage` -> `none`: Removed when the OpenRouter specification client was regenerated; the schema is now inlined into the `usage` field of `Generated.OpenResponsesResult`.
 
 - `Generated.OpenResponsesEasyInputMessage` -> `none`: Removed when the OpenRouter specification client was regenerated; use the current Generated request/response schema for the relevant endpoint instead of this old snapshot helper.
 
@@ -4750,7 +4750,7 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `Generated.ResponseTextConfigVerbosity` -> `none`: Removed when the OpenRouter specification client was regenerated; use the current Generated request/response schema for the relevant endpoint instead of this old snapshot helper.
 
-- `Generated.ResponsesErrorField` -> `Generated.ResponsesErrorField`: Still generated in v4 from the current OpenRouter specification; re-check the schema's Type/Encoded shape because the generated definition changed.
+- `Generated.ResponsesErrorField` -> `none`: Removed when the OpenRouter specification client was regenerated; the schema is now inlined into the `error` field of `Generated.OpenResponsesResult`.
 
 - `Generated.ResponsesErrorFieldCode` -> `none`: Removed when the OpenRouter specification client was regenerated; use the current Generated request/response schema for the relevant endpoint instead of this old snapshot helper.
 

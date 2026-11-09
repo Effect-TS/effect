@@ -84,11 +84,64 @@ describe("Generated", () => {
         session_id: null,
         provider_responses: null,
         user_agent: null,
-        web_search_engine: null
+        web_search_engine: null,
+        workspace_id: null
       }
     }
 
     deepStrictEqual(Schema.decodeUnknownSync(Generated.GetGeneration200)(response), response)
+  })
+
+  it("decodes Responses output item fields and alignment error metadata", () => {
+    const response = {
+      id: "resp-test",
+      object: "response",
+      created_at: 1704067200,
+      completed_at: null,
+      model: "openai/gpt-5",
+      status: "failed",
+      error: {
+        code: "server_error",
+        message: "Alignment plugin: the reply could not be evaluated: evaluator_error",
+        metadata: { alignment: { calls: [{ call: 1, outcome: "unavailable", reason: "evaluator_error" }] } }
+      },
+      incomplete_details: null,
+      instructions: null,
+      metadata: null,
+      temperature: null,
+      top_p: null,
+      presence_penalty: null,
+      frequency_penalty: null,
+      parallel_tool_calls: true,
+      tool_choice: "auto",
+      tools: [],
+      output: [
+        {
+          type: "reasoning",
+          id: "rs-1",
+          summary: [],
+          format: "anthropic-claude-v1",
+          signature: "sig"
+        },
+        {
+          type: "function_call",
+          call_id: "call-1",
+          name: "lookup",
+          arguments: "{}",
+          subagent_id: "call-0"
+        },
+        {
+          type: "apply_patch_call",
+          id: "ap-1",
+          call_id: "call-2",
+          status: "completed",
+          created_by: "user",
+          operation: { type: "delete_file", path: "a.txt" }
+        }
+      ]
+    } satisfies typeof Generated.OpenResponsesResult.Encoded
+
+    deepStrictEqual(Schema.decodeUnknownSync(Generated.OpenResponsesResult)(response), response)
   })
 
   it("preserves streamed usage cost fields", () => {

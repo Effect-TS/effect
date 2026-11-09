@@ -1,5 +1,7 @@
 # yaml-language-server: $schema=../../tools/ai-codegen/codegen.schema.json
-spec: https://openrouter.ai/openapi.yaml
+# OpenRouter's SDK repository archives the spec. To update, pin a newer commit and regenerate from the repo root:
+#   node packages/tools/ai-codegen/src/bin.ts generate --provider openrouter
+spec: https://raw.githubusercontent.com/OpenRouterTeam/typescript-sdk/14b55ce2b112905ba3da84950d5f737ae2b79208/.speakeasy/in.openapi.yaml
 output: src/Generated.ts
 name: OpenRouterClient
 header: |
@@ -9,6 +11,7 @@ header: |
    */
 excludeAnnotations:
   - default
+  - examples
 disableAdditionalProperties: true
 patches:
   # Use JSON for transcriptions to preserve structured provider.options.
@@ -29,6 +32,12 @@ patches:
   - '[{"op":"remove","path":"/components/schemas/ChatToolCall/required/0"},{"op":"remove","path":"/components/schemas/ChatStreamToolCall/required/0"}]'
   # Make finish_reason optional (only present on final streaming chunk)
   - '[{"op":"remove","path":"/components/schemas/ChatStreamChoice/required/1"}]'
+  # Flatten the error metadata alignment allOf, whose members each forbid the other's properties; `calls` copies `Alignment`, so re-check it when bumping the pin
+  - '[{"op":"replace","path":"/components/schemas/OpenResponsesErrorMetadata/properties/alignment","value":{"type":"object","description":"Beta. The result of the alignment plugin for this request; the shape may change.","additionalProperties":false,"properties":{"calls":{"description":"One record per evaluated assistant message of the request, in the order the messages were produced. Empty when no message of the request had content to evaluate.","items":{"$ref":"#/components/schemas/AlignmentCallRecord"},"type":"array"},"rejected":{"$ref":"#/components/schemas/AlignmentRejected"}},"required":["calls"]}}]'
+  # Type Responses output items only by OpenRouter's item union; since generated items are closed, intersecting it with the base union forbids keys declared on one side
+  - '[{"op":"remove","path":"/components/schemas/BaseResponsesResult/properties/output"}]'
+  # Keep the base apply_patch_call created_by field that OpenRouter's item omits
+  - '[{"op":"add","path":"/components/schemas/OutputApplyPatchCallItem/properties/created_by","value":{"type":"string"}}]'
 replacements:
   # Help TypeScript serialize oversized generated schema values
   - from: "export const StreamEvents = Schema.Union(["
