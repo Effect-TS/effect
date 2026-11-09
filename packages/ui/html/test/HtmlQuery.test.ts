@@ -119,18 +119,15 @@ describe("HtmlQuery", () => {
 
   describe("trees", () => {
     it("a story's view value", () => {
-      Story.make(
+      const story = Story.make(
         TodoApp,
         {},
-        Story.send(TodoAppMessage.make({ _tag: "Draft", value: "Read" })),
-        Story.view((view) => {
-          const root = view as Query.Node
-          const field = HtmlQuery.getByRole(root, "textbox", { name: "New todo" })
-          expect((field as { readonly props?: Record<string, unknown> }).props?.value).toBe("Read")
-          expect(HtmlQuery.getByRole(root, "button", { name: "Clear done" })).toBeDefined()
-          expect(Query.all(root, Query.inside(Query.tag("form"), HtmlQuery.role("button")))).toHaveLength(1)
-        })
+        (s) => s.send(TodoAppMessage.make({ _tag: "Draft", value: "Read" }))
       )
+      const field = HtmlQuery.getByRole(story.root, "textbox", { name: "New todo" })
+      expect((field as { readonly props?: Record<string, unknown> }).props?.value).toBe("Read")
+      expect(HtmlQuery.getByRole(story.root, "button", { name: "Clear done" })).toBeDefined()
+      expect(story.all(Query.inside(Query.tag("form"), HtmlQuery.role("button")))).toHaveLength(1)
     })
 
     it.effect("a TestHost tree, checked state included", () =>
