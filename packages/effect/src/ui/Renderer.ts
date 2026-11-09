@@ -226,8 +226,8 @@ export type HostOf<V> = [V] extends [never] ? never : V extends View.Elements ? 
  * @category constructors
  * @since 4.1.3
  */
-export const mount: <Name extends string, Props, Model, Msg, Emits, R, V extends View.Elements, RF = never>(
-  component: Component.Component<Name, Props, Model, Msg, Emits, R, V>,
+export const mount: <Name extends string, Props, Model, Msg, Events, R, V extends View.Elements, RF = never>(
+  component: Component.Component<Name, Props, Model, Msg, Events, R, V>,
   props: Props,
   container: unknown,
   options?: {

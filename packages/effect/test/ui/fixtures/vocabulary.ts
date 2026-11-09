@@ -13,8 +13,8 @@ export interface TinyHost {
   readonly TinyHost: unique symbol
 }
 
-export class TinyElement<out Msg, out R = never, in out Events = Record<string, unknown>, in out Node = unknown>
-  extends View.ElementBuilder<Msg, R, Events, Node>
+export class TinyElement<out Msg, out R = never, in out Handlers = Record<string, unknown>, in out Node = unknown>
+  extends View.ElementBuilder<Msg, R, Handlers, Node>
 {
   value(value: string): this {
     return this.prop("value", value)

@@ -91,7 +91,7 @@ export type FailureSource =
   | "init"
   | "update"
   | "view"
-  | "event"
+  | "domEvent"
   | "mount"
   | "command"
   | "subscription"
@@ -118,7 +118,7 @@ export interface Issued {
  *
  * **Details**
  *
- * `Event` is a view handler. `Command` is a Command's result, pointing at
+ * `DomEvent` is a view handler, such as a click. `Command` is a Command's result, pointing at
  * the entry that issued it and at its span. `Subscription` is a keyed
  * Subscription. `Emit` is a child's emit, pointing at the child's entry.
  * `Mount` is an `onMount` result, and `Dispatch` is a message sent from
@@ -129,7 +129,7 @@ export interface Issued {
  * @since 4.1.3
  */
 export type Source =
-  | { readonly _tag: "Event"; readonly name: string }
+  | { readonly _tag: "DomEvent"; readonly name: string }
   | {
     readonly _tag: "Command"
     readonly name: string
@@ -159,7 +159,7 @@ export interface Base {
 
 /**
  * One `update` call: the message, what sent it, the props it saw, the Model
- * after it, and the Commands and emits it returned.
+ * after it, and the Commands and events it returned.
  *
  * @stability experimental
  * @category models
@@ -174,7 +174,7 @@ export interface Update extends Base {
   readonly props: unknown
   readonly model: unknown
   readonly commands: ReadonlyArray<Command.Command<any, any>>
-  readonly emits: ReadonlyArray<unknown>
+  readonly events: ReadonlyArray<unknown>
 }
 
 /**
@@ -191,7 +191,7 @@ export interface Mounted extends Base {
   readonly props: unknown
   readonly model: unknown
   readonly commands: ReadonlyArray<Command.Command<any, any>>
-  readonly emits: ReadonlyArray<unknown>
+  readonly events: ReadonlyArray<unknown>
   readonly adopted: boolean
 }
 
@@ -427,7 +427,7 @@ const CommandWire = Schema.Struct({
 })
 const CauseWire = Schema.Struct({ pretty: Schema.String, reasons: Schema.Array(Schema.Json) })
 const SourceWire = Schema.Union([
-  Schema.TaggedStruct("Event", { name: Schema.String }),
+  Schema.TaggedStruct("DomEvent", { name: Schema.String }),
   Schema.TaggedStruct("Command", {
     name: Schema.String,
     issued: IssuedWire,
@@ -446,7 +446,7 @@ const SourceWire = Schema.Union([
  *
  * **Details**
  *
- * Models, messages, props and emits are encoded through the component's
+ * Models, messages, props and events are encoded through the component's
  * Schemas. Command args are encoded structurally, best effort: a value with
  * no JSON form becomes `{ "~unserialisable": "<kind>" }`, a `Redacted`
  * becomes `{ "~redacted": true }`, and a Model over `maxEntryBytes` becomes
@@ -468,7 +468,7 @@ export const Wire = Schema.Union([
     props: Schema.Json,
     model: Schema.Json,
     commands: Schema.Array(CommandWire),
-    emits: Schema.Array(Schema.Json)
+    events: Schema.Array(Schema.Json)
   }),
   Schema.TaggedStruct("Mounted", {
     ...Seq,
@@ -476,7 +476,7 @@ export const Wire = Schema.Union([
     props: Schema.Json,
     model: Schema.Json,
     commands: Schema.Array(CommandWire),
-    emits: Schema.Array(Schema.Json),
+    events: Schema.Array(Schema.Json),
     adopted: Schema.Boolean
   }),
   Schema.Struct({ _tag: Schema.Literals(["Unmounted", "LayerPending", "LayerReady"]), ...Seq }),
@@ -583,7 +583,7 @@ export const makeEncoder = (options?: {
   const maxEntryBytes = options?.maxEntryBytes ?? Infinity
   const warned = new Set<string>()
   const encoders = new WeakMap<Schema.Top, (value: unknown) => unknown>()
-  const through = (component: Component.Any, field: "props" | "model" | "message" | "emits", value: unknown) => {
+  const through = (component: Component.Any, field: "props" | "model" | "message" | "events", value: unknown) => {
     const schema = component[field] as Schema.Top
     let encode = encoders.get(schema)
     if (encode === undefined) {
@@ -622,7 +622,7 @@ export const makeEncoder = (options?: {
             props: through(entry.component, "props", entry.props) as Schema.Json,
             model: model(entry.component, entry.model),
             commands: entry.commands.map(encodeCommand),
-            emits: entry.emits.map((emitted) => through(entry.component, "emits", emitted) as Schema.Json)
+            events: entry.events.map((emitted) => through(entry.component, "events", emitted) as Schema.Json)
           }
         case "Mounted":
           return {
@@ -632,7 +632,7 @@ export const makeEncoder = (options?: {
             props: through(entry.component, "props", entry.props) as Schema.Json,
             model: model(entry.component, entry.model),
             commands: entry.commands.map(encodeCommand),
-            emits: entry.emits.map((emitted) => through(entry.component, "emits", emitted) as Schema.Json),
+            events: entry.events.map((emitted) => through(entry.component, "events", emitted) as Schema.Json),
             adopted: entry.adopted
           }
         case "LayerFailed":

@@ -91,14 +91,14 @@ export interface Pending<Msg> {
  * @category models
  * @since 4.1.3
  */
-export interface Story<Props, Model, Msg, Emits> {
-  readonly component: Component.Component<any, Props, Model, Msg, Emits, any, any>
+export interface Story<Props, Model, Msg, Events> {
+  readonly component: Component.Component<any, Props, Model, Msg, Events, any, any>
   readonly props: Props
   readonly model: Model
   /** Commands issued but not yet resolved, oldest first. */
   readonly pending: ReadonlyArray<Pending<Msg>>
   /** Everything emitted to the parent so far. */
-  readonly emitted: ReadonlyArray<Emits>
+  readonly emitted: ReadonlyArray<Events>
   /** Commands interrupted by `switch`, by an interrupt Command, or by `given`. */
   readonly interrupted: ReadonlyArray<Command.Effectful<Msg, any, never> | Command.Streaming<Msg, any, never>>
   /** Commands ignored by `mode: "drop"`. */
@@ -116,7 +116,9 @@ export interface Story<Props, Model, Msg, Emits> {
  * @category models
  * @since 4.1.3
  */
-export type Step<Props, Model, Msg, Emits> = (story: Story<Props, Model, Msg, Emits>) => Story<Props, Model, Msg, Emits>
+export type Step<Props, Model, Msg, Events> = (
+  story: Story<Props, Model, Msg, Events>
+) => Story<Props, Model, Msg, Events>
 
 /**
  * A step that works for any component.
@@ -125,16 +127,16 @@ export type Step<Props, Model, Msg, Emits> = (story: Story<Props, Model, Msg, Em
  * @category models
  * @since 4.1.3
  */
-export type AnyStep = <Props, Model, Msg, Emits>(
-  story: Story<Props, Model, Msg, Emits>
-) => Story<Props, Model, Msg, Emits>
+export type AnyStep = <Props, Model, Msg, Events>(
+  story: Story<Props, Model, Msg, Events>
+) => Story<Props, Model, Msg, Events>
 
-const update = <Props, Model, Msg, Emits>(
-  story: Story<Props, Model, Msg, Emits>,
+const update = <Props, Model, Msg, Events>(
+  story: Story<Props, Model, Msg, Events>,
   patch: Partial<
-    Pick<Story<Props, Model, Msg, Emits>, "props" | "model" | "pending" | "emitted" | "interrupted" | "dropped">
+    Pick<Story<Props, Model, Msg, Events>, "props" | "model" | "pending" | "emitted" | "interrupted" | "dropped">
   >
-): Story<Props, Model, Msg, Emits> => {
+): Story<Props, Model, Msg, Events> => {
   const model = "model" in patch ? patch.model as Model : story.model
   const props = "props" in patch ? patch.props as Props : story.props
   // A defect in `view` fails the step that changed the Model or props.
@@ -156,11 +158,11 @@ const toEntries = <Msg>(pending: ReadonlyArray<Pending<Msg>>): Array<schedule.En
     value: entry
   }))
 
-/** Applies what `init` or `update` returned: the Model, the Commands through `schedule`, and the emits. */
-const apply = <Props, Model, Msg, Emits>(
-  story: Story<Props, Model, Msg, Emits>,
-  next: Component.Next<Model, Msg, Emits, any>
-): Story<Props, Model, Msg, Emits> => {
+/** Applies what `init` or `update` returned: the Model, the Commands through `schedule`, and the events. */
+const apply = <Props, Model, Msg, Events>(
+  story: Story<Props, Model, Msg, Events>,
+  next: Component.Next<Model, Msg, Events, any>
+): Story<Props, Model, Msg, Events> => {
   let pending = story.pending
   const interrupted = [...story.interrupted]
   const dropped = [...story.dropped]
@@ -189,17 +191,17 @@ const apply = <Props, Model, Msg, Emits>(
   return update(story, {
     model: next.model,
     pending,
-    emitted: [...story.emitted, ...next.emits],
+    emitted: [...story.emitted, ...next.events],
     interrupted,
     dropped
   })
 }
 
 /** Removes a resolved run and starts the next queued run of its group, if any. */
-const complete = <Props, Model, Msg, Emits>(
-  story: Story<Props, Model, Msg, Emits>,
+const complete = <Props, Model, Msg, Events>(
+  story: Story<Props, Model, Msg, Events>,
   entry: Pending<Msg>
-): Story<Props, Model, Msg, Emits> => {
+): Story<Props, Model, Msg, Events> => {
   const remaining = story.pending.filter((other) => other !== entry)
   const ended = toEntries([entry])[0]
   const next = schedule.next(toEntries(remaining), ended)
@@ -253,11 +255,11 @@ const findRunning = (story: Story<any, any, any, any>, target: Target, step: str
  * @category constructors
  * @since 4.1.3
  */
-export const make = <Props, Model, Msg, Emits>(
-  component: Component.Component<any, Props, Model, Msg, Emits, any, any>,
+export const make = <Props, Model, Msg, Events>(
+  component: Component.Component<any, Props, Model, Msg, Events, any, any>,
   props: Props,
-  ...steps: ReadonlyArray<Step<Props, Model, Msg, Emits>>
-): Story<Props, Model, Msg, Emits> => {
+  ...steps: ReadonlyArray<Step<Props, Model, Msg, Events>>
+): Story<Props, Model, Msg, Events> => {
   const story = run(start(component, props), ...steps)
   if (story.pending.length > 0) {
     throw new Error(`Story.make: Commands still pending at the end: ${describePending(story.pending)}`)
@@ -272,13 +274,13 @@ export const make = <Props, Model, Msg, Emits>(
  * @category constructors
  * @since 4.1.3
  */
-export const start = <Props, Model, Msg, Emits>(
-  component: Component.Component<any, Props, Model, Msg, Emits, any, any>,
+export const start = <Props, Model, Msg, Events>(
+  component: Component.Component<any, Props, Model, Msg, Events, any, any>,
   props: Props
-): Story<Props, Model, Msg, Emits> => {
+): Story<Props, Model, Msg, Events> => {
   const first = component.init(props)
   const view = component.view(first.model, props)
-  const empty: Story<Props, Model, Msg, Emits> = {
+  const empty: Story<Props, Model, Msg, Events> = {
     component,
     props,
     model: first.model,
@@ -299,10 +301,10 @@ export const start = <Props, Model, Msg, Emits>(
  * @category combinators
  * @since 4.1.3
  */
-export const run = <Props, Model, Msg, Emits>(
-  story: Story<Props, Model, Msg, Emits>,
-  ...steps: ReadonlyArray<Step<Props, Model, Msg, Emits>>
-): Story<Props, Model, Msg, Emits> => steps.reduce((story, step) => step(story), story)
+export const run = <Props, Model, Msg, Events>(
+  story: Story<Props, Model, Msg, Events>,
+  ...steps: ReadonlyArray<Step<Props, Model, Msg, Events>>
+): Story<Props, Model, Msg, Events> => steps.reduce((story, step) => step(story), story)
 
 /**
  * Groups steps into one, for a shared setup.
@@ -311,9 +313,9 @@ export const run = <Props, Model, Msg, Emits>(
  * @category steps
  * @since 4.1.3
  */
-export const steps = <Props, Model, Msg, Emits>(
-  ...steps: ReadonlyArray<Step<Props, Model, Msg, Emits>>
-): Step<Props, Model, Msg, Emits> =>
+export const steps = <Props, Model, Msg, Events>(
+  ...steps: ReadonlyArray<Step<Props, Model, Msg, Events>>
+): Step<Props, Model, Msg, Events> =>
 (story) => run(story, ...steps)
 
 /**
@@ -323,7 +325,7 @@ export const steps = <Props, Model, Msg, Emits>(
  * @category steps
  * @since 4.1.3
  */
-export const given = <Props, Model, Msg, Emits>(model: NoInfer<Model>): Step<Props, Model, Msg, Emits> => (story) =>
+export const given = <Props, Model, Msg, Events>(model: NoInfer<Model>): Step<Props, Model, Msg, Events> => (story) =>
   update(story, { model, pending: [], emitted: [], interrupted: [], dropped: [] })
 
 /**
@@ -334,15 +336,15 @@ export const given = <Props, Model, Msg, Emits>(model: NoInfer<Model>): Step<Pro
  * @category steps
  * @since 4.1.3
  */
-export const props = <Props, Model, Msg, Emits>(
+export const props = <Props, Model, Msg, Events>(
   next: NoInfer<Props> | ((props: Props) => Props)
-): Step<Props, Model, Msg, Emits> =>
+): Step<Props, Model, Msg, Events> =>
 (story) => update(story, { props: typeof next === "function" ? (next as (props: Props) => Props)(story.props) : next })
 
-const dispatch = <Props, Model, Msg, Emits>(
-  story: Story<Props, Model, Msg, Emits>,
+const dispatch = <Props, Model, Msg, Events>(
+  story: Story<Props, Model, Msg, Events>,
   message: Msg | undefined
-): Story<Props, Model, Msg, Emits> =>
+): Story<Props, Model, Msg, Events> =>
   message === undefined ? story : apply(story, story.component.update(story.model, message, story.props))
 
 /**
@@ -352,7 +354,7 @@ const dispatch = <Props, Model, Msg, Emits>(
  * @category steps
  * @since 4.1.3
  */
-export const send = <Props, Model, Msg, Emits>(message: NoInfer<Msg>): Step<Props, Model, Msg, Emits> => (story) =>
+export const send = <Props, Model, Msg, Events>(message: NoInfer<Msg>): Step<Props, Model, Msg, Events> => (story) =>
   dispatch(story, message)
 
 /**
@@ -413,7 +415,7 @@ export const fire = <Payload>(
  * @since 4.1.3
  */
 export const model =
-  <Props, Model, Msg, Emits>(f: (model: Model) => void): Step<Props, Model, Msg, Emits> => (story) => {
+  <Props, Model, Msg, Events>(f: (model: Model) => void): Step<Props, Model, Msg, Events> => (story) => {
     f(story.model)
     return story
   }
@@ -425,9 +427,9 @@ export const model =
  * @category steps
  * @since 4.1.3
  */
-export const view = <Props, Model, Msg, Emits>(
+export const view = <Props, Model, Msg, Events>(
   f: (view: View.Node<Msg, any>) => void
-): Step<Props, Model, Msg, Emits> =>
+): Step<Props, Model, Msg, Events> =>
 (story) => {
   f(story.view())
   return story
@@ -440,9 +442,9 @@ export const view = <Props, Model, Msg, Emits>(
  * @category steps
  * @since 4.1.3
  */
-export const emitted = <Props, Model, Msg, Emits>(
-  f: (emitted: ReadonlyArray<Emits>) => void
-): Step<Props, Model, Msg, Emits> =>
+export const emitted = <Props, Model, Msg, Events>(
+  f: (emitted: ReadonlyArray<Events>) => void
+): Step<Props, Model, Msg, Events> =>
 (story) => {
   f(story.emitted)
   return story
@@ -468,9 +470,9 @@ export const subscriptions = (f: (keys: ReadonlyArray<string>) => void): AnyStep
  * @category steps
  * @since 4.1.3
  */
-export const check = <Props, Model, Msg, Emits>(
-  f: (story: Story<Props, Model, Msg, Emits>) => void
-): Step<Props, Model, Msg, Emits> =>
+export const check = <Props, Model, Msg, Events>(
+  f: (story: Story<Props, Model, Msg, Events>) => void
+): Step<Props, Model, Msg, Events> =>
 (story) => {
   f(story)
   return story
@@ -617,15 +619,15 @@ const findChild = <Msg>(view: View.Node<Msg, any>, key: string, step: string): V
 }
 
 /**
- * Sends the message the parent's `onEmit` maps `emits` from the child with
+ * Sends the message the parent's `onEmit` maps `events` from the child with
  * `key` to, if any.
  *
  * @stability experimental
  * @category steps
  * @since 4.1.3
  */
-export const childEmit = (key: string, emits: unknown): AnyStep => (story) => {
-  return dispatch(story, findChild(story.view(), key, "childEmit").onEmit(emits))
+export const childEmit = (key: string, events: unknown): AnyStep => (story) => {
+  return dispatch(story, findChild(story.view(), key, "childEmit").onEmit(events))
 }
 
 /**
@@ -677,18 +679,18 @@ export const layerFailure = <C extends Component.Any>(
  *
  * **Details**
  *
- * `recorded` and `recomputed` hold the Model, the emits and the Commands
+ * `recorded` and `recomputed` hold the Model, the events and the Commands
  * (encoded the way the Wire encodes them) after the message in entry `seq`.
  *
  * @stability experimental
  * @category models
  * @since 4.1.3
  */
-export interface Divergence<Model, Msg, Emits> {
+export interface Divergence<Model, Msg, Events> {
   readonly seq: number
   readonly message: Msg
-  readonly recorded: Outcome<Model, Emits>
-  readonly recomputed: Outcome<Model, Emits>
+  readonly recorded: Outcome<Model, Events>
+  readonly recomputed: Outcome<Model, Events>
 }
 
 /**
@@ -698,9 +700,9 @@ export interface Divergence<Model, Msg, Emits> {
  * @category models
  * @since 4.1.3
  */
-export interface Outcome<Model, Emits> {
+export interface Outcome<Model, Events> {
   readonly model: Model
-  readonly emits: ReadonlyArray<Emits>
+  readonly events: ReadonlyArray<Events>
   readonly commands: ReadonlyArray<ReturnType<typeof MessageLog.encodeCommand>>
 }
 
@@ -712,11 +714,11 @@ export interface Outcome<Model, Emits> {
  * @category models
  * @since 4.1.3
  */
-export interface Replay<Model, Msg, Emits> {
+export interface Replay<Model, Msg, Events> {
   readonly path: string
   readonly model: Model
   readonly replayed: number
-  readonly divergence: Divergence<Model, Msg, Emits> | undefined
+  readonly divergence: Divergence<Model, Msg, Events> | undefined
 }
 
 const placeholders = ["~unserialisable", "~redacted", "~truncated"]
@@ -740,7 +742,7 @@ const findPlaceholder = (value: unknown): string | undefined => {
  * the path (the first one logged for a component with this name, unless
  * `path` is given), takes its Model, and re-runs every following message with
  * the props it was recorded with. Commands are compared, never run. Models and
- * emits are compared with `Schema.toEquivalence`, and Commands by their Wire
+ * events are compared with `Schema.toEquivalence`, and Commands by their Wire
  * encoding.
  *
  * It takes live entries or Wire frames. A Wire value sent as a placeholder,
@@ -750,11 +752,11 @@ const findPlaceholder = (value: unknown): string | undefined => {
  * @category replay
  * @since 4.1.3
  */
-export const fromLog = <Name extends string, Props, Model, Msg, Emits, R, V extends View.Elements>(
-  component: Component.Component<Name, Props, Model, Msg, Emits, R, V>,
+export const fromLog = <Name extends string, Props, Model, Msg, Events, R, V extends View.Elements>(
+  component: Component.Component<Name, Props, Model, Msg, Events, R, V>,
   entries: ReadonlyArray<MessageLog.Entry | MessageLog.Wire>,
   options?: { readonly path?: string | undefined }
-): Replay<Model, Msg, Emits> => {
+): Replay<Model, Msg, Events> => {
   const nameOf = (entry: MessageLog.Entry | MessageLog.Wire): string | undefined =>
     entry._tag === "Update" || entry._tag === "Mounted"
       ? typeof entry.component === "string" ? entry.component : entry.component.name
@@ -770,7 +772,7 @@ export const fromLog = <Name extends string, Props, Model, Msg, Emits, R, V exte
   const decoders = new Map<Schema.Top, (value: unknown) => unknown>()
   const decode = (
     entry: { readonly seq: number },
-    field: "props" | "model" | "message" | "emits",
+    field: "props" | "model" | "message" | "events",
     value: unknown
   ): any => {
     const schema = component[field] as Schema.Top
@@ -796,7 +798,7 @@ export const fromLog = <Name extends string, Props, Model, Msg, Emits, R, V exte
       return {
         props: entry.props as Props,
         model: entry.model as Model,
-        emits: entry.emits as ReadonlyArray<Emits>,
+        events: entry.events as ReadonlyArray<Events>,
         commands: (entry as MessageLog.Update).commands.map(MessageLog.encodeCommand),
         message: entry._tag === "Update" ? entry.message as Msg : undefined
       }
@@ -805,14 +807,14 @@ export const fromLog = <Name extends string, Props, Model, Msg, Emits, R, V exte
     return {
       props: decode(entry, "props", wire.props) as Props,
       model: decode(entry, "model", wire.model) as Model,
-      emits: wire.emits.map((emitted) => decode(entry, "emits", emitted)) as ReadonlyArray<Emits>,
+      events: wire.events.map((emitted) => decode(entry, "events", emitted)) as ReadonlyArray<Events>,
       commands: wire.commands,
       message: wire._tag === "Update" ? decode(entry, "message", wire.message) as Msg : undefined
     }
   }
 
   const sameModel = Schema.toEquivalence(component.model as Schema.Codec<Model, unknown>)
-  const sameEmits = Schema.toEquivalence(Schema.Array(component.emits as Schema.Codec<Emits, unknown>))
+  const sameEvents = Schema.toEquivalence(Schema.Array(component.events as Schema.Codec<Events, unknown>))
   const sameCommands = (a: ReadonlyArray<unknown>, b: ReadonlyArray<unknown>) => JSON.stringify(a) === JSON.stringify(b)
 
   let model = read(relevant[0]!).model
@@ -826,9 +828,9 @@ export const fromLog = <Name extends string, Props, Model, Msg, Emits, R, V exte
     }
     const next = component.update(model, recorded.message as Msg, recorded.props)
     replayed++
-    const recomputed = { model: next.model, emits: next.emits, commands: next.commands.map(MessageLog.encodeCommand) }
+    const recomputed = { model: next.model, events: next.events, commands: next.commands.map(MessageLog.encodeCommand) }
     if (
-      !sameModel(recomputed.model, recorded.model) || !sameEmits(recomputed.emits, recorded.emits) ||
+      !sameModel(recomputed.model, recorded.model) || !sameEvents(recomputed.events, recorded.events) ||
       !sameCommands(recomputed.commands, recorded.commands)
     ) {
       return {
@@ -838,7 +840,7 @@ export const fromLog = <Name extends string, Props, Model, Msg, Emits, R, V exte
         divergence: {
           seq: entry.seq,
           message: recorded.message as Msg,
-          recorded: { model: recorded.model, emits: recorded.emits, commands: recorded.commands },
+          recorded: { model: recorded.model, events: recorded.events, commands: recorded.commands },
           recomputed
         }
       }

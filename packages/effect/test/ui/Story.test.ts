@@ -10,7 +10,7 @@ import {
   SearchBox,
   SearchMessage,
   TodoItem,
-  TodoItemEmits,
+  TodoItemEvents,
   TodoItemMessage,
   TodoList,
   TodoListMessage,
@@ -51,7 +51,7 @@ describe("Story", () => {
         { todo },
         Story.click("[ ]"),
         Story.emitted((emitted) =>
-          assert.deepStrictEqual(emitted, [TodoItemEmits.make({ _tag: "Toggled", done: true })])
+          assert.deepStrictEqual(emitted, [TodoItemEvents.make({ _tag: "Toggled", done: true })])
         )
       )
     })
@@ -116,7 +116,7 @@ describe("Story", () => {
       Story.make(
         TodoList,
         { initial: todos },
-        Story.childEmit("t2", TodoItemEmits.make({ _tag: "Toggled", done: true })),
+        Story.childEmit("t2", TodoItemEvents.make({ _tag: "Toggled", done: true })),
         Story.model((model) => {
           assert.isTrue(model.todos[1].done)
           assert.isFalse(model.todos[0].done)
