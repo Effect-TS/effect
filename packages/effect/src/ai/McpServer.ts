@@ -31,6 +31,7 @@ import * as HttpServerRequest from "../http/HttpServerRequest.ts"
 import * as HttpServerResponse from "../http/HttpServerResponse.ts"
 import * as HttpTraceContext from "../http/HttpTraceContext.ts"
 import type * as JsonSchema from "../JsonSchema.ts"
+import * as Latch from "../Latch.ts"
 import * as Layer from "../Layer.ts"
 import * as Option from "../Option.ts"
 import * as Predicate from "../Predicate.ts"
@@ -1808,8 +1809,18 @@ const runWithRuntime = Effect.fnUntraced(function*(
     sessionHeaders: Headers.Headers | undefined
   }>()
   const activeRequests = new Map<number, Map<string, ActiveRequest>>()
+  const clientEnds = new Map<number, Latch.Latch>()
+  const clientEnd = (clientId: number) => {
+    let latch = clientEnds.get(clientId)
+    if (latch === undefined) {
+      latch = Latch.makeUnsafe()
+      clientEnds.set(clientId, latch)
+    }
+    return latch
+  }
   const reverseRequestClients = new Map<string, Array<McpClientKey>>()
   const disconnectClient = (clientId: number) => {
+    clientEnds.delete(clientId)
     activeRequests.delete(clientId)
     clientStates.delete(clientId)
     runtime.disconnect(clientId)
@@ -1900,6 +1911,7 @@ const runWithRuntime = Effect.fnUntraced(function*(
     getListChangeRevision: () => notificationDelivery.listChangeRevision,
     ...(!protocol.supportsNotifications || options.allowSubscriptions === false ? {} : {
       sendNotification,
+      awaitClientEnd: isHttp ? undefined : (clientId: number) => clientEnd(clientId).await,
       markSubscriptionCancelled: (clientId: number, requestId: RpcMessage.RequestId) =>
         Effect.sync(() => {
           cancelRequest(clientId, requestId)
@@ -2034,6 +2046,10 @@ const runWithRuntime = Effect.fnUntraced(function*(
 
   const patchedProtocol = RpcServer.Protocol.of({
     ...protocol,
+    end: (clientId) => {
+      if (!isHttp) disconnectClient(clientId)
+      return protocol.end(clientId)
+    },
     send: (clientId, response) => {
       if (response._tag === "Exit") {
         const requests = activeRequests.get(clientId)
@@ -2257,7 +2273,8 @@ const runWithRuntime = Effect.fnUntraced(function*(
             return f(clientId, request)
           case "Eof":
             if (!isHttp) {
-              disconnectClient(clientId)
+              // Keep the opened signal until responses drain, including listeners still starting up.
+              clientEnd(clientId).openUnsafe()
             }
             return f(clientId, request)
           case "Pong":

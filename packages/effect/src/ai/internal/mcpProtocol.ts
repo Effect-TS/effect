@@ -449,6 +449,7 @@ export interface HandlerInstallationContext {
     clientId: number,
     requestId: RpcMessage.RequestId
   ) => Effect.Effect<void>
+  readonly awaitClientEnd?: ((clientId: number) => Effect.Effect<void>) | undefined
   readonly supportedVersions: ReadonlyArray<string>
   readonly serverInfo: {
     readonly name: string

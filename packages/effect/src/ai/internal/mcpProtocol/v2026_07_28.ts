@@ -476,13 +476,19 @@ export const makeHandlers = (
           Effect.flatMap((notification) => sendNotification(McpSchema.protocolVersion, client.id, notification))
         )
       )
-      yield* Effect.race(deliver, Deferred.await(overflowed))
-      yield* context.terminateSubscription?.(
-        McpSchema.protocolVersion,
-        client.id,
-        requestId,
-        "Pending notification limit exceeded"
-      ) ?? Effect.void
+      const didOverflow = yield* Effect.raceAll([
+        deliver,
+        Deferred.await(overflowed).pipe(Effect.as(true)),
+        (context.awaitClientEnd?.(client.id) ?? Effect.never).pipe(Effect.as(false))
+      ])
+      if (didOverflow) {
+        yield* context.terminateSubscription?.(
+          McpSchema.protocolVersion,
+          client.id,
+          requestId,
+          "Pending notification limit exceeded"
+        ) ?? Effect.void
+      }
       const encodedServerInfo = yield* encodeImplementation(context.serverInfo)
       return McpSchema.SubscriptionsListenResult.make({
         _meta: {
