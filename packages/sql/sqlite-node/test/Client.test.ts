@@ -176,17 +176,16 @@ describe("Client", { concurrent: false }, () => {
       yield* sql`CREATE TABLE t (who TEXT)`
       const go = yield* Deferred.make<void>()
       const done = yield* Deferred.make<void>()
+      const idle = yield* Deferred.make<void>()
 
       const stale = yield* sql.withTransaction(Effect.forkChild(
-        Effect.andThen(
-          Deferred.await(go),
-          Effect.all([
-            Effect.flip(sql`INSERT INTO t VALUES ('stale fiber')`),
-            Effect.flip(sql.withTransaction(sql`INSERT INTO t VALUES ('stale nested')`))
-          ])
-        ).pipe(
-          Effect.ensuring(Deferred.succeed(done, undefined))
-        )
+        Effect.all([
+          Effect.andThen(Deferred.await(go), Effect.flip(sql`INSERT INTO t VALUES ('stale fiber')`)).pipe(
+            Effect.ensuring(Deferred.succeed(done, undefined))
+          ),
+          // On an idle connection, a stale SAVEPOINT would start a transaction and block the next BEGIN.
+          Effect.andThen(Deferred.await(idle), Effect.flip(sql.withTransaction(Effect.void)))
+        ])
       ))
       const other = yield* Effect.forkChild(Effect.exit(sql.withTransaction(Effect.gen(function*() {
         yield* sql`INSERT INTO t VALUES ('other transaction')`
@@ -195,8 +194,9 @@ describe("Client", { concurrent: false }, () => {
         return yield* Effect.fail("rollback")
       }))))
 
-      const errors = yield* Fiber.join(stale)
       yield* Fiber.join(other)
+      yield* Deferred.succeed(idle, undefined)
+      const errors = yield* Fiber.join(stale)
       for (const error of errors) {
         assert.deepStrictEqual(
           [error.reason._tag, error.reason.message, error.isRetryable],
