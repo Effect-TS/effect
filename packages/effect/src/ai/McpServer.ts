@@ -654,6 +654,11 @@ class Hidden extends Data.TaggedError("effect/ai/McpServer/Hidden")<{
   readonly message: string
 }> {}
 
+// Carries a pre-handler failure past `catchTags` without mixing its tag into those cases.
+class BeforeHandleFailure extends Data.TaggedError("BeforeHandleFailure")<{
+  readonly error: unknown
+}> {}
+
 const failHidden = Effect.fail(
   new Hidden({ code: McpSchema.INVALID_PARAMS_ERROR_CODE, message: "Not found" })
 ) as Effect.Effect<never>
@@ -1236,12 +1241,23 @@ export class McpServer extends Context.Service<McpServer, {
           }),
           visible: visible("tools/list", options.tool.name),
           isVisible: isEnabled(options.annotations),
-          handle: (call, invocation) =>
-            invoke(options.handle(call.arguments), invocation, {
-              method: "tools/call",
-              target: call.name,
-              payload: call
-            }).pipe(
+          handle: <E>(
+            call: typeof McpSchema.CallTool.payloadSchema.Type,
+            invocation: McpCore.McpInvocation,
+            beforeHandle: Effect.Effect<void, E>
+          ) =>
+            invoke(
+              Effect.andThen(
+                Effect.mapError(beforeHandle, (error) => new BeforeHandleFailure({ error })),
+                () => options.handle(call.arguments)
+              ),
+              invocation,
+              {
+                method: "tools/call",
+                target: call.name,
+                payload: call
+              }
+            ).pipe(
               Effect.catchTags({
                 InternalError: (error) =>
                   Effect.fail(
@@ -1261,6 +1277,7 @@ export class McpServer extends Context.Service<McpServer, {
                     })
                   )
               }),
+              Effect.catchTag("BeforeHandleFailure", (failure) => Effect.fail(failure.error as E)),
               Effect.map((result) =>
                 Predicate.isTagged(result, "InputRequired")
                   ? McpCore.OperationOutcome.InputRequired(result)

@@ -838,4 +838,97 @@ it.layer(testLayer)(`Mcp Conformance (${protocol.protocolVersion})`, (it) => {
         })
       }))
   })
+
+  describe("Parameter headers", () => {
+    // A hidden tool must look unknown, including when its schema mirrors headers.
+    it.effect("should report a hidden tool as not found before validating mirrored headers", () =>
+      Effect.gen(function*() {
+        const state = { role: "guest", calls: [] as Array<string>, invocations: 0 }
+        class CurrentUser extends Context.Service<CurrentUser, string>()("test/HeaderVisibility/CurrentUser") {}
+        const Auth = McpServer.middleware<{ provides: CurrentUser }>()((effect, options) => {
+          state.calls.push(`${options.method} ${options.target}`)
+          return Effect.provideService(effect, CurrentUser, state.role)
+        })
+        const AdminOnly = McpServer.visibility(() => Effect.map(CurrentUser, (role) => role === "admin"))
+        const mirrored = (name: string) =>
+          new McpSchema.Tool({
+            name,
+            inputSchema: {
+              type: "object",
+              properties: { region: { type: "string", "x-mcp-header": "Region" } },
+              required: ["region"]
+            }
+          })
+        const register = (name: string) =>
+          Layer.effectDiscard(Effect.gen(function*() {
+            const server = yield* McpServer.McpServer
+            yield* server.addTool({
+              tool: mirrored(name),
+              annotations: Context.empty(),
+              services: yield* Effect.context<never>(),
+              handle: () =>
+                Effect.sync(() => {
+                  state.invocations++
+                  return new McpSchema.CallToolResult({ content: [] })
+                })
+            })
+          }))
+        const harness = yield* makeHttpHarness(McpServer.layerHttp({
+          name: "HeaderVisibility",
+          version: "1.0.0",
+          path: "/mcp",
+          protocols: [protocol],
+          registrations: Layer.mergeAll(
+            register("SecretTool").pipe(Layer.provide(AdminOnly.combine(Auth).layer)),
+            register("PublicTool")
+          )
+        }))
+        const send = (id: number, name: string, header?: string) =>
+          harness.post(
+            request(id, "tools/call", { name, arguments: { region: "eu" } }),
+            {
+              ...headers("tools/call", name),
+              ...(header === undefined ? {} : { "Mcp-Param-Region": header })
+            }
+          )
+
+        const missing = yield* send(1, "SecretTool")
+        const missingError = yield* decodeError(missing)
+        assert.notStrictEqual(missing.status, 400)
+        assert.strictEqual(missingError.error.code, McpSchema.INVALID_PARAMS_ERROR_CODE)
+        assert.strictEqual(missingError.error.message, "Tool 'SecretTool' not found")
+        assert.deepStrictEqual(state.calls, ["tools/call SecretTool"])
+        assert.strictEqual(state.invocations, 0)
+
+        state.calls.length = 0
+        const mismatched = yield* send(2, "SecretTool", "us")
+        const mismatchedError = yield* decodeError(mismatched)
+        assert.notStrictEqual(mismatched.status, 400)
+        assert.strictEqual(mismatchedError.error.code, McpSchema.INVALID_PARAMS_ERROR_CODE)
+        assert.strictEqual(mismatchedError.error.message, "Tool 'SecretTool' not found")
+        assert.deepStrictEqual(state.calls, ["tools/call SecretTool"])
+        assert.strictEqual(state.invocations, 0)
+
+        state.role = "admin"
+        state.calls.length = 0
+        const visibleMismatch = yield* send(3, "SecretTool", "us")
+        const visibleError = yield* decodeError(visibleMismatch)
+        assert.strictEqual(visibleMismatch.status, 400)
+        assert.strictEqual(visibleError.error.code, McpSchema.HEADER_MISMATCH_ERROR_CODE)
+        assert.deepStrictEqual(state.calls, ["tools/call SecretTool"])
+        assert.strictEqual(state.invocations, 0)
+
+        const publicMismatch = yield* send(4, "PublicTool", "us")
+        const publicError = yield* decodeError(publicMismatch)
+        assert.strictEqual(publicMismatch.status, 400)
+        assert.strictEqual(publicError.error.code, McpSchema.HEADER_MISMATCH_ERROR_CODE)
+        assert.strictEqual(state.invocations, 0)
+
+        state.calls.length = 0
+        const allowed = yield* send(5, "SecretTool", "eu")
+        assert.strictEqual(allowed.status, 200)
+        assert.strictEqual(state.invocations, 1)
+        assert.deepStrictEqual(state.calls, ["tools/call SecretTool"])
+      }))
+  })
 })
