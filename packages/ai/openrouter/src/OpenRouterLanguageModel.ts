@@ -1221,6 +1221,7 @@ const makeStreamResponse = Effect.fnUntraced(
       readonly name: string
       params: string
     }> = {}
+    const completedToolCallIndexes = new Set<number>()
 
     // Track reasoning details to preserve for multi-turn conversations
     const accumulatedReasoningDetails: DeepMutable<ReasoningDetails> = []
@@ -1438,6 +1439,15 @@ const makeStreamResponse = Effect.fnUntraced(
               // Tool call start - OpenRouter returns all information except the
               // tool call parameters in the first chunk
               if (Predicate.isUndefined(activeToolCall)) {
+                // Some providers send an empty fragment after a tool call's
+                // arguments are already complete
+                if (
+                  completedToolCallIndexes.has(index) && Predicate.isNullish(toolCall.id) &&
+                  argumentsDelta.length === 0
+                ) {
+                  continue
+                }
+
                 if (toolCall.type !== "function") {
                   return yield* AiError.make({
                     module: "OpenRouterLanguageModel",
@@ -1528,6 +1538,7 @@ const makeStreamResponse = Effect.fnUntraced(
               // remove the active tool call
               totalToolCalls += 1
               delete activeToolCalls[index]
+              completedToolCallIndexes.add(index)
             }
           }
 
