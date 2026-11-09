@@ -7,6 +7,8 @@ Add `effect/ui`, a Layer-composed frontend framework for Effect, and `@effect/ui
 
 The host-agnostic core holds `Component`, `Command`, `Subscription`, `Feature` and `View`, plus `Renderer` to mount a component tree on any host and `MessageLog` to record what it does. `effect/ui/testing` adds `Story` for one-instance tests, `TestHost` and `Query` for runtime tests, and `Story.fromLog` to replay a logged session. The modules are experimental.
 
+`@effect/ui-html` runs the same components in a real DOM. `Html` is the element vocabulary (typed events with plain payloads, controlled `value` / `checked` / `selected` / `open`, refs typed by tag, and the `focus`, `blur`, `scrollIntoView` and `measure` ref Commands), `BrowserHost.mount` mounts an HTML root into an element with delegated events, and `HtmlQuery` in `@effect/ui-html/testing` finds elements by ARIA role and accessible name.
+
 ```ts
 import { Schema } from "effect"
 import { Component } from "effect/ui"

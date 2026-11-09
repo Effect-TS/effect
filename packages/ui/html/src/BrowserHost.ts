@@ -1,0 +1,418 @@
+/**
+ * The DOM host for `effect/ui`: mounts a component tree into an element of a
+ * real document.
+ *
+ * Events are delegated: the host keeps one listener per event name on the
+ * document, and each element stores its handlers as data, so re-rendering
+ * never touches listeners. An event goes to the innermost element with a
+ * handler for it, and its handler gets a plain payload built from the DOM
+ * event, never the event itself. `submit` always prevents the browser's own
+ * submission.
+ *
+ * `value`, `checked`, `selected` and `open` are controlled. The host sets them
+ * after the element's children exist, skips a no-op so the caret doesn't jump,
+ * and puts the Model's value back after the user changes it and the Model
+ * didn't follow, whether `update` rejected the change or nothing handled it.
+ *
+ * **Example** (Mounting an app)
+ *
+ * ```ts
+ * import { BrowserHost, Html } from "@effect/ui-html"
+ * import { Effect, Schema } from "effect"
+ * import { Component } from "effect/ui"
+ *
+ * const Message = Schema.TaggedUnion({ Increment: {} })
+ *
+ * const Counter = Component.make({
+ *   name: "Counter",
+ *   model: Schema.Number,
+ *   message: Message,
+ *   elements: Html,
+ *   init: () => 0,
+ *   update: (count) => count + 1,
+ *   view: (count, h) => h.button(String(count)).onClick(Message.make({ _tag: "Increment" }))
+ * })
+ *
+ * const main = BrowserHost.mount(Counter, {}, document.getElementById("app")!).pipe(
+ *   Effect.andThen(Effect.never),
+ *   Effect.scoped
+ * )
+ * ```
+ *
+ * @stability experimental
+ * @since 4.1.3
+ */
+import * as Context from "effect/Context"
+import * as Effect from "effect/Effect"
+import * as Layer from "effect/Layer"
+import type * as AsyncResult from "effect/reactivity/AsyncResult"
+import type * as Scope from "effect/Scope"
+import type * as Component from "effect/ui/Component"
+import * as Renderer from "effect/ui/Renderer"
+import type * as View from "effect/ui/View"
+import * as Html from "./Html.ts"
+
+const SVG = "http://www.w3.org/2000/svg"
+
+const svgTags: ReadonlySet<string> = new Set([
+  "svg",
+  "g",
+  "path",
+  "circle",
+  "ellipse",
+  "line",
+  "polyline",
+  "polygon",
+  "rect",
+  "text",
+  "tspan",
+  "textPath",
+  "defs",
+  "use",
+  "symbol",
+  "clipPath",
+  "mask",
+  "pattern",
+  "marker",
+  "linearGradient",
+  "radialGradient",
+  "stop",
+  "filter",
+  "image",
+  "foreignObject"
+])
+
+/** Events that don't bubble: only the element they happen on gets them. */
+const ownEvents: ReadonlySet<string> = new Set([
+  "focus",
+  "blur",
+  "mouseenter",
+  "mouseleave",
+  "scroll",
+  "toggle",
+  "load",
+  "error",
+  "close",
+  "cancel"
+])
+
+/** Events after which a controlled property may differ from what the Model says. */
+const changeEvents: ReadonlyArray<string> = ["input", "change", "toggle", "close"]
+
+const controlled: ReadonlySet<string> = new Set(["value", "checked", "selected", "open"])
+
+const emptyValue = (name: string): unknown => name === "value" ? "" : false
+
+interface Bound {
+  readonly handlers: Renderer.Handlers
+  readonly dispatch: Renderer.Dispatch
+}
+
+const modifiers = (event: Event) => {
+  const e = event as KeyboardEvent
+  return { shift: e.shiftKey === true, ctrl: e.ctrlKey === true, alt: e.altKey === true, meta: e.metaKey === true }
+}
+
+const fieldsOf = (form: HTMLFormElement, submitter: HTMLElement | null) => {
+  let data: FormData
+  try {
+    data = new FormData(form, submitter)
+  } catch {
+    data = new FormData(form)
+  }
+  const fields: Record<string, string> = {}
+  const entries: Array<readonly [string, string]> = []
+  data.forEach((value, name) => {
+    if (typeof value !== "string") return
+    entries.push([name, value])
+    if (!(name in fields)) fields[name] = value
+  })
+  return { fields, entries }
+}
+
+/**
+ * Builds the payload a handler gets: plain data, read from the event and the
+ * elements involved.
+ */
+const payloadOf = (name: string, event: Event, target: EventTarget | null, element: globalThis.Element): unknown => {
+  switch (name) {
+    case "click":
+    case "dblclick":
+    case "contextmenu":
+    case "mousedown":
+    case "mouseup": {
+      const e = event as MouseEvent
+      return { button: e.button ?? 0, x: e.clientX ?? 0, y: e.clientY ?? 0, ...modifiers(event) }
+    }
+    case "keydown":
+    case "keyup":
+      return { key: (event as KeyboardEvent).key ?? "", ...modifiers(event) }
+    case "input":
+    case "change": {
+      const source = (target !== null && "value" in (target as object) ? target : element) as HTMLInputElement
+      return source.localName === "input"
+        ? { value: source.value, checked: source.checked === true }
+        : { value: String(source.value ?? "") }
+    }
+    case "submit": {
+      const form = (element.localName === "form" ? element : target) as HTMLFormElement
+      return fieldsOf(form, (event as SubmitEvent).submitter ?? null)
+    }
+    case "toggle":
+      return { open: (element as HTMLDetailsElement).open === true }
+    case "close":
+      return { returnValue: (element as HTMLDialogElement).returnValue ?? "" }
+    case "scroll":
+      return { top: element.scrollTop, left: element.scrollLeft }
+    default:
+      return {}
+  }
+}
+
+/**
+ * Makes a DOM host for `document`, plus `dispose`, which removes its
+ * listeners.
+ *
+ * **Details**
+ *
+ * Most apps use `layer` or `mount`, which manage this for them. The host shows
+ * the `html` vocabulary and host-neutral components. A component of another
+ * vocabulary fails its own slot when it mounts.
+ *
+ * @stability experimental
+ * @category constructors
+ * @since 4.1.3
+ */
+export const makeHost = (document: Document): Renderer.Host<globalThis.Node> & { readonly dispose: () => void } => {
+  const bound = new WeakMap<globalThis.Node, Bound>()
+  // The last value the renderer set for each controlled property: what the element must show.
+  const wanted = new WeakMap<globalThis.Node, Map<string, unknown>>()
+  const listening = new Map<string, (event: Event) => void>()
+  const view = document.defaultView
+  const later: (f: () => void) => void = view !== null && typeof view.requestAnimationFrame === "function"
+    ? (f) => {
+      view.requestAnimationFrame(f)
+    }
+    : (f) => {
+      setTimeout(f, 0)
+    }
+
+  const restoreNode = (node: globalThis.Node) => {
+    const values = wanted.get(node)
+    if (values === undefined) return
+    const element = node as any
+    for (const [name, value] of values) {
+      if (element[name] !== value) element[name] = value
+    }
+  }
+  let restoring: Set<globalThis.Node> | undefined
+  /**
+   * Puts controlled properties back once the event and the flush it caused
+   * are over. A flush that accepted the change already moved the wanted value,
+   * so this is then a no-op.
+   */
+  const restoreSoon = (target: EventTarget | null) => {
+    if (target === null || !("nodeType" in target)) return
+    if (restoring === undefined) {
+      restoring = new Set()
+      later(() => {
+        const nodes = restoring!
+        restoring = undefined
+        for (const node of nodes) {
+          restoreNode(node)
+          const element = node as HTMLInputElement
+          // A radio button unchecks the others in its group, and a select changes its options.
+          if (element.localName === "input" && element.type === "radio" && element.name !== "") {
+            const root = element.form ?? element.ownerDocument
+            for (const other of root.querySelectorAll(`input[type="radio"]`)) {
+              if ((other as HTMLInputElement).name === element.name) restoreNode(other)
+            }
+          } else if (element.localName === "select") {
+            for (const option of (node as HTMLSelectElement).options) restoreNode(option)
+          }
+        }
+      })
+    }
+    restoring.add(target as globalThis.Node)
+  }
+
+  const listener = (name: string) => (event: Event) => {
+    const path = event.composedPath()
+    const own = ownEvents.has(name)
+    for (let i = 0; i < path.length; i++) {
+      const node = path[i] as globalThis.Node
+      const entry = bound.get(node)
+      const handler = entry?.handlers[name]
+      if (entry !== undefined && handler !== undefined) {
+        if (name === "submit") event.preventDefault()
+        entry.dispatch(name, handler, payloadOf(name, event, event.target, node as globalThis.Element))
+        break
+      }
+      if (own) break
+    }
+    if (changeEvents.includes(name)) restoreSoon(event.target)
+  }
+
+  const listen = (name: string) => {
+    if (listening.has(name)) return
+    const f = listener(name)
+    listening.set(name, f)
+    document.addEventListener(name, f, { capture: true })
+  }
+  for (const name of changeEvents) listen(name)
+
+  return {
+    createElement: (tag) => svgTags.has(tag) ? document.createElementNS(SVG, tag) : document.createElement(tag),
+    createText: (text) => document.createTextNode(text),
+    setText(node, text) {
+      const t = node as globalThis.Text
+      if (t.data !== text) t.data = text
+    },
+    setAttr(node, name, value) {
+      const element = node as globalThis.Element
+      if (value === undefined) element.removeAttribute(name)
+      else element.setAttribute(name, value)
+    },
+    setProp(node, name, value) {
+      const element = node as any
+      if (controlled.has(name)) {
+        let values = wanted.get(node)
+        if (value === undefined) {
+          values?.delete(name)
+          value = emptyValue(name)
+        } else {
+          if (values === undefined) {
+            values = new Map()
+            wanted.set(node, values)
+          }
+          values.set(name, value)
+        }
+        // Skip a no-op, so a caret in the middle of the text stays where it is.
+        if (element[name] !== value) element[name] = value
+        return
+      }
+      if (value === undefined) {
+        const current = element[name]
+        element[name] = typeof current === "string" ? "" : typeof current === "boolean" ? false : null
+      } else {
+        element[name] = value
+      }
+    },
+    insertBefore: (parent, node, ref) => {
+      parent.insertBefore(node, ref ?? null)
+    },
+    remove: (node) => {
+      node.parentNode?.removeChild(node)
+    },
+    parentOf: (node) => node.parentNode ?? undefined,
+    nextOf: (node) => node.nextSibling ?? undefined,
+    setEvents(node, handlers, dispatch) {
+      bound.set(node, { handlers, dispatch })
+      for (const name in handlers) listen(name)
+    },
+    elements: [Html.name],
+    controlled,
+    runsMounts: true,
+    dispose: () => {
+      for (const [name, f] of listening) document.removeEventListener(name, f, { capture: true })
+      listening.clear()
+    }
+  }
+}
+
+/**
+ * The element operations behind `Html.focus`, `blur`, `scrollIntoView` and
+ * `measure`, on DOM elements.
+ *
+ * @stability experimental
+ * @category constructors
+ * @since 4.1.3
+ */
+export const htmlHost: Context.Service.Shape<typeof Html.Host> = {
+  focus: (element, options) => (element as HTMLElement).focus(options as FocusOptions),
+  blur: (element) => (element as HTMLElement).blur(),
+  scrollIntoView: (element, options) => element.scrollIntoView(options as ScrollIntoViewOptions),
+  measure: (element) => {
+    const box = element.getBoundingClientRect()
+    return {
+      x: box.x,
+      y: box.y,
+      width: box.width,
+      height: box.height,
+      top: box.top,
+      right: box.right,
+      bottom: box.bottom,
+      left: box.left
+    }
+  }
+}
+
+/**
+ * Provides the DOM host as the `Renderer`, and `Html.Host`, for the life of
+ * the Layer.
+ *
+ * **Details**
+ *
+ * `document` defaults to the global `document`. Closing the Layer removes the
+ * host's listeners.
+ *
+ * @stability experimental
+ * @category layers
+ * @since 4.1.3
+ */
+export const layer = (options?: {
+  readonly document?: Document | undefined
+}): Layer.Layer<Renderer.Renderer | Html.Host> =>
+  Layer.effectContext(Effect.gen(function*() {
+    const host = makeHost(options?.document ?? globalThis.document)
+    yield* Effect.addFinalizer(() => Effect.sync(host.dispose))
+    return Context.make(Renderer.Renderer, { host }).pipe(Context.add(Html.Host, htmlHost))
+  }))
+
+/**
+ * Passes when a root shows HTML or is host-neutral, and otherwise names the
+ * host its vocabulary needs.
+ *
+ * @stability experimental
+ * @category utility types
+ * @since 4.1.3
+ */
+export type HtmlRoot<V> = [Renderer.HostOf<V>] extends [Html.Host] ? unknown
+  : { readonly "BrowserHost.mount shows HTML elements. This root's vocabulary needs": Renderer.HostOf<V> }
+
+/**
+ * Mounts a component tree into `container`, for the life of the current
+ * Scope.
+ *
+ * **Details**
+ *
+ * The root must render HTML (or be host-neutral): mounting a root of another
+ * vocabulary is a type error. Nested components are checked when they mount,
+ * and one of another vocabulary fails its own slot. The tree's requirements
+ * are the root's, minus `Html.Host`, which the host provides. When the root
+ * itself fails, `fallback` is shown in its place.
+ *
+ * Commands and Subscriptions run on the default scheduler, the render flush
+ * on a microtask.
+ *
+ * @stability experimental
+ * @category constructors
+ * @since 4.1.3
+ */
+export const mount = <Name extends string, Props, Model, Msg, Emits, R, V extends View.Elements, RF = never>(
+  component: Component.Component<Name, Props, Model, Msg, Emits, R, V> & HtmlRoot<V>,
+  props: Props,
+  container: globalThis.Element,
+  options?: {
+    readonly fallback?:
+      | ((
+        failure: AsyncResult.Failure<never, unknown>,
+        h: View.Helper<never, {}> & View.Tags<V, never>
+      ) => View.Node<never, RF>)
+      | undefined
+  }
+): Effect.Effect<Renderer.Root<Model, Msg>, never, Exclude<R | RF, Html.Host> | Scope.Scope> =>
+  Effect.gen(function*() {
+    const context = yield* Layer.build(layer({ document: container.ownerDocument }))
+    return yield* Effect.provideContext(Renderer.mount(component, props, container, options), context)
+  }) as any
