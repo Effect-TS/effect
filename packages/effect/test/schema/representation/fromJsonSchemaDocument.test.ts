@@ -2598,6 +2598,22 @@ describe("fromJsonSchemaDocument", () => {
         )
       })
 
+      it("keeps a reference to a definition still being translated when flattening", () => {
+        const schema = toSchemaFromJsonSchemaDocument(JsonSchema.fromSchemaDraft2020_12({
+          $ref: "#/$defs/Node",
+          $defs: {
+            Node: {
+              type: "object",
+              properties: {
+                next: { allOf: [{ anyOf: [{ $ref: "#/$defs/Node" }] }, { anyOf: [{ $ref: "#/$defs/Node" }] }] }
+              }
+            }
+          }
+        }))
+        assert.isTrue(Schema.is(schema)({ next: {} }))
+        assert.isFalse(Schema.is(schema)({ next: 1 }))
+      })
+
       it("keeps duplicate oneOf alternatives", () => {
         const schema = toSchemaFromJsonSchemaDocument(JsonSchema.fromSchemaDraft2020_12({
           allOf: [
