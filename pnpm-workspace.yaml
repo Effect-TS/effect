@@ -8,6 +8,7 @@ packages:
   - packages/platform/*
   - packages/sql/*
   - packages/tools/*
+  - packages/ui/*
   - examples/*
 
 verifyDepsBeforeRun: error

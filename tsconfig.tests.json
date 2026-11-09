@@ -114,6 +114,12 @@
       "@effect/oxc/*": ["./packages/tools/oxc/src/*.ts"],
       "@effect/tools-utils": ["./packages/tools/utils/src/index.ts"],
       "@effect/tools-utils/*": ["./packages/tools/utils/src/*.ts"],
+      "@effect/ui": ["./packages/ui/core/src/index.ts"],
+      "@effect/ui/testing": ["./packages/ui/core/src/testing/index.ts"],
+      "@effect/ui/*": ["./packages/ui/core/src/*.ts"],
+      "@effect/ui-html": ["./packages/ui/html/src/index.ts"],
+      "@effect/ui-html/testing": ["./packages/ui/html/src/testing/index.ts"],
+      "@effect/ui-html/*": ["./packages/ui/html/src/*.ts"],
       "@effect/vitest": ["./packages/vitest/src/index.ts"],
       "@effect/vitest/*": ["./packages/vitest/src/*.ts"],
       // TODO: This is a special alias used by some tests. We should try to get rid of it.
