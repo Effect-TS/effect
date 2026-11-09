@@ -1585,6 +1585,19 @@ const makeStreamResponse = Effect.fnUntraced(
 
               reasoningDetailsAttachedToToolCall = true
             }
+          } else {
+            const incompleteToolCall = Object.values(activeToolCalls)[0]
+            if (Predicate.isNotUndefined(incompleteToolCall)) {
+              return yield* AiError.make({
+                module: "OpenRouterLanguageModel",
+                method: "makeStreamResponse",
+                reason: new AiError.ToolParameterValidationError({
+                  toolName: incompleteToolCall.name,
+                  description:
+                    `Response finished with reason "${finishReason}" before the tool call parameters were complete`
+                })
+              })
+            }
           }
 
           // End reasoning first if it was started, to maintain proper order
