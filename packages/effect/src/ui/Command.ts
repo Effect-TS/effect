@@ -785,6 +785,13 @@ export const Service: <Self>() => {
  * own result (the `Source` type parameter). The data-first form returns an
  * `Interrupt` unchanged; the pipeable form only takes issued Commands.
  *
+ * **Gotchas**
+ *
+ * The pipeable form infers one `Source` and one `R` for its input, so it maps
+ * one Command, or a union whose branches share them, and keeps them exact.
+ * For a union of Commands with different sources or requirements, use the
+ * data-first form, `Command.map(input, f)`, which keeps each branch's own.
+ *
  * **Example** (Mapping a shared Command into a component's message)
  *
  * ```ts import.meta.vitest

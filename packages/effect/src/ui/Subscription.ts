@@ -100,8 +100,10 @@ export type Deps = Dep | ReadonlyArray<Dep>
 export type Requirements<S> = S extends Subscription<infer _Msg, infer R> ? R : never
 
 // Strings are JSON, so they're quoted and self-delimiting. Everything else is
-// its literal: `NaN`, `Infinity` and `-Infinity` stay distinct from `null`.
-const encodeDep = (dep: Dep): string => typeof dep === "string" ? JSON.stringify(dep) : String(dep)
+// its literal: `NaN`, `Infinity` and `-Infinity` stay distinct from `null`, and
+// `-0` from `0`, since `1 / dep` tells them apart.
+const encodeDep = (dep: Dep): string =>
+  typeof dep === "string" ? JSON.stringify(dep) : Object.is(dep, -0) ? "-0" : String(dep)
 
 // A colon separates the name from the deps, so a colon in a name is doubled.
 const encodeName = (name: string): string => name.replaceAll(":", "::")
@@ -113,7 +115,8 @@ const encodeName = (name: string): string => name.replaceAll(":", "::")
  * **Details**
  *
  * Strings are JSON-quoted and other deps are their literal, so `1` and `"1"`,
- * `["a,b", "c"]` and `["a", "b,c"]`, or `NaN` and `null`, never share a key.
+ * `["a,b", "c"]` and `["a", "b,c"]`, `NaN` and `null`, or `0` and `-0`, never
+ * share a key.
  * A colon in a name is doubled, so a name can't pass for a name with deps:
  * `keyOf("page:null")` is `page::null` and `keyOf("page", null)` is `page:null`.
  * A single dep and a one-element tuple share a key, as they mean the same.
