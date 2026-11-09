@@ -267,7 +267,7 @@ export type Kind = "Effect" | "Stream"
  *
  * `Msg` is the message it produces and `R` what it requires. `Source` is the
  * result of the Command's definition before any `map`; it's what
- * `Story.resolve` takes when given an issued Command. `K` is the kind, which
+ * a story's `resolve` step takes when given an issued Command. `K` is the kind, which
  * decides whether `effect` or `stream` holds the work; the other field is
  * `undefined`. Use the `Effectful` and `Streaming` aliases rather than naming
  * `K` yourself, and narrow a `Command` on `_tag` before reading the work.
@@ -396,7 +396,7 @@ export type Mapped<C, B> = C extends Issued<infer _Msg, infer R, infer Source, i
  *
  * `Args` are the arguments a Command is issued with, `Msg` the message it
  * produces, and `IsStream` whether it was declared with `stream: true`. Story
- * steps such as `Story.resolve` take a definition and are typed by it.
+ * steps such as `resolve` take a definition and are typed by it.
  *
  * @stability experimental
  * @category models
@@ -812,7 +812,7 @@ export const Service: <Self>() => {
  * **Details**
  *
  * The name, arguments and options are kept, so the log and story tests still
- * see the original Command, and `Story.resolve` still takes the definition's
+ * see the original Command, and a story's `resolve` step still takes the definition's
  * own result (the `Source` type parameter). The data-first form returns an
  * `Interrupt` unchanged; the pipeable form only takes issued Commands.
  *
