@@ -1559,9 +1559,6 @@ const makeStreamResponse = Effect.fnUntraced(
             finishReason = "content-filter"
           }
 
-          // Forward any unsent tool calls. Their parameters never parsed as
-          // complete JSON: coerce to an empty object if the model finished with
-          // 'tool-calls', otherwise the parameters were cut off, so fail
           for (const toolCall of Object.values(activeToolCalls)) {
             let params: unknown
             // @effect-diagnostics-next-line tryCatchInEffectGen:off
