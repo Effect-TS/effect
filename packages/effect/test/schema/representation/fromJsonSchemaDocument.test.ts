@@ -2389,16 +2389,20 @@ describe("fromJsonSchemaDocument", () => {
         left,
         right
       }) => {
-        const schema = toSchemaFromJsonSchemaDocument(JsonSchema.fromSchemaDraft2020_12({
+        const source: JsonSchema.JsonSchema = {
           allOf: [
             {
               type: "object",
-              properties: { kind: left, payload: { $ref: "#/$defs/Bad" } },
+              properties: left.type === undefined
+                ? { kind: left, payload: { $ref: "#/$defs/Bad" } }
+                : { payload: { $ref: "#/$defs/Bad" }, kind: left },
               required: ["kind"]
             },
             {
               type: "object",
-              properties: { kind: right, payload: { $ref: "#/$defs/Bad" } },
+              properties: right.type === undefined
+                ? { kind: right, payload: { $ref: "#/$defs/Bad" } }
+                : { payload: { $ref: "#/$defs/Bad" }, kind: right },
               required: ["kind"]
             }
           ],
@@ -2410,8 +2414,21 @@ describe("fromJsonSchemaDocument", () => {
               ]
             }
           }
-        }))
+        }
+        const schema = toSchemaFromJsonSchemaDocument(JsonSchema.fromSchemaDraft2020_12(source))
         assert.strictEqual(schema.ast._tag, "Never")
+        throws(
+          () =>
+            toSchemaFromJsonSchemaDocument(JsonSchema.fromSchemaDraft2020_12({
+              type: "object",
+              properties: {
+                impossible: { allOf: source.allOf },
+                later: { $ref: "#/$defs/Bad" }
+              },
+              $defs: source.$defs
+            })),
+          `Cannot intersect these "anyOf" or "oneOf" alternatives without expanding their branches.\n  at ["definitions"]["Bad"]["allOf"][1]`
+        )
       })
 
       it.each([
