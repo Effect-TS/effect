@@ -1665,8 +1665,8 @@ const prepareTools = Effect.fnUntraced(
         ? toCodecOpenAI
         : transformer
       const { parameters, codec } = yield* tryToolJsonSchema(tool, "prepareTools", toolTransformer)
-      if (Predicate.isNotUndefined(codec) && toolTransformer !== LanguageModel.defaultCodecTransformer) {
-        toolCodecs.set(tool.name, { codec, json: Schema.toCodecJson(tool.parametersSchema) })
+      if (Predicate.isNotUndefined(codec)) {
+        toolCodecs.set(tool.name, codec)
       }
 
       tools.push({
@@ -1840,17 +1840,23 @@ const toolParametersError = (tool: Tool.Any, error: unknown, method: string): Ai
 const tryToolJsonSchema = <T extends Tool.Any>(tool: T, method: string, transformer: LanguageModel.CodecTransformer) =>
   Effect.try({
     // A raw JSON Schema given to a dynamic tool is sent unchanged
-    try: (): { readonly parameters: JsonSchema.JsonSchema; readonly codec: ToolCodec["codec"] | undefined } => {
+    try: (): { readonly parameters: JsonSchema.JsonSchema; readonly codec: ToolCodec | undefined } => {
       if (Tool.isDynamic(tool) && tool.jsonSchema !== undefined) {
         return { parameters: tool.jsonSchema, codec: undefined }
       }
       const { codec, jsonSchema } = transformer(tool.parametersSchema)
-      return { parameters: jsonSchema, codec }
+      return {
+        parameters: jsonSchema,
+        codec: transformer === LanguageModel.defaultCodecTransformer
+          ? undefined
+          : { codec, json: Schema.toCodecJson(tool.parametersSchema) }
+      }
     },
     catch: (error) => toolParametersError(tool, error, method)
   }).pipe(Effect.filterOrFail(
-    ({ codec, parameters }) =>
-      parameters.type === "object" || Array.isArray(parameters.anyOf) || Predicate.isUndefined(codec),
+    ({ parameters }) =>
+      parameters.type === "object" || Array.isArray(parameters.anyOf) ||
+      (Tool.isDynamic(tool) && tool.jsonSchema !== undefined),
     ({ parameters }) =>
       toolParametersError(
         tool,
