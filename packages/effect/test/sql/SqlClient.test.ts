@@ -52,6 +52,7 @@ const makeHarness = (options: {
   readonly spanAttributes?: ReadonlyArray<readonly [string, unknown]> | undefined
   readonly acquire?: Effect.Effect<void> | undefined
   readonly duringBegin?: Effect.Effect<void> | undefined
+  readonly duringRollbackSavepoint?: Effect.Effect<void> | undefined
   readonly begin?: SqlError.SqlError | undefined
   readonly commit?: (() => Effect.Effect<void, SqlError.SqlError>) | undefined
   readonly onCommitFailure?: (() => Effect.Effect<void, SqlError.SqlError>) | undefined
@@ -125,7 +126,7 @@ const makeHarness = (options: {
           return Effect.fail(options.rollbackSavepoint)
         }
         return savepoints.includes(id)
-          ? Effect.void
+          ? options.duringRollbackSavepoint ?? Effect.void
           : Effect.fail(sqlError(`cannot rollback to savepoint ${id} - it does not exist`))
       }),
     releaseSavepoint: release === undefined ?
@@ -600,6 +601,36 @@ describe("SqlClient", () => {
           "savepoint(1)",
           "rollbackSavepoint(1)",
           "releaseSavepoint(1)",
+          "commit",
+          "closeConnection"
+        ])
+      }))
+
+    it.effect("skips savepoint release when its ancestor ends during rollback, preserving the body failure", () =>
+      Effect.gen(function*() {
+        const rollingBack = yield* Deferred.make<void>()
+        const finishRollback = yield* Deferred.make<void>()
+        const harness = makeHarness({
+          releaseSavepoint: true,
+          duringRollbackSavepoint: Effect.andThen(
+            Deferred.succeed(rollingBack, undefined),
+            Deferred.await(finishRollback)
+          )
+        })
+        const nested = yield* harness.withTransaction(Effect.gen(function*() {
+          const child = yield* Effect.forkDetach(harness.withTransaction(Effect.fail("boom" as const)), {
+            startImmediately: true
+          })
+          yield* Deferred.await(rollingBack)
+          return child
+        }))
+        yield* Deferred.succeed(finishRollback, undefined)
+        assertTypedFailure(yield* Fiber.await(nested), "boom" as const)
+        assert.deepStrictEqual(harness.calls, [
+          "acquireConnection",
+          "begin",
+          "savepoint(1)",
+          "rollbackSavepoint(1)",
           "commit",
           "closeConnection"
         ])
