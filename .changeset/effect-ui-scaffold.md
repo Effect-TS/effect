@@ -5,7 +5,7 @@
 
 Add `effect/ui`, a Layer-composed frontend framework for Effect, and `@effect/ui-html`, its HTML package.
 
-This first step holds the host-agnostic core definitions: `Component`, `Command`, `Subscription`, `Feature` and the core `View` nodes, plus `Story` in `effect/ui/testing` for pure, one-instance tests. The modules are experimental.
+The host-agnostic core holds `Component`, `Command`, `Subscription`, `Feature` and `View`, plus `Renderer` to mount a component tree on any host and `MessageLog` to record what it does. `effect/ui/testing` adds `Story` for one-instance tests, `TestHost` and `Query` for runtime tests, and `Story.fromLog` to replay a logged session. The modules are experimental.
 
 ```ts
 import { Schema } from "effect"
