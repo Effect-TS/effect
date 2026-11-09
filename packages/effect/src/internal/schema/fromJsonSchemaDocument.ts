@@ -288,6 +288,8 @@ export function fromJsonSchemaMultiDocument(
   const definitionCache = new Map<string, ImportedJsonSchemaRepresentation | null>()
   const validatedAliases = new Set<string>()
   const resolvingChoices = new Set<string>()
+  const resolvingScalars = new Set<string>()
+  const intersectingReferences = new Set<string>()
   const references = new Map<string, ReferenceSlot>()
   let inNestedResource = false
 
@@ -713,7 +715,7 @@ export function fromJsonSchemaMultiDocument(
     // reference translates its definition, and translation can fail.
     const passes: ReadonlyArray<(types: ReadonlyArray<ImportedJsonSchemaRepresentation>) => boolean> = [
       (types) => types.every((type) => isScalar(type)),
-      (types) => types.length > 1 && types.every((type) => isScalar(type, new Set())),
+      (types) => types.length > 1 && types.every((type) => isScalar(type, true)),
       () => true
     ]
     const intersected = new Map<string, ImportedJsonSchemaRepresentation>()
@@ -754,18 +756,12 @@ export function fromJsonSchemaMultiDocument(
     }
   }
 
-  // With `resolving`, a reference is scalar when its definition is. Definitions
-  // still being translated, and cycles through aliases, count as structured.
-  function isScalar(representation: ImportedJsonSchemaRepresentation, resolving?: Set<string>): boolean {
+  // With `resolveReferences`, a reference is scalar when its definition is.
+  function isScalar(representation: ImportedJsonSchemaRepresentation, resolveReferences = false): boolean {
     switch (representation._tag) {
-      case "Reference": {
-        if (resolving === undefined) return false
-        const key = representation.$ref
-        const cached = definitionCache.get(key)
-        if (cached === null || resolving.has(key)) return false
-        resolving.add(key)
-        return isScalar(cached ?? translateDefinition(key, representation.path), resolving)
-      }
+      case "Reference":
+        return resolveReferences &&
+          testDefinition(representation, resolvingScalars, false, (definition) => isScalar(definition, true))
       case "Never":
       case "Unknown":
       case "Null":
@@ -880,15 +876,8 @@ export function fromJsonSchemaMultiDocument(
 
   function hasChoices(representation: ImportedJsonSchemaRepresentation): boolean {
     switch (representation._tag) {
-      case "Reference": {
-        const key = representation.$ref
-        const cached = definitionCache.get(key)
-        if (cached === null || resolvingChoices.has(key)) return true
-        resolvingChoices.add(key)
-        const out = hasChoices(cached ?? translateDefinition(key, representation.path))
-        resolvingChoices.delete(key)
-        return out
-      }
+      case "Reference":
+        return testDefinition(representation, resolvingChoices, true, hasChoices)
       case "Union":
         // Finite primitive literal sets intersect without expansion, so they can be duplicated across branches.
         return !isLiteralSet(representation) &&
@@ -906,6 +895,24 @@ export function fromJsonSchemaMultiDocument(
           representation.checks.some(checkHasChoices)
       default:
         return false
+    }
+  }
+
+  // Tests a referenced definition, answering `whileResolving` for definitions
+  // still being translated or already being tested, as happens through cycles.
+  function testDefinition(
+    reference: ImportedReference,
+    resolving: Set<string>,
+    whileResolving: boolean,
+    test: (definition: ImportedJsonSchemaRepresentation) => boolean
+  ): boolean {
+    const key = reference.$ref
+    if (definitionCache.get(key) === null || resolving.has(key)) return whileResolving
+    resolving.add(key)
+    try {
+      return test(translateDefinition(key, reference.path))
+    } finally {
+      resolving.delete(key)
     }
   }
 
@@ -1046,13 +1053,6 @@ export function fromJsonSchemaMultiDocument(
     return intersectLinearly(left, right, path)
   }
 
-  // Keyed by the alternatives arrays, which annotating a resolved definition
-  // keeps, so recursive definitions re-entering the same pair are detected.
-  const linearIntersections = new Map<
-    ReadonlyArray<ImportedJsonSchemaRepresentation>,
-    Set<ReadonlyArray<ImportedJsonSchemaRepresentation>>
-  >()
-
   // Distributing the alternatives is accepted only when the pairs that survive
   // pruning are no more than the larger union, so expansion cannot multiply,
   // and no alternative with nested choices survives in more than one pair,
@@ -1066,42 +1066,34 @@ export function fromJsonSchemaMultiDocument(
   ): ImportedJsonSchemaRepresentation {
     const mode = left.options?.mode ?? "anyOf"
     if (mode !== (right.options?.mode ?? "anyOf")) return unsupportedIntersection(path)
-    let inProgress = linearIntersections.get(left.types)
-    if (inProgress?.has(right.types)) return unsupportedIntersection(path)
-    if (inProgress === undefined) {
-      inProgress = new Set()
-      linearIntersections.set(left.types, inProgress)
-    }
-    inProgress.add(right.types)
-    try {
-      const limit = Math.max(left.types.length, right.types.length)
-      const leftPairs = new Array<number>(left.types.length).fill(0)
-      const rightPairs = new Array<number>(right.types.length).fill(0)
-      const types: Array<ImportedJsonSchemaRepresentation> = []
-      for (let i = 0; i < left.types.length; i++) {
-        for (let j = 0; j < right.types.length; j++) {
-          const type = intersect(left.types[i], right.types[j], [...path, "types", i])
-          if (type._tag === "Never") continue
-          if (types.length === limit) return unsupportedIntersection(path)
-          if (
-            (++leftPairs[i] === 2 && hasChoices(left.types[i])) ||
-            (++rightPairs[j] === 2 && hasChoices(right.types[j]))
-          ) {
-            return unsupportedIntersection(path)
-          }
-          types.push(type)
+    const limit = Math.max(left.types.length, right.types.length)
+    // Duplication is only known once a pair survives, since an alternative that
+    // survived one pair may still be disjoint from the next.
+    const survivingLeft = new Set<number>()
+    const survivingRight = new Set<number>()
+    const types: Array<ImportedJsonSchemaRepresentation> = []
+    for (let i = 0; i < left.types.length; i++) {
+      for (let j = 0; j < right.types.length; j++) {
+        const type = intersect(left.types[i], right.types[j], [...path, "types", i])
+        if (type._tag === "Never") continue
+        if (
+          types.length === limit ||
+          survivingLeft.has(i) && hasChoices(left.types[i]) ||
+          survivingRight.has(j) && hasChoices(right.types[j])
+        ) {
+          return unsupportedIntersection(path)
         }
+        survivingLeft.add(i)
+        survivingRight.add(j)
+        types.push(type)
       }
-      return makeUnion({
-        _tag: "Union",
-        types: [],
-        ...(left.options === undefined ? {} : { options: left.options }),
-        ...intersectChecks(left, right)
-      }, types)
-    } finally {
-      inProgress.delete(right.types)
-      if (inProgress.size === 0) linearIntersections.delete(left.types)
     }
+    return makeUnion({
+      _tag: "Union",
+      types: [],
+      ...(left.options === undefined ? {} : { options: left.options }),
+      ...intersectChecks(left, right)
+    }, types)
   }
 
   function intersect(
@@ -1113,19 +1105,26 @@ export function fromJsonSchemaMultiDocument(
     if (right._tag === "Never") return right
     if (left._tag === "Unknown") return annotateIntersection(right, left, right)
     if (right._tag === "Unknown") return annotateIntersection(left, left, right)
-    // Intersection is idempotent, and keeping the reference preserves the shared definition.
-    if (left._tag === "Reference" && right._tag === "Reference" && left.$ref === right.$ref) {
-      return annotateIntersection(left, left, right)
+    if (left._tag === "Reference" && right._tag === "Reference") {
+      // Intersection is idempotent, and keeping the reference preserves the shared definition.
+      if (left.$ref === right.$ref) return annotate(left, right)
+      // Reaching the same pair again inside its own intersection is a cycle,
+      // which would need a new recursive definition.
+      const key = JSON.stringify([left.$ref, right.$ref])
+      if (intersectingReferences.has(key)) return unsupportedIntersection(path)
+      intersectingReferences.add(key)
+      try {
+        // Resolve an unannotated reference first. An annotated empty definition
+        // could otherwise leave the other reference unresolved during union partitioning.
+        return (left.annotations !== undefined || left.customAnnotations !== undefined) &&
+            right.annotations === undefined && right.customAnnotations === undefined
+          ? intersect(left, resolveReference(right, path), path)
+          : annotate(intersect(resolveReference(left, path), right, path), left)
+      } finally {
+        intersectingReferences.delete(key)
+      }
     }
     if (left._tag === "Reference") {
-      // Resolve an unannotated reference first. An annotated empty definition
-      // could otherwise leave the other reference unresolved during union partitioning.
-      if (
-        (left.annotations !== undefined || left.customAnnotations !== undefined) &&
-        right._tag === "Reference" && right.annotations === undefined && right.customAnnotations === undefined
-      ) {
-        return intersect(left, resolveReference(right, path), path)
-      }
       return annotate(intersect(resolveReference(left, path), right, path), left)
     }
     if (right._tag === "Reference") {
