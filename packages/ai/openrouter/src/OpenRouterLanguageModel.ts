@@ -1844,12 +1844,13 @@ const tryToolJsonSchema = <T extends Tool.Any>(tool: T, method: string, transfor
       if (Tool.isDynamic(tool) && tool.jsonSchema !== undefined) {
         return { parameters: tool.jsonSchema, codec: undefined }
       }
-      const { codec, jsonSchema } = transformer(tool.parametersSchema)
+      // Normalize only the JSON encoding; application decoders belong to the toolkit.
+      const { codec, jsonSchema } = transformer(Schema.toEncoded(Schema.toCodecJson(tool.parametersSchema)))
       return {
         parameters: jsonSchema,
         codec: transformer === LanguageModel.defaultCodecTransformer
           ? undefined
-          : { codec, json: Schema.toCodecJson(tool.parametersSchema) }
+          : codec
       }
     },
     catch: (error) => toolParametersError(tool, error, method)
@@ -1865,25 +1866,16 @@ const tryToolJsonSchema = <T extends Tool.Any>(tool: T, method: string, transfor
       )
   ))
 
-type ToolCodec = {
-  readonly codec: Schema.ConstraintCodec<unknown, unknown, unknown, unknown>
-  readonly json: Schema.ConstraintCodec<unknown, unknown, unknown, unknown>
-}
+type ToolCodec = Schema.ConstraintCodec<unknown, unknown, never, never>
 type ToolCodecs = ReadonlyMap<string, ToolCodec>
 
-// Tool schemas sent through a provider codec (for example OpenAI strict mode)
-// receive that codec's encoding, so map valid parameters back to the JSON
-// encoding the toolkit decodes. Invalid parameters are left for the toolkit to
-// report.
+// Restore the toolkit's JSON shape; leave invalid parameters for toolkit validation.
 const decodeToolParams = (toolCodecs: ToolCodecs, toolName: string, params: unknown): Effect.Effect<unknown> => {
   const toolCodec = toolCodecs.get(toolName)
   if (Predicate.isUndefined(toolCodec)) {
     return Effect.succeed(params)
   }
-  return (Schema.decodeUnknownEffect(toolCodec.codec)(params) as Effect.Effect<unknown, Schema.SchemaError>).pipe(
-    Effect.flatMap((decoded) =>
-      Schema.encodeUnknownEffect(toolCodec.json)(decoded) as Effect.Effect<unknown, Schema.SchemaError>
-    ),
+  return Schema.decodeUnknownEffect(toolCodec)(params).pipe(
     Effect.orElseSucceed(() => params)
   )
 }
