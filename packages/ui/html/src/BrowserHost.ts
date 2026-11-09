@@ -52,6 +52,7 @@ import * as Renderer from "effect/ui/Renderer"
 import type * as View from "effect/ui/View"
 import * as Html from "./Html.ts"
 import * as headSync from "./internal/head.ts"
+import * as submit from "./internal/submit.ts"
 
 const SVG = "http://www.w3.org/2000/svg"
 
@@ -191,7 +192,9 @@ const payloadOf = (name: string, event: Event, target: EventTarget | null, eleme
  * `<body>` belong in the root component's `head`, not in the shell: HTML
  * keeps the first copy of a duplicated attribute, so the shell's copy would
  * hide the framework's. `warn` reports a shell that conflicts with the head
- * on the first sync, and defaults to `console.warn`.
+ * on the first sync, and defaults to `console.warn`. The check runs in every
+ * build, as `effect` has no development switch; it looks at the shell once,
+ * and `warn: () => {}` silences it.
  *
  * @stability experimental
  * @category constructors
@@ -273,8 +276,10 @@ export const makeHost = (
 
   const listener = (name: string) => (event: Event) => {
     // The app owns its forms' submissions, handled or not. Other forms in the document are left alone.
+    // An unhandled one is marked, so the browser Router can still route a GET form.
     if (name === "submit" && event.target !== null && bound.has(event.target as globalThis.Node)) {
       event.preventDefault()
+      submit.ownedUnhandled.add(event)
     }
     const path = event.composedPath()
     const own = ownEvents.has(name)
@@ -283,7 +288,10 @@ export const makeHost = (
       const entry = bound.get(node)
       const handler = entry?.handlers[name]
       if (entry !== undefined && handler !== undefined) {
-        if (name === "submit") event.preventDefault()
+        if (name === "submit") {
+          event.preventDefault()
+          submit.ownedUnhandled.delete(event)
+        }
         entry.dispatch(name, handler, payloadOf(name, event, event.target, node as globalThis.Element))
         break
       }
