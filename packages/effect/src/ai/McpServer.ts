@@ -1911,7 +1911,7 @@ const runWithRuntime = Effect.fnUntraced(function*(
     getListChangeRevision: () => notificationDelivery.listChangeRevision,
     ...(!protocol.supportsNotifications || options.allowSubscriptions === false ? {} : {
       sendNotification,
-      awaitClientEnd: isHttp ? undefined : (clientId: number) => clientEnd(clientId).await,
+      awaitClientEnd: transport === "stdio" ? (clientId: number) => clientEnd(clientId).await : undefined,
       markSubscriptionCancelled: (clientId: number, requestId: RpcMessage.RequestId) =>
         Effect.sync(() => {
           cancelRequest(clientId, requestId)
@@ -2047,10 +2047,10 @@ const runWithRuntime = Effect.fnUntraced(function*(
   const patchedProtocol = RpcServer.Protocol.of({
     ...protocol,
     end: (clientId) => {
-      // RpcServer ends a non-HTTP client only after its request fibers drain, so
+      // RpcServer ends a stdio client only after its request fibers drain, so
       // tearing down here (not on Eof) keeps the opened end latch visible to a
       // listener that was still starting when stdin closed.
-      if (!isHttp) disconnectClient(clientId)
+      if (transport === "stdio") disconnectClient(clientId)
       return protocol.end(clientId)
     },
     send: (clientId, response) => {
@@ -2275,8 +2275,10 @@ const runWithRuntime = Effect.fnUntraced(function*(
           case "Interrupt":
             return f(clientId, request)
           case "Eof":
-            if (!isHttp) {
+            if (transport === "stdio") {
               clientEnd(clientId).openUnsafe()
+            } else if (!isHttp) {
+              disconnectClient(clientId)
             }
             return f(clientId, request)
           case "Pong":
