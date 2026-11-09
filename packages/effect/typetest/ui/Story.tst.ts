@@ -35,6 +35,18 @@ describe("Story", () => {
     expect(Story.resolve).type.toBeCallableWith(SaveTodo, TodoItemMessage.make({ _tag: "Saved" }))
     expect(Story.resolve).type.not.toBeCallableWith(SaveTodo, SearchMessage.make({ _tag: "Tick" }))
     expect(Story.resolve).type.toBeCallableWith(Search("x"), SearchMessage.make({ _tag: "Results", items: [] }))
+    expect(Story.resolve).type.not.toBeCallableWith(Search("x"), TodoItemMessage.make({ _tag: "Saved" }))
+  })
+
+  it("an issued Command whose result never arrives is a target, and takes no result", () => {
+    const Hold = Command.make("Hold", (_key: string) => Effect.never)
+    const Watch = Command.make("Watch", (_key: string) => Stream.never, { stream: true })
+    expect(Story.expectExact).type.toBeCallableWith(Hold("one"), Watch("one"))
+    expect(Story.expectHas).type.toBeCallableWith(Hold("one"))
+    expect(Story.end).type.toBeCallableWith(Watch("one"))
+    expect(Story.end).type.not.toBeCallableWith(Hold("one"))
+    expect(Story.resolve).type.not.toBeCallableWith(Hold("one"), "anything")
+    expect(Story.next).type.not.toBeCallableWith(Watch("one"), "anything")
   })
 
   it("a mapped Command as the target takes the definition's own result", () => {
