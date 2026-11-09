@@ -51,6 +51,7 @@ import type * as Component from "effect/ui/Component"
 import * as Renderer from "effect/ui/Renderer"
 import type * as View from "effect/ui/View"
 import * as Html from "./Html.ts"
+import * as headSync from "./internal/head.ts"
 
 const SVG = "http://www.w3.org/2000/svg"
 
@@ -183,11 +184,28 @@ const payloadOf = (name: string, event: Event, target: EventTarget | null, eleme
  * the `html` vocabulary and host-neutral components. A component of another
  * vocabulary fails its own slot when it mounts.
  *
+ * The host keeps the document head in sync with the tree's merged
+ * `Head.Head`. It owns only tags marked `data-eui`, plus `<title>` and
+ * `lang` / `dir` on `<html>`, and restores the shell's value once no entry
+ * sets one. Static titles, `lang`, classes and `data-*` on `<html>` and
+ * `<body>` belong in the root component's `head`, not in the shell: HTML
+ * keeps the first copy of a duplicated attribute, so the shell's copy would
+ * hide the framework's. `warn` reports a shell that conflicts with the head
+ * on the first sync, and defaults to `console.warn`.
+ *
  * @stability experimental
  * @category constructors
  * @since 4.1.3
  */
-export const makeHost = (document: Document): Renderer.Host<globalThis.Node> & { readonly dispose: () => void } => {
+export const makeHost = (
+  document: Document,
+  options?: { readonly warn?: ((message: string) => void) | undefined }
+): Renderer.Host<globalThis.Node> & { readonly dispose: () => void } => {
+  const syncHead = headSync.make(
+    document,
+    // oxlint-disable-next-line no-console
+    options?.warn ?? ((message) => console.warn(message))
+  )
   const bound = new WeakMap<globalThis.Node, Bound>()
   // The last value the renderer set for each controlled property: what the element must show.
   const wanted = new WeakMap<globalThis.Node, Map<string, unknown>>()
@@ -334,6 +352,7 @@ export const makeHost = (document: Document): Renderer.Host<globalThis.Node> & {
     elements: [Html.name],
     controlled,
     runsMounts: true,
+    head: syncHead,
     dispose: () => {
       for (const [name, f] of listening) document.removeEventListener(name, f, { capture: true })
       listening.clear()
