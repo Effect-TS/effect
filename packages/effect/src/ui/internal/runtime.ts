@@ -575,7 +575,14 @@ const start = (
       } else {
         whenReady(parentEnv, (parentCtx) => {
           if (inst.closed) return
-          const fiber = buildLayer(component.layer!(props), parentCtx, scope, (exit) => {
+          // A factory that throws is this instance's Layer failing, not its parent's view.
+          let layer: Layer.Layer<any, any, any>
+          try {
+            layer = component.layer!(props)
+          } catch (defect) {
+            return fail(Cause.die(defect))
+          }
+          const fiber = buildLayer(layer, parentCtx, scope, (exit) => {
             if (inst.closed) return
             if (Exit.isFailure(exit)) return fail(exit.cause)
             ready()
@@ -644,16 +651,22 @@ const start = (
     next.commands.forEach((command, index) => issue(inst, command, { seq: entrySeq, index }))
     if (!initial) markDirty(inst)
     syncSubscriptions(inst)
+    if (next.emits.length === 0) return
     const parent = inst.parent
-    for (const emitted of next.emits) {
-      if (inst.closed) return
-      if (parent === undefined) {
-        rootEmitted.push(emitted)
-        continue
+    const deliver = () => {
+      for (const emitted of next.emits) {
+        if (inst.closed) return
+        if (parent === undefined) {
+          rootEmitted.push(emitted)
+          continue
+        }
+        const message = guard(parent, "onEmit", () => inst.onEmit(emitted))
+        if (message !== undefined) parent.dispatch(message, { _tag: "Emit", path: inst.path, seq: entrySeq })
       }
-      const message = guard(parent, "onEmit", () => inst.onEmit(emitted))
-      if (message !== undefined) parent.dispatch(message, { _tag: "Emit", path: inst.path, seq: entrySeq })
     }
+    // An emit from `init` waits until the parent, which is still being built, has its first Model.
+    if (initial) defer(deliver)
+    else deliver()
   }
 
   // -- Commands -------------------------------------------------------------
@@ -830,12 +843,16 @@ const start = (
       })
   })
 
+  // Mount Scopes of removed elements. Closing a Scope is asynchronous, so a mount that was waiting
+  // for its commit or its Layer checks this before it starts.
+  const removedMounts = new WeakSet<Scope.Closeable>()
+
   const startMount = (inst: Instance, mount: View.Mount<any>, node: unknown, env: Env) => {
     if (!host.runsMounts) return undefined
     const mountScope = Scope.forkUnsafe(inst.scope, "sequential")
     afterCommit(() =>
       whenReady(env, (envCtx) => {
-        if (inst.closed) return
+        if (inst.closed || removedMounts.has(mountScope)) return
         const source: MessageLog.Source = { _tag: "Mount", name: mount.name }
         const fiber = forkNow(
           Context.add(Context.add(envCtx, Scope.Scope, mountScope), services.Refs, refsOf(inst)),
@@ -1082,8 +1099,9 @@ const start = (
     }
   }
 
+  /** Patches a single root (a view's or a fallback's), which is kept only if its key matches too. */
   const patchOrReplace = (inst: Instance, rendered: Rendered, view: View.Node<any, any>, env: Env): Rendered => {
-    if (same(rendered, view)) return patch(inst, rendered, view, env)
+    if (same(rendered, view) && keyOf(rendered.v, 0) === keyOf(view, 0)) return patch(inst, rendered, view, env)
     const next = create(inst, view, env)
     const nodes = nodesOf(rendered)
     const parentNode = nodes.length > 0 ? host.parentOf(nodes[0]) : undefined
@@ -1124,7 +1142,10 @@ const start = (
         return closeAll(inst, rendered.inner)
       case "Element": {
         // The element's `onMount` work ends with it.
-        if (rendered.mountScope !== undefined) closeScope(rendered.mountScope)
+        if (rendered.mountScope !== undefined) {
+          removedMounts.add(rendered.mountScope)
+          closeScope(rendered.mountScope)
+        }
         for (const child of rendered.children) closeAll(inst, child)
         return
       }
@@ -1142,6 +1163,18 @@ const start = (
 
   // -- root -----------------------------------------------------------------
   record({ _tag: "SessionStarted", path: `/${component.name}`, app: component.name })
+  // Registered before the root instance forks its Scope from `rootScope`: finalizers run in
+  // reverse, so every instance Scope (and its Layers' finalizers) closes before the nodes go.
+  let rootRendered: () => ReadonlyArray<Rendered> = () => []
+  Effect.runSync(Scope.addFinalizer(
+    rootScope,
+    Effect.sync(() => {
+      for (const node of rootRendered().flatMap(nodesOf)) host.remove(node)
+      for (const node of rootFallbackNodes) host.remove(node)
+      rootFallbackNodes = []
+      host.commit?.()
+    })
+  ))
   const root = makeInstance(
     component,
     rootProps,
@@ -1151,19 +1184,11 @@ const start = (
     () => undefined,
     undefined
   )
+  rootRendered = () => root.rendered
   if (root.failure === undefined) place(container, root.rendered, undefined)
   host.commit?.()
   rendering = false
   runCommitted()
-  Effect.runSync(Scope.addFinalizer(
-    rootScope,
-    Effect.sync(() => {
-      for (const node of root.rendered.flatMap(nodesOf)) host.remove(node)
-      for (const node of rootFallbackNodes) host.remove(node)
-      rootFallbackNodes = []
-      host.commit?.()
-    })
-  ))
 
   const find = (path: string, from: Instance = root): Instance | undefined => {
     if (from.path === path) return from
