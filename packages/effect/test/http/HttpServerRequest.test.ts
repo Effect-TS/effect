@@ -132,6 +132,18 @@ describe("HttpServerRequest", () => {
     strictEqual(clientRequest.headers["x-test"], "ok")
   })
 
+  it.effect("fromWeb streams a null body as empty", () =>
+    Effect.gen(function*() {
+      const web = new Request("http://localhost:3000/", {
+        method: "PUT",
+        headers: { "content-length": "0" }
+      })
+      assert.strictEqual(web.body, null)
+
+      const request = HttpServerRequest.fromWeb(web)
+      assert.strictEqual((yield* Stream.runCollect(request.stream)).length, 0)
+    }))
+
   it.effect("fromClientRequest preserves request metadata and shares concurrent stream body accessors", () =>
     Effect.gen(function*() {
       const clientRequest = HttpClientRequest.post(new URL("http://localhost:3000/items?existing=1#top")).pipe(

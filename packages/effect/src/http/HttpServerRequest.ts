@@ -605,14 +605,7 @@ class ServerRequestImpl extends Inspectable.Class implements HttpServerRequest {
             })
           })
       })
-      : Stream.fail(
-        new HttpServerError({
-          reason: new RequestParseError({
-            request: this,
-            description: "can not create stream from empty body"
-          })
-        })
-      )
+      : Stream.empty
   }
 
   private textEffect: Effect.Effect<string, HttpServerError> | undefined
