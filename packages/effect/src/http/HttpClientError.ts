@@ -12,7 +12,7 @@
  */
 import * as Cause from "../Cause.ts"
 import * as Data from "../Data.ts"
-import { hasProperty } from "../Predicate.ts"
+import { hasProperty, isError } from "../Predicate.ts"
 import * as Schema from "../Schema.ts"
 import type * as HttpClientRequest from "./HttpClientRequest.ts"
 import type * as ClientResponse from "./HttpClientResponse.ts"
@@ -455,15 +455,7 @@ export class HttpClientErrorSchema extends Schema.Error<HttpClientErrorSchema>(T
     })
   }
 
-  /**
-   * Uses the message of the original reason, or the error kind when no message
-   * is available.
-   *
-   * @stability unstable
-   * @since 4.0.0
-   */
   override get message(): string {
-    const message = hasProperty(this.cause, "message") ? this.cause.message : undefined
-    return typeof message === "string" && message !== "" ? message : this.kind
+    return isError(this.cause) && this.cause.message !== "" ? this.cause.message : this.kind
   }
 }
