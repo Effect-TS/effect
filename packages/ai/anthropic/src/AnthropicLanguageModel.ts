@@ -112,6 +112,11 @@ export class Config extends Context.Service<
   >
 >()("@effect/ai-anthropic/AnthropicLanguageModel/Config") {}
 
+/**
+ * The provider configuration merged with the resolved model identifier.
+ */
+type ResolvedConfig = typeof Config.Service & { readonly model: string }
+
 // =============================================================================
 // Provider Options / Metadata
 // =============================================================================
@@ -729,7 +734,7 @@ export const make = Effect.fnUntraced(function*({ model, config: providerConfig 
 }): Effect.fn.Return<LanguageModel.LanguageModel, never, AnthropicClient> {
   const client = yield* AnthropicClient
 
-  const makeConfig: Effect.Effect<typeof Config.Service & { readonly model: string }> = Effect.contextWith((services) =>
+  const makeConfig: Effect.Effect<ResolvedConfig> = Effect.contextWith((services) =>
     Effect.succeed({
       model,
       ...providerConfig,
@@ -739,7 +744,7 @@ export const make = Effect.fnUntraced(function*({ model, config: providerConfig 
 
   const makeRequest = Effect.fnUntraced(
     function*<Tools extends ReadonlyArray<Tool.Any>>({ config, options, toolNameMapper }: {
-      readonly config: typeof Config.Service & { readonly model: string }
+      readonly config: ResolvedConfig
       readonly options: LanguageModel.ProviderOptions
       readonly toolNameMapper: Tool.NameMapper<Tools>
     }): Effect.fn.Return<{
@@ -1409,7 +1414,7 @@ const prepareTools = Effect.fnUntraced(
   function*<Tools extends ReadonlyArray<Tool.Any>>({ betas, capabilities, config, options, toolNameMapper }: {
     readonly betas: Set<string>
     readonly capabilities: ModelCapabilities
-    readonly config: typeof Config.Service
+    readonly config: ResolvedConfig
     readonly options: LanguageModel.ProviderOptions
     readonly toolNameMapper: Tool.NameMapper<Tools>
   }): Effect.fn.Return<{
@@ -1445,7 +1450,7 @@ const prepareTools = Effect.fnUntraced(
     for (const tool of options.tools) {
       if (Tool.isUserDefined(tool) || Tool.isDynamic(tool)) {
         const description = Tool.getDescription(tool)
-        const strict = getToolStrictMode(tool, config, capabilities)
+        const strict = getToolStrictMode(tool, config)
         const input_schema = yield* tryToolJsonSchema(tool, strict === true, "prepareTools")
 
         userTools.push({
@@ -1667,7 +1672,7 @@ const makeResponse = Effect.fnUntraced(
     response,
     toolNameMapper
   }: {
-    readonly config: typeof Config.Service & { readonly model: string }
+    readonly config: ResolvedConfig
     readonly options: LanguageModel.ProviderOptions
     readonly rawResponse: Generated.BetaMessage
     readonly response: HttpClientResponse.HttpClientResponse
@@ -2089,7 +2094,7 @@ const makeStreamResponse = Effect.fnUntraced(
   }: {
     readonly stream: Stream.Stream<MessageStreamEvent, AiError.AiError>
     readonly response: HttpClientResponse.HttpClientResponse
-    readonly config: typeof Config.Service & { readonly model: string }
+    readonly config: ResolvedConfig
     readonly options: LanguageModel.ProviderOptions
     readonly toolNameMapper: Tool.NameMapper<Tools>
   }): Effect.fn.Return<
@@ -3157,7 +3162,7 @@ interface ModelCapabilities {
   readonly supportsMidConversationSystemMessages: boolean
 }
 
-const getConfigCapabilities = (config: typeof Config.Service & { readonly model: string }): ModelCapabilities => {
+const getConfigCapabilities = (config: ResolvedConfig): ModelCapabilities => {
   const capabilities = getModelCapabilities(config.model)
   return {
     ...capabilities,
@@ -3260,12 +3265,14 @@ const toolParametersError = (tool: Tool.Any, error: unknown, method: string): Ai
     method
   )
 
-const getToolStrictMode = (
-  tool: Tool.Any,
-  config: typeof Config.Service,
-  capabilities: ModelCapabilities
-): boolean | undefined =>
-  capabilities.supportsStructuredOutput ? (Tool.getStrictMode(tool) ?? config.strictJsonSchema ?? true) : undefined
+/**
+ * Resolves whether a tool is advertised with the strict Anthropic schema.
+ * `undefined` means the model does not support the `strict` field at all.
+ */
+const getToolStrictMode = (tool: Tool.Any, config: ResolvedConfig): boolean | undefined =>
+  getConfigCapabilities(config).supportsStructuredOutput
+    ? (Tool.getStrictMode(tool) ?? config.strictJsonSchema ?? true)
+    : undefined
 
 const getToolJsonSchema = (tool: Tool.Any | Tool.AnyDynamic, strict: boolean) =>
   Tool.getJsonSchema(tool, {
@@ -3301,20 +3308,26 @@ const getOutputFormat = Effect.fnUntraced(function*({ capabilities, options }: {
   return undefined
 })
 
-const getToolParamsCodec = <S extends Schema.Constraint>(schema: S, strict: boolean) => {
-  if (!strict) {
-    return Schema.toCodecJson(schema)
+const getToolParamsCodec = (tool: Tool.Any, config: ResolvedConfig) => {
+  const schema = tool.parametersSchema
+  if (Tool.isProviderDefined(tool)) {
+    // Provider-defined tools are not advertised with a schema; decode them with
+    // the Anthropic codec, falling back to plain JSON for schemas it cannot
+    // convert
+    try {
+      return toCodecAnthropic(schema).codec
+    } catch {
+      return Schema.toCodecJson(schema)
+    }
   }
-  try {
-    return toCodecAnthropic(schema).codec
-  } catch {
-    // Preserve the JSON codec fallback for provider-defined tools.
-    return Schema.toCodecJson(schema)
-  }
+  // Decode with the codec of the schema the request advertised
+  return getToolStrictMode(tool, config) === true
+    ? toCodecAnthropic(schema).codec
+    : Schema.toCodecJson(schema)
 }
 
 const transformToolCallParams = Effect.fnUntraced(function*(
-  config: typeof Config.Service & { readonly model: string },
+  config: ResolvedConfig,
   options: LanguageModel.ProviderOptions,
   toolName: string,
   toolParams: unknown
@@ -3335,8 +3348,7 @@ const transformToolCallParams = Effect.fnUntraced(function*(
     })
   }
 
-  const strict = Tool.isProviderDefined(tool) || getToolStrictMode(tool, config, getConfigCapabilities(config)) === true
-  const codec = getToolParamsCodec(tool.parametersSchema, strict)
+  const codec = getToolParamsCodec(tool, config)
 
   // Normalize valid parameters; leave invalid ones for Toolkit.
   return yield* (
