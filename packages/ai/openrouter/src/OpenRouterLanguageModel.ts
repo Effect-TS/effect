@@ -1443,6 +1443,7 @@ const makeStreamResponse = Effect.fnUntraced(
                 // arguments are already complete
                 if (
                   completedToolCallIndexes.has(index) && Predicate.isNullish(toolCall.id) &&
+                  Predicate.isNullish(toolCall.type) && Predicate.isNullish(toolCall.function?.name) &&
                   argumentsDelta.length === 0
                 ) {
                   continue
