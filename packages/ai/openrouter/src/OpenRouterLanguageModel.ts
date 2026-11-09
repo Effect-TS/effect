@@ -1265,7 +1265,7 @@ const makeStreamResponse = Effect.fnUntraced(
         const choice = event.choices[0]
         if (Predicate.isNotUndefined(choice)) {
           if (Predicate.isNotNullish(choice.finish_reason)) {
-            finishReason = resolveFinishReason(choice.finish_reason, false)
+            finishReason = resolveFinishReason(choice.finish_reason)
           }
 
           const delta = choice.delta
@@ -1532,6 +1532,8 @@ const makeStreamResponse = Effect.fnUntraced(
         // Usage is only emitted by the last part of the stream, so we need to
         // handle flushing any remaining text / reasoning / tool calls
         if (Predicate.isNotUndefined(event.usage)) {
+          // No finish reason was streamed: infer "tool-calls" only when every
+          // tool call parsed, so a truncated call is never flushed as "{}"
           finishReason ??= resolveFinishReason(
             undefined,
             totalToolCalls > 0 && Object.keys(activeToolCalls).length === 0

@@ -14,7 +14,7 @@ const finishReasonMap: Record<string, Response.FinishReason> = {
 /** @internal */
 export const resolveFinishReason = (
   finishReason: string | null | undefined,
-  hasToolCalls: boolean
+  hasToolCalls = false
 ): Response.FinishReason => {
   if (Predicate.isNullish(finishReason)) {
     return hasToolCalls ? "tool-calls" : "other"
