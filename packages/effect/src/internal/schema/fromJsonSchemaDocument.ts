@@ -1068,8 +1068,7 @@ export function fromJsonSchemaMultiDocument(
 
   // Returns the unchecked "anyOf" union a member is or references, with the
   // reference annotations applied, or "spliced" when the reference chain
-  // reaches a definition whose alternatives are already spliced. References to
-  // definitions still being translated stay references.
+  // reaches a definition whose alternatives are already spliced.
   function nestedAnyOf(
     member: ImportedJsonSchemaRepresentation,
     path: Path,
@@ -1081,7 +1080,7 @@ export function fromJsonSchemaMultiDocument(
     while (current._tag === "Reference") {
       const key = current.$ref
       if (spliced.has(key)) return "spliced"
-      if (keys.includes(key) || definitionCache.get(key) === null) return undefined
+      if (keys.includes(key)) return undefined
       keys.push(key)
       references.push(current)
       current = translateDefinition(key, path)
@@ -1110,7 +1109,9 @@ export function fromJsonSchemaMultiDocument(
   // spliced once and repeated members are kept once; otherwise a definition
   // reached through several references would multiply the alternatives, and
   // the limits on distributing them would grow with the expanded union. A
-  // repeated member's annotations merge into the kept one.
+  // repeated member's annotations merge into the kept one, except for a
+  // reference to an already spliced definition, which is dropped with its
+  // annotations.
   function flattenAnyOf(union: ImportedUnion, path: Path): ImportedUnion {
     if (!isAnyOf(union)) return union
     let types = flattenedAlternatives.get(union.types)
