@@ -536,8 +536,15 @@ export const makeHandlers = (
       const invocation = yield* getInputInvocation(request)
       const read = yield* core.resources.read(request.uri, invocation)
       const contents = read.contents.map(projectResourceContents)
+      // MRTR retries depend on input outside the cache key (Caching / Cache Key).
+      const hints = request.inputResponses !== undefined || request.requestState !== undefined
+        ? privateStaleCache
+        : {
+          ttlMs: read.ttlMs === undefined ? 0 : read.ttlMs,
+          cacheScope: read.cacheScope === undefined ? "private" : read.cacheScope
+        }
       const result = yield* projectCompleteResult({
-        ...privateStaleCache,
+        ...hints,
         contents,
         _meta: read._meta
       }, context.serverInfo)

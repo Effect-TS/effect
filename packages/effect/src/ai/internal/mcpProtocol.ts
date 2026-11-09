@@ -454,6 +454,7 @@ export interface HandlerInstallationContext {
   readonly supportedVersions: ReadonlyArray<string>
   readonly serverInfo: {
     readonly name: string
+    readonly title?: string | undefined
     readonly version: string
     readonly instructions?: string | undefined
     readonly description?: string | undefined
@@ -478,7 +479,7 @@ export interface HandlerInstallationContext {
 export type CacheHints = {
   readonly [Family in keyof PublicMcpServer.CacheHints]?: {
     readonly ttlMs: number
-    readonly cacheScope: "private"
+    readonly cacheScope: "private" | "public"
   }
 }
 
