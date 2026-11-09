@@ -256,11 +256,6 @@ export const fromSetCookie = (headers: Iterable<string> | string): Cookies => {
 const cookieDomain = (cookie: Cookie): string | undefined =>
   cookie.options?.domain?.replace(/^\./, "").toLowerCase() || undefined
 
-// A missing path is not resolved to "/" because the default path depends on
-// the request URL, which `scopeCookie` applies for client storage.
-const sameIdentity = (a: Cookie, b: Cookie): boolean =>
-  a.name === b.name && a.options?.path === b.options?.path && cookieDomain(a) === cookieDomain(b)
-
 function parseSetCookie(header: string): Cookie | undefined {
   const parts = header.split(";").map((_) => _.trim()).filter((_) => _ !== "")
   if (parts.length === 0) {
@@ -522,7 +517,13 @@ export const setAllCookie: {
 } = dual(2, (self: Cookies, cookies: Iterable<Cookie>) => {
   const result = self.cookies.slice()
   for (const cookie of cookies) {
-    const index = result.findIndex((existing) => sameIdentity(existing, cookie))
+    const domain = cookieDomain(cookie)
+    // A missing path is not resolved to "/" because the default path depends on
+    // the request URL, which `scopeCookie` applies for client storage.
+    const path = cookie.options?.path
+    const index = result.findIndex((existing) =>
+      existing.name === cookie.name && existing.options?.path === path && cookieDomain(existing) === domain
+    )
     if (index !== -1) result.splice(index, 1)
     result.push(cookie)
   }
@@ -692,6 +693,11 @@ export const expireCookie: {
 
 /**
  * Adds an expired cookie to a Cookies object, throwing an error if invalid
+ *
+ * **Gotchas**
+ *
+ * Only the cookie with the same name, domain and path is replaced, so pass the
+ * `domain` and `path` the cookie was set with.
  *
  * @stability unstable
  * @category combinators

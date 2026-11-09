@@ -771,6 +771,11 @@ export const setCookieUnsafe: {
  * Use when you need to expire one trusted cookie and want encoding failures to
  * throw instead of being represented as `CookiesError` failures.
  *
+ * **Gotchas**
+ *
+ * A cookie is expired only when its name, domain and path match the ones it was
+ * set with, so pass the same `domain` and `path`.
+ *
  * @stability unstable
  * @category combinators
  * @since 4.0.0
