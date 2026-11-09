@@ -375,15 +375,13 @@ export const renameIndices: {
  * In the data-last form, annotate the ordinary callback parameter so its input
  * type can be inferred before the tuple is supplied.
  *
- * **Example** (Mapping numbers while preserving tuple length)
+ * **Example** (Incrementing every element)
  *
  * ```ts import.meta.vitest
  * import { pipe, Tuple } from "effect"
  *
- * const numbers: [number, number, number] = [1, 2, 3]
- * const incremented: [number, number, number] = Tuple.map(numbers, (n) => n + 1)
- * incremented // => [2, 3, 4]
- * pipe(numbers, Tuple.map((n: number) => n + 1)) // => [2, 3, 4]
+ * Tuple.map(Tuple.make(1, 2, 3), (n) => n + 1) // => [2, 3, 4]
+ * pipe(Tuple.make(1, 2, 3), Tuple.map((n: number) => n + 1)) // => [2, 3, 4]
  * ```
  *
  * **Example** (Wrapping every element in an array)
@@ -452,7 +450,7 @@ export const map: {
  * ) // => [[1], "hello", [true]]
  * ```
  *
- * @see {@link map} – apply a lambda to all elements
+ * @see {@link map} – apply a function or lambda to all elements
  * @see {@link mapOmit} – apply a lambda to all elements except selected ones
  * @stability stable
  * @category mapping
@@ -508,7 +506,7 @@ export const mapPick: {
  * ) // => [[1], "hello", [true]]
  * ```
  *
- * @see {@link map} – apply a lambda to all elements
+ * @see {@link map} – apply a function or lambda to all elements
  * @see {@link mapPick} – apply a lambda only to selected indices
  * @stability stable
  * @category mapping
