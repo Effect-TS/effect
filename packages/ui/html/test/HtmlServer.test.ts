@@ -2,7 +2,7 @@ import { BrowserHost, Html, HtmlServer } from "@effect/ui-html"
 import { ssr } from "@effect/ui-html/testing"
 import { expect, it } from "@effect/vitest"
 import { Context, Effect, Fiber, Layer, Option, Schema } from "effect"
-import { Command, Component, Feature, Router } from "effect/ui"
+import { Command, Component, Feature, Head, Router } from "effect/ui"
 import { describe } from "vitest"
 import { App, AppRoute, People } from "./fixtures/routed.ts"
 
@@ -355,5 +355,85 @@ describe("HtmlServer", { concurrent: false }, () => {
       const result = yield* ssr(Swap, {})
       yield* Effect.yieldNow
       expect(result.container.textContent).toBe("mounted")
+    }).pipe(Effect.scoped))
+  it.effect("keeps marker paths through the parser's normalisation of CR, NUL and lone surrogates", () =>
+    Effect.gen(function*() {
+      const Leaf = Component.make({
+        name: "Leaf",
+        model: Schema.Struct({}),
+        message: Schema.Never,
+        elements: Html,
+        init: () => ({}),
+        update: (model) => model,
+        view: (_, h) => h.p("leaf")
+      })
+      const Root = Component.make({
+        name: "Root",
+        model: Schema.Struct({}),
+        message: Schema.Never,
+        elements: Html,
+        init: () => ({}),
+        update: (model) => model,
+        view: (_, h) => h.child(Leaf, { key: "a\rb\r\nc\u0000d\ud800e-->", props: {} })
+      })
+      const rendered = yield* HtmlServer.renderToHtml(Root, {})
+      // What a browser does before it parses: UTF-8 replaces a lone surrogate, the input stream turns CR
+      // and CRLF into LF, and a comment turns NUL into U+FFFD. Happy DOM does none of it.
+      const parsed = new TextDecoder().decode(new TextEncoder().encode(rendered.html))
+        .replace(/\r\n?/g, "\n")
+        .replaceAll("\u0000", "\ufffd")
+      expect(parsed).toBe(rendered.html)
+      const app = yield* container(parsed)
+      const leaf = app.querySelector("p")
+      yield* BrowserHost.mount(Root, {}, app, { state: rendered.state })
+      expect(app.querySelector("p")).toBe(leaf)
+      expect(app.innerHTML).toBe("<p>leaf</p>")
+    }).pipe(Effect.scoped))
+
+  it.live("compares the head at adoption, so a mount update while a slot waits isn't a mismatch", () =>
+    Effect.gen(function*() {
+      class Slow extends Context.Service<Slow, string>()("test/Slow") {}
+      const Waiting = Component.make({
+        name: "Waiting",
+        model: Schema.Struct({}),
+        message: Schema.Never,
+        elements: Html,
+        init: () => ({}),
+        update: (model) => model,
+        view: (_, h) => h.p("waiting")
+      }).pipe(Component.provide(Layer.effect(Slow, Effect.as(Effect.sleep("30 millis"), "ready"))))
+      const Message = Schema.TaggedUnion({ Mounted: {} })
+      const Titled = Component.make({
+        name: "Titled",
+        model: Schema.String,
+        message: Message,
+        elements: Html,
+        init: () => "server",
+        update: () => "mounted",
+        head: (title) => [Head.title(title)],
+        view: (_, h) =>
+          h.div(h.child(Waiting, { key: "w", props: {} })).onMount(
+            "title",
+            () => Effect.succeed(Message.make({ _tag: "Mounted" }))
+          )
+      })
+      const result = yield* ssr(Titled, {})
+      expect(result.adopted).toEqual(["/Titled", "/Titled/Waiting[w]"])
+      yield* tick
+      expect(result.document.title).toBe("mounted")
+
+      let runs = 0
+      const Unstable = Component.make({
+        name: "Unstable",
+        model: Schema.Struct({}),
+        message: Schema.Never,
+        elements: Html,
+        init: () => ({}),
+        update: (model) => model,
+        head: () => [Head.title(`run ${runs++}`)],
+        view: (_, h) => h.p("same")
+      })
+      const error = yield* Effect.flip(ssr(Unstable, {}))
+      expect(error.problems).toEqual(["head title: the server has \"run 0\", the client \"run 2\""])
     }).pipe(Effect.scoped))
 })
