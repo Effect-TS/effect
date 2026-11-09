@@ -17,4 +17,10 @@ export * as BrowserHost from "./BrowserHost.ts"
  * @stability experimental
  * @since 4.1.3
  */
+export * as BrowserRouter from "./BrowserRouter.ts"
+
+/**
+ * @stability experimental
+ * @since 4.1.3
+ */
 export * as Html from "./Html.ts"
