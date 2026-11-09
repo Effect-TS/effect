@@ -102,6 +102,27 @@ export interface Teardown {
  * exitCodes // => [0, 1, 130]
  * ```
  *
+ * **Example** (Distinguishing completion from external interruption)
+ *
+ * ```ts import.meta.vitest
+ * import { Cause, Context, Exit, Runtime } from "effect"
+ *
+ * const completed = Cause.annotate(Cause.interrupt(1), Context.make(Runtime.InterruptExitCode, 0))
+ * const custom = Cause.annotate(Cause.interrupt(2), Context.make(Runtime.InterruptExitCode, 7))
+ * const external = Cause.interrupt(3)
+ * const exitCodes: Array<number> = []
+ * const collectExitCode = (cause: Cause.Cause<never>) =>
+ *   Runtime.defaultTeardown(Exit.failCause(cause), (code) => exitCodes.push(code))
+ *
+ * collectExitCode(completed)
+ * collectExitCode(Cause.combine(completed, custom))
+ * collectExitCode(Cause.combine(custom, completed))
+ * collectExitCode(Cause.combine(completed, external))
+ * collectExitCode(Cause.combine(external, completed))
+ *
+ * exitCodes // => [0, 7, 7, 130, 130]
+ * ```
+ *
  * @see {@link errorExitCode} for customizing failure exit codes
  *
  * @stability stable

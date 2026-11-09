@@ -34,6 +34,7 @@ import * as RpcClient from "effect/rpc/RpcClient"
 import type * as RpcMessage from "effect/rpc/RpcMessage"
 import { RequestId } from "effect/rpc/RpcMessage"
 import * as RpcServer from "effect/rpc/RpcServer"
+import * as Runtime from "effect/Runtime"
 import * as Scheduler from "effect/Scheduler"
 import * as Schema from "effect/Schema"
 import * as SchemaGetter from "effect/SchemaGetter"
@@ -3243,6 +3244,15 @@ describe("McpServer", () => {
   })
 
   describe("stdio", () => {
+    it.effect("should exit successfully when stdin closes after initialization", () =>
+      Effect.gen(function*() {
+        const fixture = yield* makeMcpStdioHarness(McpProtocol.v2025_06_18)
+        yield* fixture.initialize()
+        yield* fixture.close
+        const exit = yield* Fiber.await(fixture.serverFiber)
+        Runtime.defaultTeardown(exit, (code) => assert.strictEqual(code, 0))
+      }))
+
     it.effect("should give each layerStdio server its own protocol in one layer graph", () =>
       Effect.gen(function*() {
         const encoder = new TextEncoder()
