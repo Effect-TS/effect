@@ -178,7 +178,13 @@ describe("Client", { concurrent: false }, () => {
       const done = yield* Deferred.make<void>()
 
       const stale = yield* sql.withTransaction(Effect.forkChild(
-        Effect.andThen(Deferred.await(go), sql`INSERT INTO t VALUES ('stale fiber')`).pipe(
+        Effect.andThen(
+          Deferred.await(go),
+          Effect.all([
+            Effect.flip(sql`INSERT INTO t VALUES ('stale fiber')`),
+            Effect.flip(sql.withTransaction(sql`INSERT INTO t VALUES ('stale nested')`))
+          ])
+        ).pipe(
           Effect.ensuring(Deferred.succeed(done, undefined))
         )
       ))
@@ -189,12 +195,14 @@ describe("Client", { concurrent: false }, () => {
         return yield* Effect.fail("rollback")
       }))))
 
-      const error = yield* Effect.flip(Fiber.join(stale))
+      const errors = yield* Fiber.join(stale)
       yield* Fiber.join(other)
-      assert.deepStrictEqual(
-        [error.reason._tag, error.reason.message],
-        ["UnknownError", "SqlClient: the transaction has already ended"]
-      )
+      for (const error of errors) {
+        assert.deepStrictEqual(
+          [error.reason._tag, error.reason.message, error.isRetryable],
+          ["UnknownError", "SqlClient: the transaction has already ended", false]
+        )
+      }
       assert.deepStrictEqual(yield* sql`SELECT who FROM t`, [])
       // The connection is still usable for new transactions.
       yield* sql.withTransaction(sql`INSERT INTO t VALUES ('after')`)
