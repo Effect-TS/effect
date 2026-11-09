@@ -1115,7 +1115,7 @@ export function fromJsonSchemaMultiDocument(
     if (types === undefined) {
       const out: Array<ImportedJsonSchemaRepresentation> = []
       const spliced = new Set<string>()
-      const kept = new Map<string, number>()
+      const kept = new Map<unknown, number>()
       const visit = (members: ReadonlyArray<ImportedJsonSchemaRepresentation>) => {
         for (const member of members) {
           const nested = nestedAnyOf(member, path, spliced)
@@ -1129,13 +1129,13 @@ export function fromJsonSchemaMultiDocument(
             ? `$ref:${member.$ref}`
             : member._tag === "Null" && member.checks.length === 0
             ? "null"
-            : undefined
-          const index = key === undefined ? undefined : kept.get(key)
+            : member
+          const index = kept.get(key)
           if (index !== undefined) {
             out[index] = annotate(out[index], member)
             continue
           }
-          if (key !== undefined) kept.set(key, out.length)
+          kept.set(key, out.length)
           out.push(member)
         }
       }
