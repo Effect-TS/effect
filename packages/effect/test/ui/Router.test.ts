@@ -1,7 +1,7 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Effect, type Layer, Option, type Scope, Stream } from "effect"
+import { Effect, type Layer, Option, Schema, type Scope, Stream } from "effect"
 import { TestClock } from "effect/testing"
-import { type MessageLog, Router } from "effect/ui"
+import { Component, Head, type MessageLog, Router } from "effect/ui"
 import { Query, TestHost } from "effect/ui/testing"
 import { App, AppRoute } from "./fixtures/router.ts"
 
@@ -217,6 +217,60 @@ describe("Router", () => {
         yield* TestHost.settle
         assert.strictEqual(root.model()?.route._tag, "NotFound")
         assert.deepStrictEqual(history.loaded(), [])
+      })
+    )
+  })
+
+  it.effect("settles with the head of the live tree when a title template fails its layout", () => {
+    const { layer, settled } = setup()
+    const Page = Component.make({
+      name: "Page",
+      model: Schema.Number,
+      message: Schema.Never,
+      init: () => 0,
+      update: (model) => model,
+      head: () => [Head.title("Ada")],
+      view: (_, h) => h.text("page")
+    })
+    const Layout = Component.make({
+      name: "Layout",
+      model: Schema.Number,
+      message: Schema.Never,
+      init: () => 0,
+      update: (model) => model,
+      head: () => [
+        Head.titleTemplate(() => {
+          throw new Error("bad template")
+        })
+      ],
+      view: (_, h) => h.child(Page, { key: "page", props: {} })
+    })
+    const Shell = Component.make({
+      name: "Shell",
+      props: Schema.Struct({ route: AppRoute }),
+      model: AppRoute,
+      message: Schema.Struct({ route: AppRoute }),
+      init: ($) => $.props.route,
+      update: (_, { route }) => route,
+      subscriptions: () => [Router.subscription(AppRoute, (route) => ({ route }))],
+      head: () => [Head.title("App")],
+      view: (route, h) =>
+        route._tag === "Person"
+          ? h.child(Layout, { key: AppRoute.print(route), props: {}, fallback: () => h.text("down") })
+          : h.text("home")
+    })
+    return run(
+      layer,
+      Effect.gen(function*() {
+        const router = yield* Router.Router
+        const root = yield* TestHost.mount(Shell, { route: AppRoute.make({ _tag: "Home" }) })
+        yield* TestHost.settle
+        yield* router.navigate("/people/1")
+        yield* TestHost.settle
+        assert.strictEqual(root.text(), "down")
+        assert.strictEqual(root.head().title, "App")
+        // The removed page's title is never announced.
+        assert.deepStrictEqual(settled.map((done) => done.head.title), ["App"])
       })
     )
   })
