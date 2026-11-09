@@ -100,20 +100,24 @@ type RedactedNames = ReadonlyArray<string | RegExp>
 // Both maps live outside the objects they describe, so structural `Equal` and
 // `Hash` don't see them, and neither is keyed on a request, which callers
 // reuse across executions under different names.
-
-// The `UrlParams.CurrentRedactedNames` of the fiber that executed a request,
-// keyed on the response the runner produced and on the wrapper
-// `HttpClient.make` returns for it. A runner may return one response to
-// several executions, so an entry only grows.
+//
+// `responseRedactedNames` holds the `UrlParams.CurrentRedactedNames` of the
+// fiber that executed a request, keyed on the response the runner produced and
+// on the wrapper `HttpClient.make` returns for it. A runner may return one
+// response to several executions, so an entry only grows.
+//
+// `redactedUrls` holds the URL of each reason, redacted when the reason was
+// created, because the fiber that renders an error later, such as a span
+// exporter, may not have the names of the request. An entry only ever gets more
+// redacted: the current fiber may be unrelated to the request when a transport
+// callback creates the error, so its names add redaction and never decide it.
 const responseRedactedNames = new WeakMap<ClientResponse.HttpClientResponse, RedactedNames>()
-
-// The URL of each reason, redacted when the reason was created. The fiber that
-// renders an error later, such as a span exporter, may not have the names of
-// the request, so the stored URL is never less redacted than the names of the
-// response and of the current fiber at creation time. The current fiber may
-// be unrelated to the request when a transport callback creates the error, so
-// its names only add redaction.
 const redactedUrls = new WeakMap<object, string>()
+
+const addRedactedNames = (reason: object, names: RedactedNames | undefined): void => {
+  const url = redactedUrls.get(reason)
+  if (url !== undefined && names !== undefined) redactedUrls.set(reason, UrlParams.redactUrl(url, names))
+}
 
 /** @internal */
 export const addResponseRedactedNames = (response: ClientResponse.HttpClientResponse, names: RedactedNames): void => {
@@ -129,9 +133,7 @@ export const addResponseRedactedNames = (response: ClientResponse.HttpClientResp
  */
 export const addFailureRedactedNames = (cause: Cause.Cause<unknown>, names: RedactedNames): void => {
   for (const reason of cause.reasons) {
-    if (!Cause.isFailReason(reason) || !isHttpClientError(reason.error)) continue
-    const url = redactedUrls.get(reason.error.reason)
-    if (url !== undefined) redactedUrls.set(reason.error.reason, UrlParams.redactUrl(url, names))
+    if (Cause.isFailReason(reason) && isHttpClientError(reason.error)) addRedactedNames(reason.error.reason, names)
   }
 }
 
@@ -139,11 +141,8 @@ const ReasonError = <Tag extends string>(tag: Tag): ReturnType<typeof Data.Tagge
   class Base extends Data.TaggedError(tag)<ReasonProps> {
     constructor(props: ReasonProps) {
       super(props)
-      const names = props.response === undefined ? undefined : responseRedactedNames.get(props.response)
-      redactedUrls.set(
-        this,
-        UrlParams.redactUrl(names === undefined ? props.request.url : UrlParams.redactUrl(props.request.url, names))
-      )
+      redactedUrls.set(this, UrlParams.redactUrl(props.request.url))
+      if (props.response !== undefined) addRedactedNames(this, responseRedactedNames.get(props.response))
     }
   }
   return Base as any
