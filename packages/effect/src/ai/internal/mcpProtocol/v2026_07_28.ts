@@ -669,11 +669,10 @@ export const makeHandlers = (
     }, Effect.mapError(projectError)),
     "tools/call": Effect.fnUntraced(function*(request: typeof McpSchema.CallTool.payloadSchema.Type) {
       const invocation = yield* getInputInvocation(request)
-      const tool = core.tools.find(request.name, invocation.protocol)
       const httpRequest = yield* Effect.serviceOption(HttpServerRequest.HttpServerRequest)
-      // Deferred until request-level visibility accepts the tool, so a mismatch cannot reveal a hidden tool.
-      const beforeHandle = tool !== undefined && Option.isSome(httpRequest)
-        ? validateParameterHeaders(tool.inputSchema, request.arguments, httpRequest.value.headers)
+      const beforeHandle = Option.isSome(httpRequest)
+        ? (tool: PublicMcpSchema.Tool) =>
+          validateParameterHeaders(tool.inputSchema, request.arguments, httpRequest.value.headers)
         : undefined
       const call = { name: request.name, arguments: request.arguments ?? {} }
       const outcome = yield* core.tools.call(call, invocation, beforeHandle)
