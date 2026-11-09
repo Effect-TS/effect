@@ -165,6 +165,7 @@ describe("HttpClient", () => {
         kind: "TransportError",
         cause: { message: "connection refused" }
       })
+      assert.strictEqual(error.message, "connection refused")
       const encoded = Schema.encodeSync(HttpClientError.HttpClientErrorSchema)(error)
 
       assert.deepStrictEqual(encoded, {
