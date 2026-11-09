@@ -91,6 +91,48 @@ describe("Generated", () => {
     deepStrictEqual(Schema.decodeUnknownSync(Generated.GetGeneration200)(response), response)
   })
 
+  it("decodes a chat tool call that omits its id", () => {
+    const response = {
+      id: "gen-1",
+      object: "chat.completion" as const,
+      created: 1,
+      model: "test/model",
+      system_fingerprint: null,
+      choices: [{
+        index: 0,
+        finish_reason: "tool_calls" as const,
+        message: {
+          role: "assistant" as const,
+          content: null,
+          tool_calls: [{ type: "function" as const, function: { name: "lookup", arguments: "{}" } }]
+        }
+      }]
+    }
+
+    deepStrictEqual(Schema.decodeUnknownSync(Generated.SendChatCompletionRequest200)(response), response)
+  })
+
+  it("decodes a stream tool call delta that omits its index", () => {
+    const chunk = {
+      id: "gen-1",
+      object: "chat.completion.chunk" as const,
+      created: 1,
+      model: "test/model",
+      choices: [{
+        index: 0,
+        delta: {
+          tool_calls: [{
+            id: "call-1",
+            type: "function" as const,
+            function: { name: "lookup", arguments: "{}" }
+          }]
+        }
+      }]
+    }
+
+    deepStrictEqual(Schema.decodeUnknownSync(Generated.ChatStreamChunk)(chunk), chunk)
+  })
+
   it("preserves streamed usage cost fields", () => {
     const usage = {
       completion_tokens: 11,

@@ -1096,7 +1096,7 @@ const makeResponse = Effect.fnUntraced(
         })
         parts.push({
           type: "tool-call",
-          id: toolCall.id,
+          id: toolCall.id ?? `${rawResponse.id}_tool_${index}`,
           name: toolName,
           params: yield* normalizeToolParams(toolCodecs, toolName, params),
           // Only attach reasoning_details to the first tool call to avoid
@@ -1526,7 +1526,7 @@ const makeStreamResponse = Effect.fnUntraced(
               // Increment the total tool calls emitted by the stream and
               // remove the active tool call
               totalToolCalls += 1
-              delete activeToolCalls[toolCall.index]
+              delete activeToolCalls[index]
             }
           }
 
