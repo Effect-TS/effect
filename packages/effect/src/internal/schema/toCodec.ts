@@ -16,23 +16,9 @@ export function toCodecJson<S extends PublicSchema.Constraint>(schema: S): Publi
 /** @internal */
 export const toCodecJsonAST = makeCodecDerivation(toCodecJsonASTStep)
 
-/**
- * Makes a JSON codec derivation like `toCodecJsonAST`, except that
- * `intercept` sees every node before its own encoding is followed. When it
- * returns an AST, that AST replaces the node and isn't derived further.
- *
- * @internal
- */
-export const makeToCodecJsonAST = (
-  intercept: (ast: SchemaAST.AST) => SchemaAST.AST | undefined
-): (ast: SchemaAST.AST) => SchemaAST.AST => makeCodecDerivation(toCodecJsonASTStep, { intercept })
-
 function makeCodecDerivation(
   step: (ast: SchemaAST.AST, recur: (ast: SchemaAST.AST) => SchemaAST.AST) => SchemaAST.AST,
-  options?: {
-    readonly stopAt?: (link: SchemaAST.Link) => boolean
-    readonly intercept?: ((ast: SchemaAST.AST) => SchemaAST.AST | undefined) | undefined
-  }
+  options?: { readonly stopAt?: (link: SchemaAST.Link) => boolean }
 ): (ast: SchemaAST.AST) => SchemaAST.AST {
   // Derive each body once, independently of its own context. Child contexts remain part of the body.
   const deriveBody = memoize((owner: SchemaAST.AST) => {
@@ -41,7 +27,7 @@ function makeCodecDerivation(
     return out === body ? null : out
   })
   // Follow existing encodings before sharing bodies: their encoded forms may differ.
-  const follow = SchemaAST.applyToSelfOrLastLinkEncodingIdempotent((ast) => {
+  const recur = SchemaAST.applyToSelfOrLastLinkEncodingIdempotent((ast) => {
     const derived = deriveBody(SchemaAST.getContextOwner(ast))
     if (derived === null) return ast
     const out = SchemaAST.replaceContext(derived, ast.context)
@@ -49,8 +35,6 @@ function makeCodecDerivation(
       out :
       SchemaAST.replaceContextLastLink(out, withoutConstructorDefault(ast.context))
   }, options)
-  const intercept = options?.intercept
-  const recur = intercept === undefined ? follow : (ast: SchemaAST.AST) => intercept(ast) ?? follow(ast)
   return recur
 }
 
