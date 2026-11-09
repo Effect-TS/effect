@@ -12,7 +12,7 @@
  */
 import * as Cause from "../Cause.ts"
 import * as Data from "../Data.ts"
-import { hasProperty, isError } from "../Predicate.ts"
+import { hasProperty } from "../Predicate.ts"
 import * as Schema from "../Schema.ts"
 import type * as HttpClientRequest from "./HttpClientRequest.ts"
 import type * as ClientResponse from "./HttpClientResponse.ts"
@@ -456,6 +456,7 @@ export class HttpClientErrorSchema extends Schema.Error<HttpClientErrorSchema>(T
   }
 
   override get message(): string {
-    return isError(this.cause) && this.cause.message !== "" ? this.cause.message : this.kind
+    const message = hasProperty(this.cause, "message") ? this.cause.message : undefined
+    return typeof message === "string" && message !== "" ? message : this.kind
   }
 }
