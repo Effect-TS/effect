@@ -6480,13 +6480,18 @@ collide, later values overwrite earlier ones according to the existing merge ord
 alternatives or unreachable children is discarded. The resulting schema can have a different structure from the input;
 retaining annotations does not provide a lossless round trip or enforce custom validation rules.
 
-Intersections of overlapping unions are limited to disjoint root-type partitions, finite primitive `anyOf` literal
-sets, which may also be duplicated across branches, and two `anyOf` or two `oneOf` unions with `n` and `m` alternatives
-where at most `max(n, m)` pairwise intersections are non-empty, such as alternatives with distinct discriminators, and
-no alternative containing a nested choice appears in more than one non-empty pair. Other overlapping union
-intersections are rejected, including mixed `anyOf` and `oneOf`, products that would multiply the alternatives, pairs
-of recursive unions whose alternatives reach the same pair again, and cases that would duplicate any other nested
-choice.
+Intersections of overlapping unions support disjoint root-type partitions and finite primitive `anyOf` literal
+sets. Finite primitive literal sets may also be duplicated across branches.
+
+Two `anyOf` unions or two `oneOf` unions with `n` and `m` alternatives can also be intersected when:
+
+- At most `max(n, m)` pairwise intersections are non-empty, as with distinct discriminators.
+- No alternative containing a nested choice appears in more than one non-empty pair.
+
+Other overlapping union intersections are rejected, including mixed `anyOf` and `oneOf`, products that multiply
+alternatives, and intersections that duplicate other nested choices. Intersections of distinct recursive references
+are rejected if they re-enter the same pair, whether through unions or objects. Intersecting a recursive reference
+with itself is supported, but alias-only cycles in these intersections are rejected.
 
 Regular expression constraints reached during translation are rejected by default because imported patterns use the
 runtime's native regular expression engine and may block validation for an unbounded amount of time. Set
