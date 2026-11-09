@@ -2,8 +2,8 @@
  * Models HTTP cookies and cookie collections for requests and responses.
  *
  * A `Cookie` stores a name, value, encoded value, and standard cookie
- * attributes. A `Cookies` value is an immutable collection keyed by cookie
- * name. This module parses request `Cookie` headers, builds response
+ * attributes. A `Cookies` value is an immutable, ordered collection of cookies
+ * indexed by name. This module parses request `Cookie` headers, builds response
  * `Set-Cookie` headers, and provides helpers for adding, removing, merging, and
  * expiring cookies.
  *
@@ -186,19 +186,21 @@ const Proto: Omit<Cookies, "cookies" | "all"> = {
   }
 }
 
-const make = (cookies: Record.ReadonlyRecord<string, Cookie>, all: ReadonlyArray<Cookie>): Cookies => {
-  const self = Object.create(Proto)
-  self.cookies = cookies
-  self.all = all
-  return self
-}
-
 const fromArray = (all: ReadonlyArray<Cookie>): Cookies => {
   const record: Record<string, Cookie> = {}
   for (const cookie of all) {
     InternalRecord.assignProperty(record, cookie.name, cookie)
   }
-  return make(record, all)
+  const self = Object.create(Proto)
+  self.cookies = record
+  self.all = all
+  return self
+}
+
+const appendByName = (all: ReadonlyArray<Cookie>, cookie: Cookie): Array<Cookie> => {
+  const out = all.filter((existing) => existing.name !== cookie.name)
+  out.push(cookie)
+  return out
 }
 
 /**
@@ -209,7 +211,7 @@ const fromArray = (all: ReadonlyArray<Cookie>): Cookies => {
  * @since 4.0.0
  */
 export const fromReadonlyRecord = (cookies: Record.ReadonlyRecord<string, Cookie>): Cookies =>
-  make(cookies, Object.values(cookies))
+  fromArray(Object.values(cookies))
 
 /**
  * Creates a `Cookies` collection from an iterable, preserving every cookie in input order.
@@ -497,12 +499,6 @@ export const setCookie: {
   (self: Cookies, cookie: Cookie): Cookies
 } = dual(2, (self: Cookies, cookie: Cookie) => fromArray(appendByName(self.all, cookie)))
 
-const appendByName = (all: ReadonlyArray<Cookie>, cookie: Cookie): Array<Cookie> => {
-  const out = all.filter((existing) => existing.name !== cookie.name)
-  out.push(cookie)
-  return out
-}
-
 /**
  * Adds multiple cookies to a Cookies object, each replacing every cookie with
  * its name
@@ -740,15 +736,15 @@ export const setAll: {
     self: Cookies,
     cookies: Iterable<readonly [name: string, value: string, options?: Cookie["options"]]>
   ): Result.Result<Cookies, CookiesError> => {
-    let all = self.all
+    const made: Array<Cookie> = []
     for (const [name, value, options] of cookies) {
       const result = makeCookie(name, value, options)
       if (Result.isFailure(result)) {
         return result as Result.Failure<never, CookiesError>
       }
-      all = appendByName(all, result.success)
+      made.push(result.success)
     }
-    return Result.succeed(fromArray(all))
+    return Result.succeed(setAllCookie(self, made))
   }
 )
 
