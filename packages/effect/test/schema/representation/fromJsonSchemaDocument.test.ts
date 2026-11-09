@@ -2280,21 +2280,39 @@ describe("fromJsonSchemaDocument", () => {
       const taggedType = (kind: string) => `{ readonly "kind": "${kind}" } & { readonly [x: string]: Schema.Json }`
 
       it("keeps the alternatives shared by two anyOf unions", () => {
-        assertFromJsonSchema({
-          schema: {
-            allOf: [
-              { title: "left", anyOf: [tagged("a"), tagged("b")] },
-              { description: "right", anyOf: [tagged("a"), tagged("c"), tagged("b")] }
-            ]
-          }
-        }, {
-          codes: makeCode(
-            `Schema.Union([${taggedCode("a")}, ${
-              taggedCode("b")
-            }]).annotate({ "title": "left", "description": "right" })`,
-            `${taggedType("a")} | ${taggedType("b")}`
-          )
+        const nested = (kind: string) => ({
+          ...tagged(kind),
+          properties: { kind: { const: kind }, value: { anyOf: [{ type: "string" }, { type: "number" }] } }
         })
+        const schema = toSchemaFromJsonSchemaDocument(JsonSchema.fromSchemaDraft2020_12({
+          allOf: [
+            { title: "left", anyOf: [{ $ref: "#/$defs/A" }, { $ref: "#/$defs/B" }] },
+            { description: "right", anyOf: [{ $ref: "#/$defs/A" }, { $ref: "#/$defs/C" }, { $ref: "#/$defs/B" }] }
+          ],
+          $defs: { A: nested("a"), B: nested("b"), C: nested("c") }
+        }))
+        assertCode(schema, {
+          codes: makeCode(
+            `Schema.Union([A, B]).annotate({ "title": "left", "description": "right" })`,
+            `A | B`
+          ),
+          references: {
+            nonRecursives: [
+              { $ref: "A", kind: "a" },
+              { $ref: "B", kind: "b" }
+            ].map(({ $ref, kind }) => ({
+              $ref,
+              code: makeCode(
+                `Schema.StructWithRest(Schema.Struct({ "kind": Schema.Literal("${kind}"), "value": Schema.optionalKey(Schema.Union([Schema.String, Schema.Finite])) }), [Schema.Record(Schema.String, ${json})]).annotate({ "identifier": "${$ref}" })`,
+                `{ readonly "kind": "${kind}", readonly "value"?: string | number } & { readonly [x: string]: Schema.Json }`
+              )
+            }))
+          }
+        })
+        assert.isTrue(Schema.is(schema)({ kind: "a", value: "text" }))
+        assert.isTrue(Schema.is(schema)({ kind: "b", value: 1 }))
+        assert.isFalse(Schema.is(schema)({ kind: "c", value: "text" }))
+        assert.isFalse(Schema.is(schema)({ kind: "a", value: true }))
       })
 
       it("keeps the alternatives shared by two oneOf unions", () => {
