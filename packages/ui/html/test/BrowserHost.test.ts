@@ -157,6 +157,34 @@ describe("BrowserHost", { concurrent: false }, () => {
         expect(box.checked).toBe(false)
       }).pipe(Effect.scoped))
 
+    it.effect("a form reset is put back to what the Model says", () =>
+      Effect.gen(function*() {
+        const Resettable = Component.make({
+          name: "Resettable",
+          model: Schema.Null,
+          message: Schema.Never,
+          elements: Html,
+          init: () => null,
+          update: (model) => model,
+          view: (_, h) =>
+            h.form(
+              h.input().attr("aria-label", "Name").value("fixed"),
+              h.input().attr("type", "checkbox").attr("aria-label", "Agree").checked(true),
+              h.select(h.option("A").attr("value", "a"), h.option("B").attr("value", "b").selected(true))
+                .attr("aria-label", "Pick")
+            )
+        })
+        const app = yield* container
+        yield* BrowserHost.mount(Resettable, {}, app)
+        const name = HtmlQuery.getByRole(app, "textbox", { name: "Name" }) as HTMLInputElement
+        const agree = HtmlQuery.getByRole(app, "checkbox", { name: "Agree" }) as HTMLInputElement
+        const pick = HtmlQuery.getByRole(app, "combobox", { name: "Pick" }) as HTMLSelectElement
+        app.querySelector("form")!.reset()
+        expect([name.value, agree.checked, pick.value]).toEqual(["", false, "a"])
+        yield* tick
+        expect([name.value, agree.checked, pick.value]).toEqual(["fixed", true, "b"])
+      }).pipe(Effect.scoped))
+
     it.effect("accepting what the user typed leaves the caret where it is", () =>
       Effect.gen(function*() {
         const app = yield* container
@@ -258,6 +286,63 @@ describe("BrowserHost", { concurrent: false }, () => {
         yield* tick
         expect(event.defaultPrevented).toBe(true)
         expect(root.model()).toEqual(["submit Hello [a,b]"])
+      }).pipe(Effect.scoped))
+
+    it.effect("a form without a submit handler is still prevented; a form outside the app isn't", () =>
+      Effect.gen(function*() {
+        const app = yield* container
+        const outside = yield* container
+        outside.innerHTML = "<form></form>"
+        // `Events` handles submit on its own form, so the document listener is already there.
+        yield* BrowserHost.mount(Events, {}, app)
+        const Bare = Component.make({
+          name: "Bare",
+          model: Schema.Null,
+          message: Schema.Never,
+          elements: Html,
+          init: () => null,
+          update: (model) => model,
+          view: (_, h) => h.form(h.input().attr("name", "q"))
+        })
+        const bare = yield* container
+        yield* BrowserHost.mount(Bare, {}, bare)
+        const submitted = (form: HTMLFormElement) => {
+          const event = new Event("submit", { bubbles: true, cancelable: true })
+          form.dispatchEvent(event)
+          return event.defaultPrevented
+        }
+        expect(submitted(bare.querySelector("form")!)).toBe(true)
+        expect(submitted(outside.querySelector("form")!)).toBe(false)
+      }).pipe(Effect.scoped))
+
+    it.effect("fields named like Object.prototype members are kept", () =>
+      Effect.gen(function*() {
+        const seen: Array<Html.SubmitPayload> = []
+        const Prototype = Component.make({
+          name: "Prototype",
+          model: Schema.Null,
+          message: Schema.Never,
+          elements: Html,
+          init: () => null,
+          update: (model) => model,
+          view: (_, h) =>
+            h.form(
+              h.input().attr("name", "constructor").attr("value", "a"),
+              h.input().attr("name", "__proto__").attr("value", "b"),
+              h.input().attr("name", "toString").attr("value", "c"),
+              h.input().attr("name", "toString").attr("value", "d")
+            ).onSubmit((payload) => {
+              seen.push(payload)
+              return undefined
+            })
+        })
+        const app = yield* container
+        yield* BrowserHost.mount(Prototype, {}, app)
+        HtmlQuery.submit(app.querySelector("form")!)
+        const { entries, fields } = seen[0]!
+        expect(Object.keys(fields)).toEqual(["constructor", "__proto__", "toString"])
+        expect([fields.constructor, fields["__proto__"], fields.toString]).toEqual(["a", "b", "c"])
+        expect(entries).toEqual([["constructor", "a"], ["__proto__", "b"], ["toString", "c"], ["toString", "d"]])
       }).pipe(Effect.scoped))
   })
 

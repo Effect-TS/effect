@@ -1,6 +1,8 @@
 import { BrowserHost, Html } from "@effect/ui-html"
+import { HtmlQuery } from "@effect/ui-html/testing"
 import { Effect, Schema, type Scope } from "effect"
 import { Component, Renderer, type View } from "effect/ui"
+import type { Query } from "effect/ui/testing"
 import { describe, expect, it } from "tstyche"
 
 const Msg = Schema.TaggedUnion({
@@ -130,6 +132,27 @@ describe("Html", () => {
       view: (_, h) => h.input().ref(Field)
     })
     expect(Form).type.toBe<Component.Component<"Form", {}, string, Msg, never, never, Html.Elements>>()
+  })
+})
+
+describe("HtmlQuery", () => {
+  it("structural queries return a structural node, which compares with any node in the tree", () => {
+    const tree = {
+      tag: "form",
+      children: [
+        { tag: "label", attrs: { for: "new" }, children: [{ text: "New todo" }] },
+        { tag: "input", attrs: { id: "new" } }
+      ]
+    }
+    expect(HtmlQuery.getByRole(tree, "textbox")).type.toBe<Query.Node>()
+    expect(HtmlQuery.queryAllByRole(tree, "textbox")).type.toBe<ReadonlyArray<Query.Node>>()
+    expect(HtmlQuery.getByRole(tree, "textbox") === tree.children[1]).type.toBe<boolean>()
+    expect(HtmlQuery.nameOf(tree, tree.children[1]!)).type.toBe<string>()
+  })
+
+  it("DOM queries return elements", () => {
+    expect(HtmlQuery.getByRole(document, "button")).type.toBe<HTMLElement>()
+    expect(HtmlQuery.queryAllByRole(document.body, "button")).type.toBe<ReadonlyArray<HTMLElement>>()
   })
 })
 
