@@ -8,6 +8,7 @@
  * @since 4.0.0
  */
 import type * as AiError from "effect/ai/AiError"
+import * as Credentials from "effect/ai/Credentials"
 import * as Array from "effect/Array"
 import type * as Config from "effect/Config"
 import * as Context from "effect/Context"
@@ -22,10 +23,11 @@ import * as HttpClientRequest from "effect/http/HttpClientRequest"
 import type * as HttpClientResponse from "effect/http/HttpClientResponse"
 import * as Layer from "effect/Layer"
 import * as Predicate from "effect/Predicate"
-import * as Redacted from "effect/Redacted"
+import type * as Redacted from "effect/Redacted"
 import * as Schema from "effect/Schema"
 import * as Stream from "effect/Stream"
 import { AnthropicConfig } from "./AnthropicConfig.ts"
+import * as AnthropicCredentials from "./AnthropicCredentials.ts"
 import * as Generated from "./Generated.ts"
 import * as Errors from "./internal/errors.ts"
 
@@ -44,8 +46,9 @@ import * as Errors from "./internal/errors.ts"
 export interface Service {
   /**
    * The underlying generated Anthropic client that exposes all API endpoints.
+   * Its methods can also fail with the `AiError` of the configured credentials.
    */
-  readonly client: Generated.AnthropicClient
+  readonly client: Generated.AnthropicClient<HttpClientError.HttpClientError | AiError.AiError>
 
   /**
    * Executes a low-level streaming HTTP request and decodes the Server-Sent Events response using the provided schema.
@@ -54,7 +57,7 @@ export interface Service {
     schema: S
   ) => (request: HttpClientRequest.HttpClientRequest) => Stream.Stream<
     S["Type"],
-    HttpClientError.HttpClientError | Schema.SchemaError | Sse.Retry | Sse.SseError,
+    HttpClientError.HttpClientError | AiError.AiError | Schema.SchemaError | Sse.Retry | Sse.SseError,
     S["DecodingServices"]
   >
 
@@ -165,10 +168,19 @@ export class AnthropicClient extends Context.Service<AnthropicClient, Service>()
  */
 export type Options = {
   /**
-   * The Anthropic API key for authentication. Requests are made without authentication when this is omitted, which is
-   * useful for proxied setups or testing.
+   * The Anthropic API key for authentication, sent in the `x-api-key` header.
+   * Mutually exclusive with `credentials`. When neither is set, the client uses
+   * `AnthropicCredentials` from context if present, and otherwise sends
+   * requests without authentication, which is useful for proxied setups or
+   * testing.
    */
   readonly apiKey?: Redacted.Redacted<string> | undefined
+
+  /**
+   * Credentials used to authenticate requests, such as
+   * `AnthropicCredentials.makeWorkloadIdentity`. Mutually exclusive with `apiKey`.
+   */
+  readonly credentials?: AnthropicCredentials.Service | undefined
 
   /**
    * The base URL for the Anthropic API. Override this to use a proxy or a different API-compatible endpoint.
@@ -214,8 +226,10 @@ const withRedactedHeaders = Effect.updateService(
  *
  * **Details**
  *
- * The client handles API key authentication via the `x-api-key` header, API versioning via the `anthropic-version`
- * header, error mapping to the unified `AiError` type, and request/response transformations via `AnthropicConfig`. It
+ * The client authenticates with `credentials`, with `apiKey` via the
+ * `x-api-key` header, or with `AnthropicCredentials` from context. It also sets
+ * the `anthropic-version` header, maps errors to the unified `AiError` type,
+ * and applies request/response transformations via `AnthropicConfig`. It
  * requires an `HttpClient` in the context.
  *
  * @see {@link layer} for providing the client as a `Layer` from explicit options
@@ -230,16 +244,18 @@ export const make = Effect.fnUntraced(
     const baseClient = yield* HttpClient.HttpClient
     const apiVersion = options.apiVersion ?? "2023-06-01"
 
-    const httpClient = baseClient.pipe(
+    const credentials = yield* Credentials.resolve({
+      module: "AnthropicClient",
+      apiKey: options.apiKey,
+      credentials: options.credentials,
+      fromApiKey: AnthropicCredentials.apiKey,
+      tag: AnthropicCredentials.AnthropicCredentials
+    })
+
+    const transformedClient = baseClient.pipe(
       HttpClient.mapRequest((request) =>
         request.pipe(
           HttpClientRequest.prependUrl(options.apiUrl ?? "https://api.anthropic.com"),
-          Predicate.isNotUndefined(options.apiKey)
-            ? HttpClientRequest.setHeader(
-              RedactedAnthropicHeaders.AnthropicApiKey,
-              Redacted.value(options.apiKey)
-            )
-            : identity,
           HttpClientRequest.setHeader("anthropic-version", apiVersion),
           HttpClientRequest.acceptJson
         )
@@ -248,6 +264,12 @@ export const make = Effect.fnUntraced(
         ? options.transformClient
         : identity
     )
+
+    // Applied after `options.transformClient` so that transform cannot drop or
+    // overwrite the credentials; a `withClientTransform` transform runs on the
+    // authenticated client and deliberately can.
+    const httpClient: HttpClient.HttpClient.With<HttpClientError.HttpClientError | AiError.AiError> = transformedClient
+      .pipe(Credentials.authenticated(credentials))
 
     // Let status mapping handle gateway errors without an Anthropic envelope.
     const generatedHttpClient = HttpClient.transformResponse(
@@ -299,7 +321,7 @@ export const make = Effect.fnUntraced(
       <S extends Sse.EventCodec>(schema: S) =>
       (request: HttpClientRequest.HttpClientRequest): Stream.Stream<
         S["Type"],
-        HttpClientError.HttpClientError | Schema.SchemaError | Sse.Retry | Sse.SseError,
+        HttpClientError.HttpClientError | AiError.AiError | Schema.SchemaError | Sse.Retry | Sse.SseError,
         S["DecodingServices"]
       > =>
         httpClientOk.execute(request).pipe(
@@ -432,10 +454,16 @@ export const layer = (options: Options): Layer.Layer<AnthropicClient, never, Htt
  */
 export const layerConfig = (options?: {
   /**
-   * The Anthropic API key for authentication. Requests are made without authentication when this is omitted, which is
-   * useful for proxied setups or testing.
+   * The Anthropic API key for authentication. Mutually exclusive with
+   * `credentials`. Requests are made without authentication when neither is
+   * set, which is useful for proxied setups or testing.
    */
   readonly apiKey?: Config.Config<Redacted.Redacted<string> | undefined> | undefined
+
+  /**
+   * Credentials used to authenticate requests. Mutually exclusive with `apiKey`.
+   */
+  readonly credentials?: AnthropicCredentials.Service | undefined
 
   /**
    * The base URL for the Anthropic API. Override this to use a proxy or a different API-compatible endpoint.
@@ -473,6 +501,7 @@ export const layerConfig = (options?: {
         apiKey,
         apiUrl,
         apiVersion,
+        credentials: options?.credentials,
         transformClient: options?.transformClient
       })
     })

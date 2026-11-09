@@ -10,7 +10,7 @@
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import { dual } from "effect/Function"
-import type { HttpClient } from "effect/http/HttpClient"
+import type * as HttpClient from "effect/http/HttpClient"
 
 /**
  * Service tag for Anthropic client configuration overrides, such as transformations applied to the generated HTTP client.
@@ -53,13 +53,19 @@ export declare namespace AnthropicConfig {
    *
    * **Details**
    *
-   * Use `transformClient` to wrap or replace the `HttpClient` used by generated Anthropic API requests.
+   * Use `transformClient` to wrap the `HttpClient` used by generated Anthropic
+   * API requests. It receives the client after credentials are applied, whose
+   * error type includes the credentials' `AiError`, so the transform must work
+   * for any error and requirement types. Effect's `HttpClient` combinators,
+   * such as `HttpClient.mapRequest`, already do.
    *
    * @category services
    * @since 4.0.0
    */
   export interface Service {
-    readonly transformClient?: ((client: HttpClient) => HttpClient) | undefined
+    readonly transformClient?:
+      | (<E, R>(client: HttpClient.HttpClient.With<E, R>) => HttpClient.HttpClient.With<E, R>)
+      | undefined
   }
 }
 
@@ -71,16 +77,27 @@ export declare namespace AnthropicConfig {
  * Use when you need to apply a temporary `HttpClient` transformation, such as adding middleware or logging, to a
  * specific scope of an effectful program.
  *
+ * **Gotchas**
+ *
+ * The transform must be generic over the client's error and requirement types,
+ * because the client it receives can fail with credential errors. Build it from
+ * `HttpClient` combinators rather than a lambda typed `(client: HttpClient) =>`.
+ *
  * @stability unstable
  * @category configuration
  * @since 4.0.0
  */
 export const withClientTransform: {
-  (transform: (client: HttpClient) => HttpClient): <A, E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>
-  <A, E, R>(self: Effect.Effect<A, E, R>, transform: (client: HttpClient) => HttpClient): Effect.Effect<A, E, R>
+  (
+    transform: <E, R>(client: HttpClient.HttpClient.With<E, R>) => HttpClient.HttpClient.With<E, R>
+  ): <A, E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>
+  <A, E, R>(
+    self: Effect.Effect<A, E, R>,
+    transform: <E2, R2>(client: HttpClient.HttpClient.With<E2, R2>) => HttpClient.HttpClient.With<E2, R2>
+  ): Effect.Effect<A, E, R>
 } = dual(2, <A, E, R>(
   self: Effect.Effect<A, E, R>,
-  transformClient: (client: HttpClient) => HttpClient
+  transformClient: <E2, R2>(client: HttpClient.HttpClient.With<E2, R2>) => HttpClient.HttpClient.With<E2, R2>
 ) =>
   Effect.flatMap(
     AnthropicConfig.getOrUndefined,
