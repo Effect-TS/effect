@@ -25,6 +25,12 @@ export * as Chat from "./Chat.ts"
 
 /**
  * @stability unstable
+ * @since 4.1.3
+ */
+export * as Credentials from "./Credentials.ts"
+
+/**
+ * @stability unstable
  * @since 4.0.0
  */
 export * as Decision from "./Decision.ts"
