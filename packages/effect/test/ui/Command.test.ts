@@ -94,6 +94,12 @@ describe("Command", () => {
       assert.strictEqual(command.key, "photo.png")
       assert.isTrue(Upload.stream)
     })
+
+    it("the work field of the other kind is undefined", () => {
+      assert.strictEqual(Upload("photo.png").effect, undefined)
+      assert.strictEqual(Search("x").stream, undefined)
+      assert.strictEqual(Command.map(Upload("photo.png"), () => 1).effect, undefined)
+    })
   })
 
   describe("map", () => {
