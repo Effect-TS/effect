@@ -2382,17 +2382,23 @@ describe("fromJsonSchemaDocument", () => {
         )
       })
 
-      it("does not translate references on properties of an impossible intersection", () => {
+      it.each([
+        { title: "constants", left: { const: "a" }, right: { const: "b" } },
+        { title: "structured types", left: { type: "object" }, right: { type: "array" } }
+      ])("does not translate references on properties of an intersection made impossible by $title", ({
+        left,
+        right
+      }) => {
         const schema = toSchemaFromJsonSchemaDocument(JsonSchema.fromSchemaDraft2020_12({
           allOf: [
             {
               type: "object",
-              properties: { kind: { const: "a" }, payload: { $ref: "#/$defs/Bad" } },
+              properties: { kind: left, payload: { $ref: "#/$defs/Bad" } },
               required: ["kind"]
             },
             {
               type: "object",
-              properties: { kind: { const: "b" }, payload: { $ref: "#/$defs/Bad" } },
+              properties: { kind: right, payload: { $ref: "#/$defs/Bad" } },
               required: ["kind"]
             }
           ],
@@ -2405,7 +2411,7 @@ describe("fromJsonSchemaDocument", () => {
             }
           }
         }))
-        assert.isFalse(Schema.is(schema)({ kind: "a" }))
+        assert.strictEqual(schema.ast._tag, "Never")
       })
 
       it.each([
