@@ -39,7 +39,7 @@ const wantedOf = (head: Head.Head): Array<Wanted> => [
   ...head.jsonLd.map((entry) => wanted("script", [["type", ldType]], entry.json))
 ]
 
-const quote = (value: string): string => value.replace(/["\\]/g, "\\/** The attribute names the marker")
+const quote = (value: string): string => value.replace(/["\\]/g, (char) => `\\${char}`)
 
 /** The attribute names the marker on `<html>` or `<body>` lists. */
 const listed = (element: Element): ReadonlyArray<string> =>
@@ -95,20 +95,31 @@ export const make = (document: Document, warn: Warn): (head: Head.Head) => void 
   }
 
   const checkShell = (head: Head.Head) => {
-    const unmarked = (selector: string) => document.head.querySelector(`${selector}:not([${Head.marker}])`)
+    // Attributes are compared directly rather than through selectors built from entry values.
+    const shellTags = [...document.head.children].filter((element) => !element.hasAttribute(Head.marker))
+    const unmarked = (tag: string, attributes: ReadonlyArray<readonly [string, string]>) =>
+      shellTags.some((element) =>
+        element.localName === tag && attributes.every(([name, value]) => element.getAttribute(name) === value)
+      )
+    const describe = (tag: string, attributes: ReadonlyArray<readonly [string, string]>) =>
+      tag + attributes.map(([name, value]) => `[${name}="${quote(value)}"]`).join("")
+    const duplicates = (tag: string, attributes: ReadonlyArray<readonly [string, string]>) => {
+      if (unmarked(tag, attributes)) {
+        warn(`Head: the shell has its own ${describe(tag, attributes)}, which a head entry also sets`)
+      }
+    }
     for (const entry of head.meta) {
-      const selector = entry.name !== undefined
-        ? `meta[name="${quote(entry.name)}"]`
-        : `meta[property="${quote(entry.property ?? "")}"]`
-      if (unmarked(selector) !== null) warn(`Head: the shell has its own ${selector}, which a head entry also sets`)
+      duplicates("meta", [entry.name !== undefined ? ["name", entry.name] : ["property", entry.property ?? ""]])
     }
     for (const entry of head.links) {
-      const selector = entry.attributes.rel === "canonical"
-        ? `link[rel="canonical"]`
-        : `link[rel="${quote(entry.attributes.rel)}"][href="${quote(entry.attributes.href)}"]`
-      if (unmarked(selector) !== null) warn(`Head: the shell has its own ${selector}, which a head entry also sets`)
+      duplicates(
+        "link",
+        entry.attributes.rel === "canonical"
+          ? [["rel", "canonical"]]
+          : [["rel", entry.attributes.rel], ["href", entry.attributes.href]]
+      )
     }
-    if (head.jsonLd.length > 0 && unmarked(`script[type="${ldType}"]`) !== null) {
+    if (head.jsonLd.length > 0 && unmarked("script", [["type", ldType]])) {
       warn("Head: the shell has a static JSON-LD block alongside the head's JSON-LD entries")
     }
     if (head.title !== undefined) {
@@ -200,21 +211,35 @@ export const make = (document: Document, warn: Warn): (head: Head.Head) => void 
     element(body, head.body, [])
 
     const next = new Map<string, Array<Element>>()
+    const tags: Array<Element> = []
     for (const want of wantedOf(head)) {
-      const reused = owned.get(want.signature)?.shift()
-      let tag = reused
+      let tag = owned.get(want.signature)?.shift()
       if (tag === undefined) {
         tag = document.createElement(want.tag)
         for (const [name, value] of want.attributes) tag.setAttribute(name, value)
         tag.setAttribute(Head.marker, "")
         if (want.text !== "") tag.textContent = want.text
-        document.head.appendChild(tag)
       }
+      tags.push(tag)
       const list = next.get(want.signature)
       if (list === undefined) next.set(want.signature, [tag])
       else list.push(tag)
     }
     for (const stale of owned.values()) for (const tag of stale) tag.remove()
     owned = next
+    // The managed tags follow the merged order, which decides stylesheet precedence. A reused tag
+    // that's already in order stays where it is; the others are placed after the previous one.
+    let previous: Element | undefined
+    for (const tag of tags) {
+      const inOrder = tag.isConnected &&
+        (previous === undefined || (previous.compareDocumentPosition(tag) & tag.DOCUMENT_POSITION_FOLLOWING) !== 0)
+      if (!inOrder) {
+        const before = previous !== undefined
+          ? previous.nextSibling
+          : tags.find((other) => other !== tag && other.isConnected) ?? null
+        document.head.insertBefore(tag, before)
+      }
+      previous = tag
+    }
   }
 }

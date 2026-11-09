@@ -103,4 +103,27 @@ describe("BrowserHost head", () => {
     expect(warnings).toEqual(["Head: <html> is missing the class tokens dark the marker lists"])
     expect(document.documentElement.className).toBe("h-full dark")
   })
+
+  it("keeps managed tags in the merged order", () => {
+    const { apply } = sync()
+    // Stylesheets are where the order matters; happy-dom would try to load one, so these are alternates.
+    const sheet = (href: string) => Head.link({ rel: "alternate", href })
+    const hrefs = () => [...document.head.querySelectorAll("link[data-eui]")].map((link) => link.getAttribute("href"))
+    apply(head(sheet("a.css"), sheet("b.css")))
+    expect(hrefs()).toEqual(["a.css", "b.css"])
+    const b = document.head.querySelector("link[href='b.css']")
+    apply(head(sheet("a2.css"), sheet("b.css")))
+    expect(hrefs()).toEqual(["a2.css", "b.css"])
+    expect(document.head.querySelector("link[href='b.css']")).toBe(b)
+    apply(head(sheet("b.css"), sheet("a2.css"), sheet("c.css")))
+    expect(hrefs()).toEqual(["b.css", "a2.css", "c.css"])
+    expect(document.head.querySelector("link[href='b.css']")).toBe(b)
+  })
+
+  it("warns about a duplicated shell tag whose attribute value holds quotes", () => {
+    document.head.innerHTML = `<meta name='say "hi"' content="Shell">`
+    const { apply, warnings } = sync()
+    apply(head(Head.meta({ name: "say \"hi\"", content: "App" })))
+    expect(warnings).toEqual([`Head: the shell has its own meta[name="say \\"hi\\""], which a head entry also sets`])
+  })
 })
