@@ -449,6 +449,8 @@ export interface HandlerInstallationContext {
     clientId: number,
     requestId: RpcMessage.RequestId
   ) => Effect.Effect<void>
+  /** Resolves once the client's transport session has ended, e.g. stdin EOF. */
+  readonly awaitClientEnd?: Effect.Effect<void> | undefined
   readonly supportedVersions: ReadonlyArray<string>
   readonly serverInfo: {
     readonly name: string

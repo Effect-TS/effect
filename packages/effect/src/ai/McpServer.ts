@@ -31,6 +31,7 @@ import * as HttpServerRequest from "../http/HttpServerRequest.ts"
 import * as HttpServerResponse from "../http/HttpServerResponse.ts"
 import * as HttpTraceContext from "../http/HttpTraceContext.ts"
 import type * as JsonSchema from "../JsonSchema.ts"
+import * as Latch from "../Latch.ts"
 import * as Layer from "../Layer.ts"
 import * as Option from "../Option.ts"
 import * as Predicate from "../Predicate.ts"
@@ -1808,6 +1809,9 @@ const runWithRuntime = Effect.fnUntraced(function*(
     sessionHeaders: Headers.Headers | undefined
   }>()
   const activeRequests = new Map<number, Map<string, ActiveRequest>>()
+  // Stdio has a single client whose session ends with stdin, so one latch is
+  // enough; built-in subscriptions complete on it while finite requests drain.
+  const stdioEnd = transport === "stdio" ? Latch.makeUnsafe() : undefined
   const reverseRequestClients = new Map<string, Array<McpClientKey>>()
   const disconnectClient = (clientId: number) => {
     activeRequests.delete(clientId)
@@ -1900,6 +1904,7 @@ const runWithRuntime = Effect.fnUntraced(function*(
     getListChangeRevision: () => notificationDelivery.listChangeRevision,
     ...(!protocol.supportsNotifications || options.allowSubscriptions === false ? {} : {
       sendNotification,
+      awaitClientEnd: stdioEnd?.await,
       markSubscriptionCancelled: (clientId: number, requestId: RpcMessage.RequestId) =>
         Effect.sync(() => {
           cancelRequest(clientId, requestId)
@@ -2257,6 +2262,7 @@ const runWithRuntime = Effect.fnUntraced(function*(
             return f(clientId, request)
           case "Eof":
             if (!isHttp) {
+              stdioEnd?.openUnsafe()
               disconnectClient(clientId)
             }
             return f(clientId, request)

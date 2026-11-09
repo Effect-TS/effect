@@ -127,6 +127,7 @@ export interface HandlerInstallationOptions {
   readonly getListChangeRevision?: () => number
   readonly subscribeServerNotifications: McpProtocol.HandlerInstallationContext["subscribeServerNotifications"]
   readonly sendNotification?: NonNullable<McpProtocol.HandlerInstallationContext["sendNotification"]>
+  readonly awaitClientEnd?: McpProtocol.HandlerInstallationContext["awaitClientEnd"]
   readonly markSubscriptionCancelled?: NonNullable<
     McpProtocol.HandlerInstallationContext["markSubscriptionCancelled"]
   >
@@ -519,6 +520,7 @@ export const make = Effect.fnUntraced(function*(
       const installationContext: McpProtocol.HandlerInstallationContext = {
         subscribeServerNotifications: options.subscribeServerNotifications,
         getListChangeRevision: options.getListChangeRevision,
+        awaitClientEnd: options.awaitClientEnd,
         ...(options.sendNotification === undefined ? {} : { sendNotification: options.sendNotification }),
         ...(options.markSubscriptionCancelled === undefined
           ? {}
