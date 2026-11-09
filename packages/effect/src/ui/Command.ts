@@ -326,13 +326,15 @@ export interface Interrupt extends Pipeable.Pipeable {
  *
  * `Msg` is the message the Command produces, which `$.run` checks against the
  * component's message type. `R` is what the Command requires: the `Service`
- * for a service Command, `never` for one made with `make`.
+ * for a service Command, `never` for one made with `make`. A Command whose
+ * result is `never` (`Effect.never`, `Effect.die`, `Stream.never`) produces
+ * no message, so any component can run it.
  *
  * @stability experimental
  * @category models
  * @since 4.1.3
  */
-export type Command<Msg, R = never> = Effectful<Msg, R, any> | Streaming<Msg, R, any> | Interrupt
+export type Command<Msg, R = never> = Effectful<Msg, R, never> | Streaming<Msg, R, never> | Interrupt
 
 /**
  * The requirements of a Command, or of a union of them.
@@ -829,7 +831,7 @@ export const map: {
         mode: self.mode,
         key: self.key,
         effect: Effect.map(self.effect, f),
-        resolve: (result) => f(self.resolve(result))
+        resolve: (result) => f(self.resolve(result as never))
       })
     case "Stream":
       return makeStreaming({
@@ -838,7 +840,7 @@ export const map: {
         mode: self.mode,
         key: self.key,
         stream: Stream.map(self.stream, f),
-        resolve: (result) => f(self.resolve(result))
+        resolve: (result) => f(self.resolve(result as never))
       })
   }
 })

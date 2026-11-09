@@ -110,7 +110,7 @@ interface RSlot {
 // ---------------------------------------------------------------------------
 
 interface Run {
-  readonly command: Command.Effectful<any, any, any> | Command.Streaming<any, any, any>
+  readonly command: Command.Effectful<any, any, never> | Command.Streaming<any, any, never>
   readonly issued: MessageLog.Issued
   status: "running" | "queued"
   fiber: Fiber.Fiber<unknown, unknown> | undefined
