@@ -22,3 +22,4 @@ const spec = Option.getOrThrow(CommandSpec.resolve(cli, ["app", "push"]))
 for (const flag of spec.flags) {
   // flag.scope, flag.required, flag.fallbacks, Context.getOption(flag.annotations, EnvVar), ...
 }
+```
