@@ -15,9 +15,11 @@ describe("Subscription", () => {
 
   it("numbers JSON can't tell apart keep distinct keys", () => {
     const key = (dep: Subscription.Dep) => Subscription.make("page", dep, () => Stream.empty).key
-    const keys = [key(NaN), key(Infinity), key(-Infinity), key(null), key(0), key("null")]
+    const keys = [key(NaN), key(Infinity), key(-Infinity), key(null), key(0), key(-0), key("null")]
     assert.strictEqual(new Set(keys).size, keys.length)
     assert.strictEqual(key(NaN), "page:NaN")
+    assert.strictEqual(key(-0), "page:-0")
+    assert.strictEqual(key(0), "page:0")
   })
 
   it("deps join the key without colliding", () => {

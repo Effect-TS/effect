@@ -6,6 +6,8 @@ const Message = Schema.TaggedUnion({ Got: { n: Schema.Number } })
 
 const Fx = Command.make("Fx", () => Effect.succeed("text"))
 const St = Command.make("St", () => Stream.fromIterable(["text"]), { stream: true })
+class SA extends Command.Service<SA>()("SA", Effect.succeed(() => Effect.succeed("a"))) {}
+class SB extends Command.Service<SB>()("SB", Effect.succeed(() => Stream.fromIterable([1])), { stream: true }) {}
 declare const condition: boolean
 declare const $: Component.Update<{}, typeof Message.Type, never, {}>
 
@@ -45,6 +47,34 @@ describe("Command", () => {
       expect($.run).type.toBeCallableWith(mapped)
       expect($.run).type.toBeCallableWith(Command.map(input, (text) => Message.make({ _tag: "Got", n: text.length })))
       expect($.run).type.not.toBeCallableWith(input)
+    })
+
+    it("chained pipeable maps keep one Command's source and requirements", () => {
+      const chained = SA.make().pipe(
+        Command.map((a) => a.length),
+        Command.map((n) => Message.make({ _tag: "Got", n }))
+      )
+      expect(chained).type.toBe<Command.Effectful<typeof Message.Type, SA, string>>()
+      const stream = SB.make().pipe(
+        Command.map((n) => n + 1),
+        Command.map((n) => Message.make({ _tag: "Got", n }))
+      )
+      expect(stream).type.toBe<Command.Streaming<typeof Message.Type, SB, number>>()
+    })
+
+    it("data-first maps keep each branch's source and requirements across a mixed union", () => {
+      const input = condition ? Command.map(SA.make(), (a) => a.length) : SB.make()
+      expect(input).type.toBe<Command.Effectful<number, SA, string> | Command.Streaming<number, SB, number>>()
+      const once = Command.map(input, (n) => n + 1)
+      expect(once).type.toBe<Command.Effectful<number, SA, string> | Command.Streaming<number, SB, number>>()
+      const twice = Command.map(once, (n) => Message.make({ _tag: "Got", n }))
+      expect(twice).type.toBe<
+        Command.Effectful<typeof Message.Type, SA, string> | Command.Streaming<typeof Message.Type, SB, number>
+      >()
+      expect($.run).type.toBeCallableWith(twice)
+      // The pipeable form infers one source for its input, so a mixed-source union
+      // doesn't fit it: use the data-first form above.
+      expect(input.pipe).type.not.toBeCallableWith(Command.map((n: number) => n + 1))
     })
   })
 })
