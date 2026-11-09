@@ -61,7 +61,9 @@ export class DockerBuildContext extends Context.Service<DockerBuildContext, {
    * as `IgnoreFile.dockerignore` reads it. The Dockerfile and the ignore file
    * are always sent, as the Docker CLI sends them, even when the patterns
    * exclude them. `dockerfile` is a `/`-separated path inside the directory
-   * (`Dockerfile` by default); pass the same one to `build`.
+   * (`Dockerfile` by default, `./` and empty segments ignored); pass the same
+   * one to `build`. A path outside the directory fails with
+   * `InvalidBuildContext`.
    *
    * The context holds the directory's files, directories and symbolic links
    * (never followed), owned by uid and gid 0, with their permission bits and
@@ -72,7 +74,8 @@ export class DockerBuildContext extends Context.Service<DockerBuildContext, {
    * The effect reads the ignore file and finds the paths, so a malformed
    * ignore file or an unreadable directory fails before anything is sent.
    * The stream reads each file as it is sent. Both fail with
-   * `InvalidBuildContext`.
+   * `InvalidBuildContext`, naming the file: a file that can't be read, or
+   * that changes size while it is sent, fails the stream.
    *
    * **Gotchas**
    *
@@ -105,10 +108,16 @@ export const make: Effect.Effect<DockerBuildContext["Service"], never, FileSyste
 
     const fromDirectory: DockerBuildContext["Service"]["fromDirectory"] = Effect.fnUntraced(
       function*(directory, options) {
-        const dockerfile = options?.dockerfile ?? "Dockerfile"
         const at = (relative: string) => path.join(directory, ...relative.split("/"))
         const invalid = (file: string, issue: string, cause?: unknown) =>
           new DockerError({ reason: new InvalidBuildContext({ path: file, issue, cause }) })
+        // as `fs.glob` reports paths: `/`-separated, relative, without `.` segments
+        const given = options?.dockerfile ?? "Dockerfile"
+        const segments = given.split("/").filter((segment) => segment !== "" && segment !== ".")
+        if (given.startsWith("/") || segments.length === 0 || segments.includes("..")) {
+          return yield* invalid(given, "the Dockerfile must be a /-separated path inside the directory")
+        }
+        const dockerfile = segments.join("/")
         const unreadable = (file: string) => (cause: PlatformError.PlatformError) => invalid(file, cause.message, cause)
         const exists = (relative: string) => fs.exists(at(relative)).pipe(Effect.mapError(unreadable(at(relative))))
 
@@ -160,12 +169,19 @@ export const make: Effect.Effect<DockerBuildContext["Service"], never, FileSyste
               return undefined
           }
         })
-        return Stream.fromIterable(ordered).pipe(
-          Stream.mapEffect(entry),
-          Stream.filter(Predicate.isNotUndefined),
-          Stream.pipeThroughChannel(Tar.encode()),
-          Stream.mapError((error) => isDockerError(error) ? error : invalid(directory, error.message, error))
-        )
+        return Stream.suspend(() => {
+          // the encoder takes the next entry once the previous one is written: a Tar error is the current one's
+          let current = directory
+          return Stream.fromIterable(ordered).pipe(
+            Stream.mapEffect((relative) => {
+              current = at(relative)
+              return entry(relative)
+            }),
+            Stream.filter(Predicate.isNotUndefined),
+            Stream.pipeThroughChannel(Tar.encode()),
+            Stream.mapError((error) => isDockerError(error) ? error : invalid(current, error.message, error))
+          )
+        })
       }
     )
 

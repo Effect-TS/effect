@@ -69,7 +69,13 @@ describe("DockerBuildContext", () => {
           },
           "docker/app.Dockerfile",
           ["docker/app.Dockerfile", ".dockerignore", "docker/", "docker/app.Dockerfile.dockerignore", "keep.txt"]
-        ]
+        ],
+        // a Dockerfile named as `docker build -f ./Dockerfile` names it is still the first entry
+        [{ "Dockerfile": "FROM x", ".dockerignore": "", "a.txt": "" }, "./Dockerfile", [
+          "Dockerfile",
+          ".dockerignore",
+          "a.txt"
+        ]]
       ]
       for (const [files, dockerfile, expected] of cases) {
         const sent = yield* headers(yield* directoryWith(files), dockerfile === undefined ? undefined : { dockerfile })
@@ -81,5 +87,10 @@ describe("DockerBuildContext", () => {
       )
       assert(malformed.reason._tag === "InvalidBuildContext")
       assert.match(malformed.reason.issue, /^line 2: /)
-    }).pipe(Effect.scoped, Effect.provide(services)))
+      const outside = yield* Effect.flip(
+        fromDirectory(yield* directoryWith({ "Dockerfile": "FROM x" }), { dockerfile: "../Dockerfile" })
+      )
+      assert(outside.reason._tag === "InvalidBuildContext")
+      assert.strictEqual(outside.reason.path, "../Dockerfile")
+    }).pipe(Effect.provide(services)))
 })

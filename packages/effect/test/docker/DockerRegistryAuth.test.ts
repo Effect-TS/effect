@@ -5,7 +5,7 @@ import { helpers, makeStubEngine } from "./utils/stub.ts"
 describe("DockerRegistryAuth", () => {
   it.effect("prefers auth config over helpers, and helpers over stored credentials", () =>
     Effect.gen(function*() {
-      const { registryAuth } = makeStubEngine(() => ({}), {
+      const { registryAuth } = yield* makeStubEngine(() => ({}), {
         spawner: helpers({ test: () => ({ stdout: JSON.stringify({ Username: "helper", Secret: "password" }) }) }),
         config: {
           authConfig: { "ghcr.io": { username: "env" } },
@@ -26,7 +26,10 @@ describe("DockerRegistryAuth", () => {
         locked: () => ({ stderr: "keychain locked", exitCode: 3 })
       })
       const resolve = (credsStore: string) =>
-        makeStubEngine(() => ({}), { spawner, config: { credsStore } }).registryAuth.credential("ghcr.io")
+        Effect.flatMap(
+          makeStubEngine(() => ({}), { spawner, config: { credsStore } }),
+          (stub) => stub.registryAuth.credential("ghcr.io")
+        )
       assert.isUndefined(yield* resolve("absent"))
       const error = yield* resolve("locked").pipe(Effect.flip)
       assert(error.reason._tag === "CredentialsUnavailable")

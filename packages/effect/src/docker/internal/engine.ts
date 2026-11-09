@@ -308,40 +308,51 @@ export type MethodError =
   | ErrorResponse
   | SwarmErrorResponse
 
-/** `HttpApiClient`'s failure for a response whose status no endpoint schema declares. */
-type UnexpectedStatusError = HttpClientError.HttpClientError & {
-  readonly reason: HttpClientError.DecodeError & { readonly response: HttpClientResponse.HttpClientResponse }
+/**
+ * `HttpApiClient`'s failure for a response that arrived but can't be decoded
+ * as the endpoint declares it: an undeclared status, an undeclared media
+ * type, or a stream element over its size limit. A `DecodeError` with a
+ * `cause` is a body that failed to read: `HttpApiClient` decodes bodies with
+ * Schemas, which fail with `SchemaError`.
+ */
+type UndecodableResponse = HttpClientError.HttpClientError & {
+  readonly reason: HttpClientError.DecodeError & { readonly cause?: undefined }
 }
 
-const isUnexpectedStatus = (error: MethodError): error is UnexpectedStatusError =>
-  HttpClientError.isHttpClientError(error) && error.reason._tag === "DecodeError" &&
-  error.reason.response !== undefined && error.reason.cause === undefined
+const isUndecodableResponse = (error: MethodError): error is UndecodableResponse =>
+  HttpClientError.isHttpClientError(error) && error.reason._tag === "DecodeError" && error.reason.cause === undefined
 
 /**
  * Maps a method's failures to `DockerError` naming the operation: an error
- * response as its reason, a body that fails to read as `ConnectionFailed`,
- * and one that fails to decode as `InvalidResponse`. A `DockerError` keeps
- * the operation it already names.
+ * response as its reason, a request that fails to send or a body that fails
+ * to read as `ConnectionFailed`, and a response that fails to decode as
+ * `InvalidResponse`. A `DockerError` keeps the operation it already names. No
+ * `HttpClientError` is kept with its request, which holds registry
+ * credentials, secret query parameters and request bodies.
  *
  * @internal
  */
 export const toDockerError =
-  (engine: DockerEngine["Service"], operation: string) => (error: MethodError): DockerError =>
-    isDockerError(error)
-      ? error.operation === undefined ? new DockerError({ reason: error.reason, operation }) : error
-      : isErrorResponse(error)
-      ? new DockerError({ reason: error, operation })
-      : isUnexpectedStatus(error)
-      ? new DockerError({
-        reason: new InvalidResponse({ issue: `unexpected status ${error.reason.response.status}`, cause: error }),
+  (engine: DockerEngine["Service"], operation: string) => (error: MethodError): DockerError => {
+    if (isDockerError(error)) {
+      return error.operation === undefined ? new DockerError({ reason: error.reason, operation }) : error
+    }
+    if (isErrorResponse(error)) return new DockerError({ reason: error, operation })
+    if (Schema.isSchemaError(error)) {
+      return new DockerError({ reason: new InvalidResponse({ issue: error.issue, cause: error }), operation })
+    }
+    if (isUndecodableResponse(error)) {
+      const { description, response } = error.reason
+      return new DockerError({
+        reason: new InvalidResponse({
+          issue: `${description ?? "undecodable response"} (status ${response.status})`,
+          cause: sanitizeCause(error)
+        }),
         operation
       })
-      : HttpClientError.isHttpClientError(error) && error.reason._tag !== "DecodeError"
-      ? new DockerError({ reason: connectionFailed(engine.config.endpoint, error).reason, operation })
-      : new DockerError({
-        reason: new InvalidResponse({ issue: Schema.isSchemaError(error) ? error.issue : error.message, cause: error }),
-        operation
-      })
+    }
+    return new DockerError({ reason: connectionFailed(engine.config.endpoint, error).reason, operation })
+  }
 
 /** The span options of an operation: the resource it acts on, as `docker.resource_id`. */
 const spanOptions = (resource: string | undefined) =>
@@ -506,8 +517,8 @@ export const apiClient = <Group extends HttpApiGroup.Constraint>(
           const send = (request: ClientRequest | undefined) =>
             Effect.catchIf(
               method(request),
-              (error) => isUnexpectedStatus(error) && error.reason.response.status >= 400,
-              (error) => filterStatus(name)((error as UnexpectedStatusError).reason.response)
+              (error) => isUndecodableResponse(error) && error.reason.response.status >= 400,
+              (error) => filterStatus(name)((error as UndecodableResponse).reason.response)
             )
           return [id, (request: ClientRequest | undefined) => {
             const response = send(request).pipe(

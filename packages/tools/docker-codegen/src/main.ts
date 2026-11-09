@@ -27,6 +27,7 @@ import * as Effect from "effect/Effect"
 import * as Yaml from "effect/encoding/Yaml"
 import * as FileSystem from "effect/FileSystem"
 import * as HttpClient from "effect/http/HttpClient"
+import * as HttpClientResponse from "effect/http/HttpClientResponse"
 import * as JsonPatch from "effect/JsonPatch"
 import * as Path from "effect/Path"
 import * as ChildProcess from "effect/process/ChildProcess"
@@ -48,6 +49,7 @@ const SwaggerInfo = Schema.Struct({
 
 const fetchSpec = Effect.fn("fetchSpec")(function*(url: string, version: string) {
   const text = yield* HttpClient.get(url).pipe(
+    Effect.flatMap(HttpClientResponse.filterStatusOk),
     Effect.flatMap((response) => response.text)
   )
   const swagger = yield* Effect.fromResult(Yaml.parse(text))

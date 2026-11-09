@@ -22,6 +22,8 @@ export interface Reply {
   readonly status?: number
   readonly headers?: Record<string, string>
   readonly body?: string | Uint8Array
+  /** Drop the connection after `body`: reading the response fails there. */
+  readonly failAfterBody?: boolean
   /** Switch protocols (101) and hand over this connection. */
   readonly upgrade?: Connection
 }
@@ -84,7 +86,7 @@ const toSocket = (connection: Connection): Socket.Socket =>
  * A `DockerEngine` over an `HttpClient.make` stub that records requests and
  * answers with `reply`. There is no fake Engine: replies are fixtures.
  */
-export const makeStubEngine = (
+export const makeStubEngine = Effect.fnUntraced(function*(
   reply: (request: Recorded) => Reply,
   options?: {
     /** The rest of the configuration, over `DockerConfig.defaults`. */
@@ -92,7 +94,7 @@ export const makeStubEngine = (
     /** Runs credential helpers; see {@link helpers}. */
     readonly spawner?: ChildProcessSpawner.ChildProcessSpawner["Service"]
   }
-) => {
+) {
   const requests: Array<Recorded> = []
   const httpClient = HttpClient.make((request, url) =>
     Effect.gen(function*() {
@@ -124,27 +126,38 @@ export const makeStubEngine = (
           upgrade: { value: Effect.succeed(toSocket(answer.upgrade)) }
         }) as HttpClientResponse.HttpClientResponse
       }
+      const responseBody = request.method === "HEAD" || answer.status === 304 || answer.status === 204
+        ? null
+        : answer.failAfterBody === true
+        ? droppedAfter(answer.body ?? "")
+        : (answer.body ?? "") as BodyInit
       return HttpClientResponse.fromWeb(
         request,
-        new Response(
-          request.method === "HEAD" || answer.status === 304 || answer.status === 204
-            ? null
-            : (answer.body ?? "") as BodyInit,
-          { status: answer.status ?? 200, headers: answer.headers ?? {} }
-        )
+        new Response(responseBody, { status: answer.status ?? 200, headers: answer.headers ?? {} })
       )
     })
   )
-  const [engine, registryAuth] = Effect.all([DockerEngine.make(httpClient), DockerRegistryAuth.make]).pipe(
+  const [engine, registryAuth] = yield* Effect.all([DockerEngine.make(httpClient), DockerRegistryAuth.make]).pipe(
     Effect.provideService(ChildProcessSpawner.ChildProcessSpawner, options?.spawner ?? helpers({})),
     Effect.provideService(DockerConfig.DockerConfig, {
       ...DockerConfig.defaults,
       endpoint: { _tag: "Unix", path: "/test.sock" },
       ...options?.config
-    }),
-    Effect.runSync
+    })
   )
   return { engine, registryAuth, requests, provide: provideEngine(engine, registryAuth) }
+})
+
+/** A body that sends `body`, then fails as a connection reset does. */
+const droppedAfter = (body: string | Uint8Array): ReadableStream<Uint8Array> => {
+  let sent = false
+  return new ReadableStream({
+    pull(controller) {
+      if (sent) return controller.error(Object.assign(new Error("socket hang up"), { code: "ECONNRESET" }))
+      sent = true
+      controller.enqueue(typeof body === "string" ? new TextEncoder().encode(body) : body)
+    }
+  })
 }
 
 /** Provides an engine, registry credentials and every service over them. */
@@ -259,4 +272,26 @@ export const helpers = (programs: Readonly<Record<string, (stdin: string) => Hel
     })
   )
   return Object.assign(spawner, { runs })
+}
+
+/**
+ * Whether `text` is reachable from `value`: in a string held by any of its
+ * properties, own or inherited getters such as an error's `cause`, `reason`,
+ * `request` or `response`, at any depth.
+ */
+export const reaches = (value: unknown, text: string, seen = new Set<unknown>()): boolean => {
+  if (typeof value === "string") return value.includes(text)
+  if (typeof value !== "object" || value === null || seen.has(value)) return false
+  seen.add(value)
+  const keys = new Set<PropertyKey>([...Reflect.ownKeys(value), "cause", "reason", "request", "response", "headers"])
+  for (const key of keys) {
+    let property: unknown
+    try {
+      property = (value as Record<PropertyKey, unknown>)[key]
+    } catch {
+      continue
+    }
+    if (reaches(property, text, seen)) return true
+  }
+  return false
 }

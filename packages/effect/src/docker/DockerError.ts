@@ -56,7 +56,8 @@ export const isDockerError = (u: unknown): u is DockerError => hasProperty(u, Ty
  * `isRetryable` is `true` only for {@link ConnectionFailed} (unless it names a
  * misconfiguration), {@link TooManyRequests} and {@link Unavailable}. The
  * original error (an `HttpClientError` or a Schema issue) is kept as the
- * `cause`.
+ * `cause`; an `HttpClientError`'s request is reduced to its method and URL,
+ * since its headers, query and body can hold credentials.
  *
  * @stability unstable
  * @category errors

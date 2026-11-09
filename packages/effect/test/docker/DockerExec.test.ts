@@ -21,8 +21,9 @@ const withHandle = <A>(
   output: ReadonlyArray<Uint8Array>,
   f: (handle: DockerExec.Handle) => Effect.Effect<A, DockerError.DockerError>
 ) =>
-  Effect.scoped(DockerExec.DockerExec.use((exec) => Effect.flatMap(exec.start("e"), f))).pipe(
-    execEngine(connection(output)).provide
+  Effect.flatMap(
+    execEngine(connection(output)),
+    (stub) => Effect.scoped(DockerExec.DockerExec.use((exec) => Effect.flatMap(exec.start("e"), f))).pipe(stub.provide)
   )
 
 describe("DockerExec", () => {
@@ -31,7 +32,7 @@ describe("DockerExec", () => {
       // frames split across reads, one byte at a time
       const wire = concat(frame(1, "out\n"), frame(2, "err\n"))
       const upgraded = connection(Array.from(wire, (byte) => new Uint8Array([byte])))
-      const stub = execEngine(upgraded, 3)
+      const stub = yield* execEngine(upgraded, 3)
       const result = yield* DockerExec.DockerExec.use((exec) => exec.run("c", ["cat"], { stdin: "in" })).pipe(
         stub.provide
       )
@@ -42,9 +43,10 @@ describe("DockerExec", () => {
 
   it.effect("returns once the output ends, dropping stdin input that is still pending", () =>
     Effect.gen(function*() {
+      const stub = yield* execEngine(connection([frame(1, "done\n")]))
       const result = yield* DockerExec.DockerExec.use((exec) =>
         exec.run("c", ["echo", "done"], { stdin: Stream.never })
-      ).pipe(execEngine(connection([frame(1, "done\n")])).provide)
+      ).pipe(stub.provide)
       assert.deepStrictEqual(result.stdout, bytes("done\n"))
     }))
 

@@ -1,7 +1,7 @@
 import * as NodeCrypto from "@effect/platform-node/NodeCrypto"
 import * as NodeServices from "@effect/platform-node/NodeServices"
 import { assert, describe, it } from "@effect/vitest"
-import {ConfigProvider, Effect, FileSystem, Layer, Path, Redacted} from "effect"
+import { ConfigProvider, Effect, FileSystem, Layer, Path, Redacted } from "effect"
 import { DockerConfig } from "effect/docker"
 import { createHash } from "node:crypto"
 

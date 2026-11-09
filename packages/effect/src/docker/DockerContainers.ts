@@ -66,7 +66,6 @@ export interface LogFrame {
   readonly data: Uint8Array
 }
 
-
 /**
  * The containers API.
  *

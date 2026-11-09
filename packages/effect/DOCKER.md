@@ -90,7 +90,7 @@ Streaming operations return a `Stream` that ends when the Engine's response does
 - Progress (image pull, push, load and build, plugin pull and upgrade) is the Engine's messages. The Engine reports a failure as one more message after a `200`, and the stream fails with `StreamFailed` there.
 - Events and stats are decoded one message at a time.
 
-Attach and exec upgrade the connection. `DockerContainers.attach` and `DockerExec.start` return a scoped `Handle`: `stdin` is a `Sink`, `frames` is the output in arrival order, `exitCode` waits for the end, and `resize` sets the TTY's size. `all`, `stdout` and `stderr` are views of `frames`: `all` keeps the order, `stdout` and `stderr` discard the other stream's frames, so an unread stream never stalls the one being read. The output is read once, through one view; reading a second one dies. To send stdout and stderr to different places, read `frames` and dispatch on `frame.stream`. Closing the scope closes the connection.
+Attach and exec upgrade the connection. `DockerContainers.attach` and `DockerExec.start` return a scoped `Handle`: `stdin` is a `Sink`, `frames` is the output in arrival order, `exitCode` waits for the end, and `resize` sets the TTY's size. `all`, `stdout` and `stderr` are views of `frames`: `all` keeps the order, `stdout` and `stderr` discard the other stream's frames, so an unread stream never stalls the one being read. The output is read once, through one view; reading a second one dies. To send stdout and stderr to different places, read `frames` and dispatch on `frame.stream`. A few frames are read ahead; past them, unread output stalls the connection, and an exec's `exitCode`, which waits for the end of its output, with it: read the output before or alongside `exitCode`. Closing the scope closes the connection.
 
 ```ts
 import { Effect, Stream } from "effect"
@@ -101,7 +101,8 @@ const program = Effect.gen(function*() {
   const { Id } = yield* exec.create("my-container", { Cmd: ["cat"], AttachStdin: true, AttachStdout: true })
   const handle = yield* exec.start(Id)
   yield* Stream.make(new TextEncoder().encode("hello")).pipe(Stream.run(handle.stdin))
-  return yield* handle.exitCode
+  const output = yield* handle.stdout.pipe(Stream.decodeText(), Stream.mkString)
+  return { output, exitCode: yield* handle.exitCode }
 }).pipe(Effect.scoped)
 ```
 
@@ -125,7 +126,7 @@ const program = Effect.gen(function*() {
 
 ## Registry credentials
 
-Operations that talk to a registry (image pull, push, search and distribution, plugin pull, upgrade and push, and services with `registryAuth: true`) send the credential `DockerRegistryAuth` resolves for that registry, anonymous when there is none. A call's own `auth` replaces it.
+Operations that talk to a registry (image pull, push, search and distribution, plugin privileges, pull, install, upgrade and push, and services with `registryAuth: true`) send the credential `DockerRegistryAuth` resolves for that registry, anonymous when there is none. A call's own `auth` replaces it.
 
 `DockerRegistryAuth.layer`, which `NodeDocker` provides, resolves credentials as the Docker CLI does: `DOCKER_AUTH_CONFIG`, then the registry's credential helper (`credHelpers`, else `credsStore`), then `auths`. Helpers run as `docker-credential-<name> get` on every request, because their tokens are short-lived. To resolve credentials another way, such as from a secret store, provide the service yourself:
 

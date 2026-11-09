@@ -9,7 +9,7 @@ describe("DockerEngine", () => {
   it.effect("sends every request at API 1.52, after checking once that the Engine serves it", () =>
     Effect.gen(function*() {
       // a current Engine serves 1.44 through 1.56; nothing is negotiated down or up
-      const stub = makeStubEngine(withPing("1.56", () => json({})))
+      const stub = yield* makeStubEngine(withPing("1.56", () => json({})))
       yield* DockerSystem.DockerSystem.use((system) => Effect.andThen(system.info, system.info)).pipe(stub.provide)
       const versioned = stub.requests.filter((request) => /^\/v\d/.test(request.url.pathname))
       assert.deepStrictEqual(versioned.map((request) => request.url.pathname), ["/v1.52/info", "/v1.52/info"])
@@ -34,16 +34,18 @@ describe("DockerEngine", () => {
           "1.53"
         )
       ]
-      const [old, future] = yield* Effect.forEach(engines, (engine) => {
-        const stub = makeStubEngine(engine)
-        return DockerSystem.DockerSystem.use((system) => system.info).pipe(
-          stub.provide,
-          Effect.flip,
-          Effect.tap(() =>
-            Effect.sync(() => assert.isFalse(stub.requests.some((request) => /^\/v\d/.test(request.url.pathname))))
-          )
-        )
-      })
+      const [old, future] = yield* Effect.forEach(
+        engines,
+        (engine) =>
+          Effect.flatMap(makeStubEngine(engine), (stub) =>
+            DockerSystem.DockerSystem.use((system) => system.info).pipe(
+              stub.provide,
+              Effect.flip,
+              Effect.tap(() =>
+                Effect.sync(() => assert.isFalse(stub.requests.some((request) => /^\/v\d/.test(request.url.pathname))))
+              )
+            ))
+      )
       for (const error of [old, future]) {
         assert.strictEqual(error.reason._tag, "UnsupportedApiVersion")
         assert.include(error.message, "1.52")
@@ -55,7 +57,7 @@ describe("DockerEngine", () => {
   it.effect("reports a retryable connection failure without exposing request secrets", () =>
     Effect.gen(function*() {
       // the version check succeeds; the request carrying secrets is the one that can't connect
-      const stub = makeStubEngine(
+      const stub = yield* makeStubEngine(
         withPing(
           "1.52",
           () => ({ fail: true, cause: Object.assign(new Error("connect ECONNREFUSED"), { code: "ECONNREFUSED" }) })
@@ -96,9 +98,9 @@ describe("DockerEngine", () => {
 
 describe("DockerError", () => {
   const classify = (status: number, body: string) =>
-    DockerSystem.DockerSystem.use((system) => system.info).pipe(
-      makeStubEngine(withPing("1.52", () => ({ status, body }))).provide,
-      Effect.flip
+    Effect.flatMap(
+      makeStubEngine(withPing("1.52", () => ({ status, body }))),
+      (stub) => DockerSystem.DockerSystem.use((system) => system.info).pipe(stub.provide, Effect.flip)
     )
 
   it.effect("maps statuses with moby's table", () =>

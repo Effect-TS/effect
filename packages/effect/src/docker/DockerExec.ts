@@ -62,8 +62,9 @@ import { contentTypeOf, makeHandle, releaseOnFailure } from "./internal/stream.t
  * - A few frames are read ahead of the reader; a reader that doesn't keep up
  *   stalls the connection, and the Engine with it.
  * - `exitCode`: for an exec, the exit code once the output has ended, so read
- *   the output alongside it; for an attach, the result of
- *   `/wait?condition=next-exit`.
+ *   the output before or alongside it: past the frames read ahead, an exec
+ *   whose output nobody reads never ends, even after its command has exited.
+ *   For an attach, the result of `/wait?condition=next-exit`.
  * - `resize` sets the TTY size.
  *
  * Closing the handle's scope closes the connection.
