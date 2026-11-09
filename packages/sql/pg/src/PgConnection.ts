@@ -300,10 +300,9 @@ export const PgConnection = Context.Service<PgConnection>("@effect/sql-pg/PgConn
  * Password resolution, transport, optional `SSLRequest`, startup, and
  * authentication run under `connectTimeout` (5 seconds by default). The effect
  * resolves when the backend sends `ReadyForQuery`. Closing the scope sends
- * `Terminate` and ends the socket. For driver-created transports, release waits
- * for the socket to close. If it remains open after one second, release destroys
- * it and waits for closure. Caller-supplied streams are ended without waiting
- * for closure or applying this grace-period fallback.
+ * `Terminate` and ends the socket. A driver-created socket is also awaited until
+ * it closes, and destroyed if still open after one second. Caller-supplied
+ * streams are only ended.
  *
  * Use `sslmode=require` or explicit `ssl: true` to require encryption.
  * Unix sockets and custom streams should set `ssl.servername` explicitly.
@@ -320,8 +319,7 @@ export const make = (options: Config): Effect.Effect<PgConnection, SqlError, Sco
         const session = yield* connect(config, password)
         return new PgConnectionImpl(options, config, session, options.types)
       }),
-      (connection) =>
-        config.stream === undefined ? closeDriverSocket(connection) : Effect.sync(() => connection.closeUnsafe()),
+      (connection) => connection.close(),
       { interruptible: true }
     ).pipe(
       Effect.timeoutOrElse({
@@ -366,8 +364,8 @@ interface PipelineEntry {
 }
 
 const abortDrainTimeoutMillis = 5000
-const socketCloseGraceMillis = 1000
 const abortDrainGraceMillis = 10
+const socketCloseGraceMillis = 1000
 /** PostgreSQL `query_canceled` SQLSTATE. */
 const queryCanceledCode = "57014"
 const cancelRequestTimeoutMillis = 5000
@@ -396,7 +394,7 @@ class PgConnectionImpl implements PgConnection {
   consumer: Consumer | undefined
   deadWith: SqlError | undefined
   closed = false
-  socketCloseObserved = false
+  private socketClosed = false
   cancelPending = false
   /** Reported by the latest `ReadyForQuery`. */
   transactionStatus: PgProtocol.TransactionStatus = "I"
@@ -449,7 +447,7 @@ class PgConnectionImpl implements PgConnection {
     this.fatal(connectionQueryError(cause, "PgConnection: Socket error"))
 
   private readonly onSocketClose = (): void => {
-    this.socketCloseObserved = true
+    this.socketClosed = true
     this.fatal(connectionQueryError(new Error("Connection closed"), "PgConnection: Connection closed"))
   }
 
@@ -548,6 +546,24 @@ class PgConnectionImpl implements PgConnection {
     socket.off("error", this.onSocketError)
     socket.off("close", this.onSocketClose)
     this.retireHooks.clear()
+  }
+
+  /** Releases the session. A driver-created socket is awaited until it closes,
+   * and destroyed if it is still open after the grace period. */
+  close(): Effect.Effect<void> {
+    return Effect.callback<void>((resume) => {
+      const socket = this.session.socket
+      this.closeUnsafe()
+      if (this.resolved.stream !== undefined || this.socketClosed) {
+        resume(Effect.void)
+        return
+      }
+      const timer = setTimeout(() => socket.destroy(), socketCloseGraceMillis)
+      socket.once("close", () => {
+        clearTimeout(timer)
+        resume(Effect.void)
+      })
+    })
   }
 
   /** Plans one execution. `cache` is `undefined` to force the unnamed path. */
@@ -2305,23 +2321,6 @@ const connect = (config: ResolvedConfig, resolvedPassword: string | undefined): 
       done = true
       socket.destroy()
     })
-  })
-
-const closeDriverSocket = (connection: PgConnectionImpl): Effect.Effect<void> =>
-  Effect.callback<void>((resume) => {
-    const socket = connection.session.socket
-    if (connection.socketCloseObserved) {
-      connection.closeUnsafe()
-      resume(Effect.void)
-      return
-    }
-    const timer = setTimeout(() => socket.destroy(), socketCloseGraceMillis)
-    socket.once("close", () => {
-      connection.socketCloseObserved = true
-      clearTimeout(timer)
-      resume(Effect.void)
-    })
-    connection.closeUnsafe()
   })
 
 const ignoreError = (_: Error) => {}
