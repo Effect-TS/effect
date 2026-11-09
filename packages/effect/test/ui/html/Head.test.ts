@@ -1,5 +1,6 @@
-import { BrowserHost } from "@effect/ui-html"
+// @vitest-environment happy-dom
 import { Head } from "effect/ui"
+import { BrowserHost } from "effect/ui/html"
 import { afterEach, describe, expect, it } from "vitest"
 
 const head = (...entries: ReadonlyArray<Head.Entry>) => Head.merge({ entries, children: [] })

@@ -1,5 +1,5 @@
 /**
- * Test helpers for `@effect/ui-html`: `HtmlQuery`, and `ssr`, which renders
+ * Test helpers for `effect/ui/html`: `HtmlQuery`, and `ssr`, which renders
  * on the server, hydrates and checks the two agree.
  *
  * @stability experimental

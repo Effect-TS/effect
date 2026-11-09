@@ -7,7 +7,11 @@
  */
 import type * as Command from "../Command.ts"
 
-/** A run the scheduler knows about: a Command that is running or waiting to run. */
+/**
+ * A run the scheduler knows about: a Command that is running or waiting to run.
+ *
+ * @internal
+ */
 export interface Entry<A> {
   readonly name: string
   readonly key: string | undefined
@@ -16,7 +20,11 @@ export interface Entry<A> {
   readonly value: A
 }
 
-/** What to do with an issued Command, and which in-flight entries it interrupts. */
+/**
+ * What to do with an issued Command, and which in-flight entries it interrupts.
+ *
+ * @internal
+ */
 export interface Decision<A> {
   readonly action: "start" | "queue" | "drop" | "none"
   readonly interrupt: ReadonlyArray<Entry<A>>
@@ -34,6 +42,8 @@ const sameGroup = <A>(entry: Entry<A>, name: string, key: string | undefined): b
  * running run. `queue` waits while the group has a running run. An `Interrupt`
  * starts nothing and interrupts every run with its name, or only those with
  * its key when it has one.
+ *
+ * @internal
  */
 export const schedule = <A>(
   inFlight: ReadonlyArray<Entry<A>>,
@@ -63,6 +73,8 @@ export const schedule = <A>(
 /**
  * Decides which queued run starts when a running one ends: the oldest queued
  * run of the same group, if `remaining` no longer has a running one.
+ *
+ * @internal
  */
 export const next = <A>(remaining: ReadonlyArray<Entry<A>>, ended: Entry<A>): Entry<A> | undefined => {
   const group = remaining.filter((entry) => sameGroup(entry, ended.name, ended.key))

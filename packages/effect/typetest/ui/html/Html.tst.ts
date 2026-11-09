@@ -1,7 +1,7 @@
-import { BrowserHost, Html } from "@effect/ui-html"
-import { HtmlQuery } from "@effect/ui-html/testing"
 import { Effect, Schema, type Scope } from "effect"
 import { Component, Renderer, type View } from "effect/ui"
+import { BrowserHost, Html } from "effect/ui/html"
+import { HtmlQuery } from "effect/ui/html/testing"
 import type { Query } from "effect/ui/testing"
 import { describe, expect, it } from "tstyche"
 

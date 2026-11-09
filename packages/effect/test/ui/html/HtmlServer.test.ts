@@ -1,8 +1,9 @@
-import { BrowserHost, Html, HtmlServer } from "@effect/ui-html"
-import { ssr } from "@effect/ui-html/testing"
+// @vitest-environment happy-dom
 import { expect, it } from "@effect/vitest"
 import { Context, Effect, Fiber, Layer, Option, Schema } from "effect"
 import { Command, Component, Feature, Head, Router } from "effect/ui"
+import { BrowserHost, Html, HtmlServer } from "effect/ui/html"
+import { ssr } from "effect/ui/html/testing"
 import { describe } from "vitest"
 import { App, AppRoute, People } from "./fixtures/routed.ts"
 
