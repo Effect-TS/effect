@@ -262,6 +262,8 @@ export interface Mountable<in out Props, out Events, out R = never> extends Pipe
   readonly layerFailure: ((failure: AsyncResult.Failure<never, any>) => any) | undefined
   /** Set by `provide` when every provided Layer is a value: shared by every instance resolving from one Env. */
   readonly sharedLayer: Layer.Layer<any, any, any> | undefined
+  /** `false` when a `provide` opted out of the server: the server never builds the Layer and defers the instance. */
+  readonly layerOnServer: boolean
 }
 
 /**
@@ -492,7 +494,8 @@ export const make = <
     elements: () => options.elements ?? View.registeredElements(),
     layer: undefined,
     layerFailure: undefined,
-    sharedLayer: undefined
+    sharedLayer: undefined,
+    layerOnServer: true
   })
 }
 
@@ -517,10 +520,17 @@ export interface ProvideOptions<in E, out Msg> {
    * services from the same place.
    */
   readonly local?: boolean | undefined
+  /**
+   * `false` keeps the Layer off the server, for Layers that are always
+   * asynchronous there, such as a live connection. The server renders the
+   * component like one whose Layer missed the budget, without spending the
+   * budget on it, and the client builds the instance fresh.
+   */
+  readonly server?: false | undefined
 }
 
 /**
- * The `local` option of `provide`, for Layers that can't fail.
+ * The `local` and `server` options of `provide`, for Layers that can't fail.
  *
  * @stability experimental
  * @category models
@@ -528,6 +538,7 @@ export interface ProvideOptions<in E, out Msg> {
  */
 export interface LocalOption {
   readonly local?: boolean | undefined
+  readonly server?: false | undefined
 }
 
 /**
@@ -661,8 +672,11 @@ const toLayer = (layers: Layer.Any | ReadonlyArray<Layer.Any>): Layer.Layer<any,
  * its Commands and Subscriptions wait for the Layer. `onFailure` is required
  * when a provided Layer can fail, and the curried form can't take it.
  *
- * The runtime that builds and shares these Layers arrives with the renderer;
- * this module records what to build.
+ * On the server, provided Layers are built under the render's budget. A Layer
+ * that is always asynchronous there, such as a live connection, takes
+ * `{ server: false }`: the server never builds it and renders the component
+ * like one whose Layer missed the budget, and the client builds the instance
+ * fresh.
  *
  * **Example** (Sharing Command Layers across rows, and a per-instance store)
  *
@@ -751,7 +765,9 @@ export const provide: {
     return Object.assign(Object.create(Proto), component, {
       layer: inner === undefined ? outer : (props: unknown) => Layer.provideMerge(inner(props), outer(props)),
       layerFailure,
-      sharedLayer
+      sharedLayer,
+      // Nested provides are built as one Layer, so one opt-out keeps all of them off the server.
+      layerOnServer: component.layerOnServer && options?.server !== false
     })
   }
   // A component is an object with the type id; a Layer, an array or a function means the curried form.

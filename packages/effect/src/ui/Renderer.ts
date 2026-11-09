@@ -18,6 +18,7 @@
  */
 import type * as Cause from "../Cause.ts"
 import type * as Context from "../Context.ts"
+import type * as Duration from "../Duration.ts"
 import type * as Effect from "../Effect.ts"
 import * as Layer from "../Layer.ts"
 import type * as Option from "../Option.ts"
@@ -72,6 +73,9 @@ export type Dispatch = (event: string, handler: View.Handler<unknown, any>, payl
  * away. The host diffs it against what it applied last. A host without a
  * document, such as a native one, leaves it out and head entries are ignored.
  *
+ * `hydration` lets the renderer read nodes a server rendered, so `mount` with
+ * a server `state` adopts them. A host without it builds every node fresh.
+ *
  * @stability experimental
  * @category models
  * @since 4.1.3
@@ -92,6 +96,92 @@ export interface Host<Node> {
   readonly runsMounts: boolean
   readonly commit?: (() => void) | undefined
   readonly head?: ((head: Head.Head) => void) | undefined
+  readonly hydration?: Hydration<Node> | undefined
+}
+
+/**
+ * How a host reads the nodes a server rendered, so hydration can adopt them.
+ *
+ * **Details**
+ *
+ * The server brackets each instance's nodes with two markers carrying its
+ * path, `<!--[path-->` and `<!--]path-->` in HTML. `inspect` tells the
+ * renderer what a node is: an element by tag, a text node, one of those
+ * markers, or anything else, which never matches. Siblings are read with the
+ * host's `nextOf`.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.1.3
+ */
+export interface Hydration<Node> {
+  firstChild(node: Node): Node | undefined
+  inspect(node: Node):
+    | { readonly _tag: "Element"; readonly tag: string }
+    | { readonly _tag: "Text"; readonly text: string }
+    | { readonly _tag: "Open"; readonly path: string }
+    | { readonly _tag: "Close"; readonly path: string }
+    | { readonly _tag: "Other" }
+  getAttr(node: Node, name: string): string | undefined
+}
+
+/**
+ * What a server render hands the client: each instance's Schema-encoded
+ * Model by path, plus the paths to build fresh and the `init` Commands still
+ * to run.
+ *
+ * **Details**
+ *
+ * `~deferred` lists instances the client builds fresh instead of adopting:
+ * a provided Layer that missed the budget or was kept off the server, and a
+ * slot that failed. A deferred path covers its subtree. `~pending` lists, by
+ * path, the positions among `init`'s Commands of the server Commands that
+ * missed the budget, which the client runs after adopting. A path is in at
+ * most one of the two.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.1.3
+ */
+export interface State {
+  readonly [path: string]: unknown
+  readonly "~deferred"?: ReadonlyArray<string> | undefined
+  readonly "~pending"?: Readonly<Record<string, ReadonlyArray<number>>> | undefined
+}
+
+/**
+ * A node of a server-rendered tree. A `Range` is one instance's nodes, or
+ * the `fallback` of a slot, under its path.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.1.3
+ */
+export type ServerNode =
+  | {
+    readonly _tag: "Element"
+    readonly tag: string
+    readonly attrs: Readonly<Record<string, string>>
+    readonly props: Readonly<Record<string, unknown>>
+    readonly children: ReadonlyArray<ServerNode>
+  }
+  | { readonly _tag: "Text"; readonly text: string }
+  | { readonly _tag: "Range"; readonly path: string; readonly children: ReadonlyArray<ServerNode> }
+
+/**
+ * The result of `prerender`: the tree to serialise, the state the client
+ * adopts, the root's Model and the merged head.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.1.3
+ */
+export interface Prerendered<out Model> {
+  readonly nodes: ReadonlyArray<ServerNode>
+  readonly state: State
+  /** The root's Model after the server run, or `undefined` if the root failed. */
+  readonly model: Model | undefined
+  readonly head: Head.Head
 }
 
 /**
@@ -201,6 +291,12 @@ export interface Root<out Model, in Msg> {
   readonly model: () => Model | undefined
   /** Sends a message to the root, as if from outside the tree. */
   readonly send: (message: Msg) => void
+  /**
+   * Completes once every slot has adopted the server's nodes, at once
+   * without hydration. Head sync and the router's announcements start after
+   * it.
+   */
+  readonly adopted: Effect.Effect<void>
 }
 
 /**
@@ -229,6 +325,16 @@ export type HostOf<V> = [V] extends [never] ? never : V extends View.Elements ? 
  * the wrong host is a type error. Nested components are checked when they
  * mount, and a mismatch fails their slot.
  *
+ * With `state` from a server render, the tree hydrates: each instance adopts
+ * its server Model instead of running `init` and, on a host with
+ * `hydration`, adopts the server's nodes inside `container`. `init` is
+ * replayed only for its Commands. Server Commands the Model already holds the
+ * result of are skipped, unless the state lists them as pending. An instance
+ * whose view doesn't match its nodes is rebuilt on its own, and a deferred
+ * one is built fresh. An instance whose provided Layer is still building
+ * keeps the server's nodes, inert, until the Layer is ready; `adopted`
+ * completes when none is left waiting.
+ *
  * @stability experimental
  * @category constructors
  * @since 4.1.3
@@ -244,8 +350,49 @@ export const mount: <Name extends string, Props, Model, Msg, Events, R, V extend
         h: View.Helper<never, {}> & View.Tags<V, never>
       ) => View.Node<never, RF>)
       | undefined
+    readonly state?: State | undefined
   }
 ) => Effect.Effect<Root<Model, Msg>, never, R | RF | HostOf<V> | Renderer | Scope.Scope> = runtime.mount as any
+
+/**
+ * Runs a component tree the way a server renders it, and returns the tree to
+ * serialise. Server renderers such as `HtmlServer.renderToHtml` build on it.
+ *
+ * **Details**
+ *
+ * The tree renders synchronously. Provided Layers are built, and of the
+ * Commands `init` returns only those whose `Command.Service` is declared
+ * `server: true` run; a Command from `update` is dropped and logged as
+ * `CommandDropped` with reason `"server"`. Events are applied, so a child can
+ * change its parent. Subscriptions and `onMount` work never run.
+ *
+ * Rendering waits until nothing is in flight or `budget` (default 500 ms) is
+ * spent, whichever comes first. The budget limits waiting on Layers and
+ * server Commands, not the render itself. A Layer that missed it, or that a
+ * `provide` kept off the server with `{ server: false }`, defers its
+ * instance; a server Command that missed it is pending; either way the
+ * instance renders its current Model. A budget of 0 starts no server Command.
+ * The tree is serialised once, in document order, and its Scopes are closed.
+ *
+ * `elements` lists the vocabularies the server renders, by name, as a host's
+ * `elements` does.
+ *
+ * @stability experimental
+ * @category constructors
+ * @since 4.1.3
+ */
+export const prerender: <Name extends string, Props, Model, Msg, Events, R, V extends View.Elements>(
+  component: Component.Component<Name, Props, Model, Msg, Events, R, V>,
+  props: Props,
+  options?: {
+    readonly budget?: Duration.Input | undefined
+    readonly elements?: ReadonlyArray<string> | "any" | undefined
+  }
+) => Effect.Effect<Prerendered<Model>, never, R> = (component, props, options) =>
+  runtime.prerender(component as any, props, {
+    budget: options?.budget ?? "500 millis",
+    elements: options?.elements ?? "any"
+  })
 
 /**
  * A failure as `mount`'s `fallback` and a slot's `onFailure` see it.
