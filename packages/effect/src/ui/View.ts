@@ -456,7 +456,12 @@ export interface Vocabulary<out V extends Elements = Elements> {
    * goes anywhere when it's left out.
    */
   readonly textParents?: ReadonlyArray<string> | undefined
-  readonly "~V"?: V
+  /**
+   * Phantom: the type-level half of the vocabulary. A vocabulary written as a
+   * module, such as `Html`, exports it as an `undefined` value, so the module
+   * namespace itself is a `Vocabulary`.
+   */
+  readonly Elements?: V | undefined
 }
 
 /**

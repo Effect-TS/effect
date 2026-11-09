@@ -198,7 +198,11 @@ export default defineConfig({
         ]
       ),
       ...project("@effect/platform-node-shared", "packages/platform/node-shared", isNode),
-      ...project("@effect/ui-html", "packages/ui/html"),
+      ...project("@effect/ui-html", "packages/ui/html", true, {
+        test: {
+          environment: "happy-dom"
+        }
+      }),
       ...project("@effect/vitest", "packages/vitest"),
       ...project("@effect/sql-clickhouse", "packages/sql/clickhouse"),
       ...project("@effect/sql-d1", "packages/sql/d1", !isDeno),

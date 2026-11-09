@@ -1,9 +1,14 @@
-/* oxlint-disable unicorn/no-empty-file */
 /**
- * Test helpers for `@effect/ui-html`: `HtmlQuery` and `ssr()`. The modules land in later stages.
+ * Test helpers for `@effect/ui-html`: `HtmlQuery`. `ssr()` lands with server rendering.
  *
- * @stability unstable
- * @since 0.1.0
+ * @stability experimental
+ * @since 4.1.3
  */
 
 // @barrel: Auto-generated exports. Do not edit manually.
+
+/**
+ * @stability experimental
+ * @since 4.1.3
+ */
+export * as HtmlQuery from "./HtmlQuery.ts"
