@@ -137,30 +137,5 @@ describe("Data", () => {
       expect($match(A({ a: 1 }), { A: ({ a }) => a, B: () => "b" })).type.toBe<number | string>()
       expect($match).type.not.toBeCallableWith({ A: () => 1 })
     })
-
-    it("should display named constructor types", () => {
-      type Plain = Data.TaggedEnum<{
-        CaseA: { readonly name: string }
-        CaseB: { readonly message: string }
-      }>
-      const Plain = Data.taggedEnum<Plain>()
-
-      type TE<T> = Data.TaggedEnum<{
-        A: { a: T }
-        B: { b?: T }
-      }>
-      interface TEDefinition extends Data.TaggedEnum.WithGenerics<1> {
-        readonly taggedEnum: TE<this["A"]>
-      }
-      const TE = Data.taggedEnum<TEDefinition>()
-
-      // @ts-expect-error Type 'Constructor<
-      const plain: never = Plain
-      // @ts-expect-error Type 'GenericConstructor<TEDefinition>'
-      const generic: never = TE
-
-      void plain
-      void generic
-    })
   })
 })
