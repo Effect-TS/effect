@@ -760,9 +760,10 @@ export const makeWithTransaction = <I, S>(options: {
               }
               return Effect.forEach(buffer.callbacks, runAfterCommit, { discard: true })
             }, true)
+            // The savepoint wait is interruptible; the savepoint and its cleanup are not.
             return id === 0
               ? settled
-              : Context.getUnsafe(services, transactionSemaphore).withPermit(settled)
+              : restore(Context.getUnsafe(services, transactionSemaphore).withPermit(Effect.uninterruptible(settled)))
           })
       )
     )
