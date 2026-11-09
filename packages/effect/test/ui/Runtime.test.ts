@@ -630,6 +630,60 @@ describe("Runtime", () => {
       assert.throws(() => Story.fromLog(Counter, [wire]), /entry #1 \(\/Counter\).*~truncated/)
     })
 
+    it("Redacted values in component Schemas are sent as placeholders", () => {
+      class User extends Schema.Class<User>("User")({ name: Schema.String, pin: Schema.Redacted(Schema.Number) }) {}
+      const Secret = Component.make({
+        name: "Secret",
+        props: Schema.Struct({ key: Schema.Redacted(Schema.String) }),
+        model: Schema.Struct({
+          token: Schema.Redacted(Schema.String),
+          fromValue: Schema.RedactedFromValue(Schema.String),
+          maybe: Schema.optional(Schema.Redacted(Schema.String)),
+          option: Schema.Option(Schema.Redacted(Schema.String)),
+          users: Schema.Array(User)
+        }),
+        message: Schema.TaggedUnion({ Login: { password: Schema.Redacted(Schema.String) } }),
+        emits: Schema.Redacted(Schema.String),
+        init: () => ({ token: Redacted.make("t"), fromValue: Redacted.make("v"), option: Option.none(), users: [] }),
+        update: (model) => model,
+        view: (_, h) => h.text("")
+      })
+      const placeholder = { "~redacted": true }
+      const warnings: Array<string> = []
+      const entry: MessageLog.Update = {
+        _tag: "Update",
+        seq: 1,
+        at: 0,
+        session: "s",
+        path: "/Secret",
+        component: Secret,
+        source: { _tag: "Dispatch" },
+        message: { _tag: "Login", password: Redacted.make("hunter2") },
+        props: { key: Redacted.make("k") },
+        model: {
+          token: Redacted.make("t"),
+          fromValue: Redacted.make("v"),
+          maybe: Redacted.make("m"),
+          option: Option.some(Redacted.make("o")),
+          users: [new User({ name: "ada", pin: Redacted.make(1234) })]
+        },
+        commands: [],
+        emits: [Redacted.make("e")]
+      }
+      const wire = MessageLog.makeEncoder({ onWarning: (warning) => warnings.push(warning) }).encode(entry) as any
+      assert.deepStrictEqual(wire.message, { _tag: "Login", password: placeholder })
+      assert.deepStrictEqual(wire.props, { key: placeholder })
+      assert.deepStrictEqual(wire.model, {
+        token: placeholder,
+        fromValue: placeholder,
+        maybe: placeholder,
+        option: { _tag: "Some", value: placeholder },
+        users: [{ name: "ada", pin: placeholder }]
+      })
+      assert.deepStrictEqual(wire.emits, [placeholder])
+      assert.deepStrictEqual(warnings, [])
+    })
+
     it("memory keeps the last entries, and fanout feeds several logs", () => {
       const memory = MessageLog.makeMemory({ size: 2 })
       const other = MessageLog.makeMemory()
