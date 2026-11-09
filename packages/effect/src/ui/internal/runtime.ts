@@ -311,18 +311,22 @@ const start = (
     scheduled = false
     rendering = true
     flushes++
-    while (dirty.size > 0 || deferred.length > 0) {
-      if (deferred.length > 0) {
-        deferred.shift()!()
-        continue
+    do {
+      while (dirty.size > 0 || deferred.length > 0) {
+        if (deferred.length > 0) {
+          deferred.shift()!()
+          continue
+        }
+        let next: Instance | undefined
+        for (const inst of dirty) {
+          if (next === undefined || inst.depth < next.depth) next = inst
+        }
+        dirty.delete(next!)
+        if (!next!.closed) render(next!)
       }
-      let next: Instance | undefined
-      for (const inst of dirty) {
-        if (next === undefined || inst.depth < next.depth) next = inst
-      }
-      dirty.delete(next!)
-      if (!next!.closed) render(next!)
-    }
+      // A title template that throws fails its instance, so the fallback renders and the head is merged again.
+      mergeHead()
+    } while (dirty.size > 0 || deferred.length > 0)
     host.commit?.()
     afterCommitHooks()
     rendering = false
@@ -338,6 +342,8 @@ const start = (
   // Set when an instance with `head` rendered, or the tree lost an instance.
   let headDirty = false
   let merged: Head.Head = Head.empty
+  // Set when `merged` holds a head the host hasn't been given.
+  let headChanged = false
   let rootInstance: Instance | undefined
   let handle: services.RootHandle | undefined
 
@@ -370,14 +376,34 @@ const start = (
     return count
   }
 
+  /**
+   * Merges the live tree's head once nothing is left to render. A title template
+   * that throws fails its instance, which sets `headDirty` again: that merge saw
+   * the removed subtree, so it's discarded. With the root failed nothing is left
+   * to render and the next merge is final; otherwise the flush renders the
+   * fallback first.
+   */
+  const mergeHead = () => {
+    const root = rootInstance
+    if (root === undefined) return
+    while (headDirty && dirty.size === 0 && deferred.length === 0) {
+      headDirty = false
+      const next = Head.merge(headTree(root))
+      if (!headDirty) {
+        merged = next
+        headChanged = true
+      }
+    }
+  }
+
   /** After the nodes commit: head sync, then the router's hook. */
   const afterCommitHooks = () => {
-    if (headDirty && rootInstance !== undefined) {
-      headDirty = false
-      merged = Head.merge(headTree(rootInstance))
+    if (headChanged) {
+      headChanged = false
       host.head?.(merged)
     }
-    if (hooks !== undefined && handle !== undefined) {
+    // A head still to merge belongs to the flush already scheduled, which calls the hook.
+    if (hooks !== undefined && handle !== undefined && !headDirty) {
       hooks.afterFlush(handle, { flush: flushes, head: merged, buildsPendingSince })
     }
   }
@@ -1301,6 +1327,7 @@ const start = (
   rootRendered = () => root.rendered
   rootInstance = root
   if (root.failure === undefined) place(container, root.rendered, undefined)
+  mergeHead()
   host.commit?.()
 
   const snapshot = (): Record<string, unknown> => {

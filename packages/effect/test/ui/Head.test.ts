@@ -125,4 +125,37 @@ describe("Head", () => {
       const failed = root.log().filter((entry): entry is MessageLog.Failed => entry._tag === "Failed")
       assert.deepStrictEqual(failed.map((entry) => [entry.path, entry.source]), [["/App/Layout[layout]", "head"]])
     }).pipe(Effect.provide(TestHost.layer())))
+
+  it.effect("clears the head when the root's title template throws", () =>
+    Effect.gen(function*() {
+      const Page = Component.make({
+        name: "Page",
+        model: Schema.Number,
+        message: Schema.Never,
+        init: () => 0,
+        update: (model) => model,
+        head: () => [Head.title("Ada")],
+        view: (_, h) => h.text("page")
+      })
+      const App = Component.make({
+        name: "App",
+        model: Schema.Number,
+        message: Schema.Never,
+        init: () => 0,
+        update: (model) => model,
+        head: () => [
+          Head.lang("en"),
+          Head.titleTemplate(() => {
+            throw new Error("bad template")
+          })
+        ],
+        view: (_, h) => h.child(Page, { key: "page", props: {} })
+      })
+      const root = yield* TestHost.mount(App, {}, { fallback: (_, h) => h.text("down") })
+      yield* TestHost.settle
+      assert.strictEqual(root.text(), "down")
+      // The failed root and the page under it contribute nothing.
+      assert.strictEqual(root.head().title, undefined)
+      assert.strictEqual(root.head().html.lang, undefined)
+    }).pipe(Effect.provide(TestHost.layer())))
 })
