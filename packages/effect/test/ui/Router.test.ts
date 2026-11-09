@@ -68,7 +68,7 @@ describe("Router", () => {
     )
   })
 
-  it.effect("restores a page's Model on back and forward, without running its Commands", () => {
+  it.effect("restores a page's Model on back and forward, skipping only its server Commands", () => {
     const { history, layer } = setup("/people/1")
     return run(
       layer,
@@ -95,6 +95,11 @@ describe("Router", () => {
           entry._tag === "CommandDropped" && entry.path === path
         )
         assert.deepStrictEqual(dropped.map((entry) => [entry.name, entry.reason]), [["LoadPerson", "adopted"]])
+        // A client-only init Command runs again, as on any mount.
+        const visits = root.log().filter((entry): entry is MessageLog.Update =>
+          entry._tag === "Update" && entry.path === path && (entry.message as any)._tag === "Visited"
+        )
+        assert.deepStrictEqual(visits.map((entry) => (entry.model as any).visits), [1, 2])
 
         // A page reached by a push starts fresh.
         click(root, "Person 2")
@@ -104,6 +109,30 @@ describe("Router", () => {
         assert.isTrue(root.text().includes("Person 1count 0"))
       })
     )
+  })
+
+  it.effect("restores a Model written into the history entry after the Router is rebuilt, as on a reload", () => {
+    const { history, layer } = setup("/people/1")
+    const page = Effect.gen(function*() {
+      const root = yield* mountAt("/people/1")
+      yield* TestHost.settle
+      click(root, "count 0")
+      yield* TestHost.settle
+      // Leaving by a push writes the snapshot into the entry being left.
+      click(root, "Home")
+      yield* TestHost.settle
+    })
+    const reloaded = Effect.gen(function*() {
+      const root = yield* mountAt("/")
+      yield* TestHost.settle
+      history.go(-1)
+      yield* TestHost.settle
+      assert.isTrue(root.text().includes("Person 1count 1"))
+    })
+    return Effect.gen(function*() {
+      yield* run(layer, page).pipe(Effect.scoped)
+      yield* run(Router.make({ routes: AppRoute, history }), reloaded).pipe(Effect.scoped)
+    })
   })
 
   it.effect("blocks Commands and reverts back and forward while a block is held", () => {

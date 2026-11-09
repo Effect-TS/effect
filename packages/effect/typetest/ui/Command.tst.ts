@@ -78,6 +78,19 @@ describe("Command", () => {
     })
   })
 
+  describe("Service", () => {
+    it("takes server: true only for an Effect Command", () => {
+      const service = Command.Service<"Load">()
+      expect(service).type.toBeCallableWith("Load", Effect.succeed(() => Effect.succeed(1)), { server: true })
+      expect(service).type.not.toBeCallableWith("Load", Effect.succeed(() => Stream.fromIterable([1])), {
+        stream: true,
+        server: true
+      })
+      // Factories from make can't be server Commands.
+      expect(Command.make).type.not.toBeCallableWith("Load", () => Effect.succeed(1), { server: true })
+    })
+  })
+
   describe("a Command that never produces a result", () => {
     it("is accepted by any component's $.run", () => {
       const Hold = Command.make("Hold", () => Effect.never)

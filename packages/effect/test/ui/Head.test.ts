@@ -1,5 +1,7 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Head } from "effect/ui"
+import { Effect, Schema } from "effect"
+import { Component, Head, type MessageLog } from "effect/ui"
+import { TestHost } from "effect/ui/testing"
 
 const node = (entries: ReadonlyArray<Head.Entry>, ...children: ReadonlyArray<Head.Tree>): Head.Tree => ({
   entries,
@@ -68,4 +70,59 @@ describe("Head", () => {
     assert.throws(() => Head.jsonLd({ list: [1, Number.NaN] }), /\$\.list\[1\] is NaN/)
     assert.throws(() => Head.jsonLd([1] as any), /not an array/)
   })
+
+  it("skips a throwing template and reports it to its node", () => {
+    const errors: Array<unknown> = []
+    const tree: Head.Tree = {
+      entries: [Head.titleTemplate(() => {
+        throw new Error("bad template")
+      })],
+      children: [node([Head.title("Ada")])],
+      onError: (error) => errors.push(error)
+    }
+    assert.strictEqual(Head.merge(tree).title, "Ada")
+    assert.strictEqual(errors.length, 1)
+    assert.throws(() => Head.merge({ ...tree, onError: undefined }), /bad template/)
+  })
+
+  it.effect("fails only the instance whose title template throws", () =>
+    Effect.gen(function*() {
+      const Page = Component.make({
+        name: "Page",
+        model: Schema.Number,
+        message: Schema.Never,
+        init: () => 0,
+        update: (model) => model,
+        head: () => [Head.title("Ada")],
+        view: (_, h) => h.text("page")
+      })
+      const Layout = Component.make({
+        name: "Layout",
+        model: Schema.Number,
+        message: Schema.Never,
+        init: () => 0,
+        update: (model) => model,
+        head: () => [
+          Head.titleTemplate(() => {
+            throw new Error("bad template")
+          })
+        ],
+        view: (_, h) => h.child(Page, { key: "page", props: {} })
+      })
+      const App = Component.make({
+        name: "App",
+        model: Schema.Number,
+        message: Schema.Never,
+        init: () => 0,
+        update: (model) => model,
+        head: () => [Head.title("App")],
+        view: (_, h) => h.el("main", h.child(Layout, { key: "layout", props: {}, fallback: () => h.text("down") }))
+      })
+      const root = yield* TestHost.mount(App, {})
+      yield* TestHost.settle
+      assert.strictEqual(root.text(), "down")
+      assert.strictEqual(root.head().title, "App")
+      const failed = root.log().filter((entry): entry is MessageLog.Failed => entry._tag === "Failed")
+      assert.deepStrictEqual(failed.map((entry) => [entry.path, entry.source]), [["/App/Layout[layout]", "head"]])
+    }).pipe(Effect.provide(TestHost.layer())))
 })

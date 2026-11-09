@@ -50,7 +50,8 @@
  *   update: (model, message, $) =>
  *     Message.match(message, {
  *       ChangedRoute: ({ route }) => AppRoute.print(route) === AppRoute.print(model.route) ? model : { route },
- *       Go: ({ route }) => $.run(Router.Push.make(route).pipe(Command.map(() => Message.make({ _tag: "Navigated" })))),
+ *       Go: ({ route }) =>
+ *         $.run(Router.push(AppRoute, route).pipe(Command.map(() => Message.make({ _tag: "Navigated" })))),
  *       Navigated: () => model
  *     }),
  *   subscriptions: () => [Router.subscription(AppRoute, (route) => Message.make({ _tag: "ChangedRoute", route }))],
@@ -156,13 +157,35 @@ export const Router: Context.Service<Router, Router> = Context.Service<Router>("
 // ---------------------------------------------------------------------------
 
 /**
- * Pushes a history entry for a route value.
+ * A route union, with its route values' type.
  *
- * **Details**
+ * @stability experimental
+ * @category models
+ * @since 4.1.3
+ */
+export type Routes = Route.AnyUnion & { readonly Type: { readonly _tag: string } }
+
+const TargetTypeId = "~effect/ui/Router/Target" as const
+
+/**
+ * A route value checked against its union, the argument of `Push` and
+ * `Replace`. Build one with `push` and `replace`, which check the value's
+ * type against the union.
  *
- * A route equal to the current one does nothing. It returns `"blocked"`
- * without navigating while a `Block` is held. Map the outcome to a message
- * with `Command.map`.
+ * @stability experimental
+ * @category models
+ * @since 4.1.3
+ */
+export interface Target {
+  readonly [TargetTypeId]: typeof TargetTypeId
+  readonly route: { readonly _tag: string }
+}
+
+const target = (route: { readonly _tag: string }): Target => ({ [TargetTypeId]: TargetTypeId, route })
+
+/**
+ * The Command behind `push`. Use `push`, which types the route value; the
+ * class is what a Layer fake or `Story.resolve` names.
  *
  * @stability experimental
  * @category commands
@@ -170,16 +193,12 @@ export const Router: Context.Service<Router, Router> = Context.Service<Router>("
  */
 export class Push extends Command.Service<Push>()(
   "effect/ui/Router/Push",
-  Effect.map(Router, (router) => (route: { readonly _tag: string }) => router.push(route))
+  Effect.map(Router, (router) => (target: Target) => router.push(target.route))
 ) {}
 
 /**
- * Replaces the current history entry with a route value.
- *
- * **Details**
- *
- * A replace that keeps the pathname, such as a search box writing `?q=`, isn't
- * announced and leaves focus alone.
+ * The Command behind `replace`. Use `replace`, which types the route value;
+ * the class is what a Layer fake or `Story.resolve` names.
  *
  * @stability experimental
  * @category commands
@@ -187,8 +206,42 @@ export class Push extends Command.Service<Push>()(
  */
 export class Replace extends Command.Service<Replace>()(
   "effect/ui/Router/Replace",
-  Effect.map(Router, (router) => (route: { readonly _tag: string }) => router.replace(route))
+  Effect.map(Router, (router) => (target: Target) => router.replace(target.route))
 ) {}
+
+/**
+ * Pushes a history entry for a route value of the given union.
+ *
+ * **Details**
+ *
+ * The route must be a complete value of `routes`, such as one built with
+ * `routes.make`; pass the union given to the Router Layer or one of its
+ * subsets. A route equal to the current one does nothing. It returns
+ * `"blocked"` without navigating while a `Block` is held. Map the outcome
+ * to a message with `Command.map`. The component requires `Push`.
+ *
+ * @stability experimental
+ * @category commands
+ * @since 4.1.3
+ */
+export const push = <U extends Routes>(_routes: U, route: U["Type"]): Command.Effectful<Outcome, Push> =>
+  Push.make(target(route))
+
+/**
+ * Replaces the current history entry with a route value of the given union.
+ *
+ * **Details**
+ *
+ * Typed like `push`. A replace that keeps the pathname, such as a search box
+ * writing `?q=`, isn't announced and leaves focus alone. The component
+ * requires `Replace`.
+ *
+ * @stability experimental
+ * @category commands
+ * @since 4.1.3
+ */
+export const replace = <U extends Routes>(_routes: U, route: U["Type"]): Command.Effectful<Outcome, Replace> =>
+  Replace.make(target(route))
 
 /**
  * Goes back one history entry.
@@ -292,14 +345,14 @@ const engines = new WeakMap<Router, Engine>()
  * @category subscriptions
  * @since 4.1.3
  */
-export const subscription = <U extends { readonly Type: { readonly _tag: string } }, Msg>(
+export const subscription = <U extends Routes, Msg>(
   routes: U,
   f: (route: U["Type"]) => Msg
 ): Subscription.Subscription<Msg, Router> => {
   const seqs = new WeakMap<object, number>()
   let last: number | undefined
   let engine: Engine | undefined
-  const union = routes as unknown as Route.AnyUnion
+  const union: Route.AnyUnion = routes
   const stream = Stream.unwrap(Effect.map(Router, (router) => {
     engine = engines.get(router)
     return router.changes.pipe(
@@ -384,8 +437,12 @@ export interface Options {
   readonly history: History
   /** Called once per announced navigation, when it settles. */
   readonly onSettled?: ((settled: Settled) => void) | undefined
-  /** Called for a change to the `#hash` alone within the same route. */
-  readonly onHash?: ((hash: string, action: "push" | "pop") => void) | undefined
+  /**
+   * Called for a change to the `#hash` alone within the same route, with the
+   * index of the history entry it moved to. `onLeave` was called for the entry
+   * it left, so a pop can restore that entry's scroll position.
+   */
+  readonly onHash?: ((hash: string, action: "push" | "pop", index: number) => void) | undefined
   /** Called before the Router leaves the history entry at `index`. */
   readonly onLeave?: ((index: number) => void) | undefined
 }
@@ -449,9 +506,19 @@ const commandLayers = Layer.mergeAll(
  * settle timing; a host adds scroll, announcements and focus in `onSettled`.
  *
  * History restore: before leaving an entry, the Router saves the encoded
- * Model of every mounted instance. On back and forward, an instance created
- * for the entry adopts its saved Model: `init` is replayed for its
- * Subscriptions, and its Commands are dropped, so nothing is fetched again.
+ * Model of every mounted instance by path. It can't save only the page's
+ * subtree, because which instances the navigation unmounts is only known
+ * after it. On back and forward, an instance created for the entry adopts its
+ * saved Model, so only the re-keyed subtree is restored, and an instance that
+ * stayed mounted keeps its own. As with hydration, `init` is replayed: its
+ * Commands from `Command.Service`s declared `server: true` are dropped, so
+ * nothing is fetched again, and its other Commands run.
+ *
+ * The snapshot is kept in memory per entry. When a push leaves an entry, it's
+ * also written into that entry's `state`, so it survives a reload. When back
+ * or forward leaves an entry, the host has already moved to the other entry,
+ * so the snapshot stays in memory only. After a reload, that entry restores
+ * the snapshot written when a push last left it, or starts fresh.
  *
  * @stability experimental
  * @category constructors
@@ -528,7 +595,7 @@ const build = (options: Options): Effect.Effect<Context.Context<Router>, never, 
           history.push(printed + hash, writeState({ index }))
         }
         current = { ...current, hash }
-        options.onHash?.(hash, "push")
+        options.onHash?.(hash, "push", index)
         return "navigated"
       }
       const seq = current.seq + 1
@@ -570,11 +637,14 @@ const build = (options: Options): Effect.Effect<Context.Context<Router>, never, 
       if (Option.isNone(found)) return
       const printed = canonical(routes, found.value, url)
       if (printed === current.url) {
-        index = target
-        if (hash !== current.hash) {
-          current = { ...current, hash }
-          options.onHash?.(hash, "pop")
+        if (hash === current.hash) {
+          index = target
+          return
         }
+        options.onLeave?.(index)
+        index = target
+        current = { ...current, hash }
+        options.onHash?.(hash, "pop", target)
         return
       }
       leave()

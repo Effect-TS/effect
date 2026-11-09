@@ -223,6 +223,12 @@ export interface Proto<out Msg, in Source = Msg> extends Pipeable.Pipeable {
   /** The concurrency key derived from the arguments, if the definition has a `key` option. */
   readonly key: string | undefined
   /**
+   * Whether the Command comes from a `Command.Service` declared with
+   * `server: true`: a data read whose result the server already put in the
+   * Model. An adopted instance skips these when it replays `init`.
+   */
+  readonly server: boolean
+  /**
    * Maps the result of the underlying definition to the message this Command
    * produces, composing every `map` applied since it was issued. `Story`
    * uses it to resolve a Command with the definition's own message type.
@@ -401,6 +407,8 @@ export interface Definition<in Args extends ReadonlyArray<any>, out Msg, out IsS
   /** Whether the Command was declared with `stream: true`. */
   readonly stream: IsStream
   readonly mode: Mode
+  /** Whether the Command was declared with `server: true`. Always `false` for `make`. */
+  readonly server: boolean
 }
 
 /**
@@ -521,6 +529,13 @@ export declare namespace Service {
     readonly stream?: boolean | undefined
     readonly mode?: Mode | undefined
     readonly key?: ((...args: Args) => string) | undefined
+    /**
+     * Marks a safe data read whose result reaches the Model through a
+     * message. An instance that adopts its Model, on history restore or
+     * hydration, skips these Commands when it replays `init` and runs the
+     * others. Can't be combined with `stream: true`.
+     */
+    readonly server?: boolean | undefined
   }
 }
 
@@ -537,6 +552,7 @@ const makeEffectful = <Msg, R>(
     readonly args: ReadonlyArray<unknown>
     readonly mode: Mode
     readonly key: string | undefined
+    readonly server: boolean
     readonly effect: Effect.Effect<any, never, R>
     readonly resolve: (result: any) => Msg
   }
@@ -548,6 +564,7 @@ const makeStreaming = <Msg, R>(
     readonly args: ReadonlyArray<unknown>
     readonly mode: Mode
     readonly key: string | undefined
+    readonly server: boolean
     readonly stream: Stream.Stream<any, never, R>
     readonly resolve: (result: any) => Msg
   }
@@ -646,14 +663,15 @@ export const make: {
   const factory = (...args: ReadonlyArray<unknown>) => {
     const key = keyOf === undefined ? undefined : keyOf(...args)
     return stream
-      ? makeStreaming({ name, args, mode, key, stream: run(...args), resolve: identity })
-      : makeEffectful({ name, args, mode, key, effect: run(...args), resolve: identity })
+      ? makeStreaming({ name, args, mode, key, server: false, stream: run(...args), resolve: identity })
+      : makeEffectful({ name, args, mode, key, server: false, effect: run(...args), resolve: identity })
   }
   Object.defineProperty(factory, "name", { value: name })
   return Object.assign(factory, {
     [DefinitionTypeId]: DefinitionTypeId,
     stream,
-    mode
+    mode,
+    server: false
   })
 }
 
@@ -679,6 +697,11 @@ export const make: {
  * The function may use framework services on each call without them appearing
  * in `layer`'s requirements. State that changes over time is read on each call
  * through a captured service; anything that varies per call is an argument.
+ *
+ * `server: true` marks a safe data read whose result reaches the Model
+ * through a message. An instance that adopts its Model, on history restore,
+ * skips it when `init` is replayed, and runs the Command's other `init`
+ * Commands as on any mount.
  *
  * **Example** (Defining, issuing and faking a Command service)
  *
@@ -725,7 +748,7 @@ export const Service: <Self>() => {
     implementation:
       & Effect.Effect<(...args: Args) => Stream.Stream<Msg, never, RInner>, E, R>
       & CapturesServices<RInner>,
-    options: Service.Options<Args> & { readonly stream: true }
+    options: Service.Options<Args> & { readonly stream: true; readonly server?: false | undefined }
   ): Service<Self, Key, Args, Msg, true, E, Exclude<R, Scope.Scope>>
 } = () =>
 (
@@ -737,10 +760,12 @@ export const Service: <Self>() => {
   const stream = options?.stream === true
   const mode = options?.mode ?? "concurrent"
   const keyOf = options?.key
+  const server = !stream && options?.server === true
   class CommandService extends Base {
     static readonly [DefinitionTypeId] = DefinitionTypeId
     static readonly stream = stream
     static readonly mode = mode
+    static readonly server = server
     static readonly layer = Layer.effect(Base, implementation)
     static make(...args: ReadonlyArray<unknown>) {
       const concurrencyKey = keyOf === undefined ? undefined : keyOf(...args)
@@ -750,6 +775,7 @@ export const Service: <Self>() => {
           args,
           mode,
           key: concurrencyKey,
+          server,
           stream: Stream.unwrap(
             Effect.map(
               Base as Effect.Effect<(...args: ReadonlyArray<unknown>) => any, never, any>,
@@ -763,6 +789,7 @@ export const Service: <Self>() => {
           args,
           mode,
           key: concurrencyKey,
+          server,
           effect: Effect.flatMap(
             Base as Effect.Effect<(...args: ReadonlyArray<unknown>) => any, never, any>,
             (run) => run(...args)
@@ -830,6 +857,7 @@ export const map: {
         args: self.args,
         mode: self.mode,
         key: self.key,
+        server: self.server,
         effect: Effect.map(self.effect, f),
         resolve: (result) => f(self.resolve(result as never))
       })
@@ -839,6 +867,7 @@ export const map: {
         args: self.args,
         mode: self.mode,
         key: self.key,
+        server: self.server,
         stream: Stream.map(self.stream, f),
         resolve: (result) => f(self.resolve(result as never))
       })
