@@ -2,6 +2,7 @@ import { assert, describe, it } from "@effect/vitest"
 import { Context, Effect, Layer, LayerMap, Option, Redacted, Schema, Stream } from "effect"
 import { TestClock } from "effect/testing"
 import { Command, Component, Feature, MessageLog, Renderer, Subscription } from "effect/ui"
+import * as runtime from "effect/ui/internal/runtime"
 import { Query, Story, TestHost } from "effect/ui/testing"
 import { Counter, CounterMessage } from "./fixtures/components.ts"
 import { Tiny } from "./fixtures/vocabulary.ts"
@@ -823,6 +824,57 @@ describe("Runtime", () => {
       yield* TestHost.settle
       assert.strictEqual(root.text(), "[a][a][b]")
       assert.strictEqual(builds, 2)
+    })))
+
+  it.effect("each provided Layer build is stamped with the flush it began in", () =>
+    provideHost(Effect.gen(function*() {
+      class Slow extends Context.Service<Slow, { readonly name: string }>()("test/Slow") {}
+      const Inner = Component.provide(
+        Component.make({
+          name: "Inner",
+          props: Schema.Struct({ name: Schema.String }),
+          model: Schema.Number,
+          message: Schema.String,
+          init: () => 0,
+          update: (model) => model,
+          view: (_, h) => h.text(h.props.name)
+        }),
+        (props) =>
+          Layer.effect(
+            Slow,
+            props.name === "fail" ? Effect.fail("no") : Effect.as(Effect.sleep("1 hour"), { name: props.name })
+          ),
+        { onFailure: () => "failed" }
+      )
+      const Msg = Schema.TaggedUnion({ Add: { name: Schema.String } })
+      const Shell = Component.make({
+        name: "Shell",
+        model: Schema.Array(Schema.String),
+        message: Msg,
+        init: () => ["first"],
+        update: (names, message) => [...names, message.name],
+        view: (names, h) => h.el("div", names.map((name) => h.child(Inner, { key: name, props: { name } })))
+      })
+      const testHost = yield* TestHost.TestHost
+      const root = yield* runtime.mount(Shell, {}, testHost.host.createElement("#app"))
+      assert.strictEqual(root.flush(), 0)
+      assert.strictEqual(root.buildsPendingSince(0), 1)
+
+      root.send(Msg.make({ _tag: "Add", name: "second" }))
+      yield* TestHost.settle
+      const navigated = root.flush()
+      assert.isAbove(navigated, 0)
+      // The first build was already running, so it doesn't count from the later flush.
+      assert.strictEqual(root.buildsPendingSince(0), 2)
+      assert.strictEqual(root.buildsPendingSince(navigated), 1)
+
+      root.send(Msg.make({ _tag: "Add", name: "fail" }))
+      yield* TestHost.settle
+      assert.strictEqual(root.buildsPendingSince(navigated), 1)
+      // A failed build counts as settled.
+      root.send(Msg.make({ _tag: "Add", name: "x" }))
+      yield* TestHost.settle
+      assert.strictEqual(root.buildsPendingSince(0), 3)
     })))
 
   it.effect("settle fails with the log's tail when work never stops", () =>

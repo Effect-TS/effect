@@ -153,8 +153,16 @@ export interface Root {
   readonly find: (path: string) => Instance | undefined
   readonly model: () => unknown
   readonly send: (message: unknown) => void
-  /** The text of the root's rendered nodes, for diagnostics. */
+  /** The Commands still running or queued anywhere in the tree. */
   readonly pending: () => ReadonlyArray<{ readonly path: string; readonly name: string; readonly status: string }>
+  /** The current flush: 0 for the first render, then one more per flush. */
+  readonly flush: () => number
+  /**
+   * How many provided Layer builds that began in `flush` or later are still
+   * pending, tree-wide. A failed build counts as settled. The router's settle
+   * condition reads this.
+   */
+  readonly buildsPendingSince: (flush: number) => number
 }
 
 const childName = (component: Component.Any | Feature.Any): string =>
@@ -250,6 +258,9 @@ const start = (
   const deferred: Array<() => void> = []
   let committed: Array<() => void> = []
   let scheduled = false
+  // Each provided Layer build still pending, stamped with the flush it began in.
+  let flushes = 0
+  const building = new Set<{ readonly flush: number }>()
   // True while the first render or a flush is building nodes the host hasn't committed yet.
   let rendering = true
   const wake = () => {
@@ -274,6 +285,7 @@ const start = (
   function flush() {
     scheduled = false
     rendering = true
+    flushes++
     while (dirty.size > 0 || deferred.length > 0) {
       if (deferred.length > 0) {
         deferred.shift()!()
@@ -536,7 +548,9 @@ const start = (
       if (shared !== undefined) {
         Effect.runSync(Scope.addFinalizer(scope, Effect.sync(() => releaseShared(parentEnv, sharedLayer!, shared))))
       }
+      let settleBuild: (() => void) | undefined
       const fail = (cause: Cause.Cause<unknown>) => {
+        settleBuild?.()
         if (inst.closed) return
         lifecycle({ _tag: "LayerFailed", path, cause })
         const handle = component.layerFailure
@@ -573,9 +587,16 @@ const start = (
           }
         }, fail)
       }
-      if (own.ctx === undefined && own.failure === undefined) {
+      if (own.ctx === undefined && own.failure === undefined && failedEarly === undefined) {
         pending = true
         lifecycle({ _tag: "LayerPending", path })
+        const stamp = { flush: flushes }
+        building.add(stamp)
+        settleBuild = () => {
+          building.delete(stamp)
+        }
+        whenReady(own, settleBuild, settleBuild)
+        Effect.runSync(Scope.addFinalizer(scope, Effect.sync(settleBuild)))
       }
     }
 
@@ -1168,6 +1189,12 @@ const start = (
     find,
     model: () => root.failure === undefined ? root.model : undefined,
     send: (message) => root.dispatch(message, { _tag: "Dispatch" }),
-    pending: () => pendingOf(root)
+    pending: () => pendingOf(root),
+    flush: () => flushes,
+    buildsPendingSince: (flush) => {
+      let count = 0
+      for (const stamp of building) if (stamp.flush >= flush) count++
+      return count
+    }
   }
 }
