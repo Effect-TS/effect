@@ -145,6 +145,37 @@ const withWorkflow = <E, R>(execution: Layer.Layer<McpTasks.Execution, E, R>) =>
   )
 
 describe("McpTasks", () => {
+  it.effect("should omit configured Tasks support without task tools and preserve other extensions", () =>
+    Effect.gen(function*() {
+      for (const otherExtensions of [{}, { "example.com/custom": { enabled: true } }]) {
+        const harness = yield* makeHttpHarness(makeServerLayer({
+          name: "No task tools",
+          protocols: [McpProtocol.v2026_07_28],
+          extensions: { ...otherExtensions, "io.modelcontextprotocol/tasks": {} }
+        }))
+        const { result } = yield* Schema.decodeUnknownEffect(Schema.Struct({
+          result: Schema.Struct({
+            capabilities: Schema.Struct({
+              extensions: Schema.optionalKey(Schema.Record(Schema.String, Schema.JsonObject))
+            })
+          })
+        }))(yield* post(harness, "server/discover", {}))
+        assert.deepStrictEqual(
+          result.capabilities.extensions,
+          Object.keys(otherExtensions).length === 0 ? undefined : otherExtensions
+        )
+        for (const method of ["tasks/get", "tasks/update", "tasks/cancel"]) {
+          const { error } = yield* decodeError(
+            yield* post(harness, method, {
+              taskId: "unknown",
+              inputResponses: {}
+            })
+          )
+          assert.strictEqual(error.code, -32601)
+        }
+      }
+    }))
+
   it.effect("should advertise Tasks support when a task toolkit is registered", () =>
     Effect.gen(function*() {
       const harness = yield* makeHttpHarness(server)

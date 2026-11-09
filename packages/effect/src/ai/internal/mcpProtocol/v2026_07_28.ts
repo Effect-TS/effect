@@ -396,9 +396,10 @@ export const makeHandlers = (
     Effect.all([context.registrationPresence, core.registrationPresence]),
     ([presence, { tasks }]) => {
       const capabilities: Types.Mutable<typeof McpSchema.ServerCapabilities.Type> = { completions: {}, logging: {} }
-      const declared = McpSkills.declareExtension(extensions, presence.skills)
-      if (tasks) capabilities.extensions = { ...declared, [McpTasks.EXTENSION_ID]: {} }
-      else if (declared !== undefined) capabilities.extensions = declared
+      const declared = { ...McpSkills.declareExtension(extensions, presence.skills) }
+      delete declared[McpTasks.EXTENSION_ID]
+      if (tasks) declared[McpTasks.EXTENSION_ID] = {}
+      if (Object.keys(declared).length > 0) capabilities.extensions = declared
       if (presence.tools) capabilities.tools = { listChanged: supportsSubscriptions }
       if (presence.resources) {
         capabilities.resources = { listChanged: supportsSubscriptions, subscribe: supportsSubscriptions }
