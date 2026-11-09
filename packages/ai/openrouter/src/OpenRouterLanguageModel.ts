@@ -776,13 +776,7 @@ const prepareMessages = Effect.fnUntraced(
 
                   content.push({
                     type: "image_url",
-                    image_url: {
-                      url: part.data instanceof URL
-                        ? part.data.toString()
-                        : part.data instanceof Uint8Array
-                        ? `data:${mediaType};base64,${Base64.encode(part.data)}`
-                        : part.data
-                    },
+                    image_url: { url: getFileUrl(part.data, mediaType) },
                     ...(Predicate.isNotNull(partCacheControl) ? { cache_control: partCacheControl } : undefined)
                   })
 
@@ -835,11 +829,7 @@ const prepareMessages = Effect.fnUntraced(
                   type: "file",
                   file: {
                     filename: fileName,
-                    file_data: part.data instanceof URL
-                      ? part.data.toString()
-                      : part.data instanceof Uint8Array
-                      ? `data:${part.mediaType};base64,${Base64.encode(part.data)}`
-                      : part.data
+                    file_data: getFileUrl(part.data, part.mediaType)
                   },
                   ...(Predicate.isNotNull(partCacheControl) ? { cache_control: partCacheControl } : undefined)
                 } as any)
@@ -1883,6 +1873,15 @@ const audioFormats: Record<string, string> = {
 }
 
 const supportedAudioFormats = Array.from(new Set(Object.values(audioFormats))).join(", ")
+
+const getFileUrl = (data: string | Uint8Array | URL, mediaType: string): string =>
+  data instanceof URL
+    ? data.toString()
+    : data instanceof Uint8Array
+    ? `data:${mediaType};base64,${Base64.encode(data)}`
+    : /^(data:|https?:\/\/)/i.test(data)
+    ? data
+    : `data:${mediaType};base64,${data}`
 
 const getMediaType = (dataUrl: string, defaultMediaType: string): string => {
   const match = dataUrl.match(/^data:([^;]+)/)
