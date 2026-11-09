@@ -57,6 +57,7 @@ import type * as AsyncResult from "../reactivity/AsyncResult.ts"
 import * as Schema from "../Schema.ts"
 import type * as Types from "../Types.ts"
 import type * as Command from "./Command.ts"
+import type * as Head from "./Head.ts"
 import type * as Subscription from "./Subscription.ts"
 import * as View from "./View.ts"
 
@@ -251,6 +252,8 @@ export interface Mountable<in out Props, out Events, out R = never> extends Pipe
   readonly update: (model: any, msg: never, props: Props) => Next<any, any, Events, R>
   readonly view: (model: any, props: Props) => View.Node<any, R>
   readonly subscriptions: ((model: any, props: Props) => ReadonlyArray<Subscription.Subscription<any, R>>) | undefined
+  /** The instance's document head entries, a pure function of its Model. */
+  readonly head: ((model: any) => ReadonlyArray<Head.Entry>) | undefined
   /** The component's vocabulary: its `elements` override, else the registered one. Read lazily. */
   readonly elements: () => View.Vocabulary<any> | undefined
   /** Set by `provide`: the Layer built for each instance, in its Scope. Descendants inherit its services. */
@@ -304,6 +307,7 @@ export interface Component<
   readonly update: (model: Model, msg: Msg, props: Props) => Next<Model, Msg, Events, R>
   readonly view: (model: Model, props: Props) => View.Node<Msg, R>
   readonly subscriptions: ((model: Model, props: Props) => ReadonlyArray<Subscription.Subscription<Msg, R>>) | undefined
+  readonly head: ((model: Model) => ReadonlyArray<Head.Entry>) | undefined
   readonly layerFailure: ((failure: AsyncResult.Failure<never, any>) => Msg) | undefined
   readonly "~V"?: V
 }
@@ -397,6 +401,11 @@ const Proto = {
  * while their key is listed, and falsy entries are skipped. `elements`
  * overrides the registered vocabulary for this component.
  *
+ * `head` returns the instance's document head entries (see `Head`). It's a
+ * pure function of the Model and never sees props: a page that wants its
+ * route in the title copies it into the Model in `init`. The entries live and
+ * die with the instance, and a slot's `fallback` contributes none.
+ *
  * **Example** (A counter)
  *
  * ```ts import.meta.vitest
@@ -451,6 +460,7 @@ export const make = <
   readonly update: (model: Model, msg: Msg, $: Update<Model, Msg, Events, Props>) => U
   readonly view: (model: Model, h: View.Helper<Msg, Props> & View.Tags<V, Msg>) => UV
   readonly subscriptions?: ((model: Model, props: Props) => ReadonlyArray<S | false | null | undefined>) | undefined
+  readonly head?: ((model: Model) => ReadonlyArray<Head.Entry>) | undefined
   readonly elements?: View.Vocabulary<V> | undefined
 }): Component<
   Name,
@@ -478,6 +488,7 @@ export const make = <
     subscriptions: subscriptions === undefined
       ? undefined
       : (model: Model, props: Props) => subscriptions(model, props).filter((entry): entry is S => !!entry),
+    head: options.head,
     elements: () => options.elements ?? View.registeredElements(),
     layer: undefined,
     layerFailure: undefined,

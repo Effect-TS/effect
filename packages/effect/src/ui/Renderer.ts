@@ -24,6 +24,7 @@ import type * as Option from "../Option.ts"
 import type * as AsyncResult from "../reactivity/AsyncResult.ts"
 import type * as Scope from "../Scope.ts"
 import type * as Component from "./Component.ts"
+import type * as Head from "./Head.ts"
 import * as runtime from "./internal/runtime.ts"
 import * as services from "./internal/services.ts"
 import type * as View from "./View.ts"
@@ -66,6 +67,11 @@ export type Dispatch = (event: string, handler: View.Handler<unknown, any>, payl
  * on hosts that never run `onMount` work. `commit` is called once at the end
  * of each flush and after mounting, for hosts that apply changes in a batch.
  *
+ * `head` receives the tree's merged document head after the commit, on every
+ * flush where an instance with a `head` option rendered or an instance went
+ * away. The host diffs it against what it applied last. A host without a
+ * document, such as a native one, leaves it out and head entries are ignored.
+ *
  * @stability experimental
  * @category models
  * @since 4.1.3
@@ -85,6 +91,7 @@ export interface Host<Node> {
   readonly controlled: ReadonlySet<string>
   readonly runsMounts: boolean
   readonly commit?: (() => void) | undefined
+  readonly head?: ((head: Head.Head) => void) | undefined
 }
 
 /**
