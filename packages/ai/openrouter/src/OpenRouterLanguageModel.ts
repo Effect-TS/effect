@@ -1439,13 +1439,10 @@ const makeStreamResponse = Effect.fnUntraced(
               // Tool call start - OpenRouter returns all information except the
               // tool call parameters in the first chunk
               if (Predicate.isUndefined(activeToolCall)) {
-                // Some providers send an empty fragment after a tool call's
-                // arguments are already complete
-                if (
-                  completedToolCallIndexes.has(index) && Predicate.isNullish(toolCall.id) &&
-                  Predicate.isNullish(toolCall.type) && Predicate.isNullish(toolCall.function?.name) &&
-                  argumentsDelta.length === 0
-                ) {
+                // Some providers send an empty fragment after the call's arguments are complete
+                const isEmptyFragment = Predicate.isNullish(toolCall.id) && Predicate.isNullish(toolCall.type) &&
+                  Predicate.isNullish(toolCall.function?.name) && argumentsDelta.length === 0
+                if (isEmptyFragment && completedToolCallIndexes.has(index)) {
                   continue
                 }
 
