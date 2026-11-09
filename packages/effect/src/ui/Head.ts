@@ -363,6 +363,9 @@ export const dir = (dir: "ltr" | "rtl"): Dir => ({ _tag: "Dir", dir })
  * isn't `Object.prototype` or `null` (a `Date`, `Map`, `Option` or class
  * instance), or an array holding `NaN`, `Infinity` or `undefined`, throws an
  * error naming its JSON path. In a `head` option that fails the instance.
+ * The check runs in every build, not only in development: `effect` has no
+ * development switch, and it shares the walk the canonical serialisation
+ * makes anyway.
  *
  * **Example** (Describing a person)
  *
@@ -559,6 +562,12 @@ export const empty: Head = {
  * The entries of a tree of instances: each instance's own entries and its
  * children, in document order.
  *
+ * **Details**
+ *
+ * `onError` is called when one of the node's own title templates throws.
+ * The merge then skips that template. Without `onError` the error is
+ * rethrown.
+ *
  * @stability experimental
  * @category models
  * @since 4.1.3
@@ -566,6 +575,7 @@ export const empty: Head = {
 export interface Tree {
   readonly entries: ReadonlyArray<Entry>
   readonly children: ReadonlyArray<Tree>
+  readonly onError?: ((error: unknown) => void) | undefined
 }
 
 /**
@@ -617,6 +627,21 @@ export const attributes = (entry: Meta | Link): ReadonlyArray<readonly [string, 
   return out
 }
 
+interface Template {
+  readonly apply: (title: string) => string
+  readonly node: Tree
+}
+
+const applyTemplate = (text: string, template: Template): string => {
+  try {
+    return template.apply(text)
+  } catch (error) {
+    if (template.node.onError === undefined) throw error
+    template.node.onError(error)
+    return text
+  }
+}
+
 /**
  * Merges a tree's entries into one `Head`.
  *
@@ -626,14 +651,15 @@ export const attributes = (entry: Meta | Link): ReadonlyArray<readonly [string, 
  * winning title passes through the `titleTemplate` of each ancestor of the
  * instance that set it, nearest first. An instance's own template never
  * applies to its own title, and when an instance has several templates the
- * last one counts.
+ * last one counts. A template that throws is reported to its node's
+ * `onError` and skipped.
  *
  * @stability experimental
  * @category combinators
  * @since 4.1.3
  */
 export const merge = (tree: Tree): Head => {
-  let title: { readonly text: string; readonly templates: ReadonlyArray<(title: string) => string> } | undefined
+  let title: { readonly text: string; readonly templates: ReadonlyArray<Template> } | undefined
   const meta = new Map<string, Meta>()
   const links = new Map<string, Link>()
   const json = new Map<string, JsonLd>()
@@ -643,15 +669,15 @@ export const merge = (tree: Tree): Head => {
   const bodyClasses = new Set<string>()
   const htmlDataMap = new Map<string, string>()
   const bodyDataMap = new Map<string, string>()
-  const visit = (node: Tree, templates: ReadonlyArray<(title: string) => string>) => {
-    let own: ((title: string) => string) | undefined
+  const visit = (node: Tree, templates: ReadonlyArray<Template>) => {
+    let own: Template | undefined
     for (const entry of node.entries) {
       switch (entry._tag) {
         case "Title":
           title = { text: entry.text, templates }
           break
         case "TitleTemplate":
-          own = entry.apply
+          own = { apply: entry.apply, node }
           break
         case "Meta":
           meta.set(identity(entry), entry)
@@ -687,7 +713,7 @@ export const merge = (tree: Tree): Head => {
   }
   visit(tree, [])
   return {
-    title: title === undefined ? undefined : title.templates.reduce((text, apply) => apply(text), title.text),
+    title: title === undefined ? undefined : title.templates.reduce(applyTemplate, title.text),
     meta: [...meta.values()],
     links: [...links.values()],
     jsonLd: [...json.values()],

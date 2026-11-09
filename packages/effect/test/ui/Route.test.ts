@@ -52,6 +52,18 @@ describe("Route", () => {
     assert.strictEqual(parse(routes, "/search")?._tag, "NotFound")
   })
 
+  it("treats Object.prototype names as ordinary query keys", () => {
+    const routes = makeRoutes()
+    assert.strictEqual(parse(routes, "/?constructor=x")?._tag, "Home")
+    assert.deepStrictEqual(parse(routes, "/search?q=a&constructor=x&__proto__=y&toString=z&toString=w"), {
+      _tag: "Search",
+      params: {},
+      query: { q: "a" }
+    })
+    const keyed = Route.union({ Page: Route.make("/", { query: { constructor: Schema.optional(Schema.String) } }) })
+    assert.deepStrictEqual(parse(keyed, "/?constructor=x"), { _tag: "Page", params: {}, query: { constructor: "x" } })
+  })
+
   it("matches the catch-all last, with the path as its rest param", () => {
     assert.deepStrictEqual(parse(makeRoutes(), "/a/b"), { _tag: "NotFound", params: { "*": "a/b" }, query: {} })
     assert.deepStrictEqual(parse(makeRoutes(), "/files/a/b%20c"), {

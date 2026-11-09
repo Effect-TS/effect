@@ -247,7 +247,8 @@ export interface CommandSettled extends Base {
 
 /**
  * A Command that never ran: dropped by its `mode`, by the server, or because
- * hydration adopted its result.
+ * an adopted Model already holds its result (a `server: true` Command replayed
+ * by hydration or history restore).
  *
  * @stability experimental
  * @category models

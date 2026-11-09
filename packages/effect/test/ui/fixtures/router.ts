@@ -1,7 +1,8 @@
 /**
  * A two-page app on the Router: a root that holds the route, a home page, a
- * person page that loads on entry and counts clicks, and a slow page whose
- * provided Layer takes a second to build.
+ * person page that loads on entry (a server Command), counts its visits (a
+ * client-only Command) and counts clicks, and a slow page whose provided Layer
+ * takes a second to build.
  */
 import { Context, Effect, Layer, Schema } from "effect"
 import { Command, Component, Head, Route, Router } from "effect/ui"
@@ -31,22 +32,27 @@ export const Home = Component.make({
   view: (_, h) => h.el("h1", "Home")
 })
 
-export const PersonMessage = Schema.TaggedUnion({ Loaded: { name: Schema.String }, Bump: {} })
+export const PersonMessage = Schema.TaggedUnion({ Loaded: { name: Schema.String }, Visited: {}, Bump: {} })
 
-export const LoadPerson = Command.make(
+export class LoadPerson extends Command.Service<LoadPerson>()(
   "LoadPerson",
-  (id: number) => Effect.succeed(PersonMessage.make({ _tag: "Loaded", name: `Person ${id}` }))
-)
+  Effect.succeed((id: number) => Effect.succeed(PersonMessage.make({ _tag: "Loaded", name: `Person ${id}` }))),
+  { server: true }
+) {}
+
+export const CountVisit = Command.make("CountVisit", () => Effect.succeed(PersonMessage.make({ _tag: "Visited" })))
 
 export const Person = Component.make({
   name: "Person",
   props: Schema.Struct({ id: Schema.Number }),
-  model: Schema.Struct({ id: Schema.Number, name: Schema.String, count: Schema.Number }),
+  model: Schema.Struct({ id: Schema.Number, name: Schema.String, count: Schema.Number, visits: Schema.Number }),
   message: PersonMessage,
-  init: ($) => $.set({ id: $.props.id, name: "Loading", count: 0 }).run(LoadPerson($.props.id)),
+  init: ($) =>
+    $.set({ id: $.props.id, name: "Loading", count: 0, visits: 0 }).run(LoadPerson.make($.props.id)).run(CountVisit()),
   update: (model, message) =>
     PersonMessage.match(message, {
       Loaded: ({ name }) => ({ ...model, name }),
+      Visited: () => ({ ...model, visits: model.visits + 1 }),
       Bump: () => ({ ...model, count: model.count + 1 })
     }),
   head: (model) => [Head.title(model.name), Head.meta({ name: "description", content: `About ${model.name}` })],
@@ -56,7 +62,7 @@ export const Person = Component.make({
       h.el("h1", model.name),
       h.el("button", `count ${model.count}`).on("click", PersonMessage.make({ _tag: "Bump" }))
     )
-})
+}).pipe(Component.provide(LoadPerson.layer))
 
 export class SlowData extends Context.Service<SlowData, { readonly text: string }>()("test/SlowData") {}
 
@@ -101,7 +107,7 @@ export const App = Component.make({
         route._tag === model.route._tag && AppRoute.print(route) === AppRoute.print(model.route)
           ? model
           : { ...model, route },
-      Go: ({ route }) => $.run(Router.Push.make(route).pipe(Command.map(navigated))),
+      Go: ({ route }) => $.run(Router.push(AppRoute, route).pipe(Command.map(navigated))),
       Back: () => $.run(Router.Back.make().pipe(Command.map(navigated))),
       Block: () => $.run(Router.Block.make("editing").pipe(Command.map(done))),
       Unblock: () => $.run(Router.Unblock.make("editing").pipe(Command.map(done))),
