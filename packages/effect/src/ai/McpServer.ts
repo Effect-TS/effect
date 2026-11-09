@@ -2047,6 +2047,9 @@ const runWithRuntime = Effect.fnUntraced(function*(
   const patchedProtocol = RpcServer.Protocol.of({
     ...protocol,
     end: (clientId) => {
+      // RpcServer ends a non-HTTP client only after its request fibers drain, so
+      // tearing down here (not on Eof) keeps the opened end latch visible to a
+      // listener that was still starting when stdin closed.
       if (!isHttp) disconnectClient(clientId)
       return protocol.end(clientId)
     },
@@ -2273,7 +2276,6 @@ const runWithRuntime = Effect.fnUntraced(function*(
             return f(clientId, request)
           case "Eof":
             if (!isHttp) {
-              // Keep the opened signal until responses drain, including listeners still starting up.
               clientEnd(clientId).openUnsafe()
             }
             return f(clientId, request)

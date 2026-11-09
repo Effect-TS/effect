@@ -127,7 +127,7 @@ export interface HandlerInstallationOptions {
   readonly getListChangeRevision?: () => number
   readonly subscribeServerNotifications: McpProtocol.HandlerInstallationContext["subscribeServerNotifications"]
   readonly sendNotification?: NonNullable<McpProtocol.HandlerInstallationContext["sendNotification"]>
-  readonly awaitClientEnd?: McpProtocol.HandlerInstallationContext["awaitClientEnd"] | undefined
+  readonly awaitClientEnd?: McpProtocol.HandlerInstallationContext["awaitClientEnd"]
   readonly markSubscriptionCancelled?: NonNullable<
     McpProtocol.HandlerInstallationContext["markSubscriptionCancelled"]
   >
