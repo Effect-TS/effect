@@ -76,6 +76,103 @@ describe("OpenRouterLanguageModel", () => {
       }).pipe(Effect.provide(makeStreamTestLayer([]))))
   })
 
+  describe("schema codecs", () => {
+    const TagsTool = Tool.make("TagsTool", {
+      parameters: Schema.Struct({ tags: Schema.Record(Schema.String, Schema.Number) }),
+      success: Schema.String
+    })
+    const toolkit = Toolkit.make(TagsTool)
+    const handlers = toolkit.toLayer({ TagsTool: ({ tags }) => Effect.succeed(JSON.stringify(tags)) })
+    const openAiArguments = JSON.stringify({ tags: [{ "0": "a", "1": 1 }] })
+
+    it.effect("decodes tool call parameters with the codec their schema was sent with", () =>
+      Effect.gen(function*() {
+        const response = yield* LanguageModel.generateText({ prompt: "Use a tool", toolkit }).pipe(
+          Effect.provide(OpenRouterLanguageModel.model("openai/gpt-4o-mini")),
+          Effect.provide(handlers)
+        )
+
+        deepStrictEqual(response.toolResults.map((part) => [part.isFailure, part.result]), [[false, "{\"a\":1}"]])
+      }).pipe(Effect.provide(makeTestLayer({
+        body: {
+          choices: [{
+            finish_reason: "tool_calls",
+            index: 0,
+            message: {
+              role: "assistant",
+              content: null,
+              tool_calls: [{
+                id: "call-1",
+                type: "function",
+                function: { name: "TagsTool", arguments: openAiArguments }
+              }]
+            }
+          }]
+        }
+      }))))
+
+    it.effect("decodes streamed tool call parameters with the codec their schema was sent with", () =>
+      Effect.gen(function*() {
+        const parts = yield* LanguageModel.streamText({ prompt: "Use a tool", toolkit }).pipe(
+          Stream.runCollect,
+          Effect.provide(OpenRouterLanguageModel.model("openai/gpt-4o-mini")),
+          Effect.provide(handlers)
+        )
+
+        deepStrictEqual(
+          globalThis.Array.from(parts)
+            .filter((part) => part.type === "tool-result")
+            .map((part) => [part.isFailure, part.result]),
+          [[false, "{\"a\":1}"]]
+        )
+      }).pipe(Effect.provide(makeStreamTestLayer([
+        {
+          id: "response-1",
+          object: "chat.completion.chunk",
+          model: "openai/gpt-4o-mini",
+          created: 1,
+          choices: [{
+            index: 0,
+            delta: {
+              tool_calls: [{
+                index: 0,
+                id: "call-1",
+                type: "function",
+                function: { name: "TagsTool", arguments: openAiArguments }
+              }]
+            }
+          }]
+        },
+        {
+          id: "response-1",
+          object: "chat.completion.chunk",
+          model: "openai/gpt-4o-mini",
+          created: 1,
+          choices: [{ index: 0, delta: {}, finish_reason: "tool_calls" }],
+          usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 }
+        }
+      ]))))
+
+    it.effect("sends strict tools a strict-compatible schema for models without a provider codec", () =>
+      Effect.gen(function*() {
+        const StrictTool = Tool.make("StrictTool", {
+          parameters: Schema.Struct({ query: Schema.String, limit: Schema.optional(Schema.Number) })
+        }).annotate(Tool.Strict, true)
+        yield* LanguageModel.generateText({
+          prompt: "Use a tool",
+          toolkit: Toolkit.make(StrictTool),
+          disableToolCallResolution: true
+        }).pipe(Effect.provide(OpenRouterLanguageModel.model("google/gemini-2.5-flash")))
+
+        const requests = yield* MockHttpClient.requests
+        const body = yield* getRequestBody(requests[0])
+        const { parameters, strict } = body.tools[0].function
+        strictEqual(strict, true)
+        strictEqual(parameters.additionalProperties, false)
+        deepStrictEqual(parameters.required, ["query", "limit"])
+      }).pipe(Effect.provide(makeTestLayer())))
+  })
+
   it.effect("model provides openrouter provider metadata", () =>
     Effect.gen(function*() {
       strictEqual(yield* Model.ProviderName, "openrouter")

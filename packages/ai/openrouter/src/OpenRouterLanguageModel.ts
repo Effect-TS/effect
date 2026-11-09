@@ -27,10 +27,11 @@ import * as Effect from "effect/Effect"
 import * as Base64 from "effect/encoding/Base64"
 import { dual } from "effect/Function"
 import type * as HttpClientResponse from "effect/http/HttpClientResponse"
+import type * as JsonSchema from "effect/JsonSchema"
 import * as Layer from "effect/Layer"
 import * as Predicate from "effect/Predicate"
 import * as Redactable from "effect/Redactable"
-import type * as Schema from "effect/Schema"
+import * as Schema from "effect/Schema"
 import * as SchemaAST from "effect/SchemaAST"
 import * as Stream from "effect/Stream"
 import type { Span } from "effect/Tracer"
@@ -584,9 +585,12 @@ export const make = Effect.fnUntraced(function*({ model, config: providerConfig 
     function*({ config, options }: {
       readonly config: typeof Config.Service
       readonly options: LanguageModel.ProviderOptions
-    }): Effect.fn.Return<typeof Generated.ChatRequest.Encoded, AiError.AiError> {
+    }): Effect.fn.Return<{
+      readonly request: typeof Generated.ChatRequest.Encoded
+      readonly toolCodecs: ToolCodecs
+    }, AiError.AiError> {
       const messages = yield* prepareMessages({ options })
-      const { tools, toolChoice } = yield* prepareTools({ options, transformer: codecTransformer })
+      const { tools, toolChoice, toolCodecs } = yield* prepareTools({ options, transformer: codecTransformer })
       const responseFormat = yield* getResponseFormat({ config, options, transformer: codecTransformer })
       const { strictJsonSchema: _sjs, ...apiConfig } = config
       const request: typeof Generated.ChatRequest.Encoded = {
@@ -596,7 +600,7 @@ export const make = Effect.fnUntraced(function*({ model, config: providerConfig 
         ...(Predicate.isNotUndefined(tools) ? { tools } : undefined),
         ...(Predicate.isNotUndefined(toolChoice) ? { tool_choice: toolChoice } : undefined)
       }
-      return request
+      return { request, toolCodecs }
     }
   )
 
@@ -605,20 +609,20 @@ export const make = Effect.fnUntraced(function*({ model, config: providerConfig 
     generateText: Effect.fnUntraced(
       function*(options) {
         const config = yield* makeConfig
-        const request = yield* makeRequest({ config, options })
+        const { request, toolCodecs } = yield* makeRequest({ config, options })
         annotateRequest(options.span, request)
         const [rawResponse, response] = yield* client.createChatCompletion(request)
         annotateResponse(options.span, rawResponse)
-        return yield* makeResponse({ rawResponse, response })
+        return yield* makeResponse({ rawResponse, response, toolCodecs })
       }
     ),
     streamText: Effect.fnUntraced(
       function*(options) {
         const config = yield* makeConfig
-        const request = yield* makeRequest({ config, options })
+        const { request, toolCodecs } = yield* makeRequest({ config, options })
         annotateRequest(options.span, request)
         const [response, stream] = yield* client.createChatCompletionStream(request)
-        return yield* makeStreamResponse({ response, stream })
+        return yield* makeStreamResponse({ response, stream, toolCodecs })
       },
       (effect, options) =>
         effect.pipe(
@@ -985,9 +989,10 @@ const buildHttpResponseDetails = (
 // =============================================================================
 
 const makeResponse = Effect.fnUntraced(
-  function*({ rawResponse, response }: {
+  function*({ rawResponse, response, toolCodecs }: {
     readonly rawResponse: Generated.SendChatCompletionRequest200
     readonly response: HttpClientResponse.HttpClientResponse
+    readonly toolCodecs: ToolCodecs
   }): Effect.fn.Return<Array<Response.PartEncoded>, AiError.AiError, IdGenerator.IdGenerator> {
     const idGenerator = yield* IdGenerator.IdGenerator
 
@@ -1100,7 +1105,7 @@ const makeResponse = Effect.fnUntraced(
           type: "tool-call",
           id: toolCall.id,
           name: toolName,
-          params,
+          params: yield* decodeToolParams(toolCodecs, toolName, params),
           // Only attach reasoning_details to the first tool call to avoid
           // duplicating thinking blocks for parallel tool calls (Claude)
           ...(index === 0 && Predicate.isNotNullish(reasoningDetails) && reasoningDetails.length > 0
@@ -1189,9 +1194,10 @@ const makeResponse = Effect.fnUntraced(
 )
 
 const makeStreamResponse = Effect.fnUntraced(
-  function*({ response, stream }: {
+  function*({ response, stream, toolCodecs }: {
     readonly response: HttpClientResponse.HttpClientResponse
     readonly stream: Stream.Stream<ChatStreamingResponseChunkData, AiError.AiError>
+    readonly toolCodecs: ToolCodecs
   }): Effect.fn.Return<
     Stream.Stream<Response.StreamPartEncoded, AiError.AiError>,
     AiError.AiError,
@@ -1483,37 +1489,38 @@ const makeStreamResponse = Effect.fnUntraced(
               }
 
               // Check if the tool call is complete
+              let params: unknown
               // @effect-diagnostics-next-line tryCatchInEffectGen:off
               try {
-                const params = Tool.unsafeSecureJsonParse(activeToolCall.params)
-
-                parts.push({
-                  type: "tool-params-end",
-                  id: activeToolCall.id
-                })
-
-                parts.push({
-                  type: "tool-call",
-                  id: activeToolCall.id,
-                  name: activeToolCall.name,
-                  params,
-                  // Only attach reasoning_details to the first tool call to avoid
-                  // duplicating thinking blocks for parallel tool calls (Claude)
-                  metadata: reasoningDetailsAttachedToToolCall ? undefined : {
-                    openrouter: { reasoningDetails: accumulatedReasoningDetails }
-                  }
-                })
-
-                reasoningDetailsAttachedToToolCall = true
-
-                // Increment the total tool calls emitted by the stream and
-                // remove the active tool call
-                totalToolCalls += 1
-                delete activeToolCalls[toolCall.index]
+                params = Tool.unsafeSecureJsonParse(activeToolCall.params)
               } catch {
                 // Tool call incomplete, continue parsing
                 continue
               }
+
+              parts.push({
+                type: "tool-params-end",
+                id: activeToolCall.id
+              })
+
+              parts.push({
+                type: "tool-call",
+                id: activeToolCall.id,
+                name: activeToolCall.name,
+                params: yield* decodeToolParams(toolCodecs, activeToolCall.name, params),
+                // Only attach reasoning_details to the first tool call to avoid
+                // duplicating thinking blocks for parallel tool calls (Claude)
+                metadata: reasoningDetailsAttachedToToolCall ? undefined : {
+                  openrouter: { reasoningDetails: accumulatedReasoningDetails }
+                }
+              })
+
+              reasoningDetailsAttachedToToolCall = true
+
+              // Increment the total tool calls emitted by the stream and
+              // remove the active tool call
+              totalToolCalls += 1
+              delete activeToolCalls[toolCall.index]
             }
           }
 
@@ -1560,7 +1567,7 @@ const makeStreamResponse = Effect.fnUntraced(
                 type: "tool-call",
                 id: toolCall.id,
                 name: toolCall.name,
-                params,
+                params: yield* decodeToolParams(toolCodecs, toolCall.name, params),
                 metadata: reasoningDetailsAttachedToToolCall ? undefined : {
                   openrouter: { reasoningDetails: accumulatedReasoningDetails }
                 }
@@ -1627,9 +1634,12 @@ const prepareTools = Effect.fnUntraced(
   }): Effect.fn.Return<{
     readonly tools: ReadonlyArray<typeof Generated.ChatFunctionTool.Encoded> | undefined
     readonly toolChoice: typeof Generated.ChatToolChoice.Encoded | undefined
+    readonly toolCodecs: ToolCodecs
   }, AiError.AiError> {
+    const toolCodecs = new Map<string, ToolCodec>()
+
     if (options.tools.length === 0) {
-      return { tools: undefined, toolChoice: undefined }
+      return { tools: undefined, toolChoice: undefined, toolCodecs }
     }
 
     const hasProviderDefinedTools = options.tools.some((tool) => Tool.isProviderDefined(tool))
@@ -1649,8 +1659,15 @@ const prepareTools = Effect.fnUntraced(
 
     for (const tool of options.tools) {
       const description = Tool.getDescription(tool)
-      const parameters = yield* tryToolJsonSchema(tool, "prepareTools", transformer)
       const strict = Tool.getStrictMode(tool) ?? null
+      // Strict mode needs every key required and no additional properties
+      const toolTransformer = strict === true && transformer === LanguageModel.defaultCodecTransformer
+        ? toCodecOpenAI
+        : transformer
+      const { parameters, codec } = yield* tryToolJsonSchema(tool, "prepareTools", toolTransformer)
+      if (Predicate.isNotUndefined(codec) && toolTransformer !== LanguageModel.defaultCodecTransformer) {
+        toolCodecs.set(tool.name, { codec, json: Schema.toCodecJson(tool.parametersSchema) })
+      }
 
       tools.push({
         type: "function",
@@ -1677,7 +1694,7 @@ const prepareTools = Effect.fnUntraced(
       toolChoice = options.toolChoice.mode === "required" ? "required" : "auto"
     }
 
-    return { tools, toolChoice }
+    return { tools, toolChoice, toolCodecs }
   }
 )
 
@@ -1822,20 +1839,48 @@ const toolParametersError = (tool: Tool.Any, error: unknown, method: string): Ai
 
 const tryToolJsonSchema = <T extends Tool.Any>(tool: T, method: string, transformer: LanguageModel.CodecTransformer) =>
   Effect.try({
-    try: () => Tool.getJsonSchema(tool, { transformer }),
+    // A raw JSON Schema given to a dynamic tool is sent unchanged
+    try: (): { readonly parameters: JsonSchema.JsonSchema; readonly codec: ToolCodec["codec"] | undefined } => {
+      if (Tool.isDynamic(tool) && tool.jsonSchema !== undefined) {
+        return { parameters: tool.jsonSchema, codec: undefined }
+      }
+      const { codec, jsonSchema } = transformer(tool.parametersSchema)
+      return { parameters: jsonSchema, codec }
+    },
     catch: (error) => toolParametersError(tool, error, method)
   }).pipe(Effect.filterOrFail(
-    // A raw JSON Schema given to a dynamic tool is sent unchanged
-    (jsonSchema) =>
-      jsonSchema.type === "object" || Array.isArray(jsonSchema.anyOf) ||
-      (Tool.isDynamic(tool) && tool.jsonSchema !== undefined),
-    (jsonSchema) =>
+    ({ codec, parameters }) =>
+      parameters.type === "object" || Array.isArray(parameters.anyOf) || Predicate.isUndefined(codec),
+    ({ parameters }) =>
       toolParametersError(
         tool,
-        `expected a JSON Schema with type "object" or "anyOf", received ${JSON.stringify(jsonSchema)}`,
+        `expected a JSON Schema with type "object" or "anyOf", received ${JSON.stringify(parameters)}`,
         method
       )
   ))
+
+type ToolCodec = {
+  readonly codec: Schema.ConstraintCodec<unknown, unknown, unknown, unknown>
+  readonly json: Schema.ConstraintCodec<unknown, unknown, unknown, unknown>
+}
+type ToolCodecs = ReadonlyMap<string, ToolCodec>
+
+// Tool schemas sent through a provider codec (for example OpenAI strict mode)
+// receive that codec's encoding, so map valid parameters back to the JSON
+// encoding the toolkit decodes. Invalid parameters are left for the toolkit to
+// report.
+const decodeToolParams = (toolCodecs: ToolCodecs, toolName: string, params: unknown): Effect.Effect<unknown> => {
+  const toolCodec = toolCodecs.get(toolName)
+  if (Predicate.isUndefined(toolCodec)) {
+    return Effect.succeed(params)
+  }
+  return (Schema.decodeUnknownEffect(toolCodec.codec)(params) as Effect.Effect<unknown, Schema.SchemaError>).pipe(
+    Effect.flatMap((decoded) =>
+      Schema.encodeUnknownEffect(toolCodec.json)(decoded) as Effect.Effect<unknown, Schema.SchemaError>
+    ),
+    Effect.orElseSucceed(() => params)
+  )
+}
 
 const getResponseFormat = Effect.fnUntraced(function*({ config, options, transformer }: {
   readonly config: typeof Config.Service
