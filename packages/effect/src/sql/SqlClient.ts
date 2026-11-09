@@ -330,7 +330,7 @@ export const make = Effect.fnUntraced(function*(options: SqlClient.MakeOptions) 
     Effect.serviceOption(transactionService),
     Option.match({
       onNone: () => options.acquirer,
-      onSome: transactionConnection
+      onSome: activeTransactionConnection
     })
   )
 
@@ -376,7 +376,7 @@ export const make = Effect.fnUntraced(function*(options: SqlClient.MakeOptions) 
       Effect.serviceOption(transactionService),
       Option.match({
         onNone: () => options.borrower!(f),
-        onSome: (transaction) => Effect.flatMap(transactionConnection(transaction), f)
+        onSome: (transaction) => Effect.flatMap(activeTransactionConnection(transaction), f)
       })
     )
 
@@ -570,8 +570,30 @@ const transactionEnded = Effect.suspend(() =>
   )
 )
 
-/** The connection of a transaction level, failing once the level has ended. */
-const transactionConnection = <S>(transaction: readonly [conn: S, counter: number]): Effect.Effect<S, SqlError> =>
+/**
+ * Returns the connection from a transaction tuple, or fails with a `SqlError`
+ * if that transaction level or one of its parents has ended.
+ *
+ * **When to use**
+ *
+ * Use when a driver reads its transaction service directly and needs to reject
+ * connections from transactions that have ended.
+ *
+ * **Gotchas**
+ *
+ * - The check runs when this function is called, not when the returned effect
+ *   runs. Call it immediately before using the connection.
+ * - Tuples not created by `makeWithTransaction` are untracked, so their
+ *   connections are always returned.
+ * - Holding the returned connection does not keep the transaction open.
+ *
+ * @stability unstable
+ * @category transactions
+ * @since 4.1.3
+ */
+export const activeTransactionConnection = <S>(
+  transaction: readonly [conn: S, counter: number]
+): Effect.Effect<S, SqlError> =>
   hasEnded(afterCommitBuffers.get(transaction)) ? transactionEnded : Effect.succeed(transaction[0])
 
 const runAfterCommit = <R>(effect: Effect.Effect<void, never, R>): Effect.Effect<void, never, R> =>
@@ -695,7 +717,7 @@ export const makeWithTransaction = <I, S>(options: {
             const conn: Effect.Effect<readonly [Scope.Closeable | undefined, S], SqlError> = connOption._tag === "Some"
               // Checked under the savepoint permit: the parent can end while we wait.
               ? Effect.map(
-                Effect.suspend(() => transactionConnection(connOption.value)),
+                Effect.suspend(() => activeTransactionConnection(connOption.value)),
                 (conn) => [undefined, conn] as const
               )
               : Effect.flatMap(Scope.make(), (scope) =>

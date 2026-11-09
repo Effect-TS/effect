@@ -341,7 +341,7 @@ export const make = (
       Effect.serviceOption(LibsqlTransaction),
       Option.match({
         onNone: () => lease,
-        onSome: ([conn]) => Effect.succeed(conn)
+        onSome: Client.activeTransactionConnection
       })
     )
 

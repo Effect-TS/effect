@@ -291,11 +291,12 @@ export const make = (
       {
         [TypeId]: TypeId as TypeId,
         config: options,
-        export: Effect.withFiber((fiber) =>
-          Context.getOption(fiber.context, client.transactionService)._tag === "Some"
-            ? connection.export
+        export: Effect.withFiber((fiber) => {
+          const transaction = Context.getOrUndefined(fiber.context, client.transactionService)
+          return transaction !== undefined
+            ? Effect.andThen(Client.activeTransactionConnection(transaction), connection.export)
             : Effect.scoped(Effect.flatMap(acquirer, (_) => _.export))
-        ),
+        }),
         loadExtension: (path: string) => Effect.scoped(Effect.flatMap(acquirer, (_) => _.loadExtension(path)))
       }
     )
