@@ -797,6 +797,93 @@ describe("OpenAiLanguageModel", () => {
             strictEqual(inlineBody.useItemReferences, undefined)
           }).pipe(Effect.provide(makeTestLayer())))
 
+        it.effect("references a stored provider-executed item once when replaying response parts", () =>
+          Effect.gen(function*() {
+            const options = {
+              toolkit: Toolkit.make(OpenAiTool.WebSearch({})),
+              disableToolCallResolution: true
+            } as const
+            const first = yield* LanguageModel.generateText({ ...options, prompt: "Search" })
+
+            yield* LanguageModel.generateText({
+              ...options,
+              prompt: Prompt.concat(Prompt.fromResponseParts(first.content), Prompt.make("Continue"))
+            })
+
+            const body = yield* getRequestBody((yield* MockHttpClient.requests)[1])
+            assert.deepStrictEqual(body.input, [
+              { type: "item_reference", id: "ws_123" },
+              { type: "item_reference", id: "msg_123" },
+              { role: "user", content: [{ type: "input_text", text: "Continue" }] }
+            ])
+          }).pipe(
+            Effect.provide(OpenAiLanguageModel.model("gpt-4o-mini", { store: true })),
+            Effect.provide(makeTestLayer({ body: { output: [makeWebSearchCall(), makeTextOutput("Answer")] } }))
+          ))
+
+        it.effect("references stored provider-executed items by their stored item ID", () =>
+          Effect.gen(function*() {
+            const cases = [
+              {
+                toolkit: McpToolkit,
+                content: [
+                  Prompt.toolCallPart({
+                    id: "mcp_tool_call_1",
+                    name: "OpenAiMcp",
+                    params: { packageName: "effect" },
+                    providerExecuted: true
+                  }),
+                  Prompt.toolResultPart({
+                    id: "mcp_tool_call_1",
+                    name: "OpenAiMcp",
+                    isFailure: false,
+                    result: { type: "mcp_call", name: "CheckPackage", output: "ok" },
+                    providerExecuted: true,
+                    options: { openai: { itemId: "mcp_call_123" } }
+                  })
+                ],
+                expected: [{ type: "item_reference", id: "mcp_call_123" }]
+              },
+              {
+                toolkit: Toolkit.make(OpenAiTool.WebSearch({})),
+                content: [providerExecutedCall, providerExecutedResult],
+                expected: [{ type: "item_reference", id: "ws_1" }]
+              },
+              {
+                toolkit: Toolkit.make(OpenAiTool.WebSearch({})),
+                content: [
+                  providerExecutedCall,
+                  Prompt.toolResultPart({
+                    ...providerExecutedResult,
+                    id: "ws_2",
+                    options: { openai: { itemId: "ws_2" } }
+                  })
+                ],
+                expected: [{ type: "item_reference", id: "ws_1" }, { type: "item_reference", id: "ws_2" }]
+              }
+            ]
+
+            yield* Effect.forEach(cases, ({ content, toolkit }) =>
+              LanguageModel.generateText({
+                prompt: Prompt.make([{ role: "assistant", content }]),
+                toolkit,
+                disableToolCallResolution: true
+              }))
+
+            const requests = yield* MockHttpClient.requests
+            const inputs = yield* Effect.forEach(requests, (request) =>
+              getRequestBody(request).pipe(Effect.map((body) => body.input)))
+            assert.deepStrictEqual(
+              inputs,
+              cases.map(({ expected }) =>
+                expected
+              )
+            )
+          }).pipe(
+            Effect.provide(OpenAiLanguageModel.model("gpt-4o-mini", { store: true })),
+            Effect.provide(makeTestLayer())
+          ))
+
         it.effect("replays matched provider-executed history inline", () =>
           Effect.gen(function*() {
             yield* LanguageModel.generateText({
