@@ -798,7 +798,7 @@ export const make = Effect.fnUntraced(function*({ model, config: providerConfig 
       annotateRequest(options.span, request.payload)
       const [rawResponse, response] = yield* client.createMessage(request)
       annotateResponse(options.span, rawResponse)
-      return yield* makeResponse({ options, rawResponse, response, toolNameMapper })
+      return yield* makeResponse({ config, options, rawResponse, response, toolNameMapper })
     }),
     streamText: Effect.fnUntraced(function*(options) {
       const config = yield* makeConfig
@@ -806,7 +806,7 @@ export const make = Effect.fnUntraced(function*({ model, config: providerConfig 
       const request = yield* makeRequest({ config, options, toolNameMapper })
       annotateRequest(options.span, request.payload)
       const [response, stream] = yield* client.createMessageStream(request)
-      return yield* makeStreamResponse({ stream, response, options, toolNameMapper })
+      return yield* makeStreamResponse({ config, stream, response, options, toolNameMapper })
     }, (effect, options) =>
       effect.pipe(
         Stream.unwrap,
@@ -1445,10 +1445,7 @@ const prepareTools = Effect.fnUntraced(
     for (const tool of options.tools) {
       if (Tool.isUserDefined(tool) || Tool.isDynamic(tool)) {
         const description = Tool.getDescription(tool)
-        const toolStrict = Tool.getStrictMode(tool)
-        const strict = capabilities.supportsStructuredOutput
-          ? (toolStrict ?? config.strictJsonSchema ?? true)
-          : undefined
+        const strict = getToolStrictMode(tool, config, capabilities)
         const input_schema = yield* tryToolJsonSchema(tool, strict === true, "prepareTools")
 
         userTools.push({
@@ -1664,11 +1661,13 @@ const buildHttpResponseDetails = (
 
 const makeResponse = Effect.fnUntraced(
   function*<Tools extends ReadonlyArray<Tool.Any>>({
+    config,
     options,
     rawResponse,
     response,
     toolNameMapper
   }: {
+    readonly config: typeof Config.Service & { readonly model: string }
     readonly options: LanguageModel.ProviderOptions
     readonly rawResponse: Generated.BetaMessage
     readonly response: HttpClientResponse.HttpClientResponse
@@ -1775,7 +1774,7 @@ const makeResponse = Effect.fnUntraced(
             // Map the provider wire name (e.g. "memory") back to the tool's
             // custom name (e.g. "AnthropicMemory") that the toolkit is keyed by
             const toolName = toolNameMapper.getCustomName(part.name)
-            const params = yield* transformToolCallParams(options, toolName, part.input)
+            const params = yield* transformToolCallParams(config, options, toolName, part.input)
 
             parts.push({
               type: "tool-call",
@@ -2084,11 +2083,13 @@ const makeStreamResponse = Effect.fnUntraced(
   function*<Tools extends ReadonlyArray<Tool.Any>>({
     stream,
     response,
+    config,
     options,
     toolNameMapper
   }: {
     readonly stream: Stream.Stream<MessageStreamEvent, AiError.AiError>
     readonly response: HttpClientResponse.HttpClientResponse
+    readonly config: typeof Config.Service & { readonly model: string }
     readonly options: LanguageModel.ProviderOptions
     readonly toolNameMapper: Tool.NameMapper<Tools>
   }): Effect.fn.Return<
@@ -2202,7 +2203,7 @@ const makeStreamResponse = Effect.fnUntraced(
                     id: part.id
                   })
 
-                  const params = yield* transformToolCallParams(options, toolName, part.input)
+                  const params = yield* transformToolCallParams(config, options, toolName, part.input)
 
                   parts.push({
                     type: "tool-call",
@@ -2804,7 +2805,7 @@ const makeStreamResponse = Effect.fnUntraced(
 
                   const params = contentBlock.providerExecuted === true
                     ? toolParams
-                    : yield* transformToolCallParams(options, contentBlock.name, toolParams)
+                    : yield* transformToolCallParams(config, options, contentBlock.name, toolParams)
 
                   parts.push({
                     type: "tool-call",
@@ -3259,17 +3260,17 @@ const toolParametersError = (tool: Tool.Any, error: unknown, method: string): Ai
     method
   )
 
-const getToolJsonSchema = (tool: Tool.Any | Tool.AnyDynamic, strict: boolean) => {
-  try {
-    return Tool.getJsonSchema(tool, { transformer: toCodecAnthropic })
-  } catch (error) {
-    if (strict) {
-      throw error
-    }
-    // Anthropic's schema restrictions (e.g. no recursion) only apply to strict tools
-    return Tool.getJsonSchema(tool, { transformer: LanguageModel.defaultCodecTransformer })
-  }
-}
+const getToolStrictMode = (
+  tool: Tool.Any,
+  config: typeof Config.Service,
+  capabilities: ModelCapabilities
+): boolean | undefined =>
+  capabilities.supportsStructuredOutput ? (Tool.getStrictMode(tool) ?? config.strictJsonSchema ?? true) : undefined
+
+const getToolJsonSchema = (tool: Tool.Any | Tool.AnyDynamic, strict: boolean) =>
+  Tool.getJsonSchema(tool, {
+    transformer: strict ? toCodecAnthropic : LanguageModel.defaultCodecTransformer
+  })
 
 const tryToolJsonSchema = <T extends Tool.Any | Tool.AnyDynamic>(tool: T, strict: boolean, method: string) =>
   Effect.try({
@@ -3300,17 +3301,20 @@ const getOutputFormat = Effect.fnUntraced(function*({ capabilities, options }: {
   return undefined
 })
 
-const getToolParamsCodec = <S extends Schema.Constraint>(schema: S) => {
+const getToolParamsCodec = <S extends Schema.Constraint>(schema: S, strict: boolean) => {
+  if (!strict) {
+    return Schema.toCodecJson(schema)
+  }
   try {
     return toCodecAnthropic(schema).codec
   } catch {
-    // The request used the plain JSON Schema (non-strict tools only), which
-    // describes the JSON codec of the parameters
+    // Preserve the JSON codec fallback for provider-defined tools.
     return Schema.toCodecJson(schema)
   }
 }
 
 const transformToolCallParams = Effect.fnUntraced(function*(
+  config: typeof Config.Service & { readonly model: string },
   options: LanguageModel.ProviderOptions,
   toolName: string,
   toolParams: unknown
@@ -3331,7 +3335,8 @@ const transformToolCallParams = Effect.fnUntraced(function*(
     })
   }
 
-  const codec = getToolParamsCodec(tool.parametersSchema)
+  const strict = Tool.isProviderDefined(tool) || getToolStrictMode(tool, config, getConfigCapabilities(config)) === true
+  const codec = getToolParamsCodec(tool.parametersSchema, strict)
 
   // Normalize valid parameters; leave invalid ones for Toolkit.
   return yield* (
