@@ -47,13 +47,15 @@ import type * as Response from "./Response.ts"
  * - User and assistant messages keep their text. Assistant tool calls become
  *   tool-call parts with their JSON arguments parsed.
  * - Each tool message becomes a tool message with one tool-result part, named
- *   after the assistant tool call it answers. Content that is valid JSON is
+ *   after the latest preceding assistant tool call with its id, since
+ *   providers may reuse call ids across turns. Content that is valid JSON is
  *   parsed. A message with an `error` becomes a failed result carrying the
- *   error text.
+ *   error text, and a message carrying the failure metadata that
+ *   {@link fromStreamParts} emits becomes a failed result carrying its content.
  * - User image, audio, video, and document parts with inline data or a valid
  *   URL become file parts.
  * - Activity and reasoning messages, provider file handles, and tool messages
- *   that answer no known tool call are dropped.
+ *   that answer no preceding tool call are dropped.
  *
  * **Gotchas**
  *
@@ -71,14 +73,9 @@ export const toPrompt = (input: AgUiSchema.RunAgentInput, options?: {
   readonly trustClientInstructions?: boolean | undefined
 }): Prompt.Prompt => {
   const trusted = options?.trustClientInstructions === true
+  // Filled as messages are consumed, so each result is named after the latest
+  // preceding call with its id
   const toolNames = new Map<string, string>()
-  for (const message of input.messages) {
-    if (message.role === "assistant" && message.toolCalls !== undefined) {
-      for (const toolCall of message.toolCalls) {
-        toolNames.set(toolCall.id, toolCall.function.name)
-      }
-    }
-  }
 
   const messages: Array<Prompt.MessageEncoded> = []
   if (trusted && input.context.length > 0) {
@@ -109,6 +106,7 @@ export const toPrompt = (input: AgUiSchema.RunAgentInput, options?: {
           content.push({ type: "text", text: message.content })
         }
         for (const toolCall of message.toolCalls ?? []) {
+          toolNames.set(toolCall.id, toolCall.function.name)
           content.push({
             type: "tool-call",
             id: toolCall.id,
@@ -130,7 +128,7 @@ export const toPrompt = (input: AgUiSchema.RunAgentInput, options?: {
             type: "tool-result",
             id: message.toolCallId,
             name,
-            isFailure: message.error !== undefined,
+            isFailure: message.error !== undefined || hasFailureMarker(message.metadata),
             result: message.error !== undefined
               ? message.error
               : typeof message.content === "string"
@@ -143,6 +141,13 @@ export const toPrompt = (input: AgUiSchema.RunAgentInput, options?: {
     }
   }
   return Prompt.make(messages)
+}
+
+// The marker `fromStreamParts` puts on failed results, which AG-UI clients keep
+// on the tool message they send back
+const hasFailureMarker = (metadata: AgUiSchema.Metadata | undefined): boolean => {
+  const marker = metadata?.["effect/ai"]
+  return typeof marker === "object" && marker !== null && "isFailure" in marker && marker.isFailure === true
 }
 
 const parseJson = (text: string): unknown => {
