@@ -2,7 +2,7 @@
 "effect": minor
 ---
 
-Add an `onStdinEnd: "interrupt"` option to `McpServer.layerStdio` and `RpcServer.layerProtocolStdio` so that stdio servers interrupt active requests and exit when stdin closes. `RpcServer` now waits for a disconnected client's requests to finish before calling `onDisconnect`.
+Add `onStdinEnd: "interrupt"` to `McpServer.layerStdio` and `RpcServer.layerProtocolStdio` to stop the server when stdin closes, interrupting active requests without remote cancellation.
 
 ### Breaking changes
 

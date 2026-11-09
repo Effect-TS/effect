@@ -1936,7 +1936,6 @@ const runWithRuntime = Effect.fnUntraced(function*(
             if (request._tag === "Interrupt") {
               // A cancelled reverse request may never receive a reply.
               removeReverseRequestClient(requestKey(request.requestId), key)
-              if (disconnectedClients.has(key.clientId)) return Effect.void
               return sendNotification(key.profile.protocolVersion, key.clientId, {
                 tag: "notifications/cancelled",
                 payload: { requestId: request.requestId }
@@ -2033,28 +2032,8 @@ const runWithRuntime = Effect.fnUntraced(function*(
     )
   })
 
-  // A disconnected client cannot receive messages, so cancelling its pending
-  // reverse requests must stay local. Clients are marked before RpcServer
-  // interrupts their requests, and unmarked when RpcServer ends them, which is
-  // after those requests and their interruption finalizers have finished.
-  const disconnectedClients = new Set<number>()
-  const disconnects = yield* Queue.unbounded<number>()
-  yield* Queue.take(protocol.disconnects).pipe(
-    Effect.flatMap((clientId) => {
-      disconnectedClients.add(clientId)
-      return Queue.offer(disconnects, clientId)
-    }),
-    Effect.forever,
-    Effect.forkScoped
-  )
   const patchedProtocol = RpcServer.Protocol.of({
     ...protocol,
-    disconnects,
-    end: (clientId) =>
-      Effect.suspend(() => {
-        disconnectedClients.delete(clientId)
-        return protocol.end(clientId)
-      }),
     send: (clientId, response) => {
       if (response._tag === "Exit") {
         const requests = activeRequests.get(clientId)
@@ -2629,15 +2608,18 @@ const layerWithRuntime = (options: {
  *
  * `onStdinEnd` controls shutdown when the client closes stdin. With
  * `"drain"`, the default, active requests run to completion and their
- * responses are written before the server exits. With `"interrupt"`, active
- * requests, including tool handlers, are interrupted without responses and
- * the server exits once their finalizers have run.
+ * responses are written before the server exits. With `"interrupt"`, queued
+ * output is flushed and stdout closes, then the server stops and interrupts
+ * active requests, including tool handlers. Shutdown waits for their
+ * finalizers without sending further responses or remote cancellation
+ * notifications. Cleanup belongs in handler finalizers or the layer scope;
+ * stopping the server does not report a client disconnect.
  *
  * **Gotchas**
  *
  * With the default `"drain"`, a tool handler that never completes keeps the
  * process alive after the client closes stdin. Use `onStdinEnd: "interrupt"`
- * when the server must exit as soon as the client goes away.
+ * to stop the server when the client goes away.
  *
  * @see {@link layer} for running over an existing `RpcServer.Protocol`
  * @see {@link layerHttp} for the single-endpoint HTTP transport

@@ -183,13 +183,11 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any>(
     Effect.withFiber((parent) => {
       const client = clients.get(clientId)
       if (!client) return Effect.void
-      clients.delete(clientId)
-      const fibers = Array.from(client.fibers.values())
-      for (const fiber of fibers) {
+      for (const fiber of client.fibers.values()) {
         fiber.interruptUnsafe(parent.id)
       }
-      // wait for the interrupted requests to run their finalizers
-      return Effect.asVoid(Fiber.awaitAll(fibers))
+      clients.delete(clientId)
+      return Effect.void
     })
 
   const write: RpcServer<Rpcs>["write"] = (clientId, message, opts) =>
@@ -645,15 +643,15 @@ const applyMiddleware = <A, E, R>(
  * span unless tracing is disabled.
  *
  * `onDisconnect` is called for each disconnect reported by the `Protocol`,
- * after that client's in-flight requests have been interrupted and have
- * finished. It is not called when a client ends its input normally, or for
- * clients still connected when the server stops. Once the callback completes,
- * the server calls `Protocol.end` for the disconnected client.
+ * after the server has requested interruption of that client's in-flight
+ * requests. It does not wait for those requests to finish. It is not called
+ * when a client ends its input normally, or for clients still connected when
+ * the server stops.
  *
- * Each disconnect is handled in its own fiber, so a slow callback or request
- * finalizer does not delay cleanup for other clients, and callbacks may run
- * concurrently. Pending callbacks are interrupted when the server stops.
- * Failures are ignored and logged at `References.UnhandledLogLevel`.
+ * Each callback runs in its own fiber, so a slow callback does not delay
+ * cleanup for other clients, and callbacks may run concurrently. Pending
+ * callbacks are interrupted when the server stops. Failures are ignored and
+ * logged at `References.UnhandledLogLevel`.
  *
  * **Gotchas**
  *
@@ -760,21 +758,16 @@ export const make: <Rpcs extends Rpc.Any>(
 
   // handle disconnects
   const onDisconnect = options?.onDisconnect
-  // The client's output ends only after its interrupted requests and the
-  // onDisconnect hook have finished.
-  const handleDisconnect = (clientId: number) =>
-    server.disconnect(clientId).pipe(
-      onDisconnect
-        ? Effect.andThen(
-          Effect.ignoreCause(Effect.suspend(() => onDisconnect(clientId)), {
-            log: "Unhandled",
-            message: "RpcServer onDisconnect hook failed"
-          })
-        )
-        : identity,
-      Effect.andThen(() => end(clientId)),
-      Effect.forkIn(scope, { startImmediately: true })
-    )
+  const handleDisconnect = onDisconnect
+    ? (clientId: number) =>
+      Effect.andThen(
+        server.disconnect(clientId),
+        Effect.ignoreCause(Effect.suspend(() => onDisconnect(clientId)), {
+          log: "Unhandled",
+          message: "RpcServer onDisconnect hook failed"
+        }).pipe(Effect.forkIn(scope))
+      )
+    : server.disconnect
   yield* Effect.forkChild(
     Effect.whileLoop({
       while: constTrue,
@@ -1592,9 +1585,11 @@ export const toHttpEffectWebsocket: <Rpcs extends Rpc.Any>(
  *
  * `onStdinEnd` controls what happens when stdin ends. With `"drain"`, the
  * default, in-flight requests run to completion and their responses are
- * written before stdout ends. With `"interrupt"`, the protocol reports a
- * disconnect for client `0`, so in-flight requests are interrupted without
- * responses, the server's `onDisconnect` callback runs, and stdout then ends.
+ * written before stdout ends. With `"interrupt"`, queued output is flushed
+ * and stdout ends, stopping the server and interrupting in-flight requests.
+ * Shutdown waits for their finalizers without sending further responses or
+ * remote cancellation notifications. This stops the server rather than
+ * reporting a client disconnect, so `onDisconnect` is not called.
  *
  * **Gotchas**
  *
@@ -1615,8 +1610,6 @@ export const makeProtocolStdio = Effect.fnUntraced(function*(options?: {
   return yield* Protocol.make(Effect.fnUntraced(function*(writeRequest) {
     const queue = yield* Queue.bounded<Uint8Array | string, Cause.Done>(8)
     const parser = serialization.makeUnsafe()
-    const disconnects = yield* Queue.make<number>()
-    const interruptOnStdinEnd = options?.onStdinEnd === "interrupt"
 
     yield* stdio.stdin.pipe(
       Stream.runForEach((data) => {
@@ -1632,9 +1625,7 @@ export const makeProtocolStdio = Effect.fnUntraced(function*(options?: {
       Effect.sandbox,
       Effect.tapError(Effect.logError),
       Effect.retry(Schedule.spaced(500)),
-      // In "interrupt" mode the server interrupts in-flight requests for a
-      // disconnect, then ends stdout.
-      Effect.andThen(() => interruptOnStdinEnd ? Queue.offer(disconnects, 0) : writeRequest(0, constEof)),
+      Effect.andThen(() => options?.onStdinEnd === "interrupt" ? Queue.end(queue) : writeRequest(0, constEof)),
       Effect.forkScoped
     )
 
@@ -1646,7 +1637,7 @@ export const makeProtocolStdio = Effect.fnUntraced(function*(options?: {
     )
 
     return {
-      disconnects,
+      disconnects: yield* Queue.make<number>(),
       send(_clientId, response) {
         const responseEncoded = parser.encode(response)
         if (responseEncoded === undefined) {
