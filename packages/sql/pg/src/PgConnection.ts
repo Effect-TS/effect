@@ -351,6 +351,8 @@ interface Session {
  */
 interface Consumer {
   readonly onMessage: (message: PgProtocol.BackendMessage<unknown>) => void
+  /** A `DataRow` its field reader rejected; the row itself is dropped. */
+  readonly onDecodeFailure: (error: SqlError) => void
   readonly onBatchEnd?: (() => void) | undefined
   readonly onFatal: (error: SqlError) => void
 }
@@ -422,6 +424,7 @@ class PgConnectionImpl implements PgConnection {
       deadError: () => this.deadWith,
       retireHooks: this.retireHooks
     }
+    session.parser.onFieldError = this.onFieldError
     session.socket.on("data", this.onData)
     session.socket.on("error", this.onSocketError)
     session.socket.on("close", this.onSocketClose)
@@ -431,8 +434,8 @@ class PgConnectionImpl implements PgConnection {
     try {
       this.session.parser.pushEach(chunk, this.dispatch)
     } catch (cause) {
-      // A field reader that threw reports the row it could not decode; anything
-      // else came out of the framing itself.
+      // Field-reader errors go to `onFieldError`, so a `ParseError` means the
+      // framing is broken; anything else was thrown while handling a message.
       return this.fatal(
         cause instanceof PgProtocol.ParseError
           ? connectionQueryError(cause, "PgConnection: Failed to parse server messages")
@@ -440,6 +443,17 @@ class PgConnectionImpl implements PgConnection {
       )
     }
     if (this.deadWith === undefined) this.consumer?.onBatchEnd?.()
+  }
+
+  /**
+   * Codecs are pure and the parser has consumed the whole row, so a value that
+   * cannot be decoded fails only the statement that read it.
+   */
+  private readonly onFieldError = (cause: unknown): void => {
+    if (this.deadWith !== undefined) return
+    const error = queryError(cause, "PgConnection: Failed to decode row")
+    if (this.consumer !== undefined) return this.consumer.onDecodeFailure(error)
+    this.fatal(error)
   }
 
   private readonly onSocketError = (cause: Error): void =>
@@ -577,6 +591,11 @@ class PgConnectionImpl implements PgConnection {
         ))
       }
       entry.machine.onMessage(message)
+    },
+    onDecodeFailure: (error) => {
+      const entry = this.pipelineInFlight[this.pipelineHead]
+      if (entry === undefined) return this.fatal(error)
+      entry.machine.onDecodeFailure(error)
     },
     onBatchEnd: () => this.flushPipeline(),
     onFatal: (error) => {
@@ -1334,7 +1353,16 @@ const pinReleasedError = (): SqlError =>
 
 const escapeIdentifier = (identifier: string): string => `"${identifier.replaceAll("\"", "\"\"")}"`
 
-type QueryPhase = "close" | "parse" | "bind" | "describe" | "rows" | "complete" | "error"
+type QueryPhase = "close" | "parse" | "bind" | "describe" | "rows" | "complete" | "error" | "drain"
+
+/**
+ * After a row fails to decode the server has seen no error, so the cycle runs
+ * to its `ReadyForQuery` and these are skipped on the way. The decode failure
+ * is kept even over a later `ErrorResponse`.
+ */
+const skippedWhileDraining = (message: PgProtocol.BackendMessage<unknown>): boolean =>
+  message._tag === "DataRow" || message._tag === "CommandComplete" || message._tag === "EmptyQueryResponse" ||
+  message._tag === "ErrorResponse"
 
 /**
  * Splits a command tag such as `SELECT 3` or `INSERT 0 1`. Reading the two
@@ -1446,6 +1474,15 @@ class QueryMachine implements Consumer {
     else this.finish(Effect.fail(this.failure ?? error))
   }
 
+  onDecodeFailure(error: SqlError): void {
+    if (this.done || this.aborted || this.phase === "drain") return
+    if (this.phase !== "rows") return this.failDesync(`Unexpected DataRow during ${this.phase}`)
+    this.failure = error
+    this.phase = "drain"
+    // The rest of the result is discarded, so skip decoding it.
+    this.conn.session.parser.readField = undefined
+  }
+
   onMessage(message: PgProtocol.BackendMessage<unknown>): void {
     if (this.aborted) {
       if (message._tag === "ReadyForQuery") {
@@ -1453,6 +1490,11 @@ class QueryMachine implements Consumer {
         this.drainDone?.()
       }
       return
+    }
+    if (this.phase === "drain") {
+      if (message._tag === "ReadyForQuery") return this.complete(Effect.fail(this.failure!))
+      if (skippedWhileDraining(message)) return
+      return this.failDesync(`Unexpected ${message._tag} after a row failed to decode`)
     }
     if (this.phase === "error") {
       if (message._tag === "ReadyForQuery") {
@@ -1795,17 +1837,17 @@ const streamRows = (
         }
         return
       }
-      if (phase === "error") {
-        switch (message._tag) {
-          case "ReadyForQuery":
-            finished = true
-            done = true
-            conn.consumer = undefined
-            deliver()
-            return
-          default:
-            return failDesync(`Unexpected ${message._tag} after ErrorResponse`)
+      if (phase === "error" || phase === "drain") {
+        if (message._tag === "ReadyForQuery") {
+          finished = true
+          done = true
+          conn.consumer = undefined
+          deliver()
+          return
         }
+        if (phase === "error") return failDesync(`Unexpected ${message._tag} after ErrorResponse`)
+        if (skippedWhileDraining(message)) return
+        return failDesync(`Unexpected ${message._tag} after a row failed to decode`)
       }
       switch (message._tag) {
         case "ParseComplete":
@@ -1876,6 +1918,14 @@ const streamRows = (
       }
     }
 
+    const onDecodeFailure = (error: SqlError): void => {
+      if (done || aborted || phase === "drain") return
+      if (phase !== "rows") return failDesync(`Unexpected DataRow during ${phase}`)
+      failure = error
+      phase = "drain"
+      parser.readField = undefined
+    }
+
     const onBatchEnd = (): void => {
       if (done || aborted) return
       if (pending !== undefined) deliver()
@@ -1899,7 +1949,7 @@ const streamRows = (
     // Checked as the consumer is registered: a session that dies any earlier
     // has no consumer to tell through `onFatal`.
     if (conn.deadWith !== undefined) return yield* conn.deadWith
-    conn.consumer = { onMessage, onBatchEnd, onFatal }
+    conn.consumer = { onMessage, onDecodeFailure, onBatchEnd, onFatal }
     parser.readField = undefined
     // @effect-diagnostics-next-line tryCatchInEffectGen:off
     try {
