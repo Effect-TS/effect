@@ -2534,6 +2534,27 @@ describe("fromJsonSchemaDocument", () => {
         assert.isFalse(Schema.is(schema)(1))
       })
 
+      it("intersects a shared nullable reference with uncovered alternatives", () => {
+        const schema = toSchemaFromJsonSchemaDocument(JsonSchema.fromSchemaDraft2020_12({
+          allOf: [
+            { anyOf: [{ $ref: "#/$defs/N" }, { type: "null" }] },
+            { anyOf: [{ $ref: "#/$defs/N" }, { type: "string" }] }
+          ],
+          $defs: {
+            N: {
+              anyOf: [
+                { type: "object", properties: { a: { type: "string" } } },
+                { type: "null" }
+              ]
+            }
+          }
+        }))
+        assert.isTrue(Schema.is(schema)(null))
+        assert.isTrue(Schema.is(schema)({ a: "x" }))
+        assert.isFalse(Schema.is(schema)("s"))
+        assert.isFalse(Schema.is(schema)({ a: 1 }))
+      })
+
       it("flattens a nullable reference to a nullable definition", () => {
         const schema = toSchemaFromJsonSchemaDocument(JsonSchema.fromSchemaDraft2020_12({
           allOf: [
