@@ -290,6 +290,13 @@ export function fromJsonSchemaMultiDocument(
   const resolvingChoices = new Set<string>()
   const resolvingScalars = new Set<string>()
   const intersectingReferences = new Set<string>()
+  // Same-reference intersections met while their definition is translated.
+  // Once it finishes, they are rejected if the definition reaches itself
+  // without consuming a value.
+  const pendingSelfIntersections = new Map<
+    string,
+    Array<{ readonly reference: ImportedReference; readonly path: Path }>
+  >()
   const references = new Map<string, ReferenceSlot>()
   let inNestedResource = false
 
@@ -422,6 +429,9 @@ export function fromJsonSchemaMultiDocument(
         inNestedResource = wasInNestedResource
       }
       definitionCache.set(key, representation)
+      const pending = pendingSelfIntersections.get(key)
+      pendingSelfIntersections.delete(key)
+      for (const { path, reference } of pending ?? []) validatePointerAliases(reference, path)
       if (pointer !== undefined) {
         validatePointerAliases(representation, path, recursiveReferenceError)
       }
@@ -430,6 +440,7 @@ export function fromJsonSchemaMultiDocument(
       // Objects can recover from a failed property (see lowerObject), so a
       // failed definition must be translated, and fail, again when reused.
       definitionCache.delete(key)
+      pendingSelfIntersections.delete(key)
       throw error
     }
   }
@@ -1129,7 +1140,17 @@ export function fromJsonSchemaMultiDocument(
     if (right._tag === "Unknown") return annotateIntersection(left, left, right)
     if (left._tag === "Reference" && right._tag === "Reference") {
       // Intersection is idempotent, and keeping the reference preserves the shared definition.
-      if (left.$ref === right.$ref) return annotate(left, right)
+      if (left.$ref === right.$ref) {
+        // Resolving rejects alias-only cycles, which is deferred while the
+        // definition is still translated, since recursion through it is valid.
+        if (definitionCache.get(left.$ref) !== null) resolveReference(right, path)
+        else {
+          const pending = pendingSelfIntersections.get(left.$ref) ?? []
+          pending.push({ reference: right, path })
+          pendingSelfIntersections.set(left.$ref, pending)
+        }
+        return annotate(left, right)
+      }
       // Reaching the same pair again inside its own intersection is a cycle,
       // which would need a new recursive definition.
       const key = JSON.stringify([left.$ref, right.$ref])
