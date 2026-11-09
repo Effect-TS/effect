@@ -2135,6 +2135,20 @@ describe("fromJsonSchemaDocument", () => {
       })
     })
 
+    it("rejects intersections of distinct recursive objects", () => {
+      throws(
+        () =>
+          SchemaRepresentation.fromJsonSchemaDocument(JsonSchema.fromSchemaDraft2020_12({
+            allOf: [{ $ref: "#/$defs/A" }, { $ref: "#/$defs/B" }],
+            $defs: {
+              A: { type: "object", properties: { next: { $ref: "#/$defs/A" } } },
+              B: { type: "object", properties: { next: { $ref: "#/$defs/B" } } }
+            }
+          })),
+        `Cannot intersect these "anyOf" or "oneOf" alternatives without expanding their branches.\n  at ["schema"]["allOf"][1]["properties"]["next"][1]`
+      )
+    })
+
     it("combines assertion siblings with a $ref", () => {
       assertFromJsonSchema({
         schema: {
