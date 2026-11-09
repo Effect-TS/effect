@@ -25,7 +25,7 @@ import * as Layer from "../Layer.ts"
 import type { Path } from "../Path.ts"
 import * as Scope from "../Scope.ts"
 import type * as HttpApi from "./HttpApi.ts"
-import type { HandlerRuntime } from "./HttpApiBuilder.ts"
+import type { GroupService, HandlerRuntime } from "./HttpApiBuilder.ts"
 import * as HttpApiBuilder from "./HttpApiBuilder.ts"
 import * as HttpApiClient from "./HttpApiClient.ts"
 import type * as HttpApiEndpoint from "./HttpApiEndpoint.ts"
@@ -98,7 +98,8 @@ export const groups = Effect.fnUntraced(function*<
       handlers.set(endpointIdentifier, handler)
       routes.push(HttpApiBuilder.handlerToRoute(api, group as any, handler, context))
     }
-    context = Context.add(context, group as any, { handlers, routes })
+    const service: GroupService = { handlers, routes }
+    context = Context.add(context, group as any, service)
   }
 
   const layer: Layer.Layer<

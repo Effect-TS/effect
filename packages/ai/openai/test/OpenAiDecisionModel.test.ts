@@ -30,6 +30,13 @@ const Urgency = Decision.make({
   }
 })
 
+const Screenshots = Decision.make({
+  input: Schema.Struct({ message: Schema.String, shots: Schema.Array(Decision.Image) }),
+  decisions: {
+    urgent: Decision.probability({ instructions: "Does this need immediate attention?" })
+  }
+})
+
 const input = { message: "Checkout is down" }
 
 const answers = [
@@ -286,45 +293,34 @@ describe("OpenAiDecisionModel", () => {
       { name: "urgent", type: "predicate", probability: 0.99 }
     ])))))
 
-  it.effect("sends string and JSON state with byte array, base64 string, and data URL images", () => {
+  it.effect("sends the state text, then each byte array, base64, or data URL image after its reference", () => {
     const dataUrl = "data:image/webp;base64,UklGRg=="
-    const images = [
+    const shots = [
       { mediaType: "image/png", data: new Uint8Array([137, 80, 78, 71]) },
       { mediaType: "image/jpeg", data: "/9j/4AAQ" },
       { mediaType: "image/webp", data: new URL(dataUrl) }
     ]
-    const assertInput = (request: HttpClientRequest.HttpClientRequest, text: string) => {
-      const body = requestBody(request)
-      assert.strictEqual(body.input.length, 1)
-      assert.strictEqual(body.input[0].role, "user")
-      assert.deepStrictEqual(body.input[0].content, [
-        { type: "input_text", text },
-        { type: "input_image", image_url: "data:image/png;base64,iVBORw==" },
-        { type: "input_image", image_url: "data:image/jpeg;base64,/9j/4AAQ" },
-        { type: "input_image", image_url: dataUrl }
-      ])
-    }
     return Effect.gen(function*() {
-      const result = yield* DecisionModel.decide(Urgency, {
-        input: "Checkout is down",
-        images
-      })
+      const result = yield* DecisionModel.decide(Screenshots, { input: { message: "Checkout is down", shots } })
       assert.strictEqual(result.answers.urgent.probability, 0.99)
-      const jsonResult = yield* DecisionModel.decide(Triage, { input, images }).pipe(
-        Effect.provide(OpenAiDecisionModel.layer({ model: "gpt-6-luna" })),
-        Effect.provide(clientLayer(response(answers), (request) => {
-          assertInput(request, "{\"message\":\"Checkout is down\"}")
-        }))
-      )
-      assert.strictEqual(jsonResult.answers.urgent.probability, 0.99)
     }).pipe(
       Effect.provide(OpenAiDecisionModel.layer({ model: "gpt-6-luna" })),
       Effect.provide(clientLayer(response([answers[2]]), (request) => {
         const body = requestBody(request)
-        assert.deepStrictEqual(body.questions, [
-          { type: "predicate", name: "urgent", instructions: "Does this need immediate attention?" }
+        assert.strictEqual(body.input.length, 1)
+        assert.strictEqual(body.input[0].role, "user")
+        const content = body.input[0].content
+        const state = JSON.parse(content[0].text)
+        const [png, jpeg, webp] = state.shots
+        assert.deepStrictEqual(content, [
+          { type: "input_text", text: JSON.stringify({ message: "Checkout is down", shots: [png, jpeg, webp] }) },
+          { type: "input_text", text: `Image ${png}:` },
+          { type: "input_image", image_url: "data:image/png;base64,iVBORw==" },
+          { type: "input_text", text: `Image ${jpeg}:` },
+          { type: "input_image", image_url: "data:image/jpeg;base64,/9j/4AAQ" },
+          { type: "input_text", text: `Image ${webp}:` },
+          { type: "input_image", image_url: dataUrl }
         ])
-        assertInput(request, "Checkout is down")
       }))
     )
   })
@@ -332,9 +328,11 @@ describe("OpenAiDecisionModel", () => {
   it.effect("rejects remote image URLs without sending a request", () => {
     let requests = 0
     return Effect.gen(function*() {
-      const error = yield* Effect.flip(DecisionModel.decide(Urgency, {
-        input: "Checkout is down",
-        images: [{ mediaType: "image/png", data: new URL("https://example.com/cat.png") }]
+      const error = yield* Effect.flip(DecisionModel.decide(Screenshots, {
+        input: {
+          message: "Checkout is down",
+          shots: [{ mediaType: "image/png", data: new URL("https://example.com/cat.png") }]
+        }
       }))
       assert.strictEqual(error.reason._tag, "InvalidUserInputError")
       assert.strictEqual(requests, 0)

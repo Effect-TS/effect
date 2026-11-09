@@ -363,7 +363,9 @@ export type SuccessExit<R> = Success<R> extends infer T ? T extends Stream<infer
  * @category utility types
  * @since 4.0.0
  */
-export type SuccessChunk<R> = Success<R> extends Stream<infer _A, infer _E, infer _Env> ? _A : never
+export type SuccessChunk<R> = R extends Any ?
+  SuccessSchema<R> extends RpcSchema.Stream<infer _A, infer _E> ? _A["Type"] : never
+  : never
 
 /**
  * Extracts the RPC error schema, including error schemas contributed by
@@ -694,7 +696,38 @@ export type IsStream<R extends Any, Tag extends string> = R extends Rpc<
  * @category utility types
  * @since 4.0.0
  */
-export type ExtractTag<R extends Any, Tag extends string> = R extends Rpc<
+export type ExtractTag<R extends Any, Tag extends string> = [NonLiteralTagged<R>] extends [never] ?
+  ByTag<R>[Tag & Exclude<R, NonLiteralTagged<R>>["_tag"]]
+  : ExtractTagDistributive<R, Tag>
+
+/**
+ * Indexes the RPCs of a union by their tag.
+ *
+ * **Details**
+ *
+ * Indexing it with a literal tag selects that RPC without testing every RPC in
+ * the union, which keeps tag-based client calls fast for large groups.
+ *
+ * @stability unstable
+ * @category utility types
+ * @since 4.1.3
+ */
+export type ByTag<R extends Any> = { readonly [Current in R as Current["_tag"]]: Current }
+
+// The RPCs whose tag is not a single literal. `ByTag` cannot index a union
+// containing one: a `string`, template literal pattern or union-valued tag
+// would change which RPCs a tag matches.
+type NonLiteralTagged<R extends Any> = R extends Any ? IsLiteral<R["_tag"]> extends true ? never : R : never
+
+// `true` when `T` is one string literal: not `string`, not a template literal
+// pattern and not a union.
+type IsLiteral<T extends string, Each = T> = {} extends Record<T, unknown> ? false
+  : Each extends unknown ? [T] extends [Each] ? true : false
+  : never
+
+// Tests every RPC in the union. Used when some RPC's tag is not a single
+// literal, which `ByTag` cannot index without changing which RPCs match.
+type ExtractTagDistributive<R extends Any, Tag extends string> = R extends Rpc<
   infer _Tag extends Tag,
   infer _Payload,
   infer _Success,
@@ -759,7 +792,8 @@ export type ExcludeProvides<Env, R extends Any, Tag extends string> = Exclude<
  *
  * Streaming RPCs may return a stream or an effect that produces a queue. Other
  * RPCs return an effect that succeeds with the success value or a deferred
- * success value.
+ * success value. Handlers may also fail with the errors of the RPC's server
+ * middleware, but a returned `Deferred` can only fail with the RPC's own error.
  *
  * @stability unstable
  * @category utility types
@@ -775,17 +809,17 @@ export type ResultFrom<R extends Any, Services> = R extends Rpc<
 > ? [_Success] extends [RpcSchema.Stream<infer _SA, infer _SE>] ?
       | Stream<
         _SA["Type"],
-        _SE["Type"] | _Error["Type"],
+        _SE["Type"] | _Error["Type"] | _Middleware["error"]["Type"],
         Services
       >
       | Effect<
-        Queue.Dequeue<_SA["Type"], _SE["Type"] | _Error["Type"] | Cause.Done>,
-        _SE["Type"] | Schema.Schema.Type<_Error>,
+        Queue.Dequeue<_SA["Type"], _SE["Type"] | _Error["Type"] | _Middleware["error"]["Type"] | Cause.Done>,
+        _SE["Type"] | _Error["Type"] | _Middleware["error"]["Type"],
         Services
       > :
   Effect<
     _Success["Type"] | Deferred<_Success["Type"], _Error["Type"]>,
-    _Error["Type"],
+    _Error["Type"] | _Middleware["error"]["Type"],
     Services
   > :
   never

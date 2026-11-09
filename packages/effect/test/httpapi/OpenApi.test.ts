@@ -28,6 +28,13 @@ class HeaderAuthUpper extends HttpApiMiddleware.Service<HeaderAuthUpper>()("Head
   }
 }) {}
 
+class BearerOrKeyAuth extends HttpApiMiddleware.Service<BearerOrKeyAuth>()("BearerOrKeyAuth", {
+  security: {
+    bearer: HttpApiSecurity.bearer,
+    apiKey: HttpApiSecurity.apiKey({ key: "x-alternative-key" })
+  }
+}) {}
+
 class QueryAuth extends HttpApiMiddleware.Service<QueryAuth>()("QueryAuth", {
   security: {
     auth: HttpApiSecurity.apiKey({ key: "api_key", in: "query" })
@@ -871,6 +878,45 @@ describe("OpenApi", () => {
     })
   })
 
+  it("emits each listed stream content type in declared order", () => {
+    const Api = HttpApi.make("Api").add(
+      HttpApiGroup.make("test").add(
+        HttpApiEndpoint.get("logs", "/logs", {
+          success: HttpApiSchema.StreamUint8Array({
+            contentType: ["application/vnd.docker.raw-stream", "application/vnd.docker.multiplexed-stream"]
+          })
+        }),
+        HttpApiEndpoint.post("ingest", "/ingest", {
+          payload: HttpApiSchema.StreamNdjson({
+            schema: Schema.Finite,
+            contentType: ["application/jsonl", "application/json"]
+          })
+        })
+      )
+    )
+
+    const spec = OpenApi.fromApi(Api)
+
+    const bytes = {
+      schema: { type: "string", format: "binary" },
+      "x-effect-stream": { encoding: "uint8array" }
+    } as const
+    const ndjson = { schema: { type: "number" }, "x-effect-stream": { encoding: "ndjson" } } as const
+    const logs = spec.paths["/logs"]?.get?.responses[200]?.content
+    assert.deepStrictEqual(logs, {
+      "application/vnd.docker.raw-stream": bytes,
+      "application/vnd.docker.multiplexed-stream": bytes
+    })
+    assert.deepStrictEqual(Object.keys(logs ?? {}), [
+      "application/vnd.docker.raw-stream",
+      "application/vnd.docker.multiplexed-stream"
+    ])
+    assert.deepStrictEqual(spec.paths["/ingest"]?.post?.requestBody, {
+      content: { "application/jsonl": ndjson, "application/json": ndjson },
+      required: true
+    })
+  })
+
   it("rejects duplicate method and path pairs", () => {
     const Api = HttpApi.make("Api").add(
       HttpApiGroup.make("test").add(
@@ -925,6 +971,23 @@ describe("OpenApi", () => {
     assert.isDefined(second)
     assert.isFalse(Object.hasOwn(first, "operationId"))
     assert.isFalse(Object.hasOwn(second, "operationId"))
+  })
+
+  it("requires every stacked security middleware", () => {
+    const Api = HttpApi.make("Api").add(
+      HttpApiGroup.make("test").add(
+        HttpApiEndpoint.get("secured", "/secured").middleware(BearerOrKeyAuth).middleware(HeaderAuthA),
+        HttpApiEndpoint.get("public", "/public")
+      )
+    )
+
+    const spec = OpenApi.fromApi(Api)
+
+    assert.deepStrictEqual(spec.paths["/secured"]?.get?.security, [
+      { bearer: [], auth: [] },
+      { apiKey: [], auth: [] }
+    ])
+    assert.deepStrictEqual(spec.paths["/public"]?.get?.security, [])
   })
 
   it("rejects incompatible security schemes with the same name", () => {

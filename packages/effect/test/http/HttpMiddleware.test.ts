@@ -10,6 +10,7 @@ import * as HttpMiddleware from "effect/http/HttpMiddleware"
 import * as HttpServerError from "effect/http/HttpServerError"
 import * as HttpServerRequest from "effect/http/HttpServerRequest"
 import * as HttpServerResponse from "effect/http/HttpServerResponse"
+import * as UrlParams from "effect/http/UrlParams"
 import * as Logger from "effect/Logger"
 import * as IpNetwork from "effect/net/IpNetwork"
 import * as Option from "effect/Option"
@@ -116,6 +117,22 @@ describe("HttpMiddleware", () => {
         assert.strictEqual(response.headers.get("access-control-allow-origin"), "*")
         assert.strictEqual(response.headers.get("vary"), "Accept-Language")
       }))
+
+    it.effect.each(["GET", "OPTIONS"])(
+      "does not call the origin predicate without an Origin header (%s)",
+      (method) =>
+        Effect.gen(function*() {
+          const handler = HttpEffect.toWebHandler(
+            Effect.succeed(HttpServerResponse.empty()).pipe(HttpMiddleware.cors({
+              allowedOrigins: (origin) => origin.endsWith(".example")
+            }))
+          )
+          const response = yield* Effect.promise(() => handler(new Request("http://localhost/", { method })))
+          assert.isTrue(response.ok)
+          assert.isNull(response.headers.get("access-control-allow-origin"))
+          assert.strictEqual(response.headers.get("vary"), "Origin")
+        })
+    )
   })
 
   describe("logger", () => {
@@ -505,6 +522,34 @@ describe("HttpMiddleware", () => {
         Error.stackTraceLimit = stackTraceLimit
       }
     })
+
+    it.effect("keeps a synthesized 5xx span failure redacted after the request completes", () =>
+      Effect.gen(function*() {
+        let serverSpan: Tracer.NativeSpan | undefined
+        const tracer = Tracer.make({
+          span(options) {
+            serverSpan = new Tracer.NativeSpan(options)
+            return serverSpan
+          }
+        })
+        const request = HttpServerRequest.fromWeb(new Request("http://localhost/failure?token=s3cret"))
+
+        yield* HttpMiddleware.tracer(Effect.succeed(HttpServerResponse.empty({ status: 500 }))).pipe(
+          Effect.provideService(HttpServerRequest.HttpServerRequest, request),
+          Effect.provideService(UrlParams.CurrentRedactedNames, ["token"]),
+          Effect.provideService(Tracer.Tracer, tracer)
+        )
+        yield* Effect.yieldNow
+
+        assert(serverSpan !== undefined && serverSpan.status._tag === "Ended")
+        assert.strictEqual(serverSpan.attributes.get("url.full"), "http://localhost/failure?token=REDACTED")
+        const exit = serverSpan.status.exit
+        assert(Exit.isFailure(exit))
+        const error = Cause.squash(exit.cause)
+        assert(error instanceof HttpServerError.HttpServerError)
+        // The message is path-only, so query values never reach exporters through it.
+        assert.strictEqual(error.message, "ResponseError (500 GET /failure)")
+      }))
 
     it.effect("preserves the stream failure when the sent response is 500", () =>
       Effect.gen(function*() {

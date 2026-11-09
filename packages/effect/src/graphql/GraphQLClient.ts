@@ -70,7 +70,9 @@ type ArgsWithOptions<Variables, Options> = {} extends Variables ? [variables: Va
  * `partial: false`, it returns the decoded result and fails with a
  * `ResponseError` on any `errors`. With `partial: true` it returns
  * `{ data, errors }`. `partial` must be a literal `true` or `false`, not
- * an arbitrary `boolean`.
+ * an arbitrary `boolean`. A non-2xx HTTP response never succeeds, even with
+ * `partial: true`: it fails with a `ResponseError` when it has `errors`, and
+ * with a `TransportError` otherwise.
  *
  * An operation without variables is called as `client.Viewer()` or, with
  * options, `client.Viewer(undefined, { headers })`.

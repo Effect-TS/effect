@@ -77,7 +77,7 @@ describe("OTLP compression", () => {
           loggerExportInterval: "1 hour",
           metricsExportInterval: "1 hour",
           tracerExportInterval: "1 hour"
-        }).pipe(Layer.provideMerge(OtlpExporter.layerFlusher))
+        })
         return Effect.gen(function*() {
           yield* emitAndFlush
           checkRequests(requests, format, compression === "gzip" ? signals : [])
@@ -97,7 +97,7 @@ describe("OTLP compression", () => {
           OTEL_EXPORTER_OTLP_COMPRESSION: "gzip",
           OTEL_EXPORTER_OTLP_LOGS_COMPRESSION: "none",
           OTEL_EXPORTER_OTLP_TRACES_COMPRESSION: "gzip"
-        }).pipe(Layer.provideMerge(OtlpExporter.layerFlusher))
+        })
       ),
       Effect.provideService(HttpClient.HttpClient, httpClient)
     )

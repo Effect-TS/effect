@@ -395,6 +395,17 @@ it.layer(PgContainer.layerClient, { timeout: "30 seconds" })("PgClient", (it) =>
       assert.strictEqual(error.reason.operation, "commit")
     }))
 
+  it.effect("keeps the typed error when the server ends the session in a nested transaction", () =>
+    Effect.gen(function*() {
+      const sql = yield* PgClient.PgClient
+      const cause = yield* sql.withTransaction(
+        sql.withTransaction(sql`SELECT pg_terminate_backend(pg_backend_pid())`)
+      ).pipe(Effect.sandbox, Effect.flip)
+
+      assert.isFalse(Cause.hasDies(cause))
+      assert.instanceOf(Cause.squash(cause), SqlError.SqlError)
+    }))
+
   it.effect("afterCommit runs once other connections see the transaction's rows", () =>
     Effect.gen(function*() {
       const sql = yield* PgClient.PgClient
@@ -526,6 +537,34 @@ it.layer(PgContainer.layerMakeClient, { timeout: "30 seconds" })("PgClient.makeC
 
       assert.isTrue(Option.isNone(overlap))
     }))
+
+  // A transaction pooler moves the session to another server between
+  // transactions, where the statements prepared on the last one do not exist.
+  it.effect("ends transactions whose prepared statements went missing", () =>
+    Effect.gen(function*() {
+      // Its own session, so `DEALLOCATE ALL` cannot affect concurrent tests.
+      const sql = yield* PgClient.makeClient((yield* PgClient.PgClient).config)
+      const select = sql<{ value: number }>`SELECT ${1}::int4 AS value`
+      const assertSqlFailure = (cause: Cause.Cause<unknown>) => {
+        assert.isFalse(Cause.hasDies(cause))
+        const error = Cause.squash(cause)
+        assert.instanceOf(error, SqlError.SqlError)
+        assert.propertyVal(error.reason.cause, "code", "26000")
+      }
+      // Prepares BEGIN, the body, ROLLBACK and COMMIT.
+      yield* sql.withTransaction(Effect.andThen(select, Effect.fail("rollback"))).pipe(Effect.flip)
+      yield* sql.withTransaction(select)
+      yield* sql`DEALLOCATE ALL`.unprepared
+
+      // The body fails on its lost statement, and ROLLBACK still has to run.
+      assertSqlFailure(yield* sql.withTransaction(select).pipe(Effect.sandbox, Effect.flip))
+      // The body succeeds, but the lost COMMIT never runs.
+      assertSqlFailure(
+        yield* sql.withTransaction(sql`SELECT ${2}::int4 AS fresh`).pipe(Effect.sandbox, Effect.flip)
+      )
+
+      assert.deepStrictEqual(yield* sql.withTransaction(select), [{ value: 1 }])
+    }).pipe(Effect.scoped, Effect.provide(Reactivity.layer)))
 })
 
 it.layer(PgContainer.layerMakeClientAcquireForStream, { timeout: "30 seconds" })(

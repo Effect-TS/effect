@@ -839,9 +839,11 @@ describe("random data", { concurrent: false }, () => {
       return (seed >>> 0) / 0x1_0000_0000
     }
     for (let i = 0; i < 100; i++) {
-      const size = Math.round(random() * 1024 * 1024 * 100)
+      const size = Math.round(random() * 1024 * 1024)
+      // Fill bytes 0-99 include CR, LF and "-", which partially match the boundary.
       const data = Buffer.alloc(size, i)
       let success = false
+      let received = 0
 
       const parser = Multipart.make({
         headers: {
@@ -851,7 +853,9 @@ describe("random data", { concurrent: false }, () => {
           success = true
         },
         onFile() {
-          return () => {}
+          return (chunk) => {
+            if (chunk) received += chunk.length
+          }
         },
         onField() {},
         onError() {}
@@ -874,7 +878,7 @@ describe("random data", { concurrent: false }, () => {
         const chunkSize = Math.max(
           1,
           Math.min(
-            Math.round(random() * 128 * 1024 * 1024),
+            Math.round(random() * 1.28 * 1024 * 1024),
             maxChunkSize
           )
         )
@@ -883,6 +887,7 @@ describe("random data", { concurrent: false }, () => {
       }
       parser.end()
       assert.isTrue(success)
+      assert.strictEqual(received, size)
     }
-  }, 90_000)
+  })
 })

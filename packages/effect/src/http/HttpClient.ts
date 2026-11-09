@@ -33,7 +33,7 @@ import * as Ref from "../Ref.ts"
 import * as References from "../References.ts"
 import * as Result from "../Result.ts"
 import * as Schedule from "../Schedule.ts"
-import type * as Scope from "../Scope.ts"
+import * as Scope from "../Scope.ts"
 import * as Stream from "../Stream.ts"
 import * as Tracer from "../Tracer.ts"
 import type { EqualsWith, ExcludeTag, ExtractTag, NoExcessProperties, NoInfer, Tags } from "../Types.ts"
@@ -418,12 +418,19 @@ export const catchTag: {
   ): HttpClient.With<E1 | ExcludeTag<E, K extends NonEmptyReadonlyArray<string> ? K[number] : K>, R1 | R> =>
     transformResponse(
       self,
+      // TypeScript 7.1 does not relate the error type `Effect.catchTag` returns
+      // to the `ExcludeTag` declared here, because each declares its own copy
+      // of the conditional on `K`. The assertion restates the declared type.
       (effect) =>
         Effect.catchTag<HttpClientResponse.HttpClientResponse, E, R, K, R1, E1, HttpClientResponse.HttpClientResponse>(
           effect,
           tag,
           f
-        )
+        ) as Effect.Effect<
+          HttpClientResponse.HttpClientResponse,
+          E1 | ExcludeTag<E, K extends NonEmptyReadonlyArray<string> ? K[number] : K>,
+          R | R1
+        >
     )
 )
 
@@ -673,7 +680,9 @@ const Proto = {
  *
  * **Details**
  *
- * The runner receives the request, resolved URL, abort signal, and current fiber. The client wrapper handles URL construction failures, tracing and propagation, header redaction, and aborting non-scoped requests on interruption.
+ * The runner receives the request, resolved URL, abort signal, and current fiber. The client wrapper handles URL construction failures, tracing and propagation, header redaction, aborting the signal when the request is interrupted before a response arrives, and attaching each request to the scope of an enclosing `withScope`.
+ *
+ * `HttpClientError` reasons redact their URL with the `UrlParams.CurrentRedactedNames` of the fiber that executed the request, even when a callback outside that fiber creates them. The client adds those names to the errors the runner fails with and to errors built later from the response. Rendering an error then adds the names of the rendering fiber. A runner that returns one response object to several executions gives its errors the names of all of them.
  *
  * @stability unstable
  * @category constructors
@@ -690,8 +699,9 @@ export const make = (
   makeWith((effect) =>
     Effect.flatMap(effect, (request) =>
       Effect.withFiber((fiber) => {
-        const scopedController = scopedRequests.get(request)
-        const controller = scopedController ?? new AbortController()
+        const scope = fiber.getRef(RequestScope)
+        const controller = new AbortController()
+        const urlParamsRedactedNames = fiber.getRef(UrlParams.CurrentRedactedNames)
         const urlResult = Url.make(request.url, request.urlParams, Option.getOrUndefined(request.hash))
         if (Result.isFailure(urlResult)) {
           return Effect.fail(
@@ -704,25 +714,39 @@ export const make = (
           )
         }
         const url = urlResult.success
-        const tracerDisabled = fiber.getRef(Tracer.DisablePropagation) ||
-          fiber.getRef(TracerDisabledWhen)(request)
-        if (tracerDisabled) {
-          const effect = f(request, url, controller.signal, fiber as any)
-          if (scopedController) return effect
-          return Effect.uninterruptibleMask((restore) =>
-            Effect.matchCauseEffect(restore(effect), {
-              onSuccess(response) {
-                responseRegistry.register(response, controller)
-                return Effect.succeed(new InterruptibleResponse(response, controller))
+        const send = (request: HttpClientRequest.HttpClientRequest) =>
+          scope === undefined
+            ? f(request, url, controller.signal, fiber as any)
+            // Register the abort before dispatch, so a scope that is already
+            // closed aborts the signal before the transport sees it
+            : Effect.flatMap(
+              Scope.addFinalizer(scope, Effect.sync(() => controller.abort())),
+              () => f(request, url, controller.signal, fiber as any)
+            )
+        const exchange = (
+          request: HttpClientRequest.HttpClientRequest,
+          onResponse?: (response: HttpClientResponse.HttpClientResponse) => void
+        ) =>
+          Effect.uninterruptibleMask((restore) =>
+            Effect.matchCauseEffect(restore(send(request)), {
+              onSuccess: (response) => {
+                response = trackResponse(response, controller, scope !== undefined, urlParamsRedactedNames)
+                onResponse?.(response)
+                return Effect.succeed(response)
               },
-              onFailure(cause) {
+              onFailure: (cause) => {
                 if (Cause.hasInterrupts(cause)) {
                   controller.abort()
                 }
+                Error.addFailureRedactedNames(cause, urlParamsRedactedNames)
                 return Effect.failCause(cause)
               }
             })
           )
+        const tracerDisabled = fiber.getRef(Tracer.DisablePropagation) ||
+          fiber.getRef(TracerDisabledWhen)(request)
+        if (tracerDisabled) {
+          return exchange(request)
         }
         return Effect.useSpan(
           fiber.getRef(SpanNameGenerator)(request),
@@ -733,39 +757,26 @@ export const make = (
             tracing.addUrlAttributes(
               span,
               url,
-              tracing.redactedNames(request.urlParams, fiber.getRef(UrlParams.CurrentRedactedNames))
+              tracing.redactedNames(request.urlParams, urlParamsRedactedNames)
             )
             const headerFilter = fiber.getRef(TracerHeaderFilter)
             tracing.addHeaderAttributes(span, "request", request.headers, headerFilter, redactedHeaderNames)
             request = fiber.getRef(TracerPropagationEnabled)
               ? HttpClientRequest.setHeaders(request, TraceContext.toHeaders(span))
               : request
-            return Effect.uninterruptibleMask((restore) =>
-              restore(f(request, url, controller.signal, fiber as any)).pipe(
-                Effect.withParentSpan(span, { captureStackTrace: false }),
-                Effect.matchCauseEffect({
-                  onSuccess: (response) => {
-                    span.attribute("http.response.status_code", response.status)
-                    tracing.addHeaderAttributes(span, "response", response.headers, headerFilter, redactedHeaderNames)
-                    // OpenTelemetry marks client spans as failed for 4xx and
-                    // 5xx responses, while the response itself still succeeds.
-                    if (response.status >= 400 && response.status < 600) {
-                      span.attribute("error.type", String(response.status))
-                      endSpanWithStatusError(fiber, span, request, response)
-                    }
-
-                    if (scopedController) return Effect.succeed(response)
-                    responseRegistry.register(response, controller)
-                    return Effect.succeed(new InterruptibleResponse(response, controller))
-                  },
-                  onFailure(cause) {
-                    if (!scopedController && Cause.hasInterrupts(cause)) {
-                      controller.abort()
-                    }
-                    return Effect.failCause(cause)
-                  }
-                })
-              )
+            return Effect.withParentSpan(
+              exchange(request, (response) => {
+                span.attribute("http.response.status_code", response.status)
+                tracing.addHeaderAttributes(span, "response", response.headers, headerFilter, redactedHeaderNames)
+                // OpenTelemetry marks client spans as failed for 4xx and
+                // 5xx responses, while the response itself still succeeds.
+                if (response.status >= 400 && response.status < 600) {
+                  span.attribute("error.type", String(response.status))
+                  endSpanWithStatusError(fiber, span, request, response)
+                }
+              }),
+              span,
+              { captureStackTrace: false }
             )
           }
         )
@@ -1056,6 +1067,94 @@ export const retryTransient: {
         })
       )
     )
+  }
+)
+
+/**
+ * Fails requests that do not receive a response within the given duration.
+ *
+ * **When to use**
+ *
+ * Use to configure a timeout once on the client, for example when providing
+ * the `HttpClient` service, while keeping the standard `HttpClientError` error
+ * model.
+ *
+ * **Details**
+ *
+ * A timed out request is interrupted and fails with an `HttpClientError` whose
+ * reason is a `TransportError` with a `Cause.TimeoutError` cause.
+ * `retryTransient` treats it as transient. Interrupting a request while it
+ * waits for response headers aborts the underlying transport.
+ *
+ * The timer starts after request preprocessing and covers everything the
+ * wrapped client does to produce a response. For a plain client this ends when
+ * the response headers arrive, but response middleware applied before
+ * `timeout`, such as `tap` or `retryTransient`, runs inside the budget,
+ * including any body reads it performs. Composition order therefore decides
+ * how it interacts with retries: applying `timeout` before `retryTransient`
+ * gives each attempt its own budget, while applying it after bounds the whole
+ * retry loop.
+ *
+ * **Gotchas**
+ *
+ * Body reads outside the timed client are not covered, including those made
+ * by response middleware applied after `timeout` and by consumers of the
+ * `HttpClient` service. Apply a separate timeout to body reads such as
+ * `response.json` or `response.stream` when needed.
+ *
+ * For a client wrapped with `withScope`, a timeout that fires after the
+ * response headers arrive, such as during a body read by response middleware,
+ * does not abort the transport. The connection stays open until the scope
+ * closes.
+ *
+ * **Example** (Timing out each attempt)
+ *
+ * ```ts
+ * import { Effect, Layer } from "effect"
+ * import { FetchHttpClient, HttpClient } from "effect/http"
+ *
+ * const TimedHttpClient = Layer.effect(
+ *   HttpClient.HttpClient,
+ *   Effect.map(
+ *     HttpClient.HttpClient,
+ *     HttpClient.timeout("5 seconds")
+ *   )
+ * ).pipe(Layer.provide(FetchHttpClient.layer))
+ *
+ * const program = Effect.gen(function*() {
+ *   const client = (yield* HttpClient.HttpClient).pipe(
+ *     HttpClient.retryTransient({ times: 3 })
+ *   )
+ *   return yield* client.get("https://example.com")
+ * }).pipe(Effect.provide(TimedHttpClient))
+ * ```
+ *
+ * @stability unstable
+ * @category error handling
+ * @since 4.1.0
+ */
+export const timeout: {
+  (duration: Duration.Input): <E, R>(self: HttpClient.With<E, R>) => HttpClient.With<E | Error.HttpClientError, R>
+  <E, R>(self: HttpClient.With<E, R>, duration: Duration.Input): HttpClient.With<E | Error.HttpClientError, R>
+} = dual(
+  2,
+  <E, R>(self: HttpClient.With<E, R>, duration: Duration.Input): HttpClient.With<E | Error.HttpClientError, R> => {
+    const decoded = Duration.fromInputUnsafe(duration)
+    const description = `timed out after ${Duration.format(decoded)}`
+    return transform(self, (effect, request) =>
+      Effect.timeoutOrElse(effect, {
+        duration: decoded,
+        orElse: () =>
+          Effect.fail(
+            new Error.HttpClientError({
+              reason: new Error.TransportError({
+                request,
+                cause: new Cause.TimeoutError(`Operation ${description}`),
+                description
+              })
+            })
+          )
+      }))
   }
 )
 
@@ -1365,7 +1464,7 @@ export const withRateLimiter: {
  * Namespace containing configuration types for `withCircuitBreaker`.
  *
  * @stability experimental
- * @since 4.0.6
+ * @since 4.0.7
  */
 export declare namespace WithCircuitBreaker {
   /**
@@ -1373,7 +1472,7 @@ export declare namespace WithCircuitBreaker {
    *
    * @stability experimental
    * @category circuit breaking
-   * @since 4.0.6
+   * @since 4.0.7
    */
   export interface Options<E, R2 = never> {
     /**
@@ -1388,13 +1487,10 @@ export declare namespace WithCircuitBreaker {
     readonly key?: string | ((request: HttpClientRequest.HttpClientRequest) => string) | undefined
     /**
      * Classifies the `Exit` of each request that the breaker admitted.
+     * `context.probe` is `true` when the request is the HalfOpen probe.
      * Defaults to `circuitBreakerClassifier`.
      */
-    readonly classify?:
-      | ((
-        exit: Exit.Exit<HttpClientResponse.HttpClientResponse, E>
-      ) => CircuitBreaker.Outcome | Effect.Effect<CircuitBreaker.Outcome, never, R2>)
-      | undefined
+    readonly classify?: CircuitBreaker.Classifier<HttpClientResponse.HttpClientResponse, E, R2> | undefined
   }
 }
 
@@ -1515,7 +1611,7 @@ export declare namespace WithCircuitBreaker {
  *
  * @stability experimental
  * @category circuit breaking
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const withCircuitBreaker: {
   <E, R2 = never>(options: WithCircuitBreaker.Options<E, R2>): <R>(
@@ -1570,7 +1666,7 @@ const requestOrigin = (request: HttpClientRequest.HttpClientRequest): string =>
  *
  * @stability experimental
  * @category circuit breaking
- * @since 4.0.6
+ * @since 4.0.7
  */
 export const circuitBreakerClassifier = <E>(
   exit: Exit.Exit<HttpClientResponse.HttpClientResponse, E>
@@ -1868,46 +1964,87 @@ export const tapRequest: {
 )
 
 /**
- * Adds a `Ref` of cookies to the client for handling cookies across requests.
+ * Adds a `Ref` of stored cookies to the client for handling cookies across
+ * requests.
  *
  * **When to use**
  *
  * Use to add shared cookie storage to a client so response cookies are retained
- * and sent by later requests.
+ * and sent by later requests to a matching host, path, and scheme.
+ *
+ * **Details**
+ *
+ * Response cookies are merged into the ref with `Cookies.mergeIntoArray` for
+ * the response URL. When a request is sent, `Cookies.toRequestCookieHeader`
+ * selects the cookies for its final URL, after later transformations such as
+ * `HttpClientRequest.prependUrl`, and sets them as the `cookie` header. With
+ * `followRedirects` applied after `withCookiesRef`, this runs for every hop.
+ * Expiry uses the current `Clock`.
  *
  * @stability unstable
  * @category cookies
  * @since 4.0.0
  */
 export const withCookiesRef: {
-  (ref: Ref.Ref<Cookies.Cookies>): <E, R>(self: HttpClient.With<E, R>) => HttpClient.With<E, R>
-  <E, R>(self: HttpClient.With<E, R>, ref: Ref.Ref<Cookies.Cookies>): HttpClient.With<E, R>
+  (ref: Ref.Ref<ReadonlyArray<Cookies.Cookie>>): <E, R>(self: HttpClient.With<E, R>) => HttpClient.With<E, R>
+  <E, R>(self: HttpClient.With<E, R>, ref: Ref.Ref<ReadonlyArray<Cookies.Cookie>>): HttpClient.With<E, R>
 } = dual(
   2,
   <E, R>(
     self: HttpClient.With<E, R>,
-    ref: Ref.Ref<Cookies.Cookies>
-  ): HttpClient.With<E, R> =>
-    makeWith(
+    ref: Ref.Ref<ReadonlyArray<Cookies.Cookie>>
+  ): HttpClient.With<E, R> => {
+    const now = () => Fiber.getCurrent()!.getRef(Clock).currentTimeMillisUnsafe()
+    const addCookies = (request: HttpClientRequest.HttpClientRequest) =>
+      Effect.map(Ref.get(ref), (cookies) => {
+        const header = Cookies.toRequestCookieHeader(cookies, request.url, now())
+        if (header === undefined) return request
+        return HttpClientRequest.setHeader(request, "cookie", header)
+      })
+    return makeWith(
       (request: Effect.Effect<HttpClientRequest.HttpClientRequest, E, R>) =>
         Effect.tap(
-          self.postprocess(request),
-          (response) => Ref.update(ref, (cookies) => Cookies.merge(cookies, response.cookies))
+          self.postprocess(Effect.flatMap(request, addCookies)),
+          (response) => Ref.update(ref, Cookies.mergeIntoArray(response.url, response.cookies, now()))
         ),
-      (request) =>
-        Effect.flatMap(self.preprocess(request), (request) =>
-          Effect.map(
-            Ref.get(ref),
-            (cookies) =>
-              Cookies.isEmpty(cookies)
-                ? request
-                : HttpClientRequest.setHeader(request, "cookie", Cookies.toCookieHeader(cookies))
-          ))
+      self.preprocess
     )
+  }
 )
 
 /**
- * Attaches the lifetime of the `HttpClientRequest` to a `Scope`.
+ * Attaches every request the client sends to the current `Scope`, and aborts
+ * them when the scope closes.
+ *
+ * **When to use**
+ *
+ * Use when a response body, an upgraded socket or a `toWeb` hand-off must
+ * stay open after the response effect completes, and close it by closing the
+ * scope.
+ *
+ * **Details**
+ *
+ * Ownership follows the execution, not the request value. Each request the
+ * transport sends while this client executes belongs to the scope: every
+ * redirect hop, retry attempt and request rewritten by middleware, whichever
+ * side of `followRedirects`, `withCookiesRef` or `retryTransient` the
+ * `withScope` is on. Reusing one request, or one response effect,
+ * concurrently under different scopes gives each execution its own owner.
+ *
+ * Closing the scope aborts pending requests and open response bodies. A
+ * request sent after the scope has closed is aborted before the transport
+ * starts it. Interrupting a request before its response arrives still aborts
+ * it, so a `timeout` that fires before then releases the connection. Once a
+ * response is returned, its body is released only when the scope closes.
+ *
+ * **Gotchas**
+ *
+ * Requests that middleware sends with another client while this client
+ * executes, such as a token fetch in `mapRequestEffect`, are also attached to
+ * the scope. When `withScope` is nested, the innermost one owns the requests,
+ * so to give a helper request a different lifetime, apply `withScope` to the
+ * helper client and run its request in its own scope, for example with
+ * `Effect.scoped`.
  *
  * @stability unstable
  * @category resource management
@@ -1916,17 +2053,7 @@ export const withCookiesRef: {
 export const withScope = <E, R>(
   self: HttpClient.With<E, R>
 ): HttpClient.With<E, R | Scope.Scope> =>
-  transform(
-    self,
-    (effect, request) => {
-      const controller = new AbortController()
-      scopedRequests.set(request, controller)
-      return Effect.andThen(
-        Effect.addFinalizer(() => Effect.sync(() => controller.abort())),
-        effect
-      )
-    }
-  )
+  transformResponse(self, Effect.provideServiceEffect(RequestScope, Effect.scope))
 
 /**
  * Enables following HTTP redirects up to a specified number of times.
@@ -2006,13 +2133,31 @@ export const followRedirects: {
               ) {
                 nextRequest = HttpClientRequest.setMethod(nextRequest, "GET")
                 nextRequest = HttpClientRequest.setBody(nextRequest, HttpBody.empty)
+                nextRequest = HttpClientRequest.removeHeader(nextRequest, "content-encoding")
+                nextRequest = HttpClientRequest.removeHeader(nextRequest, "content-language")
+                nextRequest = HttpClientRequest.removeHeader(nextRequest, "content-location")
               }
               if (url.origin !== new URL(response.request.url).origin) {
                 nextRequest = HttpClientRequest.removeHeader(nextRequest, "authorization")
                 nextRequest = HttpClientRequest.removeHeader(nextRequest, "proxy-authorization")
                 nextRequest = HttpClientRequest.removeHeader(nextRequest, "cookie")
               }
-              return loop(Effect.succeed(HttpClientRequest.setUrl(nextRequest, url)), redirects + 1)
+              // Request the Location as sent: setUrl with a URL object would re-encode its query
+              const hash = url.hash === "" ? Option.none() : Option.some(url.hash.slice(1))
+              url.hash = ""
+              nextRequest = HttpClientRequest.makeWith(
+                nextRequest.method,
+                url.href,
+                UrlParams.empty,
+                hash,
+                nextRequest.headers,
+                nextRequest.body
+              )
+              // Abort the discarded response to release its connection without reading the body
+              return Effect.andThen(
+                Effect.sync(() => responseControllers.get(response)?.abort()),
+                loop(Effect.succeed(nextRequest), redirects + 1)
+              )
             }
           )
         })
@@ -2149,7 +2294,29 @@ const responseRegistry = (() => {
   }
 })()
 
-const scopedRequests = new WeakMap<HttpClientRequest.HttpClientRequest, AbortController>()
+const RequestScope = Context.Reference<Scope.Scope | undefined>("effect/http/HttpClient/RequestScope", {
+  defaultValue: () => undefined
+})
+
+const responseControllers = new WeakMap<HttpClientResponse.HttpClientResponse, AbortController>()
+
+const trackResponse = (
+  response: HttpClientResponse.HttpClientResponse,
+  controller: AbortController,
+  scoped: boolean,
+  urlParamsRedactedNames: ReadonlyArray<string | RegExp>
+): HttpClientResponse.HttpClientResponse => {
+  // Body readers create errors with the runner's response, while callers hold
+  // the wrapper, so both carry the names of the executing fiber.
+  Error.addResponseRedactedNames(response, urlParamsRedactedNames)
+  if (!scoped) {
+    responseRegistry.register(response, controller)
+    response = new InterruptibleResponse(response, controller)
+    Error.addResponseRedactedNames(response, urlParamsRedactedNames)
+  }
+  responseControllers.set(response, controller)
+  return response
+}
 
 class InterruptibleResponse implements HttpClientResponse.HttpClientResponse, Pipeable {
   readonly original: HttpClientResponse.HttpClientResponse
@@ -2259,7 +2426,38 @@ class InterruptibleResponse implements HttpClientResponse.HttpClientResponse, Pi
   }
 }
 
-const isTransientError = (error: unknown) => Cause.isTimeoutError(error) || isTransientHttpError(error)
+/**
+ * Returns `true` for an error that `retryTransient` retries by default: a
+ * timeout, a transport error, or a status code error with a transient response.
+ *
+ * **When to use**
+ *
+ * Use to classify failures the same way `retryTransient` does, for example in a
+ * custom retry policy or a circuit breaker.
+ *
+ * **Example** (Classifying client errors)
+ *
+ * ```ts import.meta.vitest
+ * import { Cause } from "effect"
+ * import { HttpClient, HttpClientError, HttpClientRequest } from "effect/http"
+ *
+ * const request = HttpClientRequest.get("https://example.com")
+ * const transportError = new HttpClientError.HttpClientError({
+ *   reason: new HttpClientError.TransportError({ request })
+ * })
+ *
+ * HttpClient.isTransientError(transportError) // => true
+ * HttpClient.isTransientError(new Cause.TimeoutError()) // => true
+ * HttpClient.isTransientError(new Error("boom")) // => false
+ * ```
+ *
+ * @see {@link isTransientResponse} for the response statuses it accepts
+ * @see {@link retryTransient} for the retry policy that uses it
+ * @stability unstable
+ * @category predicates
+ * @since 4.1.0
+ */
+export const isTransientError = (error: unknown): boolean => Cause.isTimeoutError(error) || isTransientHttpError(error)
 
 const isTransientHttpError = (error: unknown) =>
   Error.isHttpClientError(error) &&
@@ -2293,7 +2491,21 @@ const isTooManyRequestsHttpClientError = (
 ): error is Error.HttpClientError & { readonly reason: Error.StatusCodeError } =>
   Error.isHttpClientError(error) && error.reason._tag === "StatusCodeError" && error.reason.response.status === 429
 
-const isTransientResponse = (response: HttpClientResponse.HttpClientResponse) =>
+/**
+ * Returns `true` for a response whose status `retryTransient` retries by
+ * default: 408, 429, 500, 502, 503 or 504.
+ *
+ * **When to use**
+ *
+ * Use to retry the same responses as `retryTransient` in a custom retry policy.
+ *
+ * @see {@link isTransientError} for the matching error predicate
+ * @see {@link retryTransient} for the retry policy that uses it
+ * @stability unstable
+ * @category predicates
+ * @since 4.1.0
+ */
+export const isTransientResponse = (response: HttpClientResponse.HttpClientResponse): boolean =>
   response.status === 408 ||
   response.status === 429 ||
   response.status === 500 ||

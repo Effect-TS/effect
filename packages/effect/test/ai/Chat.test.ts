@@ -211,6 +211,35 @@ describe("Chat", () => {
       }).pipe(Effect.provide(LoopToolkitLayer)))
   })
 
+  it.effect("exports tool results with non-JSON types through exportJson", () => {
+    const toolkit = Toolkit.make(Tool.make("Count", {
+      success: Schema.Struct({ total: Schema.BigInt })
+    }))
+
+    return Effect.gen(function*() {
+      const chat = yield* Chat.empty
+      yield* chat.generateText({ prompt: "Count", toolkit }).pipe(
+        TestUtils.withLanguageModel({
+          generateText: [{ type: "tool-call", id: "count-call", name: "Count", params: {} }]
+        })
+      )
+      const restored = yield* Chat.fromJson(yield* chat.exportJson)
+      const toolMessage = (yield* Ref.get(restored.history)).content.find((message) => message.role === "tool")
+
+      assert.deepStrictEqual(
+        toolMessage?.content[0],
+        Prompt.toolResultPart({
+          id: "count-call",
+          name: "Count",
+          isFailure: false,
+          result: { total: "1" },
+          providerExecuted: false,
+          options: {}
+        })
+      )
+    }).pipe(Effect.provide(toolkit.toLayer({ Count: () => Effect.succeed({ total: 1n }) })))
+  })
+
   it.effect("does not replay a completed approved tool", () => {
     let executions = 0
     const toolkit = Toolkit.make(Tool.make("Counter", {

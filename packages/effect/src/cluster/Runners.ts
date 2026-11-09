@@ -32,6 +32,7 @@ import type { MalformedMessage, PersistenceError } from "./ClusterError.ts"
 import { AlreadyProcessingMessage, EntityNotAssignedToRunner, MailboxFull, RunnerUnavailable } from "./ClusterError.ts"
 import { Persisted } from "./ClusterSchema.ts"
 import * as Envelope from "./Envelope.ts"
+import { TransactionNotifications } from "./internal/transactionNotifications.ts"
 import * as Message from "./Message.ts"
 import * as MessageStorage from "./MessageStorage.ts"
 import * as Reply from "./Reply.ts"
@@ -179,6 +180,19 @@ export const make: (
   const { codecFor, ...serviceOptions } = options
 
   const requestIdRewrites = new Map<Snowflake.Snowflake, Snowflake.Snowflake>()
+
+  // A message saved in a transaction is invisible to readers until the commit,
+  // so its wake-up waits for the commit. A failure then can no longer be
+  // returned and is dropped; the next storage poll delivers the message.
+  const notifyAfterCommit = <E>(message: Message.Outgoing<any>, notify: Effect.Effect<void, E>) => {
+    const rpc = message.rpc as any as Rpc.AnyWithProps
+    if (!Context.get(rpc.annotations, Persisted)) return notify
+    return TransactionNotifications.use((notifications) =>
+      notifications === undefined ? notify : Effect.sync(() => {
+        notifications.push(Effect.ignore(notify))
+      })
+    )
+  }
 
   function notifyWith<E>(
     message: Message.Outgoing<any>,
@@ -471,7 +485,7 @@ export const make: (
       const { discard, message } = options_
       return notifyWith(message, (message, duplicate) => {
         if (discard || message._tag === "OutgoingEnvelope") {
-          return options.notify(options_)
+          return notifyAfterCommit(message, options.notify(options_))
         } else if (!duplicate && Option.isSome(options_.address)) {
           return Effect.catch(
             options.send({
@@ -499,7 +513,7 @@ export const make: (
       }
       return notifyWith(message, (message) => {
         if (options.discard || message._tag === "OutgoingEnvelope") {
-          return notifyEntity(message)
+          return notifyAfterCommit(message, notifyEntity(message))
         }
         return Effect.andThen(
           notifyEntity(message),

@@ -104,6 +104,29 @@ describe("CircuitBreaker", () => {
       }))))
   })
 
+  describe("onRejection", () => {
+    it.effect("allow: a rejection alongside an admit defect still dies without running the call", () =>
+      Effect.gen(function*() {
+        const breaker = yield* CircuitBreaker.make({
+          tripPolicy: CircuitBreaker.consecutive(1),
+          openDuration: "1 minute"
+        })
+        let ran = false
+        const exit = yield* Effect.sync(() => {
+          ran = true
+        }).pipe(breaker.execute({ key: "admit-defect", onRejection: "allow" }), Effect.exit)
+
+        assert.isFalse(ran)
+        assert.isTrue(causeOf(exit).reasons.some((reason) => Cause.isDieReason(reason) && reason.defect === "bug"))
+      }).pipe(Effect.provide(memoryStoreWith({
+        admit: (key) =>
+          Effect.failCause(Cause.combine(
+            Cause.fail(new CircuitBreaker.CircuitBreakerError({ reason: new CircuitBreaker.CircuitHalfOpen({ key }) })),
+            Cause.die("bug")
+          ))
+      }))))
+  })
+
   describe("classify", () => {
     it.effect("a classifier defect records Ignored and the call dies with the combined cause", () =>
       Effect.gen(function*() {
@@ -129,6 +152,34 @@ describe("CircuitBreaker", () => {
         assert.deepStrictEqual(Cause.findError(causeOf(died)), Result.succeed("boom"))
         assert.deepStrictEqual(Cause.findDefect(causeOf(died)), Result.succeed("died"))
         assert.strictEqual((yield* breaker.state("defect"))._tag, "Closed")
+      }).pipe(Effect.provide(CircuitBreaker.layerStoreMemory())))
+
+    it.effect("receives the admission's probe flag, so an outcome ignored when closed can reopen a probe", () =>
+      Effect.gen(function*() {
+        const breaker = yield* CircuitBreaker.make({
+          tripPolicy: CircuitBreaker.consecutive(1),
+          openDuration: "1 minute"
+        })
+        const probes: Array<boolean> = []
+        const rateLimited = Effect.fail("rate limited").pipe(
+          breaker.execute({
+            key: "probe",
+            classify: (_exit, { probe }) => {
+              probes.push(probe)
+              return probe ? CircuitBreaker.failure() : CircuitBreaker.ignored
+            }
+          }),
+          Effect.ignore
+        )
+
+        yield* rateLimited
+        assert.strictEqual((yield* breaker.state("probe"))._tag, "Closed")
+        yield* Effect.fail("boom").pipe(breaker.execute({ key: "probe" }), Effect.ignore)
+        yield* TestClock.adjust("2 minutes")
+        yield* rateLimited
+
+        assert.deepStrictEqual(probes, [false, true])
+        assert.strictEqual((yield* breaker.state("probe"))._tag, "Open")
       }).pipe(Effect.provide(CircuitBreaker.layerStoreMemory())))
   })
 

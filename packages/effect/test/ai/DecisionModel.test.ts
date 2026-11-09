@@ -81,6 +81,41 @@ const unanswered = (outcome: Result.Result<unknown, Decision.Unanswered>) => {
   return Result.isFailure(outcome) ? outcome.failure : undefined
 }
 
+const Scene = Schema.Struct({
+  photo: Decision.Image,
+  frames: Schema.Array(Schema.Struct({ frame: Decision.Image }))
+})
+
+const FindMug = Decision.make({
+  input: Scene,
+  decisions: {
+    mug: Decision.locate({ image: "photo", instructions: "the coffee mug" })
+  }
+})
+
+const png: DecisionModel.Image = { mediaType: "image/png", data: "iVBORw0KGgo=" }
+
+const scene = { photo: png, frames: [{ frame: png }] }
+
+const locateWith = (
+  mug: unknown,
+  onCall: (options: DecisionModel.ProviderOptions) => void = () => {}
+) =>
+  Layer.effect(
+    DecisionModel.DecisionModel,
+    DecisionModel.make({
+      supportsImages: true,
+      supportsLocate: true,
+      decide: (options) => {
+        onCall(options)
+        return Effect.succeed({
+          answers: { mug: mug as DecisionModel.ProviderAnswer },
+          usage: { inputTokens: undefined, outputTokens: undefined }
+        })
+      }
+    })
+  )
+
 class Redactor extends Context.Service<Redactor, {
   readonly redact: (value: string) => string
 }>()("Redactor") {}
@@ -162,7 +197,7 @@ describe("DecisionModel", () => {
       assert.strictEqual(calls.length, 1)
       assert.strictEqual(calls[0].state, "Help now")
       assert.strictEqual(calls[0].decisions, definition.decisions)
-      assert.strictEqual(calls[0].decisions.urgent.criteria, undefined)
+      assert.strictEqual((calls[0].decisions.urgent as Decision.Probability).criteria, undefined)
       assert.deepStrictEqual(answers, { urgent: { probability: 0.9 } })
     }).pipe(
       Effect.provide(makeLayer((options) => {
@@ -375,26 +410,41 @@ describe("DecisionModel", () => {
     )
   })
 
-  it.effect("forwards images to an image-capable provider", () => {
-    const images: ReadonlyArray<DecisionModel.Image> = [
-      { mediaType: "image/png", data: new Uint8Array([137, 80, 78, 71]) },
-      { mediaType: "image/jpeg", data: "/9j/4AAQ" },
-      { mediaType: "image/webp", data: new URL("https://example.com/image.webp") }
-    ]
+  it.effect("replaces input images with references and sends each distinct image once", () => {
+    const calls: Array<DecisionModel.ProviderOptions> = []
+    const Describe = Decision.make({
+      input: Scene,
+      decisions: { urgent: Decision.probability({ instructions: "`photo` shows a fire" }) }
+    })
+    const bytes: DecisionModel.Image = { mediaType: "image/png", data: new Uint8Array([137, 80, 78, 71]) }
+    const remote: DecisionModel.Image = { mediaType: "image/webp", data: new URL("https://example.com/image.webp") }
 
     return Effect.gen(function*() {
-      const { answers } = yield* DecisionModel.decide(TicketTriage, { input: ticket, images })
+      yield* DecisionModel.decide(Describe, { input: { photo: bytes, frames: [{ frame: bytes }, { frame: remote }] } })
 
-      assert.strictEqual(answers.urgent.probability, 0.9)
+      const [first, second] = calls[0].images ?? []
+      assert.deepStrictEqual(calls[0].state, {
+        photo: first.reference,
+        frames: [{ frame: first.reference }, { frame: second.reference }]
+      })
+      assert.notStrictEqual(first.reference, second.reference)
+      assert.deepStrictEqual(calls[0].images, [
+        { reference: first.reference, path: ["photo"], image: { mediaType: "image/png", data: "iVBORw==" } },
+        {
+          reference: second.reference,
+          path: ["frames", 1, "frame"],
+          image: { mediaType: "image/webp", data: new URL("https://example.com/image.webp") }
+        }
+      ])
     }).pipe(
       Effect.provide(Layer.effect(
         DecisionModel.DecisionModel,
         DecisionModel.make({
           supportsImages: true,
           decide: (options) => {
-            assert.deepStrictEqual(options.images, images)
+            calls.push(options)
             return Effect.succeed({
-              answers: triageAnswers,
+              answers: { urgent: { _tag: "Probability", probability: 0.9 } },
               usage: { inputTokens: undefined, outputTokens: undefined }
             })
           }
@@ -408,12 +458,7 @@ describe("DecisionModel", () => {
       `rejects images with InvalidUserInputError when supportsImages is ${supportsImages}`,
       () =>
         Effect.gen(function*() {
-          const error = yield* failureOf(
-            DecisionModel.decide(TicketTriage, {
-              input: ticket,
-              images: [{ mediaType: "image/png", data: "iVBORw0KGgo=" }]
-            })
-          )
+          const error = yield* failureOf(DecisionModel.decide(FindMug, { input: scene }))
 
           assert.isTrue(AiError.isAiError(error))
           assert.strictEqual(error?.reason._tag, "InvalidUserInputError")
@@ -427,17 +472,74 @@ describe("DecisionModel", () => {
     )
   }
 
-  for (const images of [undefined, []]) {
-    it.effect(`allows ${images === undefined ? "omitted" : "empty"} images for a text-only provider`, () =>
-      Effect.gen(function*() {
-        const { answers } = yield* DecisionModel.decide(TicketTriage, { input: ticket, images })
+  it.effect("omits images for an input without image fields", () =>
+    Effect.gen(function*() {
+      const { answers } = yield* DecisionModel.decide(TicketTriage, { input: ticket })
 
-        assert.strictEqual(answers.urgent.probability, 0.9)
-      }).pipe(Effect.provide(makeLayer((options) => {
-        assert.strictEqual(options.images, undefined)
-        return Effect.succeed({ answers: triageAnswers, usage: { inputTokens: undefined, outputTokens: undefined } })
-      }))))
+      assert.strictEqual(answers.urgent.probability, 0.9)
+    }).pipe(Effect.provide(makeLayer((options) => {
+      assert.isFalse("images" in options)
+      return Effect.succeed({ answers: triageAnswers, usage: { inputTokens: undefined, outputTokens: undefined } })
+    }))))
+
+  it.effect("forwards locate decisions to a locate-capable provider and returns a copy of the box", () => {
+    const calls: Array<DecisionModel.ProviderOptions> = []
+    const box = { left: 0.44, top: 0.25, right: 0.84, bottom: 0.82 }
+
+    return Effect.gen(function*() {
+      const { answers } = yield* DecisionModel.decide(FindMug, { input: scene })
+
+      assert.strictEqual(calls[0].decisions, FindMug.decisions)
+      assert.deepStrictEqual(answers, { mug: { box, confidence: 0.92 } })
+    }).pipe(Effect.provide(locateWith(
+      { _tag: "Locate", box: { ...box, extra: 1 }, confidence: 0.92, extra: "discard" },
+      (options) => calls.push(options)
+    )))
+  })
+
+  for (
+    const [name, supportsLocate, definition] of [
+      ["a provider without supportsLocate", undefined, FindMug],
+      [
+        "a path past the end of an array",
+        true,
+        Decision.make({
+          input: Scene,
+          decisions: { mug: Decision.locate({ image: "frames[1].frame", instructions: "the coffee mug" }) }
+        })
+      ]
+    ] as const
+  ) {
+    it.effect(`rejects locate decisions with InvalidUserInputError for ${name}`, () =>
+      Effect.gen(function*() {
+        const error = yield* failureOf(
+          DecisionModel.decide<typeof Scene, { mug: Decision.Locate }>(definition, { input: scene })
+        )
+
+        assert.strictEqual(error?.reason._tag, "InvalidUserInputError")
+      }).pipe(Effect.provide(Layer.effect(
+        DecisionModel.DecisionModel,
+        DecisionModel.make({
+          supportsImages: true,
+          supportsLocate,
+          decide: () => Effect.die("A rejected locate decision must not reach the provider")
+        })
+      ))))
   }
+
+  it.effect("decideSettled rejects a locate decision for a provider without supportsLocate", () =>
+    Effect.gen(function*() {
+      const error = yield* failureOf(DecisionModel.decideSettled(FindMug, { input: scene }))
+
+      assert.strictEqual(error?.reason._tag, "InvalidUserInputError")
+      assert.strictEqual(error?.method, "decideSettled")
+    }).pipe(Effect.provide(Layer.effect(
+      DecisionModel.DecisionModel,
+      DecisionModel.make({
+        supportsImages: true,
+        decide: () => Effect.die("A rejected locate decision must not reach the provider")
+      })
+    ))))
 
   it.effect("a string input is passed to the provider as a string state", () => {
     const states: Array<unknown> = []
@@ -949,4 +1051,69 @@ describe("Decision validation contracts", () => {
       assert.deepStrictEqual(answers, expectedAnswers)
     }).pipe(Effect.provide(succeedWith(raw)))
   })
+
+  for (
+    const [name, box] of [
+      ["the full image", { left: 0, top: 0, right: 1, bottom: 1 }],
+      ["a zero-area box", { left: 0.5, top: 0.5, right: 0.5, bottom: 0.5 }]
+    ] as const
+  ) {
+    it.effect(`locate accepts ${name}`, () =>
+      Effect.gen(function*() {
+        const { answers } = yield* DecisionModel.decide(FindMug, { input: scene })
+
+        assert.deepStrictEqual(answers.mug, { box })
+      }).pipe(Effect.provide(locateWith({ _tag: "Locate", box }))))
+  }
+
+  const box = { left: 0.44, top: 0.25, right: 0.84, bottom: 0.82 }
+  for (
+    const [name, answer] of [
+      ["a missing box", { _tag: "Locate" }],
+      ["an edge outside [0, 1]", { _tag: "Locate", box: { ...box, right: 1.01 } }],
+      ["crossed horizontal edges", { _tag: "Locate", box: { ...box, left: 0.9 } }],
+      ["crossed vertical edges", { _tag: "Locate", box: { ...box, bottom: 0.1 } }],
+      ["confidence outside [0, 1]", { _tag: "Locate", box, confidence: 2 }]
+    ] as const
+  ) {
+    it.effect(`locate rejects ${name}`, () =>
+      Effect.gen(function*() {
+        const error = yield* failureOf(DecisionModel.decide(FindMug, { input: scene }))
+
+        assert.strictEqual(error?.reason._tag, "InvalidOutputError")
+      }).pipe(Effect.provide(locateWith(answer))))
+  }
+
+  it.effect("decideSettled keeps a valid box beside an invalid one", () =>
+    Effect.gen(function*() {
+      const FindTwo = Decision.make({
+        input: Scene,
+        decisions: {
+          mug: Decision.locate({ image: "photo", instructions: "the coffee mug" }),
+          spoon: Decision.locate({ image: "photo", instructions: "the spoon" })
+        }
+      })
+      const { outcomes } = yield* DecisionModel.decideSettled(FindTwo, { input: scene })
+
+      assert.deepStrictEqual(outcomes.mug, Result.succeed({ box }))
+      assert.deepStrictEqual(unanswered(outcomes.spoon), {
+        _tag: "Unanswered",
+        reason: "Invalid",
+        description: "Provider returned a box with crossed edges for decision \"spoon\""
+      })
+    }).pipe(Effect.provide(Layer.effect(
+      DecisionModel.DecisionModel,
+      DecisionModel.make({
+        supportsImages: true,
+        supportsLocate: true,
+        decide: () =>
+          Effect.succeed({
+            answers: {
+              mug: { _tag: "Locate", box },
+              spoon: { _tag: "Locate", box: { ...box, left: 0.9 } }
+            },
+            usage: { inputTokens: undefined, outputTokens: undefined }
+          })
+      })
+    ))))
 })

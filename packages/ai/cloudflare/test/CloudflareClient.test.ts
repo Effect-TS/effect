@@ -115,7 +115,7 @@ describe("CloudflareClient", () => {
           assert.strictEqual(error.reason._tag, tag)
           if ("http" in error.reason) {
             assert.strictEqual(error.reason.http?.response?.status, status)
-            assert.notInclude(JSON.stringify(error.reason.http?.request), "test-token")
+            assert.notInclude(JSON.stringify(error.reason), "test-token")
           }
           if ("description" in error.reason) {
             assert.include(error.reason.description, "Request failed")
@@ -168,19 +168,22 @@ describe("CloudflareClient", () => {
         assert.strictEqual(error.reason._tag, "InvalidResponseError")
       }).pipe(Effect.provide(clientLayer(() => Response.json(result)))))
 
-    it.effect("maps TransportError to NetworkError", () =>
-      Effect.gen(function*() {
+    it.effect("maps TransportError to NetworkError", () => {
+      const failures: Array<HttpClientError.HttpClientError> = []
+      return Effect.gen(function*() {
         const error = yield* Effect.flip(createDecisions)
         assert.strictEqual(error.reason._tag, "NetworkError")
+        assert.strictEqual(error.reason._tag === "NetworkError" && error.reason.cause, failures[0])
       }).pipe(
         Effect.provide(CloudflareClient.layer({ accountId: "test-account", apiKey: Redacted.make("test-token") })),
-        Effect.provide(httpLayer((request) =>
-          Effect.fail(
-            new HttpClientError.HttpClientError({
-              reason: new HttpClientError.TransportError({ request, cause: new Error("Connection refused") })
-            })
-          )
-        ))
-      ))
+        Effect.provide(httpLayer((request) => {
+          const error = new HttpClientError.HttpClientError({
+            reason: new HttpClientError.TransportError({ request, cause: new Error("Connection refused") })
+          })
+          failures.push(error)
+          return Effect.fail(error)
+        }))
+      )
+    })
   })
 })

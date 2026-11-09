@@ -97,6 +97,20 @@ describe("Statement", () => {
     ])
   })
 
+  it("binds plain objects shaped like fragments or segments as parameters", () => {
+    const sql = Statement.make({} as any, Statement.makeCompilerSqlite(), [], undefined)
+    const fragmentLike = {
+      "~effect/sql/Statement/Fragment": "~effect/sql/Statement/Fragment",
+      segments: [{ _tag: "Literal", value: "1=1" }]
+    }
+    const segmentLike = { _tag: "Literal", value: "1=1" }
+
+    assert.deepStrictEqual(sql`SELECT ${fragmentLike}, ${segmentLike}`.compile(), [
+      "SELECT ?, ?",
+      [fragmentLike, segmentLike]
+    ])
+  })
+
   it("renumbers a cached returning fragment", () => {
     const sql = Statement.make(
       Effect.void as any,

@@ -16,7 +16,7 @@ import * as Duration from "../Duration.ts"
 import * as Effect from "../Effect.ts"
 import * as Exit from "../Exit.ts"
 import { identity } from "../Function.ts"
-import { sqlCleanupBatchSize } from "../internal/persistence.ts"
+import { escapeRedisGlob, sqlCleanupBatchSize, storeNamespace } from "../internal/persistence.ts"
 import * as Layer from "../Layer.ts"
 import * as PrimaryKey from "../PrimaryKey.ts"
 import * as Schedule from "../Schedule.ts"
@@ -377,7 +377,7 @@ export const layerBackingSqlMultiTable: Layer.Layer<
       )
 
       type UpsertFn = (
-        entries: Array<{ id: string; value: string; expires: number | null }>
+        entries: Arr.NonEmptyReadonlyArray<{ id: string; value: string; expires: number | null }>
       ) => Effect.Effect<unknown, SqlError>
 
       const upsert = sql.onDialectOrElse({
@@ -492,7 +492,7 @@ export const layerBackingSqlMultiTable: Layer.Layer<
         setMany: (entries) =>
           Effect.suspend(() => {
             try {
-              const encoded = entries.map(([key, value, ttl]) => ({
+              const encoded = Arr.map(entries, ([key, value, ttl]) => ({
                 id: key,
                 value: JSON.stringify(value),
                 expires: unsafeTtlToExpires(clock, ttl)
@@ -716,7 +716,7 @@ export const layerBackingSql: Layer.Layer<
   )
 
   type UpsertFn = (
-    entries: Array<{ store_id: string; id: string; value: string; expires: number | null }>
+    entries: Arr.NonEmptyReadonlyArray<{ store_id: string; id: string; value: string; expires: number | null }>
   ) => Effect.Effect<unknown, SqlError>
 
   const upsert = sql.onDialectOrElse({
@@ -841,7 +841,7 @@ export const layerBackingSql: Layer.Layer<
         setMany: (entries) =>
           Effect.suspend(() => {
             try {
-              const encoded = entries.map(([key, value, ttl]) => ({
+              const encoded = Arr.map(entries, ([key, value, ttl]) => ({
                 store_id: storeId,
                 id: key,
                 value: JSON.stringify(value),
@@ -894,8 +894,10 @@ export const layerBackingSql: Layer.Layer<
  *
  * **Details**
  *
- * Each store id is used as a key prefix, values are JSON-encoded, and finite
- * TTLs are stored with Redis expiration.
+ * Entries are stored under `<storeId>:<key>`, with `%` and `:` in the store id
+ * percent-encoded so store namespaces cannot overlap. Values are JSON-encoded,
+ * finite TTLs are stored with Redis expiration, and `clear` only removes keys
+ * in the store's namespace.
  *
  * @stability unstable
  * @category layers
@@ -910,9 +912,10 @@ export const layerBackingRedis: Layer.Layer<
   const setMany = redis.eval(setManyRedis)
 
   return BackingPersistence.of({
-    make: (prefix) =>
+    make: (storeId) =>
       Effect.sync(() => {
-        const prefixed = (key: string) => `${prefix}:${key}`
+        const namespace = storeNamespace(storeId)
+        const prefixed = (key: string) => `${namespace}${key}`
         const parse = (str: string | null) => {
           if (str === null) {
             return Effect.undefined
@@ -1007,7 +1010,7 @@ export const layerBackingRedis: Layer.Layer<
               redis.send("DEL", prefixed(key)),
               ({ cause }) => new PersistenceError({ message: `Failed to remove key ${key} from Redis`, cause })
             ),
-          clear: redis.send<Array<string>>("KEYS", `${prefix}:*`).pipe(
+          clear: redis.send<Array<string>>("KEYS", `${escapeRedisGlob(namespace)}*`).pipe(
             Effect.flatMap((keys) => keys.length === 0 ? Effect.void : redis.send("DEL", ...keys)),
             Effect.mapError(({ cause }) =>
               new PersistenceError({
@@ -1062,8 +1065,12 @@ end
  *
  * **Details**
  *
- * Each store id becomes a key prefix, and values are stored as JSON with
- * optional expiration timestamps.
+ * Entries are stored under `<storeId>:<key>`, with `%` and `:` in the store id
+ * percent-encoded so store namespaces cannot overlap. Values are stored as JSON
+ * with optional expiration timestamps.
+ *
+ * `clear` uses `KeyValueStore.clearPrefix` to remove only the store's entries,
+ * so the backing store must support it.
  *
  * @stability unstable
  * @category layers
@@ -1079,7 +1086,7 @@ export const layerBackingKvs: Layer.Layer<
   return BackingPersistence.of({
     make: (storeId) =>
       Effect.sync(() => {
-        const store = KeyValueStore.prefix(backing, storeId)
+        const store = KeyValueStore.prefix(backing, storeNamespace(storeId))
         const get = (key: string) =>
           Effect.flatMap(
             Effect.mapError(

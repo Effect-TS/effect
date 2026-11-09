@@ -140,6 +140,9 @@ export interface ChildProcessHandle {
    *
    * **Details**
    *
+   * Available for `"input"` and `"duplex"` file descriptors. The write side is
+   * ended when the sink completes.
+   *
    * If a file descriptor is accessed that was not configured, returns a drain
    * `Sink`.
    */
@@ -149,6 +152,8 @@ export interface ChildProcessHandle {
    * `ChildProcessOptions.additionalFds`.
    *
    * **Details**
+   *
+   * Available for `"output"` and `"duplex"` file descriptors.
    *
    * If a file descriptor is accessed that was not configured, returns an empty
    * `Stream`.

@@ -29,6 +29,19 @@ ChildProcessSpawnerTest.suite("NodeChildProcessSpawner", NodeServices, {
   processGroups: true
 })
 
+describe.skipIf(process.platform === "win32")("error descriptions", () => {
+  it.effect("quote arguments and escape control characters", () =>
+    Effect.gen(function*() {
+      const error = yield* Effect.flip(ChildProcess.make("nonexistent-command-12345", ["a b", "it's", "\u001b[2J"]))
+
+      assert.strictEqual(error.reason._tag, "NotFound")
+      assert.strictEqual(
+        error.reason._tag === "NotFound" ? error.reason.pathOrDescriptor : undefined,
+        "nonexistent-command-12345 'a b' 'it'\\''s' '\\u001b[2J'"
+      )
+    }).pipe(Effect.provide(NodeServices)))
+})
+
 describe("Windows cleanup", { concurrent: false }, () => {
   for (const signal of [false, true]) {
     it.skipIf(signal && process.platform === "win32")(
@@ -457,6 +470,20 @@ it.live("scope release returns when stdout is unread and backpressured", () =>
         "process.stdout.write(\"x\".repeat(1024 * 1024)); setInterval(() => {}, 1000)"
       ], { stdin: "ignore" })
       yield* Effect.sleep("100 millis")
+    })))
+
+    assert.isBelow(releaseMillis, 2_000)
+  }).pipe(Effect.provide(NodeServices)))
+
+it.live("scope release closes stdin for a child that drains it on the kill signal", () =>
+  Effect.gen(function*() {
+    const releaseMillis = yield* timed(Effect.scoped(Effect.gen(function*() {
+      const handle = yield* ChildProcess.make(process.execPath, [
+        "-e",
+        // Exits with EOF on SIGTERM, or after 3 seconds if stdin stays open.
+        "process.on(\"SIGTERM\", () => process.stdin.on(\"end\", () => process.exit(0)).resume()); console.log(\"READY\"); setTimeout(() => process.exit(1), 3_000)"
+      ], { stdin: Stream.never })
+      yield* Stream.runHead(handle.stdout)
     })))
 
     assert.isBelow(releaseMillis, 2_000)

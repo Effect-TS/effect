@@ -440,9 +440,15 @@ class RegistryImpl implements AtomRegistry {
     const node = this.ensureNode(atom)
     if (options?.immediate) {
       f(node.value())
-    } else if (node.state === NodeState.stale) {
-      // a listener hears the next change, which only reaches an up-to-date node
-      node.value()
+    } else {
+      // build the node so the listener hears its next change. A failed build
+      // is left for the next read to report; an error raised after the value
+      // is committed has no later read to report it, so it is rethrown
+      try {
+        node.value()
+      } catch (error) {
+        if ((node.state & NodeFlags.waitingForValue) === 0) throw error
+      }
     }
     const remove = node.subscribe(function() {
       f(node._value)
@@ -474,7 +480,7 @@ class RegistryImpl implements AtomRegistry {
       this.removeNodeTimeout(node)
     }
     if (typeof key === "string" && this.preloadedSerializable.has(key)) {
-      const encoded = this.preloadedSerializable.get(key)
+      const encoded = this.preloadedSerializable.get(key) as Schema.Json
       this.preloadedSerializable.delete(key)
       const serializable = (atom as any as Atom.Serializable<any>)[SerializableTypeId]
       let decoded: A
@@ -729,11 +735,15 @@ class NodeImpl<A> {
   }
 
   build(): void {
-    // a lifetime still attached to a node that needs a value belongs to a
-    // build that failed, or to one that is running and is now superseded
-    this.disposeLifetime()
-    this.invalidatedDuringBuild = false
     const lifetime = makeLifetime(this)
+    // release a failed or superseded build; its finalizers run only once, so
+    // their failure is rethrown once this build commits
+    try {
+      this.disposeLifetime()
+    } catch (error) {
+      lifetime.failure = error
+    }
+    this.invalidatedDuringBuild = false
     this.lifetime = lifetime
     let value: A
     let read = false
@@ -1013,7 +1023,8 @@ interface Lifetime<A> extends Atom.AtomContext {
   readonly node: NodeImpl<A>
   // the parents read so far by the build; `undefined` once the build has returned
   reads: Set<NodeImpl<any>> | undefined
-  // a failure met while reading a parent that still produced its value
+  // rethrown once the build commits: a failure from releasing the previous
+  // lifetime, or from reading a parent that still produced its value
   failure: unknown
   finalizers: Array<() => void> | undefined
   disposed: boolean

@@ -162,6 +162,17 @@ describe("Model", () => {
     assert.deepStrictEqual(decodeJson({ active: false }), { active: false })
   })
 
+  it.effect("UuidV7Insert generates strictly increasing ids", () =>
+    Effect.gen(function*() {
+      const insert = Model.extract(
+        Model.Struct({ id: Model.UuidV7Insert(Schema.String.pipe(Schema.brand("Id"))) }),
+        "insert"
+      )
+      const ids: Array<string> = []
+      for (let i = 0; i < 2000; i++) ids.push((yield* insert.makeEffect({})).id)
+      assert.isTrue(ids.every((id, i) => i === 0 || ids[i - 1] < id))
+    }))
+
   it.effect("Overrideable defaults are constructor-only and accept explicit overrides", () =>
     Effect.gen(function*() {
       const User = Model.Struct({

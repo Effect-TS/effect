@@ -12,7 +12,6 @@
  */
 import * as Equal from "./Equal.ts"
 import * as Dual from "./Function.ts"
-import * as Hash from "./Hash.ts"
 import { type Inspectable, toJson } from "./Inspectable.ts"
 import { PipeInspectableProto } from "./internal/core.ts"
 import type { Pipeable } from "./Pipeable.ts"
@@ -75,15 +74,9 @@ export interface MutableRef<out T> extends Pipeable, Inspectable {
   current: T
 }
 
-const MutableRefProto: Omit<MutableRef<unknown>, "current"> & Equal.Equal = {
+const MutableRefProto: Omit<MutableRef<unknown>, "current"> = {
   [TypeId]: TypeId,
   ...PipeInspectableProto,
-  [Equal.symbol](that: unknown): boolean {
-    return this === that
-  },
-  [Hash.symbol](): number {
-    return Hash.random(this)
-  },
   toJSON<A>(this: MutableRef<A>) {
     return {
       _id: "MutableRef",

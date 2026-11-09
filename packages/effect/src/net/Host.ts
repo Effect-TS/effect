@@ -111,7 +111,8 @@ export type HostPortInput = HostPort | string | HostPortParts
 const hostError = (input: unknown, message: string): Result.Result<never, NetAddress.NetAddressError> =>
   Result.fail(new NetAddress.NetAddressError({ input, message }))
 
-const asciiNameCharacter = /^[a-z0-9_.-]$/i
+const asciiName = /^[a-z0-9_.-]*$/i
+const nonAscii = /[\u0080-\uffff]/g
 const labelPattern = /^[a-z0-9_](?:[a-z0-9_-]{0,61}[a-z0-9_])?$/
 const numericLabel = /^(?:\d+|0x[0-9a-f]*)$/
 
@@ -135,15 +136,9 @@ const validateDomainName = (name: string): string | undefined => {
 }
 
 const toAsciiDomainName = (input: string): string | undefined => {
-  let ascii = true
-  for (const character of input) {
-    if (character.charCodeAt(0) < 0x80) {
-      if (!asciiNameCharacter.test(character)) return undefined
-    } else {
-      ascii = false
-    }
-  }
-  if (ascii) return input.toLowerCase()
+  if (asciiName.test(input)) return input.toLowerCase()
+  // Check the composed form, so that `=\u0338` is read as `≠`
+  if (!asciiName.test(input.normalize("NFC").replace(nonAscii, ""))) return undefined
   try {
     return new URL(`http://${input}`).hostname
   } catch {

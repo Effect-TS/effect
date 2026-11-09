@@ -333,6 +333,51 @@ export const suite = (
         assert.strictEqual(reopened._tag === "Open" && reopened.consecutiveOpenings, 2)
       })))
 
+    it.effect("onRejection allow runs a refused call unrecorded, while an admitted call records and can take the probe", () =>
+      Effect.scoped(Effect.gen(function*() {
+        const key = "allow"
+        const breaker = yield* CircuitBreaker.make({
+          tripPolicy: CircuitBreaker.consecutive(1),
+          openDuration: "200 millis"
+        })
+        assert.strictEqual(
+          yield* Effect.flip(Effect.fail("boom").pipe(breaker.execute({ key, onRejection: "allow" }))),
+          "boom"
+        )
+        assert.strictEqual((yield* breaker.state(key))._tag, "Open")
+
+        assert.strictEqual((yield* rejection(Effect.void.pipe(breaker.execute({ key }))))._tag, "CircuitOpen")
+        let ran = false
+        const value = yield* Effect.sync(() => {
+          ran = true
+          return 1
+        }).pipe(breaker.execute({ key, onRejection: "allow" }))
+        assert.isTrue(ran)
+        assert.strictEqual(value, 1)
+
+        // Another call owns the probe, so the allowed failure cannot reopen.
+        yield* advance("300 millis")
+        const probe = yield* held(breaker, key, Effect.void)
+        assert.strictEqual(
+          yield* Effect.flip(Effect.fail("boom").pipe(breaker.execute({ key, onRejection: "allow" }))),
+          "boom"
+        )
+        assert.deepStrictEqual(yield* breaker.state(key), {
+          _tag: "HalfOpen",
+          key,
+          probing: true,
+          consecutiveOpenings: 1
+        })
+        assert.isTrue(Exit.isSuccess(yield* probe.release))
+        assert.deepStrictEqual(yield* breaker.state(key), { _tag: "Closed", key })
+
+        // With the probe slot free, the allowed call is the probe.
+        yield* fail(breaker, key)
+        yield* advance("300 millis")
+        yield* Effect.void.pipe(breaker.execute({ key, onRejection: "allow" }))
+        assert.deepStrictEqual(yield* breaker.state(key), { _tag: "Closed", key })
+      })))
+
     // Short enough for live-time stores to run.
     it.layer(layer({ idleTimeToLive: "400 millis" }))((it) => {
       it.effect("idle expiry drops a key before a longer reset window ends and its next admit starts at count 0", () =>

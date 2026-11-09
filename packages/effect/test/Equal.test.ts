@@ -154,6 +154,16 @@ describe("Equal.equals", () => {
       expect(Equal.equals(obj1, obj2)).toBe(false)
     })
 
+    // The protocol keys are strings, so data can carry them without implementing the protocols.
+    it("should compare non-callable protocol keys as data", () => {
+      for (const key of [Equal.symbol, Hash.symbol]) {
+        assert.isTrue(Equal.equals({ [key]: "v1" }, { [key]: "v1" }), key)
+        assert.isFalse(Equal.equals({ [key]: "v1" }, { [key]: "v2" }), key)
+      }
+      assert.isFalse(Equal.isEqual({ [Equal.symbol]: "v1" }))
+      assert.isTrue(Equal.isEqual(new Key("a")))
+    })
+
     describe("symbol properties", () => {
       it("should return true for objects with identical symbol keys and values", () => {
         const sym1 = Symbol("test")
@@ -1163,6 +1173,23 @@ describe("Equal.equals", () => {
       // Even though stack traces are different, errors should be equal
       expect(error1.stack).not.toBe(error2.stack)
       expect(Equal.equals(error1, error2)).toBe(true)
+    })
+
+    const withSiteMetadata = (line: number, enumerable: boolean): Error => {
+      const error = new Error("same message")
+      const metadata = { line, column: line, sourceURL: `file${line}.ts`, originalLine: line, originalColumn: line }
+      for (const [key, value] of Object.entries(metadata)) {
+        Object.defineProperty(error, key, { value, enumerable, writable: true, configurable: true })
+      }
+      return error
+    }
+
+    it("should ignore non-enumerable construction-site metadata (JavaScriptCore)", () => {
+      assert.isTrue(Equal.equals(withSiteMetadata(1, false), withSiteMetadata(2, false)))
+    })
+
+    it("should compare enumerable fields named like construction-site metadata", () => {
+      assert.isFalse(Equal.equals(withSiteMetadata(1, true), withSiteMetadata(2, true)))
     })
   })
 

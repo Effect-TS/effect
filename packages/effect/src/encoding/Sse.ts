@@ -308,9 +308,10 @@ export function makeParser(onParse: (event: AnyEvent) => void, options?: DecodeO
   }
 
   function feed(chunk: string): SseError | undefined {
-    // Strip any UTF-8 byte order mark (BOM) at the start of the stream.
-    // Note that we do not strip any non - UTF8 BOM, as eventsource streams are
-    // always decoded as UTF8 as per the specification.
+    // Empty chunks must not consume the leading BOM check below
+    if (chunk.length === 0) return
+
+    // Strip a UTF-8 byte order mark (BOM) at the start of the stream
     if (isFirstChunk && chunk.startsWith(BOM)) {
       chunk = chunk.slice(BOM.length)
     }
@@ -666,7 +667,9 @@ export type AnyEvent = Event | Retry
  * **Details**
  *
  * It renders `Event` values as `id`, `event`, and `data` lines and renders
- * `Retry` values as `retry:` directives.
+ * `Retry` values as `retry:` directives. CR and LF are removed from `id` and
+ * `event`, and NUL is removed from `id`, so those values cannot inject fields
+ * or events.
  *
  * @stability unstable
  * @category encoding
@@ -678,10 +681,10 @@ export const encoder: Encoder = {
       case "Event": {
         let data = ""
         if (event.id !== undefined) {
-          data += `id: ${event.id}\n`
+          data += `id: ${event.id.replace(/[\r\n\0]/g, "")}\n`
         }
         if (event.event !== "message") {
-          data += `event: ${event.event}\n`
+          data += `event: ${event.event.replace(/[\r\n]/g, "")}\n`
         }
         data += `data: ${event.data.replace(/\r\n|\r|\n/g, "\ndata: ")}\n`
         return data + "\n"

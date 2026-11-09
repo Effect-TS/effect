@@ -208,7 +208,10 @@ export const statelessModernSuite = (
     })
   })
 
-export const statefulLegacySuite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConformanceLayer) =>
+export const statefulLegacySuite = (
+  protocol: McpProtocol.ProtocolAdapter<McpProtocol.ProtocolVersion, McpProtocol.StatefulRuntimeDescriptor>,
+  layer: McpConformanceLayer
+) =>
   it.layer(layer)(`Mcp Conformance (${protocol.protocolVersion})`, (it) => {
     describe("Base Protocol", () => {
       // https://modelcontextprotocol.io/specification/2025-11-25/basic#meta

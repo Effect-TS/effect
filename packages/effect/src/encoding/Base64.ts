@@ -4,6 +4,7 @@
  * @stability stable
  * @since 4.0.0
  */
+import * as base64 from "../internal/base64.ts"
 import * as Result from "../Result.ts"
 import { EncodingError } from "./EncodingError.ts"
 
@@ -69,7 +70,7 @@ export const encode: (input: Uint8Array | string) => string = (input) =>
  * @since 4.0.0
  */
 export const decode = (str: string): Result.Result<Uint8Array, EncodingError> => {
-  const stripped = stripCrlf(str)
+  const stripped = base64.stripCrlf(str)
   const length = stripped.length
   if (length % 4 !== 0) {
     return Result.fail(
@@ -94,9 +95,29 @@ export const decode = (str: string): Result.Result<Uint8Array, EncodingError> =>
     )
   }
 
+  const missingOctets = stripped.endsWith("==") ? 2 : stripped.endsWith("=") ? 1 : 0
+  const decodedLength = 3 * (length / 4) - missingOctets
+  const native = base64.decodeNative(stripped, decodedLength, undefined)
+  if (native) return Result.succeed(native)
+  if (native === null) {
+    // Locating the first invalid character directly is cheaper than rerunning
+    // the decoder. On JavaScriptCore the rerun also slows down sharply once the
+    // native call has thrown.
+    const invalid = invalidCharacter.exec(stripped)
+    if (invalid !== null) {
+      return Result.fail(
+        new EncodingError({
+          kind: "Decode",
+          module: "Base64",
+          input: stripped,
+          message: `Invalid character ${invalid[0]}`
+        })
+      )
+    }
+  }
+
   try {
-    const missingOctets = stripped.endsWith("==") ? 2 : stripped.endsWith("=") ? 1 : 0
-    const result = new Uint8Array(3 * (length / 4) - missingOctets)
+    const result = new Uint8Array(decodedLength)
     for (let i = 0, j = 0; i < length; i += 4, j += 3) {
       const buffer = getCode(stripped.charCodeAt(i)) << 18 |
         getCode(stripped.charCodeAt(i + 1)) << 12 |
@@ -208,11 +229,11 @@ const encodeLong = (bytes: Uint8Array): string => {
 }
 
 const encoder = new TextEncoder()
-const decoder = new TextDecoder()
-const stripCrlf = (str: string) => str.replace(/[\n\r]/g, "")
+const decoder = new TextDecoder("utf-8", { ignoreBOM: true })
 const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
 const alphabetCodes = encoder.encode(alphabet)
 const paddingCode = "=".charCodeAt(0)
+const invalidCharacter = /[^A-Za-z0-9+/=]/
 const codes = new Uint8Array(123).fill(255)
 for (let i = 0; i < alphabet.length; i++) codes[alphabet.charCodeAt(i)] = i
 codes["=".charCodeAt(0)] = 0

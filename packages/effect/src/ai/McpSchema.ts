@@ -1383,6 +1383,125 @@ export class ResourceUpdatedNotification extends Rpc.make("notifications/resourc
 }) {}
 
 // =============================================================================
+// Skills
+// =============================================================================
+
+/**
+ * Schema for a file of an Agent Skill served under the MCP Skills extension
+ * (SEP-2640), with the digest and size of its content.
+ *
+ * @stability unstable
+ * @category schemas
+ * @since 4.1.1
+ */
+export class SkillResource extends Schema.Class<SkillResource>(
+  "@effect/ai/McpSchema/SkillResource"
+)({
+  /**
+   * The resource URI of the file.
+   */
+  uri: Schema.String,
+  /**
+   * The SHA-256 digest of the file's bytes, as `sha256:` followed by 64
+   * lowercase hexadecimal digits.
+   */
+  digest: Schema.String.check(Schema.isPattern(/^sha256:[0-9a-f]{64}$/)),
+  /**
+   * The length of the file's bytes.
+   */
+  size: Schema.Natural
+}) {}
+
+/**
+ * Schema for the YAML frontmatter of an Agent Skill's `SKILL.md`, as the
+ * Agent Skills specification defines it (https://agentskills.io/specification).
+ *
+ * **Details**
+ *
+ * Fields the specification does not define are kept unchanged. `McpServer`
+ * checks a skill's frontmatter against this schema before serving it. The
+ * frontmatter of a {@link Skill} received from a server is only checked for
+ * the `name` and `description` that the Skills extension requires; decode it
+ * with this schema for the other fields.
+ *
+ * @stability unstable
+ * @category schemas
+ * @since 4.1.1
+ */
+export const SkillFrontmatter = Schema.StructWithRest(
+  Schema.Struct({
+    /**
+     * 1 to 64 lowercase letters, digits and hyphens, with no leading, trailing
+     * or consecutive hyphen. It names the directory holding `SKILL.md`.
+     */
+    name: Schema.String.check(Schema.isMaxLength(64), Schema.isPattern(/^[a-z0-9]+(?:-[a-z0-9]+)*$/)),
+    /**
+     * What the skill does and when to use it, in 1 to 1024 characters.
+     */
+    description: Schema.String.check(Schema.isNonEmpty(), Schema.isMaxLength(1024)),
+    /**
+     * The skill's license, or the name of a bundled license file.
+     */
+    license: Schema.optionalKey(Schema.String),
+    /**
+     * Environment requirements, in 1 to 500 characters.
+     */
+    compatibility: Schema.optionalKey(Schema.String.check(Schema.isNonEmpty(), Schema.isMaxLength(500))),
+    /**
+     * Additional properties not defined by the specification.
+     */
+    metadata: Schema.optionalKey(Schema.Record(Schema.String, Schema.String)),
+    /**
+     * Space-separated tools the skill asks to run without approval. Hosts must
+     * ignore it for a skill served over MCP unless the user approved the grant.
+     */
+    "allowed-tools": Schema.optionalKey(Schema.String)
+  }),
+  [UnknownObject]
+)
+
+/**
+ * The YAML frontmatter of an Agent Skill's `SKILL.md`.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.1.1
+ */
+export type SkillFrontmatter = typeof SkillFrontmatter.Type
+
+/**
+ * Schema for an Agent Skill served under the MCP Skills extension (SEP-2640),
+ * as `skills/list` and `skills/get` describe it.
+ *
+ * @stability unstable
+ * @category schemas
+ * @since 4.1.1
+ */
+export class Skill extends Schema.Class<Skill>(
+  "@effect/ai/McpSchema/Skill"
+)({
+  /**
+   * The resource URI of the skill's `SKILL.md`.
+   */
+  uri: Schema.String,
+  /**
+   * The YAML frontmatter of the skill's `SKILL.md`, as a JSON object, with
+   * every field the author wrote. See {@link SkillFrontmatter} for the fields
+   * the Agent Skills specification defines.
+   */
+  frontmatter: Schema.StructWithRest(
+    Schema.Struct({ name: Schema.String, description: Schema.String }),
+    [UnknownObject]
+  ),
+  /**
+   * Every file of the skill, `SKILL.md` included, or `"dynamic"` when the
+   * server generates the skill's content and publishes no digests.
+   */
+  resources: Schema.Union([Schema.Array(SkillResource), Schema.Literal("dynamic")]),
+  _meta: optional(UnknownObject)
+}) {}
+
+// =============================================================================
 // Prompts
 // =============================================================================
 

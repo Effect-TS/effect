@@ -190,6 +190,43 @@ describe("GraphQLProtocol.layerHttp", () => {
       }))
   }
 
+  for (const contentType of ["application/json", "application/graphql-response+json"]) {
+    it.effect(`a ${contentType} 503 with data and no errors is a TransportError, not a result`, () =>
+      Effect.gen(function*() {
+        const reason = yield* callViewer(() => graphqlResponse(viewerData, { status: 503, contentType })).pipe(
+          expectReason("TransportError")
+        )
+        assert.strictEqual(reason.status, 503)
+        assert.deepStrictEqual(reason.headers, Headers.fromInput({ "content-type": contentType }))
+        assert.isTrue(reason.isRetryable)
+      }))
+  }
+
+  it.effect("a 503 with data: null and no errors is a TransportError carrying its Retry-After", () =>
+    Effect.gen(function*() {
+      const reason = yield* callViewer(() =>
+        new Response(JSON.stringify({ data: null }), {
+          status: 503,
+          headers: { "content-type": "application/graphql-response+json", "retry-after": "30" }
+        })
+      ).pipe(expectReason("TransportError"))
+      assert.strictEqual(reason.status, 503)
+      assert.deepStrictEqual(reason.retryAfter, Duration.seconds(30))
+    }))
+
+  it.effect("a 500 with data and errors is a ResponseError even with partial: true", () =>
+    Effect.gen(function*() {
+      const reason = yield* GraphQLClient.make(ViewerGroup).pipe(
+        Effect.flatMap((client) => client.Viewer(undefined, { partial: true })),
+        Effect.provide(layerHttp(() =>
+          graphqlResponse({ ...viewerData, errors: [{ message: "boom", path: ["viewer"] }] }, { status: 500 })
+        )),
+        expectReason("ResponseError")
+      )
+      assert.strictEqual(reason.status, 500)
+      assert.isTrue(reason.isRetryable)
+    }))
+
   it.effect("a 429 with a GraphQL body is a ResponseError carrying a numeric Retry-After", () =>
     Effect.gen(function*() {
       const reason = yield* callViewer(() =>

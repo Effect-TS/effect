@@ -28,6 +28,20 @@ describe("McpSchema", () => {
     }
   })
 
+  it("should check the digest and size of a skill resource", () => {
+    const decode = Schema.decodeUnknownSync(McpSchema.SkillResource)
+    const valid = { uri: "skill://refunds/SKILL.md", digest: `sha256:${"0".repeat(64)}`, size: 0 }
+    assert.doesNotThrow(() => decode(valid))
+    for (
+      const invalid of [{ ...valid, digest: `sha256:${"A".repeat(64)}` }, { ...valid, digest: "sha256:0" }, {
+        ...valid,
+        size: -1
+      }]
+    ) {
+      assert.throws(() => decode(invalid), undefined, undefined, JSON.stringify(invalid))
+    }
+  })
+
   const decodeCreateMessage = Schema.decodeUnknownSync(McpSchema.CreateMessage.payloadSchema)
 
   it("allows create-message metadata to be omitted", () => {

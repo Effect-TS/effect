@@ -15,6 +15,7 @@ import * as HttpBody from "effect/http/HttpBody"
 import * as HttpClient from "effect/http/HttpClient"
 import * as HttpClientRequest from "effect/http/HttpClientRequest"
 import * as HttpClientResponse from "effect/http/HttpClientResponse"
+import * as HttpIncomingMessage from "effect/http/HttpIncomingMessage"
 import * as HttpPlatform from "effect/http/HttpPlatform"
 import * as HttpRouter from "effect/http/HttpRouter"
 import * as HttpServer from "effect/http/HttpServer"
@@ -485,6 +486,19 @@ describe("DenoHttpServer", () => {
       )
     }).pipe(Effect.provide(DenoHttpServer.layerTest)))
 
+  it.effect("returns 413 for a body over MaxBodySize", () =>
+    Effect.gen(function*() {
+      yield* HttpRouter.add(
+        "POST",
+        "/body",
+        HttpServerRequest.HttpServerRequest.use((request) => Effect.as(request.text, HttpServerResponse.empty())).pipe(
+          Effect.provideService(HttpIncomingMessage.MaxBodySize, ByteSize.bytes(4))
+        )
+      ).pipe(HttpRouter.serve, Layer.build)
+      const response = yield* HttpClient.post("/body", { body: HttpBody.text("12345") })
+      assert.strictEqual(response.status, 413)
+    }).pipe(Effect.provide(DenoHttpServer.layerTest)))
+
   it.effect("answers CONNECT with 501 without running the app", () =>
     Effect.gen(function*() {
       let calls = 0
@@ -521,6 +535,34 @@ describe("DenoHttpServer", () => {
       assert.strictEqual(statusLine.split(" ")[1], "501")
       assert.strictEqual(calls, 0)
     }).pipe(Effect.provide(DenoHttpServer.layerTest)))
+
+  it.effect("answers 503 while no app is served", () =>
+    Effect.gen(function*() {
+      const server = yield* DenoHttpServer.make({
+        hostname: "127.0.0.1",
+        port: 0,
+        disablePreemptiveShutdown: true,
+        onListen: () => {}
+      })
+      const serveScope = yield* Scope.fork(yield* Effect.scope)
+      const url = `http://127.0.0.1:${(server.address as NetAddress.InetAddress).port}`
+      const get = Effect.promise(async () => {
+        const response = await fetch(url, { headers: { connection: "close" } })
+        return { response, body: await response.text() }
+      })
+      const assertUnavailable = Effect.gen(function*() {
+        const { response } = yield* get
+        assert.strictEqual(response.status, 503)
+        assert.strictEqual(response.headers.get("cache-control"), "no-store")
+        assert.strictEqual(response.headers.get("retry-after"), "1")
+      })
+
+      yield* assertUnavailable
+      yield* server.serve(Effect.succeed(HttpServerResponse.text("served"))).pipe(Scope.provide(serveScope))
+      assert.strictEqual((yield* get).body, "served")
+      yield* Scope.close(serveScope, Exit.void)
+      yield* assertUnavailable
+    }))
 
   it.effect("file", () =>
     Effect.gen(function*() {

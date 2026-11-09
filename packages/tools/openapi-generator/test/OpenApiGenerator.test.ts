@@ -1,6 +1,7 @@
 import * as OpenApiGenerator from "@effect/openapi-generator/OpenApiGenerator"
 import { assert, describe, it } from "@effect/vitest"
 import * as Effect from "effect/Effect"
+import * as Exit from "effect/Exit"
 import { HttpApi, HttpApiEndpoint, HttpApiGroup, HttpApiSchema, OpenApi } from "effect/http-api"
 import type { OpenAPISpec, OpenAPISpecOperation, OpenAPISpecPathItem } from "effect/http-api/OpenApi"
 import * as HttpClient from "effect/http/HttpClient"
@@ -8,12 +9,12 @@ import * as HttpClientRequest from "effect/http/HttpClientRequest"
 import * as HttpClientResponse from "effect/http/HttpClientResponse"
 import type * as JsonSchema from "effect/JsonSchema"
 import * as Schema from "effect/Schema"
-import { spawnSync } from "node:child_process"
+import { spawn } from "node:child_process"
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs"
 import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
 
-// These integration checks start a fresh TypeScript compiler under CI load.
+// The first compile check starts the shared TypeScript compiler runs under CI load.
 const compilationTimeout = 60_000
 
 const assertRuntime = Effect.fnUntraced(function*(spec: OpenAPISpec, expected: string) {
@@ -80,14 +81,19 @@ const assertTypeOnlyIncludes = Effect.fnUntraced(function*(
   }
 }, Effect.provide(OpenApiGenerator.layerTransformerTs))
 
-function assertGeneratedClientsCompile(
-  spec: OpenAPISpec,
-  options: {
-    readonly exactOptionalPropertyTypes?: boolean | undefined
-    readonly formats?: ReadonlyArray<"httpclient" | "httpclient-type-only"> | undefined
-    readonly usage?: string | undefined
-  } = {}
-) {
+interface CompileOptions {
+  readonly exactOptionalPropertyTypes?: boolean | undefined
+  readonly formats?: ReadonlyArray<"httpclient" | "httpclient-type-only"> | undefined
+  readonly usage?: string | undefined
+}
+
+const repositoryRoot = join(dirname(fileURLToPath(import.meta.url)), "../../../..")
+
+// Every case is registered while the file is collected, so a single compiler
+// run per tsconfig variant can check all generated clients.
+const compileCases: Array<{ readonly spec: OpenAPISpec; readonly options: CompileOptions }> = []
+
+const generateClients = ({ options, spec }: (typeof compileCases)[number]) => {
   const generate = (
     format: "httpclient" | "httpclient-type-only",
     layer: typeof OpenApiGenerator.layerTransformerSchema
@@ -97,52 +103,138 @@ function assertGeneratedClientsCompile(
       return yield* generator.generate(spec, { name: "TestClient", format })
     }).pipe(Effect.provide(layer))
 
-  return Effect.gen(function*() {
-    const formats = options.formats ?? ["httpclient", "httpclient-type-only"]
-    const clients = yield* Effect.all(formats.map((format) =>
-      generate(
-        format,
-        format === "httpclient"
-          ? OpenApiGenerator.layerTransformerSchema
-          : OpenApiGenerator.layerTransformerTs
-      )
-    ))
+  const formats = options.formats ?? ["httpclient", "httpclient-type-only"]
+  return Effect.all(formats.map((format) =>
+    generate(
+      format,
+      format === "httpclient"
+        ? OpenApiGenerator.layerTransformerSchema
+        : OpenApiGenerator.layerTransformerTs
+    ).pipe(Effect.map((client) => `${client}\n${options.usage ?? ""}`))
+  ))
+}
+
+const runTsc = (configPath: string) =>
+  Effect.callback<{ readonly status: number | null; readonly output: string }>((resume) => {
+    const child = spawn(join(repositoryRoot, "node_modules/.bin/tsc"), ["-p", configPath, "--pretty", "false"], {
+      cwd: repositoryRoot
+    })
+    let output = ""
+    child.stdout.on("data", (chunk) => output += chunk)
+    child.stderr.on("data", (chunk) => output += chunk)
+    child.on("error", (error) => resume(Effect.die(error)))
+    child.on("close", (status) => resume(Effect.succeed({ status, output })))
+    return Effect.sync(() => child.kill())
+  })
+
+// Each diagnostic starts on an unindented line; indented lines continue the
+// previous diagnostic.
+const parseDiagnostics = (output: string) => {
+  const diagnostics: Array<string> = []
+  for (const line of output.split(/\r?\n/)) {
+    if (line === "") continue
+    if (/^\s/.test(line) && diagnostics.length > 0) {
+      diagnostics[diagnostics.length - 1] += `\n${line}`
+      continue
+    }
+    diagnostics.push(line)
+  }
+  return diagnostics
+}
+
+// Type-checks every case with one compiler run per tsconfig variant and
+// returns the diagnostics that fail each case. A syntax error in one file makes
+// tsc skip semantic checks for the whole program, so a failed run cannot show
+// which cases are clean; each of its cases is then checked on its own.
+const typeCheckCases = Effect.fnUntraced(
+  function*(
+    cases: ReadonlyArray<{ readonly sources: ReadonlyArray<string>; readonly exactOptionalPropertyTypes: boolean }>
+  ) {
     const directory = mkdtempSync(join(dirname(fileURLToPath(import.meta.url)), ".generated-clients-"))
-    try {
-      const files = clients.map((client, index) => {
-        const path = join(directory, `Client${index}.ts`)
-        writeFileSync(path, `${client}\n${options.usage ?? ""}`)
-        return path
-      })
-      const configPath = join(directory, "tsconfig.json")
-      writeFileSync(
-        configPath,
-        JSON.stringify({
-          compilerOptions: {
-            allowImportingTsExtensions: true,
-            exactOptionalPropertyTypes: options.exactOptionalPropertyTypes ?? true,
-            lib: ["ESNext", "DOM"],
-            module: "NodeNext",
-            noEmit: true,
-            skipLibCheck: true,
-            strict: true,
-            target: "ES2022",
-            types: [],
-            verbatimModuleSyntax: true
-          },
-          files
+    return yield* Effect.gen(function*() {
+      const files = cases.map(({ sources }, caseIndex) =>
+        sources.map((source, sourceIndex) => {
+          const path = join(directory, `Case${caseIndex}Client${sourceIndex}.ts`)
+          writeFileSync(path, source)
+          return path
         })
       )
-      const repositoryRoot = join(dirname(fileURLToPath(import.meta.url)), "../../../..")
-      const result = spawnSync(join(repositoryRoot, "node_modules/.bin/tsc"), ["-p", configPath, "--pretty", "false"], {
-        cwd: repositoryRoot,
-        encoding: "utf8"
-      })
-      assert.strictEqual(result.status, 0, `${result.stdout}${result.stderr}`)
-    } finally {
-      rmSync(directory, { recursive: true, force: true })
-    }
-  })
+      // Returns every diagnostic of one compiler run, or an empty list when it succeeds.
+      const check = (name: string, exactOptionalPropertyTypes: boolean, caseIndexes: ReadonlyArray<number>) => {
+        const configPath = join(directory, `tsconfig.${name}.json`)
+        writeFileSync(
+          configPath,
+          JSON.stringify({
+            compilerOptions: {
+              allowImportingTsExtensions: true,
+              exactOptionalPropertyTypes,
+              lib: ["ESNext", "DOM"],
+              module: "NodeNext",
+              noEmit: true,
+              skipLibCheck: true,
+              strict: true,
+              target: "ES2022",
+              types: [],
+              verbatimModuleSyntax: true
+            },
+            files: caseIndexes.flatMap((caseIndex) => files[caseIndex])
+          })
+        )
+        return runTsc(configPath).pipe(Effect.map(({ output, status }) => {
+          if (status === 0) return []
+          const diagnostics = parseDiagnostics(output)
+          return diagnostics.length === 0 ? [`tsc exited with ${status}`] : diagnostics
+        }))
+      }
+      const failures: Array<ReadonlyArray<string>> = cases.map(() => [])
+      const variants = [true, false].map((exactOptionalPropertyTypes) => ({
+        exactOptionalPropertyTypes,
+        caseIndexes: cases.flatMap((testCase, caseIndex) =>
+          testCase.exactOptionalPropertyTypes === exactOptionalPropertyTypes ? [caseIndex] : []
+        )
+      })).filter(({ caseIndexes }) => caseIndexes.length > 0)
+      yield* Effect.forEach(variants, ({ caseIndexes, exactOptionalPropertyTypes }) =>
+        Effect.gen(function*() {
+          const batch = yield* check(String(exactOptionalPropertyTypes), exactOptionalPropertyTypes, caseIndexes)
+          if (batch.length === 0) return
+          const isolated = yield* Effect.forEach(
+            caseIndexes,
+            (caseIndex) => check(`case${caseIndex}`, exactOptionalPropertyTypes, [caseIndex]),
+            { concurrency: 4 }
+          )
+          // If every case compiles alone, the failure comes from combining them, so it fails every case.
+          const combined = isolated.every((diagnostics) => diagnostics.length === 0)
+          caseIndexes.forEach((caseIndex, i) => {
+            failures[caseIndex] = combined ? batch : isolated[i]
+          })
+        }), { concurrency: "unbounded", discard: true })
+      return failures
+    }).pipe(Effect.ensuring(Effect.sync(() => rmSync(directory, { recursive: true, force: true }))))
+  }
+)
+
+const compileAll = Effect.gen(function*() {
+  const generated = yield* Effect.forEach(compileCases, (testCase) => Effect.exit(generateClients(testCase)))
+  const failures = yield* typeCheckCases(generated.map((exit, caseIndex) => ({
+    sources: Exit.isSuccess(exit) ? exit.value : [],
+    exactOptionalPropertyTypes: compileCases[caseIndex].options.exactOptionalPropertyTypes ?? true
+  })))
+  return { generated, failures }
+})
+
+const compiled = Effect.runSync(Effect.cached(compileAll))
+
+const itGeneratedClientsCompile = (name: string, spec: OpenAPISpec, options: CompileOptions = {}) => {
+  const caseIndex = compileCases.push({ spec, options }) - 1
+  it.effect(name, () =>
+    Effect.gen(function*() {
+      const result = yield* compiled
+      const generated = result.generated[caseIndex]
+      if (Exit.isFailure(generated)) {
+        return yield* Effect.failCause(generated.cause)
+      }
+      assert.strictEqual(result.failures[caseIndex].join("\n"), "")
+    }), compilationTimeout)
 }
 
 const assertHttpApiIncludes = Effect.fnUntraced(function*(
@@ -722,8 +814,7 @@ const cookieParameterSpec: OpenAPISpec = {
   tags: [{ name: "Greeting" }]
 }
 
-// spawnSync blocks this worker, so compilation must not consume another test's deadline.
-describe("OpenApiGenerator", { concurrent: false }, () => {
+describe("OpenApiGenerator", () => {
   describe("schema", () => {
     it.effect("get operation", () =>
       assertRuntime(
@@ -818,12 +909,12 @@ export type WithOptionalResponse<A, Config extends OperationConfig | undefined> 
   : Config extends { readonly includeResponse?: false | undefined } | undefined ? A
   : A | [A, HttpClientResponse.HttpClientResponse]
 
-export const make = (
-  httpClient: HttpClient.HttpClient,
+export const make = <E, R>(
+  httpClient: HttpClient.HttpClient.With<E, R>,
   options: {
-    readonly transformClient?: ((client: HttpClient.HttpClient) => Effect.Effect<HttpClient.HttpClient>) | undefined
+    readonly transformClient?: ((client: HttpClient.HttpClient.With<E, R>) => Effect.Effect<HttpClient.HttpClient.With<E, R>>) | undefined
   } = {}
-): TestClient => {
+): TestClient<E, R> => {
   const unexpectedStatus = (response: HttpClientResponse.HttpClientResponse) =>
     Effect.flatMap(
       Effect.orElseSucceed(response.json, () => "Unexpected status code"),
@@ -840,7 +931,7 @@ export const make = (
     )
   const withResponse = <Config extends OperationConfig>(config: Config | undefined) => (
     f: (response: HttpClientResponse.HttpClientResponse) => Effect.Effect<any, any>,
-  ): (request: HttpClientRequest.HttpClientRequest) => Effect.Effect<any, any> => {
+  ): (request: HttpClientRequest.HttpClientRequest) => Effect.Effect<any, any, R> => {
     const withOptionalResponse = (
       config?.includeResponse
         ? (response: HttpClientResponse.HttpClientResponse) => Effect.map(f(response), (a) => [a, response])
@@ -900,11 +991,11 @@ export const make = (
   }
 }
 
-export interface TestClient {
-  readonly httpClient: HttpClient.HttpClient
+export interface TestClient<E = HttpClientError.HttpClientError, R = never> {
+  readonly httpClient: HttpClient.HttpClient.With<E, R>
   readonly "getUser": {
-    <Config extends OperationConfig | undefined = undefined>(id: string, options: { readonly config: Config }): Effect.Effect<WithOptionalResponse<GetUser200, Config>, HttpClientError.HttpClientError | SchemaError>;
-    <Config extends OperationConfig | undefined = undefined>(id: string, options: { readonly config?: Config | undefined } | undefined): Effect.Effect<WithOptionalResponse<GetUser200, Config | undefined>, HttpClientError.HttpClientError | SchemaError>;
+    <Config extends OperationConfig | undefined = undefined>(id: string, options: { readonly config: Config }): Effect.Effect<WithOptionalResponse<GetUser200, Config>, E | HttpClientError.HttpClientError | SchemaError, R>;
+    <Config extends OperationConfig | undefined = undefined>(id: string, options: { readonly config?: Config | undefined } | undefined): Effect.Effect<WithOptionalResponse<GetUser200, Config | undefined>, E | HttpClientError.HttpClientError | SchemaError, R>;
   }
 }
 
@@ -1037,7 +1128,7 @@ export const TestClientError = <Tag extends string, E>(
         },
         [
           `import * as Sse from "effect/encoding/Sse"`,
-          `readonly "streamEventsSse": () => Stream.Stream<{ readonly event: string; readonly id: string | undefined; readonly data: StreamEvents200Sse }, HttpClientError.HttpClientError | SchemaError | Sse.Retry | Sse.SseError, typeof StreamEvents200Sse.DecodingServices>`,
+          `readonly "streamEventsSse": () => Stream.Stream<{ readonly event: string; readonly id: string | undefined; readonly data: StreamEvents200Sse }, E | HttpClientError.HttpClientError | SchemaError | Sse.Retry | Sse.SseError, R | typeof StreamEvents200Sse.DecodingServices>`,
           `"streamEventsSse": () => HttpClientRequest.get("/events").pipe(`,
           `sseRequest(StreamEvents200Sse)`,
           `schema: Schema.ConstraintDecoder<Type, DecodingServices>`
@@ -1099,7 +1190,7 @@ export const TestClientError = <Tag extends string, E>(
         [
           `"id": Schema.optionalKey(Schema.String), "event": Schema.Literal("message"), "data": Schema.String`,
           `"id": Schema.optionalKey(Schema.String), "event": Schema.Literal("effect/http-api/stream/failure"), "data": Schema.String`,
-          `readonly "streamEventsSse": () => Stream.Stream<StreamEvents200Sse, HttpClientError.HttpClientError | SchemaError | Sse.Retry | Sse.SseError, typeof StreamEvents200Sse.DecodingServices>`,
+          `readonly "streamEventsSse": () => Stream.Stream<StreamEvents200Sse, E | HttpClientError.HttpClientError | SchemaError | Sse.Retry | Sse.SseError, R | typeof StreamEvents200Sse.DecodingServices>`,
           `sseEventRequest(StreamEvents200Sse)`,
           `Stream.pipeThroughChannel(Sse.decodeSchema(schema))`
         ]
@@ -1183,17 +1274,17 @@ export const TestClientError = <Tag extends string, E>(
         `readonly "downloadArchive": {`,
         `<Config extends OperationConfig | undefined = undefined>(options: { readonly config: Config }): Effect.Effect<WithOptionalResponse<Uint8Array, Config>`,
         `<Config extends OperationConfig | undefined = undefined>(options: { readonly config?: Config | undefined } | undefined): Effect.Effect<WithOptionalResponse<Uint8Array, Config | undefined>`,
-        `readonly "downloadArchiveStream": () => Stream.Stream<Uint8Array, HttpClientError.HttpClientError>`,
-        `readonly "downloadAvatarStream": () => Stream.Stream<Uint8Array, HttpClientError.HttpClientError>`,
+        `readonly "downloadArchiveStream": () => Stream.Stream<Uint8Array, E | HttpClientError.HttpClientError, R>`,
+        `readonly "downloadAvatarStream": () => Stream.Stream<Uint8Array, E | HttpClientError.HttpClientError, R>`,
         `"downloadAvatar": (options: Parameters<TestClient["downloadAvatar"]>[0]) => HttpClientRequest.get("/avatar").pipe(
       withResponse(options?.config)(HttpClientResponse.matchStatus({
       "2xx": decodeBinary`,
-        `readonly "downloadCustomBinaryStream": () => Stream.Stream<Uint8Array, HttpClientError.HttpClientError>`,
+        `readonly "downloadCustomBinaryStream": () => Stream.Stream<Uint8Array, E | HttpClientError.HttpClientError, R>`,
         `"400": decodeError("DownloadMixedContent400", DownloadMixedContent400)`,
         `readonly "downloadMixedContent": {`,
         `<Config extends OperationConfig | undefined = undefined>(options: { readonly config: Config }): Effect.Effect<WithOptionalResponse<Uint8Array, Config>`,
         `<Config extends OperationConfig | undefined = undefined>(options: { readonly config?: Config | undefined } | undefined): Effect.Effect<WithOptionalResponse<Uint8Array, Config | undefined>`,
-        `readonly "downloadMixedContentStream": () => Stream.Stream<Uint8Array, HttpClientError.HttpClientError>`,
+        `readonly "downloadMixedContentStream": () => Stream.Stream<Uint8Array, E | HttpClientError.HttpClientError, R>`,
         `"200": () => Effect.void`,
         `"404": decodeVoidError("404")`,
         `"500": decodeVoidError("500")`,
@@ -1211,6 +1302,44 @@ export const TestClientError = <Tag extends string, E>(
         `"304": () => Effect.void`,
         `WithOptionalResponse<MixedSuccess200 | void, Config>`
       ]))
+
+    it.effect("emits included component schemas that no operation references", () =>
+      Effect.gen(function*() {
+        const generator = yield* OpenApiGenerator.OpenApiGenerator
+        const result = yield* generator.generate({
+          openapi: "3.1.0",
+          info: { title: "Test API", version: "1.0.0" },
+          paths: {
+            "/ping": {
+              get: {
+                operationId: "ping",
+                parameters: [],
+                responses: { 204: { description: "Pong" } },
+                tags: ["Ping"],
+                security: []
+              }
+            }
+          },
+          components: {
+            schemas: {
+              Legacy: {
+                type: "object",
+                properties: { value: { $ref: "#/components/schemas/LegacyValue" } },
+                required: ["value"]
+              },
+              LegacyValue: { type: "string" },
+              Unlisted: { type: "string" }
+            },
+            securitySchemes: {}
+          },
+          security: [],
+          tags: [{ name: "Ping" }]
+        }, { name: "TestClient", format: "httpclient", includeSchemas: ["Legacy"] })
+
+        assert.include(result, "export const Legacy = ")
+        assert.include(result, "export const LegacyValue = ")
+        assert.notInclude(result, "Unlisted")
+      }).pipe(Effect.provide(OpenApiGenerator.layerTransformerSchema)))
   })
 
   describe("type-only", () => {
@@ -1303,12 +1432,12 @@ export type WithOptionalResponse<A, Config extends OperationConfig | undefined> 
   : Config extends { readonly includeResponse?: false | undefined } | undefined ? A
   : A | [A, HttpClientResponse.HttpClientResponse]
 
-export const make = (
-  httpClient: HttpClient.HttpClient,
+export const make = <E, R>(
+  httpClient: HttpClient.HttpClient.With<E, R>,
   options: {
-    readonly transformClient?: ((client: HttpClient.HttpClient) => Effect.Effect<HttpClient.HttpClient>) | undefined
+    readonly transformClient?: ((client: HttpClient.HttpClient.With<E, R>) => Effect.Effect<HttpClient.HttpClient.With<E, R>>) | undefined
   } = {}
-): TestClient => {
+): TestClient<E, R> => {
   const unexpectedStatus = (response: HttpClientResponse.HttpClientResponse) =>
     Effect.flatMap(
       Effect.orElseSucceed(response.json, () => "Unexpected status code"),
@@ -1325,7 +1454,7 @@ export const make = (
     )
   const withResponse = <Config extends OperationConfig>(config: Config | undefined) => (
     f: (response: HttpClientResponse.HttpClientResponse) => Effect.Effect<any, any>,
-  ): (request: HttpClientRequest.HttpClientRequest) => Effect.Effect<any, any> => {
+  ): (request: HttpClientRequest.HttpClientRequest) => Effect.Effect<any, any, R> => {
     const withOptionalResponse = (
       config?.includeResponse
         ? (response: HttpClientResponse.HttpClientResponse) => Effect.map(f(response), (a) => [a, response])
@@ -1412,11 +1541,11 @@ export const make = (
   }
 }
 
-export interface TestClient {
-  readonly httpClient: HttpClient.HttpClient
+export interface TestClient<E = HttpClientError.HttpClientError, R = never> {
+  readonly httpClient: HttpClient.HttpClient.With<E, R>
   readonly "getUser": {
-    <Config extends OperationConfig | undefined = undefined>(id: string, options: { readonly config: Config }): Effect.Effect<WithOptionalResponse<GetUser200, Config>, HttpClientError.HttpClientError>;
-    <Config extends OperationConfig | undefined = undefined>(id: string, options: { readonly config?: Config | undefined } | undefined): Effect.Effect<WithOptionalResponse<GetUser200, Config | undefined>, HttpClientError.HttpClientError>;
+    <Config extends OperationConfig | undefined = undefined>(id: string, options: { readonly config: Config }): Effect.Effect<WithOptionalResponse<GetUser200, Config>, E | HttpClientError.HttpClientError, R>;
+    <Config extends OperationConfig | undefined = undefined>(id: string, options: { readonly config?: Config | undefined } | undefined): Effect.Effect<WithOptionalResponse<GetUser200, Config | undefined>, E | HttpClientError.HttpClientError, R>;
   }
 }
 
@@ -1458,16 +1587,16 @@ export const TestClientError = <Tag extends string, E>(
         `readonly "downloadArchive": {`,
         `<Config extends OperationConfig | undefined = undefined>(options: { readonly config: Config }): Effect.Effect<WithOptionalResponse<Uint8Array, Config>`,
         `<Config extends OperationConfig | undefined = undefined>(options: { readonly config?: Config | undefined } | undefined): Effect.Effect<WithOptionalResponse<Uint8Array, Config | undefined>`,
-        `readonly "downloadAvatarStream": () => Stream.Stream<Uint8Array, HttpClientError.HttpClientError>`,
+        `readonly "downloadAvatarStream": () => Stream.Stream<Uint8Array, E | HttpClientError.HttpClientError, R>`,
         `"downloadAvatar": (options: Parameters<TestClient["downloadAvatar"]>[0]) => HttpClientRequest.get("/avatar").pipe(
       onRequest(options?.config)([], undefined, {"binary":["2xx"],"voidSuccess":[],"voidError":[]})`,
-        `readonly "downloadCustomBinaryStream": () => Stream.Stream<Uint8Array, HttpClientError.HttpClientError>`,
+        `readonly "downloadCustomBinaryStream": () => Stream.Stream<Uint8Array, E | HttpClientError.HttpClientError, R>`,
         `import * as HttpClient from "effect/http/HttpClient"`,
         `onRequest(options?.config)([], {"400":"DownloadMixedContent400"}, {"binary":["2xx"],"voidSuccess":[],"voidError":[]})`,
         `readonly "downloadMixedContent": {`,
         `<Config extends OperationConfig | undefined = undefined>(options: { readonly config: Config }): Effect.Effect<WithOptionalResponse<Uint8Array, Config>`,
         `<Config extends OperationConfig | undefined = undefined>(options: { readonly config?: Config | undefined } | undefined): Effect.Effect<WithOptionalResponse<Uint8Array, Config | undefined>`,
-        `readonly "downloadMixedContentStream": () => Stream.Stream<Uint8Array, HttpClientError.HttpClientError>`,
+        `readonly "downloadMixedContentStream": () => Stream.Stream<Uint8Array, E | HttpClientError.HttpClientError, R>`,
         `onRequest(options?.config)([], undefined, {"binary":[],"voidSuccess":["200"],"voidError":["404","500"]})`,
         `cases[code] = decodeVoidError(code)`,
         `TestClientError<"404", undefined>`,
@@ -1483,11 +1612,7 @@ export const TestClientError = <Tag extends string, E>(
         `WithOptionalResponse<MixedSuccess200 | void, Config>`
       ]))
 
-    it.effect(
-      "emits compilable clients for schema-backed and type-only formats",
-      () => assertGeneratedClientsCompile(responseMatchingSpec),
-      compilationTimeout
-    )
+    itGeneratedClientsCompile("emits compilable clients for schema-backed and type-only formats", responseMatchingSpec)
   })
 
   describe("httpapi", () => {
@@ -3334,35 +3459,35 @@ export const __HttpApiMultipartFiles = Multipart.FilesSchema`,
   describe("regression", () => {
     for (const format of ["httpclient", "httpclient-type-only"] as const) {
       for (const exactOptionalPropertyTypes of [true, false]) {
-        it.effect(
+        itGeneratedClientsCompile(
           `preserves includeResponse success types (${format}, exactOptionalPropertyTypes=${exactOptionalPropertyTypes})`,
-          () =>
-            assertGeneratedClientsCompile({
-              openapi: "3.1.0",
-              info: { title: "Value", version: "1.0.0" },
-              components: { schemas: {}, securitySchemes: {} },
-              security: [],
-              tags: [],
-              paths: {
-                "/value": {
-                  get: {
-                    operationId: "getValue",
-                    parameters: [],
-                    security: [],
-                    tags: ["Value"],
-                    responses: {
-                      "200": {
-                        description: "Value",
-                        content: { "application/json": { schema: { type: "string" } } }
-                      }
+          {
+            openapi: "3.1.0",
+            info: { title: "Value", version: "1.0.0" },
+            components: { schemas: {}, securitySchemes: {} },
+            security: [],
+            tags: [],
+            paths: {
+              "/value": {
+                get: {
+                  operationId: "getValue",
+                  parameters: [],
+                  security: [],
+                  tags: ["Value"],
+                  responses: {
+                    "200": {
+                      description: "Value",
+                      content: { "application/json": { schema: { type: "string" } } }
                     }
                   }
                 }
               }
-            }, {
-              formats: [format],
-              exactOptionalPropertyTypes,
-              usage: `type Equal<A, B> = (<T>() => T extends A ? 1 : 2) extends
+            }
+          },
+          {
+            formats: [format],
+            exactOptionalPropertyTypes,
+            usage: `type Equal<A, B> = (<T>() => T extends A ? 1 : 2) extends
   (<T>() => T extends B ? 1 : 2) ? true : false
 type Assert<T extends true> = T
 type WithResponse = [string, HttpClientResponse.HttpClientResponse]
@@ -3395,10 +3520,61 @@ export type OptionalBoolean = Assert<Equal<Effect.Success<typeof optionalBoolean
 export type NullableConfig = Assert<Equal<Effect.Success<typeof nullableConfigResult>, string | WithResponse>>
 export type ConditionalConfig = Assert<Equal<Effect.Success<typeof conditionalConfigResult>, string | WithResponse>>
 `
-            }),
-          compilationTimeout
+          }
         )
       }
+
+      itGeneratedClientsCompile(`preserves HttpClient error and requirement types (${format})`, {
+        openapi: "3.1.0",
+        info: { title: "Channels", version: "1.0.0" },
+        components: { schemas: {}, securitySchemes: {} },
+        security: [],
+        tags: [],
+        paths: Object.fromEntries(
+          [
+            ["/value", "getValue", "application/json"],
+            ["/download", "download", "application/octet-stream"],
+            ...(format === "httpclient" ? [["/events", "events", "text/event-stream"]] : [])
+          ].map(([path, operationId, contentType]) => [path, {
+            get: {
+              operationId,
+              parameters: [],
+              security: [],
+              tags: ["Channels"],
+              responses: {
+                "200": { description: "OK", content: { [contentType]: { schema: { type: "string" } } } }
+              }
+            }
+          }])
+        )
+      }, {
+        formats: [format],
+        usage: `type Equal<A, B> = (<T>() => T extends A ? 1 : 2) extends
+  (<T>() => T extends B ? 1 : 2) ? true : false
+type Assert<T extends true> = T
+interface CustomError { readonly _tag: "CustomError" }
+interface CustomService { readonly _tag: "CustomService" }
+declare const httpClient: HttpClient.HttpClient.With<CustomError, CustomService>
+declare const defaultHttpClient: HttpClient.HttpClient
+
+const client = make(httpClient)
+const value = client.getValue(undefined)
+const download = client.downloadStream()
+
+export const defaultClient: TestClient = make(defaultHttpClient)
+export type ValueError = Assert<CustomError | HttpClientError.HttpClientError extends Effect.Error<typeof value> ? true : false>
+export type ValueServices = Assert<Equal<Effect.Services<typeof value>, CustomService>>
+export type DownloadError = Assert<Equal<Stream.Error<typeof download>, CustomError | HttpClientError.HttpClientError>>
+export type DownloadServices = Assert<Equal<Stream.Services<typeof download>, CustomService>>
+${
+          format === "httpclient"
+            ? `const events = client.eventsSse()
+export type EventsError = Assert<CustomError | HttpClientError.HttpClientError extends Stream.Error<typeof events> ? true : false>
+export type EventsServices = Assert<CustomService extends Stream.Services<typeof events> ? true : false>
+`
+            : ""
+        }`
+      })
     }
 
     it.effect("quotes static path text with and without parameters", () => {
@@ -3433,18 +3609,13 @@ export type ConditionalConfig = Assert<Equal<Effect.Success<typeof conditionalCo
       ])
     })
 
-    it.effect(
-      "types required cookie parameters as operation params",
-      () =>
-        assertGeneratedClientsCompile(cookieParameterSpec, {
-          usage: `declare const client: TestClient
+    itGeneratedClientsCompile("types required cookie parameters as operation params", cookieParameterSpec, {
+      usage: `declare const client: TestClient
 export const withLocale = client.getGreeting({ params: { locale: "en-US" } })
 // @ts-expect-error the locale cookie is required
 export const withoutLocale = client.getGreeting({ params: {} })
 `
-        }),
-      compilationTimeout
-    )
+    })
 
     it.effect("sends cookie parameters with the request", () =>
       Effect.gen(function*() {
@@ -3474,6 +3645,78 @@ export const withoutLocale = client.getGreeting({ params: {} })
         assert.strictEqual(requests.length, 1)
         assert.strictEqual(requests[0].headers["cookie"], "locale=en-US")
       }).pipe(Effect.scoped, Effect.provide(OpenApiGenerator.layerTransformerSchema)))
+
+    it.effect("escapes spec-controlled names in generated source", () =>
+      Effect.gen(function*() {
+        const path = "/items\"q"
+        const content = { "application/json": { schema: { type: "string" } } }
+        const spec = {
+          openapi: "3.1.0",
+          info: { title: "Quoted names", version: "1.0.0" },
+          paths: {
+            [path]: {
+              get: {
+                parameters: (["query", "header", "cookie"] as const).map((location) => ({
+                  name: `${location}"`,
+                  in: location,
+                  schema: { type: "string" }
+                })),
+                responses: {
+                  "200": { description: "OK", content },
+                  "x-extension": { description: "Extension", content },
+                  "4\"0": { description: "Invalid status", content }
+                },
+                tags: ["Items"],
+                security: []
+              }
+            }
+          },
+          components: { schemas: {}, securitySchemes: {} },
+          security: [],
+          tags: [{ name: "Items" }]
+        } as unknown as OpenAPISpec
+        const directory = yield* Effect.acquireRelease(
+          Effect.sync(() => mkdtempSync(join(dirname(fileURLToPath(import.meta.url)), ".generated-clients-"))),
+          (directory) => Effect.sync(() => rmSync(directory, { recursive: true, force: true }))
+        )
+        const modules: Record<string, unknown> = {}
+        for (const format of ["httpclient", "httpclient-type-only", "httpapi"] as const) {
+          const source = yield* OpenApiGenerator.OpenApiGenerator.use((generator) =>
+            generator.generate(spec, { name: "TestClient", format })
+          ).pipe(
+            Effect.provide(
+              format === "httpclient-type-only"
+                ? OpenApiGenerator.layerTransformerTs
+                : OpenApiGenerator.layerTransformerSchema
+            )
+          )
+          const file = join(directory, `${format}.ts`)
+          writeFileSync(file, source)
+          modules[format] = yield* Effect.promise(() => import(file))
+        }
+
+        const requests: Array<HttpClientRequest.HttpClientRequest> = []
+        const { make } = modules.httpclient as {
+          make: (client: HttpClient.HttpClient) => Record<
+            string,
+            (options: { params: Record<string, string> }) => Effect.Effect<unknown, unknown>
+          >
+        }
+        const client = make(
+          HttpClient.make((request) => {
+            requests.push(request)
+            return Effect.succeed(HttpClientResponse.fromWeb(request, Response.json("ok")))
+          }).pipe(HttpClient.mapRequest(HttpClientRequest.prependUrl("http://api.test")))
+        )
+
+        const result = yield* client[`GET${path}`]({ params: { "query\"": "a", "header\"": "b", "cookie\"": "c" } })
+
+        assert.strictEqual(result, "ok")
+        assert.strictEqual(requests.length, 1)
+        assert.deepStrictEqual(requests[0].urlParams.params, [["query\"", "a"]])
+        assert.strictEqual(requests[0].headers["header\""], "b")
+        assert.strictEqual(requests[0].headers["cookie"], "cookie\"=c")
+      }).pipe(Effect.scoped))
 
     it.effect("drops structured cookie parameters with a warning", () =>
       Effect.gen(function*() {
@@ -3524,44 +3767,43 @@ export const withoutLocale = client.getGreeting({ params: {} })
         assert.notInclude(result, "refPrefs")
       }).pipe(Effect.provide(OpenApiGenerator.layerTransformerSchema)))
 
-    it.effect("emits compilable clients when schema examples are invalid", () =>
-      assertGeneratedClientsCompile({
-        openapi: "3.0.3",
-        info: {
-          title: "Invalid examples API",
-          version: "1.0.0"
-        },
-        paths: {
-          "/triggers": {
-            get: {
-              operationId: "getTriggers",
-              parameters: [],
-              responses: {
-                200: {
-                  description: "OK",
-                  content: {
-                    "application/json": {
-                      schema: {
-                        type: "array",
-                        items: { type: "string" },
-                        example: "create"
-                      }
+    itGeneratedClientsCompile("emits compilable clients when schema examples are invalid", {
+      openapi: "3.0.3",
+      info: {
+        title: "Invalid examples API",
+        version: "1.0.0"
+      },
+      paths: {
+        "/triggers": {
+          get: {
+            operationId: "getTriggers",
+            parameters: [],
+            responses: {
+              200: {
+                description: "OK",
+                content: {
+                  "application/json": {
+                    schema: {
+                      type: "array",
+                      items: { type: "string" },
+                      example: "create"
                     }
                   }
                 }
-              },
-              tags: ["Triggers"],
-              security: []
-            }
+              }
+            },
+            tags: ["Triggers"],
+            security: []
           }
-        },
-        components: {
-          schemas: {},
-          securitySchemes: {}
-        },
-        security: [],
-        tags: [{ name: "Triggers" }]
-      } as unknown as OpenAPISpec), compilationTimeout)
+        }
+      },
+      components: {
+        schemas: {},
+        securitySchemes: {}
+      },
+      security: [],
+      tags: [{ name: "Triggers" }]
+    } as unknown as OpenAPISpec)
 
     it.effect("runtime warnings do not report additional-tags-dropped outside httpapi", () =>
       assertRuntimeStableWithWarnings(
@@ -3616,97 +3858,89 @@ export const withoutLocale = client.getGreeting({ params: {} })
         }
       ]))
 
-    it.effect("emits compilable open objects with optional properties", () =>
-      assertGeneratedClientsCompile(
-        {
-          openapi: "3.1.0",
-          info: {
-            title: "Open object regression API",
-            version: "1.0.0"
-          },
-          paths: {
-            "/widget": {
-              get: {
-                operationId: "getWidget",
-                parameters: [],
-                responses: {
-                  200: {
-                    description: "OK",
-                    content: {
-                      "application/json": {
-                        schema: {
-                          type: "object",
-                          properties: {
-                            optionalValue: {
-                              type: "string"
-                            }
-                          },
-                          additionalProperties: true
+    itGeneratedClientsCompile("emits compilable open objects with optional properties", {
+      openapi: "3.1.0",
+      info: {
+        title: "Open object regression API",
+        version: "1.0.0"
+      },
+      paths: {
+        "/widget": {
+          get: {
+            operationId: "getWidget",
+            parameters: [],
+            responses: {
+              200: {
+                description: "OK",
+                content: {
+                  "application/json": {
+                    schema: {
+                      type: "object",
+                      properties: {
+                        optionalValue: {
+                          type: "string"
                         }
-                      }
+                      },
+                      additionalProperties: true
                     }
                   }
-                },
-                tags: ["Widgets"],
-                security: []
+                }
               }
-            }
-          },
-          components: {
-            schemas: {},
-            securitySchemes: {}
-          },
-          security: [],
-          tags: []
-        },
-        {
-          exactOptionalPropertyTypes: false,
-          formats: ["httpclient"]
+            },
+            tags: ["Widgets"],
+            security: []
+          }
         }
-      ), compilationTimeout)
+      },
+      components: {
+        schemas: {},
+        securitySchemes: {}
+      },
+      security: [],
+      tags: []
+    }, {
+      exactOptionalPropertyTypes: false,
+      formats: ["httpclient"]
+    })
 
-    it.effect("types multipart binary fields as File | Blob for generated clients", () =>
-      assertGeneratedClientsCompile(
-        multipartSpec({
-          type: "object",
-          properties: { file: { type: "string", format: "binary" } },
-          required: ["file"],
-          additionalProperties: false
-        }),
-        {
-          usage: `export const withFile: UploadRequestFormData = { file: new File([], "upload.txt") }
+    itGeneratedClientsCompile(
+      "types multipart binary fields as File | Blob for generated clients",
+      multipartSpec({
+        type: "object",
+        properties: { file: { type: "string", format: "binary" } },
+        required: ["file"],
+        additionalProperties: false
+      }),
+      {
+        usage: `export const withFile: UploadRequestFormData = { file: new File([], "upload.txt") }
 export const withBlob: UploadRequestFormData = { file: new Blob([]) }
 // @ts-expect-error Binary multipart fields do not accept strings.
 export const withString: UploadRequestFormData = { file: "upload.txt" }
 `
-        }
-      ), compilationTimeout)
+      }
+    )
 
-    it.effect(
+    itGeneratedClientsCompile(
       "types recursive multipart binary references as File | Blob for generated clients",
-      () =>
-        assertGeneratedClientsCompile(
-          multipartSpec({ $ref: "#/components/schemas/Node" }, {
-            Node: {
-              type: "object",
-              properties: {
-                file: { type: "string", format: "binary" },
-                child: { $ref: "#/components/schemas/Node" }
-              },
-              required: ["file"],
-              additionalProperties: false
-            }
-          }),
-          {
-            usage: `const file = new File([], "upload.txt")
+      multipartSpec({ $ref: "#/components/schemas/Node" }, {
+        Node: {
+          type: "object",
+          properties: {
+            file: { type: "string", format: "binary" },
+            child: { $ref: "#/components/schemas/Node" }
+          },
+          required: ["file"],
+          additionalProperties: false
+        }
+      }),
+      {
+        usage: `const file = new File([], "upload.txt")
 const blob = new Blob([])
 export const payload: UploadRequestFormData = { file, child: { file: blob, child: { file } } }
 // @ts-expect-error Recursive binary fields do not accept strings.
 export const withString: UploadRequestFormData = { file, child: { file: "upload.txt" } }
 `
-          }
-        ),
-      compilationTimeout
+      }
     )
 
     for (
@@ -3767,24 +4001,35 @@ export const withString: UploadRequestFormData = { file, child: { file: "upload.
         ]
       ))
 
-    it.effect(
+    itGeneratedClientsCompile(
       "types multipart binary arrays as File | Blob arrays for generated clients",
-      () =>
-        assertGeneratedClientsCompile(
-          multipartSpec({
-            type: "object",
-            properties: { files: { type: "array", items: { type: "string", format: "binary" } } },
-            required: ["files"],
-            additionalProperties: false
-          }),
-          {
-            usage: `export const payload: UploadRequestFormData = { files: [new File([], "upload.txt"), new Blob([])] }
+      multipartSpec({
+        type: "object",
+        properties: { files: { type: "array", items: { type: "string", format: "binary" } } },
+        required: ["files"],
+        additionalProperties: false
+      }),
+      {
+        usage: `export const payload: UploadRequestFormData = { files: [new File([], "upload.txt"), new Blob([])] }
 // @ts-expect-error Binary multipart arrays do not accept strings.
 export const withString: UploadRequestFormData = { files: ["upload.txt"] }
 `
-          }
-        ),
-      compilationTimeout
+      }
     )
   })
+})
+
+describe("generated client type checks", () => {
+  it.effect(
+    "do not pass a case whose type errors were hidden by another case's syntax error",
+    () =>
+      Effect.gen(function*() {
+        const [, typeError] = yield* typeCheckCases([
+          { sources: ["export const broken = ;\n"], exactOptionalPropertyTypes: true },
+          { sources: ["export const value: string = 42\n"], exactOptionalPropertyTypes: true }
+        ])
+        assert.isNotEmpty(typeError)
+      }),
+    compilationTimeout
+  )
 })

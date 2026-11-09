@@ -170,7 +170,7 @@ export type TypeId = typeof TypeId
  * @category services
  * @since 4.0.0
  */
-export interface MssqlClient extends Client.SqlClient {
+export interface MssqlClient extends Client.Base {
   readonly [TypeId]: TypeId
 
   readonly config: MssqlClientConfig
@@ -207,7 +207,7 @@ export interface MssqlClient extends Client.SqlClient {
  * @category services
  * @since 4.0.0
  */
-export const MssqlClient = Context.Service<MssqlClient>("@effect/sql-mssql/MssqlClient")
+export const MssqlClient = Context.Service<MssqlClient, MssqlClient & Client.SqlClient>("@effect/sql-mssql/MssqlClient")
 
 /**
  * Configuration for a Microsoft SQL Server client, including connection, authentication, pool, parameter type, span attribute, and query/result name transform options.
@@ -234,6 +234,12 @@ export interface MssqlClientConfig {
   readonly username?: string | undefined
   readonly password?: Redacted.Redacted | undefined
   readonly connectTimeout?: Duration.Input | undefined
+  /**
+   * How long Tedious waits for the server to acknowledge a cancelled request
+   * before it closes the connection. Defaults to 5 seconds. Interrupting a
+   * request waits for that acknowledgement, so a zero duration (which disables
+   * the timer) leaves interruption unbounded rather than making it faster.
+   */
   readonly cancelTimeout?: Duration.Input | undefined
   readonly connectionRetryInterval?: Duration.Input | undefined
   readonly multiSubnetFailover?: boolean | undefined
@@ -284,7 +290,7 @@ let clientIdCounter = 0
  */
 export const make = (
   options: MssqlClientConfig
-): Effect.Effect<MssqlClient, SqlError, Scope.Scope | Reactivity.Reactivity> =>
+): Effect.Effect<MssqlClient & Client.SqlClient, SqlError, Scope.Scope | Reactivity.Reactivity> =>
   Effect.gen(function*() {
     const parameterTypes = options.parameterTypes ?? defaultParameterTypes
     const compiler = makeCompiler(options.transformQueryNames)
@@ -390,12 +396,38 @@ export const make = (
         })
       })
 
+      // Tedious calls a request back once it is settled: completed, cancelled
+      // by the server, or failed when the connection ends or the cancellation
+      // times out. Interruption cancels the request and waits for that callback
+      // so the connection is not released while it is still SentClientRequest.
+      const request = <A>(
+        start: (resume: (effect: Effect.Effect<A, SqlError>) => void) => void
+      ) =>
+        Effect.callback<A, SqlError>((resume) => {
+          let settled = false
+          let onSettled: (() => void) | undefined
+          start((effect) => {
+            // A request that failed because the connection closed settles
+            // before tedious emits end. Record it now, before resuming can
+            // release the connection back to the pool.
+            if (conn.closed) Deferred.doneUnsafe(ended, Effect.void)
+            settled = true
+            resume(effect)
+            onSettled?.()
+          })
+          return Effect.callback<void>((done) => {
+            if (settled) return done(Effect.void)
+            onSettled = () => done(Effect.void)
+            conn.cancel()
+          })
+        })
+
       const run = (
         sql: string,
         values?: ReadonlyArray<any>,
         rowsAsArray = false
       ) =>
-        Effect.callback<any, SqlError>((resume) => {
+        request<any>((resume) => {
           const req = new Tedious.Request(sql, (cause, _rowCount, result) => {
             if (cause) {
               resume(
@@ -428,16 +460,14 @@ export const make = (
             }
           }
 
-          conn.cancel()
           conn.execSql(req)
-          return Effect.sync(() => conn.cancel())
         })
 
       const runProcedure = (
         procedure: Procedure.ProcedureWithValues<any, any, any>,
         transformRows: ((rows: ReadonlyArray<any>) => ReadonlyArray<any>) | undefined
       ) =>
-        Effect.callback<any, SqlError>((resume) => {
+        request<any>((resume) => {
           const result: Record<string, any> = {}
 
           const req = new Tedious.Request(
@@ -477,9 +507,7 @@ export const make = (
             Rec.assignProperty(result, name, value)
           })
 
-          conn.cancel()
           conn.callProcedure(req)
-          return Effect.sync(() => conn.cancel())
         })
 
       const connection = identity<MssqlConnection>({
@@ -628,7 +656,7 @@ export const make = (
       rollbackSavepoint: (conn, id) => conn.rollback(`effect_sql_${id}`)
     })
 
-    return identity<MssqlClient>(Object.assign(
+    return identity<MssqlClient & Client.SqlClient>(Object.assign(
       yield* Client.make({
         driver: "mssql",
         acquirer: acquireConnection,

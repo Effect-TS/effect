@@ -18,7 +18,8 @@ import {
   HttpServer,
   HttpServerRequest,
   HttpServerResponse,
-  Multipart
+  Multipart,
+  UrlParams
 } from "effect/http"
 import * as Layer from "effect/Layer"
 import * as Schedule from "effect/Schedule"
@@ -152,12 +153,29 @@ const LocalServerRoutes = HttpRouter.serve(HttpRouter.addAll([
       })
     })
   ),
+  HttpRouter.route(
+    "POST",
+    "/question-form",
+    Effect.gen(function*() {
+      const request = yield* HttpServerRequest.HttpServerRequest
+      return HttpServerResponse.text(`?${UrlParams.toString(yield* request.urlParamsBody)}`, {
+        contentType: "application/x-www-form-urlencoded"
+      })
+    })
+  ),
   ...formDataResponses.map(({ body, contentType, path }) =>
     HttpRouter.route("GET", path, Effect.succeed(HttpServerResponse.text(body, { contentType })))
   ),
   HttpRouter.route("GET", "/large", Effect.succeed(HttpServerResponse.text(largeResponseBody))),
   HttpRouter.route("GET", "/hang", Effect.never),
-  HttpRouter.route("GET", "/redirect", Effect.succeed(HttpServerResponse.redirect("/redirected"))),
+  HttpRouter.route(
+    "GET",
+    "/redirect",
+    Effect.succeed(HttpServerResponse.text("redirecting", {
+      status: 302,
+      headers: { location: "/redirected" }
+    }))
+  ),
   HttpRouter.route("GET", "/redirected", Effect.succeed(HttpServerResponse.text("redirected"))),
   HttpRouter.route("HEAD", "/todos", Effect.succeed(HttpServerResponse.empty({ status: 200 }))),
   HttpRouter.route(
@@ -215,6 +233,15 @@ const LocalServerRoutes = HttpRouter.serve(HttpRouter.addAll([
           body: HttpBody.text("\uFEFF{\"a\":1}", "application/json")
         })
         assert.deepStrictEqual(yield* response.json, { a: 1 })
+      }).pipe(Effect.provide(localServerTestLayer)))
+
+    it.effect("request and response urlParamsBody preserve a leading question mark", () =>
+      Effect.gen(function*() {
+        const response = yield* HttpClient.post("/question-form", {
+          body: HttpBody.text("?name=value", "application/x-www-form-urlencoded")
+        })
+        // the server echoes its parsed key behind another raw question mark
+        assert.deepStrictEqual([...yield* response.urlParamsBody], [["??name", "value"]])
       }).pipe(Effect.provide(localServerTestLayer)))
 
     if (name !== "fetch") {
@@ -410,6 +437,35 @@ const LocalServerRoutes = HttpRouter.serve(HttpRouter.addAll([
   })
 })
 
+it.live("followRedirects releases redirect response bodies with a single socket", () =>
+  Effect.gen(function*() {
+    const client = (yield* HttpClient.HttpClient).pipe(HttpClient.followRedirects())
+    const response = yield* client.get("/redirect")
+    expect(yield* response.text).toBe("redirected")
+  }).pipe(
+    Effect.timeout("2 seconds"),
+    Effect.provide(LocalServerRoutes.pipe(
+      Layer.provideMerge(HttpServer.layerTestClient),
+      Layer.provide(NodeClient.layerNodeHttpOptions({ maxSockets: 1 })),
+      Layer.provideMerge(NodeHttpServer.layer(Http.createServer, { port: 0 }))
+    ))
+  ))
+
+it.live("followRedirects releases scoped redirect response bodies with a single socket", () =>
+  Effect.gen(function*() {
+    const client = (yield* HttpClient.HttpClient).pipe(HttpClient.withScope, HttpClient.followRedirects())
+    const response = yield* client.get("/redirect")
+    expect(yield* response.text).toBe("redirected")
+  }).pipe(
+    Effect.scoped,
+    Effect.timeout("2 seconds"),
+    Effect.provide(LocalServerRoutes.pipe(
+      Layer.provideMerge(HttpServer.layerTestClient),
+      Layer.provide(NodeClient.layerNodeHttpOptions({ maxSockets: 1 })),
+      Layer.provideMerge(NodeHttpServer.layer(Http.createServer, { port: 0 }))
+    ))
+  ))
+
 it.live("releases an immediately failing form data stream and connection before layer teardown", () => {
   const server = Http.createServer((request) => {
     request.on("error", () => {})
@@ -453,6 +509,56 @@ it.live("releases an immediately failing form data stream and connection before 
   }).pipe(
     Effect.ensuring(Effect.sync(() => server.closeAllConnections())),
     Effect.provide(layer)
+  )
+})
+
+it.live("returns TransportError when a form data file stream cannot be created", () =>
+  Effect.gen(function*() {
+    class ThrowingFile extends File {
+      override stream(): never {
+        throw new Error("file stream failed")
+      }
+    }
+    const formData = new FormData()
+    formData.append("file", new ThrowingFile([], "notes.txt"))
+    const error = yield* HttpClient.post("/", { body: HttpBody.formData(formData) }).pipe(Effect.flip)
+    assert.strictEqual(error.reason._tag, "TransportError")
+  }).pipe(Effect.provide(HttpServer.layerTestClient.pipe(
+    Layer.provide(NodeClient.layerNodeHttp),
+    Layer.provideMerge(NodeHttpServer.layer(Http.createServer, { port: 0 }))
+  ))))
+
+it.live("reads backpressured form data files on demand and releases them on interruption", () => {
+  const server = Http.createServer((request) => request.pause())
+  let read = 0
+  let stream: ReadableStream | undefined
+  class LargeFile extends File {
+    override stream() {
+      return stream = new ReadableStream<Uint8Array<ArrayBuffer>>({
+        pull(controller) {
+          if (read === 64 * 1024 * 1024) return controller.close()
+          read += 64 * 1024
+          controller.enqueue(new Uint8Array(64 * 1024))
+        }
+      })
+    }
+  }
+  return Effect.gen(function*() {
+    const formData = new FormData()
+    formData.append("file", new LargeFile([], "large.bin"))
+    yield* HttpClient.post("/", { body: HttpBody.formData(formData) }).pipe(Effect.timeout("1 second"), Effect.ignore)
+    // The server never reads the upload, so only socket buffers should fill.
+    assert.isBelow(read, 16 * 1024 * 1024)
+    yield* Effect.sync(() => stream?.locked).pipe(
+      Effect.repeat({ while: (locked) => locked !== false, schedule: Schedule.spaced("10 millis") }),
+      Effect.timeout("1 second")
+    )
+  }).pipe(
+    Effect.ensuring(Effect.sync(() => server.closeAllConnections())),
+    Effect.provide(HttpServer.layerTestClient.pipe(
+      Layer.provide(NodeClient.layerNodeHttp),
+      Layer.provideMerge(NodeHttpServer.layer(() => server, { port: 0 }))
+    ))
   )
 })
 
@@ -544,6 +650,63 @@ it.live("returns a stream body encoding failure", () =>
     Layer.provide(NodeClient.layerNodeHttp),
     Layer.provideMerge(NodeHttpServer.layer(Http.createServer, { port: 0 }))
   ))))
+
+it.live("redacts a transport error URL with the redacted names of the request", () =>
+  Effect.gen(function*() {
+    const error = yield* Effect.gen(function*() {
+      const error = yield* HttpClient.get("http://test/path?token=token-secret").pipe(Effect.flip)
+      assert.strictEqual(error.message, "Transport error (GET http://test/path?token=REDACTED)")
+      return error
+    }).pipe(Effect.provideService(UrlParams.CurrentRedactedNames, ["token"]))
+
+    assert.strictEqual(error.reason._tag, "TransportError")
+    assert.strictEqual(error.message, "Transport error (GET http://test/path?token=REDACTED)")
+    assert.notInclude(JSON.stringify(error), "token-secret")
+  }).pipe(Effect.provide(NodeClient.layerNodeHttpOptions({
+    socketPath: join(tmpdir(), `effect-missing-${process.pid}.sock`)
+  }))))
+
+it.live.each([
+  { name: "node:http", layer: NodeClient.layerNodeHttp },
+  { name: "undici", layer: NodeClient.layerUndici }
+])(
+  "redacts a response body error URL with the redacted names of the request ($name)",
+  ({ layer }) =>
+    Effect.gen(function*() {
+      // Sends part of the body and keeps the connection open, so the test can
+      // drop it after the client has returned the response.
+      const sockets: Array<Net.Socket> = []
+      const server = yield* Effect.acquireRelease(
+        Effect.callback<Http.Server>((resume) => {
+          const server = Http.createServer((_, response) => {
+            sockets.push(response.socket!)
+            response.writeHead(200, { "content-length": "100" })
+            response.write("partial")
+          })
+          server.listen(0, "127.0.0.1", () => resume(Effect.succeed(server)))
+        }),
+        (server) =>
+          Effect.callback<void>((resume) => {
+            server.closeAllConnections()
+            server.close(() => resume(Effect.void))
+          })
+      )
+      const url = `http://127.0.0.1:${(server.address() as Net.AddressInfo).port}/?token=`
+      const message = `Decode error (200 GET ${url}REDACTED)`
+
+      const error = yield* Effect.gen(function*() {
+        const response = yield* HttpClient.get(`${url}token-secret`)
+        for (const socket of sockets) socket.destroy()
+        const error = yield* Effect.flip(response.text)
+        assert.strictEqual(error.message, message)
+        return error
+      }).pipe(Effect.provideService(UrlParams.CurrentRedactedNames, ["token"]))
+
+      assert.strictEqual(error.reason._tag, "DecodeError")
+      assert.strictEqual(error.message, message)
+      assert.notInclude(JSON.stringify(error), "token-secret")
+    }).pipe(Effect.provide(layer))
+)
 
 // Answers upgrade requests by hand, sending bytes in the same write as the
 // response head, like a Docker Engine attach endpoint.

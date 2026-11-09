@@ -269,7 +269,7 @@ describe("it.effect timeout retry finalizers", { concurrent: false }, () => {
   })
 })
 
-describe("it.layer timeout finalizers", { concurrent: false }, () => {
+describe("it.layer timeout finalizers", { concurrent: false, retry: 0, repeats: 0 }, () => {
   const events: Array<string> = []
   let signal: AbortSignal | undefined
 

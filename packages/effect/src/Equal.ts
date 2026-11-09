@@ -398,8 +398,8 @@ export function makeCompareSet<A>(equivalence: Equivalence<A>) {
  * **Details**
  *
  * - Pure function, no side effects.
- * - Returns `true` if and only if `u` has a property keyed by
- *   {@link symbol}.
+ * - Returns `true` if and only if `u` has a function keyed by {@link symbol}.
+ *   Data that merely carries the key, such as parsed JSON, is not `Equal`.
  * - Acts as a TypeScript type guard, narrowing the input to {@link Equal}.
  *
  * **Example** (Checking Equal values)
@@ -428,7 +428,7 @@ export function makeCompareSet<A>(equivalence: Equivalence<A>) {
  * @category guards
  * @since 2.0.0
  */
-export const isEqual = (u: unknown): u is Equal => hasProperty(u, symbol)
+export const isEqual = (u: unknown): u is Equal => hasProperty(u, symbol) && typeof u[symbol] === "function"
 
 /**
  * Wraps {@link equals} as an `Equivalence<A>`.

@@ -948,6 +948,24 @@ describe("Command", () => {
         assert.deepStrictEqual(yield* TestConsole.errorLines, [])
       }).pipe(Effect.provide(TestLayer)))
 
+    it.effect("should show help for invalid global flag values", () =>
+      Effect.gen(function*() {
+        const Region = GlobalFlag.Setting("region")({
+          flag: Flag.Literals("region", ["us", "eu"]).pipe(Flag.withDefault("us"))
+        })
+        const deploy = Command.make("deploy").pipe(Command.withGlobalFlags([Region]))
+        const runCommand = Command.runWith(Command.make("app").pipe(Command.withSubcommands([deploy])), {
+          version: "1.0.0"
+        })
+
+        for (const flag of ["completions", "log-level", "region"]) {
+          const error = yield* Effect.flip(runCommand(["deploy", `--${flag}`, "bad"]))
+          assert.instanceOf(error, CliError.ShowHelp)
+          assert.deepStrictEqual(error.commandPath, ["app", "deploy"])
+          assert.instanceOf(error.errors[0], CliError.InvalidValue)
+        }
+      }).pipe(Effect.provide(TestLayer)))
+
     it.effect("should propagate handler errors from run", () =>
       Effect.gen(function*() {
         const result = yield* Effect.flip(Cli.run(["test-failing", "--input", "test"]))
@@ -1198,6 +1216,72 @@ describe("Command", () => {
         ])
         assert.deepStrictEqual(seen, [["after subcommands", ["useApi"]]])
       }).pipe(Effect.provide(TestLayer)))
+
+    it.effect("passes domain errors through like handler failures, without help", () =>
+      Effect.gen(function*() {
+        class Conflict extends Schema.TaggedError<Conflict>()("Conflict", {
+          flags: Schema.Array(Schema.String)
+        }) {
+          override get [CliError.userMessage]() {
+            return `${this.flags.join(" and ")} are mutually exclusive`
+          }
+        }
+        // A fresh instance per run, because rendering marks the error as reported
+        let raised: Conflict | undefined
+        const command = Command.make("download", {
+          useApi: Flag.Boolean("use-api").pipe(Flag.withDefault(false)),
+          useDocker: Flag.Boolean("use-docker").pipe(Flag.withDefault(false))
+        }, () => Effect.void).pipe(
+          Command.validate(({ useApi, useDocker }) =>
+            useApi && useDocker
+              ? Effect.suspend(() => Effect.fail(raised = new Conflict({ flags: ["--use-api", "--use-docker"] })))
+              : Effect.void
+          )
+        )
+
+        const rendered = yield* Effect.flip(
+          Command.runWith(command, { version: "1.0.0" })(["--use-api", "--use-docker"])
+        )
+        assert.strictEqual(rendered, raised)
+        assert.isFalse(Runtime.getErrorReported(rendered))
+        assert.deepStrictEqual(yield* TestConsole.errorLines, [
+          "\nERROR\n  --use-api and --use-docker are mutually exclusive"
+        ])
+        assert.isEmpty(yield* TestConsole.logLines)
+
+        const silent = yield* Effect.flip(
+          Command.runWith(command, { version: "1.0.0", renderErrors: false })(["--use-api", "--use-docker"])
+        )
+        assert.strictEqual(silent, raised)
+        assert.isTrue(Runtime.getErrorReported(silent))
+        assert.lengthOf(yield* TestConsole.errorLines, 1)
+      }).pipe(Effect.provide(TestLayer)))
+
+    it.effect("fails a subcommand run with a parent's domain error, rendering nothing without userMessage", () =>
+      Effect.gen(function*() {
+        class LinkedAndLocal extends Schema.TaggedError<LinkedAndLocal>()("LinkedAndLocal", {}) {}
+        const handled: Array<string> = []
+        const push = Command.make("push", {}, () =>
+          Effect.sync(() => {
+            handled.push("push")
+          }))
+        const db = Command.make("db").pipe(
+          Command.withSharedFlags({
+            linked: Flag.Boolean("linked").pipe(Flag.withDefault(false)),
+            local: Flag.Boolean("local").pipe(Flag.withDefault(false))
+          }),
+          Command.withSubcommands([push]),
+          Command.validate(({ linked, local }) => linked && local ? Effect.fail(new LinkedAndLocal()) : Effect.void)
+        )
+
+        const error = yield* Effect.flip(Command.runWith(db, { version: "1.0.0" })(["--linked", "--local", "push"]))
+
+        assert.instanceOf(error, LinkedAndLocal)
+        assert.isTrue(Runtime.getErrorReported(error))
+        assert.deepStrictEqual(handled, [])
+        assert.isEmpty(yield* TestConsole.errorLines)
+        assert.isEmpty(yield* TestConsole.logLines)
+      }).pipe(Effect.provide(TestLayer)))
   })
 
   describe("withSubcommands", () => {
@@ -1354,12 +1438,6 @@ describe("Command", () => {
           command: "git",
           details: { verbose: true }
         })
-      }).pipe(Effect.provide(TestLayer)))
-
-    it.effect("should propagate subcommand errors", () =>
-      Effect.gen(function*() {
-        const result = yield* Effect.flip(Cli.run(["test-failing", "--input", "test"]))
-        assert.strictEqual(result, "Handler error")
       }).pipe(Effect.provide(TestLayer)))
 
     it.effect("should provide shared parent context to subcommands", () =>
@@ -2174,7 +2252,7 @@ describe("Command", () => {
 
         const runCmd = Command.runWith(cmd, { version: "1.0.0" })
 
-        yield* runCmd(["--verbose", "a.txt", "b.txt", "--verbose", "c.txt"])
+        yield* runCmd(["a.txt", "b.txt", "--verbose", "c.txt"])
 
         assert.deepStrictEqual(captured, [{ files: ["a.txt", "b.txt", "c.txt"], verbose: true }])
       }).pipe(Effect.provide(TestLayer)))

@@ -12,6 +12,10 @@ packages:
 
 verifyDepsBeforeRun: error
 enableGlobalVirtualStore: false
+# pnpm 11 aborts a tarball download that has not finished within fetchTimeout (default 60s),
+# however fast it is still progressing. @op-engineering/op-sqlite is a 115 MB tarball and times
+# out when registry throughput drops below ~1.9 MB/s; 180s covers sustained rates down to ~0.64 MB/s.
+fetchTimeout: 180000
 
 allowBuilds:
   core-js: false

@@ -16,14 +16,14 @@
  * quoted-pair   = "\" ( HTAB / SP / VCHAR / obs-text )
  */
 const paramRE =
-  /; *([!#$%&'*+.^\w`|~-]+)=("(?:[\v\u0020\u0021\u0023-\u005b\u005d-\u007e\u0080-\u{10ffff}]|\\[\v\u0020-\u{10ffff}])*"|[!#$%&'*+.^\w`|~-]+) */gu
+  /; *([!#$%&'*+.^\w`|~-]+)=("(?:[\t\u0020\u0021\u0023-\u005b\u005d-\u007e\u0080-\u{10ffff}]|\\[\t\u0020-\u{10ffff}])*"|[!#$%&'*+.^\w`|~-]+) */gu
 
 /**
  * RegExp to match *( ";" disposition-parm ) in RFC 6266 sec 4.1, which allows
  * optional whitespace around separators
  */
 const dispositionParamRE =
-  /;[ \t]*([!#$%&'*+.^\w`|~-]+)[ \t]*=[ \t]*("(?:[\v\u0020\u0021\u0023-\u005b\u005d-\u007e\u0080-\u{10ffff}]|\\[\v\u0020-\u{10ffff}])*"|[!#$%&'*+.^\w`|~-]+)[ \t]*/gu
+  /;[ \t]*([!#$%&'*+.^\w`|~-]+)[ \t]*=[ \t]*("(?:[\t\u0020\u0021\u0023-\u005b\u005d-\u007e\u0080-\u{10ffff}]|\\[\t\u0020-\u{10ffff}])*"|[!#$%&'*+.^\w`|~-]+)[ \t]*/gu
 
 /**
  * RegExp to match quoted-pair in RFC 7230 sec 3.2.6
@@ -31,7 +31,7 @@ const dispositionParamRE =
  * quoted-pair = "\" ( HTAB / SP / VCHAR / obs-text )
  * obs-text    = %x80-FF
  */
-const quotedPairRE = /\\([\v\u0020-\u{10ffff}])/gu
+const quotedPairRE = /\\([\t\u0020-\u{10ffff}])/gu
 
 /**
  * RegExp to match type in RFC 7231 sec 3.1.1.1

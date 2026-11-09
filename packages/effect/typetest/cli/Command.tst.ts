@@ -1,4 +1,5 @@
 import { Context, Effect } from "effect"
+import type { CliError } from "effect/cli"
 import { Argument, Command, Flag, GlobalFlag } from "effect/cli"
 import { describe, expect, it } from "tstyche"
 
@@ -23,6 +24,43 @@ describe("Command", () => {
           "err",
           never
         >
+      >()
+    })
+
+    it("adds the validation's own error type to the command", () => {
+      const command = Command.make("download", {
+        useApi: Flag.Boolean("use-api")
+      }, () => Effect.void as Effect.Effect<void, "err">).pipe(
+        Command.validate(() => Effect.void as Effect.Effect<void, "conflict" | CliError.ValidationError>)
+      )
+
+      expect(command).type.toBe<
+        Command.Command<"download", { readonly useApi: boolean }, {}, "err" | "conflict", never>
+      >()
+    })
+
+    it("accepts an explicit input type argument without adding errors", () => {
+      const command = Command.make("download", {
+        useApi: Flag.Boolean("use-api")
+      }, () => Effect.void as Effect.Effect<void, "err">).pipe(
+        Command.validate<{ readonly useApi: boolean }>(() => Effect.void)
+      )
+
+      expect(command).type.toBe<Command.Command<"download", { readonly useApi: boolean }, {}, "err", never>>()
+    })
+
+    it("keeps the validation's error type through withHandler and provideSync", () => {
+      class Api extends Context.Service<Api, string>()("Api") {}
+      const command = Command.make("download", {
+        useApi: Flag.Boolean("use-api")
+      }).pipe(
+        Command.validate(() => Effect.void as Effect.Effect<void, "conflict">),
+        Command.withHandler(() => Effect.void as Effect.Effect<void, "err", Api>),
+        Command.provideSync(Api, () => "api")
+      )
+
+      expect(command).type.toBe<
+        Command.Command<"download", { readonly useApi: boolean }, {}, "conflict" | "err", never>
       >()
     })
   })

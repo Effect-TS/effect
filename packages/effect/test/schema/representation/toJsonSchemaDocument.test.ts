@@ -71,6 +71,24 @@ describe("SchemaRepresentation.toJsonSchemaDocument", () => {
   })
 
   describe("representation nodes", () => {
+    it("compiles string content with another media type", () => {
+      assert.deepStrictEqual(
+        compile({
+          _tag: "String",
+          checks: [],
+          content: {
+            mediaType: "application/example",
+            schema: { _tag: "Boolean", checks: [] }
+          }
+        }),
+        {
+          type: "string",
+          contentMediaType: "application/example",
+          contentSchema: { type: "boolean" }
+        }
+      )
+    })
+
     const keywords = [
       ["Any", { _tag: "Any", checks: [] }, {}],
       ["Unknown", { _tag: "Unknown", checks: [] }, {}],

@@ -894,6 +894,8 @@ interface ArrayOptions {
 interface RecordOptions {
   readonly separator?: string | undefined
   readonly keyValueSeparator?: string | undefined
+  readonly trim?: boolean | undefined
+  readonly keepEmptyValues?: boolean | undefined
 }
 
 const isPath = (u: unknown): u is string | Path => Predicate.isString(u) || globalThis.Array.isArray(u)
@@ -1202,7 +1204,11 @@ export function Array<V extends Schema.ConstraintCodec<unknown, unknown>>(
  *
  * Pass a string or `ConfigProvider.Path` as the third argument to set the lookup
  * path. When no path is needed, pass the options object directly. The `separator`
- * defaults to `","` and `keyValueSeparator` defaults to `"="`.
+ * defaults to `","` and `keyValueSeparator` defaults to `"="`. For string input,
+ * set `trim: true` to trim keys and values before entries with an empty key are
+ * skipped, and `keepEmptyValues: true` to keep entries with an empty value as
+ * `""` instead of skipping them. Entries without a `keyValueSeparator` are
+ * always skipped.
  *
  * **Example** (Reading a comma-separated record)
  *

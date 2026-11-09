@@ -1,8 +1,10 @@
 import { assert, describe, it } from "@effect/vitest"
 import { Result } from "effect"
 import * as Base64 from "effect/encoding/Base64"
+import type * as EncodingError from "effect/encoding/EncodingError"
+import { describeWithFallback } from "../utils/encoding.ts"
 
-describe("Base64", () => {
+describeWithFallback("Base64", () => {
   it("encodes and decodes binary subarrays with and without padding", () => {
     const bytes = new Uint8Array([42, 251, 255, 128, 42])
     const vectors = ["", "+w==", "+/8=", "+/+A"]
@@ -87,6 +89,10 @@ describe("Base64", () => {
     assert.strictEqual(Result.getOrThrow(Base64.decodeString("8J+Riw==")), "👋")
   })
 
+  it("preserves a leading U+FEFF when round-tripping strings", () => {
+    assert.strictEqual(Result.getOrThrow(Base64.decodeString(Base64.encode("\uFEFFa"))), "\uFEFFa")
+  })
+
   it("rejects invalid input with format information", () => {
     const invalidLength = Base64.decode("abc")
     assert.isTrue(Result.isFailure(invalidLength))
@@ -99,4 +105,52 @@ describe("Base64", () => {
     assert.isTrue(Result.isFailure(Base64.decode("ab=c")))
     assert.isTrue(Result.isFailure(Base64.decode("!!!!")))
   })
+
+  it("round trips every byte value", () => {
+    const bytes = Uint8Array.from({ length: 256 }, (_, i) => i)
+    const encoded = Base64.encode(bytes)
+    assert.deepStrictEqual(Result.getOrThrow(Base64.decode(encoded)), bytes)
+    // MIME-style 76-character lines
+    assert.deepStrictEqual(Result.getOrThrow(Base64.decode(encoded.replace(/.{76}/g, "$&\r\n"))), bytes)
+  })
+
+  it("ignores non-zero trailing bits", () => {
+    assert.deepStrictEqual(Result.getOrThrow(Base64.decode("Zh==")), new Uint8Array([102]))
+    assert.deepStrictEqual(Result.getOrThrow(Base64.decode("Zm9=")), new Uint8Array([102, 111]))
+  })
+
+  it("rejects invalid input with both decoders", () => {
+    const length = (length: number) => `Length must be a multiple of 4, but is ${length}`
+    const misplacedPadding = "Found a '=' character, but it is not at the end"
+    assertFailure("Zg", "Zg", length(2))
+    assertFailure("Zg=", "Zg=", length(3))
+    assertFailure("Zg\r\n=", "Zg=", length(3))
+    assertFailure("Zm 9v", "Zm 9v", length(5))
+    assertFailure("Zg=v", "Zg=v", misplacedPadding)
+    assertFailure("=Zg=", "=Zg=", misplacedPadding)
+    assertFailure("====", "====", misplacedPadding)
+    for (const char of ["-", "_", "!", "{", "\u00e9", " ", "\t", "\f"]) {
+      assertFailure(`Zm9${char}`, `Zm9${char}`, `Invalid character ${char}`)
+      // Long enough for size-gated decoders
+      const long = `${"Zm9v".repeat(64)}Zm9${char}`
+      assertFailure(long, long, `Invalid character ${char}`)
+    }
+  })
 })
+
+const assertFailure = (raw: string, stripped: string, expected: string) => {
+  const results: ReadonlyArray<Result.Result<unknown, EncodingError.EncodingError>> = [
+    Base64.decode(raw),
+    Base64.decodeString(raw)
+  ]
+  for (const result of results) {
+    assert.isTrue(Result.isFailure(result), raw)
+    if (Result.isFailure(result)) {
+      const { input, kind, message, module } = result.failure
+      assert.deepStrictEqual(
+        { kind, module, input, message },
+        { kind: "Decode", module: "Base64", input: stripped, message: expected }
+      )
+    }
+  }
+}

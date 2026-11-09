@@ -101,6 +101,16 @@ describe("toCodeDocument", () => {
       )
     })
 
+    it("requires a toCode callback for a named content declaration", () => {
+      const content = Schema.instanceOf(URL).annotate({ identifier: "Content" })
+      const document = SchemaRepresentation.toRepresentations([Schema.fromJsonString(content).ast])
+
+      throws(
+        () => SchemaRepresentation.toCodeDocument(document),
+        "Missing toCode callback\n  at [\"references\"][\"Content\"][\"annotations\"][\"toCode\"]"
+      )
+    })
+
     it("Error", () => {
       assertSchema({ schema: Schema.ErrorInstance() }, {
         codes: makeCode(`Schema.ErrorInstance()`, "globalThis.Error")
@@ -152,29 +162,6 @@ describe("toCodeDocument", () => {
     it("FormData", () => {
       assertSchema({ schema: Schema.FormData }, {
         codes: makeCode(`Schema.FormData`, "globalThis.FormData")
-      })
-    })
-
-    it("URLSearchParams", () => {
-      assertSchema({ schema: Schema.URLSearchParams }, {
-        codes: makeCode(`Schema.URLSearchParams`, "globalThis.URLSearchParams")
-      })
-    })
-
-    describe("Date", () => {
-      it("Date", () => {
-        assertSchema({ schema: Schema.Date }, {
-          codes: makeCode(`Schema.Date`, "globalThis.Date")
-        })
-      })
-
-      it("Date & check", () => {
-        assertSchema(
-          { schema: Schema.Date.check(Schema.isGreaterThanDate(new Date(0))) },
-          {
-            codes: makeCode(`Schema.Date.check(Schema.isGreaterThanDate(new globalThis.Date(0)))`, "globalThis.Date")
-          }
-        )
       })
     })
 
@@ -454,6 +441,15 @@ describe("toCodeDocument", () => {
           { schema: Schema.String.check(Schema.isGUID({ message: "message" })) },
           {
             codes: makeCode(`Schema.String.check(Schema.isGUID().annotate({ "message": "message" }))`, "string")
+          }
+        )
+      })
+
+      it("isAscii", () => {
+        assertSchema(
+          { schema: Schema.String.check(Schema.isAscii()) },
+          {
+            codes: makeCode(`Schema.String.check(Schema.isAscii())`, "string")
           }
         )
       })

@@ -12,12 +12,14 @@
  * @since 4.0.0
  */
 import type * as Config from "../Config.ts"
+import type * as Context from "../Context.ts"
 import type * as Effect from "../Effect.ts"
 import { dual, type LazyArg } from "../Function.ts"
 import type * as Option from "../Option.ts"
 import type * as Redacted_ from "../Redacted.ts"
 import type * as Result from "../Result.ts"
 import type * as Schema from "../Schema.ts"
+import type { NoInfer } from "../Types.ts"
 import type * as CliError from "./CliError.ts"
 import type { Environment } from "./Command.ts"
 import * as Param from "./Param.ts"
@@ -290,6 +292,7 @@ export const Directory = (name: string, options?: {
  *   Layer.succeed(Terminal.Terminal, Terminal.make({
  *     columns: Effect.succeed(80),
  *     rows: Effect.succeed(24),
+ *     size: Effect.die("unused"),
  *     readInput: Effect.die("unused"),
  *     readLine: Effect.die("unused"),
  *     display: () => Effect.void
@@ -675,7 +678,61 @@ export const withMetavar: {
 export const withHidden = <A>(self: Flag<A>): Flag<A> => Param.withHidden(self)
 
 /**
+ * Attaches a user-defined annotation to a flag, keyed by a `Context.Key`.
+ *
+ * **Details**
+ *
+ * Annotations never affect parsing, help or completions. `CommandSpec.resolve`
+ * reports them so documentation tooling can read facts the parser cannot
+ * know, such as the environment variable behind a config fallback.
+ *
+ * **Example** (Annotating a flag)
+ *
+ * ```ts import.meta.vitest
+ * import { Context } from "effect"
+ * import { Flag } from "effect/cli"
+ *
+ * const EnvVar = Context.Service<never, string>("app/EnvVar")
+ *
+ * const token = Flag.String("token").pipe(Flag.annotate(EnvVar, "APP_TOKEN"))
+ * token.kind // => "flag"
+ * ```
+ *
+ * @stability unstable
+ * @category metadata
+ * @since 4.1.3
+ */
+export const annotate: {
+  <I, S>(key: Context.Key<I, S>, value: NoInfer<S>): <A>(self: Flag<A>) => Flag<A>
+  <A, I, S>(self: Flag<A>, key: Context.Key<I, S>, value: NoInfer<S>): Flag<A>
+} = dual(
+  3,
+  <A, I, S>(self: Flag<A>, key: Context.Key<I, S>, value: NoInfer<S>): Flag<A> => Param.annotate(self, key, value)
+)
+
+/**
  * Makes a flag optional, returning an Option type that can be None if not provided.
+ *
+ * **When to use**
+ *
+ * Use when the handler or a `Command.validate` rule needs to know whether the
+ * flag was passed at all, for example to reject `--force=false` together with
+ * another flag while ignoring an omitted `--force`.
+ *
+ * **Details**
+ *
+ * An omitted flag gives `Option.none()`. A flag passed with any value gives
+ * `Option.some`, including `--flag=false`, `--flag false` and `--no-flag`
+ * for boolean flags. Apply the default afterwards with `Option.getOrElse`.
+ * Help output is the same as with `withDefault`.
+ *
+ * **Gotchas**
+ *
+ * Presence is lost once a default or fallback has filled the value in.
+ * `withDefault(...)` followed by `optional` always gives `Option.some`, and
+ * so does `withFallbackConfig(...)` followed by `optional` when the config
+ * has a value. `optional` followed by `withFallbackConfig(...)` never reads
+ * the config, because `optional` already handled the missing flag.
  *
  * **Example** (Making flags optional)
  *
@@ -691,6 +748,7 @@ export const withHidden = <A>(self: Flag<A>): Flag<A> => Param.withHidden(self)
  *   Layer.succeed(Terminal.Terminal, Terminal.make({
  *     columns: Effect.succeed(80),
  *     rows: Effect.succeed(24),
+ *     size: Effect.die("unused"),
  *     readInput: Effect.die("unused"),
  *     readLine: Effect.die("unused"),
  *     display: () => Effect.void
@@ -776,6 +834,11 @@ export const withFallbackConfig: {
 /**
  * Adds a fallback prompt that is shown when a required flag is missing.
  *
+ * **Gotchas**
+ *
+ * When `TerminalCapabilities.canPrompt` is `false`, the prompt is skipped and
+ * the original `MissingOption` error is returned.
+ *
  * **Example** (Falling back to prompts)
  *
  * ```ts import.meta.vitest
@@ -785,6 +848,38 @@ export const withFallbackConfig: {
  *   Flag.withFallbackPrompt(Prompt.String({ message: "Name" }))
  * )
  * name.kind // => "flag"
+ * ```
+ *
+ * **Example** (Showing an introduction before fallback prompts)
+ *
+ * The prompt can be built by an effect, which only runs when the prompt is
+ * needed. Share a cached introduction between the prompt builders and
+ * `Command.provideEffectDiscard`: it runs once, before the first prompt, and
+ * also runs when every flag is supplied. Flags declared after the first
+ * prompted flag may not have been validated yet when the introduction runs.
+ *
+ * ```ts import.meta.vitest
+ * import { Console, Effect } from "effect"
+ * import { Command, Flag, Prompt } from "effect/cli"
+ *
+ * const program = Effect.gen(function*() {
+ *   const intro = yield* Effect.cached(Console.log("Welcome to demo"))
+ *
+ *   const ask = (name: string) =>
+ *     Flag.String(name).pipe(
+ *       Flag.withFallbackPrompt(
+ *         Effect.as(intro, Prompt.String({ message: `${name}?` }))
+ *       )
+ *     )
+ *
+ *   const demo = Command.make(
+ *     "demo",
+ *     { name: ask("name"), dir: ask("dir") },
+ *     (input) => Console.log(input)
+ *   ).pipe(Command.provideEffectDiscard(intro))
+ *
+ *   yield* Command.run(demo, { version: "1.0.0" })
+ * })
  * ```
  *
  * @stability unstable
@@ -842,6 +937,7 @@ export const map: {
  *   Layer.succeed(Terminal.Terminal, Terminal.make({
  *     columns: Effect.succeed(80),
  *     rows: Effect.succeed(24),
+ *     size: Effect.die("unused"),
  *     readInput: Effect.die("unused"),
  *     readLine: Effect.die("unused"),
  *     display: () => Effect.void
@@ -899,6 +995,7 @@ export const mapEffect: {
  *   Layer.succeed(Terminal.Terminal, Terminal.make({
  *     columns: Effect.succeed(80),
  *     rows: Effect.succeed(24),
+ *     size: Effect.die("unused"),
  *     readInput: Effect.die("unused"),
  *     readLine: Effect.die("unused"),
  *     display: () => Effect.void
@@ -1158,6 +1255,7 @@ export const orElse: {
  *   Layer.succeed(Terminal.Terminal, Terminal.make({
  *     columns: Effect.succeed(80),
  *     rows: Effect.succeed(24),
+ *     size: Effect.die("unused"),
  *     readInput: Effect.die("unused"),
  *     readLine: Effect.die("unused"),
  *     display: () => Effect.void

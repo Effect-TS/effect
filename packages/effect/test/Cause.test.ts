@@ -704,6 +704,13 @@ describe("Cause", () => {
     it("does not render internal frames from map", () => {
       assertCleanStack(Effect.map(Effect.succeed(1), userCode))
     })
+
+    // Bun's Suspend tail call drops the frame the cleaner cuts at, so only V8
+    // runtimes are covered
+    it.skipIf(process.versions.bun !== undefined)("keeps the throw location of defects from sync and suspend", () => {
+      assertCleanStack(Effect.sync(userCode))
+      assertCleanStack(Effect.suspend(userCode))
+    })
   })
 
   describe("annotate", () => {

@@ -25,6 +25,7 @@ import * as Headers from "./Headers.ts"
 import * as Error from "./HttpClientError.ts"
 import * as HttpClientRequest from "./HttpClientRequest.ts"
 import * as HttpIncomingMessage from "./HttpIncomingMessage.ts"
+import * as internalUrlParams from "./internal/urlParams.ts"
 import { getWebSource, WebSourceSymbol } from "./internal/webResponse.ts"
 import * as UrlParams from "./UrlParams.ts"
 
@@ -428,9 +429,9 @@ class WebHttpClientResponse extends Inspectable.Class implements HttpClientRespo
   }
 
   get urlParamsBody(): Effect.Effect<UrlParams.UrlParams, Error.HttpClientError> {
-    return Effect.flatMap(this.text, (_) =>
+    return Effect.flatMap(this.arrayBuffer, (bytes) =>
       Effect.try({
-        try: () => UrlParams.fromInput(new URLSearchParams(_)),
+        try: () => UrlParams.fromInput(internalUrlParams.fromBody(bytes)),
         catch: (cause) =>
           new Error.HttpClientError({
             reason: new Error.DecodeError({

@@ -8,6 +8,7 @@ import { Persistable, Persistence } from "effect/persistence"
 import * as Request from "effect/Request"
 import * as Resolver from "effect/RequestResolver"
 import { TestClock } from "effect/testing"
+import { collectGarbage } from "./utils/gc.ts"
 
 class Counter extends Context.Service<Counter, { count: number }>()("Counter") {}
 class Requests extends Context.Service<Requests, { count: number }>()("Requests") {}
@@ -163,6 +164,15 @@ describe("Request", { concurrent: false }, () => {
 
     assert.strictEqual(Hash.hash(a), Hash.hash(b))
     assert.strictEqual(Equal.equals(a, b), false)
+  })
+
+  it("compares StructuralProto values regardless of key order", () => {
+    const make = Request.of<Request.Request<void> & { readonly a: number; readonly b: number }>()
+    const a = make({ a: 1, b: 2 })
+    const b = make({ b: 2, a: 1 })
+
+    assert.strictEqual(Hash.hash(a), Hash.hash(b))
+    assert.isTrue(Equal.equals(a, b))
   })
 
   it.effect(
@@ -903,4 +913,24 @@ describe("Request", { concurrent: false }, () => {
       assert.strictEqual(yield* Effect.request(new GetNameById({ id: 1 }), resolver), "1")
       assert.deepStrictEqual(batches, [[1]])
     }))
+
+  // Bun does not expose `gc` through V8 flags.
+  it.effect.skipIf(process.versions.bun !== undefined)(
+    "batches do not retain completed requests",
+    () =>
+      Effect.gen(function*() {
+        let reference!: WeakRef<GetNameById>
+        yield* Effect.request(
+          new GetNameById({ id: 0 }),
+          Resolver.make<GetNameById>((entries) =>
+            Effect.sync(() => {
+              reference = new WeakRef(entries[0].request)
+              entries[0].completeUnsafe(Exit.succeed(""))
+            })
+          )
+        )
+        yield* collectGarbage
+        assert.isUndefined(reference.deref())
+      })
+  )
 })

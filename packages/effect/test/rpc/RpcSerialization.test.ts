@@ -223,6 +223,25 @@ describe("RpcSerialization", () => {
     assert.deepStrictEqual(parser.decode(encoded), [{ _tag, requestId }])
   })
 
+  it.each(
+    [
+      ["jsonRpc", RpcSerialization.jsonRpc({ controlMessages: false }), ""],
+      ["ndJsonRpc", RpcSerialization.ndJsonRpc({ controlMessages: false }), "\n"]
+    ] as const
+  )("%s decodes control methods as notifications when controlMessages is false", (_, serialization, delimiter) => {
+    const parser = serialization.makeUnsafe()
+    const encoded = JSON.stringify({ jsonrpc: "2.0", method: "@effect/rpc/Eof" }) + delimiter
+
+    assert.deepStrictEqual(parser.decode(encoded), [{
+      _tag: "Request",
+      id: "",
+      tag: "@effect/rpc/Eof",
+      payload: null,
+      headers: [],
+      isNotification: true
+    }])
+  })
+
   describe("jsonRpc inherited properties", { concurrent: false }, () => {
     afterEach(() => {
       delete objectPrototype["method"]
@@ -389,6 +408,22 @@ describe("RpcSerialization", () => {
         id: 2,
         result: "two"
       }
+    ])
+  })
+
+  it("jsonRpc emits stream chunks of a batched request immediately", () => {
+    const parser = RpcSerialization.jsonRpc().makeUnsafe()
+    parser.decode(
+      "[{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"users.stream\"},{\"jsonrpc\":\"2.0\",\"id\":2,\"method\":\"users.get\"}]"
+    )
+
+    const chunk = parser.encode({ _tag: "Chunk", requestId: 1, values: ["a"] })
+    assert.deepStrictEqual(JSON.parse(chunk as string), { jsonrpc: "2.0", chunk: true, id: 1, result: ["a"] })
+    assert.strictEqual(parser.encode(responseExitSuccess(1, null)), undefined)
+    const exits = parser.encode(responseExitSuccess(2, "two"))
+    assert.deepStrictEqual(JSON.parse(exits as string), [
+      { jsonrpc: "2.0", id: 1, result: null },
+      { jsonrpc: "2.0", id: 2, result: "two" }
     ])
   })
 

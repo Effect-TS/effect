@@ -236,7 +236,7 @@ const parseLine = (
   ignoreEmptyLines: boolean,
   unterminated: boolean
 ): NdjsonError | undefined => {
-  if (ignoreEmptyLines && line.length === 0) return
+  if (ignoreEmptyLines && /^[ \t]*$/.test(line)) return
   try {
     out.push(JSON.parse(line))
   } catch (cause) {
@@ -262,8 +262,9 @@ const flushNothing = () => undefined
  *
  * **Gotchas**
  *
- * Set `ignoreEmptyLines` to skip blank lines before calling `JSON.parse`;
- * otherwise blank lines are parsed and fail as invalid JSON.
+ * Set `ignoreEmptyLines` to skip empty lines and lines containing only spaces
+ * or tabs before calling `JSON.parse`; otherwise these lines fail as invalid
+ * JSON.
  *
  * @stability unstable
  * @category constructors
@@ -314,8 +315,8 @@ const emptyBytes = new Uint8Array(0)
  * **Details**
  *
  * Lines may span input chunks. `\n`, `\r\n` and a bare `\r` end a line, and a
- * leading UTF-8 BOM is skipped. `ignoreEmptyLines` controls whether blank lines
- * are skipped before JSON parsing.
+ * leading UTF-8 BOM is skipped. `ignoreEmptyLines` skips empty lines and lines
+ * containing only spaces or tabs before JSON parsing.
  *
  * The first bad line fails the channel after the lines before it have been
  * emitted. A line that is not valid UTF-8 fails with `reason: "InvalidUtf8"`

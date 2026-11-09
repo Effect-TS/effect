@@ -27,8 +27,7 @@ PersistedQueueTest.suiteWith(
   "sql-mssql",
   PersistedQueue.layerStoreSql().pipe(Layer.provide(MssqlContainer.layerClient)),
   it,
-  "30 seconds",
-  "90 seconds"
+  { hookTimeout: "90 seconds" }
 )
 
 // Records deadlock graphs in a dedicated session, since system_health can

@@ -121,6 +121,15 @@ describe("SchemaRepresentation.toCodeDocument annotations", () => {
     assert.isFalse(runtime.includes("callback"))
   })
 
+  it("preserves top-level and nested __proto__ annotations in generated code", () => {
+    const value = { ["__proto__"]: { trusted: true } }
+    const annotations = { ...value, examples: [value] }
+    const schema = Schema.Unknown.annotate(annotations)
+    const document = SchemaRepresentation.toCodeDocument(SchemaRepresentation.toRepresentations([schema.ast]))
+    const generated: typeof schema = new Function("Schema", `return ${document.codes[0].runtime}`)(Schema)
+    assert.deepStrictEqual(Schema.resolveAnnotations(generated), annotations)
+  })
+
   it("preserves fallback identifiers", () => {
     const output = SchemaRepresentation.toCodeDocument({
       representations: [{

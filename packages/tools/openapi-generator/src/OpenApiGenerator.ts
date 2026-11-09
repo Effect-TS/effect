@@ -150,6 +150,10 @@ export interface OpenApiGenerateOptions {
    */
   readonly onEnter?: ((js: JsonSchema.JsonSchema) => JsonSchema.JsonSchema) | undefined
   /**
+   * Component schemas to generate even when no operation references them.
+   */
+  readonly includeSchemas?: ReadonlyArray<string> | undefined
+  /**
    * Callback to receive non-fatal generation warnings.
    */
   readonly onWarning?: ((warning: OpenApiGeneratorWarning) => void) | undefined
@@ -209,7 +213,11 @@ export const make = Effect.gen(function*() {
       // TODO: make a CLI option ?
       const importName = "Schema"
       const source = getDialect(spec)
-      const schemaOptions = { onEnter: options.onEnter, multipartSchemaRefs: multipart.refs }
+      const schemaOptions = {
+        onEnter: options.onEnter,
+        multipartSchemaRefs: multipart.refs,
+        includeSchemas: options.includeSchemas
+      }
       const generation = options.format === "httpapi"
         ? generator.generateHttpApi(source, multipart.definitions, schemaOptions)
         : generator.generate(source, multipart.definitions, options.format === "httpclient-type-only", schemaOptions)
@@ -394,9 +402,9 @@ const parseOpenApi = (
         continue
       }
 
-      const resolvedResponses = Object.entries(operation.responses ?? {}).map(
-        ([status, response]) => [status, resolveReference(response, resolveRef)] as const
-      )
+      const resolvedResponses = Object.entries(operation.responses ?? {})
+        .filter(([status]) => isResponseStatus(status))
+        .map(([status, response]) => [status, resolveReference(response, resolveRef)] as const)
       const hasExplicitSuccessResponse = resolvedResponses.some(([status]) => {
         if (!/^\d{3}$/.test(status)) {
           return false
@@ -1177,6 +1185,10 @@ const isSuccessStatus = (status: string): boolean => {
   const statusMajorNumber = Number(status[0])
   return !Number.isNaN(statusMajorNumber) && statusMajorNumber < 4
 }
+
+// Response keys are emitted into generated identifiers, so anything other than
+// a status code, status range or `default` (such as `x-` extensions) is skipped.
+const isResponseStatus = (status: string): boolean => /^(?:[1-5]\d\d|[1-5]xx|default)$/i.test(status)
 
 const getRequestMediaTypeEncoding = (
   contentType: string

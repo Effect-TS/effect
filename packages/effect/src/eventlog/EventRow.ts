@@ -524,6 +524,10 @@ export const handler = <
  * patches would apply to a different row, or to none. Entries that fail to
  * decode are kept.
  *
+ * The compactor opts into remote compaction (see the `remote` option of
+ * `EventLog.groupCompaction`). There it also keeps entries with fields the row
+ * schema does not know.
+ *
  * Leaves other events' compactors unchanged. Register one compactor per row
  * event.
  *
@@ -545,14 +549,19 @@ export const compaction = <
   Layer.effectDiscard(Effect.gen(function*() {
     const registry = yield* EventLog.Registry
     const services = yield* Effect.context<DecodingServices<Fields, Key, KeySchema>>()
-    const decode = Schema.decodeUnknownEffect(group.events[row.tag].payloadSchemaBinary)
+    const event = group.events[row.tag]
+    const decode = Schema.decodeUnknownEffect(event.payloadSchemaBinary)
+    // A remote compaction treats entries with unknown fields as undecodable.
+    const decodeStrict = Schema.decodeUnknownEffect(SchemaBinary.toCodecStrict(event.payload))
     yield* registry.registerCompaction({
       events: [row.tag],
-      effect: Effect.fnUntraced(function*({ entries, write }) {
+      remote: true,
+      effect: Effect.fnUntraced(function*({ entries, remote, write }) {
+        const decodePayload = remote ? decodeStrict : decode
         const ops = new Map<Entry, Op>()
         for (const entry of entries) {
           const payload = yield* Effect.result(
-            decode(entry.payload).pipe(Effect.updateContext((input) => Context.merge(services, input)))
+            decodePayload(entry.payload).pipe(Effect.updateContext((input) => Context.merge(services, input)))
           ) as Effect.Effect<Result.Result<Op, unknown>>
           if (Result.isSuccess(payload)) ops.set(entry, payload.success)
         }
