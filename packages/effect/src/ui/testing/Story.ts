@@ -223,7 +223,7 @@ const describePending = (pending: ReadonlyArray<Pending<any>>): string =>
  * @category models
  * @since 4.1.3
  */
-export type Target = Command.Definition.Any | Command.Effectful<any, any, any> | Command.Streaming<any, any, any>
+export type Target = Command.Definition.Any | Command.Effectful<any, any, never> | Command.Streaming<any, any, never>
 
 const matches = (target: Target, entry: Pending<any>): boolean => {
   if (Command.isDefinition(target)) return entry.command.name === Command.nameOf(target)
@@ -509,7 +509,7 @@ export const resolve = <D extends Target>(target: D, result: Command.Result<D>):
  * @category steps
  * @since 4.1.3
  */
-export const next = <D extends Command.Definition<any, any, true> | Command.Streaming<any, any, any>>(
+export const next = <D extends Command.Definition<any, any, true> | Command.Streaming<any, any, never>>(
   target: D,
   result: Command.Result<D>
 ): AnyStep =>
@@ -529,7 +529,10 @@ export const next = <D extends Command.Definition<any, any, true> | Command.Stre
  * @since 4.1.3
  */
 export const end =
-  <D extends Command.Definition<any, any, true> | Command.Streaming<any, any, any>>(target: D): AnyStep => (story) => {
+  <D extends Command.Definition<any, any, true> | Command.Streaming<any, any, never>>(target: D): AnyStep =>
+  (
+    story
+  ) => {
     const entry = findRunning(story, target, "end")
     if (entry.command._tag !== "Stream") {
       throw new Error(`Story.end: ${describe(entry.command)} is not a stream Command`)
