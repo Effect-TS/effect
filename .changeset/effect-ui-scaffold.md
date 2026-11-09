@@ -5,9 +5,9 @@
 
 Add `effect/ui`, a Layer-composed frontend framework for Effect, and `@effect/ui-html`, its HTML package.
 
-The host-agnostic core holds `Component`, `Command`, `Subscription`, `Feature` and `View`, plus `Renderer` to mount a component tree on any host and `MessageLog` to record what it does. `effect/ui/testing` adds `Story` for one-instance tests, `TestHost` and `Query` for runtime tests, and `Story.fromLog` to replay a logged session. The modules are experimental.
+The host-agnostic core holds `Component`, `Command`, `Subscription`, `Feature` and `View`, plus `Renderer` to mount a component tree on any host and `MessageLog` to record what it does. `effect/ui/testing` adds `Story` for one-instance tests, `TestHost` and `Query` for runtime tests, and `Story.fromLog` to replay a logged session. `Route` defines a typed route table that parses and prints URLs, `Router` holds the current route with navigation and blocking Commands (`Router.memory` for tests, `Router.static` for the server), and a component's `head` option sets the document title, meta, links, JSON-LD and `<html>` / `<body>` attributes. The modules are experimental.
 
-`@effect/ui-html` runs the same components in a real DOM. `Html` is the element vocabulary (typed events with plain payloads, controlled `value` / `checked` / `selected` / `open`, refs typed by tag, and the `focus`, `blur`, `scrollIntoView` and `measure` ref Commands), `BrowserHost.mount` mounts an HTML root into an element with delegated events, and `HtmlQuery` in `@effect/ui-html/testing` finds elements by ARIA role and accessible name.
+`@effect/ui-html` runs the same components in a real DOM. `Html` is the element vocabulary (typed events with plain payloads, controlled `value` / `checked` / `selected` / `open`, refs typed by tag, and the `focus`, `blur`, `scrollIntoView` and `measure` ref Commands), `BrowserHost.mount` mounts an HTML root into an element with delegated events and keeps the document head in sync, `BrowserRouter` routes through `window.history` with link interception, scroll restoration and route-change announcements, and `HtmlQuery` in `@effect/ui-html/testing` finds elements by ARIA role and accessible name.
 
 ```ts
 import { Schema } from "effect"
