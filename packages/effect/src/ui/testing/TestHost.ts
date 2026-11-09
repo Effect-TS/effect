@@ -311,7 +311,7 @@ export const layer = (options?: {
  * @category models
  * @since 4.1.3
  */
-export interface TestRoot<out Model, in Msg, out Emits> {
+export interface TestRoot<out Model, in Msg, out Events> {
   /** The root instance's path, `/<name>`. */
   readonly path: string
   readonly session: string
@@ -322,7 +322,7 @@ export interface TestRoot<out Model, in Msg, out Emits> {
   /** Sends a message to the root. The log shows it as a `Dispatch`. */
   readonly send: (message: Msg) => void
   /** What the root emitted, in order. */
-  readonly emitted: ReadonlyArray<Emits>
+  readonly emitted: ReadonlyArray<Events>
   /** This mount's log entries, oldest first. */
   readonly log: () => ReadonlyArray<MessageLog.Entry>
   /** The Commands still running or queued in this tree. */
@@ -348,8 +348,8 @@ export interface TestRoot<out Model, in Msg, out Emits> {
  * @category constructors
  * @since 4.1.3
  */
-export const mount = <Name extends string, Props, Model, Msg, Emits, R, V extends View.Elements, RF = never>(
-  component: Component.Component<Name, Props, Model, Msg, Emits, R, V>,
+export const mount = <Name extends string, Props, Model, Msg, Events, R, V extends View.Elements, RF = never>(
+  component: Component.Component<Name, Props, Model, Msg, Events, R, V>,
   props: Props,
   options?: {
     readonly fallback?:
@@ -359,20 +359,20 @@ export const mount = <Name extends string, Props, Model, Msg, Emits, R, V extend
       ) => View.Node<never, RF>)
       | undefined
   }
-): Effect.Effect<TestRoot<Model, Msg, Emits>, never, R | RF | TestHost | Scope.Scope> =>
+): Effect.Effect<TestRoot<Model, Msg, Events>, never, R | RF | TestHost | Scope.Scope> =>
   Effect.gen(function*() {
     const testHost = yield* TestHost
     const container = makeElement("#root")
     const root = yield* runtime.mount(component, props, container, options as any)
     const unregister = testHost.register(root)
     yield* Effect.addFinalizer(() => Effect.sync(unregister))
-    const testRoot: TestRoot<Model, Msg, Emits> = {
+    const testRoot: TestRoot<Model, Msg, Events> = {
       path: root.path,
       session: root.session,
       container,
       model: root.model as () => Model | undefined,
       send: root.send,
-      emitted: root.emitted as ReadonlyArray<Emits>,
+      emitted: root.emitted as ReadonlyArray<Events>,
       log: () => testHost.log.entries().filter((entry) => entry.session === root.session),
       pending: root.pending,
       text: () => Query.textOf(container),
@@ -474,8 +474,8 @@ export const formatLog = (entries: ReadonlyArray<MessageLog.Entry>): string =>
     switch (entry._tag) {
       case "Update": {
         const source = entry.source
-        const from = source._tag === "Event"
-          ? `event ${source.name}`
+        const from = source._tag === "DomEvent"
+          ? `dom ${source.name}`
           : source._tag === "Command"
           ? `command ${source.name}`
           : source._tag === "Subscription"
@@ -486,8 +486,8 @@ export const formatLog = (entries: ReadonlyArray<MessageLog.Entry>): string =>
           ? `mount ${source.name}`
           : "dispatch"
         const commands = entry.commands.length === 0 ? "" : ` -> ${entry.commands.map((c) => c.name).join(", ")}`
-        const emits = entry.emits.length === 0 ? "" : ` emits ${entry.emits.map(summary).join(", ")}`
-        return `${head} ${summary(entry.message)} (${from})${commands}${emits}`
+        const events = entry.events.length === 0 ? "" : ` events ${entry.events.map(summary).join(", ")}`
+        return `${head} ${summary(entry.message)} (${from})${commands}${events}`
       }
       case "Mounted":
         return `${head}${entry.commands.length === 0 ? "" : ` -> ${entry.commands.map((c) => c.name).join(", ")}`}`
@@ -516,13 +516,13 @@ export const formatLog = (entries: ReadonlyArray<MessageLog.Entry>): string =>
  * @category models
  * @since 4.1.3
  */
-export interface Stub<Self, Props, Emits> {
+export interface Stub<Self, Props, Events> {
   /** Provides the stub as the feature's implementation. */
   readonly layer: Layer.Layer<Self>
   /** The props the stub rendered with, in order, without repeats. */
   readonly props: () => ReadonlyArray<Props>
   /** Makes every mounted stub emit, as the real feature would. Settle first, so it's listening. */
-  readonly emit: (emits: Emits) => void
+  readonly emit: (events: Events) => void
 }
 
 /**
@@ -534,19 +534,19 @@ export interface Stub<Self, Props, Emits> {
  * @category constructors
  * @since 4.1.3
  */
-export const stub = <Self, Props, Emits>(feature: Feature.Service<Self, Props, Emits>): Stub<Self, Props, Emits> => {
+export const stub = <Self, Props, Events>(feature: Feature.Service<Self, Props, Events>): Stub<Self, Props, Events> => {
   const name: string = feature[Feature.TypeId].name
   const seen: Array<Props> = []
-  const listeners = new Set<(emits: Emits) => void>()
-  const Message = Schema.Struct({ emits: feature.emits })
+  const listeners = new Set<(events: Events) => void>()
+  const Message = Schema.Struct({ events: feature.events })
   const component = Component.make({
     name,
     props: feature.props,
     model: Schema.Number,
     message: Message,
-    emits: feature.emits,
+    events: feature.events,
     init: () => 0,
-    update: (count, message, $) => $.set(count + 1).emit(message.emits),
+    update: (count, message, $) => $.set(count + 1).emit(message.events),
     view: (_, h) => {
       if (seen.length === 0 || seen[seen.length - 1] !== h.props) seen.push(h.props)
       return h.el("stub").attr("data-stub", name)
@@ -554,11 +554,11 @@ export const stub = <Self, Props, Emits>(feature: Feature.Service<Self, Props, E
     subscriptions: () => [
       Subscription.make(
         "stub",
-        Stream.callback<{ readonly emits: Emits }>((queue) =>
+        Stream.callback<{ readonly events: Events }>((queue) =>
           Effect.acquireRelease(
             Effect.sync(() => {
-              const listener = (emits: Emits) => {
-                Queue.offerUnsafe(queue, { emits })
+              const listener = (events: Events) => {
+                Queue.offerUnsafe(queue, { events })
               }
               listeners.add(listener)
               return listener
@@ -572,8 +572,8 @@ export const stub = <Self, Props, Emits>(feature: Feature.Service<Self, Props, E
   return {
     layer: feature.layer(component as any),
     props: () => seen,
-    emit: (emits) => {
-      for (const listener of listeners) listener(emits)
+    emit: (events) => {
+      for (const listener of listeners) listener(events)
     }
   }
 }

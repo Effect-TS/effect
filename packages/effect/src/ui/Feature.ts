@@ -2,7 +2,7 @@
  * Features are components a parent refers to by service instead of by value,
  * so the implementation can be swapped with a Layer.
  *
- * A feature service holds the contract: the Props and Emits Schemas. Model and
+ * A feature service holds the contract: the Props and Events Schemas. Model and
  * Message belong to the implementation. The app provides an implementation
  * with `Todos.layer(TodoList)`, and a test or storybook provides a fake with
  * `Todos.layer(FakeTodos)`. A parent renders it with `h.child(Todos, ...)` and
@@ -16,16 +16,16 @@
  * import { Schema } from "effect"
  *
  * const TodosProps = Schema.Struct({ filter: Schema.Literals(["all", "open"]) })
- * const TodosEmits = Schema.TaggedUnion({ Counted: { open: Schema.Number } })
+ * const TodosEvents = Schema.TaggedUnion({ Counted: { open: Schema.Number } })
  *
- * class Todos extends Feature.Service<Todos>()("Todos", { props: TodosProps, emits: TodosEmits }) {}
+ * class Todos extends Feature.Service<Todos>()("Todos", { props: TodosProps, events: TodosEvents }) {}
  *
  * const TodoList = Component.make({
  *   name: "TodoList",
  *   props: TodosProps,
  *   model: Schema.Struct({}),
  *   message: Schema.Never,
- *   emits: TodosEmits,
+ *   events: TodosEvents,
  *   init: () => ({}),
  *   update: (model) => model,
  *   view: (_, h) => h.el("ul")
@@ -78,8 +78,8 @@ export type TypeId = typeof TypeId
  * @category models
  * @since 4.1.3
  */
-export interface Implementation<in out Props, out Emits> {
-  readonly component: Component.Mountable<Props, Emits, never>
+export interface Implementation<in out Props, out Events> {
+  readonly component: Component.Mountable<Props, Events, never>
   readonly context: Context.Context<never>
 }
 
@@ -90,19 +90,19 @@ export interface Implementation<in out Props, out Emits> {
  * @category models
  * @since 4.1.3
  */
-export interface Service<in out Self, in out Props, in out Emits>
-  extends Context.Key<Self, Implementation<Props, Emits>>
+export interface Service<in out Self, in out Props, in out Events>
+  extends Context.Key<Self, Implementation<Props, Events>>
 {
   readonly [TypeId]: { readonly name: string }
   /** The Props Schema. The log encodes a feature's props with it, whatever the implementation. */
   readonly props: Schema.Codec<Props, any>
-  /** The Emits Schema. */
-  readonly emits: Schema.Codec<Emits, any>
+  /** The Events Schema. */
+  readonly events: Schema.Codec<Events, any>
   /**
    * Provides this feature with `component`. The Layer requires whatever the
    * component requires, and closes it where the Layer is built.
    */
-  readonly layer: <R>(component: Component.Mountable<Props, Emits, R>) => Layer.Layer<Self, never, R>
+  readonly layer: <R>(component: Component.Mountable<Props, Events, R>) => Layer.Layer<Self, never, R>
 }
 
 /**
@@ -124,7 +124,7 @@ export type Any = Service<any, any, any>
 export const isService = (u: unknown): u is Any => Predicate.hasProperty(u, TypeId)
 
 /**
- * Declares a feature service from its Props and Emits Schemas.
+ * Declares a feature service from its Props and Events Schemas.
  *
  * **When to use**
  *
@@ -134,10 +134,10 @@ export const isService = (u: unknown): u is Any => Predicate.hasProperty(u, Type
  *
  * **Details**
  *
- * The class is a `Context.Service` with `props`, `emits` and `layer`. `name`
+ * The class is a `Context.Service` with `props`, `events` and `layer`. `name`
  * is also the path segment of every instance of the feature, so paths don't
  * change when the implementation does. `layer(C)` doesn't compile if `C`'s
- * props or emits don't fit the contract.
+ * props or events don't fit the contract.
  *
  * **Example** (A feature with a fake for tests)
  *
@@ -169,32 +169,32 @@ export const isService = (u: unknown): u is Any => Predicate.hasProperty(u, Type
 export const Service: <Self>() => <
   const Name extends string,
   Props extends Schema.Codec<any, any>,
-  Emits extends Schema.Codec<any, any> = Schema.Never
+  Events extends Schema.Codec<any, any> = Schema.Never
 >(
   name: Name,
   schemas: {
     readonly props: Props
-    readonly emits?: Emits | undefined
+    readonly events?: Events | undefined
   }
 ) =>
-  & Context.ServiceClass<Self, `feature/${Name}`, Implementation<Props["Type"], Emits["Type"]>>
-  & Service<Self, Props["Type"], Emits["Type"]>
+  & Context.ServiceClass<Self, `feature/${Name}`, Implementation<Props["Type"], Events["Type"]>>
+  & Service<Self, Props["Type"], Events["Type"]>
   & {
     readonly props: Props
-    readonly emits: Emits
+    readonly events: Events
   } = () =>
   (
     name: string,
     schemas: {
       readonly props: Schema.Codec<any, any>
-      readonly emits?: Schema.Codec<any, any> | undefined
+      readonly events?: Schema.Codec<any, any> | undefined
     }
   ): any => {
     const Base = Context.Service<any, Implementation<any, any>>()(`feature/${name}`)
     class FeatureService extends Base {
       static readonly [TypeId] = { name }
       static readonly props = schemas.props
-      static readonly emits = schemas.emits ?? Schema.Never
+      static readonly events = schemas.events ?? Schema.Never
       static layer<R>(component: Component.Mountable<any, any, R>): Layer.Layer<any, never, R> {
         return Layer.effect(
           Base,

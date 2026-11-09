@@ -62,7 +62,7 @@ describe("Runtime", () => {
       assert.deepStrictEqual(root.model(), { count: 3 })
       assert.deepStrictEqual(tags(root), ["SessionStarted", "Mounted", "Update", "Update"])
       const update = root.log()[2] as MessageLog.Update
-      assert.deepStrictEqual(update.source, { _tag: "Event", name: "click" })
+      assert.deepStrictEqual(update.source, { _tag: "DomEvent", name: "click" })
       assert.deepStrictEqual(update.message, CounterMessage.make({ _tag: "Increment" }))
     })))
 
@@ -457,7 +457,7 @@ describe("Runtime", () => {
         name: "Child",
         model: Schema.Number,
         message: Schema.Never,
-        emits: Schema.String,
+        events: Schema.String,
         init: ($) => $.set(0).emit("ready"),
         update: (n) => n,
         view: (_, h) => h.text("child")
@@ -608,14 +608,14 @@ describe("Runtime", () => {
   describe("features", () => {
     class Badge extends Feature.Service<Badge>()("test/Badge", {
       props: Schema.Struct({ label: Schema.String }),
-      emits: Schema.String
+      events: Schema.String
     }) {}
     const BadgeImpl = Component.make({
       name: "BadgeImpl",
       props: Schema.Struct({ label: Schema.String }),
       model: Schema.Number,
       message: Schema.Never,
-      emits: Schema.String,
+      events: Schema.String,
       init: () => 0,
       update: (model) => model,
       view: (_, h) => h.el("b", h.props.label)
@@ -722,7 +722,7 @@ describe("Runtime", () => {
         props: { initial: 123456789 },
         model: { count: 123456789 },
         commands: [],
-        emits: [],
+        events: [],
         adopted: false
       }
       const wire = encoder.encode(entry)
@@ -743,7 +743,7 @@ describe("Runtime", () => {
           users: Schema.Array(User)
         }),
         message: Schema.TaggedUnion({ Login: { password: Schema.Redacted(Schema.String) } }),
-        emits: Schema.Redacted(Schema.String),
+        events: Schema.Redacted(Schema.String),
         init: () => ({ token: Redacted.make("t"), fromValue: Redacted.make("v"), option: Option.none(), users: [] }),
         update: (model) => model,
         view: (_, h) => h.text("")
@@ -768,7 +768,7 @@ describe("Runtime", () => {
           users: [new User({ name: "ada", pin: Redacted.make(1234) })]
         },
         commands: [],
-        emits: [Redacted.make("e")]
+        events: [Redacted.make("e")]
       }
       const wire = MessageLog.makeEncoder({ onWarning: (warning) => warnings.push(warning) }).encode(entry) as any
       assert.deepStrictEqual(wire.message, { _tag: "Login", password: placeholder })
@@ -780,7 +780,7 @@ describe("Runtime", () => {
         option: { _tag: "Some", value: placeholder },
         users: [{ name: "ada", pin: placeholder }]
       })
-      assert.deepStrictEqual(wire.emits, [placeholder])
+      assert.deepStrictEqual(wire.events, [placeholder])
       assert.deepStrictEqual(warnings, [])
     })
 
@@ -825,7 +825,7 @@ describe("Runtime", () => {
         props: {},
         model,
         commands: [],
-        emits: [],
+        events: [],
         adopted: false
       }) as any
       assert.deepStrictEqual(wire.model, {

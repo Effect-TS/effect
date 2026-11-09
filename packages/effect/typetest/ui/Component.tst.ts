@@ -2,7 +2,14 @@ import { Context, Effect, Layer, Schema, Scope } from "effect"
 import type { KeyValueStore } from "effect/persistence"
 import { Command, Component, Feature } from "effect/ui"
 import { describe, expect, it } from "tstyche"
-import { Counter, SaveTodo, Todo, TodoItem, TodoItemEmits, TodoItemMessage } from "../../test/ui/fixtures/components.ts"
+import {
+  Counter,
+  SaveTodo,
+  Todo,
+  TodoItem,
+  TodoItemEvents,
+  TodoItemMessage
+} from "../../test/ui/fixtures/components.ts"
 
 const Message = Schema.TaggedUnion({ X: {}, Y: {}, Done: {} })
 
@@ -166,7 +173,7 @@ describe("Component", () => {
   describe("Feature.Service", () => {
     class Todos extends Feature.Service<Todos>()("Todos", {
       props: Schema.Struct({ todo: Todo }),
-      emits: TodoItemEmits
+      events: TodoItemEvents
     }) {}
 
     it("accepts an implementation matching the contract and rejects another", () => {

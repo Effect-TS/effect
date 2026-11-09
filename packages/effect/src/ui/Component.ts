@@ -1,11 +1,11 @@
 /**
- * A component is a value: Schemas for its props, Model, messages and emits,
+ * A component is a value: Schemas for its props, Model, messages and events,
  * plus pure `init`, `update` and `view` functions.
  *
  * `update` returns the next Model, or a step that also runs Commands and
  * emits to the parent. The runtime holds each instance's Model, runs its
  * Commands in the instance's own Scope, and re-renders its view. Children are
- * declared in the view with `h.child`, and communicate up through `emits` and
+ * declared in the view with `h.child`, and communicate up through `events` and
  * down through props. A component's requirements, `R`, name the Commands and
  * feature services it uses, never what their implementations use.
  *
@@ -17,7 +17,7 @@
  *
  * const Todo = Schema.Struct({ id: Schema.String, title: Schema.String, done: Schema.Boolean })
  * const TodoItemMessage = Schema.TaggedUnion({ Toggle: {}, Save: {}, Saved: {} })
- * const TodoItemEmits = Schema.TaggedUnion({ Toggled: { done: Schema.Boolean } })
+ * const TodoItemEvents = Schema.TaggedUnion({ Toggled: { done: Schema.Boolean } })
  *
  * class SaveTodo extends Command.Service<SaveTodo>()(
  *   "todos/SaveTodo",
@@ -29,11 +29,11 @@
  *   props: Schema.Struct({ todo: Todo }),
  *   model: Schema.Struct({ saving: Schema.Boolean }),
  *   message: TodoItemMessage,
- *   emits: TodoItemEmits,
+ *   events: TodoItemEvents,
  *   init: ($) => $.set({ saving: false }),
  *   update: (model, message, $) =>
  *     TodoItemMessage.match(message, {
- *       Toggle: () => $.emit(TodoItemEmits.make({ _tag: "Toggled", done: !$.props.todo.done })),
+ *       Toggle: () => $.emit(TodoItemEvents.make({ _tag: "Toggled", done: !$.props.todo.done })),
  *       Save: () => $.set({ saving: true }).run(SaveTodo.make($.props.todo)),
  *       Saved: () => ({ saving: false })
  *     }),
@@ -104,10 +104,10 @@ export type StepTypeId = typeof StepTypeId
  * @category models
  * @since 4.1.3
  */
-export interface Next<out Model, out Msg, out Emits, out R = never> {
+export interface Next<out Model, out Msg, out Events, out R = never> {
   readonly model: Model
   readonly commands: ReadonlyArray<Command.Command<Msg, R>>
-  readonly emits: ReadonlyArray<Emits>
+  readonly events: ReadonlyArray<Events>
 }
 
 /**
@@ -125,15 +125,15 @@ export interface Next<out Model, out Msg, out Emits, out R = never> {
  * @category models
  * @since 4.1.3
  */
-export interface Step<in out Model, in out Msg, in out Emits, out R = never> extends Pipeable.Pipeable {
+export interface Step<in out Model, in out Msg, in out Events, out R = never> extends Pipeable.Pipeable {
   readonly [StepTypeId]: StepTypeId
   readonly model: Model
   readonly commands: ReadonlyArray<Command.Command<Msg, R>>
-  readonly emitted: ReadonlyArray<Emits>
+  readonly emitted: ReadonlyArray<Events>
   /** Replaces the Model. */
-  set(model: Model): Step<Model, Msg, Emits, R>
+  set(model: Model): Step<Model, Msg, Events, R>
   /** Changes the Model with a function of the current one. */
-  modify(f: (model: Model) => Model): Step<Model, Msg, Emits, R>
+  modify(f: (model: Model) => Model): Step<Model, Msg, Events, R>
   /**
    * Runs Commands in this instance's Scope. Their results come back as
    * messages, so a Command whose result isn't this component's message is
@@ -141,9 +141,9 @@ export interface Step<in out Model, in out Msg, in out Emits, out R = never> ext
    */
   run<const C extends ReadonlyArray<Command.Command<Msg, any>>>(
     ...commands: C
-  ): Step<Model, Msg, Emits, R | Command.Requirements<C[number]>>
+  ): Step<Model, Msg, Events, R | Command.Requirements<C[number]>>
   /** Reports to the parent. */
-  emit(...emitted: ReadonlyArray<Emits>): Step<Model, Msg, Emits, R>
+  emit(...emitted: ReadonlyArray<Events>): Step<Model, Msg, Events, R>
 }
 
 /**
@@ -153,7 +153,7 @@ export interface Step<in out Model, in out Msg, in out Emits, out R = never> ext
  * @category models
  * @since 4.1.3
  */
-export interface Update<in out Model, in out Msg, in out Emits, out Props> extends Step<Model, Msg, Emits, never> {
+export interface Update<in out Model, in out Msg, in out Events, out Props> extends Step<Model, Msg, Events, never> {
   readonly props: Props
 }
 
@@ -164,10 +164,10 @@ export interface Update<in out Model, in out Msg, in out Emits, out Props> exten
  * @category models
  * @since 4.1.3
  */
-export interface Init<in out Model, in out Msg, in out Emits, out Props> {
+export interface Init<in out Model, in out Msg, in out Events, out Props> {
   readonly props: Props
   /** Sets the first Model. */
-  set(model: Model): Step<Model, Msg, Emits, never>
+  set(model: Model): Step<Model, Msg, Events, never>
 }
 
 /**
@@ -177,7 +177,7 @@ export interface Init<in out Model, in out Msg, in out Emits, out Props> {
  * @category utility types
  * @since 4.1.3
  */
-export type StepRequirements<U> = U extends Step<infer _Model, infer _Msg, infer _Emits, infer R> ? R : never
+export type StepRequirements<U> = U extends Step<infer _Model, infer _Msg, infer _Events, infer R> ? R : never
 
 const StepProto = {
   [StepTypeId]: StepTypeId,
@@ -224,11 +224,11 @@ export const isStep = (u: unknown): u is Step<unknown, unknown, unknown, unknown
 
 const toNext = (result: unknown): Next<any, any, any, any> =>
   isStep(result)
-    ? { model: result.model, commands: result.commands, emits: result.emitted }
-    : { model: result, commands: [], emits: [] }
+    ? { model: result.model, commands: result.commands, events: result.emitted }
+    : { model: result, commands: [], events: [] }
 
 /**
- * What a parent needs from a child: its props and emits contract and its
+ * What a parent needs from a child: its props and events contract and its
  * requirements. Model and message are the child's business and are erased.
  *
  * **Details**
@@ -240,15 +240,15 @@ const toNext = (result: unknown): Next<any, any, any, any> =>
  * @category models
  * @since 4.1.3
  */
-export interface Mountable<in out Props, out Emits, out R = never> extends Pipeable.Pipeable {
-  readonly [TypeId]: Mountable.Variance<Props, Emits, R>
+export interface Mountable<in out Props, out Events, out R = never> extends Pipeable.Pipeable {
+  readonly [TypeId]: Mountable.Variance<Props, Events, R>
   readonly name: string
   readonly props: Schema.Codec<Props, any>
   readonly model: Schema.Codec<any, any>
   readonly message: Schema.Codec<any, any>
-  readonly emits: Schema.Codec<Emits, any>
-  readonly init: (props: Props) => Next<any, any, Emits, R>
-  readonly update: (model: any, msg: never, props: Props) => Next<any, any, Emits, R>
+  readonly events: Schema.Codec<Events, any>
+  readonly init: (props: Props) => Next<any, any, Events, R>
+  readonly update: (model: any, msg: never, props: Props) => Next<any, any, Events, R>
   readonly view: (model: any, props: Props) => View.Node<any, R>
   readonly subscriptions: ((model: any, props: Props) => ReadonlyArray<Subscription.Subscription<any, R>>) | undefined
   /** The component's vocabulary: its `elements` override, else the registered one. Read lazily. */
@@ -269,14 +269,14 @@ export interface Mountable<in out Props, out Emits, out R = never> extends Pipea
  */
 export declare namespace Mountable {
   /**
-   * Phantom variance for a component's props, emits and requirements.
+   * Phantom variance for a component's props, events and requirements.
    *
    * @category models
    * @since 4.1.3
    */
-  export interface Variance<in out Props, out Emits, out R> {
+  export interface Variance<in out Props, out Events, out R> {
     readonly _Props: Types.Invariant<Props>
-    readonly _Emits: Types.Covariant<Emits>
+    readonly _Events: Types.Covariant<Events>
     readonly _R: Types.Covariant<R>
   }
 }
@@ -293,15 +293,15 @@ export interface Component<
   in out Props,
   in out Model,
   in out Msg,
-  out Emits,
+  out Events,
   out R = never,
   out V extends View.Elements = never
-> extends Mountable<Props, Emits, R> {
+> extends Mountable<Props, Events, R> {
   readonly name: Name
   readonly model: Schema.Codec<Model, any>
   readonly message: Schema.Codec<Msg, any>
-  readonly init: (props: Props) => Next<Model, Msg, Emits, R>
-  readonly update: (model: Model, msg: Msg, props: Props) => Next<Model, Msg, Emits, R>
+  readonly init: (props: Props) => Next<Model, Msg, Events, R>
+  readonly update: (model: Model, msg: Msg, props: Props) => Next<Model, Msg, Events, R>
   readonly view: (model: Model, props: Props) => View.Node<Msg, R>
   readonly subscriptions: ((model: Model, props: Props) => ReadonlyArray<Subscription.Subscription<Msg, R>>) | undefined
   readonly layerFailure: ((failure: AsyncResult.Failure<never, any>) => Msg) | undefined
@@ -324,16 +324,16 @@ export type Any = Mountable<any, any, any>
  * @category utility types
  * @since 4.1.3
  */
-export type Props<C> = C extends Mountable<infer P, infer _Emits, infer _R> ? P : never
+export type Props<C> = C extends Mountable<infer P, infer _Events, infer _R> ? P : never
 
 /**
- * The emits of a component.
+ * The events of a component.
  *
  * @stability experimental
  * @category utility types
  * @since 4.1.3
  */
-export type Emits<C> = C extends Mountable<infer _Props, infer E, infer _R> ? E : never
+export type Events<C> = C extends Mountable<infer _Props, infer E, infer _R> ? E : never
 
 /**
  * The requirements of a component: the Commands and feature services it uses.
@@ -342,7 +342,7 @@ export type Emits<C> = C extends Mountable<infer _Props, infer E, infer _R> ? E 
  * @category utility types
  * @since 4.1.3
  */
-export type Requirements<C> = C extends Mountable<infer _Props, infer _Emits, infer R> ? R : never
+export type Requirements<C> = C extends Mountable<infer _Props, infer _Events, infer R> ? R : never
 
 /**
  * The Model of a component.
@@ -375,7 +375,7 @@ export type Message<C> = C extends Component<infer _N, infer _P, infer _M, infer
 export const isComponent = (u: unknown): u is Any => Predicate.hasProperty(u, TypeId)
 
 const Proto = {
-  [TypeId]: { _Props: (_: never) => _, _Emits: (_: never) => _, _R: (_: never) => _ },
+  [TypeId]: { _Props: (_: never) => _, _Events: (_: never) => _, _R: (_: never) => _ },
   pipe() {
     return Pipeable.pipeArguments(this, arguments)
   }
@@ -393,7 +393,7 @@ const Proto = {
  * it, so `R` covers every branch, including conditional views. Framework
  * services such as `Scope` are never part of `R`.
  *
- * `props` and `emits` are optional. `subscriptions` returns keyed Streams run
+ * `props` and `events` are optional. `subscriptions` returns keyed Streams run
  * while their key is listed, and falsy entries are skipped. `elements`
  * overrides the registered vocabulary for this component.
  *
@@ -435,9 +435,9 @@ export const make = <
   Model,
   Msg,
   Props = {},
-  Emits = never,
-  UI extends Model | Step<Model, Msg, Emits, any> = Model,
-  U extends Model | Step<Model, Msg, Emits, any> = Model,
+  Events = never,
+  UI extends Model | Step<Model, Msg, Events, any> = Model,
+  U extends Model | Step<Model, Msg, Events, any> = Model,
   UV extends View.Node<Msg, any> = View.Node<Msg>,
   S extends Subscription.Subscription<Msg, any> = never,
   V extends View.Elements = View.Registered
@@ -446,9 +446,9 @@ export const make = <
   readonly props?: Schema.Codec<Props, any> | undefined
   readonly model: Schema.Codec<Model, any>
   readonly message: Schema.Codec<Msg, any>
-  readonly emits?: Schema.Codec<Emits, any> | undefined
-  readonly init: ($: Init<Model, Msg, Emits, Props>) => UI
-  readonly update: (model: Model, msg: Msg, $: Update<Model, Msg, Emits, Props>) => U
+  readonly events?: Schema.Codec<Events, any> | undefined
+  readonly init: ($: Init<Model, Msg, Events, Props>) => UI
+  readonly update: (model: Model, msg: Msg, $: Update<Model, Msg, Events, Props>) => U
   readonly view: (model: Model, h: View.Helper<Msg, Props> & View.Tags<V, Msg>) => UV
   readonly subscriptions?: ((model: Model, props: Props) => ReadonlyArray<S | false | null | undefined>) | undefined
   readonly elements?: View.Vocabulary<V> | undefined
@@ -457,7 +457,7 @@ export const make = <
   Props,
   Model,
   Msg,
-  Emits,
+  Events,
   Exclude<
     StepRequirements<UI> | StepRequirements<U> | View.Requirements<UV> | Subscription.Requirements<S>,
     Command.FrameworkService
@@ -470,7 +470,7 @@ export const make = <
     props: options.props ?? Schema.Struct({}),
     model: options.model,
     message: options.message,
-    emits: options.emits ?? Schema.Never,
+    events: options.events ?? Schema.Never,
     init: (props: Props) => toNext(options.init(makeInit(props))),
     update: (model: Model, msg: Msg, props: Props) => toNext(options.update(model, msg, makeUpdate(model, props))),
     view: (model: Model, props: Props) =>
@@ -530,7 +530,7 @@ export interface LocalOption {
 export type Provided<C, ROut, RIn> = C extends
   Component<infer N, infer P, infer M, infer Msg, infer E, infer _R, infer V>
   ? Component<N, P, M, Msg, E, Exclude<Requirements<C>, ROut> | RIn, V>
-  : Mountable<Props<C>, Emits<C>, Exclude<Requirements<C>, ROut> | RIn>
+  : Mountable<Props<C>, Events<C>, Exclude<Requirements<C>, ROut> | RIn>
 
 /**
  * What `provide` accepts: a Layer, an array of them, or a function of props

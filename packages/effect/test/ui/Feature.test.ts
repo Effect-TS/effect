@@ -1,25 +1,25 @@
 import { assert, describe, it } from "@effect/vitest"
 import { Context, Effect, Layer, Option, Schema, Scope } from "effect"
 import { Feature } from "effect/ui"
-import { SaveTodo, Todo, TodoItem, TodoItemEmits, TodoItemMessage } from "./fixtures/components.ts"
+import { SaveTodo, Todo, TodoItem, TodoItemEvents, TodoItemMessage } from "./fixtures/components.ts"
 
 class Todos extends Feature.Service<Todos>()("Todos", {
   props: Schema.Struct({ todo: Todo }),
-  emits: TodoItemEmits
+  events: TodoItemEvents
 }) {}
 
 describe("Feature", () => {
   it("is a Context.Service carrying the contract's Schemas", () => {
     assert.strictEqual(Todos.key, "feature/Todos")
     assert.strictEqual(Todos[Feature.TypeId].name, "Todos")
-    assert.strictEqual(Todos.emits, TodoItemEmits)
+    assert.strictEqual(Todos.events, TodoItemEvents)
     assert.isTrue(Feature.isService(Todos))
     assert.isFalse(Feature.isService(TodoItem))
   })
 
-  it("defaults emits to Schema.Never", () => {
+  it("defaults events to Schema.Never", () => {
     class Quiet extends Feature.Service<Quiet>()("Quiet", { props: Schema.Struct({}) }) {}
-    assert.strictEqual(Quiet.emits, Schema.Never)
+    assert.strictEqual(Quiet.events, Schema.Never)
   })
 
   it.effect("layer closes the implementation's requirements with the build site's Context, minus Scope", () =>

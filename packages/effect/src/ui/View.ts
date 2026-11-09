@@ -137,7 +137,7 @@ export interface Child<out Msg, out R = never> {
   readonly component: Component.Any | Feature.Any
   readonly key: string
   readonly props: unknown
-  readonly onEmit: (emits: any) => Msg | undefined
+  readonly onEmit: (events: any) => Msg | undefined
   /** What the slot shows while its child can't be shown. Required for a feature child. */
   readonly fallback: ((result: Child.Fallback) => Node<Msg, any>) | undefined
   /** Also tells the parent that the child failed. */
@@ -169,11 +169,11 @@ export declare namespace Child {
    * @category models
    * @since 4.1.3
    */
-  export type Options<Props, Emits, Msg> =
+  export type Options<Props, Events, Msg> =
     & {
       readonly key: string
-      /** Handles the child's whole `emits` union and returns `undefined` for the cases it ignores. */
-      readonly onEmit?: ((emits: Emits) => Msg | undefined) | undefined
+      /** Handles the child's whole `events` union and returns `undefined` for the cases it ignores. */
+      readonly onEmit?: ((events: Events) => Msg | undefined) | undefined
       /** Also tells the parent that the child failed. The failure stays in the slot either way. */
       readonly onFailure?: ((failure: AsyncResult.Failure<never, unknown>) => Msg | undefined) | undefined
     }
@@ -264,7 +264,7 @@ export const children = <Msg>(inputs: ReadonlyArray<Input<Msg>>): Array<Node<Msg
  *
  * **Details**
  *
- * Every setter returns a copy, so a view stays a value. `Events` maps an event
+ * Every setter returns a copy, so a view stays a value. `Handlers` maps an event
  * name to its payload; a vocabulary's element class fixes it and adds sugar.
  * The core builder leaves payloads untyped.
  *
@@ -272,9 +272,12 @@ export const children = <Msg>(inputs: ReadonlyArray<Input<Msg>>): Array<Node<Msg
  * @category models
  * @since 4.1.3
  */
-export class ElementBuilder<out Msg, out R = never, in out Events = Record<string, unknown>, in out HostNode = unknown>
-  implements Element<Msg, R>
-{
+export class ElementBuilder<
+  out Msg,
+  out R = never,
+  in out Handlers = Record<string, unknown>,
+  in out HostNode = unknown
+> implements Element<Msg, R> {
   /**
    * The node kind.
    *
@@ -329,7 +332,7 @@ export class ElementBuilder<out Msg, out R = never, in out Events = Record<strin
    *
    * @since 4.1.3
    */
-  declare readonly "~Events"?: Events
+  declare readonly "~Handlers"?: Handlers
   /**
    * The element's tag.
    *
@@ -361,7 +364,7 @@ export class ElementBuilder<out Msg, out R = never, in out Events = Record<strin
    *
    * @since 4.1.3
    */
-  on<K extends keyof Events & string>(event: K, handler: Handler<Msg, Events[K]>): this {
+  on<K extends keyof Handlers & string>(event: K, handler: Handler<Msg, Handlers[K]>): this {
     return this.with({ handlers: { ...this.handlers, [event]: handler } })
   }
   /**
@@ -415,7 +418,7 @@ export class ElementBuilder<out Msg, out R = never, in out Events = Record<strin
   onMount<R2>(
     name: string,
     run: (node: HostNode) => Effect.Effect<Msg, never, R2>
-  ): ElementBuilder<Msg, R | R2, Events, HostNode> {
+  ): ElementBuilder<Msg, R | R2, Handlers, HostNode> {
     return this.with({ mount: { name, run } }) as any
   }
 }
@@ -558,17 +561,17 @@ export interface Helper<Msg, Props> {
   /** A text node. The only way to put text in a native view. */
   text(text: string): Text
   /** A feature by service. The parent requires the service only. */
-  child<Self, Props, Emits, RF = never>(
-    service: Feature.Service<Self, Props, Emits>,
-    options: Child.Options<Props, Emits, Msg> & {
+  child<Self, Props, Events, RF = never>(
+    service: Feature.Service<Self, Props, Events>,
+    options: Child.Options<Props, Events, Msg> & {
       /** Required: the service may be building (`Initial`) or failed (`Failure`). */
       readonly fallback: (result: Child.Fallback) => Node<Msg, RF>
     }
   ): Child<Msg, Self | RF>
   /** A component by value. Its requirements surface in the parent's. */
-  child<Props, Emits, RC, RF = never>(
-    component: Component.Mountable<Props, Emits, RC>,
-    options: Child.Options<Props, Emits, Msg> & {
+  child<Props, Events, RC, RF = never>(
+    component: Component.Mountable<Props, Events, RC>,
+    options: Child.Options<Props, Events, Msg> & {
       /** Shown if the child fails, until its key changes. Without it, the slot is blank. */
       readonly fallback?: ((result: AsyncResult.Failure<never, unknown>) => Node<Msg, RF>) | undefined
     }
@@ -600,7 +603,7 @@ class HelperImpl<Msg, Props> implements Helper<Msg, Props> {
     options: {
       readonly key: string
       readonly props?: unknown
-      readonly onEmit?: ((emits: any) => Msg | undefined) | undefined
+      readonly onEmit?: ((events: any) => Msg | undefined) | undefined
       readonly fallback?: ((result: any) => Node<Msg, any>) | undefined
       readonly onFailure?: ((failure: AsyncResult.Failure<never, unknown>) => Msg | undefined) | undefined
     }
