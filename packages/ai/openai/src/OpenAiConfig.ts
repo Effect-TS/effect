@@ -10,7 +10,7 @@
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import { dual } from "effect/Function"
-import type { HttpClient } from "effect/http/HttpClient"
+import type * as HttpClient from "effect/http/HttpClient"
 
 /**
  * Context service for scoped OpenAI configuration used by provider operations.
@@ -52,11 +52,20 @@ export declare namespace OpenAiConfig {
    * Configuration values read by OpenAI provider operations when executing
    * requests.
    *
+   * **Details**
+   *
+   * `transformClient` receives the client after credentials are applied, whose
+   * error type includes the credentials' `AiError`, so the transform must work
+   * for any error and requirement types. Effect's `HttpClient` combinators,
+   * such as `HttpClient.mapRequest`, already do.
+   *
    * @category services
    * @since 4.0.0
    */
   export interface Service {
-    readonly transformClient?: ((client: HttpClient) => HttpClient) | undefined
+    readonly transformClient?:
+      | (<E, R>(client: HttpClient.HttpClient.With<E, R>) => HttpClient.HttpClient.With<E, R>)
+      | undefined
   }
 }
 
@@ -80,16 +89,25 @@ export declare namespace OpenAiConfig {
  * If a transform is already present in the scoped config, this helper replaces
  * it. Compose transforms manually when both should apply.
  *
+ * The transform must be generic over the client's error and requirement types,
+ * because the client it receives can fail with credential errors. Build it from
+ * `HttpClient` combinators rather than a lambda typed `(client: HttpClient) =>`.
+ *
  * @stability unstable
  * @category configuration
  * @since 4.0.0
  */
 export const withClientTransform: {
-  (transform: (client: HttpClient) => HttpClient): <A, E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>
-  <A, E, R>(self: Effect.Effect<A, E, R>, transform: (client: HttpClient) => HttpClient): Effect.Effect<A, E, R>
+  (
+    transform: <E, R>(client: HttpClient.HttpClient.With<E, R>) => HttpClient.HttpClient.With<E, R>
+  ): <A, E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>
+  <A, E, R>(
+    self: Effect.Effect<A, E, R>,
+    transform: <E2, R2>(client: HttpClient.HttpClient.With<E2, R2>) => HttpClient.HttpClient.With<E2, R2>
+  ): Effect.Effect<A, E, R>
 } = dual(2, <A, E, R>(
   self: Effect.Effect<A, E, R>,
-  transformClient: (client: HttpClient) => HttpClient
+  transformClient: <E2, R2>(client: HttpClient.HttpClient.With<E2, R2>) => HttpClient.HttpClient.With<E2, R2>
 ) =>
   Effect.flatMap(
     OpenAiConfig.getOrUndefined,

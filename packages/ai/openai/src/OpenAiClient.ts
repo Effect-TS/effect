@@ -10,6 +10,7 @@
  * @since 4.0.0
  */
 import * as AiError from "effect/ai/AiError"
+import * as Credentials from "effect/ai/Credentials"
 import * as ResponseIdTracker from "effect/ai/ResponseIdTracker"
 import * as Array from "effect/Array"
 import * as Cause from "effect/Cause"
@@ -22,6 +23,7 @@ import * as Function from "effect/Function"
 import * as Headers from "effect/http/Headers"
 import * as HttpBody from "effect/http/HttpBody"
 import * as HttpClient from "effect/http/HttpClient"
+import * as HttpClientError from "effect/http/HttpClientError"
 import * as HttpClientRequest from "effect/http/HttpClientRequest"
 import * as HttpClientResponse from "effect/http/HttpClientResponse"
 import * as Layer from "effect/Layer"
@@ -36,6 +38,7 @@ import * as Socket from "effect/socket/Socket"
 import * as Stream from "effect/Stream"
 import * as Errors from "./internal/errors.ts"
 import { OpenAiConfig } from "./OpenAiConfig.ts"
+import * as OpenAiCredentials from "./OpenAiCredentials.ts"
 import * as OpenAiSchema from "./OpenAiSchema.ts"
 
 const decodeResponseStreamEvent = Schema.decodeUnknownEffect(Schema.fromJsonString(OpenAiSchema.ResponseStreamEvent))
@@ -57,9 +60,10 @@ const decodeResponseStreamEvent = Schema.decodeUnknownEffect(Schema.fromJsonStri
  */
 export interface Service {
   /**
-   * The transformed HTTP client used by this service.
+   * The transformed HTTP client used by this service. It can also fail with the
+   * `AiError` of the configured credentials.
    */
-  readonly client: HttpClient.HttpClient
+  readonly client: HttpClient.HttpClient.With<HttpClientError.HttpClientError | AiError.AiError>
 
   /**
    * Create a response using the OpenAI responses endpoint.
@@ -136,9 +140,18 @@ export class OpenAiClient extends Context.Service<OpenAiClient, Service>()(
  */
 export type Options = {
   /**
-   * The OpenAI API key.
+   * The OpenAI API key, sent as a bearer token. Mutually exclusive with
+   * `credentials`. When neither is set, the client uses `OpenAiCredentials`
+   * from context if present, and otherwise sends requests without
+   * authentication.
    */
   readonly apiKey?: Redacted.Redacted<string> | undefined
+
+  /**
+   * Credentials used to authenticate requests, such as
+   * `OpenAiCredentials.makeWorkloadIdentity`. Mutually exclusive with `apiKey`.
+   */
+  readonly credentials?: OpenAiCredentials.Service | undefined
 
   /**
    * The base URL for the OpenAI API.
@@ -148,12 +161,16 @@ export type Options = {
   readonly apiUrl?: string | undefined
 
   /**
-   * Optional organization ID for multi-org accounts.
+   * Optional organization ID for multi-org accounts. It is sent with any
+   * credentials; OpenAI resolves the organization of a federated token from
+   * its service account.
    */
   readonly organizationId?: Redacted.Redacted<string> | undefined
 
   /**
-   * Optional project ID for project-scoped requests.
+   * Optional project ID for project-scoped requests. It is sent with any
+   * credentials; OpenAI resolves the project of a federated token from its
+   * service account.
    */
   readonly projectId?: Redacted.Redacted<string> | undefined
 
@@ -187,9 +204,12 @@ const withRedactedHeaders = Effect.updateService(
  * **Details**
  *
  * The returned service uses the current `HttpClient`, prepends `apiUrl` or
- * `https://api.openai.com/v1`, adds the bearer token and optional OpenAI
- * organization/project headers, accepts JSON responses, filters for successful
- * HTTP statuses, and applies `transformClient` when provided.
+ * `https://api.openai.com/v1`, adds optional OpenAI organization/project
+ * headers, accepts JSON responses, filters for successful HTTP statuses, and
+ * applies `transformClient` when provided. It then authenticates with
+ * `credentials`, with `apiKey` as a bearer token, or with `OpenAiCredentials`
+ * from context, and replays an HTTP request rejected with a 401 once; a
+ * WebSocket connection is not replayed.
  *
  * **Gotchas**
  *
@@ -210,12 +230,17 @@ export const make = Effect.fnUntraced(
     const baseClient = yield* HttpClient.HttpClient
     const apiUrl = options.apiUrl ?? "https://api.openai.com/v1"
 
+    const credentials = yield* Credentials.resolve({
+      module: "OpenAiClient",
+      apiKey: options.apiKey,
+      credentials: options.credentials,
+      fromApiKey: OpenAiCredentials.apiKey,
+      tag: OpenAiCredentials.OpenAiCredentials
+    })
+
     const httpClient = baseClient.pipe(
       HttpClient.mapRequest(Function.flow(
         HttpClientRequest.prependUrl(apiUrl),
-        options.apiKey
-          ? HttpClientRequest.bearerToken(Redacted.value(options.apiKey))
-          : identity,
         options.organizationId
           ? HttpClientRequest.setHeader(
             RedactedOpenAiHeaders.OpenAiOrganization,
@@ -233,7 +258,11 @@ export const make = Effect.fnUntraced(
       HttpClient.filterStatusOk,
       options.transformClient
         ? options.transformClient
-        : identity
+        : identity,
+      // Applied after `options.transformClient` so that transform cannot drop
+      // or overwrite the credentials; a `withClientTransform` transform runs on
+      // the authenticated client and deliberately can.
+      Credentials.authenticated(credentials)
     )
 
     const resolveHttpClient = Effect.map(
@@ -413,9 +442,15 @@ export const layer = (options: Options): Layer.Layer<OpenAiClient, never, HttpCl
  */
 export const layerConfig = (options?: {
   /**
-   * The config value to load for the API key.
+   * The config value to load for the API key. Mutually exclusive with
+   * `credentials`.
    */
   readonly apiKey?: Config.Config<Redacted.Redacted<string> | undefined> | undefined
+
+  /**
+   * Credentials used to authenticate requests. Mutually exclusive with `apiKey`.
+   */
+  readonly credentials?: OpenAiCredentials.Service | undefined
 
   /**
    * The config value to load for the API URL.
@@ -455,6 +490,7 @@ export const layerConfig = (options?: {
       return yield* make({
         apiKey,
         apiUrl,
+        credentials: options?.credentials,
         organizationId,
         projectId,
         transformClient: options?.transformClient
@@ -526,7 +562,13 @@ const makeSocket = Effect.gen(function*() {
       const httpClient = Predicate.isNotUndefined(config?.transformClient)
         ? config.transformClient(client.client)
         : client.client
-      return Effect.orDie(httpClient.preprocess(HttpClientRequest.post("/responses")))
+      // Credential failures are ordinary `AiError`s and stay failures; only
+      // transport-level failures while preparing the request are defects.
+      return Effect.catchIf(
+        httpClient.preprocess(HttpClientRequest.post("/responses")),
+        HttpClientError.isHttpClientError,
+        Effect.die
+      )
     }
   )
   const makeWebSocket = yield* Socket.WebSocketConstructor
@@ -542,7 +584,7 @@ const makeSocket = Effect.gen(function*() {
     current: Turn | undefined
   }
 
-  const queueRef: RcRef.RcRef<SocketConnection> = yield* RcRef.make({
+  const queueRef: RcRef.RcRef<SocketConnection, AiError.AiError> = yield* RcRef.make({
     idleTimeToLive: 60_000,
     acquire: Effect.gen(function*() {
       const scope = yield* Effect.scope
@@ -676,12 +718,12 @@ const makeSocket = Effect.gen(function*() {
     })
   })
 
-  // Prime the websocket
-  yield* Effect.scoped(RcRef.get(queueRef))
+  // Prime the websocket. A credentials failure here is left for the first
+  // response stream to report, since building the service cannot fail.
+  yield* Effect.ignore(Effect.scoped(RcRef.get(queueRef)))
 
   // Websocket mode only allows one request at a time
   const semaphore = Semaphore.makeUnsafe(1)
-  const request = yield* makeRequest
 
   return OpenAiSocket.context({
     createResponseStream(options) {
@@ -710,10 +752,11 @@ const makeSocket = Effect.gen(function*() {
         return Stream.fromQueue(turn)
       }))
 
-      return Effect.succeed([
-        HttpClientResponse.fromWeb(request, new Response()),
-        stream
-      ])
+      return Effect.map(makeRequest, (request) =>
+        [
+          HttpClientResponse.fromWeb(request, new Response()),
+          stream
+        ] as const)
     }
   }).pipe(
     Context.add(ResponseIdTracker.ResponseIdTracker, tracker)
@@ -763,6 +806,9 @@ const decodeEvent = Schema.decodeUnknownSync(Schema.fromJsonString(AllEvents))
  * These constructor layers support the non-standard options needed to set the
  * Authorization header.
  *
+ * The access token is sent once when the socket connects; a rejected
+ * connection is not retried with a new token.
+ *
  * @see {@link layerWebSocketMode} for providing WebSocket mode through a layer
  * @see {@link OpenAiSocket} for direct access to the WebSocket-backed streaming service
  *
@@ -802,6 +848,9 @@ export const withWebSocketMode = <A, E, R>(
  *
  * These constructor layers support the non-standard options needed to set the
  * Authorization header.
+ *
+ * The access token is sent once when the socket connects; a rejected
+ * connection is not retried with a new token.
  *
  * @see {@link withWebSocketMode} for enabling WebSocket mode around a single effect
  *
