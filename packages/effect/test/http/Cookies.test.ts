@@ -116,6 +116,17 @@ describe("Cookies", () => {
         "theme=dark"
       ])
       deepStrictEqual(Cookies.toSetCookieHeaders(Cookies.remove(parsed, "session")), ["theme=dark"])
+
+      const copy = Object.assign(Object.create(Object.getPrototypeOf(parsed)), parsed)
+      deepStrictEqual(Cookies.toSetCookieHeaders(Cookies.remove(copy, "theme")), [
+        "session=a; Path=/",
+        "session=b; Domain=example.com; Path=/"
+      ])
+      deepStrictEqual(Cookies.toSetCookieHeaders(Cookies.merge(copy, Cookies.fromSetCookie("theme=light"))), [
+        "session=a; Path=/",
+        "session=b; Domain=example.com; Path=/",
+        "theme=light"
+      ])
     })
   })
 
@@ -230,6 +241,11 @@ describe("Cookies", () => {
       deepStrictEqual(Cookies.toSetCookieHeaders(merged), [
         "session=domain; Domain=example.com; Path=/",
         "session=updated; Path=/"
+      ])
+
+      const copy = Object.assign(Object.create(Object.getPrototypeOf(cookies)), cookies)
+      deepStrictEqual(Cookies.toSetCookieHeaders(Cookies.remove(copy, "host")), [
+        "session=domain; Domain=example.com; Path=/"
       ])
     })
 
