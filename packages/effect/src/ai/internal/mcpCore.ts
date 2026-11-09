@@ -181,14 +181,14 @@ export interface ToolRegistration {
   readonly descriptor: McpSchema.Tool
   readonly isVisible: (profile: NegotiatedProtocolProfile<string>) => boolean
   readonly visible?: Visible | undefined
-  readonly handle: <E>(
+  readonly handle: (
     call: typeof McpSchema.CallTool.payloadSchema.Type,
     invocation: McpInvocation,
     // Runs after request-level visibility accepts the tool, and before its handler.
-    beforeHandle: Effect.Effect<void, E>
+    beforeHandle: Effect.Effect<void, RequestRejected>
   ) => Effect.Effect<
     OperationOutcome<McpSchema.CallToolResult>,
-    ToolNotFound | InvalidToolInput | InvalidToolContinuation | ToolExecutionError | RequestRejected | E,
+    ToolError,
     never
   >
 }
@@ -208,18 +208,11 @@ export interface Tools {
     name: string,
     profile: NegotiatedProtocolProfile<string>
   ) => McpSchema.Tool | undefined
-  readonly call: {
-    (
-      call: typeof McpSchema.CallTool.payloadSchema.Type,
-      invocation: McpInvocation
-    ): Effect.Effect<OperationOutcome<McpSchema.CallToolResult>, ToolError>
-    // `beforeHandle` runs only after request-level visibility accepts the tool.
-    <E>(
-      call: typeof McpSchema.CallTool.payloadSchema.Type,
-      invocation: McpInvocation,
-      beforeHandle: Effect.Effect<void, E>
-    ): Effect.Effect<OperationOutcome<McpSchema.CallToolResult>, ToolError | E>
-  }
+  readonly call: (
+    call: typeof McpSchema.CallTool.payloadSchema.Type,
+    invocation: McpInvocation,
+    beforeHandle?: Effect.Effect<void, RequestRejected> | undefined
+  ) => Effect.Effect<OperationOutcome<McpSchema.CallToolResult>, ToolError>
 }
 
 /**
@@ -586,11 +579,7 @@ export const make: Effect.Effect<McpCore> = Effect.sync(() => {
       const registration = registrations.get(name)
       return registration !== undefined && registration.isVisible(profile) ? registration.descriptor : undefined
     },
-    call: ((
-      call: typeof McpSchema.CallTool.payloadSchema.Type,
-      invocation: McpInvocation,
-      beforeHandle?: Effect.Effect<void, unknown>
-    ) =>
+    call: (call, invocation, beforeHandle = Effect.void) =>
       Effect.suspend(() => {
         const registration = registrations.get(call.name)
         if (registration === undefined) {
@@ -599,8 +588,8 @@ export const make: Effect.Effect<McpCore> = Effect.sync(() => {
         if (!registration.isVisible(invocation.protocol)) {
           return Effect.fail(new ToolNotFound({ name: call.name }))
         }
-        return registration.handle(call, invocation, beforeHandle ?? Effect.void)
-      })) as Tools["call"]
+        return registration.handle(call, invocation, beforeHandle)
+      })
   }
 
   const resources: Resources = {

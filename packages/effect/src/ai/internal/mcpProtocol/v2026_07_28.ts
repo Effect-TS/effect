@@ -671,11 +671,13 @@ export const makeHandlers = (
       // `find` is protocol-level, so checking headers first would reveal a hidden tool.
       const beforeHandle = tool === undefined || Option.isNone(httpRequest)
         ? undefined
-        : validateParameterHeaders(tool.inputSchema, request.arguments, httpRequest.value.headers)
+        : validateParameterHeaders(tool.inputSchema, request.arguments, httpRequest.value.headers).pipe(
+          Effect.mapError((error) =>
+            new McpCore.RequestRejected({ code: error.code, message: error.message, data: error.data, error })
+          )
+        )
       const call = { name: request.name, arguments: request.arguments ?? {} }
-      const outcome = yield* (beforeHandle === undefined
-        ? core.tools.call(call, invocation)
-        : core.tools.call(call, invocation, beforeHandle))
+      const outcome = yield* core.tools.call(call, invocation, beforeHandle)
         .pipe(
           Effect.catchTag(
             ["ToolExecutionError", "InvalidToolInput"],
