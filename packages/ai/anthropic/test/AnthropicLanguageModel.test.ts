@@ -14,6 +14,152 @@ import {
 import { HttpClient, type HttpClientError, type HttpClientRequest, HttpClientResponse } from "effect/http"
 
 describe("AnthropicLanguageModel", () => {
+  describe("tool schema strictness", () => {
+    const Contact = Tool.make("UpdateContact", {
+      parameters: Schema.Struct({
+        id: Schema.String,
+        name: Schema.optionalKey(Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(255))),
+        nickname: Schema.optionalKey(Schema.NullOr(Schema.String)),
+        fields: Schema.optionalKey(Schema.Record(Schema.String, Schema.String))
+      })
+    })
+    const cases = [
+      { name: "global non-strict", config: { strictJsonSchema: false }, strict: false },
+      { name: "tool opt-out", config: { strictJsonSchema: true }, toolStrict: false, strict: false },
+      { name: "tool opt-in", config: { strictJsonSchema: false }, toolStrict: true, strict: true },
+      { name: "default strict", config: {}, strict: true },
+      {
+        name: "unsupported model",
+        model: "claude-sonnet-4-20250514",
+        config: {},
+        toolStrict: true,
+        strict: undefined
+      },
+      { name: "disabled capability", config: { structuredOutputs: false }, toolStrict: true, strict: undefined }
+    ]
+
+    for (const testCase of cases) {
+      it.effect(testCase.name, () =>
+        Effect.gen(function*() {
+          const model = testCase.model ?? "claude-sonnet-4-5"
+          const tool = Contact.annotate(Tool.Strict, testCase.toolStrict)
+          let capturedRequest: HttpClientRequest.HttpClientRequest | undefined
+          const response = yield* LanguageModel.generateText({
+            prompt: "Update the contact",
+            toolkit: Toolkit.make(tool),
+            disableToolCallResolution: true
+          }).pipe(
+            Effect.provide(AnthropicLanguageModel.model(model, testCase.config)),
+            Effect.provide(AnthropicClient.layer({ apiKey: Redacted.make("sk-test-key") })),
+            Effect.provideService(
+              HttpClient.HttpClient,
+              makeHttpClient((request) => {
+                capturedRequest = request
+                return Effect.succeed(jsonResponse(request, {
+                  id: "msg_contact",
+                  type: "message",
+                  role: "assistant",
+                  model,
+                  content: [
+                    { type: "tool_use", id: "call_null", name: "UpdateContact", input: { id: "c1", nickname: null } },
+                    {
+                      type: "tool_use",
+                      id: "call_record",
+                      name: "UpdateContact",
+                      input: { id: "c1", fields: { a: "x" } }
+                    }
+                  ],
+                  stop_reason: "tool_use",
+                  stop_sequence: null,
+                  usage: { input_tokens: 1, output_tokens: 1 }
+                }))
+              })
+            )
+          )
+
+          assertDefined(capturedRequest)
+          const body = yield* getRequestBody(capturedRequest)
+          assert.strictEqual(body.tools[0].strict, testCase.strict)
+          const schema = body.tools[0].input_schema
+          if (testCase.strict === true) {
+            assert.deepStrictEqual(schema.required, ["id", "name", "nickname", "fields"])
+            // Preserve the existing strict codec's null-to-omission normalization.
+            assert.deepStrictEqual(response.toolCalls[0]?.params, { id: "c1" })
+          } else {
+            assert.deepStrictEqual(schema.required, ["id"])
+            assert.deepStrictEqual(schema.properties.name, { type: "string", minLength: 1, maxLength: 255 })
+            assert.strictEqual(schema.properties.fields.type, "object")
+            assert.deepStrictEqual(schema.properties.fields.additionalProperties, { type: "string" })
+            assert.deepStrictEqual(response.toolCalls.map((call) => call.params), [
+              { id: "c1", nickname: null },
+              { id: "c1", fields: { a: "x" } }
+            ])
+          }
+        }))
+    }
+
+    for (const initialContent of [true, false]) {
+      it.effect(
+        `preserves non-strict params in streaming ${initialContent ? "initial content" : "JSON deltas"}`,
+        () =>
+          Effect.gen(function*() {
+            const inputs = [{ id: "c1", nickname: null }, { id: "c1", fields: { a: "x" } }]
+            const content = inputs.map((input, index) => ({
+              type: "tool_use",
+              id: `call_${index}`,
+              name: "UpdateContact",
+              input
+            }))
+            const parts = yield* LanguageModel.streamText({
+              prompt: "Update the contact",
+              toolkit: Toolkit.make(Contact),
+              disableToolCallResolution: true
+            }).pipe(
+              Stream.runCollect,
+              Effect.provide(AnthropicLanguageModel.model("claude-sonnet-4-5", { strictJsonSchema: false })),
+              Effect.provide(AnthropicClient.layer({ apiKey: Redacted.make("sk-test-key") })),
+              Effect.provideService(
+                HttpClient.HttpClient,
+                makeHttpClient((request) =>
+                  Effect.succeed(sseResponse(request, [
+                    {
+                      type: "message_start",
+                      message: {
+                        id: "msg_contact",
+                        type: "message",
+                        role: "assistant",
+                        model: "claude-sonnet-4-5",
+                        content: initialContent ? content : [],
+                        stop_reason: null,
+                        stop_sequence: null,
+                        usage: { input_tokens: 1, output_tokens: 0 }
+                      }
+                    },
+                    ...initialContent ? [] : content.flatMap((block, index) => [
+                      { type: "content_block_start", index, content_block: { ...block, input: {} } },
+                      {
+                        type: "content_block_delta",
+                        index,
+                        delta: { type: "input_json_delta", partial_json: JSON.stringify(block.input) }
+                      },
+                      { type: "content_block_stop", index }
+                    ]),
+                    {
+                      type: "message_delta",
+                      delta: { stop_reason: "tool_use", stop_sequence: null },
+                      usage: { output_tokens: 1 }
+                    },
+                    { type: "message_stop" }
+                  ]))
+                )
+              )
+            )
+            assert.deepStrictEqual(parts.filter((part) => part.type === "tool-call").map((part) => part.params), inputs)
+          })
+      )
+    }
+  })
+
   describe("streamText", () => {
     it.effect("reports total input tokens and cache usage on the span", () =>
       Effect.gen(function*() {
