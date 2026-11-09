@@ -7,6 +7,19 @@ describe("Subscription", () => {
     assert.strictEqual(Subscription.make("tick", Stream.empty).key, "tick")
   })
 
+  it("a name can't pass for a name with deps", () => {
+    assert.strictEqual(Subscription.make("page:null", Stream.empty).key, "page::null")
+    assert.strictEqual(Subscription.make("page", null, () => Stream.empty).key, "page:null")
+    assert.strictEqual(Subscription.make("a:b", "c", () => Stream.empty).key, "a::b:\"c\"")
+  })
+
+  it("numbers JSON can't tell apart keep distinct keys", () => {
+    const key = (dep: Subscription.Dep) => Subscription.make("page", dep, () => Stream.empty).key
+    const keys = [key(NaN), key(Infinity), key(-Infinity), key(null), key(0), key("null")]
+    assert.strictEqual(new Set(keys).size, keys.length)
+    assert.strictEqual(key(NaN), "page:NaN")
+  })
+
   it("deps join the key without colliding", () => {
     const key = (deps: Subscription.Deps) => Subscription.make("room", deps, () => Stream.empty).key
     assert.strictEqual(key("42"), "room:\"42\"")

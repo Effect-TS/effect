@@ -99,28 +99,44 @@ export type Deps = Dep | ReadonlyArray<Dep>
  */
 export type Requirements<S> = S extends Subscription<infer _Msg, infer R> ? R : never
 
-const encodeDep = (dep: Dep): string => JSON.stringify(dep)
+// Strings are JSON, so they're quoted and self-delimiting. Everything else is
+// its literal: `NaN`, `Infinity` and `-Infinity` stay distinct from `null`.
+const encodeDep = (dep: Dep): string => typeof dep === "string" ? JSON.stringify(dep) : String(dep)
+
+// A colon separates the name from the deps, so a colon in a name is doubled.
+const encodeName = (name: string): string => name.replaceAll(":", "::")
 
 /**
- * The key of a Subscription with deps: the name, a colon, and the deps encoded
- * as JSON and joined with commas. `1` and `"1"`, or `["a,b", "c"]` and
- * `["a", "b,c"]`, never share a key.
+ * The key of a Subscription: the name, and with deps a colon followed by the
+ * deps joined with commas.
  *
- * **Example** (Reading a key)
+ * **Details**
+ *
+ * Strings are JSON-quoted and other deps are their literal, so `1` and `"1"`,
+ * `["a,b", "c"]` and `["a", "b,c"]`, or `NaN` and `null`, never share a key.
+ * A colon in a name is doubled, so a name can't pass for a name with deps:
+ * `keyOf("page:null")` is `page::null` and `keyOf("page", null)` is `page:null`.
+ * A single dep and a one-element tuple share a key, as they mean the same.
+ *
+ * **Example** (Reading keys)
  *
  * ```ts import.meta.vitest
  * import { Subscription } from "effect/ui"
  *
+ * Subscription.keyOf("tick") // => "tick"
  * Subscription.keyOf("room", "42") // => 'room:"42"'
  * Subscription.keyOf("cell", [1, true]) // => "cell:1,true"
+ * Subscription.keyOf("page:null") // => "page::null"
  * ```
  *
  * @stability experimental
  * @category constructors
  * @since 4.1.3
  */
-export const keyOf = (name: string, deps: Deps): string =>
-  `${name}:${(Array.isArray(deps) ? deps : [deps as Dep]).map(encodeDep).join(",")}`
+export const keyOf = (name: string, deps?: Deps): string =>
+  deps === undefined
+    ? encodeName(name)
+    : `${encodeName(name)}:${(Array.isArray(deps) ? deps : [deps as Dep]).map(encodeDep).join(",")}`
 
 /**
  * Declares a keyed Subscription.
@@ -170,5 +186,5 @@ export const make: {
   build?: (deps: any) => Stream.Stream<any, never, any>
 ): Subscription<any, any> =>
   build === undefined
-    ? { [TypeId]: TypeId, key: name, stream: depsOrStream }
+    ? { [TypeId]: TypeId, key: keyOf(name), stream: depsOrStream }
     : { [TypeId]: TypeId, key: keyOf(name, depsOrStream), stream: build(depsOrStream) }
