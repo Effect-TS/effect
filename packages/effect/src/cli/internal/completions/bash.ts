@@ -46,7 +46,8 @@ const buildFlagGroupDeclarations = (
   lines.push(`  done`)
   lines.push(`  local _filtered_flags=""`)
   groups.forEach((forms, index) => {
-    lines.push(`  [[ -n "$_used_${index}" ]] || _filtered_flags+=" ${forms.join(" ")}"`)
+    const guard = flags[index].repeatable === true ? "" : `[[ -n "$_used_${index}" ]] || `
+    lines.push(`  ${guard}_filtered_flags+=" ${forms.join(" ")}"`)
   })
   lines.push(``)
 }
