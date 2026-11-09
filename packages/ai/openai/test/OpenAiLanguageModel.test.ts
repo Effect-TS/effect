@@ -1588,7 +1588,7 @@ describe("OpenAiLanguageModel", () => {
     })
 
     describe("response format", () => {
-      it.effect("uses text format by default", () =>
+      it.effect("omits text configuration for plain text by default", () =>
         Effect.gen(function*() {
           yield* LanguageModel.generateText({
             prompt: "Hello"
@@ -1597,7 +1597,19 @@ describe("OpenAiLanguageModel", () => {
           const requests = yield* MockHttpClient.requests
           const body = yield* getRequestBody(requests[0])
 
-          strictEqual(body.text?.format?.type, "text")
+          assert.notProperty(body, "text")
+        }).pipe(Effect.provide(makeTestLayer())))
+
+      it.effect("sends verbosity without a format for plain text", () =>
+        Effect.gen(function*() {
+          yield* LanguageModel.generateText({
+            prompt: "Hello"
+          }).pipe(Effect.provide(OpenAiLanguageModel.model("gpt-5", { text: { verbosity: "low" } })))
+
+          const requests = yield* MockHttpClient.requests
+          const body = yield* getRequestBody(requests[0])
+
+          deepStrictEqual(body.text, { verbosity: "low" })
         }).pipe(Effect.provide(makeTestLayer())))
 
       it.effect("uses json_schema format for structured output", () =>
