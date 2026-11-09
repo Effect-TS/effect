@@ -706,19 +706,20 @@ export function fromJsonSchemaMultiDocument(
       }
       return { name, types, isOptional }
     })
-    // Scalar properties such as discriminators intersect without expansion.
-    // Intersecting them first lets a required Never empty the object before a
+    // Scalar properties such as discriminators intersect without expansion, so
+    // they go first: a required Never then empties the object before a
     // structured property rejects an intersection the object never needs, or
-    // recurses into one. References are only resolved for properties that are
-    // actually intersected, since resolving translates their definitions early.
-    const scalars = new Set(
-      pending.filter(({ types }) => types.every((type) => isScalar(type, types.length > 1 ? new Set() : undefined)))
-    )
+    // recurses into one. Inline scalars go before references, since resolving a
+    // reference translates its definition, and translation can fail.
+    const passes: ReadonlyArray<(types: ReadonlyArray<ImportedJsonSchemaRepresentation>) => boolean> = [
+      (types) => types.every((type) => isScalar(type)),
+      (types) => types.length > 1 && types.every((type) => isScalar(type, new Set())),
+      () => true
+    ]
     const intersected = new Map<string, ImportedJsonSchemaRepresentation>()
-    for (const isScalarPass of [true, false]) {
-      for (const property of pending) {
-        const { isOptional, name, types } = property
-        if (scalars.has(property) !== isScalarPass) continue
+    for (const isInPass of passes) {
+      for (const { isOptional, name, types } of pending) {
+        if (intersected.has(name) || !isInPass(types)) continue
         const type = intersectAll(types, [...path, "properties", name])
         if (!isOptional && type._tag === "Never") return never
         intersected.set(name, type)
