@@ -2,10 +2,142 @@ import { Generated, OpenRouterClient, OpenRouterLanguageModel } from "@effect/ai
 import { assert, describe, it } from "@effect/vitest"
 import { deepStrictEqual, strictEqual } from "@effect/vitest/utils"
 import { Array, Context, Effect, Layer, Redacted, Ref, Schema, Stream } from "effect"
-import { LanguageModel, Model, Prompt, Tool, Toolkit } from "effect/ai"
+import { type AiError, LanguageModel, Model, Prompt, type Response as AiResponse, Tool, Toolkit } from "effect/ai"
 import { HttpClient, type HttpClientError, type HttpClientRequest, HttpClientResponse } from "effect/http"
 
 describe("OpenRouterLanguageModel", () => {
+  describe("finish reason inference", () => {
+    const metadata = { id: "response-1", object: "chat.completion.chunk" as const, model: "test/model", created: 1 }
+    const usage = { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 }
+    const call = {
+      index: 0,
+      id: "call-1",
+      type: "function" as const,
+      function: { name: "ProbeTool", arguments: "{\"value\":1}" }
+    }
+
+    for (const mode of ["generate", "stream"] as const) {
+      for (
+        const { tool, finishReason, reason } of [
+          { tool: true, finishReason: null, reason: "tool-calls" },
+          { tool: false, finishReason: null, reason: "other" },
+          { tool: true, finishReason: "length", reason: "length" }
+        ] as const
+      ) {
+        it.effect(
+          `${mode}: tool=${tool}, finish=${finishReason} finishes with ${reason}`,
+          () =>
+            Effect.gen(function*() {
+              const toolkit = Toolkit.make(Tool.make("ProbeTool", {
+                parameters: Schema.Struct({ value: Schema.Number }),
+                success: Schema.Number
+              }))
+              const executed: Array<number> = []
+              const options = { prompt: "Use the probe tool", toolkit }
+              const operation: Effect.Effect<
+                Array<AiResponse.AnyPart>,
+                AiError.AiError,
+                LanguageModel.LanguageModel | Tool.HandlersFor<typeof toolkit.tools>
+              > = mode === "generate"
+                ? LanguageModel.generateText(options).pipe(Effect.map((response) => response.content))
+                : LanguageModel.streamText(options).pipe(Stream.runCollect)
+              const parts = yield* operation.pipe(
+                Effect.provide(OpenRouterLanguageModel.model(metadata.model)),
+                Effect.provide(toolkit.toLayer({
+                  ProbeTool: ({ value }) =>
+                    Effect.sync(() => {
+                      executed.push(value)
+                      return value
+                    })
+                })),
+                Effect.provide(
+                  mode === "generate" ?
+                    makeTestLayer({
+                      body: {
+                        choices: [{
+                          index: 0,
+                          finish_reason: finishReason,
+                          message: {
+                            role: "assistant",
+                            content: tool ? null : "Done",
+                            tool_calls: tool ? [call] : []
+                          }
+                        }],
+                        usage
+                      }
+                    }) :
+                    makeStreamTestLayer([
+                      {
+                        ...metadata,
+                        choices: [{
+                          index: 0,
+                          delta: tool
+                            ? { tool_calls: [{ ...call, function: { name: "ProbeTool", arguments: "{\"value\":" } }] }
+                            : { content: "Done" }
+                        }]
+                      },
+                      {
+                        ...metadata,
+                        choices: [{
+                          index: 0,
+                          ...(tool ? { finish_reason: finishReason } : {}),
+                          delta: tool
+                            ? { tool_calls: [{ index: 0, function: { arguments: "1}" } }] }
+                            : {}
+                        }]
+                      },
+                      { ...metadata, choices: [], usage }
+                    ])
+                )
+              )
+              deepStrictEqual(parts.filter((part) => part.type === "finish").map((part) => part.reason), [reason])
+              deepStrictEqual(executed, reason === "tool-calls" ? [1] : [])
+            })
+        )
+      }
+    }
+
+    it.effect("does not execute a truncated tool call alongside a complete call without a finish reason", () =>
+      Effect.gen(function*() {
+        const toolkit = Toolkit.make(Tool.make("ProbeTool", {
+          parameters: Schema.Struct({ value: Schema.optional(Schema.Number) }),
+          success: Schema.String
+        }))
+        const executed: Array<number | undefined> = []
+        yield* LanguageModel.streamText({ prompt: "Use the probe tool", toolkit }).pipe(
+          Stream.runDrain,
+          Effect.result,
+          Effect.provide(OpenRouterLanguageModel.model(metadata.model)),
+          Effect.provide(toolkit.toLayer({
+            ProbeTool: ({ value }) =>
+              Effect.sync(() => {
+                executed.push(value)
+                return "ok"
+              })
+          })),
+          Effect.provide(makeStreamTestLayer([
+            {
+              ...metadata,
+              choices: [{
+                index: 0,
+                delta: {
+                  tool_calls: [call, {
+                    index: 1,
+                    id: "call-2",
+                    type: "function",
+                    function: { name: "ProbeTool", arguments: "{\"value\":" }
+                  }]
+                }
+              }]
+            },
+            { ...metadata, choices: [], usage }
+          ]))
+        )
+        // Either rejecting the response or leaving the partial call interrupted is safe.
+        assert.notInclude(executed, undefined)
+      }))
+  })
+
   describe("strictJsonSchema", () => {
     for (
       const [model, strict] of [
