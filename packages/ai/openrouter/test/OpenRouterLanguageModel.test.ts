@@ -250,6 +250,35 @@ describe("OpenRouterLanguageModel", () => {
           }).pipe(Effect.provide(makeTestLayer())))
       })
 
+      it.effect("sends base64 string image and file data as data URLs", () =>
+        Effect.gen(function*() {
+          yield* LanguageModel.generateText({
+            prompt: Prompt.make([{
+              role: "user",
+              content: [
+                Prompt.filePart({ mediaType: "image/png", data: "iVBORw0KGgo=" }),
+                Prompt.filePart({ mediaType: "image/png", data: "data:image/png;base64,iVBORw0KGgo=" }),
+                Prompt.filePart({ mediaType: "image/png", data: "https://example.com/image.png" }),
+                Prompt.filePart({ mediaType: "application/pdf", fileName: "document.pdf", data: "JVBERg==" })
+              ]
+            }])
+          }).pipe(Effect.provide(OpenRouterLanguageModel.model("google/gemini-2.5-flash")))
+
+          const requests = yield* MockHttpClient.requests
+          const body = yield* getRequestBody(requests[0])
+
+          const userMessage = body.messages.find((message: any) => message.role === "user")
+          deepStrictEqual(userMessage.content, [
+            { type: "image_url", image_url: { url: "data:image/png;base64,iVBORw0KGgo=" } },
+            { type: "image_url", image_url: { url: "data:image/png;base64,iVBORw0KGgo=" } },
+            { type: "image_url", image_url: { url: "https://example.com/image.png" } },
+            {
+              type: "file",
+              file: { filename: "document.pdf", file_data: "data:application/pdf;base64,JVBERg==" }
+            }
+          ])
+        }).pipe(Effect.provide(makeTestLayer())))
+
       it.effect("preserves string tool results", () =>
         Effect.gen(function*() {
           yield* LanguageModel.generateText({
