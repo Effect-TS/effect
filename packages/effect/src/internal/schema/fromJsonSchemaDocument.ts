@@ -412,15 +412,26 @@ export function fromJsonSchemaMultiDocument(
     const pointer = pointers.get(key)
     const wasInNestedResource = inNestedResource
     if (pointer !== undefined) inNestedResource = pointer.crossesResource
-    const representation = pointer === undefined
-      ? translateSchema(document.definitions[key], ["definitions", key])
-      : translateSchema(pointer.target, ["definitions", ...pointer.tokens])
-    inNestedResource = wasInNestedResource
-    definitionCache.set(key, representation)
-    if (pointer !== undefined) {
-      validatePointerAliases(representation, path, recursiveReferenceError)
+    try {
+      let representation: ImportedJsonSchemaRepresentation
+      try {
+        representation = pointer === undefined
+          ? translateSchema(document.definitions[key], ["definitions", key])
+          : translateSchema(pointer.target, ["definitions", ...pointer.tokens])
+      } finally {
+        inNestedResource = wasInNestedResource
+      }
+      definitionCache.set(key, representation)
+      if (pointer !== undefined) {
+        validatePointerAliases(representation, path, recursiveReferenceError)
+      }
+      return representation
+    } catch (error) {
+      // Objects can recover from a failed property (see lowerObject), so a
+      // failed definition must be translated, and fail, again when reused.
+      definitionCache.delete(key)
+      throw error
     }
-    return representation
   }
 
   function validatePointerAliases(
@@ -718,15 +729,26 @@ export function fromJsonSchemaMultiDocument(
       (types) => types.length > 1 && types.every((type) => isScalar(type, true)),
       () => true
     ]
+    // A property that fails is deferred, since a later required Never can still
+    // empty the object. Otherwise the first failure is rethrown.
     const intersected = new Map<string, ImportedJsonSchemaRepresentation>()
+    const failures = new Map<string, unknown>()
     for (const isInPass of passes) {
       for (const { isOptional, name, types } of pending) {
-        if (intersected.has(name) || !isInPass(types)) continue
-        const type = intersectAll(types, [...path, "properties", name])
+        if (intersected.has(name) || failures.has(name)) continue
+        let type: ImportedJsonSchemaRepresentation
+        try {
+          if (!isInPass(types)) continue
+          type = intersectAll(types, [...path, "properties", name])
+        } catch (error) {
+          failures.set(name, error)
+          continue
+        }
         if (!isOptional && type._tag === "Never") return never
         intersected.set(name, type)
       }
     }
+    for (const failure of failures.values()) throw failure
     const properties: Array<ImportedProperty> = pending.map(({ isOptional, name }) => ({
       name,
       type: intersected.get(name)!,
