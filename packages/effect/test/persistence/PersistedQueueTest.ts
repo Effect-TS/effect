@@ -20,6 +20,8 @@ export const suiteWith = <R>(
      * tests can skip the wall-clock waits that real-time stores need.
      */
     readonly virtualTime?: boolean | undefined
+    /** Cleanup timestamps use the injected Clock, even when I/O still needs live waits. */
+    readonly cleanupUsesClock?: boolean | undefined
   }
 ) => {
   const timeout = options?.timeout ?? "30 seconds"
@@ -494,7 +496,7 @@ export const suiteWith = <R>(
           // Only a virtual clock can guarantee cleanup expires the first failure
           // but retains the second. SQL clocks can cross the one-second TTL
           // between failing the second element and running cleanup.
-          if (options?.virtualTime) {
+          if (options?.cleanupUsesClock ?? options?.virtualTime) {
             yield* advancePastTtl
             yield* queue.offer({ n: 2n }, offerOptions)
             yield* fail
@@ -572,5 +574,8 @@ export const suiteWith = <R>(
 export const suite = (
   name: string,
   layer: Layer.Layer<PersistedQueue.PersistedQueueStore, unknown>,
-  options?: { readonly virtualTime?: boolean | undefined }
+  options?: {
+    readonly virtualTime?: boolean | undefined
+    readonly cleanupUsesClock?: boolean | undefined
+  }
 ) => suiteWith(name, layer, it, options)
