@@ -268,6 +268,10 @@ const warnedDrops = new Set<string>()
 interface Snapshot {
   entries: ReadonlyArray<Head.Entry>
   children: ReadonlyArray<Snapshot>
+  /** Set once the merge of the flush the instance mounted in has run. */
+  settled: boolean
+  /** The instance failed before its snapshot settled, as in a title template that throws in that merge. */
+  failed: boolean
 }
 
 /** The server's nodes for one instance: between its two markers. */
@@ -474,6 +478,7 @@ const start = (
       // A title template that throws fails its instance, so the fallback renders and the head is merged again.
       mergeHead()
     } while (dirty.size > 0 || deferred.length > 0)
+    settleSnapshots()
     if (reportPending) reportAdoption()
     host.commit?.()
     afterCommitHooks()
@@ -521,15 +526,16 @@ const start = (
   }
 
   /**
-   * A title template's results, kept per entry and title. The entries change
-   * whenever `head` runs again, so this only saves calling the same template
-   * on the same title twice: a live merge after an unrelated render, or the
-   * adoption report.
+   * Title template results, kept per entry and title so the adoption report
+   * reuses what the live merges computed instead of calling templates again.
+   * It exists only while a hydrating root has a report to make, and is dropped
+   * once the report is made.
    */
-  const templates = new WeakMap<Head.TitleTemplate, Head.TitleTemplate>()
+  let templates: WeakMap<Head.TitleTemplate, Head.TitleTemplate> | undefined =
+    hydrating !== undefined && hydration?.adopted !== undefined ? new WeakMap() : undefined
   const memoized = (entries: ReadonlyArray<Head.Entry>): ReadonlyArray<Head.Entry> =>
-    entries.map((entry) => {
-      if (entry._tag !== "TitleTemplate") return entry
+    templates === undefined ? entries : entries.map((entry) => {
+      if (entry._tag !== "TitleTemplate" || templates === undefined) return entry
       let found = templates.get(entry)
       if (found === undefined) {
         const results = new Map<string, string>()
@@ -570,9 +576,14 @@ const start = (
       : []
   const snapshotTree = (snapshot: Snapshot): Head.Tree => ({
     entries: memoized(snapshot.entries),
-    children: snapshot.children.map(snapshotTree),
+    children: snapshot.children.filter((child) => !child.failed).map(snapshotTree),
     onError: () => {}
   })
+  /** Snapshots taken in this flush. Its merge has run once the flush gets to `settleSnapshots`. */
+  const unsettled: Array<Snapshot> = []
+  const settleSnapshots = () => {
+    for (const snapshot of unsettled.splice(0)) snapshot.settled = true
+  }
 
   /**
    * Reports the head the tree had at adoption: each instance's entries and
@@ -587,8 +598,9 @@ const start = (
     reportPending = false
     const root = rootInstance
     if (hydration?.adopted !== undefined && root?.snapshot !== undefined) {
-      hydration.adopted(root.failure !== undefined ? Head.empty : Head.merge(snapshotTree(root.snapshot)))
+      hydration.adopted(root.snapshot.failed ? Head.empty : Head.merge(snapshotTree(root.snapshot)))
     }
+    templates = undefined
     for (const f of adoptedWaiters.splice(0)) f()
   }
 
@@ -667,6 +679,8 @@ const start = (
     name?: string
   ) => {
     if (inst.closed) return
+    // Failing in the flush it mounted in, its head merge included, keeps it out of the adoption snapshot.
+    if (inst.snapshot !== undefined && !inst.snapshot.settled) inst.snapshot.failed = true
     const failedSeq = record({ _tag: "Failed", path: inst.path, source, name, cause })
     forkNow(
       ctx,
@@ -810,7 +824,9 @@ const start = (
       closed: false,
       waiting: false,
       adoptsChildren: false,
-      snapshot: hydrating === undefined ? undefined : { entries: [], children: [] },
+      snapshot: hydrating === undefined || hydration?.adopted === undefined
+        ? undefined
+        : { entries: [], children: [], settled: false, failed: false },
       deferred: false,
       serverPending: new Set(),
       runs: [],
@@ -1054,6 +1070,7 @@ const start = (
       if (inst.snapshot !== undefined) {
         inst.snapshot.entries = inst.head
         inst.snapshot.children = inst.rendered.flatMap(snapshotChildren)
+        unsettled.push(inst.snapshot)
       }
       if (inst.failure !== undefined) return
       if (Option.isSome(adopted)) {
@@ -1846,6 +1863,7 @@ const start = (
     reportPending = true
   }
   mergeHead()
+  settleSnapshots()
   if (reportPending) reportAdoption()
   host.commit?.()
 
