@@ -14,6 +14,7 @@
  * @stability unstable
  * @since 4.0.0
  */
+import * as Arr from "../Array.ts"
 import * as Data from "../Data.ts"
 import * as Duration from "../Duration.ts"
 import { dual } from "../Function.ts"
@@ -204,8 +205,8 @@ const make = (cookies: ReadonlyArray<Cookie>): Cookies => {
  *
  * **Details**
  *
- * The record keys are ignored. Cookies are added in record order, replacing
- * cookies with the same name, domain and path.
+ * Equivalent to `fromIterable(Object.values(cookies))`; the record keys are
+ * ignored. Prefer `fromIterable`.
  *
  * @stability unstable
  * @category constructors
@@ -226,7 +227,7 @@ export const fromReadonlyRecord = (cookies: Record.ReadonlyRecord<string, Cookie
  * @category constructors
  * @since 4.0.0
  */
-export const fromIterable = (cookies: Iterable<Cookie>): Cookies => make(addCookies([], cookies))
+export const fromIterable = (cookies: Iterable<Cookie>): Cookies => setAllCookie(empty, cookies)
 
 /**
  * Create a Cookies object from a set of Set-Cookie headers
@@ -255,26 +256,10 @@ export const fromSetCookie = (headers: Iterable<string> | string): Cookies => {
 const cookieDomain = (cookie: Cookie): string | undefined =>
   cookie.options?.domain?.replace(/^\./, "").toLowerCase() || undefined
 
+// A missing path is not resolved to "/" because the default path depends on
+// the request URL, which `scopeCookie` applies for client storage.
 const sameIdentity = (a: Cookie, b: Cookie): boolean =>
   a.name === b.name && a.options?.path === b.options?.path && cookieDomain(a) === cookieDomain(b)
-
-const addCookies = (self: ReadonlyArray<Cookie>, cookies: Iterable<Cookie>): Array<Cookie> => {
-  const result = self.slice()
-  for (const cookie of cookies) {
-    const index = result.findIndex((existing) => sameIdentity(existing, cookie))
-    if (index !== -1) result.splice(index, 1)
-    result.push(cookie)
-  }
-  return result
-}
-
-const latestByName = (self: Cookies): Map<string, Cookie> => {
-  const latest = new Map<string, Cookie>()
-  for (const cookie of self.cookies) {
-    latest.set(cookie.name, cookie)
-  }
-  return latest
-}
 
 function parseSetCookie(header: string): Cookie | undefined {
   const parts = header.split(";").map((_) => _.trim()).filter((_) => _ !== "")
@@ -411,7 +396,7 @@ function parseSetCookie(header: string): Cookie | undefined {
  * @category constructors
  * @since 4.0.0
  */
-export const empty: Cookies = fromIterable([])
+export const empty: Cookies = make([])
 
 /**
  * Returns `true` when the `Cookies` collection contains no cookies.
@@ -521,10 +506,11 @@ export const makeCookieUnsafe = (
 export const setCookie: {
   (cookie: Cookie): (self: Cookies) => Cookies
   (self: Cookies, cookie: Cookie): Cookies
-} = dual(2, (self: Cookies, cookie: Cookie) => make(addCookies(self.cookies, [cookie])))
+} = dual(2, (self: Cookies, cookie: Cookie) => setAllCookie(self, [cookie]))
 
 /**
- * Adds multiple cookies to a Cookies object
+ * Adds multiple cookies to a Cookies object, replacing cookies with the same
+ * name, domain and path
  *
  * @stability unstable
  * @category combinators
@@ -533,7 +519,15 @@ export const setCookie: {
 export const setAllCookie: {
   (cookies: Iterable<Cookie>): (self: Cookies) => Cookies
   (self: Cookies, cookies: Iterable<Cookie>): Cookies
-} = dual(2, (self: Cookies, cookies: Iterable<Cookie>) => make(addCookies(self.cookies, cookies)))
+} = dual(2, (self: Cookies, cookies: Iterable<Cookie>) => {
+  const result = self.cookies.slice()
+  for (const cookie of cookies) {
+    const index = result.findIndex((existing) => sameIdentity(existing, cookie))
+    if (index !== -1) result.splice(index, 1)
+    result.push(cookie)
+  }
+  return make(result)
+})
 
 /**
  * Combines two Cookies objects, replacing cookies in the first with cookies
@@ -566,7 +560,7 @@ export const remove: {
 /**
  * Gets a cookie from a Cookies object safely.
  *
- * **Gotchas**
+ * **Details**
  *
  * When several cookies share the name, returns the one set last.
  *
@@ -579,14 +573,7 @@ export const get: {
   (self: Cookies, name: string): Option.Option<Cookie>
 } = dual(
   (args) => isCookies(args[0]),
-  (self: Cookies, name: string): Option.Option<Cookie> => {
-    for (let index = self.cookies.length - 1; index >= 0; index--) {
-      if (self.cookies[index].name === name) {
-        return Option.some(self.cookies[index])
-      }
-    }
-    return Option.none()
-  }
+  (self: Cookies, name: string): Option.Option<Cookie> => Arr.findLast(self.cookies, (cookie) => cookie.name === name)
 )
 
 /**
@@ -594,11 +581,8 @@ export const get: {
  *
  * **Details**
  *
- * Returns `Option.none()` when the cookie is not present.
- *
- * **Gotchas**
- *
- * When several cookies share the name, returns the value of the one set last.
+ * Returns `Option.none()` when the cookie is not present. When several cookies
+ * share the name, returns the value of the one set last.
  *
  * @stability unstable
  * @category combinators
@@ -708,11 +692,6 @@ export const expireCookie: {
 
 /**
  * Adds an expired cookie to a Cookies object, throwing an error if invalid
- *
- * **Gotchas**
- *
- * Only the cookie with the same name, domain and path is replaced, so pass the
- * `domain` and `path` the cookie was set with.
  *
  * @stability unstable
  * @category combinators
@@ -885,25 +864,29 @@ export function serializeCookie(self: Cookie): string {
 /**
  * Serializes a `Cookies` object into a Cookie header.
  *
- * **Gotchas**
+ * **Details**
  *
- * When several cookies share the name, only the one set last is included. To
- * send the cookies that match a request URL, use `mergeIntoArray` and
- * `toRequestCookieHeader`.
+ * Includes the cookie set last for each name. To send the cookies that match a
+ * request URL, use `mergeIntoArray` and `toRequestCookieHeader`.
  *
  * @stability unstable
  * @category encoding
  * @since 4.0.0
  */
-export const toCookieHeader = (self: Cookies): string =>
-  Array.from(latestByName(self).values(), (cookie) => `${cookie.name}=${cookie.valueEncoded}`).join("; ")
+export const toCookieHeader = (self: Cookies): string => {
+  const latest = new Map<string, string>()
+  for (const cookie of self.cookies) {
+    latest.set(cookie.name, cookie.valueEncoded)
+  }
+  return Array.from(latest, ([name, value]) => `${name}=${value}`).join("; ")
+}
 
 /**
  * Converts a `Cookies` collection to a record of decoded cookie values keyed by cookie name.
  *
- * **Gotchas**
+ * **Details**
  *
- * When several cookies share the name, uses the value of the one set last.
+ * Uses the cookie set last for each name.
  *
  * @stability unstable
  * @category encoding

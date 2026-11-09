@@ -16432,7 +16432,7 @@ export interface Cookies extends
  * **Details**
  *
  * JSON encoding uses `Set-Cookie` header strings, while isomorphic encoding uses
- * the ordered array of cookie values.
+ * the ordered array of cookies.
  *
  * @stability unstable
  * @category schemas
