@@ -1100,6 +1100,103 @@ describe("McpServer", () => {
       })
     }))
 
+  it.effect("drops queued progress after cancellation but preserves background progress", () =>
+    Effect.gen(function*() {
+      const outbound = yield* Queue.unbounded<RpcMessage.FromServerEncoded>()
+      const disconnects = yield* Queue.unbounded<number>()
+      const blocked = yield* Deferred.make<void>()
+      const release = yield* Deferred.make<void>()
+      const queued = yield* Deferred.make<void>()
+      const cancelled = yield* Deferred.make<void>()
+      const ready = yield* Deferred.make<
+        (clientId: number, message: RpcMessage.FromClientEncoded) => Effect.Effect<void>
+      >()
+      const transport = yield* RpcServer.Protocol.make((write) =>
+        Deferred.succeed(ready, write).pipe(Effect.as({
+          disconnects,
+          send: Effect.fnUntraced(function*(_clientId, message) {
+            if (message._tag === "Request" && message.tag === "notifications/message") {
+              yield* Deferred.succeed(blocked, undefined)
+              yield* Deferred.await(release)
+            }
+            yield* Queue.offer(outbound, message)
+          }),
+          end: () => Effect.void,
+          clientIds: Effect.succeed(new Set([1])),
+          initialMessage: Effect.succeedNone,
+          supportsAck: false,
+          supportsTransferables: false,
+          supportsSpanPropagation: false,
+          supportsNotifications: true,
+          codecFor: Schema.toCodecJson as RpcSerialization.CodecFor
+        }))
+      )
+      const context = yield* Layer.build(
+        McpServer.layer({ name: "ProgressCancellation", version: "1.0.0", protocols: [McpProtocol.v2025_11_25] })
+          .pipe(Layer.provide(Layer.succeed(RpcServer.Protocol, transport)))
+      )
+      const server = Context.get(context, McpServer.McpServer)
+      yield* server.addTool({
+        tool: new McpSchema.Tool({ name: "Progress", inputSchema: { type: "object" } }),
+        annotations: Context.empty(),
+        handle: Effect.fnUntraced(function*() {
+          yield* server.notifications["notifications/progress"]({ progressToken: "request", progress: 1 }).pipe(
+            Effect.forkChild({ startImmediately: true })
+          )
+          yield* Deferred.succeed(queued, undefined)
+          return yield* Effect.never
+        }, Effect.ensuring(Deferred.succeed(cancelled, undefined)))
+      })
+      const write = yield* Deferred.await(ready)
+      const send = (message: RpcMessage.FromClientEncoded) => write(1, message)
+      yield* send({
+        _tag: "Request",
+        id: "initialize",
+        tag: "initialize",
+        headers: [],
+        payload: { protocolVersion: "2025-11-25", capabilities: {}, clientInfo: { name: "client", version: "1" } }
+      })
+      yield* Queue.take(outbound)
+      yield* send({
+        _tag: "Request",
+        id: "",
+        tag: "notifications/initialized",
+        payload: {},
+        headers: [],
+        isNotification: true
+      })
+      yield* server.notifications["notifications/message"]({ level: "error", data: "blocked" }).pipe(
+        Effect.forkScoped({ startImmediately: true })
+      )
+      yield* Deferred.await(blocked)
+      yield* send({
+        _tag: "Request",
+        id: "work",
+        tag: "tools/call",
+        headers: [],
+        payload: { name: "Progress", _meta: { progressToken: "request" } }
+      })
+      yield* Deferred.await(queued)
+      yield* send({
+        _tag: "Request",
+        id: "",
+        tag: "notifications/cancelled",
+        headers: [],
+        payload: { requestId: "work" },
+        isNotification: true
+      })
+      yield* Deferred.await(cancelled)
+      yield* Deferred.succeed(release, undefined)
+      // Await a later notification so the assertion cannot race the delivery chain.
+      yield* server.notifications["notifications/progress"]({ progressToken: "background", progress: 1 })
+      assert.deepInclude(yield* Queue.take(outbound), { tag: "notifications/message" })
+      assert.deepInclude(yield* Queue.take(outbound), {
+        tag: "notifications/progress",
+        payload: { progressToken: "background", progress: 1 }
+      })
+      assert.strictEqual(yield* Queue.size(outbound), 0)
+    }))
+
   it.effect("should suppress cancelled responses when a custom transport handles MCP messages", () =>
     Effect.gen(function*() {
       const outbound = yield* Queue.unbounded<RpcMessage.FromServerEncoded>()
