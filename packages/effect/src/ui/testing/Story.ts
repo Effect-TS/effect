@@ -62,6 +62,7 @@ import * as AsyncResult from "../../reactivity/AsyncResult.ts"
 import * as Schema from "../../Schema.ts"
 import * as Command from "../Command.ts"
 import type * as Component from "../Component.ts"
+import type * as Head from "../Head.ts"
 import * as schedule from "../internal/schedule.ts"
 import * as MessageLog from "../MessageLog.ts"
 import * as View from "../View.ts"
@@ -669,6 +670,39 @@ export const layerFailure = <C extends Component.Any>(
   component: C,
   failure: AsyncResult.Failure<never, any>
 ): Component.Message<C> | undefined => component.layerFailure?.(failure)
+
+/**
+ * One instance's head entries for a Model: what its `head` option returns,
+ * or none without one. The merge across the tree is a runtime test's.
+ *
+ * **Example** (A page's title)
+ *
+ * ```ts import.meta.vitest
+ * import { Schema } from "effect"
+ * import { Component, Head } from "effect/ui"
+ * import { Story } from "effect/ui/testing"
+ *
+ * const Person = Component.make({
+ *   name: "Person",
+ *   model: Schema.Struct({ name: Schema.String }),
+ *   message: Schema.Never,
+ *   init: () => ({ name: "Ada" }),
+ *   update: (model) => model,
+ *   head: (model) => [Head.title(model.name)],
+ *   view: (model, h) => h.el("h1", model.name)
+ * })
+ *
+ * Story.head(Person, { name: "Grace" }) // => [Head.title("Grace")]
+ * ```
+ *
+ * @stability experimental
+ * @category queries
+ * @since 4.1.3
+ */
+export const head = <Name extends string, Props, Model, Msg, Events, R, V extends View.Elements>(
+  component: Component.Component<Name, Props, Model, Msg, Events, R, V>,
+  model: Model
+): ReadonlyArray<Head.Entry> => component.head?.(model) ?? []
 
 // ---------------------------------------------------------------------------
 // Replay

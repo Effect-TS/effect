@@ -4,6 +4,7 @@
  * @internal
  */
 import * as Context from "../../Context.ts"
+import type * as Head from "../Head.ts"
 import type { Refs as RefsShape, Renderer as RendererShape } from "../Renderer.ts"
 
 /** @internal */
@@ -11,3 +12,55 @@ export const Renderer = Context.Service<RendererShape, RendererShape>("effect/ui
 
 /** @internal */
 export const Refs = Context.Service<RefsShape, RefsShape>("effect/ui/Renderer/Refs")
+
+/**
+ * What a mounted root offers the router: its flush counter and its instances' state.
+ *
+ * @internal
+ */
+export interface RootHandle {
+  readonly container: unknown
+  /** The current flush: 0 for the first render, then one more per flush. */
+  readonly flush: () => number
+  /** The JSON-encoded Model of every mounted instance, by path. Models that don't encode are left out. */
+  readonly snapshot: () => Record<string, unknown>
+}
+
+/**
+ * What the runtime tells the router after each flush.
+ *
+ * @internal
+ */
+export interface FlushInfo {
+  readonly flush: number
+  /** The merged head, as last given to the host. */
+  readonly head: Head.Head
+  /** Provided Layer builds that began in `flush` or later and are still pending, tree-wide. */
+  readonly buildsPendingSince: (flush: number) => number
+}
+
+/**
+ * The router's side of the runtime: one post-flush hook, called after the
+ * nodes commit and head sync, and the history restore of a new instance's
+ * Model. Router Layers provide it; without one the runtime skips both.
+ *
+ * @internal
+ */
+export interface RootHooks {
+  /** Registers a mounted root. The returned function unregisters it. */
+  readonly attach: (root: RootHandle) => () => void
+  readonly afterFlush: (root: RootHandle, info: FlushInfo) => void
+  /** The encoded Model a new instance at `path` adopts, if the router is restoring one. */
+  readonly restore: (path: string) => unknown
+}
+
+/** @internal */
+export const RootHooks = Context.Service<RootHooks, RootHooks>("effect/ui/internal/RootHooks")
+
+/**
+ * A Subscription may carry a function under this key. The runtime calls it with
+ * each message right before dispatching it, in the same synchronous step.
+ *
+ * @internal
+ */
+export const onDeliver: unique symbol = Symbol.for("effect/ui/Subscription/onDeliver") as any

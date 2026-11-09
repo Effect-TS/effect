@@ -99,6 +99,7 @@ export type FailureSource =
   | "fallback"
   | "onEmit"
   | "onFailure"
+  | "head"
 
 /**
  * Which Command run an entry is about: the `seq` of the entry that issued it

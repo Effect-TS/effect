@@ -54,6 +54,7 @@ import type * as Scope from "../../Scope.ts"
 import * as Stream from "../../Stream.ts"
 import * as Component from "../Component.ts"
 import * as Feature from "../Feature.ts"
+import type * as Head from "../Head.ts"
 import * as Executor from "../internal/executor.ts"
 import * as runtime from "../internal/runtime.ts"
 import * as MessageLog from "../MessageLog.ts"
@@ -213,6 +214,9 @@ export const makeHost = (): Renderer.Host<TestNode> & {
     runsMounts: false,
     commit: () => {
       commits++
+    },
+    head: () => {
+      operations.push("head")
     }
   }
 }
@@ -327,6 +331,8 @@ export interface TestRoot<out Model, in Msg, out Events> {
   readonly log: () => ReadonlyArray<MessageLog.Entry>
   /** The Commands still running or queued in this tree. */
   readonly pending: () => ReadonlyArray<Pending>
+  /** The tree's merged document head, as last given to the host. */
+  readonly head: () => Head.Head
   /** The text of everything mounted. */
   readonly text: () => string
   readonly all: (locator: Query.Locator) => ReadonlyArray<TestNode>
@@ -375,6 +381,7 @@ export const mount = <Name extends string, Props, Model, Msg, Events, R, V exten
       emitted: root.emitted as ReadonlyArray<Events>,
       log: () => testHost.log.entries().filter((entry) => entry.session === root.session),
       pending: root.pending,
+      head: root.head,
       text: () => Query.textOf(container),
       all: (locator) => Query.all(container as TestNode, locator),
       query: (locator) => Query.query(container as TestNode, locator),

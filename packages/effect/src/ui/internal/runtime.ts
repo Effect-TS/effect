@@ -15,11 +15,13 @@ import * as Layer from "../../Layer.ts"
 import * as Option from "../../Option.ts"
 import * as AsyncResult from "../../reactivity/AsyncResult.ts"
 import * as Scheduler from "../../Scheduler.ts"
+import * as Schema from "../../Schema.ts"
 import * as Scope from "../../Scope.ts"
 import * as Stream from "../../Stream.ts"
 import type * as Command from "../Command.ts"
 import type * as Component from "../Component.ts"
 import * as Feature from "../Feature.ts"
+import * as Head from "../Head.ts"
 import * as MessageLog from "../MessageLog.ts"
 import type * as Renderer from "../Renderer.ts"
 import type * as Subscription from "../Subscription.ts"
@@ -133,6 +135,8 @@ export interface Instance {
   readonly children: Map<string, Instance>
   props: unknown
   model: unknown
+  /** The entries from the component's `head`, as of the last render. */
+  head: ReadonlyArray<Head.Entry>
   onEmit: (events: unknown) => unknown
   onFailure: ((failure: AsyncResult.Failure<never, unknown>) => unknown) | undefined
   failure: Cause.Cause<unknown> | undefined
@@ -163,6 +167,23 @@ export interface Root {
    * condition reads this.
    */
   readonly buildsPendingSince: (flush: number) => number
+  /** The merged head, as last given to the host. */
+  readonly head: () => Head.Head
+}
+
+/** A component's Model as JSON, for history restore. */
+const jsonCodecs = new WeakMap<object, {
+  readonly encode: (model: unknown) => Option.Option<unknown>
+  readonly decode: (encoded: unknown) => Option.Option<unknown>
+}>()
+const jsonCodecOf = (schema: Schema.Codec<any, any>) => {
+  let found = jsonCodecs.get(schema)
+  if (found === undefined) {
+    const codec = Schema.toCodecJson(schema as Schema.Codec<unknown, unknown>)
+    found = { encode: Schema.encodeUnknownOption(codec), decode: Schema.decodeUnknownOption(codec) }
+    jsonCodecs.set(schema, found)
+  }
+  return found
 }
 
 const childName = (component: Component.Any | Feature.Any): string =>
@@ -230,6 +251,7 @@ const start = (
   const controlled = host.controlled
   const rootEmitted: Array<unknown> = []
   const sharedBuilds = new WeakMap<Env, Map<Layer.Layer<any, any, any>, SharedBuild>>()
+  const hooks = Option.getOrUndefined(Context.getOption(ctx, services.RootHooks))
 
   // -- log ------------------------------------------------------------------
   let seq = 0
@@ -299,6 +321,7 @@ const start = (
       if (!next!.closed) render(next!)
     }
     host.commit?.()
+    afterCommitHooks()
     rendering = false
     runCommitted()
   }
@@ -306,6 +329,52 @@ const start = (
     const done = committed
     committed = []
     for (const f of done) f()
+  }
+
+  // -- head and the router's hook --------------------------------------------
+  // Set when an instance with `head` rendered, or the tree lost an instance.
+  let headDirty = false
+  let merged: Head.Head = Head.empty
+  let rootInstance: Instance | undefined
+  let handle: services.RootHandle | undefined
+
+  const updateHead = (inst: Instance) => {
+    const head = inst.component.head
+    if (head === undefined) return
+    const entries = guard(inst, "head", () => head(inst.model))
+    if (entries === undefined) return
+    inst.head = entries
+    headDirty = true
+  }
+
+  /** The head entries in document order. A slot's fallback contributes none. */
+  const headTree = (inst: Instance): Head.Tree => ({
+    entries: inst.closed || inst.failure !== undefined ? [] : inst.head,
+    children: inst.closed || inst.failure !== undefined ? [] : inst.rendered.flatMap(headChildren)
+  })
+  const headChildren = (rendered: Rendered): Array<Head.Tree> =>
+    rendered._tag === "Child"
+      ? [headTree(rendered.inst)]
+      : rendered._tag === "Element"
+      ? rendered.children.flatMap(headChildren)
+      : []
+
+  const buildsPendingSince = (flush: number) => {
+    let count = 0
+    for (const stamp of building) if (stamp.flush >= flush) count++
+    return count
+  }
+
+  /** After the nodes commit: head sync, then the router's hook. */
+  const afterCommitHooks = () => {
+    if (headDirty && rootInstance !== undefined) {
+      headDirty = false
+      merged = Head.merge(headTree(rootInstance))
+      host.head?.(merged)
+    }
+    if (hooks !== undefined && handle !== undefined) {
+      hooks.afterFlush(handle, { flush: flushes, head: merged, buildsPendingSince })
+    }
   }
 
   // -- failure --------------------------------------------------------------
@@ -350,6 +419,7 @@ const start = (
       Effect.logError(`${inst.path} failed in ${source}${name === undefined ? "" : ` (${name})`}`, cause)
     )
     inst.failure = cause
+    headDirty = true
     close(inst)
     const parent = inst.parent
     if (parent === undefined) {
@@ -477,6 +547,7 @@ const start = (
       children: new Map(),
       props,
       model: undefined,
+      head: [],
       onEmit,
       onFailure,
       failure: undefined,
@@ -600,7 +671,8 @@ const start = (
         const stamp = { flush: flushes }
         building.add(stamp)
         settleBuild = () => {
-          building.delete(stamp)
+          // The router's settle condition is checked after a flush, so a settled build wakes one.
+          if (building.delete(stamp) && hooks !== undefined) wake()
         }
         whenReady(own, settleBuild, settleBuild)
         Effect.runSync(Scope.addFinalizer(scope, Effect.sync(settleBuild)))
@@ -616,19 +688,34 @@ const start = (
       }
       return component.init(props)
     })
+    // History restore: the Model is adopted and `init` replayed, with its Commands and events dropped.
+    const restored = first === undefined || hooks === undefined ? undefined : hooks.restore(path)
+    const adopted = restored === undefined ? Option.none() : jsonCodecOf(component.model).decode(restored)
     let mountedSeq = -1
     if (first !== undefined) {
-      inst.model = first.model
+      inst.model = Option.isSome(adopted) ? adopted.value : first.model
       mountedSeq = record({
         _tag: "Mounted",
         path,
         component,
         props,
-        model: first.model,
+        model: inst.model,
         commands: first.commands,
         events: first.events,
-        adopted: false
+        adopted: Option.isSome(adopted)
       })
+      if (Option.isSome(adopted)) {
+        first.commands.forEach((command, index) => {
+          if (command._tag === "Interrupt") return
+          record({
+            _tag: "CommandDropped",
+            path,
+            name: command.name,
+            issued: { seq: mountedSeq, index },
+            reason: "adopted"
+          })
+        })
+      }
     }
     constructing = false
     for (const f of early) f()
@@ -642,7 +729,14 @@ const start = (
     const rendered = guard(inst, "view", () => create(inst, tree, inst.env))
     if (rendered === undefined) return inst
     inst.rendered = [rendered]
-    apply(inst, first, mountedSeq, true)
+    updateHead(inst)
+    if (inst.failure !== undefined) return inst
+    apply(
+      inst,
+      Option.isSome(adopted) ? { model: inst.model, commands: [], events: [] } : first,
+      mountedSeq,
+      true
+    )
     return inst
   }
 
@@ -800,7 +894,13 @@ const start = (
         const source: MessageLog.Source = { _tag: "Subscription", key }
         const fiber = forkLater(
           Context.add(envCtx, Scope.Scope, running.scope),
-          Stream.runForEach(subscription.stream, (message) => Effect.sync(() => inst.dispatch(message, source)))
+          Stream.runForEach(subscription.stream, (message) =>
+            Effect.sync(() => {
+              ;(subscription as { readonly [services.onDeliver]?: (message: unknown) => void })[services.onDeliver]?.(
+                message
+              )
+              inst.dispatch(message, source)
+            }))
         )
         running.fiber = fiber
         Effect.runSync(Scope.addFinalizer(running.scope, Effect.sync(() => fiber.interruptUnsafe())))
@@ -884,6 +984,7 @@ const start = (
       const ref = host.nextOf(old[old.length - 1])
       inst.rendered = patchList(inst, parentNode, inst.rendered, [tree], ref, inst.env)
     })
+    if (!inst.closed) updateHead(inst)
   }
 
   const create = (inst: Instance, view: View.Node<any, any>, env: Env): Rendered => {
@@ -1135,6 +1236,7 @@ const start = (
     switch (rendered._tag) {
       case "Child": {
         inst.children.delete(rendered.inst.path)
+        headDirty = true
         closeScope(rendered.inst.scope)
         return
       }
@@ -1173,6 +1275,11 @@ const start = (
       for (const node of rootFallbackNodes) host.remove(node)
       rootFallbackNodes = []
       host.commit?.()
+      // The tree's entries go with it, so the host puts the shell's values back.
+      if (merged !== Head.empty) {
+        merged = Head.empty
+        host.head?.(merged)
+      }
     })
   ))
   const root = makeInstance(
@@ -1185,8 +1292,27 @@ const start = (
     undefined
   )
   rootRendered = () => root.rendered
+  rootInstance = root
   if (root.failure === undefined) place(container, root.rendered, undefined)
   host.commit?.()
+
+  const snapshot = (): Record<string, unknown> => {
+    const out: Record<string, unknown> = {}
+    const visit = (inst: Instance) => {
+      if (inst.closed || inst.failure !== undefined) return
+      const encoded = jsonCodecOf(inst.component.model).encode(inst.model)
+      if (Option.isSome(encoded)) out[inst.path] = encoded.value
+      for (const child of inst.children.values()) visit(child)
+    }
+    visit(root)
+    return out
+  }
+  if (hooks !== undefined) {
+    handle = { container, flush: () => flushes, snapshot }
+    const detach = hooks.attach(handle)
+    Effect.runSync(Scope.addFinalizer(rootScope, Effect.sync(detach)))
+  }
+  afterCommitHooks()
   rendering = false
   runCommitted()
 
@@ -1216,10 +1342,7 @@ const start = (
     send: (message) => root.dispatch(message, { _tag: "Dispatch" }),
     pending: () => pendingOf(root),
     flush: () => flushes,
-    buildsPendingSince: (flush) => {
-      let count = 0
-      for (const stamp of building) if (stamp.flush >= flush) count++
-      return count
-    }
+    buildsPendingSince,
+    head: () => merged
   }
 }
