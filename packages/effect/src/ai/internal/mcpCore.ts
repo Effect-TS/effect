@@ -188,7 +188,7 @@ export interface ToolRegistration {
     beforeHandle: Effect.Effect<void, RequestRejected>
   ) => Effect.Effect<
     OperationOutcome<McpSchema.CallToolResult>,
-    ToolError,
+    ToolNotFound | InvalidToolInput | InvalidToolContinuation | ToolExecutionError | RequestRejected,
     never
   >
 }
@@ -580,13 +580,13 @@ export const make: Effect.Effect<McpCore> = Effect.sync(() => {
       return registration !== undefined && registration.isVisible(profile) ? registration.descriptor : undefined
     },
     call: (call, invocation, beforeHandle = Effect.void) =>
-      Effect.suspend(() => {
+      Effect.suspend((): Effect.Effect<OperationOutcome<McpSchema.CallToolResult>, ToolError> => {
         const registration = registrations.get(call.name)
         if (registration === undefined) {
-          return Effect.fail(new ToolNotFound({ name: call.name }))
+          return new ToolNotFound({ name: call.name })
         }
         if (!registration.isVisible(invocation.protocol)) {
-          return Effect.fail(new ToolNotFound({ name: call.name }))
+          return new ToolNotFound({ name: call.name })
         }
         return registration.handle(call, invocation, beforeHandle)
       })

@@ -314,7 +314,11 @@ const validateParameterHeaders = (
       }
     }
     return Effect.void
-  })
+  }).pipe(
+    Effect.mapError((error) =>
+      new McpCore.RequestRejected({ code: error.code, message: error.message, data: error.data, error })
+    )
+  )
 
 /**
  * @internal
@@ -667,15 +671,10 @@ export const makeHandlers = (
       const invocation = yield* getInputInvocation(request)
       const tool = core.tools.find(request.name, invocation.protocol)
       const httpRequest = yield* Effect.serviceOption(HttpServerRequest.HttpServerRequest)
-      // Compare mirrored headers only after request-level visibility accepts the tool.
-      // `find` is protocol-level, so checking headers first would reveal a hidden tool.
-      const beforeHandle = tool === undefined || Option.isNone(httpRequest)
-        ? undefined
-        : validateParameterHeaders(tool.inputSchema, request.arguments, httpRequest.value.headers).pipe(
-          Effect.mapError((error) =>
-            new McpCore.RequestRejected({ code: error.code, message: error.message, data: error.data, error })
-          )
-        )
+      // Deferred until request-level visibility accepts the tool, so a mismatch cannot reveal a hidden tool.
+      const beforeHandle = tool !== undefined && Option.isSome(httpRequest)
+        ? validateParameterHeaders(tool.inputSchema, request.arguments, httpRequest.value.headers)
+        : undefined
       const call = { name: request.name, arguments: request.arguments ?? {} }
       const outcome = yield* core.tools.call(call, invocation, beforeHandle)
         .pipe(
