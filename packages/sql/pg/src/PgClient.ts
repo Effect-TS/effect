@@ -23,6 +23,7 @@ import * as Statement from "effect/sql/Statement"
 import * as Stream from "effect/Stream"
 import type { Duplex } from "node:stream"
 import type { ConnectionOptions } from "node:tls"
+import { resolveConfig } from "./internal/config.ts"
 import { connectionInternals } from "./internal/connection.ts"
 import { validateChannelName } from "./internal/sqlError.ts"
 import * as PgConnection from "./PgConnection.ts"
@@ -284,6 +285,7 @@ const makeImpl = Effect.fnUntraced(function*<R>(
   const onAcquire = hook &&
     Effect.updateContext(hook, (current: Context.Context<never>) => Context.merge(context, current))
   const config: PgClientConfig = { ...options.config, onAcquire }
+  const resolved = yield* resolveConfig(config)
   let { acquirer, borrower, listenAcquirer, transactionAcquirer } = options
   if (onAcquire !== undefined) {
     acquirer = Effect.tap(acquirer, onAcquire)
@@ -329,9 +331,9 @@ const makeImpl = Effect.fnUntraced(function*<R>(
       spanAttributes: [
         ...(config.spanAttributes ? Object.entries(config.spanAttributes) : []),
         [ATTR_DB_SYSTEM_NAME, "postgresql"],
-        [ATTR_DB_NAMESPACE, config.database ?? config.username ?? "postgres"],
-        [ATTR_SERVER_ADDRESS, config.host ?? "localhost"],
-        [ATTR_SERVER_PORT, config.port ?? 5432]
+        [ATTR_DB_NAMESPACE, resolved.startupParameters.database ?? resolved.username],
+        [ATTR_SERVER_ADDRESS, resolved.host],
+        [ATTR_SERVER_PORT, resolved.port]
       ],
       transformRows
     }),
