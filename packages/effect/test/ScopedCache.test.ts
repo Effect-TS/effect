@@ -13,6 +13,7 @@ import {
   Logger,
   Option,
   References,
+  Scheduler,
   Scope,
   ScopedCache
 } from "effect"
@@ -178,6 +179,32 @@ describe("ScopedCache", () => {
 
           assert.strictEqual(cache.state._tag, "Closed")
           assert.isTrue(Exit.hasInterrupts(yield* Effect.exit(ScopedCache.get(cache, "test"))))
+        }))
+
+      it.effect("pending gets interrupt when scope closes during lookup", () =>
+        Effect.gen(function*() {
+          const owner = yield* Scope.make()
+          const started = yield* Deferred.make<void>()
+          const proceed = yield* Deferred.make<void>()
+          const cache = yield* ScopedCache.make({
+            capacity: 10,
+            lookup: (_key: string) =>
+              Deferred.succeed(started, void 0).pipe(
+                Effect.andThen(Deferred.await(proceed)),
+                Effect.as(1)
+              )
+          }).pipe(Scope.provide(owner))
+
+          const get = yield* ScopedCache.get(cache, "key").pipe(Effect.forkChild({ startImmediately: true }))
+          const getOption = yield* ScopedCache.getOption(cache, "key").pipe(
+            Effect.forkChild({ startImmediately: true })
+          )
+          yield* Deferred.await(started)
+          yield* Scope.close(owner, Exit.void)
+          yield* Deferred.succeed(proceed, void 0)
+
+          assert.isTrue(Exit.hasInterrupts(yield* Fiber.await(get)))
+          assert.isTrue(Exit.hasInterrupts(yield* Fiber.await(getOption)))
         }))
     })
 
@@ -1761,6 +1788,52 @@ describe("ScopedCache", () => {
   })
 
   describe("concurrency tests", () => {
+    it.effect("releases an abandoned lookup that completes after owner closure", () =>
+      Effect.gen(function*() {
+        const owner = yield* Scope.make()
+        const started = yield* Deferred.make<Fiber.Fiber<unknown, unknown>>()
+        const proceed = yield* Deferred.make<void>()
+        const scheduler = yield* Effect.service(Scheduler.Scheduler)
+        const tasks: Array<() => void> = []
+        let stepping = false
+        let released = 0
+        const cache = yield* ScopedCache.make({
+          capacity: 1,
+          lookup: Effect.fnUntraced(function*(_key: string) {
+            yield* Effect.acquireRelease(Effect.void, () => Effect.sync(() => released++))
+            yield* Deferred.succeed(started, yield* Effect.fiber)
+            yield* Deferred.await(proceed)
+          }, Effect.provideService(Scheduler.Scheduler, scheduler))
+        }).pipe(Scope.provide(owner))
+        const get: Fiber.Fiber<void> = yield* ScopedCache.get(cache, "key").pipe(
+          Effect.provideService(Scheduler.Scheduler, {
+            executionMode: "async",
+            makeDispatcher: () => ({
+              scheduleTask: (task) => tasks.push(task),
+              flush: () => {}
+            }),
+            shouldYield: (fiber) => stepping && fiber === get && fiber.currentOpCount > 3
+          }),
+          Effect.forkChild({ startImmediately: true })
+        )
+        const lookup = yield* Deferred.await(started)
+        stepping = true
+        get.interruptUnsafe()
+        // Stop cancellation after the entry is detached, before it interrupts the lookup.
+        while ((yield* ScopedCache.size(cache)) !== 0) {
+          const task = tasks.shift()
+          assert.isDefined(task)
+          task!()
+        }
+        yield* Scope.close(owner, Exit.void)
+        yield* Deferred.succeed(proceed, void 0)
+        assert.isTrue(Exit.isSuccess(yield* Fiber.await(lookup)))
+        stepping = false
+        while (tasks.length > 0) tasks.shift()!()
+        yield* Fiber.await(get)
+        assert.strictEqual(released, 1)
+      }))
+
     it.effect("a get made while an abandoned lookup is finalizing starts a new lookup", () =>
       Effect.gen(function*() {
         let lookups = 0
