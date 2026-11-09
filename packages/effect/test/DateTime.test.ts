@@ -559,6 +559,50 @@ describe("DateTime", () => {
     })
   })
 
+  describe("zoneMakeNamed", () => {
+    it("keeps the name of a renamed zone", () => {
+      for (const name of ["Europe/Kiev", "Europe/Kyiv", "Europe/Kiev", "Europe/Kyiv"]) {
+        strictEqual(DateTime.zoneToString(DateTime.zoneMakeNamedUnsafe(name)), name)
+      }
+      strictEqual(
+        DateTime.formatIsoZoned(DateTime.makeZonedUnsafe("2024-01-01T00:00:00Z", { timeZone: "Europe/Kyiv" })),
+        "2024-01-01T02:00:00.000+02:00[Europe/Kyiv]"
+      )
+      strictEqual(DateTime.zoneToString(DateTime.zoneMakeNamedUnsafe("europe/london")), "Europe/London")
+    })
+
+    const mapsRenamedZones =
+      new Intl.DateTimeFormat("en-US", { timeZone: "Europe/Kyiv" }).resolvedOptions().timeZone ===
+        new Intl.DateTimeFormat("en-US", { timeZone: "Europe/Kiev" }).resolvedOptions().timeZone
+
+    it.runIf(mapsRenamedZones)("treats a renamed zone and its old name as equal", () => {
+      const kyiv = DateTime.zoneMakeNamedUnsafe("Europe/Kyiv")
+      const kiev = DateTime.zoneMakeNamedUnsafe("Europe/Kiev")
+      assertTrue(Equal.equals(kyiv, kiev))
+      strictEqual(Hash.hash(kyiv), Hash.hash(kiev))
+    })
+
+    it("treats a zone from an older copy of effect as equal", () => {
+      const zone = DateTime.zoneMakeNamedUnsafe("Europe/London")
+      // Older copies store Intl's resolved identifier in `id` and have no `resolvedId`
+      const older = {
+        "~effect/DateTime/TimeZone": "~effect/DateTime/TimeZone",
+        _tag: "Named",
+        id: "Europe/London",
+        format: new Intl.DateTimeFormat("en-US", { timeZone: "Europe/London" }),
+        [Hash.symbol]() {
+          return Hash.string(`Named:${this.id}`)
+        },
+        [Equal.symbol](that: unknown) {
+          return DateTime.isTimeZoneNamed(that) && this.id === that.id
+        }
+      }
+      assertTrue(Equal.equals(older, zone))
+      assertTrue(Equal.equals(zone, older))
+      strictEqual(Hash.hash(zone), Hash.hash(older))
+    })
+  })
+
   describe("toUtc", () => {
     it.effect("with a Utc", () =>
       Effect.gen(function*() {
