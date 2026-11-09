@@ -1613,10 +1613,15 @@ export const makeProtocolStdio = Effect.gen(function*() {
     yield* Stream.fromQueue(queue).pipe(
       Stream.run(stdio.stdout()),
       Effect.retry(Schedule.spaced(500)),
-      Effect.andThen(Effect.forkDetach(
-        Fiber.interruptAs(fiber, undefined, Context.make(Runtime.InterruptExitCode, 0)),
-        { startImmediately: true }
-      )),
+      Effect.onExit((exit) => {
+        if (Exit.isFailure(exit) && Cause.hasInterruptsOnly(exit.cause)) return Effect.void
+        return Effect.forkDetach(
+          Exit.isSuccess(exit)
+            ? Fiber.interruptAs(fiber, undefined, Context.make(Runtime.InterruptExitCode, 0))
+            : Fiber.interrupt(fiber),
+          { startImmediately: true }
+        ).pipe(Effect.asVoid)
+      }),
       Effect.forkScoped
     )
 
