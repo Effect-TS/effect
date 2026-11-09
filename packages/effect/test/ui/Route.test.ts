@@ -1,0 +1,134 @@
+import { assert, describe, it } from "@effect/vitest"
+import { Option, Schema } from "effect"
+import { Route } from "effect/ui"
+
+const makeRoutes = () =>
+  Route.union(
+    {
+      Home: Route.make("/"),
+      NewPerson: Route.make("/people/new"),
+      Person: Route.make("/people/:id", {
+        params: { id: Schema.Number },
+        query: { tab: Schema.optional(Schema.String) }
+      }),
+      PersonBySlug: Route.make("/people/:slug", { params: { slug: Schema.String } }),
+      Search: Route.make("/search", { query: { q: Schema.String, page: Schema.optional(Schema.Number) } }),
+      Files: Route.make("/files/*"),
+      NotFound: Route.make("/*")
+    },
+    Route.redirect("/old/:id", (params) => ({ _tag: "Person", params: { id: Number(params.id) }, query: {} }))
+  )
+
+const parse = (routes: Route.AnyUnion, url: string): any => Option.getOrUndefined(routes.parse(url))
+
+describe("Route", () => {
+  it("ranks a static segment above a param, whatever the order", () => {
+    const routes = makeRoutes()
+    assert.deepStrictEqual(parse(routes, "/people/new"), { _tag: "NewPerson", params: {}, query: {} })
+    assert.deepStrictEqual(parse(routes, "/people/1"), { _tag: "Person", params: { id: 1 }, query: {} })
+    const reordered = Route.union({
+      Person: Route.make("/people/:id", { params: { id: Schema.String } }),
+      NewPerson: Route.make("/people/new")
+    })
+    assert.strictEqual(parse(reordered, "/people/new")?._tag, "NewPerson")
+  })
+
+  it("falls through when a path param fails to decode", () => {
+    assert.deepStrictEqual(parse(makeRoutes(), "/people/ada"), {
+      _tag: "PersonBySlug",
+      params: { slug: "ada" },
+      query: {}
+    })
+  })
+
+  it("makes a query that fails to decode a 404, without falling through", () => {
+    const routes = makeRoutes()
+    assert.deepStrictEqual(parse(routes, "/search?q=a+b&page=2"), {
+      _tag: "Search",
+      params: {},
+      query: { q: "a b", page: 2 }
+    })
+    assert.strictEqual(parse(routes, "/search?q=a&page=x")?._tag, "NotFound")
+    assert.strictEqual(parse(routes, "/search")?._tag, "NotFound")
+  })
+
+  it("matches the catch-all last, with the path as its rest param", () => {
+    assert.deepStrictEqual(parse(makeRoutes(), "/a/b"), { _tag: "NotFound", params: { "*": "a/b" }, query: {} })
+    assert.deepStrictEqual(parse(makeRoutes(), "/files/a/b%20c"), {
+      _tag: "Files",
+      params: { "*": "a/b c" },
+      query: {}
+    })
+  })
+
+  it("strips a trailing slash, matches case-sensitively and ignores the hash", () => {
+    const routes = makeRoutes()
+    const resolved = Option.getOrThrow(routes.resolve("/people/1/"))
+    assert.deepStrictEqual(resolved, { route: { _tag: "Person", params: { id: 1 }, query: {} }, redirected: true })
+    assert.strictEqual(parse(routes, "/People/1")?._tag, "NotFound")
+    assert.strictEqual(parse(routes, "/people/1#bio")?._tag, "Person")
+  })
+
+  it("resolves redirects inside parse", () => {
+    const routes = makeRoutes()
+    assert.deepStrictEqual(Option.getOrThrow(routes.resolve("/old/3")), {
+      route: { _tag: "Person", params: { id: 3 }, query: {} },
+      redirected: true
+    })
+  })
+
+  it("prints through the same Schemas, with no trailing slash", () => {
+    const routes = makeRoutes()
+    assert.strictEqual(routes.print(routes.make({ _tag: "Home" })), "/")
+    assert.strictEqual(
+      routes.print(routes.make({ _tag: "Person", params: { id: 2 }, query: { tab: "x y" } })),
+      "/people/2?tab=x%20y"
+    )
+    assert.strictEqual(
+      routes.print(routes.make({ _tag: "Search", query: { q: "a&b", page: 3 } })),
+      "/search?q=a%26b&page=3"
+    )
+    assert.strictEqual(routes.print(routes.make({ _tag: "Files", params: { "*": "a/b c" } })), "/files/a/b%20c")
+    for (const url of ["/", "/people/2?tab=x%20y", "/search?q=a%26b&page=3", "/files/a/b%20c"]) {
+      assert.strictEqual(routes.print(Option.getOrThrow(routes.parse(url))), url)
+    }
+  })
+
+  it("parses and prints under the base path", () => {
+    const routes = makeRoutes()
+    routes.setBase("/en/")
+    assert.strictEqual(routes.base(), "/en")
+    assert.strictEqual(routes.print(routes.make({ _tag: "Home" })), "/en")
+    assert.strictEqual(routes.print(routes.make({ _tag: "NewPerson" })), "/en/people/new")
+    assert.strictEqual(parse(routes, "/en/people/5")?._tag, "Person")
+    assert.strictEqual(parse(routes, "/en")?._tag, "Home")
+    assert.isUndefined(parse(routes, "/fr/people/5"))
+  })
+
+  it("parses and prints in the fragment with a # base", () => {
+    const routes = makeRoutes()
+    routes.setBase("#")
+    assert.strictEqual(routes.print(routes.make({ _tag: "Person", params: { id: 1 } })), "#/people/1")
+    assert.deepStrictEqual(parse(routes, "#/search?q=x"), { _tag: "Search", params: {}, query: { q: "x" } })
+    assert.strictEqual(parse(routes, "#")?._tag, "Home")
+    assert.isUndefined(parse(routes, "/people/1"))
+  })
+
+  it("subsets a union for a section", () => {
+    const routes = makeRoutes()
+    const people = routes.subset(["NewPerson", "Person"])
+    assert.strictEqual(people.print(people.make({ _tag: "Person", params: { id: 1 } })), "/people/1")
+    assert.isUndefined(parse(people, "/"))
+    assert.isTrue(routes.isAnyOf(["NewPerson", "Person"])(routes.make({ _tag: "NewPerson" })))
+  })
+
+  it("is a Schema of its route values", () => {
+    const routes = makeRoutes()
+    const decoded = Schema.decodeUnknownSync(routes)({ _tag: "Person", params: { id: 1 }, query: {} })
+    assert.deepStrictEqual(decoded, { _tag: "Person", params: { id: 1 }, query: {} })
+  })
+
+  it("requires a Schema for every param", () => {
+    assert.throws(() => (Route.make as any)("/people/:id", { params: {} }), /no Schema for its :id param/)
+  })
+})

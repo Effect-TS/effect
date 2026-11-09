@@ -1,0 +1,71 @@
+import { assert, describe, it } from "@effect/vitest"
+import { Head } from "effect/ui"
+
+const node = (entries: ReadonlyArray<Head.Entry>, ...children: ReadonlyArray<Head.Tree>): Head.Tree => ({
+  entries,
+  children
+})
+
+describe("Head", () => {
+  it("chains title templates outward, never on the instance's own title", () => {
+    const app = (layout: Head.Tree) => node([Head.titleTemplate((t) => `${t} · App`), Head.title("App")], layout)
+    const people = (...children: ReadonlyArray<Head.Tree>) =>
+      node([Head.titleTemplate((t) => `${t} · People`), Head.title("People")], ...children)
+    assert.strictEqual(Head.merge(app(people(node([Head.title("Ada")])))).title, "Ada · People · App")
+    assert.strictEqual(Head.merge(app(people())).title, "People · App")
+    assert.strictEqual(Head.merge(node([Head.titleTemplate((t) => `${t}!`), Head.title("Root")])).title, "Root")
+  })
+
+  it("lets the later entry win per identity, in document order", () => {
+    const head = Head.merge(node(
+      [
+        Head.meta({ name: "description", content: "root" }),
+        Head.link({ rel: "canonical", href: "/a" }),
+        Head.lang("en")
+      ],
+      node([Head.meta({ name: "description", content: "first" }), Head.link({ rel: "canonical", href: "/b" })]),
+      node([
+        Head.meta({ name: "description", content: "second" }),
+        Head.meta({ property: "og:title", content: "Ada" }),
+        Head.link({ rel: "alternate", href: "/fr", hreflang: "fr" }),
+        Head.link({ rel: "alternate", href: "/de", hreflang: "de" }),
+        Head.lang("fr")
+      ])
+    ))
+    assert.deepStrictEqual(head.meta.map((meta) => meta.content), ["second", "Ada"])
+    assert.deepStrictEqual(head.links.map((link) => link.attributes.href), ["/b", "/fr", "/de"])
+    assert.strictEqual(head.html.lang, "fr")
+  })
+
+  it("unions class tokens in order of first contribution and keeps one data slot per name", () => {
+    const head = Head.merge(node(
+      [Head.htmlClass("h-full  dark"), Head.bodyClass(["a b"]), Head.htmlData("data-theme", "light")],
+      node([Head.htmlClass(["dark", "x"]), Head.htmlData("data-theme", "dark"), Head.bodyData("data-page", "")])
+    ))
+    assert.deepStrictEqual(head.html.class, ["h-full", "dark", "x"])
+    assert.deepStrictEqual(head.body.class, ["a", "b"])
+    assert.deepStrictEqual(head.html.data, { "data-theme": "dark" })
+    assert.deepStrictEqual(head.body.data, { "data-page": "" })
+  })
+
+  it("rejects the marker as a data name", () => {
+    assert.throws(() => Head.htmlData("data-eui" as any, "x"), /marker/)
+  })
+
+  it("serialises JSON-LD canonically and escapes <", () => {
+    const a = Head.jsonLd({ b: 1, a: { d: [1, "x"], c: "</script>" }, z: undefined })
+    const b = Head.jsonLd({ a: { c: "</script>", d: [1, "x"] }, b: 1 })
+    assert.strictEqual(a.json, "{\"a\":{\"c\":\"\\u003c/script>\",\"d\":[1,\"x\"]},\"b\":1}")
+    assert.strictEqual(a.json, b.json)
+    const head = Head.merge(
+      node([a], node([b]), node([Head.jsonLd({ b: 2 }, { key: "k" }), Head.jsonLd({ b: 3 }, { key: "k" })]))
+    )
+    assert.deepStrictEqual(head.jsonLd.map((entry) => entry.json), [a.json, "{\"b\":3}"])
+  })
+
+  it("reports what JSON can't hold, with its path", () => {
+    assert.throws(() => Head.jsonLd({ a: { when: new Map() } } as any), /\$\.a\.when is a Map/)
+    assert.throws(() => Head.jsonLd({ list: [1, Number.NaN] }), /\$\.list\[1\] is NaN/)
+    assert.throws(() => Head.jsonLd([1] as any), /not an array/)
+  })
+})
