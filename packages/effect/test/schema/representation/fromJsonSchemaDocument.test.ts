@@ -2150,6 +2150,14 @@ describe("fromJsonSchemaDocument", () => {
         title: "inside its own definition",
         schema: { $ref: "#/$defs/A", $defs: { A: { allOf: [{ $ref: "#/$defs/A" }, { $ref: "#/$defs/A" }] } } },
         path: `["definitions"]["A"]["allOf"][1]`
+      },
+      {
+        title: "through a union",
+        schema: {
+          allOf: [{ $ref: "#/$defs/A" }, { $ref: "#/$defs/A" }],
+          $defs: { A: { anyOf: [{ $ref: "#/$defs/A" }, { type: "string" }] } }
+        },
+        path: `["schema"]["allOf"][1]`
       }
     ])("rejects intersecting a circular alias with itself $title", ({ path, schema }) => {
       throws(
