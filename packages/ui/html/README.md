@@ -1,11 +1,11 @@
 # @effect/ui-html
 
-The HTML vocabulary, browser host, browser router and server renderer for `@effect/ui`.
+The HTML vocabulary, browser host, browser router and server renderer for `effect/ui`, the Layer-composed frontend framework in the `effect` package.
 
 ## Installation
 
 ```sh
-npm install effect @effect/ui @effect/ui-html
+npm install effect @effect/ui-html
 ```
 
 ## Links

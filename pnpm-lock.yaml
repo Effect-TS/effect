@@ -1067,17 +1067,8 @@ importers:
         specifier: ^26.6.6
         version: 26.6.6
 
-  packages/ui/core:
-    devDependencies:
-      effect:
-        specifier: workspace:^
-        version: link:../../effect
-
   packages/ui/html:
     devDependencies:
-      '@effect/ui':
-        specifier: workspace:^
-        version: link:../core
       effect:
         specifier: workspace:^
         version: link:../../effect

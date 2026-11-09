@@ -1,8 +1,8 @@
-import { Command } from "@effect/ui"
-import * as schedule from "@effect/ui/internal/schedule"
 import { assert, describe, it } from "@effect/vitest"
 import { Effect, Layer, Schema, Stream } from "effect"
 import { KeyValueStore } from "effect/persistence"
+import { Command } from "effect/ui"
+import * as schedule from "effect/ui/internal/schedule"
 import { SaveTodo, Search, TodoItemMessage, Upload } from "./fixtures/components.ts"
 
 const todo = { id: "t1", title: "buy milk", done: false }

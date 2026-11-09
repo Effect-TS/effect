@@ -16,8 +16,8 @@
  * **Example** (A todo row: click, resolve its Command, check the Model)
  *
  * ```ts import.meta.vitest
- * import { Command, Component } from "@effect/ui"
- * import { Story } from "@effect/ui/testing"
+ * import { Command, Component } from "effect/ui"
+ * import { Story } from "effect/ui/testing"
  * import { Effect, Schema } from "effect"
  *
  * const Message = Schema.TaggedUnion({ Save: {}, Saved: {} })
@@ -53,12 +53,12 @@
  * )
  * ```
  *
- * @stability unstable
- * @since 0.1.0
+ * @stability experimental
+ * @since 4.1.3
  */
-import type * as Cause from "effect/Cause"
-import * as Equal from "effect/Equal"
-import * as AsyncResult from "effect/reactivity/AsyncResult"
+import type * as Cause from "../../Cause.ts"
+import * as Equal from "../../Equal.ts"
+import * as AsyncResult from "../../reactivity/AsyncResult.ts"
 import * as Command from "../Command.ts"
 import type * as Component from "../Component.ts"
 import * as schedule from "../internal/schedule.ts"
@@ -72,12 +72,12 @@ import * as View from "../View.ts"
  * `running` is what the runtime would be executing; `queued` is waiting behind
  * a running run of the same group under `mode: "queue"`.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
- * @since 0.1.0
+ * @since 4.1.3
  */
 export interface Pending<Msg> {
-  readonly command: Command.Effectful<Msg, any> | Command.Streaming<Msg, any>
+  readonly command: Command.Effectful<Msg, any, any> | Command.Streaming<Msg, any, any>
   readonly status: "running" | "queued"
 }
 
@@ -85,9 +85,9 @@ export interface Pending<Msg> {
  * The state of one instance between steps. Immutable: every step returns a new
  * story.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
- * @since 0.1.0
+ * @since 4.1.3
  */
 export interface Story<Props, Model, Msg, Emits> {
   readonly component: Component.Component<any, Props, Model, Msg, Emits, any, any>
@@ -98,10 +98,10 @@ export interface Story<Props, Model, Msg, Emits> {
   /** Everything emitted to the parent so far. */
   readonly emitted: ReadonlyArray<Emits>
   /** Commands interrupted by `switch`, by an interrupt Command, or by `given`. */
-  readonly interrupted: ReadonlyArray<Command.Effectful<Msg, any> | Command.Streaming<Msg, any>>
+  readonly interrupted: ReadonlyArray<Command.Effectful<Msg, any, any> | Command.Streaming<Msg, any, any>>
   /** Commands ignored by `mode: "drop"`. */
-  readonly dropped: ReadonlyArray<Command.Effectful<Msg, any> | Command.Streaming<Msg, any>>
-  /** The view of the current Model and props. Runs `view` each time. */
+  readonly dropped: ReadonlyArray<Command.Effectful<Msg, any, any> | Command.Streaming<Msg, any, any>>
+  /** The view of the current Model and props, rendered when they change, so a defect in `view` fails that step. */
   readonly view: () => View.Node<Msg, any>
   /** The Subscription keys the current Model and props ask for. Nothing runs. */
   readonly subscriptions: () => ReadonlyArray<string>
@@ -110,18 +110,18 @@ export interface Story<Props, Model, Msg, Emits> {
 /**
  * A step of a story: a function from one story to the next.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
- * @since 0.1.0
+ * @since 4.1.3
  */
 export type Step<Props, Model, Msg, Emits> = (story: Story<Props, Model, Msg, Emits>) => Story<Props, Model, Msg, Emits>
 
 /**
  * A step that works for any component.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
- * @since 0.1.0
+ * @since 4.1.3
  */
 export type AnyStep = <Props, Model, Msg, Emits>(
   story: Story<Props, Model, Msg, Emits>
@@ -133,13 +133,16 @@ const update = <Props, Model, Msg, Emits>(
     Pick<Story<Props, Model, Msg, Emits>, "props" | "model" | "pending" | "emitted" | "interrupted" | "dropped">
   >
 ): Story<Props, Model, Msg, Emits> => {
-  const next: Story<Props, Model, Msg, Emits> = {
+  const model = "model" in patch ? patch.model as Model : story.model
+  const props = "props" in patch ? patch.props as Props : story.props
+  // A defect in `view` fails the step that changed the Model or props.
+  const view = model === story.model && props === story.props ? story.view() : story.component.view(model, props)
+  return {
     ...story,
     ...patch,
-    view: () => story.component.view(next.model, next.props),
-    subscriptions: () => (story.component.subscriptions?.(next.model, next.props) ?? []).map((sub) => sub.key)
+    view: () => view,
+    subscriptions: () => (story.component.subscriptions?.(model, props) ?? []).map((sub) => sub.key)
   }
-  return next
 }
 
 const toEntries = <Msg>(pending: ReadonlyArray<Pending<Msg>>): Array<schedule.Entry<Pending<Msg>>> =>
@@ -204,7 +207,7 @@ const complete = <Props, Model, Msg, Emits>(
   return update(story, { pending })
 }
 
-const describe = (command: Command.Effectful<any, any> | Command.Streaming<any, any>): string =>
+const describe = (command: Command.Effectful<any, any, any> | Command.Streaming<any, any, any>): string =>
   `${command.name}(${command.args.map((arg) => JSON.stringify(arg)).join(", ")})`
 
 const describePending = (pending: ReadonlyArray<Pending<any>>): string =>
@@ -214,11 +217,11 @@ const describePending = (pending: ReadonlyArray<Pending<any>>): string =>
  * A pending Command's definition, or an issued Command to also match the
  * arguments.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
- * @since 0.1.0
+ * @since 4.1.3
  */
-export type Target = Command.Definition.Any | Command.Effectful<any, any> | Command.Streaming<any, any>
+export type Target = Command.Definition.Any | Command.Effectful<any, any, any> | Command.Streaming<any, any, any>
 
 const matches = (target: Target, entry: Pending<any>): boolean => {
   if (Command.isDefinition(target)) return entry.command.name === Command.nameOf(target)
@@ -244,9 +247,9 @@ const findRunning = (story: Story<any, any, any, any>, target: Target, step: str
  * It returns the final story so a test can read it, and throws if a Command is
  * still pending at the end.
  *
- * @stability unstable
+ * @stability experimental
  * @category constructors
- * @since 0.1.0
+ * @since 4.1.3
  */
 export const make = <Props, Model, Msg, Emits>(
   component: Component.Component<any, Props, Model, Msg, Emits, any, any>,
@@ -263,15 +266,16 @@ export const make = <Props, Model, Msg, Emits>(
 /**
  * The story after `init` and before any step, with no check on what's pending.
  *
- * @stability unstable
+ * @stability experimental
  * @category constructors
- * @since 0.1.0
+ * @since 4.1.3
  */
 export const start = <Props, Model, Msg, Emits>(
   component: Component.Component<any, Props, Model, Msg, Emits, any, any>,
   props: Props
 ): Story<Props, Model, Msg, Emits> => {
   const first = component.init(props)
+  const view = component.view(first.model, props)
   const empty: Story<Props, Model, Msg, Emits> = {
     component,
     props,
@@ -280,8 +284,8 @@ export const start = <Props, Model, Msg, Emits>(
     emitted: [],
     interrupted: [],
     dropped: [],
-    view: () => component.view(first.model, props),
-    subscriptions: () => []
+    view: () => view,
+    subscriptions: () => (component.subscriptions?.(first.model, props) ?? []).map((sub) => sub.key)
   }
   return apply(empty, first)
 }
@@ -289,9 +293,9 @@ export const start = <Props, Model, Msg, Emits>(
 /**
  * Applies steps to a story, with no check on what's pending.
  *
- * @stability unstable
+ * @stability experimental
  * @category combinators
- * @since 0.1.0
+ * @since 4.1.3
  */
 export const run = <Props, Model, Msg, Emits>(
   story: Story<Props, Model, Msg, Emits>,
@@ -301,9 +305,9 @@ export const run = <Props, Model, Msg, Emits>(
 /**
  * Groups steps into one, for a shared setup.
  *
- * @stability unstable
+ * @stability experimental
  * @category steps
- * @since 0.1.0
+ * @since 4.1.3
  */
 export const steps = <Props, Model, Msg, Emits>(
   ...steps: ReadonlyArray<Step<Props, Model, Msg, Emits>>
@@ -313,9 +317,9 @@ export const steps = <Props, Model, Msg, Emits>(
 /**
  * Starts from any Model, forgetting what `init` issued and emitted.
  *
- * @stability unstable
+ * @stability experimental
  * @category steps
- * @since 0.1.0
+ * @since 4.1.3
  */
 export const given = <Props, Model, Msg, Emits>(model: NoInfer<Model>): Step<Props, Model, Msg, Emits> => (story) =>
   update(story, { model, pending: [], emitted: [], interrupted: [], dropped: [] })
@@ -324,9 +328,9 @@ export const given = <Props, Model, Msg, Emits>(model: NoInfer<Model>): Step<Pro
  * Changes the props. A props change never reaches `update`: it re-renders the
  * view and changes the Subscription keys.
  *
- * @stability unstable
+ * @stability experimental
  * @category steps
- * @since 0.1.0
+ * @since 4.1.3
  */
 export const props = <Props, Model, Msg, Emits>(
   next: NoInfer<Props> | ((props: Props) => Props)
@@ -342,9 +346,9 @@ const dispatch = <Props, Model, Msg, Emits>(
 /**
  * Sends a message to `update`.
  *
- * @stability unstable
+ * @stability experimental
  * @category steps
- * @since 0.1.0
+ * @since 4.1.3
  */
 export const send = <Props, Model, Msg, Emits>(message: NoInfer<Msg>): Step<Props, Model, Msg, Emits> => (story) =>
   dispatch(story, message)
@@ -353,9 +357,9 @@ export const send = <Props, Model, Msg, Emits>(message: NoInfer<Msg>): Step<Prop
  * Sends the message a `click` on the innermost element containing `text` would
  * send. Throws if nothing clickable contains it.
  *
- * @stability unstable
+ * @stability experimental
  * @category steps
- * @since 0.1.0
+ * @since 4.1.3
  */
 export const click = (text: string): AnyStep => (story) => {
   let hit: View.Element<any, any> | undefined
@@ -370,9 +374,9 @@ export const click = (text: string): AnyStep => (story) => {
  * The message a handler sends for a payload: the value itself, or the result
  * of the function, where `undefined` ignores the event.
  *
- * @stability unstable
+ * @stability experimental
  * @category queries
- * @since 0.1.0
+ * @since 4.1.3
  */
 export const handle = <Msg, Payload>(handler: View.Handler<Msg, Payload>, payload: Payload): Msg | undefined =>
   typeof handler === "function" ? (handler as (payload: Payload) => Msg | undefined)(payload) : handler
@@ -381,9 +385,9 @@ export const handle = <Msg, Payload>(handler: View.Handler<Msg, Payload>, payloa
  * Sends the message `event` with `payload` would send from the first element
  * matching `predicate`. Throws if no matching element handles the event.
  *
- * @stability unstable
+ * @stability experimental
  * @category steps
- * @since 0.1.0
+ * @since 4.1.3
  */
 export const fire = <Payload>(
   predicate: (element: View.Element<any, any>) => boolean,
@@ -402,9 +406,9 @@ export const fire = <Payload>(
 /**
  * Checks the Model. `f` throws to fail the test.
  *
- * @stability unstable
+ * @stability experimental
  * @category steps
- * @since 0.1.0
+ * @since 4.1.3
  */
 export const model =
   <Props, Model, Msg, Emits>(f: (model: Model) => void): Step<Props, Model, Msg, Emits> => (story) => {
@@ -415,9 +419,9 @@ export const model =
 /**
  * Checks the view. `f` throws to fail the test.
  *
- * @stability unstable
+ * @stability experimental
  * @category steps
- * @since 0.1.0
+ * @since 4.1.3
  */
 export const view = <Props, Model, Msg, Emits>(
   f: (view: View.Node<Msg, any>) => void
@@ -430,9 +434,9 @@ export const view = <Props, Model, Msg, Emits>(
 /**
  * Checks everything emitted so far. `f` throws to fail the test.
  *
- * @stability unstable
+ * @stability experimental
  * @category steps
- * @since 0.1.0
+ * @since 4.1.3
  */
 export const emitted = <Props, Model, Msg, Emits>(
   f: (emitted: ReadonlyArray<Emits>) => void
@@ -446,9 +450,9 @@ export const emitted = <Props, Model, Msg, Emits>(
  * Checks the Subscription keys the current Model and props ask for. `f` throws
  * to fail the test.
  *
- * @stability unstable
+ * @stability experimental
  * @category steps
- * @since 0.1.0
+ * @since 4.1.3
  */
 export const subscriptions = (f: (keys: ReadonlyArray<string>) => void): AnyStep => (story) => {
   f(story.subscriptions())
@@ -458,9 +462,9 @@ export const subscriptions = (f: (keys: ReadonlyArray<string>) => void): AnyStep
 /**
  * Checks the whole story. `f` throws to fail the test.
  *
- * @stability unstable
+ * @stability experimental
  * @category steps
- * @since 0.1.0
+ * @since 4.1.3
  */
 export const check = <Props, Model, Msg, Emits>(
   f: (story: Story<Props, Model, Msg, Emits>) => void
@@ -477,15 +481,15 @@ export const check = <Props, Model, Msg, Emits>(
  * **Details**
  *
  * A definition matches by identity; an issued Command also matches the
- * arguments. `result` is typed by the Command's own message type, and a
- * `Command.map` applied to it is replayed. A queued run of the same group
+ * arguments. `result` is the definition's own result, before any
+ * `Command.map`, which is replayed to produce the component's message. A queued run of the same group
  * starts when the running one resolves.
  *
- * @stability unstable
+ * @stability experimental
  * @category steps
- * @since 0.1.0
+ * @since 4.1.3
  */
-export const resolve = <D extends Target>(target: D, result: Command.Message<D>): AnyStep => (story) => {
+export const resolve = <D extends Target>(target: D, result: Command.Result<D>): AnyStep => (story) => {
   const entry = findRunning(story, target, "resolve")
   return dispatch(complete(story, entry), entry.command.resolve(result))
 }
@@ -494,13 +498,13 @@ export const resolve = <D extends Target>(target: D, result: Command.Message<D>)
  * Sends one element of the oldest running Stream Command matching `target`,
  * which stays pending.
  *
- * @stability unstable
+ * @stability experimental
  * @category steps
- * @since 0.1.0
+ * @since 4.1.3
  */
-export const next = <D extends Command.Definition<any, any, true> | Command.Streaming<any, any>>(
+export const next = <D extends Command.Definition<any, any, true> | Command.Streaming<any, any, any>>(
   target: D,
-  result: Command.Message<D>
+  result: Command.Result<D>
 ): AnyStep =>
 (story) => {
   const entry = findRunning(story, target, "next")
@@ -513,12 +517,12 @@ export const next = <D extends Command.Definition<any, any, true> | Command.Stre
 /**
  * Ends the oldest running Stream Command matching `target`, sending nothing.
  *
- * @stability unstable
+ * @stability experimental
  * @category steps
- * @since 0.1.0
+ * @since 4.1.3
  */
 export const end =
-  <D extends Command.Definition<any, any, true> | Command.Streaming<any, any>>(target: D): AnyStep => (story) => {
+  <D extends Command.Definition<any, any, true> | Command.Streaming<any, any, any>>(target: D): AnyStep => (story) => {
     const entry = findRunning(story, target, "end")
     if (entry.command._tag !== "Stream") {
       throw new Error(`Story.end: ${describe(entry.command)} is not a stream Command`)
@@ -529,9 +533,9 @@ export const end =
 /**
  * Asserts that exactly these Commands are pending, in order.
  *
- * @stability unstable
+ * @stability experimental
  * @category steps
- * @since 0.1.0
+ * @since 4.1.3
  */
 export const expectExact = (...targets: ReadonlyArray<Target>): AnyStep => (story) => {
   const ok = story.pending.length === targets.length &&
@@ -549,9 +553,9 @@ export const expectExact = (...targets: ReadonlyArray<Target>): AnyStep => (stor
 /**
  * Asserts that a Command matching `target` is pending.
  *
- * @stability unstable
+ * @stability experimental
  * @category steps
- * @since 0.1.0
+ * @since 4.1.3
  */
 export const expectHas = (target: Target): AnyStep => (story) => {
   if (!story.pending.some((entry) => matches(target, entry))) {
@@ -565,9 +569,9 @@ export const expectHas = (target: Target): AnyStep => (story) => {
 /**
  * Asserts that nothing is pending.
  *
- * @stability unstable
+ * @stability experimental
  * @category steps
- * @since 0.1.0
+ * @since 4.1.3
  */
 export const expectNone = (): AnyStep => (story) => {
   if (story.pending.length > 0) {
@@ -580,9 +584,9 @@ export const expectNone = (): AnyStep => (story) => {
  * The child slots declared in a view, optionally filtered by component or
  * feature service.
  *
- * @stability unstable
+ * @stability experimental
  * @category queries
- * @since 0.1.0
+ * @since 4.1.3
  */
 export const children = <Msg>(
   view: View.Node<Msg, any>,
@@ -606,9 +610,9 @@ const findChild = <Msg>(view: View.Node<Msg, any>, key: string, step: string): V
  * Sends the message the parent's `onEmit` maps `emits` from the child with
  * `key` to, if any.
  *
- * @stability unstable
+ * @stability experimental
  * @category steps
- * @since 0.1.0
+ * @since 4.1.3
  */
 export const childEmit = (key: string, emits: unknown): AnyStep => (story) => {
   return dispatch(story, findChild(story.view(), key, "childEmit").onEmit(emits))
@@ -618,9 +622,9 @@ export const childEmit = (key: string, emits: unknown): AnyStep => (story) => {
  * Sends the message the parent's `onFailure` maps a failure of the child with
  * `key` to, if any. The failure is passed as an `AsyncResult.Failure`.
  *
- * @stability unstable
+ * @stability experimental
  * @category steps
- * @since 0.1.0
+ * @since 4.1.3
  */
 export const childFailure = (key: string, cause: Cause.Cause<unknown>): AnyStep => (story) => {
   const child = findChild(story.view(), key, "childFailure")
@@ -631,9 +635,9 @@ export const childFailure = (key: string, cause: Cause.Cause<unknown>): AnyStep 
  * What the slot with `key` shows for `result`: its `fallback` evaluated with an
  * `AsyncResult.Initial` or `AsyncResult.Failure`, or `undefined` without one.
  *
- * @stability unstable
+ * @stability experimental
  * @category queries
- * @since 0.1.0
+ * @since 4.1.3
  */
 export const fallback = <Msg>(
   view: View.Node<Msg, any>,
@@ -645,9 +649,9 @@ export const fallback = <Msg>(
  * The message `Component.provide`'s `onFailure` maps a Layer failure to, or
  * `undefined` when the component has none.
  *
- * @stability unstable
+ * @stability experimental
  * @category queries
- * @since 0.1.0
+ * @since 4.1.3
  */
 export const layerFailure = <C extends Component.Any>(
   component: C,

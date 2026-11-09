@@ -23,7 +23,7 @@
  * **Example** (A Command service with a captured dependency)
  *
  * ```ts import.meta.vitest
- * import { Command } from "@effect/ui"
+ * import { Command } from "effect/ui"
  * import { Effect, Schema } from "effect"
  * import { KeyValueStore } from "effect/persistence"
  *
@@ -45,52 +45,52 @@
  * // The live wiring provides `DeleteTodo.layer`, which requires `KeyValueStore`.
  * ```
  *
- * @stability unstable
- * @since 0.1.0
+ * @stability experimental
+ * @since 4.1.3
  */
-import * as Context from "effect/Context"
-import * as Effect from "effect/Effect"
-import { dual } from "effect/Function"
-import * as Layer from "effect/Layer"
-import * as Pipeable from "effect/Pipeable"
-import * as Predicate from "effect/Predicate"
-import type * as Scope from "effect/Scope"
-import * as Stream from "effect/Stream"
-import type * as Types from "effect/Types"
+import * as Context from "../Context.ts"
+import * as Effect from "../Effect.ts"
+import { dual } from "../Function.ts"
+import * as Layer from "../Layer.ts"
+import * as Pipeable from "../Pipeable.ts"
+import * as Predicate from "../Predicate.ts"
+import type * as Scope from "../Scope.ts"
+import * as Stream from "../Stream.ts"
+import type * as Types from "../Types.ts"
 
 /**
  * Identifies a Command value.
  *
- * @stability unstable
+ * @stability experimental
  * @category type ids
- * @since 0.1.0
+ * @since 4.1.3
  */
-export const TypeId = "~@effect/ui/Command" as const
+export const TypeId = "~effect/ui/Command" as const
 
 /**
  * Identifies a Command value.
  *
- * @stability unstable
+ * @stability experimental
  * @category type ids
- * @since 0.1.0
+ * @since 4.1.3
  */
 export type TypeId = typeof TypeId
 
 /**
  * Identifies a Command definition: a factory from `make` or a `Service` class.
  *
- * @stability unstable
+ * @stability experimental
  * @category type ids
- * @since 0.1.0
+ * @since 4.1.3
  */
-export const DefinitionTypeId = "~@effect/ui/Command/Definition" as const
+export const DefinitionTypeId = "~effect/ui/Command/Definition" as const
 
 /**
  * Identifies a Command definition: a factory from `make` or a `Service` class.
  *
- * @stability unstable
+ * @stability experimental
  * @category type ids
- * @since 0.1.0
+ * @since 4.1.3
  */
 export type DefinitionTypeId = typeof DefinitionTypeId
 
@@ -105,9 +105,9 @@ export type DefinitionTypeId = typeof DefinitionTypeId
  * runs, `drop` ignores the new one, and `queue` starts it once the earlier runs
  * have ended.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
- * @since 0.1.0
+ * @since 4.1.3
  */
 export type Mode = "concurrent" | "switch" | "drop" | "queue"
 
@@ -121,9 +121,9 @@ export type Mode = "concurrent" | "switch" | "drop" | "queue"
  * concurrency key from the arguments, so runs with different keys don't
  * interfere.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
- * @since 0.1.0
+ * @since 4.1.3
  */
 export interface Options<in Args extends ReadonlyArray<any>> {
   readonly stream?: boolean | undefined
@@ -145,7 +145,7 @@ export interface Options<in Args extends ReadonlyArray<any>> {
  * **Example** (Registering a host's framework service)
  *
  * ```ts
- * declare module "@effect/ui/Command" {
+ * declare module "effect/ui/Command" {
  *   interface FrameworkServices {
  *     readonly MyHost: MyHost
  *   }
@@ -156,9 +156,9 @@ export interface Options<in Args extends ReadonlyArray<any>> {
  * }
  * ```
  *
- * @stability unstable
+ * @stability experimental
  * @category models
- * @since 0.1.0
+ * @since 4.1.3
  */
 export interface FrameworkServices {
   readonly Scope: Scope.Scope
@@ -167,9 +167,9 @@ export interface FrameworkServices {
 /**
  * The union of the registered framework services.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
- * @since 0.1.0
+ * @since 4.1.3
  */
 export type FrameworkService = FrameworkServices[keyof FrameworkServices]
 
@@ -177,9 +177,9 @@ export type FrameworkService = FrameworkServices[keyof FrameworkServices]
  * Passes when `R` holds only framework services, and otherwise names the
  * services a `Service` would be needed for.
  *
- * @stability unstable
+ * @stability experimental
  * @category utility types
- * @since 0.1.0
+ * @since 4.1.3
  */
 export type OnlyFrameworkServices<R> = [Exclude<R, FrameworkService>] extends [never] ? unknown
   : {
@@ -194,9 +194,9 @@ export type OnlyFrameworkServices<R> = [Exclude<R, FrameworkService>] extends [n
  * services, and otherwise names what it should have captured when its Layer
  * was built.
  *
- * @stability unstable
+ * @stability experimental
  * @category utility types
- * @since 0.1.0
+ * @since 4.1.3
  */
 export type CapturesServices<R> = [Exclude<R, FrameworkService>] extends [never] ? unknown
   : {
@@ -207,12 +207,12 @@ export type CapturesServices<R> = [Exclude<R, FrameworkService>] extends [never]
 /**
  * The shared fields of an issued Command.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
- * @since 0.1.0
+ * @since 4.1.3
  */
-export interface Proto<out Msg> extends Pipeable.Pipeable {
-  readonly [TypeId]: Variance<Msg>
+export interface Proto<out Msg, in Source = Msg> extends Pipeable.Pipeable {
+  readonly [TypeId]: Variance<Msg, Source>
   /** The Command's name: the factory's name or the service's key. */
   readonly name: string
   /** The arguments the Command was issued with. Data a test asserts on without running the Effect. */
@@ -227,43 +227,72 @@ export interface Proto<out Msg> extends Pipeable.Pipeable {
    *
    * @internal
    */
-  readonly resolve: (result: any) => Msg
+  readonly resolve: (result: Source) => Msg
 }
 
 /**
- * Phantom variance for a Command's message type.
+ * Phantom variance for a Command's message type and the result of its definition.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
- * @since 0.1.0
+ * @since 4.1.3
  */
-export interface Variance<out Msg> {
+export interface Variance<out Msg, in Source> {
   readonly _Msg: Types.Covariant<Msg>
+  readonly _Source: Types.Contravariant<Source>
+}
+
+/**
+ * The kind of an issued Command: `"Effect"` for one message, `"Stream"` for a
+ * Stream of them.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.1.3
+ */
+export type Kind = "Effect" | "Stream"
+
+/**
+ * An issued Command: what a definition's factory or `make` returns.
+ *
+ * **Details**
+ *
+ * `Msg` is the message it produces and `R` what it requires. `Source` is the
+ * result of the Command's definition before any `map`; it's what
+ * `Story.resolve` takes when given an issued Command. `K` is the kind, which
+ * decides whether `effect` or `stream` holds the work. Use the `Effectful` and
+ * `Streaming` aliases rather than naming `K` yourself.
+ *
+ * One interface for both kinds, rather than two, is what lets
+ * `command.pipe(Command.map((result) => ...))` infer `result`.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.1.3
+ */
+export interface Issued<out Msg, out R, in Source, out K extends Kind> extends Proto<Msg, Source> {
+  readonly _tag: K
+  readonly effect: K extends "Effect" ? Effect.Effect<Msg, never, R> : never
+  readonly stream: K extends "Stream" ? Stream.Stream<Msg, never, R> : never
 }
 
 /**
  * A Command whose result is one message.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
- * @since 0.1.0
+ * @since 4.1.3
  */
-export interface Effectful<out Msg, out R = never> extends Proto<Msg> {
-  readonly _tag: "Effect"
-  readonly effect: Effect.Effect<Msg, never, R>
-}
+export type Effectful<Msg, R = never, Source = Msg> = Issued<Msg, R, Source, "Effect">
 
 /**
  * A Command declared with `stream: true`, whose result is a Stream of messages.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
- * @since 0.1.0
+ * @since 4.1.3
  */
-export interface Streaming<out Msg, out R = never> extends Proto<Msg> {
-  readonly _tag: "Stream"
-  readonly stream: Stream.Stream<Msg, never, R>
-}
+export type Streaming<Msg, R = never, Source = Msg> = Issued<Msg, R, Source, "Stream">
 
 /**
  * A Command that interrupts the running and queued runs of another Command.
@@ -273,12 +302,12 @@ export interface Streaming<out Msg, out R = never> extends Proto<Msg> {
  * It produces no message. With a `key`, only the runs with that concurrency
  * key are interrupted.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
- * @since 0.1.0
+ * @since 4.1.3
  */
 export interface Interrupt extends Pipeable.Pipeable {
-  readonly [TypeId]: Variance<never>
+  readonly [TypeId]: Variance<never, unknown>
   readonly _tag: "Interrupt"
   /** The name of the Command to interrupt. */
   readonly name: string
@@ -294,32 +323,54 @@ export interface Interrupt extends Pipeable.Pipeable {
  * component's message type. `R` is what the Command requires: the `Service`
  * for a service Command, `never` for one made with `make`.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
- * @since 0.1.0
+ * @since 4.1.3
  */
-export type Command<Msg, R = never> = Effectful<Msg, R> | Streaming<Msg, R> | Interrupt
+export type Command<Msg, R = never> = Effectful<Msg, R, any> | Streaming<Msg, R, any> | Interrupt
 
 /**
  * The requirements of a Command, or of a union of them.
  *
- * @stability unstable
+ * @stability experimental
  * @category utility types
- * @since 0.1.0
+ * @since 4.1.3
  */
-export type Requirements<C> = C extends Effectful<infer _Msg, infer R> ? R :
-  C extends Streaming<infer _Msg, infer R> ? R
-  : never
+export type Requirements<C> = C extends Issued<infer _Msg, infer R, infer _S, infer _K> ? R : never
 
 /**
  * The message type of a Command, or of a union of them.
  *
- * @stability unstable
+ * @stability experimental
  * @category utility types
- * @since 0.1.0
+ * @since 4.1.3
  */
-export type Message<C> = C extends Proto<infer Msg> ? Msg : C extends Definition<infer _Args, infer Msg, infer _S> ? Msg
-: never
+export type Message<C> = C extends Proto<infer Msg, infer _Source> ? Msg
+  : C extends Definition<infer _Args, infer Msg, infer _S> ? Msg
+  : never
+
+/**
+ * What resolves a Command in a story: the definition's own result, for a
+ * definition or an issued Command, before any `map`.
+ *
+ * @stability experimental
+ * @category utility types
+ * @since 4.1.3
+ */
+export type Result<C> = C extends Proto<infer _Msg, infer Source> ? Source
+  : C extends Definition<infer _Args, infer Msg, infer _S> ? Msg
+  : never
+
+/**
+ * `C` with its message mapped to `B`. An `Interrupt` stays an `Interrupt`.
+ *
+ * @stability experimental
+ * @category utility types
+ * @since 4.1.3
+ */
+export type Mapped<C, B> = C extends Issued<infer _Msg, infer R, infer Source, infer K> ? Issued<B, R, Source, K>
+  : C extends Interrupt ? Interrupt
+  : never
 
 /**
  * What `make` and `Service` have in common: the data about a Command that's
@@ -331,9 +382,9 @@ export type Message<C> = C extends Proto<infer Msg> ? Msg : C extends Definition
  * produces, and `IsStream` whether it was declared with `stream: true`. Story
  * steps such as `Story.resolve` take a definition and are typed by it.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
- * @since 0.1.0
+ * @since 4.1.3
  */
 export interface Definition<in Args extends ReadonlyArray<any>, out Msg, out IsStream extends boolean> {
   readonly [DefinitionTypeId]: Definition.Variance<Args, Msg, IsStream>
@@ -345,15 +396,15 @@ export interface Definition<in Args extends ReadonlyArray<any>, out Msg, out IsS
 /**
  * Helper types for `Definition`.
  *
- * @stability unstable
- * @since 0.1.0
+ * @stability experimental
+ * @since 4.1.3
  */
 export declare namespace Definition {
   /**
    * Phantom variance for a definition's arguments, message and kind.
    *
    * @category models
-   * @since 0.1.0
+   * @since 4.1.3
    */
   export interface Variance<in Args extends ReadonlyArray<any>, out Msg, out IsStream extends boolean> {
     readonly _Args: Types.Contravariant<Args>
@@ -365,7 +416,7 @@ export declare namespace Definition {
    * Any Command definition.
    *
    * @category models
-   * @since 0.1.0
+   * @since 4.1.3
    */
   export type Any = Definition<any, any, boolean>
 
@@ -373,7 +424,7 @@ export declare namespace Definition {
    * The arguments a definition is issued with.
    *
    * @category utility types
-   * @since 0.1.0
+   * @since 4.1.3
    */
   export type Args<D> = D extends Definition<infer A, infer _Msg, infer _S> ? A : never
 
@@ -381,7 +432,7 @@ export declare namespace Definition {
    * Whether a definition was declared with `stream: true`.
    *
    * @category utility types
-   * @since 0.1.0
+   * @since 4.1.3
    */
   export type IsStream<D> = D extends Definition<infer _Args, infer _Msg, infer S> ? S : never
 }
@@ -389,11 +440,11 @@ export declare namespace Definition {
 /**
  * What `make` returns: call it with the Command's arguments to issue it.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
- * @since 0.1.0
+ * @since 4.1.3
  */
-export interface Factory<in Args extends ReadonlyArray<any>, out Msg, out IsStream extends boolean = false>
+export interface Factory<in Args extends ReadonlyArray<any>, in out Msg, out IsStream extends boolean = false>
   extends Definition<Args, Msg, IsStream>
 {
   (...args: Args): IsStream extends true ? Streaming<Msg> : Effectful<Msg>
@@ -410,15 +461,15 @@ export interface Factory<in Args extends ReadonlyArray<any>, out Msg, out IsStre
  * message. `layer` builds that implementation, and `make` issues a Command
  * that requires the service. A fake is `Layer.succeed(X, (...args) => ...)`.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
- * @since 0.1.0
+ * @since 4.1.3
  */
 export interface Service<
   in out Self,
   in out Key extends string,
   in Args extends ReadonlyArray<any>,
-  out Msg,
+  in out Msg,
   out IsStream extends boolean,
   out E,
   out R
@@ -435,8 +486,8 @@ export interface Service<
 /**
  * Helper types for `Service`.
  *
- * @stability unstable
- * @since 0.1.0
+ * @stability experimental
+ * @since 4.1.3
  */
 export declare namespace Service {
   /**
@@ -444,7 +495,7 @@ export declare namespace Service {
    * returns the Command's result. It may use framework services on each call.
    *
    * @category models
-   * @since 0.1.0
+   * @since 4.1.3
    */
   export type Implementation<Args extends ReadonlyArray<any>, Msg, IsStream extends boolean> = IsStream extends true ?
     (...args: Args) => Stream.Stream<Msg, never, FrameworkService>
@@ -454,7 +505,7 @@ export declare namespace Service {
    * The options accepted by `Service`.
    *
    * @category models
-   * @since 0.1.0
+   * @since 4.1.3
    */
   export interface Options<in Args extends ReadonlyArray<any>> {
     readonly stream?: boolean | undefined
@@ -464,7 +515,7 @@ export declare namespace Service {
 }
 
 const Proto = {
-  [TypeId]: { _Msg: (_: never) => _ },
+  [TypeId]: { _Msg: (_: never) => _, _Source: (_: never) => _ },
   pipe() {
     return Pipeable.pipeArguments(this, arguments)
   }
@@ -497,9 +548,9 @@ const identity = (result: any) => result
 /**
  * Returns `true` if `u` is a Command.
  *
- * @stability unstable
+ * @stability experimental
  * @category guards
- * @since 0.1.0
+ * @since 4.1.3
  */
 export const isCommand = (u: unknown): u is Command<unknown, unknown> => Predicate.hasProperty(u, TypeId)
 
@@ -507,18 +558,18 @@ export const isCommand = (u: unknown): u is Command<unknown, unknown> => Predica
  * Returns `true` if `u` is a Command definition: a factory from `make` or a
  * `Service` class.
  *
- * @stability unstable
+ * @stability experimental
  * @category guards
- * @since 0.1.0
+ * @since 4.1.3
  */
 export const isDefinition = (u: unknown): u is Definition.Any => Predicate.hasProperty(u, DefinitionTypeId)
 
 /**
  * The name of a Command definition: the factory's name, or the service's key.
  *
- * @stability unstable
+ * @stability experimental
  * @category accessors
- * @since 0.1.0
+ * @since 4.1.3
  */
 export const nameOf = (definition: Definition.Any): string =>
   Context.isKey(definition) ? definition.key : (definition as Factory<any, any, any>).name
@@ -548,7 +599,7 @@ export const nameOf = (definition: Definition.Any): string =>
  * **Example** (A Command that only needs the runtime)
  *
  * ```ts import.meta.vitest
- * import { Command } from "@effect/ui"
+ * import { Command } from "effect/ui"
  * import { Effect, Random, Schema } from "effect"
  *
  * const DieMessage = Schema.TaggedUnion({ Roll: {}, Rolled: { n: Schema.Number } })
@@ -559,9 +610,9 @@ export const nameOf = (definition: Definition.Any): string =>
  * // In a component: `$.run(RollDie(6))`, pending in a story as { name: "RollDie", args: [6] }
  * ```
  *
- * @stability unstable
+ * @stability experimental
  * @category constructors
- * @since 0.1.0
+ * @since 4.1.3
  */
 export const make: {
   <const Name extends string, Args extends ReadonlyArray<any>, Msg, R>(
@@ -622,7 +673,7 @@ export const make: {
  * **Example** (Defining, issuing and faking a Command service)
  *
  * ```ts import.meta.vitest
- * import { Command } from "@effect/ui"
+ * import { Command } from "effect/ui"
  * import { Effect, Layer, Schema } from "effect"
  * import { KeyValueStore } from "effect/persistence"
  *
@@ -647,9 +698,9 @@ export const make: {
  * const Fake = Layer.succeed(SaveTodo, () => Effect.succeed(Message.make({ _tag: "Saved" })))
  * ```
  *
- * @stability unstable
+ * @stability experimental
  * @category constructors
- * @since 0.1.0
+ * @since 4.1.3
  */
 export const Service: <Self>() => {
   <const Key extends string, Args extends ReadonlyArray<any>, Msg, RInner, E, R>(
@@ -725,12 +776,13 @@ export const Service: <Self>() => {
  *
  * The name, arguments and options are kept, so the log and story tests still
  * see the original Command, and `Story.resolve` still takes the definition's
- * own message. An `Interrupt` is returned unchanged.
+ * own result (the `Source` type parameter). The data-first form returns an
+ * `Interrupt` unchanged; the pipeable form only takes issued Commands.
  *
  * **Example** (Mapping a shared Command into a component's message)
  *
  * ```ts import.meta.vitest
- * import { Command } from "@effect/ui"
+ * import { Command } from "effect/ui"
  * import { Effect, Schema } from "effect"
  *
  * const Message = Schema.TaggedUnion({ Uploaded: { url: Schema.String } })
@@ -742,13 +794,13 @@ export const Service: <Self>() => {
  * )
  * ```
  *
- * @stability unstable
+ * @stability experimental
  * @category mapping
- * @since 0.1.0
+ * @since 4.1.3
  */
 export const map: {
-  <A, B>(f: (a: A) => B): <R>(self: Command<A, R>) => Command<B, R>
-  <A, R, B>(self: Command<A, R>, f: (a: A) => B): Command<B, R>
+  <A, B>(f: (a: A) => B): <R, Source, K extends Kind>(self: Issued<A, R, Source, K>) => Issued<B, R, Source, K>
+  <C extends Command<any, any>, B>(self: C, f: (a: Message<C>) => B): Mapped<C, B>
 } = dual(2, <A, R, B>(self: Command<A, R>, f: (a: A) => B): Command<B, R> => {
   switch (self._tag) {
     case "Interrupt":
@@ -791,7 +843,7 @@ export const map: {
  * **Example** (Cancelling an upload)
  *
  * ```ts import.meta.vitest
- * import { Command } from "@effect/ui"
+ * import { Command } from "effect/ui"
  * import { Effect } from "effect"
  *
  * const UploadFile = Command.make("UploadFile", (name: string) => Effect.succeed(`https://cdn/${name}`), {
@@ -802,9 +854,9 @@ export const map: {
  * const cancel = Command.interrupt(UploadFile, "photo.png")
  * ```
  *
- * @stability unstable
+ * @stability experimental
  * @category constructors
- * @since 0.1.0
+ * @since 4.1.3
  */
 export const interrupt = (definition: Definition.Any, key?: string): Interrupt =>
   Object.assign(Object.create(Proto), {

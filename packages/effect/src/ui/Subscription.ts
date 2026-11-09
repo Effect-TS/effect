@@ -15,7 +15,7 @@
  * **Example** (A timer while running, and a room keyed on a prop)
  *
  * ```ts import.meta.vitest
- * import { Subscription } from "@effect/ui"
+ * import { Subscription } from "effect/ui"
  * import { Schema, Stream } from "effect"
  *
  * const Message = Schema.TaggedUnion({ Tick: {}, Received: { text: Schema.String } })
@@ -29,26 +29,26 @@
  * ]
  * ```
  *
- * @stability unstable
- * @since 0.1.0
+ * @stability experimental
+ * @since 4.1.3
  */
-import type * as Stream from "effect/Stream"
+import type * as Stream from "../Stream.ts"
 
 /**
  * Identifies a Subscription.
  *
- * @stability unstable
+ * @stability experimental
  * @category type ids
- * @since 0.1.0
+ * @since 4.1.3
  */
-export const TypeId = "~@effect/ui/Subscription" as const
+export const TypeId = "~effect/ui/Subscription" as const
 
 /**
  * Identifies a Subscription.
  *
- * @stability unstable
+ * @stability experimental
  * @category type ids
- * @since 0.1.0
+ * @since 4.1.3
  */
 export type TypeId = typeof TypeId
 
@@ -62,9 +62,9 @@ export type TypeId = typeof TypeId
  * key leaves and comes back. Reconnect logic lives in the Stream. `R` joins the
  * component's requirements.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
- * @since 0.1.0
+ * @since 4.1.3
  */
 export interface Subscription<out Msg, out R = never> {
   readonly [TypeId]: TypeId
@@ -75,29 +75,52 @@ export interface Subscription<out Msg, out R = never> {
 /**
  * The primitives a Subscription may depend on. They're joined into the key.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
- * @since 0.1.0
+ * @since 4.1.3
  */
 export type Dep = string | number | boolean | null
 
 /**
  * One dependency or a tuple of them.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
- * @since 0.1.0
+ * @since 4.1.3
  */
 export type Deps = Dep | ReadonlyArray<Dep>
 
 /**
  * The requirements of a Subscription, or of a union of them.
  *
- * @stability unstable
+ * @stability experimental
  * @category utility types
- * @since 0.1.0
+ * @since 4.1.3
  */
 export type Requirements<S> = S extends Subscription<infer _Msg, infer R> ? R : never
+
+const encodeDep = (dep: Dep): string => JSON.stringify(dep)
+
+/**
+ * The key of a Subscription with deps: the name, a colon, and the deps encoded
+ * as JSON and joined with commas. `1` and `"1"`, or `["a,b", "c"]` and
+ * `["a", "b,c"]`, never share a key.
+ *
+ * **Example** (Reading a key)
+ *
+ * ```ts import.meta.vitest
+ * import { Subscription } from "effect/ui"
+ *
+ * Subscription.keyOf("room", "42") // => 'room:"42"'
+ * Subscription.keyOf("cell", [1, true]) // => "cell:1,true"
+ * ```
+ *
+ * @stability experimental
+ * @category constructors
+ * @since 4.1.3
+ */
+export const keyOf = (name: string, deps: Deps): string =>
+  `${name}:${(Array.isArray(deps) ? deps : [deps as Dep]).map(encodeDep).join(",")}`
 
 /**
  * Declares a keyed Subscription.
@@ -111,13 +134,13 @@ export type Requirements<S> = S extends Subscription<infer _Msg, infer R> ? R : 
  *
  * With deps, the builder sees only its deps, never the Model, so a Stream
  * can't hold stale Model values. The deps are joined into the key
- * (`room:42`), so `room:1` and `room:2` are never both connected: the old key
- * closes before the new one starts.
+ * (`room:"42"`, see `keyOf`), so `room:"1"` and `room:"2"` are never both
+ * connected: the old key closes before the new one starts.
  *
  * **Example** (Keying a Subscription on a prop)
  *
  * ```ts import.meta.vitest
- * import { Subscription } from "@effect/ui"
+ * import { Subscription } from "effect/ui"
  * import { Schema, Stream } from "effect"
  *
  * const Message = Schema.TaggedUnion({ Received: { text: Schema.String } })
@@ -127,12 +150,12 @@ export type Requirements<S> = S extends Subscription<infer _Msg, infer R> ? R : 
  * const room = Subscription.make("room", "42", (roomId) =>
  *   roomMessages(roomId).pipe(Stream.map((text) => Message.make({ _tag: "Received", text }))))
  *
- * room.key // => "room:42"
+ * room.key // => 'room:"42"'
  * ```
  *
- * @stability unstable
+ * @stability experimental
  * @category constructors
- * @since 0.1.0
+ * @since 4.1.3
  */
 export const make: {
   <Msg, R = never>(name: string, stream: Stream.Stream<Msg, never, R>): Subscription<Msg, R>
@@ -148,8 +171,4 @@ export const make: {
 ): Subscription<any, any> =>
   build === undefined
     ? { [TypeId]: TypeId, key: name, stream: depsOrStream }
-    : {
-      [TypeId]: TypeId,
-      key: `${name}:${(Array.isArray(depsOrStream) ? depsOrStream : [depsOrStream]).map(String).join(",")}`,
-      stream: build(depsOrStream)
-    }
+    : { [TypeId]: TypeId, key: keyOf(name, depsOrStream), stream: build(depsOrStream) }

@@ -55,6 +55,8 @@
     "./sql": "./src/sql/index.ts",
     "./workflow": "./src/workflow/index.ts",
     "./workers": "./src/workers/index.ts",
+    "./ui": "./src/ui/index.ts",
+    "./ui/testing": "./src/ui/testing/index.ts",
     "./*": "./src/*.ts",
     "./ai/internal/*": null,
     "./cli/internal/*": null,
@@ -69,6 +71,7 @@
     "./observability/internal/*": null,
     "./rpc/internal/*": null,
     "./workflow/internal/*": null,
+    "./ui/internal/*": null,
     "./internal/*": null,
     "./index": null,
     "./*/index": null
@@ -113,6 +116,8 @@
       "./sql": "./dist/sql/index.js",
       "./workflow": "./dist/workflow/index.js",
       "./workers": "./dist/workers/index.js",
+      "./ui": "./dist/ui/index.js",
+      "./ui/testing": "./dist/ui/testing/index.js",
       "./*": "./dist/*.js",
       "./internal/*": null,
       "./cli/internal/*": null,
@@ -128,6 +133,7 @@
       "./observability/internal/*": null,
       "./rpc/internal/*": null,
       "./workflow/internal/*": null,
+      "./ui/internal/*": null,
       "./index": null,
       "./*/index": null
     }
