@@ -2512,6 +2512,28 @@ describe("fromJsonSchemaDocument", () => {
         )
       })
 
+      it("intersects the same nullable reference to overlapping anyOf alternatives", () => {
+        const schema = toSchemaFromJsonSchemaDocument(JsonSchema.fromSchemaDraft2020_12({
+          allOf: [
+            { anyOf: [{ $ref: "#/$defs/X" }, { type: "null" }] },
+            { anyOf: [{ $ref: "#/$defs/X" }, { type: "null" }] }
+          ],
+          $defs: {
+            X: {
+              anyOf: [
+                { type: "object", properties: { a: { type: "string" } } },
+                { type: "object", properties: { b: { type: "number" } } }
+              ]
+            }
+          }
+        }))
+        assert.isTrue(Schema.is(schema)(null))
+        assert.isTrue(Schema.is(schema)({ a: "a", b: "not a number" }))
+        assert.isTrue(Schema.is(schema)({ a: 1, b: 1 }))
+        assert.isFalse(Schema.is(schema)({ a: 1, b: "not a number" }))
+        assert.isFalse(Schema.is(schema)(1))
+      })
+
       it("flattens a nullable reference to a nullable definition", () => {
         const schema = toSchemaFromJsonSchemaDocument(JsonSchema.fromSchemaDraft2020_12({
           allOf: [
