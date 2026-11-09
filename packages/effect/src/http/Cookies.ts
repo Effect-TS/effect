@@ -175,8 +175,10 @@ export const isCookiesError = (u: unknown): u is CookiesError => Predicate.hasPr
 
 type Entries = ReadonlyArray<readonly [key: string, cookie: Cookie]>
 
+const EntriesId = Symbol.for("~effect/http/Cookies/entries")
+
 interface CookiesImpl extends Cookies {
-  readonly entries: Entries
+  readonly [EntriesId]: Entries
 }
 
 const Proto: Omit<Cookies, "cookies" | "all"> = {
@@ -201,11 +203,11 @@ const make = (entries: Entries): Cookies => {
   const self = Object.create(Proto)
   self.cookies = record
   self.all = entries.map(([, cookie]) => cookie)
-  Object.defineProperty(self, "entries", { value: entries })
+  self[EntriesId] = entries
   return self
 }
 
-const entriesOf = (self: Cookies): Entries => (self as CookiesImpl).entries
+const entriesOf = (self: Cookies): Entries => (self as CookiesImpl)[EntriesId]
 
 const replaceKey = (entries: Entries, cookie: Cookie): Entries => [
   ...entries.filter(([key]) => key !== cookie.name),
