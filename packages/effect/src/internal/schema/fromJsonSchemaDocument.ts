@@ -675,16 +675,18 @@ export function fromJsonSchemaMultiDocument(
       ? scopes[0].patterns[0]
       : undefined
     if (!hasFiniteKeyDomain && requiresFiniteKeyDomain && closedPattern === undefined) {
-      throw errorWithPath(
-        scopes.some((scope) => scope.additionalProperties._tag === "Never")
-          ? "Cannot import this closed patterned object: only one pattern without properties is supported."
-          : "Cannot combine typed \"additionalProperties\" with other property schemas: Effect index signatures also check excluded keys.",
-        path
-      )
+      const isClosed = scopes.some((scope) => scope.additionalProperties._tag === "Never")
+      if (isClosed || !scopes.every(additionalPropertiesSubsumeProperties)) {
+        throw errorWithPath(
+          isClosed
+            ? "Cannot import this closed patterned object: only one pattern without properties is supported."
+            : "Cannot combine typed \"additionalProperties\" with other property schemas: Effect index signatures also check excluded keys.",
+          path
+        )
+      }
     }
 
-    const properties: Array<ImportedProperty> = []
-    for (const name of names) {
+    const pending = Array.from(names, (name) => {
       let isOptional = true
       const types: Array<ImportedJsonSchemaRepresentation> = []
       for (const scope of scopes) {
@@ -702,10 +704,31 @@ export function fromJsonSchemaMultiDocument(
         }
         if (property?.type === undefined && !matches) types.push(scope.additionalProperties)
       }
-      const type = intersectAll(types, [...path, "properties", name])
-      if (!isOptional && type._tag === "Never") return never
-      properties.push({ name, type, isOptional })
+      return { name, types, isOptional }
+    })
+    // Scalar properties such as discriminators intersect without expansion.
+    // Intersecting them first lets a required Never empty the object before a
+    // structured property rejects an intersection the object never needs, or
+    // recurses into one. References are only resolved for properties that are
+    // actually intersected, since resolving translates their definitions early.
+    const scalars = new Set(
+      pending.filter(({ types }) => types.every((type) => isScalar(type, types.length > 1 ? new Set() : undefined)))
+    )
+    const intersected = new Map<string, ImportedJsonSchemaRepresentation>()
+    for (const isScalarPass of [true, false]) {
+      for (const property of pending) {
+        const { isOptional, name, types } = property
+        if (scalars.has(property) !== isScalarPass) continue
+        const type = intersectAll(types, [...path, "properties", name])
+        if (!isOptional && type._tag === "Never") return never
+        intersected.set(name, type)
+      }
     }
+    const properties: Array<ImportedProperty> = pending.map(({ isOptional, name }) => ({
+      name,
+      type: intersected.get(name)!,
+      isOptional
+    }))
 
     const indexSignatures: ReadonlyArray<ImportedIndexSignature> = closedPattern !== undefined
       ? [{ parameter: closedPattern.parameter, type: closedPattern.type }]
@@ -728,6 +751,97 @@ export function fromJsonSchemaMultiDocument(
       path,
       ...checked
     }
+  }
+
+  // With `resolving`, a reference is scalar when its definition is. Definitions
+  // still being translated, and cycles through aliases, count as structured.
+  function isScalar(representation: ImportedJsonSchemaRepresentation, resolving?: Set<string>): boolean {
+    switch (representation._tag) {
+      case "Reference": {
+        if (resolving === undefined) return false
+        const key = representation.$ref
+        const cached = definitionCache.get(key)
+        if (cached === null || resolving.has(key)) return false
+        resolving.add(key)
+        return isScalar(cached ?? translateDefinition(key, representation.path), resolving)
+      }
+      case "Never":
+      case "Unknown":
+      case "Null":
+      case "String":
+      case "Number":
+      case "Boolean":
+      case "Literal":
+        return true
+      case "Union":
+        return isLiteralSet(representation)
+      default:
+        return false
+    }
+  }
+
+  // The index signature also checks declared keys, which is harmless only when
+  // every value a declared property accepts is accepted by "additionalProperties".
+  function additionalPropertiesSubsumeProperties(scope: ImportedObjectScope): boolean {
+    if (isUnconstrained(scope.additionalProperties)) return true
+    if (scope.patterns.length > 0) return false
+    for (const property of scope.properties.values()) {
+      if (property.type !== undefined && !isSubsumedBy(property.type, scope.additionalProperties)) return false
+    }
+    return true
+  }
+
+  function isUnconstrained(representation: ImportedJsonSchemaRepresentation): boolean {
+    return representation._tag === "Unknown" && representation.checks.length === 0
+  }
+
+  // Conservatively proves that `type` accepts no value `supertype` rejects.
+  // Checks on `type` only narrow it and can be ignored, while checks on
+  // `supertype` must be shown to hold. References are compared by name only.
+  function isSubsumedBy(
+    type: ImportedJsonSchemaRepresentation,
+    supertype: ImportedJsonSchemaRepresentation
+  ): boolean {
+    if (isUnconstrained(supertype) || type._tag === "Never") return true
+    if (type._tag === "Union") return type.types.every((member) => isSubsumedBy(member, supertype))
+    switch (supertype._tag) {
+      case "Union":
+        // A value matching several "oneOf" alternatives is rejected, so only "anyOf" members can witness.
+        return supertype.checks.length === 0 && (supertype.options?.mode ?? "anyOf") === "anyOf" &&
+          supertype.types.some((member) => isSubsumedBy(type, member))
+      case "Reference":
+        return type._tag === "Reference" && type.$ref === supertype.$ref
+      case "Null":
+        return supertype.checks.length === 0 && type._tag === "Null"
+      case "Boolean":
+        return supertype.checks.length === 0 &&
+          (type._tag === "Boolean" || type._tag === "Literal" && typeof type.literal === "boolean")
+      case "Literal":
+        return supertype.checks.length === 0 && type._tag === "Literal" && type.literal === supertype.literal
+      case "String":
+        return type._tag === "String"
+          ? supertype.checks.length === 0
+          : type._tag === "Literal" && satisfiesLiteral(supertype, type)
+      case "Number":
+        return type._tag === "Number"
+          ? supertype.checks.every((check) =>
+            isFilterWithId(check, "effect/schema/isInt")
+              ? type.checks.some((check) => isFilterWithId(check, "effect/schema/isInt"))
+              : isFilterWithId(check, "effect/schema/isFinite") && type.checks.some((check) =>
+                isFilterWithId(check, "effect/schema/isFinite") || isFilterWithId(check, "effect/schema/isInt")
+              )
+          )
+          : type._tag === "Literal" && satisfiesLiteral(supertype, type)
+      case "Arrays":
+        return type._tag === "Arrays" && supertype.checks.length === 0 && supertype.elements.length === 0 &&
+          supertype.rest.length === 1 && isUnconstrained(supertype.rest[0])
+      default:
+        return false
+    }
+  }
+
+  function isFilterWithId(check: Check, id: string): boolean {
+    return check._tag === "Filter" && check.filter.annotations?.representation?.id === id
   }
 
   const jsonRootTags = ["Null", "String", "Number", "Boolean", "Objects", "Arrays"] as const
@@ -928,7 +1042,65 @@ export function fromJsonSchemaMultiDocument(
     if (literals !== undefined) return literals
     if (isTypePartition(left)) return intersectPartition(left, right, path, true)
     if (isTypePartition(right)) return intersectPartition(right, left, path, false)
-    return unsupportedIntersection(path)
+    return intersectLinearly(left, right, path)
+  }
+
+  // Keyed by the alternatives arrays, which annotating a resolved definition
+  // keeps, so recursive definitions re-entering the same pair are detected.
+  const linearIntersections = new Map<
+    ReadonlyArray<ImportedJsonSchemaRepresentation>,
+    Set<ReadonlyArray<ImportedJsonSchemaRepresentation>>
+  >()
+
+  // Distributing the alternatives is accepted only when the pairs that survive
+  // pruning are no more than the larger union, so expansion cannot multiply,
+  // and no alternative with nested choices survives in more than one pair,
+  // since each copy would repeat those choices.
+  // Exactly one pair matches only when each "oneOf" matches exactly once, but
+  // mixing "anyOf" with "oneOf" has no faithful single-mode result.
+  function intersectLinearly(
+    left: ImportedUnion,
+    right: ImportedUnion,
+    path: Path
+  ): ImportedJsonSchemaRepresentation {
+    const mode = left.options?.mode ?? "anyOf"
+    if (mode !== (right.options?.mode ?? "anyOf")) return unsupportedIntersection(path)
+    let inProgress = linearIntersections.get(left.types)
+    if (inProgress?.has(right.types)) return unsupportedIntersection(path)
+    if (inProgress === undefined) {
+      inProgress = new Set()
+      linearIntersections.set(left.types, inProgress)
+    }
+    inProgress.add(right.types)
+    try {
+      const limit = Math.max(left.types.length, right.types.length)
+      const leftPairs = new Array<number>(left.types.length).fill(0)
+      const rightPairs = new Array<number>(right.types.length).fill(0)
+      const types: Array<ImportedJsonSchemaRepresentation> = []
+      for (let i = 0; i < left.types.length; i++) {
+        for (let j = 0; j < right.types.length; j++) {
+          const type = intersect(left.types[i], right.types[j], [...path, "types", i])
+          if (type._tag === "Never") continue
+          if (types.length === limit) return unsupportedIntersection(path)
+          if (
+            (++leftPairs[i] === 2 && hasChoices(left.types[i])) ||
+            (++rightPairs[j] === 2 && hasChoices(right.types[j]))
+          ) {
+            return unsupportedIntersection(path)
+          }
+          types.push(type)
+        }
+      }
+      return makeUnion({
+        _tag: "Union",
+        types: [],
+        ...(left.options === undefined ? {} : { options: left.options }),
+        ...intersectChecks(left, right)
+      }, types)
+    } finally {
+      inProgress.delete(right.types)
+      if (inProgress.size === 0) linearIntersections.delete(left.types)
+    }
   }
 
   function intersect(
@@ -940,6 +1112,10 @@ export function fromJsonSchemaMultiDocument(
     if (right._tag === "Never") return right
     if (left._tag === "Unknown") return annotateIntersection(right, left, right)
     if (right._tag === "Unknown") return annotateIntersection(left, left, right)
+    // Intersection is idempotent, and keeping the reference preserves the shared definition.
+    if (left._tag === "Reference" && right._tag === "Reference" && left.$ref === right.$ref) {
+      return annotateIntersection(left, left, right)
+    }
     if (left._tag === "Reference") {
       // Resolve an unannotated reference first. An annotated empty definition
       // could otherwise leave the other reference unresolved during union partitioning.

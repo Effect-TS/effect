@@ -6425,8 +6425,10 @@ validation or a lossless round trip:
   A closed object with a single
   `patternProperties` entry and no named or required properties imports as a filtered `Schema.Record` when patterns
   are applied. Object keyword scopes still constrain declared properties when intersecting schemas.
-  Combinations requiring an index signature to exclude
-  explicit properties or patterned keys remain unsupported and are rejected with an explanation of the limitation.
+  A typed `additionalProperties` alongside declared properties is imported only when every declared property's type
+  is provably accepted by the `additionalProperties` schema, because the index signature also checks declared keys.
+  Other combinations requiring an index signature to exclude explicit properties or patterned keys remain unsupported
+  and are rejected with an explanation of the limitation.
 - With `patterns: "apply"`, open patterned objects are also rejected. Their filtered
   index and catch-all would produce incompatible TypeScript index signatures. This includes `additionalProperties`
   set to `true`, `{}`, or omitted. An intersection with a closed object can still be imported when it reduces the
@@ -6478,9 +6480,13 @@ collide, later values overwrite earlier ones according to the existing merge ord
 alternatives or unreachable children is discarded. The resulting schema can have a different structure from the input;
 retaining annotations does not provide a lossless round trip or enforce custom validation rules.
 
-Intersections of overlapping unions are limited to disjoint root-type partitions and finite primitive `anyOf` literal
-sets, which may also be duplicated across branches. Other union intersections, including cases that would duplicate any
-other nested choice, are rejected.
+Intersections of overlapping unions are limited to disjoint root-type partitions, finite primitive `anyOf` literal
+sets, which may also be duplicated across branches, and two `anyOf` or two `oneOf` unions with `n` and `m` alternatives
+where at most `max(n, m)` pairwise intersections are non-empty, such as alternatives with distinct discriminators, and
+no alternative containing a nested choice appears in more than one non-empty pair. Other overlapping union
+intersections are rejected, including mixed `anyOf` and `oneOf`, products that would multiply the alternatives, pairs
+of recursive unions whose alternatives reach the same pair again, and cases that would duplicate any other nested
+choice.
 
 Regular expression constraints reached during translation are rejected by default because imported patterns use the
 runtime's native regular expression engine and may block validation for an unbounded amount of time. Set

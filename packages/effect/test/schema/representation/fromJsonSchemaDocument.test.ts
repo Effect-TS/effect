@@ -908,6 +908,106 @@ describe("fromJsonSchemaDocument", () => {
       )
     })
 
+    it("allows typed additionalProperties that subsume every declared property", async () => {
+      const schema = toSchemaFromJsonSchemaDocument(JsonSchema.fromSchemaDraft2020_12({
+        type: "object",
+        properties: { model: { type: "string" } },
+        additionalProperties: {
+          anyOf: [{ type: "string" }, { type: "number", format: "double" }, { type: "array", items: {} }]
+        }
+      }))
+      assertCode(schema, {
+        codes: makeCode(
+          `Schema.StructWithRest(Schema.Struct({ "model": Schema.optionalKey(Schema.String) }), [Schema.Record(Schema.String, Schema.Union([Schema.String, Schema.Number.annotate({ "format": "double" }).check(Schema.isFinite().annotate({ "expected": "a finite number" })), Schema.Array(Schema.Json.annotate({ "expected": "JSON value" }))]))])`,
+          `{ readonly "model"?: string } & { readonly [x: string]: string | number | ReadonlyArray<Schema.Json> }`
+        )
+      })
+      const decoding = new TestSchema.Asserts(schema as unknown as Schema.ConstraintDecoder<unknown>).decoding()
+      await decoding.succeed({ model: "m", quality: "high", n: 2, tags: [] })
+      assert.isFalse(Schema.is(schema)({ model: 1 }))
+      assert.isFalse(Schema.is(schema)({ quality: true }))
+    })
+
+    it("rejects typed additionalProperties that do not subsume a declared property", () => {
+      throws(
+        () =>
+          toSchemaFromJsonSchemaDocument(JsonSchema.fromSchemaDraft2020_12({
+            type: "object",
+            properties: { count: { type: "integer" } },
+            additionalProperties: { type: "string" }
+          })),
+        `Cannot combine typed "additionalProperties" with other property schemas: Effect index signatures also check excluded keys.\n  at ["schema"]`
+      )
+    })
+
+    it.each([
+      {
+        title: "an integer under number",
+        property: { type: "integer" },
+        additional: { type: "number" },
+        accepted: { p: 1, other: 1.5 },
+        rejected: { p: 1.5 }
+      },
+      {
+        title: "a constant under a constrained string",
+        property: { const: "ab" },
+        additional: { type: "string", minLength: 2 },
+        accepted: { p: "ab", other: "xyz" },
+        rejected: { p: "abc" }
+      },
+      {
+        title: "a union of members",
+        property: { type: ["string", "null"] },
+        additional: { type: ["null", "string"] },
+        accepted: { p: null, other: "x" },
+        rejected: { p: 1 }
+      },
+      {
+        title: "the same reference",
+        property: { $ref: "#/$defs/A" },
+        additional: { $ref: "#/$defs/A" },
+        accepted: { p: {}, other: {} },
+        rejected: { p: 1 }
+      }
+    ])("allows typed additionalProperties subsuming $title", async ({ accepted, additional, property, rejected }) => {
+      const schema = toSchemaFromJsonSchemaDocument(JsonSchema.fromSchemaDraft2020_12({
+        type: "object",
+        properties: { p: property },
+        additionalProperties: additional,
+        $defs: { A: { type: "object" } }
+      }))
+      assert.strictEqual(schema.ast._tag, "Objects")
+      const decoding = new TestSchema.Asserts(schema as unknown as Schema.ConstraintDecoder<unknown>).decoding()
+      await decoding.succeed(accepted)
+      assert.isFalse(Schema.is(schema)(rejected))
+    })
+
+    it.each([
+      { title: "a number under integer", property: { type: "number" }, additional: { type: "integer" } },
+      {
+        title: "a string under a constrained string",
+        property: { type: "string" },
+        additional: { type: "string", minLength: 2 }
+      },
+      {
+        title: "a member of a oneOf",
+        property: { type: "string" },
+        additional: { oneOf: [{ type: "string" }, { type: "number" }] }
+      },
+      { title: "a resolvable reference", property: { $ref: "#/$defs/A" }, additional: { type: "object" } }
+    ])("rejects typed additionalProperties that may not subsume $title", ({ additional, property }) => {
+      throws(
+        () =>
+          toSchemaFromJsonSchemaDocument(JsonSchema.fromSchemaDraft2020_12({
+            type: "object",
+            properties: { p: property },
+            additionalProperties: additional,
+            $defs: { A: { type: "object" } }
+          })),
+        `Cannot combine typed "additionalProperties" with other property schemas: Effect index signatures also check excluded keys.\n  at ["schema"]`
+      )
+    })
+
     it("explains why typed additional properties cannot exclude patterned keys", () => {
       throws(
         () =>
@@ -2058,6 +2158,27 @@ describe("fromJsonSchemaDocument", () => {
       )
     })
 
+    it("intersects a recursive $ref with itself", async () => {
+      const schema = toSchemaFromJsonSchemaDocument(JsonSchema.fromSchemaDraft2020_12({
+        allOf: [{ $ref: "#/$defs/Node", description: "site" }, { $ref: "#/$defs/Node" }],
+        $defs: { Node: { type: "object", properties: { next: { $ref: "#/$defs/Node" } } } }
+      }))
+      assertCode(schema, {
+        codes: makeCode(`Schema.suspend((): Schema.Codec<Node> => Node).annotate({ "description": "site" })`, `Node`),
+        references: {
+          recursives: {
+            Node: makeCode(
+              `Schema.StructWithRest(Schema.Struct({ "next": Schema.optionalKey(Schema.suspend((): Schema.Codec<Node> => Node)) }), [Schema.Record(Schema.String, Schema.Json.annotate({ "expected": "JSON value" }))]).annotate({ "identifier": "Node" })`,
+              `{ readonly "next"?: Node } & { readonly [x: string]: Schema.Json }`
+            )
+          }
+        }
+      })
+      const decoding = new TestSchema.Asserts(schema as unknown as Schema.ConstraintDecoder<unknown>).decoding()
+      await decoding.succeed({ next: { next: {} } })
+      assert.isFalse(Schema.is(schema)({ next: { next: 1 } }))
+    })
+
     it("combines assertion siblings with a $ref", () => {
       assertFromJsonSchema({
         schema: {
@@ -2174,6 +2295,284 @@ describe("fromJsonSchemaDocument", () => {
           ),
         `Cannot intersect these "anyOf" or "oneOf" alternatives without expanding their branches.\n  at ["schema"]["allOf"][1]`
       )
+    })
+
+    describe("overlapping unions", () => {
+      const tagged = (kind: string) =>
+        ({
+          type: "object",
+          properties: { kind: { const: kind } },
+          required: ["kind"]
+        }) as const
+      const json = `Schema.Json.annotate({ "expected": "JSON value" })`
+      const taggedCode = (kind: string) =>
+        `Schema.StructWithRest(Schema.Struct({ "kind": Schema.Literal("${kind}") }), [Schema.Record(Schema.String, ${json})])`
+      const taggedType = (kind: string) => `{ readonly "kind": "${kind}" } & { readonly [x: string]: Schema.Json }`
+
+      it("keeps the alternatives shared by two anyOf unions", async () => {
+        const document = JsonSchema.fromSchemaDraft2020_12({
+          allOf: [
+            { title: "left", anyOf: [tagged("a"), tagged("b")] },
+            { description: "right", anyOf: [tagged("a"), tagged("c"), tagged("b")] }
+          ]
+        })
+        const schema = toSchemaFromJsonSchemaDocument(document)
+        assertCode(schema, {
+          codes: makeCode(
+            `Schema.Union([${taggedCode("a")}, ${
+              taggedCode("b")
+            }]).annotate({ "title": "left", "description": "right" })`,
+            `${taggedType("a")} | ${taggedType("b")}`
+          )
+        })
+        const decoding = new TestSchema.Asserts(schema as unknown as Schema.ConstraintDecoder<unknown>).decoding()
+        await decoding.succeed({ kind: "a" })
+        await decoding.succeed({ kind: "b" })
+        assert.isFalse(Schema.is(schema)({ kind: "c" }))
+      })
+
+      it("keeps the alternatives shared by two oneOf unions", async () => {
+        const schema = toSchemaFromJsonSchemaDocument(JsonSchema.fromSchemaDraft2020_12({
+          allOf: [
+            { oneOf: [tagged("a"), tagged("b")] },
+            { oneOf: [tagged("a"), tagged("c"), tagged("b")] }
+          ]
+        }))
+        assertCode(schema, {
+          codes: makeCode(
+            `Schema.Union([${taggedCode("a")}, ${taggedCode("b")}], { mode: "oneOf" })`,
+            `${taggedType("a")} | ${taggedType("b")}`
+          )
+        })
+        const decoding = new TestSchema.Asserts(schema as unknown as Schema.ConstraintDecoder<unknown>).decoding()
+        await decoding.succeed({ kind: "a" })
+        assert.isFalse(Schema.is(schema)({ kind: "c" }))
+      })
+
+      it("keeps the referenced alternatives shared by a redefined property", async () => {
+        const reference = (name: string) => ({ $ref: `#/$defs/${name}` })
+        const schema = toSchemaFromJsonSchemaDocument(JsonSchema.fromSchemaDraft2020_12({
+          allOf: [
+            {
+              type: "object",
+              properties: { item: { anyOf: [reference("A"), reference("B")] } },
+              required: ["item"]
+            },
+            {
+              type: "object",
+              properties: { item: { anyOf: [reference("A"), reference("C"), reference("B")] } }
+            }
+          ],
+          $defs: { A: tagged("a"), B: tagged("b"), C: tagged("c") }
+        }))
+        assertCode(schema, {
+          codes: makeCode(
+            `Schema.StructWithRest(Schema.Struct({ "item": Schema.Union([A, B]) }), [Schema.Record(Schema.String, ${json})])`,
+            `{ readonly "item": A | B } & { readonly [x: string]: Schema.Json }`
+          ),
+          references: {
+            nonRecursives: [{
+              $ref: "A",
+              code: makeCode(`${taggedCode("a")}.annotate({ "identifier": "A" })`, taggedType("a"))
+            }, {
+              $ref: "B",
+              code: makeCode(`${taggedCode("b")}.annotate({ "identifier": "B" })`, taggedType("b"))
+            }]
+          }
+        })
+        const decoding = new TestSchema.Asserts(schema as unknown as Schema.ConstraintDecoder<unknown>).decoding()
+        await decoding.succeed({ item: { kind: "a" } })
+        await decoding.succeed({ item: { kind: "b" } })
+        assert.isFalse(Schema.is(schema)({ item: { kind: "c" } }))
+      })
+
+      it("rejects overlapping anyOf and oneOf unions", () => {
+        throws(
+          () =>
+            toSchemaFromJsonSchemaDocument(JsonSchema.fromSchemaDraft2020_12({
+              allOf: [
+                { anyOf: [tagged("a"), tagged("b")] },
+                { oneOf: [tagged("a"), tagged("c"), tagged("b")] }
+              ]
+            })),
+          `Cannot intersect these "anyOf" or "oneOf" alternatives without expanding their branches.\n  at ["schema"]["allOf"][1]`
+        )
+      })
+
+      it("prunes on a conflicting discriminator before intersecting structured properties", () => {
+        const schema = (kind: string) =>
+          ({
+            allOf: [
+              {
+                type: "object",
+                properties: {
+                  action: { anyOf: [{ type: "object", required: ["x"] }, { type: "object", required: ["y"] }] },
+                  kind: { const: "a" }
+                },
+                required: ["kind"]
+              },
+              {
+                type: "object",
+                properties: {
+                  action: {
+                    type: "object",
+                    properties: { value: { anyOf: [{ type: "string" }, { type: "number" }] } }
+                  },
+                  kind: { const: kind }
+                },
+                required: ["kind"]
+              }
+            ]
+          }) as const
+        assertFromJsonSchema({ schema: schema("b") }, { codes: makeCode(`Schema.Never`, `never`) })
+        throws(
+          () => toSchemaFromJsonSchemaDocument(JsonSchema.fromSchemaDraft2020_12(schema("a"))),
+          `Cannot intersect these "anyOf" or "oneOf" alternatives without expanding their branches.\n  at ["schema"]["allOf"][1]["properties"]["action"][1]`
+        )
+      })
+
+      it("rejects overlapping unions with more surviving pairs than alternatives", () => {
+        throws(
+          () =>
+            toSchemaFromJsonSchemaDocument(JsonSchema.fromSchemaDraft2020_12({
+              allOf: [
+                { anyOf: [tagged("a"), tagged("b")] },
+                {
+                  anyOf: [
+                    { type: "object", required: ["x"] },
+                    { type: "object", required: ["y"] }
+                  ]
+                }
+              ]
+            })),
+          `Cannot intersect these "anyOf" or "oneOf" alternatives without expanding their branches.\n  at ["schema"]["allOf"][1]`
+        )
+      })
+
+      it("rejects overlapping unions that duplicate a nested choice", () => {
+        throws(
+          () =>
+            toSchemaFromJsonSchemaDocument(JsonSchema.fromSchemaDraft2020_12({
+              allOf: [
+                {
+                  anyOf: [
+                    { type: "object", properties: { tag: { const: "a" } } },
+                    { type: "object", properties: { tag: { const: "b" } } }
+                  ]
+                },
+                {
+                  anyOf: [
+                    { type: "object", properties: { value: { anyOf: [{ type: "string" }, { type: "number" }] } } },
+                    { type: "object", properties: { tag: { const: "c" } }, required: ["tag"] }
+                  ]
+                }
+              ]
+            })),
+          `Cannot intersect these "anyOf" or "oneOf" alternatives without expanding their branches.\n  at ["schema"]["allOf"][1]`
+        )
+      })
+
+      it.each([
+        { title: "on the right", reversed: false },
+        { title: "on the left", reversed: true }
+      ])("rejects overlapping unions that multiply a nested choice $title", ({ reversed }) => {
+        const size = 4
+        const optionalTags = {
+          anyOf: Array.from({ length: size }, (_, index) => ({
+            type: "object",
+            properties: { tag: { const: `t${index}` } }
+          }))
+        }
+        const choices = {
+          anyOf: [
+            {
+              type: "object",
+              properties: {
+                value: {
+                  anyOf: Array.from({ length: size }, (_, index) => ({ type: "object", required: [`v${index}`] }))
+                }
+              }
+            },
+            ...Array.from({ length: size - 1 }, (_, index) => ({
+              type: "object",
+              properties: { tag: { const: `u${index}` } },
+              required: ["tag"]
+            }))
+          ]
+        }
+        throws(
+          () =>
+            toSchemaFromJsonSchemaDocument(JsonSchema.fromSchemaDraft2020_12({
+              allOf: reversed ? [choices, optionalTags] : [optionalTags, choices]
+            })),
+          `Cannot intersect these "anyOf" or "oneOf" alternatives without expanding their branches.\n  at ["schema"]["allOf"][1]`
+        )
+      })
+
+      it("rejects overlapping recursive unions", () => {
+        const recursive = (name: string, other: string) => ({
+          anyOf: [
+            {
+              type: "object",
+              properties: { kind: { const: "a" }, next: { $ref: `#/$defs/${name}` } },
+              required: ["kind"]
+            },
+            {
+              type: "object",
+              properties: { kind: { const: other }, next: { $ref: `#/$defs/${name}` } },
+              required: ["kind"]
+            }
+          ]
+        })
+        throws(
+          () =>
+            toSchemaFromJsonSchemaDocument(JsonSchema.fromSchemaDraft2020_12({
+              allOf: [{ $ref: "#/$defs/A" }, { $ref: "#/$defs/B" }],
+              $defs: { A: recursive("A", "b"), B: recursive("B", "c") }
+            })),
+          `Cannot intersect these "anyOf" or "oneOf" alternatives without expanding their branches.\n  at ["schema"]["allOf"][1]["types"][0]["properties"]["next"][1]`
+        )
+      })
+
+      it("keeps the checks of the right union", async () => {
+        const schema = toSchemaFromJsonSchemaDocument(JsonSchema.fromSchemaDraft2020_12({
+          allOf: [
+            { anyOf: [tagged("a"), tagged("b")] },
+            { minProperties: 2, anyOf: [tagged("a"), tagged("c"), tagged("b")] }
+          ]
+        }))
+        const decoding = new TestSchema.Asserts(schema as unknown as Schema.ConstraintDecoder<unknown>).decoding()
+        await decoding.succeed({ kind: "a", x: 1 })
+        assert.isFalse(Schema.is(schema)({ kind: "a" }))
+      })
+
+      it("prunes pairs by a referenced discriminator before recursing", { timeout: 1000 }, () => {
+        const depth = 4
+        const chain = (name: string, size: number) =>
+          Object.fromEntries(Array.from({ length: depth + 1 }, (_, level) => [
+            `${name}${level}`,
+            {
+              anyOf: Array.from({ length: size }, (_, index) => ({
+                type: "object",
+                properties: {
+                  ...(level < depth ? { next: { $ref: `#/$defs/${name}${level + 1}` } } : {}),
+                  kind: { $ref: `#/$defs/K${index}` }
+                },
+                required: ["kind"]
+              }))
+            }
+          ]))
+        const schema = toSchemaFromJsonSchemaDocument(JsonSchema.fromSchemaDraft2020_12({
+          allOf: [{ $ref: "#/$defs/L0" }, { $ref: "#/$defs/R0" }],
+          $defs: {
+            ...chain("L", 4),
+            ...chain("R", 5),
+            ...Object.fromEntries(Array.from({ length: 5 }, (_, index) => [`K${index}`, { const: `k${index}` }]))
+          }
+        }))
+        assert.isTrue(Schema.is(schema)({ kind: "k1", next: { kind: "k0" } }))
+        assert.isFalse(Schema.is(schema)({ kind: "k4" }))
+      })
     })
 
     it.each([
