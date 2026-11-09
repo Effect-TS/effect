@@ -27,6 +27,18 @@ export * as Feature from "./Feature.ts"
  * @stability experimental
  * @since 4.1.3
  */
+export * as MessageLog from "./MessageLog.ts"
+
+/**
+ * @stability experimental
+ * @since 4.1.3
+ */
+export * as Renderer from "./Renderer.ts"
+
+/**
+ * @stability experimental
+ * @since 4.1.3
+ */
 export * as Subscription from "./Subscription.ts"
 
 /**

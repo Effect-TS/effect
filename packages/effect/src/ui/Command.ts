@@ -57,6 +57,7 @@ import * as Predicate from "../Predicate.ts"
 import type * as Scope from "../Scope.ts"
 import * as Stream from "../Stream.ts"
 import type * as Types from "../Types.ts"
+import type * as Renderer from "./Renderer.ts"
 
 /**
  * Identifies a Command value.
@@ -139,8 +140,8 @@ export interface Options<in Args extends ReadonlyArray<any>> {
  *
  * Host packages widen this interface by module augmentation, the same way an
  * app registers its element vocabulary. The runtime provides these services
- * when a Command runs, so they're removed from `R`. The core lists `Scope`;
- * the runtime adds `Renderer.Refs` and host packages add their host marker.
+ * when a Command runs, so they're removed from `R`. The core lists `Scope`
+ * and `Renderer.Refs`, and host packages add their host marker.
  *
  * **Example** (Registering a host's framework service)
  *
@@ -162,6 +163,7 @@ export interface Options<in Args extends ReadonlyArray<any>> {
  */
 export interface FrameworkServices {
   readonly Scope: Scope.Scope
+  readonly Refs: Renderer.Refs
 }
 
 /**
