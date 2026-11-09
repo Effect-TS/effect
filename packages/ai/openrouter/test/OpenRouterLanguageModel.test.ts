@@ -609,6 +609,27 @@ describe("OpenRouterLanguageModel", () => {
           deepStrictEqual(tool.function.parameters, inputSchema)
         }).pipe(Effect.provide(makeTestLayer())))
 
+      it.effect("preserves JSON content schemas for non-strict tools on default models", () =>
+        Effect.gen(function*() {
+          const JsonTool = Tool.make("JsonTool", {
+            parameters: Schema.Struct({ payload: Schema.fromJsonString(Schema.Boolean) })
+          }).annotate(Tool.Strict, false)
+
+          yield* LanguageModel.generateText({
+            prompt: "Use the tool",
+            toolkit: Toolkit.make(JsonTool),
+            disableToolCallResolution: true
+          }).pipe(Effect.provide(OpenRouterLanguageModel.model("google/gemini-2.5-flash")))
+
+          const requests = yield* MockHttpClient.requests
+          const body = yield* getRequestBody(requests[0])
+          deepStrictEqual(body.tools[0].function.parameters.properties.payload, {
+            type: "string",
+            contentMediaType: "application/json",
+            contentSchema: { type: "boolean" }
+          })
+        }).pipe(Effect.provide(makeTestLayer())))
+
       it.effect("passes object union parameters through", () =>
         Effect.gen(function*() {
           const UnionTool = Tool.make("UnionTool", {
