@@ -108,7 +108,9 @@ export interface Host<Node> {
  * path, `<!--[path-->` and `<!--]path-->` in HTML. `inspect` tells the
  * renderer what a node is: an element by tag, a text node, one of those
  * markers, or anything else, which never matches. Siblings are read with the
- * host's `nextOf`.
+ * host's `nextOf`. An element whose content the host parses as text only,
+ * such as an HTML `textarea`, is marked `textOnly`: the server writes only
+ * its text, and hydration adopts the element but builds its children fresh.
  *
  * @stability experimental
  * @category models
@@ -117,7 +119,7 @@ export interface Host<Node> {
 export interface Hydration<Node> {
   firstChild(node: Node): Node | undefined
   inspect(node: Node):
-    | { readonly _tag: "Element"; readonly tag: string }
+    | { readonly _tag: "Element"; readonly tag: string; readonly textOnly?: boolean | undefined }
     | { readonly _tag: "Text"; readonly text: string }
     | { readonly _tag: "Open"; readonly path: string }
     | { readonly _tag: "Close"; readonly path: string }

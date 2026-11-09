@@ -273,7 +273,12 @@ interface Range {
 
 /** How a view matches the server's nodes. */
 type Plan =
-  | { readonly _tag: "Element"; readonly node: unknown; readonly children: ReadonlyArray<Plan> }
+  | {
+    readonly _tag: "Element"
+    readonly node: unknown
+    /** `undefined` when the element's server content is text only: its children are built fresh. */
+    readonly children: ReadonlyArray<Plan> | undefined
+  }
   | { readonly _tag: "Text"; readonly node: unknown }
   | { readonly _tag: "Child"; readonly range: Range }
 
@@ -304,29 +309,30 @@ export const prerender = (
   rootProps: unknown,
   options: { readonly budget: Duration.Input; readonly elements: ReadonlyArray<string> | "any" }
 ): Effect.Effect<Renderer.Prerendered<any>> =>
-  Effect.gen(function*() {
-    const budget = Duration.fromInputUnsafe(options.budget)
-    const started = !Duration.isZero(budget)
-    const scope = yield* Scope.make("sequential")
-    const host = serverHost.make(options.elements)
-    const ctx = Context.add(yield* Effect.context<never>(), Scope.Scope, scope)
-    const root = start(component, rootProps, host.createElement("#root"), ctx, {
-      server: { start: started, host }
-    })
-    if (started) {
-      yield* Effect.raceFirst(
-        Effect.callback<void>((resume) => {
-          root.whenIdle(() => resume(Effect.void))
-        }),
-        Effect.sleep(budget)
-      )
-    }
-    const out = root.finish()
-    const model = root.model()
-    const head = root.head()
-    yield* Scope.close(scope, Exit.void)
-    return { nodes: out.nodes, state: out.state, model, head }
-  })
+  // The render's own Scope closes however it ends, interrupted included: its work runs in fibers of its own.
+  Effect.acquireUseRelease(
+    Scope.make("sequential"),
+    Effect.fnUntraced(function*(scope) {
+      const budget = Duration.fromInputUnsafe(options.budget)
+      const started = !Duration.isZero(budget)
+      const host = serverHost.make(options.elements)
+      const ctx = Context.add(yield* Effect.context<never>(), Scope.Scope, scope)
+      const root = start(component, rootProps, host.createElement("#root"), ctx, {
+        server: { start: started, host }
+      })
+      if (started) {
+        yield* Effect.raceFirst(
+          Effect.callback<void>((resume) => {
+            root.whenIdle(() => resume(Effect.void))
+          }),
+          Effect.sleep(budget)
+        )
+      }
+      const out = root.finish()
+      return { nodes: out.nodes, state: out.state, model: root.model(), head: root.head() }
+    }),
+    (scope, exit) => Scope.close(scope, exit)
+  )
 
 const start = (
   component: Component.Any,
@@ -464,10 +470,20 @@ const start = (
     runCommitted()
     checkIdle()
   }
+  /**
+   * Decides whether the server is idle once the current callback has finished:
+   * a Layer that settled or a Command that ended may still be about to wake a
+   * slot, fail an instance or start work.
+   */
+  let idleCheck = false
   const checkIdle = () => {
-    if (idleWaiters.length === 0 || scheduled || dirty.size > 0 || deferred.length > 0) return
-    if (active > 0 || building.size > 0) return
-    for (const f of idleWaiters.splice(0)) f()
+    if (idleWaiters.length === 0 || idleCheck) return
+    idleCheck = true
+    executor.schedule(() => {
+      idleCheck = false
+      if (scheduled || dirty.size > 0 || deferred.length > 0 || active > 0 || building.size > 0) return
+      for (const f of idleWaiters.splice(0)) f()
+    })
   }
   const runCommitted = () => {
     const done = committed
@@ -1456,11 +1472,9 @@ const start = (
         }
         case "Element": {
           if (kind?._tag !== "Element" || kind.tag !== view.tag) return undefined
-          // A textarea's server text is its value, which the controlled property sets again.
-          const children = view.tag === "textarea" && view.children.length === 0
-            ? []
-            : matchList(inst, view.children, childNodes(node))
-          if (children === undefined) return undefined
+          // Content the host parses as text has no nodes or markers to adopt, so its children are built fresh.
+          const children = kind.textOnly === true ? undefined : matchList(inst, view.children, childNodes(node))
+          if (children === undefined && kind.textOnly !== true) return undefined
           out.push({ _tag: "Element", node, children })
           index++
           break
@@ -1492,7 +1506,10 @@ const start = (
           if (hydration!.getAttr(node, name) !== view.attrs[name]) host.setAttr(node, name, view.attrs[name])
         }
         host.setEvents(node, view.handlers, inst.fire)
-        const children = view.children.map((child, index) => adoptNode(inst, child, plans[index]!, env))
+        if (plans === undefined) { for (const child of childNodes(node)) host.remove(child) }
+        const children = plans === undefined
+          ? view.children.map((child) => create(inst, child, env))
+          : view.children.map((child, index) => adoptNode(inst, child, plans[index]!, env))
         place(node, children, undefined)
         for (const name in view.props) host.setProp(node, name, view.props[name])
         return {
