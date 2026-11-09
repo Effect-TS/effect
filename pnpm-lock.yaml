@@ -1067,12 +1067,6 @@ importers:
         specifier: ^26.6.6
         version: 26.6.6
 
-  packages/ui/html:
-    devDependencies:
-      effect:
-        specifier: workspace:^
-        version: link:../../effect
-
   packages/vitest:
     devDependencies:
       '@types/node':

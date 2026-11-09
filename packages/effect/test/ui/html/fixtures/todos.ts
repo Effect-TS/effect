@@ -3,9 +3,9 @@
  * characters, a keyed list of rows with a controlled checkbox each, and a
  * button that clears the done ones.
  */
-import { Html } from "@effect/ui-html"
 import { Schema } from "effect"
 import { Component } from "effect/ui"
+import { Html } from "effect/ui/html"
 
 export const maxTitle = 20
 

@@ -38,5 +38,21 @@
     "rules": {
       "eslint/no-control-regex": "off"
     }
+  }, {
+    // Only effect/ui/html may use DOM types, so nothing else in effect imports it.
+    "files": ["packages/effect/src/**"],
+    "rules": {
+      "eslint/no-restricted-imports": ["error", {
+        "patterns": [{
+          "regex": "(^|/)ui/html(/|$)|^\\.{1,2}/(\\.\\./)*html(/|$)",
+          "message": "Only effect/ui/html may use DOM types; nothing else in effect may import it."
+        }]
+      }]
+    }
+  }, {
+    "files": ["packages/effect/src/ui/html/**"],
+    "rules": {
+      "eslint/no-restricted-imports": "off"
+    }
   }]
 }

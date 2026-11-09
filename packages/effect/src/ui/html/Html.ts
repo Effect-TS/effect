@@ -16,7 +16,7 @@
  * **Example** (Registering the vocabulary for the app)
  *
  * ```ts
- * import { Html } from "@effect/ui-html"
+ * import { Html } from "effect/ui/html"
  * import { View } from "effect/ui"
  *
  * declare module "effect/ui/View" {
@@ -31,7 +31,7 @@
  * **Example** (A controlled text field)
  *
  * ```ts import.meta.vitest
- * import { Html } from "@effect/ui-html"
+ * import { Html } from "effect/ui/html"
  * import { Schema } from "effect"
  * import { Component } from "effect/ui"
  *
@@ -58,12 +58,12 @@
  * @stability experimental
  * @since 4.1.3
  */
-import * as Context from "effect/Context"
-import * as Effect from "effect/Effect"
-import * as Option from "effect/Option"
-import * as Command from "effect/ui/Command"
-import * as Renderer from "effect/ui/Renderer"
-import * as View from "effect/ui/View"
+import * as Context from "../../Context.ts"
+import * as Effect from "../../Effect.ts"
+import * as Option from "../../Option.ts"
+import * as Command from "../Command.ts"
+import * as Renderer from "../Renderer.ts"
+import * as View from "../View.ts"
 
 // ---------------------------------------------------------------------------
 // host
@@ -89,9 +89,9 @@ export class Host extends Context.Service<Host, {
   readonly blur: (element: globalThis.Element) => void
   readonly scrollIntoView: (element: globalThis.Element, options: ScrollOptions) => void
   readonly measure: (element: globalThis.Element) => Rect
-}>()("@effect/ui-html/Html/Host") {}
+}>()("effect/ui/html/Html/Host") {}
 
-declare module "effect/ui/Command" {
+declare module "../Command.ts" {
   interface FrameworkServices {
     readonly HtmlHost: Host
   }
@@ -772,7 +772,7 @@ export const Measure: Command.Factory<[ref: Renderer.Ref<any>], Option.Option<Re
  * **Example** (Focusing the new-todo field after adding)
  *
  * ```ts
- * import { Html } from "@effect/ui-html"
+ * import { Html } from "effect/ui/html"
  * import { Schema } from "effect"
  *
  * const Message = Schema.TaggedUnion({ Add: {}, Focused: {} })

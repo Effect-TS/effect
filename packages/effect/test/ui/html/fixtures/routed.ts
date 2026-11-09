@@ -3,9 +3,9 @@
  * page that loads its bio on entry with a server Command, a search route
  * and a slow page whose provided Layer takes a second to build.
  */
-import { Html } from "@effect/ui-html"
 import { Context, Effect, Layer, Schema } from "effect"
 import { Command, Component, Head, Route, Router } from "effect/ui"
+import { Html } from "effect/ui/html"
 
 export const AppRoute = Route.union({
   Home: Route.make("/"),

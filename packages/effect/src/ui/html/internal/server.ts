@@ -2,8 +2,8 @@
  * Server HTML: the tree, the head tags and the `<html>` / `<body>` attributes
  * as escaped strings.
  */
-import * as Head from "effect/ui/Head"
-import type * as Renderer from "effect/ui/Renderer"
+import * as Head from "../../Head.ts"
+import type * as Renderer from "../../Renderer.ts"
 import * as markers from "./markers.ts"
 
 // ---------------------------------------------------------------------------
