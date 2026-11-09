@@ -80,7 +80,7 @@ export class Config extends Context.Service<
     >
     & {
       readonly output_config?: {
-        readonly effort?: "low" | "medium" | "high" | null
+        readonly effort?: Generated.BetaEffortLevel | null
       }
       /**
        * Disables Claude's ability to use multiple tools to respond to a query.
