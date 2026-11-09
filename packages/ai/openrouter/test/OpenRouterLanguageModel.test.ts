@@ -2,7 +2,7 @@ import { Generated, OpenRouterClient, OpenRouterLanguageModel } from "@effect/ai
 import { assert, describe, it } from "@effect/vitest"
 import { deepStrictEqual, strictEqual } from "@effect/vitest/utils"
 import { Array, Context, Effect, Layer, Redacted, Ref, Schema, Stream } from "effect"
-import { LanguageModel, Model, Prompt, Tool, Toolkit } from "effect/ai"
+import { type AiError, LanguageModel, Model, Prompt, Tool, Toolkit } from "effect/ai"
 import { HttpClient, type HttpClientError, type HttpClientRequest, HttpClientResponse } from "effect/http"
 
 describe("OpenRouterLanguageModel", () => {
@@ -78,11 +78,17 @@ describe("OpenRouterLanguageModel", () => {
 
   describe("schema codecs", () => {
     const TagsTool = Tool.make("TagsTool", {
+      failureMode: "return",
       parameters: Schema.Struct({ tags: Schema.Record(Schema.String, Schema.Number) }),
       success: Schema.String
     })
     const toolkit = Toolkit.make(TagsTool)
-    const handlers = toolkit.toLayer({ TagsTool: ({ tags }) => Effect.succeed(JSON.stringify(tags)) })
+    const handlers = toolkit.toLayer({
+      TagsTool: (params) => {
+        deepStrictEqual(params, { tags: { a: 1 } })
+        return Effect.succeed(JSON.stringify(params.tags))
+      }
+    })
     const openAiArguments = JSON.stringify({ tags: [{ "0": "a", "1": 1 }] })
 
     it.effect("decodes tool call parameters with the codec their schema was sent with", () =>
@@ -92,7 +98,17 @@ describe("OpenRouterLanguageModel", () => {
           Effect.provide(handlers)
         )
 
-        deepStrictEqual(response.toolResults.map((part) => [part.isFailure, part.result]), [[false, "{\"a\":1}"]])
+        const requests = yield* MockHttpClient.requests
+        const body = yield* getRequestBody(requests[0])
+        strictEqual(body.tools[0].function.parameters.properties.tags.type, "array")
+        strictEqual(response.toolResults.length, 2)
+        const success = response.toolResults.find((part) => part.id === "call-1")!
+        const invalid = response.toolResults.find((part) => part.id === "call-2")!
+        deepStrictEqual([success.isFailure, success.result], [false, "{\"a\":1}"])
+        strictEqual(invalid.isFailure, true)
+        const failure = invalid.result as AiError.AiError
+        strictEqual(failure._tag, "AiError")
+        strictEqual(failure.reason._tag, "ToolParameterValidationError")
       }).pipe(Effect.provide(makeTestLayer({
         body: {
           choices: [{
@@ -105,64 +121,33 @@ describe("OpenRouterLanguageModel", () => {
                 id: "call-1",
                 type: "function",
                 function: { name: "TagsTool", arguments: openAiArguments }
+              }, {
+                id: "call-2",
+                type: "function",
+                function: { name: "TagsTool", arguments: JSON.stringify({ tags: 42 }) }
               }]
             }
           }]
         }
       }))))
 
-    it.effect("decodes streamed tool call parameters with the codec their schema was sent with", () =>
-      Effect.gen(function*() {
-        const parts = yield* LanguageModel.streamText({ prompt: "Use a tool", toolkit }).pipe(
-          Stream.runCollect,
-          Effect.provide(OpenRouterLanguageModel.model("openai/gpt-4o-mini")),
-          Effect.provide(handlers)
-        )
-
-        deepStrictEqual(
-          globalThis.Array.from(parts)
-            .filter((part) => part.type === "tool-result")
-            .map((part) => [part.isFailure, part.result]),
-          [[false, "{\"a\":1}"]]
-        )
-      }).pipe(Effect.provide(makeStreamTestLayer([
-        {
-          id: "response-1",
-          object: "chat.completion.chunk",
-          model: "openai/gpt-4o-mini",
-          created: 1,
-          choices: [{
-            index: 0,
-            delta: {
-              tool_calls: [{
-                index: 0,
-                id: "call-1",
-                type: "function",
-                function: { name: "TagsTool", arguments: openAiArguments }
-              }]
-            }
-          }]
-        },
-        {
-          id: "response-1",
-          object: "chat.completion.chunk",
-          model: "openai/gpt-4o-mini",
-          created: 1,
-          choices: [{ index: 0, delta: {}, finish_reason: "tool_calls" }],
-          usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 }
-        }
-      ]))))
-
     it.effect("sends strict tools a strict-compatible schema for models without a provider codec", () =>
       Effect.gen(function*() {
         const StrictTool = Tool.make("StrictTool", {
-          parameters: Schema.Struct({ query: Schema.String, limit: Schema.optional(Schema.Number) })
+          parameters: Schema.Struct({ query: Schema.String, limit: Schema.optional(Schema.Number) }),
+          success: Schema.String
         }).annotate(Tool.Strict, true)
-        yield* LanguageModel.generateText({
-          prompt: "Use a tool",
-          toolkit: Toolkit.make(StrictTool),
-          disableToolCallResolution: true
-        }).pipe(Effect.provide(OpenRouterLanguageModel.model("google/gemini-2.5-flash")))
+        const toolkit = Toolkit.make(StrictTool)
+        const response = yield* LanguageModel.generateText({ prompt: "Use a tool", toolkit }).pipe(
+          Effect.provide(OpenRouterLanguageModel.model("google/gemini-2.5-flash")),
+          Effect.provide(toolkit.toLayer({
+            StrictTool: (params) => {
+              deepStrictEqual(params, { query: "search" })
+              return Effect.succeed("ok")
+            }
+          }))
+        )
+        deepStrictEqual(response.toolResults.map((part) => [part.isFailure, part.result]), [[false, "ok"]])
 
         const requests = yield* MockHttpClient.requests
         const body = yield* getRequestBody(requests[0])
@@ -170,7 +155,23 @@ describe("OpenRouterLanguageModel", () => {
         strictEqual(strict, true)
         strictEqual(parameters.additionalProperties, false)
         deepStrictEqual(parameters.required, ["query", "limit"])
-      }).pipe(Effect.provide(makeTestLayer())))
+      }).pipe(Effect.provide(makeTestLayer({
+        body: {
+          choices: [{
+            finish_reason: "tool_calls",
+            index: 0,
+            message: {
+              role: "assistant",
+              content: null,
+              tool_calls: [{
+                id: "call-1",
+                type: "function",
+                function: { name: "StrictTool", arguments: JSON.stringify({ query: "search", limit: null }) }
+              }]
+            }
+          }]
+        }
+      }))))
   })
 
   it.effect("model provides openrouter provider metadata", () =>
@@ -864,18 +865,22 @@ describe("OpenRouterLanguageModel", () => {
     it.effect("emits incremental tool parameter fragments", () =>
       Effect.gen(function*() {
         const ProbeTool = Tool.make("ProbeTool", {
-          parameters: Schema.Struct({ a: Schema.Number }),
+          parameters: Schema.Struct({ tags: Schema.Record(Schema.String, Schema.Number) }),
           success: Schema.String
         })
         const toolkit = Toolkit.make(ProbeTool)
         const parts = yield* LanguageModel.streamText({
           prompt: "call the tool",
-          toolkit,
-          disableToolCallResolution: true
+          toolkit
         }).pipe(
           Stream.runCollect,
           Effect.provide(OpenRouterLanguageModel.model("openai/gpt-4o-mini")),
-          Effect.provide(toolkit.toLayer({ ProbeTool: () => Effect.succeed("ok") })),
+          Effect.provide(toolkit.toLayer({
+            ProbeTool: (params) => {
+              deepStrictEqual(params, { tags: { a: 1 } })
+              return Effect.succeed("ok")
+            }
+          })),
           Effect.provide(makeStreamTestLayer([
             {
               id: "response-1",
@@ -889,7 +894,7 @@ describe("OpenRouterLanguageModel", () => {
                     index: 0,
                     id: "call-1",
                     type: "function",
-                    function: { name: "ProbeTool", arguments: "{\"a\":" }
+                    function: { name: "ProbeTool", arguments: "{\"tags\":[{\"0\":\"a\"," }
                   }]
                 }
               }]
@@ -912,7 +917,7 @@ describe("OpenRouterLanguageModel", () => {
               choices: [{
                 index: 0,
                 finish_reason: "tool_calls",
-                delta: { tool_calls: [{ index: 0, function: { arguments: "1}" } }] }
+                delta: { tool_calls: [{ index: 0, function: { arguments: "\"1\":1}]}" } }] }
               }]
             }
           ]))
@@ -922,7 +927,11 @@ describe("OpenRouterLanguageModel", () => {
           globalThis.Array.from(parts)
             .filter((part) => part.type === "tool-params-delta")
             .map((part) => part.delta),
-          ["{\"a\":", "1}"]
+          ["{\"tags\":[{\"0\":\"a\",", "\"1\":1}]}"]
+        )
+        deepStrictEqual(
+          parts.filter((part) => part.type === "tool-result").map((part) => [part.isFailure, part.result]),
+          [[false, "ok"]]
         )
       }))
   })
