@@ -70,6 +70,7 @@ import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import type * as Route from "effect/ui/Route"
 import * as Router from "effect/ui/Router"
+import * as submit from "./internal/submit.ts"
 
 /**
  * The options of `layer`.
@@ -186,10 +187,17 @@ const make = (options: Options, inFragment: boolean): Layer.Layer<Router.Service
       region = live
       yield* Effect.addFinalizer(() => Effect.sync(() => live.remove()))
     }
-    const nextFrame = (f: () => void) => {
-      if (typeof window.requestAnimationFrame === "function") window.requestAnimationFrame(f)
-      else setTimeout(f, 0)
+    /** Runs `f` on the next frame, and returns a function that cancels it. */
+    const nextFrame = (f: () => void): () => void => {
+      if (typeof window.requestAnimationFrame === "function") {
+        const id = window.requestAnimationFrame(f)
+        return () => window.cancelAnimationFrame(id)
+      }
+      const id = setTimeout(f, 0)
+      return () => clearTimeout(id)
     }
+    let cancelAnnouncement: (() => void) | undefined
+    yield* Effect.addFinalizer(() => Effect.sync(() => cancelAnnouncement?.()))
 
     // --- focus -------------------------------------------------------------
     const focusOn = (element: HTMLElement) => element.focus({ preventScroll: true })
@@ -227,9 +235,13 @@ const make = (options: Options, inFragment: boolean): Layer.Layer<Router.Service
         const text = (settled.head.title ?? "").trim() ||
           (container.querySelector("h1")?.textContent ?? "").trim() ||
           new URL(settled.location.url, location.href).pathname
+        const seq = settled.location.seq
         live.textContent = ""
-        nextFrame(() => {
-          live.textContent = text
+        cancelAnnouncement?.()
+        cancelAnnouncement = nextFrame(() => {
+          cancelAnnouncement = undefined
+          // A navigation that started before the frame makes this one obsolete.
+          if (router.location().seq === seq) live.textContent = text
         })
       }
     }
@@ -252,8 +264,11 @@ const make = (options: Options, inFragment: boolean): Layer.Layer<Router.Service
       routes,
       history: browserHistory,
       onSettled,
-      onHash: (hash, action) => {
-        if (scroll && action === "push") scrollTo(hash)
+      onHash: (hash, action, index) => {
+        if (!scroll) return
+        const saved = action === "pop" ? positions.get(index) : undefined
+        if (saved !== undefined) window.scrollTo(saved.x, saved.y)
+        else scrollTo(hash)
       },
       onLeave: (index) => {
         positions.set(index, { x: window.scrollX, y: window.scrollY })
@@ -292,7 +307,10 @@ const make = (options: Options, inFragment: boolean): Layer.Layer<Router.Service
       follow(event, local(new URL(rawHref, document.baseURI)))
     }
     const onSubmit = (event: SubmitEvent) => {
-      if (event.defaultPrevented) return
+      // BrowserHost prevents every submission of a form the app rendered. If the app has no
+      // submit handler for it, the form is still the Router's to follow.
+      const ownedUnhandled = submit.ownedUnhandled.has(event)
+      if (event.defaultPrevented && !ownedUnhandled) return
       const form = event.target as HTMLFormElement | null
       if (form === null || form.localName !== "form") return
       const submitter = event.submitter as HTMLButtonElement | null
@@ -308,7 +326,11 @@ const make = (options: Options, inFragment: boolean): Layer.Layer<Router.Service
       for (const [name, value] of data) if (typeof value === "string") query.append(name, value)
       url.search = query.toString()
       url.hash = ""
-      follow(event, local(url))
+      const href = local(url)
+      // The host already stopped the browser's submission, so the Router makes it: a full page
+      // load for anything the routes don't parse.
+      if (ownedUnhandled) Effect.runSync(href !== undefined ? router.navigate(href) : router.load(url.href))
+      else follow(event, href)
     }
     document.addEventListener("click", onClick)
     document.addEventListener("submit", onSubmit)

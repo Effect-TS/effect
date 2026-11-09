@@ -2,6 +2,7 @@ import { BrowserHost, BrowserRouter, Html } from "@effect/ui-html"
 import { HtmlQuery } from "@effect/ui-html/testing"
 import { expect, it } from "@effect/vitest"
 import { Context, Effect, Exit, Layer, Option, Schema, Scope } from "effect"
+import { TestClock } from "effect/testing"
 import { Command, Component, Head, Route, Router } from "effect/ui"
 import { describe } from "vitest"
 
@@ -16,6 +17,8 @@ const container = Effect.acquireRelease(
 const AppRoute = Route.union({
   Home: Route.make("/"),
   Person: Route.make("/people/:id", { params: { id: Schema.Number } }),
+  Search: Route.make("/search", { query: { q: Schema.String } }),
+  Slow: Route.make("/slow"),
   NotFound: Route.make("/*")
 })
 type AppRoute = typeof AppRoute.Type
@@ -47,7 +50,21 @@ const Person = Component.make({
   view: (model, h) => h.div(h.h1(`Person ${model.id}`), h.p("Bio").attr("id", "bio"))
 })
 
-const Message = Schema.TaggedUnion({ ChangedRoute: { route: AppRoute }, Block: {}, Done: {} })
+class SlowData extends Context.Service<SlowData, string>()("test/SlowData") {}
+
+/** A page whose provided Layer takes a second of the TestClock to build. */
+const Slow = Component.make({
+  name: "Slow",
+  model: Schema.Struct({}),
+  message: Schema.Never,
+  elements: Html,
+  init: () => ({}),
+  update: (model) => model,
+  head: () => [Head.title("Slow")],
+  view: (_, h) => h.h1("Slow")
+}).pipe(Component.provide(Layer.effect(SlowData, Effect.as(Effect.sleep("1 second"), "ready"))))
+
+const Message = Schema.TaggedUnion({ ChangedRoute: { route: AppRoute }, Block: {}, Done: {}, Filter: {} })
 
 const App = Component.make({
   name: "App",
@@ -60,7 +77,8 @@ const App = Component.make({
     Message.match(message, {
       ChangedRoute: (changed) => AppRoute.print(changed.route) === AppRoute.print(route) ? route : changed.route,
       Block: () => $.run(Router.Block.make("editing").pipe(Command.map(() => Message.make({ _tag: "Done" })))),
-      Done: () => route
+      Done: () => route,
+      Filter: () => route
     }),
   subscriptions: () => [Router.subscription(AppRoute, (route) => Message.make({ _tag: "ChangedRoute", route }))],
   head: () => [Head.titleTemplate((title) => `${title} · App`), Head.lang("en"), Head.htmlClass("routed")],
@@ -71,11 +89,23 @@ const App = Component.make({
         h.a("Person 1").attr("href", AppRoute.print(AppRoute.make({ _tag: "Person", params: { id: 1 } }))),
         h.a("Person 2 bio").attr("href", `${AppRoute.print(AppRoute.make({ _tag: "Person", params: { id: 2 } }))}#bio`),
         h.a("Elsewhere").attr("href", "https://example.com/"),
-        h.button("Block").onClick(Message.make({ _tag: "Block" }))
+        h.a("Slow").attr("href", AppRoute.print(AppRoute.make({ _tag: "Slow" }))),
+        h.button("Block").onClick(Message.make({ _tag: "Block" })),
+        h.form(h.input().attr("name", "q").attr("value", "ada"), h.button("Search").attr("type", "submit"))
+          .attr("method", "get")
+          .attr("action", "/search")
+          .attr("aria-label", "Search"),
+        h.form(h.input().attr("name", "q").attr("value", "x"), h.button("Filter").attr("type", "submit"))
+          .attr("method", "get")
+          .attr("action", "/search")
+          .attr("aria-label", "Filter")
+          .onSubmit(Message.make({ _tag: "Filter" }))
       ),
       AppRoute.match(route, {
         Home: (route) => h.child(Home, { key: AppRoute.print(route), props: {} }),
         Person: (route) => h.child(Person, { key: AppRoute.print(route), props: { id: route.params.id } }),
+        Search: (route) => h.h1(`Search ${route.query.q}`),
+        Slow: (route) => h.child(Slow, { key: AppRoute.print(route), props: {} }),
         NotFound: () => h.h1("Not found")
       })
     )
@@ -91,8 +121,33 @@ const start = Effect.fnUntraced(function*(url: string, options?: Partial<Browser
     Effect.provideContext(context)
   )
   yield* tick
-  return { app, root }
+  return { app, root, router }
 })
+
+/** The global window, with animation frames that only run when `run` is called. */
+const manualFrames = () => {
+  const frames = new Map<number, FrameRequestCallback>()
+  let next = 0
+  const proxy = new Proxy(window, {
+    get(target, key) {
+      if (key === "requestAnimationFrame") {
+        return (f: FrameRequestCallback) => {
+          frames.set(++next, f)
+          return next
+        }
+      }
+      if (key === "cancelAnimationFrame") return (id: number) => frames.delete(id)
+      const value = Reflect.get(target, key)
+      return typeof value === "function" ? value.bind(target) : value
+    }
+  })
+  const run = () => {
+    const due = [...frames.values()]
+    frames.clear()
+    for (const f of due) f(0)
+  }
+  return { window: proxy as Window, run }
+}
 
 const link = (app: Element, name: string) => HtmlQuery.getByRole(app, "link", { name })
 const region = () => document.querySelector("[aria-live=assertive]")
@@ -163,6 +218,64 @@ describe("BrowserRouter", { concurrent: false }, () => {
       expect(clickReporting(link(app, "Elsewhere"))).toBe(false)
       yield* tick
       expect(window.location.pathname).toBe("/")
+    }).pipe(Effect.scoped))
+
+  it.effect("follows a GET form the app has no submit handler for, and leaves a handled one alone", () =>
+    Effect.gen(function*() {
+      const { app, root } = yield* start("/")
+      const submitForm = (name: string) =>
+        HtmlQuery.getByRole(app, "form", { name }).dispatchEvent(
+          new Event("submit", { bubbles: true, cancelable: true })
+        )
+      submitForm("Filter")
+      yield* tick
+      expect(window.location.pathname).toBe("/")
+      submitForm("Search")
+      yield* tick
+      expect(window.location.pathname + window.location.search).toBe("/search?q=ada")
+      expect(root.model()?._tag).toBe("Search")
+      expect(HtmlQuery.getByRole(app, "heading").textContent).toBe("Search ada")
+    }).pipe(Effect.scoped))
+
+  it.effect("doesn't announce a navigation a newer one replaced before its frame", () =>
+    Effect.gen(function*() {
+      const frames = manualFrames()
+      const { app } = yield* start("/", { window: frames.window })
+      clickReporting(link(app, "Person 1"))
+      yield* tick
+      // Person 1 settled and cleared the region; its text waits for the next frame.
+      expect(region()?.textContent).toBe("")
+      clickReporting(link(app, "Slow"))
+      yield* tick
+      frames.run()
+      expect(region()?.textContent).toBe("")
+      yield* TestClock.adjust("1 second")
+      yield* tick
+      frames.run()
+      expect(region()?.textContent).toBe("Slow · App")
+    }).pipe(Effect.scoped))
+
+  it.effect("restores the scroll position on back and forward between #hash entries", () =>
+    Effect.gen(function*() {
+      const { app, router } = yield* start("/")
+      clickReporting(link(app, "Person 2 bio"))
+      yield* tick
+      window.scrollTo(0, 100)
+      yield* router.navigate("/people/2#top")
+      yield* tick
+      window.scrollTo(0, 40)
+      const announced = region()?.textContent
+
+      window.history.back()
+      yield* tick
+      expect(window.location.hash).toBe("#bio")
+      expect(window.scrollY).toBe(100)
+      window.history.forward()
+      yield* tick
+      expect(window.location.hash).toBe("#top")
+      expect(window.scrollY).toBe(40)
+      // A #hash change sends no route change and announces nothing.
+      expect(region()?.textContent).toBe(announced)
     }).pipe(Effect.scoped))
 
   it.effect("goes to a link's #hash and moves focus there", () =>
