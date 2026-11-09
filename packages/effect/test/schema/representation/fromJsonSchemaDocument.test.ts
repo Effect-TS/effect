@@ -2537,6 +2537,31 @@ describe("fromJsonSchemaDocument", () => {
         )
       })
 
+      it("intersects the same union pair independently on different properties", () => {
+        const schema = toSchemaFromJsonSchemaDocument(JsonSchema.fromSchemaDraft2020_12({
+          allOf: [
+            { type: "object", properties: { x: { $ref: "#/$defs/A" }, y: { $ref: "#/$defs/A" } } },
+            { type: "object", properties: { x: { $ref: "#/$defs/B" }, y: { $ref: "#/$defs/B" } } }
+          ],
+          $defs: {
+            A: {
+              anyOf: [
+                { type: "object", properties: { kind: { const: "a" } }, required: ["kind"] },
+                { type: "object", properties: { kind: { const: "b" } }, required: ["kind"] }
+              ]
+            },
+            B: {
+              anyOf: [
+                { type: "object", properties: { kind: { const: "a" } }, required: ["kind"] },
+                { type: "object", properties: { kind: { const: "c" } }, required: ["kind"] }
+              ]
+            }
+          }
+        }))
+        assert.isTrue(Schema.is(schema)({ x: { kind: "a" }, y: { kind: "a" } }))
+        assert.isFalse(Schema.is(schema)({ y: { kind: "b" } }))
+      })
+
       it("intersects the same nullable reference to overlapping anyOf alternatives", () => {
         const schema = toSchemaFromJsonSchemaDocument(JsonSchema.fromSchemaDraft2020_12({
           allOf: [
