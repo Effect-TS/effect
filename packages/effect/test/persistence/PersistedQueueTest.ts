@@ -488,18 +488,23 @@ export const suiteWith = <R>(
           const fail = queue.take(() => Effect.fail("boom")).pipe(Effect.flip)
           const cleanupFailed = store.cleanup({ timeToLive: Duration.days(30), failedTimeToLive: Duration.seconds(1) })
 
-          // two elements with the same id fail, and cleanup expires only the first
           yield* queue.offer({ n: 1n }, offerOptions)
           yield* fail
-          yield* advancePastTtl
-          yield* queue.offer({ n: 2n }, offerOptions)
-          yield* fail
-          yield* cleanupFailed
 
-          // the second failure is retained, so a default-mode offer is ignored
-          yield* queue.offer({ n: 9n }, { id })
+          // Only a virtual clock can guarantee cleanup expires the first failure
+          // but retains the second. SQL clocks can cross the one-second TTL
+          // between failing the second element and running cleanup.
+          if (options?.virtualTime) {
+            yield* advancePastTtl
+            yield* queue.offer({ n: 2n }, offerOptions)
+            yield* fail
+            yield* cleanupFailed
 
-          // expiring the second failure must not release the pending element
+            // The retained failure reserves the id for default-mode offers.
+            yield* queue.offer({ n: 9n }, { id })
+          }
+
+          // On every store, expiring failures must not release a pending replacement.
           yield* queue.offer({ n: 3n }, offerOptions)
           yield* advancePastTtl
           yield* cleanupFailed
