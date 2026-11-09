@@ -82,6 +82,24 @@ describe("Match", () => {
     strictEqual(match(null), "miss")
   })
 
+  it("tags and discriminators skip undefined handlers", () => {
+    const tags = pipe(
+      Match.type<{ readonly _tag: "A" } | { readonly _tag: "B" }>(),
+      Match.tags({ A: undefined, B: () => "B" }),
+      Match.orElse(() => "miss")
+    )
+    const discriminators = pipe(
+      Match.type<{ readonly kind: "A" } | { readonly kind: "B" }>(),
+      Match.discriminators("kind")({ A: undefined, B: () => "B" }),
+      Match.orElse(() => "miss")
+    )
+
+    strictEqual(tags({ _tag: "B" }), "B")
+    strictEqual(tags({ _tag: "A" }), "miss")
+    strictEqual(discriminators({ kind: "B" }), "B")
+    strictEqual(discriminators({ kind: "A" }), "miss")
+  })
+
   it("checks symbol-keyed object pattern properties", () => {
     const key = Symbol("key")
     const match = pipe(
