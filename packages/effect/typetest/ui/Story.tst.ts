@@ -1,4 +1,6 @@
-import { Story } from "@effect/ui/testing"
+import { Effect, Schema, Stream } from "effect"
+import { Command } from "effect/ui"
+import { Story } from "effect/ui/testing"
 import { describe, expect, it } from "tstyche"
 import {
   Counter,
@@ -8,7 +10,7 @@ import {
   SearchMessage,
   TodoItemMessage,
   Upload
-} from "../test/fixtures/components.ts"
+} from "../../test/ui/fixtures/components.ts"
 
 describe("Story", () => {
   it("types steps by the component", () => {
@@ -33,6 +35,22 @@ describe("Story", () => {
     expect(Story.resolve).type.toBeCallableWith(SaveTodo, TodoItemMessage.make({ _tag: "Saved" }))
     expect(Story.resolve).type.not.toBeCallableWith(SaveTodo, SearchMessage.make({ _tag: "Tick" }))
     expect(Story.resolve).type.toBeCallableWith(Search("x"), SearchMessage.make({ _tag: "Results", items: [] }))
+  })
+
+  it("a mapped Command as the target takes the definition's own result", () => {
+    const Uploaded = Schema.TaggedUnion({ Uploaded: { url: Schema.String } })
+    const UploadFile = Command.make("UploadFile", (name: string) => Effect.succeed(`https://cdn/${name}`))
+    const mapped = UploadFile("me.png").pipe(Command.map((url) => Uploaded.make({ _tag: "Uploaded", url })))
+    expect(mapped).type.toBe<Command.Effectful<typeof Uploaded.Type, never, string>>()
+    expect(Story.resolve).type.toBeCallableWith(mapped, "https://cdn/me.png")
+    expect(Story.resolve).type.not.toBeCallableWith(mapped, Uploaded.make({ _tag: "Uploaded", url: "" }))
+    const Progress = Command.make("Progress", (_: string) => Stream.fromIterable([1, 2]), { stream: true })
+    const mappedStream = Progress("x").pipe(
+      Command.map((percent) => Uploaded.make({ _tag: "Uploaded", url: String(percent) }))
+    )
+    expect(Story.next).type.toBeCallableWith(mappedStream, 50)
+    expect(Story.next).type.not.toBeCallableWith(mappedStream, Uploaded.make({ _tag: "Uploaded", url: "" }))
+    expect(Story.end).type.toBeCallableWith(mappedStream)
   })
 
   it("next and end only take stream Commands", () => {

@@ -12,7 +12,7 @@
  * **Example** (A todo row that saves through a Command and reports to its parent)
  *
  * ```ts import.meta.vitest
- * import { Command, Component } from "@effect/ui"
+ * import { Command, Component } from "effect/ui"
  * import { Effect, Schema } from "effect"
  *
  * const Todo = Schema.Struct({ id: Schema.String, title: Schema.String, done: Schema.Boolean })
@@ -47,15 +47,15 @@
  * })
  * ```
  *
- * @stability unstable
- * @since 0.1.0
+ * @stability experimental
+ * @since 4.1.3
  */
-import * as Layer from "effect/Layer"
-import * as Pipeable from "effect/Pipeable"
-import * as Predicate from "effect/Predicate"
-import type * as AsyncResult from "effect/reactivity/AsyncResult"
-import * as Schema from "effect/Schema"
-import type * as Types from "effect/Types"
+import * as Layer from "../Layer.ts"
+import * as Pipeable from "../Pipeable.ts"
+import * as Predicate from "../Predicate.ts"
+import type * as AsyncResult from "../reactivity/AsyncResult.ts"
+import * as Schema from "../Schema.ts"
+import type * as Types from "../Types.ts"
 import type * as Command from "./Command.ts"
 import type * as Subscription from "./Subscription.ts"
 import * as View from "./View.ts"
@@ -63,36 +63,36 @@ import * as View from "./View.ts"
 /**
  * Identifies a component.
  *
- * @stability unstable
+ * @stability experimental
  * @category type ids
- * @since 0.1.0
+ * @since 4.1.3
  */
-export const TypeId = "~@effect/ui/Component" as const
+export const TypeId = "~effect/ui/Component" as const
 
 /**
  * Identifies a component.
  *
- * @stability unstable
+ * @stability experimental
  * @category type ids
- * @since 0.1.0
+ * @since 4.1.3
  */
 export type TypeId = typeof TypeId
 
 /**
  * Identifies a step.
  *
- * @stability unstable
+ * @stability experimental
  * @category type ids
- * @since 0.1.0
+ * @since 4.1.3
  */
-export const StepTypeId = "~@effect/ui/Component/Step" as const
+export const StepTypeId = "~effect/ui/Component/Step" as const
 
 /**
  * Identifies a step.
  *
- * @stability unstable
+ * @stability experimental
  * @category type ids
- * @since 0.1.0
+ * @since 4.1.3
  */
 export type StepTypeId = typeof StepTypeId
 
@@ -100,9 +100,9 @@ export type StepTypeId = typeof StepTypeId
  * What the runtime reads after `init` or `update`: the next Model, the
  * Commands to run and what to emit to the parent.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
- * @since 0.1.0
+ * @since 4.1.3
  */
 export interface Next<out Model, out Msg, out Emits, out R = never> {
   readonly model: Model
@@ -121,9 +121,9 @@ export interface Next<out Model, out Msg, out Emits, out R = never> {
  * with different requirements give the union. Returning a bare Model from
  * `update` is also fine.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
- * @since 0.1.0
+ * @since 4.1.3
  */
 export interface Step<in out Model, in out Msg, in out Emits, out R = never> extends Pipeable.Pipeable {
   readonly [StepTypeId]: StepTypeId
@@ -149,9 +149,9 @@ export interface Step<in out Model, in out Msg, in out Emits, out R = never> ext
 /**
  * `$` in `update`: a step holding the current Model, plus the current props.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
- * @since 0.1.0
+ * @since 4.1.3
  */
 export interface Update<in out Model, in out Msg, in out Emits, out Props> extends Step<Model, Msg, Emits, never> {
   readonly props: Props
@@ -160,9 +160,9 @@ export interface Update<in out Model, in out Msg, in out Emits, out Props> exten
 /**
  * `$` in `init`: there's no Model yet, so `set` comes first.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
- * @since 0.1.0
+ * @since 4.1.3
  */
 export interface Init<in out Model, in out Msg, in out Emits, out Props> {
   readonly props: Props
@@ -173,9 +173,9 @@ export interface Init<in out Model, in out Msg, in out Emits, out Props> {
 /**
  * The requirements of a step, or `never` for a bare Model.
  *
- * @stability unstable
+ * @stability experimental
  * @category utility types
- * @since 0.1.0
+ * @since 4.1.3
  */
 export type StepRequirements<U> = U extends Step<infer _Model, infer _Msg, infer _Emits, infer R> ? R : never
 
@@ -215,9 +215,9 @@ const makeInit = (props: unknown): Init<any, any, any, any> => ({
 /**
  * Returns `true` if `u` is a step.
  *
- * @stability unstable
+ * @stability experimental
  * @category guards
- * @since 0.1.0
+ * @since 4.1.3
  */
 export const isStep = (u: unknown): u is Step<unknown, unknown, unknown, unknown> =>
   Predicate.hasProperty(u, StepTypeId)
@@ -236,9 +236,9 @@ const toNext = (result: unknown): Next<any, any, any, any> =>
  * A component with `message: Schema.Never` is a valid child, because
  * `update` takes `msg: never`.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
- * @since 0.1.0
+ * @since 4.1.3
  */
 export interface Mountable<in out Props, out Emits, out R = never> extends Pipeable.Pipeable {
   readonly [TypeId]: Mountable.Variance<Props, Emits, R>
@@ -264,15 +264,15 @@ export interface Mountable<in out Props, out Emits, out R = never> extends Pipea
 /**
  * Helper types for `Mountable`.
  *
- * @stability unstable
- * @since 0.1.0
+ * @stability experimental
+ * @since 4.1.3
  */
 export declare namespace Mountable {
   /**
    * Phantom variance for a component's props, emits and requirements.
    *
    * @category models
-   * @since 0.1.0
+   * @since 4.1.3
    */
   export interface Variance<in out Props, out Emits, out R> {
     readonly _Props: Types.Invariant<Props>
@@ -284,9 +284,9 @@ export declare namespace Mountable {
 /**
  * A component definition.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
- * @since 0.1.0
+ * @since 4.1.3
  */
 export interface Component<
   out Name extends string,
@@ -311,45 +311,45 @@ export interface Component<
 /**
  * Any component.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
- * @since 0.1.0
+ * @since 4.1.3
  */
 export type Any = Mountable<any, any, any>
 
 /**
  * The props of a component.
  *
- * @stability unstable
+ * @stability experimental
  * @category utility types
- * @since 0.1.0
+ * @since 4.1.3
  */
 export type Props<C> = C extends Mountable<infer P, infer _Emits, infer _R> ? P : never
 
 /**
  * The emits of a component.
  *
- * @stability unstable
+ * @stability experimental
  * @category utility types
- * @since 0.1.0
+ * @since 4.1.3
  */
 export type Emits<C> = C extends Mountable<infer _Props, infer E, infer _R> ? E : never
 
 /**
  * The requirements of a component: the Commands and feature services it uses.
  *
- * @stability unstable
+ * @stability experimental
  * @category utility types
- * @since 0.1.0
+ * @since 4.1.3
  */
 export type Requirements<C> = C extends Mountable<infer _Props, infer _Emits, infer R> ? R : never
 
 /**
  * The Model of a component.
  *
- * @stability unstable
+ * @stability experimental
  * @category utility types
- * @since 0.1.0
+ * @since 4.1.3
  */
 export type Model<C> = C extends Component<infer _N, infer _P, infer M, infer _Msg, infer _E, infer _R, infer _V> ? M
   : never
@@ -357,9 +357,9 @@ export type Model<C> = C extends Component<infer _N, infer _P, infer M, infer _M
 /**
  * The message type of a component.
  *
- * @stability unstable
+ * @stability experimental
  * @category utility types
- * @since 0.1.0
+ * @since 4.1.3
  */
 export type Message<C> = C extends Component<infer _N, infer _P, infer _M, infer Msg, infer _E, infer _R, infer _V> ?
   Msg
@@ -368,9 +368,9 @@ export type Message<C> = C extends Component<infer _N, infer _P, infer _M, infer
 /**
  * Returns `true` if `u` is a component.
  *
- * @stability unstable
+ * @stability experimental
  * @category guards
- * @since 0.1.0
+ * @since 4.1.3
  */
 export const isComponent = (u: unknown): u is Any => Predicate.hasProperty(u, TypeId)
 
@@ -388,9 +388,10 @@ const Proto = {
  *
  * `init` and `update` get `$`, a step holding the current Model and props.
  * `view` gets `h`, bound to the component's message type and carrying the
- * props, with the registered vocabulary's element names mixed in. `update`'s
- * whole return type is inferred and `R` is read off it, so `R` covers every
- * branch. Framework services such as `Scope` are never part of `R`.
+ * props, with the registered vocabulary's element names mixed in. The whole
+ * return type of `init`, `update` and `view` is inferred and `R` is read off
+ * it, so `R` covers every branch, including conditional views. Framework
+ * services such as `Scope` are never part of `R`.
  *
  * `props` and `emits` are optional. `subscriptions` returns keyed Streams run
  * while their key is listed, and falsy entries are skipped. `elements`
@@ -399,7 +400,7 @@ const Proto = {
  * **Example** (A counter)
  *
  * ```ts import.meta.vitest
- * import { Component } from "@effect/ui"
+ * import { Component } from "effect/ui"
  * import { Schema } from "effect"
  *
  * const CounterMessage = Schema.TaggedUnion({ Increment: {}, Decrement: {} })
@@ -425,9 +426,9 @@ const Proto = {
  * })
  * ```
  *
- * @stability unstable
+ * @stability experimental
  * @category constructors
- * @since 0.1.0
+ * @since 4.1.3
  */
 export const make = <
   const Name extends string,
@@ -435,9 +436,9 @@ export const make = <
   Msg,
   Props = {},
   Emits = never,
-  RI = never,
+  UI extends Model | Step<Model, Msg, Emits, any> = Model,
   U extends Model | Step<Model, Msg, Emits, any> = Model,
-  RV = never,
+  UV extends View.Node<Msg, any> = View.Node<Msg>,
   S extends Subscription.Subscription<Msg, any> = never,
   V extends View.Elements = View.Registered
 >(options: {
@@ -446,9 +447,9 @@ export const make = <
   readonly model: Schema.Codec<Model, any>
   readonly message: Schema.Codec<Msg, any>
   readonly emits?: Schema.Codec<Emits, any> | undefined
-  readonly init: ($: Init<Model, Msg, Emits, Props>) => Model | Step<Model, Msg, Emits, RI>
+  readonly init: ($: Init<Model, Msg, Emits, Props>) => UI
   readonly update: (model: Model, msg: Msg, $: Update<Model, Msg, Emits, Props>) => U
-  readonly view: (model: Model, h: View.Helper<Msg, Props> & View.Tags<V, Msg>) => View.Node<Msg, RV>
+  readonly view: (model: Model, h: View.Helper<Msg, Props> & View.Tags<V, Msg>) => UV
   readonly subscriptions?: ((model: Model, props: Props) => ReadonlyArray<S | false | null | undefined>) | undefined
   readonly elements?: View.Vocabulary<V> | undefined
 }): Component<
@@ -457,7 +458,10 @@ export const make = <
   Model,
   Msg,
   Emits,
-  Exclude<RI | StepRequirements<U> | RV | Subscription.Requirements<S>, Command.FrameworkService>,
+  Exclude<
+    StepRequirements<UI> | StepRequirements<U> | View.Requirements<UV> | Subscription.Requirements<S>,
+    Command.FrameworkService
+  >,
   V
 > => {
   const subscriptions = options.subscriptions
@@ -484,9 +488,9 @@ export const make = <
 /**
  * The options of `provide`.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
- * @since 0.1.0
+ * @since 4.1.3
  */
 export interface ProvideOptions<in E, out Msg> {
   /**
@@ -507,9 +511,9 @@ export interface ProvideOptions<in E, out Msg> {
 /**
  * The `local` option of `provide`, for Layers that can't fail.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
- * @since 0.1.0
+ * @since 4.1.3
  */
 export interface LocalOption {
   readonly local?: boolean | undefined
@@ -519,9 +523,9 @@ export interface LocalOption {
  * `C` with `ROut` provided and `RIn` required instead. Name, Model and message
  * are kept, so paths and story tests don't change.
  *
- * @stability unstable
+ * @stability experimental
  * @category utility types
- * @since 0.1.0
+ * @since 4.1.3
  */
 export type Provided<C, ROut, RIn> = C extends
   Component<infer N, infer P, infer M, infer Msg, infer E, infer _R, infer V>
@@ -532,24 +536,24 @@ export type Provided<C, ROut, RIn> = C extends
  * What `provide` accepts: a Layer, an array of them, or a function of props
  * returning a Layer.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
- * @since 0.1.0
+ * @since 4.1.3
  */
 export type ProvideInput = Layer.Any | ReadonlyArray<Layer.Any> | ((props: any) => Layer.Any)
 
 /**
  * Helper types for `provide`.
  *
- * @stability unstable
- * @since 0.1.0
+ * @stability experimental
+ * @since 4.1.3
  */
 export declare namespace ProvideInput {
   /**
    * The Layer type of an input.
    *
    * @category utility types
-   * @since 0.1.0
+   * @since 4.1.3
    */
   export type LayerOf<L> = L extends (props: any) => infer R ? R : L extends ReadonlyArray<infer E> ? E : L
 
@@ -557,7 +561,7 @@ export declare namespace ProvideInput {
    * The services an input provides.
    *
    * @category utility types
-   * @since 0.1.0
+   * @since 4.1.3
    */
   export type Success<L> = LayerOf<L> extends infer X ? X extends Layer.Layer<infer A, any, any> ? A : never : never
 
@@ -565,7 +569,7 @@ export declare namespace ProvideInput {
    * The error an input can fail with.
    *
    * @category utility types
-   * @since 0.1.0
+   * @since 4.1.3
    */
   export type Error<L> = LayerOf<L> extends infer X ? X extends Layer.Layer<any, infer E, any> ? E : never : never
 
@@ -573,7 +577,7 @@ export declare namespace ProvideInput {
    * The services an input requires.
    *
    * @category utility types
-   * @since 0.1.0
+   * @since 4.1.3
    */
   export type Services<L> = LayerOf<L> extends infer X ? X extends Layer.Layer<any, any, infer R> ? R : never : never
 }
@@ -582,9 +586,9 @@ export declare namespace ProvideInput {
  * The options argument of `provide`. Optional when the Layer can't fail with a
  * typed error, and otherwise a required argument with `onFailure`.
  *
- * @stability unstable
+ * @stability experimental
  * @category utility types
- * @since 0.1.0
+ * @since 4.1.3
  */
 export type ProvideRest<L, Msg> = [ProvideInput.Error<L>] extends [never] ?
   [options?: LocalOption & { readonly onFailure?: ProvideOptions<never, Msg>["onFailure"] | undefined }]
@@ -594,9 +598,9 @@ export type ProvideRest<L, Msg> = [ProvideInput.Error<L>] extends [never] ?
  * Passes unless the Layer can fail and no `onFailure` was given; then names
  * the error type in the compiler error.
  *
- * @stability unstable
+ * @stability experimental
  * @category utility types
- * @since 0.1.0
+ * @since 4.1.3
  */
 export type RequiresOnFailure<L, O> = [ProvideInput.Error<L>] extends [never] ? unknown
   : [O] extends [never] ? { readonly "This Layer can fail. Pass { onFailure } to handle": ProvideInput.Error<L> }
@@ -606,9 +610,9 @@ export type RequiresOnFailure<L, O> = [ProvideInput.Error<L>] extends [never] ? 
  * Passes unless the Layer can fail, because the curried form has no
  * `onFailure`.
  *
- * @stability unstable
+ * @stability experimental
  * @category utility types
- * @since 0.1.0
+ * @since 4.1.3
  */
 export type CurriedCantFail<L> = [ProvideInput.Error<L>] extends [never] ? unknown
   : {
@@ -652,7 +656,7 @@ const toLayer = (layers: Layer.Any | ReadonlyArray<Layer.Any>): Layer.Layer<any,
  * **Example** (Sharing Command Layers across rows, and a per-instance store)
  *
  * ```ts import.meta.vitest
- * import { Command, Component } from "@effect/ui"
+ * import { Command, Component } from "effect/ui"
  * import { Context, Effect, Layer, Schema } from "effect"
  *
  * const RowMessage = Schema.TaggedUnion({ Save: {}, Saved: {} })
@@ -684,9 +688,9 @@ const toLayer = (layers: Layer.Any | ReadonlyArray<Layer.Any>): Layer.Layer<any,
  * const Editor = Component.provide(Row, EditorStore.layer, { local: true }) // per instance
  * ```
  *
- * @stability unstable
+ * @stability experimental
  * @category composition
- * @since 0.1.0
+ * @since 4.1.3
  */
 export const provide: {
   <Props, ROut, RIn>(

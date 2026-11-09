@@ -12,7 +12,7 @@
  * **Example** (Declaring a feature and providing an implementation)
  *
  * ```ts import.meta.vitest
- * import { Component, Feature } from "@effect/ui"
+ * import { Component, Feature } from "effect/ui"
  * import { Schema } from "effect"
  *
  * const TodosProps = Schema.Struct({ filter: Schema.Literals(["all", "open"]) })
@@ -35,32 +35,32 @@
  * const TodosLive = Todos.layer(TodoList)
  * ```
  *
- * @stability unstable
- * @since 0.1.0
+ * @stability experimental
+ * @since 4.1.3
  */
-import * as Context from "effect/Context"
-import * as Effect from "effect/Effect"
-import * as Layer from "effect/Layer"
-import * as Predicate from "effect/Predicate"
-import * as Schema from "effect/Schema"
-import * as Scope from "effect/Scope"
+import * as Context from "../Context.ts"
+import * as Effect from "../Effect.ts"
+import * as Layer from "../Layer.ts"
+import * as Predicate from "../Predicate.ts"
+import * as Schema from "../Schema.ts"
+import * as Scope from "../Scope.ts"
 import type * as Component from "./Component.ts"
 
 /**
  * Identifies a feature service.
  *
- * @stability unstable
+ * @stability experimental
  * @category type ids
- * @since 0.1.0
+ * @since 4.1.3
  */
-export const TypeId = "~@effect/ui/Feature" as const
+export const TypeId = "~effect/ui/Feature" as const
 
 /**
  * Identifies a feature service.
  *
- * @stability unstable
+ * @stability experimental
  * @category type ids
- * @since 0.1.0
+ * @since 4.1.3
  */
 export type TypeId = typeof TypeId
 
@@ -74,9 +74,9 @@ export type TypeId = typeof TypeId
  * Layer memoisation is harmless and every slot still gets its own instance,
  * Model and Scope.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
- * @since 0.1.0
+ * @since 4.1.3
  */
 export interface Implementation<in out Props, out Emits> {
   readonly component: Component.Mountable<Props, Emits, never>
@@ -86,9 +86,9 @@ export interface Implementation<in out Props, out Emits> {
 /**
  * A feature service class, as returned by `Service`.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
- * @since 0.1.0
+ * @since 4.1.3
  */
 export interface Service<in out Self, in out Props, in out Emits>
   extends Context.Key<Self, Implementation<Props, Emits>>
@@ -108,18 +108,18 @@ export interface Service<in out Self, in out Props, in out Emits>
 /**
  * Any feature service.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
- * @since 0.1.0
+ * @since 4.1.3
  */
 export type Any = Service<any, any, any>
 
 /**
  * Returns `true` if `u` is a feature service.
  *
- * @stability unstable
+ * @stability experimental
  * @category guards
- * @since 0.1.0
+ * @since 4.1.3
  */
 export const isService = (u: unknown): u is Any => Predicate.hasProperty(u, TypeId)
 
@@ -142,7 +142,7 @@ export const isService = (u: unknown): u is Any => Predicate.hasProperty(u, Type
  * **Example** (A feature with a fake for tests)
  *
  * ```ts import.meta.vitest
- * import { Component, Feature } from "@effect/ui"
+ * import { Component, Feature } from "effect/ui"
  * import { Schema } from "effect"
  *
  * class Todos extends Feature.Service<Todos>()("Todos", {
@@ -162,9 +162,9 @@ export const isService = (u: unknown): u is Any => Predicate.hasProperty(u, Type
  * const TodosFake = Todos.layer(FakeTodos)
  * ```
  *
- * @stability unstable
+ * @stability experimental
  * @category constructors
- * @since 0.1.0
+ * @since 4.1.3
  */
 export const Service: <Self>() => <
   const Name extends string,
