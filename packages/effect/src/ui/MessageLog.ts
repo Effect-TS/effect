@@ -27,7 +27,7 @@
 import * as Cause from "../Cause.ts"
 import * as Context from "../Context.ts"
 import * as Effect from "../Effect.ts"
-import * as InternalToCodec from "../internal/schema/toCodec.ts"
+import { memoize } from "../Function.ts"
 import * as Layer from "../Layer.ts"
 import * as Queue from "../Queue.ts"
 import * as Redacted from "../Redacted.ts"
@@ -545,14 +545,26 @@ const redactedLink = Schema.link<Redacted.Redacted<unknown>>()(
 )
 
 /**
- * The JSON codec a component Schema is sent through. Every `Schema.Redacted`
- * node, including one that already has an encoding (`RedactedFromValue`),
- * encodes to `{ "~redacted": true }` whatever its own codec would do.
+ * Gives every `Schema.Redacted` node in `ast` the placeholder encoding, wherever
+ * it is: in a field, an element or a union member, in a declaration's type
+ * parameters (`Option`, `ReadonlyMap`, ...), behind a `suspend`, or on the
+ * encoded side of a transformation. A node's own codec is replaced too, so
+ * `RedactedFromValue` can't unwrap its value. Declaration type parameters
+ * matter most: a declaration encodes its contents with them, before any JSON
+ * codec derived for the declaration itself runs.
  */
-const toWireAST = InternalToCodec.makeToCodecJsonAST((ast) => {
-  if (!isRedactedAST(ast)) return undefined
-  const out = SchemaAST.replaceEncoding(ast, [redactedLink])
-  return ast.context === undefined ? out : SchemaAST.replaceContextLastLink(out, ast.context)
+const redactAST: (ast: SchemaAST.AST) => SchemaAST.AST = memoize((ast: SchemaAST.AST): SchemaAST.AST => {
+  if (isRedactedAST(ast)) {
+    const out = SchemaAST.replaceEncoding(ast, [redactedLink])
+    return ast.context === undefined ? out : SchemaAST.replaceContextLastLink(out, ast.context)
+  }
+  if (ast.encoding !== undefined) {
+    const body = SchemaAST.replaceEncoding(ast, undefined)
+    const redactedBody = redactAST(body)
+    const encoding = SchemaAST.mapOrSame(ast.encoding, (link) => SchemaAST.mapLink(link, redactAST))
+    return redactedBody === body && encoding === ast.encoding ? ast : SchemaAST.replaceEncoding(redactedBody, encoding)
+  }
+  return "recur" in ast ? ast.recur(redactAST) : ast
 })
 
 /**
@@ -575,7 +587,9 @@ export const makeEncoder = (options?: {
     const schema = component[field] as Schema.Top
     let encode = encoders.get(schema)
     if (encode === undefined) {
-      encode = Schema.encodeUnknownSync(Schema.make<Schema.Codec<unknown, unknown>>(toWireAST(schema.ast)))
+      encode = Schema.encodeUnknownSync(
+        Schema.toCodecJson(Schema.make<Schema.Codec<unknown, unknown>>(redactAST(schema.ast)))
+      )
       encoders.set(schema, encode)
     }
     try {

@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Context, Effect, Layer, LayerMap, Option, Redacted, Schema, Stream } from "effect"
+import { Context, Effect, Layer, LayerMap, Option, Redacted, Schema, SchemaTransformation, Stream } from "effect"
 import { TestClock } from "effect/testing"
 import { Command, Component, Feature, MessageLog, Renderer, Subscription } from "effect/ui"
 import * as runtime from "effect/ui/internal/runtime"
@@ -782,6 +782,60 @@ describe("Runtime", () => {
       })
       assert.deepStrictEqual(wire.emits, [placeholder])
       assert.deepStrictEqual(warnings, [])
+    })
+
+    it("Redacted values inside declarations and transformations are sent as placeholders", () => {
+      const Secret = Schema.RedactedFromValue(Schema.String)
+      class Holder extends Schema.Class<Holder>("Holder")({ secret: Secret }) {}
+      const Model = Schema.Struct({
+        option: Schema.Option(Secret),
+        nested: Schema.Option(Schema.Option(Holder)),
+        map: Schema.ReadonlyMap(Schema.String, Secret),
+        encodedSide: Schema.Redacted(Schema.String).pipe(
+          Schema.decodeTo(
+            Schema.String,
+            SchemaTransformation.transform({ decode: Redacted.value, encode: Redacted.make })
+          )
+        ),
+        plain: Schema.Option(Schema.ReadonlyMap(Schema.String, Schema.Date))
+      })
+      const model: typeof Model.Type = {
+        option: Option.some(Redacted.make("s1")),
+        nested: Option.some(Option.some(new Holder({ secret: Redacted.make("s2") }))),
+        map: new Map([["k", Redacted.make("s3")]]),
+        encodedSide: "s4",
+        plain: Option.some(new Map([["at", new Date(0)]]))
+      }
+      const Secrets = Component.make({
+        name: "Secrets",
+        model: Model,
+        message: Schema.Never,
+        init: () => model,
+        update: (model) => model,
+        view: (_, h) => h.text("")
+      })
+      const placeholder = { "~redacted": true }
+      const wire = MessageLog.makeEncoder().encode({
+        _tag: "Mounted",
+        seq: 1,
+        at: 0,
+        session: "s",
+        path: "/Secrets",
+        component: Secrets,
+        props: {},
+        model,
+        commands: [],
+        emits: [],
+        adopted: false
+      }) as any
+      assert.deepStrictEqual(wire.model, {
+        option: { _tag: "Some", value: placeholder },
+        nested: { _tag: "Some", value: { _tag: "Some", value: { secret: placeholder } } },
+        map: [["k", placeholder]],
+        encodedSide: placeholder,
+        // Schemas without a Redacted value encode as `Schema.toCodecJson` does.
+        plain: Schema.encodeSync(Schema.toCodecJson(Model.fields.plain))(model.plain)
+      })
     })
 
     it("memory keeps the last entries, and fanout feeds several logs", () => {
