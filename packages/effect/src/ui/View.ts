@@ -26,9 +26,11 @@
  * @stability experimental
  * @since 4.1.3
  */
+import type * as Effect from "../Effect.ts"
 import type * as AsyncResult from "../reactivity/AsyncResult.ts"
 import type * as Component from "./Component.ts"
 import type * as Feature from "./Feature.ts"
+import type * as Renderer from "./Renderer.ts"
 
 /**
  * A node of a view: an element, text, or a child component slot.
@@ -81,7 +83,8 @@ export type Handler<Msg, Payload> = Msg | ((payload: Payload) => Msg | undefined
  * `attrs` are strings set as attributes. `props` are typed values the host
  * decides the meaning of. `handlers` map an event name to its handler, so
  * re-rendering never touches listeners. `key` keeps the element's node when
- * its siblings move; unkeyed elements match by position.
+ * its siblings move; unkeyed elements match by position. `refKey` names the
+ * element for ref Commands, and `mount` is the work started by `onMount`.
  *
  * @stability experimental
  * @category models
@@ -94,7 +97,22 @@ export interface Element<out Msg, out R = never> {
   readonly attrs: Readonly<Record<string, string>>
   readonly props: Readonly<Record<string, unknown>>
   readonly handlers: Readonly<Record<string, Handler<Msg, any>>>
+  readonly refKey: string | undefined
+  readonly mount: Mount<Msg> | undefined
   readonly children: ReadonlyArray<Node<Msg, R>>
+}
+
+/**
+ * What `onMount` stores: a name shown in the tree, and the work to run with
+ * the host's node once the element is committed.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.1.3
+ */
+export interface Mount<out Msg> {
+  readonly name: string
+  readonly run: (node: any) => Effect.Effect<Msg, never, any>
 }
 
 /**
@@ -254,7 +272,7 @@ export const children = <Msg>(inputs: ReadonlyArray<Input<Msg>>): Array<Node<Msg
  * @category models
  * @since 4.1.3
  */
-export class ElementBuilder<out Msg, out R = never, in out Events = Record<string, unknown>>
+export class ElementBuilder<out Msg, out R = never, in out Events = Record<string, unknown>, in out HostNode = unknown>
   implements Element<Msg, R>
 {
   /**
@@ -288,6 +306,25 @@ export class ElementBuilder<out Msg, out R = never, in out Events = Record<strin
    */
   readonly handlers: Readonly<Record<string, Handler<Msg, any>>> = {}
   /**
+   * The ref set with `ref`, if any.
+   *
+   * @since 4.1.3
+   */
+  readonly refKey: string | undefined = undefined
+  /**
+   * The work set with `onMount`, if any.
+   *
+   * @since 4.1.3
+   */
+  readonly mount: Mount<Msg> | undefined = undefined
+  /**
+   * Phantom: the host node this element renders to, which types `ref` and
+   * `onMount`.
+   *
+   * @since 4.1.3
+   */
+  declare readonly "~HostNode"?: (_: HostNode) => HostNode
+  /**
    * Phantom: the element's events and their payloads.
    *
    * @since 4.1.3
@@ -314,7 +351,9 @@ export class ElementBuilder<out Msg, out R = never, in out Events = Record<strin
    *
    * @since 4.1.3
    */
-  protected with(patch: Partial<Pick<Element<Msg, R>, "elementKey" | "attrs" | "props" | "handlers">>): this {
+  protected with(
+    patch: Partial<Pick<Element<Msg, R>, "elementKey" | "attrs" | "props" | "handlers" | "refKey" | "mount">>
+  ): this {
     return Object.assign(Object.create(Object.getPrototypeOf(this)), this, patch)
   }
   /**
@@ -350,6 +389,35 @@ export class ElementBuilder<out Msg, out R = never, in out Events = Record<strin
   prop(name: string, value: unknown): this {
     return this.with({ props: { ...this.props, [name]: value } })
   }
+  /**
+   * Names this element for ref Commands, which reach it through
+   * `Renderer.Refs` within the instance that renders it. A ref declared for
+   * another kind of node doesn't compile.
+   *
+   * @since 4.1.3
+   */
+  ref(ref: Renderer.Ref<HostNode>): this {
+    return this.with({ refKey: ref.key })
+  }
+  /**
+   * Runs `run` with this element's host node after it's committed, in a Scope
+   * that closes when the element goes and survives patches. Its message comes
+   * back to the component, and its requirements join the component's.
+   *
+   * **Details**
+   *
+   * A defect fails the instance. It never runs on the server or on a host that
+   * doesn't run mounts, such as `TestHost`, where a test sends the message
+   * itself. Call it last: it returns the core builder.
+   *
+   * @since 4.1.3
+   */
+  onMount<R2>(
+    name: string,
+    run: (node: HostNode) => Effect.Effect<Msg, never, R2>
+  ): ElementBuilder<Msg, R | R2, Events, HostNode> {
+    return this.with({ mount: { name, run } }) as any
+  }
 }
 
 /**
@@ -381,7 +449,13 @@ export interface Elements {
  */
 export interface Vocabulary<out V extends Elements = Elements> {
   readonly name: string
-  readonly tags: Readonly<Record<string, (...children: ReadonlyArray<any>) => ElementBuilder<any, any, any>>>
+  readonly tags: Readonly<Record<string, (...children: ReadonlyArray<any>) => ElementBuilder<any, any, any, any>>>
+  /**
+   * The only tags that may hold text, for a vocabulary such as a native one
+   * where text lives in a text primitive. `h.el` checks it at runtime. Text
+   * goes anywhere when it's left out.
+   */
+  readonly textParents?: ReadonlyArray<string> | undefined
   readonly "~V"?: V
 }
 
@@ -498,11 +572,20 @@ export interface Helper<Msg, Props> {
 
 class HelperImpl<Msg, Props> implements Helper<Msg, Props> {
   readonly props: Props
-  constructor(props: Props) {
+  readonly elements: Vocabulary<any> | undefined
+  constructor(props: Props, elements: Vocabulary<any> | undefined) {
     this.props = props
+    this.elements = elements
   }
   el(tag: string, ...inputs: ReadonlyArray<Input<Msg>>): ElementBuilder<Msg, any> {
-    return new ElementBuilder(tag, children(inputs))
+    const nodes = children(inputs)
+    const textParents = this.elements?.textParents
+    if (textParents !== undefined && !textParents.includes(tag) && nodes.some((node) => node._tag === "Text")) {
+      throw new Error(
+        `<${tag}> can't hold text in the ${this.elements!.name} vocabulary; text goes inside ${textParents.join(", ")}`
+      )
+    }
+    return new ElementBuilder(tag, nodes)
   }
   text(value: string): Text {
     return text(value)
@@ -531,7 +614,7 @@ class HelperImpl<Msg, Props> implements Helper<Msg, Props> {
 
 const ignore = () => undefined
 
-const helperClasses = new WeakMap<Vocabulary<any>, new(props: any) => Helper<any, any>>()
+const helperClasses = new WeakMap<Vocabulary<any>, typeof HelperImpl<any, any>>()
 
 /**
  * Builds the view helper for one render, with a vocabulary's element names
@@ -543,14 +626,15 @@ export const makeHelper = <Msg, Props, V extends Elements = never>(
   props: Props,
   elements: Vocabulary<V> | undefined
 ): Helper<Msg, Props> & Tags<V, Msg> => {
-  if (elements === undefined) return new HelperImpl(props) as any
+  if (elements === undefined) return new HelperImpl(props, undefined) as any
   let Class = helperClasses.get(elements)
   if (Class === undefined) {
-    Class = class extends HelperImpl<any, any> {}
-    Object.assign(Class.prototype, elements.tags)
-    helperClasses.set(elements, Class)
+    const Made = class extends HelperImpl<any, any> {}
+    Object.assign(Made.prototype, elements.tags)
+    helperClasses.set(elements, Made)
+    Class = Made
   }
-  return new Class(props) as any
+  return new Class(props, elements) as any
 }
 
 /**
