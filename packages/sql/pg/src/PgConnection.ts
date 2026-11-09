@@ -300,7 +300,9 @@ export const PgConnection = Context.Service<PgConnection>("@effect/sql-pg/PgConn
  * Password resolution, transport, optional `SSLRequest`, startup, and
  * authentication run under `connectTimeout` (5 seconds by default). The effect
  * resolves when the backend sends `ReadyForQuery`. Closing the scope sends
- * `Terminate` and ends the socket.
+ * `Terminate`, ends the socket, and destroys the transport (a custom `stream`
+ * included) once the message has flushed, or after one second if the flush
+ * stalls. Release does not wait for the peer.
  *
  * Use `sslmode=require` or explicit `ssl: true` to require encryption.
  * Unix sockets and custom streams should set `ssl.servername` explicitly.
@@ -366,6 +368,7 @@ const abortDrainGraceMillis = 10
 /** PostgreSQL `query_canceled` SQLSTATE. */
 const queryCanceledCode = "57014"
 const cancelRequestTimeoutMillis = 5000
+const terminateTimeoutMillis = 1000
 const unlistenTimeoutMillis = 5000
 /** How many statements a multiplexed session keeps on the wire at once. */
 const maxPipelineDepth = 128
@@ -516,10 +519,18 @@ class PgConnectionImpl implements PgConnection {
 
   closeUnsafe(): void {
     this.closed = true
+    const socket = this.session.socket
     let destroySocket = true
-    if (this.deadWith === undefined && this.session.socket.writable) {
+    if (this.deadWith === undefined && socket.writable) {
       try {
-        this.session.socket.end(PgProtocol.encodeTerminate())
+        // Once Terminate and our FIN have reached the kernel there is nothing
+        // left to read, so the descriptor is released without waiting for the
+        // peer's FIN, which a half-open proxy may never send.
+        const timeout = setTimeout(() => socket.destroy(), terminateTimeoutMillis)
+        timeout.unref()
+        socket.once("finish", () => socket.destroy())
+        socket.once("close", () => clearTimeout(timeout))
+        socket.end(PgProtocol.encodeTerminate())
         destroySocket = false
       } catch {
         // Fall back to the fatal path's immediate destroy below.
@@ -535,7 +546,6 @@ class PgConnectionImpl implements PgConnection {
       }),
       destroySocket
     )
-    const socket = this.session.socket
     socket.off("data", this.onData)
     socket.off("error", this.onSocketError)
     socket.off("close", this.onSocketClose)
