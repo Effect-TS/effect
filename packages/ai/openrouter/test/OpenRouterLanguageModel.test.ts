@@ -1,7 +1,7 @@
 import { Generated, OpenRouterClient, OpenRouterLanguageModel } from "@effect/ai-openrouter"
 import { assert, describe, it } from "@effect/vitest"
 import { deepStrictEqual, strictEqual } from "@effect/vitest/utils"
-import { Array, Context, Effect, Layer, Redacted, Ref, Schema, Stream } from "effect"
+import { Array, Context, Effect, Layer, Redacted, Ref, Schema, SchemaGetter, Stream } from "effect"
 import { type AiError, LanguageModel, Model, Prompt, Tool, Toolkit } from "effect/ai"
 import { HttpClient, type HttpClientError, type HttpClientRequest, HttpClientResponse } from "effect/http"
 
@@ -125,6 +125,41 @@ describe("OpenRouterLanguageModel", () => {
                 id: "call-2",
                 type: "function",
                 function: { name: "TagsTool", arguments: JSON.stringify({ tags: 42 }) }
+              }]
+            }
+          }]
+        }
+      }))))
+
+    it.effect("returns encoded tool parameters without decoding services when resolution is disabled", () =>
+      Effect.gen(function*() {
+        class Decoder extends Context.Service<Decoder, { readonly value: number }>()("test/OpenRouterDecoder") {}
+        const parameter = Schema.String.pipe(Schema.decodeTo(Schema.Number, {
+          decode: SchemaGetter.transformEffect(() => Effect.map(Decoder, (decoder) => decoder.value)),
+          encode: SchemaGetter.transform(String)
+        }))
+        const toolkit = Toolkit.make(Tool.make("Decode", {
+          parameters: Schema.Struct({ n: parameter })
+        }))
+        const response = yield* LanguageModel.generateText({
+          prompt: "Use a tool",
+          toolkit,
+          disableToolCallResolution: true
+        }).pipe(Effect.provide(OpenRouterLanguageModel.model("openai/gpt-4o-mini")))
+
+        deepStrictEqual(response.toolCalls.map((part) => part.params), [{ n: "1" }])
+      }).pipe(Effect.provide(makeTestLayer({
+        body: {
+          choices: [{
+            finish_reason: "tool_calls",
+            index: 0,
+            message: {
+              role: "assistant",
+              content: null,
+              tool_calls: [{
+                id: "call-1",
+                type: "function",
+                function: { name: "Decode", arguments: JSON.stringify({ n: "1" }) }
               }]
             }
           }]
