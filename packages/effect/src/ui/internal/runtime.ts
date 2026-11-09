@@ -7,6 +7,7 @@
 import * as Cause from "../../Cause.ts"
 import * as Clock from "../../Clock.ts"
 import * as Context from "../../Context.ts"
+import * as Duration from "../../Duration.ts"
 import * as Effect from "../../Effect.ts"
 import * as Equal from "../../Equal.ts"
 import * as Exit from "../../Exit.ts"
@@ -28,6 +29,7 @@ import type * as Subscription from "../Subscription.ts"
 import * as View from "../View.ts"
 import * as Executor from "./executor.ts"
 import * as schedule from "./schedule.ts"
+import * as serverHost from "./serverHost.ts"
 import * as services from "./services.ts"
 
 // ---------------------------------------------------------------------------
@@ -43,14 +45,28 @@ interface Env {
   ctx: Context.Context<any> | undefined
   failure: Cause.Cause<unknown> | undefined
   readonly parent: Env | undefined
+  /** On the server: a Layer that is never built there, or one below it. It never settles. */
+  readonly never: boolean
   readonly waiters: Array<{
     readonly ready: (ctx: Context.Context<any>) => void
     readonly failed: ((cause: Cause.Cause<unknown>) => void) | undefined
   }>
 }
 
-const readyEnv = (ctx: Context.Context<any>, parent?: Env): Env => ({ ctx, failure: undefined, parent, waiters: [] })
-const buildingEnv = (parent: Env): Env => ({ ctx: undefined, failure: undefined, parent, waiters: [] })
+const readyEnv = (ctx: Context.Context<any>, parent?: Env): Env => ({
+  ctx,
+  failure: undefined,
+  parent,
+  waiters: [],
+  never: false
+})
+const buildingEnv = (parent: Env, never = parent.never): Env => ({
+  ctx: undefined,
+  failure: undefined,
+  parent,
+  waiters: [],
+  never
+})
 /** The nearest Env with services: what a fallback, or work after a handled Layer failure, runs against. */
 const settled = (env: Env): Env => env.ctx !== undefined ? env : settled(env.parent!)
 const whenReady = (
@@ -114,6 +130,8 @@ interface RSlot {
 interface Run {
   readonly command: Command.Effectful<any, any, never> | Command.Streaming<any, any, never>
   readonly issued: MessageLog.Issued
+  /** On the server: the run's position among `init`'s Commands. */
+  readonly initIndex: number | undefined
   status: "running" | "queued"
   fiber: Fiber.Fiber<unknown, unknown> | undefined
   done: boolean
@@ -142,6 +160,14 @@ export interface Instance {
   failure: Cause.Cause<unknown> | undefined
   rendered: Array<Rendered>
   closed: boolean
+  /** Hydration: the provided Layer is still building, so the server's nodes wait, inert. */
+  waiting: boolean
+  /** Hydration: whether this instance's children may adopt the server's Models. */
+  adoptsChildren: boolean
+  /** On the server: the client builds this instance fresh, because its Layer wasn't built. */
+  deferred: boolean
+  /** On the server: positions of `init`'s server Commands that haven't completed. */
+  readonly serverPending: Set<number>
   readonly runs: Array<Run>
   readonly subscriptions: Map<string, SubscriptionRun>
   readonly dispatch: (message: unknown, source: MessageLog.Source) => void
@@ -169,6 +195,26 @@ export interface Root {
   readonly buildsPendingSince: (flush: number) => number
   /** The merged head, as last given to the host. */
   readonly head: () => Head.Head
+  /** Completes once no slot is waiting to adopt the server's nodes. */
+  readonly adopted: Effect.Effect<void>
+  /** On the server: calls `f` once nothing is in flight. */
+  readonly whenIdle: (f: () => void) => void
+  /** On the server: settles what's left synchronously, stops the tree and serialises it once. */
+  readonly finish: () => {
+    readonly nodes: ReadonlyArray<Renderer.ServerNode>
+    readonly state: Renderer.State
+  }
+}
+
+/** The options `start` takes. */
+interface Options {
+  readonly fallback?:
+    | ((failure: AsyncResult.Failure<never, unknown>, h: any) => View.Node<never, any>)
+    | undefined
+  /** Hydration: the server's state. The container holds the server's nodes. */
+  readonly state?: Renderer.State | undefined
+  /** Server rendering. `start` is false once server Commands may no longer start. */
+  readonly server?: { readonly start: boolean; readonly host: Renderer.Host<any> } | undefined
 }
 
 /** A component's Model as JSON, for history restore. */
@@ -213,6 +259,24 @@ type Draft = MessageLog.Entry extends infer E ? E extends MessageLog.Entry ? Omi
 
 let sessions = 0
 
+/** Components and Commands already warned about being dropped on the server, so each warns once. */
+const warnedDrops = new Set<string>()
+
+/** The server's nodes for one instance: between its two markers. */
+interface Range {
+  readonly open: unknown
+  readonly close: unknown
+  readonly nodes: ReadonlyArray<unknown>
+  /** Whether the instance took these nodes, so whoever created the slot leaves them in place. */
+  claimed: boolean
+}
+
+/** How a view matches the server's nodes. */
+type Plan =
+  | { readonly _tag: "Element"; readonly node: unknown; readonly children: ReadonlyArray<Plan> }
+  | { readonly _tag: "Text"; readonly node: unknown }
+  | { readonly _tag: "Child"; readonly range: Range }
+
 // ---------------------------------------------------------------------------
 // mount
 // ---------------------------------------------------------------------------
@@ -222,30 +286,57 @@ export const mount = (
   component: Component.Any,
   rootProps: unknown,
   container: unknown,
-  options?: {
-    readonly fallback?:
-      | ((failure: AsyncResult.Failure<never, unknown>, h: any) => View.Node<never, any>)
-      | undefined
-  }
+  options?: Options
 ): Effect.Effect<Root & Renderer.Root<any, any>, never, Scope.Scope | Renderer.Renderer> =>
   Effect.contextWith((ctx: Context.Context<Scope.Scope | Renderer.Renderer>) =>
-    Effect.sync(() => start(component, rootProps, container, ctx, options))
+    Effect.sync(() => start(component, rootProps, container, ctx, { ...options, server: undefined }))
   )
+
+/**
+ * Renders a tree on the server: on a host that only keeps the node tree,
+ * waiting for provided Layers and `init`'s server Commands until nothing is
+ * in flight or the budget runs out, then serialising it once.
+ *
+ * @internal
+ */
+export const prerender = (
+  component: Component.Any,
+  rootProps: unknown,
+  options: { readonly budget: Duration.Input; readonly elements: ReadonlyArray<string> | "any" }
+): Effect.Effect<Renderer.Prerendered<any>> =>
+  Effect.gen(function*() {
+    const budget = Duration.fromInputUnsafe(options.budget)
+    const started = !Duration.isZero(budget)
+    const scope = yield* Scope.make("sequential")
+    const host = serverHost.make(options.elements)
+    const ctx = Context.add(yield* Effect.context<never>(), Scope.Scope, scope)
+    const root = start(component, rootProps, host.createElement("#root"), ctx, {
+      server: { start: started, host }
+    })
+    if (started) {
+      yield* Effect.raceFirst(
+        Effect.callback<void>((resume) => {
+          root.whenIdle(() => resume(Effect.void))
+        }),
+        Effect.sleep(budget)
+      )
+    }
+    const out = root.finish()
+    const model = root.model()
+    const head = root.head()
+    yield* Scope.close(scope, Exit.void)
+    return { nodes: out.nodes, state: out.state, model, head }
+  })
 
 const start = (
   component: Component.Any,
   rootProps: unknown,
   container: unknown,
   ctx: Context.Context<any>,
-  options:
-    | {
-      readonly fallback?:
-        | ((failure: AsyncResult.Failure<never, unknown>, h: any) => View.Node<never, any>)
-        | undefined
-    }
-    | undefined
+  options: Options | undefined
 ): Root & Renderer.Root<any, any> => {
-  const host = Context.get(ctx, services.Renderer).host
+  const server = options?.server
+  const host: Renderer.Host<any> = server !== undefined ? server.host : Context.get(ctx, services.Renderer).host
   const log = Context.get(ctx, MessageLog.MessageLog)
   const executor = Context.get(ctx, Executor.CurrentExecutor)
   const clock = Context.get(ctx, Clock.Clock)
@@ -255,6 +346,46 @@ const start = (
   const rootEmitted: Array<unknown> = []
   const sharedBuilds = new WeakMap<Env, Map<Layer.Layer<any, any, any>, SharedBuild>>()
   const hooks = Option.getOrUndefined(Context.getOption(ctx, services.RootHooks))
+
+  // -- server ---------------------------------------------------------------
+  // Whether `init`'s server Commands may still start: false with no budget, or once it's spent.
+  let serverStarts = server?.start ?? false
+  // Set by `finish`: the tree is serialised, and nothing it does from now on counts.
+  let frozen = false
+  // Server Command runs not yet ended.
+  let active = 0
+  const idleWaiters: Array<() => void> = []
+
+  // -- hydration ------------------------------------------------------------
+  const hydration = host.hydration
+  // The server's state, until every slot has adopted.
+  let hydrating: {
+    readonly state: Renderer.State
+    readonly deferred: ReadonlySet<string>
+    readonly pending: Readonly<Record<string, ReadonlyArray<number>>>
+  } | undefined = options?.state === undefined || server !== undefined ? undefined : {
+    state: options.state,
+    deferred: new Set(options.state["~deferred"] ?? []),
+    pending: options.state["~pending"] ?? {}
+  }
+  // Slots still waiting for their Layer before they adopt, and whether the first render is done.
+  let waiting = 0
+  let started = false
+  let adoptedDone = hydrating === undefined
+  const adoptedWaiters: Array<() => void> = []
+  const settleWaiting = () => {
+    waiting--
+    if (waiting === 0 && started) finishAdoption()
+  }
+  const finishAdoption = () => {
+    if (adoptedDone) return
+    adoptedDone = true
+    hydrating = undefined
+    for (const f of adoptedWaiters.splice(0)) f()
+    // Head sync starts with the flush after adoption.
+    headDirty = true
+    wake()
+  }
 
   // -- log ------------------------------------------------------------------
   let seq = 0
@@ -331,6 +462,12 @@ const start = (
     afterCommitHooks()
     rendering = false
     runCommitted()
+    checkIdle()
+  }
+  const checkIdle = () => {
+    if (idleWaiters.length === 0 || scheduled || dirty.size > 0 || deferred.length > 0) return
+    if (active > 0 || building.size > 0) return
+    for (const f of idleWaiters.splice(0)) f()
   }
   const runCommitted = () => {
     const done = committed
@@ -396,8 +533,9 @@ const start = (
     }
   }
 
-  /** After the nodes commit: head sync, then the router's hook. */
+  /** After the nodes commit: head sync, then the router's hook. Both wait until every slot has adopted. */
   const afterCommitHooks = () => {
+    if (!adoptedDone) return
     if (headChanged) {
       headChanged = false
       host.head?.(merged)
@@ -565,7 +703,8 @@ const start = (
     parent: Instance | undefined,
     parentEnv: Env,
     onEmit: (events: unknown) => unknown,
-    onFailure: ((failure: AsyncResult.Failure<never, unknown>) => unknown) | undefined
+    onFailure: ((failure: AsyncResult.Failure<never, unknown>) => unknown) | undefined,
+    range: Range | undefined
   ): Instance => {
     const scope = Scope.forkUnsafe(parent?.scope ?? rootScope, "sequential")
     const inst: Instance = {
@@ -584,10 +723,14 @@ const start = (
       failure: undefined,
       rendered: [],
       closed: false,
+      waiting: false,
+      adoptsChildren: false,
+      deferred: false,
+      serverPending: new Set(),
       runs: [],
       subscriptions: new Map(),
       dispatch(message, source) {
-        if (inst.closed) return
+        if (inst.closed || inst.waiting || frozen) return
         const next = guard(inst, "update", () => component.update(inst.model, message as never, inst.props))
         if (next === undefined) return
         const entrySeq = record({
@@ -604,7 +747,7 @@ const start = (
         apply(inst, next, entrySeq, false)
       },
       fire(event, handler, payload) {
-        if (inst.closed) return
+        if (inst.closed || inst.waiting) return
         const message = typeof handler === "function"
           ? guard(inst, "domEvent", () => (handler as (payload: unknown) => unknown)(payload), event)
           : handler
@@ -620,6 +763,11 @@ const start = (
         inst.closed = true
         dirty.delete(inst)
         record({ _tag: "Unmounted", path })
+        // A slot that closes while it waits no longer holds up adoption.
+        if (inst.waiting) {
+          inst.waiting = false
+          settleWaiting()
+        }
       })
     ))
     Effect.runSync(Scope.addFinalizer(
@@ -631,115 +779,153 @@ const start = (
     ))
 
     // Entries about the Layer wait until `Mounted` is logged.
-    let constructing = true
+    let buffering = true
     const early: Array<() => void> = []
     const lifecycle = (draft: Draft) => {
-      if (constructing) early.push(() => record(draft))
+      if (buffering) early.push(() => record(draft))
       else record(draft)
     }
+    const logEarly = () => {
+      buffering = false
+      for (const f of early.splice(0)) f()
+    }
+    let constructing = true
     let failedEarly: Cause.Cause<unknown> | undefined
     let pending = false
 
     // A provided Layer builds in the background. The instance renders at once; its Commands,
     // Subscriptions and mounts, and its descendants', wait for it.
     if (component.layer !== undefined) {
-      const sharedLayer = component.sharedLayer
-      const shared = sharedLayer !== undefined ? acquireShared(parentEnv, sharedLayer) : undefined
-      const own = shared !== undefined ? shared.env : buildingEnv(parentEnv)
-      inst.env = own
-      if (shared !== undefined) {
-        Effect.runSync(Scope.addFinalizer(scope, Effect.sync(() => releaseShared(parentEnv, sharedLayer!, shared))))
-      }
-      let settleBuild: (() => void) | undefined
-      const fail = (cause: Cause.Cause<unknown>) => {
-        settleBuild?.()
-        if (inst.closed) return
-        lifecycle({ _tag: "LayerFailed", path, cause })
-        const handle = component.layerFailure
-        if (handle === undefined) {
-          if (constructing) failedEarly = cause
-          else defer(() => failInstance(inst, cause, "layer"))
-          return
-        }
-        // Handled: the component stays mounted and hears about it once. Feature slots below show
-        // `fallback`, and Commands waiting for the Layer are interrupted.
-        failEnv(own, cause)
-        defer(() => {
-          const message = guard(inst, "onFailure", () => handle(AsyncResult.failure(cause)))
-          if (message !== undefined) inst.dispatch(message, { _tag: "Dispatch" })
-        })
-      }
-      const ready = () => {
-        if (!inst.closed && pending) lifecycle({ _tag: "LayerReady", path })
-      }
-      if (shared !== undefined) {
-        whenReady(own, ready, fail)
+      if (server !== undefined && (!component.layerOnServer || parentEnv.never)) {
+        // Kept off the server: never built, and the budget doesn't wait for it. The client builds it fresh.
+        inst.env = buildingEnv(parentEnv, true)
+        inst.deferred = true
       } else {
-        whenReady(parentEnv, (parentCtx) => {
-          if (inst.closed) return
-          // A factory that throws is this instance's Layer failing, not its parent's view.
-          let layer: Layer.Layer<any, any, any>
-          try {
-            layer = component.layer!(props)
-          } catch (defect) {
-            return fail(Cause.die(defect))
-          }
-          const fiber = buildLayer(layer, parentCtx, scope, (exit) => {
-            if (inst.closed) return
-            if (Exit.isFailure(exit)) return fail(exit.cause)
-            ready()
-            resolveEnv(own, Context.merge(parentCtx, exit.value))
-          })
-          // A build still running ends with its instance.
-          if (fiber !== undefined) {
-            Effect.runSync(Scope.addFinalizer(scope, Effect.sync(() => fiber.interruptUnsafe())))
-          }
-        }, fail)
-      }
-      if (own.ctx === undefined && own.failure === undefined && failedEarly === undefined) {
-        pending = true
-        lifecycle({ _tag: "LayerPending", path })
-        const stamp = { flush: flushes }
-        building.add(stamp)
-        settleBuild = () => {
-          // The router's settle condition is checked after a flush, so a settled build wakes one.
-          if (building.delete(stamp) && hooks !== undefined) wake()
+        const sharedLayer = component.sharedLayer
+        const shared = sharedLayer !== undefined ? acquireShared(parentEnv, sharedLayer) : undefined
+        const own = shared !== undefined ? shared.env : buildingEnv(parentEnv)
+        inst.env = own
+        if (shared !== undefined) {
+          Effect.runSync(Scope.addFinalizer(scope, Effect.sync(() => releaseShared(parentEnv, sharedLayer!, shared))))
         }
-        whenReady(own, settleBuild, settleBuild)
-        Effect.runSync(Scope.addFinalizer(scope, Effect.sync(settleBuild)))
+        let settleBuild: (() => void) | undefined
+        const fail = (cause: Cause.Cause<unknown>) => {
+          settleBuild?.()
+          if (inst.closed) return
+          lifecycle({ _tag: "LayerFailed", path, cause })
+          const handle = component.layerFailure
+          if (handle === undefined) {
+            if (constructing) failedEarly = cause
+            else {
+              defer(() => {
+                logEarly()
+                failInstance(inst, cause, "layer")
+              })
+            }
+            return
+          }
+          // Handled: the component stays mounted and hears about it once. Feature slots below show
+          // `fallback`, and Commands waiting for the Layer are interrupted. The server leaves it to the client.
+          inst.deferred = true
+          failEnv(own, cause)
+          defer(() => {
+            const message = guard(inst, "onFailure", () => handle(AsyncResult.failure(cause)))
+            if (message !== undefined) inst.dispatch(message, { _tag: "Dispatch" })
+          })
+        }
+        const ready = () => {
+          if (!inst.closed && pending) lifecycle({ _tag: "LayerReady", path })
+        }
+        if (shared !== undefined) {
+          whenReady(own, ready, fail)
+        } else {
+          whenReady(parentEnv, (parentCtx) => {
+            if (inst.closed) return
+            // A factory that throws is this instance's Layer failing, not its parent's view.
+            let layer: Layer.Layer<any, any, any>
+            try {
+              layer = component.layer!(props)
+            } catch (defect) {
+              return fail(Cause.die(defect))
+            }
+            const fiber = buildLayer(layer, parentCtx, scope, (exit) => {
+              if (inst.closed) return
+              if (Exit.isFailure(exit)) return fail(exit.cause)
+              ready()
+              resolveEnv(own, Context.merge(parentCtx, exit.value))
+            })
+            // A build still running ends with its instance.
+            if (fiber !== undefined) {
+              Effect.runSync(Scope.addFinalizer(scope, Effect.sync(() => fiber.interruptUnsafe())))
+            }
+          }, fail)
+        }
+        if (own.ctx === undefined && own.failure === undefined && failedEarly === undefined) {
+          pending = true
+          lifecycle({ _tag: "LayerPending", path })
+          const stamp = { flush: flushes }
+          building.add(stamp)
+          settleBuild = () => {
+            if (!building.delete(stamp)) return
+            // The router's settle condition is checked after a flush, so a settled build wakes one.
+            if (hooks !== undefined) wake()
+            checkIdle()
+          }
+          whenReady(own, settleBuild, settleBuild)
+          Effect.runSync(Scope.addFinalizer(scope, Effect.sync(settleBuild)))
+        }
       }
     }
 
-    const first = failedEarly !== undefined ? undefined : guard(inst, "init", () => {
-      const elements = component.elements()
-      if (elements !== undefined && host.elements !== "any" && !host.elements.includes(elements.name)) {
-        throw new Error(
-          `${component.name} renders ${elements.name} elements, and this host shows ${host.elements.join(", ")}`
-        )
-      }
-      return component.init(props)
-    })
-    // History restore follows hydration's adoption rule: the Model is adopted and `init` replayed. Its
-    // server Commands are dropped, since their results are already in the Model, nothing is pending, and
-    // the other Commands run as on any mount. Events from `init` are dropped.
-    const restored = first === undefined || hooks === undefined ? undefined : hooks.restore(path)
-    const adopted = restored === undefined ? Option.none() : jsonCodecOf(component.model).decode(restored)
-    let mountedSeq = -1
-    if (first !== undefined) {
-      inst.model = Option.isSome(adopted) ? adopted.value : first.model
-      mountedSeq = record({
-        _tag: "Mounted",
-        path,
-        component,
-        props,
-        model: inst.model,
-        commands: first.commands,
-        events: first.events,
-        adopted: Option.isSome(adopted)
+    // Hydration: the Model the server rendered this path with, unless it deferred the path.
+    const fromServer: Option.Option<unknown> = hydrating !== undefined &&
+        (parent === undefined || parent.adoptsChildren) &&
+        !hydrating.deferred.has(path) &&
+        Object.hasOwn(hydrating.state, path)
+      ? jsonCodecOf(component.model).decode(hydrating.state[path])
+      : Option.none()
+    const pendingPositions = Option.isSome(fromServer) ? hydrating!.pending[path] ?? [] : []
+
+    /**
+     * Runs `init` and renders. An instance adopting a Model (from the server, or from
+     * history restore) replays `init` only for its Commands: the adopted Model wins, events
+     * are dropped, and server Commands are skipped unless the server lists them as pending.
+     * Given the server's nodes, it adopts them when its view matches, and otherwise builds fresh.
+     */
+    const begin = (range: Range | undefined, serverModel: Option.Option<unknown>) => {
+      const first = guard(inst, "init", () => {
+        const elements = component.elements()
+        if (elements !== undefined && host.elements !== "any" && !host.elements.includes(elements.name)) {
+          throw new Error(
+            `${component.name} renders ${elements.name} elements, and this host shows ${host.elements.join(", ")}`
+          )
+        }
+        return component.init(inst.props)
       })
-      if (Option.isSome(adopted)) {
+      let adopted = serverModel
+      if (first !== undefined && Option.isNone(adopted) && hooks !== undefined) {
+        const restored = hooks.restore(path)
+        if (restored !== undefined) adopted = jsonCodecOf(component.model).decode(restored)
+      }
+      const pendingSet = new Set(Option.isSome(serverModel) ? pendingPositions : [])
+      const skipped = (command: Command.Command<any, any>, index: number) =>
+        Option.isSome(adopted) && isReplayDropped(command) && !pendingSet.has(index)
+      let mountedSeq = -1
+      if (first !== undefined) {
+        inst.model = Option.isSome(adopted) ? adopted.value : first.model
+        inst.adoptsChildren = Option.isSome(serverModel)
+        mountedSeq = record({
+          _tag: "Mounted",
+          path,
+          component,
+          props: inst.props,
+          model: inst.model,
+          commands: first.commands,
+          events: first.events,
+          adopted: Option.isSome(adopted)
+        })
         first.commands.forEach((command, index) => {
-          if (!isReplayDropped(command)) return
+          if (!skipped(command, index)) return
           record({
             _tag: "CommandDropped",
             path,
@@ -748,34 +934,99 @@ const start = (
             reason: "adopted"
           })
         })
+        for (const position of pendingSet) {
+          if (position >= first.commands.length) {
+            forkNow(
+              ctx,
+              Effect.logWarning(
+                `${path}: the server lists init's Command ${position} as pending, and init issued ${first.commands.length}. init isn't deterministic.`
+              )
+            )
+          }
+        }
       }
+      logEarly()
+      if (first === undefined) return
+      const tree = guard(inst, "view", () => component.view(inst.model, inst.props))
+      if (tree === undefined) return
+      const plan = range !== undefined && Option.isSome(serverModel) ? matchList(inst, [tree], range.nodes) : undefined
+      const rendered = guard(
+        inst,
+        "view",
+        () => plan !== undefined ? adoptNode(inst, tree, plan[0]!, inst.env) : create(inst, tree, inst.env)
+      )
+      if (rendered === undefined) return
+      if (plan !== undefined) {
+        // Adopted: the markers go, and the server's nodes are the instance's.
+        range!.claimed = true
+        host.remove(range!.open)
+        host.remove(range!.close)
+      }
+      inst.rendered = [rendered]
+      updateHead(inst)
+      if (inst.failure !== undefined) return
+      if (Option.isSome(adopted)) {
+        apply(inst, { model: inst.model, commands: [], events: [] }, mountedSeq, true)
+        first.commands.forEach((command, index) => {
+          if (!skipped(command, index)) issue(inst, command, { seq: mountedSeq, index }, index)
+        })
+      } else apply(inst, first, mountedSeq, true)
     }
-    constructing = false
-    for (const f of early) f()
+
     if (failedEarly !== undefined) {
+      constructing = false
+      logEarly()
       failInstance(inst, failedEarly, "layer")
       return inst
     }
-    if (first === undefined) return inst
-    const tree = guard(inst, "view", () => component.view(inst.model, props))
-    if (tree === undefined) return inst
-    const rendered = guard(inst, "view", () => create(inst, tree, inst.env))
-    if (rendered === undefined) return inst
-    inst.rendered = [rendered]
-    updateHead(inst)
-    if (inst.failure !== undefined) return inst
-    if (Option.isSome(adopted)) {
-      apply(inst, { model: inst.model, commands: [], events: [] }, mountedSeq, true)
-      first.commands.forEach((command, index) => {
-        if (!isReplayDropped(command)) issue(inst, command, { seq: mountedSeq, index })
+
+    // Hydration: an instance whose provided Layer is still building keeps the server's nodes, inert,
+    // and adopts them once the Layer is ready. If the Layer fails and the component handles it,
+    // the instance is built fresh and gets its failure message.
+    if (
+      range !== undefined && Option.isSome(fromServer) && component.layer !== undefined &&
+      inst.env.ctx === undefined && inst.env.failure === undefined
+    ) {
+      const raw: Rendered = { _tag: "Text", v: emptyText, node: undefined }
+      inst.waiting = true
+      waiting++
+      range.claimed = true
+      inst.rendered = [range.open, ...range.nodes, range.close].map((node) => ({ ...raw, node }))
+      const resume = (adopt: boolean) => {
+        if (inst.closed || !inst.waiting) return
+        inst.waiting = false
+        const nodes = inst.rendered.flatMap(nodesOf)
+        inst.rendered = []
+        range.claimed = false
+        begin(range, adopt ? fromServer : Option.none())
+        if (!range.claimed) {
+          // Rebuilt: the new nodes take the server's place.
+          const parentNode = host.parentOf(range.open)
+          if (inst.failure === undefined && parentNode !== undefined) {
+            for (const node of inst.rendered.flatMap(nodesOf)) host.insertBefore(parentNode, node, range.open)
+          }
+          for (const node of nodes) host.remove(node)
+        }
+        headDirty = true
+        settleWaiting()
+      }
+      whenReady(inst.env, () => defer(() => resume(true)), () => {
+        if (component.layerFailure !== undefined) defer(() => resume(false))
       })
-    } else apply(inst, first, mountedSeq, true)
+      constructing = false
+      return inst
+    }
+
+    begin(range, fromServer)
+    constructing = false
     return inst
   }
 
   const apply = (inst: Instance, next: Component.Next<any, any, any, any>, entrySeq: number, initial: boolean) => {
     inst.model = next.model
-    next.commands.forEach((command, index) => issue(inst, command, { seq: entrySeq, index }))
+    next.commands.forEach((command, index) =>
+      issue(inst, command, { seq: entrySeq, index }, initial ? index : undefined)
+    )
     if (!initial) markDirty(inst)
     syncSubscriptions(inst)
     if (next.events.length === 0) return
@@ -806,7 +1057,27 @@ const start = (
     value: run
   })
 
-  const issue = (inst: Instance, command: Command.Command<any, any>, issued: MessageLog.Issued) => {
+  /** `initIndex` is the Command's position among those `init` returned, or `undefined` for `update`'s. */
+  const issue = (
+    inst: Instance,
+    command: Command.Command<any, any>,
+    issued: MessageLog.Issued,
+    initIndex: number | undefined
+  ) => {
+    if (server !== undefined) {
+      // On the server only `init`'s server Commands run. The rest run on the client.
+      if (command._tag === "Interrupt") {
+        if (initIndex === undefined) return
+      } else if (initIndex === undefined || !command.server || inst.env.never) {
+        record({ _tag: "CommandDropped", path: inst.path, name: command.name, issued, reason: "server" })
+        if (initIndex === undefined) warnDropped(inst, command.name)
+        return
+      } else {
+        inst.serverPending.add(initIndex)
+        // With the budget spent, or none, it stays pending for the client.
+        if (!serverStarts) return
+      }
+    }
     const decision = schedule.schedule(entriesOf(inst), command)
     for (const entry of decision.interrupt) stopRun(inst, entry.value)
     if (command._tag === "Interrupt") return
@@ -816,15 +1087,18 @@ const start = (
         const run: Run = {
           command,
           issued,
+          initIndex,
           status: decision.action === "start" ? "running" : "queued",
           fiber: undefined,
           done: false
         }
         inst.runs.push(run)
+        if (server !== undefined) active++
         if (run.status === "running") startRun(inst, run)
         return
       }
       case "drop": {
+        if (initIndex !== undefined) inst.serverPending.delete(initIndex)
         record({ _tag: "CommandDropped", path: inst.path, name: command.name, issued, reason: "mode" })
         return
       }
@@ -835,6 +1109,22 @@ const start = (
     run.done = true
     const index = inst.runs.indexOf(run)
     if (index >= 0) inst.runs.splice(index, 1)
+    if (server !== undefined) {
+      active--
+      checkIdle()
+    }
+  }
+
+  const warnDropped = (inst: Instance, name: string) => {
+    const key = `${inst.component.name}\u0000${name}`
+    if (warnedDrops.has(key)) return
+    warnedDrops.add(key)
+    forkNow(
+      ctx,
+      Effect.logWarning(
+        `${inst.component.name}'s update issued ${name} during server rendering, and it was dropped. Only init's server Commands run on the server.`
+      )
+    )
   }
 
   /** Starts the next queued run of the same group, if nothing in it is running any more. */
@@ -848,6 +1138,7 @@ const start = (
 
   const stopRun = (inst: Instance, run: Run) => {
     if (run.done) return
+    if (run.initIndex !== undefined && !frozen) inst.serverPending.delete(run.initIndex)
     removeRun(inst, run)
     run.fiber?.interruptUnsafe()
     record({ _tag: "CommandInterrupted", path: inst.path, name: run.command.name, issued: run.issued })
@@ -856,7 +1147,7 @@ const start = (
 
   const startRun = (inst: Instance, run: Run) => {
     const go = (envCtx: Context.Context<any>) => {
-      if (run.done || inst.closed) return
+      if (run.done || inst.closed || frozen) return
       const command = run.command
       const context = Context.add(Context.add(envCtx, Scope.Scope, inst.scope), services.Refs, refsOf(inst))
       const program = Effect.useSpan(
@@ -885,6 +1176,7 @@ const start = (
         if (run.done) return
         removeRun(inst, run)
         if (Exit.isSuccess(exit)) {
+          if (run.initIndex !== undefined) inst.serverPending.delete(run.initIndex)
           record({ _tag: "CommandEnded", path: inst.path, name: command.name, issued: run.issued })
         } else if (Cause.hasInterruptsOnly(exit.cause)) {
           record({ _tag: "CommandInterrupted", path: inst.path, name: command.name, issued: run.issued })
@@ -903,7 +1195,8 @@ const start = (
   // -- Subscriptions --------------------------------------------------------
   const syncSubscriptions = (inst: Instance) => {
     const subscriptions = inst.component.subscriptions
-    if (inst.closed || subscriptions === undefined) return
+    // Subscriptions never run on the server, and a waiting slot has no Model yet.
+    if (inst.closed || inst.waiting || server !== undefined || subscriptions === undefined) return
     const wanted = guard(inst, "subscription", () => subscriptions(inst.model, inst.props))
     if (wanted === undefined) return
     const byKey = new Map<string, Subscription.Subscription<any, any>>()
@@ -1010,6 +1303,7 @@ const start = (
 
   // -- create ---------------------------------------------------------------
   const render = (inst: Instance) => {
+    if (inst.waiting) return
     guard(inst, "view", () => {
       const tree = inst.component.view(inst.model, inst.props)
       const old = inst.rendered.flatMap(nodesOf)
@@ -1045,7 +1339,7 @@ const start = (
     }
   }
 
-  const createChild = (inst: Instance, view: View.Child<any, any>, env: Env): Rendered => {
+  const createChild = (inst: Instance, view: View.Child<any, any>, env: Env, range?: Range): Rendered => {
     const target = view.component
     if (Feature.isService(target) && env.ctx === undefined) {
       // The feature's service comes from a Layer that is still building, or failed. The slot shows
@@ -1061,6 +1355,7 @@ const start = (
         }
         whenReady(env, rerender, rerender)
       }
+      if (range !== undefined) removeRange(range)
       return {
         _tag: "Slot",
         v: view,
@@ -1080,7 +1375,9 @@ const start = (
       component = target
     }
     const path = `${inst.path}/${childName(target)}[${view.key}]`
-    const child = makeInstance(component, view.props, path, inst, childEnv, view.onEmit, view.onFailure)
+    const child = makeInstance(component, view.props, path, inst, childEnv, view.onEmit, view.onFailure, range)
+    // Built fresh: the server's nodes go, and the parent places the new ones.
+    if (range !== undefined && !range.claimed) removeRange(range)
     if (child.failure !== undefined) {
       // Failed while mounting: the slot shows its fallback in the placeholder's place.
       const nodes = child.rendered.flatMap(nodesOf)
@@ -1102,6 +1399,113 @@ const start = (
   ): Rendered => {
     const shown = guard(inst, "fallback", () => fallbackFor(view, failure)) ?? emptyText
     return { _tag: "Slot", v: view, inner: create(inst, shown, settled(env)), failure }
+  }
+
+  // -- hydration ------------------------------------------------------------
+  /** The range that starts at `open`, the marker for `path`, up to its closing marker. */
+  const rangeFrom = (open: unknown, path: string): Range | undefined => {
+    const nodes: Array<unknown> = []
+    for (let node = host.nextOf(open); node !== undefined; node = host.nextOf(node)) {
+      const kind = hydration!.inspect(node)
+      if (kind._tag === "Close" && kind.path === path) return { open, close: node, nodes, claimed: false }
+      nodes.push(node)
+    }
+    return undefined
+  }
+
+  const removeRange = (range: Range) => {
+    host.remove(range.open)
+    for (const node of range.nodes) host.remove(node)
+    host.remove(range.close)
+  }
+
+  const childNodes = (node: unknown): Array<unknown> => {
+    const out: Array<unknown> = []
+    for (let child = hydration!.firstChild(node); child !== undefined; child = host.nextOf(child)) out.push(child)
+    return out
+  }
+
+  /**
+   * Matches a view against the server's nodes: the instance's own nodes one by
+   * one, and each child slot by its marker range, which the child matches
+   * itself. A server never writes an empty text node, so an empty text matches
+   * nothing and is created.
+   */
+  const matchList = (
+    inst: Instance,
+    views: ReadonlyArray<View.Node<any, any>>,
+    nodes: ReadonlyArray<unknown>
+  ): Array<Plan> | undefined => {
+    const out: Array<Plan> = []
+    let index = 0
+    for (const view of views) {
+      const node = nodes[index]
+      const kind = node === undefined ? undefined : hydration!.inspect(node)
+      switch (view._tag) {
+        case "Text": {
+          if (kind?._tag === "Text") {
+            if (kind.text !== view.text) return undefined
+            out.push({ _tag: "Text", node })
+            index++
+          } else if (view.text === "") {
+            out.push({ _tag: "Text", node: undefined })
+          } else {
+            return undefined
+          }
+          break
+        }
+        case "Element": {
+          if (kind?._tag !== "Element" || kind.tag !== view.tag) return undefined
+          // A textarea's server text is its value, which the controlled property sets again.
+          const children = view.tag === "textarea" && view.children.length === 0
+            ? []
+            : matchList(inst, view.children, childNodes(node))
+          if (children === undefined) return undefined
+          out.push({ _tag: "Element", node, children })
+          index++
+          break
+        }
+        case "Child": {
+          const path = `${inst.path}/${childName(view.component)}[${view.key}]`
+          if (kind?._tag !== "Open" || kind.path !== path) return undefined
+          const range = rangeFrom(node, path)
+          if (range === undefined) return undefined
+          out.push({ _tag: "Child", range })
+          index += range.nodes.length + 2
+          break
+        }
+      }
+    }
+    return index === nodes.length ? out : undefined
+  }
+
+  /** Like `create`, but takes the server's nodes a matched view points at. */
+  const adoptNode = (inst: Instance, view: View.Node<any, any>, plan: Plan, env: Env): Rendered => {
+    switch (view._tag) {
+      case "Text": {
+        const node = (plan as Extract<Plan, { _tag: "Text" }>).node
+        return { _tag: "Text", v: view, node: node ?? host.createText(view.text) }
+      }
+      case "Element": {
+        const { children: plans, node } = plan as Extract<Plan, { _tag: "Element" }>
+        for (const name in view.attrs) {
+          if (hydration!.getAttr(node, name) !== view.attrs[name]) host.setAttr(node, name, view.attrs[name])
+        }
+        host.setEvents(node, view.handlers, inst.fire)
+        const children = view.children.map((child, index) => adoptNode(inst, child, plans[index]!, env))
+        place(node, children, undefined)
+        for (const name in view.props) host.setProp(node, name, view.props[name])
+        return {
+          _tag: "Element",
+          v: view,
+          node,
+          children,
+          mountScope: view.mount !== undefined ? startMount(inst, view.mount, node, env) : undefined
+        }
+      }
+      case "Child":
+        return createChild(inst, view, env, (plan as Extract<Plan, { _tag: "Child" }>).range)
+    }
   }
 
   // -- diff -----------------------------------------------------------------
@@ -1315,25 +1719,46 @@ const start = (
       }
     })
   ))
+  // Hydration: the root's range among the container's nodes, which may hold more than the app.
+  const rootPath = `/${component.name}`
+  let rootRange: Range | undefined
+  let rootRef: unknown = undefined
+  if (hydrating !== undefined && hydration !== undefined) {
+    for (let node = hydration.firstChild(container); node !== undefined; node = host.nextOf(node)) {
+      const kind = hydration.inspect(node)
+      if (kind._tag === "Open" && kind.path === rootPath) {
+        rootRange = rangeFrom(node, rootPath)
+        break
+      }
+    }
+    if (rootRange !== undefined) rootRef = host.nextOf(rootRange.close)
+  }
   const root = makeInstance(
     component,
     rootProps,
-    `/${component.name}`,
+    rootPath,
     undefined,
     readyEnv(ctx),
     () => undefined,
-    undefined
+    undefined,
+    rootRange
   )
+  if (rootRange !== undefined && !rootRange.claimed) removeRange(rootRange)
   rootRendered = () => root.rendered
   rootInstance = root
-  if (root.failure === undefined) place(container, root.rendered, undefined)
+  if (root.failure === undefined) place(container, root.rendered, rootRef)
+  started = true
+  if (waiting === 0 && !adoptedDone) {
+    adoptedDone = true
+    hydrating = undefined
+  }
   mergeHead()
   host.commit?.()
 
   const snapshot = (): Record<string, unknown> => {
     const out: Record<string, unknown> = {}
     const visit = (inst: Instance) => {
-      if (inst.closed || inst.failure !== undefined) return
+      if (inst.closed || inst.failure !== undefined || inst.waiting) return
       const encoded = jsonCodecOf(inst.component.model).encode(inst.model)
       if (Option.isSome(encoded)) out[inst.path] = encoded.value
       for (const child of inst.children.values()) visit(child)
@@ -1359,6 +1784,63 @@ const start = (
     return undefined
   }
 
+  /** Serialises the tree once, in document order, with the state the client adopts. */
+  const finish = () => {
+    serverStarts = false
+    if (scheduled || dirty.size > 0 || deferred.length > 0) flush()
+    frozen = true
+    const state: Record<string, unknown> = {}
+    const deferredPaths: Array<string> = []
+    const pendingPaths: Record<string, ReadonlyArray<number>> = {}
+    // `under`: inside a deferred instance, whose subtree the client builds fresh.
+    const instance = (inst: Instance, under: boolean): Renderer.ServerNode => {
+      let inner = under
+      if (!under) {
+        const encoded = inst.failure !== undefined ||
+            inst.deferred ||
+            (inst.component.layer !== undefined && inst.env.ctx === undefined)
+          ? Option.none()
+          : jsonCodecOf(inst.component.model).encode(inst.model)
+        if (Option.isNone(encoded)) {
+          deferredPaths.push(inst.path)
+          inner = true
+        } else {
+          state[inst.path] = encoded.value
+          if (inst.serverPending.size > 0) pendingPaths[inst.path] = [...inst.serverPending].sort((a, b) => a - b)
+        }
+      }
+      return {
+        _tag: "Range",
+        path: inst.path,
+        children: inst.failure !== undefined ? [] : inst.rendered.map((rendered) => serialize(inst, rendered, inner))
+      }
+    }
+    const serialize = (inst: Instance, rendered: Rendered, under: boolean): Renderer.ServerNode => {
+      switch (rendered._tag) {
+        case "Text":
+          return { _tag: "Text", text: rendered.v.text }
+        case "Element":
+          return {
+            _tag: "Element",
+            tag: rendered.v.tag,
+            attrs: rendered.v.attrs,
+            props: rendered.v.props,
+            children: rendered.children.map((child) => serialize(inst, child, under))
+          }
+        case "Child":
+          return instance(rendered.inst, under)
+        case "Slot": {
+          // A failed child, or a feature whose Layer isn't ready: the client builds it fresh.
+          const path = `${inst.path}/${childName(rendered.v.component)}[${rendered.v.key}]`
+          if (!under) deferredPaths.push(path)
+          return { _tag: "Range", path, children: [serialize(inst, rendered.inner, true)] }
+        }
+      }
+    }
+    const nodes = [instance(root, false)]
+    return { nodes, state: { ...state, "~deferred": deferredPaths, "~pending": pendingPaths } }
+  }
+
   const pendingOf = (
     inst: Instance
   ): Array<{ readonly path: string; readonly name: string; readonly status: string }> => [
@@ -1377,6 +1859,15 @@ const start = (
     pending: () => pendingOf(root),
     flush: () => flushes,
     buildsPendingSince,
-    head: () => merged
+    head: () => merged,
+    adopted: Effect.callback<void>((resume) => {
+      if (adoptedDone) resume(Effect.void)
+      else adoptedWaiters.push(() => resume(Effect.void))
+    }),
+    whenIdle: (f) => {
+      idleWaiters.push(f)
+      checkIdle()
+    },
+    finish
   }
 }
