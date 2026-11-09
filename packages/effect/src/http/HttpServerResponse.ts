@@ -645,7 +645,8 @@ export const setHeaders: {
 )
 
 /**
- * Returns a response with the cookie of the specified name removed.
+ * Returns a response with every cookie of the specified name removed, whatever
+ * its domain and path.
  *
  * @stability unstable
  * @category combinators
@@ -724,6 +725,11 @@ export const setCookie: {
  * Returns an effect because cookie encoding can fail. The original response is not
  * mutated; the effect succeeds with a response containing the updated cookie set.
  *
+ * **Gotchas**
+ *
+ * A cookie is expired only when its name, domain and path match the ones it was
+ * set with, so pass the same `domain` and `path`.
+ *
  * @stability unstable
  * @category combinators
  * @since 4.0.0
@@ -796,6 +802,11 @@ export const setCookieUnsafe: {
  *
  * Use when you need to expire one trusted cookie and want encoding failures to
  * throw instead of being represented as `CookiesError` failures.
+ *
+ * **Gotchas**
+ *
+ * A cookie is expired only when its name, domain and path match the ones it was
+ * set with, so pass the same `domain` and `path`.
  *
  * @stability unstable
  * @category combinators
