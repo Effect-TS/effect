@@ -144,7 +144,10 @@ export type Target = Command.Definition.Any | Command.Effectful<any, any, never>
  */
 export type StreamTarget = Command.Definition<any, any, true> | Command.Streaming<any, any, never>
 
-type AnyComponent = Component.Component<any, any, any, any, any, any, any>
+// A component with no messages has `Msg = never`, and its `update` can't take `any`, so it needs its own member.
+type AnyComponent =
+  | Component.Component<any, any, any, any, any, any, any>
+  | Component.Component<any, any, any, never, any, any, any>
 
 /**
  * A cursor over one story. Each step runs as soon as it's called, replaces
@@ -588,7 +591,8 @@ export const make = <C extends AnyComponent>(
 export const start = <C extends AnyComponent>(component: C, props: Component.Props<C>): Steps<C> => {
   const first = component.init(props)
   const empty = record<any, any, any, any>({
-    component,
+    // The record is stored with its types erased; `Steps<C>` restores them.
+    component: component as Component.Component<any, any, any, any, any, any, any>,
     props,
     model: first.model,
     pending: [],

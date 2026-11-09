@@ -1,5 +1,5 @@
 import { Effect, Schema, Stream } from "effect"
-import { Command } from "effect/ui"
+import { Command, Component } from "effect/ui"
 import { Story } from "effect/ui/testing"
 import { describe, expect, it } from "tstyche"
 import type { SearchBox, TodoItem } from "../../test/ui/fixtures/components.ts"
@@ -56,6 +56,24 @@ describe("Story", () => {
     const clickPlus = <S extends Story.Steps.Any>(s: S): S => s.click("+")
     expect(clickPlus(counter)).type.toBe<Story.Steps<typeof Counter>>()
     expect(counter.pipe(clickPlus).current.model).type.toBe<{ readonly count: number }>()
+  })
+
+  it("a component with no messages is a story, with its types kept", () => {
+    const Static = Component.make({
+      name: "Static",
+      model: Schema.Number,
+      message: Schema.Never,
+      init: () => 0,
+      update: (model) => model,
+      view: (model, h) => h.el("p", String(model))
+    })
+    const steps = Story.start(Static, {})
+    expect(steps).type.toBe<Story.Steps<typeof Static>>()
+    expect(steps.current.model).type.toBe<number>()
+    expect(Story.make(Static, {}, (s) => s.given(1)).model).type.toBe<number>()
+    expect(steps.send).type.not.toBeCallableWith(CounterMessage.make({ _tag: "Increment" }))
+    const shared = <S extends Story.Steps.Any>(s: S): S => s
+    expect(shared(steps)).type.toBe<Story.Steps<typeof Static>>()
   })
 
   it("resolves a Command with the definition's own message", () => {
