@@ -18,7 +18,7 @@ export type Todo = typeof Todo.Type
 
 export const TodoItemMessage = Schema.TaggedUnion({ Toggle: { done: Schema.Boolean }, Delete: {} })
 
-export const TodoItemEmits = Schema.TaggedUnion({
+export const TodoItemEvents = Schema.TaggedUnion({
   Toggled: { id: Schema.String, done: Schema.Boolean },
   Deleted: { id: Schema.String }
 })
@@ -28,13 +28,13 @@ export const TodoItem = Component.make({
   props: Schema.Struct({ todo: Todo }),
   model: Schema.Struct({}),
   message: TodoItemMessage,
-  emits: TodoItemEmits,
+  events: TodoItemEvents,
   elements: Html,
   init: () => ({}),
   update: (_, message, $) =>
     TodoItemMessage.match(message, {
-      Toggle: ({ done }) => $.emit(TodoItemEmits.make({ _tag: "Toggled", id: $.props.todo.id, done })),
-      Delete: () => $.emit(TodoItemEmits.make({ _tag: "Deleted", id: $.props.todo.id }))
+      Toggle: ({ done }) => $.emit(TodoItemEvents.make({ _tag: "Toggled", id: $.props.todo.id, done })),
+      Delete: () => $.emit(TodoItemEvents.make({ _tag: "Deleted", id: $.props.todo.id }))
     }),
   view: (_, h) =>
     h.li(

@@ -48,8 +48,8 @@ export const TodoItemMessage = Schema.TaggedUnion({
 })
 export type TodoItemMessage = typeof TodoItemMessage.Type
 
-export const TodoItemEmits = Schema.TaggedUnion({ Toggled: { done: Schema.Boolean } })
-export type TodoItemEmits = typeof TodoItemEmits.Type
+export const TodoItemEvents = Schema.TaggedUnion({ Toggled: { done: Schema.Boolean } })
+export type TodoItemEvents = typeof TodoItemEvents.Type
 
 const encodeTodo = Schema.encodeSync(Schema.fromJsonString(Todo))
 
@@ -71,11 +71,11 @@ export const TodoItem = Component.make({
   props: Schema.Struct({ todo: Todo }),
   model: Schema.Struct({ saving: Schema.Boolean }),
   message: TodoItemMessage,
-  emits: TodoItemEmits,
+  events: TodoItemEvents,
   init: ($) => $.set({ saving: false }),
   update: (_model, message, $) =>
     TodoItemMessage.match(message, {
-      Toggle: () => $.emit(TodoItemEmits.make({ _tag: "Toggled", done: !$.props.todo.done })),
+      Toggle: () => $.emit(TodoItemEvents.make({ _tag: "Toggled", done: !$.props.todo.done })),
       Save: () => $.set({ saving: true }).run(SaveTodo.make($.props.todo)),
       Saved: () => ({ saving: false }),
       SaveFailed: () => ({ saving: false })
@@ -120,7 +120,7 @@ export const TodoList = Component.make({
         h.child(TodoItem, {
           key: todo.id,
           props: { todo },
-          onEmit: (emits) => TodoListMessage.make({ _tag: "SetDone", id: todo.id, done: emits.done }),
+          onEmit: (events) => TodoListMessage.make({ _tag: "SetDone", id: todo.id, done: events.done }),
           onFailure: () => TodoListMessage.make({ _tag: "RowFailed", id: todo.id }),
           fallback: () => h.el("li", `${todo.title} failed`)
         })

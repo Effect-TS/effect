@@ -133,7 +133,7 @@ export interface Instance {
   readonly children: Map<string, Instance>
   props: unknown
   model: unknown
-  onEmit: (emits: unknown) => unknown
+  onEmit: (events: unknown) => unknown
   onFailure: ((failure: AsyncResult.Failure<never, unknown>) => unknown) | undefined
   failure: Cause.Cause<unknown> | undefined
   rendered: Array<Rendered>
@@ -463,7 +463,7 @@ const start = (
     path: string,
     parent: Instance | undefined,
     parentEnv: Env,
-    onEmit: (emits: unknown) => unknown,
+    onEmit: (events: unknown) => unknown,
     onFailure: ((failure: AsyncResult.Failure<never, unknown>) => unknown) | undefined
   ): Instance => {
     const scope = Scope.forkUnsafe(parent?.scope ?? rootScope, "sequential")
@@ -497,16 +497,16 @@ const start = (
           props: inst.props,
           model: next.model,
           commands: next.commands,
-          emits: next.emits
+          events: next.events
         })
         apply(inst, next, entrySeq, false)
       },
       fire(event, handler, payload) {
         if (inst.closed) return
         const message = typeof handler === "function"
-          ? guard(inst, "event", () => (handler as (payload: unknown) => unknown)(payload), event)
+          ? guard(inst, "domEvent", () => (handler as (payload: unknown) => unknown)(payload), event)
           : handler
-        if (message !== undefined) inst.dispatch(message, { _tag: "Event", name: event })
+        if (message !== undefined) inst.dispatch(message, { _tag: "DomEvent", name: event })
       }
     }
 
@@ -626,7 +626,7 @@ const start = (
         props,
         model: first.model,
         commands: first.commands,
-        emits: first.emits,
+        events: first.events,
         adopted: false
       })
     }
@@ -651,10 +651,10 @@ const start = (
     next.commands.forEach((command, index) => issue(inst, command, { seq: entrySeq, index }))
     if (!initial) markDirty(inst)
     syncSubscriptions(inst)
-    if (next.emits.length === 0) return
+    if (next.events.length === 0) return
     const parent = inst.parent
     const deliver = () => {
-      for (const emitted of next.emits) {
+      for (const emitted of next.events) {
         if (inst.closed) return
         if (parent === undefined) {
           rootEmitted.push(emitted)
