@@ -26,6 +26,27 @@ const voidTags: ReadonlySet<string> = new Set([
   "wbr"
 ])
 
+/**
+ * Elements whose content the HTML parser reads as text: escaped text
+ * (`textarea`, `title`) or raw text. Markers or tags inside them would become
+ * part of the text, so the server writes only their text.
+ *
+ * @internal
+ */
+export const textOnlyTags: ReadonlySet<string> = new Set([
+  "textarea",
+  "title",
+  "script",
+  "style",
+  "xmp",
+  "iframe",
+  "noembed",
+  "noframes",
+  "noscript"
+])
+
+const escapedTextTags: ReadonlySet<string> = new Set(["textarea", "title"])
+
 /** Elements whose first newline the HTML parser drops. */
 const newlineTags: ReadonlySet<string> = new Set(["pre", "textarea", "listing"])
 
@@ -68,6 +89,19 @@ const elementAttributes = (node: ServerElement, selectValue: string | undefined)
   return out
 }
 
+/**
+ * The text of a text-only element. A textarea with no children shows its
+ * value. Raw text that could end the element early is left out; the client
+ * builds the children anyway.
+ */
+const textContent = (node: ServerElement, value: unknown): string => {
+  const text = node.children.length === 0 && node.tag === "textarea" && value !== undefined
+    ? String(value)
+    : textOf(node.children)
+  if (escapedTextTags.has(node.tag)) return escapeText(text)
+  return new RegExp(`</${node.tag}|<!--`, "i").test(text) ? "" : text
+}
+
 /** @internal */
 export const toHtml = (nodes: ReadonlyArray<ServerNode>, selectValue?: string): string => {
   let out = ""
@@ -87,8 +121,8 @@ export const toHtml = (nodes: ReadonlyArray<ServerNode>, selectValue?: string): 
         out += ">"
         if (voidTags.has(node.tag)) break
         const value = node.props.value
-        let inner = node.tag === "textarea" && node.children.length === 0 && value !== undefined
-          ? escapeText(String(value))
+        let inner = textOnlyTags.has(node.tag)
+          ? textContent(node, value)
           : toHtml(
             node.children,
             node.tag === "select" && value !== undefined
