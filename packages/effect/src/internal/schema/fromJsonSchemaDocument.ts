@@ -1098,8 +1098,8 @@ export function fromJsonSchemaMultiDocument(
     )
   }
 
-  // Keyed by the alternatives arrays, so recursive definitions keep reaching
-  // the same flattened alternatives and linear intersections still detect them.
+  // Keyed by the alternatives arrays, so a union reached again is flattened
+  // once. Recursion is bounded by `intersectingUnions`, not by this cache.
   const flattenedAlternatives = new Map<
     ReadonlyArray<ImportedJsonSchemaRepresentation>,
     ReadonlyArray<ImportedJsonSchemaRepresentation>
@@ -1171,37 +1171,52 @@ export function fromJsonSchemaMultiDocument(
     return union.types.length === 1 && union.checks.length === 0 ? annotate(union.types[0], union) : undefined
   }
 
+  const intersectingUnions: Array<
+    readonly [ReadonlyArray<ImportedJsonSchemaRepresentation>, ReadonlyArray<ImportedJsonSchemaRepresentation>]
+  > = []
+
   function intersectUnions(
     left: ImportedUnion,
     right: ImportedUnion,
     path: Path
   ): ImportedJsonSchemaRepresentation {
-    // A reference in both unions stays a reference, so the two still
-    // intersect as the same reference instead of pairing every alternative.
-    const shared = new Set<string>()
-    if (isAnyOf(left) && isAnyOf(right)) {
-      for (const member of left.types) {
-        if (
-          member._tag === "Reference" &&
-          right.types.some((other) => other._tag === "Reference" && other.$ref === member.$ref)
-        ) shared.add(member.$ref)
-      }
+    // Flattening can splice away the references whose pairs
+    // `intersectingReferences` tracks, so re-entering the same pair of input
+    // alternatives would recurse without bound.
+    if (intersectingUnions.some(([l, r]) => l === left.types && r === right.types)) {
+      return unsupportedIntersection(path)
     }
-    left = flattenAnyOf(left, path, shared)
-    right = flattenAnyOf(right, path, shared)
-    if (shared.size > 0) {
-      // A union reduced to its shared reference intersects as that reference.
-      const leftReference = soleAlternative(left)
-      const rightReference = soleAlternative(right)
-      if (leftReference !== undefined || rightReference !== undefined) {
-        return intersect(leftReference ?? left, rightReference ?? right, path)
+    intersectingUnions.push([left.types, right.types])
+    try {
+      // A reference in both unions stays a reference, so the two still
+      // intersect as the same reference instead of pairing every alternative.
+      const shared = new Set<string>()
+      if (isAnyOf(left) && isAnyOf(right)) {
+        for (const member of left.types) {
+          if (
+            member._tag === "Reference" &&
+            right.types.some((other) => other._tag === "Reference" && other.$ref === member.$ref)
+          ) shared.add(member.$ref)
+        }
       }
+      left = flattenAnyOf(left, path, shared)
+      right = flattenAnyOf(right, path, shared)
+      if (shared.size > 0) {
+        // A union reduced to its shared reference intersects as that reference.
+        const leftReference = soleAlternative(left)
+        const rightReference = soleAlternative(right)
+        if (leftReference !== undefined || rightReference !== undefined) {
+          return intersect(leftReference ?? left, rightReference ?? right, path)
+        }
+      }
+      const literals = intersectLiteralUnions(left, right, path)
+      if (literals !== undefined) return literals
+      if (isTypePartition(left)) return intersectPartition(left, right, path, true)
+      if (isTypePartition(right)) return intersectPartition(right, left, path, false)
+      return intersectLinearly(left, right, path)
+    } finally {
+      intersectingUnions.pop()
     }
-    const literals = intersectLiteralUnions(left, right, path)
-    if (literals !== undefined) return literals
-    if (isTypePartition(left)) return intersectPartition(left, right, path, true)
-    if (isTypePartition(right)) return intersectPartition(right, left, path, false)
-    return intersectLinearly(left, right, path)
   }
 
   // Bound surviving pairs and avoid duplicating nested choices.
