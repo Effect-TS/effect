@@ -290,13 +290,10 @@ export function fromJsonSchemaMultiDocument(
   const resolvingChoices = new Set<string>()
   const resolvingScalars = new Set<string>()
   const intersectingReferences = new Set<string>()
-  // Same-reference intersections met while their definition is translated.
-  // Once it finishes, they are rejected if the definition reaches itself
-  // without consuming a value.
-  const pendingSelfIntersections = new Map<
-    string,
-    Array<{ readonly reference: ImportedReference; readonly path: Path }>
-  >()
+  // The first same-reference intersection met while its definition is
+  // translated. Once it finishes, the definition is rejected if it reaches
+  // itself without consuming a value.
+  const pendingSelfIntersections = new Map<string, Path>()
   const references = new Map<string, ReferenceSlot>()
   let inNestedResource = false
 
@@ -429,9 +426,11 @@ export function fromJsonSchemaMultiDocument(
         inNestedResource = wasInNestedResource
       }
       definitionCache.set(key, representation)
-      const pending = pendingSelfIntersections.get(key)
-      pendingSelfIntersections.delete(key)
-      for (const { path, reference } of pending ?? []) validatePointerAliases(reference, path)
+      const selfIntersection = pendingSelfIntersections.get(key)
+      if (selfIntersection !== undefined) {
+        pendingSelfIntersections.delete(key)
+        validatePointerAliases(representation, selfIntersection)
+      }
       if (pointer !== undefined) {
         validatePointerAliases(representation, path, recursiveReferenceError)
       }
@@ -575,10 +574,8 @@ export function fromJsonSchemaMultiDocument(
   ): Checked {
     let checks = right.checks
     for (const id of deduplicate) {
-      if (left.checks.some((check) => check._tag === "Filter" && check.filter.annotations?.representation?.id === id)) {
-        checks = checks.filter((check) =>
-          check._tag !== "Filter" || check.filter.annotations?.representation?.id !== id
-        )
+      if (left.checks.some((check) => isFilterWithId(check, id))) {
+        checks = checks.filter((check) => !isFilterWithId(check, id))
       }
     }
     const annotations = checks.length === 0 ? mergeAnnotations(left.annotations, right.annotations) : left.annotations
@@ -740,26 +737,29 @@ export function fromJsonSchemaMultiDocument(
       (types) => types.length > 1 && types.every((type) => isScalar(type, true)),
       () => true
     ]
-    // A property that fails is deferred, since a later required Never can still
+    // A failed property is skipped, since a later required Never can still
     // empty the object. Otherwise the first failure is rethrown.
     const intersected = new Map<string, ImportedJsonSchemaRepresentation>()
-    const failures = new Map<string, unknown>()
+    const failures: Array<unknown> = []
+    let remaining = pending
     for (const isInPass of passes) {
-      for (const { isOptional, name, types } of pending) {
-        if (intersected.has(name) || failures.has(name)) continue
-        let type: ImportedJsonSchemaRepresentation
+      const deferred: typeof pending = []
+      for (const property of remaining) {
         try {
-          if (!isInPass(types)) continue
-          type = intersectAll(types, [...path, "properties", name])
+          if (!isInPass(property.types)) {
+            deferred.push(property)
+            continue
+          }
+          const type = intersectAll(property.types, [...path, "properties", property.name])
+          if (!property.isOptional && type._tag === "Never") return never
+          intersected.set(property.name, type)
         } catch (error) {
-          failures.set(name, error)
-          continue
+          failures.push(error)
         }
-        if (!isOptional && type._tag === "Never") return never
-        intersected.set(name, type)
       }
+      remaining = deferred
     }
-    for (const failure of failures.values()) throw failure
+    if (failures.length > 0) throw failures[0]
     const properties: Array<ImportedProperty> = pending.map(({ isOptional, name }) => ({
       name,
       type: intersected.get(name)!,
@@ -1144,11 +1144,7 @@ export function fromJsonSchemaMultiDocument(
         // Reject a definition that reaches itself without consuming a value,
         // waiting while it is still translated, since recursion through it is valid.
         if (definitionCache.get(left.$ref) !== null) validatePointerAliases(right, path)
-        else {
-          const pending = pendingSelfIntersections.get(left.$ref) ?? []
-          pending.push({ reference: right, path })
-          pendingSelfIntersections.set(left.$ref, pending)
-        }
+        else if (!pendingSelfIntersections.has(left.$ref)) pendingSelfIntersections.set(left.$ref, path)
         return annotate(left, right)
       }
       // Reaching the same pair again inside its own intersection is a cycle,
