@@ -338,7 +338,8 @@ const decodeComponent = (text: string): string | undefined => {
 type RawQuery = Record<string, string | Array<string>>
 
 const parseQuery = (search: string): RawQuery | undefined => {
-  const query: RawQuery = {}
+  // No prototype, so keys such as `constructor` or `__proto__` are plain query keys.
+  const query: RawQuery = Object.create(null)
   if (search === "") return query
   for (const pair of search.split("&")) {
     if (pair === "") continue
@@ -346,7 +347,7 @@ const parseQuery = (search: string): RawQuery | undefined => {
     const key = decodeComponent((at < 0 ? pair : pair.slice(0, at)).replaceAll("+", " "))
     const value = decodeComponent((at < 0 ? "" : pair.slice(at + 1)).replaceAll("+", " "))
     if (key === undefined || value === undefined) return undefined
-    const found = query[key]
+    const found = Object.hasOwn(query, key) ? query[key] : undefined
     query[key] = found === undefined ? value : typeof found === "string" ? [found, value] : [...found, value]
   }
   return query

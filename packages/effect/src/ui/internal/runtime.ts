@@ -186,6 +186,9 @@ const jsonCodecOf = (schema: Schema.Codec<any, any>) => {
   return found
 }
 
+/** Whether replaying `init` for an adopted Model skips a Command: only server Commands are skipped. */
+const isReplayDropped = (command: Command.Command<any, any>): boolean => command._tag !== "Interrupt" && command.server
+
 const childName = (component: Component.Any | Feature.Any): string =>
   Feature.isService(component) ? component[Feature.TypeId].name : component.name
 
@@ -350,7 +353,9 @@ const start = (
   /** The head entries in document order. A slot's fallback contributes none. */
   const headTree = (inst: Instance): Head.Tree => ({
     entries: inst.closed || inst.failure !== undefined ? [] : inst.head,
-    children: inst.closed || inst.failure !== undefined ? [] : inst.rendered.flatMap(headChildren)
+    children: inst.closed || inst.failure !== undefined ? [] : inst.rendered.flatMap(headChildren),
+    // A throwing title template fails the instance that declared it.
+    onError: (error) => failInstance(inst, Cause.die(error), "head")
   })
   const headChildren = (rendered: Rendered): Array<Head.Tree> =>
     rendered._tag === "Child"
@@ -688,7 +693,9 @@ const start = (
       }
       return component.init(props)
     })
-    // History restore: the Model is adopted and `init` replayed, with its Commands and events dropped.
+    // History restore follows hydration's adoption rule: the Model is adopted and `init` replayed. Its
+    // server Commands are dropped, since their results are already in the Model, nothing is pending, and
+    // the other Commands run as on any mount. Events from `init` are dropped.
     const restored = first === undefined || hooks === undefined ? undefined : hooks.restore(path)
     const adopted = restored === undefined ? Option.none() : jsonCodecOf(component.model).decode(restored)
     let mountedSeq = -1
@@ -706,7 +713,7 @@ const start = (
       })
       if (Option.isSome(adopted)) {
         first.commands.forEach((command, index) => {
-          if (command._tag === "Interrupt") return
+          if (!isReplayDropped(command)) return
           record({
             _tag: "CommandDropped",
             path,
@@ -731,12 +738,12 @@ const start = (
     inst.rendered = [rendered]
     updateHead(inst)
     if (inst.failure !== undefined) return inst
-    apply(
-      inst,
-      Option.isSome(adopted) ? { model: inst.model, commands: [], events: [] } : first,
-      mountedSeq,
-      true
-    )
+    if (Option.isSome(adopted)) {
+      apply(inst, { model: inst.model, commands: [], events: [] }, mountedSeq, true)
+      first.commands.forEach((command, index) => {
+        if (!isReplayDropped(command)) issue(inst, command, { seq: mountedSeq, index })
+      })
+    } else apply(inst, first, mountedSeq, true)
     return inst
   }
 

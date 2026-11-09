@@ -1,5 +1,5 @@
 import { Schema } from "effect"
-import { Command, Component, Head, Route, Router } from "effect/ui"
+import { Command, Component, Head, Route, Router, type Subscription } from "effect/ui"
 import { describe, expect, it } from "tstyche"
 
 const AppRoute = Route.union({
@@ -48,13 +48,41 @@ describe("Router", () => {
       update: (model, message, $) =>
         message._tag === "Go"
           ? $.run(
-            Router.Push.make(AppRoute.make({ _tag: "Home" })).pipe(Command.map(() => Message.make({ _tag: "Done" })))
+            Router.push(AppRoute, AppRoute.make({ _tag: "Home" })).pipe(
+              Command.map(() => Message.make({ _tag: "Done" }))
+            )
           )
           : model,
       subscriptions: () => [Router.subscription(AppRoute, () => Message.make({ _tag: "Done" }))],
       view: (_, h) => h.text("")
     })
     expect<Component.Requirements<typeof Nav>>().type.toBe<Router.Push | Router.Router>()
+  })
+
+  it("takes only complete route values of the given union", () => {
+    const person = AppRoute.make({ _tag: "Person", params: { id: 1 } })
+    expect(Router.push).type.toBeCallableWith(AppRoute, person)
+    const People = AppRoute.subset(["Person"])
+    expect(Router.replace).type.toBeCallableWith(People, People.make({ _tag: "Person", params: { id: 1 } }))
+    expect(Router.push).type.not.toBeCallableWith(AppRoute, { _tag: "Person" })
+    expect(Router.push).type.not.toBeCallableWith(AppRoute, { _tag: "Person", params: {}, query: {} })
+    expect(Router.replace).type.not.toBeCallableWith(AppRoute, { _tag: "Elsewhere", params: {}, query: {} })
+    expect(Router.push).type.not.toBeCallableWith(AppRoute.subset(["Home"]), {
+      _tag: "Person",
+      params: { id: 1 },
+      query: {}
+    })
+    // The Command classes only take what push and replace build.
+    expect(Router.Push.make).type.not.toBeCallableWith({ _tag: "Person" })
+    expect(Router.Replace.make).type.not.toBeCallableWith(person)
+  })
+
+  it("subscribes only to a route union", () => {
+    const Tagged = Schema.TaggedUnion({ Home: {} })
+    expect(Router.subscription).type.not.toBeCallableWith(Tagged, () => 1)
+    expect(Router.subscription(AppRoute, (route) => route._tag)).type.toBe<
+      Subscription.Subscription<AppRoute["_tag"], Router.Router>
+    >()
   })
 
   it("gives head only the Model", () => {
