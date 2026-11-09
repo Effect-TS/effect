@@ -451,14 +451,14 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
           yield* Deferred.await(started)
 
           yield* fixture.close
-          yield* Deferred.succeed(release, undefined)
 
-          // Responses are routed by request id, so their wire order does not matter.
-          assert.deepInclude((yield* tool.response).result, { content: [{ type: "text", text: "drained" }] })
+          // Keep the tool pending until the subscription confirms the server has observed EOF.
           const response = yield* subscription.response
           const result = yield* Schema.decodeUnknownEffect(McpSchema2026.SubscriptionsListenResult)(response.result)
           assert.strictEqual(result.resultType, "complete")
           assert.strictEqual(result._meta?.[subscriptionIdKey], id)
+          yield* Deferred.succeed(release, undefined)
+          assert.deepInclude((yield* tool.response).result, { content: [{ type: "text", text: "drained" }] })
           const exit = yield* Fiber.await(fixture.serverFiber)
           assert.isTrue(Exit.isSuccess(exit) || (Exit.isFailure(exit) && Cause.hasInterruptsOnly(exit.cause)))
         }))
