@@ -2512,6 +2512,31 @@ describe("fromJsonSchemaDocument", () => {
         )
       })
 
+      it("rejects distinct recursive unions that wrap their references in anyOf", () => {
+        const recursive = (name: string) => ({
+          anyOf: [
+            { type: "null" },
+            { type: "object", properties: { next: { anyOf: [{ $ref: `#/$defs/${name}` }] } } }
+          ]
+        })
+        throws(
+          () =>
+            toSchemaFromJsonSchemaDocument(JsonSchema.fromSchemaDraft2020_12({
+              allOf: [{ $ref: "#/$defs/A" }, { $ref: "#/$defs/B" }],
+              $defs: { A: recursive("A"), B: recursive("B") }
+            })),
+          (error) => {
+            assert.instanceOf(error, Error)
+            const [message, at] = error.message.split("\n")
+            assert.strictEqual(
+              message,
+              `Cannot intersect these "anyOf" or "oneOf" alternatives without expanding their branches.`
+            )
+            assert.isTrue(at.startsWith(`  at ["schema"]["allOf"][1]`))
+          }
+        )
+      })
+
       it("intersects the same nullable reference to overlapping anyOf alternatives", () => {
         const schema = toSchemaFromJsonSchemaDocument(JsonSchema.fromSchemaDraft2020_12({
           allOf: [
