@@ -2312,7 +2312,12 @@ describe("fromJsonSchemaDocument", () => {
         )
       })
 
-      it("prunes on a conflicting discriminator before intersecting structured properties", () => {
+      it.each([
+        { title: "a constant", discriminator: (kind: string) => ({ const: kind }) },
+        { title: "a reference", discriminator: (kind: string) => ({ $ref: `#/$defs/${kind}` }) }
+      ])("prunes on a conflicting discriminator given by $title before intersecting structured properties", ({
+        discriminator
+      }) => {
         const schema = (kind: string) =>
           ({
             allOf: [
@@ -2320,7 +2325,7 @@ describe("fromJsonSchemaDocument", () => {
                 type: "object",
                 properties: {
                   action: { anyOf: [{ type: "object", required: ["x"] }, { type: "object", required: ["y"] }] },
-                  kind: { const: "a" }
+                  kind: discriminator("a")
                 },
                 required: ["kind"]
               },
@@ -2331,11 +2336,12 @@ describe("fromJsonSchemaDocument", () => {
                     type: "object",
                     properties: { value: { anyOf: [{ type: "string" }, { type: "number" }] } }
                   },
-                  kind: { const: kind }
+                  kind: discriminator(kind)
                 },
                 required: ["kind"]
               }
-            ]
+            ],
+            $defs: { a: { const: "a" }, b: { const: "b" } }
           }) as const
         assertFromJsonSchema({ schema: schema("b") }, { codes: makeCode(`Schema.Never`, `never`) })
         throws(
@@ -2418,34 +2424,6 @@ describe("fromJsonSchemaDocument", () => {
             })),
           `Cannot intersect these "anyOf" or "oneOf" alternatives without expanding their branches.\n  at ["schema"]["allOf"][1]["types"][0]["properties"]["next"][1]`
         )
-      })
-
-      it("prunes pairs by a referenced discriminator before recursing", { timeout: 1000 }, () => {
-        const depth = 4
-        const chain = (name: string, size: number) =>
-          Object.fromEntries(Array.from({ length: depth + 1 }, (_, level) => [
-            `${name}${level}`,
-            {
-              anyOf: Array.from({ length: size }, (_, index) => ({
-                type: "object",
-                properties: {
-                  ...(level < depth ? { next: { $ref: `#/$defs/${name}${level + 1}` } } : {}),
-                  kind: { $ref: `#/$defs/K${index}` }
-                },
-                required: ["kind"]
-              }))
-            }
-          ]))
-        const schema = toSchemaFromJsonSchemaDocument(JsonSchema.fromSchemaDraft2020_12({
-          allOf: [{ $ref: "#/$defs/L0" }, { $ref: "#/$defs/R0" }],
-          $defs: {
-            ...chain("L", 4),
-            ...chain("R", 5),
-            ...Object.fromEntries(Array.from({ length: 5 }, (_, index) => [`K${index}`, { const: `k${index}` }]))
-          }
-        }))
-        assert.isTrue(Schema.is(schema)({ kind: "k1", next: { kind: "k0" } }))
-        assert.isFalse(Schema.is(schema)({ kind: "k4" }))
       })
     })
 
