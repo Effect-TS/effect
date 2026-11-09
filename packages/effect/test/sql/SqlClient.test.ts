@@ -313,6 +313,17 @@ describe("SqlClient", () => {
       })
   )
 
+  it.effect("activeTransactionConnection returns the connection only while its transaction is open", () =>
+    Effect.gen(function*() {
+      const { sql } = yield* makeClient()
+      const transaction = yield* sql.withTransaction(Effect.gen(function*() {
+        const transaction = yield* sql.transactionService
+        assert.strictEqual(yield* SqlClient.activeTransactionConnection(transaction), transaction[0])
+        return transaction
+      }))
+      assertEnded(yield* Effect.flip(SqlClient.activeTransactionConnection(transaction)))
+    }))
+
   it.effect("fails statements from a fiber that runs while its transaction commits", () =>
     Effect.gen(function*() {
       const go = yield* Deferred.make<void>()
