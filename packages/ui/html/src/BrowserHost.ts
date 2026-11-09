@@ -52,6 +52,7 @@ import * as Renderer from "effect/ui/Renderer"
 import type * as View from "effect/ui/View"
 import * as Html from "./Html.ts"
 import * as headSync from "./internal/head.ts"
+import * as markers from "./internal/markers.ts"
 import * as submit from "./internal/submit.ts"
 
 const SVG = "http://www.w3.org/2000/svg"
@@ -361,6 +362,22 @@ export const makeHost = (
     controlled,
     runsMounts: true,
     head: syncHead,
+    hydration: {
+      firstChild: (node) => node.firstChild ?? undefined,
+      inspect(node) {
+        switch (node.nodeType) {
+          case 1:
+            return { _tag: "Element", tag: (node as globalThis.Element).localName }
+          case 3:
+            return { _tag: "Text", text: (node as globalThis.Text).data }
+          case 8:
+            return markers.parse((node as globalThis.Comment).data) ?? { _tag: "Other" }
+          default:
+            return { _tag: "Other" }
+        }
+      },
+      getAttr: (node, name) => (node as globalThis.Element).getAttribute(name) ?? undefined
+    },
     dispose: () => {
       for (const [name, f] of listening) document.removeEventListener(name, f, { capture: true })
       listening.clear()
@@ -443,6 +460,22 @@ export type HtmlRoot<V> = [Renderer.HostOf<V>] extends [Html.Host] ? unknown
  * Commands and Subscriptions run on the default scheduler, the render flush
  * on a microtask.
  *
+ * **Hydration.** Pass the `state` from `HtmlServer.renderToHtml`, with the
+ * server's HTML already in `container` and the same props, to adopt the
+ * server's nodes instead of building them. Each instance adopts its server
+ * Model and replays `init` only to recover its Commands; server Commands the
+ * Model already has the result of are skipped, and those that missed the
+ * budget run now. `onMount` fires on adoption. An instance whose view doesn't
+ * match the server's nodes is rebuilt on its own, and one the server deferred
+ * is built fresh.
+ *
+ * An instance whose provided Layer is still building keeps the server's
+ * nodes until the Layer is ready, and everything else is live at once. A
+ * waiting slot is inert: its buttons do nothing, links still navigate through
+ * the Router, a `<form>` submits natively, and typed input is overwritten
+ * when it adopts. `root.adopted` completes when no slot is waiting, and head
+ * sync starts after it.
+ *
  * @stability experimental
  * @category constructors
  * @since 4.1.3
@@ -458,6 +491,7 @@ export const mount = <Name extends string, Props, Model, Msg, Events, R, V exten
         h: View.Helper<never, {}> & View.Tags<V, never>
       ) => View.Node<never, RF>)
       | undefined
+    readonly state?: Renderer.State | undefined
   }
 ): Effect.Effect<Renderer.Root<Model, Msg>, never, Exclude<R | RF, Html.Host> | Scope.Scope> =>
   Effect.gen(function*() {
