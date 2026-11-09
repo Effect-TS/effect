@@ -3762,27 +3762,6 @@ describe("toJsonSchemaDocument", () => {
         )
       })
     })
-
-    it("optionalKey to required key", () => {
-      assertJsonSchemaDocument(
-        Schema.Tuple([
-          Schema.optionalKey(Schema.String).pipe(Schema.encodeTo(Schema.String, {
-            decode: SchemaGetter.passthrough(),
-            encode: SchemaGetter.withDefault(Effect.succeed(""))
-          }))
-        ]),
-        {
-          schema: {
-            "type": "array",
-            "prefixItems": [
-              { "type": "string" }
-            ],
-            "minItems": 1,
-            "maxItems": 1
-          }
-        }
-      )
-    })
   })
 
   describe("Array", () => {

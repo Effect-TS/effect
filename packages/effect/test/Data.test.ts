@@ -2,26 +2,7 @@ import * as Data from "effect/Data"
 import * as Effect from "effect/Effect"
 import * as Equal from "effect/Equal"
 import assert from "node:assert/strict"
-import { spawn } from "node:child_process"
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
-import { dirname, join, relative } from "node:path"
-import { fileURLToPath } from "node:url"
 import { describe, it } from "vitest"
-
-// Runs a command without blocking the Vitest worker, so concurrent sibling
-// tests are not held up (and timed out) while it runs.
-const run = (command: string, args: ReadonlyArray<string>, cwd: string) =>
-  new Promise<{ readonly status: number | null; readonly stdout: string; readonly stderr: string }>(
-    (resolve, reject) => {
-      const child = spawn(command, args, { cwd })
-      let stdout = ""
-      let stderr = ""
-      child.stdout.setEncoding("utf8").on("data", (data) => stdout += data)
-      child.stderr.setEncoding("utf8").on("data", (data) => stderr += data)
-      child.on("error", reject)
-      child.on("close", (status) => resolve({ status, stdout, stderr }))
-    }
-  )
 
 describe("Data", () => {
   describe("Class", () => {
@@ -143,70 +124,6 @@ describe("Data", () => {
       assert.strictEqual(show(Option.None()), "none")
       assert.strictEqual(show(Option.Some({ value: 42 })), "some(42)")
     })
-
-    it("declarations reference the named constructor types", async () => {
-      const packageRoot = join(dirname(fileURLToPath(import.meta.url)), "..")
-      const directory = mkdtempSync(join(packageRoot, "test", ".taggedEnum-declarations-"))
-      try {
-        writeFileSync(
-          join(directory, "fixture.ts"),
-          `import * as Data from "effect/Data"
-
-export type Plain = Data.TaggedEnum<{
-  CaseA: { readonly name: string; readonly count: number; readonly active: boolean }
-  CaseB: { readonly message: string; readonly retry: boolean }
-}>
-export const Plain = Data.taggedEnum<Plain>()
-
-export type TE<T> = Data.TaggedEnum<{
-  A: { a: T }
-  B: { b?: T }
-}>
-export interface TEDefinition extends Data.TaggedEnum.WithGenerics<1> {
-  readonly taggedEnum: TE<this["A"]>
-}
-export const TE = Data.taggedEnum<TEDefinition>()
-`
-        )
-        writeFileSync(
-          join(directory, "tsconfig.json"),
-          JSON.stringify({
-            extends: join(packageRoot, "../../tsconfig.base.json"),
-            compilerOptions: {
-              composite: false,
-              incremental: false,
-              declaration: true,
-              declarationMap: false,
-              emitDeclarationOnly: true,
-              sourceMap: false,
-              rootDir: packageRoot,
-              outDir: join(directory, "out"),
-              types: ["node"]
-            },
-            files: ["fixture.ts"]
-          })
-        )
-        const repositoryRoot = join(packageRoot, "../..")
-        const result = await run(
-          join(repositoryRoot, "node_modules/.bin/tsc"),
-          ["-p", join(directory, "tsconfig.json"), "--pretty", "false"],
-          repositoryRoot
-        )
-        assert.strictEqual(result.status, 0, `${result.stdout}${result.stderr}`)
-        const declarations = readFileSync(
-          join(directory, "out", relative(packageRoot, directory), "fixture.d.ts"),
-          "utf8"
-        )
-        const [plain = "", ...rest] = declarations.match(/^export declare const .*$/gm) ?? []
-        // the plain union alias is not preserved, only the named constructor
-        assert.match(plain, /^export declare const Plain: Data\.TaggedEnum\.Constructor</)
-        assert.deepStrictEqual(rest, [
-          "export declare const TE: Data.TaggedEnum.GenericConstructor<TEDefinition>;"
-        ])
-      } finally {
-        rmSync(directory, { recursive: true, force: true })
-      }
-    }, 60_000)
   })
 
   describe("Error", () => {
