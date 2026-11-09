@@ -2563,6 +2563,23 @@ describe("fromJsonSchemaDocument", () => {
         })
       })
 
+      it("keeps repeated unconstrained alternatives once when flattening", () => {
+        const schema = toSchemaFromJsonSchemaDocument(JsonSchema.fromSchemaDraft2020_12({
+          allOf: [
+            { anyOf: [{}, {}] },
+            {
+              anyOf: [
+                { type: "object", properties: { a: { type: "string" } }, required: ["a"] },
+                { type: "object", properties: { b: { type: "number" } }, required: ["b"] }
+              ]
+            }
+          ]
+        }))
+        assert.isTrue(Schema.is(schema)({ a: "a" }))
+        assert.isTrue(Schema.is(schema)({ b: 1 }))
+        assert.isFalse(Schema.is(schema)({}))
+      })
+
       it("splices each referenced anyOf once when flattening", () => {
         const depth = 24
         const schema = toSchemaFromJsonSchemaDocument(JsonSchema.fromSchemaDraft2020_12({
