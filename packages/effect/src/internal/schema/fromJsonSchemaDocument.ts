@@ -1068,18 +1068,23 @@ export function fromJsonSchemaMultiDocument(
   // Returns the unchecked "anyOf" union a member is or references, annotated
   // with the references, which are marked spliced. Returns "spliced" when the
   // chain reaches an already spliced definition, and undefined otherwise,
-  // including for a definition still being translated, which stays a reference.
+  // including for a definition still being translated or a shared one, which
+  // stays a reference.
   function nestedAnyOf(
     member: ImportedJsonSchemaRepresentation,
     path: Path,
-    spliced: Set<string>
+    spliced: Set<string>,
+    shared: ReadonlySet<string>
   ): ImportedUnion | "spliced" | undefined {
     const references: Array<ImportedReference> = []
     let current = member
     while (current._tag === "Reference") {
       const key = current.$ref
       if (spliced.has(key)) return "spliced"
-      if (definitionCache.get(key) === null || references.some((reference) => reference.$ref === key)) {
+      if (
+        definitionCache.get(key) === null || shared.has(key) ||
+        references.some((reference) => reference.$ref === key)
+      ) {
         return undefined
       }
       references.push(current)
@@ -1100,6 +1105,17 @@ export function fromJsonSchemaMultiDocument(
     ReadonlyArray<ImportedJsonSchemaRepresentation>
   >()
 
+  const noReferences: ReadonlySet<string> = new Set()
+
+  // References and unchecked nulls repeat by value, other alternatives by identity.
+  function alternativeKey(member: ImportedJsonSchemaRepresentation): unknown {
+    return member._tag === "Reference"
+      ? `$ref:${member.$ref}`
+      : member._tag === "Null" && member.checks.length === 0
+      ? "null"
+      : member
+  }
+
   // A nullable reference to a definition that already admits null nests one
   // "anyOf" in another and repeats null, so neither side is a type partition.
   // Splicing unchecked nested "anyOf" alternatives and keeping one unchecked
@@ -1109,30 +1125,35 @@ export function fromJsonSchemaMultiDocument(
   // through several references cannot multiply the alternatives. A repeated
   // member's annotations merge into the kept one, except for a reference to an
   // already spliced definition, which is dropped with its annotations.
-  function flattenAnyOf(union: ImportedUnion, path: Path): ImportedUnion {
+  // References in `shared` stay references, and an alternative one of them
+  // already admits is dropped with its annotations (marked -1 in `kept`).
+  // That result depends on the other union, so it is not cached.
+  function flattenAnyOf(union: ImportedUnion, path: Path, shared: ReadonlySet<string>): ImportedUnion {
     if (!isAnyOf(union)) return union
-    let types = flattenedAlternatives.get(union.types)
+    let types = shared.size === 0 ? flattenedAlternatives.get(union.types) : undefined
     if (types === undefined) {
       const out: Array<ImportedJsonSchemaRepresentation> = []
       const spliced = new Set<string>()
       const kept = new Map<unknown, number>()
+      for (const member of union.types) {
+        if (member._tag !== "Reference" || !shared.has(member.$ref)) continue
+        const nested = nestedAnyOf(member, path, new Set(), noReferences)
+        if (nested === undefined || nested === "spliced") continue
+        for (const type of flattenAnyOf(nested, path, noReferences).types) kept.set(alternativeKey(type), -1)
+      }
       const visit = (members: ReadonlyArray<ImportedJsonSchemaRepresentation>) => {
         for (const member of members) {
-          const nested = nestedAnyOf(member, path, spliced)
+          const nested = nestedAnyOf(member, path, spliced, shared)
           if (nested === "spliced") continue
           if (nested !== undefined) {
             // As when a union collapses to one member, its annotations move to the members.
             visit(nested.types.map((type) => annotate(type, nested)))
             continue
           }
-          const key = member._tag === "Reference"
-            ? `$ref:${member.$ref}`
-            : member._tag === "Null" && member.checks.length === 0
-            ? "null"
-            : member
+          const key = alternativeKey(member)
           const index = kept.get(key)
           if (index !== undefined) {
-            out[index] = annotate(out[index], member)
+            if (index >= 0) out[index] = annotate(out[index], member)
             continue
           }
           kept.set(key, out.length)
@@ -1141,9 +1162,13 @@ export function fromJsonSchemaMultiDocument(
       }
       visit(union.types)
       types = out
-      flattenedAlternatives.set(union.types, types)
+      if (shared.size === 0) flattenedAlternatives.set(union.types, types)
     }
     return { ...union, types }
+  }
+
+  function soleAlternative(union: ImportedUnion): ImportedJsonSchemaRepresentation | undefined {
+    return union.types.length === 1 && union.checks.length === 0 ? annotate(union.types[0], union) : undefined
   }
 
   function intersectUnions(
@@ -1151,8 +1176,27 @@ export function fromJsonSchemaMultiDocument(
     right: ImportedUnion,
     path: Path
   ): ImportedJsonSchemaRepresentation {
-    left = flattenAnyOf(left, path)
-    right = flattenAnyOf(right, path)
+    // A reference in both unions stays a reference, so the two still
+    // intersect as the same reference instead of pairing every alternative.
+    const shared = new Set<string>()
+    if (isAnyOf(left) && isAnyOf(right)) {
+      for (const member of left.types) {
+        if (
+          member._tag === "Reference" &&
+          right.types.some((other) => other._tag === "Reference" && other.$ref === member.$ref)
+        ) shared.add(member.$ref)
+      }
+    }
+    left = flattenAnyOf(left, path, shared)
+    right = flattenAnyOf(right, path, shared)
+    if (shared.size > 0) {
+      // A union reduced to its shared reference intersects as that reference.
+      const leftReference = soleAlternative(left)
+      const rightReference = soleAlternative(right)
+      if (leftReference !== undefined || rightReference !== undefined) {
+        return intersect(leftReference ?? left, rightReference ?? right, path)
+      }
+    }
     const literals = intersectLiteralUnions(left, right, path)
     if (literals !== undefined) return literals
     if (isTypePartition(left)) return intersectPartition(left, right, path, true)

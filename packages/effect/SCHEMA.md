@@ -6496,8 +6496,9 @@ with itself is supported, but alias-only cycles in these intersections are rejec
 Before intersecting, an `anyOf` union splices in the alternatives of any unchecked `anyOf` member, inline or
 referenced, and keeps a single unchecked `null`, so `anyOf: [{ $ref: X }, { type: "null" }]` intersects like `X` itself
 when `X` already admits `null`. Each referenced definition is spliced once, and repeated references are kept once; a
-reference to a definition that is still being translated stays a reference. `oneOf` alternatives are never spliced or
-deduplicated.
+reference to a definition that is still being translated stays a reference. A reference that appears in both unions also
+stays a reference, and alternatives it already admits are dropped, so the unions still intersect through that reference.
+`oneOf` alternatives are never spliced or deduplicated.
 
 Regular expression constraints reached during translation are rejected by default because imported patterns use the
 runtime's native regular expression engine and may block validation for an unbounded amount of time. Set
