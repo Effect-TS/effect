@@ -2,7 +2,7 @@
  * The browser host's head sync: it diffs each merged `Head.Head` against the
  * document, owning only marked tags plus `<title>` and `lang` / `dir`.
  */
-import * as Head from "effect/ui/Head"
+import * as Head from "../../Head.ts"
 
 type Warn = (message: string) => void
 

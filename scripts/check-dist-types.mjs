@@ -48,10 +48,11 @@ try {
   Fs.writeFileSync(Path.join(dir, "tsconfig.json"), JSON.stringify(config))
   execFileSync("pnpm", ["exec", "tsc", "-p", Path.join(dir, "tsconfig.json")], { cwd: root, stdio: "inherit" })
 
-  // Core, crypto and JOSE imports must work without DOM types (see Effect-TS/effect#10115).
+  // Core, crypto, JOSE and UI imports must work without DOM types (see Effect-TS/effect#10115).
+  // Only `effect/ui/html` may need the DOM lib.
   Fs.writeFileSync(
     Path.join(dir, "index.ts"),
-    ["effect", "effect/Effect", "effect/Schema", "effect/crypto/KeyFormat", "effect/jose"]
+    ["effect", "effect/Effect", "effect/Schema", "effect/crypto/KeyFormat", "effect/jose", "effect/ui", "effect/ui/testing"]
       .map((entry, i) => `import * as _${i} from "${entry}"\nexport { _${i} }\n`).join("")
   )
   config.compilerOptions.lib = ["ES2024"]

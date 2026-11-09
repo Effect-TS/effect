@@ -21,7 +21,7 @@
  * **Example** (Rendering a page)
  *
  * ```ts
- * import { HtmlServer } from "@effect/ui-html"
+ * import { HtmlServer } from "effect/ui/html"
  * import { Effect, Schema } from "effect"
  * import { Component, Head } from "effect/ui"
  *
@@ -54,12 +54,12 @@
  * @stability experimental
  * @since 4.1.3
  */
-import type * as Context from "effect/Context"
-import type * as Duration from "effect/Duration"
-import * as Effect from "effect/Effect"
-import type * as Component from "effect/ui/Component"
-import * as Renderer from "effect/ui/Renderer"
-import type * as View from "effect/ui/View"
+import type * as Context from "../../Context.ts"
+import type * as Duration from "../../Duration.ts"
+import * as Effect from "../../Effect.ts"
+import type * as Component from "../Component.ts"
+import * as Renderer from "../Renderer.ts"
+import type * as View from "../View.ts"
 import type * as BrowserHost from "./BrowserHost.ts"
 import * as Html from "./Html.ts"
 import * as server from "./internal/server.ts"

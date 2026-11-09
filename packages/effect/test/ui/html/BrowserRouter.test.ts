@@ -1,9 +1,10 @@
-import { BrowserHost, BrowserRouter } from "@effect/ui-html"
-import { HtmlQuery } from "@effect/ui-html/testing"
+// @vitest-environment happy-dom
 import { expect, it } from "@effect/vitest"
 import { Context, Effect, Exit, Layer, Option, Scope } from "effect"
 import { TestClock } from "effect/testing"
 import { Router } from "effect/ui"
+import { BrowserHost, BrowserRouter } from "effect/ui/html"
+import { HtmlQuery } from "effect/ui/html/testing"
 import { describe } from "vitest"
 import { App, AppRoute, People } from "./fixtures/routed.ts"
 

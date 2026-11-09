@@ -1,8 +1,9 @@
-import { BrowserHost, Html } from "@effect/ui-html"
-import { HtmlQuery } from "@effect/ui-html/testing"
+// @vitest-environment happy-dom
 import { expect, it } from "@effect/vitest"
 import { Effect, Exit, Option, Schema, Scope } from "effect"
 import { Component, View } from "effect/ui"
+import { BrowserHost, Html } from "effect/ui/html"
+import { HtmlQuery } from "effect/ui/html/testing"
 import { describe } from "vitest"
 import { maxTitle, TodoApp } from "./fixtures/todos.ts"
 

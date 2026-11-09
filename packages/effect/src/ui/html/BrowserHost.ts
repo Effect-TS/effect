@@ -17,7 +17,7 @@
  * **Example** (Mounting an app)
  *
  * ```ts
- * import { BrowserHost, Html } from "@effect/ui-html"
+ * import { BrowserHost, Html } from "effect/ui/html"
  * import { Effect, Schema } from "effect"
  * import { Component } from "effect/ui"
  *
@@ -42,14 +42,14 @@
  * @stability experimental
  * @since 4.1.3
  */
-import * as Context from "effect/Context"
-import * as Effect from "effect/Effect"
-import * as Layer from "effect/Layer"
-import type * as AsyncResult from "effect/reactivity/AsyncResult"
-import type * as Scope from "effect/Scope"
-import type * as Component from "effect/ui/Component"
-import * as Renderer from "effect/ui/Renderer"
-import type * as View from "effect/ui/View"
+import * as Context from "../../Context.ts"
+import * as Effect from "../../Effect.ts"
+import * as Layer from "../../Layer.ts"
+import type * as AsyncResult from "../../reactivity/AsyncResult.ts"
+import type * as Scope from "../../Scope.ts"
+import type * as Component from "../Component.ts"
+import * as Renderer from "../Renderer.ts"
+import type * as View from "../View.ts"
 import * as Html from "./Html.ts"
 import * as headSync from "./internal/head.ts"
 import * as markers from "./internal/markers.ts"

@@ -17,7 +17,7 @@
  * **Example** (Finding a button by its name)
  *
  * ```ts import.meta.vitest
- * import { HtmlQuery } from "@effect/ui-html/testing"
+ * import { HtmlQuery } from "effect/ui/html/testing"
  *
  * const tree = {
  *   tag: "form",
@@ -35,7 +35,7 @@
  * @stability experimental
  * @since 4.1.3
  */
-import type * as Query from "effect/ui/testing/Query"
+import type * as Query from "../../testing/Query.ts"
 
 // ---------------------------------------------------------------------------
 // trees

@@ -22,7 +22,7 @@
  * **Example** (A two-page app)
  *
  * ```ts
- * import { BrowserHost, BrowserRouter, Html } from "@effect/ui-html"
+ * import { BrowserHost, BrowserRouter, Html } from "effect/ui/html"
  * import { Effect, Layer, Option, Schema } from "effect"
  * import { Component, Route, Router } from "effect/ui"
  *
@@ -64,12 +64,12 @@
  * @stability experimental
  * @since 4.1.3
  */
-import * as Context from "effect/Context"
-import * as Effect from "effect/Effect"
-import * as Layer from "effect/Layer"
-import * as Option from "effect/Option"
-import type * as Route from "effect/ui/Route"
-import * as Router from "effect/ui/Router"
+import * as Context from "../../Context.ts"
+import * as Effect from "../../Effect.ts"
+import * as Layer from "../../Layer.ts"
+import * as Option from "../../Option.ts"
+import type * as Route from "../Route.ts"
+import * as Router from "../Router.ts"
 import * as submit from "./internal/submit.ts"
 
 /**

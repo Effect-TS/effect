@@ -1,6 +1,7 @@
-import { HtmlQuery } from "@effect/ui-html/testing"
+// @vitest-environment happy-dom
 import { describe, expect, it } from "@effect/vitest"
 import { Effect } from "effect"
+import { HtmlQuery } from "effect/ui/html/testing"
 import { Query, Story, TestHost } from "effect/ui/testing"
 import { TodoApp, TodoAppMessage } from "./fixtures/todos.ts"
 

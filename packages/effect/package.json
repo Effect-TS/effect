@@ -58,6 +58,8 @@
     "./workers": "./src/workers/index.ts",
     "./ui": "./src/ui/index.ts",
     "./ui/testing": "./src/ui/testing/index.ts",
+    "./ui/html": "./src/ui/html/index.ts",
+    "./ui/html/testing": "./src/ui/html/testing/index.ts",
     "./*": "./src/*.ts",
     "./ai/internal/*": null,
     "./cli/internal/*": null,
@@ -74,6 +76,7 @@
     "./rpc/internal/*": null,
     "./workflow/internal/*": null,
     "./ui/internal/*": null,
+    "./ui/html/internal/*": null,
     "./internal/*": null,
     "./index": null,
     "./*/index": null
@@ -121,6 +124,8 @@
       "./workers": "./dist/workers/index.js",
       "./ui": "./dist/ui/index.js",
       "./ui/testing": "./dist/ui/testing/index.js",
+      "./ui/html": "./dist/ui/html/index.js",
+      "./ui/html/testing": "./dist/ui/html/testing/index.js",
       "./*": "./dist/*.js",
       "./internal/*": null,
       "./cli/internal/*": null,
@@ -138,6 +143,7 @@
       "./rpc/internal/*": null,
       "./workflow/internal/*": null,
       "./ui/internal/*": null,
+      "./ui/html/internal/*": null,
       "./index": null,
       "./*/index": null
     }

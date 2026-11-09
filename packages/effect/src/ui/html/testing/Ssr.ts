@@ -17,7 +17,7 @@
  * **Example** (Checking a page hydrates)
  *
  * ```ts
- * import { ssr } from "@effect/ui-html/testing"
+ * import { ssr } from "effect/ui/html/testing"
  * import { Effect, Schema } from "effect"
  * import { Component, Head } from "effect/ui"
  *
@@ -40,17 +40,17 @@
  * @stability experimental
  * @since 4.1.3
  */
-import * as Context from "effect/Context"
-import * as Data from "effect/Data"
-import type * as Duration from "effect/Duration"
-import * as Effect from "effect/Effect"
-import * as Schema from "effect/Schema"
-import type * as Scope from "effect/Scope"
-import type * as Component from "effect/ui/Component"
-import * as Head from "effect/ui/Head"
-import * as MessageLog from "effect/ui/MessageLog"
-import * as Renderer from "effect/ui/Renderer"
-import type * as View from "effect/ui/View"
+import * as Context from "../../../Context.ts"
+import * as Data from "../../../Data.ts"
+import type * as Duration from "../../../Duration.ts"
+import * as Effect from "../../../Effect.ts"
+import * as Schema from "../../../Schema.ts"
+import type * as Scope from "../../../Scope.ts"
+import type * as Component from "../../Component.ts"
+import * as Head from "../../Head.ts"
+import * as MessageLog from "../../MessageLog.ts"
+import * as Renderer from "../../Renderer.ts"
+import type * as View from "../../View.ts"
 import * as BrowserHost from "../BrowserHost.ts"
 import * as Html from "../Html.ts"
 import * as markers from "../internal/markers.ts"

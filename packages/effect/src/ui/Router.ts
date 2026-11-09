@@ -4,7 +4,7 @@
  *
  * `Router` is a host service. Its Layers are `Router.memory` (tests and
  * `TestHost`), `Router.static` (server rendering) and, in
- * `@effect/ui-html`, `BrowserRouter.layer` and `BrowserRouter.layerHash`.
+ * `effect/ui/html`, `BrowserRouter.layer` and `BrowserRouter.layerHash`.
  * Each provides the `Router` service and the navigation Commands, `Push`,
  * `Replace`, `Back`, `Forward`, `Load`, `Block` and `Unblock`. A component
  * that navigates has them in its requirements, so a missing Router is a
