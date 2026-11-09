@@ -26,6 +26,7 @@ import * as EffectRequest from "effect/Request"
 import { Rpc, RpcGroup, RpcMiddleware, RpcSchema, RpcSerialization, RpcServer } from "effect/rpc"
 import * as RpcMessage from "effect/rpc/RpcMessage"
 import { Socket, SocketServer } from "effect/socket"
+import * as TestClock from "effect/testing/TestClock"
 
 const exitCode = (exit: Exit.Exit<unknown, unknown>): number => {
   let code = -1
@@ -417,6 +418,28 @@ describe("RpcServer", () => {
       ])
       yield* Deferred.succeed(closeStdin, undefined)
       assert.strictEqual(exitCode(yield* Fiber.await(server)), 0)
+    }))
+
+  it.effect("should shut down unsuccessfully when STDIO writing defects", () =>
+    Effect.gen(function*() {
+      const writeStarted = yield* Deferred.make<void>()
+      const server = yield* Layer.launch(
+        RpcServer.layer(RpcGroup.make()).pipe(
+          Layer.provide(RpcServer.layerProtocolStdio),
+          Layer.provide(RpcSerialization.layerNdjson),
+          Layer.provide(Stdio.layerTest({
+            stdin: Stream.make(new TextEncoder().encode(`{"_tag":"Ping"}\n`)),
+            stdout: () =>
+              Sink.forEach(() =>
+                Deferred.succeed(writeStarted, undefined).pipe(Effect.andThen(Effect.die("stdout defect")))
+              )
+          }))
+        )
+      ).pipe(Effect.forkScoped)
+      yield* Deferred.await(writeStarted)
+      const terminated = yield* Fiber.await(server).pipe(Effect.timeout("1 second"), Effect.forkChild)
+      yield* TestClock.adjust("1 second")
+      assert.notStrictEqual(exitCode(yield* Fiber.join(terminated)), 0)
     }))
 
   it.effect("should wait for a blocked STDIO write before shutting down", () =>
