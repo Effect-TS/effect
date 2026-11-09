@@ -28,6 +28,7 @@ import * as Context from "../Context.ts"
 import * as Deferred from "../Deferred.ts"
 import * as Effect from "../Effect.ts"
 import * as Exit from "../Exit.ts"
+import * as HttpApiClient from "../http-api/HttpApiClient.ts"
 import * as Layer from "../Layer.ts"
 import type * as Redacted from "../Redacted.ts"
 import type * as Scope from "../Scope.ts"
@@ -306,7 +307,7 @@ export const make: Effect.Effect<DockerExec["Service"], never, DockerEngine> = E
     function*(id: string, options?: { readonly consoleSize?: DockerApi.TtySize | undefined }) {
       const info = yield* inspect(id)
       const tty = info.ProcessConfig?.tty === true
-      const body: DockerApi.ExecStartConfig = {
+      const body: DockerSchema.ExecStartConfig = {
         Detach: false,
         Tty: tty,
         ...(options?.consoleSize !== undefined
@@ -314,7 +315,14 @@ export const make: Effect.Effect<DockerExec["Service"], never, DockerEngine> = E
           : {})
       }
       return yield* releaseOnFailure(Effect.gen(function*() {
-        const { headers, socket } = yield* api.start({ params: { id }, payload: body })
+        const started = yield* api.start({ params: { id }, payload: body })
+        // an attached start always upgrades; only a detached one answers `200`
+        if (!HttpApiClient.isUpgraded(started)) {
+          return yield* new DockerError({
+            reason: new InvalidResponse({ issue: "the Engine didn't upgrade an attached exec start" })
+          })
+        }
+        const { headers, socket } = started
         return yield* makeHandle({
           engine,
           socket,

@@ -247,9 +247,9 @@ describe("DockerApi", () => {
       ContainerAttachWebsocket: ["not declared"],
       // deprecated since API 1.52: a BuildKit session is gRPC over h2c, with headers the document doesn't list
       Session: ["not declared"],
-      // the client always asks to upgrade, which the Engine answers with 101; `Detach: false` rules out exec's 200
+      // the client always asks to upgrade, which the Engine answers with 101 (a detached exec start with 200)
       ContainerAttach: ["success 200 not declared"],
-      ExecStart: ["success 200 not declared", "success 101 not in the document"],
+      ExecStart: ["success 101 not in the document"],
       // pull and upgrade answer a progress stream with 200, verified live
       PluginPull: ["success 204 not declared", "success 200 not in the document"],
       PluginUpgrade: ["success 204 not declared", "success 200 not in the document"],

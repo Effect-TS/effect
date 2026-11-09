@@ -783,32 +783,11 @@ export const ExecConfig = DockerSchema.ExecConfig.mapFields((fields) => ({ ...fi
 export type ExecConfig = typeof ExecConfig.Type
 
 /**
- * How to start an exec, as the Engine's `ExecStartConfig`, attached to its
- * stdio: `Detach` can only be `false`. A detached start answers `200` instead
- * of upgrading the connection, which an upgrade endpoint can't declare.
- *
- * @stability unstable
- * @category schemas
- * @since 4.2.0
- */
-export const ExecStartConfig = DockerSchema.ExecStartConfig.mapFields((fields) => ({
-  ...fields,
-  Detach: Schema.optionalKey(Schema.Literal(false))
-}))
-
-/**
- * How to start an exec, see {@link ExecStartConfig}.
- *
- * @stability unstable
- * @category models
- * @since 4.2.0
- */
-export type ExecStartConfig = typeof ExecStartConfig.Type
-
-/**
  * The Engine's exec endpoints, which `DockerExec` is a client of. Starting an
  * exec upgrades its request, which carries the start options, to the exec's
- * stdio, framed as the `101`'s `Content-Type` says.
+ * stdio, framed as the `101`'s `Content-Type` says. A detached start
+ * (`Detach: true`) answers an empty `200` instead; tell the two apart with
+ * `HttpApiClient.isUpgraded`.
  *
  * @stability unstable
  * @category groups
@@ -826,8 +805,8 @@ export const Exec = HttpApiGroup.make("exec").add(
   }),
   HttpApiEndpoint.post("start", "/exec/:id/start", {
     params: id,
-    payload: ExecStartConfig,
-    success: HttpApiSchema.Upgrade({ protocol: "tcp", headers: streamHeaders })
+    payload: DockerSchema.ExecStartConfig,
+    success: [HttpApiSchema.Upgrade({ protocol: "tcp", headers: streamHeaders }), HttpApiSchema.Empty(200)]
   }),
   HttpApiEndpoint.post("resize", "/exec/:id/resize", {
     params: id,
