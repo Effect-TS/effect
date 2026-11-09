@@ -288,7 +288,18 @@ describe("DockerApi", () => {
       SecretCreate: ["response Id not declared", "response ID not in the document"],
       ConfigCreate: ["response Id not declared", "response ID not in the document"],
       // the Engine's AuthConfig has `identitytoken`, which the document leaves out
-      SystemAuth: ["request identitytoken not in the document"]
+      SystemAuth: ["request identitytoken not in the document"],
+      // the document shares these with container create, but the Engine clears them on update before API 1.55
+      // (moby's postContainerUpdate), so at 1.52 they would succeed without effect
+      ContainerUpdate: [
+        "request BlkioDeviceReadBps not declared",
+        "request BlkioDeviceReadIOps not declared",
+        "request BlkioDeviceWriteBps not declared",
+        "request BlkioDeviceWriteIOps not declared",
+        "request BlkioWeightDevice not declared"
+      ],
+      // likewise on network connect before API 1.54 (moby's postNetworkConnect); container create keeps it
+      NetworkConnect: ["request EndpointConfig.MacAddress not declared"]
     })
   })
 })

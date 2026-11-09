@@ -92,7 +92,7 @@ export class DockerNetworks extends Context.Service<DockerNetworks, {
    */
   readonly connect: (
     id: string,
-    config: DockerSchema.NetworkConnectRequest
+    config: DockerApi.NetworkConnectRequest
   ) => Effect.Effect<void, DockerError>
   /**
    * Disconnects a container from a network.

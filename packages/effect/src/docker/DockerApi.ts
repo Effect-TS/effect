@@ -55,6 +55,7 @@ import * as Option from "../Option.ts"
 import * as Schema from "../Schema.ts"
 import * as SchemaGetter from "../SchemaGetter.ts"
 import * as SchemaTransformation from "../SchemaTransformation.ts"
+import * as Struct from "../Struct.ts"
 import * as DockerError from "./DockerError.ts"
 import * as DockerSchema from "./DockerSchema.ts"
 import { BuildMessage, errorMessage, Progress } from "./internal/api.ts"
@@ -526,6 +527,33 @@ export const ContainerCreateRequest = DockerSchema.ContainerCreateRequest.mapFie
  */
 export type ContainerCreateRequest = typeof ContainerCreateRequest.Type
 
+/**
+ * A container's new resource limits and restart policy, as the Engine's
+ * `ContainerUpdateRequest`, without the block I/O device limits: the Engine
+ * clears those on update before API 1.55 (moby's `postContainerUpdate`), so
+ * at 1.52 they would succeed without effect.
+ *
+ * @stability unstable
+ * @category schemas
+ * @since 4.2.0
+ */
+export const ContainerUpdateRequest = DockerSchema.ContainerUpdateRequest.mapFields(Struct.omit([
+  "BlkioWeightDevice",
+  "BlkioDeviceReadBps",
+  "BlkioDeviceWriteBps",
+  "BlkioDeviceReadIOps",
+  "BlkioDeviceWriteIOps"
+]))
+
+/**
+ * A container's new resource limits, see {@link ContainerUpdateRequest}.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.2.0
+ */
+export type ContainerUpdateRequest = typeof ContainerUpdateRequest.Type
+
 /** `stop` and `restart`: a signal, and the grace period as the Engine's `t`. */
 const StopQuery = Schema.Struct({ signal, timeout: Schema.optional(DurationSeconds) }).pipe(
   Schema.encodeKeys({ timeout: "t" })
@@ -631,7 +659,7 @@ export const Containers = HttpApiGroup.make("containers").add(
   }),
   HttpApiEndpoint.post("update", "/containers/:id/update", {
     params: id,
-    payload: DockerSchema.ContainerUpdateRequest,
+    payload: ContainerUpdateRequest,
     success: Schema.toCodecGoJson(DockerSchema.ContainerUpdateResponse)
   }),
   HttpApiEndpoint.post("wait", "/containers/:id/wait", {
@@ -807,6 +835,30 @@ export const Exec = HttpApiGroup.make("exec").add(
 // -----------------------------------------------------------------------------
 
 /**
+ * How to connect a container to a network, as the Engine's
+ * `NetworkConnectRequest`, without `EndpointConfig.MacAddress`: the Engine
+ * ignores it on connect before API 1.54 (moby's `postNetworkConnect`). Set
+ * the address when creating the container instead.
+ *
+ * @stability unstable
+ * @category schemas
+ * @since 4.2.0
+ */
+export const NetworkConnectRequest = DockerSchema.NetworkConnectRequest.mapFields((fields) => ({
+  ...fields,
+  EndpointConfig: Schema.optionalKey(DockerSchema.EndpointSettings.mapFields(Struct.omit(["MacAddress"])))
+}))
+
+/**
+ * How to connect a container to a network, see {@link NetworkConnectRequest}.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.2.0
+ */
+export type NetworkConnectRequest = typeof NetworkConnectRequest.Type
+
+/**
  * The Engine's network endpoints, which `DockerNetworks` is a client of.
  *
  * @stability unstable
@@ -833,7 +885,7 @@ export const Networks = HttpApiGroup.make("networks").add(
   }),
   HttpApiEndpoint.post("connect", "/networks/:id/connect", {
     params: id,
-    payload: DockerSchema.NetworkConnectRequest,
+    payload: NetworkConnectRequest,
     success: HttpApiSchema.Empty(200)
   }),
   HttpApiEndpoint.post("disconnect", "/networks/:id/disconnect", {

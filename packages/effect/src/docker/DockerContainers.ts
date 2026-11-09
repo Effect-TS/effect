@@ -253,7 +253,7 @@ export class DockerContainers extends Context.Service<DockerContainers, {
    */
   readonly update: (
     id: string,
-    config: DockerSchema.ContainerUpdateRequest
+    config: DockerApi.ContainerUpdateRequest
   ) => Effect.Effect<DockerSchema.ContainerUpdateResponse, DockerError>
   /**
    * Waits for a container to reach a condition, and returns its exit code.
