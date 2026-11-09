@@ -1620,7 +1620,7 @@ export const makeProtocolStdio = Effect.gen(function*() {
             ? Fiber.interruptAs(fiber, undefined, Context.make(Runtime.InterruptExitCode, 0))
             : Fiber.interrupt(fiber),
           { startImmediately: true }
-        ).pipe(Effect.asVoid)
+        )
       }),
       Effect.forkScoped
     )

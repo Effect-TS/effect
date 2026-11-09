@@ -68,13 +68,42 @@ export interface Teardown {
  * Annotation specifying the exit code for an interruption handled by
  * {@link defaultTeardown}.
  *
+ * **When to use**
+ *
+ * Use when a component finishes a program by interrupting its main fiber on
+ * purpose, such as a stdio server shutting down after stdin closes, and that
+ * shutdown should not report the `130` code reserved for external interruption.
+ *
  * **Details**
  *
- * Attach this service to interrupt reason annotations, not the running effect's
- * context. When every reason is an annotated interruption, the largest code is
- * used. Any unannotated interruption preserves the default exit code of 130.
+ * Pass the annotation through `Fiber.interruptAs`. {@link defaultTeardown}
+ * reads it from the interrupt reasons of the final `Cause`.
  *
- * @see {@link defaultTeardown}
+ * **Gotchas**
+ *
+ * The annotation is read from the `Cause`, not from the running effect's
+ * services, so providing it with `Effect.provideService` has no effect.
+ *
+ * **Example** (Exiting with 0 after an intentional interruption)
+ *
+ * ```ts import.meta.vitest
+ * import { Context, Effect, Fiber, Runtime } from "effect"
+ *
+ * const program = Effect.gen(function*() {
+ *   const main = yield* Effect.forkChild(Effect.never)
+ *   yield* Fiber.interruptAs(main, undefined, Context.make(Runtime.InterruptExitCode, 0))
+ *   return yield* Fiber.await(main)
+ * })
+ *
+ * const exitCodes: Array<number> = []
+ * Runtime.defaultTeardown(await Effect.runPromise(program), (code) => exitCodes.push(code))
+ *
+ * exitCodes // => [0]
+ * ```
+ *
+ * @see {@link defaultTeardown} for how annotated and unannotated interruptions combine
+ * @see {@link errorExitCode} for the equivalent marker on failures
+ *
  * @stability stable
  * @category annotations
  * @since 4.1.3
@@ -104,9 +133,9 @@ export class InterruptExitCode
  *
  * **Gotchas**
  *
- * The `130` code is used only when the Cause contains interruptions and no
- * other failure reasons and at least one interruption is unannotated. Causes
- * containing errors or defects use the squashed error path instead.
+ * Interruption codes apply only when the Cause contains nothing but
+ * interruptions. A Cause that mixes interruptions with errors or defects uses
+ * the squashed error path instead.
  *
  * **Example** (Referencing default teardown)
  *
