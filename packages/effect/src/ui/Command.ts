@@ -260,8 +260,9 @@ export type Kind = "Effect" | "Stream"
  * `Msg` is the message it produces and `R` what it requires. `Source` is the
  * result of the Command's definition before any `map`; it's what
  * `Story.resolve` takes when given an issued Command. `K` is the kind, which
- * decides whether `effect` or `stream` holds the work. Use the `Effectful` and
- * `Streaming` aliases rather than naming `K` yourself.
+ * decides whether `effect` or `stream` holds the work; the other field is
+ * `undefined`. Use the `Effectful` and `Streaming` aliases rather than naming
+ * `K` yourself, and narrow a `Command` on `_tag` before reading the work.
  *
  * One interface for both kinds, rather than two, is what lets
  * `command.pipe(Command.map((result) => ...))` infer `result`.
@@ -272,8 +273,10 @@ export type Kind = "Effect" | "Stream"
  */
 export interface Issued<out Msg, out R, in Source, out K extends Kind> extends Proto<Msg, Source> {
   readonly _tag: K
-  readonly effect: K extends "Effect" ? Effect.Effect<Msg, never, R> : never
-  readonly stream: K extends "Stream" ? Stream.Stream<Msg, never, R> : never
+  /** The work of an `"Effect"` Command. `undefined` on a `"Stream"` one. */
+  readonly effect: K extends "Effect" ? Effect.Effect<Msg, never, R> : undefined
+  /** The work of a `"Stream"` Command. `undefined` on an `"Effect"` one. */
+  readonly stream: K extends "Stream" ? Stream.Stream<Msg, never, R> : undefined
 }
 
 /**
@@ -362,13 +365,16 @@ export type Result<C> = C extends Proto<infer _Msg, infer Source> ? Source
   : never
 
 /**
- * `C` with its message mapped to `B`. An `Interrupt` stays an `Interrupt`.
+ * `C` with its message mapped to `B`. An `Interrupt` stays an `Interrupt`, and
+ * a Command whose kind is `"Effect" | "Stream"` becomes a union of the two kinds,
+ * so it still fits `Command<B>`.
  *
  * @stability experimental
  * @category utility types
  * @since 4.1.3
  */
-export type Mapped<C, B> = C extends Issued<infer _Msg, infer R, infer Source, infer K> ? Issued<B, R, Source, K>
+export type Mapped<C, B> = C extends Issued<infer _Msg, infer R, infer Source, infer K> ?
+  (K extends Kind ? Issued<B, R, Source, K> : never)
   : C extends Interrupt ? Interrupt
   : never
 
@@ -530,7 +536,7 @@ const makeEffectful = <Msg, R>(
     readonly effect: Effect.Effect<any, never, R>
     readonly resolve: (result: any) => Msg
   }
-): Effectful<Msg, R> => Object.assign(Object.create(Proto), { _tag: "Effect" }, fields)
+): Effectful<Msg, R> => Object.assign(Object.create(Proto), { _tag: "Effect", stream: undefined }, fields)
 
 const makeStreaming = <Msg, R>(
   fields: {
@@ -541,7 +547,7 @@ const makeStreaming = <Msg, R>(
     readonly stream: Stream.Stream<any, never, R>
     readonly resolve: (result: any) => Msg
   }
-): Streaming<Msg, R> => Object.assign(Object.create(Proto), { _tag: "Stream" }, fields)
+): Streaming<Msg, R> => Object.assign(Object.create(Proto), { _tag: "Stream", effect: undefined }, fields)
 
 const identity = (result: any) => result
 
@@ -799,7 +805,9 @@ export const Service: <Self>() => {
  * @since 4.1.3
  */
 export const map: {
-  <A, B>(f: (a: A) => B): <R, Source, K extends Kind>(self: Issued<A, R, Source, K>) => Issued<B, R, Source, K>
+  <A, B>(
+    f: (a: A) => B
+  ): <R, Source, K extends Kind>(self: Issued<A, R, Source, K>) => Mapped<Issued<A, R, Source, K>, B>
   <C extends Command<any, any>, B>(self: C, f: (a: Message<C>) => B): Mapped<C, B>
 } = dual(2, <A, R, B>(self: Command<A, R>, f: (a: A) => B): Command<B, R> => {
   switch (self._tag) {
