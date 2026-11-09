@@ -6,6 +6,123 @@ import { LanguageModel, Model, Prompt, Tool, Toolkit } from "effect/ai"
 import { HttpClient, type HttpClientError, type HttpClientRequest, HttpClientResponse } from "effect/http"
 
 describe("OpenRouterLanguageModel", () => {
+  describe("tool calls with omitted provider fields", () => {
+    const toolkit = Toolkit.make(Tool.make("Lookup", {
+      parameters: Schema.Struct({ value: Schema.Number }),
+      success: Schema.Number
+    }))
+    const handlers = toolkit.toLayer({ Lookup: ({ value }) => Effect.succeed(value * 2) })
+
+    it.effect("generates missing tool call ids and preserves supplied ids", () =>
+      Effect.gen(function*() {
+        const response = yield* LanguageModel.generateText({ prompt: "Look up values", toolkit })
+        deepStrictEqual(response.toolCalls.map(({ id, name, params }) => ({ id, name, params })), [
+          { id: "gen-1_tool_0", name: "Lookup", params: { value: 1 } },
+          { id: "gen-1_tool_1", name: "Lookup", params: { value: 2 } },
+          { id: "provider-id", name: "Lookup", params: { value: 3 } }
+        ])
+        deepStrictEqual(response.toolResults.map(({ id, result }) => ({ id, result })), [
+          { id: "gen-1_tool_0", result: 2 },
+          { id: "gen-1_tool_1", result: 4 },
+          { id: "provider-id", result: 6 }
+        ])
+      }).pipe(
+        Effect.provide(OpenRouterLanguageModel.model("test/model")),
+        Effect.provide(handlers),
+        Effect.provide(makeTestLayer({
+          rawBody: {
+            ...makeDefaultResponse(),
+            id: "gen-1",
+            choices: [{
+              index: 0,
+              finish_reason: "tool_calls",
+              message: {
+                role: "assistant",
+                content: null,
+                tool_calls: [
+                  { type: "function", function: { name: "Lookup", arguments: "{\"value\":1}" } },
+                  { type: "function", function: { name: "Lookup", arguments: "{\"value\":2}" } },
+                  { id: "provider-id", type: "function", function: { name: "Lookup", arguments: "{\"value\":3}" } }
+                ]
+              }
+            }]
+          }
+        }))
+      ))
+
+    it.effect("associates indexless stream deltas by position and emits completed calls only once", () =>
+      Effect.gen(function*() {
+        const parts = yield* LanguageModel.streamText({
+          prompt: "Look up values",
+          toolkit,
+          disableToolCallResolution: true
+        }).pipe(Stream.runCollect)
+        deepStrictEqual(
+          parts.filter((part) => part.type === "tool-call").map(({ id, name, params }) => ({ id, name, params })),
+          [
+            { id: "call-1", name: "Lookup", params: { value: 1 } },
+            { id: "call-2", name: "Lookup", params: { value: 2 } },
+            { id: "call-3", name: "Lookup", params: { value: 3 } }
+          ]
+        )
+        deepStrictEqual(parts.filter((part) => part.type === "tool-params-end").map(({ id }) => id), [
+          "call-1",
+          "call-2",
+          "call-3"
+        ])
+      }).pipe(
+        Effect.provide(OpenRouterLanguageModel.model("test/model")),
+        Effect.provide(handlers),
+        Effect.provide(makeStreamTestLayer([
+          {
+            id: "gen-1",
+            object: "chat.completion.chunk",
+            created: 1,
+            model: "test/model",
+            choices: [{
+              index: 0,
+              delta: {
+                tool_calls: [
+                  { id: "call-1", type: "function", function: { name: "Lookup", arguments: "{\"value\":" } },
+                  { id: "call-2", type: "function", function: { name: "Lookup", arguments: "{\"value\":" } },
+                  { index: 7, id: "call-3", type: "function", function: { name: "Lookup", arguments: "{\"value\":" } }
+                ]
+              }
+            }]
+          },
+          {
+            id: "gen-1",
+            object: "chat.completion.chunk",
+            created: 1,
+            model: "test/model",
+            choices: [{
+              index: 0,
+              delta: {
+                tool_calls: [
+                  { function: { arguments: "1}" } },
+                  { function: { arguments: "2}" } }
+                ]
+              }
+            }]
+          },
+          {
+            id: "gen-1",
+            object: "chat.completion.chunk",
+            created: 1,
+            model: "test/model",
+            choices: [{ index: 0, delta: { tool_calls: [{ index: 7, function: { arguments: "3}" } }] } }]
+          },
+          {
+            id: "gen-1",
+            object: "chat.completion.chunk",
+            created: 1,
+            model: "test/model",
+            choices: [{ index: 0, finish_reason: "tool_calls", delta: {} }]
+          }
+        ]))
+      ))
+  })
+
   describe("strictJsonSchema", () => {
     for (
       const [model, strict] of [
@@ -837,6 +954,7 @@ describe("OpenRouterLanguageModel", () => {
 
 class MockOpenRouterResponse extends Context.Service<MockOpenRouterResponse, {
   readonly status: number
+  readonly rawBody?: unknown
   readonly body: typeof Generated.SendChatCompletionRequest200.Type
   readonly headers?: Record<string, string> | undefined
 }>()("MockOpenRouterResponse") {}
@@ -854,7 +972,7 @@ const encodeResponse = Schema.encodeEffect(Generated.SendChatCompletionRequest20
 const makeHttpClient = Effect.gen(function*() {
   const capturedRequests = yield* Ref.make<ReadonlyArray<HttpClientRequest.HttpClientRequest>>([])
   const response = yield* MockOpenRouterResponse
-  const body = yield* Effect.orDie(encodeResponse(response.body))
+  const body = response.rawBody ?? (yield* Effect.orDie(encodeResponse(response.body)))
 
   const httpClient = HttpClient.makeWith(
     Effect.fnUntraced(function*(requestEffect) {
@@ -898,6 +1016,7 @@ const makeDefaultResponse = (
 })
 
 const makeTestLayer = (options: {
+  readonly rawBody?: unknown
   readonly body?: Partial<typeof Generated.SendChatCompletionRequest200.Type>
   readonly status?: number
   readonly headers?: Record<string, string>
@@ -906,6 +1025,7 @@ const makeTestLayer = (options: {
     Layer.provideMerge(HttpClientLayer),
     Layer.provide(Layer.succeed(MockOpenRouterResponse, {
       body: makeDefaultResponse(options.body),
+      rawBody: options.rawBody,
       status: options.status ?? 200,
       headers: options.headers ?? {}
     }))
@@ -920,7 +1040,8 @@ const getRequestBody = Effect.fnUntraced(function*(request: HttpClientRequest.Ht
   return yield* Effect.die(new Error("Expected Uint8Array body"))
 })
 
-const makeStreamTestLayer = (events: ReadonlyArray<typeof Generated.ChatStreamChunk.Encoded>) => {
+// Raw wire events allow regression coverage for payloads rejected by the current schema.
+const makeStreamTestLayer = (events: ReadonlyArray<unknown>) => {
   const body = events.map((event) => `data: ${JSON.stringify(event)}\n\n`).join("") + "data: [DONE]\n\n"
   const httpClientLayer = Layer.effectContext(Effect.gen(function*() {
     const capturedRequests = yield* Ref.make<ReadonlyArray<HttpClientRequest.HttpClientRequest>>([])
