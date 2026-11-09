@@ -28,6 +28,7 @@
 import * as Cause from "../Cause.ts"
 import * as Effect from "../Effect.ts"
 import * as ErrorReporter from "../ErrorReporter.ts"
+import * as Predicate from "../Predicate.ts"
 import * as Stream from "../Stream.ts"
 import type * as AgUiSchema from "./AgUiSchema.ts"
 import { protocolVersion } from "./AgUiSchema.ts"
@@ -147,7 +148,7 @@ export const toPrompt = (input: AgUiSchema.RunAgentInput, options?: {
 // on the tool message they send back
 const hasFailureMarker = (metadata: AgUiSchema.Metadata | undefined): boolean => {
   const marker = metadata?.["effect/ai"]
-  return typeof marker === "object" && marker !== null && "isFailure" in marker && marker.isFailure === true
+  return Predicate.hasProperty(marker, "isFailure") && marker.isFailure === true
 }
 
 const parseJson = (text: string): unknown => {

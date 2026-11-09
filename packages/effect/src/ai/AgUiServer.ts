@@ -131,15 +131,14 @@ const respond = <E, R>(
     headers: { "cache-control": "no-cache" as const }
   })
 
-const encodeEvent = Schema.encodeUnknownEffect(Schema.fromJsonString(AgUiSchema.Event))
+const EventJson = Schema.fromJsonString(AgUiSchema.Event)
+const encodeEvent = Schema.encodeUnknownEffect(EventJson)
+const decodeEvent = Schema.decodeUnknownEffect(EventJson)
 
-const normalizeEvent = (event: AgUiSchema.Event) =>
-  encodeEvent(event).pipe(
-    Effect.map((json): AgUiSchema.Event => JSON.parse(json)),
-    // JSON can drop a required member, such as an undefined `value`, so encode
-    // the parsed event as HttpApi will before it leaves the run
-    Effect.tap(encodeEvent)
-  )
+// Round-trips the event through its JSON text. JSON can drop a required
+// member, such as an undefined `value`, so decoding the text checks what
+// HttpApi will encode before the event leaves the run
+const normalizeEvent = (event: AgUiSchema.Event) => Effect.flatMap(encodeEvent(event), decodeEvent)
 
 /**
  * Creates a layer that serves AG-UI runs at `path` on the current
