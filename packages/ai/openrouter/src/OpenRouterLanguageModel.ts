@@ -1429,8 +1429,9 @@ const makeStreamResponse = Effect.fnUntraced(
 
           const toolCalls = delta.tool_calls
           if (Predicate.isNotNullish(toolCalls)) {
-            for (const toolCall of toolCalls) {
-              const index = toolCall.index ?? toolCalls.length - 1
+            for (let indexInChunk = 0; indexInChunk < toolCalls.length; indexInChunk++) {
+              const toolCall = toolCalls[indexInChunk]
+              const index = toolCall.index ?? indexInChunk
               let activeToolCall = activeToolCalls[index]
               const argumentsDelta = toolCall.function?.arguments ?? ""
 
