@@ -19,7 +19,7 @@ const click = (root: TestHost.TestRoot<any, any, any>, text: string) =>
 
 const RowMessage = Schema.TaggedUnion({ Bump: {} })
 
-const Hold = Command.make("Hold", (): Effect.Effect<typeof RowMessage.Type> => Effect.never)
+const Hold = Command.make("Hold", () => Effect.never)
 const Row = Component.make({
   name: "Row",
   props: Schema.Struct({ id: Schema.String }),
@@ -235,7 +235,7 @@ describe("Runtime", () => {
 
     it.effect("a defect in a Command fails its instance", () =>
       provideHost(Effect.gen(function*() {
-        const Explode = Command.make("Explode", (): Effect.Effect<string> => Effect.die("kaboom"))
+        const Explode = Command.make("Explode", () => Effect.die("kaboom"))
         const Child = Component.make({
           name: "Child",
           model: Schema.Number,

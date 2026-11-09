@@ -79,7 +79,7 @@ import * as View from "../View.ts"
  * @since 4.1.3
  */
 export interface Pending<Msg> {
-  readonly command: Command.Effectful<Msg, any, any> | Command.Streaming<Msg, any, any>
+  readonly command: Command.Effectful<Msg, any, never> | Command.Streaming<Msg, any, never>
   readonly status: "running" | "queued"
 }
 
@@ -100,9 +100,9 @@ export interface Story<Props, Model, Msg, Emits> {
   /** Everything emitted to the parent so far. */
   readonly emitted: ReadonlyArray<Emits>
   /** Commands interrupted by `switch`, by an interrupt Command, or by `given`. */
-  readonly interrupted: ReadonlyArray<Command.Effectful<Msg, any, any> | Command.Streaming<Msg, any, any>>
+  readonly interrupted: ReadonlyArray<Command.Effectful<Msg, any, never> | Command.Streaming<Msg, any, never>>
   /** Commands ignored by `mode: "drop"`. */
-  readonly dropped: ReadonlyArray<Command.Effectful<Msg, any, any> | Command.Streaming<Msg, any, any>>
+  readonly dropped: ReadonlyArray<Command.Effectful<Msg, any, never> | Command.Streaming<Msg, any, never>>
   /** The view of the current Model and props, rendered when they change, so a defect in `view` fails that step. */
   readonly view: () => View.Node<Msg, any>
   /** The Subscription keys the current Model and props ask for. Nothing runs. */
@@ -209,7 +209,7 @@ const complete = <Props, Model, Msg, Emits>(
   return update(story, { pending })
 }
 
-const describe = (command: Command.Effectful<any, any, any> | Command.Streaming<any, any, any>): string =>
+const describe = (command: Command.Effectful<any, any, never> | Command.Streaming<any, any, never>): string =>
   `${command.name}(${command.args.map((arg) => JSON.stringify(arg)).join(", ")})`
 
 const describePending = (pending: ReadonlyArray<Pending<any>>): string =>
@@ -476,6 +476,11 @@ export const check = <Props, Model, Msg, Emits>(
   return story
 }
 
+// Pending Commands are stored with their Source erased; `findRunning` matched `target`, so
+// `result` is the Source of this entry's Command.
+const resolveWith = (entry: Pending<any>, result: unknown): any =>
+  (entry.command.resolve as (result: unknown) => unknown)(result)
+
 /**
  * Resolves the oldest running Command matching `target` with the message it
  * would have produced, and sends it.
@@ -493,7 +498,7 @@ export const check = <Props, Model, Msg, Emits>(
  */
 export const resolve = <D extends Target>(target: D, result: Command.Result<D>): AnyStep => (story) => {
   const entry = findRunning(story, target, "resolve")
-  return dispatch(complete(story, entry), entry.command.resolve(result))
+  return dispatch(complete(story, entry), resolveWith(entry, result))
 }
 
 /**
@@ -513,7 +518,7 @@ export const next = <D extends Command.Definition<any, any, true> | Command.Stre
   if (entry.command._tag !== "Stream") {
     throw new Error(`Story.next: ${describe(entry.command)} is not a stream Command`)
   }
-  return dispatch(story, entry.command.resolve(result))
+  return dispatch(story, resolveWith(entry, result))
 }
 
 /**

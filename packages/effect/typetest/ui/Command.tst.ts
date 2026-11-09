@@ -77,4 +77,18 @@ describe("Command", () => {
       expect(input.pipe).type.not.toBeCallableWith(Command.map((n: number) => n + 1))
     })
   })
+
+  describe("a Command that never produces a result", () => {
+    it("is accepted by any component's $.run", () => {
+      const Hold = Command.make("Hold", () => Effect.never)
+      const Die = Command.make("Die", () => Effect.die("boom"))
+      const Watch = Command.make("Watch", () => Stream.never, { stream: true })
+      expect($.run).type.toBeCallableWith(Hold())
+      expect($.run).type.toBeCallableWith(Die())
+      expect($.run).type.toBeCallableWith(Watch())
+      expect($.run).type.toBeCallableWith(
+        Hold().pipe(Command.map((): typeof Message.Type => Message.make({ _tag: "Got", n: 1 })))
+      )
+    })
+  })
 })
