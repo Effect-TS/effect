@@ -770,11 +770,8 @@ export const makeWithTransaction = <I, S>(options: {
                         }
                         if (id > 0 && options.releaseSavepoint) {
                           const release = Effect.orDie(control("RELEASE SAVEPOINT", options.releaseSavepoint(conn, id)))
-                          effect = Effect.andThen(
-                            effect,
-                            // An ancestor can end while the savepoint rollback is in flight.
-                            Effect.suspend(() => hasEnded(buffer.parent) ? Effect.void : release)
-                          )
+                          // An ancestor can end while the savepoint rollback is in flight.
+                          effect = Effect.flatMap(effect, () => hasEnded(buffer.parent) ? Effect.void : release)
                         }
                         return Effect.flatMap(effect, () => {
                           committed = Exit.isSuccess(exit)
@@ -785,8 +782,7 @@ export const makeWithTransaction = <I, S>(options: {
                     )
                   }),
                   scope
-                    ? (eff) =>
-                      Effect.onExitPrimitive(eff, (exit) => Scope.close(scope, exit), true)
+                    ? (eff) => Effect.onExitPrimitive(eff, (exit) => Scope.close(scope, exit), true)
                     : identity
                 )
             )
