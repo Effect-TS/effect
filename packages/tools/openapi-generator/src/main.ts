@@ -47,8 +47,15 @@ const patch = Flag.String("patch").pipe(
   Flag.between(0, Infinity)
 )
 
-const root = Command.make("openapigen", { spec, format, name, patch }).pipe(
-  Command.withHandler(Effect.fnUntraced(function*({ name, spec, format, patch }) {
+const int64AsBigInt = Flag.Boolean("int64-as-bigint").pipe(
+  Flag.withDescription(
+    "Decode string-or-integer int64 schemas as bigints branded as Int64, encoding them back as decimal strings"
+  ),
+  Flag.withDefault(false)
+)
+
+const root = Command.make("openapigen", { spec, format, name, patch, int64AsBigInt }).pipe(
+  Command.withHandler(Effect.fnUntraced(function*({ name, spec, format, patch, int64AsBigInt }) {
     let patchedSpec: Schema.Json = spec as Schema.Json
 
     if (patch.length > 0) {
@@ -70,6 +77,7 @@ const root = Command.make("openapigen", { spec, format, name, patch }).pipe(
     const source = yield* generator.generate(patchedSpec as unknown as OpenAPISpec, {
       name,
       format,
+      int64AsBigInt,
       onWarning: (warning) => {
         warnings.push(warning)
       }
