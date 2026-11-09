@@ -16436,9 +16436,9 @@ export interface Cookies extends
  *
  * **Gotchas**
  *
- * The isomorphic encoding is the `cookies` record, which keeps only the last
- * cookie for each name. Cookies with the same name but a different domain or
- * path survive only the JSON encoding.
+ * The isomorphic encoding is the `cookies` record, with its keys kept as
+ * given. It holds only the last cookie for each key, so cookies with the same
+ * name but a different domain or path survive only the JSON encoding.
  *
  * @stability unstable
  * @category schemas

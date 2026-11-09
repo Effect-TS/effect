@@ -3,9 +3,9 @@
  *
  * A `Cookie` stores a name, value, encoded value, and standard cookie
  * attributes. A `Cookies` value is an immutable, ordered collection of cookies
- * indexed by name. This module parses request `Cookie` headers, builds response
- * `Set-Cookie` headers, and provides helpers for adding, removing, merging, and
- * expiring cookies.
+ * indexed by key, usually the cookie name. This module parses request `Cookie`
+ * headers, builds response `Set-Cookie` headers, and provides helpers for
+ * adding, removing, merging, and expiring cookies.
  *
  * For client-side storage, `mergeIntoArray` and `toRequestCookieHeader`
  * work on a plain array of cookies scoped by domain, path and scheme, following
@@ -43,8 +43,9 @@ export const isCookies = (u: unknown): u is Cookies => Predicate.hasProperty(u, 
  * **Details**
  *
  * `all` lists every cookie in order, including cookies with the same name but
- * a different domain or path. `cookies` indexes the last of them for each
- * name, and `toJSON` shows that index.
+ * a different domain or path. Each cookie is stored under a key, which is its
+ * name unless it came from a `fromReadonlyRecord` key. `cookies` indexes the
+ * last cookie for each key, and `toJSON` shows that index.
  *
  * @stability unstable
  * @category models
@@ -172,6 +173,12 @@ export class CookiesError extends Data.TaggedError("CookiesError")<{
  */
 export const isCookiesError = (u: unknown): u is CookiesError => Predicate.hasProperty(u, CookieErrorTypeId)
 
+type Entries = ReadonlyArray<readonly [key: string, cookie: Cookie]>
+
+interface CookiesImpl extends Cookies {
+  readonly entries: Entries
+}
+
 const Proto: Omit<Cookies, "cookies" | "all"> = {
   [TypeId]: TypeId,
   ...Inspectable.BaseProto,
@@ -186,32 +193,40 @@ const Proto: Omit<Cookies, "cookies" | "all"> = {
   }
 }
 
-const fromArray = (all: ReadonlyArray<Cookie>): Cookies => {
+const make = (entries: Entries): Cookies => {
   const record: Record<string, Cookie> = {}
-  for (const cookie of all) {
-    InternalRecord.assignProperty(record, cookie.name, cookie)
+  for (const [key, cookie] of entries) {
+    InternalRecord.assignProperty(record, key, cookie)
   }
   const self = Object.create(Proto)
   self.cookies = record
-  self.all = all
+  self.all = entries.map(([, cookie]) => cookie)
+  Object.defineProperty(self, "entries", { value: entries })
   return self
 }
 
-const appendByName = (all: ReadonlyArray<Cookie>, cookie: Cookie): Array<Cookie> => {
-  const out = all.filter((existing) => existing.name !== cookie.name)
-  out.push(cookie)
-  return out
-}
+const entriesOf = (self: Cookies): Entries => (self as CookiesImpl).entries
+
+const replaceKey = (entries: Entries, cookie: Cookie): Entries => [
+  ...entries.filter(([key]) => key !== cookie.name),
+  [cookie.name, cookie]
+]
 
 /**
- * Creates a `Cookies` collection from an existing readonly record of cookies keyed by cookie name.
+ * Creates a `Cookies` collection from a readonly record of cookies, keeping its keys.
+ *
+ * **Details**
+ *
+ * Keys are usually cookie names. A key that differs from its cookie's name is
+ * still the key that `get`, `set`, `remove` and `merge` use, while
+ * serialization uses the cookie's own name.
  *
  * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
 export const fromReadonlyRecord = (cookies: Record.ReadonlyRecord<string, Cookie>): Cookies =>
-  fromArray(Object.values(cookies))
+  make(Object.entries(cookies))
 
 /**
  * Creates a `Cookies` collection from an iterable, preserving every cookie in input order.
@@ -226,7 +241,8 @@ export const fromReadonlyRecord = (cookies: Record.ReadonlyRecord<string, Cookie
  * @category constructors
  * @since 4.0.0
  */
-export const fromIterable = (cookies: Iterable<Cookie>): Cookies => fromArray(Array.from(cookies))
+export const fromIterable = (cookies: Iterable<Cookie>): Cookies =>
+  make(Array.from(cookies, (cookie) => [cookie.name, cookie] as const))
 
 /**
  * Creates a `Cookies` collection from `Set-Cookie` headers in input order.
@@ -488,7 +504,8 @@ export const makeCookieUnsafe = (
 ): Cookie => Result.getOrThrow(makeCookie(name, value, options))
 
 /**
- * Adds a cookie to a Cookies object, replacing every cookie with its name
+ * Adds a cookie to a Cookies object under its name, replacing every cookie
+ * stored under that name
  *
  * @stability unstable
  * @category combinators
@@ -497,11 +514,11 @@ export const makeCookieUnsafe = (
 export const setCookie: {
   (cookie: Cookie): (self: Cookies) => Cookies
   (self: Cookies, cookie: Cookie): Cookies
-} = dual(2, (self: Cookies, cookie: Cookie) => fromArray(appendByName(self.all, cookie)))
+} = dual(2, (self: Cookies, cookie: Cookie) => make(replaceKey(entriesOf(self), cookie)))
 
 /**
- * Adds multiple cookies to a Cookies object, each replacing every cookie with
- * its name
+ * Adds multiple cookies to a Cookies object, each under its name and replacing
+ * every cookie stored under that name
  *
  * @stability unstable
  * @category combinators
@@ -511,16 +528,16 @@ export const setAllCookie: {
   (cookies: Iterable<Cookie>): (self: Cookies) => Cookies
   (self: Cookies, cookies: Iterable<Cookie>): Cookies
 } = dual(2, (self: Cookies, cookies: Iterable<Cookie>) => {
-  let all = self.all
+  let entries = entriesOf(self)
   for (const cookie of cookies) {
-    all = appendByName(all, cookie)
+    entries = replaceKey(entries, cookie)
   }
-  return fromArray(all)
+  return make(entries)
 })
 
 /**
- * Combines two Cookies objects, removing every cookie from the first with a
- * name that appears in the second
+ * Combines two Cookies objects, removing every cookie from the first stored
+ * under a key that appears in the second
  *
  * @stability unstable
  * @category combinators
@@ -530,12 +547,12 @@ export const merge: {
   (that: Cookies): (self: Cookies) => Cookies
   (self: Cookies, that: Cookies): Cookies
 } = dual(2, (self: Cookies, that: Cookies) => {
-  const names = new Set(that.all.map((cookie) => cookie.name))
-  return fromArray([...self.all.filter((cookie) => !names.has(cookie.name)), ...that.all])
+  const keys = new Set(Object.keys(that.cookies))
+  return make([...entriesOf(self).filter(([key]) => !keys.has(key)), ...entriesOf(that)])
 })
 
 /**
- * Removes every cookie with the given name, whatever its domain and path
+ * Removes every cookie stored under the given name, whatever its domain and path
  *
  * @stability unstable
  * @category combinators
@@ -544,14 +561,14 @@ export const merge: {
 export const remove: {
   (name: string): (self: Cookies) => Cookies
   (self: Cookies, name: string): Cookies
-} = dual(2, (self: Cookies, name: string) => fromArray(self.all.filter((cookie) => cookie.name !== name)))
+} = dual(2, (self: Cookies, name: string) => make(entriesOf(self).filter(([key]) => key !== name)))
 
 /**
  * Gets a cookie from a Cookies object safely.
  *
  * **Gotchas**
  *
- * When several cookies share the name, returns the last one.
+ * When several cookies are stored under the name, returns the last one.
  *
  * @stability unstable
  * @category combinators
@@ -575,7 +592,8 @@ export const get: {
  *
  * **Gotchas**
  *
- * When several cookies share the name, returns the value of the last one.
+ * When several cookies are stored under the name, returns the value of the last
+ * one.
  *
  * @stability unstable
  * @category combinators
@@ -591,7 +609,7 @@ export const getValue: {
 
 /**
  * Creates and adds a cookie safely by name and value, replacing every cookie
- * with that name.
+ * stored under that name.
  *
  * **Details**
  *
@@ -620,8 +638,8 @@ export const set: {
 )
 
 /**
- * Creates and adds a cookie by name and value, replacing every cookie with that
- * name and throwing if the cookie fields are invalid.
+ * Creates and adds a cookie by name and value, replacing every cookie stored
+ * under that name and throwing if the cookie fields are invalid.
  *
  * @stability unstable
  * @category combinators
@@ -856,9 +874,9 @@ export function serializeCookie(self: Cookie): string {
  *
  * **Gotchas**
  *
- * When several cookies share the name, only the last one is included. To send
- * the cookies that match a request URL, use `mergeIntoArray` and
- * `toRequestCookieHeader`.
+ * When several cookies are stored under one key, only the last one is
+ * included. To send the cookies that match a request URL, use
+ * `mergeIntoArray` and `toRequestCookieHeader`.
  *
  * @stability unstable
  * @category encoding
@@ -872,7 +890,8 @@ export const toCookieHeader = (self: Cookies): string =>
  *
  * **Gotchas**
  *
- * When several cookies share the name, uses the value of the last one.
+ * Reads the `cookies` record, so when several cookies are stored under one
+ * key, uses the value of the last one.
  *
  * @stability unstable
  * @category encoding
