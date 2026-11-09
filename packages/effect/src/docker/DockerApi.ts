@@ -205,6 +205,9 @@ export type StreamContentType = typeof StreamContentType.Type
 /** The headers of an output stream's response, or of its `101`: the `Content-Type` says how it is framed. */
 const streamHeaders = { "content-type": Schema.optional(StreamContentType) }
 
+/** The media types of an output stream's response, multiplexed (no TTY) first. */
+const streamContentTypes = ["application/vnd.docker.multiplexed-stream", "application/vnd.docker.raw-stream"] as const
+
 /**
  * Filters of a list or prune: values by key, one value as a string, as the Engine's JSON `map[string][]string` query parameter.
  *
@@ -430,10 +433,10 @@ export const System = HttpApiGroup.make("system").add(
   HttpApiEndpoint.get("info", "/info", { success: Schema.toCodecGoJson(DockerSchema.SystemInfo) }),
   HttpApiEndpoint.get("events", "/events", {
     query: { since: Schema.optional(UnixSeconds), until: Schema.optional(UnixSeconds), filters },
-    // one message per line
+    // one message per line: the Engine answers `application/jsonl`
     success: HttpApiSchema.StreamNdjson({
       schema: Schema.toCodecGoJson(DockerSchema.EventMessage),
-      contentType: "application/x-ndjson"
+      contentType: ["application/jsonl", "application/x-ndjson"]
     })
   }),
   HttpApiEndpoint.get("df", "/system/df", {
@@ -692,7 +695,10 @@ export const Containers = HttpApiGroup.make("containers").add(
       tail: Schema.optional(Schema.Union([Schema.Number, Schema.Literal("all")]))
     },
     // raw or multiplexed, as the `Content-Type` says
-    success: HttpApiSchema.WithHeaders(HttpApiSchema.StreamUint8Array(), streamHeaders)
+    success: HttpApiSchema.WithHeaders(
+      HttpApiSchema.StreamUint8Array({ contentType: streamContentTypes }),
+      streamHeaders
+    )
   }),
   HttpApiEndpoint.get("stats", "/containers/:id/stats", {
     params: id,
@@ -1422,7 +1428,10 @@ export const Services = HttpApiGroup.make("services").add(
     params: id,
     query: LogsQuery,
     // raw or multiplexed, as the `Content-Type` says
-    success: HttpApiSchema.WithHeaders(HttpApiSchema.StreamUint8Array(), streamHeaders)
+    success: HttpApiSchema.WithHeaders(
+      HttpApiSchema.StreamUint8Array({ contentType: streamContentTypes }),
+      streamHeaders
+    )
   })
 ).middleware(SwarmErrors)
 
@@ -1450,7 +1459,10 @@ export const Tasks = HttpApiGroup.make("tasks").add(
     params: id,
     query: LogsQuery,
     // raw or multiplexed, as the `Content-Type` says
-    success: HttpApiSchema.WithHeaders(HttpApiSchema.StreamUint8Array(), streamHeaders)
+    success: HttpApiSchema.WithHeaders(
+      HttpApiSchema.StreamUint8Array({ contentType: streamContentTypes }),
+      streamHeaders
+    )
   })
 ).middleware(SwarmErrors)
 

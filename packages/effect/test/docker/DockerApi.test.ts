@@ -273,10 +273,8 @@ describe("DockerApi", () => {
         "request application/x-tar not in the document"
       ],
       ContainerStats: ["query stream required"],
-      // HttpApi gives a stream one media type; the declared `Content-Type` header says which of the two it is
-      ContainerLogs: ["response application/octet-stream not in the document"],
-      ServiceLogs: ["response application/octet-stream not in the document"],
-      TaskLogs: ["response application/octet-stream not in the document"]
+      // the Engine answers events as `application/jsonl`, verified live
+      SystemEvents: ["response application/jsonl not in the document"]
     })
   })
 
