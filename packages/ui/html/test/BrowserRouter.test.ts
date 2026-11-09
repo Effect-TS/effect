@@ -1,10 +1,11 @@
-import { BrowserHost, BrowserRouter, Html } from "@effect/ui-html"
+import { BrowserHost, BrowserRouter } from "@effect/ui-html"
 import { HtmlQuery } from "@effect/ui-html/testing"
 import { expect, it } from "@effect/vitest"
-import { Context, Effect, Exit, Layer, Option, Schema, Scope } from "effect"
+import { Context, Effect, Exit, Layer, Option, Scope } from "effect"
 import { TestClock } from "effect/testing"
-import { Command, Component, Head, Route, Router } from "effect/ui"
+import { Router } from "effect/ui"
 import { describe } from "vitest"
+import { App, AppRoute, People } from "./fixtures/routed.ts"
 
 /** Lets popstate, the render flush, Commands and the announcement frame run. */
 const tick = Effect.promise(() => new Promise<void>((resolve) => setTimeout(resolve, 30)))
@@ -14,103 +15,6 @@ const container = Effect.acquireRelease(
   (element) => Effect.sync(() => element.remove())
 )
 
-const AppRoute = Route.union({
-  Home: Route.make("/"),
-  Person: Route.make("/people/:id", { params: { id: Schema.Number } }),
-  Search: Route.make("/search", { query: { q: Schema.String } }),
-  Slow: Route.make("/slow"),
-  NotFound: Route.make("/*")
-})
-type AppRoute = typeof AppRoute.Type
-
-const Home = Component.make({
-  name: "Home",
-  model: Schema.Struct({}),
-  message: Schema.Never,
-  elements: Html,
-  init: () => ({}),
-  update: (model) => model,
-  head: () => [Head.title("Home"), Head.meta({ name: "description", content: "Home page" })],
-  view: (_, h) => h.h1("Home")
-})
-
-const Person = Component.make({
-  name: "Person",
-  props: Schema.Struct({ id: Schema.Number }),
-  model: Schema.Struct({ id: Schema.Number }),
-  message: Schema.Never,
-  elements: Html,
-  init: ($) => ({ id: $.props.id }),
-  update: (model) => model,
-  head: (model) => [
-    Head.title(`Person ${model.id}`),
-    Head.meta({ name: "description", content: `About person ${model.id}` }),
-    Head.jsonLd({ "@type": "Person", identifier: model.id })
-  ],
-  view: (model, h) => h.div(h.h1(`Person ${model.id}`), h.p("Bio").attr("id", "bio"))
-})
-
-class SlowData extends Context.Service<SlowData, string>()("test/SlowData") {}
-
-/** A page whose provided Layer takes a second of the TestClock to build. */
-const Slow = Component.make({
-  name: "Slow",
-  model: Schema.Struct({}),
-  message: Schema.Never,
-  elements: Html,
-  init: () => ({}),
-  update: (model) => model,
-  head: () => [Head.title("Slow")],
-  view: (_, h) => h.h1("Slow")
-}).pipe(Component.provide(Layer.effect(SlowData, Effect.as(Effect.sleep("1 second"), "ready"))))
-
-const Message = Schema.TaggedUnion({ ChangedRoute: { route: AppRoute }, Block: {}, Done: {}, Filter: {} })
-
-const App = Component.make({
-  name: "App",
-  props: Schema.Struct({ route: AppRoute }),
-  model: AppRoute,
-  message: Message,
-  elements: Html,
-  init: ($) => $.props.route,
-  update: (route, message, $) =>
-    Message.match(message, {
-      ChangedRoute: (changed) => AppRoute.print(changed.route) === AppRoute.print(route) ? route : changed.route,
-      Block: () => $.run(Router.Block.make("editing").pipe(Command.map(() => Message.make({ _tag: "Done" })))),
-      Done: () => route,
-      Filter: () => route
-    }),
-  subscriptions: () => [Router.subscription(AppRoute, (route) => Message.make({ _tag: "ChangedRoute", route }))],
-  head: () => [Head.titleTemplate((title) => `${title} · App`), Head.lang("en"), Head.htmlClass("routed")],
-  view: (route, h) =>
-    h.div(
-      h.nav(
-        h.a("Home").attr("href", AppRoute.print(AppRoute.make({ _tag: "Home" }))),
-        h.a("Person 1").attr("href", AppRoute.print(AppRoute.make({ _tag: "Person", params: { id: 1 } }))),
-        h.a("Person 2 bio").attr("href", `${AppRoute.print(AppRoute.make({ _tag: "Person", params: { id: 2 } }))}#bio`),
-        h.a("Elsewhere").attr("href", "https://example.com/"),
-        h.a("Slow").attr("href", AppRoute.print(AppRoute.make({ _tag: "Slow" }))),
-        h.button("Block").onClick(Message.make({ _tag: "Block" })),
-        h.form(h.input().attr("name", "q").attr("value", "ada"), h.button("Search").attr("type", "submit"))
-          .attr("method", "get")
-          .attr("action", "/search")
-          .attr("aria-label", "Search"),
-        h.form(h.input().attr("name", "q").attr("value", "x"), h.button("Filter").attr("type", "submit"))
-          .attr("method", "get")
-          .attr("action", "/search")
-          .attr("aria-label", "Filter")
-          .onSubmit(Message.make({ _tag: "Filter" }))
-      ),
-      AppRoute.match(route, {
-        Home: (route) => h.child(Home, { key: AppRoute.print(route), props: {} }),
-        Person: (route) => h.child(Person, { key: AppRoute.print(route), props: { id: route.params.id } }),
-        Search: (route) => h.h1(`Search ${route.query.q}`),
-        Slow: (route) => h.child(Slow, { key: AppRoute.print(route), props: {} }),
-        NotFound: () => h.h1("Not found")
-      })
-    )
-})
-
 /** Mounts the app at `url` under a browser Router, for the life of the returned Scope. */
 const start = Effect.fnUntraced(function*(url: string, options?: Partial<BrowserRouter.Options>) {
   window.history.replaceState(null, "", url)
@@ -118,6 +22,7 @@ const start = Effect.fnUntraced(function*(url: string, options?: Partial<Browser
   const context = yield* Layer.build(BrowserRouter.layer({ routes: AppRoute, ...options }))
   const router = Context.get(context, Router.Router)
   const root = yield* BrowserHost.mount(App, { route: router.location().route as AppRoute }, app).pipe(
+    Effect.provide(People.layer),
     Effect.provideContext(context)
   )
   yield* tick

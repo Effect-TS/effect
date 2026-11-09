@@ -1,5 +1,6 @@
 /**
- * The HTML vocabulary and browser host for `effect/ui`. The browser router and server renderer land in later stages.
+ * The HTML vocabulary, browser host, browser router and server renderer for
+ * `effect/ui`.
  *
  * @stability experimental
  * @since 4.1.3
@@ -24,3 +25,9 @@ export * as BrowserRouter from "./BrowserRouter.ts"
  * @since 4.1.3
  */
 export * as Html from "./Html.ts"
+
+/**
+ * @stability experimental
+ * @since 4.1.3
+ */
+export * as HtmlServer from "./HtmlServer.ts"
