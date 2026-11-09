@@ -1,8 +1,8 @@
-import { Command, Component, Feature } from "@effect/ui"
 import { Context, Effect, Layer, Schema, Scope } from "effect"
 import type { KeyValueStore } from "effect/persistence"
+import { Command, Component, Feature } from "effect/ui"
 import { describe, expect, it } from "tstyche"
-import { Counter, SaveTodo, Todo, TodoItem, TodoItemEmits, TodoItemMessage } from "../test/fixtures/components.ts"
+import { Counter, SaveTodo, Todo, TodoItem, TodoItemEmits, TodoItemMessage } from "../../test/ui/fixtures/components.ts"
 
 const Message = Schema.TaggedUnion({ X: {}, Y: {}, Done: {} })
 
@@ -34,6 +34,47 @@ describe("Component", () => {
         view: (_, h) => h.el("div")
       })
       expect<Component.Requirements<typeof C>>().type.toBe<CA | CB>()
+    })
+
+    it("covers every init branch", () => {
+      const C = Component.make({
+        name: "C",
+        props: Schema.Struct({ a: Schema.Boolean }),
+        model: Schema.Struct({}),
+        message: Message,
+        init: ($) => $.props.a ? $.set({}).run(CA.make()) : $.set({}).run(CB.make()),
+        update: (model) => model,
+        view: (_, h) => h.el("div")
+      })
+      expect<Component.Requirements<typeof C>>().type.toBe<CA | CB>()
+    })
+
+    it("covers every view branch", () => {
+      const ChildA = Component.make({
+        name: "ChildA",
+        model: Schema.Struct({}),
+        message: Message,
+        init: () => ({}),
+        update: (model, _, $) => $.set(model).run(CA.make()),
+        view: (_, h) => h.el("div")
+      })
+      const ChildB = Component.make({
+        name: "ChildB",
+        model: Schema.Struct({}),
+        message: Message,
+        init: () => ({}),
+        update: (model, _, $) => $.set(model).run(CB.make()),
+        view: (_, h) => h.el("div")
+      })
+      const Parent = Component.make({
+        name: "Parent",
+        model: Schema.Struct({ a: Schema.Boolean }),
+        message: Schema.Never,
+        init: () => ({ a: true }),
+        update: (model) => model,
+        view: (model, h) => model.a ? h.child(ChildA, { key: "a" }) : h.child(ChildB, { key: "b" })
+      })
+      expect<Component.Requirements<typeof Parent>>().type.toBe<CA | CB>()
     })
 
     it("keeps framework services out", () => {

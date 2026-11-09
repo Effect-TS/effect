@@ -1,8 +1,8 @@
-import { Command, Component, View } from "@effect/ui"
-import { Story } from "@effect/ui/testing"
 import { assert, describe, it } from "@effect/vitest"
 import { Cause, Effect, Layer, Schema } from "effect"
 import { AsyncResult } from "effect/reactivity"
+import { Command, Component, View } from "effect/ui"
+import { Story } from "effect/ui/testing"
 import {
   Counter,
   SaveTodo,
@@ -180,7 +180,7 @@ describe("Story", () => {
         Story.check((story) => assert.strictEqual(story.dropped.length, 1)),
         Story.next(Upload, SearchMessage.make({ _tag: "Progress", percent: 50 })),
         Story.model((model) => assert.strictEqual(model.percent, 50)),
-        Story.subscriptions((keys) => assert.deepStrictEqual(keys, ["tick", "query:"])),
+        Story.subscriptions((keys) => assert.deepStrictEqual(keys, ["tick", "query:\"\""])),
         Story.expectHas(Upload),
         Story.send(SearchMessage.make({ _tag: "Cancel" })),
         Story.check((story) => assert.deepStrictEqual(story.interrupted.map((command) => command.name), ["Upload"])),
@@ -230,6 +230,52 @@ describe("Story", () => {
         Story.resolve(UploadFile, "https://cdn/me.png"),
         Story.model((model) => assert.strictEqual(model.url, "https://cdn/me.png"))
       )
+    })
+
+    it("a mapped Command as the target still takes the definition's own result", () => {
+      const mapped = UploadFile("me.png").pipe(Command.map((url) => Message.make({ _tag: "Uploaded", url })))
+      Story.make(
+        Avatar,
+        {},
+        Story.send(Message.make({ _tag: "Upload" })),
+        Story.resolve(mapped, "https://cdn/me.png"),
+        Story.model((model) => assert.strictEqual(model.url, "https://cdn/me.png"))
+      )
+    })
+  })
+
+  describe("view defects", () => {
+    const Message = Schema.TaggedUnion({ Bump: {} })
+    const Broken = Component.make({
+      name: "Broken",
+      model: Schema.Struct({ n: Schema.Number }),
+      message: Message,
+      init: () => ({ n: 0 }),
+      update: (model) => ({ n: model.n + 1 }),
+      view: (model, h) => {
+        if (model.n > 0) throw new Error(`view broke at ${model.n}`)
+        return h.el("div")
+      }
+    })
+
+    it("fail the step that changed the Model, even when no step queries the view", () => {
+      Story.make(Broken, {})
+      assert.throws(() => Story.make(Broken, {}, Story.send(Message.make({ _tag: "Bump" }))), /view broke at 1/)
+    })
+
+    it("fail initialisation when init's Model can't be rendered", () => {
+      assert.throws(() => Story.make(Broken, {}, Story.given({ n: 5 })), /view broke at 5/)
+      const AlwaysBroken = Component.make({
+        name: "AlwaysBroken",
+        model: Schema.Struct({}),
+        message: Message,
+        init: () => ({}),
+        update: (model) => model,
+        view: () => {
+          throw new Error("no view")
+        }
+      })
+      assert.throws(() => Story.make(AlwaysBroken, {}), /no view/)
     })
   })
 })

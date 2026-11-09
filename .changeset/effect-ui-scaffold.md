@@ -1,16 +1,16 @@
 ---
-"@effect/ui": minor
-"@effect/ui-html": minor
+"effect": patch
+"@effect/ui-html": patch
 ---
 
-Add `@effect/ui`, a Layer-composed frontend framework for Effect, and `@effect/ui-html`, its HTML package.
+Add `effect/ui`, a Layer-composed frontend framework for Effect, and `@effect/ui-html`, its HTML package.
 
-This first release holds the host-agnostic core definitions: `Component`, `Command`, `Subscription`, `Feature` and the core `View` nodes, plus `Story` in `@effect/ui/testing` for pure, one-instance tests.
+This first step holds the host-agnostic core definitions: `Component`, `Command`, `Subscription`, `Feature` and the core `View` nodes, plus `Story` in `effect/ui/testing` for pure, one-instance tests. The modules are experimental.
 
 ```ts
-import { Command, Component } from "@effect/ui"
-import { Story } from "@effect/ui/testing"
-import { Effect, Schema } from "effect"
+import { Schema } from "effect"
+import { Component } from "effect/ui"
+import { Story } from "effect/ui/testing"
 
 const Message = Schema.TaggedUnion({ Increment: {}, Decrement: {} })
 

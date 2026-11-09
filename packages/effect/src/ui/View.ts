@@ -14,7 +14,7 @@
  * **Example** (A host-neutral view)
  *
  * ```ts import.meta.vitest
- * import type { View } from "@effect/ui"
+ * import type { View } from "effect/ui"
  * import { Schema } from "effect"
  *
  * const Message = Schema.TaggedUnion({ Increment: {} })
@@ -23,10 +23,10 @@
  *   h.el("div", h.el("button", "+").on("click", Message.make({ _tag: "Increment" })), String(count))
  * ```
  *
- * @stability unstable
- * @since 0.1.0
+ * @stability experimental
+ * @since 4.1.3
  */
-import type * as AsyncResult from "effect/reactivity/AsyncResult"
+import type * as AsyncResult from "../reactivity/AsyncResult.ts"
 import type * as Component from "./Component.ts"
 import type * as Feature from "./Feature.ts"
 
@@ -39,18 +39,18 @@ import type * as Feature from "./Feature.ts"
  * requirements of the children declared by value, which surface in the
  * parent's requirements.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
- * @since 0.1.0
+ * @since 4.1.3
  */
 export type Node<Msg, R = never> = Element<Msg, R> | Text | Child<Msg, R>
 
 /**
  * A text node.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
- * @since 0.1.0
+ * @since 4.1.3
  */
 export interface Text {
   readonly _tag: "Text"
@@ -67,9 +67,9 @@ export interface Text {
  * No host event object reaches component code, so a test fires one with a
  * literal.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
- * @since 0.1.0
+ * @since 4.1.3
  */
 export type Handler<Msg, Payload> = Msg | ((payload: Payload) => Msg | undefined)
 
@@ -83,9 +83,9 @@ export type Handler<Msg, Payload> = Msg | ((payload: Payload) => Msg | undefined
  * re-rendering never touches listeners. `key` keeps the element's node when
  * its siblings move; unkeyed elements match by position.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
- * @since 0.1.0
+ * @since 4.1.3
  */
 export interface Element<out Msg, out R = never> {
   readonly _tag: "Element"
@@ -109,9 +109,9 @@ export interface Element<out Msg, out R = never> {
  * nothing, until its key changes, and the parent's optional `onFailure` is
  * also messaged.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
- * @since 0.1.0
+ * @since 4.1.3
  */
 export interface Child<out Msg, out R = never> {
   readonly _tag: "Child"
@@ -131,8 +131,8 @@ export interface Child<out Msg, out R = never> {
 /**
  * Helper types for `Child`.
  *
- * @stability unstable
- * @since 0.1.0
+ * @stability experimental
+ * @since 4.1.3
  */
 export declare namespace Child {
   /**
@@ -140,7 +140,7 @@ export declare namespace Child {
    * or the child failed.
    *
    * @category models
-   * @since 0.1.0
+   * @since 4.1.3
    */
   export type Fallback = AsyncResult.Initial<never, unknown> | AsyncResult.Failure<never, unknown>
 
@@ -149,7 +149,7 @@ export declare namespace Child {
    * none.
    *
    * @category models
-   * @since 0.1.0
+   * @since 4.1.3
    */
   export type Options<Props, Emits, Msg> =
     & {
@@ -166,9 +166,9 @@ export declare namespace Child {
  * One child argument of an element: a node, text, an array of them, or a hole
  * (`false`, `null`, `undefined`) that renders nothing.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
- * @since 0.1.0
+ * @since 4.1.3
  */
 export type Input<Msg> =
   | Node<Msg, any>
@@ -182,9 +182,9 @@ export type Input<Msg> =
  * The requirements of a tuple of children, collected one at a time, so two
  * siblings with different needs give the union.
  *
- * @stability unstable
+ * @stability experimental
  * @category utility types
- * @since 0.1.0
+ * @since 4.1.3
  */
 export type Requirements<T> = T extends string | false | null | undefined ? never
   : T extends Text ? never
@@ -196,9 +196,9 @@ export type Requirements<T> = T extends string | false | null | undefined ? neve
 /**
  * Builds a text node.
  *
- * @stability unstable
+ * @stability experimental
  * @category constructors
- * @since 0.1.0
+ * @since 4.1.3
  */
 export const text = (text: string): Text => ({ _tag: "Text", text })
 
@@ -211,9 +211,9 @@ export const text = (text: string): Text => ({ _tag: "Text", text })
  * The view value never holds two text nodes side by side, so server HTML
  * hydrates without separator comments.
  *
- * @stability unstable
+ * @stability experimental
  * @category constructors
- * @since 0.1.0
+ * @since 4.1.3
  */
 export const children = <Msg>(inputs: ReadonlyArray<Input<Msg>>): Array<Node<Msg, any>> => {
   const out: Array<Node<Msg, any>> = []
@@ -250,9 +250,9 @@ export const children = <Msg>(inputs: ReadonlyArray<Input<Msg>>): Array<Node<Msg
  * name to its payload; a vocabulary's element class fixes it and adds sugar.
  * The core builder leaves payloads untyped.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
- * @since 0.1.0
+ * @since 4.1.3
  */
 export class ElementBuilder<out Msg, out R = never, in out Events = Record<string, unknown>>
   implements Element<Msg, R>
@@ -260,49 +260,49 @@ export class ElementBuilder<out Msg, out R = never, in out Events = Record<strin
   /**
    * The node kind.
    *
-   * @since 0.1.0
+   * @since 4.1.3
    */
   readonly _tag = "Element"
   /**
    * The key set with `key`, if any.
    *
-   * @since 0.1.0
+   * @since 4.1.3
    */
   readonly elementKey: string | undefined = undefined
   /**
    * The attributes set with `attr`.
    *
-   * @since 0.1.0
+   * @since 4.1.3
    */
   readonly attrs: Readonly<Record<string, string>> = {}
   /**
    * The properties set with `prop`.
    *
-   * @since 0.1.0
+   * @since 4.1.3
    */
   readonly props: Readonly<Record<string, unknown>> = {}
   /**
    * The handlers set with `on`, by event name.
    *
-   * @since 0.1.0
+   * @since 4.1.3
    */
   readonly handlers: Readonly<Record<string, Handler<Msg, any>>> = {}
   /**
    * Phantom: the element's events and their payloads.
    *
-   * @since 0.1.0
+   * @since 4.1.3
    */
   declare readonly "~Events"?: Events
   /**
    * The element's tag.
    *
-   * @since 0.1.0
+   * @since 4.1.3
    */
   readonly tag: string
   /**
    * The element's children, normalised.
    *
-   * @since 0.1.0
+   * @since 4.1.3
    */
   readonly children: ReadonlyArray<Node<Msg, R>>
   constructor(tag: string, children: ReadonlyArray<Node<Msg, R>>) {
@@ -312,7 +312,7 @@ export class ElementBuilder<out Msg, out R = never, in out Events = Record<strin
   /**
    * Copies this element with a patch applied.
    *
-   * @since 0.1.0
+   * @since 4.1.3
    */
   protected with(patch: Partial<Pick<Element<Msg, R>, "elementKey" | "attrs" | "props" | "handlers">>): this {
     return Object.assign(Object.create(Object.getPrototypeOf(this)), this, patch)
@@ -320,7 +320,7 @@ export class ElementBuilder<out Msg, out R = never, in out Events = Record<strin
   /**
    * Sends a message when `event` fires: a value, or a function of the payload.
    *
-   * @since 0.1.0
+   * @since 4.1.3
    */
   on<K extends keyof Events & string>(event: K, handler: Handler<Msg, Events[K]>): this {
     return this.with({ handlers: { ...this.handlers, [event]: handler } })
@@ -328,7 +328,7 @@ export class ElementBuilder<out Msg, out R = never, in out Events = Record<strin
   /**
    * Keeps this element's node when its siblings move. Unique among siblings.
    *
-   * @since 0.1.0
+   * @since 4.1.3
    */
   key(key: string): this {
     return this.with({ elementKey: key })
@@ -336,7 +336,7 @@ export class ElementBuilder<out Msg, out R = never, in out Events = Record<strin
   /**
    * Sets an attribute, or removes it with `undefined`.
    *
-   * @since 0.1.0
+   * @since 4.1.3
    */
   attr(name: string, value: string | undefined): this {
     const { [name]: _, ...rest } = this.attrs
@@ -345,7 +345,7 @@ export class ElementBuilder<out Msg, out R = never, in out Events = Record<strin
   /**
    * Sets a property. The host decides what it means.
    *
-   * @since 0.1.0
+   * @since 4.1.3
    */
   prop(name: string, value: unknown): this {
     return this.with({ props: { ...this.props, [name]: value } })
@@ -362,9 +362,9 @@ export class ElementBuilder<out Msg, out R = never, in out Events = Record<strin
  * service a host's Layer provides to say it can show these elements, which
  * `mount` requires for the root.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
- * @since 0.1.0
+ * @since 4.1.3
  */
 export interface Elements {
   readonly Msg: unknown
@@ -375,9 +375,9 @@ export interface Elements {
 /**
  * The runtime half of a vocabulary: its element constructors, installed on `h`.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
- * @since 0.1.0
+ * @since 4.1.3
  */
 export interface Vocabulary<out V extends Elements = Elements> {
   readonly name: string
@@ -391,7 +391,7 @@ export interface Vocabulary<out V extends Elements = Elements> {
  * **Example** (Registering an HTML vocabulary)
  *
  * ```ts
- * declare module "@effect/ui/View" {
+ * declare module "effect/ui/View" {
  *   interface Register {
  *     readonly elements: MyElements
  *   }
@@ -404,18 +404,18 @@ export interface Vocabulary<out V extends Elements = Elements> {
  * }
  * ```
  *
- * @stability unstable
+ * @stability experimental
  * @category models
- * @since 0.1.0
+ * @since 4.1.3
  */
 export interface Register {}
 
 /**
  * The registered vocabulary, or `never` when nothing is registered.
  *
- * @stability unstable
+ * @stability experimental
  * @category utility types
- * @since 0.1.0
+ * @since 4.1.3
  */
 export type Registered = Register extends { readonly elements: infer V extends Elements } ? V : never
 
@@ -423,9 +423,9 @@ export type Registered = Register extends { readonly elements: infer V extends E
  * The element names a vocabulary adds to `h`, bound to a component's message
  * type. Nothing when `V` is `never`.
  *
- * @stability unstable
+ * @stability experimental
  * @category utility types
- * @since 0.1.0
+ * @since 4.1.3
  */
 export type Tags<V, Msg> = [V] extends [never] ? {} : V extends Elements ? (V & { readonly Msg: Msg })["Tags"] : {}
 
@@ -439,9 +439,9 @@ let registered: Vocabulary<any> | undefined
  * It's read when a view runs, not when a component is made, so module order
  * doesn't matter as long as it runs before the first render.
  *
- * @stability unstable
+ * @stability experimental
  * @category vocabularies
- * @since 0.1.0
+ * @since 4.1.3
  */
 export const registerElements = (elements: Vocabulary<any>): void => {
   registered = elements
@@ -450,9 +450,9 @@ export const registerElements = (elements: Vocabulary<any>): void => {
 /**
  * The vocabulary installed with `registerElements`, if any.
  *
- * @stability unstable
+ * @stability experimental
  * @category vocabularies
- * @since 0.1.0
+ * @since 4.1.3
  */
 export const registeredElements = (): Vocabulary<any> | undefined => registered
 
@@ -465,9 +465,9 @@ export const registeredElements = (): Vocabulary<any> | undefined => registered
  * The core helper has `el`, `child` and `text`. A vocabulary's element names
  * are mixed in by `Component.make`.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
- * @since 0.1.0
+ * @since 4.1.3
  */
 export interface Helper<Msg, Props> {
   readonly props: Props
@@ -557,9 +557,9 @@ export const makeHelper = <Msg, Props, V extends Elements = never>(
  * The text of a view, with the text of every element concatenated in order.
  * Child slots contribute nothing.
  *
- * @stability unstable
+ * @stability experimental
  * @category queries
- * @since 0.1.0
+ * @since 4.1.3
  */
 export const textOf = (node: Node<any, any>): string => {
   switch (node._tag) {
@@ -575,9 +575,9 @@ export const textOf = (node: Node<any, any>): string => {
 /**
  * Every node of a view in document order, the root first.
  *
- * @stability unstable
+ * @stability experimental
  * @category queries
- * @since 0.1.0
+ * @since 4.1.3
  */
 export const nodes = function*<Msg>(node: Node<Msg, any>): Generator<Node<Msg, any>> {
   yield node
