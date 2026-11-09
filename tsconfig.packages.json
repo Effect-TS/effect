@@ -44,6 +44,8 @@
     { "path": "packages/tools/npm-promote" },
     { "path": "packages/tools/oxc" },
     { "path": "packages/tools/utils" },
+    { "path": "packages/ui/core" },
+    { "path": "packages/ui/html" },
     { "path": "packages/vitest" }
   ]
 }
