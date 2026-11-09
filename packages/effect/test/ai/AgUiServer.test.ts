@@ -231,6 +231,20 @@ describe("AgUiServer", () => {
         })
     ))
 
+  it.effect("reports an event that is invalid once serialized as RUN_ERROR", () =>
+    // JSON drops the required `value` of a CUSTOM event when it is undefined
+    withHandler(
+      () => Stream.fromIterable<AgUiSchema.Event>([{ type: "CUSTOM", name: "progress", value: undefined }]),
+      (handler) =>
+        Effect.gen(function*() {
+          const events = yield* post(handler, input).pipe(Effect.flatMap(readEvents))
+
+          assert.strictEqual(events.length, 2)
+          assert.strictEqual(events[0].type, "RUN_STARTED")
+          assert.strictEqual(events[1].type, "RUN_ERROR")
+        })
+    ))
+
   it.effect("never serializes an event outside the run's error handling", () => {
     // A value whose JSON form can only be computed once: delivering it is fine
     // if it is serialized once, and failing the run is fine, but a second

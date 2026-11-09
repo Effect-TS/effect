@@ -75,6 +75,78 @@ describe("AgUi", () => {
         ])
       )
     })
+
+    it("keeps the failure marker of tool results emitted by fromStreamParts", () => {
+      assert.deepStrictEqual(
+        AgUi.toPrompt(decodeInput({
+          threadId: "thread-1",
+          runId: "run-1",
+          messages: [
+            {
+              id: "1",
+              role: "assistant",
+              toolCalls: [{ id: "call-1", type: "function", function: { name: "GetWeather", arguments: "{}" } }]
+            },
+            {
+              id: "2",
+              role: "tool",
+              toolCallId: "call-1",
+              content: `{"reason":"offline"}`,
+              metadata: { "effect/ai": { isFailure: true } }
+            }
+          ]
+        })),
+        Prompt.make([
+          { role: "assistant", content: [{ type: "tool-call", id: "call-1", name: "GetWeather", params: {} }] },
+          {
+            role: "tool",
+            content: [{
+              type: "tool-result",
+              id: "call-1",
+              name: "GetWeather",
+              isFailure: true,
+              result: { reason: "offline" }
+            }]
+          }
+        ])
+      )
+    })
+
+    it("names each tool result after the latest preceding call with its id", () => {
+      // Providers may reuse a call id such as `call_0` on every turn
+      assert.deepStrictEqual(
+        AgUi.toPrompt(decodeInput({
+          threadId: "thread-1",
+          runId: "run-1",
+          messages: [
+            {
+              id: "1",
+              role: "assistant",
+              toolCalls: [{ id: "call_0", type: "function", function: { name: "Weather", arguments: "{}" } }]
+            },
+            { id: "2", role: "tool", toolCallId: "call_0", content: "sunny" },
+            {
+              id: "3",
+              role: "assistant",
+              toolCalls: [{ id: "call_0", type: "function", function: { name: "Clock", arguments: "{}" } }]
+            },
+            { id: "4", role: "tool", toolCallId: "call_0", content: "noon" }
+          ]
+        })),
+        Prompt.make([
+          { role: "assistant", content: [{ type: "tool-call", id: "call_0", name: "Weather", params: {} }] },
+          {
+            role: "tool",
+            content: [{ type: "tool-result", id: "call_0", name: "Weather", isFailure: false, result: "sunny" }]
+          },
+          { role: "assistant", content: [{ type: "tool-call", id: "call_0", name: "Clock", params: {} }] },
+          {
+            role: "tool",
+            content: [{ type: "tool-result", id: "call_0", name: "Clock", isFailure: false, result: "noon" }]
+          }
+        ])
+      )
+    })
   })
 
   describe("fromStreamParts", () => {
