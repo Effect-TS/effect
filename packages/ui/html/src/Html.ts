@@ -1,0 +1,830 @@
+/**
+ * The HTML element vocabulary for `effect/ui`: element names on `h`, typed
+ * events with plain payloads, controlled properties, refs typed by tag, and
+ * ref Commands.
+ *
+ * The module is itself a vocabulary. Register it once for the app, with the
+ * type half by module augmentation and the runtime half with
+ * `View.registerElements`, or set it on one component with `elements: Html`.
+ *
+ * Event handlers get plain data, never a DOM event: `input` is `{ value }`,
+ * `keydown` is `{ key, shift, ctrl, alt, meta }` and `submit` is `{ fields }`.
+ * `value`, `checked`, `selected` and `open` are controlled: the host puts the
+ * Model's value back after every patch and after every event that could have
+ * changed it, so the element always shows what the Model says.
+ *
+ * **Example** (Registering the vocabulary for the app)
+ *
+ * ```ts
+ * import { Html } from "@effect/ui-html"
+ * import { View } from "effect/ui"
+ *
+ * declare module "effect/ui/View" {
+ *   interface Register {
+ *     readonly elements: Html.Elements
+ *   }
+ * }
+ *
+ * View.registerElements(Html)
+ * ```
+ *
+ * **Example** (A controlled text field)
+ *
+ * ```ts import.meta.vitest
+ * import { Html } from "@effect/ui-html"
+ * import { Schema } from "effect"
+ * import { Component } from "effect/ui"
+ *
+ * const Message = Schema.TaggedUnion({ Typed: { value: Schema.String }, Add: {} })
+ *
+ * const NewTodo = Html.ref("NewTodo", "input")
+ *
+ * const Form = Component.make({
+ *   name: "Form",
+ *   model: Schema.String,
+ *   message: Message,
+ *   elements: Html,
+ *   init: () => "",
+ *   update: (draft, message) => (message._tag === "Typed" ? message.value : ""),
+ *   view: (draft, h) =>
+ *     h.form(
+ *       h.input().ref(NewTodo).attr("aria-label", "New todo").value(draft)
+ *         .onInput(({ value }) => Message.make({ _tag: "Typed", value })),
+ *       h.button("Add").attr("type", "submit")
+ *     ).onSubmit(Message.make({ _tag: "Add" }))
+ * })
+ * ```
+ *
+ * @stability experimental
+ * @since 4.1.3
+ */
+import * as Context from "effect/Context"
+import * as Effect from "effect/Effect"
+import * as Option from "effect/Option"
+import * as Command from "effect/ui/Command"
+import * as Renderer from "effect/ui/Renderer"
+import * as View from "effect/ui/View"
+
+// ---------------------------------------------------------------------------
+// host
+// ---------------------------------------------------------------------------
+
+/**
+ * The HTML host marker: a host Layer that can show HTML elements provides it.
+ *
+ * **Details**
+ *
+ * `mount` requires it for an HTML root, so mounting one on another host is a
+ * type error. It's a framework service, so a Command may use it without it
+ * appearing in a component's requirements. It holds the element operations
+ * the ref Commands use, which a test on `TestHost` fakes with
+ * `Layer.succeed(Html.Host, ...)`.
+ *
+ * @stability experimental
+ * @category services
+ * @since 4.1.3
+ */
+export class Host extends Context.Service<Host, {
+  readonly focus: (element: globalThis.Element, options: { readonly preventScroll?: boolean | undefined }) => void
+  readonly blur: (element: globalThis.Element) => void
+  readonly scrollIntoView: (element: globalThis.Element, options: ScrollOptions) => void
+  readonly measure: (element: globalThis.Element) => Rect
+}>()("@effect/ui-html/Html/Host") {}
+
+declare module "effect/ui/Command" {
+  interface FrameworkServices {
+    readonly HtmlHost: Host
+  }
+}
+
+/**
+ * An element's box, from `measure`, in CSS pixels relative to the viewport.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.1.3
+ */
+export interface Rect {
+  readonly x: number
+  readonly y: number
+  readonly width: number
+  readonly height: number
+  readonly top: number
+  readonly right: number
+  readonly bottom: number
+  readonly left: number
+}
+
+/**
+ * The options of `scrollIntoView`.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.1.3
+ */
+export interface ScrollOptions {
+  readonly behavior?: "auto" | "instant" | "smooth" | undefined
+  readonly block?: "start" | "center" | "end" | "nearest" | undefined
+  readonly inline?: "start" | "center" | "end" | "nearest" | undefined
+}
+
+// ---------------------------------------------------------------------------
+// events
+// ---------------------------------------------------------------------------
+
+/**
+ * The payload of `click`, `dblclick`, `contextmenu`, `mousedown` and
+ * `mouseup`: the button, the position in the viewport, and the modifier keys.
+ *
+ * @stability experimental
+ * @category events
+ * @since 4.1.3
+ */
+export interface PointerPayload {
+  readonly button: number
+  readonly x: number
+  readonly y: number
+  readonly shift: boolean
+  readonly ctrl: boolean
+  readonly alt: boolean
+  readonly meta: boolean
+}
+
+/**
+ * The payload of `keydown` and `keyup`.
+ *
+ * @stability experimental
+ * @category events
+ * @since 4.1.3
+ */
+export interface KeyPayload {
+  readonly key: string
+  readonly shift: boolean
+  readonly ctrl: boolean
+  readonly alt: boolean
+  readonly meta: boolean
+}
+
+/**
+ * The payload of `input` and `change` on a `textarea` or `select`: the
+ * value the user left in the element.
+ *
+ * @stability experimental
+ * @category events
+ * @since 4.1.3
+ */
+export interface ValuePayload {
+  readonly value: string
+}
+
+/**
+ * The payload of `input` and `change` on an `input`: its value, and whether
+ * it's checked (a checkbox or radio button).
+ *
+ * @stability experimental
+ * @category events
+ * @since 4.1.3
+ */
+export interface InputPayload {
+  readonly value: string
+  readonly checked: boolean
+}
+
+/**
+ * The payload of `submit`: the form's fields.
+ *
+ * **Details**
+ *
+ * `fields` holds the first value of each named field, and `entries` every
+ * name and value in document order, for names used more than once. Files are
+ * left out. The browser's own submission is always prevented.
+ *
+ * @stability experimental
+ * @category events
+ * @since 4.1.3
+ */
+export interface SubmitPayload {
+  readonly fields: Readonly<Record<string, string>>
+  readonly entries: ReadonlyArray<readonly [name: string, value: string]>
+}
+
+/**
+ * The payload of `toggle` on a `details` or `dialog`: whether it's open now.
+ *
+ * @stability experimental
+ * @category events
+ * @since 4.1.3
+ */
+export interface TogglePayload {
+  readonly open: boolean
+}
+
+/**
+ * The payload of `scroll`: the element's scroll offsets.
+ *
+ * @stability experimental
+ * @category events
+ * @since 4.1.3
+ */
+export interface ScrollPayload {
+  readonly top: number
+  readonly left: number
+}
+
+/**
+ * The events every HTML element has, with their payloads.
+ *
+ * **Details**
+ *
+ * `focus`, `blur`, `mouseenter`, `mouseleave` and `scroll` don't bubble: only
+ * the element they happen on gets them. The others go to the innermost element
+ * with a handler.
+ *
+ * @stability experimental
+ * @category events
+ * @since 4.1.3
+ */
+export interface Events {
+  readonly click: PointerPayload
+  readonly dblclick: PointerPayload
+  readonly contextmenu: PointerPayload
+  readonly mousedown: PointerPayload
+  readonly mouseup: PointerPayload
+  readonly mouseenter: {}
+  readonly mouseleave: {}
+  readonly keydown: KeyPayload
+  readonly keyup: KeyPayload
+  readonly focus: {}
+  readonly blur: {}
+  readonly focusin: {}
+  readonly focusout: {}
+  readonly scroll: ScrollPayload
+}
+
+/**
+ * The events of one tag: the shared `Events` plus the tag's own.
+ *
+ * @stability experimental
+ * @category events
+ * @since 4.1.3
+ */
+export type EventsOf<K extends string> =
+  & Events
+  & (K extends "input" ? { readonly input: InputPayload; readonly change: InputPayload } : {})
+  & (K extends "textarea" | "select" ? { readonly input: ValuePayload; readonly change: ValuePayload } : {})
+  & (K extends "form" ? { readonly submit: SubmitPayload; readonly reset: {} } : {})
+  & (K extends "details" ? { readonly toggle: TogglePayload } : {})
+  & (K extends "dialog" ?
+    { readonly toggle: TogglePayload; readonly close: { readonly returnValue: string }; readonly cancel: {} }
+    : {})
+  & (K extends "img" | "iframe" | "video" | "audio" ? { readonly load: {}; readonly error: {} } : {})
+
+// ---------------------------------------------------------------------------
+// elements
+// ---------------------------------------------------------------------------
+
+/**
+ * The nodes whose `value` is controlled.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.1.3
+ */
+export type ValueNode = HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
+
+/**
+ * An HTML element builder: the core builder plus typed event sugar, controlled
+ * properties and a few attribute helpers.
+ *
+ * **Details**
+ *
+ * `Events` are the tag's events and `Node` the DOM element it renders to,
+ * which types `ref` and `onMount`. Every method returns a copy.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.1.3
+ */
+export class Element<out Msg, out R = never, in out E = Record<string, unknown>, in out Node = unknown>
+  extends View.ElementBuilder<Msg, R, E, Node>
+{
+  /**
+   * Sets the `id` attribute.
+   *
+   * @since 4.1.3
+   */
+  id(id: string): this {
+    return this.attr("id", id)
+  }
+  /**
+   * Sets the `class` attribute.
+   *
+   * @since 4.1.3
+   */
+  class(value: string): this {
+    return this.attr("class", value)
+  }
+  /**
+   * Sets or removes the `disabled` boolean attribute.
+   *
+   * @since 4.1.3
+   */
+  disabled(disabled: boolean): this {
+    return this.attr("disabled", disabled ? "" : undefined)
+  }
+  /**
+   * The controlled `value` of an `input`, `textarea` or `select`. The element
+   * always shows it, whatever the user types, until the Model changes.
+   *
+   * @since 4.1.3
+   */
+  value<N extends ValueNode>(this: Element<Msg, R, E, N>, value: string): Element<Msg, R, E, N> {
+    return this.prop("value", value)
+  }
+  /**
+   * The controlled `checked` state of a checkbox or radio button.
+   *
+   * @since 4.1.3
+   */
+  checked(this: Element<Msg, R, E, HTMLInputElement>, checked: boolean): Element<Msg, R, E, HTMLInputElement> {
+    return this.prop("checked", checked)
+  }
+  /**
+   * The controlled `selected` state of an `option`.
+   *
+   * @since 4.1.3
+   */
+  selected(
+    this: Element<Msg, R, E, HTMLOptionElement>,
+    selected: boolean
+  ): Element<Msg, R, E, HTMLOptionElement> {
+    return this.prop("selected", selected)
+  }
+  /**
+   * The controlled `open` state of a `details` or `dialog`.
+   *
+   * @since 4.1.3
+   */
+  open<N extends HTMLDetailsElement | HTMLDialogElement>(
+    this: Element<Msg, R, E, N>,
+    open: boolean
+  ): Element<Msg, R, E, N> {
+    return this.prop("open", open)
+  }
+  /**
+   * Sugar for `on("click", handler)`.
+   *
+   * @since 4.1.3
+   */
+  onClick(handler: View.Handler<Msg, PointerPayload>): this {
+    return this.on("click" as any, handler as any)
+  }
+  /**
+   * Sugar for `on("dblclick", handler)`.
+   *
+   * @since 4.1.3
+   */
+  onDoubleClick(handler: View.Handler<Msg, PointerPayload>): this {
+    return this.on("dblclick" as any, handler as any)
+  }
+  /**
+   * Sugar for `on("keydown", handler)`.
+   *
+   * @since 4.1.3
+   */
+  onKeyDown(handler: View.Handler<Msg, KeyPayload>): this {
+    return this.on("keydown" as any, handler as any)
+  }
+  /**
+   * Sugar for `on("keyup", handler)`.
+   *
+   * @since 4.1.3
+   */
+  onKeyUp(handler: View.Handler<Msg, KeyPayload>): this {
+    return this.on("keyup" as any, handler as any)
+  }
+  /**
+   * Sugar for `on("focus", handler)`.
+   *
+   * @since 4.1.3
+   */
+  onFocus(handler: View.Handler<Msg, {}>): this {
+    return this.on("focus" as any, handler as any)
+  }
+  /**
+   * Sugar for `on("blur", handler)`.
+   *
+   * @since 4.1.3
+   */
+  onBlur(handler: View.Handler<Msg, {}>): this {
+    return this.on("blur" as any, handler as any)
+  }
+  /**
+   * Sugar for `on("input", handler)`, on the elements that have it.
+   *
+   * @since 4.1.3
+   */
+  onInput<E2 extends E & { readonly input: unknown }>(
+    this: Element<Msg, R, E2, Node>,
+    handler: View.Handler<Msg, E2["input"]>
+  ): Element<Msg, R, E2, Node> {
+    return this.on("input", handler)
+  }
+  /**
+   * Sugar for `on("change", handler)`, on the elements that have it.
+   *
+   * @since 4.1.3
+   */
+  onChange<E2 extends E & { readonly change: unknown }>(
+    this: Element<Msg, R, E2, Node>,
+    handler: View.Handler<Msg, E2["change"]>
+  ): Element<Msg, R, E2, Node> {
+    return this.on("change", handler)
+  }
+  /**
+   * Sugar for `on("submit", handler)`, on a `form`.
+   *
+   * @since 4.1.3
+   */
+  onSubmit<E2 extends E & { readonly submit: unknown }>(
+    this: Element<Msg, R, E2, Node>,
+    handler: View.Handler<Msg, E2["submit"]>
+  ): Element<Msg, R, E2, Node> {
+    return this.on("submit", handler)
+  }
+  /**
+   * Sugar for `on("toggle", handler)`, on a `details` or `dialog`.
+   *
+   * @since 4.1.3
+   */
+  onToggle<E2 extends E & { readonly toggle: unknown }>(
+    this: Element<Msg, R, E2, Node>,
+    handler: View.Handler<Msg, E2["toggle"]>
+  ): Element<Msg, R, E2, Node> {
+    return this.on("toggle", handler)
+  }
+}
+
+/**
+ * The tags that take children.
+ *
+ * @stability experimental
+ * @category vocabulary
+ * @since 4.1.3
+ */
+export const containerTags = [
+  "a",
+  "abbr",
+  "address",
+  "article",
+  "aside",
+  "audio",
+  "b",
+  "bdi",
+  "bdo",
+  "blockquote",
+  "button",
+  "canvas",
+  "caption",
+  "cite",
+  "code",
+  "colgroup",
+  "data",
+  "datalist",
+  "dd",
+  "del",
+  "details",
+  "dfn",
+  "dialog",
+  "div",
+  "dl",
+  "dt",
+  "em",
+  "fieldset",
+  "figcaption",
+  "figure",
+  "footer",
+  "form",
+  "h1",
+  "h2",
+  "h3",
+  "h4",
+  "h5",
+  "h6",
+  "header",
+  "hgroup",
+  "i",
+  "iframe",
+  "ins",
+  "kbd",
+  "label",
+  "legend",
+  "li",
+  "main",
+  "mark",
+  "menu",
+  "meter",
+  "nav",
+  "ol",
+  "optgroup",
+  "option",
+  "output",
+  "p",
+  "picture",
+  "pre",
+  "progress",
+  "q",
+  "rp",
+  "rt",
+  "ruby",
+  "s",
+  "samp",
+  "search",
+  "section",
+  "select",
+  "small",
+  "span",
+  "strong",
+  "sub",
+  "summary",
+  "sup",
+  "table",
+  "tbody",
+  "td",
+  "textarea",
+  "tfoot",
+  "th",
+  "thead",
+  "time",
+  "tr",
+  "u",
+  "ul",
+  "var",
+  "video"
+] as const
+
+/**
+ * The void tags, which take no children.
+ *
+ * @stability experimental
+ * @category vocabulary
+ * @since 4.1.3
+ */
+export const voidTags = ["br", "col", "hr", "img", "input", "source", "track", "wbr"] as const
+
+/**
+ * A tag that takes children.
+ *
+ * @stability experimental
+ * @category vocabulary
+ * @since 4.1.3
+ */
+export type ContainerTag = typeof containerTags[number]
+
+/**
+ * A void tag.
+ *
+ * @stability experimental
+ * @category vocabulary
+ * @since 4.1.3
+ */
+export type VoidTag = typeof voidTags[number]
+
+/**
+ * The element names the vocabulary adds to `h`, bound to a component's
+ * message type. Document-level tags (`html`, `head`, `body`, `title`, `meta`,
+ * `link`, `base`, `script`, `style`) aren't here: the document head is managed
+ * through a component's `head`.
+ *
+ * @stability experimental
+ * @category vocabulary
+ * @since 4.1.3
+ */
+export type Tags<Msg> =
+  & {
+    readonly [K in ContainerTag]: <const C extends ReadonlyArray<View.Input<Msg>>>(
+      ...children: C
+    ) => Element<Msg, View.Requirements<C[number]>, EventsOf<K>, HTMLElementTagNameMap[K]>
+  }
+  & { readonly [K in VoidTag]: () => Element<Msg, never, EventsOf<K>, HTMLElementTagNameMap[K]> }
+
+/**
+ * The type-level vocabulary, for `View.Register`.
+ *
+ * @stability experimental
+ * @category vocabulary
+ * @since 4.1.3
+ */
+export interface Elements extends View.Elements {
+  readonly Tags: Tags<this["Msg"]>
+  readonly Host: Host
+}
+
+/**
+ * Phantom: carries `Elements` on the module, so the module namespace is a
+ * `View.Vocabulary<Elements>`. It's `undefined` at runtime.
+ *
+ * @stability experimental
+ * @category vocabulary
+ * @since 4.1.3
+ */
+export const Elements: Elements | undefined = undefined
+
+/**
+ * The vocabulary's name, which a host lists to show it.
+ *
+ * @stability experimental
+ * @category vocabulary
+ * @since 4.1.3
+ */
+export const name = "html"
+
+const makeTags = (): Readonly<Record<string, (...children: ReadonlyArray<any>) => Element<any, any, any, any>>> => {
+  const out: Record<string, (...children: ReadonlyArray<any>) => Element<any, any, any, any>> = {}
+  for (const tag of containerTags) {
+    out[tag] = (...children: ReadonlyArray<View.Input<any>>) => new Element(tag, View.children(children))
+  }
+  for (const tag of voidTags) out[tag] = () => new Element(tag, [])
+  return out
+}
+
+/**
+ * The element constructors installed on `h`.
+ *
+ * @stability experimental
+ * @category vocabulary
+ * @since 4.1.3
+ */
+export const tags: Readonly<Record<string, (...children: ReadonlyArray<any>) => Element<any, any, any, any>>> =
+  makeTags()
+
+// ---------------------------------------------------------------------------
+// refs
+// ---------------------------------------------------------------------------
+
+/**
+ * Declares a ref to an element of tag `tag`. Attaching it to another tag
+ * doesn't compile. List rows use `Row.at(id)`.
+ *
+ * @stability experimental
+ * @category refs
+ * @since 4.1.3
+ */
+export const ref = <K extends keyof HTMLElementTagNameMap>(
+  name: string,
+  _tag: K
+): Renderer.Ref<HTMLElementTagNameMap[K]> => Renderer.ref<HTMLElementTagNameMap[K]>(name)
+
+/**
+ * What `focus`, `blur` and `scrollIntoView` report: whether the ref was
+ * rendered.
+ *
+ * @stability experimental
+ * @category refs
+ * @since 4.1.3
+ */
+export interface Found {
+  readonly found: boolean
+}
+
+const withElement = <A>(
+  ref: Renderer.Ref<any>,
+  f: (host: Context.Service.Shape<typeof Host>, element: globalThis.Element) => A
+): Effect.Effect<Option.Option<A>, never, Renderer.Refs | Host> =>
+  Effect.flatMap(Effect.service(Renderer.Refs), (refs) =>
+    Effect.flatMap(refs.lookup(ref), (node) =>
+      Option.isNone(node)
+        ? Effect.succeed(Option.none())
+        : Effect.map(Effect.service(Host), (host) => Option.some(f(host, node.value as globalThis.Element)))))
+
+/**
+ * The Command behind `focus`, for `Story.resolve(Html.Focus, { found })`.
+ *
+ * @stability experimental
+ * @category refs
+ * @since 4.1.3
+ */
+export const Focus: Command.Factory<
+  [ref: Renderer.Ref<any>, options?: { readonly preventScroll?: boolean | undefined } | undefined],
+  Found
+> = Command.make(
+  "Html.focus",
+  (ref: Renderer.Ref<any>, options?: { readonly preventScroll?: boolean | undefined } | undefined) =>
+    Effect.map(
+      withElement(ref, (host, element) => host.focus(element, options ?? {})),
+      (done): Found => ({ found: Option.isSome(done) })
+    )
+)
+
+/**
+ * The Command behind `blur`.
+ *
+ * @stability experimental
+ * @category refs
+ * @since 4.1.3
+ */
+export const Blur: Command.Factory<[ref: Renderer.Ref<any>], Found> = Command.make(
+  "Html.blur",
+  (ref: Renderer.Ref<any>) =>
+    Effect.map(withElement(ref, (host, element) => host.blur(element)), (done): Found => ({
+      found: Option.isSome(done)
+    }))
+)
+
+/**
+ * The Command behind `scrollIntoView`.
+ *
+ * @stability experimental
+ * @category refs
+ * @since 4.1.3
+ */
+export const ScrollIntoView: Command.Factory<[ref: Renderer.Ref<any>, options?: ScrollOptions | undefined], Found> =
+  Command.make(
+    "Html.scrollIntoView",
+    (ref: Renderer.Ref<any>, options?: ScrollOptions | undefined) =>
+      Effect.map(withElement(ref, (host, element) => host.scrollIntoView(element, options ?? {})), (done): Found => ({
+        found: Option.isSome(done)
+      }))
+  )
+
+/**
+ * The Command behind `measure`.
+ *
+ * @stability experimental
+ * @category refs
+ * @since 4.1.3
+ */
+export const Measure: Command.Factory<[ref: Renderer.Ref<any>], Option.Option<Rect>> = Command.make(
+  "Html.measure",
+  (ref: Renderer.Ref<any>) => withElement(ref, (host, element) => host.measure(element))
+)
+
+/**
+ * Focuses the element `ref` names, once the render the issuing `update`
+ * caused is committed, and sends `f`'s message.
+ *
+ * **Details**
+ *
+ * A ref that isn't rendered gives `{ found: false }`. The ref resolves within
+ * the issuing instance. `Refs` and `Html.Host` are framework services, so
+ * this adds nothing to a component's requirements.
+ *
+ * **Example** (Focusing the new-todo field after adding)
+ *
+ * ```ts
+ * import { Html } from "@effect/ui-html"
+ * import { Schema } from "effect"
+ *
+ * const Message = Schema.TaggedUnion({ Add: {}, Focused: {} })
+ * const NewTodo = Html.ref("NewTodo", "input")
+ *
+ * const command = Html.focus(NewTodo, () => Message.make({ _tag: "Focused" }))
+ * ```
+ *
+ * @stability experimental
+ * @category refs
+ * @since 4.1.3
+ */
+export const focus = <N extends HTMLElement | SVGElement, Msg>(
+  ref: Renderer.Ref<N>,
+  f: (result: Found) => Msg,
+  options?: { readonly preventScroll?: boolean | undefined }
+): Command.Mapped<Command.Effectful<Found>, Msg> => Command.map(Focus(ref, options), f)
+
+/**
+ * Takes focus away from the element `ref` names, and sends `f`'s message.
+ *
+ * @stability experimental
+ * @category refs
+ * @since 4.1.3
+ */
+export const blur = <N extends HTMLElement | SVGElement, Msg>(
+  ref: Renderer.Ref<N>,
+  f: (result: Found) => Msg
+): Command.Mapped<Command.Effectful<Found>, Msg> => Command.map(Blur(ref), f)
+
+/**
+ * Scrolls the element `ref` names into view, and sends `f`'s message.
+ *
+ * @stability experimental
+ * @category refs
+ * @since 4.1.3
+ */
+export const scrollIntoView = <N extends globalThis.Element, Msg>(
+  ref: Renderer.Ref<N>,
+  f: (result: Found) => Msg,
+  options?: ScrollOptions
+): Command.Mapped<Command.Effectful<Found>, Msg> => Command.map(ScrollIntoView(ref, options), f)
+
+/**
+ * Measures the element `ref` names, and sends `f`'s message with its box, or
+ * `Option.none()` when the ref isn't rendered.
+ *
+ * @stability experimental
+ * @category refs
+ * @since 4.1.3
+ */
+export const measure = <N extends globalThis.Element, Msg>(
+  ref: Renderer.Ref<N>,
+  f: (rect: Option.Option<Rect>) => Msg
+): Command.Mapped<Command.Effectful<Option.Option<Rect>>, Msg> => Command.map(Measure(ref), f)

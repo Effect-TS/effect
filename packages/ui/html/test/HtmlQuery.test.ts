@@ -1,0 +1,159 @@
+import { HtmlQuery } from "@effect/ui-html/testing"
+import { describe, expect, it } from "@effect/vitest"
+import { Effect } from "effect"
+import { Query, Story, TestHost } from "effect/ui/testing"
+import { TodoApp, TodoAppMessage } from "./fixtures/todos.ts"
+
+const el = (
+  tag: string,
+  attrs: Record<string, string> = {},
+  ...children: ReadonlyArray<Query.Node>
+): Query.Node => ({ tag, attrs, children })
+const text = (text: string): Query.Node => ({ text })
+
+describe("HtmlQuery", () => {
+  describe("roles", () => {
+    it("come from tags, types and attributes", () => {
+      const tree = el(
+        "div",
+        {},
+        el("a", { href: "/" }, text("Home")),
+        el("a", {}, text("Not a link")),
+        el("input", {}),
+        el("input", { type: "checkbox" }),
+        el("input", { type: "submit" }),
+        el("input", { type: "hidden" }),
+        el("input", { type: "search", list: "options" }),
+        el("select", {}),
+        el("select", { multiple: "" }),
+        el("img", { alt: "" }),
+        el("div", { role: "alert  status" }),
+        el("ul", {}, el("li", {}))
+      )
+      const roles = Query.elements(tree).map((node) => HtmlQuery.roleOf(tree, node))
+      expect(roles).toEqual([
+        undefined,
+        "link",
+        undefined,
+        "textbox",
+        "checkbox",
+        "button",
+        undefined,
+        "combobox",
+        "combobox",
+        "listbox",
+        "presentation",
+        "alert",
+        "list",
+        "listitem"
+      ])
+    })
+
+    it("header and footer are landmarks outside sectioning elements only", () => {
+      const tree = el("div", {}, el("header", {}), el("article", {}, el("header", {}), el("footer", {})), el("footer"))
+      expect(HtmlQuery.queryAllByRole(tree, "banner")).toHaveLength(1)
+      expect(HtmlQuery.queryAllByRole(tree, "contentinfo")).toHaveLength(1)
+    })
+
+    it("hidden elements are left out unless asked for", () => {
+      const tree = el(
+        "div",
+        {},
+        el("button", { hidden: "" }, text("A")),
+        el("div", { "aria-hidden": "true" }, el("button", {}, text("B"))),
+        el("button", {}, text("C"))
+      )
+      expect(HtmlQuery.queryAllByRole(tree, "button").map((node) => Query.textOf(node))).toEqual(["C"])
+      expect(HtmlQuery.queryAllByRole(tree, "button", { hidden: true })).toHaveLength(3)
+    })
+  })
+
+  describe("names", () => {
+    it("follow the accessible name order", () => {
+      const tree = el(
+        "form",
+        {},
+        el("span", { id: "first" }, text("First")),
+        el("span", { id: "last" }, text("name")),
+        el("input", { "aria-labelledby": "first last", "aria-label": "ignored" }),
+        el("input", { "aria-label": "  Search   site " }),
+        el("label", { for: "email" }, text("Email")),
+        el("input", { id: "email", title: "ignored" }),
+        el("label", {}, el("input", { type: "checkbox" }), text(" Remember me")),
+        el("input", { type: "submit" }),
+        el("input", { type: "button", value: "Go" }),
+        el("button", {}, el("img", { alt: "Close" })),
+        el("button", { title: "Menu" }),
+        el("input", { placeholder: "Notes" }),
+        el("fieldset", {}, el("legend", {}, text("Address"))),
+        el("h2", {}, text("Section "), el("em", {}, text("two")))
+      )
+      const names = HtmlQuery.queryAllByRole(tree, "textbox").map((node) => HtmlQuery.nameOf(tree, node))
+      expect(names).toEqual(["First name", "Search site", "Email", "Notes"])
+      expect(HtmlQuery.nameOf(tree, HtmlQuery.getByRole(tree, "checkbox"))).toBe("Remember me")
+      expect(HtmlQuery.queryAllByRole(tree, "button").map((node) => HtmlQuery.nameOf(tree, node))).toEqual([
+        "Submit",
+        "Go",
+        "Close",
+        "Menu"
+      ])
+      expect(HtmlQuery.nameOf(tree, HtmlQuery.getByRole(tree, "group"))).toBe("Address")
+      expect(HtmlQuery.getByRole(tree, "heading", { name: "Section two", level: 2 })).toBeDefined()
+      expect(HtmlQuery.getByRole(tree, "heading", { name: /two$/ })).toBeDefined()
+    })
+
+    it("getByRole lists what's there when nothing matches", () => {
+      const tree = el("div", {}, el("button", {}, text("Save")), el("a", { href: "/" }, text("Home")))
+      expect(() => HtmlQuery.getByRole(tree, "button", { name: "Cancel" })).toThrow(
+        "HtmlQuery: nothing has role \"button\", name \"Cancel\". Roles here:\n  button \"Save\"\n  link \"Home\""
+      )
+      expect(() => HtmlQuery.getByRole(el("div", {}, el("p"), el("p")), "paragraph")).toThrow("2 elements")
+    })
+  })
+
+  describe("trees", () => {
+    it("a story's view value", () => {
+      Story.make(
+        TodoApp,
+        {},
+        Story.send(TodoAppMessage.make({ _tag: "Draft", value: "Read" })),
+        Story.view((view) => {
+          const root = view as Query.Node
+          const field = HtmlQuery.getByRole(root, "textbox", { name: "New todo" })
+          expect((field as { readonly props?: Record<string, unknown> }).props?.value).toBe("Read")
+          expect(HtmlQuery.getByRole(root, "button", { name: "Clear done" })).toBeDefined()
+          expect(Query.all(root, Query.inside(Query.tag("form"), HtmlQuery.role("button")))).toHaveLength(1)
+        })
+      )
+    })
+
+    it.effect("a TestHost tree, checked state included", () =>
+      Effect.gen(function*() {
+        const root = yield* TestHost.mount(TodoApp, {})
+        root.send(TodoAppMessage.make({ _tag: "Draft", value: "Read" }))
+        root.send(TodoAppMessage.make({ _tag: "Add" }))
+        yield* TestHost.settle
+        const box = HtmlQuery.getByRole(root.container, "checkbox", { name: "Read", checked: false })
+        Query.fire(box as TestHost.TestElement, "input", { value: "on", checked: true })
+        yield* TestHost.settle
+        expect(HtmlQuery.queryAllByRole(root.container, "checkbox", { checked: true })).toEqual([box])
+        expect(root.all(HtmlQuery.role("listitem"))).toHaveLength(1)
+      }).pipe(Effect.scoped, Effect.provide(TestHost.layer())))
+
+    it("the DOM", () => {
+      const container = document.createElement("div")
+      container.innerHTML = `
+        <nav aria-label="Main"><a href="/a">A</a><a href="/b">B</a></nav>
+        <label>Agree <input type="checkbox" checked></label>
+        <table><caption>Totals</caption><tr><th>Item</th><td>3</td></tr></table>`
+      expect(HtmlQuery.queryAllByRole(container, "link").map((node) => node.textContent)).toEqual(["A", "B"])
+      expect(HtmlQuery.getByRole(container, "navigation", { name: "Main" }).localName).toBe("nav")
+      const box = HtmlQuery.getByRole(container, "checkbox", { name: "Agree", checked: true }) as HTMLInputElement
+      box.checked = false
+      expect(HtmlQuery.queryAllByRole(container, "checkbox", { checked: true })).toEqual([])
+      expect(HtmlQuery.nameOf(container, HtmlQuery.getByRole(container, "table"))).toBe("Totals")
+      expect(HtmlQuery.getByRole(container, "columnheader", { name: "Item" })).toBeDefined()
+      expect(HtmlQuery.getByRole(container, "cell", { name: "3" })).toBeDefined()
+    })
+  })
+})
