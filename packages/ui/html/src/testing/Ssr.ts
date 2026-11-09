@@ -121,7 +121,8 @@ const serverNodes = (container: globalThis.Element): Array<ServerNode> => {
         continue
       }
       out.push({ node, paths: paths.slice() })
-      visit(node)
+      // A text-only element's content is rebuilt by design: only the element itself is adopted.
+      if (!server.textOnlyTags.has((node as globalThis.Element).localName)) visit(node)
     }
   }
   visit(container)
@@ -223,14 +224,38 @@ export const ssr = <Name extends string, Props, Model, Msg, Events, R, V extends
     const host = BrowserHost.makeHost(document, { warn: (message) => problems.push(message) })
     yield* Effect.addFinalizer(() => Effect.sync(host.dispose))
     let firstHead: Head.Head | undefined
+    const clientLog = MessageLog.makeMemory({ size: 100_000 })
+    // Adoption is judged at the commit of the flush in which each instance adopted, so a later
+    // update, such as the message an `onMount` sends, may replace nodes without counting against it.
+    const deferred = new Set(rendered.state["~deferred"] ?? [])
+    let unjudged = before.filter(({ paths }) => paths.length > 0 && !paths.some((path) => deferred.has(path)))
+    const rebuilt = new Set<string>()
+    let read = 0
+    const judge = () => {
+      const entries = clientLog.entries()
+      const adoptedNow = new Set<string>()
+      for (; read < entries.length; read++) {
+        const entry = entries[read]!
+        if (entry._tag === "Mounted" && entry.adopted) adoptedNow.add(entry.path)
+      }
+      unjudged = unjudged.filter(({ node, paths }) => {
+        const owner = paths[paths.length - 1]!
+        if (!adoptedNow.has(owner)) return true
+        if (!container.contains(node)) rebuilt.add(owner)
+        return false
+      })
+    }
     const recording: Renderer.Host<globalThis.Node> = {
       ...host,
       head: (head) => {
         firstHead ??= head
         host.head!(head)
+      },
+      commit: () => {
+        host.commit?.()
+        judge()
       }
     }
-    const clientLog = MessageLog.makeMemory({ size: 100_000 })
     const root = yield* Renderer.mount(component, props, container, { state: rendered.state }).pipe(
       Effect.provideContext(
         Context.make(Renderer.Renderer, { host: recording }).pipe(
@@ -245,7 +270,6 @@ export const ssr = <Name extends string, Props, Model, Msg, Events, R, V extends
 
     // -- checks ---------------------------------------------------------------
     const log = clientLog.entries()
-    const deferred = new Set(rendered.state["~deferred"] ?? [])
     const mounted = log.filter((entry): entry is MessageLog.Mounted => entry._tag === "Mounted" && entry.adopted)
     const adopted = mounted.map((entry) => entry.path)
     for (const path of Object.keys(rendered.state)) {
@@ -263,11 +287,6 @@ export const ssr = <Name extends string, Props, Model, Msg, Events, R, V extends
           }`
         )
       }
-    }
-    const rebuilt = new Set<string>()
-    for (const { node, paths } of before) {
-      if (paths.some((path) => deferred.has(path))) continue
-      if (!container.contains(node)) rebuilt.add(paths[paths.length - 1] ?? "(outside every instance)")
     }
     for (const path of rebuilt) problems.push(`${path}: the client rebuilt the server's nodes instead of adopting them`)
     for (const path of markersLeft(container)) problems.push(`${path}: its markers are still in the document`)

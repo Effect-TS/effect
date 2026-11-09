@@ -53,6 +53,7 @@ import type * as View from "effect/ui/View"
 import * as Html from "./Html.ts"
 import * as headSync from "./internal/head.ts"
 import * as markers from "./internal/markers.ts"
+import * as server from "./internal/server.ts"
 import * as submit from "./internal/submit.ts"
 
 const SVG = "http://www.w3.org/2000/svg"
@@ -366,8 +367,10 @@ export const makeHost = (
       firstChild: (node) => node.firstChild ?? undefined,
       inspect(node) {
         switch (node.nodeType) {
-          case 1:
-            return { _tag: "Element", tag: (node as globalThis.Element).localName }
+          case 1: {
+            const tag = (node as globalThis.Element).localName
+            return { _tag: "Element", tag, textOnly: server.textOnlyTags.has(tag) }
+          }
           case 3:
             return { _tag: "Text", text: (node as globalThis.Text).data }
           case 8:

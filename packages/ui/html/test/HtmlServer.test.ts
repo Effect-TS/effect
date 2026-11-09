@@ -1,8 +1,8 @@
 import { BrowserHost, Html, HtmlServer } from "@effect/ui-html"
 import { ssr } from "@effect/ui-html/testing"
 import { expect, it } from "@effect/vitest"
-import { Context, Effect, Layer, Option, Schema } from "effect"
-import { Command, Component, Router } from "effect/ui"
+import { Context, Effect, Fiber, Layer, Option, Schema } from "effect"
+import { Command, Component, Feature, Router } from "effect/ui"
 import { describe } from "vitest"
 import { App, AppRoute, People } from "./fixtures/routed.ts"
 
@@ -216,5 +216,144 @@ describe("HtmlServer", { concurrent: false }, () => {
       expect(a).not.toBe(first)
       expect(b).toBe(second)
       expect(app.querySelector("ul")!.childNodes.length).toBe(2)
+    }).pipe(Effect.scoped))
+  it.live("waits for the slot a Layer that settles in budget wakes, and for the work it starts", () =>
+    Effect.gen(function*() {
+      const PanelMessage = Schema.TaggedUnion({ Loaded: { text: Schema.String } })
+      class LoadText extends Command.Service<LoadText>()(
+        "LoadText",
+        Effect.succeed(() => Effect.succeed(PanelMessage.make({ _tag: "Loaded", text: "data" }))),
+        { server: true }
+      ) {}
+      class Panel extends Feature.Service<Panel>()("Panel", { props: Schema.Struct({}), events: Schema.Never }) {}
+      const PanelLive = Component.make({
+        name: "PanelLive",
+        model: Schema.String,
+        message: PanelMessage,
+        elements: Html,
+        init: ($) => $.set("loading").run(LoadText.make()),
+        update: (_, message) => message.text,
+        view: (text, h) => h.p(text)
+      }).pipe(Component.provide(LoadText.layer))
+      const Page = Component.make({
+        name: "Page",
+        model: Schema.Struct({}),
+        message: Schema.Never,
+        elements: Html,
+        init: () => ({}),
+        update: (model) => model,
+        view: (_, h) =>
+          h.div(
+            h.child(Panel, { key: "p", props: {}, fallback: () => h.p("fallback") })
+          )
+      }).pipe(Component.provide(Layer.merge(Panel.layer(PanelLive), Layer.effectDiscard(Effect.sleep("20 millis")))))
+
+      const rendered = yield* HtmlServer.renderToHtml(Page, {})
+      expect(rendered.html).toContain("<p>data</p>")
+      expect(rendered.state["~deferred"]).toEqual([])
+    }))
+
+  it.effect("fails and defers the instance whose last server Command dies", () =>
+    Effect.gen(function*() {
+      class Die extends Command.Service<Die>()("Die", Effect.succeed(() => Effect.die("boom")), { server: true }) {}
+      const Doomed = Component.make({
+        name: "Doomed",
+        model: Schema.String,
+        message: Schema.Never,
+        elements: Html,
+        init: ($) => $.set("loading").run(Die.make()),
+        update: (model) => model,
+        view: (text, h) => h.p(text)
+      }).pipe(Component.provide(Die.layer))
+      const Page = Component.make({
+        name: "Page",
+        model: Schema.Struct({}),
+        message: Schema.Never,
+        elements: Html,
+        init: () => ({}),
+        update: (model) => model,
+        view: (_, h) =>
+          h.div(
+            h.child(Doomed, { key: "d", props: {}, fallback: () => h.p("failed") })
+          )
+      })
+
+      const rendered = yield* HtmlServer.renderToHtml(Page, {})
+      expect(rendered.html).toContain("<!--[/Page/Doomed[d]--><p>failed</p><!--]/Page/Doomed[d]-->")
+      expect(rendered.state["~deferred"]).toEqual(["/Page/Doomed[d]"])
+      expect(rendered.state["~pending"]).toEqual({})
+    }))
+
+  it.live("closes everything it started when the render is interrupted", () =>
+    Effect.gen(function*() {
+      let acquired = 0
+      let released = 0
+      const Held = Layer.effectDiscard(
+        Effect.acquireRelease(Effect.sync(() => acquired++), () => Effect.sync(() => released++)).pipe(
+          Effect.andThen(Effect.sleep("100 millis"))
+        )
+      )
+      const Page = Component.make({
+        name: "Page",
+        model: Schema.Struct({}),
+        message: Schema.Never,
+        elements: Html,
+        init: () => ({}),
+        update: (model) => model,
+        view: (_, h) => h.p("page")
+      }).pipe(Component.provide(Held))
+      const fiber = yield* Effect.forkChild(HtmlServer.renderToHtml(Page, {}))
+      yield* Effect.sleep("20 millis")
+      yield* Fiber.interrupt(fiber)
+      yield* Effect.sleep("150 millis")
+      expect([acquired, released]).toEqual([1, 1])
+    }))
+
+  it.effect("writes only text inside a textarea, and hydration rebuilds just that text", () =>
+    Effect.gen(function*() {
+      const Word = Component.make({
+        name: "Word",
+        model: Schema.Struct({}),
+        message: Schema.Never,
+        elements: Html,
+        init: () => ({}),
+        update: (model) => model,
+        view: (_, h) => h.text("hello")
+      })
+      const Form = Component.make({
+        name: "Form",
+        model: Schema.Struct({}),
+        message: Schema.Never,
+        elements: Html,
+        init: () => ({}),
+        update: (model) => model,
+        view: (_, h) => h.div(h.textarea(h.child(Word, { key: "a", props: {} })), h.p("after"))
+      })
+      const result = yield* ssr(Form, {})
+      expect(result.html).toBe(
+        "<!--[/Form--><div><textarea>hello</textarea><p>after</p></div><!--]/Form-->"
+      )
+      expect(result.adopted).toEqual(["/Form", "/Form/Word[a]"])
+      expect(result.container.querySelector("textarea")!.value).toBe("hello")
+    }).pipe(Effect.scoped))
+
+  it.effect("judges adoption when it commits, before onMount updates replace nodes", () =>
+    Effect.gen(function*() {
+      const Message = Schema.TaggedUnion({ Mounted: {} })
+      const Swap = Component.make({
+        name: "Swap",
+        model: Schema.Boolean,
+        message: Message,
+        elements: Html,
+        init: () => false,
+        update: () => true,
+        view: (mounted, h) =>
+          mounted
+            ? h.div("mounted")
+            : h.p("server").onMount("swap", () => Effect.succeed(Message.make({ _tag: "Mounted" })))
+      })
+      const result = yield* ssr(Swap, {})
+      yield* Effect.yieldNow
+      expect(result.container.textContent).toBe("mounted")
     }).pipe(Effect.scoped))
 })
