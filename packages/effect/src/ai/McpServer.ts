@@ -2520,6 +2520,9 @@ type RegistrationServices<RR> = Exclude<McpRequest.Without<RR>, McpServer>
  * `McpServer.layer`, so registration layers can use the `McpServer` service
  * while the server is running.
  *
+ * Core lists return one complete page; supplying a cursor, including an empty
+ * string, fails with `InvalidParams`.
+ *
  * Pass registration layers as `registrations` to build them before the server
  * reads its first request. The transport discharges the request-level
  * dependencies it supplies (see `ProvidedServices`); any other `McpRequest`
