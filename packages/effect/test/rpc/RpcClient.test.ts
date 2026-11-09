@@ -23,6 +23,7 @@ import {
   Tracer
 } from "effect"
 import * as HttpClient from "effect/http/HttpClient"
+import * as HttpClientError from "effect/http/HttpClientError"
 import * as HttpClientRequest from "effect/http/HttpClientRequest"
 import * as HttpClientResponse from "effect/http/HttpClientResponse"
 import * as HttpEffect from "effect/http/HttpEffect"
@@ -886,6 +887,26 @@ describe("RpcClient", () => {
 
   it.effect("fails request on empty HTTP response for framed serialization", () =>
     assertEmptyResponseFailsRequest(RpcSerialization.layerNdjson, ""))
+
+  it.effect("includes the HTTP failure in the error message", () =>
+    Effect.gen(function*() {
+      const httpClient = HttpClient.make((request) =>
+        Effect.fail(
+          new HttpClientError.HttpClientError({
+            reason: new HttpClientError.TransportError({ request, description: "connect ECONNREFUSED" })
+          })
+        )
+      )
+      const client = yield* RpcClient.make(TestGroup).pipe(
+        Effect.provide(makeProtocolLayerWithClient(RpcSerialization.layerJson, httpClient))
+      )
+
+      const error = yield* client.Ping().pipe(Effect.flip)
+
+      assert.instanceOf(error, RpcClientError)
+      assert.strictEqual(error.reason._tag, "HttpError")
+      assert.strictEqual(error.message, "HttpError: Transport: connect ECONNREFUSED (POST http://localhost/rpc/)")
+    }))
 
   it.effect("sends a discarded call to a worker as a request and waits for its Exit", () =>
     Effect.gen(function*() {
