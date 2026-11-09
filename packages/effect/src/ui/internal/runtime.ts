@@ -164,6 +164,8 @@ export interface Instance {
   waiting: boolean
   /** Hydration: whether this instance's children may adopt the server's Models. */
   adoptsChildren: boolean
+  /** Hydration: the head entries the instance contributed when it mounted, before any later update. */
+  adoptionHead: ReadonlyArray<Head.Entry> | undefined
   /** On the server: the client builds this instance fresh, because its Layer wasn't built. */
   deferred: boolean
   /** On the server: positions of `init`'s server Commands that haven't completed. */
@@ -387,6 +389,7 @@ const start = (
     if (adoptedDone) return
     adoptedDone = true
     hydrating = undefined
+    reportAdoption()
     for (const f of adoptedWaiters.splice(0)) f()
     // Head sync starts with the flush after adoption.
     headDirty = true
@@ -522,6 +525,29 @@ const start = (
       : rendered._tag === "Element"
       ? rendered.children.flatMap(headChildren)
       : []
+
+  /**
+   * The head the tree had at adoption: the live tree's structure, with each
+   * instance's entries as evaluated when it mounted. Updates since, such as
+   * one an `onMount` sent while another slot waited, don't count. A template
+   * that throws is skipped here; the live merge fails its instance.
+   */
+  const adoptionTree = (inst: Instance): Head.Tree => ({
+    entries: inst.closed || inst.failure !== undefined ? [] : inst.adoptionHead ?? inst.head,
+    children: inst.closed || inst.failure !== undefined ? [] : inst.rendered.flatMap(adoptionChildren),
+    onError: () => {}
+  })
+  const adoptionChildren = (rendered: Rendered): Array<Head.Tree> =>
+    rendered._tag === "Child"
+      ? [adoptionTree(rendered.inst)]
+      : rendered._tag === "Element"
+      ? rendered.children.flatMap(adoptionChildren)
+      : []
+  const reportAdoption = () => {
+    if (hydration?.adopted !== undefined && rootInstance !== undefined) {
+      hydration.adopted(Head.merge(adoptionTree(rootInstance)))
+    }
+  }
 
   const buildsPendingSince = (flush: number) => {
     let count = 0
@@ -741,6 +767,7 @@ const start = (
       closed: false,
       waiting: false,
       adoptsChildren: false,
+      adoptionHead: undefined,
       deferred: false,
       serverPending: new Set(),
       runs: [],
@@ -980,6 +1007,7 @@ const start = (
       }
       inst.rendered = [rendered]
       updateHead(inst)
+      if (hydrating !== undefined) inst.adoptionHead = inst.head
       if (inst.failure !== undefined) return
       if (Option.isSome(adopted)) {
         apply(inst, { model: inst.model, commands: [], events: [] }, mountedSeq, true)
@@ -1768,6 +1796,7 @@ const start = (
   if (waiting === 0 && !adoptedDone) {
     adoptedDone = true
     hydrating = undefined
+    reportAdoption()
   }
   mergeHead()
   host.commit?.()
