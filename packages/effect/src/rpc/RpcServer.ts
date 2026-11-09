@@ -1357,42 +1357,48 @@ export const makeProtocolWithHttpEffect: (
       end: Queue.end(queue)
     }
 
-    yield* Scope.addFinalizerExit(scope, () => {
-      clients.delete(id)
-      clientIds.delete(id)
-      Queue.offerUnsafe(disconnects, id)
-      if (queue.state._tag === "Done") return Effect.void
-      return Effect.andThen(
-        Queue.shutdown(queue),
-        Effect.forEach(
+    // Ends an unfinished response, failing it with `cause` when given, and interrupts its requests.
+    const terminate = (cause?: Cause.Cause<never>) =>
+      Effect.suspend(() => {
+        if (queue.state._tag === "Done") return Effect.void
+        if (cause) Queue.failCauseUnsafe(queue, cause)
+        Queue.shutdownUnsafe(queue)
+        return Effect.forEach(
           requestIds,
           (requestId) => writeRequest(id, { _tag: "Interrupt", requestId }),
           { discard: true }
         )
-      )
+      })
+    yield* Scope.addFinalizerExit(scope, () => {
+      clients.delete(id)
+      clientIds.delete(id)
+      Queue.offerUnsafe(disconnects, id)
+      return terminate()
     })
     clients.set(id, client)
     clientIds.add(id)
 
-    // @effect-diagnostics-next-line tryCatchInEffectGen:off
-    try {
-      const decoded = parser.decode(data) as ReadonlyArray<FromClientEncoded>
-      for (let i = 0; i < decoded.length; i++) {
-        const message = decoded[i]
-        if (message._tag === "Request") {
-          requestIds.push(RequestId(message.id))
-          ;(message as Types.Mutable<RequestEncoded>).headers = requestHeaders.concat(message.headers)
+    const dispatch = Effect.gen(function*() {
+      // @effect-diagnostics-next-line tryCatchInEffectGen:off
+      try {
+        const decoded = parser.decode(data) as ReadonlyArray<FromClientEncoded>
+        for (let i = 0; i < decoded.length; i++) {
+          const message = decoded[i]
+          if (message._tag === "Request") {
+            requestIds.push(RequestId(message.id))
+            ;(message as Types.Mutable<RequestEncoded>).headers = requestHeaders.concat(message.headers)
+          }
+          yield* writeRequest(id, message)
         }
-        yield* writeRequest(id, message)
+      } catch (cause) {
+        yield* client.write(ResponseDefectEncoded(encodeDefectUnsafe(cause)))
       }
-    } catch (cause) {
-      yield* client.write(ResponseDefectEncoded(encodeDefectUnsafe(cause)))
-    }
+      yield* writeRequest(id, constEof)
+    })
 
-    yield* writeRequest(id, constEof)
-
-    // Allow request aborts during response waits without unmasking response construction.
     if (!includesFraming) {
+      yield* dispatch
+      // Allow request aborts during response waits without unmasking response construction.
       const responses = yield* Effect.interruptible(Queue.collect(queue))
       // Notification-only batches encode without a response body.
       const encoded = parser.encode(responses)
@@ -1401,11 +1407,16 @@ export const makeProtocolWithHttpEffect: (
       })
     }
 
+    // Dispatch concurrently so the bounded queue can drain; a failed dispatch fails the response.
+    yield* Effect.forkIn(Effect.onError(dispatch, terminate), scope, { startImmediately: true })
+
     const initialChunk = yield* Effect.interruptible(Pull.catchDone(
       Queue.takeAll(queue as Queue.Dequeue<Uint8Array, Cause.Done>),
       () => Effect.succeed([])
     ))
     if (queue.state._tag === "Done") {
+      // A failed dispatch may have completed the queue after the initial chunk was taken.
+      yield* Pull.doneExitFromCause<Cause.Done>(queue.state.exit.cause)
       return HttpServerResponse.uint8Array(initialChunk.length === 1 ? initialChunk[0] : Bytes.concat(initialChunk), {
         contentType: serialization.contentType
       })
