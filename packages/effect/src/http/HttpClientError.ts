@@ -463,7 +463,7 @@ export class HttpClientErrorSchema extends Schema.Error<HttpClientErrorSchema>(T
    * @since 4.0.0
    */
   override get message(): string {
-    const message = hasProperty(this.cause, "message") ? String(this.cause.message) : ""
-    return message || this.kind
+    const message = hasProperty(this.cause, "message") ? this.cause.message : undefined
+    return typeof message === "string" && message !== "" ? message : this.kind
   }
 }
