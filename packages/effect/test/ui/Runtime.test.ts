@@ -2,7 +2,7 @@ import { assert, describe, it } from "@effect/vitest"
 import { Context, Effect, Layer, LayerMap, Option, Redacted, Schema, Stream } from "effect"
 import { TestClock } from "effect/testing"
 import { Command, Component, Feature, MessageLog, Renderer, Subscription } from "effect/ui"
-import { Query, TestHost } from "effect/ui/testing"
+import { Query, Story, TestHost } from "effect/ui/testing"
 import { Counter, CounterMessage } from "./fixtures/components.ts"
 import { Tiny } from "./fixtures/vocabulary.ts"
 
@@ -567,6 +567,37 @@ describe("Runtime", () => {
   })
 
   describe("MessageLog", () => {
+    it.effect("a logged session replays through Story.fromLog", () =>
+      provideHost(Effect.gen(function*() {
+        const root = yield* TestHost.mount(Counter, { initial: 5 })
+        click(root, "+")
+        click(root, "-")
+        click(root, "+")
+        yield* TestHost.settle
+        const replay = Story.fromLog(Counter, root.log())
+        assert.strictEqual(replay.replayed, 3)
+        assert.isUndefined(replay.divergence)
+        assert.deepStrictEqual(replay.model, { count: 6 })
+
+        // Through the Wire, and against a component whose update changed.
+        const encoder = MessageLog.makeEncoder()
+        const wire = root.log().map(encoder.encode)
+        assert.deepStrictEqual(Story.fromLog(Counter, wire).model, { count: 6 })
+        const Changed = Component.make({
+          name: "Counter",
+          props: Schema.Struct({ initial: Schema.Number }),
+          model: Schema.Struct({ count: Schema.Number }),
+          message: CounterMessage,
+          init: ($) => ({ count: $.props.initial }),
+          update: (model, message) => ({ count: model.count + (message._tag === "Increment" ? 2 : -1) }),
+          view: (model, h) => h.text(String(model.count))
+        })
+        const diverged = Story.fromLog(Changed, wire)
+        assert.deepStrictEqual(diverged.divergence?.recorded.model, { count: 6 })
+        assert.deepStrictEqual(diverged.divergence?.recomputed.model, { count: 7 })
+        assert.strictEqual(diverged.divergence?.seq, wire[2].seq)
+      })))
+
     it("the Wire encodes args structurally, with placeholders", () => {
       const Send = Command.make("Send", (_token: unknown, _when: unknown, _f: unknown) => Effect.succeed(1))
       const command = Send(Redacted.make("secret"), new Date(0), () => 1)
@@ -578,7 +609,7 @@ describe("Runtime", () => {
       })
     })
 
-    it("truncates a Model over maxEntryBytes", () => {
+    it("truncates a Model over maxEntryBytes, and fromLog names the entry", () => {
       const encoder = MessageLog.makeEncoder({ maxEntryBytes: 10 })
       const entry: MessageLog.Mounted = {
         _tag: "Mounted",
@@ -595,6 +626,7 @@ describe("Runtime", () => {
       }
       const wire = encoder.encode(entry)
       assert.deepStrictEqual((wire as any).model, { "~truncated": 19 })
+      assert.throws(() => Story.fromLog(Counter, [wire]), /entry #1 \(\/Counter\).*~truncated/)
     })
 
     it("memory keeps the last entries, and fanout feeds several logs", () => {

@@ -59,9 +59,11 @@
 import type * as Cause from "../../Cause.ts"
 import * as Equal from "../../Equal.ts"
 import * as AsyncResult from "../../reactivity/AsyncResult.ts"
+import * as Schema from "../../Schema.ts"
 import * as Command from "../Command.ts"
 import type * as Component from "../Component.ts"
 import * as schedule from "../internal/schedule.ts"
+import * as MessageLog from "../MessageLog.ts"
 import * as View from "../View.ts"
 
 /**
@@ -657,3 +659,183 @@ export const layerFailure = <C extends Component.Any>(
   component: C,
   failure: AsyncResult.Failure<never, any>
 ): Component.Message<C> | undefined => component.layerFailure?.(failure)
+
+// ---------------------------------------------------------------------------
+// Replay
+// ---------------------------------------------------------------------------
+
+/**
+ * Where a replay first computed something other than what the log recorded.
+ *
+ * **Details**
+ *
+ * `recorded` and `recomputed` hold the Model, the emits and the Commands
+ * (encoded the way the Wire encodes them) after the message in entry `seq`.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.1.3
+ */
+export interface Divergence<Model, Msg, Emits> {
+  readonly seq: number
+  readonly message: Msg
+  readonly recorded: Outcome<Model, Emits>
+  readonly recomputed: Outcome<Model, Emits>
+}
+
+/**
+ * What one `update` produced, as a replay compares it.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.1.3
+ */
+export interface Outcome<Model, Emits> {
+  readonly model: Model
+  readonly emits: ReadonlyArray<Emits>
+  readonly commands: ReadonlyArray<ReturnType<typeof MessageLog.encodeCommand>>
+}
+
+/**
+ * The result of `fromLog`: the Model the replay reached, how many messages it
+ * re-ran, and the first divergence, if any.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.1.3
+ */
+export interface Replay<Model, Msg, Emits> {
+  readonly path: string
+  readonly model: Model
+  readonly replayed: number
+  readonly divergence: Divergence<Model, Msg, Emits> | undefined
+}
+
+const placeholders = ["~unserialisable", "~redacted", "~truncated"]
+const findPlaceholder = (value: unknown): string | undefined => {
+  if (typeof value !== "object" || value === null) return undefined
+  for (const key of Object.keys(value)) {
+    if (placeholders.includes(key)) return key
+    const inner = findPlaceholder((value as any)[key])
+    if (inner !== undefined) return inner
+  }
+  return undefined
+}
+
+/**
+ * Re-runs a logged session of one component, purely, and reports the first
+ * place it doesn't reproduce.
+ *
+ * **Details**
+ *
+ * The replay starts at the oldest surviving `Mounted` or `Update` entry for
+ * the path (the first one logged for a component with this name, unless
+ * `path` is given), takes its Model, and re-runs every following message with
+ * the props it was recorded with. Commands are compared, never run. Models and
+ * emits are compared with `Schema.toEquivalence`, and Commands by their Wire
+ * encoding.
+ *
+ * It takes live entries or Wire frames. A Wire value sent as a placeholder,
+ * such as a truncated Model, can't be decoded, and the error names the entry.
+ *
+ * @stability experimental
+ * @category replay
+ * @since 4.1.3
+ */
+export const fromLog = <Name extends string, Props, Model, Msg, Emits, R, V extends View.Elements>(
+  component: Component.Component<Name, Props, Model, Msg, Emits, R, V>,
+  entries: ReadonlyArray<MessageLog.Entry | MessageLog.Wire>,
+  options?: { readonly path?: string | undefined }
+): Replay<Model, Msg, Emits> => {
+  const nameOf = (entry: MessageLog.Entry | MessageLog.Wire): string | undefined =>
+    entry._tag === "Update" || entry._tag === "Mounted"
+      ? typeof entry.component === "string" ? entry.component : entry.component.name
+      : undefined
+  const path = options?.path ??
+    (entries.find((entry) => nameOf(entry) === component.name) as MessageLog.Base | undefined)?.path
+  if (path === undefined) throw new Error(`Story.fromLog: the log has no entry for ${component.name}`)
+  const relevant = entries.filter((entry) =>
+    (entry._tag === "Update" || entry._tag === "Mounted") && entry.path === path
+  ) as ReadonlyArray<MessageLog.Update | MessageLog.Mounted | Extract<MessageLog.Wire, { _tag: "Update" | "Mounted" }>>
+  if (relevant.length === 0) throw new Error(`Story.fromLog: the log has no entry for ${path}`)
+
+  const decoders = new Map<Schema.Top, (value: unknown) => unknown>()
+  const decode = (
+    entry: { readonly seq: number },
+    field: "props" | "model" | "message" | "emits",
+    value: unknown
+  ): any => {
+    const schema = component[field] as Schema.Top
+    let run = decoders.get(schema)
+    if (run === undefined) {
+      run = Schema.decodeUnknownSync(Schema.toCodecJson(schema as Schema.Codec<unknown, unknown>))
+      decoders.set(schema, run)
+    }
+    try {
+      return run(value)
+    } catch (error) {
+      const placeholder = findPlaceholder(value)
+      throw new Error(
+        `Story.fromLog: entry #${entry.seq} (${path}) has a ${field} that can't be decoded${
+          placeholder === undefined ? "" : `, because it was logged as a ${placeholder} placeholder`
+        }: ${String(error)}`,
+        { cause: error }
+      )
+    }
+  }
+  const read = (entry: (typeof relevant)[number]) => {
+    if (typeof entry.component !== "string") {
+      return {
+        props: entry.props as Props,
+        model: entry.model as Model,
+        emits: entry.emits as ReadonlyArray<Emits>,
+        commands: (entry as MessageLog.Update).commands.map(MessageLog.encodeCommand),
+        message: entry._tag === "Update" ? entry.message as Msg : undefined
+      }
+    }
+    const wire = entry as Extract<MessageLog.Wire, { _tag: "Update" | "Mounted" }>
+    return {
+      props: decode(entry, "props", wire.props) as Props,
+      model: decode(entry, "model", wire.model) as Model,
+      emits: wire.emits.map((emitted) => decode(entry, "emits", emitted)) as ReadonlyArray<Emits>,
+      commands: wire.commands,
+      message: wire._tag === "Update" ? decode(entry, "message", wire.message) as Msg : undefined
+    }
+  }
+
+  const sameModel = Schema.toEquivalence(component.model as Schema.Codec<Model, unknown>)
+  const sameEmits = Schema.toEquivalence(Schema.Array(component.emits as Schema.Codec<Emits, unknown>))
+  const sameCommands = (a: ReadonlyArray<unknown>, b: ReadonlyArray<unknown>) => JSON.stringify(a) === JSON.stringify(b)
+
+  let model = read(relevant[0]!).model
+  let replayed = 0
+  for (const entry of relevant.slice(1)) {
+    const recorded = read(entry)
+    if (entry._tag === "Mounted") {
+      // Mounted again at the same path: the replay starts over from it.
+      model = recorded.model
+      continue
+    }
+    const next = component.update(model, recorded.message as Msg, recorded.props)
+    replayed++
+    const recomputed = { model: next.model, emits: next.emits, commands: next.commands.map(MessageLog.encodeCommand) }
+    if (
+      !sameModel(recomputed.model, recorded.model) || !sameEmits(recomputed.emits, recorded.emits) ||
+      !sameCommands(recomputed.commands, recorded.commands)
+    ) {
+      return {
+        path,
+        model,
+        replayed,
+        divergence: {
+          seq: entry.seq,
+          message: recorded.message as Msg,
+          recorded: { model: recorded.model, emits: recorded.emits, commands: recorded.commands },
+          recomputed
+        }
+      }
+    }
+    model = recomputed.model
+  }
+  return { path, model, replayed, divergence: undefined }
+}
