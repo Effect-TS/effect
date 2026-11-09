@@ -331,6 +331,7 @@ const makeImpl = Effect.fnUntraced(function*<R>(
       spanAttributes: [
         ...(config.spanAttributes ? Object.entries(config.spanAttributes) : []),
         [ATTR_DB_SYSTEM_NAME, "postgresql"],
+        // PostgreSQL connects to the database named after the user when none is given.
         [ATTR_DB_NAMESPACE, resolved.startupParameters.database ?? resolved.username],
         [ATTR_SERVER_ADDRESS, resolved.host],
         [ATTR_SERVER_PORT, resolved.port]
