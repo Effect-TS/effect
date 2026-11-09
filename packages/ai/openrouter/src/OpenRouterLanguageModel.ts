@@ -27,7 +27,6 @@ import * as Effect from "effect/Effect"
 import * as Base64 from "effect/encoding/Base64"
 import { dual } from "effect/Function"
 import type * as HttpClientResponse from "effect/http/HttpClientResponse"
-import type * as JsonSchema from "effect/JsonSchema"
 import * as Layer from "effect/Layer"
 import * as Predicate from "effect/Predicate"
 import * as Redactable from "effect/Redactable"
@@ -1105,7 +1104,7 @@ const makeResponse = Effect.fnUntraced(
           type: "tool-call",
           id: toolCall.id,
           name: toolName,
-          params: yield* decodeToolParams(toolCodecs, toolName, params),
+          params: yield* normalizeToolParams(toolCodecs, toolName, params),
           // Only attach reasoning_details to the first tool call to avoid
           // duplicating thinking blocks for parallel tool calls (Claude)
           ...(index === 0 && Predicate.isNotNullish(reasoningDetails) && reasoningDetails.length > 0
@@ -1507,7 +1506,7 @@ const makeStreamResponse = Effect.fnUntraced(
                 type: "tool-call",
                 id: activeToolCall.id,
                 name: activeToolCall.name,
-                params: yield* decodeToolParams(toolCodecs, activeToolCall.name, params),
+                params: yield* normalizeToolParams(toolCodecs, activeToolCall.name, params),
                 // Only attach reasoning_details to the first tool call to avoid
                 // duplicating thinking blocks for parallel tool calls (Claude)
                 metadata: reasoningDetailsAttachedToToolCall ? undefined : {
@@ -1567,7 +1566,7 @@ const makeStreamResponse = Effect.fnUntraced(
                 type: "tool-call",
                 id: toolCall.id,
                 name: toolCall.name,
-                params: yield* decodeToolParams(toolCodecs, toolCall.name, params),
+                params: yield* normalizeToolParams(toolCodecs, toolCall.name, params),
                 metadata: reasoningDetailsAttachedToToolCall ? undefined : {
                   openrouter: { reasoningDetails: accumulatedReasoningDetails }
                 }
@@ -1660,11 +1659,14 @@ const prepareTools = Effect.fnUntraced(
     for (const tool of options.tools) {
       const description = Tool.getDescription(tool)
       const strict = Tool.getStrictMode(tool) ?? null
-      // Strict mode needs every key required and no additional properties
+      // Strict tools need the OpenAI strict schema subset
       const toolTransformer = strict === true && transformer === LanguageModel.defaultCodecTransformer
         ? toCodecOpenAI
         : transformer
-      const { parameters, codec } = yield* tryToolJsonSchema(tool, "prepareTools", toolTransformer)
+      const { parameters, codec } = Tool.isDynamic(tool) && tool.jsonSchema !== undefined
+        // A raw JSON Schema given to a dynamic tool is sent unchanged
+        ? { parameters: tool.jsonSchema, codec: undefined }
+        : yield* tryToolJsonSchema(tool, "prepareTools", toolTransformer)
       if (Predicate.isNotUndefined(codec)) {
         toolCodecs.set(tool.name, codec)
       }
@@ -1837,28 +1839,20 @@ const toolParametersError = (tool: Tool.Any, error: unknown, method: string): Ai
     method
   )
 
-const tryToolJsonSchema = <T extends Tool.Any>(tool: T, method: string, transformer: LanguageModel.CodecTransformer) =>
+// The advertised schema comes from the original codec, keeping its
+// transformation metadata. The normalization codec is derived from the encoded
+// JSON side instead, so decoding a tool call never runs application decoders.
+const tryToolJsonSchema = (tool: Tool.Any, method: string, transformer: LanguageModel.CodecTransformer) =>
   Effect.try({
-    // A raw JSON Schema given to a dynamic tool is sent unchanged
-    try: (): { readonly parameters: JsonSchema.JsonSchema; readonly codec: ToolCodec | undefined } => {
-      if (Tool.isDynamic(tool) && tool.jsonSchema !== undefined) {
-        return { parameters: tool.jsonSchema, codec: undefined }
-      }
-      // Preserve transformation metadata in the advertised schema.
-      const { jsonSchema } = transformer(tool.parametersSchema)
-      return {
-        parameters: jsonSchema,
-        codec: transformer === LanguageModel.defaultCodecTransformer
-          ? undefined
-          // Normalize only the JSON encoding; application decoders belong to the toolkit.
-          : transformer(Schema.toEncoded(Schema.toCodecJson(tool.parametersSchema))).codec
-      }
-    },
+    try: () => ({
+      parameters: transformer(tool.parametersSchema).jsonSchema,
+      codec: transformer === LanguageModel.defaultCodecTransformer
+        ? undefined
+        : transformer(Schema.toEncoded(Schema.toCodecJson(tool.parametersSchema))).codec
+    }),
     catch: (error) => toolParametersError(tool, error, method)
   }).pipe(Effect.filterOrFail(
-    ({ parameters }) =>
-      parameters.type === "object" || Array.isArray(parameters.anyOf) ||
-      (Tool.isDynamic(tool) && tool.jsonSchema !== undefined),
+    ({ parameters }) => parameters.type === "object" || Array.isArray(parameters.anyOf),
     ({ parameters }) =>
       toolParametersError(
         tool,
@@ -1870,8 +1864,8 @@ const tryToolJsonSchema = <T extends Tool.Any>(tool: T, method: string, transfor
 type ToolCodec = Schema.ConstraintCodec<unknown, unknown, never, never>
 type ToolCodecs = ReadonlyMap<string, ToolCodec>
 
-// Restore the toolkit's JSON shape; leave invalid parameters for toolkit validation.
-const decodeToolParams = (toolCodecs: ToolCodecs, toolName: string, params: unknown): Effect.Effect<unknown> => {
+// Invalid parameters pass through so the toolkit reports the validation error.
+const normalizeToolParams = (toolCodecs: ToolCodecs, toolName: string, params: unknown): Effect.Effect<unknown> => {
   const toolCodec = toolCodecs.get(toolName)
   if (Predicate.isUndefined(toolCodec)) {
     return Effect.succeed(params)
