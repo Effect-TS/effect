@@ -605,14 +605,18 @@ describe("HtmlServer", { concurrent: false }, () => {
         elements: Html,
         init: () => ({}),
         update: (model) => model,
-        view: (_, h) => h.div(h.child(Broken, { key: "b", props: {}, fallback: () => h.p("fallback") }))
+        // Two siblings: the later one's title wins the first merge, so the earlier one's template only
+        // throws in the merge after the fallback renders. Mounting drains both before it reports.
+        view: (_, h) =>
+          h.div(
+            h.child(Broken, { key: "a", props: {}, fallback: () => h.p("fallback a") }),
+            h.child(Broken, { key: "b", props: {}, fallback: () => h.p("fallback b") })
+          )
       })
       const result = yield* ssr(Parent, {})
       expect(result.head.title).toBeUndefined()
-      expect(result.state["~deferred"]).toEqual(["/Parent/Broken[b]"])
-      // The client's merge fails Broken too; its fallback renders in the next flush.
-      yield* Effect.promise(() => Promise.resolve())
-      expect(result.container.textContent).toBe("fallback")
+      expect(result.state["~deferred"]).toEqual(["/Parent/Broken[a]", "/Parent/Broken[b]"])
+      expect(result.container.textContent).toBe("fallback afallback b")
     }).pipe(Effect.scoped))
 
   it.live("keeps no template results outside an adoption report", () =>

@@ -462,6 +462,21 @@ const start = (
     scheduled = false
     rendering = true
     flushes++
+    drain()
+    settleSnapshots()
+    if (reportPending) reportAdoption()
+    host.commit?.()
+    afterCommitHooks()
+    rendering = false
+    runCommitted()
+    checkIdle()
+  }
+  /**
+   * Renders what's dirty, runs deferred work and merges the head, until none
+   * is left. A title template that throws fails its instance, so the fallback
+   * renders and the head is merged again.
+   */
+  function drain() {
     do {
       while (dirty.size > 0 || deferred.length > 0) {
         if (deferred.length > 0) {
@@ -475,16 +490,8 @@ const start = (
         dirty.delete(next!)
         if (!next!.closed) render(next!)
       }
-      // A title template that throws fails its instance, so the fallback renders and the head is merged again.
       mergeHead()
     } while (dirty.size > 0 || deferred.length > 0)
-    settleSnapshots()
-    if (reportPending) reportAdoption()
-    host.commit?.()
-    afterCommitHooks()
-    rendering = false
-    runCommitted()
-    checkIdle()
   }
   /**
    * Decides whether the server is idle once the current callback has finished:
@@ -1862,7 +1869,9 @@ const start = (
     hydrating = undefined
     reportPending = true
   }
-  mergeHead()
+  // Mounting drains like a flush, so failures it causes (a title template that throws included) settle
+  // before the snapshots do. `onMount` work runs after the commit, so its updates come later.
+  drain()
   settleSnapshots()
   if (reportPending) reportAdoption()
   host.commit?.()
