@@ -2444,7 +2444,11 @@ const runWithRuntime = Effect.fnUntraced(function*(
           }
           const encoded = yield* selectedProtocol.payloadCodecs(rpc).encode(projected.payload)
           // Projection and encoding can suspend after the request has ended.
-          if (notification._tag === "Progress" && queued.requestLiveness?.active === false) return
+          if (notification._tag === "Progress") {
+            // The disconnect hook may still be scheduled when an interrupted handler resumes delivery.
+            if (!(yield* patchedProtocol.clientIds).has(clientId)) return
+            if (queued.requestLiveness?.active === false) return
+          }
           yield* patchedProtocol.send(clientId, {
             _tag: "Request",
             id: "",
@@ -2475,6 +2479,7 @@ const runWithRuntime = Effect.fnUntraced(function*(
   return yield* RpcServer.make(runtime.clientRpcs, {
     disableTracing: true,
     disableFatalDefects: true,
+    onDisconnect: (clientId) => Effect.sync(() => disconnectClient(clientId)),
     // Wrapped so `RpcServer.make` infers the group's rpcs from `clientRpcs`
     // rather than from `traceRequest`'s parameter type.
     onRequest: (effect, request) => traceRequest(effect, request)
