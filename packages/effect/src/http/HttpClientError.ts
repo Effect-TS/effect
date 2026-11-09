@@ -454,4 +454,16 @@ export class HttpClientErrorSchema extends Schema.Error<HttpClientErrorSchema>(T
       cause: error.reason
     })
   }
+
+  /**
+   * Uses the message of the original reason, or the error kind when no message
+   * is available.
+   *
+   * @stability unstable
+   * @since 4.0.0
+   */
+  override get message(): string {
+    const message = hasProperty(this.cause, "message") ? String(this.cause.message) : ""
+    return message || this.kind
+  }
 }
