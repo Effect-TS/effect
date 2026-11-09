@@ -1141,9 +1141,9 @@ export function fromJsonSchemaMultiDocument(
     if (left._tag === "Reference" && right._tag === "Reference") {
       // Intersection is idempotent, and keeping the reference preserves the shared definition.
       if (left.$ref === right.$ref) {
-        // Resolving rejects alias-only cycles, which is deferred while the
-        // definition is still translated, since recursion through it is valid.
-        if (definitionCache.get(left.$ref) !== null) resolveReference(right, path)
+        // Reject a definition that reaches itself without consuming a value,
+        // waiting while it is still translated, since recursion through it is valid.
+        if (definitionCache.get(left.$ref) !== null) validatePointerAliases(right, path)
         else {
           const pending = pendingSelfIntersections.get(left.$ref) ?? []
           pending.push({ reference: right, path })
