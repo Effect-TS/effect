@@ -112,6 +112,12 @@ export interface Host<Node> {
  * such as an HTML `textarea`, is marked `textOnly`: the server writes only
  * its text, and hydration adopts the element but builds its children fresh.
  *
+ * `adopted`, if given, is called once every slot has adopted, with the head
+ * the tree had at adoption: each instance's entries as the renderer evaluated
+ * them when it mounted, merged in tree order. Updates since then don't count.
+ * Because `head` is pure and the Model is adopted, it equals the server's
+ * merged head, so a host or a test can check one against the other.
+ *
  * @stability experimental
  * @category models
  * @since 4.1.3
@@ -125,6 +131,7 @@ export interface Hydration<Node> {
     | { readonly _tag: "Close"; readonly path: string }
     | { readonly _tag: "Other" }
   getAttr(node: Node, name: string): string | undefined
+  readonly adopted?: ((head: Head.Head) => void) | undefined
 }
 
 /**

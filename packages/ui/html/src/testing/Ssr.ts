@@ -143,53 +143,6 @@ const markersLeft = (container: globalThis.Element): Array<string> => {
   return out
 }
 
-/** The paths of the server's ranges, in document order. */
-const rangePaths = (nodes: ReadonlyArray<Renderer.ServerNode>, out: Map<string, number> = new Map()) => {
-  for (const node of nodes) {
-    if (node._tag === "Text") continue
-    if (node._tag === "Range" && !out.has(node.path)) out.set(node.path, out.size)
-    rangePaths(node.children, out)
-  }
-  return out
-}
-
-/**
- * The client's head at adoption time: each server-rendered instance's `head`
- * of the Model it mounted with, merged in document order. Updates after that,
- * such as one an `onMount` sends while another slot waits, don't count, and a
- * `head` that isn't deterministic still differs from the server's.
- */
-const headAtMount = (
-  rootName: string,
-  order: ReadonlyMap<string, number>,
-  mounted: ReadonlyMap<string, { readonly entry: MessageLog.Mounted; readonly failed: boolean }>
-): Head.Head | string => {
-  const live = [...mounted.values()].filter(({ failed }) => !failed).map(({ entry }) => entry)
-    .sort((a, b) => order.get(a.path)! - order.get(b.path)!)
-  const trees = new Map<string, { readonly entries: Array<Head.Entry>; readonly children: Array<Head.Tree> }>()
-  try {
-    for (const entry of live) {
-      const node = { entries: [...(entry.component.head?.(entry.model) ?? [])], children: [] }
-      trees.set(entry.path, node)
-      // The nearest mounted ancestor: its path is a prefix ending at a segment boundary.
-      let parent: string | undefined
-      for (const other of trees.keys()) {
-        if (
-          other !== entry.path && entry.path.startsWith(`${other}/`) &&
-          (parent === undefined || other.length > parent.length)
-        ) {
-          parent = other
-        }
-      }
-      if (parent !== undefined) trees.get(parent)!.children.push(node)
-    }
-    const root = trees.get(`/${rootName}`)
-    return root === undefined ? Head.empty : Head.merge(root)
-  } catch (error) {
-    return `head: the client's head threw at adoption: ${String(error)}`
-  }
-}
-
 const show = (value: unknown): string => value === undefined ? "nothing" : JSON.stringify(value)
 
 /** The differences between two merged heads, one line per field or identity. */
@@ -276,26 +229,13 @@ export const ssr = <Name extends string, Props, Model, Msg, Events, R, V extends
     const deferred = new Set(rendered.state["~deferred"] ?? [])
     let unjudged = before.filter(({ paths }) => paths.length > 0 && !paths.some((path) => deferred.has(path)))
     const rebuilt = new Set<string>()
-    // Each server-rendered instance as it mounted on the client, for the head at adoption time. One
-    // that failed in the flush it mounted in contributes nothing, as on the server.
-    const serverPaths = rangePaths(rendered.nodes)
-    const atMount = new Map<string, { readonly entry: MessageLog.Mounted; failed: boolean }>()
     let read = 0
     const judge = () => {
       const entries = clientLog.entries()
       const adoptedNow = new Set<string>()
-      const mountedNow = new Set<string>()
       for (; read < entries.length; read++) {
         const entry = entries[read]!
-        if (entry._tag === "Mounted") {
-          if (entry.adopted) adoptedNow.add(entry.path)
-          if (serverPaths.has(entry.path) && !atMount.has(entry.path)) {
-            atMount.set(entry.path, { entry, failed: false })
-            mountedNow.add(entry.path)
-          }
-        } else if (entry._tag === "Failed" && mountedNow.has(entry.path)) {
-          atMount.get(entry.path)!.failed = true
-        }
+        if (entry._tag === "Mounted" && entry.adopted) adoptedNow.add(entry.path)
       }
       unjudged = unjudged.filter(({ node, paths }) => {
         const owner = paths[paths.length - 1]!
@@ -304,8 +244,16 @@ export const ssr = <Name extends string, Props, Model, Msg, Events, R, V extends
         return false
       })
     }
+    // The head as the runtime evaluated it at adoption, merged over its own instance tree.
+    let adoptionHead: Head.Head | undefined
     const recording: Renderer.Host<globalThis.Node> = {
       ...host,
+      hydration: {
+        ...host.hydration!,
+        adopted: (head) => {
+          adoptionHead = head
+        }
+      },
       commit: () => {
         host.commit?.()
         judge()
@@ -350,9 +298,7 @@ export const ssr = <Name extends string, Props, Model, Msg, Events, R, V extends
       problems.push(`${path}: no instance adopted the server's nodes under this path`)
     }
     for (const path of markersLeft(container)) problems.push(`${path}: its markers are still in the document`)
-    const clientHead = headAtMount(component.name, serverPaths, atMount)
-    if (typeof clientHead === "string") problems.push(clientHead)
-    else problems.push(...compareHeads(rendered.head, clientHead))
+    problems.push(...compareHeads(rendered.head, adoptionHead ?? Head.empty))
     if (problems.length > 0) return yield* new SsrError({ problems })
 
     const dropped = new Set(

@@ -421,7 +421,10 @@ describe("HtmlServer", { concurrent: false }, () => {
       expect(result.adopted).toEqual(["/Titled", "/Titled/Waiting[w]"])
       yield* tick
       expect(result.document.title).toBe("mounted")
-
+    }).pipe(Effect.scoped))
+  it.effect("compares the head the client evaluated, over the instance tree, not one rebuilt from paths", () =>
+    Effect.gen(function*() {
+      // Alternates per evaluation, so evaluating it again after adoption would agree with the server.
       let runs = 0
       const Unstable = Component.make({
         name: "Unstable",
@@ -430,10 +433,59 @@ describe("HtmlServer", { concurrent: false }, () => {
         elements: Html,
         init: () => ({}),
         update: (model) => model,
-        head: () => [Head.title(`run ${runs++}`)],
+        head: () => [Head.title(runs++ % 2 === 0 ? "server" : "client")],
         view: (_, h) => h.p("same")
       })
-      const error = yield* Effect.flip(ssr(Unstable, {}))
-      expect(error.problems).toEqual(["head title: the server has \"run 0\", the client \"run 2\""])
+      const unstable = yield* Effect.flip(ssr(Unstable, {}))
+      expect(unstable.problems).toEqual(["head title: the server has \"server\", the client \"client\""])
+      expect(runs).toBe(2)
+
+      // Siblings whose keys make one path look like the other's descendant: no template applies.
+      const Box = Component.make({
+        name: "Box",
+        props: Schema.Struct({ title: Schema.String }),
+        model: Schema.String,
+        message: Schema.Never,
+        elements: Html,
+        init: ($) => $.props.title,
+        update: (model) => model,
+        head: (title) => [Head.title(title), Head.titleTemplate((inner) => `wrap(${inner})`)],
+        view: (title, h) => h.p(title)
+      })
+      const Siblings = Component.make({
+        name: "Siblings",
+        model: Schema.Struct({}),
+        message: Schema.Never,
+        elements: Html,
+        init: () => ({}),
+        update: (model) => model,
+        view: (_, h) =>
+          h.div(
+            h.child(Box, { key: "a", props: { title: "A" } }),
+            h.child(Box, { key: "a]/Box[b", props: { title: "B" } })
+          )
+      })
+      const siblings = yield* ssr(Siblings, {})
+      expect(siblings.head.title).toBe("B")
+
+      // A template that really applies, and differs on the client, still fails.
+      let templates = 0
+      const Outer = Component.make({
+        name: "Outer",
+        model: Schema.Struct({}),
+        message: Schema.Never,
+        elements: Html,
+        init: () => ({}),
+        update: (model) => model,
+        head: () => {
+          const side = templates++ % 2 === 0 ? "server" : "client"
+          return [Head.titleTemplate((inner) => `${inner} (${side})`)]
+        },
+        view: (_, h) => h.div(h.child(Box, { key: "a", props: { title: "Inner" } }))
+      })
+      const nested = yield* Effect.flip(ssr(Outer, {}))
+      expect(nested.problems).toEqual([
+        "head title: the server has \"Inner (server)\", the client \"Inner (client)\""
+      ])
     }).pipe(Effect.scoped))
 })
