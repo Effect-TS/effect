@@ -261,6 +261,81 @@ describe("Runtime", () => {
       })))
   })
 
+  describe("a provided Layer factory and a fallback's child", () => {
+    const Leaf = Component.make({
+      name: "Leaf",
+      model: Schema.Number,
+      message: Schema.String,
+      init: () => 0,
+      update: (n) => n + 1,
+      view: (n, h) => h.text(`leaf${n}`)
+    })
+    const broken = (): Layer.Layer<never> => {
+      throw new Error("factory broke")
+    }
+
+    it.effect("a throwing factory fails the child's own slot", () =>
+      provideHost(Effect.gen(function*() {
+        const Child = Component.provide(Leaf, broken)
+        const Parent = Component.make({
+          name: "Parent",
+          model: Schema.Number,
+          message: Schema.Never,
+          init: () => 0,
+          update: (n) => n,
+          view: (_, h) => h.el("main", h.child(Child, { key: "c", fallback: () => h.text("down ") }), "alive")
+        })
+        const root = yield* TestHost.mount(Parent, {}, { fallback: (_, h) => h.text("ROOT CRASH") })
+        yield* TestHost.settle
+        assert.strictEqual(root.text(), "down alive")
+        const failed = root.log().find((entry) => entry._tag === "Failed") as MessageLog.Failed
+        assert.deepStrictEqual([failed.path, failed.source], ["/Parent/Leaf[c]", "layer"])
+      })))
+
+    it.effect("with onFailure, a throwing factory becomes a message", () =>
+      provideHost(Effect.gen(function*() {
+        const root = yield* TestHost.mount(Component.provide(Leaf, broken, { onFailure: () => "failed" }), {})
+        yield* TestHost.settle
+        assert.strictEqual(root.text(), "leaf1")
+      })))
+
+    it.effect("re-keying the child a fallback returns mounts it again", () =>
+      provideHost(Effect.gen(function*() {
+        let starts = 0
+        const Counted = Component.make({
+          name: "Counted",
+          model: Schema.Number,
+          message: Schema.Never,
+          init: () => ++starts,
+          update: (n) => n,
+          view: (n, h) => h.text(String(n))
+        })
+        const Broken = Component.make({
+          name: "Broken",
+          model: Schema.Number,
+          message: Schema.Never,
+          init: () => 0,
+          update: (n) => n,
+          view: (): never => {
+            throw new Error("broken")
+          }
+        })
+        const Parent = Component.make({
+          name: "Parent",
+          model: Schema.Number,
+          message: Schema.Number,
+          init: () => 0,
+          update: (_, n) => n,
+          view: (n, h) => h.child(Broken, { key: "b", fallback: () => h.child(Counted, { key: String(n) }) })
+        })
+        const root = yield* TestHost.mount(Parent, {})
+        assert.strictEqual(root.text(), "1")
+        root.send(1)
+        yield* TestHost.settle
+        assert.strictEqual(root.text(), "2")
+      })))
+  })
+
   describe("Commands", () => {
     const Msg = Schema.TaggedUnion({ Query: { text: Schema.String }, Results: { text: Schema.String } })
     const Search = Command.make(
@@ -375,6 +450,31 @@ describe("Runtime", () => {
         assert.notStrictEqual(changes[0].key, changes[2].key)
       })))
   })
+
+  it.effect("a child's emit from init reaches its parent after the parent's first Model", () =>
+    provideHost(Effect.gen(function*() {
+      const Child = Component.make({
+        name: "Child",
+        model: Schema.Number,
+        message: Schema.Never,
+        emits: Schema.String,
+        init: ($) => $.set(0).emit("ready"),
+        update: (n) => n,
+        view: (_, h) => h.text("child")
+      })
+      const Parent = Component.make({
+        name: "Parent",
+        model: Schema.Number,
+        message: Schema.String,
+        init: () => 0,
+        update: (n) => n + 1,
+        view: (n, h) => h.el("div", String(n), h.child(Child, { key: "c", onEmit: (message) => message }))
+      })
+      const root = yield* TestHost.mount(Parent, {})
+      yield* TestHost.settle
+      assert.strictEqual(root.model(), 1)
+      assert.strictEqual(root.text(), "1child")
+    })))
 
   describe("props", () => {
     it.effect("a props change re-renders the child without reaching its update", () =>
@@ -822,6 +922,68 @@ describe("Runtime", () => {
         assert.strictEqual(root.text(), "waiting")
       })))
   })
+
+  it.effect("a removed element's mount that was waiting for its Layer never runs", () =>
+    Effect.gen(function*() {
+      let mounts = 0
+      class Slow extends Context.Service<Slow, number>()("test/SlowMount") {}
+      const App = Component.provide(
+        Component.make({
+          name: "App",
+          model: Schema.Boolean,
+          message: Schema.Boolean,
+          init: () => true,
+          update: (_, shown) => shown,
+          view: (shown, h) =>
+            h.el(
+              "main",
+              shown ?
+                h.el("input").onMount("count", () =>
+                  Effect.sync(() => {
+                    mounts++
+                    return false
+                  })) :
+                null
+            )
+        }),
+        Layer.effect(Slow, Effect.as(Effect.sleep("1 second"), 1))
+      )
+      const root = yield* TestHost.mount(App, {})
+      root.send(false)
+      yield* TestHost.settle
+      yield* TestClock.adjust("1 second")
+      yield* TestHost.settle
+      assert.strictEqual(mounts, 0)
+    }).pipe(
+      Effect.provide(Renderer.layer({ ...TestHost.makeHost(), runsMounts: true })),
+      provideHost
+    ))
+
+  it.effect("Renderer.mount closes every instance before it removes the root nodes", () =>
+    provideHost(Effect.gen(function*() {
+      const testHost = yield* TestHost.TestHost
+      const container = testHost.host.createElement("#app") as TestHost.TestElement
+      let childrenAtRelease = -1
+      const App = Component.provide(
+        Component.make({
+          name: "App",
+          model: Schema.Number,
+          message: Schema.Never,
+          init: () => 0,
+          update: (n) => n,
+          view: (_, h) => h.el("div", "still here")
+        }),
+        Layer.effectDiscard(Effect.addFinalizer(() =>
+          Effect.sync(() => {
+            childrenAtRelease = container.children.length
+          })
+        ))
+      )
+      yield* Effect.scoped(Renderer.mount(App, {}, container))
+      yield* TestHost.settle
+      assert.strictEqual(childrenAtRelease, 1)
+      assert.strictEqual(container.children.length, 0)
+    })))
 
   it.effect("Renderer.mount mounts in a container on the Renderer's host", () =>
     provideHost(Effect.gen(function*() {
