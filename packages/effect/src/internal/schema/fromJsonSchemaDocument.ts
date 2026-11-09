@@ -961,8 +961,7 @@ export function fromJsonSchemaMultiDocument(
   }
 
   function isLiteralSet(union: ImportedUnion): boolean {
-    return (union.options?.mode ?? "anyOf") === "anyOf" &&
-      union.types.every((type) => literalValue(type) !== undefined)
+    return isAnyOf(union) && union.types.every((type) => literalValue(type) !== undefined)
   }
 
   function intersectLiteralUnions(
@@ -1066,32 +1065,32 @@ export function fromJsonSchemaMultiDocument(
     return (union.options?.mode ?? "anyOf") === "anyOf"
   }
 
-  // Returns the unchecked "anyOf" union a member is or references, with the
-  // reference annotations applied, or "spliced" when the reference chain
-  // reaches a definition whose alternatives are already spliced. References to
-  // definitions still being translated stay references.
+  // Returns the unchecked "anyOf" union a member is or references, annotated
+  // with the references, which are marked spliced. Returns "spliced" when the
+  // chain reaches an already spliced definition, and undefined otherwise,
+  // including for a definition still being translated, which stays a reference.
   function nestedAnyOf(
     member: ImportedJsonSchemaRepresentation,
     path: Path,
-    spliced: ReadonlySet<string>
-  ): { readonly union: ImportedUnion; readonly keys: ReadonlyArray<string> } | "spliced" | undefined {
-    const keys: Array<string> = []
+    spliced: Set<string>
+  ): ImportedUnion | "spliced" | undefined {
     const references: Array<ImportedReference> = []
     let current = member
     while (current._tag === "Reference") {
       const key = current.$ref
       if (spliced.has(key)) return "spliced"
-      if (keys.includes(key) || definitionCache.get(key) === null) return undefined
-      keys.push(key)
+      if (definitionCache.get(key) === null || references.some((reference) => reference.$ref === key)) {
+        return undefined
+      }
       references.push(current)
       current = translateDefinition(key, path)
     }
     if (current._tag !== "Union" || !isAnyOf(current) || current.checks.length > 0) return undefined
-    let union: ImportedUnion = current
-    for (let index = references.length - 1; index >= 0; index--) {
-      union = annotate(union, references[index]) as ImportedUnion
-    }
-    return { union, keys }
+    for (const reference of references) spliced.add(reference.$ref)
+    return references.reduceRight(
+      (union, reference) => annotate(union, reference) as ImportedUnion,
+      current
+    )
   }
 
   // Keyed by the alternatives arrays, so recursive definitions keep reaching
@@ -1102,61 +1101,49 @@ export function fromJsonSchemaMultiDocument(
   >()
 
   // A nullable reference to a definition that already admits null nests one
-  // "anyOf" inside another and repeats null, so neither side is a type
-  // partition. Splicing nested "anyOf" alternatives and keeping a single
-  // unchecked null accepts the same values. "oneOf" is left alone: splicing or
-  // dropping a duplicate changes which values match exactly one alternative.
-  // Repeating an "anyOf" alternative accepts nothing new, so each definition is
-  // spliced once and repeated members are kept once; otherwise a definition
-  // reached through several references would multiply the alternatives, and
-  // the limits on distributing them would grow with the expanded union. A
-  // repeated member's annotations merge into the kept one, except for a
-  // reference to an already spliced definition, which is dropped with its
-  // annotations.
+  // "anyOf" in another and repeats null, so neither side is a type partition.
+  // Splicing unchecked nested "anyOf" alternatives and keeping one unchecked
+  // null accepts the same values. "oneOf" is left alone: a duplicate changes
+  // which values match exactly one alternative. Each definition is spliced
+  // once and repeated references are kept once, so a definition reached
+  // through several references cannot multiply the alternatives. A repeated
+  // member's annotations merge into the kept one, except for a reference to an
+  // already spliced definition, which is dropped with its annotations.
   function flattenAnyOf(union: ImportedUnion, path: Path): ImportedUnion {
     if (!isAnyOf(union)) return union
     let types = flattenedAlternatives.get(union.types)
     if (types === undefined) {
       const out: Array<ImportedJsonSchemaRepresentation> = []
       const spliced = new Set<string>()
-      const kept = new Map<unknown, number>()
-      let changed = false
-      const keyOf = (member: ImportedJsonSchemaRepresentation): unknown =>
-        member._tag === "Reference"
-          ? `$ref:${member.$ref}`
-          : member._tag === "Null" && member.checks.length === 0
-          ? "null"
-          : member
+      const kept = new Map<string, number>()
       const visit = (members: ReadonlyArray<ImportedJsonSchemaRepresentation>) => {
         for (const member of members) {
           const nested = nestedAnyOf(member, path, spliced)
-          if (nested === "spliced") {
-            changed = true
-            continue
-          }
+          if (nested === "spliced") continue
           if (nested !== undefined) {
-            changed = true
-            for (const key of nested.keys) spliced.add(key)
             // As when a union collapses to one member, its annotations move to the members.
-            visit(nested.union.types.map((type) => annotate(type, nested.union)))
+            visit(nested.types.map((type) => annotate(type, nested)))
             continue
           }
-          const key = keyOf(member)
-          const index = kept.get(key)
-          if (index === undefined) {
-            kept.set(key, out.length)
-            out.push(member)
-          } else {
-            changed = true
+          const key = member._tag === "Reference"
+            ? `$ref:${member.$ref}`
+            : member._tag === "Null" && member.checks.length === 0
+            ? "null"
+            : undefined
+          const index = key === undefined ? undefined : kept.get(key)
+          if (index !== undefined) {
             out[index] = annotate(out[index], member)
+            continue
           }
+          if (key !== undefined) kept.set(key, out.length)
+          out.push(member)
         }
       }
       visit(union.types)
-      types = changed ? out : union.types
+      types = out
       flattenedAlternatives.set(union.types, types)
     }
-    return types === union.types ? union : { ...union, types }
+    return { ...union, types }
   }
 
   function intersectUnions(

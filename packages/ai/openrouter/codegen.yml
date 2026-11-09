@@ -1,6 +1,6 @@
 # yaml-language-server: $schema=../../tools/ai-codegen/codegen.schema.json
 # OpenRouter's SDK repository archives the spec. To update, pin a newer commit and regenerate from the repo root:
-#   node packages/tools/ai-codegen/src/bin.ts generate --provider openrouter
+#   nix develop -c node packages/tools/ai-codegen/src/bin.ts generate --provider openrouter
 spec: https://raw.githubusercontent.com/OpenRouterTeam/typescript-sdk/14b55ce2b112905ba3da84950d5f737ae2b79208/.speakeasy/in.openapi.yaml
 output: src/Generated.ts
 name: OpenRouterClient
