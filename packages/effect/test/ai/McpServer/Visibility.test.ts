@@ -196,6 +196,107 @@ describe("McpServer visibility", () => {
       ])
     }))
 
+  for (const user of ["guest", "admin"]) {
+    for (const header of [undefined, "us", "eu"]) {
+      it.effect(
+        `checks visibility once before mirrored headers for ${user} with ${header ?? "missing"} header`,
+        () =>
+          Effect.gen(function*() {
+            const calls: Array<{ readonly stage: string; readonly method: string; readonly payload: unknown }> = []
+            let executions = 0
+            const Auth = McpServer.middleware<{ provides: CurrentUser }>()((effect, { method, payload }) => {
+              calls.push({ stage: "auth", method, payload })
+              return Effect.provideService(effect, CurrentUser, user)
+            })
+            const Visible = McpServer.visibility(({ method, payload }) =>
+              Effect.map(CurrentUser, (current) => {
+                calls.push({ stage: "visibility", method, payload })
+                return current === "admin"
+              })
+            )
+            const registrations = Layer.effectDiscard(Effect.gen(function*() {
+              const server = yield* McpServer.McpServer
+              yield* server.addTool({
+                tool: new McpSchema.Tool({
+                  name: "HeaderTool",
+                  inputSchema: {
+                    type: "object",
+                    properties: { region: { type: "string", "x-mcp-header": "Region" } },
+                    required: ["region"]
+                  }
+                }),
+                annotations: Context.empty(),
+                services: yield* Effect.context<never>(),
+                handle: () =>
+                  Effect.sync(() => {
+                    executions++
+                    return new McpSchema.CallToolResult({ content: [] })
+                  })
+              })
+            })).pipe(Layer.provide(Visible.combine(Auth).layer))
+            const protocol = McpProtocol.v2026_07_28
+            const harness = yield* makeHttpHarness(McpServer.layerHttp({
+              name: "VisibilityServer",
+              version: "1.0.0",
+              path: "/mcp",
+              protocols: [protocol],
+              registrations
+            }))
+            const send = Effect.fnUntraced(function*(name: string) {
+              const response = yield* harness.post({
+                jsonrpc: "2.0",
+                id: 1,
+                method: "tools/call",
+                params: {
+                  name,
+                  arguments: { region: "eu" },
+                  _meta: {
+                    "io.modelcontextprotocol/protocolVersion": protocol.protocolVersion,
+                    "io.modelcontextprotocol/clientCapabilities": {},
+                    "io.modelcontextprotocol/clientInfo": { name: "client", version: "1" }
+                  }
+                }
+              }, {
+                "Mcp-Protocol-Version": protocol.protocolVersion,
+                "Mcp-Method": "tools/call",
+                "Mcp-Name": name,
+                ...(header === undefined ? {} : { "Mcp-Param-Region": header })
+              })
+              const message = (yield* readMcpHttpResponse(response)) as JsonRpcMessage
+              return { status: response.status, message }
+            })
+            const unknown = yield* send("UnknownTool")
+            assert.deepStrictEqual(unknown.message.error, { code: -32602, message: "Tool 'UnknownTool' not found" })
+            assert.deepStrictEqual(calls, [])
+            const result = yield* send("HeaderTool")
+            assert.strictEqual(executions, user === "admin" && header === "eu" ? 1 : 0)
+            if (user === "guest") {
+              assert.deepStrictEqual(result.message.error, { code: -32602, message: "Tool 'HeaderTool' not found" })
+              assert.strictEqual(result.status, unknown.status)
+            } else if (header !== "eu") {
+              assert.strictEqual(result.status, 400)
+              assert.deepStrictEqual(result.message.error, {
+                code: McpSchema.HEADER_MISMATCH_ERROR_CODE,
+                message: "mcp-param-region does not match argument 'region'"
+              })
+            } else {
+              assert.strictEqual(result.status, 200)
+              assert.isUndefined(result.message.error)
+              assert.deepStrictEqual((result.message.result as { readonly content: unknown }).content, [])
+            }
+            assert.deepStrictEqual(calls, [
+              { stage: "auth", method: "tools/call", payload: { name: "HeaderTool", arguments: { region: "eu" } } },
+              {
+                stage: "visibility",
+                method: "tools/call",
+                payload: { name: "HeaderTool", arguments: { region: "eu" } }
+              }
+            ])
+          })
+      )
+    }
+  }
+
   it.effect("applies a global visibility to every registration", () =>
     Effect.gen(function*() {
       const registrations = Layer.mergeAll(
