@@ -1809,18 +1809,11 @@ const runWithRuntime = Effect.fnUntraced(function*(
     sessionHeaders: Headers.Headers | undefined
   }>()
   const activeRequests = new Map<number, Map<string, ActiveRequest>>()
-  const clientEnds = new Map<number, Latch.Latch>()
-  const clientEnd = (clientId: number) => {
-    let latch = clientEnds.get(clientId)
-    if (latch === undefined) {
-      latch = Latch.makeUnsafe()
-      clientEnds.set(clientId, latch)
-    }
-    return latch
-  }
+  // Stdio has a single client whose session ends with stdin, so one latch is
+  // enough; built-in subscriptions complete on it while finite requests drain.
+  const stdioEnd = transport === "stdio" ? Latch.makeUnsafe() : undefined
   const reverseRequestClients = new Map<string, Array<McpClientKey>>()
   const disconnectClient = (clientId: number) => {
-    clientEnds.delete(clientId)
     activeRequests.delete(clientId)
     clientStates.delete(clientId)
     runtime.disconnect(clientId)
@@ -1911,7 +1904,7 @@ const runWithRuntime = Effect.fnUntraced(function*(
     getListChangeRevision: () => notificationDelivery.listChangeRevision,
     ...(!protocol.supportsNotifications || options.allowSubscriptions === false ? {} : {
       sendNotification,
-      awaitClientEnd: transport === "stdio" ? (clientId: number) => clientEnd(clientId).await : undefined,
+      awaitClientEnd: stdioEnd?.await,
       markSubscriptionCancelled: (clientId: number, requestId: RpcMessage.RequestId) =>
         Effect.sync(() => {
           cancelRequest(clientId, requestId)
@@ -2046,13 +2039,6 @@ const runWithRuntime = Effect.fnUntraced(function*(
 
   const patchedProtocol = RpcServer.Protocol.of({
     ...protocol,
-    end: (clientId) => {
-      // RpcServer ends a stdio client only after its request fibers drain, so
-      // tearing down here (not on Eof) keeps the opened end latch visible to a
-      // listener that was still starting when stdin closed.
-      if (transport === "stdio") disconnectClient(clientId)
-      return protocol.end(clientId)
-    },
     send: (clientId, response) => {
       if (response._tag === "Exit") {
         const requests = activeRequests.get(clientId)
@@ -2275,9 +2261,8 @@ const runWithRuntime = Effect.fnUntraced(function*(
           case "Interrupt":
             return f(clientId, request)
           case "Eof":
-            if (transport === "stdio") {
-              clientEnd(clientId).openUnsafe()
-            } else if (!isHttp) {
+            if (!isHttp) {
+              stdioEnd?.openUnsafe()
               disconnectClient(clientId)
             }
             return f(clientId, request)

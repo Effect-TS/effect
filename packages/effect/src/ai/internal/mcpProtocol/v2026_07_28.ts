@@ -479,7 +479,7 @@ export const makeHandlers = (
       const didOverflow = yield* Effect.raceAll([
         deliver,
         Deferred.await(overflowed).pipe(Effect.as(true)),
-        (context.awaitClientEnd?.(client.id) ?? Effect.never).pipe(Effect.as(false))
+        (context.awaitClientEnd ?? Effect.never).pipe(Effect.as(false))
       ])
       if (didOverflow) {
         yield* context.terminateSubscription?.(
