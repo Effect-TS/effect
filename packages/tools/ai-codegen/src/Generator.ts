@@ -384,6 +384,18 @@ const mergeChoices = (left: Choice, right: Choice): Part | undefined => {
   )
 }
 
+/**
+ * Splits an object schema that also admits other types, such as `type: ["object", "null"]`, into an
+ * object branch and one branch per other type, since object keywords only constrain objects.
+ */
+const splitObjectTypes = (js: JsonSchema.JsonSchema): Choice | undefined => {
+  if (!isStringArray(js.type) || js.type.length < 2 || !js.type.includes("object")) return undefined
+  const object = { ...js, type: "object" }
+  if (!isPlainObject(object)) return undefined
+  const others = js.type.filter((type) => type !== "object").map((type) => ({ type }))
+  return { _tag: "Choice", mode: "anyOf", branches: [object, ...others] }
+}
+
 const mergeParts = (left: Part, right: Part): Part | undefined => {
   if (left._tag === "Object") {
     return right._tag === "Object"
@@ -424,6 +436,8 @@ const makeNormalizer = (resolve: (key: string) => JsonSchema.JsonSchema | undefi
     const schema = dereference(member)
     if (schema === undefined) return undefined
     if (isPlainObject(schema)) return { _tag: "Object", schema }
+    const split = splitObjectTypes(schema)
+    if (split !== undefined) return split
     const mode = bareChoice(schema)
     if (mode === undefined) return undefined
     const branches: Array<JsonSchema.JsonSchema> = []

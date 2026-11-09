@@ -239,6 +239,28 @@ const cases: ReadonlyArray<Case> = [
     invalid: [{ merged: { a: "a", b: "b" } }, { distributed: { b: "b" } }]
   },
   {
+    // OpenRouter's ReasoningConfig: the extension must not be closed against the base's properties,
+    // and only an extension that requires an object excludes the base's null
+    name: "allOf of a base that also admits null",
+    schemas: {
+      Base: { type: ["object", "null"], properties: { effort: string } },
+      Root: object({
+        reasoning: {
+          anyOf: [{ allOf: [ref("Base"), object({ enabled: { type: ["boolean", "null"] } })] }, { type: "null" }]
+        },
+        untyped: { allOf: [ref("Base"), { properties: { enabled: { type: "boolean" } } }] }
+      })
+    },
+    valid: [
+      { reasoning: { effort: "high", enabled: true } },
+      { reasoning: { effort: "low" } },
+      { reasoning: null },
+      { untyped: { effort: "high", enabled: true } },
+      { untyped: null }
+    ],
+    invalid: [{ reasoning: { effort: 1 } }, { reasoning: { enabled: 1 } }, { untyped: { enabled: 1 } }]
+  },
+  {
     // Both alternatives keywords on one schema must hold together, whether or not the `allOf`
     // fragment declares properties of its own
     name: "anyOf and oneOf on the same object",
