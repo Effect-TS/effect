@@ -63,7 +63,7 @@ describe("Cookies", () => {
       )
     })
 
-    it("keeps same-name cookies with a different domain or path, in the order they were last set", () => {
+    it("keeps every cookie in input order and exposes the latest value by name", () => {
       const cookies = Cookies.fromSetCookie([
         "session=a",
         "session=b; Domain=example.com",
@@ -77,6 +77,8 @@ describe("Cookies", () => {
 
       deepStrictEqual(Cookies.toSetCookieHeaders(cookies), [
         "session=a",
+        "session=b; Domain=example.com",
+        "session=c; Path=/",
         "session=d; Path=/API",
         "session=h; Path=/api",
         "Session=e",
@@ -375,20 +377,22 @@ describe("Cookies", () => {
       assert.strictEqual(header(jar, "http://api.example.com/"), undefined)
     })
 
-    it("applies cookies in response order after resolving paths and clears every scope on logout", () => {
+    it("applies cookies in response order after resolving scopes and clears every scope on logout", () => {
       const cookies = Cookies.fromSetCookie(["session=1; Path=/a", "session=2", "session=3; Path=/a"])
-      deepStrictEqual(Cookies.toSetCookieHeaders(cookies), ["session=2", "session=3; Path=/a"])
       const resolved = Cookies.mergeIntoArray([], "https://example.com/a/b", cookies, now)
       assert.strictEqual(header(resolved, "https://example.com/a/x"), "session=3")
 
+      const response = Cookies.fromSetCookie([
+        "session=host; Path=/",
+        "session=domain; Domain=example.com; Path=/",
+        "session=updated; Path=/"
+      ])
+      const apex = "https://example.com/"
+      assert.strictEqual(header(Cookies.mergeIntoArray([], apex, response, now), apex), "session=updated")
+
       const url = "https://www.example.com/"
-      const jar = Cookies.mergeIntoArray(
-        [],
-        url,
-        Cookies.fromSetCookie(["session=host; Path=/", "session=domain; Domain=example.com; Path=/"]),
-        now
-      )
-      assert.strictEqual(header(jar, url), "session=host; session=domain")
+      const jar = Cookies.mergeIntoArray([], url, response, now)
+      assert.strictEqual(header(jar, url), "session=updated; session=domain")
 
       const cleared = Cookies.mergeIntoArray(
         jar,
