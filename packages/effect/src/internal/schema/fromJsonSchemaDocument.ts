@@ -290,9 +290,7 @@ export function fromJsonSchemaMultiDocument(
   const resolvingChoices = new Set<string>()
   const resolvingScalars = new Set<string>()
   const intersectingReferences = new Set<string>()
-  // The first same-reference intersection met while its definition is
-  // translated. Once it finishes, the definition is rejected if it reaches
-  // itself without consuming a value.
+  // Keep the first intersection path for alias validation after translation.
   const pendingSelfIntersections = new Map<string, Path>()
   const references = new Map<string, ReferenceSlot>()
   let inNestedResource = false
@@ -436,8 +434,7 @@ export function fromJsonSchemaMultiDocument(
       }
       return representation
     } catch (error) {
-      // Objects can recover from a failed property (see lowerObject), so a
-      // failed definition must be translated, and fail, again when reused.
+      // Pruning can suppress this failure; later references must retry translation.
       definitionCache.delete(key)
       pendingSelfIntersections.delete(key)
       throw error
@@ -727,18 +724,14 @@ export function fromJsonSchemaMultiDocument(
       }
       return { name, types, isOptional }
     })
-    // Scalar properties such as discriminators intersect without expansion, so
-    // they go first: a required Never then empties the object before a
-    // structured property rejects an intersection the object never needs, or
-    // recurses into one. Inline scalars go before references, since resolving a
-    // reference translates its definition, and translation can fail.
+    // Prune on scalar conflicts before expanding structured properties.
+    // Inline scalars go first because resolving references can fail.
     const passes: ReadonlyArray<(types: ReadonlyArray<ImportedJsonSchemaRepresentation>) => boolean> = [
       (types) => types.every((type) => isScalar(type)),
       (types) => types.length > 1 && types.every((type) => isScalar(type, true)),
       () => true
     ]
-    // A failed property is skipped, since a later required Never can still
-    // empty the object. Otherwise the first failure is rethrown.
+    // Defer failures until required Never properties have a chance to prune the object.
     const intersected = new Map<string, ImportedJsonSchemaRepresentation>()
     const failures: Array<unknown> = []
     let remaining = pending
@@ -789,7 +782,6 @@ export function fromJsonSchemaMultiDocument(
     }
   }
 
-  // With `resolveReferences`, a reference is scalar when its definition is.
   function isScalar(representation: ImportedJsonSchemaRepresentation, resolveReferences = false): boolean {
     switch (representation._tag) {
       case "Reference":
@@ -810,8 +802,7 @@ export function fromJsonSchemaMultiDocument(
     }
   }
 
-  // The index signature also checks declared keys, which is harmless only when
-  // every value a declared property accepts is accepted by "additionalProperties".
+  // Index signatures also check declared keys, so their values must already satisfy the schema.
   function additionalPropertiesSubsumeProperties(scope: ImportedObjectScope): boolean {
     if (isUnconstrained(scope.additionalProperties)) return true
     if (scope.patterns.length > 0) return false
@@ -825,9 +816,7 @@ export function fromJsonSchemaMultiDocument(
     return representation._tag === "Unknown" && representation.checks.length === 0
   }
 
-  // Conservatively proves that `type` accepts no value `supertype` rejects.
-  // Checks on `type` only narrow it and can be ignored, while checks on
-  // `supertype` must be shown to hold. References are compared by name only.
+  // Prove containment conservatively: subtype checks only narrow; supertype checks must hold.
   function isSubsumedBy(
     type: ImportedJsonSchemaRepresentation,
     supertype: ImportedJsonSchemaRepresentation
@@ -836,7 +825,7 @@ export function fromJsonSchemaMultiDocument(
     if (type._tag === "Union") return type.types.every((member) => isSubsumedBy(member, supertype))
     switch (supertype._tag) {
       case "Union":
-        // A value matching several "oneOf" alternatives is rejected, so only "anyOf" members can witness.
+        // Matching one member proves inclusion only for "anyOf", not "oneOf".
         return supertype.checks.length === 0 && (supertype.options?.mode ?? "anyOf") === "anyOf" &&
           supertype.types.some((member) => isSubsumedBy(type, member))
       case "Reference":
@@ -931,8 +920,7 @@ export function fromJsonSchemaMultiDocument(
     }
   }
 
-  // Tests a referenced definition, answering `whileResolving` for definitions
-  // still being translated or already being tested, as happens through cycles.
+  // Use the caller's conservative fallback when translation or traversal re-enters a definition.
   function testDefinition(
     reference: ImportedReference,
     resolving: Set<string>,
@@ -1086,12 +1074,8 @@ export function fromJsonSchemaMultiDocument(
     return intersectLinearly(left, right, path)
   }
 
-  // Distributing the alternatives is accepted only when the pairs that survive
-  // pruning are no more than the larger union, so expansion cannot multiply,
-  // and no alternative with nested choices survives in more than one pair,
-  // since each copy would repeat those choices.
-  // Exactly one pair matches only when each "oneOf" matches exactly once, but
-  // mixing "anyOf" with "oneOf" has no faithful single-mode result.
+  // Bound surviving pairs and avoid duplicating nested choices.
+  // Matching exactly one pair preserves "oneOf"; mixed modes have no faithful single-mode result.
   function intersectLinearly(
     left: ImportedUnion,
     right: ImportedUnion,
@@ -1100,8 +1084,7 @@ export function fromJsonSchemaMultiDocument(
     const mode = left.options?.mode ?? "anyOf"
     if (mode !== (right.options?.mode ?? "anyOf")) return unsupportedIntersection(path)
     const limit = Math.max(left.types.length, right.types.length)
-    // Duplication is only known once a pair survives, since an alternative that
-    // survived one pair may still be disjoint from the next.
+    // Count only surviving pairs: a previously matched alternative may be disjoint from the next.
     const survivingLeft = new Set<number>()
     const survivingRight = new Set<number>()
     const types: Array<ImportedJsonSchemaRepresentation> = []
@@ -1139,16 +1122,13 @@ export function fromJsonSchemaMultiDocument(
     if (left._tag === "Unknown") return annotateIntersection(right, left, right)
     if (right._tag === "Unknown") return annotateIntersection(left, left, right)
     if (left._tag === "Reference" && right._tag === "Reference") {
-      // Intersection is idempotent, and keeping the reference preserves the shared definition.
       if (left.$ref === right.$ref) {
-        // Reject a definition that reaches itself without consuming a value,
-        // waiting while it is still translated, since recursion through it is valid.
+        // Reject alias-only cycles, deferring validation until the definition is complete.
         if (definitionCache.get(left.$ref) !== null) validatePointerAliases(right, path)
         else if (!pendingSelfIntersections.has(left.$ref)) pendingSelfIntersections.set(left.$ref, path)
         return annotate(left, right)
       }
-      // Reaching the same pair again inside its own intersection is a cycle,
-      // which would need a new recursive definition.
+      // Re-entering this pair would require a new recursive definition.
       const key = JSON.stringify([left.$ref, right.$ref])
       if (intersectingReferences.has(key)) return unsupportedIntersection(path)
       intersectingReferences.add(key)

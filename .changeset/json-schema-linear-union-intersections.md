@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Import intersections of overlapping `anyOf` or `oneOf` unions whose surviving pairs do not outnumber their alternatives, and typed `additionalProperties` that accept every declared property, in `SchemaRepresentation.fromJsonSchemaDocument`.
+Support bounded overlapping union intersections and compatible typed `additionalProperties` in `SchemaRepresentation.fromJsonSchemaDocument`, and reject unsupported recursive intersections without overflowing.
