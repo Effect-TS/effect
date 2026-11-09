@@ -90,7 +90,7 @@ describe("Cookies", () => {
       assertSome(Cookies.get(cookies, "session"), Cookies.makeCookieUnsafe("session", "g", { path: "/" }))
       assertSome(Cookies.getValue(cookies, "session"), "g")
       deepStrictEqual(Cookies.toRecord(cookies), { session: "g", Session: "e", "0": "zero" })
-      deepStrictEqual(Cookies.toCookieHeader(cookies).split("; ").sort(), ["0=zero", "Session=e", "session=g"])
+      assert.strictEqual(Cookies.toCookieHeader(cookies), "session=g; 0=zero; Session=e")
       deepStrictEqual(Cookies.toSetCookieHeaders(Cookies.remove(cookies, "session")), ["0=zero", "Session=e"])
     })
 
@@ -377,6 +377,14 @@ describe("Cookies", () => {
       const cookies = Cookies.fromSetCookie(["session=1; Path=/a", "session=2", "session=3; Path=/a"])
       const jar = Cookies.mergeIntoArray([], "https://example.com/a/b", cookies, now)
       assert.strictEqual(header(jar, "https://example.com/a/x"), "session=3")
+
+      const withExpiry = Cookies.mergeIntoArray(
+        [],
+        "https://example.com/a/b",
+        Cookies.fromSetCookie(["session=1; Path=/a", "session=; Max-Age=0", "session=3; Path=/a"]),
+        now
+      )
+      assert.strictEqual(header(withExpiry, "https://example.com/a/x"), "session=3")
     })
 
     it("deletes every scope of a cookie cleared in one response", () => {
