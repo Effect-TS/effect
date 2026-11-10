@@ -979,11 +979,9 @@ export function fromJsonSchemaMultiDocument(
   ): ImportedJsonSchemaRepresentation {
     const partitionTypes = partition.types
     const otherTypes = other.types
-    let pairs = 0
     for (const type of otherTypes) {
       const matches = partitionTypes.filter((member) => !areDisjoint(member, type)).length
-      pairs += matches
-      if (pairs > Math.max(partitionTypes.length, otherTypes.length) || matches > 1 && hasChoices(type)) {
+      if (matches > 1 && hasChoices(type)) {
         return unsupportedIntersection(path)
       }
     }

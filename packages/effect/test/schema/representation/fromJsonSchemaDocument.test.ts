@@ -2288,7 +2288,23 @@ describe("fromJsonSchemaDocument", () => {
       }
     })
 
-    it("rejects intersections requiring a Cartesian product", () => {
+    it("intersects type partitions with heterogeneous finite enums", () => {
+      const partition = { anyOf: [{ type: "string" }, { type: "number" }] }
+      const enums = { anyOf: [{ enum: ["a", 1] }, { enum: ["b", 2] }] }
+      for (const allOf of [[partition, enums], [enums, partition]]) {
+        const schema = toSchemaFromJsonSchemaDocument(JsonSchema.fromSchemaDraft2020_12({ allOf }))
+        const decode = Schema.decodeUnknownExit(schema as unknown as Schema.ConstraintDecoder<unknown>)
+
+        for (const input of ["a", "b", 1, 2]) {
+          assert.deepStrictEqual(decode(input), Exit.succeed(input))
+        }
+        for (const input of ["other", 3, null]) {
+          assert.isTrue(Exit.isFailure(decode(input)))
+        }
+      }
+    })
+
+    it("rejects union intersections without a proven disjoint partition", () => {
       throws(
         () =>
           toSchemaFromJsonSchemaDocument(
@@ -2313,29 +2329,36 @@ describe("fromJsonSchemaDocument", () => {
       )
     })
 
-    it("rejects intersections that multiply tagged alternatives", () => {
-      throws(
-        () =>
-          toSchemaFromJsonSchemaDocument(JsonSchema.fromSchemaDraft2020_12({
-            allOf: [
-              {
-                anyOf: ["a", "b"].map((tag) => ({
-                  type: "object",
-                  properties: { tag: { const: tag } },
-                  required: ["tag"]
-                }))
-              },
-              {
-                anyOf: ["x", "y"].map((key) => ({
-                  type: "object",
-                  properties: { [key]: { type: "string" } },
-                  required: [key]
-                }))
-              }
-            ]
-          })),
-        `Cannot intersect these "anyOf" or "oneOf" alternatives without expanding their branches.\n  at ["schema"]["allOf"][1]`
-      )
+    it.each(["anyOf", "oneOf"] as const)("intersects flat tagged %s alternatives", (mode) => {
+      const tagged = {
+        [mode]: ["a", "b"].map((tag) => ({
+          type: "object",
+          properties: { tag: { const: tag } },
+          required: ["tag"]
+        }))
+      }
+      const fields = {
+        [mode]: ["x", "y"].map((key) => ({
+          type: "object",
+          properties: { [key]: { type: "string" } },
+          required: [key]
+        }))
+      }
+      for (const allOf of [[tagged, fields], [fields, tagged]]) {
+        const schema = toSchemaFromJsonSchemaDocument(JsonSchema.fromSchemaDraft2020_12({ allOf }))
+        const decode = Schema.decodeUnknownExit(schema as unknown as Schema.ConstraintDecoder<unknown>)
+
+        for (const tag of ["a", "b"]) {
+          for (const key of ["x", "y"]) {
+            const input = { tag, [key]: "value" }
+            assert.deepStrictEqual(decode(input), Exit.succeed(input))
+          }
+        }
+        for (const input of [{ tag: "c", x: "value" }, { tag: "a" }, { tag: "a", x: 1 }]) {
+          assert.isTrue(Exit.isFailure(decode(input)))
+        }
+        assert.strictEqual(Exit.isSuccess(decode({ tag: "a", x: "x", y: "y" })), mode === "anyOf")
+      }
     })
 
     it("preserves mutually recursive references intersected with themselves", () => {
