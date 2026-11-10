@@ -1,9 +1,6 @@
 /**
  * The `AnthropicWorkloadIdentity` module authenticates `AnthropicClient` with
  * [Workload Identity Federation](https://platform.claude.com/docs/en/manage-claude/workload-identity-federation).
- * It exchanges an identity token from the workload's own identity provider,
- * such as Kubernetes or GitHub Actions, for a short-lived Anthropic access
- * token, so no long-lived API key is stored.
  *
  * @stability unstable
  * @since 4.1.3
@@ -28,11 +25,6 @@ const withOAuthBeta = (request: HttpClientRequest.HttpClientRequest): HttpClient
 /**
  * Options for authenticating Anthropic requests with Workload Identity
  * Federation.
- *
- * **Details**
- *
- * `E` and `R` are the error and the requirements of the `identityToken`
- * effect.
  *
  * @see {@link make} for creating a client transform from these options
  * @see {@link layer} for providing a transformed `HttpClient` from these options
@@ -78,9 +70,7 @@ export type Options<E = never, R = never> = {
  *
  * **When to use**
  *
- * Use to pass the result as the `transformClient` option of `AnthropicClient`
- * when a workload has an identity token from its own identity provider instead
- * of an API key.
+ * Use as the `transformClient` option of `AnthropicClient` instead of an API key.
  *
  * **Details**
  *
@@ -91,28 +81,18 @@ export type Options<E = never, R = never> = {
  * `identityToken` runs again on every exchange, so a token read from a file is
  * picked up after it rotates. Surrounding whitespace is trimmed.
  *
- * The exchange uses the `HttpClient` in context when `make` runs, not the
- * client being transformed. Failures are `HttpClientError`s, which
- * `AnthropicClient` maps to `AiError` like any other request failure. A failing
- * `identityToken` is an `EncodeError` with the failure as its cause, and so is
- * an empty token. That failure is attached unchanged, so it should not hold
- * secrets.
- *
- * The identity token is kept out of exchange errors. They refer to a request
- * without a body. A transport failure keeps only its messages, and the identity
- * token is replaced with `<redacted>` in those messages and in the headers
- * and body of a rejection.
+ * Exchanges use the `HttpClient` captured by `make`, not the transformed client.
+ * Failures are `HttpClientError`s, mapped to `AiError` by `AnthropicClient`.
+ * A failing or empty `identityToken` produces an `EncodeError`. Source failures
+ * are preserved as causes and must not contain secrets. Exchange errors redact
+ * the literal identity token, including JSON-escaped occurrences.
  *
  * **Gotchas**
  *
- * - There is no background refresh. Once the cached token expires, the next
- *   request waits for a new exchange.
- * - A request rejected with a 401 discards the token it was sent with, and the
- *   next request exchanges a new one. The rejected request is not replayed.
- * - The `HttpClient` in context must not follow redirects or log request
- *   bodies, because the exchange request carries the identity token. Redirects
- *   are disabled for `FetchHttpClient`, and a redirect response fails the
- *   exchange.
+ * - No background refresh: the next request after expiry waits for an exchange.
+ * - A 401 invalidates only the token used by that request, without replay.
+ * - The exchange client must not follow redirects or log request bodies.
+ *   `FetchHttpClient` redirects are disabled; redirect responses fail the exchange.
  * - Anthropic accepts an identity token with a `jti` claim once, so the
  *   exchange is never retried and `identityToken` must yield a new token for
  *   each exchange.
@@ -170,32 +150,26 @@ export const make = <E = never, R = never>(options: Options<E, R>): Effect.Effec
           })
         )
     }),
-    // Requests that carry the access token need the OAuth beta.
     (transform) => (client) => transform(HttpClient.mapRequest(client, withOAuthBeta))
   )
 
 /**
- * Creates a layer that takes the `HttpClient` in context and provides it
- * again, authenticated with Workload Identity Federation.
+ * Provides the current `HttpClient` authenticated with workload identity federation.
  *
  * **When to use**
  *
- * Use to give `AnthropicClient` an authenticated `HttpClient` with
- * `Layer.provide`, instead of passing the transform from `make` as its
- * `transformClient` option.
+ * Use with `Layer.provide` to authenticate `AnthropicClient` without
+ * setting its `transformClient` option.
  *
  * **Details**
  *
- * The provided client is the `HttpClient` in context with the transform from
- * `make` applied, and behaves as described there. The token exchange is sent
- * with the client in context, so it does not carry an access token itself.
- * Whatever `identityToken` requires becomes a requirement of the layer.
+ * Applies `make` to the current client, which also performs token exchanges.
+ * The layer requires the services needed by `identityToken`.
  *
  * **Gotchas**
  *
- * - Every request sent with the provided `HttpClient` carries the access
- *   token, whatever its URL. Provide the layer to the `AnthropicClient` layer
- *   only, and not to the rest of the application.
+ * - Every request carries the access token regardless of URL. Provide this
+ *   layer only to `AnthropicClient`, not the whole application.
  * - The gotchas of `make` apply.
  *
  * **Example** (Providing an authenticated client to `AnthropicClient`)
@@ -214,8 +188,7 @@ export const make = <E = never, R = never>(options: Options<E, R>): Effect.Effec
  *   serviceAccountId: "svac_..."
  * })
  *
- * // Requires an `HttpClient`, and the `FileSystem` the identity token is
- * // read from.
+ * // Requires an `HttpClient` and a `FileSystem`.
  * const AnthropicLayer = AnthropicClient.layer({}).pipe(
  *   Layer.provide(WorkloadIdentity)
  * )

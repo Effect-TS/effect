@@ -1,14 +1,7 @@
 /**
- * The `WorkloadIdentity` module authenticates an `HttpClient` with workload
- * identity federation. It exchanges an identity token from the workload's own
- * identity provider, such as Kubernetes or GitHub Actions, for a short-lived
- * access token at a token endpoint, caches that token, and sends it with every
- * request.
- *
- * Provider packages build their own workload identity modules on it, such as
- * `AnthropicWorkloadIdentity` in `@effect/ai-anthropic` and
- * `OpenAiWorkloadIdentity` in `@effect/ai-openai`. Use those for the providers
- * they cover.
+ * Authenticates an `HttpClient` by exchanging workload identity tokens for cached
+ * access tokens. For Anthropic or OpenAI, use the provider package's
+ * `AnthropicWorkloadIdentity` or `OpenAiWorkloadIdentity` module.
  *
  * @stability unstable
  * @since 4.1.3
@@ -44,9 +37,7 @@ const checkTokenUrl = (url: string): Effect.Effect<void> =>
     throw new Error(`Refusing to send an identity token to the non-https token URL "${url}"`)
   })
 
-// The messages of an error and its causes. A failed exchange request keeps only
-// this text, because the errors can refer to the request that holds the
-// identity token.
+// Keep only messages: errors may reference requests containing the identity token.
 const errorMessages = (error: unknown): Array<string> => {
   const messages: Array<string> = []
   for (let cause = error, depth = 0; cause instanceof Error && depth < 5; cause = cause.cause, depth++) {
@@ -55,8 +46,7 @@ const errorMessages = (error: unknown): Array<string> => {
   return messages
 }
 
-// Redacts the strings of a JSON body after decoding them, so that an escaped
-// identity token is found as well. The second pass covers property names.
+// Decode escaped tokens before redacting values; the second pass covers keys.
 const redactBody = (body: string, redact: (text: string) => string): string => {
   try {
     return redact(JSON.stringify(JSON.parse(body, (_, value) => typeof value === "string" ? redact(value) : value)))
@@ -90,51 +80,40 @@ const readBody = (response: HttpClientResponse.HttpClientResponse): Effect.Effec
  *
  * **Details**
  *
- * The first request runs `identityToken`, trims the result, and passes it to
- * `exchangeRequest` with a `POST` request to `tokenUrl` that accepts JSON.
- * `exchangeRequest` adds the body and any headers, and the request it returns
- * is sent. The access token of the response is cached and sent as
- * `Authorization: Bearer` until 30 seconds before it expires, or after three
- * quarters of its lifetime if that is later. The lifetime is the `expires_in`
- * of the response, or `defaultExpiresIn` when the response has none.
- * Concurrent requests share one exchange, and interrupting one of them does
- * not cancel it. `identityToken` runs again on every exchange, so a token
- * read from a file is picked up after it rotates.
+ * Each exchange reruns `identityToken` and passes its trimmed value and a JSON-
+ * accepting `POST` request to `exchangeRequest`. The response's `access_token`
+ * is sent as `Authorization: Bearer`. Its lifetime is `expires_in` seconds,
+ * falling back to `defaultExpiresIn` when absent.
  *
- * The exchange uses the `HttpClient` in context when `make` runs, not the
- * client being transformed. Failures are `HttpClientError`s. A rejected
- * exchange is a `StatusCodeError`, an unreachable token endpoint or a redirect
- * a `TransportError`, and an unusable token response a `DecodeError`. A
- * failing `identityToken` is an `EncodeError` with the failure as its cause,
- * and so is an empty token. That failure is attached unchanged, so it should
- * not hold secrets.
+ * Tokens are cached until 30 seconds before expiry or three quarters of their
+ * lifetime, whichever is later. Concurrent requests share one exchange;
+ * interrupting a waiter does not cancel it.
  *
- * The identity token is kept out of exchange errors. They refer to a request
- * without a body. A transport failure keeps only its messages, and the identity
- * token is replaced with `<redacted>` in those messages and in the headers
- * and body of a rejection.
+ * Exchanges use the `HttpClient` captured by `make`, not the transformed client.
+ * Failures are `HttpClientError`s: `StatusCodeError` for rejected exchanges,
+ * `TransportError` for transport failures or redirects, `DecodeError` for
+ * invalid responses, and `EncodeError` for failing or empty identity tokens.
+ * Identity-token source failures are preserved as causes and must not contain
+ * secrets.
+ *
+ * Exchange errors omit the request body and retain only transport error
+ * messages. The literal identity token is redacted from those messages and
+ * rejection headers and bodies, including JSON-escaped occurrences.
  *
  * **Gotchas**
  *
- * - There is no background refresh. Once the cached token expires, the next
- *   request waits for a new exchange.
- * - A request rejected with a 401 discards the token it was sent with, and the
- *   next request exchanges a new one. The rejected request is not replayed.
+ * - No background refresh: the next request after expiry waits for an exchange.
+ * - A 401 invalidates only the token used by that request, without replay.
  * - The exchange is never retried.
- * - Every request sent with the transformed client carries the access token,
- *   whatever its URL.
- * - The `HttpClient` in context must not follow redirects or log request
- *   bodies, because the exchange request carries the identity token. Redirects
- *   are disabled for `FetchHttpClient`, and a redirect response fails the
- *   exchange.
+ * - Every request carries the access token regardless of URL.
+ * - The exchange client must not follow redirects or log request bodies.
+ *   `FetchHttpClient` redirects are disabled; redirect responses fail the exchange.
  * - `tokenUrl` must use `https`, or `http` on `localhost`, `127.0.0.1` or
  *   `::1`. Any other URL is a defect.
- * - `exchangeRequest` must keep the method, URL, URL parameters and hash of
- *   the request it is given. Returning a request that differs in one of them
- *   is a defect, and nothing is sent. Put query parameters in `tokenUrl`.
- * - `defaultExpiresIn` must be a positive finite duration. Anything else is a
- *   defect when `make` runs. A number is milliseconds, while `expires_in` is
- *   seconds.
+ * - `exchangeRequest` may change only the body and headers; other changes are
+ *   defects and send nothing. Put query parameters in `tokenUrl`.
+ * - `defaultExpiresIn` must be positive and finite or `make` defects.
+ *   Numeric durations are milliseconds; response `expires_in` is seconds.
  * - Only the literal identity token is redacted, after JSON decoding. A token
  *   endpoint that echoes it in another encoding is not covered.
  * - The response is limited to 1 MiB, and the access token to printable ASCII.
@@ -208,14 +187,11 @@ export const make = <E = never, R = never>(options: {
     const defaultExpiresIn = options.defaultExpiresIn === undefined
       ? undefined
       : Duration.toSeconds(options.defaultExpiresIn)
-    // The bounds of `expires_in`. A negative infinite lifetime would never
-    // expire in the cache.
     if (defaultExpiresIn !== undefined && !(defaultExpiresIn > 0 && defaultExpiresIn < Infinity)) {
       return yield* Effect.die(new Error("`defaultExpiresIn` must be a positive finite duration"))
     }
 
-    // Exchange errors refer to this request and to rebuilt responses instead of
-    // the originals, which hold the identity token in the request body.
+    // Errors must not retain the exchange request body.
     const errorRequest = HttpClientRequest.post(tokenUrl)
     const preparedRequest = HttpClientRequest.acceptJson(errorRequest)
     const requestError = (description: string) =>
@@ -237,8 +213,6 @@ export const make = <E = never, R = never>(options: {
       if (identityToken === "") {
         return yield* identityTokenError("The identity token is empty")
       }
-      // The token endpoint and the HTTP client can echo the identity token, so
-      // everything an exchange error keeps from them goes through this.
       const redact = (text: string) => text.replaceAll(identityToken, "<redacted>")
       const errorResponse = (response: HttpClientResponse.HttpClientResponse, body?: string) =>
         HttpClientResponse.fromWeb(
@@ -257,8 +231,7 @@ export const make = <E = never, R = never>(options: {
           })
         })
       const request = options.exchangeRequest(preparedRequest, identityToken)
-      // The identity token must only go to the URL that was checked, which is
-      // also the one that errors refer to.
+      // Keep the identity token confined to the validated endpoint.
       if (
         request.method !== preparedRequest.method || request.url !== preparedRequest.url ||
         request.urlParams.params.length > 0 || Option.isSome(request.hash)
@@ -271,8 +244,7 @@ export const make = <E = never, R = never>(options: {
       }
       const fetchInit = yield* Effect.serviceOption(FetchHttpClient.RequestInit)
       const response = yield* httpClient.execute(request).pipe(
-        // `fetch` follows redirects by default, which would send the identity
-        // token to wherever the token endpoint points.
+        // Prevent redirects from forwarding the identity token.
         Effect.provideService(FetchHttpClient.RequestInit, { ...Option.getOrUndefined(fetchInit), redirect: "manual" }),
         Effect.catch((error) =>
           error.response === undefined
@@ -284,7 +256,7 @@ export const make = <E = never, R = never>(options: {
         )
       )
       const status = response.status
-      // A fetch that does not follow a redirect reports it with the status 0.
+      // Fetch may report manual redirects as opaque responses with status 0.
       if (status < 200 || status >= 600 || (status >= 300 && status < 400)) {
         return yield* requestError(
           `The token endpoint responded with the status ${status}. Redirects are not followed`

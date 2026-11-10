@@ -1,9 +1,6 @@
 /**
  * The `OpenAiWorkloadIdentity` module authenticates `OpenAiClient` with
  * [workload identity federation](https://developers.openai.com/api/docs/guides/workload-identity-federation).
- * It exchanges an identity token from the workload's own identity provider,
- * such as Kubernetes or GitHub Actions, for a short-lived OpenAI access token,
- * so no long-lived API key is stored.
  *
  * @stability unstable
  * @since 4.1.3
@@ -18,11 +15,6 @@ import type * as Redacted from "effect/Redacted"
 /**
  * Options for authenticating OpenAI requests with Workload Identity
  * Federation.
- *
- * **Details**
- *
- * `E` and `R` are the error and the requirements of the `identityToken`
- * effect.
  *
  * @see {@link make} for creating a client transform from these options
  * @see {@link layer} for providing a transformed `HttpClient` from these options
@@ -64,9 +56,7 @@ export type Options<E = never, R = never> = {
  *
  * **When to use**
  *
- * Use to pass the result as the `transformClient` option of `OpenAiClient`
- * when a workload has an identity token from its own identity provider instead
- * of an API key.
+ * Use as the `transformClient` option of `OpenAiClient` instead of an API key.
  *
  * **Details**
  *
@@ -77,33 +67,23 @@ export type Options<E = never, R = never> = {
  * runs again on every exchange, so a token read from a file is picked up after
  * it rotates. Surrounding whitespace is trimmed.
  *
- * The exchange uses the `HttpClient` in context when `make` runs, not the
- * client being transformed. Failures are `HttpClientError`s, which
- * `OpenAiClient` maps to `AiError` like any other request failure. A failing
- * `identityToken` is an `EncodeError` with the failure as its cause, and so is
- * an empty token. That failure is attached unchanged, so it should not hold
- * secrets.
- *
- * The identity token is kept out of exchange errors. They refer to a request
- * without a body. A transport failure keeps only its messages, and the identity
- * token is replaced with `<redacted>` in those messages and in the headers
- * and body of a rejection.
+ * Exchanges use the `HttpClient` captured by `make`, not the transformed client.
+ * Failures are `HttpClientError`s, mapped to `AiError` by `OpenAiClient`.
+ * A failing or empty `identityToken` produces an `EncodeError`. Source failures
+ * are preserved as causes and must not contain secrets. Exchange errors redact
+ * the literal identity token, including JSON-escaped occurrences.
  *
  * In WebSocket mode the access token is resolved each time a socket connects.
  *
  * **Gotchas**
  *
- * - There is no background refresh. Once the cached token expires, the next
- *   request waits for a new exchange.
- * - A request rejected with a 401 discards the token it was sent with, and the
- *   next request exchanges a new one. The rejected request is not replayed.
+ * - No background refresh: the next request after expiry waits for an exchange.
+ * - A 401 invalidates only the token used by that request, without replay.
  * - A WebSocket keeps the token it connected with. A rejected WebSocket
  *   handshake does not discard the cached token, because the socket does not
  *   report the response status.
- * - The `HttpClient` in context must not follow redirects or log request
- *   bodies, because the exchange request carries the identity token. Redirects
- *   are disabled for `FetchHttpClient`, and a redirect response fails the
- *   exchange.
+ * - The exchange client must not follow redirects or log request bodies.
+ *   `FetchHttpClient` redirects are disabled; redirect responses fail the exchange.
  * - The exchange is never retried.
  * - The token URL must use `https`, or `http` on `localhost`, `127.0.0.1` or
  *   `::1`. Any other URL is a defect.
@@ -158,27 +138,22 @@ export const make = <E = never, R = never>(options: Options<E, R>): Effect.Effec
   })
 
 /**
- * Creates a layer that takes the `HttpClient` in context and provides it
- * again, authenticated with Workload Identity Federation.
+ * Provides the current `HttpClient` authenticated with workload identity federation.
  *
  * **When to use**
  *
- * Use to give `OpenAiClient` an authenticated `HttpClient` with
- * `Layer.provide`, instead of passing the transform from `make` as its
- * `transformClient` option.
+ * Use with `Layer.provide` to authenticate `OpenAiClient` without
+ * setting its `transformClient` option.
  *
  * **Details**
  *
- * The provided client is the `HttpClient` in context with the transform from
- * `make` applied, and behaves as described there. The token exchange is sent
- * with the client in context, so it does not carry an access token itself.
- * Whatever `identityToken` requires becomes a requirement of the layer.
+ * Applies `make` to the current client, which also performs token exchanges.
+ * The layer requires the services needed by `identityToken`.
  *
  * **Gotchas**
  *
- * - Every request sent with the provided `HttpClient` carries the access
- *   token, whatever its URL. Provide the layer to the `OpenAiClient` layer
- *   only, and not to the rest of the application.
+ * - Every request carries the access token regardless of URL. Provide this
+ *   layer only to `OpenAiClient`, not the whole application.
  * - An `apiKey` option of `OpenAiClient` replaces the access token here, so
  *   leave it unset.
  * - The other gotchas of `make` apply.
@@ -198,8 +173,7 @@ export const make = <E = never, R = never>(options: Options<E, R>): Effect.Effec
  *   serviceAccountId: "sa_..."
  * })
  *
- * // Requires an `HttpClient`, and the `FileSystem` the identity token is
- * // read from.
+ * // Requires an `HttpClient` and a `FileSystem`.
  * const OpenAiLayer = OpenAiClient.layer({}).pipe(
  *   Layer.provide(WorkloadIdentity)
  * )

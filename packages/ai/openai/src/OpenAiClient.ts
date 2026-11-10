@@ -526,8 +526,6 @@ const makeSocket = Effect.gen(function*() {
       const httpClient = Predicate.isNotUndefined(config?.transformClient)
         ? config.transformClient(client.client)
         : client.client
-      // The transformed client can fail here, for example when it exchanges
-      // credentials for the Authorization header.
       return Effect.catchTag(
         httpClient.preprocess(HttpClientRequest.post("/responses")),
         "HttpClientError",
@@ -548,9 +546,7 @@ const makeSocket = Effect.gen(function*() {
     current: Turn | undefined
   }
 
-  // The request of the most recent connection. Each turn reuses it for its
-  // response, so that a connected socket does not run the client transforms,
-  // and with them a credential exchange, again.
+  // Reuse the connection request to avoid exchanging credentials on each turn.
   let connectionRequest: HttpClientRequest.HttpClientRequest | undefined
 
   const queueRef: RcRef.RcRef<SocketConnection, AiError.AiError> = yield* RcRef.make({
@@ -688,8 +684,7 @@ const makeSocket = Effect.gen(function*() {
     })
   })
 
-  // Prime the websocket. A failure to prepare the connection is left for the
-  // first response stream to report.
+  // Prime the socket; let the first response stream report preparation failures.
   yield* Effect.ignore(Effect.scoped(RcRef.get(queueRef)))
 
   // Websocket mode only allows one request at a time

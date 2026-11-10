@@ -4,4 +4,4 @@
 "@effect/ai-openai": patch
 ---
 
-Add workload identity federation with `WorkloadIdentity` in `effect/ai`, `AnthropicWorkloadIdentity` and `OpenAiWorkloadIdentity`, and fail OpenAI WebSocket streams with an `AiError` instead of a defect when a client transform fails.
+Add `WorkloadIdentity` helpers for Anthropic and OpenAI authentication, and report OpenAI WebSocket client-transform failures as `AiError` instead of defects.
