@@ -111,6 +111,15 @@ describe("Statement", () => {
     ])
   })
 
+  it("uses each constructor's own compiler for a shared acquirer", () => {
+    const acquirer = Effect.void as any
+    const sql = Statement.make(acquirer, Statement.makeCompilerSqlite(), [], undefined)
+    const transformed = Statement.make(acquirer, Statement.makeCompilerSqlite((name) => `t_${name}`), [], undefined)
+
+    assert.deepStrictEqual(sql`SELECT ${sql("a")}`.compile(), ["SELECT \"a\"", []])
+    assert.deepStrictEqual(transformed`SELECT ${transformed("a")}`.compile(), ["SELECT \"t_a\"", []])
+  })
+
   it("renumbers a cached returning fragment", () => {
     const sql = Statement.make(
       Effect.void as any,
