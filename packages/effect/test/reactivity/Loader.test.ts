@@ -9,6 +9,7 @@ import {
   Option,
   Redacted,
   Schema,
+  SchemaAST,
   SchemaGetter,
   SchemaTransformation,
   Scope,
@@ -949,6 +950,221 @@ describe("Loader", () => {
     }).pipe(Effect.provide(
       Layer.mergeAll(Plain.layer, Stamped.layer, Crossed.layer, Swapped.layer, Listed.layer, TestLoader.layer())
     ))
+  })
+
+  it.effect("a union member is asked only when the Schema could take the args as that member", () => {
+    const options = { success: Schema.Number, error: Schema.Never, staleTime: "Infinity" } as const
+    const fetcher = Effect.succeed(() => Effect.succeed(1))
+    const page = Schema.optional(Schema.Number)
+    // No number is exactly one of these two, so nothing is the first member.
+    const Neither = Schema.Union([Schema.Number, Schema.Number], { mode: "oneOf" })
+    class Exclusive extends Loader.Service<Exclusive>()("Exclusive", {
+      ...options,
+      args: Schema.Union([
+        Schema.Struct({ value: Neither, page }),
+        Schema.Struct({ value: Schema.Number, page: Schema.UndefinedOr(Schema.Number) })
+      ])
+    }, fetcher) {}
+    // The same goes for `undefined` here, though each member is behind the one `suspend`.
+    const Undefined = Schema.suspend(() => Schema.Undefined)
+    class Forbidden extends Loader.Service<Forbidden>()("Forbidden", {
+      ...options,
+      args: { page: Schema.optionalKey(Schema.Union([Undefined, Undefined], { mode: "oneOf" })) }
+    }, fetcher) {}
+    // A class that can't be asked whether a value is its instance.
+    let asked = 0
+    class Stamp extends Schema.Class<Stamp>("Stamp")({ page }) {
+      static override [Symbol.hasInstance](): boolean {
+        asked++
+        throw new Error("asked")
+      }
+    }
+    class Tagged extends Loader.Service<Tagged>()("Tagged", {
+      ...options,
+      args: Schema.Union([
+        Schema.Struct({ value: Stamp, kind: Schema.Literal("A") }),
+        Schema.Struct({ value: Schema.String, kind: Schema.Literal("B") })
+      ])
+    }, fetcher) {}
+    return Effect.gen(function*() {
+      yield* Exclusive.get({ value: 1, page: undefined })
+      const forbidden = yield* Effect.exit(Forbidden.get({ page: undefined }))
+      assert.isTrue(Exit.isFailure(forbidden))
+      // The tag rules the first member out before anything in it is asked.
+      yield* Tagged.get({ kind: "B", value: "x" })
+      assert.strictEqual(asked, 0)
+      assert.deepStrictEqual((yield* TestLoader.fetches).map((fetch) => fetch.read + " " + fetch.logKey), [
+        `Exclusive {"page":null,"value":1}`,
+        `Tagged {"kind":"B","value":"x"}`
+      ])
+    }).pipe(Effect.provide(Layer.mergeAll(Exclusive.layer, Forbidden.layer, Tagged.layer, TestLoader.layer())))
+  })
+
+  it("a union member that runs none of the caller's code is told apart as the Schema's parser tells it", () => {
+    const N = Schema.Number
+    const S = Schema.String
+    const oneOf = (...members: ReadonlyArray<Schema.Top>) => Schema.Union(members, { mode: "oneOf" })
+    const Tree: Schema.Top = Schema.Struct({ a: N, next: Schema.optionalKey(Schema.suspend(() => Tree)) })
+    const Undefined = Schema.suspend(() => Schema.Undefined)
+    const key = (args: Schema.Top, value: unknown): string => {
+      try {
+        return internal.makeDef("Read", { args, success: N, error: Schema.Never, staleTime: 0 }).argsKey(value)
+      } catch {
+        return "throws"
+      }
+    }
+    // What a value may be. None has a check, a declaration or an encoding, so the parser runs nothing of the caller's.
+    const types: ReadonlyArray<Schema.Top> = [
+      N,
+      Schema.Null,
+      Schema.Literals(["A", "B"]),
+      Schema.TemplateLiteral(["a-", N]),
+      Schema.Struct({}),
+      Schema.Struct({ a: N }),
+      Schema.Struct({ a: Schema.optional(N) }),
+      Schema.Struct({ a: Schema.optionalKey(N) }),
+      Schema.Struct({ a: Schema.UndefinedOr(N) }),
+      Schema.Struct({ a: N, b: S }),
+      Schema.Struct({ kind: Schema.Literal("A"), a: Schema.optionalKey(N) }),
+      Schema.Struct({ x: Schema.Struct({ a: N }) }),
+      Schema.Struct({ x: Schema.Array(N) }),
+      Schema.Struct({ toString: Schema.optionalKey(N) }),
+      Schema.Array(Schema.Struct({ a: N })),
+      Schema.Array(Schema.Array(N)),
+      Schema.Tuple([N, Schema.optionalKey(S)]),
+      Schema.Tuple([]),
+      Schema.TupleWithRest(Schema.Tuple([S]), [N, Schema.Boolean]),
+      Schema.TupleWithRest(Schema.Tuple([S, Schema.optionalKey(N)]), [Schema.Boolean]),
+      Schema.Record(S, N),
+      Schema.Record(Schema.Literals(["a", "b"]), N),
+      Schema.Record(Schema.TemplateLiteral(["k", S]), N),
+      Schema.StructWithRest(Schema.Struct({ a: N }), [Schema.Record(S, Schema.Union([N, S]))]),
+      Schema.StructWithRest(Schema.Struct({ a: S }), [Schema.Record(S, N)]),
+      Schema.Union([Schema.Struct({ a: N }), Schema.Struct({ b: S })]),
+      oneOf(N, N),
+      oneOf(N, S),
+      oneOf(Schema.Struct({ a: N }), Schema.Struct({ b: S })),
+      oneOf(Schema.Struct({ a: N }), Schema.Struct({ a: N, b: Schema.optionalKey(S) })),
+      oneOf(Schema.Union([N, S]), Schema.Union([S, Schema.Boolean])),
+      Schema.Union([oneOf(N, N), S]),
+      oneOf(Schema.suspend(() => N), Schema.suspend(() => S)),
+      Tree
+    ]
+    const values: ReadonlyArray<unknown> = [
+      1,
+      "a",
+      "A",
+      "a-1",
+      true,
+      null,
+      [],
+      [1],
+      [1, "a"],
+      ["a"],
+      ["a", 1],
+      ["a", true],
+      [
+        "a",
+        1,
+        true
+      ],
+      [
+        "a",
+        1,
+        2,
+        true
+      ],
+      [[1]],
+      [{ a: 1 }],
+      {},
+      { a: 1 },
+      { a: "x" },
+      {
+        a: 1,
+        b: "x"
+      },
+      { b: "x" },
+      { a: undefined },
+      { a: null },
+      {
+        a: 1,
+        c: true
+      },
+      { kind: "A" },
+      {
+        kind: "A",
+        a: 1
+      },
+      { kind: "B" },
+      {
+        kind: "A",
+        a: "x"
+      },
+      { toString: 1 },
+      { x: { a: 1 } },
+      { x: [1, 2] },
+      { x: {} },
+      { ka: 1 },
+      {
+        a: 1,
+        kb: 2
+      },
+      {
+        a: "s",
+        z: 1
+      },
+      {
+        a: 1,
+        next: { a: 2 }
+      },
+      {
+        a: 1,
+        next: { a: "x" }
+      },
+      {
+        a: 1,
+        next: undefined
+      }
+    ]
+    const wrong: Array<unknown> = []
+    // The first member drops `page` and the other keeps it, so the key says whether the args were taken as the first.
+    const Other = Schema.Struct({ page: Schema.UndefinedOr(N) })
+    for (const type of types) {
+      const is = Schema.is(type)
+      const First = Schema.Struct({ value: type, page: Schema.optional(N) })
+      for (const args of [Schema.Union([First, Other]), Schema.Union([Other, First])]) {
+        for (const value of values) {
+          const taken = !key(args, { value, page: undefined }).includes(`"page":null`)
+          if (taken !== is(value)) wrong.push([SchemaAST.toType(type.ast), value])
+        }
+      }
+    }
+    // The same for whether a type allows `undefined`: the property is dropped when it does.
+    const allowing: ReadonlyArray<Schema.Top> = [
+      N,
+      Schema.Undefined,
+      Schema.Void,
+      Schema.Unknown,
+      Schema.UndefinedOr(N),
+      Schema.NullOr(N),
+      Schema.Struct({}),
+      oneOf(Schema.Undefined, Schema.Undefined),
+      oneOf(Schema.Undefined, N),
+      oneOf(Schema.Undefined, Schema.Unknown),
+      oneOf(Schema.UndefinedOr(N), S),
+      oneOf(Schema.UndefinedOr(N), Schema.UndefinedOr(S)),
+      Schema.Union([oneOf(Schema.Undefined, Schema.Undefined), N]),
+      Undefined,
+      Schema.suspend(() => N),
+      oneOf(Undefined, Undefined),
+      Schema.Union([Undefined, Undefined]),
+      oneOf(Undefined, N, Schema.Union([S, Undefined]))
+    ]
+    for (const type of allowing) {
+      const dropped = key(Schema.Struct({ page: Schema.optionalKey(type) }), { page: undefined }) === "{}"
+      if (dropped !== Schema.is(type)(undefined)) wrong.push([type.ast, undefined])
+    }
+    assert.deepStrictEqual(wrong, [])
   })
 
   it("a definition and a cache throw on durations that can't be meant", () => {

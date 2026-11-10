@@ -137,116 +137,198 @@ const propertyOf = (o: object, name: PropertyKey): PropertyDescriptor | undefine
   return undefined
 }
 
+/** An answer about a value: no, yes, or that only the caller's code could say. */
+type Answer = 0 | 1 | 2
+const no = 0
+const unsure = 1
+const yes = 2
+
+/** A union's answer from its members': any one of them will do, or with `oneOf` exactly one. */
+const answerOfUnion = (ast: SchemaAST.Union, answers: ReadonlyArray<Answer>): Answer => {
+  let yeses = 0
+  let unsures = 0
+  for (const answer of answers) {
+    if (answer === yes) yeses++
+    else if (answer === unsure) unsures++
+  }
+  if (ast.options?.mode === "oneOf") return yeses > 1 ? no : unsures > 0 ? unsure : yeses === 1 ? yes : no
+  return yeses > 0 ? yes : unsures > 0 ? unsure : no
+}
+
 /**
  * Whether the type holds `undefined`, by what it names: `Schema.optional` and
- * `Schema.UndefinedOr` name it, and `Schema.Unknown` holds anything. A
- * declaration is taken not to, since only its guard could say.
+ * `Schema.UndefinedOr` name it, and `Schema.Unknown` holds anything. Only a
+ * declaration's guard could say whether the declaration does. A type that is
+ * met again inside itself adds nothing there.
  */
-const allowsUndefined = (ast: SchemaAST.AST, seen: Set<SchemaAST.AST> = new Set()): boolean => {
+const allowsUndefined = (ast: SchemaAST.AST, inside: Set<SchemaAST.AST> = new Set()): Answer => {
   switch (ast._tag) {
     case "Undefined":
     case "Void":
     case "Unknown":
     case "Any":
-      return true
-    case "Union": {
-      const count = ast.types.filter((type) => allowsUndefined(type, seen)).length
-      return ast.options?.mode === "oneOf" ? count === 1 : count > 0
-    }
+      return yes
+    case "Declaration":
+      return unsure
+    case "Union":
+      return answerOfUnion(ast, ast.types.map((type) => allowsUndefined(type, inside)))
     case "Suspend": {
-      if (seen.has(ast)) return false
-      seen.add(ast)
-      return allowsUndefined(ast.thunk(), seen)
+      if (inside.has(ast)) return no
+      inside.add(ast)
+      try {
+        return allowsUndefined(ast.thunk(), inside)
+      } finally {
+        inside.delete(ast)
+      }
     }
     default:
-      return false
+      return no
   }
 }
 
-type Fits = (u: unknown, walk: Walk) => boolean
+type Fits = (u: unknown, walk: Walk) => Answer
 
 /**
  * Whether a value has the shape of the type `ast` describes, which is how a
- * union's members are told apart. It answers yes wherever only the caller's
- * code could say no: for what a declaration holds, for a property behind a
- * getter, and for every check. A `Schema.Class` is the exception among
- * declarations, since the Schema itself says what an instance is.
+ * union's members are told apart. Nothing of the caller's runs to answer, so
+ * the answer is `unsure` wherever only that could say: for what a declaration
+ * holds, for a property behind a getter, and for a type with a check. A
+ * `Schema.Class` is the exception among declarations, since the Schema itself
+ * says what an instance is.
  */
 const fitsOf: (ast: SchemaAST.AST) => Fits = memoize((ast: SchemaAST.AST): Fits => {
+  const fits = shapeOf(ast)
+  return ast.checks === undefined ? fits : (u, walk) => fits(u, walk) === no ? no : unsure
+})
+
+/**
+ * The answer of a union's member. A member with a tag is asked about the tag
+ * first, as the Schema's own parser asks, so a member with another tag is
+ * ruled out before anything else in it is asked.
+ */
+const memberOf = (type: SchemaAST.AST): Fits => {
+  const fits = fitsOf(type)
+  const tags = lazy(() => SchemaAST.collectSentinels(SchemaAST.toType(type)))
+  return (u, walk) => {
+    for (const { key, literal } of tags()) {
+      if (typeof u !== "object" || u === null) return no
+      const descriptor = propertyOf(u, key)
+      if (descriptor === undefined) return no
+      const data = dataOf(descriptor)
+      if (data !== undefined && data.value !== literal) return no
+    }
+    return fits(u, walk)
+  }
+}
+
+/** What a property's type has to be asked: nothing but the value, what the value holds, or a class. */
+const costOf = (type: SchemaAST.AST): number => {
+  switch (type._tag) {
+    case "Declaration":
+      return 2
+    case "Objects":
+    case "Arrays":
+    case "Union":
+    case "Suspend":
+      return 1
+    default:
+      return 0
+  }
+}
+
+/** Whether a key Schema has a check, which may leave a key out of the record. */
+const hasCheck = (ast: SchemaAST.AST): boolean =>
+  ast.checks !== undefined ||
+  (ast._tag === "Union" && ast.types.some(hasCheck)) ||
+  (ast._tag === "TemplateLiteral" && ast.parts.some(hasCheck))
+
+const shapeOf = (ast: SchemaAST.AST): Fits => {
   switch (ast._tag) {
     case "Suspend": {
       const inner = lazy(() => fitsOf(ast.thunk()))
-      return (u, walk) => within(walk, ast, u, true, () => inner()(u, walk))
+      return (u, walk) => within(walk, ast, u, unsure, () => inner()(u, walk))
     }
     case "Declaration": {
       const descriptor = lazy(() => SchemaAST.getConstructorDescriptor(ast))
-      return (u) => descriptor()?.isConstructed(u) ?? true
+      return (u) => {
+        const constructor = descriptor()
+        return constructor === undefined ? unsure : constructor.isConstructed(u) ? yes : no
+      }
     }
     case "Union": {
-      const members = ast.types.map(fitsOf)
-      return (u, walk) => members.some((fits) => fits(u, walk))
+      const members = ast.types.map(memberOf)
+      return (u, walk) => answerOfUnion(ast, members.map((member) => member(u, walk)))
     }
     case "Arrays": {
       const elements = ast.elements.map((type) => ({ fits: fitsOf(type), optional: SchemaAST.isOptional(type) }))
       const rest = ast.rest.map(fitsOf)
       const tail = Math.max(0, rest.length - 1)
       return (u, walk) => {
-        if (!Array.isArray(u)) return false
+        if (!Array.isArray(u)) return no
         const length = u.length
-        if (rest.length === 0 && length > elements.length) return false
+        if (rest.length === 0 && length > elements.length) return no
         // As the Schema's parser places them: the elements after the rest element are counted from the end.
         const threshold = Math.max(elements.length, length - tail)
         const end = rest.length === 0 ? elements.length : Math.max(length, elements.length + tail)
+        let answer: Answer = yes
         for (let i = 0; i < end; i++) {
           const fits = i < elements.length ? elements[i].fits : i >= threshold ? rest[i - threshold + 1] : rest[0]
           if (i >= length) {
             if (i < elements.length && elements[i].optional) continue
-            return false
+            return no
           }
           const descriptor = propertyOf(u, i)
           const data = dataOf(descriptor)
-          if (descriptor !== undefined && data === undefined) continue
-          if (!fits(data?.value, walk)) return false
+          const fit = descriptor !== undefined && data === undefined ? unsure : fits(data?.value, walk)
+          if (fit === no) return no
+          if (fit === unsure) answer = unsure
         }
-        return true
+        return answer
       }
     }
     case "Objects": {
       // A struct with no properties is the Schema's `{}`: anything but `null` and `undefined`.
-      if (ast.propertySignatures.length === 0 && ast.indexSignatures.length === 0) return (u) => u != null
-      const isLeaf = (type: SchemaAST.AST): boolean =>
-        type._tag !== "Objects" && type._tag !== "Arrays" && type._tag !== "Union" && type._tag !== "Suspend"
-      // A tag is asked about first, so a member with another tag is ruled out before anything it holds is walked.
+      if (ast.propertySignatures.length === 0 && ast.indexSignatures.length === 0) return (u) => u != null ? yes : no
+      // What costs least to ask comes first, and a class last: a value that some other property rules out is
+      // never asked whether it is an instance.
       const properties = ast.propertySignatures
         .map((property) => ({
           name: property.name,
           fits: fitsOf(property.type),
           optional: SchemaAST.isOptional(property.type),
-          leaf: isLeaf(property.type)
+          cost: costOf(property.type)
         }))
-        .sort((a, b) => Number(b.leaf) - Number(a.leaf))
-      const indexes = ast.indexSignatures.map((index) => ({
-        parameter: SchemaAST.toType(index.parameter),
-        fits: fitsOf(index.type)
-      }))
+        .sort((a, b) => a.cost - b.cost)
+      const indexes = ast.indexSignatures.map((index) => {
+        const parameter = SchemaAST.toType(index.parameter)
+        // A key's check may leave the key out of the record, and then what the key holds is no part of it.
+        const mismatch: Answer = hasCheck(parameter) ? unsure : no
+        return { parameter, fits: fitsOf(index.type), mismatch }
+      })
       return (u, walk) => {
-        if (typeof u !== "object" || u === null || Array.isArray(u)) return false
+        if (typeof u !== "object" || u === null || Array.isArray(u)) return no
+        let answer: Answer = yes
         for (const { fits, name, optional } of properties) {
           const descriptor = propertyOf(u, name)
           if (descriptor === undefined) {
             if (optional) continue
-            return false
+            return no
           }
           const data = dataOf(descriptor)
-          if (data !== undefined && !fits(data.value, walk)) return false
+          const fit = data === undefined ? unsure : fits(data.value, walk)
+          if (fit === no) return no
+          if (fit === unsure) answer = unsure
         }
-        for (const { fits, parameter } of indexes) {
+        for (const { fits, mismatch, parameter } of indexes) {
           for (const key of SchemaAST.getIndexSignatureKeys(u as Record<PropertyKey, unknown>, parameter, typeOnly)) {
             const data = dataOf(Object.getOwnPropertyDescriptor(u, key))
-            if (data !== undefined && !fits(data.value, walk)) return false
+            let fit = data === undefined ? unsure : fits(data.value, walk)
+            if (fit === no) fit = mismatch
+            if (fit === no) return no
+            if (fit === unsure) answer = unsure
           }
         }
-        return true
+        return answer
       }
     }
     default: {
@@ -258,10 +340,10 @@ const fitsOf: (ast: SchemaAST.AST) => Fits = memoize((ast: SchemaAST.AST): Fits 
           typeOnly
         )
       )
-      return (u) => Exit.isSuccess(decode()(u))
+      return (u) => Exit.isSuccess(decode()(u)) ? yes : no
     }
   }
-})
+}
 
 /** In a plan, the property is to be removed. */
 const dropped: unique symbol = Symbol()
@@ -348,13 +430,13 @@ const plannerOf: (ast: SchemaAST.AST) => Planner | null = memoize((ast: SchemaAS
     case "Union": {
       const members = ast.types.flatMap((type) => {
         const planner = plannerOf(type)
-        return planner === null ? [] : [{ planner, fits: fitsOf(type) }]
+        return planner === null ? [] : [{ planner, fits: memberOf(type) }]
       })
       if (members.length === 0) return null
       return (u, walk) => {
         let plan: Plan | undefined
         for (const { fits, planner } of members) {
-          if (!fits(u, new Map())) continue
+          if (fits(u, new Map()) === no) continue
           const planned = planner(u, walk)
           if (planned !== undefined) { for (const [key, change] of planned) plan = planFor(plan, key, change) }
         }
@@ -383,7 +465,7 @@ const plannerOf: (ast: SchemaAST.AST) => Planner | null = memoize((ast: SchemaAS
       const properties = ast.propertySignatures.flatMap((property) => {
         const type = property.type
         const planner = plannerOf(type)
-        const drops = SchemaAST.isOptional(type) ? lazy(() => allowsUndefined(type)) : undefined
+        const drops = SchemaAST.isOptional(type) ? lazy(() => allowsUndefined(type) === yes) : undefined
         return planner === null && drops === undefined ? [] : [{ name: property.name, planner, drops }]
       })
       const indexes = ast.indexSignatures.flatMap((index) => {
