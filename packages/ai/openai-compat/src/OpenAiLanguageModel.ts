@@ -545,6 +545,10 @@ declare module "effect/ai/Response" {
        * The service tier reported by the OpenAI-compatible provider.
        */
       readonly serviceTier?: "default" | "auto" | "flex" | "scale" | "priority" | null
+      /**
+       * The refusal explanation returned instead of content.
+       */
+      readonly refusal?: string | null
     } | null
   }
 }
@@ -1054,10 +1058,9 @@ const makeResponse = Effect.fnUntraced(
       }
     }
 
-    const finishReason = InternalUtilities.resolveFinishReason(
-      choice?.finish_reason,
-      hasToolCalls
-    )
+    const refusal = message?.refusal
+    const hasRefusal = Predicate.isNotNullish(refusal) && refusal.length > 0
+    const finishReason = InternalUtilities.resolveFinishReason(choice?.finish_reason, hasToolCalls, hasRefusal)
     const serviceTier = normalizeServiceTier(rawResponse.service_tier ?? undefined)
 
     parts.push({
@@ -1065,7 +1068,14 @@ const makeResponse = Effect.fnUntraced(
       reason: finishReason,
       usage: getUsage(rawResponse.usage),
       response: buildHttpResponseDetails(response),
-      ...(serviceTier !== undefined && { metadata: { "openai-compat": { serviceTier } } })
+      ...((serviceTier !== undefined || hasRefusal) && {
+        metadata: {
+          "openai-compat": {
+            ...(serviceTier !== undefined && { serviceTier }),
+            ...(hasRefusal && { refusal })
+          }
+        }
+      })
     })
 
     return parts
@@ -1092,6 +1102,7 @@ const makeStreamResponse = Effect.fnUntraced(
     let serviceTier: string | undefined = undefined
     let usage: CreateResponse200["usage"] = undefined
     let finishReason: string | null | undefined = undefined
+    let refusal = ""
     let metadataEmitted = false
     let textStarted = false
     let textId = ""
@@ -1153,13 +1164,21 @@ const makeStreamResponse = Effect.fnUntraced(
           }
 
           const normalizedServiceTier = normalizeServiceTier(serviceTier)
+          const hasRefusal = refusal.length > 0
           parts.push({
             type: "finish",
-            reason: InternalUtilities.resolveFinishReason(finishReason, hasToolCalls),
+            reason: InternalUtilities.resolveFinishReason(finishReason, hasToolCalls, hasRefusal),
             usage: getUsage(usage),
             response: buildHttpResponseDetails(response),
-            ...(normalizedServiceTier !== undefined
-              ? { metadata: { "openai-compat": { serviceTier: normalizedServiceTier } } }
+            ...(normalizedServiceTier !== undefined || hasRefusal
+              ? {
+                metadata: {
+                  "openai-compat": {
+                    ...(normalizedServiceTier !== undefined ? { serviceTier: normalizedServiceTier } : undefined),
+                    ...(hasRefusal ? { refusal } : undefined)
+                  }
+                }
+              }
               : undefined)
           })
           return parts
@@ -1230,6 +1249,10 @@ const makeStreamResponse = Effect.fnUntraced(
             })
           }
           parts.push({ type: "text-delta", id: textId, delta: choice.delta.content })
+        }
+
+        if (Predicate.isNotNullish(choice.delta?.refusal)) {
+          refusal += choice.delta.refusal
         }
 
         if (Predicate.isNotNullish(choice.delta?.tool_calls)) {

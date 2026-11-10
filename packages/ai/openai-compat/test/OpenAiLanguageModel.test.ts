@@ -1256,6 +1256,43 @@ describe("OpenAiLanguageModel", () => {
         assert.strictEqual(textResult.text, "Hello")
       }))
 
+    it.effect("reports a refusal through the finish part", () =>
+      Effect.gen(function*() {
+        const layer = OpenAiClient.layer({ apiKey: Redacted.make("sk-test-key") }).pipe(
+          Layer.provide(Layer.succeed(
+            HttpClient.HttpClient,
+            makeHttpClient((request) =>
+              Effect.succeed(jsonResponse(
+                request,
+                makeChatCompletion({
+                  choices: [{
+                    index: 0,
+                    finish_reason: "stop",
+                    message: { role: "assistant", content: null, refusal: "I'm sorry, I can't help with that." }
+                  }]
+                })
+              ))
+            )
+          ))
+        )
+
+        const result = yield* LanguageModel.generateText({ prompt: "test" }).pipe(
+          Effect.provide(OpenAiLanguageModel.model("gpt-4o-mini")),
+          Effect.provide(layer)
+        )
+
+        const finish = result.content.find((part) => part.type === "finish")
+        assert.deepStrictEqual({
+          text: result.text,
+          finishReason: result.finishReason,
+          refusal: finish?.metadata["openai-compat"]?.refusal
+        }, {
+          text: "",
+          finishReason: "content-filter",
+          refusal: "I'm sorry, I can't help with that."
+        })
+      }))
+
     it.effect("surfaces reasoning from non-streaming responses", () =>
       Effect.gen(function*() {
         const layer = OpenAiClient.layer({ apiKey: Redacted.make("sk-test-key") }).pipe(
@@ -1721,6 +1758,49 @@ describe("OpenAiLanguageModel", () => {
         if (finish?.type === "finish") {
           assert.strictEqual(finish.reason, "stop")
         }
+      }))
+
+    it.effect("streams a refusal through the finish part", () =>
+      Effect.gen(function*() {
+        const chunk = (delta: Record<string, unknown>, finish_reason: string | null = null) => ({
+          id: "chatcmpl_refusal",
+          object: "chat.completion.chunk",
+          model: "gpt-4o-mini",
+          created: 1,
+          service_tier: "default",
+          choices: [{ index: 0, delta, finish_reason }]
+        })
+        const layer = OpenAiClient.layer({ apiKey: Redacted.make("sk-test-key") }).pipe(
+          Layer.provide(Layer.succeed(
+            HttpClient.HttpClient,
+            makeHttpClient((request) =>
+              Effect.succeed(sseResponse(request, [
+                chunk({ role: "assistant", content: null, refusal: "" }),
+                chunk({ refusal: "I'm sorry," }),
+                chunk({ refusal: " I can't help with that." }),
+                chunk({}, "stop"),
+                "[DONE]"
+              ]))
+            )
+          ))
+        )
+
+        const parts = yield* LanguageModel.streamText({ prompt: "test" }).pipe(
+          Stream.runCollect,
+          Effect.provide(OpenAiLanguageModel.model("gpt-4o-mini")),
+          Effect.provide(layer)
+        )
+
+        const finish = parts.find((part) => part.type === "finish")
+        assert.deepStrictEqual({
+          textParts: parts.filter((part) => part.type.startsWith("text-")).length,
+          reason: finish?.reason,
+          metadata: finish?.metadata["openai-compat"]
+        }, {
+          textParts: 0,
+          reason: "content-filter",
+          metadata: { serviceTier: "default", refusal: "I'm sorry, I can't help with that." }
+        })
       }))
 
     it.effect("streams undeclared tool calls when tool call validation is deferred", () =>
