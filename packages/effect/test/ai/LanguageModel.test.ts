@@ -1540,6 +1540,43 @@ describe("LanguageModel", () => {
         }
       }))
 
+    it.effect("returns none when empty output is allowed", () =>
+      Effect.gen(function*() {
+        const response = yield* LanguageModel.generateObject({
+          prompt: "hi",
+          schema: Schema.Struct({ count: Schema.Number }),
+          allowEmpty: true
+        }).pipe(TestUtils.withLanguageModel({ generateText: [] }))
+
+        assertTrue(Option.isNone(response.value))
+      }))
+
+    it.effect("fails when empty output is not allowed", () =>
+      Effect.gen(function*() {
+        const error = yield* LanguageModel.generateObject({
+          prompt: "hi",
+          schema: Schema.Struct({ count: Schema.Number })
+        }).pipe(
+          TestUtils.withLanguageModel({ generateText: [] }),
+          Effect.flip
+        )
+
+        strictEqual(error.reason._tag, "StructuredOutputError")
+      }))
+
+    it.effect("wraps generated values in some when empty output is allowed", () =>
+      Effect.gen(function*() {
+        const response = yield* LanguageModel.generateObject({
+          prompt: "hi",
+          schema: Schema.Struct({ count: Schema.Number }),
+          allowEmpty: true
+        }).pipe(
+          TestUtils.withLanguageModel({ generateText: [{ type: "text", text: "{\"count\":1}" }] })
+        )
+
+        deepStrictEqual(response.value, Option.some({ count: 1 }))
+      }))
+
     it("resolves the canonical top-level $ref for class schemas in defaultCodecTransformer", () => {
       class Person extends Schema.Class<Person>("Person")({
         name: Schema.String

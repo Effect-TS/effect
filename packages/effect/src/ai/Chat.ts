@@ -430,7 +430,8 @@ export interface Chat {
     LanguageModel.GenerateObjectResponse<
       LanguageModel.ExtractTools<Options>,
       ObjectSchema["Type"],
-      LanguageModel.ExtractToolParametersMode<Options>
+      LanguageModel.ExtractToolParametersMode<Options>,
+      Options
     >,
     LanguageModel.ExtractError<Options>,
     LanguageModel.ExtractServices<Options> | ObjectSchema["DecodingServices"] | LanguageModel.LanguageModel
