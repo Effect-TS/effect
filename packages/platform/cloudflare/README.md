@@ -2,6 +2,8 @@
 
 Runs Effect Cluster on [Cloudflare Durable Objects](https://developers.cloudflare.com/durable-objects/). Every entity instance is one Durable Object, the Worker is the edge, and each object's SQLite storage is the system of record.
 
+This package is experimental. Its APIs may change in patch releases.
+
 ## Installation
 
 ```sh

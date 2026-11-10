@@ -28,7 +28,7 @@
  * deduplication. A `deduplicate: "untilExecuted"` offer replaces such a row
  * with a new element, which keeps only the latest failure.
  *
- * @stability unstable
+ * @stability experimental
  * @since 4.1.3
  */
 import * as Cause from "effect/Cause"
@@ -44,7 +44,7 @@ import type { QueueItem } from "./internal/queueStorage.ts"
 /**
  * The queue Durable Object namespace binding the store is built from.
  *
- * @stability unstable
+ * @stability experimental
  * @category layers
  * @since 4.1.3
  */
@@ -88,7 +88,7 @@ const finalize = (run: () => Promise<void>): Effect.Effect<void> => Effect.orDie
  * Creates the `PersistedQueueStore` backed by the queue Durable Object
  * namespace binding.
  *
- * @stability unstable
+ * @stability experimental
  * @category constructors
  * @since 4.1.3
  */
@@ -179,7 +179,7 @@ export const make = (options: LayerOptions): PersistedQueue.PersistedQueueStore[
  * `CloudflareCluster.layer` already includes this layer; use it directly only
  * when persisted queues are needed without the rest of the cluster.
  *
- * @stability unstable
+ * @stability experimental
  * @category layers
  * @since 4.1.3
  */

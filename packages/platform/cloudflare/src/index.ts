@@ -8,31 +8,31 @@
 // @barrel(Cloudflare*.ts): Auto-generated exports. Do not edit manually.
 
 /**
- * @stability unstable
+ * @stability experimental
  * @since 4.1.3
  */
 export * as CloudflareCluster from "./CloudflareCluster.ts"
 
 /**
- * @stability unstable
+ * @stability experimental
  * @since 4.1.3
  */
 export * as CloudflareDurableObjectPrograms from "./CloudflareDurableObjectPrograms.ts"
 
 /**
- * @stability unstable
+ * @stability experimental
  * @since 4.1.3
  */
 export * as CloudflareDurableObjects from "./CloudflareDurableObjects.ts"
 
 /**
- * @stability unstable
+ * @stability experimental
  * @since 4.1.3
  */
 export * as CloudflarePersistedQueue from "./CloudflarePersistedQueue.ts"
 
 /**
- * @stability unstable
+ * @stability experimental
  * @since 4.1.3
  */
 export * as CloudflareWorkflowEngine from "./CloudflareWorkflowEngine.ts"

@@ -7,7 +7,7 @@
  * namespace bindings only; none of these classes serve a public route, and any
  * direct `fetch` of an object is rejected.
  *
- * @stability unstable
+ * @stability experimental
  * @since 4.1.3
  */
 import { DurableObject } from "cloudflare:workers"
@@ -48,7 +48,7 @@ const notExposed = (className: string) => () => {
  * complete within 15 seconds: a build still pending after that is treated as
  * abandoned, and a waiting object runs the initializer again.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
  * @since 4.1.3
  */
@@ -96,7 +96,7 @@ let initialization: InitializationAttempt | undefined
  * the 30 second `blockConcurrencyWhile` limit. The returned function joins the
  * same readiness state from Worker handlers.
  *
- * @stability unstable
+ * @stability experimental
  * @category initialization
  * @since 4.1.3
  */
@@ -187,7 +187,7 @@ const blockOnInitialization = (
  * per wake. Each build gets a `DurableObjectSqlClient` on this object's SQLite
  * storage; tables whose names start with `cluster_` are reserved for the mailbox.
  *
- * @stability unstable
+ * @stability experimental
  * @category durable objects
  * @since 4.1.3
  */
@@ -252,7 +252,7 @@ export class ClusterEntity extends DurableObject<unknown> {
  * before handlers are looked up in the module-level registry and built once
  * per wake.
  *
- * @stability unstable
+ * @stability experimental
  * @category durable objects
  * @since 4.1.3
  */
@@ -321,7 +321,7 @@ export class ClusterWorkflow extends DurableObject<unknown> {
  * leases so an item whose worker died is redelivered. Requests and alarms wait
  * for the registered {@link setInitializer} callback first.
  *
- * @stability unstable
+ * @stability experimental
  * @category durable objects
  * @since 4.1.3
  */
@@ -402,7 +402,7 @@ export class ClusterDurableQueue extends DurableObject<unknown> {
  * and alarms wait for the registered {@link setInitializer} callback before
  * consulting the singleton registry.
  *
- * @stability unstable
+ * @stability experimental
  * @category durable objects
  * @since 4.1.3
  */

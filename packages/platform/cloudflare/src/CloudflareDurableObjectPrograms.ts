@@ -8,7 +8,7 @@
  * in `AlchemyCloudflareCluster`) runs these programs instead and forwards its
  * class methods to the returned handles.
  *
- * @stability unstable
+ * @stability experimental
  * @since 4.1.3
  */
 import type { DurableObjectStorage } from "@cloudflare/workers-types"
@@ -50,7 +50,7 @@ import { earliestClockWakeUp, ensureWorkflowStorage, loadExecution } from "./int
  * SQLite storage, resolves same-Worker class exports, and extends the current
  * event with `waitUntil`.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
  * @since 4.1.3
  */
@@ -72,7 +72,7 @@ const exportedNamespace = <Stub>(
 /**
  * Delivery options accepted by the cluster entity transport program.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
  * @since 4.1.3
  */
@@ -85,7 +85,7 @@ export interface EntityDeliveryOptions {
 /**
  * Result returned by the cluster entity transport program.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
  * @since 4.1.3
  */
@@ -110,7 +110,7 @@ export type EntityInvokeResult = {
  * typed failures as envelopes, but the native namespace transport expects
  * plain results and rejected defects.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
  * @since 4.1.3
  */
@@ -147,7 +147,7 @@ export type ClusterEntityProgram = {
  * exported from the Worker entry as `ClusterEntity`; keep-alive and reply
  * delivery resolve that export through `state.exports`.
  *
- * @stability unstable
+ * @stability experimental
  * @category constructors
  * @since 4.1.3
  */
@@ -219,7 +219,7 @@ export const makeClusterEntityProgram = Effect.fnUntraced(function*(state: Durab
 /**
  * Execution options accepted by the workflow program's `run`.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
  * @since 4.1.3
  */
@@ -234,7 +234,7 @@ export interface ClusterWorkflowRunOptions {
  * leaves an execution suspended by `Workflow.SuspendOnFailure` parked until
  * an explicit resume.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
  * @since 4.1.3
  */
@@ -243,7 +243,7 @@ export type ClusterWorkflowWakeMode = "explicit" | "automatic"
 /**
  * Effect-valued program for one workflow execution Durable Object.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
  * @since 4.1.3
  */
@@ -276,7 +276,7 @@ export type ClusterWorkflowProgram = {
  * exported from the Worker entry as `ClusterWorkflow`; child and parent
  * workflow delivery resolves that export through `state.exports`.
  *
- * @stability unstable
+ * @stability experimental
  * @category constructors
  * @since 4.1.3
  */
@@ -340,7 +340,7 @@ export const makeClusterWorkflowProgram = Effect.fnUntraced(function*(state: Dur
 /**
  * Item leased from the durable queue program.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
  * @since 4.1.3
  */
@@ -353,7 +353,7 @@ export interface DurableQueueItem {
 /**
  * Effect-valued program for one durable queue Durable Object.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
  * @since 4.1.3
  */
@@ -394,7 +394,7 @@ export type ClusterDurableQueueProgram = {
  * queue table and re-arms the single alarm from the earliest pending lease
  * expiry before returning the handler object.
  *
- * @stability unstable
+ * @stability experimental
  * @category constructors
  * @since 4.1.3
  */
@@ -430,7 +430,7 @@ export const makeClusterDurableQueueProgram = Effect.fnUntraced(function*(state:
 /**
  * Effect-valued program for one cluster singleton Durable Object.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
  * @since 4.1.3
  */
@@ -448,7 +448,7 @@ export type ClusterSingletonProgram = {
  * rejecting it, so a rejected `wake()` always means the call itself failed in
  * transit and is safe to retry. Retrying a failed run would rerun user code.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
  * @since 4.1.3
  */
@@ -474,7 +474,7 @@ const wakeSuccess: SingletonWakeResult = { _tag: "Success" }
  * the singleton state table and re-arms the watchdog alarm for a wake
  * interrupted by isolate loss before returning the handler object.
  *
- * @stability unstable
+ * @stability experimental
  * @category constructors
  * @since 4.1.3
  */

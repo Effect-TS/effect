@@ -8,7 +8,7 @@
  * message storage; `layer` provides the cluster `Sharding` service on top of
  * the Durable Object namespace bindings instead of `Sharding.layer`.
  *
- * @stability unstable
+ * @stability experimental
  * @since 4.1.3
  */
 import * as Cause from "effect/Cause"
@@ -56,7 +56,7 @@ import { boundedRetry, callDurableObject } from "./internal/transport.ts"
 /**
  * A Durable Object name decoded back into its entity address parts.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
  * @since 4.1.3
  */
@@ -76,7 +76,7 @@ export interface ClusterName {
  * characters an entity id may contain. Workflow, queue, and singleton names use
  * the same scheme on their own namespaces.
  *
- * @stability unstable
+ * @stability experimental
  * @category encoding
  * @since 4.1.3
  */
@@ -92,7 +92,7 @@ export const encodeName: (type: string, id: string) => string = Internal.encodeN
  * including non-canonical length prefixes. A Durable Object uses this to
  * recover its own address from `ctx.id.name`.
  *
- * @stability unstable
+ * @stability experimental
  * @category decoding
  * @since 4.1.3
  */
@@ -119,7 +119,7 @@ export const decodeName: (name: string) => ClusterName | undefined = Internal.de
  * never schedules its first run until a Cron Trigger wakes this singleton.
  * Each later run is scheduled through a destination alarm.
  *
- * @stability unstable
+ * @stability experimental
  * @category encoding
  * @since 4.1.3
  */
@@ -143,7 +143,7 @@ export const clusterCronSingletonName = (name: string): string => `ClusterCron/$
  * interrupted request after a restart or deploy. It bounds recovery latency;
  * it is not a liveness check.
  *
- * @stability unstable
+ * @stability experimental
  * @category layers
  * @since 4.1.3
  */
@@ -612,7 +612,7 @@ const make = Effect.fnUntraced(function*(options: LayerOptions) {
  * wake; workflow handlers registered with `Workflow.toLayer` follow the same
  * pattern on the workflow class.
  *
- * @stability unstable
+ * @stability experimental
  * @category layers
  * @since 4.1.3
  */
@@ -676,7 +676,7 @@ export const layer = (
  * }))
  * ```
  *
- * @stability unstable
+ * @stability experimental
  * @category services
  * @since 4.1.3
  */
@@ -686,7 +686,7 @@ export class DurableObjectSqlClient extends Context.Service<DurableObjectSqlClie
   /**
    * Gets the current entity's SQL client, or dies if no client is provided.
    *
-   * @stability unstable
+   * @stability experimental
    * @since 4.1.3
    */
   static readonly orDie: Effect.Effect<SqlClient.SqlClient> = Effect.flatMap(

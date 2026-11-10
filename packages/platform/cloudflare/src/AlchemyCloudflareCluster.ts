@@ -43,7 +43,7 @@
  * }).pipe(Effect.provide(Cloudflare.Workers.CronEventSourceLive)))
  * ```
  *
- * @stability unstable
+ * @stability experimental
  * @since 4.1.3
  */
 import * as Cloudflare from "@alchemy.run/cloudflare"
@@ -74,7 +74,7 @@ declare global {
  * The services `make` builds on top of the user layer: the cluster `Sharding`
  * service, the workflow engine, and the persisted queue factory.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
  * @since 4.1.3
  */
@@ -90,7 +90,7 @@ export type {
    * Reading them during plan evaluation throws a diagnostic; `provide` and
    * `wake` remain inert during planning.
    *
-   * @stability unstable
+   * @stability experimental
    * @category models
    * @since 4.1.3
    */
@@ -100,7 +100,7 @@ export type {
 /**
  * The entity definitions and handler layer the cluster is built from.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
  * @since 4.1.3
  */
@@ -187,7 +187,7 @@ const makeUnsafe = Effect.fnUntraced(function*(options: MakeOptions<any, any, an
  * A `ClusterCron` fires only after a Cron Trigger wakes its seed singleton.
  * Pass `CloudflareCluster.clusterCronSingletonName(name)` to `wake` for it.
  *
- * @stability unstable
+ * @stability experimental
  * @category constructors
  * @since 4.1.3
  */

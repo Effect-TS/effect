@@ -4,7 +4,7 @@
  *
  * Deploy with `alchemy deploy` from this directory (see `alchemy.run.ts`).
  *
- * @stability unstable
+ * @stability experimental
  */
 import * as Cloudflare from "@alchemy.run/cloudflare"
 import * as AlchemyCloudflareCluster from "@effect/platform-cloudflare/AlchemyCloudflareCluster"
@@ -37,7 +37,7 @@ const MaintenanceLayer = Singleton.make(
 )
 
 /**
- * @stability unstable
+ * @stability experimental
  */
 export default Cloudflare.Worker(
   "EffectCluster",
