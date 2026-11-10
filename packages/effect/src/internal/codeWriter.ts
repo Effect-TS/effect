@@ -85,10 +85,6 @@ export interface ImportEntry {
   /** The imported name; for a default import, the requested local name. */
   readonly name: string
   readonly local: string
-  /** Printed even when no printed fragment uses it (for plain-text source). */
-  always: boolean
-  /** Whether a plain-text use needs the value (fragments decide for themselves). */
-  alwaysRuntime: boolean
 }
 
 /** @internal */
@@ -181,44 +177,18 @@ export const make = (options?: { readonly reserved?: Iterable<string> | undefine
   return writer
 }
 
-/**
- * Finds or adds an import. `exact` keeps the requested local name (code that hard-codes it needs exactly that name)
- * and prints the import even without fragment uses.
- *
- * @internal
- */
+/** Finds or adds an import. @internal */
 export const importEntry = (
   writer: CodeWriterImpl,
   from: string,
   style: ImportEntry["style"],
-  name: string,
-  options?: { readonly exact?: boolean | undefined; readonly runtime?: boolean | undefined }
+  name: string
 ): ImportEntry => {
   const existing = writer.imports.find((i) =>
     i.from === from && i.style === style && (style === "default" || i.name === name)
   )
-  if (existing !== undefined) {
-    if (options?.exact === true) {
-      existing.always = true
-      existing.alwaysRuntime ||= options.runtime === true
-    }
-    return existing
-  }
-  let local: string
-  if (options?.exact === true) {
-    local = name
-    writer.taken.set(name, `import "${from}"`)
-  } else {
-    local = take(writer, name, `import "${from}"`, false)
-  }
-  const entry: ImportEntry = {
-    from,
-    style,
-    name,
-    local,
-    always: options?.exact === true,
-    alwaysRuntime: options?.exact === true && options.runtime === true
-  }
+  if (existing !== undefined) return existing
+  const entry: ImportEntry = { from, style, name, local: take(writer, name, `import "${from}"`, false) }
   writer.imports.push(entry)
   return entry
 }
@@ -424,8 +394,7 @@ export const print = (writer: CodeWriterImpl): string => {
   symbolUses(writer.body, uses)
   const imports = writer.imports.flatMap((entry) => {
     const use = uses.get(entry)
-    if (!entry.always && use === undefined) return []
-    return [{ entry, runtime: entry.alwaysRuntime || use === true }]
+    return use === undefined ? [] : [{ entry, runtime: use }]
   })
   const head = [...writer.sideEffects.map((from) => `import "${from}"`), printImports(imports)]
     .filter((s) => s !== "")
