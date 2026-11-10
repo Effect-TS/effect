@@ -240,8 +240,9 @@ const handledSymbol = Symbol.for("effect/http/HttpEffect/handled")
  *
  * Only the close that runs when the request finishes is disabled. A body
  * transferred with `scopeTransferToStream` still closes the scope when it
- * exits. If `handleResponse` does not transfer the body, the scope stays open
- * until the host closes it with `Scope.close` and its chosen exit.
+ * exits. If the body is not transferred anywhere, whether in the handler,
+ * middleware or `handleResponse`, the scope stays open until the host closes
+ * it with `Scope.close` and its chosen exit.
  *
  * **Gotchas**
  *
