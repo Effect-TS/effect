@@ -1548,26 +1548,29 @@ describe("LanguageModel", () => {
         })
       ))
 
-    it.effect("includes full generated text in StructuredOutputError", () =>
-      Effect.gen(function*() {
-        const error = yield* LanguageModel.generateObject({
-          prompt: [],
-          schema: Schema.Struct({ count: Schema.Number })
-        }).pipe(
-          TestUtils.withLanguageModel({
-            generateText: [{
-              type: "text",
-              text: "{\"count\":\"oops\"}"
-            }]
-          }),
-          Effect.flip
-        )
+    for (const allowEmpty of [false, true]) {
+      it.effect(`includes full generated text in StructuredOutputError with allowEmpty=${allowEmpty}`, () =>
+        Effect.gen(function*() {
+          const error = yield* LanguageModel.generateObject({
+            prompt: [],
+            allowEmpty,
+            schema: Schema.Struct({ count: Schema.Number })
+          }).pipe(
+            TestUtils.withLanguageModel({
+              generateText: [{
+                type: "text",
+                text: "{\"count\":\"oops\"}"
+              }]
+            }),
+            Effect.flip
+          )
 
-        strictEqual(error.reason._tag, "StructuredOutputError")
-        if (error.reason._tag === "StructuredOutputError") {
-          strictEqual(error.reason.responseText, "{\"count\":\"oops\"}")
-        }
-      }))
+          strictEqual(error.reason._tag, "StructuredOutputError")
+          if (error.reason._tag === "StructuredOutputError") {
+            strictEqual(error.reason.responseText, "{\"count\":\"oops\"}")
+          }
+        }))
+    }
 
     it.effect("returns none when empty output is allowed", () =>
       Effect.gen(function*() {

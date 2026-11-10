@@ -1,5 +1,6 @@
 ---
 "effect": patch
+"@effect/ai-anthropic": patch
 ---
 
-Add `allowEmpty` to `LanguageModel.generateObject` and `Chat.generateObject` so callers can receive an `Option` value which `None` represent a response with no text content.
+Add `allowEmpty` to `LanguageModel.generateObject` and `Chat.generateObject` for optional structured values, and preserve Anthropic tool-call finish reasons with native structured output.

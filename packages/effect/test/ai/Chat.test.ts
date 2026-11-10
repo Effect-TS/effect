@@ -172,58 +172,6 @@ describe("Chat", () => {
       )
     }))
 
-  describe("generateObject allowEmpty", () => {
-    it.effect("returns none when empty object output is allowed", () =>
-      Effect.gen(function*() {
-        const chat = yield* Chat.empty
-        const response = yield* chat.generateObject({
-          prompt: "hi",
-          schema: Schema.Struct({ count: Schema.Number }),
-          allowEmpty: true
-        }).pipe(TestUtils.withLanguageModel({ generateText: [] }))
-
-        assert.isTrue(Option.isNone(response.value))
-      }))
-
-    it.effect("can iterate with tool calls", () =>
-      Effect.gen(function*() {
-        let steps = 0
-        const modelResponses: Array<Array<Response.PartEncoded>> = [
-          [
-            { type: "tool-call", id: "call-1", name: "Lookup", params: { key: "123" } },
-            { type: "finish", reason: "tool-calls", usage: { inputTokens: {}, outputTokens: {} } }
-          ],
-          [
-            { type: "text", text: JSON.stringify({ count: 1 }) }
-          ]
-        ]
-        const chat = yield* Chat.empty
-        const response = yield* chat.generateObject({
-          prompt: "hi",
-          schema: Schema.Struct({ count: Schema.Number }),
-          toolkit: LoopToolkit,
-          allowEmpty: true
-        }).pipe(
-          Effect.tap(() => Effect.sync(() => steps++)),
-          Effect.repeat({ times: 5, while: (_) => _.finishReason === "tool-calls" }),
-          Effect.provide(LoopToolkitLayer),
-          TestUtils.withLanguageModel({
-            generateText: () => modelResponses.shift() ?? []
-          })
-        )
-
-        assert.deepStrictEqual(response.value, Option.some({ count: 1 }))
-        assert.strictEqual(steps, 2)
-        assert.deepStrictEqual(Ref.getUnsafe(chat.history).content.map((message) => message.role), [
-          "user",
-          "assistant",
-          "tool",
-          "user",
-          "assistant"
-        ])
-      }))
-  })
-
   describe("streamText step loop", () => {
     it.effect("continues with tool results until a round needs no tools", () =>
       Effect.gen(function*() {

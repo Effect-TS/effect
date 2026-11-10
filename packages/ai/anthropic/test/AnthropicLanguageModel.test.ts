@@ -2196,6 +2196,7 @@ describe("AnthropicLanguageModel", () => {
         )
 
         assert.deepStrictEqual(response.value, { title: "Rain" })
+        assert.strictEqual(response.finishReason, "stop")
       }))
 
     it.effect("decodes native JSON alongside an ordinary tool call", () =>
@@ -2229,6 +2230,7 @@ describe("AnthropicLanguageModel", () => {
 
         assert.deepStrictEqual(response.value, { title: "Rain" })
         assert.strictEqual(response.toolCalls[0]?.name, "Weather")
+        assert.strictEqual(response.finishReason, "tool-calls")
       }))
   })
 

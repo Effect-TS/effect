@@ -429,9 +429,8 @@ export interface Chat {
   ) => Effect.Effect<
     LanguageModel.GenerateObjectResponse<
       LanguageModel.ExtractTools<Options>,
-      ObjectSchema["Type"],
-      LanguageModel.ExtractToolParametersMode<Options>,
-      Options
+      LanguageModel.ExtractObjectValue<Options, ObjectSchema["Type"]>,
+      LanguageModel.ExtractToolParametersMode<Options>
     >,
     LanguageModel.ExtractError<Options>,
     LanguageModel.ExtractServices<Options> | ObjectSchema["DecodingServices"] | LanguageModel.LanguageModel

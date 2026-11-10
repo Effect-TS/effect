@@ -2045,7 +2045,7 @@ const makeResponse = Effect.fnUntraced(
     // Anthropic always returns a non-null `stop_reason` for non-streaming responses
     const finishReason = InternalUtilities.resolveFinishReason(
       rawResponse.stop_reason!,
-      options.responseFormat.type === "json"
+      hasStructuredOutputTool
     )
 
     const inputTokens = rawResponse.usage.input_tokens
