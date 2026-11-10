@@ -1176,6 +1176,7 @@ const ChatCompletionMessage = Schema.Struct({
   content: Schema.optionalKey(Schema.NullOr(Schema.String)),
   reasoning: Schema.optionalKey(Schema.NullOr(Schema.String)),
   reasoning_content: Schema.optionalKey(Schema.NullOr(Schema.String)),
+  refusal: Schema.optionalKey(Schema.NullOr(Schema.String)),
   tool_calls: Schema.optionalKey(Schema.NullOr(Schema.Array(ChatCompletionToolCall)))
 })
 
@@ -1185,6 +1186,7 @@ const ChatCompletionDelta = Schema.Struct({
   content: Schema.optionalKey(Schema.NullOr(Schema.String)),
   reasoning: Schema.optionalKey(Schema.NullOr(Schema.String)),
   reasoning_content: Schema.optionalKey(Schema.NullOr(Schema.String)),
+  refusal: Schema.optionalKey(Schema.NullOr(Schema.String)),
   // Some OpenAI-compatible providers send `tool_calls: null` when a streamed
   // chunk contains only text. Accepting null keeps the text-bearing chunk from
   // being classified as an unknown event.
