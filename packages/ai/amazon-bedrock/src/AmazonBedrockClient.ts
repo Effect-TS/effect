@@ -7,10 +7,12 @@
  *
  * **Mental model**
  *
- * `HttpClient.HttpClient` provides the transport. {@link make} turns
- * {@link Options} into an {@link AmazonBedrockClient} service, while
- * {@link layer} and {@link layerConfig} provide that service as a layer. The
- * service exposes helpers for the `converse` and `converse-stream` endpoints.
+ * `HttpClient.HttpClient` provides the transport, and the `Digest` and `Mac`
+ * services of `effect/crypto` provide the SHA-256 and HMAC that SigV4 signing
+ * runs on. {@link make} turns {@link Options} into an
+ * {@link AmazonBedrockClient} service, while {@link layer} and
+ * {@link layerConfig} provide that service as a layer. The service exposes
+ * helpers for the `converse` and `converse-stream` endpoints.
  *
  * @stability unstable
  * @since 4.0.0
@@ -19,6 +21,8 @@ import * as AiError from "effect/ai/AiError"
 import * as Array from "effect/Array"
 import * as Config from "effect/Config"
 import * as Context from "effect/Context"
+import * as Digest from "effect/crypto/Digest"
+import * as Mac from "effect/crypto/Mac"
 import * as Effect from "effect/Effect"
 import { identity } from "effect/Function"
 import * as Headers from "effect/http/Headers"
@@ -236,7 +240,11 @@ const makeResolveCredentials = (
     ))
 }
 
-const authenticateRequest = (region: string) =>
+const authenticateRequest = (signing: {
+  readonly region: string
+  readonly digest: Digest.Digest["Service"]
+  readonly mac: Mac.Mac["Service"]
+}) =>
   Effect.fnUntraced(function*(request: HttpClientRequest.HttpClientRequest) {
     const credentials = yield* CurrentRequestCredentials
     if (Predicate.isUndefined(credentials)) {
@@ -247,7 +255,7 @@ const authenticateRequest = (region: string) =>
         return HttpClientRequest.bearerToken(request, credentials.apiKey)
       }
       case "SigV4": {
-        return yield* SigV4.sign(request, { region, credentials: credentials.credentials })
+        return yield* SigV4.sign(request, { ...signing, credentials: credentials.credentials })
       }
     }
   })
@@ -259,6 +267,15 @@ const decodeStreamException = Schema.decodeUnknownEffect(ConverseStreamException
 /**
  * Creates an Amazon Bedrock client service with the given options.
  *
+ * **Details**
+ *
+ * The client signs with the `Digest` and `Mac` services in its context, so
+ * the caller chooses their implementation: the WebCrypto layers of
+ * `effect/crypto`, or the layers of a platform package such as
+ * `NodeCrypto.layer` from `@effect/platform-node`. They are required for
+ * every way of authenticating, although a client with an `apiKey` never
+ * calls them. A `CryptoError` from the `Mac` service is a defect.
+ *
  * @see {@link layer} for providing the client as a `Layer` from explicit options
  * @see {@link layerConfig} for providing the client as a `Layer` with `Config`-based settings
  *
@@ -267,10 +284,14 @@ const decodeStreamException = Schema.decodeUnknownEffect(ConverseStreamException
  * @since 4.0.0
  */
 export const make = Effect.fnUntraced(
-  function*(options: Options): Effect.fn.Return<Service, never, HttpClient.HttpClient> {
+  function*(
+    options: Options
+  ): Effect.fn.Return<Service, never, HttpClient.HttpClient | Digest.Digest | Mac.Mac> {
     const region = options.region ?? "us-east-1"
     const apiUrl = options.apiUrl ?? `https://bedrock-runtime.${region}.amazonaws.com`
     const baseClient = yield* HttpClient.HttpClient
+    const digest = yield* Digest.Digest
+    const mac = yield* Mac.Mac
     const resolveCredentials = makeResolveCredentials(options)
 
     // Resolves the credentials of one request before it executes, so that a
@@ -286,7 +307,7 @@ export const make = Effect.fnUntraced(
       HttpClient.mapRequest((request) =>
         request.pipe(HttpClientRequest.prependUrl(apiUrl), HttpClientRequest.acceptJson)
       ),
-      HttpClient.mapRequestEffect(authenticateRequest(region)),
+      HttpClient.mapRequestEffect(authenticateRequest({ region, digest, mac })),
       options.transformClient ?? identity
     )
 
@@ -398,6 +419,27 @@ export const make = Effect.fnUntraced(
 /**
  * Creates a layer for the Amazon Bedrock client with the given options.
  *
+ * **Example** (Providing the transport and the crypto services)
+ *
+ * ```ts
+ * import { AmazonBedrockClient } from "@effect/ai-amazon-bedrock"
+ * import { Layer, Redacted } from "effect"
+ * import { Digest, Mac, SecureRandom } from "effect/crypto"
+ * import { FetchHttpClient } from "effect/http"
+ *
+ * const BedrockClient = AmazonBedrockClient.layer({
+ *   region: "eu-west-1",
+ *   accessKeyId: "AKIAIOSFODNN7EXAMPLE",
+ *   secretAccessKey: Redacted.make("wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY")
+ * }).pipe(
+ *   Layer.provide([
+ *     FetchHttpClient.layer,
+ *     Digest.layerWebCrypto,
+ *     Mac.layerWebCrypto.pipe(Layer.provide(SecureRandom.layerWebCrypto))
+ *   ])
+ * )
+ * ```
+ *
  * @see {@link make} for constructing the client service effectfully
  * @see {@link layerConfig} for loading client settings from `Config`
  *
@@ -405,7 +447,9 @@ export const make = Effect.fnUntraced(
  * @category layers
  * @since 4.0.0
  */
-export const layer = (options: Options): Layer.Layer<AmazonBedrockClient, never, HttpClient.HttpClient> =>
+export const layer = (
+  options: Options
+): Layer.Layer<AmazonBedrockClient, never, HttpClient.HttpClient | Digest.Digest | Mac.Mac> =>
   Layer.effect(AmazonBedrockClient, make(options))
 
 /**
@@ -436,7 +480,7 @@ export const layerConfig = (options?: {
   readonly apiKey?: Config.Config<Redacted.Redacted<string> | undefined> | undefined
   readonly credentials?: Effect.Effect<Credentials, AiError.AiError> | undefined
   readonly transformClient?: ((client: HttpClient.HttpClient) => HttpClient.HttpClient) | undefined
-}): Layer.Layer<AmazonBedrockClient, Config.ConfigError, HttpClient.HttpClient> =>
+}): Layer.Layer<AmazonBedrockClient, Config.ConfigError, HttpClient.HttpClient | Digest.Digest | Mac.Mac> =>
   Layer.effect(
     AmazonBedrockClient,
     Effect.gen(function*() {

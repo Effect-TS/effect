@@ -3,6 +3,7 @@ import { assert, describe, it } from "@effect/vitest"
 import { assertDefined } from "@effect/vitest/utils"
 import { ConfigProvider, Effect, Layer, Redacted, Stream, Tracer } from "effect"
 import { AiError } from "effect/ai"
+import { Digest, Mac, SecureRandom } from "effect/crypto"
 import { HttpClient, type HttpClientError, type HttpClientRequest, HttpClientResponse, UrlParams } from "effect/http"
 import * as NodeCrypto from "node:crypto"
 import { concat, encodeFrame, encodeRawFrame, eventFrame, exceptionFrame, textReplyFrames } from "./utils.ts"
@@ -84,6 +85,57 @@ describe("AmazonBedrockClient", () => {
         assert.strictEqual(signature.actual, signature.expected)
       }))
 
+    it.effect("signs with the Digest and Mac services the caller provides", () =>
+      Effect.gen(function*() {
+        const http = makeHttpClient((request) => Effect.succeed(jsonResponse(request, 200, converseBody)))
+        const calls = { digest: 0, hmac: 0 }
+        const nodeCrypto = Layer.merge(
+          Layer.mock(Digest.Digest, {
+            digestHex: (_, data) =>
+              Effect.sync(() => {
+                calls.digest += 1
+                return sha256Hex(data)
+              })
+          }),
+          Mac.layerWebCryptoWith({
+            hmac: (_, key, data) => {
+              calls.hmac += 1
+              return NodeCrypto.createHmac("sha256", key).update(data).digest()
+            }
+          }).pipe(Layer.provide(SecureRandom.layerWebCrypto))
+        )
+
+        yield* converse.pipe(
+          Effect.provide(staticKeys),
+          Effect.provide(nodeCrypto),
+          Effect.provide(http.transport)
+        )
+
+        const request = http.requests[0]
+        assertDefined(request)
+        const signature = verifySigV4(request, secretAccessKey)
+        assert.strictEqual(signature.actual, signature.expected)
+        assert.isAbove(calls.digest, 0)
+        assert.isAbove(calls.hmac, 0)
+      }))
+
+    it.effect("authenticates with an API key without calling Digest or Mac", () =>
+      Effect.gen(function*() {
+        const http = makeHttpClient((request) => Effect.succeed(jsonResponse(request, 200, converseBody)))
+        // Every method of a mocked service dies when it is called.
+        const unusedCrypto = Layer.merge(Layer.mock(Digest.Digest, {}), Layer.mock(Mac.Mac, {}))
+
+        yield* converse.pipe(
+          Effect.provide(AmazonBedrockClient.layer({ apiKey: Redacted.make("bedrock-api-key") })),
+          Effect.provide(unusedCrypto),
+          Effect.provide(http.transport)
+        )
+
+        const request = http.requests[0]
+        assertDefined(request)
+        assert.strictEqual(request.headers["authorization"], "Bearer bedrock-api-key")
+      }))
+
     it.effect("sends a Bedrock API key as a bearer token and honours apiUrl", () =>
       Effect.gen(function*() {
         const http = makeHttpClient((request) => Effect.succeed(jsonResponse(request, 200, converseBody)))
@@ -154,7 +206,7 @@ describe("AmazonBedrockClient", () => {
           accessKeyId,
           secretAccessKey: Redacted.make(secretAccessKey),
           sessionToken: Redacted.make("session-token")
-        }).pipe(Layer.provide(Layer.succeed(HttpClient.HttpClient, client)))
+        }).pipe(Layer.provide([Layer.succeed(HttpClient.HttpClient, client), webCrypto]))
 
         yield* Effect.flatMap(
           AmazonBedrockClient.AmazonBedrockClient,
@@ -546,6 +598,12 @@ describe("AmazonBedrockClient", () => {
   })
 })
 
+// The client signs with the `Digest` and `Mac` its caller provides.
+const webCrypto = Layer.merge(
+  Digest.layerWebCrypto,
+  Mac.layerWebCrypto.pipe(Layer.provide(SecureRandom.layerWebCrypto))
+)
+
 const makeHttpClient = (
   handler: (
     request: HttpClientRequest.HttpClientRequest
@@ -560,7 +618,8 @@ const makeHttpClient = (
     }),
     Effect.succeed as HttpClient.HttpClient.Preprocess<HttpClientError.HttpClientError, never>
   )
-  return { requests, layer: Layer.succeed(HttpClient.HttpClient, client) }
+  const transport = Layer.succeed(HttpClient.HttpClient, client)
+  return { requests, transport, layer: Layer.merge(transport, webCrypto) }
 }
 
 const jsonResponse = (

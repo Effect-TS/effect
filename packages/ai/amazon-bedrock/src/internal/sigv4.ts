@@ -1,13 +1,11 @@
 import * as Clock from "effect/Clock"
 import * as Digest from "effect/crypto/Digest"
 import * as Mac from "effect/crypto/Mac"
-import * as SecureRandom from "effect/crypto/SecureRandom"
 import * as Effect from "effect/Effect"
 import * as Hex from "effect/encoding/Hex"
 import type * as HttpBody from "effect/http/HttpBody"
 import * as HttpClientRequest from "effect/http/HttpClientRequest"
 import * as Url from "effect/http/Url"
-import * as Layer from "effect/Layer"
 import * as Result from "effect/Result"
 
 /**
@@ -22,13 +20,6 @@ export interface SigningCredentials {
 }
 
 const encoder = new TextEncoder()
-
-// `Mac.layerWebCrypto` needs `SecureRandom` to generate keys, which signing
-// never does.
-const layerCrypto = Layer.merge(
-  Digest.layerWebCrypto,
-  Layer.provide(Mac.layerWebCrypto, SecureRandom.layerWebCrypto)
-)
 
 /** Percent-encodes a string per RFC 3986, as SigV4 requires. */
 const encodeRfc3986 = (value: string): string =>
@@ -78,7 +69,7 @@ const bodyBytes = (body: HttpBody.HttpBody): Effect.Effect<Uint8Array> => {
  * from the URL the transport sends, `url` with `urlParams` appended. Path
  * segments are encoded a second time in the canonical URI, as the service does
  * for every API but S3. The timestamp comes from the Effect `Clock`, and
- * SHA-256 and HMAC run on `crypto.subtle` through `effect/crypto`.
+ * SHA-256 and HMAC run on the given `Digest` and `Mac` services.
  *
  * @internal
  */
@@ -87,13 +78,14 @@ export const sign = (
   options: {
     readonly region: string
     readonly credentials: SigningCredentials
+    readonly digest: Digest.Digest["Service"]
+    readonly mac: Mac.Mac["Service"]
   }
 ): Effect.Effect<HttpClientRequest.HttpClientRequest> =>
   Effect.gen(function*() {
-    const digest = yield* Digest.Digest
-    const mac = yield* Mac.Mac
-    // Signing keys are never empty, so a `CryptoError` means the runtime has
-    // no HMAC-SHA-256, which is a defect.
+    const { digest, mac } = options
+    // Signing keys are never empty, so a `CryptoError` means the `Mac`
+    // service has no HMAC-SHA-256, which is a defect.
     const hmac = (key: Uint8Array, data: string): Effect.Effect<Uint8Array> =>
       Mac.key(Mac.hmacSha256, key).pipe(
         Effect.flatMap((key) => mac.sign(key, encoder.encode(data))),
@@ -159,4 +151,4 @@ export const sign = (
         `AWS4-HMAC-SHA256 Credential=${accessKeyId}/${scope}, SignedHeaders=${signedHeaders}, Signature=${signature}`,
       ...amzHeaders
     })
-  }).pipe(Effect.provide(layerCrypto))
+  })

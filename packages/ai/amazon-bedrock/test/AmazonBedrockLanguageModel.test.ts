@@ -3,6 +3,7 @@ import { assert, describe, it } from "@effect/vitest"
 import { assertDefined } from "@effect/vitest/utils"
 import { Effect, Layer, Redacted, Schema, Stream } from "effect"
 import { LanguageModel, Prompt, type Response as AiResponse, Tool, Toolkit } from "effect/ai"
+import { Digest, Mac, SecureRandom } from "effect/crypto"
 import { HttpClient, type HttpClientError, type HttpClientRequest, HttpClientResponse } from "effect/http"
 import { concat, eventFrame } from "./utils.ts"
 
@@ -656,7 +657,13 @@ const makeHttpClient = (
     region: "us-east-1",
     accessKeyId: "AKIAIOSFODNN7EXAMPLE",
     secretAccessKey: Redacted.make("wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY")
-  }).pipe(Layer.provide(Layer.succeed(HttpClient.HttpClient, client)))
+  }).pipe(
+    Layer.provide([
+      Layer.succeed(HttpClient.HttpClient, client),
+      Digest.layerWebCrypto,
+      Mac.layerWebCrypto.pipe(Layer.provide(SecureRandom.layerWebCrypto))
+    ])
+  )
   return { requests, layer }
 }
 
