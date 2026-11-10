@@ -220,7 +220,8 @@ export interface Tools {
   ) => Effect.Effect<ReadonlyArray<McpSchema.Tool>, RequestRejected>
   readonly call: (
     call: typeof McpSchema.CallTool.payloadSchema.Type,
-    invocation: McpInvocation
+    invocation: McpInvocation,
+    beforeHandle?: ((tool: McpSchema.Tool) => Effect.Effect<void, RequestRejected>) | undefined
   ) => Effect.Effect<ToolOutcome, ToolError>
 }
 
@@ -647,11 +648,7 @@ export const make: Effect.Effect<McpCore> = Effect.sync(() => {
         registrations.set(registration.descriptor.name, registration)
       }),
     list: (invocation) => filterList(registrations.values(), invocation),
-    find: (name, profile) => {
-      const registration = registrations.get(name)
-      return registration !== undefined && registration.isVisible(profile) ? registration.descriptor : undefined
-    },
-    call: (call, invocation) =>
+    call: (call, invocation, beforeHandle) =>
       Effect.suspend((): Effect.Effect<ToolOutcome, ToolError> => {
         const registration = registrations.get(call.name)
         if (registration === undefined) {
@@ -660,7 +657,11 @@ export const make: Effect.Effect<McpCore> = Effect.sync(() => {
         if (!registration.isVisible(invocation.protocol)) {
           return new ToolNotFound({ name: call.name })
         }
-        return registration.handle(call, invocation)
+        return registration.handle(
+          call,
+          invocation,
+          beforeHandle === undefined ? Effect.void : Effect.suspend(() => beforeHandle(registration.descriptor))
+        )
       })
   }
 
