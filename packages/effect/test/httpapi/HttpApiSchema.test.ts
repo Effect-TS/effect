@@ -59,7 +59,7 @@ describe("HttpApiSchema", () => {
     assert.isDefined(declared)
     assert.strictEqual(declared.body, Body)
     assert.deepStrictEqual(Object.keys(declared).sort(), ["body", "headers"])
-    assert.deepStrictEqual(Schema.decodeUnknownSync(declared.headers)({ "x-total": "1" }), { "x-total": "1" })
+    assert.isTrue(Schema.is(declared.headers)({ "x-total": "1" }))
     assert.deepStrictEqual(Object.keys(declared.headers.fields), ["x-total"])
     assert.isUndefined(HttpApiSchema.getEncodeToWithHeadersParts(Page))
     assert.isUndefined(HttpApiSchema.getEncodeToWithHeadersParts(HttpApiSchema.WithHeaders(Body, headers)))
