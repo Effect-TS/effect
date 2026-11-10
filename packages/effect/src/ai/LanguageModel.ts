@@ -356,11 +356,15 @@ export interface GenerateObjectOptions<
   readonly objectName?: string | undefined
 
   /**
-   * Returns `Option.none()` for absent or whitespace-only text, regardless of
-   * the finish reason, and `Option.some(value)` for valid structured output.
-   * Nonempty invalid output still fails validation. Defaults to `false`.
-   * Pass a literal `true` to avoid an `A | Option<A>` value type when the flag
-   * is a non-literal boolean.
+   * When set to `true`, the response `value` is an `Option`: `Option.none()`
+   * when the model returns no text or only whitespace, such as a step that
+   * only calls tools, and `Option.some(value)` for valid structured output.
+   * Any other text still fails validation. Defaults to `false`.
+   *
+   * **Gotchas**
+   *
+   * Pass a literal `true`. A non-literal boolean types `value` as
+   * `A | Option<A>`.
    */
   readonly allowEmpty?: boolean | undefined
 
@@ -623,7 +627,7 @@ export type ExtractTools<Options> = Options extends {
  *
  * @stability unstable
  * @category utility types
- * @since 4.0.0
+ * @since 4.1.4
  */
 export type ExtractObjectValue<Options, A> = Options extends { readonly allowEmpty: true } ? Option.Option<A>
   : true extends Options["allowEmpty" & keyof Options] ? A | Option.Option<A>

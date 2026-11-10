@@ -3,4 +3,4 @@
 "@effect/ai-anthropic": patch
 ---
 
-Add `generateObject`’s `allowEmpty` option for optional structured output and preserve Anthropic tool-call finish reasons with native structured output.
+Add an `allowEmpty` option to `generateObject` for optional structured output and preserve Anthropic tool-call finish reasons with native structured output.

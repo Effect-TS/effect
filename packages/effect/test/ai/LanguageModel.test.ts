@@ -1506,34 +1506,33 @@ describe("LanguageModel", () => {
   })
 
   describe("generateObject", () => {
-    for (const text of [undefined, " \n\t"]) {
-      it.effect(
-        `allowEmpty keeps tool-only responses with ${text === undefined ? "no" : "whitespace"} text`,
-        () =>
-          Effect.gen(function*() {
-            const response = yield* LanguageModel.generateObject({
-              prompt: "hi",
-              schema: Schema.Struct({ count: Schema.Number }),
-              toolkit: TransformToolkit,
-              allowEmpty: true
-            }).pipe(
-              TestUtils.withLanguageModel({
-                generateText: [
-                  ...(text === undefined ? [] : [{ type: "text" as const, text }]),
-                  { type: "tool-call", id: "call-1", name: "TransformTool", params: "2" },
-                  { ...finishPart, reason: "tool-calls" }
-                ]
-              }),
-              Effect.provide(TransformToolkitLayer)
-            )
-
-            deepStrictEqual(response.value, Option.none())
-            strictEqual(response.finishReason, "tool-calls")
-            strictEqual(response.toolCalls[0].id, "call-1")
-            strictEqual(response.toolResults[0].result, 4)
-          })
+    const generateWithToolCall = (...texts: Array<string>) =>
+      LanguageModel.generateObject({
+        prompt: [],
+        schema: Schema.Struct({ count: Schema.Number }),
+        toolkit: TransformToolkit,
+        allowEmpty: true
+      }).pipe(
+        TestUtils.withLanguageModel({
+          generateText: [
+            ...texts.map((text) => ({ type: "text" as const, text })),
+            { type: "tool-call", id: "call-1", name: "TransformTool", params: "2" },
+            { ...finishPart, reason: "tool-calls" }
+          ]
+        }),
+        Effect.provide(TransformToolkitLayer)
       )
-    }
+
+    it.effect("allowEmpty keeps tool-only responses with no text or whitespace-only text", () =>
+      Effect.gen(function*() {
+        for (const texts of [[], [" \n\t"]]) {
+          const response = yield* generateWithToolCall(...texts)
+          deepStrictEqual(response.value, Option.none())
+          strictEqual(response.finishReason, "tool-calls")
+          strictEqual(response.toolCalls[0].id, "call-1")
+          strictEqual(response.toolResults[0].result, 4)
+        }
+      }))
 
     it.effect("allowEmpty accepts empty responses regardless of finish reason", () =>
       Effect.gen(function*() {
@@ -1547,32 +1546,17 @@ describe("LanguageModel", () => {
         }
       }))
 
-    it.effect("allowEmpty wraps valid output and still rejects invalid nonempty output with tool calls", () =>
+    it.effect("allowEmpty wraps valid output alongside tool calls", () =>
       Effect.gen(function*() {
-        for (const text of ["{\"count\":1}", "{\"count\":\"oops\"}", "not JSON"]) {
-          const result = yield* LanguageModel.generateObject({
-            prompt: [],
-            schema: Schema.Struct({ count: Schema.Number }),
-            toolkit: TransformToolkit,
-            allowEmpty: true
-          }).pipe(
-            TestUtils.withLanguageModel({
-              generateText: [
-                { type: "text", text },
-                { type: "tool-call", id: "call-1", name: "TransformTool", params: "2" },
-                { ...finishPart, reason: "tool-calls" }
-              ]
-            }),
-            Effect.provide(TransformToolkitLayer),
-            Effect.result
-          )
-          if (text === "{\"count\":1}") {
-            assertTrue(result._tag === "Success")
-            if (result._tag === "Success") deepStrictEqual(result.success.value, Option.some({ count: 1 }))
-          } else {
-            assertTrue(result._tag === "Failure")
-            if (result._tag === "Failure") strictEqual(result.failure.reason._tag, "StructuredOutputError")
-          }
+        const response = yield* generateWithToolCall("{\"count\":1}")
+        deepStrictEqual(response.value, Option.some({ count: 1 }))
+      }))
+
+    it.effect("allowEmpty still rejects invalid nonempty output alongside tool calls", () =>
+      Effect.gen(function*() {
+        for (const text of ["{\"count\":\"oops\"}", "not JSON"]) {
+          const error = yield* generateWithToolCall(text).pipe(Effect.flip)
+          strictEqual(error.reason._tag, "StructuredOutputError")
         }
       }))
 
