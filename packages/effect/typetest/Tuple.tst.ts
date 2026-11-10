@@ -159,6 +159,19 @@ describe("Tuple", () => {
     >()
   })
 
+  it("map with an ordinary callback", () => {
+    const numbers = [1, 2, 3] as [number, number, number]
+    expect(Tuple.map(numbers, (n) => n + 1)).type.toBe<[number, number, number]>()
+    expect(pipe(numbers, Tuple.map((n: number) => n + 1))).type.toBe<[number, number, number]>()
+    // the callback receives the element union, so heterogeneous tuples work too
+    expect(Tuple.map(tuple, (x) => x)).type.toBe<
+      [string | number | boolean, string | number | boolean, string | number | boolean]
+    >()
+    expect(Tuple.map).type.not.toBeCallableWith(tuple, (s: string) => s.length)
+    expect(Tuple.map([1, 2, 3] as const, (n) => n + 1)).type.toBe<readonly [number, number, number]>()
+    expect(Tuple.map(optionalTuple, (x) => x === undefined)).type.toBe<[boolean?, boolean?, boolean?]>()
+  })
+
   it("mapPick", () => {
     const tuple = [Schema.String, Schema.Number, Schema.Boolean] as const
     expect(pipe(tuple, Tuple.mapPick([0, 2], Schema.NullOr))).type.toBe<

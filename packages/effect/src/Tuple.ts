@@ -356,7 +356,8 @@ export const renameIndices: {
 )
 
 /**
- * Applies a `Struct.Lambda` transformation to every element in a tuple.
+ * Applies a function or `Struct.Lambda` transformation to every element in a tuple
+ * while preserving its length.
  *
  * **When to use**
  *
@@ -364,12 +365,24 @@ export const renameIndices: {
  *
  * **Details**
  *
- * The lambda lets the compiler track the output type for each element.
+ * An ordinary callback receives the union of the element types and gives every
+ * position the same return type. The result preserves readonly, optional, and
+ * rest positions. A lambda created with `Struct.lambda` lets the compiler track
+ * the output type for each element separately.
  *
  * **Gotchas**
  *
- * The lambda must be created with `Struct.lambda`; a plain function will not
- * type-check.
+ * In the data-last form, annotate the ordinary callback parameter so its input
+ * type can be inferred before the tuple is supplied.
+ *
+ * **Example** (Incrementing every element)
+ *
+ * ```ts import.meta.vitest
+ * import { pipe, Tuple } from "effect"
+ *
+ * Tuple.map(Tuple.make(1, 2, 3), (n) => n + 1) // => [2, 3, 4]
+ * pipe(Tuple.make(1, 2, 3), Tuple.map((n: number) => n + 1)) // => [2, 3, 4]
+ * ```
  *
  * **Example** (Wrapping every element in an array)
  *
@@ -402,6 +415,8 @@ export const map: {
     self: T,
     lambda: L
   ): { [K in keyof T]: Apply<L, T[K]> }
+  <A, B>(f: (a: A) => B): <const T extends ReadonlyArray<A>>(self: T) => { [K in keyof T]: B }
+  <const T extends ReadonlyArray<unknown>, B>(self: T, f: (a: T[number]) => B): { [K in keyof T]: B }
 } = dual(
   2,
   <const T extends ReadonlyArray<unknown>, L extends Function>(self: T, lambda: L) => {
@@ -435,7 +450,7 @@ export const map: {
  * ) // => [[1], "hello", [true]]
  * ```
  *
- * @see {@link map} – apply a lambda to all elements
+ * @see {@link map} – apply a function or lambda to all elements
  * @see {@link mapOmit} – apply a lambda to all elements except selected ones
  * @stability stable
  * @category mapping
@@ -491,7 +506,7 @@ export const mapPick: {
  * ) // => [[1], "hello", [true]]
  * ```
  *
- * @see {@link map} – apply a lambda to all elements
+ * @see {@link map} – apply a function or lambda to all elements
  * @see {@link mapPick} – apply a lambda only to selected indices
  * @stability stable
  * @category mapping
