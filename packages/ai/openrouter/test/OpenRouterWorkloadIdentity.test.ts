@@ -11,15 +11,33 @@ const TOKEN_URL = "https://openrouter.ai/api/v1/oauth/token"
 describe("OpenRouterWorkloadIdentity", () => {
   it.effect("exchanges the identity token and authenticates every client request path", () =>
     Effect.gen(function*() {
-      const http = makeHttp()
-      const client = yield* OpenRouterClient.OpenRouterClient.pipe(provideClient(http))
+      const requests: Array<HttpClientRequest.HttpClientRequest> = []
+      const httpClient = HttpClient.make((request) => {
+        requests.push(request)
+        return Effect.succeed(HttpClientResponse.fromWeb(
+          request,
+          request.url === TOKEN_URL
+            ? Response.json({ access_token: "access-1", expires_in: 900 })
+            : new Response()
+        ))
+      })
+      const client = yield* OpenRouterClient.OpenRouterClient.pipe(
+        Effect.provide(
+          OpenRouterClient.layer({ apiUrl: API_URL }).pipe(Layer.provide(OpenRouterWorkloadIdentity.layer({
+            identityToken: Effect.succeed(Redacted.make(IDENTITY_TOKEN)),
+            federationPolicyId: "policy_1",
+            apiUrl: API_URL
+          })))
+        ),
+        Effect.provideService(HttpClient.HttpClient, httpClient)
+      )
       const messages = [{ role: "user" as const, content: "hello" }]
 
       yield* Effect.ignore(client.createChatCompletion({ model: "openai/gpt-4o-mini", messages }))
       yield* Effect.ignore(client.createChatCompletionStream({ model: "openai/gpt-4o-mini", messages }))
       yield* Effect.ignore(client.createDecisions({ model: "openai/gpt-4o-mini", state: {}, questions: {} }))
 
-      const [exchange, ...requests] = http.requests
+      const [exchange, ...apiRequests] = requests
       assert.strictEqual(exchange.url, TOKEN_URL)
       assert.isUndefined(exchange.headers.authorization)
       assert.strictEqual(exchange.headers["content-type"], "application/x-www-form-urlencoded")
@@ -31,7 +49,7 @@ describe("OpenRouterWorkloadIdentity", () => {
         scope: "inference"
       })
       assert.deepStrictEqual(
-        requests.map((request) => [request.url, request.headers.authorization]),
+        apiRequests.map((request) => [request.url, request.headers.authorization]),
         [
           ["https://openrouter.ai/api/v1/chat/completions", "Bearer access-1"],
           ["https://openrouter.ai/api/v1/chat/completions", "Bearer access-1"],
@@ -40,34 +58,6 @@ describe("OpenRouterWorkloadIdentity", () => {
       )
     }))
 })
-
-type Http = ReturnType<typeof makeHttp>
-
-const makeHttp = () => {
-  const requests: Array<HttpClientRequest.HttpClientRequest> = []
-  const client = HttpClient.make((request) => {
-    requests.push(request)
-    return Effect.succeed(HttpClientResponse.fromWeb(
-      request,
-      request.url === TOKEN_URL
-        ? Response.json({ access_token: "access-1", expires_in: 900 })
-        : new Response()
-    ))
-  })
-  return { client, requests }
-}
-
-const provideClient = (http: Http) => <A, E, R>(effect: Effect.Effect<A, E, R>) =>
-  effect.pipe(
-    Effect.provide(
-      OpenRouterClient.layer({ apiUrl: API_URL }).pipe(Layer.provide(OpenRouterWorkloadIdentity.layer({
-        identityToken: Effect.succeed(Redacted.make(IDENTITY_TOKEN)),
-        federationPolicyId: "policy_1",
-        apiUrl: API_URL
-      })))
-    ),
-    Effect.provideService(HttpClient.HttpClient, http.client)
-  )
 
 const bodyParams = (request: HttpClientRequest.HttpClientRequest) =>
   request.body._tag === "Uint8Array"
