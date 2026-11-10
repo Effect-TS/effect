@@ -1,19 +1,23 @@
 /**
  * Build TypeScript modules for code generators.
  *
- * A `CodeWriter` collects source text and the imports it needs, and keeps the
- * module's names from clashing. Code is written with the {@link code} template:
- * imports are {@link CodeSymbol}s interpolated into it, and an import is only
- * printed when a printed fragment uses it. Names for your own declarations come
- * from {@link declare}, which avoids every name already taken in the module.
- * Nested {@link scope}s hold local declarations, such as function parameters.
- * Re-exports ({@link reexport}, {@link reexportAll}) are printed after the
- * imports, and {@link exportedNames} lists every name the module exports.
+ * A `CodeWriter` collects the source of one module and prints it together with
+ * the imports that source uses. Write source with the {@link code} template and
+ * interpolate {@link CodeSymbol}s into it. Imports ({@link importNamespace},
+ * {@link importNamed}, {@link importDefault}) are not tied to a writer, so they
+ * can be module-level constants. {@link print} gives them local names, and
+ * imports that no printed code uses are left out. Names of your own
+ * declarations come from {@link declare}, and nested {@link scope}s hold local
+ * names such as function parameters.
  *
  * @stability unstable
  * @since 4.1.4
  */
-import * as internal from "./internal/codeWriter.ts"
+
+const TypeId = "~effect/CodeWriter"
+const ScopeTypeId = "~effect/CodeWriter/CodeScope"
+const SymbolTypeId = "~effect/CodeWriter/CodeSymbol"
+const FragmentTypeId = "~effect/CodeWriter/CodeFragment"
 
 /**
  * Writes one TypeScript module.
@@ -23,7 +27,7 @@ import * as internal from "./internal/codeWriter.ts"
  * @since 4.1.4
  */
 export interface CodeWriter {
-  readonly "~effect/CodeWriter": "~effect/CodeWriter"
+  readonly [TypeId]: typeof TypeId
 }
 
 /**
@@ -41,43 +45,52 @@ export interface CodeWriter {
  * @since 4.1.4
  */
 export interface CodeScope {
-  readonly "~effect/CodeWriter/CodeScope": "~effect/CodeWriter/CodeScope"
+  readonly [ScopeTypeId]: typeof ScopeTypeId
 }
 
 /**
- * A name in a {@link CodeWriter}: an import (from {@link importNamespace},
- * {@link importNamed} or {@link importDefault}) or a declaration (from
- * {@link declare}).
- * Its name is fixed when it is created. An import is printed only if a printed
- * fragment contains its symbol.
+ * A name to interpolate into the {@link code} template: an import or a
+ * {@link CodeDeclaration}.
  *
  * **Gotchas**
  *
- * Interpolate symbols only into the {@link code} template. Converting one to a
- * string throws, so an import can never go missing silently.
+ * Converting a symbol to a string throws, so an import can never go missing
+ * silently.
  *
  * @stability unstable
  * @category models
  * @since 4.1.4
  */
 export interface CodeSymbol {
+  readonly [SymbolTypeId]: typeof SymbolTypeId
+}
+
+/**
+ * A symbol for a declaration of your own, created by {@link declare}. Its
+ * `name` is final.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.1.4
+ */
+export interface CodeDeclaration extends CodeSymbol {
   readonly name: string
 }
 
 /**
- * Source text built with the {@link code} template. It keeps the symbols it
- * contains, so their imports are registered when it is printed.
+ * Source built with the {@link code} template. It keeps the symbols
+ * interpolated into it, so the imports they need are printed with it.
  *
  * @stability unstable
  * @category models
  * @since 4.1.4
  */
 export interface CodeFragment {
-  readonly parts: ReadonlyArray<string | CodeSymbol | CodeFragment>
+  readonly [FragmentTypeId]: typeof FragmentTypeId
 }
 
 /**
- * What can be interpolated into a {@link code} template: text, numbers,
+ * Value that can be interpolated into a {@link code} template: text, numbers,
  * symbols, fragments and arrays of them. `undefined`, `null` and `false` print
  * nothing.
  *
@@ -95,58 +108,189 @@ export type CodeHole =
   | null
   | false
 
-/**
- * A name that could not be used because it was taken, and the name used
- * instead.
- *
- * @stability unstable
- * @category models
- * @since 4.1.4
- */
-export interface Rename {
-  readonly wanted: string
+const reservedWords: ReadonlySet<string> = new Set([
+  "any",
+  "arguments",
+  "await",
+  "bigint",
+  "boolean",
+  "break",
+  "case",
+  "catch",
+  "class",
+  "const",
+  "continue",
+  "debugger",
+  "default",
+  "delete",
+  "do",
+  "else",
+  "enum",
+  "eval",
+  "export",
+  "extends",
+  "false",
+  "finally",
+  "for",
+  "function",
+  "globalThis",
+  "if",
+  "implements",
+  "import",
+  "in",
+  "instanceof",
+  "interface",
+  "let",
+  "never",
+  "new",
+  "null",
+  "number",
+  "object",
+  "package",
+  "private",
+  "protected",
+  "public",
+  "return",
+  "static",
+  "string",
+  "super",
+  "switch",
+  "symbol",
+  "this",
+  "throw",
+  "true",
+  "try",
+  "typeof",
+  "undefined",
+  "unknown",
+  "var",
+  "void",
+  "while",
+  "with",
+  "yield"
+])
+
+const sanitize = (name: string): string => {
+  const out = name.replace(/[^\p{ID_Continue}$\u200c\u200d]/gu, "_")
+  return /^[\p{ID_Start}$_]/u.test(out) ? out : `_${out}`
+}
+
+/** Returns `wanted`, or `wanted` with the first numeric suffix that is free. */
+const freeName = (wanted: string, isTaken: (name: string) => boolean): string => {
+  let name = wanted
+  for (let n = 2; reservedWords.has(name) || isTaken(name); n++) name = `${wanted}${n}`
+  return name
+}
+
+class WriterImpl implements CodeWriter {
+  readonly [TypeId] = TypeId
+  readonly taken = new Set<string>()
+  readonly children: Array<ScopeImpl> = []
+  readonly sideEffects: Array<string> = []
+  readonly body: Array<string | FragmentImpl> = []
+}
+
+class ScopeImpl implements CodeScope {
+  readonly [ScopeTypeId] = ScopeTypeId
+  readonly taken = new Set<string>()
+  readonly children: Array<ScopeImpl> = []
+  readonly parent: WriterImpl | ScopeImpl
+  readonly writer: WriterImpl
+  constructor(parent: WriterImpl | ScopeImpl) {
+    this.parent = parent
+    this.writer = parent instanceof ScopeImpl ? parent.writer : parent
+  }
+}
+
+type ImportStyle = "namespace" | "named" | "default"
+
+class ImportImpl implements CodeSymbol {
+  readonly [SymbolTypeId] = SymbolTypeId
+  /** Identifies the import statement: one per module for namespace and default imports, one per name otherwise. */
+  readonly key: string
+  readonly from: string
+  readonly style: ImportStyle
   readonly name: string
-  readonly owner: string
-  readonly takenBy: string
+  readonly typeOnly: boolean
+  constructor(from: string, style: ImportStyle, name: string, typeOnly: boolean) {
+    this.key = JSON.stringify([style, from, style === "named" ? name : ""])
+    this.from = from
+    this.style = style
+    this.name = name
+    this.typeOnly = typeOnly
+  }
+  toString(): string {
+    throw new Error(`Import of "${this.name}" used in a plain string; interpolate it into CodeWriter.code`)
+  }
+}
+
+class DeclarationImpl implements CodeDeclaration {
+  readonly [SymbolTypeId] = SymbolTypeId
+  readonly name: string
+  readonly writer: WriterImpl
+  constructor(name: string, writer: WriterImpl) {
+    this.name = name
+    this.writer = writer
+  }
+  toString(): string {
+    throw new Error(`Declaration "${this.name}" used in a plain string; interpolate it into CodeWriter.code`)
+  }
+}
+
+type Part = string | ImportImpl | DeclarationImpl | FragmentImpl
+
+class FragmentImpl implements CodeFragment {
+  readonly [FragmentTypeId] = FragmentTypeId
+  readonly parts: ReadonlyArray<Part>
+  readonly indented: boolean
+  constructor(parts: ReadonlyArray<Part>, indented: boolean) {
+    this.parts = parts
+    this.indented = indented
+  }
+  toString(): string {
+    throw new Error("CodeFragment used in a plain string; interpolate it into CodeWriter.code")
+  }
 }
 
 /**
  * Creates a writer for an empty module. `reserved` names are never given to
- * anything in it.
+ * declarations or imports, for example globals the module uses.
  *
  * @stability unstable
  * @category constructors
  * @since 4.1.4
  */
-export const make: (options?: { readonly reserved?: Iterable<string> | undefined }) => CodeWriter = internal.make
-
-const symbolOf = (entry: internal.ImportEntry, options?: { readonly typeOnly?: boolean | undefined }): CodeSymbol =>
-  new internal.CodeSymbolImpl(entry.local, entry, options?.typeOnly === true)
+export const make = (options?: { readonly reserved?: Iterable<string> | undefined }): CodeWriter => {
+  const writer = new WriterImpl()
+  for (const name of options?.reserved ?? []) writer.taken.add(name)
+  return writer
+}
 
 /**
- * Requests `import * as name from "from"` and returns its symbol.
+ * Creates the symbol for `import * as name from "from"`.
  *
  * **Details**
  *
- * The local name is `name`, suffixed when something in the module already has
- * it; requesting the same import twice gives the same name. The import is
- * printed only if a printed fragment uses the symbol, and as `import type` when
- * every printed use was requested with `typeOnly: true`.
+ * The symbol is not tied to a writer. When a writer prints code that uses it,
+ * the import is printed with `name` as its local name, or `name` with a
+ * numeric suffix when a declaration or another import has that name. A module
+ * is imported as a namespace once; the first printed symbol picks the name.
+ * The import is printed as `import type` when every printed use comes from a
+ * symbol created with `typeOnly: true`.
  *
  * @stability unstable
  * @category imports
  * @since 4.1.4
  */
 export const importNamespace = (
-  self: CodeWriter,
   from: string,
   name: string,
   options?: { readonly typeOnly?: boolean | undefined }
-): CodeSymbol => symbolOf(internal.importEntry(self as internal.CodeWriterImpl, from, "namespace", name), options)
+): CodeSymbol => new ImportImpl(from, "namespace", name, options?.typeOnly === true)
 
 /**
- * Requests `import { name } from "from"` and returns its symbol. See
- * {@link importNamespace} for naming and printing.
+ * Creates the symbol for `import { name } from "from"`. See
+ * {@link importNamespace} for naming and type-only imports.
  *
  * **Details**
  *
@@ -159,10 +303,11 @@ export const importNamespace = (
  * ```ts import.meta.vitest
  * import { CodeWriter } from "effect"
  *
+ * const Effect = CodeWriter.importNamespace("effect/Effect", "Effect", { typeOnly: true })
+ * const some = CodeWriter.importNamed("effect/Option", "some")
+ * const Option = CodeWriter.importNamed("effect/Option", "Option", { typeOnly: true })
+ *
  * const writer = CodeWriter.make()
- * const Effect = CodeWriter.importNamespace(writer, "effect/Effect", "Effect", { typeOnly: true })
- * const some = CodeWriter.importNamed(writer, "effect/Option", "some")
- * const Option = CodeWriter.importNamed(writer, "effect/Option", "Option", { typeOnly: true })
  * CodeWriter.add(writer, CodeWriter.code`export const one: ${Option}<number> = ${some}(1)`)
  * CodeWriter.add(writer, CodeWriter.code`export type Two = ${Effect}.Effect<number>`)
  *
@@ -174,31 +319,29 @@ export const importNamespace = (
  * @since 4.1.4
  */
 export const importNamed = (
-  self: CodeWriter,
   from: string,
   name: string,
   options?: { readonly typeOnly?: boolean | undefined }
-): CodeSymbol => symbolOf(internal.importEntry(self as internal.CodeWriterImpl, from, "named", name), options)
+): CodeSymbol => new ImportImpl(from, "named", name, options?.typeOnly === true)
 
 /**
- * Requests `import name from "from"` and returns its symbol. `name` is the
- * local name you want; a module has one default import, so requesting it again
- * gives the first symbol's name. See {@link importNamespace} for naming and
- * printing.
+ * Creates the symbol for `import name from "from"`, where `name` is the local
+ * name you want. A module has one default import; the first printed symbol
+ * picks the name. See {@link importNamespace} for naming and type-only imports.
  *
  * @stability unstable
  * @category imports
  * @since 4.1.4
  */
 export const importDefault = (
-  self: CodeWriter,
   from: string,
   name: string,
   options?: { readonly typeOnly?: boolean | undefined }
-): CodeSymbol => symbolOf(internal.importEntry(self as internal.CodeWriterImpl, from, "default", name), options)
+): CodeSymbol => new ImportImpl(from, "default", name, options?.typeOnly === true)
 
 /**
- * Adds `import "from"`, which is always printed: there is no symbol to use.
+ * Adds `import "from"` to a writer. It is always printed, because there is no
+ * symbol to use.
  *
  * **Details**
  *
@@ -209,68 +352,19 @@ export const importDefault = (
  * @category imports
  * @since 4.1.4
  */
-export const importSideEffect = (self: CodeWriter, from: string): void =>
-  internal.importSideEffect(self as internal.CodeWriterImpl, from)
-
-/**
- * Adds `export { name } from "from"`, or `export { name as as } from "from"`,
- * and returns the exported name. It is always printed.
- *
- * **Details**
- *
- * The exported name is taken in the module like any other name, so it is
- * suffixed (and reported in {@link renames}) when it is taken. Re-exports of
- * one module are printed in one statement, with `type` modifiers as for
- * {@link importNamed}. Re-exporting the same name twice gives the same
- * exported name, and is type-only only if both requests were.
- *
- * **Example** (A barrel module)
- *
- * ```ts import.meta.vitest
- * import { CodeWriter } from "effect"
- *
- * const writer = CodeWriter.make()
- * CodeWriter.reexport(writer, "./User.ts", "User")
- * CodeWriter.reexport(writer, "./User.ts", "UserId", { typeOnly: true })
- * CodeWriter.reexportAll(writer, "./Order.ts", { as: "Order" })
- *
- * CodeWriter.print(writer) // => 'export * as Order from "./Order.ts"\nexport { User, type UserId } from "./User.ts"\n'
- * CodeWriter.exportedNames(writer) // => ["User", "UserId", "Order"]
- * ```
- *
- * @stability unstable
- * @category exports
- * @since 4.1.4
- */
-export const reexport = (
-  self: CodeWriter,
-  from: string,
-  name: string,
-  options?: { readonly as?: string | undefined; readonly typeOnly?: boolean | undefined }
-): string => internal.reexport(self as internal.CodeWriterImpl, from, name, options)!
-
-/**
- * Adds `export * from "from"`, or `export * as as from "from"` and returns the
- * exported name. It is always printed.
- *
- * **Gotchas**
- *
- * The names a bare `export *` brings in are unknown to the writer: they are
- * neither in {@link exportedNames} nor checked for clashes.
- *
- * @stability unstable
- * @category exports
- * @since 4.1.4
- */
-export const reexportAll: {
-  (self: CodeWriter, from: string, options: { readonly as: string; readonly typeOnly?: boolean | undefined }): string
-  (self: CodeWriter, from: string, options?: { readonly typeOnly?: boolean | undefined }): undefined
-} =
-  ((self: CodeWriter, from: string, options?: { readonly as?: string; readonly typeOnly?: boolean | undefined }) =>
-    internal.reexport(self as internal.CodeWriterImpl, from, undefined, options)) as any
+export const importSideEffect = (self: CodeWriter, from: string): void => {
+  const writer = self as WriterImpl
+  if (!writer.sideEffects.includes(from)) writer.sideEffects.push(from)
+}
 
 /**
  * Opens a nested scope of a writer or of another scope.
+ *
+ * **Gotchas**
+ *
+ * A name declared in a scope is taken for declarations made later in the
+ * module and in enclosing scopes. Declare module names before local ones so
+ * that module names keep the names you asked for.
  *
  * **Example** (Naming locals of two sibling functions)
  *
@@ -292,56 +386,78 @@ export const reexportAll: {
  * @category scopes
  * @since 4.1.4
  */
-export const scope = (parent: CodeWriter | CodeScope): CodeScope => internal.scope(parent as internal.Owner)
+export const scope = (parent: CodeWriter | CodeScope): CodeScope => {
+  const owner = parent as WriterImpl | ScopeImpl
+  const child = new ScopeImpl(owner)
+  owner.children.push(child)
+  return child
+}
 
-/**
- * Takes a name for a declaration of your own, in the module or in a nested
- * {@link CodeScope}, and returns its symbol. The name is suffixed when it is
- * taken; every suffix is recorded in {@link renames}.
- *
- * **Details**
- *
- * Interpolate the symbol into {@link code} like an import; its `name` is the
- * final name. `exported: true` lists a module declaration in {@link exportedNames}.
- *
- * **Gotchas**
- *
- * The writer does not print the `export` keyword: write it in the declaration's
- * source yourself.
- *
- * @stability unstable
- * @category names
- * @since 4.1.4
- */
-export const declare: {
-  (self: CodeWriter, name: string, options?: { readonly exported?: boolean | undefined }): CodeSymbol
-  (self: CodeWriter | CodeScope, name: string): CodeSymbol
-} = (self: CodeWriter | CodeScope, name: string, options?: { readonly exported?: boolean | undefined }) => {
-  const isScope = self instanceof internal.ScopeImpl
-  const taken = internal.take(self as internal.Owner, name, isScope ? "a scope" : "the module")
-  if (!isScope && options?.exported === true) (self as internal.CodeWriterImpl).exportsList.push(taken)
-  return new internal.CodeSymbolImpl(taken, undefined, false)
+/** Whether `name` is taken by the owner, an enclosing scope or a nested scope. */
+const isTakenFor = (owner: WriterImpl | ScopeImpl, name: string): boolean => {
+  for (let s: WriterImpl | ScopeImpl = owner;; s = s.parent) {
+    if (s.taken.has(name)) return true
+    if (!(s instanceof ScopeImpl)) break
+  }
+  const stack = [...owner.children]
+  while (stack.length > 0) {
+    const child = stack.pop()!
+    if (child.taken.has(name)) return true
+    stack.push(...child.children)
+  }
+  return false
 }
 
 /**
- * Turns any name into a valid local identifier without reserving it: invalid
- * characters become `_`, a leading digit gets a `_` prefix, and reserved words
- * get a `_` suffix. Use it for function parameters named after generator input.
+ * Takes a name for a declaration of your own, in the module or in a nested
+ * {@link CodeScope}, and returns its symbol.
  *
- * **Example** (Naming a parameter after input)
+ * **Details**
+ *
+ * Characters that cannot appear in an identifier become `_`, and a name that
+ * cannot start an identifier gets a `_` prefix. A name that is a reserved word
+ * or already taken gets the first free numeric suffix: `"user-id"` becomes
+ * `user_id`, and `"default"` becomes `default2`. Imports never take a
+ * declaration's name; they are renamed instead.
+ *
+ * **Gotchas**
+ *
+ * The writer does not print the declaration or the `export` keyword; write
+ * them in the source yourself.
+ *
+ * **Example** (Declarations keep their names)
  *
  * ```ts import.meta.vitest
  * import { CodeWriter } from "effect"
  *
- * CodeWriter.identifier("default") // => "default_"
- * CodeWriter.identifier("user-id") // => "user_id"
+ * const Schema = CodeWriter.importNamespace("effect/Schema", "Schema")
+ *
+ * const writer = CodeWriter.make()
+ * const name = CodeWriter.declare(writer, "Schema")
+ * CodeWriter.add(writer, CodeWriter.code`export const ${name} = ${Schema}.String`)
+ *
+ * CodeWriter.print(writer) // => 'import * as Schema2 from "effect/Schema"\n\nexport const Schema = Schema2.String\n'
  * ```
  *
  * @stability unstable
  * @category names
  * @since 4.1.4
  */
-export const identifier: (name: string) => string = internal.identifier
+export const declare = (self: CodeWriter | CodeScope, name: string): CodeDeclaration => {
+  const owner = self as WriterImpl | ScopeImpl
+  const taken = freeName(sanitize(name), (n) => isTakenFor(owner, n))
+  owner.taken.add(taken)
+  return new DeclarationImpl(taken, owner instanceof ScopeImpl ? owner.writer : owner)
+}
+
+const flatten = (hole: CodeHole, out: Array<Part>): void => {
+  if (hole === undefined || hole === null || hole === false || hole === "") return
+  if (typeof hole === "string") out.push(hole)
+  else if (typeof hole === "number") out.push(String(hole))
+  else if (Array.isArray(hole)) { for (const h of hole) flatten(h, out) }
+  else if (hole instanceof ImportImpl || hole instanceof DeclarationImpl || hole instanceof FragmentImpl) out.push(hole)
+  else throw new Error("Unsupported value in CodeWriter.code")
+}
 
 /**
  * Builds a {@link CodeFragment} from a template.
@@ -350,7 +466,14 @@ export const identifier: (name: string) => string = internal.identifier
  * @category constructors
  * @since 4.1.4
  */
-export const code: (strings: TemplateStringsArray, ...holes: ReadonlyArray<CodeHole>) => CodeFragment = internal.code
+export const code = (strings: TemplateStringsArray, ...holes: ReadonlyArray<CodeHole>): CodeFragment => {
+  const parts: Array<Part> = []
+  strings.forEach((s, i) => {
+    if (s !== "") parts.push(s)
+    if (i < holes.length) flatten(holes[i], parts)
+  })
+  return new FragmentImpl(parts, false)
+}
 
 /**
  * Joins holes with a separator.
@@ -359,60 +482,142 @@ export const code: (strings: TemplateStringsArray, ...holes: ReadonlyArray<CodeH
  * @category constructors
  * @since 4.1.4
  */
-export const join: (items: ReadonlyArray<CodeHole>, separator: string) => CodeFragment = internal.join
+export const join = (items: ReadonlyArray<CodeHole>, separator: string): CodeFragment => {
+  const parts: Array<Part> = []
+  items.forEach((item, i) => {
+    if (i > 0) parts.push(separator)
+    flatten(item, parts)
+  })
+  return new FragmentImpl(parts, false)
+}
 
 /**
- * Indents every line after the first by two more spaces.
+ * Indents every non-empty line after the first by two more spaces.
  *
  * @stability unstable
  * @category constructors
  * @since 4.1.4
  */
-export const indent: (hole: CodeHole) => CodeFragment = internal.indent
+export const indent = (hole: CodeHole): CodeFragment => {
+  const parts: Array<Part> = []
+  flatten(hole, parts)
+  return new FragmentImpl(parts, true)
+}
 
 /**
  * Appends source to the module, as a fragment or as plain text. Plain text
- * registers no imports.
+ * prints no imports.
  *
  * @stability unstable
  * @category mutations
  * @since 4.1.4
  */
 export const add = (self: CodeWriter, source: string | CodeFragment): void => {
-  ;(self as internal.CodeWriterImpl).body.push(source as string | internal.CodeFragmentImpl)
+  ;(self as WriterImpl).body.push(source as string | FragmentImpl)
+}
+
+interface Line {
+  readonly from: string
+  readonly line: string
+}
+
+const compareStrings = (a: string, b: string): number => (a < b ? -1 : a > b ? 1 : 0)
+
+/** Packages before relative modules, then by module (ignoring case), then by statement. */
+const sortLines = (lines: Array<Line>): ReadonlyArray<string> =>
+  lines.sort((a, b) =>
+    Number(a.from.startsWith(".")) - Number(b.from.startsWith(".")) ||
+    compareStrings(a.from.toLowerCase(), b.from.toLowerCase()) ||
+    compareStrings(a.line, b.line)
+  ).map((l) => l.line)
+
+interface UsedImport {
+  readonly symbol: ImportImpl
+  runtime: boolean
+  local: string
+}
+
+const printImports = (imports: Iterable<UsedImport>): ReadonlyArray<string> => {
+  const lines: Array<Line> = []
+  const named = new Map<string, Array<UsedImport>>()
+  for (const used of imports) {
+    const { from, style } = used.symbol
+    const type = used.runtime ? "" : "type "
+    if (style === "namespace") {
+      lines.push({ from, line: `import ${type}* as ${used.local} from ${JSON.stringify(from)}` })
+    } else if (style === "default") {
+      lines.push({ from, line: `import ${type}${used.local} from ${JSON.stringify(from)}` })
+    } else {
+      const group = named.get(from)
+      if (group === undefined) named.set(from, [used])
+      else group.push(used)
+    }
+  }
+  for (const [from, group] of named) {
+    const allTypes = group.every((used) => !used.runtime)
+    const specifiers = group
+      .sort((a, b) => compareStrings(a.local, b.local))
+      .map(({ local, runtime, symbol }) =>
+        `${allTypes || runtime ? "" : "type "}${symbol.name}${symbol.name === local ? "" : ` as ${local}`}`
+      )
+    lines.push({
+      from,
+      line: `import ${allTypes ? "type " : ""}{ ${specifiers.join(", ")} } from ${JSON.stringify(from)}`
+    })
+  }
+  return sortLines(lines)
+}
+
+const collectImports = (writer: WriterImpl, parts: ReadonlyArray<Part>, out: Map<string, UsedImport>): void => {
+  for (const part of parts) {
+    if (part instanceof ImportImpl) {
+      const used = out.get(part.key)
+      if (used === undefined) out.set(part.key, { symbol: part, runtime: !part.typeOnly, local: "" })
+      else used.runtime ||= !part.typeOnly
+    } else if (part instanceof DeclarationImpl) {
+      if (part.writer !== writer) {
+        throw new Error(`Declaration "${part.name}" belongs to another CodeWriter; import it in this module instead`)
+      }
+    } else if (part instanceof FragmentImpl) collectImports(writer, part.parts, out)
+  }
+}
+
+const allNames = (owner: WriterImpl | ScopeImpl, out: Set<string>): Set<string> => {
+  for (const name of owner.taken) out.add(name)
+  for (const child of owner.children) allNames(child, out)
+  return out
+}
+
+const render = (
+  part: string | FragmentImpl | ImportImpl | DeclarationImpl,
+  imports: Map<string, UsedImport>
+): string => {
+  if (typeof part === "string") return part
+  if (part instanceof ImportImpl) return imports.get(part.key)!.local
+  if (part instanceof DeclarationImpl) return part.name
+  let out = ""
+  for (const p of part.parts) out += render(p, imports)
+  return part.indented ? out.replace(/\n(?=[^\n])/g, "\n  ") : out
 }
 
 /**
- * Every name that had to change because it was taken.
- *
- * @stability unstable
- * @category getters
- * @since 4.1.4
- */
-export const renames = (self: CodeWriter): ReadonlyArray<Rename> => (self as internal.CodeWriterImpl).renamesList
-
-/**
- * Every name the module exports: declarations made with `exported: true`, and
- * re-exported names, in the order they were added.
- *
- * @stability unstable
- * @category getters
- * @since 4.1.4
- */
-export const exportedNames = (self: CodeWriter): ReadonlyArray<string> => (self as internal.CodeWriterImpl).exportsList
-
-/**
  * Prints the module: side-effect imports and the imports used by printed code,
- * then re-exports, then the added source, separated by blank lines.
+ * then the added source, separated by blank lines.
  *
- * **Example** (Imports appear only when used)
+ * **Details**
+ *
+ * Imports get their local names here, after every declaration: an import whose
+ * name is taken anywhere in the module, including nested scopes, gets a
+ * numeric suffix. Printing does not change the writer.
+ *
+ * **Example** (Printing a module)
  *
  * ```ts import.meta.vitest
  * import { CodeWriter } from "effect"
  *
+ * const Effect = CodeWriter.importNamespace("effect/Effect", "Effect")
+ *
  * const writer = CodeWriter.make()
- * const Effect = CodeWriter.importNamespace(writer, "effect/Effect", "Effect")
- * CodeWriter.importNamespace(writer, "effect/Stream", "Stream")
  * CodeWriter.add(writer, CodeWriter.code`export const one = ${Effect}.succeed(1)`)
  *
  * CodeWriter.print(writer) // => 'import * as Effect from "effect/Effect"\n\nexport const one = Effect.succeed(1)\n'
@@ -422,4 +627,21 @@ export const exportedNames = (self: CodeWriter): ReadonlyArray<string> => (self 
  * @category printing
  * @since 4.1.4
  */
-export const print = (self: CodeWriter): string => internal.print(self as internal.CodeWriterImpl)
+export const print = (self: CodeWriter): string => {
+  const writer = self as WriterImpl
+  const imports = new Map<string, UsedImport>()
+  for (const part of writer.body) {
+    if (part instanceof FragmentImpl) collectImports(writer, [part], imports)
+  }
+  const taken = allNames(writer, new Set())
+  for (const used of imports.values()) {
+    used.local = freeName(sanitize(used.symbol.name), (name) => taken.has(name))
+    taken.add(used.local)
+  }
+  const head = [
+    ...writer.sideEffects.map((from) => `import ${JSON.stringify(from)}`),
+    ...printImports(imports.values())
+  ]
+  const body = writer.body.map((part) => render(part, imports))
+  return [head.join("\n"), ...body].filter((s) => s !== "").join("\n\n") + "\n"
+}
