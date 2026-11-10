@@ -526,7 +526,13 @@ const makeSocket = Effect.gen(function*() {
       const httpClient = Predicate.isNotUndefined(config?.transformClient)
         ? config.transformClient(client.client)
         : client.client
-      return Effect.orDie(httpClient.preprocess(HttpClientRequest.post("/responses")))
+      // The transformed client can fail here, for example when it exchanges
+      // credentials for the Authorization header.
+      return Effect.catchTag(
+        httpClient.preprocess(HttpClientRequest.post("/responses")),
+        "HttpClientError",
+        (error) => Errors.mapHttpClientError(error, "createResponseStream")
+      )
     }
   )
   const makeWebSocket = yield* Socket.WebSocketConstructor
@@ -542,7 +548,7 @@ const makeSocket = Effect.gen(function*() {
     current: Turn | undefined
   }
 
-  const queueRef: RcRef.RcRef<SocketConnection> = yield* RcRef.make({
+  const queueRef: RcRef.RcRef<SocketConnection, AiError.AiError> = yield* RcRef.make({
     idleTimeToLive: 60_000,
     acquire: Effect.gen(function*() {
       const scope = yield* Effect.scope
@@ -676,12 +682,12 @@ const makeSocket = Effect.gen(function*() {
     })
   })
 
-  // Prime the websocket
-  yield* Effect.scoped(RcRef.get(queueRef))
+  // Prime the websocket. A failure to prepare the connection is left for the
+  // first response stream to report.
+  yield* Effect.ignore(Effect.scoped(RcRef.get(queueRef)))
 
   // Websocket mode only allows one request at a time
   const semaphore = Semaphore.makeUnsafe(1)
-  const request = yield* makeRequest
 
   return OpenAiSocket.context({
     createResponseStream(options) {
@@ -710,7 +716,7 @@ const makeSocket = Effect.gen(function*() {
         return Stream.fromQueue(turn)
       }))
 
-      return Effect.succeed([
+      return Effect.map(makeRequest, (request) => [
         HttpClientResponse.fromWeb(request, new Response()),
         stream
       ])
@@ -761,7 +767,8 @@ const decodeEvent = Schema.decodeUnknownSync(Schema.fromJsonString(AllEvents))
  * - `BunSocket.layerWebSocketConstructor`
  *
  * These constructor layers support the non-standard options needed to set the
- * Authorization header.
+ * Authorization header. The header is resolved each time a socket connects, and
+ * the socket keeps it until it closes.
  *
  * @see {@link layerWebSocketMode} for providing WebSocket mode through a layer
  * @see {@link OpenAiSocket} for direct access to the WebSocket-backed streaming service
@@ -801,7 +808,8 @@ export const withWebSocketMode = <A, E, R>(
  * - `BunSocket.layerWebSocketConstructor`
  *
  * These constructor layers support the non-standard options needed to set the
- * Authorization header.
+ * Authorization header. The header is resolved each time a socket connects, and
+ * the socket keeps it until it closes.
  *
  * @see {@link withWebSocketMode} for enabling WebSocket mode around a single effect
  *
