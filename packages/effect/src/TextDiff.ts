@@ -85,7 +85,7 @@ export interface EditDelete<A> {
  * @see {@link hunks} to group a line diff into hunks
  * @stability experimental
  * @category models
- * @since 4.1.3
+ * @since 4.1.4
  */
 export interface Hunk {
   readonly beforeStart: number
@@ -101,19 +101,27 @@ export interface Hunk {
  * **Details**
  *
  * `text` is the line as it appears in its string, with its line break when it
- * has one. With the `inline` option of {@link hunks}, a line of a change that
- * deletes and inserts the same number of lines carries `changes`: the UTF-16
- * ranges `[start, end)` of its text, without its line break, that differ from
- * the line at the same position on the other side.
+ * has one. With the `inline` option of {@link hunks}, the deleted and inserted
+ * lines of a change are paired by position when there are as many of each, and
+ * `ranges` holds the UTF-16 ranges `[start, end)` of `text` that differ from
+ * its counterpart. The final `\n` is not compared.
+ *
+ * **Gotchas**
+ *
+ * - `ranges` is `undefined` when `inline` is off or the line is not paired,
+ *   and empty when a pair differs only in its final `\n`, so an empty array
+ *   does not mean the lines are identical.
+ * - A `\r` before the `\n` is compared, so `"a\r\n"` against `"a\n"` reports
+ *   the `\r` as a range.
  *
  * @stability experimental
  * @category models
- * @since 4.1.3
+ * @since 4.1.4
  */
 export interface HunkLine {
   readonly _tag: "Equal" | "Delete" | "Insert"
   readonly text: string
-  readonly changes?: ReadonlyArray<readonly [start: number, end: number]> | undefined
+  readonly ranges?: ReadonlyArray<readonly [start: number, end: number]> | undefined
 }
 
 /**
@@ -502,22 +510,25 @@ export const invert = <A>(edits: ReadonlyArray<Edit<A>>): Array<Edit<A>> => {
  *
  * **Gotchas**
  *
- * With `inline`, each pair of lines is diffed by code point. Set
- * `inlineMaxEdits` when lines can be long or untrusted.
+ * With `inline`, each pair of lines gets a minimal code point diff with no
+ * similarity cutoff, so unrelated lines yield many short ranges. Deciding
+ * whether to highlight them, for example by how much of the line they cover,
+ * is up to the caller. Set `inlineMaxEdits` when lines can be long or
+ * untrusted.
  *
  * **Example** (Grouping a line diff)
  *
  * ```ts import.meta.vitest
  * import { TextDiff } from "effect"
  *
- * TextDiff.hunks(TextDiff.lines("a\nb\nc\n", "a\nB\nc\n"), { context: 0, inline: true }) // => [{ beforeStart: 1, beforeLines: 1, afterStart: 1, afterLines: 1, lines: [{ _tag: "Delete", text: "b\n", changes: [[0, 1]] }, { _tag: "Insert", text: "B\n", changes: [[0, 1]] }] }]
+ * TextDiff.hunks(TextDiff.lines("a\nb\nc\n", "a\nB\nc\n"), { context: 0, inline: true }) // => [{ beforeStart: 1, beforeLines: 1, afterStart: 1, afterLines: 1, lines: [{ _tag: "Delete", text: "b\n", ranges: [[0, 1]] }, { _tag: "Insert", text: "B\n", ranges: [[0, 1]] }] }]
  * ```
  *
  * @see {@link lines} to compute a line diff
  * @see {@link unified} to format a line diff as text
  * @stability experimental
  * @category combinators
- * @since 4.1.3
+ * @since 4.1.4
  */
 export const hunks = (edits: ReadonlyArray<Edit<string>>, options?: {
   /**
@@ -527,15 +538,15 @@ export const hunks = (edits: ReadonlyArray<Edit<string>>, options?: {
    */
   readonly context?: number | undefined
   /**
-   * Whether lines of a change that deletes and inserts the same number of
-   * lines carry the ranges that differ from their counterpart.
+   * Whether paired lines carry the `ranges` that differ from their
+   * counterpart, see {@link HunkLine}.
    *
    * @default false
    */
   readonly inline?: boolean | undefined
   /**
    * The `maxEdits` of the code point diff of each pair of lines, see
-   * {@link codePoints}.
+   * {@link codePoints}. Has no effect without `inline`.
    *
    * @default Infinity
    */
@@ -570,6 +581,7 @@ export const hunks = (edits: ReadonlyArray<Edit<string>>, options?: {
   }
 
   const context = Math.max(0, Math.floor(options?.context ?? 3))
+  const inline = options?.inline === true
   const out: Array<Hunk> = []
   let start = 0
   while (start < changes.length) {
@@ -586,21 +598,17 @@ export const hunks = (edits: ReadonlyArray<Edit<string>>, options?: {
     for (let c = start; c < end; c++) {
       const change = changes[c]
       for (; line < change.a0; line++) lines.push({ _tag: "Equal", text: a[line] })
-      const paired = options?.inline === true && change.a1 - change.a0 === change.b1 - change.b0
-      const deleted = lines.length
-      for (let k = change.a0; k < change.a1; k++) lines.push({ _tag: "Delete", text: a[k] })
-      for (let k = change.b0; k < change.b1; k++) lines.push({ _tag: "Insert", text: b[k] })
-      if (paired) {
-        const count = change.a1 - change.a0
-        for (let k = 0; k < count; k++) {
-          const [before, after] = inlineChanges(
-            withoutBreak(a[change.a0 + k]),
-            withoutBreak(b[change.b0 + k]),
-            options?.inlineMaxEdits
-          )
-          lines[deleted + k] = { _tag: "Delete", text: a[change.a0 + k], changes: before }
-          lines[deleted + count + k] = { _tag: "Insert", text: b[change.b0 + k], changes: after }
+      if (inline && change.a1 - change.a0 === change.b1 - change.b0) {
+        const inserts: Array<HunkLine> = []
+        for (let k = change.a0, l = change.b0; k < change.a1; k++, l++) {
+          const [deleted, inserted] = inlineRanges(a[k], b[l], options?.inlineMaxEdits)
+          lines.push({ _tag: "Delete", text: a[k], ranges: deleted })
+          inserts.push({ _tag: "Insert", text: b[l], ranges: inserted })
         }
+        for (const insert of inserts) lines.push(insert)
+      } else {
+        for (let k = change.a0; k < change.a1; k++) lines.push({ _tag: "Delete", text: a[k] })
+        for (let k = change.b0; k < change.b1; k++) lines.push({ _tag: "Insert", text: b[k] })
       }
       line = change.a1
     }
@@ -717,8 +725,8 @@ const formatLine = (prefix: string, line: string): string =>
 
 const withoutBreak = (line: string): string => line.endsWith("\n") ? line.slice(0, -1) : line
 
-// The differing UTF-16 ranges of two lines, in each; code points are never split
-const inlineChanges = (
+// The UTF-16 ranges where two lines differ, in each, ignoring a final `\n`
+const inlineRanges = (
   before: string,
   after: string,
   maxEdits: number | undefined
@@ -727,7 +735,7 @@ const inlineChanges = (
   const inAfter: Array<readonly [number, number]> = []
   let i = 0
   let j = 0
-  for (const edit of codePoints(before, after, { maxEdits })) {
+  for (const edit of codePoints(withoutBreak(before), withoutBreak(after), { maxEdits })) {
     let length = 0
     for (const item of edit.items) length += item.length
     if (edit._tag === "Equal") {

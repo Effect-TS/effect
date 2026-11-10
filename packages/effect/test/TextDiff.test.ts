@@ -213,7 +213,7 @@ describe("TextDiff", () => {
       ]
       for (const [before, after, expected] of cases) {
         const hunks = TextDiff.hunks(TextDiff.lines(before, after), { context: 0, inline: true })
-        deepStrictEqual(hunks.flatMap((hunk) => hunk.lines.map((line) => [line._tag, line.changes])), expected)
+        deepStrictEqual(hunks.flatMap((hunk) => hunk.lines.map((line) => [line._tag, line.ranges])), expected)
       }
     })
   })
