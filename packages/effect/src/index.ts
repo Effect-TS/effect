@@ -129,6 +129,12 @@ export * as Chunk from "./Chunk.ts"
 export * as Clock from "./Clock.ts"
 
 /**
+ * @stability unstable
+ * @since 4.1.4
+ */
+export * as CodeWriter from "./CodeWriter.ts"
+
+/**
  * @stability stable
  * @since 4.0.0
  */
