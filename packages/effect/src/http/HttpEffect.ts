@@ -230,18 +230,18 @@ const handledSymbol = Symbol.for("effect/http/HttpEffect/handled")
 /**
  * Disables automatic closing for an HTTP request scope.
  *
- * **Details**
+ * **When to use**
  *
- * To keep the scope created by `toHandled` open past the response and body,
- * call this in the handler with its request scope and do not call
- * `scopeTransferToStream` in the host's response callback. The host can then
- * close the request scope with `Scope.close` and its chosen exit after all
- * work using request resources has settled, including background work handed
- * to `waitUntil`.
+ * Use when the host must keep the scope created by `toHandled` open past the
+ * response and its body, for example while background work still uses request
+ * resources.
+ *
+ * **Details**
  *
  * Only the close that runs when the request finishes is disabled. A body
  * transferred with `scopeTransferToStream` still closes the scope when it
- * exits.
+ * exits. If `handleResponse` does not transfer the body, the scope stays open
+ * until the host closes it with `Scope.close` and its chosen exit.
  *
  * **Gotchas**
  *

@@ -1,5 +1,5 @@
 import { describe, it, test } from "@effect/vitest"
-import { deepStrictEqual, strictEqual } from "@effect/vitest/utils"
+import { assertTrue, deepStrictEqual, strictEqual } from "@effect/vitest/utils"
 import { Cause, Context, Effect, Exit, Option, References, Scope, Stream, Tracer } from "effect"
 import { identity } from "effect/Function"
 import { HttpEffect, HttpRouter, HttpServerRequest, HttpServerResponse } from "effect/http"
@@ -68,58 +68,53 @@ describe("HttpEffect", () => {
     )
   })
 
-  for (const responseKind of ["plain", "failure", "stream"] as const) {
-    it.effect(
-      "a disabled, untransferred request scope stays open until the host closes it: " + responseKind,
-      () =>
-        Effect.gen(function*() {
-          let requestScope!: Scope.Closeable
-          let response!: HttpServerResponse.HttpServerResponse
-          const exits: Array<Exit.Exit<unknown, unknown>> = []
-          const handledExit = yield* HttpEffect.toHandled(
-            Effect.gen(function*() {
-              requestScope = (yield* Effect.scope) as Scope.Closeable
-              HttpEffect.scopeDisableClose(requestScope)
-              yield* Effect.addFinalizer((exit) =>
-                Effect.sync(() => {
-                  exits.push(exit)
-                })
-              )
-              if (responseKind === "failure") return yield* Effect.fail(new Error("handler failed"))
-              return responseKind === "stream"
-                ? HttpServerResponse.stream(Stream.make("body").pipe(Stream.encodeText))
-                : HttpServerResponse.text("body")
-            }),
-            (_, handled) =>
+  it.effect.each(["plain", "failure", "stream"] as const)(
+    "a disabled, untransferred request scope stays open until the host closes it: %s",
+    (responseKind) =>
+      Effect.gen(function*() {
+        let requestScope!: Scope.Closeable
+        let response!: HttpServerResponse.HttpServerResponse
+        const exits: Array<Exit.Exit<unknown, unknown>> = []
+        const handledExit = yield* HttpEffect.toHandled(
+          Effect.gen(function*() {
+            requestScope = (yield* Effect.scope) as Scope.Closeable
+            HttpEffect.scopeDisableClose(requestScope)
+            yield* Effect.addFinalizer((exit) =>
               Effect.sync(() => {
-                response = handled
+                exits.push(exit)
               })
-          ).pipe(Effect.exit)
-          strictEqual(Exit.isFailure(handledExit), responseKind === "failure")
+            )
+            if (responseKind === "failure") return yield* Effect.fail(new Error("handler failed"))
+            return responseKind === "stream"
+              ? HttpServerResponse.stream(Stream.make("body").pipe(Stream.encodeText))
+              : HttpServerResponse.text("body")
+          }),
+          (_, handled) =>
+            Effect.sync(() => {
+              response = handled
+            })
+        ).pipe(Effect.exit)
+        strictEqual(Exit.isFailure(handledExit), responseKind === "failure")
+        deepStrictEqual(exits, [])
+        strictEqual(response.status, responseKind === "failure" ? 500 : 200)
+        if (responseKind === "stream") {
+          assertTrue(response.body._tag === "Stream")
+          strictEqual(yield* Stream.mkString(Stream.decodeText(response.body.stream)), "body")
           deepStrictEqual(exits, [])
-          strictEqual(response.status, responseKind === "failure" ? 500 : 200)
-          if (responseKind === "stream") {
-            strictEqual(response.body._tag, "Stream")
-            if (response.body._tag === "Stream") {
-              const body = yield* Stream.mkString(Stream.decodeText(response.body.stream))
-              strictEqual(body, "body")
-            }
-            deepStrictEqual(exits, [])
-          }
-          const hostExit = Exit.fail(new Error("host background work failed"))
-          yield* Scope.close(requestScope, hostExit)
-          deepStrictEqual(exits, [hostExit])
-          yield* Scope.close(requestScope, Exit.void)
-          deepStrictEqual(exits, [hostExit])
-        }).pipe(
-          Effect.provideService(
-            HttpServerRequest.HttpServerRequest,
-            HttpServerRequest.fromWeb(new Request("http://localhost:3000/"))
-          ),
-          Effect.provideService(References.TracerEnabled, false)
-        )
-    )
-  }
+        }
+        const hostExit = Exit.fail(new Error("host background work failed"))
+        yield* Scope.close(requestScope, hostExit)
+        deepStrictEqual(exits, [hostExit])
+        yield* Scope.close(requestScope, Exit.void)
+        deepStrictEqual(exits, [hostExit])
+      }).pipe(
+        Effect.provideService(
+          HttpServerRequest.HttpServerRequest,
+          HttpServerRequest.fromWeb(new Request("http://localhost:3000/"))
+        ),
+        Effect.provideService(References.TracerEnabled, false)
+      )
+  )
 
   describe("toWebHandler", () => {
     test("skips the server span with the default tracer", async () => {
