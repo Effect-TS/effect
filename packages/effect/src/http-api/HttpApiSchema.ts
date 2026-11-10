@@ -1460,7 +1460,7 @@ export const getWithHeadersAnnotation = SchemaAST.resolveAt<WithHeadersAnnotatio
 
 /**
  * Returns the declared body and headers schemas of an `encodeToWithHeaders`
- * response, or `undefined` when its annotation is absent.
+ * response, or `undefined` for any other schema.
  *
  * **When to use**
  *
@@ -1469,17 +1469,16 @@ export const getWithHeadersAnnotation = SchemaAST.resolveAt<WithHeadersAnnotatio
  *
  * **Details**
  *
- * Returns a fresh object containing only `body` and `headers`. Both schemas keep
- * their declared identity through endpoint construction and reflection, with or
- * without `disableCodecs`. The headers schema is a `Schema.Struct`, so its
- * fields can be inspected directly.
+ * Both schemas keep their declared identity through endpoint construction and
+ * reflection, with or without `disableCodecs`. The headers schema is a
+ * `Schema.Struct`, so its fields can be inspected directly.
  *
  * **Gotchas**
  *
  * These are declared schemas, not the response codecs installed by an endpoint.
  * Plain schemas, `WithHeaders` wrappers, and ordinary transformations from an
- * identical `{ body, headers }` struct return `undefined`. This reader follows
- * the annotation: schema operations that discard it also discard these parts.
+ * identical `{ body, headers }` struct return `undefined`. So do schemas that
+ * wrap the result, such as a union or a further transformation.
  *
  * @see encodeToWithHeaders
  * @see getResponseEncodingSchema
@@ -1581,9 +1580,9 @@ export function getStatusSuccessSchema(schema: Schema.Constraint): number {
  * **Details**
  *
  * For `WithHeaders`, the wrapper's encoding takes precedence over the inner
- * schema's encoding. For `encodeToWithHeaders`, the body encoding is copied
- * at construction; subsequent encoding annotations on the result take precedence
- * for this reader, but do not change the body's encoding used by the server.
+ * schema's encoding. For `encodeToWithHeaders`, the body schema's encoding is
+ * used. Re-annotating the result changes what this function returns, not what
+ * the server sends.
  *
  * **Gotchas**
  *

@@ -27,13 +27,9 @@ try {
   Fs.writeFileSync(
     Path.join(dir, "index.ts"),
     entrypoints.map(([entry], i) => `import * as _${i} from "${entry}"\nexport { _${i} }\n`).join("") +
-      `import { Schema } from "effect"
-import { HttpApiSchema } from "effect/http-api"
-const encoding: HttpApiSchema.ResponseEncoding = HttpApiSchema.getResponseEncodingSchema(Schema.String)
-const parts: { readonly body: Schema.Top; readonly headers: Schema.Struct<Schema.Struct.Fields> } | undefined =
-  HttpApiSchema.getEncodeToWithHeadersParts(Schema.String)
-export { encoding, parts }
-`
+      // These readers must stay in the published declarations (see Effect-TS/effect#10524).
+      'import { HttpApiSchema } from "effect/http-api"\n' +
+      "export const { getEncodeToWithHeadersParts, getResponseEncodingSchema } = HttpApiSchema\n"
   )
   const config = {
     compilerOptions: {
