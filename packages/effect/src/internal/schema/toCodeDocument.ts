@@ -43,6 +43,14 @@ function renderEmittableAnnotation(input: unknown): string | undefined {
     return `[${values.join(", ")}]`
   }
 
+  const prototype = Object.getPrototypeOf(input)
+  // Plain objects from other realms also have a prototype whose prototype is null.
+  if (
+    prototype !== null &&
+    prototype !== Object.prototype &&
+    Object.getPrototypeOf(prototype) !== null
+  ) return undefined
+
   const entries: Array<string> = []
   for (const [key, value] of Object.entries(input)) {
     const rendered = renderEmittableAnnotation(value)
