@@ -196,15 +196,12 @@ const appendRedactedHeaders = Array.append("x-amz-security-token")
 
 const withRedactedHeaders = Effect.updateService(Headers.CurrentRedactedNames, appendRedactedHeaders)
 
-const emptyToUndefined = (value: string | undefined): string | undefined =>
-  value === undefined || value === "" ? undefined : value
-
 const missingKey = (method: string, description: string) =>
   Errors.make(method, new AiError.AuthenticationError({ kind: "MissingKey", description }))
 
 const sigV4 = (accessKeyId: string, secretAccessKey: string, sessionToken: string | undefined): RequestCredentials => ({
   _tag: "SigV4",
-  credentials: { accessKeyId, secretAccessKey, sessionToken: emptyToUndefined(sessionToken) }
+  credentials: { accessKeyId, secretAccessKey, sessionToken: sessionToken === "" ? undefined : sessionToken }
 })
 
 const makeResolveCredentials = (
@@ -255,6 +252,7 @@ const authenticateRequest = (region: string) =>
     }
   })
 
+const decodeResponse = HttpClientResponse.schemaBodyJson(ConverseResponse)
 const decodeStreamEvent = Schema.decodeUnknownEffect(ConverseStreamEvent)
 const decodeStreamException = Schema.decodeUnknownEffect(ConverseStreamException)
 
@@ -271,6 +269,7 @@ const decodeStreamException = Schema.decodeUnknownEffect(ConverseStreamException
 export const make = Effect.fnUntraced(
   function*(options: Options): Effect.fn.Return<Service, never, HttpClient.HttpClient> {
     const region = options.region ?? "us-east-1"
+    const apiUrl = options.apiUrl ?? `https://bedrock-runtime.${region}.amazonaws.com`
     const baseClient = yield* HttpClient.HttpClient
     const resolveCredentials = makeResolveCredentials(options)
 
@@ -285,10 +284,7 @@ export const make = Effect.fnUntraced(
 
     const httpClient = baseClient.pipe(
       HttpClient.mapRequest((request) =>
-        request.pipe(
-          HttpClientRequest.prependUrl(options.apiUrl ?? `https://bedrock-runtime.${region}.amazonaws.com`),
-          HttpClientRequest.acceptJson
-        )
+        request.pipe(HttpClientRequest.prependUrl(apiUrl), HttpClientRequest.acceptJson)
       ),
       HttpClient.mapRequestEffect(authenticateRequest(region)),
       options.transformClient ?? identity
@@ -312,26 +308,29 @@ export const make = Effect.fnUntraced(
       (config) => (config?.transformClient ?? identity)(httpClientOk)
     )
 
-    const makeRequest = (
+    const execute = (
       operation: "converse" | "converse-stream",
+      method: string,
       { modelId, ...body }: typeof ConverseRequest.Encoded
     ) =>
-      HttpClientRequest.post(`/model/${encodeURIComponent(modelId)}/${operation}`, {
-        body: HttpBody.jsonUnsafe(body)
-      })
+      configClient.pipe(
+        Effect.flatMap((client) =>
+          client.execute(HttpClientRequest.post(`/model/${encodeURIComponent(modelId)}/${operation}`, {
+            body: HttpBody.jsonUnsafe(body)
+          }))
+        ),
+        withCredentials(method)
+      )
 
-    const converse: Service["converse"] = Effect.fnUntraced(function*(request) {
-      const client = yield* configClient
-      return yield* client.execute(makeRequest("converse", request)).pipe(
-        withCredentials("converse"),
-        Effect.flatMap(HttpClientResponse.schemaBodyJson(ConverseResponse)),
+    const converse: Service["converse"] = (request) =>
+      execute("converse", "converse", request).pipe(
+        Effect.flatMap(decodeResponse),
         Effect.catchTags({
           HttpClientError: (error) => Errors.mapHttpClientError(error, "converse"),
           SchemaError: (error) => Effect.fail(Errors.mapSchemaError(error, "converse"))
         }),
         withRedactedHeaders
       )
-    })
 
     const decodeFrame = Effect.fnUntraced(function*(frame: EventStream.Frame) {
       const messageType = frame.headers[":message-type"]
@@ -370,22 +369,17 @@ export const make = Effect.fnUntraced(
     })
 
     const converseStream: Service["converseStream"] = (request) =>
-      Stream.unwrap(
-        Effect.map(configClient, (client) =>
-          client.execute(makeRequest("converse-stream", request)).pipe(
-            withCredentials("converseStream"),
-            Effect.map((response) => response.stream),
-            Stream.unwrap,
-            EventStream.decode,
-            Stream.mapEffect(decodeFrame),
-            Stream.filter(Predicate.isNotUndefined),
-            Stream.catchTags({
-              HttpClientError: (error) => Stream.fromEffect(Errors.mapHttpClientError(error, "converseStream")),
-              SchemaError: (error) => Stream.fail(Errors.mapSchemaError(error, "converseStream")),
-              EventStreamError: (error) => Stream.fail(Errors.mapEventStreamError(error, "converseStream"))
-            }),
-            Stream.updateService(Headers.CurrentRedactedNames, appendRedactedHeaders)
-          ))
+      execute("converse-stream", "converseStream", request).pipe(
+        HttpClientResponse.stream,
+        EventStream.decode,
+        Stream.mapEffect(decodeFrame),
+        Stream.filter(Predicate.isNotUndefined),
+        Stream.catchTags({
+          HttpClientError: (error) => Stream.fromEffect(Errors.mapHttpClientError(error, "converseStream")),
+          SchemaError: (error) => Stream.fail(Errors.mapSchemaError(error, "converseStream")),
+          EventStreamError: (error) => Stream.fail(Errors.mapEventStreamError(error, "converseStream"))
+        }),
+        Stream.updateService(Headers.CurrentRedactedNames, appendRedactedHeaders)
       )
 
     return AmazonBedrockClient.of({

@@ -61,15 +61,7 @@ export const mapHttpClientError = (
     case "TransportError":
     case "EncodeError":
     case "InvalidUrlError": {
-      return Effect.fail(make(
-        method,
-        new AiError.NetworkError({
-          reason: reason._tag,
-          description: reason.description,
-          method: reason.request.method,
-          url: reason.request.url
-        })
-      ))
+      return Effect.fail(make(method, AiError.NetworkError.fromRequestError(reason)))
     }
     case "StatusCodeError": {
       return mapStatusCodeError(reason, method)

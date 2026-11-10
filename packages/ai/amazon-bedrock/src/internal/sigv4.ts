@@ -19,12 +19,9 @@ export interface SigningCredentials {
 
 const encoder = new TextEncoder()
 
-const toArrayBuffer = (bytes: Uint8Array): ArrayBuffer =>
-  bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer
-
 const sha256 = (data: Uint8Array): Effect.Effect<Uint8Array> =>
   Effect.map(
-    Effect.promise(() => globalThis.crypto.subtle.digest("SHA-256", toArrayBuffer(data))),
+    Effect.promise(() => globalThis.crypto.subtle.digest("SHA-256", data as BufferSource)),
     (digest) => new Uint8Array(digest)
   )
 
@@ -32,12 +29,12 @@ const hmac = (key: Uint8Array, data: string): Effect.Effect<Uint8Array> =>
   Effect.promise(async () => {
     const cryptoKey = await globalThis.crypto.subtle.importKey(
       "raw",
-      toArrayBuffer(key),
+      key as BufferSource,
       { name: "HMAC", hash: "SHA-256" },
       false,
       ["sign"]
     )
-    return new Uint8Array(await globalThis.crypto.subtle.sign("HMAC", cryptoKey, toArrayBuffer(encoder.encode(data))))
+    return new Uint8Array(await globalThis.crypto.subtle.sign("HMAC", cryptoKey, encoder.encode(data)))
   })
 
 /** Percent-encodes a string per RFC 3986, as SigV4 requires. */

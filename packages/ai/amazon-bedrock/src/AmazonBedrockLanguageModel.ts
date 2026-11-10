@@ -384,10 +384,7 @@ export const make = Effect.fnUntraced(function*({ config: providerConfig, model 
   const makeRequest = Effect.fnUntraced(
     function*(
       options: LanguageModel.ProviderOptions
-    ): Effect.fn.Return<{
-      readonly request: typeof ConverseRequest.Encoded
-      readonly nameMapper: Tool.NameMapper<ReadonlyArray<Tool.Any>>
-    }, AiError.AiError> {
+    ): Effect.fn.Return<typeof ConverseRequest.Encoded, AiError.AiError> {
       const services = yield* Effect.context<never>()
       const { outputConfig: configOutputConfig, structuredOutputs, ...config } = {
         ...providerConfig,
@@ -395,7 +392,7 @@ export const make = Effect.fnUntraced(function*({ config: providerConfig, model 
       }
       const modelId = config.modelId ?? model
       const { messages, system } = yield* prepareMessages(options)
-      let { nameMapper, toolConfig } = yield* prepareTools(options)
+      let toolConfig = yield* prepareTools(options)
       const responseFormat = options.responseFormat
 
       let outputConfig: typeof OutputConfig.Encoded | undefined = configOutputConfig
@@ -423,7 +420,6 @@ export const make = Effect.fnUntraced(function*({ config: providerConfig, model 
           }
         } else {
           // The object tool is the only tool, and it is forced.
-          nameMapper = new Tool.NameMapper([])
           toolConfig = {
             tools: [{
               toolSpec: {
@@ -461,22 +457,22 @@ export const make = Effect.fnUntraced(function*({ config: providerConfig, model 
             "carries no tools. Pass the toolkit that produced the tool calls, with a toolChoice other than \"none\"."
         )
       }
-      return { request, nameMapper }
+      return request
     }
   )
 
   return yield* LanguageModel.make({
     codecTransformer: toCodecAnthropic,
     generateText: Effect.fnUntraced(function*(options) {
-      const { nameMapper, request } = yield* makeRequest(options)
+      const request = yield* makeRequest(options)
       annotateRequest(options.span, request)
       const response = yield* client.converse(toConverseRequest(request))
-      return yield* makeResponse(request, response, options, nameMapper)
+      return yield* makeResponse(request, response, options)
     }),
     streamText: Effect.fnUntraced(function*(options) {
-      const { nameMapper, request } = yield* makeRequest(options)
+      const request = yield* makeRequest(options)
       annotateRequest(options.span, request)
-      return makeStreamResponse(request, client.converseStream(request), options.tools, nameMapper, options.span)
+      return makeStreamResponse(request, client.converseStream(request), options.tools, options.span)
     }, (effect, _options) => effect.pipe(Stream.unwrap))
   })
 })
@@ -854,18 +850,20 @@ const decodeToolParams = (
 
 const prepareTools: (
   options: LanguageModel.ProviderOptions
-) => Effect.Effect<{
-  readonly toolConfig: typeof ToolConfiguration.Encoded | undefined
-  readonly nameMapper: Tool.NameMapper<ReadonlyArray<Tool.Any>>
-}, AiError.AiError> = Effect.fnUntraced(function*(options) {
-  const nameMapper = new Tool.NameMapper(options.tools)
-
+) => Effect.Effect<
+  typeof ToolConfiguration.Encoded | undefined,
+  AiError.AiError
+> = Effect.fnUntraced(function*(options) {
+  // Converse rejects an empty `tools` array, and it has no tool choice that
+  // forbids tool calls.
   if (options.tools.length === 0 || options.toolChoice === "none") {
-    return { toolConfig: undefined, nameMapper }
+    return undefined
   }
 
   const tools: Array<typeof BedrockTool.Encoded> = []
   for (const tool of options.tools) {
+    // Provider-defined tools are rejected, and only they go by another name
+    // on the wire, so no `Tool.NameMapper` is needed.
     if (!Tool.isUserDefined(tool)) {
       return yield* invalidUserInput(
         "prepareTools",
@@ -876,7 +874,7 @@ const prepareTools: (
     const json = yield* tryJsonSchema("prepareTools", () => Tool.getJsonSchema(tool, { transformer: toCodecAnthropic }))
     tools.push({
       toolSpec: {
-        name: nameMapper.getProviderName(tool.name),
+        name: tool.name,
         ...(Predicate.isNotUndefined(description) ? { description } : {}),
         inputSchema: { json: json as Record<string, unknown> }
       }
@@ -890,19 +888,14 @@ const prepareTools: (
   } else if (choice === "required") {
     toolChoice = { any: {} }
   } else if ("tool" in choice) {
-    toolChoice = { tool: { name: nameMapper.getProviderName(choice.tool) } }
+    toolChoice = { tool: { name: choice.tool } }
   } else {
     // `LanguageModel` already filters the toolkit by `toolChoice.oneOf`
     // before a provider sees it, so this only picks the mode.
     toolChoice = choice.mode === "required" ? { any: {} } : { auto: {} }
   }
 
-  // Converse rejects an empty `tools` array alongside a `toolChoice`.
-  const toolConfig: typeof ToolConfiguration.Encoded | undefined = tools.length > 0
-    ? { tools, toolChoice }
-    : undefined
-
-  return { toolConfig, nameMapper }
+  return { tools, toolChoice }
 })
 
 // =============================================================================
@@ -912,10 +905,9 @@ const prepareTools: (
 const makeResponse: (
   request: typeof ConverseRequest.Encoded,
   response: ConverseResponse,
-  options: LanguageModel.ProviderOptions,
-  nameMapper: Tool.NameMapper<ReadonlyArray<Tool.Any>>
+  options: LanguageModel.ProviderOptions
 ) => Effect.Effect<Array<Response.PartEncoded>, AiError.AiError> = Effect.fnUntraced(
-  function*(request, response, options, nameMapper) {
+  function*(request, response, options) {
     const parts: Array<Response.PartEncoded> = []
     // Without native structured output the object is asked for through a tool
     // named after it (see `makeRequest`).
@@ -949,12 +941,11 @@ const makeResponse: (
           }
           continue
         }
-        const name = nameMapper.getCustomName(part.toolUse.name)
         parts.push({
           type: "tool-call",
           id: part.toolUse.toolUseId,
-          name,
-          params: yield* decodeToolParams(options.tools, name, part.toolUse.input),
+          name: part.toolUse.name,
+          params: yield* decodeToolParams(options.tools, part.toolUse.name, part.toolUse.input),
           providerExecuted: false
         })
       } else if (Predicate.isNotUndefined(part.reasoningContent)) {
@@ -1054,7 +1045,6 @@ const makeStreamResponse = (
   request: typeof ConverseRequest.Encoded,
   stream: Stream.Stream<ConverseStreamEvent, AiError.AiError>,
   tools: ReadonlyArray<Tool.Any>,
-  nameMapper: Tool.NameMapper<ReadonlyArray<Tool.Any>>,
   span: Span
 ): Stream.Stream<Response.StreamPartEncoded, AiError.AiError> => {
   // Text and reasoning blocks have no `contentBlockStart` event, so they are
@@ -1080,9 +1070,9 @@ const makeStreamResponse = (
         // Tool-use blocks announce themselves here.
         const start = event.contentBlockStart.start?.toolUse
         if (Predicate.isNotUndefined(start)) {
-          const name = nameMapper.getCustomName(start.name)
-          toolBlocks.set(event.contentBlockStart.contentBlockIndex, { id: start.toolUseId, name, params: "" })
-          parts.push({ type: "tool-params-start", id: start.toolUseId, name })
+          const { name, toolUseId: id } = start
+          toolBlocks.set(event.contentBlockStart.contentBlockIndex, { id, name, params: "" })
+          parts.push({ type: "tool-params-start", id, name })
         }
       } else if ("contentBlockDelta" in event) {
         const index = event.contentBlockDelta.contentBlockIndex
