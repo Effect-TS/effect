@@ -396,10 +396,8 @@ export const importSideEffect = (self: CodeWriter, from: string): void => {
  */
 export const scope = (parent: CodeWriter | CodeScope): CodeScope => new ScopeImpl(parent as Owner)
 
-/** Why `name` cannot be declared in `owner` as it is, or `undefined` when it can. */
-const unavailable = (owner: Owner, name: string): string | undefined => {
-  if (!isIdentifierName(name)) return "it is not an identifier"
-  if (reservedWords.has(name)) return "it is a reserved word"
+/** Why `name` is taken for `owner`, or `undefined` when it is free. */
+const takenBy = (owner: Owner, name: string): string | undefined => {
   if (owner.writer.reserved.has(name)) return "it is reserved by CodeWriter.make"
   if (owner.nested.has(name)) return "a nested scope declares it"
   for (let s: Owner | undefined = owner; s !== undefined; s = s.parent) {
@@ -471,10 +469,14 @@ export const declare = (
   const owner = self as Owner
   let taken = name
   if (options?.exact === true) {
-    const reason = unavailable(owner, name)
+    const reason = !isIdentifierName(name)
+      ? "it is not an identifier"
+      : reservedWords.has(name)
+      ? "it is a reserved word"
+      : takenBy(owner, name)
     if (reason !== undefined) throw new Error(`Cannot declare ${JSON.stringify(name)}: ${reason}`)
   } else {
-    taken = freeName(sanitize(name), (n) => unavailable(owner, n) !== undefined)
+    taken = freeName(sanitize(name), (n) => takenBy(owner, n) !== undefined)
   }
   owner.taken.add(taken)
   for (let s: Owner | undefined = owner.parent; s !== undefined; s = s.parent) s.nested.add(taken)
@@ -619,8 +621,8 @@ export const propertyKey = (key: string): string =>
  *
  * The text, or each string of an array, is split into lines. Trailing
  * whitespace and leading and trailing blank lines are removed, and `*\/` is
- * escaped. One line prints as `/** text *\/`. Text without any non-blank line
- * prints `""`. The comment can be put inside {@link indent}.
+ * escaped. One line prints as `/** text *\/`. Text with no non-blank line
+ * gives an empty string. The comment can be put inside {@link indent}.
  *
  * **Example** (Documenting a declaration)
  *

@@ -97,11 +97,12 @@ describe("CodeWriter", () => {
       [writer, "user-id"],
       [writer, "1st"],
       [writer, ""],
-      [writer, "default"]
+      [writer, "default"],
+      [writer, "globalThis"]
     ] as const
     deepStrictEqual(
       declared.map(([owner, name]) => CodeWriter.declare(owner, name).name),
-      ["x", "x2", "x3", "x", "y", "y", "user_id", "_1st", "_", "default2"]
+      ["x", "x2", "x3", "x", "y", "y", "user_id", "_1st", "_", "default2", "globalThis2"]
     )
   })
 
