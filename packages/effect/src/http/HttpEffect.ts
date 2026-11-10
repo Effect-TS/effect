@@ -32,7 +32,9 @@ import * as requestState from "./internal/requestState.ts"
 
 /**
  * Runs an HTTP server effect, sends the produced response with the supplied handler, and converts failures into HTTP responses.
- * On handler failure, the request scope closes with the original cause.
+ * On handler failure, the request scope closes with the original cause. If the
+ * response body was transferred with `scopeTransferToStream`, the scope closes
+ * with the body's exit once both the request and the body have finished.
  * If the send handler returns an `HttpServerResponse`, such as the `101`
  * response of an upgraded request, middleware observes it in place of the
  * handler's response.
@@ -156,28 +158,46 @@ export const toHandled = <E, R, EH, RH>(
   ) =>
     Effect.onExitPrimitive(effect, (exit) => {
       fiber.setContext(frame.prev)
-      if (scopeEjected in frame.scope) return undefined
-      return Scope.closeUnsafe(frame.scope, frame.cause === undefined ? exit : Exit.failCause(frame.cause))
+      return frame.finish(exit)
     }, true)
 
-  class RequestFrame extends requestState.RequestState {
+  class RequestFrame extends requestState.RequestState implements RequestScopeJoin {
     readonly scope: Scope.Closeable
     readonly prev: Context.Context<never>
     readonly request: HttpServerRequest
     cause: Cause.Cause<E | EH | HttpServerError> | undefined
+    finished = false
+    transferred = false
+    bodyExit: Exit.Exit<unknown, unknown> | undefined = undefined
     constructor(scope: Scope.Closeable, prev: Context.Context<never>, request: HttpServerRequest) {
       super()
       this.scope = scope
       this.prev = prev
       this.request = request
+      ;(scope as any)[requestScopeJoin] = this
+    }
+    // Marks the request as finished and closes its scope. A transferred body
+    // owns the exit, so the scope closes with the body's exit once both have finished.
+    finish(exit: Exit.Exit<unknown, unknown>): Effect.Effect<void> | undefined {
+      this.finished = true
+      if (this.transferred) {
+        return this.bodyExit === undefined ? undefined : Scope.closeUnsafe(this.scope, this.bodyExit)
+      }
+      if (scopeEjected in this.scope) return undefined
+      return Scope.closeUnsafe(this.scope, this.cause === undefined ? exit : Exit.failCause(this.cause))
+    }
+    finishBody(exit: Exit.Exit<unknown, unknown>): Effect.Effect<void> {
+      // A body can be transferred more than once. The first exit wins, so a
+      // later transfer cannot replace it before the request finishes.
+      this.bodyExit ??= exit
+      return this.finished ? Scope.close(this.scope, this.bodyExit) : Effect.void
     }
     [contA](response: HttpServerResponse, fiber: Fiber.Fiber<unknown, unknown>) {
       const sent = sendResponse(this, response)
       // Most response writes complete synchronously.
       if (effectIsExit(sent) && sent._tag === "Success") {
         fiber.setContext(this.prev)
-        if (scopeEjected in this.scope) return sent
-        const closed = Scope.closeUnsafe(this.scope, sent)
+        const closed = this.finish(sent)
         return closed === undefined ? sent : Effect.flatMap(closed, () => sent)
       }
       return finishAfter(this, fiber, sent)
@@ -210,10 +230,25 @@ const handledSymbol = Symbol.for("effect/http/HttpEffect/handled")
 /**
  * Disables automatic closing for an HTTP request scope.
  *
+ * **When to use**
+ *
+ * Use when the host must keep the scope created by `toHandled` open past the
+ * response and its body, for example while background work still uses request
+ * resources.
+ *
+ * **Details**
+ *
+ * Only the close that runs when the request finishes is disabled. A body
+ * transferred with `scopeTransferToStream` still closes the scope when it
+ * exits. If the body is not transferred anywhere, whether in the handler,
+ * middleware or `handleResponse`, the scope stays open until the host closes
+ * it with `Scope.close` and its chosen exit.
+ *
  * **Gotchas**
  *
- * Use only when another owner will close the scope; otherwise resources attached
- * to the request scope can leak.
+ * Without `scopeTransferToStream`, finishing or aborting the body does not
+ * release request resources. The host must close the scope on every path,
+ * including failures and interruption, or those resources can leak.
  *
  * @stability unstable
  * @category resource management
@@ -224,7 +259,18 @@ export const scopeDisableClose = (scope: Scope.Scope): void => {
 }
 
 /**
- * Returns a streaming server response that closes the request scope when the body stream exits.
+ * Returns a streaming server response that closes the request scope with the body stream's exit.
+ *
+ * **Details**
+ *
+ * For a request scope created by `toHandled`, the scope closes once both the
+ * body stream has exited and the request has finished, including middleware
+ * and tracing. If the body exits first, for example because the request
+ * signal was already aborted, the close waits for the request. Any other scope
+ * closes as soon as the body stream exits.
+ *
+ * Responses without a stream body are returned unchanged and the request scope
+ * keeps its usual close.
  *
  * @stability unstable
  * @category resource management
@@ -239,10 +285,15 @@ export const scopeTransferToStream = (
   const fiber = Fiber.getCurrent()!
   const scope = Context.getUnsafe(fiber.context, Scope.Scope) as Scope.Closeable
   scopeDisableClose(scope)
+  const join: RequestScopeJoin | undefined = (scope as any)[requestScopeJoin]
+  if (join !== undefined) join.transferred = true
   return Response.setBodyKeepHeaders(
     response,
     HttpBody.stream(
-      Stream.onExit(response.body.stream, (exit) => Scope.close(scope, exit)),
+      Stream.onExit(
+        response.body.stream,
+        join === undefined ? (exit) => Scope.close(scope, exit) : (exit) => join.finishBody(exit)
+      ),
       response.body.contentType,
       response.body.contentLength
     )
@@ -250,6 +301,15 @@ export const scopeTransferToStream = (
 }
 
 const scopeEjected = Symbol.for("effect/http/HttpEffect/scopeEjected")
+
+// Close coordination for a request scope created by `toHandled`. A transferred
+// body and the request frame both have to finish before the scope closes.
+interface RequestScopeJoin {
+  transferred: boolean
+  finishBody(exit: Exit.Exit<unknown, unknown>): Effect.Effect<void>
+}
+
+const requestScopeJoin = Symbol.for("effect/http/HttpEffect/requestScopeJoin")
 
 /**
  * Function run with the current request and response just before the response is sent, allowing the response to be replaced or failing with `HttpServerError`.

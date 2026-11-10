@@ -230,6 +230,14 @@ export const make = Effect.fnUntraced(
             if (upgradedSources.has(bunRequest.source)) return upgradedResponse
           }), middleware)
 
+        // Join the serve scope before the first step. A body can start and exit while
+        // the handler is still running synchronously, and the request scope then
+        // closes when the request finishes, so closing the serve scope must await it.
+        const ownedHttpEffect = Effect.uninterruptible(Effect.withFiber((fiber) => {
+          Fiber.runIn(fiber, scope)
+          return httpEffect
+        }))
+
         function handler(request: Request, server: BunServer<WebSocketContext>) {
           if (request.method === "CONNECT") {
             return Promise.resolve(new Response(null, { status: 501 }))
@@ -240,7 +248,7 @@ export const make = Effect.fnUntraced(
               ServerRequest.HttpServerRequest,
               new BunServerRequest(request, resolve, removeHost(request.url), server, compressionThreshold)
             )
-            const fiber = Fiber.runIn(Effect.runForkWith(context)(httpEffect), scope)
+            const fiber = Effect.runForkWith(context)(ownedHttpEffect)
             request.signal.addEventListener("abort", () => {
               // Bun aborts the signal when an upgraded WebSocket closes, which is not a client abort.
               if (upgradedSources.has(request)) return
