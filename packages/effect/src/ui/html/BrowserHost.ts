@@ -495,6 +495,7 @@ export const mount = <Name extends string, Props, Model, Msg, Events, R, V exten
       ) => View.Node<never, RF>)
       | undefined
     readonly state?: Renderer.State | undefined
+    readonly loader?: Renderer.LoaderOptions | undefined
   }
 ): Effect.Effect<Renderer.Root<Model, Msg>, never, Exclude<R | RF, Html.Host> | Scope.Scope> =>
   Effect.gen(function*() {

@@ -21,28 +21,30 @@
  *
  * class SaveTodo extends Command.Service<SaveTodo>()(
  *   "todos/SaveTodo",
- *   Effect.succeed((todo: typeof Todo.Type) => Effect.succeed(TodoItemMessage.make({ _tag: "Saved" })))
+ *   { args: Todo, invalidates: () => [] },
+ *   Effect.succeed(() => Effect.succeed(TodoItemMessage.make({ _tag: "Saved" })))
  * ) {}
  *
  * const TodoItem = Component.make({
  *   name: "TodoItem",
  *   props: Schema.Struct({ todo: Todo }),
- *   model: Schema.Struct({ saving: Schema.Boolean }),
+ *   model: Schema.Struct({}),
  *   message: TodoItemMessage,
  *   events: TodoItemEvents,
- *   init: ($) => $.set({ saving: false }),
+ *   init: ($) => $.set({}),
  *   update: (model, message, $) =>
  *     TodoItemMessage.match(message, {
  *       Toggle: () => $.emit(TodoItemEvents.make({ _tag: "Toggled", done: !$.props.todo.done })),
- *       Save: () => $.set({ saving: true }).run(SaveTodo.make($.props.todo)),
- *       Saved: () => ({ saving: false })
+ *       Save: () => $.run(SaveTodo.make($.props.todo)),
+ *       Saved: () => model
  *     }),
- *   view: (model, h) =>
+ *   // `h.running` is true from the Save until its message has been handled.
+ *   view: (_, h) =>
  *     h.el(
  *       "li",
  *       h.el("button", h.props.todo.done ? "[x]" : "[ ]").on("click", TodoItemMessage.make({ _tag: "Toggle" })),
  *       h.el("span", h.props.todo.title),
- *       model.saving ? " saving" : ""
+ *       h.running(SaveTodo) ? " saving" : ""
  *     )
  * })
  * ```
@@ -54,6 +56,7 @@ import * as Layer from "../Layer.ts"
 import * as Pipeable from "../Pipeable.ts"
 import * as Predicate from "../Predicate.ts"
 import type * as AsyncResult from "../reactivity/AsyncResult.ts"
+import type * as Loader from "../reactivity/Loader.ts"
 import * as Schema from "../Schema.ts"
 import type * as Types from "../Types.ts"
 import type * as Command from "./Command.ts"
@@ -250,7 +253,12 @@ export interface Mountable<in out Props, out Events, out R = never> extends Pipe
   readonly events: Schema.Codec<Events, any>
   readonly init: (props: Props) => Next<any, any, Events, R>
   readonly update: (model: any, msg: never, props: Props) => Next<any, any, Events, R>
-  readonly view: (model: any, props: Props) => View.Node<any, R>
+  /** `running` answers `h.running` for the instance being rendered. Without it nothing is running. */
+  readonly view: (
+    model: any,
+    props: Props,
+    running?: ((name: string, groupKey: string | undefined) => boolean) | undefined
+  ) => View.Node<any, R>
   readonly subscriptions: ((model: any, props: Props) => ReadonlyArray<Subscription.Subscription<any, R>>) | undefined
   /** The instance's document head entries, a pure function of its Model. */
   readonly head: ((model: any) => ReadonlyArray<Head.Entry>) | undefined
@@ -307,7 +315,11 @@ export interface Component<
   readonly message: Schema.Codec<Msg, any>
   readonly init: (props: Props) => Next<Model, Msg, Events, R>
   readonly update: (model: Model, msg: Msg, props: Props) => Next<Model, Msg, Events, R>
-  readonly view: (model: Model, props: Props) => View.Node<Msg, R>
+  readonly view: (
+    model: Model,
+    props: Props,
+    running?: ((name: string, groupKey: string | undefined) => boolean) | undefined
+  ) => View.Node<Msg, R>
   readonly subscriptions: ((model: Model, props: Props) => ReadonlyArray<Subscription.Subscription<Msg, R>>) | undefined
   readonly head: ((model: Model) => ReadonlyArray<Head.Entry>) | undefined
   readonly layerFailure: ((failure: AsyncResult.Failure<never, any>) => Msg) | undefined
@@ -485,8 +497,11 @@ export const make = <
     events: options.events ?? Schema.Never,
     init: (props: Props) => toNext(options.init(makeInit(props))),
     update: (model: Model, msg: Msg, props: Props) => toNext(options.update(model, msg, makeUpdate(model, props))),
-    view: (model: Model, props: Props) =>
-      options.view(model, View.makeHelper<Msg, Props, V>(props, options.elements ?? View.registeredElements())),
+    view: (model: Model, props: Props, running?: View.Running) =>
+      options.view(
+        model,
+        View.makeHelper<Msg, Props, V>(props, options.elements ?? View.registeredElements(), running)
+      ),
     subscriptions: subscriptions === undefined
       ? undefined
       : (model: Model, props: Props) => subscriptions(model, props).filter((entry): entry is S => !!entry),
@@ -551,8 +566,24 @@ export interface LocalOption {
  */
 export type Provided<C, ROut, RIn> = C extends
   Component<infer N, infer P, infer M, infer Msg, infer E, infer _R, infer V>
-  ? Component<N, P, M, Msg, E, Exclude<Requirements<C>, ROut> | RIn, V>
-  : Mountable<Props<C>, Events<C>, Exclude<Requirements<C>, ROut> | RIn>
+  ? Component<N, P, M, Msg, E, Exclude<Requirements<C>, Exclude<ROut, RuntimeService>> | RIn, V>
+  : Mountable<Props<C>, Events<C>, Exclude<Requirements<C>, Exclude<ROut, RuntimeService>> | RIn>
+
+/**
+ * Services the runtime owns or reads once at mount: the framework services,
+ * among them the loader cache, and the cache's three references. A `provide`
+ * Layer can't supply them, so it never removes them from a component's
+ * requirements.
+ *
+ * @stability experimental
+ * @category utility types
+ * @since 4.1.3
+ */
+export type RuntimeService =
+  | Command.FrameworkService
+  | typeof Loader.Visibility
+  | typeof Loader.Connectivity
+  | typeof Loader.Problems
 
 /**
  * What `provide` accepts: a Layer, an array of them, or a function of props
@@ -688,7 +719,8 @@ const toLayer = (layers: Layer.Any | ReadonlyArray<Layer.Any>): Layer.Layer<any,
  *
  * class SaveTodo extends Command.Service<SaveTodo>()(
  *   "todos/SaveTodo",
- *   Effect.succeed((id: string) => Effect.succeed(RowMessage.make({ _tag: "Saved" })))
+ *   { args: { id: Schema.String }, invalidates: () => [] },
+ *   Effect.succeed(() => Effect.succeed(RowMessage.make({ _tag: "Saved" })))
  * ) {}
  *
  * class EditorStore extends Context.Service<EditorStore, { readonly draft: string }>()("EditorStore") {
@@ -703,7 +735,7 @@ const toLayer = (layers: Layer.Any | ReadonlyArray<Layer.Any>): Layer.Layer<any,
  *   init: () => ({}),
  *   update: (model, message, $) =>
  *     RowMessage.match(message, {
- *       Save: () => $.run(SaveTodo.make($.props.id)),
+ *       Save: () => $.run(SaveTodo.make({ id: $.props.id })),
  *       Saved: () => model
  *     }),
  *   view: (_, h) => h.el("li", h.props.id)

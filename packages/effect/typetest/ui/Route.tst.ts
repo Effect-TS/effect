@@ -85,6 +85,22 @@ describe("Router", () => {
     >()
   })
 
+  it("blocked is a Subscription a component returns while the Model says so", () => {
+    expect(Router.blocked("form")).type.toBe<Subscription.Subscription<never, Router.Router>>()
+    const Form = Component.make({
+      name: "Form",
+      model: Schema.Struct({ dirty: Schema.Boolean }),
+      message: Schema.Never,
+      init: () => ({ dirty: false }),
+      update: (model) => model,
+      subscriptions: (model) => [model.dirty && Router.blocked("form")],
+      view: (_, h) => h.text("")
+    })
+    expect<Component.Requirements<typeof Form>>().type.toBe<Router.Router>()
+    expect(Router).type.not.toHaveProperty("Block")
+    expect(Router).type.not.toHaveProperty("Unblock")
+  })
+
   it("gives head only the Model", () => {
     expect(Component.make).type.not.toBeCallableWith({
       name: "Page",

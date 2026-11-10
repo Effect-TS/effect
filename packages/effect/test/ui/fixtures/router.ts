@@ -36,11 +36,15 @@ export const PersonMessage = Schema.TaggedUnion({ Loaded: { name: Schema.String 
 
 export class LoadPerson extends Command.Service<LoadPerson>()(
   "LoadPerson",
-  Effect.succeed((id: number) => Effect.succeed(PersonMessage.make({ _tag: "Loaded", name: `Person ${id}` }))),
-  { server: true }
+  { args: { id: Schema.Number }, invalidates: () => [], server: true },
+  Effect.succeed(({ id }) => Effect.succeed(PersonMessage.make({ _tag: "Loaded", name: `Person ${id}` })))
 ) {}
 
-export const CountVisit = Command.make("CountVisit", () => Effect.succeed(PersonMessage.make({ _tag: "Visited" })))
+export const CountVisit = Command.make(
+  "CountVisit",
+  { args: {} },
+  () => Effect.succeed(PersonMessage.make({ _tag: "Visited" }))
+)
 
 export const Person = Component.make({
   name: "Person",
@@ -48,7 +52,9 @@ export const Person = Component.make({
   model: Schema.Struct({ id: Schema.Number, name: Schema.String, count: Schema.Number, visits: Schema.Number }),
   message: PersonMessage,
   init: ($) =>
-    $.set({ id: $.props.id, name: "Loading", count: 0, visits: 0 }).run(LoadPerson.make($.props.id)).run(CountVisit()),
+    $.set({ id: $.props.id, name: "Loading", count: 0, visits: 0 }).run(LoadPerson.make({ id: $.props.id })).run(
+      CountVisit()
+    ),
   update: (model, message) =>
     PersonMessage.match(message, {
       Loaded: ({ name }) => ({ ...model, name }),
@@ -88,19 +94,17 @@ export const AppMessage = Schema.TaggedUnion({
   Back: {},
   Block: {},
   Unblock: {},
-  Navigated: { outcome: Schema.Literals(["navigated", "blocked"]) },
-  Done: {}
+  Navigated: { outcome: Schema.Literals(["navigated", "blocked"]) }
 })
 
 const navigated = (outcome: Router.Outcome) => AppMessage.make({ _tag: "Navigated", outcome })
-const done = () => AppMessage.make({ _tag: "Done" })
 
 export const App = Component.make({
   name: "App",
   props: Schema.Struct({ route: AppRoute }),
-  model: Schema.Struct({ route: AppRoute, outcomes: Schema.Array(Schema.String) }),
+  model: Schema.Struct({ route: AppRoute, outcomes: Schema.Array(Schema.String), blocked: Schema.Boolean }),
   message: AppMessage,
-  init: ($) => ({ route: $.props.route, outcomes: [] }),
+  init: ($) => ({ route: $.props.route, outcomes: [], blocked: false }),
   update: (model, message, $) =>
     AppMessage.match(message, {
       ChangedRoute: ({ route }) =>
@@ -109,12 +113,14 @@ export const App = Component.make({
           : { ...model, route },
       Go: ({ route }) => $.run(Router.push(AppRoute, route).pipe(Command.map(navigated))),
       Back: () => $.run(Router.Back.make().pipe(Command.map(navigated))),
-      Block: () => $.run(Router.Block.make("editing").pipe(Command.map(done))),
-      Unblock: () => $.run(Router.Unblock.make("editing").pipe(Command.map(done))),
-      Navigated: ({ outcome }) => ({ ...model, outcomes: [...model.outcomes, outcome] }),
-      Done: () => model
+      Block: () => ({ ...model, blocked: true }),
+      Unblock: () => ({ ...model, blocked: false }),
+      Navigated: ({ outcome }) => ({ ...model, outcomes: [...model.outcomes, outcome] })
     }),
-  subscriptions: () => [Router.subscription(AppRoute, (route) => AppMessage.make({ _tag: "ChangedRoute", route }))],
+  subscriptions: (model) => [
+    Router.subscription(AppRoute, (route) => AppMessage.make({ _tag: "ChangedRoute", route })),
+    model.blocked && Router.blocked("editing")
+  ],
   head: () => [Head.titleTemplate((title) => `${title} · App`), Head.lang("en")],
   view: (model, h) => {
     const go = (label: string, route: AppRoute) =>

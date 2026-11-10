@@ -192,7 +192,8 @@ const encodeJson = (schema: Schema.Codec<any, any>, value: unknown): string | un
  *
  * Both sides run with the caller's services, so provide the ones the tree
  * needs, such as `Router.memory`, around `ssr`. The client mount lives as
- * long as the current Scope. `budget` is passed to `HtmlServer.renderToHtml`.
+ * long as the current Scope. `budget` is passed to `HtmlServer.renderToHtml`,
+ * and `loader` to the client mount only: the server starts no idle timers.
  *
  * @stability experimental
  * @category constructors
@@ -201,7 +202,10 @@ const encodeJson = (schema: Schema.Codec<any, any>, value: unknown): string | un
 export const ssr = <Name extends string, Props, Model, Msg, Events, R, V extends View.Elements>(
   component: Component.Component<Name, Props, Model, Msg, Events, R, V> & BrowserHost.HtmlRoot<V>,
   props: Props,
-  options?: { readonly budget?: Duration.Input | undefined }
+  options?: {
+    readonly budget?: Duration.Input | undefined
+    readonly loader?: Renderer.LoaderOptions | undefined
+  }
 ): Effect.Effect<Ssr<Model, Msg>, SsrError, Exclude<R, Html.Host> | Scope.Scope> =>
   Effect.gen(function*() {
     // -- server ---------------------------------------------------------------
@@ -259,7 +263,10 @@ export const ssr = <Name extends string, Props, Model, Msg, Events, R, V extends
         judge()
       }
     }
-    const root = yield* Renderer.mount(component, props, container, { state: rendered.state }).pipe(
+    const root = yield* Renderer.mount(component, props, container, {
+      state: rendered.state,
+      loader: options?.loader
+    }).pipe(
       Effect.provideContext(
         Context.make(Renderer.Renderer, { host: recording }).pipe(
           Context.add(Html.Host, BrowserHost.htmlHost),

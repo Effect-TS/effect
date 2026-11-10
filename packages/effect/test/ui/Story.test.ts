@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Cause, Effect, Layer, Schema } from "effect"
+import { Cause, Data, Effect, Layer, Schema } from "effect"
 import { AsyncResult } from "effect/reactivity"
 import { Command, Component, View } from "effect/ui"
 import { Query, Story } from "effect/ui/testing"
@@ -140,7 +140,7 @@ describe("Story", () => {
           .check((story) => {
             assert.deepStrictEqual(
               story.pending.map((entry) => [entry.command.name, entry.command.args, entry.status]),
-              [["todos/SaveTodo", [todo], "running"]]
+              [["todos/SaveTodo", todo, "running"]]
             )
           })
           .resolve(SaveTodo, TodoItemMessage.make({ _tag: "SaveFailed", reason: "disk full" }))
@@ -163,6 +163,68 @@ describe("Story", () => {
               .resolve(SaveTodo.make({ ...todo, id: "other" }), TodoItemMessage.make({ _tag: "Saved" }))),
         /no running todos\/SaveTodo/
       )
+    })
+  })
+
+  describe("Commands that can fail", () => {
+    class SaveFailed extends Data.TaggedError("SaveFailed")<{ readonly reason: string }> {}
+    class Save extends Command.Service<Save>()(
+      "test/Save",
+      { args: { title: Schema.String }, invalidates: () => [] },
+      Effect.succeed((): Effect.Effect<void, SaveFailed> => Effect.void)
+    ) {}
+    const Msg = Schema.TaggedUnion({ Save: {}, Saved: {}, Failed: { reason: Schema.String }, Stop: {} })
+    const Editor = Component.make({
+      name: "Editor",
+      model: Schema.String,
+      message: Msg,
+      init: () => "idle",
+      update: (_, message, $) =>
+        Msg.match(message, {
+          Save: () =>
+            $.run(
+              Save.make({ title: "milk" }).pipe(Command.match({
+                onSuccess: () => Msg.make({ _tag: "Saved" }),
+                onFailure: (error) => Msg.make({ _tag: "Failed", reason: error.reason })
+              }))
+            ),
+          Saved: () => "saved",
+          Failed: ({ reason }) => `failed: ${reason}`,
+          Stop: () => $.run(Command.interrupt(Save))
+        }),
+      view: (model, h) =>
+        h.el("div", [
+          h.el("button", "save").on("click", Msg.make({ _tag: "Save" })),
+          h.el("button", "stop").on("click", Msg.make({ _tag: "Stop" })),
+          h.text(h.running(Save) ? "saving" : model)
+        ])
+    })
+
+    it("fail sends the typed failure through Command.match", () => {
+      Story.make(Editor, {}, (s) =>
+        s.click("save")
+          .fail(Save, new SaveFailed({ reason: "disk full" }))
+          .model((model) => assert.strictEqual(model, "failed: disk full")))
+    })
+
+    it("fail throws for a Command with no typed failure", () => {
+      assert.throws(
+        () => Story.make(TodoItem, { todo }, (s) => s.click("save").fail(SaveTodo as any, new Error("no"))),
+        /has no typed failure mapped by Command\.match/
+      )
+    })
+
+    it("h.running is derived from the pending Commands", () => {
+      Story.make(Editor, {}, (s) =>
+        s.view((view) => assert.include(View.textOf(view), "idle"))
+          .click("save")
+          .view((view) => assert.include(View.textOf(view), "saving"))
+          .resolve(Save, undefined)
+          .view((view) => assert.include(View.textOf(view), "saved"))
+          .click("save")
+          .click("stop")
+          .view((view) => assert.include(View.textOf(view), "saved"))
+          .expectNone())
     })
   })
 
@@ -219,9 +281,9 @@ describe("Story", () => {
         s.send(SearchMessage.make({ _tag: "Query", text: "a" }))
           .send(SearchMessage.make({ _tag: "Query", text: "ab" }))
           .check((story) => {
-            assert.deepStrictEqual(story.interrupted.map((command) => command.args), [["a"]])
+            assert.deepStrictEqual(story.interrupted.map((command) => command.args), [{ text: "a" }])
           })
-          .expectExact(Search("ab"))
+          .expectExact(Search({ text: "ab" }))
           .resolve(Search, SearchMessage.make({ _tag: "Results", items: ["ab"] }))
           .model((model) => assert.deepStrictEqual(model.items, ["ab"])))
     })
@@ -256,7 +318,11 @@ describe("Story", () => {
 
   describe("Command.map", () => {
     const Message = Schema.TaggedUnion({ Upload: {}, Uploaded: { url: Schema.String } })
-    const UploadFile = Command.make("UploadFile", (name: string) => Effect.succeed(`https://cdn/${name}`))
+    const UploadFile = Command.make(
+      "UploadFile",
+      { args: { name: Schema.String } },
+      ({ name }) => Effect.succeed(`https://cdn/${name}`)
+    )
     const Avatar = Component.make({
       name: "Avatar",
       model: Schema.Struct({ url: Schema.String }),
@@ -264,7 +330,8 @@ describe("Story", () => {
       init: () => ({ url: "" }),
       update: (_model, message, $) =>
         Message.match(message, {
-          Upload: () => $.run(UploadFile("me.png").pipe(Command.map((url) => Message.make({ _tag: "Uploaded", url })))),
+          Upload: () =>
+            $.run(UploadFile({ name: "me.png" }).pipe(Command.map((url) => Message.make({ _tag: "Uploaded", url })))),
           Uploaded: ({ url }) => ({ url })
         }),
       view: (model, h) => h.el("img").attr("src", model.url)
@@ -273,13 +340,13 @@ describe("Story", () => {
     it("resolves with the Command's own message type and replays the mapping", () => {
       Story.make(Avatar, {}, (s) =>
         s.send(Message.make({ _tag: "Upload" }))
-          .expectExact(UploadFile("me.png"))
+          .expectExact(UploadFile({ name: "me.png" }))
           .resolve(UploadFile, "https://cdn/me.png")
           .model((model) => assert.strictEqual(model.url, "https://cdn/me.png")))
     })
 
     it("a mapped Command as the target still takes the definition's own result", () => {
-      const mapped = UploadFile("me.png").pipe(Command.map((url) => Message.make({ _tag: "Uploaded", url })))
+      const mapped = UploadFile({ name: "me.png" }).pipe(Command.map((url) => Message.make({ _tag: "Uploaded", url })))
       Story.make(Avatar, {}, (s) =>
         s.send(Message.make({ _tag: "Upload" }))
           .resolve(mapped, "https://cdn/me.png")

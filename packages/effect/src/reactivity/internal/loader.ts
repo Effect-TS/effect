@@ -67,8 +67,10 @@ class NonJsonLeaf {
  * Canonical JSON: sorted object keys, `undefined` properties dropped, no
  * whitespace, `-0` kept apart from `0`. It parses back with `JSON.parse`.
  * Throws a `NonJsonLeaf` on a leaf JSON can't carry.
+ *
+ * @internal
  */
-const canonical = (u: unknown): string => {
+export const canonical = (u: unknown): string => {
   if (u === null || typeof u === "boolean") return String(u)
   if (typeof u === "string") return JSON.stringify(u)
   if (typeof u === "number") {

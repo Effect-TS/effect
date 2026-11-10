@@ -22,7 +22,10 @@ import type * as Duration from "../Duration.ts"
 import type * as Effect from "../Effect.ts"
 import * as Layer from "../Layer.ts"
 import type * as Option from "../Option.ts"
+import * as Predicate from "../Predicate.ts"
 import type * as AsyncResult from "../reactivity/AsyncResult.ts"
+import * as Schema from "../Schema.ts"
+import * as SchemaTransformation from "../SchemaTransformation.ts"
 import type * as Scope from "../Scope.ts"
 import type * as Component from "./Component.ts"
 import type * as Head from "./Head.ts"
@@ -264,10 +267,42 @@ export interface Ref<in out Node> {
  * @category constructors
  * @since 4.1.3
  */
-export const ref = <Node = unknown>(name: string): Ref<Node> => {
-  const make = (key: string): Ref<Node> => ({ name, key, at: (row) => make(`${key}[${row}]`) })
-  return make(name)
-}
+export const ref = <Node = unknown>(name: string): Ref<Node> => refAt(name, name)
+
+const refAt = <Node>(name: string, key: string): Ref<Node> => ({
+  name,
+  key,
+  at: (row) => refAt(name, `${key}[${row}]`)
+})
+
+const isRef = (u: unknown): u is Ref<any> =>
+  Predicate.hasProperty(u, "name") && typeof u.name === "string" && Predicate.hasProperty(u, "key") &&
+  typeof u.key === "string" && Predicate.hasProperty(u, "at") && typeof u.at === "function"
+
+/**
+ * The Schema of a ref in a Command's `args`: it encodes to the ref's `key`.
+ *
+ * **Details**
+ *
+ * The log shows a ref Command's args through it. Decoding a key gives a ref
+ * with that key, named by the part before any `at` keys.
+ *
+ * @stability experimental
+ * @category schemas
+ * @since 4.1.3
+ */
+export const Ref: Schema.decodeTo<Schema.declare<Ref<any>>, Schema.String> = Schema.String.pipe(
+  Schema.decodeTo(
+    Schema.declare(isRef, { expected: "Renderer.Ref" }),
+    SchemaTransformation.transform({
+      decode: (key: string): Ref<any> => {
+        const at = key.indexOf("[")
+        return refAt(at < 0 ? key : key.slice(0, at), key)
+      },
+      encode: (ref: Ref<any>) => ref.key
+    })
+  )
+)
 
 /**
  * How a Command reaches an element of the instance that issued it.
@@ -374,8 +409,22 @@ export const mount: <Name extends string, Props, Model, Msg, Events, R, V extend
       ) => View.Node<never, RF>)
       | undefined
     readonly state?: State | undefined
+    readonly loader?: LoaderOptions | undefined
   }
 ) => Effect.Effect<Root<Model, Msg>, never, R | RF | HostOf<V> | Renderer | Scope.Scope> = runtime.mount as any
+
+/**
+ * Cache-wide options for the loader cache a mount owns. The app never
+ * provides the cache, so they go through `mount`.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.1.3
+ */
+export interface LoaderOptions {
+  /** How long an entry stays once nothing watches it. 5 minutes by default; a read can override it. */
+  readonly idleTimeToLive?: Duration.Input | undefined
+}
 
 /**
  * Runs a component tree the way a server renders it, and returns the tree to

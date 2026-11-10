@@ -39,11 +39,11 @@ export const PersonMessage = Schema.TaggedUnion({ Loaded: { bio: Schema.String }
 /** Route data: read on the server, so the page's HTML holds it. */
 export class LoadBio extends Command.Service<LoadBio>()(
   "LoadBio",
+  { args: { id: Schema.Number }, invalidates: () => [], server: true },
   Effect.gen(function*() {
     const people = yield* People
-    return (id: number) => Effect.map(people.bio(id), (bio) => PersonMessage.make({ _tag: "Loaded", bio }))
-  }),
-  { server: true }
+    return ({ id }) => Effect.map(people.bio(id), (bio) => PersonMessage.make({ _tag: "Loaded", bio }))
+  })
 ) {}
 
 export const Person = Component.make({
@@ -52,7 +52,7 @@ export const Person = Component.make({
   model: Schema.Struct({ id: Schema.Number, bio: Schema.optional(Schema.String) }),
   message: PersonMessage,
   elements: Html,
-  init: ($) => $.set({ id: $.props.id }).run(LoadBio.make($.props.id)),
+  init: ($) => $.set({ id: $.props.id }).run(LoadBio.make({ id: $.props.id })),
   update: (model, message) => ({ ...model, bio: message.bio }),
   head: (model) => [
     Head.title(`Person ${model.id}`),
@@ -76,25 +76,28 @@ export const Slow = Component.make({
   view: (_, h) => h.h1("Slow")
 }).pipe(Component.provide(Layer.effect(SlowData, Effect.as(Effect.sleep("1 second"), "ready"))))
 
-export const Message = Schema.TaggedUnion({ ChangedRoute: { route: AppRoute }, Block: {}, Done: {}, Filter: {} })
+export const Message = Schema.TaggedUnion({ ChangedRoute: { route: AppRoute }, Block: {}, Filter: {} })
 
 export const App = Component.make({
   name: "App",
   props: Schema.Struct({ route: AppRoute }),
-  model: AppRoute,
+  model: Schema.Struct({ route: AppRoute, blocked: Schema.Boolean }),
   message: Message,
   elements: Html,
-  init: ($) => $.props.route,
-  update: (route, message, $) =>
+  init: ($) => ({ route: $.props.route, blocked: false }),
+  update: (model, message) =>
     Message.match(message, {
-      ChangedRoute: (changed) => AppRoute.print(changed.route) === AppRoute.print(route) ? route : changed.route,
-      Block: () => $.run(Router.Block.make("editing").pipe(Command.map(() => Message.make({ _tag: "Done" })))),
-      Done: () => route,
-      Filter: () => route
+      ChangedRoute: (changed) =>
+        AppRoute.print(changed.route) === AppRoute.print(model.route) ? model : { ...model, route: changed.route },
+      Block: () => ({ ...model, blocked: true }),
+      Filter: () => model
     }),
-  subscriptions: () => [Router.subscription(AppRoute, (route) => Message.make({ _tag: "ChangedRoute", route }))],
+  subscriptions: (model) => [
+    Router.subscription(AppRoute, (route) => Message.make({ _tag: "ChangedRoute", route })),
+    model.blocked && Router.blocked("editing")
+  ],
   head: () => [Head.titleTemplate((title) => `${title} · App`), Head.lang("en"), Head.htmlClass("routed")],
-  view: (route, h) =>
+  view: ({ route }, h) =>
     h.div(
       h.nav(
         h.a("Home").attr("href", AppRoute.print(AppRoute.make({ _tag: "Home" }))),

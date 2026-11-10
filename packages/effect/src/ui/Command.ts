@@ -1,24 +1,27 @@
 /**
  * Commands are the side effects a component asks the runtime to run.
  *
- * `update` and `init` return Commands as data. The runtime runs each one in
- * the instance's `Scope` and feeds its result back to the instance as a
- * message, so `update` stays pure and a story test can read what was issued
- * without running anything.
+ * `update` and `init` return Commands as data. The runtime runs each one and
+ * feeds its result back to the instance as a message, so `update` stays pure
+ * and a story test can read what was issued without running anything.
  *
- * There are two ways to define a Command, and they don't overlap:
+ * There are two ways to define a Command, and they don't overlap. Both take a
+ * name, then options with a required `args` Schema, then the body, which gets
+ * the args as one struct:
  *
- * - `Command.make(name, fn, options?)` for Commands that need nothing beyond
- *   the framework services. It returns a factory: `RollDie(6)`.
- * - `Command.Service<Self>()(key, implementation, options?)` for Commands that
- *   reach any other service. The implementation runs once per Layer build and
- *   captures the services it uses, so a component's requirements name the
- *   Command service, never what its implementation uses. Issue one with
- *   `DeleteTodo.make(id)` and fake it with `Layer.succeed(DeleteTodo, ...)`.
+ * - `Command.make(name, { args }, body)` for Commands that need nothing beyond
+ *   the framework services. It returns a factory: `RollDie({ sides: 6 })`.
+ *   Its body can't fail.
+ * - `Command.Service<Self>()(key, { args, invalidates }, implementation)` for
+ *   Commands that reach any other service. The implementation runs once per
+ *   Layer build and captures the services it uses, so a component's
+ *   requirements name the Command service, never what its implementation
+ *   uses. Issue one with `DeleteTodo.make({ id })` and fake it with
+ *   `Layer.succeed(DeleteTodo, ({ id }) => ...)`. Its body may fail with a
+ *   typed error, which the issue site maps to a message with `Command.match`.
  *
- * A Command's result is `Effect<Msg, never>` or, with `stream: true`,
- * `Stream<Msg, never>`. Expected failures are handled inside the Command and
- * turned into messages; there's no error channel.
+ * A `Command.Service` declares what it does to the loader cache:
+ * `invalidates` is required, and `optimistic` and `writes` are optional.
  *
  * **Example** (A Command service with a captured dependency)
  *
@@ -27,21 +30,21 @@
  * import { Effect, Schema } from "effect"
  * import { KeyValueStore } from "effect/persistence"
  *
- * const Message = Schema.TaggedUnion({ Delete: {}, Deleted: {} })
+ * const Message = Schema.TaggedUnion({ Delete: {}, Deleted: {}, DeleteFailed: {} })
  *
- * class DeleteTodo extends Command.Service<DeleteTodo>()(
- *   "todos/DeleteTodo",
- *   Effect.gen(function*() {
- *     const kv = yield* KeyValueStore.KeyValueStore
- *     return (id: string) =>
- *       kv.remove(`todo/${id}`).pipe(
- *         Effect.as(Message.make({ _tag: "Deleted" })),
- *         Effect.catchTag("KeyValueStoreError", () => Effect.succeed(Message.make({ _tag: "Deleted" })))
- *       )
- *   })
- * ) {}
+ * class DeleteTodo extends Command.Service<DeleteTodo>()("todos/DeleteTodo", {
+ *   args: { id: Schema.String },
+ *   invalidates: () => []
+ * }, Effect.gen(function*() {
+ *   const kv = yield* KeyValueStore.KeyValueStore
+ *   return ({ id }) => kv.remove(`todo/${id}`)
+ * })) {}
  *
- * // In a component: `$.run(DeleteTodo.make("t1"))`. The component requires `DeleteTodo`.
+ * // In a component, mapping both channels to messages. The component requires `DeleteTodo`.
+ * const remove = DeleteTodo.make({ id: "t1" }).pipe(Command.match({
+ *   onSuccess: () => Message.make({ _tag: "Deleted" }),
+ *   onFailure: () => Message.make({ _tag: "DeleteFailed" })
+ * }))
  * // The live wiring provides `DeleteTodo.layer`, which requires `KeyValueStore`.
  * ```
  *
@@ -54,7 +57,10 @@ import { dual } from "../Function.ts"
 import * as Layer from "../Layer.ts"
 import * as Pipeable from "../Pipeable.ts"
 import * as Predicate from "../Predicate.ts"
-import type * as Scope from "../Scope.ts"
+import { canonical } from "../reactivity/internal/loader.ts"
+import type * as Loader from "../reactivity/Loader.ts"
+import * as Schema from "../Schema.ts"
+import * as Scope from "../Scope.ts"
 import * as Stream from "../Stream.ts"
 import type * as Types from "../Types.ts"
 import type * as Renderer from "./Renderer.ts"
@@ -96,12 +102,31 @@ export const DefinitionTypeId = "~effect/ui/Command/Definition" as const
 export type DefinitionTypeId = typeof DefinitionTypeId
 
 /**
+ * Identifies a Command issued by a `Service` whose body can fail, before
+ * `match` has mapped its two channels to messages.
+ *
+ * @stability experimental
+ * @category type ids
+ * @since 4.1.3
+ */
+export const UnmatchedTypeId = "~effect/ui/Command/Unmatched" as const
+
+/**
+ * Identifies an unmatched Command.
+ *
+ * @stability experimental
+ * @category type ids
+ * @since 4.1.3
+ */
+export type UnmatchedTypeId = typeof UnmatchedTypeId
+
+/**
  * How runs of one Command relate to each other when a new one is issued while
  * an earlier one is still running.
  *
  * **Details**
  *
- * Runs are grouped by instance, Command name and the `key` option. Within a
+ * Runs are grouped by instance, Command name and the `group` key. Within a
  * group, `concurrent` runs everything at once, `switch` interrupts the earlier
  * runs, `drop` ignores the new one, and `queue` starts it once the earlier runs
  * have ended.
@@ -113,23 +138,106 @@ export type DefinitionTypeId = typeof DefinitionTypeId
 export type Mode = "concurrent" | "switch" | "drop" | "queue"
 
 /**
- * The options accepted by `make` and `Service`.
- *
- * **Details**
- *
- * `stream: true` declares a Stream Command, so a story test knows the kind
- * without building a Layer. `mode` defaults to `"concurrent"`. `key` derives a
- * concurrency key from the arguments, so runs with different keys don't
- * interfere.
+ * What `args` accepts: a fields record or a `Schema.Struct`.
  *
  * @stability experimental
  * @category models
  * @since 4.1.3
  */
-export interface Options<in Args extends ReadonlyArray<any>> {
+export type ArgsInput = Schema.Struct.Fields | Schema.Struct<Schema.Struct.Fields>
+
+/**
+ * The fields of an `args` input.
+ *
+ * @stability experimental
+ * @category utility types
+ * @since 4.1.3
+ */
+export type ArgsFields<In> = In extends Schema.Struct<infer Fields> ? Fields
+  : In extends Schema.Struct.Fields ? In
+  : never
+
+/**
+ * The decoded args struct of an `args` input: what the body, `invalidates`,
+ * `optimistic` and `writes` get.
+ *
+ * @stability experimental
+ * @category utility types
+ * @since 4.1.3
+ */
+export type ArgsOf<In> = Schema.Struct<ArgsFields<In>>["Type"]
+
+type Json = string | number | boolean | null | undefined | ReadonlyArray<Json> | { readonly [key: string]: Json }
+
+/**
+ * The args fields a `group` may name: those whose encoded form is JSON.
+ *
+ * @stability experimental
+ * @category utility types
+ * @since 4.1.3
+ */
+export type GroupField<In> =
+  & {
+    [K in keyof ArgsFields<In>]: ArgsFields<In>[K] extends { readonly Encoded: infer E } ?
+      [E] extends [Json] ? K : never
+      : never
+  }[keyof ArgsFields<In>]
+  & string
+
+/**
+ * The `group` fields of a Command's args: what `Command.interrupt` and
+ * `h.running` take to address one group.
+ *
+ * @stability experimental
+ * @category utility types
+ * @since 4.1.3
+ */
+export type GroupPick<Args, G extends string> = Pick<Args, G & keyof Args>
+
+/**
+ * The optional group argument of `Command.interrupt` and `h.running`: none
+ * for a Command without a `group`.
+ *
+ * @stability experimental
+ * @category utility types
+ * @since 4.1.3
+ */
+export type GroupArg<Args, G extends string> = [G] extends [never] ? [] : [group?: GroupPick<Args, G>]
+
+/**
+ * The arguments of `make`: optional when every field of the args is.
+ *
+ * @stability experimental
+ * @category utility types
+ * @since 4.1.3
+ */
+export type MakeArgs<Args> = {} extends Args ? [args?: Args] : [args: Args]
+
+/**
+ * The options shared by `make` and `Service`.
+ *
+ * **Details**
+ *
+ * - `args` is required: a fields record or a `Schema.Struct`. The body gets
+ *   one decoded struct. A Command with no args writes `args: {}`. The log
+ *   encodes a run's args through it, redacting `Schema.Redacted` fields.
+ * - `stream: true` declares a Stream Command, so a story test knows the kind
+ *   without building a Layer.
+ * - `mode` defaults to `"concurrent"`.
+ * - `group` lists args fields whose values split runs into groups, so runs of
+ *   different groups don't interfere. The group key is the canonical JSON of
+ *   those fields, encoded. Without it, all runs of a Command in one instance
+ *   are one group.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.1.3
+ */
+export interface Options<In extends ArgsInput, G extends string> {
+  readonly args: In
   readonly stream?: boolean | undefined
   readonly mode?: Mode | undefined
-  readonly key?: ((...args: Args) => string) | undefined
+  readonly group?: ReadonlyArray<G> | undefined
 }
 
 /**
@@ -140,8 +248,9 @@ export interface Options<in Args extends ReadonlyArray<any>> {
  *
  * Host packages widen this interface by module augmentation, the same way an
  * app registers its element vocabulary. The runtime provides these services
- * when a Command runs, so they're removed from `R`. The core lists `Scope`
- * and `Renderer.Refs`, and host packages add their host marker.
+ * when a Command runs, so they're removed from `R`. The core lists `Scope`,
+ * `Renderer.Refs` and the loader cache, and host packages add their host
+ * marker.
  *
  * **Example** (Registering a host's framework service)
  *
@@ -164,6 +273,7 @@ export interface Options<in Args extends ReadonlyArray<any>> {
 export interface FrameworkServices {
   readonly Scope: Scope.Scope
   readonly Refs: Renderer.Refs
+  readonly Cache: Loader.Cache
 }
 
 /**
@@ -174,22 +284,6 @@ export interface FrameworkServices {
  * @since 4.1.3
  */
 export type FrameworkService = FrameworkServices[keyof FrameworkServices]
-
-/**
- * Passes when `R` holds only framework services, and otherwise names the
- * services a `Service` would be needed for.
- *
- * @stability experimental
- * @category utility types
- * @since 4.1.3
- */
-export type OnlyFrameworkServices<R> = [Exclude<R, FrameworkService>] extends [never] ? unknown
-  : {
-    readonly "Command.make can only require framework services. Define a Command.Service instead; it needs": Exclude<
-      R,
-      FrameworkService
-    >
-  }
 
 /**
  * Passes when a `Service` implementation's function holds only framework
@@ -207,21 +301,41 @@ export type CapturesServices<R> = [Exclude<R, FrameworkService>] extends [never]
   }
 
 /**
- * The shared fields of an issued Command.
+ * What a Command declares about the loader cache, computed from its args when
+ * it's issued. A story test reads these off the issued Command without a
+ * cache. `make` Commands declare nothing.
  *
  * @stability experimental
  * @category models
  * @since 4.1.3
  */
-export interface Proto<out Msg, in Source = Msg> extends Pipeable.Pipeable {
-  readonly [TypeId]: Variance<Msg, Source>
+export interface Declared {
+  /** What the run invalidates when its fiber exits, however it exits. */
+  readonly invalidates: ReadonlyArray<Loader.Target>
+  /** The optimistic patches, registered when the Command is issued. */
+  readonly optimistic: ReadonlyArray<Loader.Patch>
+  /**
+   * The writes a success stores, or `undefined` without `writes`. Takes the
+   * body's own success.
+   */
+  readonly writes: ((success: any) => ReadonlyArray<Loader.Write>) | undefined
+}
+
+/**
+ * The data every issued Command carries, matched or not.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.1.3
+ */
+export interface Data extends Declared {
   /** The Command's name: the factory's name or the service's key. */
   readonly name: string
-  /** The arguments the Command was issued with. Data a test asserts on without running the Effect. */
-  readonly args: ReadonlyArray<unknown>
+  /** The decoded args struct the Command was issued with. Data a test asserts on without running the Effect. */
+  readonly args: unknown
   readonly mode: Mode
-  /** The concurrency key derived from the arguments, if the definition has a `key` option. */
-  readonly key: string | undefined
+  /** The group key: canonical JSON of the encoded `group` fields, or `undefined` without `group`. */
+  readonly groupKey: string | undefined
   /**
    * Whether the Command comes from a `Command.Service` declared with
    * `server: true`: a data read whose result the server already put in the
@@ -229,25 +343,59 @@ export interface Proto<out Msg, in Source = Msg> extends Pipeable.Pipeable {
    */
   readonly server: boolean
   /**
-   * Maps the result of the underlying definition to the message this Command
-   * produces, composing every `map` applied since it was issued. `Story`
-   * uses it to resolve a Command with the definition's own message type.
+   * The args Schema, for the log.
    *
    * @internal
    */
-  readonly resolve: (result: Source) => Msg
+  readonly argsSchema: Schema.Top
+  /**
+   * The `Service` class the Command was issued by, `undefined` for a `make`
+   * Command. The runtime finds the Layer build that owns a detached run
+   * through it.
+   *
+   * @internal
+   */
+  readonly service: Context.Key<any, any> | undefined
 }
 
 /**
- * Phantom variance for a Command's message type and the result of its definition.
+ * The shared fields of an issued Command.
  *
  * @stability experimental
  * @category models
  * @since 4.1.3
  */
-export interface Variance<out Msg, in Source> {
+export interface Proto<out Msg, in Source = Msg, in SourceE = never> extends Pipeable.Pipeable, Data {
+  readonly [TypeId]: Variance<Msg, Source, SourceE>
+  /**
+   * Maps the success of the underlying definition to the message this Command
+   * produces, composing every `map` and `match` applied since it was issued.
+   * `Story` uses it to resolve a Command with the definition's own success.
+   *
+   * @internal
+   */
+  readonly resolve: (result: Source) => Msg
+  /**
+   * Maps a typed failure of the underlying definition to the message this
+   * Command produces. `undefined` when the definition can't fail.
+   *
+   * @internal
+   */
+  readonly reject: ((error: SourceE) => Msg) | undefined
+}
+
+/**
+ * Phantom variance for a Command's message type and the success and failure
+ * of its definition.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.1.3
+ */
+export interface Variance<out Msg, in Source, in SourceE = never> {
   readonly _Msg: Types.Covariant<Msg>
   readonly _Source: Types.Contravariant<Source>
+  readonly _SourceE: Types.Contravariant<SourceE>
 }
 
 /**
@@ -261,16 +409,18 @@ export interface Variance<out Msg, in Source> {
 export type Kind = "Effect" | "Stream"
 
 /**
- * An issued Command: what a definition's factory or `make` returns.
+ * An issued Command: what a definition's factory or `make` returns, or what
+ * `match` makes of an `Unmatched` one.
  *
  * **Details**
  *
- * `Msg` is the message it produces and `R` what it requires. `Source` is the
- * result of the Command's definition before any `map`; it's what
- * a story's `resolve` step takes when given an issued Command. `K` is the kind, which
- * decides whether `effect` or `stream` holds the work; the other field is
- * `undefined`. Use the `Effectful` and `Streaming` aliases rather than naming
- * `K` yourself, and narrow a `Command` on `_tag` before reading the work.
+ * `Msg` is the message it produces and `R` what it requires. `Source` is
+ * the success of the Command's definition before any `map`, and `SourceE`
+ * its typed failure before `match`; they're what a story's `resolve` and
+ * `fail` steps take. `K` is the kind, which decides whether `effect` or
+ * `stream` holds the work; the other field is `undefined`. Use the
+ * `Effectful` and `Streaming` aliases rather than naming `K` yourself, and
+ * narrow a `Command` on `_tag` before reading the work.
  *
  * One interface for both kinds, rather than two, is what lets
  * `command.pipe(Command.map((result) => ...))` infer `result`.
@@ -279,12 +429,48 @@ export type Kind = "Effect" | "Stream"
  * @category models
  * @since 4.1.3
  */
-export interface Issued<out Msg, out R, in Source, out K extends Kind> extends Proto<Msg, Source> {
+export interface Issued<out Msg, out R, in Source, out K extends Kind, in SourceE = never>
+  extends Proto<Msg, Source, SourceE>
+{
   readonly _tag: K
-  /** The work of an `"Effect"` Command. `undefined` on a `"Stream"` one. */
+  /** The work of an `"Effect"` Command, with `map` and `match` applied. `undefined` on a `"Stream"` one. */
   readonly effect: K extends "Effect" ? Effect.Effect<Msg, never, R> : undefined
-  /** The work of a `"Stream"` Command. `undefined` on an `"Effect"` one. */
+  /** The work of a `"Stream"` Command, with `map` and `match` applied. `undefined` on an `"Effect"` one. */
   readonly stream: K extends "Stream" ? Stream.Stream<Msg, never, R> : undefined
+  /**
+   * The definition's own work, before `map` and `match`. The runtime runs
+   * this one, so the exit of a run tells a success from a typed failure.
+   *
+   * @internal
+   */
+  readonly work: K extends "Effect" ? Effect.Effect<unknown, unknown, R> : Stream.Stream<unknown, unknown, R>
+}
+
+/**
+ * What a `Service` whose body can fail issues: a Command whose success `A`
+ * and typed failure `E` haven't been mapped to messages yet.
+ *
+ * **Details**
+ *
+ * It isn't a `Command`, so `$.run` and `Command.map` reject it until
+ * `match` maps both channels. It already carries the Command's data: its
+ * name, args and what it declares about the cache.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.1.3
+ */
+export interface Unmatched<out A, out E, out R, out K extends Kind> extends Pipeable.Pipeable, Data {
+  readonly [UnmatchedTypeId]: {
+    readonly _A: Types.Covariant<A>
+    readonly _E: Types.Covariant<E>
+    readonly _R: Types.Covariant<R>
+  }
+  readonly _tag: K
+  /** The body's work of an `"Effect"` Command, with its typed failure. `undefined` on a `"Stream"` one. */
+  readonly effect: K extends "Effect" ? Effect.Effect<A, E, R> : undefined
+  /** The body's work of a `"Stream"` Command, with its typed failure. `undefined` on an `"Effect"` one. */
+  readonly stream: K extends "Stream" ? Stream.Stream<A, E, R> : undefined
 }
 
 /**
@@ -294,7 +480,7 @@ export interface Issued<out Msg, out R, in Source, out K extends Kind> extends P
  * @category models
  * @since 4.1.3
  */
-export type Effectful<Msg, R = never, Source = Msg> = Issued<Msg, R, Source, "Effect">
+export type Effectful<Msg, R = never, Source = Msg, SourceE = never> = Issued<Msg, R, Source, "Effect", SourceE>
 
 /**
  * A Command declared with `stream: true`, whose result is a Stream of messages.
@@ -303,15 +489,15 @@ export type Effectful<Msg, R = never, Source = Msg> = Issued<Msg, R, Source, "Ef
  * @category models
  * @since 4.1.3
  */
-export type Streaming<Msg, R = never, Source = Msg> = Issued<Msg, R, Source, "Stream">
+export type Streaming<Msg, R = never, Source = Msg, SourceE = never> = Issued<Msg, R, Source, "Stream", SourceE>
 
 /**
  * A Command that interrupts the running and queued runs of another Command.
  *
  * **Details**
  *
- * It produces no message. With a `key`, only the runs with that concurrency
- * key are interrupted.
+ * It produces no message. With a group key, only the runs of that group are
+ * interrupted.
  *
  * @stability experimental
  * @category models
@@ -322,7 +508,8 @@ export interface Interrupt extends Pipeable.Pipeable {
   readonly _tag: "Interrupt"
   /** The name of the Command to interrupt. */
   readonly name: string
-  readonly key: string | undefined
+  /** The group key to interrupt, or `undefined` for every run of the Command. */
+  readonly groupKey: string | undefined
 }
 
 /**
@@ -340,7 +527,7 @@ export interface Interrupt extends Pipeable.Pipeable {
  * @category models
  * @since 4.1.3
  */
-export type Command<Msg, R = never> = Effectful<Msg, R, never> | Streaming<Msg, R, never> | Interrupt
+export type Command<Msg, R = never> = Effectful<Msg, R, never, never> | Streaming<Msg, R, never, never> | Interrupt
 
 /**
  * The requirements of a Command, or of a union of them.
@@ -349,7 +536,7 @@ export type Command<Msg, R = never> = Effectful<Msg, R, never> | Streaming<Msg, 
  * @category utility types
  * @since 4.1.3
  */
-export type Requirements<C> = C extends Issued<infer _Msg, infer R, infer _S, infer _K> ? R : never
+export type Requirements<C> = C extends Issued<infer _Msg, infer R, infer _S, infer _K, infer _SE> ? R : never
 
 /**
  * The message type of a Command, or of a union of them.
@@ -358,20 +545,34 @@ export type Requirements<C> = C extends Issued<infer _Msg, infer R, infer _S, in
  * @category utility types
  * @since 4.1.3
  */
-export type Message<C> = C extends Proto<infer Msg, infer _Source> ? Msg
-  : C extends Definition<infer _Args, infer Msg, infer _S> ? Msg
+export type Message<C> = C extends Proto<infer Msg, infer _Source, infer _SourceE> ? Msg
+  : C extends Definition<infer _Args, infer Msg, infer _S, infer _E, infer _G> ? Msg
   : never
 
 /**
- * What resolves a Command in a story: the definition's own result, for a
- * definition or an issued Command, before any `map`.
+ * What resolves a Command in a story: the definition's own success, for a
+ * definition or an issued Command, before any `map` or `match`.
  *
  * @stability experimental
  * @category utility types
  * @since 4.1.3
  */
-export type Result<C> = C extends Proto<infer _Msg, infer Source> ? Source
-  : C extends Definition<infer _Args, infer Msg, infer _S> ? Msg
+export type Result<C> = C extends Proto<infer _Msg, infer Source, infer _SourceE> ? Source
+  : C extends Unmatched<infer A, infer _E, infer _R, infer _K> ? A
+  : C extends Definition<infer _Args, infer A, infer _S, infer _E, infer _G> ? A
+  : never
+
+/**
+ * What fails a Command in a story: the definition's own typed failure, for a
+ * definition or an issued Command, before `match`.
+ *
+ * @stability experimental
+ * @category utility types
+ * @since 4.1.3
+ */
+export type Failure<C> = C extends Proto<infer _Msg, infer _Source, infer SourceE> ? SourceE
+  : C extends Unmatched<infer _A, infer E, infer _R, infer _K> ? E
+  : C extends Definition<infer _Args, infer _A, infer _S, infer E, infer _G> ? E
   : never
 
 /**
@@ -383,8 +584,8 @@ export type Result<C> = C extends Proto<infer _Msg, infer Source> ? Source
  * @category utility types
  * @since 4.1.3
  */
-export type Mapped<C, B> = C extends Issued<infer _Msg, infer R, infer Source, infer K> ?
-  (K extends Kind ? Issued<B, R, Source, K> : never)
+export type Mapped<C, B> = C extends Issued<infer _Msg, infer R, infer Source, infer K, infer SourceE> ?
+  (K extends Kind ? Issued<B, R, Source, K, SourceE> : never)
   : C extends Interrupt ? Interrupt
   : never
 
@@ -394,21 +595,30 @@ export type Mapped<C, B> = C extends Issued<infer _Msg, infer R, infer Source, i
  *
  * **Details**
  *
- * `Args` are the arguments a Command is issued with, `Msg` the message it
- * produces, and `IsStream` whether it was declared with `stream: true`. Story
- * steps such as `resolve` take a definition and are typed by it.
+ * `Args` is the decoded args struct a Command is issued with, `A` the
+ * body's success, `IsStream` whether it was declared with `stream: true`,
+ * `E` the body's typed failure and `G` its `group` fields. Story steps
+ * such as `resolve` take a definition and are typed by it.
  *
  * @stability experimental
  * @category models
  * @since 4.1.3
  */
-export interface Definition<in Args extends ReadonlyArray<any>, out Msg, out IsStream extends boolean> {
-  readonly [DefinitionTypeId]: Definition.Variance<Args, Msg, IsStream>
+export interface Definition<in Args, out A, out IsStream extends boolean, out E = never, out G extends string = never> {
+  readonly [DefinitionTypeId]: Definition.Variance<Args, A, IsStream, E, G>
   /** Whether the Command was declared with `stream: true`. */
   readonly stream: IsStream
   readonly mode: Mode
   /** Whether the Command was declared with `server: true`. Always `false` for `make`. */
   readonly server: boolean
+  /** The `group` fields. Empty without `group`. */
+  readonly group: ReadonlyArray<G>
+  /**
+   * The group key of an args struct, or of a pick of its `group` fields.
+   *
+   * @internal
+   */
+  readonly "~groupKey": (args: unknown) => string | undefined
 }
 
 /**
@@ -419,15 +629,17 @@ export interface Definition<in Args extends ReadonlyArray<any>, out Msg, out IsS
  */
 export declare namespace Definition {
   /**
-   * Phantom variance for a definition's arguments, message and kind.
+   * Phantom variance for a definition's args, success, kind, failure and group.
    *
    * @category models
    * @since 4.1.3
    */
-  export interface Variance<in Args extends ReadonlyArray<any>, out Msg, out IsStream extends boolean> {
+  export interface Variance<in Args, out A, out IsStream extends boolean, out E, out G extends string> {
     readonly _Args: Types.Contravariant<Args>
-    readonly _Msg: Types.Covariant<Msg>
+    readonly _A: Types.Covariant<A>
     readonly _IsStream: Types.Covariant<IsStream>
+    readonly _E: Types.Covariant<E>
+    readonly _G: Types.Covariant<G>
   }
 
   /**
@@ -436,15 +648,15 @@ export declare namespace Definition {
    * @category models
    * @since 4.1.3
    */
-  export type Any = Definition<any, any, boolean>
+  export type Any = Definition<any, any, boolean, any, any>
 
   /**
-   * The arguments a definition is issued with.
+   * The args struct a definition is issued with.
    *
    * @category utility types
    * @since 4.1.3
    */
-  export type Args<D> = D extends Definition<infer A, infer _Msg, infer _S> ? A : never
+  export type Args<D> = D extends Definition<infer A, infer _A, infer _S, infer _E, infer _G> ? A : never
 
   /**
    * Whether a definition was declared with `stream: true`.
@@ -452,21 +664,23 @@ export declare namespace Definition {
    * @category utility types
    * @since 4.1.3
    */
-  export type IsStream<D> = D extends Definition<infer _Args, infer _Msg, infer S> ? S : never
+  export type IsStream<D> = D extends Definition<infer _Args, infer _A, infer S, infer _E, infer _G> ? S : never
 }
 
 /**
- * What `make` returns: call it with the Command's arguments to issue it.
+ * What `make` returns: call it with the Command's args struct to issue it.
  *
  * @stability experimental
  * @category models
  * @since 4.1.3
  */
-export interface Factory<in Args extends ReadonlyArray<any>, in out Msg, out IsStream extends boolean = false>
-  extends Definition<Args, Msg, IsStream>
+export interface Factory<in out Args, in out Msg, out IsStream extends boolean = false, out G extends string = never>
+  extends Definition<Args, Msg, IsStream, never, G>
 {
-  (...args: Args): IsStream extends true ? Streaming<Msg> : Effectful<Msg>
+  (...args: MakeArgs<Args>): IsStream extends true ? Streaming<Msg> : Effectful<Msg>
   readonly name: string
+  /** The args Schema. */
+  readonly args: Schema.Top
 }
 
 /**
@@ -475,9 +689,9 @@ export interface Factory<in Args extends ReadonlyArray<any>, in out Msg, out IsS
  * **Details**
  *
  * It's a `Context.Service` whose value is the Command's implementation: a
- * function of the arguments returning an `Effect` (or a `Stream`) of the
- * message. `layer` builds that implementation, and `make` issues a Command
- * that requires the service. A fake is `Layer.succeed(X, (...args) => ...)`.
+ * function of the args struct returning an `Effect` (or a `Stream`).
+ * `layer` builds that implementation, and `make` issues a Command that
+ * requires the service. A fake is `Layer.succeed(X, (args) => ...)`.
  *
  * @stability experimental
  * @category models
@@ -486,19 +700,30 @@ export interface Factory<in Args extends ReadonlyArray<any>, in out Msg, out IsS
 export interface Service<
   in out Self,
   in out Key extends string,
-  in Args extends ReadonlyArray<any>,
-  in out Msg,
+  in out Args,
+  in out A,
   out IsStream extends boolean,
   out E,
-  out R
+  out R,
+  in out Err = never,
+  out G extends string = never
 > extends
-  Context.ServiceClass<Self, Key, Service.Implementation<Args, Msg, IsStream>>,
-  Definition<Args, Msg, IsStream>
+  Context.ServiceClass<Self, Key, Service.Implementation<Args, A, IsStream, Err>>,
+  Definition<Args, A, IsStream, Err, G>
 {
   /** The implementation's Layer. It requires what the implementation captured. */
   readonly layer: Layer.Layer<Self, E, R>
-  /** Issues the Command. The component requires `Self`. */
-  make(...args: Args): IsStream extends true ? Streaming<Msg, Self> : Effectful<Msg, Self>
+  /** The args Schema. */
+  readonly args: Schema.Top
+  /**
+   * Issues the Command. The component requires `Self`. When the body can
+   * fail (`Err` isn't `never`) the result is `Unmatched`: map both channels
+   * with `Command.match` before running it.
+   */
+  make(
+    ...args: MakeArgs<Args>
+  ): [Err] extends [never] ? (IsStream extends true ? Streaming<A, Self> : Effectful<A, Self>)
+    : Unmatched<A, Err, Self, IsStream extends true ? "Stream" : "Effect">
 }
 
 /**
@@ -509,26 +734,36 @@ export interface Service<
  */
 export declare namespace Service {
   /**
-   * The value behind a Command service: a function of the arguments that
-   * returns the Command's result. It may use framework services on each call.
+   * The value behind a Command service: a function of the args struct that
+   * returns the body's result. It may use framework services on each call.
    *
    * @category models
    * @since 4.1.3
    */
-  export type Implementation<Args extends ReadonlyArray<any>, Msg, IsStream extends boolean> = IsStream extends true ?
-    (...args: Args) => Stream.Stream<Msg, never, FrameworkService>
-    : (...args: Args) => Effect.Effect<Msg, never, FrameworkService>
+  export type Implementation<Args, A, IsStream extends boolean, Err = never> = IsStream extends true ?
+    (args: Args) => Stream.Stream<A, Err, FrameworkService>
+    : (args: Args) => Effect.Effect<A, Err, FrameworkService>
 
   /**
    * The options accepted by `Service`.
    *
+   * **Details**
+   *
+   * On top of `Options`:
+   *
+   * - `invalidates` is required: what a run invalidates, from the args
+   *   only, so it's known at issue. It's applied on every exit of a started
+   *   run. A Command that invalidates nothing writes `() => []`.
+   * - `optimistic` lists patches, from the args only, registered at issue.
+   * - `writes` lists the entries a success writes. A Stream Command has none.
+   *
    * @category models
    * @since 4.1.3
    */
-  export interface Options<in Args extends ReadonlyArray<any>> {
-    readonly stream?: boolean | undefined
-    readonly mode?: Mode | undefined
-    readonly key?: ((...args: Args) => string) | undefined
+  export interface Options<In extends ArgsInput, A, G extends string> extends CommandOptions<In, G> {
+    readonly invalidates: (args: ArgsOf<In>) => ReadonlyArray<Loader.Target>
+    readonly optimistic?: ((args: ArgsOf<In>) => ReadonlyArray<Loader.Patch>) | undefined
+    readonly writes?: ((success: A, args: ArgsOf<In>) => ReadonlyArray<Loader.Write>) | undefined
     /**
      * Marks a safe data read whose result reaches the Model through a
      * message. An instance that adopts its Model, on history restore or
@@ -539,38 +774,104 @@ export declare namespace Service {
   }
 }
 
+type CommandOptions<In extends ArgsInput, G extends string> = Options<In, G>
+
+const identity = (result: any) => result
+
 const Proto = {
-  [TypeId]: { _Msg: (_: never) => _, _Source: (_: never) => _ },
+  [TypeId]: { _Msg: (_: never) => _, _Source: (_: never) => _, _SourceE: (_: never) => _ },
   pipe() {
     return Pipeable.pipeArguments(this, arguments)
   }
 }
 
-const makeEffectful = <Msg, R>(
-  fields: {
-    readonly name: string
-    readonly args: ReadonlyArray<unknown>
-    readonly mode: Mode
-    readonly key: string | undefined
-    readonly server: boolean
-    readonly effect: Effect.Effect<any, never, R>
-    readonly resolve: (result: any) => Msg
-  }
-): Effectful<Msg, R> => Object.assign(Object.create(Proto), { _tag: "Effect", stream: undefined }, fields)
+const UnmatchedProto = {
+  ...Proto,
+  [UnmatchedTypeId]: { _A: (_: never) => _, _E: (_: never) => _, _R: (_: never) => _ }
+}
 
-const makeStreaming = <Msg, R>(
-  fields: {
-    readonly name: string
-    readonly args: ReadonlyArray<unknown>
-    readonly mode: Mode
-    readonly key: string | undefined
-    readonly server: boolean
-    readonly stream: Stream.Stream<any, never, R>
-    readonly resolve: (result: any) => Msg
-  }
-): Streaming<Msg, R> => Object.assign(Object.create(Proto), { _tag: "Stream", effect: undefined }, fields)
+interface Fields extends Omit<Data, "effect" | "stream"> {
+  readonly _tag: Kind
+  readonly work: Effect.Effect<any, any, any> | Stream.Stream<any, any, any>
+  readonly resolve: (result: any) => any
+  readonly reject: ((error: any) => any) | undefined
+}
 
-const identity = (result: any) => result
+/** `effect` and `stream` are the work with `resolve` and `reject` applied. An unmatched Command keeps its failure. */
+const makeIssued = (fields: Fields, unmatched = false): any => {
+  const { reject, resolve, work } = fields
+  const plain = resolve === identity && reject === undefined
+  let effect: Effect.Effect<any, any, any> | undefined
+  let stream: Stream.Stream<any, any, any> | undefined
+  if (fields._tag === "Effect") {
+    const mapped = plain
+      ? work as Effect.Effect<any, any, any>
+      : Effect.map(work as Effect.Effect<any, any, any>, resolve)
+    effect = reject === undefined ? mapped : Effect.catch(mapped, (error) => Effect.sync(() => reject(error)))
+  } else {
+    const mapped = plain
+      ? work as Stream.Stream<any, any, any>
+      : Stream.map(work as Stream.Stream<any, any, any>, resolve)
+    stream = reject === undefined ? mapped : Stream.catch(mapped, (error) => Stream.sync(() => reject(error)))
+  }
+  return Object.assign(Object.create(unmatched ? UnmatchedProto : Proto), fields, { effect, stream })
+}
+
+const noTargets: ReadonlyArray<never> = []
+
+/**
+ * One build of a `Service`'s Layer: the owner of the detached runs issued
+ * against it. A fake provided with `Layer.succeed` has none, and its runs are
+ * owned by the root alone.
+ *
+ * @internal
+ */
+export interface Build {
+  closed: boolean
+  /** Called once, when the build's Scope closes. The returned function removes the listener. */
+  readonly onClose: (listener: () => void) => () => void
+}
+
+const builds = new WeakMap<object, Build>()
+
+/**
+ * The build an implementation came from, or `undefined` for a fake.
+ *
+ * @internal
+ */
+export const buildOf = (implementation: unknown): Build | undefined =>
+  typeof implementation === "function" ? builds.get(implementation) : undefined
+
+const argsSchemaOf = (args: ArgsInput): Schema.Struct<Schema.Struct.Fields> =>
+  Schema.isSchema(args) ? args as Schema.Struct<Schema.Struct.Fields> : Schema.Struct(args as Schema.Struct.Fields)
+
+/** Canonical JSON of the encoded `group` fields. The codec is built on first use. */
+const makeGroupKey = (
+  name: string,
+  schema: Schema.Struct<Schema.Struct.Fields>,
+  group: ReadonlyArray<string>
+): (args: unknown) => string | undefined => {
+  if (group.length === 0) return () => undefined
+  for (const field of group) {
+    if (!Object.hasOwn(schema.fields, field)) {
+      throw new Error(`${name}: the group field "${field}" isn't one of its args`)
+    }
+  }
+  let encode: ((u: unknown) => unknown) | undefined
+  return (args) => {
+    if (encode === undefined) {
+      const fields: Record<string, Schema.Top> = {}
+      for (const field of group) fields[field] = schema.fields[field] as Schema.Top
+      encode = Schema.encodeUnknownSync(
+        Schema.toCodecJson(Schema.Struct(fields)) as unknown as Schema.Codec<unknown, unknown>
+      )
+    }
+    const picked: Record<string, unknown> = {}
+    const source = (args ?? {}) as Record<string, unknown>
+    for (const field of group) if (Object.hasOwn(source, field)) picked[field] = source[field]
+    return canonical(encode(picked))
+  }
+}
 
 /**
  * Returns `true` if `u` is a Command.
@@ -580,6 +881,17 @@ const identity = (result: any) => result
  * @since 4.1.3
  */
 export const isCommand = (u: unknown): u is Command<unknown, unknown> => Predicate.hasProperty(u, TypeId)
+
+/**
+ * Returns `true` if `u` is a Command issued by a `Service` whose body can
+ * fail, before `match`.
+ *
+ * @stability experimental
+ * @category guards
+ * @since 4.1.3
+ */
+export const isUnmatched = (u: unknown): u is Unmatched<unknown, unknown, unknown, Kind> =>
+  Predicate.hasProperty(u, UnmatchedTypeId)
 
 /**
  * Returns `true` if `u` is a Command definition: a factory from `make` or a
@@ -602,6 +914,15 @@ export const nameOf = (definition: Definition.Any): string =>
   Context.isKey(definition) ? definition.key : (definition as Factory<any, any, any>).name
 
 /**
+ * The group key a definition's `group` pick addresses, or `undefined` for
+ * every run of it.
+ *
+ * @internal
+ */
+export const groupKeyOf = (definition: Definition.Any, group: unknown): string | undefined =>
+  group === undefined ? undefined : definition["~groupKey"](group)
+
+/**
  * Defines a Command that needs nothing beyond the framework services.
  *
  * **When to use**
@@ -612,11 +933,15 @@ export const nameOf = (definition: Definition.Any): string =>
  *
  * **Details**
  *
- * The result is a factory: calling it with the arguments issues a Command whose
- * `args` are those arguments, so a story test sees them without running the
- * Effect. The function's requirements may only be framework services, which
- * are removed from `R`; anything else is a compile error that names the
- * service. With `stream: true` the function returns a `Stream` instead.
+ * The arguments are the name, the options (`args` is required) and the body.
+ * The result is a factory: calling it with the args struct issues a Command
+ * whose `args` are that struct, so a story test sees them without running the
+ * Effect. The body can't fail. Its requirements may only be framework
+ * services, which are removed from `R`. A body that requires anything else
+ * doesn't compile, and the error names `FrameworkService` rather than the
+ * missing service. With `stream: true` the body returns a `Stream` instead.
+ * A `make` Command declares nothing about the loader cache, and its runs end
+ * with the issuing instance.
  *
  * **Gotchas**
  *
@@ -631,10 +956,10 @@ export const nameOf = (definition: Definition.Any): string =>
  *
  * const DieMessage = Schema.TaggedUnion({ Roll: {}, Rolled: { n: Schema.Number } })
  *
- * const RollDie = Command.make("RollDie", (sides: number) =>
+ * const RollDie = Command.make("RollDie", { args: { sides: Schema.Number } }, ({ sides }) =>
  *   Random.nextIntBetween(1, sides).pipe(Effect.map((n) => DieMessage.make({ _tag: "Rolled", n }))))
  *
- * // In a component: `$.run(RollDie(6))`, pending in a story as { name: "RollDie", args: [6] }
+ * // In a component: `$.run(RollDie({ sides: 6 }))`, pending in a story as { name: "RollDie", args: { sides: 6 } }
  * ```
  *
  * @stability experimental
@@ -642,36 +967,64 @@ export const nameOf = (definition: Definition.Any): string =>
  * @since 4.1.3
  */
 export const make: {
-  <const Name extends string, Args extends ReadonlyArray<any>, Msg, R>(
+  <
+    const Name extends string,
+    const In extends ArgsInput,
+    Msg,
+    R extends FrameworkService = never,
+    const G extends GroupField<In> = never
+  >(
     name: Name,
-    run: ((...args: Args) => Effect.Effect<Msg, never, R>) & OnlyFrameworkServices<R>,
-    options?: Options<Args> & { readonly stream?: false | undefined }
-  ): Factory<Args, Msg, false>
-  <const Name extends string, Args extends ReadonlyArray<any>, Msg, R>(
+    options: Options<In, G> & { readonly stream?: false | undefined },
+    run: (args: ArgsOf<In>) => Effect.Effect<Msg, never, R>
+  ): Factory<ArgsOf<In>, Msg, false, G>
+  <
+    const Name extends string,
+    const In extends ArgsInput,
+    Msg,
+    R extends FrameworkService = never,
+    const G extends GroupField<In> = never
+  >(
     name: Name,
-    run: ((...args: Args) => Stream.Stream<Msg, never, R>) & OnlyFrameworkServices<R>,
-    options: Options<Args> & { readonly stream: true }
-  ): Factory<Args, Msg, true>
+    options: Options<In, G> & { readonly stream: true },
+    run: (args: ArgsOf<In>) => Stream.Stream<Msg, never, R>
+  ): Factory<ArgsOf<In>, Msg, true, G>
 } = (
   name: string,
-  run: (...args: ReadonlyArray<unknown>) => any,
-  options?: Options<ReadonlyArray<any>>
+  options: Options<ArgsInput, string>,
+  run: (args: any) => any
 ): any => {
-  const stream = options?.stream === true
-  const mode = options?.mode ?? "concurrent"
-  const keyOf = options?.key
-  const factory = (...args: ReadonlyArray<unknown>) => {
-    const key = keyOf === undefined ? undefined : keyOf(...args)
-    return stream
-      ? makeStreaming({ name, args, mode, key, server: false, stream: run(...args), resolve: identity })
-      : makeEffectful({ name, args, mode, key, server: false, effect: run(...args), resolve: identity })
-  }
+  const stream = options.stream === true
+  const mode = options.mode ?? "concurrent"
+  const group = options.group ?? []
+  const argsSchema = argsSchemaOf(options.args)
+  const groupKey = makeGroupKey(name, argsSchema, group)
+  const factory = (args: unknown = {}) =>
+    makeIssued({
+      _tag: stream ? "Stream" : "Effect",
+      name,
+      args,
+      mode,
+      groupKey: groupKey(args),
+      server: false,
+      argsSchema,
+      service: undefined,
+      invalidates: noTargets,
+      optimistic: noTargets,
+      writes: undefined,
+      work: run(args),
+      resolve: identity,
+      reject: undefined
+    })
   Object.defineProperty(factory, "name", { value: name })
   return Object.assign(factory, {
     [DefinitionTypeId]: DefinitionTypeId,
     stream,
     mode,
-    server: false
+    server: false,
+    group,
+    args: argsSchema,
+    "~groupKey": groupKey
   })
 }
 
@@ -681,22 +1034,35 @@ export const make: {
  * **When to use**
  *
  * Use as the only way for a Command to reach a service other than the
- * framework's: a store, an HTTP client, the page's current workspace.
+ * framework's: a store, an HTTP client, the page's current workspace. A
+ * mutation of data a loader reads is one.
  *
  * **Details**
  *
- * `Service` is a thin wrapper over `Context.Service`. The implementation is an
- * Effect that runs once per Layer build and returns the Command's function, so
- * it captures the services it uses then. The resulting class has `layer`, the
- * implementation's Layer, and `make(...args)`, which issues a Command that
- * requires the class. A component's requirements therefore name the Command
- * service, never what its implementation uses, and a fake is
- * `Layer.succeed(X, (...args) => ...)`. The key is the Command's name in the
- * log and in story tests.
+ * The arguments are the key, the options and the implementation. The
+ * implementation is an Effect that runs once per Layer build and returns the
+ * body, a function of the args struct, so it captures the services it uses
+ * then. The resulting class has `layer`, the implementation's Layer, and
+ * `make(args)`, which issues a Command that requires the class. A
+ * component's requirements therefore name the Command service, never what its
+ * implementation uses, and a fake is `Layer.succeed(X, (args) => ...)`. The
+ * key is the Command's name in the log and in story tests.
  *
- * The function may use framework services on each call without them appearing
- * in `layer`'s requirements. State that changes over time is read on each call
- * through a captured service; anything that varies per call is an argument.
+ * The body may use framework services on each call without them appearing in
+ * `layer`'s requirements, and it may fail with a typed error. `make` then
+ * issues an `Unmatched` Command, and the issue site maps both channels to
+ * messages with `Command.match({ onSuccess, onFailure })`. A body that can't
+ * fail issues a Command directly, mapped with `Command.map`.
+ *
+ * The options declare what a run does to the loader cache, from the args:
+ * `invalidates` (required), `optimistic` patches, live from issue, and
+ * `writes` of the success. The runtime applies them when the run's fiber
+ * exits, before its message is sent.
+ *
+ * An Effect-shaped run outside `switch` is detached: it's owned by the Layer
+ * build that provides the service and by the root, not by the issuing
+ * instance, and it gets a Scope of its own. A save completes after its
+ * instance unmounts, and its message is then dropped.
  *
  * `server: true` marks a safe data read whose result reaches the Model
  * through a message. An instance that adopts its Model, on history restore,
@@ -712,23 +1078,24 @@ export const make: {
  *
  * const Message = Schema.TaggedUnion({ Save: {}, Saved: {}, SaveFailed: { reason: Schema.String } })
  *
- * class SaveTodo extends Command.Service<SaveTodo>()(
- *   "todos/SaveTodo",
- *   Effect.gen(function*() {
- *     const kv = yield* KeyValueStore.KeyValueStore
- *     return (id: string, title: string) =>
- *       kv.set(`todo/${id}`, title).pipe(
- *         Effect.as(Message.make({ _tag: "Saved" })),
- *         Effect.catchTag("KeyValueStoreError", (e) =>
- *           Effect.succeed(Message.make({ _tag: "SaveFailed", reason: e.message })))
- *       )
- *   })
- * ) {}
+ * class SaveTodo extends Command.Service<SaveTodo>()("todos/SaveTodo", {
+ *   args: { id: Schema.String, title: Schema.String },
+ *   mode: "queue",
+ *   group: ["id"],
+ *   invalidates: () => []
+ * }, Effect.gen(function*() {
+ *   const kv = yield* KeyValueStore.KeyValueStore
+ *   return ({ id, title }) => kv.set(`todo/${id}`, title)
+ * })) {}
  *
- * // Issue it from `update`: `$.run(SaveTodo.make("t1", "milk"))`
+ * // Issue it from `update`, mapping both channels to messages
+ * const save = SaveTodo.make({ id: "t1", title: "milk" }).pipe(Command.match({
+ *   onSuccess: () => Message.make({ _tag: "Saved" }),
+ *   onFailure: (e) => Message.make({ _tag: "SaveFailed", reason: e.message })
+ * }))
  * // Live: provide `SaveTodo.layer`, which requires `KeyValueStore`
  * // Test: a fake that needs nothing
- * const Fake = Layer.succeed(SaveTodo, () => Effect.succeed(Message.make({ _tag: "Saved" })))
+ * const Fake = Layer.succeed(SaveTodo, () => Effect.void)
  * ```
  *
  * @stability experimental
@@ -736,66 +1103,114 @@ export const make: {
  * @since 4.1.3
  */
 export const Service: <Self>() => {
-  <const Key extends string, Args extends ReadonlyArray<any>, Msg, RInner, E, R>(
+  <
+    const Key extends string,
+    const In extends ArgsInput,
+    A,
+    Err,
+    RInner,
+    E,
+    R,
+    const G extends GroupField<In> = never
+  >(
     key: Key,
+    options: Service.Options<In, A, G> & { readonly stream?: false | undefined },
     implementation:
-      & Effect.Effect<(...args: Args) => Effect.Effect<Msg, never, RInner>, E, R>
-      & CapturesServices<RInner>,
-    options?: Service.Options<Args> & { readonly stream?: false | undefined }
-  ): Service<Self, Key, Args, Msg, false, E, Exclude<R, Scope.Scope>>
-  <const Key extends string, Args extends ReadonlyArray<any>, Msg, RInner, E, R>(
+      & Effect.Effect<(args: ArgsOf<In>) => Effect.Effect<A, Err, RInner>, E, R>
+      & CapturesServices<RInner>
+  ): Service<Self, Key, ArgsOf<In>, A, false, E, Exclude<R, Scope.Scope>, Err, G>
+  <
+    const Key extends string,
+    const In extends ArgsInput,
+    A,
+    Err,
+    RInner,
+    E,
+    R,
+    const G extends GroupField<In> = never
+  >(
     key: Key,
+    options: Service.Options<In, A, G> & {
+      readonly stream: true
+      readonly writes?: undefined
+      readonly server?: false | undefined
+    },
     implementation:
-      & Effect.Effect<(...args: Args) => Stream.Stream<Msg, never, RInner>, E, R>
-      & CapturesServices<RInner>,
-    options: Service.Options<Args> & { readonly stream: true; readonly server?: false | undefined }
-  ): Service<Self, Key, Args, Msg, true, E, Exclude<R, Scope.Scope>>
+      & Effect.Effect<(args: ArgsOf<In>) => Stream.Stream<A, Err, RInner>, E, R>
+      & CapturesServices<RInner>
+  ): Service<Self, Key, ArgsOf<In>, A, true, E, Exclude<R, Scope.Scope>, Err, G>
 } = () =>
 (
   key: string,
-  implementation: Effect.Effect<(...args: ReadonlyArray<unknown>) => any, any, any>,
-  options?: Service.Options<ReadonlyArray<any>>
+  options: Service.Options<ArgsInput, any, string>,
+  implementation: Effect.Effect<(args: any) => any, any, any>
 ): any => {
   const Base = Context.Service<any, any>()(key)
-  const stream = options?.stream === true
-  const mode = options?.mode ?? "concurrent"
-  const keyOf = options?.key
-  const server = !stream && options?.server === true
+  const stream = options.stream === true
+  const mode = options.mode ?? "concurrent"
+  const server = !stream && options.server === true
+  const group = options.group ?? []
+  const argsSchema = argsSchemaOf(options.args)
+  const groupKey = makeGroupKey(key, argsSchema, group)
+  const { invalidates, optimistic, writes } = options
+  const service = Base as Effect.Effect<(args: unknown) => any, never, any>
   class CommandService extends Base {
     static readonly [DefinitionTypeId] = DefinitionTypeId
     static readonly stream = stream
     static readonly mode = mode
     static readonly server = server
-    static readonly layer = Layer.effect(Base, implementation)
-    static make(...args: ReadonlyArray<unknown>) {
-      const concurrencyKey = keyOf === undefined ? undefined : keyOf(...args)
-      return stream
-        ? makeStreaming({
-          name: key,
-          args,
-          mode,
-          key: concurrencyKey,
-          server,
-          stream: Stream.unwrap(
-            Effect.map(
-              Base as Effect.Effect<(...args: ReadonlyArray<unknown>) => any, never, any>,
-              (run) => run(...args)
-            )
-          ),
-          resolve: identity
-        })
-        : makeEffectful({
-          name: key,
-          args,
-          mode,
-          key: concurrencyKey,
-          server,
-          effect: Effect.flatMap(
-            Base as Effect.Effect<(...args: ReadonlyArray<unknown>) => any, never, any>,
-            (run) => run(...args)
-          ),
-          resolve: identity
-        })
+    static readonly group = group
+    static readonly args = argsSchema
+    static readonly "~groupKey" = groupKey
+    static readonly layer = Layer.effect(
+      Base,
+      Effect.gen(function*() {
+        const scope = yield* Effect.scope
+        const run = yield* implementation
+        // A new function per build, so two builds never share an identity.
+        const wrapped = (args: unknown) => run(args)
+        const listeners = new Set<() => void>()
+        const build: Build = {
+          closed: false,
+          onClose: (listener) => {
+            listeners.add(listener)
+            return () => {
+              listeners.delete(listener)
+            }
+          }
+        }
+        builds.set(wrapped, build)
+        yield* Scope.addFinalizer(
+          scope,
+          Effect.sync(() => {
+            build.closed = true
+            for (const listener of Array.from(listeners)) listener()
+            listeners.clear()
+          })
+        )
+        return wrapped
+      })
+    )
+    static make(args: any = {}) {
+      const fields: Fields = {
+        _tag: stream ? "Stream" : "Effect",
+        name: key,
+        args,
+        mode,
+        groupKey: groupKey(args),
+        server,
+        argsSchema,
+        service: Base,
+        invalidates: invalidates(args),
+        optimistic: optimistic?.(args) ?? noTargets,
+        writes: writes === undefined ? undefined : (success) => writes(success, args),
+        work: stream
+          ? Stream.unwrap(Effect.map(service, (run) => run(args)))
+          : Effect.flatMap(service, (run) => run(args)),
+        resolve: identity,
+        reject: undefined
+      }
+      return makeIssued(fields, true)
     }
   }
   return CommandService
@@ -807,14 +1222,16 @@ export const Service: <Self>() => {
  * **When to use**
  *
  * Use to reuse a Command whose result isn't the component's own message, such
- * as a shared `UploadFile` Command that returns a URL.
+ * as a shared `UploadFile` Command that returns a URL. A Command whose body
+ * can fail takes `match` instead.
  *
  * **Details**
  *
- * The name, arguments and options are kept, so the log and story tests still
- * see the original Command, and a story's `resolve` step still takes the definition's
- * own result (the `Source` type parameter). The data-first form returns an
- * `Interrupt` unchanged; the pipeable form only takes issued Commands.
+ * The name, args and options are kept, so the log and story tests still see
+ * the original Command, and a story's `resolve` step still takes the
+ * definition's own success (the `Source` type parameter). The data-first form
+ * returns an `Interrupt` unchanged; the pipeable form only takes issued
+ * Commands.
  *
  * **Gotchas**
  *
@@ -831,9 +1248,10 @@ export const Service: <Self>() => {
  *
  * const Message = Schema.TaggedUnion({ Uploaded: { url: Schema.String } })
  *
- * const UploadFile = Command.make("UploadFile", (name: string) => Effect.succeed(`https://cdn/${name}`))
+ * const UploadFile = Command.make("UploadFile", { args: { name: Schema.String } }, ({ name }) =>
+ *   Effect.succeed(`https://cdn/${name}`))
  *
- * const upload = UploadFile("photo.png").pipe(
+ * const upload = UploadFile({ name: "photo.png" }).pipe(
  *   Command.map((url) => Message.make({ _tag: "Uploaded", url }))
  * )
  * ```
@@ -845,34 +1263,80 @@ export const Service: <Self>() => {
 export const map: {
   <A, B>(
     f: (a: A) => B
-  ): <R, Source, K extends Kind>(self: Issued<A, R, Source, K>) => Mapped<Issued<A, R, Source, K>, B>
+  ): <R, Source, K extends Kind, SourceE>(
+    self: Issued<A, R, Source, K, SourceE>
+  ) => Mapped<Issued<A, R, Source, K, SourceE>, B>
   <C extends Command<any, any>, B>(self: C, f: (a: Message<C>) => B): Mapped<C, B>
 } = dual(2, <A, R, B>(self: Command<A, R>, f: (a: A) => B): Command<B, R> => {
-  switch (self._tag) {
-    case "Interrupt":
-      return self
-    case "Effect":
-      return makeEffectful({
-        name: self.name,
-        args: self.args,
-        mode: self.mode,
-        key: self.key,
-        server: self.server,
-        effect: Effect.map(self.effect, f),
-        resolve: (result) => f(self.resolve(result as never))
-      })
-    case "Stream":
-      return makeStreaming({
-        name: self.name,
-        args: self.args,
-        mode: self.mode,
-        key: self.key,
-        server: self.server,
-        stream: Stream.map(self.stream, f),
-        resolve: (result) => f(self.resolve(result as never))
-      })
-  }
+  if (self._tag === "Interrupt") return self
+  const { reject, resolve } = self as unknown as Fields
+  return makeIssued({
+    ...(self as unknown as Fields),
+    resolve: (result) => f(resolve(result)),
+    reject: reject === undefined ? undefined : (error) => f(reject(error))
+  })
 })
+
+/**
+ * Maps both channels of a Command whose body can fail to messages.
+ *
+ * **When to use**
+ *
+ * Use when issuing a `Command.Service` whose body has a typed error:
+ * `$.run` doesn't take the `Unmatched` Command its `make` returns.
+ *
+ * **Details**
+ *
+ * `onSuccess` maps the body's success, or each element of a Stream Command,
+ * and `onFailure` the typed failure, which ends a Stream Command. A defect or
+ * an interrupt isn't mapped. A Command whose body can't fail takes `map`, and
+ * `match` on it doesn't compile.
+ *
+ * **Example** (Mapping a save that can fail)
+ *
+ * ```ts import.meta.vitest
+ * import { Command } from "effect/ui"
+ * import { Data, Effect, Schema } from "effect"
+ *
+ * class SaveFailed extends Data.TaggedError("SaveFailed")<{ readonly reason: string }> {}
+ *
+ * const Message = Schema.TaggedUnion({ Saved: {}, Failed: { reason: Schema.String } })
+ *
+ * class Save extends Command.Service<Save>()("Save", {
+ *   args: { title: Schema.String },
+ *   invalidates: () => []
+ * }, Effect.succeed(({ title }: { readonly title: string }) =>
+ *   title === "" ? Effect.fail(new SaveFailed({ reason: "empty" })) : Effect.void
+ * )) {}
+ *
+ * const save = Save.make({ title: "milk" }).pipe(Command.match({
+ *   onSuccess: () => Message.make({ _tag: "Saved" }),
+ *   onFailure: (error) => Message.make({ _tag: "Failed", reason: error.reason })
+ * }))
+ * ```
+ *
+ * @stability experimental
+ * @category mapping
+ * @since 4.1.3
+ */
+export const match: {
+  <A, E, B, C>(options: {
+    readonly onSuccess: (a: A) => B
+    readonly onFailure: (e: E) => C
+  }): <R, K extends Kind>(self: Unmatched<A, E, R, K>) => Issued<B | C, R, A, K, E>
+  <A, E, R, K extends Kind, B, C>(self: Unmatched<A, E, R, K>, options: {
+    readonly onSuccess: (a: A) => B
+    readonly onFailure: (e: E) => C
+  }): Issued<B | C, R, A, K, E>
+} = dual(2, (self: Unmatched<any, any, any, Kind>, options: {
+  readonly onSuccess: (a: any) => any
+  readonly onFailure: (e: any) => any
+}): any =>
+  makeIssued({
+    ...(self as unknown as Fields),
+    resolve: options.onSuccess,
+    reject: options.onFailure
+  }))
 
 /**
  * Issues a Command that interrupts the running and queued runs of another one.
@@ -885,30 +1349,35 @@ export const map: {
  * **Details**
  *
  * It produces no message. An interrupted run dispatches nothing and is logged
- * as `CommandInterrupted`. With `key`, only the runs whose concurrency key
- * matches are interrupted.
+ * as `CommandInterrupted`. With a pick of the Command's `group` fields, only
+ * the runs of that group are interrupted. Without one, every run of the
+ * Command the instance has is.
  *
  * **Example** (Cancelling an upload)
  *
  * ```ts import.meta.vitest
  * import { Command } from "effect/ui"
- * import { Effect } from "effect"
+ * import { Effect, Schema } from "effect"
  *
- * const UploadFile = Command.make("UploadFile", (name: string) => Effect.succeed(`https://cdn/${name}`), {
- *   key: (name) => name
- * })
+ * const UploadFile = Command.make("UploadFile", {
+ *   args: { name: Schema.String },
+ *   group: ["name"]
+ * }, ({ name }) => Effect.succeed(`https://cdn/${name}`))
  *
- * // In `update`: `$.run(Command.interrupt(UploadFile, "photo.png"))`
- * const cancel = Command.interrupt(UploadFile, "photo.png")
+ * // In `update`: `$.run(Command.interrupt(UploadFile, { name: "photo.png" }))`
+ * const cancel = Command.interrupt(UploadFile, { name: "photo.png" })
  * ```
  *
  * @stability experimental
  * @category constructors
  * @since 4.1.3
  */
-export const interrupt = (definition: Definition.Any, key?: string): Interrupt =>
+export const interrupt = <Args, G extends string>(
+  definition: Definition<Args, any, boolean, any, G>,
+  ...group: GroupArg<Args, G>
+): Interrupt =>
   Object.assign(Object.create(Proto), {
     _tag: "Interrupt",
     name: nameOf(definition),
-    key
+    groupKey: groupKeyOf(definition, group[0])
   })

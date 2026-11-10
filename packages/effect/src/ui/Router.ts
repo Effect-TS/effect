@@ -6,7 +6,7 @@
  * `TestHost`), `Router.static` (server rendering) and, in
  * `effect/ui/html`, `BrowserRouter.layer` and `BrowserRouter.layerHash`.
  * Each provides the `Router` service and the navigation Commands, `Push`,
- * `Replace`, `Back`, `Forward`, `Load`, `Block` and `Unblock`. A component
+ * `Replace`, `Back`, `Forward` and `Load`. A component
  * that navigates has them in its requirements, so a missing Router is a
  * compile error at `mount`.
  *
@@ -66,6 +66,8 @@ import * as Context from "../Context.ts"
 import * as Effect from "../Effect.ts"
 import * as Layer from "../Layer.ts"
 import * as Option from "../Option.ts"
+import * as Predicate from "../Predicate.ts"
+import * as Schema from "../Schema.ts"
 import * as Scope from "../Scope.ts"
 import * as Stream from "../Stream.ts"
 import * as SubscriptionRef from "../SubscriptionRef.ts"
@@ -103,7 +105,7 @@ export interface Location {
 export type Action = "initial" | "push" | "replace" | "pop"
 
 /**
- * What a navigation Command returns: `"blocked"` when a `Block` was held,
+ * What a navigation Command returns: `"blocked"` when a block was held,
  * else `"navigated"`.
  *
  * @stability experimental
@@ -136,9 +138,8 @@ export interface Router {
   readonly back: Effect.Effect<Outcome>
   readonly forward: Effect.Effect<Outcome>
   readonly load: (href: string) => Effect.Effect<Outcome>
-  /** Holds a block under `key` until `unblock` or until the Scope closes. */
+  /** Holds a block under `key` until the Scope closes. */
   readonly block: (key: string) => Effect.Effect<void, never, Scope.Scope>
-  readonly unblock: (key: string) => Effect.Effect<void>
   /** Whether any block is held. */
   readonly blocked: () => boolean
 }
@@ -165,23 +166,13 @@ export const Router: Context.Service<Router, Router> = Context.Service<Router>("
  */
 export type Routes = Route.AnyUnion & { readonly Type: { readonly _tag: string } }
 
-const TargetTypeId = "~effect/ui/Router/Target" as const
-
 /**
- * A route value checked against its union, the argument of `Push` and
- * `Replace`. Build one with `push` and `replace`, which check the value's
- * type against the union.
- *
- * @stability experimental
- * @category models
- * @since 4.1.3
+ * A route value of some union: the args Schema of `Push` and `Replace`. The
+ * log encodes it structurally.
  */
-export interface Target {
-  readonly [TargetTypeId]: typeof TargetTypeId
-  readonly route: { readonly _tag: string }
-}
-
-const target = (route: { readonly _tag: string }): Target => ({ [TargetTypeId]: TargetTypeId, route })
+const RouteValue = Schema.declare(
+  (u: unknown): u is { readonly _tag: string } => Predicate.hasProperty(u, "_tag") && typeof u._tag === "string"
+)
 
 /**
  * The Command behind `push`. Use `push`, which types the route value; the
@@ -191,10 +182,10 @@ const target = (route: { readonly _tag: string }): Target => ({ [TargetTypeId]: 
  * @category commands
  * @since 4.1.3
  */
-export class Push extends Command.Service<Push>()(
-  "effect/ui/Router/Push",
-  Effect.map(Router, (router) => (target: Target) => router.push(target.route))
-) {}
+export class Push extends Command.Service<Push>()("effect/ui/Router/Push", {
+  args: { route: RouteValue },
+  invalidates: () => []
+}, Effect.map(Router, (router) => ({ route }: { readonly route: { readonly _tag: string } }) => router.push(route))) {}
 
 /**
  * The Command behind `replace`. Use `replace`, which types the route value;
@@ -206,7 +197,11 @@ export class Push extends Command.Service<Push>()(
  */
 export class Replace extends Command.Service<Replace>()(
   "effect/ui/Router/Replace",
-  Effect.map(Router, (router) => (target: Target) => router.replace(target.route))
+  {
+    args: { route: RouteValue },
+    invalidates: () => []
+  },
+  Effect.map(Router, (router) => ({ route }: { readonly route: { readonly _tag: string } }) => router.replace(route))
 ) {}
 
 /**
@@ -217,15 +212,16 @@ export class Replace extends Command.Service<Replace>()(
  * The route must be a complete value of `routes`, such as one built with
  * `routes.make`; pass the union given to the Router Layer or one of its
  * subsets. A route equal to the current one does nothing. It returns
- * `"blocked"` without navigating while a `Block` is held. Map the outcome
- * to a message with `Command.map`. The component requires `Push`.
+ * `"blocked"` without navigating while a `Router.blocked` Subscription holds
+ * a block. Map the outcome to a message with `Command.map`. The component
+ * requires `Push`.
  *
  * @stability experimental
  * @category commands
  * @since 4.1.3
  */
 export const push = <U extends Routes>(_routes: U, route: U["Type"]): Command.Effectful<Outcome, Push> =>
-  Push.make(target(route))
+  Push.make({ route })
 
 /**
  * Replaces the current history entry with a route value of the given union.
@@ -241,7 +237,7 @@ export const push = <U extends Routes>(_routes: U, route: U["Type"]): Command.Ef
  * @since 4.1.3
  */
 export const replace = <U extends Routes>(_routes: U, route: U["Type"]): Command.Effectful<Outcome, Replace> =>
-  Replace.make(target(route))
+  Replace.make({ route })
 
 /**
  * Goes back one history entry.
@@ -250,10 +246,10 @@ export const replace = <U extends Routes>(_routes: U, route: U["Type"]): Command
  * @category commands
  * @since 4.1.3
  */
-export class Back extends Command.Service<Back>()(
-  "effect/ui/Router/Back",
-  Effect.map(Router, (router) => () => router.back)
-) {}
+export class Back extends Command.Service<Back>()("effect/ui/Router/Back", {
+  args: {},
+  invalidates: () => []
+}, Effect.map(Router, (router) => () => router.back)) {}
 
 /**
  * Goes forward one history entry.
@@ -262,10 +258,10 @@ export class Back extends Command.Service<Back>()(
  * @category commands
  * @since 4.1.3
  */
-export class Forward extends Command.Service<Forward>()(
-  "effect/ui/Router/Forward",
-  Effect.map(Router, (router) => () => router.forward)
-) {}
+export class Forward extends Command.Service<Forward>()("effect/ui/Router/Forward", {
+  args: {},
+  invalidates: () => []
+}, Effect.map(Router, (router) => () => router.forward)) {}
 
 /**
  * Loads an href with a full page load, such as an external URL.
@@ -274,13 +270,14 @@ export class Forward extends Command.Service<Forward>()(
  * @category commands
  * @since 4.1.3
  */
-export class Load extends Command.Service<Load>()(
-  "effect/ui/Router/Load",
-  Effect.map(Router, (router) => (href: string) => router.load(href))
-) {}
+export class Load extends Command.Service<Load>()("effect/ui/Router/Load", {
+  args: { href: Schema.String },
+  invalidates: () => []
+}, Effect.map(Router, (router) => ({ href }: { readonly href: string }) => router.load(href))) {}
 
 /**
- * Blocks navigation under a key, such as while a form has unsaved changes.
+ * Blocks navigation under a key while the Subscription runs, such as while a
+ * form has unsaved changes.
  *
  * **Details**
  *
@@ -288,29 +285,30 @@ export class Load extends Command.Service<Load>()(
  * return `"blocked"` and links aren't followed. Back and forward in the
  * browser can't be blocked, only reverted: the Router moves back to the
  * entry it was on, announces nothing and leaves focus alone. The block is
- * released by `Unblock` with the same key, or when the instance that issued
- * it unmounts.
+ * held while `subscriptions` returns it, so the Model says when, and it's
+ * released when the instance unmounts. It sends no messages.
+ *
+ * **Example** (Blocking navigation while a form is dirty)
+ *
+ * ```ts
+ * import { Router } from "effect/ui"
+ *
+ * const subscriptions = (model: { readonly dirty: boolean }) => model.dirty ? [Router.blocked("form")] : []
+ * ```
  *
  * @stability experimental
- * @category commands
+ * @category subscriptions
  * @since 4.1.3
  */
-export class Block extends Command.Service<Block>()(
-  "effect/ui/Router/Block",
-  Effect.map(Router, (router) => (key: string) => router.block(key))
-) {}
-
-/**
- * Releases the block held under a key.
- *
- * @stability experimental
- * @category commands
- * @since 4.1.3
- */
-export class Unblock extends Command.Service<Unblock>()(
-  "effect/ui/Router/Unblock",
-  Effect.map(Router, (router) => (key: string) => router.unblock(key))
-) {}
+export const blocked = (key: string): Subscription.Subscription<never, Router> =>
+  Subscription.make(
+    `effect/ui/Router/blocked/${key}`,
+    Stream.unwrap(Effect.gen(function*() {
+      const router = yield* Router
+      yield* router.block(key)
+      return Stream.never
+    }))
+  )
 
 /**
  * Everything a Router Layer provides.
@@ -319,7 +317,7 @@ export class Unblock extends Command.Service<Unblock>()(
  * @category models
  * @since 4.1.3
  */
-export type Services = Router | Push | Replace | Back | Forward | Load | Block | Unblock
+export type Services = Router | Push | Replace | Back | Forward | Load
 
 // ---------------------------------------------------------------------------
 // Subscription
@@ -490,9 +488,7 @@ const commandLayers = Layer.mergeAll(
   Replace.layer,
   Back.layer,
   Forward.layer,
-  Load.layer,
-  Block.layer,
-  Unblock.layer
+  Load.layer
 )
 
 /**
@@ -545,7 +541,8 @@ const build = (options: Options): Effect.Effect<Context.Context<Router>, never, 
     }
     let current: Location = { route: resolved.value.route, url: initialUrl, hash: startHash, action: "initial", seq: 0 }
     const ref = yield* SubscriptionRef.make(current)
-    const blocks = new Set<string>()
+    // Each key's holders: two instances may block under one key.
+    const blocks = new Map<string, number>()
     const snapshots = new Map<number, Record<string, unknown>>()
     const roots = new Set<services.RootHandle>()
     let restoring: Map<string, unknown> | undefined
@@ -710,12 +707,15 @@ const build = (options: Options): Effect.Effect<Context.Context<Router>, never, 
         }),
       block: (key) =>
         Effect.flatMap(Effect.scope, (scope) => {
-          blocks.add(key)
-          return Scope.addFinalizer(scope, Effect.sync(() => blocks.delete(key)))
-        }),
-      unblock: (key) =>
-        Effect.sync(() => {
-          blocks.delete(key)
+          blocks.set(key, (blocks.get(key) ?? 0) + 1)
+          return Scope.addFinalizer(
+            scope,
+            Effect.sync(() => {
+              const held = blocks.get(key)! - 1
+              if (held === 0) blocks.delete(key)
+              else blocks.set(key, held)
+            })
+          )
         }),
       blocked: () => blocks.size > 0
     }
@@ -837,7 +837,6 @@ const static_ = (options: { readonly routes: Route.AnyUnion; readonly url: strin
           forward: blocked,
           load: () => blocked,
           block: () => Effect.void,
-          unblock: () => Effect.void,
           blocked: () => false
         })
       })

@@ -241,6 +241,12 @@ export interface CommandSettled extends Base {
   readonly _tag: "CommandEnded" | "CommandInterrupted"
   readonly name: string
   readonly issued: Issued
+  /**
+   * Whether the run was detached: an Effect-shaped `Command.Service` run
+   * outside `switch`, owned by its Layer build. When its instance was gone
+   * by then, its message was dropped, and this entry is all that reports it.
+   */
+  readonly detached: boolean
 }
 
 /**
@@ -422,8 +428,8 @@ const IssuedWire = Schema.Struct({ seq: Schema.Number, index: Schema.Number })
 const CommandWire = Schema.Struct({
   _tag: Schema.Literals(["Effect", "Stream", "Interrupt"]),
   name: Schema.String,
-  key: Schema.NullOr(Schema.String),
-  args: Schema.Array(Schema.Json)
+  group: Schema.NullOr(Schema.String),
+  args: Schema.Json
 })
 const CauseWire = Schema.Struct({ pretty: Schema.String, reasons: Schema.Array(Schema.Json) })
 const SourceWire = Schema.Union([
@@ -447,9 +453,11 @@ const SourceWire = Schema.Union([
  * **Details**
  *
  * Models, messages, props and events are encoded through the component's
- * Schemas. Command args are encoded structurally, best effort: a value with
- * no JSON form becomes `{ "~unserialisable": "<kind>" }`, a `Redacted`
- * becomes `{ "~redacted": true }`, and a Model over `maxEntryBytes` becomes
+ * Schemas. Command args are encoded through the Command's `args` Schema,
+ * field by field, and a field that doesn't encode falls back to a structural
+ * encoding, best effort: a value with no JSON form becomes
+ * `{ "~unserialisable": "<kind>" }`, a `Redacted` becomes
+ * `{ "~redacted": true }`, and a Model over `maxEntryBytes` becomes
  * `{ "~truncated": bytes }`. A Cause is sent as `Cause.pretty` plus its
  * reasons, best effort.
  *
@@ -486,7 +494,8 @@ export const Wire = Schema.Union([
     _tag: Schema.Literals(["CommandEnded", "CommandInterrupted"]),
     ...Seq,
     name: Schema.String,
-    issued: IssuedWire
+    issued: IssuedWire,
+    detached: Schema.Boolean
   }),
   Schema.TaggedStruct("CommandDropped", {
     ...Seq,
@@ -618,7 +627,7 @@ export const makeEncoder = (options?: {
           return { ...base(entry), _tag: entry._tag, key: entry.key }
         case "CommandEnded":
         case "CommandInterrupted":
-          return { ...base(entry), _tag: entry._tag, name: entry.name, issued: entry.issued }
+          return { ...base(entry), _tag: entry._tag, name: entry.name, issued: entry.issued, detached: entry.detached }
         case "CommandDropped":
           return {
             ...base(entry),
@@ -648,7 +657,10 @@ const encodeSource = (source: Source): typeof SourceWire.Type => {
 }
 
 /**
- * Encodes a Command by name, key and args, the args structurally.
+ * Encodes a Command by name, group key and args. The args go through the
+ * Command's `args` Schema with every `Schema.Redacted` redacted, and a field
+ * that fails to encode is encoded structurally instead. An `Interrupt` has
+ * `null` args.
  *
  * @stability experimental
  * @category Wire
@@ -657,9 +669,51 @@ const encodeSource = (source: Source): typeof SourceWire.Type => {
 export const encodeCommand = (command: Command.Command<any, any>): typeof CommandWire.Type => ({
   _tag: command._tag,
   name: command.name,
-  key: command.key ?? null,
-  args: command._tag === "Interrupt" ? [] : command.args.map((arg) => structural(arg))
+  group: command.groupKey ?? null,
+  args: command._tag === "Interrupt" ? null : encodeArgs(command.argsSchema, command.args)
 })
+
+const argEncoders = new WeakMap<Schema.Top, (value: unknown) => unknown>()
+
+/**
+ * Encodes a value through a Schema with every `Schema.Redacted` redacted. A
+ * struct is encoded field by field, so a field that fails, such as a `File`
+ * under `Schema.Any`, falls back to `structural` on its own.
+ *
+ * @internal
+ */
+export const encodeArgs = (schema: Schema.Top, value: unknown): Schema.Json => {
+  const fields = (schema as { readonly fields?: Schema.Struct.Fields }).fields
+  if (
+    fields !== undefined && typeof value === "object" && value !== null && !Array.isArray(value) &&
+    !Redacted.isRedacted(value)
+  ) {
+    const out: Record<string, Schema.Json> = {}
+    const record = value as Record<string, unknown>
+    for (const key of Object.keys(fields)) {
+      if (!Object.hasOwn(record, key)) continue
+      out[key] = encodeArgs(fields[key] as Schema.Top, record[key])
+    }
+    return out
+  }
+  let encode = argEncoders.get(schema)
+  if (encode === undefined) {
+    try {
+      encode = Schema.encodeUnknownSync(
+        Schema.toCodecJson(Schema.make<Schema.Codec<unknown, unknown>>(redactAST(schema.ast)))
+      )
+    } catch {
+      encode = structural
+    }
+    argEncoders.set(schema, encode)
+  }
+  try {
+    // A Schema such as `Schema.Any` passes a value through, so the result goes through `structural` too.
+    return structural(encode(value))
+  } catch {
+    return structural(value)
+  }
+}
 
 const encodeCause = (cause: Cause.Cause<unknown>): typeof CauseWire.Type => ({
   pretty: Cause.pretty(cause),

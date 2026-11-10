@@ -135,7 +135,7 @@ describe("Router", () => {
     })
   })
 
-  it.effect("blocks Commands and reverts back and forward while a block is held", () => {
+  it.effect("blocks navigation and reverts back and forward while Router.blocked runs", () => {
     const { history, layer, settled } = setup()
     return run(
       layer,

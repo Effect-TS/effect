@@ -1,7 +1,9 @@
 import { assert, describe, it } from "@effect/vitest"
 import { Context, Effect, Layer, LayerMap, Option, Redacted, Schema, SchemaTransformation, Stream } from "effect"
+import { AsyncResult, Loader } from "effect/reactivity"
 import { TestClock } from "effect/testing"
 import { Command, Component, Feature, MessageLog, Renderer, Subscription } from "effect/ui"
+import { Html } from "effect/ui/html"
 import * as runtime from "effect/ui/internal/runtime"
 import { Query, Story, TestHost } from "effect/ui/testing"
 import { Counter, CounterMessage } from "./fixtures/components.ts"
@@ -19,7 +21,7 @@ const click = (root: TestHost.TestRoot<any, any, any>, text: string) =>
 
 const RowMessage = Schema.TaggedUnion({ Bump: {} })
 
-const Hold = Command.make("Hold", () => Effect.never)
+const Hold = Command.make("Hold", { args: {} }, () => Effect.never)
 const Row = Component.make({
   name: "Row",
   props: Schema.Struct({ id: Schema.String }),
@@ -235,7 +237,7 @@ describe("Runtime", () => {
 
     it.effect("a defect in a Command fails its instance", () =>
       provideHost(Effect.gen(function*() {
-        const Explode = Command.make("Explode", () => Effect.die("kaboom"))
+        const Explode = Command.make("Explode", { args: {} }, () => Effect.die("kaboom"))
         const Child = Component.make({
           name: "Child",
           model: Schema.Number,
@@ -340,8 +342,8 @@ describe("Runtime", () => {
     const Msg = Schema.TaggedUnion({ Query: { text: Schema.String }, Results: { text: Schema.String } })
     const Search = Command.make(
       "Search",
-      (text: string) => Effect.as(Effect.sleep("1 second"), Msg.make({ _tag: "Results", text })),
-      { mode: "switch" }
+      { args: { text: Schema.String }, mode: "switch" },
+      ({ text }) => Effect.as(Effect.sleep("1 second"), Msg.make({ _tag: "Results", text }))
     )
     const Box = Component.make({
       name: "Box",
@@ -350,7 +352,7 @@ describe("Runtime", () => {
       init: () => "",
       update: (_, message, $) =>
         Msg.match(message, {
-          Query: ({ text }) => $.run(Search(text)),
+          Query: ({ text }) => $.run(Search({ text })),
           Results: ({ text }) => text
         }),
       view: (model, h) => h.text(model)
@@ -362,7 +364,7 @@ describe("Runtime", () => {
         root.send(Msg.make({ _tag: "Query", text: "a" }))
         root.send(Msg.make({ _tag: "Query", text: "ab" }))
         yield* TestHost.settle
-        assert.deepStrictEqual(root.pending(), [{ path: "/Box", name: "Search", status: "running" }])
+        assert.deepStrictEqual(root.pending(), [{ path: "/Box", name: "Search", status: "running", detached: false }])
         yield* TestClock.adjust("1 second")
         yield* TestHost.settle
         assert.strictEqual(root.text(), "ab")
@@ -384,7 +386,7 @@ describe("Runtime", () => {
       provideHost(Effect.gen(function*() {
         const Field = Renderer.ref("Field")
         const RefMsg = Schema.TaggedUnion({ Show: {}, Found: { found: Schema.Boolean } })
-        const Look = Command.make("Look", () =>
+        const Look = Command.make("Look", { args: {} }, () =>
           Effect.gen(function*() {
             const refs = yield* Renderer.Refs
             const node = yield* refs.lookup(Field)
@@ -408,6 +410,322 @@ describe("Runtime", () => {
         root.send(RefMsg.make({ _tag: "Show" }))
         yield* TestHost.settle
         assert.deepStrictEqual(root.model(), { shown: true, found: true })
+      })))
+  })
+
+  describe("run owners", () => {
+    // The server behind the fake API, and the requests that reached the read's fetcher.
+    const makeServer = () => ({ count: 0, requests: 0, interrupted: 0 })
+    type Server = ReturnType<typeof makeServer>
+
+    class GetCount extends Loader.Service<GetCount>()("test/GetCount", {
+      args: { id: Schema.String },
+      success: Schema.Number,
+      error: Schema.Never,
+      staleTime: "Infinity"
+    }, Effect.succeed(() => Effect.succeed(0))) {}
+    const fetcher = (server: Server) =>
+      Layer.succeed(GetCount, () =>
+        Effect.sync(() => {
+          server.requests++
+          return server.count
+        }))
+
+    class Api extends Context.Service<Api, { readonly save: (n: number) => Effect.Effect<number> }>()("test/Api") {}
+    const api = (server: Server) =>
+      Layer.succeed(Api, {
+        save: (n) =>
+          Effect.sleep("1 second").pipe(
+            Effect.andThen(Effect.sync(() => (server.count = n))),
+            Effect.onInterrupt(() => Effect.sync(() => server.interrupted++))
+          )
+      })
+
+    class Save extends Command.Service<Save>()(
+      "test/Save",
+      { args: { n: Schema.Number }, invalidates: () => [GetCount], mode: "queue" },
+      Effect.gen(function*() {
+        const { save } = yield* Api
+        return ({ n }) => save(n)
+      })
+    ) {}
+    class Rename extends Command.Service<Rename>()(
+      "test/Rename",
+      {
+        args: { n: Schema.Number },
+        invalidates: () => [],
+        optimistic: () => [GetCount.patch({ id: "a" }, (count) => count + 100)],
+        writes: (count) => [GetCount.set({ id: "a" }, count)]
+      },
+      Effect.gen(function*() {
+        const { save } = yield* Api
+        return ({ n }) => save(n)
+      })
+    ) {}
+
+    const EditorMsg = Schema.TaggedUnion({ Save: {}, Rename: {}, Stop: {}, Saved: { n: Schema.Number } })
+    const Editor = Component.make({
+      name: "Editor",
+      model: Schema.Number,
+      message: EditorMsg,
+      init: () => 0,
+      update: (n, message, $) =>
+        EditorMsg.match(message, {
+          Save: () =>
+            $.set(n + 1).run(Save.make({ n: n + 1 }).pipe(Command.map((n) => EditorMsg.make({ _tag: "Saved", n })))),
+          Rename: () =>
+            $.set(n + 1).run(Rename.make({ n: n + 1 }).pipe(Command.map((n) => EditorMsg.make({ _tag: "Saved", n })))),
+          Stop: () => $.run(Command.interrupt(Save)),
+          Saved: () => n
+        }),
+      view: (_, h) =>
+        h.el("div", [
+          h.el("button", "save").on("click", EditorMsg.make({ _tag: "Save" })),
+          h.el("button", "rename").on("click", EditorMsg.make({ _tag: "Rename" })),
+          h.el("button", "stop").on("click", EditorMsg.make({ _tag: "Stop" })),
+          h.text(h.running(Save) ? "saving" : "idle")
+        ])
+    })
+
+    // The layout: it watches the server count through `changes`, which carries server values only.
+    const PageMsg = Schema.TaggedUnion({ Count: { value: Schema.Number }, Close: {}, Watch: { on: Schema.Boolean } })
+    const page = <R>(editor: Component.Component<"Editor", {}, number, any, never, R, any>) =>
+      Component.make({
+        name: "Page",
+        model: Schema.Struct({ count: Schema.Number, editing: Schema.Boolean, watching: Schema.Boolean }),
+        message: PageMsg,
+        init: () => ({ count: -1, editing: true, watching: true }),
+        update: (model, message) =>
+          PageMsg.match(message, {
+            Count: ({ value }) => ({ ...model, count: value }),
+            Close: () => ({ ...model, editing: false }),
+            Watch: ({ on }) => ({ ...model, watching: on })
+          }),
+        subscriptions: (model) => [
+          model.watching && Subscription.make(
+            "count",
+            GetCount.changes({ id: "a" }).pipe(
+              Stream.filter(AsyncResult.isSuccess),
+              Stream.map((result) => PageMsg.make({ _tag: "Count", value: result.value }))
+            )
+          )
+        ],
+        view: (model, h) =>
+          h.el("main", [
+            h.el("p", `count ${model.count}`),
+            model.editing ? h.child(editor, { key: "editor", props: {} }) : null
+          ])
+      })
+    const EditorPage = page(Editor)
+
+    it.effect("a save outlives its instance: the queue drains, its messages are dropped, the cache invalidates", () =>
+      provideHost(Effect.gen(function*() {
+        const server = makeServer()
+        const App = Component.provide(
+          EditorPage,
+          Layer.mergeAll(Save.layer.pipe(Layer.provide(api(server))), fetcher(server))
+        )
+        const root = yield* TestHost.mount(App, {})
+        yield* TestHost.settle
+        assert.include(root.text(), "count 0")
+        click(root, "save")
+        click(root, "save")
+        yield* TestHost.settle
+        assert.include(root.text(), "saving")
+        root.send(PageMsg.make({ _tag: "Close" }))
+        yield* TestHost.settle
+        assert.deepStrictEqual(root.pending(), [
+          { path: "/Page/Editor[editor]", name: "test/Save", status: "running", detached: true },
+          { path: "/Page/Editor[editor]", name: "test/Save", status: "queued", detached: true }
+        ])
+        yield* TestClock.adjust("1 second")
+        yield* TestHost.settle
+        assert.include(root.text(), "count 1")
+        yield* TestClock.adjust("1 second")
+        yield* TestHost.settle
+        assert.include(root.text(), "count 2")
+        assert.strictEqual(server.requests, 3)
+        assert.deepStrictEqual(root.pending(), [])
+        const editor = root.log().filter((entry) => entry.path === "/Page/Editor[editor]")
+        const unmounted = editor.findIndex((entry) => entry._tag === "Unmounted")
+        assert.deepStrictEqual(editor.slice(unmounted).map((entry) => entry._tag), [
+          "Unmounted",
+          "CommandEnded",
+          "CommandEnded"
+        ])
+        assert.isTrue(
+          editor.slice(unmounted + 1).every((entry) => (entry as MessageLog.CommandSettled).detached)
+        )
+      })))
+
+    it.effect("the Layer build that owns a detached run ends it when it closes", () =>
+      provideHost(Effect.gen(function*() {
+        const server = makeServer()
+        const App = Component.provide(
+          page(Component.provide(Editor, Save.layer.pipe(Layer.provide(api(server))))),
+          fetcher(server)
+        )
+        const root = yield* TestHost.mount(App, {})
+        yield* TestHost.settle
+        click(root, "save")
+        yield* TestHost.settle
+        root.send(PageMsg.make({ _tag: "Close" }))
+        yield* TestHost.settle
+        assert.strictEqual(server.interrupted, 1)
+        assert.deepStrictEqual(root.pending(), [])
+        const last = root.log().filter((entry) => entry._tag === "CommandInterrupted")
+        assert.deepStrictEqual(
+          last.map((entry) => (entry as MessageLog.CommandSettled).detached),
+          [true]
+        )
+        // A started run invalidates however it exits.
+        assert.strictEqual(server.requests, 2)
+      })))
+
+    it.effect("the root is a second owner, even for a service provided outside the mount", () => {
+      const server = makeServer()
+      return Effect.gen(function*() {
+        yield* Effect.scoped(Effect.gen(function*() {
+          const root = yield* TestHost.mount(EditorPage, {})
+          yield* TestHost.settle
+          click(root, "save")
+          yield* TestHost.settle
+          root.send(PageMsg.make({ _tag: "Close" }))
+          yield* TestHost.settle
+          assert.strictEqual(root.pending().length, 1)
+        }))
+        yield* TestHost.settle
+        assert.strictEqual(server.interrupted, 1)
+        assert.strictEqual(server.count, 0)
+      }).pipe(
+        Effect.provide(Layer.mergeAll(Save.layer.pipe(Layer.provide(api(server))), fetcher(server))),
+        Effect.provide(TestHost.layer())
+      )
+    })
+
+    it.effect("switch runs, Stream Commands and Command.make Commands end with their instance", () =>
+      provideHost(Effect.gen(function*() {
+        const stopped: Array<string> = []
+        const held = (name: string) => Effect.onInterrupt(Effect.never, () => Effect.sync(() => stopped.push(name)))
+        class Latest extends Command.Service<Latest>()(
+          "test/Latest",
+          { args: {}, invalidates: () => [], mode: "switch" },
+          Effect.succeed(() => held("switch"))
+        ) {}
+        class Watch extends Command.Service<Watch>()(
+          "test/Watch",
+          { args: {}, invalidates: () => [], stream: true },
+          Effect.succeed(() => Stream.fromEffect(held("stream")))
+        ) {}
+        const Local = Command.make("test/Local", { args: {} }, () => held("make"))
+        const Msg = Schema.TaggedUnion({ Close: {} })
+        const Busy = Component.make({
+          name: "Busy",
+          model: Schema.Boolean,
+          message: Msg,
+          init: ($) => $.set(true).run(Latest.make()).run(Watch.make()).run(Local()),
+          update: () => false,
+          view: (open, h) =>
+            h.el(
+              "div",
+              open ?
+                h.child(
+                  Component.make({
+                    name: "Inner",
+                    model: Schema.Null,
+                    message: Schema.Never,
+                    init: ($) => $.set(null).run(Latest.make()).run(Watch.make()).run(Local()),
+                    update: (model) => model,
+                    view: (_, h) => h.text("inner")
+                  }),
+                  { key: "inner", props: {} }
+                ) :
+                null
+            )
+        })
+        const App = Component.provide(
+          Busy,
+          Layer.mergeAll(
+            Layer.succeed(Latest, () => held("switch")),
+            Layer.succeed(Watch, () => Stream.fromEffect(held("stream")))
+          )
+        )
+        const root = yield* TestHost.mount(App, {})
+        yield* TestHost.settle
+        assert.deepStrictEqual(root.pending().map((entry) => entry.detached), [
+          false,
+          false,
+          false,
+          false,
+          false,
+          false
+        ])
+        root.send(Msg.make({ _tag: "Close" }))
+        yield* TestHost.settle
+        assert.sameMembers(stopped, ["switch", "stream", "make"])
+        assert.strictEqual(root.pending().length, 3)
+      })))
+
+    it.effect("h.running ends when an interrupted run's fiber exits, and the instance re-renders", () =>
+      provideHost(Effect.gen(function*() {
+        const server = makeServer()
+        const App = Component.provide(
+          EditorPage,
+          Layer.mergeAll(Save.layer.pipe(Layer.provide(api(server))), fetcher(server))
+        )
+        const root = yield* TestHost.mount(App, {})
+        yield* TestHost.settle
+        click(root, "save")
+        yield* TestHost.settle
+        assert.include(root.text(), "saving")
+        click(root, "stop")
+        yield* TestHost.settle
+        assert.include(root.text(), "idle")
+        assert.strictEqual(server.interrupted, 1)
+      })))
+
+    it.effect("a write lands in its entry without a request, and changes never shows the patch", () =>
+      provideHost(Effect.gen(function*() {
+        const server = makeServer()
+        const App = Component.provide(
+          EditorPage,
+          Layer.mergeAll(Rename.layer.pipe(Layer.provide(api(server))), fetcher(server))
+        )
+        const root = yield* TestHost.mount(App, {})
+        yield* TestHost.settle
+        assert.strictEqual(server.requests, 1)
+        click(root, "rename")
+        yield* TestHost.settle
+        // The patch is live from issue. `changes` shows the server value, which doesn't move.
+        assert.include(root.text(), "count 0")
+        yield* TestClock.adjust("1 second")
+        yield* TestHost.settle
+        assert.include(root.text(), "count 1")
+        // The write was stored fresh, so the run's own invalidation skipped it.
+        assert.strictEqual(server.requests, 1)
+      })))
+
+    it.effect("the loader mount option sets how long an unwatched entry stays", () =>
+      provideHost(Effect.gen(function*() {
+        const server = makeServer()
+        const App = Component.provide(
+          page(Editor),
+          Layer.mergeAll(fetcher(server), Save.layer.pipe(Layer.provide(api(server))))
+        )
+        const root = yield* TestHost.mount(App, {}, { loader: { idleTimeToLive: "1 second" } })
+        yield* TestHost.settle
+        root.send(PageMsg.make({ _tag: "Watch", on: false }))
+        yield* TestHost.settle
+        yield* TestClock.adjust("500 millis")
+        root.send(PageMsg.make({ _tag: "Watch", on: true }))
+        yield* TestHost.settle
+        assert.strictEqual(server.requests, 1)
+        root.send(PageMsg.make({ _tag: "Watch", on: false }))
+        yield* TestHost.settle
+        yield* TestClock.adjust("1 second")
+        root.send(PageMsg.make({ _tag: "Watch", on: true }))
+        yield* TestHost.settle
+        assert.strictEqual(server.requests, 2)
       })))
   })
 
@@ -511,16 +829,17 @@ describe("Runtime", () => {
     class Greeter extends Context.Service<Greeter, { readonly greet: (name: string) => string }>()("test/Greeter") {}
     class Greet extends Command.Service<Greet>()(
       "test/Greet",
+      { args: { name: Schema.String }, invalidates: () => [] },
       Effect.gen(function*() {
         const greeter = yield* Greeter
-        return (name: string) => Effect.succeed(greeter.greet(name))
+        return ({ name }) => Effect.succeed(greeter.greet(name))
       })
     ) {}
     const Hello = Component.make({
       name: "Hello",
       model: Schema.String,
       message: Schema.String,
-      init: ($) => $.set("...").run(Greet.make("world")),
+      init: ($) => $.set("...").run(Greet.make({ name: "world" })),
       update: (_, message) => message,
       view: (text, h) => h.text(text)
     })
@@ -699,15 +1018,52 @@ describe("Runtime", () => {
         assert.strictEqual(diverged.divergence?.seq, wire[2].seq)
       })))
 
-    it("the Wire encodes args structurally, with placeholders", () => {
-      const Send = Command.make("Send", (_token: unknown, _when: unknown, _f: unknown) => Effect.succeed(1))
-      const command = Send(Redacted.make("secret"), new Date(0), () => 1)
-      assert.deepStrictEqual(MessageLog.encodeCommand(command), {
+    it("the Wire encodes args through their Schema, redacted, with a structural fallback per field", () => {
+      const Send = Command.make(
+        "Send",
+        {
+          args: {
+            channel: Schema.String,
+            token: Schema.Redacted(Schema.String),
+            when: Schema.Date,
+            nested: Schema.Struct({ secret: Schema.Redacted(Schema.String), loose: Schema.Any }),
+            f: Schema.Any
+          },
+          group: ["channel"]
+        },
+        () => Effect.succeed(1)
+      )
+      const command = Send({
+        channel: "general",
+        token: Redacted.make("secret"),
+        when: new Date(0),
+        nested: { secret: Redacted.make("hidden"), loose: new Date(0) },
+        f: () => 1
+      })
+      const encoded = MessageLog.encodeCommand(command)
+      assert.deepStrictEqual(encoded, {
         _tag: "Effect",
         name: "Send",
-        key: null,
-        args: [{ "~redacted": true }, "1970-01-01T00:00:00.000Z", { "~unserialisable": "function" }]
+        group: `{"channel":"general"}`,
+        args: {
+          channel: "general",
+          token: { "~redacted": true },
+          when: "1970-01-01T00:00:00.000Z",
+          nested: { secret: { "~redacted": true }, loose: "1970-01-01T00:00:00.000Z" },
+          f: { "~unserialisable": "function" }
+        }
       })
+      assert.notInclude(JSON.stringify(encoded), ":\"secret\"")
+      assert.notInclude(JSON.stringify(encoded), "hidden")
+    })
+
+    it("Renderer.Ref encodes as its key, and the log shows a ref Command's args that way", () => {
+      const Field = Renderer.ref("Field")
+      const row = Field.at(3)
+      assert.strictEqual(Schema.encodeSync(Renderer.Ref)(row), "Field[3]")
+      const decoded = Schema.decodeSync(Renderer.Ref)("Field[3]")
+      assert.deepStrictEqual([decoded.name, decoded.key, decoded.at(1).key], ["Field", "Field[3]", "Field[3][1]"])
+      assert.deepStrictEqual(MessageLog.encodeCommand(Html.Focus({ ref: row })).args, { ref: "Field[3]" })
     })
 
     it("truncates a Model over maxEntryBytes, and fromLog names the entry", () => {
@@ -1064,6 +1420,7 @@ describe("Runtime", () => {
       }) {}
       class Show extends Command.Service<Show>()(
         "test/Show",
+        { args: {}, invalidates: () => [] },
         Effect.map(Effect.service(Greeter), (greeter) => () => Effect.succeed(greeter.room))
       ) {}
       const RoomView = Component.make({
@@ -1150,7 +1507,7 @@ describe("Runtime", () => {
   it.effect("settle fails with the log's tail when work never stops", () =>
     Effect.gen(function*() {
       const Msg = Schema.TaggedUnion({ Again: {} })
-      const Again = Command.make("Again", () => Effect.succeed(Msg.make({ _tag: "Again" })))
+      const Again = Command.make("Again", { args: {} }, () => Effect.succeed(Msg.make({ _tag: "Again" })))
       const Loop = Component.make({
         name: "Loop",
         model: Schema.Number,

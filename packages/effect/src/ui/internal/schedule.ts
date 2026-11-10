@@ -14,6 +14,7 @@ import type * as Command from "../Command.ts"
  */
 export interface Entry<A> {
   readonly name: string
+  /** The group key, or `undefined` for a Command without `group`. */
   readonly key: string | undefined
   readonly mode: Command.Mode
   readonly status: "running" | "queued"
@@ -36,12 +37,12 @@ const sameGroup = <A>(entry: Entry<A>, name: string, key: string | undefined): b
 /**
  * Decides how an issued Command relates to the in-flight runs of its instance.
  *
- * Concurrency is grouped by Command name plus the key derived from its
- * arguments. `concurrent` always starts. `switch` starts and interrupts the
+ * Concurrency is grouped by Command name plus the group key of its `group`
+ * fields. `concurrent` always starts. `switch` starts and interrupts the
  * group's running and queued runs. `drop` is ignored while the group has a
  * running run. `queue` waits while the group has a running run. An `Interrupt`
  * starts nothing and interrupts every run with its name, or only those with
- * its key when it has one.
+ * its group key when it has one.
  *
  * @internal
  */
@@ -53,11 +54,11 @@ export const schedule = <A>(
     return {
       action: "none",
       interrupt: inFlight.filter((entry) =>
-        entry.name === command.name && (command.key === undefined || entry.key === command.key)
+        entry.name === command.name && (command.groupKey === undefined || entry.key === command.groupKey)
       )
     }
   }
-  const group = inFlight.filter((entry) => sameGroup(entry, command.name, command.key))
+  const group = inFlight.filter((entry) => sameGroup(entry, command.name, command.groupKey))
   switch (command.mode) {
     case "concurrent":
       return { action: "start", interrupt: [] }

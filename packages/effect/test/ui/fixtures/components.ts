@@ -55,9 +55,10 @@ const encodeTodo = Schema.encodeSync(Schema.fromJsonString(Todo))
 
 export class SaveTodo extends Command.Service<SaveTodo>()(
   "todos/SaveTodo",
+  { args: Todo, invalidates: () => [] },
   Effect.gen(function*() {
     const kv = yield* KeyValueStore.KeyValueStore
-    return (todo: Todo) =>
+    return (todo) =>
       kv.set(`todo/${todo.id}`, encodeTodo(todo)).pipe(
         Effect.as(TodoItemMessage.make({ _tag: "Saved" })),
         Effect.catchTag("KeyValueStoreError", (error) =>
@@ -144,14 +145,14 @@ export type SearchMessage = typeof SearchMessage.Type
 
 export const Search = Command.make(
   "Search",
-  (text: string) => Effect.succeed(SearchMessage.make({ _tag: "Results", items: [text] })),
-  { mode: "switch" }
+  { args: { text: Schema.String }, mode: "switch" },
+  ({ text }) => Effect.succeed(SearchMessage.make({ _tag: "Results", items: [text] }))
 )
 
 export const Upload = Command.make(
   "Upload",
-  (_name: string) => Stream.make(SearchMessage.make({ _tag: "Progress", percent: 100 })),
-  { stream: true, mode: "drop", key: (name) => name }
+  { args: { name: Schema.String }, stream: true, mode: "drop", group: ["name"] },
+  () => Stream.make(SearchMessage.make({ _tag: "Progress", percent: 100 }))
 )
 
 export const SearchBox = Component.make({
@@ -166,10 +167,10 @@ export const SearchBox = Component.make({
   init: () => ({ text: "", items: [], percent: 0, ticks: 0 }),
   update: (model, message, $) =>
     SearchMessage.match(message, {
-      Query: ({ text }) => $.set({ ...model, text }).run(Search(text)),
+      Query: ({ text }) => $.set({ ...model, text }).run(Search({ text })),
       Results: ({ items }) => ({ ...model, items }),
-      Start: () => $.run(Upload("photo.png")),
-      Cancel: () => $.run(Command.interrupt(Upload, "photo.png")),
+      Start: () => $.run(Upload({ name: "photo.png" })),
+      Cancel: () => $.run(Command.interrupt(Upload, { name: "photo.png" })),
       Progress: ({ percent }) => ({ ...model, percent }),
       Tick: () => ({ ...model, ticks: model.ticks + 1 })
     }),

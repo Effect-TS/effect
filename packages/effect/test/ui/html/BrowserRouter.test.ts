@@ -86,7 +86,7 @@ describe("BrowserRouter", { concurrent: false }, () => {
       expect(clickReporting(link(app, "Person 1"))).toBe(true)
       yield* tick
       expect(window.location.pathname).toBe("/people/1")
-      expect(root.model()?._tag).toBe("Person")
+      expect(root.model()?.route._tag).toBe("Person")
       expect(HtmlQuery.getByRole(app, "heading").textContent).toBe("Person 1")
       expect(document.title).toBe("Person 1 · App")
       expect(description()).toBe("About person 1")
@@ -139,7 +139,7 @@ describe("BrowserRouter", { concurrent: false }, () => {
       submitForm("Search")
       yield* tick
       expect(window.location.pathname + window.location.search).toBe("/search?q=ada")
-      expect(root.model()?._tag).toBe("Search")
+      expect(root.model()?.route._tag).toBe("Search")
       expect(HtmlQuery.getByRole(app, "heading").textContent).toBe("Search ada")
     }).pipe(Effect.scoped))
 
@@ -212,7 +212,7 @@ describe("BrowserRouter", { concurrent: false }, () => {
       yield* tick
       yield* tick
       expect(window.location.pathname).toBe("/people/1")
-      expect(root.model()?._tag).toBe("Person")
+      expect(root.model()?.route._tag).toBe("Person")
       expect(region()?.textContent).toBe("")
     }).pipe(Effect.scoped))
 

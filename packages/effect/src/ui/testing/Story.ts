@@ -26,29 +26,31 @@
  *
  * class SaveTodo extends Command.Service<SaveTodo>()(
  *   "todos/SaveTodo",
- *   Effect.succeed((id: string) => Effect.succeed(Message.make({ _tag: "Saved" })))
+ *   { args: { id: Schema.String }, invalidates: () => [] },
+ *   Effect.succeed(() => Effect.succeed(Message.make({ _tag: "Saved" })))
  * ) {}
  *
  * const TodoItem = Component.make({
  *   name: "TodoItem",
  *   props: Schema.Struct({ id: Schema.String }),
- *   model: Schema.Struct({ saving: Schema.Boolean }),
+ *   model: Schema.Struct({ saved: Schema.Boolean }),
  *   message: Message,
- *   init: () => ({ saving: false }),
+ *   init: () => ({ saved: false }),
  *   update: (model, message, $) =>
  *     Message.match(message, {
- *       Save: () => $.set({ saving: true }).run(SaveTodo.make($.props.id)),
- *       Saved: () => ({ saving: false })
+ *       Save: () => $.run(SaveTodo.make({ id: $.props.id })),
+ *       Saved: () => ({ saved: true })
  *     }),
- *   view: (model, h) => h.el("button", model.saving ? "saving" : "save").on("click", Message.make({ _tag: "Save" }))
+ *   // In a story, `h.running` is derived from the pending Commands.
+ *   view: (_, h) => h.el("button", h.running(SaveTodo) ? "saving" : "save").on("click", Message.make({ _tag: "Save" }))
  * })
  *
  * Story.make(TodoItem, { id: "t1" }, (s) =>
  *   s.click("save")
- *     .expectExact(SaveTodo.make("t1"))
+ *     .expectExact(SaveTodo.make({ id: "t1" }))
  *     .resolve(SaveTodo, Message.make({ _tag: "Saved" }))
  *     .model((model) => {
- *       if (model.saving) throw new Error("still saving")
+ *       if (!model.saved) throw new Error("not saved")
  *     }))
  * ```
  *
@@ -142,7 +144,7 @@ export type Target = Command.Definition.Any | Command.Effectful<any, any, never>
  * @category models
  * @since 4.1.3
  */
-export type StreamTarget = Command.Definition<any, any, true> | Command.Streaming<any, any, never>
+export type StreamTarget = Command.Definition<any, any, true, any, any> | Command.Streaming<any, any, never>
 
 // A component with no messages has `Msg = never`, and its `update` can't take `any`, so it needs its own member.
 type AnyComponent =
@@ -232,6 +234,12 @@ export interface Steps<C extends AnyComponent> extends Pipeable {
    * queued run of the same group starts when the running one resolves.
    */
   resolve<D extends Target>(target: D, result: Command.Result<D>): this
+  /**
+   * Fails the oldest running Command matching `target` with a typed failure
+   * of its body, and sends the message its `Command.match` maps it to. A
+   * stream Command ends. Throws for a Command whose body can't fail.
+   */
+  fail<D extends Target>(target: D, error: Command.Failure<D>): this
   /** Sends one element of the oldest running stream Command matching `target`, which stays pending. */
   next<D extends StreamTarget>(target: D, result: Command.Result<D>): this
   /** Ends the oldest running stream Command matching `target`, sending nothing. */
@@ -307,17 +315,23 @@ const update = <Props, Model, Msg, Events>(
   patch: Partial<Fields<Props, Model, Msg, Events>>
 ): Story<Props, Model, Msg, Events> => {
   const fields = { ...story, ...patch }
-  // A defect in `view` fails the step that changed the Model or props.
-  const view = fields.model === story.model && fields.props === story.props
+  // A defect in `view` fails the step that changed the Model, the props or what's pending.
+  const view = fields.model === story.model && fields.props === story.props && fields.pending === story.pending
     ? story.view()
-    : story.component.view(fields.model, fields.props)
+    : story.component.view(fields.model, fields.props, runningOf(fields.pending))
   return record(fields, view)
 }
+
+/** `h.running` in a story: derived from what's pending. */
+const runningOf = (pending: ReadonlyArray<Pending<any>>) => (name: string, groupKey: string | undefined): boolean =>
+  pending.some((entry) =>
+    entry.command.name === name && (groupKey === undefined || entry.command.groupKey === groupKey)
+  )
 
 const toEntries = <Msg>(pending: ReadonlyArray<Pending<Msg>>): Array<schedule.Entry<Pending<Msg>>> =>
   pending.map((entry) => ({
     name: entry.command.name,
-    key: entry.command.key,
+    key: entry.command.groupKey,
     mode: entry.command.mode,
     status: entry.status,
     value: entry
@@ -377,7 +391,7 @@ const complete = <Props, Model, Msg, Events>(
 }
 
 const describe = (command: Command.Effectful<any, any, never> | Command.Streaming<any, any, never>): string =>
-  `${command.name}(${command.args.map((arg) => JSON.stringify(arg)).join(", ")})`
+  `${command.name}(${JSON.stringify(MessageLog.encodeArgs(command.argsSchema, command.args))})`
 
 const describePending = (pending: ReadonlyArray<Pending<any>>): string =>
   pending.length === 0 ? "nothing" : pending.map((entry) => `${describe(entry.command)} [${entry.status}]`).join(", ")
@@ -500,6 +514,14 @@ class StepsImpl implements Steps<AnyComponent> {
     const entry = findRunning(this.current, target, "resolve")
     return this.step(dispatch(complete(this.current, entry), resolveWith(entry, result)))
   }
+  fail(target: Target, error: unknown): this {
+    const entry = findRunning(this.current, target, "fail")
+    const reject = entry.command.reject as ((error: unknown) => unknown) | undefined
+    if (reject === undefined) {
+      throw new Error(`Story.fail: ${describe(entry.command)} has no typed failure mapped by Command.match`)
+    }
+    return this.step(dispatch(complete(this.current, entry), reject(error)))
+  }
   next(target: StreamTarget, result: unknown): this {
     return this.step(dispatch(this.current, resolveWith(findStream(this.current, target, "next"), result)))
   }
@@ -599,7 +621,7 @@ export const start = <C extends AnyComponent>(component: C, props: Component.Pro
     emitted: [],
     interrupted: [],
     dropped: []
-  }, component.view(first.model, props))
+  }, component.view(first.model, props, runningOf([])))
   return new StepsImpl(apply(empty, first)) as Steps<C>
 }
 

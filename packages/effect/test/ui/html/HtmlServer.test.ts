@@ -82,10 +82,10 @@ describe("HtmlServer", { concurrent: false }, () => {
       const ChildMessage = Schema.TaggedUnion({ Loaded: {}, Tracked: {} })
       class Load extends Command.Service<Load>()(
         "Load",
-        Effect.succeed(() => Effect.succeed(ChildMessage.make({ _tag: "Loaded" }))),
-        { server: true }
+        { args: {}, invalidates: () => [], server: true },
+        Effect.succeed(() => Effect.succeed(ChildMessage.make({ _tag: "Loaded" })))
       ) {}
-      const Track = Command.make("Track", () => Effect.succeed(ChildMessage.make({ _tag: "Tracked" })))
+      const Track = Command.make("Track", { args: {} }, () => Effect.succeed(ChildMessage.make({ _tag: "Tracked" })))
       const Child = Component.make({
         name: "Child",
         model: Schema.String,
@@ -223,8 +223,8 @@ describe("HtmlServer", { concurrent: false }, () => {
       const PanelMessage = Schema.TaggedUnion({ Loaded: { text: Schema.String } })
       class LoadText extends Command.Service<LoadText>()(
         "LoadText",
-        Effect.succeed(() => Effect.succeed(PanelMessage.make({ _tag: "Loaded", text: "data" }))),
-        { server: true }
+        { args: {}, invalidates: () => [], server: true },
+        Effect.succeed(() => Effect.succeed(PanelMessage.make({ _tag: "Loaded", text: "data" })))
       ) {}
       class Panel extends Feature.Service<Panel>()("Panel", { props: Schema.Struct({}), events: Schema.Never }) {}
       const PanelLive = Component.make({
@@ -256,7 +256,11 @@ describe("HtmlServer", { concurrent: false }, () => {
 
   it.effect("fails and defers the instance whose last server Command dies", () =>
     Effect.gen(function*() {
-      class Die extends Command.Service<Die>()("Die", Effect.succeed(() => Effect.die("boom")), { server: true }) {}
+      class Die extends Command.Service<Die>()(
+        "Die",
+        { args: {}, invalidates: () => [], server: true },
+        Effect.succeed(() => Effect.die("boom"))
+      ) {}
       const Doomed = Component.make({
         name: "Doomed",
         model: Schema.String,

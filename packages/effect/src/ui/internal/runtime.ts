@@ -15,11 +15,13 @@ import type * as Fiber from "../../Fiber.ts"
 import * as Layer from "../../Layer.ts"
 import * as Option from "../../Option.ts"
 import * as AsyncResult from "../../reactivity/AsyncResult.ts"
+import * as loaderInternal from "../../reactivity/internal/loader.ts"
+import * as Loader from "../../reactivity/Loader.ts"
 import * as Scheduler from "../../Scheduler.ts"
 import * as Schema from "../../Schema.ts"
 import * as Scope from "../../Scope.ts"
 import * as Stream from "../../Stream.ts"
-import type * as Command from "../Command.ts"
+import * as Command from "../Command.ts"
 import type * as Component from "../Component.ts"
 import * as Feature from "../Feature.ts"
 import * as Head from "../Head.ts"
@@ -132,8 +134,19 @@ interface Run {
   readonly issued: MessageLog.Issued
   /** On the server: the run's position among `init`'s Commands. */
   readonly initIndex: number | undefined
+  /** The run at the cache, begun at issue. `undefined` for a `Command.make` Command. */
+  readonly handle: loaderInternal.RunHandle | undefined
+  /**
+   * An Effect-shaped `Command.Service` run outside `switch`: owned by the Layer build that provides
+   * its service and by the root, not by its instance, with a Scope of its own.
+   */
+  readonly detached: boolean
   status: "running" | "queued"
   fiber: Fiber.Fiber<unknown, unknown> | undefined
+  /** A detached run's own Scope, closed when its fiber exits. */
+  scope: Scope.Closeable | undefined
+  /** Stops listening to the owning build's close. */
+  release: (() => void) | undefined
   done: boolean
 }
 
@@ -171,9 +184,19 @@ export interface Instance {
   /** On the server: positions of `init`'s server Commands that haven't completed. */
   readonly serverPending: Set<number>
   readonly runs: Array<Run>
+  /** Runs asked to stop whose fibers haven't exited: `h.running` still counts them. */
+  readonly stopping: Set<Run>
   readonly subscriptions: Map<string, SubscriptionRun>
   readonly dispatch: (message: unknown, source: MessageLog.Source) => void
   readonly fire: Renderer.Dispatch
+}
+
+/** @internal */
+export interface Pending {
+  readonly path: string
+  readonly name: string
+  readonly status: string
+  readonly detached: boolean
 }
 
 /** @internal */
@@ -185,8 +208,11 @@ export interface Root {
   readonly find: (path: string) => Instance | undefined
   readonly model: () => unknown
   readonly send: (message: unknown) => void
-  /** The Commands still running or queued anywhere in the tree. */
-  readonly pending: () => ReadonlyArray<{ readonly path: string; readonly name: string; readonly status: string }>
+  /**
+   * The Commands still running or queued anywhere in the tree, and the detached runs of instances
+   * that are gone.
+   */
+  readonly pending: () => ReadonlyArray<Pending>
   /** The current flush: 0 for the first render, then one more per flush. */
   readonly flush: () => number
   /**
@@ -217,6 +243,14 @@ interface Options {
   readonly state?: Renderer.State | undefined
   /** Server rendering. `start` is false once server Commands may no longer start. */
   readonly server?: { readonly start: boolean; readonly host: Renderer.Host<any> } | undefined
+  /** Cache-wide options for the loader cache the runtime owns. */
+  readonly loader?: LoaderOptions | undefined
+}
+
+/** @internal */
+export interface LoaderOptions {
+  /** How long an entry stays once nothing watches it. 5 minutes by default. */
+  readonly idleTimeToLive?: Duration.Input | undefined
 }
 
 /** A component's Model as JSON, for history restore. */
@@ -428,6 +462,34 @@ const start = (
   const closeScope = (scope: Scope.Closeable) => {
     forkNow(ctx, Scope.close(scope, Exit.void))
   }
+
+  // -- loader cache ---------------------------------------------------------
+  // The runtime owns the cache and re-adds it wherever work runs, so `Component.provide` can't shadow
+  // it. The three references are read once, here.
+  const cache = loaderInternal.makeCache({
+    scope: rootScope,
+    // Its fetches and timers run on the runtime's scheduler, so `TestHost.settle` drains them.
+    context: withScheduler(ctx),
+    visibility: Context.get(ctx, Loader.Visibility),
+    connectivity: Context.get(ctx, Loader.Connectivity),
+    report: Context.get(ctx, Loader.Problems),
+    idleMs: loaderInternal.cacheIdleMs(options?.loader?.idleTimeToLive),
+    settleOnce: server !== undefined
+  })
+  const withCache = (context: Context.Context<any>): Context.Context<any> =>
+    Context.add(context, Loader.Cache, cache as unknown as Loader.Cache["Service"])
+  // Detached runs and the instance that issued them. The root is their second owner: closing it ends them.
+  const detachedRuns = new Map<Run, Instance>()
+  // Closed instances whose detached runs are still running or queued.
+  const orphans = new Set<Instance>()
+  let rootClosed = false
+  Effect.runSync(Scope.addFinalizer(
+    rootScope,
+    Effect.sync(() => {
+      rootClosed = true
+      for (const [run, inst] of Array.from(detachedRuns)) stopRun(inst, run)
+    })
+  ))
 
   // -- flush ----------------------------------------------------------------
   const dirty = new Set<Instance>()
@@ -755,7 +817,7 @@ const start = (
     scope: Scope.Scope,
     onExit: (exit: Exit.Exit<Context.Context<any>, unknown>) => void
   ): Fiber.Fiber<Context.Context<any>, unknown> | undefined => {
-    const fiber = forkNow(context, Layer.buildWithScope(layer, scope))
+    const fiber = forkNow(withCache(context), Layer.buildWithScope(layer, scope))
     const exit = fiber.pollUnsafe()
     if (exit !== undefined) {
       onExit(exit)
@@ -837,6 +899,7 @@ const start = (
       deferred: false,
       serverPending: new Set(),
       runs: [],
+      stopping: new Set(),
       subscriptions: new Map(),
       dispatch(message, source) {
         if (inst.closed || inst.waiting || frozen) return
@@ -883,7 +946,11 @@ const start = (
       scope,
       Effect.sync(() => {
         inst.closed = true
-        for (const run of inst.runs.slice()) stopRun(inst, run)
+        // A detached run goes on under the Layer build that owns it. Everything else ends here.
+        for (const run of inst.runs.slice()) {
+          if (!(run.detached && survives(inst, run))) stopRun(inst, run)
+        }
+        if (inst.runs.length > 0) orphans.add(inst)
       })
     ))
 
@@ -1056,7 +1123,7 @@ const start = (
       }
       logEarly()
       if (first === undefined) return
-      const tree = guard(inst, "view", () => component.view(inst.model, inst.props))
+      const tree = guard(inst, "view", () => component.view(inst.model, inst.props, runningOf(inst)))
       if (tree === undefined) return
       const plan = range !== undefined && Option.isSome(serverModel) ? matchList(inst, [tree], range.nodes) : undefined
       const rendered = guard(
@@ -1166,7 +1233,7 @@ const start = (
   const entriesOf = (inst: Instance): Array<schedule.Entry<Run>> => inst.runs.map(entryOf)
   const entryOf = (run: Run): schedule.Entry<Run> => ({
     name: run.command.name,
-    key: run.command.key,
+    key: run.command.groupKey,
     mode: run.command.mode,
     status: run.status,
     value: run
@@ -1179,6 +1246,8 @@ const start = (
     issued: MessageLog.Issued,
     initIndex: number | undefined
   ) => {
+    // A patch that threw on an earlier Command of the same step failed the instance.
+    if (inst.closed) return
     if (server !== undefined) {
       // On the server only `init`'s server Commands run. The rest run on the client.
       if (command._tag === "Interrupt") {
@@ -1194,20 +1263,44 @@ const start = (
       }
     }
     const decision = schedule.schedule(entriesOf(inst), command)
-    for (const entry of decision.interrupt) stopRun(inst, entry.value)
-    if (command._tag === "Interrupt") return
+    if (command._tag === "Interrupt") {
+      for (const entry of decision.interrupt) stopRun(inst, entry.value)
+      return
+    }
     switch (decision.action) {
       case "start":
       case "queue": {
+        // The cache begins the run at issue, so its patches are live before it starts, and before
+        // `switch` stops the earlier runs: the new patch layers over the old until the old fiber exits.
+        let handle: loaderInternal.RunHandle | undefined
+        if (command.service !== undefined) {
+          try {
+            handle = cache.beginRun({
+              command: command.name,
+              invalidates: command.invalidates as ReadonlyArray<loaderInternal.Target>,
+              optimistic: command.optimistic as ReadonlyArray<loaderInternal.Patch>
+            })
+          } catch (error) {
+            // Like a throw in `update`: the run doesn't start and the issuing instance fails.
+            failInstance(inst, Cause.die(error), initIndex === undefined ? "update" : "init", command.name)
+            return
+          }
+        }
+        for (const entry of decision.interrupt) stopRun(inst, entry.value)
         const run: Run = {
           command,
           issued,
           initIndex,
+          handle,
+          detached: command._tag === "Effect" && command.service !== undefined && command.mode !== "switch",
           status: decision.action === "start" ? "running" : "queued",
           fiber: undefined,
+          scope: undefined,
+          release: undefined,
           done: false
         }
         inst.runs.push(run)
+        if (run.detached) detachedRuns.set(run, inst)
         if (server !== undefined) active++
         if (run.status === "running") startRun(inst, run)
         return
@@ -1224,6 +1317,8 @@ const start = (
     run.done = true
     const index = inst.runs.indexOf(run)
     if (index >= 0) inst.runs.splice(index, 1)
+    detachedRuns.delete(run)
+    if (inst.closed && inst.runs.length === 0) orphans.delete(inst)
     if (server !== undefined) {
       active--
       checkIdle()
@@ -1242,69 +1337,212 @@ const start = (
     )
   }
 
-  /** Starts the next queued run of the same group, if nothing in it is running any more. */
+  /**
+   * Whether a detached run goes on without its instance: the Layer build that provides its service
+   * is still open. A service with no build, such as a fake from `Layer.succeed`, is owned by the root.
+   */
+  const survives = (inst: Instance, run: Run): boolean => {
+    const env = inst.env.failure !== undefined ? settled(inst.env) : inst.env
+    if (env.ctx === undefined || run.command.service === undefined) return false
+    const build = ownerOf(env.ctx, run)
+    return build === undefined ? !rootClosed : !build.closed
+  }
+  const ownerOf = (envCtx: Context.Context<any>, run: Run): Command.Build | undefined =>
+    Option.match(Context.getOption(envCtx, run.command.service!), {
+      onNone: () => undefined,
+      onSome: Command.buildOf
+    })
+
+  /**
+   * Starts the next queued run of the same group, if nothing in it is running any more. On a closed
+   * instance only detached runs are left, and its queue drains while their owner lives.
+   */
   const promote = (inst: Instance, ended: Run) => {
-    if (inst.closed || ended.status !== "running") return
-    const next = schedule.next(entriesOf(inst), entryOf(ended))
-    if (next === undefined) return
-    next.value.status = "running"
-    startRun(inst, next.value)
+    if (ended.status !== "running") return
+    for (;;) {
+      const next = schedule.next(entriesOf(inst), entryOf(ended))
+      if (next === undefined) return
+      if (inst.closed && !survives(inst, next.value)) {
+        stopRun(inst, next.value)
+        continue
+      }
+      next.value.status = "running"
+      startRun(inst, next.value)
+      return
+    }
   }
 
+  /**
+   * Asks a run to stop: it leaves the schedule at once and delivers nothing from now on. A run whose
+   * fiber is going is interrupted, and the cache hears when it exits. One that never got a fiber is
+   * stopped at the cache here.
+   */
   const stopRun = (inst: Instance, run: Run) => {
     if (run.done) return
     if (run.initIndex !== undefined && !frozen) inst.serverPending.delete(run.initIndex)
     removeRun(inst, run)
-    run.fiber?.interruptUnsafe()
-    record({ _tag: "CommandInterrupted", path: inst.path, name: run.command.name, issued: run.issued })
+    const fiber = run.fiber
+    if (fiber === undefined) {
+      run.handle?.finish({ _tag: "Stopped" })
+    } else if (fiber.pollUnsafe() === undefined) {
+      inst.stopping.add(run)
+      fiber.interruptUnsafe()
+    }
+    record({
+      _tag: "CommandInterrupted",
+      path: inst.path,
+      name: run.command.name,
+      issued: run.issued,
+      detached: run.detached
+    })
+    if (!inst.closed) markDirty(inst)
     promote(inst, run)
   }
 
   const startRun = (inst: Instance, run: Run) => {
     const go = (envCtx: Context.Context<any>) => {
-      if (run.done || inst.closed || frozen) return
+      if (run.done || frozen) return
       const command = run.command
-      const context = Context.add(Context.add(envCtx, Scope.Scope, inst.scope), services.Refs, refsOf(inst))
+      let build: Command.Build | undefined
+      if (run.detached) {
+        build = ownerOf(envCtx, run)
+        if (build !== undefined ? build.closed : rootClosed) return stopRun(inst, run)
+      }
+      // A detached run gets a Scope of its own, closed when its fiber exits.
+      const scope = run.detached ? (run.scope = Scope.makeUnsafe("sequential")) : inst.scope
+      const context = withCache(Context.add(Context.add(envCtx, Scope.Scope, scope), services.Refs, refsOf(inst)))
+      let source: MessageLog.Source = {
+        _tag: "Command",
+        name: command.name,
+        issued: run.issued,
+        spanId: undefined,
+        traceId: undefined
+      }
+      const send = (message: unknown) => {
+        if (!run.done) inst.dispatch(message, source)
+      }
+      // The fiber runs the definition's own work, so its exit tells a success from a typed failure.
       const program = Effect.useSpan(
         command.name,
         { attributes: { path: inst.path, mode: command.mode } },
-        (span) => {
-          const source: MessageLog.Source = {
+        (span): Effect.Effect<unknown, unknown, any> => {
+          // Stopped before the first step: the work never begins.
+          if (run.done) return Effect.interrupt
+          source = {
             _tag: "Command",
             name: command.name,
             issued: run.issued,
             spanId: span.spanId,
             traceId: span.traceId
           }
-          const send = (message: unknown) =>
-            Effect.sync(() => {
-              if (!run.done) inst.dispatch(message, source)
-            })
-          return command._tag === "Effect"
-            ? Effect.flatMap(command.effect, send)
-            : Stream.runForEach(command.stream, send)
+          const work: Effect.Effect<unknown, unknown, any> = command._tag === "Effect"
+            ? command.work
+            : Stream.runForEach(command.work, (element) => Effect.sync(() => send(command.resolve(element as never))))
+          return run.handle === undefined
+            ? work
+            : run.handle.run(
+              work,
+              command.writes as ((success: unknown) => ReadonlyArray<loaderInternal.Write>) | undefined
+            )
         }
       )
       const fiber = forkLater(context, program)
       run.fiber = fiber
-      fiber.addObserver((exit) => {
-        if (run.done) return
-        removeRun(inst, run)
-        if (Exit.isSuccess(exit)) {
-          if (run.initIndex !== undefined) inst.serverPending.delete(run.initIndex)
-          record({ _tag: "CommandEnded", path: inst.path, name: command.name, issued: run.issued })
-        } else if (Cause.hasInterruptsOnly(exit.cause)) {
-          record({ _tag: "CommandInterrupted", path: inst.path, name: command.name, issued: run.issued })
-        } else {
-          failInstance(inst, exit.cause, "command", command.name)
-          return
-        }
-        promote(inst, run)
-      })
+      if (build !== undefined) run.release = build.onClose(() => stopRun(inst, run))
+      fiber.addObserver((exit) => ended(inst, run, exit, send))
     }
     // After a handled Layer failure, work runs against the parent's services.
     if (inst.env.failure !== undefined) go(settled(inst.env).ctx!)
     else whenReady(inst.env, go, () => stopRun(inst, run))
+  }
+
+  /**
+   * A run's fiber exited. The cache has already had its patch removal, `writes` and invalidation, from
+   * the body's own exit. Then the result message is sent, unless the instance is gone.
+   */
+  const ended = (inst: Instance, run: Run, exit: Exit.Exit<unknown, unknown>, send: (message: unknown) => void) => {
+    const command = run.command
+    // Only acts when the work never began.
+    run.handle?.finish({ _tag: "Stopped" })
+    run.release?.()
+    run.release = undefined
+    if (run.scope !== undefined) closeScope(run.scope)
+    // A stopped run sent no message, so `h.running` ends here.
+    if (inst.stopping.delete(run) && !inst.closed) markDirty(inst)
+    if (run.done) return
+    const interrupted = Exit.isFailure(exit) && !Cause.hasDies(exit.cause) && !Cause.hasFails(exit.cause)
+    if (inst.closed) {
+      // Only a detached run outlives its instance. Its message is dropped, and a failure tells only the log.
+      removeRun(inst, run)
+      if (Exit.isFailure(exit) && !interrupted) {
+        forkNow(ctx, Effect.logError(`${inst.path} is gone, and its Command ${command.name} failed`, exit.cause))
+      }
+      record({
+        _tag: interrupted ? "CommandInterrupted" : "CommandEnded",
+        path: inst.path,
+        name: command.name,
+        issued: run.issued,
+        detached: true
+      })
+      promote(inst, run)
+      return
+    }
+    if (interrupted) {
+      removeRun(inst, run)
+      record({
+        _tag: "CommandInterrupted",
+        path: inst.path,
+        name: command.name,
+        issued: run.issued,
+        detached: run.detached
+      })
+      markDirty(inst)
+      promote(inst, run)
+      return
+    }
+    const reject = command.reject
+    if (Exit.isFailure(exit) && (Cause.hasDies(exit.cause) || reject === undefined)) {
+      // A typed failure nothing maps is a defect too: an unmatched Command got past the types.
+      removeRun(inst, run)
+      failInstance(inst, exit.cause, "command", command.name)
+      return
+    }
+    // The run is still in the schedule while `update` handles its result.
+    if (Exit.isFailure(exit) || command._tag === "Effect") {
+      const message = guard(
+        inst,
+        "command",
+        () =>
+          Exit.isFailure(exit)
+            ? { value: reject!(Option.getOrUndefined(Cause.findErrorOption(exit.cause)) as never) }
+            : { value: command.resolve(exit.value as never) },
+        command.name
+      )
+      if (message === undefined) return
+      send(message.value)
+    }
+    if (run.done) return
+    removeRun(inst, run)
+    if (run.initIndex !== undefined) inst.serverPending.delete(run.initIndex)
+    record({
+      _tag: "CommandEnded",
+      path: inst.path,
+      name: command.name,
+      issued: run.issued,
+      detached: run.detached
+    })
+    // `h.running` ends with the message, which rendered the run still in the schedule.
+    if (!inst.closed) markDirty(inst)
+    promote(inst, run)
+  }
+
+  /** `h.running` for one instance: a run of the Command, of the group if given, queued or running. */
+  const runningOf = (inst: Instance) => (name: string, groupKey: string | undefined): boolean => {
+    const matches = (run: Run) =>
+      run.command.name === name && (groupKey === undefined || run.command.groupKey === groupKey)
+    if (inst.runs.some(matches)) return true
+    for (const run of inst.stopping) if (matches(run)) return true
+    return false
   }
 
   // -- Subscriptions --------------------------------------------------------
@@ -1334,7 +1572,7 @@ const start = (
         if (inst.closed || inst.subscriptions.get(key) !== running) return
         const source: MessageLog.Source = { _tag: "Subscription", key }
         const fiber = forkLater(
-          Context.add(envCtx, Scope.Scope, running.scope),
+          withCache(Context.add(envCtx, Scope.Scope, running.scope)),
           Stream.runForEach(subscription.stream, (message) =>
             Effect.sync(() => {
               ;(subscription as { readonly [services.onDeliver]?: (message: unknown) => void })[services.onDeliver]?.(
@@ -1396,7 +1634,7 @@ const start = (
         if (inst.closed || removedMounts.has(mountScope)) return
         const source: MessageLog.Source = { _tag: "Mount", name: mount.name }
         const fiber = forkNow(
-          Context.add(Context.add(envCtx, Scope.Scope, mountScope), services.Refs, refsOf(inst)),
+          withCache(Context.add(Context.add(envCtx, Scope.Scope, mountScope), services.Refs, refsOf(inst))),
           Effect.flatMap(Effect.suspend(() => mount.run(node)), (message) =>
             Effect.sync(() => inst.dispatch(message, source)))
         )
@@ -1420,7 +1658,7 @@ const start = (
   const render = (inst: Instance) => {
     if (inst.waiting) return
     guard(inst, "view", () => {
-      const tree = inst.component.view(inst.model, inst.props)
+      const tree = inst.component.view(inst.model, inst.props, runningOf(inst))
       const old = inst.rendered.flatMap(nodesOf)
       const parentNode = host.parentOf(old[0])!
       const ref = host.nextOf(old[old.length - 1])
@@ -1854,7 +2092,7 @@ const start = (
     rootProps,
     rootPath,
     undefined,
-    readyEnv(ctx),
+    readyEnv(withCache(ctx)),
     () => undefined,
     undefined,
     rootRange
@@ -1962,10 +2200,10 @@ const start = (
     return { nodes, state: { ...state, "~deferred": deferredPaths, "~pending": pendingPaths } }
   }
 
-  const pendingOf = (
-    inst: Instance
-  ): Array<{ readonly path: string; readonly name: string; readonly status: string }> => [
-    ...inst.runs.map((run) => ({ path: inst.path, name: run.command.name, status: run.status })),
+  const runsOf = (inst: Instance): Array<Pending> =>
+    inst.runs.map((run) => ({ path: inst.path, name: run.command.name, status: run.status, detached: run.detached }))
+  const pendingOf = (inst: Instance): Array<Pending> => [
+    ...runsOf(inst),
     ...[...inst.children.values()].flatMap(pendingOf)
   ]
 
@@ -1977,7 +2215,8 @@ const start = (
     find,
     model: () => root.failure === undefined ? root.model : undefined,
     send: (message) => root.dispatch(message, { _tag: "Dispatch" }),
-    pending: () => pendingOf(root),
+    // A detached run whose instance is gone still counts: `TestHost.settle` waits for it.
+    pending: () => [...pendingOf(root), ...Array.from(orphans).flatMap(runsOf)],
     flush: () => flushes,
     buildsPendingSince,
     head: () => merged,

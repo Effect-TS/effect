@@ -254,6 +254,8 @@ export interface Pending {
   readonly path: string
   readonly name: string
   readonly status: string
+  /** A detached run: owned by its Layer build, it may outlive its instance. */
+  readonly detached: boolean
 }
 
 /**
@@ -364,6 +366,7 @@ export const mount = <Name extends string, Props, Model, Msg, Events, R, V exten
         h: View.Helper<never, {}> & View.Tags<V, never>
       ) => View.Node<never, RF>)
       | undefined
+    readonly loader?: Renderer.LoaderOptions | undefined
   }
 ): Effect.Effect<TestRoot<Model, Msg, Events>, never, R | RF | TestHost | Scope.Scope> =>
   Effect.gen(function*() {
@@ -442,7 +445,9 @@ export const settle: Effect.Effect<void, SettleError, TestHost> = Effect.gen(fun
             "Last log entries:",
             formatLog(log),
             "Pending Commands:",
-            pending.length === 0 ? "  (none)" : pending.map((p) => `  ${p.path} ${p.name} (${p.status})`).join("\n")
+            pending.length === 0
+              ? "  (none)"
+              : pending.map((p) => `  ${p.path} ${p.name} (${p.status}${p.detached ? ", detached" : ""})`).join("\n")
           ].join("\n"),
           pending,
           log
