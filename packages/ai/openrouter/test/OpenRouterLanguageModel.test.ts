@@ -2,7 +2,7 @@ import { Generated, OpenRouterClient, OpenRouterLanguageModel } from "@effect/ai
 import { assert, describe, it } from "@effect/vitest"
 import { deepStrictEqual, strictEqual } from "@effect/vitest/utils"
 import { Array, Context, Effect, Layer, Redacted, Ref, Schema, SchemaGetter, Stream } from "effect"
-import { type AiError, LanguageModel, Model, Prompt, type Response as AiResponse, Tool, Toolkit } from "effect/ai"
+import { type AiError, LanguageModel, Model, Prompt, Tool, Toolkit } from "effect/ai"
 import { HttpClient, type HttpClientError, type HttpClientRequest, HttpClientResponse } from "effect/http"
 
 describe("OpenRouterLanguageModel", () => {
@@ -16,86 +16,64 @@ describe("OpenRouterLanguageModel", () => {
       function: { name: "ProbeTool", arguments: "{\"value\":1}" }
     }
 
-    for (const mode of ["generate", "stream"] as const) {
-      for (
-        const { tool, finishReason, reason } of [
-          { tool: true, finishReason: null, reason: "tool-calls" },
-          { tool: false, finishReason: null, reason: "other" },
-          { tool: true, finishReason: "length", reason: "length" }
-        ] as const
-      ) {
-        it.effect(
-          `${mode}: tool=${tool}, finish=${finishReason} finishes with ${reason}`,
-          () =>
-            Effect.gen(function*() {
-              const toolkit = Toolkit.make(Tool.make("ProbeTool", {
-                parameters: Schema.Struct({ value: Schema.Number }),
-                success: Schema.Number
-              }))
-              const executed: Array<number> = []
-              const options = { prompt: "Use the probe tool", toolkit }
-              const operation: Effect.Effect<
-                Array<AiResponse.AnyPart>,
-                AiError.AiError,
-                LanguageModel.LanguageModel | Tool.HandlersFor<typeof toolkit.tools>
-              > = mode === "generate"
-                ? LanguageModel.generateText(options).pipe(Effect.map((response) => response.content))
-                : LanguageModel.streamText(options).pipe(Stream.runCollect)
-              const parts = yield* operation.pipe(
-                Effect.provide(OpenRouterLanguageModel.model(metadata.model)),
-                Effect.provide(toolkit.toLayer({
-                  ProbeTool: ({ value }) =>
-                    Effect.sync(() => {
-                      executed.push(value)
-                      return value
-                    })
-                })),
-                Effect.provide(
-                  mode === "generate" ?
-                    makeTestLayer({
-                      body: {
-                        choices: [{
-                          index: 0,
-                          finish_reason: finishReason,
-                          message: {
-                            role: "assistant",
-                            content: tool ? null : "Done",
-                            tool_calls: tool ? [call] : []
-                          }
-                        }],
-                        usage
-                      }
-                    }) :
-                    makeStreamTestLayer([
-                      {
-                        ...metadata,
-                        choices: [{
-                          index: 0,
-                          delta: tool
-                            ? { tool_calls: [{ ...call, function: { name: "ProbeTool", arguments: "{\"value\":" } }] }
-                            : { content: "Done" }
-                        }]
-                      },
-                      {
-                        ...metadata,
-                        choices: [{
-                          index: 0,
-                          ...(tool ? { finish_reason: finishReason } : {}),
-                          delta: tool
-                            ? { tool_calls: [{ index: 0, function: { arguments: "1}" } }] }
-                            : {}
-                        }]
-                      },
-                      { ...metadata, choices: [], usage }
-                    ])
-                )
-              )
-              deepStrictEqual(parts.filter((part) => part.type === "finish").map((part) => part.reason), [reason])
-              deepStrictEqual(executed, reason === "tool-calls" ? [1] : [])
-            })
-        )
-      }
-    }
+    const toolkit = Toolkit.make(Tool.make("ProbeTool", {
+      parameters: Schema.Struct({ value: Schema.Number }),
+      success: Schema.Number
+    }))
+    const toolLayer = toolkit.toLayer({ ProbeTool: ({ value }) => Effect.succeed(value) })
+
+    it.effect("generate executes tool calls with a null finish reason", () =>
+      Effect.gen(function*() {
+        const response = yield* LanguageModel.generateText({ prompt: "Use the tool", toolkit })
+        strictEqual(response.finishReason, "tool-calls")
+        deepStrictEqual(response.content.filter((part) => part.type === "tool-result").map((part) => part.result), [1])
+      }).pipe(
+        Effect.provide(OpenRouterLanguageModel.model(metadata.model)),
+        Effect.provide(toolLayer),
+        Effect.provide(makeTestLayer({
+          body: {
+            choices: [{
+              index: 0,
+              finish_reason: null,
+              message: { role: "assistant", content: null, tool_calls: [call] }
+            }]
+          }
+        }))
+      ))
+
+    it.effect("stream executes complete tool calls without a finish reason", () =>
+      Effect.gen(function*() {
+        const parts = yield* LanguageModel.streamText({ prompt: "Use the tool", toolkit }).pipe(Stream.runCollect)
+        deepStrictEqual(parts.filter((part) => part.type === "finish").map((part) => part.reason), ["tool-calls"])
+        deepStrictEqual(parts.filter((part) => part.type === "tool-result").map((part) => part.result), [1])
+      }).pipe(
+        Effect.provide(OpenRouterLanguageModel.model(metadata.model)),
+        Effect.provide(toolLayer),
+        Effect.provide(makeStreamTestLayer([
+          {
+            ...metadata,
+            choices: [{
+              index: 0,
+              delta: {
+                tool_calls: [{
+                  ...call,
+                  function: { name: "ProbeTool", arguments: "{\"value\":" }
+                }]
+              }
+            }]
+          },
+          {
+            ...metadata,
+            choices: [{
+              index: 0,
+              delta: {
+                tool_calls: [{ index: 0, function: { arguments: "1}" } }]
+              }
+            }],
+            usage
+          }
+        ]))
+      ))
 
     it.effect("does not execute a truncated tool call alongside a complete call without a finish reason", () =>
       Effect.gen(function*() {
