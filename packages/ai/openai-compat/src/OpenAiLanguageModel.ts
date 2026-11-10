@@ -828,7 +828,14 @@ const prepareMessages = Effect.fnUntraced(
                   } else if (
                     part.data instanceof URL || (typeof part.data === "string" && /^https?:\/\//i.test(part.data))
                   ) {
-                    content.push({ type: "input_file", file_url: part.data.toString() })
+                    return yield* AiError.make({
+                      module: "OpenAiLanguageModel",
+                      method: "prepareMessages",
+                      reason: new AiError.InvalidUserInputError({
+                        description: "Chat Completions does not support PDF URLs. " +
+                          "Pass PDF bytes, base64 data, or a configured file ID instead."
+                      })
+                    })
                   } else {
                     const fileData = part.data instanceof Uint8Array
                       ? `data:application/pdf;base64,${Base64.encode(part.data)}`
@@ -1711,12 +1718,11 @@ const toChatMessageContent = (
         break
       }
       case "input_file": {
-        const fileData = part.file_url ?? part.file_data
         parts.push({
           type: "file",
           file: {
             ...(part.filename !== undefined ? { filename: part.filename } : undefined),
-            ...(fileData !== undefined ? { file_data: fileData } : undefined),
+            ...(part.file_data !== undefined ? { file_data: part.file_data } : undefined),
             ...(Predicate.isNotNullish(part.file_id) ? { file_id: part.file_id } : undefined)
           }
         })
