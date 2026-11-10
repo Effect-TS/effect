@@ -206,11 +206,11 @@ export interface Service<
    *
    * **Gotchas**
    *
-   * A call waiting on a fetch that ends with nothing to store is interrupted.
-   * That happens when the fetcher interrupts itself, and when the Scope of
-   * the caller's build closes while no other build watches or waits for the
-   * entry. The call never fails with an error the fetcher didn't raise, and
-   * never returns a stale value in its place.
+   * A call waiting on a fetch that reverts is interrupted. A fetch reverts
+   * when the fetcher interrupts itself, and when the Scope of the caller's
+   * build closes while no other build watches or waits for the entry. The
+   * call never fails with an error the fetcher didn't raise, and never
+   * returns a stale value in its place.
    */
   get(args: Args): Effect.Effect<A, E, Self | Cache>
   /**
@@ -306,10 +306,15 @@ export declare namespace Service {
  *   something JSON can't carry.
  * - `{ id }` and `{ id, page: 1 }` are two entries, even when a default makes
  *   them one request.
- * - A property that is `undefined` is dropped before the arguments are
- *   encoded, in plain objects at any depth, so `{ id, page: undefined }` and
- *   `{ id }` are one entry. The fetcher gets the arguments of the call that
- *   created the entry, in either form.
+ * - An optional property that is `undefined` is the same as a missing one:
+ *   `{ id, page: undefined }` and `{ id }` are one entry. That holds wherever
+ *   the `args` Schema has a struct, the fields of a `Schema.Class` included.
+ *   The Schema still decides what a property accepts, so a
+ *   `Schema.optionalKey(Schema.Number)` property rejects `undefined`. A
+ *   required key keeps its `undefined`, as do a record's values and a
+ *   tuple's elements.
+ * - The fetcher gets the arguments of the call that created the entry, so it
+ *   can see either form.
  *
  * **Example** (A read that captures a service)
  *

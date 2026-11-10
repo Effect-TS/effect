@@ -616,42 +616,54 @@ describe("Loader", () => {
     }).pipe(Effect.provide(Layer.mergeAll(Search.layer, ById.layer, TestLoader.layer())))
   })
 
-  it.effect("an undefined property is the same entry as a missing one", () => {
+  it.effect("an optional property that is undefined is the same entry as a missing one", () => {
     let calls = 0
+    const fetcher = Effect.sync(() => () => Effect.sync(() => ++calls))
+    const options = { success: Schema.Number, error: Schema.Never, staleTime: "Infinity" } as const
     class Search extends Loader.Service<Search>()("Search", {
+      ...options,
       args: {
         token: Schema.Redacted(Schema.String),
         page: Schema.optional(Schema.Number),
-        filter: Schema.optional(Schema.Struct({ tag: Schema.optional(Schema.String) }))
-      },
-      success: Schema.Number,
-      error: Schema.Never,
-      staleTime: "Infinity"
-    }, Effect.sync(() => () => Effect.sync(() => ++calls))) {}
-    // A required key that admits undefined only encodes with the property there, so it stays.
-    class Required extends Loader.Service<Required>()("Required", {
-      args: { page: Schema.UndefinedOr(Schema.Number) },
-      success: Schema.Number,
-      error: Schema.Never,
-      staleTime: "Infinity"
-    }, Effect.sync(() => () => Effect.sync(() => ++calls))) {}
+        filter: Schema.optional(Schema.Struct({ tag: Schema.optional(Schema.String) })),
+        // A required key keeps its undefined, and doesn't stop the optional ones from being dropped.
+        cursor: Schema.UndefinedOr(Schema.String)
+      }
+    }, fetcher) {}
+    class Args extends Schema.Class<Args>("Args")({ id: Schema.String, page: Schema.optional(Schema.Number) }) {}
+    class ByClass extends Loader.Service<ByClass>()("ByClass", { ...options, args: Args }, fetcher) {}
+    // The Schema decides what the args may be: this property may be missing, and may not be undefined.
+    class Exact extends Loader.Service<Exact>()("Exact", {
+      ...options,
+      args: { page: Schema.optionalKey(Schema.Number) }
+    }, fetcher) {}
     return Effect.gen(function*() {
       const token = Redacted.make("s3cret")
+      const cursor = undefined
+      // A property the Schema doesn't name is never looked at, so it may hold anything.
+      const cycle: { self?: unknown } = {}
+      cycle.self = cycle
       const results = [
-        yield* Search.get({ token, page: undefined, filter: { tag: undefined } }),
-        yield* Search.get({ token, filter: {} }),
-        yield* Search.get({ token, filter: undefined }),
-        yield* Search.get({ token }),
-        yield* Required.get({ page: undefined })
+        yield* Search.get({ token, cursor, page: undefined, filter: { tag: undefined } }),
+        yield* Search.get({ token, cursor, filter: {} }),
+        yield* Search.get({ token, cursor, filter: undefined }),
+        yield* Search.get({ token, cursor }),
+        yield* Search.get({ token, cursor, cycle } as { token: typeof token; cursor: undefined }),
+        yield* ByClass.get(new Args({ id: "1", page: undefined })),
+        yield* ByClass.get(new Args({ id: "1" }))
       ]
-      assert.deepStrictEqual(results, [1, 1, 2, 2, 3])
+      assert.deepStrictEqual(results, [1, 1, 2, 2, 2, 3, 3])
       assert.deepStrictEqual((yield* TestLoader.fetches).map((fetch) => fetch.read + " " + fetch.logKey), [
-        `Search {"filter":{},"token":{"~redacted":true}}`,
-        `Search {"token":{"~redacted":true}}`,
-        `Required {"page":null}`
+        `Search {"cursor":null,"filter":{},"token":{"~redacted":true}}`,
+        `Search {"cursor":null,"token":{"~redacted":true}}`,
+        `ByClass {"id":"1"}`
       ])
-      assert.isDefined(yield* TestLoader.entry(Search, { token, page: undefined }))
-    }).pipe(Effect.provide(Layer.mergeAll(Search.layer, Required.layer, TestLoader.layer())))
+      const exact = yield* Effect.exit(Exact.get({ page: undefined } as {}))
+      assert.strictEqual(
+        Exit.isFailure(exact) ? (Cause.squash(exact.cause) as Error).message : "no throw",
+        `[Loader] read "Exact": the args don't encode with the read's args Schema`
+      )
+    }).pipe(Effect.provide(Layer.mergeAll(Search.layer, ByClass.layer, Exact.layer, TestLoader.layer())))
   })
 
   it("a definition and a cache throw on durations that can't be meant", () => {
