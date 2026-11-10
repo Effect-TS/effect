@@ -935,6 +935,25 @@ export type PatchInvalid = internal.PatchInvalid
  * A patch changed the server value it was given, the first time it was
  * applied. A patch must return a new value.
  *
+ * **Details**
+ *
+ * The cache encodes the server value with the read's `success` Schema before
+ * a run's patches are first applied and after, and compares snapshots of the
+ * two encodings with `Equal.equals`. The check sees everything the Schema
+ * encodes. Where the Schema passes a value through as it is, as `Schema.Any`
+ * does, it sees the value's own data properties, and not:
+ *
+ * - inside a value that implements `Equal` or is marked with
+ *   `Equal.byReference`;
+ * - state that only a getter reaches, such as a private field or a
+ *   `WeakMap`.
+ *
+ * The check runs no getter and no `Equal` or `Hash` method of the value. A
+ * patch that reads a getter which memoizes into the value's own data is
+ * reported, since the stored value changed. If a mutation goes unreported,
+ * give the read a `success` Schema that encodes the value. A value the Schema
+ * can't encode is not checked.
+ *
  * @stability experimental
  * @category problems
  * @since 4.1.3
@@ -944,6 +963,25 @@ export const PatchMutated: typeof internal.PatchMutated = internal.PatchMutated
 /**
  * A patch changed the server value it was given, the first time it was
  * applied. A patch must return a new value.
+ *
+ * **Details**
+ *
+ * The cache encodes the server value with the read's `success` Schema before
+ * a run's patches are first applied and after, and compares snapshots of the
+ * two encodings with `Equal.equals`. The check sees everything the Schema
+ * encodes. Where the Schema passes a value through as it is, as `Schema.Any`
+ * does, it sees the value's own data properties, and not:
+ *
+ * - inside a value that implements `Equal` or is marked with
+ *   `Equal.byReference`;
+ * - state that only a getter reaches, such as a private field or a
+ *   `WeakMap`.
+ *
+ * The check runs no getter and no `Equal` or `Hash` method of the value. A
+ * patch that reads a getter which memoizes into the value's own data is
+ * reported, since the stored value changed. If a mutation goes unreported,
+ * give the read a `success` Schema that encodes the value. A value the Schema
+ * can't encode is not checked.
  *
  * @stability experimental
  * @category problems

@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Cause, Deferred, Effect, Exit, Fiber, Latch, Layer, Option, Schema, Scope } from "effect"
+import { Cause, Deferred, Effect, Equal, Exit, Fiber, Hash, Latch, Layer, Option, Schema, Scope } from "effect"
 import type { Duration } from "effect"
 import { AsyncResult, Loader } from "effect/reactivity"
 import * as internal from "effect/reactivity/internal/loader"
@@ -465,7 +465,7 @@ describe("Loader runs", () => {
         assert.strictEqual(entry?.view._tag === "Success" && entry.view.value.name, 42 as unknown as string)
       }).pipe(provide)
     })
-    it.effect("PatchMutated compares a detached encoding with Equal.equals, through a value the codec passes through as is", () => {
+    it.effect("PatchMutated compares snapshots of the encodings with Equal.equals, through a value the codec passes through as is", () => {
       const payloads: Record<string, Record<string, unknown>> = {
         aliased: { count: 1 },
         zero: { n: 0 },
@@ -517,11 +517,11 @@ describe("Loader runs", () => {
         ])
       }).pipe(Effect.provide(Layer.merge(GetDoc.layer, TestLoader.layer())))
     })
-    it.effect("PatchMutated reads values as Equal.equals does, run after run, and a getter that throws only skips the check", () => {
+    it.effect("PatchMutated compares own data properties run after run, and runs none of the value's own code", () => {
       class Counter {
         constructor(public n: number) {}
       }
-      // State behind a getter: Equal.equals reads it through the getter, and so does the check.
+      // State only a getter reaches: outside the check.
       const store = new WeakMap<object, number>()
       class Stored {
         constructor(n: number) {
@@ -532,43 +532,77 @@ describe("Loader runs", () => {
         }
       }
       const external = { count: 0 }
-      const values: Record<string, unknown> = {
-        plain: { n: 0 },
-        counter: new Counter(0),
-        stored: new Stored(0),
-        external: Object.defineProperty({}, "payload", { get: () => external, enumerable: true }),
-        hidden: Object.defineProperty({ n: 0 }, "hidden", {
+      // A Hash method that can't run on a snapshot, and isn't used.
+      class Hashed {
+        #secret = 0
+        count = 0
+        get secret() {
+          return this.#secret
+        }
+        [Hash.symbol]() {
+          return this.#secret
+        }
+      }
+      // An Equal value is held by reference: it answers for its own equality.
+      class Box implements Equal.Equal {
+        constructor(public n: number) {}
+        [Equal.symbol](that: Equal.Equal) {
+          return that instanceof Box
+        }
+        [Hash.symbol]() {
+          return 0
+        }
+      }
+      const throwing = () =>
+        Object.defineProperty({ n: 0 }, "hidden", {
           get() {
             throw new Error("getter")
           }
         })
+      const values: Record<string, unknown> = {
+        plain: { n: 0 },
+        counter: new Counter(0),
+        hashed: new Hashed(),
+        ownHash: {
+          count: 0,
+          [Hash.symbol]() {
+            throw new Error("hash")
+          }
+        },
+        hidden: throwing(),
+        hiddenInArray: [0, throwing()],
+        besideEqual: { box: new Box(0), n: 0 },
+        insideEqual: { box: new Box(0), n: 0 },
+        stored: new Stored(0),
+        external: Object.defineProperty({}, "payload", { get: () => external, enumerable: true })
       }
       class GetAny extends Loader.Service<GetAny>()(
         "any/GetAny",
         { args: { id: Schema.String }, success: Schema.Any, error: Schema.Never, staleTime: "30 seconds" },
         Effect.sync(() => ({ id }) => Effect.sync(() => values[id]))
       ) {}
+      const inPlace = (id: string, mutate: (value: any) => void) =>
+        GetAny.patch({ id }, (value) => {
+          mutate(value)
+          return value
+        })
       const mutating = [
-        GetAny.patch({ id: "plain" }, (value) => {
-          value.n++
-          return value
-        }),
-        GetAny.patch({ id: "counter" }, (counter) => {
-          counter.n++
-          return counter
-        }),
-        GetAny.patch({ id: "stored" }, (value) => {
-          store.set(value, store.get(value)! + 1)
-          return value
-        }),
-        GetAny.patch({ id: "external" }, (value) => {
-          value.payload.count++
-          return value
-        }),
-        // Mutates nothing: it is never reported, and the getter never stops the run.
-        GetAny.patch({ id: "hidden" }, () => ({ n: 1 }))
+        inPlace("plain", (value) => value.n++),
+        inPlace("counter", (value: Counter) => value.n++),
+        inPlace("hashed", (value: Hashed) => value.count++),
+        inPlace("ownHash", (value) => value.count++),
+        // The throwing getter is never read, and the data beside it is compared.
+        inPlace("hidden", (value) => value.n++),
+        inPlace("hiddenInArray", (value) => value[1].n++),
+        inPlace("besideEqual", (value) => value.n++),
+        // Not reported: the rest of the entry is unchanged.
+        inPlace("insideEqual", (value) => value.box.n++),
+        inPlace("stored", (value) => store.set(value, store.get(value)! + 1)),
+        inPlace("external", (value) => value.payload.count++)
       ]
-      const reported = ["plain", "counter", "stored", "external"].map((id) => `{"id":"${id}"}`)
+      const reported = ["plain", "counter", "hashed", "ownHash", "hidden", "hiddenInArray", "besideEqual"].map((id) =>
+        `{"id":"${id}"}`
+      )
       return Effect.gen(function*() {
         for (const id of Object.keys(values)) yield* GetAny.get({ id })
         // The first run is stopped: its patches go, and the server values keep the mutation.
@@ -580,13 +614,48 @@ describe("Loader runs", () => {
         yield* issue({ optimistic: mutating })
         const second = yield* TestLoader.expectProblem("PatchMutated")
         assert.deepStrictEqual(second.map((problem) => problem.logKey), reported)
+        // The getter never stopped a run: the patch registered.
         const hidden = yield* TestLoader.entry(GetAny, { id: "hidden" })
-        assert.deepStrictEqual([hidden?.patched, hidden?.view._tag === "Success" && hidden.view.value], [true, {
-          n: 1
-        }])
+        assert.isTrue(hidden?.patched)
       }).pipe(Effect.provide(Layer.merge(GetAny.layer, TestLoader.layer())))
     })
-    it.effect("PatchMutated sees in-place changes to binary data of every kind Equal.equals compares", () => {
+    it.effect("PatchMutated never reads a getter, so a patch that changes nothing is never reported", () => {
+      let computed = 0
+      class Lazy {
+        memo: number | undefined = undefined
+        get total() {
+          return this.memo ??= ++computed
+        }
+      }
+      const values: Record<string, unknown> = {
+        memo: new Lazy(),
+        closure: Object.defineProperty({ n: 0 }, "f", { get: () => () => 0, enumerable: true }),
+        time: Object.defineProperty({ n: 0 }, "now", { get: () => Math.random(), enumerable: true }),
+        // Reading a getter that memoizes into the value's own data changes the stored value.
+        memoRead: new Lazy()
+      }
+      class GetAny extends Loader.Service<GetAny>()(
+        "any/GetAny",
+        { args: { id: Schema.String }, success: Schema.Any, error: Schema.Never, staleTime: "30 seconds" },
+        Effect.sync(() => ({ id }) => Effect.sync(() => values[id]))
+      ) {}
+      return Effect.gen(function*() {
+        for (const id of Object.keys(values)) yield* GetAny.get({ id })
+        yield* issue({
+          optimistic: [
+            ...["memo", "closure", "time"].map((id) => GetAny.patch({ id }, (value) => value)),
+            GetAny.patch({ id: "memoRead" }, (value: Lazy) => {
+              assert.strictEqual(value.total, 1)
+              return value
+            })
+          ]
+        })
+        const mutated = yield* TestLoader.expectProblem("PatchMutated")
+        assert.deepStrictEqual(mutated.map((problem) => problem.logKey), [`{"id":"memoRead"}`])
+        assert.strictEqual(computed, 1)
+      }).pipe(Effect.provide(Layer.merge(GetAny.layer, TestLoader.layer())))
+    })
+    it.effect("PatchMutated compares binary data by its bytes, each kind apart, so an unchanged NaN stays unchanged", () => {
       const values: Record<string, unknown> = {
         buffer: new ArrayBuffer(2),
         shared: new SharedArrayBuffer(2),
@@ -594,7 +663,13 @@ describe("Loader runs", () => {
         floats: new Float64Array(2),
         view: new DataView(new ArrayBuffer(2)),
         sharedBytes: new Uint8Array(new SharedArrayBuffer(2)),
-        untouched: new SharedArrayBuffer(2)
+        nanMutated: new Float64Array([NaN, 1]),
+        widened: { bytes: new Uint8Array([1]) },
+        retyped: { bytes: new Uint8Array([1]) },
+        signedZero: new Float64Array([0]),
+        untouched: new SharedArrayBuffer(2),
+        nan64: new Float64Array([NaN]),
+        nan32: new Float32Array([NaN, 1])
       }
       class GetBinary extends Loader.Service<GetBinary>()(
         "binary/GetBinary",
@@ -616,14 +691,35 @@ describe("Loader runs", () => {
             inPlace("floats", (value: Float64Array) => value[1] = 0.5),
             inPlace("view", (value: DataView) => value.setUint8(1, 7)),
             inPlace("sharedBytes", (value: Uint8Array) => value[1]++),
-            // Returned as it is, unchanged: never reported.
-            inPlace("untouched", () => {})
+            // A NaN beside the changed element doesn't hide the change.
+            inPlace("nanMutated", (value: Float64Array) => value[1] = 2),
+            // Equal.equals compares byte lengths: the same elements, wider, differ.
+            inPlace("widened", (value: { bytes: ArrayBufferView }) => value.bytes = new Uint16Array([1])),
+            // Each kind is kept apart: the same bytes in another kind differ.
+            inPlace("retyped", (value: { bytes: ArrayBufferView }) => value.bytes = new Int8Array([1])),
+            // Binary data compares by bytes, so 0 to -0 is a change.
+            inPlace("signedZero", (value: Float64Array) => value[0] = -0),
+            // Returned as they are, unchanged: never reported, NaN included.
+            inPlace("untouched", () => {}),
+            inPlace("nan64", () => {}),
+            inPlace("nan32", () => {})
           ]
         })
         const mutated = yield* TestLoader.expectProblem("PatchMutated")
         assert.deepStrictEqual(
           mutated.map((problem) => problem.logKey),
-          ["buffer", "shared", "bytes", "floats", "view", "sharedBytes"].map((id) => `{"id":"${id}"}`)
+          [
+            "buffer",
+            "shared",
+            "bytes",
+            "floats",
+            "view",
+            "sharedBytes",
+            "nanMutated",
+            "widened",
+            "retyped",
+            "signedZero"
+          ].map((id) => `{"id":"${id}"}`)
         )
       }).pipe(Effect.provide(Layer.merge(GetBinary.layer, TestLoader.layer())))
     })
