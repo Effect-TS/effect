@@ -395,6 +395,33 @@ describe("Command", () => {
         assert.include(output, "$ root --log-level error child -p=dev --name prompted prompted")
       }).pipe(Effect.provide(TestLayer)))
 
+    it.effect("should preserve numeric aliases in shared short-option clusters with --wizard", () =>
+      Effect.gen(function*() {
+        const captured: Array<readonly [boolean, boolean]> = []
+        const root = Command.make("root").pipe(
+          Command.withSharedFlags({
+            silent: Flag.Boolean("silent").pipe(Flag.withAlias("s")),
+            ipv4: Flag.Boolean("ipv4").pipe(Flag.withAlias("4"))
+          })
+        )
+        const child = Command.make("child", {}, () =>
+          Effect.gen(function*() {
+            const { silent, ipv4 } = yield* root
+            captured.push([silent, ipv4])
+          }))
+        const command = root.pipe(Command.withSubcommands([child]))
+
+        const fiber = yield* Command.runWith(command, { version: "1.0.0" })([
+          "-s4",
+          "child",
+          "--wizard"
+        ]).pipe(Effect.forkChild)
+        yield* MockTerminal.inputKey("enter")
+        yield* Fiber.join(fiber)
+
+        assert.deepStrictEqual(captured, [[true, true]])
+      }).pipe(Effect.provide(TestLayer)))
+
     it.effect("should reject --completions without a shell", () =>
       Effect.gen(function*() {
         let invoked = false
