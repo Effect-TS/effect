@@ -100,6 +100,45 @@ describe("OpenAiLanguageModel", () => {
   }
 
   describe("generateText", () => {
+    it.effect("advertises a non-strict tool's parameters without the OpenAI codec", () =>
+      Effect.gen(function*() {
+        let capturedRequest: HttpClientRequest.HttpClientRequest | undefined
+        const Search = Tool.make("Search", {
+          parameters: Schema.Struct({
+            query: Schema.String,
+            filters: Schema.optional(Schema.Record(Schema.String, Schema.String))
+          })
+        })
+        const toolkit = Toolkit.make(Search)
+        const layer = OpenAiClient.layer({ apiKey: Redacted.make("sk-test-key") }).pipe(
+          Layer.provide(Layer.succeed(
+            HttpClient.HttpClient,
+            makeHttpClient((request) => {
+              capturedRequest = request
+              return Effect.succeed(jsonResponse(request, makeChatCompletion()))
+            })
+          ))
+        )
+
+        yield* LanguageModel.generateText({ prompt: "Search", toolkit }).pipe(
+          Effect.provide(OpenAiLanguageModel.model("gpt-4o-mini", { strictJsonSchema: false })),
+          Effect.provide(toolkit.toLayer({ Search: () => Effect.void })),
+          Effect.provide(layer)
+        )
+
+        assert.isDefined(capturedRequest)
+        if (capturedRequest === undefined) {
+          return
+        }
+        const body = yield* getRequestBody(capturedRequest)
+        const tool = body.tools[0].function
+        assert.strictEqual(tool.strict, false)
+        assert.deepStrictEqual(tool.parameters.required, ["query"])
+        assert.deepStrictEqual(tool.parameters.properties.filters, {
+          anyOf: [{ type: "object", additionalProperties: { type: "string" } }, { type: "null" }]
+        })
+      }))
+
     it.effect("serializes text-only user messages and decodes text output", () =>
       Effect.gen(function*() {
         let capturedRequest: HttpClientRequest.HttpClientRequest | undefined

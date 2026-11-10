@@ -1458,6 +1458,13 @@ const prepareTools = Effect.fnUntraced(function*<Tools extends ReadonlyArray<Too
       let parameters: ReturnType<typeof Tool.getJsonSchema>
       if (Tool.isDynamic(tool) && tool.jsonSchema !== undefined) {
         parameters = tool.jsonSchema
+      } else if (!strict) {
+        // Strict mode only accepts the subset `toCodecOpenAI` produces. A non-strict tool advertises its standard
+        // JSON Schema; its calls then fail the codec in normalization and reach the toolkit as sent.
+        parameters = yield* Effect.try({
+          try: () => Tool.getJsonSchema(tool, { transformer: LanguageModel.defaultCodecTransformer }),
+          catch: (error) => toolParametersError(tool, error, "prepareTools")
+        })
       } else {
         const prepared = yield* Effect.try({
           try: () => toCodecOpenAI(tool.parametersSchema),

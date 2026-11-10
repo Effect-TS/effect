@@ -2906,7 +2906,7 @@ const prepareTools = Effect.fnUntraced(function*<Tools extends ReadonlyArray<Too
     if (Tool.isUserDefined(tool) || Tool.isDynamic(tool)) {
       const strict = Tool.getStrictMode(tool) ?? config.strictJsonSchema ?? true
       const description = Tool.getDescription(tool)
-      const parameters = yield* tryToolJsonSchema(tool, "prepareTools")
+      const parameters = yield* tryToolJsonSchema(tool, strict, "prepareTools")
       tools.push({
         type: "function",
         name: tool.name,
@@ -3218,9 +3218,14 @@ const toolParametersError = (tool: Tool.Any, error: unknown, method: string): Ai
     method
   )
 
-const tryToolJsonSchema = <T extends Tool.Any>(tool: T, method: string) =>
+/**
+ * Strict mode only accepts the JSON Schema subset `toCodecOpenAI` produces. A non-strict tool advertises its
+ * parameters' standard JSON Schema; its calls then fail the codec and reach the toolkit as sent.
+ */
+const tryToolJsonSchema = <T extends Tool.Any>(tool: T, strict: boolean, method: string) =>
   Effect.try({
-    try: () => Tool.getJsonSchema(tool, { transformer: toCodecOpenAI }),
+    try: () =>
+      Tool.getJsonSchema(tool, { transformer: strict ? toCodecOpenAI : LanguageModel.defaultCodecTransformer }),
     catch: (error) => toolParametersError(tool, error, method)
   })
 
