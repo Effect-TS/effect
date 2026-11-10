@@ -377,8 +377,8 @@ class TestClockImpl implements TestClock {
         Effect.provideService(Console.Console, this.liveConsole),
         Effect.delay(this.config.warningDelay),
         this.withLive,
+        // Child fibers are interruptible by default; preserve the caller's mask.
         Effect.forkChild,
-        Effect.interruptible,
         Effect.flatMap((fiber) =>
           Effect.sync(() => {
             this.warningState = WarningState.Pending({ fiber })

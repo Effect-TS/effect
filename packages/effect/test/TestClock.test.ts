@@ -103,6 +103,28 @@ describe("TestClock", () => {
       assert.isTrue(elapsed)
     }))
 
+  it.effect("sleep - preserves interruption masking in a finalizer on first use", () =>
+    Effect.gen(function*() {
+      const clock = yield* TestClock.make()
+      const events: Array<string> = []
+      const fiber = yield* Effect.never.pipe(
+        Effect.ensuring(Effect.gen(function*() {
+          events.push("cleanup started")
+          yield* Effect.sleep("1 second")
+          events.push("cleanup finished")
+        })),
+        Effect.provideService(Clock.Clock, clock),
+        Effect.forkChild({ startImmediately: true })
+      )
+      fiber.interruptUnsafe()
+      yield* Effect.yieldNow
+      assert.deepStrictEqual(events, ["cleanup started"])
+      assert.isUndefined(fiber.pollUnsafe())
+      yield* clock.adjust("1 second")
+      yield* Fiber.await(fiber)
+      assert.deepStrictEqual(events, ["cleanup started", "cleanup finished"])
+    }))
+
   it.effect("sleep - handles multiple sleeps", () =>
     Effect.gen(function*() {
       let message = ""
