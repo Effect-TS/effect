@@ -62,3 +62,7 @@ const BedrockClient = Layer.unwrap(Effect.gen(function*() {
 - Model-specific parameters, such as extended thinking, through `additionalModelRequestFields` in the model config.
 
 The client maps Bedrock's `x-amzn-errortype` exceptions and HTTP statuses to `AiError`, validates the CRC of every event stream frame, and fails a stream on an exception frame such as `throttlingException`.
+
+## Credits
+
+This provider builds on [`@wmaurer/effect-ai-amazon-bedrock`](https://github.com/wmaurer/effect-ai-amazon-bedrock). Tom McKenzie (grrowl) wrote the original event stream decoder, error mapping and test frame builders. Wayne Maurer (wmaurer) developed the tools, structured output, files, reasoning and caching support and offered the provider for upstream inclusion.
