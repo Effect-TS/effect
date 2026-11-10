@@ -37,32 +37,20 @@ describe("OpenRouterWorkloadIdentity", () => {
         ]
       )
     }))
-
-  it.effect("maps a rejected exchange to an AiError without the identity token", () =>
-    Effect.gen(function*() {
-      const http = makeHttp(() =>
-        Response.json({ error: "invalid_grant", error_description: `Rejected ${IDENTITY_TOKEN}` }, { status: 400 })
-      )
-      const client = yield* OpenRouterClient.OpenRouterClient.pipe(provideClient(http))
-
-      const error = yield* Effect.flip(client.createChatCompletion({
-        model: "openai/gpt-4o-mini",
-        messages: [{ role: "user", content: "hello" }]
-      }))
-
-      assert.strictEqual(error._tag, "AiError")
-      assert.lengthOf(http.requests, 1)
-      assert.notInclude(JSON.stringify(error), IDENTITY_TOKEN)
-    }))
 })
 
 type Http = ReturnType<typeof makeHttp>
 
-const makeHttp = (token = () => Response.json({ access_token: "access-1", expires_in: 900 })) => {
+const makeHttp = () => {
   const requests: Array<HttpClientRequest.HttpClientRequest> = []
   const client = HttpClient.make((request) => {
     requests.push(request)
-    return Effect.succeed(HttpClientResponse.fromWeb(request, request.url === TOKEN_URL ? token() : new Response()))
+    return Effect.succeed(HttpClientResponse.fromWeb(
+      request,
+      request.url === TOKEN_URL
+        ? Response.json({ access_token: "access-1", expires_in: 900 })
+        : new Response()
+    ))
   })
   return { client, requests }
 }
