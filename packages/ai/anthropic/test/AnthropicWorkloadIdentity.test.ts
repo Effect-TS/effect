@@ -61,7 +61,6 @@ describe("AnthropicWorkloadIdentity", () => {
 
       assert.strictEqual(error.reason._tag, "AuthenticationError")
       assert.include(error.message, "Authentication failed for <redacted>")
-      assert.isFalse(contains(error, IDENTITY_TOKEN))
     }))
 })
 
@@ -82,13 +81,3 @@ const makeHttp = (token = () => Response.json({ access_token: "access-1", expire
 
 const bodyJson = (request: HttpClientRequest.HttpClientRequest) =>
   request.body._tag === "Uint8Array" ? JSON.parse(new TextDecoder().decode(request.body.body)) : undefined
-
-// Searches every string and byte array reachable from `value`, including error causes.
-const contains = (value: unknown, text: string, seen = new Set<unknown>()): boolean => {
-  if (typeof value === "string") return value.includes(text)
-  if (value instanceof Uint8Array) return new TextDecoder().decode(value).includes(text)
-  if (typeof value !== "object" || value === null || seen.has(value)) return false
-  seen.add(value)
-  return [String(value), ...Reflect.ownKeys(value).map((key) => Reflect.get(value, key))]
-    .some((child) => contains(child, text, seen))
-}

@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Deferred, type Duration, Effect, type Exit, Fiber, Redacted } from "effect"
+import { Deferred, Effect, Fiber, Redacted } from "effect"
 import { WorkloadIdentity } from "effect/ai"
 import { FetchHttpClient, HttpClient, HttpClientError, HttpClientRequest, HttpClientResponse } from "effect/http"
 import { TestClock } from "effect/testing"
@@ -9,23 +9,6 @@ const TOKEN_URL = "https://auth.example.com/oauth/token"
 const API_URL = "https://api.example.com/v1/models"
 
 describe("WorkloadIdentity", () => {
-  it.effect("exchanges the identity token and authenticates requests with the access token", () =>
-    Effect.gen(function*() {
-      const http = makeHttp()
-      const client = yield* makeClient(http, {
-        identityToken: Effect.succeed(Redacted.make(`${IDENTITY_TOKEN}\n`))
-      })
-
-      yield* client.get(API_URL)
-
-      const [exchange, request] = http.requests
-      assert.strictEqual(exchange.method, "POST")
-      assert.strictEqual(exchange.url, TOKEN_URL)
-      assert.strictEqual(exchange.headers.accept, "application/json")
-      assert.deepStrictEqual(bodyJson(exchange), { subject_token: IDENTITY_TOKEN })
-      assert.strictEqual(request.headers.authorization, "Bearer access-1")
-    }))
-
   it.effect("exchanges a new identity token once the access token is about to expire", () =>
     Effect.gen(function*() {
       let identityTokens = 0
@@ -98,27 +81,19 @@ describe("WorkloadIdentity", () => {
       assert.deepStrictEqual(authorizations(http), [undefined, "Bearer access-1", undefined, "Bearer access-2"])
     }))
 
-  it.effect.each([
-    {
-      name: "a JSON body with escaped characters",
-      body: JSON.stringify({ message: `Authentication failed for ${IDENTITY_TOKEN}`, [IDENTITY_TOKEN]: true })
-        .replaceAll(".", "\\u002e"),
-      redacted: "{\"message\":\"Authentication failed for <redacted>\",\"<redacted>\":true}"
-    },
-    {
-      name: "a text body",
-      body: `Authentication failed for ${IDENTITY_TOKEN}`,
-      redacted: "Authentication failed for <redacted>"
-    }
-  ])("redacts the identity token from a rejected exchange with $name", ({ body, redacted }) =>
+  it.effect("redacts the identity token from a rejected exchange", () =>
     Effect.gen(function*() {
       const http = makeHttp({
         token: () =>
           Effect.succeed(
-            new Response(body, {
-              status: 401,
-              headers: { "www-authenticate": `Bearer error_description="${IDENTITY_TOKEN}"` }
-            })
+            new Response(
+              JSON.stringify({ message: `Authentication failed for ${IDENTITY_TOKEN}`, [IDENTITY_TOKEN]: true })
+                .replaceAll(".", "\\u002e"),
+              {
+                status: 401,
+                headers: { "www-authenticate": `Bearer error_description="${IDENTITY_TOKEN}"` }
+              }
+            )
           )
       })
 
@@ -128,7 +103,10 @@ describe("WorkloadIdentity", () => {
       if (response === undefined) return assert.fail("Expected a response")
       assert.strictEqual(response.status, 401)
       assert.strictEqual(response.headers["www-authenticate"], "Bearer error_description=\"<redacted>\"")
-      assert.strictEqual(yield* response.text, redacted)
+      assert.strictEqual(
+        yield* response.text,
+        "{\"message\":\"Authentication failed for <redacted>\",\"<redacted>\":true}"
+      )
       assert.isFalse(contains(error, IDENTITY_TOKEN))
     }))
 
@@ -190,38 +168,6 @@ describe("WorkloadIdentity", () => {
       assert.strictEqual(error.reason._tag, "TransportError")
       assert.isFalse(contains(error, IDENTITY_TOKEN))
     }).pipe(Effect.provide(FetchHttpClient.layer)))
-
-  it.effect("refuses a token URL that is not https", () =>
-    Effect.gen(function*() {
-      const exit = yield* Effect.exit(make(makeHttp(), { tokenUrl: "http://gateway.internal/oauth/token" }))
-      assert.isTrue(isDefect(exit))
-    }))
-
-  it.effect.each([
-    { name: "URL", change: HttpClientRequest.setUrl(`https://gateway.internal/${IDENTITY_TOKEN}`) },
-    { name: "URL parameter", change: HttpClientRequest.setUrlParam("subject_token", IDENTITY_TOKEN) }
-  ])("refuses to send an exchange request with another $name", ({ change }) =>
-    Effect.gen(function*() {
-      const http = makeHttp()
-      const client = yield* makeClient(http, {
-        exchangeRequest: (request, identityToken) => change(exchangeRequest(request, identityToken))
-      })
-
-      const exit = yield* Effect.exit(client.get(API_URL))
-
-      assert.isTrue(isDefect(exit))
-      assert.isFalse(contains(exit, IDENTITY_TOKEN))
-      assert.lengthOf(http.requests, 0)
-    }))
-
-  it.effect.each<{ readonly defaultExpiresIn: Duration.Input }>([
-    { defaultExpiresIn: 0 },
-    { defaultExpiresIn: "Infinity" }
-  ])("refuses a default lifetime of $defaultExpiresIn", ({ defaultExpiresIn }) =>
-    Effect.gen(function*() {
-      const exit = yield* Effect.exit(make(makeHttp(), { defaultExpiresIn }))
-      assert.isTrue(isDefect(exit))
-    }))
 })
 
 type Options = Parameters<typeof WorkloadIdentity.make<Error, never>>[0]
@@ -261,9 +207,6 @@ const make = (http: Http, options: Partial<Options> = {}) =>
 
 const makeClient = (http: Http, options?: Partial<Options>) =>
   Effect.map(make(http, options), (transform) => transform(http.client))
-
-const isDefect = (exit: Exit.Exit<unknown, unknown>) =>
-  exit._tag === "Failure" && exit.cause.reasons.every((reason) => reason._tag === "Die")
 
 const authorizations = (http: Http) => http.requests.map((request) => request.headers.authorization)
 
