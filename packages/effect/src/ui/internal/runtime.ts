@@ -11,7 +11,7 @@ import * as Duration from "../../Duration.ts"
 import * as Effect from "../../Effect.ts"
 import * as Equal from "../../Equal.ts"
 import * as Exit from "../../Exit.ts"
-import type * as Fiber from "../../Fiber.ts"
+import * as Fiber from "../../Fiber.ts"
 import * as Layer from "../../Layer.ts"
 import * as Option from "../../Option.ts"
 import * as AsyncResult from "../../reactivity/AsyncResult.ts"
@@ -143,8 +143,6 @@ interface Run {
   readonly detached: boolean
   status: "running" | "queued"
   fiber: Fiber.Fiber<unknown, unknown> | undefined
-  /** A detached run's own Scope, closed when its fiber exits. */
-  scope: Scope.Closeable | undefined
   /** Stops listening to the owning build's close. */
   release: (() => void) | undefined
   done: boolean
@@ -478,16 +476,17 @@ const start = (
   })
   const withCache = (context: Context.Context<any>): Context.Context<any> =>
     Context.add(context, Loader.Cache, cache as unknown as Loader.Cache["Service"])
-  // Detached runs and the instance that issued them. The root is their second owner: closing it ends them.
+  // Detached runs and the instance that issued them. The root is their second owner: closing it ends
+  // them, and the close waits until their fibers, and so their Scopes, have exited.
   const detachedRuns = new Map<Run, Instance>()
   // Closed instances whose detached runs are still running or queued.
   const orphans = new Set<Instance>()
   let rootClosed = false
   Effect.runSync(Scope.addFinalizer(
     rootScope,
-    Effect.sync(() => {
+    Effect.suspend(() => {
       rootClosed = true
-      for (const [run, inst] of Array.from(detachedRuns)) stopRun(inst, run)
+      return awaitRuns(Array.from(detachedRuns, ([run, inst]) => stopAndAwait(inst, run)))
     })
   ))
 
@@ -944,13 +943,16 @@ const start = (
     ))
     Effect.runSync(Scope.addFinalizer(
       scope,
-      Effect.sync(() => {
+      Effect.suspend(() => {
         inst.closed = true
-        // A detached run goes on under the Layer build that owns it. Everything else ends here.
+        // A detached run goes on under the Layer build that owns it. Everything else ends here, and the
+        // close waits for it.
+        const waits: Array<Effect.Effect<void>> = []
         for (const run of inst.runs.slice()) {
-          if (!(run.detached && survives(inst, run))) stopRun(inst, run)
+          if (!(run.detached && survives(inst, run))) waits.push(stopAndAwait(inst, run))
         }
         if (inst.runs.length > 0) orphans.add(inst)
+        return awaitRuns(waits)
       })
     ))
 
@@ -1295,7 +1297,6 @@ const start = (
           detached: command._tag === "Effect" && command.service !== undefined && command.mode !== "switch",
           status: decision.action === "start" ? "running" : "queued",
           fiber: undefined,
-          scope: undefined,
           release: undefined,
           done: false
         }
@@ -1399,6 +1400,18 @@ const start = (
     promote(inst, run)
   }
 
+  /**
+   * Stops a run and returns an Effect that waits for its fiber to exit. The run is stopped when this
+   * is called, not when the Effect runs, so an owner stops every run before it waits for any.
+   */
+  const stopAndAwait = (inst: Instance, run: Run): Effect.Effect<void> => {
+    const fiber = run.fiber
+    stopRun(inst, run)
+    return fiber === undefined ? Effect.void : Effect.asVoid(Fiber.await(fiber))
+  }
+  const awaitRuns = (waits: ReadonlyArray<Effect.Effect<void>>): Effect.Effect<void> =>
+    waits.length === 0 ? Effect.void : Effect.all(waits, { concurrency: "unbounded", discard: true })
+
   const startRun = (inst: Instance, run: Run) => {
     const go = (envCtx: Context.Context<any>) => {
       if (run.done || frozen) return
@@ -1408,8 +1421,8 @@ const start = (
         build = ownerOf(envCtx, run)
         if (build !== undefined ? build.closed : rootClosed) return stopRun(inst, run)
       }
-      // A detached run gets a Scope of its own, closed when its fiber exits.
-      const scope = run.detached ? (run.scope = Scope.makeUnsafe("sequential")) : inst.scope
+      // A detached run gets a Scope of its own, closed with the run's exit before its fiber exits.
+      const scope = run.detached ? Scope.makeUnsafe("sequential") : inst.scope
       const context = withCache(Context.add(Context.add(envCtx, Scope.Scope, scope), services.Refs, refsOf(inst)))
       let source: MessageLog.Source = {
         _tag: "Command",
@@ -1446,9 +1459,12 @@ const start = (
             )
         }
       )
-      const fiber = forkLater(context, program)
+      const fiber = forkLater(
+        context,
+        run.detached ? Effect.onExit(program, (exit) => Scope.close(scope as Scope.Closeable, exit)) : program
+      )
       run.fiber = fiber
-      if (build !== undefined) run.release = build.onClose(() => stopRun(inst, run))
+      if (build !== undefined) run.release = build.onClose(() => stopAndAwait(inst, run))
       fiber.addObserver((exit) => ended(inst, run, exit, send))
     }
     // After a handled Layer failure, work runs against the parent's services.
@@ -1466,7 +1482,6 @@ const start = (
     run.handle?.finish({ _tag: "Stopped" })
     run.release?.()
     run.release = undefined
-    if (run.scope !== undefined) closeScope(run.scope)
     // A stopped run sent no message, so `h.running` ends here.
     if (inst.stopping.delete(run) && !inst.closed) markDirty(inst)
     if (run.done) return

@@ -618,7 +618,7 @@ export interface Definition<in Args, out A, out IsStream extends boolean, out E 
    *
    * @internal
    */
-  readonly "~groupKey": (args: unknown) => string | undefined
+  readonly "~group": (args: unknown) => GroupSource | undefined
 }
 
 /**
@@ -792,6 +792,7 @@ const UnmatchedProto = {
 
 interface Fields extends Omit<Data, "effect" | "stream"> {
   readonly _tag: Kind
+  readonly "~group": GroupSource | undefined
   readonly work: Effect.Effect<any, any, any> | Stream.Stream<any, any, any>
   readonly resolve: (result: any) => any
   readonly reject: ((error: any) => any) | undefined
@@ -828,8 +829,11 @@ const noTargets: ReadonlyArray<never> = []
  */
 export interface Build {
   closed: boolean
-  /** Called once, when the build's Scope closes. The returned function removes the listener. */
-  readonly onClose: (listener: () => void) => () => void
+  /**
+   * Called once, when the build's Scope closes. Every listener is called before any returned Effect
+   * runs, and the close waits for those Effects. The returned function removes the listener.
+   */
+  readonly onClose: (listener: () => Effect.Effect<void>) => () => void
 }
 
 const builds = new WeakMap<object, Build>()
@@ -845,31 +849,47 @@ export const buildOf = (implementation: unknown): Build | undefined =>
 const argsSchemaOf = (args: ArgsInput): Schema.Struct<Schema.Struct.Fields> =>
   Schema.isSchema(args) ? args as Schema.Struct<Schema.Struct.Fields> : Schema.Struct(args as Schema.Struct.Fields)
 
-/** Canonical JSON of the encoded `group` fields. The codec is built on first use. */
-const makeGroupKey = (
+/**
+ * A Command's group: its key, and the `group` fields it was made from, so the
+ * message log can encode them with redaction instead of logging the key.
+ *
+ * @internal
+ */
+export interface GroupSource {
+  /** Canonical JSON of the encoded `group` fields. */
+  readonly key: string
+  /** A struct of the `group` fields. */
+  readonly schema: Schema.Top
+  /** The `group` fields picked from the args. */
+  readonly picked: Record<string, unknown>
+}
+
+/** The group of an args struct, or of a pick of its `group` fields. The codec is built on first use. */
+const makeGroup = (
   name: string,
   schema: Schema.Struct<Schema.Struct.Fields>,
   group: ReadonlyArray<string>
-): (args: unknown) => string | undefined => {
+): (args: unknown) => GroupSource | undefined => {
   if (group.length === 0) return () => undefined
   for (const field of group) {
     if (!Object.hasOwn(schema.fields, field)) {
       throw new Error(`${name}: the group field "${field}" isn't one of its args`)
     }
   }
+  const fields: Record<string, Schema.Top> = {}
+  for (const field of group) fields[field] = schema.fields[field] as Schema.Top
+  const pickSchema = Schema.Struct(fields)
   let encode: ((u: unknown) => unknown) | undefined
   return (args) => {
     if (encode === undefined) {
-      const fields: Record<string, Schema.Top> = {}
-      for (const field of group) fields[field] = schema.fields[field] as Schema.Top
       encode = Schema.encodeUnknownSync(
-        Schema.toCodecJson(Schema.Struct(fields)) as unknown as Schema.Codec<unknown, unknown>
+        Schema.toCodecJson(pickSchema) as unknown as Schema.Codec<unknown, unknown>
       )
     }
     const picked: Record<string, unknown> = {}
     const source = (args ?? {}) as Record<string, unknown>
     for (const field of group) if (Object.hasOwn(source, field)) picked[field] = source[field]
-    return canonical(encode(picked))
+    return { key: canonical(encode(picked)), schema: pickSchema, picked }
   }
 }
 
@@ -920,7 +940,7 @@ export const nameOf = (definition: Definition.Any): string =>
  * @internal
  */
 export const groupKeyOf = (definition: Definition.Any, group: unknown): string | undefined =>
-  group === undefined ? undefined : definition["~groupKey"](group)
+  group === undefined ? undefined : definition["~group"](group)?.key
 
 /**
  * Defines a Command that needs nothing beyond the framework services.
@@ -998,14 +1018,16 @@ export const make: {
   const mode = options.mode ?? "concurrent"
   const group = options.group ?? []
   const argsSchema = argsSchemaOf(options.args)
-  const groupKey = makeGroupKey(name, argsSchema, group)
-  const factory = (args: unknown = {}) =>
-    makeIssued({
+  const groupOf = makeGroup(name, argsSchema, group)
+  const factory = (args: unknown = {}) => {
+    const source = groupOf(args)
+    return makeIssued({
       _tag: stream ? "Stream" : "Effect",
       name,
       args,
       mode,
-      groupKey: groupKey(args),
+      groupKey: source?.key,
+      "~group": source,
       server: false,
       argsSchema,
       service: undefined,
@@ -1016,6 +1038,7 @@ export const make: {
       resolve: identity,
       reject: undefined
     })
+  }
   Object.defineProperty(factory, "name", { value: name })
   return Object.assign(factory, {
     [DefinitionTypeId]: DefinitionTypeId,
@@ -1024,7 +1047,7 @@ export const make: {
     server: false,
     group,
     args: argsSchema,
-    "~groupKey": groupKey
+    "~group": groupOf
   })
 }
 
@@ -1151,7 +1174,7 @@ export const Service: <Self>() => {
   const server = !stream && options.server === true
   const group = options.group ?? []
   const argsSchema = argsSchemaOf(options.args)
-  const groupKey = makeGroupKey(key, argsSchema, group)
+  const groupOf = makeGroup(key, argsSchema, group)
   const { invalidates, optimistic, writes } = options
   const service = Base as Effect.Effect<(args: unknown) => any, never, any>
   class CommandService extends Base {
@@ -1161,7 +1184,7 @@ export const Service: <Self>() => {
     static readonly server = server
     static readonly group = group
     static readonly args = argsSchema
-    static readonly "~groupKey" = groupKey
+    static readonly "~group" = groupOf
     static readonly layer = Layer.effect(
       Base,
       Effect.gen(function*() {
@@ -1169,7 +1192,7 @@ export const Service: <Self>() => {
         const run = yield* implementation
         // A new function per build, so two builds never share an identity.
         const wrapped = (args: unknown) => run(args)
-        const listeners = new Set<() => void>()
+        const listeners = new Set<() => Effect.Effect<void>>()
         const build: Build = {
           closed: false,
           onClose: (listener) => {
@@ -1180,24 +1203,28 @@ export const Service: <Self>() => {
           }
         }
         builds.set(wrapped, build)
+        // Its runs stop before the implementation's own finalizers run, and the close waits for them.
         yield* Scope.addFinalizer(
           scope,
-          Effect.sync(() => {
+          Effect.suspend(() => {
             build.closed = true
-            for (const listener of Array.from(listeners)) listener()
+            const waits = Array.from(listeners, (listener) => listener())
             listeners.clear()
+            return Effect.all(waits, { concurrency: "unbounded", discard: true })
           })
         )
         return wrapped
       })
     )
     static make(args: any = {}) {
+      const source = groupOf(args)
       const fields: Fields = {
         _tag: stream ? "Stream" : "Effect",
         name: key,
         args,
         mode,
-        groupKey: groupKey(args),
+        groupKey: source?.key,
+        "~group": source,
         server,
         argsSchema,
         service: Base,
@@ -1375,9 +1402,12 @@ export const match: {
 export const interrupt = <Args, G extends string>(
   definition: Definition<Args, any, boolean, any, G>,
   ...group: GroupArg<Args, G>
-): Interrupt =>
-  Object.assign(Object.create(Proto), {
+): Interrupt => {
+  const source = group[0] === undefined ? undefined : definition["~group"](group[0])
+  return Object.assign(Object.create(Proto), {
     _tag: "Interrupt",
     name: nameOf(definition),
-    groupKey: groupKeyOf(definition, group[0])
+    groupKey: source?.key,
+    "~group": source
   })
+}

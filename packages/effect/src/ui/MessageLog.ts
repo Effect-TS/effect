@@ -30,9 +30,11 @@ import * as Effect from "../Effect.ts"
 import { redactAST } from "../internal/schemaRedact.ts"
 import * as Layer from "../Layer.ts"
 import * as Queue from "../Queue.ts"
+import { canonical } from "../reactivity/internal/loader.ts"
 import * as Redacted from "../Redacted.ts"
 import * as Schedule from "../Schedule.ts"
 import * as Schema from "../Schema.ts"
+import type * as SchemaAST from "../SchemaAST.ts"
 import * as Socket from "../socket/Socket.ts"
 import type * as Command from "./Command.ts"
 import type * as Component from "./Component.ts"
@@ -657,10 +659,11 @@ const encodeSource = (source: Source): typeof SourceWire.Type => {
 }
 
 /**
- * Encodes a Command by name, group key and args. The args go through the
- * Command's `args` Schema with every `Schema.Redacted` redacted, and a field
- * that fails to encode is encoded structurally instead. An `Interrupt` has
- * `null` args.
+ * Encodes a Command by name, group and args. The args go through the
+ * Command's `args` Schema with every `Schema.Redacted` redacted, and a leaf
+ * that fails to encode is encoded structurally instead. The group is the
+ * group fields encoded the same way, so a redacted group field is a
+ * placeholder there too. An `Interrupt` has `null` args.
  *
  * @stability experimental
  * @category Wire
@@ -669,50 +672,129 @@ const encodeSource = (source: Source): typeof SourceWire.Type => {
 export const encodeCommand = (command: Command.Command<any, any>): typeof CommandWire.Type => ({
   _tag: command._tag,
   name: command.name,
-  group: command.groupKey ?? null,
+  group: encodeGroup(command),
   args: command._tag === "Interrupt" ? null : encodeArgs(command.argsSchema, command.args)
 })
 
-const argEncoders = new WeakMap<Schema.Top, (value: unknown) => unknown>()
+// The scheduling key holds the group fields' real encoding, so the log re-encodes them redacted.
+const encodeGroup = (command: Command.Command<any, any>): string | null => {
+  if (command.groupKey === undefined) return null
+  const source = (command as { readonly "~group"?: Command.GroupSource | undefined })["~group"]
+  return source === undefined
+    ? JSON.stringify({ "~redacted": true })
+    : canonical(encodeArgs(source.schema, source.picked))
+}
+
+const leafEncoders = new WeakMap<SchemaAST.AST, ((value: unknown) => unknown) | undefined>()
+const encoderOf = (ast: SchemaAST.AST): ((value: unknown) => unknown) | undefined => {
+  if (leafEncoders.has(ast)) return leafEncoders.get(ast)
+  let encode: ((value: unknown) => unknown) | undefined
+  try {
+    encode = Schema.encodeUnknownSync(
+      Schema.toCodecJson(Schema.make<Schema.Codec<unknown, unknown>>(redactAST(ast)))
+    )
+  } catch {
+    encode = undefined
+  }
+  leafEncoders.set(ast, encode)
+  return encode
+}
+const guards = new WeakMap<SchemaAST.AST, (value: unknown) => boolean>()
+const guardOf = (ast: SchemaAST.AST): (value: unknown) => boolean => {
+  let guard = guards.get(ast)
+  if (guard === undefined) {
+    const is = Schema.is(Schema.make<Schema.Top>(ast))
+    guard = (value) => {
+      try {
+        return is(value)
+      } catch {
+        return false
+      }
+    }
+    guards.set(ast, guard)
+  }
+  return guard
+}
+const isPlainRecord = (value: unknown): value is Record<PropertyKey, unknown> =>
+  typeof value === "object" && value !== null && !Array.isArray(value) && !Redacted.isRedacted(value)
+
+/**
+ * Encodes `value` through `ast`. When the whole fails, a struct, record,
+ * tuple or array is encoded part by part, and a union through the member the
+ * value belongs to, so only the leaf that fails falls back. A failing leaf
+ * whose Schema declares a `Schema.Redacted` anywhere is a placeholder, since
+ * `structural` can't tell which of its values is secret.
+ */
+const encodeAt = (ast: SchemaAST.AST, value: unknown): Schema.Json => {
+  const encode = encoderOf(ast)
+  if (encode !== undefined) {
+    try {
+      // A Schema such as `Schema.Any` passes a value through, so the result goes through `structural` too.
+      return structural(encode(value))
+    } catch {
+      // Encoded part by part below.
+    }
+  }
+  if (ast.encoding === undefined) {
+    switch (ast._tag) {
+      case "Suspend":
+        return encodeAt(ast.thunk(), value)
+      case "Objects": {
+        if (!isPlainRecord(value)) break
+        const out: Record<string, Schema.Json> = {}
+        const named = new Set<PropertyKey>()
+        for (const property of ast.propertySignatures) {
+          named.add(property.name)
+          if (typeof property.name !== "string" || !Object.hasOwn(value, property.name)) continue
+          out[property.name] = encodeAt(property.type, value[property.name])
+        }
+        const index = ast.indexSignatures[0]
+        if (index !== undefined) {
+          for (const key of Object.keys(value)) {
+            if (!named.has(key)) out[key] = encodeAt(index.type, value[key])
+          }
+        }
+        return out
+      }
+      case "Arrays": {
+        if (!Array.isArray(value)) break
+        const rest = ast.rest[0]
+        return value.map((item, i) => {
+          const element = i < ast.elements.length ? ast.elements[i] : rest
+          return element === undefined ? fallback(ast, item) : encodeAt(element, item)
+        })
+      }
+      case "Union": {
+        const member = ast.types.find((type) => guardOf(type)(value))
+        if (member !== undefined) return encodeAt(member, value)
+        break
+      }
+    }
+  }
+  return fallback(ast, value)
+}
+const fallback = (ast: SchemaAST.AST, value: unknown): Schema.Json =>
+  redactAST(ast) === ast ? structural(value) : { "~redacted": true }
 
 /**
  * Encodes a value through a Schema with every `Schema.Redacted` redacted. A
- * struct is encoded field by field, so a field that fails, such as a `File`
- * under `Schema.Any`, falls back to `structural` on its own.
+ * leaf that fails to encode, such as a `File` under `Schema.instanceOf`,
+ * falls back to `structural` on its own, and its siblings keep their codecs.
  *
  * @internal
  */
 export const encodeArgs = (schema: Schema.Top, value: unknown): Schema.Json => {
+  // A struct or a class is encoded field by field.
   const fields = (schema as { readonly fields?: Schema.Struct.Fields }).fields
-  if (
-    fields !== undefined && typeof value === "object" && value !== null && !Array.isArray(value) &&
-    !Redacted.isRedacted(value)
-  ) {
+  if (fields !== undefined && isPlainRecord(value)) {
     const out: Record<string, Schema.Json> = {}
-    const record = value as Record<string, unknown>
     for (const key of Object.keys(fields)) {
-      if (!Object.hasOwn(record, key)) continue
-      out[key] = encodeArgs(fields[key] as Schema.Top, record[key])
+      if (!Object.hasOwn(value, key)) continue
+      out[key] = encodeAt((fields[key] as Schema.Top).ast, value[key])
     }
     return out
   }
-  let encode = argEncoders.get(schema)
-  if (encode === undefined) {
-    try {
-      encode = Schema.encodeUnknownSync(
-        Schema.toCodecJson(Schema.make<Schema.Codec<unknown, unknown>>(redactAST(schema.ast)))
-      )
-    } catch {
-      encode = structural
-    }
-    argEncoders.set(schema, encode)
-  }
-  try {
-    // A Schema such as `Schema.Any` passes a value through, so the result goes through `structural` too.
-    return structural(encode(value))
-  } catch {
-    return structural(value)
-  }
+  return encodeAt(schema.ast, value)
 }
 
 const encodeCause = (cause: Cause.Cause<unknown>): typeof CauseWire.Type => ({

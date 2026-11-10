@@ -1,5 +1,20 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Context, Effect, Layer, LayerMap, Option, Redacted, Schema, SchemaTransformation, Stream } from "effect"
+import {
+  Cause,
+  Context,
+  Deferred,
+  Effect,
+  Exit,
+  Fiber,
+  Layer,
+  LayerMap,
+  Option,
+  Redacted,
+  Schema,
+  SchemaTransformation,
+  Scope,
+  Stream
+} from "effect"
 import { AsyncResult, Loader } from "effect/reactivity"
 import { TestClock } from "effect/testing"
 import { Command, Component, Feature, MessageLog, Renderer, Subscription } from "effect/ui"
@@ -603,6 +618,159 @@ describe("Runtime", () => {
       )
     })
 
+    it.effect("a detached run's Scope closes with the run's own exit", () =>
+      provideHost(Effect.gen(function*() {
+        const exits: Array<string> = []
+        class Tx extends Command.Service<Tx>()(
+          "test/Tx",
+          { args: { outcome: Schema.Literals(["succeed", "fail", "hold"]) }, invalidates: () => [] },
+          Effect.succeed(({ outcome }: { readonly outcome: "succeed" | "fail" | "hold" }) =>
+            Effect.acquireRelease(Effect.void, (_, exit) =>
+              Effect.sync(() =>
+                exits.push(
+                  Exit.isSuccess(exit) ? "Success" : Cause.hasFails(exit.cause) ? "Fail" : "Interrupt"
+                )
+              )).pipe(
+                Effect.andThen(
+                  outcome === "succeed" ? Effect.void : outcome === "fail" ? Effect.fail("rejected") : Effect.never
+                )
+              )
+          )
+        ) {}
+        const Msg = Schema.TaggedUnion({
+          Issue: { outcome: Schema.Literals(["succeed", "fail", "hold"]) },
+          Stop: {},
+          Done: {}
+        })
+        const done = Command.match({
+          onSuccess: () => Msg.make({ _tag: "Done" }),
+          onFailure: () => Msg.make({ _tag: "Done" })
+        })
+        const Tx_ = Component.provide(
+          Component.make({
+            name: "Tx",
+            model: Schema.Null,
+            message: Msg,
+            init: () => null,
+            update: (model, message, $) =>
+              Msg.match(message, {
+                Issue: ({ outcome }) => $.run(Tx.make({ outcome }).pipe(done)),
+                Stop: () => $.run(Command.interrupt(Tx)),
+                Done: () => model
+              }),
+            view: (_, h) => h.text("tx")
+          }),
+          Tx.layer
+        )
+        const root = yield* TestHost.mount(Tx_, {})
+        yield* TestHost.settle
+        for (const outcome of ["succeed", "fail", "hold"] as const) {
+          root.send(Msg.make({ _tag: "Issue", outcome }))
+          yield* TestHost.settle
+        }
+        root.send(Msg.make({ _tag: "Stop" }))
+        yield* TestHost.settle
+        assert.deepStrictEqual(exits, ["Success", "Fail", "Interrupt"])
+      })))
+
+    // A body that can't be interrupted, so an owner that only asks it to stop closes before it ends.
+    const makeStubborn = () => {
+      const events: Array<string> = []
+      const gate = Deferred.makeUnsafe<void>()
+      class Stubborn extends Command.Service<Stubborn>()(
+        "test/Stubborn",
+        { args: {}, invalidates: () => [] },
+        Effect.gen(function*() {
+          yield* Effect.addFinalizer(() => Effect.sync(() => events.push("build released")))
+          return () =>
+            Effect.uninterruptible(Effect.andThen(Deferred.await(gate), Effect.sync(() => events.push("body done"))))
+        })
+      ) {}
+      const Msg = Schema.TaggedUnion({ Close: {}, Done: {} })
+      const Child = Component.make({
+        name: "Child",
+        model: Schema.Null,
+        message: Msg,
+        init: ($) => $.set(null).run(Stubborn.make().pipe(Command.map(() => Msg.make({ _tag: "Done" })))),
+        update: (model) => model,
+        view: (_, h) => h.text("child")
+      })
+      const parent = <R>(child: Component.Component<"Child", {}, null, any, never, R, any>) =>
+        Component.make({
+          name: "Parent",
+          model: Schema.Boolean,
+          message: Msg,
+          init: () => true,
+          update: (open, message) => message._tag === "Close" ? false : open,
+          view: (open, h) => h.el("div", open ? h.child(child, { key: "child", props: {} }) : null)
+        })
+      return { events, gate, Stubborn, Child, parent, Msg }
+    }
+
+    it.effect("closing the root waits for a detached run to exit", () => {
+      const { Child, Msg, Stubborn, events, gate, parent } = makeStubborn()
+      return Effect.gen(function*() {
+        const scope = yield* Scope.make()
+        const root = yield* TestHost.mount(parent(Child), {}).pipe(Scope.provide(scope))
+        yield* TestHost.settle
+        root.send(Msg.make({ _tag: "Close" }))
+        yield* TestHost.settle
+        assert.strictEqual(root.pending().length, 1)
+        const closing = yield* Effect.forkChild(Scope.close(scope, Exit.void))
+        yield* TestHost.settle
+        assert.isUndefined(closing.pollUnsafe())
+        Deferred.doneUnsafe(gate, Exit.void)
+        yield* TestHost.settle
+        yield* Fiber.join(closing)
+        events.push("root closed")
+        assert.deepStrictEqual(events, ["body done", "root closed"])
+      }).pipe(Effect.provide(Stubborn.layer), Effect.provide(TestHost.layer()))
+    })
+
+    it.effect("closing the root waits for a run that ends with its instance", () =>
+      provideHost(Effect.gen(function*() {
+        const events: Array<string> = []
+        const gate = Deferred.makeUnsafe<void>()
+        const Hold = Command.make(
+          "test/Hold",
+          { args: {} },
+          () =>
+            Effect.uninterruptible(Effect.andThen(Deferred.await(gate), Effect.sync(() => events.push("body done"))))
+        )
+        const Holder = Component.make({
+          name: "Holder",
+          model: Schema.Null,
+          message: Schema.Never,
+          init: ($) => $.set(null).run(Hold().pipe(Command.map(() => undefined as never))),
+          update: (model) => model,
+          view: (_, h) => h.text("holder")
+        })
+        const scope = yield* Scope.make()
+        yield* TestHost.mount(Holder, {}).pipe(Scope.provide(scope))
+        yield* TestHost.settle
+        const closing = yield* Effect.forkChild(Scope.close(scope, Exit.void))
+        yield* TestHost.settle
+        assert.isUndefined(closing.pollUnsafe())
+        Deferred.doneUnsafe(gate, Exit.void)
+        yield* TestHost.settle
+        yield* Fiber.join(closing)
+        events.push("root closed")
+        assert.deepStrictEqual(events, ["body done", "root closed"])
+      })))
+
+    it.effect("closing the Layer build that owns a detached run waits for it before the build is released", () =>
+      provideHost(Effect.gen(function*() {
+        const { Child, Msg, Stubborn, events, gate, parent } = makeStubborn()
+        const root = yield* TestHost.mount(parent(Component.provide(Child, Stubborn.layer)), {})
+        yield* TestHost.settle
+        root.send(Msg.make({ _tag: "Close" }))
+        yield* TestHost.settle
+        assert.deepStrictEqual(events, [])
+        Deferred.doneUnsafe(gate, Exit.void)
+        yield* TestHost.settle
+        assert.deepStrictEqual(events, ["body done", "build released"])
+      })))
+
     it.effect("switch runs, Stream Commands and Command.make Commands end with their instance", () =>
       provideHost(Effect.gen(function*() {
         const stopped: Array<string> = []
@@ -1055,6 +1223,65 @@ describe("Runtime", () => {
       })
       assert.notInclude(JSON.stringify(encoded), ":\"secret\"")
       assert.notInclude(JSON.stringify(encoded), "hidden")
+    })
+
+    it("the Wire's group is the group fields encoded with redaction, for a run and an Interrupt", () => {
+      const Sync = Command.make(
+        "Sync",
+        { args: { secret: Schema.RedactedFromValue(Schema.String), room: Schema.String }, group: ["secret", "room"] },
+        () => Effect.succeed(1)
+      )
+      const command = Sync({ secret: Redacted.make("secret-token"), room: "a" })
+      const interrupt = Command.interrupt(Sync, { secret: Redacted.make("secret-token"), room: "a" })
+      // The scheduling key keeps the real encoding, so two secrets are two groups.
+      assert.strictEqual(command.groupKey, interrupt.groupKey)
+      assert.include(command.groupKey, "secret-token")
+      const placeholder = JSON.stringify({ room: "a", secret: { "~redacted": true } })
+      assert.strictEqual(MessageLog.encodeCommand(command).group, placeholder)
+      assert.strictEqual(MessageLog.encodeCommand(interrupt).group, placeholder)
+      assert.notInclude(JSON.stringify(MessageLog.encodeCommand(command)), "secret-token")
+      assert.notInclude(JSON.stringify(MessageLog.encodeCommand(interrupt)), "secret-token")
+    })
+
+    it("the Wire falls back on the leaf that fails, keeping its siblings' codecs and redaction", () => {
+      const EncodedSecret = Schema.Redacted(Schema.String).pipe(
+        Schema.decodeTo(
+          Schema.String,
+          SchemaTransformation.transform({ decode: Redacted.value, encode: Redacted.make })
+        )
+      )
+      const Upload = Command.make(
+        "Upload",
+        {
+          args: {
+            items: Schema.Array(Schema.Struct({
+              secret: EncodedSecret,
+              file: Schema.instanceOf(File),
+              n: Schema.NumberFromString
+            })),
+            pair: Schema.Tuple([Schema.NumberFromString, Schema.instanceOf(File)]),
+            choice: Schema.Union([Schema.NumberFromString, Schema.Struct({ file: Schema.instanceOf(File) })]),
+            hidden: Schema.Option(Schema.Redacted(Schema.String))
+          }
+        },
+        () => Effect.succeed(1)
+      )
+      const file = new File(["x"], "a.txt")
+      const command = Upload({
+        items: [{ secret: "must-not-log", file, n: 2 }],
+        pair: [3, file],
+        choice: { file },
+        // A malformed value under a Schema that declares a Redacted is a placeholder, not `structural`.
+        hidden: "must-not-log-either" as any
+      })
+      const encoded = MessageLog.encodeCommand(command)
+      assert.deepStrictEqual(encoded.args, {
+        items: [{ secret: { "~redacted": true }, file: {}, n: "2" }],
+        pair: ["3", {}],
+        choice: { file: {} },
+        hidden: { "~redacted": true }
+      })
+      assert.notInclude(JSON.stringify(encoded), "must-not-log")
     })
 
     it("Renderer.Ref encodes as its key, and the log shows a ref Command's args that way", () => {
