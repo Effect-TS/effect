@@ -211,6 +211,12 @@ export interface Service<
    * build closes while no other build watches or waits for the entry. The
    * call never fails with an error the fetcher didn't raise, and never
    * returns a stale value in its place.
+   *
+   * It returns the server value, never a patched one. Under a run's live
+   * patch it returns a fresh entry's value, and otherwise calls the fetcher
+   * for its callers alone, storing nothing. Inside a run, on an entry the
+   * run invalidates, it always calls the fetcher in the caller's fiber, and
+   * stores nothing.
    */
   get(args: Args): Effect.Effect<A, E, Self | Cache>
   /**
@@ -236,6 +242,21 @@ export interface Service<
    * keep it alive.
    */
   peek(args: Args): Effect.Effect<AsyncResult.AsyncResult<A, E>, never, Cache>
+  /** One entry, as an invalidation target. */
+  entry(args: Args): EntryTarget<Read<Args, A, E>>
+  /**
+   * An optimistic patch of one entry, applied over its server value while the
+   * run that declares it is queued or running. It implies invalidation of
+   * the entry.
+   */
+  patch(args: Args, f: (value: A) => A): Patch<Read<Args, A, E>>
+  /**
+   * An optimistic patch of every entry of the read that holds a Success when
+   * the run is issued. It implies invalidation of the whole read.
+   */
+  patchAll(f: (value: A, args: Args) => A): Patch<Read<Args, A, E>>
+  /** A write of a run's result into one entry, for a Command's `writes`. */
+  set(args: Args, value: A): Write<Read<Args, A, E>>
 }
 
 /**
@@ -428,14 +449,20 @@ export const Service: <Self>() => <
       })
     )
     static get(args: unknown) {
-      return withCache((cache, context) => cache.get(def, args, fetcherOf(context)))
+      return withCache((cache, context) =>
+        cache.get(def, args, fetcherOf(context), Context.get(context, internal.CurrentRun))
+      )
     }
     static prefetch(args: unknown) {
       return withCache((cache, context) => Effect.sync(() => cache.prefetch(def, args, fetcherOf(context))))
     }
     static invalidate(args?: unknown) {
       return withCache((cache) =>
-        Effect.sync(() => cache.invalidate([args === undefined ? { _tag: "Read", def } : { _tag: "Entry", def, args }]))
+        Effect.sync(() =>
+          cache.invalidate([args === undefined ? ReadService : internal.entryTarget(ReadService, args)], {
+            byHand: true
+          })
+        )
       )
     }
     static changes(args: unknown) {
@@ -464,6 +491,18 @@ export const Service: <Self>() => <
     }
     static peek(args: unknown) {
       return withCache((cache) => Effect.sync(() => cache.peek(def, args)))
+    }
+    static entry(args: unknown) {
+      return internal.entryTarget(ReadService, args)
+    }
+    static patch(args: unknown, f: (value: any) => any) {
+      return internal.patchOne(ReadService, args, f)
+    }
+    static patchAll(f: (value: any, args: any) => any) {
+      return internal.patchAll(ReadService, f)
+    }
+    static set(args: unknown, value: unknown) {
+      return internal.write(ReadService, args, value)
     }
   }
   return ReadService
@@ -497,6 +536,220 @@ export interface Tag {
 export const Tag = (name: string): Tag => ({ _tag: "Tag", name })
 
 /**
+ * One entry of a read, as an invalidation target. Built by a read's `entry`.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.1.3
+ */
+export interface EntryTarget<R extends Read.Any = Read.Any> {
+  readonly _tag: "Entry"
+  readonly read: R
+  readonly args: Read.Args<R>
+}
+
+/**
+ * What a run invalidates: a whole read, one entry or a tag.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.1.3
+ */
+export type Target = Read.Any | EntryTarget | Tag
+
+/**
+ * An optimistic patch, built by a read's `patch` or `patchAll`. It is a
+ * pure function from a server value to the value to show.
+ *
+ * **Details**
+ *
+ * A patch is live while its run is queued or running: nothing fetches the
+ * entry, and its watchers see the patched value. After the run succeeds the
+ * patch is held until the entry settles or a write is stored. A failure, an
+ * interrupt or a defect drops it at once.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.1.3
+ */
+export type Patch<R extends Read.Any = Read.Any> =
+  | {
+    readonly _tag: "Patch"
+    readonly read: R
+    readonly args: Read.Args<R>
+    readonly patch: (value: Read.Success<R>) => Read.Success<R>
+  }
+  | {
+    readonly _tag: "PatchAll"
+    readonly read: R
+    readonly patch: (value: Read.Success<R>, args: Read.Args<R>) => Read.Success<R>
+  }
+
+/**
+ * A write of a run's result into one entry, built by a read's `set`. A
+ * Command's `writes` is the only place one is used.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.1.3
+ */
+export interface Write<R extends Read.Any = Read.Any> {
+  readonly _tag: "Set"
+  readonly read: R
+  readonly args: Read.Args<R>
+  readonly value: Read.Success<R>
+}
+
+/**
+ * Applies, in order, every patch that targets the entry of `read` at `args`
+ * to `value`, and leaves the others out.
+ *
+ * **When to use**
+ *
+ * Use to test a Command's `optimistic` patches without a cache. It is the
+ * function the cache itself calls.
+ *
+ * **Example** (Testing a patch)
+ *
+ * ```ts import.meta.vitest
+ * import { Effect, Schema } from "effect"
+ * import { Loader } from "effect/reactivity"
+ *
+ * class GetCount extends Loader.Service<GetCount>()("counts/GetCount", {
+ *   args: { id: Schema.String },
+ *   success: Schema.Number,
+ *   error: Schema.Never,
+ *   staleTime: "1 minute"
+ * }, Effect.succeed(() => Effect.succeed(0))) {}
+ *
+ * const patches = [GetCount.patch({ id: "a" }, (n) => n + 1)]
+ * Loader.applyPatches(patches, GetCount, { id: "a" }, 1) // => 2
+ * Loader.applyPatches(patches, GetCount, { id: "b" }, 1) // => 1
+ * ```
+ *
+ * @stability experimental
+ * @category utils
+ * @since 4.1.3
+ */
+export const applyPatches: <R extends Read.Any>(
+  patches: ReadonlyArray<Patch>,
+  read: R,
+  args: Read.Args<R>,
+  value: Read.Success<R>
+) => Read.Success<R> = internal.applyPatches as any
+
+/**
+ * Whether a run with these `invalidates` and `optimistic` declarations
+ * invalidates the entry of `read` at `args`: a declared target hits it, or
+ * a patch targets it.
+ *
+ * **When to use**
+ *
+ * Use to test a Command's declarations without a cache. It is the predicate
+ * the cache resolves a run's targets with, and the one `get` uses inside a
+ * run to tell the run's own targets.
+ *
+ * **Details**
+ *
+ * A write stored fresh is left out of its run's invalidation. This predicate
+ * doesn't know about writes: it answers before they are subtracted.
+ *
+ * **Example** (Testing a Command's targets)
+ *
+ * ```ts import.meta.vitest
+ * import { Effect, Schema } from "effect"
+ * import { Loader } from "effect/reactivity"
+ *
+ * const Users = Loader.Tag("users")
+ *
+ * class GetUser extends Loader.Service<GetUser>()("users/GetUser", {
+ *   args: { id: Schema.String },
+ *   success: Schema.String,
+ *   error: Schema.Never,
+ *   staleTime: "1 minute",
+ *   tags: [Users]
+ * }, Effect.succeed(({ id }) => Effect.succeed(id))) {}
+ *
+ * Loader.invalidatesEntry({ invalidates: [Users] }, GetUser, { id: "1" }) // => true
+ * Loader.invalidatesEntry({ invalidates: [GetUser.entry({ id: "1" })] }, GetUser, { id: "2" }) // => false
+ * ```
+ *
+ * @stability experimental
+ * @category utils
+ * @since 4.1.3
+ */
+export const invalidatesEntry: <R extends Read.Any>(
+  run: {
+    readonly invalidates: ReadonlyArray<Target>
+    readonly optimistic?: ReadonlyArray<Patch> | undefined
+  },
+  read: R,
+  args: Read.Args<R>
+) => boolean = internal.invalidatesEntry as any
+
+/**
+ * An opaque snapshot of one entry of a read, held in a Model field. The
+ * effect/ui runtime builds it and opens it; nothing else can.
+ *
+ * **Details**
+ *
+ * It holds the read's name, the label, the entry's arguments, a settled
+ * result and whether that result includes an unconfirmed patch. It never
+ * holds `Initial`, and `waiting` always decodes as false.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.1.3
+ */
+export interface Snapshot<in out R extends Read.Any, in out Label extends string> {
+  readonly "~effect/reactivity/Loader/Snapshot": {
+    readonly _R: Types.Invariant<R>
+    readonly _Label: Types.Invariant<Label>
+  }
+}
+
+/**
+ * The Schema `Loader.Snapshot` returns. Its type parameters are the read's
+ * `args`, `success` and `error` Schemas.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.1.3
+ */
+export interface SnapshotSchema<R extends Read.Any, Label extends string> extends
+  Schema.declareConstructor<
+    Snapshot<R, Label>,
+    Snapshot<R, Label>,
+    readonly [
+      Schema.Codec<Read.Args<R>, unknown>,
+      Schema.Codec<Read.Success<R>, unknown>,
+      Schema.Codec<Read.Error<R>, unknown>
+    ]
+  >
+{}
+
+/**
+ * The Schema of a Model field that holds a snapshot of `read`, branded by
+ * the read and the label.
+ *
+ * **Details**
+ *
+ * Two fields of one read can't take each other's snapshot: the type and the
+ * check both carry the read and the label. The JSON codec encodes the
+ * arguments, the value and the errors through the read's own Schemas, so a
+ * walk over a Model's Schema reaches what a snapshot holds, a
+ * `Schema.Redacted` included.
+ *
+ * @stability experimental
+ * @category schemas
+ * @since 4.1.3
+ */
+export const Snapshot = <R extends Read.Any, const Label extends string>(
+  read: R,
+  label: Label
+): SnapshotSchema<R, Label> => internal.snapshotSchema(read, label) as any
+
+/**
  * What started a fetch. Every fetch records exactly one, and the fetcher
  * never sees it.
  *
@@ -505,7 +758,8 @@ export const Tag = (name: string): Tag => ({ _tag: "Tag", name })
  * - `watch`: an entry's watcher count went from zero to one over a cold or
  *   stale entry. A watcher that joins others never refetches.
  * - `get` and `prefetch`: the call found a cold or stale entry with no
- *   fetch in flight.
+ *   fetch in flight. A `get` that calls the fetcher for its callers alone,
+ *   storing nothing, records `get` too.
  * - `visibility` and `connectivity`: the host signal went from false to
  *   true, and a watched entry was stale or its interval had elapsed.
  * - `interval`: a watched entry's `refetchInterval` fired.
@@ -656,6 +910,148 @@ export const FetchRestarted: typeof internal.FetchRestarted = internal.FetchRest
 export type FetchRestarted = internal.FetchRestarted
 
 /**
+ * A patch made a value the read's `success` Schema rejects, the first time it
+ * was applied. The value is used as is.
+ *
+ * @stability experimental
+ * @category problems
+ * @since 4.1.3
+ */
+export const PatchInvalid: typeof internal.PatchInvalid = internal.PatchInvalid
+
+/**
+ * A patch made a value the read's `success` Schema rejects, the first time it
+ * was applied. The value is used as is.
+ *
+ * @stability experimental
+ * @category problems
+ * @since 4.1.3
+ */
+export type PatchInvalid = internal.PatchInvalid
+
+/**
+ * A patch changed the server value it was given, the first time it was
+ * applied. A patch must return a new value.
+ *
+ * @stability experimental
+ * @category problems
+ * @since 4.1.3
+ */
+export const PatchMutated: typeof internal.PatchMutated = internal.PatchMutated
+
+/**
+ * A patch changed the server value it was given, the first time it was
+ * applied. A patch must return a new value.
+ *
+ * @stability experimental
+ * @category problems
+ * @since 4.1.3
+ */
+export type PatchMutated = internal.PatchMutated
+
+/**
+ * A run wrote an entry that existed when it started and that neither its
+ * `invalidates` nor a patch covers. The write applies.
+ *
+ * @stability experimental
+ * @category problems
+ * @since 4.1.3
+ */
+export const UncoveredWrite: typeof internal.UncoveredWrite = internal.UncoveredWrite
+
+/**
+ * A run wrote an entry that existed when it started and that neither its
+ * `invalidates` nor a patch covers. The write applies.
+ *
+ * @stability experimental
+ * @category problems
+ * @since 4.1.3
+ */
+export type UncoveredWrite = internal.UncoveredWrite
+
+/**
+ * A read's own `invalidate` was called on a per-request server cache, where
+ * an entry settles once. Nothing changes.
+ *
+ * @stability experimental
+ * @category problems
+ * @since 4.1.3
+ */
+export const InvalidateIgnored: typeof internal.InvalidateIgnored = internal.InvalidateIgnored
+
+/**
+ * A read's own `invalidate` was called on a per-request server cache, where
+ * an entry settles once. Nothing changes.
+ *
+ * @stability experimental
+ * @category problems
+ * @since 4.1.3
+ */
+export type InvalidateIgnored = internal.InvalidateIgnored
+
+/**
+ * An entry failed to encode when the server cache was serialised. It is left
+ * out, and the client fetches it.
+ *
+ * @stability experimental
+ * @category problems
+ * @since 4.1.3
+ */
+export const EncodeFailed: typeof internal.EncodeFailed = internal.EncodeFailed
+
+/**
+ * An entry failed to encode when the server cache was serialised. It is left
+ * out, and the client fetches it.
+ *
+ * @stability experimental
+ * @category problems
+ * @since 4.1.3
+ */
+export type EncodeFailed = internal.EncodeFailed
+
+/**
+ * The serialised cache the client hydrates from isn't the expected shape. It
+ * is ignored whole.
+ *
+ * @stability experimental
+ * @category problems
+ * @since 4.1.3
+ */
+export const HydrationMalformed: typeof internal.HydrationMalformed = internal.HydrationMalformed
+
+/**
+ * The serialised cache the client hydrates from isn't the expected shape. It
+ * is ignored whole.
+ *
+ * @stability experimental
+ * @category problems
+ * @since 4.1.3
+ */
+export type HydrationMalformed = internal.HydrationMalformed
+
+/**
+ * A hydrated entry's arguments or value failed to decode when its read
+ * registered. The entry is cold. `logKey` is there only when the arguments
+ * decoded.
+ *
+ * @stability experimental
+ * @category problems
+ * @since 4.1.3
+ */
+export const HydrationDecodeFailed: typeof internal.HydrationDecodeFailed = internal.HydrationDecodeFailed
+
+/**
+ * A hydrated entry's arguments or value failed to decode when its read
+ * registered. The entry is cold. `logKey` is there only when the arguments
+ * decoded.
+ *
+ * @stability experimental
+ * @category problems
+ * @since 4.1.3
+ */
+export type HydrationDecodeFailed = internal.HydrationDecodeFailed
+
+/**
  * The problems the cache reports. A problem never changes what the cache
  * does: it is reported, and behaviour carries on.
  *
@@ -669,7 +1065,18 @@ export type FetchRestarted = internal.FetchRestarted
  * @category problems
  * @since 4.1.3
  */
-export type Problem = DuplicateName | IntervalThrew | IntervalInvalid | FetchRestarted
+export type Problem =
+  | DuplicateName
+  | IntervalThrew
+  | IntervalInvalid
+  | FetchRestarted
+  | PatchInvalid
+  | PatchMutated
+  | UncoveredWrite
+  | InvalidateIgnored
+  | EncodeFailed
+  | HydrationMalformed
+  | HydrationDecodeFailed
 
 /**
  * Helper types for `Problem`.

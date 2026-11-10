@@ -66,4 +66,44 @@ describe("Loader", () => {
     expect(Loader.Service<any>()).type.toBeCallableWith("Ok", options, fetcher)
     expect(Loader.Service<any>()).type.not.toBeCallableWith("Bad", options, needsApi)
   })
+
+  it("patches and writes are typed by their read", () => {
+    GetUser.patch({ id: "1" }, (user) => {
+      expect(user).type.toBe<User>()
+      return user
+    })
+    GetUser.patchAll((user, args) => {
+      expect(user).type.toBe<User>()
+      expect(args).type.toBe<{ readonly id: string }>()
+      return user
+    })
+    expect(GetUser.patch).type.not.toBeCallableWith({ id: "1" }, (user: User) => user.name)
+    expect(GetUser.set).type.toBeCallableWith({ id: "1" }, { id: "1", name: "Ann" })
+    expect(GetUser.set).type.not.toBeCallableWith({ id: "1" }, { id: "1" })
+    expect(Loader.applyPatches([], Count, "a", 1)).type.toBe<number>()
+  })
+
+  it("reads, entries and tags are targets; patches of any read are patches", () => {
+    const targets: ReadonlyArray<Loader.Target> = [GetUser, Count.entry("a"), Loader.Tag("users")]
+    const patches: ReadonlyArray<Loader.Patch> = [GetUser.patch({ id: "1" }, (user) => user), Count.patchAll((n) => n)]
+    const writes: ReadonlyArray<Loader.Write> = [Count.set("a", 1)]
+    expect(Loader.invalidatesEntry({ invalidates: targets, optimistic: patches }, GetUser, { id: "1" })).type.toBe<
+      boolean
+    >()
+    expect(writes).type.toBe<ReadonlyArray<Loader.Write>>()
+  })
+
+  it("a snapshot is branded by its read and label, and needs no services", () => {
+    const Model = Schema.Struct({ user: Loader.Snapshot(GetUser, "user") })
+    expect<typeof Model.Type["user"]>().type.toBe<Loader.Snapshot<typeof GetUser, "user">>()
+    expect<typeof Model.DecodingServices>().type.toBe<never>()
+    expect<typeof Model.EncodingServices>().type.toBe<never>()
+    expect(Model.make).type.toBeCallableWith({ user: {} as Loader.Snapshot<typeof GetUser, "user"> })
+    expect(Model.make).type.not.toBeCallableWith({
+      user: {} as Loader.Snapshot<typeof GetUser, "other">
+    })
+    expect(Model.make).type.not.toBeCallableWith({
+      user: {} as Loader.Snapshot<typeof Count, "user">
+    })
+  })
 })

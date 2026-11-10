@@ -27,7 +27,7 @@
  *   return yield* TestLoader.fetches
  * }).pipe(Effect.provide(Layer.merge(GetUser.layer, TestLoader.layer())))
  *
- * await Effect.runPromise(program) // => [{ read: "users/GetUser", logKey: `{"id":"1"}`, trigger: "get", restart: false }]
+ * await Effect.runPromise(program) // => [{ read: "users/GetUser", logKey: `{"id":"1"}`, trigger: "get", restart: false, stored: true }]
  * ```
  *
  * @stability experimental
@@ -44,12 +44,17 @@ import * as Loader from "../reactivity/Loader.ts"
 
 /**
  * A fetch the cache started: the read's name, the entry's log key, the
- * trigger, and whether it replaced an interrupted fetch.
+ * trigger, whether it replaced an interrupted fetch, and whether its result
+ * is stored.
  *
  * **Details**
  *
  * The log key is the entry's key with every `Schema.Redacted` argument
  * redacted. A caller that joins a fetch in flight records nothing.
+ *
+ * `stored` is false for a fetcher call made for `get` callers alone: a
+ * run reading back an entry it invalidates, or a `get` on a stale entry
+ * under a live patch. Its trigger is `get`.
  *
  * @stability experimental
  * @category models
@@ -60,6 +65,7 @@ export interface Fetch {
   readonly logKey: string
   readonly trigger: Loader.Trigger
   readonly restart: boolean
+  readonly stored: boolean
 }
 
 /**
@@ -67,9 +73,13 @@ export interface Fetch {
  *
  * **Details**
  *
- * `stored` is the entry's state, `Initial` during a first fetch. `stale` is
- * whether the next trigger would refetch it, `watchers` how many watch it,
- * and `trigger` what started the fetch in flight.
+ * `stored` is the entry's server state, `Initial` during a first fetch.
+ * `view` is that state with every patch applied, and `patched` whether it
+ * includes one. `stale` is whether the next trigger would refetch it,
+ * `watchers` how many watch it. `fetch` is `held` while a refetch waits for
+ * a live patch's run to exit, and `trigger` is what started the fetch in
+ * flight, or what the held one will start with. `patches` counts the live
+ * patches and those held after their run succeeded.
  *
  * @stability experimental
  * @category models
@@ -77,10 +87,13 @@ export interface Fetch {
  */
 export interface Entry<A, E> {
   readonly stored: AsyncResult.AsyncResult<A, E>
+  readonly view: AsyncResult.AsyncResult<A, E>
+  readonly patched: boolean
   readonly stale: boolean
   readonly watchers: number
-  readonly fetch: "none" | "running"
+  readonly fetch: "none" | "running" | "held"
   readonly trigger: Loader.Trigger | undefined
+  readonly patches: { readonly live: number; readonly held: number }
 }
 
 /**
