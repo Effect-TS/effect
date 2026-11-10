@@ -1,6 +1,6 @@
-import { OpenAiWorkloadIdentity } from "@effect/ai-openai"
+import { OpenAiClient, OpenAiConfig, OpenAiWorkloadIdentity } from "@effect/ai-openai"
 import type { Effect, FileSystem, Layer, PlatformError, Redacted } from "effect"
-import type { HttpClient } from "effect/http"
+import { HttpClient } from "effect/http"
 import { describe, expect, it } from "tstyche"
 
 declare const identityToken: Effect.Effect<
@@ -27,5 +27,14 @@ describe("OpenAiWorkloadIdentity", () => {
     expect(OpenAiWorkloadIdentity.layer(options)).type.toBe<
       Layer.Layer<HttpClient.HttpClient, never, HttpClient.HttpClient | FileSystem.FileSystem>
     >()
+  })
+
+  it("leaves the existing client transforms accepted", () => {
+    expect(OpenAiClient.layer).type.toBeCallableWith({ transformClient: HttpClient.timeout("30 seconds") })
+    expect(OpenAiClient.layer).type.toBeCallableWith({ transformClient: HttpClient.filterStatusOk })
+    expect(OpenAiClient.layer).type.toBeCallableWith({ transformClient: (client: HttpClient.HttpClient) => client })
+    expect(OpenAiConfig.withClientTransform).type.toBeCallableWith(HttpClient.timeout("30 seconds"))
+    expect(OpenAiConfig.withClientTransform).type.toBeCallableWith(HttpClient.filterStatusOk)
+    expect(OpenAiConfig.withClientTransform).type.toBeCallableWith((client: HttpClient.HttpClient) => client)
   })
 })
