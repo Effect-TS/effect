@@ -160,3 +160,9 @@ export * as Tool from "./Tool.ts"
  * @since 4.0.0
  */
 export * as Toolkit from "./Toolkit.ts"
+
+/**
+ * @stability unstable
+ * @since 4.1.3
+ */
+export * as WorkloadIdentity from "./WorkloadIdentity.ts"
