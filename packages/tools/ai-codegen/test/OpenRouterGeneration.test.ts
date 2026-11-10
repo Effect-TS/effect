@@ -7,9 +7,90 @@ import * as Exit from "effect/Exit"
 import * as FileSystem from "effect/FileSystem"
 import * as Layer from "effect/Layer"
 import * as Schema from "effect/Schema"
+import * as SchemaAST from "effect/SchemaAST"
+
+const generateAndImport = Effect.fn(function*(schemas: Record<string, unknown>) {
+  const fs = yield* FileSystem.FileSystem
+  const generator = yield* Generator.CodeGenerator
+  const code = yield* generator.generate({
+    name: "openrouter",
+    packagePath: ".",
+    outputPath: "Generated.ts",
+    specSource: Config.SpecSource.File("fixture.json"),
+    config: new Config.CodegenConfig({
+      spec: "fixture.json",
+      output: "Generated.ts",
+      includeSchemas: ["Root"],
+      closeObjects: true
+    })
+  }, {
+    openapi: "3.1.0",
+    info: { title: "OpenRouter", version: "1.0.0" },
+    paths: {},
+    components: { schemas }
+  })
+  const directory = yield* fs.makeTempDirectoryScoped({ directory: import.meta.dirname })
+  const file = `${directory}/Generated.ts`
+  yield* fs.writeFileString(file, code)
+  const generated = yield* Effect.promise(() => import(file))
+  return generated.Root as Schema.Codec<unknown, unknown>
+})
 
 describe("OpenRouter generation", () => {
+  it.effect("shares references through annotation-only allOf members", () =>
+    Effect.gen(function*() {
+      const schema = yield* generateAndImport({
+        Base: {
+          description: "Base",
+          oneOf: [
+            { type: "object", properties: { a: { type: "string" } }, required: ["a"] },
+            { type: "object", properties: { b: { type: "number" } }, required: ["b"] }
+          ]
+        },
+        Root: {
+          type: "object",
+          properties: {
+            first: { allOf: [{ $ref: "#/components/schemas/Base" }, { description: "First" }] },
+            second: {
+              allOf: [{ description: "Second" }, { $ref: "#/components/schemas/Base" }],
+              description: "Outer"
+            }
+          },
+          required: ["first", "second"]
+        }
+      })
+      assert(SchemaAST.isObjects(schema.ast))
+      const [first, second] = schema.ast.propertySignatures
+      assert(SchemaAST.isSuspend(first.type))
+      assert(SchemaAST.isSuspend(second.type))
+      assert.strictEqual(first.type.thunk(), second.type.thunk())
+      assert.strictEqual(first.type.annotations?.description, "First")
+      assert.strictEqual(second.type.annotations?.description, "Second")
+      assert.strictEqual(first.type.thunk().annotations?.description, "Base")
+
+      const decode = Schema.decodeUnknownExit(schema)
+      const value = { first: { a: "a" }, second: { b: 1 } }
+      assert.deepStrictEqual(decode(value), Exit.succeed(value))
+      assert.isTrue(Exit.isFailure(decode({ first: { a: 1 }, second: { b: 1 } })))
+      assert.isTrue(Exit.isFailure(decode({ first: { a: "a" }, second: { b: "b" } })))
+    }).pipe(Effect.provide(Generator.layerSchema.pipe(Layer.provideMerge(NodeServices.layer)))))
+
   it.effect.each([
+    {
+      name: "merges object constraints beside allOf annotations",
+      schemas: {
+        Base: { type: "object", properties: { base: { type: "string" } } },
+        Root: {
+          allOf: [
+            { description: "Root" },
+            { $ref: "#/components/schemas/Base" },
+            { description: "Extra", properties: { extra: { type: "number" } }, required: ["extra"] }
+          ]
+        }
+      },
+      valid: [{ base: "base", extra: 1 }],
+      invalid: [{ base: "base" }, { base: "base", extra: "extra" }]
+    },
     ...[
       {
         name: "a type array",
@@ -92,30 +173,7 @@ describe("OpenRouter generation", () => {
     }))
   ])("$name", ({ invalid, schemas, valid }) =>
     Effect.gen(function*() {
-      const fs = yield* FileSystem.FileSystem
-      const generator = yield* Generator.CodeGenerator
-      const code = yield* generator.generate({
-        name: "openrouter",
-        packagePath: ".",
-        outputPath: "Generated.ts",
-        specSource: Config.SpecSource.File("fixture.json"),
-        config: new Config.CodegenConfig({
-          spec: "fixture.json",
-          output: "Generated.ts",
-          includeSchemas: ["Root"],
-          closeObjects: true
-        })
-      }, {
-        openapi: "3.1.0",
-        info: { title: "OpenRouter", version: "1.0.0" },
-        paths: {},
-        components: { schemas }
-      })
-      const directory = yield* fs.makeTempDirectoryScoped({ directory: import.meta.dirname })
-      const file = `${directory}/Generated.ts`
-      yield* fs.writeFileString(file, code)
-      const generated = yield* Effect.promise(() => import(file))
-      const schema = generated.Root as Schema.Codec<unknown, unknown>
+      const schema = yield* generateAndImport(schemas)
       const decode = Schema.decodeUnknownExit(schema)
 
       for (const input of valid) {

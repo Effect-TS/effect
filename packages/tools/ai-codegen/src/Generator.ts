@@ -472,8 +472,11 @@ const makeNormalizer = (resolve: (key: string) => JsonSchema.JsonSchema | undefi
       ...(Array.isArray(js.oneOf) ? [{ oneOf: js.oneOf }] : [])
     ]
     const hasOwn = js.properties !== undefined || js.required !== undefined
-    // Preserve references when no intersection is needed.
-    if ((hasOwn ? 1 : 0) + members.length < 2) return js
+    const constraints = members.filter((member) =>
+      !Predicate.isObject(member) || !Object.keys(member).every(isAnnotation)
+    )
+    // Annotation-only members do not require expanding references; the importer attaches their metadata.
+    if ((hasOwn ? 1 : 0) + constraints.length < 2) return js
     const { allOf: _allOf, anyOf: _anyOf, oneOf: _oneOf, ...rest } = js
     if (!isPlainObject(rest)) return js
     const own = pick(rest, (key) => objectKeys.has(key))

@@ -4,7 +4,7 @@
 "@effect/ai-openrouter": patch
 ---
 
-Add experimental `closeObjects`, fix JSON Schema composition and examples, and regenerate the OpenRouter client with a boolean workspace-deletion confirmation flag.
+Add experimental `closeObjects`, fix JSON Schema composition and examples, and regenerate a smaller OpenRouter client with a boolean workspace-deletion confirmation flag.
 
 ### Breaking changes
 
