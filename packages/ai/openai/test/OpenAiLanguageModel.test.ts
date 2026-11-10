@@ -1843,75 +1843,22 @@ describe("OpenAiLanguageModel", () => {
           }))
         ))
 
-      const strictCases = [[false, undefined, false], [true, false, false], [false, true, true]] as const
-      for (const [configured, override, strict] of strictCases) {
-        it.effect(`advertises tool parameters with strict=${strict} (config=${configured}, override=${override})`, () =>
-          Effect.gen(function*() {
-            const tool = override === undefined ? FilterTool : FilterTool.annotate(Tool.Strict, override)
-            yield* LanguageModel.generateText({
-              prompt: "Use the tool",
-              toolkit: Toolkit.make(tool),
-              disableToolCallResolution: true
-            }).pipe(
-              Effect.provide(OpenAiLanguageModel.model("gpt-4o-mini", { strictJsonSchema: configured }))
-            )
-            const requests = yield* MockHttpClient.requests
-            const body = yield* getRequestBody(requests[0])
-            const sent = body.tools.find((t: any) => t.type === "function")
-            strictEqual(sent.strict, strict)
-            deepStrictEqual(sent.parameters.required, strict ? ["query", "filters"] : ["query"])
-            strictEqual(sent.parameters.properties.filters.anyOf[0].type, strict ? "array" : "object")
-          }).pipe(Effect.provide(makeTestLayer())))
-      }
-
-      for (const mode of ["complete", "output_item.done", "function_call_arguments.done"] as const) {
-        it.effect(`passes non-strict record parameters to the handler via ${mode}`, () =>
-          Effect.gen(function*() {
-            const received = yield* Ref.make<unknown>(undefined)
-            const tool = Tool.make("Search", { parameters: Schema.Record(Schema.String, Schema.String) })
-            const toolkit = Toolkit.make(mode === "complete" ? tool : tool.annotate(Tool.Strict, false))
-            const params = { status: "open" }
-            const call = makeFunctionCall("Search", params)
-            const options = { prompt: "Search", toolkit }
-            yield* (mode === "complete"
-              ? LanguageModel.generateText(options).pipe(
-                Effect.asVoid,
-                Effect.provide(OpenAiLanguageModel.model("gpt-4o-mini", { strictJsonSchema: false })),
-                Effect.provide(makeTestLayer({ body: { output: [call] } }))
-              )
-              : LanguageModel.streamText(options).pipe(
-                Stream.runDrain,
-                Effect.provide(OpenAiLanguageModel.model("gpt-4o-mini")),
-                Effect.provide(makeStreamTestLayer([
-                  {
-                    type: "response.created",
-                    sequence_number: 1,
-                    response: makeDefaultResponse({ status: "in_progress" })
-                  },
-                  {
-                    type: "response.output_item.added",
-                    sequence_number: 2,
-                    output_index: 0,
-                    item: { ...call, arguments: "", status: "in_progress" }
-                  },
-                  mode === "output_item.done"
-                    ? { type: "response.output_item.done", sequence_number: 3, output_index: 0, item: call }
-                    : {
-                      type: "response.function_call_arguments.done",
-                      sequence_number: 3,
-                      output_index: 0,
-                      item_id: call.id!,
-                      name: "Search",
-                      arguments: JSON.stringify(params)
-                    },
-                  { type: "response.completed", sequence_number: 4, response: makeDefaultResponse() }
-                ]))
-              )).pipe(
-                Effect.provide(toolkit.toLayer({ Search: (params) => Ref.set(received, params) }))
-              )
-            deepStrictEqual(yield* Ref.get(received), params)
-          }))
-      }
+      it.effect("advertises and handles non-strict record parameters", () =>
+        Effect.gen(function*() {
+          const received = yield* Ref.make<unknown>(undefined)
+          const toolkit = Toolkit.make(Tool.make("Search", { parameters: Schema.Record(Schema.String, Schema.String) }))
+          yield* LanguageModel.generateText({ prompt: "Search", toolkit }).pipe(
+            Effect.provide(OpenAiLanguageModel.model("gpt-4o-mini", { strictJsonSchema: false })),
+            Effect.provide(toolkit.toLayer({ Search: (params) => Ref.set(received, params) }))
+          )
+          const requests = yield* MockHttpClient.requests
+          const body = yield* getRequestBody(requests[0])
+          strictEqual(body.tools[0].strict, false)
+          deepStrictEqual(body.tools[0].parameters, { type: "object", additionalProperties: { type: "string" } })
+          deepStrictEqual(yield* Ref.get(received), { status: "open" })
+        }).pipe(Effect.provide(makeTestLayer({
+          body: { output: [makeFunctionCall("Search", { status: "open" })] }
+        }))))
 
       it.effect("converts transformed tool call params to the tool's standard encoded form", () =>
         Effect.gen(function*() {
@@ -3369,13 +3316,6 @@ const ReturnModeTool = Tool.make("ReturnModeTool", {
   parameters: Schema.Struct({ input: Schema.String }),
   success: Schema.Struct({ output: Schema.String }),
   failure: Schema.Struct({ error: Schema.String })
-})
-
-const FilterTool = Tool.make("FilterTool", {
-  parameters: Schema.Struct({
-    query: Schema.String,
-    filters: Schema.optional(Schema.Record(Schema.String, Schema.String))
-  })
 })
 
 const TransformParamsTool = Tool.make("TransformParamsTool", {

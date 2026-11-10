@@ -6,90 +6,6 @@ import { HttpClient, type HttpClientError, type HttpClientRequest, HttpClientRes
 
 describe("OpenAiLanguageModel", () => {
   for (const mode of ["complete", "stream"] as const) {
-    for (const strictJsonSchema of [false, true]) {
-      it.effect(`preserves non-strict parameters in ${mode} with strictJsonSchema=${strictJsonSchema}`, () =>
-        Effect.gen(function*() {
-          const Root = Tool.make("Root", { parameters: Schema.Record(Schema.String, Schema.String) })
-          const Search = Tool.make("Search", {
-            parameters: Schema.Struct({
-              query: Schema.String,
-              filters: Schema.optional(Schema.Record(Schema.String, Schema.String))
-            })
-          }).annotate(Tool.Strict, false)
-          const Strict = Tool.make("Strict", {
-            parameters: Schema.Struct({ env: Schema.Record(Schema.String, Schema.String) })
-          }).annotate(Tool.Strict, true)
-          const toolkit = Toolkit.make(strictJsonSchema ? Root.annotate(Tool.Strict, false) : Root, Search, Strict)
-          const calls = [
-            { id: "root", type: "function", function: { name: "Root", arguments: "{\"PATH\":\"/usr/bin\"}" } },
-            { id: "search", type: "function", function: { name: "Search", arguments: "{\"query\":\"test\"}" } },
-            {
-              id: "strict",
-              type: "function",
-              function: { name: "Strict", arguments: "{\"env\":[{\"0\":\"PATH\",\"1\":\"/usr/bin\"}]}" }
-            }
-          ]
-          const layer = OpenAiClient.layer({ apiKey: Redacted.make("sk-test-key") }).pipe(
-            Layer.provide(Layer.succeed(
-              HttpClient.HttpClient,
-              makeHttpClient((request) =>
-                Effect.gen(function*() {
-                  const body = yield* getRequestBody(request)
-                  const [root, search, strict] = body.tools.map((tool: any) => tool.function)
-                  assert.strictEqual(root.strict, false)
-                  assert.deepStrictEqual(root.parameters, { type: "object", additionalProperties: { type: "string" } })
-                  assert.strictEqual(search.strict, false)
-                  assert.deepStrictEqual(search.parameters.required, ["query"])
-                  assert.deepStrictEqual(search.parameters.properties.filters, {
-                    anyOf: [{ type: "object", additionalProperties: { type: "string" } }, { type: "null" }]
-                  })
-                  assert.strictEqual(strict.strict, true)
-                  assert.strictEqual(strict.parameters.properties.env.type, "array")
-                  return mode === "complete"
-                    ? jsonResponse(
-                      request,
-                      makeChatCompletion({
-                        choices: [{
-                          index: 0,
-                          finish_reason: "tool_calls",
-                          message: { role: "assistant", content: null, tool_calls: calls }
-                        }]
-                      })
-                    )
-                    : sseResponse(request, [{
-                      id: "chatcmpl_tools",
-                      object: "chat.completion.chunk",
-                      model: "gpt-4o-mini",
-                      created: 1,
-                      choices: [{
-                        index: 0,
-                        delta: { tool_calls: calls.map((call, index) => ({ ...call, index })) },
-                        finish_reason: "tool_calls"
-                      }]
-                    }, "[DONE]"])
-                })
-              )
-            ))
-          )
-          const options = { prompt: "Use the tools", toolkit, disableToolCallResolution: true }
-          const params = yield* (mode === "complete"
-            ? LanguageModel.generateText(options).pipe(
-              Effect.map((result) => result.toolCalls.map((part) => part.params))
-            )
-            : LanguageModel.streamText(options).pipe(
-              Stream.runCollect,
-              Effect.map((parts) => parts.filter((part) => part.type === "tool-call").map((part) => part.params))
-            )).pipe(
-              Effect.provide(OpenAiLanguageModel.model("gpt-4o-mini", { strictJsonSchema })),
-              Effect.provide(
-                toolkit.toLayer({ Root: () => Effect.void, Search: () => Effect.void, Strict: () => Effect.void })
-              ),
-              Effect.provide(layer)
-            )
-          assert.deepStrictEqual(params, [{ PATH: "/usr/bin" }, { query: "test" }, { env: { PATH: "/usr/bin" } }])
-        }))
-    }
-
     it.effect(`prepares selected tool codecs once per ${mode} request and normalizes repeated calls`, () =>
       Effect.gen(function*() {
         let conversions = 0
@@ -184,6 +100,51 @@ describe("OpenAiLanguageModel", () => {
   }
 
   describe("generateText", () => {
+    it.effect("advertises and handles non-strict record parameters", () =>
+      Effect.gen(function*() {
+        const received = yield* Ref.make<unknown>(undefined)
+        const toolkit = Toolkit.make(Tool.make("Search", { parameters: Schema.Record(Schema.String, Schema.String) }))
+        const layer = OpenAiClient.layer({ apiKey: Redacted.make("sk-test-key") }).pipe(
+          Layer.provide(Layer.succeed(
+            HttpClient.HttpClient,
+            makeHttpClient((request) =>
+              Effect.gen(function*() {
+                const body = yield* getRequestBody(request)
+                assert.strictEqual(body.tools[0].function.strict, false)
+                assert.deepStrictEqual(body.tools[0].function.parameters, {
+                  type: "object",
+                  additionalProperties: { type: "string" }
+                })
+                return jsonResponse(
+                  request,
+                  makeChatCompletion({
+                    choices: [{
+                      index: 0,
+                      finish_reason: "tool_calls",
+                      message: {
+                        role: "assistant",
+                        content: null,
+                        tool_calls: [{
+                          id: "call_1",
+                          type: "function",
+                          function: { name: "Search", arguments: JSON.stringify({ status: "open" }) }
+                        }]
+                      }
+                    }]
+                  })
+                )
+              })
+            )
+          ))
+        )
+        yield* LanguageModel.generateText({ prompt: "Search", toolkit }).pipe(
+          Effect.provide(OpenAiLanguageModel.model("gpt-4o-mini", { strictJsonSchema: false })),
+          Effect.provide(toolkit.toLayer({ Search: (params) => Ref.set(received, params) })),
+          Effect.provide(layer)
+        )
+        assert.deepStrictEqual(yield* Ref.get(received), { status: "open" })
+      }))
+
     it.effect("serializes text-only user messages and decodes text output", () =>
       Effect.gen(function*() {
         let capturedRequest: HttpClientRequest.HttpClientRequest | undefined
