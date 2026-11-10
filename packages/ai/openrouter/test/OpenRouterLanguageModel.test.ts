@@ -1347,6 +1347,44 @@ describe("OpenRouterLanguageModel", () => {
 
         strictEqual(error.reason._tag, "ToolParameterValidationError")
       }))
+
+    it.effect("ignores an empty fragment after a tool call completes", () =>
+      Effect.gen(function*() {
+        const ProbeTool = Tool.make("ProbeTool", {
+          parameters: Schema.Struct({ a: Schema.Number }),
+          success: Schema.String
+        })
+        const toolkit = Toolkit.make(ProbeTool)
+        const parts = yield* LanguageModel.streamText({
+          prompt: "call the tool",
+          toolkit,
+          disableToolCallResolution: true
+        }).pipe(
+          Stream.runCollect,
+          Effect.provide(OpenRouterLanguageModel.model("openai/gpt-4o-mini")),
+          Effect.provide(toolkit.toLayer({ ProbeTool: () => Effect.succeed("ok") })),
+          Effect.provide(makeStreamTestLayer([
+            {
+              index: 0,
+              id: "call-1",
+              type: "function" as const,
+              function: { name: "ProbeTool", arguments: "{\"a\":1}" }
+            },
+            { index: 0, function: { arguments: "" } }
+          ].map((toolCall) => ({
+            id: "response-1",
+            object: "chat.completion.chunk" as const,
+            model: "openai/gpt-4o-mini",
+            created: 1,
+            choices: [{ index: 0, delta: { tool_calls: [toolCall] } }]
+          }))))
+        )
+
+        deepStrictEqual(
+          parts.filter((part) => part.type === "tool-call").map((part) => [part.id, part.params]),
+          [["call-1", { a: 1 }]]
+        )
+      }))
   })
 })
 
