@@ -412,6 +412,13 @@ describe("LanguageModel", () => {
       const flag = null as unknown as boolean
 
       Effect.gen(function*() {
+        const strictOptions: LanguageModel.GenerateObjectOptions<{}, typeof schema> = options
+        const strict = yield* LanguageModel.generateObject(strictOptions)
+        expect<typeof strict.value>().type.toBe<Value>()
+
+        expect(LanguageModel.generateObject<Record<string, any>, typeof schema, typeof options>)
+          .type.not.toBeCallableWith({ ...options, allowEmpty: true })
+
         const absent = yield* LanguageModel.generateObject(options)
         const enabled = yield* LanguageModel.generateObject({ ...options, allowEmpty: true })
         const widened = yield* LanguageModel.generateObject({ ...options, allowEmpty: flag })

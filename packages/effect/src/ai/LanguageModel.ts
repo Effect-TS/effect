@@ -161,12 +161,18 @@ export interface LanguageModel {
     ObjectEncoded extends Record<string, any>,
     StructuredOutputSchema extends Schema.Encoder<ObjectEncoded, unknown>,
     Options extends NoExcessProperties<
-      GenerateObjectOptions<any, StructuredOutputSchema>,
+      GenerateObjectOptions<any, StructuredOutputSchema, boolean>,
       Options
     >,
     Tools extends Record<string, Tool.Any> = {}
   >(
-    options: Options & GenerateObjectOptions<Tools, StructuredOutputSchema>
+    options:
+      & Options
+      & GenerateObjectOptions<
+        Tools,
+        StructuredOutputSchema,
+        false | Extract<Options["allowEmpty" & keyof Options], boolean>
+      >
   ) => Effect.Effect<
     GenerateObjectResponse<
       Tools,
@@ -347,7 +353,8 @@ type GenerateTextOptionsWithoutToolkit = Omit<GenerateTextOptions<{}>, "toolkit"
  */
 export interface GenerateObjectOptions<
   Tools extends Record<string, Tool.Any>,
-  StructuredOutputSchema extends Schema.Top
+  StructuredOutputSchema extends Schema.Top,
+  AllowEmpty extends boolean = false
 > extends GenerateTextOptions<Tools> {
   /**
    * The name of the structured output that should be generated. Used by some
@@ -361,7 +368,7 @@ export interface GenerateObjectOptions<
    * generated object returns `Option.some(value)`. Pass a literal `true`; a
    * non-literal boolean types the value as `A | Option<A>`.
    */
-  readonly allowEmpty?: boolean | undefined
+  readonly allowEmpty?: AllowEmpty | undefined
 
   /**
    * The schema to be used to specify the structure of the object to generate.
@@ -978,12 +985,18 @@ export const make: (params: {
     ObjectEncoded extends Record<string, any>,
     StructuredOutputSchema extends Schema.Encoder<ObjectEncoded, unknown>,
     Options extends NoExcessProperties<
-      GenerateObjectOptions<any, StructuredOutputSchema>,
+      GenerateObjectOptions<any, StructuredOutputSchema, boolean>,
       Options
     >,
     Tools extends Record<string, Tool.Any> = {}
   >(
-    options: Options & GenerateObjectOptions<Tools, StructuredOutputSchema>
+    options:
+      & Options
+      & GenerateObjectOptions<
+        Tools,
+        StructuredOutputSchema,
+        false | Extract<Options["allowEmpty" & keyof Options], boolean>
+      >
   ): Effect.Effect<
     GenerateObjectResponse<
       Tools,
@@ -1038,7 +1051,7 @@ export const make: (params: {
               })
           })
 
-          const value = yield* resolveStructuredOutput(content as any, codec, options.allowEmpty === true)
+          const value = yield* resolveStructuredOutput(content as any, codec, options.allowEmpty ?? false)
 
           return new GenerateObjectResponse(value, content)
         },
@@ -1977,11 +1990,17 @@ export const generateObject = <
   ObjectEncoded extends Record<string, any>,
   StructuredOutputSchema extends Schema.Encoder<ObjectEncoded, unknown>,
   Options extends NoExcessProperties<
-    GenerateObjectOptions<any, StructuredOutputSchema>,
+    GenerateObjectOptions<any, StructuredOutputSchema, boolean>,
     Options
   >
 >(
-  options: Options & GenerateObjectOptions<ExtractTools<Options>, StructuredOutputSchema>
+  options:
+    & Options
+    & GenerateObjectOptions<
+      ExtractTools<Options>,
+      StructuredOutputSchema,
+      false | Extract<Options["allowEmpty" & keyof Options], boolean>
+    >
 ): Effect.Effect<
   GenerateObjectResponse<
     ExtractTools<Options>,
