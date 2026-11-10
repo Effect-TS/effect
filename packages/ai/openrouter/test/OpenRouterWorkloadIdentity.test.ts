@@ -4,6 +4,8 @@ import { Effect, Layer, Redacted } from "effect"
 import { HttpClient, type HttpClientRequest, HttpClientResponse } from "effect/http"
 
 const IDENTITY_TOKEN = "identity.token.signature"
+// A trailing slash, which OpenRouterClient also accepts.
+const API_URL = "https://openrouter.ai/api/v1/"
 const TOKEN_URL = "https://openrouter.ai/api/v1/oauth/token"
 
 describe("OpenRouterWorkloadIdentity", () => {
@@ -58,9 +60,10 @@ const makeHttp = () => {
 const provideClient = (http: Http) => <A, E, R>(effect: Effect.Effect<A, E, R>) =>
   effect.pipe(
     Effect.provide(
-      OpenRouterClient.layer({}).pipe(Layer.provide(OpenRouterWorkloadIdentity.layer({
+      OpenRouterClient.layer({ apiUrl: API_URL }).pipe(Layer.provide(OpenRouterWorkloadIdentity.layer({
         identityToken: Effect.succeed(Redacted.make(IDENTITY_TOKEN)),
-        federationPolicyId: "policy_1"
+        federationPolicyId: "policy_1",
+        apiUrl: API_URL
       })))
     ),
     Effect.provideService(HttpClient.HttpClient, http.client)

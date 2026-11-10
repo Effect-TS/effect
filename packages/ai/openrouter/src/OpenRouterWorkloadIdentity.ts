@@ -113,7 +113,7 @@ export const make = <E = never, R = never>(options: Options<E, R>): Effect.Effec
   HttpClient.HttpClient | R
 > =>
   WorkloadIdentity.make({
-    tokenUrl: `${options.apiUrl ?? "https://openrouter.ai/api/v1"}/oauth/token`,
+    tokenUrl: `${(options.apiUrl ?? "https://openrouter.ai/api/v1").replace(/\/$/, "")}/oauth/token`,
     identityToken: options.identityToken,
     exchangeRequest: (request, subjectToken) =>
       HttpClientRequest.bodyUrlParams(request, {
