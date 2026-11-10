@@ -312,13 +312,19 @@ function compilerAnnotations(
 
 function optionalToNullable(type: SchemaAST.AST): SchemaAST.AST {
   return SchemaAST.decodeTo(
-    new SchemaAST.Union([type, SchemaAST.null]),
+    isNullable(type) ? SchemaAST.replaceContext(type, undefined) : new SchemaAST.Union([type, SchemaAST.null]),
     SchemaAST.optionalKey(SchemaAST.toType(type)),
     SchemaTransformation.transformOptional({
       decode: Option.filter(Predicate.isNotNull),
       encode: Option.orElseSome(() => null)
     })
   )
+}
+
+function isNullable(ast: SchemaAST.AST): boolean {
+  const encoded = SchemaAST.toEncoded(ast)
+  if (encoded.checks !== undefined) return false
+  return SchemaAST.isNull(encoded) || (SchemaAST.isUnion(encoded) && encoded.types.some(isNullable))
 }
 
 function prepareChecks(checks: SchemaAST.Checks | undefined): SchemaAST.Checks | undefined {
