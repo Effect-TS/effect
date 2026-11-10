@@ -363,10 +363,10 @@ export interface GenerateObjectOptions<
   readonly objectName?: string | undefined
 
   /**
-   * Whether empty or whitespace-only text content is allowed. Defaults to
-   * `false`. When `true`, an empty response returns `Option.none()` and a
-   * generated object returns `Option.some(value)`. Pass a literal `true`; a
-   * non-literal boolean types the value as `A | Option<A>`.
+   * Whether to return `None` for empty or whitespace-only text and `Some` for
+   * valid output. Defaults to `false`; invalid nonempty output still fails.
+   * Use literal `true` for an `Option<A>` value; a widened boolean yields
+   * `A | Option<A>`.
    */
   readonly allowEmpty?: AllowEmpty | undefined
 
@@ -542,8 +542,7 @@ export class GenerateObjectResponse<
   ParametersMode extends Response.ToolParametersMode = "decoded"
 > extends GenerateTextResponse<Tools, ParametersMode> {
   /**
-   * The parsed structured object that conforms to the provided schema, or an
-   * `Option` when empty response is allowed.
+   * The decoded schema value, wrapped in an `Option` when `allowEmpty` is enabled.
    */
   readonly value: A
 
@@ -625,8 +624,8 @@ export type ExtractTools<Options> = Options extends {
   : {}
 
 /**
- * Resolves the generated value to an Option when empty output is allowed, or a
- * union when the option may be enabled.
+ * Resolves to `Option<A>` when `allowEmpty` is true, `A` when false or absent,
+ * or their union when the flag may be enabled.
  *
  * @stability unstable
  * @category utility types
