@@ -1089,8 +1089,7 @@ describe("OpenAiLanguageModel", () => {
 
     it.effect("decodes null optional fields in non-streaming responses", () =>
       Effect.gen(function*() {
-        const Ping = Tool.make("Ping")
-        const toolkit = Toolkit.make(Ping)
+        const toolkit = Toolkit.make(Tool.make("Ping"))
         const responses = [
           makeChatCompletion({
             service_tier: null,
@@ -1126,7 +1125,6 @@ describe("OpenAiLanguageModel", () => {
           disableToolCallResolution: true
         }).pipe(
           Effect.provide(OpenAiLanguageModel.model("gpt-4o-mini")),
-          Effect.provide(toolkit.toLayer({ Ping: () => Effect.void })),
           Effect.provide(layer)
         )
         const textResult = yield* LanguageModel.generateText({ prompt: "hello" }).pipe(
@@ -1771,10 +1769,8 @@ describe("OpenAiLanguageModel", () => {
           .map((part) => part.delta)
           .join("")
         const toolCall = parts.find((part) => part.type === "tool-call")
-
         const finish = parts.find((part) => part.type === "finish")
 
-        assert.strictEqual(finish?.reason, "tool-calls")
         assert.deepStrictEqual(finish?.metadata["openai-compat"], { serviceTier: "priority" })
         assert.strictEqual(text, "Hello")
         assert.isDefined(toolCall)

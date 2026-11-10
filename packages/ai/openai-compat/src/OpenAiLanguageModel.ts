@@ -1306,7 +1306,7 @@ const annotateResponse = (span: Span, response: CreateResponse200): void => {
     },
     openai: {
       response: {
-        serviceTier: response.service_tier ?? undefined
+        serviceTier: response.service_tier
       }
     }
   })
