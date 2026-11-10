@@ -2,4 +2,4 @@
 "@effect/ai-openrouter": patch
 ---
 
-Accept OpenRouter Bedrock and stealth `reasoning_details` formats in `@effect/ai-openrouter`.
+Fix OpenRouter responses failing to decode when `reasoning_details` use the `bedrock-openai-responses-v1`, `bedrock-xai-responses-v1` or `openrouter-stealth-v1` format.
