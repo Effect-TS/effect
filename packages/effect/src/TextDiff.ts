@@ -674,9 +674,7 @@ export const unified = (edits: ReadonlyArray<Edit<string>>, options?: {
   }
   for (const hunk of found) {
     out += `@@ -${range(hunk.beforeStart, hunk.beforeLines)} +${range(hunk.afterStart, hunk.afterLines)} @@\n`
-    for (const line of hunk.lines) {
-      out += formatLine(line._tag === "Equal" ? " " : line._tag === "Delete" ? "-" : "+", line.text)
-    }
+    for (const line of hunk.lines) out += formatLine(prefixes[line._tag], line.text)
   }
   return out
 }
@@ -720,17 +718,15 @@ const splitLines = (text: string): Array<string> => text.match(/[^\n]*\n|[^\n]+$
 const range = (start: number, count: number): string =>
   count === 0 ? `${start},0` : count === 1 ? `${start + 1}` : `${start + 1},${count}`
 
+const prefixes = { Equal: " ", Delete: "-", Insert: "+" } as const
+
 const formatLine = (prefix: string, line: string): string =>
   line.endsWith("\n") ? prefix + line : `${prefix}${line}\n\\ No newline at end of file\n`
 
 const withoutBreak = (line: string): string => line.endsWith("\n") ? line.slice(0, -1) : line
 
-// The UTF-16 ranges where two lines differ, in each, ignoring a final `\n`
-const inlineRanges = (
-  before: string,
-  after: string,
-  maxEdits: number | undefined
-): readonly [Array<readonly [number, number]>, Array<readonly [number, number]>] => {
+// The UTF-16 ranges of each line that differ from the other, ignoring a final `\n`
+const inlineRanges = (before: string, after: string, maxEdits: number | undefined) => {
   const inBefore: Array<readonly [number, number]> = []
   const inAfter: Array<readonly [number, number]> = []
   let i = 0
@@ -749,7 +745,7 @@ const inlineRanges = (
       j += length
     }
   }
-  return [inBefore, inAfter]
+  return [inBefore, inAfter] as const
 }
 
 // Interns the tokens so the search compares integers instead of strings

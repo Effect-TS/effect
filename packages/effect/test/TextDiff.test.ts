@@ -35,6 +35,10 @@ const loneSurrogate = /[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\
 const smallArray = fc.array(fc.constantFrom("a", "b", "c"), { maxLength: 12 })
 const text = fc.string({ unit: fc.constantFrom("a", "b", "\n", "\r\n", "é", "e\u0301", "😀", "👍🏽") })
 
+const base = Array.from({ length: 20 }, (_, i) => `${i + 1}\n`).join("")
+const replace = (lines: Record<number, string | undefined>) =>
+  Array.from({ length: 20 }, (_, i) => i + 1 in lines ? lines[i + 1] ?? "" : `${i + 1}\n`).join("")
+
 describe("TextDiff", () => {
   describe("diff", () => {
     it("produces a canonical script that applies and inverts, minimal within maxEdits", () => {
@@ -172,9 +176,7 @@ describe("TextDiff", () => {
 
   describe("hunks", () => {
     it("groups changes as diff -u does, with zero-based positions", () => {
-      const before = Array.from({ length: 12 }, (_, i) => `${i + 1}\n`).join("")
-      const after = before.replace("2\n", "two\n").replace("11\n", "")
-      deepStrictEqual(TextDiff.hunks(TextDiff.lines(before, after), { context: 1 }), [
+      deepStrictEqual(TextDiff.hunks(TextDiff.lines(base, replace({ 2: "two\n", 11: undefined })), { context: 1 }), [
         {
           beforeStart: 0,
           beforeLines: 3,
@@ -199,13 +201,13 @@ describe("TextDiff", () => {
           ]
         }
       ])
-      deepStrictEqual(TextDiff.hunks(TextDiff.lines(before, before)), [])
+      deepStrictEqual(TextDiff.hunks(TextDiff.lines(base, base)), [])
     })
 
     it("marks the differing ranges of lines changed one for one, with inline", () => {
       const cases: ReadonlyArray<readonly [string, string, ReadonlyArray<unknown>]> = [
-        // a code point is never split
-        ["a😀\n", "a😃\n", [["Delete", [[1, 3]]], ["Insert", [[1, 3]]]]],
+        // offsets are UTF-16 and a code point is never split
+        ["😀😀a-b\n", "😀😃-c\n", [["Delete", [[2, 5], [6, 7]]], ["Insert", [[2, 4], [5, 6]]]]],
         // the line break is not part of the text compared
         ["a\n", "a", [["Delete", []], ["Insert", []]]],
         // two lines for one: not changed one for one
@@ -219,10 +221,6 @@ describe("TextDiff", () => {
   })
 
   describe("unified", () => {
-    const base = Array.from({ length: 20 }, (_, i) => `${i + 1}\n`).join("")
-    const replace = (lines: Record<number, string | undefined>) =>
-      Array.from({ length: 20 }, (_, i) => i + 1 in lines ? lines[i + 1] ?? "" : `${i + 1}\n`).join("")
-
     // Expected outputs are from `diff -u`, without its header lines
     it("matches diff -u", () => {
       const cases: ReadonlyArray<readonly [string, string, string]> = [

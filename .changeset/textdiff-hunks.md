@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Add `TextDiff.hunks`, which groups a line diff into hunks as data, as `diff -u` does, optionally with the differing ranges of lines changed one for one. `TextDiff.unified` renders these hunks.
+Add `TextDiff.hunks`, which groups a line diff into `diff -u` style hunks as data, optionally with the ranges that differ within changed lines.
