@@ -43,9 +43,11 @@
  * @since 4.1.3
  */
 import * as Context from "../../Context.ts"
+import type * as Duration from "../../Duration.ts"
 import * as Effect from "../../Effect.ts"
 import * as Layer from "../../Layer.ts"
 import type * as AsyncResult from "../../reactivity/AsyncResult.ts"
+import * as Loader from "../../reactivity/Loader.ts"
 import type * as Scope from "../../Scope.ts"
 import type * as Component from "../Component.ts"
 import * as Renderer from "../Renderer.ts"
@@ -432,9 +434,32 @@ export const layer = (options?: {
   readonly document?: Document | undefined
 }): Layer.Layer<Renderer.Renderer | Html.Host> =>
   Layer.effectContext(Effect.gen(function*() {
-    const host = makeHost(options?.document ?? globalThis.document)
+    const document = options?.document ?? globalThis.document
+    const host = makeHost(document)
     yield* Effect.addFinalizer(() => Effect.sync(host.dispose))
-    return Context.make(Renderer.Renderer, { host }).pipe(Context.add(Html.Host, htmlHost))
+    // The cache's host signals (EFF-3556 #20): `visibilitychange` only, never window focus, and the
+    // container's document and its window, not globals.
+    const visibility = Loader.makeSignal(document.visibilityState !== "hidden")
+    const onVisibility = () => visibility.set(document.visibilityState !== "hidden")
+    document.addEventListener("visibilitychange", onVisibility)
+    const view = document.defaultView
+    const connectivity = Loader.makeSignal(view?.navigator?.onLine !== false)
+    const onOnline = () => connectivity.set(true)
+    const onOffline = () => connectivity.set(false)
+    view?.addEventListener("online", onOnline)
+    view?.addEventListener("offline", onOffline)
+    yield* Effect.addFinalizer(() =>
+      Effect.sync(() => {
+        document.removeEventListener("visibilitychange", onVisibility)
+        view?.removeEventListener("online", onOnline)
+        view?.removeEventListener("offline", onOffline)
+      })
+    )
+    return Context.make(Renderer.Renderer, { host }).pipe(
+      Context.add(Html.Host, htmlHost),
+      Context.add(Loader.Visibility, visibility),
+      Context.add(Loader.Connectivity, connectivity)
+    ) as Context.Context<Renderer.Renderer | Html.Host>
   }))
 
 /**
@@ -494,6 +519,8 @@ export const mount = <Name extends string, Props, Model, Msg, Events, R, V exten
       ) => View.Node<never, RF>)
       | undefined
     readonly state?: Renderer.State | undefined
+    /** Cache-wide options. `idleTimeToLive` defaults to 5 minutes. */
+    readonly loader?: { readonly idleTimeToLive?: Duration.Input | undefined } | undefined
   }
 ): Effect.Effect<Renderer.Root<Model, Msg>, never, Exclude<R | RF, Html.Host> | Scope.Scope> =>
   Effect.gen(function*() {

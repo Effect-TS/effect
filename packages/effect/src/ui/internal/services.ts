@@ -26,6 +26,8 @@ export interface RootHandle {
   readonly flush: () => number
   /** The JSON-encoded Model of every mounted instance, by path. Models that don't encode are left out. */
   readonly snapshot: () => Record<string, unknown>
+  /** The Router navigated: the cache's fetch-free window after hydration ends here at the latest. */
+  readonly navigated: () => void
 }
 
 /**
@@ -66,6 +68,25 @@ export const RootHooks = Context.Service<RootHooks, RootHooks>("effect/ui/intern
  * @internal
  */
 export const onDeliver: unique symbol = Symbol.for("effect/ui/Subscription/onDeliver") as any
+
+/**
+ * A `Loaded` watch's Subscription carries its marker (read, label, args) under
+ * this key. The runtime registers a cache watcher from it instead of running a Stream.
+ *
+ * @internal
+ */
+export const loadedMarker: unique symbol = Symbol.for("effect/ui/Loaded/marker") as any
+
+/**
+ * Told about the cache each `runtime.start` builds. For `ssr()` and tests, which
+ * read fetch triggers on the server side too.
+ *
+ * @internal
+ */
+export const CacheObserver = Context.Reference<(cache: unknown, side: "client" | "server") => void>(
+  "effect/ui/internal/CacheObserver",
+  { defaultValue: () => () => {} }
+)
 
 /**
  * One run of an issued Command, as `MutationHooks` sees it. The same object is

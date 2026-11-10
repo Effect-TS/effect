@@ -56,44 +56,38 @@ import { dual } from "../Function.ts"
 import * as Layer from "../Layer.ts"
 import * as Pipeable from "../Pipeable.ts"
 import * as Predicate from "../Predicate.ts"
+import type * as Loader from "../reactivity/Loader.ts"
 import type * as Scope from "../Scope.ts"
 import * as Stream from "../Stream.ts"
 import type * as Types from "../Types.ts"
 import type * as Renderer from "./Renderer.ts"
 
-// ---------------------------------------------------------------------------
-// TODO(loader): placeholders. The real `Target`, `Patch` and `Write` types
-// come from the Loader core (`effect/reactivity/Loader`). Until it lands they
-// are opaque data: the Command only carries them, and the runtime hands them
-// to its `MutationHooks`.
-// ---------------------------------------------------------------------------
-
 /**
- * TODO(loader): what a Command invalidates: a whole read, one entry or a tag.
+ * What a Command invalidates: a whole read, one entry or a tag.
  *
  * @stability experimental
  * @category models
  * @since 4.1.3
  */
-export interface Target {}
+export type Target = Loader.Target
 
 /**
- * TODO(loader): an optimistic patch over one entry, or every entry of a read.
+ * An optimistic patch over one entry, or every entry of a read.
  *
  * @stability experimental
  * @category models
  * @since 4.1.3
  */
-export interface Patch {}
+export type Patch = Loader.Patch
 
 /**
- * TODO(loader): a write of a Command's success into one entry.
+ * A write of a Command's success into one entry.
  *
  * @stability experimental
  * @category models
  * @since 4.1.3
  */
-export interface Write {}
+export type Write = Loader.SetTarget
 
 /**
  * Identifies a Command value.

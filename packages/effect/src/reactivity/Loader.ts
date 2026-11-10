@@ -170,13 +170,15 @@ export interface ReadInternal<Args = any, A = any, E = any> {
   readonly error: Schema.Codec<E, any>
   readonly staleMs: number
   readonly idleMs: number | undefined
-  readonly refetchInterval: RefetchInterval<Args, A, E> | undefined
+  // Loosely typed, and methods (bivariant) below, so a read with `error: Schema.Never` is still an
+  // `AnyDefinition`: `any` isn't assignable to `never` in a parameter position.
+  readonly refetchInterval: RefetchInterval<any, any, any> | undefined
   readonly tags: ReadonlyArray<string>
-  readonly argsKey: (args: Args) => string
-  readonly encodeSuccess: (a: A) => unknown
-  readonly decodeSuccess: (u: unknown) => A
-  readonly encodeError: (e: E) => unknown
-  readonly decodeError: (u: unknown) => E
+  argsKey(args: Args): string
+  encodeSuccess(a: A): unknown
+  decodeSuccess(u: unknown): A
+  encodeError(e: E): unknown
+  decodeError(u: unknown): E
 }
 
 /**

@@ -15,6 +15,12 @@ export * as Query from "./Query.ts"
  * @stability experimental
  * @since 4.1.3
  */
+export * as Snapshot from "./Snapshot.ts"
+
+/**
+ * @stability experimental
+ * @since 4.1.3
+ */
 export * as Story from "./Story.ts"
 
 /**

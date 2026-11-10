@@ -55,10 +55,12 @@ import * as Layer from "../Layer.ts"
 import * as Pipeable from "../Pipeable.ts"
 import * as Predicate from "../Predicate.ts"
 import type * as AsyncResult from "../reactivity/AsyncResult.ts"
+import type * as Loader from "../reactivity/Loader.ts"
 import * as Schema from "../Schema.ts"
 import type * as Types from "../Types.ts"
 import type * as Command from "./Command.ts"
 import type * as Head from "./Head.ts"
+import * as Loaded from "./Loaded.ts"
 import type * as Subscription from "./Subscription.ts"
 import * as View from "./View.ts"
 
@@ -478,6 +480,8 @@ export const make = <
   V
 > => {
   const subscriptions = options.subscriptions
+  // At module load, in every build: a snapshot inside an array, or two fields with one (read, label).
+  Loaded.checkModel(options.name, options.model)
   return Object.assign(Object.create(Proto), {
     name: options.name,
     props: options.props ?? Schema.Struct({}),
@@ -552,8 +556,18 @@ export interface LocalOption {
  */
 export type Provided<C, ROut, RIn> = C extends
   Component<infer N, infer P, infer M, infer Msg, infer E, infer _R, infer V>
-  ? Component<N, P, M, Msg, E, Exclude<Requirements<C>, ROut> | RIn, V>
-  : Mountable<Props<C>, Events<C>, Exclude<Requirements<C>, ROut> | RIn>
+  ? Component<N, P, M, Msg, E, Exclude<Requirements<C>, Exclude<ROut, RuntimeService>> | RIn, V>
+  : Mountable<Props<C>, Events<C>, Exclude<Requirements<C>, Exclude<ROut, RuntimeService>> | RIn>
+
+/**
+ * Services the runtime owns and reads once from the mount: a `provide` Layer
+ * can't supply them, so it never removes them from a component's requirements.
+ *
+ * @stability experimental
+ * @category utility types
+ * @since 4.1.3
+ */
+export type RuntimeService = Loader.Cache | typeof Loader.Visibility | typeof Loader.Connectivity
 
 /**
  * What `provide` accepts: a Layer, an array of them, or a function of props

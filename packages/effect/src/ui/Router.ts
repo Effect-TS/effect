@@ -465,6 +465,9 @@ interface EntryState {
 
 const stateKey = "effect/ui"
 
+/** Dev warning threshold for one `history.state` snapshot, well below any browser limit (EFF-3557 #26). */
+const snapshotWarnSize = 100_000
+
 const readState = (state: unknown): EntryState | undefined => {
   if (typeof state !== "object" || state === null) return undefined
   const value = (state as Record<string, unknown>)[stateKey]
@@ -578,6 +581,8 @@ const build = (options: Options): Effect.Effect<Context.Context<Router>, never, 
       current = next
       restoring = undefined
       if (announce) pending = { location: next, from, index, since: undefined }
+      // The first navigation ends the cache's fetch-free window, even if a slot is still adopting.
+      for (const root of roots) root.navigated()
       Effect.runSync(SubscriptionRef.set(ref, next))
     }
 
@@ -613,7 +618,21 @@ const build = (options: Options): Effect.Effect<Context.Context<Router>, never, 
       } else {
         leave()
         // The Model snapshot also goes into the entry itself, so it survives a reload.
-        history.replace(current.url + current.hash, writeState({ index, snapshot: snapshots.get(index) }))
+        // A snapshot the host can't store (too large, not cloneable) stays in memory only.
+        try {
+          const saved = snapshots.get(index)
+          if (saved !== undefined && JSON.stringify(saved).length > snapshotWarnSize) {
+            // eslint-disable-next-line no-console
+            console.warn(
+              `[effect/ui] The history snapshot of ${current.url} is over ${snapshotWarnSize} characters. Browsers limit history.state.`
+            )
+          }
+          history.replace(current.url + current.hash, writeState({ index, snapshot: saved }))
+        } catch (error) {
+          // eslint-disable-next-line no-console
+          console.warn(`[effect/ui] The history snapshot of ${current.url} couldn't be stored`, error)
+          history.replace(current.url + current.hash, writeState({ index }))
+        }
         index++
         for (const key of snapshots.keys()) if (key >= index) snapshots.delete(key)
         history.push(printed + hash, writeState({ index }))
@@ -754,6 +773,8 @@ export const memoryHistory = (url: string = "/"): History & {
   readonly entries: () => ReadonlyArray<string>
   readonly index: () => number
   readonly loaded: () => ReadonlyArray<string>
+  /** PROTOTYPE (EFF-3558): each entry's `history.state`, to measure what a push stores. */
+  readonly states: () => ReadonlyArray<unknown>
 } => {
   const entries: Array<{ url: string; state: unknown }> = [{ url, state: undefined }]
   const loaded: Array<string> = []
@@ -761,6 +782,7 @@ export const memoryHistory = (url: string = "/"): History & {
   let index = 0
   return {
     entries: () => entries.map((entry) => entry.url),
+    states: () => entries.map((entry) => entry.state),
     index: () => index,
     loaded: () => loaded,
     current: () => entries[index]!,

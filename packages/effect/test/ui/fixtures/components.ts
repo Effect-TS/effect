@@ -4,6 +4,7 @@
  */
 import { Effect, Schema, Stream } from "effect"
 import { KeyValueStore } from "effect/persistence"
+import { Loader } from "effect/reactivity"
 import { Command, Component, Subscription } from "effect/ui"
 
 // ---------------------------------------------------------------------------
@@ -53,14 +54,20 @@ export type TodoItemEvents = typeof TodoItemEvents.Type
 
 const encodeTodo = Schema.encodeSync(Schema.fromJsonString(Todo))
 
+/** The read `SaveTodo` invalidates. Nothing in these fixtures watches it. */
+export class GetTodo extends Loader.Service<GetTodo>()(
+  "todos/GetTodo",
+  { args: Schema.Struct({ id: Schema.String }), success: Todo, error: Schema.Never, staleTime: "1 minute" },
+  Effect.succeed(({ id }) => Effect.succeed({ id, title: "", done: false }))
+) {}
+
 export class SaveTodo extends Command.Service<SaveTodo>()(
   "todos/SaveTodo",
   Effect.gen(function*() {
     const kv = yield* KeyValueStore.KeyValueStore
     return (todo: Todo) => kv.set(`todo/${todo.id}`, encodeTodo(todo))
   }),
-  // TODO(loader): a stand-in for `GetTodo.entry({ id })`.
-  { invalidates: (todo) => [{ read: "GetTodo", id: todo.id }] }
+  { invalidates: (todo) => [GetTodo.entry({ id: todo.id })] }
 ) {}
 
 /** The issue site maps the body's two channels to messages. */

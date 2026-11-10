@@ -6,6 +6,7 @@ import { Command, Component, View } from "effect/ui"
 import { Query, Story } from "effect/ui/testing"
 import {
   Counter,
+  GetTodo,
   SaveTodo,
   Search,
   SearchBox,
@@ -171,7 +172,7 @@ describe("Story", () => {
         s.click("save")
           .check((story) => {
             const command = story.pending[0].command
-            assert.deepStrictEqual(command.invalidates, [{ read: "GetTodo", id: "t1" }])
+            assert.deepStrictEqual(command.invalidates, [GetTodo.entry({ id: "t1" })])
             assert.deepStrictEqual(command.optimistic, [])
             assert.strictEqual(command.writes, undefined)
           })

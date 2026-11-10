@@ -122,19 +122,20 @@ const serverHtmlHost: Context.Service.Shape<typeof Html.Host> = {
 export const renderToHtml = <Name extends string, Props, Model, Msg, Events, R, V extends View.Elements>(
   component: Component.Component<Name, Props, Model, Msg, Events, R, V> & BrowserHost.HtmlRoot<V>,
   props: Props,
-  options?: { readonly budget?: Duration.Input | undefined }
+  options?: { readonly budget?: Duration.Input | undefined; readonly static?: boolean | undefined }
 ): Effect.Effect<Rendered<Model>, never, Exclude<R, Html.Host>> =>
-  Renderer.prerender(component, props, { budget: options?.budget, elements: [Html.name] }).pipe(
-    Effect.provideService(Html.Host, serverHtmlHost),
-    Effect.map((rendered) => ({
-      html: server.toHtml(rendered.nodes),
-      state: rendered.state,
-      model: rendered.model,
-      head: server.headTags(rendered.head),
-      htmlAttributes: server.attributes(server.htmlOwned(rendered.head)),
-      bodyAttributes: server.attributes(server.bodyOwned(rendered.head))
-    }))
-  ) as any
+  Renderer.prerender(component, props, { budget: options?.budget, elements: [Html.name], static: options?.static })
+    .pipe(
+      Effect.provideService(Html.Host, serverHtmlHost),
+      Effect.map((rendered) => ({
+        html: server.toHtml(rendered.nodes),
+        state: rendered.state,
+        model: rendered.model,
+        head: server.headTags(rendered.head),
+        htmlAttributes: server.attributes(server.htmlOwned(rendered.head)),
+        bodyAttributes: server.attributes(server.bodyOwned(rendered.head))
+      }))
+    ) as any
 
 /**
  * The state as JSON that is safe inside `<script type="application/json">`:

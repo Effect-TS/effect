@@ -163,6 +163,10 @@ export interface Hydration<Node> {
 export interface State {
   readonly [path: string]: unknown
   readonly "~deferred"?: ReadonlyArray<string> | undefined
+  /** The server's cache entries: `Record<readName, Array<[argsKey, 0 | 1, encoded, timestamp]>>`. */
+  readonly "~loader"?: unknown
+  /** The HTML is static (built at deploy, or held in a CDN): its entries hydrate with unknown age. */
+  readonly "~static"?: boolean | undefined
 }
 
 /**
@@ -369,6 +373,8 @@ export const mount: <Name extends string, Props, Model, Msg, Events, R, V extend
       ) => View.Node<never, RF>)
       | undefined
     readonly state?: State | undefined
+    /** Cache-wide options. `idleTimeToLive` defaults to 5 minutes; a read can override it. */
+    readonly loader?: { readonly idleTimeToLive?: Duration.Input | undefined } | undefined
   }
 ) => Effect.Effect<Root<Model, Msg>, never, R | RF | HostOf<V> | Renderer | Scope.Scope> = runtime.mount as any
 
@@ -403,11 +409,14 @@ export const prerender: <Name extends string, Props, Model, Msg, Events, R, V ex
   options?: {
     readonly budget?: Duration.Input | undefined
     readonly elements?: ReadonlyArray<string> | "any" | undefined
+    /** The HTML is built at deploy or held in a CDN: its cache entries hydrate with unknown age. */
+    readonly static?: boolean | undefined
   }
 ) => Effect.Effect<Prerendered<Model>, never, R> = (component, props, options) =>
   runtime.prerender(component as any, props, {
     budget: options?.budget ?? "500 millis",
-    elements: options?.elements ?? "any"
+    elements: options?.elements ?? "any",
+    static: options?.static
   })
 
 /**

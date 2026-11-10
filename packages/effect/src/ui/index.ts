@@ -33,6 +33,12 @@ export * as Head from "./Head.ts"
  * @stability experimental
  * @since 4.1.3
  */
+export * as Loaded from "./Loaded.ts"
+
+/**
+ * @stability experimental
+ * @since 4.1.3
+ */
 export * as MessageLog from "./MessageLog.ts"
 
 /**

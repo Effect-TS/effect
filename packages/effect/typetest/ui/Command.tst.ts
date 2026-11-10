@@ -1,4 +1,5 @@
 import { Effect, Schema, Stream } from "effect"
+import { Loader } from "effect/reactivity"
 import { Command, type Component } from "effect/ui"
 import { describe, expect, it } from "tstyche"
 
@@ -18,21 +19,31 @@ interface User {
   readonly id: string
   readonly name: string
 }
+class GetUser extends Loader.Service<GetUser>()(
+  "GetUser",
+  {
+    args: Schema.Struct({ id: Schema.String }),
+    success: Schema.Struct({ id: Schema.String, name: Schema.String }),
+    error: Schema.Never,
+    staleTime: "1 minute"
+  },
+  Effect.succeed(({ id }) => Effect.succeed({ id, name: "" }))
+) {}
 class Rename extends Command.Service<Rename>()(
   "Rename",
   Effect.succeed((id: string, name?: string): Effect.Effect<User, Boom> =>
     name === undefined ? Effect.fail(new Boom()) : Effect.succeed({ id, name })
   ),
   {
-    invalidates: (id) => [{ id }],
-    optimistic: (id, name) => [{ id, name }],
-    writes: (user, id) => [{ id, name: user.name }]
+    invalidates: (id) => [GetUser.entry({ id })],
+    optimistic: (id, name) => [GetUser.patch({ id }, (user) => ({ ...user, name: name ?? "" }))],
+    writes: (user, id) => [GetUser.set({ id }, user)]
   }
 ) {}
 class Feed extends Command.Service<Feed>()(
   "Feed",
   Effect.succeed((_room: string): Stream.Stream<number, Boom> => Stream.fail(new Boom())),
-  { stream: true, invalidates: (room) => [room.length] }
+  { stream: true, invalidates: (room) => [GetUser.entry({ id: room })] }
 ) {}
 declare const condition: boolean
 declare const $: Component.Update<{}, typeof Message.Type, never, {}>

@@ -49,7 +49,7 @@ export * as Hydration from "./Hydration.ts"
 
 /**
  * @stability unstable
- * @since 4.0.0
+ * @since 4.1.3
  */
 export * as Loader from "./Loader.ts"
 

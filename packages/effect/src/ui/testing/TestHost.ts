@@ -45,10 +45,12 @@
  */
 import * as Context from "../../Context.ts"
 import * as Data from "../../Data.ts"
+import type * as Duration from "../../Duration.ts"
 import * as Effect from "../../Effect.ts"
 import * as Layer from "../../Layer.ts"
 import * as Queue from "../../Queue.ts"
 import type * as AsyncResult from "../../reactivity/AsyncResult.ts"
+import * as Loader from "../../reactivity/Loader.ts"
 import * as Schema from "../../Schema.ts"
 import type * as Scope from "../../Scope.ts"
 import * as Stream from "../../Stream.ts"
@@ -57,6 +59,7 @@ import * as Feature from "../Feature.ts"
 import type * as Head from "../Head.ts"
 import * as Executor from "../internal/executor.ts"
 import * as runtime from "../internal/runtime.ts"
+import * as services from "../internal/services.ts"
 import * as MessageLog from "../MessageLog.ts"
 import * as Renderer from "../Renderer.ts"
 import * as Subscription from "../Subscription.ts"
@@ -338,6 +341,10 @@ export interface TestRoot<out Model, in Msg, out Events> {
   readonly all: (locator: Query.Locator) => ReadonlyArray<TestNode>
   readonly query: (locator: Query.Locator) => TestNode | undefined
   readonly get: (locator: Query.Locator) => TestNode
+  /** PROTOTYPE (EFF-3558): every fetch this mount's cache started, in order, with its trigger. */
+  readonly fetches: () => ReadonlyArray<Loader.FetchEvent>
+  /** PROTOTYPE (EFF-3558): the mount's cache, for `inspect` and `peek`. */
+  readonly cache: Loader.CacheInternals
 }
 
 /**
@@ -364,12 +371,20 @@ export const mount = <Name extends string, Props, Model, Msg, Events, R, V exten
         h: View.Helper<never, {}> & View.Tags<V, never>
       ) => View.Node<never, RF>)
       | undefined
+    /** Cache-wide options, as `BrowserHost.mount` takes them. */
+    readonly loader?: { readonly idleTimeToLive?: Duration.Input | undefined } | undefined
   }
 ): Effect.Effect<TestRoot<Model, Msg, Events>, never, R | RF | TestHost | Scope.Scope> =>
   Effect.gen(function*() {
     const testHost = yield* TestHost
     const container = makeElement("#root")
-    const root = yield* runtime.mount(component, props, container, options as any)
+    // The cache exists before the first render, so its first fetch is recorded too.
+    const fetches: Array<Loader.FetchEvent> = []
+    const root = yield* runtime.mount(component, props, container, options as any).pipe(
+      Effect.provideService(services.CacheObserver, (cache) => {
+        Loader.internals(cache as Loader.Cache["Service"]).onFetch((event) => fetches.push(event))
+      })
+    )
     const unregister = testHost.register(root)
     yield* Effect.addFinalizer(() => Effect.sync(unregister))
     const testRoot: TestRoot<Model, Msg, Events> = {
@@ -385,7 +400,9 @@ export const mount = <Name extends string, Props, Model, Msg, Events, R, V exten
       text: () => Query.textOf(container),
       all: (locator) => Query.all(container as TestNode, locator),
       query: (locator) => Query.query(container as TestNode, locator),
-      get: (locator) => Query.get(container as TestNode, locator)
+      get: (locator) => Query.get(container as TestNode, locator),
+      fetches: () => fetches,
+      cache: Loader.internals(root.cache)
     }
     return testRoot
   }) as any

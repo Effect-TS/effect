@@ -1,9 +1,10 @@
 import { assert, describe, it } from "@effect/vitest"
 import { Data, Effect, Layer, Schema, Stream } from "effect"
 import { KeyValueStore } from "effect/persistence"
+import { Loader } from "effect/reactivity"
 import { Command } from "effect/ui"
 import * as schedule from "effect/ui/internal/schedule"
-import { SaveTodo, saveTodo, Search, TodoItemMessage, Upload } from "./fixtures/components.ts"
+import { GetTodo, SaveTodo, saveTodo, Search, TodoItemMessage, Upload } from "./fixtures/components.ts"
 
 const todo = { id: "t1", title: "buy milk", done: false }
 
@@ -13,9 +14,24 @@ class Ticks extends Command.Service<Ticks>()(
   { stream: true, invalidates: () => [] }
 ) {}
 
-// TODO(loader): stand-ins for the Loader core's targets, patches and writes. To a Command they're opaque data.
-const entry = (id: string) => ({ _tag: "Entry", read: "GetUser", args: { id } })
-const listUsers = { _tag: "Read", read: "ListUsers" }
+class GetUser extends Loader.Service<GetUser>()(
+  "users/GetUser",
+  {
+    args: Schema.Struct({ id: Schema.String }),
+    success: Schema.Struct({ id: Schema.String, name: Schema.String }),
+    error: Schema.Never,
+    staleTime: "1 minute"
+  },
+  Effect.succeed(({ id }) => Effect.succeed({ id, name: "" }))
+) {}
+class ListUsers extends Loader.Service<ListUsers>()(
+  "users/ListUsers",
+  { args: Schema.Void, success: Schema.Array(Schema.String), error: Schema.Never, staleTime: "1 minute" },
+  Effect.succeed(() => Effect.succeed([]))
+) {}
+const entry = (id: string) => GetUser.entry({ id })
+const listUsers = ListUsers
+const renameFn = (name: string) => (user: { readonly id: string; readonly name: string }) => ({ ...user, name })
 
 class RenameFailed extends Data.TaggedError("RenameFailed")<{ readonly reason: string }> {}
 
@@ -28,8 +44,8 @@ class RenameUser extends Command.Service<RenameUser>()(
     mode: "queue",
     key: (id) => id,
     invalidates: (id) => [entry(id), listUsers],
-    optimistic: (id, name) => [{ _tag: "Patch", target: entry(id), name }],
-    writes: (user, id) => [{ _tag: "Set", target: entry(id), value: user }]
+    optimistic: (id, name) => [GetUser.patch({ id }, renameFn(name))],
+    writes: (user, id) => [GetUser.set({ id }, user)]
   }
 ) {}
 
@@ -109,9 +125,11 @@ describe("Command", () => {
     it("is data on the issued Command, computed from the arguments, with no cache", () => {
       const unmatched = RenameUser.make("1", "Ada")
       assert.deepStrictEqual(unmatched.invalidates, [entry("1"), listUsers])
-      assert.deepStrictEqual(unmatched.optimistic, [{ _tag: "Patch", target: entry("1"), name: "Ada" }])
+      const patch = unmatched.optimistic[0] as Loader.PatchTarget
+      assert.deepStrictEqual([patch._tag, patch.argsKey], ["Patch", entry("1").argsKey])
+      assert.deepStrictEqual(patch.fn({ id: "1", name: "x" }), { id: "1", name: "Ada" })
       assert.deepStrictEqual(unmatched.writes?.({ id: "1", name: "Ada" }), [
-        { _tag: "Set", target: entry("1"), value: { id: "1", name: "Ada" } }
+        GetUser.set({ id: "1" }, { id: "1", name: "Ada" })
       ])
       assert.deepStrictEqual([unmatched.args, unmatched.key, unmatched.mode], [["1", "Ada"], "1", "queue"])
     })
@@ -127,7 +145,7 @@ describe("Command", () => {
     it("a Service with only invalidates has no patches and no writes, and make declares nothing", () => {
       const save = SaveTodo.make(todo)
       assert.deepStrictEqual([save.invalidates, save.optimistic, save.writes], [
-        [{ read: "GetTodo", id: "t1" }],
+        [GetTodo.entry({ id: "t1" })],
         [],
         undefined
       ])

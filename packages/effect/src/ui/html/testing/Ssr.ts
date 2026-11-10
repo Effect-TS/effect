@@ -44,15 +44,18 @@ import * as Context from "../../../Context.ts"
 import * as Data from "../../../Data.ts"
 import type * as Duration from "../../../Duration.ts"
 import * as Effect from "../../../Effect.ts"
+import * as Loader from "../../../reactivity/Loader.ts"
 import * as Schema from "../../../Schema.ts"
 import type * as Scope from "../../../Scope.ts"
 import type * as Component from "../../Component.ts"
 import * as Head from "../../Head.ts"
+import * as services from "../../internal/services.ts"
 import * as MessageLog from "../../MessageLog.ts"
 import * as Renderer from "../../Renderer.ts"
 import type * as View from "../../View.ts"
 import * as BrowserHost from "../BrowserHost.ts"
 import * as Html from "../Html.ts"
+import * as HtmlServer from "../HtmlServer.ts"
 import * as markers from "../internal/markers.ts"
 import * as server from "../internal/server.ts"
 
@@ -85,6 +88,18 @@ export interface Ssr<out Model, in Msg> {
   readonly log: ReadonlyArray<MessageLog.Entry>
   readonly serverLog: ReadonlyArray<MessageLog.Entry>
   readonly commands: ReadonlyArray<{ readonly path: string; readonly name: string; readonly index: number }>
+  /**
+   * PROTOTYPE (EFF-3558): every cache fetch on each side, in order, with its trigger. `fetches.client`
+   * is live: it keeps growing after `ssr` returns. `inWindow`: it started inside the fetch-free window.
+   */
+  readonly fetches: {
+    readonly server: ReadonlyArray<Loader.FetchEvent>
+    readonly client: ReadonlyArray<Loader.FetchEvent & { readonly inWindow: boolean }>
+  }
+  /** PROTOTYPE (EFF-3558): the state as `HtmlServer.serializeState` writes it, to measure its size. */
+  readonly payload: string
+  /** PROTOTYPE (EFF-3558): the client's cache, for `inspect` and `peek`. */
+  readonly cache: Loader.CacheInternals
 }
 
 /**
@@ -202,13 +217,29 @@ const encodeJson = (schema: Schema.Codec<any, any>, value: unknown): string | un
 export const ssr = <Name extends string, Props, Model, Msg, Events, R, V extends View.Elements>(
   component: Component.Component<Name, Props, Model, Msg, Events, R, V> & BrowserHost.HtmlRoot<V>,
   props: Props,
-  options?: { readonly budget?: Duration.Input | undefined }
+  options?: {
+    readonly budget?: Duration.Input | undefined
+    /** As `HtmlServer.renderToHtml` takes it: the entries hydrate with unknown age and there's no window. */
+    readonly static?: boolean | undefined
+    /** The client mount's cache options. The server takes none. */
+    readonly loader?: { readonly idleTimeToLive?: Duration.Input | undefined } | undefined
+  }
 ): Effect.Effect<Ssr<Model, Msg>, SsrError, Exclude<R, Html.Host> | Scope.Scope> =>
   Effect.gen(function*() {
     // -- server ---------------------------------------------------------------
     const serverLog = MessageLog.makeMemory({ size: 100_000 })
-    const rendered = yield* Renderer.prerender(component, props, { budget: options?.budget, elements: [Html.name] })
+    const serverFetches: Array<Loader.FetchEvent> = []
+    const clientFetches: Array<Loader.FetchEvent & { readonly inWindow: boolean }> = []
+    let clientCache: Loader.CacheInternals | undefined
+    const rendered = yield* Renderer.prerender(component, props, {
+      budget: options?.budget,
+      elements: [Html.name],
+      static: options?.static
+    })
       .pipe(
+        Effect.provideService(services.CacheObserver, (cache) => {
+          Loader.internals(cache as Loader.Cache["Service"]).onFetch((event) => serverFetches.push(event))
+        }),
         Effect.provideService(MessageLog.MessageLog, serverLog),
         Effect.provideService(Html.Host, BrowserHost.htmlHost)
       )
@@ -260,11 +291,21 @@ export const ssr = <Name extends string, Props, Model, Msg, Events, R, V extends
         judge()
       }
     }
-    const root = yield* Renderer.mount(component, props, container, { state: rendered.state }).pipe(
+    // The state crosses the wire as JSON, so the client adopts what a browser would parse.
+    const payload = HtmlServer.serializeState(rendered.state)
+    const root = yield* Renderer.mount(component, props, container, {
+      state: JSON.parse(payload),
+      loader: options?.loader
+    }).pipe(
       Effect.provideContext(
         Context.make(Renderer.Renderer, { host: recording }).pipe(
           Context.add(Html.Host, BrowserHost.htmlHost),
-          Context.add(MessageLog.MessageLog, clientLog)
+          Context.add(MessageLog.MessageLog, clientLog),
+          Context.add(services.CacheObserver, (cache) => {
+            const internals = Loader.internals(cache as Loader.Cache["Service"])
+            clientCache = internals
+            internals.onFetch((event) => clientFetches.push({ ...event, inWindow: internals.isWindowOpen() }))
+          })
         )
       )
     ) as Effect.Effect<Renderer.Root<Model, Msg>, never, Exclude<R, Html.Host> | Scope.Scope>
@@ -300,6 +341,21 @@ export const ssr = <Name extends string, Props, Model, Msg, Events, R, V extends
     }
     for (const path of markersLeft(container)) problems.push(`${path}: its markers are still in the document`)
     problems.push(...compareHeads(rendered.head, adoptionHead ?? Head.empty))
+    // Inside the fetch-free window only invalidation, a host edge or the interval may fetch a shipped
+    // entry. One the server didn't ship (a budget miss) is cold, and fetches as usual.
+    const shipped = new Set<string>()
+    const entries = rendered.state["~loader"]
+    if (typeof entries === "object" && entries !== null) {
+      for (const [read, tuples] of Object.entries(entries)) {
+        if (Array.isArray(tuples)) { for (const tuple of tuples) shipped.add(`${read}\u0000${tuple?.[0]}`) }
+      }
+    }
+    for (const event of clientFetches) {
+      if (!shipped.has(`${event.read}\u0000${event.argsKey}`)) continue
+      if (event.inWindow && (event.trigger === "watch" || event.trigger === "get" || event.trigger === "prefetch")) {
+        problems.push(`${event.read} ${event.argsKey}: a ${event.trigger} fetched inside the fetch-free window`)
+      }
+    }
     if (problems.length > 0) return yield* new SsrError({ problems })
 
     // Hydration replays every one of `init`'s Commands.
@@ -319,6 +375,9 @@ export const ssr = <Name extends string, Props, Model, Msg, Events, R, V extends
       adopted,
       log,
       serverLog: serverLog.entries(),
-      commands
+      commands,
+      fetches: { server: serverFetches, client: clientFetches },
+      payload,
+      cache: clientCache!
     }
   })
