@@ -1711,7 +1711,7 @@ const prepareTools = Effect.fnUntraced(
         type: "function",
         function: {
           name: tool.name,
-          parameters,
+          parameters: parameters as Record<string, Schema.Json>,
           strict,
           ...(Predicate.isNotUndefined(description) ? { description } : undefined)
         }
@@ -1923,7 +1923,7 @@ const getResponseFormat = Effect.fnUntraced(function*({ config, options, transfo
       type: "json_schema",
       json_schema: {
         name: options.responseFormat.objectName,
-        schema: jsonSchema,
+        schema: jsonSchema as Record<string, Schema.Json>,
         strict: config.strictJsonSchema ?? (transformer === toCodecOpenAI ? true : null),
         ...(Predicate.isNotUndefined(description) ? { description } : undefined)
       }

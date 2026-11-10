@@ -6443,6 +6443,15 @@ An Effect struct exported with `additionalProperties: true` therefore imports wi
 even if the original struct had none. The imported decoder retains additional properties that the original decoder
 would strip. Use the imported schema's actual checks and parse options when reasoning about validation.
 
+Set `closeObjects: true` to close objects with declared properties when every contributing object omits
+`additionalProperties`. Closing happens after intersections are normalized, so inherited fields remain valid.
+Explicit additional-property constraints take precedence, and free-form objects stay open. This option changes excess-property behavior:
+the decoder strips excess keys by default, or rejects them with `onExcessProperty: "error"`.
+
+Typed additional properties can coexist with named properties when an unchecked primitive or `anyOf` catch-all
+provably accepts every declared property's values. Combinations requiring the index signature to exclude named
+properties remain unsupported.
+
 Import translates a Draft 2020-12 subset. `$dynamicRef`, `contains`, `dependentRequired`, `dependentSchemas`,
 active `if` / `then` / `else`, `unevaluatedItems`, and `unevaluatedProperties` are rejected with an error identifying
 the unsupported keyword. Inactive conditional keywords and `minContains` / `maxContains` without
@@ -6478,9 +6487,11 @@ collide, later values overwrite earlier ones according to the existing merge ord
 alternatives or unreachable children is discarded. The resulting schema can have a different structure from the input;
 retaining annotations does not provide a lossless round trip or enforce custom validation rules.
 
-Intersections of overlapping unions are limited to disjoint root-type partitions and finite primitive `anyOf` literal
-sets, which may also be duplicated across branches. Other union intersections, including cases that would duplicate any
-other nested choice, are rejected.
+Intersections of overlapping unions support alternatives separated by root types or required literal properties,
+including referenced objects. Incompatible alternatives are pruned before intersection. Finite primitive `anyOf`
+literal sets may also be duplicated across branches. Other intersections that would duplicate nested choices
+remain unsupported. Intersecting the same reference retains the shared definition, including recursive definitions.
+Other recursive intersections are rejected when normalization requires an unfinished definition or revisits the same operands.
 
 Regular expression constraints reached during translation are rejected by default because imported patterns use the
 runtime's native regular expression engine and may block validation for an unbounded amount of time. Set
