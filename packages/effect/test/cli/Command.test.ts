@@ -161,7 +161,7 @@ describe("Command", () => {
         yield* MockTerminal.inputKey("enter")
         yield* Fiber.join(fiber)
 
-        assert.deepStrictEqual(captured, [["greet", "--name", "Alice", "2"]])
+        assert.deepStrictEqual(captured, [["greet", "--name", "Alice", "--", "2"]])
       }).pipe(Effect.provide(TestLayer)))
 
     it.effect("should run wizard-generated arguments with --wizard", () =>
@@ -392,7 +392,7 @@ describe("Command", () => {
 
         const output = (yield* TestConsole.logLines).join("\n")
         assert.deepStrictEqual(captured, [["prompted", "prompted"]])
-        assert.include(output, "$ root --log-level error child -p=dev --name prompted prompted")
+        assert.include(output, "$ root --log-level error child -p=dev --name prompted -- prompted")
       }).pipe(Effect.provide(TestLayer)))
 
     it.effect("should preserve numeric aliases in shared short-option clusters with --wizard", () =>
@@ -421,6 +421,40 @@ describe("Command", () => {
 
         assert.deepStrictEqual(captured, [[true, true]])
       }).pipe(Effect.provide(TestLayer)))
+
+    for (const global of [false, true]) {
+      it.effect(
+        `should preserve retained ${global ? "global" : "shared"} boolean bindings with --wizard`,
+        () =>
+          Effect.gen(function*() {
+            const captured: Array<readonly [boolean, ReadonlyArray<string>]> = []
+            const Verbose = GlobalFlag.Setting("debug")({ flag: Flag.Boolean("debug").pipe(Flag.withDefault(false)) })
+            const root = Command.make("root").pipe(
+              Command.withSharedFlags({ verbose: Flag.Boolean("verbose").pipe(Flag.withDefault(false)) })
+            )
+            const child = Command.make("child", {
+              values: Argument.String("value").pipe(Argument.atLeast(1))
+            }, ({ values }) =>
+              Effect.gen(function*() {
+                const verbose = global ? yield* Verbose : (yield* root).verbose
+                captured.push([verbose, values])
+              }))
+            const command = root.pipe(Command.withSubcommands([child]), Command.withGlobalFlags([Verbose]))
+            const fiber = yield* Command.runWith(command, { version: "1.0.0" })([
+              "child",
+              global ? "--debug" : "--verbose",
+              "typed",
+              "--wizard"
+            ]).pipe(Effect.forkChild)
+            yield* MockTerminal.inputKey("enter")
+            yield* MockTerminal.inputText("false")
+            yield* MockTerminal.inputKey("enter")
+            yield* MockTerminal.inputKey("enter")
+            yield* Fiber.join(fiber)
+            assert.deepStrictEqual(captured, [[true, ["false"]]])
+          }).pipe(Effect.provide(TestLayer))
+      )
+    }
 
     it.effect("should reject --completions without a shell", () =>
       Effect.gen(function*() {
