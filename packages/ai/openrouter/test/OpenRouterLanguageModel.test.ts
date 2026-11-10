@@ -6,6 +6,116 @@ import { type AiError, LanguageModel, Model, Prompt, Tool, Toolkit } from "effec
 import { HttpClient, type HttpClientError, type HttpClientRequest, HttpClientResponse } from "effect/http"
 
 describe("OpenRouterLanguageModel", () => {
+  describe("finish reason inference", () => {
+    const metadata = { id: "response-1", object: "chat.completion.chunk" as const, model: "test/model", created: 1 }
+    const usage = { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 }
+    const call = {
+      index: 0,
+      id: "call-1",
+      type: "function" as const,
+      function: { name: "ProbeTool", arguments: "{\"value\":1}" }
+    }
+
+    const toolkit = Toolkit.make(Tool.make("ProbeTool", {
+      parameters: Schema.Struct({ value: Schema.Number }),
+      success: Schema.Number
+    }))
+    const toolLayer = toolkit.toLayer({ ProbeTool: ({ value }) => Effect.succeed(value) })
+
+    it.effect("generate executes tool calls with a null finish reason", () =>
+      Effect.gen(function*() {
+        const response = yield* LanguageModel.generateText({ prompt: "Use the tool", toolkit })
+        strictEqual(response.finishReason, "tool-calls")
+        deepStrictEqual(response.content.filter((part) => part.type === "tool-result").map((part) => part.result), [1])
+      }).pipe(
+        Effect.provide(OpenRouterLanguageModel.model(metadata.model)),
+        Effect.provide(toolLayer),
+        Effect.provide(makeTestLayer({
+          body: {
+            choices: [{
+              index: 0,
+              finish_reason: null,
+              message: { role: "assistant", content: null, tool_calls: [call] }
+            }]
+          }
+        }))
+      ))
+
+    it.effect("stream executes complete tool calls without a finish reason", () =>
+      Effect.gen(function*() {
+        const parts = yield* LanguageModel.streamText({ prompt: "Use the tool", toolkit }).pipe(Stream.runCollect)
+        deepStrictEqual(parts.filter((part) => part.type === "finish").map((part) => part.reason), ["tool-calls"])
+        deepStrictEqual(parts.filter((part) => part.type === "tool-result").map((part) => part.result), [1])
+      }).pipe(
+        Effect.provide(OpenRouterLanguageModel.model(metadata.model)),
+        Effect.provide(toolLayer),
+        Effect.provide(makeStreamTestLayer([
+          {
+            ...metadata,
+            choices: [{
+              index: 0,
+              delta: {
+                tool_calls: [{
+                  ...call,
+                  function: { name: "ProbeTool", arguments: "{\"value\":" }
+                }]
+              }
+            }]
+          },
+          {
+            ...metadata,
+            choices: [{
+              index: 0,
+              delta: {
+                tool_calls: [{ index: 0, function: { arguments: "1}" } }]
+              }
+            }],
+            usage
+          }
+        ]))
+      ))
+
+    it.effect("does not execute a truncated tool call alongside a complete call without a finish reason", () =>
+      Effect.gen(function*() {
+        const toolkit = Toolkit.make(Tool.make("ProbeTool", {
+          parameters: Schema.Struct({ value: Schema.optional(Schema.Number) }),
+          success: Schema.String
+        }))
+        const executed: Array<number | undefined> = []
+        yield* LanguageModel.streamText({ prompt: "Use the probe tool", toolkit }).pipe(
+          Stream.runDrain,
+          Effect.result,
+          Effect.provide(OpenRouterLanguageModel.model(metadata.model)),
+          Effect.provide(toolkit.toLayer({
+            ProbeTool: ({ value }) =>
+              Effect.sync(() => {
+                executed.push(value)
+                return "ok"
+              })
+          })),
+          Effect.provide(makeStreamTestLayer([
+            {
+              ...metadata,
+              choices: [{
+                index: 0,
+                delta: {
+                  tool_calls: [call, {
+                    index: 1,
+                    id: "call-2",
+                    type: "function",
+                    function: { name: "ProbeTool", arguments: "{\"value\":" }
+                  }]
+                }
+              }]
+            },
+            { ...metadata, choices: [], usage }
+          ]))
+        )
+        // Either rejecting the response or leaving the partial call interrupted is safe.
+        assert.notInclude(executed, undefined)
+      }))
+  })
+
   describe("strictJsonSchema", () => {
     for (
       const [model, strict] of [
