@@ -1513,6 +1513,50 @@ describe("HttpServer", () => {
       })
   )
 
+  it.live("sends EOF to non-WebSocket upgrades and shuts down when the peer closes", () =>
+    Effect.gen(function*() {
+      const server = Http.createServer()
+      const scope = yield* Scope.make()
+      yield* Effect.addFinalizer(() => Scope.close(scope, Exit.void))
+      yield* HttpRouter.add(
+        "GET",
+        "/attach",
+        Effect.gen(function*() {
+          const request = yield* HttpServerRequest.HttpServerRequest
+          const socket = yield* request.upgrade
+          yield* Stream.runDrain(Socket.toStream(socket)).pipe(Effect.ignore)
+          return HttpServerResponse.empty()
+        })
+      ).pipe(
+        (layer) => HttpRouter.serve(layer, { disableListenLog: true }),
+        Layer.provide(NodeHttpServer.layer(() => server, { port: 0, gracefulShutdownTimeout: "10 seconds" })),
+        Layer.buildWithScope(scope)
+      )
+      const client = yield* Effect.acquireRelease(
+        Effect.sync(() => Net.connect({ port: tcpPort(server), host: "127.0.0.1", allowHalfOpen: true })),
+        (client) => Effect.sync(() => client.destroy())
+      )
+      const eof = Latch.makeUnsafe()
+      client.on("end", () => eof.openUnsafe())
+      client.on("error", constVoid)
+      const head = yield* Effect.callback<string>((resume) => {
+        let received = ""
+        client.on("data", (chunk) => {
+          received += chunk.toString()
+          if (received.includes("\r\n\r\n")) resume(Effect.succeed(received))
+        })
+        client.write("GET /attach HTTP/1.1\r\nHost: localhost\r\nConnection: Upgrade\r\nUpgrade: tcp\r\n\r\n")
+      }).pipe(Effect.timeout("2 seconds"))
+      assert.strictEqual(head, "HTTP/1.1 101 Switching Protocols\r\nConnection: Upgrade\r\nUpgrade: tcp\r\n\r\n")
+
+      const closed = yield* Effect.forkDetach(Scope.close(scope, Exit.void))
+      yield* eof.await.pipe(
+        Effect.andThen(Effect.sync(() => client.end())),
+        Effect.andThen(Fiber.join(closed)),
+        Effect.timeout("2 seconds")
+      )
+    }))
+
   it.live("closes idle HTTP/2 sessions on shutdown", () =>
     Effect.gen(function*() {
       const server = Http2.createServer()
