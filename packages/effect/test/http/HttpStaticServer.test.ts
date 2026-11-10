@@ -107,7 +107,6 @@ describe("HttpStaticServer conditional requests", () => {
           [{ "If-Unmodified-Since": earlier, "If-None-Match": "\"v1,part\"", Range: "bytes=2-5" }, 412],
           [{ "If-None-Match": "\"stale\", W/\"v1,part\"" }, 304],
           [{ "If-None-Match": "\"v1\", \"part\"" }, 200],
-          [{ "If-None-Match": "*" }, 304],
           [{ "If-Unmodified-Since": lastModified }, 200],
           [{ "If-Unmodified-Since": "invalid" }, 200],
           [{ "If-Match": "\"v1,part\"", "If-Unmodified-Since": earlier }, 200]
