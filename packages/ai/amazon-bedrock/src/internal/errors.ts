@@ -1,8 +1,6 @@
 import * as AiError from "effect/ai/AiError"
-import type * as Response from "effect/ai/Response"
 import * as Effect from "effect/Effect"
 import type * as HttpClientError from "effect/http/HttpClientError"
-import type * as HttpClientRequest from "effect/http/HttpClientRequest"
 import * as Option from "effect/Option"
 import * as Predicate from "effect/Predicate"
 import * as Redactable from "effect/Redactable"
@@ -68,7 +66,8 @@ export const mapHttpClientError = (
         new AiError.NetworkError({
           reason: reason._tag,
           description: reason.description,
-          request: buildHttpRequestDetails(reason.request)
+          method: reason.request.method,
+          url: reason.request.url
         })
       ))
     }
@@ -118,11 +117,12 @@ const mapStatusCodeError = Effect.fnUntraced(function*(
     method,
     mapStatusCodeToReason({
       status: response.status,
+      requestMethod: request.method,
+      url: request.url,
       message,
       // AWS sends the exception shape as `Name:http://internal.amazon.com/coral/...`.
       errorType: response.headers["x-amzn-errortype"]?.split(":")[0],
       http: {
-        request: buildHttpRequestDetails(request),
         response: {
           status: response.status,
           headers: Redactable.redact(response.headers) as Record<string, string>
@@ -131,20 +131,6 @@ const mapStatusCodeError = Effect.fnUntraced(function*(
       }
     })
   )
-})
-
-// =============================================================================
-// HTTP Context
-// =============================================================================
-
-const buildHttpRequestDetails = (
-  request: HttpClientRequest.HttpClientRequest
-): typeof Response.HttpRequestDetails.Type => ({
-  method: request.method,
-  url: request.url,
-  urlParams: Array.from(request.urlParams),
-  hash: Option.getOrUndefined(request.hash),
-  headers: Redactable.redact(request.headers) as Record<string, string>
 })
 
 // =============================================================================
@@ -165,7 +151,9 @@ const authenticationKinds: Record<string, AiError.AuthenticationError["kind"]> =
   UnrecognizedClientException: "InvalidKey"
 }
 
-const mapStatusCodeToReason = ({ errorType, http, message, status }: {
+const mapStatusCodeToReason = ({ errorType, http, message, requestMethod, status, url }: {
+  readonly requestMethod: string
+  readonly url: string
   readonly status: number
   readonly message: string | undefined
   readonly errorType: string | undefined
@@ -186,7 +174,7 @@ const mapStatusCodeToReason = ({ errorType, http, message, status }: {
     case 422: {
       const summary = message ?? `HTTP ${status}`
       return new AiError.InvalidRequestError({
-        description: describe(`${summary} (${http.request.method} ${http.request.url})`),
+        description: describe(`${summary} (${requestMethod} ${url})`),
         http
       })
     }

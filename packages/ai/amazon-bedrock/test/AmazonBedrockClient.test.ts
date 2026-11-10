@@ -3,14 +3,7 @@ import { assert, describe, it } from "@effect/vitest"
 import { assertDefined } from "@effect/vitest/utils"
 import { ConfigProvider, Effect, Layer, Redacted, Stream, Tracer } from "effect"
 import { AiError } from "effect/ai"
-import {
-  Headers,
-  HttpClient,
-  type HttpClientError,
-  type HttpClientRequest,
-  HttpClientResponse,
-  UrlParams
-} from "effect/http"
+import { HttpClient, type HttpClientError, type HttpClientRequest, HttpClientResponse, UrlParams } from "effect/http"
 import * as NodeCrypto from "node:crypto"
 import { concat, encodeFrame, encodeRawFrame, eventFrame, exceptionFrame, textReplyFrames } from "./utils.ts"
 
@@ -241,7 +234,7 @@ describe("AmazonBedrockClient", () => {
         assert.strictEqual(http.requests.length, 0)
       }))
 
-    it.effect("redacts the credential headers in error context", () =>
+    it.effect("omits request credentials from error context", () =>
       Effect.gen(function*() {
         const http = makeHttpClient((request) =>
           Effect.succeed(jsonResponse(request, 400, { message: "Malformed input request" }, "ValidationException"))
@@ -255,11 +248,14 @@ describe("AmazonBedrockClient", () => {
 
         const error = yield* converse.pipe(Effect.provide(layer), Effect.provide(http.layer), Effect.flip)
 
-        const headers = error.reason._tag === "InvalidRequestError"
-          ? error.reason.http?.request.headers ?? Headers.empty
-          : Headers.empty
-        assert.strictEqual(String(headers["authorization"]), "<redacted>")
-        assert.strictEqual(String(headers["x-amz-security-token"]), "<redacted>")
+        assert.strictEqual(error.reason._tag, "InvalidRequestError")
+        if (error.reason._tag !== "InvalidRequestError") return
+        assert.isDefined(error.reason.http)
+        assert.strictEqual("request" in error.reason.http!, false)
+        const serialized = JSON.stringify(error)
+        assert.strictEqual(serialized.includes(accessKeyId), false)
+        assert.strictEqual(serialized.includes(secretAccessKey), false)
+        assert.strictEqual(serialized.includes("session-token"), false)
       }))
   })
 
