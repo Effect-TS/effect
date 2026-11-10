@@ -87,7 +87,7 @@ describe("Loader snapshots", () => {
       AsyncResult.success({ id: "1", name: "Ann" }, { timestamp: 5 })
     )
     const encoded = Schema.encodeUnknownSync(json)(success)
-    assert.deepStrictEqual(encoded, [{ id: "1" }, 0, { id: "1", name: "Ann" }, 5, false])
+    assert.deepStrictEqual(encoded, [`{"id":"1"}`, 0, { id: "1", name: "Ann" }, 5, false])
     assert.isTrue(Equal.equals(Schema.decodeUnknownSync(json)(encoded), success))
 
     const failure = internal.makeSnapshot(
@@ -99,7 +99,7 @@ describe("Loader snapshots", () => {
       })
     )
     const failureEncoded = Schema.encodeUnknownSync(json)(failure)
-    assert.deepStrictEqual(failureEncoded, [{ id: "1" }, 1, ["nope"], [{ id: "1", name: "Ann" }, 5]])
+    assert.deepStrictEqual(failureEncoded, [`{"id":"1"}`, 1, ["nope"], [{ id: "1", name: "Ann" }, 5]])
     assert.isTrue(Equal.equals(Schema.decodeUnknownSync(json)(failureEncoded), failure))
 
     const empty = internal.makeSnapshot(def, "user", undefined, undefined)
@@ -153,11 +153,11 @@ describe("Loader snapshots", () => {
       Schema.toCodecJson(Schema.make<Schema.Codec<unknown, unknown>>(redactAST(Model.ast)))
     )({ secret: snapshot })
     assert.deepStrictEqual(logged, {
-      secret: [{ token: { "~redacted": true } }, 0, { value: { "~redacted": true } }, 1, false]
+      secret: [`{"token":{"~redacted":true}}`, 0, { value: { "~redacted": true } }, 1, false]
     })
     // Page state and history.state keep the real key and value.
     const page = Schema.encodeUnknownSync(Schema.toCodecJson(Model))({ secret: snapshot })
-    assert.deepStrictEqual(page, { secret: [{ token: "t" }, 0, { value: "v" }, 1, false] })
+    assert.deepStrictEqual(page, { secret: [`{"token":"t"}`, 0, { value: "v" }, 1, false] })
   })
 })
 
@@ -340,6 +340,62 @@ describe("Loader history restore", () => {
       assert.deepStrictEqual(yield* fetchLog, ["watch"])
       yield* Fiber.interrupt(watcher)
     }).pipe(Effect.provide(Layer.merge(GetUser.layer, TestLoader.layer())))
+  })
+})
+
+describe("Loader snapshot identity", () => {
+  it.effect("a snapshot keeps its entry's args key through JSON text, -0 included, and seeds that entry", () => {
+    class GetPoint extends Loader.Service<GetPoint>()(
+      "points/GetPoint",
+      { args: { n: Schema.Number }, success: Schema.String, error: Schema.Never, staleTime: "1 minute" },
+      Effect.sync(() => ({ n }) => Effect.succeed(Object.is(n, -0) ? "minus zero" : "zero"))
+    ) {}
+    const def = internal.defOf(GetPoint)
+    const json = Schema.toCodecJson(Loader.Snapshot(GetPoint, "point"))
+    const snapshot = internal.makeSnapshot(
+      def,
+      "point",
+      { args: { n: -0 }, argsKey: def.argsKey({ n: -0 }) },
+      AsyncResult.success("restored", { timestamp: 1 })
+    )
+    // Through text, as page state and history.state carry it: JSON text has no -0 in an args object.
+    const text = JSON.stringify(Schema.encodeUnknownSync(json)(snapshot))
+    const decoded = Schema.decodeUnknownSync(json)(JSON.parse(text))
+    assert.strictEqual(internal.snapshotData(decoded)?.argsKey, `{"n":-0}`)
+    assert.isTrue(Equal.equals(decoded, snapshot))
+    // A key that doesn't key back to itself is rejected, not seeded under another entry.
+    assert.isTrue(Exit.isFailure(Schema.decodeUnknownExit(json)([`{ "n": 0 }`, 0, "x", 1, false])))
+    return Effect.gen(function*() {
+      const loader = yield* cache
+      assert.isTrue(loader.seed(decoded))
+      assert.strictEqual((yield* TestLoader.entry(GetPoint, { n: -0 }))?.stored?._tag, "Success")
+      assert.isUndefined(yield* TestLoader.entry(GetPoint, { n: 0 }))
+    }).pipe(Effect.provide(Layer.merge(GetPoint.layer, TestLoader.layer())))
+  })
+
+  it("a snapshot of an entry keyed with an optional undefined dropped encodes as the key does", () => {
+    // Accepts a missing page, and rejects one that is present and undefined.
+    const Args = Schema.Struct({ id: Schema.String, page: Schema.optional(Schema.Number) }).check(
+      Schema.makeFilter((args) => !("page" in args) || args.page !== undefined)
+    )
+    class GetPage extends Loader.Service<GetPage>()(
+      "pages/GetPage",
+      { args: Args, success: Schema.String, error: Schema.Never, staleTime: "1 minute" },
+      Effect.sync(() => ({ id }) => Effect.succeed(id))
+    ) {}
+    const def = internal.defOf(GetPage)
+    const json = Schema.toCodecJson(Loader.Snapshot(GetPage, "page"))
+    const args = { id: "1", page: undefined }
+    const snapshot = internal.makeSnapshot(
+      def,
+      "page",
+      { args, argsKey: def.argsKey(args) },
+      AsyncResult.success("one", { timestamp: 1 })
+    )
+    const encoded = Schema.encodeUnknownSync(json)(snapshot)
+    assert.deepStrictEqual(encoded, [`{"id":"1"}`, 0, "one", 1, false])
+    const decoded = Schema.decodeUnknownSync(json)(JSON.parse(JSON.stringify(encoded)))
+    assert.strictEqual(internal.snapshotData(decoded)?.argsKey, def.argsKey(args))
   })
 })
 

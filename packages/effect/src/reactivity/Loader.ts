@@ -693,7 +693,7 @@ export const invalidatesEntry: <R extends Read.Any>(
  *
  * **Details**
  *
- * It holds the read's name, the label, the entry's arguments, a settled
+ * It holds the read's name, the label, the entry's args key, a settled
  * result and whether that result includes an unconfirmed patch. It never
  * holds `Initial`, and `waiting` always decodes as false.
  *
@@ -735,10 +735,12 @@ export interface SnapshotSchema<R extends Read.Any, Label extends string> extend
  * **Details**
  *
  * Two fields of one read can't take each other's snapshot: the type and the
- * check both carry the read and the label. The JSON codec encodes the
- * arguments, the value and the errors through the read's own Schemas, so a
- * walk over a Model's Schema reaches what a snapshot holds, a
- * `Schema.Redacted` included.
+ * check both carry the read and the label. The JSON codec writes the
+ * entry's args key, built through the read's `args` Schema, and encodes the
+ * value and the errors through the read's own Schemas, so a walk over a
+ * Model's Schema reaches what a snapshot holds, a `Schema.Redacted`
+ * included. Decoding rejects an args key that isn't canonical, so a snapshot
+ * always names the entry it was taken from.
  *
  * @stability experimental
  * @category schemas

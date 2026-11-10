@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Cause, Effect, Exit, Fiber, Layer, Option, Schema } from "effect"
+import { Cause, Deferred, Effect, Exit, Fiber, Latch, Layer, Option, Schema, Scope } from "effect"
 import type { Duration } from "effect"
 import { AsyncResult, Loader } from "effect/reactivity"
 import * as internal from "effect/reactivity/internal/loader"
@@ -328,6 +328,37 @@ describe("Loader runs", () => {
         }).pipe(provide)
       }))
 
+    it.effect("a newer run that fails still keeps an older answer from being stored", () => {
+      const { GetUser, db, provide } = makeUsers()
+      const rename = (name: string, serverAt: number, answerAt: number, fails: boolean) =>
+        run(
+          { invalidates: [GetUser.entry({ id: "1" })] },
+          Effect.gen(function*() {
+            yield* Effect.sleep(serverAt)
+            db.name = name
+            yield* Effect.sleep(answerAt - serverAt)
+            // The server landed the write; only the answer is lost.
+            if (fails) return yield* Effect.fail("lost")
+            return { id: "1", name }
+          }),
+          (user) => [GetUser.set({ id: "1" }, user)]
+        )
+      return Effect.gen(function*() {
+        const watcher = yield* watchPatched(GetUser, { id: "1" })
+        yield* advance(10)
+        // The server applies B1 then B2. B2's run fails first, and B1 answers last.
+        const first = yield* rename("B1", 5, 30, false)
+        const second = yield* rename("B2", 8, 10, true)
+        yield* advance(10)
+        assert.isTrue(Exit.isFailure(yield* Fiber.await(second)))
+        yield* advance(20)
+        yield* Fiber.join(first)
+        yield* advance(10)
+        assert.deepStrictEqual(watcher.seen, ["Ann", "Ann waiting", "B2", "B2 waiting", "B2"])
+        assert.deepStrictEqual(yield* fetchLog, ["watch", "invalidation", "invalidation"])
+      }).pipe(provide)
+    })
+
     it.effect("a failed run drops its patch at once; a successful one holds it until a settle", () => {
       const { GetUser, provide } = makeUsers()
       return Effect.gen(function*() {
@@ -434,6 +465,31 @@ describe("Loader runs", () => {
         assert.strictEqual(entry?.view._tag === "Success" && entry.view.value.name, 42 as unknown as string)
       }).pipe(provide)
     })
+    it.effect("PatchMutated catches a mutation inside a value the success codec passes through", () => {
+      class GetDoc extends Loader.Service<GetDoc>()(
+        "docs/GetDoc",
+        {
+          args: { id: Schema.String },
+          success: Schema.Struct({ payload: Schema.Unknown }),
+          error: Schema.Never,
+          staleTime: "30 seconds"
+        },
+        Effect.sync(() => () => Effect.sync(() => ({ payload: { count: 1 } })))
+      ) {}
+      return Effect.gen(function*() {
+        yield* GetDoc.get({ id: "1" })
+        yield* issue({
+          optimistic: [
+            GetDoc.patch({ id: "1" }, (doc) => {
+              ;(doc.payload as { count: number }).count++
+              return { ...doc }
+            })
+          ]
+        })
+        const [mutated] = yield* TestLoader.expectProblem("PatchMutated")
+        assert.strictEqual(mutated.logKey, `{"id":"1"}`)
+      }).pipe(Effect.provide(Layer.merge(GetDoc.layer, TestLoader.layer())))
+    })
   })
 
   describe("get under a live patch", () => {
@@ -480,6 +536,87 @@ describe("Loader runs", () => {
         yield* advance(20)
         assert.strictEqual((yield* fetchLog).length, 3)
       }).pipe(provide)
+    })
+
+    it.effect("a converted get starts its caller-only fetch only once the interrupted fetch has cleaned up", () => {
+      const log: Array<string> = []
+      const gate = Deferred.makeUnsafe<void>()
+      let calls = 0
+      class GetGated extends Loader.Service<GetGated>()(
+        "gated/GetGated",
+        { args: { id: Schema.String }, success: Schema.String, error: Schema.Never, staleTime: "30 seconds" },
+        Effect.sync(() => () =>
+          Effect.suspend(() => {
+            const n = ++calls
+            log.push("start " + n)
+            return Effect.sleep(10).pipe(
+              Effect.as("v" + n),
+              Effect.onInterrupt(() =>
+                Deferred.await(gate).pipe(Effect.andThen(Effect.sync(() => log.push("cleaned " + n))))
+              )
+            )
+          })
+        )
+      ) {}
+      return Effect.gen(function*() {
+        yield* GetGated.get({ id: "1" }).pipe(Effect.forkScoped)
+        yield* advance(10)
+        yield* GetGated.invalidate({ id: "1" })
+        const pending = yield* GetGated.get({ id: "1" }).pipe(Effect.forkScoped)
+        yield* advance(5)
+        yield* issue({ optimistic: [GetGated.patch({ id: "1" }, (s) => s + "!")] })
+        yield* advance(5)
+        // The interrupted fetch is still cleaning up, so its replacement waits.
+        assert.deepStrictEqual(log, ["start 1", "start 2"])
+        Deferred.doneUnsafe(gate, Exit.void)
+        yield* flush
+        assert.deepStrictEqual(log, ["start 1", "start 2", "cleaned 2", "start 3"])
+        yield* advance(10)
+        assert.strictEqual(yield* Fiber.join(pending), "v3")
+      }).pipe(Effect.provide(Layer.merge(GetGated.layer, TestLoader.layer())))
+    })
+
+    it.effect("a caller-only fetch moving to a surviving build starts once the one under the closed build has cleaned up", () => {
+      const log: Array<string> = []
+      const cleanup = Latch.makeUnsafe()
+      let calls = 0
+      class GetGated extends Loader.Service<GetGated>()(
+        "gated/GetGated",
+        { args: { id: Schema.String }, success: Schema.String, error: Schema.Never, staleTime: "30 seconds" },
+        Effect.sync(() => () =>
+          Effect.suspend(() => {
+            const n = ++calls
+            log.push("start " + n)
+            return Effect.sleep(10).pipe(
+              Effect.as("v" + n),
+              Effect.onInterrupt(() => cleanup.await.pipe(Effect.andThen(Effect.sync(() => log.push("cleaned " + n)))))
+            )
+          })
+        )
+      ) {}
+      return Effect.gen(function*() {
+        const scopeA = yield* Scope.make()
+        const buildA = yield* Layer.buildWithScope(Layer.fresh(GetGated.layer), scopeA)
+        const buildB = yield* Layer.buildWithScope(Layer.fresh(GetGated.layer), yield* Effect.scope)
+        yield* GetGated.get({ id: "1" }).pipe(Effect.provideContext(buildB), Effect.forkScoped)
+        yield* advance(10)
+        yield* GetGated.invalidate({ id: "1" })
+        yield* issue({ optimistic: [GetGated.patch({ id: "1" }, (s) => s + "!")] })
+        // Stale under a live patch: one caller-only fetch, under the first caller's build.
+        const a = yield* GetGated.get({ id: "1" }).pipe(Effect.provideContext(buildA), Effect.forkScoped)
+        const b = yield* GetGated.get({ id: "1" }).pipe(Effect.provideContext(buildB), Effect.forkScoped)
+        yield* advance(5)
+        yield* Effect.forkScoped(Scope.close(scopeA, Exit.void))
+        yield* flush
+        assert.deepStrictEqual(log, ["start 1", "start 2"])
+        yield* cleanup.open
+        yield* flush
+        assert.deepStrictEqual(log, ["start 1", "start 2", "cleaned 2", "start 3"])
+        yield* advance(10)
+        // Both callers get the one answer.
+        assert.deepStrictEqual([yield* Fiber.join(a), yield* Fiber.join(b)], ["v3", "v3"])
+        assert.deepStrictEqual(yield* fetchLog, ["get", "get unstored", "get restart unstored"])
+      }).pipe(Effect.provide(TestLoader.layer()))
     })
   })
 
