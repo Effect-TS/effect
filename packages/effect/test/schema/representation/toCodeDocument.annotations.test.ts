@@ -1,5 +1,6 @@
 import { assert, describe, it } from "@effect/vitest"
 import { Schema, SchemaRepresentation } from "effect"
+import { runInNewContext } from "node:vm"
 import { assertInclude, throws } from "../../utils/assert.ts"
 
 function expectError(thunk: () => void, expected: string | Error): void {
@@ -105,7 +106,9 @@ describe("SchemaRepresentation.toCodeDocument annotations", () => {
           symbol: Symbol.for("shared"),
           nan: NaN,
           positive: Infinity,
-          negative: -Infinity
+          negative: -Infinity,
+          nullPrototype: Object.create(null),
+          crossRealm: runInNewContext("({ value: 1 })") as unknown
         },
         omitted: { value: 1, callback: () => 2 }
       }).ast
@@ -117,8 +120,31 @@ describe("SchemaRepresentation.toCodeDocument annotations", () => {
     assertInclude(runtime, `"nan": NaN`)
     assertInclude(runtime, `"positive": Infinity`)
     assertInclude(runtime, `"negative": -Infinity`)
+    assertInclude(runtime, `"nullPrototype": {}`)
+    assertInclude(runtime, `"crossRealm": { "value": 1 }`)
     assert.isFalse(runtime.includes("omitted"))
     assert.isFalse(runtime.includes("callback"))
+  })
+
+  it("omits unsupported object annotations atomically", () => {
+    const schema = Schema.String.annotate({
+      kept: { value: 1 },
+      map: new Map([["a", 1]]),
+      set: new Set([1]),
+      date: new Date(0),
+      bytes: new Uint8Array([1, 2]),
+      instance: new (class {
+        value = 1
+      })(),
+      nested: { value: 1, map: new Map([["a", 1]]) },
+      array: [1, new Set([1])]
+    })
+    const document = SchemaRepresentation.toRepresentations([schema.ast])
+
+    assert.strictEqual(
+      SchemaRepresentation.toCodeDocument(document).codes[0].runtime,
+      `Schema.String.annotate({ "kept": { "value": 1 } })`
+    )
   })
 
   it("preserves top-level and nested __proto__ annotations in generated code", () => {
@@ -153,7 +179,8 @@ describe("SchemaRepresentation.toCodeDocument annotations", () => {
             type: StringRepresentation,
             annotations: {
               element: { value: 1 },
-              omitted: { callback: () => 1 }
+              omitted: { callback: () => 1 },
+              map: new Map([["a", 1]])
             }
           }],
           rest: [],
@@ -166,7 +193,7 @@ describe("SchemaRepresentation.toCodeDocument annotations", () => {
             type: NumberRepresentation,
             isOptional: false,
             isMutable: false,
-            annotations: { property: true }
+            annotations: { property: true, nested: { set: new Set([1]) } }
           }],
           indexSignatures: [],
           checks: []
