@@ -18,6 +18,12 @@ export * as TestClock from "./TestClock.ts"
 export * as TestConsole from "./TestConsole.ts"
 
 /**
+ * @stability experimental
+ * @since 4.1.3
+ */
+export * as TestLoader from "./TestLoader.ts"
+
+/**
  * @stability unstable
  * @since 4.0.0
  */
