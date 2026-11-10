@@ -118,6 +118,19 @@ const hasShapeOf = (ast: SchemaAST.AST): (u: unknown) => boolean => {
   }
 }
 
+/** Whether the type names `undefined` itself, as `Schema.optional` and `Schema.UndefinedOr` make it do. */
+const namesUndefined = (ast: SchemaAST.AST): boolean =>
+  ast._tag === "Undefined" ||
+  (ast._tag === "Union" && (ast.options?.mode ?? "anyOf") === "anyOf" && ast.types.some(namesUndefined))
+
+/**
+ * Whether a property of this type may hold `undefined`. A type that names
+ * `undefined` is not asked, so a declaration next to it never has its guard
+ * run on an `undefined` that is about to be dropped.
+ */
+const acceptsUndefined = (ast: SchemaAST.AST): boolean =>
+  namesUndefined(SchemaAST.toType(ast)) || hasShapeOf(ast)(undefined)
+
 /** Asks on first use, not when the Schema is walked: the type may be behind a `suspend`. */
 const lazy = <A>(make: () => A): () => A => {
   let made: { readonly value: A } | undefined
@@ -164,17 +177,17 @@ const copyWith = (o: object, changes: ReadonlyMap<PropertyKey, unknown>): object
  * without the property. Only the type side of the Schema is walked: what an
  * encoding produces is the Schema's business.
  *
- * It reaches nested structs, tuple and array elements, record values, union
- * members, the fields of a `Schema.Class` and whatever is behind a `suspend`.
- * It doesn't reach into an `Option`, a collection or any other declaration:
- * nothing says where a declaration keeps its contents or how to put changed
- * ones back.
+ * Only a struct's optional property is dropped. The struct is found wherever
+ * it sits: nested in another struct, as a tuple or array element, as a
+ * record's value, in a union member, as the fields of a `Schema.Class` or
+ * behind a `suspend`. A record's value or a tuple's element that is itself
+ * `undefined` stays, and so does a required key's. An `Option`, a collection
+ * or any other declaration is not looked into: nothing says where a
+ * declaration keeps its contents or how to put changed ones back.
  *
  * A property is dropped only when its own type accepts `undefined`, so the
- * Schema still rejects one that `Schema.optionalKey` forbids. A required key
- * keeps its `undefined`, and so do a record's values and a tuple's elements.
- * A property the Schema doesn't name is never read, and neither is one the
- * value inherits.
+ * Schema still rejects one that `Schema.optionalKey` forbids. A property the
+ * Schema doesn't name is never read, and neither is one the value inherits.
  *
  * Nothing is changed in place. A value that loses a property is copied with
  * `copyWith`, and a value with nothing to drop is handed on as it is.
@@ -232,7 +245,7 @@ const dropUndefinedOf: (ast: SchemaAST.AST) => DropUndefined | null = memoize(
         const properties = ast.propertySignatures.flatMap((property) => {
           const type = property.type
           const drop = dropUndefinedOf(type)
-          const accepts = SchemaAST.isOptional(type) ? lazy(() => hasShapeOf(type)(undefined)) : undefined
+          const accepts = SchemaAST.isOptional(type) ? lazy(() => acceptsUndefined(type)) : undefined
           return drop === null && accepts === undefined ? [] : [{ name: property.name, drop, accepts }]
         })
         const indexes = ast.indexSignatures.flatMap((index) => {

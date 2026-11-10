@@ -730,6 +730,17 @@ describe("Loader", () => {
         )
       )
     }, fetcher) {}
+    // A type's own guard is the caller's code too. It isn't asked about an undefined the type already allows.
+    const guarded: Array<unknown> = []
+    class Guarded extends Loader.Service<Guarded>()("Guarded", {
+      ...options,
+      args: {
+        when: Schema.optional(Schema.declare((u): u is Date => {
+          guarded.push(u)
+          return u instanceof Date
+        }))
+      }
+    }, fetcher) {}
     const thrown = <R>(get: Effect.Effect<number, never, R>) =>
       Effect.map(
         Effect.exit(get),
@@ -737,6 +748,8 @@ describe("Loader", () => {
       )
     return Effect.gen(function*() {
       assert.strictEqual(yield* Checked.get({ page: 1 }), 1)
+      assert.strictEqual(yield* Guarded.get({ when: undefined }), 1)
+      assert.deepStrictEqual(guarded, [])
       assert.deepStrictEqual([
         yield* thrown(Checked.get({ page: undefined })),
         yield* thrown(Checked.get({})),
@@ -746,7 +759,7 @@ describe("Loader", () => {
         `[Loader] read "Checked": the args don't encode with the read's args Schema`,
         `[Loader] read "Encoded": the args don't encode with the read's args Schema`
       ])
-    }).pipe(Effect.provide(Layer.mergeAll(Checked.layer, Encoded.layer, TestLoader.layer())))
+    }).pipe(Effect.provide(Layer.mergeAll(Checked.layer, Encoded.layer, Guarded.layer, TestLoader.layer())))
   })
 
   it.effect("the args Schema gets everything the drop doesn't change as it was passed", () => {
@@ -833,6 +846,25 @@ describe("Loader", () => {
         `ByName {"wire-a":{}}`
       ])
     }).pipe(Effect.provide(Layer.mergeAll(ByKind.layer, ByName.layer, TestLoader.layer())))
+  })
+
+  it.effect("a record's value and a tuple's element keep their undefined, and a struct in one loses its own", () => {
+    const Filter = Schema.UndefinedOr(Schema.Struct({ page: Schema.optional(Schema.Number) }))
+    class Nested extends Loader.Service<Nested>()("Nested", {
+      args: { record: Schema.Record(Schema.String, Filter), tuple: Schema.Tuple([Filter]) },
+      success: Schema.Number,
+      error: Schema.Never,
+      staleTime: "Infinity"
+    }, Effect.succeed(() => Effect.succeed(1))) {}
+    return Effect.gen(function*() {
+      yield* Nested.get({ record: { direct: undefined, nested: { page: undefined } }, tuple: [{ page: undefined }] })
+      yield* Nested.get({ record: { direct: undefined, nested: {} }, tuple: [{}] })
+      yield* Nested.get({ record: { nested: {} }, tuple: [undefined] })
+      assert.deepStrictEqual((yield* TestLoader.fetches).map((fetch) => fetch.logKey), [
+        `{"record":{"direct":null,"nested":{}},"tuple":[{}]}`,
+        `{"record":{"nested":{}},"tuple":[null]}`
+      ])
+    }).pipe(Effect.provide(Layer.mergeAll(Nested.layer, TestLoader.layer())))
   })
 
   it("a definition and a cache throw on durations that can't be meant", () => {
