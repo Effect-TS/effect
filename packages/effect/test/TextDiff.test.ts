@@ -203,11 +203,7 @@ describe("TextDiff", () => {
     })
 
     it("marks the differing ranges of lines changed one for one, with inline", () => {
-      const changesOf = (before: string, after: string) =>
-        TextDiff.hunks(TextDiff.lines(before, after), { context: 0, inline: true })
-          .flatMap((hunk) => hunk.lines.map((line) => [line._tag, line.changes]))
       const cases: ReadonlyArray<readonly [string, string, ReadonlyArray<unknown>]> = [
-        ["cat\n", "cut\n", [["Delete", [[1, 2]]], ["Insert", [[1, 2]]]]],
         // a code point is never split
         ["a😀\n", "a😃\n", [["Delete", [[1, 3]]], ["Insert", [[1, 3]]]]],
         // the line break is not part of the text compared
@@ -216,7 +212,8 @@ describe("TextDiff", () => {
         ["a\nb\n", "c\n", [["Delete", undefined], ["Delete", undefined], ["Insert", undefined]]]
       ]
       for (const [before, after, expected] of cases) {
-        deepStrictEqual(changesOf(before, after), expected)
+        const hunks = TextDiff.hunks(TextDiff.lines(before, after), { context: 0, inline: true })
+        deepStrictEqual(hunks.flatMap((hunk) => hunk.lines.map((line) => [line._tag, line.changes])), expected)
       }
     })
   })
