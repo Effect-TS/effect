@@ -317,6 +317,8 @@ export declare namespace Service {
  *   `Schema.optionalKey(Schema.Number)` property rejects it. A required key
  *   keeps its `undefined`, as do a record's values and a tuple's elements. An
  *   `undefined` that the Schema's own encoding produces is left to the Schema.
+ * - Only a property the arguments hold as their own plain data is dropped.
+ *   One they inherit, or one behind a getter, is left to the Schema.
  * - The arguments are never changed. When a property is dropped, the Schema
  *   gets a copy without it.
  * - The fetcher gets the arguments of the call that created the entry, so it

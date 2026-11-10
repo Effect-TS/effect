@@ -867,6 +867,90 @@ describe("Loader", () => {
     }).pipe(Effect.provide(Layer.mergeAll(Nested.layer, TestLoader.layer())))
   })
 
+  it.effect("none of the caller's code runs to find what to drop, and a union's members are asked in no order", () => {
+    const options = { success: Schema.Number, error: Schema.Never, staleTime: "Infinity" } as const
+    const fetcher = Effect.succeed(() => Effect.succeed(1))
+    const page = Schema.optional(Schema.Number)
+    class Plain extends Loader.Service<Plain>()("Plain", { ...options, args: { page } }, fetcher) {}
+    const guarded: Array<unknown> = []
+    const Stamp = Schema.declare((u): u is Date => {
+      guarded.push(u)
+      return u instanceof Date
+    }, {
+      toCodecJson: () =>
+        Schema.link<Date>()(
+          Schema.String,
+          SchemaTransformation.transform({
+            decode: (iso) => new Date(iso),
+            encode: (date) => date.toISOString()
+          })
+        )
+    })
+    class Stamped extends Loader.Service<Stamped>()("Stamped", {
+      ...options,
+      args: Schema.Union([
+        Schema.Struct({ kind: Schema.Literal("A"), at: Stamp, page }),
+        Schema.Struct({ at: Stamp, page, size: Schema.optionalKey(Schema.Number) })
+      ])
+    }, fetcher) {}
+    // Each property is optional in one member and required in the other.
+    const Left = Schema.Struct({ a: Schema.optional(Schema.Number), b: Schema.UndefinedOr(Schema.Number) })
+    const Right = Schema.Struct({ a: Schema.UndefinedOr(Schema.Number), b: Schema.optional(Schema.Number) })
+    class Crossed
+      extends Loader.Service<Crossed>()("Crossed", { ...options, args: Schema.Union([Left, Right]) }, fetcher)
+    {}
+    class Swapped
+      extends Loader.Service<Swapped>()("Swapped", { ...options, args: Schema.Union([Right, Left]) }, fetcher)
+    {}
+    const List = Schema.Array(Schema.Struct({ page })).check(
+      Schema.makeFilter((list) => Object.getOwnPropertyDescriptor(list, "length")?.writable === false)
+    )
+    class Listed extends Loader.Service<Listed>()("Listed", { ...options, args: List }, fetcher) {}
+    const thrown = <R>(get: Effect.Effect<number, never, R>) =>
+      Effect.map(
+        Effect.exit(get),
+        (exit) => Exit.isFailure(exit) ? (Cause.squash(exit.cause) as Error).message : "no throw"
+      )
+    return Effect.gen(function*() {
+      // A getter is the Schema's to run, once. This one can't be run twice.
+      let reads = 0
+      yield* Plain.get({
+        get page() {
+          if (++reads > 1) throw new Error("read twice")
+          return 1
+        }
+      })
+      // So a property behind a getter is never dropped.
+      yield* Plain.get({
+        get page() {
+          return undefined
+        }
+      })
+      // A type's guard runs when the Schema runs it, and not before to tell which member the args are.
+      const at = new Date(0)
+      yield* Stamped.get({ kind: "A", at, page: undefined })
+      yield* Stamped.get({ at, page: undefined })
+      assert.deepStrictEqual(guarded, [at, at])
+      // Both members have a say, whichever comes first, and neither takes the args that are left.
+      const crossed = { a: undefined, b: undefined }
+      assert.deepStrictEqual([yield* thrown(Crossed.get(crossed)), yield* thrown(Swapped.get(crossed))], [
+        `[Loader] read "Crossed": the args don't encode with the read's args Schema`,
+        `[Loader] read "Swapped": the args don't encode with the read's args Schema`
+      ])
+      // An array that loses nothing but a property of an element is still the array the caller made.
+      yield* Listed.get(Object.defineProperty([{ page: undefined }], "length", { writable: false }))
+      assert.deepStrictEqual((yield* TestLoader.fetches).map((fetch) => fetch.read + " " + fetch.logKey), [
+        `Plain {"page":1}`,
+        `Plain {"page":null}`,
+        `Stamped {"at":"1970-01-01T00:00:00.000Z","kind":"A"}`,
+        `Stamped {"at":"1970-01-01T00:00:00.000Z"}`,
+        `Listed [{}]`
+      ])
+    }).pipe(Effect.provide(
+      Layer.mergeAll(Plain.layer, Stamped.layer, Crossed.layer, Swapped.layer, Listed.layer, TestLoader.layer())
+    ))
+  })
+
   it("a definition and a cache throw on durations that can't be meant", () => {
     const define = (options: {
       readonly staleTime?: Duration.Input

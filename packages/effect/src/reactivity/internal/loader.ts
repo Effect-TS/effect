@@ -14,7 +14,6 @@ import * as Equal from "../../Equal.ts"
 import * as Exit from "../../Exit.ts"
 import * as Fiber from "../../Fiber.ts"
 import { memoize } from "../../Function.ts"
-import { CONSTRUCTOR_ANNOTATION_KEY } from "../../internal/schema/annotations.ts"
 import { redactAST } from "../../internal/schemaRedact.ts"
 import * as Option from "../../Option.ts"
 import * as Schema from "../../Schema.ts"
@@ -91,45 +90,10 @@ const canonical = (u: unknown): string => {
   throw new NonJsonLeaf(u)
 }
 
-/** Returns its input when there is nothing to drop. */
-type DropUndefined = (u: unknown) => unknown
-
-/** A `Schema.Class`: its fields are the Struct in its type parameter, and an instance holds them as own properties. */
-const isClassAST = (ast: SchemaAST.Declaration): boolean =>
-  typeof ast.annotations?.[CONSTRUCTOR_ANNOTATION_KEY] === "function"
-
-/**
- * Whether a value has the shape of the type side of `ast`. No check runs, so
- * no code of the caller's sees args that still hold what is about to be
- * dropped. A value the type can't be asked about, such as one that goes round
- * in a circle, doesn't have the shape.
- */
-const hasShapeOf = (ast: SchemaAST.AST): (u: unknown) => boolean => {
-  const decode = Schema.decodeUnknownExit(
-    Schema.make<Schema.Codec<unknown, unknown>>(SchemaAST.replaceContext(SchemaAST.toType(ast), undefined)),
-    { disableChecks: true }
-  )
-  return (u) => {
-    try {
-      return Exit.isSuccess(decode(u))
-    } catch {
-      return false
-    }
-  }
-}
-
-/** Whether the type names `undefined` itself, as `Schema.optional` and `Schema.UndefinedOr` make it do. */
-const namesUndefined = (ast: SchemaAST.AST): boolean =>
-  ast._tag === "Undefined" ||
-  (ast._tag === "Union" && (ast.options?.mode ?? "anyOf") === "anyOf" && ast.types.some(namesUndefined))
-
-/**
- * Whether a property of this type may hold `undefined`. A type that names
- * `undefined` is not asked, so a declaration next to it never has its guard
- * run on an `undefined` that is about to be dropped.
- */
-const acceptsUndefined = (ast: SchemaAST.AST): boolean =>
-  namesUndefined(SchemaAST.toType(ast)) || hasShapeOf(ast)(undefined)
+// The drop is planned from the args as the caller passes them, and nothing of the caller's runs to plan it:
+// no check, no declaration's guard and no getter. Each of those is the args Schema's to run, on the args it
+// is given afterwards. So the plan goes by the type side of the Schema alone, and reads a property through its
+// descriptor.
 
 /** Asks on first use, not when the Schema is walked: the type may be behind a `suspend`. */
 const lazy = <A>(make: () => A): () => A => {
@@ -137,27 +101,205 @@ const lazy = <A>(make: () => A): () => A => {
   return () => (made ??= { value: make() }).value
 }
 
-/** In a map of changes, the property is to be removed. */
-const dropped: unique symbol = Symbol()
+/**
+ * The values a `suspend` is being asked about right now. A value that goes
+ * round in a circle through a recursive type comes back to the `suspend` it
+ * started from, and gets `onCycle` there instead of being asked about again.
+ */
+type Walk = Map<SchemaAST.AST, Set<unknown>>
+
+const within = <A>(walk: Walk, ast: SchemaAST.AST, u: unknown, onCycle: A, ask: () => A): A => {
+  let values = walk.get(ast)
+  if (values === undefined) walk.set(ast, values = new Set())
+  if (values.has(u)) return onCycle
+  values.add(u)
+  try {
+    return ask()
+  } finally {
+    values.delete(u)
+  }
+}
+
+/** A record's keys are matched by the type of its key Schema, and a value by the type of its Schema. */
+const typeOnly: SchemaAST.ParseOptions = { disableChecks: true }
+
+/** The value of a data property. A getter is not run, so a property behind one has no value here. */
+const dataOf = (descriptor: PropertyDescriptor | undefined): { readonly value: unknown } | undefined =>
+  descriptor !== undefined && "value" in descriptor ? { value: descriptor.value } : undefined
+
+/** The property as the Schema's parser finds it: own, or inherited unless `Object.prototype` has the name. */
+const propertyOf = (o: object, name: PropertyKey): PropertyDescriptor | undefined => {
+  const ownOnly = SchemaAST.requiresOwnProperty(name)
+  for (let at: object | null = o; at !== null; at = ownOnly ? null : Object.getPrototypeOf(at)) {
+    const descriptor = Object.getOwnPropertyDescriptor(at, name)
+    if (descriptor !== undefined) return descriptor
+  }
+  return undefined
+}
 
 /**
- * A copy of `o` with some of its own properties removed or given another
- * value. Every other own property keeps its descriptor, so no getter runs and
- * a property that isn't enumerable stays. The copy has the prototype of `o`,
- * and is frozen, sealed or closed to extension when `o` is.
+ * Whether the type holds `undefined`, by what it names: `Schema.optional` and
+ * `Schema.UndefinedOr` name it, and `Schema.Unknown` holds anything. A
+ * declaration is taken not to, since only its guard could say.
  */
-const copyWith = (o: object, changes: ReadonlyMap<PropertyKey, unknown>): object => {
+const allowsUndefined = (ast: SchemaAST.AST, seen: Set<SchemaAST.AST> = new Set()): boolean => {
+  switch (ast._tag) {
+    case "Undefined":
+    case "Void":
+    case "Unknown":
+    case "Any":
+      return true
+    case "Union": {
+      const count = ast.types.filter((type) => allowsUndefined(type, seen)).length
+      return ast.options?.mode === "oneOf" ? count === 1 : count > 0
+    }
+    case "Suspend": {
+      if (seen.has(ast)) return false
+      seen.add(ast)
+      return allowsUndefined(ast.thunk(), seen)
+    }
+    default:
+      return false
+  }
+}
+
+type Fits = (u: unknown, walk: Walk) => boolean
+
+/**
+ * Whether a value has the shape of the type `ast` describes, which is how a
+ * union's members are told apart. It answers yes wherever only the caller's
+ * code could say no: for what a declaration holds, for a property behind a
+ * getter, and for every check. A `Schema.Class` is the exception among
+ * declarations, since the Schema itself says what an instance is.
+ */
+const fitsOf: (ast: SchemaAST.AST) => Fits = memoize((ast: SchemaAST.AST): Fits => {
+  switch (ast._tag) {
+    case "Suspend": {
+      const inner = lazy(() => fitsOf(ast.thunk()))
+      return (u, walk) => within(walk, ast, u, true, () => inner()(u, walk))
+    }
+    case "Declaration": {
+      const descriptor = lazy(() => SchemaAST.getConstructorDescriptor(ast))
+      return (u) => descriptor()?.isConstructed(u) ?? true
+    }
+    case "Union": {
+      const members = ast.types.map(fitsOf)
+      return (u, walk) => members.some((fits) => fits(u, walk))
+    }
+    case "Arrays": {
+      const elements = ast.elements.map((type) => ({ fits: fitsOf(type), optional: SchemaAST.isOptional(type) }))
+      const rest = ast.rest.map(fitsOf)
+      const tail = Math.max(0, rest.length - 1)
+      return (u, walk) => {
+        if (!Array.isArray(u)) return false
+        const length = u.length
+        if (rest.length === 0 && length > elements.length) return false
+        // As the Schema's parser places them: the elements after the rest element are counted from the end.
+        const threshold = Math.max(elements.length, length - tail)
+        const end = rest.length === 0 ? elements.length : Math.max(length, elements.length + tail)
+        for (let i = 0; i < end; i++) {
+          const fits = i < elements.length ? elements[i].fits : i >= threshold ? rest[i - threshold + 1] : rest[0]
+          if (i >= length) {
+            if (i < elements.length && elements[i].optional) continue
+            return false
+          }
+          const descriptor = propertyOf(u, i)
+          const data = dataOf(descriptor)
+          if (descriptor !== undefined && data === undefined) continue
+          if (!fits(data?.value, walk)) return false
+        }
+        return true
+      }
+    }
+    case "Objects": {
+      // A struct with no properties is the Schema's `{}`: anything but `null` and `undefined`.
+      if (ast.propertySignatures.length === 0 && ast.indexSignatures.length === 0) return (u) => u != null
+      const isLeaf = (type: SchemaAST.AST): boolean =>
+        type._tag !== "Objects" && type._tag !== "Arrays" && type._tag !== "Union" && type._tag !== "Suspend"
+      // A tag is asked about first, so a member with another tag is ruled out before anything it holds is walked.
+      const properties = ast.propertySignatures
+        .map((property) => ({
+          name: property.name,
+          fits: fitsOf(property.type),
+          optional: SchemaAST.isOptional(property.type),
+          leaf: isLeaf(property.type)
+        }))
+        .sort((a, b) => Number(b.leaf) - Number(a.leaf))
+      const indexes = ast.indexSignatures.map((index) => ({
+        parameter: SchemaAST.toType(index.parameter),
+        fits: fitsOf(index.type)
+      }))
+      return (u, walk) => {
+        if (typeof u !== "object" || u === null || Array.isArray(u)) return false
+        for (const { fits, name, optional } of properties) {
+          const descriptor = propertyOf(u, name)
+          if (descriptor === undefined) {
+            if (optional) continue
+            return false
+          }
+          const data = dataOf(descriptor)
+          if (data !== undefined && !fits(data.value, walk)) return false
+        }
+        for (const { fits, parameter } of indexes) {
+          for (const key of SchemaAST.getIndexSignatureKeys(u as Record<PropertyKey, unknown>, parameter, typeOnly)) {
+            const data = dataOf(Object.getOwnPropertyDescriptor(u, key))
+            if (data !== undefined && !fits(data.value, walk)) return false
+          }
+        }
+        return true
+      }
+    }
+    default: {
+      // What is left holds nothing: a string, a literal, a template literal and the like. The Schema's own
+      // parser for the type says whether the value is one, and with the checks off it runs nothing else.
+      const decode = lazy(() =>
+        Schema.decodeUnknownExit(
+          Schema.make<Schema.Codec<unknown, unknown>>(SchemaAST.replaceContext(SchemaAST.toType(ast), undefined)),
+          typeOnly
+        )
+      )
+      return (u) => Exit.isSuccess(decode()(u))
+    }
+  }
+})
+
+/** In a plan, the property is to be removed. */
+const dropped: unique symbol = Symbol()
+
+/** What to change in a value: a property to remove, or what to change in the value a property holds. */
+type Plan = Map<PropertyKey, typeof dropped | Plan>
+
+/** Adds what one part of the Schema plans for a value to what another part plans for it. */
+const planFor = (plan: Plan | undefined, key: PropertyKey, change: typeof dropped | Plan | undefined) => {
+  if (change === undefined) return plan
+  plan ??= new Map()
+  const planned = plan.get(key)
+  // A property that is `undefined` holds nothing to change, so the two never meet.
+  if (planned === undefined || planned === dropped || change === dropped) plan.set(key, change)
+  else for (const [inner, innerChange] of change) planFor(planned, inner, innerChange)
+  return plan
+}
+
+/**
+ * A copy of `o` with the plan carried out. Every own property the plan
+ * doesn't name keeps its descriptor, so no getter runs and a property that
+ * isn't enumerable stays. A property the plan changes keeps its flags. The
+ * copy has the prototype of `o`, an array keeps its `length` as it was
+ * defined, and the copy is frozen, sealed or closed to extension when `o` is.
+ */
+const copyWith = (o: object, plan: Plan): object => {
   const descriptors: Record<PropertyKey, PropertyDescriptor> = Object.getOwnPropertyDescriptors(o)
-  for (const [key, value] of changes) {
-    const { configurable = false, enumerable = false, writable = true } = descriptors[key]
-    if (value === dropped) delete descriptors[key]
-    else descriptors[key] = { value, configurable, enumerable, writable }
+  for (const [key, change] of plan) {
+    if (change === dropped) delete descriptors[key]
+    else descriptors[key] = { ...descriptors[key], value: copyWith(descriptors[key].value, change) }
   }
   const prototype = Object.getPrototypeOf(o)
   let out: object
   if (Array.isArray(o)) {
+    const { writable } = descriptors.length
     delete descriptors.length
     out = Object.defineProperties(Object.setPrototypeOf(new Array(o.length), prototype), descriptors)
+    if (writable === false) Object.defineProperty(out, "length", { writable })
   } else {
     out = Object.create(prototype, descriptors)
   }
@@ -167,15 +309,17 @@ const copyWith = (o: object, changes: ReadonlyMap<PropertyKey, unknown>): object
   return out
 }
 
+type Planner = (u: unknown, walk: Walk) => Plan | undefined
+
 /**
- * The function that drops every optional property that is `undefined` from
- * args of the type `ast` describes, so `{ id, page: undefined }` and `{ id }`
- * build one key. `null` when that type has no such property.
+ * Plans the drop of every optional property that is `undefined` from args of
+ * the type `ast` describes, so `{ id, page: undefined }` and `{ id }` build one
+ * key. `null` when that type has no such property.
  *
- * It runs on the args as the caller passes them, before the args Schema checks
- * or encodes anything, so the read behaves as it does for the same args
- * without the property. Only the type side of the Schema is walked: what an
- * encoding produces is the Schema's business.
+ * The plan is made from the args as the caller passes them and carried out
+ * before the args Schema checks or encodes anything, so the read behaves as
+ * it does for the same args without the property. Only the type side of the
+ * Schema is walked: what an encoding produces is the Schema's business.
  *
  * Only a struct's optional property is dropped. The struct is found wherever
  * it sits: nested in another struct, as a tuple or array element, as a
@@ -185,106 +329,94 @@ const copyWith = (o: object, changes: ReadonlyMap<PropertyKey, unknown>): object
  * or any other declaration is not looked into: nothing says where a
  * declaration keeps its contents or how to put changed ones back.
  *
- * A property is dropped only when its own type accepts `undefined`, so the
- * Schema still rejects one that `Schema.optionalKey` forbids. A property the
- * Schema doesn't name is never read, and neither is one the value inherits.
+ * A property is dropped only when its own type holds `undefined`, so the
+ * Schema still rejects one that `Schema.optionalKey` forbids. Only a value's
+ * own data properties are read: one the value inherits is left, one behind a
+ * getter is left, and one the Schema doesn't name is never looked at.
  *
- * Nothing is changed in place. A value that loses a property is copied with
- * `copyWith`, and a value with nothing to drop is handed on as it is.
+ * Every member of a union that the args have the shape of has its say, on the
+ * args as they were passed, so the order of the members doesn't matter.
  */
-const dropUndefinedOf: (ast: SchemaAST.AST) => DropUndefined | null = memoize(
-  (ast: SchemaAST.AST): DropUndefined | null => {
-    switch (ast._tag) {
-      case "Suspend": {
-        const inner = lazy(() => dropUndefinedOf(ast.thunk()))
-        return (u) => inner()?.(u) ?? u
-      }
-      case "Declaration":
-        return isClassAST(ast) ? dropUndefinedOf(ast.typeParameters[0]) : null
-      case "Union": {
-        const members = ast.types.flatMap((type, index) => {
-          const drop = dropUndefinedOf(type)
-          return drop === null ? [] : [{ index, drop, fits: lazy(() => hasShapeOf(type)) }]
-        })
-        if (members.length === 0) return null
-        // The members the Schema itself would try for a value: a tag that doesn't match rules a member out.
-        const candidates = lazy(() => SchemaAST.getCandidateIndex(ast.types.map(SchemaAST.toType)))
-        // A member's properties are dropped from a value that has the member's shape, and only then is the
-        // value walked as that member.
-        return (u) => {
-          const tried = candidates()(u, false)
-          let out = u
-          for (const member of members) {
-            if (tried.includes(member.index) && member.fits()(out)) out = member.drop(out)
-          }
-          return out
-        }
-      }
-      case "Arrays": {
-        const elements = ast.elements.map(dropUndefinedOf)
-        const rest = ast.rest.map(dropUndefinedOf)
-        if (elements.every((drop) => drop === null) && rest.every((drop) => drop === null)) {
-          return null
-        }
-        return (u) => {
-          if (!Array.isArray(u)) return u
-          // The elements after the rest element are counted from the end.
-          const tail = u.length - (rest.length - 1)
-          let changes: Map<PropertyKey, unknown> | undefined
-          for (let i = 0; i < u.length; i++) {
-            const drop = i < elements.length ? elements[i] : i < tail ? rest[0] : rest[i - tail + 1]
-            if (drop === null || drop === undefined) continue
-            const value = u[i]
-            const next = drop(value)
-            if (next !== value) (changes ??= new Map()).set(i, next)
-          }
-          return changes === undefined ? u : copyWith(u, changes)
-        }
-      }
-      case "Objects": {
-        const properties = ast.propertySignatures.flatMap((property) => {
-          const type = property.type
-          const drop = dropUndefinedOf(type)
-          const accepts = SchemaAST.isOptional(type) ? lazy(() => acceptsUndefined(type)) : undefined
-          return drop === null && accepts === undefined ? [] : [{ name: property.name, drop, accepts }]
-        })
-        const indexes = ast.indexSignatures.flatMap((index) => {
-          const drop = dropUndefinedOf(index.type)
-          // The keys the caller writes, which an encoding of the key may spell another way.
-          return drop === null ? [] : [{ parameter: SchemaAST.toType(index.parameter), drop }]
-        })
-        if (properties.length === 0 && indexes.length === 0) return null
-        return (u) => {
-          if (typeof u !== "object" || u === null || Array.isArray(u)) return u
-          const o = u as Record<PropertyKey, unknown>
-          let changes: Map<PropertyKey, unknown> | undefined
-          for (const { accepts, drop, name } of properties) {
-            if (!Object.hasOwn(o, name)) continue
-            const value = o[name]
-            if (value === undefined) {
-              if (accepts?.() === true) (changes ??= new Map()).set(name, dropped)
-              continue
-            }
-            if (drop === null) continue
-            const next = drop(value)
-            if (next !== value) (changes ??= new Map()).set(name, next)
-          }
-          for (const { drop, parameter } of indexes) {
-            for (const key of SchemaAST.getIndexSignatureKeys(o, parameter)) {
-              const value = changes?.has(key) ? changes.get(key) : o[key]
-              if (value === dropped) continue
-              const next = drop(value)
-              if (next !== value) (changes ??= new Map()).set(key, next)
-            }
-          }
-          return changes === undefined ? o : copyWith(o, changes)
-        }
-      }
-      default:
-        return null
+const plannerOf: (ast: SchemaAST.AST) => Planner | null = memoize((ast: SchemaAST.AST): Planner | null => {
+  switch (ast._tag) {
+    case "Suspend": {
+      const inner = lazy(() => plannerOf(ast.thunk()))
+      return (u, walk) => within(walk, ast, u, undefined, () => inner()?.(u, walk))
     }
+    case "Declaration":
+      return SchemaAST.getConstructorDescriptor(ast) === undefined ? null : plannerOf(ast.typeParameters[0])
+    case "Union": {
+      const members = ast.types.flatMap((type) => {
+        const planner = plannerOf(type)
+        return planner === null ? [] : [{ planner, fits: fitsOf(type) }]
+      })
+      if (members.length === 0) return null
+      return (u, walk) => {
+        let plan: Plan | undefined
+        for (const { fits, planner } of members) {
+          if (!fits(u, new Map())) continue
+          const planned = planner(u, walk)
+          if (planned !== undefined) { for (const [key, change] of planned) plan = planFor(plan, key, change) }
+        }
+        return plan
+      }
+    }
+    case "Arrays": {
+      const elements = ast.elements.map(plannerOf)
+      const rest = ast.rest.map(plannerOf)
+      if (elements.every((planner) => planner === null) && rest.every((planner) => planner === null)) return null
+      const tail = Math.max(0, rest.length - 1)
+      return (u, walk) => {
+        if (!Array.isArray(u)) return undefined
+        const threshold = Math.max(elements.length, u.length - tail)
+        let plan: Plan | undefined
+        for (let i = 0; i < u.length; i++) {
+          const planner = i < elements.length ? elements[i] : i >= threshold ? rest[i - threshold + 1] : rest[0]
+          if (planner === null || planner === undefined) continue
+          const data = dataOf(Object.getOwnPropertyDescriptor(u, i))
+          if (data !== undefined) plan = planFor(plan, i, planner(data.value, walk))
+        }
+        return plan
+      }
+    }
+    case "Objects": {
+      const properties = ast.propertySignatures.flatMap((property) => {
+        const type = property.type
+        const planner = plannerOf(type)
+        const drops = SchemaAST.isOptional(type) ? lazy(() => allowsUndefined(type)) : undefined
+        return planner === null && drops === undefined ? [] : [{ name: property.name, planner, drops }]
+      })
+      const indexes = ast.indexSignatures.flatMap((index) => {
+        const planner = plannerOf(index.type)
+        // The keys the caller writes, which an encoding of the key may spell another way.
+        return planner === null ? [] : [{ parameter: SchemaAST.toType(index.parameter), planner }]
+      })
+      if (properties.length === 0 && indexes.length === 0) return null
+      return (u, walk) => {
+        if (typeof u !== "object" || u === null || Array.isArray(u)) return undefined
+        let plan: Plan | undefined
+        for (const { drops, name, planner } of properties) {
+          const data = dataOf(Object.getOwnPropertyDescriptor(u, name))
+          if (data === undefined) continue
+          if (data.value === undefined) {
+            if (drops?.() === true) plan = planFor(plan, name, dropped)
+          } else if (planner !== null) {
+            plan = planFor(plan, name, planner(data.value, walk))
+          }
+        }
+        for (const { parameter, planner } of indexes) {
+          for (const key of SchemaAST.getIndexSignatureKeys(u as Record<PropertyKey, unknown>, parameter, typeOnly)) {
+            const data = dataOf(Object.getOwnPropertyDescriptor(u, key))
+            if (data !== undefined) plan = planFor(plan, key, planner(data.value, walk))
+          }
+        }
+        return plan
+      }
+    }
+    default:
+      return null
   }
-)
+})
 
 /**
  * The JSON encoder of an args Schema, run on the args once their optional
@@ -292,8 +424,13 @@ const dropUndefinedOf: (ast: SchemaAST.AST) => DropUndefined | null = memoize(
  */
 const argsEncoder = (ast: SchemaAST.AST): (args: unknown) => unknown => {
   const encode = Schema.encodeUnknownSync(Schema.toCodecJson(Schema.make<Schema.Codec<unknown, unknown>>(ast)))
-  const drop = dropUndefinedOf(ast)
-  return drop === null ? encode : (args) => encode(drop(args))
+  const planner = plannerOf(ast)
+  if (planner === null) return encode
+  return (args) => {
+    const plan = planner(args, new Map())
+    // Args with nothing to drop are the Schema's as they are, not as a copy.
+    return encode(plan === undefined ? args : copyWith(args as object, plan))
+  }
 }
 
 // -----------------------------------------------------------------------------
