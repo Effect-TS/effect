@@ -2,4 +2,4 @@
 "@effect/ai-openai-compat": patch
 ---
 
-Send PDF file parts as Chat Completions `file` content parts. A PDF given as a base64 string or a `data:` URL string was dropped, and a `Uint8Array`, URL or file id was flattened into the message text.
+Send PDF file parts as Chat Completions `file` content parts instead of dropping them or flattening them into message text. PDF URLs now fail with `InvalidUserInputError`; pass bytes, base64 or a file ID instead.
