@@ -47,8 +47,8 @@ export function lex(argv: ReadonlyArray<string>): LexResult {
 }
 
 /**
- * Formats a token as the argument it was lexed from. Each token of a short
- * option cluster becomes its own argument.
+ * Formats a token as an argument. Short option clusters become one argument
+ * per flag.
  *
  * @internal
  */

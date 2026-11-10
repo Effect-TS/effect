@@ -2161,13 +2161,12 @@ export const runWith = <const Name extends string, Input, E, R, ContextInput>(
           const { colors } = yield* Prompt.Theme
           return yield* Effect.gen(function*() {
             yield* Console.log(Wizard.renderIntroduction(command.name, config.version, command.description, colors))
-            // The wizard prompts for every flag and argument of the selected command, so drop the typed ones.
+            // The wizard prompts for the selected command's inputs, so drop the typed ones.
             const selectedTokens = new Set(Parser.getSelectedCommandTokens(remainder, command))
             const prefix = [
               command.name,
               ...tokens.filter((token) =>
-                !selectedTokens.has(token) &&
-                !(token._tag === "LongOption" && singles.some((single) => single.name === token.name))
+                !selectedTokens.has(token) && !(token._tag === "LongOption" && token.name === "wizard")
               ).map(Lexer.formatToken)
             ]
             const wizardResult = yield* Wizard.run(command, { commandPath, prefix })

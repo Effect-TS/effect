@@ -428,7 +428,7 @@ describe("Command", () => {
         () =>
           Effect.gen(function*() {
             const captured: Array<readonly [boolean, ReadonlyArray<string>]> = []
-            const Verbose = GlobalFlag.Setting("debug")({ flag: Flag.Boolean("debug").pipe(Flag.withDefault(false)) })
+            const Debug = GlobalFlag.Setting("debug")({ flag: Flag.Boolean("debug").pipe(Flag.withDefault(false)) })
             const root = Command.make("root").pipe(
               Command.withSharedFlags({ verbose: Flag.Boolean("verbose").pipe(Flag.withDefault(false)) })
             )
@@ -436,10 +436,10 @@ describe("Command", () => {
               values: Argument.String("value").pipe(Argument.atLeast(1))
             }, ({ values }) =>
               Effect.gen(function*() {
-                const verbose = global ? yield* Verbose : (yield* root).verbose
-                captured.push([verbose, values])
+                const enabled = global ? yield* Debug : (yield* root).verbose
+                captured.push([enabled, values])
               }))
-            const command = root.pipe(Command.withSubcommands([child]), Command.withGlobalFlags([Verbose]))
+            const command = root.pipe(Command.withSubcommands([child]), Command.withGlobalFlags([Debug]))
             const fiber = yield* Command.runWith(command, { version: "1.0.0" })([
               "child",
               global ? "--debug" : "--verbose",

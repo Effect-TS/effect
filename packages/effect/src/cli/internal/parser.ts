@@ -86,20 +86,17 @@ export const parseArgs = (
   })
 
 /**
- * Returns the tokens the parser leaves for the selected (deepest) command, its
- * own flags and arguments, without the subcommand names and inherited flags
- * that its ancestors consume.
+ * Returns the subset of `tokens` left for the selected command once its
+ * ancestors have consumed subcommand names and inherited flags.
  *
  * @internal
  */
 export const getSelectedCommandTokens = (
   tokens: ReadonlyArray<Token>,
-  command: Command.Any,
-  commandPath: ReadonlyArray<string> = []
+  command: Command.Any
 ): ReadonlyArray<Token> => {
-  const newCommandPath = [...commandPath, command.name]
-  const result = scanCommandLevel(tokens, makeCommandContext(command, newCommandPath))
-  return result._tag === "Leaf" ? tokens : getSelectedCommandTokens(result.childTokens, result.sub, newCommandPath)
+  const result = scanCommandLevel(tokens, makeCommandContext(command, []))
+  return result._tag === "Leaf" ? tokens : getSelectedCommandTokens(result.childTokens, result.sub)
 }
 
 /* ========================================================================== */
