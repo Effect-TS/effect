@@ -1078,7 +1078,9 @@ v4 removes the `parseOptions` annotation and has no annotation-based replacement
 
 In v3, the annotation set `onExcessProperty`, `errors`, `exact` or `propertyOrder` for the annotated node and its children, whatever options the decoder was called with.
 
-In v4, pass the options when you create a decoder, encoder, or parser, or on each call. They apply to the whole parse, and there is no per-node override.
+In v4, pass `onExcessProperty` and `errors` when you create a decoder, encoder, or parser, or on each call. They apply to the whole parse, and there is no per-node override.
+
+The `exact` and `propertyOrder` parse options were removed. Model required and optional keys in the schema itself. Output key order is unspecified; handle any required presentation or serialization order outside the parser.
 
 v3
 
@@ -1109,7 +1111,7 @@ const decodeOuter = Schema.decodeUnknownExit(Outer, { onExcessProperty: "error" 
 decodeOuter({ inner: { x: "a", y: 1 } })
 ```
 
-If only some structs must refuse unknown keys, decode them on their own with the option, or model the extra keys with `Schema.StructWithRest` and a record whose values are `Schema.Never`.
+If only some structs must refuse unknown keys, decode their raw inputs separately with `{ onExcessProperty: "error" }`, before a surrounding parse can strip the extra keys.
 
 ### rename
 
@@ -1236,7 +1238,7 @@ To keep the v3 output:
 - use `Schema.optionalKey` for a key that is either absent or present with a value: it does not add `null`;
 - pass `{ onExcessProperty: "error" }` to the generator, and to the decoder, to close objects.
 
-If you publish JSON Schemas or compare them with earlier output, compare which documents they accept and refuse rather than their text: v4 also drops the `description` and `title` that v3 generated (`"a non empty string"` for `NonEmptyString`) and no longer moves identified schemas into `$defs`.
+If you publish JSON Schemas or compare them with earlier output, compare which documents they accept and refuse rather than their text. Built-in schemas such as `NonEmptyString` no longer carry their v3 `description`, `title`, and `identifier` annotations, so they can appear inline without that metadata. Schemas annotated with an `identifier` still produce named definitions and `$ref` references. The returned document stores those definitions separately in `definitions`; the root `schema` refers to them through `#/$defs/...`.
 
 ## Migrating from the fast-check bridge to native Arbitrary
 
