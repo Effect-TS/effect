@@ -306,17 +306,27 @@ export declare namespace Service {
  *   something JSON can't carry.
  * - `{ id }` and `{ id, page: 1 }` are two entries, even when a default makes
  *   them one request.
- * - An optional property that is `undefined` is the same as a missing one:
- *   `{ id, page: undefined }` and `{ id }` are one entry. The property is
- *   dropped from the arguments before the `args` Schema checks or encodes
- *   them, so the read behaves as it does for the same arguments without the
- *   property. That holds wherever the arguments have a struct, the fields of
- *   a `Schema.Class` included. What an `Option`, a collection or another
- *   declared type holds is left as it was passed.
+ * - An optional field of the `args` struct that is `undefined` is the same
+ *   as a missing one: `{ id, page: undefined }` and `{ id }` are one entry.
+ *   The property is dropped before the `args` Schema checks or encodes the
+ *   arguments, so the read behaves as it does for the same arguments without
+ *   the property.
+ * - Only the fields of the `args` struct itself are covered. What a field
+ *   holds reaches the Schema as it was passed: a nested struct, a union, a
+ *   class, a record, a tuple, an `Option` or a collection. So do arguments
+ *   that are not a struct, such as a `Schema.Class` or a union.
+ * - Everywhere else the JSON encoding decides, and it encodes `undefined` as
+ *   `null`. So `{ filter: { page: undefined } }` and `{ filter: {} }` are two
+ *   entries. Where the type allows both, `{ filter: { page: undefined } }`
+ *   and `{ filter: { page: null } }` are one entry, and the later call gets
+ *   the data of the earlier one. The same goes for a required key, a record's
+ *   value and a tuple's element. When the fetcher tells the two apart, give
+ *   the value an encoding that does.
  * - The property's type decides whether `undefined` is allowed, so a
- *   `Schema.optionalKey(Schema.Number)` property rejects it. A required key
- *   keeps its `undefined`, as do a record's values and a tuple's elements. An
- *   `undefined` that the Schema's own encoding produces is left to the Schema.
+ *   `Schema.optionalKey(Schema.Number)` property rejects it. A type made with
+ *   `Schema.declare` is not asked: under `Schema.optionalKey` its `undefined`
+ *   is left to the Schema. An `undefined` that the Schema's own encoding
+ *   produces is left to the Schema too.
  * - Only a property the arguments hold as their own plain data is dropped.
  *   One they inherit, or one behind a getter, is left to the Schema.
  * - The arguments are never changed. When a property is dropped, the Schema

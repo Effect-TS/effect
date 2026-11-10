@@ -9,8 +9,6 @@ import {
   Option,
   Redacted,
   Schema,
-  SchemaAST,
-  SchemaGetter,
   SchemaTransformation,
   Scope,
   Stream
@@ -631,7 +629,7 @@ describe("Loader", () => {
     }).pipe(Effect.provide(Layer.mergeAll(Search.layer, ById.layer, TestLoader.layer())))
   })
 
-  it.effect("an optional property that is undefined is the same entry as a missing one", () => {
+  it.effect("an optional field of the args struct that is undefined is the same entry as a missing one", () => {
     let calls = 0
     const fetcher = Effect.sync(() => () => Effect.sync(() => ++calls))
     const options = { success: Schema.Number, error: Schema.Never, staleTime: "Infinity" } as const
@@ -640,75 +638,58 @@ describe("Loader", () => {
       args: {
         token: Schema.Redacted(Schema.String),
         page: Schema.optional(Schema.Number),
-        filter: Schema.optional(Schema.Struct({ tag: Schema.optional(Schema.String) })),
-        // A required key keeps its undefined, and doesn't stop the optional ones from being dropped.
+        // Here `null` is data and `undefined` is dropped, so the two are told apart.
+        size: Schema.optional(Schema.NullOr(Schema.Number)),
+        // A required key keeps its undefined.
         cursor: Schema.UndefinedOr(Schema.String)
       }
     }, fetcher) {}
-    class Args extends Schema.Class<Args>("Args")({ id: Schema.String, page: Schema.optional(Schema.Number) }) {}
-    class ByClass extends Loader.Service<ByClass>()("ByClass", { ...options, args: Args }, fetcher) {}
     // The Schema decides what the args may be: this property may be missing, and may not be undefined.
     class Exact extends Loader.Service<Exact>()("Exact", {
       ...options,
       args: { page: Schema.optionalKey(Schema.Number) }
     }, fetcher) {}
+    // Two more ways to write a struct with optional fields. What isn't a field keeps its undefined.
+    class Rest extends Loader.Service<Rest>()("Rest", {
+      ...options,
+      args: Schema.StructWithRest(Schema.Struct({ id: Schema.Number, page: Schema.optional(Schema.Number) }), [
+        Schema.Record(Schema.String, Schema.UndefinedOr(Schema.Number))
+      ])
+    }, fetcher) {}
+    class Keyed extends Loader.Service<Keyed>()("Keyed", {
+      ...options,
+      args: Schema.Record(Schema.Literals(["a", "b"]), Schema.optional(Schema.Number))
+    }, fetcher) {}
     return Effect.gen(function*() {
       const token = Redacted.make("s3cret")
       const cursor = undefined
-      // A property the Schema doesn't name is never looked at, so it may hold anything.
-      const cycle: { self?: unknown } = {}
-      cycle.self = cycle
       const results = [
-        yield* Search.get({ token, cursor, page: undefined, filter: { tag: undefined } }),
-        yield* Search.get({ token, cursor, filter: {} }),
-        yield* Search.get({ token, cursor, filter: undefined }),
+        yield* Search.get({ token, cursor, page: undefined, size: undefined }),
         yield* Search.get({ token, cursor }),
-        yield* Search.get({ token, cursor, cycle } as { token: typeof token; cursor: undefined }),
-        yield* ByClass.get(new Args({ id: "1", page: undefined })),
-        yield* ByClass.get(new Args({ id: "1" }))
+        yield* Search.get({ token, cursor, size: null }),
+        yield* Rest.get({ id: 1, page: undefined, extra: undefined }),
+        yield* Rest.get({ id: 1, extra: undefined }),
+        yield* Keyed.get({ a: undefined, b: 1 }),
+        yield* Keyed.get({ b: 1 })
       ]
-      assert.deepStrictEqual(results, [1, 1, 2, 2, 2, 3, 3])
+      assert.deepStrictEqual(results, [1, 1, 2, 3, 3, 4, 4])
       assert.deepStrictEqual((yield* TestLoader.fetches).map((fetch) => fetch.read + " " + fetch.logKey), [
-        `Search {"cursor":null,"filter":{},"token":{"~redacted":true}}`,
         `Search {"cursor":null,"token":{"~redacted":true}}`,
-        `ByClass {"id":"1"}`
+        `Search {"cursor":null,"size":null,"token":{"~redacted":true}}`,
+        `Rest {"extra":null,"id":1}`,
+        `Keyed {"b":1}`
       ])
       const exact = yield* Effect.exit(Exact.get({ page: undefined } as {}))
       assert.strictEqual(
         Exit.isFailure(exact) ? (Cause.squash(exact.cause) as Error).message : "no throw",
         `[Loader] read "Exact": the args don't encode with the read's args Schema`
       )
-    }).pipe(Effect.provide(Layer.mergeAll(Search.layer, ByClass.layer, Exact.layer, TestLoader.layer())))
+    }).pipe(Effect.provide(
+      Layer.mergeAll(Search.layer, Exact.layer, Rest.layer, Keyed.layer, TestLoader.layer())
+    ))
   })
 
-  it.effect("an optional property that isn't undefined reaches the Schema's encoding as it is", () => {
-    let calls = 0
-    // The first member accepts any number as a type and only a positive one when it encodes,
-    // so a negative `a` encodes with the second member, which needs the `b` the first doesn't have.
-    const Filter = Schema.Union([
-      Schema.Struct({ a: Schema.Number.check(Schema.isGreaterThan(0)).pipe(Schema.decodeTo(Schema.Number)) }),
-      Schema.Struct({ a: Schema.Number, b: Schema.Number })
-    ])
-    class Search extends Loader.Service<Search>()("Search", {
-      args: { filter: Schema.optionalKey(Filter) },
-      success: Schema.Number,
-      error: Schema.Never,
-      staleTime: "Infinity"
-    }, Effect.sync(() => () => Effect.sync(() => ++calls))) {}
-    return Effect.gen(function*() {
-      const results = [
-        yield* Search.get({ filter: { a: -1, b: 1 } }),
-        yield* Search.get({ filter: { a: -1, b: 2 } })
-      ]
-      assert.deepStrictEqual(results, [1, 2])
-      assert.deepStrictEqual((yield* TestLoader.fetches).map((fetch) => fetch.logKey), [
-        `{"filter":{"a":-1,"b":1}}`,
-        `{"filter":{"a":-1,"b":2}}`
-      ])
-    }).pipe(Effect.provide(Layer.mergeAll(Search.layer, TestLoader.layer())))
-  })
-
-  it.effect("an undefined is dropped from the args the caller passes, before the Schema sees them", () => {
+  it.effect("the drop comes before the args Schema sees the args, and runs nothing of theirs to decide", () => {
     const options = { success: Schema.Number, error: Schema.Never, staleTime: "Infinity" } as const
     const fetcher = Effect.succeed(() => Effect.succeed(1))
     // A check gets the args after the drop, so it treats undefined as it treats a missing property.
@@ -731,16 +712,27 @@ describe("Loader", () => {
         )
       )
     }, fetcher) {}
-    // A type's own guard is the caller's code too. It isn't asked about an undefined the type already allows.
+    // A declared type's guard is the Schema's to run. `when` names undefined, so the guard isn't asked.
+    // `until` doesn't, and only the guard could say, so the Schema gets the undefined and rejects it.
     const guarded: Array<unknown> = []
+    const Stamp = Schema.declare((u): u is Date => {
+      guarded.push(u)
+      return u instanceof Date
+    })
     class Guarded extends Loader.Service<Guarded>()("Guarded", {
       ...options,
-      args: {
-        when: Schema.optional(Schema.declare((u): u is Date => {
-          guarded.push(u)
-          return u instanceof Date
-        }))
-      }
+      args: { when: Schema.optional(Stamp), until: Schema.optionalKey(Stamp) }
+    }, fetcher) {}
+    // What the drop leaves is handed on as it was defined, and args that lose nothing are handed on themselves.
+    const seen: Array<unknown> = []
+    class Plain extends Loader.Service<Plain>()("Plain", {
+      ...options,
+      args: Schema.Struct({ id: Schema.String, page: Schema.optional(Schema.Number) }).check(
+        Schema.makeFilter((args) => {
+          seen.push(args)
+          return true
+        })
+      )
     }, fetcher) {}
     const thrown = <R>(get: Effect.Effect<number, never, R>) =>
       Effect.map(
@@ -754,33 +746,17 @@ describe("Loader", () => {
       assert.deepStrictEqual([
         yield* thrown(Checked.get({ page: undefined })),
         yield* thrown(Checked.get({})),
-        yield* thrown(Encoded.get(1))
+        yield* thrown(Encoded.get(1)),
+        yield* thrown(Guarded.get({ until: undefined } as {}))
       ], [
         `[Loader] read "Checked": the args don't encode with the read's args Schema`,
         `[Loader] read "Checked": the args don't encode with the read's args Schema`,
-        `[Loader] read "Encoded": the args don't encode with the read's args Schema`
+        `[Loader] read "Encoded": the args don't encode with the read's args Schema`,
+        `[Loader] read "Guarded": the args don't encode with the read's args Schema`
       ])
-    }).pipe(Effect.provide(Layer.mergeAll(Checked.layer, Encoded.layer, Guarded.layer, TestLoader.layer())))
-  })
-
-  it.effect("the args Schema gets everything the drop doesn't change as it was passed", () => {
-    const options = { success: Schema.Number, error: Schema.Never, staleTime: "Infinity" } as const
-    const fetcher = Effect.succeed(() => Effect.succeed(1))
-    class Plain extends Loader.Service<Plain>()("Plain", {
-      ...options,
-      args: { id: Schema.String, page: Schema.optional(Schema.Number) }
-    }, fetcher) {}
-    const some = Option.some({ page: 1 })
-    class Wrapped extends Loader.Service<Wrapped>()("Wrapped", {
-      ...options,
-      args: Schema.Struct({
-        filter: Schema.Option(Schema.Struct({ page: Schema.optional(Schema.Number) })),
-        page: Schema.optional(Schema.Number)
-      }).check(Schema.makeFilter((args) => args.filter === some))
-    }, fetcher) {}
-    return Effect.gen(function*() {
+      assert.deepStrictEqual(guarded, [undefined])
       // The Schema reads `id`, which isn't enumerable, and never reads `broken`, which throws.
-      const args = Object.defineProperties({ page: undefined }, {
+      const defined = Object.defineProperties({ page: undefined }, {
         id: { value: "1" },
         broken: {
           enumerable: true,
@@ -789,382 +765,105 @@ describe("Loader", () => {
           }
         }
       }) as { readonly id: string; readonly page: undefined }
-      assert.strictEqual(yield* Plain.get(args), 1)
-      assert.strictEqual(yield* Wrapped.get({ filter: some, page: undefined }), 1)
-      assert.deepStrictEqual((yield* TestLoader.fetches).map((fetch) => fetch.read + " " + fetch.logKey), [
-        `Plain {"id":"1"}`,
-        `Wrapped {"filter":{"_tag":"Some","value":{"page":1}}}`
-      ])
-    }).pipe(Effect.provide(Layer.mergeAll(Plain.layer, Wrapped.layer, TestLoader.layer())))
-  })
-
-  it.effect("a union member and a record's keys are matched on the args as they are passed", () => {
-    const options = { success: Schema.Number, error: Schema.Never, staleTime: "Infinity" } as const
-    const fetcher = Effect.succeed(() => Effect.succeed(1))
-    interface Node {
-      readonly next?: Node | undefined
-    }
-    const Node: Schema.Codec<Node> = Schema.Struct({
-      next: Schema.optional(Schema.suspend((): Schema.Codec<Node> => Node))
-    })
-    const checked: Array<string> = []
-    class ByKind extends Loader.Service<ByKind>()("ByKind", {
-      ...options,
-      args: Schema.Union([
-        Schema.Struct({ kind: Schema.Literal("A"), value: Node, page: Schema.optional(Schema.Number) }).check(
-          Schema.makeFilter((args) => {
-            checked.push(Object.keys(args).join())
-            return true
-          })
-        ),
-        Schema.Struct({ kind: Schema.Literal("B"), value: Schema.Struct({ id: Schema.String }) })
-      ])
-    }, fetcher) {}
-    // The caller writes the key `a`. Only the encoded key has the prefix.
-    const Name = Schema.String.pipe(
-      Schema.encodeTo(Schema.String.check(Schema.isStartingWith("wire-")), {
-        decode: SchemaGetter.transform((encoded: string) => encoded.slice(5)),
-        encode: SchemaGetter.transform((name: string) => "wire-" + name)
-      })
-    )
-    class ByName extends Loader.Service<ByName>()("ByName", {
-      ...options,
-      args: Schema.Record(Name, Schema.Struct({ page: Schema.optional(Schema.Number) }))
-    }, fetcher) {}
-    return Effect.gen(function*() {
-      // Member A's check only ever gets the args after the drop.
-      yield* ByKind.get({ kind: "A", value: {}, page: undefined })
-      assert.deepStrictEqual([...new Set(checked)], ["kind,value"])
-      // Member B doesn't name `next`, so what member A would do with it doesn't matter.
-      const value: { id: string; next?: unknown } = { id: "1" }
-      value.next = value
-      yield* ByKind.get({ kind: "B", value })
-      yield* ByName.get({ a: { page: undefined } })
-      yield* ByName.get({ a: {} })
-      assert.deepStrictEqual((yield* TestLoader.fetches).map((fetch) => fetch.read + " " + fetch.logKey), [
-        `ByKind {"kind":"A","value":{}}`,
-        `ByKind {"kind":"B","value":{"id":"1"}}`,
-        `ByName {"wire-a":{}}`
-      ])
-    }).pipe(Effect.provide(Layer.mergeAll(ByKind.layer, ByName.layer, TestLoader.layer())))
-  })
-
-  it.effect("a record's value and a tuple's element keep their undefined, and a struct in one loses its own", () => {
-    const Filter = Schema.UndefinedOr(Schema.Struct({ page: Schema.optional(Schema.Number) }))
-    class Nested extends Loader.Service<Nested>()("Nested", {
-      args: { record: Schema.Record(Schema.String, Filter), tuple: Schema.Tuple([Filter]) },
-      success: Schema.Number,
-      error: Schema.Never,
-      staleTime: "Infinity"
-    }, Effect.succeed(() => Effect.succeed(1))) {}
-    return Effect.gen(function*() {
-      yield* Nested.get({ record: { direct: undefined, nested: { page: undefined } }, tuple: [{ page: undefined }] })
-      yield* Nested.get({ record: { direct: undefined, nested: {} }, tuple: [{}] })
-      yield* Nested.get({ record: { nested: {} }, tuple: [undefined] })
-      assert.deepStrictEqual((yield* TestLoader.fetches).map((fetch) => fetch.logKey), [
-        `{"record":{"direct":null,"nested":{}},"tuple":[{}]}`,
-        `{"record":{"nested":{}},"tuple":[null]}`
-      ])
-    }).pipe(Effect.provide(Layer.mergeAll(Nested.layer, TestLoader.layer())))
-  })
-
-  it.effect("none of the caller's code runs to find what to drop, and a union's members are asked in no order", () => {
-    const options = { success: Schema.Number, error: Schema.Never, staleTime: "Infinity" } as const
-    const fetcher = Effect.succeed(() => Effect.succeed(1))
-    const page = Schema.optional(Schema.Number)
-    class Plain extends Loader.Service<Plain>()("Plain", { ...options, args: { page } }, fetcher) {}
-    const guarded: Array<unknown> = []
-    const Stamp = Schema.declare((u): u is Date => {
-      guarded.push(u)
-      return u instanceof Date
-    }, {
-      toCodecJson: () =>
-        Schema.link<Date>()(
-          Schema.String,
-          SchemaTransformation.transform({
-            decode: (iso) => new Date(iso),
-            encode: (date) => date.toISOString()
-          })
-        )
-    })
-    class Stamped extends Loader.Service<Stamped>()("Stamped", {
-      ...options,
-      args: Schema.Union([
-        Schema.Struct({ kind: Schema.Literal("A"), at: Stamp, page }),
-        Schema.Struct({ at: Stamp, page, size: Schema.optionalKey(Schema.Number) })
-      ])
-    }, fetcher) {}
-    // Each property is optional in one member and required in the other.
-    const Left = Schema.Struct({ a: Schema.optional(Schema.Number), b: Schema.UndefinedOr(Schema.Number) })
-    const Right = Schema.Struct({ a: Schema.UndefinedOr(Schema.Number), b: Schema.optional(Schema.Number) })
-    class Crossed
-      extends Loader.Service<Crossed>()("Crossed", { ...options, args: Schema.Union([Left, Right]) }, fetcher)
-    {}
-    class Swapped
-      extends Loader.Service<Swapped>()("Swapped", { ...options, args: Schema.Union([Right, Left]) }, fetcher)
-    {}
-    const List = Schema.Array(Schema.Struct({ page })).check(
-      Schema.makeFilter((list) => Object.getOwnPropertyDescriptor(list, "length")?.writable === false)
-    )
-    class Listed extends Loader.Service<Listed>()("Listed", { ...options, args: List }, fetcher) {}
-    const thrown = <R>(get: Effect.Effect<number, never, R>) =>
-      Effect.map(
-        Effect.exit(get),
-        (exit) => Exit.isFailure(exit) ? (Cause.squash(exit.cause) as Error).message : "no throw"
-      )
-    return Effect.gen(function*() {
-      // A getter is the Schema's to run, once. This one can't be run twice.
+      const same = { id: "2", page: 2 }
+      // A getter is the Schema's to run, once, and a property the args inherit is the Schema's to find.
       let reads = 0
-      yield* Plain.get({
+      const getter = {
+        id: "3",
         get page() {
-          if (++reads > 1) throw new Error("read twice")
-          return 1
-        }
-      })
-      // So a property behind a getter is never dropped.
-      yield* Plain.get({
-        get page() {
+          reads++
           return undefined
         }
-      })
-      // A type's guard runs when the Schema runs it, and not before to tell which member the args are.
-      const at = new Date(0)
-      yield* Stamped.get({ kind: "A", at, page: undefined })
-      yield* Stamped.get({ at, page: undefined })
-      assert.deepStrictEqual(guarded, [at, at])
-      // Both members have a say, whichever comes first, and neither takes the args that are left.
-      const crossed = { a: undefined, b: undefined }
-      assert.deepStrictEqual([yield* thrown(Crossed.get(crossed)), yield* thrown(Swapped.get(crossed))], [
-        `[Loader] read "Crossed": the args don't encode with the read's args Schema`,
-        `[Loader] read "Swapped": the args don't encode with the read's args Schema`
-      ])
-      // An array that loses nothing but a property of an element is still the array the caller made.
-      yield* Listed.get(Object.defineProperty([{ page: undefined }], "length", { writable: false }))
+      }
+      const inherited: { readonly id: string } = Object.assign(Object.create({ page: undefined }), { id: "4" })
+      for (const args of [defined, same, getter, inherited]) yield* Plain.get(args)
+      assert.strictEqual(seen[1], same)
+      assert.strictEqual(reads, 1)
       assert.deepStrictEqual((yield* TestLoader.fetches).map((fetch) => fetch.read + " " + fetch.logKey), [
-        `Plain {"page":1}`,
-        `Plain {"page":null}`,
-        `Stamped {"at":"1970-01-01T00:00:00.000Z","kind":"A"}`,
-        `Stamped {"at":"1970-01-01T00:00:00.000Z"}`,
-        `Listed [{}]`
+        `Checked {"page":1}`,
+        `Guarded {}`,
+        `Plain {"id":"1"}`,
+        `Plain {"id":"2","page":2}`,
+        `Plain {"id":"3","page":null}`,
+        `Plain {"id":"4","page":null}`
       ])
     }).pipe(Effect.provide(
-      Layer.mergeAll(Plain.layer, Stamped.layer, Crossed.layer, Swapped.layer, Listed.layer, TestLoader.layer())
+      Layer.mergeAll(Checked.layer, Encoded.layer, Guarded.layer, Plain.layer, TestLoader.layer())
     ))
   })
 
-  it.effect("a union member is asked only when the Schema could take the args as that member", () => {
+  it.effect("what a field of the args struct holds reaches the args Schema as it was passed", () => {
+    let calls = 0
+    const fetcher = Effect.sync(() => () => Effect.sync(() => ++calls))
     const options = { success: Schema.Number, error: Schema.Never, staleTime: "Infinity" } as const
-    const fetcher = Effect.succeed(() => Effect.succeed(1))
-    const page = Schema.optional(Schema.Number)
-    // No number is exactly one of these two, so nothing is the first member.
-    const Neither = Schema.Union([Schema.Number, Schema.Number], { mode: "oneOf" })
-    class Exclusive extends Loader.Service<Exclusive>()("Exclusive", {
+    const Page = Schema.Struct({ page: Schema.optional(Schema.NullOr(Schema.Number)) })
+    class Paged extends Schema.Class<Paged>("Paged")({ page: Schema.optional(Schema.Number) }) {}
+    class Nested extends Loader.Service<Nested>()("Nested", {
       ...options,
-      args: Schema.Union([
-        Schema.Struct({ value: Neither, page }),
-        Schema.Struct({ value: Schema.Number, page: Schema.UndefinedOr(Schema.Number) })
-      ])
+      args: { id: Schema.String, filter: Page }
     }, fetcher) {}
-    // The same goes for `undefined` here, though each member is behind the one `suspend`.
-    const Undefined = Schema.suspend(() => Schema.Undefined)
-    class Forbidden extends Loader.Service<Forbidden>()("Forbidden", {
+    class Held extends Loader.Service<Held>()("Held", {
       ...options,
-      args: { page: Schema.optionalKey(Schema.Union([Undefined, Undefined], { mode: "oneOf" })) }
-    }, fetcher) {}
-    // A class that can't be asked whether a value is its instance.
-    let asked = 0
-    class Stamp extends Schema.Class<Stamp>("Stamp")({ page }) {
-      static override [Symbol.hasInstance](): boolean {
-        asked++
-        throw new Error("asked")
+      args: {
+        union: Schema.Union([Page, Schema.String]),
+        instance: Paged,
+        record: Schema.Record(Schema.String, Schema.UndefinedOr(Page)),
+        tuple: Schema.Tuple([Page, Schema.UndefinedOr(Page)]),
+        option: Schema.Option(Page)
       }
-    }
-    class Tagged extends Loader.Service<Tagged>()("Tagged", {
+    }, fetcher) {}
+    // Args that are not themselves a struct are not looked into either.
+    class ByClass extends Loader.Service<ByClass>()("ByClass", { ...options, args: Paged }, fetcher) {}
+    class ByUnion extends Loader.Service<ByUnion>()("ByUnion", {
       ...options,
-      args: Schema.Union([
-        Schema.Struct({ value: Stamp, kind: Schema.Literal("A") }),
-        Schema.Struct({ value: Schema.String, kind: Schema.Literal("B") })
-      ])
+      args: Schema.Union([Page, Schema.String])
+    }, fetcher) {}
+    class BySuspend extends Loader.Service<BySuspend>()("BySuspend", {
+      ...options,
+      args: Schema.suspend(() => Page)
     }, fetcher) {}
     return Effect.gen(function*() {
-      yield* Exclusive.get({ value: 1, page: undefined })
-      const forbidden = yield* Effect.exit(Forbidden.get({ page: undefined }))
-      assert.isTrue(Exit.isFailure(forbidden))
-      // The tag rules the first member out before anything in it is asked.
-      yield* Tagged.get({ kind: "B", value: "x" })
-      assert.strictEqual(asked, 0)
+      const page = { page: undefined }
+      // The JSON encoding has no `undefined`, so below the args struct it and `null` are one entry, whichever
+      // comes first, and the later caller gets the earlier one's data. A missing property is another entry.
+      const results = [
+        yield* Nested.get({ id: "a", filter: { page: undefined } }),
+        yield* Nested.get({ id: "a", filter: { page: null } }),
+        yield* Nested.get({ id: "b", filter: { page: null } }),
+        yield* Nested.get({ id: "b", filter: { page: undefined } }),
+        yield* Nested.get({ id: "a", filter: {} }),
+        yield* Held.get({
+          union: page,
+          instance: new Paged(page),
+          record: { held: page, direct: undefined },
+          tuple: [page, undefined],
+          option: Option.some(page)
+        }),
+        yield* ByClass.get(new Paged(page)),
+        yield* ByClass.get(new Paged({})),
+        yield* ByUnion.get(page),
+        yield* BySuspend.get(page)
+      ]
+      assert.deepStrictEqual(results, [1, 1, 2, 2, 3, 4, 5, 6, 7, 8])
       assert.deepStrictEqual((yield* TestLoader.fetches).map((fetch) => fetch.read + " " + fetch.logKey), [
-        `Exclusive {"page":null,"value":1}`,
-        `Tagged {"kind":"B","value":"x"}`
+        `Nested {"filter":{"page":null},"id":"a"}`,
+        `Nested {"filter":{"page":null},"id":"b"}`,
+        `Nested {"filter":{},"id":"a"}`,
+        `Held {"instance":{"page":null},"option":{"_tag":"Some","value":{"page":null}},` +
+        `"record":{"direct":null,"held":{"page":null}},"tuple":[{"page":null},null],"union":{"page":null}}`,
+        `ByClass {"page":null}`,
+        `ByClass {}`,
+        `ByUnion {"page":null}`,
+        `BySuspend {"page":null}`
       ])
-    }).pipe(Effect.provide(Layer.mergeAll(Exclusive.layer, Forbidden.layer, Tagged.layer, TestLoader.layer())))
-  })
-
-  it("a union member that runs none of the caller's code is told apart as the Schema's parser tells it", () => {
-    const N = Schema.Number
-    const S = Schema.String
-    const oneOf = (...members: ReadonlyArray<Schema.Top>) => Schema.Union(members, { mode: "oneOf" })
-    const Tree: Schema.Top = Schema.Struct({ a: N, next: Schema.optionalKey(Schema.suspend(() => Tree)) })
-    const Undefined = Schema.suspend(() => Schema.Undefined)
-    const key = (args: Schema.Top, value: unknown): string => {
-      try {
-        return internal.makeDef("Read", { args, success: N, error: Schema.Never, staleTime: 0 }).argsKey(value)
-      } catch {
-        return "throws"
-      }
-    }
-    // What a value may be. None has a check, a declaration or an encoding, so the parser runs nothing of the caller's.
-    const types: ReadonlyArray<Schema.Top> = [
-      N,
-      Schema.Null,
-      Schema.Literals(["A", "B"]),
-      Schema.TemplateLiteral(["a-", N]),
-      Schema.Struct({}),
-      Schema.Struct({ a: N }),
-      Schema.Struct({ a: Schema.optional(N) }),
-      Schema.Struct({ a: Schema.optionalKey(N) }),
-      Schema.Struct({ a: Schema.UndefinedOr(N) }),
-      Schema.Struct({ a: N, b: S }),
-      Schema.Struct({ kind: Schema.Literal("A"), a: Schema.optionalKey(N) }),
-      Schema.Struct({ x: Schema.Struct({ a: N }) }),
-      Schema.Struct({ x: Schema.Array(N) }),
-      Schema.Struct({ toString: Schema.optionalKey(N) }),
-      Schema.Array(Schema.Struct({ a: N })),
-      Schema.Array(Schema.Array(N)),
-      Schema.Tuple([N, Schema.optionalKey(S)]),
-      Schema.Tuple([]),
-      Schema.TupleWithRest(Schema.Tuple([S]), [N, Schema.Boolean]),
-      Schema.TupleWithRest(Schema.Tuple([S, Schema.optionalKey(N)]), [Schema.Boolean]),
-      Schema.Record(S, N),
-      Schema.Record(Schema.Literals(["a", "b"]), N),
-      Schema.Record(Schema.TemplateLiteral(["k", S]), N),
-      Schema.StructWithRest(Schema.Struct({ a: N }), [Schema.Record(S, Schema.Union([N, S]))]),
-      Schema.StructWithRest(Schema.Struct({ a: S }), [Schema.Record(S, N)]),
-      Schema.Union([Schema.Struct({ a: N }), Schema.Struct({ b: S })]),
-      oneOf(N, N),
-      oneOf(N, S),
-      oneOf(Schema.Struct({ a: N }), Schema.Struct({ b: S })),
-      oneOf(Schema.Struct({ a: N }), Schema.Struct({ a: N, b: Schema.optionalKey(S) })),
-      oneOf(Schema.Union([N, S]), Schema.Union([S, Schema.Boolean])),
-      Schema.Union([oneOf(N, N), S]),
-      oneOf(Schema.suspend(() => N), Schema.suspend(() => S)),
-      Tree
-    ]
-    const values: ReadonlyArray<unknown> = [
-      1,
-      "a",
-      "A",
-      "a-1",
-      true,
-      null,
-      [],
-      [1],
-      [1, "a"],
-      ["a"],
-      ["a", 1],
-      ["a", true],
-      [
-        "a",
-        1,
-        true
-      ],
-      [
-        "a",
-        1,
-        2,
-        true
-      ],
-      [[1]],
-      [{ a: 1 }],
-      {},
-      { a: 1 },
-      { a: "x" },
-      {
-        a: 1,
-        b: "x"
-      },
-      { b: "x" },
-      { a: undefined },
-      { a: null },
-      {
-        a: 1,
-        c: true
-      },
-      { kind: "A" },
-      {
-        kind: "A",
-        a: 1
-      },
-      { kind: "B" },
-      {
-        kind: "A",
-        a: "x"
-      },
-      { toString: 1 },
-      { x: { a: 1 } },
-      { x: [1, 2] },
-      { x: {} },
-      { ka: 1 },
-      {
-        a: 1,
-        kb: 2
-      },
-      {
-        a: "s",
-        z: 1
-      },
-      {
-        a: 1,
-        next: { a: 2 }
-      },
-      {
-        a: 1,
-        next: { a: "x" }
-      },
-      {
-        a: 1,
-        next: undefined
-      }
-    ]
-    const wrong: Array<unknown> = []
-    // The first member drops `page` and the other keeps it, so the key says whether the args were taken as the first.
-    const Other = Schema.Struct({ page: Schema.UndefinedOr(N) })
-    for (const type of types) {
-      const is = Schema.is(type)
-      const First = Schema.Struct({ value: type, page: Schema.optional(N) })
-      for (const args of [Schema.Union([First, Other]), Schema.Union([Other, First])]) {
-        for (const value of values) {
-          const taken = !key(args, { value, page: undefined }).includes(`"page":null`)
-          if (taken !== is(value)) wrong.push([SchemaAST.toType(type.ast), value])
-        }
-      }
-    }
-    // The same for whether a type allows `undefined`: the property is dropped when it does.
-    const allowing: ReadonlyArray<Schema.Top> = [
-      N,
-      Schema.Undefined,
-      Schema.Void,
-      Schema.Unknown,
-      Schema.UndefinedOr(N),
-      Schema.NullOr(N),
-      Schema.Struct({}),
-      oneOf(Schema.Undefined, Schema.Undefined),
-      oneOf(Schema.Undefined, N),
-      oneOf(Schema.Undefined, Schema.Unknown),
-      oneOf(Schema.UndefinedOr(N), S),
-      oneOf(Schema.UndefinedOr(N), Schema.UndefinedOr(S)),
-      Schema.Union([oneOf(Schema.Undefined, Schema.Undefined), N]),
-      Undefined,
-      Schema.suspend(() => N),
-      oneOf(Undefined, Undefined),
-      Schema.Union([Undefined, Undefined]),
-      oneOf(Undefined, N, Schema.Union([S, Undefined]))
-    ]
-    for (const type of allowing) {
-      const dropped = key(Schema.Struct({ page: Schema.optionalKey(type) }), { page: undefined }) === "{}"
-      if (dropped !== Schema.is(type)(undefined)) wrong.push([type.ast, undefined])
-    }
-    assert.deepStrictEqual(wrong, [])
+    }).pipe(Effect.provide(Layer.mergeAll(
+      Nested.layer,
+      Held.layer,
+      ByClass.layer,
+      ByUnion.layer,
+      BySuspend.layer,
+      TestLoader.layer()
+    )))
   })
 
   it("a definition and a cache throw on durations that can't be meant", () => {
