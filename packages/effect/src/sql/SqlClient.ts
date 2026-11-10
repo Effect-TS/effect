@@ -391,9 +391,6 @@ export const make = Effect.fnUntraced(function*(options: SqlClient.MakeOptions) 
       reserve: transactionAcquirer,
       driver: options.driver,
       withoutTransforms(): any {
-        if (options.transformRows === undefined) {
-          return this
-        }
         const statement = Statement.make(
           getConnection,
           options.compiler.withoutTransform,

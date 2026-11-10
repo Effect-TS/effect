@@ -40,6 +40,20 @@ const makeLockedDatabase = Effect.gen(function*() {
 // node:sqlite blocks the Vitest worker; concurrent tests would share a running
 // timeout while waiting for each other's queries.
 describe("Client", { concurrent: false }, () => {
+  it.effect("should disable query-only transforms", () =>
+    Effect.gen(function*() {
+      const sql = yield* SqliteClient.make({
+        filename: ":memory:",
+        transformQueryNames: (name) => name === "firstName" ? "first_name" : name
+      }).pipe(Effect.provide(Reactivity.layer))
+      const withoutTransforms = sql.withoutTransforms()
+      yield* sql`CREATE TABLE test (first_name TEXT, "firstName" TEXT)`
+      yield* sql`INSERT INTO test (first_name, "firstName") VALUES ('John', 'Jane')`
+
+      const select = withoutTransforms`SELECT ${withoutTransforms("firstName")} FROM test`
+      assert.deepStrictEqual(yield* select, [{ firstName: "Jane" }])
+    }))
+
   it.effect("releases completed nested savepoints", () =>
     Effect.gen(function*() {
       const sql = yield* makeClient
