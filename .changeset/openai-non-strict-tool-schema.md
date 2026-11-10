@@ -3,4 +3,4 @@
 "@effect/ai-openai-compat": patch
 ---
 
-Advertise a non-strict tool's parameters with their standard JSON Schema. `OpenAiLanguageModel` in both packages passed every tool through `toCodecOpenAI`, whatever `strictJsonSchema` said, so a non-strict tool still advertised records as `[key, value]` pairs and optional properties as required and nullable.
+Fix `OpenAiLanguageModel` advertising non-strict tools with strict-mode schemas, which turned records into entry arrays and optional properties into required nullable ones.

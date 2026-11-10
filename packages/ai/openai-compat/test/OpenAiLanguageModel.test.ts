@@ -6,9 +6,9 @@ import { HttpClient, type HttpClientError, type HttpClientRequest, HttpClientRes
 
 describe("OpenAiLanguageModel", () => {
   for (const mode of ["complete", "stream"] as const) {
-    it.effect(`preserves non-strict parameters and respects tool overrides in ${mode}`, () =>
-      Effect.gen(function*() {
-        for (const strictJsonSchema of [false, true]) {
+    for (const strictJsonSchema of [false, true]) {
+      it.effect(`preserves non-strict parameters in ${mode} with strictJsonSchema=${strictJsonSchema}`, () =>
+        Effect.gen(function*() {
           const Root = Tool.make("Root", { parameters: Schema.Record(Schema.String, Schema.String) })
           const Search = Tool.make("Search", {
             parameters: Schema.Struct({
@@ -87,8 +87,8 @@ describe("OpenAiLanguageModel", () => {
               Effect.provide(layer)
             )
           assert.deepStrictEqual(params, [{ PATH: "/usr/bin" }, { query: "test" }, { env: { PATH: "/usr/bin" } }])
-        }
-      }))
+        }))
+    }
 
     it.effect(`prepares selected tool codecs once per ${mode} request and normalizes repeated calls`, () =>
       Effect.gen(function*() {

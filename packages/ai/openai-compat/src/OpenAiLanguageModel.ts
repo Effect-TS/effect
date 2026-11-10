@@ -1378,6 +1378,9 @@ const toolParametersError = (tool: Tool.Any, error: unknown, method: string): Ai
     method
   )
 
+const getToolStrictMode = (tool: Tool.Any, config: typeof Config.Service): boolean =>
+  Tool.getStrictMode(tool) ?? config.strictJsonSchema ?? true
+
 type ToolCodec = ReturnType<typeof toCodecOpenAI>["codec"]
 type ToolCodecs = ReadonlyMap<Tool.Any, ToolCodec>
 
@@ -1404,10 +1407,7 @@ const transformToolCallParams = Effect.fnUntraced(function*(
     })
   }
 
-  if (
-    !(Tool.getStrictMode(tool) ?? config.strictJsonSchema ?? true) ||
-    (Tool.isDynamic(tool) && tool.jsonSchema !== undefined)
-  ) {
+  if (!getToolStrictMode(tool, config) || (Tool.isDynamic(tool) && tool.jsonSchema !== undefined)) {
     return toolParams
   }
 
@@ -1464,24 +1464,20 @@ const prepareTools = Effect.fnUntraced(function*<Tools extends ReadonlyArray<Too
   // Convert the tools in the toolkit to the provider-defined format
   for (const tool of allowedTools) {
     if (Tool.isUserDefined(tool) || Tool.isDynamic(tool)) {
-      const strict = Tool.getStrictMode(tool) ?? config.strictJsonSchema ?? true
+      const strict = getToolStrictMode(tool, config)
       let parameters: ReturnType<typeof Tool.getJsonSchema>
       if (Tool.isDynamic(tool) && tool.jsonSchema !== undefined) {
         parameters = tool.jsonSchema
-      } else if (!strict) {
-        // Non-strict tools use standard JSON Schema and preserve their parameters during normalization.
-        parameters = yield* Effect.try({
-          try: () => Tool.getJsonSchema(tool, { transformer: LanguageModel.defaultCodecTransformer }),
-          catch: (error) => toolParametersError(tool, error, "prepareTools")
-        })
       } else {
         const prepared = yield* Effect.try({
-          try: () => toCodecOpenAI(tool.parametersSchema),
+          try: () => (strict ? toCodecOpenAI : LanguageModel.defaultCodecTransformer)(tool.parametersSchema),
           catch: (error) => toolParametersError(tool, error, "prepareTools")
         })
         parameters = prepared.jsonSchema
-        // Reused to normalize this tool's calls in the response.
-        toolCodecs.set(tool, prepared.codec)
+        if (strict) {
+          // Reused to normalize this tool's calls in the response.
+          toolCodecs.set(tool, prepared.codec)
+        }
       }
       tools.push({
         type: "function",

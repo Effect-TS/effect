@@ -2907,7 +2907,7 @@ const prepareTools = Effect.fnUntraced(function*<Tools extends ReadonlyArray<Too
   // Convert the tools in the toolkit to the provider-defined format
   for (const tool of allowedTools) {
     if (Tool.isUserDefined(tool) || Tool.isDynamic(tool)) {
-      const strict = Tool.getStrictMode(tool) ?? config.strictJsonSchema ?? true
+      const strict = getToolStrictMode(tool, config)
       const description = Tool.getDescription(tool)
       const parameters = yield* tryToolJsonSchema(tool, strict, "prepareTools")
       tools.push({
@@ -3221,6 +3221,9 @@ const toolParametersError = (tool: Tool.Any, error: unknown, method: string): Ai
     method
   )
 
+const getToolStrictMode = (tool: Tool.Any, config: typeof Config.Service): boolean =>
+  Tool.getStrictMode(tool) ?? config.strictJsonSchema ?? true
+
 const tryToolJsonSchema = <T extends Tool.Any>(tool: T, strict: boolean, method: string) =>
   Effect.try({
     try: () =>
@@ -3412,11 +3415,7 @@ const transformToolCallParams = Effect.fnUntraced(function*(
     })
   }
 
-  if (Tool.isDynamic(tool) && tool.jsonSchema !== undefined) {
-    return toolParams
-  }
-
-  if (!(Tool.getStrictMode(tool) ?? config.strictJsonSchema ?? true)) {
+  if (!getToolStrictMode(tool, config) || (Tool.isDynamic(tool) && tool.jsonSchema !== undefined)) {
     return toolParams
   }
 

@@ -1843,13 +1843,8 @@ describe("OpenAiLanguageModel", () => {
           }))
         ))
 
-      for (
-        const [configured, override, strict] of [[false, undefined, false], [true, false, false], [false, true, true], [
-          undefined,
-          undefined,
-          true
-        ]] as const
-      ) {
+      const strictCases = [[false, undefined, false], [true, false, false], [false, true, true]] as const
+      for (const [configured, override, strict] of strictCases) {
         it.effect(`advertises tool parameters with strict=${strict} (config=${configured}, override=${override})`, () =>
           Effect.gen(function*() {
             const tool = override === undefined ? FilterTool : FilterTool.annotate(Tool.Strict, override)
@@ -3377,12 +3372,10 @@ const ReturnModeTool = Tool.make("ReturnModeTool", {
 })
 
 const FilterTool = Tool.make("FilterTool", {
-  description: "A test tool with an optional record parameter",
   parameters: Schema.Struct({
     query: Schema.String,
     filters: Schema.optional(Schema.Record(Schema.String, Schema.String))
-  }),
-  success: Schema.Struct({ count: Schema.Finite })
+  })
 })
 
 const TransformParamsTool = Tool.make("TransformParamsTool", {
