@@ -707,6 +707,32 @@ describe("OpenRouterLanguageModel", () => {
         }).pipe(Effect.provide(makeTestLayer())))
     })
 
+    it.effect("reports a refusal through the finish part", () =>
+      Effect.gen(function*() {
+        const result = yield* LanguageModel.generateText({ prompt: "Do something bad" }).pipe(
+          Effect.provide(OpenRouterLanguageModel.model("openai/gpt-4o"))
+        )
+
+        const finishPart = result.content.find((part) => part.type === "finish")
+        deepStrictEqual({
+          text: result.text,
+          finishReason: result.finishReason,
+          refusal: finishPart?.metadata.openrouter?.refusal
+        }, {
+          text: "",
+          finishReason: "content-filter",
+          refusal: "I cannot do that"
+        })
+      }).pipe(Effect.provide(makeTestLayer({
+        body: {
+          choices: [{
+            finish_reason: "stop",
+            index: 0,
+            message: { role: "assistant", content: null, refusal: "I cannot do that" }
+          }]
+        }
+      }))))
+
     describe("usage", () => {
       it.effect("derives text and uncached tokens when details are subsets of their totals", () =>
         Effect.gen(function*() {
@@ -945,6 +971,49 @@ describe("OpenRouterLanguageModel", () => {
             "text-end"
           ]
         )
+      }))
+
+    it.effect("streams a refusal through the finish part", () =>
+      Effect.gen(function*() {
+        const parts = yield* LanguageModel.streamText({ prompt: "Do something bad" }).pipe(
+          Stream.runCollect,
+          Effect.provide(OpenRouterLanguageModel.model("openai/gpt-4o")),
+          Effect.provide(makeStreamTestLayer([
+            {
+              id: "response-1",
+              object: "chat.completion.chunk",
+              model: "openai/gpt-4o",
+              created: 1,
+              choices: [{ index: 0, delta: { content: "", refusal: "I cannot", role: "assistant" } }]
+            },
+            {
+              id: "response-1",
+              object: "chat.completion.chunk",
+              model: "openai/gpt-4o",
+              created: 1,
+              choices: [{ index: 0, delta: { content: "", refusal: " do that" } }]
+            },
+            {
+              id: "response-1",
+              object: "chat.completion.chunk",
+              model: "openai/gpt-4o",
+              created: 1,
+              choices: [{ index: 0, finish_reason: "stop", delta: { content: "" } }],
+              usage: { prompt_tokens: 5, completion_tokens: 4, total_tokens: 9 }
+            }
+          ]))
+        )
+
+        const finishPart = parts.find((part) => part.type === "finish")
+        deepStrictEqual({
+          textParts: parts.filter((part) => part.type.startsWith("text-")).map((part) => part.type),
+          reason: finishPart?.reason,
+          refusal: finishPart?.metadata.openrouter?.refusal
+        }, {
+          textParts: [],
+          reason: "content-filter",
+          refusal: "I cannot do that"
+        })
       }))
 
     it.effect("emits incremental tool parameter fragments", () =>
