@@ -1,5 +1,5 @@
 import { AnthropicClient, AnthropicConfig, AnthropicWorkloadIdentity } from "@effect/ai-anthropic"
-import type { Effect, FileSystem, PlatformError, Redacted } from "effect"
+import { type Effect, type FileSystem, Layer, type PlatformError, type Redacted } from "effect"
 import { HttpClient } from "effect/http"
 import { describe, expect, it } from "tstyche"
 
@@ -23,6 +23,21 @@ describe("AnthropicWorkloadIdentity", () => {
         never,
         HttpClient.HttpClient | FileSystem.FileSystem
       >
+    >()
+  })
+
+  it("provides an HttpClient as a layer, requiring one and what the identity token requires", () => {
+    const layer = AnthropicWorkloadIdentity.layer({
+      identityToken,
+      federationRuleId: "fdrl_1",
+      organizationId: "org_1"
+    })
+
+    expect(layer).type.toBe<
+      Layer.Layer<HttpClient.HttpClient, never, HttpClient.HttpClient | FileSystem.FileSystem>
+    >()
+    expect(AnthropicClient.layer({}).pipe(Layer.provide(layer))).type.toBe<
+      Layer.Layer<AnthropicClient.AnthropicClient, never, HttpClient.HttpClient | FileSystem.FileSystem>
     >()
   })
 

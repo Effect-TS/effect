@@ -1,5 +1,5 @@
 import { OpenAiClient, OpenAiConfig, OpenAiWorkloadIdentity } from "@effect/ai-openai"
-import type { Effect, FileSystem, PlatformError, Redacted } from "effect"
+import { type Effect, type FileSystem, Layer, type PlatformError, type Redacted } from "effect"
 import { HttpClient } from "effect/http"
 import { describe, expect, it } from "tstyche"
 
@@ -23,6 +23,21 @@ describe("OpenAiWorkloadIdentity", () => {
         never,
         HttpClient.HttpClient | FileSystem.FileSystem
       >
+    >()
+  })
+
+  it("provides an HttpClient as a layer, requiring one and what the identity token requires", () => {
+    const layer = OpenAiWorkloadIdentity.layer({
+      identityToken,
+      identityProviderId: "idp_1",
+      serviceAccountId: "sa_1"
+    })
+
+    expect(layer).type.toBe<
+      Layer.Layer<HttpClient.HttpClient, never, HttpClient.HttpClient | FileSystem.FileSystem>
+    >()
+    expect(OpenAiClient.layer({}).pipe(Layer.provide(layer))).type.toBe<
+      Layer.Layer<OpenAiClient.OpenAiClient, never, HttpClient.HttpClient | FileSystem.FileSystem>
     >()
   })
 

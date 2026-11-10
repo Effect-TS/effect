@@ -17,6 +17,7 @@ import * as HttpClient from "effect/http/HttpClient"
 import * as HttpClientError from "effect/http/HttpClientError"
 import * as HttpClientRequest from "effect/http/HttpClientRequest"
 import * as HttpClientResponse from "effect/http/HttpClientResponse"
+import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import * as Redacted from "effect/Redacted"
 import * as Schema from "effect/Schema"
@@ -72,6 +73,49 @@ const readBody = (response: HttpClientResponse.HttpClientResponse): Effect.Effec
       Effect.orElseSucceed(() => undefined)
     )
   })
+
+/**
+ * Options for authenticating OpenAI requests with Workload Identity
+ * Federation.
+ *
+ * **Details**
+ *
+ * `E` and `R` are the error and the requirements of the `identityToken`
+ * effect.
+ *
+ * @see {@link make} for creating a client transform from these options
+ * @see {@link layer} for providing a transformed `HttpClient` from these options
+ *
+ * @stability unstable
+ * @category options
+ * @since 4.1.3
+ */
+export type Options<E = never, R = never> = {
+  /**
+   * Produces the identity token to exchange. Runs again on every exchange.
+   */
+  readonly identityToken: Effect.Effect<Redacted.Redacted<string>, E, R>
+  /**
+   * Whether the identity token is a JWT or an OpenID Connect ID token.
+   *
+   * @default "jwt"
+   */
+  readonly identityTokenType?: "jwt" | "id_token" | undefined
+  /**
+   * ID of the workload identity provider registered with OpenAI.
+   */
+  readonly identityProviderId: string
+  /**
+   * ID of the service account the token acts as.
+   */
+  readonly serviceAccountId: string
+  /**
+   * The URL of the token endpoint.
+   *
+   * @default "https://auth.openai.com/oauth/token"
+   */
+  readonly tokenUrl?: string | undefined
+}
 
 /**
  * Creates an `HttpClient` transform that authenticates OpenAI requests with
@@ -147,36 +191,13 @@ const readBody = (response: HttpClientResponse.HttpClientResponse): Effect.Effec
  * }))
  * ```
  *
+ * @see {@link layer} for providing the transformed `HttpClient` as a layer
+ *
  * @stability unstable
  * @category constructors
  * @since 4.1.3
  */
-export const make = <E = never, R = never>(options: {
-  /**
-   * Produces the identity token to exchange. Runs again on every exchange.
-   */
-  readonly identityToken: Effect.Effect<Redacted.Redacted<string>, E, R>
-  /**
-   * Whether the identity token is a JWT or an OpenID Connect ID token.
-   *
-   * @default "jwt"
-   */
-  readonly identityTokenType?: "jwt" | "id_token" | undefined
-  /**
-   * ID of the workload identity provider registered with OpenAI.
-   */
-  readonly identityProviderId: string
-  /**
-   * ID of the service account the token acts as.
-   */
-  readonly serviceAccountId: string
-  /**
-   * The URL of the token endpoint.
-   *
-   * @default "https://auth.openai.com/oauth/token"
-   */
-  readonly tokenUrl?: string | undefined
-}): Effect.Effect<
+export const make = <E = never, R = never>(options: Options<E, R>): Effect.Effect<
   (client: HttpClient.HttpClient) => HttpClient.HttpClient,
   never,
   HttpClient.HttpClient | R
@@ -305,3 +326,69 @@ export const make = <E = never, R = never>(options: {
         )
       )
   })
+
+/**
+ * Creates a layer that takes the `HttpClient` in context and provides it
+ * again, authenticated with Workload Identity Federation.
+ *
+ * **When to use**
+ *
+ * Use to give `OpenAiClient` an authenticated `HttpClient` with
+ * `Layer.provide`, instead of passing the transform from `make` as its
+ * `transformClient` option.
+ *
+ * **Details**
+ *
+ * The provided client is the `HttpClient` in context with the transform from
+ * `make` applied, and behaves as described there. The token exchange is sent
+ * with the client in context, so it does not carry an access token itself.
+ * Whatever `identityToken` requires becomes a requirement of the layer.
+ *
+ * **Gotchas**
+ *
+ * - Every request sent with the provided `HttpClient` carries the access
+ *   token, whatever its URL. Provide the layer to the `OpenAiClient` layer
+ *   only, and not to the rest of the application.
+ * - An `apiKey` option of `OpenAiClient` replaces the access token here, so
+ *   leave it unset.
+ * - The other gotchas of `make` apply.
+ *
+ * **Example** (Providing an authenticated client to `OpenAiClient`)
+ *
+ * ```ts
+ * import { OpenAiClient, OpenAiWorkloadIdentity } from "@effect/ai-openai"
+ * import { Effect, FileSystem, Layer, Redacted } from "effect"
+ *
+ * const WorkloadIdentity = OpenAiWorkloadIdentity.layer({
+ *   identityToken: Effect.gen(function*() {
+ *     const fs = yield* FileSystem.FileSystem
+ *     return Redacted.make(yield* fs.readFileString("/var/run/secrets/openai.com/token"))
+ *   }),
+ *   identityProviderId: "idp_...",
+ *   serviceAccountId: "sa_..."
+ * })
+ *
+ * // Requires an `HttpClient`, and the `FileSystem` the identity token is
+ * // read from.
+ * const OpenAiLayer = OpenAiClient.layer({}).pipe(
+ *   Layer.provide(WorkloadIdentity)
+ * )
+ * ```
+ *
+ * @see {@link make} for the client transform this layer applies
+ *
+ * @stability unstable
+ * @category layers
+ * @since 4.1.3
+ */
+export const layer = <E = never, R = never>(
+  options: Options<E, R>
+): Layer.Layer<HttpClient.HttpClient, never, HttpClient.HttpClient | R> =>
+  Layer.effect(
+    HttpClient.HttpClient,
+    Effect.gen(function*() {
+      const client = yield* HttpClient.HttpClient
+      const transform = yield* make(options)
+      return transform(client)
+    })
+  )

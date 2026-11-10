@@ -210,6 +210,35 @@ describe("AnthropicWorkloadIdentity", () => {
       })
   )
 
+  it.effect("layer authenticates the HttpClient it provides, and not the exchange", () =>
+    Effect.gen(function*() {
+      const http = makeHttp()
+      const client = yield* AnthropicClient.AnthropicClient.pipe(
+        Effect.provide(
+          AnthropicClient.layer({}).pipe(
+            Layer.provide(AnthropicWorkloadIdentity.layer({
+              identityToken: Effect.succeed(Redacted.make(IDENTITY_TOKEN)),
+              federationRuleId: "fdrl_1",
+              organizationId: "org_1"
+            }))
+          )
+        ),
+        Effect.provideService(HttpClient.HttpClient, http.client)
+      )
+
+      // The empty response does not decode. Only the requests matter here.
+      const createMessage = Effect.exit(client.createMessage({
+        payload: { model: "claude-sonnet-4-20250514", max_tokens: 1, messages: [{ role: "user", content: "hello" }] }
+      }))
+      yield* createMessage
+      yield* createMessage
+
+      const messagesUrl = `${API_URL}?beta=true`
+      assert.deepStrictEqual(http.requests.map((request) => request.url), [TOKEN_URL, messagesUrl, messagesUrl])
+      assert.deepStrictEqual(authorizations(http), [undefined, "Bearer access-1", "Bearer access-1"])
+      assert.strictEqual(http.requests[1].headers["anthropic-beta"], "oauth-2025-04-20")
+    }))
+
   it.effect("does not follow a redirect of the exchange", () =>
     Effect.gen(function*() {
       const redirects: Array<RequestRedirect | undefined> = []
@@ -243,7 +272,7 @@ describe("AnthropicWorkloadIdentity", () => {
     }))
 })
 
-type Options = Parameters<typeof AnthropicWorkloadIdentity.make<Error, never>>[0]
+type Options = AnthropicWorkloadIdentity.Options<Error>
 
 type TokenHandler = (
   request: HttpClientRequest.HttpClientRequest,

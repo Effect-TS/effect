@@ -214,6 +214,20 @@ describe("OpenAiWorkloadIdentity", () => {
       })
   )
 
+  it.effect("layer authenticates the HttpClient it provides, and not the exchange", () =>
+    Effect.gen(function*() {
+      const http = makeHttp()
+      const client = yield* OpenAiClient.OpenAiClient.pipe(provideLayerClient(http))
+
+      // The empty response does not decode. Only the requests matter here.
+      const createResponse = Effect.exit(client.createResponse({ model: "gpt-4o", input: "test" }))
+      yield* createResponse
+      yield* createResponse
+
+      assert.deepStrictEqual(http.requests.map((request) => request.url), [TOKEN_URL, API_URL, API_URL])
+      assert.deepStrictEqual(authorizations(http), [undefined, "Bearer access-1", "Bearer access-1"])
+    }))
+
   it.effect("does not follow a redirect of the exchange", () =>
     Effect.gen(function*() {
       const redirects: Array<RequestRedirect | undefined> = []
@@ -351,6 +365,29 @@ describe("OpenAiWorkloadIdentity", () => {
         assert.lengthOf(http.requests, 1)
       }))
 
+    it.effect("authenticates a connection of a client provided with the layer", () =>
+      Effect.gen(function*() {
+        const apiUrl = "https://layer.test/v1"
+        const server = yield* makeSocketServer(apiUrl)
+        const http = makeHttp()
+        const connections: Array<string | undefined> = []
+
+        yield* Effect.gen(function*() {
+          const client = yield* OpenAiClient.OpenAiClient
+          const [, stream] = yield* client.createResponseStream({ model: "gpt-4o", input: "test" })
+          yield* Effect.all([
+            Stream.runDrain(stream),
+            Effect.promise(() => server.nextMessage).pipe(
+              Effect.tap(() => Effect.sync(() => server.send(completedEvent)))
+            )
+          ], { concurrency: "unbounded" })
+        }).pipe(OpenAiClient.withWebSocketMode, provideLayerClient(http, apiUrl), recordConnections(connections))
+
+        assert.deepStrictEqual(connections, ["Bearer access-1"])
+        assert.deepStrictEqual(http.requests.map((request) => request.url), [TOKEN_URL])
+        assert.isUndefined(http.requests[0].headers.authorization)
+      }))
+
     it.effect("fails the stream when the handshake is rejected, keeping the access token", () =>
       Effect.gen(function*() {
         const apiUrl = "https://handshake.test/v1"
@@ -372,7 +409,7 @@ describe("OpenAiWorkloadIdentity", () => {
   })
 })
 
-type Options = Parameters<typeof OpenAiWorkloadIdentity.make<Error, never>>[0]
+type Options = OpenAiWorkloadIdentity.Options<Error>
 
 type TokenHandler = (
   request: HttpClientRequest.HttpClientRequest,
@@ -448,17 +485,32 @@ const makeSocketServer = (apiUrl: string, options?: ConstructorParameters<typeof
     (server) => Effect.sync(() => server.close())
   )
 
+// Provides `OpenAiClient` with the `HttpClient` of `OpenAiWorkloadIdentity.layer`.
+const provideLayerClient = (http: Http, apiUrl?: string) => <A, E, R>(effect: Effect.Effect<A, E, R>) =>
+  effect.pipe(
+    Effect.provide(
+      OpenAiClient.layer({ apiUrl }).pipe(
+        Layer.provide(OpenAiWorkloadIdentity.layer({
+          identityToken: Effect.succeed(Redacted.make(IDENTITY_TOKEN)),
+          identityProviderId: "idp_1",
+          serviceAccountId: "sa_1"
+        }))
+      )
+    ),
+    Effect.provideService(HttpClient.HttpClient, http.client)
+  )
+
 // Records the Authorization header of every WebSocket connection.
+const recordConnections = (connections: Array<string | undefined>) => <A, E, R>(effect: Effect.Effect<A, E, R>) =>
+  Effect.provideService(effect, Socket.WebSocketConstructor, (url, options) => {
+    const headers = typeof options === "object" && "headers" in options ? options.headers : undefined
+    connections.push((headers as Record<string, string> | undefined)?.authorization)
+    return new globalThis.WebSocket(url)
+  })
+
 const provideSocketClient =
   (http: Http, apiUrl: string, connections: Array<string | undefined>) => <A, E, R>(effect: Effect.Effect<A, E, R>) =>
-    effect.pipe(
-      provideClient(http, undefined, apiUrl),
-      Effect.provideService(Socket.WebSocketConstructor, (url, options) => {
-        const headers = typeof options === "object" && "headers" in options ? options.headers : undefined
-        connections.push((headers as Record<string, string> | undefined)?.authorization)
-        return new globalThis.WebSocket(url)
-      })
-    )
+    effect.pipe(provideClient(http, undefined, apiUrl), recordConnections(connections))
 
 const completedEvent = {
   type: "response.completed",
