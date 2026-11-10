@@ -1087,6 +1087,60 @@ describe("OpenAiLanguageModel", () => {
         })
       }))
 
+    it.effect("decodes null optional fields in non-streaming responses", () =>
+      Effect.gen(function*() {
+        const Ping = Tool.make("Ping")
+        const toolkit = Toolkit.make(Ping)
+        const responses = [
+          makeChatCompletion({
+            service_tier: null,
+            choices: [{
+              index: 0,
+              finish_reason: "tool_calls",
+              message: {
+                role: "assistant",
+                content: null,
+                tool_calls: [{ id: null, type: null, function: { name: "Ping", arguments: null } }]
+              }
+            }]
+          }),
+          makeChatCompletion({
+            service_tier: null,
+            choices: [{
+              index: 0,
+              finish_reason: "stop",
+              message: { role: "assistant", content: "Hello", tool_calls: null }
+            }]
+          })
+        ]
+        const layer = OpenAiClient.layer({ apiKey: Redacted.make("sk-test-key") }).pipe(
+          Layer.provide(Layer.succeed(
+            HttpClient.HttpClient,
+            makeHttpClient((request) => Effect.succeed(jsonResponse(request, responses.shift())))
+          ))
+        )
+
+        const toolResult = yield* LanguageModel.generateText({
+          prompt: "ping",
+          toolkit,
+          disableToolCallResolution: true
+        }).pipe(
+          Effect.provide(OpenAiLanguageModel.model("gpt-4o-mini")),
+          Effect.provide(toolkit.toLayer({ Ping: () => Effect.void })),
+          Effect.provide(layer)
+        )
+        const textResult = yield* LanguageModel.generateText({ prompt: "hello" }).pipe(
+          Effect.provide(OpenAiLanguageModel.model("gpt-4o-mini")),
+          Effect.provide(layer)
+        )
+
+        assert.deepStrictEqual(
+          toolResult.toolCalls.map(({ id, name, params }) => ({ id, name, params })),
+          [{ id: "chatcmpl_test_1_tool_0", name: "Ping", params: {} }]
+        )
+        assert.strictEqual(textResult.text, "Hello")
+      }))
+
     it.effect("surfaces reasoning from non-streaming responses", () =>
       Effect.gen(function*() {
         const layer = OpenAiClient.layer({ apiKey: Redacted.make("sk-test-key") }).pipe(
@@ -1720,6 +1774,75 @@ describe("OpenAiLanguageModel", () => {
         assert.strictEqual(toolCall.id, "call_1")
         assert.deepStrictEqual(toolCall.params, { input: "hello" })
         assert.deepStrictEqual(toolCall.metadata["openai-compat"] as unknown, { itemId: "call_1", extraContent })
+      }))
+
+    it.effect("keeps stream chunks with null service_tier and tool call fields", () =>
+      Effect.gen(function*() {
+        const chunk = (delta: Record<string, unknown>, finish_reason: string | null = null) => ({
+          id: "chatcmpl_null_fields",
+          object: "chat.completion.chunk",
+          model: "gpt-4o-mini",
+          created: 1,
+          service_tier: null,
+          choices: [{ index: 0, delta, finish_reason }]
+        })
+
+        const layer = OpenAiClient.layer({ apiKey: Redacted.make("sk-test-key") }).pipe(
+          Layer.provide(Layer.succeed(
+            HttpClient.HttpClient,
+            makeHttpClient((request) =>
+              Effect.succeed(sseResponse(request, [
+                chunk({ role: "assistant", content: "Hel" }),
+                chunk({ content: "lo" }),
+                chunk({
+                  tool_calls: [{
+                    index: 0,
+                    id: "call_1",
+                    type: "function",
+                    function: { name: "TestTool", arguments: null }
+                  }]
+                }),
+                chunk({
+                  tool_calls: [{
+                    index: 0,
+                    id: null,
+                    type: null,
+                    function: { name: null, arguments: "{\"input\":\"hello\"}" }
+                  }]
+                }),
+                chunk({}, "tool_calls"),
+                "[DONE]"
+              ]))
+            )
+          ))
+        )
+
+        const parts = yield* LanguageModel.streamText({
+          prompt: "use the tool",
+          toolkit: TestToolkit,
+          disableToolCallResolution: true
+        }).pipe(
+          Stream.runCollect,
+          Effect.provide(OpenAiLanguageModel.model("gpt-4o-mini")),
+          Effect.provide(TestToolkitLayer),
+          Effect.provide(layer)
+        )
+
+        const text = parts
+          .filter((part) => part.type === "text-delta")
+          .map((part) => part.delta)
+          .join("")
+        const toolCall = parts.find((part) => part.type === "tool-call")
+        const finish = parts.find((part) => part.type === "finish")
+
+        assert.strictEqual(text, "Hello")
+        assert.isDefined(toolCall)
+        if (toolCall?.type !== "tool-call") {
+          return
+        }
+        assert.strictEqual(toolCall.id, "call_1")
+        assert.deepStrictEqual(toolCall.params, { input: "hello" })
+        assert.strictEqual(finish?.type === "finish" ? finish.reason : undefined, "tool-calls")
       }))
 
     it.effect("decodes streamed tool call params with the OpenAI codec", () =>
