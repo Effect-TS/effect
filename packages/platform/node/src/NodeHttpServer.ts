@@ -108,18 +108,20 @@ export interface Options extends Net.ListenOptions {
   /**
    * Skips the `gracefulShutdownTimeout` wait, so shutdown interrupts request
    * fibers as soon as the server stops serving. Uninterruptible handlers still
-   * run to completion. Upgraded connections are force-closed after initiating
-   * their close; WebSocket close frames and queued writes may not reach peers.
+   * run to completion. Upgraded connections are destroyed right after their
+   * close is initiated, so a WebSocket close frame or queued writes may not
+   * reach the peer. Use a short `gracefulShutdownTimeout` instead when clients
+   * need them.
    *
    * @default false
    */
   readonly disablePreemptiveShutdown?: boolean | undefined
   /**
    * Bounds how long shutdown waits for the server to close its connections
-   * before it interrupts the remaining request fibers. Shutdown initiates a
-   * WebSocket close with code 1001 (Going Away) and ends other upgraded
-   * connections, then force-closes remaining upgrades after this wait.
-   * Handlers run uninterruptibly unless wrapped in
+   * before it interrupts the remaining request fibers. When shutdown starts,
+   * WebSockets are sent a close frame with code 1001 (Going Away) and other
+   * upgraded connections are ended. Any still open after the wait are
+   * destroyed. Handlers run uninterruptibly unless wrapped in
    * `Effect.interruptible` or served by interruptible `HttpRouter` routes, so
    * shutdown still waits for them after the timeout.
    *
@@ -530,7 +532,7 @@ export const makeUpgradeHandler = <
   })
 }
 
-// Independent of the optional `WebSocketServer.clients` collection.
+// Lets shutdown find a socket's WebSocket, as `WebSocketServer.clients` is optional.
 const upgradedWebSockets = new WeakMap<Duplex, NodeWS.WebSocket>()
 
 // Node 26 parses the body of an upgrade request (nodejs/node#60016).
