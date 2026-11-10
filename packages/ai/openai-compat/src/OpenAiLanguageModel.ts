@@ -825,17 +825,28 @@ const prepareMessages = Effect.fnUntraced(
                 } else if (part.mediaType === "application/pdf") {
                   if (typeof part.data === "string" && isFileId(part.data, config)) {
                     content.push({ type: "input_file", file_id: part.data })
-                  }
-
-                  if (part.data instanceof URL) {
-                    content.push({ type: "input_file", file_url: part.data.toString() })
-                  }
-
-                  if (part.data instanceof Uint8Array) {
-                    const base64 = Base64.encode(part.data)
-                    const fileName = part.fileName ?? `part-${index}.pdf`
-                    const fileData = `data:application/pdf;base64,${base64}`
-                    content.push({ type: "input_file", filename: fileName, file_data: fileData })
+                  } else if (
+                    part.data instanceof URL || (typeof part.data === "string" && /^https?:\/\//i.test(part.data))
+                  ) {
+                    return yield* AiError.make({
+                      module: "OpenAiLanguageModel",
+                      method: "prepareMessages",
+                      reason: new AiError.InvalidUserInputError({
+                        description: "Chat Completions does not support PDF URLs. " +
+                          "Pass PDF bytes, base64 data, or a configured file ID instead."
+                      })
+                    })
+                  } else {
+                    const fileData = part.data instanceof Uint8Array
+                      ? `data:application/pdf;base64,${Base64.encode(part.data)}`
+                      : /^data:/i.test(part.data)
+                      ? part.data
+                      : `data:application/pdf;base64,${part.data}`
+                    content.push({
+                      type: "input_file",
+                      filename: part.fileName ?? `part-${index}.pdf`,
+                      file_data: fileData
+                    })
                   }
                 } else {
                   return yield* AiError.make({
@@ -1707,13 +1718,14 @@ const toChatMessageContent = (
         break
       }
       case "input_file": {
-        if (part.file_url !== undefined) {
-          parts.push({ type: "text", text: part.file_url })
-        } else if (part.file_data !== undefined) {
-          parts.push({ type: "text", text: part.file_data })
-        } else if (part.file_id !== undefined) {
-          parts.push({ type: "text", text: `openai://file/${part.file_id}` })
-        }
+        parts.push({
+          type: "file",
+          file: {
+            ...(part.filename !== undefined ? { filename: part.filename } : undefined),
+            ...(part.file_data !== undefined ? { file_data: part.file_data } : undefined),
+            ...(Predicate.isNotNullish(part.file_id) ? { file_id: part.file_id } : undefined)
+          }
+        })
         break
       }
     }
