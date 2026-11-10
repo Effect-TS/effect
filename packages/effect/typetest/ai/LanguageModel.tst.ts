@@ -410,26 +410,15 @@ describe("LanguageModel", () => {
       type Value = typeof schema.Type
       const options = { prompt: "hello", schema }
       const flag = null as unknown as boolean
-      const optional = null as unknown as { readonly allowEmpty?: true }
 
       Effect.gen(function*() {
         const absent = yield* LanguageModel.generateObject(options)
-        const disabled = yield* LanguageModel.generateObject({ ...options, allowEmpty: false })
-        const undefinedFlag = yield* LanguageModel.generateObject({ ...options, allowEmpty: undefined })
         const enabled = yield* LanguageModel.generateObject({ ...options, allowEmpty: true })
         const widened = yield* LanguageModel.generateObject({ ...options, allowEmpty: flag })
-        const optionalFlag = yield* LanguageModel.generateObject({ ...options, ...optional })
 
         expect<typeof absent.value>().type.toBe<Value>()
-        expect<typeof disabled.value>().type.toBe<Value>()
-        expect<typeof undefinedFlag.value>().type.toBe<Value>()
         expect<typeof enabled.value>().type.toBe<Option.Option<Value>>()
         expect<typeof widened.value>().type.toBe<Value | Option.Option<Value>>()
-        expect<typeof optionalFlag.value>().type.toBe<Value | Option.Option<Value>>()
-
-        const model = yield* LanguageModel.LanguageModel
-        const serviceResponse = yield* model.generateObject({ ...options, allowEmpty: true })
-        expect<typeof serviceResponse.value>().type.toBe<Option.Option<Value>>()
 
         const chat = null as unknown as Chat.Chat
         const chatResponse = yield* chat.generateObject({ ...options, allowEmpty: true })

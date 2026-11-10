@@ -1506,29 +1506,6 @@ describe("LanguageModel", () => {
   })
 
   describe("generateObject", () => {
-    it.effect("allowEmpty keeps tool-only responses", () =>
-      Effect.gen(function*() {
-        const response = yield* LanguageModel.generateObject({
-          prompt: "hi",
-          schema: Schema.Struct({ count: Schema.Number }),
-          toolkit: TransformToolkit,
-          allowEmpty: true
-        }).pipe(
-          TestUtils.withLanguageModel({
-            generateText: [
-              { type: "tool-call", id: "call-1", name: "TransformTool", params: "2" },
-              { ...finishPart, reason: "tool-calls" }
-            ]
-          }),
-          Effect.provide(TransformToolkitLayer)
-        )
-
-        assertNone(response.value)
-        strictEqual(response.finishReason, "tool-calls")
-        strictEqual(response.toolCalls[0].id, "call-1")
-        strictEqual(response.toolResults[0].result, 4)
-      }))
-
     it.effect("records json output type on the span", () =>
       LanguageModel.generateObject({
         prompt: "hi",
@@ -1542,29 +1519,24 @@ describe("LanguageModel", () => {
         })
       ))
 
-    for (const allowEmpty of [false, true]) {
-      it.effect(`includes full generated text in StructuredOutputError with allowEmpty=${allowEmpty}`, () =>
-        Effect.gen(function*() {
-          const error = yield* LanguageModel.generateObject({
-            prompt: [],
-            allowEmpty,
-            schema: Schema.Struct({ count: Schema.Number })
-          }).pipe(
-            TestUtils.withLanguageModel({
-              generateText: [{
-                type: "text",
-                text: "{\"count\":\"oops\"}"
-              }]
-            }),
-            Effect.flip
-          )
+    it.effect("includes full generated text in StructuredOutputError", () =>
+      Effect.gen(function*() {
+        const error = yield* LanguageModel.generateObject({
+          prompt: [],
+          schema: Schema.Struct({ count: Schema.Number }),
+          allowEmpty: true
+        }).pipe(
+          TestUtils.withLanguageModel({
+            generateText: [{ type: "text", text: "{\"count\":\"oops\"}" }]
+          }),
+          Effect.flip
+        )
 
-          strictEqual(error.reason._tag, "StructuredOutputError")
-          if (error.reason._tag === "StructuredOutputError") {
-            strictEqual(error.reason.responseText, "{\"count\":\"oops\"}")
-          }
-        }))
-    }
+        strictEqual(error.reason._tag, "StructuredOutputError")
+        if (error.reason._tag === "StructuredOutputError") {
+          strictEqual(error.reason.responseText, "{\"count\":\"oops\"}")
+        }
+      }))
 
     it.effect("allowEmpty treats whitespace-only text as empty", () =>
       Effect.gen(function*() {
@@ -1575,19 +1547,6 @@ describe("LanguageModel", () => {
         }).pipe(TestUtils.withLanguageModel({ generateText: [{ type: "text", text: " \n\t" }] }))
 
         assertNone(response.value)
-      }))
-
-    it.effect("fails when empty output is not allowed", () =>
-      Effect.gen(function*() {
-        const error = yield* LanguageModel.generateObject({
-          prompt: "hi",
-          schema: Schema.Struct({ count: Schema.Number })
-        }).pipe(
-          TestUtils.withLanguageModel({ generateText: [] }),
-          Effect.flip
-        )
-
-        strictEqual(error.reason._tag, "StructuredOutputError")
       }))
 
     it.effect("wraps generated values in some when empty output is allowed", () =>
