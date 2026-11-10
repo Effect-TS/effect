@@ -641,7 +641,7 @@ export const make = (
       Effect.serviceOption(transactionService),
       Option.match({
         onNone: () => acquireConnection,
-        onSome: ([conn]) => Effect.succeed(conn)
+        onSome: Client.activeTransactionConnection
       })
     )
 
