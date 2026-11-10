@@ -60,7 +60,7 @@ import * as Schema from "../Schema.ts"
 import type * as Types from "../Types.ts"
 import type * as Command from "./Command.ts"
 import type * as Head from "./Head.ts"
-import * as Loaded from "./Loaded.ts"
+import * as loaders from "./internal/loaders.ts"
 import type * as Subscription from "./Subscription.ts"
 import * as View from "./View.ts"
 
@@ -159,6 +159,11 @@ export interface Step<in out Model, in out Msg, in out Events, out R = never> ex
  */
 export interface Update<in out Model, in out Msg, in out Events, out Props> extends Step<Model, Msg, Events, never> {
   readonly props: Props
+  /**
+   * PROTOTYPE (EFF-3558). What `h.loaded` would be for `model` and the current
+   * props, so `update` can read the snapshot a watch's message just brought.
+   */
+  loadedOf(model: Model): Loaded<Model>
 }
 
 /**
@@ -170,6 +175,8 @@ export interface Update<in out Model, in out Msg, in out Events, out Props> exte
  */
 export interface Init<in out Model, in out Msg, in out Events, out Props> {
   readonly props: Props
+  /** PROTOTYPE (EFF-3558). One empty snapshot per snapshot field of the Model, to spread into the first Model. */
+  readonly empty: Empty<Model>
   /** Sets the first Model. */
   set(model: Model): Step<Model, Msg, Events, never>
 }
@@ -208,11 +215,20 @@ const makeStep = (
   emitted: ReadonlyArray<unknown>
 ): Step<any, any, any, any> => Object.assign(Object.create(StepProto), { model, commands, emitted })
 
-const makeUpdate = (model: unknown, props: unknown): Update<any, any, any, any> =>
-  Object.assign(Object.create(StepProto), { model, commands: [], emitted: [], props })
+const noSnapshots = Object.freeze({})
 
-const makeInit = (props: unknown): Init<any, any, any, any> => ({
+const makeUpdate = (model: unknown, props: unknown, bound: loaders.Bound | undefined): Update<any, any, any, any> =>
+  Object.assign(Object.create(StepProto), {
+    model,
+    commands: [],
+    emitted: [],
+    props,
+    loadedOf: (next: unknown) => bound === undefined ? noSnapshots : bound.context(next, props).loaded
+  })
+
+const makeInit = (props: unknown, bound: loaders.Bound | undefined): Init<any, any, any, any> => ({
   props,
+  empty: bound === undefined ? noSnapshots : bound.empty,
   set: (model) => makeStep(model, [], []) as Step<any, any, any, never>
 })
 
@@ -314,8 +330,120 @@ export interface Component<
   readonly subscriptions: ((model: Model, props: Props) => ReadonlyArray<Subscription.Subscription<Msg, R>>) | undefined
   readonly head: ((model: Model) => ReadonlyArray<Head.Entry>) | undefined
   readonly layerFailure: ((failure: AsyncResult.Failure<never, any>) => Msg) | undefined
+  /** PROTOTYPE (EFF-3558). What the view reads as `h.loaded` for this Model and props. */
+  readonly loaded: (model: Model, props: Props) => Loaded<Model>
   readonly "~V"?: V
 }
+
+/**
+ * PROTOTYPE (EFF-3558). The fields of a Model that hold a `Loader.Snapshot`
+ * directly. Each one has a loader.
+ *
+ * @stability experimental
+ * @category utility types
+ * @since 4.1.3
+ */
+export type SnapshotFields<Model> = [Model] extends [object] ? SnapshotKey<Model, keyof Model & string> : never
+
+// Not a mapped type over `keyof Model`: that one is homomorphic, so a primitive or array Model maps to itself.
+type SnapshotKey<Model, K extends keyof Model> = K extends unknown
+  ? Model[K] extends Loader.Snapshot<any, any> ? K : never
+  : never
+
+/**
+ * The read of a snapshot.
+ *
+ * @stability experimental
+ * @category utility types
+ * @since 4.1.3
+ */
+export type ReadOf<S> = S extends Loader.Snapshot<infer Read extends Loader.AnyDefinition, any> ? Read : never
+
+/**
+ * The services a Model's loaders add to a component's requirements: the reads
+ * themselves, never their fetchers' services.
+ *
+ * @stability experimental
+ * @category utility types
+ * @since 4.1.3
+ */
+export type LoaderServices<Model> = ServiceOf<ReadOf<Model[SnapshotFields<Model>]>>
+
+type ServiceOf<Read> = Read extends { readonly Identifier: infer Self } ? Self
+  : Read extends Loader.Service<infer Self, any, any, any, any, any, any> ? Self
+  : never
+
+/**
+ * `$.empty` in `init`: an empty snapshot per snapshot field.
+ *
+ * @stability experimental
+ * @category utility types
+ * @since 4.1.3
+ */
+export type Empty<Model> = { readonly [K in SnapshotFields<Model>]: Model[K] }
+
+/**
+ * `h.loaded` in `view`: per snapshot field, the stored result when the
+ * loader's current args match the snapshot's key, otherwise Initial (waiting
+ * when the loader is enabled).
+ *
+ * @stability experimental
+ * @category utility types
+ * @since 4.1.3
+ */
+export type Loaded<Model> = {
+  readonly [K in SnapshotFields<Model>]: AsyncResult.AsyncResult<
+    Loader.SuccessOf<ReadOf<Model[K]>>,
+    Loader.ErrorOf<ReadOf<Model[K]>>
+  >
+}
+
+/**
+ * The `loaders` of `make`: per snapshot field, the args of its read.
+ * Returning `undefined` disables the read. `loaded` is `h.loaded`, for a read
+ * whose args depend on another read's result.
+ *
+ * @stability experimental
+ * @category utility types
+ * @since 4.1.3
+ */
+export type Loaders<Model, Props> = {
+  readonly [K in SnapshotFields<Model>]: (
+    model: Model,
+    props: Props,
+    loaded: Loaded<Model>
+  ) => Loader.ArgsOf<ReadOf<Model[K]>> | undefined
+}
+
+/**
+ * @stability experimental
+ * @category type ids
+ * @since 4.1.3
+ */
+export declare const WatchesTypeId: unique symbol
+
+/**
+ * The Subscription `watch` returns: every snapshot field of the Model is
+ * watched. `subscriptions` must start with it.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.1.3
+ */
+export interface Watches<in out Model, out Msg> extends Subscription.Subscription<Msg, LoaderServices<Model>> {
+  readonly [WatchesTypeId]: (_: Model) => Model
+}
+
+/**
+ * The third argument of `subscriptions`: takes one handler per snapshot field.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.1.3
+ */
+export type Watch<Model, Msg> = (
+  handlers: { readonly [K in SnapshotFields<Model>]: (snapshot: Model[K]) => Msg }
+) => Watches<Model, Msg>
 
 /**
  * Any component.
@@ -455,46 +583,84 @@ export const make = <
   UV extends View.Node<Msg, any> = View.Node<Msg>,
   S extends Subscription.Subscription<Msg, any> = never,
   V extends View.Elements = View.Registered
->(options: {
-  readonly name: Name
-  readonly props?: Schema.Codec<Props, any> | undefined
-  readonly model: Schema.Codec<Model, any>
-  readonly message: Schema.Codec<Msg, any>
-  readonly events?: Schema.Codec<Events, any> | undefined
-  readonly init: ($: Init<Model, Msg, Events, Props>) => UI
-  readonly update: (model: Model, msg: Msg, $: Update<Model, Msg, Events, Props>) => U
-  readonly view: (model: Model, h: View.Helper<Msg, Props> & View.Tags<V, Msg>) => UV
-  readonly subscriptions?: ((model: Model, props: Props) => ReadonlyArray<S | false | null | undefined>) | undefined
-  readonly head?: ((model: Model) => ReadonlyArray<Head.Entry>) | undefined
-  readonly elements?: View.Vocabulary<V> | undefined
-}): Component<
+>(
+  options:
+    & {
+      readonly name: Name
+      readonly props?: Schema.Codec<Props, any> | undefined
+      readonly model: Schema.Codec<Model, any>
+      readonly message: Schema.Codec<Msg, any>
+      readonly events?: Schema.Codec<Events, any> | undefined
+      readonly init: ($: Init<Model, Msg, Events, Props>) => UI
+      readonly update: (model: Model, msg: Msg, $: Update<Model, Msg, Events, Props>) => U
+      readonly view: (
+        model: Model,
+        h:
+          & View.Helper<Msg, Props>
+          & View.Tags<V, Msg>
+          & ([SnapshotFields<Model>] extends [never] ? {} : { readonly loaded: Loaded<Model> })
+      ) => UV
+      readonly head?: ((model: Model) => ReadonlyArray<Head.Entry>) | undefined
+      readonly elements?: View.Vocabulary<V> | undefined
+    }
+    & ([SnapshotFields<Model>] extends [never] ? {
+        readonly subscriptions?:
+          | ((model: Model, props: Props) => ReadonlyArray<S | false | null | undefined>)
+          | undefined
+      }
+      : {
+        /** PROTOTYPE (EFF-3558). The args of each snapshot field's read. */
+        readonly loaders: Loaders<Model, Props>
+        /** Starts with `watch({ field: (snapshot) => message })`, one handler per snapshot field. */
+        readonly subscriptions: (
+          model: Model,
+          props: Props,
+          watch: Watch<Model, Msg>
+        ) => readonly [Watches<Model, Msg>, ...ReadonlyArray<S | false | null | undefined>]
+      })
+): Component<
   Name,
   Props,
   Model,
   Msg,
   Events,
   Exclude<
-    StepRequirements<UI> | StepRequirements<U> | View.Requirements<UV> | Subscription.Requirements<S>,
+    | StepRequirements<UI>
+    | StepRequirements<U>
+    | View.Requirements<UV>
+    | Subscription.Requirements<S>
+    | LoaderServices<Model>,
     Command.FrameworkService
   >,
   V
 > => {
-  const subscriptions = options.subscriptions
-  // At module load, in every build: a snapshot inside an array, or two fields with one (read, label).
-  Loaded.checkModel(options.name, options.model)
+  const subscriptions = (options as any).subscriptions as
+    | ((model: Model, props: Props, watch?: unknown) => ReadonlyArray<S | false | null | undefined>)
+    | undefined
+  // At module load, in every build: the Model's snapshot fields are checked and bound to their loaders.
+  const bound = loaders.bind(options.name, options.model, (options as any).loaders, subscriptions !== undefined)
+  const view = options.view as (model: Model, h: any) => UV
   return Object.assign(Object.create(Proto), {
     name: options.name,
     props: options.props ?? Schema.Struct({}),
     model: options.model,
     message: options.message,
     events: options.events ?? Schema.Never,
-    init: (props: Props) => toNext(options.init(makeInit(props))),
-    update: (model: Model, msg: Msg, props: Props) => toNext(options.update(model, msg, makeUpdate(model, props))),
-    view: (model: Model, props: Props) =>
-      options.view(model, View.makeHelper<Msg, Props, V>(props, options.elements ?? View.registeredElements())),
+    init: (props: Props) => toNext(options.init(makeInit(props, bound))),
+    update: (model: Model, msg: Msg, props: Props) =>
+      toNext(options.update(model, msg, makeUpdate(model, props, bound))),
+    view: (model: Model, props: Props) => {
+      const h = View.makeHelper<Msg, Props, V>(props, options.elements ?? View.registeredElements())
+      // An own property, so it wins over a vocabulary element named `loaded`. Only set when there are snapshot fields.
+      if (bound !== undefined) (h as any).loaded = bound.context(model, props).loaded
+      return view(model, h)
+    },
     subscriptions: subscriptions === undefined
       ? undefined
-      : (model: Model, props: Props) => subscriptions(model, props).filter((entry): entry is S => !!entry),
+      : bound === undefined
+      ? (model: Model, props: Props) => subscriptions(model, props).filter((entry): entry is S => !!entry)
+      : (model: Model, props: Props) => bound.expand(subscriptions(model, props, bound.context(model, props).watch)),
+    loaded: (model: Model, props: Props) => bound === undefined ? noSnapshots : bound.context(model, props).loaded,
     head: options.head,
     elements: () => options.elements ?? View.registeredElements(),
     layer: undefined,

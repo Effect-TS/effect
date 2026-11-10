@@ -4,7 +4,7 @@
  */
 import { Effect, Layer, Option, Schema } from "effect"
 import { AsyncResult, Loader } from "effect/reactivity"
-import { Command, Component, Loaded, Route, Router } from "effect/ui"
+import { Command, Component, Route, Router } from "effect/ui"
 import { Html } from "effect/ui/html"
 import { User, UserNotFound, UserPage, UsersApi } from "./api.ts"
 
@@ -89,35 +89,32 @@ const detailUrl = (id: string) => AppRoute.print(AppRoute.make({ _tag: "Detail",
 // ---------------------------------------------------------------------------
 
 export const UserCardMessage = Schema.TaggedUnion({
-  UserChanged: { snapshot: Loaded.Snapshot(GetUser, "user") },
+  UserChanged: { snapshot: Loader.Snapshot(GetUser, "user") },
   Like: {},
   Liked: {}
 })
 
-const UserCardModel = Schema.Struct({ user: Loaded.Snapshot(GetUser, "user") })
-
-const cardUser = Loaded.at(GetUser, "user", (_model: typeof UserCardModel.Type, props: { readonly id: string }) => ({
-  id: props.id
-}))
-
 export const UserCard = Component.make({
   name: "UserCard",
   props: Schema.Struct({ id: Schema.String }),
-  model: UserCardModel,
+  model: Schema.Struct({ user: Loader.Snapshot(GetUser, "user") }),
   message: UserCardMessage,
   elements: Html,
-  init: () => ({ user: cardUser.empty }),
+  loaders: {
+    user: (_model, props) => ({ id: props.id })
+  },
+  init: ($) => $.empty,
   update: (model, message, $) =>
     UserCardMessage.match(message, {
       UserChanged: ({ snapshot }) => ({ user: snapshot }),
       Like: () => $.run(LikeUser.make($.props.id).pipe(Command.map(() => UserCardMessage.make({ _tag: "Liked" })))),
       Liked: () => model
     }),
-  subscriptions: (model, props) => [
-    cardUser.watch(model, props, (snapshot) => UserCardMessage.make({ _tag: "UserChanged", snapshot }))
+  subscriptions: (_model, _props, watch) => [
+    watch({ user: (snapshot) => UserCardMessage.make({ _tag: "UserChanged", snapshot }) })
   ],
-  view: (model, h) =>
-    AsyncResult.match(cardUser.open(model.user, model, h.props), {
+  view: (_model, h) =>
+    AsyncResult.match(h.loaded.user, {
       onInitial: () => h.p("Loading user…"),
       onFailure: () => h.p("This user doesn't exist."),
       onSuccess: ({ value: user, waiting }) =>
@@ -136,7 +133,7 @@ export const UserCard = Component.make({
 // ---------------------------------------------------------------------------
 
 export const RenameFormMessage = Schema.TaggedUnion({
-  UserChanged: { snapshot: Loaded.Snapshot(GetUser, "user") },
+  UserChanged: { snapshot: Loader.Snapshot(GetUser, "user") },
   Edit: { name: Schema.String },
   Cancel: {},
   Save: {},
@@ -144,24 +141,21 @@ export const RenameFormMessage = Schema.TaggedUnion({
   SaveFailed: { name: Schema.String, reason: Schema.String }
 })
 
-const RenameFormModel = Schema.Struct({
-  user: Loaded.Snapshot(GetUser, "user"),
-  draft: Schema.Option(Schema.String),
-  saving: Schema.Number,
-  error: Schema.Option(Schema.String)
-})
-
-const formUser = Loaded.at(GetUser, "user", (_model: typeof RenameFormModel.Type, props: { readonly id: string }) => ({
-  id: props.id
-}))
-
 export const RenameForm = Component.make({
   name: "RenameForm",
   props: Schema.Struct({ id: Schema.String }),
-  model: RenameFormModel,
+  model: Schema.Struct({
+    user: Loader.Snapshot(GetUser, "user"),
+    draft: Schema.Option(Schema.String),
+    saving: Schema.Number,
+    error: Schema.Option(Schema.String)
+  }),
   message: RenameFormMessage,
   elements: Html,
-  init: () => ({ user: formUser.empty, draft: Option.none(), saving: 0, error: Option.none() }),
+  loaders: {
+    user: (_model, props) => ({ id: props.id })
+  },
+  init: ($) => ({ ...$.empty, draft: Option.none(), saving: 0, error: Option.none() }),
   update: (model, message, $) =>
     RenameFormMessage.match(message, {
       UserChanged: ({ snapshot }) => ({ ...model, user: snapshot }),
@@ -186,11 +180,11 @@ export const RenameForm = Component.make({
         error: Option.some(reason)
       })
     }),
-  subscriptions: (model, props) => [
-    formUser.watch(model, props, (snapshot) => RenameFormMessage.make({ _tag: "UserChanged", snapshot }))
+  subscriptions: (_model, _props, watch) => [
+    watch({ user: (snapshot) => RenameFormMessage.make({ _tag: "UserChanged", snapshot }) })
   ],
   view: (model, h) =>
-    AsyncResult.match(formUser.open(model.user, model, h.props), {
+    AsyncResult.match(h.loaded.user, {
       onInitial: () => h.p("Loading…"),
       onFailure: () => h.p("There is nothing to rename."),
       onSuccess: ({ value: user }) =>
@@ -237,41 +231,33 @@ export const DetailPage = Component.make({
 // ---------------------------------------------------------------------------
 
 export const ListPageMessage = Schema.TaggedUnion({
-  RequestedChanged: { snapshot: Loaded.Snapshot(ListUsers, "requested") },
-  ShownChanged: { snapshot: Loaded.Snapshot(ListUsers, "shown") },
+  RequestedChanged: { snapshot: Loader.Snapshot(ListUsers, "requested") },
+  ShownChanged: { snapshot: Loader.Snapshot(ListUsers, "shown") },
   GoTo: { page: Schema.Number },
   Peek: { id: Schema.String }
 })
 
-export const ListPageModel = Schema.Struct({
-  page: Schema.Number,
-  shownPage: Schema.Number,
-  requested: Loaded.Snapshot(ListUsers, "requested"),
-  shown: Loaded.Snapshot(ListUsers, "shown"),
-  peek: Schema.Option(Schema.String)
-})
-export type ListPageModel = typeof ListPageModel.Type
-
-export const requestedPage = Loaded.at(ListUsers, "requested", (model: ListPageModel) => ({ page: model.page }))
-export const shownPage = Loaded.at(ListUsers, "shown", (model: ListPageModel) => ({ page: model.shownPage }))
-
 export const ListPage = Component.make({
   name: "ListPage",
-  model: ListPageModel,
+  model: Schema.Struct({
+    page: Schema.Number,
+    shownPage: Schema.Number,
+    requested: Loader.Snapshot(ListUsers, "requested"),
+    shown: Loader.Snapshot(ListUsers, "shown"),
+    peek: Schema.Option(Schema.String)
+  }),
   message: ListPageMessage,
   elements: Html,
-  init: () => ({
-    page: 0,
-    shownPage: 0,
-    requested: requestedPage.empty,
-    shown: shownPage.empty,
-    peek: Option.none()
-  }),
+  loaders: {
+    requested: (model) => ({ page: model.page }),
+    shown: (model) => ({ page: model.shownPage })
+  },
+  init: ($) => ({ ...$.empty, page: 0, shownPage: 0, peek: Option.none() }),
   update: (model, message, $) =>
     ListPageMessage.match(message, {
       RequestedChanged: ({ snapshot }) => {
         const next = { ...model, requested: snapshot }
-        return AsyncResult.isSuccess(requestedPage.open(snapshot, next, $.props))
+        return AsyncResult.isSuccess($.loadedOf(next).requested)
           ? { ...next, shownPage: model.page }
           : next
       },
@@ -279,13 +265,14 @@ export const ListPage = Component.make({
       GoTo: ({ page }) => ({ ...model, page }),
       Peek: ({ id }) => ({ ...model, peek: Option.some(id) })
     }),
-  subscriptions: (model, props) => [
-    requestedPage.watch(model, props, (snapshot) => ListPageMessage.make({ _tag: "RequestedChanged", snapshot })),
-    shownPage.watch(model, props, (snapshot) => ListPageMessage.make({ _tag: "ShownChanged", snapshot }))
+  subscriptions: (_model, _props, watch) => [
+    watch({
+      requested: (snapshot) => ListPageMessage.make({ _tag: "RequestedChanged", snapshot }),
+      shown: (snapshot) => ListPageMessage.make({ _tag: "ShownChanged", snapshot })
+    })
   ],
   view: (model, h) => {
-    const requested = requestedPage.open(model.requested, model, h.props)
-    const visible = AsyncResult.isSuccess(requested) ? requested : shownPage.open(model.shown, model, h.props)
+    const visible = AsyncResult.isSuccess(h.loaded.requested) ? h.loaded.requested : h.loaded.shown
     return AsyncResult.match(visible, {
       onInitial: () => h.p("Loading users…"),
       onFailure: () => h.p("The users couldn't be loaded."),

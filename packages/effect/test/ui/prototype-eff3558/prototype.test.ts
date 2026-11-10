@@ -3,7 +3,7 @@ import { assert, describe, it } from "@effect/vitest"
 import { Cause, type Duration, Effect, Layer, Option, Schema } from "effect"
 import { AsyncResult, Loader } from "effect/reactivity"
 import { TestClock } from "effect/testing"
-import { Component, Loaded, Router, type View } from "effect/ui"
+import { Component, Router, type View } from "effect/ui"
 import { BrowserHost, Html } from "effect/ui/html"
 import { HtmlQuery, ssr } from "effect/ui/html/testing"
 import { Query, Snapshot, TestHost } from "effect/ui/testing"
@@ -18,7 +18,6 @@ import {
   ListPage,
   ListUsers,
   RenameForm,
-  shownPage,
   UserCard
 } from "./app.ts"
 
@@ -236,7 +235,6 @@ describe("EFF-3558 prototype", { concurrent: false }, () => {
   // -- EFF-3554 ---------------------------------------------------------------
 
   it("\"Measure the cost of open encoding args on every render\"", () => {
-    const small = Loaded.at(GetUser, "user", (_model: unknown, props: { readonly id: string }) => ({ id: props.id }))
     class SearchUsers extends Loader.Service<SearchUsers>()(
       "bench/SearchUsers",
       {
@@ -266,11 +264,29 @@ describe("EFF-3558 prototype", { concurrent: false }, () => {
       since: "2024-01-01",
       includeInactive: false
     }
-    const large = Loaded.at(SearchUsers, "results", (model: typeof largeArgs) => model)
+    // `open` is no longer callable on its own: `Component.loaded` is what the view's `h.loaded` reads,
+    // so each call also builds the per-render object with one lazy getter per snapshot field.
+    const Search = Component.make({
+      name: "Search",
+      model: Schema.Struct({ results: Loader.Snapshot(SearchUsers, "results") }),
+      message: Schema.Never,
+      elements: Html,
+      loaders: { results: () => largeArgs },
+      init: ($) => $.empty,
+      update: (model) => model,
+      subscriptions: (_model, _props, watch) => [watch({
+        results: () => {
+          throw new Error("unused")
+        }
+      })],
+      view: (_model, h) => h.p(h.loaded.results._tag)
+    })
     const user = { ...makeFake().users.get("1")! }
-    const smallSnapshot = Snapshot.success(small, { id: "1" }, user)
-    const largeSnapshot = Snapshot.success(large, largeArgs, [user])
     const props = { id: "1" }
+    const smallModel = { user: Snapshot.success(GetUser, "user", { id: "1" }, user) }
+    const largeModel = { results: Snapshot.success(SearchUsers, "results", largeArgs, [user]) }
+    const small = () => UserCard.loaded(smallModel, props).user
+    const large = () => Search.loaded(largeModel, {}).results
     const runs = 100_000
     const time = (f: () => unknown) => {
       for (let i = 0; i < 10_000; i++) f()
@@ -279,13 +295,13 @@ describe("EFF-3558 prototype", { concurrent: false }, () => {
       return ((performance.now() - start) / runs) * 1000
     }
     const results = {
-      small: time(() => small.open(smallSnapshot, undefined, props)),
-      large: time(() => large.open(largeSnapshot, largeArgs, undefined)),
+      small: time(small),
+      large: time(large),
       smallStringify: time(() => JSON.stringify({ id: props.id })),
       largeStringify: time(() => JSON.stringify(largeArgs))
     }
-    assert.isTrue(AsyncResult.isSuccess(small.open(smallSnapshot, undefined, props)))
-    assert.isTrue(AsyncResult.isSuccess(large.open(largeSnapshot, largeArgs, undefined)))
+    assert.isTrue(AsyncResult.isSuccess(small()))
+    assert.isTrue(AsyncResult.isSuccess(large()))
     // Generous bounds: the point is the order of magnitude.
     assert.isBelow(results.small, 50)
     assert.isBelow(results.large, 200)
@@ -306,8 +322,7 @@ describe("EFF-3558 prototype", { concurrent: false }, () => {
     const t = make()
     return Effect.gen(function*() {
       const shownOf = (root: Root) => {
-        const model = root.model()
-        const shown = shownPage.open(model.shown, model, {})
+        const shown = ListPage.loaded(root.model(), {}).shown
         return `${shown._tag}${shown.waiting ? " waiting" : ""}`
       }
       const { root, frames } = yield* mount(ListPage, {}, {

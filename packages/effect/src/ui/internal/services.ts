@@ -70,7 +70,7 @@ export const RootHooks = Context.Service<RootHooks, RootHooks>("effect/ui/intern
 export const onDeliver: unique symbol = Symbol.for("effect/ui/Subscription/onDeliver") as any
 
 /**
- * A `Loaded` watch's Subscription carries its marker (read, label, args) under
+ * One snapshot field's watch carries its marker (read, label, args) under
  * this key. The runtime registers a cache watcher from it instead of running a Stream.
  *
  * @internal

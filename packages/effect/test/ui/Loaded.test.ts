@@ -2,7 +2,7 @@ import { assert, describe, it } from "@effect/vitest"
 import { Effect, Layer, Option, Schema } from "effect"
 import { AsyncResult, Loader } from "effect/reactivity"
 import { TestClock } from "effect/testing"
-import { Command, Component, Loaded, Route, Router } from "effect/ui"
+import { Command, Component, Route, Router } from "effect/ui"
 import { Query, Snapshot, TestHost } from "effect/ui/testing"
 
 const User = Schema.Struct({ id: Schema.String, name: Schema.String })
@@ -48,7 +48,7 @@ const make = (options: { readonly staleTime: string }) => {
   ) {}
 
   const CardMessage = Schema.TaggedUnion({
-    UserChanged: { snapshot: Loaded.Snapshot(GetUser, "user") },
+    UserChanged: { snapshot: Loader.Snapshot(GetUser, "user") },
     Rename: { name: Schema.String },
     Renamed: {}
   })
@@ -59,19 +59,20 @@ const make = (options: { readonly staleTime: string }) => {
     Detail: Route.make("/users/:id", { params: { id: Schema.String } })
   })
   const AppMessage = Schema.TaggedUnion({ Changed: { route: AppRoute }, Go: { route: AppRoute }, Back: {}, Done: {} })
-  const user = Loaded.at(GetUser, "user", (_model: unknown, props: { readonly id: string; readonly tag: string }) => ({
-    id: props.id
-  }))
   const Card = Component.make({
     name: "Card",
     props: Schema.Struct({ id: Schema.String, tag: Schema.String }),
-    model: Schema.Struct({ user: Loaded.Snapshot(GetUser, "user"), saving: Schema.Boolean }),
+    model: Schema.Struct({ user: Loader.Snapshot(GetUser, "user"), saving: Schema.Boolean }),
     message: CardMessage,
-    init: ($) => $.set({ user: user.empty, saving: false }),
+    loaders: {
+      // An empty id disables the read.
+      user: (_model, props) => props.id === "" ? undefined : { id: props.id }
+    },
+    init: ($) => $.set({ ...$.empty, saving: false }),
     update: (model, message, $) =>
       CardMessage.match(message, {
         UserChanged: ({ snapshot }) => {
-          const result = user.open(snapshot, model, $.props)
+          const result = $.loadedOf({ ...model, user: snapshot }).user
           order.push(`update ${$.props.tag} ${AsyncResult.isSuccess(result) ? result.value.name : result._tag}`)
           return { ...model, user: snapshot }
         },
@@ -86,11 +87,11 @@ const make = (options: { readonly staleTime: string }) => {
         },
         Renamed: () => ({ ...model, saving: false })
       }),
-    subscriptions: (model, props) => [
-      user.watch(model, props, (snapshot) => CardMessage.make({ _tag: "UserChanged", snapshot }))
+    subscriptions: (_model, _props, watch) => [
+      watch({ user: (snapshot) => CardMessage.make({ _tag: "UserChanged", snapshot }) })
     ],
     view: (model, h) => {
-      const text = AsyncResult.match(user.open(model.user, model, h.props), {
+      const text = AsyncResult.match(h.loaded.user, {
         onInitial: (initial) => (initial.waiting ? "loading" : "idle"),
         onSuccess: (success) => success.value.name + (success.waiting ? "…" : ""),
         onFailure: () => "failed"
@@ -139,7 +140,7 @@ const make = (options: { readonly staleTime: string }) => {
       })
   })
   const layer = Layer.mergeAll(TestHost.layer(), GetUser.layer, RenameUser.layer)
-  return { db, order, GetUser, RenameUser, Card, CardMessage, Board, user, layer, App, AppRoute, AppMessage }
+  return { db, order, GetUser, RenameUser, Card, CardMessage, Board, layer, App, AppRoute, AppMessage }
 }
 
 const load = Effect.gen(function*() {
@@ -168,12 +169,17 @@ describe("Loaded", () => {
   it.effect("a disabled read opens as Initial, not waiting, and a testing snapshot opens as its result", () => {
     const t = make({ staleTime: "1 minute" })
     const props = { id: "1", tag: "a" }
-    assert.strictEqual(t.user.open(t.user.empty, {}, props)._tag, "Initial")
-    const snapshot = Snapshot.success(t.user, { id: "1" }, { id: "1", name: "Zed" })
-    const opened = t.user.open(snapshot, {}, props)
+    const empty = t.Card.init(props).model
+    const initial = t.Card.loaded(empty, props).user
+    assert.deepStrictEqual([initial._tag, initial.waiting], ["Initial", true])
+    const disabled = t.Card.loaded(empty, { id: "", tag: "a" }).user
+    assert.deepStrictEqual([disabled._tag, disabled.waiting], ["Initial", false])
+    const snapshot = Snapshot.success(t.GetUser, "user", { id: "1" }, { id: "1", name: "Zed" })
+    const model = { ...empty, user: snapshot }
+    const opened = t.Card.loaded(model, props).user
     assert.strictEqual(AsyncResult.isSuccess(opened) && opened.value.name, "Zed")
-    // Another id's snapshot under the same binding: the args key differs, so it opens as waiting.
-    const other = t.user.open(snapshot, {}, { id: "2", tag: "a" })
+    // Another id's snapshot in the same field: the args key differs, so it opens as waiting.
+    const other = t.Card.loaded(model, { id: "2", tag: "a" }).user
     assert.deepStrictEqual([other._tag, other.waiting], ["Initial", true])
     return Effect.void
   })
@@ -382,16 +388,38 @@ describe("Loaded", () => {
       view: (_: any, h: any) => h.text("")
     }
     assert.throws(
-      () => Component.make({ ...base, model: Schema.Array(Loaded.Snapshot(t.GetUser, "user")) } as any),
+      () => Component.make({ ...base, model: Schema.Array(Loader.Snapshot(t.GetUser, "user")) } as any),
       /inside an array/
     )
     assert.throws(
       () =>
         Component.make({
           ...base,
-          model: Schema.Struct({ a: Loaded.Snapshot(t.GetUser, "user"), b: Loaded.Snapshot(t.GetUser, "user") })
+          model: Schema.Struct({ a: Loader.Snapshot(t.GetUser, "user"), b: Loader.Snapshot(t.GetUser, "user") })
         } as any),
       /two snapshot fields/
     )
+    const snapshot = Loader.Snapshot(t.GetUser, "user")
+    // The label is the field's name.
+    assert.throws(
+      () => Component.make({ ...base, model: Schema.Struct({ person: snapshot }) } as any),
+      /A snapshot's label is its field's name/
+    )
+    // A snapshot that isn't directly a field of the Model has no loader key.
+    assert.throws(
+      () => Component.make({ ...base, model: Schema.Struct({ user: Schema.NullOr(snapshot) }) } as any),
+      /Only a field of the Model itself has a loader/
+    )
+    // What the types already reject: no loader, no subscriptions, a watch that is missing or has no handler.
+    const model = Schema.Struct({ user: snapshot })
+    assert.throws(() => Component.make({ ...base, model } as any), /has no loader/)
+    const loaders = { user: () => ({ id: "1" }) }
+    assert.throws(() => Component.make({ ...base, model, loaders } as any), /subscriptions must return/)
+    const unwatched = Component.make({ ...base, model, loaders, subscriptions: () => [] } as any)
+    assert.throws(() => unwatched.subscriptions!({ user: undefined }, {}), /made by watch/)
+    const unhandled = Component.make(
+      { ...base, model, loaders, subscriptions: (_m: any, _p: any, watch: any) => [watch({})] } as any
+    )
+    assert.throws(() => unhandled.subscriptions!({ user: undefined }, {}), /no handler/)
   })
 })

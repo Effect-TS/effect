@@ -25,30 +25,50 @@ import * as Scope from "../Scope.ts"
 import * as Stream from "../Stream.ts"
 import * as AsyncResult from "./AsyncResult.ts"
 
+// PROTOTYPE (EFF-3558): the Model's snapshot Schema, `Loader.Snapshot(read, label)`. Its code lives apart.
+export { Snapshot, type SnapshotSchema, SnapshotTypeId } from "./internal/loaderSnapshot.ts"
+
 // -----------------------------------------------------------------------------
 // Keys
 // -----------------------------------------------------------------------------
 
-// Copied from Subscription's encodeDep: strings are JSON, everything else is
-// its literal, so NaN, Infinity and -0 stay distinct.
-const encodeLeaf = (leaf: unknown): string =>
-  typeof leaf === "string"
-    ? JSON.stringify(leaf)
-    : Object.is(leaf, -0)
-    ? "-0"
-    : typeof leaf === "bigint"
-    ? String(leaf) + "n"
-    : String(leaf)
+// The args key is canonical JSON (EFF-3558 #11): sorted object keys, `undefined`
+// properties dropped, no whitespace. It parses back with JSON.parse, so a
+// hydrated entry recovers its args. A leaf JSON can't carry throws.
+const nonJson = (leaf: unknown): Error =>
+  new Error(
+    "Loader: the encoded args hold a value JSON can't carry (" +
+      (typeof leaf === "bigint"
+        ? String(leaf) + "n"
+        : typeof leaf === "object"
+        ? Object.prototype.toString.call(leaf)
+        : String(leaf)) +
+      "). Give the args Schema a JSON encoding."
+  )
 
 const encodeKey = (u: unknown): string => {
-  if (Array.isArray(u)) return "[" + u.map(encodeKey).join(",") + "]"
-  if (typeof u === "object" && u !== null) {
+  if (u === null || typeof u === "boolean") return String(u)
+  if (typeof u === "string") return JSON.stringify(u)
+  if (typeof u === "number") {
+    if (!Number.isFinite(u)) throw nonJson(u)
+    // "-0" is JSON and parses back to -0, so it stays distinct from 0.
+    return Object.is(u, -0) ? "-0" : String(u)
+  }
+  if (Array.isArray(u)) {
+    const parts: Array<string> = []
+    // Not `map`: a hole must throw too.
+    for (let i = 0; i < u.length; i++) parts.push(encodeKey(u[i]))
+    return "[" + parts.join(",") + "]"
+  }
+  if (typeof u === "object") {
+    const proto = Object.getPrototypeOf(u)
+    if (proto !== Object.prototype && proto !== null) throw nonJson(u)
     const o = u as Record<string, unknown>
     return "{" + Object.keys(o).sort().filter((k) =>
       o[k] !== undefined
     ).map((k) => JSON.stringify(k) + ":" + encodeKey(o[k])).join(",") + "}"
   }
-  return encodeLeaf(u)
+  throw nonJson(u)
 }
 
 // -----------------------------------------------------------------------------
@@ -175,6 +195,8 @@ export interface ReadInternal<Args = any, A = any, E = any> {
   readonly refetchInterval: RefetchInterval<any, any, any> | undefined
   readonly tags: ReadonlyArray<string>
   argsKey(args: Args): string
+  /** Recovers args from a parsed args key (EFF-3558 #11). Throws if it doesn't decode. */
+  decodeArgs(u: unknown): Args
   encodeSuccess(a: A): unknown
   decodeSuccess(u: unknown): A
   encodeError(e: E): unknown
@@ -346,6 +368,24 @@ export interface WatchHandle<A, E> {
   readonly unregister: () => void
   /** The patched view right now (Initial over a cold entry). */
   readonly current: () => AsyncResult.AsyncResult<A, E>
+  /** Whether `current()` includes an unconfirmed (live or held) patch (EFF-3558 #7). */
+  readonly patched: () => boolean
+}
+
+/**
+ * @stability unstable
+ * @since 4.1.3
+ * @category models
+ */
+export interface WatchOptions {
+  /**
+   * Default `true` (the pre-EFF-3558 behaviour): the state at registration is
+   * delivered through `onChange` one scheduler step later. With `false` the
+   * cache never calls back for the state at registration and schedules
+   * nothing: read `handle.current()` and `handle.patched()`, and `onChange`
+   * fires only for later changes.
+   */
+  readonly emitInitial?: boolean | undefined
 }
 
 /**
@@ -420,11 +460,24 @@ export interface CacheInternals {
     read: Definition<Args, A, E>,
     args: Args,
     fetcher: Fetcher<Args, A, E>,
-    onChange: (result: AsyncResult.Success<A, E> | AsyncResult.Failure<A, E>) => void,
-    onDefect?: (cause: Cause.Cause<never>) => void
+    onChange: (result: AsyncResult.Success<A, E> | AsyncResult.Failure<A, E>, patched: boolean) => void,
+    onDefect?: (cause: Cause.Cause<never>) => void,
+    options?: WatchOptions
   ) => WatchHandle<A, E>
   /** The patched view. Doesn't create the entry or reset its idle timer. */
   readonly peek: <Args, A, E>(read: Definition<Args, A, E>, args: Args) => AsyncResult.AsyncResult<A, E>
+  /** Whether `peek` includes an unconfirmed (live or held) patch. Same rules as `peek`. */
+  readonly isPatched: <Args, A, E>(read: Definition<Args, A, E>, args: Args) => boolean
+  /**
+   * Stores `value` as a stale Success, only if the entry is cold (EFF-3558 #8).
+   * Never overwrites, starts no fetch. Returns whether it seeded.
+   */
+  readonly seed: <Args, A, E>(
+    read: Definition<Args, A, E>,
+    args: Args,
+    value: A,
+    options?: { readonly timestamp?: number | undefined }
+  ) => boolean
   readonly get: <Args, A, E>(
     read: Definition<Args, A, E>,
     args: Args,
@@ -534,10 +587,11 @@ const buildOf = (fetcher: (args: any) => Effect.Effect<any, any>): Build => {
 type Settled = AsyncResult.Success<any, any> | AsyncResult.Failure<any, any>
 
 interface Watcher {
-  readonly onChange: (result: Settled) => void
+  readonly onChange: (result: Settled, patched: boolean) => void
   readonly onDefect: ((cause: Cause.Cause<never>) => void) | undefined
   readonly build: Build
   last: AsyncResult.AsyncResult<any, any> | undefined
+  lastPatched: boolean
   started: boolean
   active: boolean
 }
@@ -548,6 +602,8 @@ interface Waiter {
 }
 
 interface Run {
+  /** Issue order (EFF-3558 #9). */
+  readonly issue: number
   startSeq: number
   done: boolean
   readonly entries: Set<Entry>
@@ -577,6 +633,8 @@ interface Entry {
   hydrated: boolean
   /** Sequence of the last write or invalidation. */
   touch: number
+  /** Issue order of the latest-issued successful run that wrote or invalidated this entry. */
+  reached: number
   removed: boolean
   readonly watchers: Set<Watcher>
   readonly waiters: Set<Waiter>
@@ -652,6 +710,7 @@ export const makeCacheUnsafe = (
   let hydratedStatic = false
   let windowOpen = false
   let seq = 0
+  let issueSeq = 0
   let inFlight = 0
   let disposed = false
   const fetchListeners = new Set<(event: FetchEvent) => void>()
@@ -696,6 +755,7 @@ export const makeCacheUnsafe = (
       invalidated: false,
       hydrated: false,
       touch: 0,
+      reached: 0,
       removed: false,
       watchers: new Set(),
       waiters: new Set(),
@@ -752,6 +812,13 @@ export const makeCacheUnsafe = (
         entry.settledAt = hydratedAt
         entry.hydrated = !hydratedStatic
         entry.invalidated = hydratedStatic && def.staleMs !== Infinity
+        // The key is canonical JSON of the encoded args (EFF-3558 #11).
+        try {
+          entry.args = def.decodeArgs(JSON.parse(argsKey))
+          entry.argsKnown = true
+        } catch {
+          warn("the args of a hydrated entry of " + JSON.stringify(def.key) + " failed to decode: " + argsKey)
+        }
         afterQuiet(entry)
       }
     }
@@ -797,23 +864,29 @@ export const makeCacheUnsafe = (
     }
     return value
   }
+  /** `waiting` is only "a fetch is in flight" (EFF-3558 #7). The patch bit is `isPatchedEntry`. */
   const view = (entry: Entry): AsyncResult.AsyncResult<any, any> => {
     const result = entry.result
-    if (result === undefined) return AsyncResult.initial(entry.fetch !== undefined)
+    const waiting = entry.fetch !== undefined
+    if (result === undefined) return AsyncResult.initial(waiting)
     if (entry.patches.length > 0 && result._tag === "Success") {
-      return AsyncResult.success(patchedValue(entry, result.value), { waiting: true, timestamp: result.timestamp })
+      return AsyncResult.success(patchedValue(entry, result.value), { waiting, timestamp: result.timestamp })
     }
-    return withWaiting(result, entry.fetch !== undefined)
+    return withWaiting(result, waiting)
   }
+  /** Read it after `view`: a patch that throws on recompute is dropped there. */
+  const isPatchedEntry = (entry: Entry): boolean => entry.patches.length > 0 && entry.result?._tag === "Success"
   const emit = (entry: Entry): void => {
     if (entry.watchers.size === 0) return
     const current = view(entry)
     if (current._tag === "Initial") return
+    const patched = isPatchedEntry(entry)
     for (const watcher of Array.from(entry.watchers)) {
       if (!watcher.active || !watcher.started) continue
-      if (watcher.last !== undefined && Equal.equals(current, watcher.last)) continue
+      if (watcher.last !== undefined && watcher.lastPatched === patched && Equal.equals(current, watcher.last)) continue
       watcher.last = current
-      watcher.onChange(current)
+      watcher.lastPatched = patched
+      watcher.onChange(current, patched)
     }
   }
   const survivingBuild = (entry: Entry): Build | undefined => {
@@ -835,7 +908,8 @@ export const makeCacheUnsafe = (
   }
   const idleEligible = (entry: Entry): boolean =>
     !entry.removed && entry.watchers.size === 0 && entry.waiters.size === 0 && entry.fetch === undefined &&
-    entry.patches.length === 0
+    // A held patch doesn't block collection (EFF-3558 #10). A live one does.
+    !hasLive(entry)
   const startIdle = (entry: Entry): void => {
     cancelIdle(entry)
     if (settleOnce) return
@@ -926,6 +1000,21 @@ export const makeCacheUnsafe = (
     armInterval(entry)
   }
 
+  /**
+   * EFF-3558 #12: a fetch ended without a settle being stored. If the interval
+   * timer has already fired, nothing else would arm it again, so count a new
+   * interval from now. While paused the due time stays for the edge pass.
+   */
+  const rearmInterval = (entry: Entry): void => {
+    if (settleOnce || disposed || entry.removed || entry.watchers.size === 0 || entry.fetch !== undefined) return
+    if (entry.intervalCancel !== undefined) return
+    if (!visibility.get() || !connectivity.get()) return
+    const ms = intervalMs(entry)
+    if (ms === undefined) return
+    entry.intervalDue = now() + ms
+    armInterval(entry)
+  }
+
   // -- fetching ---------------------------------------------------------------
   const startFetch = (entry: Entry, trigger: Trigger, build: Build, restart: boolean): void => {
     const fetch: FetchRec = { trigger, build, fiber: undefined }
@@ -964,8 +1053,15 @@ export const makeCacheUnsafe = (
     entry.deferred = undefined
     startFetch(entry, first, build, false)
   }
-  const sweepHeld = (entry: Entry): void => {
+  /**
+   * Drops held patches once neither a fetch nor a live patch covers them.
+   * `settled`: a fetch on the entry has just settled. Without that, a held
+   * patch on an unwatched entry stays (EFF-3558 #10): no confirming fetch is
+   * coming, and dropping it would show the old server value.
+   */
+  const sweepHeld = (entry: Entry, settled: boolean): void => {
     if (entry.patches.length === 0 || entry.fetch !== undefined || hasLive(entry)) return
+    if (!settled && entry.watchers.size === 0) return
     entry.patches = []
   }
   const resumeWaiters = (entry: Entry, exit: Exit.Exit<any, any>): void => {
@@ -984,8 +1080,9 @@ export const makeCacheUnsafe = (
   /** A fetch ended with nothing to store and nothing to restart it. */
   const revert = (entry: Entry): void => {
     resumeWaiters(entry, Exit.interrupt())
-    sweepHeld(entry)
+    sweepHeld(entry, false)
     emit(entry)
+    rearmInterval(entry)
     afterQuiet(entry)
     notifyIdle()
   }
@@ -996,8 +1093,12 @@ export const makeCacheUnsafe = (
     const previous = entry.result
     let waiterExit: Exit.Exit<any, any> = exit
     let defect: Cause.Cause<never> | undefined
+    let stored = false
+    // An interrupt is not a settle.
+    let settled = true
     if (exit._tag === "Success") {
       store(entry, AsyncResult.success(exit.value, { timestamp: now() }))
+      stored = true
     } else if (Cause.hasDies(exit.cause)) {
       // Never stored: the previous state stays, marked stale.
       defect = exit.cause as Cause.Cause<never>
@@ -1012,10 +1113,13 @@ export const makeCacheUnsafe = (
         : previous.previousSuccess
       if (entry.watchers.size > 0 || settleOnce || Option.isSome(previousSuccess)) {
         store(entry, AsyncResult.failure(cause, { previousSuccess }))
+        stored = true
       }
+    } else {
+      // Interrupted. The entry reverts to its previous state.
+      settled = false
     }
-    // else: interrupted. The entry reverts to its previous state.
-    sweepHeld(entry)
+    sweepHeld(entry, settled)
     resumeWaiters(entry, waiterExit)
     if (defect !== undefined) {
       for (const watcher of Array.from(entry.watchers)) {
@@ -1023,6 +1127,7 @@ export const makeCacheUnsafe = (
       }
     }
     emit(entry)
+    if (!stored) rearmInterval(entry)
     afterQuiet(entry)
     notifyIdle()
   }
@@ -1038,12 +1143,20 @@ export const makeCacheUnsafe = (
   }
 
   // -- watch, peek, get, prefetch -----------------------------------------------
-  const watch: CacheInternals["watch"] = (read, args, fetcher, onChange, onDefect) => {
+  const watch: CacheInternals["watch"] = (read, args, fetcher, onChange, onDefect, watchOptions) => {
     const def = register(read)
     const entry = ensureEntry(def, args)
     const build = buildOf(fetcher)
     build.caches.add(self)
-    const watcher: Watcher = { onChange, onDefect, build, last: undefined, started: false, active: true }
+    const watcher: Watcher = {
+      onChange,
+      onDefect,
+      build,
+      last: undefined,
+      lastPatched: false,
+      started: false,
+      active: true
+    }
     const first = entry.watchers.size === 0
     entry.watchers.add(watcher)
     cancelIdle(entry)
@@ -1052,14 +1165,26 @@ export const makeCacheUnsafe = (
       if (isStale(entry) && !(windowOpen && entry.hydrated)) ensureFetch(entry, "watch", build)
       scheduleInterval(entry)
     }
-    defer(() => {
-      if (!watcher.active) return
+    if (watchOptions?.emitInitial === false) {
+      // EFF-3558 #2: no callback for the state at registration, and nothing
+      // scheduled. The caller reads `current()`; "last" starts there.
+      watcher.last = view(entry)
+      watcher.lastPatched = isPatchedEntry(entry)
       watcher.started = true
-      emit(entry)
-    })
+    } else {
+      defer(() => {
+        if (!watcher.active) return
+        watcher.started = true
+        emit(entry)
+      })
+    }
     return {
       argsKey: entry.argsKey,
       current: () => view(entry),
+      patched: () => {
+        view(entry)
+        return isPatchedEntry(entry)
+      },
       unregister: () => {
         if (!watcher.active) return
         watcher.active = false
@@ -1077,6 +1202,29 @@ export const makeCacheUnsafe = (
     const def = register(read)
     const entry = lookup(def, def.argsKey(args), args)
     return entry === undefined ? AsyncResult.initial() : view(entry)
+  }
+  const isPatched: CacheInternals["isPatched"] = (read, args) => {
+    const def = register(read)
+    const entry = lookup(def, def.argsKey(args), args)
+    if (entry === undefined) return false
+    view(entry)
+    return isPatchedEntry(entry)
+  }
+  const seed: CacheInternals["seed"] = (read, args, value, opts) => {
+    // A per-request cache never refetches a settled entry, so a seed there would be final.
+    if (disposed || settleOnce) return false
+    // Registering first decodes the read's hydrated entries, so they count as warm.
+    const def = register(read)
+    const entry = ensureEntry(def, args)
+    if (entry.result !== undefined) return false
+    entry.result = AsyncResult.success(value, { timestamp: opts?.timestamp ?? now() })
+    entry.settledAt = now()
+    entry.invalidated = true
+    entry.hydrated = false
+    scheduleInterval(entry)
+    emit(entry)
+    afterQuiet(entry)
+    return true
   }
 
   const settledEffect = (result: Settled): Effect.Effect<any, any> =>
@@ -1162,16 +1310,28 @@ export const makeCacheUnsafe = (
       if (build !== undefined) ensureFetch(entry, "invalidation", build)
     }
   }
-  const applyInvalidation: CacheInternals["applyInvalidation"] = (targets, opts) => {
+  /** One batch. `run`: the successful run doing it, which then counts as having reached the entries. */
+  const invalidateBatch = (
+    run: Run | undefined,
+    targets: ReadonlyArray<Target>,
+    exclude: ReadonlySet<unknown>,
+    extra?: Iterable<Entry>
+  ): void => {
+    if (disposed) return
     if (settleOnce) {
       if (targets.length > 0) warn("invalidate is a no-op on a per-request cache")
       return
     }
-    const exclude = new Set<unknown>(opts?.exclude ?? [])
-    for (const entry of resolveTargets(targets)) {
-      if (!exclude.has(entry)) invalidateEntry(entry)
+    const entries = resolveTargets(targets)
+    if (extra !== undefined) { for (const entry of extra) entries.add(entry) }
+    for (const entry of entries) {
+      if (exclude.has(entry)) continue
+      if (run !== undefined && run.issue > entry.reached) entry.reached = run.issue
+      invalidateEntry(entry)
     }
   }
+  const applyInvalidation: CacheInternals["applyInvalidation"] = (targets, opts) =>
+    invalidateBatch(undefined, targets, new Set<unknown>(opts?.exclude ?? []))
 
   // -- patches and writes -------------------------------------------------------
   const runs = new WeakMap<RunHandle, Run>()
@@ -1184,16 +1344,31 @@ export const makeCacheUnsafe = (
         if (build !== undefined) ensureFetch(entry, "invalidation", build)
       }
       entry.deferred = undefined
-      sweepHeld(entry)
+      sweepHeld(entry, false)
     }
     emit(entry)
     afterQuiet(entry)
   }
-  const applyWritesRun = (run: Run, sets: ReadonlyArray<SetTarget>): Array<Entry> => {
+  /**
+   * `skipped` collects the entries whose write was skipped (EFF-3558 #9), for the
+   * caller to invalidate in its batch. Without it they are invalidated here.
+   */
+  const applyWritesRun = (run: Run, sets: ReadonlyArray<SetTarget>, skipped?: Set<Entry>): Array<Entry> => {
     const fresh: Array<Entry> = []
+    if (disposed) return fresh
     for (const set of sets) {
       const def = register(set.read)
       const entry = ensureEntry(def, set.args, set.argsKey)
+      if (entry.reached > run.issue) {
+        // A run issued later has already reached the entry: this answer is the
+        // older one, so it is never stored or shown. It still says the server
+        // changed, so the entry is invalidated like any other target.
+        if (skipped !== undefined) skipped.add(entry)
+        else if (!settleOnce) invalidateEntry(entry)
+        afterQuiet(entry)
+        continue
+      }
+      entry.reached = run.issue
       if (entry.patches.some((patch) => patch.live && patch.run !== run)) {
         // Under another run's live patch it isn't stored and the entry goes stale.
         entry.touch = ++seq
@@ -1240,7 +1415,7 @@ export const makeCacheUnsafe = (
         : patchedValue(entry, (entry.result as AsyncResult.Success<any, any>).value)
       preview.set(entry, fn(current, entry.args))
     }
-    const run: Run = { startSeq: seq, done: false, entries: new Set() }
+    const run: Run = { issue: ++issueSeq, startSeq: seq, done: false, entries: new Set() }
     for (const { entry, fn } of planned) {
       entry.patches.push({ run, fn, live: true })
       run.entries.add(entry)
@@ -1261,13 +1436,16 @@ export const makeCacheUnsafe = (
       finish: (opts) => {
         if (run.done) return
         run.done = true
+        // A run may outlive the instance that issued it (EFF-3558 #6), and so the cache.
+        if (disposed) return
         const targets = [...(opts.invalidates ?? []), ...implied]
         if (opts.exit === "success") {
           for (const entry of run.entries) {
             for (const patch of entry.patches) if (patch.run === run) patch.live = false
           }
-          const written = opts.writes === undefined ? [] : applyWritesRun(run, opts.writes)
-          applyInvalidation(targets, { exclude: written as any })
+          const skipped = new Set<Entry>()
+          const written = opts.writes === undefined ? [] : applyWritesRun(run, opts.writes, skipped)
+          invalidateBatch(run, targets, new Set<unknown>(written), skipped)
         } else {
           for (const entry of run.entries) entry.patches = entry.patches.filter((patch) => patch.run !== run)
           if (opts.exit === "failure") applyInvalidation(targets)
@@ -1377,6 +1555,8 @@ export const makeCacheUnsafe = (
     },
     watch,
     peek,
+    isPatched,
+    seed,
     get,
     prefetch,
     applyInvalidation,
@@ -1555,6 +1735,7 @@ export const Service: <Self>() => <
     return () => (value ??= { value: f() }).value
   }
   const argsCodec = lazy(() => Schema.encodeUnknownSync(Schema.toCodecJson(options.args)))
+  const argsDecode = lazy(() => Schema.decodeUnknownSync(Schema.toCodecJson(options.args)))
   const successEncode = lazy(() => Schema.encodeUnknownSync(Schema.toCodecJson(options.success)))
   const successDecode = lazy(() => Schema.decodeUnknownSync(Schema.toCodecJson(options.success)))
   const errorEncode = lazy(() => Schema.encodeUnknownSync(Schema.toCodecJson(options.error)))
@@ -1569,6 +1750,7 @@ export const Service: <Self>() => <
     refetchInterval: options.refetchInterval,
     tags: (options.tags ?? []).map((tag) => tag.name),
     argsKey: (args) => encodeKey(argsCodec()(args)),
+    decodeArgs: (u) => argsDecode()(u),
     encodeSuccess: (a) => successEncode()(a),
     decodeSuccess: (u) => successDecode()(u),
     encodeError: (e) => errorEncode()(e),
@@ -1627,19 +1809,30 @@ export const Service: <Self>() => <
       return Stream.callback<AsyncResult.AsyncResult<any, any>>((queue) =>
         withCache((cache, context) =>
           Effect.acquireRelease(
-            Effect.sync(() =>
-              cache.watch(
+            Effect.sync(() => {
+              // The patched bit isn't on the Stream, so a flip of it alone is not an element.
+              let last: AsyncResult.AsyncResult<any, any> | undefined
+              const offer = (result: AsyncResult.AsyncResult<any, any>): void => {
+                if (last !== undefined && Equal.equals(result, last)) return
+                last = result
+                Queue.offerUnsafe(queue, result)
+              }
+              const handle = cache.watch(
                 read,
                 args,
                 Context.get(context, Base as any) as any,
-                (result) => {
-                  Queue.offerUnsafe(queue, result)
-                },
+                offer,
                 (cause) => {
                   Queue.failCauseUnsafe(queue, cause)
-                }
+                },
+                { emitInitial: false }
               )
-            ),
+              // The cache doesn't call back for the state at registration: the
+              // Stream still starts with it when it is settled.
+              const current = handle.current()
+              if (current._tag !== "Initial") offer(current)
+              return handle
+            }),
             (handle) => Effect.sync(handle.unregister)
           )
         )

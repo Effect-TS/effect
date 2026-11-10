@@ -2,7 +2,7 @@
 import { expect, it } from "@effect/vitest"
 import { Effect, Layer, Schema } from "effect"
 import { AsyncResult, Loader } from "effect/reactivity"
-import { Component, Loaded } from "effect/ui"
+import { Component } from "effect/ui"
 import { Html } from "effect/ui/html"
 import { ssr } from "effect/ui/html/testing"
 import { describe } from "vitest"
@@ -45,48 +45,47 @@ const make = (options: { readonly staleTime: string; readonly delay?: number }) 
   ) {}
 
   const Message = Schema.TaggedUnion({
-    User: { snapshot: Loaded.Snapshot(GetUser, "user") },
-    Posts: { snapshot: Loaded.Snapshot(GetPosts, "posts") }
-  })
-  const Model = Schema.Struct({
-    user: Loaded.Snapshot(GetUser, "user"),
-    posts: Loaded.Snapshot(GetPosts, "posts")
-  })
-  type Model = typeof Model.Type
-  type Props = { readonly id: string; readonly posts: boolean }
-  const user = Loaded.at(GetUser, "user", (_model: Model, props: Props) => ({ id: props.id }))
-  // A dependent read: its args come from the first read's result, so it starts a round later.
-  const posts = Loaded.at(GetPosts, "posts", (model: Model, props: Props) => {
-    const loaded = user.open(model.user, model, props)
-    return props.posts && AsyncResult.isSuccess(loaded) ? { author: loaded.value } : undefined
+    User: { snapshot: Loader.Snapshot(GetUser, "user") },
+    Posts: { snapshot: Loader.Snapshot(GetPosts, "posts") }
   })
   const Profile = Component.make({
     name: "Profile",
     props: Schema.Struct({ id: Schema.String, posts: Schema.Boolean }),
-    model: Model,
+    model: Schema.Struct({
+      user: Loader.Snapshot(GetUser, "user"),
+      posts: Loader.Snapshot(GetPosts, "posts")
+    }),
     message: Message,
     elements: Html,
-    init: ($) => $.set({ user: user.empty, posts: posts.empty }),
+    loaders: {
+      user: (_model, props) => ({ id: props.id }),
+      // A dependent read: its args come from the first read's result, so it starts a round later.
+      posts: (_model, props, loaded) =>
+        props.posts && AsyncResult.isSuccess(loaded.user) ? { author: loaded.user.value } : undefined
+    },
+    init: ($) => $.set($.empty),
     update: (model, message) =>
       Message.match(message, {
         User: ({ snapshot }) => ({ ...model, user: snapshot }),
         Posts: ({ snapshot }) => ({ ...model, posts: snapshot })
       }),
-    subscriptions: (model, props) => [
-      user.watch(model, props, (snapshot) => Message.make({ _tag: "User", snapshot })),
-      posts.watch(model, props, (snapshot) => Message.make({ _tag: "Posts", snapshot }))
+    subscriptions: (_model, _props, watch) => [
+      watch({
+        user: (snapshot) => Message.make({ _tag: "User", snapshot }),
+        posts: (snapshot) => Message.make({ _tag: "Posts", snapshot })
+      })
     ],
-    view: (model, h) =>
+    view: (_model, h) =>
       h.div(
         h.p(
-          AsyncResult.match(user.open(model.user, model, h.props), {
+          AsyncResult.match(h.loaded.user, {
             onInitial: () => "loading",
             onSuccess: (success) => success.value + (success.waiting ? " (refreshing)" : ""),
             onFailure: () => "failed"
           })
         ).attr("class", "user"),
         h.p(
-          AsyncResult.match(posts.open(model.posts, model, h.props), {
+          AsyncResult.match(h.loaded.posts, {
             onInitial: (initial) => (initial.waiting ? "loading posts" : "no posts"),
             onSuccess: (success) => success.value.join(","),
             onFailure: () => "failed"

@@ -15,6 +15,7 @@ import type * as Fiber from "../../Fiber.ts"
 import * as Layer from "../../Layer.ts"
 import * as Option from "../../Option.ts"
 import * as AsyncResult from "../../reactivity/AsyncResult.ts"
+import * as snapshots from "../../reactivity/internal/loaderSnapshot.ts"
 import * as Loader from "../../reactivity/Loader.ts"
 import * as Scheduler from "../../Scheduler.ts"
 import * as Schema from "../../Schema.ts"
@@ -24,12 +25,12 @@ import type * as Command from "../Command.ts"
 import type * as Component from "../Component.ts"
 import * as Feature from "../Feature.ts"
 import * as Head from "../Head.ts"
-import * as Loaded from "../Loaded.ts"
 import * as MessageLog from "../MessageLog.ts"
 import type * as Renderer from "../Renderer.ts"
 import type * as Subscription from "../Subscription.ts"
 import * as View from "../View.ts"
 import * as Executor from "./executor.ts"
+import * as loaders from "./loaders.ts"
 import * as schedule from "./schedule.ts"
 import * as serverHost from "./serverHost.ts"
 import * as services from "./services.ts"
@@ -152,7 +153,7 @@ interface SubscriptionRun {
 /** A `Loaded` watch: a cache watcher registered from the Subscription's marker, with no Stream. */
 interface WatchRun {
   /** The marker of the latest `subscriptions()` call, so `toMsg` is never stale. */
-  marker: Loaded.Marker
+  marker: loaders.Marker
   handle: Loader.WatchHandle<any, any> | undefined
   released: boolean
   /** On the server: the entry was settled at registration, and its first emission hasn't arrived. */
@@ -246,7 +247,7 @@ const snapshotFields = new WeakMap<object, boolean>()
 const hasSnapshotField = (component: Component.Any): boolean => {
   let found = snapshotFields.get(component.model)
   if (found === undefined) {
-    found = Loaded.fieldsOf(component.model).length > 0
+    found = snapshots.fieldsOf(component.model).length > 0
     snapshotFields.set(component.model, found)
   }
   return found
@@ -1429,9 +1430,9 @@ const start = (
     const wanted = guard(inst, "subscription", () => subscriptions(inst.model, inst.props))
     if (wanted === undefined) return
     const byKey = new Map<string, Subscription.Subscription<any, any>>()
-    const markers = new Map<string, Loaded.Marker>()
+    const markers = new Map<string, loaders.Marker>()
     for (const subscription of wanted) {
-      const marker = Loaded.markerOf(subscription)
+      const marker = loaders.markerOf(subscription)
       if (marker !== undefined) {
         if (!markers.has(subscription.key)) markers.set(subscription.key, marker)
       } else if (server === undefined && !byKey.has(subscription.key)) byKey.set(subscription.key, subscription)
@@ -1483,7 +1484,7 @@ const start = (
    * A re-key is a new Subscription key, so the old watcher goes before the new one registers.
    * The same code runs on the server, where each watcher is dispatched when its entry settles.
    */
-  const syncWatches = (inst: Instance, markers: Map<string, Loaded.Marker>) => {
+  const syncWatches = (inst: Instance, markers: Map<string, loaders.Marker>) => {
     for (const [key, running] of inst.watches) {
       if (markers.has(key)) continue
       inst.watches.delete(key)
@@ -1530,7 +1531,7 @@ const start = (
               inst,
               "subscription",
               () => ({
-                value: running.marker.toMsg(Loaded.makeSnapshot(marker.read, marker.label, handle.argsKey, result))
+                value: running.marker.toMsg(snapshots.makeSnapshot(marker.read, marker.label, handle.argsKey, result))
               }),
               key
             )
