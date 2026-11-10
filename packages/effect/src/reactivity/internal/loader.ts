@@ -96,16 +96,21 @@ const canonical = (u: unknown): string => {
 
 /**
  * A copy of a value that a later in-place mutation of the value can't reach,
- * and that `Equal.equals` sees as the value: arrays, plain objects (every own
- * key), `Map`, `Set`, `Date` and binary data are copied, nested and cycles
- * included. An `Equal` implementor, an `Equal.byReference` object and any
- * other class instance are kept as they are.
+ * for `Equal.equals` to compare with: arrays, `Map`, `Set`, `Date`,
+ * `RegExp`, binary data and every other object, class instances included,
+ * are copied, nested and cycles included. An object keeps its prototype and
+ * every own key; an accessor is copied as an accessor, never read. An
+ * `Equal` implementor and an `Equal.byReference` object are kept as they
+ * are. State `Equal.equals` reads but a copy can't hold, such as a private
+ * field behind a getter, makes the copy unfaithful: `detachedEncoding`
+ * checks for that.
  */
 const detach = (u: unknown, seen = new Map<object, unknown>()): unknown => {
   if (typeof u !== "object" || u === null || byReferenceInstances.has(u) || Equal.isEqual(u)) return u
   const known = seen.get(u)
   if (known !== undefined) return known
   if (u instanceof Date) return new Date(u.getTime())
+  if (u instanceof RegExp) return new RegExp(u.source, u.flags)
   if (u instanceof ArrayBuffer) return u.slice(0)
   if (ArrayBuffer.isView(u)) {
     const bytes = new Uint8Array(u.buffer, u.byteOffset, u.byteLength).slice()
@@ -131,19 +136,37 @@ const detach = (u: unknown, seen = new Map<object, unknown>()): unknown => {
     for (const value of u) out.add(detach(value, seen))
     return out
   }
-  const proto = Object.getPrototypeOf(u)
-  if (proto !== Object.prototype && proto !== null) return u
-  const out: Record<PropertyKey, unknown> = Object.create(proto)
+  const out: Record<PropertyKey, unknown> = Object.create(Object.getPrototypeOf(u))
   seen.set(u, out)
   for (const key of Reflect.ownKeys(u)) {
-    Object.defineProperty(out, key, {
-      value: detach((u as Record<PropertyKey, unknown>)[key], seen),
-      enumerable: Object.prototype.propertyIsEnumerable.call(u, key),
-      writable: true,
-      configurable: true
-    })
+    const descriptor = Object.getOwnPropertyDescriptor(u, key)!
+    Object.defineProperty(
+      out,
+      key,
+      "value" in descriptor
+        ? { ...descriptor, value: detach(descriptor.value, seen), writable: true, configurable: true }
+        : { ...descriptor, configurable: true }
+    )
   }
   return out
+}
+
+/**
+ * The encoding of a server value, detached for the `PatchMutated` check, or
+ * `undefined` when the check can't be made: the encoding fails, or the copy
+ * isn't one `Equal.equals` sees as the encoding. Never throws, since the check
+ * only reports.
+ */
+const detachedEncoding = (encode: () => unknown): { readonly encoded: unknown } | undefined => {
+  try {
+    const encoded = encode()
+    const copy = detach(encoded)
+    // Compared inside fresh arrays: `Equal.equals` caches its outermost pair, and the later comparison may be
+    // against the same encoding, mutated since.
+    return Equal.equals([copy], [encoded]) ? { encoded: copy } : undefined
+  } catch {
+    return undefined
+  }
 }
 
 const lazy = <A>(make: () => A): () => A => {
@@ -2285,6 +2308,14 @@ export const makeCache = (options: {
     emit(entry)
     afterQuiet(entry)
   }
+  /** `Equal.equals`, true when it throws: a check that only reports never fails a run. */
+  const equalsOrTrue = (a: unknown, b: unknown): boolean => {
+    try {
+      return Equal.equals(a, b)
+    } catch {
+      return true
+    }
+  }
   const tryEncode = (entry: Entry, value: unknown): { readonly encoded: unknown } | undefined => {
     try {
       return { encoded: entry.def.codec().encodeSuccess(value) }
@@ -2379,9 +2410,8 @@ export const makeCache = (options: {
     for (const { entry, patch } of planned) {
       if (!values.has(entry)) {
         const server = (entry.result as AsyncResult.Success<any, any>).value
-        // Detached: an encoding can share parts with the value, such as under `Schema.Unknown`.
-        const encoded = tryEncode(entry, server)
-        before.set(entry, encoded === undefined ? undefined : { encoded: detach(encoded.encoded) })
+        // Detached: an encoding can share parts with the value, such as under `Schema.Any`.
+        before.set(entry, detachedEncoding(() => entry.def.codec().encodeSuccess(server)))
         values.set(
           entry,
           (patchedViewOf(entry, entry.result!) as { readonly result: AsyncResult.Success<any, any> })
@@ -2421,7 +2451,7 @@ export const makeCache = (options: {
       const encoded = before.get(entry)
       if (encoded !== undefined && entry.result?._tag === "Success") {
         const after = tryEncode(entry, entry.result.value)
-        if (after !== undefined && !Equal.equals(encoded.encoded, after.encoded)) {
+        if (after !== undefined && !equalsOrTrue(encoded.encoded, after.encoded)) {
           report(
             new PatchMutated({
               read: entry.def.name,

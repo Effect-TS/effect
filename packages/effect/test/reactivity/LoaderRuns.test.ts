@@ -517,6 +517,56 @@ describe("Loader runs", () => {
         ])
       }).pipe(Effect.provide(Layer.merge(GetDoc.layer, TestLoader.layer())))
     })
+    it.effect("PatchMutated sees into class instances, and a value it can't copy faithfully only skips the check", () => {
+      class Counter {
+        constructor(public n: number) {}
+      }
+      // Its state lives outside the instance, so a copy reads nothing: the check can't be made.
+      const store = new WeakMap<object, number>()
+      class Stored {
+        constructor(n: number) {
+          store.set(this, n)
+        }
+        get n() {
+          return store.get(this)
+        }
+      }
+      const values: Record<string, unknown> = {
+        counter: new Counter(0),
+        stored: new Stored(1),
+        hidden: Object.defineProperty({ n: 0 }, "hidden", {
+          get() {
+            throw new Error("getter")
+          }
+        })
+      }
+      class GetAny extends Loader.Service<GetAny>()(
+        "any/GetAny",
+        { args: { id: Schema.String }, success: Schema.Any, error: Schema.Never, staleTime: "30 seconds" },
+        Effect.sync(() => ({ id }) => Effect.sync(() => values[id]))
+      ) {}
+      return Effect.gen(function*() {
+        for (const id of Object.keys(values)) yield* GetAny.get({ id })
+        yield* issue({
+          optimistic: [
+            // An ordinary class instance compares structurally, so it is copied.
+            GetAny.patch({ id: "counter" }, (counter) => {
+              counter.n++
+              return counter
+            }),
+            // Neither of these mutates anything, and neither is reported or stops the run.
+            GetAny.patch({ id: "stored" }, () => new Stored(2)),
+            GetAny.patch({ id: "hidden" }, () => ({ n: 1 }))
+          ]
+        })
+        const mutated = yield* TestLoader.expectProblem("PatchMutated")
+        assert.deepStrictEqual(mutated.map((problem) => problem.logKey), [`{"id":"counter"}`])
+        const hidden = yield* TestLoader.entry(GetAny, { id: "hidden" })
+        assert.deepStrictEqual([hidden?.patched, hidden?.view._tag === "Success" && hidden.view.value], [true, {
+          n: 1
+        }])
+      }).pipe(Effect.provide(Layer.merge(GetAny.layer, TestLoader.layer())))
+    })
   })
 
   describe("get under a live patch", () => {
