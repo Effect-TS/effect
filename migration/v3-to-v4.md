@@ -4,7 +4,7 @@
 
 Base: `cab7f2e3493e4a3dceda27cb1b6d28c4599cb939` (`cab7f2e3493e4a3dceda27cb1b6d28c4599cb939`)
 
-Head: `origin/main` (`175113ea18f412ec3199e8710ad773b0c081289e`)
+Head: `HEAD` (`c8f79a591af295fc75f3eacc4c4b8e304b6dfc64`)
 
 This file is generated from the API diff and `migration/annotations/*.yaml`.
 
@@ -4526,7 +4526,7 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `Generated.OpenAIResponsesTruncation` -> `Generated.OpenAIResponsesTruncation`: Still generated in v4 from the current OpenRouter specification; re-check the schema's Type/Encoded shape because the generated definition changed.
 
-- `Generated.OpenAIResponsesUsage` -> `Generated.OpenAIResponsesUsage`: Still generated in v4 from the current OpenRouter specification; re-check the schema's Type/Encoded shape because the generated definition changed.
+- `Generated.OpenAIResponsesUsage` -> `none`: The standalone schema export was removed. For the usage object type, use `NonNullable<Generated.OpenResponsesResult["usage"]>` to exclude `undefined`.
 
 - `Generated.OpenResponsesEasyInputMessage` -> `none`: Removed when the OpenRouter specification client was regenerated; use the current Generated request/response schema for the relevant endpoint instead of this old snapshot helper.
 
@@ -4750,7 +4750,7 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `Generated.ResponseTextConfigVerbosity` -> `none`: Removed when the OpenRouter specification client was regenerated; use the current Generated request/response schema for the relevant endpoint instead of this old snapshot helper.
 
-- `Generated.ResponsesErrorField` -> `Generated.ResponsesErrorField`: Still generated in v4 from the current OpenRouter specification; re-check the schema's Type/Encoded shape because the generated definition changed.
+- `Generated.ResponsesErrorField` -> `none`: The standalone schema export was removed. For the error object type, use `NonNullable<Generated.OpenResponsesResult["error"]>` to exclude `null`.
 
 - `Generated.ResponsesErrorFieldCode` -> `none`: Removed when the OpenRouter specification client was regenerated; use the current Generated request/response schema for the relevant endpoint instead of this old snapshot helper.
 
