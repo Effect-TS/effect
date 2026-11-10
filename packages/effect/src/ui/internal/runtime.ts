@@ -21,7 +21,7 @@ import * as Scheduler from "../../Scheduler.ts"
 import * as Schema from "../../Schema.ts"
 import * as Scope from "../../Scope.ts"
 import * as Stream from "../../Stream.ts"
-import type * as Command from "../Command.ts"
+import * as Command from "../Command.ts"
 import type * as Component from "../Component.ts"
 import * as Feature from "../Feature.ts"
 import * as Head from "../Head.ts"
@@ -143,6 +143,13 @@ interface Run {
   begun: boolean
   /** `MutationHooks.onExit` or `onCancel` was called for it. */
   settled: boolean
+  /**
+   * EFF-3558 resolution #6: an Effect-shaped `Command.Service` run that isn't `switch`. It is owned
+   * by the Layer build that provides the service, and goes on when its instance closes.
+   */
+  readonly detached: boolean
+  /** Detached: stops listening for the owning build's close. */
+  release: (() => void) | undefined
 }
 
 interface SubscriptionRun {
@@ -156,8 +163,6 @@ interface WatchRun {
   marker: loaders.Marker
   handle: Loader.WatchHandle<any, any> | undefined
   released: boolean
-  /** On the server: the entry was settled at registration, and its first emission hasn't arrived. */
-  awaited: boolean
 }
 
 /** @internal */
@@ -189,6 +194,12 @@ export interface Instance {
   readonly runs: Array<Run>
   readonly subscriptions: Map<string, SubscriptionRun>
   readonly watches: Map<string, WatchRun>
+  /**
+   * Set while a new instance registers its watches and folds their settled values through
+   * `update`, before its first render: the Commands those updates issue wait here until
+   * `init`'s are issued.
+   */
+  mounting: Array<{ readonly command: Command.Command<any, any>; readonly issued: MessageLog.Issued }> | undefined
   readonly dispatch: (message: unknown, source: MessageLog.Source) => void
   readonly fire: Renderer.Dispatch
 }
@@ -471,8 +482,9 @@ const start = (
   if (hydrating !== undefined && hydrating.state["~loader"] !== undefined) {
     loader.hydrate(hydrating.state["~loader"], { static: hydrating.state["~static"] === true })
   }
-  // On the server: watches whose entry was settled at registration and whose emission is still to come.
-  let awaitedEmissions = 0
+  // Closed instances whose detached runs are still running or queued (resolution #6).
+  const orphans = new Set<Instance>()
+  let rootClosing = false
   const cacheMutations = new WeakMap<services.MutationRun, Loader.RunHandle>()
 
   /** Starts at once, so a Layer that builds synchronously is ready for the first frame. */
@@ -561,7 +573,7 @@ const start = (
     executor.schedule(() => {
       idleCheck = false
       if (scheduled || dirty.size > 0 || deferred.length > 0 || building.size > 0) return
-      if (loader.isFetching() || awaitedEmissions > 0) return
+      if (loader.isFetching()) return
       for (const f of idleWaiters.splice(0)) f()
     })
   }
@@ -898,6 +910,7 @@ const start = (
       runs: [],
       subscriptions: new Map(),
       watches: new Map(),
+      mounting: undefined,
       dispatch(message, source) {
         if (inst.closed || inst.waiting || frozen) return
         const next = guard(inst, "update", () => component.update(inst.model, message as never, inst.props))
@@ -945,7 +958,11 @@ const start = (
       scope,
       Effect.sync(() => {
         inst.closed = true
-        for (const run of inst.runs.slice()) stopRun(inst, run)
+        // A detached run goes on under the Layer build that owns it. Everything else ends here.
+        for (const run of inst.runs.slice()) {
+          if (!(run.detached && survives(inst, run))) stopRun(inst, run)
+        }
+        if (inst.runs.length > 0) orphans.add(inst)
       })
     ))
 
@@ -1075,7 +1092,9 @@ const start = (
       let adopted = serverModel
       if (first !== undefined && Option.isNone(adopted) && hooks !== undefined) {
         const restored = hooks.restore(path)
-        if (restored !== undefined) adopted = jsonCodecOf(component.model).decode(restored)
+        if (restored !== undefined) {
+          adopted = Option.map(jsonCodecOf(component.model).decode(restored), (model) => seedRestored(component, model))
+        }
       }
       let mountedSeq = -1
       if (first !== undefined) {
@@ -1094,6 +1113,17 @@ const start = (
       }
       logEarly()
       if (first === undefined) return
+      // Resolution #2: the watches register and their settled values are folded through `update`
+      // before the first render, parent before child. An instance adopting the server's Model
+      // renders that Model first, to match the server's nodes, and gets them right after.
+      let early: NonNullable<Instance["mounting"]> = []
+      if (Option.isNone(serverModel) && component.subscriptions !== undefined && hasSnapshotField(component)) {
+        inst.mounting = early
+        syncSubscriptions(inst, true)
+        early = inst.mounting ?? early
+        inst.mounting = undefined
+        if (inst.closed || inst.failure !== undefined) return
+      }
       const tree = guard(inst, "view", () => component.view(inst.model, inst.props))
       if (tree === undefined) return
       const plan = range !== undefined && Option.isSome(serverModel) ? matchList(inst, [tree], range.nodes) : undefined
@@ -1118,9 +1148,17 @@ const start = (
         unsettled.push(inst.snapshot)
       }
       if (inst.failure !== undefined) return
-      if (Option.isSome(adopted)) {
-        apply(inst, { model: inst.model, commands: first.commands, events: [] }, mountedSeq, true)
-      } else apply(inst, first, mountedSeq, true)
+      apply(
+        inst,
+        { model: inst.model, commands: first.commands, events: Option.isSome(adopted) ? [] : first.events },
+        mountedSeq,
+        true
+      )
+      // The Commands of the updates folded before the render: issued where `init`'s are, after them.
+      for (const entry of early) {
+        if (inst.closed) return
+        issue(inst, entry.command, entry.issued, true)
+      }
     }
 
     if (failedEarly !== undefined) {
@@ -1174,6 +1212,16 @@ const start = (
 
   const apply = (inst: Instance, next: Component.Next<any, any, any, any>, entrySeq: number, initial: boolean) => {
     inst.model = next.model
+    const mounting = inst.mounting
+    if (mounting !== undefined) {
+      // Before the first render: nothing is issued or marked dirty, and only the watches follow the Model.
+      for (let index = 0; index < next.commands.length; index++) {
+        mounting.push({ command: next.commands[index]!, issued: { seq: entrySeq, index } })
+      }
+      syncSubscriptions(inst, true)
+      if (next.events.length > 0) defer(() => deliverEvents(inst, next.events, entrySeq))
+      return
+    }
     for (let index = 0; index < next.commands.length; index++) {
       // A throwing `MutationHooks.onIssue` failed the instance: the rest isn't issued.
       if (inst.closed) return
@@ -1182,21 +1230,50 @@ const start = (
     if (!initial) markDirty(inst)
     syncSubscriptions(inst)
     if (next.events.length === 0) return
+    // An emit from `init` waits until the parent, which is still being built, has its first Model.
+    if (initial) defer(() => deliverEvents(inst, next.events, entrySeq))
+    else deliverEvents(inst, next.events, entrySeq)
+  }
+  const deliverEvents = (inst: Instance, events: ReadonlyArray<unknown>, entrySeq: number) => {
     const parent = inst.parent
-    const deliver = () => {
-      for (const emitted of next.events) {
-        if (inst.closed) return
-        if (parent === undefined) {
-          rootEmitted.push(emitted)
-          continue
-        }
-        const message = guard(parent, "onEmit", () => inst.onEmit(emitted))
-        if (message !== undefined) parent.dispatch(message, { _tag: "Emit", path: inst.path, seq: entrySeq })
+    for (const emitted of events) {
+      if (inst.closed) return
+      if (parent === undefined) {
+        rootEmitted.push(emitted)
+        continue
+      }
+      const message = guard(parent, "onEmit", () => inst.onEmit(emitted))
+      if (message !== undefined) parent.dispatch(message, { _tag: "Emit", path: inst.path, seq: entrySeq })
+    }
+  }
+
+  /**
+   * History restore (resolution #8): each restored snapshot seeds its entry as stale, if the cache
+   * holds nothing for it, so the watch that follows shows the restored value with `waiting: true`
+   * and a failed refetch keeps it as `previousSuccess`. A snapshot taken under a patch seeds
+   * nothing, and is dropped from the restored Model: the value was never the server's.
+   */
+  const seedRestored = (component: Component.Any, model: unknown): unknown => {
+    if (!hasSnapshotField(component) || typeof model !== "object" || model === null) return model
+    const restored = model as Record<string, unknown>
+    let out: Record<string, unknown> | undefined
+    for (const field of snapshots.fieldsOf(component.model)) {
+      if (field.field === undefined) continue
+      const seed = snapshots.seedOf(restored[field.field] as Loader.Snapshot<any, any>)
+      if (seed === undefined) continue
+      if (seed.patched) {
+        out ??= { ...restored }
+        out[field.field] = snapshots.emptySnapshot(field.definition, field.label)
+        continue
+      }
+      try {
+        const args = field.definition[Loader.TypeId].decodeArgs(JSON.parse(seed.argsKey))
+        loader.seed(field.definition, args, seed.value, { timestamp: seed.timestamp })
+      } catch {
+        // Args that no longer decode: nothing is seeded, and the restored snapshot stays as it is.
       }
     }
-    // An emit from `init` waits until the parent, which is still being built, has its first Model.
-    if (initial) defer(deliver)
-    else deliver()
+    return out ?? restored
   }
 
   // -- Commands -------------------------------------------------------------
@@ -1277,7 +1354,9 @@ const start = (
           fiber: undefined,
           done: false,
           begun: false,
-          settled: false
+          settled: false,
+          detached: command._tag === "Effect" && command.service !== undefined && command.mode !== "switch",
+          release: undefined
         }
         // MutationHooks (a): at issue, synchronously, before the run is queued or started, and before
         // `switch` asks the earlier runs to stop, so the new one registers while their fibers still run.
@@ -1326,11 +1405,45 @@ const start = (
 
   /** Starts the next queued run of the same group, if nothing in it is running any more. */
   const promote = (inst: Instance, ended: Run) => {
-    if (inst.closed || ended.status !== "running") return
-    const next = schedule.next(entriesOf(inst), entryOf(ended))
-    if (next === undefined) return
-    next.value.status = "running"
-    startRun(inst, next.value)
+    if (ended.status !== "running") return
+    for (;;) {
+      const next = schedule.next(entriesOf(inst), entryOf(ended))
+      if (next === undefined) break
+      if (inst.closed) {
+        // Only detached runs are left on a closed instance. Its queue drains while the build lives.
+        if (!next.value.detached) break
+        if (!survives(inst, next.value)) {
+          stopRun(inst, next.value)
+          continue
+        }
+      }
+      next.value.status = "running"
+      startRun(inst, next.value)
+      break
+    }
+    if (inst.closed && inst.runs.length === 0) orphans.delete(inst)
+  }
+
+  /** The build that provides a detached run's service, as far as the instance's Env knows it. */
+  const ownerOf = (
+    inst: Instance,
+    run: Run
+  ): { readonly known: boolean; readonly build: Command.Build | undefined } => {
+    const env = inst.env.failure !== undefined ? settled(inst.env) : inst.env
+    const service = run.command.service
+    if (env.ctx === undefined || service === undefined) return { known: false, build: undefined }
+    const implementation = Context.getOption(env.ctx, service)
+    if (Option.isNone(implementation)) return { known: false, build: undefined }
+    return { known: true, build: Command.buildOf(implementation.value) }
+  }
+  /**
+   * Whether a detached run goes on without its instance: the build that provides its service is
+   * still open. A service with no build (a fake from `Layer.succeed`) is owned by the root.
+   */
+  const survives = (inst: Instance, run: Run): boolean => {
+    const owner = ownerOf(inst, run)
+    if (!owner.known) return false
+    return owner.build === undefined ? !rootClosing : !owner.build.closed
   }
 
   /**
@@ -1346,12 +1459,23 @@ const start = (
     if (!run.begun) settle(inst, run, undefined)
     run.fiber?.interruptUnsafe()
     promote(inst, run)
+    if (inst.closed && inst.runs.length === 0) orphans.delete(inst)
   }
 
   const startRun = (inst: Instance, run: Run) => {
     const go = (envCtx: Context.Context<any>) => {
-      if (run.done || inst.closed || frozen) return
+      if (run.done || frozen || (inst.closed && !run.detached)) return
       const command = run.command
+      // A detached run's fiber is owned by the build that provides its service. The `Scope` its body
+      // sees is still the instance's: `Router.Block` holds its block in it until the instance unmounts.
+      let build: Command.Build | undefined
+      if (run.detached) {
+        build = Option.match(Context.getOption(envCtx, command.service!), {
+          onNone: () => undefined,
+          onSome: Command.buildOf
+        })
+        if (build !== undefined ? build.closed : rootClosing) return stopRun(inst, run)
+      }
       const context = Context.add(Context.add(envCtx, Scope.Scope, inst.scope), services.Refs, refsOf(inst))
       const sourceOf = (spanId: string | undefined, traceId: string | undefined): MessageLog.Source => ({
         _tag: "Command",
@@ -1381,11 +1505,36 @@ const start = (
       )
       const fiber = forkLater(context, program)
       run.fiber = fiber
+      if (build !== undefined) {
+        const unlisten = build.onClose(() => fiber.interruptUnsafe())
+        run.release = () => {
+          run.release = undefined
+          unlisten()
+        }
+      }
       fiber.addObserver((exit) => {
         // MutationHooks (b): the fiber exited, however it did, and before the result message is sent.
         // A run that never began was cancelled, by `stopRun`.
         settle(inst, run, run.begun ? exit : undefined)
-        if (run.done || inst.closed) return
+        run.release?.()
+        if (run.done) return
+        if (inst.closed) {
+          if (!run.detached) return
+          // The instance is gone: the cache has been told (above), and the result message is dropped.
+          removeRun(inst, run)
+          const interrupted = Exit.isFailure(exit) && !Cause.hasDies(exit.cause) && !Cause.hasFails(exit.cause)
+          if (Exit.isFailure(exit) && Cause.hasDies(exit.cause)) {
+            forkNow(ctx, Effect.logError(`${inst.path} is gone and its Command ${command.name} died`, exit.cause))
+          }
+          record({
+            _tag: interrupted ? "CommandInterrupted" : "CommandEnded",
+            path: inst.path,
+            name: command.name,
+            issued: run.issued
+          })
+          promote(inst, run)
+          return
+        }
         // One classification for every exit: any Die is a defect, otherwise any Fail is the typed
         // failure, otherwise it was interrupted.
         const reject = command.reject
@@ -1420,7 +1569,8 @@ const start = (
   }
 
   // -- Subscriptions --------------------------------------------------------
-  const syncSubscriptions = (inst: Instance) => {
+  /** `watchesOnly`: before the first render, when only the cache watchers register. */
+  const syncSubscriptions = (inst: Instance, watchesOnly = false) => {
     const subscriptions = inst.component.subscriptions
     // A waiting slot has no Model yet.
     if (inst.closed || inst.waiting || subscriptions === undefined) return
@@ -1437,7 +1587,14 @@ const start = (
         if (!markers.has(subscription.key)) markers.set(subscription.key, marker)
       } else if (server === undefined && !byKey.has(subscription.key)) byKey.set(subscription.key, subscription)
     }
-    syncWatches(inst, markers)
+    const folds = syncWatches(inst, markers)
+    if (!watchesOnly) syncStreams(inst, byKey)
+    // Resolution #2: the cache never calls back for the state at registration. Each new watcher's
+    // settled value is folded through `update` here, once every watcher and Stream is in step
+    // with the Model that asked for them, and so before this instance's next render.
+    for (const fold of folds) fold()
+  }
+  const syncStreams = (inst: Instance, byKey: Map<string, Subscription.Subscription<any, any>>) => {
     // Close first, so `room:1` and `room:2` are never both connected.
     for (const [key, running] of inst.subscriptions) {
       if (byKey.has(key)) continue
@@ -1484,30 +1641,44 @@ const start = (
    * A re-key is a new Subscription key, so the old watcher goes before the new one registers.
    * The same code runs on the server, where each watcher is dispatched when its entry settles.
    */
-  const syncWatches = (inst: Instance, markers: Map<string, loaders.Marker>) => {
+  const syncWatches = (inst: Instance, markers: Map<string, loaders.Marker>): ReadonlyArray<() => void> => {
     for (const [key, running] of inst.watches) {
       if (markers.has(key)) continue
       inst.watches.delete(key)
       record({ _tag: "SubscriptionStopped", path: inst.path, key })
       releaseWatch(running)
     }
+    // The first values of the watchers registered in this call: dispatched by the caller once the loop is done.
+    let folds: Array<() => void> | undefined = []
     for (const [key, marker] of markers) {
       const existing = inst.watches.get(key)
       if (existing !== undefined) {
         existing.marker = marker
         continue
       }
-      const running: WatchRun = { marker, handle: undefined, released: false, awaited: false }
+      const running: WatchRun = { marker, handle: undefined, released: false }
       inst.watches.set(key, running)
       record({ _tag: "SubscriptionStarted", path: inst.path, key })
       // A disabled read: the marker is inert.
       if (marker.argsKey === undefined) continue
       const source: MessageLog.Source = { _tag: "Subscription", key }
-      const settleAwaited = () => {
-        if (!running.awaited) return
-        running.awaited = false
-        awaitedEmissions--
-        checkIdle()
+      const send = (
+        argsKey: string,
+        result: AsyncResult.Success<any, any> | AsyncResult.Failure<any, any>,
+        patched: boolean
+      ) => {
+        if (running.released || inst.closed) return
+        const message = guard(
+          inst,
+          "subscription",
+          () => ({
+            value: running.marker.toMsg(snapshots.makeSnapshot(marker.read, marker.label, argsKey, result, patched))
+          }),
+          key
+        )
+        // The instance's normal message path. It may run inside another instance's `update`: a
+        // patch registered at issue reaches every watcher before that `update` returns.
+        if (message !== undefined) inst.dispatch(message.value, source)
       }
       const go = (envCtx: Context.Context<any>) => {
         if (inst.closed || running.released) return
@@ -1520,49 +1691,45 @@ const start = (
             key
           )
         }
+        let delivered = false
         const handle = loader.watch(
           marker.read,
           marker.args,
           fetcher.value as Loader.Fetcher<any, any, any>,
-          (result) => {
-            settleAwaited()
-            if (running.released || inst.closed) return
-            const message = guard(
-              inst,
-              "subscription",
-              () => ({
-                value: running.marker.toMsg(snapshots.makeSnapshot(marker.read, marker.label, handle.argsKey, result))
-              }),
-              key
-            )
-            // The instance's normal message path. It may run inside another instance's `update`: a
-            // patch registered at issue reaches every watcher before that `update` returns.
-            if (message !== undefined) inst.dispatch(message.value, source)
+          (result, patched) => {
+            delivered = true
+            send(handle.argsKey, result, patched)
           },
           (cause) => {
-            settleAwaited()
             // A defect in a fetcher fails every watcher's instance. The cache never stores it.
             if (!running.released) failInstance(inst, cause, "subscription", key)
-          }
+          },
+          { emitInitial: false }
         )
         running.handle = handle
-        // On the server the idle check has to wait for the emission the cache defers by one step.
-        if (server !== undefined && handle.current()._tag !== "Initial") {
-          running.awaited = true
-          awaitedEmissions++
+        // The state at registration, read when it is dispatched: an `update` run in between may
+        // have patched the entry, and the cache has then already called back with the newer value.
+        const first = handle.current()
+        if (first._tag === "Initial") return
+        const fold = () => {
+          if (delivered) return
+          const current = handle.current()
+          if (current._tag !== "Initial") send(handle.argsKey, current, handle.patched())
         }
+        // Registered later, when the instance's Layer is ready: there is no loop to wait for.
+        if (folds !== undefined) folds.push(fold)
+        else fold()
       }
       if (inst.env.failure !== undefined) go(settled(inst.env).ctx!)
       else whenReady(inst.env, go)
     }
+    const out = folds
+    folds = undefined
+    return out
   }
   const releaseWatch = (running: WatchRun) => {
     if (running.released) return
     running.released = true
-    if (running.awaited) {
-      running.awaited = false
-      awaitedEmissions--
-    }
     running.handle?.unregister()
   }
   /** Drops an instance's watchers, and its descendants', at once. Closing its Scope comes after. */
@@ -1983,9 +2150,12 @@ const start = (
         instance.onFailure = child.onFailure
         if (!propsEqual(child.props, instance.props)) {
           instance.props = child.props
-          dirty.delete(instance)
-          render(instance)
+          // Watches first: a re-key over a settled entry folds its value before this render (resolution #2).
           syncSubscriptions(instance)
+          if (!instance.closed) {
+            dirty.delete(instance)
+            render(instance)
+          }
         }
         return { _tag: "Child", v: child, inst: instance }
       }
@@ -2101,6 +2271,17 @@ const start = (
     undefined,
     rootRange
   )
+  // Registered after the root instance, so it runs before the instance Scopes close: a run owned
+  // by the root (its service has no Layer build) ends with it, orphaned or not.
+  Effect.runSync(Scope.addFinalizer(
+    rootScope,
+    Effect.sync(() => {
+      rootClosing = true
+      for (const inst of Array.from(orphans)) {
+        for (const run of inst.runs.slice()) if (!survives(inst, run)) stopRun(inst, run)
+      }
+    })
+  ))
   if (rootRange !== undefined && !rootRange.claimed) removeRange(rootRange)
   rootRendered = () => root.rendered
   rootInstance = root
@@ -2227,7 +2408,13 @@ const start = (
     find,
     model: () => root.failure === undefined ? root.model : undefined,
     send: (message) => root.dispatch(message, { _tag: "Dispatch" }),
-    pending: () => pendingOf(root),
+    // A detached run whose instance is gone still counts: `TestHost.settle` waits for it.
+    pending: () => [
+      ...pendingOf(root),
+      ...Array.from(orphans).flatMap((inst) =>
+        inst.runs.map((run) => ({ path: inst.path, name: run.command.name, status: run.status }))
+      )
+    ],
     flush: () => flushes,
     buildsPendingSince,
     head: () => merged,

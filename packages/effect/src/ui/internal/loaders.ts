@@ -4,6 +4,7 @@
  *
  * @internal
  */
+import type * as Option from "../../Option.ts"
 import type * as AsyncResult from "../../reactivity/AsyncResult.ts"
 import * as snapshots from "../../reactivity/internal/loaderSnapshot.ts"
 import type * as Loader from "../../reactivity/Loader.ts"
@@ -40,6 +41,10 @@ type LoaderFn = (model: any, props: any, loaded: any) => unknown
 export interface Context {
   /** `h.loaded`: one lazy getter per snapshot field. */
   readonly loaded: Record<string, AsyncResult.AsyncResult<any, any>>
+  /** `h.previous`: the value the snapshot holds for another key, while the loader is enabled. */
+  readonly previous: Record<string, Option.Option<any>>
+  /** `h.patched`: the opened value includes an unconfirmed optimistic patch. */
+  readonly patched: Record<string, boolean>
   readonly watch: (handlers: Record<string, (snapshot: any) => unknown>) => Subscription.Subscription<any, any>
 }
 
@@ -81,32 +86,64 @@ export const bind = (
   const empty: Record<string, Loader.Snapshot<any, any>> = {}
   for (const field of fields) empty[field.field] = snapshots.emptySnapshot(field.definition, field.label)
   Object.freeze(empty)
-  const context = (model: any, props: any): Context => {
-    const memo = new Map<string, { readonly args: unknown; readonly argsKey: string | undefined }>()
-    const running = new Set<string>()
-    const loaded: Record<string, AsyncResult.AsyncResult<any, any>> = {}
-    const argsOf = (field: snapshots.Found & { readonly field: string }) => {
-      let current = memo.get(field.field)
-      if (current === undefined) {
-        if (running.has(field.field)) {
-          throw new Error(`${name}: the loader "${field.field}" reads its own result through a cycle of loaders.`)
-        }
-        running.add(field.field)
-        const args = loaders![field.field](model, props, loaded)
-        running.delete(field.field)
-        current = { args, argsKey: args === undefined ? undefined : field.definition[LoaderTypeId].argsKey(args) }
-        memo.set(field.field, current)
+  // One state object per (model, props). The three views of it (`loaded`, `previous`, `patched`)
+  // share prototypes built once here, so a render allocates four small objects and defines no property.
+  interface State {
+    readonly model: any
+    readonly props: any
+    readonly memo: Record<string, { readonly args: unknown; readonly argsKey: string | undefined } | undefined>
+    running: string | undefined
+    loaded: any
+  }
+  const stateKey = Symbol()
+  const argsOf = (state: State, field: snapshots.Found & { readonly field: string }) => {
+    let current = state.memo[field.field]
+    if (current === undefined) {
+      const stack = state.running ?? ""
+      if (stack.split("\u0000").includes(field.field)) {
+        throw new Error(`${name}: the loader "${field.field}" reads its own result through a cycle of loaders.`)
       }
-      return current
+      state.running = stack === "" ? field.field : `${stack}\u0000${field.field}`
+      let args: unknown
+      try {
+        args = loaders![field.field](state.model, state.props, state.loaded)
+      } finally {
+        state.running = stack === "" ? undefined : stack
+      }
+      current = { args, argsKey: args === undefined ? undefined : field.definition[LoaderTypeId].argsKey(args) }
+      state.memo[field.field] = current
     }
+    return current
+  }
+  const view = (read: (snapshot: Loader.Snapshot<any, any>, argsKey: string | undefined) => unknown) => {
+    const proto = {}
     for (const field of fields) {
-      Object.defineProperty(loaded, field.field, {
+      Object.defineProperty(proto, field.field, {
         enumerable: true,
-        get: () => snapshots.open(model[field.field], argsOf(field).argsKey)
+        get(this: any) {
+          const state: State = this[stateKey]
+          return read(state.model[field.field], argsOf(state, field).argsKey)
+        }
       })
     }
+    return proto
+  }
+  const loadedProto = view(snapshots.open)
+  const previousProto = view(snapshots.previous)
+  const patchedProto = view(snapshots.patched)
+  const context = (model: any, props: any): Context => {
+    const state: State = { model, props, memo: {}, running: undefined, loaded: undefined }
+    const loaded = Object.create(loadedProto)
+    loaded[stateKey] = state
+    state.loaded = loaded
+    const previous = Object.create(previousProto)
+    previous[stateKey] = state
+    const patched = Object.create(patchedProto)
+    patched[stateKey] = state
     return {
       loaded,
+      previous,
+      patched,
       watch: (handlers) => ({
         [Subscription.TypeId]: Subscription.TypeId,
         key: "~loaded",
@@ -116,7 +153,7 @@ export const bind = (
           if (typeof toMsg !== "function") {
             throw new Error(`${name}: watch has no handler for the snapshot field "${field.field}".`)
           }
-          const { args, argsKey } = argsOf(field)
+          const { args, argsKey } = argsOf(state, field)
           const marker: Marker = { read: field.definition, label: field.label, args, argsKey, toMsg }
           return {
             [Subscription.TypeId]: Subscription.TypeId,

@@ -8,7 +8,14 @@ import { Query, Snapshot, TestHost } from "effect/ui/testing"
 const User = Schema.Struct({ id: Schema.String, name: Schema.String })
 
 /** A fresh read, mutation and components per test: the db is closed over. */
-const make = (options: { readonly staleTime: string }) => {
+const make = (
+  options: {
+    readonly staleTime: string
+    readonly mode?: Command.Mode
+    /** Each Card provides RenameUser itself, so the Layer build closes with the Card. */
+    readonly ownLayer?: boolean
+  }
+) => {
   const db = { calls: 0, names: new Map<string, string>([["1", "Ann"], ["2", "Bea"]]) }
   /** What happened, in order: updates and views, to assert on ordering. */
   const order: Array<string> = []
@@ -42,6 +49,7 @@ const make = (options: { readonly staleTime: string }) => {
       })
     ),
     {
+      mode: options.mode ?? "concurrent",
       invalidates: (id) => [GetUser.entry({ id })],
       optimistic: (id, name) => [GetUser.patch({ id }, (user) => ({ ...user, name }))]
     }
@@ -85,7 +93,10 @@ const make = (options: { readonly staleTime: string }) => {
             }))
           )
         },
-        Renamed: () => ({ ...model, saving: false })
+        Renamed: () => {
+          order.push(`update ${$.props.tag} Renamed`)
+          return { ...model, saving: false }
+        }
       }),
     subscriptions: (_model, _props, watch) => [
       watch({ user: (snapshot) => CardMessage.make({ _tag: "UserChanged", snapshot }) })
@@ -93,13 +104,18 @@ const make = (options: { readonly staleTime: string }) => {
     view: (model, h) => {
       const text = AsyncResult.match(h.loaded.user, {
         onInitial: (initial) => (initial.waiting ? "loading" : "idle"),
-        onSuccess: (success) => success.value.name + (success.waiting ? "…" : ""),
+        // "~": the value includes an unconfirmed patch. "…": a fetch is in flight.
+        onSuccess: (success) => success.value.name + (h.patched.user ? "~" : "") + (success.waiting ? "…" : ""),
         onFailure: () => "failed"
       })
       order.push(`view ${h.props.tag} ${text}${model.saving ? " saving" : ""}`)
-      return h.el("p", `${h.props.tag}=${text}`).on("click", CardMessage.make({ _tag: "Rename", name: "Bob" }))
+      // A click renames to Bob, and a click on Bob renames to Cy.
+      const next = AsyncResult.isSuccess(h.loaded.user) && h.loaded.user.value.name === "Bob" ? "Cy" : "Bob"
+      return h.el("p", `${h.props.tag}=${text}`).on("click", CardMessage.make({ _tag: "Rename", name: next }))
     }
   })
+
+  const OwnCard = Component.provide(Card, RenameUser.layer, { local: true })
 
   /** A parent whose Model says which cards are mounted: "key:id" each. */
   const Board = Component.make({
@@ -114,7 +130,7 @@ const make = (options: { readonly staleTime: string }) => {
         "div",
         cards.map((card) => {
           const [key, id] = card.split(":")
-          return h.child(Card, { key, props: { id, tag: key } })
+          return h.child(options.ownLayer ? OwnCard : Card, { key, props: { id, tag: key } })
         })
       )
   })
@@ -139,7 +155,9 @@ const make = (options: { readonly staleTime: string }) => {
         Detail: ({ params }) => h.child(Card, { key: `detail-${params.id}`, props: { id: params.id, tag: "detail" } })
       })
   })
-  const layer = Layer.mergeAll(TestHost.layer(), GetUser.layer, RenameUser.layer)
+  const shared = Layer.mergeAll(TestHost.layer(), GetUser.layer, RenameUser.layer)
+  // With `ownLayer` nothing above the Cards provides RenameUser. Only the Board is mounted then.
+  const layer = options.ownLayer ? Layer.mergeAll(TestHost.layer(), GetUser.layer) as typeof shared : shared
   return { db, order, GetUser, RenameUser, Card, CardMessage, Board, layer, App, AppRoute, AppMessage }
 }
 
@@ -251,10 +269,13 @@ describe("Loaded", () => {
       assert.deepStrictEqual(t.order, ["update a Rename", "update a Bob", "update b Bob"])
       yield* TestHost.settle
       // One flush renders the issuing update and the patch together: "Ann saving" never shows.
-      assert.deepStrictEqual(t.order.slice(3), ["view a Bob… saving", "view b Bob…"])
-      // A live patch shows as waiting.
-      assert.strictEqual(root.text(), "a=Bob…b=Bob…")
+      assert.deepStrictEqual(t.order.slice(3), ["view a Bob~ saving", "view b Bob~"])
+      // A live patch is `patched` and not `waiting` (resolution #7).
+      assert.strictEqual(root.text(), "a=Bob~b=Bob~")
       yield* TestClock.adjust(10)
+      yield* TestHost.settle
+      // The run succeeded. Through the confirming refetch the patch is held: patched and waiting.
+      assert.strictEqual(root.text(), "a=Bob~…b=Bob~…")
       yield* load
       // The run succeeded: invalidation refetched, and the server agrees.
       assert.strictEqual(root.text(), "a=Bobb=Bob")
@@ -271,7 +292,7 @@ describe("Loaded", () => {
       // The mutation fails on an empty name.
       root.send(t.CardMessage.make({ _tag: "Rename", name: "" }))
       yield* TestHost.settle
-      assert.strictEqual(root.text(), "a=…")
+      assert.strictEqual(root.text(), "a=~")
       assert.strictEqual(root.cache.inspect(t.GetUser, { id: "1" }).patches, 1)
       yield* TestClock.adjust(10)
       yield* TestHost.settle
@@ -351,9 +372,13 @@ describe("Loaded", () => {
       t.db.names.set("1", "Ann2")
       history.go(-1)
       yield* TestHost.settle
-      // The restored Model's snapshot opens as its stored Success: old data, and not marked waiting,
-      // while the cold entry's fetch is in flight.
-      assert.strictEqual(root.text(), "list=Ann")
+      // Resolution #8: the cold entry is seeded as stale from the restored snapshot, so the old data
+      // shows in the first frame marked waiting, while the entry's fetch is in flight.
+      assert.strictEqual(root.text(), "list=Ann…")
+      assert.deepStrictEqual(
+        [root.cache.inspect(t.GetUser, { id: "1" }).stale, root.cache.inspect(t.GetUser, { id: "1" }).fetching],
+        [true, true]
+      )
       assert.deepStrictEqual(root.fetches().map((fetch) => fetch.argsKey).length, 2)
       yield* load
       assert.strictEqual(root.text(), "list=Ann2")
@@ -362,6 +387,251 @@ describe("Loaded", () => {
     return Effect.gen(function*() {
       yield* first.pipe(Effect.provide(router()), Effect.scoped)
       yield* reloaded.pipe(Effect.provide(router()), Effect.scoped)
+    }).pipe(Effect.provide(t.layer))
+  })
+
+  it.effect("resolution #6: a Command.Service run outlives its instance, its result message is dropped, and the cache still hears", () => {
+    const t = make({ staleTime: "1 minute", mode: "queue" })
+    return Effect.gen(function*() {
+      const root = yield* TestHost.mount(t.Board, { cards: ["a:1", "b:1"] })
+      yield* load
+      // Two saves from card a: one running, one queued.
+      Query.fire(root.get(Query.text("a=")), "click")
+      yield* TestHost.settle
+      Query.fire(root.get(Query.text("a=")), "click")
+      yield* TestHost.settle
+      assert.deepStrictEqual(root.pending().map((run) => run.status), ["running", "queued"])
+      // Card a unmounts.
+      t.order.length = 0
+      root.send(["b:1"])
+      yield* TestHost.settle
+      // Both runs are still there, under the path of an instance that no longer exists.
+      assert.deepStrictEqual(root.pending(), [
+        { path: "/Board/Card[a]", name: "users/RenameUser", status: "running" },
+        { path: "/Board/Card[a]", name: "users/RenameUser", status: "queued" }
+      ])
+      assert.strictEqual(root.cache.inspect(t.GetUser, { id: "1" }).patches, 2)
+      assert.strictEqual(root.text(), "b=Cy~")
+      yield* TestClock.adjust(10)
+      yield* TestHost.settle
+      // The first finished and the queue went on without the instance.
+      assert.strictEqual(t.db.names.get("1"), "Bob")
+      assert.deepStrictEqual(root.pending().map((run) => run.status), ["running"])
+      yield* TestClock.adjust(10)
+      yield* TestHost.settle
+      assert.strictEqual(t.db.names.get("1"), "Cy")
+      assert.deepStrictEqual(root.pending(), [])
+      yield* load
+      assert.strictEqual(root.text(), "b=Cy")
+      assert.strictEqual(root.cache.inspect(t.GetUser, { id: "1" }).patches, 0)
+      // No "Renamed" reached anyone: the result messages were dropped.
+      assert.isFalse(t.order.some((entry) => entry.includes("Renamed") || entry.startsWith("update a")))
+      // Both runs invalidated. The second landed while the first one's refetch was in flight: one fetch event.
+      assert.deepStrictEqual(root.fetches().map((fetch) => fetch.trigger), ["watch", "invalidation"])
+    }).pipe(Effect.provide(t.layer))
+  })
+
+  it.effect("resolution #6: a switch-mode run still ends with its instance", () => {
+    const t = make({ staleTime: "1 minute", mode: "switch" })
+    return Effect.gen(function*() {
+      const root = yield* TestHost.mount(t.Board, { cards: ["a:1", "b:1"] })
+      yield* load
+      Query.fire(root.get(Query.text("a=")), "click")
+      yield* TestHost.settle
+      assert.strictEqual(root.text(), "a=Bob~b=Bob~")
+      root.send(["b:1"])
+      yield* TestHost.settle
+      // Interrupted with the instance: the patch is gone, and the server never renamed.
+      assert.deepStrictEqual(root.pending(), [])
+      assert.strictEqual(root.cache.inspect(t.GetUser, { id: "1" }).patches, 0)
+      yield* load
+      yield* load
+      assert.strictEqual(t.db.names.get("1"), "Ann")
+      assert.strictEqual(root.text(), "b=Ann")
+    }).pipe(Effect.provide(t.layer))
+  })
+
+  it.effect("resolution #6: a run whose service Layer is provided by the instance that unmounts ends with it", () => {
+    const t = make({ staleTime: "1 minute", mode: "queue", ownLayer: true })
+    return Effect.gen(function*() {
+      const root = yield* TestHost.mount(t.Board, { cards: ["a:1", "b:1"] })
+      yield* load
+      Query.fire(root.get(Query.text("a=")), "click")
+      yield* TestHost.settle
+      Query.fire(root.get(Query.text("a=")), "click")
+      yield* TestHost.settle
+      assert.strictEqual(root.text(), "a=Cy~b=Cy~")
+      root.send(["b:1"])
+      yield* TestHost.settle
+      // The build that owned both runs closed with card a.
+      assert.deepStrictEqual(root.pending(), [])
+      assert.strictEqual(root.cache.inspect(t.GetUser, { id: "1" }).patches, 0)
+      yield* load
+      yield* load
+      assert.strictEqual(t.db.names.get("1"), "Ann")
+      assert.strictEqual(root.text(), "b=Ann")
+    }).pipe(Effect.provide(t.layer))
+  })
+
+  it.effect("[SURPRISE] resolution #6 with history restore: a `saving` flag kept in the Model is restored set, and nothing ever clears it", () => {
+    const t = make({ staleTime: "1 minute" })
+    const history = Router.memoryHistory("/")
+    const route = (url: string) => Option.getOrThrow(t.AppRoute.parse(url))
+    return Effect.gen(function*() {
+      const root = yield* TestHost.mount(t.App, { route: route("/") })
+      yield* load
+      root.send(t.AppMessage.make({ _tag: "Go", route: route("/users/1") }))
+      yield* load
+      Query.fire(root.get(Query.text("detail=Ann", { exact: true })), "click")
+      yield* TestHost.settle
+      assert.strictEqual(root.text(), "detail=Bob~")
+      // Leave while the save is in flight. The push writes `saving: true` and the patched snapshot.
+      root.send(t.AppMessage.make({ _tag: "Go", route: route("/") }))
+      yield* TestHost.settle
+      const saved = JSON.stringify(history.states()[1])
+      assert.isTrue(saved.includes("\"saving\":true"))
+      // The snapshot's fifth element is the patched bit.
+      assert.isTrue(/\{\\?"id\\?":\\?"1\\?",\\?"name\\?":\\?"Bob\\?"\},\d+,1\]/.test(saved), saved)
+      yield* load
+      yield* load
+      // The save finished with nobody to tell.
+      assert.strictEqual(t.db.names.get("1"), "Bob")
+      assert.deepStrictEqual(root.pending(), [])
+      assert.isFalse(t.order.includes("update detail Renamed"))
+      t.order.length = 0
+      root.send(t.AppMessage.make({ _tag: "Back" }))
+      yield* load
+      yield* load
+      assert.strictEqual(root.text(), "detail=Bob")
+      // The restored Model says a save is running. No Command is, and no message will come.
+      assert.strictEqual(t.order[t.order.length - 1], "view detail Bob saving")
+      assert.deepStrictEqual(root.pending(), [])
+    }).pipe(Effect.provide(Router.make({ routes: t.AppRoute, history })), Effect.provide(t.layer))
+  })
+
+  it.effect("resolution #2: mounting or re-keying onto an entry the cache holds never renders \"loading\"", () => {
+    const t = make({ staleTime: "1 minute" })
+    return Effect.gen(function*() {
+      const root = yield* TestHost.mount(t.Board, { cards: ["a:1", "b:2"] })
+      yield* load
+      t.order.length = 0
+      // A new instance on user 1, and card b re-keyed from user 2 to user 1.
+      root.send(["a:1", "c:1", "b:1"])
+      yield* TestHost.settle
+      // Each folds the cache's value through update before its render: no "loading", no "Bea" under b's new key.
+      assert.deepStrictEqual(t.order, ["update c Ann", "view c Ann", "update b Ann", "view b Ann"])
+      assert.strictEqual(root.text(), "a=Annc=Annb=Ann")
+      assert.strictEqual(t.db.calls, 2)
+    }).pipe(Effect.provide(t.layer))
+  })
+
+  it.effect("resolution #2: a Command issued by the folded first emission starts after init's, and after the first render", () => {
+    const t = make({ staleTime: "1 minute" })
+    const seen: Array<string> = []
+    const Message = Schema.TaggedUnion({ UserChanged: { snapshot: Loader.Snapshot(t.GetUser, "user") }, Noted: {} })
+    const Note = Command.make("Note", (text: string) =>
+      Effect.sync(() => {
+        seen.push(`command ${text}`)
+        return Message.make({ _tag: "Noted" })
+      }))
+    const Noter = Component.make({
+      name: "Noter",
+      model: Schema.Struct({ user: Loader.Snapshot(t.GetUser, "user") }),
+      message: Message,
+      loaders: { user: () => ({ id: "1" }) },
+      init: ($) => $.set($.empty).run(Note("init")),
+      update: (model, message, $) =>
+        Message.match(message, {
+          UserChanged: ({ snapshot }) => {
+            seen.push("update UserChanged")
+            return $.set({ user: snapshot }).run(Note("fold"))
+          },
+          Noted: () => model
+        }),
+      subscriptions: (_model, _props, watch) => [
+        watch({ user: (snapshot) => Message.make({ _tag: "UserChanged", snapshot }) })
+      ],
+      view: (_model, h) => {
+        seen.push(`view ${h.loaded.user._tag}`)
+        return h.el("i", "noter")
+      }
+    })
+    const Host = Component.make({
+      name: "Host",
+      model: Schema.Boolean,
+      message: Schema.Boolean,
+      init: ($) => $.set(false),
+      update: (_model, message) => message,
+      view: (show, h) =>
+        h.el("div", h.child(t.Card, { key: "a", props: { id: "1", tag: "a" } }), show && h.child(Noter, { key: "n" }))
+    })
+    return Effect.gen(function*() {
+      const root = yield* TestHost.mount(Host, {})
+      yield* load
+      root.send(true)
+      yield* TestHost.settle
+      // Folded before the first render. Its Command is issued where init's is: after that render, and after init's.
+      assert.deepStrictEqual(seen, [
+        "update UserChanged",
+        "view Success",
+        "command init",
+        "command fold",
+        "view Success"
+      ])
+    }).pipe(Effect.provide(t.layer))
+  })
+
+  it.effect("resolution #8: a snapshot taken under a patch seeds nothing on a cold restore", () => {
+    const t = make({ staleTime: "1 minute" })
+    const history = Router.memoryHistory("/users/1")
+    const route = (url: string) => Option.getOrThrow(t.AppRoute.parse(url))
+    const router = () => Router.make({ routes: t.AppRoute, history })
+    const first = Effect.gen(function*() {
+      const root = yield* TestHost.mount(t.App, { route: route("/users/1") })
+      yield* load
+      Query.fire(root.get(Query.text("detail=")), "click")
+      yield* TestHost.settle
+      assert.strictEqual(root.text(), "detail=Bob~")
+      // Pushed while the patch is live.
+      root.send(t.AppMessage.make({ _tag: "Go", route: route("/users/2") }))
+      yield* TestHost.settle
+      assert.isTrue(JSON.stringify(history.states()[0]).includes("Bob"))
+    })
+    const reloaded = Effect.gen(function*() {
+      // A new mount is a new, cold cache, and this page doesn't read user 1.
+      const root = yield* TestHost.mount(t.App, { route: route("/users/2") })
+      yield* load
+      const calls = t.db.calls
+      t.order.length = 0
+      history.go(-1)
+      yield* TestHost.settle
+      // Nothing was seeded: the restored snapshot opens empty, and the cold entry fetches.
+      assert.deepStrictEqual(t.order, ["view detail loading saving"])
+      assert.strictEqual(root.text(), "detail=loading")
+      assert.strictEqual(t.db.calls - calls, 1)
+      yield* load
+      assert.strictEqual(root.text(), "detail=Bob")
+    })
+    return Effect.gen(function*() {
+      yield* first.pipe(Effect.provide(router()), Effect.scoped)
+      yield* reloaded.pipe(Effect.provide(router()), Effect.scoped)
+    }).pipe(Effect.provide(t.layer))
+  })
+
+  it.effect("[SURPRISE] resolution #6: a run outlives the mount itself when its service Layer is provided outside the mount", () => {
+    const t = make({ staleTime: "1 minute" })
+    return Effect.gen(function*() {
+      yield* Effect.gen(function*() {
+        const root = yield* TestHost.mount(t.Card, { id: "1", tag: "a" })
+        yield* load
+        Query.fire(root.get(Query.text("a=")), "click")
+        yield* TestHost.settle
+        assert.strictEqual(root.text(), "a=Bob~")
+      }).pipe(Effect.scoped)
+      // The mount's Scope is closed. RenameUser.layer was built outside it and is still open.
+      assert.strictEqual(t.db.names.get("1"), "Ann")
+      yield* TestClock.adjust(10)
+      assert.strictEqual(t.db.names.get("1"), "Bob")
     }).pipe(Effect.provide(t.layer))
   })
 

@@ -123,6 +123,7 @@ export const UserCard = Component.make({
           h.p(user.email),
           h.p(`${user.role} · ${user.team} · ${user.location} · joined ${user.joined}`),
           h.button(`♥ ${user.likes}`).attr("aria-label", "Like").onClick(UserCardMessage.make({ _tag: "Like" })),
+          // `waiting` is only "a fetch is in flight": an optimistic patch alone doesn't set it.
           waiting && h.small("Updating…")
         )
     })
@@ -147,7 +148,6 @@ export const RenameForm = Component.make({
   model: Schema.Struct({
     user: Loader.Snapshot(GetUser, "user"),
     draft: Schema.Option(Schema.String),
-    saving: Schema.Number,
     error: Schema.Option(Schema.String)
   }),
   message: RenameFormMessage,
@@ -155,7 +155,7 @@ export const RenameForm = Component.make({
   loaders: {
     user: (_model, props) => ({ id: props.id })
   },
-  init: ($) => ({ ...$.empty, draft: Option.none(), saving: 0, error: Option.none() }),
+  init: ($) => ({ ...$.empty, draft: Option.none(), error: Option.none() }),
   update: (model, message, $) =>
     RenameFormMessage.match(message, {
       UserChanged: ({ snapshot }) => ({ ...model, user: snapshot }),
@@ -165,17 +165,21 @@ export const RenameForm = Component.make({
         Option.match(model.draft, {
           onNone: () => model,
           onSome: (name) =>
-            $.set({ ...model, draft: Option.none(), saving: model.saving + 1, error: Option.none() }).run(
+            // No `saving` flag in the Model. The save is owned by the Layer that provides RenameUser, so it
+            // goes on if this form unmounts, and then neither message below arrives. A flag set here would
+            // be written into history.state at the next push and restored with nothing left to clear it.
+            // "Saving…" is read from `h.patched.user` in the view.
+            $.set({ ...model, draft: Option.none(), error: Option.none() }).run(
               RenameUser.make($.props.id, name).pipe(Command.match({
                 onSuccess: () => RenameFormMessage.make({ _tag: "Saved" }),
                 onFailure: (error) => RenameFormMessage.make({ _tag: "SaveFailed", name, reason: error.reason })
               }))
             )
         }),
-      Saved: () => ({ ...model, saving: model.saving - 1 }),
+      // Only reaches a form that is still mounted. A failed save of a form that is gone reports nowhere.
+      Saved: () => model,
       SaveFailed: ({ name, reason }) => ({
         ...model,
-        saving: model.saving - 1,
         draft: Option.orElse(model.draft, () => Option.some(name)),
         error: Option.some(reason)
       })
@@ -194,7 +198,8 @@ export const RenameForm = Component.make({
           h.button("Save").attr("type", "submit").disabled(Option.isNone(model.draft)),
           h.button("Cancel").attr("type", "button").disabled(Option.isNone(model.draft))
             .onClick(RenameFormMessage.make({ _tag: "Cancel" })),
-          model.saving > 0 && h.small("Saving…"),
+          // The name on screen includes a rename the server hasn't confirmed: this form's or anyone's.
+          h.patched.user && h.small("Saving…"),
           Option.match(model.error, {
             onNone: () => null,
             onSome: (reason) => h.p(reason).attr("role", "alert")
@@ -227,12 +232,12 @@ export const DetailPage = Component.make({
 
 // ---------------------------------------------------------------------------
 // ListPage: a paged list that keeps the previous page on screen while the
-// next one loads, and a card for the row being peeked at
+// next one loads (one snapshot field, `h.previous`), and a card for the row
+// being peeked at
 // ---------------------------------------------------------------------------
 
 export const ListPageMessage = Schema.TaggedUnion({
-  RequestedChanged: { snapshot: Loader.Snapshot(ListUsers, "requested") },
-  ShownChanged: { snapshot: Loader.Snapshot(ListUsers, "shown") },
+  UsersChanged: { snapshot: Loader.Snapshot(ListUsers, "users") },
   GoTo: { page: Schema.Number },
   Peek: { id: Schema.String }
 })
@@ -241,42 +246,32 @@ export const ListPage = Component.make({
   name: "ListPage",
   model: Schema.Struct({
     page: Schema.Number,
-    shownPage: Schema.Number,
-    requested: Loader.Snapshot(ListUsers, "requested"),
-    shown: Loader.Snapshot(ListUsers, "shown"),
+    users: Loader.Snapshot(ListUsers, "users"),
     peek: Schema.Option(Schema.String)
   }),
   message: ListPageMessage,
   elements: Html,
   loaders: {
-    requested: (model) => ({ page: model.page }),
-    shown: (model) => ({ page: model.shownPage })
+    users: (model) => ({ page: model.page })
   },
-  init: ($) => ({ ...$.empty, page: 0, shownPage: 0, peek: Option.none() }),
-  update: (model, message, $) =>
+  init: ($) => ({ ...$.empty, page: 0, peek: Option.none() }),
+  update: (model, message) =>
     ListPageMessage.match(message, {
-      RequestedChanged: ({ snapshot }) => {
-        const next = { ...model, requested: snapshot }
-        return AsyncResult.isSuccess($.loadedOf(next).requested)
-          ? { ...next, shownPage: model.page }
-          : next
-      },
-      ShownChanged: ({ snapshot }) => ({ ...model, shown: snapshot }),
+      UsersChanged: ({ snapshot }) => ({ ...model, users: snapshot }),
       GoTo: ({ page }) => ({ ...model, page }),
       Peek: ({ id }) => ({ ...model, peek: Option.some(id) })
     }),
   subscriptions: (_model, _props, watch) => [
-    watch({
-      requested: (snapshot) => ListPageMessage.make({ _tag: "RequestedChanged", snapshot }),
-      shown: (snapshot) => ListPageMessage.make({ _tag: "ShownChanged", snapshot })
-    })
+    watch({ users: (snapshot) => ListPageMessage.make({ _tag: "UsersChanged", snapshot }) })
   ],
   view: (model, h) => {
-    const visible = AsyncResult.isSuccess(h.loaded.requested) ? h.loaded.requested : h.loaded.shown
-    return AsyncResult.match(visible, {
-      onInitial: () => h.p("Loading users…"),
-      onFailure: () => h.p("The users couldn't be loaded."),
-      onSuccess: ({ value: { page, pages, users } }) =>
+    const current = h.loaded.users
+    if (AsyncResult.isFailure(current)) return h.p("The users couldn't be loaded.")
+    // The requested page once it is here. Until then the page the snapshot still holds, if any.
+    const shown = AsyncResult.isSuccess(current) ? Option.some(current.value) : h.previous.users
+    return Option.match(shown, {
+      onNone: () => h.p("Loading users…"),
+      onSome: ({ page, pages, users }) =>
         h.section(
           h.ul(
             users.map((user) =>

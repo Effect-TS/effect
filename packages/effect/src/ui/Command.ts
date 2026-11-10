@@ -57,7 +57,7 @@ import * as Layer from "../Layer.ts"
 import * as Pipeable from "../Pipeable.ts"
 import * as Predicate from "../Predicate.ts"
 import type * as Loader from "../reactivity/Loader.ts"
-import type * as Scope from "../Scope.ts"
+import * as Scope from "../Scope.ts"
 import * as Stream from "../Stream.ts"
 import type * as Types from "../Types.ts"
 import type * as Renderer from "./Renderer.ts"
@@ -288,6 +288,14 @@ export interface Proto<out Msg, in Source = Msg, in SourceE = never> extends Pip
    * @internal
    */
   readonly reject: ((error: SourceE) => Msg) | undefined
+  /**
+   * PROTOTYPE (EFF-3558 resolution #6). The `Service` class the Command was
+   * issued by, `undefined` for a `make` Command. The runtime finds the Layer
+   * build that owns an Effect-shaped run through it.
+   *
+   * @internal
+   */
+  readonly service: Context.Key<any, any> | undefined
 }
 
 /**
@@ -698,7 +706,28 @@ interface Fields extends Declared {
   readonly work: Effect.Effect<any, any, any> | Stream.Stream<any, any, any>
   readonly resolve: (result: any) => any
   readonly reject: ((error: any) => any) | undefined
+  readonly service: Context.Key<any, any> | undefined
 }
+
+/**
+ * PROTOTYPE (EFF-3558 resolution #6). One build of a `Service`'s Layer: the
+ * owner of the Effect-shaped runs issued against it. A fake provided with
+ * `Layer.succeed` has none, and its runs are owned by the mounted root.
+ *
+ * @internal
+ */
+export interface Build {
+  readonly scope: Scope.Scope
+  closed: boolean
+  /** Called once when the build's Scope closes. The returned function removes the listener. */
+  readonly onClose: (listener: () => void) => () => void
+}
+
+const builds = new WeakMap<object, Build>()
+
+/** @internal */
+export const buildOf = (implementation: unknown): Build | undefined =>
+  typeof implementation === "function" ? builds.get(implementation) : undefined
 
 /** `effect` and `stream` are the work with `resolve` and `reject` applied. An unmatched Command keeps its failure. */
 const makeIssued = (fields: Fields): any => {
@@ -822,6 +851,7 @@ export const make: {
       work,
       resolve: identity,
       reject: undefined,
+      service: undefined,
       invalidates: noTargets,
       optimistic: noTargets,
       writes: undefined
@@ -951,7 +981,34 @@ export const Service: <Self>() => {
     static readonly [DefinitionTypeId] = DefinitionTypeId
     static readonly stream = stream
     static readonly mode = mode
-    static readonly layer = Layer.effect(Base, implementation)
+    static readonly layer = Layer.effect(
+      Base,
+      Effect.gen(function*() {
+        const scope = yield* Effect.scope
+        const run = yield* implementation
+        // A new function per build, so two builds never share an identity.
+        const wrapped = (...args: ReadonlyArray<unknown>) => run(...args)
+        const listeners = new Set<() => void>()
+        const build: Build = {
+          scope,
+          closed: false,
+          onClose: (listener) => {
+            listeners.add(listener)
+            return () => listeners.delete(listener)
+          }
+        }
+        builds.set(wrapped, build)
+        yield* Scope.addFinalizer(
+          scope,
+          Effect.sync(() => {
+            build.closed = true
+            for (const listener of Array.from(listeners)) listener()
+            listeners.clear()
+          })
+        )
+        return wrapped
+      })
+    )
     static make(...args: ReadonlyArray<unknown>) {
       return makeIssued({
         _tag: stream ? "Stream" : "Effect",
@@ -964,6 +1021,7 @@ export const Service: <Self>() => {
           : Effect.flatMap(service, (run) => run(...args)),
         resolve: identity,
         reject: undefined,
+        service: Base,
         invalidates: options.invalidates(...args),
         optimistic: options.optimistic === undefined ? noTargets : options.optimistic(...args),
         writes: writesOf === undefined ? undefined : (success) => writesOf(success, ...args)

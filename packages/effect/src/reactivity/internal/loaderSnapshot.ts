@@ -34,6 +34,8 @@ interface SnapshotData {
   /** `undefined` only for the empty snapshot. */
   readonly argsKey: string | undefined
   readonly result: Settled<any, any> | undefined
+  /** The value includes an unconfirmed optimistic patch (resolution #7). Only ever true over a Success. */
+  readonly patched: boolean
 }
 
 /**
@@ -61,7 +63,8 @@ class SnapshotImpl implements Equal.Equal {
     if (!(that instanceof SnapshotImpl)) return false
     const a = this[SnapshotTypeId]
     const b = that[SnapshotTypeId]
-    return a.read === b.read && a.label === b.label && a.argsKey === b.argsKey && Equal.equals(a.result, b.result)
+    return a.read === b.read && a.label === b.label && a.argsKey === b.argsKey && a.patched === b.patched &&
+      Equal.equals(a.result, b.result)
   }
   [Hash.symbol](): number {
     const data = this[SnapshotTypeId]
@@ -76,9 +79,16 @@ export const makeSnapshot = (
   read: Loader.AnyDefinition,
   label: string,
   argsKey: string | undefined,
-  result: Settled<any, any> | undefined
+  result: Settled<any, any> | undefined,
+  patched = false
 ): Snapshot<any, any> =>
-  new SnapshotImpl({ read: read[LoaderTypeId].key, label, argsKey, result }) as unknown as Snapshot<any, any>
+  new SnapshotImpl({
+    read: read[LoaderTypeId].key,
+    label,
+    argsKey,
+    result,
+    patched: patched && result?._tag === "Success"
+  }) as unknown as Snapshot<any, any>
 
 /**
  * The snapshot a field holds before its first emission. Opens as Initial.
@@ -102,6 +112,47 @@ export const open = (
   const data = dataOf(snapshot)
   if (data.result === undefined || data.argsKey !== argsKey) return AsyncResult.initial(true)
   return data.result
+}
+
+/**
+ * Whether the opened value includes an unconfirmed patch: false when `open` is Initial.
+ *
+ * @internal
+ */
+export const patched = (snapshot: Snapshot<any, any>, argsKey: string | undefined): boolean => {
+  const data = dataOf(snapshot)
+  return argsKey !== undefined && data.argsKey === argsKey && data.patched
+}
+
+/**
+ * "Keep previous" (resolution #3): the value the snapshot holds for another key,
+ * only while the loader is enabled and its current args are not the snapshot's.
+ * A Failure gives its `previousSuccess`.
+ *
+ * @internal
+ */
+export const previous = (snapshot: Snapshot<any, any>, argsKey: string | undefined): Option.Option<any> => {
+  if (argsKey === undefined) return Option.none()
+  const data = dataOf(snapshot)
+  if (data.result === undefined || data.argsKey === undefined || data.argsKey === argsKey) return Option.none()
+  return AsyncResult.value(data.result)
+}
+
+/**
+ * What history restore seeds a cold entry from (resolution #8): the snapshot's
+ * key and Success, unless it was taken under a patch.
+ *
+ * @internal
+ */
+export const seedOf = (
+  snapshot: Snapshot<any, any>
+):
+  | { readonly argsKey: string; readonly value: unknown; readonly timestamp: number; readonly patched: boolean }
+  | undefined =>
+{
+  const data = dataOf(snapshot)
+  if (data.argsKey === undefined || data.result === undefined || data.result._tag !== "Success") return undefined
+  return { argsKey: data.argsKey, value: data.result.value, timestamp: data.result.timestamp, patched: data.patched }
 }
 
 /**
@@ -218,14 +269,19 @@ export const checkModel = (name: string, schema: Schema.Top): ReadonlyArray<Foun
 }
 
 // -- wire ---------------------------------------------------------------------
-// [] for empty, [argsKey, 0, success, timestamp] for a Success and
+// [] for empty, [argsKey, 0, success, timestamp] for a Success ([..., 1] when taken under a patch) and
 // [argsKey, 1, [error, ...], 0, [success, timestamp]?] for a Failure: the ~loader tuples,
 // plus a Failure's previous Success. `waiting` is never written.
 
 const encode = (def: Loader.ReadInternal, data: SnapshotData): unknown => {
   const result = data.result
   if (result === undefined || data.argsKey === undefined) return []
-  if (result._tag === "Success") return [data.argsKey, 0, def.encodeSuccess(result.value), result.timestamp]
+  if (result._tag === "Success") {
+    const out: Array<unknown> = [data.argsKey, 0, def.encodeSuccess(result.value), result.timestamp]
+    // The patched bit goes into history.state, so a restore never seeds the cache from an unconfirmed value.
+    if (data.patched) out.push(1)
+    return out
+  }
   const errors = result.cause.reasons.filter(Cause.isFailReason).map((reason) => def.encodeError(reason.error))
   return Option.isSome(result.previousSuccess)
     ? [data.argsKey, 1, errors, 0, [
@@ -246,7 +302,8 @@ const decode = (read: Loader.AnyDefinition, label: string, encoded: unknown): Sn
       read,
       label,
       argsKey,
-      AsyncResult.success(def.decodeSuccess(payload), { timestamp: Number(timestamp) })
+      AsyncResult.success(def.decodeSuccess(payload), { timestamp: Number(timestamp) }),
+      previous === 1
     )
   }
   if (tag === 1 && Array.isArray(payload)) {

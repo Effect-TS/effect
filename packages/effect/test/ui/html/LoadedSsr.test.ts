@@ -11,6 +11,8 @@ const sleep = (ms: number) => Effect.promise(() => new Promise<void>((resolve) =
 
 const make = (options: { readonly staleTime: string; readonly delay?: number }) => {
   const db = { users: 0, posts: 0 }
+  /** Updates and views in order, server then client. */
+  const order: Array<string> = []
   class GetUser extends Loader.Service<GetUser>()(
     "users/GetUser",
     {
@@ -66,7 +68,10 @@ const make = (options: { readonly staleTime: string; readonly delay?: number }) 
     init: ($) => $.set($.empty),
     update: (model, message) =>
       Message.match(message, {
-        User: ({ snapshot }) => ({ ...model, user: snapshot }),
+        User: ({ snapshot }) => {
+          order.push("update User")
+          return { ...model, user: snapshot }
+        },
         Posts: ({ snapshot }) => ({ ...model, posts: snapshot })
       }),
     subscriptions: (_model, _props, watch) => [
@@ -75,8 +80,9 @@ const make = (options: { readonly staleTime: string; readonly delay?: number }) 
         posts: (snapshot) => Message.make({ _tag: "Posts", snapshot })
       })
     ],
-    view: (_model, h) =>
-      h.div(
+    view: (_model, h) => {
+      order.push(`view ${AsyncResult.isSuccess(h.loaded.user) ? h.loaded.user.value : h.loaded.user._tag}`)
+      return h.div(
         h.p(
           AsyncResult.match(h.loaded.user, {
             onInitial: () => "loading",
@@ -92,6 +98,7 @@ const make = (options: { readonly staleTime: string; readonly delay?: number }) 
           })
         ).attr("class", "posts")
       )
+    }
   })
   const Pair = Component.make({
     name: "Pair",
@@ -106,7 +113,7 @@ const make = (options: { readonly staleTime: string; readonly delay?: number }) 
         h.child(Profile, { key: "b", props: { id: "1", posts: false } })
       )
   })
-  return { db, GetUser, GetPosts, Profile, Pair, layer: Layer.mergeAll(GetUser.layer, GetPosts.layer) }
+  return { db, order, GetUser, GetPosts, Profile, Pair, layer: Layer.mergeAll(GetUser.layer, GetPosts.layer) }
 }
 
 const text = (result: { readonly container: Element }, selector: string) =>
@@ -130,6 +137,25 @@ describe("Loaded: SSR and hydration", { concurrent: false }, () => {
       expect(result.fetches.client).toEqual([])
       expect(t.db.users).toBe(1)
       expect(text(result, ".user")).toEqual(["user-1"])
+    }).pipe(Effect.provide(t.layer), Effect.scoped)
+  })
+
+  it.live("resolution #2: an adopting instance renders the server's Model first and gets the cache's emission right after", () => {
+    const t = make({ staleTime: "1 minute" })
+    return Effect.gen(function*() {
+      const result = yield* ssr(t.Profile, { id: "1", posts: false })
+      yield* sleep(20)
+      expect(t.order).toEqual([
+        // The server: cold, so Initial renders, then the fetch's result.
+        "view Initial",
+        "update User",
+        "view user-1",
+        // The client: the server's Model first, then the hydrated entry's value through update.
+        "view user-1",
+        "update User",
+        "view user-1"
+      ])
+      expect(result.fetches.client).toEqual([])
     }).pipe(Effect.provide(t.layer), Effect.scoped)
   })
 

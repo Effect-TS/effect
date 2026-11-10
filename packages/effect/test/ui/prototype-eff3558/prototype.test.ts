@@ -201,12 +201,12 @@ describe("EFF-3558 prototype", { concurrent: false }, () => {
       const user = bytes((detail.state as any)["~loader"]["users/GetUser"][0][2])
       const listSizes = measure(list.state)
       const detailSizes = measure(detail.state)
-      // The page is in the payload three times: the "requested" snapshot, the "shown" snapshot and ~loader.
-      assert.strictEqual(list.payload.split("user20@example.com").length - 1, 3)
+      // The page is in the payload twice: the Model's one snapshot and ~loader.
+      assert.strictEqual(list.payload.split("user20@example.com").length - 1, 2)
       assert.strictEqual(detail.payload.split("user1@example.com").length - 1, 2)
-      assert.isAbove(listSizes.models, 2 * page)
-      assert.isAbove(bytes(list.payload), 3 * page)
-      assert.isBelow(bytes(list.payload), 3 * page + 600)
+      assert.isAbove(listSizes.models, page)
+      assert.isAbove(bytes(list.payload), 2 * page)
+      assert.isBelow(bytes(list.payload), 2 * page + 600)
       assert.isBelow(bytes(detail.payload), 2 * user + 400)
       print("SSR state payload (20 users of 8 fields per page)", [
         `list page:   payload ${
@@ -219,8 +219,8 @@ describe("EFF-3558 prototype", { concurrent: false }, () => {
         } B = Models ${detailSizes.models} B + ~loader ${detailSizes.loader} B; one copy of the user is ${user} B; html ${
           bytes(detail.html)
         } B`,
-        `list page if Models referenced entries: about ${bytes(list.payload) - 2 * page} B (${
-          Math.round(100 * (1 - (bytes(list.payload) - 2 * page) / bytes(list.payload)))
+        `list page if Models referenced entries: about ${bytes(list.payload) - page} B (${
+          Math.round(100 * (1 - (bytes(list.payload) - page) / bytes(list.payload)))
         }% less)`,
         `gzipped: list payload ${gzipSync(list.payload).length} B (html ${
           gzipSync(list.html).length
@@ -318,15 +318,18 @@ describe("EFF-3558 prototype", { concurrent: false }, () => {
     ])
   })
 
-  it.effect("[SURPRISE] \"keep previous page\" works with two bindings without flashing only when the view prefers \"requested\": \"shown\" alone opens as Initial for one frame at every page change", () => {
+  it.effect("\"keep previous page\" with ONE snapshot field and h.previous: no frame goes back to loading, and a cached page shows with no intermediate frame", () => {
     const t = make()
     return Effect.gen(function*() {
-      const shownOf = (root: Root) => {
-        const shown = ListPage.loaded(root.model(), {}).shown
-        return `${shown._tag}${shown.waiting ? " waiting" : ""}`
+      const opened = (root: Root) => {
+        const loaded = ListPage.loaded(root.model(), {}).users
+        const previous = ListPage.previous(root.model(), {}).users
+        return `loaded ${loaded._tag}${loaded.waiting ? " waiting" : ""}, previous ${
+          Option.match(previous, { onNone: () => "None", onSome: (page) => `Some(page ${page.page + 1})` })
+        }`
       }
       const { root, frames } = yield* mount(ListPage, {}, {
-        describe: (root) => `${screen(root)}   {shown opens as ${shownOf(root)}}`
+        describe: (root) => `${screen(root)}   {${opened(root)}}`
       })
       yield* load
       t.api.hold("list")
@@ -344,24 +347,26 @@ describe("EFF-3558 prototype", { concurrent: false }, () => {
 
       const seen = distinct(frames)
       assert.deepStrictEqual(seen, [
-        "Loading users…   {shown opens as Initial waiting}",
-        "rows User 1..User 20 | Page 1 of 3   {shown opens as Success}",
-        "rows User 1..User 20 | Page 1 of 3 | Loading page 2…   {shown opens as Success}",
-        "rows User 21..User 40 | Page 2 of 3   {shown opens as Initial waiting}",
-        "rows User 21..User 40 | Page 2 of 3   {shown opens as Success}",
-        "rows User 21..User 40 | Page 2 of 3 | Loading page 3…   {shown opens as Success}",
-        "rows User 41..User 45 | Page 3 of 3   {shown opens as Initial waiting}",
-        "rows User 41..User 45 | Page 3 of 3   {shown opens as Success}",
-        "rows User 41..User 45 | Page 3 of 3 | Loading page 2…   {shown opens as Success}",
-        "rows User 21..User 40 | Page 2 of 3   {shown opens as Initial waiting}",
-        "rows User 21..User 40 | Page 2 of 3   {shown opens as Success}"
+        "Loading users…   {loaded Initial waiting, previous None}",
+        "rows User 1..User 20 | Page 1 of 3   {loaded Success, previous None}",
+        "rows User 1..User 20 | Page 1 of 3 | Loading page 2…   {loaded Initial waiting, previous Some(page 1)}",
+        "rows User 21..User 40 | Page 2 of 3   {loaded Success, previous None}",
+        "rows User 21..User 40 | Page 2 of 3 | Loading page 3…   {loaded Initial waiting, previous Some(page 2)}",
+        "rows User 41..User 45 | Page 3 of 3   {loaded Success, previous None}",
+        // Page 2 is in the cache: its value is folded before the render, so "Loading page 2…" never commits.
+        "rows User 21..User 40 | Page 2 of 3   {loaded Success, previous None}"
       ])
-      // What the user sees never goes back to the loading state.
       assert.isFalse(seen.slice(1).some((frame) => frame.startsWith("Loading users…")))
       // Three pages, three fetches: going back to page 2 used the cache.
       assert.deepStrictEqual(triggers(root), ["ListUsers:watch", "ListUsers:watch", "ListUsers:watch"])
       assert.strictEqual(t.api.calls.list, 3)
-      print("keep previous page, every committed frame", seen)
+      // One field, one message variant, one watch: the page is in the Model once.
+      assert.strictEqual(
+        JSON.stringify(Schema.encodeSync(Schema.toCodecJson(ListPage.model))(root.model()!)).split("user21@example.com")
+          .length - 1,
+        1
+      )
+      print("keep previous page (h.previous), every committed frame", seen)
     }).pipe(Effect.provide(t.layer))
   })
 
@@ -391,19 +396,19 @@ describe("EFF-3558 prototype", { concurrent: false }, () => {
           "RenameForm[rename] Save",
           "UserCard[card] UserChanged",
           "RenameForm[rename] UserChanged",
-          "ListPage[list] RequestedChanged",
-          "ListPage[list] ShownChanged"
+          "ListPage[list] UsersChanged"
         ]
       )
       yield* TestHost.settle
+      // Patched, and no fetch in flight: "Saving…" from h.patched, and no "Updating…".
       assert.deepStrictEqual(frames.slice(from), [
-        "rows Ada..User 20 | Page 1 of 3 | card Ada | ♥ 1 | input Ada | Updating… | Saving…"
+        "rows Ada..User 20 | Page 1 of 3 | card Ada | ♥ 1 | input Ada | Saving…"
       ])
       t.api.release("rename")
       yield* load
       yield* load
       assert.deepStrictEqual(distinct(frames.slice(from)), [
-        "rows Ada..User 20 | Page 1 of 3 | card Ada | ♥ 1 | input Ada | Updating… | Saving…",
+        "rows Ada..User 20 | Page 1 of 3 | card Ada | ♥ 1 | input Ada | Saving…",
         "rows Ada..User 20 | Page 1 of 3 | card Ada | ♥ 1 | input Ada"
       ])
       // The write covered GetUser, so only the list was fetched again.
@@ -437,8 +442,8 @@ describe("EFF-3558 prototype", { concurrent: false }, () => {
       yield* load
       yield* load
       assert.deepStrictEqual(distinct(frames.slice(from)), [
-        "card B | ♥ 1 | input B | Updating… | Saving…",
-        "card C | ♥ 1 | input C | Updating… | Saving…",
+        "card B | ♥ 1 | input B | Saving…",
+        "card C | ♥ 1 | input C | Saving…",
         "card C | ♥ 1 | input C"
       ])
       assert.strictEqual(t.api.users.get("1")!.name, "C")
@@ -449,7 +454,7 @@ describe("EFF-3558 prototype", { concurrent: false }, () => {
     }).pipe(Effect.provide(t.router()), Effect.provide(t.layer))
   })
 
-  it.effect("[SURPRISE] \"save then unmount\": the queued save never reaches the server, the list shows the old name before the saved one, and going back shows three names and a stuck \"Saving…\"", () => {
+  it.effect("\"save then unmount\" (decision 6): both saves reach the server after the form is gone, the list never shows the old name, and going back shows the saved name with no stuck \"Saving…\"", () => {
     const t = make()
     return Effect.gen(function*() {
       const { root, frames, mark } = yield* mount(App, { route: route("/") })
@@ -465,42 +470,102 @@ describe("EFF-3558 prototype", { concurrent: false }, () => {
       type(root, "C")
       submit(root)
       yield* TestHost.settle
-      assert.strictEqual(frames[frames.length - 1], "card C | ♥ 1 | input C | Updating… | Saving…")
+      assert.strictEqual(frames[frames.length - 1], "card C | ♥ 1 | input C | Saving…")
 
       // Navigate away with one save in flight and one queued.
       const left = mark()
       yield* go("/")
       yield* TestHost.settle
-      // Both runs ended with their instance: the patches are gone at once.
-      assert.strictEqual(root.cache.inspect(GetUser, { id: "1" }).patches, 0)
-      assert.strictEqual(name(root, "1"), "User 1")
-      t.api.resume("rename")
-      yield* load
-      yield* load
-      assert.deepStrictEqual(distinct(frames.slice(left)), [
-        "Loading users…",
-        "rows User 1..User 20 | Page 1 of 3",
-        "rows B..User 20 | Page 1 of 3"
+      // Both runs outlive the form: the patches stay, and `pending` lists the runs under the path they had.
+      assert.deepStrictEqual(root.cache.inspect(GetUser, { id: "1" }), {
+        exists: true,
+        watchers: 0,
+        fetching: false,
+        stale: false,
+        patches: 2
+      })
+      assert.deepStrictEqual(root.pending(), [
+        { path: "/App/DetailPage[user-1]/RenameForm[rename]", name: "users/RenameUser", status: "running" },
+        { path: "/App/DetailPage[user-1]/RenameForm[rename]", name: "users/RenameUser", status: "queued" }
       ])
-      // The first save reached the server. The second was still queued and is lost, with no message.
-      assert.deepStrictEqual([t.api.calls.rename, t.api.users.get("1")!.name], [1, "B"])
+      assert.strictEqual(t.api.calls.rename, 1)
+      t.api.release("rename")
+      yield* TestHost.settle
+      // The queue drained with no instance: the second request has left.
+      assert.deepStrictEqual([t.api.calls.rename, t.api.waiting("rename"), root.pending().length], [2, 1, 1])
+      t.api.release("rename")
+      yield* load
+      yield* load
+      assert.deepStrictEqual(distinct(frames.slice(left)), ["rows C..User 20 | Page 1 of 3"])
+      assert.deepStrictEqual([t.api.calls.rename, t.api.users.get("1")!.name], [2, "C"])
+      assert.deepStrictEqual(root.pending(), [])
+      // Neither `Saved` reached anyone.
+      assert.isFalse(root.log().some((entry: any) => entry.message?._tag === "Saved"))
+      assert.deepStrictEqual(triggers(root), ["ListUsers:watch", "GetUser:watch", "ListUsers:invalidation"])
 
       // A later revisit, by the back button.
       const back = mark()
       t.history.go(-1)
       yield* load
       yield* load
-      assert.deepStrictEqual(distinct(frames.slice(back)), [
-        // The Model saved at the push: the optimistic name of a save that never happened, and its counter.
-        "card C | ♥ 1 | input C | Saving…",
-        // The cache's entry, last fetched before either save.
-        "card User 1 | ♥ 1 | input User 1 | Updating… | Saving…",
-        "card B | ♥ 1 | input B | Saving…"
-      ])
-      // No Command is running: "Saving…" never goes away.
-      assert.deepStrictEqual(root.pending(), [])
+      // The Model saved at the push was taken under a patch (the trailing 1), so it seeds nothing and opens
+      // empty. The cache still holds the entry the saves wrote, and its value is folded before the render.
+      assert.isTrue(JSON.stringify(t.history.states()[1]).includes("\"name\":\"C\""))
+      assert.isTrue(/"likes":1\},\d+,1\]/.test(JSON.stringify(t.history.states()[1])))
+      assert.deepStrictEqual(distinct(frames.slice(back)), ["card C | ♥ 1 | input C"])
+      assert.deepStrictEqual(triggers(root), ["ListUsers:watch", "GetUser:watch", "ListUsers:invalidation"])
       print("save then unmount: the list after leaving", distinct(frames.slice(left, back)))
       print("save then unmount: back to the detail page", distinct(frames.slice(back)))
+    }).pipe(Effect.provide(t.router()), Effect.provide(t.layer))
+  })
+
+  it.effect("the Architect flow (decision 10): rename on the detail page, wait for success, go back: the list never shows the old name", () => {
+    const t = make()
+    return Effect.gen(function*() {
+      const { root, frames, mark } = yield* mount(App, { route: route("/") })
+      yield* load
+      yield* go("/users/1")
+      yield* load
+      click(root, "Rename")
+      yield* load
+      type(root, "Ada")
+      submit(root)
+      yield* load
+      yield* load
+      // The save succeeded. Nobody watches the list, so its invalidation fetched nothing: the entry is stale,
+      // holds the old page, and keeps the rename's patch.
+      assert.strictEqual(t.api.users.get("1")!.name, "Ada")
+      assert.strictEqual(frames[frames.length - 1], "card Ada | ♥ 1 | input Ada")
+      assert.deepStrictEqual(root.cache.inspect(ListUsers, { page: 0 }), {
+        exists: true,
+        watchers: 0,
+        fetching: false,
+        stale: true,
+        patches: 1
+      })
+      assert.deepStrictEqual(triggers(root), ["ListUsers:watch", "GetUser:watch"])
+
+      const back = mark()
+      t.history.go(-1)
+      yield* TestHost.settle
+      // The first frame after back: the history snapshot says "User 1", and the entry's patched value is
+      // folded over it before the render.
+      assert.isTrue(JSON.stringify(t.history.states()[0]).includes("\"name\":\"User 1\""))
+      assert.deepStrictEqual(frames.slice(back), ["rows Ada..User 20 | Page 1 of 3"])
+      assert.deepStrictEqual(root.cache.inspect(ListUsers, { page: 0 }), {
+        exists: true,
+        watchers: 1,
+        fetching: true,
+        stale: true,
+        patches: 1
+      })
+      yield* load
+      yield* load
+      assert.deepStrictEqual(distinct(frames.slice(back)), ["rows Ada..User 20 | Page 1 of 3"])
+      assert.isFalse(frames.slice(back).some((frame) => frame.includes("rows User 1..")))
+      assert.strictEqual(root.cache.inspect(ListUsers, { page: 0 }).patches, 0)
+      assert.deepStrictEqual(triggers(root), ["ListUsers:watch", "GetUser:watch", "ListUsers:watch"])
+      print("Architect flow: back to the list after a confirmed rename", distinct(frames.slice(back)))
     }).pipe(Effect.provide(t.router()), Effect.provide(t.layer))
   })
 
@@ -529,6 +594,9 @@ describe("EFF-3558 prototype", { concurrent: false }, () => {
       yield* load
       yield* load
       assert.deepStrictEqual(distinct(frames.slice(from)), [
+        // The patch alone: not waiting.
+        "card User 1 | ♥ 2",
+        // The edge's fetch, started once the like was answered.
         "card User 1 | ♥ 2 | Updating…",
         "card User 1 | ♥ 2"
       ])
@@ -539,7 +607,7 @@ describe("EFF-3558 prototype", { concurrent: false }, () => {
     }).pipe(Effect.provide(t.router()), Effect.provide(t.layer))
   })
 
-  it.effect("[SURPRISE] \"two concurrent renames answered out of order\": ends on the server's name, but shows the older answer for the length of a refetch", () => {
+  it.effect("\"two concurrent renames answered out of order\" (decision 9): the older answer is never shown", () => {
     const t = make()
     return Effect.gen(function*() {
       const { root, frames, mark } = yield* mount(TwoForms, {})
@@ -560,24 +628,26 @@ describe("EFF-3558 prototype", { concurrent: false }, () => {
       assert.strictEqual(name(root, "1"), "C")
       t.api.release("rename", 0)
       yield* TestHost.settle
-      // B's answer is written over C's and shown, stale, while the refetch it triggers runs.
-      assert.strictEqual(name(root, "1"), "B")
+      // B's answer is skipped: C, issued later, already reached the entry. Both patches are held through
+      // the confirming refetch.
+      assert.strictEqual(name(root, "1"), "C")
       assert.deepStrictEqual(root.cache.inspect(GetUser, { id: "1" }), {
         exists: true,
         watchers: 3,
         fetching: true,
         stale: true,
-        patches: 0
+        patches: 2
       })
       yield* load
       yield* load
       assert.deepStrictEqual(distinct(frames.slice(from)).map((frame) => frame.replace(/ \| input \w+/g, "")), [
-        "card B | ♥ 1 | Updating… | Saving…",
+        // Two "Saving…": h.patched is about the entry, so each form shows it for the other's save too.
+        "card B | ♥ 1 | Saving… | Saving…",
+        "card C | ♥ 1 | Saving… | Saving…",
         "card C | ♥ 1 | Updating… | Saving… | Saving…",
-        "card C | ♥ 1 | Updating… | Saving…",
-        "card B | ♥ 1 | Updating…",
         "card C | ♥ 1"
       ])
+      assert.isFalse(frames.slice(from + 1).some((frame) => frame.startsWith("card B")))
       assert.deepStrictEqual(triggers(root), ["GetUser:watch", "GetUser:invalidation"])
       print("two concurrent renames answered out of order", distinct(frames.slice(from)))
     }).pipe(Effect.provide(t.layer))
@@ -632,7 +702,7 @@ describe("EFF-3558 prototype", { concurrent: false }, () => {
     }).pipe(Effect.provide(t.router()), Effect.provide(t.layer))
   })
 
-  it.effect("[SURPRISE] an instance that starts watching an entry the cache already holds commits one frame of \"Loading\" first (TestHost)", () => {
+  it.effect("decision 2: an instance that starts watching an entry the cache already holds never commits a \"Loading\" frame (TestHost)", () => {
     const t = make()
     return Effect.gen(function*() {
       const { root, frames, mark } = yield* mount(App, { route: route("/") })
@@ -647,21 +717,20 @@ describe("EFF-3558 prototype", { concurrent: false }, () => {
       click(root, "Rename")
       yield* load
       assert.deepStrictEqual(distinct(frames.slice(from)), [
-        "Loading user…",
         "card User 1 | ♥ 1",
-        "Loading… | card User 1 | ♥ 1",
         "card User 1 | ♥ 1 | input User 1"
       ])
+      assert.isFalse(frames.slice(from).some((frame) => frame.includes("Loading")))
       const back = mark()
       yield* go("/")
       yield* load
-      assert.deepStrictEqual(distinct(frames.slice(back)), ["Loading users…", "rows User 1..User 20 | Page 1 of 3"])
+      assert.deepStrictEqual(distinct(frames.slice(back)), ["rows User 1..User 20 | Page 1 of 3"])
       // Nothing was fetched for any of it.
       assert.deepStrictEqual(triggers(root), ["ListUsers:watch", "GetUser:watch"])
     }).pipe(Effect.provide(t.router()), Effect.provide(t.layer))
   })
 
-  it.live("[SURPRISE] on BrowserHost that \"Loading\" frame outlives the microtask queue, so the browser can paint it", () => {
+  it.live("decision 2 on BrowserHost: the form is in the DOM after the click's microtasks, with no \"Loading\" in between", () => {
     const t = make("/", { live: true, latency: 5 })
     return Effect.gen(function*() {
       const app = yield* Effect.acquireRelease(
@@ -671,6 +740,10 @@ describe("EFF-3558 prototype", { concurrent: false }, () => {
       yield* BrowserHost.mount(DetailPage, { id: "1" }, app)
       yield* sleep(40)
       assert.strictEqual(app.querySelector("h2")!.textContent, "User 1")
+      // Every DOM state from the click on, recorded as it changes.
+      const seen: Array<string> = []
+      const observer = new MutationObserver(() => seen.push(app.textContent ?? ""))
+      observer.observe(app, { childList: true, subtree: true, characterData: true })
       HtmlQuery.click(HtmlQuery.getByRole(app, "button", { name: "Rename" }))
       // Run every microtask, and nothing else.
       const afterMicrotasks = yield* Effect.callback<string>((resume) => {
@@ -678,9 +751,12 @@ describe("EFF-3558 prototype", { concurrent: false }, () => {
         const step = () => left-- > 0 ? queueMicrotask(step) : resume(Effect.succeed(app.textContent ?? ""))
         queueMicrotask(step)
       })
-      assert.isTrue(afterMicrotasks.includes("Loading…"))
-      assert.strictEqual(app.querySelector("form"), null)
+      assert.isFalse(afterMicrotasks.includes("Loading"))
+      assert.notStrictEqual(app.querySelector("form"), null)
+      assert.strictEqual((app.querySelector("input") as HTMLInputElement).value, "User 1")
       yield* sleep(20)
+      observer.disconnect()
+      assert.isFalse(seen.some((text) => text.includes("Loading")))
       assert.notStrictEqual(app.querySelector("form"), null)
       assert.strictEqual(t.api.calls.get, 1)
     }).pipe(Effect.provide(Layer.provide(appLayer, t.api.layer)), Effect.scoped)
@@ -709,13 +785,13 @@ describe("EFF-3558 prototype", { concurrent: false }, () => {
           (root.cache.peek(ListUsers, { page: 0 }) as any).value
         )
       )
-      // No ~loader in history.state, but the list page's two bindings store the page twice.
-      assert.isAbove(list!, 2 * page)
-      assert.isBelow(list!, 2 * page + 400)
+      // No ~loader in history.state, and one snapshot field: the page is stored once.
+      assert.isAbove(list!, page)
+      assert.isBelow(list!, page + 400)
       assert.isBelow(detail!, 700)
-      assert.strictEqual(JSON.stringify(t.history.states()[0]).split("user20@example.com").length - 1, 2)
+      assert.strictEqual(JSON.stringify(t.history.states()[0]).split("user20@example.com").length - 1, 1)
       print("history.state per push", [
-        `leaving the list page (20 users):           ${list} B, of which the page twice is ${2 * page} B`,
+        `leaving the list page (20 users):           ${list} B, of which the page once is ${page} B`,
         `leaving the detail page (card + open form): ${detail} B`,
         `leaving the list page with a card open:     ${listWithCard} B`
       ])
@@ -724,8 +800,8 @@ describe("EFF-3558 prototype", { concurrent: false }, () => {
 
   for (const outcome of ["succeeding", "failing"] as const) {
     const title = outcome === "succeeding"
-      ? "\"back after the entry was collected with the fetch succeeding (data on screen, waiting: false, live fetch)\""
-      : "\"and with it failing (data flips to a bare Failure)\""
+      ? "\"back after the entry was collected with the fetch succeeding\" (decision 8: data on screen, waiting: true)"
+      : "\"and with it failing\" (decision 8: the Failure keeps the data as previousSuccess)"
     it.effect(`cold restore, ${title}`, () => {
       const t = make("/users/1")
       return Effect.gen(function*() {
@@ -742,8 +818,8 @@ describe("EFF-3558 prototype", { concurrent: false }, () => {
         const from = mark()
         t.history.go(-1)
         yield* TestHost.settle
-        // The first frame: the data saved at the push, not marked as waiting, with the fetch in flight.
-        assert.deepStrictEqual(frames.slice(from), ["card User 1 | ♥ 1"])
+        // The first frame: the data saved at the push, seeded into the cold entry as stale, so it is waiting.
+        assert.deepStrictEqual(frames.slice(from), ["card User 1 | ♥ 1 | Updating…"])
         assert.deepStrictEqual(root.cache.inspect(GetUser, { id: "1" }), {
           exists: true,
           watchers: 1,
@@ -751,17 +827,25 @@ describe("EFF-3558 prototype", { concurrent: false }, () => {
           stale: true,
           patches: 0
         })
-        assert.strictEqual(root.cache.peek(GetUser, { id: "1" })._tag, "Initial")
+        const seeded = root.cache.peek(GetUser, { id: "1" })
+        assert.deepStrictEqual([seeded._tag, seeded.waiting], ["Success", true])
         yield* load
         const result = root.cache.peek(GetUser, { id: "1" })
         if (outcome === "succeeding") {
-          assert.deepStrictEqual(distinct(frames.slice(from)), ["card User 1 | ♥ 1", "card Renamed since | ♥ 1"])
+          assert.deepStrictEqual(distinct(frames.slice(from)), [
+            "card User 1 | ♥ 1 | Updating…",
+            "card Renamed since | ♥ 1"
+          ])
           assert.strictEqual(result._tag, "Success")
         } else {
-          assert.deepStrictEqual(distinct(frames.slice(from)), ["card User 1 | ♥ 1", "This user doesn't exist."])
+          // The app's card shows a Failure as "doesn't exist" whatever it holds. The data is still there.
+          assert.deepStrictEqual(distinct(frames.slice(from)), [
+            "card User 1 | ♥ 1 | Updating…",
+            "This user doesn't exist."
+          ])
           assert.isTrue(AsyncResult.isFailure(result))
           if (AsyncResult.isFailure(result)) {
-            assert.isTrue(Option.isNone(result.previousSuccess))
+            assert.strictEqual(Option.getOrThrow(result.previousSuccess).value.name, "User 1")
             assert.deepStrictEqual(Cause.squash(result.cause), new UserNotFound({ id: "1" }))
           }
         }

@@ -52,6 +52,7 @@
  * @since 4.1.3
  */
 import * as Layer from "../Layer.ts"
+import type * as Option from "../Option.ts"
 import * as Pipeable from "../Pipeable.ts"
 import * as Predicate from "../Predicate.ts"
 import type * as AsyncResult from "../reactivity/AsyncResult.ts"
@@ -332,6 +333,10 @@ export interface Component<
   readonly layerFailure: ((failure: AsyncResult.Failure<never, any>) => Msg) | undefined
   /** PROTOTYPE (EFF-3558). What the view reads as `h.loaded` for this Model and props. */
   readonly loaded: (model: Model, props: Props) => Loaded<Model>
+  /** PROTOTYPE (EFF-3558). What the view reads as `h.previous`. */
+  readonly previous: (model: Model, props: Props) => Previous<Model>
+  /** PROTOTYPE (EFF-3558). What the view reads as `h.patched`. */
+  readonly patched: (model: Model, props: Props) => Patched<Model>
   readonly "~V"?: V
 }
 
@@ -397,6 +402,32 @@ export type Loaded<Model> = {
     Loader.ErrorOf<ReadOf<Model[K]>>
   >
 }
+
+/**
+ * `h.previous` in `view` ("keep previous", EFF-3558 resolution #3): per snapshot
+ * field, the value the snapshot still holds for *another* key. `Some` only while
+ * the loader is enabled and its current args are not the snapshot's, so it is
+ * `None` whenever `h.loaded` has the stored result. A stored Failure gives its
+ * previous Success.
+ *
+ * @stability experimental
+ * @category utility types
+ * @since 4.1.3
+ */
+export type Previous<Model> = {
+  readonly [K in SnapshotFields<Model>]: Option.Option<Loader.SuccessOf<ReadOf<Model[K]>>>
+}
+
+/**
+ * `h.patched` in `view` (EFF-3558 resolution #7): per snapshot field, whether
+ * the value in `h.loaded` includes an optimistic patch the server hasn't
+ * confirmed. `waiting` on the result is only "a fetch is in flight".
+ *
+ * @stability experimental
+ * @category utility types
+ * @since 4.1.3
+ */
+export type Patched<Model> = { readonly [K in SnapshotFields<Model>]: boolean }
 
 /**
  * The `loaders` of `make`: per snapshot field, the args of its read.
@@ -598,7 +629,11 @@ export const make = <
         h:
           & View.Helper<Msg, Props>
           & View.Tags<V, Msg>
-          & ([SnapshotFields<Model>] extends [never] ? {} : { readonly loaded: Loaded<Model> })
+          & ([SnapshotFields<Model>] extends [never] ? {} : {
+            readonly loaded: Loaded<Model>
+            readonly previous: Previous<Model>
+            readonly patched: Patched<Model>
+          })
       ) => UV
       readonly head?: ((model: Model) => ReadonlyArray<Head.Entry>) | undefined
       readonly elements?: View.Vocabulary<V> | undefined
@@ -652,7 +687,12 @@ export const make = <
     view: (model: Model, props: Props) => {
       const h = View.makeHelper<Msg, Props, V>(props, options.elements ?? View.registeredElements())
       // An own property, so it wins over a vocabulary element named `loaded`. Only set when there are snapshot fields.
-      if (bound !== undefined) (h as any).loaded = bound.context(model, props).loaded
+      if (bound !== undefined) {
+        const context = bound.context(model, props)
+        ;(h as any).loaded = context.loaded
+        ;(h as any).previous = context.previous
+        ;(h as any).patched = context.patched
+      }
       return view(model, h)
     },
     subscriptions: subscriptions === undefined
@@ -661,6 +701,8 @@ export const make = <
       ? (model: Model, props: Props) => subscriptions(model, props).filter((entry): entry is S => !!entry)
       : (model: Model, props: Props) => bound.expand(subscriptions(model, props, bound.context(model, props).watch)),
     loaded: (model: Model, props: Props) => bound === undefined ? noSnapshots : bound.context(model, props).loaded,
+    previous: (model: Model, props: Props) => bound === undefined ? noSnapshots : bound.context(model, props).previous,
+    patched: (model: Model, props: Props) => bound === undefined ? noSnapshots : bound.context(model, props).patched,
     head: options.head,
     elements: () => options.elements ?? View.registeredElements(),
     layer: undefined,
