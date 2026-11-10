@@ -315,13 +315,18 @@ export declare namespace Service {
  *   holds reaches the Schema as it was passed: a nested struct, a union, a
  *   class, a record, a tuple, an `Option` or a collection. So do arguments
  *   that are not a struct, such as a `Schema.Class` or a union.
- * - Everywhere else the JSON encoding decides, and it encodes `undefined` as
- *   `null`. So `{ filter: { page: undefined } }` and `{ filter: {} }` are two
- *   entries. Where the type allows both, `{ filter: { page: undefined } }`
- *   and `{ filter: { page: null } }` are one entry, and the later call gets
- *   the data of the earlier one. The same goes for a required key, a record's
- *   value and a tuple's element. When the fetcher tells the two apart, give
- *   the value an encoding that does.
+ * - Everywhere else the Schema's encoding decides. The default JSON encoding
+ *   of a type that allows both `undefined` and `null` encodes both as
+ *   `null`. So for a nested `page: Schema.optional(Schema.NullOr(Schema.Number))`,
+ *   `{ filter: { page: undefined } }` and `{ filter: { page: null } }` are
+ *   one entry, and the later call gets the data of the earlier one.
+ *   `{ filter: {} }` is another entry. The same goes for a required key, a
+ *   record's value and a tuple's element of such a type.
+ * - That is what those encodings do, and other Schemas differ. What
+ *   `Schema.Any` holds is not encoded, and there an `undefined` property is
+ *   the same as a missing one. A value whose own encoding tells `undefined`
+ *   from `null` gets two entries. When the fetcher tells the two apart, give
+ *   the value such an encoding.
  * - The property's type decides whether `undefined` is allowed, so a
  *   `Schema.optionalKey(Schema.Number)` property rejects it. A type made with
  *   `Schema.declare` is not asked: under `Schema.optionalKey` its `undefined`
