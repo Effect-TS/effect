@@ -1703,6 +1703,7 @@ describe("OpenAiLanguageModel", () => {
           object: "chat.completion.chunk",
           model: "gpt-4o-mini",
           created: 1,
+          service_tier: null,
           choices: [{ index: 0, delta, finish_reason: null }]
         })
 
@@ -1711,6 +1712,7 @@ describe("OpenAiLanguageModel", () => {
             HttpClient.HttpClient,
             makeHttpClient((request) =>
               Effect.succeed(sseResponse(request, [
+                { ...chunk({ role: "assistant" }), service_tier: "priority" },
                 chunk({ content: "Hello", role: null }),
                 chunk({
                   tool_calls: [{
@@ -1718,16 +1720,20 @@ describe("OpenAiLanguageModel", () => {
                     id: "call_1",
                     type: "function",
                     extra_content: extraContent,
-                    function: { name: "TestTool", arguments: "" }
+                    function: { name: "TestTool", arguments: null }
                   }]
                 }),
                 chunk({
                   tool_calls: [{
                     index: 0,
                     id: null,
+                    type: null,
                     extra_content: null,
                     function: { name: null, arguments: "{\"in" }
                   }]
+                }),
+                chunk({
+                  tool_calls: [{ index: 0, id: null, function: { name: null, arguments: null } }]
                 }),
                 chunk({
                   tool_calls: [{ index: 0, id: null, function: { name: null, arguments: "put\":\"hel" } }]
@@ -1766,6 +1772,10 @@ describe("OpenAiLanguageModel", () => {
           .join("")
         const toolCall = parts.find((part) => part.type === "tool-call")
 
+        const finish = parts.find((part) => part.type === "finish")
+
+        assert.strictEqual(finish?.reason, "tool-calls")
+        assert.deepStrictEqual(finish?.metadata["openai-compat"], { serviceTier: "priority" })
         assert.strictEqual(text, "Hello")
         assert.isDefined(toolCall)
         if (toolCall?.type !== "tool-call") {
@@ -1774,75 +1784,6 @@ describe("OpenAiLanguageModel", () => {
         assert.strictEqual(toolCall.id, "call_1")
         assert.deepStrictEqual(toolCall.params, { input: "hello" })
         assert.deepStrictEqual(toolCall.metadata["openai-compat"] as unknown, { itemId: "call_1", extraContent })
-      }))
-
-    it.effect("keeps stream chunks with null service_tier and tool call fields", () =>
-      Effect.gen(function*() {
-        const chunk = (delta: Record<string, unknown>, finish_reason: string | null = null) => ({
-          id: "chatcmpl_null_fields",
-          object: "chat.completion.chunk",
-          model: "gpt-4o-mini",
-          created: 1,
-          service_tier: null,
-          choices: [{ index: 0, delta, finish_reason }]
-        })
-
-        const layer = OpenAiClient.layer({ apiKey: Redacted.make("sk-test-key") }).pipe(
-          Layer.provide(Layer.succeed(
-            HttpClient.HttpClient,
-            makeHttpClient((request) =>
-              Effect.succeed(sseResponse(request, [
-                chunk({ role: "assistant", content: "Hel" }),
-                chunk({ content: "lo" }),
-                chunk({
-                  tool_calls: [{
-                    index: 0,
-                    id: "call_1",
-                    type: "function",
-                    function: { name: "TestTool", arguments: null }
-                  }]
-                }),
-                chunk({
-                  tool_calls: [{
-                    index: 0,
-                    id: null,
-                    type: null,
-                    function: { name: null, arguments: "{\"input\":\"hello\"}" }
-                  }]
-                }),
-                chunk({}, "tool_calls"),
-                "[DONE]"
-              ]))
-            )
-          ))
-        )
-
-        const parts = yield* LanguageModel.streamText({
-          prompt: "use the tool",
-          toolkit: TestToolkit,
-          disableToolCallResolution: true
-        }).pipe(
-          Stream.runCollect,
-          Effect.provide(OpenAiLanguageModel.model("gpt-4o-mini")),
-          Effect.provide(TestToolkitLayer),
-          Effect.provide(layer)
-        )
-
-        const text = parts
-          .filter((part) => part.type === "text-delta")
-          .map((part) => part.delta)
-          .join("")
-        const toolCall = parts.find((part) => part.type === "tool-call")
-        const finish = parts.find((part) => part.type === "finish")
-
-        assert.strictEqual(text, "Hello")
-        assert.isDefined(toolCall)
-        if (toolCall?.type !== "tool-call") {
-          return
-        }
-        assert.strictEqual(toolCall.id, "call_1")
-        assert.deepStrictEqual(toolCall.params, { input: "hello" })
-        assert.strictEqual(finish?.type === "finish" ? finish.reason : undefined, "tool-calls")
       }))
 
     it.effect("decodes streamed tool call params with the OpenAI codec", () =>
