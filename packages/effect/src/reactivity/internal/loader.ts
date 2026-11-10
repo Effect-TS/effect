@@ -12,7 +12,7 @@ import * as Duration from "../../Duration.ts"
 import * as Effect from "../../Effect.ts"
 import * as Equal from "../../Equal.ts"
 import * as Exit from "../../Exit.ts"
-import type * as Fiber from "../../Fiber.ts"
+import * as Fiber from "../../Fiber.ts"
 import { redactAST } from "../../internal/schemaRedact.ts"
 import * as Option from "../../Option.ts"
 import * as Schema from "../../Schema.ts"
@@ -35,15 +35,20 @@ const BuildTypeId = "~effect/reactivity/Loader/Build"
 // Keys
 // -----------------------------------------------------------------------------
 
-// Names the kind of a leaf, never its value: a key can hold a secret.
-const kindOf = (leaf: unknown): string =>
-  typeof leaf === "number"
-    ? "a non-finite number"
-    : typeof leaf === "object" || typeof leaf === "function"
-    ? Object.prototype.toString.call(leaf)
-    : typeof leaf === "undefined"
-    ? "undefined in an array"
-    : "a " + typeof leaf
+// A fixed name for the kind of a leaf. Never its value, nor anything the value can set, such as its string tag: a
+// key can hold a secret.
+const kindOf = (leaf: unknown): string => {
+  switch (typeof leaf) {
+    case "number":
+      return "a non-finite number"
+    case "undefined":
+      return "undefined"
+    case "object":
+      return "a class instance"
+    default:
+      return "a " + typeof leaf
+  }
+}
 
 class NonJsonLeaf {
   readonly kind: string
@@ -333,6 +338,8 @@ export interface Build {
   readonly fetcher: Fetcher
   closed: boolean
   readonly listeners: Set<(build: Build) => void>
+  /** The fetches running under this build, in any cache, until their cleanup has finished. */
+  readonly fibers: Set<Fiber.Fiber<any, any>>
 }
 
 /**
@@ -343,22 +350,27 @@ export interface Build {
  */
 export const makeBuild = (fetcher: Fetcher): Build => {
   const wrapped: Fetcher = (args) => fetcher(args)
-  const build: Build = { fetcher: wrapped, closed: false, listeners: new Set() }
+  const build: Build = { fetcher: wrapped, closed: false, listeners: new Set(), fibers: new Set() }
   Object.defineProperty(wrapped, BuildTypeId, { value: build })
   return build
 }
 
 /**
  * Closes a build: every cache that used it restarts or reverts its fetches.
+ * It ends when every fetch that ran under the build has finished its cleanup,
+ * so a build's finalizer that runs this first releases nothing a fetch still
+ * uses.
  *
  * @internal
  */
-export const closeBuild = (build: Build): void => {
-  if (build.closed) return
-  build.closed = true
-  for (const listener of Array.from(build.listeners)) listener(build)
-  build.listeners.clear()
-}
+export const closeBuild = (build: Build): Effect.Effect<void> =>
+  Effect.suspend(() => {
+    if (build.closed) return Effect.void
+    build.closed = true
+    for (const listener of Array.from(build.listeners)) listener(build)
+    build.listeners.clear()
+    return Fiber.interruptAll(build.fibers)
+  })
 
 // -----------------------------------------------------------------------------
 // Cache: the internal API
@@ -532,6 +544,9 @@ export const makeCache = (options: {
   const attached = new Set<Build>()
   const fetchListeners = new Set<(event: FetchEvent) => void>()
   const timers = new Set<Fiber.Fiber<any, any>>()
+  // Every fetch fiber until its cleanup has finished, and per entry the interrupted one its next fetch waits for.
+  const fetchFibers = new Set<Fiber.Fiber<any, any>>()
+  const draining = new Map<string, Fiber.Fiber<any, any>>()
   let disposed = false
 
   const now = (): number => clock.currentTimeMillisUnsafe()
@@ -627,6 +642,7 @@ export const makeCache = (options: {
       if (byKey.size === 0) index.delete(entry.def.name)
     }
   }
+  const drainKey = (entry: Entry): string => quote(entry.def.name) + entry.argsKey
   const logKeyOf = (entry: Entry): string => entry.logKey ??= entry.def.logKey(entry.args, entry.argsKey)
 
   // -- builds -----------------------------------------------------------------
@@ -635,7 +651,7 @@ export const makeCache = (options: {
     if (build === undefined) {
       build = fakeBuilds.get(fetcher)
       if (build === undefined) {
-        build = { fetcher, closed: false, listeners: new Set() }
+        build = { fetcher, closed: false, listeners: new Set(), fibers: new Set() }
         fakeBuilds.set(fetcher, build)
       }
       return build
@@ -833,16 +849,34 @@ export const makeCache = (options: {
         }
       }
     }
-    // The fetcher never starts inside the call that asked for it.
-    const fiber = runFork(Effect.andThen(Effect.yieldNow, Effect.suspend(() => build.fetcher(entry.args))))
+    // The fetcher never starts inside the call that asked for it, nor before the fetch it replaces has finished
+    // its cleanup. The wait is uninterruptible, so a chain of restarts still ends in order.
+    const key = drainKey(entry)
+    const previous = draining.get(key)
+    const fiber = runFork(Effect.andThen(
+      previous === undefined ? Effect.yieldNow : Effect.uninterruptible(Fiber.await(previous)),
+      Effect.suspend(() => build.fetcher(entry.args))
+    ))
     fetch.fiber = fiber
-    fiber.addObserver((exit) => onFetchExit(entry, fetch, exit))
+    fetchFibers.add(fiber)
+    build.fibers.add(fiber)
+    fiber.addObserver((exit) => {
+      fetchFibers.delete(fiber)
+      build.fibers.delete(fiber)
+      if (draining.get(key) === fiber) draining.delete(key)
+      onFetchExit(entry, fetch, exit)
+    })
     emit(entry)
   }
-  /** Interrupts the fetch without settling anything. The caller restarts or reverts. */
+  /**
+   * Interrupts the fetch without settling anything, and without waiting for its cleanup: the entry's next fetch,
+   * the build's close and the cache's disposal wait for that. The caller restarts or reverts.
+   */
   const dropFetch = (entry: Entry, fetch: FetchRec): void => {
     entry.fetch = undefined
-    fetch.fiber?.interruptUnsafe()
+    if (fetch.fiber === undefined) return
+    draining.set(drainKey(entry), fetch.fiber)
+    fetch.fiber.interruptUnsafe()
   }
   /** One fetch per entry: a caller that finds one in flight joins it. */
   const ensureFetch = (entry: Entry, trigger: Trigger, build: Build): void => {
@@ -879,7 +913,10 @@ export const makeCache = (options: {
     entry.interval = undefined
     scheduleInterval(entry)
   }
-  /** A fetch ended with nothing to store and nothing to restart it: the entry keeps its previous state. */
+  /**
+   * A fetch ended with nothing to store and nothing to restart it: the entry keeps its previous state, its
+   * freshness included. Only a defect marks the previous Success stale.
+   */
   const revert = (entry: Entry): void => {
     resumeWaiters(entry, Exit.interrupt())
     emit(entry)
@@ -1105,7 +1142,7 @@ export const makeCache = (options: {
 
   Effect.runSync(Scope.addFinalizer(
     options.scope,
-    Effect.sync(() => {
+    Effect.suspend(() => {
       disposed = true
       offVisibility()
       offConnectivity()
@@ -1117,6 +1154,8 @@ export const makeCache = (options: {
       }
       for (const fiber of Array.from(timers)) fiber.interruptUnsafe()
       timers.clear()
+      // Disposal ends when every fetch has finished its cleanup.
+      return Fiber.interruptAll(fetchFibers)
     })
   ))
 

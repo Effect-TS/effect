@@ -196,7 +196,8 @@ export interface Service<
   /**
    * The fetcher's Layer. It requires what the fetcher captured. A fetch runs
    * under the build that asked for it, and is interrupted when that build's
-   * Scope closes.
+   * Scope closes. The close waits for the fetch's cleanup before it releases
+   * what the fetcher captured.
    */
   readonly layer: Layer.Layer<Self, LE, LR>
   /**
@@ -382,7 +383,7 @@ export const Service: <Self>() => <
       Effect.gen(function*() {
         const scope = yield* Effect.scope
         const build = internal.makeBuild(yield* fetcher)
-        yield* Scope.addFinalizer(scope, Effect.sync(() => internal.closeBuild(build)))
+        yield* Scope.addFinalizer(scope, internal.closeBuild(build))
         return build.fetcher
       })
     )
@@ -694,7 +695,8 @@ export class Cache extends Context.Service<Cache, {
  * `idleTimeToLive` is how long an entry stays once nothing watches it, 5
  * minutes by default; a read can override it. The cache takes `Visibility`,
  * `Connectivity`, `Problems` and the `Clock` from where the Layer is built,
- * and is disposed with the Layer's Scope: fetches in flight are interrupted.
+ * and is disposed with the Layer's Scope: fetches in flight are interrupted,
+ * and the close waits for their cleanup.
  *
  * **Gotchas**
  *

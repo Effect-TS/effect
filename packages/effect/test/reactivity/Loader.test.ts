@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Cause, Effect, Exit, Fiber, Layer, Option, Redacted, Schema, Scope, Stream } from "effect"
+import { Cause, Effect, Exit, Fiber, Latch, Layer, Option, Redacted, Schema, Scope, Stream } from "effect"
 import type { Duration } from "effect"
 import { AsyncResult, Loader } from "effect/reactivity"
 import * as internal from "effect/reactivity/internal/loader"
@@ -374,6 +374,102 @@ describe("Loader", () => {
     }).pipe(Effect.provide(TestLoader.layer()))
   })
 
+  // The cleanups below wait on a Latch the test opens, so the order of events is the test's to set.
+  it.effect("a fetch finishes its cleanup before its restart begins and before its build's resources are released", () => {
+    const events: Array<string> = []
+    const cleanup = Latch.makeUnsafe()
+    class Slow extends Loader.Service<Slow>()(
+      "Slow",
+      {
+        args: {},
+        success: Schema.Number,
+        error: Schema.Never,
+        staleTime: 0
+      },
+      Effect.gen(function*() {
+        yield* Effect.addFinalizer(() => Effect.sync(() => events.push("resource released")))
+        return () =>
+          Effect.sync(() => events.push("fetch started")).pipe(
+            Effect.andThen(Effect.never),
+            Effect.ensuring(Effect.andThen(cleanup.await, Effect.sync(() => events.push("fetch cleaned up"))))
+          )
+      })
+    ) {}
+    return Effect.gen(function*() {
+      const scope = yield* Scope.make()
+      const build = yield* Layer.buildWithScope(Slow.layer, scope)
+      yield* Slow.prefetch({}).pipe(Effect.provideContext(build))
+      yield* flush
+      yield* Slow.invalidate({})
+      yield* flush
+      assert.deepStrictEqual(events, ["fetch started"])
+      yield* cleanup.open
+      yield* flush
+      assert.deepStrictEqual(events, ["fetch started", "fetch cleaned up", "fetch started"])
+
+      yield* cleanup.close
+      const closing = yield* Effect.forkScoped(Scope.close(scope, Exit.void))
+      yield* flush
+      assert.deepStrictEqual(events, ["fetch started", "fetch cleaned up", "fetch started"])
+      yield* cleanup.open
+      yield* Fiber.join(closing)
+      assert.deepStrictEqual(events, [
+        "fetch started",
+        "fetch cleaned up",
+        "fetch started",
+        "fetch cleaned up",
+        "resource released"
+      ])
+    }).pipe(Effect.provide(TestLoader.layer()))
+  })
+
+  it.effect("a cache waits for its fetches' cleanup when it is disposed", () => {
+    const events: Array<string> = []
+    const cleanup = Latch.makeUnsafe()
+    class Slow extends Loader.Service<Slow>()(
+      "Slow",
+      {
+        args: {},
+        success: Schema.Number,
+        error: Schema.Never,
+        staleTime: 0
+      },
+      Effect.succeed(() =>
+        Effect.ensuring(Effect.never, Effect.andThen(cleanup.await, Effect.sync(() => events.push("fetch cleaned up"))))
+      )
+    ) {}
+    return Effect.gen(function*() {
+      const scope = yield* Scope.make()
+      const cache = yield* Layer.buildWithScope(Layer.merge(Slow.layer, Loader.layer()), scope)
+      yield* Slow.prefetch({}).pipe(Effect.provideContext(cache))
+      yield* flush
+      const closing = yield* Effect.forkScoped(
+        Effect.andThen(Scope.close(scope, Exit.void), Effect.sync(() => events.push("cache disposed")))
+      )
+      yield* flush
+      assert.deepStrictEqual(events, [])
+      yield* cleanup.open
+      yield* Fiber.join(closing)
+      assert.deepStrictEqual(events, ["fetch cleaned up", "cache disposed"])
+    })
+  })
+
+  it.effect("a fetch cut by its build closing leaves a fresh entry fresh", () => {
+    const { GetUser, db } = makeUsers({ staleTime: "Infinity", refetchInterval: "5 seconds" })
+    return Effect.gen(function*() {
+      const scope = yield* Scope.make()
+      const build = yield* Layer.buildWithScope(GetUser.layer, scope)
+      const watcher = yield* watch(GetUser.changes({ id: "1" }).pipe(Stream.provideContext(build)))
+      yield* advance(10)
+      // The interval refetches an entry that is fresh by staleTime. Nothing survives the close, so the fetch reverts.
+      yield* advance("5 seconds")
+      yield* watcher.stop
+      yield* Scope.close(scope, Exit.void)
+      const entry = yield* TestLoader.entry(GetUser, { id: "1" })
+      assert.deepStrictEqual([entry?.stale, entry?.fetch, db.calls], [false, "none", 2])
+    }).pipe(Effect.provide(TestLoader.layer()))
+  })
+
   it.effect("fetch exits: a Fail is stored, an interrupt reverts and a defect reaches the watchers unstored", () => {
     const { GetUser, db, provide } = makeUsers({ staleTime: "Infinity" })
     return Effect.gen(function*() {
@@ -490,12 +586,17 @@ describe("Loader", () => {
         "1"
       ])
 
-      // Building a key throws, and never prints the args.
+      // Building a key throws, and never prints the args or anything an arg can set, such as its string tag.
+      class Tagged {
+        get [Symbol.toStringTag]() {
+          return "s3cret"
+        }
+      }
       const messages: Array<string> = []
       const calls: ReadonlyArray<Effect.Effect<unknown, never, Search | ById | Loader.Cache>> = [
         Search.get({ token, page: "s3cret" as any }),
         ById.peek({ secret: 1n }),
-        ById.prefetch(new Date(0)),
+        ById.prefetch(new Tagged()),
         ById.invalidate(NaN)
       ]
       for (const effect of calls) {
@@ -505,7 +606,7 @@ describe("Loader", () => {
       assert.deepStrictEqual(messages, [
         `[Loader] read "Search": the args don't encode with the read's args Schema`,
         `[Loader] read "ById": the encoded args hold a value JSON can't carry (a bigint). Give the args Schema a JSON encoding.`,
-        `[Loader] read "ById": the encoded args hold a value JSON can't carry ([object Date]). Give the args Schema a JSON encoding.`,
+        `[Loader] read "ById": the encoded args hold a value JSON can't carry (a class instance). Give the args Schema a JSON encoding.`,
         `[Loader] read "ById": the encoded args hold a value JSON can't carry (a non-finite number). Give the args Schema a JSON encoding.`
       ])
     }).pipe(Effect.provide(Layer.mergeAll(Search.layer, ById.layer, TestLoader.layer())))
