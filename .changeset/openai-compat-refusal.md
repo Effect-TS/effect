@@ -2,4 +2,4 @@
 "@effect/ai-openai-compat": patch
 ---
 
-Report chat completion refusals with a `"content-filter"` finish reason and expose the explanation as `refusal` in the finish part's `openai-compat` metadata.
+Preserve nonempty chat completion refusals in finish metadata and remap only refusal-bearing `stop` responses to `content-filter`, including streaming responses.
