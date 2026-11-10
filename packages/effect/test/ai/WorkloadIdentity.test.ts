@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Deferred, Effect, Fiber, Redacted } from "effect"
+import { Deferred, type Duration, Effect, type Exit, Fiber, Redacted } from "effect"
 import { WorkloadIdentity } from "effect/ai"
 import { FetchHttpClient, HttpClient, HttpClientError, HttpClientRequest, HttpClientResponse } from "effect/http"
 import { TestClock } from "effect/testing"
@@ -285,8 +285,46 @@ describe("WorkloadIdentity", () => {
   it.effect("refuses a token URL that is not https", () =>
     Effect.gen(function*() {
       const exit = yield* Effect.exit(make(makeHttp(), { tokenUrl: "http://gateway.internal/oauth/token" }))
-      assert.isTrue(exit._tag === "Failure" && exit.cause.reasons.every((reason) => reason._tag === "Die"))
+      assert.isTrue(isDefect(exit))
     }))
+
+  it.effect.each<{
+    readonly name: string
+    readonly change: (request: HttpClientRequest.HttpClientRequest) => HttpClientRequest.HttpClientRequest
+  }>([
+    { name: "URL", change: HttpClientRequest.setUrl(`http://gateway.internal/${IDENTITY_TOKEN}`) },
+    { name: "method", change: HttpClientRequest.setMethod("PUT") },
+    { name: "URL parameter", change: HttpClientRequest.setUrlParam("subject_token", IDENTITY_TOKEN) },
+    { name: "hash", change: HttpClientRequest.setHash(IDENTITY_TOKEN) }
+  ])("refuses to send an exchange request with another $name", ({ change }) =>
+    Effect.gen(function*() {
+      const http = makeHttp()
+      const client = yield* makeClient(http, {
+        exchangeRequest: (request, identityToken) => change(exchangeRequest(request, identityToken))
+      })
+
+      const exit = yield* Effect.exit(client.get(API_URL))
+
+      assert.isTrue(isDefect(exit))
+      assert.isFalse(contains(exit, IDENTITY_TOKEN))
+      assert.lengthOf(http.requests, 0)
+    }))
+
+  it.effect.each<{ readonly defaultExpiresIn: Duration.Input; readonly accepted: boolean }>([
+    { defaultExpiresIn: "1 nano", accepted: true },
+    { defaultExpiresIn: 0, accepted: false },
+    { defaultExpiresIn: "-1 second", accepted: false },
+    { defaultExpiresIn: "Infinity", accepted: false },
+    { defaultExpiresIn: "-Infinity", accepted: false }
+  ])(
+    "accepts only a positive finite default lifetime ($defaultExpiresIn)",
+    ({ accepted, defaultExpiresIn }) =>
+      Effect.gen(function*() {
+        const exit = yield* Effect.exit(make(makeHttp(), { defaultExpiresIn }))
+        assert.strictEqual(isDefect(exit), !accepted)
+        assert.strictEqual(exit._tag, accepted ? "Success" : "Failure")
+      })
+  )
 })
 
 type Options = Parameters<typeof WorkloadIdentity.make<Error, never>>[0]
@@ -323,12 +361,15 @@ const make = (http: Http, options: { readonly [K in keyof Options]?: Options[K] 
   WorkloadIdentity.make({
     tokenUrl: options.tokenUrl ?? TOKEN_URL,
     identityToken: options.identityToken ?? Effect.succeed(Redacted.make(IDENTITY_TOKEN)),
-    exchangeRequest,
+    exchangeRequest: options.exchangeRequest ?? exchangeRequest,
     defaultExpiresIn: options.defaultExpiresIn
   }).pipe(Effect.provideService(HttpClient.HttpClient, http.client))
 
 const makeClient = (http: Http, options?: Parameters<typeof make>[1]) =>
   Effect.map(make(http, options), (transform) => transform(http.client))
+
+const isDefect = (exit: Exit.Exit<unknown, unknown>) =>
+  exit._tag === "Failure" && exit.cause.reasons.every((reason) => reason._tag === "Die")
 
 const authorizations = (http: Http) => http.requests.map((request) => request.headers.authorization)
 

@@ -92,9 +92,11 @@ const readBody = (response: HttpClientResponse.HttpClientResponse): Effect.Effec
  *
  * The first request runs `identityToken`, trims the result, and passes it to
  * `exchangeRequest` with a `POST` request to `tokenUrl` that accepts JSON.
- * The request it returns is sent, and the access token of the response is
- * cached and sent as `Authorization: Bearer` until 30 seconds before it
- * expires, or after three quarters of its lifetime if that is later.
+ * `exchangeRequest` adds the body and any headers, and the request it returns
+ * is sent. The access token of the response is cached and sent as
+ * `Authorization: Bearer` until 30 seconds before it expires, or after three
+ * quarters of its lifetime if that is later. The lifetime is the `expires_in`
+ * of the response, or `defaultExpiresIn` when the response has none.
  * Concurrent requests share one exchange, and interrupting one of them does
  * not cancel it. `identityToken` runs again on every exchange, so a token
  * read from a file is picked up after it rotates.
@@ -127,6 +129,12 @@ const readBody = (response: HttpClientResponse.HttpClientResponse): Effect.Effec
  *   exchange.
  * - `tokenUrl` must use `https`, or `http` on `localhost`, `127.0.0.1` or
  *   `::1`. Any other URL is a defect.
+ * - `exchangeRequest` must keep the method, URL, URL parameters and hash of
+ *   the request it is given. Returning a request that differs in one of them
+ *   is a defect, and nothing is sent. Put query parameters in `tokenUrl`.
+ * - `defaultExpiresIn` must be a positive finite duration. Anything else is a
+ *   defect when `make` runs. A number is milliseconds, while `expires_in` is
+ *   seconds.
  * - Only the literal identity token is redacted, after JSON decoding. A token
  *   endpoint that echoes it in another encoding is not covered.
  * - The response is limited to 1 MiB, and the access token to printable ASCII.
@@ -170,7 +178,11 @@ export const make = <E = never, R = never>(options: {
   readonly identityToken: Effect.Effect<Redacted.Redacted<string>, E, R>
   /**
    * Completes the exchange request with the identity token. `request` is a
-   * `POST` request to `tokenUrl` that accepts JSON.
+   * `POST` request to `tokenUrl` that accepts JSON, and `identityToken` is
+   * the trimmed token. Runs on every exchange.
+   *
+   * Set the body and headers only. Changing the method, URL, URL parameters or
+   * hash is a defect, so the identity token is only sent to `tokenUrl`.
    */
   readonly exchangeRequest: (
     request: HttpClientRequest.HttpClientRequest,
@@ -178,7 +190,10 @@ export const make = <E = never, R = never>(options: {
   ) => HttpClientRequest.HttpClientRequest
   /**
    * The lifetime of an access token when the token response has no
-   * `expires_in`. Without it, such a response fails the exchange.
+   * `expires_in`. Without it, such a response fails the exchange. An
+   * `expires_in` in the response takes precedence.
+   *
+   * Must be positive and finite. A number is milliseconds.
    */
   readonly defaultExpiresIn?: Duration.Input | undefined
 }): Effect.Effect<
@@ -193,10 +208,16 @@ export const make = <E = never, R = never>(options: {
     const defaultExpiresIn = options.defaultExpiresIn === undefined
       ? undefined
       : Duration.toSeconds(options.defaultExpiresIn)
+    // The bounds of `expires_in`. A negative infinite lifetime would never
+    // expire in the cache.
+    if (defaultExpiresIn !== undefined && !(defaultExpiresIn > 0 && defaultExpiresIn < Infinity)) {
+      return yield* Effect.die(new Error("`defaultExpiresIn` must be a positive finite duration"))
+    }
 
     // Exchange errors refer to this request and to rebuilt responses instead of
     // the originals, which hold the identity token in the request body.
     const errorRequest = HttpClientRequest.post(tokenUrl)
+    const preparedRequest = HttpClientRequest.acceptJson(errorRequest)
     const requestError = (description: string) =>
       new HttpClientError.HttpClientError({
         reason: new HttpClientError.TransportError({ request: errorRequest, description })
@@ -235,10 +256,21 @@ export const make = <E = never, R = never>(options: {
             description: "The token endpoint returned an invalid token response"
           })
         })
+      const request = options.exchangeRequest(preparedRequest, identityToken)
+      // The identity token must only go to the URL that was checked, which is
+      // also the one that errors refer to.
+      if (
+        request.method !== preparedRequest.method || request.url !== preparedRequest.url ||
+        request.urlParams.params.length > 0 || Option.isSome(request.hash)
+      ) {
+        return yield* Effect.die(
+          new Error(
+            `\`exchangeRequest\` must keep the method, URL, URL parameters and hash of the "POST ${tokenUrl}" request`
+          )
+        )
+      }
       const fetchInit = yield* Effect.serviceOption(FetchHttpClient.RequestInit)
-      const response = yield* httpClient.execute(
-        options.exchangeRequest(HttpClientRequest.post(tokenUrl).pipe(HttpClientRequest.acceptJson), identityToken)
-      ).pipe(
+      const response = yield* httpClient.execute(request).pipe(
         // `fetch` follows redirects by default, which would send the identity
         // token to wherever the token endpoint points.
         Effect.provideService(FetchHttpClient.RequestInit, { ...Option.getOrUndefined(fetchInit), redirect: "manual" }),
