@@ -1,5 +1,5 @@
 import { describe, it } from "@effect/vitest"
-import { assertDefined, assertTrue, deepStrictEqual, strictEqual } from "@effect/vitest/utils"
+import { assertDefined, assertNone, assertSome, assertTrue, deepStrictEqual, strictEqual } from "@effect/vitest/utils"
 import { type Cause, Effect, Fiber, Latch, Option, Queue, Ref, Schema, Stream } from "effect"
 import { AiError, LanguageModel, Prompt, Response, ResponseIdTracker, Tool, Toolkit } from "effect/ai"
 import { TestClock } from "effect/testing"
@@ -1523,13 +1523,11 @@ describe("LanguageModel", () => {
       Effect.gen(function*() {
         const error = yield* LanguageModel.generateObject({
           prompt: [],
-          schema: Schema.Struct({ count: Schema.Number })
+          schema: Schema.Struct({ count: Schema.Number }),
+          allowEmpty: true
         }).pipe(
           TestUtils.withLanguageModel({
-            generateText: [{
-              type: "text",
-              text: "{\"count\":\"oops\"}"
-            }]
+            generateText: [{ type: "text", text: "{\"count\":\"oops\"}" }]
           }),
           Effect.flip
         )
@@ -1538,6 +1536,30 @@ describe("LanguageModel", () => {
         if (error.reason._tag === "StructuredOutputError") {
           strictEqual(error.reason.responseText, "{\"count\":\"oops\"}")
         }
+      }))
+
+    it.effect("allowEmpty treats whitespace-only text as empty", () =>
+      Effect.gen(function*() {
+        const response = yield* LanguageModel.generateObject({
+          prompt: "hi",
+          schema: Schema.Struct({ count: Schema.Number }),
+          allowEmpty: true
+        }).pipe(TestUtils.withLanguageModel({ generateText: [{ type: "text", text: " \n\t" }] }))
+
+        assertNone(response.value)
+      }))
+
+    it.effect("wraps generated values in some when empty output is allowed", () =>
+      Effect.gen(function*() {
+        const response = yield* LanguageModel.generateObject({
+          prompt: "hi",
+          schema: Schema.Struct({ count: Schema.Number }),
+          allowEmpty: true
+        }).pipe(
+          TestUtils.withLanguageModel({ generateText: [{ type: "text", text: "{\"count\":1}" }] })
+        )
+
+        assertSome(response.value, { count: 1 })
       }))
 
     it("resolves the canonical top-level $ref for class schemas in defaultCodecTransformer", () => {

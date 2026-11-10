@@ -161,14 +161,24 @@ export interface LanguageModel {
     ObjectEncoded extends Record<string, any>,
     StructuredOutputSchema extends Schema.Encoder<ObjectEncoded, unknown>,
     Options extends NoExcessProperties<
-      GenerateObjectOptions<any, StructuredOutputSchema>,
+      GenerateObjectOptions<any, StructuredOutputSchema, boolean>,
       Options
     >,
     Tools extends Record<string, Tool.Any> = {}
   >(
-    options: Options & GenerateObjectOptions<Tools, StructuredOutputSchema>
+    options:
+      & Options
+      & GenerateObjectOptions<
+        Tools,
+        StructuredOutputSchema,
+        false | Extract<Options["allowEmpty" & keyof Options], boolean>
+      >
   ) => Effect.Effect<
-    GenerateObjectResponse<Tools, StructuredOutputSchema["Type"], ExtractToolParametersMode<Options>>,
+    GenerateObjectResponse<
+      Tools,
+      ExtractObjectValue<Options, StructuredOutputSchema["Type"]>,
+      ExtractToolParametersMode<Options>
+    >,
     ExtractError<Options>,
     ExtractServices<Options> | StructuredOutputSchema["DecodingServices"]
   >
@@ -343,13 +353,22 @@ type GenerateTextOptionsWithoutToolkit = Omit<GenerateTextOptions<{}>, "toolkit"
  */
 export interface GenerateObjectOptions<
   Tools extends Record<string, Tool.Any>,
-  StructuredOutputSchema extends Schema.Top
+  StructuredOutputSchema extends Schema.Top,
+  AllowEmpty extends boolean = false
 > extends GenerateTextOptions<Tools> {
   /**
    * The name of the structured output that should be generated. Used by some
    * large language model providers to provide additional guidance to the model.
    */
   readonly objectName?: string | undefined
+
+  /**
+   * Whether to return `None` for empty or whitespace-only text and `Some` for
+   * valid output. Defaults to `false`; invalid nonempty output still fails.
+   * Use literal `true` for an `Option<A>` value; a widened boolean yields
+   * `A | Option<A>`.
+   */
+  readonly allowEmpty?: AllowEmpty | undefined
 
   /**
    * The schema to be used to specify the structure of the object to generate.
@@ -523,7 +542,7 @@ export class GenerateObjectResponse<
   ParametersMode extends Response.ToolParametersMode = "decoded"
 > extends GenerateTextResponse<Tools, ParametersMode> {
   /**
-   * The parsed structured object that conforms to the provided schema.
+   * The decoded schema value, wrapped in an `Option` when `allowEmpty` is enabled.
    */
   readonly value: A
 
@@ -603,6 +622,18 @@ export type ExtractTools<Options> = Options extends {
   readonly toolkit: infer ToolkitValue
 } ? ExtractToolsFromToolkitOption<Exclude<ToolkitValue, undefined>>
   : {}
+
+/**
+ * Resolves to `Option<A>` when `allowEmpty` is true, `A` when false or absent,
+ * or their union when the flag may be enabled.
+ *
+ * @stability unstable
+ * @category utility types
+ * @since 4.1.4
+ */
+export type ExtractObjectValue<Options, A> = Options extends { readonly allowEmpty: true } ? Option.Option<A>
+  : true extends Options["allowEmpty" & keyof Options] ? A | Option.Option<A>
+  : A
 
 /**
  * Resolves to `"deferred"` when tool call resolution may be disabled with
@@ -953,14 +984,24 @@ export const make: (params: {
     ObjectEncoded extends Record<string, any>,
     StructuredOutputSchema extends Schema.Encoder<ObjectEncoded, unknown>,
     Options extends NoExcessProperties<
-      GenerateObjectOptions<any, StructuredOutputSchema>,
+      GenerateObjectOptions<any, StructuredOutputSchema, boolean>,
       Options
     >,
     Tools extends Record<string, Tool.Any> = {}
   >(
-    options: Options & GenerateObjectOptions<Tools, StructuredOutputSchema>
+    options:
+      & Options
+      & GenerateObjectOptions<
+        Tools,
+        StructuredOutputSchema,
+        false | Extract<Options["allowEmpty" & keyof Options], boolean>
+      >
   ): Effect.Effect<
-    GenerateObjectResponse<Tools, StructuredOutputSchema["Type"], ExtractToolParametersMode<Options>>,
+    GenerateObjectResponse<
+      Tools,
+      ExtractObjectValue<Options, StructuredOutputSchema["Type"]>,
+      ExtractToolParametersMode<Options>
+    >,
     ExtractError<Options>,
     ExtractServices<Options> | StructuredOutputSchema["DecodingServices"]
   > => {
@@ -1009,7 +1050,7 @@ export const make: (params: {
               })
           })
 
-          const value = yield* resolveStructuredOutput(content as any, codec)
+          const value = yield* resolveStructuredOutput(content as any, codec, options.allowEmpty ?? false)
 
           return new GenerateObjectResponse(value, content)
         },
@@ -1948,15 +1989,21 @@ export const generateObject = <
   ObjectEncoded extends Record<string, any>,
   StructuredOutputSchema extends Schema.Encoder<ObjectEncoded, unknown>,
   Options extends NoExcessProperties<
-    GenerateObjectOptions<any, StructuredOutputSchema>,
+    GenerateObjectOptions<any, StructuredOutputSchema, boolean>,
     Options
   >
 >(
-  options: Options & GenerateObjectOptions<ExtractTools<Options>, StructuredOutputSchema>
+  options:
+    & Options
+    & GenerateObjectOptions<
+      ExtractTools<Options>,
+      StructuredOutputSchema,
+      false | Extract<Options["allowEmpty" & keyof Options], boolean>
+    >
 ): Effect.Effect<
   GenerateObjectResponse<
     ExtractTools<Options>,
-    StructuredOutputSchema["Type"],
+    ExtractObjectValue<Options, StructuredOutputSchema["Type"]>,
     ExtractToolParametersMode<Options>
   >,
   ExtractError<Options>,
@@ -2609,7 +2656,11 @@ export const getObjectName = <StructuredOutputSchema extends Schema.Constraint>(
 
 const resolveStructuredOutput = Effect.fnUntraced(function*<
   StructuredOutputSchema extends Schema.Constraint
->(response: ReadonlyArray<Response.AllParts<any>>, schema: StructuredOutputSchema) {
+>(
+  response: ReadonlyArray<Response.AllParts<any>>,
+  schema: StructuredOutputSchema,
+  allowEmpty: boolean
+) {
   const texts: Array<string> = []
   for (const part of response) {
     if (part.type === "text") {
@@ -2618,6 +2669,10 @@ const resolveStructuredOutput = Effect.fnUntraced(function*<
   }
 
   const text = texts.join("")
+
+  if (allowEmpty && text.trim().length === 0) {
+    return Option.none()
+  }
 
   if (text.length === 0) {
     return yield* AiError.make({
@@ -2631,12 +2686,13 @@ const resolveStructuredOutput = Effect.fnUntraced(function*<
   }
 
   const decode = Schema.decodeEffect(Schema.fromJsonString(schema))
-  return yield* Effect.mapError(decode(text), (error) =>
+  const value = yield* Effect.mapError(decode(text), (error) =>
     AiError.make({
       module: "LanguageModel",
       method: "generateObject",
       reason: AiError.StructuredOutputError.fromSchemaError(error, text)
     }))
+  return allowEmpty ? Option.some(value) : value
 })
 
 const applySpanTransformer = (

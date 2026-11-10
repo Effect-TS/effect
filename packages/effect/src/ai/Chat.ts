@@ -423,13 +423,19 @@ export interface Chat {
   readonly generateObject: <
     ObjectEncoded extends Record<string, any>,
     ObjectSchema extends Schema.Encoder<ObjectEncoded, unknown>,
-    Options extends NoExcessProperties<LanguageModel.GenerateObjectOptions<any, ObjectSchema>, Options>
+    Options extends NoExcessProperties<LanguageModel.GenerateObjectOptions<any, ObjectSchema, boolean>, Options>
   >(
-    options: Options & LanguageModel.GenerateObjectOptions<LanguageModel.ExtractTools<Options>, ObjectSchema>
+    options:
+      & Options
+      & LanguageModel.GenerateObjectOptions<
+        LanguageModel.ExtractTools<Options>,
+        ObjectSchema,
+        false | Extract<Options["allowEmpty" & keyof Options], boolean>
+      >
   ) => Effect.Effect<
     LanguageModel.GenerateObjectResponse<
       LanguageModel.ExtractTools<Options>,
-      ObjectSchema["Type"],
+      LanguageModel.ExtractObjectValue<Options, ObjectSchema["Type"]>,
       LanguageModel.ExtractToolParametersMode<Options>
     >,
     LanguageModel.ExtractError<Options>,
