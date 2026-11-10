@@ -39,6 +39,27 @@ const checkTokenUrl = (url: string): Effect.Effect<void> =>
     throw new Error(`Refusing to send an identity token to the non-https token URL "${url}"`)
   })
 
+// The messages of an error and its causes. A failed exchange request keeps only
+// this text, because the errors can refer to the request that holds the
+// identity token.
+const errorMessages = (error: unknown): Array<string> => {
+  const messages: Array<string> = []
+  for (let cause = error, depth = 0; cause instanceof Error && depth < 5; cause = cause.cause, depth++) {
+    if (cause.message !== "") messages.push(cause.message)
+  }
+  return messages
+}
+
+// Redacts the strings of a JSON body after decoding them, so that an escaped
+// identity token is found as well. The second pass covers property names.
+const redactBody = (body: string, redact: (text: string) => string): string => {
+  try {
+    return redact(JSON.stringify(JSON.parse(body, (_, value) => typeof value === "string" ? redact(value) : value)))
+  } catch {
+    return redact(body)
+  }
+}
+
 // Resolves to `undefined` when the body is missing, unreadable or over the limit.
 const readBody = (response: HttpClientResponse.HttpClientResponse): Effect.Effect<string | undefined> =>
   Effect.suspend(() => {
@@ -75,7 +96,13 @@ const readBody = (response: HttpClientResponse.HttpClientResponse): Effect.Effec
  * client being transformed. Failures are `HttpClientError`s, which
  * `OpenAiClient` maps to `AiError` like any other request failure. A failing
  * `identityToken` is an `EncodeError` with the failure as its cause, and so is
- * an empty token. The identity token is kept out of these errors.
+ * an empty token. That failure is attached unchanged, so it should not hold
+ * secrets.
+ *
+ * The identity token is kept out of exchange errors. They refer to a request
+ * without a body. A transport failure keeps only its messages, and the identity
+ * token is replaced with `<redacted>` in those messages and in the headers
+ * and body of a rejection.
  *
  * In WebSocket mode the access token is resolved each time a socket connects.
  *
@@ -162,14 +189,9 @@ export const make = <E = never, R = never>(options: {
     // Exchange errors refer to this request and to rebuilt responses instead of
     // the originals, which hold the identity token in the request body.
     const errorRequest = HttpClientRequest.post(tokenUrl)
-    const errorResponse = (response: HttpClientResponse.HttpClientResponse, body?: string) =>
-      HttpClientResponse.fromWeb(
-        errorRequest,
-        new Response(body ?? null, { status: response.status, headers: response.headers })
-      )
-    const requestError = (description: string, cause?: unknown) =>
+    const requestError = (description: string) =>
       new HttpClientError.HttpClientError({
-        reason: new HttpClientError.TransportError({ request: errorRequest, description, cause })
+        reason: new HttpClientError.TransportError({ request: errorRequest, description })
       })
     const identityTokenError = (description: string, cause?: unknown) =>
       new HttpClientError.HttpClientError({
@@ -185,6 +207,17 @@ export const make = <E = never, R = never>(options: {
       if (subjectToken === "") {
         return yield* identityTokenError("The identity token is empty")
       }
+      // The token endpoint and the HTTP client can echo the identity token, so
+      // everything an exchange error keeps from them goes through this.
+      const redact = (text: string) => text.replaceAll(subjectToken, "<redacted>")
+      const errorResponse = (response: HttpClientResponse.HttpClientResponse, body?: string) =>
+        HttpClientResponse.fromWeb(
+          errorRequest,
+          new Response(body === undefined ? null : redactBody(body, redact), {
+            status: response.status,
+            headers: Object.entries(response.headers).map(([name, value]): [string, string] => [name, redact(value)])
+          })
+        )
       const fetchInit = yield* Effect.serviceOption(FetchHttpClient.RequestInit)
       const response = yield* httpClient.execute(
         HttpClientRequest.post(tokenUrl).pipe(
@@ -203,7 +236,10 @@ export const make = <E = never, R = never>(options: {
         Effect.provideService(FetchHttpClient.RequestInit, { ...Option.getOrUndefined(fetchInit), redirect: "manual" }),
         Effect.catch((error) =>
           error.response === undefined
-            ? Effect.fail(requestError(error.reason.description ?? "Failed to reach the token endpoint", error.cause))
+            ? Effect.fail(requestError(
+              redact([error.reason.description, ...errorMessages(error.cause)].filter(Boolean).join(": ")) ||
+                "Failed to reach the token endpoint"
+            ))
             : Effect.succeed(error.response)
         )
       )
@@ -219,8 +255,7 @@ export const make = <E = never, R = never>(options: {
         return yield* new HttpClientError.HttpClientError({
           reason: new HttpClientError.StatusCodeError({
             request: errorRequest,
-            // The token endpoint may echo the identity token back.
-            response: errorResponse(response, body?.replaceAll(subjectToken, "<redacted>"))
+            response: errorResponse(response, body)
           })
         })
       }

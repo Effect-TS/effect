@@ -136,19 +136,47 @@ describe("OpenAiWorkloadIdentity", () => {
       reason: "AuthenticationError",
       description: "invalid_subject_token",
       token: () =>
-        Effect.succeed(Response.json({
-          error: "invalid_subject_token",
-          error_description: `Authentication failed for ${IDENTITY_TOKEN}`
-        }, { status: 401 }))
+        Effect.succeed(echoResponse(
+          JSON.stringify({
+            error: "invalid_subject_token",
+            error_description: `Authentication failed for ${IDENTITY_TOKEN}`,
+            [IDENTITY_TOKEN]: true
+          }).replaceAll(".", "\\u002e")
+        ))
+    },
+    {
+      name: "a rejected exchange with an escaped identity token",
+      reason: "AuthenticationError",
+      description: "Authentication failed for <redacted>",
+      token: () =>
+        Effect.succeed(echoResponse(
+          JSON.stringify({
+            error: {
+              message: `Authentication failed for ${IDENTITY_TOKEN}`,
+              type: "invalid_request_error",
+              code: "invalid_subject_token"
+            }
+          }).replaceAll(".", "\\u002e")
+        ))
+    },
+    {
+      name: "a rejected exchange with a text body",
+      reason: "AuthenticationError",
+      description: "Response: Authentication failed for <redacted>",
+      token: () => Effect.succeed(echoResponse(`Authentication failed for ${IDENTITY_TOKEN}`))
     },
     {
       name: "an unreachable token endpoint",
       reason: "NetworkError",
-      description: "socket hang up",
+      description: "failed to send <redacted>: socket hang up",
       token: (request) =>
         Effect.fail(
           new HttpClientError.HttpClientError({
-            reason: new HttpClientError.TransportError({ request, description: "socket hang up" })
+            reason: new HttpClientError.TransportError({
+              request,
+              description: `failed to send ${IDENTITY_TOKEN}`,
+              cause: new Error("socket hang up", { cause: { request } })
+            })
           })
         )
     },
@@ -285,6 +313,44 @@ describe("OpenAiWorkloadIdentity", () => {
         assert.deepStrictEqual(connections, ["Bearer access-3"])
       }))
 
+    it.effect("keeps using a connected socket after the access token expires", () =>
+      Effect.gen(function*() {
+        const apiUrl = "https://connected.test/v1"
+        const server = yield* makeSocketServer(apiUrl)
+        let rejected = false
+        const http = makeHttp({
+          token: () =>
+            Effect.succeed(
+              rejected
+                ? Response.json({ error: "invalid_subject_token" }, { status: 401 })
+                : Response.json({ access_token: "access-1", expires_in: 40 })
+            )
+        })
+        const connections: Array<string | undefined> = []
+
+        yield* Effect.gen(function*() {
+          const client = yield* OpenAiClient.OpenAiClient
+          const turn = Effect.gen(function*() {
+            const [, stream] = yield* client.createResponseStream({ model: "gpt-4o", input: "test" })
+            yield* Effect.all([
+              Stream.runDrain(stream),
+              Effect.promise(() => server.nextMessage).pipe(
+                Effect.tap(() => Effect.sync(() => server.send(completedEvent)))
+              )
+            ], { concurrency: "unbounded" })
+          })
+
+          yield* turn
+          // The access token is used for 30 seconds, and an idle socket stays open for 60.
+          rejected = true
+          yield* TestClock.adjust("31 seconds")
+          yield* turn
+        }).pipe(OpenAiClient.withWebSocketMode, provideSocketClient(http, apiUrl, connections))
+
+        assert.deepStrictEqual(connections, ["Bearer access-1"])
+        assert.lengthOf(http.requests, 1)
+      }))
+
     it.effect("fails the stream when the handshake is rejected, keeping the access token", () =>
       Effect.gen(function*() {
         const apiUrl = "https://handshake.test/v1"
@@ -314,6 +380,13 @@ type TokenHandler = (
 ) => Effect.Effect<Response, HttpClientError.HttpClientError>
 
 type Http = ReturnType<typeof makeHttp>
+
+// A rejection that echoes the identity token in the body and in a header.
+const echoResponse = (body: string) =>
+  new Response(body, {
+    status: 401,
+    headers: { "www-authenticate": `Bearer error_description="${IDENTITY_TOKEN}"` }
+  })
 
 const tokenResponse = (n: number) => Response.json({ access_token: `access-${n}`, expires_in: 3600 })
 

@@ -136,22 +136,35 @@ describe("AnthropicWorkloadIdentity", () => {
     {
       name: "a rejected exchange",
       reason: "AuthenticationError",
-      description: "Authentication failed",
+      description: "Authentication failed for <redacted>",
       token: () =>
-        Effect.succeed(Response.json({
-          type: "error",
-          error: { type: "authentication_error", message: `Authentication failed for ${IDENTITY_TOKEN}` },
-          request_id: "req_1"
-        }, { status: 401 }))
+        Effect.succeed(echoResponse(
+          JSON.stringify({
+            type: "error",
+            error: { type: "authentication_error", message: `Authentication failed for ${IDENTITY_TOKEN}` },
+            request_id: "req_1",
+            [IDENTITY_TOKEN]: true
+          }).replaceAll(".", "\\u002e")
+        ))
+    },
+    {
+      name: "a rejected exchange with a text body",
+      reason: "AuthenticationError",
+      description: "Response: Authentication failed for <redacted>",
+      token: () => Effect.succeed(echoResponse(`Authentication failed for ${IDENTITY_TOKEN}`))
     },
     {
       name: "an unreachable token endpoint",
       reason: "NetworkError",
-      description: "socket hang up",
+      description: "failed to send <redacted>: socket hang up",
       token: (request) =>
         Effect.fail(
           new HttpClientError.HttpClientError({
-            reason: new HttpClientError.TransportError({ request, description: "socket hang up" })
+            reason: new HttpClientError.TransportError({
+              request,
+              description: `failed to send ${IDENTITY_TOKEN}`,
+              cause: new Error("socket hang up", { cause: { request } })
+            })
           })
         )
     },
@@ -238,6 +251,13 @@ type TokenHandler = (
 ) => Effect.Effect<Response, HttpClientError.HttpClientError>
 
 type Http = ReturnType<typeof makeHttp>
+
+// A rejection that echoes the identity token in the body and in a header.
+const echoResponse = (body: string) =>
+  new Response(body, {
+    status: 401,
+    headers: { "www-authenticate": `Bearer error_description="${IDENTITY_TOKEN}"` }
+  })
 
 const tokenResponse = (n: number) => Response.json({ access_token: `access-${n}`, expires_in: 3600 })
 

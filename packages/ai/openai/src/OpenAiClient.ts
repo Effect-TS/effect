@@ -548,11 +548,17 @@ const makeSocket = Effect.gen(function*() {
     current: Turn | undefined
   }
 
+  // The request of the most recent connection. Each turn reuses it for its
+  // response, so that a connected socket does not run the client transforms,
+  // and with them a credential exchange, again.
+  let connectionRequest: HttpClientRequest.HttpClientRequest | undefined
+
   const queueRef: RcRef.RcRef<SocketConnection, AiError.AiError> = yield* RcRef.make({
     idleTimeToLive: 60_000,
     acquire: Effect.gen(function*() {
       const scope = yield* Effect.scope
       const request = yield* makeRequest
+      connectionRequest = request
       const socket = yield* Socket.makeWebSocket(request.url.replace(/^http/, "ws")).pipe(
         Effect.provideService(Socket.WebSocketConstructor, (url) =>
           makeWebSocket(url, {
@@ -716,10 +722,13 @@ const makeSocket = Effect.gen(function*() {
         return Stream.fromQueue(turn)
       }))
 
-      return Effect.map(makeRequest, (request) => [
-        HttpClientResponse.fromWeb(request, new Response()),
-        stream
-      ])
+      return Effect.map(
+        Effect.suspend(() => connectionRequest === undefined ? makeRequest : Effect.succeed(connectionRequest)),
+        (request) => [
+          HttpClientResponse.fromWeb(request, new Response()),
+          stream
+        ]
+      )
     }
   }).pipe(
     Context.add(ResponseIdTracker.ResponseIdTracker, tracker)
