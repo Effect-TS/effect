@@ -948,9 +948,13 @@ export type PatchInvalid = internal.PatchInvalid
  * - state that only a getter reaches, such as a private field or a
  *   `WeakMap`.
  *
- * The check runs no getter and no `Equal` or `Hash` method of the value. A
- * patch that reads a getter which memoizes into the value's own data is
- * reported, since the stored value changed. If a mutation goes unreported,
+ * The check runs no getter and no `Equal` or `Hash` method of the value,
+ * and finds an `Equal` value by the presence of its key. A patch that reads
+ * a getter which memoizes into the value's own data is reported, since the
+ * stored value changed. A `Proxy` has its `getPrototypeOf`, `has`,
+ * `ownKeys` and `getOwnPropertyDescriptor` traps called, never `get` or
+ * `set`, and one whose traps answer differently each time can be reported on
+ * a patch that changed nothing. If a mutation goes unreported,
  * give the read a `success` Schema that encodes the value. A value the Schema
  * can't encode is not checked.
  *
@@ -977,9 +981,13 @@ export const PatchMutated: typeof internal.PatchMutated = internal.PatchMutated
  * - state that only a getter reaches, such as a private field or a
  *   `WeakMap`.
  *
- * The check runs no getter and no `Equal` or `Hash` method of the value. A
- * patch that reads a getter which memoizes into the value's own data is
- * reported, since the stored value changed. If a mutation goes unreported,
+ * The check runs no getter and no `Equal` or `Hash` method of the value,
+ * and finds an `Equal` value by the presence of its key. A patch that reads
+ * a getter which memoizes into the value's own data is reported, since the
+ * stored value changed. A `Proxy` has its `getPrototypeOf`, `has`,
+ * `ownKeys` and `getOwnPropertyDescriptor` traps called, never `get` or
+ * `set`, and one whose traps answer differently each time can be reported on
+ * a patch that changed nothing. If a mutation goes unreported,
  * give the read a `success` Schema that encodes the value. A value the Schema
  * can't encode is not checked.
  *

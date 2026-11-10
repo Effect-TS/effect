@@ -655,6 +655,140 @@ describe("Loader runs", () => {
         assert.strictEqual(computed, 1)
       }).pipe(Effect.provide(Layer.merge(GetAny.layer, TestLoader.layer())))
     })
+    it.effect("PatchMutated runs none of the value's own code, and of a Proxy only the reflection traps", () => {
+      // Every call into a value's own code counts here.
+      let owned = 0
+      const own = <A>(a: A): A => {
+        owned++
+        return a
+      }
+      class Opaque implements Equal.Equal {
+        n = 0;
+        [Equal.symbol](): boolean {
+          own(0)
+          throw new Error("equal")
+        }
+        [Hash.symbol](): number {
+          own(0)
+          throw new Error("hash")
+        }
+      }
+      // An accessor at the Equal key that writes the value: the key's presence makes it Equal, and it is never read.
+      const equalAccessor = () =>
+        Object.defineProperty({ n: 0 }, Equal.symbol, {
+          get(this: { n: number }) {
+            own(this.n++)
+            return undefined
+          }
+        })
+      let flip = false
+      class Flags extends RegExp {
+        override get global() {
+          return own(flip = !flip)
+        }
+      }
+      class Bytes extends Uint8Array {
+        override get buffer() {
+          return own(super.buffer)
+        }
+        override get byteOffset() {
+          return own(1)
+        }
+      }
+      class View extends (DataView as new(buffer: ArrayBuffer) => DataView) {
+        override get byteLength() {
+          return own(0)
+        }
+      }
+      class Day extends Date {
+        override getTime() {
+          return own(Math.random())
+        }
+      }
+      class Dict extends Map<string, number> {
+        override get size() {
+          return own(0)
+        }
+        override forEach() {
+          own(0)
+        }
+      }
+      class Bag extends Set<number> {
+        override get size() {
+          return own(0)
+        }
+      }
+      // Each trap a Proxy runs is recorded.
+      const traps = new Set<string>()
+      const watch = <A extends object>(target: A): A =>
+        new Proxy(
+          target,
+          Object.fromEntries(
+            Object.getOwnPropertyNames(Reflect).map((trap) => [trap, (...args: Array<any>) => {
+              traps.add(trap)
+              return (Reflect as any)[trap](...args)
+            }])
+          )
+        )
+      const proxied = { n: 0 }
+      const values: Record<string, unknown> = {
+        // Changed beside a held value whose Hash and Equal methods throw.
+        besideOpaque: { opaque: new Opaque(), n: 0 },
+        opaque: { opaque: new Opaque(), n: 0 },
+        besideEqualAccessor: { inner: equalAccessor(), n: 0 },
+        equalAccessor: equalAccessor(),
+        flags: new Flags("a", "g"),
+        bytes: new Bytes([1, 2]),
+        mutatedBytes: new Bytes([1, 2]),
+        view: new View(new ArrayBuffer(2)),
+        day: new Day(0),
+        dict: new Dict([["a", 1]]),
+        bag: new Bag([1]),
+        proxyRecord: watch(proxied),
+        proxyArray: watch([0, { n: 0 }]),
+        proxyBuffer: watch(new ArrayBuffer(2)),
+        proxyDate: watch(new Date(0)),
+        proxyMap: watch(new Map([["a", 1]]))
+      }
+      class GetAny extends Loader.Service<GetAny>()(
+        "any/GetAny",
+        { args: { id: Schema.String }, success: Schema.Any, error: Schema.Never, staleTime: "30 seconds" },
+        Effect.sync(() => ({ id }) => Effect.sync(() => values[id]))
+      ) {}
+      const inPlace = (id: string, mutate: (value: any) => void) =>
+        GetAny.patch({ id }, (value) => {
+          mutate(value)
+          return value
+        })
+      return Effect.gen(function*() {
+        for (const id of Object.keys(values)) yield* GetAny.get({ id })
+        owned = 0
+        traps.clear()
+        yield* issue({
+          optimistic: [
+            ...Object.keys(values).map((id) => GetAny.patch({ id }, (value) => value)),
+            inPlace("besideOpaque", (value) => value.n++),
+            inPlace("besideEqualAccessor", (value) => value.n++),
+            // Read through the built-in slots, not the overridden getters.
+            inPlace("mutatedBytes", (value: Bytes) => value[0]++),
+            // Through the target, so that the patch itself runs no trap.
+            inPlace("proxyRecord", () => proxied.n++)
+          ]
+        })
+        const mutated = yield* TestLoader.expectProblem("PatchMutated")
+        assert.deepStrictEqual(
+          mutated.map((problem) => problem.logKey),
+          ["besideOpaque", "besideEqualAccessor", "mutatedBytes", "proxyRecord"].map((id) => `{"id":"${id}"}`)
+        )
+        assert.strictEqual(owned, 0)
+        // The snapshots reflected on the proxies, through the reflection traps only.
+        assert.isTrue(traps.has("ownKeys") && traps.has("getOwnPropertyDescriptor"))
+        assert.deepStrictEqual(
+          [...traps].filter((trap) => !["getPrototypeOf", "has", "ownKeys", "getOwnPropertyDescriptor"].includes(trap)),
+          []
+        )
+      }).pipe(Effect.provide(Layer.merge(GetAny.layer, TestLoader.layer())))
+    })
     it.effect("PatchMutated compares binary data by its bytes, each kind apart, so an unchanged NaN stays unchanged", () => {
       const values: Record<string, unknown> = {
         buffer: new ArrayBuffer(2),

@@ -14,7 +14,7 @@ import * as Equal from "../../Equal.ts"
 import * as Exit from "../../Exit.ts"
 import * as Fiber from "../../Fiber.ts"
 import * as Hash from "../../Hash.ts"
-import { bufferBytes, byReferenceInstances, isArrayBufferLike } from "../../internal/equal.ts"
+import { byReferenceInstances } from "../../internal/equal.ts"
 import { redactAST } from "../../internal/schemaRedact.ts"
 import * as Option from "../../Option.ts"
 import * as Schema from "../../Schema.ts"
@@ -96,46 +96,53 @@ const canonical = (u: unknown): string => {
 
 /**
  * A snapshot of a value for the `PatchMutated` check, deep and following
- * cycles, that runs none of the value's own code. Arrays are copied by
- * element, and `Map`, `Set`, `Date` and `RegExp` through their built-in
- * methods. Any other object becomes a prototype-less record of its own data
- * properties, non-enumerable and symbol keys included. An accessor is never
- * read, nothing inherited is copied, and the `Hash` method is left out, so
- * the record is hashed by its data. Binary data is kept as its bytes, each
- * kind apart: an unchanged float array holding `NaN` stays equal to itself.
- * An `Equal` implementor, an `Equal.byReference` object and a function are
- * kept as they are.
+ * cycles, that runs none of the value's own code. It only reflects on a
+ * value, so of a `Proxy` only the `getPrototypeOf`, `has`, `ownKeys` and
+ * `getOwnPropertyDescriptor` traps run, never `get` or `set`.
+ *
+ * - An `Equal` value, found by the presence of the `Equal` key without
+ *   reading it, an `Equal.byReference` object and a function become an inert
+ *   stand-in, the same one for the same object, so that no `Equal` or `Hash`
+ *   method of theirs runs when snapshots are compared.
+ * - `Date`, `RegExp`, `Map`, `Set` and binary data are recognized by their
+ *   internal slots and read through the built-in getters and methods called
+ *   directly, which read nothing through the object.
+ * - An array is copied by element, read through its own property descriptors.
+ *   An accessor element is not read, and its slot holds a marker.
+ * - Any other object becomes a prototype-less record of its own data
+ *   properties, non-enumerable and symbol keys included, without its `Hash`
+ *   method. An accessor is never read, and nothing inherited is copied.
+ * - Binary data is kept as its bytes, each kind apart, so an unchanged float
+ *   array holding `NaN` stays equal to itself.
  *
  * Two snapshots compare with `Equal.equals` as the data did when each was
  * taken, and neither holds a live object: `Equal.equals` and `Hash.hash`
  * cache by object, and a hash cached before one mutation would hide the next.
+ * Throws when a trap throws or a buffer is detached.
  */
 const materialize = (u: unknown, seen = new Map<object, unknown>()): unknown => {
-  if (typeof u !== "object" || u === null || byReferenceInstances.has(u) || Equal.isEqual(u)) return u
+  if (typeof u === "function") return standIn(u)
+  if (typeof u !== "object" || u === null) return u
+  if (byReferenceInstances.has(u) || Equal.symbol in u) return standIn(u)
   const known = seen.get(u)
   if (known !== undefined) return known
-  if (u instanceof Date) return new Date(dateTime.call(u))
-  if (u instanceof RegExp) return new RegExp(regExpSource.call(u), regExpFlags.call(u))
-  // `Equal.equals` compares buffers by bytes and keeps `ArrayBuffer` apart from `SharedArrayBuffer`. A detached
-  // buffer has no bytes and throws, skipping the check.
-  if (isArrayBufferLike(u)) {
-    const bytes = bufferBytes(u)
-    if (bytes === undefined) throw new Error("detached")
-    const out = u instanceof ArrayBuffer ? new ArrayBuffer(bytes.byteLength) : new SharedArrayBuffer(bytes.byteLength)
-    new Uint8Array(out).set(bytes)
-    return out
-  }
   if (ArrayBuffer.isView(u)) {
-    const bytes = new Uint8Array(u.buffer, u.byteOffset, u.byteLength).slice()
-    if (u instanceof DataView) return new DataView(bytes.buffer)
+    const kind: string | undefined = typedArrayTag.call(u)
+    if (kind === undefined) {
+      // A `DataView`: its getter throws on a detached buffer, skipping the check.
+      return new DataView(copyBytes(dataViewBuffer.call(u), dataViewOffset.call(u), dataViewLength.call(u)).buffer)
+    }
     // `Equal.equals` compares typed array elements with `!==`, which never matches `NaN` and matches `0` with `-0`,
     // and doesn't tell kinds apart. A record under a private key holds the kind and the bytes instead.
     const out: Record<PropertyKey, unknown> = Object.create(null)
-    out[typedArrayKey] = [typedArrayKinds.findIndex((kind) => u instanceof kind), bytes.buffer]
+    out[typedArrayKey] = [
+      kind,
+      copyBytes(typedArrayBuffer.call(u), typedArrayOffset.call(u), typedArrayLength.call(u)).buffer
+    ]
     return out
   }
   if (Array.isArray(u)) {
-    const length = u.length
+    const length = Object.getOwnPropertyDescriptor(u, "length")!.value as number
     const out: Array<unknown> = new Array(length)
     seen.set(u, out)
     for (let i = 0; i < length; i++) {
@@ -148,13 +155,28 @@ const materialize = (u: unknown, seen = new Map<object, unknown>()): unknown => 
     }
     return out
   }
-  if (u instanceof Map) {
+  // `instanceof` only walks the prototypes; the slot check then tells a built-in object from a `Proxy` or an
+  // object made from its prototype, which are copied as records.
+  if (u instanceof Date && hasSlot(dateTime, u)) return new Date(dateTime.call(u))
+  if (u instanceof RegExp && hasSlot(regExpSource, u)) return new RegExp(regExpSource.call(u), regExpFlags(u))
+  if (u instanceof ArrayBuffer && hasSlot(arrayBufferLength, u)) {
+    return copyBytes(u as ArrayBuffer, 0, arrayBufferLength.call(u)).buffer
+  }
+  if (
+    sharedArrayBufferLength !== undefined && u instanceof SharedArrayBuffer && hasSlot(sharedArrayBufferLength, u)
+  ) {
+    const length: number = sharedArrayBufferLength.call(u)
+    const out = new SharedArrayBuffer(length)
+    new Uint8Array(out).set(new Uint8Array(u as SharedArrayBuffer, 0, length))
+    return out
+  }
+  if (u instanceof Map && hasSlot(mapSize, u)) {
     const out = new Map()
     seen.set(u, out)
     mapForEach.call(u, (value, key) => out.set(materialize(key, seen), materialize(value, seen)))
     return out
   }
-  if (u instanceof Set) {
+  if (u instanceof Set && hasSlot(setSize, u)) {
     const out = new Set()
     seen.set(u, out)
     setForEach.call(u, (value) => out.add(materialize(value, seen)))
@@ -170,30 +192,71 @@ const materialize = (u: unknown, seen = new Map<object, unknown>()): unknown => 
   return out
 }
 
+/** The stand-ins for values held by reference: equal only to themselves, with no `Equal` or `Hash` method. */
+const standIns = new WeakMap<object, object>()
+const standIn = (u: object): object => {
+  let out = standIns.get(u)
+  if (out === undefined) {
+    out = Equal.byReferenceUnsafe(Object.create(null) as object)
+    standIns.set(u, out)
+  }
+  return out
+}
 const typedArrayKey = Symbol("effect/reactivity/Loader/typedArray")
 /** Where an array has an accessor element: it is never read. */
 const accessorSlot = Symbol("effect/reactivity/Loader/accessor")
-const typedArrayKinds: ReadonlyArray<abstract new(...args: ReadonlyArray<any>) => unknown> = [
-  Int8Array,
-  Uint8Array,
-  Uint8ClampedArray,
-  Int16Array,
-  Uint16Array,
-  Int32Array,
-  Uint32Array,
-  Float32Array,
-  Float64Array,
-  BigInt64Array,
-  BigUint64Array,
-  ...("Float16Array" in globalThis ? [(globalThis as any).Float16Array] : [])
-]
-// The built-in methods, so that a subclass's own code never runs.
-const dateTime = Date.prototype.getTime
-const regExpSource = Object.getOwnPropertyDescriptor(RegExp.prototype, "source")!.get!
-const regExpFlags = Object.getOwnPropertyDescriptor(RegExp.prototype, "flags")!.get!
-const mapForEach: (this: Map<unknown, unknown>, f: (value: unknown, key: unknown) => void) => void =
-  Map.prototype.forEach
-const setForEach: (this: Set<unknown>, f: (value: unknown) => void) => void = Set.prototype.forEach
+
+// The built-in getters and methods, called directly: they read internal slots and nothing through the object, and
+// throw on an object without the slot, a `Proxy` included.
+type Intrinsic = (this: unknown, ...args: Array<any>) => any
+const getter = (proto: object, key: PropertyKey): Intrinsic => Object.getOwnPropertyDescriptor(proto, key)!.get!
+const hasSlot = (intrinsic: Intrinsic, u: object): boolean => {
+  try {
+    intrinsic.call(u)
+    return true
+  } catch {
+    return false
+  }
+}
+const typedArrayProto: object = Object.getPrototypeOf(Uint8Array.prototype)
+const typedArrayTag = getter(typedArrayProto, Symbol.toStringTag)
+const typedArrayBuffer = getter(typedArrayProto, "buffer")
+const typedArrayOffset = getter(typedArrayProto, "byteOffset")
+const typedArrayLength = getter(typedArrayProto, "byteLength")
+const dataViewBuffer = getter(DataView.prototype, "buffer")
+const dataViewOffset = getter(DataView.prototype, "byteOffset")
+const dataViewLength = getter(DataView.prototype, "byteLength")
+const arrayBufferLength = getter(ArrayBuffer.prototype, "byteLength")
+const sharedArrayBufferLength = typeof SharedArrayBuffer === "undefined"
+  ? undefined
+  : getter(SharedArrayBuffer.prototype, "byteLength")
+const dateTime: Intrinsic = Date.prototype.getTime
+const regExpSource = getter(RegExp.prototype, "source")
+// Each flag on its own: the `flags` getter reads them through the object.
+const regExpFlagGetters = (
+  [
+    ["d", "hasIndices"],
+    ["g", "global"],
+    ["i", "ignoreCase"],
+    ["m", "multiline"],
+    ["s", "dotAll"],
+    ["u", "unicode"],
+    ["v", "unicodeSets"],
+    ["y", "sticky"]
+  ] as const
+).flatMap(([flag, key]) => key in RegExp.prototype ? [[flag, getter(RegExp.prototype, key)] as const] : [])
+const regExpFlags = (u: object): string => {
+  let flags = ""
+  for (const [flag, get] of regExpFlagGetters) if (get.call(u)) flags += flag
+  return flags
+}
+const mapSize = getter(Map.prototype, "size")
+const setSize = getter(Set.prototype, "size")
+const mapForEach: (this: unknown, f: (value: unknown, key: unknown) => void) => void = Map.prototype.forEach
+const setForEach: (this: unknown, f: (value: unknown) => void) => void = Set.prototype.forEach
+/** A copy of a buffer's bytes in a new `ArrayBuffer`. A detached buffer throws, skipping the check. */
+const copyBytes = (buffer: ArrayBufferLike, offset: number, length: number): Uint8Array<ArrayBuffer> =>
+  new Uint8Array(buffer, offset, length).slice()
 
 /**
  * A snapshot of the encoding of a server value, for the `PatchMutated`
