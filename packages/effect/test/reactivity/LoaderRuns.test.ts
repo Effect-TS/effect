@@ -465,29 +465,56 @@ describe("Loader runs", () => {
         assert.strictEqual(entry?.view._tag === "Success" && entry.view.value.name, 42 as unknown as string)
       }).pipe(provide)
     })
-    it.effect("PatchMutated catches a mutation inside a value the success codec passes through", () => {
+    it.effect("PatchMutated compares a detached encoding with Equal.equals, through a value the codec passes through as is", () => {
+      const payloads: Record<string, Record<string, unknown>> = {
+        aliased: { count: 1 },
+        zero: { n: 0 },
+        undefinedKey: { count: 1 },
+        nan: { bad: NaN, count: 1 }
+      }
       class GetDoc extends Loader.Service<GetDoc>()(
         "docs/GetDoc",
         {
           args: { id: Schema.String },
-          success: Schema.Struct({ payload: Schema.Unknown }),
+          success: Schema.Struct({ payload: Schema.Any }),
           error: Schema.Never,
           staleTime: "30 seconds"
         },
-        Effect.sync(() => () => Effect.sync(() => ({ payload: { count: 1 } })))
+        Effect.sync(() => ({ id }) => Effect.sync(() => ({ payload: payloads[id] })))
       ) {}
+      const inPlace = (id: string, mutate: (payload: Record<string, unknown>) => void) =>
+        GetDoc.patch({ id }, (doc) => {
+          mutate(doc.payload as Record<string, unknown>)
+          return { ...doc }
+        })
       return Effect.gen(function*() {
-        yield* GetDoc.get({ id: "1" })
+        for (const id of Object.keys(payloads)) yield* GetDoc.get({ id })
         yield* issue({
           optimistic: [
-            GetDoc.patch({ id: "1" }, (doc) => {
-              ;(doc.payload as { count: number }).count++
-              return { ...doc }
+            // Under Schema.Any the encoding is the payload itself.
+            inPlace("aliased", (payload) => {
+              ;(payload.count as number)++
+            }),
+            // Equal.equals sees 0 and -0 as equal.
+            inPlace("zero", (payload) => {
+              payload.n = -0
+            }),
+            // It sees an own property set to undefined.
+            inPlace("undefinedKey", (payload) => {
+              payload.extra = undefined
+            }),
+            // A NaN beside the mutated field doesn't skip the check.
+            inPlace("nan", (payload) => {
+              ;(payload.count as number)++
             })
           ]
         })
-        const [mutated] = yield* TestLoader.expectProblem("PatchMutated")
-        assert.strictEqual(mutated.logKey, `{"id":"1"}`)
+        const mutated = yield* TestLoader.expectProblem("PatchMutated")
+        assert.deepStrictEqual(mutated.map((problem) => problem.logKey), [
+          `{"id":"aliased"}`,
+          `{"id":"undefinedKey"}`,
+          `{"id":"nan"}`
+        ])
       }).pipe(Effect.provide(Layer.merge(GetDoc.layer, TestLoader.layer())))
     })
   })

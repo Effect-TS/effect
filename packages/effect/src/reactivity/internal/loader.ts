@@ -14,6 +14,7 @@ import * as Equal from "../../Equal.ts"
 import * as Exit from "../../Exit.ts"
 import * as Fiber from "../../Fiber.ts"
 import * as Hash from "../../Hash.ts"
+import { byReferenceInstances } from "../../internal/equal.ts"
 import { redactAST } from "../../internal/schemaRedact.ts"
 import * as Option from "../../Option.ts"
 import * as Schema from "../../Schema.ts"
@@ -91,6 +92,58 @@ const canonical = (u: unknown): string => {
     return "{" + parts.join(",") + "}"
   }
   throw new NonJsonLeaf(u)
+}
+
+/**
+ * A copy of a value that a later in-place mutation of the value can't reach,
+ * and that `Equal.equals` sees as the value: arrays, plain objects (every own
+ * key), `Map`, `Set`, `Date` and binary data are copied, nested and cycles
+ * included. An `Equal` implementor, an `Equal.byReference` object and any
+ * other class instance are kept as they are.
+ */
+const detach = (u: unknown, seen = new Map<object, unknown>()): unknown => {
+  if (typeof u !== "object" || u === null || byReferenceInstances.has(u) || Equal.isEqual(u)) return u
+  const known = seen.get(u)
+  if (known !== undefined) return known
+  if (u instanceof Date) return new Date(u.getTime())
+  if (u instanceof ArrayBuffer) return u.slice(0)
+  if (ArrayBuffer.isView(u)) {
+    const bytes = new Uint8Array(u.buffer, u.byteOffset, u.byteLength).slice()
+    return u instanceof DataView
+      ? new DataView(bytes.buffer)
+      : new (u.constructor as new(buffer: ArrayBuffer) => unknown)(bytes.buffer)
+  }
+  if (Array.isArray(u)) {
+    const out: Array<unknown> = new Array(u.length)
+    seen.set(u, out)
+    for (let i = 0; i < u.length; i++) out[i] = detach(u[i], seen)
+    return out
+  }
+  if (u instanceof Map) {
+    const out = new Map()
+    seen.set(u, out)
+    for (const [key, value] of u) out.set(detach(key, seen), detach(value, seen))
+    return out
+  }
+  if (u instanceof Set) {
+    const out = new Set()
+    seen.set(u, out)
+    for (const value of u) out.add(detach(value, seen))
+    return out
+  }
+  const proto = Object.getPrototypeOf(u)
+  if (proto !== Object.prototype && proto !== null) return u
+  const out: Record<PropertyKey, unknown> = Object.create(proto)
+  seen.set(u, out)
+  for (const key of Reflect.ownKeys(u)) {
+    Object.defineProperty(out, key, {
+      value: detach((u as Record<PropertyKey, unknown>)[key], seen),
+      enumerable: Object.prototype.propertyIsEnumerable.call(u, key),
+      writable: true,
+      configurable: true
+    })
+  }
+  return out
 }
 
 const lazy = <A>(make: () => A): () => A => {
@@ -1068,8 +1121,8 @@ const settledMap = (
  *
  * The args key on the wire is built through the `args` type parameter, so
  * it is the entry's key in page state and its log key under the log's
- * redaction. Decoding takes the args from the key and checks that they key
- * back to it.
+ * redaction. Decoding takes the args from the key, decodes them all the way
+ * and checks that they key back to it.
  *
  * @internal
  */
@@ -1080,7 +1133,9 @@ export const snapshotSchema = (
   const def = defOf(read)
   const is = (u: unknown): u is SnapshotImpl =>
     u instanceof SnapshotImpl && u[SnapshotTypeId].def.name === def.name && u[SnapshotTypeId].label === label
-  const run = (typeParameters: ReadonlyArray<SchemaAST.AST>) => {
+  const invalid = (message: string) =>
+    new SchemaIssue.InvalidValue({ message: "a snapshot of " + quote(def.name) + ": " + message })
+  const makeRun = (decoding: boolean) => (typeParameters: ReadonlyArray<SchemaAST.AST>) => {
     const [args, success, error] = typeParameters.map((ast) =>
       SchemaParser.decodeUnknownEffect(Schema.make<Schema.Codec<unknown, unknown>>(ast))
     )
@@ -1093,18 +1148,28 @@ export const snapshotSchema = (
       const data = input[SnapshotTypeId]
       if (data.result === undefined) return Effect.succeed(input)
       const result = data.result
-      // The key stays as it is: it is the snapshot's identity.
-      return Effect.map(
+      // The key stays as it is: it is the snapshot's identity. A decoded snapshot is accepted only when its
+      // args, decoded all the way, key back to it, so it never names an entry other than the one it was taken from.
+      return Effect.flatMap(
         Effect.all([
           args(data.args, options),
           settledMap(result, (u) => success(u, options), (u) => error(u, options))
         ]),
-        ([args, result]) => new SnapshotImpl({ ...data, args, result })
+        ([args, result]) => {
+          if (decoding) {
+            let back: string | undefined
+            try {
+              back = def.argsKey(args)
+            } catch {
+              back = undefined
+            }
+            if (back !== data.argsKey) return Effect.fail(invalid("the args key isn't the key of its args"))
+          }
+          return Effect.succeed(new SnapshotImpl({ ...data, args, result }))
+        }
       )
     }
   }
-  const invalid = (message: string) =>
-    new SchemaIssue.InvalidValue({ message: "a snapshot of " + quote(def.name) + ": " + message })
   const toCodecJson = ([args, success, error]: ReadonlyArray<Schema.Top>) => {
     const argsJson = Schema.toCodecJson(args as Schema.Codec<unknown, unknown>)
     const encodeArgs = SchemaParser.encodeUnknownEffect(argsJson)
@@ -1128,15 +1193,8 @@ export const snapshotSchema = (
       } catch {
         return Effect.fail(invalid("the args key isn't JSON"))
       }
-      // A key that doesn't come back as itself would name another entry than the one it was taken from.
-      return Effect.flatMap(
-        decodeArgs(parsed, options),
-        (decoded) =>
-          Effect.flatMap(
-            toKey(decoded, options),
-            (back) => back === key ? Effect.succeed(decoded) : Effect.fail(invalid("the args key isn't canonical"))
-          )
-      )
+      // The declaration checks the key once the args are decoded all the way.
+      return decodeArgs(parsed, options)
     }
     return Schema.link<SnapshotImpl>()(
       Schema.Union([
@@ -1198,12 +1256,17 @@ export const snapshotSchema = (
   return Schema.make(
     new SchemaAST.Declaration(
       [def.args.ast, def.success.ast, def.error.ast],
-      run,
+      makeRun(true),
       {
         expected: "Loader.Snapshot(" + quote(def.name) + ", " + quote(label) + ")",
         [snapshotAnnotationKey]: { read: def.name, label, definition: read },
         toCodecJson
-      } as Schema.Annotations.Annotations
+      } as Schema.Annotations.Annotations,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      makeRun(false)
     )
   )
 }
@@ -2222,14 +2285,9 @@ export const makeCache = (options: {
     emit(entry)
     afterQuiet(entry)
   }
-  /**
-   * The server value's encoding, as canonical JSON text. An encoding can share
-   * parts with the value, such as under `Schema.Unknown`, so it is taken as
-   * text: a patch that then mutates the value can't change it too.
-   */
-  const tryEncode = (entry: Entry, value: unknown): string | undefined => {
+  const tryEncode = (entry: Entry, value: unknown): { readonly encoded: unknown } | undefined => {
     try {
-      return canonical(entry.def.codec().encodeSuccess(value))
+      return { encoded: entry.def.codec().encodeSuccess(value) }
     } catch {
       return undefined
     }
@@ -2316,12 +2374,14 @@ export const makeCache = (options: {
     }
     // First application is all-or-nothing: a throw here leaves nothing registered.
     const values = new Map<Entry, unknown>()
-    const before = new Map<Entry, string | undefined>()
+    const before = new Map<Entry, { readonly encoded: unknown } | undefined>()
     const invalid = new Set<Entry>()
     for (const { entry, patch } of planned) {
       if (!values.has(entry)) {
         const server = (entry.result as AsyncResult.Success<any, any>).value
-        before.set(entry, tryEncode(entry, server))
+        // Detached: an encoding can share parts with the value, such as under `Schema.Unknown`.
+        const encoded = tryEncode(entry, server)
+        before.set(entry, encoded === undefined ? undefined : { encoded: detach(encoded.encoded) })
         values.set(
           entry,
           (patchedViewOf(entry, entry.result!) as { readonly result: AsyncResult.Success<any, any> })
@@ -2361,7 +2421,7 @@ export const makeCache = (options: {
       const encoded = before.get(entry)
       if (encoded !== undefined && entry.result?._tag === "Success") {
         const after = tryEncode(entry, entry.result.value)
-        if (after !== undefined && encoded !== after) {
+        if (after !== undefined && !Equal.equals(encoded.encoded, after.encoded)) {
           report(
             new PatchMutated({
               read: entry.def.name,

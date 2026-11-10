@@ -373,6 +373,21 @@ describe("Loader snapshot identity", () => {
     }).pipe(Effect.provide(Layer.merge(GetPoint.layer, TestLoader.layer())))
   })
 
+  it("a decoded snapshot's key must be the key of its args decoded all the way", () => {
+    class GetTrimmed extends Loader.Service<GetTrimmed>()(
+      "trimmed/GetTrimmed",
+      { args: { s: Schema.Trim }, success: Schema.String, error: Schema.Never, staleTime: "1 minute" },
+      Effect.sync(() => ({ s }) => Effect.succeed(s))
+    ) {}
+    const def = internal.defOf(GetTrimmed)
+    const json = Schema.toCodecJson(Loader.Snapshot(GetTrimmed, "trimmed"))
+    // " a " decodes to "a", whose key is {"s":"a"}: the snapshot would name an entry it wasn't taken from.
+    assert.isTrue(Exit.isFailure(Schema.decodeUnknownExit(json)([`{"s":" a "}`, 0, "cached", 1, false])))
+    const decoded = Schema.decodeUnknownSync(json)([`{"s":"a"}`, 0, "cached", 1, false])
+    assert.deepStrictEqual(internal.snapshotData(decoded)?.args, { s: "a" })
+    assert.strictEqual(internal.snapshotData(decoded)?.argsKey, def.argsKey({ s: "a" }))
+  })
+
   it("a snapshot of an entry keyed with an optional undefined dropped encodes as the key does", () => {
     // Accepts a missing page, and rejects one that is present and undefined.
     const Args = Schema.Struct({ id: Schema.String, page: Schema.optional(Schema.Number) }).check(
