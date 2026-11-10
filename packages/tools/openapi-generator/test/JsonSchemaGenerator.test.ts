@@ -1,5 +1,5 @@
 import * as JsonSchemaGenerator from "@effect/openapi-generator/JsonSchemaGenerator"
-import { describe, expect, it } from "@effect/vitest"
+import { assert, describe, expect, it } from "@effect/vitest"
 
 describe("JsonSchemaGenerator", () => {
   it("schema & no definitions", () => {
@@ -55,6 +55,24 @@ export const A = Schema.String.annotate({ "description": "desc" })
 export type A = string
 export const A = Schema.String.annotate({ "description": "desc", "examples": ["ex"] })
 `)
+  })
+
+  it("omits examples with excess properties on closed objects while retaining valid examples", () => {
+    const generator = JsonSchemaGenerator.make()
+    generator.addSchema("A", {
+      type: "object",
+      properties: { value: { type: "string" } },
+      additionalProperties: false,
+      examples: [{ value: "valid" }, { value: "invalid", extra: true }]
+    })
+
+    assert.strictEqual(
+      generator.generate("openapi-3.1", {}, false),
+      `// schemas
+export type A = { readonly "value"?: string }
+export const A = Schema.Struct({ "value": Schema.optionalKey(Schema.String) }).annotate({ "examples": [{ "value": "valid" }] })
+`
+    )
   })
 
   const definitions = {

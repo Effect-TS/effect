@@ -1,5 +1,5 @@
 import { assert } from "@effect/vitest"
-import { JsonSchema, Schema, SchemaRepresentation } from "effect"
+import { Exit, JsonSchema, Schema, SchemaRepresentation } from "effect"
 import { TestSchema } from "effect/testing"
 import { describe, it } from "vitest"
 import { deepStrictEqual, throws } from "../../utils/assert.ts"
@@ -908,6 +908,44 @@ describe("fromJsonSchemaDocument", () => {
       )
     })
 
+    it("imports additionalProperties that accept the declared property's values", () => {
+      // Reduced from OpenRouter's ImageGenerationServerToolConfig.
+      const schema = toSchemaFromJsonSchemaDocument(JsonSchema.fromSchemaDraft2020_12({
+        type: "object",
+        properties: { model: { type: "string" } },
+        additionalProperties: {
+          anyOf: [{ type: "string" }, { type: "number" }]
+        }
+      }))
+      const decode = Schema.decodeUnknownExit(schema as unknown as Schema.ConstraintDecoder<unknown>)
+
+      for (const input of [{ model: "image-model", seed: 1 }, { extra: "value" }]) {
+        assert.deepStrictEqual(decode(input), Exit.succeed(input))
+      }
+      assert.isTrue(Exit.isFailure(decode({ model: 1 })))
+      assert.isTrue(Exit.isFailure(decode({ model: "image-model", extra: true })))
+    })
+
+    it("closes implicit additional properties after intersections", () => {
+      for (const additionalProperties of [undefined, true, {}]) {
+        const schema = toSchemaFromJsonSchemaDocument(
+          JsonSchema.fromSchemaDraft2020_12({
+            allOf: [
+              { type: "object", properties: { a: { type: "string" } } },
+              { type: "object", properties: { b: { type: "number" } }, additionalProperties }
+            ]
+          }),
+          { closeObjects: true }
+        )
+        const decode = Schema.decodeUnknownExit(schema as unknown as Schema.ConstraintDecoder<unknown>)
+        const input = { a: "a", b: 1, extra: true }
+        assert.deepStrictEqual(
+          decode(input),
+          Exit.succeed(additionalProperties === undefined ? { a: "a", b: 1 } : input)
+        )
+      }
+    })
+
     it("explains why typed additional properties cannot exclude patterned keys", () => {
       throws(
         () =>
@@ -1198,6 +1236,65 @@ describe("fromJsonSchemaDocument", () => {
       }
     )
   })
+
+  it.each(["anyOf", "oneOf"] as const)("keeps parent and branch examples separate with %s", (mode) => {
+    assertFromJsonSchema({
+      schema: {
+        type: "string",
+        [mode]: [
+          { const: "Router", examples: ["Router"] },
+          { const: "GPT", examples: ["GPT"] }
+        ],
+        examples: ["GPT"]
+      }
+    }, {
+      codes: makeCode(
+        `Schema.Union([Schema.Literal("Router").annotate({ "examples": ["Router"] }), Schema.Literal("GPT").annotate({ "examples": ["GPT"] })]${
+          mode === "oneOf" ? `, { mode: "oneOf" }` : ""
+        }).annotate({ "examples": ["GPT"] })`,
+        `"Router" | "GPT"`
+      )
+    })
+  })
+
+  it("keeps examples on an enum intersected with a nullable reference to itself", () => {
+    assertFromJsonSchema({
+      schema: {
+        allOf: [
+          { $ref: "#/$defs/Tokenizer" },
+          { anyOf: [{ $ref: "#/$defs/Tokenizer" }, { type: "null" }] }
+        ],
+        $defs: { Tokenizer: { type: "string", enum: ["Router", "GPT"], examples: ["GPT"] } }
+      }
+    }, {
+      codes: makeCode(
+        `Schema.Literals(["Router", "GPT"]).annotate({ "examples": ["GPT"] })`,
+        `"Router" | "GPT"`
+      )
+    })
+  })
+
+  it.each([undefined, ["a"]])(
+    "preserves oneOf when intersecting a nullable enum reference with examples %j",
+    (examples) => {
+      assertFromJsonSchema({
+        schema: {
+          allOf: [
+            { oneOf: [{ const: "a" }, { const: "b" }] },
+            { anyOf: [{ $ref: "#/$defs/U" }, { type: "null" }] }
+          ],
+          $defs: { U: { enum: ["a", "b"], examples } }
+        }
+      }, {
+        codes: makeCode(
+          `Schema.Union([Schema.Literal("a"), Schema.Literal("b")], { mode: "oneOf" })${
+            examples === undefined ? "" : `.annotate({ "examples": ["a"] })`
+          }`,
+          `"a" | "b"`
+        )
+      })
+    }
+  )
 
   it.each(["$ref", "$dynamicRef"])("omits contentSchema containing a nested %s", (keyword) => {
     const schema = toSchemaFromJsonSchemaDocument(JsonSchema.fromSchemaDraft2020_12({
@@ -2151,6 +2248,46 @@ describe("fromJsonSchemaDocument", () => {
       })
     })
 
+    it("intersects overlapping unions of referenced discriminated objects", () => {
+      // Reduced from the base and extension of OpenRouter's OpenResponsesResult.output items.
+      for (const mode of ["anyOf", "oneOf"] as const) {
+        const base = { [mode]: [{ $ref: "#/$defs/A" }, { $ref: "#/$defs/B" }] }
+        const extension = { [mode]: [{ $ref: "#/$defs/ExtendedA" }, { $ref: "#/$defs/C" }, { $ref: "#/$defs/B" }] }
+        for (const allOf of [[base, extension], [extension, base]]) {
+          const schema = toSchemaFromJsonSchemaDocument(JsonSchema.fromSchemaDraft2020_12({
+            $defs: {
+              A: {
+                type: "object",
+                properties: { type: { const: "a" }, value: { type: "string" } },
+                required: ["type", "value"]
+              },
+              ExtendedA: {
+                type: "object",
+                properties: { type: { const: "a" }, extra: { type: "number" } },
+                required: ["type", "extra"]
+              },
+              B: {
+                type: "object",
+                properties: { type: { const: "b" }, child: { $ref: "#/$defs/B" } },
+                required: ["type"]
+              },
+              C: { type: "object", properties: { type: { const: "c" } }, required: ["type"] }
+            },
+            allOf
+          }))
+          const decode = Schema.decodeUnknownExit(schema as unknown as Schema.ConstraintDecoder<unknown>)
+
+          for (const input of [{ type: "a", value: "value", extra: 1 }, { type: "b", child: { type: "b" } }]) {
+            assert.deepStrictEqual(decode(input), Exit.succeed(input))
+          }
+          assert.isTrue(Exit.isFailure(decode({ type: "c" })))
+          assert.isTrue(Exit.isFailure(decode({ type: "a", value: "value" })))
+          assert.isTrue(Exit.isFailure(decode({ type: "a", extra: 1 })))
+          assert.isTrue(Exit.isFailure(decode({})))
+        }
+      }
+    })
+
     it("rejects intersections requiring a Cartesian product", () => {
       throws(
         () =>
@@ -2174,6 +2311,152 @@ describe("fromJsonSchemaDocument", () => {
           ),
         `Cannot intersect these "anyOf" or "oneOf" alternatives without expanding their branches.\n  at ["schema"]["allOf"][1]`
       )
+    })
+
+    it("rejects intersections that multiply tagged alternatives", () => {
+      throws(
+        () =>
+          toSchemaFromJsonSchemaDocument(JsonSchema.fromSchemaDraft2020_12({
+            allOf: [
+              {
+                anyOf: ["a", "b"].map((tag) => ({
+                  type: "object",
+                  properties: { tag: { const: tag } },
+                  required: ["tag"]
+                }))
+              },
+              {
+                anyOf: ["x", "y"].map((key) => ({
+                  type: "object",
+                  properties: { [key]: { type: "string" } },
+                  required: [key]
+                }))
+              }
+            ]
+          })),
+        `Cannot intersect these "anyOf" or "oneOf" alternatives without expanding their branches.\n  at ["schema"]["allOf"][1]`
+      )
+    })
+
+    it("preserves mutually recursive references intersected with themselves", () => {
+      const schema = toSchemaFromJsonSchemaDocument(JsonSchema.fromSchemaDraft2020_12({
+        $ref: "#/$defs/Node",
+        $defs: {
+          Node: {
+            type: "object",
+            properties: {
+              value: { type: "string" },
+              children: { allOf: [{ $ref: "#/$defs/Children" }, { $ref: "#/$defs/Children" }] }
+            },
+            required: ["value"]
+          },
+          Children: {
+            type: "array",
+            items: { allOf: [{ $ref: "#/$defs/Node" }, { $ref: "#/$defs/Node" }] }
+          }
+        }
+      }))
+      const decode = Schema.decodeUnknownExit(schema as unknown as Schema.ConstraintDecoder<unknown>)
+      const input = { value: "parent", children: [{ value: "child", children: [] }] }
+
+      assert.deepStrictEqual(decode(input), Exit.succeed(input))
+      assert.isTrue(Exit.isFailure(decode({ value: "parent", children: [{ value: 1 }] })))
+      assert.isTrue(Exit.isFailure(decode({ value: "parent", children: [{}] })))
+    })
+
+    it.each([
+      {
+        name: "directly",
+        definition: { allOf: [{ $ref: "#/$defs/A" }, { $ref: "#/$defs/A" }] }
+      },
+      {
+        name: "through a union",
+        definition: {
+          anyOf: [
+            { allOf: [{ $ref: "#/$defs/A" }, { $ref: "#/$defs/A" }] },
+            { type: "string" }
+          ]
+        }
+      }
+    ])("rejects circular aliases repeated in an intersection $name", ({ definition }) => {
+      assert.throws(() =>
+        toSchemaFromJsonSchemaDocument(JsonSchema.fromSchemaDraft2020_12({
+          $ref: "#/$defs/A",
+          $defs: { A: definition }
+        })), /Definition "A" is a circular alias/)
+    })
+
+    it("rejects alias cycles through unions in a same-reference intersection", () => {
+      assert.throws(() =>
+        toSchemaFromJsonSchemaDocument(JsonSchema.fromSchemaDraft2020_12({
+          $defs: { A: { anyOf: [{ $ref: "#/$defs/A" }, { type: "string" }] } },
+          allOf: [{ $ref: "#/$defs/A" }, { $ref: "#/$defs/A" }]
+        })), /Definition "A" is a circular alias/)
+    })
+
+    it.each([
+      {
+        name: "distinct references",
+        schema: {
+          allOf: [{ $ref: "#/$defs/A" }, { $ref: "#/$defs/B" }],
+          $defs: {
+            A: { type: "object", properties: { next: { $ref: "#/$defs/A" } } },
+            B: { type: "object", properties: { next: { $ref: "#/$defs/B" } } }
+          }
+        },
+        message: /^Cannot normalize this recursive intersection\./
+      },
+      {
+        name: "annotated aliases with an inline constraint",
+        schema: {
+          allOf: [{ $ref: "#/$defs/A" }, { type: "string" }],
+          $defs: {
+            A: { $ref: "#/$defs/B", description: "alias", examples: ["x"] },
+            B: { anyOf: [{ $ref: "#/$defs/A" }, { type: "null" }] }
+          }
+        },
+        message: /^Cannot normalize this recursive intersection\./
+      },
+      {
+        name: "a constraint needing an unfinished definition",
+        schema: {
+          $ref: "#/$defs/A",
+          $defs: {
+            A: {
+              type: "object",
+              properties: {
+                next: {
+                  allOf: [
+                    { $ref: "#/$defs/A" },
+                    { type: "object", properties: { extra: { type: "string" } } }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        message: /^Cannot resolve recursive definition "A" during normalization\./
+      }
+    ])("rejects unsupported recursive intersections: $name", ({ message, schema }) => {
+      assert.throws(() => toSchemaFromJsonSchemaDocument(JsonSchema.fromSchemaDraft2020_12(schema)), message)
+    })
+
+    it("allows independent uses of the same reference intersection", () => {
+      const intersection = { allOf: [{ $ref: "#/$defs/A" }, { $ref: "#/$defs/B" }] }
+      const schema = toSchemaFromJsonSchemaDocument(JsonSchema.fromSchemaDraft2020_12({
+        type: "object",
+        properties: { first: intersection, second: intersection },
+        $defs: {
+          A: { type: "number", minimum: 0 },
+          B: { type: "number", maximum: 10 }
+        }
+      }))
+      const decode = Schema.decodeUnknownExit(schema as unknown as Schema.ConstraintDecoder<unknown>)
+      const input = { first: 1, second: 2 }
+
+      assert.deepStrictEqual(decode(input), Exit.succeed(input))
+      assert.isTrue(Exit.isFailure(decode({ first: -1, second: 2 })))
+      assert.isTrue(Exit.isFailure(decode({ first: 1, second: 11 })))
     })
 
     it.each([

@@ -20,6 +20,7 @@
  */
 import * as Arr from "effect/Array"
 import * as JsonSchema from "effect/JsonSchema"
+import * as Option from "effect/Option"
 import * as Rec from "effect/Record"
 import * as Schema from "effect/Schema"
 import * as SchemaRepresentation from "effect/SchemaRepresentation"
@@ -29,6 +30,12 @@ interface GenerateOptions {
   readonly onEnter?: ((js: JsonSchema.JsonSchema) => JsonSchema.JsonSchema) | undefined
   readonly multipartSchemaRefs?: MultipartSchemaRefs | undefined
   readonly includeSchemas?: ReadonlyArray<string> | undefined
+  /**
+   * Closes objects with declared properties when every contributing object schema omits `additionalProperties`.
+   *
+   * @stability experimental
+   */
+  readonly closeObjects?: boolean | undefined
 }
 
 interface HttpApiMultipartSchemaRefs {
@@ -222,6 +229,7 @@ function makeWithRepresentation() {
     const preparedOutputs = new WeakSet<JsonSchema.JsonSchema>()
     const importerOptions: SchemaRepresentation.FromJsonSchemaOptions = {
       patterns: "apply",
+      closeObjects: options?.closeObjects,
       onEnter(js: JsonSchema.JsonSchema) {
         if (preparedOutputs.has(js)) return js
         const cached = preparedSchemas.get(js)
@@ -246,7 +254,8 @@ function makeWithRepresentation() {
       for (let i = 0; i < schemasWithExamples.length; i++) {
         const node = schemasWithExamples[i]
         const examples = node.examples as ReadonlyArray<unknown>
-        const validExamples = examples.filter(Schema.is(exampleSchemas[i]))
+        const decode = Schema.decodeUnknownOption(Schema.toType(exampleSchemas[i]), { onExcessProperty: "error" })
+        const validExamples = examples.filter((example) => Option.isSome(decode(example)))
         if (validExamples.length === examples.length) continue
         if (validExamples.length === 0) {
           delete node.examples

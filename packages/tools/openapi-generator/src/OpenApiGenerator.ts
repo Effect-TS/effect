@@ -150,6 +150,14 @@ export interface OpenApiGenerateOptions {
    */
   readonly onEnter?: ((js: JsonSchema.JsonSchema) => JsonSchema.JsonSchema) | undefined
   /**
+   * Closes objects with declared properties when every contributing object schema omits `additionalProperties`.
+   * Closing happens after composition is normalized, preserving inherited fields.
+   * Explicit additional-property declarations and free-form objects are preserved.
+   *
+   * @stability experimental
+   */
+  readonly closeObjects?: boolean | undefined
+  /**
    * Component schemas to generate even when no operation references them.
    */
   readonly includeSchemas?: ReadonlyArray<string> | undefined
@@ -215,6 +223,7 @@ export const make = Effect.gen(function*() {
       const source = getDialect(spec)
       const schemaOptions = {
         onEnter: options.onEnter,
+        closeObjects: options.closeObjects,
         multipartSchemaRefs: multipart.refs,
         includeSchemas: options.includeSchemas
       }

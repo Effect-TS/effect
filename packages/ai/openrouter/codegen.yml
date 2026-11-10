@@ -1,16 +1,26 @@
 # yaml-language-server: $schema=../../tools/ai-codegen/codegen.schema.json
+# Regeneration snapshot: OpenRouter API 1.0.0 (MIT), 2026-11-10.
+# Input SHA-256: c1e6b8a3e3e94885c7c80a1f57e21f2a054c29849d6880db9aa4fe9bd21d35e6
 spec: https://openrouter.ai/openapi.yaml
 output: src/Generated.ts
 name: OpenRouterClient
 header: |
   /**
+   * Generated from OpenRouter's MIT-licensed specification at https://openrouter.ai/openapi.yaml.
+   *
    * @stability unstable
    * @since 1.0.0
    */
 excludeAnnotations:
   - default
-disableAdditionalProperties: true
+closeObjects: true
 patches:
+  # Replace credential-shaped examples that GitHub secret scanning rejects.
+  - '[{"op":"replace","path":"/paths/~1auth~1keys/post/responses/200/content/application~1json/example/key","value":"OPENROUTER_API_KEY"},{"op":"replace","path":"/paths/~1auth~1keys/post/responses/200/content/application~1json/schema/example/key","value":"OPENROUTER_API_KEY"},{"op":"replace","path":"/paths/~1auth~1keys/post/responses/200/content/application~1json/schema/properties/key/example","value":"OPENROUTER_API_KEY"},{"op":"replace","path":"/paths/~1keys/post/responses/201/content/application~1json/example/key","value":"OPENROUTER_API_KEY"},{"op":"replace","path":"/paths/~1keys/post/responses/201/content/application~1json/schema/example/key","value":"OPENROUTER_API_KEY"},{"op":"replace","path":"/paths/~1keys/post/responses/201/content/application~1json/schema/properties/key/example","value":"OPENROUTER_API_KEY"}]'
+  # Fix confirm_default_workspace_deletion's boolean schema: its enum and example use strings upstream.
+  - '[{"op":"remove","path":"/paths/~1workspaces~1{id}/delete/parameters/1/schema/enum"},{"op":"replace","path":"/paths/~1workspaces~1{id}/delete/parameters/1/schema/example","value":false}]'
+  # Extend the closed Alignment object without intersecting incompatible closed property sets.
+  - '[{"op":"replace","path":"/components/schemas/OpenResponsesErrorMetadata/properties/alignment","value":{"type":"object","description":"Beta. The result of the alignment plugin for this request; the shape may change.","properties":{"calls":{"type":"array","items":{"$ref":"#/components/schemas/AlignmentCallRecord"}},"rejected":{"$ref":"#/components/schemas/AlignmentRejected"}},"required":["calls"],"additionalProperties":false}}]'
   # Use JSON for transcriptions to preserve structured provider.options.
   - '[{"op":"remove","path":"/paths/~1audio~1transcriptions/post/requestBody/content/multipart~1form-data"}]'
   # Flatten Responses streaming event allOf wrappers to keep generated schemas referential
