@@ -1559,32 +1559,39 @@ const makeStreamResponse = Effect.fnUntraced(
             finishReason = "content-filter"
           }
 
-          // Forward any unsent tool calls if finish reason is 'tool-calls'
-          if (finishReason === "tool-calls") {
-            for (const toolCall of Object.values(activeToolCalls)) {
-              // Coerce invalid tool call parameters to an empty object
-              let params: unknown
-              // @effect-diagnostics-next-line tryCatchInEffectGen:off
-              try {
-                params = Tool.unsafeSecureJsonParse(toolCall.params)
-              } catch {
-                params = {}
+          for (const toolCall of Object.values(activeToolCalls)) {
+            let params: unknown
+            // @effect-diagnostics-next-line tryCatchInEffectGen:off
+            try {
+              params = Tool.unsafeSecureJsonParse(toolCall.params)
+            } catch {
+              if (finishReason !== "tool-calls") {
+                return yield* AiError.make({
+                  module: "OpenRouterLanguageModel",
+                  method: "makeStreamResponse",
+                  reason: new AiError.ToolParameterValidationError({
+                    toolName: toolCall.name,
+                    description:
+                      `Response finished with reason "${finishReason}" before the tool call parameters were complete`
+                  })
+                })
               }
-
-              // Only attach reasoning_details to the first tool call to avoid
-              // duplicating thinking blocks for parallel tool calls (Claude)
-              parts.push({
-                type: "tool-call",
-                id: toolCall.id,
-                name: toolCall.name,
-                params: yield* normalizeToolParams(toolCodecs, toolCall.name, params),
-                metadata: reasoningDetailsAttachedToToolCall ? undefined : {
-                  openrouter: { reasoningDetails: accumulatedReasoningDetails }
-                }
-              })
-
-              reasoningDetailsAttachedToToolCall = true
+              params = {}
             }
+
+            // Only attach reasoning_details to the first tool call to avoid
+            // duplicating thinking blocks for parallel tool calls (Claude)
+            parts.push({
+              type: "tool-call",
+              id: toolCall.id,
+              name: toolCall.name,
+              params: yield* normalizeToolParams(toolCodecs, toolCall.name, params),
+              metadata: reasoningDetailsAttachedToToolCall ? undefined : {
+                openrouter: { reasoningDetails: accumulatedReasoningDetails }
+              }
+            })
+
+            reasoningDetailsAttachedToToolCall = true
           }
 
           // End reasoning first if it was started, to maintain proper order
