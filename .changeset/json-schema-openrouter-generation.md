@@ -15,3 +15,8 @@ Fixtures and stored responses must also include these newly required fields:
 - `Model`: `endpoints`.
 - `BYOKKey`: `declared_region`, `declared_zdr`, `is_byok_only`, and `is_required`.
 - `PublicEndpoint`: `native_tools`, `service_tier`, `supports_diarization`, and `supports_tool_choice`.
+- `Guardrail`: `include_byok_in_budgets`.
+- `VideoModel`: `creativity` and `upscale_factor`.
+- `GenerationContentData`: `error`.
+- `FusionCallAnalysisInProgressEvent`: `analyst_model`.
+- All `Observability*Destination` schemas: `regions`, `broadcast_generation_cost`, `broadcast_generation_cost_allocation`, `broadcast_generation_identity`, and `broadcast_generation_request_context`.
