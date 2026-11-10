@@ -4,6 +4,7 @@
 import * as Deferred from "../../../Deferred.ts"
 import * as Effect from "../../../Effect.ts"
 import * as Base64 from "../../../encoding/Base64.ts"
+import type * as Headers from "../../../http/Headers.ts"
 import { appendPreResponseHandlerUnsafe } from "../../../http/HttpEffect.ts"
 import * as HttpServerRequest from "../../../http/HttpServerRequest.ts"
 import * as HttpServerResponse from "../../../http/HttpServerResponse.ts"
@@ -273,6 +274,51 @@ const failWithHttpStatus = (status: number, error: McpProtocol.ProtocolError) =>
     )
     return Effect.fail(error)
   })
+
+// Only properties paths may mirror headers; composition, arrays, and references do not qualify.
+const validateParameterHeaders = (
+  inputSchema: unknown,
+  args: unknown,
+  headers: Headers.Headers
+) =>
+  Effect.suspend(() => {
+    const pending: Array<{ readonly schema: unknown; readonly argument: unknown; readonly path: string }> = [
+      { schema: inputSchema, argument: args, path: "" }
+    ]
+    while (pending.length > 0) {
+      const { schema, argument, path } = pending.pop()!
+      if (!Predicate.isReadonlyObject(schema)) continue
+      const annotation = schema["x-mcp-header"]
+      if (typeof annotation === "string") {
+        const headerName = `mcp-param-${annotation.toLowerCase()}`
+        if (!parameterHeaderMatches(headers[headerName], argument)) {
+          return failWithHttpStatus(
+            400,
+            new McpProtocol.ProtocolError({
+              code: PublicMcpSchema.HEADER_MISMATCH_ERROR_CODE,
+              message: `${headerName} does not match argument '${path}'`
+            })
+          )
+        }
+      }
+      if (Predicate.isReadonlyObject(schema.properties)) {
+        for (const [name, property] of Object.entries(schema.properties)) {
+          pending.push({
+            schema: property,
+            argument: Predicate.isReadonlyObject(argument) && Object.hasOwn(argument, name)
+              ? argument[name]
+              : undefined,
+            path: path === "" ? name : `${path}.${name}`
+          })
+        }
+      }
+    }
+    return Effect.void
+  }).pipe(
+    Effect.mapError((error) =>
+      new McpCore.RequestRejected({ code: error.code, message: error.message, data: error.data, error })
+    )
+  )
 
 /**
  * @internal
@@ -627,45 +673,13 @@ export const makeHandlers = (
     }, Effect.mapError(projectError)),
     "tools/call": Effect.fnUntraced(function*(request: typeof McpSchema.CallTool.payloadSchema.Type) {
       const invocation = yield* getInputInvocation(request)
-      const tool = core.tools.find(request.name, invocation.protocol)
       const httpRequest = yield* Effect.serviceOption(HttpServerRequest.HttpServerRequest)
-
-      if (tool !== undefined && Option.isSome(httpRequest)) {
-        const pending: Array<{ readonly schema: unknown; readonly argument: unknown; readonly path: string }> = [
-          { schema: tool.inputSchema, argument: request.arguments, path: "" }
-        ]
-        // Only properties paths may mirror headers; composition, arrays, and references do not qualify.
-        while (pending.length > 0) {
-          const { schema, argument, path } = pending.pop()!
-          if (!Predicate.isReadonlyObject(schema)) continue
-          const annotation = schema["x-mcp-header"]
-          if (typeof annotation === "string") {
-            const headerName = `mcp-param-${annotation.toLowerCase()}`
-            if (!parameterHeaderMatches(httpRequest.value.headers[headerName], argument)) {
-              return yield* failWithHttpStatus(
-                400,
-                new McpProtocol.ProtocolError({
-                  code: PublicMcpSchema.HEADER_MISMATCH_ERROR_CODE,
-                  message: `${headerName} does not match argument '${path}'`
-                })
-              )
-            }
-          }
-          if (Predicate.isReadonlyObject(schema.properties)) {
-            for (const [name, property] of Object.entries(schema.properties)) {
-              pending.push({
-                schema: property,
-                argument: Predicate.isReadonlyObject(argument) && Object.hasOwn(argument, name)
-                  ? argument[name]
-                  : undefined,
-                path: path === "" ? name : `${path}.${name}`
-              })
-            }
-          }
-        }
-      }
-
-      const outcome = yield* core.tools.call({ name: request.name, arguments: request.arguments ?? {} }, invocation)
+      const beforeHandle = Option.isSome(httpRequest)
+        ? (tool: PublicMcpSchema.Tool) =>
+          validateParameterHeaders(tool.inputSchema, request.arguments, httpRequest.value.headers)
+        : undefined
+      const call = { name: request.name, arguments: request.arguments ?? {} }
+      const outcome = yield* core.tools.call(call, invocation, beforeHandle)
         .pipe(
           Effect.catchTag(
             ["ToolExecutionError", "InvalidToolInput"],

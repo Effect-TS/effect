@@ -1242,8 +1242,8 @@ export class McpServer extends Context.Service<McpServer, {
           }),
           visible: visible("tools/list", options.tool.name),
           isVisible: isEnabled(options.annotations),
-          handle: (call, invocation) =>
-            invoke(options.handle(call.arguments), invocation, {
+          handle: (call, invocation, beforeHandle) =>
+            invoke(Effect.andThen(beforeHandle, () => options.handle(call.arguments)), invocation, {
               method: "tools/call",
               target: call.name,
               payload: call
