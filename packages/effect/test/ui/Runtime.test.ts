@@ -507,6 +507,50 @@ describe("Runtime", () => {
       })))
   })
 
+  describe("a Command's typed failure", () => {
+    class Save extends Command.Service<Save>()(
+      "test/Save",
+      Effect.succeed((text: string) => text === "" ? Effect.fail("empty" as const) : Effect.succeed(text.length)),
+      { invalidates: () => [] }
+    ) {}
+    const save = (text: string) =>
+      Save.make(text).pipe(Command.match({
+        onSuccess: (length) => `saved ${length}`,
+        onFailure: (error) => `failed: ${error}`
+      }))
+    const Form = (issue: (text: string) => Command.Command<string, Save>) =>
+      Component.make({
+        name: "Form",
+        props: Schema.Struct({ text: Schema.String }),
+        model: Schema.String,
+        message: Schema.String,
+        init: ($) => $.set("...").run(issue($.props.text)),
+        update: (_, message) => message,
+        view: (text, h) => h.text(text)
+      }).pipe(Component.provide(Save.layer))
+
+    it.effect("reaches update as the message the issue site mapped it to, and ends the run", () =>
+      provideHost(Effect.gen(function*() {
+        const ok = yield* TestHost.mount(Form(save), { text: "abc" })
+        const failed = yield* TestHost.mount(Form(save), { text: "" })
+        yield* TestHost.settle
+        assert.strictEqual(ok.text(), "saved 3")
+        assert.strictEqual(failed.text(), "failed: empty")
+        assert.include(tags(failed), "CommandEnded")
+        assert.notInclude(tags(failed), "Failed")
+      })))
+
+    it.effect("fails the instance when nothing mapped it, which the types rule out", () =>
+      provideHost(Effect.gen(function*() {
+        const unmatched = (text: string) => Save.make(text) as unknown as Command.Command<string, Save>
+        const root = yield* TestHost.mount(Form(unmatched), { text: "" }, { fallback: (_, h) => h.text("crashed") })
+        yield* TestHost.settle
+        assert.strictEqual(root.text(), "crashed")
+        const failed = root.log().filter((entry): entry is MessageLog.Failed => entry._tag === "Failed")
+        assert.deepStrictEqual(failed.map((entry) => [entry.source, entry.name]), [["command", "test/Save"]])
+      })))
+  })
+
   describe("provided Layers", () => {
     class Greeter extends Context.Service<Greeter, { readonly greet: (name: string) => string }>()("test/Greeter") {}
     class Greet extends Command.Service<Greet>()(
@@ -514,7 +558,8 @@ describe("Runtime", () => {
       Effect.gen(function*() {
         const greeter = yield* Greeter
         return (name: string) => Effect.succeed(greeter.greet(name))
-      })
+      }),
+      { invalidates: () => [] }
     ) {}
     const Hello = Component.make({
       name: "Hello",
@@ -1064,7 +1109,8 @@ describe("Runtime", () => {
       }) {}
       class Show extends Command.Service<Show>()(
         "test/Show",
-        Effect.map(Effect.service(Greeter), (greeter) => () => Effect.succeed(greeter.room))
+        Effect.map(Effect.service(Greeter), (greeter) => () => Effect.succeed(greeter.room)),
+        { invalidates: () => [] }
       ) {}
       const RoomView = Component.make({
         name: "RoomView",

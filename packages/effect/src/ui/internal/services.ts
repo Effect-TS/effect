@@ -4,6 +4,8 @@
  * @internal
  */
 import * as Context from "../../Context.ts"
+import type * as Exit from "../../Exit.ts"
+import type * as Command from "../Command.ts"
 import type * as Head from "../Head.ts"
 import type { Refs as RefsShape, Renderer as RendererShape } from "../Renderer.ts"
 
@@ -64,3 +66,53 @@ export const RootHooks = Context.Service<RootHooks, RootHooks>("effect/ui/intern
  * @internal
  */
 export const onDeliver: unique symbol = Symbol.for("effect/ui/Subscription/onDeliver") as any
+
+/**
+ * One run of an issued Command, as `MutationHooks` sees it. The same object is
+ * passed to every hook call about that run, so a hook can key on its identity.
+ *
+ * @internal
+ */
+export interface MutationRun {
+  /** The issued Command: `invalidates`, `optimistic` and `writes` are data on it. */
+  readonly command: Command.Effectful<any, any, never> | Command.Streaming<any, any, never>
+  /** The arguments it was issued with: `command.args`. */
+  readonly args: ReadonlyArray<unknown>
+  /** The path of the instance that issued it. */
+  readonly path: string
+}
+
+/**
+ * Where the cache hooks into a Command run. TODO(loader): the runtime only calls
+ * these; applying patches, invalidation and writes is the cache's.
+ *
+ * @internal
+ */
+export interface MutationHooks {
+  /**
+   * (a) The Command was issued and will run: called synchronously inside the
+   * issuing `update` (or `init`), before the run is queued or started. Not
+   * called for a Command its `drop` mode dropped. Under `switch` it's called
+   * before the earlier runs are asked to stop, so their fibers still run. If it
+   * throws, the run doesn't start and the issuing instance fails as if
+   * `update` had thrown.
+   */
+  readonly onIssue: (run: MutationRun) => void
+  /**
+   * (b) A started run's fiber exited: with the body's success, a typed
+   * failure, an interrupt or a defect. Called when the fiber exits, not when a
+   * stop is requested, and before the result message is dispatched. For a
+   * Stream Command the success is `void`.
+   */
+  readonly onExit: (run: MutationRun, exit: Exit.Exit<unknown, unknown>) => void
+  /**
+   * (c) The run was stopped before its work began: while queued, while waiting
+   * for its instance's Layer, or before its fiber's first step.
+   */
+  readonly onCancel: (run: MutationRun) => void
+}
+
+/** @internal */
+export const MutationHooks = Context.Reference<MutationHooks>("effect/ui/internal/MutationHooks", {
+  defaultValue: () => ({ onIssue() {}, onExit() {}, onCancel() {} })
+})

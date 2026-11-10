@@ -16,8 +16,12 @@ const Message = Schema.TaggedUnion({ X: {}, Y: {}, Done: {} })
 class A extends Context.Service<A, { readonly a: Effect.Effect<void> }>()("A") {}
 class B extends Context.Service<B, { readonly b: Effect.Effect<void> }>()("B") {}
 
-class CA extends Command.Service<CA>()("CA", Effect.succeed(() => Effect.succeed(Message.make({ _tag: "Done" })))) {}
-class CB extends Command.Service<CB>()("CB", Effect.succeed(() => Effect.succeed(Message.make({ _tag: "Done" })))) {}
+class CA extends Command.Service<CA>()("CA", Effect.succeed(() => Effect.succeed(Message.make({ _tag: "Done" }))), {
+  invalidates: () => []
+}) {}
+class CB extends Command.Service<CB>()("CB", Effect.succeed(() => Effect.succeed(Message.make({ _tag: "Done" }))), {
+  invalidates: () => []
+}) {}
 
 describe("Component", () => {
   describe("Requirements", () => {
@@ -113,24 +117,25 @@ describe("Component", () => {
   })
 
   describe("Command.Service", () => {
-    it("types the implementation by the message it returns", () => {
+    it("types the implementation by its arguments, result and typed failure", () => {
       expect(SaveTodo.make({ id: "t1", title: "milk", done: false })).type.toBe<
-        Command.Effectful<TodoItemMessage, SaveTodo>
+        Command.Unmatched<void, KeyValueStore.KeyValueStoreError, SaveTodo, "Effect">
       >()
-      expect(Layer.succeed(SaveTodo)).type.toBeCallableWith(() =>
-        Effect.succeed(TodoItemMessage.make({ _tag: "Saved" }))
-      )
-      expect(Layer.succeed(SaveTodo)).type.not.toBeCallableWith(() => Effect.succeed(Message.make({ _tag: "Done" })))
+      expect(Layer.succeed(SaveTodo)).type.toBeCallableWith(() => Effect.void)
+      expect(Layer.succeed(SaveTodo)).type.not.toBeCallableWith((_todo: number) => Effect.void)
+      expect(Layer.succeed(SaveTodo)).type.not.toBeCallableWith(() => Effect.fail("offline"))
     })
 
     it("rejects a function that reaches for a service instead of capturing it", () => {
       expect(Command.Service<B>()).type.not.toBeCallableWith(
         "Bad",
-        Effect.succeed(() => Effect.map(A, () => Message.make({ _tag: "Done" })))
+        Effect.succeed(() => Effect.map(A, () => Message.make({ _tag: "Done" }))),
+        { invalidates: () => [] }
       )
       expect(Command.Service<B>()).type.toBeCallableWith(
         "Good",
-        Effect.map(A, () => () => Effect.succeed(Message.make({ _tag: "Done" })))
+        Effect.map(A, () => () => Effect.succeed(Message.make({ _tag: "Done" }))),
+        { invalidates: () => [] }
       )
     })
   })
@@ -153,7 +158,7 @@ describe("Component", () => {
       expect<Component.Requirements<typeof Curried>>().type.toBe<KeyValueStore.KeyValueStore>()
       const FromProps = Component.provide(TodoItem, (props) => {
         expect(props).type.toBe<{ readonly todo: Todo }>()
-        return Layer.succeed(SaveTodo, () => Effect.succeed(TodoItemMessage.make({ _tag: "Saved" })))
+        return Layer.succeed(SaveTodo, () => Effect.void)
       })
       expect<Component.Requirements<typeof FromProps>>().type.toBe<never>()
       expect<Component.Props<typeof FromProps>>().type.toBe<{ readonly todo: Todo }>()

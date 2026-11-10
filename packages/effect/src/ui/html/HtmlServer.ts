@@ -3,9 +3,7 @@
  * `BrowserHost.mount` hydrates.
  *
  * `renderToHtml` runs the tree the way the server must: provided Layers are
- * built, and of `init`'s Commands only those from a `Command.Service`
- * declared `server: true` run, so data reaches the Model through ordinary
- * messages. Rendering waits until nothing is in flight or the `budget` is
+ * built, and no Command runs. Rendering waits until nothing is in flight or the `budget` is
  * spent, then serialises once. Nothing else runs on the server: Commands
  * issued by `update`, Subscriptions and `onMount` work wait for the client.
  *
@@ -70,8 +68,7 @@ import * as server from "./internal/server.ts"
  * **Details**
  *
  * `html` is the body markup for the app's container. `state` maps each
- * instance's path to its Schema-encoded Model, plus `~deferred` and
- * `~pending`; pass it to `BrowserHost.mount`. `model` is the root's Model
+ * instance's path to its Schema-encoded Model, plus `~deferred`; pass it to `BrowserHost.mount`. `model` is the root's Model
  * after the server run, for app code that sets the status (a 404 for a
  * missing record), or `undefined` if the root failed. `head` holds the
  * `<title>`, meta, link and JSON-LD tags, and `htmlAttributes` and
@@ -109,11 +106,10 @@ const serverHtmlHost: Context.Service.Shape<typeof Html.Host> = {
  * `MessageLog` Layer to log the server run; its entries stay on the server.
  *
  * `budget` (default 500 ms) is one deadline for the whole render. It limits
- * waiting on provided Layers and `init`'s server Commands, not the render.
+ * waiting on provided Layers, not the render.
  * A Layer that misses it, or that `Component.provide(..., { server: false })`
  * keeps off the server, renders its feature children's `fallback`, and the
- * client builds that instance fresh. A server Command that misses it is run
- * by the client after hydration. A defect renders the slot's `fallback`, and
+ * client builds that instance fresh. A defect renders the slot's `fallback`, and
  * the client builds the slot fresh.
  *
  * Route status is the app's: parse the URL with `AppRoute.parse` first and

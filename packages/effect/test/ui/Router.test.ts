@@ -68,7 +68,7 @@ describe("Router", () => {
     )
   })
 
-  it.effect("restores a page's Model on back and forward, skipping only its server Commands", () => {
+  it.effect("restores a page's Model on back and forward, running its init Commands again", () => {
     const { history, layer } = setup("/people/1")
     return run(
       layer,
@@ -94,8 +94,8 @@ describe("Router", () => {
         const dropped = root.log().filter((entry): entry is MessageLog.CommandDropped =>
           entry._tag === "CommandDropped" && entry.path === path
         )
-        assert.deepStrictEqual(dropped.map((entry) => [entry.name, entry.reason]), [["LoadPerson", "adopted"]])
-        // A client-only init Command runs again, as on any mount.
+        assert.deepStrictEqual(dropped, [])
+        // Every init Command runs again, as on any mount.
         const visits = root.log().filter((entry): entry is MessageLog.Update =>
           entry._tag === "Update" && entry.path === path && (entry.message as any)._tag === "Visited"
         )

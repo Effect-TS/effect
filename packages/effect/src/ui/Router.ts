@@ -193,7 +193,8 @@ const target = (route: { readonly _tag: string }): Target => ({ [TargetTypeId]: 
  */
 export class Push extends Command.Service<Push>()(
   "effect/ui/Router/Push",
-  Effect.map(Router, (router) => (target: Target) => router.push(target.route))
+  Effect.map(Router, (router) => (target: Target) => router.push(target.route)),
+  { invalidates: () => [] }
 ) {}
 
 /**
@@ -206,7 +207,8 @@ export class Push extends Command.Service<Push>()(
  */
 export class Replace extends Command.Service<Replace>()(
   "effect/ui/Router/Replace",
-  Effect.map(Router, (router) => (target: Target) => router.replace(target.route))
+  Effect.map(Router, (router) => (target: Target) => router.replace(target.route)),
+  { invalidates: () => [] }
 ) {}
 
 /**
@@ -252,7 +254,8 @@ export const replace = <U extends Routes>(_routes: U, route: U["Type"]): Command
  */
 export class Back extends Command.Service<Back>()(
   "effect/ui/Router/Back",
-  Effect.map(Router, (router) => () => router.back)
+  Effect.map(Router, (router) => () => router.back),
+  { invalidates: () => [] }
 ) {}
 
 /**
@@ -264,7 +267,8 @@ export class Back extends Command.Service<Back>()(
  */
 export class Forward extends Command.Service<Forward>()(
   "effect/ui/Router/Forward",
-  Effect.map(Router, (router) => () => router.forward)
+  Effect.map(Router, (router) => () => router.forward),
+  { invalidates: () => [] }
 ) {}
 
 /**
@@ -276,7 +280,8 @@ export class Forward extends Command.Service<Forward>()(
  */
 export class Load extends Command.Service<Load>()(
   "effect/ui/Router/Load",
-  Effect.map(Router, (router) => (href: string) => router.load(href))
+  Effect.map(Router, (router) => (href: string) => router.load(href)),
+  { invalidates: () => [] }
 ) {}
 
 /**
@@ -297,7 +302,8 @@ export class Load extends Command.Service<Load>()(
  */
 export class Block extends Command.Service<Block>()(
   "effect/ui/Router/Block",
-  Effect.map(Router, (router) => (key: string) => router.block(key))
+  Effect.map(Router, (router) => (key: string) => router.block(key)),
+  { invalidates: () => [] }
 ) {}
 
 /**
@@ -309,7 +315,8 @@ export class Block extends Command.Service<Block>()(
  */
 export class Unblock extends Command.Service<Unblock>()(
   "effect/ui/Router/Unblock",
-  Effect.map(Router, (router) => (key: string) => router.unblock(key))
+  Effect.map(Router, (router) => (key: string) => router.unblock(key)),
+  { invalidates: () => [] }
 ) {}
 
 /**
@@ -510,9 +517,8 @@ const commandLayers = Layer.mergeAll(
  * subtree, because which instances the navigation unmounts is only known
  * after it. On back and forward, an instance created for the entry adopts its
  * saved Model, so only the re-keyed subtree is restored, and an instance that
- * stayed mounted keeps its own. As with hydration, `init` is replayed: its
- * Commands from `Command.Service`s declared `server: true` are dropped, so
- * nothing is fetched again, and its other Commands run.
+ * stayed mounted keeps its own. As with hydration, `init` is replayed: every
+ * one of its Commands runs again.
  *
  * The snapshot is kept in memory per entry. When a push leaves an entry, it's
  * also written into that entry's `state`, so it survives a reload. When back

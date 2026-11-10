@@ -148,17 +148,13 @@ export interface Hydration<Node> {
 
 /**
  * What a server render hands the client: each instance's Schema-encoded
- * Model by path, plus the paths to build fresh and the `init` Commands still
- * to run.
+ * Model by path, plus the paths to build fresh.
  *
  * **Details**
  *
  * `~deferred` lists instances the client builds fresh instead of adopting:
  * a provided Layer that missed the budget or was kept off the server, and a
- * slot that failed. A deferred path covers its subtree. `~pending` lists, by
- * path, the positions among `init`'s Commands of the server Commands that
- * missed the budget, which the client runs after adopting. A path is in at
- * most one of the two.
+ * slot that failed. A deferred path covers its subtree.
  *
  * @stability experimental
  * @category models
@@ -167,7 +163,6 @@ export interface Hydration<Node> {
 export interface State {
   readonly [path: string]: unknown
   readonly "~deferred"?: ReadonlyArray<string> | undefined
-  readonly "~pending"?: Readonly<Record<string, ReadonlyArray<number>>> | undefined
 }
 
 /**
@@ -383,18 +378,16 @@ export const mount: <Name extends string, Props, Model, Msg, Events, R, V extend
  *
  * **Details**
  *
- * The tree renders synchronously. Provided Layers are built, and of the
- * Commands `init` returns only those whose `Command.Service` is declared
- * `server: true` run; a Command from `update` is dropped and logged as
- * `CommandDropped` with reason `"server"`. Events are applied, so a child can
+ * The tree renders synchronously. Provided Layers are built. No Command runs:
+ * each is logged as `CommandDropped` with reason `"server"`, and one issued
+ * by `update` also warns. Events are applied, so a child can
  * change its parent. Subscriptions and `onMount` work never run.
  *
  * Rendering waits until nothing is in flight or `budget` (default 500 ms) is
- * spent, whichever comes first. The budget limits waiting on Layers and
- * server Commands, not the render itself. A Layer that missed it, or that a
- * `provide` kept off the server with `{ server: false }`, defers its
- * instance; a server Command that missed it is pending; either way the
- * instance renders its current Model. A budget of 0 starts no server Command.
+ * spent, whichever comes first. The budget limits waiting on Layers, not the
+ * render itself. A Layer that missed it, or that a `provide` kept off the
+ * server with `{ server: false }`, defers its instance, which renders its
+ * current Model.
  * The tree is serialised once, in document order, and its Scopes are closed.
  *
  * `elements` lists the vocabularies the server renders, by name, as a host's

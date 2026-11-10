@@ -1,4 +1,5 @@
 import { Effect, Schema, Stream } from "effect"
+import { KeyValueStore } from "effect/persistence"
 import { Command, Component } from "effect/ui"
 import { Story } from "effect/ui/testing"
 import { describe, expect, it } from "tstyche"
@@ -7,6 +8,7 @@ import {
   Counter,
   CounterMessage,
   SaveTodo,
+  saveTodo,
   Search,
   SearchMessage,
   TodoItemMessage,
@@ -77,10 +79,21 @@ describe("Story", () => {
   })
 
   it("resolves a Command with the definition's own message", () => {
-    expect(todoItem.resolve).type.toBeCallableWith(SaveTodo, TodoItemMessage.make({ _tag: "Saved" }))
-    expect(todoItem.resolve).type.not.toBeCallableWith(SaveTodo, SearchMessage.make({ _tag: "Tick" }))
+    expect(todoItem.resolve).type.toBeCallableWith(SaveTodo, undefined)
+    expect(todoItem.resolve).type.not.toBeCallableWith(SaveTodo, TodoItemMessage.make({ _tag: "Saved" }))
+    expect(todoItem.resolve).type.toBeCallableWith(saveTodo({ id: "t1", title: "", done: false }), undefined)
     expect(searchBox.resolve).type.toBeCallableWith(Search("x"), SearchMessage.make({ _tag: "Results", items: [] }))
     expect(searchBox.resolve).type.not.toBeCallableWith(Search("x"), TodoItemMessage.make({ _tag: "Saved" }))
+  })
+
+  it("fails a Command with the definition's own typed failure", () => {
+    const error = new KeyValueStore.KeyValueStoreError({ message: "disk full", method: "set", key: "" })
+    expect(todoItem.fail).type.toBeCallableWith(SaveTodo, error)
+    expect(todoItem.fail).type.toBeCallableWith(saveTodo({ id: "t1", title: "", done: false }), error)
+    expect(todoItem.fail).type.toBeCallableWith(SaveTodo.make({ id: "t1", title: "", done: false }), error)
+    expect(todoItem.fail).type.not.toBeCallableWith(SaveTodo, "disk full")
+    // A Command that can't fail takes no failure.
+    expect(searchBox.fail).type.not.toBeCallableWith(Search("x"), "anything")
   })
 
   it("an issued Command whose result never arrives is a target, and takes no result", () => {

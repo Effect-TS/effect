@@ -1,7 +1,7 @@
 /**
  * A two-page app on the Router: a root that holds the route, a home page, a
- * person page that loads on entry (a server Command), counts its visits (a
- * client-only Command) and counts clicks, and a slow page whose provided Layer
+ * person page that loads on entry (a Command service), counts its visits (a
+ * `Command.make`) and counts clicks, and a slow page whose provided Layer
  * takes a second to build.
  */
 import { Context, Effect, Layer, Schema } from "effect"
@@ -37,7 +37,7 @@ export const PersonMessage = Schema.TaggedUnion({ Loaded: { name: Schema.String 
 export class LoadPerson extends Command.Service<LoadPerson>()(
   "LoadPerson",
   Effect.succeed((id: number) => Effect.succeed(PersonMessage.make({ _tag: "Loaded", name: `Person ${id}` }))),
-  { server: true }
+  { invalidates: () => [] }
 ) {}
 
 export const CountVisit = Command.make("CountVisit", () => Effect.succeed(PersonMessage.make({ _tag: "Visited" })))

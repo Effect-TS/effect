@@ -1,5 +1,6 @@
 import { assert, describe, it } from "@effect/vitest"
 import { Cause, Effect, Layer, Schema } from "effect"
+import { KeyValueStore } from "effect/persistence"
 import { AsyncResult } from "effect/reactivity"
 import { Command, Component, View } from "effect/ui"
 import { Query, Story } from "effect/ui/testing"
@@ -143,9 +144,38 @@ describe("Story", () => {
               [["todos/SaveTodo", [todo], "running"]]
             )
           })
-          .resolve(SaveTodo, TodoItemMessage.make({ _tag: "SaveFailed", reason: "disk full" }))
+          .resolve(SaveTodo, undefined)
           .model((model) => assert.isFalse(model.saving))
           .expectNone())
+    })
+
+    it("a Command fails with the body's typed failure, which the issue site maps to a message", () => {
+      const seen: Array<unknown> = []
+      const Spy = {
+        ...TodoItem,
+        update: (model: any, message: any, props: any) => {
+          seen.push(message)
+          return TodoItem.update(model, message, props)
+        }
+      } as typeof TodoItem
+      Story.make(Spy, { todo }, (s) =>
+        s.click("save")
+          .fail(SaveTodo, new KeyValueStore.KeyValueStoreError({ message: "disk full", method: "set", key: "" }))
+          .model((model) => assert.isFalse(model.saving))
+          .expectNone())
+      assert.deepStrictEqual(seen[seen.length - 1], TodoItemMessage.make({ _tag: "SaveFailed", reason: "disk full" }))
+    })
+
+    it("what a Command declares about the cache is read off the pending Command, with no cache", () => {
+      Story.make(TodoItem, { todo }, (s) =>
+        s.click("save")
+          .check((story) => {
+            const command = story.pending[0].command
+            assert.deepStrictEqual(command.invalidates, [{ read: "GetTodo", id: "t1" }])
+            assert.deepStrictEqual(command.optimistic, [])
+            assert.strictEqual(command.writes, undefined)
+          })
+          .resolve(SaveTodo, undefined))
     })
 
     it("fails when a Command is still pending at the end", () => {
@@ -160,7 +190,7 @@ describe("Story", () => {
         () =>
           Story.make(TodoItem, { todo }, (s) =>
             s.click("save")
-              .resolve(SaveTodo.make({ ...todo, id: "other" }), TodoItemMessage.make({ _tag: "Saved" }))),
+              .resolve(SaveTodo.make({ ...todo, id: "other" }), undefined)),
         /no running todos\/SaveTodo/
       )
     })

@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import { expect, it } from "@effect/vitest"
-import { Context, Effect, Fiber, Layer, Option, Schema } from "effect"
+import { Context, Effect, Fiber, Layer, Logger, Option, Schema } from "effect"
 import { Command, Component, Feature, Head, Router } from "effect/ui"
 import { BrowserHost, Html, HtmlServer } from "effect/ui/html"
 import { ssr } from "effect/ui/html/testing"
@@ -14,10 +14,6 @@ const routed = (url: string) => {
   return { props: { route }, router: Router.memory({ routes: AppRoute, url }) }
 }
 
-const slowPeople = Layer.succeed(People, {
-  bio: (id: number) => Effect.as(Effect.sleep("300 millis"), `Bio of person ${id}`)
-})
-
 const container = (html: string) =>
   Effect.acquireRelease(
     Effect.sync(() => {
@@ -29,16 +25,17 @@ const container = (html: string) =>
   )
 
 describe("HtmlServer", { concurrent: false }, () => {
-  it.effect("renders the routed example with its route data, and hydration adopts it", () =>
+  it.effect("renders the routed example without its route data, which the client loads after adopting", () =>
     Effect.gen(function*() {
       const { props, router } = routed("/people/1")
       const rendered = yield* HtmlServer.renderToHtml(App, props).pipe(
         Effect.provide([People.layer, router])
       )
-      expect(rendered.html).toContain("<p id=\"bio\">Bio of person 1</p>")
+      // No Command runs on the server: the page is what init returned.
+      expect(rendered.html).toContain("<p id=\"bio\">Loading</p>")
       expect(rendered.html).toContain("<!--[/App/Person[/people/1]-->")
-      expect(rendered.state["/App/Person[/people/1]"]).toEqual({ id: 1, bio: "Bio of person 1" })
-      expect(rendered.state["~pending"]).toEqual({})
+      expect(rendered.state["/App/Person[/people/1]"]).toEqual({ id: 1, bio: undefined })
+      expect("~pending" in rendered.state).toBe(false)
       expect(rendered.head).toBe(
         "<title data-eui>Person 1 · App</title>" +
           "<meta name=\"description\" content=\"About person 1\" data-eui>" +
@@ -48,26 +45,19 @@ describe("HtmlServer", { concurrent: false }, () => {
 
       const result = yield* ssr(App, props).pipe(Effect.provide([People.layer, router]))
       expect(result.adopted).toEqual(["/App", "/App/Person[/people/1]"])
-      // The bio is already in the Model, so the client doesn't load it again.
-      expect(result.commands).toEqual([])
-      expect(result.log).toContainEqual(
-        expect.objectContaining({ _tag: "CommandDropped", name: "LoadBio", reason: "adopted" })
+      // An adopted instance runs every one of its init Commands.
+      expect(result.commands).toEqual([{ path: "/App/Person[/people/1]", name: "LoadBio", index: 0 }])
+      // The server dropped it without a warning: an init Command is expected there.
+      expect(result.serverLog).toContainEqual(
+        expect.objectContaining({ _tag: "CommandDropped", name: "LoadBio", reason: "server" })
       )
-      expect(result.document.title).toBe("Person 1 · App")
+      expect(result.log.filter((entry) => entry._tag === "CommandDropped")).toEqual([])
+      yield* tick
+      expect(result.container.querySelector("#bio")!.textContent).toBe("Bio of person 1")
     }).pipe(Effect.scoped))
 
-  it.live("hydrates slots that missed the budget: a pending server Command and a deferred Layer", () =>
+  it.live("hydrates a slot that missed the budget: a deferred Layer", () =>
     Effect.gen(function*() {
-      const person = routed("/people/2")
-      const pending = yield* ssr(App, person.props, { budget: "50 millis" }).pipe(
-        Effect.provide([slowPeople, person.router])
-      )
-      expect(pending.html).toContain("<p id=\"bio\">Loading</p>")
-      expect(pending.state["~pending"]).toEqual({ "/App/Person[/people/2]": [0] })
-      expect(pending.commands).toEqual([{ path: "/App/Person[/people/2]", name: "LoadBio", index: 0 }])
-      yield* Effect.sleep("400 millis")
-      expect(pending.container.querySelector("#bio")!.textContent).toBe("Bio of person 2")
-
       const slow = routed("/slow")
       const deferred = yield* ssr(App, slow.props, { budget: "50 millis" }).pipe(
         Effect.provide([People.layer, slow.router])
@@ -77,13 +67,13 @@ describe("HtmlServer", { concurrent: false }, () => {
       expect(deferred.container.querySelector("h1")!.textContent).toBe("Slow")
     }).pipe(Effect.scoped))
 
-  it.effect("runs only init's server Commands, applies events, and defers failures and opted-out Layers", () =>
+  it.effect("runs no Command, warns only about one update issues, and defers failures and opted-out Layers", () =>
     Effect.gen(function*() {
       const ChildMessage = Schema.TaggedUnion({ Loaded: {}, Tracked: {} })
       class Load extends Command.Service<Load>()(
         "Load",
         Effect.succeed(() => Effect.succeed(ChildMessage.make({ _tag: "Loaded" }))),
-        { server: true }
+        { invalidates: () => [] }
       ) {}
       const Track = Command.make("Track", () => Effect.succeed(ChildMessage.make({ _tag: "Tracked" })))
       const Child = Component.make({
@@ -92,8 +82,8 @@ describe("HtmlServer", { concurrent: false }, () => {
         message: ChildMessage,
         events: Schema.Literal("loaded"),
         elements: Html,
-        init: ($) => $.set("loading").run(Load.make()),
-        update: (_, message, $) => message._tag === "Loaded" ? $.set("loaded").run(Track()).emit("loaded") : "tracked",
+        init: ($) => $.set("loading").run(Load.make()).emit("loaded"),
+        update: (_, message, $) => message._tag === "Loaded" ? $.set("loaded").run(Track()) : "tracked",
         view: (model, h) => h.span(model)
       }).pipe(Component.provide(Load.layer))
       const Broken = Component.make({
@@ -124,7 +114,7 @@ describe("HtmlServer", { concurrent: false }, () => {
         message: ParentMessage,
         elements: Html,
         init: () => false,
-        update: () => true,
+        update: (_, __, $) => $.set(true).run(Track().pipe(Command.map(() => ParentMessage.make({ _tag: "Ready" })))),
         view: (ready, h) =>
           h.div(
             h.p(ready ? "ready" : "waiting"),
@@ -135,15 +125,26 @@ describe("HtmlServer", { concurrent: false }, () => {
       })
 
       // The opted-out Layer doesn't spend the budget: under the TestClock, waiting for it would never end.
-      const result = yield* ssr(Parent, {}, { budget: "1 hour" })
+      const warnings: Array<unknown> = []
+      const capture = Logger.make<unknown, void>((options) => {
+        if (options.logLevel === "Warn") warnings.push(options.message)
+      })
+      const result = yield* ssr(Parent, {}, { budget: "1 hour" }).pipe(Effect.provide(Logger.layer([capture])))
+      // init's event still reaches the parent on the server; init's Command doesn't run there.
       expect(result.html).toContain("<p>ready</p>")
-      expect(result.html).toContain("<span>loaded</span>")
+      expect(result.html).toContain("<span>loading</span>")
+      const dropped = result.serverLog.filter((entry) => entry._tag === "CommandDropped")
+      expect(dropped.map((entry) => [entry.path, entry.name, entry.reason])).toEqual([
+        ["/Parent/Child[a]", "Load", "server"],
+        ["/Parent", "Track", "server"]
+      ])
+      // Only the Command update issued warns: on the server it's lost, where init's runs again on the client.
+      expect(warnings.filter((text) => String(text).includes("Track")).length).toBe(1)
+      expect(warnings.filter((text) => String(text).includes("Load")).length).toBe(0)
       expect(result.html).toContain("<!--[/Parent/Broken[b]--><p>broken</p><!--]/Parent/Broken[b]-->")
       expect(result.state["~deferred"]).toEqual(["/Parent/Broken[b]", "/Parent/Live[c]"])
-      expect(result.serverLog).toContainEqual(
-        expect.objectContaining({ _tag: "CommandDropped", name: "Track", reason: "server" })
-      )
-      expect(result.container.textContent).toBe("readyloadedbrokenlive")
+      yield* tick
+      expect(result.container.textContent).toBe("readytrackedbrokenlive")
     }).pipe(Effect.scoped))
 
   it.live("keeps a slot whose Layer is still building inert until it adopts, then fires onMount", () =>
@@ -218,13 +219,13 @@ describe("HtmlServer", { concurrent: false }, () => {
       expect(b).toBe(second)
       expect(app.querySelector("ul")!.childNodes.length).toBe(2)
     }).pipe(Effect.scoped))
-  it.live("waits for the slot a Layer that settles in budget wakes, and for the work it starts", () =>
+  it.live("waits for the slot a Layer that settles in budget wakes", () =>
     Effect.gen(function*() {
       const PanelMessage = Schema.TaggedUnion({ Loaded: { text: Schema.String } })
       class LoadText extends Command.Service<LoadText>()(
         "LoadText",
         Effect.succeed(() => Effect.succeed(PanelMessage.make({ _tag: "Loaded", text: "data" }))),
-        { server: true }
+        { invalidates: () => [] }
       ) {}
       class Panel extends Feature.Service<Panel>()("Panel", { props: Schema.Struct({}), events: Schema.Never }) {}
       const PanelLive = Component.make({
@@ -250,39 +251,9 @@ describe("HtmlServer", { concurrent: false }, () => {
       }).pipe(Component.provide(Layer.merge(Panel.layer(PanelLive), Layer.effectDiscard(Effect.sleep("20 millis")))))
 
       const rendered = yield* HtmlServer.renderToHtml(Page, {})
-      expect(rendered.html).toContain("<p>data</p>")
+      // The slot mounted in budget; its init Command waits for the client.
+      expect(rendered.html).toContain("<p>loading</p>")
       expect(rendered.state["~deferred"]).toEqual([])
-    }))
-
-  it.effect("fails and defers the instance whose last server Command dies", () =>
-    Effect.gen(function*() {
-      class Die extends Command.Service<Die>()("Die", Effect.succeed(() => Effect.die("boom")), { server: true }) {}
-      const Doomed = Component.make({
-        name: "Doomed",
-        model: Schema.String,
-        message: Schema.Never,
-        elements: Html,
-        init: ($) => $.set("loading").run(Die.make()),
-        update: (model) => model,
-        view: (text, h) => h.p(text)
-      }).pipe(Component.provide(Die.layer))
-      const Page = Component.make({
-        name: "Page",
-        model: Schema.Struct({}),
-        message: Schema.Never,
-        elements: Html,
-        init: () => ({}),
-        update: (model) => model,
-        view: (_, h) =>
-          h.div(
-            h.child(Doomed, { key: "d", props: {}, fallback: () => h.p("failed") })
-          )
-      })
-
-      const rendered = yield* HtmlServer.renderToHtml(Page, {})
-      expect(rendered.html).toContain("<!--[/Page/Doomed[d]--><p>failed</p><!--]/Page/Doomed[d]-->")
-      expect(rendered.state["~deferred"]).toEqual(["/Page/Doomed[d]"])
-      expect(rendered.state["~pending"]).toEqual({})
     }))
 
   it.live("closes everything it started when the render is interrupted", () =>

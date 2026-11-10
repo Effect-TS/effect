@@ -1,17 +1,47 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Effect, Layer, Schema, Stream } from "effect"
+import { Data, Effect, Layer, Schema, Stream } from "effect"
 import { KeyValueStore } from "effect/persistence"
 import { Command } from "effect/ui"
 import * as schedule from "effect/ui/internal/schedule"
-import { SaveTodo, Search, TodoItemMessage, Upload } from "./fixtures/components.ts"
+import { SaveTodo, saveTodo, Search, TodoItemMessage, Upload } from "./fixtures/components.ts"
 
 const todo = { id: "t1", title: "buy milk", done: false }
 
 class Ticks extends Command.Service<Ticks>()(
   "Ticks",
   Effect.succeed((n: number) => Stream.fromIterable(Array.from({ length: n }, (_, i) => i))),
-  { stream: true }
+  { stream: true, invalidates: () => [] }
 ) {}
+
+// TODO(loader): stand-ins for the Loader core's targets, patches and writes. To a Command they're opaque data.
+const entry = (id: string) => ({ _tag: "Entry", read: "GetUser", args: { id } })
+const listUsers = { _tag: "Read", read: "ListUsers" }
+
+class RenameFailed extends Data.TaggedError("RenameFailed")<{ readonly reason: string }> {}
+
+class RenameUser extends Command.Service<RenameUser>()(
+  "users/RenameUser",
+  Effect.succeed((id: string, name: string) =>
+    name === "" ? Effect.fail(new RenameFailed({ reason: "empty" })) : Effect.succeed({ id, name })
+  ),
+  {
+    mode: "queue",
+    key: (id) => id,
+    invalidates: (id) => [entry(id), listUsers],
+    optimistic: (id, name) => [{ _tag: "Patch", target: entry(id), name }],
+    writes: (user, id) => [{ _tag: "Set", target: entry(id), value: user }]
+  }
+) {}
+
+const RenameMessage = Schema.TaggedUnion({
+  Renamed: { name: Schema.String },
+  RenameFailed: { reason: Schema.String }
+})
+const rename = (id: string, name: string) =>
+  RenameUser.make(id, name).pipe(Command.match({
+    onSuccess: (user) => RenameMessage.make({ _tag: "Renamed", name: user.name }),
+    onFailure: (error) => RenameMessage.make({ _tag: "RenameFailed", reason: error.reason })
+  }))
 
 const failingKv = Layer.succeed(
   KeyValueStore.KeyValueStore,
@@ -47,22 +77,24 @@ describe("Command", () => {
     it.effect("the implementation is tested against a fake of what it uses", () =>
       Effect.gen(function*() {
         const kv = yield* KeyValueStore.KeyValueStore
-        const message = yield* SaveTodo.make(todo).effect
+        const message = yield* saveTodo(todo).effect
         assert.deepStrictEqual(message, TodoItemMessage.make({ _tag: "Saved" }))
         assert.strictEqual(yield* kv.get("todo/t1"), JSON.stringify(todo))
       }).pipe(Effect.provide(SaveTodo.layer.pipe(Layer.provideMerge(KeyValueStore.layerMemory)))))
 
-    it.effect("the implementation owns the error policy", () =>
+    it.effect("the body fails with a typed error, and the issue site maps it to a message", () =>
       Effect.gen(function*() {
-        const message = yield* SaveTodo.make(todo).effect
+        const error = yield* Effect.flip(SaveTodo.make(todo).effect)
+        assert.strictEqual(error._tag, "KeyValueStoreError")
+        const message = yield* saveTodo(todo).effect
         assert.deepStrictEqual(message, TodoItemMessage.make({ _tag: "SaveFailed", reason: "disk full" }))
       }).pipe(Effect.provide(SaveTodo.layer.pipe(Layer.provide(failingKv)))))
 
     it.effect("a fake is a plain Layer.succeed", () =>
       Effect.gen(function*() {
-        const message = yield* SaveTodo.make(todo).effect
+        const message = yield* saveTodo(todo).effect
         assert.deepStrictEqual(message, TodoItemMessage.make({ _tag: "Saved" }))
-      }).pipe(Effect.provide(Layer.succeed(SaveTodo, () => Effect.succeed(TodoItemMessage.make({ _tag: "Saved" }))))))
+      }).pipe(Effect.provide(Layer.succeed(SaveTodo, () => Effect.void))))
 
     it.effect("a stream service runs its Stream", () =>
       Effect.gen(function*() {
@@ -71,6 +103,70 @@ describe("Command", () => {
         assert.isTrue(Ticks.stream)
         assert.strictEqual(Ticks.make(3)._tag, "Stream")
       }).pipe(Effect.provide(Ticks.layer)))
+  })
+
+  describe("what a Service declares about the cache", () => {
+    it("is data on the issued Command, computed from the arguments, with no cache", () => {
+      const unmatched = RenameUser.make("1", "Ada")
+      assert.deepStrictEqual(unmatched.invalidates, [entry("1"), listUsers])
+      assert.deepStrictEqual(unmatched.optimistic, [{ _tag: "Patch", target: entry("1"), name: "Ada" }])
+      assert.deepStrictEqual(unmatched.writes?.({ id: "1", name: "Ada" }), [
+        { _tag: "Set", target: entry("1"), value: { id: "1", name: "Ada" } }
+      ])
+      assert.deepStrictEqual([unmatched.args, unmatched.key, unmatched.mode], [["1", "Ada"], "1", "queue"])
+    })
+
+    it("survives match and map", () => {
+      const command = rename("1", "Ada").pipe(Command.map((message) => message._tag))
+      assert.deepStrictEqual(command.invalidates, [entry("1"), listUsers])
+      assert.strictEqual(command.optimistic.length, 1)
+      assert.strictEqual(command.writes?.({ id: "1", name: "Ada" }).length, 1)
+      assert.deepStrictEqual(command.args, ["1", "Ada"])
+    })
+
+    it("a Service with only invalidates has no patches and no writes, and make declares nothing", () => {
+      const save = SaveTodo.make(todo)
+      assert.deepStrictEqual([save.invalidates, save.optimistic, save.writes], [
+        [{ read: "GetTodo", id: "t1" }],
+        [],
+        undefined
+      ])
+      const search = Search("x")
+      assert.deepStrictEqual([search.invalidates, search.optimistic, search.writes], [[], [], undefined])
+    })
+  })
+
+  describe("match", () => {
+    it.effect("maps the success and the typed failure to messages", () =>
+      Effect.gen(function*() {
+        assert.deepStrictEqual(yield* rename("1", "Ada").effect, RenameMessage.make({ _tag: "Renamed", name: "Ada" }))
+        assert.deepStrictEqual(
+          yield* rename("1", "").effect,
+          RenameMessage.make({ _tag: "RenameFailed", reason: "empty" })
+        )
+      }).pipe(Effect.provide(RenameUser.layer)))
+
+    it("keeps the definition's own result and failure for a story to resolve with", () => {
+      const command = rename("1", "Ada")
+      assert.deepStrictEqual(
+        command.resolve({ id: "1", name: "Bob" }),
+        RenameMessage.make({ _tag: "Renamed", name: "Bob" })
+      )
+      assert.deepStrictEqual(
+        command.reject?.(new RenameFailed({ reason: "taken" })),
+        RenameMessage.make({ _tag: "RenameFailed", reason: "taken" })
+      )
+      const mapped = command.pipe(Command.map((message) => message._tag))
+      assert.strictEqual(mapped.resolve({ id: "1", name: "Bob" }), "Renamed")
+      assert.strictEqual(mapped.reject?.(new RenameFailed({ reason: "taken" })), "RenameFailed")
+    })
+
+    it.effect("the work the runtime runs is the body's own, so its exit tells a failure from a success", () =>
+      Effect.gen(function*() {
+        const ok = yield* Effect.exit(rename("1", "Ada").work)
+        const failed = yield* Effect.exit(rename("1", "").work)
+        assert.isTrue(ok._tag === "Success" && failed._tag === "Failure")
+      }).pipe(Effect.provide(RenameUser.layer)))
   })
 
   describe("make", () => {

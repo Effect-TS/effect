@@ -6,8 +6,34 @@ const Message = Schema.TaggedUnion({ Got: { n: Schema.Number } })
 
 const Fx = Command.make("Fx", () => Effect.succeed("text"))
 const St = Command.make("St", () => Stream.fromIterable(["text"]), { stream: true })
-class SA extends Command.Service<SA>()("SA", Effect.succeed(() => Effect.succeed("a"))) {}
-class SB extends Command.Service<SB>()("SB", Effect.succeed(() => Stream.fromIterable([1])), { stream: true }) {}
+class SA extends Command.Service<SA>()("SA", Effect.succeed(() => Effect.succeed("a")), { invalidates: () => [] }) {}
+class SB extends Command.Service<SB>()("SB", Effect.succeed(() => Stream.fromIterable([1])), {
+  stream: true,
+  invalidates: () => []
+}) {}
+class Boom {
+  readonly _tag = "Boom"
+}
+interface User {
+  readonly id: string
+  readonly name: string
+}
+class Rename extends Command.Service<Rename>()(
+  "Rename",
+  Effect.succeed((id: string, name?: string): Effect.Effect<User, Boom> =>
+    name === undefined ? Effect.fail(new Boom()) : Effect.succeed({ id, name })
+  ),
+  {
+    invalidates: (id) => [{ id }],
+    optimistic: (id, name) => [{ id, name }],
+    writes: (user, id) => [{ id, name: user.name }]
+  }
+) {}
+class Feed extends Command.Service<Feed>()(
+  "Feed",
+  Effect.succeed((_room: string): Stream.Stream<number, Boom> => Stream.fail(new Boom())),
+  { stream: true, invalidates: (room) => [room.length] }
+) {}
 declare const condition: boolean
 declare const $: Component.Update<{}, typeof Message.Type, never, {}>
 
@@ -79,15 +105,88 @@ describe("Command", () => {
   })
 
   describe("Service", () => {
-    it("takes server: true only for an Effect Command", () => {
+    it("requires the third parameter with invalidates, and has no server option", () => {
       const service = Command.Service<"Load">()
-      expect(service).type.toBeCallableWith("Load", Effect.succeed(() => Effect.succeed(1)), { server: true })
-      expect(service).type.not.toBeCallableWith("Load", Effect.succeed(() => Stream.fromIterable([1])), {
+      expect(service).type.not.toBeCallableWith("Load", Effect.succeed(() => Effect.succeed(1)))
+      expect(service).type.not.toBeCallableWith("Load", Effect.succeed(() => Effect.succeed(1)), {})
+      expect(service).type.toBeCallableWith("Load", Effect.succeed(() => Effect.succeed(1)), { invalidates: () => [] })
+      // make has none of them.
+      expect(Command.make).type.not.toBeCallableWith("Load", () => Effect.succeed(1), { invalidates: () => [] })
+    })
+
+    it("a stream Service has invalidates and no writes", () => {
+      const service = Command.Service<"Feed">()
+      expect(service).type.toBeCallableWith("Feed", Effect.succeed(() => Stream.fromIterable([1])), {
         stream: true,
-        server: true
+        invalidates: () => []
       })
-      // Factories from make can't be server Commands.
-      expect(Command.make).type.not.toBeCallableWith("Load", () => Effect.succeed(1), { server: true })
+      expect(service).type.not.toBeCallableWith("Feed", Effect.succeed(() => Stream.fromIterable([1])), {
+        stream: true,
+        invalidates: () => [],
+        writes: () => []
+      })
+    })
+
+    it("a body that can't fail issues a Command directly", () => {
+      expect(SA.make()).type.toBe<Command.Effectful<string, SA>>()
+      expect(SB.make()).type.toBe<Command.Streaming<number, SB>>()
+      expect($.run).type.toBeCallableWith(
+        SA.make().pipe(Command.map((a) => Message.make({ _tag: "Got", n: a.length })))
+      )
+    })
+
+    it("a body that can fail issues an Unmatched Command, which $.run and map reject", () => {
+      const unmatched = Rename.make("1", "Ada")
+      expect(unmatched).type.toBe<Command.Unmatched<User, Boom, Rename, "Effect">>()
+      expect(unmatched.effect).type.toBe<Effect.Effect<User, Boom, Rename>>()
+      expect(Feed.make("lobby")).type.toBe<Command.Unmatched<number, Boom, Feed, "Stream">>()
+      expect($.run).type.not.toBeCallableWith(unmatched)
+      expect(unmatched.pipe).type.not.toBeCallableWith(Command.map((user: User) => user.name))
+      // Optional positional arguments stay optional, whatever the options' callbacks take.
+      expect(Rename.make).type.toBeCallableWith("1")
+      expect(Rename.make).type.toBeCallableWith("1", "Ada")
+    })
+  })
+
+  describe("match", () => {
+    it("infers both channels in a pipe and yields a Command the component can run", () => {
+      const matched = Rename.make("1", "Ada").pipe(Command.match({
+        onSuccess: (user) => Message.make({ _tag: "Got", n: user.name.length }),
+        onFailure: (boom) => Message.make({ _tag: "Got", n: boom._tag.length })
+      }))
+      expect(matched).type.toBe<Command.Effectful<typeof Message.Type, Rename, User, Boom>>()
+      expect(matched.effect).type.toBe<Effect.Effect<typeof Message.Type, never, Rename>>()
+      expect($.run).type.toBeCallableWith(matched)
+      expect<Command.Result<typeof matched>>().type.toBe<User>()
+      expect<Command.Failure<typeof matched>>().type.toBe<Boom>()
+      expect<Command.Result<typeof Rename>>().type.toBe<User>()
+      expect<Command.Failure<typeof Rename>>().type.toBe<Boom>()
+    })
+
+    it("needs both handlers", () => {
+      expect(Command.match).type.not.toBeCallableWith(Rename.make("1"), { onSuccess: (user: User) => user.name })
+    })
+
+    it("maps each element and the failure of a stream Command, and composes with map", () => {
+      const matched = Feed.make("lobby").pipe(
+        Command.match({ onSuccess: (n) => n + 1, onFailure: (boom) => boom._tag.length }),
+        Command.map((n) => Message.make({ _tag: "Got", n }))
+      )
+      expect(matched).type.toBe<Command.Streaming<typeof Message.Type, Feed, number, Boom>>()
+      expect($.run).type.toBeCallableWith(matched)
+    })
+
+    it("the data-first form infers too", () => {
+      const matched = Command.match(Rename.make("1"), {
+        onSuccess: (user) => user.name,
+        onFailure: (boom) => boom._tag
+      })
+      expect(matched).type.toBe<Command.Effectful<string, Rename, User, Boom>>()
+    })
+
+    it("what a Service declares is readable off the issued Command", () => {
+      expect(Rename.make("1").invalidates).type.toBe<ReadonlyArray<Command.Target>>()
+      expect(Rename.make("1").optimistic).type.toBe<ReadonlyArray<Command.Patch>>()
     })
   })
 

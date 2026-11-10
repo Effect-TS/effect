@@ -466,9 +466,8 @@ export type HtmlRoot<V> = [Renderer.HostOf<V>] extends [Html.Host] ? unknown
  * **Hydration.** Pass the `state` from `HtmlServer.renderToHtml`, with the
  * server's HTML already in `container` and the same props, to adopt the
  * server's nodes instead of building them. Each instance adopts its server
- * Model and replays `init` only to recover its Commands; server Commands the
- * Model already has the result of are skipped, and those that missed the
- * budget run now. `onMount` fires on adoption. An instance whose view doesn't
+ * Model and replays `init` only to recover its Commands, which all run now:
+ * none ran on the server. `onMount` fires on adoption. An instance whose view doesn't
  * match the server's nodes is rebuilt on its own, and one the server deferred
  * is built fresh.
  *

@@ -21,7 +21,8 @@
  *
  * class SaveTodo extends Command.Service<SaveTodo>()(
  *   "todos/SaveTodo",
- *   Effect.succeed((todo: typeof Todo.Type) => Effect.succeed(TodoItemMessage.make({ _tag: "Saved" })))
+ *   Effect.succeed((todo: typeof Todo.Type) => Effect.succeed(TodoItemMessage.make({ _tag: "Saved" }))),
+ *   { invalidates: () => [] }
  * ) {}
  *
  * const TodoItem = Component.make({
@@ -688,7 +689,8 @@ const toLayer = (layers: Layer.Any | ReadonlyArray<Layer.Any>): Layer.Layer<any,
  *
  * class SaveTodo extends Command.Service<SaveTodo>()(
  *   "todos/SaveTodo",
- *   Effect.succeed((id: string) => Effect.succeed(RowMessage.make({ _tag: "Saved" })))
+ *   Effect.succeed((id: string) => Effect.succeed(RowMessage.make({ _tag: "Saved" }))),
+ *   { invalidates: () => [] }
  * ) {}
  *
  * class EditorStore extends Context.Service<EditorStore, { readonly draft: string }>()("EditorStore") {

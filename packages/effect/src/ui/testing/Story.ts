@@ -26,7 +26,8 @@
  *
  * class SaveTodo extends Command.Service<SaveTodo>()(
  *   "todos/SaveTodo",
- *   Effect.succeed((id: string) => Effect.succeed(Message.make({ _tag: "Saved" })))
+ *   Effect.succeed((id: string) => Effect.succeed(Message.make({ _tag: "Saved" }))),
+ *   { invalidates: () => [] }
  * ) {}
  *
  * const TodoItem = Component.make({
@@ -132,7 +133,11 @@ export interface Story<Props, Model, Msg, Events> {
  * @category models
  * @since 4.1.3
  */
-export type Target = Command.Definition.Any | Command.Effectful<any, any, never> | Command.Streaming<any, any, never>
+export type Target =
+  | Command.Definition.Any
+  | Command.Effectful<any, any, never>
+  | Command.Streaming<any, any, never>
+  | Command.Unmatched<any, any, any, Command.Kind>
 
 /**
  * A stream Command's definition, or an issued stream Command: what `next` and
@@ -142,7 +147,10 @@ export type Target = Command.Definition.Any | Command.Effectful<any, any, never>
  * @category models
  * @since 4.1.3
  */
-export type StreamTarget = Command.Definition<any, any, true> | Command.Streaming<any, any, never>
+export type StreamTarget =
+  | Command.Definition<any, any, true, any>
+  | Command.Streaming<any, any, never>
+  | Command.Unmatched<any, any, any, "Stream">
 
 // A component with no messages has `Msg = never`, and its `update` can't take `any`, so it needs its own member.
 type AnyComponent =
@@ -232,6 +240,12 @@ export interface Steps<C extends AnyComponent> extends Pipeable {
    * queued run of the same group starts when the running one resolves.
    */
   resolve<D extends Target>(target: D, result: Command.Result<D>): this
+  /**
+   * Fails the oldest running Command matching `target` with the typed failure
+   * its body would have failed with, and sends the message `Command.match`'s
+   * `onFailure` maps it to. A failed stream Command ends.
+   */
+  fail<D extends Target>(target: D, error: Command.Failure<D>): this
   /** Sends one element of the oldest running stream Command matching `target`, which stays pending. */
   next<D extends StreamTarget>(target: D, result: Command.Result<D>): this
   /** Ends the oldest running stream Command matching `target`, sending nothing. */
@@ -388,7 +402,7 @@ const matches = (target: Target, entry: Pending<any>): boolean => {
 }
 
 const describeTarget = (target: Target): string =>
-  Command.isDefinition(target) ? Command.nameOf(target) : describe(target)
+  Command.isDefinition(target) ? Command.nameOf(target) : describe(target as Command.Effectful<any, any, never>)
 
 const findRunning = (story: Story<any, any, any, any>, target: Target, step: string): Pending<any> => {
   const entry = story.pending.find((entry) => entry.status === "running" && matches(target, entry))
@@ -499,6 +513,14 @@ class StepsImpl implements Steps<AnyComponent> {
   resolve(target: Target, result: unknown): this {
     const entry = findRunning(this.current, target, "resolve")
     return this.step(dispatch(complete(this.current, entry), resolveWith(entry, result)))
+  }
+  fail(target: Target, error: unknown): this {
+    const entry = findRunning(this.current, target, "fail")
+    const reject = entry.command.reject as ((error: unknown) => unknown) | undefined
+    if (reject === undefined) {
+      throw new Error(`Story.fail: ${describe(entry.command)} has no typed failure mapped by Command.match`)
+    }
+    return this.step(dispatch(complete(this.current, entry), reject(error)))
   }
   next(target: StreamTarget, result: unknown): this {
     return this.step(dispatch(this.current, resolveWith(findStream(this.current, target, "next"), result)))

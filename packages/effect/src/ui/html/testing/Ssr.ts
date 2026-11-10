@@ -64,9 +64,10 @@ import * as server from "../internal/server.ts"
  * `html`, `state` and `model` are the server's, `head` its merged head.
  * `document` is the hydrated page and `container` the app's element in it.
  * `adopted` lists the paths whose Model the client adopted. `log` is the
- * client's log from hydration on, which holds the `CommandDropped` entries
- * of replayed server Commands, and `serverLog` the server's. `commands` are
- * the Commands adopted instances ran after replaying `init`, by position.
+ * client's log from hydration on, and `serverLog` the server's, which holds
+ * a `CommandDropped` entry for every Command `init` issued there. `commands`
+ * are the Commands adopted instances ran after replaying `init`, by position:
+ * every one `init` issued.
  *
  * @stability experimental
  * @category models
@@ -301,18 +302,10 @@ export const ssr = <Name extends string, Props, Model, Msg, Events, R, V extends
     problems.push(...compareHeads(rendered.head, adoptionHead ?? Head.empty))
     if (problems.length > 0) return yield* new SsrError({ problems })
 
-    const dropped = new Set(
-      log.flatMap((entry) =>
-        entry._tag === "CommandDropped" && entry.reason === "adopted"
-          ? [`${entry.issued.seq}:${entry.issued.index}`]
-          : []
-      )
-    )
+    // Hydration replays every one of `init`'s Commands.
     const commands = mounted.flatMap((entry) =>
       entry.commands.flatMap((command, index) =>
-        command._tag === "Interrupt" || dropped.has(`${entry.seq}:${index}`)
-          ? []
-          : [{ path: entry.path, name: command.name, index }]
+        command._tag === "Interrupt" ? [] : [{ path: entry.path, name: command.name, index }]
       )
     )
     return {

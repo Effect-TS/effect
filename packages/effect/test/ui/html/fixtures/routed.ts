@@ -1,6 +1,6 @@
 /**
  * The routed example: a root that holds the route, a home page, a person
- * page that loads its bio on entry with a server Command, a search route
+ * page that loads its bio on entry with a Command, a search route
  * and a slow page whose provided Layer takes a second to build.
  */
 import { Context, Effect, Layer, Schema } from "effect"
@@ -36,14 +36,14 @@ export class People extends Context.Service<People, {
 
 export const PersonMessage = Schema.TaggedUnion({ Loaded: { bio: Schema.String } })
 
-/** Route data: read on the server, so the page's HTML holds it. */
+/** Route data. No Command runs on the server, so the client loads it after adopting. */
 export class LoadBio extends Command.Service<LoadBio>()(
   "LoadBio",
   Effect.gen(function*() {
     const people = yield* People
     return (id: number) => Effect.map(people.bio(id), (bio) => PersonMessage.make({ _tag: "Loaded", bio }))
   }),
-  { server: true }
+  { invalidates: () => [] }
 ) {}
 
 export const Person = Component.make({

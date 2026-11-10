@@ -130,11 +130,16 @@ interface RSlot {
 interface Run {
   readonly command: Command.Effectful<any, any, never> | Command.Streaming<any, any, never>
   readonly issued: MessageLog.Issued
-  /** On the server: the run's position among `init`'s Commands. */
-  readonly initIndex: number | undefined
+  /** What `MutationHooks` is given for this run: one object for all of its calls. */
+  readonly mutation: services.MutationRun
   status: "running" | "queued"
   fiber: Fiber.Fiber<unknown, unknown> | undefined
+  /** Out of the schedule: it ended, or it was asked to stop. Its fiber may still be running. */
   done: boolean
+  /** The fiber took its first step, so the work may have had an effect. */
+  begun: boolean
+  /** `MutationHooks.onExit` or `onCancel` was called for it. */
+  settled: boolean
 }
 
 interface SubscriptionRun {
@@ -168,8 +173,6 @@ export interface Instance {
   readonly snapshot: Snapshot | undefined
   /** On the server: the client builds this instance fresh, because its Layer wasn't built. */
   deferred: boolean
-  /** On the server: positions of `init`'s server Commands that haven't completed. */
-  readonly serverPending: Set<number>
   readonly runs: Array<Run>
   readonly subscriptions: Map<string, SubscriptionRun>
   readonly dispatch: (message: unknown, source: MessageLog.Source) => void
@@ -215,7 +218,7 @@ interface Options {
     | undefined
   /** Hydration: the server's state. The container holds the server's nodes. */
   readonly state?: Renderer.State | undefined
-  /** Server rendering. `start` is false once server Commands may no longer start. */
+  /** Server rendering. `start` is false with no budget. TODO(loader): "budget 0 starts no fetches" reads it. */
   readonly server?: { readonly start: boolean; readonly host: Renderer.Host<any> } | undefined
 }
 
@@ -233,9 +236,6 @@ const jsonCodecOf = (schema: Schema.Codec<any, any>) => {
   }
   return found
 }
-
-/** Whether replaying `init` for an adopted Model skips a Command: only server Commands are skipped. */
-const isReplayDropped = (command: Command.Command<any, any>): boolean => command._tag !== "Interrupt" && command.server
 
 const childName = (component: Component.Any | Feature.Any): string =>
   Feature.isService(component) ? component[Feature.TypeId].name : component.name
@@ -311,8 +311,8 @@ export const mount = (
 
 /**
  * Renders a tree on the server: on a host that only keeps the node tree,
- * waiting for provided Layers and `init`'s server Commands until nothing is
- * in flight or the budget runs out, then serialising it once.
+ * waiting for provided Layers until nothing is in flight or the budget runs
+ * out, then serialising it once. No Command runs there.
  *
  * @internal
  */
@@ -364,14 +364,12 @@ const start = (
   const rootEmitted: Array<unknown> = []
   const sharedBuilds = new WeakMap<Env, Map<Layer.Layer<any, any, any>, SharedBuild>>()
   const hooks = Option.getOrUndefined(Context.getOption(ctx, services.RootHooks))
+  // TODO(loader): the cache's hooks into Command runs. No-ops unless the Context carries others.
+  const mutations = Context.get(ctx, services.MutationHooks)
 
   // -- server ---------------------------------------------------------------
-  // Whether `init`'s server Commands may still start: false with no budget, or once it's spent.
-  let serverStarts = server?.start ?? false
   // Set by `finish`: the tree is serialised, and nothing it does from now on counts.
   let frozen = false
-  // Server Command runs not yet ended.
-  let active = 0
   const idleWaiters: Array<() => void> = []
 
   // -- hydration ------------------------------------------------------------
@@ -380,11 +378,9 @@ const start = (
   let hydrating: {
     readonly state: Renderer.State
     readonly deferred: ReadonlySet<string>
-    readonly pending: Readonly<Record<string, ReadonlyArray<number>>>
   } | undefined = options?.state === undefined || server !== undefined ? undefined : {
     state: options.state,
-    deferred: new Set(options.state["~deferred"] ?? []),
-    pending: options.state["~pending"] ?? {}
+    deferred: new Set(options.state["~deferred"] ?? [])
   }
   // Slots still waiting for their Layer before they adopt, and whether the first render is done.
   let waiting = 0
@@ -495,8 +491,8 @@ const start = (
   }
   /**
    * Decides whether the server is idle once the current callback has finished:
-   * a Layer that settled or a Command that ended may still be about to wake a
-   * slot, fail an instance or start work.
+   * a Layer that settled may still be about to wake a slot, fail an instance
+   * or start work. TODO(loader): add "no fetch in flight in the cache" to the condition.
    */
   let idleCheck = false
   const checkIdle = () => {
@@ -504,7 +500,7 @@ const start = (
     idleCheck = true
     executor.schedule(() => {
       idleCheck = false
-      if (scheduled || dirty.size > 0 || deferred.length > 0 || active > 0 || building.size > 0) return
+      if (scheduled || dirty.size > 0 || deferred.length > 0 || building.size > 0) return
       for (const f of idleWaiters.splice(0)) f()
     })
   }
@@ -835,7 +831,6 @@ const start = (
         ? undefined
         : { entries: [], children: [], settled: false, failed: false },
       deferred: false,
-      serverPending: new Set(),
       runs: [],
       subscriptions: new Map(),
       dispatch(message, source) {
@@ -993,12 +988,11 @@ const start = (
         Object.hasOwn(hydrating.state, path)
       ? jsonCodecOf(component.model).decode(hydrating.state[path])
       : Option.none()
-    const pendingPositions = Option.isSome(fromServer) ? hydrating!.pending[path] ?? [] : []
 
     /**
      * Runs `init` and renders. An instance adopting a Model (from the server, or from
      * history restore) replays `init` only for its Commands: the adopted Model wins, events
-     * are dropped, and server Commands are skipped unless the server lists them as pending.
+     * are dropped, and every Command runs again.
      * Given the server's nodes, it adopts them when its view matches, and otherwise builds fresh.
      */
     const begin = (range: Range | undefined, serverModel: Option.Option<unknown>) => {
@@ -1016,9 +1010,6 @@ const start = (
         const restored = hooks.restore(path)
         if (restored !== undefined) adopted = jsonCodecOf(component.model).decode(restored)
       }
-      const pendingSet = new Set(Option.isSome(serverModel) ? pendingPositions : [])
-      const skipped = (command: Command.Command<any, any>, index: number) =>
-        Option.isSome(adopted) && isReplayDropped(command) && !pendingSet.has(index)
       let mountedSeq = -1
       if (first !== undefined) {
         inst.model = Option.isSome(adopted) ? adopted.value : first.model
@@ -1033,26 +1024,6 @@ const start = (
           events: first.events,
           adopted: Option.isSome(adopted)
         })
-        first.commands.forEach((command, index) => {
-          if (!skipped(command, index)) return
-          record({
-            _tag: "CommandDropped",
-            path,
-            name: command.name,
-            issued: { seq: mountedSeq, index },
-            reason: "adopted"
-          })
-        })
-        for (const position of pendingSet) {
-          if (position >= first.commands.length) {
-            forkNow(
-              ctx,
-              Effect.logWarning(
-                `${path}: the server lists init's Command ${position} as pending, and init issued ${first.commands.length}. init isn't deterministic.`
-              )
-            )
-          }
-        }
       }
       logEarly()
       if (first === undefined) return
@@ -1081,10 +1052,7 @@ const start = (
       }
       if (inst.failure !== undefined) return
       if (Option.isSome(adopted)) {
-        apply(inst, { model: inst.model, commands: [], events: [] }, mountedSeq, true)
-        first.commands.forEach((command, index) => {
-          if (!skipped(command, index)) issue(inst, command, { seq: mountedSeq, index }, index)
-        })
+        apply(inst, { model: inst.model, commands: first.commands, events: [] }, mountedSeq, true)
       } else apply(inst, first, mountedSeq, true)
     }
 
@@ -1139,9 +1107,11 @@ const start = (
 
   const apply = (inst: Instance, next: Component.Next<any, any, any, any>, entrySeq: number, initial: boolean) => {
     inst.model = next.model
-    next.commands.forEach((command, index) =>
-      issue(inst, command, { seq: entrySeq, index }, initial ? index : undefined)
-    )
+    for (let index = 0; index < next.commands.length; index++) {
+      // A throwing `MutationHooks.onIssue` failed the instance: the rest isn't issued.
+      if (inst.closed) return
+      issue(inst, next.commands[index]!, { seq: entrySeq, index }, initial)
+    }
     if (!initial) markDirty(inst)
     syncSubscriptions(inst)
     if (next.events.length === 0) return
@@ -1172,48 +1142,66 @@ const start = (
     value: run
   })
 
-  /** `initIndex` is the Command's position among those `init` returned, or `undefined` for `update`'s. */
+  /** Calls a `MutationHooks` function about a run that already exists. A throw fails the instance. */
+  const settle = (inst: Instance, run: Run, exit: Exit.Exit<unknown, unknown> | undefined) => {
+    if (run.settled) return
+    run.settled = true
+    try {
+      if (exit === undefined) mutations.onCancel(run.mutation)
+      else mutations.onExit(run.mutation, exit)
+    } catch (error) {
+      failInstance(inst, Cause.die(error), "command", run.command.name)
+    }
+  }
+
+  /** `initial`: issued by `init` rather than `update`. */
   const issue = (
     inst: Instance,
     command: Command.Command<any, any>,
     issued: MessageLog.Issued,
-    initIndex: number | undefined
+    initial: boolean
   ) => {
     if (server !== undefined) {
-      // On the server only `init`'s server Commands run. The rest run on the client.
-      if (command._tag === "Interrupt") {
-        if (initIndex === undefined) return
-      } else if (initIndex === undefined || !command.server || inst.env.never) {
-        record({ _tag: "CommandDropped", path: inst.path, name: command.name, issued, reason: "server" })
-        if (initIndex === undefined) warnDropped(inst, command.name)
-        return
-      } else {
-        inst.serverPending.add(initIndex)
-        // With the budget spent, or none, it stays pending for the client.
-        if (!serverStarts) return
-      }
+      // No Command runs on the server. `init`'s are dropped silently; one from `update` warns.
+      if (command._tag === "Interrupt") return
+      record({ _tag: "CommandDropped", path: inst.path, name: command.name, issued, reason: "server" })
+      if (!initial) warnDropped(inst, command.name)
+      return
     }
     const decision = schedule.schedule(entriesOf(inst), command)
-    for (const entry of decision.interrupt) stopRun(inst, entry.value)
-    if (command._tag === "Interrupt") return
+    if (command._tag === "Interrupt") {
+      for (const entry of decision.interrupt) stopRun(inst, entry.value)
+      return
+    }
     switch (decision.action) {
       case "start":
       case "queue": {
         const run: Run = {
           command,
           issued,
-          initIndex,
+          mutation: { command, args: command.args, path: inst.path },
           status: decision.action === "start" ? "running" : "queued",
           fiber: undefined,
-          done: false
+          done: false,
+          begun: false,
+          settled: false
         }
+        // MutationHooks (a): at issue, synchronously, before the run is queued or started, and before
+        // `switch` asks the earlier runs to stop, so the new one registers while their fibers still run.
+        try {
+          mutations.onIssue(run.mutation)
+        } catch (error) {
+          // Like a throw in `update`: the run doesn't start and the issuing instance fails.
+          failInstance(inst, Cause.die(error), initial ? "init" : "update", command.name)
+          return
+        }
+        for (const entry of decision.interrupt) stopRun(inst, entry.value)
         inst.runs.push(run)
-        if (server !== undefined) active++
         if (run.status === "running") startRun(inst, run)
         return
       }
       case "drop": {
-        if (initIndex !== undefined) inst.serverPending.delete(initIndex)
+        // MutationHooks: a dropped Command registers nothing.
         record({ _tag: "CommandDropped", path: inst.path, name: command.name, issued, reason: "mode" })
         return
       }
@@ -1224,10 +1212,6 @@ const start = (
     run.done = true
     const index = inst.runs.indexOf(run)
     if (index >= 0) inst.runs.splice(index, 1)
-    if (server !== undefined) {
-      active--
-      checkIdle()
-    }
   }
 
   const warnDropped = (inst: Instance, name: string) => {
@@ -1237,7 +1221,7 @@ const start = (
     forkNow(
       ctx,
       Effect.logWarning(
-        `${inst.component.name}'s update issued ${name} during server rendering, and it was dropped. Only init's server Commands run on the server.`
+        `${inst.component.name}'s update issued ${name} during server rendering, and it was dropped. No Command runs on the server.`
       )
     )
   }
@@ -1251,12 +1235,18 @@ const start = (
     startRun(inst, next.value)
   }
 
+  /**
+   * Asks a run to stop: it leaves the schedule at once and dispatches nothing from now on. A run
+   * whose work began is interrupted, and `MutationHooks.onExit` is called when its fiber exits,
+   * from `startRun`'s observer. One whose work hasn't begun is cancelled here.
+   */
   const stopRun = (inst: Instance, run: Run) => {
     if (run.done) return
-    if (run.initIndex !== undefined && !frozen) inst.serverPending.delete(run.initIndex)
     removeRun(inst, run)
-    run.fiber?.interruptUnsafe()
     record({ _tag: "CommandInterrupted", path: inst.path, name: run.command.name, issued: run.issued })
+    // MutationHooks (c): stopped before its work began.
+    if (!run.begun) settle(inst, run, undefined)
+    run.fiber?.interruptUnsafe()
     promote(inst, run)
   }
 
@@ -1265,39 +1255,62 @@ const start = (
       if (run.done || inst.closed || frozen) return
       const command = run.command
       const context = Context.add(Context.add(envCtx, Scope.Scope, inst.scope), services.Refs, refsOf(inst))
+      const sourceOf = (spanId: string | undefined, traceId: string | undefined): MessageLog.Source => ({
+        _tag: "Command",
+        name: command.name,
+        issued: run.issued,
+        spanId,
+        traceId
+      })
+      let source = sourceOf(undefined, undefined)
+      const send = (message: unknown) => {
+        if (!run.done) inst.dispatch(message, source)
+      }
+      // The fiber runs the definition's own work: its exit tells a success from a typed failure.
       const program = Effect.useSpan(
         command.name,
         { attributes: { path: inst.path, mode: command.mode } },
-        (span) => {
-          const source: MessageLog.Source = {
-            _tag: "Command",
-            name: command.name,
-            issued: run.issued,
-            spanId: span.spanId,
-            traceId: span.traceId
-          }
-          const send = (message: unknown) =>
-            Effect.sync(() => {
-              if (!run.done) inst.dispatch(message, source)
-            })
+        (span): Effect.Effect<unknown, unknown, any> => {
+          // Stopped before the first step: the work never begins.
+          if (run.done) return Effect.interrupt
+          run.begun = true
+          source = sourceOf(span.spanId, span.traceId)
           return command._tag === "Effect"
-            ? Effect.flatMap(command.effect, send)
-            : Stream.runForEach(command.stream, send)
+            ? command.work
+            : Stream.runForEach(command.work, (element) => Effect.sync(() => send(command.resolve(element as never))))
         }
       )
       const fiber = forkLater(context, program)
       run.fiber = fiber
       fiber.addObserver((exit) => {
-        if (run.done) return
-        removeRun(inst, run)
-        if (Exit.isSuccess(exit)) {
-          if (run.initIndex !== undefined) inst.serverPending.delete(run.initIndex)
-          record({ _tag: "CommandEnded", path: inst.path, name: command.name, issued: run.issued })
-        } else if (Cause.hasInterruptsOnly(exit.cause)) {
+        // MutationHooks (b): the fiber exited, however it did, and before the result message is sent.
+        // A run that never began was cancelled, by `stopRun`.
+        settle(inst, run, run.begun ? exit : undefined)
+        if (run.done || inst.closed) return
+        // One classification for every exit: any Die is a defect, otherwise any Fail is the typed
+        // failure, otherwise it was interrupted.
+        const reject = command.reject
+        if (Exit.isFailure(exit) && !Cause.hasDies(exit.cause) && !Cause.hasFails(exit.cause)) {
+          removeRun(inst, run)
           record({ _tag: "CommandInterrupted", path: inst.path, name: command.name, issued: run.issued })
-        } else {
+        } else if (Exit.isFailure(exit) && (Cause.hasDies(exit.cause) || reject === undefined)) {
+          // A typed failure nothing maps is a defect too: an unmatched Command got past the types.
+          removeRun(inst, run)
           failInstance(inst, exit.cause, "command", command.name)
           return
+        } else {
+          // The run is still in the schedule while `update` handles its result, as when the fiber sent it.
+          if (Exit.isFailure(exit) || command._tag === "Effect") {
+            const message = guard(inst, "command", () =>
+              Exit.isFailure(exit)
+                ? { value: reject!(Option.getOrUndefined(Cause.findErrorOption(exit.cause)) as never) }
+                : { value: command.resolve(exit.value as never) }, command.name)
+            if (message === undefined) return
+            send(message.value)
+          }
+          if (run.done) return
+          removeRun(inst, run)
+          record({ _tag: "CommandEnded", path: inst.path, name: command.name, issued: run.issued })
         }
         promote(inst, run)
       })
@@ -1907,12 +1920,10 @@ const start = (
 
   /** Serialises the tree once, in document order, with the state the client adopts. */
   const finish = () => {
-    serverStarts = false
     if (scheduled || dirty.size > 0 || deferred.length > 0) flush()
     frozen = true
     const state: Record<string, unknown> = {}
     const deferredPaths: Array<string> = []
-    const pendingPaths: Record<string, ReadonlyArray<number>> = {}
     // `under`: inside a deferred instance, whose subtree the client builds fresh.
     const instance = (inst: Instance, under: boolean): Renderer.ServerNode => {
       let inner = under
@@ -1927,7 +1938,6 @@ const start = (
           inner = true
         } else {
           state[inst.path] = encoded.value
-          if (inst.serverPending.size > 0) pendingPaths[inst.path] = [...inst.serverPending].sort((a, b) => a - b)
         }
       }
       return {
@@ -1959,7 +1969,8 @@ const start = (
       }
     }
     const nodes = [instance(root, false)]
-    return { nodes, state: { ...state, "~deferred": deferredPaths, "~pending": pendingPaths } }
+    // TODO(loader): the cache is serialised here, under "~loader", in the same synchronous step as the Models.
+    return { nodes, state: { ...state, "~deferred": deferredPaths } }
   }
 
   const pendingOf = (

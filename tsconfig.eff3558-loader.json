@@ -1,0 +1,13 @@
+{
+  // Prototype helper (EFF-3558): type checks only the Loader core and its test. Not for merging.
+  "extends": "./tsconfig.tests.json",
+  "references": [],
+  "include": ["./packages/effect/test/reactivity/Loader.test.ts", "./packages/effect/src/reactivity/Loader.ts"],
+  "compilerOptions": {
+    "composite": false,
+    "declaration": false,
+    "declarationMap": false,
+    "incremental": false,
+    "noEmit": true
+  }
+}

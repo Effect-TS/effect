@@ -1,0 +1,13 @@
+{
+  // Prototype helper (EFF-3558): type checks only the effect/ui tests and type tests. Not for merging.
+  "extends": "./tsconfig.tests.json",
+  "references": [],
+  "include": ["./packages/effect/test/ui/**/*.ts", "./packages/effect/typetest/ui/**/*.ts"],
+  "compilerOptions": {
+    "composite": false,
+    "declaration": false,
+    "declarationMap": false,
+    "incremental": false,
+    "noEmit": true
+  }
+}

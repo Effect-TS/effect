@@ -57,14 +57,18 @@ export class SaveTodo extends Command.Service<SaveTodo>()(
   "todos/SaveTodo",
   Effect.gen(function*() {
     const kv = yield* KeyValueStore.KeyValueStore
-    return (todo: Todo) =>
-      kv.set(`todo/${todo.id}`, encodeTodo(todo)).pipe(
-        Effect.as(TodoItemMessage.make({ _tag: "Saved" })),
-        Effect.catchTag("KeyValueStoreError", (error) =>
-          Effect.succeed(TodoItemMessage.make({ _tag: "SaveFailed", reason: error.message })))
-      )
-  })
+    return (todo: Todo) => kv.set(`todo/${todo.id}`, encodeTodo(todo))
+  }),
+  // TODO(loader): a stand-in for `GetTodo.entry({ id })`.
+  { invalidates: (todo) => [{ read: "GetTodo", id: todo.id }] }
 ) {}
+
+/** The issue site maps the body's two channels to messages. */
+export const saveTodo = (todo: Todo) =>
+  SaveTodo.make(todo).pipe(Command.match({
+    onSuccess: () => TodoItemMessage.make({ _tag: "Saved" }),
+    onFailure: (error) => TodoItemMessage.make({ _tag: "SaveFailed", reason: error.message })
+  }))
 
 export const TodoItem = Component.make({
   name: "TodoItem",
@@ -76,7 +80,7 @@ export const TodoItem = Component.make({
   update: (_model, message, $) =>
     TodoItemMessage.match(message, {
       Toggle: () => $.emit(TodoItemEvents.make({ _tag: "Toggled", done: !$.props.todo.done })),
-      Save: () => $.set({ saving: true }).run(SaveTodo.make($.props.todo)),
+      Save: () => $.set({ saving: true }).run(saveTodo($.props.todo)),
       Saved: () => ({ saving: false }),
       SaveFailed: () => ({ saving: false })
     }),
