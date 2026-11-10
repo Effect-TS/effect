@@ -453,6 +453,7 @@ const stripWeakEtagPrefix = (value: string): string => {
 const entityTagList = /^[\s,]*(?:(?:W\/)?"[^"]*"\s*(?:,[\s,]*|$))*$/
 const entityTag = /(?:W\/)?"[^"]*"/g
 
+// If-Match uses strong comparison (RFC 9110 §13.1.1), so weak tags never match.
 const matchesIfMatch = (ifMatch: string, etag: string | undefined): boolean => {
   if (ifMatch.trim() === "*") {
     return true
