@@ -1,9 +1,13 @@
 import * as Clock from "effect/Clock"
+import * as Digest from "effect/crypto/Digest"
+import * as Mac from "effect/crypto/Mac"
+import * as SecureRandom from "effect/crypto/SecureRandom"
 import * as Effect from "effect/Effect"
 import * as Hex from "effect/encoding/Hex"
 import type * as HttpBody from "effect/http/HttpBody"
 import * as HttpClientRequest from "effect/http/HttpClientRequest"
 import * as Url from "effect/http/Url"
+import * as Layer from "effect/Layer"
 import * as Result from "effect/Result"
 
 /**
@@ -19,23 +23,12 @@ export interface SigningCredentials {
 
 const encoder = new TextEncoder()
 
-const sha256 = (data: Uint8Array): Effect.Effect<Uint8Array> =>
-  Effect.map(
-    Effect.promise(() => globalThis.crypto.subtle.digest("SHA-256", data as BufferSource)),
-    (digest) => new Uint8Array(digest)
-  )
-
-const hmac = (key: Uint8Array, data: string): Effect.Effect<Uint8Array> =>
-  Effect.promise(async () => {
-    const cryptoKey = await globalThis.crypto.subtle.importKey(
-      "raw",
-      key as BufferSource,
-      { name: "HMAC", hash: "SHA-256" },
-      false,
-      ["sign"]
-    )
-    return new Uint8Array(await globalThis.crypto.subtle.sign("HMAC", cryptoKey, encoder.encode(data)))
-  })
+// `Mac.layerWebCrypto` needs `SecureRandom` to generate keys, which signing
+// never does.
+const layerCrypto = Layer.merge(
+  Digest.layerWebCrypto,
+  Layer.provide(Mac.layerWebCrypto, SecureRandom.layerWebCrypto)
+)
 
 /** Percent-encodes a string per RFC 3986, as SigV4 requires. */
 const encodeRfc3986 = (value: string): string =>
@@ -84,7 +77,8 @@ const bodyBytes = (body: HttpBody.HttpBody): Effect.Effect<Uint8Array> => {
  * and `x-amz-security-token` when present. The canonical URI and query come
  * from the URL the transport sends, `url` with `urlParams` appended. Path
  * segments are encoded a second time in the canonical URI, as the service does
- * for every API but S3. The timestamp comes from the Effect `Clock`.
+ * for every API but S3. The timestamp comes from the Effect `Clock`, and
+ * SHA-256 and HMAC run on `crypto.subtle` through `effect/crypto`.
  *
  * @internal
  */
@@ -96,6 +90,15 @@ export const sign = (
   }
 ): Effect.Effect<HttpClientRequest.HttpClientRequest> =>
   Effect.gen(function*() {
+    const digest = yield* Digest.Digest
+    const mac = yield* Mac.Mac
+    // Signing keys are never empty, so a `CryptoError` means the runtime has
+    // no HMAC-SHA-256, which is a defect.
+    const hmac = (key: Uint8Array, data: string): Effect.Effect<Uint8Array> =>
+      Mac.key(Mac.hmacSha256, key).pipe(
+        Effect.flatMap((key) => mac.sign(key, encoder.encode(data))),
+        Effect.orDie
+      )
     const { accessKeyId, secretAccessKey, sessionToken } = options.credentials
     const amzDate = formatAmzDate(new Date(yield* Clock.currentTimeMillis))
     const date = amzDate.slice(0, 8)
@@ -126,7 +129,7 @@ export const sign = (
       .sort(([a, av], [b, bv]) => a < b ? -1 : a > b ? 1 : av < bv ? -1 : av > bv ? 1 : 0)
       .map(([key, value]) => `${key}=${value}`)
       .join("&")
-    const payloadHash = Hex.encode(yield* sha256(yield* bodyBytes(request.body)))
+    const payloadHash = yield* digest.digestHex(Digest.sha256, yield* bodyBytes(request.body))
 
     const canonicalRequest = [
       request.method,
@@ -142,7 +145,7 @@ export const sign = (
       "AWS4-HMAC-SHA256",
       amzDate,
       scope,
-      Hex.encode(yield* sha256(encoder.encode(canonicalRequest)))
+      yield* digest.digestHex(Digest.sha256, encoder.encode(canonicalRequest))
     ].join("\n")
 
     const kDate = yield* hmac(encoder.encode(`AWS4${secretAccessKey}`), date)
@@ -156,4 +159,4 @@ export const sign = (
         `AWS4-HMAC-SHA256 Credential=${accessKeyId}/${scope}, SignedHeaders=${signedHeaders}, Signature=${signature}`,
       ...amzHeaders
     })
-  })
+  }).pipe(Effect.provide(layerCrypto))
