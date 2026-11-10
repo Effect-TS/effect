@@ -361,6 +361,40 @@ describe("Command", () => {
         assert.deepStrictEqual(captured, ["selected"])
       }).pipe(Effect.provide(TestLayer)))
 
+    it.effect("should replace the selected command's typed flags and arguments with --wizard", () =>
+      Effect.gen(function*() {
+        const captured: Array<readonly [string, string]> = []
+        const child = Command.make("child", {
+          name: Flag.String("name"),
+          value: Argument.String("value")
+        }, ({ name, value }) => Effect.sync(() => captured.push([name, value])))
+        const command = Command.make("root").pipe(
+          Command.withSharedFlags({ profile: Flag.String("profile").pipe(Flag.withAlias("p")) }),
+          Command.withSubcommands([child])
+        )
+
+        const fiber = yield* Command.runWith(command, { version: "1.0.0" })([
+          "--log-level",
+          "error",
+          "child",
+          "-p=dev",
+          "--name",
+          "typed",
+          "typed",
+          "--wizard"
+        ]).pipe(Effect.forkChild)
+        yield* MockTerminal.inputText("prompted")
+        yield* MockTerminal.inputKey("enter")
+        yield* MockTerminal.inputText("prompted")
+        yield* MockTerminal.inputKey("enter")
+        yield* MockTerminal.inputKey("enter")
+        yield* Fiber.join(fiber)
+
+        const output = (yield* TestConsole.logLines).join("\n")
+        assert.deepStrictEqual(captured, [["prompted", "prompted"]])
+        assert.include(output, "$ root --log-level error child -p=dev --name prompted prompted")
+      }).pipe(Effect.provide(TestLayer)))
+
     it.effect("should reject --completions without a shell", () =>
       Effect.gen(function*() {
         let invoked = false
