@@ -495,6 +495,10 @@ describe("Loader", () => {
         "Failure(nope) previous waiting",
         "Failure(nope) previous"
       ])
+      // A get waiting on a fetch that reverts is interrupted.
+      const pending = yield* Effect.forkScoped(GetUser.get({ id: "1" }))
+      yield* advance(10)
+      assert.isTrue(Exit.hasInterrupts(yield* Fiber.await(pending)))
 
       db.mode = "die"
       yield* GetUser.invalidate({ id: "1" })
@@ -610,6 +614,44 @@ describe("Loader", () => {
         `[Loader] read "ById": the encoded args hold a value JSON can't carry (a non-finite number). Give the args Schema a JSON encoding.`
       ])
     }).pipe(Effect.provide(Layer.mergeAll(Search.layer, ById.layer, TestLoader.layer())))
+  })
+
+  it.effect("an undefined property is the same entry as a missing one", () => {
+    let calls = 0
+    class Search extends Loader.Service<Search>()("Search", {
+      args: {
+        token: Schema.Redacted(Schema.String),
+        page: Schema.optional(Schema.Number),
+        filter: Schema.optional(Schema.Struct({ tag: Schema.optional(Schema.String) }))
+      },
+      success: Schema.Number,
+      error: Schema.Never,
+      staleTime: "Infinity"
+    }, Effect.sync(() => () => Effect.sync(() => ++calls))) {}
+    // A required key that admits undefined only encodes with the property there, so it stays.
+    class Required extends Loader.Service<Required>()("Required", {
+      args: { page: Schema.UndefinedOr(Schema.Number) },
+      success: Schema.Number,
+      error: Schema.Never,
+      staleTime: "Infinity"
+    }, Effect.sync(() => () => Effect.sync(() => ++calls))) {}
+    return Effect.gen(function*() {
+      const token = Redacted.make("s3cret")
+      const results = [
+        yield* Search.get({ token, page: undefined, filter: { tag: undefined } }),
+        yield* Search.get({ token, filter: {} }),
+        yield* Search.get({ token, filter: undefined }),
+        yield* Search.get({ token }),
+        yield* Required.get({ page: undefined })
+      ]
+      assert.deepStrictEqual(results, [1, 1, 2, 2, 3])
+      assert.deepStrictEqual((yield* TestLoader.fetches).map((fetch) => fetch.read + " " + fetch.logKey), [
+        `Search {"filter":{},"token":{"~redacted":true}}`,
+        `Search {"token":{"~redacted":true}}`,
+        `Required {"page":null}`
+      ])
+      assert.isDefined(yield* TestLoader.entry(Search, { token, page: undefined }))
+    }).pipe(Effect.provide(Layer.mergeAll(Search.layer, Required.layer, TestLoader.layer())))
   })
 
   it("a definition and a cache throw on durations that can't be meant", () => {

@@ -76,8 +76,7 @@ const canonical = (u: unknown): string => {
     return "[" + parts.join(",") + "]"
   }
   if (typeof u === "object") {
-    const proto = Object.getPrototypeOf(u)
-    if (proto !== Object.prototype && proto !== null) throw new NonJsonLeaf(u)
+    if (!isPlain(u)) throw new NonJsonLeaf(u)
     const o = u as Record<string, unknown>
     const parts: Array<string> = []
     for (const key of Object.keys(o).sort()) {
@@ -86,6 +85,57 @@ const canonical = (u: unknown): string => {
     return "{" + parts.join(",") + "}"
   }
   throw new NonJsonLeaf(u)
+}
+
+const isPlain = (u: object): boolean => {
+  const proto = Object.getPrototypeOf(u)
+  return proto === Object.prototype || proto === null
+}
+
+/**
+ * Drops the `undefined` properties of plain objects, at any depth, so
+ * `{ id, page: undefined }` and `{ id }` are one key. Returns its input when
+ * there is nothing to drop. A class instance is left as it is.
+ */
+const dropUndefined = (u: unknown): unknown => {
+  if (typeof u !== "object" || u === null) return u
+  if (Array.isArray(u)) {
+    let out: Array<unknown> | undefined
+    for (let i = 0; i < u.length; i++) {
+      const next = dropUndefined(u[i])
+      if (next === u[i]) continue
+      out ??= u.slice()
+      out[i] = next
+    }
+    return out ?? u
+  }
+  if (!isPlain(u)) return u
+  const o = u as Record<string, unknown>
+  let out: Record<string, unknown> | undefined
+  for (const key of Object.keys(o)) {
+    const value = o[key]
+    const next = dropUndefined(value)
+    if (next === value && value !== undefined) continue
+    out ??= { ...o }
+    if (next === undefined) delete out[key]
+    else out[key] = next
+  }
+  return out ?? u
+}
+
+/**
+ * Encodes the args with their `undefined` properties dropped. A required key
+ * whose Schema admits `undefined` only encodes with the property there, so
+ * args that don't encode without them are encoded as given.
+ */
+const encodeDropped = (encode: (args: unknown) => unknown, args: unknown): unknown => {
+  const dropped = dropUndefined(args)
+  if (dropped === args) return encode(args)
+  try {
+    return encode(dropped)
+  } catch {
+    return encode(args)
+  }
 }
 
 // -----------------------------------------------------------------------------
@@ -262,7 +312,7 @@ export const makeDef = (name: string, options: {
     encodeArgs ??= Schema.encodeUnknownSync(Schema.toCodecJson(args as Schema.Codec<unknown, unknown>))
     let encoded: unknown
     try {
-      encoded = encodeArgs(value)
+      encoded = encodeDropped(encodeArgs, value)
     } catch {
       // The Schema issue prints the value, so it isn't passed on.
       throw new Error("[Loader] read " + quote(name) + ": the args don't encode with the read's args Schema")
@@ -287,7 +337,7 @@ export const makeDef = (name: string, options: {
     }
     if (encodeLogArgs === undefined) return key
     try {
-      return canonical(encodeLogArgs(value))
+      return canonical(encodeDropped(encodeLogArgs, value))
     } catch {
       return "\"~unserialisable\""
     }
