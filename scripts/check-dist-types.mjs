@@ -26,7 +26,14 @@ const dir = Fs.mkdtempSync(Path.join(Os.tmpdir(), "effect-dist-types-"))
 try {
   Fs.writeFileSync(
     Path.join(dir, "index.ts"),
-    entrypoints.map(([entry], i) => `import * as _${i} from "${entry}"\nexport { _${i} }\n`).join("")
+    entrypoints.map(([entry], i) => `import * as _${i} from "${entry}"\nexport { _${i} }\n`).join("") +
+      `import { Schema } from "effect"
+import { HttpApiSchema } from "effect/http-api"
+const encoding: HttpApiSchema.ResponseEncoding = HttpApiSchema.getResponseEncodingSchema(Schema.String)
+const parts: { readonly body: Schema.Top; readonly headers: Schema.Struct<Schema.Struct.Fields> } | undefined =
+  HttpApiSchema.getEncodeToWithHeadersParts(Schema.String)
+export { encoding, parts }
+`
   )
   const config = {
     compilerOptions: {
