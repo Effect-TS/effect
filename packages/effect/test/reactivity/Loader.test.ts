@@ -666,6 +666,33 @@ describe("Loader", () => {
     }).pipe(Effect.provide(Layer.mergeAll(Search.layer, ByClass.layer, Exact.layer, TestLoader.layer())))
   })
 
+  it.effect("an optional property that isn't undefined reaches the Schema's encoding as it is", () => {
+    let calls = 0
+    // The first member accepts any number as a type and only a positive one when it encodes,
+    // so a negative `a` encodes with the second member, which needs the `b` the first doesn't have.
+    const Filter = Schema.Union([
+      Schema.Struct({ a: Schema.Number.check(Schema.isGreaterThan(0)).pipe(Schema.decodeTo(Schema.Number)) }),
+      Schema.Struct({ a: Schema.Number, b: Schema.Number })
+    ])
+    class Search extends Loader.Service<Search>()("Search", {
+      args: { filter: Schema.optionalKey(Filter) },
+      success: Schema.Number,
+      error: Schema.Never,
+      staleTime: "Infinity"
+    }, Effect.sync(() => () => Effect.sync(() => ++calls))) {}
+    return Effect.gen(function*() {
+      const results = [
+        yield* Search.get({ filter: { a: -1, b: 1 } }),
+        yield* Search.get({ filter: { a: -1, b: 2 } })
+      ]
+      assert.deepStrictEqual(results, [1, 2])
+      assert.deepStrictEqual((yield* TestLoader.fetches).map((fetch) => fetch.logKey), [
+        `{"filter":{"a":-1,"b":1}}`,
+        `{"filter":{"a":-1,"b":2}}`
+      ])
+    }).pipe(Effect.provide(Layer.mergeAll(Search.layer, TestLoader.layer())))
+  })
+
   it("a definition and a cache throw on durations that can't be meant", () => {
     const define = (options: {
       readonly staleTime?: Duration.Input

@@ -92,10 +92,28 @@ const canonical = (u: unknown): string => {
   throw new NonJsonLeaf(u)
 }
 
-const dropUndefined = new SchemaTransformation.Transformation(
-  SchemaGetter.passthrough(),
-  SchemaGetter.transformOptional(Option.filter((value: unknown) => value !== undefined))
-)
+/**
+ * The optional property's replacement: a type that lets any value through,
+ * encoded with the property's own Schema once an `undefined` that Schema's
+ * type accepts is dropped. Every other value, an `undefined` the type rejects
+ * included, reaches the property's Schema exactly as it was given, so that
+ * Schema alone validates and encodes it.
+ */
+const dropUndefinedProperty = (original: SchemaAST.AST, type: SchemaAST.AST): SchemaAST.AST => {
+  let accepts: boolean | undefined
+  // Asked on the first `undefined`, not here: the type may be behind a `suspend`.
+  const acceptsUndefined = () =>
+    accepts ??= Schema.is(Schema.make(SchemaAST.replaceContext(SchemaAST.toType(original), undefined)))(undefined)
+  return SchemaAST.replaceEncoding(SchemaAST.replaceContext(SchemaAST.unknown, type.context), [
+    new SchemaAST.Link(
+      type,
+      new SchemaTransformation.Transformation(
+        SchemaGetter.passthrough(),
+        SchemaGetter.transformOptional(Option.filter((value: unknown) => value !== undefined || !acceptsUndefined()))
+      )
+    )
+  ])
+}
 
 /**
  * Makes every optional property that is `undefined` encode as a missing one,
@@ -103,11 +121,10 @@ const dropUndefined = new SchemaTransformation.Transformation(
  * the Schema has a struct: nested, in a union member or an element, behind a
  * `suspend`, and in the fields of a `Schema.Class`.
  *
- * The property's own type still checks the value first, so a property that
- * may be missing and may not be `undefined` (`Schema.optionalKey`) is rejected
- * as before. A required key keeps its `undefined`, and so do a record's values
- * and a tuple's elements. Returns `ast` itself when it has no optional
- * property.
+ * A property that may be missing and may not be `undefined`
+ * (`Schema.optionalKey`) is rejected as before. A required key keeps its
+ * `undefined`, and so do a record's values and a tuple's elements. Returns
+ * `ast` itself when it has no optional property.
  */
 const dropUndefinedAST: (ast: SchemaAST.AST) => SchemaAST.AST = memoize((ast: SchemaAST.AST): SchemaAST.AST => {
   if (ast.encoding !== undefined) {
@@ -122,11 +139,7 @@ const dropUndefinedAST: (ast: SchemaAST.AST) => SchemaAST.AST = memoize((ast: Sc
     if (!SchemaAST.isOptional(type)) {
       return type === property.type ? property : new SchemaAST.PropertySignature(property.name, type)
     }
-    // The type side checks the value, then `undefined` is dropped, then the property's own encoding runs.
-    return new SchemaAST.PropertySignature(
-      property.name,
-      SchemaAST.replaceEncoding(SchemaAST.toType(type), [new SchemaAST.Link(type, dropUndefined)])
-    )
+    return new SchemaAST.PropertySignature(property.name, dropUndefinedProperty(property.type, type))
   })
   const indexes = SchemaAST.mapOrSame(ast.indexSignatures, (index) => {
     const type = dropUndefinedAST(index.type)

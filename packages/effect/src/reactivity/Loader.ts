@@ -309,10 +309,11 @@ export declare namespace Service {
  * - An optional property that is `undefined` is the same as a missing one:
  *   `{ id, page: undefined }` and `{ id }` are one entry. That holds wherever
  *   the `args` Schema has a struct, the fields of a `Schema.Class` included.
- *   The Schema still decides what a property accepts, so a
- *   `Schema.optionalKey(Schema.Number)` property rejects `undefined`. A
- *   required key keeps its `undefined`, as do a record's values and a
- *   tuple's elements.
+ *   The property's type decides whether `undefined` is allowed, so a
+ *   `Schema.optionalKey(Schema.Number)` property rejects it. An allowed
+ *   `undefined` is dropped before the property is encoded, so an encoding the
+ *   property has for `undefined` is never used. A required key keeps its
+ *   `undefined`, as do a record's values and a tuple's elements.
  * - The fetcher gets the arguments of the call that created the entry, so it
  *   can see either form.
  *
