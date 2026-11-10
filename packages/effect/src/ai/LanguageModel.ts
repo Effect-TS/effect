@@ -356,9 +356,10 @@ export interface GenerateObjectOptions<
   readonly objectName?: string | undefined
 
   /**
-   * Whether empty or whitespace-only text content is allowed. Defaults to `false`. When `true`, an
-   * empty response returns `Option.none()` and a generated object returns
-   * `Option.some(value)`.
+   * Whether empty or whitespace-only text content is allowed. Defaults to
+   * `false`. When `true`, an empty response returns `Option.none()` and a
+   * generated object returns `Option.some(value)`. Pass a literal `true`; a
+   * non-literal boolean types the value as `A | Option<A>`.
    */
   readonly allowEmpty?: boolean | undefined
 
@@ -622,7 +623,7 @@ export type ExtractTools<Options> = Options extends {
  *
  * @stability unstable
  * @category utility types
- * @since 4.0.0
+ * @since 4.1.4
  */
 export type ExtractObjectValue<Options, A> = Options extends { readonly allowEmpty: true } ? Option.Option<A>
   : true extends Options["allowEmpty" & keyof Options] ? A | Option.Option<A>

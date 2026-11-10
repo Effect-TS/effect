@@ -1,5 +1,5 @@
 import { describe, it } from "@effect/vitest"
-import { assertDefined, assertTrue, deepStrictEqual, strictEqual } from "@effect/vitest/utils"
+import { assertDefined, assertNone, assertSome, assertTrue, deepStrictEqual, strictEqual } from "@effect/vitest/utils"
 import { type Cause, Effect, Fiber, Latch, Option, Queue, Ref, Schema, Stream } from "effect"
 import { AiError, LanguageModel, Prompt, Response, ResponseIdTracker, Tool, Toolkit } from "effect/ai"
 import { TestClock } from "effect/testing"
@@ -1506,34 +1506,28 @@ describe("LanguageModel", () => {
   })
 
   describe("generateObject", () => {
-    for (const text of [undefined, " \n\t"]) {
-      it.effect(
-        `allowEmpty keeps tool-only responses with ${text === undefined ? "no" : "whitespace"} text`,
-        () =>
-          Effect.gen(function*() {
-            const response = yield* LanguageModel.generateObject({
-              prompt: "hi",
-              schema: Schema.Struct({ count: Schema.Number }),
-              toolkit: TransformToolkit,
-              allowEmpty: true
-            }).pipe(
-              TestUtils.withLanguageModel({
-                generateText: [
-                  ...(text === undefined ? [] : [{ type: "text" as const, text }]),
-                  { type: "tool-call", id: "call-1", name: "TransformTool", params: "2" },
-                  { ...finishPart, reason: "tool-calls" }
-                ]
-              }),
-              Effect.provide(TransformToolkitLayer)
-            )
+    it.effect("allowEmpty keeps tool-only responses", () =>
+      Effect.gen(function*() {
+        const response = yield* LanguageModel.generateObject({
+          prompt: "hi",
+          schema: Schema.Struct({ count: Schema.Number }),
+          toolkit: TransformToolkit,
+          allowEmpty: true
+        }).pipe(
+          TestUtils.withLanguageModel({
+            generateText: [
+              { type: "tool-call", id: "call-1", name: "TransformTool", params: "2" },
+              { ...finishPart, reason: "tool-calls" }
+            ]
+          }),
+          Effect.provide(TransformToolkitLayer)
+        )
 
-            deepStrictEqual(response.value, Option.none())
-            strictEqual(response.finishReason, "tool-calls")
-            strictEqual(response.toolCalls[0].id, "call-1")
-            strictEqual(response.toolResults[0].result, 4)
-          })
-      )
-    }
+        assertNone(response.value)
+        strictEqual(response.finishReason, "tool-calls")
+        strictEqual(response.toolCalls[0].id, "call-1")
+        strictEqual(response.toolResults[0].result, 4)
+      }))
 
     it.effect("records json output type on the span", () =>
       LanguageModel.generateObject({
@@ -1572,15 +1566,15 @@ describe("LanguageModel", () => {
         }))
     }
 
-    it.effect("returns none when empty output is allowed", () =>
+    it.effect("allowEmpty treats whitespace-only text as empty", () =>
       Effect.gen(function*() {
         const response = yield* LanguageModel.generateObject({
           prompt: "hi",
           schema: Schema.Struct({ count: Schema.Number }),
           allowEmpty: true
-        }).pipe(TestUtils.withLanguageModel({ generateText: [] }))
+        }).pipe(TestUtils.withLanguageModel({ generateText: [{ type: "text", text: " \n\t" }] }))
 
-        assertTrue(Option.isNone(response.value))
+        assertNone(response.value)
       }))
 
     it.effect("fails when empty output is not allowed", () =>
@@ -1606,7 +1600,7 @@ describe("LanguageModel", () => {
           TestUtils.withLanguageModel({ generateText: [{ type: "text", text: "{\"count\":1}" }] })
         )
 
-        deepStrictEqual(response.value, Option.some({ count: 1 }))
+        assertSome(response.value, { count: 1 })
       }))
 
     it("resolves the canonical top-level $ref for class schemas in defaultCodecTransformer", () => {
