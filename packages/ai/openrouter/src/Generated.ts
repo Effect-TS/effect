@@ -5151,8 +5151,11 @@ export type ReasoningFormat =
   | "unknown"
   | "openai-responses-v1"
   | "azure-openai-responses-v1"
+  | "bedrock-openai-responses-v1"
+  | "bedrock-xai-responses-v1"
   | "xai-responses-v1"
   | "meta-responses-v1"
+  | "openrouter-stealth-v1"
   | "anthropic-claude-v1"
   | "google-gemini-v1"
   | null
@@ -5160,8 +5163,11 @@ export const ReasoningFormat = Schema.Union([
   Schema.Literal("unknown"),
   Schema.Literal("openai-responses-v1"),
   Schema.Literal("azure-openai-responses-v1"),
+  Schema.Literal("bedrock-openai-responses-v1"),
+  Schema.Literal("bedrock-xai-responses-v1"),
   Schema.Literal("xai-responses-v1"),
   Schema.Literal("meta-responses-v1"),
+  Schema.Literal("openrouter-stealth-v1"),
   Schema.Literal("anthropic-claude-v1"),
   Schema.Literal("google-gemini-v1"),
   Schema.Null

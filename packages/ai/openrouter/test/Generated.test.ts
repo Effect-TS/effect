@@ -188,4 +188,38 @@ describe("Generated", () => {
         deepStrictEqual(parts.filter((part) => part.type === "finish").map((part) => part.reason), [reason])
       }))
   }
+
+  for (const format of [
+    "bedrock-openai-responses-v1",
+    "bedrock-xai-responses-v1",
+    "openrouter-stealth-v1"
+  ] as const) {
+    it(`decodes chat completions that use the ${format} reasoning format`, () => {
+      const metadata = { id: "response-1", model: "test/reasoning-model", created: 1 }
+      const usage = { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 }
+      const reasoningDetails = [{ type: "reasoning.encrypted" as const, data: "opaque-signature", format }]
+
+      const body = Schema.decodeUnknownSync(Generated.SendChatCompletionRequest200)({
+        ...metadata,
+        object: "chat.completion",
+        system_fingerprint: null,
+        choices: [{
+          index: 0,
+          finish_reason: "stop",
+          message: { role: "assistant", content: "hello", reasoning_details: reasoningDetails }
+        }],
+        usage
+      })
+      deepStrictEqual(body.choices[0]?.message.content, "hello")
+      deepStrictEqual(body.choices[0]?.message.reasoning_details?.[0]?.format, format)
+
+      const chunk = Schema.decodeUnknownSync(Generated.ChatStreamChunk)({
+        ...metadata,
+        object: "chat.completion.chunk",
+        choices: [{ index: 0, delta: { content: "hello", reasoning_details: reasoningDetails } }]
+      })
+      deepStrictEqual(chunk.choices[0]?.delta.content, "hello")
+      deepStrictEqual(chunk.choices[0]?.delta.reasoning_details?.[0]?.format, format)
+    })
+  }
 })
