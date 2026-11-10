@@ -517,11 +517,11 @@ describe("Loader runs", () => {
         ])
       }).pipe(Effect.provide(Layer.merge(GetDoc.layer, TestLoader.layer())))
     })
-    it.effect("PatchMutated sees into class instances, and a value it can't copy faithfully only skips the check", () => {
+    it.effect("PatchMutated reads values as Equal.equals does, run after run, and a getter that throws only skips the check", () => {
       class Counter {
         constructor(public n: number) {}
       }
-      // Its state lives outside the instance, so a copy reads nothing: the check can't be made.
+      // State behind a getter: Equal.equals reads it through the getter, and so does the check.
       const store = new WeakMap<object, number>()
       class Stored {
         constructor(n: number) {
@@ -531,9 +531,12 @@ describe("Loader runs", () => {
           return store.get(this)
         }
       }
+      const external = { count: 0 }
       const values: Record<string, unknown> = {
+        plain: { n: 0 },
         counter: new Counter(0),
-        stored: new Stored(1),
+        stored: new Stored(0),
+        external: Object.defineProperty({}, "payload", { get: () => external, enumerable: true }),
         hidden: Object.defineProperty({ n: 0 }, "hidden", {
           get() {
             throw new Error("getter")
@@ -545,22 +548,38 @@ describe("Loader runs", () => {
         { args: { id: Schema.String }, success: Schema.Any, error: Schema.Never, staleTime: "30 seconds" },
         Effect.sync(() => ({ id }) => Effect.sync(() => values[id]))
       ) {}
+      const mutating = [
+        GetAny.patch({ id: "plain" }, (value) => {
+          value.n++
+          return value
+        }),
+        GetAny.patch({ id: "counter" }, (counter) => {
+          counter.n++
+          return counter
+        }),
+        GetAny.patch({ id: "stored" }, (value) => {
+          store.set(value, store.get(value)! + 1)
+          return value
+        }),
+        GetAny.patch({ id: "external" }, (value) => {
+          value.payload.count++
+          return value
+        }),
+        // Mutates nothing: it is never reported, and the getter never stops the run.
+        GetAny.patch({ id: "hidden" }, () => ({ n: 1 }))
+      ]
+      const reported = ["plain", "counter", "stored", "external"].map((id) => `{"id":"${id}"}`)
       return Effect.gen(function*() {
         for (const id of Object.keys(values)) yield* GetAny.get({ id })
-        yield* issue({
-          optimistic: [
-            // An ordinary class instance compares structurally, so it is copied.
-            GetAny.patch({ id: "counter" }, (counter) => {
-              counter.n++
-              return counter
-            }),
-            // Neither of these mutates anything, and neither is reported or stops the run.
-            GetAny.patch({ id: "stored" }, () => new Stored(2)),
-            GetAny.patch({ id: "hidden" }, () => ({ n: 1 }))
-          ]
-        })
-        const mutated = yield* TestLoader.expectProblem("PatchMutated")
-        assert.deepStrictEqual(mutated.map((problem) => problem.logKey), [`{"id":"counter"}`])
+        // The first run is stopped: its patches go, and the server values keep the mutation.
+        const { handle } = yield* issue({ optimistic: mutating })
+        const first = yield* TestLoader.expectProblem("PatchMutated")
+        assert.deepStrictEqual(first.map((problem) => problem.logKey), reported)
+        handle.finish({ _tag: "Stopped" })
+        // The same patches on the same stored values are reported again.
+        yield* issue({ optimistic: mutating })
+        const second = yield* TestLoader.expectProblem("PatchMutated")
+        assert.deepStrictEqual(second.map((problem) => problem.logKey), reported)
         const hidden = yield* TestLoader.entry(GetAny, { id: "hidden" })
         assert.deepStrictEqual([hidden?.patched, hidden?.view._tag === "Success" && hidden.view.value], [true, {
           n: 1

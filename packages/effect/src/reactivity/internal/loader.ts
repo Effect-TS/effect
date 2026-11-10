@@ -14,7 +14,7 @@ import * as Equal from "../../Equal.ts"
 import * as Exit from "../../Exit.ts"
 import * as Fiber from "../../Fiber.ts"
 import * as Hash from "../../Hash.ts"
-import { byReferenceInstances } from "../../internal/equal.ts"
+import { byReferenceInstances, getAllObjectKeys } from "../../internal/equal.ts"
 import { redactAST } from "../../internal/schemaRedact.ts"
 import * as Option from "../../Option.ts"
 import * as Schema from "../../Schema.ts"
@@ -95,17 +95,20 @@ const canonical = (u: unknown): string => {
 }
 
 /**
- * A copy of a value that a later in-place mutation of the value can't reach,
- * for `Equal.equals` to compare with: arrays, `Map`, `Set`, `Date`,
- * `RegExp`, binary data and every other object, class instances included,
- * are copied, nested and cycles included. An object keeps its prototype and
- * every own key; an accessor is copied as an accessor, never read. An
- * `Equal` implementor and an `Equal.byReference` object are kept as they
- * are. State `Equal.equals` reads but a copy can't hold, such as a private
- * field behind a getter, makes the copy unfaithful: `detachedEncoding`
- * checks for that.
+ * A fresh copy of a value as `Equal.equals` sees it, for the `PatchMutated`
+ * check. An object becomes a prototype-less record of every key
+ * `Equal.equals` compares, own and inherited, each read through the object
+ * as `Equal.equals` reads it, getters included. Arrays, `Map`, `Set`,
+ * `Date`, `RegExp` and binary data are copied, nested and cycles included.
+ * An `Equal` implementor, an `Equal.byReference` object and a function are
+ * kept as they are.
+ *
+ * Two of these copies compare with `Equal.equals` as the values did when
+ * each was taken, and nothing in them is the live value: `Equal.equals` and
+ * `Hash.hash` cache by object, so the check never hands them a live value
+ * that may be mutated later. Throws whatever a getter throws.
  */
-const detach = (u: unknown, seen = new Map<object, unknown>()): unknown => {
+const materialize = (u: unknown, seen = new Map<object, unknown>()): unknown => {
   if (typeof u !== "object" || u === null || byReferenceInstances.has(u) || Equal.isEqual(u)) return u
   const known = seen.get(u)
   if (known !== undefined) return known
@@ -121,49 +124,37 @@ const detach = (u: unknown, seen = new Map<object, unknown>()): unknown => {
   if (Array.isArray(u)) {
     const out: Array<unknown> = new Array(u.length)
     seen.set(u, out)
-    for (let i = 0; i < u.length; i++) out[i] = detach(u[i], seen)
+    for (let i = 0; i < u.length; i++) out[i] = materialize(u[i], seen)
     return out
   }
   if (u instanceof Map) {
     const out = new Map()
     seen.set(u, out)
-    for (const [key, value] of u) out.set(detach(key, seen), detach(value, seen))
+    for (const [key, value] of u) out.set(materialize(key, seen), materialize(value, seen))
     return out
   }
   if (u instanceof Set) {
     const out = new Set()
     seen.set(u, out)
-    for (const value of u) out.add(detach(value, seen))
+    for (const value of u) out.add(materialize(value, seen))
     return out
   }
-  const out: Record<PropertyKey, unknown> = Object.create(Object.getPrototypeOf(u))
+  const out: Record<PropertyKey, unknown> = Object.create(null)
   seen.set(u, out)
-  for (const key of Reflect.ownKeys(u)) {
-    const descriptor = Object.getOwnPropertyDescriptor(u, key)!
-    Object.defineProperty(
-      out,
-      key,
-      "value" in descriptor
-        ? { ...descriptor, value: detach(descriptor.value, seen), writable: true, configurable: true }
-        : { ...descriptor, configurable: true }
-    )
+  for (const key of getAllObjectKeys(u)) {
+    out[key] = materialize((u as Record<PropertyKey, unknown>)[key], seen)
   }
   return out
 }
 
 /**
- * The encoding of a server value, detached for the `PatchMutated` check, or
- * `undefined` when the check can't be made: the encoding fails, or the copy
- * isn't one `Equal.equals` sees as the encoding. Never throws, since the check
- * only reports.
+ * The encoding of a server value, materialized for the `PatchMutated`
+ * check, or `undefined` when the check can't be made: the encoding fails or
+ * a getter throws. Never throws, since the check only reports.
  */
-const detachedEncoding = (encode: () => unknown): { readonly encoded: unknown } | undefined => {
+const materializedEncoding = (encode: () => unknown): { readonly encoded: unknown } | undefined => {
   try {
-    const encoded = encode()
-    const copy = detach(encoded)
-    // Compared inside fresh arrays: `Equal.equals` caches its outermost pair, and the later comparison may be
-    // against the same encoding, mutated since.
-    return Equal.equals([copy], [encoded]) ? { encoded: copy } : undefined
+    return { encoded: materialize(encode()) }
   } catch {
     return undefined
   }
@@ -2316,13 +2307,6 @@ export const makeCache = (options: {
       return true
     }
   }
-  const tryEncode = (entry: Entry, value: unknown): { readonly encoded: unknown } | undefined => {
-    try {
-      return { encoded: entry.def.codec().encodeSuccess(value) }
-    } catch {
-      return undefined
-    }
-  }
   const isValidSuccess = (entry: Entry, value: unknown): boolean => {
     try {
       return entry.def.codec().isSuccess(value)
@@ -2410,8 +2394,8 @@ export const makeCache = (options: {
     for (const { entry, patch } of planned) {
       if (!values.has(entry)) {
         const server = (entry.result as AsyncResult.Success<any, any>).value
-        // Detached: an encoding can share parts with the value, such as under `Schema.Any`.
-        before.set(entry, detachedEncoding(() => entry.def.codec().encodeSuccess(server)))
+        // Materialized: an encoding can share parts with the value, such as under `Schema.Any`.
+        before.set(entry, materializedEncoding(() => entry.def.codec().encodeSuccess(server)))
         values.set(
           entry,
           (patchedViewOf(entry, entry.result!) as { readonly result: AsyncResult.Success<any, any> })
@@ -2450,7 +2434,8 @@ export const makeCache = (options: {
       }
       const encoded = before.get(entry)
       if (encoded !== undefined && entry.result?._tag === "Success") {
-        const after = tryEncode(entry, entry.result.value)
+        const value = entry.result.value
+        const after = materializedEncoding(() => entry.def.codec().encodeSuccess(value))
         if (after !== undefined && !equalsOrTrue(encoded.encoded, after.encoded)) {
           report(
             new PatchMutated({
