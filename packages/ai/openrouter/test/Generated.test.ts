@@ -189,11 +189,13 @@ describe("Generated", () => {
       }))
   }
 
-  for (const format of [
-    "bedrock-openai-responses-v1",
-    "bedrock-xai-responses-v1",
-    "openrouter-stealth-v1"
-  ] as const) {
+  for (
+    const format of [
+      "bedrock-openai-responses-v1",
+      "bedrock-xai-responses-v1",
+      "openrouter-stealth-v1"
+    ] as const
+  ) {
     it(`decodes chat completions that use the ${format} reasoning format`, () => {
       const metadata = { id: "response-1", model: "test/reasoning-model", created: 1 }
       const usage = { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 }
