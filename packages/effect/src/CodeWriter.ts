@@ -170,12 +170,12 @@ const reservedWords: ReadonlySet<string> = new Set([
   "yield"
 ])
 
-const isIdentifierName = (name: string): boolean => /^[\p{ID_Start}$_][\p{ID_Continue}$\u200c\u200d]*$/u.test(name)
-
 const sanitize = (name: string): string => {
   const out = name.replace(/[^\p{ID_Continue}$\u200c\u200d]/gu, "_")
   return /^[\p{ID_Start}$_]/u.test(out) ? out : `_${out}`
 }
+
+const isIdentifierName = (name: string): boolean => sanitize(name) === name
 
 /** Returns `wanted`, or `wanted` with the first numeric suffix that is free. */
 const freeName = (wanted: string, isTaken: (name: string) => boolean): string => {
@@ -186,23 +186,29 @@ const freeName = (wanted: string, isTaken: (name: string) => boolean): string =>
 
 class WriterImpl implements CodeWriter {
   readonly [TypeId] = TypeId
+  readonly parent = undefined
+  readonly writer: WriterImpl = this
   readonly taken = new Set<string>()
-  readonly children: Array<ScopeImpl> = []
-  readonly sideEffects: Array<string> = []
+  /** Names taken by nested scopes. */
+  readonly nested = new Set<string>()
+  readonly sideEffects = new Set<string>()
   readonly body: Array<string | FragmentImpl> = []
 }
 
 class ScopeImpl implements CodeScope {
   readonly [ScopeTypeId] = ScopeTypeId
-  readonly taken = new Set<string>()
-  readonly children: Array<ScopeImpl> = []
-  readonly parent: WriterImpl | ScopeImpl
+  readonly parent: Owner
   readonly writer: WriterImpl
-  constructor(parent: WriterImpl | ScopeImpl) {
+  readonly taken = new Set<string>()
+  /** Names taken by nested scopes. */
+  readonly nested = new Set<string>()
+  constructor(parent: Owner) {
     this.parent = parent
-    this.writer = parent instanceof ScopeImpl ? parent.writer : parent
+    this.writer = parent.writer
   }
 }
+
+type Owner = WriterImpl | ScopeImpl
 
 type ImportStyle = "namespace" | "named" | "default"
 
@@ -273,12 +279,12 @@ export const make = (options?: { readonly reserved?: Iterable<string> | undefine
  *
  * **Details**
  *
- * The symbol is not tied to a writer. When a writer prints code that uses it,
- * the import is printed with `name` as its local name, or `name` with a
- * numeric suffix when a declaration or another import has that name. A module
- * is imported as a namespace once; the first printed symbol picks the name.
- * The import is printed as `import type` when every printed use comes from a
- * symbol created with `typeOnly: true`.
+ * When a writer prints code that uses the symbol, the import is printed with
+ * `name` as its local name, or `name` with a numeric suffix when a declaration
+ * or another import has that name. A module is imported as a namespace once;
+ * the first printed symbol picks the name. The import is printed as
+ * `import type` when every printed use comes from a symbol created with
+ * `typeOnly: true`.
  *
  * @stability unstable
  * @category imports
@@ -347,16 +353,14 @@ export const importDefault = (
  *
  * **Details**
  *
- * Side-effect imports are printed first, in the order they were added, because
- * their order can matter.
+ * Side-effect imports are printed first, in the order they were added.
  *
  * @stability unstable
  * @category imports
  * @since 4.1.4
  */
 export const importSideEffect = (self: CodeWriter, from: string): void => {
-  const writer = self as WriterImpl
-  if (!writer.sideEffects.includes(from)) writer.sideEffects.push(from)
+  ;(self as WriterImpl).sideEffects.add(from)
 }
 
 /**
@@ -388,24 +392,13 @@ export const importSideEffect = (self: CodeWriter, from: string): void => {
  * @category scopes
  * @since 4.1.4
  */
-export const scope = (parent: CodeWriter | CodeScope): CodeScope => {
-  const owner = parent as WriterImpl | ScopeImpl
-  const child = new ScopeImpl(owner)
-  owner.children.push(child)
-  return child
-}
+export const scope = (parent: CodeWriter | CodeScope): CodeScope => new ScopeImpl(parent as Owner)
 
 /** Whether `name` is taken by the owner, an enclosing scope or a nested scope. */
-const isTakenFor = (owner: WriterImpl | ScopeImpl, name: string): boolean => {
-  for (let s: WriterImpl | ScopeImpl = owner;; s = s.parent) {
+const isTakenFor = (owner: Owner, name: string): boolean => {
+  if (owner.nested.has(name)) return true
+  for (let s: Owner | undefined = owner; s !== undefined; s = s.parent) {
     if (s.taken.has(name)) return true
-    if (!(s instanceof ScopeImpl)) break
-  }
-  const stack = [...owner.children]
-  while (stack.length > 0) {
-    const child = stack.pop()!
-    if (child.taken.has(name)) return true
-    stack.push(...child.children)
   }
   return false
 }
@@ -419,8 +412,7 @@ const isTakenFor = (owner: WriterImpl | ScopeImpl, name: string): boolean => {
  * Characters that cannot appear in an identifier become `_`, and a name that
  * cannot start an identifier gets a `_` prefix. A name that is a reserved word
  * or already taken gets the first free numeric suffix: `"user-id"` becomes
- * `user_id`, and `"default"` becomes `default2`. Imports never take a
- * declaration's name; they are renamed instead.
+ * `user_id`, and `"default"` becomes `default2`.
  *
  * **Gotchas**
  *
@@ -446,10 +438,11 @@ const isTakenFor = (owner: WriterImpl | ScopeImpl, name: string): boolean => {
  * @since 4.1.4
  */
 export const declare = (self: CodeWriter | CodeScope, name: string): CodeDeclaration => {
-  const owner = self as WriterImpl | ScopeImpl
+  const owner = self as Owner
   const taken = freeName(sanitize(name), (n) => isTakenFor(owner, n))
   owner.taken.add(taken)
-  return new DeclarationImpl(taken, owner instanceof ScopeImpl ? owner.writer : owner)
+  for (let s: Owner | undefined = owner.parent; s !== undefined; s = s.parent) s.nested.add(taken)
+  return new DeclarationImpl(taken, owner.writer)
 }
 
 const flatten = (hole: CodeHole, out: Array<Part>): void => {
@@ -471,8 +464,8 @@ const flatten = (hole: CodeHole, out: Array<Part>): void => {
 export const code = (strings: TemplateStringsArray, ...holes: ReadonlyArray<CodeHole>): CodeFragment => {
   const parts: Array<Part> = []
   strings.forEach((s, i) => {
-    if (s !== "") parts.push(s)
-    if (i < holes.length) flatten(holes[i], parts)
+    flatten(s, parts)
+    flatten(holes[i], parts)
   })
   return new FragmentImpl(parts, false)
 }
@@ -535,8 +528,8 @@ const sortLines = (lines: Array<Line>): ReadonlyArray<string> =>
 
 interface UsedImport {
   readonly symbol: ImportImpl
+  readonly local: string
   runtime: boolean
-  local: string
 }
 
 const printImports = (imports: Iterable<UsedImport>): ReadonlyArray<string> => {
@@ -572,38 +565,6 @@ const printImports = (imports: Iterable<UsedImport>): ReadonlyArray<string> => {
   return sortLines(lines)
 }
 
-const collectImports = (writer: WriterImpl, parts: ReadonlyArray<Part>, out: Map<string, UsedImport>): void => {
-  for (const part of parts) {
-    if (part instanceof ImportImpl) {
-      const used = out.get(part.key)
-      if (used === undefined) out.set(part.key, { symbol: part, runtime: !part.typeOnly, local: "" })
-      else used.runtime ||= !part.typeOnly
-    } else if (part instanceof DeclarationImpl) {
-      if (part.writer !== writer) {
-        throw new Error(`Declaration "${part.name}" belongs to another CodeWriter; import it in this module instead`)
-      }
-    } else if (part instanceof FragmentImpl) collectImports(writer, part.parts, out)
-  }
-}
-
-const allNames = (owner: WriterImpl | ScopeImpl, out: Set<string>): Set<string> => {
-  for (const name of owner.taken) out.add(name)
-  for (const child of owner.children) allNames(child, out)
-  return out
-}
-
-const render = (
-  part: string | FragmentImpl | ImportImpl | DeclarationImpl,
-  imports: Map<string, UsedImport>
-): string => {
-  if (typeof part === "string") return part
-  if (part instanceof ImportImpl) return imports.get(part.key)!.local
-  if (part instanceof DeclarationImpl) return part.name
-  let out = ""
-  for (const p of part.parts) out += render(p, imports)
-  return part.indented ? out.replace(/\n(?=[^\n])/g, "\n  ") : out
-}
-
 /**
  * Prints the module: side-effect imports and the imports used by printed code,
  * then the added source, separated by blank lines.
@@ -633,19 +594,33 @@ const render = (
  */
 export const print = (self: CodeWriter): string => {
   const writer = self as WriterImpl
+  const taken = new Set([...writer.taken, ...writer.nested])
   const imports = new Map<string, UsedImport>()
-  for (const part of writer.body) {
-    if (part instanceof FragmentImpl) collectImports(writer, [part], imports)
+  const render = (part: Part): string => {
+    if (typeof part === "string") return part
+    if (part instanceof DeclarationImpl) {
+      if (part.writer !== writer) {
+        throw new Error(`Declaration "${part.name}" belongs to another CodeWriter; import it in this module instead`)
+      }
+      return part.name
+    }
+    if (part instanceof ImportImpl) {
+      let used = imports.get(part.key)
+      if (used === undefined) {
+        used = { symbol: part, local: freeName(sanitize(part.name), (name) => taken.has(name)), runtime: false }
+        taken.add(used.local)
+        imports.set(part.key, used)
+      }
+      used.runtime ||= !part.typeOnly
+      return used.local
+    }
+    const out = part.parts.map(render).join("")
+    return part.indented ? out.replace(/\n(?=[^\n])/g, "\n  ") : out
   }
-  const taken = allNames(writer, new Set())
-  for (const used of imports.values()) {
-    used.local = freeName(sanitize(used.symbol.name), (name) => taken.has(name))
-    taken.add(used.local)
-  }
+  const body = writer.body.map(render)
   const head = [
-    ...writer.sideEffects.map((from) => `import ${JSON.stringify(from)}`),
+    ...Array.from(writer.sideEffects, (from) => `import ${JSON.stringify(from)}`),
     ...printImports(imports.values())
   ]
-  const body = writer.body.map((part) => render(part, imports))
   return [head.join("\n"), ...body].filter((s) => s !== "").join("\n\n") + "\n"
 }
