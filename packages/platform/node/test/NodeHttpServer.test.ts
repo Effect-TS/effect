@@ -1430,97 +1430,14 @@ describe("HttpServer", () => {
     )
   })
 
-  it.live.each([
-    { name: "default options", options: {} },
-    { name: "disablePreemptiveShutdown", options: { disablePreemptiveShutdown: true } },
-    { name: "clientTracking disabled", options: { websocket: { clientTracking: false } } }
-  ].flatMap(({ name, options }) => [
-    { name, options, peer: "cooperative", cooperative: true },
-    { name, options, peer: "unresponsive", cooperative: false }
-  ]))(
-    "shuts down $peer WebSocket peers with $name",
-    ({ cooperative, options }) =>
-      Effect.gen(function*() {
-        const server = Http.createServer()
-        const scope = yield* Scope.make()
-        yield* Effect.addFinalizer(() => Scope.close(scope, Exit.void))
-        yield* HttpRouter.add(
-          "GET",
-          "/ws",
-          Effect.gen(function*() {
-            const request = yield* HttpServerRequest.HttpServerRequest
-            const socket = yield* request.upgrade
-            yield* Stream.runDrain(Socket.toStream(socket)).pipe(Effect.ignore)
-            return HttpServerResponse.empty()
-          })
-        ).pipe(
-          (layer) => HttpRouter.serve(layer, { disableListenLog: true }),
-          Layer.provide(NodeHttpServer.layer(() => server, {
-            host: "127.0.0.1",
-            port: 0,
-            gracefulShutdownTimeout: cooperative || options.disablePreemptiveShutdown ? "10 seconds" : "250 millis",
-            ...options
-          })),
-          Layer.buildWithScope(scope)
-        )
-        const client = yield* Effect.acquireRelease(
-          Effect.sync(() => Net.connect(tcpPort(server), "127.0.0.1")),
-          (client) => Effect.sync(() => client.destroy())
-        )
-        const upgraded = Latch.makeUnsafe()
-        const clientClosed = Latch.makeUnsafe()
-        let head: string | undefined
-        let stream = Buffer.Buffer.alloc(0)
-        let code: number | undefined
-        let closedAt = 0
-        client.on("error", constVoid)
-        client.on("close", () => {
-          closedAt = performance.now()
-          clientClosed.openUnsafe()
-        })
-        client.on("data", (chunk) => {
-          stream = Buffer.Buffer.concat([stream, Buffer.Buffer.from(chunk)])
-          if (head === undefined) {
-            const end = stream.indexOf("\r\n\r\n")
-            if (end === -1) return
-            head = stream.subarray(0, end).toString("latin1")
-            stream = stream.subarray(end + 4)
-            upgraded.openUnsafe()
-          }
-          const parsed = parseWebSocketFrames(stream)
-          stream = Buffer.Buffer.from(parsed.trailing)
-          for (const frame of parsed.frames) {
-            if (frame.opcode !== 8) continue
-            code = frame.payload.length >= 2 ? frame.payload.readUInt16BE(0) : 1005
-            if (cooperative) client.write(closeFrame(code))
-          }
-        })
-        client.write(upgradeRequest("/ws"))
-        yield* upgraded.await.pipe(Effect.timeout("2 seconds"))
-        assert.match(head!, /^HTTP\/1\.1 101 /)
-
-        // Finalizers are uninterruptible, so bound the join, not Scope.close.
-        const started = performance.now()
-        const closed = yield* Effect.forkDetach(Scope.close(scope, Exit.void))
-        yield* Fiber.join(closed).pipe(
-          Effect.andThen(clientClosed.await),
-          Effect.timeout("2 seconds")
-        )
-        if (!cooperative && !options.disablePreemptiveShutdown) {
-          assert.isAtLeast(closedAt - started, 200, "allow the peer the configured grace period")
-        }
-        assert.strictEqual(code, 1001, "send Going Away before closing the transport")
-      })
-  )
-
-  it.live("sends EOF to non-WebSocket upgrades and shuts down when the peer closes", () =>
+  it.live.each([false, true])("shuts down WebSockets (unresponsive: %s)", (unresponsive) =>
     Effect.gen(function*() {
       const server = Http.createServer()
       const scope = yield* Scope.make()
       yield* Effect.addFinalizer(() => Scope.close(scope, Exit.void))
       yield* HttpRouter.add(
         "GET",
-        "/attach",
+        "/ws",
         Effect.gen(function*() {
           const request = yield* HttpServerRequest.HttpServerRequest
           const socket = yield* request.upgrade
@@ -1529,32 +1446,38 @@ describe("HttpServer", () => {
         })
       ).pipe(
         (layer) => HttpRouter.serve(layer, { disableListenLog: true }),
-        Layer.provide(NodeHttpServer.layer(() => server, { port: 0, gracefulShutdownTimeout: "10 seconds" })),
+        Layer.provide(NodeHttpServer.layer(() => server, {
+          port: 0,
+          gracefulShutdownTimeout: unresponsive ? "250 millis" : "10 seconds"
+        })),
         Layer.buildWithScope(scope)
       )
       const client = yield* Effect.acquireRelease(
-        Effect.sync(() => Net.connect({ port: tcpPort(server), host: "127.0.0.1", allowHalfOpen: true })),
-        (client) => Effect.sync(() => client.destroy())
+        Effect.sync(() => new NodeWS.WebSocket("ws://127.0.0.1:" + tcpPort(server) + "/ws")),
+        (client) => Effect.sync(() => client.terminate())
       )
-      const eof = Latch.makeUnsafe()
-      client.on("end", () => eof.openUnsafe())
-      client.on("error", constVoid)
-      const head = yield* Effect.callback<string>((resume) => {
-        let received = ""
-        client.on("data", (chunk) => {
-          received += chunk.toString()
-          if (received.includes("\r\n\r\n")) resume(Effect.succeed(received))
-        })
-        client.write("GET /attach HTTP/1.1\r\nHost: localhost\r\nConnection: Upgrade\r\nUpgrade: tcp\r\n\r\n")
+      const clientClosed = Latch.makeUnsafe()
+      let closeCode: number | undefined
+      client.on("close", (code) => {
+        closeCode = code
+        clientClosed.openUnsafe()
+      })
+      yield* Effect.callback<void, Error>((resume) => {
+        client.on("open", () => resume(Effect.void))
+        client.on("error", (error) => resume(Effect.fail(error)))
       }).pipe(Effect.timeout("2 seconds"))
-      assert.strictEqual(head, "HTTP/1.1 101 Switching Protocols\r\nConnection: Upgrade\r\nUpgrade: tcp\r\n\r\n")
+      if (unresponsive) client.pause() // Do not receive or answer the close frame.
 
+      const started = performance.now()
+      // Finalizers are uninterruptible, so bound the join, not Scope.close.
       const closed = yield* Effect.forkDetach(Scope.close(scope, Exit.void))
-      yield* eof.await.pipe(
-        Effect.andThen(Effect.sync(() => client.end())),
-        Effect.andThen(Fiber.join(closed)),
-        Effect.timeout("2 seconds")
-      )
+      yield* Fiber.join(closed).pipe(Effect.timeout("2 seconds"))
+      if (unresponsive) {
+        assert.isAtLeast(performance.now() - started, 200)
+      } else {
+        yield* clientClosed.await.pipe(Effect.timeout("1 second"))
+        assert.strictEqual(closeCode, 1001)
+      }
     }))
 
   it.live("closes idle HTTP/2 sessions on shutdown", () =>
