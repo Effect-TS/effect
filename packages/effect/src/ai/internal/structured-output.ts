@@ -322,9 +322,8 @@ function optionalToNullable(type: SchemaAST.AST): SchemaAST.AST {
 }
 
 function isNullable(ast: SchemaAST.AST): boolean {
-  const encoded = SchemaAST.toEncoded(ast)
-  if (encoded.checks !== undefined) return false
-  return SchemaAST.isNull(encoded) || (SchemaAST.isUnion(encoded) && encoded.types.some(isNullable))
+  if (ast.checks !== undefined || ast.encoding !== undefined) return false
+  return SchemaAST.isNull(ast) || (SchemaAST.isUnion(ast) && ast.types.some(isNullable))
 }
 
 function prepareChecks(checks: SchemaAST.Checks | undefined): SchemaAST.Checks | undefined {

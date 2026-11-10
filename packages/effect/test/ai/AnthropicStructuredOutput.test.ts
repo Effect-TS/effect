@@ -492,40 +492,35 @@ describe("toCodecAnthropic", () => {
 
     it("optional properties that already accept null", async () => {
       const schema = Schema.Struct({
-        a: Schema.optional(Schema.Finite),
+        a: Schema.optional(Schema.Finite).annotate({ description: "Optional number" }),
         b: Schema.optionalKey(Schema.NullOr(Schema.Finite))
       })
-      assertJsonSchema(
-        schema,
-        {
-          "type": "object",
-          "properties": {
-            "a": {
-              "anyOf": [
-                { "type": "number" },
-                { "type": "null" }
-              ]
-            },
-            "b": {
-              "anyOf": [
-                { "type": "number" },
-                { "type": "null" }
-              ]
-            }
-          },
-          "required": ["a", "b"],
-          "additionalProperties": false
-        }
-      )
+      assertJsonSchema(schema, {
+        type: "object",
+        properties: {
+          a: { anyOf: [{ type: "number" }, { type: "null" }], description: "Optional number" },
+          b: { anyOf: [{ type: "number" }, { type: "null" }] }
+        },
+        required: ["a", "b"],
+        additionalProperties: false
+      })
       const asserts = new TestSchema.Asserts(toCodecAnthropic(schema).codec)
+      await asserts.encoding().succeed({ a: 1, b: 2 })
+      await asserts.encoding().succeed({}, { a: null, b: null })
+      await asserts.decoding().succeed({ a: 1, b: 2 })
+      await asserts.decoding().succeed({ a: null, b: null }, {})
+    })
 
-      const encoding = asserts.encoding()
-      await encoding.succeed({ a: 1, b: 2 })
-      await encoding.succeed({}, { a: null, b: null })
-
-      const decoding = asserts.decoding()
-      await decoding.succeed({ a: 1, b: 2 })
-      await decoding.succeed({ a: null, b: null }, {})
+    it("optional checked nullable properties preserve absent keys", async () => {
+      const checked = Schema.NullOr(Schema.Record(Schema.String, Schema.Finite))
+        .check(Schema.makeFilter((value) => value !== null, { expected: "non-null" }))
+      const schema = Schema.Struct({
+        a: Schema.optionalKey(checked),
+        b: Schema.optionalKey(Schema.Union([Schema.String, checked]))
+      })
+      const asserts = new TestSchema.Asserts(toCodecAnthropic(schema).codec)
+      await asserts.encoding().succeed({}, { a: null, b: null })
+      await asserts.decoding().succeed({ a: null, b: null }, {})
     })
   })
 
