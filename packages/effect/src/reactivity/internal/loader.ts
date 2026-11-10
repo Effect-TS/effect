@@ -14,7 +14,7 @@ import * as Equal from "../../Equal.ts"
 import * as Exit from "../../Exit.ts"
 import * as Fiber from "../../Fiber.ts"
 import * as Hash from "../../Hash.ts"
-import { byReferenceInstances, getAllObjectKeys } from "../../internal/equal.ts"
+import { bufferBytes, byReferenceInstances, getAllObjectKeys, isArrayBufferLike } from "../../internal/equal.ts"
 import { redactAST } from "../../internal/schemaRedact.ts"
 import * as Option from "../../Option.ts"
 import * as Schema from "../../Schema.ts"
@@ -114,7 +114,15 @@ const materialize = (u: unknown, seen = new Map<object, unknown>()): unknown => 
   if (known !== undefined) return known
   if (u instanceof Date) return new Date(u.getTime())
   if (u instanceof RegExp) return new RegExp(u.source, u.flags)
-  if (u instanceof ArrayBuffer) return u.slice(0)
+  // Binary data in the categories `Equal.equals` keeps apart: an `ArrayBuffer` or a `SharedArrayBuffer` by its
+  // bytes, a `DataView` by its bytes, a typed array by its elements. A detached buffer throws, skipping the check.
+  if (isArrayBufferLike(u)) {
+    const bytes = bufferBytes(u)
+    if (bytes === undefined) throw new Error("detached")
+    const out = u instanceof ArrayBuffer ? new ArrayBuffer(bytes.byteLength) : new SharedArrayBuffer(bytes.byteLength)
+    new Uint8Array(out).set(bytes)
+    return out
+  }
   if (ArrayBuffer.isView(u)) {
     const bytes = new Uint8Array(u.buffer, u.byteOffset, u.byteLength).slice()
     return u instanceof DataView

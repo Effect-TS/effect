@@ -586,6 +586,47 @@ describe("Loader runs", () => {
         }])
       }).pipe(Effect.provide(Layer.merge(GetAny.layer, TestLoader.layer())))
     })
+    it.effect("PatchMutated sees in-place changes to binary data of every kind Equal.equals compares", () => {
+      const values: Record<string, unknown> = {
+        buffer: new ArrayBuffer(2),
+        shared: new SharedArrayBuffer(2),
+        bytes: new Uint8Array(2),
+        floats: new Float64Array(2),
+        view: new DataView(new ArrayBuffer(2)),
+        sharedBytes: new Uint8Array(new SharedArrayBuffer(2)),
+        untouched: new SharedArrayBuffer(2)
+      }
+      class GetBinary extends Loader.Service<GetBinary>()(
+        "binary/GetBinary",
+        { args: { id: Schema.String }, success: Schema.Any, error: Schema.Never, staleTime: "30 seconds" },
+        Effect.sync(() => ({ id }) => Effect.sync(() => values[id]))
+      ) {}
+      const inPlace = (id: string, mutate: (value: any) => void) =>
+        GetBinary.patch({ id }, (value) => {
+          mutate(value)
+          return value
+        })
+      return Effect.gen(function*() {
+        for (const id of Object.keys(values)) yield* GetBinary.get({ id })
+        yield* issue({
+          optimistic: [
+            inPlace("buffer", (value: ArrayBuffer) => new Uint8Array(value)[0]++),
+            inPlace("shared", (value: SharedArrayBuffer) => new Uint8Array(value)[0]++),
+            inPlace("bytes", (value: Uint8Array) => value[0]++),
+            inPlace("floats", (value: Float64Array) => value[1] = 0.5),
+            inPlace("view", (value: DataView) => value.setUint8(1, 7)),
+            inPlace("sharedBytes", (value: Uint8Array) => value[1]++),
+            // Returned as it is, unchanged: never reported.
+            inPlace("untouched", () => {})
+          ]
+        })
+        const mutated = yield* TestLoader.expectProblem("PatchMutated")
+        assert.deepStrictEqual(
+          mutated.map((problem) => problem.logKey),
+          ["buffer", "shared", "bytes", "floats", "view", "sharedBytes"].map((id) => `{"id":"${id}"}`)
+        )
+      }).pipe(Effect.provide(Layer.merge(GetBinary.layer, TestLoader.layer())))
+    })
   })
 
   describe("get under a live patch", () => {
