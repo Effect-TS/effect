@@ -1,5 +1,6 @@
 /**
- * Generated from OpenRouter's MIT-licensed specification at https://openrouter.ai/openapi.yaml.
+ * Generated from OpenRouter's MIT-licensed specification.
+ * Source: https://raw.githubusercontent.com/OpenRouterTeam/typescript-sdk/cc53c9882d4a37270bddfc1a13162fc895385394/.speakeasy/out.openapi.yaml
  *
  * @stability unstable
  * @since 1.0.0
@@ -5269,7 +5270,7 @@ export const DeferredRegexSearch = Schema.Struct({
   "max_results": Schema.optionalKey(Schema.Int),
   "miss_sources": Schema.optionalKey(Schema.Boolean.annotate({
     "description":
-      "Universal profile only, for searches the router answers through the `tool_search` wrapper. When true, a search that matches nothing also names the deferred sources this search covers (namespaces, MCP servers, and shared `<server>_` prefixes; up to 40 names or 2,000 characters, with a count of any omitted) and tells the model that a source the search does not cover is unreachable through it in this request, so it can make a client tool call the task already needs (or a read-only one) and search again on a later turn instead of concluding the integration is missing. A hit gets the same guidance after its matches when, as a heuristic on the model's own words, the query's leading word has 3 to 64 characters, no query word names a searchable source, and the leading word is not among the words of the deferred tools' names (the union of every deferred tool name's tokens, whole and split as the search index splits names; a camel-case word counts when each of its parts is), with descriptions left out so a tool that merely mentions another product cannot mask it (`jira create issue` answered with another tracker's issue tools). Direct tools, including a client's built-in tools, are already in the tool list and are not named. Absent or false: a miss suggests other keywords and the closest names only."
+      "Universal profile only, for searches the router answers through the `tool_search` wrapper. Unless false, a search that matches nothing also names the deferred sources this search covers (namespaces, MCP servers, and shared `<server>_` prefixes; up to 40 names or 2,000 characters, with a count of any omitted) and tells the model that a source the search does not cover is unreachable through it in this request, so it can make a client tool call the task already needs (or a read-only one) and search again on a later turn instead of concluding the integration is missing. A hit gets the same guidance after its matches when, as a heuristic on the model's own words, the query's leading word has 3 to 64 characters, no query word names a searchable source, and the leading word is not among the words of the deferred tools' names (the union of every deferred tool name's tokens, whole and split as the search index splits names; a camel-case word counts when each of its parts is), with descriptions left out so a tool that merely mentions another product cannot mask it (`jira create issue` answered with another tracker's issue tools). Direct tools, including a client's built-in tools, are already in the tool list and are not named. False: a miss suggests other keywords and the closest names only."
   })),
   "siblings": Schema.optionalKey(Schema.Boolean.annotate({
     "description":
@@ -5292,7 +5293,7 @@ export const DeferredBm25Search = Schema.Struct({
   "max_results": Schema.optionalKey(Schema.Int),
   "miss_sources": Schema.optionalKey(Schema.Boolean.annotate({
     "description":
-      "Universal profile only, for searches the router answers through the `tool_search` wrapper. When true, a search that matches nothing also names the deferred sources this search covers (namespaces, MCP servers, and shared `<server>_` prefixes; up to 40 names or 2,000 characters, with a count of any omitted) and tells the model that a source the search does not cover is unreachable through it in this request, so it can make a client tool call the task already needs (or a read-only one) and search again on a later turn instead of concluding the integration is missing. A hit gets the same guidance after its matches when, as a heuristic on the model's own words, the query's leading word has 3 to 64 characters, no query word names a searchable source, and the leading word is not among the words of the deferred tools' names (the union of every deferred tool name's tokens, whole and split as the search index splits names; a camel-case word counts when each of its parts is), with descriptions left out so a tool that merely mentions another product cannot mask it (`jira create issue` answered with another tracker's issue tools). Direct tools, including a client's built-in tools, are already in the tool list and are not named. Absent or false: a miss suggests other keywords and the closest names only."
+      "Universal profile only, for searches the router answers through the `tool_search` wrapper. Unless false, a search that matches nothing also names the deferred sources this search covers (namespaces, MCP servers, and shared `<server>_` prefixes; up to 40 names or 2,000 characters, with a count of any omitted) and tells the model that a source the search does not cover is unreachable through it in this request, so it can make a client tool call the task already needs (or a read-only one) and search again on a later turn instead of concluding the integration is missing. A hit gets the same guidance after its matches when, as a heuristic on the model's own words, the query's leading word has 3 to 64 characters, no query word names a searchable source, and the leading word is not among the words of the deferred tools' names (the union of every deferred tool name's tokens, whole and split as the search index splits names; a camel-case word counts when each of its parts is), with descriptions left out so a tool that merely mentions another product cannot mask it (`jira create issue` answered with another tracker's issue tools). Direct tools, including a client's built-in tools, are already in the tool list and are not named. False: a miss suggests other keywords and the closest names only."
   })),
   "siblings": Schema.optionalKey(Schema.Boolean.annotate({
     "description":
@@ -6726,22 +6727,22 @@ export type CreditPurchase = {
   readonly "failure_reason": string | null
   readonly "id": string
   readonly "network": string
-  readonly "payment_intent_id": string | null
   readonly "platform_fee_usd": string
   readonly "protocol": string
-  readonly "status": "settling" | "settled" | "credited" | "failed"
+  readonly "status": "awaiting_payment" | "processing" | "credited" | "failed"
   readonly "total_charged_usd": string
 }
 export const CreditPurchase = Schema.Struct({
   "created_at": Schema.String,
   "credit_amount_usd": Schema.String,
   "failure_reason": Schema.Union([Schema.String, Schema.Null]),
-  "id": Schema.String.annotate({ "description": "Opaque purchase id, owned by the calling account." }),
+  "id": Schema.String.annotate({
+    "description": "Purchase id, the Stripe PaymentIntent that owns the deposit address."
+  }),
   "network": Schema.String,
-  "payment_intent_id": Schema.Union([Schema.String, Schema.Null]),
   "platform_fee_usd": Schema.String,
   "protocol": Schema.String,
-  "status": Schema.Literals(["settling", "settled", "credited", "failed"]),
+  "status": Schema.Literals(["awaiting_payment", "processing", "credited", "failed"]),
   "total_charged_usd": Schema.String
 }).annotate({ "identifier": "CreditPurchase" })
 export type AppRankingsItem = {
@@ -41970,6 +41971,7 @@ export type OpenResponsesResult = {
       | "cyber_policy"
       | "misalignment_policy_violation"
       | "data_residency_mismatch"
+      | "flex_unavailable"
       | "permission_denied"
     readonly "message": string
     readonly "metadata"?: OpenResponsesErrorMetadata
@@ -42214,6 +42216,7 @@ export const OpenResponsesResult = Schema.Struct({
         Schema.Literal("cyber_policy").annotate({ "title": "CodeEnum" }),
         Schema.Literal("misalignment_policy_violation").annotate({ "title": "CodeEnum" }),
         Schema.Literal("data_residency_mismatch").annotate({ "title": "CodeEnum" }),
+        Schema.Literal("flex_unavailable").annotate({ "title": "CodeEnum" }),
         Schema.Literal("permission_denied").annotate({ "title": "CodeEnum" })
       ]),
       "message": Schema.String,
@@ -44846,6 +44849,8 @@ export type CreateAuthKeysCode409 = ConflictResponse
 export const CreateAuthKeysCode409 = ConflictResponse
 export type CreateAuthKeysCode500 = InternalServerResponse
 export const CreateAuthKeysCode500 = InternalServerResponse
+export type CreateAuthKeysCode503 = ServiceUnavailableResponse
+export const CreateAuthKeysCode503 = ServiceUnavailableResponse
 export type ListBatchesParams = {
   readonly "HTTP-Referer"?: string
   readonly "X-OpenRouter-Title"?: string
@@ -45711,16 +45716,22 @@ export type CreateCreditsPurchasesParams = {
   readonly "HTTP-Referer"?: string
   readonly "X-OpenRouter-Title"?: string
   readonly "X-OpenRouter-Categories"?: string
+  readonly "idempotency-key": string
 }
 export const CreateCreditsPurchasesParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
-  "X-OpenRouter-Categories": Schema.optionalKey(Schema.String)
+  "X-OpenRouter-Categories": Schema.optionalKey(Schema.String),
+  "idempotency-key": Schema.String.annotate({
+    "description":
+      "Identifies the purchase. Send the same value on the unpaid request and on the paid retry; use a new value for a new purchase.",
+    "examples": ["6f1f7f0e-2b1a-4f57-9a43-3c1f6f3e8b0d"]
+  }).check(Schema.isMinLength(1).annotate({ "expected": "a value with a length of at least 1" })).check(
+    Schema.isMaxCodePoints(255).annotate({ "expected": "a string with at most 255 code points" })
+  )
 })
 export type CreateCreditsPurchasesRequestJson = CreateCreditPurchaseRequest
 export const CreateCreditsPurchasesRequestJson = CreateCreditPurchaseRequest
-export type CreateCreditsPurchases200 = CreditPurchaseResponse
-export const CreateCreditsPurchases200 = CreditPurchaseResponse
 export type CreateCreditsPurchases202 = CreditPurchaseResponse
 export const CreateCreditsPurchases202 = CreditPurchaseResponse
 export type CreateCreditsPurchases400 = BadRequestResponse
@@ -45735,6 +45746,8 @@ export type CreateCreditsPurchases404 = NotFoundResponse
 export const CreateCreditsPurchases404 = NotFoundResponse
 export type CreateCreditsPurchases409 = ConflictResponse
 export const CreateCreditsPurchases409 = ConflictResponse
+export type CreateCreditsPurchases429 = TooManyRequestsResponse
+export const CreateCreditsPurchases429 = TooManyRequestsResponse
 export type CreateCreditsPurchases500 = InternalServerResponse
 export const CreateCreditsPurchases500 = InternalServerResponse
 export type CreateCreditsPurchases503 = ServiceUnavailableResponse
@@ -45759,8 +45772,12 @@ export type ListCreditsPurchases403 = ForbiddenResponse
 export const ListCreditsPurchases403 = ForbiddenResponse
 export type ListCreditsPurchases404 = NotFoundResponse
 export const ListCreditsPurchases404 = NotFoundResponse
+export type ListCreditsPurchases429 = TooManyRequestsResponse
+export const ListCreditsPurchases429 = TooManyRequestsResponse
 export type ListCreditsPurchases500 = InternalServerResponse
 export const ListCreditsPurchases500 = InternalServerResponse
+export type ListCreditsPurchases503 = ServiceUnavailableResponse
+export const ListCreditsPurchases503 = ServiceUnavailableResponse
 export type GetAppRankingsParams = {
   readonly "HTTP-Referer"?: string
   readonly "X-OpenRouter-Title"?: string
@@ -50015,6 +50032,7 @@ export type ListPresetsParams = {
   readonly "X-OpenRouter-Categories"?: string
   readonly "offset"?: number | null
   readonly "limit"?: number
+  readonly "workspace_id"?: string
 }
 export const ListPresetsParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
@@ -50032,7 +50050,13 @@ export const ListPresetsParams = Schema.Struct({
     ).check(Schema.isGreaterThanOrEqualTo(1).annotate({ "expected": "a value greater than or equal to 1" })).check(
       Schema.isLessThanOrEqualTo(100).annotate({ "expected": "a value less than or equal to 100" })
     )
-  )
+  ),
+  "workspace_id": Schema.optionalKey(Schema.String.annotate({
+    "description":
+      "Workspace to act in. Also accepted as a `workspace_id` field in a JSON request body. Defaults to the key's workspace for a key limited to one workspace, otherwise to the account's default workspace.",
+    "examples": ["750e8400-e29b-41d4-a716-446655440002"],
+    "format": "uuid"
+  }))
 })
 export type ListPresets200 = ListPresetsResponse
 export const ListPresets200 = ListPresetsResponse
@@ -50042,6 +50066,8 @@ export type ListPresets401 = UnauthorizedResponse
 export const ListPresets401 = UnauthorizedResponse
 export type ListPresets403 = ForbiddenResponse
 export const ListPresets403 = ForbiddenResponse
+export type ListPresets404 = NotFoundResponse
+export const ListPresets404 = NotFoundResponse
 export type ListPresets500 = InternalServerResponse
 export const ListPresets500 = InternalServerResponse
 export type ListPresets503 = ServiceUnavailableResponse
@@ -50050,11 +50076,18 @@ export type GetPresetParams = {
   readonly "HTTP-Referer"?: string
   readonly "X-OpenRouter-Title"?: string
   readonly "X-OpenRouter-Categories"?: string
+  readonly "workspace_id"?: string
 }
 export const GetPresetParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
-  "X-OpenRouter-Categories": Schema.optionalKey(Schema.String)
+  "X-OpenRouter-Categories": Schema.optionalKey(Schema.String),
+  "workspace_id": Schema.optionalKey(Schema.String.annotate({
+    "description":
+      "Workspace to act in. Also accepted as a `workspace_id` field in a JSON request body. Defaults to the key's workspace for a key limited to one workspace, otherwise to the account's default workspace.",
+    "examples": ["750e8400-e29b-41d4-a716-446655440002"],
+    "format": "uuid"
+  }))
 })
 export type GetPreset200 = GetPresetResponse
 export const GetPreset200 = GetPresetResponse
@@ -50070,6 +50103,37 @@ export type GetPreset500 = InternalServerResponse
 export const GetPreset500 = InternalServerResponse
 export type GetPreset503 = ServiceUnavailableResponse
 export const GetPreset503 = ServiceUnavailableResponse
+export type DeletePresetParams = {
+  readonly "HTTP-Referer"?: string
+  readonly "X-OpenRouter-Title"?: string
+  readonly "X-OpenRouter-Categories"?: string
+  readonly "workspace_id"?: string
+}
+export const DeletePresetParams = Schema.Struct({
+  "HTTP-Referer": Schema.optionalKey(Schema.String),
+  "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
+  "X-OpenRouter-Categories": Schema.optionalKey(Schema.String),
+  "workspace_id": Schema.optionalKey(Schema.String.annotate({
+    "description":
+      "Workspace to act in. Also accepted as a `workspace_id` field in a JSON request body. Defaults to the key's workspace for a key limited to one workspace, otherwise to the account's default workspace.",
+    "examples": ["750e8400-e29b-41d4-a716-446655440002"],
+    "format": "uuid"
+  }))
+})
+export type DeletePreset200 = GetPresetResponse
+export const DeletePreset200 = GetPresetResponse
+export type DeletePreset400 = BadRequestResponse
+export const DeletePreset400 = BadRequestResponse
+export type DeletePreset401 = UnauthorizedResponse
+export const DeletePreset401 = UnauthorizedResponse
+export type DeletePreset403 = ForbiddenResponse
+export const DeletePreset403 = ForbiddenResponse
+export type DeletePreset404 = NotFoundResponse
+export const DeletePreset404 = NotFoundResponse
+export type DeletePreset409 = ConflictResponse
+export const DeletePreset409 = ConflictResponse
+export type DeletePreset500 = InternalServerResponse
+export const DeletePreset500 = InternalServerResponse
 export type CreatePresetsChatCompletionsParams = {
   readonly "HTTP-Referer"?: string
   readonly "X-OpenRouter-Title"?: string
@@ -50080,14 +50144,12 @@ export const CreatePresetsChatCompletionsParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Categories": Schema.optionalKey(Schema.String),
-  "workspace_id": Schema.optionalKey(
-    Schema.String.annotate({
-      "description":
-        "Workspace to create the preset in. Defaults to the key's workspace for a key limited to one workspace, otherwise to the account's default workspace.",
-      "examples": ["750e8400-e29b-41d4-a716-446655440002"],
-      "format": "uuid"
-    })
-  )
+  "workspace_id": Schema.optionalKey(Schema.String.annotate({
+    "description":
+      "Workspace to act in. Also accepted as a `workspace_id` field in a JSON request body. Defaults to the key's workspace for a key limited to one workspace, otherwise to the account's default workspace.",
+    "examples": ["750e8400-e29b-41d4-a716-446655440002"],
+    "format": "uuid"
+  }))
 })
 export type CreatePresetsChatCompletionsRequestJson = ChatRequest
 export const CreatePresetsChatCompletionsRequestJson = ChatRequest
@@ -50115,14 +50177,12 @@ export const CreatePresetsMessagesParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Categories": Schema.optionalKey(Schema.String),
-  "workspace_id": Schema.optionalKey(
-    Schema.String.annotate({
-      "description":
-        "Workspace to create the preset in. Defaults to the key's workspace for a key limited to one workspace, otherwise to the account's default workspace.",
-      "examples": ["750e8400-e29b-41d4-a716-446655440002"],
-      "format": "uuid"
-    })
-  )
+  "workspace_id": Schema.optionalKey(Schema.String.annotate({
+    "description":
+      "Workspace to act in. Also accepted as a `workspace_id` field in a JSON request body. Defaults to the key's workspace for a key limited to one workspace, otherwise to the account's default workspace.",
+    "examples": ["750e8400-e29b-41d4-a716-446655440002"],
+    "format": "uuid"
+  }))
 })
 export type CreatePresetsMessagesRequestJson = MessagesRequest
 export const CreatePresetsMessagesRequestJson = MessagesRequest
@@ -50150,14 +50210,12 @@ export const CreatePresetsResponsesParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Categories": Schema.optionalKey(Schema.String),
-  "workspace_id": Schema.optionalKey(
-    Schema.String.annotate({
-      "description":
-        "Workspace to create the preset in. Defaults to the key's workspace for a key limited to one workspace, otherwise to the account's default workspace.",
-      "examples": ["750e8400-e29b-41d4-a716-446655440002"],
-      "format": "uuid"
-    })
-  )
+  "workspace_id": Schema.optionalKey(Schema.String.annotate({
+    "description":
+      "Workspace to act in. Also accepted as a `workspace_id` field in a JSON request body. Defaults to the key's workspace for a key limited to one workspace, otherwise to the account's default workspace.",
+    "examples": ["750e8400-e29b-41d4-a716-446655440002"],
+    "format": "uuid"
+  }))
 })
 export type CreatePresetsResponsesRequestJson = ResponsesRequest
 export const CreatePresetsResponsesRequestJson = ResponsesRequest
@@ -50175,12 +50233,44 @@ export type CreatePresetsResponses409 = ConflictResponse
 export const CreatePresetsResponses409 = ConflictResponse
 export type CreatePresetsResponses500 = InternalServerResponse
 export const CreatePresetsResponses500 = InternalServerResponse
+export type RestorePresetParams = {
+  readonly "HTTP-Referer"?: string
+  readonly "X-OpenRouter-Title"?: string
+  readonly "X-OpenRouter-Categories"?: string
+  readonly "workspace_id"?: string
+}
+export const RestorePresetParams = Schema.Struct({
+  "HTTP-Referer": Schema.optionalKey(Schema.String),
+  "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
+  "X-OpenRouter-Categories": Schema.optionalKey(Schema.String),
+  "workspace_id": Schema.optionalKey(Schema.String.annotate({
+    "description":
+      "Workspace to act in. Also accepted as a `workspace_id` field in a JSON request body. Defaults to the key's workspace for a key limited to one workspace, otherwise to the account's default workspace.",
+    "examples": ["750e8400-e29b-41d4-a716-446655440002"],
+    "format": "uuid"
+  }))
+})
+export type RestorePreset200 = GetPresetResponse
+export const RestorePreset200 = GetPresetResponse
+export type RestorePreset400 = BadRequestResponse
+export const RestorePreset400 = BadRequestResponse
+export type RestorePreset401 = UnauthorizedResponse
+export const RestorePreset401 = UnauthorizedResponse
+export type RestorePreset403 = ForbiddenResponse
+export const RestorePreset403 = ForbiddenResponse
+export type RestorePreset404 = NotFoundResponse
+export const RestorePreset404 = NotFoundResponse
+export type RestorePreset409 = ConflictResponse
+export const RestorePreset409 = ConflictResponse
+export type RestorePreset500 = InternalServerResponse
+export const RestorePreset500 = InternalServerResponse
 export type ListPresetVersionsParams = {
   readonly "HTTP-Referer"?: string
   readonly "X-OpenRouter-Title"?: string
   readonly "X-OpenRouter-Categories"?: string
   readonly "offset"?: number | null
   readonly "limit"?: number
+  readonly "workspace_id"?: string
 }
 export const ListPresetVersionsParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
@@ -50198,7 +50288,13 @@ export const ListPresetVersionsParams = Schema.Struct({
     ).check(Schema.isGreaterThanOrEqualTo(1).annotate({ "expected": "a value greater than or equal to 1" })).check(
       Schema.isLessThanOrEqualTo(100).annotate({ "expected": "a value less than or equal to 100" })
     )
-  )
+  ),
+  "workspace_id": Schema.optionalKey(Schema.String.annotate({
+    "description":
+      "Workspace to act in. Also accepted as a `workspace_id` field in a JSON request body. Defaults to the key's workspace for a key limited to one workspace, otherwise to the account's default workspace.",
+    "examples": ["750e8400-e29b-41d4-a716-446655440002"],
+    "format": "uuid"
+  }))
 })
 export type ListPresetVersions200 = ListPresetVersionsResponse
 export const ListPresetVersions200 = ListPresetVersionsResponse
@@ -50218,11 +50314,18 @@ export type GetPresetVersionParams = {
   readonly "HTTP-Referer"?: string
   readonly "X-OpenRouter-Title"?: string
   readonly "X-OpenRouter-Categories"?: string
+  readonly "workspace_id"?: string
 }
 export const GetPresetVersionParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
-  "X-OpenRouter-Categories": Schema.optionalKey(Schema.String)
+  "X-OpenRouter-Categories": Schema.optionalKey(Schema.String),
+  "workspace_id": Schema.optionalKey(Schema.String.annotate({
+    "description":
+      "Workspace to act in. Also accepted as a `workspace_id` field in a JSON request body. Defaults to the key's workspace for a key limited to one workspace, otherwise to the account's default workspace.",
+    "examples": ["750e8400-e29b-41d4-a716-446655440002"],
+    "format": "uuid"
+  }))
 })
 export type GetPresetVersion200 = GetPresetVersionResponse
 export const GetPresetVersion200 = GetPresetVersionResponse
@@ -53448,6 +53551,7 @@ export const make = <E, R>(
           "403": decodeError("CreateAuthKeysCode403", CreateAuthKeysCode403),
           "409": decodeError("CreateAuthKeysCode409", CreateAuthKeysCode409),
           "500": decodeError("CreateAuthKeysCode500", CreateAuthKeysCode500),
+          "503": decodeError("CreateAuthKeysCode503", CreateAuthKeysCode503),
           orElse: unexpectedStatus
         }))
       ),
@@ -53892,20 +53996,21 @@ export const make = <E, R>(
     "createCreditsPurchases": (options: Parameters<OpenRouterClient["createCreditsPurchases"]>[0]) =>
       HttpClientRequest.post("/credits/purchases").pipe(
         HttpClientRequest.setHeaders({
-          "HTTP-Referer": options.params?.["HTTP-Referer"] ?? undefined,
-          "X-OpenRouter-Title": options.params?.["X-OpenRouter-Title"] ?? undefined,
-          "X-OpenRouter-Categories": options.params?.["X-OpenRouter-Categories"] ?? undefined
+          "HTTP-Referer": options.params["HTTP-Referer"] ?? undefined,
+          "X-OpenRouter-Title": options.params["X-OpenRouter-Title"] ?? undefined,
+          "X-OpenRouter-Categories": options.params["X-OpenRouter-Categories"] ?? undefined,
+          "idempotency-key": options.params["idempotency-key"] ?? undefined
         }),
         HttpClientRequest.bodyJsonUnsafe(options.payload),
         withResponse(options.config)(HttpClientResponse.matchStatus({
-          "200": decodeSuccess(CreateCreditsPurchases200),
-          "202": decodeSuccess(CreateCreditsPurchases202),
+          "2xx": decodeSuccess(CreateCreditsPurchases202),
           "400": decodeError("CreateCreditsPurchases400", CreateCreditsPurchases400),
           "401": decodeError("CreateCreditsPurchases401", CreateCreditsPurchases401),
           "402": decodeError("CreateCreditsPurchases402", CreateCreditsPurchases402),
           "403": decodeError("CreateCreditsPurchases403", CreateCreditsPurchases403),
           "404": decodeError("CreateCreditsPurchases404", CreateCreditsPurchases404),
           "409": decodeError("CreateCreditsPurchases409", CreateCreditsPurchases409),
+          "429": decodeError("CreateCreditsPurchases429", CreateCreditsPurchases429),
           "500": decodeError("CreateCreditsPurchases500", CreateCreditsPurchases500),
           "503": decodeError("CreateCreditsPurchases503", CreateCreditsPurchases503),
           orElse: unexpectedStatus
@@ -53926,7 +54031,9 @@ export const make = <E, R>(
               "401": decodeError("ListCreditsPurchases401", ListCreditsPurchases401),
               "403": decodeError("ListCreditsPurchases403", ListCreditsPurchases403),
               "404": decodeError("ListCreditsPurchases404", ListCreditsPurchases404),
+              "429": decodeError("ListCreditsPurchases429", ListCreditsPurchases429),
               "500": decodeError("ListCreditsPurchases500", ListCreditsPurchases500),
+              "503": decodeError("ListCreditsPurchases503", ListCreditsPurchases503),
               orElse: unexpectedStatus
             }))
           )
@@ -55842,7 +55949,8 @@ export const make = <E, R>(
       HttpClientRequest.get("/presets").pipe(
         HttpClientRequest.setUrlParams({
           "offset": options?.params?.["offset"] as any,
-          "limit": options?.params?.["limit"] as any
+          "limit": options?.params?.["limit"] as any,
+          "workspace_id": options?.params?.["workspace_id"] as any
         }),
         HttpClientRequest.setHeaders({
           "HTTP-Referer": options?.params?.["HTTP-Referer"] ?? undefined,
@@ -55854,6 +55962,7 @@ export const make = <E, R>(
           "400": decodeError("ListPresets400", ListPresets400),
           "401": decodeError("ListPresets401", ListPresets401),
           "403": decodeError("ListPresets403", ListPresets403),
+          "404": decodeError("ListPresets404", ListPresets404),
           "500": decodeError("ListPresets500", ListPresets500),
           "503": decodeError("ListPresets503", ListPresets503),
           orElse: unexpectedStatus
@@ -55863,6 +55972,7 @@ export const make = <E, R>(
       __makePathRequest(HttpClientRequest.get, [slug], () => "/presets/" + __encodePathParam(slug) + "").pipe(
         Effect.flatMap((request) =>
           request.pipe(
+            HttpClientRequest.setUrlParams({ "workspace_id": options?.params?.["workspace_id"] as any }),
             HttpClientRequest.setHeaders({
               "HTTP-Referer": options?.params?.["HTTP-Referer"] ?? undefined,
               "X-OpenRouter-Title": options?.params?.["X-OpenRouter-Title"] ?? undefined,
@@ -55876,6 +55986,29 @@ export const make = <E, R>(
               "404": decodeError("GetPreset404", GetPreset404),
               "500": decodeError("GetPreset500", GetPreset500),
               "503": decodeError("GetPreset503", GetPreset503),
+              orElse: unexpectedStatus
+            }))
+          )
+        )
+      ),
+    "deletePreset": (slug, options: Parameters<OpenRouterClient["deletePreset"]>[1]) =>
+      __makePathRequest(HttpClientRequest.delete, [slug], () => "/presets/" + __encodePathParam(slug) + "").pipe(
+        Effect.flatMap((request) =>
+          request.pipe(
+            HttpClientRequest.setUrlParams({ "workspace_id": options?.params?.["workspace_id"] as any }),
+            HttpClientRequest.setHeaders({
+              "HTTP-Referer": options?.params?.["HTTP-Referer"] ?? undefined,
+              "X-OpenRouter-Title": options?.params?.["X-OpenRouter-Title"] ?? undefined,
+              "X-OpenRouter-Categories": options?.params?.["X-OpenRouter-Categories"] ?? undefined
+            }),
+            withResponse(options?.config)(HttpClientResponse.matchStatus({
+              "2xx": decodeSuccess(DeletePreset200),
+              "400": decodeError("DeletePreset400", DeletePreset400),
+              "401": decodeError("DeletePreset401", DeletePreset401),
+              "403": decodeError("DeletePreset403", DeletePreset403),
+              "404": decodeError("DeletePreset404", DeletePreset404),
+              "409": decodeError("DeletePreset409", DeletePreset409),
+              "500": decodeError("DeletePreset500", DeletePreset500),
               orElse: unexpectedStatus
             }))
           )
@@ -55958,13 +56091,37 @@ export const make = <E, R>(
             )
           )
         ),
+    "restorePreset": (slug, options: Parameters<OpenRouterClient["restorePreset"]>[1]) =>
+      __makePathRequest(HttpClientRequest.post, [slug], () => "/presets/" + __encodePathParam(slug) + "/restore").pipe(
+        Effect.flatMap((request) =>
+          request.pipe(
+            HttpClientRequest.setUrlParams({ "workspace_id": options?.params?.["workspace_id"] as any }),
+            HttpClientRequest.setHeaders({
+              "HTTP-Referer": options?.params?.["HTTP-Referer"] ?? undefined,
+              "X-OpenRouter-Title": options?.params?.["X-OpenRouter-Title"] ?? undefined,
+              "X-OpenRouter-Categories": options?.params?.["X-OpenRouter-Categories"] ?? undefined
+            }),
+            withResponse(options?.config)(HttpClientResponse.matchStatus({
+              "2xx": decodeSuccess(RestorePreset200),
+              "400": decodeError("RestorePreset400", RestorePreset400),
+              "401": decodeError("RestorePreset401", RestorePreset401),
+              "403": decodeError("RestorePreset403", RestorePreset403),
+              "404": decodeError("RestorePreset404", RestorePreset404),
+              "409": decodeError("RestorePreset409", RestorePreset409),
+              "500": decodeError("RestorePreset500", RestorePreset500),
+              orElse: unexpectedStatus
+            }))
+          )
+        )
+      ),
     "listPresetVersions": (slug, options: Parameters<OpenRouterClient["listPresetVersions"]>[1]) =>
       __makePathRequest(HttpClientRequest.get, [slug], () => "/presets/" + __encodePathParam(slug) + "/versions").pipe(
         Effect.flatMap((request) =>
           request.pipe(
             HttpClientRequest.setUrlParams({
               "offset": options?.params?.["offset"] as any,
-              "limit": options?.params?.["limit"] as any
+              "limit": options?.params?.["limit"] as any,
+              "workspace_id": options?.params?.["workspace_id"] as any
             }),
             HttpClientRequest.setHeaders({
               "HTTP-Referer": options?.params?.["HTTP-Referer"] ?? undefined,
@@ -55992,6 +56149,7 @@ export const make = <E, R>(
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
+            HttpClientRequest.setUrlParams({ "workspace_id": options?.params?.["workspace_id"] as any }),
             HttpClientRequest.setHeaders({
               "HTTP-Referer": options?.params?.["HTTP-Referer"] ?? undefined,
               "X-OpenRouter-Title": options?.params?.["X-OpenRouter-Title"] ?? undefined,
@@ -57716,7 +57874,8 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
       | OpenRouterClientError<"CreateAuthKeysCode401", CreateAuthKeysCode401>
       | OpenRouterClientError<"CreateAuthKeysCode403", CreateAuthKeysCode403>
       | OpenRouterClientError<"CreateAuthKeysCode409", CreateAuthKeysCode409>
-      | OpenRouterClientError<"CreateAuthKeysCode500", CreateAuthKeysCode500>,
+      | OpenRouterClientError<"CreateAuthKeysCode500", CreateAuthKeysCode500>
+      | OpenRouterClientError<"CreateAuthKeysCode503", CreateAuthKeysCode503>,
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
@@ -57734,7 +57893,8 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
       | OpenRouterClientError<"CreateAuthKeysCode401", CreateAuthKeysCode401>
       | OpenRouterClientError<"CreateAuthKeysCode403", CreateAuthKeysCode403>
       | OpenRouterClientError<"CreateAuthKeysCode409", CreateAuthKeysCode409>
-      | OpenRouterClientError<"CreateAuthKeysCode500", CreateAuthKeysCode500>,
+      | OpenRouterClientError<"CreateAuthKeysCode500", CreateAuthKeysCode500>
+      | OpenRouterClientError<"CreateAuthKeysCode503", CreateAuthKeysCode503>,
       R
     >
   }
@@ -58497,17 +58657,17 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
     >
   }
   /**
-   * Starts an agent credit purchase paid with a Machine Payments Protocol (MPP) credential on Tempo. The first call answers `402` with a `WWW-Authenticate: Payment ...` challenge; retry the same request, same `Idempotency-Key`, with the signed credential in `Payment-Authorization: Payment ...` (or in `Authorization: Payment ...` when the API key is sent as `X-Api-Key`). A paid request answers `202`: the transfer was broadcast and Stripe is still screening the payment, so credits arrive asynchronously. Poll `GET /api/v1/credits/purchases/{id}` until `status` is `credited` or `failed`. A retry with the same `Idempotency-Key` after the purchase is credited answers `200`.
+   * Starts an agent credit purchase paid with a Machine Payments Protocol (MPP) credential on Tempo. The first call answers `402` with a `WWW-Authenticate: Payment ...` challenge; retry the same request, same `Idempotency-Key`, with the signed credential in `Payment-Authorization: Payment ...` (or in `Authorization: Payment ...` when the management key is sent as `X-Api-Key`). A paid request answers `202`: the transfer was broadcast and Stripe is still screening the payment, so credits arrive asynchronously. Poll the URL in the `Location` header, `GET /api/v1/credits/purchases/{id}`, until `status` is `credited` or `failed`.
    */
   readonly "createCreditsPurchases": {
     <Config extends OperationConfig | undefined = undefined>(
       options: {
-        readonly params?: typeof CreateCreditsPurchasesParams.Encoded | undefined
+        readonly params: typeof CreateCreditsPurchasesParams.Encoded
         readonly payload: typeof CreateCreditsPurchasesRequestJson.Encoded
         readonly config: Config
       }
     ): Effect.Effect<
-      WithOptionalResponse<CreateCreditsPurchases200 | CreateCreditsPurchases202, Config>,
+      WithOptionalResponse<CreateCreditsPurchases202, Config>,
       | E
       | HttpClientError.HttpClientError
       | SchemaError
@@ -58517,18 +58677,19 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
       | OpenRouterClientError<"CreateCreditsPurchases403", CreateCreditsPurchases403>
       | OpenRouterClientError<"CreateCreditsPurchases404", CreateCreditsPurchases404>
       | OpenRouterClientError<"CreateCreditsPurchases409", CreateCreditsPurchases409>
+      | OpenRouterClientError<"CreateCreditsPurchases429", CreateCreditsPurchases429>
       | OpenRouterClientError<"CreateCreditsPurchases500", CreateCreditsPurchases500>
       | OpenRouterClientError<"CreateCreditsPurchases503", CreateCreditsPurchases503>,
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
       options: {
-        readonly params?: typeof CreateCreditsPurchasesParams.Encoded | undefined
+        readonly params: typeof CreateCreditsPurchasesParams.Encoded
         readonly payload: typeof CreateCreditsPurchasesRequestJson.Encoded
         readonly config?: Config | undefined
       }
     ): Effect.Effect<
-      WithOptionalResponse<CreateCreditsPurchases200 | CreateCreditsPurchases202, Config | undefined>,
+      WithOptionalResponse<CreateCreditsPurchases202, Config | undefined>,
       | E
       | HttpClientError.HttpClientError
       | SchemaError
@@ -58538,13 +58699,14 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
       | OpenRouterClientError<"CreateCreditsPurchases403", CreateCreditsPurchases403>
       | OpenRouterClientError<"CreateCreditsPurchases404", CreateCreditsPurchases404>
       | OpenRouterClientError<"CreateCreditsPurchases409", CreateCreditsPurchases409>
+      | OpenRouterClientError<"CreateCreditsPurchases429", CreateCreditsPurchases429>
       | OpenRouterClientError<"CreateCreditsPurchases500", CreateCreditsPurchases500>
       | OpenRouterClientError<"CreateCreditsPurchases503", CreateCreditsPurchases503>,
       R
     >
   }
   /**
-   * Returns one agent credit purchase made with a key of the calling workspace. Poll this after a `202` until `status` is `credited` or `failed`.
+   * Returns one agent credit purchase of the calling account, read from its Stripe PaymentIntent. Poll this after a `202` until `status` is `credited` or `failed`.
    */
   readonly "listCreditsPurchases": {
     <Config extends OperationConfig | undefined = undefined>(
@@ -58559,7 +58721,9 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
       | OpenRouterClientError<"ListCreditsPurchases401", ListCreditsPurchases401>
       | OpenRouterClientError<"ListCreditsPurchases403", ListCreditsPurchases403>
       | OpenRouterClientError<"ListCreditsPurchases404", ListCreditsPurchases404>
-      | OpenRouterClientError<"ListCreditsPurchases500", ListCreditsPurchases500>,
+      | OpenRouterClientError<"ListCreditsPurchases429", ListCreditsPurchases429>
+      | OpenRouterClientError<"ListCreditsPurchases500", ListCreditsPurchases500>
+      | OpenRouterClientError<"ListCreditsPurchases503", ListCreditsPurchases503>,
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
@@ -58577,7 +58741,9 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
       | OpenRouterClientError<"ListCreditsPurchases401", ListCreditsPurchases401>
       | OpenRouterClientError<"ListCreditsPurchases403", ListCreditsPurchases403>
       | OpenRouterClientError<"ListCreditsPurchases404", ListCreditsPurchases404>
-      | OpenRouterClientError<"ListCreditsPurchases500", ListCreditsPurchases500>,
+      | OpenRouterClientError<"ListCreditsPurchases429", ListCreditsPurchases429>
+      | OpenRouterClientError<"ListCreditsPurchases500", ListCreditsPurchases500>
+      | OpenRouterClientError<"ListCreditsPurchases503", ListCreditsPurchases503>,
       R
     >
   }
@@ -61844,6 +62010,7 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
       | OpenRouterClientError<"ListPresets400", ListPresets400>
       | OpenRouterClientError<"ListPresets401", ListPresets401>
       | OpenRouterClientError<"ListPresets403", ListPresets403>
+      | OpenRouterClientError<"ListPresets404", ListPresets404>
       | OpenRouterClientError<"ListPresets500", ListPresets500>
       | OpenRouterClientError<"ListPresets503", ListPresets503>,
       R
@@ -61860,6 +62027,7 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
       | OpenRouterClientError<"ListPresets400", ListPresets400>
       | OpenRouterClientError<"ListPresets401", ListPresets401>
       | OpenRouterClientError<"ListPresets403", ListPresets403>
+      | OpenRouterClientError<"ListPresets404", ListPresets404>
       | OpenRouterClientError<"ListPresets500", ListPresets500>
       | OpenRouterClientError<"ListPresets503", ListPresets503>,
       R
@@ -61901,6 +62069,45 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
       | OpenRouterClientError<"GetPreset404", GetPreset404>
       | OpenRouterClientError<"GetPreset500", GetPreset500>
       | OpenRouterClientError<"GetPreset503", GetPreset503>,
+      R
+    >
+  }
+  /**
+   * Archives a preset: it no longer resolves for inference and is hidden from get and list. The preset and its versions are kept, so the slug stays taken; restore it with `POST /presets/{slug}/restore`. Deleting an already-archived preset succeeds again. A disabled preset returns 409. Requires a read-write [management key](/docs/guides/overview/auth/management-api-keys); inference API keys are rejected. `workspace_id` may be sent as a query parameter or a JSON body field.
+   */
+  readonly "deletePreset": {
+    <Config extends OperationConfig | undefined = undefined>(
+      slug: string,
+      options: { readonly params?: typeof DeletePresetParams.Encoded | undefined; readonly config: Config }
+    ): Effect.Effect<
+      WithOptionalResponse<DeletePreset200, Config>,
+      | E
+      | HttpClientError.HttpClientError
+      | SchemaError
+      | OpenRouterClientError<"DeletePreset400", DeletePreset400>
+      | OpenRouterClientError<"DeletePreset401", DeletePreset401>
+      | OpenRouterClientError<"DeletePreset403", DeletePreset403>
+      | OpenRouterClientError<"DeletePreset404", DeletePreset404>
+      | OpenRouterClientError<"DeletePreset409", DeletePreset409>
+      | OpenRouterClientError<"DeletePreset500", DeletePreset500>,
+      R
+    >
+    <Config extends OperationConfig | undefined = undefined>(
+      slug: string,
+      options:
+        | { readonly params?: typeof DeletePresetParams.Encoded | undefined; readonly config?: Config | undefined }
+        | undefined
+    ): Effect.Effect<
+      WithOptionalResponse<DeletePreset200, Config | undefined>,
+      | E
+      | HttpClientError.HttpClientError
+      | SchemaError
+      | OpenRouterClientError<"DeletePreset400", DeletePreset400>
+      | OpenRouterClientError<"DeletePreset401", DeletePreset401>
+      | OpenRouterClientError<"DeletePreset403", DeletePreset403>
+      | OpenRouterClientError<"DeletePreset404", DeletePreset404>
+      | OpenRouterClientError<"DeletePreset409", DeletePreset409>
+      | OpenRouterClientError<"DeletePreset500", DeletePreset500>,
       R
     >
   }
@@ -62036,6 +62243,46 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
       | OpenRouterClientError<"CreatePresetsResponses404", CreatePresetsResponses404>
       | OpenRouterClientError<"CreatePresetsResponses409", CreatePresetsResponses409>
       | OpenRouterClientError<"CreatePresetsResponses500", CreatePresetsResponses500>,
+      R
+    >
+  }
+  /**
+   * Re-activates an archived preset so it resolves for inference again. No version is created and the designated version is unchanged. Restoring an active preset returns it unchanged. A disabled preset returns 409. Requires a read-write [management key](/docs/guides/overview/auth/management-api-keys); inference API keys are rejected. `workspace_id` may be sent as a query parameter or a JSON body field.
+   */
+  readonly "restorePreset": {
+    <Config extends OperationConfig | undefined = undefined>(
+      slug: string,
+      options: { readonly params?: typeof RestorePresetParams.Encoded | undefined; readonly config: Config }
+    ): Effect.Effect<
+      WithOptionalResponse<RestorePreset200, Config>,
+      | E
+      | HttpClientError.HttpClientError
+      | SchemaError
+      | OpenRouterClientError<"RestorePreset400", RestorePreset400>
+      | OpenRouterClientError<"RestorePreset401", RestorePreset401>
+      | OpenRouterClientError<"RestorePreset403", RestorePreset403>
+      | OpenRouterClientError<"RestorePreset404", RestorePreset404>
+      | OpenRouterClientError<"RestorePreset409", RestorePreset409>
+      | OpenRouterClientError<"RestorePreset500", RestorePreset500>,
+      R
+    >
+    <Config extends OperationConfig | undefined = undefined>(
+      slug: string,
+      options: {
+        readonly params?: typeof RestorePresetParams.Encoded | undefined
+        readonly config?: Config | undefined
+      } | undefined
+    ): Effect.Effect<
+      WithOptionalResponse<RestorePreset200, Config | undefined>,
+      | E
+      | HttpClientError.HttpClientError
+      | SchemaError
+      | OpenRouterClientError<"RestorePreset400", RestorePreset400>
+      | OpenRouterClientError<"RestorePreset401", RestorePreset401>
+      | OpenRouterClientError<"RestorePreset403", RestorePreset403>
+      | OpenRouterClientError<"RestorePreset404", RestorePreset404>
+      | OpenRouterClientError<"RestorePreset409", RestorePreset409>
+      | OpenRouterClientError<"RestorePreset500", RestorePreset500>,
       R
     >
   }
