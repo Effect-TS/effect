@@ -1477,8 +1477,10 @@ export const getWithHeadersAnnotation = SchemaAST.resolveAt<WithHeadersAnnotatio
  *
  * These are declared schemas, not the response codecs installed by an endpoint.
  * Plain schemas, `WithHeaders` wrappers, and ordinary transformations from an
- * identical `{ body, headers }` struct return `undefined`. So do schemas that
- * wrap the result, such as a union or a further transformation.
+ * identical `{ body, headers }` struct return `undefined`. So do schemas derived
+ * from the result with operations such as `.check`, `Schema.Union`, or
+ * `Schema.decodeTo`, while `.annotate`, `Schema.brand`, and `Schema.decode`
+ * keep the parts.
  *
  * @see encodeToWithHeaders
  * @see getResponseEncodingSchema
