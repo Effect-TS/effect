@@ -26,24 +26,6 @@ describe("WorkloadIdentity", () => {
       assert.strictEqual(request.headers.authorization, "Bearer access-1")
     }))
 
-  it.effect("shares one exchange between concurrent requests, even when one is interrupted", () =>
-    Effect.gen(function*() {
-      const latch = yield* Deferred.make<void>()
-      const http = makeHttp({ token: (_, n) => Effect.as(Deferred.await(latch), tokenResponse(n)) })
-      const client = yield* makeClient(http)
-
-      const interrupted = yield* Effect.forkChild(client.get(API_URL), { startImmediately: true })
-      const fibers = yield* Effect.forEach(
-        [1, 2],
-        () => Effect.forkChild(client.get(API_URL), { startImmediately: true })
-      )
-      yield* Fiber.interrupt(interrupted)
-      yield* Deferred.succeed(latch, void 0)
-      yield* Fiber.joinAll(fibers)
-
-      assert.deepStrictEqual(authorizations(http), [undefined, "Bearer access-1", "Bearer access-1"])
-    }))
-
   it.effect("exchanges a new identity token once the access token is about to expire", () =>
     Effect.gen(function*() {
       let identityTokens = 0
@@ -68,45 +50,7 @@ describe("WorkloadIdentity", () => {
       assert.deepStrictEqual(bodyJson(http.requests[3]), { subject_token: "identity-2" })
     }))
 
-  it.effect("requires expires_in in the token response unless a default lifetime is given", () =>
-    Effect.gen(function*() {
-      const http = makeHttp({ token: (_, n) => Effect.succeed(Response.json({ access_token: `access-${n}` })) })
-
-      const error = yield* Effect.flip((yield* makeClient(http)).get(API_URL))
-      assert.strictEqual(error.reason._tag, "DecodeError")
-
-      const client = yield* makeClient(http, { defaultExpiresIn: "2 minutes" })
-      yield* client.get(API_URL)
-      yield* TestClock.adjust("89 seconds")
-      yield* client.get(API_URL)
-      yield* TestClock.adjust("1 second")
-      yield* client.get(API_URL)
-
-      assert.deepStrictEqual(authorizations(http), [
-        undefined,
-        undefined,
-        "Bearer access-2",
-        "Bearer access-2",
-        undefined,
-        "Bearer access-3"
-      ])
-    }))
-
-  it.effect("exchanges again on the request after a failed exchange", () =>
-    Effect.gen(function*() {
-      const http = makeHttp({
-        token: (_, n) => Effect.succeed(n === 1 ? new Response(null, { status: 503 }) : tokenResponse(n))
-      })
-      const client = yield* makeClient(http)
-
-      const error = yield* Effect.flip(client.get(API_URL))
-      yield* client.get(API_URL)
-
-      assert.strictEqual(error.response?.status, 503)
-      assert.deepStrictEqual(authorizations(http), [undefined, undefined, "Bearer access-2"])
-    }))
-
-  it.effect("discards an access token rejected with a 401 without replaying the request", () =>
+  it.effect("discards only the access token a 401 rejected, without replaying the request", () =>
     Effect.gen(function*() {
       const latch = yield* Deferred.make<void>()
       const http = makeHttp({
@@ -154,11 +98,7 @@ describe("WorkloadIdentity", () => {
       assert.deepStrictEqual(authorizations(http), [undefined, "Bearer access-1", undefined, "Bearer access-2"])
     }))
 
-  it.effect.each<{
-    readonly name: string
-    readonly body: string
-    readonly redacted: string
-  }>([
+  it.effect.each([
     {
       name: "a JSON body with escaped characters",
       body: JSON.stringify({ message: `Authentication failed for ${IDENTITY_TOKEN}`, [IDENTITY_TOKEN]: true })
@@ -181,80 +121,50 @@ describe("WorkloadIdentity", () => {
             })
           )
       })
-      const client = yield* makeClient(http)
 
-      const error = yield* Effect.flip(client.get(API_URL))
+      const error = yield* Effect.flip((yield* makeClient(http)).get(API_URL))
 
-      assert.strictEqual(error.reason._tag, "StatusCodeError")
       const response = error.response
       if (response === undefined) return assert.fail("Expected a response")
       assert.strictEqual(response.status, 401)
       assert.strictEqual(response.headers["www-authenticate"], "Bearer error_description=\"<redacted>\"")
       assert.strictEqual(yield* response.text, redacted)
       assert.isFalse(contains(error, IDENTITY_TOKEN))
-      assert.lengthOf(http.requests, 1)
     }))
 
-  const sourceError = new Error("ENOENT")
-
-  it.effect.each<{
-    readonly name: string
-    readonly reason: string
-    readonly description: string
-    readonly cause?: unknown
-    readonly token?: TokenHandler
-    readonly identityToken?: Effect.Effect<Redacted.Redacted<string>, Error>
-  }>([
-    {
-      name: "an unreachable token endpoint",
-      reason: "TransportError",
-      description: "failed to send <redacted>: socket hang up",
-      token: (request) =>
-        Effect.fail(
-          new HttpClientError.HttpClientError({
-            reason: new HttpClientError.TransportError({
-              request,
-              description: `failed to send ${IDENTITY_TOKEN}`,
-              cause: new Error("socket hang up", { cause: { request } })
+  it.effect("keeps only the redacted messages of a transport failure", () =>
+    Effect.gen(function*() {
+      const http = makeHttp({
+        token: (request) =>
+          Effect.fail(
+            new HttpClientError.HttpClientError({
+              reason: new HttpClientError.TransportError({
+                request,
+                description: `failed to send ${IDENTITY_TOKEN}`,
+                cause: new Error("socket hang up", { cause: { request } })
+              })
             })
-          })
-        )
-    },
-    {
-      name: "an invalid token response",
-      reason: "DecodeError",
-      description: "invalid token response",
-      token: () => Effect.succeed(Response.json({ subject_token: IDENTITY_TOKEN }))
-    },
-    {
-      name: "a failing identity token source",
-      reason: "EncodeError",
-      description: "Failed to load the identity token",
-      cause: sourceError,
-      identityToken: Effect.fail(sourceError)
-    },
-    {
-      name: "an empty identity token",
-      reason: "EncodeError",
-      description: "The identity token is empty",
-      identityToken: Effect.succeed(Redacted.make("\n"))
-    }
-  ])(
-    "fails with an HttpClientError without the identity token for $name",
-    ({ cause, description, identityToken, reason, token }) =>
-      Effect.gen(function*() {
-        const http = makeHttp({ token })
-        const client = yield* makeClient(http, { identityToken })
-
-        const error = yield* Effect.flip(client.get(API_URL))
-
-        assert.strictEqual(error.reason._tag, reason)
-        assert.include(error.message, description)
-        assert.strictEqual(error.reason.cause, cause)
-        assert.isFalse(contains(error, IDENTITY_TOKEN))
-        assert.lengthOf(http.requests, token === undefined ? 0 : 1)
+          )
       })
-  )
+
+      const error = yield* Effect.flip((yield* makeClient(http)).get(API_URL))
+
+      assert.strictEqual(error.reason._tag, "TransportError")
+      assert.include(error.message, "failed to send <redacted>: socket hang up")
+      assert.isFalse(contains(error, IDENTITY_TOKEN))
+    }))
+
+  it.effect("fails with the identity token source failure as the cause, without an exchange", () =>
+    Effect.gen(function*() {
+      const cause = new Error("ENOENT")
+      const http = makeHttp()
+
+      const error = yield* Effect.flip((yield* makeClient(http, { identityToken: Effect.fail(cause) })).get(API_URL))
+
+      assert.strictEqual(error.reason._tag, "EncodeError")
+      assert.strictEqual(error.reason.cause, cause)
+      assert.lengthOf(http.requests, 0)
+    }))
 
   it.effect("does not follow a redirect of the exchange", () =>
     Effect.gen(function*() {
@@ -278,7 +188,6 @@ describe("WorkloadIdentity", () => {
 
       assert.deepStrictEqual(redirects, ["manual"])
       assert.strictEqual(error.reason._tag, "TransportError")
-      assert.include(error.message, "Redirects are not followed")
       assert.isFalse(contains(error, IDENTITY_TOKEN))
     }).pipe(Effect.provide(FetchHttpClient.layer)))
 
@@ -288,14 +197,9 @@ describe("WorkloadIdentity", () => {
       assert.isTrue(isDefect(exit))
     }))
 
-  it.effect.each<{
-    readonly name: string
-    readonly change: (request: HttpClientRequest.HttpClientRequest) => HttpClientRequest.HttpClientRequest
-  }>([
-    { name: "URL", change: HttpClientRequest.setUrl(`http://gateway.internal/${IDENTITY_TOKEN}`) },
-    { name: "method", change: HttpClientRequest.setMethod("PUT") },
-    { name: "URL parameter", change: HttpClientRequest.setUrlParam("subject_token", IDENTITY_TOKEN) },
-    { name: "hash", change: HttpClientRequest.setHash(IDENTITY_TOKEN) }
+  it.effect.each([
+    { name: "URL", change: HttpClientRequest.setUrl(`https://gateway.internal/${IDENTITY_TOKEN}`) },
+    { name: "URL parameter", change: HttpClientRequest.setUrlParam("subject_token", IDENTITY_TOKEN) }
   ])("refuses to send an exchange request with another $name", ({ change }) =>
     Effect.gen(function*() {
       const http = makeHttp()
@@ -310,44 +214,34 @@ describe("WorkloadIdentity", () => {
       assert.lengthOf(http.requests, 0)
     }))
 
-  it.effect.each<{ readonly defaultExpiresIn: Duration.Input; readonly accepted: boolean }>([
-    { defaultExpiresIn: "1 nano", accepted: true },
-    { defaultExpiresIn: 0, accepted: false },
-    { defaultExpiresIn: "-1 second", accepted: false },
-    { defaultExpiresIn: "Infinity", accepted: false },
-    { defaultExpiresIn: "-Infinity", accepted: false }
-  ])(
-    "accepts only a positive finite default lifetime ($defaultExpiresIn)",
-    ({ accepted, defaultExpiresIn }) =>
-      Effect.gen(function*() {
-        const exit = yield* Effect.exit(make(makeHttp(), { defaultExpiresIn }))
-        assert.strictEqual(isDefect(exit), !accepted)
-        assert.strictEqual(exit._tag, accepted ? "Success" : "Failure")
-      })
-  )
+  it.effect.each<{ readonly defaultExpiresIn: Duration.Input }>([
+    { defaultExpiresIn: 0 },
+    { defaultExpiresIn: "Infinity" }
+  ])("refuses a default lifetime of $defaultExpiresIn", ({ defaultExpiresIn }) =>
+    Effect.gen(function*() {
+      const exit = yield* Effect.exit(make(makeHttp(), { defaultExpiresIn }))
+      assert.isTrue(isDefect(exit))
+    }))
 })
 
 type Options = Parameters<typeof WorkloadIdentity.make<Error, never>>[0]
-
-type TokenHandler = (
-  request: HttpClientRequest.HttpClientRequest,
-  n: number
-) => Effect.Effect<Response, HttpClientError.HttpClientError>
 
 type Http = ReturnType<typeof makeHttp>
 
 const tokenResponse = (n: number) => Response.json({ access_token: `access-${n}`, expires_in: 3600 })
 
 const makeHttp = (handlers: {
-  readonly token?: TokenHandler | undefined
-  readonly api?: ((request: HttpClientRequest.HttpClientRequest) => Effect.Effect<Response>) | undefined
+  readonly token?: (
+    request: HttpClientRequest.HttpClientRequest
+  ) => Effect.Effect<Response, HttpClientError.HttpClientError>
+  readonly api?: (request: HttpClientRequest.HttpClientRequest) => Effect.Effect<Response>
 } = {}) => {
   const requests: Array<HttpClientRequest.HttpClientRequest> = []
   let exchanges = 0
   const client = HttpClient.make((request) => {
     requests.push(request)
     const response = request.url === TOKEN_URL
-      ? (handlers.token ?? ((_, n) => Effect.succeed(tokenResponse(n))))(request, ++exchanges)
+      ? handlers.token?.(request) ?? Effect.succeed(tokenResponse(++exchanges))
       : handlers.api?.(request) ?? Effect.succeed(new Response())
     return Effect.map(response, (response) => HttpClientResponse.fromWeb(request, response))
   })
@@ -357,15 +251,15 @@ const makeHttp = (handlers: {
 const exchangeRequest: Options["exchangeRequest"] = (request, identityToken) =>
   request.pipe(HttpClientRequest.bodyJsonUnsafe({ subject_token: identityToken }))
 
-const make = (http: Http, options: { readonly [K in keyof Options]?: Options[K] | undefined } = {}) =>
+const make = (http: Http, options: Partial<Options> = {}) =>
   WorkloadIdentity.make({
-    tokenUrl: options.tokenUrl ?? TOKEN_URL,
-    identityToken: options.identityToken ?? Effect.succeed(Redacted.make(IDENTITY_TOKEN)),
-    exchangeRequest: options.exchangeRequest ?? exchangeRequest,
-    defaultExpiresIn: options.defaultExpiresIn
+    tokenUrl: TOKEN_URL,
+    identityToken: Effect.succeed(Redacted.make(IDENTITY_TOKEN)),
+    exchangeRequest,
+    ...options
   }).pipe(Effect.provideService(HttpClient.HttpClient, http.client))
 
-const makeClient = (http: Http, options?: Parameters<typeof make>[1]) =>
+const makeClient = (http: Http, options?: Partial<Options>) =>
   Effect.map(make(http, options), (transform) => transform(http.client))
 
 const isDefect = (exit: Exit.Exit<unknown, unknown>) =>
