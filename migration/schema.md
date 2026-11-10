@@ -85,7 +85,7 @@ This document maps v3 Schema APIs to their v4 equivalents. Simple renames and ar
 
 ### `annotations` → `annotate`
 
-`Schema.Annotations.Annotations` accepts any string key, so renaming `.annotations(...)` to `.annotate(...)` still type-checks when the object contains v3 annotations that v4 removed, such as `concurrency`, `batching`, or `parseOptions`. v4 keeps those keys as metadata but never reads them. Migrate them as described in [concurrency and batching](#concurrency-and-batching-annotations) instead of renaming them.
+`Schema.Annotations.Annotations` accepts any string key, so renaming `.annotations(...)` to `.annotate(...)` still type-checks when the object contains v3 annotations that v4 removed, such as `concurrency`, `batching`, or `parseOptions`. v4 keeps those keys as metadata but never reads them. Migrate them as described in [concurrency and batching](#concurrency-and-batching-annotations) and [`parseOptions` annotation](#parseoptions-annotation) instead of renaming them.
 
 ### `*FromSelf` renames
 
@@ -1068,6 +1068,51 @@ const program = decodeUsers([1, 2, 3])
 
 Without `{ concurrency: "unbounded" }`, the same program resolves three batches of one request each. With `{ concurrency: 2 }`, the array has at most two of its requests pending at a time, but the limit is per node: requests from other products in the same parse can land in the same batch.
 
+### `parseOptions` annotation
+
+**Migration: manual**
+
+v4 removes the `parseOptions` annotation and has no annotation-based replacement. `.annotate({ parseOptions: { onExcessProperty: "error" } })` still compiles and is ignored at runtime, like the [`concurrency` and `batching` annotations](#concurrency-and-batching-annotations).
+
+> **Warning:** Losing this annotation does not cause an error. A nested struct that refused unknown keys now accepts them and drops them from the decoded value. Search for `parseOptions` in `.annotations(...)` calls, plus any calls to `AST.getParseOptionsAnnotation`.
+
+In v3, the annotation set `onExcessProperty`, `errors`, `exact` or `propertyOrder` for the annotated node and its children, whatever options the decoder was called with.
+
+In v4, pass `onExcessProperty` and `errors` when you create a decoder, encoder, or parser, or on each call. They apply to the whole parse, and there is no per-node override.
+
+The `exact` and `propertyOrder` parse options were removed. Model required and optional keys in the schema itself. Output key order is unspecified; handle any required presentation or serialization order outside the parser.
+
+v3
+
+```ts
+import { Schema } from "effect"
+
+const Inner = Schema.Struct({ x: Schema.String }).annotations({
+  parseOptions: { onExcessProperty: "error" }
+})
+const Outer = Schema.Struct({ inner: Inner })
+
+// Left: the unknown key `y` is refused, although the decoder ignores excess properties by default
+Schema.decodeUnknownEither(Outer)({ inner: { x: "a", y: 1 } })
+```
+
+v4
+
+```ts
+import { Schema } from "effect"
+
+const Inner = Schema.Struct({ x: Schema.String })
+const Outer = Schema.Struct({ inner: Inner })
+
+// The option now applies to every struct in the parse, `Outer` included
+const decodeOuter = Schema.decodeUnknownExit(Outer, { onExcessProperty: "error" })
+
+// Failure: the unknown key `y` is refused
+decodeOuter({ inner: { x: "a", y: 1 } })
+```
+
+If only some structs must refuse unknown keys, decode their raw inputs separately with `{ onExcessProperty: "error" }`, before a surrounding parse can strip the extra keys.
+
 ### rename
 
 **Migration: manual**
@@ -1172,6 +1217,28 @@ function split(separator: string) {
   )
 }
 ```
+
+### JSON Schema output
+
+**Migration: manual**
+
+`JSONSchema.make` becomes `Schema.toJsonSchemaDocument` (see [`JSONSchema.make`](./v3-to-v4.md#jsonschemamake)). Some schemas also produce a looser JSON Schema than in v3. The v4 document describes the encoded side of the schema's JSON codec (`Schema.toCodecJson`), so it accepts the values that codec writes. In v3, the document described the schema's own encoded side.
+
+| v3 schema          | v3 `JSONSchema.make`                 | v4 `Schema.toJsonSchemaDocument`                                          |
+| ------------------ | ------------------------------------ | ------------------------------------------------------------------------- |
+| `Number`           | `{ "type": "number" }`               | `number`, or one of the strings `"Infinity"`, `"-Infinity"`, `"NaN"`      |
+| `optional(String)` | `{ "type": "string" }`, not required | `string` or `null`, not required                                          |
+| `Struct({ ... })`  | `"additionalProperties": false`      | `"additionalProperties": true`, unless `onExcessProperty: "error"` is set |
+
+A document that passes the v4 JSON Schema can therefore fail `Schema.decodeUnknown*(schema)`: that decoder refuses `"NaN"` for `Schema.Number` and `null` for `Schema.optional(Schema.String)`. Decoding through `Schema.toCodecJson(schema)` accepts them.
+
+To keep the v3 output:
+
+- use `Schema.Finite` for a number that is never `NaN` or infinite: it produces `{ "type": "number" }`;
+- use `Schema.optionalKey` for a key that is either absent or present with a value: it does not add `null`;
+- pass `{ onExcessProperty: "error" }` to the generator, and to the decoder, to close objects.
+
+If you publish JSON Schemas or compare them with earlier output, compare which documents they accept and refuse rather than their text. Built-in schemas such as `NonEmptyString` no longer carry their v3 `description`, `title`, and `identifier` annotations, so they can appear inline without that metadata. Schemas annotated with an `identifier` still produce named definitions and `$ref` references. The returned document stores those definitions separately in `definitions`; the root `schema` refers to them through `#/$defs/...`.
 
 ## Migrating from the fast-check bridge to native Arbitrary
 
