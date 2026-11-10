@@ -222,6 +222,20 @@ describe("Statement", () => {
         Effect.provideService(References.TracerEnabled, false)
       )
     }).pipe(Effect.provide(Reactivity.layer)))
+
+  it.effect("passes the client that built a statement to the current transformer", () =>
+    Effect.gen(function*() {
+      const sql = yield* makeClient(Effect.void)
+      const copy = sql.withoutTransforms()
+      const clients: Array<string> = []
+      yield* Effect.all([sql`select 1`, sql.unsafe("select 1"), copy`select 1`, copy.unsafe("select 1")]).pipe(
+        Effect.provideService(Statement.CurrentTransformer, (statement, client) => {
+          clients.push(client === sql ? "sql" : client === copy ? "copy" : "other")
+          return Effect.succeed(statement)
+        })
+      )
+      assert.deepStrictEqual(clients, ["sql", "sql", "copy", "copy"])
+    }).pipe(Effect.provide(Reactivity.layer)))
 })
 
 const makeClient = (observe: Effect.Effect<void>, borrow = false, acquire = observe) => {
