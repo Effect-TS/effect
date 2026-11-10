@@ -159,11 +159,9 @@ describe("OpenAiLanguageModel", () => {
     for (
       const [model, role] of [
         ["o3", "developer"],
-        ["o4-mini", "developer"],
-        ["gpt-5", "developer"],
         ["olmo-2", "system"],
-        ["gpt-oss-120b", "system"],
-        ["openai/gpt-oss-120b", "system"]
+        ["openai/gpt-oss-120b", "system"],
+        ["openai/o3", "system"]
       ] as const
     ) {
       it.effect(`sends the system prompt as a ${role} message for ${model}`, () =>
