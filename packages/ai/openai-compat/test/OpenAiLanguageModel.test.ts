@@ -398,6 +398,55 @@ describe("OpenAiLanguageModel", () => {
         ])
       }))
 
+    it.effect("sends PDFs as chat completion file parts", () =>
+      Effect.gen(function*() {
+        const bytes = new Uint8Array([37, 80, 68, 70])
+        const base64 = "JVBERg=="
+        let capturedRequest: HttpClientRequest.HttpClientRequest | undefined
+
+        const layer = OpenAiClient.layer({ apiKey: Redacted.make("sk-test-key") }).pipe(
+          Layer.provide(Layer.succeed(
+            HttpClient.HttpClient,
+            makeHttpClient((request) => {
+              capturedRequest = request
+              return Effect.succeed(jsonResponse(request, makeChatCompletion()))
+            })
+          ))
+        )
+
+        yield* LanguageModel.generateText({
+          prompt: Prompt.make([{
+            role: "user",
+            content: [
+              Prompt.textPart({ text: "Summarise" }),
+              Prompt.filePart({ mediaType: "application/pdf", fileName: "bytes.pdf", data: bytes }),
+              Prompt.filePart({ mediaType: "application/pdf", data: base64 }),
+              Prompt.filePart({ mediaType: "application/pdf", data: `data:application/pdf;base64,${base64}` }),
+              Prompt.filePart({ mediaType: "application/pdf", data: new URL("https://example.com/doc.pdf") }),
+              Prompt.filePart({ mediaType: "application/pdf", data: "file-abc123" })
+            ]
+          }])
+        }).pipe(
+          Effect.provide(OpenAiLanguageModel.model("gpt-4o-mini", { fileIdPrefixes: ["file-"] })),
+          Effect.provide(layer)
+        )
+
+        assert.isDefined(capturedRequest)
+        if (capturedRequest === undefined) {
+          return
+        }
+
+        const requestBody = yield* getRequestBody(capturedRequest)
+        assert.deepStrictEqual(requestBody.messages[0]?.content, [
+          { type: "text", text: "Summarise" },
+          { type: "file", file: { filename: "bytes.pdf", file_data: `data:application/pdf;base64,${base64}` } },
+          { type: "file", file: { filename: "part-2.pdf", file_data: `data:application/pdf;base64,${base64}` } },
+          { type: "file", file: { filename: "part-3.pdf", file_data: `data:application/pdf;base64,${base64}` } },
+          { type: "file", file: { file_data: "https://example.com/doc.pdf" } },
+          { type: "file", file: { file_id: "file-abc123" } }
+        ])
+      }))
+
     it.effect("normalizes empty assistant message content to an empty string", () =>
       Effect.gen(function*() {
         let capturedRequest: HttpClientRequest.HttpClientRequest | undefined

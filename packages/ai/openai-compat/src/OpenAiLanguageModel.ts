@@ -825,17 +825,21 @@ const prepareMessages = Effect.fnUntraced(
                 } else if (part.mediaType === "application/pdf") {
                   if (typeof part.data === "string" && isFileId(part.data, config)) {
                     content.push({ type: "input_file", file_id: part.data })
-                  }
-
-                  if (part.data instanceof URL) {
+                  } else if (
+                    part.data instanceof URL || (typeof part.data === "string" && /^https?:\/\//i.test(part.data))
+                  ) {
                     content.push({ type: "input_file", file_url: part.data.toString() })
-                  }
-
-                  if (part.data instanceof Uint8Array) {
-                    const base64 = Base64.encode(part.data)
-                    const fileName = part.fileName ?? `part-${index}.pdf`
-                    const fileData = `data:application/pdf;base64,${base64}`
-                    content.push({ type: "input_file", filename: fileName, file_data: fileData })
+                  } else {
+                    const fileData = part.data instanceof Uint8Array
+                      ? `data:application/pdf;base64,${Base64.encode(part.data)}`
+                      : /^data:/i.test(part.data)
+                      ? part.data
+                      : `data:application/pdf;base64,${part.data}`
+                    content.push({
+                      type: "input_file",
+                      filename: part.fileName ?? `part-${index}.pdf`,
+                      file_data: fileData
+                    })
                   }
                 } else {
                   return yield* AiError.make({
@@ -1707,13 +1711,15 @@ const toChatMessageContent = (
         break
       }
       case "input_file": {
-        if (part.file_url !== undefined) {
-          parts.push({ type: "text", text: part.file_url })
-        } else if (part.file_data !== undefined) {
-          parts.push({ type: "text", text: part.file_data })
-        } else if (part.file_id !== undefined) {
-          parts.push({ type: "text", text: `openai://file/${part.file_id}` })
-        }
+        const fileData = part.file_url ?? part.file_data
+        parts.push({
+          type: "file",
+          file: {
+            ...(part.filename !== undefined ? { filename: part.filename } : undefined),
+            ...(fileData !== undefined ? { file_data: fileData } : undefined),
+            ...(Predicate.isNotNullish(part.file_id) ? { file_id: part.file_id } : undefined)
+          }
+        })
         break
       }
     }

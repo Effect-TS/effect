@@ -966,6 +966,14 @@ export type ChatCompletionContentPart =
       readonly detail?: "low" | "high" | "auto" | undefined
     }
   }
+  | {
+    readonly type: "file"
+    readonly file: {
+      readonly filename?: string | undefined
+      readonly file_data?: string | undefined
+      readonly file_id?: string | undefined
+    }
+  }
 /**
  * Tool call data attached to an assistant chat completion message.
  *
