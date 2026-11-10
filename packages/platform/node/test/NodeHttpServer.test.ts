@@ -1434,9 +1434,12 @@ describe("HttpServer", () => {
     { name: "default options", options: {} },
     { name: "disablePreemptiveShutdown", options: { disablePreemptiveShutdown: true } },
     { name: "clientTracking disabled", options: { websocket: { clientTracking: false } } }
-  ])(
-    "closes connected WebSocket clients without waiting for the grace period with $name",
-    ({ options }) =>
+  ].flatMap(({ name, options }) => [
+    { name, options, peer: "cooperative", cooperative: true },
+    { name, options, peer: "unresponsive", cooperative: false }
+  ]))(
+    "shuts down $peer WebSocket peers with $name",
+    ({ cooperative, options }) =>
       Effect.gen(function*() {
         const server = Http.createServer()
         const scope = yield* Scope.make()
@@ -1455,35 +1458,58 @@ describe("HttpServer", () => {
           Layer.provide(NodeHttpServer.layer(() => server, {
             host: "127.0.0.1",
             port: 0,
-            gracefulShutdownTimeout: "10 seconds",
+            gracefulShutdownTimeout: cooperative || options.disablePreemptiveShutdown ? "10 seconds" : "250 millis",
             ...options
           })),
           Layer.buildWithScope(scope)
         )
-        // A peer that keeps reading but never answers the closing handshake
         const client = yield* Effect.acquireRelease(
           Effect.sync(() => Net.connect(tcpPort(server), "127.0.0.1")),
           (client) => Effect.sync(() => client.destroy())
         )
+        const upgraded = Latch.makeUnsafe()
         const clientClosed = Latch.makeUnsafe()
+        let head: string | undefined
+        let stream = Buffer.Buffer.alloc(0)
+        let code: number | undefined
+        let closedAt = 0
         client.on("error", constVoid)
-        client.on("close", () => clientClosed.openUnsafe())
-        yield* Effect.callback<string>((resume) => {
-          let received = ""
-          client.write(upgradeRequest("/ws"))
-          client.on("data", (chunk) => {
-            received += chunk.toString("latin1")
-            if (received.includes("\r\n\r\n")) resume(Effect.succeed(received))
-          })
-        }).pipe(
-          Effect.timeout("2 seconds"),
-          Effect.map((head) => assert.match(head, /^HTTP\/1\.1 101 /))
-        )
+        client.on("close", () => {
+          closedAt = performance.now()
+          clientClosed.openUnsafe()
+        })
+        client.on("data", (chunk) => {
+          stream = Buffer.Buffer.concat([stream, Buffer.Buffer.from(chunk)])
+          if (head === undefined) {
+            const end = stream.indexOf("\r\n\r\n")
+            if (end === -1) return
+            head = stream.subarray(0, end).toString("latin1")
+            stream = stream.subarray(end + 4)
+            upgraded.openUnsafe()
+          }
+          const parsed = parseWebSocketFrames(stream)
+          stream = Buffer.Buffer.from(parsed.trailing)
+          for (const frame of parsed.frames) {
+            if (frame.opcode !== 8) continue
+            code = frame.payload.length >= 2 ? frame.payload.readUInt16BE(0) : 1005
+            if (cooperative) client.write(closeFrame(code))
+          }
+        })
+        client.write(upgradeRequest("/ws"))
+        yield* upgraded.await.pipe(Effect.timeout("2 seconds"))
+        assert.match(head!, /^HTTP\/1\.1 101 /)
 
-        // Finalizers are uninterruptible, so the timeout applies to the join
+        // Finalizers are uninterruptible, so bound the join, not Scope.close.
+        const started = performance.now()
         const closed = yield* Effect.forkDetach(Scope.close(scope, Exit.void))
-        yield* Fiber.join(closed).pipe(Effect.timeout("2 seconds"))
-        yield* clientClosed.await.pipe(Effect.timeout("1 second"))
+        yield* Fiber.join(closed).pipe(
+          Effect.andThen(clientClosed.await),
+          Effect.timeout("2 seconds")
+        )
+        if (!cooperative && !options.disablePreemptiveShutdown) {
+          assert.isAtLeast(closedAt - started, 200, "allow the peer the configured grace period")
+        }
+        assert.strictEqual(code, 1001, "send Going Away before closing the transport")
       })
   )
 
