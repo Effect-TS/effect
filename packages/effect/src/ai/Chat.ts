@@ -429,7 +429,7 @@ export interface Chat {
   ) => Effect.Effect<
     LanguageModel.GenerateObjectResponse<
       LanguageModel.ExtractTools<Options>,
-      ObjectSchema["Type"],
+      LanguageModel.ExtractObjectValue<Options, ObjectSchema["Type"]>,
       LanguageModel.ExtractToolParametersMode<Options>
     >,
     LanguageModel.ExtractError<Options>,

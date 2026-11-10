@@ -1535,6 +1535,64 @@ describe("LanguageModel", () => {
       )
     }
 
+    it.effect("allowEmpty accepts empty responses regardless of finish reason", () =>
+      Effect.gen(function*() {
+        for (const reason of ["stop", "length", "pause"] as const) {
+          const response = yield* LanguageModel.generateObject({
+            prompt: [],
+            schema: Schema.Struct({ count: Schema.Number }),
+            allowEmpty: true
+          }).pipe(TestUtils.withLanguageModel({ generateText: [{ ...finishPart, reason }] }))
+          deepStrictEqual(response.value, Option.none())
+        }
+      }))
+
+    it.effect("allowEmpty wraps valid output and still rejects invalid nonempty output with tool calls", () =>
+      Effect.gen(function*() {
+        for (const text of ["{\"count\":1}", "{\"count\":\"oops\"}", "not JSON"]) {
+          const result = yield* LanguageModel.generateObject({
+            prompt: [],
+            schema: Schema.Struct({ count: Schema.Number }),
+            toolkit: TransformToolkit,
+            allowEmpty: true
+          }).pipe(
+            TestUtils.withLanguageModel({
+              generateText: [
+                { type: "text", text },
+                { type: "tool-call", id: "call-1", name: "TransformTool", params: "2" },
+                { ...finishPart, reason: "tool-calls" }
+              ]
+            }),
+            Effect.provide(TransformToolkitLayer),
+            Effect.result
+          )
+          if (text === "{\"count\":1}") {
+            assertTrue(result._tag === "Success")
+            if (result._tag === "Success") deepStrictEqual(result.success.value, Option.some({ count: 1 }))
+          } else {
+            assertTrue(result._tag === "Failure")
+            if (result._tag === "Failure") strictEqual(result.failure.reason._tag, "StructuredOutputError")
+          }
+        }
+      }))
+
+    it.effect("rejects empty output by default and with allowEmpty false", () =>
+      Effect.gen(function*() {
+        for (const options of [{}, { allowEmpty: false }] as const) {
+          for (const text of ["", " \n\t"]) {
+            const error = yield* LanguageModel.generateObject({
+              prompt: [],
+              schema: Schema.Struct({ count: Schema.Number }),
+              ...options
+            }).pipe(
+              TestUtils.withLanguageModel({ generateText: [{ type: "text", text }] }),
+              Effect.flip
+            )
+            strictEqual(error.reason._tag, "StructuredOutputError")
+          }
+        }
+      }))
+
     it.effect("records json output type on the span", () =>
       LanguageModel.generateObject({
         prompt: "hi",

@@ -2196,9 +2196,10 @@ describe("AnthropicLanguageModel", () => {
         )
 
         assert.deepStrictEqual(response.value, { title: "Rain" })
+        assert.strictEqual(response.finishReason, "stop")
       }))
 
-    it.effect("decodes native JSON alongside an ordinary tool call", () =>
+    it.effect("decodes native JSON alongside an ordinary tool call and preserves its finish reason", () =>
       Effect.gen(function*() {
         const layer = AnthropicClient.layer({ apiKey: Redacted.make("sk-test-key") }).pipe(
           Layer.provide(Layer.succeed(
@@ -2229,6 +2230,7 @@ describe("AnthropicLanguageModel", () => {
 
         assert.deepStrictEqual(response.value, { title: "Rain" })
         assert.strictEqual(response.toolCalls[0]?.name, "Weather")
+        assert.strictEqual(response.finishReason, "tool-calls")
       }))
   })
 
