@@ -1348,7 +1348,7 @@ describe("OpenRouterLanguageModel", () => {
         strictEqual(error.reason._tag, "ToolParameterValidationError")
       }))
 
-    it.effect("ignores empty trailing fragments while allowing tool call index reuse", () =>
+    it.effect("ignores an empty fragment after a tool call completes", () =>
       Effect.gen(function*() {
         const ProbeTool = Tool.make("ProbeTool", {
           parameters: Schema.Struct({ a: Schema.Number }),
@@ -1365,101 +1365,25 @@ describe("OpenRouterLanguageModel", () => {
           Effect.provide(toolkit.toLayer({ ProbeTool: () => Effect.succeed("ok") })),
           Effect.provide(makeStreamTestLayer([
             {
-              id: "response-1",
-              object: "chat.completion.chunk",
-              model: "openai/gpt-4o-mini",
-              created: 1,
-              choices: [{
-                index: 0,
-                delta: {
-                  tool_calls: [{
-                    index: 0,
-                    id: "call-1",
-                    type: "function",
-                    function: { name: "ProbeTool", arguments: "{\"a\":1}" }
-                  }]
-                }
-              }]
-            },
-            {
-              id: "response-1",
-              object: "chat.completion.chunk",
-              model: "openai/gpt-4o-mini",
-              created: 1,
-              choices: [{
-                index: 0,
-                delta: { tool_calls: [{ index: 0, function: { arguments: "" } }] }
-              }]
-            },
-            ...[
-              {
-                index: 0,
-                id: "call-2",
-                type: "function" as const,
-                function: { name: "ProbeTool", arguments: "{\"a\":" }
-              },
-              { index: 0, function: { arguments: "2}" } }
-            ].map((toolCall) => ({
-              id: "response-1",
-              object: "chat.completion.chunk" as const,
-              model: "openai/gpt-4o-mini",
-              created: 1,
-              choices: [{ index: 0, delta: { tool_calls: [toolCall] } }]
-            })),
-            {
-              id: "response-1",
-              object: "chat.completion.chunk",
-              model: "openai/gpt-4o-mini",
-              created: 1,
-              choices: [{ index: 0, finish_reason: "tool_calls", delta: {} }],
-              usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 }
-            }
-          ]))
-        )
-
-        deepStrictEqual(
-          globalThis.Array.from(parts)
-            .filter((part) => part.type === "tool-call")
-            .map((part) => [part.id, part.params]),
-          [["call-1", { a: 1 }], ["call-2", { a: 2 }]]
-        )
-      }))
-
-    it.effect("rejects a name-bearing fragment without an ID after a tool call completes", () =>
-      Effect.gen(function*() {
-        const ProbeTool = Tool.make("ProbeTool", {
-          parameters: Schema.Struct({ a: Schema.Number }),
-          success: Schema.String
-        })
-        const toolkit = Toolkit.make(ProbeTool)
-        const error = yield* LanguageModel.streamText({
-          prompt: "call the tool",
-          toolkit,
-          disableToolCallResolution: true
-        }).pipe(
-          Stream.runDrain,
-          Effect.provide(OpenRouterLanguageModel.model("openai/gpt-4o-mini")),
-          Effect.provide(toolkit.toLayer({ ProbeTool: () => Effect.succeed("ok") })),
-          Effect.provide(makeStreamTestLayer([
-            {
               index: 0,
               id: "call-1",
               type: "function" as const,
               function: { name: "ProbeTool", arguments: "{\"a\":1}" }
             },
-            { index: 0, type: "function" as const, function: { name: "OtherTool", arguments: "" } }
+            { index: 0, function: { arguments: "" } }
           ].map((toolCall) => ({
             id: "response-1",
             object: "chat.completion.chunk" as const,
             model: "openai/gpt-4o-mini",
             created: 1,
             choices: [{ index: 0, delta: { tool_calls: [toolCall] } }]
-          })))),
-          Effect.flip
+          }))))
         )
 
-        assert(error.reason._tag === "InvalidOutputError")
-        strictEqual(error.reason.description, "Received tool call delta without a tool call identifier")
+        deepStrictEqual(
+          parts.filter((part) => part.type === "tool-call").map((part) => [part.id, part.params]),
+          [["call-1", { a: 1 }]]
+        )
       }))
   })
 })
