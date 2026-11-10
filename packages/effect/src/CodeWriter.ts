@@ -8,7 +8,8 @@
  * can be module-level constants. {@link print} gives them local names, and
  * imports that no printed code uses are left out. Names of your own
  * declarations come from {@link declare}, and nested {@link scope}s hold local
- * names such as function parameters.
+ * names such as function parameters. {@link literal}, {@link propertyKey} and
+ * {@link docComment} format values, object keys and JSDoc as source text.
  *
  * @stability unstable
  * @since 4.1.4
@@ -92,7 +93,7 @@ export interface CodeFragment {
 /**
  * Value that can be interpolated into a {@link code} template: text, numbers,
  * symbols, fragments and arrays of them. `undefined`, `null` and `false` print
- * nothing.
+ * nothing; use {@link literal} to print them as values.
  *
  * @stability unstable
  * @category models
@@ -188,11 +189,15 @@ class WriterImpl implements CodeWriter {
   readonly [TypeId] = TypeId
   readonly parent = undefined
   readonly writer: WriterImpl = this
+  readonly reserved: ReadonlySet<string>
   readonly taken = new Set<string>()
   /** Names taken by nested scopes. */
   readonly nested = new Set<string>()
   readonly sideEffects = new Set<string>()
   readonly body: Array<string | FragmentImpl> = []
+  constructor(reserved: Iterable<string>) {
+    this.reserved = new Set(reserved)
+  }
 }
 
 class ScopeImpl implements CodeScope {
@@ -268,11 +273,8 @@ class FragmentImpl implements CodeFragment {
  * @category constructors
  * @since 4.1.4
  */
-export const make = (options?: { readonly reserved?: Iterable<string> | undefined }): CodeWriter => {
-  const writer = new WriterImpl()
-  for (const name of options?.reserved ?? []) writer.taken.add(name)
-  return writer
-}
+export const make = (options?: { readonly reserved?: Iterable<string> | undefined }): CodeWriter =>
+  new WriterImpl(options?.reserved ?? [])
 
 /**
  * Creates the symbol for `import * as name from "from"`.
@@ -394,13 +396,16 @@ export const importSideEffect = (self: CodeWriter, from: string): void => {
  */
 export const scope = (parent: CodeWriter | CodeScope): CodeScope => new ScopeImpl(parent as Owner)
 
-/** Whether `name` is taken by the owner, an enclosing scope or a nested scope. */
-const isTakenFor = (owner: Owner, name: string): boolean => {
-  if (owner.nested.has(name)) return true
+/** Why `name` cannot be declared in `owner` as it is, or `undefined` when it can. */
+const unavailable = (owner: Owner, name: string): string | undefined => {
+  if (!isIdentifierName(name)) return "it is not an identifier"
+  if (reservedWords.has(name)) return "it is a reserved word"
+  if (owner.writer.reserved.has(name)) return "it is reserved by CodeWriter.make"
+  if (owner.nested.has(name)) return "a nested scope declares it"
   for (let s: Owner | undefined = owner; s !== undefined; s = s.parent) {
-    if (s.taken.has(name)) return true
+    if (s.taken.has(name)) return s === owner ? "this scope declares it" : "an enclosing scope declares it"
   }
-  return false
+  return undefined
 }
 
 /**
@@ -413,6 +418,12 @@ const isTakenFor = (owner: Owner, name: string): boolean => {
  * cannot start an identifier gets a `_` prefix. A name that is a reserved word
  * or already taken gets the first free numeric suffix: `"user-id"` becomes
  * `user_id`, and `"default"` becomes `default2`.
+ *
+ * With `exact: true` the declaration gets exactly `name`, which suits names
+ * that are part of the generated module's API. If `name` is not an identifier,
+ * is a reserved word, is reserved by {@link make}, or is declared in the scope
+ * chain (including nested scopes), `declare` throws an error that says which,
+ * and takes no name.
  *
  * **Gotchas**
  *
@@ -433,13 +444,38 @@ const isTakenFor = (owner: Owner, name: string): boolean => {
  * CodeWriter.print(writer) // => 'import * as Schema2 from "effect/Schema"\n\nexport const Schema = Schema2.String\n'
  * ```
  *
+ * **Example** (Exact names)
+ *
+ * ```ts import.meta.vitest
+ * import { CodeWriter } from "effect"
+ *
+ * const writer = CodeWriter.make({ reserved: ["Client"] })
+ * CodeWriter.declare(writer, "User", { exact: true }).name // => "User"
+ *
+ * try {
+ *   CodeWriter.declare(writer, "Client", { exact: true })
+ * } catch (error) {
+ *   String(error) // => 'Error: Cannot declare "Client": it is reserved by CodeWriter.make'
+ * }
+ * ```
+ *
  * @stability unstable
  * @category names
  * @since 4.1.4
  */
-export const declare = (self: CodeWriter | CodeScope, name: string): CodeDeclaration => {
+export const declare = (
+  self: CodeWriter | CodeScope,
+  name: string,
+  options?: { readonly exact?: boolean | undefined }
+): CodeDeclaration => {
   const owner = self as Owner
-  const taken = freeName(sanitize(name), (n) => isTakenFor(owner, n))
+  let taken = name
+  if (options?.exact === true) {
+    const reason = unavailable(owner, name)
+    if (reason !== undefined) throw new Error(`Cannot declare ${JSON.stringify(name)}: ${reason}`)
+  } else {
+    taken = freeName(sanitize(name), (n) => unavailable(owner, n) !== undefined)
+  }
   owner.taken.add(taken)
   for (let s: Owner | undefined = owner.parent; s !== undefined; s = s.parent) s.nested.add(taken)
   return new DeclarationImpl(taken, owner.writer)
@@ -509,6 +545,107 @@ export const indent = (hole: CodeHole): CodeFragment => {
  */
 export const add = (self: CodeWriter, source: string | CodeFragment): void => {
   ;(self as WriterImpl).body.push(source as string | FragmentImpl)
+}
+
+/**
+ * Formats a value as a TypeScript literal.
+ *
+ * **Details**
+ *
+ * Strings are quoted and escaped, bigints get an `n` suffix, and `-0` keeps
+ * its sign. `NaN` and the infinities are printed as `globalThis.NaN` and
+ * `globalThis.Infinity`, which no declaration can shadow.
+ *
+ * **Example** (Formatting literals)
+ *
+ * ```ts import.meta.vitest
+ * import { CodeWriter } from "effect"
+ *
+ * CodeWriter.literal('say "hi"') // => '"say \\"hi\\""'
+ * CodeWriter.literal(123n) // => "123n"
+ * CodeWriter.literal(false) // => "false"
+ * CodeWriter.literal(-Infinity) // => "-globalThis.Infinity"
+ * ```
+ *
+ * @stability unstable
+ * @category formatting
+ * @since 4.1.4
+ */
+export const literal = (value: string | number | bigint | boolean | null | undefined): string => {
+  switch (typeof value) {
+    case "string":
+      return JSON.stringify(value)
+    case "bigint":
+      return `${value}n`
+    case "number":
+      if (Number.isNaN(value)) return "globalThis.NaN"
+      if (!Number.isFinite(value)) return value > 0 ? "globalThis.Infinity" : "-globalThis.Infinity"
+      return Object.is(value, -0) ? "-0" : String(value)
+    default:
+      return String(value)
+  }
+}
+
+/**
+ * Formats a string as a key of an object literal or a type member.
+ *
+ * **Details**
+ *
+ * An identifier name, including a reserved word, is printed as it is, and any
+ * other key is quoted. `__proto__` becomes `["__proto__"]`, so that an object
+ * literal defines a property instead of setting its prototype.
+ *
+ * **Example** (Formatting property keys)
+ *
+ * ```ts import.meta.vitest
+ * import { CodeWriter } from "effect"
+ *
+ * CodeWriter.propertyKey("default") // => "default"
+ * CodeWriter.propertyKey("user-id") // => '"user-id"'
+ * CodeWriter.propertyKey("__proto__") // => '["__proto__"]'
+ * ```
+ *
+ * @stability unstable
+ * @category formatting
+ * @since 4.1.4
+ */
+export const propertyKey = (key: string): string =>
+  key === "__proto__" ? `["__proto__"]` : isIdentifierName(key) ? key : JSON.stringify(key)
+
+/**
+ * Formats text as a JSDoc comment, followed by a newline.
+ *
+ * **Details**
+ *
+ * The text, or each string of an array, is split into lines. Trailing
+ * whitespace and leading and trailing blank lines are removed, and `*\/` is
+ * escaped. One line prints as `/** text *\/`. Text without any non-blank line
+ * prints `""`. The comment can be put inside {@link indent}.
+ *
+ * **Example** (Documenting a declaration)
+ *
+ * ```ts import.meta.vitest
+ * import { CodeWriter } from "effect"
+ *
+ * CodeWriter.docComment("The user id.") // => "/** The user id. *\/\n"
+ * CodeWriter.docComment(["A user.", "", "@since 1.0.0"]) // => "/**\n * A user.\n *\n * @since 1.0.0\n *\/\n"
+ * ```
+ *
+ * @stability unstable
+ * @category formatting
+ * @since 4.1.4
+ */
+export const docComment = (text: string | ReadonlyArray<string>): string => {
+  const lines = (typeof text === "string" ? [text] : text)
+    .flatMap((t) => t.split(/\r\n?|\n/))
+    .map((line) => line.trimEnd().replaceAll("*/", "*\\/"))
+  const start = lines.findIndex((line) => line !== "")
+  if (start === -1) return ""
+  let end = lines.length
+  while (lines[end - 1] === "") end--
+  const body = lines.slice(start, end)
+  if (body.length === 1) return `/** ${body[0]} */\n`
+  return `/**\n${body.map((line) => (line === "" ? " *" : ` * ${line}`)).join("\n")}\n */\n`
 }
 
 interface Line {
@@ -594,7 +731,7 @@ const printImports = (imports: Iterable<UsedImport>): ReadonlyArray<string> => {
  */
 export const print = (self: CodeWriter): string => {
   const writer = self as WriterImpl
-  const taken = new Set([...writer.taken, ...writer.nested])
+  const taken = new Set([...writer.reserved, ...writer.taken, ...writer.nested])
   const imports = new Map<string, UsedImport>()
   const render = (part: Part): string => {
     if (typeof part === "string") return part

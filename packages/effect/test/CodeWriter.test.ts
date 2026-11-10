@@ -105,6 +105,73 @@ describe("CodeWriter", () => {
     )
   })
 
+  it("declares exact names or throws without taking a name", () => {
+    const writer = CodeWriter.make({ reserved: ["Client"] })
+    const scope = CodeWriter.scope(writer)
+    CodeWriter.declare(writer, "make", { exact: true })
+    CodeWriter.declare(scope, "id", { exact: true })
+    const failures = [
+      [writer, "user-id", "it is not an identifier"],
+      [writer, "default", "it is a reserved word"],
+      [writer, "Client", "it is reserved by CodeWriter.make"],
+      [writer, "make", "this scope declares it"],
+      [writer, "id", "a nested scope declares it"],
+      [scope, "make", "an enclosing scope declares it"]
+    ] as const
+    for (const [owner, name, reason] of failures) {
+      throws(() => CodeWriter.declare(owner, name, { exact: true }), new Error(`Cannot declare "${name}": ${reason}`))
+    }
+    throws(() => CodeWriter.declare(CodeWriter.scope(scope), "x-y", { exact: true }))
+    deepStrictEqual(
+      [CodeWriter.declare(writer, "user_id", { exact: true }), CodeWriter.declare(writer, "make")].map((d) => d.name),
+      ["user_id", "make2"]
+    )
+    const Client = CodeWriter.importNamespace("./Client.ts", "Client")
+    const xy = CodeWriter.importNamed("./x.ts", "x_y")
+    CodeWriter.add(writer, CodeWriter.code`${Client} ${xy}`)
+    strictEqual(
+      CodeWriter.print(writer),
+      `import * as Client2 from "./Client.ts"\nimport { x_y } from "./x.ts"\n\nClient2 x_y\n`
+    )
+  })
+
+  it("formats literals, property keys and doc comments", () => {
+    deepStrictEqual(
+      ["a\"b", 1.5, -0, NaN, Infinity, -Infinity, -12n, true, false, null, undefined].map(CodeWriter.literal),
+      [
+        `"a\\"b"`,
+        "1.5",
+        "-0",
+        "globalThis.NaN",
+        "globalThis.Infinity",
+        "-globalThis.Infinity",
+        "-12n",
+        "true",
+        "false",
+        "null",
+        "undefined"
+      ]
+    )
+    deepStrictEqual(
+      ["id", "default", "$é_1", "user-id", "1a", "", "__proto__"].map(CodeWriter.propertyKey),
+      ["id", "default", "$é_1", `"user-id"`, `"1a"`, `""`, `["__proto__"]`]
+    )
+    deepStrictEqual(
+      [" \none */ ", [], "\n \n"].map(CodeWriter.docComment),
+      ["/** one *\\/ */\n", "", ""]
+    )
+    const writer = CodeWriter.make()
+    const doc = CodeWriter.docComment(["\nA user.  ", "", "Has an id.\r\n"])
+    CodeWriter.add(
+      writer,
+      CodeWriter.code`interface User {${CodeWriter.indent(CodeWriter.code`\n${doc}id: string`)}\n}`
+    )
+    strictEqual(
+      CodeWriter.print(writer),
+      `interface User {\n  /**\n   * A user.\n   *\n   * Has an id.\n   */\n  id: string\n}\n`
+    )
+  })
+
   it("joins and indents fragments", () => {
     const writer = CodeWriter.make()
     const fields = CodeWriter.join(["a: 1", CodeWriter.code`b: {${CodeWriter.indent("\nc: 2")}\n}`], ",\n")
