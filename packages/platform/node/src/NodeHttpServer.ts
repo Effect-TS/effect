@@ -108,16 +108,18 @@ export interface Options extends Net.ListenOptions {
   /**
    * Skips the `gracefulShutdownTimeout` wait, so shutdown interrupts request
    * fibers as soon as the server stops serving. Uninterruptible handlers still
-   * run to completion.
+   * run to completion. Upgraded connections are force-closed after initiating
+   * their close; WebSocket close frames and queued writes may not reach peers.
    *
    * @default false
    */
   readonly disablePreemptiveShutdown?: boolean | undefined
   /**
    * Bounds how long shutdown waits for the server to close its connections
-   * before it interrupts the remaining request fibers. Upgraded connections
-   * such as WebSockets are closed as soon as shutdown starts, since they never
-   * drain on their own. Handlers run uninterruptibly unless wrapped in
+   * before it interrupts the remaining request fibers. Shutdown initiates a
+   * WebSocket close with code 1001 (Going Away) and ends other upgraded
+   * connections, then force-closes remaining upgrades after this wait.
+   * Handlers run uninterruptibly unless wrapped in
    * `Effect.interruptible` or served by interruptible `HttpRouter` routes, so
    * shutdown still waits for them after the timeout.
    *
@@ -263,8 +265,7 @@ export const make = Effect.fnUntraced(function*(
         middleware: middleware as any,
         scope
       })
-      // `server.close` waits for upgraded connections, which never drain on their own, so
-      // shutdown destroys them before the graceful wait.
+      // Upgraded connections need a close signal before `server.close` can drain them.
       let upgradesClosed = false
       const upgradedSockets = new Set<Duplex>()
       const trackedUpgrade = (request: Http.IncomingMessage, socket: Duplex, head: Buffer) => {
@@ -283,11 +284,16 @@ export const make = Effect.fnUntraced(function*(
       yield* Scope.addFinalizerExit(serveScope, () => {
         upgradesClosed = true
         for (const socket of upgradedSockets) {
-          socket.destroy()
+          const ws = upgradedWebSockets.get(socket)
+          if (ws) ws.close(1001)
+          else socket.end()
         }
         return Effect.ensuring(
           preemptiveShutdown,
           Effect.sync(() => {
+            for (const socket of upgradedSockets) {
+              socket.destroy()
+            }
             server.off("request", handler)
             server.off("checkContinue", checkContinueHandler)
             server.off("upgrade", trackedUpgrade)
@@ -472,6 +478,7 @@ export const makeUpgradeHandler = <
               wss.handleUpgrade(nodeRequest, socket, head, (ws) => {
                 socket.off("close", onClose)
                 state.response = upgradedResponse
+                upgradedWebSockets.set(socket, ws)
                 resume(Effect.succeed(ws))
               })
             }),
@@ -522,6 +529,9 @@ export const makeUpgradeHandler = <
     })
   })
 }
+
+// Independent of the optional `WebSocketServer.clients` collection.
+const upgradedWebSockets = new WeakMap<Duplex, NodeWS.WebSocket>()
 
 // Node 26 parses the body of an upgrade request (nodejs/node#60016).
 const legacyUpgradeBody = Number(process.versions.node.split(".")[0]) < 26
