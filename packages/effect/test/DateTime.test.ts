@@ -768,6 +768,18 @@ describe("DateTime", () => {
       strictEqual(DateTime.makeUnsafe(input).toJSON(), expected)
       assertSomeIso(DateTime.make(input), expected)
     })
+
+    it.each([
+      ["2024-06-01 10:00:00 UTC", "2024-06-01T10:00:00.000Z"],
+      ["2024-06-01 10:00:00 +0000 UTC", "2024-06-01T10:00:00.000Z"],
+      ["Sat, 01 Jun 2024 10:00:00 UT", "2024-06-01T10:00:00.000Z"],
+      ["Sat, 01 Jun 2024 10:00:00 utc", "2024-06-01T10:00:00.000Z"],
+      ["June 1, 2024 10:00 PDT", "2024-06-01T17:00:00.000Z"],
+      ["June 1, 2024 10:00 est", "2024-06-01T15:00:00.000Z"]
+    ])("accepts zone abbreviations understood by Date.parse: %s", (input, expected) => {
+      strictEqual(DateTime.makeUnsafe(input).toJSON(), expected)
+      assertSomeIso(DateTime.make(input), expected)
+    })
   })
 
   describe("Disambiguation", () => {
