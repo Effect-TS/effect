@@ -170,6 +170,57 @@ describe("TextDiff", () => {
     })
   })
 
+  describe("hunks", () => {
+    it("groups changes as diff -u does, with zero-based positions", () => {
+      const before = Array.from({ length: 12 }, (_, i) => `${i + 1}\n`).join("")
+      const after = before.replace("2\n", "two\n").replace("11\n", "")
+      deepStrictEqual(TextDiff.hunks(TextDiff.lines(before, after), { context: 1 }), [
+        {
+          beforeStart: 0,
+          beforeLines: 3,
+          afterStart: 0,
+          afterLines: 3,
+          lines: [
+            { _tag: "Equal", text: "1\n" },
+            { _tag: "Delete", text: "2\n" },
+            { _tag: "Insert", text: "two\n" },
+            { _tag: "Equal", text: "3\n" }
+          ]
+        },
+        {
+          beforeStart: 9,
+          beforeLines: 3,
+          afterStart: 9,
+          afterLines: 2,
+          lines: [
+            { _tag: "Equal", text: "10\n" },
+            { _tag: "Delete", text: "11\n" },
+            { _tag: "Equal", text: "12\n" }
+          ]
+        }
+      ])
+      deepStrictEqual(TextDiff.hunks(TextDiff.lines(before, before)), [])
+    })
+
+    it("marks the differing ranges of lines changed one for one, with inline", () => {
+      const changesOf = (before: string, after: string) =>
+        TextDiff.hunks(TextDiff.lines(before, after), { context: 0, inline: true })
+          .flatMap((hunk) => hunk.lines.map((line) => [line._tag, line.changes]))
+      const cases: ReadonlyArray<readonly [string, string, ReadonlyArray<unknown>]> = [
+        ["cat\n", "cut\n", [["Delete", [[1, 2]]], ["Insert", [[1, 2]]]]],
+        // a code point is never split
+        ["a😀\n", "a😃\n", [["Delete", [[1, 3]]], ["Insert", [[1, 3]]]]],
+        // the line break is not part of the text compared
+        ["a\n", "a", [["Delete", []], ["Insert", []]]],
+        // two lines for one: not changed one for one
+        ["a\nb\n", "c\n", [["Delete", undefined], ["Delete", undefined], ["Insert", undefined]]]
+      ]
+      for (const [before, after, expected] of cases) {
+        deepStrictEqual(changesOf(before, after), expected)
+      }
+    })
+  })
+
   describe("unified", () => {
     const base = Array.from({ length: 20 }, (_, i) => `${i + 1}\n`).join("")
     const replace = (lines: Record<number, string | undefined>) =>
