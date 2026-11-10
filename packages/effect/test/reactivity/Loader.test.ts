@@ -9,6 +9,7 @@ import {
   Option,
   Redacted,
   Schema,
+  SchemaGetter,
   SchemaTransformation,
   Scope,
   Stream
@@ -746,6 +747,92 @@ describe("Loader", () => {
         `[Loader] read "Encoded": the args don't encode with the read's args Schema`
       ])
     }).pipe(Effect.provide(Layer.mergeAll(Checked.layer, Encoded.layer, TestLoader.layer())))
+  })
+
+  it.effect("the args Schema gets everything the drop doesn't change as it was passed", () => {
+    const options = { success: Schema.Number, error: Schema.Never, staleTime: "Infinity" } as const
+    const fetcher = Effect.succeed(() => Effect.succeed(1))
+    class Plain extends Loader.Service<Plain>()("Plain", {
+      ...options,
+      args: { id: Schema.String, page: Schema.optional(Schema.Number) }
+    }, fetcher) {}
+    const some = Option.some({ page: 1 })
+    class Wrapped extends Loader.Service<Wrapped>()("Wrapped", {
+      ...options,
+      args: Schema.Struct({
+        filter: Schema.Option(Schema.Struct({ page: Schema.optional(Schema.Number) })),
+        page: Schema.optional(Schema.Number)
+      }).check(Schema.makeFilter((args) => args.filter === some))
+    }, fetcher) {}
+    return Effect.gen(function*() {
+      // The Schema reads `id`, which isn't enumerable, and never reads `broken`, which throws.
+      const args = Object.defineProperties({ page: undefined }, {
+        id: { value: "1" },
+        broken: {
+          enumerable: true,
+          get() {
+            throw new Error("read")
+          }
+        }
+      }) as { readonly id: string; readonly page: undefined }
+      assert.strictEqual(yield* Plain.get(args), 1)
+      assert.strictEqual(yield* Wrapped.get({ filter: some, page: undefined }), 1)
+      assert.deepStrictEqual((yield* TestLoader.fetches).map((fetch) => fetch.read + " " + fetch.logKey), [
+        `Plain {"id":"1"}`,
+        `Wrapped {"filter":{"_tag":"Some","value":{"page":1}}}`
+      ])
+    }).pipe(Effect.provide(Layer.mergeAll(Plain.layer, Wrapped.layer, TestLoader.layer())))
+  })
+
+  it.effect("a union member and a record's keys are matched on the args as they are passed", () => {
+    const options = { success: Schema.Number, error: Schema.Never, staleTime: "Infinity" } as const
+    const fetcher = Effect.succeed(() => Effect.succeed(1))
+    interface Node {
+      readonly next?: Node | undefined
+    }
+    const Node: Schema.Codec<Node> = Schema.Struct({
+      next: Schema.optional(Schema.suspend((): Schema.Codec<Node> => Node))
+    })
+    const checked: Array<string> = []
+    class ByKind extends Loader.Service<ByKind>()("ByKind", {
+      ...options,
+      args: Schema.Union([
+        Schema.Struct({ kind: Schema.Literal("A"), value: Node, page: Schema.optional(Schema.Number) }).check(
+          Schema.makeFilter((args) => {
+            checked.push(Object.keys(args).join())
+            return true
+          })
+        ),
+        Schema.Struct({ kind: Schema.Literal("B"), value: Schema.Struct({ id: Schema.String }) })
+      ])
+    }, fetcher) {}
+    // The caller writes the key `a`. Only the encoded key has the prefix.
+    const Name = Schema.String.pipe(
+      Schema.encodeTo(Schema.String.check(Schema.isStartingWith("wire-")), {
+        decode: SchemaGetter.transform((encoded: string) => encoded.slice(5)),
+        encode: SchemaGetter.transform((name: string) => "wire-" + name)
+      })
+    )
+    class ByName extends Loader.Service<ByName>()("ByName", {
+      ...options,
+      args: Schema.Record(Name, Schema.Struct({ page: Schema.optional(Schema.Number) }))
+    }, fetcher) {}
+    return Effect.gen(function*() {
+      // Member A's check only ever gets the args after the drop.
+      yield* ByKind.get({ kind: "A", value: {}, page: undefined })
+      assert.deepStrictEqual([...new Set(checked)], ["kind,value"])
+      // Member B doesn't name `next`, so what member A would do with it doesn't matter.
+      const value: { id: string; next?: unknown } = { id: "1" }
+      value.next = value
+      yield* ByKind.get({ kind: "B", value })
+      yield* ByName.get({ a: { page: undefined } })
+      yield* ByName.get({ a: {} })
+      assert.deepStrictEqual((yield* TestLoader.fetches).map((fetch) => fetch.read + " " + fetch.logKey), [
+        `ByKind {"kind":"A","value":{}}`,
+        `ByKind {"kind":"B","value":{"id":"1"}}`,
+        `ByName {"wire-a":{}}`
+      ])
+    }).pipe(Effect.provide(Layer.mergeAll(ByKind.layer, ByName.layer, TestLoader.layer())))
   })
 
   it("a definition and a cache throw on durations that can't be meant", () => {

@@ -311,11 +311,14 @@ export declare namespace Service {
  *   dropped from the arguments before the `args` Schema checks or encodes
  *   them, so the read behaves as it does for the same arguments without the
  *   property. That holds wherever the arguments have a struct, the fields of
- *   a `Schema.Class` and the contents of an `Option` included.
+ *   a `Schema.Class` included. What an `Option`, a collection or another
+ *   declared type holds is left as it was passed.
  * - The property's type decides whether `undefined` is allowed, so a
  *   `Schema.optionalKey(Schema.Number)` property rejects it. A required key
  *   keeps its `undefined`, as do a record's values and a tuple's elements. An
  *   `undefined` that the Schema's own encoding produces is left to the Schema.
+ * - The arguments are never changed. When a property is dropped, the Schema
+ *   gets a copy without it.
  * - The fetcher gets the arguments of the call that created the entry, so it
  *   can see either form.
  *
