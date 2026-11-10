@@ -764,7 +764,7 @@ export const withConfigOverride: {
 // =============================================================================
 
 const getSystemMessageMode = (model: string): "system" | "developer" =>
-  model.startsWith("o") ||
+  /^o\d/.test(model) ||
     model.startsWith("gpt-5") ||
     model.startsWith("codex-") ||
     model.startsWith("computer-use")

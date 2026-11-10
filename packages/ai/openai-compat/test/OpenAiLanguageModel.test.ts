@@ -156,6 +156,49 @@ describe("OpenAiLanguageModel", () => {
         ])
       }))
 
+    for (
+      const [model, role] of [
+        ["o3", "developer"],
+        ["o4-mini", "developer"],
+        ["gpt-5", "developer"],
+        ["olmo-2", "system"],
+        ["gpt-oss-120b", "system"],
+        ["openai/gpt-oss-120b", "system"]
+      ] as const
+    ) {
+      it.effect(`sends the system prompt as a ${role} message for ${model}`, () =>
+        Effect.gen(function*() {
+          let capturedRequest: HttpClientRequest.HttpClientRequest | undefined
+
+          const layer = OpenAiClient.layer({ apiKey: Redacted.make("sk-test-key") }).pipe(
+            Layer.provide(Layer.succeed(
+              HttpClient.HttpClient,
+              makeHttpClient((request) => {
+                capturedRequest = request
+                return Effect.succeed(jsonResponse(request, makeChatCompletion()))
+              })
+            ))
+          )
+
+          yield* LanguageModel.generateText({
+            prompt: Prompt.make([
+              { role: "system", content: "Be brief." },
+              { role: "user", content: [Prompt.textPart({ text: "hello" })] }
+            ])
+          }).pipe(
+            Effect.provide(OpenAiLanguageModel.model(model)),
+            Effect.provide(layer)
+          )
+
+          assert.isDefined(capturedRequest)
+          if (capturedRequest === undefined) {
+            return
+          }
+          const requestBody = yield* getRequestBody(capturedRequest)
+          assert.deepStrictEqual(requestBody.messages[0], { role, content: "Be brief." })
+        }))
+    }
+
     it.effect("routes invalid tool call params through failureMode: return without failing the effect", () =>
       Effect.gen(function*() {
         const layer = OpenAiClient.layer({ apiKey: Redacted.make("sk-test-key") }).pipe(
