@@ -1096,7 +1096,7 @@ const makeResponse = Effect.fnUntraced(
         })
         parts.push({
           type: "tool-call",
-          id: toolCall.id,
+          id: toolCall.id ?? `${rawResponse.id}_tool_${index}`,
           name: toolName,
           params: yield* normalizeToolParams(toolCodecs, toolName, params),
           // Only attach reasoning_details to the first tool call to avoid
@@ -1429,8 +1429,9 @@ const makeStreamResponse = Effect.fnUntraced(
 
           const toolCalls = delta.tool_calls
           if (Predicate.isNotNullish(toolCalls)) {
-            for (const toolCall of toolCalls) {
-              const index = toolCall.index ?? toolCalls.length - 1
+            for (let indexInChunk = 0; indexInChunk < toolCalls.length; indexInChunk++) {
+              const toolCall = toolCalls[indexInChunk]
+              const index = toolCall.index ?? indexInChunk
               let activeToolCall = activeToolCalls[index]
               const argumentsDelta = toolCall.function?.arguments ?? ""
 
@@ -1526,7 +1527,7 @@ const makeStreamResponse = Effect.fnUntraced(
               // Increment the total tool calls emitted by the stream and
               // remove the active tool call
               totalToolCalls += 1
-              delete activeToolCalls[toolCall.index]
+              delete activeToolCalls[index]
             }
           }
 

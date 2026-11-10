@@ -1623,7 +1623,7 @@ export const Objects_6 = Schema.StructWithRest(
 export type ChatStreamToolCall = {
   readonly "function"?: { readonly "arguments"?: string; readonly "name"?: string | null }
   readonly "id"?: string | null
-  readonly "index": number
+  readonly "index"?: number
   readonly "type"?: "function" | null
 }
 export const ChatStreamToolCall = Schema.Struct({
@@ -1634,8 +1634,10 @@ export const ChatStreamToolCall = Schema.Struct({
     }).annotate({ "description": "Function call details" })
   ),
   "id": Schema.optionalKey(Schema.Union([Schema.String, Schema.Null])),
-  "index": Schema.Number.annotate({ "description": "Tool call index in the array" }).check(
-    Schema.isInt().annotate({ "expected": "an integer" })
+  "index": Schema.optionalKey(
+    Schema.Number.annotate({ "description": "Tool call index in the array" }).check(
+      Schema.isInt().annotate({ "expected": "an integer" })
+    )
   ),
   "type": Schema.optionalKey(Schema.Union([Schema.Literal("function"), Schema.Null]))
 }).annotate({ "description": "Tool call delta for streaming responses", "identifier": "ChatStreamToolCall" })
@@ -1669,7 +1671,7 @@ export const ChatTokenLogprob = Schema.Struct({
 }).annotate({ "description": "Token log probability information", "identifier": "ChatTokenLogprob" })
 export type ChatToolCall = {
   readonly "function": { readonly "arguments": string; readonly "name": string }
-  readonly "id": string
+  readonly "id"?: string
   readonly "type": "function"
 }
 export const ChatToolCall = Schema.Struct({
@@ -1677,7 +1679,7 @@ export const ChatToolCall = Schema.Struct({
     "arguments": Schema.String.annotate({ "description": "Function arguments as JSON string" }),
     "name": Schema.String.annotate({ "description": "Function name to call" })
   }),
-  "id": Schema.String.annotate({ "description": "Tool call identifier" }),
+  "id": Schema.optionalKey(Schema.String.annotate({ "description": "Tool call identifier" })),
   "type": Schema.Literal("function")
 }).annotate({ "description": "Tool call made by the assistant", "identifier": "ChatToolCall" })
 export type Union_ = {

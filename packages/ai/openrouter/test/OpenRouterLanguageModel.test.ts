@@ -218,6 +218,45 @@ describe("OpenRouterLanguageModel", () => {
     ))
 
   describe("generateText", () => {
+    it.effect("generates distinct IDs for tool calls without IDs and preserves supplied IDs", () =>
+      Effect.gen(function*() {
+        const toolkit = Toolkit.make(Tool.make("ProbeTool", {
+          parameters: Schema.Struct({ a: Schema.Number }),
+          success: Schema.String
+        }))
+        const response = yield* LanguageModel.generateText({
+          prompt: "call the tools",
+          toolkit,
+          disableToolCallResolution: true
+        }).pipe(
+          Effect.provide(OpenRouterLanguageModel.model("openai/gpt-4o-mini")),
+          Effect.provide(toolkit.toLayer({ ProbeTool: () => Effect.succeed("ok") })),
+          Effect.provide(makeTestLayer({
+            body: {
+              id: "response-1",
+              choices: [{
+                index: 0,
+                finish_reason: "tool_calls",
+                message: {
+                  role: "assistant",
+                  content: null,
+                  tool_calls: [
+                    { type: "function", function: { name: "ProbeTool", arguments: "{\"a\":1}" } },
+                    { type: "function", function: { name: "ProbeTool", arguments: "{\"a\":2}" } },
+                    { id: "provided-id", type: "function", function: { name: "ProbeTool", arguments: "{\"a\":3}" } }
+                  ]
+                }
+              }]
+            }
+          }))
+        )
+        deepStrictEqual(response.toolCalls.map(({ id, name, params }) => ({ id, name, params })), [
+          { id: "response-1_tool_0", name: "ProbeTool", params: { a: 1 } },
+          { id: "response-1_tool_1", name: "ProbeTool", params: { a: 2 } },
+          { id: "provided-id", name: "ProbeTool", params: { a: 3 } }
+        ])
+      }))
+
     describe("message preparation", () => {
       describe("audio file parts", () => {
         it.effect("converts audio bytes to input_audio", () =>
@@ -1014,6 +1053,68 @@ describe("OpenRouterLanguageModel", () => {
           reason: "content-filter",
           refusal: "I cannot do that"
         })
+      }))
+
+    it.effect("streams parallel tool calls without indices exactly once", () =>
+      Effect.gen(function*() {
+        const toolkit = Toolkit.make(Tool.make("ProbeTool", {
+          parameters: Schema.Struct({ a: Schema.Number }),
+          success: Schema.String
+        }))
+        const metadata = {
+          id: "response-1",
+          object: "chat.completion.chunk" as const,
+          model: "openai/gpt-4o-mini",
+          created: 1
+        }
+        const parts = yield* LanguageModel.streamText({
+          prompt: "call the tools",
+          toolkit,
+          disableToolCallResolution: true
+        }).pipe(
+          Stream.runCollect,
+          Effect.provide(OpenRouterLanguageModel.model(metadata.model)),
+          Effect.provide(toolkit.toLayer({ ProbeTool: () => Effect.succeed("ok") })),
+          Effect.provide(makeStreamTestLayer([
+            {
+              ...metadata,
+              choices: [{
+                index: 0,
+                delta: {
+                  tool_calls: [
+                    { id: "call-1", type: "function", function: { name: "ProbeTool", arguments: "{\"a\":" } },
+                    { id: "call-2", type: "function", function: { name: "ProbeTool", arguments: "{\"a\":" } }
+                  ]
+                }
+              }]
+            },
+            {
+              ...metadata,
+              choices: [{
+                index: 0,
+                finish_reason: "tool_calls",
+                delta: {
+                  tool_calls: [
+                    { function: { arguments: "1}" } },
+                    { function: { arguments: "2}" } }
+                  ]
+                }
+              }]
+            },
+            {
+              ...metadata,
+              choices: [],
+              usage: { prompt_tokens: 5, completion_tokens: 3, total_tokens: 8 }
+            }
+          ]))
+        )
+        deepStrictEqual(
+          parts.filter((part) => part.type === "tool-call").map(({ id, name, params }) => ({ id, name, params })),
+          [
+            { id: "call-1", name: "ProbeTool", params: { a: 1 } },
+            { id: "call-2", name: "ProbeTool", params: { a: 2 } }
+          ]
+        )
       }))
 
     it.effect("emits incremental tool parameter fragments", () =>
