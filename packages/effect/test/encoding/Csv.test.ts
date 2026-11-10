@@ -218,6 +218,32 @@ describe("Csv", () => {
       assert.deepStrictEqual(yield* run(text, Csv.decodeSchemaString(TuplePerson)()), [{ name: "Alice", age: 32 }])
     }))
 
+  it.effect("emits completed records before decoding errors in the same chunk", () =>
+    Effect.gen(function*() {
+      const beforeError = Effect.fnUntraced(function*(
+        text: string,
+        channel: ReturnType<typeof Csv.decodeString<never>> = Csv.decodeString()
+      ) {
+        const values: Array<unknown> = []
+        const error = yield* Stream.make(text).pipe(
+          Stream.pipeThroughChannel(channel),
+          Stream.runForEach((value) => Effect.sync(() => values.push(value))),
+          Effect.flip
+        )
+        return [error.kind, values]
+      })
+
+      assert.deepStrictEqual(yield* beforeError("a,b\nc,d\n\"e\"x\n"), [
+        "Syntax",
+        [["a", "b"], ["c", "d"]]
+      ])
+      assert.deepStrictEqual(yield* beforeError("a,b\nc,d\ne\n\"f\"x\n", Csv.decodeString({ headers: true })), [
+        "Header",
+        [{ a: "c", b: "d" }]
+      ])
+      assert.deepStrictEqual(yield* beforeError("a,b\n\"c"), ["Syntax", [["a", "b"]]])
+    }))
+
   it.effect("fails with upstream errors without flushing a partial record", () =>
     Effect.gen(function*() {
       const error = yield* Stream.make("\"unfinished").pipe(

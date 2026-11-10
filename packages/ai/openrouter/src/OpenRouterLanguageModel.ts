@@ -30,7 +30,7 @@ import type * as HttpClientResponse from "effect/http/HttpClientResponse"
 import * as Layer from "effect/Layer"
 import * as Predicate from "effect/Predicate"
 import * as Redactable from "effect/Redactable"
-import type * as Schema from "effect/Schema"
+import * as Schema from "effect/Schema"
 import * as SchemaAST from "effect/SchemaAST"
 import * as Stream from "effect/Stream"
 import type { Span } from "effect/Tracer"
@@ -504,6 +504,10 @@ declare module "effect/ai/Response" {
        * The OpenRouter provider that served the request, when reported.
        */
       readonly provider?: string | null
+      /**
+       * The refusal explanation returned instead of content.
+       */
+      readonly refusal?: string | null
     } | null
   }
 }
@@ -584,9 +588,12 @@ export const make = Effect.fnUntraced(function*({ model, config: providerConfig 
     function*({ config, options }: {
       readonly config: typeof Config.Service
       readonly options: LanguageModel.ProviderOptions
-    }): Effect.fn.Return<typeof Generated.ChatRequest.Encoded, AiError.AiError> {
+    }): Effect.fn.Return<{
+      readonly request: typeof Generated.ChatRequest.Encoded
+      readonly toolCodecs: ToolCodecs
+    }, AiError.AiError> {
       const messages = yield* prepareMessages({ options })
-      const { tools, toolChoice } = yield* prepareTools({ options, transformer: codecTransformer })
+      const { tools, toolChoice, toolCodecs } = yield* prepareTools({ options, transformer: codecTransformer })
       const responseFormat = yield* getResponseFormat({ config, options, transformer: codecTransformer })
       const { strictJsonSchema: _sjs, ...apiConfig } = config
       const request: typeof Generated.ChatRequest.Encoded = {
@@ -596,7 +603,7 @@ export const make = Effect.fnUntraced(function*({ model, config: providerConfig 
         ...(Predicate.isNotUndefined(tools) ? { tools } : undefined),
         ...(Predicate.isNotUndefined(toolChoice) ? { tool_choice: toolChoice } : undefined)
       }
-      return request
+      return { request, toolCodecs }
     }
   )
 
@@ -605,20 +612,20 @@ export const make = Effect.fnUntraced(function*({ model, config: providerConfig 
     generateText: Effect.fnUntraced(
       function*(options) {
         const config = yield* makeConfig
-        const request = yield* makeRequest({ config, options })
+        const { request, toolCodecs } = yield* makeRequest({ config, options })
         annotateRequest(options.span, request)
         const [rawResponse, response] = yield* client.createChatCompletion(request)
         annotateResponse(options.span, rawResponse)
-        return yield* makeResponse({ rawResponse, response })
+        return yield* makeResponse({ rawResponse, response, toolCodecs })
       }
     ),
     streamText: Effect.fnUntraced(
       function*(options) {
         const config = yield* makeConfig
-        const request = yield* makeRequest({ config, options })
+        const { request, toolCodecs } = yield* makeRequest({ config, options })
         annotateRequest(options.span, request)
         const [response, stream] = yield* client.createChatCompletionStream(request)
-        return yield* makeStreamResponse({ response, stream })
+        return yield* makeStreamResponse({ response, stream, toolCodecs })
       },
       (effect, options) =>
         effect.pipe(
@@ -776,13 +783,7 @@ const prepareMessages = Effect.fnUntraced(
 
                   content.push({
                     type: "image_url",
-                    image_url: {
-                      url: part.data instanceof URL
-                        ? part.data.toString()
-                        : part.data instanceof Uint8Array
-                        ? `data:${mediaType};base64,${Base64.encode(part.data)}`
-                        : part.data
-                    },
+                    image_url: { url: getFileUrl(part.data, mediaType) },
                     ...(Predicate.isNotNull(partCacheControl) ? { cache_control: partCacheControl } : undefined)
                   })
 
@@ -835,11 +836,7 @@ const prepareMessages = Effect.fnUntraced(
                   type: "file",
                   file: {
                     filename: fileName,
-                    file_data: part.data instanceof URL
-                      ? part.data.toString()
-                      : part.data instanceof Uint8Array
-                      ? `data:${part.mediaType};base64,${Base64.encode(part.data)}`
-                      : part.data
+                    file_data: getFileUrl(part.data, part.mediaType)
                   },
                   ...(Predicate.isNotNull(partCacheControl) ? { cache_control: partCacheControl } : undefined)
                 } as any)
@@ -985,9 +982,10 @@ const buildHttpResponseDetails = (
 // =============================================================================
 
 const makeResponse = Effect.fnUntraced(
-  function*({ rawResponse, response }: {
+  function*({ rawResponse, response, toolCodecs }: {
     readonly rawResponse: Generated.SendChatCompletionRequest200
     readonly response: HttpClientResponse.HttpClientResponse
+    readonly toolCodecs: ToolCodecs
   }): Effect.fn.Return<Array<Response.PartEncoded>, AiError.AiError, IdGenerator.IdGenerator> {
     const idGenerator = yield* IdGenerator.IdGenerator
 
@@ -1100,7 +1098,7 @@ const makeResponse = Effect.fnUntraced(
           type: "tool-call",
           id: toolCall.id,
           name: toolName,
-          params,
+          params: yield* normalizeToolParams(toolCodecs, toolName, params),
           // Only attach reasoning_details to the first tool call to avoid
           // duplicating thinking blocks for parallel tool calls (Claude)
           ...(index === 0 && Predicate.isNotNullish(reasoningDetails) && reasoningDetails.length > 0
@@ -1165,6 +1163,12 @@ const makeResponse = Effect.fnUntraced(
       finishReason = "tool_calls"
     }
 
+    const refusal = message.refusal
+    const hasRefusal = Predicate.isNotNullish(refusal) && refusal.length > 0
+    if (hasRefusal && finishReason === "stop") {
+      finishReason = "content_filter"
+    }
+
     parts.push({
       type: "finish",
       reason: resolveFinishReason(finishReason, hasToolCalls),
@@ -1179,7 +1183,8 @@ const makeResponse = Effect.fnUntraced(
             : undefined),
           ...(Predicate.hasProperty(rawResponse, "provider") && Predicate.isString(rawResponse.provider)
             ? { provider: rawResponse.provider }
-            : undefined)
+            : undefined),
+          ...(hasRefusal ? { refusal } : undefined)
         }
       }
     })
@@ -1189,9 +1194,10 @@ const makeResponse = Effect.fnUntraced(
 )
 
 const makeStreamResponse = Effect.fnUntraced(
-  function*({ response, stream }: {
+  function*({ response, stream, toolCodecs }: {
     readonly response: HttpClientResponse.HttpClientResponse
     readonly stream: Stream.Stream<ChatStreamingResponseChunkData, AiError.AiError>
+    readonly toolCodecs: ToolCodecs
   }): Effect.fn.Return<
     Stream.Stream<Response.StreamPartEncoded, AiError.AiError>,
     AiError.AiError,
@@ -1221,6 +1227,8 @@ const makeStreamResponse = Effect.fnUntraced(
 
     // Track file annotations to expose in provider metadata
     const accumulatedFileAnnotations: Array<FileAnnotation> = []
+
+    let accumulatedRefusal = ""
 
     const usage: DeepMutable<Response.Usage> = {
       inputTokens: {
@@ -1348,6 +1356,10 @@ const makeStreamResponse = Effect.fnUntraced(
             }
           } else if (Predicate.isNotNullish(delta.reasoning)) {
             yield* emitReasoning(delta.reasoning)
+          }
+
+          if (Predicate.isNotNullish(delta.refusal)) {
+            accumulatedRefusal += delta.refusal
           }
 
           const content = delta.content
@@ -1483,37 +1495,38 @@ const makeStreamResponse = Effect.fnUntraced(
               }
 
               // Check if the tool call is complete
+              let params: unknown
               // @effect-diagnostics-next-line tryCatchInEffectGen:off
               try {
-                const params = Tool.unsafeSecureJsonParse(activeToolCall.params)
-
-                parts.push({
-                  type: "tool-params-end",
-                  id: activeToolCall.id
-                })
-
-                parts.push({
-                  type: "tool-call",
-                  id: activeToolCall.id,
-                  name: activeToolCall.name,
-                  params,
-                  // Only attach reasoning_details to the first tool call to avoid
-                  // duplicating thinking blocks for parallel tool calls (Claude)
-                  metadata: reasoningDetailsAttachedToToolCall ? undefined : {
-                    openrouter: { reasoningDetails: accumulatedReasoningDetails }
-                  }
-                })
-
-                reasoningDetailsAttachedToToolCall = true
-
-                // Increment the total tool calls emitted by the stream and
-                // remove the active tool call
-                totalToolCalls += 1
-                delete activeToolCalls[toolCall.index]
+                params = Tool.unsafeSecureJsonParse(activeToolCall.params)
               } catch {
                 // Tool call incomplete, continue parsing
                 continue
               }
+
+              parts.push({
+                type: "tool-params-end",
+                id: activeToolCall.id
+              })
+
+              parts.push({
+                type: "tool-call",
+                id: activeToolCall.id,
+                name: activeToolCall.name,
+                params: yield* normalizeToolParams(toolCodecs, activeToolCall.name, params),
+                // Only attach reasoning_details to the first tool call to avoid
+                // duplicating thinking blocks for parallel tool calls (Claude)
+                metadata: reasoningDetailsAttachedToToolCall ? undefined : {
+                  openrouter: { reasoningDetails: accumulatedReasoningDetails }
+                }
+              })
+
+              reasoningDetailsAttachedToToolCall = true
+
+              // Increment the total tool calls emitted by the stream and
+              // remove the active tool call
+              totalToolCalls += 1
+              delete activeToolCalls[toolCall.index]
             }
           }
 
@@ -1549,6 +1562,10 @@ const makeStreamResponse = Effect.fnUntraced(
             finishReason = "tool-calls"
           }
 
+          if (accumulatedRefusal.length > 0 && finishReason === "stop") {
+            finishReason = "content-filter"
+          }
+
           // Forward any unsent tool calls if finish reason is 'tool-calls'
           if (finishReason === "tool-calls") {
             for (const toolCall of Object.values(activeToolCalls)) {
@@ -1567,7 +1584,7 @@ const makeStreamResponse = Effect.fnUntraced(
                 type: "tool-call",
                 id: toolCall.id,
                 name: toolCall.name,
-                params,
+                params: yield* normalizeToolParams(toolCodecs, toolCall.name, params),
                 metadata: reasoningDetailsAttachedToToolCall ? undefined : {
                   openrouter: { reasoningDetails: accumulatedReasoningDetails }
                 }
@@ -1603,7 +1620,8 @@ const makeStreamResponse = Effect.fnUntraced(
               ...(Predicate.hasProperty(event, "provider") && Predicate.isString(event.provider)
                 ? { provider: event.provider }
                 : undefined),
-              ...(accumulatedFileAnnotations.length > 0 ? { annotations: accumulatedFileAnnotations } : undefined)
+              ...(accumulatedFileAnnotations.length > 0 ? { annotations: accumulatedFileAnnotations } : undefined),
+              ...(accumulatedRefusal.length > 0 ? { refusal: accumulatedRefusal } : undefined)
             }
           }
 
@@ -1634,9 +1652,12 @@ const prepareTools = Effect.fnUntraced(
   }): Effect.fn.Return<{
     readonly tools: ReadonlyArray<typeof Generated.ChatFunctionTool.Encoded> | undefined
     readonly toolChoice: typeof Generated.ChatToolChoice.Encoded | undefined
+    readonly toolCodecs: ToolCodecs
   }, AiError.AiError> {
+    const toolCodecs = new Map<string, ToolCodec>()
+
     if (options.tools.length === 0) {
-      return { tools: undefined, toolChoice: undefined }
+      return { tools: undefined, toolChoice: undefined, toolCodecs }
     }
 
     const hasProviderDefinedTools = options.tools.some((tool) => Tool.isProviderDefined(tool))
@@ -1656,8 +1677,18 @@ const prepareTools = Effect.fnUntraced(
 
     for (const tool of options.tools) {
       const description = Tool.getDescription(tool)
-      const parameters = yield* tryToolJsonSchema(tool, "prepareTools", transformer)
       const strict = Tool.getStrictMode(tool) ?? null
+      // Strict tools need the OpenAI strict schema subset
+      const toolTransformer = strict === true && transformer === LanguageModel.defaultCodecTransformer
+        ? toCodecOpenAI
+        : transformer
+      const { parameters, codec } = Tool.isDynamic(tool) && tool.jsonSchema !== undefined
+        // A raw JSON Schema given to a dynamic tool is sent unchanged
+        ? { parameters: tool.jsonSchema, codec: undefined }
+        : yield* tryToolJsonSchema(tool, "prepareTools", toolTransformer)
+      if (Predicate.isNotUndefined(codec)) {
+        toolCodecs.set(tool.name, codec)
+      }
 
       tools.push({
         type: "function",
@@ -1684,7 +1715,7 @@ const prepareTools = Effect.fnUntraced(
       toolChoice = options.toolChoice.mode === "required" ? "required" : "auto"
     }
 
-    return { tools, toolChoice }
+    return { tools, toolChoice, toolCodecs }
   }
 )
 
@@ -1827,22 +1858,41 @@ const toolParametersError = (tool: Tool.Any, error: unknown, method: string): Ai
     method
   )
 
-const tryToolJsonSchema = <T extends Tool.Any>(tool: T, method: string, transformer: LanguageModel.CodecTransformer) =>
+// The advertised schema comes from the original codec, keeping its
+// transformation metadata. The normalization codec is derived from the encoded
+// JSON side instead, so decoding a tool call never runs application decoders.
+const tryToolJsonSchema = (tool: Tool.Any, method: string, transformer: LanguageModel.CodecTransformer) =>
   Effect.try({
-    try: () => Tool.getJsonSchema(tool, { transformer }),
+    try: () => ({
+      parameters: transformer(tool.parametersSchema).jsonSchema,
+      codec: transformer === LanguageModel.defaultCodecTransformer
+        ? undefined
+        : transformer(Schema.toEncoded(Schema.toCodecJson(tool.parametersSchema))).codec
+    }),
     catch: (error) => toolParametersError(tool, error, method)
   }).pipe(Effect.filterOrFail(
-    // A raw JSON Schema given to a dynamic tool is sent unchanged
-    (jsonSchema) =>
-      jsonSchema.type === "object" || Array.isArray(jsonSchema.anyOf) ||
-      (Tool.isDynamic(tool) && tool.jsonSchema !== undefined),
-    (jsonSchema) =>
+    ({ parameters }) => parameters.type === "object" || Array.isArray(parameters.anyOf),
+    ({ parameters }) =>
       toolParametersError(
         tool,
-        `expected a JSON Schema with type "object" or "anyOf", received ${JSON.stringify(jsonSchema)}`,
+        `expected a JSON Schema with type "object" or "anyOf", received ${JSON.stringify(parameters)}`,
         method
       )
   ))
+
+type ToolCodec = Schema.ConstraintCodec<unknown, unknown, never, never>
+type ToolCodecs = ReadonlyMap<string, ToolCodec>
+
+// Invalid parameters pass through so the toolkit reports the validation error.
+const normalizeToolParams = (toolCodecs: ToolCodecs, toolName: string, params: unknown): Effect.Effect<unknown> => {
+  const toolCodec = toolCodecs.get(toolName)
+  if (Predicate.isUndefined(toolCodec)) {
+    return Effect.succeed(params)
+  }
+  return Schema.decodeUnknownEffect(toolCodec)(params).pipe(
+    Effect.orElseSucceed(() => params)
+  )
+}
 
 const getResponseFormat = Effect.fnUntraced(function*({ config, options, transformer }: {
   readonly config: typeof Config.Service
@@ -1890,6 +1940,15 @@ const audioFormats: Record<string, string> = {
 }
 
 const supportedAudioFormats = Array.from(new Set(Object.values(audioFormats))).join(", ")
+
+const getFileUrl = (data: string | Uint8Array | URL, mediaType: string): string =>
+  data instanceof URL
+    ? data.toString()
+    : data instanceof Uint8Array
+    ? `data:${mediaType};base64,${Base64.encode(data)}`
+    : /^(data:|https?:\/\/)/i.test(data)
+    ? data
+    : `data:${mediaType};base64,${data}`
 
 const getMediaType = (dataUrl: string, defaultMediaType: string): string => {
   const match = dataUrl.match(/^data:([^;]+)/)

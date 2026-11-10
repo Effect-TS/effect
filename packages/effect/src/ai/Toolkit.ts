@@ -14,6 +14,7 @@ import * as Cause from "../Cause.ts"
 import * as Context from "../Context.ts"
 import * as Effect from "../Effect.ts"
 import * as Effectable from "../Effectable.ts"
+import * as Exit from "../Exit.ts"
 import * as Fiber from "../Fiber.ts"
 import { identity } from "../Function.ts"
 import * as InternalRecord from "../internal/record.ts"
@@ -584,7 +585,13 @@ const Proto = {
             }
             return { ...output, encodedResult, modelOutput: tool.toModelOutput(output.result) }
           })),
-          Stream.ensuring(Fiber.interrupt(fiber))
+          Stream.ensuring(Effect.flatMap(
+            Effect.andThen(Fiber.interrupt(fiber), Fiber.await(fiber)),
+            (exit) => {
+              const dies = Exit.isFailure(exit) ? exit.cause.reasons.filter(Cause.isDieReason) : []
+              return dies.length > 0 ? Effect.failCause(Cause.fromReasons(dies)) : Effect.void
+            }
+          ))
         ) satisfies Stream.Stream<Tool.HandlerResult<any>, any>
       })
 

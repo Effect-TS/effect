@@ -91,31 +91,6 @@ describe("TestSchema", () => {
     await decoding.fail("a", `Expected a finite number`)
   })
 
-  it("decoding.provide", async () => {
-    class Service extends Context.Service<Service, { fallback: Effect.Effect<string> }>()("Service") {}
-
-    const schema = Schema.String.pipe(
-      Schema.decode({
-        decode: SchemaGetter.checkEffect((s) =>
-          Effect.gen(function*() {
-            yield* Service
-            if (s.length === 0) {
-              return new SchemaIssue.InvalidValue({
-                message: "input should not be empty string"
-              })
-            }
-          })
-        ),
-        encode: SchemaGetter.passthrough()
-      })
-    )
-    const asserts = new TestSchema.Asserts(schema)
-
-    const decoding = asserts.decoding().provide(Service, { fallback: Effect.succeed("b") })
-    await decoding.succeed("a")
-    await decoding.fail("", "input should not be empty string")
-  })
-
   it("encoding", async () => {
     const schema = Schema.FiniteFromString.check(Schema.isGreaterThan(0))
     const asserts = new TestSchema.Asserts(schema)

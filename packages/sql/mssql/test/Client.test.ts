@@ -2,6 +2,7 @@ import { MssqlClient, Procedure } from "@effect/sql-mssql"
 import { assert, describe, expect, it } from "@effect/vitest"
 import { Deferred, Effect, Fiber } from "effect"
 import * as Reactivity from "effect/reactivity/Reactivity"
+import { SqlError } from "effect/sql/SqlError"
 import * as Statement from "effect/sql/Statement"
 import type { EventEmitter } from "node:events"
 import type * as Tedious from "tedious"
@@ -115,6 +116,7 @@ vi.mock("tedious", async (importOriginal) => {
       }
     }
     callProcedure(request: MockRequest) {
+      this.queries.push(request.sql)
       request.listeners.returnValue("answer", 42)
       request.callback(null, 0, [])
     }
@@ -247,6 +249,23 @@ describe("mssql", () => {
     })
   }
 
+  it("insert and updateValues helpers bind returning parameters after row values", () => {
+    const returning = sql`INSERTED.id, ${"audit"} AS source`
+    assert.deepStrictEqual(
+      sql`INSERT INTO ${sql("people")} ${sql.insert({ name: "Ada", age: 36 }).returning(returning)}`.compile(),
+      [`INSERT INTO [people] ([name],[age]) OUTPUT INSERTED.id, @3 AS source VALUES (@1,@2)`, ["Ada", 36, "audit"]]
+    )
+    assert.deepStrictEqual(
+      sql`UPDATE people SET name = data.name ${
+        sql.updateValues([{ name: "Ada" }, { name: "Mira" }], "data").returning(returning)
+      }`.compile(),
+      [
+        `UPDATE people SET name = data.name OUTPUT INSERTED.id, @3 AS source FROM (values (@1),(@2)) AS [data]([name])`,
+        ["Ada", "Mira", "audit"]
+      ]
+    )
+  })
+
   it("array helper", () => {
     const [query, params] = sql`SELECT * FROM ${sql("people")} WHERE id IN ${sql.in([1, 2, "string"])}`.compile()
     expect(query).toEqual(`SELECT * FROM [people] WHERE id IN (@1,@2,@3)`)
@@ -350,6 +369,29 @@ describe("MssqlClient connection lifecycle", { concurrent: false }, () => {
         })))
       }).pipe(Effect.provide(Reactivity.layer)))
   }
+
+  it.live("fails stored procedures and untransformed statements from a fiber that outlives its transaction", () =>
+    Effect.gen(function*() {
+      reset()
+      const client = yield* bounded(makeClient)
+      const definition = Procedure.outputParam<number>()("answer", state.type as any)(Procedure.make("get_answer"))
+      const go = yield* Deferred.make<void>()
+      const stale = yield* bounded(client.withTransaction(Effect.forkDetach(Effect.andThen(
+        Deferred.await(go),
+        Effect.all([
+          Effect.flip(client.call(Procedure.compile(definition)({}))),
+          Effect.flip(client.withoutTransforms()`SELECT 'stale'`)
+        ])
+      ))))
+      yield* Deferred.succeed(go, undefined)
+      for (const error of yield* bounded(Fiber.join(stale))) {
+        assert.instanceOf(error, SqlError)
+        assert.strictEqual(error.reason.message, "SqlClient: the transaction has already ended")
+      }
+      const queries = state.connections.flatMap((connection) => connection.queries)
+      assert.isFalse(queries.some((query) => query.includes("get_answer") || query === "SELECT 'stale'"))
+    }).pipe(Effect.provide(Reactivity.layer)))
+
   it.live("handles a late error after an ended connection is discarded and recovers", () =>
     Effect.gen(function*() {
       reset()

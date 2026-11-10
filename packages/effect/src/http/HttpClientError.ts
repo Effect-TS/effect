@@ -454,4 +454,9 @@ export class HttpClientErrorSchema extends Schema.Error<HttpClientErrorSchema>(T
       cause: error.reason
     })
   }
+
+  override get message(): string {
+    const message = hasProperty(this.cause, "message") ? this.cause.message : undefined
+    return typeof message === "string" && message !== "" ? message : this.kind
+  }
 }

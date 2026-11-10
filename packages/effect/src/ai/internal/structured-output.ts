@@ -313,7 +313,7 @@ function compilerAnnotations(
 function optionalToNullable(type: SchemaAST.AST): SchemaAST.AST {
   return SchemaAST.decodeTo(
     new SchemaAST.Union([type, SchemaAST.null]),
-    SchemaAST.optionalKey(type),
+    SchemaAST.optionalKey(SchemaAST.toType(type)),
     SchemaTransformation.transformOptional({
       decode: Option.filter(Predicate.isNotNull),
       encode: Option.orElseSome(() => null)

@@ -641,7 +641,7 @@ export const make = (
       Effect.serviceOption(transactionService),
       Option.match({
         onNone: () => acquireConnection,
-        onSome: ([conn]) => Effect.succeed(conn)
+        onSome: Client.activeTransactionConnection
       })
     )
 
@@ -768,7 +768,7 @@ export const makeCompiler = (transform?: (_: string) => string) =>
       return [
         `${returningSql}FROM (values ${placeholders}) AS ${valueAlias}${valueColumns}`,
         returning ?
-          returning[1].concat(values.flat()) :
+          values.flat().concat(returning[1]) :
           values.flat()
       ]
     },
@@ -784,7 +784,7 @@ export const makeCompiler = (transform?: (_: string) => string) =>
       return [
         `(${columns.join(",")})${returningSql} VALUES ${placeholders}`,
         returning ?
-          returning[1].concat(values.flat()) :
+          values.flat().concat(returning[1]) :
           values.flat()
       ]
     }

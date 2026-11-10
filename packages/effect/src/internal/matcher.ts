@@ -34,6 +34,10 @@ type ValueTagHandlers<I> = {
   readonly [Tag in Types.Tags<"_tag", I> & string]: (_: Extract<I, { readonly _tag: Tag }>) => any
 }
 
+type HandledKeys<P, Keys extends keyof P = keyof P> = {
+  readonly [K in Keys]-?: undefined extends P[K] ? never : K
+}[Keys]
+
 const TypeMatcherProto: Omit<TypeMatcher<any, any, any, any, any, any>, "cases" | "select"> = {
   [TypeId]: {
     _input: identity,
@@ -442,7 +446,7 @@ export const discriminators = <D extends string>(field: D) =>
   fields: Contextual<P, PartialTagHandlers<D, R, Ret>>
 ) => {
   const predicate = makeWhen(
-    (arg: any) => arg != null && Object.hasOwn(fields, arg[field]),
+    (arg: any) => arg != null && Object.hasOwn(fields, arg[field]) && (fields as any)[arg[field]] !== undefined,
     (data: any) => (fields as any)[data[field]](data)
   )
 
@@ -450,8 +454,8 @@ export const discriminators = <D extends string>(field: D) =>
     self: Matcher<I, F, R, A, Pr, Ret>
   ): Matcher<
     I,
-    Types.AddWithout<F, Extract<R, Record<D, keyof P>>>,
-    Types.ApplyFilters<I, Types.AddWithout<F, Extract<R, Record<D, keyof P>>>>,
+    Types.AddWithout<F, Extract<R, Record<D, HandledKeys<P>>>>,
+    Types.ApplyFilters<I, Types.AddWithout<F, Extract<R, Record<D, HandledKeys<P>>>>>,
     A | ReturnType<P[keyof P] & {}>,
     Pr,
     Ret

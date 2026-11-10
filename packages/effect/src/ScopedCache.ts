@@ -317,6 +317,11 @@ export const get: {
                   Deferred.doneUnsafe(deferred, exit)
                   return Scope.close(scope, exit)
                 }
+                if (self.state._tag === "Closed") {
+                  Deferred.doneUnsafe(deferred, effect.exitInterrupt())
+                  // Detached entries may not have been closed by owner shutdown.
+                  return Scope.close(scope, effect.exitVoid)
+                }
                 try {
                   const ttl = self.timeToLive(exit, key)
                   if (Duration.isFinite(ttl)) {

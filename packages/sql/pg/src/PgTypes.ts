@@ -237,6 +237,50 @@ const decodeUtf8 = (bytes: Uint8Array, offset: number, size: number): string => 
   }
 }
 
+/**
+ * The UTF-8 fallback for an OID with no codec. PostgreSQL's text output never
+ * contains a NUL byte, while binary layouts almost always do, so a NUL marks
+ * the value as binary data rather than text. The context is only built when
+ * the value is rejected.
+ */
+const decodeUnregistered = (
+  bytes: Uint8Array,
+  offset: number,
+  size: number,
+  oid: number,
+  column: Column | undefined,
+  index: number
+): string => {
+  let text: string
+  try {
+    text = decodeUtf8(bytes, offset, size)
+  } catch {
+    return failUnregistered("is not valid UTF-8", oid, column, index)
+  }
+  if (text.indexOf("\u0000") !== -1) {
+    return failUnregistered("contains a NUL byte, so it is binary data rather than text", oid, column, index)
+  }
+  return text
+}
+
+const failUnregistered = (reason: string, oid: number, column: Column | undefined, index: number): never => {
+  let subject: string
+  if (column === undefined) {
+    subject = `a value of type OID ${oid}`
+  } else {
+    const name = column.name === undefined ? `${index}` : JSON.stringify(column.name)
+    const table = column.tableOid === undefined || column.tableOid === 0
+      ? ""
+      : `, table OID ${column.tableOid}, attribute number ${column.columnAttributeNumber}`
+    subject = `column ${name} (type OID ${oid}${table})`
+  }
+  return fail(
+    `Cannot decode ${subject}: no codec is registered for the type, so it is read as UTF-8 text, ` +
+      `but the value ${reason}. Register a codec with PgTypes.makeRegistry().register and pass the registry ` +
+      `as the client's types option, or cast the value to text in the query.`
+  )
+}
+
 const requireSize = (size: number, expected: number, name: string): void => {
   if (size !== expected) {
     fail(`Expected ${expected} byte(s) for ${name}, received ${size}`)
@@ -1481,9 +1525,10 @@ const lookupFor = (registry: Registry | undefined): Lookup =>
  * **Details**
  *
  * Unregistered OIDs decode as UTF-8 text. Register binary user-defined types
- * to avoid garbled output or codec errors, which close the connection when
- * reading rows. For arrays, use `makeRegistry().register` with
- * `RegisterOptions.arrayOid` and pass the registry as the client's `types` option.
+ * to avoid codec errors, which fail the query that read the row, or garbled
+ * output from a binary layout without NUL bytes. For arrays, use
+ * `makeRegistry().register` with `RegisterOptions.arrayOid` and pass the
+ * registry as the client's `types` option.
  *
  * @stability unstable
  * @category registry
@@ -1673,6 +1718,12 @@ const decodeArray = (
 export interface Column {
   readonly dataTypeOid: number
   readonly format: number
+  /** Names the column in decoding errors. */
+  readonly name?: string | undefined
+  /** The source table, or `0` when the column is not a table column. */
+  readonly tableOid?: number | undefined
+  /** The column's attribute number within `tableOid`. */
+  readonly columnAttributeNumber?: number | undefined
 }
 
 /**
@@ -1681,8 +1732,11 @@ export interface Column {
  * **Details**
  *
  * Codecs are resolved once per column. SQL `NULL` becomes `null`.
- * Unregistered OIDs decode as UTF-8 text. Invalid UTF-8 and text-format
- * columns fail with `CodecError`.
+ * Unregistered OIDs decode as UTF-8 text. Text-format columns fail with
+ * `CodecError`, as do unregistered values that are invalid UTF-8 or contain a
+ * NUL byte, which no PostgreSQL text value does. Those errors name the column
+ * and its type OID. A binary layout with no NUL bytes still decodes as
+ * garbled text, so register a codec for binary user-defined types.
  *
  * **Example** (Updating the reader after `RowDescription`)
  *
@@ -1714,7 +1768,9 @@ export const makeFieldReader = (
     return (bytes: Uint8Array, offset: number, size: number, column: number): unknown => {
       if (size < 0) return null
       const codec = codecs[column]
-      if (codec === undefined) return decodeUtf8(bytes, offset, size)
+      if (codec === undefined) {
+        return decodeUnregistered(bytes, offset, size, columns[column].dataTypeOid, columns[column], column)
+      }
       const read = codec.read
       return read === undefined ? codec.decode(bytes.subarray(offset, offset + size)) : read(bytes, offset, size)
     }
@@ -1745,8 +1801,9 @@ export const encode = (value: unknown, oid: number, registry?: Registry): Result
  * **Details**
  *
  * Only binary format (`1`) is supported. Unregistered OIDs decode as UTF-8
- * text; invalid UTF-8 fails with `CodecError`. See `register` for binary
- * user-defined types, including arrays.
+ * text; a value that is invalid UTF-8 or contains a NUL byte fails with
+ * `CodecError`. See `register` for binary user-defined types, including
+ * arrays.
  *
  * @stability unstable
  * @category decoding
@@ -1763,7 +1820,7 @@ export const decode = (
       return fail(`Only the binary format is supported, received format ${format}`)
     }
     const codec = lookupFor(registry)(oid)
-    return codec === undefined ? decodeUtf8(bytes, 0, bytes.length) : codec.decode(bytes)
+    return codec === undefined ? decodeUnregistered(bytes, 0, bytes.length, oid, undefined, 0) : codec.decode(bytes)
   })
 
 // -----------------------------------------------------------------------------

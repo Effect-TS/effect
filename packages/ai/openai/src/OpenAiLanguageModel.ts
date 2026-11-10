@@ -710,10 +710,9 @@ export const make = Effect.fnUntraced(function*({ model, config: providerConfig 
         ...apiConfig,
         input: messages,
         include: include.size > 0 ? Array.from(include) : undefined,
-        text: {
-          verbosity: config.text?.verbosity ?? undefined,
-          format: responseFormat
-        }
+        text: responseFormat !== undefined || config.text?.verbosity !== undefined
+          ? { verbosity: config.text?.verbosity, format: responseFormat }
+          : undefined
       }
       if (tools) request.tools = tools
       if (toolChoice) request.tool_choice = toolChoice
@@ -3228,7 +3227,7 @@ const tryToolJsonSchema = <T extends Tool.Any>(tool: T, method: string) =>
 const prepareResponseFormat = Effect.fnUntraced(function*({ config, options }: {
   readonly config: typeof Config.Service
   readonly options: LanguageModel.ProviderOptions
-}): Effect.fn.Return<typeof OpenAiSchema.TextResponseFormatConfiguration.Encoded, AiError.AiError> {
+}): Effect.fn.Return<typeof OpenAiSchema.TextResponseFormatConfiguration.Encoded | undefined, AiError.AiError> {
   if (options.responseFormat.type === "json") {
     const name = options.responseFormat.objectName
     const schema = options.responseFormat.schema
@@ -3241,7 +3240,7 @@ const prepareResponseFormat = Effect.fnUntraced(function*({ config, options }: {
       strict: config.strictJsonSchema ?? true
     }
   }
-  return { type: "text" }
+  return undefined
 })
 
 // Default new model names to reasoning without extending an allowlist.

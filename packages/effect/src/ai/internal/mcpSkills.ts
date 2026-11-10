@@ -130,12 +130,6 @@ const methodNotFound = (method: string) =>
     message: `Method not found: ${method}`
   })
 
-// Every skill fits on one page, so the server never issues a cursor.
-const unknownCursor = new McpProtocol.ProtocolError({
-  code: PublicMcpSchema.INVALID_PARAMS_ERROR_CODE,
-  message: "Unknown cursor"
-})
-
 /**
  * Fails with `Method not found` while no skill is registered, as a server
  * that does not declare the extension.
@@ -147,12 +141,6 @@ export const requireSkills = (core: McpCore.McpCore, method: string) =>
     core.registrationPresence,
     (presence) => presence.skills ? Effect.void : Effect.fail(methodNotFound(method))
   )
-
-/**
- * @internal
- */
-export const rejectCursor = (cursor: string | undefined) =>
-  cursor === undefined ? Effect.void : Effect.fail(unknownCursor)
 
 // =============================================================================
 // Static skills
