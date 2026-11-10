@@ -1204,6 +1204,95 @@ describe("OpenAiLanguageModel", () => {
         })
       }))
 
+    it.effect("decodes null optional fields in non-streaming responses", () =>
+      Effect.gen(function*() {
+        const toolkit = Toolkit.make(Tool.make("Ping"))
+        const responses = [
+          makeChatCompletion({
+            service_tier: null,
+            choices: [{
+              index: 0,
+              finish_reason: "tool_calls",
+              message: {
+                role: "assistant",
+                content: null,
+                tool_calls: [{ id: null, type: null, function: { name: "Ping", arguments: null } }]
+              }
+            }]
+          }),
+          makeChatCompletion({
+            service_tier: null,
+            choices: [{
+              index: 0,
+              finish_reason: "stop",
+              message: { role: "assistant", content: "Hello", tool_calls: null }
+            }]
+          })
+        ]
+        const layer = OpenAiClient.layer({ apiKey: Redacted.make("sk-test-key") }).pipe(
+          Layer.provide(Layer.succeed(
+            HttpClient.HttpClient,
+            makeHttpClient((request) => Effect.succeed(jsonResponse(request, responses.shift())))
+          ))
+        )
+
+        const toolResult = yield* LanguageModel.generateText({
+          prompt: "ping",
+          toolkit,
+          disableToolCallResolution: true
+        }).pipe(
+          Effect.provide(OpenAiLanguageModel.model("gpt-4o-mini")),
+          Effect.provide(layer)
+        )
+        const textResult = yield* LanguageModel.generateText({ prompt: "hello" }).pipe(
+          Effect.provide(OpenAiLanguageModel.model("gpt-4o-mini")),
+          Effect.provide(layer)
+        )
+
+        assert.deepStrictEqual(
+          toolResult.toolCalls.map(({ id, name, params }) => ({ id, name, params })),
+          [{ id: "chatcmpl_test_1_tool_0", name: "Ping", params: {} }]
+        )
+        assert.strictEqual(textResult.text, "Hello")
+      }))
+
+    it.effect("reports a refusal through the finish part", () =>
+      Effect.gen(function*() {
+        const layer = OpenAiClient.layer({ apiKey: Redacted.make("sk-test-key") }).pipe(
+          Layer.provide(Layer.succeed(
+            HttpClient.HttpClient,
+            makeHttpClient((request) =>
+              Effect.succeed(jsonResponse(
+                request,
+                makeChatCompletion({
+                  choices: [{
+                    index: 0,
+                    finish_reason: "stop",
+                    message: { role: "assistant", content: null, refusal: "I'm sorry, I can't help with that." }
+                  }]
+                })
+              ))
+            )
+          ))
+        )
+
+        const result = yield* LanguageModel.generateText({ prompt: "test" }).pipe(
+          Effect.provide(OpenAiLanguageModel.model("gpt-4o-mini")),
+          Effect.provide(layer)
+        )
+
+        const finish = result.content.find((part) => part.type === "finish")
+        assert.deepStrictEqual({
+          text: result.text,
+          finishReason: result.finishReason,
+          refusal: finish?.metadata["openai-compat"]?.refusal
+        }, {
+          text: "",
+          finishReason: "content-filter",
+          refusal: "I'm sorry, I can't help with that."
+        })
+      }))
+
     it.effect("surfaces reasoning from non-streaming responses", () =>
       Effect.gen(function*() {
         const layer = OpenAiClient.layer({ apiKey: Redacted.make("sk-test-key") }).pipe(

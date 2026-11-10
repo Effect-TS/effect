@@ -1060,10 +1060,7 @@ const makeResponse = Effect.fnUntraced(
 
     const refusal = message?.refusal
     const hasRefusal = Predicate.isNotNullish(refusal) && refusal.length > 0
-    const finishReason = InternalUtilities.resolveFinishReason(
-      hasRefusal && choice?.finish_reason === "stop" ? "content_filter" : choice?.finish_reason,
-      hasToolCalls
-    )
+    const finishReason = InternalUtilities.resolveFinishReason(choice?.finish_reason, hasToolCalls, hasRefusal)
     const serviceTier = normalizeServiceTier(rawResponse.service_tier ?? undefined)
 
     parts.push({
@@ -1170,10 +1167,7 @@ const makeStreamResponse = Effect.fnUntraced(
           const hasRefusal = refusal.length > 0
           parts.push({
             type: "finish",
-            reason: InternalUtilities.resolveFinishReason(
-              hasRefusal && finishReason === "stop" ? "content_filter" : finishReason,
-              hasToolCalls
-            ),
+            reason: InternalUtilities.resolveFinishReason(finishReason, hasToolCalls, hasRefusal),
             usage: getUsage(usage),
             response: buildHttpResponseDetails(response),
             ...(normalizedServiceTier !== undefined || hasRefusal
