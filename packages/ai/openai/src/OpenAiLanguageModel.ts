@@ -732,6 +732,7 @@ export const make = Effect.fnUntraced(function*({ model, config: providerConfig 
         const [rawResponse, response] = yield* client.createResponse(request)
         annotateResponse(options.span, rawResponse)
         return yield* makeResponse({
+          config,
           options,
           rawResponse,
           response,
@@ -1416,11 +1417,13 @@ const isKnownResponseStreamEvent = (
 
 const makeResponse = Effect.fnUntraced(
   function*<Tools extends ReadonlyArray<Tool.Any>>({
+    config,
     options,
     rawResponse,
     response,
     toolNameMapper
   }: {
+    readonly config: typeof Config.Service
     readonly options: LanguageModel.ProviderOptions
     readonly rawResponse: OpenAiSchema.Response
     readonly response: HttpClientResponse.HttpClientResponse
@@ -1528,7 +1531,7 @@ const makeResponse = Effect.fnUntraced(
               })
           })
 
-          const params = yield* transformToolCallParams(options, part.name, toolParams)
+          const params = yield* transformToolCallParams(config, options, part.name, toolParams)
 
           parts.push({
             type: "tool-call",
@@ -2318,7 +2321,7 @@ const makeStreamResponse = Effect.fnUntraced(
                     })
                 })
 
-                const params = yield* transformToolCallParams(options, toolName, toolParams)
+                const params = yield* transformToolCallParams(config, options, toolName, toolParams)
 
                 parts.push({
                   type: "tool-params-end",
@@ -2626,7 +2629,7 @@ const makeStreamResponse = Effect.fnUntraced(
                   })
               })
 
-              const params = yield* transformToolCallParams(options, toolCall.name, toolParams)
+              const params = yield* transformToolCallParams(config, options, toolCall.name, toolParams)
 
               parts.push({
                 type: "tool-params-end",
@@ -3218,10 +3221,6 @@ const toolParametersError = (tool: Tool.Any, error: unknown, method: string): Ai
     method
   )
 
-/**
- * Strict mode only accepts the JSON Schema subset `toCodecOpenAI` produces. A non-strict tool advertises its
- * parameters' standard JSON Schema; its calls then fail the codec and reach the toolkit as sent.
- */
 const tryToolJsonSchema = <T extends Tool.Any>(tool: T, strict: boolean, method: string) =>
   Effect.try({
     try: () =>
@@ -3392,6 +3391,7 @@ const getUsageTokenDetail = (details: unknown, key: string): number | undefined 
   Predicate.hasProperty(details, key) && typeof details[key] === "number" ? details[key] : undefined
 
 const transformToolCallParams = Effect.fnUntraced(function*(
+  config: typeof Config.Service,
   options: LanguageModel.ProviderOptions,
   toolName: string,
   toolParams: unknown
@@ -3413,6 +3413,10 @@ const transformToolCallParams = Effect.fnUntraced(function*(
   }
 
   if (Tool.isDynamic(tool) && tool.jsonSchema !== undefined) {
+    return toolParams
+  }
+
+  if (!(Tool.getStrictMode(tool) ?? config.strictJsonSchema ?? true)) {
     return toolParams
   }
 

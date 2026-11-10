@@ -1843,70 +1843,80 @@ describe("OpenAiLanguageModel", () => {
           }))
         ))
 
-      it.effect("advertises a non-strict tool's parameters without the OpenAI codec", () =>
-        Effect.gen(function*() {
-          const toolkit = Toolkit.make(FilterTool)
-          yield* LanguageModel.generateText({
-            prompt: "Use the tool",
-            toolkit
-          }).pipe(
-            Effect.provide(OpenAiLanguageModel.model("gpt-4o-mini", { strictJsonSchema: false })),
-            Effect.provide(toolkit.toLayer({ FilterTool: () => Effect.succeed({ count: 0 }) }))
-          )
+      for (
+        const [configured, override, strict] of [[false, undefined, false], [true, false, false], [false, true, true], [
+          undefined,
+          undefined,
+          true
+        ]] as const
+      ) {
+        it.effect(`advertises tool parameters with strict=${strict} (config=${configured}, override=${override})`, () =>
+          Effect.gen(function*() {
+            const tool = override === undefined ? FilterTool : FilterTool.annotate(Tool.Strict, override)
+            yield* LanguageModel.generateText({
+              prompt: "Use the tool",
+              toolkit: Toolkit.make(tool),
+              disableToolCallResolution: true
+            }).pipe(
+              Effect.provide(OpenAiLanguageModel.model("gpt-4o-mini", { strictJsonSchema: configured }))
+            )
+            const requests = yield* MockHttpClient.requests
+            const body = yield* getRequestBody(requests[0])
+            const sent = body.tools.find((t: any) => t.type === "function")
+            strictEqual(sent.strict, strict)
+            deepStrictEqual(sent.parameters.required, strict ? ["query", "filters"] : ["query"])
+            strictEqual(sent.parameters.properties.filters.anyOf[0].type, strict ? "array" : "object")
+          }).pipe(Effect.provide(makeTestLayer())))
+      }
 
-          const requests = yield* MockHttpClient.requests
-          const body = yield* getRequestBody(requests[0])
-          const tool = body.tools?.find((t: any) => t.type === "function")
-          assert.isDefined(tool)
-          strictEqual(tool.strict, false)
-          deepStrictEqual(tool.parameters.required, ["query"])
-          deepStrictEqual(tool.parameters.properties.filters, {
-            anyOf: [{ type: "object", additionalProperties: { type: "string" } }, { type: "null" }]
-          })
-        }).pipe(Effect.provide(makeTestLayer())))
-
-      it.effect("keeps the OpenAI codec for a strict tool's parameters", () =>
-        Effect.gen(function*() {
-          const toolkit = Toolkit.make(FilterTool)
-          yield* LanguageModel.generateText({
-            prompt: "Use the tool",
-            toolkit
-          }).pipe(
-            Effect.provide(OpenAiLanguageModel.model("gpt-4o-mini")),
-            Effect.provide(toolkit.toLayer({ FilterTool: () => Effect.succeed({ count: 0 }) }))
-          )
-
-          const requests = yield* MockHttpClient.requests
-          const body = yield* getRequestBody(requests[0])
-          const tool = body.tools?.find((t: any) => t.type === "function")
-          assert.isDefined(tool)
-          strictEqual(tool.strict, true)
-          deepStrictEqual(tool.parameters.required, ["query", "filters"])
-        }).pipe(Effect.provide(makeTestLayer())))
-
-      it.effect("passes a non-strict tool's call params to the toolkit as sent", () =>
-        Effect.gen(function*() {
-          const received = yield* Ref.make<unknown>(undefined)
-          const toolkit = Toolkit.make(FilterTool)
-          const handlers = toolkit.toLayer({
-            FilterTool: (params) => Ref.set(received, params).pipe(Effect.as({ count: 1 }))
-          })
-
-          const result = yield* LanguageModel.generateText({
-            prompt: "Use the tool",
-            toolkit
-          }).pipe(
-            Effect.provide(OpenAiLanguageModel.model("gpt-4o-mini", { strictJsonSchema: false })),
-            Effect.provide(handlers)
-          )
-
-          deepStrictEqual(yield* Ref.get(received), { query: "pumps", filters: { status: "open" } })
-          strictEqual(result.toolResults[0]!.isFailure, false)
-        }).pipe(
-          Effect.provide(makeTestLayer({
-            body: { output: [makeFunctionCall("FilterTool", { query: "pumps", filters: { status: "open" } })] }
+      for (const mode of ["complete", "output_item.done", "function_call_arguments.done"] as const) {
+        it.effect(`passes non-strict record parameters to the handler via ${mode}`, () =>
+          Effect.gen(function*() {
+            const received = yield* Ref.make<unknown>(undefined)
+            const tool = Tool.make("Search", { parameters: Schema.Record(Schema.String, Schema.String) })
+            const toolkit = Toolkit.make(mode === "complete" ? tool : tool.annotate(Tool.Strict, false))
+            const params = { status: "open" }
+            const call = makeFunctionCall("Search", params)
+            const options = { prompt: "Search", toolkit }
+            yield* (mode === "complete"
+              ? LanguageModel.generateText(options).pipe(
+                Effect.asVoid,
+                Effect.provide(OpenAiLanguageModel.model("gpt-4o-mini", { strictJsonSchema: false })),
+                Effect.provide(makeTestLayer({ body: { output: [call] } }))
+              )
+              : LanguageModel.streamText(options).pipe(
+                Stream.runDrain,
+                Effect.provide(OpenAiLanguageModel.model("gpt-4o-mini")),
+                Effect.provide(makeStreamTestLayer([
+                  {
+                    type: "response.created",
+                    sequence_number: 1,
+                    response: makeDefaultResponse({ status: "in_progress" })
+                  },
+                  {
+                    type: "response.output_item.added",
+                    sequence_number: 2,
+                    output_index: 0,
+                    item: { ...call, arguments: "", status: "in_progress" }
+                  },
+                  mode === "output_item.done"
+                    ? { type: "response.output_item.done", sequence_number: 3, output_index: 0, item: call }
+                    : {
+                      type: "response.function_call_arguments.done",
+                      sequence_number: 3,
+                      output_index: 0,
+                      item_id: call.id!,
+                      name: "Search",
+                      arguments: JSON.stringify(params)
+                    },
+                  { type: "response.completed", sequence_number: 4, response: makeDefaultResponse() }
+                ]))
+              )).pipe(
+                Effect.provide(toolkit.toLayer({ Search: (params) => Ref.set(received, params) }))
+              )
+            deepStrictEqual(yield* Ref.get(received), params)
           }))
-        ))
+      }
 
       it.effect("converts transformed tool call params to the tool's standard encoded form", () =>
         Effect.gen(function*() {
