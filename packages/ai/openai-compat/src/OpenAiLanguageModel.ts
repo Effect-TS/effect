@@ -1008,7 +1008,7 @@ const makeResponse = Effect.fnUntraced(
         parts.push({ type: "text", text: message.content })
       }
 
-      if (message.tool_calls !== undefined) {
+      if (Predicate.isNotNullish(message.tool_calls)) {
         for (const [index, toolCall] of message.tool_calls.entries()) {
           const toolId = toolCall.id ?? `${rawResponse.id}_tool_${index}`
           const toolName = toolNameMapper.getCustomName(toolCall.function?.name ?? "unknown_tool")
@@ -1034,7 +1034,7 @@ const makeResponse = Effect.fnUntraced(
             params,
             metadata: {
               "openai-compat": {
-                ...makeItemIdMetadata(toolCall.id),
+                ...makeItemIdMetadata(toolCall.id ?? undefined),
                 ...makeExtraContentMetadata(toolCall.extra_content ?? undefined)
               }
             }
@@ -1047,7 +1047,7 @@ const makeResponse = Effect.fnUntraced(
       choice?.finish_reason,
       hasToolCalls
     )
-    const serviceTier = normalizeServiceTier(rawResponse.service_tier)
+    const serviceTier = normalizeServiceTier(rawResponse.service_tier ?? undefined)
 
     parts.push({
       type: "finish",
@@ -1160,7 +1160,7 @@ const makeStreamResponse = Effect.fnUntraced(
           return parts
         }
 
-        if (event.service_tier !== undefined) {
+        if (Predicate.isNotNullish(event.service_tier)) {
           serviceTier = event.service_tier
         }
         if (event.usage !== undefined && Predicate.isNotNull(event.usage)) {
@@ -1306,7 +1306,7 @@ const annotateResponse = (span: Span, response: CreateResponse200): void => {
     },
     openai: {
       response: {
-        serviceTier: response.service_tier as string | undefined
+        serviceTier: response.service_tier
       }
     }
   })

@@ -1128,6 +1128,58 @@ describe("OpenAiLanguageModel", () => {
         })
       }))
 
+    it.effect("decodes null optional fields in non-streaming responses", () =>
+      Effect.gen(function*() {
+        const toolkit = Toolkit.make(Tool.make("Ping"))
+        const responses = [
+          makeChatCompletion({
+            service_tier: null,
+            choices: [{
+              index: 0,
+              finish_reason: "tool_calls",
+              message: {
+                role: "assistant",
+                content: null,
+                tool_calls: [{ id: null, type: null, function: { name: "Ping", arguments: null } }]
+              }
+            }]
+          }),
+          makeChatCompletion({
+            service_tier: null,
+            choices: [{
+              index: 0,
+              finish_reason: "stop",
+              message: { role: "assistant", content: "Hello", tool_calls: null }
+            }]
+          })
+        ]
+        const layer = OpenAiClient.layer({ apiKey: Redacted.make("sk-test-key") }).pipe(
+          Layer.provide(Layer.succeed(
+            HttpClient.HttpClient,
+            makeHttpClient((request) => Effect.succeed(jsonResponse(request, responses.shift())))
+          ))
+        )
+
+        const toolResult = yield* LanguageModel.generateText({
+          prompt: "ping",
+          toolkit,
+          disableToolCallResolution: true
+        }).pipe(
+          Effect.provide(OpenAiLanguageModel.model("gpt-4o-mini")),
+          Effect.provide(layer)
+        )
+        const textResult = yield* LanguageModel.generateText({ prompt: "hello" }).pipe(
+          Effect.provide(OpenAiLanguageModel.model("gpt-4o-mini")),
+          Effect.provide(layer)
+        )
+
+        assert.deepStrictEqual(
+          toolResult.toolCalls.map(({ id, name, params }) => ({ id, name, params })),
+          [{ id: "chatcmpl_test_1_tool_0", name: "Ping", params: {} }]
+        )
+        assert.strictEqual(textResult.text, "Hello")
+      }))
+
     it.effect("surfaces reasoning from non-streaming responses", () =>
       Effect.gen(function*() {
         const layer = OpenAiClient.layer({ apiKey: Redacted.make("sk-test-key") }).pipe(
@@ -1690,6 +1742,7 @@ describe("OpenAiLanguageModel", () => {
           object: "chat.completion.chunk",
           model: "gpt-4o-mini",
           created: 1,
+          service_tier: null,
           choices: [{ index: 0, delta, finish_reason: null }]
         })
 
@@ -1698,6 +1751,7 @@ describe("OpenAiLanguageModel", () => {
             HttpClient.HttpClient,
             makeHttpClient((request) =>
               Effect.succeed(sseResponse(request, [
+                { ...chunk({ role: "assistant" }), service_tier: "priority" },
                 chunk({ content: "Hello", role: null }),
                 chunk({
                   tool_calls: [{
@@ -1705,16 +1759,20 @@ describe("OpenAiLanguageModel", () => {
                     id: "call_1",
                     type: "function",
                     extra_content: extraContent,
-                    function: { name: "TestTool", arguments: "" }
+                    function: { name: "TestTool", arguments: null }
                   }]
                 }),
                 chunk({
                   tool_calls: [{
                     index: 0,
                     id: null,
+                    type: null,
                     extra_content: null,
                     function: { name: null, arguments: "{\"in" }
                   }]
+                }),
+                chunk({
+                  tool_calls: [{ index: 0, id: null, function: { name: null, arguments: null } }]
                 }),
                 chunk({
                   tool_calls: [{ index: 0, id: null, function: { name: null, arguments: "put\":\"hel" } }]
@@ -1752,7 +1810,9 @@ describe("OpenAiLanguageModel", () => {
           .map((part) => part.delta)
           .join("")
         const toolCall = parts.find((part) => part.type === "tool-call")
+        const finish = parts.find((part) => part.type === "finish")
 
+        assert.deepStrictEqual(finish?.metadata["openai-compat"], { serviceTier: "priority" })
         assert.strictEqual(text, "Hello")
         assert.isDefined(toolCall)
         if (toolCall?.type !== "tool-call") {
