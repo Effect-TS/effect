@@ -1,5 +1,18 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Cause, Effect, Exit, Fiber, Latch, Layer, Option, Redacted, Schema, Scope, Stream } from "effect"
+import {
+  Cause,
+  Effect,
+  Exit,
+  Fiber,
+  Latch,
+  Layer,
+  Option,
+  Redacted,
+  Schema,
+  SchemaTransformation,
+  Scope,
+  Stream
+} from "effect"
 import type { Duration } from "effect"
 import { AsyncResult, Loader } from "effect/reactivity"
 import * as internal from "effect/reactivity/internal/loader"
@@ -691,6 +704,48 @@ describe("Loader", () => {
         `{"filter":{"a":-1,"b":2}}`
       ])
     }).pipe(Effect.provide(Layer.mergeAll(Search.layer, TestLoader.layer())))
+  })
+
+  it.effect("an undefined is dropped from the args the caller passes, before the Schema sees them", () => {
+    const options = { success: Schema.Number, error: Schema.Never, staleTime: "Infinity" } as const
+    const fetcher = Effect.succeed(() => Effect.succeed(1))
+    // A check gets the args after the drop, so it treats undefined as it treats a missing property.
+    class Checked extends Loader.Service<Checked>()("Checked", {
+      ...options,
+      args: Schema.Struct({ page: Schema.optional(Schema.Number) }).check(
+        Schema.makeFilter((args) => "page" in args)
+      )
+    }, fetcher) {}
+    // The caller passes a number. This undefined is made by the Schema's own encoding, and JSON can't carry it.
+    class Encoded extends Loader.Service<Encoded>()("Encoded", {
+      ...options,
+      args: Schema.Struct({ value: Schema.optionalKey(Schema.Unknown) }).pipe(
+        Schema.decodeTo(
+          Schema.Number,
+          SchemaTransformation.transform({
+            decode: () => 1,
+            encode: (): { readonly value?: unknown } => ({ value: undefined })
+          })
+        )
+      )
+    }, fetcher) {}
+    const thrown = <R>(get: Effect.Effect<number, never, R>) =>
+      Effect.map(
+        Effect.exit(get),
+        (exit) => Exit.isFailure(exit) ? (Cause.squash(exit.cause) as Error).message : "no throw"
+      )
+    return Effect.gen(function*() {
+      assert.strictEqual(yield* Checked.get({ page: 1 }), 1)
+      assert.deepStrictEqual([
+        yield* thrown(Checked.get({ page: undefined })),
+        yield* thrown(Checked.get({})),
+        yield* thrown(Encoded.get(1))
+      ], [
+        `[Loader] read "Checked": the args don't encode with the read's args Schema`,
+        `[Loader] read "Checked": the args don't encode with the read's args Schema`,
+        `[Loader] read "Encoded": the args don't encode with the read's args Schema`
+      ])
+    }).pipe(Effect.provide(Layer.mergeAll(Checked.layer, Encoded.layer, TestLoader.layer())))
   })
 
   it("a definition and a cache throw on durations that can't be meant", () => {

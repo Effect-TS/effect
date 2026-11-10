@@ -14,6 +14,7 @@ import * as Equal from "../../Equal.ts"
 import * as Exit from "../../Exit.ts"
 import * as Fiber from "../../Fiber.ts"
 import { memoize } from "../../Function.ts"
+import { CONSTRUCTOR_ANNOTATION_KEY } from "../../internal/schema/annotations.ts"
 import { redactAST } from "../../internal/schemaRedact.ts"
 import * as Option from "../../Option.ts"
 import * as Schema from "../../Schema.ts"
@@ -92,75 +93,174 @@ const canonical = (u: unknown): string => {
   throw new NonJsonLeaf(u)
 }
 
-/**
- * The optional property's replacement: a type that lets any value through,
- * encoded with the property's own Schema once an `undefined` that Schema's
- * type accepts is dropped. Every other value, an `undefined` the type rejects
- * included, reaches the property's Schema exactly as it was given, so that
- * Schema alone validates and encodes it.
- */
-const dropUndefinedProperty = (original: SchemaAST.AST, type: SchemaAST.AST): SchemaAST.AST => {
-  let accepts: boolean | undefined
-  // Asked on the first `undefined`, not here: the type may be behind a `suspend`.
-  const acceptsUndefined = () =>
-    accepts ??= Schema.is(Schema.make(SchemaAST.replaceContext(SchemaAST.toType(original), undefined)))(undefined)
-  return SchemaAST.replaceEncoding(SchemaAST.replaceContext(SchemaAST.unknown, type.context), [
-    new SchemaAST.Link(
-      type,
-      new SchemaTransformation.Transformation(
-        SchemaGetter.passthrough(),
-        SchemaGetter.transformOptional(Option.filter((value: unknown) => value !== undefined || !acceptsUndefined()))
-      )
-    )
-  ])
+/** Returns its input when there is nothing to drop. */
+type DropUndefined = (u: unknown) => unknown
+
+/** A `Schema.Class`: its fields are the Struct behind its first link, and an instance holds them as given. */
+const isClassAST = (ast: SchemaAST.Declaration): boolean =>
+  typeof ast.annotations?.[CONSTRUCTOR_ANNOTATION_KEY] === "function"
+
+const isTypeOf = (ast: SchemaAST.AST): (u: unknown) => boolean =>
+  Schema.is(Schema.make(SchemaAST.replaceContext(SchemaAST.toType(ast), undefined)))
+
+/** Asks on first use, not when the Schema is walked: the type may be behind a `suspend`. */
+const lazy = <A>(make: () => A): () => A => {
+  let made: { readonly value: A } | undefined
+  return () => (made ??= { value: make() }).value
 }
 
-/**
- * Makes every optional property that is `undefined` encode as a missing one,
- * so `{ id, page: undefined }` and `{ id }` build one key. It reaches wherever
- * the Schema has a struct: nested, in a union member or an element, behind a
- * `suspend`, and in the fields of a `Schema.Class`.
- *
- * A property that may be missing and may not be `undefined`
- * (`Schema.optionalKey`) is rejected as before. A required key keeps its
- * `undefined`, and so do a record's values and a tuple's elements. Returns
- * `ast` itself when it has no optional property.
- */
-const dropUndefinedAST: (ast: SchemaAST.AST) => SchemaAST.AST = memoize((ast: SchemaAST.AST): SchemaAST.AST => {
-  if (ast.encoding !== undefined) {
-    const body = SchemaAST.replaceEncoding(ast, undefined)
-    const droppedBody = dropUndefinedAST(body)
-    const encoding = SchemaAST.mapOrSame(ast.encoding, (link) => SchemaAST.mapLink(link, dropUndefinedAST))
-    return droppedBody === body && encoding === ast.encoding ? ast : SchemaAST.replaceEncoding(droppedBody, encoding)
-  }
-  if (ast._tag !== "Objects") return "recur" in ast ? ast.recur(dropUndefinedAST) : ast
-  const properties = SchemaAST.mapOrSame(ast.propertySignatures, (property) => {
-    const type = dropUndefinedAST(property.type)
-    if (!SchemaAST.isOptional(type)) {
-      return type === property.type ? property : new SchemaAST.PropertySignature(property.name, type)
-    }
-    return new SchemaAST.PropertySignature(property.name, dropUndefinedProperty(property.type, type))
-  })
-  const indexes = SchemaAST.mapOrSame(ast.indexSignatures, (index) => {
-    const type = dropUndefinedAST(index.type)
-    return type === index.type ? index : new SchemaAST.IndexSignature(index.parameter, type)
-  })
-  return properties === ast.propertySignatures && indexes === ast.indexSignatures
-    ? ast
-    : new SchemaAST.Objects(
-      properties,
-      indexes,
-      ast.annotations,
-      ast.checks,
-      undefined,
-      ast.context,
-      ast.encodingChecks
-    )
-})
+// A copy that is still an instance of its class, and whose properties can be deleted when the original is frozen.
+const copyOf = (u: object): Record<PropertyKey, unknown> => Object.assign(Object.create(Object.getPrototypeOf(u)), u)
 
-/** The JSON encoder of an args Schema, with optional `undefined` properties dropped. */
-const argsEncoder = (ast: SchemaAST.AST): (args: unknown) => unknown =>
-  Schema.encodeUnknownSync(Schema.toCodecJson(Schema.make<Schema.Codec<unknown, unknown>>(dropUndefinedAST(ast))))
+/**
+ * The function that drops every optional property that is `undefined` from
+ * args of the type `ast` describes, so `{ id, page: undefined }` and `{ id }`
+ * build one key. `null` when that type has no such property.
+ *
+ * It runs on the args as the caller passes them, before the args Schema checks
+ * or encodes anything, so the read behaves as it does for the same args
+ * without the property. Only the type side of the Schema is walked: what an
+ * encoding produces is the Schema's business.
+ *
+ * It reaches nested structs, tuple and array elements, record values, union
+ * members, the fields of a `Schema.Class`, the contents of an `Option` or a
+ * collection, and whatever is behind a `suspend`.
+ *
+ * A property is dropped only when its own type accepts `undefined`, so the
+ * Schema still rejects one that `Schema.optionalKey` forbids. A required key
+ * keeps its `undefined`, and so do a record's values and a tuple's elements.
+ * A property the Schema doesn't name is never looked at, and neither is one
+ * the value inherits.
+ *
+ * Nothing is changed in place: a value that loses a property is copied, and
+ * the copy is what the Schema gets.
+ */
+const dropUndefinedOf: (ast: SchemaAST.AST) => DropUndefined | null = memoize(
+  (ast: SchemaAST.AST): DropUndefined | null => {
+    switch (ast._tag) {
+      case "Suspend": {
+        const inner = lazy(() => dropUndefinedOf(ast.thunk()))
+        return (u) => inner()?.(u) ?? u
+      }
+      case "Declaration": {
+        if (isClassAST(ast)) return dropUndefinedOf(ast.typeParameters[0])
+        const contents = ast.typeParameters.map(dropUndefinedOf)
+        if (contents.every((drop) => drop === null)) return null
+        // An `Option`, a `ReadonlyMap` and the like: the declaration's own parser rebuilds the value around
+        // its contents. It is run without the declaration's checks, which are the args Schema's to run.
+        const rebuild = Schema.encodeUnknownSync(Schema.make<Schema.Codec<unknown, unknown>>(
+          new SchemaAST.Declaration(
+            contents.map((drop) =>
+              drop === null ? SchemaAST.unknown : SchemaAST.replaceEncoding(SchemaAST.unknown, [
+                new SchemaAST.Link(
+                  SchemaAST.unknown,
+                  new SchemaTransformation.Transformation(SchemaGetter.passthrough(), SchemaGetter.transform(drop))
+                )
+              ])
+            ),
+            ast.run,
+            ast.annotations,
+            undefined,
+            undefined,
+            undefined,
+            undefined,
+            ast.encodingRun
+          )
+        ))
+        return (u) => {
+          try {
+            return rebuild(u)
+          } catch {
+            return u
+          }
+        }
+      }
+      case "Union": {
+        const members = ast.types.flatMap((type) => {
+          const drop = dropUndefinedOf(type)
+          return drop === null ? [] : [{ drop, is: lazy(() => isTypeOf(type)) }]
+        })
+        if (members.length === 0) return null
+        // A member's properties are dropped from a value of that member's type, with or without them.
+        return (u) => {
+          let out = u
+          for (const member of members) {
+            const next = member.drop(out)
+            if (next !== out && (member.is()(out) || member.is()(next))) out = next
+          }
+          return out
+        }
+      }
+      case "Arrays": {
+        const elements = ast.elements.map(dropUndefinedOf)
+        const rest = ast.rest.map(dropUndefinedOf)
+        if (elements.every((drop) => drop === null) && rest.every((drop) => drop === null)) {
+          return null
+        }
+        return (u) => {
+          if (!Array.isArray(u)) return u
+          // The elements after the rest element are counted from the end.
+          const tail = u.length - (rest.length - 1)
+          let out: Array<unknown> | undefined
+          for (let i = 0; i < u.length; i++) {
+            const drop = i < elements.length ? elements[i] : i < tail ? rest[0] : rest[i - tail + 1]
+            const next = drop?.(u[i]) ?? u[i]
+            if (next !== u[i]) (out ??= u.slice())[i] = next
+          }
+          return out ?? u
+        }
+      }
+      case "Objects": {
+        const properties = ast.propertySignatures.flatMap((property) => {
+          const type = property.type
+          const drop = dropUndefinedOf(type)
+          const accepts = SchemaAST.isOptional(type) ? lazy(() => isTypeOf(type)(undefined)) : undefined
+          return drop === null && accepts === undefined ? [] : [{ name: property.name, drop, accepts }]
+        })
+        const indexes = ast.indexSignatures.flatMap((index) => {
+          const drop = dropUndefinedOf(index.type)
+          return drop === null ? [] : [{ parameter: index.parameter, drop }]
+        })
+        if (properties.length === 0 && indexes.length === 0) return null
+        return (u) => {
+          if (typeof u !== "object" || u === null || Array.isArray(u)) return u
+          const o = u as Record<PropertyKey, unknown>
+          let out: Record<PropertyKey, unknown> | undefined
+          for (const { accepts, drop, name } of properties) {
+            if (!Object.hasOwn(o, name)) continue
+            const value = o[name]
+            if (value === undefined) {
+              if (accepts?.() === true) delete (out ??= copyOf(o))[name]
+              continue
+            }
+            const next = drop?.(value) ?? value
+            if (next !== value) (out ??= copyOf(o))[name] = next
+          }
+          for (const { drop, parameter } of indexes) {
+            for (const key of SchemaAST.getIndexSignatureKeys(out ?? o, parameter)) {
+              const value = (out ?? o)[key]
+              const next = drop(value)
+              if (next !== value) (out ??= copyOf(o))[key] = next
+            }
+          }
+          return out ?? o
+        }
+      }
+      default:
+        return null
+    }
+  }
+)
+
+/**
+ * The JSON encoder of an args Schema, run on the args once their optional
+ * `undefined` properties are dropped.
+ */
+const argsEncoder = (ast: SchemaAST.AST): (args: unknown) => unknown => {
+  const encode = Schema.encodeUnknownSync(Schema.toCodecJson(Schema.make<Schema.Codec<unknown, unknown>>(ast)))
+  const drop = dropUndefinedOf(ast)
+  return drop === null ? encode : (args) => encode(drop(args))
+}
 
 // -----------------------------------------------------------------------------
 // Host signals
