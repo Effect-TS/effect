@@ -4319,7 +4319,11 @@ export const filterEffect: {
   <A, E, R, EX, RX>(
     self: Stream<A, E, R>,
     predicate: (a: NoInfer<A>, i: number) => Effect.Effect<boolean, EX, RX>
-  ): Stream<A, E | EX, R | RX> => fromChannel(Channel.filterArrayEffect(toChannel(self), predicate))
+  ): Stream<A, E | EX, R | RX> =>
+    suspend(() => {
+      let i = 0
+      return fromChannel(Channel.filterArrayEffect(toChannel(self), (a) => predicate(a, i++)))
+    })
 )
 
 /**
