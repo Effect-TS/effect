@@ -129,6 +129,13 @@ const emptyCmd = Command.make("noop").pipe(
   Command.withDescription("Does nothing")
 )
 
+const withColonSubcommand = Command.make("tool").pipe(
+  Command.withSubcommands([
+    Command.make("test:unit").pipe(Command.withDescription("Run unit tests")),
+    Command.make("build")
+  ])
+)
+
 const leaf = (name: string, flag: string): Completions.CommandDescriptor => ({
   name,
   description: undefined,
@@ -155,9 +162,12 @@ const hasReadline = spawnSync("bash", ["--noprofile", "--norc", "-c", "compgen -
 
 /**
  * Type `line`, a tab and Enter into interactive Bash in a directory of
- * `process` fixtures, and return the arguments `process` receives.
+ * `process` fixtures, and return the arguments the command receives.
  */
-const replayBashCompletion = (line: string): Array<string> => {
+const replayBashCompletion = (
+  line: string,
+  descriptor: Completions.CommandDescriptor = fromCommand(withPaths)
+): Array<string> => {
   const directory = mkdtempSync(join(tmpdir(), "effect-cli-bash-"))
   try {
     mkdirSync(join(directory, "project files"))
@@ -166,8 +176,11 @@ const replayBashCompletion = (line: string): Array<string> => {
     writeFileSync(join(directory, "report.txt"), "")
     writeFileSync(
       join(directory, "rc.bash"),
-      [Bash.generate("process", fromCommand(withPaths)), `process() { printf '<%s>\\n' "$@"; }`, `PS1='$ ' TMOUT=1`]
-        .join("\n")
+      [
+        Bash.generate(descriptor.name, descriptor),
+        `${descriptor.name}() { printf '<%s>\\n' "$@"; }`,
+        `PS1='$ ' TMOUT=1`
+      ].join("\n")
     )
     // Ctrl-D exits, or ends a quote left open; TMOUT exits once input runs out.
     return spawnSync("script", scriptArgs("bash --noprofile --rcfile rc.bash -i"), {
@@ -294,6 +307,10 @@ describe("Bash completions", () => {
   it.skipIf(!hasReadline)("keeps an expandable or quoted directory as typed", () => {
     assert.deepStrictEqual(replayBashCompletion("process --input $HOME/report\\ d"), ["--input", "~/report data.txt"])
     assert.deepStrictEqual(replayBashCompletion(`process --input "./"rep`), ["--input", "./report"])
+  })
+
+  it.skipIf(!hasReadline)("completes subcommand names containing a colon", () => {
+    assert.deepStrictEqual(replayBashCompletion("tool test:u", fromCommand(withColonSubcommand)), ["test:unit"])
   })
 
   it("inlines choice values for choice flags", () => {
@@ -458,6 +475,11 @@ describe("Zsh completions", () => {
     assert.include(script, "_describe")
     assert.include(script, "Start the server")
     assert.include(script, "Stop the server")
+  })
+
+  it("escapes colons in subcommand names for _describe", () => {
+    const script = Zsh.generate("tool", fromCommand(withColonSubcommand))
+    assert.include(script, `'test\\:unit:Run unit tests'`)
   })
 
   it("generates --no-<flag> for boolean flags", () => {
