@@ -28,7 +28,10 @@ describe("CodeWriter", () => {
     const EffectType = CodeWriter.importNamespace("effect/Effect", "Effect", { typeOnly: true })
     const ts = CodeWriter.importDefault("typescript", "ts")
     const Ajv = CodeWriter.importDefault("ajv", "Ajv", { typeOnly: true })
+    const C = CodeWriter.importNamed("./c.ts", "C", { typeOnly: true })
+    const cd = CodeWriter.importNamed("./c.ts", "c-d", { typeOnly: true })
     CodeWriter.add(writer, CodeWriter.code`${b}(${some}, ${ts}): ${Option} | ${Types} | ${Ajv} | ${EffectType}`)
+    CodeWriter.add(writer, CodeWriter.code`${C} | ${cd}`)
     CodeWriter.add(writer, CodeWriter.code`${Effect}`)
     strictEqual(
       CodeWriter.print(writer),
@@ -41,8 +44,11 @@ describe("CodeWriter", () => {
         `import type * as Types from "effect/Types"`,
         `import ts from "typescript"`,
         `import { b } from "./b.ts"`,
+        `import type { C, "c-d" as c_d } from "./c.ts"`,
         ``,
         `b(some, ts): Option | Types | Ajv | Effect`,
+        ``,
+        `C | c_d`,
         ``,
         `Effect`,
         ``
@@ -50,13 +56,17 @@ describe("CodeWriter", () => {
     )
   })
 
-  it("names imports after every declaration, including nested ones", () => {
+  it("names used imports after every declaration, including nested ones", () => {
     const writer = CodeWriter.make({ reserved: ["ts"] })
     const local = CodeWriter.declare(CodeWriter.scope(writer), "some")
     const some = CodeWriter.importNamed("effect/Option", "some")
     const ts = CodeWriter.importDefault("typescript", "ts")
     CodeWriter.add(writer, CodeWriter.code`${Effect} ${some} ${ts} ${local}`)
-    CodeWriter.add(writer, CodeWriter.code`${CodeWriter.declare(writer, "Effect")}`)
+    CodeWriter.add(CodeWriter.make(), CodeWriter.code`${CodeWriter.importNamespace("effect/Stream", "Stream")}`) // used elsewhere only
+    CodeWriter.add(
+      writer,
+      CodeWriter.code`${CodeWriter.declare(writer, "Effect")} ${CodeWriter.declare(writer, "Stream")}`
+    )
     strictEqual(
       CodeWriter.print(writer),
       [
@@ -66,7 +76,7 @@ describe("CodeWriter", () => {
         ``,
         `Effect2 some2 ts2 some`,
         ``,
-        `Effect`,
+        `Effect Stream`,
         ``
       ].join("\n")
     )

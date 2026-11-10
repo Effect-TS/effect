@@ -170,6 +170,8 @@ const reservedWords: ReadonlySet<string> = new Set([
   "yield"
 ])
 
+const isIdentifierName = (name: string): boolean => /^[\p{ID_Start}$_][\p{ID_Continue}$\u200c\u200d]*$/u.test(name)
+
 const sanitize = (name: string): string => {
   const out = name.replace(/[^\p{ID_Continue}$\u200c\u200d]/gu, "_")
   return /^[\p{ID_Start}$_]/u.test(out) ? out : `_${out}`
@@ -558,7 +560,9 @@ const printImports = (imports: Iterable<UsedImport>): ReadonlyArray<string> => {
     const specifiers = group
       .sort((a, b) => compareStrings(a.local, b.local))
       .map(({ local, runtime, symbol }) =>
-        `${allTypes || runtime ? "" : "type "}${symbol.name}${symbol.name === local ? "" : ` as ${local}`}`
+        `${allTypes || runtime ? "" : "type "}${
+          isIdentifierName(symbol.name) ? symbol.name : JSON.stringify(symbol.name)
+        }${symbol.name === local ? "" : ` as ${local}`}`
       )
     lines.push({
       from,
