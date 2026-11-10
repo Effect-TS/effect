@@ -1843,6 +1843,23 @@ describe("OpenAiLanguageModel", () => {
           }))
         ))
 
+      it.effect("advertises and handles non-strict record parameters", () =>
+        Effect.gen(function*() {
+          const received = yield* Ref.make<unknown>(undefined)
+          const toolkit = Toolkit.make(Tool.make("Search", { parameters: Schema.Record(Schema.String, Schema.String) }))
+          yield* LanguageModel.generateText({ prompt: "Search", toolkit }).pipe(
+            Effect.provide(OpenAiLanguageModel.model("gpt-4o-mini", { strictJsonSchema: false })),
+            Effect.provide(toolkit.toLayer({ Search: (params) => Ref.set(received, params) }))
+          )
+          const requests = yield* MockHttpClient.requests
+          const body = yield* getRequestBody(requests[0])
+          strictEqual(body.tools[0].strict, false)
+          deepStrictEqual(body.tools[0].parameters, { type: "object", additionalProperties: { type: "string" } })
+          deepStrictEqual(yield* Ref.get(received), { status: "open" })
+        }).pipe(Effect.provide(makeTestLayer({
+          body: { output: [makeFunctionCall("Search", { status: "open" })] }
+        }))))
+
       it.effect("converts transformed tool call params to the tool's standard encoded form", () =>
         Effect.gen(function*() {
           const received = yield* Ref.make<number | undefined>(undefined)

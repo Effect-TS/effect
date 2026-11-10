@@ -669,6 +669,7 @@ export const make = Effect.fnUntraced(function*({ model, config: providerConfig 
         const [rawResponse, response] = yield* client.createResponse(request)
         annotateResponse(options.span, rawResponse)
         return yield* makeResponse({
+          config,
           options,
           rawResponse,
           response,
@@ -685,6 +686,7 @@ export const make = Effect.fnUntraced(function*({ model, config: providerConfig 
         annotateRequest(options.span, request)
         const [response, stream] = yield* client.createResponseStream(request)
         return yield* makeStreamResponse({
+          config,
           options,
           stream,
           response,
@@ -981,12 +983,14 @@ type ActiveToolCall = {
 
 const makeResponse = Effect.fnUntraced(
   function*<Tools extends ReadonlyArray<Tool.Any>>({
+    config,
     options,
     rawResponse,
     response,
     toolNameMapper,
     toolCodecs
   }: {
+    readonly config: typeof Config.Service
     readonly options: LanguageModel.ProviderOptions
     readonly rawResponse: CreateResponse200
     readonly response: HttpClientResponse.HttpClientResponse
@@ -1040,7 +1044,7 @@ const makeResponse = Effect.fnUntraced(
                 })
               })
           })
-          const params = yield* transformToolCallParams(options, toolName, toolParams, toolCodecs)
+          const params = yield* transformToolCallParams(config, options, toolName, toolParams, toolCodecs)
           hasToolCalls = true
           parts.push({
             type: "tool-call",
@@ -1084,12 +1088,14 @@ const makeResponse = Effect.fnUntraced(
 
 const makeStreamResponse = Effect.fnUntraced(
   function*<Tools extends ReadonlyArray<Tool.Any>>({
+    config,
     options,
     stream,
     response,
     toolNameMapper,
     toolCodecs
   }: {
+    readonly config: typeof Config.Service
     readonly options: LanguageModel.ProviderOptions
     readonly stream: Stream.Stream<ResponseStreamEvent, AiError.AiError>
     readonly response: HttpClientResponse.HttpClientResponse
@@ -1146,7 +1152,7 @@ const makeStreamResponse = Effect.fnUntraced(
                   })
                 })
             })
-            const params = yield* transformToolCallParams(options, toolCall.name, parsedParams, toolCodecs)
+            const params = yield* transformToolCallParams(config, options, toolCall.name, parsedParams, toolCodecs)
             parts.push({ type: "tool-params-end", id: toolCall.id })
             parts.push({
               type: "tool-call",
@@ -1406,10 +1412,14 @@ const toolParametersError = (tool: Tool.Any, error: unknown, method: string): Ai
     method
   )
 
+const getToolStrictMode = (tool: Tool.Any, config: typeof Config.Service): boolean =>
+  Tool.getStrictMode(tool) ?? config.strictJsonSchema ?? true
+
 type ToolCodec = ReturnType<typeof toCodecOpenAI>["codec"]
 type ToolCodecs = ReadonlyMap<Tool.Any, ToolCodec>
 
 const transformToolCallParams = Effect.fnUntraced(function*(
+  config: typeof Config.Service,
   options: LanguageModel.ProviderOptions,
   toolName: string,
   toolParams: unknown,
@@ -1431,7 +1441,7 @@ const transformToolCallParams = Effect.fnUntraced(function*(
     })
   }
 
-  if (Tool.isDynamic(tool) && tool.jsonSchema !== undefined) {
+  if (!getToolStrictMode(tool, config) || (Tool.isDynamic(tool) && tool.jsonSchema !== undefined)) {
     return toolParams
   }
 
@@ -1488,18 +1498,20 @@ const prepareTools = Effect.fnUntraced(function*<Tools extends ReadonlyArray<Too
   // Convert the tools in the toolkit to the provider-defined format
   for (const tool of allowedTools) {
     if (Tool.isUserDefined(tool) || Tool.isDynamic(tool)) {
-      const strict = Tool.getStrictMode(tool) ?? config.strictJsonSchema ?? true
+      const strict = getToolStrictMode(tool, config)
       let parameters: ReturnType<typeof Tool.getJsonSchema>
       if (Tool.isDynamic(tool) && tool.jsonSchema !== undefined) {
         parameters = tool.jsonSchema
       } else {
         const prepared = yield* Effect.try({
-          try: () => toCodecOpenAI(tool.parametersSchema),
+          try: () => (strict ? toCodecOpenAI : LanguageModel.defaultCodecTransformer)(tool.parametersSchema),
           catch: (error) => toolParametersError(tool, error, "prepareTools")
         })
         parameters = prepared.jsonSchema
-        // Reused to normalize this tool's calls in the response.
-        toolCodecs.set(tool, prepared.codec)
+        if (strict) {
+          // Reused to normalize this tool's calls in the response.
+          toolCodecs.set(tool, prepared.codec)
+        }
       }
       tools.push({
         type: "function",

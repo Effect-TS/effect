@@ -100,6 +100,51 @@ describe("OpenAiLanguageModel", () => {
   }
 
   describe("generateText", () => {
+    it.effect("advertises and handles non-strict record parameters", () =>
+      Effect.gen(function*() {
+        const received = yield* Ref.make<unknown>(undefined)
+        const toolkit = Toolkit.make(Tool.make("Search", { parameters: Schema.Record(Schema.String, Schema.String) }))
+        const layer = OpenAiClient.layer({ apiKey: Redacted.make("sk-test-key") }).pipe(
+          Layer.provide(Layer.succeed(
+            HttpClient.HttpClient,
+            makeHttpClient((request) =>
+              Effect.gen(function*() {
+                const body = yield* getRequestBody(request)
+                assert.strictEqual(body.tools[0].function.strict, false)
+                assert.deepStrictEqual(body.tools[0].function.parameters, {
+                  type: "object",
+                  additionalProperties: { type: "string" }
+                })
+                return jsonResponse(
+                  request,
+                  makeChatCompletion({
+                    choices: [{
+                      index: 0,
+                      finish_reason: "tool_calls",
+                      message: {
+                        role: "assistant",
+                        content: null,
+                        tool_calls: [{
+                          id: "call_1",
+                          type: "function",
+                          function: { name: "Search", arguments: JSON.stringify({ status: "open" }) }
+                        }]
+                      }
+                    }]
+                  })
+                )
+              })
+            )
+          ))
+        )
+        yield* LanguageModel.generateText({ prompt: "Search", toolkit }).pipe(
+          Effect.provide(OpenAiLanguageModel.model("gpt-4o-mini", { strictJsonSchema: false })),
+          Effect.provide(toolkit.toLayer({ Search: (params) => Ref.set(received, params) })),
+          Effect.provide(layer)
+        )
+        assert.deepStrictEqual(yield* Ref.get(received), { status: "open" })
+      }))
+
     it.effect("serializes text-only user messages and decodes text output", () =>
       Effect.gen(function*() {
         let capturedRequest: HttpClientRequest.HttpClientRequest | undefined
