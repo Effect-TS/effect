@@ -54,6 +54,40 @@ const PersistenceLayer = Layer.provideMerge(
 )
 
 describe("Chat", () => {
+  it.effect("generateObject with allowEmpty preserves tool calls and results in history", () =>
+    Effect.gen(function*() {
+      const chat = yield* Chat.empty
+      const response = yield* chat.generateObject({
+        prompt: "Look it up",
+        schema: Schema.Struct({ answer: Schema.String }),
+        toolkit: LoopToolkit,
+        allowEmpty: true
+      }).pipe(
+        TestUtils.withLanguageModel({
+          generateText: [
+            { type: "tool-call", id: "call-1", name: "Lookup", params: { key: "a" } },
+            { type: "finish", reason: "tool-calls", usage: { inputTokens: {}, outputTokens: {} } }
+          ]
+        })
+      )
+
+      assert.deepStrictEqual(response.value, Option.none())
+      assert.deepStrictEqual(
+        yield* Ref.get(chat.history),
+        Prompt.make([
+          { role: "user", content: "Look it up" },
+          {
+            role: "assistant",
+            content: [{ type: "tool-call", id: "call-1", name: "Lookup", params: { key: "a" } }]
+          },
+          {
+            role: "tool",
+            content: [{ type: "tool-result", id: "call-1", name: "Lookup", result: "value of a", isFailure: false }]
+          }
+        ])
+      )
+    }).pipe(Effect.provide(LoopToolkitLayer)))
+
   for (
     const [name, data] of [
       ["bytes", new Uint8Array([0, 137, 255, 65])],

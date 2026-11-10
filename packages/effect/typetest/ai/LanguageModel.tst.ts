@@ -1,4 +1,4 @@
-import { Context, Effect, Schema, SchemaGetter, type Stream } from "effect"
+import { Context, Effect, type Option, Schema, SchemaGetter, type Stream } from "effect"
 import { type AiError, type Chat, LanguageModel, Tool, Toolkit } from "effect/ai"
 import type * as Response from "effect/ai/Response"
 import { describe, expect, it } from "tstyche"
@@ -405,6 +405,38 @@ describe("LanguageModel", () => {
   })
 
   describe("generateObject", () => {
+    it("infers the object value from allowEmpty", () => {
+      const schema = Schema.Struct({ answer: Schema.Number })
+      type Value = typeof schema.Type
+      const options = { prompt: "hello", schema }
+      const flag = null as unknown as boolean
+      const optional = null as unknown as { readonly allowEmpty?: true }
+
+      Effect.gen(function*() {
+        const absent = yield* LanguageModel.generateObject(options)
+        const disabled = yield* LanguageModel.generateObject({ ...options, allowEmpty: false })
+        const undefinedFlag = yield* LanguageModel.generateObject({ ...options, allowEmpty: undefined })
+        const enabled = yield* LanguageModel.generateObject({ ...options, allowEmpty: true })
+        const widened = yield* LanguageModel.generateObject({ ...options, allowEmpty: flag })
+        const optionalFlag = yield* LanguageModel.generateObject({ ...options, ...optional })
+
+        expect<typeof absent.value>().type.toBe<Value>()
+        expect<typeof disabled.value>().type.toBe<Value>()
+        expect<typeof undefinedFlag.value>().type.toBe<Value>()
+        expect<typeof enabled.value>().type.toBe<Option.Option<Value>>()
+        expect<typeof widened.value>().type.toBe<Value | Option.Option<Value>>()
+        expect<typeof optionalFlag.value>().type.toBe<Value | Option.Option<Value>>()
+
+        const model = yield* LanguageModel.LanguageModel
+        const serviceResponse = yield* model.generateObject({ ...options, allowEmpty: true })
+        expect<typeof serviceResponse.value>().type.toBe<Option.Option<Value>>()
+
+        const chat = null as unknown as Chat.Chat
+        const chatResponse = yield* chat.generateObject({ ...options, allowEmpty: true })
+        expect<typeof chatResponse.value>().type.toBe<Option.Option<Value>>()
+      })
+    })
+
     it("uses encoded tool parameters when tool call resolution is disabled", () => {
       const toolkit = Toolkit.make(TransformTool)
       const program = LanguageModel.generateObject({

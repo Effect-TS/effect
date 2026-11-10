@@ -1506,6 +1506,35 @@ describe("LanguageModel", () => {
   })
 
   describe("generateObject", () => {
+    for (const text of [undefined, " \n\t"]) {
+      it.effect(
+        `allowEmpty keeps tool-only responses with ${text === undefined ? "no" : "whitespace"} text`,
+        () =>
+          Effect.gen(function*() {
+            const response = yield* LanguageModel.generateObject({
+              prompt: "hi",
+              schema: Schema.Struct({ count: Schema.Number }),
+              toolkit: TransformToolkit,
+              allowEmpty: true
+            }).pipe(
+              TestUtils.withLanguageModel({
+                generateText: [
+                  ...(text === undefined ? [] : [{ type: "text" as const, text }]),
+                  { type: "tool-call", id: "call-1", name: "TransformTool", params: "2" },
+                  { ...finishPart, reason: "tool-calls" }
+                ]
+              }),
+              Effect.provide(TransformToolkitLayer)
+            )
+
+            deepStrictEqual(response.value, Option.none())
+            strictEqual(response.finishReason, "tool-calls")
+            strictEqual(response.toolCalls[0].id, "call-1")
+            strictEqual(response.toolResults[0].result, 4)
+          })
+      )
+    }
+
     it.effect("records json output type on the span", () =>
       LanguageModel.generateObject({
         prompt: "hi",
