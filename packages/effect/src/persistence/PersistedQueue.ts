@@ -464,7 +464,8 @@ const makeAckRetrySchedule = (lockExpiration: Duration.Input) =>
 
 // Internal signal used by the factory to tell a store that a taken element
 // cannot ever be processed (its stored payload fails to decode) and must be
-// dead-lettered instead of retried.
+// dead-lettered instead of retried. Stores outside this module detect it with
+// the exported `isDeadLetterCause`.
 class DeadLetter {
   readonly _tag = "~effect/persistence/PersistedQueue/DeadLetter"
   readonly cause: Cause.Cause<unknown>
@@ -518,7 +519,8 @@ const deadLetterFromCause = (cause: Cause.Cause<unknown>): DeadLetter | undefine
  * is 1-based. When the take scope closes with a success the element is marked
  * completed; a failure retries it according to `retryDelay` or marks it failed
  * once `maxAttempts` is exhausted; an interruption releases it without
- * counting the attempt.
+ * counting the attempt. A failure for which {@link isDeadLetterCause} holds
+ * marks the element failed immediately, without a retry.
  *
  * @stability unstable
  * @category services
@@ -563,6 +565,30 @@ export class PersistedQueueStore extends Context.Service<
     }) => Effect.Effect<void, PersistedQueueError>
   }
 >()("effect/persistence/PersistedQueue/PersistedQueueStore") {}
+
+/**
+ * Returns `true` when a take scope failed because the queue could not decode
+ * the element's stored payload.
+ *
+ * **When to use**
+ *
+ * Use when a custom `PersistedQueueStore` take finalizer decides whether a
+ * failed element is marked failed at once or retried.
+ *
+ * **Details**
+ *
+ * A payload that fails to decode with the queue's schema can never be
+ * processed, so `PersistedQueue` fails the take scope with an internal
+ * dead-letter signal and takes the next element. The store should mark the
+ * element failed whatever attempts remain, which also releases its id for a
+ * `deduplicate: "untilExecuted"` offer.
+ *
+ * @see {@link PersistedQueueStore} for the store contract that calls for this check
+ * @stability unstable
+ * @category predicates
+ * @since 4.1.3
+ */
+export const isDeadLetterCause = (cause: Cause.Cause<unknown>): boolean => deadLetterFromCause(cause) !== undefined
 
 /**
  * Provides an in-memory `PersistedQueueStore`.
@@ -675,8 +701,7 @@ export const layerStoreMemory: Layer.Layer<
                 entry.stateChangedAt = now
                 return
               }
-              const deadLetter = deadLetterFromCause(exit.cause)
-              if (deadLetter !== undefined) {
+              if (isDeadLetterCause(exit.cause)) {
                 entry.state = "failed"
                 entry.stateChangedAt = now
                 return
