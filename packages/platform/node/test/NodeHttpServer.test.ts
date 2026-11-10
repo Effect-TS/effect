@@ -1430,6 +1430,56 @@ describe("HttpServer", () => {
     )
   })
 
+  it.live.each([false, true])("shuts down WebSockets (unresponsive: %s)", (unresponsive) =>
+    Effect.gen(function*() {
+      const server = Http.createServer()
+      const scope = yield* Scope.make()
+      yield* Effect.addFinalizer(() => Scope.close(scope, Exit.void))
+      yield* HttpRouter.add(
+        "GET",
+        "/ws",
+        Effect.gen(function*() {
+          const request = yield* HttpServerRequest.HttpServerRequest
+          const socket = yield* request.upgrade
+          yield* Stream.runDrain(Socket.toStream(socket)).pipe(Effect.ignore)
+          return HttpServerResponse.empty()
+        })
+      ).pipe(
+        (layer) => HttpRouter.serve(layer, { disableListenLog: true }),
+        Layer.provide(NodeHttpServer.layer(() => server, {
+          port: 0,
+          gracefulShutdownTimeout: unresponsive ? "250 millis" : "10 seconds"
+        })),
+        Layer.buildWithScope(scope)
+      )
+      const client = yield* Effect.acquireRelease(
+        Effect.sync(() => new NodeWS.WebSocket("ws://127.0.0.1:" + tcpPort(server) + "/ws")),
+        (client) => Effect.sync(() => client.terminate())
+      )
+      const clientClosed = Latch.makeUnsafe()
+      let closeCode: number | undefined
+      client.on("close", (code) => {
+        closeCode = code
+        clientClosed.openUnsafe()
+      })
+      yield* Effect.callback<void, Error>((resume) => {
+        client.on("open", () => resume(Effect.void))
+        client.on("error", (error) => resume(Effect.fail(error)))
+      }).pipe(Effect.timeout("2 seconds"))
+      if (unresponsive) client.pause() // Do not receive or answer the close frame.
+
+      const started = performance.now()
+      // Finalizers are uninterruptible, so bound the join, not Scope.close.
+      const closed = yield* Effect.forkDetach(Scope.close(scope, Exit.void))
+      yield* Fiber.join(closed).pipe(Effect.timeout("2 seconds"))
+      if (unresponsive) {
+        assert.isAtLeast(performance.now() - started, 200)
+      } else {
+        yield* clientClosed.await.pipe(Effect.timeout("1 second"))
+        assert.strictEqual(closeCode, 1001)
+      }
+    }))
+
   it.live("closes idle HTTP/2 sessions on shutdown", () =>
     Effect.gen(function*() {
       const server = Http2.createServer()
