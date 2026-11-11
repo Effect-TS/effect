@@ -1085,28 +1085,17 @@ const prepareMessages = Effect.fnUntraced(
                       Predicate.hasProperty(part.params, "type") &&
                       (
                         part.params.type === "bash_code_execution" ||
-                        part.params.type === "text_editor_code_execution"
+                        part.params.type === "text_editor_code_execution" ||
+                        part.params.type === "programmatic-tool-call"
                       )
                     ) {
+                      // Strip the injected `type` before sending to Anthropic;
+                      // bash and text editor calls use it as their provider name
                       const { type, ...params } = part.params
                       content.push({
                         type: "server_tool_use",
                         id: part.id,
-                        name: type,
-                        input: params as any
-                      })
-                    } else if (
-                      // code execution 20250825 programmatic tool calling:
-                      // Strip the fake 'programmatic-tool-call' type before sending to Anthropic
-                      toolName === "code_execution" &&
-                      Predicate.hasProperty(part.params, "type") &&
-                      part.params.type === "programmatic-tool-call"
-                    ) {
-                      const { type: _type, ...params } = part.params
-                      content.push({
-                        type: "server_tool_use",
-                        id: part.id,
-                        name: toolName,
+                        name: type === "programmatic-tool-call" ? toolName : type,
                         input: params as any
                       })
                     } else {
@@ -1799,11 +1788,7 @@ const makeResponse = Effect.fnUntraced(
         }
 
         case "server_tool_use": {
-          const toolName = toolNameMapper.getCustomName(
-            part.name === "bash_code_execution" || part.name === "text_editor_code_execution"
-              ? "code_execution"
-              : part.name
-          )
+          const toolName = toolNameMapper.getCustomName(part.name)
 
           if (
             part.name === "bash_code_execution" ||
@@ -1812,7 +1797,7 @@ const makeResponse = Effect.fnUntraced(
             parts.push({
               type: "tool-call",
               id: part.id,
-              name: toolName,
+              name: toolNameMapper.getCustomName("code_execution"),
               params: { type: part.name, ...part.input },
               providerExecuted: true
             })
@@ -1898,23 +1883,7 @@ const makeResponse = Effect.fnUntraced(
           break
         }
 
-        // Code Execution 20250522
-        case "code_execution_tool_result": {
-          const toolName = toolNameMapper.getCustomName("code_execution")
-
-          parts.push({
-            type: "tool-result",
-            id: part.tool_use_id,
-            name: toolName,
-            isFailure: part.content.type === "code_execution_tool_result_error",
-            result: part.content,
-            providerExecuted: true
-          })
-
-          break
-        }
-
-        // Code Execution 20250825
+        case "code_execution_tool_result":
         case "bash_code_execution_tool_result":
         case "text_editor_code_execution_tool_result": {
           const toolName = toolNameMapper.getCustomName("code_execution")
@@ -1923,7 +1892,8 @@ const makeResponse = Effect.fnUntraced(
             type: "tool-result",
             id: part.tool_use_id,
             name: toolName,
-            isFailure: part.content.type === "bash_code_execution_tool_result_error" ||
+            isFailure: part.content.type === "code_execution_tool_result_error" ||
+              part.content.type === "bash_code_execution_tool_result_error" ||
               part.content.type === "text_editor_code_execution_tool_result_error",
             result: part.content,
             providerExecuted: true
@@ -2507,21 +2477,7 @@ const makeStreamResponse = Effect.fnUntraced(
                 break
               }
 
-              case "code_execution_tool_result": {
-                const part = event.content_block
-                const toolName = toolNameMapper.getCustomName("code_execution")
-
-                parts.push({
-                  type: "tool-result",
-                  id: part.tool_use_id,
-                  name: toolName,
-                  isFailure: part.content.type === "code_execution_tool_result_error",
-                  result: part.content,
-                  providerExecuted: true
-                })
-                break
-              }
-
+              case "code_execution_tool_result":
               case "bash_code_execution_tool_result":
               case "text_editor_code_execution_tool_result": {
                 const part = event.content_block
@@ -2531,7 +2487,8 @@ const makeStreamResponse = Effect.fnUntraced(
                   type: "tool-result",
                   id: part.tool_use_id,
                   name: toolName,
-                  isFailure: part.content.type === "bash_code_execution_tool_result_error" ||
+                  isFailure: part.content.type === "code_execution_tool_result_error" ||
+                    part.content.type === "bash_code_execution_tool_result_error" ||
                     part.content.type === "text_editor_code_execution_tool_result_error",
                   result: part.content,
                   providerExecuted: true

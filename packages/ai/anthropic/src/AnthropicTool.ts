@@ -382,7 +382,7 @@ export const CodeExecution_20250825_Parameters = Schema.Struct({
   code: Schema.String
 })
 /**
- * Input payload for the 2025-08-25 Anthropic code execution tool.
+ * Code-only input payload for the 2025-08-25 Anthropic code execution tool.
  *
  * **When to use**
  *
