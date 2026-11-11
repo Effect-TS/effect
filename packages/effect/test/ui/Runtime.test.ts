@@ -1418,6 +1418,46 @@ describe("Runtime", () => {
       assert.notInclude(JSON.stringify(encoded), "hidden")
     })
 
+    it("the Wire redacts a named property that a redacting index signature matches, through the codec and in the fallback", () => {
+      const EncodedSecret = Schema.Redacted(Schema.String).pipe(
+        Schema.decodeTo(
+          Schema.String,
+          SchemaTransformation.transform({ decode: Redacted.value, encode: Redacted.make })
+        )
+      )
+      // `token` is a named property, and the `tok` signature, which redacts, matches it too.
+      const Entry = (withFile: boolean) =>
+        Schema.StructWithRest(
+          Schema.Struct({
+            token: Schema.String,
+            other: Schema.NumberFromString,
+            ...(withFile ? { file: Schema.instanceOf(File) } : {})
+          }),
+          [Schema.Record(Schema.TemplateLiteral(["tok", Schema.String]), EncodedSecret)]
+        )
+      // The reverse: the property redacts, and a plain signature matches it.
+      const Reverse = Schema.StructWithRest(Schema.Struct({ token: EncodedSecret }), [
+        Schema.Record(Schema.String, Schema.String)
+      ])
+      const Save = Command.make(
+        "Save",
+        { args: { codec: Entry(false), fallback: Entry(true), reverse: Reverse } },
+        () => Effect.succeed(1)
+      )
+      const file = new File(["x"], "a.txt")
+      const encoded = MessageLog.encodeCommand(Save({
+        codec: { token: "hidden-one", other: 1, tokB: "hidden-two" },
+        fallback: { token: "hidden-three", other: 2, file },
+        reverse: { token: "hidden-four", note: "shown" }
+      } as any))
+      assert.deepStrictEqual(encoded.args, {
+        codec: { token: { "~redacted": true }, other: "1", tokB: { "~redacted": true } },
+        fallback: { token: { "~redacted": true }, other: "2", file: {} },
+        reverse: { token: { "~redacted": true }, note: "shown" }
+      })
+      assert.notInclude(JSON.stringify(encoded), "hidden")
+    })
+
     it("the Wire reads only what the Schema declares, and a value that throws is a placeholder", () => {
       const Save = Command.make(
         "Save",

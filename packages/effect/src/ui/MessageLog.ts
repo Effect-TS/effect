@@ -722,10 +722,12 @@ const holdsRedacted = (ast: SchemaAST.AST): boolean => redactAST(ast) !== ast
 
 const overlaps = new WeakMap<SchemaAST.AST, boolean>()
 /**
- * Whether `ast` holds, anywhere, an object with two or more index signatures
- * where one declares a `Schema.Redacted`. A key both match is parsed by each,
- * and the codec keeps the last one's output, so another one's redaction can
- * be lost. The whole codec is never used for such a Schema.
+ * Whether `ast` holds, anywhere, an object with an index signature that
+ * declares a `Schema.Redacted` beside another signature, named or indexed. A
+ * key two of them match is parsed by each, and the codec keeps only one
+ * output: a named property's, or else the last index signature's. Another
+ * one's redaction can be lost, so the whole codec is never used for such a
+ * Schema.
  */
 const holdsRedactedOverlap = (ast: SchemaAST.AST): boolean => {
   const cached = overlaps.get(ast)
@@ -737,7 +739,8 @@ const holdsRedactedOverlap = (ast: SchemaAST.AST): boolean => {
     if (node.encoding !== undefined && node.encoding.some((link) => visit(link.to))) return true
     switch (node._tag) {
       case "Objects":
-        return (node.indexSignatures.length > 1 && node.indexSignatures.some((index) => holdsRedacted(index.type))) ||
+        return (node.indexSignatures.length + node.propertySignatures.length > 1 &&
+          node.indexSignatures.some((index) => holdsRedacted(index.type))) ||
           node.propertySignatures.some((property) => visit(property.type)) ||
           node.indexSignatures.some((index) => visit(index.type))
       case "Arrays":
@@ -818,10 +821,11 @@ const within = <A>(path: Set<object>, value: object, f: () => A): A => {
   }
 }
 /**
- * The keys the parser outputs, each with the Schemas that apply to it. A
- * property key is the property's alone. Any other key gets every index
- * signature it matches, and one that matches none is left out. Only keys are
- * read here, never values.
+ * The keys the parser outputs, each with every Schema that applies to it: its
+ * property signature, if it has one, and every index signature it matches. The
+ * parser runs all of them, even when it keeps only one output, so each one's
+ * redaction counts. A key that matches nothing is left out. Only keys are read
+ * here, never values.
  */
 const encodeObject = (ast: SchemaAST.Objects, value: Record<PropertyKey, unknown>, path: Set<object>): Schema.Json => {
   const applies = new Map<string, Array<SchemaAST.AST>>()
@@ -833,7 +837,7 @@ const encodeObject = (ast: SchemaAST.Objects, value: Record<PropertyKey, unknown
   const properties = new Set(applies.keys())
   for (const index of ast.indexSignatures) {
     for (const key of SchemaAST.getIndexSignatureKeys(value, index.parameter)) {
-      if (typeof key !== "string" || properties.has(key)) continue
+      if (typeof key !== "string") continue
       const types = applies.get(key)
       if (types === undefined) applies.set(key, [index.type])
       else if (!types.includes(index.type)) types.push(index.type)
@@ -842,10 +846,11 @@ const encodeObject = (ast: SchemaAST.Objects, value: Record<PropertyKey, unknown
   const out: Record<string, Schema.Json> = {}
   for (const [key, types] of applies) {
     // Under two Schemas, either one's redaction could apply, so it's a placeholder. Otherwise the
-    // last one wins, as in the parser.
+    // parser's output is kept: the property's, or else the last index signature's.
+    const type = properties.has(key) ? types[0]! : types[types.length - 1]!
     out[key] = types.length > 1 && types.some(holdsRedacted)
       ? redacted
-      : guarded(() => encodeAt(types[types.length - 1]!, value[key], path))
+      : guarded(() => encodeAt(type, value[key], path))
   }
   return out
 }
