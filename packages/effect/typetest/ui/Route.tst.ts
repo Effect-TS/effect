@@ -204,6 +204,34 @@ describe("Router.prefetch", () => {
     >()
   })
 
+  it("keeps each member's reads, and rejects an erased member, for a union of components", () => {
+    const Selected = Math.random() > 0.5 ? PersonPage : HomePage
+    expect(Router.page(Selected, { id: 1 })).type.toBe<Router.Page<GetPerson>>()
+    const Provided = Math.random() > 0.5 ? PersonPage.pipe(Component.provide(GetPerson.layer)) : HomePage
+    expect(Router.page(Provided, { id: 1 })).type.toBe<Router.Page<GetPerson>>()
+    const Erased: Component.Mountable<{ readonly id: number }, never, GetPerson> = PersonPage
+    const Mixed = Math.random() > 0.5 ? Erased : HomePage
+    expect(Router.page).type.not.toBeCallableWith(Mixed, { id: 1 })
+    // Declared, the union's reads join the declarer's requirements.
+    const Declarer = Component.make({
+      name: "UnionDeclarer",
+      model: Schema.Struct({}),
+      message: Schema.Never,
+      init: () => ({}),
+      update: (model) => model,
+      subscriptions: () => [
+        Router.prefetch(AppRoute, {
+          Home: () => [],
+          Person: ({ params }) => [Router.page(Selected, { id: params.id })],
+          Files: () => [],
+          NotFound: () => []
+        })
+      ],
+      view: (_, h) => h.text("app")
+    })
+    expect<Component.Requirements<typeof Declarer>>().type.toBe<Router.Router | GetPerson>()
+  })
+
   it("takes props like h.child, and a handler for every route", () => {
     expect(Router.page).type.toBeCallableWith(HomePage)
     expect(Router.page).type.not.toBeCallableWith(PersonPage)

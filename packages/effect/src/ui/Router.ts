@@ -477,12 +477,13 @@ export interface Page<out R = never> {
  * @category utility types
  * @since 4.1.3
  */
-export type PageRequirements<C> = Component.LoaderServices<Component.Model<C>>
+export type PageRequirements<C> = C extends unknown ? Component.LoaderServices<Component.Model<C>> : never
 
-// A `Mountable` has its Model erased, and with it the reads `Router.page` adds to the declarer.
-type PageInput<C> = [Component.Model<C>] extends [never] ? ErasedPage
-  : 0 extends (1 & Component.Model<C>) ? ErasedPage
-  : unknown
+// A `Mountable` has its Model erased, and with it the reads `Router.page` adds to the declarer. Checked
+// per member, so a union with one erased member is rejected too.
+type PageInput<C> = true extends (C extends unknown ? IsErased<Component.Model<C>> : never) ? ErasedPage : unknown
+
+type IsErased<M> = [M] extends [never] ? true : 0 extends (1 & M) ? true : false
 
 interface ErasedPage {
   readonly "Router.page needs the component's Model to find its reads. Pass the component, not a Mountable":
