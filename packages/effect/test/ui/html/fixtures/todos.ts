@@ -45,7 +45,7 @@ export const TodoItem = Component.make({
       ),
       h.button("×").attr("aria-label", `Delete ${h.props.todo.title}`)
         .onClick(TodoItemMessage.make({ _tag: "Delete" }))
-    ).class(h.props.todo.done ? "done" : "")
+    ).class(h.props.todo.done && "done")
 })
 
 // ---------------------------------------------------------------------------

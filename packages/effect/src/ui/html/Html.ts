@@ -309,12 +309,35 @@ export class Element<out Msg, out R = never, in out E = Record<string, unknown>,
     return this.attr("id", id)
   }
   /**
-   * Sets the `class` attribute.
+   * Sets the `class` attribute from class tokens, skipping `false`, `null`,
+   * `undefined` and `""`.
+   *
+   * **Details**
+   *
+   * The remaining tokens are joined with one space, as `classNames` does.
+   * When none remain, the attribute is removed instead of rendering
+   * `class=""`. Calling `class` again replaces the earlier value.
+   *
+   * **Example** (Adding classes conditionally)
+   *
+   * ```ts
+   * import type { Html } from "effect/ui/html"
+   *
+   * declare const h: Html.Tags<never>
+   * declare const model: { readonly saving: boolean; readonly error: string | undefined }
+   *
+   * const save = h.button("Save").class(
+   *   "rounded px-3 py-1",
+   *   model.saving && "opacity-50",
+   *   model.error !== undefined && "ring-2 ring-red-500"
+   * )
+   * ```
    *
    * @since 4.1.5
    */
-  class(value: string): this {
-    return this.attr("class", value)
+  class(...tokens: ReadonlyArray<ClassToken>): this {
+    const value = classNames(...tokens)
+    return this.attr("class", value === "" ? undefined : value)
   }
   /**
    * Sets or removes the `disabled` boolean attribute.
@@ -455,6 +478,59 @@ export class Element<out Msg, out R = never, in out E = Record<string, unknown>,
   ): Element<Msg, R, E2, Node> {
     return this.on("toggle", handler)
   }
+}
+
+/**
+ * One class token for `classNames` and `Element.class`: a class string, or
+ * `false`, `null` or `undefined` for a class that is left out.
+ *
+ * **Details**
+ *
+ * `true` and numbers aren't tokens, which catches `cond || "x"` and
+ * `count && "x"` mistakes at compile time.
+ *
+ * @stability experimental
+ * @category attributes
+ * @since 4.1.5
+ */
+export type ClassToken = string | false | null | undefined
+
+/**
+ * Joins class tokens with one space, skipping `false`, `null`, `undefined`
+ * and `""`.
+ *
+ * **When to use**
+ *
+ * Use to build a class string outside `Element.class`, such as an attribute
+ * other than `class` or a value passed to a child component.
+ *
+ * **Details**
+ *
+ * Tokens are kept as written: there is no splitting, deduplication or
+ * conflict resolution between utility classes. With no tokens left it returns
+ * `""`.
+ *
+ * **Example** (Building a class string)
+ *
+ * ```ts import.meta.vitest
+ * import { Html } from "effect/ui/html"
+ *
+ * const tabClass = (active: boolean) => Html.classNames("tab", active && "tab-active")
+ *
+ * tabClass(true) // => "tab tab-active"
+ * tabClass(false) // => "tab"
+ * ```
+ *
+ * @stability experimental
+ * @category attributes
+ * @since 4.1.5
+ */
+export const classNames = (...tokens: ReadonlyArray<ClassToken>): string => {
+  let out = ""
+  for (const token of tokens) {
+    if (token) out = out === "" ? token : `${out} ${token}`
+  }
+  return out
 }
 
 /**
