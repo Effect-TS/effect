@@ -751,18 +751,27 @@ export const sqrtUnsafe = (n: bigint): bigint => {
 export const sqrt = (n: bigint): Option.Option<bigint> =>
   isGreaterThanOrEqualTo(n, bigint0) ? Option.some(sqrtUnsafe(n)) : Option.none()
 
-// `self` must be at least 2 and `degree` at least 2. Newton's method on whole
-// numbers, started above the root, decreases to the floor of the root and stops
-// there (Brent and Zimmermann, Modern Computer Arithmetic, §1.5.2, Algorithm
-// 1.14 RootInt). `self` is below 2 ** bits, so a degree of at least `bits`
-// leaves a root below 2, which is 1.
+// `self` must be at least 2 and `degree` at least 2. `self` is below 2 ** bits,
+// so a degree of at least `bits` leaves a root below 2, which is 1. Otherwise
+// the root is estimated from the leading 53 bits of `self`, raised by a
+// relative margin of 2 ** -40 so that it lies above the root despite rounding.
+// One Newton step on whole numbers from any positive value lands at or above the
+// floor of the root, by the inequality of arithmetic and geometric means, so the
+// result does not depend on the estimate being accurate. From there, Newton's
+// method on whole numbers decreases to the floor of the root and stops there
+// (Brent and Zimmermann, Modern Computer Arithmetic, §1.5.2, Algorithm 1.14
+// RootInt).
 const rootFloor = (self: bigint, degree: number): bigint => {
   const bits = self.toString(2).length
   if (degree >= bits) {
     return bigint1
   }
   const n = BigInt(degree)
-  let x = bigint1 << BigInt(Math.ceil(bits / degree))
+  const shift = Math.max(bits - 53, 0)
+  const exponent = (shift + Math.log2(Number(self >> BigInt(shift)) + 1)) / degree * (1 + 2 ** -40)
+  const scale = Math.max(Math.floor(exponent) - 52, 0)
+  const estimate = BigInt(Math.ceil(2 ** (exponent - scale))) << BigInt(scale)
+  let x = ((n - bigint1) * estimate + self / estimate ** (n - bigint1)) / n
   while (true) {
     const y = ((n - bigint1) * x + self / x ** (n - bigint1)) / n
     if (y >= x) {
@@ -773,7 +782,8 @@ const rootFloor = (self: bigint, degree: number): bigint => {
 }
 
 /**
- * Computes the integer n-th root of a `bigint` safely, rounding toward zero.
+ * Computes the integer n-th root of a `bigint`, rounding toward zero, returning
+ * `Option.none()` when the root does not exist.
  *
  * **When to use**
  *
@@ -807,9 +817,9 @@ const rootFloor = (self: bigint, degree: number): bigint => {
  * @see {@link rootUnsafe} for throwing when the root does not exist
  * @see {@link sqrt} for square roots
  *
- * @stability stable
+ * @stability unstable
  * @category math
- * @since 4.2.0
+ * @since 4.1.5
  */
 export const root: {
   (degree: number): (self: bigint) => Option.Option<bigint>
@@ -857,9 +867,9 @@ export const root: {
  * @see {@link root} for returning `Option.none` when the root does not exist
  * @see {@link sqrtUnsafe} for square roots
  *
- * @stability stable
+ * @stability unstable
  * @category math
- * @since 4.2.0
+ * @since 4.1.5
  */
 export const rootUnsafe: {
   (degree: number): (self: bigint) => bigint
@@ -867,7 +877,10 @@ export const rootUnsafe: {
 } = dual(
   2,
   (self: bigint, degree: number): bigint =>
-    Option.getOrThrowWith(root(self, degree), () => new RangeError(`No integer root of degree ${degree} of ${self}`))
+    Option.getOrThrowWith(
+      root(self, degree),
+      () => new RangeError(`Cannot take an integer root of degree ${degree} of ${self}`)
+    )
 )
 
 /**

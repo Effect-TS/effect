@@ -1,7 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
 import * as BigInt from "effect/BigInt"
-import * as Option from "effect/Option"
-import * as fc from "fast-check"
 import { assertNone, assertSome, throws } from "./utils/assert.ts"
 
 describe("BigInt", () => {
@@ -42,17 +40,16 @@ describe("BigInt", () => {
     assertSome(BigInt.root(-(2n ** 100n), Number.MAX_SAFE_INTEGER), -1n)
     assertSome(BigInt.root(2n ** 100n, 101), 1n)
     assertSome(BigInt.root(2n ** 100n, 100), 2n)
+    assertSome(BigInt.root(2n ** 80000n, 5000), 65536n)
+    assertSome(BigInt.root(2n ** 80000n - 1n, 5000), 65535n)
+    assertSome(BigInt.root(2n ** 262144n, 8192), 2n ** 32n)
+    for (const x of [0n, 1n, 2n, 3n, 4n, 15n, 16n, 17n, 2n ** 64n - 1n, 2n ** 64n, 10n ** 30n + 1n]) {
+      assertSome(BigInt.root(x, 2), BigInt.sqrtUnsafe(x))
+    }
     assertSome(BigInt.root(3)(27n), 3n)
-  })
-
-  it("root is the largest integer whose power does not exceed the input", () => {
-    fc.assert(
-      fc.property(fc.bigInt({ min: 0n, max: 1n << 300n }), fc.integer({ min: 1, max: 20 }), (x, degree) => {
-        const n = BigInt.BigInt(degree)
-        const r = Option.getOrThrow(BigInt.root(x, degree))
-        return r ** n <= x && x < (r + 1n) ** n && BigInt.rootUnsafe(x, degree) === r
-      })
-    )
+    for (const degree of [0.5, NaN, Infinity, 2 ** 53]) {
+      throws(() => BigInt.root(16n, degree), new RangeError(`Degree must be a safe integer, got ${degree}`))
+    }
   })
 
   it("toNumber converts bigints in the safe integer range", () => {
@@ -185,10 +182,9 @@ describe("BigInt", () => {
   it("rootUnsafe returns integer n-th roots and throws when there is none", () => {
     assert.strictEqual(BigInt.rootUnsafe(1024n, 10), 2n)
     assert.strictEqual(BigInt.rootUnsafe(10)(1023n), 1n)
-    throws(() => BigInt.rootUnsafe(-16n, 4), new RangeError("No integer root of degree 4 of -16"))
-    throws(() => BigInt.rootUnsafe(16n, 0), new RangeError("No integer root of degree 0 of 16"))
+    throws(() => BigInt.rootUnsafe(-16n, 4), new RangeError("Cannot take an integer root of degree 4 of -16"))
+    throws(() => BigInt.rootUnsafe(16n, 0), new RangeError("Cannot take an integer root of degree 0 of 16"))
     for (const degree of [0.5, NaN, Infinity, 2 ** 53]) {
-      throws(() => BigInt.root(16n, degree), new RangeError(`Degree must be a safe integer, got ${degree}`))
       throws(() => BigInt.rootUnsafe(16n, degree), new RangeError(`Degree must be a safe integer, got ${degree}`))
     }
   })

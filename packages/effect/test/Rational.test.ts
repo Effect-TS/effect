@@ -86,7 +86,7 @@ describe("Rational", () => {
   it("root is exact, and none when the root is not rational", () => {
     assertSome(Rational.root($("8/27"), 3), $("2/3"))
     assertSome(Rational.root(3)($("-8/27")), $("-2/3"))
-    assertRational(Rational.rootUnsafe($("-8/27"), 3), -2n, 3n)
+    assertRational(Rational.rootUnsafe(3)($("-8/27")), -2n, 3n)
     assertRational(Rational.rootUnsafe(zero, 3), 0n, 1n)
     assertRational(Rational.rootUnsafe($("7/9"), 1), 7n, 9n)
     assertRational(Rational.rootUnsafe(Rational.makeUnsafe(3n ** 120n, 2n ** 96n), 12), 3n ** 10n, 2n ** 8n)
@@ -96,9 +96,12 @@ describe("Rational", () => {
     assertNone(Rational.root($("4/9"), -2))
     assertNone(Rational.root($("2"), 2))
     assertNone(Rational.root($("1/2"), 2))
-    throws(() => Rational.rootUnsafe($("-4/9"), 2), new RangeError("No rational root of degree 2 of -4/9"))
-    throws(() => Rational.rootUnsafe($("4/9"), 0), new RangeError("No rational root of degree 0 of 4/9"))
-    throws(() => Rational.rootUnsafe($("2"), 2), new RangeError("No rational root of degree 2 of 2/1"))
+    // A degree at least the bit length finishes without computing a huge power.
+    assertNone(Rational.root($("4/9"), 2 ** 40))
+    assertSome(Rational.root($("-1"), Number.MAX_SAFE_INTEGER), $("-1"))
+    throws(() => Rational.rootUnsafe($("-4/9"), 2), new RangeError("Cannot take a rational root of degree 2 of -4/9"))
+    throws(() => Rational.rootUnsafe($("4/9"), 0), new RangeError("Cannot take a rational root of degree 0 of 4/9"))
+    throws(() => Rational.rootUnsafe($("2"), 2), new RangeError("Cannot take a rational root of degree 2 of 2/1"))
     for (const degree of [0.5, NaN, Infinity, 2 ** 53]) {
       throws(() => Rational.root($("4/9"), degree), new RangeError(`Degree must be a safe integer, got ${degree}`))
       throws(

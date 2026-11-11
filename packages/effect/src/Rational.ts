@@ -684,7 +684,7 @@ export const powUnsafe: {
  *
  * @stability unstable
  * @category math
- * @since 4.2.0
+ * @since 4.1.5
  */
 export const root: {
   (degree: number): (self: Rational) => Option.Option<Rational>
@@ -723,7 +723,7 @@ export const root: {
  *
  * @stability unstable
  * @category math
- * @since 4.2.0
+ * @since 4.1.5
  */
 export const rootUnsafe: {
   (degree: number): (self: Rational) => Rational
@@ -733,7 +733,7 @@ export const rootUnsafe: {
   (self: Rational, degree: number): Rational =>
     Option.getOrThrowWith(
       root(self, degree),
-      () => new RangeError(`No rational root of degree ${degree} of ${format(self)}`)
+      () => new RangeError(`Cannot take a rational root of degree ${degree} of ${format(self)}`)
     )
 )
 
