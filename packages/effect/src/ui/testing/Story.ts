@@ -57,14 +57,17 @@
  * @stability experimental
  * @since 4.1.3
  */
-import type * as Cause from "../../Cause.ts"
+import * as Cause from "../../Cause.ts"
 import * as Equal from "../../Equal.ts"
+import * as Option from "../../Option.ts"
 import { type Pipeable, pipeArguments } from "../../Pipeable.ts"
 import * as AsyncResult from "../../reactivity/AsyncResult.ts"
+import * as Loader from "../../reactivity/Loader.ts"
 import * as Schema from "../../Schema.ts"
 import * as Command from "../Command.ts"
 import type * as Component from "../Component.ts"
 import type * as Head from "../Head.ts"
+import * as loaders from "../internal/loaders.ts"
 import * as schedule from "../internal/schedule.ts"
 import * as MessageLog from "../MessageLog.ts"
 import * as View from "../View.ts"
@@ -114,8 +117,10 @@ export interface Story<Props, Model, Msg, Events> {
   readonly dropped: ReadonlyArray<Command.Effectful<Msg, any, never> | Command.Streaming<Msg, any, never>>
   /** The view of the current Model and props, rendered when they change, so a defect in `view` fails that step. */
   readonly view: () => View.Node<Msg, any>
-  /** The Subscription keys the current Model and props ask for. Nothing runs. */
+  /** The Subscription keys the current Model and props ask for, without the loader watches. Nothing runs. */
   readonly subscriptions: () => ReadonlyArray<string>
+  /** Each loader field with its read and the args its loader returns for the current Model and props. */
+  readonly loaders: () => ReadonlyArray<LoaderInfo>
   /** The view as a `Query` tree. */
   readonly root: Query.Node
   /** The one element matching `locator`. Throws when there's none or several. */
@@ -124,6 +129,21 @@ export interface Story<Props, Model, Msg, Events> {
   readonly query: (locator: Query.Locator) => Query.Node | undefined
   /** Every element matching `locator`, in document order. */
   readonly all: (locator: Query.Locator) => ReadonlyArray<Query.Node>
+}
+
+/**
+ * One loader field in a story: the field, its read's name, and the args its
+ * loader returns for the current Model and props, `undefined` when it is
+ * disabled.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.1.3
+ */
+export interface LoaderInfo {
+  readonly field: string
+  readonly read: string
+  readonly args: unknown
 }
 
 /**
@@ -192,8 +212,12 @@ export interface Steps<C extends AnyComponent> extends Pipeable {
   /** The story after the last step. */
   readonly current: Story<Component.Props<C>, Component.Model<C>, Component.Message<C>, Component.Events<C>>
 
-  /** Starts from any Model, forgetting what was issued and emitted so far. */
-  given(model: Component.Model<C>): this
+  /**
+   * Starts from any Model, forgetting what was issued and emitted so far. An
+   * updater is called with the current Model: `given(f)` is exactly
+   * `given(f(current.model))`.
+   */
+  given(model: Component.Model<C> | ((model: Component.Model<C>) => Component.Model<C>)): this
   /**
    * Changes the props. A props change never reaches `update`: it re-renders the
    * view and changes the Subscription keys.
@@ -245,6 +269,27 @@ export interface Steps<C extends AnyComponent> extends Pipeable {
   /** Ends the oldest running stream Command matching `target`, sending nothing. */
   end<D extends StreamTarget>(target: D): this
 
+  /**
+   * Loads a loader field with a Success: builds the snapshot at the loader's
+   * current args and sends it through the declared watch handler. Throws when
+   * the loader is disabled.
+   */
+  loaded<F extends Component.LoaderFields<Component.Model<C>>>(
+    field: F,
+    value: Loader.Read.Success<Component.ReadOf<Component.Model<C>[F]>>,
+    options?: { readonly waiting?: boolean | undefined; readonly patched?: boolean | undefined }
+  ): this
+  /**
+   * Loads a loader field with a typed failure, as `loaded` does. The failure
+   * keeps the field's last Success as `previousSuccess` when the field holds
+   * one at the loader's current args.
+   */
+  loadFailed<F extends Component.LoaderFields<Component.Model<C>>>(
+    field: F,
+    error: Loader.Read.Error<Component.ReadOf<Component.Model<C>[F]>>,
+    options?: { readonly waiting?: boolean | undefined }
+  ): this
+
   /** Checks the Model. `f` throws to fail the test. */
   model(f: (model: Component.Model<C>) => void): this
   /** Checks the view. `f` throws to fail the test. */
@@ -253,6 +298,8 @@ export interface Steps<C extends AnyComponent> extends Pipeable {
   emitted(f: (emitted: ReadonlyArray<Component.Events<C>>) => void): this
   /** Checks the Subscription keys the current Model and props ask for. `f` throws to fail the test. */
   subscriptions(f: (keys: ReadonlyArray<string>) => void): this
+  /** Checks the loader fields and their current args. `f` throws to fail the test. */
+  loaders(f: (loaders: ReadonlyArray<LoaderInfo>) => void): this
   /** Checks the whole story. `f` throws to fail the test. */
   check(f: (story: Steps<C>["current"]) => void): this
 
@@ -302,7 +349,20 @@ const record = <Props, Model, Msg, Events>(
     interrupted: fields.interrupted,
     dropped: fields.dropped,
     view: () => view,
-    subscriptions: () => (fields.component.subscriptions?.(fields.model, fields.props) ?? []).map((sub) => sub.key),
+    subscriptions: () =>
+      (fields.component.subscriptions?.(fields.model, fields.props) ?? [])
+        .map((sub) => sub.key)
+        .filter((key) => !loaders.isWatchKey(key)),
+    loaders: () => {
+      const bound = boundOf(fields.component)
+      if (bound === undefined) return []
+      const context = bound.context(fields.model, fields.props)
+      return bound.fields.map((field) => ({
+        field: field.field,
+        read: Loader.defOf(field.read).name,
+        args: context.argsOf(field.field).args
+      }))
+    },
     root,
     get: (locator) => Query.get(root, locator),
     query: (locator) => Query.query(root, locator),
@@ -320,6 +380,47 @@ const update = <Props, Model, Msg, Events>(
     ? story.view()
     : story.component.view(fields.model, fields.props, runningOf(fields.pending))
   return record(fields, view)
+}
+
+const boundOf = (component: AnyComponent): loaders.Bound | undefined =>
+  (component as unknown as { readonly "~loaders": loaders.Bound | undefined })["~loaders"]
+
+/** Builds the snapshot of `result` at the loader's current args and sends it through the watch handler. */
+const loadStep = (
+  story: Story<any, any, any, any>,
+  step: string,
+  field: string,
+  build: (
+    previous: Option.Option<AsyncResult.Success<any, any>>
+  ) => AsyncResult.Success<any, any> | AsyncResult.Failure<any, any>,
+  patched: boolean
+): Story<any, any, any, any> => {
+  const bound = boundOf(story.component)
+  if (bound === undefined || !bound.fields.some((f) => f.field === field)) {
+    throw new Error(`Story.${step}: "${field}" is not a loader field of ${story.component.name}`)
+  }
+  const marker = (story.component.subscriptions?.(story.model, story.props) ?? [])
+    .map((sub) => loaders.markerOf(sub))
+    .find((marker) => marker?.label === field)!
+  if (marker.argsKey === undefined) {
+    throw new Error(`Story.${step}: the loader of "${field}" is disabled for the current Model and props`)
+  }
+  const data = Loader.snapshotData(story.model[field])
+  const stored = data?.argsKey === marker.argsKey ? data.result : undefined
+  const previous: Option.Option<AsyncResult.Success<any, any>> = stored === undefined
+    ? Option.none()
+    : stored._tag === "Success"
+    ? Option.some(stored)
+    : stored.previousSuccess
+  const result = build(previous)
+  const snapshot = Loader.makeSnapshot(
+    Loader.defOf(marker.read),
+    marker.label,
+    { args: marker.args, argsKey: marker.argsKey },
+    result,
+    patched
+  )
+  return dispatch(story, marker.toMsg(snapshot, result))
 }
 
 /** `h.running` in a story: derived from what's pending. */
@@ -486,7 +587,8 @@ class StepsImpl implements Steps<AnyComponent> {
   }
 
   given(model: unknown): this {
-    return this.step(update(this.current, { model, pending: [], emitted: [], interrupted: [], dropped: [] }))
+    const next = typeof model === "function" ? model(this.current.model) : model
+    return this.step(update(this.current, { model: next, pending: [], emitted: [], interrupted: [], dropped: [] }))
   }
   props(next: unknown): this {
     const props = typeof next === "function" ? next(this.current.props) : next
@@ -528,6 +630,28 @@ class StepsImpl implements Steps<AnyComponent> {
   end(target: StreamTarget): this {
     return this.step(complete(this.current, findStream(this.current, target, "end")))
   }
+  loaded(
+    field: string,
+    value: unknown,
+    options?: { readonly waiting?: boolean | undefined; readonly patched?: boolean | undefined }
+  ): this {
+    return this.step(loadStep(
+      this.current,
+      "loaded",
+      field,
+      () => AsyncResult.success(value, { waiting: options?.waiting, timestamp: 0 }),
+      options?.patched === true
+    ))
+  }
+  loadFailed(field: string, error: unknown, options?: { readonly waiting?: boolean | undefined }): this {
+    return this.step(loadStep(
+      this.current,
+      "loadFailed",
+      field,
+      (previousSuccess) => AsyncResult.failure(Cause.fail(error), { previousSuccess, waiting: options?.waiting }),
+      false
+    ))
+  }
 
   model(f: (model: any) => void): this {
     f(this.current.model)
@@ -543,6 +667,10 @@ class StepsImpl implements Steps<AnyComponent> {
   }
   subscriptions(f: (keys: ReadonlyArray<string>) => void): this {
     f(this.current.subscriptions())
+    return this
+  }
+  loaders(f: (loaders: ReadonlyArray<LoaderInfo>) => void): this {
+    f(this.current.loaders())
     return this
   }
   check(f: (story: Story<any, any, any, any>) => void): this {

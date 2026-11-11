@@ -244,7 +244,8 @@ describe("Runtime", () => {
       provideHost(Effect.gen(function*() {
         const root = yield* TestHost.mount(Page, {}, { fallback: (_, h) => h.el("h1", "Something went wrong") })
         root.send("not a message" as any)
-        yield* TestHost.settle
+        const crashed = yield* Effect.flip(TestHost.settle)
+        assert.strictEqual(crashed._tag, "RootCrashed")
         assert.strictEqual(root.text(), "Something went wrong")
         assert.isUndefined(root.model())
         assert.includeMembers(tags(root), ["Failed", "Crashed"])
@@ -379,7 +380,13 @@ describe("Runtime", () => {
         root.send(Msg.make({ _tag: "Query", text: "a" }))
         root.send(Msg.make({ _tag: "Query", text: "ab" }))
         yield* TestHost.settle
-        assert.deepStrictEqual(root.pending(), [{ path: "/Box", name: "Search", status: "running", detached: false }])
+        assert.deepStrictEqual(root.pending(), [{
+          _tag: "Command",
+          path: "/Box",
+          name: "Search",
+          status: "running",
+          detached: false
+        }])
         yield* TestClock.adjust("1 second")
         yield* TestHost.settle
         assert.strictEqual(root.text(), "ab")
@@ -550,8 +557,8 @@ describe("Runtime", () => {
         root.send(PageMsg.make({ _tag: "Close" }))
         yield* TestHost.settle
         assert.deepStrictEqual(root.pending(), [
-          { path: "/Page/Editor[editor]", name: "test/Save", status: "running", detached: true },
-          { path: "/Page/Editor[editor]", name: "test/Save", status: "queued", detached: true }
+          { _tag: "Command", path: "/Page/Editor[editor]", name: "test/Save", status: "running", detached: true },
+          { _tag: "Command", path: "/Page/Editor[editor]", name: "test/Save", status: "queued", detached: true }
         ])
         yield* TestClock.adjust("1 second")
         yield* TestHost.settle
@@ -860,7 +867,7 @@ describe("Runtime", () => {
         )
         const root = yield* TestHost.mount(App, {})
         yield* TestHost.settle
-        assert.deepStrictEqual(root.pending().map((entry) => entry.detached), [
+        assert.deepStrictEqual(root.pending().map((entry) => entry._tag === "Command" && entry.detached), [
           false,
           false,
           false,
@@ -1562,6 +1569,46 @@ describe("Runtime", () => {
       const wire = encoder.encode(entry)
       assert.deepStrictEqual((wire as any).model, { "~truncated": 19 })
       assert.throws(() => Story.fromLog(Counter, [wire]), /entry #1 \(\/Counter\).*~truncated/)
+    })
+
+    it("truncates a message over maxEntryBytes, as it does a Model", () => {
+      // The message is 20 bytes and the Model 11.
+      const encoder = MessageLog.makeEncoder({ maxEntryBytes: 15 })
+      const entry: MessageLog.Update = {
+        _tag: "Update",
+        seq: 2,
+        at: 0,
+        session: "s",
+        path: "/Counter",
+        component: Counter,
+        source: { _tag: "Dispatch" },
+        message: CounterMessage.make({ _tag: "Increment" }),
+        props: { initial: 1 },
+        model: { count: 1 },
+        commands: [],
+        events: []
+      }
+      assert.deepStrictEqual((encoder.encode(entry) as any).message, { "~truncated": 20 })
+      assert.deepStrictEqual((encoder.encode(entry) as any).model, { count: 1 })
+    })
+
+    it("encodes FetchStarted on the Wire as it is, and decodes it back", () => {
+      const entry: MessageLog.FetchStarted = {
+        _tag: "FetchStarted",
+        seq: 3,
+        at: 10,
+        session: "s",
+        path: "/App",
+        read: "users/GetUser",
+        logKey: `{"id":"1"}`,
+        trigger: "visibility",
+        restart: false,
+        inWindow: false,
+        stored: true
+      }
+      const wire = MessageLog.makeEncoder().encode(entry)
+      assert.deepStrictEqual(wire, entry)
+      assert.deepStrictEqual(Schema.decodeUnknownSync(MessageLog.Wire)(JSON.parse(JSON.stringify(wire))), wire)
     })
 
     it("Redacted values in component Schemas are sent as placeholders", () => {
