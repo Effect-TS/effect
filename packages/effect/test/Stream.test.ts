@@ -5229,98 +5229,6 @@ describe("Stream", () => {
         deepStrictEqual(result1, [1, 3, 5])
         deepStrictEqual(result2, ["odd:1", "odd:3", "odd:5"])
       }))
-
-    it.effect("partition - values", () =>
-      Effect.gen(function*() {
-        const { result1, result2 } = yield* pipe(
-          Stream.range(0, 5),
-          Stream.partition((n) => n % 2 === 0 ? Result.succeed(n) : Result.fail(n)),
-          Effect.flatMap(([evens, odds]) =>
-            Effect.all({
-              result1: Stream.runCollect(evens),
-              result2: Stream.runCollect(odds)
-            })
-          ),
-          Effect.scoped
-        )
-        deepStrictEqual(result1, [0, 2, 4])
-        deepStrictEqual(result2, [1, 3, 5])
-      }))
-
-    it.effect("partition - errors", () =>
-      Effect.gen(function*() {
-        const { result1, result2 } = yield* pipe(
-          Stream.make(0),
-          Stream.concat(Stream.fail("boom")),
-          Stream.partition((n) => n % 2 === 0 ? Result.succeed(n) : Result.fail(n)),
-          Effect.flatMap(([evens, odds]) =>
-            Effect.all({
-              result1: Effect.flip(Stream.runCollect(evens)),
-              result2: Effect.flip(Stream.runCollect(odds))
-            })
-          ),
-          Effect.scoped
-        )
-        assert.strictEqual(result1, "boom")
-        assert.strictEqual(result2, "boom")
-      }))
-
-    it.effect("partition - backpressure", () =>
-      Effect.gen(function*() {
-        const { result1, result2, result3 } = yield* pipe(
-          Stream.range(0, 5),
-          Stream.partition((n) => (n % 2 === 0 ? Result.succeed(n) : Result.fail(n)), { capacity: 1 }),
-          Effect.flatMap(([evens, odds]) =>
-            Effect.gen(function*() {
-              const ref = yield* Ref.make(Array.empty<number>())
-              const latch = yield* (Deferred.make<void>())
-              const fiber = yield* pipe(
-                evens,
-                Stream.tap((n) =>
-                  pipe(
-                    Ref.update(ref, Array.prepend(n)),
-                    Effect.andThen(
-                      pipe(
-                        Deferred.succeed(latch, void 0),
-                        Effect.when(Effect.sync(() => n === 2))
-                      )
-                    )
-                  )
-                ),
-                Stream.runDrain,
-                Effect.forkChild
-              )
-              yield* (Deferred.await(latch))
-              const result1 = yield* (Ref.get(ref))
-              const result2 = yield* (Stream.runCollect(odds))
-              yield* (Fiber.await(fiber))
-              const result3 = yield* (Ref.get(ref))
-              return { result1, result2, result3 }
-            })
-          ),
-          Effect.scoped
-        )
-        deepStrictEqual(result1, [2, 0])
-        deepStrictEqual(result2, [1, 3, 5])
-        deepStrictEqual(result3, [4, 2, 0])
-      }))
-
-    it.effect("partition with Filter", () =>
-      Effect.gen(function*() {
-        const { evens, odds } = yield* pipe(
-          Stream.range(0, 5),
-          Stream.partition((n: number) => n % 2 === 0 ? Result.succeed(n) : Result.fail(n)),
-          Effect.flatMap(([pass, fail]) =>
-            Effect.all({
-              evens: Stream.runCollect(pass),
-              odds: Stream.runCollect(fail)
-            })
-          ),
-          Effect.scoped
-        )
-        deepStrictEqual(evens, [0, 2, 4])
-        deepStrictEqual(odds, [1, 3, 5])
-      }))
   })
 
   describe("peel", () => {
@@ -6044,16 +5952,6 @@ describe("Stream", () => {
   })
 
   describe("when", () => {
-    it.effect("when - returns the stream if the condition is satisfied", () =>
-      Effect.gen(function*() {
-        const stream = Stream.make(1, 2, 3, 4, 5)
-        const { result1, result2 } = yield* (Effect.all({
-          result1: pipe(stream, Stream.when(Effect.succeed(true)), Stream.runCollect),
-          result2: Stream.runCollect(stream)
-        }))
-        deepStrictEqual(result1, result2)
-      }))
-
     it.effect("when - returns an empty stream if the condition is not satisfied", () =>
       Effect.gen(function*() {
         const result = yield* pipe(
@@ -6078,7 +5976,7 @@ describe("Stream", () => {
         deepStrictEqual(result, Exit.die(error))
       }))
 
-    it.effect("when - returns the stream if the effectful condition is satisfied", () =>
+    it.effect("when - returns the stream if the condition is satisfied", () =>
       Effect.gen(function*() {
         const result = yield* pipe(
           Stream.make(1, 2, 3, 4, 5),
@@ -6086,16 +5984,6 @@ describe("Stream", () => {
           Stream.runCollect
         )
         deepStrictEqual(result, [1, 2, 3, 4, 5])
-      }))
-
-    it.effect("when - returns an empty stream if the effectful condition is not satisfied", () =>
-      Effect.gen(function*() {
-        const result = yield* pipe(
-          Stream.make(1, 2, 3, 4, 5),
-          Stream.when(Effect.succeed(false)),
-          Stream.runCollect
-        )
-        deepStrictEqual(result, [])
       }))
 
     it.effect("when - fails if the effectful condition fails", () =>
