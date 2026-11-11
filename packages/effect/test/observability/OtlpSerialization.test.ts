@@ -1,11 +1,15 @@
 import { assert, describe, it } from "@effect/vitest"
 import { Effect } from "effect"
 import { OtlpResource, OtlpSerialization } from "effect/observability"
-import { encodeAnyValue } from "effect/observability/internal/otlpProtobuf"
 import { Buffer } from "node:buffer"
 
 describe("OtlpSerialization", () => {
   const boundaries = [
+    {
+      input: -1,
+      decimal: "-1",
+      varint: [0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x01]
+    },
     {
       input: -(2 ** 63),
       decimal: "-9223372036854775808",
@@ -69,12 +73,6 @@ describe("OtlpSerialization", () => {
         }).pipe(Effect.provide(format === "json" ? OtlpSerialization.layerJson : OtlpSerialization.layerProtobuf))
     )
   }
-
-  it("encodes a negative protobuf int64 as a ten-byte varint", () => {
-    const encoded = encodeAnyValue({ intValue: -1 })
-    assert.strictEqual(encoded.length, 11)
-    assert.deepStrictEqual(Array.from(encoded), [0x18, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x01])
-  })
 
   it.effect("layerProtobuf omits absent metric start timestamps", () =>
     Effect.gen(function*() {
