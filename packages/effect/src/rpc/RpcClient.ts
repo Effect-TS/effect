@@ -667,10 +667,14 @@ export const make: <Rpcs extends Rpc.Any, const Flatten extends boolean = false>
     readonly context: Context.Context<never>
     readonly schemas: RpcSchemas
     readonly discard: boolean
-    // The delivery fiber of a chunk whose Ack is being sent
-    acking?: Fiber.Fiber<unknown, unknown> | undefined
+    // Completed when the request ends, retiring its unfinished Ack sends
+    acksDone?: Deferred.Deferred<void> | undefined
   }
   const entries = new Map<RequestId, ClientEntry>()
+  const removeEntry = (requestId: RequestId, entry: ClientEntry) => {
+    entries.delete(requestId)
+    if (entry.acksDone) Deferred.doneUnsafe(entry.acksDone, Exit.void)
+  }
   // Completed before the protocol stops running this client, so requests made
   // while it shuts down are not handed to a transport that is being torn down.
   const closing = Deferred.makeUnsafe<void>()
@@ -678,8 +682,7 @@ export const make: <Rpcs extends Rpc.Any, const Flatten extends boolean = false>
   const interruptRequest = (requestId: RequestId): Effect.Effect<void, RpcClientError> => {
     const entry = entries.get(requestId)
     if (!entry) return Effect.void
-    entries.delete(requestId)
-    entry.acking?.interruptUnsafe()
+    removeEntry(requestId, entry)
     return send(clientId, { _tag: "Interrupt", requestId }) as Effect.Effect<void, RpcClientError>
   }
 
@@ -728,14 +731,14 @@ export const make: <Rpcs extends Rpc.Any, const Flatten extends boolean = false>
         case "Ack": {
           const entry = entries.get(message.requestId)
           if (!entry) return Effect.void
-          return Effect.withFiber((fiber) => {
-            entry.acking = fiber
-            return send(clientId, { _tag: "Ack", requestId: message.requestId }).pipe(
-              Effect.ensuring(Effect.sync(() => {
-                if (entry.acking === fiber) entry.acking = undefined
-              }))
-            )
-          }) as Effect.Effect<void, RpcClientError>
+          // Chunks are delivered off the read loop, so a send can outlast its
+          // request and overlap the next Ack. Only the send is cut short, so
+          // the delivery and its queue are unaffected.
+          entry.acksDone ??= Deferred.makeUnsafe()
+          return Effect.raceFirst(
+            send(clientId, { _tag: "Ack", requestId: message.requestId }),
+            Deferred.await(entry.acksDone)
+          ) as Effect.Effect<void, RpcClientError>
         }
         case "Interrupt": {
           return interruptRequest(message.requestId)
@@ -789,7 +792,7 @@ export const make: <Rpcs extends Rpc.Any, const Flatten extends boolean = false>
         const requestId = RequestId(message.requestId)
         const entry = entries.get(requestId)
         if (!entry) return Effect.void
-        entries.delete(requestId)
+        removeEntry(requestId, entry)
         // the success of a discarded call is its acknowledgement, which has no
         // value, and an older server may send the handler result instead
         if (entry.discard && message.exit._tag === "Success") {
@@ -807,7 +810,7 @@ export const make: <Rpcs extends Rpc.Any, const Flatten extends boolean = false>
       }
       // Clear entries before resuming callers, as they can start new requests
       case "Defect": {
-        entries.clear()
+        for (const [requestId, entry] of Array.from(entries)) removeEntry(requestId, entry)
         return write({ _tag: "Defect", clientId: 0, defect: decodeDefect(message.defect as any) })
       }
       case "ClientProtocolError": {
@@ -815,7 +818,7 @@ export const make: <Rpcs extends Rpc.Any, const Flatten extends boolean = false>
         const requestIds = message.requestIds === undefined
           ? Array.from(entries.keys())
           : message.requestIds.map(RequestId).filter((requestId) => entries.has(requestId))
-        for (const requestId of requestIds) entries.delete(requestId)
+        for (const requestId of requestIds) removeEntry(requestId, entries.get(requestId)!)
         return Effect.forEach(
           requestIds,
           (requestId) => write({ _tag: "Exit", clientId: 0, requestId, exit: exit as any })
