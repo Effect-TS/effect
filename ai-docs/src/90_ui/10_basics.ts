@@ -6,12 +6,23 @@
  * the browser with `BrowserHost`.
  */
 import { Effect, Layer, Schema, Stream } from "effect"
-import { Command, Component, Subscription } from "effect/ui"
+import { Command, Component, Subscription, View } from "effect/ui"
 // Only the `effect/ui/html` paths need the DOM lib types. `effect/ui` and
 // `effect/ui/testing` are host-neutral.
 import { BrowserHost, Html } from "effect/ui/html"
 import { Note, NotesTag } from "./fixtures/domain/Note.ts"
 import { Notes } from "./fixtures/services/Notes.ts"
+
+// Register the element vocabulary once for the app: the augmentation is the
+// type half, `registerElements` the runtime half. Every `view` then has
+// `h.form`, `h.button`, ... It must run before the first render, in tests
+// too. A component that can't rely on it sets `elements: Html` instead.
+declare module "effect/ui/View" {
+  interface Register {
+    readonly elements: Html.Elements
+  }
+}
+View.registerElements(Html)
 
 // Props, Model, messages and events are Schemas, so the runtime can log,
 // serialise and hydrate them. Build a message with `Message.make({ _tag })`.
@@ -56,8 +67,6 @@ export const NoteEditor = Component.make({
   }),
   message: NoteEditorMessage,
   events: NoteEditorEvents,
-  // The element vocabulary of `h` in `view`: `h.form`, `h.button`, ...
-  elements: Html,
   // `init`, `update` and `view` are pure. Props are `$.props` and `h.props`.
   // A props change re-renders, but never reaches `update`.
   init: ($) => ({ draft: $.props.note.body, saved: $.props.note.body, edits: 0, error: null }),

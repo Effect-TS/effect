@@ -51,15 +51,19 @@ export class Notes extends Context.Service<Notes, {
       const notes = new Map(seed.map((note) => [note.id, note]))
       return Notes.of({
         list: Effect.sync(() => Array.from(notes.values())),
-        get: (id) => {
-          const note = notes.get(id)
-          return note === undefined ? Effect.fail(new NoteNotFound({ id })) : Effect.succeed(note)
-        },
-        save: (note) => {
-          if (note.title === "") return Effect.fail(new NoteSaveError({ reason: "A note needs a title" }))
-          notes.set(note.id, note)
-          return Effect.succeed(note)
-        }
+        // `Effect.suspend` keeps the fake as lazy as the HTTP client: the
+        // Map is read and written when the Effect runs, not when it is made.
+        get: (id) =>
+          Effect.suspend(() => {
+            const note = notes.get(id)
+            return note === undefined ? Effect.fail(new NoteNotFound({ id })) : Effect.succeed(note)
+          }),
+        save: (note) =>
+          Effect.suspend(() => {
+            if (note.title === "") return Effect.fail(new NoteSaveError({ reason: "A note needs a title" }))
+            notes.set(note.id, note)
+            return Effect.succeed(note)
+          })
       })
     })
 }
