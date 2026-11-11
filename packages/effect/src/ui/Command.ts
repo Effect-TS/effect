@@ -53,6 +53,7 @@
  */
 import * as Context from "../Context.ts"
 import { TaggedClass } from "../Data.ts"
+import * as Duration from "../Duration.ts"
 import * as Effect from "../Effect.ts"
 import { dual } from "../Function.ts"
 import * as Layer from "../Layer.ts"
@@ -319,6 +320,11 @@ export interface Declared {
    * body's own success.
    */
   readonly writes: ((success: any) => ReadonlyArray<Loader.Write>) | undefined
+  /**
+   * The budget given to `Command.afterRefetch`, or `undefined` when a success
+   * is delivered without waiting for refetches.
+   */
+  readonly afterRefetch: Duration.Duration | undefined
 }
 
 /**
@@ -1018,6 +1024,7 @@ export const make: {
       invalidates: noTargets,
       optimistic: noTargets,
       writes: undefined,
+      afterRefetch: undefined,
       work: run(args),
       resolve: identity,
       reject: undefined
@@ -1205,6 +1212,7 @@ export const Service: <Self>() => {
         invalidates: invalidates(args),
         optimistic: optimistic?.(args) ?? noTargets,
         writes: writes === undefined ? undefined : (success) => writes(success, args),
+        afterRefetch: undefined,
         work: stream
           ? Stream.unwrap(Effect.map(service, (run) => run(args)))
           : Effect.flatMap(service, (run) => run(args)),
@@ -1338,6 +1346,99 @@ export const match: {
     resolve: options.onSuccess,
     reject: options.onFailure
   }))
+
+/**
+ * Passes when `C` is an issued or unmatched Effect-kind `Service` Command,
+ * and otherwise says why `Command.afterRefetch` doesn't take it.
+ *
+ * @stability experimental
+ * @category utility types
+ * @since 4.1.3
+ */
+export type AwaitsRefetch<C> = C extends Unmatched<infer _A, infer _E, infer R, infer K> ? AwaitsRefetchOf<R, K>
+  : C extends Issued<infer _Msg, infer R, infer _S, infer K, infer _SE> ? AwaitsRefetchOf<R, K>
+  : never
+
+// `SourceE` is contravariant: `never` admits every issued Command.
+type Awaitable = Issued<any, any, any, Kind, never> | Unmatched<any, any, any, Kind>
+
+type AwaitsRefetchOf<R, K> = [K] extends ["Effect"] ? [R] extends [never] ? {
+      readonly "Command.afterRefetch takes a Command.Service Command. A Command.make Command invalidates nothing": never
+    }
+  : unknown
+  : { readonly "Command.afterRefetch takes an Effect Command. A Stream Command has no final message to hold": never }
+
+/**
+ * Holds a Command's success message until the entries its run invalidated
+ * have refetched, or until `budget` runs out.
+ *
+ * **When to use**
+ *
+ * Use when `update` needs the refetched data with the success: a "save, then
+ * show the saved row" flow whose refetch would otherwise land a render after
+ * the message.
+ *
+ * **Details**
+ *
+ * It applies to an issued or unmatched Effect-kind `Service` Command, on
+ * either side of `match` and `map`. A Stream Command or a `make` Command
+ * doesn't compile. A second application replaces the first.
+ *
+ * - The wait covers everything the run invalidated: declared targets plus
+ *   those implied by patches, minus the entries its own `writes` stored
+ *   fresh. Of those, it waits for the entries that have a watcher, from any
+ *   instance, when the success applies its invalidation. A watcher that
+ *   comes later doesn't join.
+ * - An entry's wait ends when it has no refetch in flight and none owed,
+ *   whether the refetch succeeds, fails or dies. The wait ends on the
+ *   slowest entry, and the budget is the upper bound.
+ * - `budget` is a `Duration.Input`: `"Infinity"` waits with no bound, zero
+ *   doesn't wait, and a bare number is milliseconds. The clock is the
+ *   Effect `Clock`, started when invalidation is applied. A run cut by the
+ *   budget, by `switch` or by `Command.interrupt` delivers its success at
+ *   once, and its refetches run on.
+ * - A typed failure is delivered at once. An interrupt before the body
+ *   succeeds sends nothing. If the issuing instance closes during the wait,
+ *   the message is dropped.
+ * - `h.running` stays true through the wait. Under `queue` the next run
+ *   starts when the body exits, and messages keep issue order; under
+ *   `drop` a waiting run still counts as running.
+ * - Each awaited entry emits when it settles, so the field's message comes
+ *   before the success, in one render, for the last entry to settle. Two
+ *   entries settling apart can briefly show a row patched into the Model
+ *   next to the refetched one.
+ *
+ * **Example** (Waiting for a rename's refetch)
+ *
+ * ```ts import.meta.vitest
+ * import { Command } from "effect/ui"
+ * import { Effect, Schema } from "effect"
+ *
+ * const Message = Schema.TaggedUnion({ Renamed: {} })
+ *
+ * class RenameUser extends Command.Service<RenameUser>()("RenameUser", {
+ *   args: { id: Schema.String, name: Schema.String },
+ *   invalidates: () => []
+ * }, Effect.succeed(() => Effect.void)) {}
+ *
+ * const rename = RenameUser.make({ id: "1", name: "Ada" }).pipe(
+ *   Command.map(() => Message.make({ _tag: "Renamed" })),
+ *   Command.afterRefetch("5 seconds")
+ * )
+ * ```
+ *
+ * @stability experimental
+ * @category mapping
+ * @since 4.1.3
+ */
+export const afterRefetch: {
+  (budget: Duration.Input): <C extends Awaitable>(self: C & AwaitsRefetch<C>) => C
+  <C extends Awaitable>(self: C & AwaitsRefetch<C>, budget: Duration.Input): C
+} = dual(2, (self: Awaitable, budget: Duration.Input): any =>
+  makeIssued(
+    { ...(self as unknown as Fields), afterRefetch: Duration.fromInputUnsafe(budget) },
+    UnmatchedTypeId in self
+  ))
 
 /**
  * Issues a Command that interrupts the running and queued runs of another one.

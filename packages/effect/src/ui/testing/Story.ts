@@ -58,6 +58,7 @@
  * @since 4.1.3
  */
 import * as Cause from "../../Cause.ts"
+import * as Duration from "../../Duration.ts"
 import * as Equal from "../../Equal.ts"
 import * as Option from "../../Option.ts"
 import { type Pipeable, pipeArguments } from "../../Pipeable.ts"
@@ -74,12 +75,15 @@ import * as View from "../View.ts"
 import * as Query from "./Query.ts"
 
 /**
- * A Command issued by the instance and not yet resolved.
+ * A Command issued by the instance whose message hasn't been delivered.
  *
  * **Details**
  *
  * `running` is what the runtime would be executing; `queued` is waiting behind
- * a running run of the same group under `mode: "queue"`.
+ * a running run of the same group under `mode: "queue"`. `awaiting` has
+ * resolved or failed, and holds `message`: a `Command.afterRefetch` run
+ * waits for the loader fields in `awaiting`, and under `mode: "queue"` a
+ * message also waits for the earlier ones of its group.
  *
  * @stability experimental
  * @category models
@@ -87,7 +91,25 @@ import * as Query from "./Query.ts"
  */
 export interface Pending<Msg> {
   readonly command: Command.Effectful<Msg, any, never> | Command.Streaming<Msg, any, never>
-  readonly status: "running" | "queued"
+  readonly status: "running" | "queued" | "awaiting"
+  /** On an awaiting run: the message it delivers when its wait ends. */
+  readonly message?: Msg | undefined
+  /** On an awaiting run: the loader fields its wait is still on, each at the args it awaits. */
+  readonly awaiting?: ReadonlyArray<AwaitedField> | undefined
+}
+
+/**
+ * A loader field a `Command.afterRefetch` run waits for, at the args its
+ * loader returned when the run resolved. A keyed field has one per awaited
+ * key.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.1.3
+ */
+export interface AwaitedField {
+  readonly field: string
+  readonly args: unknown
 }
 
 /**
@@ -111,7 +133,10 @@ export interface Story<Props, Model, Msg, Events> {
   readonly pending: ReadonlyArray<Pending<Msg>>
   /** Everything emitted to the parent so far. */
   readonly emitted: ReadonlyArray<Events>
-  /** Commands interrupted by `switch`, by an interrupt Command, or by `given`. */
+  /**
+   * Commands interrupted by `switch`, by an interrupt Command, or by `given`.
+   * An awaiting run that is cut delivers its message instead, and isn't here.
+   */
   readonly interrupted: ReadonlyArray<Command.Effectful<Msg, any, never> | Command.Streaming<Msg, any, never>>
   /** Commands ignored by `mode: "drop"`. */
   readonly dropped: ReadonlyArray<Command.Effectful<Msg, any, never> | Command.Streaming<Msg, any, never>>
@@ -283,24 +308,45 @@ export interface Steps<C extends AnyComponent> extends Pipeable {
    * arguments. `result` is the definition's own result, before any
    * `Command.map`, which is replayed to produce the component's message. A
    * queued run of the same group starts when the running one resolves.
+   *
+   * A Command issued with `Command.afterRefetch` becomes `awaiting` on the
+   * component's own loader fields its declared targets match, less those its
+   * `writes` store, and sends at once when there are none. A `loaded` or
+   * `loadFailed` step on the last of them sends the field's message, then
+   * this one. `waitExpired` ends the wait by budget. Under `mode: "queue"`
+   * a message also waits for the earlier ones of its group.
    */
   resolve<D extends Target>(target: D, result: Command.Result<D>): this
   /**
    * Fails the oldest running Command matching `target` with a typed failure
    * of its body, and sends the message its `Command.match` maps it to. A
-   * stream Command ends. Throws for a Command whose body can't fail.
+   * stream Command ends. Throws for a Command whose body can't fail. A
+   * failure doesn't wait for refetches.
    */
   fail<D extends Target>(target: D, error: Command.Failure<D>): this
   /** Sends one element of the oldest running stream Command matching `target`, which stays pending. */
   next<D extends StreamTarget>(target: D, result: Command.Result<D>): this
   /** Ends the oldest running stream Command matching `target`, sending nothing. */
   end<D extends StreamTarget>(target: D): this
+  /**
+   * Ends the `Command.afterRefetch` wait of the oldest awaiting Command
+   * matching `target` by its budget, and sends its message. Throws when no
+   * matching Command is waiting.
+   */
+  waitExpired(target: Target): this
 
   /**
    * Loads a loader field with a Success: builds the snapshot at the loader's
    * current args and sends it through the declared watch handler. Throws when
    * the loader is disabled. For a list field `value` is the page array, and
    * unless `waiting` it settles a pending load more.
+   *
+   * **Details**
+   *
+   * Unless `waiting` or `patched`, it is a settle: it ends a
+   * `Command.afterRefetch` wait on the field. It throws while a running or
+   * queued Command patches the field, since no fetch settles under a live
+   * patch: only a `patched` value is sent then.
    */
   loaded<F extends Component.SingleFields<Component.Model<C>>>(
     field: F,
@@ -701,7 +747,8 @@ const loadKeyedStep = (
   const group = keyedField(story, step, field)
   const def = Loader.defOf(group.read)
   const held = Loader.snapshotMapData(story.model[field])?.entries
-  return sendKeyed(
+  const settled = new Set<string>()
+  const sent = sendKeyed(
     story,
     sentFor,
     group,
@@ -712,6 +759,9 @@ const loadKeyedStep = (
           `Story.${step}: the loader of "${field}" doesn't return the args ${def.logKey(load.args, argsKey)}`
         )
       }
+      const patched = "value" in load && load.patched === true
+      if (!patched) checkUnpatched(story, step, field, load.args)
+      if (!patched && load.waiting !== true) settled.add(argsKey)
       if ("value" in load) {
         return {
           argsKey,
@@ -732,6 +782,8 @@ const loadKeyedStep = (
       }
     })
   )
+  // After the field's message: the wait's own message comes second.
+  return settleWaits(sent, (awaited) => awaited.field === field && settled.has(def.argsKey(awaited.args)))
 }
 
 /** How many rounds of prune messages one step may send before it throws. */
@@ -790,66 +842,208 @@ const toEntries = <Msg>(pending: ReadonlyArray<Pending<Msg>>): Array<schedule.En
     value: entry
   }))
 
-/** Applies what `init` or `update` returned: the Model, the Commands through `schedule`, and the events. */
+/**
+ * Applies what `init` or `update` returned: the Model, the Commands through `schedule`, and the events.
+ * As in the runtime, a cut run that awaits delivers its message inside this `update`, before the
+ * Command that cut it is added.
+ */
 const apply = <Props, Model, Msg, Events>(
   story: Story<Props, Model, Msg, Events>,
   next: Component.Next<Model, Msg, Events, any>
 ): Story<Props, Model, Msg, Events> => {
-  let pending = story.pending
-  const interrupted = [...story.interrupted]
-  const dropped = [...story.dropped]
+  let out = update(story, { model: next.model })
   for (const command of next.commands) {
-    const decision = schedule.schedule(toEntries(pending), command)
+    const decision = schedule.schedule(toEntries(out.pending), command)
     if (decision.interrupt.length > 0) {
       const gone = new Set(decision.interrupt.map((entry) => entry.value))
-      pending = pending.filter((entry) => !gone.has(entry))
-      for (const entry of decision.interrupt) interrupted.push(entry.value.command)
+      out = update(out, {
+        pending: out.pending.filter((entry) => !gone.has(entry)),
+        interrupted: [
+          ...out.interrupted,
+          ...decision.interrupt.flatMap((entry) => entry.value.status === "awaiting" ? [] : [entry.value.command])
+        ]
+      })
+      for (const entry of decision.interrupt) {
+        if (entry.value.status === "awaiting") out = dispatch(out, entry.value.message)
+      }
     }
     if (command._tag === "Interrupt") continue
     switch (decision.action) {
       case "start":
-        pending = [...pending, { command, status: "running" }]
-        break
       case "queue":
-        pending = [...pending, { command, status: "queued" }]
+        out = update(out, {
+          pending: [...out.pending, { command, status: decision.action === "start" ? "running" : "queued" }]
+        })
         break
       case "drop":
-        dropped.push(command)
+        out = update(out, { dropped: [...out.dropped, command] })
         break
       case "none":
         break
     }
   }
-  let out = update(story, {
-    model: next.model,
-    pending,
-    emitted: [...story.emitted, ...next.events],
-    interrupted,
-    dropped
-  })
+  out = update(out, { emitted: [...out.emitted, ...next.events] })
   for (const list of next.lists ?? []) out = applyList(out, list)
   return out
 }
 
-/** Removes a resolved run and starts the next queued run of its group, if any. */
-const complete = <Props, Model, Msg, Events>(
+/**
+ * A run's fiber exited: with a message it is awaiting, on `awaiting` or behind an earlier message of
+ * its queue, and without one it leaves. The next queued run of its group starts either way.
+ */
+const exited = <Props, Model, Msg, Events>(
+  story: Story<Props, Model, Msg, Events>,
+  entry: Pending<Msg>,
+  held: { readonly message: Msg; readonly awaiting: ReadonlyArray<AwaitedField> } | undefined
+): Story<Props, Model, Msg, Events> => {
+  const awaiting: Pending<Msg> | undefined = held === undefined
+    ? undefined
+    : { command: entry.command, status: "awaiting", message: held.message, awaiting: held.awaiting }
+  const next = schedule.next(toEntries(story.pending.filter((other) => other !== entry)), toEntries([entry])[0])
+  const pending = story.pending.flatMap((other): Array<Pending<Msg>> =>
+    other === entry
+      ? awaiting === undefined ? [] : [awaiting]
+      : other === next?.value
+      ? [{ command: other.command, status: "running" }]
+      : [other]
+  )
+  const out = update(story, { pending })
+  return awaiting === undefined ? out : release(out, awaiting)
+}
+
+/** Delivers the messages of `entry`'s group that can go now, in the order `schedule.deliverable` gives. */
+const release = <Props, Model, Msg, Events>(
   story: Story<Props, Model, Msg, Events>,
   entry: Pending<Msg>
 ): Story<Props, Model, Msg, Events> => {
-  const remaining = story.pending.filter((other) => other !== entry)
-  const ended = toEntries([entry])[0]
-  const next = schedule.next(toEntries(remaining), ended)
-  const pending = next === undefined
-    ? remaining
-    : remaining.map((other) => other === next.value ? { command: other.command, status: "running" as const } : other)
-  return update(story, { pending })
+  let out = story
+  for (;;) {
+    if (entry.command.mode !== "queue" && !out.pending.includes(entry)) return out
+    const next = schedule.deliverable(
+      toEntries(out.pending),
+      toEntries([entry])[0],
+      (other) => other.awaiting === undefined || other.awaiting.length === 0
+    )
+    if (next === undefined) return out
+    out = dispatch(update(out, { pending: out.pending.filter((other) => other !== next.value) }), next.value.message)
+  }
+}
+
+/** Takes awaited fields off the awaiting runs, delivering what a wait that ends lets go. */
+const settleWaits = <Props, Model, Msg, Events>(
+  story: Story<Props, Model, Msg, Events>,
+  settled: (awaited: AwaitedField) => boolean
+): Story<Props, Model, Msg, Events> => {
+  let out = story
+  for (const entry of story.pending) {
+    if (entry.awaiting === undefined || !entry.awaiting.some(settled) || !out.pending.includes(entry)) continue
+    const rest: Pending<Msg> = { ...entry, awaiting: entry.awaiting.filter((awaited) => !settled(awaited)) }
+    out = update(out, { pending: out.pending.map((other) => other === entry ? rest : other) })
+    if (rest.awaiting!.length === 0) out = release(out, rest)
+  }
+  return out
+}
+
+/**
+ * A single or list field's `loaded` or `loadFailed`: unless `patched`, a live patch makes it throw,
+ * and unless `waiting` too, it settles the field's entry for the waits on it, after its message.
+ */
+const settleStep = <S extends Story<any, any, any, any>>(
+  story: S,
+  step: string,
+  field: string,
+  patched: boolean,
+  waiting: boolean,
+  load: () => S
+): S => {
+  const marker = markerAt(story, field)
+  if (patched || marker?.argsKey === undefined) return load()
+  checkUnpatched(story, step, field, marker.args)
+  const loaded = load()
+  return waiting ? loaded : settleWaits(loaded, awaitedAt(loaded, field, marker.argsKey)) as S
+}
+
+/** `checkUnpatched` at a single or list field's current args. */
+const unpatchedAt = (story: Story<any, any, any, any>, step: string, field: string): void => {
+  const marker = markerAt(story, field)
+  if (marker?.argsKey !== undefined) checkUnpatched(story, step, field, marker.args)
+}
+
+/** Whether `awaited` is the entry of `field` at `argsKey`. */
+const awaitedAt = (story: Story<any, any, any, any>, field: string, argsKey: string) => {
+  const def = Loader.defOf(boundOf(story.component)!.fields.find((f) => f.field === field)!.read)
+  return (awaited: AwaitedField): boolean => awaited.field === field && def.argsKey(awaited.args) === argsKey
+}
+
+/**
+ * What a `Command.afterRefetch` run resolved with `result` waits for: the component's own loader
+ * fields, at their current args, that its declared targets match, less the entries its `writes` store.
+ */
+const awaitedFields = (
+  story: Story<any, any, any, any>,
+  command: Command.Effectful<any, any, never> | Command.Streaming<any, any, never>,
+  result: unknown
+): ReadonlyArray<AwaitedField> => {
+  const budget = command.afterRefetch
+  if (command._tag !== "Effect" || budget === undefined || Duration.isZero(budget)) return []
+  const bound = boundOf(story.component)
+  if (bound === undefined) return []
+  const written = (command.writes?.(result) ?? []).map((write) => ({
+    name: Loader.defOf(write.read).name,
+    argsKey: Loader.defOf(write.read).argsKey(write.args)
+  }))
+  const out: Array<AwaitedField> = []
+  const context = bound.context(story.model, story.props)
+  for (const field of bound.fields) {
+    const def = Loader.defOf(field.read)
+    const current = context.argsOf(field.field)
+    const args = current.entries !== undefined
+      ? current.entries.map((entry) => entry.args)
+      : current.argsKey === undefined
+      ? []
+      : [current.args]
+    for (const each of args) {
+      const argsKey = def.argsKey(each)
+      if (!Loader.invalidatesEntry(command, field.read, each)) continue
+      if (written.some((write) => write.name === def.name && write.argsKey === argsKey)) continue
+      out.push({ field: field.field, args: each })
+    }
+  }
+  return out
+}
+
+/**
+ * Throws when a running or queued Command's optimistic patch is live on the entry of `field` at
+ * `args`: the runtime settles no fetch there, so only a patched value can be sent.
+ */
+const checkUnpatched = (story: Story<any, any, any, any>, step: string, field: string, args: unknown): void => {
+  const read = boundOf(story.component)!.fields.find((f) => f.field === field)!.read
+  const patcher = story.pending.find((entry) =>
+    entry.status !== "awaiting" && entry.command.optimistic.length > 0 &&
+    Loader.invalidatesEntry({ invalidates: [], optimistic: entry.command.optimistic }, read, args)
+  )
+  if (patcher !== undefined) {
+    throw new Error(
+      `Story.${step}: "${field}" is under the optimistic patch of ${
+        describe(patcher.command)
+      } [${patcher.status}], and no fetch settles under a live patch. Resolve or fail it first, or send the patched value with \`{ patched: true }\`.`
+    )
+  }
 }
 
 const describe = (command: Command.Effectful<any, any, never> | Command.Streaming<any, any, never>): string =>
   `${command.name}(${JSON.stringify(MessageLog.encodeArgs(command.argsSchema, command.args))})`
 
 const describePending = (pending: ReadonlyArray<Pending<any>>): string =>
-  pending.length === 0 ? "nothing" : pending.map((entry) => `${describe(entry.command)} [${entry.status}]`).join(", ")
+  pending.length === 0 ?
+    "nothing" :
+    pending.map((entry) =>
+      `${describe(entry.command)} [${entry.status}${
+        entry.awaiting === undefined || entry.awaiting.length === 0
+          ? ""
+          : ` on ${entry.awaiting.map((awaited) => awaited.field).join(", ")}`
+      }]`
+    ).join(", ")
 
 const matches = (target: Target, entry: Pending<any>): boolean => {
   if (Command.isDefinition(target)) return entry.command.name === Command.nameOf(target)
@@ -976,7 +1170,10 @@ class StepsImpl implements Steps<AnyComponent> {
 
   resolve(target: Target, result: unknown): this {
     const entry = findRunning(this.current, target, "resolve")
-    return this.step(dispatch(complete(this.current, entry), resolveWith(entry, result)))
+    return this.step(exited(this.current, entry, {
+      message: resolveWith(entry, result),
+      awaiting: awaitedFields(this.current, entry.command, result)
+    }))
   }
   fail(target: Target, error: unknown): this {
     const entry = findRunning(this.current, target, "fail")
@@ -984,13 +1181,26 @@ class StepsImpl implements Steps<AnyComponent> {
     if (reject === undefined) {
       throw new Error(`Story.fail: ${describe(entry.command)} has no typed failure mapped by Command.match`)
     }
-    return this.step(dispatch(complete(this.current, entry), reject(error)))
+    return this.step(exited(this.current, entry, { message: reject(error), awaiting: [] }))
   }
   next(target: StreamTarget, result: unknown): this {
     return this.step(dispatch(this.current, resolveWith(findStream(this.current, target, "next"), result)))
   }
   end(target: StreamTarget): this {
-    return this.step(complete(this.current, findStream(this.current, target, "end")))
+    return this.step(exited(this.current, findStream(this.current, target, "end"), undefined))
+  }
+  waitExpired(target: Target): this {
+    const entry = this.current.pending.find((entry) =>
+      entry.awaiting !== undefined && entry.awaiting.length > 0 && matches(target, entry)
+    )
+    if (entry === undefined) {
+      throw new Error(
+        `Story.waitExpired: no ${describeTarget(target)} is waiting on refetches; pending: ${
+          describePending(this.current.pending)
+        }`
+      )
+    }
+    return this.step(settleWaits(this.current, (awaited) => entry.awaiting!.includes(awaited)))
   }
   loaded(field: string, ...rest: Array<any>): this {
     if (isKeyed(this.current, field)) {
@@ -1002,21 +1212,26 @@ class StepsImpl implements Steps<AnyComponent> {
       { readonly waiting?: boolean | undefined; readonly patched?: boolean | undefined } | undefined
     ]
     // A list's pages settle its pending load more, unless a walk is still running.
-    return this.step(loadStep(
-      options?.waiting === true ? this.current : settlePending(this.current, field),
-      "loaded",
-      field,
-      () => AsyncResult.success(value, { waiting: options?.waiting, timestamp: 0 }),
-      options?.patched === true
-    ))
+    return this.step(
+      settleStep(this.current, "loaded", field, options?.patched === true, options?.waiting === true, () =>
+        loadStep(
+          options?.waiting === true ? this.current : settlePending(this.current, field),
+          "loaded",
+          field,
+          () => AsyncResult.success(value, { waiting: options?.waiting, timestamp: 0 }),
+          options?.patched === true
+        ))
+    )
   }
   loadedMore(field: string, page: unknown): this {
+    unpatchedAt(this.current, "loadedMore", field)
     return this.step(settleMore(this.current, "loadedMore", field, (pages) => ({
       pages: [...pages, page],
       more: (pages) => moreOfPages(Loader.defOf(markerAt(this.current, field).read), pages)
     })))
   }
   loadMoreFailed(field: string, error: unknown): this {
+    unpatchedAt(this.current, "loadMoreFailed", field)
     return this.step(settleMore(this.current, "loadMoreFailed", field, (pages) => ({
       pages,
       more: () => ({ _tag: "Failed", error })
@@ -1031,13 +1246,14 @@ class StepsImpl implements Steps<AnyComponent> {
     }
     const [error, options] = rest as [unknown, { readonly waiting?: boolean | undefined } | undefined]
     // A failure ends the walk a pending load more waits on, unless a walk is still running.
-    return this.step(loadStep(
-      options?.waiting === true ? this.current : settlePending(this.current, field),
-      "loadFailed",
-      field,
-      (previousSuccess) => AsyncResult.failure(Cause.fail(error), { previousSuccess, waiting: options?.waiting }),
-      false
-    ))
+    return this.step(settleStep(this.current, "loadFailed", field, false, options?.waiting === true, () =>
+      loadStep(
+        options?.waiting === true ? this.current : settlePending(this.current, field),
+        "loadFailed",
+        field,
+        (previousSuccess) => AsyncResult.failure(Cause.fail(error), { previousSuccess, waiting: options?.waiting }),
+        false
+      )))
   }
   loadedMany(field: string, entries: ReadonlyArray<KeyedLoad<any>>): this {
     return this.step(loadKeyedStep(this.current, this.sentFor, "loadedMany", field, entries))

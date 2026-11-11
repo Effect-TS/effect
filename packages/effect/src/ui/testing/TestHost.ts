@@ -296,7 +296,9 @@ export type Pending = PendingCommand | PendingFetch
 
 /**
  * A Command run still in flight: the instance that issued it, its name, and
- * whether it's `running` or `queued`.
+ * whether it's `running`, `queued` or `awaiting`: its fiber exited and its
+ * message waits, on a `Command.afterRefetch` wait or, under `queue`, behind
+ * an earlier message of its group.
  *
  * @stability experimental
  * @category models
@@ -843,7 +845,11 @@ export const formatLog = (entries: ReadonlyArray<MessageLog.Entry>): string =>
         return `${head} ${entry.key}`
       case "CommandEnded":
       case "CommandInterrupted":
-        return `${head} ${entry.name}`
+        return `${head} ${entry.name}${entry.waitEnded === undefined ? "" : ` (wait ${entry.waitEnded})`}`
+      case "CommandAwaiting":
+        return `${head} ${entry.name} on ${
+          entry.entries.map((awaited) => `${awaited.read} ${awaited.logKey}`).join(", ")
+        }`
       case "CommandDropped":
         return `${head} ${entry.name} (${entry.reason})`
       case "FetchStarted":

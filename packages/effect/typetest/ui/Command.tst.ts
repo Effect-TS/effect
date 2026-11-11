@@ -203,6 +203,33 @@ describe("Command", () => {
     })
   })
 
+  describe("afterRefetch", () => {
+    it("takes an Effect Service Command on either side of match and map, and keeps its type", () => {
+      const unmatched = Save.make({ id: "t1", title: "milk" })
+      expect(unmatched.pipe(Command.afterRefetch("5 seconds"))).type.toBe<
+        Command.Unmatched<string, SaveFailed, Save, "Effect">
+      >()
+      const matched = unmatched.pipe(
+        Command.afterRefetch("Infinity"),
+        Command.match({ onSuccess: (title) => title.length, onFailure: (error) => error.reason.length })
+      )
+      expect(matched).type.toBe<Command.Effectful<number, Save, string, SaveFailed>>()
+      expect(matched.pipe(Command.afterRefetch(5))).type.toBe<Command.Effectful<number, Save, string, SaveFailed>>()
+      expect(SA.make().pipe(Command.map((a) => a.length), Command.afterRefetch("1 second"))).type.toBe<
+        Command.Effectful<number, SA, string>
+      >()
+      expect(Command.afterRefetch(SA.make(), "1 second")).type.toBe<Command.Effectful<string, SA, string>>()
+    })
+
+    it("rejects a Stream Command and a Command.make Command", () => {
+      expect(Command.afterRefetch).type.not.toBeCallableWith(SB.make(), "1 second")
+      expect(Command.afterRefetch).type.not.toBeCallableWith(Fx(), "1 second")
+      expect(Command.afterRefetch).type.not.toBeCallableWith(St(), "1 second")
+      expect(Command.afterRefetch("1 second")).type.not.toBeCallableWith(Fx())
+      expect(Command.afterRefetch("1 second")).type.not.toBeCallableWith(SB.make())
+    })
+  })
+
   describe("a Command that never produces a result", () => {
     it("is accepted by any component's $.run", () => {
       const Hold = Command.make("Hold", { args: {} }, () => Effect.never)

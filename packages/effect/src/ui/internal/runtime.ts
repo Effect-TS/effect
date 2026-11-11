@@ -140,11 +140,20 @@ interface Run {
    * its service and by the root, not by its instance, with a Scope of its own.
    */
   readonly detached: boolean
-  status: "running" | "queued"
+  status: schedule.Status
   fiber: Fiber.Fiber<unknown, unknown> | undefined
   /** Stops listening to the owning build's close. */
   release: (() => void) | undefined
   done: boolean
+  /** From fiber exit until delivery: the message an awaiting run holds, and its source. */
+  held: { readonly message: unknown; readonly source: MessageLog.Source } | undefined
+  /** Whether the run's own `Command.afterRefetch` wait is going on. */
+  waiting: boolean
+  /** How the run's own wait ended, and what it still awaited then. */
+  waitEnded: MessageLog.WaitEnded | undefined
+  outstanding: ReadonlyArray<MessageLog.AwaitedEntry> | undefined
+  /** Stops the budget's sleep and the cache's callback. */
+  cancelWait: (() => void) | undefined
 }
 
 interface SubscriptionRun {
@@ -1155,7 +1164,8 @@ const start = (
           if (!run.detached && run.fiber !== undefined) waits.push(Effect.asVoid(Fiber.await(run.fiber)))
         }
         for (const run of inst.runs.slice()) {
-          if (!(run.detached && survives(inst, run))) waits.push(stopAndAwait(inst, run))
+          // An awaiting run's message is dropped with its instance, and the run ends here.
+          if (run.status === "awaiting" || !(run.detached && survives(inst, run))) waits.push(stopAndAwait(inst, run))
         }
         if (inst.runs.length > 0) orphans.add(inst)
         return awaitRuns(waits)
@@ -1539,7 +1549,8 @@ const start = (
             handle = cache.beginRun({
               command: command.name,
               invalidates: command.invalidates as ReadonlyArray<Loader.Target>,
-              optimistic: command.optimistic as ReadonlyArray<Loader.Patch>
+              optimistic: command.optimistic as ReadonlyArray<Loader.Patch>,
+              afterRefetch: command._tag === "Effect" && command.afterRefetch !== undefined
             })
           } catch (error) {
             // Like a throw in `update`: the run doesn't start and the issuing instance fails.
@@ -1547,7 +1558,8 @@ const start = (
             return
           }
         }
-        for (const entry of decision.interrupt) stopRun(inst, entry.value)
+        // A cut run that awaits delivers here, so `update` gets it after the new patch and before the new fiber.
+        for (const entry of decision.interrupt) stopRun(inst, entry.value, "switch")
         const run: Run = {
           command,
           issued,
@@ -1556,7 +1568,12 @@ const start = (
           status: decision.action === "start" ? "running" : "queued",
           fiber: undefined,
           release: undefined,
-          done: false
+          done: false,
+          held: undefined,
+          waiting: false,
+          waitEnded: undefined,
+          outstanding: undefined,
+          cancelWait: undefined
         }
         inst.runs.push(run)
         if (run.detached) detachedRuns.set(run, inst)
@@ -1598,8 +1615,8 @@ const start = (
    * Starts the next queued run of the same group, if nothing in it is running any more. On a closed
    * instance only detached runs are left, and its queue drains while their owner lives.
    */
-  const promote = (inst: Instance, ended: Run) => {
-    if (ended.status !== "running") return
+  const promote = (inst: Instance, ended: Run, status: schedule.Status = ended.status) => {
+    if (status !== "running") return
     for (;;) {
       const next = schedule.next(entriesOf(inst), entryOf(ended))
       if (next === undefined) return
@@ -1617,9 +1634,24 @@ const start = (
    * Asks a run to stop: it leaves the schedule at once and delivers nothing from now on. A run whose
    * fiber is going is interrupted, and the cache hears when it exits. One that never got a fiber is
    * stopped at the cache here.
+   *
+   * A wait only delays a message: an awaiting run delivers it at once, whatever stops it, unless its
+   * instance is gone. `by` is what the log says cut its wait.
    */
-  const stopRun = (inst: Instance, run: Run) => {
+  const stopRun = (inst: Instance, run: Run, by: "switch" | "interrupt" = "interrupt") => {
     if (run.done) return
+    if (run.held !== undefined) {
+      const closed = inst.closed || rootClosed
+      endWait(run, closed ? "closed" : by)
+      if (closed) {
+        run.held = undefined
+        removeRun(inst, run)
+        recordEnded(inst, run)
+      } else {
+        deliver(inst, run)
+      }
+      return
+    }
     removeRun(inst, run)
     const fiber = run.fiber
     if (fiber === undefined) {
@@ -1676,9 +1708,9 @@ const start = (
         spanId: undefined,
         traceId: undefined
       }
-      const send = (message: unknown) => {
+      const send = Object.assign((message: unknown) => {
         if (!run.done) inst.dispatch(message, source)
-      }
+      }, { source: () => source })
       // The fiber runs the definition's own work, so its exit tells a success from a typed failure.
       const program = Effect.useSpan(
         command.name,
@@ -1722,7 +1754,12 @@ const start = (
    * A run's fiber exited. The cache has already had its patch removal, `writes` and invalidation, from
    * the body's own exit. Then the result message is sent, unless the instance is gone.
    */
-  const ended = (inst: Instance, run: Run, exit: Exit.Exit<unknown, unknown>, send: (message: unknown) => void) => {
+  const ended = (
+    inst: Instance,
+    run: Run,
+    exit: Exit.Exit<unknown, unknown>,
+    send: { readonly source: () => MessageLog.Source }
+  ) => {
     const command = run.command
     // Only acts when the work never began.
     run.handle?.finish({ _tag: "Stopped" })
@@ -1743,7 +1780,10 @@ const start = (
         path: inst.path,
         name: command.name,
         issued: run.issued,
-        detached: true
+        detached: true,
+        ...(command._tag === "Effect" && command.afterRefetch !== undefined && Exit.isSuccess(exit)
+          ? { waitEnded: "closed", outstanding: run.handle?.outstanding() ?? [] }
+          : undefined)
       })
       promote(inst, run)
       return
@@ -1762,39 +1802,112 @@ const start = (
       return
     }
     const reject = command.reject
+    const waits = command._tag === "Effect" && command.afterRefetch !== undefined && Exit.isSuccess(exit)
     if (Exit.isFailure(exit) && (Cause.hasDies(exit.cause) || reject === undefined)) {
       // A typed failure nothing maps is a defect too: an unmatched Command got past the types.
       removeRun(inst, run)
       failInstance(inst, exit.cause, "command", command.name)
       return
     }
-    // The run is still in the schedule while `update` handles its result.
-    if (Exit.isFailure(exit) || command._tag === "Effect") {
-      const message = guard(
-        inst,
-        "command",
-        () =>
-          Exit.isFailure(exit)
-            ? { value: reject!(Option.getOrUndefined(Cause.findErrorOption(exit.cause)) as never) }
-            : { value: command.resolve(exit.value as never) },
-        command.name
-      )
-      if (message === undefined) return
-      send(message.value)
+    if (Exit.isSuccess(exit) && command._tag === "Stream") {
+      removeRun(inst, run)
+      recordEnded(inst, run)
+      if (!inst.closed) markDirty(inst)
+      promote(inst, run)
+      return
     }
+    const message = guard(
+      inst,
+      "command",
+      () =>
+        Exit.isFailure(exit)
+          ? { value: reject!(Option.getOrUndefined(Cause.findErrorOption(exit.cause)) as never) }
+          : { value: command.resolve(exit.value as never) },
+      command.name
+    )
+    if (message === undefined || run.done) return
+    // From here until delivery the run is awaiting: on its own wait, or under `queue` behind an earlier
+    // message of its group. Either way the next queued run starts now.
+    const status = run.status
+    run.status = "awaiting"
+    run.held = { message: message.value, source: send.source() }
+    if (waits) beginWait(inst, run)
+    release(inst, run)
+    promote(inst, run, status)
+  }
+
+  /**
+   * At fiber exit of a run issued with `Command.afterRefetch`: the awaited set is fixed, and the wait
+   * ends on its last refetch or on the budget. An empty set, a zero budget or a set that already
+   * settled ends it here.
+   */
+  const beginWait = (inst: Instance, run: Run) => {
+    const handle = run.handle
+    const awaited = handle?.awaited() ?? []
+    if (handle === undefined || awaited.length === 0) {
+      run.waitEnded = "nothing"
+      run.outstanding = []
+      return
+    }
+    record({ _tag: "CommandAwaiting", path: inst.path, name: run.command.name, issued: run.issued, entries: awaited })
+    run.waiting = true
+    const budget = run.command.afterRefetch!
+    if (handle.outstanding().length === 0) return endWait(run, "settled")
+    if (Duration.isZero(budget)) return endWait(run, "budget")
+    // After the cache's emission: a single field's message is already sent, and a keyed field's is
+    // queued in the flush's deferred work, which the delivery goes behind.
+    const ended = (by: MessageLog.WaitEnded) => {
+      endWait(run, by)
+      defer(() => release(inst, run))
+    }
+    const off = handle.onRefetched(() => ended("settled"))
+    const timer = Duration.isFinite(budget)
+      ? forkNow(ctx, Effect.andThen(Effect.sleep(budget), Effect.sync(() => ended("budget"))))
+      : undefined
+    run.cancelWait = () => {
+      off()
+      timer?.interruptUnsafe()
+    }
+  }
+  const endWait = (run: Run, by: MessageLog.WaitEnded) => {
+    if (!run.waiting) return
+    run.waiting = false
+    run.waitEnded = by
+    run.outstanding = by === "settled" ? [] : run.handle!.outstanding()
+    const cancel = run.cancelWait
+    run.cancelWait = undefined
+    cancel?.()
+  }
+  /** Delivers the messages of `run`'s group that can go now, in the order `schedule.deliverable` gives. */
+  const release = (inst: Instance, run: Run) => {
+    for (;;) {
+      if (run.command.mode !== "queue" && run.done) return
+      const next = schedule.deliverable(entriesOf(inst), entryOf(run), (other) => !other.waiting)
+      if (next === undefined) return
+      if (inst.closed || rootClosed) return stopRun(inst, next.value)
+      deliver(inst, next.value)
+    }
+  }
+  /** Sends an awaiting run's message. The run is still in the schedule while `update` handles it. */
+  const deliver = (inst: Instance, run: Run) => {
+    const held = run.held!
+    run.held = undefined
+    inst.dispatch(held.message, held.source)
     if (run.done) return
     removeRun(inst, run)
+    recordEnded(inst, run)
+    // `h.running` ends with the message, which rendered the run still in the schedule.
+    if (!inst.closed) markDirty(inst)
+  }
+  const recordEnded = (inst: Instance, run: Run) =>
     record({
       _tag: "CommandEnded",
       path: inst.path,
-      name: command.name,
+      name: run.command.name,
       issued: run.issued,
-      detached: run.detached
+      detached: run.detached,
+      ...(run.waitEnded === undefined ? undefined : { waitEnded: run.waitEnded, outstanding: run.outstanding })
     })
-    // `h.running` ends with the message, which rendered the run still in the schedule.
-    if (!inst.closed) markDirty(inst)
-    promote(inst, run)
-  }
 
   /** `h.running` for one instance: a run of the Command, of the group if given, queued or running. */
   const runningOf = (inst: Instance) => (name: string, groupKey: string | undefined): boolean => {

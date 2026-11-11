@@ -2668,6 +2668,32 @@ export interface RunHandle {
     body: Effect.Effect<A, E, R>,
     writes?: ((success: A) => ReadonlyArray<Write>) | undefined
   ) => Effect.Effect<A, E, R>
+  /**
+   * For a run begun with `afterRefetch`, once a success has applied its
+   * invalidation: the awaited set, fixed then. It is every entry the run
+   * invalidated, minus those its own writes stored fresh, that had a watcher
+   * and was owed a refetch, in flight or held. `undefined` before that, after
+   * any other exit, and without `afterRefetch`.
+   */
+  readonly awaited: () => ReadonlyArray<AwaitedEntry> | undefined
+  /** The entries of the awaited set whose refetch is still in flight or owed. */
+  readonly outstanding: () => ReadonlyArray<AwaitedEntry>
+  /**
+   * Calls `f` once no entry of the awaited set is outstanding: after the
+   * emission of the last one to settle, and after its `get` callers resume.
+   * Calls nothing when none is outstanding now. Returns the cancel.
+   */
+  readonly onRefetched: (f: () => void) => () => void
+}
+
+/**
+ * An entry a run waits for, as the log names it.
+ *
+ * @internal
+ */
+export interface AwaitedEntry {
+  readonly read: string
+  readonly logKey: string
 }
 
 /**
@@ -2754,6 +2780,8 @@ interface CacheInternals {
     readonly command: string
     readonly invalidates: ReadonlyArray<Target>
     readonly optimistic?: ReadonlyArray<Patch> | undefined
+    /** Fix the awaited set when a success applies its invalidation: see `RunHandle.awaited`. */
+    readonly afterRefetch?: boolean | undefined
   }) => RunHandle
   /**
    * Interrupts every fetch in flight and every pending `get`, and returns
@@ -3319,6 +3347,12 @@ interface Run {
   readonly entries: Set<Entry>
 }
 
+/** A run's awaited set: the entries still owed their refetch, and who hears when none is. */
+interface Await {
+  readonly entries: Set<Entry>
+  listener: (() => void) | undefined
+}
+
 interface PatchRec {
   readonly run: Run
   readonly patch: Patch
@@ -3534,6 +3568,8 @@ export const makeCache = (options: {
   const fetchFibers = new Set<Fiber.Fiber<any, any>>()
   const draining = new Map<string, Fiber.Fiber<any, any>>()
   const sharedFetches = new Set<Shared>()
+  // The awaited sets still waiting on an entry.
+  const awaits = new Set<Await>()
   // Hydrated entries whose read hasn't registered yet.
   let raw = new Map<string, Map<string, RawTuple>>()
   let hydratedAt = 0
@@ -3648,6 +3684,21 @@ export const makeCache = (options: {
     if (byKey !== undefined && byKey.get(entry.argsKey) === entry) {
       byKey.delete(entry.argsKey)
       if (byKey.size === 0) index.delete(entry.def.name)
+    }
+    checkAwaits(entry)
+  }
+  /** A refetch in flight, or one owed: held by a live patch, or owed after a list's append. */
+  const owesRefetch = (entry: Entry): boolean =>
+    !entry.removed && (entry.fetch !== undefined || entry.deferred !== undefined || entry.owed !== undefined)
+  /** An entry that may have gone quiet leaves the awaited sets, and a set it empties is heard. */
+  const checkAwaits = (entry: Entry): void => {
+    if (awaits.size === 0 || owesRefetch(entry)) return
+    for (const rec of Array.from(awaits)) {
+      if (!rec.entries.delete(entry) || rec.entries.size > 0) continue
+      awaits.delete(rec)
+      const listener = rec.listener
+      rec.listener = undefined
+      listener?.()
     }
   }
   const drainKey = (entry: Entry): string => quote(entry.def.name) + entry.argsKey
@@ -3803,6 +3854,8 @@ export const makeCache = (options: {
   }
   /** Called whenever the entry may have gone quiet: removes a cold one, starts the timer on a settled one. */
   const afterQuiet = (entry: Entry): void => {
+    // Called after the entry's emission, so a run's wait ends after its watchers have seen the settle.
+    checkAwaits(entry)
     if (disposed || !idleEligible(entry)) return
     if (entry.result === undefined) return removeEntry(entry)
     if (entry.idle === undefined) startIdle(entry)
@@ -5008,9 +5061,22 @@ export const makeCache = (options: {
       cancelIdle(entry)
       emit(entry)
     }
+    let awaited: Await | undefined
+    let awaitedEntries: ReadonlyArray<AwaitedEntry> | undefined
+    const entryRef = (entry: Entry): AwaitedEntry => ({ read: entry.def.name, logKey: logKeyOf(entry) })
     const handle: RunHandle = {
       command: run.command,
       run: (body, writes) => runBody(handle, body, writes),
+      awaited: () => awaitedEntries,
+      outstanding: () => awaited === undefined ? [] : Array.from(awaited.entries, entryRef),
+      onRefetched: (f) => {
+        const rec = awaited
+        if (rec === undefined || !awaits.has(rec)) return constVoid
+        rec.listener = f
+        return () => {
+          if (rec.listener === f) rec.listener = undefined
+        }
+      },
       invalidates: (def, argsKey) => targetsHit(targets, def.name, def.tags, argsKey),
       start: () => {
         if (run.started || run.done) return
@@ -5029,6 +5095,7 @@ export const makeCache = (options: {
           }
           const skipped = new Set<Entry>()
           const fresh = applyWrites(run, exit.writes, skipped)
+          const invalidated: Array<Entry> = []
           if (!settleOnce) {
             const hit = resolve(targets)
             for (const entry of skipped) hit.add(entry)
@@ -5037,7 +5104,16 @@ export const makeCache = (options: {
               if (fresh.has(entry)) continue
               if (run.issue > entry.reached) entry.reached = run.issue
               invalidateEntry(entry)
+              invalidated.push(entry)
             }
+          }
+          if (runOptions.afterRefetch === true) {
+            // Fixed now: a watcher that comes later doesn't join, and an unwatched refetch isn't awaited.
+            for (const entry of run.entries) settleRunEntry(entry)
+            const entries = new Set(invalidated.filter((entry) => entry.watchers.size > 0 && owesRefetch(entry)))
+            awaitedEntries = Array.from(entries, entryRef)
+            if (entries.size > 0) awaits.add(awaited = { entries, listener: undefined })
+            return
           }
         } else {
           for (const entry of run.entries) entry.patches = entry.patches.filter((patch) => patch.run !== run)
@@ -5368,6 +5444,8 @@ export const makeCache = (options: {
       for (const shared of Array.from(sharedFetches)) endShared(shared, Exit.interrupt())
       for (const fiber of Array.from(timers)) fiber.interruptUnsafe()
       timers.clear()
+      // A run's wait outlives no cache: its owner is closing too.
+      awaits.clear()
       // Disposal ends when every fetch has finished its cleanup.
       return Fiber.interruptAll(fetchFibers)
     })

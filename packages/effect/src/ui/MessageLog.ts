@@ -252,6 +252,56 @@ export interface CommandSettled extends Base {
    * by then, its message was dropped, and this entry is all that reports it.
    */
   readonly detached: boolean
+  /**
+   * For a run issued with `Command.afterRefetch` that succeeded, how its wait
+   * ended: `"settled"` when every awaited entry refetched, `"nothing"` when
+   * the awaited set was empty, `"budget"` when the budget ran out,
+   * `"switch"` or `"interrupt"` when the run was cut, which delivered its
+   * message at once, and `"closed"` when the instance closed and the message
+   * was dropped. Absent for any other run.
+   */
+  readonly waitEnded?: WaitEnded | undefined
+  /** With `waitEnded`: the awaited entries still refetching when the wait was cut. */
+  readonly outstanding?: ReadonlyArray<AwaitedEntry> | undefined
+}
+
+/**
+ * How a `Command.afterRefetch` wait ended.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.1.3
+ */
+export type WaitEnded = "settled" | "nothing" | "budget" | "switch" | "interrupt" | "closed"
+
+/**
+ * An entry a `Command.afterRefetch` run waits for: the read's name and the
+ * entry's log key.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.1.3
+ */
+export interface AwaitedEntry {
+  readonly read: string
+  readonly logKey: string
+}
+
+/**
+ * A run issued with `Command.afterRefetch` succeeded and waits for the
+ * refetches its invalidation started, written at its fiber's exit after
+ * the batch's fetch entries. `entries` is the awaited set, which isn't empty:
+ * an empty one logs no entry, and `CommandEnded` has `waitEnded: "nothing"`.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.1.3
+ */
+export interface CommandAwaiting extends Base {
+  readonly _tag: "CommandAwaiting"
+  readonly name: string
+  readonly issued: Issued
+  readonly entries: ReadonlyArray<AwaitedEntry>
 }
 
 /**
@@ -346,6 +396,7 @@ export type Entry =
   | LayerFailed
   | SubscriptionChanged
   | CommandSettled
+  | CommandAwaiting
   | CommandDropped
   | Failed
   | FetchStarted
@@ -471,6 +522,7 @@ const CommandWire = Schema.Struct({
   group: Schema.NullOr(Schema.String),
   args: Schema.Json
 })
+const AwaitedEntryWire = Schema.Struct({ read: Schema.String, logKey: Schema.String })
 const CauseWire = Schema.Struct({ pretty: Schema.String, reasons: Schema.Array(Schema.Json) })
 const SourceWire = Schema.Union([
   Schema.TaggedStruct("DomEvent", { name: Schema.String }),
@@ -538,7 +590,15 @@ export const Wire = Schema.Union([
     ...Seq,
     name: Schema.String,
     issued: IssuedWire,
-    detached: Schema.Boolean
+    detached: Schema.Boolean,
+    waitEnded: Schema.optionalKey(Schema.Literals(["settled", "nothing", "budget", "switch", "interrupt", "closed"])),
+    outstanding: Schema.optionalKey(Schema.Array(AwaitedEntryWire))
+  }),
+  Schema.TaggedStruct("CommandAwaiting", {
+    ...Seq,
+    name: Schema.String,
+    issued: IssuedWire,
+    entries: Schema.Array(AwaitedEntryWire)
   }),
   Schema.TaggedStruct("CommandDropped", {
     ...Seq,
@@ -693,7 +753,23 @@ export const makeEncoder = (options?: {
           return { ...base(entry), _tag: entry._tag, key: entry.key }
         case "CommandEnded":
         case "CommandInterrupted":
-          return { ...base(entry), _tag: entry._tag, name: entry.name, issued: entry.issued, detached: entry.detached }
+          return {
+            ...base(entry),
+            _tag: entry._tag,
+            name: entry.name,
+            issued: entry.issued,
+            detached: entry.detached,
+            ...(entry.waitEnded === undefined ? undefined : { waitEnded: entry.waitEnded }),
+            ...(entry.outstanding === undefined ? undefined : { outstanding: entry.outstanding })
+          }
+        case "CommandAwaiting":
+          return {
+            ...base(entry),
+            _tag: "CommandAwaiting",
+            name: entry.name,
+            issued: entry.issued,
+            entries: entry.entries
+          }
         case "CommandDropped":
           return {
             ...base(entry),
