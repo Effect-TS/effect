@@ -267,6 +267,173 @@ describe("Loaded", () => {
     )
   })
 
+  it.effect("watch: the pre-pass releases a removal below a kept element before a sibling element creates its watcher", () => {
+    const app = makeApp()
+    // Two kept sections: the second loses the old card as the first gains a new one on the same entry.
+    const Sections = Component.make({
+      name: "Sections",
+      model: Schema.Boolean,
+      message: Schema.Boolean,
+      init: () => false,
+      update: (_model, message) => message,
+      view: (swapped, h) =>
+        h.el(
+          "div",
+          h.el("section", swapped ? [h.child(app.Card, { key: "new", props: { id: "1", tag: "n" } })] : []),
+          h.el("section", swapped ? [] : [h.child(app.Card, { key: "old", props: { id: "1", tag: "o" } })])
+        )
+    })
+    return run(
+      app.layer,
+      Effect.gen(function*() {
+        const root = yield* TestHost.mount(Sections, {})
+        yield* load
+        yield* TestClock.adjust("31 seconds")
+        root.send(true)
+        yield* TestHost.settle
+        assert.deepStrictEqual(triggers(root), ["watch", "watch"])
+        assert.strictEqual(root.entry(app.GetUser, { id: "1" })?.watchers, 1)
+        assert.strictEqual(root.text(), "n=Ann…")
+        yield* load
+        assert.strictEqual(app.db.calls, 2)
+      })
+    )
+  })
+
+  it.effect("watch: a kept child's new args release its old entry before a new sibling watches it", () => {
+    const app = makeApp()
+    return run(
+      app.layer,
+      Effect.gen(function*() {
+        const root = yield* TestHost.mount(app.List, { cards: ["a:1"] })
+        yield* load
+        yield* TestClock.adjust("31 seconds")
+        // b is created first in document order, and a, kept, moves from 1 to 2 after it.
+        root.send(app.ListMessage.make({ _tag: "Set", cards: ["b:1", "a:2"] }))
+        yield* TestHost.settle
+        assert.deepStrictEqual(root.fetches().map((fetch) => [fetch.logKey, fetch.trigger]), [
+          ["{\"id\":\"1\"}", "watch"],
+          ["{\"id\":\"2\"}", "watch"],
+          ["{\"id\":\"1\"}", "watch"]
+        ])
+        assert.strictEqual(root.entry(app.GetUser, { id: "1" })?.watchers, 1)
+        yield* load
+        assert.strictEqual(root.text(), "b=Anna=Bea")
+      })
+    )
+  })
+
+  it.effect("a failed instance drops its watchers before its Command cleanup ends, so its fallback refetches", () => {
+    const app = makeApp()
+    // Stopping it takes 10 seconds of uninterruptible cleanup.
+    let cleaned = false
+    const cleanup = Effect.sleep("10 seconds").pipe(Effect.andThen(Effect.sync(() => {
+      cleaned = true
+    })))
+    const Hold = Command.make(
+      "Hold",
+      { args: {} },
+      () => Effect.never.pipe(Effect.ensuring(Effect.uninterruptible(cleanup)))
+    )
+    const BadMessage = Schema.TaggedUnion({ UserChanged: { user: Loader.Snapshot(app.GetUser, "user") }, Crash: {} })
+    const Bad = Component.make({
+      name: "Bad",
+      model: Schema.Struct({ user: Loader.Snapshot(app.GetUser, "user") }),
+      message: BadMessage,
+      loaders: { user: () => ({ id: "1" }) },
+      init: ($) => $.set($.empty).run(Hold()),
+      update: (model, message) => {
+        if (message._tag === "Crash") throw new Error("crash")
+        return { ...model, user: message.user }
+      },
+      subscriptions: (
+        _model,
+        _props,
+        watch
+      ) => [watch({ user: (user) => BadMessage.make({ _tag: "UserChanged", user }) })],
+      view: (_model, h) => h.el("p", "bad").on("click", BadMessage.make({ _tag: "Crash" }))
+    })
+    const Host = Component.make({
+      name: "Host",
+      model: Schema.Null,
+      message: Schema.Never,
+      init: () => null,
+      update: (model) => model,
+      view: (_model, h) =>
+        h.child(Bad, {
+          key: "bad",
+          fallback: () => h.child(app.Card, { key: "fallback", props: { id: "1", tag: "f" } })
+        })
+    })
+    return run(
+      app.layer,
+      Effect.gen(function*() {
+        const root = yield* TestHost.mount(Host, {})
+        yield* load
+        yield* TestClock.adjust("31 seconds")
+        Query.fire(root.get(Query.text("bad", { exact: true })), "click")
+        yield* TestHost.settle
+        // Hold is still cleaning up, and the fallback's watch was a zero-to-one. Read now and checked
+        // after the cleanup, so a failure doesn't leave the close waiting on the clock.
+        const during = {
+          cleaned,
+          watchers: root.entry(app.GetUser, { id: "1" })?.watchers,
+          triggers: triggers(root),
+          text: root.text()
+        }
+        yield* TestClock.adjust("10 seconds")
+        assert.deepStrictEqual(during, { cleaned: false, watchers: 1, triggers: ["watch", "watch"], text: "f=Ann…" })
+        assert.isTrue(cleaned)
+        assert.strictEqual(root.text(), "f=Ann")
+        assert.strictEqual(root.entry(app.GetUser, { id: "1" })?.watchers, 1)
+      })
+    )
+  })
+
+  it.effect("settle waits for a resolved Promise while an interval sleeps on the clock", () => {
+    const app = makeApp({ interval: true })
+    const PollMessage = Schema.TaggedUnion({
+      UserChanged: { user: Loader.Snapshot(app.GetUser, "user") },
+      Go: {},
+      Done: {}
+    })
+    const Go = Command.make(
+      "Go",
+      { args: {} },
+      () => Effect.promise(() => Promise.resolve(PollMessage.make({ _tag: "Done" })))
+    )
+    const Poll = Component.make({
+      name: "Poll",
+      model: Schema.Struct({ user: Loader.Snapshot(app.GetUser, "user"), done: Schema.Boolean }),
+      message: PollMessage,
+      loaders: { user: () => ({ id: "1" }) },
+      init: ($) => ({ ...$.empty, done: false }),
+      update: (model, message, $) =>
+        PollMessage.match(message, {
+          UserChanged: ({ user }) => ({ ...model, user }),
+          Go: () => $.set(model).run(Go()),
+          Done: () => ({ ...model, done: true })
+        }),
+      subscriptions: (
+        _model,
+        _props,
+        watch
+      ) => [watch({ user: (user) => PollMessage.make({ _tag: "UserChanged", user }) })],
+      view: (model, h) => h.el("p", model.done ? "done" : "not yet")
+    })
+    return run(
+      app.layer,
+      Effect.gen(function*() {
+        const root = yield* TestHost.mount(Poll, {})
+        yield* load
+        root.send(PollMessage.make({ _tag: "Go" }))
+        yield* TestHost.settle
+        assert.strictEqual(root.text(), "done")
+        assert.deepStrictEqual(root.pending(), [])
+      })
+    )
+  })
+
   it.effect("mounting or re-keying onto an entry the cache holds never renders loading", () => {
     const app = makeApp()
     return run(
@@ -278,8 +445,9 @@ describe("Loaded", () => {
         // A new instance on user 1, and card b re-keyed from user 2 to user 1.
         root.send(app.ListMessage.make({ _tag: "Set", cards: ["a:1", "c:1", "b:1"] }))
         yield* TestHost.settle
-        // Each folds the cache's value through update before its first render.
-        assert.deepStrictEqual(app.order, ["update c UserChanged", "view c Ann", "update b UserChanged", "view b Ann"])
+        // Each folds the cache's value through update before its first render. b's new args are
+        // applied in the patcher's pre-pass, before c is created.
+        assert.deepStrictEqual(app.order, ["update b UserChanged", "update c UserChanged", "view c Ann", "view b Ann"])
         assert.strictEqual(root.text(), "a=Annc=Annb=Ann")
         assert.strictEqual(app.db.calls, 2)
       })

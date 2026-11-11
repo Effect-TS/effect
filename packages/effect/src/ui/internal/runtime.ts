@@ -768,6 +768,9 @@ const start = (
     const parentNode = at === undefined ? undefined : host.parentOf(at)
     if (parentNode !== undefined) host.insertBefore(parentNode, placeholder, at)
     else if (inst.parent === undefined) host.insertBefore(container, placeholder, undefined)
+    // Before the Scope closes: a Command's cleanup can hold the close open, and a fallback or
+    // replacement created meanwhile must see the count without this instance's watchers.
+    releaseWatches(inst)
     closeScope(inst.scope)
     for (const node of nodes) host.remove(node)
     inst.rendered = [{ _tag: "Text", v: emptyText, node: placeholder }]
@@ -1878,6 +1881,7 @@ const start = (
       const old = inst.rendered.flatMap(nodesOf)
       const parentNode = host.parentOf(old[0])!
       const ref = host.nextOf(old[old.length - 1])
+      releaseRemoved(inst.rendered, [tree])
       inst.rendered = patchList(inst, parentNode, inst.rendered, [tree], ref, inst.env)
     })
     if (!inst.closed) updateHead(inst)
@@ -2108,15 +2112,6 @@ const start = (
   ): Array<Rendered> => {
     const byKey = new Map<string, Rendered>()
     olds.forEach((rendered, index) => byKey.set(keyOf(rendered.v, index), rendered))
-    // What this patch removes lets go of its cache watchers before anything new is created. New
-    // instances are created before old ones are destroyed, so without this a route swap over one
-    // stale entry would count as a join and not refetch.
-    const kept = new Set<Rendered>()
-    news.forEach((view, index) => {
-      const old = byKey.get(keyOf(view, index))
-      if (old !== undefined && same(old, view)) kept.add(old)
-    })
-    for (const old of olds) if (!kept.has(old)) releaseRendered(old)
     const seen = new Set<string>()
     const result = news.map((view, index) => {
       const key = keyOf(view, index)
@@ -2133,6 +2128,41 @@ const start = (
     place(parentNode, result, ref)
     return result
   }
+
+  /**
+   * The patcher's pre-pass, run over an instance's whole tree before any of it is patched. What the
+   * patch will remove lets go of its cache watchers, at any depth below the elements it keeps, and a
+   * kept child whose props changed moves its watchers to its new args. New instances are created
+   * before old ones are destroyed, and in document order, so without this a route swap over one
+   * stale entry would count as a join and not refetch.
+   */
+  const releaseRemoved = (olds: ReadonlyArray<Rendered>, news: ReadonlyArray<View.Node<any, any>>) => {
+    const byKey = new Map<string, Rendered>()
+    olds.forEach((rendered, index) => byKey.set(keyOf(rendered.v, index), rendered))
+    const kept = new Set<Rendered>()
+    news.forEach((view, index) => {
+      const old = byKey.get(keyOf(view, index))
+      if (old === undefined || !same(old, view) || kept.has(old)) return
+      kept.add(old)
+      switch (old._tag) {
+        case "Element":
+          return releaseRemoved(old.children, (view as View.Element<any, any>).children)
+        case "Child": {
+          const child = view as View.Child<any, any>
+          const instance = old.inst
+          if (instance.closed || propsEqual(child.props, instance.props)) return
+          instance.props = child.props
+          syncSubscriptions(instance)
+          // `patch` renders it with the props it now has.
+          if (!instance.closed) propsSynced.set(instance, child.props)
+          return
+        }
+      }
+    })
+    for (const old of olds) if (!kept.has(old)) releaseRendered(old)
+  }
+  /** Kept children whose new props the pre-pass already applied, with those props. */
+  const propsSynced = new WeakMap<Instance, unknown>()
 
   const patchProps = (
     node: unknown,
@@ -2205,10 +2235,14 @@ const start = (
         }
         instance.onEmit = child.onEmit
         instance.onFailure = child.onFailure
-        if (!propsEqual(child.props, instance.props)) {
-          instance.props = child.props
-          // Watches first: new args over a settled entry fold its value before this render.
-          syncSubscriptions(instance)
+        const synced = propsSynced.get(instance) === child.props
+        propsSynced.delete(instance)
+        if (synced || !propsEqual(child.props, instance.props)) {
+          if (!synced) {
+            instance.props = child.props
+            // Watches first: new args over a settled entry fold its value before this render.
+            syncSubscriptions(instance)
+          }
           if (!instance.closed) {
             dirty.delete(instance)
             render(instance)
@@ -2221,9 +2255,9 @@ const start = (
 
   /** Patches a single root (a view's or a fallback's), which is kept only if its key matches too. */
   const patchOrReplace = (inst: Instance, rendered: Rendered, view: View.Node<any, any>, env: Env): Rendered => {
+    // The pre-pass, as in `render`: a replaced subtree's watchers go before the new one is created.
+    releaseRemoved([rendered], [view])
     if (same(rendered, view) && keyOf(rendered.v, 0) === keyOf(view, 0)) return patch(inst, rendered, view, env)
-    // As in `patchList`: the old subtree's watchers go before the new one is created.
-    releaseRendered(rendered)
     const next = create(inst, view, env)
     const nodes = nodesOf(rendered)
     const parentNode = nodes.length > 0 ? host.parentOf(nodes[0]) : undefined

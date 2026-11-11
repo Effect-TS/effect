@@ -267,8 +267,6 @@ export interface TestHost {
   readonly expectProblem: (tag: string) => ReadonlyArray<Loader.Problem.Any>
   /** Wraps a `Clock` so that a woken sleeper drains the test scheduler. */
   readonly drainingClock: (clock: Clock.Clock, context: Context.Context<never>) => Clock.Clock
-  /** How many sleepers of the draining clocks are parked. */
-  readonly parked: () => number
   /** The trees mounted on this host. */
   readonly trees: () => ReadonlySet<Tree>
 }
@@ -386,7 +384,6 @@ export const layer = (options?: {
     const budget = options?.budget ?? 100_000
     let problems: Array<Loader.Problem.Any> = []
     let draining = false
-    let parked = 0
     // Re-entrant calls return at once: the outer drain runs what they would.
     const drain = (n: number): boolean => {
       if (draining) return true
@@ -404,12 +401,12 @@ export const layer = (options?: {
       const run = Effect.runForkWith(context)
       const sleep = (duration: Duration.Duration): Effect.Effect<void> =>
         Effect.callback<void>((resume) => {
-          parked++
           const fiber = run(clock.sleep(duration))
           let done = false
           fiber.addObserver(() => {
+            // Cancelled: the sleeper is gone, and nothing woke.
+            if (done) return
             done = true
-            parked--
             resume(Effect.void)
             if (!drain(budget)) {
               report(
@@ -422,7 +419,6 @@ export const layer = (options?: {
           return Effect.sync(() => {
             if (done) return
             done = true
-            parked--
             fiber.interruptUnsafe()
           })
         })
@@ -457,7 +453,6 @@ export const layer = (options?: {
         return matched
       },
       drainingClock,
-      parked: () => parked,
       trees: () => trees
     }
     yield* Effect.addFinalizer(() =>
@@ -644,8 +639,7 @@ const nextMacrotask = Effect.callback<void>((resume) => {
  * Subscription waiting for its next value, or a Command or fetch sleeping on
  * the clock, doesn't keep `settle` from returning; adjust `TestClock`, which
  * runs what it wakes. Work that resolves a Promise gets a few macrotasks to
- * come back, unless parked clock sleepers account for everything in flight.
- * A run or fetch that never returns is left in `pending()`.
+ * come back. A run or fetch that never returns is left in `pending()`.
  *
  * **Gotchas**
  *
@@ -694,8 +688,9 @@ const drainAll = Effect.fnUntraced(function*(testHost: TestHost) {
       budget = Math.max(0, before - 1)
       continue
     }
-    const inFlight = testHost.pending().length
-    if (inFlight === 0 || testHost.parked() >= inFlight) return
+    // A run or fetch sleeping on the clock looks the same as one waiting on a Promise, so anything
+    // in flight gets the grace.
+    if (testHost.pending().length === 0) return
     // Something may come back from outside the scheduler, such as a resolved Promise.
     quiet++
     yield* nextMacrotask
