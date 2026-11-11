@@ -995,6 +995,51 @@ describe("HtmlServer loaders", { concurrent: false }, () => {
       }))
     }))
 
+  it.effect("closes the window at the first navigation, before a waiting slot adopts", () =>
+    Effect.gen(function*() {
+      const { GetItem, Item, calls } = makeItems()
+      class Store extends Context.Service<Store, string>()("test/Store") {}
+      let builds = 0
+      const Slow = Component.make({
+        name: "Slow",
+        model: Schema.Struct({}),
+        message: Schema.Never,
+        elements: Html,
+        init: () => ({}),
+        update: (model) => model,
+        view: (_, h) => h.p("slow")
+      }).pipe(Component.provide(Layer.effect(
+        Store,
+        Effect.suspend(() => builds++ === 0 ? Effect.succeed("ready") : Effect.as(Effect.sleep("10 millis"), "ready"))
+      )))
+      const Message = Schema.TaggedUnion({ Navigated: {}, Refreshed: {} })
+      class Refresh extends Command.Service<Refresh>()("Refresh", {
+        args: {},
+        invalidates: () => [GetItem]
+      }, Effect.succeed(() => Effect.succeed(Message.make({ _tag: "Refreshed" })))) {}
+      const Page = Component.make({
+        name: "Page",
+        model: Schema.Struct({}),
+        message: Message,
+        elements: Html,
+        // On the client, init navigates, and only then invalidates: the fetch lands after the window closed.
+        init: ($) =>
+          $.set({}).run(
+            Router.push(AppRoute, Option.getOrThrow(AppRoute.parse("/slow"))).pipe(
+              Command.map(() => Message.make({ _tag: "Navigated" }))
+            )
+          ),
+        update: (model, message, $) => message._tag === "Navigated" ? $.set(model).run(Refresh.make()) : model,
+        view: (_, h) => h.div(h.child(Item, { key: "a", props: { id: 1 } }), h.child(Slow, { key: "s", props: {} }))
+      }).pipe(Component.provide(Refresh.layer))
+      const { router } = routed("/")
+      yield* hosted(Effect.gen(function*() {
+        const result = yield* ssr(Page, {}).pipe(Effect.provide(router))
+        expect(result.root.fetches().map((fetch) => [fetch.trigger, fetch.inWindow])).toEqual([["invalidation", false]])
+        expect(calls).toEqual([1, 1])
+      }))
+    }))
+
   it.effect("fails ssr naming the slots still waiting for their Layer when the budget is spent", () =>
     hosted(Effect.gen(function*() {
       class Store extends Context.Service<Store, string>()("test/Store") {}
