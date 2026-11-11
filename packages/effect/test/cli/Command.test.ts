@@ -161,7 +161,7 @@ describe("Command", () => {
         yield* MockTerminal.inputKey("enter")
         yield* Fiber.join(fiber)
 
-        assert.deepStrictEqual(captured, [["greet", "--name", "Alice", "2"]])
+        assert.deepStrictEqual(captured, [["greet", "--name", "Alice", "--", "2"]])
       }).pipe(Effect.provide(TestLayer)))
 
     it.effect("should run wizard-generated arguments with --wizard", () =>
@@ -359,6 +359,60 @@ describe("Command", () => {
         yield* Fiber.join(fiber)
 
         assert.deepStrictEqual(captured, ["selected"])
+      }).pipe(Effect.provide(TestLayer)))
+
+    it.effect("should replace typed flags and arguments with wizard answers", () =>
+      Effect.gen(function*() {
+        const captured: Array<readonly [string, string]> = []
+        const command = Command.make("demo", {
+          name: Flag.String("name"),
+          value: Argument.String("value")
+        }, ({ name, value }) => Effect.sync(() => captured.push([name, value])))
+
+        const fiber = yield* Command.runWith(command, { version: "1.0.0" })([
+          "--name",
+          "typed",
+          "typed",
+          "--wizard"
+        ]).pipe(Effect.forkChild)
+        yield* MockTerminal.inputText("prompted")
+        yield* MockTerminal.inputKey("enter")
+        yield* MockTerminal.inputText("prompted")
+        yield* MockTerminal.inputKey("enter")
+        yield* MockTerminal.inputKey("enter")
+        yield* Fiber.join(fiber)
+
+        assert.deepStrictEqual(captured, [["prompted", "prompted"]])
+      }).pipe(Effect.provide(TestLayer)))
+
+    it.effect("should preserve inherited clustered flags before a boolean-looking wizard answer", () =>
+      Effect.gen(function*() {
+        const captured: Array<readonly [boolean, boolean, string]> = []
+        const root = Command.make("root").pipe(
+          Command.withSharedFlags({
+            silent: Flag.Boolean("silent").pipe(Flag.withAlias("s")),
+            ipv4: Flag.Boolean("ipv4").pipe(Flag.withAlias("4"))
+          })
+        )
+        const child = Command.make("child", { value: Argument.String("value") }, ({ value }) =>
+          Effect.gen(function*() {
+            const { silent, ipv4 } = yield* root
+            captured.push([silent, ipv4, value])
+          }))
+        const command = root.pipe(Command.withSubcommands([child]))
+
+        const fiber = yield* Command.runWith(command, { version: "1.0.0" })([
+          "child",
+          "-s4",
+          "typed",
+          "--wizard"
+        ]).pipe(Effect.forkChild)
+        yield* MockTerminal.inputText("false")
+        yield* MockTerminal.inputKey("enter")
+        yield* MockTerminal.inputKey("enter")
+        yield* Fiber.join(fiber)
+
+        assert.deepStrictEqual(captured, [[true, true, "false"]])
       }).pipe(Effect.provide(TestLayer)))
 
     it.effect("should reject --completions without a shell", () =>
