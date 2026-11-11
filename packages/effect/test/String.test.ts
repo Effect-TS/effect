@@ -403,6 +403,32 @@ describe("String", () => {
     })
   })
 
+  describe("isWellFormed", () => {
+    it.each([
+      ["", true],
+      ["abc", true],
+      ["\uD83D\uDE00", true],
+      ["\uD800", false],
+      ["a\uDC00b", false],
+      ["\uDE00\uD83D", false]
+    ])("%j → %s", (input, expected) => {
+      strictEqual(S.isWellFormed(input), expected)
+    })
+  })
+
+  describe("toWellFormed", () => {
+    it.each([
+      ["", ""],
+      ["abc", "abc"],
+      ["\uD83D\uDE00", "\uD83D\uDE00"],
+      ["\uD800", "\uFFFD"],
+      ["a\uDC00b", "a\uFFFDb"],
+      ["\uDE00\uD83D", "\uFFFD\uFFFD"]
+    ])("%j → %j", (input, expected) => {
+      strictEqual(S.toWellFormed(input), expected)
+    })
+  })
+
   describe("padStart", () => {
     it("pads from start with spaces", () => {
       strictEqual(pipe("a", S.padStart(5)), "    a")

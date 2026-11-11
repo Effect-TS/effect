@@ -36,6 +36,7 @@ import * as Migrator from "../sql/Migrator.ts"
 import * as SqlClient from "../sql/SqlClient.ts"
 import type { SqlError } from "../sql/SqlError.ts"
 import type { Fragment } from "../sql/Statement.ts"
+import * as Str from "../String.ts"
 import * as Redis from "./Redis.ts"
 
 /**
@@ -978,7 +979,7 @@ export const makeStoreRedis = Effect.fnUntraced(function*(
       const keys = keysFor(name)
       // replace lone surrogates like Redis' UTF-8 encoding does, so the id in
       // the payload matches the id keys
-      id = id.replace(/[\uD800-\uDFFF]/gu, "\uFFFD")
+      id = Str.toWellFormed(id)
       const payload = JSON.stringify({ id, element })
       const untilExecuted = deduplicate === "untilExecuted" ? 1 : 0
       const send = Effect.suspend(() => {
