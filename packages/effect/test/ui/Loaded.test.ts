@@ -388,6 +388,138 @@ describe("Loaded", () => {
     )
   })
 
+  /** Watches user `id`, and records each message's result as "tag Tag:waiting". */
+  const makeWatcher = (app: ReturnType<typeof makeApp>, messages: Array<string>) => {
+    const WatchMessage = Schema.TaggedUnion({
+      Changed: { user: Loader.Snapshot(app.GetUser, "user"), state: Schema.String }
+    })
+    return Component.make({
+      name: "Watcher",
+      props: Schema.Struct({ id: Schema.String, tag: Schema.String }),
+      model: Schema.Struct({ user: Loader.Snapshot(app.GetUser, "user") }),
+      message: WatchMessage,
+      loaders: { user: (_model, props) => ({ id: props.id }) },
+      init: ($) => $.empty,
+      update: (_model, message, $) => {
+        messages.push(`${$.props.tag} ${message.state}`)
+        return { user: message.user }
+      },
+      subscriptions: (_model, _props, watch) => [
+        watch({
+          user: (user, result) =>
+            WatchMessage.make({ _tag: "Changed", user, state: `${result._tag}:${result.waiting}` })
+        })
+      ],
+      view: (_model, h) => h.el("p", `${h.props.tag}=${h.loaded.user._tag}:${h.loaded.user.waiting}`)
+    })
+  }
+
+  it.effect("watch: a swap off a bare Failure clears it whether the old watcher is inlined or in a kept child", () => {
+    const swap = (extracted: boolean) => {
+      const app = makeApp()
+      const messages: Array<string> = []
+      const Watcher = makeWatcher(app, messages)
+      const Shell = Component.make({
+        name: "Shell",
+        props: Schema.Struct({ show: Schema.Boolean }),
+        model: Schema.Null,
+        message: Schema.Never,
+        init: () => null,
+        update: (model) => model,
+        view: (_model, h) =>
+          h.el("div", h.props.show ? [h.child(Watcher, { key: "old", props: { id: "9", tag: "o" } })] : [])
+      })
+      const Page = Component.make({
+        name: "Page",
+        model: Schema.Boolean,
+        message: Schema.Boolean,
+        init: () => false,
+        update: (_model, message) => message,
+        view: (swapped, h) =>
+          h.el(
+            "div",
+            h.el("section", swapped ? [h.child(Watcher, { key: "new", props: { id: "9", tag: "n" } })] : []),
+            extracted
+              ? h.child(Shell, { key: "shell", props: { show: !swapped } })
+              : h.el("div", swapped ? [] : [h.child(Watcher, { key: "old", props: { id: "9", tag: "o" } })])
+          )
+      })
+      return run(
+        app.layer,
+        Effect.gen(function*() {
+          const root = yield* TestHost.mount(Page, {})
+          // User 9 doesn't exist: a bare Failure.
+          yield* load
+          messages.length = 0
+          root.send(true)
+          yield* TestHost.settle
+          const swapped = {
+            messages: messages.slice(),
+            text: root.text(),
+            stored: root.entry(app.GetUser, { id: "9" })?.stored._tag,
+            triggers: triggers(root)
+          }
+          yield* load
+          return { swapped, settled: messages.slice(), frames: root.frames() }
+        })
+      )
+    }
+    return Effect.gen(function*() {
+      const expected = {
+        // The new watcher never sees the old Failure, and its view shows loading.
+        swapped: {
+          messages: [],
+          text: "n=Initial:true",
+          stored: "Initial" as const,
+          triggers: ["watch", "watch"] as Array<Loader.Trigger>
+        },
+        settled: ["n Failure:false"],
+        frames: ["o=Initial:true", "o=Failure:false", "n=Initial:true", "n=Failure:false"]
+      }
+      assert.deepStrictEqual(yield* swap(false), expected)
+      assert.deepStrictEqual(yield* swap(true), expected)
+    })
+  })
+
+  it.effect("watch: joining a bare Failure delivers it in the pass that registered, so no loading frame commits", () => {
+    const app = makeApp()
+    const messages: Array<string> = []
+    const Watcher = makeWatcher(app, messages)
+    const Pair = Component.make({
+      name: "Pair",
+      model: Schema.Boolean,
+      message: Schema.Boolean,
+      init: () => false,
+      update: (_model, message) => message,
+      view: (joined, h) =>
+        h.el(
+          "div",
+          h.child(Watcher, { key: "a", props: { id: "9", tag: "a" } }),
+          joined ? [h.child(Watcher, { key: "b", props: { id: "9", tag: "b" } })] : []
+        )
+    })
+    return run(
+      app.layer,
+      Effect.gen(function*() {
+        const root = yield* TestHost.mount(Pair, {})
+        yield* load
+        messages.length = 0
+        root.send(true)
+        yield* TestHost.settle
+        assert.deepStrictEqual(messages, ["b Failure:false"])
+        assert.strictEqual(root.text(), "a=Failure:falseb=Failure:false")
+        assert.deepStrictEqual(root.frames(), [
+          "a=Initial:true",
+          "a=Failure:false",
+          "a=Failure:falseb=Failure:false"
+        ])
+        // A join never refetches.
+        assert.deepStrictEqual(triggers(root), ["watch"])
+        assert.strictEqual(root.entry(app.GetUser, { id: "9" })?.watchers, 2)
+      })
+    )
+  })
+
   it.effect("a kept child's warm re-key emits through the onEmit of the view that re-keyed it", () => {
     const app = makeApp()
     const EmitterMessage = Schema.TaggedUnion({ UserChanged: { user: Loader.Snapshot(app.GetUser, "user") } })

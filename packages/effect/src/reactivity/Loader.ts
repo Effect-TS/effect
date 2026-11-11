@@ -1977,6 +1977,12 @@ interface CacheInternals {
    * interval when every watcher it has was registered during the hold: no
    * watcher from before the hold survived it, whatever order the releases and
    * registrations came in. The effect/ui runtime holds for each render pass.
+   *
+   * A watcher registering during a hold on a bare Failure stored before it
+   * sees `Initial` (waiting) until release. Then, if no watcher from before
+   * the hold survived, the Failure is cleared and the entry fetches, so the
+   * watcher never sees it, as if the last watcher had left first. Otherwise
+   * it joins, and the Failure is delivered at release.
    */
   readonly hold: () => () => void
   /** The server value. Doesn't create the entry or reset its idle timer. */
@@ -2315,6 +2321,11 @@ interface Watcher {
   readonly patched: boolean
   /** The hold it registered under, or -1. */
   readonly generation: number
+  /**
+   * The bare Failure stored when it registered during a hold, withheld until the hold is released: the watcher
+   * sees `Initial` (waiting) meanwhile. Cleared once the entry stores anything else, or at release.
+   */
+  provisional: Settled | undefined
   last: AsyncResult.AsyncResult<any, any>
   lastPatched: boolean
   active: boolean
@@ -2702,6 +2713,11 @@ export const makeCache = (options: {
     let patchedView: PatchedView | undefined
     for (const watcher of Array.from(entry.watchers)) {
       if (!watcher.active) continue
+      if (watcher.provisional !== undefined) {
+        // The withheld Failure, waiting or not: still withheld.
+        if (watcher.provisional === entry.result) continue
+        watcher.provisional = undefined
+      }
       let result: AsyncResult.AsyncResult<any, any> = server
       let patched = false
       if (watcher.patched) {
@@ -2959,6 +2975,7 @@ export const makeCache = (options: {
   /** A settle or a stored write: patches held after success are confirmed and go. */
   const store = (entry: Entry, result: Settled): void => {
     entry.result = result
+    if (holds > 0) storedInHold.add(result)
     entry.settledAt = now()
     entry.invalidated = false
     entry.restarts = 0
@@ -3126,13 +3143,25 @@ export const makeCache = (options: {
       ensureFetch(entry, "watch", build)
     }
     const patched = watchOptions?.patched === true
-    const current = patched ? patchedViewOf(entry, view(entry)) : { result: view(entry), patched: false }
+    // A bare Failure from before the hold is withheld: if no watcher from before the hold survives it, release
+    // clears it, as the last watcher leaving first would have, and this watcher never sees it.
+    const provisional = holds > 0 && isBareFailure(entry.result) && !storedInHold.has(entry.result!) && !settleOnce &&
+        !inWindow(entry)
+      ? entry.result
+      : undefined
+    const withheld = (): boolean => watcher.provisional !== undefined && watcher.provisional === entry.result
+    const current = provisional !== undefined
+      ? { result: AsyncResult.initial(true), patched: false }
+      : patched
+      ? patchedViewOf(entry, view(entry))
+      : { result: view(entry), patched: false }
     const watcher: Watcher = {
       onChange,
       onDefect,
       build,
       patched,
       generation: holds > 0 ? generation : -1,
+      provisional,
       last: current.result,
       lastPatched: current.patched,
       active: true
@@ -3142,8 +3171,9 @@ export const makeCache = (options: {
     if (first && holds === 0) scheduleInterval(entry)
     return {
       logKey: () => logKeyOf(entry),
-      current: () => view(entry),
-      patchedView: () => patchedViewOf(entry, view(entry)),
+      current: () => withheld() ? AsyncResult.initial(true) : view(entry),
+      patchedView: () =>
+        withheld() ? { result: AsyncResult.initial(true), patched: false } : patchedViewOf(entry, view(entry)),
       unregister: () => {
         if (!watcher.active) return
         watcher.active = false
@@ -3162,6 +3192,8 @@ export const makeCache = (options: {
   let generation = 0
   // Each entry a watcher registered on during the hold, and whether one of them came inside the window.
   const held = new Map<Entry, boolean>()
+  // Results stored while a hold is open: newer than the hold, so never withheld.
+  const storedInHold = new WeakSet<object>()
   const hold: CacheInternals["hold"] = () => {
     if (holds++ === 0) generation++
     const since = generation
@@ -3182,14 +3214,28 @@ export const makeCache = (options: {
           if (entry.removed || entry.watchers.size === 0) continue
           let build: Build | undefined
           let fresh = true
+          let withheld = false
           for (const watcher of entry.watchers) {
-            if (watcher.generation < since) {
-              fresh = false
-              break
+            if (watcher.generation < since) fresh = false
+            if (watcher.provisional !== undefined) {
+              if (watcher.provisional === entry.result) withheld = true
+              watcher.provisional = undefined
             }
             if (build === undefined && !watcher.build.closed) build = watcher.build
           }
-          if (!fresh) continue
+          if (!fresh) {
+            // A join: the withheld Failure is delivered now.
+            if (withheld) emit(entry)
+            continue
+          }
+          // A swap: the Failure goes, as when the last watcher leaves, and no watcher ever saw it.
+          if (withheld && !windowed) {
+            entry.result = undefined
+            for (const watcher of entry.watchers) {
+              watcher.last = AsyncResult.initial()
+              watcher.lastPatched = false
+            }
+          }
           if (!windowed && build !== undefined && isStale(entry)) ensureFetch(entry, "watch", build)
           scheduleInterval(entry)
         }

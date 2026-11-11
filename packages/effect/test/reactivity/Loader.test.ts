@@ -147,6 +147,45 @@ describe("Loader", () => {
     }).pipe(provide)
   })
 
+  it.effect("under a hold, a bare Failure is withheld: a swap clears it unseen, and a join gets it at release", () => {
+    const { GetUser, db, provide } = makeUsers({ staleTime: "30 seconds" })
+    return Effect.gen(function*() {
+      const cache = Loader.internals(yield* Loader.Cache)
+      const def = Loader.defOf(GetUser)
+      const fetcher = (yield* GetUser) as unknown as (args: unknown) => Effect.Effect<any, any>
+      const seen: Array<string> = []
+      const watchOne = (name: string) =>
+        cache.watch(def, { id: "1" }, fetcher, (result) => seen.push(name + " " + show(result as Seen)))
+      db.mode = "fail"
+      const old = watchOne("old")
+      yield* advance(10)
+      assert.deepStrictEqual(seen, ["old Failure(nope)"])
+
+      // Join: old survives the hold.
+      const releaseJoin = cache.hold()
+      const joining = watchOne("joining")
+      assert.deepStrictEqual(joining.current(), AsyncResult.initial(true))
+      releaseJoin()
+      assert.deepStrictEqual(seen, ["old Failure(nope)", "joining Failure(nope)"])
+      assert.strictEqual(show(joining.current() as Seen), "Failure(nope)")
+      joining.unregister()
+
+      // Swap: the new watcher registers before old leaves, and never sees the Failure.
+      seen.length = 0
+      const releaseSwap = cache.hold()
+      const next = watchOne("next")
+      old.unregister()
+      assert.deepStrictEqual(next.patchedView().result, AsyncResult.initial(true))
+      releaseSwap()
+      assert.deepStrictEqual(next.current(), AsyncResult.initial(true))
+      db.mode = "ok"
+      yield* advance(10)
+      assert.deepStrictEqual(seen, ["next Ann"])
+      assert.deepStrictEqual(yield* triggers, ["watch", "watch"])
+      next.unregister()
+    }).pipe(provide)
+  })
+
   it.effect("get serves a fresh value, fetches a stale one and joins a fetch in flight", () => {
     const { GetUser, db, provide } = makeUsers({ staleTime: "30 seconds" })
     return Effect.gen(function*() {
