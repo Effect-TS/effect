@@ -989,6 +989,59 @@ describe("HtmlServer loaders", { concurrent: false }, () => {
       expect(result.root.fetches()).toEqual([])
     })))
 
+  it.effect("ships the k of N keys of a keyed field that settled in budget, and the client fetches the rest", () =>
+    hosted(Effect.gen(function*() {
+      const calls: Array<number> = []
+      class GetSlowItem extends Loader.Service<GetSlowItem>()(
+        "GetSlowItem",
+        { args: { id: Schema.Number }, success: Schema.String, error: Schema.String, staleTime: "1 minute" },
+        Effect.succeed(({ id }) =>
+          Effect.suspend(() => {
+            calls.push(id)
+            return id === 404
+              ? Effect.fail("missing")
+              : Effect.as(Effect.sleep(id === 3 ? "300 millis" : "0 millis"), `Item ${id}`)
+          })
+        )
+      ) {}
+      const Items = Loader.SnapshotMap(GetSlowItem, "items")
+      const Message = Schema.TaggedUnion({ Loaded: { items: Items } })
+      const List = Component.make({
+        name: "List",
+        model: Schema.Struct({ items: Items }),
+        message: Message,
+        elements: Html,
+        loaders: { items: () => [{ id: 1 }, { id: 404 }, { id: 3 }] },
+        init: ($) => $.empty,
+        update: (_, message) => ({ items: message.items }),
+        subscriptions: (
+          _model,
+          _props,
+          watch
+        ) => [watch({ items: (items) => Message.make({ _tag: "Loaded", items }) })],
+        view: (_, h) =>
+          h.ul(h.loaded.items.map(({ args, result }) =>
+            h.li(
+              AsyncResult.isSuccess(result) ? result.value : AsyncResult.isFailure(result) ? "failed" : "loading"
+            ).key(String(args.id))
+          ))
+      }).pipe(Component.provide(GetSlowItem.layer))
+      const result = yield* ssr(List, {}, { budget: "50 millis" })
+      expect(result.html).toContain("<li>Item 1</li><li>failed</li><li>loading</li>")
+      // The Model field is the settled keys' tuples; the entries ship as ordinary entries of the read.
+      expect(result.state["/List"]).toEqual({
+        items: [["{\"id\":1}", 0, "Item 1", 0, false], ["{\"id\":404}", 1, ["missing"], null]]
+      })
+      expect((result.state["~loader"] as any).GetSlowItem).toHaveLength(2)
+      expect(result.misses).toEqual([{ read: "GetSlowItem", logKey: "{\"id\":3}" }])
+      // The client adopts the two settled keys and fetches only the third.
+      expect(result.root.fetches().map((fetch) => fetch.logKey)).toEqual(["{\"id\":3}"])
+      yield* TestClock.adjust("300 millis")
+      yield* TestHost.settle
+      expect(result.container.textContent).toBe("Item 1failedItem 3")
+      expect(calls).toEqual([1, 404, 3, 3])
+    })))
+
   it.effect("fails ssr when an entry doesn't encode, and doesn't ship it", () =>
     hosted(Effect.gen(function*() {
       class GetCount extends Loader.Service<GetCount>()("GetCount", {

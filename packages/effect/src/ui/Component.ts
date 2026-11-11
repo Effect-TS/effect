@@ -338,7 +338,7 @@ export interface Component<
 
 /**
  * What `h` gains in `view` for a Model with loader fields: `loaded`,
- * `previous` and `patched`.
+ * `previous` and `patched`. `previous` and `patched` have no keyed field.
  *
  * @stability experimental
  * @category utility types
@@ -409,27 +409,53 @@ export type Message<C> = C extends Component<infer _N, infer _P, infer _M, infer
 
 /**
  * The loader fields of a Model: its top-level fields that hold a
- * `Loader.Snapshot`. Each one has a loader.
+ * `Loader.Snapshot` or a `Loader.SnapshotMap`. Each one has a loader.
  *
  * @stability experimental
  * @category utility types
  * @since 4.1.3
  */
-export type LoaderFields<Model> = [Model] extends [object] ? LoaderKey<Model, keyof Model & string> : never
-
-// Not a mapped type over `keyof Model`: that one is homomorphic, so a primitive or array Model maps to itself.
-type LoaderKey<Model, K extends keyof Model> = K extends unknown ?
-  Model[K] extends Loader.Snapshot<any, any> ? K : never
+export type LoaderFields<Model> = [Model] extends [object] ?
+  LoaderKey<Model, keyof Model & string, Loader.Snapshot<any, any> | Loader.SnapshotMap<any, any>>
   : never
 
 /**
- * The read of a snapshot type.
+ * The single loader fields of a Model: those that hold a `Loader.Snapshot`.
  *
  * @stability experimental
  * @category utility types
  * @since 4.1.3
  */
-export type ReadOf<S> = S extends Loader.Snapshot<infer R, any> ? R : never
+export type SingleFields<Model> = [Model] extends [object] ?
+  LoaderKey<Model, keyof Model & string, Loader.Snapshot<any, any>>
+  : never
+
+/**
+ * The keyed loader fields of a Model: those that hold a
+ * `Loader.SnapshotMap`.
+ *
+ * @stability experimental
+ * @category utility types
+ * @since 4.1.3
+ */
+export type KeyedFields<Model> = [Model] extends [object] ?
+  LoaderKey<Model, keyof Model & string, Loader.SnapshotMap<any, any>>
+  : never
+
+// Not a mapped type over `keyof Model`: that one is homomorphic, so a primitive or array Model maps to itself.
+type LoaderKey<Model, K extends keyof Model, S> = K extends unknown ? Model[K] extends S ? K : never
+  : never
+
+/**
+ * The read of a snapshot type, single or keyed.
+ *
+ * @stability experimental
+ * @category utility types
+ * @since 4.1.3
+ */
+export type ReadOf<S> = S extends Loader.Snapshot<infer R, any> ? R
+  : S extends Loader.SnapshotMap<infer R, any> ? R
+  : never
 
 /**
  * The result a loader field opens to: an `AsyncResult` of its read's success
@@ -463,15 +489,64 @@ type ServiceOf<R> = R extends { readonly Identifier: infer Self } ? Self : never
 export type Empty<Model> = { readonly [K in LoaderFields<Model>]: Model[K] }
 
 /**
- * `h.loaded` in `view`, and `loaded` in a loader: per loader field, the
- * stored result when the snapshot was taken at the loader's current args,
- * and otherwise `Initial`, waiting while the loader is enabled.
+ * `h.loaded` in `view`, and `loaded` in a loader: per single loader field,
+ * the stored result when the snapshot was taken at the loader's current args,
+ * and otherwise `Initial`, waiting while the loader is enabled. A keyed
+ * field opens to its entries in the loader's order.
  *
  * @stability experimental
  * @category utility types
  * @since 4.1.3
  */
-export type Loaded<Model> = { readonly [K in LoaderFields<Model>]: ResultOf<Model[K]> }
+export type Loaded<Model> = {
+  readonly [K in LoaderFields<Model>]: Model[K] extends Loader.SnapshotMap<any, any> ? KeyedLoaded<ReadOf<Model[K]>>
+    : ResultOf<Model[K]>
+}
+
+/**
+ * One entry of a keyed field as `h.loaded` opens it: the args from the
+ * loader, the opened result and whether the value includes an unconfirmed
+ * patch.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.1.3
+ */
+export interface KeyedEntry<R extends Loader.Read.Any> {
+  readonly args: Loader.Read.Args<R>
+  readonly result: AsyncResult.AsyncResult<Loader.Read.Success<R>, Loader.Read.Error<R>>
+  readonly patched: boolean
+}
+
+/**
+ * A keyed field as `h.loaded` opens it: an entry per unique args the loader
+ * returns, in its order, and `get` to find one entry by its args.
+ *
+ * **Details**
+ *
+ * A key the field holds no settled result for opens as `Initial`, waiting.
+ * `get` is `None` for args the loader doesn't currently return. Entries
+ * carry no key: write each row's `.key(...)` by hand.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.1.3
+ */
+export interface KeyedLoaded<R extends Loader.Read.Any> extends ReadonlyArray<KeyedEntry<R>> {
+  readonly get: (args: Loader.Read.Args<R>) => Option.Option<KeyedEntry<R>>
+}
+
+/**
+ * One key of a keyed field whose result changed, as a watch handler gets it.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.1.3
+ */
+export interface KeyedChange<R extends Loader.Read.Any> {
+  readonly args: Loader.Read.Args<R>
+  readonly result: AsyncResult.AsyncResult<Loader.Read.Success<R>, Loader.Read.Error<R>>
+}
 
 /**
  * `h.previous` in `view`: per loader field, the Success value the snapshot
@@ -484,7 +559,7 @@ export type Loaded<Model> = { readonly [K in LoaderFields<Model>]: ResultOf<Mode
  * @since 4.1.3
  */
 export type Previous<Model> = {
-  readonly [K in LoaderFields<Model>]: Option.Option<Loader.Read.Success<ReadOf<Model[K]>>>
+  readonly [K in SingleFields<Model>]: Option.Option<Loader.Read.Success<ReadOf<Model[K]>>>
 }
 
 /**
@@ -496,12 +571,13 @@ export type Previous<Model> = {
  * @category utility types
  * @since 4.1.3
  */
-export type Patched<Model> = { readonly [K in LoaderFields<Model>]: boolean }
+export type Patched<Model> = { readonly [K in SingleFields<Model>]: boolean }
 
 /**
- * The `loaders` of `make`: per loader field, the args of its read, or
- * `undefined` to disable it. `loaded` is `h.loaded` without the field's own
- * entry, for a read whose args depend on another read's result.
+ * The `loaders` of `make`: per single loader field, the args of its read, or
+ * `undefined` to disable it, and per keyed field an array of args, empty to
+ * watch nothing. `loaded` is `h.loaded` without the field's own entry, for a
+ * read whose args depend on another read's result.
  *
  * @stability experimental
  * @category utility types
@@ -512,7 +588,8 @@ export type Loaders<Model, Props> = {
     model: Model,
     props: Props,
     loaded: Omit<Loaded<Model>, K>
-  ) => Loader.Read.Args<ReadOf<Model[K]>> | undefined
+  ) => Model[K] extends Loader.SnapshotMap<any, any> ? ReadonlyArray<Loader.Read.Args<ReadOf<Model[K]>>>
+    : Loader.Read.Args<ReadOf<Model[K]>> | undefined
 }
 
 /**
@@ -547,14 +624,23 @@ export interface Watches<in out Model, out Msg> extends Subscription.Subscriptio
 
 /**
  * The third argument of `subscriptions`: takes one handler per loader field.
- * A handler gets the snapshot to store and the result it was built from.
+ * A single field's handler gets the snapshot to store and the result it was
+ * built from. A keyed field's gets the collection to store, the entries it
+ * opens to, and the keys whose result changed.
  *
  * @stability experimental
  * @category models
  * @since 4.1.3
  */
 export type Watch<Model, Msg> = (
-  handlers: { readonly [K in LoaderFields<Model>]: (snapshot: Model[K], result: ResultOf<Model[K]>) => Msg }
+  handlers: {
+    readonly [K in LoaderFields<Model>]: Model[K] extends Loader.SnapshotMap<any, any> ? (
+        snapshots: Model[K],
+        loaded: KeyedLoaded<ReadOf<Model[K]>>,
+        changes: ReadonlyArray<KeyedChange<ReadOf<Model[K]>>>
+      ) => Msg
+      : (snapshot: Model[K], result: ResultOf<Model[K]>) => Msg
+  }
 ) => Watches<Model, Msg>
 
 /**

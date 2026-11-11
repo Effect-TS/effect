@@ -111,3 +111,154 @@ describe("Story loader steps", () => {
     >()
   })
 })
+
+class GetCount extends Loader.Service<GetCount>()(
+  "typetest/GetCount",
+  { args: Schema.String, success: Schema.Number, error: Schema.Never, staleTime: 0 },
+  Effect.succeed(() => Effect.succeed(1))
+) {}
+
+const ListMessage = Schema.TaggedUnion({
+  UsersChanged: { snapshots: Loader.SnapshotMap(GetUser, "users"), changed: Schema.Number },
+  Show: { ids: Schema.Array(Schema.String) }
+})
+
+const List = Component.make({
+  name: "List",
+  model: Schema.Struct({ ids: Schema.Array(Schema.String), users: Loader.SnapshotMap(GetUser, "users") }),
+  message: ListMessage,
+  elements: Html,
+  loaders: {
+    users: (model) => model.ids.map((id) => ({ id }))
+  },
+  init: ($) => ({ ...$.empty, ids: [] }),
+  update: (model, message) =>
+    ListMessage.match(message, {
+      UsersChanged: ({ snapshots }) => ({ ...model, users: snapshots }),
+      Show: ({ ids }) => ({ ...model, ids })
+    }),
+  subscriptions: (_model, _props, watch) => [
+    watch({
+      users: (snapshots, loaded, changes) => {
+        expect(loaded).type.toBe<Component.KeyedLoaded<typeof GetUser>>()
+        expect(changes).type.toBe<ReadonlyArray<Component.KeyedChange<typeof GetUser>>>()
+        return ListMessage.make({ _tag: "UsersChanged", snapshots, changed: changes.length })
+      }
+    })
+  ],
+  view: (_model, h) =>
+    h.ul(
+      h.loaded.users.map(({ args, result, patched }) =>
+        h.li(AsyncResult.isSuccess(result) ? result.value.name + (patched ? "*" : "") : "…").key(args.id)
+      )
+    )
+})
+
+describe("Keyed loader fields", () => {
+  it("open to entries with args, result and patched, and get by args", () => {
+    type M = Component.Model<typeof List>
+    expect<Component.LoaderFields<M>>().type.toBe<"users">()
+    expect<Component.KeyedFields<M>>().type.toBe<"users">()
+    expect<Component.SingleFields<M>>().type.toBe<never>()
+    expect<Component.Requirements<typeof List>>().type.toBe<GetUser>()
+    expect<Component.Loaded<M>["users"]>().type.toBe<Component.KeyedLoaded<typeof GetUser>>()
+    expect<Component.Loaded<M>["users"][number]["args"]>().type.toBe<{ readonly id: string }>()
+    expect<Component.Loaded<M>["users"][number]["result"]>().type.toBe<
+      AsyncResult.AsyncResult<typeof User.Type, string>
+    >()
+    expect<ReturnType<Component.Loaded<M>["users"]["get"]>>().type.toBe<
+      Option.Option<Component.KeyedEntry<typeof GetUser>>
+    >()
+    expect<Parameters<Component.Loaded<M>["users"]["get"]>[0]>().type.toBe<{ readonly id: string }>()
+  })
+
+  it("have no previous or patched view", () => {
+    type M = Component.Model<typeof List>
+    expect<Component.Previous<M>>().type.toBe<{}>()
+    expect<Component.Patched<M>>().type.toBe<{}>()
+  })
+
+  it("a keyed loader's loaded doesn't have its own field", () => {
+    type M = Component.Model<typeof List>
+    expect<Parameters<Component.Loaders<M, {}>["users"]>[2]>().type.toBe<Omit<Component.Loaded<M>, "users">>()
+    Component.make({
+      name: "SelfKeyed",
+      model: Schema.Struct({ users: Loader.SnapshotMap(GetUser, "users"), team: Loader.Snapshot(GetTeam, "team") }),
+      message: Message,
+      loaders: {
+        // @ts-expect-error Property 'users' does not exist
+        users: (_model, _props, loaded) => loaded.users === undefined ? [] : [{ id: "1" }],
+        team: (_model, _props, loaded) => loaded.users.length > 0 ? { id: "1" } : undefined
+      },
+      init: ($) => $.empty,
+      update: (model) => model,
+      subscriptions: (_m, _p, watch) => [
+        watch({ users: () => Message.make({ _tag: "Bump" }), team: () => Message.make({ _tag: "Bump" }) })
+      ],
+      view: () => null as never
+    })
+  })
+
+  it("take an array of args from the loader, and a handler of three arguments", () => {
+    const model = Schema.Struct({ ids: Schema.Array(Schema.String), users: Loader.SnapshotMap(GetUser, "users") })
+    const base = {
+      name: "Keyed",
+      model,
+      message: ListMessage,
+      init: ($: { readonly empty: { readonly users: Loader.SnapshotMap<typeof GetUser, "users"> } }) => ({
+        ...$.empty,
+        ids: []
+      }),
+      update: (m: typeof model.Type) => m,
+      view: () => null as never
+    }
+    Component.make({
+      ...base,
+      // @ts-expect-error is missing the following properties from type 'readonly { readonly id: string; }[]'
+      loaders: { users: (m) => ({ id: m.ids[0] }) },
+      subscriptions: (_m, _p, watch) => [watch({ users: () => ListMessage.make({ _tag: "Show", ids: [] }) })]
+    })
+    Component.make({
+      ...base,
+      loaders: { users: (m) => m.ids.map((id) => ({ id })) },
+      subscriptions: (_m, _p, watch) => [
+        watch({
+          // @ts-expect-error not assignable
+          users: (_snapshots, _result: AsyncResult.AsyncResult<unknown, unknown>) =>
+            ListMessage.make({ _tag: "Show", ids: [] })
+        })
+      ]
+    })
+  })
+
+  it("keep a single and a keyed snapshot apart", () => {
+    ListMessage.make({
+      _tag: "UsersChanged",
+      // @ts-expect-error is missing in type 'Snapshot<typeof GetUser, "users">'
+      snapshots: null as unknown as Loader.Snapshot<typeof GetUser, "users">,
+      changed: 0
+    })
+  })
+
+  it("need a read with struct args", () => {
+    Loader.SnapshotMap(GetUser, "users")
+    // @ts-expect-error the read's args must be a struct
+    Loader.SnapshotMap(GetCount, "counts")
+  })
+
+  it("take the Story's keyed steps, typed by the read", () => {
+    Story.make(List, {}, (s) =>
+      s
+        .send(ListMessage.make({ _tag: "Show", ids: ["1", "2"] }))
+        .loaded("users", { id: "1" }, { id: "1", name: "Ann", teamId: "t" })
+        .loadFailed("users", { id: "2" }, "missing", { waiting: true })
+        .loadedMany("users", [
+          { args: { id: "1" }, value: { id: "1", name: "Ann", teamId: "t" }, patched: true },
+          { args: { id: "2" }, error: "missing" }
+        ])
+        // @ts-expect-error not assignable
+        .loaded("users", { id: "1", name: "Ann", teamId: "t" })
+        // @ts-expect-error not assignable
+        .loadedMany("users", [{ args: { id: 1 }, value: { id: "1", name: "Ann", teamId: "t" } }]))
+  })
+})

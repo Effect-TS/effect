@@ -134,7 +134,7 @@ export interface Story<Props, Model, Msg, Events> {
 /**
  * One loader field in a story: the field, its read's name, and the args its
  * loader returns for the current Model and props, `undefined` when it is
- * disabled.
+ * disabled. A keyed field's args are its loader's unique args, in order.
  *
  * @stability experimental
  * @category models
@@ -145,6 +145,27 @@ export interface LoaderInfo {
   readonly read: string
   readonly args: unknown
 }
+
+/**
+ * One key of a keyed field for `loadedMany`: its args and a Success value or
+ * a typed failure.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.1.3
+ */
+export type KeyedLoad<R extends Loader.Read.Any> =
+  | {
+    readonly args: Loader.Read.Args<R>
+    readonly value: Loader.Read.Success<R>
+    readonly waiting?: boolean | undefined
+    readonly patched?: boolean | undefined
+  }
+  | {
+    readonly args: Loader.Read.Args<R>
+    readonly error: Loader.Read.Error<R>
+    readonly waiting?: boolean | undefined
+  }
 
 /**
  * A pending Command's definition, or an issued Command to also match the
@@ -274,8 +295,18 @@ export interface Steps<C extends AnyComponent> extends Pipeable {
    * current args and sends it through the declared watch handler. Throws when
    * the loader is disabled.
    */
-  loaded<F extends Component.LoaderFields<Component.Model<C>>>(
+  loaded<F extends Component.SingleFields<Component.Model<C>>>(
     field: F,
+    value: Loader.Read.Success<Component.ReadOf<Component.Model<C>[F]>>,
+    options?: { readonly waiting?: boolean | undefined; readonly patched?: boolean | undefined }
+  ): this
+  /**
+   * Loads one key of a keyed field with a Success, as `loadedMany` does with
+   * one entry.
+   */
+  loaded<F extends Component.KeyedFields<Component.Model<C>>>(
+    field: F,
+    args: Loader.Read.Args<Component.ReadOf<Component.Model<C>[F]>>,
     value: Loader.Read.Success<Component.ReadOf<Component.Model<C>[F]>>,
     options?: { readonly waiting?: boolean | undefined; readonly patched?: boolean | undefined }
   ): this
@@ -284,10 +315,27 @@ export interface Steps<C extends AnyComponent> extends Pipeable {
    * keeps the field's last Success as `previousSuccess` when the field holds
    * one at the loader's current args.
    */
-  loadFailed<F extends Component.LoaderFields<Component.Model<C>>>(
+  loadFailed<F extends Component.SingleFields<Component.Model<C>>>(
     field: F,
     error: Loader.Read.Error<Component.ReadOf<Component.Model<C>[F]>>,
     options?: { readonly waiting?: boolean | undefined }
+  ): this
+  /** Loads one key of a keyed field with a typed failure, as `loadedMany` does with one entry. */
+  loadFailed<F extends Component.KeyedFields<Component.Model<C>>>(
+    field: F,
+    args: Loader.Read.Args<Component.ReadOf<Component.Model<C>[F]>>,
+    error: Loader.Read.Error<Component.ReadOf<Component.Model<C>[F]>>,
+    options?: { readonly waiting?: boolean | undefined }
+  ): this
+  /**
+   * Loads several keys of a keyed field in one message, as the runtime sends
+   * a first emission or a batch: the collection holds the field's stored keys
+   * and these, and `changes` holds these. Throws on args the loader doesn't
+   * currently return.
+   */
+  loadedMany<F extends Component.KeyedFields<Component.Model<C>>>(
+    field: F,
+    entries: ReadonlyArray<KeyedLoad<Component.ReadOf<Component.Model<C>[F]>>>
   ): this
 
   /** Checks the Model. `f` throws to fail the test. */
@@ -385,6 +433,9 @@ const update = <Props, Model, Msg, Events>(
 const boundOf = (component: AnyComponent): loaders.Bound | undefined =>
   (component as unknown as { readonly "~loaders": loaders.Bound | undefined })["~loaders"]
 
+const isKeyed = (story: Story<any, any, any, any>, field: string): boolean =>
+  boundOf(story.component)?.fields.some((f) => f.field === field && f.keyed) === true
+
 /** Builds the snapshot of `result` at the loader's current args and sends it through the watch handler. */
 const loadStep = (
   story: Story<any, any, any, any>,
@@ -421,6 +472,120 @@ const loadStep = (
     patched
   )
   return dispatch(story, marker.toMsg(snapshot, result))
+}
+
+/** The watch group of a keyed field at the story's Model and props. */
+const groupOf = (story: Story<any, any, any, any>, field: string): loaders.Group | undefined => {
+  for (const sub of story.component.subscriptions?.(story.model, story.props) ?? []) {
+    const group = loaders.groupOf(sub)
+    if (group?.field === field) return group
+  }
+  return undefined
+}
+
+const keyedField = (story: Story<any, any, any, any>, step: string, field: string): loaders.Group => {
+  const bound = boundOf(story.component)
+  if (bound === undefined || !bound.fields.some((f) => f.field === field && f.keyed)) {
+    throw new Error(`Story.${step}: "${field}" is not a keyed loader field of ${story.component.name}`)
+  }
+  return groupOf(story, field)!
+}
+
+/**
+ * Sends a keyed field's message as the runtime does: the collection is the
+ * stored keys the loader still returns with `loads` over them, and
+ * `changes` holds `loads`.
+ */
+const sendKeyed = (
+  story: Story<any, any, any, any>,
+  group: loaders.Group,
+  loads: ReadonlyArray<
+    { readonly argsKey: string; readonly result: AsyncResult.AsyncResult<any, any>; readonly patched: boolean }
+  >
+): Story<any, any, any, any> => {
+  const def = Loader.defOf(group.read)
+  const held = Loader.snapshotMapData(story.model[group.field])?.entries
+  const byKey = new Map(loads.map((load) => [load.argsKey, load]))
+  const snapshots = Loader.makeSnapshotMap(
+    def,
+    group.label,
+    group.entries.flatMap((entry) => {
+      const load = byKey.get(entry.argsKey)
+      if (load !== undefined) {
+        return [Loader.makeSnapshot(def, group.label, entry, load.result as any, load.patched)]
+      }
+      const stored = held?.get(entry.argsKey)
+      return stored === undefined ? [] : [stored]
+    })
+  )
+  const changes = group.entries.flatMap((entry) => {
+    const load = byKey.get(entry.argsKey)
+    return load === undefined ? [] : [{ args: entry.args, result: load.result }]
+  })
+  return dispatch(story, group.toMsg(snapshots, loaders.openKeyed(def, snapshots, group.entries), changes))
+}
+
+/** Loads keys of a keyed field: each args must be one the loader currently returns. */
+const loadKeyedStep = (
+  story: Story<any, any, any, any>,
+  step: string,
+  field: string,
+  loads: ReadonlyArray<KeyedLoad<any>>
+): Story<any, any, any, any> => {
+  const group = keyedField(story, step, field)
+  const def = Loader.defOf(group.read)
+  const held = Loader.snapshotMapData(story.model[field])?.entries
+  return sendKeyed(
+    story,
+    group,
+    loads.map((load) => {
+      const argsKey = def.argsKey(load.args)
+      if (!group.entries.some((entry) => entry.argsKey === argsKey)) {
+        throw new Error(
+          `Story.${step}: the loader of "${field}" doesn't return the args ${def.logKey(load.args, argsKey)}`
+        )
+      }
+      if ("value" in load) {
+        return {
+          argsKey,
+          result: AsyncResult.success(load.value, { waiting: load.waiting, timestamp: 0 }),
+          patched: load.patched === true
+        }
+      }
+      const stored = Loader.snapshotData(held?.get(argsKey))?.result
+      const previousSuccess: Option.Option<AsyncResult.Success<any, any>> = stored === undefined
+        ? Option.none()
+        : stored._tag === "Success"
+        ? Option.some(stored)
+        : stored.previousSuccess
+      return {
+        argsKey,
+        result: AsyncResult.failure(Cause.fail(load.error), { previousSuccess, waiting: load.waiting }),
+        patched: false
+      }
+    })
+  )
+}
+
+/**
+ * After a step: a keyed field whose Model holds a key its loader no longer
+ * returns gets the pruned collection, with no changes, as the runtime sends
+ * it at the next sync.
+ */
+const pruneKeyed = (story: Story<any, any, any, any>): Story<any, any, any, any> => {
+  const bound = boundOf(story.component)
+  if (bound === undefined) return story
+  let out = story
+  for (const field of bound.fields) {
+    if (!field.keyed) continue
+    const held = Loader.snapshotMapData(out.model?.[field.field])
+    if (held === undefined || held.entries.size === 0) continue
+    const group = groupOf(out, field.field)!
+    const declared = new Set(group.entries.map((entry) => entry.argsKey))
+    if (Array.from(held.entries.keys()).every((key) => declared.has(key))) continue
+    out = sendKeyed(out, group, [])
+  }
+  return out
 }
 
 /** `h.running` in a story: derived from what's pending. */
@@ -582,7 +747,7 @@ class StepsImpl implements Steps<AnyComponent> {
     return pipeArguments(this, arguments)
   }
   private step(next: Story<any, any, any, any>): this {
-    this.current = next
+    this.current = next === this.current ? next : pruneKeyed(next)
     return this
   }
 
@@ -630,11 +795,15 @@ class StepsImpl implements Steps<AnyComponent> {
   end(target: StreamTarget): this {
     return this.step(complete(this.current, findStream(this.current, target, "end")))
   }
-  loaded(
-    field: string,
-    value: unknown,
-    options?: { readonly waiting?: boolean | undefined; readonly patched?: boolean | undefined }
-  ): this {
+  loaded(field: string, ...rest: Array<any>): this {
+    if (isKeyed(this.current, field)) {
+      const [args, value, options] = rest
+      return this.step(loadKeyedStep(this.current, "loaded", field, [{ args, value, ...options }]))
+    }
+    const [value, options] = rest as [
+      unknown,
+      { readonly waiting?: boolean | undefined; readonly patched?: boolean | undefined } | undefined
+    ]
     return this.step(loadStep(
       this.current,
       "loaded",
@@ -643,7 +812,12 @@ class StepsImpl implements Steps<AnyComponent> {
       options?.patched === true
     ))
   }
-  loadFailed(field: string, error: unknown, options?: { readonly waiting?: boolean | undefined }): this {
+  loadFailed(field: string, ...rest: Array<any>): this {
+    if (isKeyed(this.current, field)) {
+      const [args, error, options] = rest
+      return this.step(loadKeyedStep(this.current, "loadFailed", field, [{ args, error, waiting: options?.waiting }]))
+    }
+    const [error, options] = rest as [unknown, { readonly waiting?: boolean | undefined } | undefined]
     return this.step(loadStep(
       this.current,
       "loadFailed",
@@ -651,6 +825,9 @@ class StepsImpl implements Steps<AnyComponent> {
       (previousSuccess) => AsyncResult.failure(Cause.fail(error), { previousSuccess, waiting: options?.waiting }),
       false
     ))
+  }
+  loadedMany(field: string, entries: ReadonlyArray<KeyedLoad<any>>): this {
+    return this.step(loadKeyedStep(this.current, "loadedMany", field, entries))
   }
 
   model(f: (model: any) => void): this {

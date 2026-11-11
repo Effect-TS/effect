@@ -160,6 +160,20 @@ interface WatchRun {
   released: boolean
 }
 
+/**
+ * One keyed field's watchers, collected: the last value of each key, and the
+ * keys that changed since the field's last message.
+ */
+interface KeyedRun {
+  group: loaders.Group
+  readonly logKey: string
+  readonly values: Map<string, { readonly args: unknown; readonly result: Settled; readonly patched: boolean }>
+  readonly changes: Map<string, loaders.KeyedChange>
+  scheduled: boolean
+}
+
+type Settled = AsyncResult.Success<any, any> | AsyncResult.Failure<any, any>
+
 /** @internal */
 export interface Instance {
   serverSampled?: boolean
@@ -192,6 +206,10 @@ export interface Instance {
   readonly stopping: Set<Run>
   readonly subscriptions: Map<string, SubscriptionRun>
   readonly watches: Map<string, WatchRun>
+  /** The keyed fields, by label. */
+  readonly keyed: Map<string, KeyedRun>
+  /** Above 0 while the watches follow the Model: a keyed field's message waits for the sync to end. */
+  syncing: number
   /**
    * Set while the first emissions are folded before the first render: the Commands of those
    * updates, issued after `init`'s.
@@ -529,6 +547,21 @@ const start = (
     let out = model as Record<string, unknown>
     for (const field of bound.fields) {
       const snapshot = out[field.field]
+      if (field.keyed) {
+        // Per tuple: one taken under a patch is dropped.
+        const map = Loader.snapshotMapData(snapshot)
+        if (map === undefined) continue
+        const kept: Array<unknown> = []
+        for (const one of map.entries.values()) {
+          if (Loader.snapshotData(one)!.patched) continue
+          Loader.internals(cache).seed(one)
+          kept.push(one)
+        }
+        if (kept.length === map.entries.size) continue
+        if (out === model) out = Object.assign(Object.create(Object.getPrototypeOf(model)), model)
+        out[field.field] = Loader.makeSnapshotMap(map.def, map.label, kept)
+        continue
+      }
       const data = Loader.snapshotData(snapshot)
       if (data === undefined) continue
       if (!data.patched) {
@@ -1018,6 +1051,8 @@ const start = (
       stopping: new Set(),
       subscriptions: new Map(),
       watches: new Map(),
+      keyed: new Map(),
+      syncing: 0,
       mounting: undefined,
       dispatch(message, source) {
         if (inst.closed || inst.waiting || frozen) return
@@ -1707,17 +1742,26 @@ const start = (
     const markers = new Map<string, loaders.Marker>()
     for (const subscription of wanted) {
       const marker = loaders.markerOf(subscription)
+      const group = marker === undefined ? loaders.groupOf(subscription) : undefined
       if (marker !== undefined) {
         if (!markers.has(subscription.key)) markers.set(subscription.key, marker)
-      } else if (!byKey.has(subscription.key)) byKey.set(subscription.key, subscription)
+      } else if (group !== undefined) syncGroup(inst, group)
+      else if (!byKey.has(subscription.key)) byKey.set(subscription.key, subscription)
     }
-    const folds = syncWatches(inst, markers)
-    // Streams never run on the server.
-    if (!watchesOnly && server === undefined) syncStreams(inst, byKey)
-    // The cache never calls back with the state at registration. Each new watcher's settled value
-    // is folded through `update` here, once the watchers and Streams follow the Model that asked for
-    // them, and so before this instance's next render.
-    for (const fold of folds) fold()
+    inst.syncing++
+    try {
+      const folds = syncWatches(inst, markers)
+      // Streams never run on the server.
+      if (!watchesOnly && server === undefined) syncStreams(inst, byKey)
+      // The cache never calls back with the state at registration. Each new watcher's settled value
+      // is folded through `update` here, once the watchers and Streams follow the Model that asked for
+      // them, and so before this instance's next render.
+      for (const fold of folds) fold()
+    } finally {
+      inst.syncing--
+    }
+    // In the same sync: a keyed field's first values are one message, and so is a pruned key set.
+    if (inst.syncing === 0) { for (const run of inst.keyed.values()) deliverKeyed(inst, run) }
   }
   const syncStreams = (inst: Instance, byKey: Map<string, Subscription.Subscription<any, any>>) => {
     // Close first, so `room:1` and `room:2` are never both connected.
@@ -1771,6 +1815,11 @@ const start = (
       inst.watches.delete(key)
       record({ _tag: "SubscriptionStopped", path: inst.path, key: running.logKey })
       releaseWatch(running)
+      if (running.marker.keyed) {
+        const run = inst.keyed.get(running.marker.label)
+        run?.values.delete(running.marker.argsKey!)
+        run?.changes.delete(running.marker.argsKey!)
+      }
     }
     // The first values of the watchers registered in this call, folded by the caller once the loop is done.
     let folds: Array<() => void> | undefined = []
@@ -1798,6 +1847,12 @@ const start = (
         // An emission equal to this watcher's last is skipped.
         if (last !== undefined && last.patched === patched && Equal.equals(last.result, result)) return
         last = { result, patched }
+        if (marker.keyed) {
+          const run = inst.keyed.get(marker.label)!
+          run.values.set(entry.argsKey, { args: entry.args, result, patched })
+          run.changes.set(entry.argsKey, { args: entry.args, result })
+          return requestKeyed(inst, run)
+        }
         const toMsg = running.marker.toMsg
         const message = guard(
           inst,
@@ -1849,6 +1904,76 @@ const start = (
     const out = folds
     folds = undefined
     return out
+  }
+  /** A keyed field's handler and keys follow the Model. */
+  const syncGroup = (inst: Instance, group: loaders.Group) => {
+    const run = inst.keyed.get(group.label)
+    if (run !== undefined) run.group = group
+    else {
+      inst.keyed.set(group.label, {
+        group,
+        logKey: Subscription.keyOf(`~loaded/${group.label}`),
+        values: new Map(),
+        changes: new Map(),
+        scheduled: false
+      })
+    }
+  }
+  /**
+   * A key of a keyed field changed outside a sync. Its changes are collected until the flush, whose
+   * deferred work runs before any render: one message for every key that changed meanwhile, and a
+   * patch registered at issue still reaches the field before the flush renders the issuing update.
+   */
+  const requestKeyed = (inst: Instance, run: KeyedRun) => {
+    if (inst.syncing > 0 || run.scheduled) return
+    run.scheduled = true
+    defer(() => {
+      run.scheduled = false
+      deliverKeyed(inst, run)
+    })
+  }
+  /**
+   * Sends a keyed field's message when a key changed, or when the Model holds a key the loader no
+   * longer returns. The collection is sampled from the watchers now: each current key's last value.
+   */
+  const deliverKeyed = (inst: Instance, run: KeyedRun) => {
+    if (inst.closed || inst.failure !== undefined) return
+    const group = run.group
+    const declared = new Set(group.entries.map((entry) => entry.argsKey))
+    const held = Loader.snapshotMapData((inst.model as Record<string, unknown> | undefined)?.[group.field])
+    let prune = false
+    if (held !== undefined) {
+      for (const key of held.entries.keys()) {
+        if (!declared.has(key)) {
+          prune = true
+          break
+        }
+      }
+    }
+    if (run.changes.size === 0 && !prune) return
+    const def = Loader.defOf(group.read)
+    const snapshots = Loader.makeSnapshotMap(
+      def,
+      group.label,
+      group.entries.flatMap((entry) => {
+        const value = run.values.get(entry.argsKey)
+        return value === undefined
+          ? []
+          : [Loader.makeSnapshot(def, group.label, entry, value.result, value.patched)]
+      })
+    )
+    const changes = group.entries.flatMap((entry) => {
+      const change = run.changes.get(entry.argsKey)
+      return change === undefined ? [] : [change]
+    })
+    run.changes.clear()
+    const message = guard(
+      inst,
+      "subscription",
+      () => ({ value: group.toMsg(snapshots, loaders.openKeyed(def, snapshots, group.entries), changes) }),
+      run.logKey
+    )
+    if (message !== undefined) inst.dispatch(message.value, { _tag: "Subscription", key: run.logKey })
   }
   const releaseWatch = (running: WatchRun) => {
     if (running.released) return

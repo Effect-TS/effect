@@ -763,6 +763,139 @@ export const Snapshot = <R extends Read.Any, const Label extends string>(
 ): SnapshotSchema<R, Label> => snapshotSchema(read, label) as any
 
 /**
+ * An opaque collection of snapshots of one read, one per args key, held in a
+ * keyed Model field. The effect/ui runtime builds it and opens it; nothing
+ * else can.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.1.3
+ */
+export interface SnapshotMap<in out R extends Read.Any, in out Label extends string> {
+  readonly "~effect/reactivity/Loader/SnapshotMap": {
+    readonly _R: Types.Invariant<R>
+    readonly _Label: Types.Invariant<Label>
+  }
+}
+
+/**
+ * Helper types for `SnapshotMap`.
+ *
+ * @stability experimental
+ * @since 4.1.3
+ */
+export declare namespace SnapshotMap {
+  /**
+   * `unknown` when the read's args are a struct, which a keyed field
+   * requires, and a type `read` can't satisfy otherwise.
+   *
+   * @category utility types
+   * @since 4.1.3
+   */
+  export type StructArgs<R extends Read.Any> = [Read.Args<R>] extends [{ readonly [x: string]: unknown }] ? unknown
+    : { readonly "~error": "Loader.SnapshotMap: the read's args must be a struct" }
+}
+
+/**
+ * The Schema `Loader.SnapshotMap` returns. Its type parameters are the read's
+ * `args`, `success` and `error` Schemas.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.1.3
+ */
+export interface SnapshotMapSchema<R extends Read.Any, Label extends string> extends
+  Schema.declareConstructor<
+    SnapshotMap<R, Label>,
+    SnapshotMap<R, Label>,
+    readonly [
+      Schema.Codec<Read.Args<R>, unknown>,
+      Schema.Codec<Read.Success<R>, unknown>,
+      Schema.Codec<Read.Error<R>, unknown>
+    ]
+  >
+{}
+
+/**
+ * The Schema of a keyed Model field: many entries of `read`, one per args
+ * key, branded by the read and the label.
+ *
+ * **When to use**
+ *
+ * Use when one component shows many reads of one kind, such as a row per
+ * user id. The loader returns an array of args, and `h.loaded.<field>`
+ * opens to an entry per unique args in that order. Use a child instance per
+ * row instead when a row owns state of its own, such as an inline edit.
+ *
+ * **Details**
+ *
+ * It follows `Snapshot`'s rules: only the runtime builds one, the label is
+ * its field's name, and it sits at the top level of the Model. The read's
+ * args must be a struct. The runtime collects the keys' changes until the
+ * next flush and sends one message with the whole collection, so N results
+ * that land together are one `update`. A change to the key set that removes a
+ * stored key sends a message with the pruned collection. On the wire it is
+ * an array of `Snapshot`'s tuples, one per key, in no meaningful order, and
+ * a duplicate args key is a decode error.
+ *
+ * **Gotchas**
+ *
+ * - N cold keys start N fetches: batch them in the fetcher with a
+ *   `RequestResolver`. Keys that register in one pass share a batch; child
+ *   rows whose Layers build at different times don't.
+ * - A fetcher defect on any key fails the instance holding the field. A
+ *   defect in a batching resolver's `runAll` fails every watcher in the
+ *   batch, so a child per row doesn't confine a defect to one row either.
+ * - The Model field holds every settled key, so a large collection makes
+ *   every `history.state` push, the SSR state and each log entry larger.
+ *
+ * **Example** (Watching a user per id)
+ *
+ * ```ts
+ * import { Effect, Schema } from "effect"
+ * import { AsyncResult, Loader } from "effect/reactivity"
+ * import { Component } from "effect/ui"
+ * import { Html } from "effect/ui/html"
+ *
+ * class GetUser extends Loader.Service<GetUser>()("users/GetUser", {
+ *   args: { id: Schema.String },
+ *   success: Schema.Struct({ id: Schema.String, name: Schema.String }),
+ *   error: Schema.Never,
+ *   staleTime: "30 seconds"
+ * }, Effect.succeed(({ id }) => Effect.succeed({ id, name: `User ${id}` }))) {}
+ *
+ * const Users = Loader.SnapshotMap(GetUser, "users")
+ * const Message = Schema.TaggedUnion({ UsersChanged: { users: Users } })
+ *
+ * const UserList = Component.make({
+ *   name: "UserList",
+ *   props: Schema.Struct({ ids: Schema.Array(Schema.String) }),
+ *   model: Schema.Struct({ users: Users }),
+ *   message: Message,
+ *   elements: Html,
+ *   loaders: { users: (_model, props) => props.ids.map((id) => ({ id })) },
+ *   init: ($) => $.empty,
+ *   update: (_model, message) => ({ users: message.users }),
+ *   subscriptions: (_model, _props, watch) => [
+ *     watch({ users: (users) => Message.make({ _tag: "UsersChanged", users }) })
+ *   ],
+ *   view: (_model, h) =>
+ *     h.ul(h.loaded.users.map(({ args, result }) =>
+ *       h.li(AsyncResult.isSuccess(result) ? result.value.name : "…").key(args.id)
+ *     ))
+ * })
+ * ```
+ *
+ * @stability experimental
+ * @category schemas
+ * @since 4.1.3
+ */
+export const SnapshotMap = <R extends Read.Any, const Label extends string>(
+  read: R & SnapshotMap.StructArgs<R>,
+  label: Label
+): SnapshotMapSchema<R, Label> => snapshotMapSchema(read, label) as any
+
+/**
  * What started a fetch. Every fetch records exactly one, and the fetcher
  * never sees it.
  *
@@ -2183,11 +2316,34 @@ const snapshotSchema = (
   label: string
 ): Schema.Top => {
   const def = defOf(read)
-  const is = (u: unknown): u is SnapshotImpl =>
-    u instanceof SnapshotImpl && u[SnapshotTypeId].def.name === def.name && u[SnapshotTypeId].label === label
-  const invalid = (message: string) =>
-    new SchemaIssue.InvalidValue({ message: "a snapshot of " + quote(def.name) + ": " + message })
-  const makeRun = (decoding: boolean) => (typeParameters: ReadonlyArray<SchemaAST.AST>) => {
+  return Schema.make(
+    new SchemaAST.Declaration(
+      [def.args.ast, def.success.ast, def.error.ast],
+      snapshotRun(def, label, true),
+      {
+        expected: "Loader.Snapshot(" + quote(def.name) + ", " + quote(label) + ")",
+        [snapshotAnnotationKey]: { read: def.name, label, definition: read, keyed: false },
+        toCodecJson: snapshotJson(def, label)
+      } as Schema.Annotations.Annotations,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      snapshotRun(def, label, false)
+    )
+  )
+}
+
+const isSnapshotOf = (def: ReadDef, label: string) => (u: unknown): u is SnapshotImpl =>
+  u instanceof SnapshotImpl && u[SnapshotTypeId].def.name === def.name && u[SnapshotTypeId].label === label
+
+const snapshotIssue = (def: ReadDef, message: string) =>
+  new SchemaIssue.InvalidValue({ message: "a snapshot of " + quote(def.name) + ": " + message })
+
+/** Checks a snapshot against the read's Schemas, the type parameters. */
+const snapshotRun = (def: ReadDef, label: string, decoding: boolean) => {
+  const is = isSnapshotOf(def, label)
+  return (typeParameters: ReadonlyArray<SchemaAST.AST>) => {
     const [args, success, error] = typeParameters.map((ast) =>
       SchemaParser.decodeUnknownEffect(Schema.make<Schema.Codec<unknown, unknown>>(ast))
     )
@@ -2217,93 +2373,208 @@ const snapshotSchema = (
             } catch {
               back = undefined
             }
-            if (back !== data.argsKey) return Effect.fail(invalid("the args key isn't the key of its args"))
+            if (back !== data.argsKey) return Effect.fail(snapshotIssue(def, "the args key isn't the key of its args"))
           }
           return Effect.succeed(new SnapshotImpl({ ...data, args, result }))
         }
       )
     }
   }
-  const toCodecJson = ([args, success, error]: ReadonlyArray<Schema.Top>) => {
-    const argsJson = Schema.toCodecJson(args as Schema.Codec<unknown, unknown>)
-    const encodeArgs = SchemaParser.encodeUnknownEffect(argsJson)
-    const decodeArgs = SchemaParser.decodeUnknownEffect(argsJson)
-    // `args` here is the encoded side of the args Schema, so these see the args as the declaration passes them.
-    const toKey = (args: unknown, options: SchemaAST.ParseOptions): Effect.Effect<string, SchemaIssue.Issue> =>
-      Effect.flatMap(encodeArgs(args, options), (encoded) => {
-        try {
-          return Effect.succeed(canonical(encoded))
-        } catch {
-          return Effect.fail(invalid("the encoded args hold a value JSON can't carry"))
-        }
-      })
-    const fromKey = (
-      key: string,
-      options: SchemaAST.ParseOptions
-    ): Effect.Effect<unknown, SchemaIssue.Issue> => {
-      let parsed: unknown
+}
+
+/**
+ * The JSON form of a snapshot, built from the read's Schemas as the walk over the Model passes them: the
+ * tuple Schema and the two steps between a tuple and a snapshot.
+ */
+const snapshotWire = (def: ReadDef, label: string, [args, success, error]: ReadonlyArray<Schema.Top>) => {
+  const invalid = (message: string) => snapshotIssue(def, message)
+  const argsJson = Schema.toCodecJson(args as Schema.Codec<unknown, unknown>)
+  const encodeArgs = SchemaParser.encodeUnknownEffect(argsJson)
+  const decodeArgs = SchemaParser.decodeUnknownEffect(argsJson)
+  // `args` here is the encoded side of the args Schema, so these see the args as the declaration passes them.
+  const toKey = (args: unknown, options: SchemaAST.ParseOptions): Effect.Effect<string, SchemaIssue.Issue> =>
+    Effect.flatMap(encodeArgs(args, options), (encoded) => {
       try {
-        parsed = JSON.parse(key)
+        return Effect.succeed(canonical(encoded))
       } catch {
-        return Effect.fail(invalid("the args key isn't JSON"))
+        return Effect.fail(invalid("the encoded args hold a value JSON can't carry"))
       }
-      // The declaration checks the key once the args are decoded all the way.
-      return decodeArgs(parsed, options)
+    })
+  const fromKey = (
+    key: string,
+    options: SchemaAST.ParseOptions
+  ): Effect.Effect<unknown, SchemaIssue.Issue> => {
+    let parsed: unknown
+    try {
+      parsed = JSON.parse(key)
+    } catch {
+      return Effect.fail(invalid("the args key isn't JSON"))
     }
-    return Schema.link<SnapshotImpl>()(
-      Schema.Union([
-        Schema.Tuple([]),
-        Schema.Tuple([Schema.String, Schema.Literal(0), success, Schema.Number, Schema.Boolean]),
-        Schema.Tuple([
-          Schema.String,
-          Schema.Literal(1),
-          Schema.Array(error),
-          Schema.NullOr(Schema.Tuple([success, Schema.Number]))
-        ])
-      ]),
-      SchemaTransformation.transformEffect<SnapshotImpl, any>({
-        decode: (tuple, options) => {
-          if (tuple.length === 0) return Effect.succeed(makeSnapshot(def, label, undefined, undefined))
-          const [key, tag, payload, fourth, fifth] = tuple
-          return Effect.map(fromKey(key, options), (args) => {
-            const data = { def, label, argsKey: key as string, args }
-            if (tag === 0) {
-              return new SnapshotImpl({
-                ...data,
-                result: AsyncResult.success(payload, { timestamp: fourth }),
-                patched: fifth === true
-              })
-            }
-            return new SnapshotImpl({
-              ...data,
-              result: AsyncResult.failure(
-                Cause.fromReasons((payload as ReadonlyArray<unknown>).map((e) => Cause.makeFailReason(e))),
-                {
-                  previousSuccess: fourth === null
-                    ? Option.none()
-                    : Option.some(AsyncResult.success(fourth[0], { timestamp: fourth[1] }))
-                }
-              ),
-              patched: false
-            })
+    // The declaration checks the key once the args are decoded all the way.
+    return decodeArgs(parsed, options)
+  }
+  return {
+    tuple: Schema.Union([
+      Schema.Tuple([]),
+      Schema.Tuple([Schema.String, Schema.Literal(0), success, Schema.Number, Schema.Boolean]),
+      Schema.Tuple([
+        Schema.String,
+        Schema.Literal(1),
+        Schema.Array(error),
+        Schema.NullOr(Schema.Tuple([success, Schema.Number]))
+      ])
+    ]),
+    decode: (tuple: any, options: SchemaAST.ParseOptions): Effect.Effect<SnapshotImpl, SchemaIssue.Issue> => {
+      if (tuple.length === 0) return Effect.succeed(makeSnapshot(def, label, undefined, undefined))
+      const [key, tag, payload, fourth, fifth] = tuple
+      return Effect.map(fromKey(key, options), (args) => {
+        const data = { def, label, argsKey: key as string, args }
+        if (tag === 0) {
+          return new SnapshotImpl({
+            ...data,
+            result: AsyncResult.success(payload, { timestamp: fourth }),
+            patched: fifth === true
           })
-        },
-        encode: (snapshot, options) => {
-          const data = snapshot[SnapshotTypeId]
-          const result = data.result
-          if (result === undefined) return Effect.succeed([])
-          return Effect.map(toKey(data.args, options), (key) =>
-            result._tag === "Success"
-              ? [key, 0, result.value, result.timestamp, data.patched]
-              : [
-                key,
-                1,
-                result.cause.reasons.filter(Cause.isFailReason).map((reason) => reason.error),
-                Option.isSome(result.previousSuccess)
-                  ? [result.previousSuccess.value.value, result.previousSuccess.value.timestamp]
-                  : null
-              ])
         }
+        return new SnapshotImpl({
+          ...data,
+          result: AsyncResult.failure(
+            Cause.fromReasons((payload as ReadonlyArray<unknown>).map((e) => Cause.makeFailReason(e))),
+            {
+              previousSuccess: fourth === null
+                ? Option.none()
+                : Option.some(AsyncResult.success(fourth[0], { timestamp: fourth[1] }))
+            }
+          ),
+          patched: false
+        })
+      })
+    },
+    encode: (snapshot: SnapshotImpl, options: SchemaAST.ParseOptions): Effect.Effect<any, SchemaIssue.Issue> => {
+      const data = snapshot[SnapshotTypeId]
+      const result = data.result
+      if (result === undefined) return Effect.succeed([])
+      return Effect.map(toKey(data.args, options), (key) =>
+        result._tag === "Success"
+          ? [key, 0, result.value, result.timestamp, data.patched]
+          : [
+            key,
+            1,
+            result.cause.reasons.filter(Cause.isFailReason).map((reason) => reason.error),
+            Option.isSome(result.previousSuccess)
+              ? [result.previousSuccess.value.value, result.previousSuccess.value.timestamp]
+              : null
+          ])
+    }
+  }
+}
+
+/** The JSON codec of a snapshot. */
+const snapshotJson = (def: ReadDef, label: string) => (typeParameters: ReadonlyArray<Schema.Top>) => {
+  const wire = snapshotWire(def, label, typeParameters)
+  return Schema.link<SnapshotImpl>()(
+    wire.tuple,
+    SchemaTransformation.transformEffect<SnapshotImpl, any>({ decode: wire.decode, encode: wire.encode })
+  )
+}
+
+// -----------------------------------------------------------------------------
+// Snapshot maps
+// -----------------------------------------------------------------------------
+
+const SnapshotMapTypeId = "~effect/reactivity/Loader/SnapshotMap"
+
+/** What a snapshot map holds: one settled snapshot per args key. */
+interface SnapshotMapData {
+  readonly def: ReadDef
+  readonly label: string
+  readonly entries: ReadonlyMap<string, SnapshotImpl>
+}
+
+class SnapshotMapImpl implements Equal.Equal {
+  readonly [SnapshotMapTypeId]: SnapshotMapData
+  constructor(data: SnapshotMapData) {
+    this[SnapshotMapTypeId] = data
+  }
+  [Equal.symbol](that: unknown): boolean {
+    if (!(that instanceof SnapshotMapImpl)) return false
+    const a = this[SnapshotMapTypeId]
+    const b = that[SnapshotMapTypeId]
+    if (a.def.name !== b.def.name || a.label !== b.label || a.entries.size !== b.entries.size) return false
+    for (const [key, snapshot] of a.entries) {
+      if (!Equal.equals(snapshot, b.entries.get(key))) return false
+    }
+    return true
+  }
+  [Hash.symbol](): number {
+    const data = this[SnapshotMapTypeId]
+    return Hash.string(data.def.name + "\u0000" + data.label + "\u0000" + data.entries.size)
+  }
+}
+
+/**
+ * A snapshot map of the given snapshots, each one settled and of `def` and
+ * `label`, with no two sharing an args key.
+ *
+ * @internal
+ */
+export const makeSnapshotMap = (
+  def: ReadDef,
+  label: string,
+  snapshots: Iterable<unknown>
+): SnapshotMapImpl => {
+  const entries = new Map<string, SnapshotImpl>()
+  for (const snapshot of snapshots) {
+    const data = snapshotData(snapshot)!
+    entries.set(data.argsKey!, snapshot as SnapshotImpl)
+  }
+  return new SnapshotMapImpl({ def, label, entries })
+}
+
+/** @internal */
+export const snapshotMapData = (u: unknown): SnapshotMapData | undefined =>
+  u instanceof SnapshotMapImpl ? u[SnapshotMapTypeId] : undefined
+
+const snapshotMapSchema = (
+  read: { readonly [TypeId]: unknown },
+  label: string
+): Schema.Top => {
+  const def = defOf(read)
+  const is = (u: unknown): u is SnapshotMapImpl =>
+    u instanceof SnapshotMapImpl && u[SnapshotMapTypeId].def.name === def.name &&
+    u[SnapshotMapTypeId].label === label
+  const makeRun = (decoding: boolean) => (typeParameters: ReadonlyArray<SchemaAST.AST>) => {
+    const one = snapshotRun(def, label, decoding)(typeParameters)
+    return (
+      input: unknown,
+      ast: SchemaAST.Declaration,
+      options: SchemaAST.ParseOptions
+    ): Effect.Effect<SnapshotMapImpl, SchemaIssue.Issue> => {
+      if (!is(input)) return Effect.fail(new SchemaIssue.InvalidType(ast, input, options))
+      return Effect.map(
+        Effect.forEach(input[SnapshotMapTypeId].entries.values(), (snapshot) => one(snapshot, ast, options)),
+        (snapshots) => makeSnapshotMap(def, label, snapshots)
+      )
+    }
+  }
+  const toCodecJson = (typeParameters: ReadonlyArray<Schema.Top>) => {
+    const wire = snapshotWire(def, label, typeParameters)
+    return Schema.link<SnapshotMapImpl>()(
+      Schema.Array(wire.tuple),
+      SchemaTransformation.transformEffect<SnapshotMapImpl, ReadonlyArray<any>>({
+        decode: (tuples, options) =>
+          Effect.flatMap(Effect.forEach(tuples, (tuple) => wire.decode(tuple, options)), (snapshots) => {
+            const keys = new Set<string>()
+            for (const snapshot of snapshots) {
+              const key = snapshot[SnapshotTypeId].argsKey
+              if (key === undefined) return Effect.fail(snapshotIssue(def, "a keyed field holds an empty snapshot"))
+              if (keys.has(key)) return Effect.fail(snapshotIssue(def, "a keyed field holds one args key twice"))
+              keys.add(key)
+            }
+            return Effect.succeed(makeSnapshotMap(def, label, snapshots))
+          }),
+        encode: (map, options) =>
+          Effect.forEach(map[SnapshotMapTypeId].entries.values(), (snapshot) => wire.encode(snapshot, options))
       })
     )
   }
@@ -2312,8 +2583,8 @@ const snapshotSchema = (
       [def.args.ast, def.success.ast, def.error.ast],
       makeRun(true),
       {
-        expected: "Loader.Snapshot(" + quote(def.name) + ", " + quote(label) + ")",
-        [snapshotAnnotationKey]: { read: def.name, label, definition: read },
+        expected: "Loader.SnapshotMap(" + quote(def.name) + ", " + quote(label) + ")",
+        [snapshotAnnotationKey]: { read: def.name, label, definition: read, keyed: true },
         toCodecJson
       } as Schema.Annotations.Annotations,
       undefined,
