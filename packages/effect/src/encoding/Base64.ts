@@ -197,7 +197,10 @@ export const decodeString = (str: string) => Result.map(decode(str), (_) => deco
  * @category encoding
  * @since 4.1.5
  */
-export const encodeUnpadded: (input: Uint8Array | string) => string = (input) => encode(input).replace(/=+$/, "")
+export const encodeUnpadded: (input: Uint8Array | string) => string = (input) => {
+  const encoded = encode(input)
+  return encoded.endsWith("==") ? encoded.slice(0, -2) : encoded.endsWith("=") ? encoded.slice(0, -1) : encoded
+}
 
 /**
  * Decodes Base64 in the standard or the URL-safe alphabet, with or without
@@ -211,9 +214,9 @@ export const encodeUnpadded: (input: Uint8Array | string) => string = (input) =>
  * **Details**
  *
  * Returns `Result.succeed` with a `Uint8Array` when decoding succeeds, or
- * `Result.fail` with an `EncodingError` when the input is not valid. `+` and
- * `-` both decode to 62, and `/` and `_` both decode to 63, so input that
- * mixes the two alphabets is accepted too.
+ * `Result.fail` with an `EncodingError` when the input is not valid. Errors
+ * identify the `Base64` module and preserve the original input. CR/LF are
+ * ignored, but other whitespace and input mixing the two alphabets are rejected.
  *
  * **Example** (Decoding either Base64 alphabet)
  *
@@ -231,11 +234,21 @@ export const encodeUnpadded: (input: Uint8Array | string) => string = (input) =>
  * @category decoding
  * @since 4.1.5
  */
-export const decodeLenient = (str: string): Result.Result<Uint8Array, EncodingError> =>
-  Result.mapError(
-    Base64Url.decode(str.replaceAll("+", "-").replaceAll("/", "_")),
+export const decodeLenient = (str: string): Result.Result<Uint8Array, EncodingError> => {
+  const stripped = base64.stripCrlf(str)
+  const remainder = stripped.length % 4
+  const result = stripped.includes("-") || stripped.includes("_")
+    ? Base64Url.decode(stripped)
+    : decode(
+      !stripped.endsWith("=") && (remainder === 2 || remainder === 3)
+        ? stripped + (remainder === 2 ? "==" : "=")
+        : stripped
+    )
+  return Result.mapError(
+    result,
     (error) => new EncodingError({ kind: "Decode", module: "Base64", input: str, message: error.message })
   )
+}
 
 const encodeBytes = (bytes: Uint8Array): string => {
   const length = bytes.length
