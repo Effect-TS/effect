@@ -278,6 +278,68 @@ describe("Pool", () => {
     }))
 
   describe("usage TTL idle timeout", () => {
+    it.effect("retires an idle item one TTL after its last release", () =>
+      Effect.gen(function*() {
+        const pool = yield* Pool.makeWithTTL({
+          acquire: Effect.succeed("resource"),
+          min: 0,
+          max: 1,
+          timeToLive: 1000,
+          timeToLiveStrategy: "usage"
+        })
+        yield* TestClock.adjust(50)
+        yield* Pool.use(pool, Effect.succeed)
+        yield* TestClock.adjust(999)
+        strictEqual(pool.state.items.size, 1)
+        yield* TestClock.adjust(1)
+        strictEqual(pool.state.items.size, 0)
+      }))
+
+    it.effect("restarts the idle timeout when an item is reused", () =>
+      Effect.gen(function*() {
+        const pool = yield* Pool.makeWithTTL({
+          acquire: Effect.succeed("resource"),
+          min: 0,
+          max: 1,
+          timeToLive: 1000,
+          timeToLiveStrategy: "usage"
+        })
+        yield* TestClock.adjust(50)
+        yield* Pool.use(pool, Effect.succeed)
+        yield* TestClock.adjust(850)
+        yield* Pool.use(pool, Effect.succeed)
+        yield* TestClock.adjust(999)
+        strictEqual(pool.state.items.size, 1)
+        yield* TestClock.adjust(1)
+        strictEqual(pool.state.items.size, 0)
+      }))
+
+    it.effect("retires an item on time when it becomes excess before its deadline", () =>
+      Effect.gen(function*() {
+        const pool = yield* Pool.makeWithTTL({
+          acquire: Effect.succeed("resource"),
+          min: 0,
+          max: 2,
+          targetUtilization: 0.5,
+          timeToLive: 1000,
+          timeToLiveStrategy: "usage"
+        })
+        const first = yield* Scope.fork(yield* Effect.scope)
+        const second = yield* Scope.fork(yield* Effect.scope)
+        yield* Pool.get(pool).pipe(Scope.provide(first))
+        yield* Pool.get(pool).pipe(Scope.provide(second))
+        yield* TestClock.adjust(900)
+        yield* Scope.close(first, Exit.void)
+        yield* TestClock.adjust(200)
+        yield* Scope.close(second, Exit.void)
+        yield* TestClock.adjust(799)
+        strictEqual(pool.state.items.size, 2)
+        yield* TestClock.adjust(1)
+        strictEqual(pool.state.items.size, 1)
+        yield* TestClock.adjust(200)
+        strictEqual(pool.state.items.size, 0)
+      }))
+
     it.effect("shrinks to min in idle order rather than acquisition order", () =>
       Effect.gen(function*() {
         let acquired = 0
@@ -305,9 +367,13 @@ describe("Pool", () => {
         yield* Scope.close(first, Exit.void)
         yield* TestClock.adjust(100)
         yield* Scope.close(third, Exit.void)
-        yield* TestClock.adjust(700)
+        yield* TestClock.adjust(799)
         deepStrictEqual(finalized, [])
-        yield* TestClock.adjust(1000)
+        yield* TestClock.adjust(1)
+        deepStrictEqual(finalized, [2])
+        yield* TestClock.adjust(99)
+        deepStrictEqual(finalized, [2])
+        yield* TestClock.adjust(1)
         deepStrictEqual(finalized, [2, 1])
         strictEqual(pool.state.items.size, 1)
         yield* TestClock.adjust(2000)
