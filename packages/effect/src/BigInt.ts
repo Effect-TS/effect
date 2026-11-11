@@ -753,10 +753,10 @@ export const sqrt = (n: bigint): Option.Option<bigint> =>
   isGreaterThanOrEqualTo(n, bigint0) ? Option.some(sqrtUnsafe(n)) : Option.none()
 
 // `self` and `degree` must be at least 2. `self` is below 2 ** bits, so a degree of at least `bits` leaves a root of 1.
-// Otherwise the root is estimated from the leading 53 bits of `self`, raised by a relative margin of 2 ** -40 to lie
-// above it despite rounding. By the AM-GM inequality, one Newton step on whole numbers from any positive value lands at
-// or above the floor of the root, so the estimate need not be accurate, and from there Newton's method decreases to the
-// floor and stops (Brent and Zimmermann, Modern Computer Arithmetic, §1.5.2, Algorithm 1.14 RootInt).
+// Otherwise the root is estimated from the leading `MANTISSA_BITS` bits of `self`, raised by a relative margin of
+// 2 ** -40 to lie above it despite rounding. By the AM-GM inequality, one Newton step on whole numbers from any
+// positive value lands at or above the floor, so the estimate need not be accurate, and from there Newton's method
+// decreases to the floor and stops (Brent and Zimmermann, Modern Computer Arithmetic, §1.5.2, Algorithm 1.14 RootInt).
 const rootFloor = (self: bigint, degree: number): bigint => {
   const bits = self.toString(2).length
   if (degree >= bits) {

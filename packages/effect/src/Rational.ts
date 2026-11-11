@@ -720,6 +720,7 @@ export const root: {
  * ```
  *
  * @see {@link root} for returning `Option.none` when the root is not rational
+ * @see {@link powUnsafe} for integer powers
  *
  * @stability unstable
  * @category math

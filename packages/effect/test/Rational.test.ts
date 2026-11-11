@@ -96,6 +96,8 @@ describe("Rational", () => {
     assertNone(Rational.root($("4/9"), -2))
     assertNone(Rational.root($("2"), 2))
     assertNone(Rational.root($("1/2"), 2))
+    assertNone(Rational.root($("-2/27"), 3))
+    assertNone(Rational.root($("-8/9"), 3))
     // A degree at least the bit length finishes without computing a huge power.
     assertNone(Rational.root($("4/9"), 2 ** 40))
     assertSome(Rational.root($("-1"), Number.MAX_SAFE_INTEGER), $("-1"))
