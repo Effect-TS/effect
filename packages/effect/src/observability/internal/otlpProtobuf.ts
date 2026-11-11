@@ -32,6 +32,9 @@ const hexBytes = (hex: string): Uint8Array => {
   return bytes
 }
 
+// A log record id is a hex string or the bytes themselves.
+const idBytes = (id: string | Uint8Array): Uint8Array => typeof id === "string" ? hexBytes(id) : id
+
 // Common types (opentelemetry.proto.common.v1)
 
 /**
@@ -596,8 +599,8 @@ interface LogRecord {
   readonly attributes: ReadonlyArray<KeyValue>
   readonly droppedAttributesCount?: number | undefined
   readonly flags?: number | undefined
-  readonly traceId?: string | undefined
-  readonly spanId?: string | undefined
+  readonly traceId?: string | Uint8Array | undefined
+  readonly spanId?: string | Uint8Array | undefined
 }
 
 /**
@@ -624,8 +627,8 @@ const writeLogRecord = (w: Writer, record: LogRecord): Writer => {
     w.tag(7, VARINT).uint32(record.droppedAttributesCount)
   }
   if (record.flags !== undefined) w.tag(8, I32).fixed32(record.flags)
-  if (record.traceId) w.tag(9, LEN).bytes(hexBytes(record.traceId))
-  if (record.spanId) w.tag(10, LEN).bytes(hexBytes(record.spanId))
+  if (record.traceId) w.tag(9, LEN).bytes(idBytes(record.traceId))
+  if (record.spanId) w.tag(10, LEN).bytes(idBytes(record.spanId))
   if (record.observedTimeUnixNano !== undefined) w.tag(11, I64).fixed64(record.observedTimeUnixNano)
   return w
 }

@@ -286,6 +286,37 @@ describe("OtlpSerialization", () => {
       )
     }).pipe(Effect.provide(OtlpSerialization.layerProtobuf)))
 
+  it.effect("layerProtobuf encodes log record ids given as bytes like their hex strings", () =>
+    Effect.gen(function*() {
+      const serialization = yield* OtlpSerialization.OtlpSerialization
+      const encode = (traceId: string | Uint8Array, spanId: string | Uint8Array) => {
+        const body = serialization.logs({
+          resourceLogs: [{
+            resource: { attributes: [], droppedAttributesCount: 0 },
+            scopeLogs: [{
+              scope: { name: "s" },
+              logRecords: [{
+                timeUnixNano: "1",
+                observedTimeUnixNano: "2",
+                attributes: [],
+                droppedAttributesCount: 0,
+                traceId,
+                spanId
+              }]
+            }]
+          }]
+        })
+        return body._tag === "Uint8Array" ? Hex.encode(body.body) : body._tag
+      }
+      assert.strictEqual(
+        encode(
+          Uint8Array.of(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16),
+          Uint8Array.of(17, 18, 19, 20, 21, 22, 23, 24)
+        ),
+        encode("0102030405060708090a0b0c0d0e0f10", "1112131415161718")
+      )
+    }).pipe(Effect.provide(OtlpSerialization.layerProtobuf)))
+
   it.effect("layerJson preserves JSON values and writes non-finite doubles as strings for every signal", () =>
     Effect.gen(function*() {
       const serialization = yield* OtlpSerialization.OtlpSerialization
