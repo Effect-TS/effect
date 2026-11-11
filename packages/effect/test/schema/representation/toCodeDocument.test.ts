@@ -756,6 +756,30 @@ describe("toCodeDocument", { concurrent: false }, () => {
       })
     })
 
+    it("reuses the predefined Schema import without rerunning callbacks", async () => {
+      let calls = 0
+      const Named = Schema.String.annotate({ identifier: "Schema" })
+      const schema = Schema.Option(Named).annotate({
+        toCode: ({ typeParameters }: SchemaRepresentation.Generation.DeclarationInput) => {
+          calls++
+          return {
+            runtime: `Schema.Option(${typeParameters[0].runtime})`,
+            Type: `Option.Option<${typeParameters[0].Type}>`,
+            importDeclarations: [
+              "import * as Schema from \"effect/Schema\"",
+              "import * as Option from \"effect/Option\""
+            ]
+          }
+        }
+      })
+      const source = render(generate(schema))
+      assert.strictEqual(calls, 1)
+      register("predefined Schema import", source, ["Option.Option<string>"])
+      await withGeneratedModule<Generated>(source, ({ TestRoot0 }) => {
+        assertSamples(TestRoot0, { accepts: [Option.some("a")], rejects: [Option.some(1)] })
+      })
+    })
+
     it("resolves named and type-only imports and only repeats callbacks whose inputs changed", async () => {
       const calls: Array<SchemaRepresentation.Code> = []
       let unaffectedCalls = 0

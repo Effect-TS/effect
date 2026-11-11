@@ -170,7 +170,7 @@ export class Module {
     this.imports.set(input.local, { binding, signature })
     this.importedBindings.add(binding)
     this.names.set(binding, input.local)
-    if (this.finalized) this.taken.add(input.local)
+    this.taken.add(input.local)
     return binding
   }
 

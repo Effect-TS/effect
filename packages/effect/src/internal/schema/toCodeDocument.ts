@@ -270,7 +270,16 @@ function topologicalSort(
 export function toCodeDocument(
   document: SchemaRepresentation.MultiDocument
 ): SchemaRepresentation.CodeDocument {
-  const module = new Module(["Schema", "globalThis"])
+  const module = new Module(["globalThis"])
+  // Consumers provide this namespace; track it without emitting a duplicate import.
+  const schemaImport = module.addImport({
+    module: "effect/Schema",
+    kind: "Namespace",
+    imported: "*",
+    local: "Schema",
+    typeOnly: false,
+    attributes: ""
+  })
   const artifacts: Array<{ readonly _tag: "Symbol" | "Enum"; readonly binding: Binding }> = []
   const sorted = topologicalSort(document.references)
   const sanitizedReferences = new Map<string, Binding>()
@@ -370,10 +379,9 @@ export function toCodeDocument(
               parsed = CodeImports.parse(source)
               parsedImports.set(source, parsed)
             }
-            for (const binding of parsed) {
-              if (binding.kind !== "SideEffect") module.addImport(binding)
-            }
-            return parsed
+            return parsed.filter((binding) =>
+              binding.kind === "SideEffect" || module.addImport(binding) !== schemaImport
+            )
           } catch (error) {
             throw errorWithPath(
               error instanceof Error ? error.message : String(error),
