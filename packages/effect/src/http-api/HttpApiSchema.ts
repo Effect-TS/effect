@@ -1486,7 +1486,7 @@ export const getWithHeadersAnnotation = SchemaAST.resolveAt<WithHeadersAnnotatio
  * @see getResponseEncodingSchema
  * @stability unstable
  * @category getters
- * @since 4.0.0
+ * @since 4.1.4
  */
 export function getEncodeToWithHeadersParts(schema: Schema.Constraint): {
   readonly body: Schema.Top
@@ -1599,7 +1599,7 @@ export function getStatusSuccessSchema(schema: Schema.Constraint): number {
  * @see isNoContent
  * @stability unstable
  * @category getters
- * @since 4.0.0
+ * @since 4.1.4
  */
 export function getResponseEncodingSchema(schema: Schema.Constraint): ResponseEncoding {
   if (isWithHeaders(schema) && resolveHttpApiEncoding(schema.ast) === undefined) {
