@@ -23,7 +23,7 @@ const run = <A, E>(
   effect: Effect.Effect<A, E, Router.Services | TestHost.TestHost | Scope.Scope>
 ) => effect.pipe(Effect.provide(layer), Effect.provide(TestHost.layer()))
 
-const mount = Effect.flatMap(Router.currentRoute(AppRoute), (route) => TestHost.mount(App, { route }))
+const mount = TestHost.mount(App, Router.props(AppRoute))
 
 // Sequential: the restore tests change the person fixture's shared fetcher.
 describe("Router", { concurrent: false }, () => {

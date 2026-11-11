@@ -12,8 +12,9 @@
  *
  * **Where the route lives**
  *
- * The root's Model holds the route. Read the initial route with
- * `Router.currentRoute(AppRoute)` at mount and pass it through the root's props.
+ * The root's Model holds the route. Its props carry the initial one: mount it
+ * with `Router.props(AppRoute)`, which reads `{ route }` from the Router, or
+ * map `Router.currentRoute(AppRoute)` for a root with other props.
  * Later changes arrive as a message from
  * `Router.subscription`, so every route change is in the log. The Router is
  * shaped like a `SubscriptionRef`: `changes` starts with the current
@@ -60,9 +61,10 @@
  *   view: (model, h) => h.el("p", model.route._tag)
  * })
  *
- * const mount = Effect.gen(function*() {
- *   return yield* TestHost.mount(App, { route: yield* Router.currentRoute(AppRoute) })
- * }).pipe(Effect.provide(Router.memory({ routes: AppRoute, url: "/about" })))
+ * // The initial route comes from the Router, here at "/about".
+ * const mount = TestHost.mount(App, Router.props(AppRoute)).pipe(
+ *   Effect.provide(Router.memory({ routes: AppRoute, url: "/about" }))
+ * )
  * ```
  *
  * @stability experimental
@@ -364,6 +366,60 @@ export const currentRoute = <U extends Routes>(routes: U): Effect.Effect<U["Type
   Effect.map(Router, (router) => Option.getOrThrow(routeOf(router, routes, router.location())) as U["Type"])
 
 /**
+ * The props of a root whose only prop is the route: `{ route }`, read from
+ * the Router when the root mounts.
+ *
+ * **When to use**
+ *
+ * Use as a routed root's props in `BrowserHost.mount`, `TestHost.mount` or
+ * `HtmlServer.renderToHtml`, which run it once before `init`. The mount
+ * then requires the `Router`. A root with other props maps
+ * `Router.currentRoute` to them instead.
+ *
+ * `init` still receives a plain route, so a Story or a test can start the
+ * root on any page by passing `{ route }` with no Router.
+ *
+ * **Gotchas**
+ *
+ * Dies if the given union cannot parse the current location, as
+ * `currentRoute` does.
+ *
+ * **Example** (Mounting a routed root)
+ *
+ * ```ts
+ * import { Effect, Schema } from "effect"
+ * import { Component, Route, Router } from "effect/ui"
+ * import { TestHost } from "effect/ui/testing"
+ *
+ * const AppRoute = Route.union({
+ *   Home: Route.make("/"),
+ *   NotFound: Route.make("/*")
+ * })
+ *
+ * const App = Component.make({
+ *   name: "App",
+ *   props: Schema.Struct({ route: AppRoute }),
+ *   model: AppRoute,
+ *   message: Schema.Never,
+ *   init: ($) => $.props.route,
+ *   update: (route) => route,
+ *   view: (route, h) => h.el("p", route._tag)
+ * })
+ *
+ * // Requires the Router: the initial route comes from its URL.
+ * const mount = TestHost.mount(App, Router.props(AppRoute)).pipe(
+ *   Effect.provide(Router.memory({ routes: AppRoute, url: "/" }))
+ * )
+ * ```
+ *
+ * @stability experimental
+ * @category accessors
+ * @since 4.1.3
+ */
+export const props = <U extends Routes>(routes: U): Effect.Effect<{ readonly route: U["Type"] }, never, Router> =>
+  Effect.map(currentRoute(routes), (route) => ({ route }))
+
+/**
  * The Subscription that feeds route changes into a root's `update`.
  *
  * **Details**
@@ -401,7 +457,7 @@ export const subscription = <U extends Routes, Msg>(
       have,
       router,
       message:
-        `The component holds "${have}" but the Router is at "${router}". Initialize the root with Router.currentRoute.`
+        `The component holds "${have}" but the Router is at "${router}". Initialize the root with Router.props or Router.currentRoute.`
     })
   }
   const stream = Stream.unwrap(Effect.gen(function*() {

@@ -6,8 +6,8 @@
  * **Details**
  *
  * Provide `layer` (or `layerHash`, for static hosting) next to the host. The
- * root holds the route: its props carry the initial one and
- * `Router.subscription` delivers each change as a message.
+ * root holds the route: mounting it with `Router.props` gives its props the
+ * initial one, and `Router.subscription` delivers each change as a message.
  *
  * Links are plain anchors with a printed route. A click is intercepted only
  * when the routes parse its href and it has no modifier key, `target` or
@@ -52,18 +52,16 @@
  *     )
  * })
  *
- * // The first route comes from the Router, so the mount Layer is unwrapped
- * // from an Effect.
- * const main = Router.currentRoute(AppRoute).pipe(
- *   Effect.map((route) => BrowserHost.mount(App, { route }, document.getElementById("app")!)),
- *   Layer.unwrap,
- *   Layer.provide(BrowserRouter.layer({ routes: AppRoute })),
- *   Layer.launch
- * )
+ * // Router.props reads the initial `{ route }` from the browser Router's URL.
+ * const main = (container: Element) =>
+ *   BrowserHost.mount(App, Router.props(AppRoute), container).pipe(
+ *     Layer.provide(BrowserRouter.layer({ routes: AppRoute })),
+ *     Layer.launch
+ *   )
  *
  * // Exercise the same component without a browser.
  * await Effect.runPromise(Effect.gen(function*() {
- *   const root = yield* TestHost.mount(App, { route: yield* Router.currentRoute(AppRoute) })
+ *   const root = yield* TestHost.mount(App, Router.props(AppRoute))
  *   yield* TestHost.settle
  *   root.model()?._tag // => "Person"
  * }).pipe(

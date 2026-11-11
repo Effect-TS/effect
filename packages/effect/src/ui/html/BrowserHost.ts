@@ -516,12 +516,18 @@ export interface MountOptions<V extends View.Elements, RF = never> {
  * are the root's, minus `Html.Host`, which the host provides. When the root
  * itself fails, `fallback` is shown in its place.
  *
+ * `props` may be an Effect, such as `Router.props(AppRoute)`. It runs once,
+ * before `init`, and its requirements are added to the mount's, so a routed
+ * app needs only this Layer and its Router's. A root's props therefore can't
+ * themselves be an Effect.
+ *
  * Commands and Subscriptions run on the default scheduler, the render flush
  * on a microtask.
  *
  * **Hydration.** Pass the `state` from `HtmlServer.renderToHtml`, with the
  * server's HTML already in `container` and the same props, to adopt the
- * server's nodes instead of building them. Each instance adopts its server
+ * server's nodes instead of building them. `Router.props` gives the same
+ * props on both sides when both Routers are at the same URL. Each instance adopts its server
  * Model and replays `init` only to recover its Commands; server Commands the
  * Model already has the result of are skipped, and those that missed the
  * budget run now. `onMount` fires on adoption. An instance whose view doesn't
@@ -559,12 +565,22 @@ export interface MountOptions<V extends View.Elements, RF = never> {
  * @category layers
  * @since 4.1.3
  */
-export const mount = <Name extends string, Props, Model, Msg, Events, R, V extends View.Elements, RF = never>(
+export const mount = <
+  Name extends string,
+  Props,
+  Model,
+  Msg,
+  Events,
+  R,
+  V extends View.Elements,
+  RF = never,
+  RP = never
+>(
   component: Component.Component<Name, Props, Model, Msg, Events, R, V> & HtmlRoot<V>,
-  props: Props,
+  props: Props | Effect.Effect<Props, never, RP>,
   container: globalThis.Element,
   options?: MountOptions<V, RF>
-): Layer.Layer<never, never, Exclude<R | RF, Html.Host>> =>
+): Layer.Layer<never, never, Exclude<R | RF | RP, Html.Host>> =>
   Layer.effectDiscard(mountEffect(component, props, container, options)) as any
 
 /**
@@ -585,12 +601,22 @@ export const mount = <Name extends string, Props, Model, Msg, Events, R, V exten
  * @category constructors
  * @since 4.1.3
  */
-export const mountEffect = <Name extends string, Props, Model, Msg, Events, R, V extends View.Elements, RF = never>(
+export const mountEffect = <
+  Name extends string,
+  Props,
+  Model,
+  Msg,
+  Events,
+  R,
+  V extends View.Elements,
+  RF = never,
+  RP = never
+>(
   component: Component.Component<Name, Props, Model, Msg, Events, R, V> & HtmlRoot<V>,
-  props: Props,
+  props: Props | Effect.Effect<Props, never, RP>,
   container: globalThis.Element,
   options?: MountOptions<V, RF>
-): Effect.Effect<Renderer.Root<Model, Msg>, never, Exclude<R | RF, Html.Host> | Scope.Scope> =>
+): Effect.Effect<Renderer.Root<Model, Msg>, never, Exclude<R | RF | RP, Html.Host> | Scope.Scope> =>
   Effect.gen(function*() {
     const context = yield* Layer.build(layer({ document: container.ownerDocument }))
     return yield* Effect.provideContext(Renderer.mount(component, props, container, options), context)

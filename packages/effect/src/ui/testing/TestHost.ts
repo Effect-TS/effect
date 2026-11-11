@@ -545,13 +545,26 @@ export interface TestRoot<out Model, in Msg, out Events> extends Root<Model, Msg
  * `frames` projects the tree after each commit for `root.frames()`, and
  * defaults to `root.text()`.
  *
+ * `props` may be an Effect, such as `Router.props(AppRoute)` under
+ * `Router.memory`, run once before `init`, as with `Renderer.mount`.
+ *
  * @stability experimental
  * @category constructors
  * @since 4.1.3
  */
-export const mount = <Name extends string, Props, Model, Msg, Events, R, V extends View.Elements, RF = never>(
+export const mount = <
+  Name extends string,
+  Props,
+  Model,
+  Msg,
+  Events,
+  R,
+  V extends View.Elements,
+  RF = never,
+  RP = never
+>(
   component: Component.Component<Name, Props, Model, Msg, Events, R, V>,
-  props: Props,
+  props: Props | Effect.Effect<Props, never, RP>,
   options?: {
     readonly fallback?:
       | ((
@@ -562,7 +575,7 @@ export const mount = <Name extends string, Props, Model, Msg, Events, R, V exten
     readonly loader?: Renderer.LoaderOptions | undefined
     readonly frames?: ((root: TestRoot<Model, Msg, Events>) => string) | undefined
   }
-): Effect.Effect<TestRoot<Model, Msg, Events>, never, R | RF | TestHost | Scope.Scope> =>
+): Effect.Effect<TestRoot<Model, Msg, Events>, never, R | RF | RP | TestHost | Scope.Scope> =>
   Effect.gen(function*() {
     const testHost = yield* TestHost
     const container = makeElement("#root")

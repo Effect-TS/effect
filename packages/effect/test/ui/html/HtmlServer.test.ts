@@ -127,8 +127,8 @@ describe("HtmlServer", { concurrent: false }, () => {
 
   it.effect("renders the routed example with its route data, and hydration adopts it", () =>
     Effect.gen(function*() {
-      const { props, router } = yield* routed("/people/1")
-      const rendered = yield* HtmlServer.renderToHtml(App, props).pipe(
+      const router = Router.memory({ routes: AppRoute, url: "/people/1" })
+      const rendered = yield* HtmlServer.renderToHtml(App, Router.props(AppRoute)).pipe(
         Effect.provide([People.layer, router])
       )
       expect(rendered.html).toContain("<p id=\"bio\">Bio of person 1</p>")
@@ -143,7 +143,7 @@ describe("HtmlServer", { concurrent: false }, () => {
       expect(rendered.htmlAttributes).toBe("lang=\"en\" class=\"routed\" data-eui=\"lang class\"")
 
       yield* hosted(Effect.gen(function*() {
-        const result = yield* ssr(App, props).pipe(Effect.provide([People.layer, router]))
+        const result = yield* ssr(App, Router.props(AppRoute)).pipe(Effect.provide([People.layer, router]))
         expect(result.adopted).toEqual(["/App", "/App/Person[/people/1]"])
         expect(result.misses).toEqual([])
         // The bio is hydrated, so the client doesn't fetch it, and the watch's first emission still

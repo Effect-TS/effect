@@ -393,6 +393,13 @@ type Plan =
 // mount
 // ---------------------------------------------------------------------------
 
+/** Root props given as an Effect are resolved once, with the mount's services, before the tree starts. */
+const withProps = <A, E, R>(
+  rootProps: unknown,
+  f: (props: unknown) => Effect.Effect<A, E, R>
+): Effect.Effect<A, E, R> =>
+  Effect.isEffect(rootProps) ? Effect.flatMap(rootProps as Effect.Effect<unknown>, f) : f(rootProps)
+
 /** @internal */
 export const mount = (
   component: Component.Any,
@@ -400,13 +407,14 @@ export const mount = (
   container: unknown,
   options?: Options
 ): Effect.Effect<Root & Renderer.Root<any, any>, never, Scope.Scope | Renderer.Renderer> =>
-  Effect.contextWith((ctx: Context.Context<Scope.Scope | Renderer.Renderer>) => {
-    const startOptions = { ...options, server: undefined }
-    return Effect.flatMap(
-      makeLoaderCache(ctx, startOptions),
-      (cache) => start(component, rootProps, container, ctx, cache, startOptions)
-    )
-  })
+  withProps(rootProps, (props) =>
+    Effect.contextWith((ctx: Context.Context<Scope.Scope | Renderer.Renderer>) => {
+      const startOptions = { ...options, server: undefined }
+      return Effect.flatMap(
+        makeLoaderCache(ctx, startOptions),
+        (cache) => start(component, props, container, ctx, cache, startOptions)
+      )
+    }))
 
 /**
  * Renders a tree on the server: on a host that only keeps the node tree,
@@ -425,32 +433,33 @@ export const prerender = (
     readonly onFinish?: ServerOptions["onFinish"]
   }
 ): Effect.Effect<Renderer.Prerendered<any>> =>
-  // The render's own Scope closes however it ends, interrupted included: its work runs in fibers of its own.
-  Effect.acquireUseRelease(
-    Scope.make("sequential"),
-    Effect.fnUntraced(function*(scope) {
-      const budget = Duration.fromInputUnsafe(options.budget)
-      const started = !Duration.isZero(budget)
-      const host = serverHost.make(options.elements)
-      const ctx = Context.add(yield* Effect.context<never>(), Scope.Scope, scope)
-      const startOptions: Options = {
-        server: { host, fetches: started, static: options.static === true, onFinish: options.onFinish }
-      }
-      const cache = yield* makeLoaderCache(ctx, startOptions)
-      const root = yield* start(component, rootProps, host.createElement("#root"), ctx, cache, startOptions)
-      if (started) {
-        yield* Effect.raceFirst(
-          Effect.callback<void>((resume) => {
-            root.whenIdle(() => resume(Effect.void))
-          }),
-          Effect.sleep(budget)
-        )
-      }
-      const out = root.finish()
-      return { nodes: out.nodes, state: out.state, model: root.model(), head: root.head() }
-    }),
-    (scope, exit) => Scope.close(scope, exit)
-  )
+  withProps(rootProps, (props) =>
+    // The render's own Scope closes however it ends, interrupted included: its work runs in fibers of its own.
+    Effect.acquireUseRelease(
+      Scope.make("sequential"),
+      Effect.fnUntraced(function*(scope) {
+        const budget = Duration.fromInputUnsafe(options.budget)
+        const started = !Duration.isZero(budget)
+        const host = serverHost.make(options.elements)
+        const ctx = Context.add(yield* Effect.context<never>(), Scope.Scope, scope)
+        const startOptions: Options = {
+          server: { host, fetches: started, static: options.static === true, onFinish: options.onFinish }
+        }
+        const cache = yield* makeLoaderCache(ctx, startOptions)
+        const root = yield* start(component, props, host.createElement("#root"), ctx, cache, startOptions)
+        if (started) {
+          yield* Effect.raceFirst(
+            Effect.callback<void>((resume) => {
+              root.whenIdle(() => resume(Effect.void))
+            }),
+            Effect.sleep(budget)
+          )
+        }
+        const out = root.finish()
+        return { nodes: out.nodes, state: out.state, model: root.model(), head: root.head() }
+      }),
+      (scope, exit) => Scope.close(scope, exit)
+    ))
 
 /**
  * The cache the root owns, disposed with the root's Scope. The runtime re-adds it wherever work runs,

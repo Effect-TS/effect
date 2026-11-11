@@ -1,5 +1,5 @@
 import { Effect, Schema, type Scope } from "effect"
-import { Component, Renderer } from "effect/ui"
+import { Component, Renderer, Route, Router } from "effect/ui"
 import { TestHost } from "effect/ui/testing"
 import { describe, expect, it } from "tstyche"
 import { Counter } from "../../test/ui/fixtures/components.ts"
@@ -47,6 +47,50 @@ describe("Renderer", () => {
     expect(TestHost.mount(Form, {})).type.toBe<
       Effect.Effect<TestHost.TestRoot<string, typeof Msg.Type, never>, never, TestHost.TestHost | Scope.Scope>
     >()
+  })
+})
+
+describe("Effect props", () => {
+  const AppRoute = Route.union({ Home: Route.make("/"), NotFound: Route.make("/*") })
+  type AppRoute = typeof AppRoute.Type
+  const App = Component.make({
+    name: "App",
+    props: Schema.Struct({ route: AppRoute }),
+    model: AppRoute,
+    message: Schema.Never,
+    init: ($) => $.props.route,
+    update: (route) => route,
+    view: (route, h) => h.text(route._tag)
+  })
+
+  it("Router.props reads the route props from the Router", () => {
+    expect(Router.props(AppRoute)).type.toBe<Effect.Effect<{ readonly route: AppRoute }, never, Router.Router>>()
+  })
+
+  it("mount and prerender add the props' requirements", () => {
+    expect(Renderer.mount(App, Router.props(AppRoute), null)).type.toBe<
+      Effect.Effect<Renderer.Root<AppRoute, never>, never, Router.Router | Renderer.Renderer | Scope.Scope>
+    >()
+    expect(Renderer.prerender(App, Router.props(AppRoute))).type.toBe<
+      Effect.Effect<Renderer.Prerendered<AppRoute>, never, Router.Router>
+    >()
+    expect(TestHost.mount(App, Router.props(AppRoute))).type.toBe<
+      Effect.Effect<TestHost.TestRoot<AppRoute, never, never>, never, Router.Router | TestHost.TestHost | Scope.Scope>
+    >()
+  })
+
+  it("plain props still infer and add nothing", () => {
+    expect(Renderer.mount(App, { route: AppRoute.make({ _tag: "Home" }) }, null)).type.toBe<
+      Effect.Effect<Renderer.Root<AppRoute, never>, never, Renderer.Renderer | Scope.Scope>
+    >()
+    expect(TestHost.mount(App, { route: AppRoute.make({ _tag: "Home" }) })).type.toBe<
+      Effect.Effect<TestHost.TestRoot<AppRoute, never, never>, never, TestHost.TestHost | Scope.Scope>
+    >()
+  })
+
+  it("rejects props, plain or as an Effect, of the wrong shape", () => {
+    expect(TestHost.mount).type.not.toBeCallableWith(App, { route: "/" })
+    expect(TestHost.mount).type.not.toBeCallableWith(App, Effect.succeed({ route: "/" }))
   })
 })
 
