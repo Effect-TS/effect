@@ -150,8 +150,7 @@ interface Run {
   /** Whether the run's own `Command.afterRefetch` wait is going on. */
   waiting: boolean
   /** How the run's own wait ended, and what it still awaited then. */
-  waitEnded: MessageLog.WaitEnded | undefined
-  outstanding: ReadonlyArray<MessageLog.AwaitedEntry> | undefined
+  waited: Pick<MessageLog.CommandSettled, "waitEnded" | "outstanding"> | undefined
   /** Stops the budget's sleep and the cache's callback. */
   cancelWait: (() => void) | undefined
 }
@@ -1565,8 +1564,7 @@ const start = (
           done: false,
           held: undefined,
           waiting: false,
-          waitEnded: undefined,
-          outstanding: undefined,
+          waited: undefined,
           cancelWait: undefined
         }
         inst.runs.push(run)
@@ -1841,8 +1839,7 @@ const start = (
     const handle = run.handle
     const awaited = handle?.awaited() ?? []
     if (handle === undefined || awaited.length === 0) {
-      run.waitEnded = "nothing"
-      run.outstanding = []
+      run.waited = { waitEnded: "nothing", outstanding: [] }
       return
     }
     record({ _tag: "CommandAwaiting", path: inst.path, name: run.command.name, issued: run.issued, entries: awaited })
@@ -1871,8 +1868,7 @@ const start = (
   const endWait = (run: Run, by: MessageLog.WaitEnded) => {
     if (!run.waiting) return
     run.waiting = false
-    run.waitEnded = by
-    run.outstanding = by === "settled" ? [] : run.handle!.outstanding()
+    run.waited = { waitEnded: by, outstanding: by === "settled" ? [] : run.handle!.outstanding() }
     const cancel = run.cancelWait
     run.cancelWait = undefined
     cancel?.()
@@ -1905,7 +1901,7 @@ const start = (
       name: run.command.name,
       issued: run.issued,
       detached: run.detached,
-      ...(run.waitEnded === undefined ? undefined : { waitEnded: run.waitEnded, outstanding: run.outstanding })
+      ...run.waited
     })
 
   /** `h.running` for one instance: a run of the Command, of the group if given, queued or running. */
