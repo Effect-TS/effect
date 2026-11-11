@@ -16,8 +16,8 @@ import { BrowserHost } from "effect/ui/html"
 // component that can't rely on it sets `elements: Html` instead.
 // oxlint-disable-next-line no-unassigned-import
 import "effect/ui/html/register"
-import { Note, NotesTag } from "./fixtures/domain/Note.ts"
-import { Notes } from "./fixtures/services/Notes.ts"
+import { Note, NotesTag } from "./fixtures/notes/domain/Note.ts"
+import { Notes } from "./fixtures/notes/services/Notes.ts"
 
 // Props, Model, messages and events are Schemas, so the runtime can log,
 // serialise and hydrate them. Build a message with `Message.make({ _tag })`.
@@ -36,6 +36,7 @@ export const NoteEditorEvents = Schema.TaggedUnion({ Saved: { note: Note } })
 // services it uses. That is why a component requires `SaveNote` and never
 // `Notes`. `Command.make` is only for bodies that need no service. Calling
 // `fetch` in one compiles, but a test can't fake it.
+// notes/components/NoteEditor.ts: keep the command with the editor that runs it.
 export class SaveNote extends Command.Service<SaveNote>()(
   "notes/SaveNote",
   {
@@ -51,6 +52,7 @@ export class SaveNote extends Command.Service<SaveNote>()(
   })
 ) {}
 
+// notes/components/NoteEditor.ts
 export const NoteEditor = Component.make({
   name: "NoteEditor",
   props: Schema.Struct({ note: Note }),
