@@ -2397,12 +2397,11 @@ const start = (
   }
 
   /**
-   * The check after a navigation that ran declarations settles. Per page, by component name: none
-   * mounted is reported; instances older than the navigation are skipped; the ones created since are
-   * checked per entry. Skipped whole when a Layer build begun since the navigation failed.
+   * Checks prefetch declarations after navigation settles, matching pages by component name.
+   * Reports unmounted pages and checks new instances against their recorded watches; older
+   * instances are skipped. Skips the entire check if a Layer build begun since navigation failed.
    *
-   * It looks at the instances created since the navigation and their watches, recorded meanwhile.
-   * Only a page none of them is an instance of costs a walk of the tree, once per check.
+   * Walks the tree only for pages with no new instance, at most once per check.
    */
   const checkPrefetch = (
     inst: Instance,

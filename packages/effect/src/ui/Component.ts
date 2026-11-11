@@ -580,10 +580,9 @@ export type Loaded<Model> = {
  *
  * **Details**
  *
- * `items` is every page's items, flat, after patches, with one item per
- * the definition's `key`: the first of a key stays. `pages` is the page
- * array. `more` is `Loading` while a load more runs or waits its turn, and
- * `Failed` with the error of the last one that failed.
+ * `items` flattens the patched pages, keeping the first item for each
+ * definition `key`. `pages` is the page array. `more` is `Loading` while a
+ * load more runs or is queued, and `Failed` with the last load-more error.
  *
  * @stability experimental
  * @category models

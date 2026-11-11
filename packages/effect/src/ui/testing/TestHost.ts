@@ -538,10 +538,10 @@ export interface TestRoot<out Model, in Msg, out Events> extends Root<Model, Msg
  * Layer builds wait for `settle`. The test host shows every vocabulary, so
  * any root mounts.
  *
- * The mount gets the host's `Loader.Visibility`, `Loader.Connectivity` and
- * problem collector, re-added here so a provide nearer the mount can't shadow
- * them. Its `Clock` drains the test scheduler whenever a sleeper wakes, so
- * `TestClock.adjust` runs what the clock woke without waiting for `settle`.
+ * The mount uses the host's `Loader.Visibility`, `Loader.Connectivity` and
+ * problem collector even if a nearer provide overrides them. Its `Clock`
+ * drains the test scheduler whenever a sleeper wakes, so `TestClock.adjust`
+ * runs the awakened work without waiting for `settle`.
  * `frames` projects the tree after each commit for `root.frames()`, and
  * defaults to `root.text()`.
  *

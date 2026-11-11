@@ -22,13 +22,12 @@ const redactedLink = Schema.link<Redacted.Redacted<unknown>>()(
 )
 
 /**
- * Gives every `Schema.Redacted` node in `ast` the placeholder encoding, wherever
- * it is: in a field, an element or a union member, in a declaration's type
- * parameters (`Option`, `ReadonlyMap`, ...), behind a `suspend`, or on the
- * encoded side of a transformation. A node's own codec is replaced too, so
- * `RedactedFromValue` can't unwrap its value. Declaration type parameters
- * matter most: a declaration encodes its contents with them, before any JSON
- * codec derived for the declaration itself runs.
+ * Replaces every `Schema.Redacted` node's encoding with a placeholder, including
+ * fields, elements, union members, declaration type parameters, suspended schemas
+ * and transformations' encoded sides. Replacing the node's own codec prevents
+ * `RedactedFromValue` from unwrapping its value. Declaration type parameters
+ * (such as those of `Option` and `ReadonlyMap`) encode contents before the
+ * declaration's derived JSON codec runs, so they must also be redacted.
  *
  * Returns `ast` itself when it holds no `Schema.Redacted`.
  *

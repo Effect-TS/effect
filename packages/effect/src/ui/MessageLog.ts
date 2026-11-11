@@ -813,11 +813,10 @@ const encodeSource = (source: Source): typeof SourceWire.Type => {
 }
 
 /**
- * Encodes a Command by name, group and args. The args go through the
- * Command's `args` Schema with every `Schema.Redacted` redacted, and a leaf
- * that fails to encode is encoded structurally instead. The group is the
- * group fields encoded the same way, so a redacted group field is a
- * placeholder there too. An `Interrupt` has `null` args.
+ * Encodes a Command by name, group and args. Args and group fields use the
+ * Command's `args` Schema, replacing every `Schema.Redacted` with a
+ * placeholder. A leaf that fails to encode falls back to structural encoding.
+ * An `Interrupt` has `null` args.
  *
  * @stability experimental
  * @category Wire
@@ -865,12 +864,11 @@ const isPlainRecord = (value: unknown): value is Record<PropertyKey, unknown> =>
 const holdsRedacted = (ast: SchemaAST.AST): boolean => redactAST(ast) !== ast
 
 /**
- * Whether `ast` holds, anywhere, an object with an index signature that
- * declares a `Schema.Redacted` beside another signature, named or indexed. A
- * key two of them match is parsed by each, and the codec keeps only one
- * output: a named property's, or else the last index signature's. Another
- * one's redaction can be lost, so the whole codec is never used for such a
- * Schema.
+ * Detects objects anywhere in `ast` with a redacted index signature beside
+ * another named or indexed signature. Each matching signature parses a key,
+ * but the codec keeps only the named property's output or the last index
+ * signature's. This can discard another signature's redaction, so these
+ * Schemas bypass the whole codec.
  */
 const holdsRedactedOverlap = memoize((ast: SchemaAST.AST): boolean => {
   const seen = new Set<SchemaAST.AST>()

@@ -84,9 +84,9 @@ import * as server from "../internal/server.ts"
  * `TestHost.settle` waits for it; `root.fetches()` lists the client's
  * fetches. `adopted` lists the paths whose Model the client adopted. `log`
  * is the client's log up to adoption and `serverLog` the server's, both
- * unbounded unless `logSize` says otherwise. `commands` are the `init`
- * Commands adopted instances ran, by position: every one of them. `misses`
- * are the loader entries the server's cache had in flight when the budget
+ * unbounded unless `logSize` says otherwise. `commands` lists all `init`
+ * Commands run by adopted instances, by position. `misses` lists loader
+ * entries the server's cache had in flight when the budget
  * was spent, or never started with a budget of 0. The client fetches those.
  *
  * @stability experimental
@@ -246,8 +246,8 @@ const stepLimit = 10_000
  *
  * **Gotchas**
  *
- * Any problem fails `ssr`, a `Command.ServerCommandIssued` from the server
- * included. To test one, render with `Renderer.prerender` instead.
+ * Any problem fails `ssr`, including `Command.ServerCommandIssued` on the
+ * server. To test one, render with `Renderer.prerender` instead.
  *
  * @stability experimental
  * @category constructors

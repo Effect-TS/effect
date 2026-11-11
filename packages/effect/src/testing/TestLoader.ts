@@ -1,11 +1,10 @@
 /**
- * A test harness for `effect/reactivity/Loader` on its own: the public cache
- * Layer, with host signals a test can set, a record of every fetch that
- * started, a read-only view of an entry, and a collector for the problems the
- * cache reports.
+ * A test harness for `effect/reactivity/Loader` with controllable host
+ * signals, fetch records, read-only entry views, and problem collection.
+ * Uses the public cache Layer.
  *
- * Time is the `TestClock`'s: stale times, idle times and intervals all run on
- * the `Clock`, so `TestClock.adjust` drives them.
+ * Stale times, idle times and intervals use the `Clock`, so
+ * `TestClock.adjust` drives them.
  *
  * **Example** (Asserting on what the cache fetched)
  *
@@ -298,7 +297,7 @@ export const entry = <R extends Loader.Read.Any>(
   TestLoader.useSync((loader) => loader.entry(read, args))
 
 /**
- * Returns the problems the test cache reported and no `expectProblem` took.
+ * Returns reported problems not yet consumed by `expectProblem`.
  *
  * @stability experimental
  * @category testing
@@ -309,8 +308,8 @@ export const problems: Effect.Effect<ReadonlyArray<Loader.Problem.Any>, never, T
 )
 
 /**
- * Takes every reported problem with the given tag, so it no longer fails the
- * test, and returns them.
+ * Removes and returns every reported problem with the given tag, preventing
+ * those problems from failing the test.
  *
  * **Gotchas**
  *

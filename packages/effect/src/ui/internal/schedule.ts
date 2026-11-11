@@ -97,10 +97,10 @@ export const next = <A>(remaining: ReadonlyArray<Entry<A>>, ended: Entry<A>): En
 }
 
 /**
- * The awaiting run of `entry`'s group whose message goes next, if it can go
- * now. Under `queue` a group's messages keep issue order: it is the group's
- * oldest awaiting run, once `ready` (its own wait has ended). In the other
- * modes it is `entry` itself, once ready.
+ * Returns the next awaiting run whose message is ready to deliver. Under
+ * `queue`, selects the group's oldest awaiting run to preserve issue order;
+ * otherwise selects `entry`. Returns nothing until the selected run's own
+ * wait has ended (`ready`).
  *
  * @internal
  */

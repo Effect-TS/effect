@@ -42,7 +42,7 @@ export interface Field {
 }
 
 /**
- * One args of a loader, with its key.
+ * One set of loader arguments and its cache key.
  *
  * @internal
  */
@@ -68,8 +68,7 @@ export interface Marker {
 }
 
 /**
- * What a keyed field's watch carries for the runtime, besides a marker per
- * unique key: the keys in the loader's order and the handler.
+ * A keyed field's ordered keys and handler, accompanying its per-key watch markers.
  *
  * @internal
  */
@@ -103,9 +102,8 @@ export const groupOf = (subscription: object): Group | undefined =>
 export const isWatchKey = (key: string): boolean => key.startsWith("~loaded/")
 
 /**
- * The snapshot fields of a Model, checked: a snapshot may only be a field of
- * the Model's own struct, and its label is its field's name. Throws
- * otherwise. `Schema.suspend` isn't followed.
+ * Returns the Model's snapshot fields. Throws if a snapshot is nested or its
+ * label differs from its field name. Does not follow `Schema.suspend`.
  *
  * @internal
  */
@@ -245,8 +243,7 @@ export const openKeyed = (
 }
 
 /**
- * The unique args of a keyed loader's array, in order: the first occurrence
- * of a key sets its place.
+ * Returns loader arguments deduplicated by key, in first-occurrence order.
  */
 const uniqueArgs = (name: string, field: string, def: ReadDef, args: unknown): ReadonlyArray<Keyed> => {
   if (!Array.isArray(args)) {
@@ -267,7 +264,7 @@ type ReadDef = ReturnType<typeof Loader.defOf>
 
 type LoaderFn = (model: any, props: any, loaded: any) => unknown
 
-/** One field's loader, run: the args or the unique keyed args. */
+/** A field's evaluated loader arguments, deduplicated by key for keyed fields. */
 type Current =
   | { readonly args: unknown; readonly argsKey: string | undefined; readonly entries?: undefined }
   | { readonly args: ReadonlyArray<unknown>; readonly argsKey: undefined; readonly entries: ReadonlyArray<Keyed> }

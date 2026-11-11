@@ -5,9 +5,8 @@
  * feeds its result back to the instance as a message, so `update` stays pure
  * and a story test can read what was issued without running anything.
  *
- * There are two ways to define a Command, and they don't overlap. Both take a
- * name, then options with a required `args` Schema, then the body, which gets
- * the args as one struct:
+ * Both constructors take a name, options with a required `args` Schema, and
+ * a body that receives the args as one struct:
  *
  * - `Command.make(name, { args }, body)` for Commands that need nothing beyond
  *   the framework services. It returns a factory: `RollDie({ sides: 6 })`.
@@ -943,10 +942,9 @@ export const groupKeyOf = (definition: Definition.Any, group: unknown): string |
  *
  * **Details**
  *
- * The arguments are the name, the options (`args` is required) and the body.
- * The result is a factory: calling it with the args struct issues a Command
- * whose `args` are that struct, so a story test sees them without running the
- * Effect. The body can't fail. Its requirements may only be framework
+ * Requires an `args` Schema and returns a factory that takes the args struct
+ * and issues a Command. Story tests can inspect its `args` without running
+ * the Effect. The body can't fail. Its requirements may only be framework
  * services, which are removed from `R`. A body that requires anything else
  * doesn't compile, and the error names `FrameworkService` rather than the
  * missing service. With `stream: true` the body returns a `Stream` instead.
@@ -1045,9 +1043,8 @@ export const make: {
  *
  * **When to use**
  *
- * Use as the only way for a Command to reach a service other than the
- * framework's: a store, an HTTP client, the page's current workspace. A
- * mutation of data a loader reads is one.
+ * Use when a Command needs a non-framework service, such as a store or HTTP
+ * client, including mutations of data a loader reads.
  *
  * **Details**
  *

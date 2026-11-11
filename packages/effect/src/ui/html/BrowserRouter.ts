@@ -84,7 +84,7 @@ import type * as Route from "../Route.ts"
 import * as Router from "../Router.ts"
 import * as submit from "./internal/submit.ts"
 
-/** How long a hover or focus rests on a link before it counts as intent. Fixed. */
+/** Fixed hover and focus delay before reporting link intent. */
 const intentDelay = "50 millis"
 
 /**
@@ -120,9 +120,9 @@ export interface Options {
  * There's one per document: building a second fails as a defect, and the
  * claim is released when the Layer's Scope closes.
  *
- * It reports link intent to `Router.prefetch` declarations through
- * `intent`: a hover or focus that rests on a link for 50 ms, on the Effect
- * `Clock`, and a touch at once. Only links a click would follow count.
+ * Reports link intent to `Router.prefetch` declarations through `intent`
+ * after 50 ms of hover or focus on the Effect `Clock`, or immediately on
+ * touch. Only links a click would follow count.
  *
  * @stability experimental
  * @category layers

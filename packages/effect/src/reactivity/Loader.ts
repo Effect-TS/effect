@@ -1,13 +1,12 @@
 /**
- * A keyed data cache. A read is a class service: a name, Schemas for its
- * arguments and result, how long a result stays fresh, and a fetcher. The
- * cache keeps one entry per read and arguments, shares a fetch between the
- * callers that want it, refetches a stale entry when something asks for it,
- * and collects an entry nothing has used for a while.
+ * A keyed data cache. Each read is a class service with a name, argument and
+ * result Schemas, a freshness duration, and a fetcher. The cache keeps one
+ * entry per read and arguments, shares in-flight fetches, refetches stale
+ * entries on demand, and collects unused entries.
  *
  * A read's fetcher is built once per Layer build and captures the services it
- * uses, so code that calls `get` requires the read and the cache, never what
- * the fetcher is made of. A fake is `Layer.succeed(GetUser, (args) => ...)`.
+ * uses, so `get` requires the read and cache, not the fetcher's dependencies.
+ * Replace a fetcher with `Layer.succeed(GetUser, (args) => ...)` for a fake.
  *
  * Plain Effect code provides the cache with `Loader.layer()`. Every time-based
  * rule runs on the `Clock`, so `TestClock` drives it, and
@@ -331,8 +330,7 @@ export declare namespace Service {
  * - An optional field of the `args` struct that is `undefined` is the same
  *   as a missing one: `{ id, page: undefined }` and `{ id }` are one entry.
  *   The property is dropped before the `args` Schema checks or encodes the
- *   arguments, so the read behaves as it does for the same arguments without
- *   the property.
+ *   arguments.
  * - Only the fields of the `args` struct itself are covered. What a field
  *   holds reaches the Schema as it was passed: a nested struct, a union, a
  *   class, a record, a tuple, an `Option` or a collection. So do arguments
@@ -344,11 +342,10 @@ export declare namespace Service {
  *   one entry, and the later call gets the data of the earlier one.
  *   `{ filter: {} }` is another entry. The same goes for a required key, a
  *   record's value and a tuple's element of such a type.
- * - That is what those encodings do, and other Schemas differ. What
- *   `Schema.Any` holds is not encoded, and there an `undefined` property is
- *   the same as a missing one. A value whose own encoding tells `undefined`
- *   from `null` gets two entries. When the fetcher tells the two apart, give
- *   the value such an encoding.
+ * - Other Schemas differ. `Schema.Any` passes values through, so an
+ *   `undefined` property is the same as a missing one. An encoding that
+ *   distinguishes `undefined` from `null` gives them separate entries; use
+ *   one when the fetcher treats them differently.
  * - The property's type decides whether `undefined` is allowed, so a
  *   `Schema.optionalKey(Schema.Number)` property rejects it. A type made with
  *   `Schema.declare` is not asked: under `Schema.optionalKey` its `undefined`
@@ -736,10 +733,9 @@ export interface ListService<
  * **Details**
  *
  * - `page` is the Schema of one page. The entry's value is the page array.
- * - `items` lists the items of a page and `key` gives an item's identity.
- *   Both are required, so the items of a page array come out deduped by
- *   `key`, the first one winning: an offset API that shifts returns an item
- *   twice.
+ * - `items` lists a page's items and `key` identifies each item. Both are
+ *   required. Items are deduplicated by `key`, keeping the first occurrence,
+ *   including when an offset API shifts items between pages.
  * - `cursor` is the Schema of a cursor, and `next` derives the cursor of
  *   the page after `lastPage` from the server's pages, `None` when the
  *   list has ended. It must be pure. The cursor is never stored.
@@ -775,10 +771,8 @@ export interface ListService<
  * - Every page a list field holds is saved in `history.state` on each
  *   navigation. `$.reset` drops the pages after the first, and is the way
  *   to keep that small.
- * - A list appends. A page that replaces the one before is ordinary args,
- *   such as a cursor in the Model, with `h.previous` showing the old page
- *   while the new one loads. Reset that cursor when a filter changes, or the
- *   new filter opens at the old cursor.
+ * - For replacement pagination with an ordinary read, reset the cursor when
+ *   a filter changes, or the new filter opens at the old cursor.
  *
  * **Example** (A list of messages)
  *
@@ -1084,9 +1078,8 @@ export const applyPatches = <R extends Read.Any>(
  *
  * **When to use**
  *
- * Use to test a Command's declarations without a cache. It is the predicate
- * the cache resolves a run's targets with, and the one `get` uses inside a
- * run to tell the run's own targets.
+ * Use to test a Command's declarations without a cache, using the same
+ * predicate as the cache and `get` inside a run.
  *
  * **Details**
  *
@@ -1714,8 +1707,7 @@ export class HydrationDecodeFailed extends Data.TaggedClass("HydrationDecodeFail
 }> {}
 
 /**
- * The problems the cache reports. A problem never changes what the cache
- * does: it is reported, and behaviour carries on.
+ * Diagnostic problems reported by the cache without changing its behavior.
  *
  * **Details**
  *
@@ -1788,7 +1780,7 @@ export const Problems: Context.Reference<(problem: Problem.Any) => void> = Conte
 })
 
 /**
- * The cache service. Reads look it up; its contents are
+ * The cache service used by reads.
  *
  * @stability experimental
  * @category services

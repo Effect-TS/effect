@@ -454,9 +454,8 @@ type Fields<Props, Model, Msg, Events> = Pick<
 >
 
 /**
- * Builds a record around a view that renders when first read. A step reads
- * it once its keyed prunes have settled, so the records in between, which
- * the runtime never renders, aren't rendered either.
+ * Defers rendering until the view is first read, after the step's keyed
+ * prunes settle. This skips intermediate records the runtime wouldn't render.
  */
 const record = <Props, Model, Msg, Events>(
   fields: Fields<Props, Model, Msg, Events>,
@@ -997,9 +996,8 @@ const awaitedFields = (
 }
 
 /**
- * The patches a pending run registered at issue, as `field` and args key: as in the cache, a patch
- * registers only over an entry that holds a Success then, and one over a cold or failed entry holds
- * nothing back.
+ * Patches registered at issue, by field and args key. As in the cache, only entries that
+ * held a Success then register a patch; cold or failed entries don't delay settling.
  */
 const livePatches = new WeakMap<Pending<any>, ReadonlyArray<{ readonly field: string; readonly argsKey: string }>>()
 

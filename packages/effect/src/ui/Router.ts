@@ -502,9 +502,9 @@ interface ErasedPage {
  *
  * **Gotchas**
  *
- * It takes a component as `Component.make` returns it, with or without
- * `Component.provide`. A `Component.Mountable` has its Model erased, and
- * with it the reads, so it is rejected, and so is a feature.
+ * Accepts a component returned by `Component.make`, with or without
+ * `Component.provide`. Rejects features and `Component.Mountable` values,
+ * whose erased Model hides their reads.
  *
  * @stability experimental
  * @category subscriptions
@@ -573,10 +573,10 @@ type PageRequirement<P> = P extends Page<infer R> ? R : never
  * an instance created since the push never watched as
  * `PrefetchEntryNotWatched`.
  *
- * With `staleTime: 0` a prefetch buys the instant paint only: the page still
- * refetches when it mounts. A read
- * with a `staleTime` between 0 and 30 seconds gets a stale paint and a
- * refetch where a second hover would have refreshed it, because of the guard.
+ * With `staleTime: 0`, the page renders prefetched data immediately but
+ * refetches on mount. With `staleTime` between 0 and 30 seconds, the intent
+ * guard can suppress a second hover that would refresh stale data, leaving
+ * the page to render stale data and refetch on mount.
  *
  * One `Router.prefetch` per instance: a second one throws. Nothing runs on
  * the server.

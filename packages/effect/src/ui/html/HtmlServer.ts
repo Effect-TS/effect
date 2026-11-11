@@ -2,12 +2,11 @@
  * Server rendering for `effect/ui`: renders a component tree to HTML that
  * `BrowserHost.mount` hydrates.
  *
- * `renderToHtml` runs the tree the way the server must: provided Layers are
- * built, and data comes from loaders, which a per-request cache fetches once
- * per key. Rendering waits until nothing is in flight or the `budget` is
- * spent, then serialises once. No Command runs on the server, and
- * Subscriptions other than loader watches and `onMount` work wait for the
- * client.
+ * `renderToHtml` builds provided Layers and fetches loader data once per key
+ * in a per-request cache. Rendering waits until nothing is in flight or the
+ * `budget` is spent, then serialises once. No Command runs on the server.
+ * Only loader-watch Subscriptions run; other Subscriptions and `onMount`
+ * work wait for the client.
  *
  * The result holds the body markup, the `state` the client adopts, with the
  * loader entries that settled, the root's Model (for the response status),
@@ -125,8 +124,8 @@ const serverHtmlHost: Context.Service.Shape<typeof Html.Host> = {
  *
  * **Gotchas**
  *
- * Read data is public: every entry that settled is in `state`, a typed
- * Failure and an entry no view renders included.
+ * Read data is public: `state` includes every settled entry, including typed
+ * Failures and entries no view renders.
  *
  * Route status is the app's: parse the URL with `AppRoute.parse` first and
  * answer a `NotFound` route with a 404.

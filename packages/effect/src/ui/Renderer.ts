@@ -298,9 +298,9 @@ const isRef = (u: unknown): u is Ref<any> =>
  *
  * **Gotchas**
  *
- * - The name is read up to the first `[`, so a ref whose name contains `[`
- *   decodes with a shorter name. Its `key` is still exact, and the runtime
- *   resolves refs by key.
+ * The name is read up to the first `[`, so a ref whose name contains `[`
+ * decodes with a shorter name. Its `key` is still exact, and the runtime
+ * resolves refs by key.
  *
  * @stability experimental
  * @category schemas
