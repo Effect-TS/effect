@@ -1,11 +1,11 @@
 /**
  * @title Routing and the document head
  *
- * Define typed routes with `Route`, keep the current route in the root's
- * Model with `Router`, set the title and meta tags with `Head`, and run the
- * app in the browser with `BrowserRouter`.
+ * Define typed routes with `Route` and keep the current route in the root's
+ * Model. The example also sets the title and meta tags with `Head` and runs
+ * in the browser with `BrowserRouter`.
  */
-import { Effect, Layer, Schema } from "effect"
+import { Layer, Schema } from "effect"
 import { AsyncResult, Loader } from "effect/reactivity"
 import { Command, Component, Head, Route, Router } from "effect/ui"
 import { BrowserHost, BrowserRouter } from "effect/ui/html"
@@ -60,8 +60,9 @@ export const AppMessage = Schema.TaggedUnion({
 
 export const App = Component.make({
   name: "App",
-  // The root holds the route: the initial one arrives through props, and every
-  // later change arrives as a message, so navigation is in the message log.
+  // The root holds the route. The first one arrives through props and every
+  // later change arrives as a message, which puts navigation in the message
+  // log.
   props: Schema.Struct({ route: AppRoute }),
   model: Schema.Struct({ route: AppRoute }),
   message: AppMessage,
@@ -69,7 +70,8 @@ export const App = Component.make({
   update: (model, message, $) =>
     AppMessage.match(message, {
       RouteChanged: ({ route }) => ({ route }),
-      // Navigating from `update` is a Command. It can't fail, so `Command.map`.
+      // Navigating from `update` is a Command that can't fail, so it takes
+      // `Command.map`.
       GoHome: () =>
         $.run(Router.push(AppRoute, indexRoute).pipe(Command.map(() => AppMessage.make({ _tag: "Navigated" })))),
       Navigated: () => model
@@ -78,7 +80,8 @@ export const App = Component.make({
     Router.subscription(AppRoute, model.route, (route) => AppMessage.make({ _tag: "RouteChanged", route }))
   ],
   // App-wide head defaults go in the root's `head`, not in the HTML shell.
-  // The template wraps the title a page below sets: "All notes · Notes".
+  // The template wraps the title a page below sets, giving
+  // "All notes · Notes".
   head: () => [Head.titleTemplate((title) => `${title} · Notes`), Head.lang("en")],
   view: ({ route }, h) =>
     h.div(
@@ -104,11 +107,11 @@ export const App = Component.make({
 // focus and announces the page, so give a loading page a title worth
 // hearing. Use `layerHash` for static hosting.
 //
-// The root's first route comes from the Router, so the mount Layer is
-// unwrapped from an Effect.
-export const AppLive = Layer.unwrap(Effect.gen(function*() {
-  const route = yield* Router.currentRoute(AppRoute)
-  return BrowserHost.mount(App, { route }, document.getElementById("app")!)
-})).pipe(Layer.provide([BrowserRouter.layer({ routes: AppRoute }), Notes.layerHttp]))
+// A root's props can be an Effect. `Router.props` reads `{ route }` from the
+// Router when the root mounts. A root with other props maps
+// `Router.currentRoute(AppRoute)` instead.
+export const AppLive = Layer.suspend(() =>
+  BrowserHost.mount(App, Router.props(AppRoute), document.getElementById("app")!)
+).pipe(Layer.provide([BrowserRouter.layer({ routes: AppRoute }), Notes.layerHttp]))
 
 export const main = Layer.launch(AppLive)

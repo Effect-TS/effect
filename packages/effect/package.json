@@ -27,7 +27,9 @@
   ],
   "sideEffects": [
     "./src/schema/SchemaJITCompiler/enable.ts",
-    "./dist/schema/SchemaJITCompiler/enable.js"
+    "./dist/schema/SchemaJITCompiler/enable.js",
+    "./src/ui/html/register.ts",
+    "./dist/ui/html/register.js"
   ],
   "exports": {
     "./package.json": "./package.json",

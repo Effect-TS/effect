@@ -1,28 +1,23 @@
 /**
  * @title Building a component with effect/ui
  *
- * Define a component from Schemas and pure functions, run its side effects
- * through a `Command.Service`, autosave with a Subscription, and mount it in
- * the browser with `BrowserHost`.
+ * Build a note editor from Schemas and pure functions. It saves through a
+ * `Command.Service`, autosaves with a Subscription, and is mounted in the
+ * browser with `BrowserHost`.
  */
 import { Effect, Layer, Schema, Stream } from "effect"
-import { Command, Component, Subscription, View } from "effect/ui"
+import { Command, Component, Subscription } from "effect/ui"
 // Only the `effect/ui/html` paths need the DOM lib types. `effect/ui` and
 // `effect/ui/testing` are host-neutral.
-import { BrowserHost, Html } from "effect/ui/html"
+import { BrowserHost } from "effect/ui/html"
+// Registers the HTML elements once for the app, so every `view` has
+// `h.form`, `h.button` and so on. Importing `effect/ui/html` alone doesn't
+// do it. The import has to run before the first render, in tests too. A
+// component that can't rely on it sets `elements: Html` instead.
+// oxlint-disable-next-line no-unassigned-import
+import "effect/ui/html/register"
 import { Note, NotesTag } from "./fixtures/domain/Note.ts"
 import { Notes } from "./fixtures/services/Notes.ts"
-
-// Register the element vocabulary once for the app: the augmentation is the
-// type half, `registerElements` the runtime half. Every `view` then has
-// `h.form`, `h.button`, ... It must run before the first render, in tests
-// too. A component that can't rely on it sets `elements: Html` instead.
-declare module "effect/ui/View" {
-  interface Register {
-    readonly elements: Html.Elements
-  }
-}
-View.registerElements(Html)
 
 // Props, Model, messages and events are Schemas, so the runtime can log,
 // serialise and hydrate them. Build a message with `Message.make({ _tag })`.
@@ -38,16 +33,16 @@ export const NoteEditorEvents = Schema.TaggedUnion({ Saved: { note: Note } })
 
 // A side effect is a Command, and I/O goes through a `Command.Service`. Its
 // implementation runs once, when the Layer is built, and captures the
-// services it uses: a component requires `SaveNote`, never `Notes`.
-// `Command.make` is only for bodies that need no service. Calling `fetch`
-// in one compiles, but a test can't fake it.
+// services it uses. That is why a component requires `SaveNote` and never
+// `Notes`. `Command.make` is only for bodies that need no service. Calling
+// `fetch` in one compiles, but a test can't fake it.
 export class SaveNote extends Command.Service<SaveNote>()(
   "notes/SaveNote",
   {
     args: { note: Note },
     // Saves from one editor run one at a time, in order.
     mode: "queue",
-    // Required: the loader reads a run makes stale. `() => []` for none.
+    // Required. Returns the tags of the reads a run makes stale, or `[]`.
     invalidates: () => [NotesTag]
   },
   Effect.gen(function*() {
@@ -67,8 +62,8 @@ export const NoteEditor = Component.make({
   }),
   message: NoteEditorMessage,
   events: NoteEditorEvents,
-  // `init`, `update` and `view` are pure. Props are `$.props` and `h.props`.
-  // A props change re-renders, but never reaches `update`.
+  // `init`, `update` and `view` are pure. They read props from `$.props` and
+  // `h.props`. A props change re-renders, but never reaches `update`.
   init: ($) => ({ draft: $.props.note.body, saved: $.props.note.body, edits: 0, error: null }),
   update: (model, message, $) =>
     NoteEditorMessage.match(message, {
@@ -78,9 +73,9 @@ export const NoteEditor = Component.make({
         model.draft === model.saved
           ? model
           // `$.set` replaces the Model and doesn't merge. `$.run` only takes
-          // Commands whose result is one of this component's messages:
-          // `SaveNote` can fail, so `Command.match` maps both channels. A
-          // Command that can't fail takes `Command.map`.
+          // Commands whose result is one of this component's messages.
+          // `SaveNote` can fail, so `Command.match` maps its success and
+          // its failure. A Command that can't fail takes `Command.map`.
           : $.set({ ...model, error: null }).run(
             SaveNote.make({ note: { ...$.props.note, body: model.draft } }).pipe(Command.match({
               onSuccess: (note) => NoteEditorMessage.make({ _tag: "Saved", note }),
@@ -94,9 +89,9 @@ export const NoteEditor = Component.make({
   // A Subscription is a keyed Stream that runs while it is listed. Use one
   // when you can say "while ...", and a Command for a single event. This one
   // autosaves while there are unsaved edits. `edits` is part of its key, so
-  // each keystroke restarts the timer: a debounce. Save continuously like
-  // this, not in a finalizer when the editor leaves. The source is the clock
-  // or a service, never a global, so tests drive it.
+  // each keystroke restarts the timer, which makes it a debounce. Save
+  // continuously like this instead of in a finalizer when the editor leaves.
+  // Its source has to be the clock or a service so that tests can drive it.
   subscriptions: (model) => [
     model.draft !== model.saved &&
     Subscription.make(
@@ -106,9 +101,9 @@ export const NoteEditor = Component.make({
     )
   ],
   // Children are rest arguments, and `false`, `null` and `undefined` render
-  // nothing. A handler is a message, or a function of a plain payload
-  // (`{ value }` for `input`), never of a DOM event. `value` is controlled:
-  // the field always shows the Model's draft.
+  // nothing. A handler is a message, or a function from a plain payload such
+  // as `{ value }` for `input`. It never sees the DOM event. `value` is
+  // controlled, so the field always shows the Model's draft.
   view: (model, h) =>
     h.form(
       h.h2(h.props.note.title),
@@ -123,10 +118,11 @@ export const NoteEditor = Component.make({
 
 const scratchpad: Note = { id: "scratchpad", title: "Scratchpad", body: "" }
 
-// `mount` is a Layer: the tree is mounted for as long as the Layer is built.
-// The component's requirements are the Layer's, so this doesn't compile until
-// `SaveNote` is provided. `Layer.suspend` delays the `document` lookup until
-// the app runs, because other modules import this one.
+// `mount` returns a Layer, and the tree stays mounted for as long as that
+// Layer is built. The component's requirements become the Layer's, so this
+// doesn't compile until `SaveNote` is provided. `Layer.suspend` delays the
+// `document` lookup until the app runs, because other modules import this
+// one.
 export const NoteEditorLive = Layer.suspend(() =>
   BrowserHost.mount(NoteEditor, { note: scratchpad }, document.getElementById("app")!)
 ).pipe(Layer.provide(SaveNote.layer.pipe(Layer.provide(Notes.layerHttp))))

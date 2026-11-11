@@ -1,9 +1,9 @@
 /**
  * @title Composing components, data and Layers
  *
- * Load data with a `Loader` read, render child components and handle what
- * they emit, provide Layers with `Component.provide`, and declare a swappable
- * `Feature.Service`.
+ * Load a note with a `Loader` read and show it with child components. The
+ * example handles a child's events, provides Layers with
+ * `Component.provide`, and makes one child swappable with `Feature.Service`.
  */
 import { Effect, Schema } from "effect"
 import { AsyncResult, Loader } from "effect/reactivity"
@@ -12,8 +12,8 @@ import { NoteEditor, SaveNote } from "./10_basics.ts"
 import { Note, NoteNotFound, NotesTag } from "./fixtures/domain/Note.ts"
 import { Notes } from "./fixtures/services/Notes.ts"
 
-// A read is data loaded by its arguments and cached: components watching the
-// same note share one entry and one fetch. Like a `Command.Service`, it
+// A read is data loaded by its arguments and cached, so components watching
+// the same note share one entry and one fetch. Like a `Command.Service`, it
 // captures `Notes` when its Layer is built. `SaveNote` invalidates
 // `NotesTag`, so a save refetches it.
 export class GetNote extends Loader.Service<GetNote>()(
@@ -52,7 +52,8 @@ export const NotePage = Component.make({
   props: Schema.Struct({ id: Schema.String }),
   model: Schema.Struct({ note: NoteSnapshot, title: Schema.String, notice: Schema.String }),
   message: NotePageMessage,
-  // Per loader field, the arguments of its read. `undefined` disables it.
+  // Returns the arguments of each loader field's read, or `undefined` to
+  // disable it.
   loaders: { note: (_model, props) => ({ id: props.id }) },
   // `$.empty` holds an empty snapshot for every loader field.
   init: ($) => ({ ...$.empty, title: "Loading note", notice: "" }),
@@ -62,8 +63,9 @@ export const NotePage = Component.make({
       Saved: () => ({ ...model, notice: "Saved" }),
       EditorFailed: () => ({ ...model, notice: "The editor crashed" })
     }),
-  // With loader fields, `subscriptions` must start with `$.watch`: one handler
-  // per field, turning each change into a message that stores the snapshot.
+  // With loader fields, `subscriptions` must start with `$.watch`. It takes
+  // one handler per field, and each handler turns a change into the message
+  // that stores the snapshot.
   subscriptions: (_model, _props, $) => [
     $.watch({
       note: (snapshot, result) =>
@@ -83,8 +85,8 @@ export const NotePage = Component.make({
       onFailure: () => h.p("This note doesn't exist."),
       onSuccess: ({ value: note }) =>
         h.article(
-          // A child by value. The key is its identity: a new key mounts a
-          // fresh instance. Props never reach the child's `update`, so
+          // A child by value. Its key is its identity, so a new key mounts
+          // a fresh instance. Props never reach the child's `update`, so
           // re-key to reset a child.
           h.child(NoteEditor, {
             key: note.id,
@@ -96,8 +98,8 @@ export const NotePage = Component.make({
             onFailure: () => NotePageMessage.make({ _tag: "EditorFailed" }),
             fallback: () => h.p("The editor is unavailable.")
           }),
-          // A child by service. `fallback` is required: it shows while the
-          // feature's Layer builds (`Initial`) and after a failure.
+          // A child by service. `fallback` is required here, and it shows
+          // while the feature's Layer builds (`Initial`) and after a failure.
           h.child(NoteActivity, {
             key: "activity",
             props: { noteId: note.id },
