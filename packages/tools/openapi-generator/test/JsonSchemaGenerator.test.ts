@@ -1,5 +1,7 @@
 import * as JsonSchemaGenerator from "@effect/openapi-generator/JsonSchemaGenerator"
 import { assert, describe, expect, it } from "@effect/vitest"
+import * as Schema from "effect/Schema"
+import { withGeneratedModule } from "../../../effect/test/utils/generatedModule.ts"
 
 describe("JsonSchemaGenerator", () => {
   it("schema & no definitions", () => {
@@ -194,7 +196,7 @@ export const A = B
 `)
   })
 
-  it("hoists recursive definitions referenced by earlier recursive definitions", () => {
+  it("loads and validates mutually recursive schemas", async () => {
     const generator = JsonSchemaGenerator.make()
     generator.addSchema("A", { $ref: "#/components/schemas/ResourcesNetworkCard" })
     const definitions = {
@@ -221,21 +223,27 @@ export const A = B
       }
     }
 
-    const result = generator.generate("openapi-3.1", definitions, false)
-    const recursiveDeclaration =
-      "export const ResourcesNetworkCard = Schema.suspend((): Schema.Codec<ResourcesNetworkCard> => __recursive_ResourcesNetworkCard)"
-
-    expect(result).toContain(recursiveDeclaration)
-    expect(result).toContain("const __recursive_ResourcesNetworkCard =")
-    expect(result.indexOf(recursiveDeclaration)).toBeLessThan(
-      result.indexOf("export const ResourcesNetworkCardSRIOV =")
-    )
-    expect(result.indexOf("export const ResourcesNetworkCardSRIOV =")).toBeLessThan(
-      result.indexOf("const __recursive_ResourcesNetworkCard =")
-    )
+    for (
+      const source of [
+        generator.generate("openapi-3.1", definitions, false),
+        generator.generateHttpApi("openapi-3.1", definitions)
+      ]
+    ) {
+      await withGeneratedModule<{ readonly A: Schema.Codec<unknown> }>(
+        `import * as Schema from "effect/Schema"\n${source}`,
+        ({ A }) => {
+          const decode = Schema.decodeUnknownSync(A)
+          const valid = { sriov: { vfs: [{ sriov: { vfs: [{}] } }] } }
+          assert.deepStrictEqual(decode(valid), valid)
+          assert.isTrue(
+            Schema.isSchemaError(assert.throws(() => decode({ sriov: { vfs: [{ sriov: { vfs: "invalid" } }] } })))
+          )
+        }
+      )
+    }
   })
 
-  it("renders recursive definitions before non-recursive references for runtime generation", () => {
+  it("loads and validates recursive schemas with non-recursive dependencies and dependents", async () => {
     const generator = JsonSchemaGenerator.make()
     generator.addSchema("A", { $ref: "#/components/schemas/ErrorResponse" })
     const definitions = {
@@ -273,21 +281,21 @@ export const A = B
       }
     }
 
-    const runtimeResult = generator.generate("openapi-3.1", definitions, false)
-    const recursiveDeclaration =
-      "export const ErrorDetails = Schema.suspend((): Schema.Codec<ErrorDetails> => __recursive_ErrorDetails)"
-
-    expect(runtimeResult).toContain(recursiveDeclaration)
-    expect(runtimeResult).toContain("const __recursive_ErrorDetails =")
-    expect(runtimeResult.indexOf(recursiveDeclaration)).toBeLessThan(
-      runtimeResult.indexOf("export const ErrorResponse =")
-    )
-
-    const httpApiResult = generator.generateHttpApi("openapi-3.1", definitions)
-    expect(httpApiResult).toContain(recursiveDeclaration)
-    expect(httpApiResult).toContain("const __recursive_ErrorDetails =")
-    expect(httpApiResult.indexOf(recursiveDeclaration)).toBeLessThan(
-      httpApiResult.indexOf("export const ErrorResponse =")
-    )
+    for (
+      const source of [
+        generator.generate("openapi-3.1", definitions, false),
+        generator.generateHttpApi("openapi-3.1", definitions)
+      ]
+    ) {
+      await withGeneratedModule<{ readonly A: Schema.Codec<unknown> }>(
+        `import * as Schema from "effect/Schema"\n${source}`,
+        ({ A }) => {
+          const decode = Schema.decodeUnknownSync(A)
+          const valid = { errors: { nested: { field: "message" } } }
+          assert.deepStrictEqual(decode(valid), valid)
+          assert.isTrue(Schema.isSchemaError(assert.throws(() => decode({ errors: { nested: { field: 123 } } }))))
+        }
+      )
+    }
   })
 })

@@ -3,6 +3,7 @@ import { Brand, JsonSchema, Schema, SchemaRepresentation } from "effect"
 import { TestSchema } from "effect/testing"
 import { describe, it } from "vitest"
 import { assertTrue, deepStrictEqual, strictEqual, throws } from "../../utils/assert.ts"
+import { withGeneratedModule } from "../../utils/generatedModule.ts"
 
 type Category = {
   readonly name: string
@@ -1731,6 +1732,38 @@ describe("toCodeDocument", () => {
           }
         }
       })
+    })
+  })
+
+  it("initializes and validates mixed recursive and non-recursive definitions", async () => {
+    const Meta = Schema.Struct({ n: Schema.Number }).annotate({ identifier: "Meta" })
+    interface Tree {
+      readonly meta: typeof Meta.Type
+      readonly children: ReadonlyArray<Tree>
+    }
+    const Tree = Schema.Struct({
+      meta: Meta,
+      children: Schema.Array(Schema.suspend((): Schema.Codec<Tree> => Tree))
+    }).annotate({ identifier: "Tree" })
+    const Forest = Schema.Struct({ trees: Schema.Array(Tree) }).annotate({ identifier: "Forest" })
+    const { codes, references } = SchemaRepresentation.toCodeDocument(
+      SchemaRepresentation.toRepresentations([Forest.ast])
+    )
+    const definitions = [
+      ...references.nonRecursives.map(({ $ref, code }) => [$ref, code] as const),
+      ...Object.entries(references.recursives),
+      ["Root", codes[0]] as const
+    ]
+    const source = [
+      `import * as Schema from "effect/Schema"`,
+      ...definitions.map(([name, code]) => `export type ${name} = ${code.Type}\nexport const ${name} = ${code.runtime}`)
+    ].join("\n")
+    await withGeneratedModule<{ readonly Root: Schema.Codec<unknown> }>(source, ({ Root }) => {
+      const decode = Schema.decodeUnknownSync(Root)
+      const valid = { trees: [{ meta: { n: 1 }, children: [{ meta: { n: 2 }, children: [] }] }] }
+      assert.deepStrictEqual(decode(valid), valid)
+      const invalid = { trees: [{ meta: { n: 1 }, children: [{ meta: { n: "invalid" }, children: [] }] }] }
+      assert.isTrue(Schema.isSchemaError(assert.throws(() => decode(invalid))))
     })
   })
 
