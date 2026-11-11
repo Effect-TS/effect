@@ -452,7 +452,6 @@ const start = (
   // Slots still waiting for their Layer before they adopt, and whether the first render is done.
   let waiting = 0
   let started = false
-  const hydrated = hydrating !== undefined
   let adoptedDone = hydrating === undefined
   const adoptedWaiters: Array<() => void> = []
   const settleWaiting = () => {
@@ -1691,8 +1690,16 @@ const start = (
       ? subscriptions(inst.model, inst.props)
       : guard(inst, "subscription", () => subscriptions(inst.model, inst.props))
     if (wanted === undefined) return
+    const byKey = new Map<string, Subscription.Subscription<any, any>>()
+    const markers = new Map<string, loaders.Marker>()
+    for (const subscription of wanted) {
+      const marker = loaders.markerOf(subscription)
+      if (marker !== undefined) {
+        if (!markers.has(subscription.key)) markers.set(subscription.key, marker)
+      } else if (!byKey.has(subscription.key)) byKey.set(subscription.key, subscription)
+    }
     if (checkRoot) {
-      for (const subscription of wanted) {
+      for (const subscription of byKey.values()) {
         if (typeof subscription !== "object" || subscription === null) continue
         const hook = (subscription as {
           readonly [services.onServer]?: (
@@ -1702,14 +1709,6 @@ const start = (
         })[services.onServer]
         if (hook !== undefined) whenReady(inst.env, (envCtx) => hook(envCtx, report))
       }
-    }
-    const byKey = new Map<string, Subscription.Subscription<any, any>>()
-    const markers = new Map<string, loaders.Marker>()
-    for (const subscription of wanted) {
-      const marker = loaders.markerOf(subscription)
-      if (marker !== undefined) {
-        if (!markers.has(subscription.key)) markers.set(subscription.key, marker)
-      } else if (!byKey.has(subscription.key)) byKey.set(subscription.key, subscription)
     }
     const folds = syncWatches(inst, markers)
     // Streams never run on the server.
@@ -2439,7 +2438,9 @@ const start = (
   if (hooks !== undefined) {
     handle = {
       container,
-      hydrated,
+      get hydrated() {
+        return root.adoptsChildren
+      },
       flush: () => flushes,
       snapshot,
       // The first navigation closes the fetch-free window, if adoption hasn't yet.

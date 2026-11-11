@@ -3,7 +3,7 @@ import { assert, expect, it } from "@effect/vitest"
 import { Context, Effect, Exit, Layer, Option, Scope } from "effect"
 import { Loader } from "effect/reactivity"
 import { TestClock } from "effect/testing"
-import { Router } from "effect/ui"
+import { Component, Router } from "effect/ui"
 import { BrowserHost, BrowserRouter, HtmlServer } from "effect/ui/html"
 import { HtmlQuery } from "effect/ui/html/testing"
 import { describe } from "vitest"
@@ -103,6 +103,40 @@ describe("BrowserRouter", { concurrent: false }, () => {
       assert.strictEqual(client.model()?.route._tag, "Person")
       assert.strictEqual(problems.length, 1)
       assert.strictEqual(problems[0]._tag, "RouteMismatch")
+    }).pipe(Effect.provide(People.layer), Effect.provideService(Loader.Problems, (problem) => problems.push(problem)))
+  })
+
+  it.effect("checks hash roots that cannot adopt a server Model", () => {
+    const problems: Array<Loader.Problem.Any> = []
+    return Effect.gen(function*() {
+      AppRoute.setBase("#")
+      yield* Effect.addFinalizer(() => Effect.sync(() => AppRoute.setBase("")))
+      const route = AppRoute.make({ _tag: "Home" })
+      const Deferred = App.pipe(Component.provide(People.layer, { server: false }))
+      const deferred = yield* HtmlServer.renderToHtml(Deferred, { route }, { static: true }).pipe(
+        Effect.provide(Router.static({ routes: AppRoute, url: "#/" }))
+      )
+      const rendered = yield* HtmlServer.renderToHtml(App, { route }, { static: true }).pipe(
+        Effect.provide(Router.static({ routes: AppRoute, url: "#/" }))
+      )
+      window.history.replaceState(null, "", "/#/people/1")
+      const context = yield* Layer.build(BrowserRouter.layerHash({ routes: AppRoute }))
+      for (
+        const [component, state] of [
+          [Deferred, deferred.state],
+          [App, {}],
+          [App, { ...rendered.state, "/App": null }]
+        ] as const
+      ) {
+        const element = yield* container
+        const root = yield* BrowserHost.mount(component, { route }, element, { state }).pipe(
+          Effect.provideContext(context)
+        )
+        yield* tick
+        assert.strictEqual(root.model()?.route._tag, "Person")
+        assert.strictEqual(problems.filter((problem) => problem._tag === "RouteMismatch").length, 1)
+        problems.length = 0
+      }
     }).pipe(Effect.provide(People.layer), Effect.provideService(Loader.Problems, (problem) => problems.push(problem)))
   })
 
