@@ -274,7 +274,7 @@ const makeStep = (
 const makeUpdate = (model: unknown, props: unknown): Update<any, any, any, any> =>
   Object.assign(Object.create(StepProto), { model, commands: [], emitted: [], lists: [], props })
 
-const makeInit = (props: unknown, empty: object = {}): Init<any, any, any, any> => ({
+const makeInit = (props: unknown, empty: object): Init<any, any, any, any> => ({
   props,
   empty,
   set: (model) => makeStep(model, [], [], []) as Step<any, any, any, never>
@@ -476,12 +476,10 @@ export type Message<C> = C extends Component<infer _N, infer _P, infer _M, infer
  * @category utility types
  * @since 4.1.3
  */
-export type LoaderFields<Model> = [Model] extends [object] ? LoaderKey<
-    Model,
-    keyof Model & string,
-    Loader.Snapshot<any, any> | Loader.SnapshotMap<any, any> | Loader.SnapshotList<any, any>
-  >
-  : never
+export type LoaderFields<Model> = LoaderKey<
+  Model,
+  Loader.Snapshot<any, any> | Loader.SnapshotMap<any, any> | Loader.SnapshotList<any, any>
+>
 
 /**
  * The single loader fields of a Model: those that hold a `Loader.Snapshot`
@@ -491,9 +489,7 @@ export type LoaderFields<Model> = [Model] extends [object] ? LoaderKey<
  * @category utility types
  * @since 4.1.3
  */
-export type SingleFields<Model> = [Model] extends [object] ?
-  LoaderKey<Model, keyof Model & string, Loader.Snapshot<any, any> | Loader.SnapshotList<any, any>>
-  : never
+export type SingleFields<Model> = LoaderKey<Model, Loader.Snapshot<any, any> | Loader.SnapshotList<any, any>>
 
 /**
  * The list fields of a Model: those that hold a `Loader.SnapshotList`.
@@ -503,9 +499,7 @@ export type SingleFields<Model> = [Model] extends [object] ?
  * @category utility types
  * @since 4.1.3
  */
-export type ListFields<Model> = [Model] extends [object] ?
-  LoaderKey<Model, keyof Model & string, Loader.SnapshotList<any, any>>
-  : never
+export type ListFields<Model> = LoaderKey<Model, Loader.SnapshotList<any, any>>
 
 /**
  * The keyed loader fields of a Model: those that hold a
@@ -515,12 +509,11 @@ export type ListFields<Model> = [Model] extends [object] ?
  * @category utility types
  * @since 4.1.3
  */
-export type KeyedFields<Model> = [Model] extends [object] ?
-  LoaderKey<Model, keyof Model & string, Loader.SnapshotMap<any, any>>
-  : never
+export type KeyedFields<Model> = LoaderKey<Model, Loader.SnapshotMap<any, any>>
 
 // Not a mapped type over `keyof Model`: that one is homomorphic, so a primitive or array Model maps to itself.
-type LoaderKey<Model, K extends keyof Model, S> = K extends unknown ? Model[K] extends S ? K : never
+type LoaderKey<Model, S, K extends keyof Model = keyof Model & string> = [Model] extends [object] ?
+  K extends unknown ? Model[K] extends S ? K : never : never
   : never
 
 /**
