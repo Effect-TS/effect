@@ -505,6 +505,8 @@ export interface Root<out Model, in Msg, out Events> {
   ) => TestLoader.Entry<Loader.Read.Success<R>, Loader.Read.Error<R>> | undefined
   /** The tree's merged document head, as last given to the host. */
   readonly head: () => Head.Head
+  /** The `frames` projection after each commit, without consecutive repeats. */
+  readonly frames: () => ReadonlyArray<string>
 }
 
 /**
@@ -517,8 +519,6 @@ export interface Root<out Model, in Msg, out Events> {
 export interface TestRoot<out Model, in Msg, out Events> extends Root<Model, Msg, Events> {
   /** The element the tree is mounted in. */
   readonly container: TestElement
-  /** The `frames` projection after each commit, without consecutive repeats. */
-  readonly frames: () => ReadonlyArray<string>
   /** The text of everything mounted. */
   readonly text: () => string
   readonly all: (locator: Query.Locator) => ReadonlyArray<TestNode>
@@ -581,11 +581,10 @@ export const mount = <Name extends string, Props, Model, Msg, Events, R, V exten
       Effect.provideService(Loader.Connectivity, testHost.connectivity),
       Effect.provideService(Loader.Problems, testHost.report)
     )
-    const neutral = yield* register(testHost, root, testHost.log)
+    const neutral = yield* register(testHost, root, testHost.log, () => frames.slice())
     testRoot = {
       ...neutral,
       container,
-      frames: () => frames.slice(),
       text: () => Query.textOf(container),
       all: (locator) => Query.all(container as TestNode, locator),
       query: (locator) => Query.query(container as TestNode, locator),
@@ -597,14 +596,16 @@ export const mount = <Name extends string, Props, Model, Msg, Events, R, V exten
 
 /**
  * Registers a mounted tree with `TestHost`, so `settle` waits for it and
- * fails when it crashes, and builds its host-neutral view over `log`.
+ * fails when it crashes, and builds its host-neutral view over `log` and
+ * the frames its host recorded.
  *
  * @internal
  */
 export const register = (
   testHost: TestHost,
   root: runtime.Root & Renderer.Root<any, any>,
-  log: MessageLog.Memory
+  log: MessageLog.Memory,
+  frames: () => ReadonlyArray<string>
 ): Effect.Effect<Root<any, any, any>, never, Scope.Scope> =>
   Effect.gen(function*() {
     const pending = (): ReadonlyArray<Pending> => [
@@ -624,7 +625,8 @@ export const register = (
       pending,
       fetches: () => entries().filter((entry): entry is MessageLog.FetchStarted => entry._tag === "FetchStarted"),
       entry: (read, args) => root.cache.inspect(Loader.defOf(read), args) as any,
-      head: root.head
+      head: root.head,
+      frames
     }
   })
 

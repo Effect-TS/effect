@@ -33,21 +33,25 @@ export const Home = Component.make({
   view: (_, h) => h.el("h1", "Home")
 })
 
-/** Counts every fetch, so a test can see when a restore refetches. */
-export const personFetches = { count: 0 }
+/**
+ * Counts every fetch, so a test can see when a restore refetches. A fetch
+ * sleeps `delay` millis first, and fails when `fail` is set.
+ */
+export const personFetches = { count: 0, delay: 0, fail: false }
 
 export class GetPerson extends Loader.Service<GetPerson>()(
   "GetPerson",
   {
     args: { id: Schema.Number },
     success: Schema.String,
-    error: Schema.Never,
+    error: Schema.String,
     staleTime: "30 seconds"
   },
   Effect.succeed(({ id }) =>
-    Effect.sync(() => {
+    Effect.suspend(() => {
       personFetches.count++
-      return `Person ${id}`
+      const result = personFetches.fail ? Effect.fail(`No person ${id}`) : Effect.succeed(`Person ${id}`)
+      return personFetches.delay > 0 ? Effect.andThen(Effect.sleep(personFetches.delay), result) : result
     })
   )
 ) {}
@@ -112,6 +116,7 @@ export const Person = Component.make({
     h.el(
       "div",
       h.el("h1", model.name),
+      h.loaded.person.waiting ? h.el("p", "Refreshing") : null,
       h.el("button", `count ${model.count}`).on("click", PersonMessage.make({ _tag: "Bump" })),
       h.el("button", "Rename").on("click", PersonMessage.make({ _tag: "Rename" }))
     )

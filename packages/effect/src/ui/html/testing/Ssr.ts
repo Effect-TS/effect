@@ -16,8 +16,9 @@
  * - a shipped loader entry doesn't decode and encode back as it was shipped,
  *   args key included, once the state has been through
  *   `HtmlServer.serializeState` and `JSON.parse`;
- * - the client fetched a hydrated entry inside the fetch-free window, unless
- *   the render was `static`;
+ * - the client fetched a hydrated entry into its cache inside the fetch-free
+ *   window, unless the render was `static`. A caller-only fetch, which
+ *   stores nothing, is allowed;
  * - a slot was still waiting for its Layer when the budget was spent;
  * - a problem was reported, on either side.
  *
@@ -230,7 +231,12 @@ const stepLimit = 10_000
  * there. While a slot waits for its Layer before adopting, the client steps
  * the clock the same way, for up to `budget` more, and then fails naming the
  * waiting paths. A Layer that sleeps on a clock other than the one it is
- * given is not seen, and the server phase then spends the whole budget.
+ * given is not seen: either phase then spends its whole budget before it
+ * gives up.
+ *
+ * `frames` projects the container after each client commit, starting from
+ * the server's markup, for `root.frames()`. It defaults to the container's
+ * text.
  *
  * `budget` and `static` are passed to the server render, and `loader` to
  * the client mount only: the server's cache is per request. With `static`
@@ -255,6 +261,7 @@ export const ssr = <Name extends string, Props, Model, Msg, Events, R, V extends
     readonly static?: boolean | undefined
     readonly loader?: Renderer.LoaderOptions | undefined
     readonly logSize?: number | undefined
+    readonly frames?: ((container: globalThis.Element) => string) | undefined
   }
 ): Effect.Effect<
   Ssr<Model, Msg, Events>,
@@ -358,6 +365,13 @@ export const ssr = <Name extends string, Props, Model, Msg, Events, R, V extends
     const document = new DOMParser().parseFromString(page, "text/html")
     const container = document.getElementById("app")!
     const before = serverNodes(container)
+    const project = options?.frames ?? ((container: globalThis.Element) => container.textContent ?? "")
+    const frames: Array<string> = []
+    const frame = () => {
+      const next = project(container)
+      if (frames.length === 0 || frames[frames.length - 1] !== next) frames.push(next)
+    }
+    frame()
 
     // -- client ---------------------------------------------------------------
     const host = BrowserHost.makeHost(document, { warn: (message) => problems.push(message) })
@@ -396,6 +410,7 @@ export const ssr = <Name extends string, Props, Model, Msg, Events, R, V extends
       commit: () => {
         host.commit?.()
         judge()
+        frame()
       }
     }
     const mounted = yield* runtime.mount(component, props, container, { state, loader: options?.loader }).pipe(
@@ -410,10 +425,17 @@ export const ssr = <Name extends string, Props, Model, Msg, Events, R, V extends
         )
       )
     ) as Effect.Effect<runtime.Root & Renderer.Root<any, any>, never, Exclude<R, Html.Host> | Scope.Scope>
-    const root = yield* TestHost.register(testHost, mounted, clientLog)
+    const root = yield* TestHost.register(testHost, mounted, clientLog, () => frames.slice())
     let adoptedDone = false
     yield* Effect.forkChild(Effect.andThen(mounted.adopted, Effect.sync(() => adoptedDone = true)))
-    if (!(yield* stepUntil(() => adoptedDone, now() + budget))) {
+    const deadline = now() + budget
+    const adoptedOrFallback = Effect.gen(function*() {
+      if (yield* stepUntil(() => adoptedDone, deadline)) return true
+      // A sleep the tree's clock didn't see: the budget is spent whole.
+      if (now() < deadline) yield* TestClock.setTime(deadline)
+      return yield* stepUntil(() => adoptedDone, deadline)
+    })
+    if (!(yield* adoptedOrFallback)) {
       return yield* new SsrError({
         problems: mounted.waiting().map((path) =>
           `${path}: still waiting for its Layer to adopt when the budget was spent`
@@ -453,7 +475,8 @@ export const ssr = <Name extends string, Props, Model, Msg, Events, R, V extends
     problems.push(...compareHeads(rendered.head, adoptionHead ?? Head.empty))
     if (!isStatic) {
       for (const entry of log) {
-        if (entry._tag === "FetchStarted" && entry.inWindow) {
+        // A caller-only fetch (`stored: false`) is allowed: only a fetch the cache stores defeats hydration.
+        if (entry._tag === "FetchStarted" && entry.inWindow && entry.stored) {
           problems.push(`${entry.read} ${entry.logKey}: fetched inside the fetch-free window (${entry.trigger})`)
         }
       }
