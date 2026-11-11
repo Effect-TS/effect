@@ -214,9 +214,9 @@ export const encodeUnpadded: (input: Uint8Array | string) => string = (input) =>
  * **Details**
  *
  * Returns `Result.succeed` with a `Uint8Array` when decoding succeeds, or
- * `Result.fail` with an `EncodingError` when the input is not valid. Errors
- * identify the `Base64` module and preserve the original input. CR/LF are
- * ignored, but other whitespace and input mixing the two alphabets are rejected.
+ * `Result.fail` with an `EncodingError` holding the original input when the
+ * input is not valid. Each input must use a single alphabet. CR/LF are
+ * ignored, and other whitespace is rejected.
  *
  * **Example** (Decoding either Base64 alphabet)
  *
@@ -234,20 +234,16 @@ export const encodeUnpadded: (input: Uint8Array | string) => string = (input) =>
  * @category decoding
  * @since 4.1.5
  */
-export const decodeLenient = (str: string): Result.Result<Uint8Array, EncodingError> => {
-  const stripped = base64.stripCrlf(str)
-  const remainder = stripped.length % 4
-  const result = stripped.includes("-") || stripped.includes("_")
-    ? Base64Url.decode(stripped)
-    : decode(
-      !stripped.endsWith("=") && (remainder === 2 || remainder === 3)
-        ? stripped + (remainder === 2 ? "==" : "=")
-        : stripped
-    )
-  return Result.mapError(
-    result,
+export const decodeLenient = (str: string): Result.Result<Uint8Array, EncodingError> =>
+  Result.mapError(
+    str.includes("-") || str.includes("_") ? Base64Url.decode(str) : decode(addPadding(base64.stripCrlf(str))),
     (error) => new EncodingError({ kind: "Decode", module: "Base64", input: str, message: error.message })
   )
+
+// Lengths that cannot be valid are left for `decode` to reject.
+const addPadding = (stripped: string): string => {
+  const remainder = stripped.length % 4
+  return remainder < 2 || stripped.endsWith("=") ? stripped : stripped + (remainder === 2 ? "==" : "=")
 }
 
 const encodeBytes = (bytes: Uint8Array): string => {

@@ -12,7 +12,7 @@ describeWithFallback("Base64", () => {
     for (const [length, encoded] of vectors.entries()) {
       const view = bytes.subarray(1, 1 + length)
       assert.strictEqual(Base64.encode(view), encoded)
-      assert.strictEqual(Base64.encodeUnpadded(view), ["", "+w", "+/8", "+/+A"][length])
+      assert.strictEqual(Base64.encodeUnpadded(view), encoded.replace(/=+$/, ""))
       assert.deepStrictEqual(Result.getOrThrow(Base64.decode(encoded)), view)
     }
     assert.deepStrictEqual(bytes, new Uint8Array([42, 251, 255, 128, 42]))
@@ -135,7 +135,8 @@ describeWithFallback("Base64", () => {
 
   it("rejects invalid lenient input and preserves the original input", () => {
     for (const prefix of ["", "AAAA".repeat(48)]) {
-      for (const suffix of ["Zm9vY", "Zg=", "-_!\r\n=", "Zg=v"]) {
+      // The last two mix the alphabets.
+      for (const suffix of ["Zm9vY", "Zg=", "-_!\r\n=", "Zg=v", "+_8", "-/8="]) {
         const input = prefix + suffix
         const result = Base64.decodeLenient(input)
         assert.isTrue(Result.isFailure(result), input)
@@ -143,11 +144,6 @@ describeWithFallback("Base64", () => {
           const { input: actual, kind, module } = result.failure
           assert.deepStrictEqual({ kind, module, input: actual }, { kind: "Decode", module: "Base64", input })
         }
-      }
-    }
-    for (const prefix of ["", "AAAA".repeat(48)]) {
-      for (const mixed of ["+_8", "-/8="]) {
-        assert.isTrue(Result.isFailure(Base64.decodeLenient(prefix + mixed)), prefix + mixed)
       }
     }
   })
