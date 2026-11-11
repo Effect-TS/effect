@@ -744,6 +744,18 @@ describe("toCodeDocument", { concurrent: false }, () => {
       })
     })
 
+    it("propagates renamed references through nested declaration callbacks", async () => {
+      const Named = Schema.String.annotate({ identifier: "Option" })
+      const source = render(generate(Schema.Option(Schema.Option(Named))))
+      register("nested declaration import collision", source, ["Option.Option<Option.Option<string>>"])
+      await withGeneratedModule<Generated>(source, ({ TestRoot0 }) => {
+        assertSamples(TestRoot0, {
+          accepts: [Option.some(Option.some("a"))],
+          rejects: [Option.some(Option.some(1))]
+        })
+      })
+    })
+
     it("resolves named and type-only imports and only repeats callbacks whose inputs changed", async () => {
       const calls: Array<SchemaRepresentation.Code> = []
       let unaffectedCalls = 0
