@@ -98,8 +98,7 @@ function makeWithRepresentation() {
     )
 
     return renderImportArtifacts(generated.codeDocument, !typeOnly) +
-      render("definitions", references) +
-      render("schemas", codes)
+      render([...references, ...codes])
   }
 
   function generateHttpApi(
@@ -250,9 +249,9 @@ function multipartCode(
   return undefined
 }
 
-function render(title: string, as: ReadonlyArray<string>) {
+function render(as: ReadonlyArray<string>) {
   if (as.length === 0) return ""
-  return "// " + title + "\n" + as.join("\n") + "\n"
+  return as.join("\n") + "\n"
 }
 
 function renderImportArtifacts(codeDocument: SchemaRepresentation.CodeDocument, enabled: boolean): string {

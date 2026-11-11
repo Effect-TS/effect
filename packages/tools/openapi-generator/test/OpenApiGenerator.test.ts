@@ -881,7 +881,6 @@ import type * as HttpClient from "effect/http/HttpClient"
 import * as HttpClientError from "effect/http/HttpClientError"
 import * as HttpClientRequest from "effect/http/HttpClientRequest"
 import * as HttpClientResponse from "effect/http/HttpClientResponse"
-// schemas
 export type GetUser200 = { readonly "id": string, readonly "name": string }
 export const GetUser200 = Schema.Struct({ "id": Schema.String, "name": Schema.String }).annotate({ "description": "User object" })
 
@@ -1405,7 +1404,6 @@ import type * as HttpClient from "effect/http/HttpClient"
 import * as HttpClientError from "effect/http/HttpClientError"
 import * as HttpClientRequest from "effect/http/HttpClientRequest"
 import * as HttpClientResponse from "effect/http/HttpClientResponse"
-// schemas
 export type GetUser200 = { readonly "id": string, readonly "name": string }
 
 export interface OperationConfig {
@@ -3997,7 +3995,7 @@ export const withString: UploadRequestFormData = { file, child: { file: "upload.
         [
           `export type Upload = string`,
           `export type CreateJsonRequestJson = Upload`,
-          `export type UploadRequestFormData = { readonly "file": __ClientMultipartFile, readonly "files": ReadonlyArray<__ClientMultipartFile> }`
+          `export type UploadRequestFormData = { readonly "file": __ClientMultipartFile, readonly "files": globalThis.ReadonlyArray<__ClientMultipartFile> }`
         ]
       ))
 
