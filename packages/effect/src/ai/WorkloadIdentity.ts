@@ -1,7 +1,8 @@
 /**
  * Authenticates an `HttpClient` by exchanging workload identity tokens for cached
- * access tokens. For Anthropic or OpenAI, use the provider package's
- * `AnthropicWorkloadIdentity` or `OpenAiWorkloadIdentity` module.
+ * access tokens. For Anthropic, OpenAI or OpenRouter, use the provider package's
+ * `AnthropicWorkloadIdentity`, `OpenAiWorkloadIdentity` or
+ * `OpenRouterWorkloadIdentity` module.
  *
  * @stability unstable
  * @since 4.1.3
