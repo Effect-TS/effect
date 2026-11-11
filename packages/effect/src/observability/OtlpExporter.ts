@@ -283,7 +283,7 @@ export const make: (
       yield* Fiber.await(yield* FiberSet.run(exportFibers, runExport))
       yield* disarmIfEmpty
     }
-  }).pipe(Effect.forkIn(scope))
+  }).pipe(Effect.forkIn(scope), Effect.when(Effect.succeed(Duration.isFinite(exportInterval))))
   const exportNow = Effect.andThen(runExport, disarmIfEmpty)
 
   const flusher = yield* Flusher
