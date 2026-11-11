@@ -167,6 +167,8 @@ interface WatchRun {
   readonly logKey: string
   handle: ReturnType<ReturnType<typeof Loader.internals>["watch"]> | undefined
   released: boolean
+  /** A debounced loader's sleep on the Clock: the watcher registers when it ends. */
+  debounce: Fiber.Fiber<unknown> | undefined
 }
 
 /**
@@ -221,6 +223,8 @@ export interface Instance {
   readonly stopping: Set<Run>
   readonly subscriptions: Map<string, SubscriptionRun>
   readonly watches: Map<string, WatchRun>
+  /** The watches followed a Model after mount: from then on, a debounced loader's new args may wait. */
+  watchesSynced: boolean
   /**
    * Every entry a watch of this instance registered on, by read name and args key. Kept only for an
    * instance created while a check after a navigation is outstanding, and dropped when none is.
@@ -1159,6 +1163,7 @@ const setup = (
       stopping: new Set(),
       subscriptions: new Map(),
       watches: new Map(),
+      watchesSynced: false,
       watched: undefined,
       prefetch: undefined,
       keyed: new Map(),
@@ -2096,6 +2101,10 @@ const setup = (
    * Registers and unregisters cache watchers from the watch markers, synchronously: the watcher
    * count, and with it whether a watch is a zero-to-one or a join, never waits for the scheduler.
    * New args are a new key, so the old watcher goes before the new one registers.
+   *
+   * A debounced loader's new args, after mount and on the client, register once its delay has passed
+   * on the Clock, unless registering now fetches nothing. Newer args are a new key: the waiting
+   * watcher goes, and its sleep with it.
    */
   const syncWatches = (inst: Instance, markers: Map<string, loaders.Marker>): ReadonlyArray<() => void> => {
     for (const [key, running] of inst.watches) {
@@ -2122,7 +2131,7 @@ const setup = (
       const logKey = marker.argsKey === undefined
         ? key
         : Subscription.keyOf(`~loaded/${marker.label}`, def.logKey(marker.args, marker.argsKey))
-      const running: WatchRun = { marker, logKey, handle: undefined, released: false }
+      const running: WatchRun = { marker, logKey, handle: undefined, released: false, debounce: undefined }
       inst.watches.set(key, running)
       record({ _tag: "SubscriptionStarted", path: inst.path, key: logKey })
       // A disabled loader: the marker is inert.
@@ -2200,12 +2209,38 @@ const setup = (
         if (folds !== undefined) folds.push(fold)
         else fold()
       }
-      if (inst.env.failure !== undefined) go(settled(inst.env).ctx!)
-      else whenReady(inst.env, go)
+      const start = () => {
+        if (inst.env.failure !== undefined) go(settled(inst.env).ctx!)
+        else whenReady(inst.env, go)
+      }
+      if (
+        marker.debounce === undefined || server !== undefined || !inst.watchesSynced || !wouldFetch(def, marker.args)
+      ) {
+        start()
+        continue
+      }
+      // Its first value is folded when it registers: there is no loop to wait for.
+      running.debounce = forkNow(
+        ctx,
+        Effect.andThen(
+          Effect.sleep(Duration.millis(marker.debounce)),
+          Effect.sync(() => {
+            running.debounce = undefined
+            start()
+          })
+        )
+      )
     }
+    // The first Model after mount: the values folded before the first render never wait.
+    if (inst.mounting === undefined) inst.watchesSynced = true
     const out = folds
     folds = undefined
     return out
+  }
+  /** Whether a watcher registering on the entry now starts a fetch: no watcher, nothing in flight, and stale or cold. */
+  const wouldFetch = (def: ReturnType<typeof Loader.defOf>, args: unknown): boolean => {
+    const info = cache.inspect(def, args)
+    return info === undefined || (info.watchers === 0 && info.fetch === "none" && info.stale)
   }
   /** A keyed field's handler and keys follow the Model. */
   const syncGroup = (inst: Instance, group: loaders.Group) => {
@@ -2306,6 +2341,7 @@ const setup = (
   const releaseWatch = (running: WatchRun) => {
     if (running.released) return
     running.released = true
+    running.debounce?.interruptUnsafe()
     running.handle?.unregister()
   }
   /** Drops an instance's watchers, and its descendants', at once. Closing its Scope comes after. */

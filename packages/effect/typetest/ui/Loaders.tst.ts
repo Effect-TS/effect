@@ -93,6 +93,32 @@ describe("Component loaders", () => {
   })
 })
 
+describe("Component.debounce", () => {
+  it("types a loader from its field, single or keyed, as a plain loader is", () => {
+    Component.make({
+      name: "Debounced",
+      props: Schema.Struct({ id: Schema.String }),
+      model: Schema.Struct({ user: Loader.Snapshot(GetUser, "user"), team: Loader.SnapshotMap(GetTeam, "team") }),
+      message: Message,
+      loaders: {
+        user: Component.debounce("300 millis", (_model, props, loaded) => {
+          expect(props).type.toBe<{ readonly id: string }>()
+          expect(loaded).type.not.toHaveProperty("user")
+          return props.id === "" ? undefined : { id: props.id }
+        }),
+        // @ts-expect-error Type 'number' is not assignable to type 'string'
+        team: Component.debounce("300 millis", () => [{ id: 1 }])
+      },
+      init: ($) => $.empty,
+      update: (model) => model,
+      subscriptions: (_m, _p, $) => [
+        $.watch({ user: () => Message.make({ _tag: "Bump" }), team: () => Message.make({ _tag: "Bump" }) })
+      ],
+      view: () => null as never
+    })
+  })
+})
+
 describe("Story loader steps", () => {
   it("take a loader field and its read's success or error", () => {
     Story.make(Card, { id: "1" }, (s) =>

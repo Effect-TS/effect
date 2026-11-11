@@ -52,6 +52,7 @@
  * @stability experimental
  * @since 4.1.5
  */
+import * as Duration from "../Duration.ts"
 import * as Layer from "../Layer.ts"
 import type * as Option from "../Option.ts"
 import * as Pipeable from "../Pipeable.ts"
@@ -684,6 +685,66 @@ export type Loaders<Model, Props> = {
   ) => Model[K] extends Loader.SnapshotMap<any, any> ? ReadonlyArray<Loader.Read.Args<ReadOf<Model[K]>>>
     : Loader.Read.Args<ReadOf<Model[K]>> | undefined
 }
+
+/**
+ * Wraps a loader of `loaders` so that a fetch for its changed args waits
+ * `duration` on the Clock.
+ *
+ * **When to use**
+ *
+ * Use when a loader's args change in bursts, such as a search box's text,
+ * so only the args that hold still are fetched.
+ *
+ * **Details**
+ *
+ * Only a fetch waits: the first args at mount, the server render, args whose
+ * cache entry is fresh or already being fetched, and a change to `undefined`
+ * go through at once. While the fetch waits, `h.loaded` is `Initial`,
+ * waiting, and `h.previous` holds the last value. Args that change again
+ * during the wait restart it, so only the last args are fetched. Unmounting
+ * cancels the wait. A keyed field's new keys wait each on their own.
+ *
+ * **Example** (A search that fetches once the query holds still)
+ *
+ * ```ts import.meta.vitest
+ * import { Effect, Schema } from "effect"
+ * import { AsyncResult, Loader } from "effect/reactivity"
+ * import { Component } from "effect/ui"
+ *
+ * class Search extends Loader.Service<Search>()(
+ *   "Search",
+ *   { args: { q: Schema.String }, success: Schema.Array(Schema.String), error: Schema.Never, staleTime: "1 minute" },
+ *   Effect.succeed(({ q }) => Effect.succeed([q]))
+ * ) {}
+ *
+ * const SearchMessage = Schema.TaggedUnion({ Results: { results: Loader.Snapshot(Search, "results") } })
+ *
+ * const SearchPage = Component.make({
+ *   name: "SearchPage",
+ *   props: Schema.Struct({ q: Schema.String }),
+ *   model: Schema.Struct({ results: Loader.Snapshot(Search, "results") }),
+ *   message: SearchMessage,
+ *   loaders: {
+ *     results: Component.debounce("300 millis", (_model, props) => ({ q: props.q }))
+ *   },
+ *   init: ($) => $.empty,
+ *   update: (_model, message) => ({ results: message.results }),
+ *   subscriptions: (_model, _props, $) => [
+ *     $.watch({ results: (results) => SearchMessage.make({ _tag: "Results", results }) })
+ *   ],
+ *   view: (_model, h) =>
+ *     h.el("ul", AsyncResult.getOrElse(h.loaded.results, () => []).map((result) => h.el("li", result)))
+ * })
+ * ```
+ *
+ * @stability experimental
+ * @category combinators
+ * @since 4.1.5
+ */
+export const debounce = <Model, Props, Loaded, A>(
+  duration: Duration.Input,
+  f: (model: Model, props: Props, loaded: Loaded) => A
+): (model: Model, props: Props, loaded: Loaded) => A => loaders.debounce(Duration.toMillis(duration), f)
 
 /**
  * Identifies the Subscription `$.watch` returns.
