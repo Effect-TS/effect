@@ -155,7 +155,10 @@ export function parse(source: string): Imports {
             token.kind === "identifier" && token.value === "type" && (
               tokens[index]?.kind === "string" ||
               (tokens[index]?.kind === "identifier" && !at("as")) ||
-              (at("as") && ["as", ",", "}"].includes(tokens[index + 1]?.value))
+              (at("as") && (
+                [",", "}"].includes(tokens[index + 1]?.value) ||
+                (tokens[index + 1]?.value === "as" && tokens[index + 2]?.kind === "identifier")
+              ))
             )
           ) {
             itemTypeOnly = true

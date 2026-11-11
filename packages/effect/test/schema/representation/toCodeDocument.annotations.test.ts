@@ -117,9 +117,9 @@ describe("SchemaRepresentation.toCodeDocument annotations", () => {
     const runtime = SchemaRepresentation.toCodeDocument(document).codes[0].runtime
     assertInclude(runtime, `"bigint": 1n`)
     assertInclude(runtime, `"symbol": globalThis.Symbol.for("shared")`)
-    assertInclude(runtime, `"nan": NaN`)
-    assertInclude(runtime, `"positive": Infinity`)
-    assertInclude(runtime, `"negative": -Infinity`)
+    assertInclude(runtime, `"nan": globalThis.NaN`)
+    assertInclude(runtime, `"positive": globalThis.Infinity`)
+    assertInclude(runtime, `"negative": -globalThis.Infinity`)
     assertInclude(runtime, `"nullPrototype": {}`)
     assertInclude(runtime, `"crossRealm": { "value": 1 }`)
     assert.isFalse(runtime.includes("omitted"))
@@ -381,7 +381,7 @@ describe("SchemaRepresentation.toCodeDocument annotations", () => {
       },
       {
         runtime: `Schema.TupleWithRest(Schema.Tuple([Schema.optionalKey(Schema.String)]), [Schema.Number])`,
-        Type: `readonly [(string)?, ...Array<number>]`
+        Type: `readonly [(string)?, ...globalThis.Array<number>]`
       },
       {
         runtime: `Schema.Struct({ 1: Schema.Boolean })`,

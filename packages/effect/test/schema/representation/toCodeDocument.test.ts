@@ -867,10 +867,42 @@ describe("toCodeDocument", { concurrent: false }, () => {
         ...schemas
       )
       const source = render(document)
-      register("global name collisions", source, ["ReadonlyArray<number>"])
+      register("global name collisions", source, ["globalThis.ReadonlyArray<number>"])
       await withGeneratedModule<Generated>(source, ({ TestRoot0 }) => {
         assertSamples(TestRoot0, { accepts: [[1, 2]], rejects: [["a"]] })
         assert.deepStrictEqual(Schema.resolveAnnotations(TestRoot0)?.examples, [[NaN, Infinity]])
+      })
+    })
+
+    it("allows an import named Array", async () => {
+      const input = SchemaRepresentation.toRepresentations([
+        Schema.TupleWithRest(Schema.Tuple([Schema.String]), [Schema.Number]).ast
+      ])
+      const document = SchemaRepresentation.toCodeDocument({
+        ...input,
+        representations: [{
+          _tag: "Declaration",
+          typeParameters: [],
+          checks: [],
+          annotations: {
+            toCode: () => ({
+              runtime: "Array(Schema.String)",
+              Type: "string",
+              importDeclarations: [
+                "import { identity as Array } from \"effect/Function\""
+              ]
+            })
+          }
+        }, ...input.representations]
+      })
+      const source = render(document)
+      register("imports named after globals", source, [
+        "string",
+        "readonly [string, ...globalThis.Array<number>]"
+      ])
+      await withGeneratedModule<Generated>(source, ({ TestRoot0, TestRoot1 }) => {
+        assertSamples(TestRoot0, { accepts: ["a"], rejects: [1] })
+        assertSamples(TestRoot1, { accepts: [["a"], ["a", 1, 2]], rejects: [[1], ["a", "b"]] })
       })
     })
 

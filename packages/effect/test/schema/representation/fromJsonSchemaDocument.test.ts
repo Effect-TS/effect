@@ -58,14 +58,14 @@ describe("fromJsonSchemaDocument", () => {
   it("preserves Never in array items and union members", () => {
     assertFromJsonSchema(
       { schema: { type: "array", items: { not: {} } } },
-      { codes: makeCode(`Schema.Array(Schema.Never)`, `ReadonlyArray<never>`) }
+      { codes: makeCode(`Schema.Array(Schema.Never)`, `globalThis.ReadonlyArray<never>`) }
     )
     assertFromJsonSchema(
       { schema: { type: "array", prefixItems: [{ not: {} }] } },
       {
         codes: makeCode(
           `Schema.TupleWithRest(Schema.Tuple([Schema.optionalKey(Schema.Never)]), [Schema.Json.annotate({ "expected": "JSON value" })])`,
-          `readonly [(never)?, ...Array<Schema.Json>]`
+          `readonly [(never)?, ...globalThis.Array<Schema.Json>]`
         )
       }
     )
@@ -428,7 +428,7 @@ describe("fromJsonSchemaDocument", () => {
         assertFromJsonSchema({ schema: { pattern: "^a+$" } }, {
           codes: makeCode(
             `Schema.Union([Schema.Null, Schema.String.check(Schema.isPattern(new globalThis.RegExp("^a+$", "u")).annotate({ "expected": "a string matching the RegExp ^a+$" })), Schema.Finite, Schema.Boolean, Schema.Record(Schema.String, Schema.Json.annotate({ "expected": "JSON value" })), Schema.Array(Schema.Json.annotate({ "expected": "JSON value" }))])`,
-            `null | string | number | boolean | { readonly [x: string]: Schema.Json } | ReadonlyArray<Schema.Json>`
+            `null | string | number | boolean | { readonly [x: string]: Schema.Json } | globalThis.ReadonlyArray<Schema.Json>`
           )
         })
       })
@@ -598,7 +598,7 @@ describe("fromJsonSchemaDocument", () => {
         {
           codes: makeCode(
             `Schema.Array(Schema.Json.annotate({ "expected": "JSON value" }))`,
-            `ReadonlyArray<Schema.Json>`
+            `globalThis.ReadonlyArray<Schema.Json>`
           )
         }
       )
@@ -612,7 +612,7 @@ describe("fromJsonSchemaDocument", () => {
             items: { type: "string" }
           }
         },
-        { codes: makeCode(`Schema.Array(Schema.String)`, `ReadonlyArray<string>`) }
+        { codes: makeCode(`Schema.Array(Schema.String)`, `globalThis.ReadonlyArray<string>`) }
       )
     })
 
@@ -628,7 +628,7 @@ describe("fromJsonSchemaDocument", () => {
         {
           codes: makeCode(
             `Schema.TupleWithRest(Schema.Tuple([Schema.optionalKey(Schema.String), Schema.optionalKey(Schema.Finite)]), [Schema.Json.annotate({ "expected": "JSON value" })]).check(Schema.isMaxLength(1).annotate({ "expected": "a value with a length of at most 1" }))`,
-            `readonly [(string)?, (number)?, ...Array<Schema.Json>]`
+            `readonly [(string)?, (number)?, ...globalThis.Array<Schema.Json>]`
           )
         }
       )
@@ -646,7 +646,7 @@ describe("fromJsonSchemaDocument", () => {
         {
           codes: makeCode(
             `Schema.TupleWithRest(Schema.Tuple([Schema.optionalKey(Schema.String)]), [Schema.Json.annotate({ "expected": "JSON value" })]).check(Schema.isMaxLength(2).annotate({ "expected": "a value with a length of at most 2" }))`,
-            `readonly [(string)?, ...Array<Schema.Json>]`
+            `readonly [(string)?, ...globalThis.Array<Schema.Json>]`
           )
         }
       )
@@ -706,7 +706,7 @@ describe("fromJsonSchemaDocument", () => {
         {
           codes: makeCode(
             `Schema.TupleWithRest(Schema.Tuple([Schema.String]), [Schema.Finite])`,
-            `readonly [string, ...Array<number>]`
+            `readonly [string, ...globalThis.Array<number>]`
           )
         }
       )
@@ -719,7 +719,7 @@ describe("fromJsonSchemaDocument", () => {
           {
             codes: makeCode(
               `Schema.Array(Schema.Json.annotate({ "expected": "JSON value" })).check(Schema.isMinLength(1).annotate({ "expected": "a value with a length of at least 1" }))`,
-              `ReadonlyArray<Schema.Json>`
+              `globalThis.ReadonlyArray<Schema.Json>`
             )
           }
         )
@@ -731,7 +731,7 @@ describe("fromJsonSchemaDocument", () => {
           {
             codes: makeCode(
               `Schema.Array(Schema.Json.annotate({ "expected": "JSON value" })).check(Schema.isMaxLength(1).annotate({ "expected": "a value with a length of at most 1" }))`,
-              `ReadonlyArray<Schema.Json>`
+              `globalThis.ReadonlyArray<Schema.Json>`
             )
           }
         )
@@ -743,7 +743,7 @@ describe("fromJsonSchemaDocument", () => {
           {
             codes: makeCode(
               `Schema.Array(Schema.Json.annotate({ "expected": "JSON value" })).check(Schema.isUnique().annotate({ "expected": "an array with unique items" }))`,
-              `ReadonlyArray<Schema.Json>`
+              `globalThis.ReadonlyArray<Schema.Json>`
             )
           }
         )
@@ -753,7 +753,7 @@ describe("fromJsonSchemaDocument", () => {
         assertFromJsonSchema({ schema: { type: "array", uniqueItems: false } }, {
           codes: makeCode(
             `Schema.Array(Schema.Json.annotate({ "expected": "JSON value" }))`,
-            `ReadonlyArray<Schema.Json>`
+            `globalThis.ReadonlyArray<Schema.Json>`
           )
         })
       })
@@ -2113,7 +2113,7 @@ describe("fromJsonSchemaDocument", () => {
             recursives: {
               A: makeCode(
                 `Schema.Struct({ "name": Schema.String, "children": Schema.Array(Schema.suspend((): Schema.Codec<A> => A)) }).annotate({ "identifier": "A" })`,
-                `{ readonly "name": string, readonly "children": ReadonlyArray<A> }`
+                `{ readonly "name": string, readonly "children": globalThis.ReadonlyArray<A> }`
               )
             }
           }
@@ -2614,7 +2614,7 @@ describe("fromJsonSchemaDocument", () => {
         {
           codes: makeCode(
             `Schema.Array(Schema.Json.annotate({ "expected": "JSON value" })).annotate({ "description": "a" })`,
-            `ReadonlyArray<Schema.Json>`
+            `globalThis.ReadonlyArray<Schema.Json>`
           )
         }
       )
@@ -3276,7 +3276,7 @@ describe("fromJsonSchemaDocument", () => {
           {
             codes: makeCode(
               `Schema.Array(Schema.Json.annotate({ "expected": "JSON value" })).check(Schema.isUnique().annotate({ "expected": "an array with unique items" }))`,
-              `ReadonlyArray<Schema.Json>`
+              `globalThis.ReadonlyArray<Schema.Json>`
             )
           }
         )
@@ -3299,7 +3299,7 @@ describe("fromJsonSchemaDocument", () => {
           {
             codes: makeCode(
               `Schema.TupleWithRest(Schema.Tuple([Schema.String, Schema.Literal("tail")]), [Schema.String])`,
-              `readonly [string, "tail", ...Array<string>]`
+              `readonly [string, "tail", ...globalThis.Array<string>]`
             )
           }
         )

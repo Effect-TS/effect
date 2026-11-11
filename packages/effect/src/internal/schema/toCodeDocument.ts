@@ -32,6 +32,11 @@ function formatObjectLiteralKey(key: PropertyKey, formatted = formatPropertyKey(
 }
 
 function renderEmittableAnnotation(input: unknown): string | undefined {
+  if (typeof input === "number") {
+    if (Number.isNaN(input)) return "globalThis.NaN"
+    if (input === Infinity) return "globalThis.Infinity"
+    if (input === -Infinity) return "-globalThis.Infinity"
+  }
   if (
     input === null ||
     typeof input === "string" ||
@@ -265,7 +270,7 @@ function topologicalSort(
 export function toCodeDocument(
   document: SchemaRepresentation.MultiDocument
 ): SchemaRepresentation.CodeDocument {
-  const module = new Module(["Schema", "globalThis", "Array", "ReadonlyArray", "NaN", "Infinity"])
+  const module = new Module(["Schema", "globalThis"])
   const artifacts: Array<{ readonly _tag: "Symbol" | "Enum"; readonly binding: Binding }> = []
   const sorted = topologicalSort(document.references)
   const sanitizedReferences = new Map<string, Binding>()
@@ -575,11 +580,14 @@ export function toCodeDocument(
         if (Arr.isArrayNonEmpty(rest)) {
           const item = rest[0]
           if (elements.length === 0 && rest.length === 1) {
-            result = makeFragments(code`Schema.Array(${item.runtime})`, code`ReadonlyArray<${item.Type}>`)
+            result = makeFragments(
+              code`Schema.Array(${item.runtime})`,
+              code`globalThis.ReadonlyArray<${item.Type}>`
+            )
           } else {
             const types = [
               ...elements.map((element) => element.Type),
-              code`...Array<${item.Type}>`,
+              code`...globalThis.Array<${item.Type}>`,
               ...rest.slice(1).map((item) => item.Type)
             ]
             result = makeFragments(

@@ -248,7 +248,7 @@ describe("SchemaRepresentation.fromJsonSchemaMultiDocument", () => {
       codes: [
         makeCode(`A`, `A`),
         makeCode(`Schema.suspend((): Schema.Codec<A> => A).annotate({ "description": "second" })`, `A`),
-        makeCode(`Schema.Array(A)`, `ReadonlyArray<A>`),
+        makeCode(`Schema.Array(A)`, `globalThis.ReadonlyArray<A>`),
         makeCode(`Schema.suspend((): Schema.Codec<A> => A).annotate({ "description": "fourth" })`, `A`)
       ],
       references: {

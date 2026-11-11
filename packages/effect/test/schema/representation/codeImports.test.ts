@@ -18,6 +18,7 @@ describe("code generation imports", () => {
         ["Named", "as", "as", true],
         ["Named", "as", "Alias", true]
       ]],
+      [`import { type as as } from "module"`, [["Named", "type", "as", false]]],
       [`import type from "module"`, [["Default", "default", "type", false]]],
       [`import { value as 𝒜 } from "module"`, [["Named", "value", "𝒜", false]]],
       [`import /* comment */ { "export-name" as Alias, value as \\u0058 } from "module"`, [
