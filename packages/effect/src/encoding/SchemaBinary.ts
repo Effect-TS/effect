@@ -27,6 +27,7 @@ import * as HashMap from "../HashMap.ts"
 import * as HashSet from "../HashSet.ts"
 import { assignProperty } from "../internal/record.ts"
 import * as InternalParserProtocol from "../internal/schema/parser.ts"
+import { getStackTraceLimit, setStackTraceLimit } from "../internal/stackTraceLimit.ts"
 import * as Utf8 from "../internal/utf8.ts"
 import * as Option from "../Option.ts"
 import * as Predicate from "../Predicate.ts"
@@ -1244,7 +1245,13 @@ function pushU64(out: Array<number>, n: bigint) {
 class IssueError extends Error {
   readonly issue: SchemaIssue.Issue
   constructor(issue: SchemaIssue.Issue) {
-    super("SchemaBinary failure")
+    const stackTraceLimit = getStackTraceLimit()
+    setStackTraceLimit(0)
+    try {
+      super("SchemaBinary failure")
+    } finally {
+      setStackTraceLimit(stackTraceLimit)
+    }
     this.issue = issue
   }
 }
