@@ -763,8 +763,11 @@ describe("DateTime", () => {
 
     it.each([
       ["2024-01-01T00:00:00z", "2024-01-01T00:00:00.000Z"],
-      ["Tue, 27 Jan 2026 17:14:06 gmt", "2026-01-27T17:14:06.000Z"]
-    ])("accepts lowercase UTC designators: %s", (input, expected) => {
+      ["Tue, 27 Jan 2026 17:14:06 gmt", "2026-01-27T17:14:06.000Z"],
+      ["2024-06-01 10:00:00 UTC", "2024-06-01T10:00:00.000Z"],
+      ["Sat, 01 Jun 2024 10:00:00 UT", "2024-06-01T10:00:00.000Z"],
+      ["June 1, 2024 10:00 est", "2024-06-01T15:00:00.000Z"]
+    ])("accepts trailing zone designators in any case: %s", (input, expected) => {
       strictEqual(DateTime.makeUnsafe(input).toJSON(), expected)
       assertSomeIso(DateTime.make(input), expected)
     })
