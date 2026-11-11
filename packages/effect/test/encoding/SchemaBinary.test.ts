@@ -1996,11 +1996,12 @@ describe("SchemaBinary", () => {
       )
     })
 
-    it("uses SchemaIssue for binary failures", () => {
-      const codec = SchemaBinary.toCodec(Schema.Boolean)
-      const error = schemaError(() => Schema.decodeUnknownSync(codec)(Uint8Array.of(2, 0x20, 2)))
-      assert.isTrue(SchemaIssue.isIssue(error.issue))
-      assert.match(error.message, /bool/)
+    it("reports the issue and path for binary failures", () => {
+      const codec = SchemaBinary.toCodec(Schema.Tuple([Schema.Boolean]))
+      const bytes = Schema.encodeSync(codec)([true]).slice()
+      bytes[bytes.length - 1] = 2
+      const error = schemaError(() => Schema.decodeUnknownSync(codec)(bytes))
+      assert.strictEqual(error.message, "Expected bool\n  at [0]")
     })
 
     it.effect("preserves the SchemaParser Issue and Schema SchemaError surfaces", () =>
