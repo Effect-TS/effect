@@ -13,7 +13,7 @@ interface Token {
   readonly value: string
 }
 
-/** Parse import declarations only. Callback expressions remain opaque to this adapter. */
+/** Parse import declarations into the writer's import descriptions. */
 export function parse(source: string): Imports {
   const tokens: Array<Token> = []
   let offset = 0
@@ -206,45 +206,4 @@ export function parse(source: string): Imports {
     take(";")
   }
   return imports
-}
-
-export function render(imports: ReadonlyArray<Imports>): ReadonlyArray<string> {
-  const bindings = new Map<string, Import>()
-  const sideEffects = new Set<string>()
-  const ordered: Array<string | Import> = []
-  for (const imported of imports.flat()) {
-    if (imported.kind === "SideEffect") {
-      const source = `import ${JSON.stringify(imported.module)}${imported.attributes}`
-      if (!sideEffects.has(source)) {
-        sideEffects.add(source)
-        ordered.push(source)
-      }
-    } else {
-      const previous = bindings.get(imported.local)
-      if (previous === undefined || (previous.typeOnly && !imported.typeOnly)) {
-        bindings.set(imported.local, imported)
-        ordered.push(imported)
-      }
-    }
-  }
-  return ordered.flatMap((binding) => {
-    if (typeof binding === "string") return [binding]
-    if (bindings.get(binding.local) !== binding) return []
-    const clause = binding.kind === "Namespace" ?
-      `* as ${binding.local}`
-      : binding.kind === "Default" ?
-      binding.local
-      : `{ ${
-        binding.imported === binding.local ?
-          binding.imported :
-          `${
-            /^[$_\p{ID_Start}][$\u200c\u200d\p{ID_Continue}]*$/u.test(binding.imported)
-              ? binding.imported :
-              JSON.stringify(binding.imported)
-          } as ${binding.local}`
-      } }`
-    return [
-      `import ${binding.typeOnly ? "type " : ""}${clause} from ${JSON.stringify(binding.module)}${binding.attributes}`
-    ]
-  })
 }

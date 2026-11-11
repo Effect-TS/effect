@@ -316,7 +316,7 @@ describe("SchemaRepresentation.toCodeDocument annotations", () => {
     )
   })
 
-  it("reports conflicting imports without retrying callbacks indefinitely", () => {
+  it("rejects imports that reuse a callback argument without retrying", () => {
     let calls = 0
     expectError(
       () =>
@@ -337,9 +337,27 @@ describe("SchemaRepresentation.toCodeDocument annotations", () => {
             }
           }]
         }),
-      `Import introduced a new naming conflict after finalization: A1\n  at ["representations"][0]["annotations"]["toCode"]["importDeclarations"][0]`
+      `Import shadows a callback argument\n  at ["representations"][0]["annotations"]["toCode"]["importDeclarations"][0]`
     )
-    assert.strictEqual(calls, 2)
+    assert.strictEqual(calls, 1)
+  })
+
+  it("reports unsupported callback syntax with its document path", () => {
+    assert.throws(
+      () =>
+        SchemaRepresentation.toCodeDocument({
+          references: {},
+          representations: [{
+            _tag: "String",
+            checks: [{
+              _tag: "Filter",
+              aborted: false,
+              annotations: { toCode: () => ({ runtime: "Schema.makeFilter((value) => value)" }) }
+            }]
+          }]
+        }),
+      /Unsupported runtime syntax.*\n  at \["representations"\]\[0\]\["checks"\]\[0\]\["annotations"\]\["toCode"\]\["runtime"\]/
+    )
   })
 
   it("generates content media types, optional pre-rest elements and numeric properties", () => {

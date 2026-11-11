@@ -2,10 +2,11 @@ import * as Arr from "../../Array.ts"
 import { format, formatPropertyKey } from "../../Formatter.ts"
 import type * as Schema from "../../Schema.ts"
 import type * as SchemaRepresentation from "../../SchemaRepresentation.ts"
-import { type Binding, code, deferred, type Fragment, join, Module, type Render } from "../codegen.ts"
+import { type Binding, code, deferred, type Fragment, type Import, join, literal, Module } from "../codegen.ts"
 import { errorWithPath } from "../errors.ts"
 import * as InternalRecord from "../record.ts"
 import * as InternalAnnotations from "./annotations.ts"
+import * as CodeExpression from "./codeExpression.ts"
 import * as CodeImports from "./codeImports.ts"
 
 type Path = ReadonlyArray<string | number>
@@ -32,18 +33,13 @@ function formatObjectLiteralKey(key: PropertyKey, formatted = formatPropertyKey(
 }
 
 function renderEmittableAnnotation(input: unknown): string | undefined {
-  if (typeof input === "number") {
-    if (Number.isNaN(input)) return "globalThis.NaN"
-    if (input === Infinity) return "globalThis.Infinity"
-    if (input === -Infinity) return "-globalThis.Infinity"
-  }
   if (
     input === null ||
     typeof input === "string" ||
     typeof input === "boolean" ||
     typeof input === "number" ||
     typeof input === "bigint"
-  ) return format(input)
+  ) return literal(input)
   if (typeof input === "symbol") {
     const key = globalThis.Symbol.keyFor(input)
     return key === undefined ? undefined : `globalThis.Symbol.for(${format(key)})`
@@ -115,7 +111,7 @@ function isSimpleLiveLiteral(
     representation.annotations === undefined
 }
 
-interface TopologicalSort {
+interface ReferenceGroups {
   readonly dependencies: ReadonlyMap<string, ReadonlySet<string>>
   readonly nonRecursives: ReadonlyArray<{
     readonly $ref: string
@@ -124,9 +120,9 @@ interface TopologicalSort {
   readonly recursives: Readonly<Record<string, SchemaRepresentation.Representation>>
 }
 
-function topologicalSort(
+function classifyReferences(
   references: SchemaRepresentation.References
-): TopologicalSort {
+): ReferenceGroups {
   const identifiers = Object.keys(references)
   const identifierSet = new Set(identifiers)
 
@@ -240,23 +236,12 @@ function topologicalSort(
     for (const dependency of eagerDependencies.get(identifier)!) firstGroup.add(dependency)
   }
 
-  // Explicit suspensions already break construction cycles in a valid input.
-  const ordered: Array<string> = []
-  const visited = new Set<string>()
-  function order(identifier: string): void {
-    if (visited.has(identifier)) return
-    visited.add(identifier)
-    for (const dependency of eagerDependencies.get(identifier)!) order(dependency)
-    ordered.push(identifier)
-  }
-  for (const identifier of identifiers) order(identifier)
-
   const nonRecursives: Array<{
     readonly $ref: string
     readonly representation: SchemaRepresentation.Representation
   }> = []
   const recursives: Record<string, SchemaRepresentation.Representation> = {}
-  for (const $ref of ordered) {
+  for (const $ref of identifiers) {
     if (firstGroup.has($ref)) {
       nonRecursives.push({ $ref, representation: references[$ref] })
     } else {
@@ -272,7 +257,7 @@ export function toCodeDocument(
 ): SchemaRepresentation.CodeDocument {
   const module = new Module(["globalThis"])
   // Consumers provide this namespace; track it without emitting a duplicate import.
-  const schemaImport = module.addImport({
+  const schemaImport = module.provideImport({
     module: "effect/Schema",
     kind: "Namespace",
     imported: "*",
@@ -281,11 +266,11 @@ export function toCodeDocument(
     attributes: ""
   })
   const artifacts: Array<{ readonly _tag: "Symbol" | "Enum"; readonly binding: Binding }> = []
-  const sorted = topologicalSort(document.references)
+  const sorted = classifyReferences(document.references)
   const sanitizedReferences = new Map<string, Binding>()
   const symbols = new Map<symbol, Binding>()
   const parsedImports = new Map<string, CodeImports.Imports>()
-  const callbackImports = new Map<object, ReadonlyArray<CodeImports.Imports>>()
+  let callbackIndex = 0
 
   for (const { $ref } of sorted.nonRecursives) ensureUniqueIdentifier($ref)
   for (const $ref of Object.keys(sorted.recursives)) ensureUniqueIdentifier($ref)
@@ -310,10 +295,11 @@ export function toCodeDocument(
   const definitions = new Map(
     output.declarations.map(({ binding, fragments }) => [binding, makeCode(fragments[0], fragments[1])] as const)
   )
-  const nonRecursives = sorted.nonRecursives.map(({ $ref }) => {
-    const binding = ensureUniqueIdentifier($ref)
-    return { $ref: output.names.get(binding)!, code: definitions.get(binding)! }
-  })
+  const firstGroup = new Set(sorted.nonRecursives.map(({ $ref }) => ensureUniqueIdentifier($ref)))
+  const nonRecursives = output.declarations.filter(({ binding }) => firstGroup.has(binding)).map(({ binding }) => ({
+    $ref: output.names.get(binding)!,
+    code: definitions.get(binding)!
+  }))
   const recursives: Record<string, SchemaRepresentation.Code> = {}
   for (const $ref of Object.keys(sorted.recursives)) {
     const binding = ensureUniqueIdentifier($ref)
@@ -324,7 +310,7 @@ export function toCodeDocument(
     codes: roots.map((_, index) => makeCode(output.roots[index * 2], output.roots[index * 2 + 1])),
     references: { nonRecursives, recursives },
     artifacts: [
-      ...CodeImports.render(Array.from(callbackImports.values()).flat()).map((importDeclaration) => ({
+      ...output.imports.map((importDeclaration) => ({
         _tag: "Import" as const,
         importDeclaration
       })),
@@ -355,51 +341,64 @@ export function toCodeDocument(
     ) => SchemaRepresentation.Generation.DeclarationOutput | SchemaRepresentation.Generation.CheckOutput,
     path: Path
   ): Code {
-    let previous: ReadonlyArray<SchemaRepresentation.Code> | undefined
-    let output: SchemaRepresentation.Generation.DeclarationOutput | SchemaRepresentation.Generation.CheckOutput
-    let lastRender: Render | undefined
-    const identity = {}
-    const evaluate = (render: Render) => {
-      if (lastRender === render) return output
-      lastRender = render
-      const parameters = inputs.map((input) => makeCode(render(input.runtime), render(input.Type)))
-      // Keep callback results when their inputs are unchanged, including across finalization.
-      if (
-        previous === undefined ||
-        parameters.some((input, index) =>
-          input.runtime !== previous![index].runtime || input.Type !== previous![index].Type
-        )
-      ) {
-        output = callback(parameters)
-        previous = parameters
-        const imports = (output.importDeclarations ?? []).map((source, index) => {
-          try {
-            let parsed = parsedImports.get(source)
-            if (parsed === undefined) {
-              parsed = CodeImports.parse(source)
-              parsedImports.set(source, parsed)
-            }
-            return parsed.filter((binding) =>
-              binding.kind === "SideEffect" || module.addImport(binding) !== schemaImport
-            )
-          } catch (error) {
-            throw errorWithPath(
-              error instanceof Error ? error.message : String(error),
-              [...path, "importDeclarations", index]
-            )
+    const references = new Map<string, Fragment>([["Schema", schemaImport]])
+    const id = callbackIndex++
+    // Supplied expressions keep their identities even when the callback imports the same names.
+    const parameters = inputs.map((input, index) => {
+      const runtime = `__effect_codegen_${id}_${index}_runtime`
+      const Type = `__effect_codegen_${id}_${index}_Type`
+      references.set(runtime, input.runtime)
+      references.set(Type, input.Type)
+      return makeCode(runtime, Type)
+    })
+    const output = callback(parameters)
+    const imports = new Map<string, Import>()
+    for (const [index, source] of (output.importDeclarations ?? []).entries()) {
+      try {
+        let parsed = parsedImports.get(source)
+        if (parsed === undefined) {
+          parsed = CodeImports.parse(source)
+          parsedImports.set(source, parsed)
+        }
+        for (const imported of parsed) {
+          if (imported.kind === "SideEffect") {
+            module.addSideEffect(imported.module, imported.attributes)
+            continue
           }
-        })
-        callbackImports.set(identity, imports)
+          if (references.has(imported.local) && imported.local !== "Schema" && !imports.has(imported.local)) {
+            throw new Error("Import shadows a callback argument")
+          }
+          const previous = imports.get(imported.local)
+          if (
+            previous !== undefined && (
+              previous.module !== imported.module || previous.kind !== imported.kind ||
+              previous.imported !== imported.imported || previous.attributes !== imported.attributes
+            )
+          ) {
+            throw new Error(`Conflicting imports for ${imported.local}`)
+          }
+          const input = previous === undefined
+            ? imported
+            : { ...imported, typeOnly: previous.typeOnly && imported.typeOnly }
+          imports.set(imported.local, input)
+          references.set(imported.local, module.addImport(input))
+        }
+      } catch (error) {
+        throw errorWithPath(error instanceof Error ? error.message : String(error), [
+          ...path,
+          "importDeclarations",
+          index
+        ])
       }
-      return output
     }
-    return makeFragments(
-      deferred((render) => evaluate(render).runtime),
-      deferred((render) => {
-        const output = evaluate(render)
-        return "Type" in output ? output.Type : "never"
-      })
-    )
+    const parse = (source: string, kind: "runtime" | "Type") => {
+      try {
+        return CodeExpression.parse(source, references, kind)
+      } catch (error) {
+        throw errorWithPath(error instanceof Error ? error.message : String(error), [...path, kind])
+      }
+    }
+    return makeFragments(parse(output.runtime, "runtime"), "Type" in output ? parse(output.Type, "Type") : "never")
   }
 
   function addSymbol(symbol: symbol): Binding {

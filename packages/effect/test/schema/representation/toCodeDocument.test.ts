@@ -744,10 +744,12 @@ describe("toCodeDocument", { concurrent: false }, () => {
       })
     })
 
-    it("propagates renamed references through nested declaration callbacks", async () => {
+    it("propagates renamed imports through nested declaration callbacks", async () => {
       const Named = Schema.String.annotate({ identifier: "Option" })
       const source = render(generate(Schema.Option(Schema.Option(Named))))
-      register("nested declaration import collision", source, ["Option.Option<Option.Option<string>>"])
+      register("nested declaration import collision", source, [
+        "import(\"effect/Option\").Option<import(\"effect/Option\").Option<string>>"
+      ])
       await withGeneratedModule<Generated>(source, ({ TestRoot0 }) => {
         assertSamples(TestRoot0, {
           accepts: [Option.some(Option.some("a"))],
@@ -780,7 +782,7 @@ describe("toCodeDocument", { concurrent: false }, () => {
       })
     })
 
-    it("resolves named and type-only imports and only repeats callbacks whose inputs changed", async () => {
+    it("resolves named and type-only imports without repeating callbacks", async () => {
       const calls: Array<SchemaRepresentation.Code> = []
       let unaffectedCalls = 0
       const document = SchemaRepresentation.toCodeDocument({
@@ -821,11 +823,9 @@ describe("toCodeDocument", { concurrent: false }, () => {
           }
         }]
       })
-      assert.lengthOf(calls, 2)
-      assert.deepStrictEqual(calls[0], { runtime: "Box", Type: "Box" })
+      assert.lengthOf(calls, 1)
       const name = document.references.nonRecursives[0].$ref
-      assert.notStrictEqual(name, "Box")
-      assert.deepStrictEqual(calls[1], { runtime: name, Type: name })
+      assert.strictEqual(name, "Box")
       assert.strictEqual(unaffectedCalls, 1)
       const source = render(document)
       register("named import collision", source, ["import(\"effect/Option\").Option<string>", "string"])
@@ -892,6 +892,46 @@ describe("toCodeDocument", { concurrent: false }, () => {
       register("check import collision", source)
       await withGeneratedModule<Generated>(source, ({ TestRoot0 }) => {
         assertSamples(TestRoot0, { accepts: ["a"], rejects: [1] })
+      })
+    })
+
+    it("resolves callback-local imports while preserving declaration names and literal text", async () => {
+      const document = SchemaRepresentation.toCodeDocument({
+        references: { Library: { _tag: "String", checks: [] } },
+        representations: [{
+          _tag: "Declaration",
+          typeParameters: [],
+          checks: [],
+          annotations: {
+            toCode: () => ({
+              runtime: "Schema.Option(Schema.String).annotate({ description: \"Library.Option\" })",
+              Type: "Library.Option<string>",
+              importDeclarations: [
+                "import type * as Library from \"effect/Option\"",
+                "import * as Library from \"effect/Option\""
+              ]
+            })
+          }
+        }, {
+          _tag: "Declaration",
+          typeParameters: [],
+          checks: [],
+          annotations: {
+            toCode: () => ({
+              runtime: "Library(Schema.Number)",
+              Type: "number",
+              importDeclarations: ["import { identity as Library } from \"effect/Function\""]
+            })
+          }
+        }]
+      })
+      assert.strictEqual(document.references.nonRecursives[0].$ref, "Library")
+      const source = render(document)
+      register("callback-local imports", source, ["import(\"effect/Option\").Option<string>", "number"])
+      await withGeneratedModule<Generated>(source, ({ TestRoot0, TestRoot1 }) => {
+        assertSamples(TestRoot0, { accepts: [Option.some("a")], rejects: [Option.some(1)] })
+        assertSamples(TestRoot1, { accepts: [1], rejects: ["a"] })
+        assert.strictEqual(Schema.resolveAnnotations(TestRoot0)?.description, "Library.Option")
       })
     })
 
@@ -1152,7 +1192,7 @@ describe("toCodeDocument", { concurrent: false }, () => {
           representation: { id: "test/check", payload: null, schemas: [{ _tag: "Reference", $ref: "Child" }] },
           annotations: {
             toCode: ({ schemas }: SchemaRepresentation.Generation.CheckInput) => {
-              assert.deepStrictEqual(schemas, [{ runtime: "Child", Type: "Child" }])
+              assert.lengthOf(schemas, 1)
               return { runtime: "Schema.makeFilter(Schema.is(" + schemas[0].runtime + "))" }
             }
           }

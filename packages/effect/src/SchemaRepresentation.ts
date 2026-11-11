@@ -134,6 +134,11 @@ export declare namespace Generation {
   /**
    * Input for declaration code generation.
    *
+   * **Details**
+   *
+   * Interpolate the supplied code strings unchanged into the result. They may
+   * contain temporary references that are resolved after the callback returns.
+   *
    * @category models
    * @since 4.0.0
    */
@@ -163,6 +168,11 @@ export declare namespace Generation {
 
   /**
    * Input for check code generation.
+   *
+   * **Details**
+   *
+   * Interpolate the supplied code strings unchanged into the result. They may
+   * contain temporary references that are resolved after the callback returns.
    *
    * @category models
    * @since 4.0.0
@@ -2828,7 +2838,14 @@ export function toJsonSchemaMultiDocument(
  * The input must represent valid schema construction, with suspension explicit wherever needed.
  * The compiler does not introduce suspensions for bare recursive references.
  *
- * Opaque declarations and leaf checks require `toCode` callbacks. Callback results are used directly, and exceptions raised by a callback pass through unchanged.
+ * Opaque declarations and leaf checks require `toCode` callbacks. Each callback is
+ * called once. Imported names in its output are resolved without changing named
+ * schema definitions. Exceptions raised by a callback pass through unchanged.
+ *
+ * Callback output supports imports, qualified names, generic and structural types,
+ * API calls, literal/object/array arguments, and zero-argument arrows. Unsupported
+ * syntax, including local declarations, parameterized functions, template expressions,
+ * and conditional or mapped types, throws with the callback's document path.
  *
  * @stability stable
  * @category transforming
