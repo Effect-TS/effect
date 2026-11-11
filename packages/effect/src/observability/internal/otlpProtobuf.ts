@@ -8,7 +8,7 @@
  */
 
 import * as ProtobufWriter from "../../protobuf/ProtobufWriter.ts"
-import type { AnyValue, KeyValue, Resource } from "../OtlpResource.ts"
+import type { AnyValue, ArrayValue, KeyValue, KeyValueList, Resource } from "../OtlpResource.ts"
 import type { ResourceSpan, ScopeSpan, TraceData } from "../OtlpTracer.ts"
 
 type Writer = ProtobufWriter.ProtobufWriter
@@ -76,7 +76,7 @@ const writeAnyValue = (w: Writer, value: AnyValue): Writer => {
  *   repeated AnyValue values = 1;
  * }
  */
-const writeArrayValue = (w: Writer, value: { readonly values: ReadonlyArray<AnyValue> }): Writer => {
+const writeArrayValue = (w: Writer, value: ArrayValue): Writer => {
   for (const item of value.values) writeAnyValue(w.tag(1, LEN).fork(), item).join()
   return w
 }
@@ -88,7 +88,7 @@ const writeArrayValue = (w: Writer, value: { readonly values: ReadonlyArray<AnyV
  *   repeated KeyValue values = 1;
  * }
  */
-const writeKeyValueList = (w: Writer, value: { readonly values: ReadonlyArray<KeyValue> }): Writer => {
+const writeKeyValueList = (w: Writer, value: KeyValueList): Writer => {
   for (const item of value.values) writeKeyValue(w.tag(1, LEN).fork(), item).join()
   return w
 }
@@ -107,6 +107,13 @@ const writeKeyValue = (w: Writer, kv: KeyValue): Writer => {
   return w
 }
 
+interface InstrumentationScope {
+  readonly name: string
+  readonly version?: string
+  readonly attributes?: ReadonlyArray<KeyValue>
+  readonly droppedAttributesCount?: number
+}
+
 /**
  * Encodes an InstrumentationScope message.
  *
@@ -117,12 +124,7 @@ const writeKeyValue = (w: Writer, kv: KeyValue): Writer => {
  *   uint32 dropped_attributes_count = 4;
  * }
  */
-const writeInstrumentationScope = (w: Writer, scope: {
-  readonly name: string
-  readonly version?: string
-  readonly attributes?: ReadonlyArray<KeyValue>
-  readonly droppedAttributesCount?: number
-}): Writer => {
+const writeInstrumentationScope = (w: Writer, scope: InstrumentationScope): Writer => {
   w.tag(1, LEN).string(scope.name)
   if (scope.version) w.tag(2, LEN).string(scope.version)
   if (scope.attributes) { for (const item of scope.attributes) writeKeyValue(w.tag(3, LEN).fork(), item).join() }
@@ -146,6 +148,11 @@ const writeResource = (w: Writer, resource: Resource): Writer => {
   return w
 }
 
+interface Status {
+  readonly code: number
+  readonly message?: string
+}
+
 /**
  * Encodes a Status message.
  *
@@ -154,13 +161,17 @@ const writeResource = (w: Writer, resource: Resource): Writer => {
  *   StatusCode code = 3;
  * }
  */
-const writeStatus = (w: Writer, status: {
-  readonly code: number
-  readonly message?: string
-}): Writer => {
+const writeStatus = (w: Writer, status: Status): Writer => {
   if (status.message) w.tag(2, LEN).string(status.message)
   w.tag(3, VARINT).int32(status.code)
   return w
+}
+
+interface Event {
+  readonly timeUnixNano: string
+  readonly name: string
+  readonly attributes: ReadonlyArray<KeyValue>
+  readonly droppedAttributesCount: number
 }
 
 /**
@@ -173,17 +184,21 @@ const writeStatus = (w: Writer, status: {
  *   uint32 dropped_attributes_count = 4;
  * }
  */
-const writeEvent = (w: Writer, event: {
-  readonly timeUnixNano: string
-  readonly name: string
-  readonly attributes: ReadonlyArray<KeyValue>
-  readonly droppedAttributesCount: number
-}): Writer => {
+const writeEvent = (w: Writer, event: Event): Writer => {
   w.tag(1, I64).fixed64(event.timeUnixNano)
   w.tag(2, LEN).string(event.name)
   for (const item of event.attributes) writeKeyValue(w.tag(3, LEN).fork(), item).join()
   if (event.droppedAttributesCount > 0) w.tag(4, VARINT).uint32(event.droppedAttributesCount)
   return w
+}
+
+interface Link {
+  readonly traceId: string
+  readonly spanId: string
+  readonly traceState?: string
+  readonly attributes: ReadonlyArray<KeyValue>
+  readonly droppedAttributesCount: number
+  readonly flags?: number
 }
 
 /**
@@ -198,14 +213,7 @@ const writeEvent = (w: Writer, event: {
  *   fixed32 flags = 6;
  * }
  */
-const writeLink = (w: Writer, link: {
-  readonly traceId: string
-  readonly spanId: string
-  readonly traceState?: string
-  readonly attributes: ReadonlyArray<KeyValue>
-  readonly droppedAttributesCount: number
-  readonly flags?: number
-}): Writer => {
+const writeLink = (w: Writer, link: Link): Writer => {
   w.tag(1, LEN).bytes(hexBytes(link.traceId))
   w.tag(2, LEN).bytes(hexBytes(link.spanId))
   if (link.traceState) w.tag(3, LEN).string(link.traceState)
@@ -213,6 +221,25 @@ const writeLink = (w: Writer, link: {
   if (link.droppedAttributesCount > 0) w.tag(5, VARINT).uint32(link.droppedAttributesCount)
   if (link.flags !== undefined) w.tag(6, I32).fixed32(link.flags)
   return w
+}
+
+interface Span {
+  readonly traceId: string
+  readonly spanId: string
+  readonly traceState?: string
+  readonly parentSpanId?: string | undefined
+  readonly name: string
+  readonly kind: number
+  readonly startTimeUnixNano: string
+  readonly endTimeUnixNano: string
+  readonly attributes: ReadonlyArray<KeyValue>
+  readonly droppedAttributesCount: number
+  readonly events: ReadonlyArray<Event>
+  readonly droppedEventsCount: number
+  readonly links: ReadonlyArray<Link>
+  readonly droppedLinksCount: number
+  readonly status: Status
+  readonly flags?: number
 }
 
 /**
@@ -237,24 +264,7 @@ const writeLink = (w: Writer, link: {
  *   fixed32 flags = 16;
  * }
  */
-const writeSpan = (w: Writer, span: {
-  readonly traceId: string
-  readonly spanId: string
-  readonly traceState?: string
-  readonly parentSpanId?: string | undefined
-  readonly name: string
-  readonly kind: number
-  readonly startTimeUnixNano: string
-  readonly endTimeUnixNano: string
-  readonly attributes: ReadonlyArray<KeyValue>
-  readonly droppedAttributesCount: number
-  readonly events: ReadonlyArray<Parameters<typeof writeEvent>[1]>
-  readonly droppedEventsCount: number
-  readonly links: ReadonlyArray<Parameters<typeof writeLink>[1]>
-  readonly droppedLinksCount: number
-  readonly status: Parameters<typeof writeStatus>[1]
-  readonly flags?: number
-}): Writer => {
+const writeSpan = (w: Writer, span: Span): Writer => {
   w.tag(1, LEN).bytes(hexBytes(span.traceId))
   w.tag(2, LEN).bytes(hexBytes(span.spanId))
   if (span.traceState) w.tag(3, LEN).string(span.traceState)
@@ -321,6 +331,15 @@ export const encodeTracesData = (tracesData: TraceData): Uint8Array => {
   return w.finish()
 }
 
+interface NumberDataPoint {
+  readonly attributes: ReadonlyArray<KeyValue>
+  readonly startTimeUnixNano?: string | undefined
+  readonly timeUnixNano: string
+  readonly asDouble?: number | undefined
+  readonly asInt?: string | number | bigint | undefined
+  readonly flags?: number | undefined
+}
+
 /**
  * Encodes a NumberDataPoint message.
  *
@@ -336,14 +355,7 @@ export const encodeTracesData = (tracesData: TraceData): Uint8Array => {
  *   uint32 flags = 8;
  * }
  */
-const writeNumberDataPoint = (w: Writer, point: {
-  readonly attributes: ReadonlyArray<KeyValue>
-  readonly startTimeUnixNano?: string | undefined
-  readonly timeUnixNano: string
-  readonly asDouble?: number | undefined
-  readonly asInt?: string | number | bigint | undefined
-  readonly flags?: number | undefined
-}): Writer => {
+const writeNumberDataPoint = (w: Writer, point: NumberDataPoint): Writer => {
   // An absent start time is omitted.
   if (point.startTimeUnixNano !== undefined) w.tag(2, I64).fixed64(point.startTimeUnixNano)
   w.tag(3, I64).fixed64(point.timeUnixNano)
@@ -352,6 +364,19 @@ const writeNumberDataPoint = (w: Writer, point: {
   for (const item of point.attributes) writeKeyValue(w.tag(7, LEN).fork(), item).join()
   if (point.flags !== undefined) w.tag(8, VARINT).uint32(point.flags)
   return w
+}
+
+interface HistogramDataPoint {
+  readonly attributes: ReadonlyArray<KeyValue>
+  readonly startTimeUnixNano?: string | undefined
+  readonly timeUnixNano: string
+  readonly count: string | number | bigint
+  readonly sum?: number | undefined
+  readonly bucketCounts: ReadonlyArray<string | number | bigint>
+  readonly explicitBounds: ReadonlyArray<number>
+  readonly min?: number | undefined
+  readonly max?: number | undefined
+  readonly flags?: number | undefined
 }
 
 /**
@@ -370,18 +395,7 @@ const writeNumberDataPoint = (w: Writer, point: {
  *   uint32 flags = 10;
  * }
  */
-const writeHistogramDataPoint = (w: Writer, point: {
-  readonly attributes: ReadonlyArray<KeyValue>
-  readonly startTimeUnixNano?: string | undefined
-  readonly timeUnixNano: string
-  readonly count: string | number | bigint
-  readonly sum?: number | undefined
-  readonly bucketCounts: ReadonlyArray<string | number | bigint>
-  readonly explicitBounds: ReadonlyArray<number>
-  readonly min?: number | undefined
-  readonly max?: number | undefined
-  readonly flags?: number | undefined
-}): Writer => {
+const writeHistogramDataPoint = (w: Writer, point: HistogramDataPoint): Writer => {
   // An absent start time is omitted.
   if (point.startTimeUnixNano !== undefined) w.tag(2, I64).fixed64(point.startTimeUnixNano)
   w.tag(3, I64).fixed64(point.timeUnixNano)
@@ -397,6 +411,10 @@ const writeHistogramDataPoint = (w: Writer, point: {
   return w
 }
 
+interface Gauge {
+  readonly dataPoints: ReadonlyArray<NumberDataPoint>
+}
+
 /**
  * Encodes a Gauge message.
  *
@@ -404,11 +422,15 @@ const writeHistogramDataPoint = (w: Writer, point: {
  *   repeated NumberDataPoint data_points = 1;
  * }
  */
-const writeGauge = (w: Writer, gauge: {
-  readonly dataPoints: ReadonlyArray<Parameters<typeof writeNumberDataPoint>[1]>
-}): Writer => {
+const writeGauge = (w: Writer, gauge: Gauge): Writer => {
   for (const item of gauge.dataPoints) writeNumberDataPoint(w.tag(1, LEN).fork(), item).join()
   return w
+}
+
+interface Sum {
+  readonly dataPoints: ReadonlyArray<NumberDataPoint>
+  readonly aggregationTemporality: number
+  readonly isMonotonic: boolean
 }
 
 /**
@@ -420,15 +442,16 @@ const writeGauge = (w: Writer, gauge: {
  *   bool is_monotonic = 3;
  * }
  */
-const writeSum = (w: Writer, sum: {
-  readonly dataPoints: ReadonlyArray<Parameters<typeof writeNumberDataPoint>[1]>
-  readonly aggregationTemporality: number
-  readonly isMonotonic: boolean
-}): Writer => {
+const writeSum = (w: Writer, sum: Sum): Writer => {
   for (const item of sum.dataPoints) writeNumberDataPoint(w.tag(1, LEN).fork(), item).join()
   w.tag(2, VARINT).int32(sum.aggregationTemporality)
   w.tag(3, VARINT).bool(sum.isMonotonic)
   return w
+}
+
+interface Histogram {
+  readonly dataPoints: ReadonlyArray<HistogramDataPoint>
+  readonly aggregationTemporality: number
 }
 
 /**
@@ -439,19 +462,31 @@ const writeSum = (w: Writer, sum: {
  *   AggregationTemporality aggregation_temporality = 2;
  * }
  */
-const writeHistogram = (w: Writer, histogram: {
-  readonly dataPoints: ReadonlyArray<Parameters<typeof writeHistogramDataPoint>[1]>
-  readonly aggregationTemporality: number
-}): Writer => {
+const writeHistogram = (w: Writer, histogram: Histogram): Writer => {
   for (const item of histogram.dataPoints) writeHistogramDataPoint(w.tag(1, LEN).fork(), item).join()
   w.tag(2, VARINT).int32(histogram.aggregationTemporality)
   return w
 }
 
-const writeValueAtQuantile = (w: Writer, q: { readonly quantile: number; readonly value: number }): Writer => {
+interface ValueAtQuantile {
+  readonly quantile: number
+  readonly value: number
+}
+
+const writeValueAtQuantile = (w: Writer, q: ValueAtQuantile): Writer => {
   w.tag(1, I64).double(q.quantile)
   w.tag(2, I64).double(q.value)
   return w
+}
+
+interface SummaryDataPoint {
+  readonly attributes: ReadonlyArray<KeyValue>
+  readonly startTimeUnixNano?: string | undefined
+  readonly timeUnixNano: string
+  readonly count: string | number | bigint
+  readonly sum: number
+  readonly quantileValues: ReadonlyArray<ValueAtQuantile>
+  readonly flags?: number | undefined
 }
 
 /**
@@ -472,15 +507,7 @@ const writeValueAtQuantile = (w: Writer, q: { readonly quantile: number; readonl
  *   double value = 2;
  * }
  */
-const writeSummaryDataPoint = (w: Writer, point: {
-  readonly attributes: ReadonlyArray<KeyValue>
-  readonly startTimeUnixNano?: string | undefined
-  readonly timeUnixNano: string
-  readonly count: string | number | bigint
-  readonly sum: number
-  readonly quantileValues: ReadonlyArray<{ readonly quantile: number; readonly value: number }>
-  readonly flags?: number | undefined
-}): Writer => {
+const writeSummaryDataPoint = (w: Writer, point: SummaryDataPoint): Writer => {
   // An absent start time is omitted.
   if (point.startTimeUnixNano !== undefined) w.tag(2, I64).fixed64(point.startTimeUnixNano)
   w.tag(3, I64).fixed64(point.timeUnixNano)
@@ -492,6 +519,10 @@ const writeSummaryDataPoint = (w: Writer, point: {
   return w
 }
 
+interface Summary {
+  readonly dataPoints: ReadonlyArray<SummaryDataPoint>
+}
+
 /**
  * Encodes a Summary message.
  *
@@ -499,11 +530,19 @@ const writeSummaryDataPoint = (w: Writer, point: {
  *   repeated SummaryDataPoint data_points = 1;
  * }
  */
-const writeSummary = (w: Writer, summary: {
-  readonly dataPoints: ReadonlyArray<Parameters<typeof writeSummaryDataPoint>[1]>
-}): Writer => {
+const writeSummary = (w: Writer, summary: Summary): Writer => {
   for (const item of summary.dataPoints) writeSummaryDataPoint(w.tag(1, LEN).fork(), item).join()
   return w
+}
+
+interface Metric {
+  readonly name: string
+  readonly description?: string | undefined
+  readonly unit?: string | undefined
+  readonly gauge?: Gauge | undefined
+  readonly sum?: Sum | undefined
+  readonly histogram?: Histogram | undefined
+  readonly summary?: Summary | undefined
 }
 
 /**
@@ -522,15 +561,7 @@ const writeSummary = (w: Writer, summary: {
  *   }
  * }
  */
-const writeMetric = (w: Writer, metric: {
-  readonly name: string
-  readonly description?: string | undefined
-  readonly unit?: string | undefined
-  readonly gauge?: Parameters<typeof writeGauge>[1] | undefined
-  readonly sum?: Parameters<typeof writeSum>[1] | undefined
-  readonly histogram?: Parameters<typeof writeHistogram>[1] | undefined
-  readonly summary?: Parameters<typeof writeSummary>[1] | undefined
-}): Writer => {
+const writeMetric = (w: Writer, metric: Metric): Writer => {
   w.tag(1, LEN).string(metric.name)
   if (metric.description) w.tag(2, LEN).string(metric.description)
   if (metric.unit) w.tag(3, LEN).string(metric.unit)
@@ -539,6 +570,12 @@ const writeMetric = (w: Writer, metric: {
   if (metric.histogram !== undefined) writeHistogram(w.tag(9, LEN).fork(), metric.histogram).join()
   if (metric.summary !== undefined) writeSummary(w.tag(11, LEN).fork(), metric.summary).join()
   return w
+}
+
+interface ScopeMetrics {
+  readonly scope: InstrumentationScope
+  readonly metrics: ReadonlyArray<Metric>
+  readonly schemaUrl?: string
 }
 
 /**
@@ -550,15 +587,17 @@ const writeMetric = (w: Writer, metric: {
  *   string schema_url = 3;
  * }
  */
-const writeScopeMetrics = (w: Writer, scopeMetrics: {
-  readonly scope: { readonly name: string; readonly version?: string }
-  readonly metrics: ReadonlyArray<Parameters<typeof writeMetric>[1]>
-  readonly schemaUrl?: string
-}): Writer => {
+const writeScopeMetrics = (w: Writer, scopeMetrics: ScopeMetrics): Writer => {
   writeInstrumentationScope(w.tag(1, LEN).fork(), scopeMetrics.scope).join()
   for (const item of scopeMetrics.metrics) writeMetric(w.tag(2, LEN).fork(), item).join()
   if (scopeMetrics.schemaUrl) w.tag(3, LEN).string(scopeMetrics.schemaUrl)
   return w
+}
+
+interface ResourceMetrics {
+  readonly resource: Resource
+  readonly scopeMetrics: ReadonlyArray<ScopeMetrics>
+  readonly schemaUrl?: string
 }
 
 /**
@@ -570,15 +609,15 @@ const writeScopeMetrics = (w: Writer, scopeMetrics: {
  *   string schema_url = 3;
  * }
  */
-const writeResourceMetrics = (w: Writer, resourceMetrics: {
-  readonly resource: Resource
-  readonly scopeMetrics: ReadonlyArray<Parameters<typeof writeScopeMetrics>[1]>
-  readonly schemaUrl?: string
-}): Writer => {
+const writeResourceMetrics = (w: Writer, resourceMetrics: ResourceMetrics): Writer => {
   writeResource(w.tag(1, LEN).fork(), resourceMetrics.resource).join()
   for (const item of resourceMetrics.scopeMetrics) writeScopeMetrics(w.tag(2, LEN).fork(), item).join()
   if (resourceMetrics.schemaUrl) w.tag(3, LEN).string(resourceMetrics.schemaUrl)
   return w
+}
+
+interface MetricsData {
+  readonly resourceMetrics: ReadonlyArray<ResourceMetrics>
 }
 
 /**
@@ -590,12 +629,23 @@ const writeResourceMetrics = (w: Writer, resourceMetrics: {
  *
  * @internal
  */
-export const encodeMetricsData = (metricsData: {
-  readonly resourceMetrics: ReadonlyArray<Parameters<typeof writeResourceMetrics>[1]>
-}): Uint8Array => {
+export const encodeMetricsData = (metricsData: MetricsData): Uint8Array => {
   const w = new ProtobufWriter.ProtobufWriter()
   for (const item of metricsData.resourceMetrics) writeResourceMetrics(w.tag(1, LEN).fork(), item).join()
   return w.finish()
+}
+
+interface LogRecord {
+  readonly timeUnixNano: string
+  readonly observedTimeUnixNano?: string | undefined
+  readonly severityNumber?: number | undefined
+  readonly severityText?: string | undefined
+  readonly body?: AnyValue | undefined
+  readonly attributes: ReadonlyArray<KeyValue>
+  readonly droppedAttributesCount?: number | undefined
+  readonly flags?: number | undefined
+  readonly traceId?: string | undefined
+  readonly spanId?: string | undefined
 }
 
 /**
@@ -614,18 +664,7 @@ export const encodeMetricsData = (metricsData: {
  *   bytes span_id = 10;
  * }
  */
-const writeLogRecord = (w: Writer, record: {
-  readonly timeUnixNano: string
-  readonly observedTimeUnixNano?: string | undefined
-  readonly severityNumber?: number | undefined
-  readonly severityText?: string | undefined
-  readonly body?: AnyValue | undefined
-  readonly attributes: ReadonlyArray<KeyValue>
-  readonly droppedAttributesCount?: number | undefined
-  readonly flags?: number | undefined
-  readonly traceId?: string | undefined
-  readonly spanId?: string | undefined
-}): Writer => {
+const writeLogRecord = (w: Writer, record: LogRecord): Writer => {
   w.tag(1, I64).fixed64(record.timeUnixNano)
   if (record.severityNumber !== undefined) w.tag(2, VARINT).int32(record.severityNumber)
   if (record.severityText) w.tag(3, LEN).string(record.severityText)
@@ -641,6 +680,12 @@ const writeLogRecord = (w: Writer, record: {
   return w
 }
 
+interface ScopeLogs {
+  readonly scope: InstrumentationScope
+  readonly logRecords: ReadonlyArray<LogRecord>
+  readonly schemaUrl?: string
+}
+
 /**
  * Encodes a ScopeLogs message.
  *
@@ -650,15 +695,17 @@ const writeLogRecord = (w: Writer, record: {
  *   string schema_url = 3;
  * }
  */
-const writeScopeLogs = (w: Writer, scopeLogs: {
-  readonly scope: { readonly name: string; readonly version?: string }
-  readonly logRecords: ReadonlyArray<Parameters<typeof writeLogRecord>[1]>
-  readonly schemaUrl?: string
-}): Writer => {
+const writeScopeLogs = (w: Writer, scopeLogs: ScopeLogs): Writer => {
   writeInstrumentationScope(w.tag(1, LEN).fork(), scopeLogs.scope).join()
   for (const item of scopeLogs.logRecords) writeLogRecord(w.tag(2, LEN).fork(), item).join()
   if (scopeLogs.schemaUrl) w.tag(3, LEN).string(scopeLogs.schemaUrl)
   return w
+}
+
+interface ResourceLogs {
+  readonly resource: Resource
+  readonly scopeLogs: ReadonlyArray<ScopeLogs>
+  readonly schemaUrl?: string
 }
 
 /**
@@ -670,15 +717,15 @@ const writeScopeLogs = (w: Writer, scopeLogs: {
  *   string schema_url = 3;
  * }
  */
-const writeResourceLogs = (w: Writer, resourceLogs: {
-  readonly resource: Resource
-  readonly scopeLogs: ReadonlyArray<Parameters<typeof writeScopeLogs>[1]>
-  readonly schemaUrl?: string
-}): Writer => {
+const writeResourceLogs = (w: Writer, resourceLogs: ResourceLogs): Writer => {
   writeResource(w.tag(1, LEN).fork(), resourceLogs.resource).join()
   for (const item of resourceLogs.scopeLogs) writeScopeLogs(w.tag(2, LEN).fork(), item).join()
   if (resourceLogs.schemaUrl) w.tag(3, LEN).string(resourceLogs.schemaUrl)
   return w
+}
+
+interface LogsData {
+  readonly resourceLogs: ReadonlyArray<ResourceLogs>
 }
 
 /**
@@ -690,9 +737,7 @@ const writeResourceLogs = (w: Writer, resourceLogs: {
  *
  * @internal
  */
-export const encodeLogsData = (logsData: {
-  readonly resourceLogs: ReadonlyArray<Parameters<typeof writeResourceLogs>[1]>
-}): Uint8Array => {
+export const encodeLogsData = (logsData: LogsData): Uint8Array => {
   const w = new ProtobufWriter.ProtobufWriter()
   for (const item of logsData.resourceLogs) writeResourceLogs(w.tag(1, LEN).fork(), item).join()
   return w.finish()
