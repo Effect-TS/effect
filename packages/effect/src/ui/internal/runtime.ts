@@ -457,8 +457,16 @@ const start = (
   /** Starts on the scheduler, never inside the `update` that issued it. */
   const forkLater = <A, E>(context: Context.Context<any>, effect: Effect.Effect<A, E, any>): Fiber.Fiber<A, E> =>
     forkNow(context, Effect.andThen(Effect.yieldNow, effect))
+  // Every run fiber and every Scope close the runtime has forked, until they exit. The root waits for both.
+  const liveRuns = new Set<Fiber.Fiber<unknown, unknown>>()
+  const closing = new Set<Fiber.Fiber<void>>()
+  const track = <A, E>(fibers: Set<Fiber.Fiber<A, E>>, fiber: Fiber.Fiber<A, E>) => {
+    fibers.add(fiber)
+    fiber.addObserver(() => fibers.delete(fiber))
+  }
+  /** Closing a Scope detaches it from its parent, so the close is tracked until it ends. */
   const closeScope = (scope: Scope.Closeable) => {
-    forkNow(ctx, Scope.close(scope, Exit.void))
+    track(closing, forkNow(ctx, Scope.close(scope, Exit.void)))
   }
 
   // -- loader cache ---------------------------------------------------------
@@ -477,7 +485,8 @@ const start = (
   const withCache = (context: Context.Context<any>): Context.Context<any> =>
     Context.add(context, Loader.Cache, cache as unknown as Loader.Cache["Service"])
   // Detached runs and the instance that issued them. The root is their second owner: closing it ends
-  // them, and the close waits until their fibers, and so their Scopes, have exited.
+  // them. The close then waits until every run fiber has exited, stopped ones included, and every
+  // Scope close already started, such as an unmounted instance's, has finished.
   const detachedRuns = new Map<Run, Instance>()
   // Closed instances whose detached runs are still running or queued.
   const orphans = new Set<Instance>()
@@ -486,7 +495,8 @@ const start = (
     rootScope,
     Effect.suspend(() => {
       rootClosed = true
-      return awaitRuns(Array.from(detachedRuns, ([run, inst]) => stopAndAwait(inst, run)))
+      for (const [run, inst] of Array.from(detachedRuns)) stopRun(inst, run)
+      return awaitAllOwned
     })
   ))
 
@@ -946,8 +956,11 @@ const start = (
       Effect.suspend(() => {
         inst.closed = true
         // A detached run goes on under the Layer build that owns it. Everything else ends here, and the
-        // close waits for it.
+        // close waits for it, and for the instance's runs that were stopped earlier and haven't exited.
         const waits: Array<Effect.Effect<void>> = []
+        for (const run of inst.stopping) {
+          if (!run.detached && run.fiber !== undefined) waits.push(Effect.asVoid(Fiber.await(run.fiber)))
+        }
         for (const run of inst.runs.slice()) {
           if (!(run.detached && survives(inst, run))) waits.push(stopAndAwait(inst, run))
         }
@@ -1411,6 +1424,12 @@ const start = (
   }
   const awaitRuns = (waits: ReadonlyArray<Effect.Effect<void>>): Effect.Effect<void> =>
     waits.length === 0 ? Effect.void : Effect.all(waits, { concurrency: "unbounded", discard: true })
+  // Repeats until nothing is left, since a close that finishes can stop more runs.
+  const awaitAllOwned: Effect.Effect<void> = Effect.suspend(() =>
+    liveRuns.size === 0 && closing.size === 0
+      ? Effect.void
+      : Effect.andThen(Fiber.awaitAll([...liveRuns, ...closing]), awaitAllOwned)
+  )
 
   const startRun = (inst: Instance, run: Run) => {
     const go = (envCtx: Context.Context<any>) => {
@@ -1464,6 +1483,7 @@ const start = (
         run.detached ? Effect.onExit(program, (exit) => Scope.close(scope as Scope.Closeable, exit)) : program
       )
       run.fiber = fiber
+      track(liveRuns, fiber)
       if (build !== undefined) run.release = build.onClose(() => stopAndAwait(inst, run))
       fiber.addObserver((exit) => ended(inst, run, exit, send))
     }

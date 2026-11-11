@@ -686,14 +686,33 @@ describe("Runtime", () => {
             Effect.uninterruptible(Effect.andThen(Deferred.await(gate), Effect.sync(() => events.push("body done"))))
         })
       ) {}
-      const Msg = Schema.TaggedUnion({ Close: {}, Done: {} })
+      const Msg = Schema.TaggedUnion({ Close: {}, Stop: {}, Done: {} })
       const Child = Component.make({
         name: "Child",
         model: Schema.Null,
         message: Msg,
         init: ($) => $.set(null).run(Stubborn.make().pipe(Command.map(() => Msg.make({ _tag: "Done" })))),
+        update: (model, message, $) => message._tag === "Stop" ? $.run(Command.interrupt(Stubborn)) : model,
+        view: (_, h) => h.el("button", "stop").on("click", Msg.make({ _tag: "Stop" }))
+      })
+      // A child whose `Command.make` run ends with it.
+      const Holder = Component.make({
+        name: "Child",
+        model: Schema.Null,
+        message: Msg,
+        init: ($) =>
+          $.set(null).run(
+            Command.make(
+              "test/Hold",
+              { args: {} },
+              () =>
+                Effect.uninterruptible(
+                  Effect.andThen(Deferred.await(gate), Effect.sync(() => events.push("body done")))
+                )
+            )().pipe(Command.map(() => Msg.make({ _tag: "Done" })))
+          ),
         update: (model) => model,
-        view: (_, h) => h.text("child")
+        view: (_, h) => h.text("holder")
       })
       const parent = <R>(child: Component.Component<"Child", {}, null, any, never, R, any>) =>
         Component.make({
@@ -704,11 +723,61 @@ describe("Runtime", () => {
           update: (open, message) => message._tag === "Close" ? false : open,
           view: (open, h) => h.el("div", open ? h.child(child, { key: "child", props: {} }) : null)
         })
-      return { events, gate, Stubborn, Child, parent, Msg }
+      return { events, gate, Stubborn, Child, Holder, parent, Msg }
     }
 
+    // Closes the mount Scope and checks the close waits for the body, which the gate holds.
+    const closeWaitsForBody = Effect.fnUntraced(
+      function*(
+        scope: Scope.Closeable,
+        { events, gate }: { readonly events: Array<string>; readonly gate: Deferred.Deferred<void> }
+      ) {
+        const closing = yield* Effect.forkChild(Scope.close(scope, Exit.void))
+        // The close fiber runs on the default scheduler, so it gets turns between the settles.
+        for (let turn = 0; turn < 3; turn++) {
+          yield* TestHost.settle
+          yield* Effect.yieldNow
+        }
+        assert.isUndefined(closing.pollUnsafe())
+        Deferred.doneUnsafe(gate, Exit.void)
+        yield* TestHost.settle
+        yield* Fiber.join(closing)
+        events.push("root closed")
+        assert.deepStrictEqual(events, ["body done", "root closed"])
+      }
+    )
+
+    it.effect("closing the root waits for a detached run that was already interrupted", () => {
+      const stubborn = makeStubborn()
+      const { Child, Stubborn, parent } = stubborn
+      return Effect.gen(function*() {
+        const scope = yield* Scope.make()
+        const root = yield* TestHost.mount(parent(Child), {}).pipe(Scope.provide(scope))
+        yield* TestHost.settle
+        click(root, "stop")
+        yield* TestHost.settle
+        // Out of the schedule, but its fiber hasn't exited.
+        assert.deepStrictEqual(root.pending(), [])
+        yield* closeWaitsForBody(scope, stubborn)
+      }).pipe(Effect.provide(Stubborn.layer), Effect.provide(TestHost.layer()))
+    })
+
+    it.effect("closing the root waits for an unmounted instance's close that is still running", () =>
+      provideHost(Effect.gen(function*() {
+        const stubborn = makeStubborn()
+        const { Holder, Msg, parent } = stubborn
+        const scope = yield* Scope.make()
+        const root = yield* TestHost.mount(parent(Holder), {}).pipe(Scope.provide(scope))
+        yield* TestHost.settle
+        root.send(Msg.make({ _tag: "Close" }))
+        yield* TestHost.settle
+        assert.notInclude(root.text(), "holder")
+        yield* closeWaitsForBody(scope, stubborn)
+      })))
+
     it.effect("closing the root waits for a detached run to exit", () => {
-      const { Child, Msg, Stubborn, events, gate, parent } = makeStubborn()
+      const stubborn = makeStubborn()
+      const { Child, Msg, Stubborn, parent } = stubborn
       return Effect.gen(function*() {
         const scope = yield* Scope.make()
         const root = yield* TestHost.mount(parent(Child), {}).pipe(Scope.provide(scope))
@@ -716,46 +785,17 @@ describe("Runtime", () => {
         root.send(Msg.make({ _tag: "Close" }))
         yield* TestHost.settle
         assert.strictEqual(root.pending().length, 1)
-        const closing = yield* Effect.forkChild(Scope.close(scope, Exit.void))
-        yield* TestHost.settle
-        assert.isUndefined(closing.pollUnsafe())
-        Deferred.doneUnsafe(gate, Exit.void)
-        yield* TestHost.settle
-        yield* Fiber.join(closing)
-        events.push("root closed")
-        assert.deepStrictEqual(events, ["body done", "root closed"])
+        yield* closeWaitsForBody(scope, stubborn)
       }).pipe(Effect.provide(Stubborn.layer), Effect.provide(TestHost.layer()))
     })
 
     it.effect("closing the root waits for a run that ends with its instance", () =>
       provideHost(Effect.gen(function*() {
-        const events: Array<string> = []
-        const gate = Deferred.makeUnsafe<void>()
-        const Hold = Command.make(
-          "test/Hold",
-          { args: {} },
-          () =>
-            Effect.uninterruptible(Effect.andThen(Deferred.await(gate), Effect.sync(() => events.push("body done"))))
-        )
-        const Holder = Component.make({
-          name: "Holder",
-          model: Schema.Null,
-          message: Schema.Never,
-          init: ($) => $.set(null).run(Hold().pipe(Command.map(() => undefined as never))),
-          update: (model) => model,
-          view: (_, h) => h.text("holder")
-        })
+        const stubborn = makeStubborn()
         const scope = yield* Scope.make()
-        yield* TestHost.mount(Holder, {}).pipe(Scope.provide(scope))
+        yield* TestHost.mount(stubborn.Holder, {}).pipe(Scope.provide(scope))
         yield* TestHost.settle
-        const closing = yield* Effect.forkChild(Scope.close(scope, Exit.void))
-        yield* TestHost.settle
-        assert.isUndefined(closing.pollUnsafe())
-        Deferred.doneUnsafe(gate, Exit.void)
-        yield* TestHost.settle
-        yield* Fiber.join(closing)
-        events.push("root closed")
-        assert.deepStrictEqual(events, ["body done", "root closed"])
+        yield* closeWaitsForBody(scope, stubborn)
       })))
 
     it.effect("closing the Layer build that owns a detached run waits for it before the build is released", () =>
@@ -1280,6 +1320,92 @@ describe("Runtime", () => {
         pair: ["3", {}],
         choice: { file: {} },
         hidden: { "~redacted": true }
+      })
+      assert.notInclude(JSON.stringify(encoded), "must-not-log")
+    })
+
+    it("the Wire's fallback keeps redaction in tuple tails and in every matching record signature", () => {
+      const EncodedSecret = Schema.Redacted(Schema.String).pipe(
+        Schema.decodeTo(
+          Schema.String,
+          SchemaTransformation.transform({ decode: Redacted.value, encode: Redacted.make })
+        )
+      )
+      const Upload = Command.make(
+        "Upload",
+        {
+          args: {
+            tail: Schema.TupleWithRest(Schema.Tuple([]), [Schema.instanceOf(File), EncodedSecret]),
+            middle: Schema.TupleWithRest(Schema.Tuple([Schema.NumberFromString]), [
+              Schema.instanceOf(File),
+              EncodedSecret,
+              Schema.NumberFromString
+            ]),
+            keyed: Schema.StructWithRest(Schema.Struct({ n: Schema.NumberFromString }), [
+              Schema.Record(Schema.TemplateLiteral(["file-", Schema.String]), Schema.instanceOf(File)),
+              Schema.Record(Schema.TemplateLiteral(["secret-", Schema.String]), EncodedSecret)
+            ]),
+            // Both signatures match `secret-a`: the one that declares a Redacted encodes it.
+            overlapping: Schema.StructWithRest(Schema.Struct({}), [
+              Schema.Record(Schema.String, Schema.Unknown),
+              Schema.Record(Schema.TemplateLiteral(["secret-", Schema.String]), EncodedSecret)
+            ])
+          }
+        },
+        () => Effect.succeed(1)
+      )
+      const file = new File(["x"], "a.txt")
+      const command = Upload({
+        tail: [file, "must-not-log"],
+        middle: [1, file, file, "must-not-log", 2],
+        keyed: { n: 3, "file-a": file, "secret-a": "must-not-log" },
+        overlapping: { "secret-a": "must-not-log", other: file }
+      } as any)
+      const encoded = MessageLog.encodeCommand(command)
+      assert.deepStrictEqual(encoded.args, {
+        tail: [{}, { "~redacted": true }],
+        middle: ["1", {}, {}, { "~redacted": true }, "2"],
+        keyed: { n: "3", "file-a": {}, "secret-a": { "~redacted": true } },
+        overlapping: { "secret-a": { "~redacted": true }, other: {} }
+      })
+      assert.notInclude(JSON.stringify(encoded), "must-not-log")
+    })
+
+    it("the Wire encodes a cyclic arg with a placeholder for the cycle, instead of overflowing", () => {
+      interface Node {
+        readonly label: string
+        readonly secret: Redacted.Redacted<string>
+        readonly next: Node | null
+      }
+      const Node: Schema.Codec<Node, unknown> = Schema.Struct({
+        label: Schema.String,
+        secret: Schema.Redacted(Schema.String),
+        next: Schema.NullOr(Schema.suspend((): Schema.Codec<Node, unknown> => Node))
+      })
+      interface Link {
+        readonly next: Link
+      }
+      const Link: Schema.Codec<Link> = Schema.Struct({ next: Schema.suspend((): Schema.Codec<Link> => Link) })
+      const Walk = Command.make(
+        "Walk",
+        { args: { node: Node, link: Link, list: Schema.Array(Schema.Unknown) } },
+        () => Effect.succeed(1)
+      )
+      const node: { label: string; secret: Redacted.Redacted<string>; next: unknown } = {
+        label: "a",
+        secret: Redacted.make("must-not-log"),
+        next: null
+      }
+      node.next = node
+      const list: Array<unknown> = [1]
+      list.push(list)
+      const link: { next: unknown } = { next: null }
+      link.next = link
+      const encoded = MessageLog.encodeCommand(Walk({ node: node as Node, link: link as Link, list }))
+      assert.deepStrictEqual(encoded.args, {
+        node: { label: "a", secret: { "~redacted": true }, next: { "~unserialisable": "cycle" } },
+        link: { next: { "~unserialisable": "cycle" } },
+        list: [1, { "~unserialisable": "cycle" }]
       })
       assert.notInclude(JSON.stringify(encoded), "must-not-log")
     })
