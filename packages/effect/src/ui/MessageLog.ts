@@ -30,6 +30,7 @@ import * as Effect from "../Effect.ts"
 import { redactAST } from "../internal/schemaRedact.ts"
 import * as Layer from "../Layer.ts"
 import * as Queue from "../Queue.ts"
+import type * as Loader from "../reactivity/Loader.ts"
 import { canonical } from "../reactivity/Loader.ts"
 import * as Redacted from "../Redacted.ts"
 import * as Schedule from "../Schedule.ts"
@@ -295,6 +296,33 @@ export interface SessionStarted extends Base {
 }
 
 /**
+ * The loader cache started a fetch. `path` is the root's path.
+ *
+ * **Details**
+ *
+ * `logKey` is the entry's args key with every `Schema.Redacted` argument
+ * redacted, so two entries that differ only in a secret share it.
+ * `restart` marks a fetch that replaced an interrupted one, under the same
+ * trigger. `inWindow` marks a fetch of a hydrated entry while the
+ * fetch-free window is open. `stored: false` marks a fetcher call whose
+ * result goes to `get` callers only. A caller that joins a fetch in flight
+ * logs nothing.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.1.3
+ */
+export interface FetchStarted extends Base {
+  readonly _tag: "FetchStarted"
+  readonly read: string
+  readonly logKey: string
+  readonly trigger: Loader.Trigger
+  readonly restart: boolean
+  readonly inWindow: boolean
+  readonly stored: boolean
+}
+
+/**
  * Any log entry.
  *
  * @stability experimental
@@ -311,6 +339,7 @@ export type Entry =
   | CommandSettled
   | CommandDropped
   | Failed
+  | FetchStarted
 
 /**
  * A ring buffer log whose entries can be read back.
@@ -459,7 +488,7 @@ const SourceWire = Schema.Union([
  * field by field, and a field that doesn't encode falls back to a structural
  * encoding, best effort: a value with no JSON form becomes
  * `{ "~unserialisable": "<kind>" }`, a `Redacted` becomes
- * `{ "~redacted": true }`, and a Model over `maxEntryBytes` becomes
+ * `{ "~redacted": true }`, and a Model or message over `maxEntryBytes` becomes
  * `{ "~truncated": bytes }`. A Cause is sent as `Cause.pretty` plus its
  * reasons, best effort.
  *
@@ -511,6 +540,15 @@ export const Wire = Schema.Union([
     source: Schema.String,
     name: Schema.NullOr(Schema.String),
     cause: CauseWire
+  }),
+  Schema.TaggedStruct("FetchStarted", {
+    ...Seq,
+    read: Schema.String,
+    logKey: Schema.String,
+    trigger: Schema.Literals(["watch", "get", "prefetch", "visibility", "connectivity", "interval", "invalidation"]),
+    restart: Schema.Boolean,
+    inWindow: Schema.Boolean,
+    stored: Schema.Boolean
   })
 ])
 
@@ -579,8 +617,9 @@ export const makeEncoder = (options?: {
       return { "~unserialisable": "encode" }
     }
   }
-  const model = (component: Component.Any, value: unknown): Schema.Json => {
-    const encoded = through(component, "model", value) as Schema.Json
+  // A watch's message carries a whole snapshot, so messages are capped like Models.
+  const capped = (component: Component.Any, field: "model" | "message", value: unknown): Schema.Json => {
+    const encoded = through(component, field, value) as Schema.Json
     if (maxEntryBytes === Infinity) return encoded
     const bytes = utf8Length(JSON.stringify(encoded))
     return bytes > maxEntryBytes ? { "~truncated": bytes } : encoded
@@ -594,9 +633,9 @@ export const makeEncoder = (options?: {
             _tag: "Update",
             component: entry.component.name,
             source: encodeSource(entry.source),
-            message: through(entry.component, "message", entry.message) as Schema.Json,
+            message: capped(entry.component, "message", entry.message),
             props: through(entry.component, "props", entry.props) as Schema.Json,
-            model: model(entry.component, entry.model),
+            model: capped(entry.component, "model", entry.model),
             commands: entry.commands.map(encodeCommand),
             events: entry.events.map((emitted) => through(entry.component, "events", emitted) as Schema.Json)
           }
@@ -606,7 +645,7 @@ export const makeEncoder = (options?: {
             _tag: "Mounted",
             component: entry.component.name,
             props: through(entry.component, "props", entry.props) as Schema.Json,
-            model: model(entry.component, entry.model),
+            model: capped(entry.component, "model", entry.model),
             commands: entry.commands.map(encodeCommand),
             events: entry.events.map((emitted) => through(entry.component, "events", emitted) as Schema.Json),
             adopted: entry.adopted
@@ -642,6 +681,17 @@ export const makeEncoder = (options?: {
         case "LayerPending":
         case "LayerReady":
           return { ...base(entry), _tag: entry._tag }
+        case "FetchStarted":
+          return {
+            ...base(entry),
+            _tag: "FetchStarted",
+            read: entry.read,
+            logKey: entry.logKey,
+            trigger: entry.trigger,
+            restart: entry.restart,
+            inWindow: entry.inWindow,
+            stored: entry.stored
+          }
       }
     }
   }

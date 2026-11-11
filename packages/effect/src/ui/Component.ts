@@ -53,6 +53,7 @@
  * @since 4.1.3
  */
 import * as Layer from "../Layer.ts"
+import type * as Option from "../Option.ts"
 import * as Pipeable from "../Pipeable.ts"
 import * as Predicate from "../Predicate.ts"
 import type * as AsyncResult from "../reactivity/AsyncResult.ts"
@@ -61,6 +62,7 @@ import * as Schema from "../Schema.ts"
 import type * as Types from "../Types.ts"
 import type * as Command from "./Command.ts"
 import type * as Head from "./Head.ts"
+import * as loaders from "./internal/loaders.ts"
 import type * as Subscription from "./Subscription.ts"
 import * as View from "./View.ts"
 
@@ -170,6 +172,11 @@ export interface Update<in out Model, in out Msg, in out Events, out Props> exte
  */
 export interface Init<in out Model, in out Msg, in out Events, out Props> {
   readonly props: Props
+  /**
+   * An empty snapshot per loader field of the Model, for `init` to spread
+   * into the first Model. `{}` for a Model with no loader field.
+   */
+  readonly empty: Empty<Model>
   /** Sets the first Model. */
   set(model: Model): Step<Model, Msg, Events, never>
 }
@@ -211,8 +218,9 @@ const makeStep = (
 const makeUpdate = (model: unknown, props: unknown): Update<any, any, any, any> =>
   Object.assign(Object.create(StepProto), { model, commands: [], emitted: [], props })
 
-const makeInit = (props: unknown): Init<any, any, any, any> => ({
+const makeInit = (props: unknown, empty: object = {}): Init<any, any, any, any> => ({
   props,
+  empty,
   set: (model) => makeStep(model, [], []) as Step<any, any, any, never>
 })
 
@@ -272,6 +280,8 @@ export interface Mountable<in out Props, out Events, out R = never> extends Pipe
   readonly sharedLayer: Layer.Layer<any, any, any> | undefined
   /** `false` when a `provide` opted out of the server: the server never builds the Layer and defers the instance. */
   readonly layerOnServer: boolean
+  /** The Model's loader fields bound to `loaders`, read by the runtime and `Story`. `undefined` without any. */
+  readonly "~loaders": unknown
 }
 
 /**
@@ -324,6 +334,20 @@ export interface Component<
   readonly head: ((model: Model) => ReadonlyArray<Head.Entry>) | undefined
   readonly layerFailure: ((failure: AsyncResult.Failure<never, any>) => Msg) | undefined
   readonly "~V"?: V
+}
+
+/**
+ * What `h` gains in `view` for a Model with loader fields: `loaded`,
+ * `previous` and `patched`.
+ *
+ * @stability experimental
+ * @category utility types
+ * @since 4.1.3
+ */
+export type LoaderHelpers<Model> = [LoaderFields<Model>] extends [never] ? {} : {
+  readonly loaded: Loaded<Model>
+  readonly previous: Previous<Model>
+  readonly patched: Patched<Model>
 }
 
 /**
@@ -382,6 +406,156 @@ export type Model<C> = C extends Component<infer _N, infer _P, infer M, infer _M
 export type Message<C> = C extends Component<infer _N, infer _P, infer _M, infer Msg, infer _E, infer _R, infer _V> ?
   Msg
   : never
+
+/**
+ * The loader fields of a Model: its top-level fields that hold a
+ * `Loader.Snapshot`. Each one has a loader.
+ *
+ * @stability experimental
+ * @category utility types
+ * @since 4.1.3
+ */
+export type LoaderFields<Model> = [Model] extends [object] ? LoaderKey<Model, keyof Model & string> : never
+
+// Not a mapped type over `keyof Model`: that one is homomorphic, so a primitive or array Model maps to itself.
+type LoaderKey<Model, K extends keyof Model> = K extends unknown ?
+  Model[K] extends Loader.Snapshot<any, any> ? K : never
+  : never
+
+/**
+ * The read of a snapshot type.
+ *
+ * @stability experimental
+ * @category utility types
+ * @since 4.1.3
+ */
+export type ReadOf<S> = S extends Loader.Snapshot<infer R, any> ? R : never
+
+/**
+ * The result a loader field opens to: an `AsyncResult` of its read's success
+ * and error.
+ *
+ * @stability experimental
+ * @category utility types
+ * @since 4.1.3
+ */
+export type ResultOf<S> = AsyncResult.AsyncResult<Loader.Read.Success<ReadOf<S>>, Loader.Read.Error<ReadOf<S>>>
+
+/**
+ * The services a Model's loaders add to a component's requirements: the reads
+ * themselves, never what their fetchers use.
+ *
+ * @stability experimental
+ * @category utility types
+ * @since 4.1.3
+ */
+export type LoaderServices<Model> = ServiceOf<ReadOf<Model[LoaderFields<Model>]>>
+
+type ServiceOf<R> = R extends { readonly Identifier: infer Self } ? Self : never
+
+/**
+ * `$.empty` in `init`: an empty snapshot per loader field.
+ *
+ * @stability experimental
+ * @category utility types
+ * @since 4.1.3
+ */
+export type Empty<Model> = { readonly [K in LoaderFields<Model>]: Model[K] }
+
+/**
+ * `h.loaded` in `view`, and `loaded` in a loader: per loader field, the
+ * stored result when the snapshot was taken at the loader's current args,
+ * and otherwise `Initial`, waiting while the loader is enabled.
+ *
+ * @stability experimental
+ * @category utility types
+ * @since 4.1.3
+ */
+export type Loaded<Model> = { readonly [K in LoaderFields<Model>]: ResultOf<Model[K]> }
+
+/**
+ * `h.previous` in `view`: per loader field, the Success value the snapshot
+ * holds for args other than the loader's current ones. `Some` only while the
+ * loader is enabled, so it is `None` whenever `h.loaded` has the stored
+ * result.
+ *
+ * @stability experimental
+ * @category utility types
+ * @since 4.1.3
+ */
+export type Previous<Model> = {
+  readonly [K in LoaderFields<Model>]: Option.Option<Loader.Read.Success<ReadOf<Model[K]>>>
+}
+
+/**
+ * `h.patched` in `view`: per loader field, whether the value includes an
+ * optimistic patch the server hasn't confirmed. It is per entry, not per
+ * instance.
+ *
+ * @stability experimental
+ * @category utility types
+ * @since 4.1.3
+ */
+export type Patched<Model> = { readonly [K in LoaderFields<Model>]: boolean }
+
+/**
+ * The `loaders` of `make`: per loader field, the args of its read, or
+ * `undefined` to disable it. `loaded` is `h.loaded` without the field's own
+ * entry, for a read whose args depend on another read's result.
+ *
+ * @stability experimental
+ * @category utility types
+ * @since 4.1.3
+ */
+export type Loaders<Model, Props> = {
+  readonly [K in LoaderFields<Model>]: (
+    model: Model,
+    props: Props,
+    loaded: Omit<Loaded<Model>, K>
+  ) => Loader.Read.Args<ReadOf<Model[K]>> | undefined
+}
+
+/**
+ * Identifies the Subscription `watch` returns.
+ *
+ * @stability experimental
+ * @category type ids
+ * @since 4.1.3
+ */
+export const WatchTypeId = "~effect/ui/Component/Watch" as const
+
+/**
+ * Identifies the Subscription `watch` returns.
+ *
+ * @stability experimental
+ * @category type ids
+ * @since 4.1.3
+ */
+export type WatchTypeId = typeof WatchTypeId
+
+/**
+ * The Subscription `watch` returns: every loader field of the Model is
+ * watched. `subscriptions` must start with it.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.1.3
+ */
+export interface Watches<in out Model, out Msg> extends Subscription.Subscription<Msg, LoaderServices<Model>> {
+  readonly [WatchTypeId]: Types.Invariant<Model>
+}
+
+/**
+ * The third argument of `subscriptions`: takes one handler per loader field.
+ * A handler gets the snapshot to store and the result it was built from.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.1.3
+ */
+export type Watch<Model, Msg> = (
+  handlers: { readonly [K in LoaderFields<Model>]: (snapshot: Model[K], result: ResultOf<Model[K]>) => Msg }
+) => Watches<Model, Msg>
 
 /**
  * Returns `true` if `u` is a component.
@@ -464,53 +638,90 @@ export const make = <
   UV extends View.Node<Msg, any> = View.Node<Msg>,
   S extends Subscription.Subscription<Msg, any> = never,
   V extends View.Elements = View.Registered
->(options: {
-  readonly name: Name
-  readonly props?: Schema.Codec<Props, any> | undefined
-  readonly model: Schema.Codec<Model, any>
-  readonly message: Schema.Codec<Msg, any>
-  readonly events?: Schema.Codec<Events, any> | undefined
-  readonly init: ($: Init<Model, Msg, Events, Props>) => UI
-  readonly update: (model: Model, msg: Msg, $: Update<Model, Msg, Events, Props>) => U
-  readonly view: (model: Model, h: View.Helper<Msg, Props> & View.Tags<V, Msg>) => UV
-  readonly subscriptions?: ((model: Model, props: Props) => ReadonlyArray<S | false | null | undefined>) | undefined
-  readonly head?: ((model: Model) => ReadonlyArray<Head.Entry>) | undefined
-  readonly elements?: View.Vocabulary<V> | undefined
-}): Component<
+>(
+  options:
+    & {
+      readonly name: Name
+      readonly props?: Schema.Codec<Props, any> | undefined
+      readonly model: Schema.Codec<Model, any>
+      readonly message: Schema.Codec<Msg, any>
+      readonly events?: Schema.Codec<Events, any> | undefined
+      readonly init: ($: Init<Model, Msg, Events, Props>) => UI
+      readonly update: (model: Model, msg: Msg, $: Update<Model, Msg, Events, Props>) => U
+      readonly view: (model: Model, h: View.Helper<Msg, Props> & View.Tags<V, Msg> & LoaderHelpers<Model>) => UV
+      readonly head?: ((model: Model) => ReadonlyArray<Head.Entry>) | undefined
+      readonly elements?: View.Vocabulary<V> | undefined
+    }
+    & ([LoaderFields<Model>] extends [never] ? {
+        readonly subscriptions?:
+          | ((model: Model, props: Props) => ReadonlyArray<S | false | null | undefined>)
+          | undefined
+      }
+      : {
+        /** The args of each loader field's read. */
+        readonly loaders: Loaders<Model, Props>
+        /** Starts with `watch({ ... })`, one handler per loader field. */
+        readonly subscriptions: (
+          model: Model,
+          props: Props,
+          watch: Watch<Model, Msg>
+        ) => readonly [Watches<Model, Msg>, ...ReadonlyArray<S | false | null | undefined>]
+      })
+): Component<
   Name,
   Props,
   Model,
   Msg,
   Events,
   Exclude<
-    StepRequirements<UI> | StepRequirements<U> | View.Requirements<UV> | Subscription.Requirements<S>,
+    | StepRequirements<UI>
+    | StepRequirements<U>
+    | View.Requirements<UV>
+    | Subscription.Requirements<S>
+    | LoaderServices<Model>,
     Command.FrameworkService
   >,
   V
 > => {
-  const subscriptions = options.subscriptions
+  const subscriptions = (options as any).subscriptions as
+    | ((model: Model, props: Props, watch: any) => ReadonlyArray<S | false | null | undefined>)
+    | undefined
+  const bound = loaders.bind(options.name, options.model as any, (options as any).loaders)
+  if (bound !== undefined && subscriptions === undefined) {
+    throw new Error(`${options.name}: the Model has loader fields, so subscriptions must return [watch({ ... })].`)
+  }
+  const empty = bound?.empty ?? {}
   return Object.assign(Object.create(Proto), {
     name: options.name,
     props: options.props ?? Schema.Struct({}),
     model: options.model,
     message: options.message,
     events: options.events ?? Schema.Never,
-    init: (props: Props) => toNext(options.init(makeInit(props))),
+    init: (props: Props) => toNext(options.init(makeInit(props, empty))),
     update: (model: Model, msg: Msg, props: Props) => toNext(options.update(model, msg, makeUpdate(model, props))),
-    view: (model: Model, props: Props, running?: View.Running) =>
-      options.view(
-        model,
-        View.makeHelper<Msg, Props, V>(props, options.elements ?? View.registeredElements(), running)
-      ),
+    view: (model: Model, props: Props, running?: View.Running) => {
+      const h: any = View.makeHelper<Msg, Props, V>(props, options.elements ?? View.registeredElements(), running)
+      if (bound !== undefined) {
+        const context = bound.context(model, props)
+        h.loaded = context.loaded
+        h.previous = context.previous
+        h.patched = context.patched
+      }
+      return options.view(model, h)
+    },
     subscriptions: subscriptions === undefined
       ? undefined
-      : (model: Model, props: Props) => subscriptions(model, props).filter((entry): entry is S => !!entry),
+      : bound === undefined
+      ? (model: Model, props: Props) => subscriptions(model, props, undefined).filter((entry): entry is S => !!entry)
+      : (model: Model, props: Props) =>
+        bound.expand(subscriptions(model, props, bound.context(model, props).watch)) as Array<S>,
     head: options.head,
     elements: () => options.elements ?? View.registeredElements(),
     layer: undefined,
     layerFailure: undefined,
     sharedLayer: undefined,
-    layerOnServer: true
+    layerOnServer: true,
+    "~loaders": bound
   })
 }
 
