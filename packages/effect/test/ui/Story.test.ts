@@ -1,6 +1,6 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Cause, Effect, Layer, Schema } from "effect"
-import { AsyncResult } from "effect/reactivity"
+import { Cause, Data, Effect, Layer, Option, Schema } from "effect"
+import { AsyncResult, Loader } from "effect/reactivity"
 import { Command, Component, View } from "effect/ui"
 import { Query, Story } from "effect/ui/testing"
 import {
@@ -16,6 +16,7 @@ import {
   TodoListMessage,
   Upload
 } from "./fixtures/components.ts"
+import * as users from "./fixtures/users.ts"
 
 const todo = { id: "t1", title: "buy milk", done: false }
 const todos = [todo, { id: "t2", title: "write spec", done: false }]
@@ -140,7 +141,7 @@ describe("Story", () => {
           .check((story) => {
             assert.deepStrictEqual(
               story.pending.map((entry) => [entry.command.name, entry.command.args, entry.status]),
-              [["todos/SaveTodo", [todo], "running"]]
+              [["todos/SaveTodo", todo, "running"]]
             )
           })
           .resolve(SaveTodo, TodoItemMessage.make({ _tag: "SaveFailed", reason: "disk full" }))
@@ -163,6 +164,68 @@ describe("Story", () => {
               .resolve(SaveTodo.make({ ...todo, id: "other" }), TodoItemMessage.make({ _tag: "Saved" }))),
         /no running todos\/SaveTodo/
       )
+    })
+  })
+
+  describe("Commands that can fail", () => {
+    class SaveFailed extends Data.TaggedError("SaveFailed")<{ readonly reason: string }> {}
+    class Save extends Command.Service<Save>()(
+      "test/Save",
+      { args: { title: Schema.String }, invalidates: () => [] },
+      Effect.succeed((): Effect.Effect<void, SaveFailed> => Effect.void)
+    ) {}
+    const Msg = Schema.TaggedUnion({ Save: {}, Saved: {}, Failed: { reason: Schema.String }, Stop: {} })
+    const Editor = Component.make({
+      name: "Editor",
+      model: Schema.String,
+      message: Msg,
+      init: () => "idle",
+      update: (_, message, $) =>
+        Msg.match(message, {
+          Save: () =>
+            $.run(
+              Save.make({ title: "milk" }).pipe(Command.match({
+                onSuccess: () => Msg.make({ _tag: "Saved" }),
+                onFailure: (error) => Msg.make({ _tag: "Failed", reason: error.reason })
+              }))
+            ),
+          Saved: () => "saved",
+          Failed: ({ reason }) => `failed: ${reason}`,
+          Stop: () => $.run(Command.interrupt(Save))
+        }),
+      view: (model, h) =>
+        h.el("div", [
+          h.el("button", "save").on("click", Msg.make({ _tag: "Save" })),
+          h.el("button", "stop").on("click", Msg.make({ _tag: "Stop" })),
+          h.text(h.running(Save) ? "saving" : model)
+        ])
+    })
+
+    it("fail sends the typed failure through Command.match", () => {
+      Story.make(Editor, {}, (s) =>
+        s.click("save")
+          .fail(Save, new SaveFailed({ reason: "disk full" }))
+          .model((model) => assert.strictEqual(model, "failed: disk full")))
+    })
+
+    it("fail throws for a Command with no typed failure", () => {
+      assert.throws(
+        () => Story.make(TodoItem, { todo }, (s) => s.click("save").fail(SaveTodo as any, new Error("no"))),
+        /has no typed failure mapped by Command\.match/
+      )
+    })
+
+    it("h.running is derived from the pending Commands", () => {
+      Story.make(Editor, {}, (s) =>
+        s.view((view) => assert.include(View.textOf(view), "idle"))
+          .click("save")
+          .view((view) => assert.include(View.textOf(view), "saving"))
+          .resolve(Save, undefined)
+          .view((view) => assert.include(View.textOf(view), "saved"))
+          .click("save")
+          .click("stop")
+          .view((view) => assert.include(View.textOf(view), "saved"))
+          .expectNone())
     })
   })
 
@@ -219,9 +282,9 @@ describe("Story", () => {
         s.send(SearchMessage.make({ _tag: "Query", text: "a" }))
           .send(SearchMessage.make({ _tag: "Query", text: "ab" }))
           .check((story) => {
-            assert.deepStrictEqual(story.interrupted.map((command) => command.args), [["a"]])
+            assert.deepStrictEqual(story.interrupted.map((command) => command.args), [{ text: "a" }])
           })
-          .expectExact(Search("ab"))
+          .expectExact(Search({ text: "ab" }))
           .resolve(Search, SearchMessage.make({ _tag: "Results", items: ["ab"] }))
           .model((model) => assert.deepStrictEqual(model.items, ["ab"])))
     })
@@ -256,7 +319,11 @@ describe("Story", () => {
 
   describe("Command.map", () => {
     const Message = Schema.TaggedUnion({ Upload: {}, Uploaded: { url: Schema.String } })
-    const UploadFile = Command.make("UploadFile", (name: string) => Effect.succeed(`https://cdn/${name}`))
+    const UploadFile = Command.make(
+      "UploadFile",
+      { args: { name: Schema.String } },
+      ({ name }) => Effect.succeed(`https://cdn/${name}`)
+    )
     const Avatar = Component.make({
       name: "Avatar",
       model: Schema.Struct({ url: Schema.String }),
@@ -264,7 +331,8 @@ describe("Story", () => {
       init: () => ({ url: "" }),
       update: (_model, message, $) =>
         Message.match(message, {
-          Upload: () => $.run(UploadFile("me.png").pipe(Command.map((url) => Message.make({ _tag: "Uploaded", url })))),
+          Upload: () =>
+            $.run(UploadFile({ name: "me.png" }).pipe(Command.map((url) => Message.make({ _tag: "Uploaded", url })))),
           Uploaded: ({ url }) => ({ url })
         }),
       view: (model, h) => h.el("img").attr("src", model.url)
@@ -273,13 +341,13 @@ describe("Story", () => {
     it("resolves with the Command's own message type and replays the mapping", () => {
       Story.make(Avatar, {}, (s) =>
         s.send(Message.make({ _tag: "Upload" }))
-          .expectExact(UploadFile("me.png"))
+          .expectExact(UploadFile({ name: "me.png" }))
           .resolve(UploadFile, "https://cdn/me.png")
           .model((model) => assert.strictEqual(model.url, "https://cdn/me.png")))
     })
 
     it("a mapped Command as the target still takes the definition's own result", () => {
-      const mapped = UploadFile("me.png").pipe(Command.map((url) => Message.make({ _tag: "Uploaded", url })))
+      const mapped = UploadFile({ name: "me.png" }).pipe(Command.map((url) => Message.make({ _tag: "Uploaded", url })))
       Story.make(Avatar, {}, (s) =>
         s.send(Message.make({ _tag: "Upload" }))
           .resolve(mapped, "https://cdn/me.png")
@@ -319,6 +387,75 @@ describe("Story", () => {
         }
       })
       assert.throws(() => Story.make(AlwaysBroken, {}, () => {}), /no view/)
+    })
+  })
+
+  describe("loader fields", () => {
+    const text = (story: { readonly root: Query.Node }) => Query.textOf(story.root)
+    const page = (n: number, names: ReadonlyArray<string>) => ({
+      page: n,
+      pages: 2,
+      users: names.map((name, i) => ({ id: `${n}-${i}`, name, email: "", likes: 0 }))
+    })
+
+    it("loaded sends the snapshot through the watch handler, at the loader's current args", () => {
+      Story.make(users.ListPage, {}, (s) =>
+        s
+          .check((story) => assert.include(text(story), "Loading users…"))
+          .loaders((loaders) =>
+            assert.deepStrictEqual(loaders, [{ field: "users", read: "users/ListUsers", args: { page: 0 } }])
+          )
+          .loaded("users", page(0, ["Ann", "Bea"]))
+          .check((story) => assert.include(text(story), "AnnBea"))
+          // The next page: h.previous keeps the page the snapshot holds until it is loaded.
+          .click("Next")
+          .loaders((loaders) => assert.deepStrictEqual(loaders.map((loader) => loader.args), [{ page: 1 }]))
+          .check((story) => {
+            assert.include(text(story), "AnnBea")
+            assert.include(text(story), "Loading page 2…")
+          })
+          .loaded("users", page(1, ["Cy"]))
+          .check((story) => {
+            assert.include(text(story), "Cy")
+            assert.notInclude(text(story), "Loading page")
+          }))
+    })
+
+    it("loadFailed keeps the field's Success at the current args as previousSuccess, and waiting shows", () => {
+      Story.make(users.UserCard, { id: "1" }, (s) =>
+        s
+          .loaded("user", { id: "1", name: "Ann", email: "ann@x", likes: 0 }, { waiting: true })
+          .check((story) => assert.include(text(story), "Updating…"))
+          .loadFailed("user", new users.UserNotFound({ id: "1" }))
+          .check((story) => assert.strictEqual(text(story), "This user doesn't exist."))
+          .model(({ user }) => {
+            const result = Loader.snapshotData(user)?.result
+            assert.isTrue(
+              result !== undefined && AsyncResult.isFailure(result) && Option.isSome(result.previousSuccess)
+            )
+          })
+          // Another user's snapshot doesn't carry over.
+          .props({ id: "2" })
+          .loadFailed("user", new users.UserNotFound({ id: "2" }))
+          .model(({ user }) => {
+            const result = Loader.snapshotData(user)?.result
+            assert.isTrue(
+              result !== undefined && AsyncResult.isFailure(result) && Option.isNone(result.previousSuccess)
+            )
+          }))
+    })
+
+    it("given takes an updater, and loaded throws for a field that isn't a loader field", () => {
+      Story.make(users.RenameForm, { id: "1" }, (s) =>
+        s
+          .given((model) => ({ ...model, draft: Option.some("Zed") }))
+          .loaded("user", { id: "1", name: "Ann", email: "", likes: 0 })
+          .check((story) => assert.strictEqual(story.model.draft._tag, "Some"))
+          .subscriptions((keys) => assert.deepStrictEqual(keys, [])))
+      assert.throws(
+        () => Story.make(users.RenameForm, { id: "1" }, (s) => s.loaded("draft" as any, "x")),
+        /draft/
+      )
     })
   })
 })

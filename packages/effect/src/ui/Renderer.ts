@@ -22,7 +22,10 @@ import type * as Duration from "../Duration.ts"
 import type * as Effect from "../Effect.ts"
 import * as Layer from "../Layer.ts"
 import type * as Option from "../Option.ts"
+import * as Predicate from "../Predicate.ts"
 import type * as AsyncResult from "../reactivity/AsyncResult.ts"
+import * as Schema from "../Schema.ts"
+import * as SchemaTransformation from "../SchemaTransformation.ts"
 import type * as Scope from "../Scope.ts"
 import type * as Component from "./Component.ts"
 import type * as Head from "./Head.ts"
@@ -148,17 +151,25 @@ export interface Hydration<Node> {
 
 /**
  * What a server render hands the client: each instance's Schema-encoded
- * Model by path, plus the paths to build fresh and the `init` Commands still
- * to run.
+ * Model by path, the paths to build fresh, and the loader entries the
+ * server's per-request cache settled.
  *
  * **Details**
  *
  * `~deferred` lists instances the client builds fresh instead of adopting:
  * a provided Layer that missed the budget or was kept off the server, and a
- * slot that failed. A deferred path covers its subtree. `~pending` lists, by
- * path, the positions among `init`'s Commands of the server Commands that
- * missed the budget, which the client runs after adopting. A path is in at
- * most one of the two.
+ * slot that failed. A deferred path covers its subtree.
+ *
+ * `~loader` holds every entry that settled on the server, a typed Failure
+ * included, by read name and args key. The client's cache hydrates from it,
+ * so a watch over a shipped entry doesn't fetch while the hydration window is
+ * open. An entry still in flight at the budget isn't shipped, and the client
+ * fetches it. `~static` is set by a render with `static: true`.
+ *
+ * **Gotchas**
+ *
+ * Read data is public: a read's success, error and args are in the state
+ * even when no view renders them.
  *
  * @stability experimental
  * @category models
@@ -167,7 +178,8 @@ export interface Hydration<Node> {
 export interface State {
   readonly [path: string]: unknown
   readonly "~deferred"?: ReadonlyArray<string> | undefined
-  readonly "~pending"?: Readonly<Record<string, ReadonlyArray<number>>> | undefined
+  readonly "~loader"?: unknown
+  readonly "~static"?: boolean | undefined
 }
 
 /**
@@ -264,10 +276,48 @@ export interface Ref<in out Node> {
  * @category constructors
  * @since 4.1.3
  */
-export const ref = <Node = unknown>(name: string): Ref<Node> => {
-  const make = (key: string): Ref<Node> => ({ name, key, at: (row) => make(`${key}[${row}]`) })
-  return make(name)
-}
+export const ref = <Node = unknown>(name: string): Ref<Node> => refAt(name, name)
+
+const refAt = <Node>(name: string, key: string): Ref<Node> => ({
+  name,
+  key,
+  at: (row) => refAt(name, `${key}[${row}]`)
+})
+
+const isRef = (u: unknown): u is Ref<any> =>
+  Predicate.hasProperty(u, "name") && typeof u.name === "string" && Predicate.hasProperty(u, "key") &&
+  typeof u.key === "string" && Predicate.hasProperty(u, "at") && typeof u.at === "function"
+
+/**
+ * The Schema of a ref in a Command's `args`: it encodes to the ref's `key`.
+ *
+ * **Details**
+ *
+ * The log shows a ref Command's args through it. Decoding a key gives a ref
+ * with that key, named by the part before any `at` keys.
+ *
+ * **Gotchas**
+ *
+ * The name is read up to the first `[`, so a ref whose name contains `[`
+ * decodes with a shorter name. Its `key` is still exact, and the runtime
+ * resolves refs by key.
+ *
+ * @stability experimental
+ * @category schemas
+ * @since 4.1.3
+ */
+export const Ref: Schema.decodeTo<Schema.declare<Ref<any>>, Schema.String> = Schema.String.pipe(
+  Schema.decodeTo(
+    Schema.declare(isRef, { expected: "Renderer.Ref" }),
+    SchemaTransformation.transform({
+      decode: (key: string): Ref<any> => {
+        const at = key.indexOf("[")
+        return refAt(at < 0 ? key : key.slice(0, at), key)
+      },
+      encode: (ref: Ref<any>) => ref.key
+    })
+  )
+)
 
 /**
  * How a Command reaches an element of the instance that issued it.
@@ -351,12 +401,17 @@ export type HostOf<V> = [V] extends [never] ? never : V extends View.Elements ? 
  * With `state` from a server render, the tree hydrates: each instance adopts
  * its server Model instead of running `init` and, on a host with
  * `hydration`, adopts the server's nodes inside `container`. `init` is
- * replayed only for its Commands. Server Commands the Model already holds the
- * result of are skipped, unless the state lists them as pending. An instance
+ * replayed only for its Commands, and every one of them runs. An instance
  * whose view doesn't match its nodes is rebuilt on its own, and a deferred
  * one is built fresh. An instance whose provided Layer is still building
  * keeps the server's nodes, inert, until the Layer is ready; `adopted`
  * completes when none is left waiting.
+ *
+ * The cache hydrates from the state's `~loader` entries. Until `adopted`
+ * completes or the Router first navigates, a watch, `get` or `prefetch` over
+ * a hydrated entry doesn't fetch, even when it is stale. The first emission
+ * of each watch after adoption is delivered to `update`, and the view
+ * doesn't change, since it equals the adopted snapshot.
  *
  * @stability experimental
  * @category constructors
@@ -374,8 +429,22 @@ export const mount: <Name extends string, Props, Model, Msg, Events, R, V extend
       ) => View.Node<never, RF>)
       | undefined
     readonly state?: State | undefined
+    readonly loader?: LoaderOptions | undefined
   }
 ) => Effect.Effect<Root<Model, Msg>, never, R | RF | HostOf<V> | Renderer | Scope.Scope> = runtime.mount as any
+
+/**
+ * Cache-wide options for the loader cache a mount owns. The app never
+ * provides the cache, so they go through `mount`.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.1.3
+ */
+export interface LoaderOptions {
+  /** How long an entry stays once nothing watches it. 5 minutes by default; a read can override it. */
+  readonly idleTimeToLive?: Duration.Input | undefined
+}
 
 /**
  * Runs a component tree the way a server renders it, and returns the tree to
@@ -383,19 +452,29 @@ export const mount: <Name extends string, Props, Model, Msg, Events, R, V extend
  *
  * **Details**
  *
- * The tree renders synchronously. Provided Layers are built, and of the
- * Commands `init` returns only those whose `Command.Service` is declared
- * `server: true` run; a Command from `update` is dropped and logged as
- * `CommandDropped` with reason `"server"`. Events are applied, so a child can
- * change its parent. Subscriptions and `onMount` work never run.
+ * The tree renders synchronously. Provided Layers are built, and data comes
+ * from loaders: a per-request cache fetches each key at most once, ignores
+ * `staleTime`, and dispatches each watch when its entry settles, so a watch
+ * message that changes a loader's args fetches the next key in the same
+ * render. No Command runs: `init`'s are dropped silently, and one from
+ * `update` is dropped, logged as `CommandDropped` with reason `"server"`
+ * and reported as `Command.ServerCommandIssued`. Events are applied, so a
+ * child can change its parent. Subscriptions other than loader watches, and
+ * `onMount` work, never run.
  *
  * Rendering waits until nothing is in flight or `budget` (default 500 ms) is
- * spent, whichever comes first. The budget limits waiting on Layers and
- * server Commands, not the render itself. A Layer that missed it, or that a
- * `provide` kept off the server with `{ server: false }`, defers its
- * instance; a server Command that missed it is pending; either way the
- * instance renders its current Model. A budget of 0 starts no server Command.
- * The tree is serialised once, in document order, and its Scopes are closed.
+ * spent, whichever comes first. Any fetch in flight holds it, a prefetch
+ * nobody renders included. The budget limits waiting on Layers and fetches,
+ * not the render itself. A Layer that missed it, or that a `provide` kept off
+ * the server with `{ server: false }`, defers its instance. A fetch that
+ * missed it is interrupted and its entry isn't shipped, so the client fetches
+ * it. A budget of 0 starts no fetch. The tree and the cache are serialised
+ * once, in document order, and its Scopes are closed.
+ *
+ * `static: true` is for HTML built at deploy or held in a CDN. It is written
+ * into the state, and the client hydrates every entry with an unknown age: an
+ * entry is stale, and refetches once, unless its read's `staleTime` is
+ * `"Infinity"`, and there is no fetch-free window.
  *
  * `elements` lists the vocabularies the server renders, by name, as a host's
  * `elements` does.
@@ -410,11 +489,13 @@ export const prerender: <Name extends string, Props, Model, Msg, Events, R, V ex
   options?: {
     readonly budget?: Duration.Input | undefined
     readonly elements?: ReadonlyArray<string> | "any" | undefined
+    readonly static?: boolean | undefined
   }
 ) => Effect.Effect<Prerendered<Model>, never, R> = (component, props, options) =>
   runtime.prerender(component as any, props, {
     budget: options?.budget ?? "500 millis",
-    elements: options?.elements ?? "any"
+    elements: options?.elements ?? "any",
+    static: options?.static
   })
 
 /**

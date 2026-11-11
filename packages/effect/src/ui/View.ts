@@ -28,6 +28,7 @@
  */
 import type * as Effect from "../Effect.ts"
 import type * as AsyncResult from "../reactivity/AsyncResult.ts"
+import * as Command from "./Command.ts"
 import type * as Component from "./Component.ts"
 import type * as Feature from "./Feature.ts"
 import type * as Renderer from "./Renderer.ts"
@@ -560,6 +561,17 @@ export interface Helper<Msg, Props> {
   ): ElementBuilder<Msg, Requirements<C[number]>>
   /** A text node. The only way to put text in a native view. */
   text(text: string): Text
+  /**
+   * Whether this instance has a run of the Command queued or running, of the
+   * group if a pick of its `group` fields is given. It ends when the run's
+   * message has been delivered, or at fiber exit for a run that sends none.
+   * Per instance and view only: `update` ignores a submit while saving with
+   * `mode: "drop"`.
+   */
+  running<Args, G extends string>(
+    command: Command.Definition<Args, any, boolean, any, G>,
+    ...group: Command.GroupArg<Args, G>
+  ): boolean
   /** A feature by service. The parent requires the service only. */
   child<Self, Props, Events, RF = never>(
     service: Feature.Service<Self, Props, Events>,
@@ -578,12 +590,27 @@ export interface Helper<Msg, Props> {
   ): Child<Msg, RC | RF>
 }
 
+/**
+ * What `h.running` asks: whether the instance has a run of the named Command,
+ * of the group key if given.
+ *
+ * @internal
+ */
+export type Running = (name: string, groupKey: string | undefined) => boolean
+
+const notRunning: Running = () => false
+
 class HelperImpl<Msg, Props> implements Helper<Msg, Props> {
   readonly props: Props
   readonly elements: Vocabulary<any> | undefined
-  constructor(props: Props, elements: Vocabulary<any> | undefined) {
+  readonly isRunning: Running
+  constructor(props: Props, elements: Vocabulary<any> | undefined, running: Running | undefined) {
     this.props = props
     this.elements = elements
+    this.isRunning = running ?? notRunning
+  }
+  running(command: Command.Definition.Any, group?: unknown): boolean {
+    return this.isRunning(Command.nameOf(command), Command.groupKeyOf(command, group))
   }
   el(tag: string, ...inputs: ReadonlyArray<Input<Msg>>): ElementBuilder<Msg, any> {
     const nodes = children(inputs)
@@ -632,9 +659,10 @@ const helperClasses = new WeakMap<Vocabulary<any>, typeof HelperImpl<any, any>>(
  */
 export const makeHelper = <Msg, Props, V extends Elements = never>(
   props: Props,
-  elements: Vocabulary<V> | undefined
+  elements: Vocabulary<V> | undefined,
+  running?: Running | undefined
 ): Helper<Msg, Props> & Tags<V, Msg> => {
-  if (elements === undefined) return new HelperImpl(props, undefined) as any
+  if (elements === undefined) return new HelperImpl(props, undefined, running) as any
   let Class = helperClasses.get(elements)
   if (Class === undefined) {
     const Made = class extends HelperImpl<any, any> {}
@@ -642,7 +670,7 @@ export const makeHelper = <Msg, Props, V extends Elements = never>(
     helperClasses.set(elements, Made)
     Class = Made
   }
-  return new Class(props, elements) as any
+  return new Class(props, elements, running) as any
 }
 
 /**

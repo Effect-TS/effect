@@ -21,10 +21,11 @@
  *
  * **Example** (A two-page app)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { BrowserHost, BrowserRouter, Html } from "effect/ui/html"
- * import { Effect, Layer, Option, Schema } from "effect"
+ * import { Effect, Schema } from "effect"
  * import { Component, Route, Router } from "effect/ui"
+ * import { TestHost } from "effect/ui/testing"
  *
  * const AppRoute = Route.union({
  *   Home: Route.make("/"),
@@ -42,8 +43,8 @@
  *   message: Message,
  *   elements: Html,
  *   init: ($) => $.props.route,
- *   update: (route, message) => AppRoute.print(message.route) === AppRoute.print(route) ? route : message.route,
- *   subscriptions: () => [Router.subscription(AppRoute, (route) => Message.make({ _tag: "ChangedRoute", route }))],
+ *   update: (_, message) => message.route,
+ *   subscriptions: (model) => [Router.subscription(AppRoute, model, (route) => Message.make({ _tag: "ChangedRoute", route }))],
  *   view: (route, h) =>
  *     h.div(
  *       h.a("Ada").attr("href", AppRoute.print(AppRoute.make({ _tag: "Person", params: { id: 1 } }))),
@@ -52,13 +53,23 @@
  * })
  *
  * const main = Effect.gen(function*() {
- *   const router = yield* Router.Router
- *   yield* BrowserHost.mount(App, { route: router.location().route as AppRoute }, document.getElementById("app")!)
+ *   yield* BrowserHost.mount(App, { route: yield* Router.currentRoute(AppRoute) }, document.getElementById("app")!)
  *   return yield* Effect.never
  * }).pipe(
  *   Effect.scoped,
  *   Effect.provide(BrowserRouter.layer({ routes: AppRoute }))
  * )
+ *
+ * // Exercise the same component without a browser.
+ * await Effect.runPromise(Effect.gen(function*() {
+ *   const root = yield* TestHost.mount(App, { route: yield* Router.currentRoute(AppRoute) })
+ *   yield* TestHost.settle
+ *   root.model()?._tag // => "Person"
+ * }).pipe(
+ *   Effect.provide(Router.memory({ routes: AppRoute, url: "/people/1" })),
+ *   Effect.scoped,
+ *   Effect.provide(TestHost.layer())
+ * ))
  * ```
  *
  * @stability experimental
@@ -66,11 +77,15 @@
  */
 import * as Context from "../../Context.ts"
 import * as Effect from "../../Effect.ts"
+import type * as Fiber from "../../Fiber.ts"
 import * as Layer from "../../Layer.ts"
 import * as Option from "../../Option.ts"
 import type * as Route from "../Route.ts"
 import * as Router from "../Router.ts"
 import * as submit from "./internal/submit.ts"
+
+/** Fixed hover and focus delay before reporting link intent. */
+const intentDelay = "50 millis"
 
 /**
  * The options of `layer`.
@@ -105,6 +120,10 @@ export interface Options {
  * There's one per document: building a second fails as a defect, and the
  * claim is released when the Layer's Scope closes.
  *
+ * Reports link intent to `Router.prefetch` declarations through `intent`
+ * after 50 ms of hover or focus on the Effect `Clock`, or immediately on
+ * touch. Only links a click would follow count.
+ *
  * @stability experimental
  * @category layers
  * @since 4.1.3
@@ -118,7 +137,11 @@ export const layer = (options: Options): Layer.Layer<Router.Services> => make(op
  * **Details**
  *
  * Parsing and printing work as with `layer`, with the base `"#"`. As the
- * fragment holds the route, there are no in-page `#hash` links.
+ * fragment holds the route, there are no in-page `#hash` links. To hydrate a
+ * prerendered shell, set `routes.setBase("#")` before rendering on the server
+ * with `Router.static` at `"#/"`. Hydration adopts that shell, then delivers
+ * the browser route without reporting an initial `RouteMismatch`. Client-only
+ * hash roots are still checked.
  *
  * @stability experimental
  * @category layers
@@ -291,20 +314,69 @@ const make = (options: Options, inFragment: boolean): Layer.Layer<Router.Service
       event.preventDefault()
       Effect.runSync(router.navigate(href))
     }
-    const onClick = (event: MouseEvent) => {
-      if (event.defaultPrevented || event.button !== 0) return
-      if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return
-      const anchor = event.composedPath().find((node): node is Element =>
+    /** The nearest anchor with an `href` on the event's path. */
+    const anchorOf = (event: Event): Element | undefined =>
+      event.composedPath().find((node): node is Element =>
         "localName" in node && (node as Element).localName === "a" && (node as Element).hasAttribute("href")
       )
-      if (anchor === undefined) return
+    /** The href a click on `anchor` would follow, or undefined when the browser keeps it. */
+    const hrefOf = (anchor: Element): string | undefined => {
       const targetAttribute = anchor.getAttribute("target")
       if (
         (targetAttribute !== null && targetAttribute !== "" && targetAttribute !== "_self") ||
         anchor.hasAttribute("download")
-      ) return
-      const rawHref = anchor.getAttribute("href")!
-      follow(event, local(new URL(rawHref, document.baseURI)))
+      ) return undefined
+      const href = local(new URL(anchor.getAttribute("href")!, document.baseURI))
+      return href === undefined || Option.isNone(routes.parse(href)) ? undefined : href
+    }
+    const onClick = (event: MouseEvent) => {
+      if (event.defaultPrevented || event.button !== 0) return
+      if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return
+      const anchor = anchorOf(event)
+      if (anchor === undefined) return
+      follow(event, hrefOf(anchor))
+    }
+
+    // --- intent ------------------------------------------------------------
+    // Hover and focus count after 50 ms on the Effect Clock, touch at once. Moving between elements
+    // inside one anchor neither cancels nor restarts the wait.
+    const services = yield* Effect.context<never>()
+    let intended: Element | undefined
+    let waiting: Fiber.Fiber<void> | undefined
+    const cancelIntent = () => {
+      intended = undefined
+      waiting?.interruptUnsafe()
+      waiting = undefined
+    }
+    const onEnter = (event: Event) => {
+      const anchor = anchorOf(event)
+      if (anchor === intended) return
+      cancelIntent()
+      if (anchor === undefined) return
+      intended = anchor
+      const href = hrefOf(anchor)
+      if (href === undefined) return
+      waiting = Effect.runForkWith(services)(
+        Effect.andThen(
+          Effect.sleep(intentDelay),
+          Effect.suspend(() => {
+            waiting = undefined
+            return router.intent(href)
+          })
+        )
+      )
+    }
+    const onLeave = (event: FocusEvent | MouseEvent) => {
+      if (intended === undefined) return
+      const next = event.relatedTarget
+      if (next !== null && "nodeType" in next && intended.contains(next as Node)) return
+      cancelIntent()
+    }
+    const onTouch = (event: TouchEvent) => {
+      cancelIntent()
+      const anchor = anchorOf(event)
+      const href = anchor === undefined ? undefined : hrefOf(anchor)
+      if (href !== undefined) Effect.runSync(router.intent(href))
     }
     const onSubmit = (event: SubmitEvent) => {
       // BrowserHost prevents every submission of a form the app rendered. If the app has no
@@ -334,10 +406,21 @@ const make = (options: Options, inFragment: boolean): Layer.Layer<Router.Service
     }
     document.addEventListener("click", onClick)
     document.addEventListener("submit", onSubmit)
+    document.addEventListener("mouseover", onEnter)
+    document.addEventListener("focusin", onEnter)
+    document.addEventListener("mouseout", onLeave)
+    document.addEventListener("focusout", onLeave)
+    document.addEventListener("touchstart", onTouch, { passive: true })
     yield* Effect.addFinalizer(() =>
       Effect.sync(() => {
+        cancelIntent()
         document.removeEventListener("click", onClick)
         document.removeEventListener("submit", onSubmit)
+        document.removeEventListener("mouseover", onEnter)
+        document.removeEventListener("focusin", onEnter)
+        document.removeEventListener("mouseout", onLeave)
+        document.removeEventListener("focusout", onLeave)
+        document.removeEventListener("touchstart", onTouch)
       })
     )
     return context

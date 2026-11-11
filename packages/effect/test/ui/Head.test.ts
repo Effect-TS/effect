@@ -152,7 +152,8 @@ describe("Head", () => {
         view: (_, h) => h.child(Page, { key: "page", props: {} })
       })
       const root = yield* TestHost.mount(App, {}, { fallback: (_, h) => h.text("down") })
-      yield* TestHost.settle
+      const crashed = yield* Effect.flip(TestHost.settle)
+      assert.strictEqual(crashed._tag, "RootCrashed")
       assert.strictEqual(root.text(), "down")
       // The failed root and the page under it contribute nothing.
       assert.strictEqual(root.head().title, undefined)

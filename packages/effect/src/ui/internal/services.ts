@@ -6,6 +6,7 @@
 import * as Context from "../../Context.ts"
 import type * as Head from "../Head.ts"
 import type { Refs as RefsShape, Renderer as RendererShape } from "../Renderer.ts"
+import type * as Route from "../Route.ts"
 
 /** @internal */
 export const Renderer = Context.Service<RendererShape, RendererShape>("effect/ui/Renderer")
@@ -19,11 +20,20 @@ export const Refs = Context.Service<RefsShape, RefsShape>("effect/ui/Renderer/Re
  * @internal
  */
 export interface RootHandle {
+  /** Whether the root actually adopted a server Model, including after a deferred Layer resolves. */
+  readonly hydrated: boolean
   readonly container: unknown
   /** The current flush: 0 for the first render, then one more per flush. */
   readonly flush: () => number
   /** The JSON-encoded Model of every mounted instance, by path. Models that don't encode are left out. */
   readonly snapshot: () => Record<string, unknown>
+  /**
+   * The Router navigated. It closes the cache's fetch-free window after hydration, if adoption
+   * hasn't yet. The Router calls it first in `set`, before the route changes.
+   */
+  readonly navigated: () => void
+  /** The runtime's problems sink. */
+  readonly report: (problem: { readonly _tag: string; readonly message: string }) => void
 }
 
 /**
@@ -52,6 +62,61 @@ export interface RootHooks {
   readonly afterFlush: (root: RootHandle, info: FlushInfo) => void
   /** The encoded Model a new instance at `path` adopts, if the router is restoring one. */
   readonly restore: (path: string) => unknown
+  /** Registers an instance's `Router.prefetch` declaration. The returned function unregisters it. */
+  readonly declare: (declarer: Declarer) => () => void
+}
+
+/**
+ * A mounted instance's `Router.prefetch` declaration, as the router sees it.
+ *
+ * @internal
+ */
+export interface Declarer {
+  /** The union the declaration's map covers. It follows the latest `subscriptions` run. */
+  readonly routes: () => Route.AnyUnion
+  /**
+   * Runs the declaration for `route` synchronously. An intent is dropped when
+   * the declaration ran for the same printed route less than 30 seconds ago.
+   * A navigation returns the check to run once it settles.
+   */
+  readonly run: (route: { readonly _tag: string }, intent: boolean) => PrefetchCheck | undefined
+}
+
+/**
+ * The check after a navigation that ran a declaration. The Router calls
+ * exactly one of the two: `settled` when the navigation settles, `dropped`
+ * when another navigation supersedes it or the Router closes. Either ends the
+ * watch recording the check holds open.
+ *
+ * @internal
+ */
+export interface PrefetchCheck {
+  readonly settled: () => void
+  readonly dropped: () => void
+}
+
+/**
+ * A `Router.prefetch` Subscription carries its declaration under this key.
+ * The runtime reads it at every `subscriptions` run and runs no Stream for it.
+ *
+ * @internal
+ */
+export const prefetch: unique symbol = Symbol.for("effect/ui/Router/prefetch") as any
+
+/** @internal */
+export interface Prefetch {
+  readonly routes: Route.AnyUnion
+  readonly map: Readonly<Record<string, (route: any) => ReadonlyArray<Page>>>
+}
+
+/**
+ * One page a declaration names: a component and its props.
+ *
+ * @internal
+ */
+export interface Page {
+  readonly component: unknown
+  readonly props: unknown
 }
 
 /** @internal */
@@ -64,3 +129,22 @@ export const RootHooks = Context.Service<RootHooks, RootHooks>("effect/ui/intern
  * @internal
  */
 export const onDeliver: unique symbol = Symbol.for("effect/ui/Subscription/onDeliver") as any
+
+/** @internal */
+export const CurrentRoot = Context.Reference<() => RootHandle | undefined>("effect/ui/internal/CurrentRoot", {
+  defaultValue: () => () => undefined
+})
+
+/**
+ * A Subscription may carry a function under this key. No Stream runs on the
+ * server, so there the runtime calls it once per render, for the root's
+ * Subscriptions only, with the root's context and the problems sink.
+ *
+ * @internal
+ */
+export const onServer: unique symbol = Symbol.for("effect/ui/Subscription/onServer") as any
+
+/** @internal */
+export interface OnServer {
+  readonly [onServer]?: (context: Context.Context<never>, report: RootHandle["report"]) => void
+}

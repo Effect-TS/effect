@@ -1,13 +1,25 @@
-import { Effect, Schema, Stream } from "effect"
-import { Command, type Component } from "effect/ui"
+import { Context, Data, Effect, Schema, Stream } from "effect"
+import { Command, type Component, Renderer } from "effect/ui"
 import { describe, expect, it } from "tstyche"
 
 const Message = Schema.TaggedUnion({ Got: { n: Schema.Number } })
 
-const Fx = Command.make("Fx", () => Effect.succeed("text"))
-const St = Command.make("St", () => Stream.fromIterable(["text"]), { stream: true })
-class SA extends Command.Service<SA>()("SA", Effect.succeed(() => Effect.succeed("a"))) {}
-class SB extends Command.Service<SB>()("SB", Effect.succeed(() => Stream.fromIterable([1])), { stream: true }) {}
+const Fx = Command.make("Fx", { args: {} }, () => Effect.succeed("text"))
+const St = Command.make("St", { args: {}, stream: true }, () => Stream.fromIterable(["text"]))
+class SA
+  extends Command.Service<SA>()("SA", { args: {}, invalidates: () => [] }, Effect.succeed(() => Effect.succeed("a")))
+{}
+class SB extends Command.Service<SB>()(
+  "SB",
+  { args: {}, stream: true, invalidates: () => [] },
+  Effect.succeed(() => Stream.fromIterable([1]))
+) {}
+class SaveFailed extends Data.TaggedError("SaveFailed")<{ readonly reason: string }> {}
+class Save extends Command.Service<Save>()(
+  "Save",
+  { args: { id: Schema.String, title: Schema.String }, group: ["id"], mode: "queue", invalidates: () => [] },
+  Effect.succeed(({ title }) => title === "" ? Effect.fail(new SaveFailed({ reason: "empty" })) : Effect.succeed(title))
+) {}
 declare const condition: boolean
 declare const $: Component.Update<{}, typeof Message.Type, never, {}>
 
@@ -79,23 +91,150 @@ describe("Command", () => {
   })
 
   describe("Service", () => {
-    it("takes server: true only for an Effect Command", () => {
+    it("has no server option: no Command runs on the server", () => {
       const service = Command.Service<"Load">()
-      expect(service).type.toBeCallableWith("Load", Effect.succeed(() => Effect.succeed(1)), { server: true })
-      expect(service).type.not.toBeCallableWith("Load", Effect.succeed(() => Stream.fromIterable([1])), {
-        stream: true,
-        server: true
+      expect(service).type.not.toBeCallableWith(
+        "Load",
+        { args: {}, invalidates: () => [], server: true },
+        Effect.succeed(() => Effect.succeed(1))
+      )
+      expect(service).type.not.toBeCallableWith(
+        "Load",
+        { args: {}, invalidates: () => [], stream: true, server: true },
+        Effect.succeed(() => Stream.fromIterable([1]))
+      )
+      expect(Command.make).type.not.toBeCallableWith("Load", { args: {}, server: true }, () => Effect.succeed(1))
+    })
+
+    it("requires args and invalidates", () => {
+      const service = Command.Service<"Load">()
+      expect(service).type.not.toBeCallableWith("Load", { args: {} }, Effect.succeed(() => Effect.succeed(1)))
+      expect(service).type.not.toBeCallableWith(
+        "Load",
+        { invalidates: () => [] },
+        Effect.succeed(() => Effect.succeed(1))
+      )
+      expect(Command.make).type.not.toBeCallableWith("Fx", {}, () => Effect.succeed(1))
+    })
+
+    it("types the body's args, and make takes them", () => {
+      expect(Save.make).type.toBeCallableWith({ id: "t1", title: "milk" })
+      expect(Save.make).type.not.toBeCallableWith({ id: "t1" })
+      expect(SA.make).type.toBeCallableWith()
+    })
+
+    it("a body that captures a service it should have taken at build time is rejected", () => {
+      class Db extends Context.Service<Db, { readonly save: Effect.Effect<void> }>()("Db") {}
+      expect(Command.Service<"Bad">()).type.not.toBeCallableWith(
+        "Bad",
+        { args: {}, invalidates: () => [] },
+        Effect.succeed(() => Db.use((db) => db.save))
+      )
+    })
+  })
+
+  describe("make", () => {
+    it("may only require framework services", () => {
+      class Db extends Context.Service<Db, { readonly save: Effect.Effect<void> }>()("Db") {}
+      expect(Command.make).type.toBeCallableWith(
+        "Look",
+        { args: {} },
+        () => Renderer.Refs.use(() => Effect.succeed(1))
+      )
+      expect(Command.make).type.not.toBeCallableWith(
+        "Bad",
+        { args: {} },
+        () => Db.use((db) => db.save)
+      )
+    })
+  })
+
+  describe("group", () => {
+    it("names args fields whose encoded form is JSON", () => {
+      expect(Command.make).type.toBeCallableWith(
+        "Page",
+        { args: { tab: Schema.String, page: Schema.NumberFromString }, group: ["tab", "page"] },
+        () => Effect.void
+      )
+      expect(Command.make).type.not.toBeCallableWith(
+        "Page",
+        { args: { tab: Schema.String }, group: ["other"] },
+        () => Effect.void
+      )
+      expect(Command.make).type.not.toBeCallableWith(
+        "Upload",
+        { args: { file: Schema.instanceOf(File) }, group: ["file"] },
+        () => Effect.void
+      )
+    })
+
+    it("interrupt takes a pick of the group fields, or nothing", () => {
+      expect(Command.interrupt).type.toBeCallableWith(Save, { id: "t1" })
+      expect(Command.interrupt).type.toBeCallableWith(Save)
+      expect(Command.interrupt).type.not.toBeCallableWith(Save, { title: "milk" })
+      expect(Command.interrupt).type.not.toBeCallableWith(Fx, {})
+    })
+  })
+
+  describe("match", () => {
+    const matched = Save.make({ id: "t1", title: "milk" }).pipe(Command.match({
+      onSuccess: (title) => Message.make({ _tag: "Got", n: title.length }),
+      onFailure: (error) => Message.make({ _tag: "Got", n: error.reason.length })
+    }))
+
+    it("a body with a typed error issues an Unmatched Command, which $.run doesn't take", () => {
+      const unmatched = Save.make({ id: "t1", title: "milk" })
+      expect(unmatched).type.toBe<Command.Unmatched<string, SaveFailed, Save, "Effect">>()
+      expect($.run).type.not.toBeCallableWith(unmatched)
+      expect(Command.map).type.not.toBeCallableWith(unmatched, (title: string) => title)
+    })
+
+    it("maps both channels, keeping the source result and failure", () => {
+      expect(matched).type.toBe<Command.Effectful<typeof Message.Type, Save, string, SaveFailed>>()
+      expect($.run).type.toBeCallableWith(matched)
+      expect<Command.Failure<typeof matched>>().type.toBe<SaveFailed>()
+    })
+
+    it("doesn't take a Command whose body can't fail", () => {
+      expect(Command.match).type.not.toBeCallableWith(SA.make(), {
+        onSuccess: (a: string) => a,
+        onFailure: (e: never) => e
       })
-      // Factories from make can't be server Commands.
-      expect(Command.make).type.not.toBeCallableWith("Load", () => Effect.succeed(1), { server: true })
+    })
+  })
+
+  describe("afterRefetch", () => {
+    it("takes an Effect Service Command on either side of match and map, and keeps its type", () => {
+      const unmatched = Save.make({ id: "t1", title: "milk" })
+      expect(unmatched.pipe(Command.afterRefetch("5 seconds"))).type.toBe<
+        Command.Unmatched<string, SaveFailed, Save, "Effect">
+      >()
+      const matched = unmatched.pipe(
+        Command.afterRefetch("Infinity"),
+        Command.match({ onSuccess: (title) => title.length, onFailure: (error) => error.reason.length })
+      )
+      expect(matched).type.toBe<Command.Effectful<number, Save, string, SaveFailed>>()
+      expect(matched.pipe(Command.afterRefetch(5))).type.toBe<Command.Effectful<number, Save, string, SaveFailed>>()
+      expect(SA.make().pipe(Command.map((a) => a.length), Command.afterRefetch("1 second"))).type.toBe<
+        Command.Effectful<number, SA, string>
+      >()
+      expect(Command.afterRefetch(SA.make(), "1 second")).type.toBe<Command.Effectful<string, SA, string>>()
+    })
+
+    it("rejects a Stream Command and a Command.make Command", () => {
+      expect(Command.afterRefetch).type.not.toBeCallableWith(SB.make(), "1 second")
+      expect(Command.afterRefetch).type.not.toBeCallableWith(Fx(), "1 second")
+      expect(Command.afterRefetch).type.not.toBeCallableWith(St(), "1 second")
+      expect(Command.afterRefetch("1 second")).type.not.toBeCallableWith(Fx())
+      expect(Command.afterRefetch("1 second")).type.not.toBeCallableWith(SB.make())
     })
   })
 
   describe("a Command that never produces a result", () => {
     it("is accepted by any component's $.run", () => {
-      const Hold = Command.make("Hold", () => Effect.never)
-      const Die = Command.make("Die", () => Effect.die("boom"))
-      const Watch = Command.make("Watch", () => Stream.never, { stream: true })
+      const Hold = Command.make("Hold", { args: {} }, () => Effect.never)
+      const Die = Command.make("Die", { args: {} }, () => Effect.die("boom"))
+      const Watch = Command.make("Watch", { args: {}, stream: true }, () => Stream.never)
       expect($.run).type.toBeCallableWith(Hold())
       expect($.run).type.toBeCallableWith(Die())
       expect($.run).type.toBeCallableWith(Watch())

@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Stream } from "effect"
+import { Effect, Stream } from "effect"
 import { Subscription } from "effect/ui"
 
 describe("Subscription", () => {
@@ -32,12 +32,16 @@ describe("Subscription", () => {
     assert.strictEqual(key([1, "x"]), Subscription.keyOf("room", [1, "x"]))
   })
 
-  it("the builder only sees its deps", () => {
-    let seen: unknown
-    Subscription.make("room", ["a", 1], (deps) => {
-      seen = deps
-      return Stream.empty
-    })
-    assert.deepStrictEqual(seen, ["a", 1])
-  })
+  it.effect("builds lazily with only its deps each time the Stream runs", () =>
+    Effect.gen(function*() {
+      const seen: Array<unknown> = []
+      const subscription = Subscription.make("room", ["a", 1], (deps) => {
+        seen.push(deps)
+        return Stream.empty
+      })
+      assert.deepStrictEqual(seen, [])
+      yield* Stream.runDrain(subscription.stream)
+      yield* Stream.runDrain(subscription.stream)
+      assert.deepStrictEqual(seen, [["a", 1], ["a", 1]])
+    }))
 })

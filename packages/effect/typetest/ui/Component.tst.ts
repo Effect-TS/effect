@@ -1,5 +1,6 @@
 import { Context, Effect, Layer, Schema, Scope } from "effect"
 import type { KeyValueStore } from "effect/persistence"
+import type { Loader } from "effect/reactivity"
 import { Command, Component, Feature } from "effect/ui"
 import { describe, expect, it } from "tstyche"
 import {
@@ -16,8 +17,27 @@ const Message = Schema.TaggedUnion({ X: {}, Y: {}, Done: {} })
 class A extends Context.Service<A, { readonly a: Effect.Effect<void> }>()("A") {}
 class B extends Context.Service<B, { readonly b: Effect.Effect<void> }>()("B") {}
 
-class CA extends Command.Service<CA>()("CA", Effect.succeed(() => Effect.succeed(Message.make({ _tag: "Done" })))) {}
-class CB extends Command.Service<CB>()("CB", Effect.succeed(() => Effect.succeed(Message.make({ _tag: "Done" })))) {}
+class CA extends Command.Service<CA>()(
+  "CA",
+  { args: {}, invalidates: () => [] },
+  Effect.succeed(() => Effect.succeed(Message.make({ _tag: "Done" })))
+) {}
+class CB extends Command.Service<CB>()(
+  "CB",
+  { args: {}, invalidates: () => [] },
+  Effect.succeed(() => Effect.succeed(Message.make({ _tag: "Done" })))
+) {}
+
+declare const NeedsRuntime: Component.Component<
+  "NeedsRuntime",
+  {},
+  {},
+  never,
+  never,
+  A | Loader.Cache | Scope.Scope,
+  any
+>
+declare const runtimeLayer: Layer.Layer<A | Loader.Cache | Scope.Scope | typeof Loader.Visibility>
 
 describe("Component", () => {
   describe("Requirements", () => {
@@ -85,7 +105,11 @@ describe("Component", () => {
     })
 
     it("keeps framework services out", () => {
-      const UsesScope = Command.make("UsesScope", () => Effect.map(Scope.Scope, () => Message.make({ _tag: "Done" })))
+      const UsesScope = Command.make(
+        "UsesScope",
+        { args: {} },
+        () => Effect.map(Scope.Scope, () => Message.make({ _tag: "Done" }))
+      )
       expect(UsesScope()).type.toBe<Command.Effectful<typeof Message.Type, never>>()
       const C = Component.make({
         name: "C",
@@ -103,10 +127,12 @@ describe("Component", () => {
     it("rejects any service that isn't a framework service", () => {
       expect(Command.make).type.not.toBeCallableWith(
         "Save",
+        { args: {} },
         () => Effect.map(A, () => Message.make({ _tag: "Done" }))
       )
       expect(Command.make).type.toBeCallableWith(
         "Roll",
+        { args: {} },
         () => Effect.succeed(Message.make({ _tag: "Done" }))
       )
     })
@@ -126,10 +152,12 @@ describe("Component", () => {
     it("rejects a function that reaches for a service instead of capturing it", () => {
       expect(Command.Service<B>()).type.not.toBeCallableWith(
         "Bad",
+        { args: {}, invalidates: () => [] },
         Effect.succeed(() => Effect.map(A, () => Message.make({ _tag: "Done" })))
       )
       expect(Command.Service<B>()).type.toBeCallableWith(
         "Good",
+        { args: {}, invalidates: () => [] },
         Effect.map(A, () => () => Effect.succeed(Message.make({ _tag: "Done" })))
       )
     })
@@ -167,6 +195,11 @@ describe("Component", () => {
         onFailure: () => TodoItemMessage.make({ _tag: "SaveFailed", reason: "offline" })
       })
       expect(Component.provide).type.not.toBeCallableWith(failing)
+    })
+
+    it("never removes a service the runtime owns", () => {
+      const Provided = Component.provide(NeedsRuntime, runtimeLayer)
+      expect<Component.Requirements<typeof Provided>>().type.toBe<Loader.Cache | Scope.Scope>()
     })
   })
 
