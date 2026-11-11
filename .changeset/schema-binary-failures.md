@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Reduce the overhead of reporting invalid values in `SchemaBinary`.
+Speed up failed `SchemaBinary` decoding and encoding.

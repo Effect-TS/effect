@@ -1242,6 +1242,7 @@ function pushU64(out: Array<number>, n: bigint) {
   }
 }
 
+// Every entry point catches and converts this error, so its stack is never read.
 class IssueError extends Error {
   readonly issue: SchemaIssue.Issue
   constructor(issue: SchemaIssue.Issue) {

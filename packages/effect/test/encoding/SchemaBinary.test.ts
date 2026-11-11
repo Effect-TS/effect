@@ -1996,7 +1996,7 @@ describe("SchemaBinary", () => {
       )
     })
 
-    it("preserves the issue and path for binary failures", () => {
+    it("reports the issue and path for binary failures", () => {
       const codec = SchemaBinary.toCodec(Schema.Tuple([Schema.Boolean]))
       const bytes = Schema.encodeSync(codec)([true]).slice()
       bytes[bytes.length - 1] = 2
