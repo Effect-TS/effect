@@ -3,9 +3,9 @@
  * events with plain payloads, controlled properties, refs typed by tag, and
  * ref Commands.
  *
- * The module is itself a vocabulary. Register it once for the app, with the
- * type half by module augmentation and the runtime half with
- * `View.registerElements`, or set it on one component with `elements: Html`.
+ * The module is itself a vocabulary. Register it once for the app by
+ * importing `effect/ui/html/register`, or set it on one component with
+ * `elements: Html`.
  *
  * Event handlers get plain data, never a DOM event: `input` is `{ value }`,
  * `keydown` is `{ key, shift, ctrl, alt, meta }` and `submit` is `{ fields }`.
@@ -16,16 +16,7 @@
  * **Example** (Registering the vocabulary for the app)
  *
  * ```ts
- * import { Html } from "effect/ui/html"
- * import { View } from "effect/ui"
- *
- * declare module "effect/ui/View" {
- *   interface Register {
- *     readonly elements: Html.Elements
- *   }
- * }
- *
- * View.registerElements(Html)
+ * import "effect/ui/html/register"
  * ```
  *
  * **Example** (A controlled text field)

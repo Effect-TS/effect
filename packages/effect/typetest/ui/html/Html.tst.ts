@@ -28,6 +28,10 @@ interface Native extends View.Elements {
 }
 
 describe("Html", () => {
+  it("registers nothing: only `effect/ui/html/register` does", () => {
+    expect<View.Registered>().type.toBe<never>()
+  })
+
   it("the module is a vocabulary", () => {
     expect(Html).type.toBeAssignableTo<View.Vocabulary<Html.Elements>>()
     Component.make({

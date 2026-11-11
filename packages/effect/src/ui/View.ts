@@ -520,7 +520,8 @@ let registered: Vocabulary<any> | undefined
  * **Details**
  *
  * It's read when a view runs, not when a component is made, so module order
- * doesn't matter as long as it runs before the first render.
+ * doesn't matter as long as it runs before the first render. For the HTML
+ * vocabulary, importing `effect/ui/html/register` does both halves.
  *
  * @stability experimental
  * @category vocabularies

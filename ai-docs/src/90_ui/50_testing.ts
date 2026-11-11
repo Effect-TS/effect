@@ -1,8 +1,9 @@
 /**
  * @title Testing effect/ui components
  *
- * Test one component as a pure `Story`, a Command against a fake Layer, a
- * whole tree on `TestHost`, and server rendering plus hydration with `ssr`.
+ * Test a component as a pure `Story`, a Command against a fake Layer, and a
+ * whole tree on `TestHost`. The last test renders on the server and hydrates
+ * with `ssr`.
  */
 // @vitest-environment happy-dom
 import { assert, describe, it } from "@effect/vitest"
@@ -22,7 +23,7 @@ const edited: Note = { ...note, body: "Oat milk" }
 const body = HtmlQuery.role("textbox", { name: "Body" })
 
 // ---------------------------------------------------------------------------
-// Story: one instance, pure. No runtime, no Layers, no host.
+// Story: one instance as pure functions. No runtime, Layers or host.
 // ---------------------------------------------------------------------------
 
 describe("NoteEditor", () => {
@@ -31,7 +32,7 @@ describe("NoteEditor", () => {
     // plain payloads the view's handlers expect.
     Story.make(NoteEditor, { note }, (s) =>
       s.fire(body, "input", { value: edited.body })
-        // Subscriptions are asserted as keys: nothing runs in a story.
+        // Nothing runs in a story, so Subscriptions are asserted by key.
         .subscriptions((keys) => assert.deepStrictEqual(keys, ["autosave:1"]))
         .fire(Query.tag("form"), "submit")
         // Commands stay pending as data until a step resolves them.
@@ -75,7 +76,7 @@ describe("SaveNote", () => {
 // ---------------------------------------------------------------------------
 
 // `Router.memory` is the Router for tests. The app's own requirements are
-// provided as in production, with the fake at the bottom.
+// provided as in production, except that `Notes` is the in-memory fake.
 const provideApp = <A, E, R>(effect: Effect.Effect<A, E, R>) =>
   effect.pipe(
     Effect.provide([Router.memory({ routes: AppRoute, url: "/notes/n1" }), Notes.layerMemory([note])]),
@@ -86,14 +87,15 @@ const provideApp = <A, E, R>(effect: Effect.Effect<A, E, R>) =>
 describe("App", () => {
   it.effect("loads a note, autosaves an edit and shows the notice", () =>
     Effect.gen(function*() {
-      const root = yield* TestHost.mount(App, { route: yield* Router.currentRoute(AppRoute) })
+      // `Router.props` reads the root's `{ route }` from the Router.
+      const root = yield* TestHost.mount(App, Router.props(AppRoute))
       // `settle` drains Commands, fetches, Layer builds and the render flush.
       yield* TestHost.settle
       assert.strictEqual(root.head().title, "Shopping · Notes")
 
       Query.fire(root.get(body), "input", { value: edited.body })
       yield* TestHost.settle
-      // Time is the TestClock's: this fires the autosave Subscription.
+      // The TestClock owns time. Adjusting it fires the autosave Subscription.
       yield* TestClock.adjust("2 seconds")
       yield* TestHost.settle
       assert.strictEqual(Query.textOf(root.get(HtmlQuery.role("status"))), "Saved")
@@ -101,9 +103,10 @@ describe("App", () => {
 
   it.effect("hydrates what the server rendered", () =>
     Effect.gen(function*() {
-      // Renders on the server, hydrates in a fresh document (hence the DOM
-      // environment above) and fails with `SsrError` if the two disagree.
-      const result = yield* ssr(App, { route: yield* Router.currentRoute(AppRoute) })
+      // `ssr` renders on the server and hydrates in a fresh document, which
+      // is why this file needs the DOM environment above. It fails with
+      // `SsrError` if the two disagree.
+      const result = yield* ssr(App, Router.props(AppRoute))
       assert.include(result.html, "Milk")
       // The paths of the instances that adopted the server's Model.
       assert.include(result.adopted, "/App/NotePage[/notes/n1]/NoteEditor[n1]")
