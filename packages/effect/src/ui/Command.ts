@@ -781,7 +781,7 @@ const UnmatchedProto = {
   [UnmatchedTypeId]: { _A: (_: never) => _, _E: (_: never) => _, _R: (_: never) => _ }
 }
 
-interface Fields extends Omit<Data, "effect" | "stream"> {
+interface Fields extends Data {
   readonly _tag: Kind
   readonly "~group": GroupSource | undefined
   readonly work: Effect.Effect<any, any, any> | Stream.Stream<any, any, any>
@@ -792,16 +792,15 @@ interface Fields extends Omit<Data, "effect" | "stream"> {
 /** `effect` and `stream` are the work with `resolve` and `reject` applied. An unmatched Command keeps its failure. */
 const makeIssued = (fields: Fields, unmatched = false): any => {
   const { reject, resolve, work } = fields
-  const plain = resolve === identity && reject === undefined
   let effect: Effect.Effect<any, any, any> | undefined
   let stream: Stream.Stream<any, any, any> | undefined
   if (fields._tag === "Effect") {
-    const mapped = plain
+    const mapped = resolve === identity
       ? work as Effect.Effect<any, any, any>
       : Effect.map(work as Effect.Effect<any, any, any>, resolve)
     effect = reject === undefined ? mapped : Effect.catch(mapped, (error) => Effect.sync(() => reject(error)))
   } else {
-    const mapped = plain
+    const mapped = resolve === identity
       ? work as Stream.Stream<any, any, any>
       : Stream.map(work as Stream.Stream<any, any, any>, resolve)
     stream = reject === undefined ? mapped : Stream.catch(mapped, (error) => Stream.sync(() => reject(error)))
@@ -862,13 +861,13 @@ const makeGroup = (
   group: ReadonlyArray<string>
 ): (args: unknown) => GroupSource | undefined => {
   if (group.length === 0) return () => undefined
+  const fields: Record<string, Schema.Top> = {}
   for (const field of group) {
     if (!Object.hasOwn(schema.fields, field)) {
       throw new Error(`${name}: the group field "${field}" isn't one of its args`)
     }
+    fields[field] = schema.fields[field] as Schema.Top
   }
-  const fields: Record<string, Schema.Top> = {}
-  for (const field of group) fields[field] = schema.fields[field] as Schema.Top
   const pickSchema = Schema.Struct(fields)
   let encode: ((u: unknown) => unknown) | undefined
   return (args) => {
@@ -1200,7 +1199,7 @@ export const Service: <Self>() => {
     )
     static make(args: any = {}) {
       const source = groupOf(args)
-      const fields: Fields = {
+      return makeIssued({
         _tag: stream ? "Stream" : "Effect",
         name: key,
         args,
@@ -1218,8 +1217,7 @@ export const Service: <Self>() => {
           : Effect.flatMap(service, (run) => run(args)),
         resolve: identity,
         reject: undefined
-      }
-      return makeIssued(fields, true)
+      }, true)
     }
   }
   return CommandService
