@@ -457,7 +457,7 @@ host and router, and server rendering.
 - **[Server rendering and hydration](./ai-docs/src/90_ui/40_server-rendering.ts)**:
   Render a routed app to HTML on the server with `HtmlServer.renderToHtml`,
   embed its state in the page, and hydrate it in the browser with
-  `BrowserHost.mount`.
+  `BrowserHost`.
 - **[Testing effect/ui components](./ai-docs/src/90_ui/50_testing.ts)**:
   Test one component as a pure `Story`, a Command against a fake Layer, a
   whole tree on `TestHost`, and server rendering plus hydration with `ssr`.

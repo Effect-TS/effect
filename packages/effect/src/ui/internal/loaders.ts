@@ -1,6 +1,6 @@
 /**
  * What `Component.make` builds from `loaders`: the empty snapshots, the
- * opened views of `h` and the `watch` of `subscriptions`.
+ * opened views of `h` and the `$.watch` of `subscriptions`.
  *
  * @internal
  */
@@ -289,7 +289,7 @@ export interface Bound {
   readonly fields: ReadonlyArray<Field>
   readonly empty: Readonly<Record<string, unknown>>
   readonly context: (model: any, props: any) => Context
-  /** Replaces the `watch` Subscription with its per-field ones, which the runtime registers. */
+  /** Replaces the `$.watch` Subscription with its per-field ones, which the runtime registers. */
   readonly expand: (
     subscriptions: ReadonlyArray<Subscription.Subscription<any, any> | false | null | undefined>
   ) => Array<Subscription.Subscription<any, any>>
@@ -416,7 +416,7 @@ export const bind = (
         [watchesKey]: fields.flatMap((field) => {
           const toMsg = handlers[field.field]
           if (typeof toMsg !== "function") {
-            throw new Error(`${name}: watch has no handler for the loader field "${field.field}".`)
+            throw new Error(`${name}: $.watch has no handler for the loader field "${field.field}".`)
           }
           const current = argsOf(state, field)
           // A list's handler gets the list opened, as `h.loaded` shows it.
@@ -481,7 +481,7 @@ export const bind = (
           for (const watch of watches) out.push(watch)
         }
       }
-      if (!watched) throw new Error(`${name}: subscriptions must return the Subscription watch({ ... }) makes.`)
+      if (!watched) throw new Error(`${name}: subscriptions must return the Subscription $.watch({ ... }) makes.`)
       return out
     }
   }

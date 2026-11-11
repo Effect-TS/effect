@@ -47,8 +47,8 @@ const Card = Component.make({
       TeamChanged: ({ snapshot }) => ({ ...model, team: snapshot }),
       Bump: () => ({ ...model, n: model.n + 1 })
     }),
-  subscriptions: (_model, _props, watch) => [
-    watch({
+  subscriptions: (_model, _props, $) => [
+    $.watch({
       user: (snapshot, result) =>
         Message.make({ _tag: "UserChanged", snapshot, failed: AsyncResult.isFailure(result) }),
       team: (snapshot) => Message.make({ _tag: "TeamChanged", snapshot })
@@ -85,8 +85,8 @@ describe("Component loaders", () => {
       },
       init: ($) => $.empty,
       update: (model) => model,
-      subscriptions: (_m, _p, watch) => [
-        watch({ user: () => Message.make({ _tag: "Bump" }), team: () => Message.make({ _tag: "Bump" }) })
+      subscriptions: (_m, _p, $) => [
+        $.watch({ user: () => Message.make({ _tag: "Bump" }), team: () => Message.make({ _tag: "Bump" }) })
       ],
       view: () => null as never
     })
@@ -137,8 +137,8 @@ const List = Component.make({
       UsersChanged: ({ snapshots }) => ({ ...model, users: snapshots }),
       Show: ({ ids }) => ({ ...model, ids })
     }),
-  subscriptions: (_model, _props, watch) => [
-    watch({
+  subscriptions: (_model, _props, $) => [
+    $.watch({
       users: (snapshots, loaded, changes) => {
         expect(loaded).type.toBe<Component.KeyedLoaded<typeof GetUser>>()
         expect(changes).type.toBe<ReadonlyArray<Component.KeyedChange<typeof GetUser>>>()
@@ -192,8 +192,8 @@ describe("Keyed loader fields", () => {
       },
       init: ($) => $.empty,
       update: (model) => model,
-      subscriptions: (_m, _p, watch) => [
-        watch({ users: () => Message.make({ _tag: "Bump" }), team: () => Message.make({ _tag: "Bump" }) })
+      subscriptions: (_m, _p, $) => [
+        $.watch({ users: () => Message.make({ _tag: "Bump" }), team: () => Message.make({ _tag: "Bump" }) })
       ],
       view: () => null as never
     })
@@ -216,13 +216,13 @@ describe("Keyed loader fields", () => {
       ...base,
       // @ts-expect-error is missing the following properties from type 'readonly { readonly id: string; }[]'
       loaders: { users: (m) => ({ id: m.ids[0] }) },
-      subscriptions: (_m, _p, watch) => [watch({ users: () => ListMessage.make({ _tag: "Show", ids: [] }) })]
+      subscriptions: (_m, _p, $) => [$.watch({ users: () => ListMessage.make({ _tag: "Show", ids: [] }) })]
     })
     Component.make({
       ...base,
       loaders: { users: (m) => m.ids.map((id) => ({ id })) },
-      subscriptions: (_m, _p, watch) => [
-        watch({
+      subscriptions: (_m, _p, $) => [
+        $.watch({
           // @ts-expect-error not assignable
           users: (_snapshots, _result: AsyncResult.AsyncResult<unknown, unknown>) =>
             ListMessage.make({ _tag: "Show", ids: [] })
@@ -294,8 +294,8 @@ const Chat = Component.make({
       More: () => $.loadMore("messages"),
       Refresh: () => $.reset("messages")
     }),
-  subscriptions: (_model, _props, watch) => [
-    watch({
+  subscriptions: (_model, _props, $) => [
+    $.watch({
       messages: (snapshot, loaded) => {
         expect(loaded).type.toBe<
           AsyncResult.AsyncResult<Component.LoadedList<typeof ListMessages>, string>
@@ -345,8 +345,8 @@ describe("List fields", () => {
       update: (model, _message, $) =>
         // @ts-expect-error Argument of type '"user"' is not assignable to parameter of type '"messages"'
         $.set(model).loadMore("user"),
-      subscriptions: (_model, _props, watch) => [
-        watch({
+      subscriptions: (_model, _props, $) => [
+        $.watch({
           messages: (snapshot) => ChatMessage.make({ _tag: "Changed", snapshot }),
           user: () => ChatMessage.make({ _tag: "More" })
         })

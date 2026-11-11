@@ -18,7 +18,7 @@
  *
  * ```ts
  * import { BrowserHost, Html } from "effect/ui/html"
- * import { Effect, Schema } from "effect"
+ * import { Layer, Schema } from "effect"
  * import { Component } from "effect/ui"
  *
  * const Message = Schema.TaggedUnion({ Increment: {} })
@@ -33,10 +33,8 @@
  *   view: (count, h) => h.button(String(count)).onClick(Message.make({ _tag: "Increment" }))
  * })
  *
- * const main = BrowserHost.mount(Counter, {}, document.getElementById("app")!).pipe(
- *   Effect.andThen(Effect.never),
- *   Effect.scoped
- * )
+ * // The tree is mounted for as long as the Layer is built.
+ * const main = Layer.launch(BrowserHost.mount(Counter, {}, document.getElementById("app")!))
  * ```
  *
  * @stability experimental
@@ -481,8 +479,34 @@ export type HtmlRoot<V> = [Renderer.HostOf<V>] extends [Html.Host] ? unknown
   : { readonly "BrowserHost.mount shows HTML elements. This root's vocabulary needs": Renderer.HostOf<V> }
 
 /**
- * Mounts a component tree into `container`, for the life of the current
- * Scope.
+ * The options of `mount` and `mountEffect`.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.1.3
+ */
+export interface MountOptions<V extends View.Elements, RF = never> {
+  /** Shown in the root's place when the root itself fails. */
+  readonly fallback?:
+    | ((
+      failure: AsyncResult.Failure<never, unknown>,
+      h: View.Helper<never, {}> & View.Tags<V, never>
+    ) => View.Node<never, RF>)
+    | undefined
+  /** The `state` of `HtmlServer.renderToHtml`, to hydrate the server's HTML. */
+  readonly state?: Renderer.State | undefined
+  readonly loader?: Renderer.LoaderOptions | undefined
+}
+
+/**
+ * A Layer that mounts a component tree into `container` for as long as the
+ * Layer is built. It provides no service: launch it with `Layer.launch`, or
+ * merge it into the app's Layer.
+ *
+ * **When to use**
+ *
+ * Use to run an app. Reach for `mountEffect` when the caller needs the root,
+ * to send it messages or to wait for `root.adopted`.
  *
  * **Details**
  *
@@ -508,27 +532,64 @@ export type HtmlRoot<V> = [Renderer.HostOf<V>] extends [Html.Host] ? unknown
  * nodes until the Layer is ready, and everything else is live at once. A
  * waiting slot is inert: its buttons do nothing, links still navigate through
  * the Router, a `<form>` submits natively, and typed input is overwritten
- * when it adopts. `root.adopted` completes when no slot is waiting, and head
- * sync starts after it.
+ * when it adopts. Head sync starts once no slot is waiting.
+ *
+ * **Example** (Launching an app)
+ *
+ * ```ts
+ * import { BrowserHost, Html } from "effect/ui/html"
+ * import { Effect, Layer, Schema } from "effect"
+ * import { Component } from "effect/ui"
+ *
+ * const App = Component.make({
+ *   name: "App",
+ *   model: Schema.Struct({}),
+ *   message: Schema.Never,
+ *   elements: Html,
+ *   init: () => ({}),
+ *   update: (model) => model,
+ *   view: (_, h) => h.h1("Hello")
+ * })
+ *
+ * // In the browser entry module.
+ * Effect.runFork(Layer.launch(BrowserHost.mount(App, {}, document.getElementById("app")!)))
+ * ```
  *
  * @stability experimental
- * @category constructors
+ * @category layers
  * @since 4.1.3
  */
 export const mount = <Name extends string, Props, Model, Msg, Events, R, V extends View.Elements, RF = never>(
   component: Component.Component<Name, Props, Model, Msg, Events, R, V> & HtmlRoot<V>,
   props: Props,
   container: globalThis.Element,
-  options?: {
-    readonly fallback?:
-      | ((
-        failure: AsyncResult.Failure<never, unknown>,
-        h: View.Helper<never, {}> & View.Tags<V, never>
-      ) => View.Node<never, RF>)
-      | undefined
-    readonly state?: Renderer.State | undefined
-    readonly loader?: Renderer.LoaderOptions | undefined
-  }
+  options?: MountOptions<V, RF>
+): Layer.Layer<never, never, Exclude<R | RF, Html.Host>> =>
+  Layer.effectDiscard(mountEffect(component, props, container, options)) as any
+
+/**
+ * Mounts a component tree into `container` for the life of the current
+ * Scope, and returns its root.
+ *
+ * **When to use**
+ *
+ * Use when the caller needs the root: to read its Model, send it a message,
+ * or wait for `root.adopted`, which completes when no hydrating slot is still
+ * waiting. `mount` is the form that runs an app.
+ *
+ * **Details**
+ *
+ * It mounts, checks the root and hydrates exactly as `mount` does.
+ *
+ * @stability experimental
+ * @category constructors
+ * @since 4.1.3
+ */
+export const mountEffect = <Name extends string, Props, Model, Msg, Events, R, V extends View.Elements, RF = never>(
+  component: Component.Component<Name, Props, Model, Msg, Events, R, V> & HtmlRoot<V>,
+  props: Props,
+  container: globalThis.Element,
+  options?: MountOptions<V, RF>
 ): Effect.Effect<Renderer.Root<Model, Msg>, never, Exclude<R | RF, Html.Host> | Scope.Scope> =>
   Effect.gen(function*() {
     const context = yield* Layer.build(layer({ document: container.ownerDocument }))

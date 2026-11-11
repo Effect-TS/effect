@@ -3,7 +3,7 @@
  *
  * Render a routed app to HTML on the server with `HtmlServer.renderToHtml`,
  * embed its state in the page, and hydrate it in the browser with
- * `BrowserHost.mount`.
+ * `BrowserHost`.
  */
 import { Effect, Option } from "effect"
 import { HttpRouter, HttpServerRequest, HttpServerResponse } from "effect/http"
@@ -92,8 +92,9 @@ export const PageRoutes = HttpRouter.add(
 export const hydrate = Effect.gen(function*() {
   const state = JSON.parse(document.getElementById("state")!.textContent!)
   const route = yield* Router.currentRoute(AppRoute)
-  const root = yield* BrowserHost.mount(App, { route }, document.getElementById("app")!, { state })
-  // Completes once every slot is live. Until then a waiting slot is inert.
+  const root = yield* BrowserHost.mountEffect(App, { route }, document.getElementById("app")!, { state })
+  // `mountEffect` is `mount` as an Effect that returns the root. `adopted`
+  // completes once every slot is live. Until then a waiting slot is inert.
   yield* root.adopted
   return yield* Effect.never
 }).pipe(

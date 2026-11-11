@@ -62,10 +62,10 @@ export const NotePage = Component.make({
       Saved: () => ({ ...model, notice: "Saved" }),
       EditorFailed: () => ({ ...model, notice: "The editor crashed" })
     }),
-  // With loader fields, `subscriptions` must start with `watch`: one handler
+  // With loader fields, `subscriptions` must start with `$.watch`: one handler
   // per field, turning each change into a message that stores the snapshot.
-  subscriptions: (_model, _props, watch) => [
-    watch({
+  subscriptions: (_model, _props, $) => [
+    $.watch({
       note: (snapshot, result) =>
         NotePageMessage.make({
           _tag: "NoteChanged",

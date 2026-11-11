@@ -56,8 +56,8 @@ export const Person = Component.make({
   loaders: { bio: (_model, props) => ({ id: props.id }) },
   init: ($) => ({ ...$.empty, id: $.props.id }),
   update: (model, message) => ({ ...model, bio: message.snapshot }),
-  subscriptions: (_model, _props, watch) => [
-    watch({ bio: (snapshot) => PersonMessage.make({ _tag: "Loaded", snapshot }) })
+  subscriptions: (_model, _props, $) => [
+    $.watch({ bio: (snapshot) => PersonMessage.make({ _tag: "Loaded", snapshot }) })
   ],
   head: (model) => [
     Head.title(`Person ${model.id}`),

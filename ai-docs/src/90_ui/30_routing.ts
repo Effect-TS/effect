@@ -5,7 +5,7 @@
  * Model with `Router`, set the title and meta tags with `Head`, and run the
  * app in the browser with `BrowserRouter`.
  */
-import { Effect, Schema } from "effect"
+import { Effect, Layer, Schema } from "effect"
 import { AsyncResult, Loader } from "effect/reactivity"
 import { Command, Component, Head, Route, Router } from "effect/ui"
 import { BrowserHost, BrowserRouter } from "effect/ui/html"
@@ -35,8 +35,8 @@ export const NotesIndex = Component.make({
   loaders: { notes: () => ({}) },
   init: ($) => $.empty,
   update: (_model, message) => ({ notes: message.snapshot }),
-  subscriptions: (_model, _props, watch) => [
-    watch({ notes: (snapshot) => NotesIndexMessage.make({ _tag: "NotesChanged", snapshot }) })
+  subscriptions: (_model, _props, $) => [
+    $.watch({ notes: (snapshot) => NotesIndexMessage.make({ _tag: "NotesChanged", snapshot }) })
   ],
   // Every mounted instance contributes head entries. They merge in document
   // order, and the later entry wins.
@@ -103,11 +103,12 @@ export const App = Component.make({
 // Commands over `window.history`. After each navigation it scrolls, moves
 // focus and announces the page, so give a loading page a title worth
 // hearing. Use `layerHash` for static hosting.
-export const main = Effect.gen(function*() {
+//
+// The root's first route comes from the Router, so the mount Layer is
+// unwrapped from an Effect.
+export const AppLive = Layer.unwrap(Effect.gen(function*() {
   const route = yield* Router.currentRoute(AppRoute)
-  yield* BrowserHost.mount(App, { route }, document.getElementById("app")!)
-  return yield* Effect.never
-}).pipe(
-  Effect.scoped,
-  Effect.provide([BrowserRouter.layer({ routes: AppRoute }), Notes.layerHttp])
-)
+  return BrowserHost.mount(App, { route }, document.getElementById("app")!)
+})).pipe(Layer.provide([BrowserRouter.layer({ routes: AppRoute }), Notes.layerHttp]))
+
+export const main = Layer.launch(AppLive)

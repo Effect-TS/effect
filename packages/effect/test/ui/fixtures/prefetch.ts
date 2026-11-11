@@ -43,8 +43,8 @@ const reader = <const Name extends string>(name: Name) => {
     subscriptions: (
       _model,
       _props,
-      watch
-    ) => [watch({ person: (snapshot) => Message.make({ _tag: "Loaded", snapshot }) })],
+      $
+    ) => [$.watch({ person: (snapshot) => Message.make({ _tag: "Loaded", snapshot }) })],
     view: (_, h) => h.el("p", name)
   })
 }
@@ -67,8 +67,8 @@ export const Note = Component.make({
   subscriptions: (
     _model,
     _props,
-    watch
-  ) => [watch({ note: (snapshot) => NoteMessage.make({ _tag: "Loaded", snapshot }) })],
+    $
+  ) => [$.watch({ note: (snapshot) => NoteMessage.make({ _tag: "Loaded", snapshot }) })],
   view: (_, h) => h.el("p", "Note")
 })
 
@@ -87,8 +87,8 @@ export const Walked = Component.make({
   subscriptions: (
     _model,
     _props,
-    watch
-  ) => [watch({ person: (snapshot) => PersonMessage.make({ _tag: "Loaded", snapshot }) })],
+    $
+  ) => [$.watch({ person: (snapshot) => PersonMessage.make({ _tag: "Loaded", snapshot }) })],
   view: (_, h) =>
     h.el(
       "div",
@@ -110,8 +110,8 @@ export const Broken = Component.make({
   subscriptions: (
     _model,
     _props,
-    watch
-  ) => [watch({ person: (snapshot) => PersonMessage.make({ _tag: "Loaded", snapshot }) })],
+    $
+  ) => [$.watch({ person: (snapshot) => PersonMessage.make({ _tag: "Loaded", snapshot }) })],
   view: () => {
     throw new Error("Broken view")
   }

@@ -109,8 +109,8 @@ const makeApp = (options?: {
         Stop: () => $.set(model).run(Command.interrupt(RenameUser))
       })
     },
-    subscriptions: (_model, _props, watch) => [
-      watch({ user: (user) => CardMessage.make({ _tag: "UserChanged", user }) })
+    subscriptions: (_model, _props, $) => [
+      $.watch({ user: (user) => CardMessage.make({ _tag: "UserChanged", user }) })
     ],
     view: (model, h) => {
       const text = AsyncResult.match(h.loaded.user, {
@@ -388,8 +388,8 @@ describe("Command.afterRefetch", () => {
           Renamed: () => ({ ...model, renamed: true })
         })
       },
-      subscriptions: (_model, _props, watch) => [
-        watch({
+      subscriptions: (_model, _props, $) => [
+        $.watch({
           users: (users, _loaded, changes) => {
             order.push(`changes ${changes.map((change) => change.args.id).join(",")}`)
             return BoardMessage.make({ _tag: "Changed", users })
@@ -695,8 +695,8 @@ describe("Command.afterRefetch", () => {
             ),
           Touched: () => ({ ...model, touched: true })
         }),
-      subscriptions: (_model, _props, watch) => [
-        watch({ items: (snapshot) => ItemsMessage.make({ _tag: "Changed", snapshot }) })
+      subscriptions: (_model, _props, $) => [
+        $.watch({ items: (snapshot) => ItemsMessage.make({ _tag: "Changed", snapshot }) })
       ],
       view: (model, h) =>
         h.el(

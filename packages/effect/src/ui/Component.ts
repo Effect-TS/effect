@@ -686,7 +686,7 @@ export type Loaders<Model, Props> = {
 }
 
 /**
- * Identifies the Subscription `watch` returns.
+ * Identifies the Subscription `$.watch` returns.
  *
  * @stability experimental
  * @category type ids
@@ -695,7 +695,7 @@ export type Loaders<Model, Props> = {
 export const WatchTypeId = "~effect/ui/Component/Watch" as const
 
 /**
- * Identifies the Subscription `watch` returns.
+ * Identifies the Subscription `$.watch` returns.
  *
  * @stability experimental
  * @category type ids
@@ -704,7 +704,7 @@ export const WatchTypeId = "~effect/ui/Component/Watch" as const
 export type WatchTypeId = typeof WatchTypeId
 
 /**
- * The Subscription `watch` returns: every loader field of the Model is
+ * The Subscription `$.watch` returns: every loader field of the Model is
  * watched. `subscriptions` must start with it.
  *
  * @stability experimental
@@ -716,8 +716,8 @@ export interface Watches<in out Model, out Msg> extends Subscription.Subscriptio
 }
 
 /**
- * The third argument of `subscriptions`: takes one handler per loader field.
- * A single field's handler gets the snapshot to store and the result it was
+ * `$.watch` in `subscriptions`: takes one handler per loader field. A
+ * single field's handler gets the snapshot to store and the result it was
  * built from. A keyed field's gets the collection to store, the entries it
  * opens to, and the keys whose result changed since its last message, which
  * are none for a message that only prunes removed keys.
@@ -738,6 +738,18 @@ export type Watch<Model, Msg> = (
       : (snapshot: Model[K], result: ResultOf<Model[K]>) => Msg
   }
 ) => Watches<Model, Msg>
+
+/**
+ * `$` in `subscriptions`, for a component whose Model has loader fields.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.1.3
+ */
+export interface Subscriptions<in out Model, in out Msg> {
+  /** Watches every loader field of the Model: one handler per field. */
+  readonly watch: Watch<Model, Msg>
+}
 
 /**
  * Returns `true` if `u` is a component.
@@ -768,8 +780,9 @@ const Proto = {
  * services such as `Scope` are never part of `R`.
  *
  * `props` and `events` are optional. `subscriptions` returns keyed Streams run
- * while their key is listed, and falsy entries are skipped. `elements`
- * overrides the registered vocabulary for this component.
+ * while their key is listed, and falsy entries are skipped. When the Model
+ * has loader fields it also gets `$`, and must start with `$.watch({ ... })`.
+ * `elements` overrides the registered vocabulary for this component.
  *
  * `head` returns the instance's document head entries (see `Head`). It's a
  * pure function of the Model and never sees props: a page that wants its
@@ -842,11 +855,11 @@ export const make = <
       : {
         /** The args of each loader field's read. */
         readonly loaders: Loaders<Model, Props>
-        /** Starts with `watch({ ... })`, one handler per loader field. */
+        /** Starts with `$.watch({ ... })`, one handler per loader field. */
         readonly subscriptions: (
           model: Model,
           props: Props,
-          watch: Watch<Model, Msg>
+          $: Subscriptions<Model, Msg>
         ) => readonly [Watches<Model, Msg>, ...ReadonlyArray<S | false | null | undefined>]
       })
 ): Component<
@@ -866,11 +879,11 @@ export const make = <
   V
 > => {
   const subscriptions = (options as any).subscriptions as
-    | ((model: Model, props: Props, watch: any) => ReadonlyArray<S | false | null | undefined>)
+    | ((model: Model, props: Props, $: any) => ReadonlyArray<S | false | null | undefined>)
     | undefined
   const bound = loaders.bind(options.name, options.model as any, (options as any).loaders)
   if (bound !== undefined && subscriptions === undefined) {
-    throw new Error(`${options.name}: the Model has loader fields, so subscriptions must return [watch({ ... })].`)
+    throw new Error(`${options.name}: the Model has loader fields, so subscriptions must return [$.watch({ ... })].`)
   }
   const empty = bound?.empty ?? {}
   return Object.assign(Object.create(Proto), {
@@ -896,7 +909,7 @@ export const make = <
       : bound === undefined
       ? (model: Model, props: Props) => subscriptions(model, props, undefined).filter((entry): entry is S => !!entry)
       : (model: Model, props: Props) =>
-        bound.expand(subscriptions(model, props, bound.context(model, props).watch)) as Array<S>,
+        bound.expand(subscriptions(model, props, { watch: bound.context(model, props).watch })) as Array<S>,
     head: options.head,
     elements: () => options.elements ?? View.registeredElements(),
     layer: undefined,

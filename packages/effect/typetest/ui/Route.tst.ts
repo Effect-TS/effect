@@ -144,8 +144,8 @@ const PersonPage = Component.make({
   subscriptions: (
     _model,
     _props,
-    watch
-  ) => [watch({ person: (snapshot) => PersonMessage.make({ _tag: "Loaded", snapshot }) })],
+    $
+  ) => [$.watch({ person: (snapshot) => PersonMessage.make({ _tag: "Loaded", snapshot }) })],
   view: (_, h) => h.text("person")
 })
 

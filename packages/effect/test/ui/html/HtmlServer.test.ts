@@ -231,8 +231,8 @@ describe("HtmlServer", { concurrent: false }, () => {
               "loaded"
             )
             : { ...model, status: "tracked" },
-        subscriptions: (_model, _props, watch) => [
-          watch({ text: (snapshot) => ChildMessage.make({ _tag: "Loaded", snapshot }) }),
+        subscriptions: (_model, _props, $) => [
+          $.watch({ text: (snapshot) => ChildMessage.make({ _tag: "Loaded", snapshot }) }),
           // subscriptions() runs on the server for the watch, but a Stream's builder doesn't.
           Subscription.make("browser", 0, () => {
             builds++
@@ -380,7 +380,7 @@ describe("HtmlServer", { concurrent: false }, () => {
       expect(rendered.state["~deferred"]).toEqual([])
       const app = yield* container(rendered.html)
       const button = app.querySelector("button")!
-      const root = yield* BrowserHost.mount(Panel, {}, app, { state: rendered.state })
+      const root = yield* BrowserHost.mountEffect(Panel, {}, app, { state: rendered.state })
       button.click()
       yield* tick
       expect(button.textContent).toBe("0 server")
@@ -424,7 +424,7 @@ describe("HtmlServer", { concurrent: false }, () => {
       const rendered = yield* HtmlServer.renderToHtml(List, {})
       const app = yield* container(rendered.html.replace("<li>A</li>", "<li>changed</li>"))
       const [first, second] = app.querySelectorAll("li")
-      yield* BrowserHost.mount(List, {}, app, { state: rendered.state })
+      yield* BrowserHost.mountEffect(List, {}, app, { state: rendered.state })
       const [a, b] = app.querySelectorAll("li")
       expect(a.textContent).toBe("A")
       expect(a).not.toBe(first)
@@ -450,8 +450,8 @@ describe("HtmlServer", { concurrent: false }, () => {
         loaders: { text: () => ({}) },
         init: ($) => $.empty,
         update: (_, message) => ({ text: message.snapshot }),
-        subscriptions: (_model, _props, watch) => [
-          watch({ text: (snapshot) => PanelMessage.make({ _tag: "Loaded", snapshot }) })
+        subscriptions: (_model, _props, $) => [
+          $.watch({ text: (snapshot) => PanelMessage.make({ _tag: "Loaded", snapshot }) })
         ],
         view: (_, h) => h.p(AsyncResult.isSuccess(h.loaded.text) ? h.loaded.text.value : "loading")
       }).pipe(Component.provide(GetText.layer))
@@ -495,8 +495,8 @@ describe("HtmlServer", { concurrent: false }, () => {
         loaders: { text: () => ({}) },
         init: ($) => $.empty,
         update: (_, message) => ({ text: message.snapshot }),
-        subscriptions: (_model, _props, watch) => [
-          watch({ text: (snapshot) => Message.make({ _tag: "Loaded", snapshot }) })
+        subscriptions: (_model, _props, $) => [
+          $.watch({ text: (snapshot) => Message.make({ _tag: "Loaded", snapshot }) })
         ],
         view: (_, h) => h.p("loading")
       }).pipe(Component.provide(Die.layer))
@@ -621,7 +621,7 @@ describe("HtmlServer", { concurrent: false }, () => {
       expect(parsed).toBe(rendered.html)
       const app = yield* container(parsed)
       const leaf = app.querySelector("p")
-      yield* BrowserHost.mount(Root, {}, app, { state: rendered.state })
+      yield* BrowserHost.mountEffect(Root, {}, app, { state: rendered.state })
       expect(app.querySelector("p")).toBe(leaf)
       expect(app.innerHTML).toBe("<p>leaf</p>")
     }).pipe(Effect.scoped))
@@ -893,7 +893,7 @@ describe("HtmlServer", { concurrent: false }, () => {
 
       // A plain mount: each of the four merges (mount and three updates) calls the template.
       const app = yield* container("")
-      const mounted = yield* BrowserHost.mount(Layout, {}, app)
+      const mounted = yield* BrowserHost.mountEffect(Layout, {}, app)
       yield* bumpThrice(mounted)
       expect(calls).toBe(4)
 
@@ -946,7 +946,7 @@ const makeItems = () => {
     loaders: { item: (_model, props) => ({ id: props.id }) },
     init: ($) => $.empty,
     update: (_, message) => ({ item: message.snapshot }),
-    subscriptions: (_model, _props, watch) => [watch({ item: loaded })],
+    subscriptions: (_model, _props, $) => [$.watch({ item: loaded })],
     view: (_, h) => h.p(show(h.loaded.item))
   }).pipe(Component.provide(GetItem.layer))
   return { calls, GetItem, ItemSnapshot, Message, Item, loaded, show }
@@ -1002,7 +1002,7 @@ describe("HtmlServer loaders", { concurrent: false }, () => {
           const page = message.ok && model.page < 3 ? model.page + 1 : model.page
           return { page, item: message.snapshot }
         },
-        subscriptions: (_model, _props, watch) => [watch({ item: loaded })],
+        subscriptions: (_model, _props, $) => [$.watch({ item: loaded })],
         view: (_, h) => h.p(show(h.loaded.item))
       }).pipe(Component.provide(GetItem.layer))
       const result = yield* ssr(Pager, {})
@@ -1044,8 +1044,8 @@ describe("HtmlServer loaders", { concurrent: false }, () => {
         subscriptions: (
           _model,
           _props,
-          watch
-        ) => [watch({ items: (items) => Message.make({ _tag: "Loaded", items }) })],
+          $
+        ) => [$.watch({ items: (items) => Message.make({ _tag: "Loaded", items }) })],
         view: (_, h) =>
           h.ul(h.loaded.items.map(({ args, result }) =>
             h.li(
@@ -1087,7 +1087,7 @@ describe("HtmlServer loaders", { concurrent: false }, () => {
         loaders: { count: () => ({}) },
         init: ($) => $.empty,
         update: (model) => model,
-        subscriptions: (_model, _props, watch) => [watch({
+        subscriptions: (_model, _props, $) => [$.watch({
           count: (snapshot) => Message.make({ _tag: "Loaded", snapshot })
         })],
         view: (_, h) => h.p("count")
@@ -1214,8 +1214,8 @@ describe("HtmlServer loaders", { concurrent: false }, () => {
         loaders: { now: (_model, props) => ({ id: props.id }) },
         init: ($) => $.empty,
         update: (_, message) => ({ now: message.snapshot }),
-        subscriptions: (_model, _props, watch) => [
-          watch({ now: (snapshot) => NowMessage.make({ _tag: "Loaded", snapshot }) })
+        subscriptions: (_model, _props, $) => [
+          $.watch({ now: (snapshot) => NowMessage.make({ _tag: "Loaded", snapshot }) })
         ],
         view: (_, h) => h.p("now")
       })

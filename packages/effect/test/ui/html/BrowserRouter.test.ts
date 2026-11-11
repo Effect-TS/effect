@@ -23,7 +23,10 @@ const start = Effect.fnUntraced(function*(url: string, options?: Partial<Browser
   const app = yield* container
   const context = yield* Layer.build(BrowserRouter.layer({ routes: AppRoute, ...options }))
   const router = Context.get(context, Router.Router)
-  const root = yield* Effect.flatMap(Router.currentRoute(AppRoute), (route) => BrowserHost.mount(App, { route }, app))
+  const root = yield* Effect.flatMap(
+    Router.currentRoute(AppRoute),
+    (route) => BrowserHost.mountEffect(App, { route }, app)
+  )
     .pipe(
       Effect.provide(People.layer),
       Effect.provideContext(context)
@@ -102,14 +105,14 @@ describe("BrowserRouter", { concurrent: false }, () => {
       const home = hydratedContainer.querySelector("h1")
       const hydrated = yield* Effect.flatMap(
         Router.currentRoute(AppRoute),
-        (route) => BrowserHost.mount(App, { route }, hydratedContainer, { state: rendered.state })
+        (route) => BrowserHost.mountEffect(App, { route }, hydratedContainer, { state: rendered.state })
       ).pipe(Effect.provideContext(context))
       assert.strictEqual(hydratedContainer.querySelector("h1"), home)
       yield* tick
       assert.strictEqual(hydrated.model()?.route._tag, "Person")
       assert.deepStrictEqual(problems, [])
       const clientContainer = yield* container
-      const client = yield* BrowserHost.mount(App, { route: homeRoute }, clientContainer).pipe(
+      const client = yield* BrowserHost.mountEffect(App, { route: homeRoute }, clientContainer).pipe(
         Effect.provideContext(context)
       )
       yield* tick
@@ -134,7 +137,7 @@ describe("BrowserRouter", { concurrent: false }, () => {
         ] as const
       ) {
         const element = yield* container
-        const root = yield* BrowserHost.mount(component, { route: homeRoute }, element, { state }).pipe(
+        const root = yield* BrowserHost.mountEffect(component, { route: homeRoute }, element, { state }).pipe(
           Effect.provideContext(context)
         )
         yield* tick
