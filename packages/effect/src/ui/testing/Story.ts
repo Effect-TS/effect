@@ -951,6 +951,23 @@ const settleStep = (
   )
 }
 
+/** The component's own loader fields, each with the entries it is at: one per args its loader returns now. */
+function* currentEntries(
+  story: Story<any, any, any, any>
+): Generator<{ readonly field: loaders.Field; readonly entries: ReadonlyArray<loaders.Keyed> }> {
+  const bound = boundOf(story.component)
+  if (bound === undefined) return
+  const context = bound.context(story.model, story.props)
+  for (const field of bound.fields) {
+    const current = context.argsOf(field.field)
+    yield {
+      field,
+      entries: current.entries ??
+        (current.argsKey === undefined ? [] : [{ args: current.args, argsKey: current.argsKey }])
+    }
+  }
+}
+
 /**
  * What a `Command.afterRefetch` run resolved with `result` waits for: the component's own loader
  * fields, at their current args, that its declared targets match, less the entries its `writes` store.
@@ -962,27 +979,18 @@ const awaitedFields = (
 ): ReadonlyArray<AwaitedField> => {
   const budget = command.afterRefetch
   if (command._tag !== "Effect" || budget === undefined || Duration.isZero(budget)) return []
-  const bound = boundOf(story.component)
-  if (bound === undefined) return []
+  if (boundOf(story.component) === undefined) return []
   const written = (command.writes?.(result) ?? []).map((write) => ({
     name: Loader.defOf(write.read).name,
     argsKey: Loader.defOf(write.read).argsKey(write.args)
   }))
   const out: Array<AwaitedField> = []
-  const context = bound.context(story.model, story.props)
-  for (const field of bound.fields) {
-    const def = Loader.defOf(field.read)
-    const current = context.argsOf(field.field)
-    const args = current.entries !== undefined
-      ? current.entries.map((entry) => entry.args)
-      : current.argsKey === undefined
-      ? []
-      : [current.args]
-    for (const each of args) {
-      const argsKey = def.argsKey(each)
-      if (!Loader.invalidatesEntry(command, field.read, each)) continue
-      if (written.some((write) => write.name === def.name && write.argsKey === argsKey)) continue
-      out.push({ field: field.field, args: each })
+  for (const { entries, field } of currentEntries(story)) {
+    const name = Loader.defOf(field.read).name
+    for (const { args, argsKey } of entries) {
+      if (!Loader.invalidatesEntry(command, field.read, args)) continue
+      if (written.some((write) => write.name === name && write.argsKey === argsKey)) continue
+      out.push({ field: field.field, args })
     }
   }
   return out
@@ -1000,26 +1008,14 @@ const registeredPatches = (
   story: Story<any, any, any, any>,
   command: Command.Effectful<any, any, never> | Command.Streaming<any, any, never>
 ): ReadonlyArray<{ readonly field: string; readonly argsKey: string }> => {
-  const bound = boundOf(story.component)
-  if (command.optimistic.length === 0 || bound === undefined) return []
+  if (command.optimistic.length === 0) return []
   const out: Array<{ readonly field: string; readonly argsKey: string }> = []
-  const context = bound.context(story.model, story.props)
-  for (const field of bound.fields) {
-    const def = Loader.defOf(field.read)
-    const current = context.argsOf(field.field)
-    const held = current.entries !== undefined ? Loader.snapshotMapData(story.model[field.field])?.entries : undefined
-    const args = current.entries !== undefined
-      ? current.entries.map((entry) => entry.args)
-      : current.argsKey === undefined
-      ? []
-      : [current.args]
-    for (const each of args) {
-      const argsKey = def.argsKey(each)
-      const data = held !== undefined
-        ? Loader.snapshotData(held.get(argsKey))
-        : Loader.snapshotData(story.model[field.field])
+  for (const { entries, field } of currentEntries(story)) {
+    const held = field.keyed ? Loader.snapshotMapData(story.model[field.field])?.entries : undefined
+    for (const { args, argsKey } of entries) {
+      const data = Loader.snapshotData(held !== undefined ? held.get(argsKey) : story.model[field.field])
       if (data?.argsKey !== argsKey || data.result?._tag !== "Success") continue
-      if (!Loader.invalidatesEntry({ invalidates: [], optimistic: command.optimistic }, field.read, each)) continue
+      if (!Loader.invalidatesEntry({ invalidates: [], optimistic: command.optimistic }, field.read, args)) continue
       out.push({ field: field.field, argsKey })
     }
   }
