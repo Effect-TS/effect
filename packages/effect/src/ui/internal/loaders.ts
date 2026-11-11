@@ -432,9 +432,7 @@ export const bind = (
             return {
               [Subscription.TypeId]: Subscription.TypeId,
               // New args are a new key, so the old watcher goes before the new one registers.
-              key: argsKey === undefined
-                ? Subscription.keyOf(`~loaded/${field.label}`)
-                : Subscription.keyOf(`~loaded/${field.label}`, argsKey),
+              key: Subscription.keyOf(`~loaded/${field.label}`, argsKey),
               stream: Stream.never,
               [markerKey]: marker
             }
