@@ -484,14 +484,16 @@ export function toCodeDocument(
           if (elements.length === 0 && rest.length === 1) {
             code = makeCode(`Schema.Array(${item.runtime})`, `ReadonlyArray<${item.Type}>`)
           } else {
-            const post = rest.slice(1)
+            const types = [
+              ...elements.map((element) => element.Type),
+              `...Array<${item.Type}>`,
+              ...rest.slice(1).map((item) => item.Type)
+            ]
             code = makeCode(
               `Schema.TupleWithRest(Schema.Tuple([${elements.map((element) => element.runtime).join(", ")}]), [${
                 rest.map((item) => item.runtime).join(", ")
               }])`,
-              `readonly [${elements.map((element) => element.Type).join(", ")}, ...Array<${item.Type}>${
-                post.length > 0 ? `, ${post.map((item) => item.Type).join(", ")}` : ""
-              }]`
+              `readonly [${types.join(", ")}]`
             )
           }
         } else {
