@@ -25,7 +25,7 @@
  * ```
  *
  * @stability experimental
- * @since 4.1.3
+ * @since 4.1.5
  */
 import { registerElements } from "../View.ts"
 import * as Html from "./Html.ts"

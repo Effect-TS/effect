@@ -72,7 +72,7 @@
  * ```
  *
  * @stability experimental
- * @since 4.1.3
+ * @since 4.1.5
  */
 import * as Context from "../../Context.ts"
 import * as Effect from "../../Effect.ts"
@@ -91,7 +91,7 @@ const intentDelay = "50 millis"
  *
  * @stability experimental
  * @category models
- * @since 4.1.3
+ * @since 4.1.5
  */
 export interface Options {
   readonly routes: Route.AnyUnion
@@ -125,7 +125,7 @@ export interface Options {
  *
  * @stability experimental
  * @category layers
- * @since 4.1.3
+ * @since 4.1.5
  */
 export const layer = (options: Options): Layer.Layer<Router.Services> => make(options, false)
 
@@ -144,7 +144,7 @@ export const layer = (options: Options): Layer.Layer<Router.Services> => make(op
  *
  * @stability experimental
  * @category layers
- * @since 4.1.3
+ * @since 4.1.5
  */
 export const layerHash = (options: Omit<Options, "base">): Layer.Layer<Router.Services> => make(options, true)
 

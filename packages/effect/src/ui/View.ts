@@ -24,7 +24,7 @@
  * ```
  *
  * @stability experimental
- * @since 4.1.3
+ * @since 4.1.5
  */
 import type * as Effect from "../Effect.ts"
 import type * as AsyncResult from "../reactivity/AsyncResult.ts"
@@ -44,7 +44,7 @@ import type * as Renderer from "./Renderer.ts"
  *
  * @stability experimental
  * @category models
- * @since 4.1.3
+ * @since 4.1.5
  */
 export type Node<Msg, R = never> = Element<Msg, R> | Text | Child<Msg, R>
 
@@ -53,7 +53,7 @@ export type Node<Msg, R = never> = Element<Msg, R> | Text | Child<Msg, R>
  *
  * @stability experimental
  * @category models
- * @since 4.1.3
+ * @since 4.1.5
  */
 export interface Text {
   readonly _tag: "Text"
@@ -72,7 +72,7 @@ export interface Text {
  *
  * @stability experimental
  * @category models
- * @since 4.1.3
+ * @since 4.1.5
  */
 export type Handler<Msg, Payload> = Msg | ((payload: Payload) => Msg | undefined)
 
@@ -89,7 +89,7 @@ export type Handler<Msg, Payload> = Msg | ((payload: Payload) => Msg | undefined
  *
  * @stability experimental
  * @category models
- * @since 4.1.3
+ * @since 4.1.5
  */
 export interface Element<out Msg, out R = never> {
   readonly _tag: "Element"
@@ -109,7 +109,7 @@ export interface Element<out Msg, out R = never> {
  *
  * @stability experimental
  * @category models
- * @since 4.1.3
+ * @since 4.1.5
  */
 export interface Mount<out Msg> {
   readonly name: string
@@ -130,7 +130,7 @@ export interface Mount<out Msg> {
  *
  * @stability experimental
  * @category models
- * @since 4.1.3
+ * @since 4.1.5
  */
 export interface Child<out Msg, out R = never> {
   readonly _tag: "Child"
@@ -151,7 +151,7 @@ export interface Child<out Msg, out R = never> {
  * Helper types for `Child`.
  *
  * @stability experimental
- * @since 4.1.3
+ * @since 4.1.5
  */
 export declare namespace Child {
   /**
@@ -159,7 +159,7 @@ export declare namespace Child {
    * or the child failed.
    *
    * @category models
-   * @since 4.1.3
+   * @since 4.1.5
    */
   export type Fallback = AsyncResult.Initial<never, unknown> | AsyncResult.Failure<never, unknown>
 
@@ -168,7 +168,7 @@ export declare namespace Child {
    * none.
    *
    * @category models
-   * @since 4.1.3
+   * @since 4.1.5
    */
   export type Options<Props, Events, Msg> =
     & {
@@ -187,7 +187,7 @@ export declare namespace Child {
  *
  * @stability experimental
  * @category models
- * @since 4.1.3
+ * @since 4.1.5
  */
 export type Input<Msg> =
   | Node<Msg, any>
@@ -203,7 +203,7 @@ export type Input<Msg> =
  *
  * @stability experimental
  * @category utility types
- * @since 4.1.3
+ * @since 4.1.5
  */
 export type Requirements<T> = T extends string | false | null | undefined ? never
   : T extends Text ? never
@@ -217,7 +217,7 @@ export type Requirements<T> = T extends string | false | null | undefined ? neve
  *
  * @stability experimental
  * @category constructors
- * @since 4.1.3
+ * @since 4.1.5
  */
 export const text = (text: string): Text => ({ _tag: "Text", text })
 
@@ -232,7 +232,7 @@ export const text = (text: string): Text => ({ _tag: "Text", text })
  *
  * @stability experimental
  * @category constructors
- * @since 4.1.3
+ * @since 4.1.5
  */
 export const children = <Msg>(inputs: ReadonlyArray<Input<Msg>>): Array<Node<Msg, any>> => {
   const out: Array<Node<Msg, any>> = []
@@ -271,7 +271,7 @@ export const children = <Msg>(inputs: ReadonlyArray<Input<Msg>>): Array<Node<Msg
  *
  * @stability experimental
  * @category models
- * @since 4.1.3
+ * @since 4.1.5
  */
 export class ElementBuilder<
   out Msg,
@@ -282,68 +282,68 @@ export class ElementBuilder<
   /**
    * The node kind.
    *
-   * @since 4.1.3
+   * @since 4.1.5
    */
   readonly _tag = "Element"
   /**
    * The key set with `key`, if any.
    *
-   * @since 4.1.3
+   * @since 4.1.5
    */
   readonly elementKey: string | undefined = undefined
   /**
    * The attributes set with `attr`.
    *
-   * @since 4.1.3
+   * @since 4.1.5
    */
   readonly attrs: Readonly<Record<string, string>> = {}
   /**
    * The properties set with `prop`.
    *
-   * @since 4.1.3
+   * @since 4.1.5
    */
   readonly props: Readonly<Record<string, unknown>> = {}
   /**
    * The handlers set with `on`, by event name.
    *
-   * @since 4.1.3
+   * @since 4.1.5
    */
   readonly handlers: Readonly<Record<string, Handler<Msg, any>>> = {}
   /**
    * The ref set with `ref`, if any.
    *
-   * @since 4.1.3
+   * @since 4.1.5
    */
   readonly refKey: string | undefined = undefined
   /**
    * The work set with `onMount`, if any.
    *
-   * @since 4.1.3
+   * @since 4.1.5
    */
   readonly mount: Mount<Msg> | undefined = undefined
   /**
    * Phantom: the host node this element renders to, which types `ref` and
    * `onMount`.
    *
-   * @since 4.1.3
+   * @since 4.1.5
    */
   declare readonly "~HostNode"?: (_: HostNode) => HostNode
   /**
    * Phantom: the element's events and their payloads.
    *
-   * @since 4.1.3
+   * @since 4.1.5
    */
   declare readonly "~Handlers"?: Handlers
   /**
    * The element's tag.
    *
-   * @since 4.1.3
+   * @since 4.1.5
    */
   readonly tag: string
   /**
    * The element's children, normalised.
    *
-   * @since 4.1.3
+   * @since 4.1.5
    */
   readonly children: ReadonlyArray<Node<Msg, R>>
   constructor(tag: string, children: ReadonlyArray<Node<Msg, R>>) {
@@ -353,7 +353,7 @@ export class ElementBuilder<
   /**
    * Copies this element with a patch applied.
    *
-   * @since 4.1.3
+   * @since 4.1.5
    */
   protected with(
     patch: Partial<Pick<Element<Msg, R>, "elementKey" | "attrs" | "props" | "handlers" | "refKey" | "mount">>
@@ -363,7 +363,7 @@ export class ElementBuilder<
   /**
    * Sends a message when `event` fires: a value, or a function of the payload.
    *
-   * @since 4.1.3
+   * @since 4.1.5
    */
   on<K extends keyof Handlers & string>(event: K, handler: Handler<Msg, Handlers[K]>): this {
     return this.with({ handlers: { ...this.handlers, [event]: handler } })
@@ -371,7 +371,7 @@ export class ElementBuilder<
   /**
    * Keeps this element's node when its siblings move. Unique among siblings.
    *
-   * @since 4.1.3
+   * @since 4.1.5
    */
   key(key: string): this {
     return this.with({ elementKey: key })
@@ -379,7 +379,7 @@ export class ElementBuilder<
   /**
    * Sets an attribute, or removes it with `undefined`.
    *
-   * @since 4.1.3
+   * @since 4.1.5
    */
   attr(name: string, value: string | undefined): this {
     const { [name]: _, ...rest } = this.attrs
@@ -388,7 +388,7 @@ export class ElementBuilder<
   /**
    * Sets a property. The host decides what it means.
    *
-   * @since 4.1.3
+   * @since 4.1.5
    */
   prop(name: string, value: unknown): this {
     return this.with({ props: { ...this.props, [name]: value } })
@@ -398,7 +398,7 @@ export class ElementBuilder<
    * `Renderer.Refs` within the instance that renders it. A ref declared for
    * another kind of node doesn't compile.
    *
-   * @since 4.1.3
+   * @since 4.1.5
    */
   ref(ref: Renderer.Ref<HostNode>): this {
     return this.with({ refKey: ref.key })
@@ -414,7 +414,7 @@ export class ElementBuilder<
    * doesn't run mounts, such as `TestHost`, where a test sends the message
    * itself. Call it last: it returns the core builder.
    *
-   * @since 4.1.3
+   * @since 4.1.5
    */
   onMount<R2>(
     name: string,
@@ -436,7 +436,7 @@ export class ElementBuilder<
  *
  * @stability experimental
  * @category models
- * @since 4.1.3
+ * @since 4.1.5
  */
 export interface Elements {
   readonly Msg: unknown
@@ -449,7 +449,7 @@ export interface Elements {
  *
  * @stability experimental
  * @category models
- * @since 4.1.3
+ * @since 4.1.5
  */
 export interface Vocabulary<out V extends Elements = Elements> {
   readonly name: string
@@ -489,7 +489,7 @@ export interface Vocabulary<out V extends Elements = Elements> {
  *
  * @stability experimental
  * @category models
- * @since 4.1.3
+ * @since 4.1.5
  */
 export interface Register {}
 
@@ -498,7 +498,7 @@ export interface Register {}
  *
  * @stability experimental
  * @category utility types
- * @since 4.1.3
+ * @since 4.1.5
  */
 export type Registered = Register extends { readonly elements: infer V extends Elements } ? V : never
 
@@ -508,7 +508,7 @@ export type Registered = Register extends { readonly elements: infer V extends E
  *
  * @stability experimental
  * @category utility types
- * @since 4.1.3
+ * @since 4.1.5
  */
 export type Tags<V, Msg> = [V] extends [never] ? {} : V extends Elements ? (V & { readonly Msg: Msg })["Tags"] : {}
 
@@ -525,7 +525,7 @@ let registered: Vocabulary<any> | undefined
  *
  * @stability experimental
  * @category vocabularies
- * @since 4.1.3
+ * @since 4.1.5
  */
 export const registerElements = (elements: Vocabulary<any>): void => {
   registered = elements
@@ -536,7 +536,7 @@ export const registerElements = (elements: Vocabulary<any>): void => {
  *
  * @stability experimental
  * @category vocabularies
- * @since 4.1.3
+ * @since 4.1.5
  */
 export const registeredElements = (): Vocabulary<any> | undefined => registered
 
@@ -551,7 +551,7 @@ export const registeredElements = (): Vocabulary<any> | undefined => registered
  *
  * @stability experimental
  * @category models
- * @since 4.1.3
+ * @since 4.1.5
  */
 export interface Helper<Msg, Props> {
   readonly props: Props
@@ -680,7 +680,7 @@ export const makeHelper = <Msg, Props, V extends Elements = never>(
  *
  * @stability experimental
  * @category queries
- * @since 4.1.3
+ * @since 4.1.5
  */
 export const textOf = (node: Node<any, any>): string => {
   switch (node._tag) {
@@ -698,7 +698,7 @@ export const textOf = (node: Node<any, any>): string => {
  *
  * @stability experimental
  * @category queries
- * @since 4.1.3
+ * @since 4.1.5
  */
 export const nodes = function*<Msg>(node: Node<Msg, any>): Generator<Node<Msg, any>> {
   yield node

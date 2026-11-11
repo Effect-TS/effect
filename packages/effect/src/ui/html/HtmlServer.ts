@@ -52,7 +52,7 @@
  * `BrowserHost.mountEffect` to wait for `root.adopted`.
  *
  * @stability experimental
- * @since 4.1.3
+ * @since 4.1.5
  */
 import type * as Context from "../../Context.ts"
 import type * as Duration from "../../Duration.ts"
@@ -81,7 +81,7 @@ import * as server from "./internal/server.ts"
  *
  * @stability experimental
  * @category models
- * @since 4.1.3
+ * @since 4.1.5
  */
 export interface Rendered<out Model> {
   readonly html: string
@@ -137,7 +137,7 @@ const serverHtmlHost: Context.Service.Shape<typeof Html.Host> = {
  *
  * @stability experimental
  * @category constructors
- * @since 4.1.3
+ * @since 4.1.5
  */
 export const renderToHtml = <
   Name extends string,
@@ -175,7 +175,7 @@ export const renderToHtml = <
  *
  * @stability experimental
  * @category utils
- * @since 4.1.3
+ * @since 4.1.5
  */
 export const serializeState = (state: Renderer.State): string =>
   JSON.stringify(state).replace(/[<\u2028\u2029]/g, (char) => `\\u${char.charCodeAt(0).toString(16).padStart(4, "0")}`)

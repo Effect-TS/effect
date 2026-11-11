@@ -22,7 +22,7 @@
  * ```
  *
  * @stability experimental
- * @since 4.1.3
+ * @since 4.1.5
  */
 import * as Cause from "../Cause.ts"
 import * as Context from "../Context.ts"
@@ -54,7 +54,7 @@ import type * as Component from "./Component.ts"
  *
  * @stability experimental
  * @category services
- * @since 4.1.3
+ * @since 4.1.5
  */
 export interface MessageLog {
   readonly enabled: boolean
@@ -66,7 +66,7 @@ export interface MessageLog {
  *
  * @stability experimental
  * @category constructors
- * @since 4.1.3
+ * @since 4.1.5
  */
 export const noop: MessageLog = { enabled: false, record: () => {} }
 
@@ -76,7 +76,7 @@ export const noop: MessageLog = { enabled: false, record: () => {} }
  *
  * @stability experimental
  * @category services
- * @since 4.1.3
+ * @since 4.1.5
  */
 export const MessageLog: Context.Reference<MessageLog> = Context.Reference<MessageLog>("effect/ui/MessageLog", {
   defaultValue: () => noop
@@ -87,7 +87,7 @@ export const MessageLog: Context.Reference<MessageLog> = Context.Reference<Messa
  *
  * @stability experimental
  * @category models
- * @since 4.1.3
+ * @since 4.1.5
  */
 export type FailureSource =
   | "init"
@@ -109,7 +109,7 @@ export type FailureSource =
  *
  * @stability experimental
  * @category models
- * @since 4.1.3
+ * @since 4.1.5
  */
 export interface Issued {
   readonly seq: number
@@ -129,7 +129,7 @@ export interface Issued {
  *
  * @stability experimental
  * @category models
- * @since 4.1.3
+ * @since 4.1.5
  */
 export type Source =
   | { readonly _tag: "DomEvent"; readonly name: string }
@@ -151,7 +151,7 @@ export type Source =
  *
  * @stability experimental
  * @category models
- * @since 4.1.3
+ * @since 4.1.5
  */
 export interface Base {
   readonly seq: number
@@ -166,7 +166,7 @@ export interface Base {
  *
  * @stability experimental
  * @category models
- * @since 4.1.3
+ * @since 4.1.5
  */
 export interface Update extends Base {
   readonly _tag: "Update"
@@ -188,7 +188,7 @@ export interface Update extends Base {
  *
  * @stability experimental
  * @category models
- * @since 4.1.3
+ * @since 4.1.5
  */
 export interface Mounted extends Base {
   readonly _tag: "Mounted"
@@ -205,7 +205,7 @@ export interface Mounted extends Base {
  *
  * @stability experimental
  * @category models
- * @since 4.1.3
+ * @since 4.1.5
  */
 export interface Lifecycle extends Base {
   readonly _tag: "Unmounted" | "LayerPending" | "LayerReady"
@@ -216,7 +216,7 @@ export interface Lifecycle extends Base {
  *
  * @stability experimental
  * @category models
- * @since 4.1.3
+ * @since 4.1.5
  */
 export interface LayerFailed extends Base {
   readonly _tag: "LayerFailed"
@@ -228,7 +228,7 @@ export interface LayerFailed extends Base {
  *
  * @stability experimental
  * @category models
- * @since 4.1.3
+ * @since 4.1.5
  */
 export interface SubscriptionChanged extends Base {
   readonly _tag: "SubscriptionStarted" | "SubscriptionStopped"
@@ -241,7 +241,7 @@ export interface SubscriptionChanged extends Base {
  *
  * @stability experimental
  * @category models
- * @since 4.1.3
+ * @since 4.1.5
  */
 export interface CommandSettled extends Base {
   readonly _tag: "CommandEnded" | "CommandInterrupted"
@@ -271,7 +271,7 @@ export interface CommandSettled extends Base {
  *
  * @stability experimental
  * @category models
- * @since 4.1.3
+ * @since 4.1.5
  */
 export type WaitEnded = "settled" | "nothing" | "budget" | "switch" | "interrupt" | "closed"
 
@@ -281,7 +281,7 @@ export type WaitEnded = "settled" | "nothing" | "budget" | "switch" | "interrupt
  *
  * @stability experimental
  * @category models
- * @since 4.1.3
+ * @since 4.1.5
  */
 export interface AwaitedEntry {
   readonly read: string
@@ -296,7 +296,7 @@ export interface AwaitedEntry {
  *
  * @stability experimental
  * @category models
- * @since 4.1.3
+ * @since 4.1.5
  */
 export interface CommandAwaiting extends Base {
   readonly _tag: "CommandAwaiting"
@@ -312,7 +312,7 @@ export interface CommandAwaiting extends Base {
  *
  * @stability experimental
  * @category models
- * @since 4.1.3
+ * @since 4.1.5
  */
 export interface CommandDropped extends Base {
   readonly _tag: "CommandDropped"
@@ -327,7 +327,7 @@ export interface CommandDropped extends Base {
  *
  * @stability experimental
  * @category models
- * @since 4.1.3
+ * @since 4.1.5
  */
 export interface Failed extends Base {
   readonly _tag: "Failed" | "Crashed"
@@ -341,7 +341,7 @@ export interface Failed extends Base {
  *
  * @stability experimental
  * @category models
- * @since 4.1.3
+ * @since 4.1.5
  */
 export interface SessionStarted extends Base {
   readonly _tag: "SessionStarted"
@@ -368,7 +368,7 @@ export interface SessionStarted extends Base {
  *
  * @stability experimental
  * @category models
- * @since 4.1.3
+ * @since 4.1.5
  */
 export interface FetchStarted extends Base {
   readonly _tag: "FetchStarted"
@@ -387,7 +387,7 @@ export interface FetchStarted extends Base {
  *
  * @stability experimental
  * @category models
- * @since 4.1.3
+ * @since 4.1.5
  */
 export type Entry =
   | SessionStarted
@@ -407,7 +407,7 @@ export type Entry =
  *
  * @stability experimental
  * @category models
- * @since 4.1.3
+ * @since 4.1.5
  */
 export interface Memory extends MessageLog {
   /** The surviving entries, oldest first. */
@@ -419,7 +419,7 @@ export interface Memory extends MessageLog {
  *
  * @stability experimental
  * @category constructors
- * @since 4.1.3
+ * @since 4.1.5
  */
 export const makeMemory = (options?: { readonly size?: number | undefined }): Memory => {
   const size = Math.max(1, options?.size ?? 1_000)
@@ -444,7 +444,7 @@ export const makeMemory = (options?: { readonly size?: number | undefined }): Me
  *
  * @stability experimental
  * @category layers
- * @since 4.1.3
+ * @since 4.1.5
  */
 export const memory = (options?: { readonly size?: number | undefined }): Layer.Layer<never> =>
   Layer.succeed(MessageLog, makeMemory(options))
@@ -459,7 +459,7 @@ export const memory = (options?: { readonly size?: number | undefined }): Layer.
  *
  * @stability experimental
  * @category combinators
- * @since 4.1.3
+ * @since 4.1.5
  */
 export const fanoutAll = (logs: ReadonlyArray<MessageLog>): MessageLog => {
   const enabled = logs.filter((log) => log.enabled)
@@ -476,7 +476,7 @@ export const fanoutAll = (logs: ReadonlyArray<MessageLog>): MessageLog => {
  *
  * @stability experimental
  * @category layers
- * @since 4.1.3
+ * @since 4.1.5
  */
 export const fanout = <const Layers extends ReadonlyArray<Layer.Layer<never, any, any>>>(
   layers: Layers
@@ -497,7 +497,7 @@ export const fanout = <const Layers extends ReadonlyArray<Layer.Layer<never, any
  *
  * @stability experimental
  * @category Wire
- * @since 4.1.3
+ * @since 4.1.5
  */
 export const wireVersion = 1
 
@@ -506,7 +506,7 @@ export const wireVersion = 1
  *
  * @stability experimental
  * @category Wire
- * @since 4.1.3
+ * @since 4.1.5
  */
 export type WireHost = "browser" | "server" | "test"
 
@@ -556,7 +556,7 @@ const SourceWire = Schema.Union([
  *
  * @stability experimental
  * @category Wire
- * @since 4.1.3
+ * @since 4.1.5
  */
 export const Wire = Schema.Union([
   Schema.TaggedStruct("Hello", { version: Schema.Number, host: Schema.Literals(["browser", "server", "test"]) }),
@@ -642,7 +642,7 @@ export const Wire = Schema.Union([
  *
  * @stability experimental
  * @category Wire
- * @since 4.1.3
+ * @since 4.1.5
  */
 export type Wire = typeof Wire.Type
 
@@ -651,7 +651,7 @@ export type Wire = typeof Wire.Type
  *
  * @stability experimental
  * @category Wire
- * @since 4.1.3
+ * @since 4.1.5
  */
 export type WireEntry = Exclude<Wire, { readonly _tag: "Hello" }>
 
@@ -660,7 +660,7 @@ export type WireEntry = Exclude<Wire, { readonly _tag: "Hello" }>
  *
  * @stability experimental
  * @category Wire
- * @since 4.1.3
+ * @since 4.1.5
  */
 export interface Encoder {
   readonly encode: (entry: Entry) => WireEntry
@@ -673,7 +673,7 @@ export interface Encoder {
  *
  * @stability experimental
  * @category Wire
- * @since 4.1.3
+ * @since 4.1.5
  */
 export const makeEncoder = (options?: {
   readonly maxEntryBytes?: number | undefined
@@ -820,7 +820,7 @@ const encodeSource = (source: Source): typeof SourceWire.Type => {
  *
  * @stability experimental
  * @category Wire
- * @since 4.1.3
+ * @since 4.1.5
  */
 export const encodeCommand = (command: Command.Command<any, any>): typeof CommandWire.Type => ({
   _tag: command._tag,
@@ -1051,7 +1051,7 @@ const encodeCause = (cause: Cause.Cause<unknown>): typeof CauseWire.Type => ({
  *
  * @stability experimental
  * @category Wire
- * @since 4.1.3
+ * @since 4.1.5
  */
 export const structural = (value: unknown, seen: Set<unknown> = new Set()): Schema.Json => {
   switch (typeof value) {
@@ -1118,7 +1118,7 @@ const utf8Length = (text: string): number => {
  *
  * @stability experimental
  * @category layers
- * @since 4.1.3
+ * @since 4.1.5
  */
 export const socket = (url: string, options?: {
   readonly buffer?: number | undefined

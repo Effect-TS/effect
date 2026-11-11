@@ -33,7 +33,7 @@
  * ```
  *
  * @stability experimental
- * @since 4.1.3
+ * @since 4.1.5
  */
 import type * as Query from "../../testing/Query.ts"
 
@@ -443,7 +443,7 @@ const levelOf = <N>(reader: Reader<N>, node: N): number | undefined => {
  *
  * @stability experimental
  * @category models
- * @since 4.1.3
+ * @since 4.1.5
  */
 export interface RoleOptions {
   readonly name?: string | RegExp | undefined
@@ -484,7 +484,7 @@ const select = <N>(index: Index<N>, role: string, options: RoleOptions | undefin
  *
  * @stability experimental
  * @category queries
- * @since 4.1.3
+ * @since 4.1.5
  */
 export const queryAllByRole: {
   (root: globalThis.Node, role: string, options?: RoleOptions): ReadonlyArray<HTMLElement>
@@ -497,7 +497,7 @@ export const queryAllByRole: {
  *
  * @stability experimental
  * @category queries
- * @since 4.1.3
+ * @since 4.1.5
  */
 export const getByRole: {
   (root: globalThis.Node, role: string, options?: RoleOptions): HTMLElement
@@ -526,7 +526,7 @@ const describeIndex = <N>(index: Index<N>): string => {
  *
  * @stability experimental
  * @category getters
- * @since 4.1.3
+ * @since 4.1.5
  */
 export const roleOf: {
   (root: globalThis.Node, node: globalThis.Node): string | undefined
@@ -541,7 +541,7 @@ export const roleOf: {
  *
  * @stability experimental
  * @category getters
- * @since 4.1.3
+ * @since 4.1.5
  */
 export const nameOf: {
   (root: globalThis.Node, node: globalThis.Node): string
@@ -558,7 +558,7 @@ export const nameOf: {
  *
  * @stability experimental
  * @category locators
- * @since 4.1.3
+ * @since 4.1.5
  */
 export const role = (role: string, options?: RoleOptions): Query.Locator => ({
   description: describeOptions(role, options),
@@ -575,7 +575,7 @@ export const role = (role: string, options?: RoleOptions): Query.Locator => ({
  *
  * @stability experimental
  * @category actions
- * @since 4.1.3
+ * @since 4.1.5
  */
 export const click = (element: globalThis.Element): void => {
   ;(element as HTMLElement).click()
@@ -587,7 +587,7 @@ export const click = (element: globalThis.Element): void => {
  *
  * @stability experimental
  * @category actions
- * @since 4.1.3
+ * @since 4.1.5
  */
 export const input = (element: globalThis.Element, value: string): void => {
   const field = element as HTMLInputElement
@@ -606,7 +606,7 @@ export const input = (element: globalThis.Element, value: string): void => {
  *
  * @stability experimental
  * @category actions
- * @since 4.1.3
+ * @since 4.1.5
  */
 export const keyDown = (
   element: globalThis.Element,
@@ -639,7 +639,7 @@ export const keyDown = (
  *
  * @stability experimental
  * @category actions
- * @since 4.1.3
+ * @since 4.1.5
  */
 export const submit = (element: globalThis.Element): void => {
   const form = element.localName === "form"

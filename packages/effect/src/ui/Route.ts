@@ -55,7 +55,7 @@
  * ```
  *
  * @stability experimental
- * @since 4.1.3
+ * @since 4.1.5
  */
 import * as Effect from "../Effect.ts"
 import * as Option from "../Option.ts"
@@ -66,7 +66,7 @@ import * as Schema from "../Schema.ts"
  *
  * @stability experimental
  * @category type IDs
- * @since 4.1.3
+ * @since 4.1.5
  */
 export const TypeId = "~effect/ui/Route" as const
 
@@ -75,7 +75,7 @@ export const TypeId = "~effect/ui/Route" as const
  *
  * @stability experimental
  * @category utility types
- * @since 4.1.3
+ * @since 4.1.5
  */
 export type PathParams<Path extends string> = Path extends `${string}:${infer Rest}`
   ? Rest extends `${infer Name}/${infer Tail}` ? Name | PathParams<`/${Tail}`> : Rest
@@ -87,7 +87,7 @@ export type PathParams<Path extends string> = Path extends `${string}:${infer Re
  *
  * @stability experimental
  * @category models
- * @since 4.1.3
+ * @since 4.1.5
  */
 export interface Route<
   out Path extends string,
@@ -105,7 +105,7 @@ export interface Route<
  *
  * @stability experimental
  * @category models
- * @since 4.1.3
+ * @since 4.1.5
  */
 export type Any = Route<string, Schema.Struct.Fields, Schema.Struct.Fields>
 
@@ -115,7 +115,7 @@ export type Any = Route<string, Schema.Struct.Fields, Schema.Struct.Fields>
  *
  * @stability experimental
  * @category utility types
- * @since 4.1.3
+ * @since 4.1.5
  */
 export type ParamFields<R> = R extends Route<infer Path, infer Params, infer _Query>
   ? Path extends `${string}*` ? Params & { readonly "*": Schema.String } : Params
@@ -126,7 +126,7 @@ export type ParamFields<R> = R extends Route<infer Path, infer Params, infer _Qu
  *
  * @stability experimental
  * @category utility types
- * @since 4.1.3
+ * @since 4.1.5
  */
 export type QueryFields<R> = R extends Route<infer _Path, infer _Params, infer Query> ? Query : never
 
@@ -136,7 +136,7 @@ export type QueryFields<R> = R extends Route<infer _Path, infer _Params, infer Q
  *
  * @stability experimental
  * @category utility types
- * @since 4.1.3
+ * @since 4.1.5
  */
 export type FieldsSchema<Fields extends Schema.Struct.Fields> = {} extends Schema.Struct<Fields>["Type"]
   ? Schema.withConstructorDefault<Schema.Struct<Fields>>
@@ -147,7 +147,7 @@ export type FieldsSchema<Fields extends Schema.Struct.Fields> = {} extends Schem
  *
  * @stability experimental
  * @category models
- * @since 4.1.3
+ * @since 4.1.5
  */
 export type Case<Tag extends string, R> = Schema.TaggedStruct<Tag, {
   readonly params: FieldsSchema<ParamFields<R>>
@@ -159,7 +159,7 @@ export type Case<Tag extends string, R> = Schema.TaggedStruct<Tag, {
  *
  * @stability experimental
  * @category models
- * @since 4.1.3
+ * @since 4.1.5
  */
 export interface Redirect {
   readonly _tag: "Redirect"
@@ -177,7 +177,7 @@ export interface Redirect {
  *
  * @stability experimental
  * @category models
- * @since 4.1.3
+ * @since 4.1.5
  */
 export interface Resolved<A> {
   readonly route: A
@@ -190,7 +190,7 @@ export interface Resolved<A> {
  *
  * @stability experimental
  * @category models
- * @since 4.1.3
+ * @since 4.1.5
  */
 export interface Union<Routes extends Record<string, Any>>
   extends Schema.TaggedUnion<{ readonly [K in keyof Routes & string]: Case<K, Routes[K]> }>
@@ -218,7 +218,7 @@ export interface Union<Routes extends Record<string, Any>>
  *
  * @stability experimental
  * @category models
- * @since 4.1.3
+ * @since 4.1.5
  */
 export interface AnyUnion {
   readonly parse: (url: string) => Option.Option<{ readonly _tag: string }>
@@ -272,7 +272,7 @@ type Declared<Fields extends Schema.Struct.Fields> = string extends keyof Fields
  *
  * @stability experimental
  * @category constructors
- * @since 4.1.3
+ * @since 4.1.5
  */
 export const make = <
   const Path extends string,
@@ -310,7 +310,7 @@ export const make = <
  *
  * @stability experimental
  * @category constructors
- * @since 4.1.3
+ * @since 4.1.5
  */
 export const redirect = <const Path extends string>(
   path: Path,
@@ -578,7 +578,7 @@ const build = (
  *
  * @stability experimental
  * @category constructors
- * @since 4.1.3
+ * @since 4.1.5
  */
 export const union = <const Routes extends Record<string, Any>>(
   routes: Routes,

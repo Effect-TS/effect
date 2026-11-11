@@ -68,7 +68,7 @@
  * ```
  *
  * @stability experimental
- * @since 4.1.3
+ * @since 4.1.5
  */
 import * as Context from "../Context.ts"
 import * as Data from "../Data.ts"
@@ -95,7 +95,7 @@ import * as Subscription from "./Subscription.ts"
  *
  * @stability experimental
  * @category models
- * @since 4.1.3
+ * @since 4.1.5
  */
 export interface Location {
   readonly route: { readonly _tag: string }
@@ -112,7 +112,7 @@ export interface Location {
  *
  * @stability experimental
  * @category models
- * @since 4.1.3
+ * @since 4.1.5
  */
 export type Action = "initial" | "push" | "replace" | "pop"
 
@@ -122,7 +122,7 @@ export type Action = "initial" | "push" | "replace" | "pop"
  *
  * @stability experimental
  * @category models
- * @since 4.1.3
+ * @since 4.1.5
  */
 export type Outcome = "navigated" | "blocked"
 
@@ -138,7 +138,7 @@ export type Outcome = "navigated" | "blocked"
  *
  * @stability experimental
  * @category models
- * @since 4.1.3
+ * @since 4.1.5
  */
 export interface Router {
   readonly routes: Route.AnyUnion
@@ -169,7 +169,7 @@ export interface Router {
  *
  * @stability experimental
  * @category services
- * @since 4.1.3
+ * @since 4.1.5
  */
 export const Router: Context.Service<Router, Router> = Context.Service<Router>("effect/ui/Router")
 
@@ -182,7 +182,7 @@ export const Router: Context.Service<Router, Router> = Context.Service<Router>("
  *
  * @stability experimental
  * @category models
- * @since 4.1.3
+ * @since 4.1.5
  */
 export type Routes = Route.AnyUnion & { readonly Type: { readonly _tag: string } }
 
@@ -200,7 +200,7 @@ const RouteValue = Schema.declare(
  *
  * @stability experimental
  * @category commands
- * @since 4.1.3
+ * @since 4.1.5
  */
 export class Push extends Command.Service<Push>()("effect/ui/Router/Push", {
   args: { route: RouteValue },
@@ -213,7 +213,7 @@ export class Push extends Command.Service<Push>()("effect/ui/Router/Push", {
  *
  * @stability experimental
  * @category commands
- * @since 4.1.3
+ * @since 4.1.5
  */
 export class Replace extends Command.Service<Replace>()(
   "effect/ui/Router/Replace",
@@ -238,7 +238,7 @@ export class Replace extends Command.Service<Replace>()(
  *
  * @stability experimental
  * @category commands
- * @since 4.1.3
+ * @since 4.1.5
  */
 export const push = <U extends Routes>(_routes: U, route: U["Type"]): Command.Effectful<Outcome, Push> =>
   Push.make({ route })
@@ -254,7 +254,7 @@ export const push = <U extends Routes>(_routes: U, route: U["Type"]): Command.Ef
  *
  * @stability experimental
  * @category commands
- * @since 4.1.3
+ * @since 4.1.5
  */
 export const replace = <U extends Routes>(_routes: U, route: U["Type"]): Command.Effectful<Outcome, Replace> =>
   Replace.make({ route })
@@ -264,7 +264,7 @@ export const replace = <U extends Routes>(_routes: U, route: U["Type"]): Command
  *
  * @stability experimental
  * @category commands
- * @since 4.1.3
+ * @since 4.1.5
  */
 export class Back extends Command.Service<Back>()("effect/ui/Router/Back", {
   args: {},
@@ -276,7 +276,7 @@ export class Back extends Command.Service<Back>()("effect/ui/Router/Back", {
  *
  * @stability experimental
  * @category commands
- * @since 4.1.3
+ * @since 4.1.5
  */
 export class Forward extends Command.Service<Forward>()("effect/ui/Router/Forward", {
   args: {},
@@ -288,7 +288,7 @@ export class Forward extends Command.Service<Forward>()("effect/ui/Router/Forwar
  *
  * @stability experimental
  * @category commands
- * @since 4.1.3
+ * @since 4.1.5
  */
 export class Load extends Command.Service<Load>()("effect/ui/Router/Load", {
   args: { href: Schema.String },
@@ -318,7 +318,7 @@ export class Load extends Command.Service<Load>()("effect/ui/Router/Load", {
  *
  * @stability experimental
  * @category subscriptions
- * @since 4.1.3
+ * @since 4.1.5
  */
 export const blocked = (key: string): Subscription.Subscription<never, Router> =>
   Subscription.make(
@@ -331,7 +331,7 @@ export const blocked = (key: string): Subscription.Subscription<never, Router> =
  *
  * @stability experimental
  * @category models
- * @since 4.1.3
+ * @since 4.1.5
  */
 export type Services = Router | Push | Replace | Back | Forward | Load
 
@@ -360,7 +360,7 @@ const routeOf = (router: Router, union: Route.AnyUnion, location: Location): Opt
  *
  * @stability experimental
  * @category accessors
- * @since 4.1.3
+ * @since 4.1.5
  */
 export const currentRoute = <U extends Routes>(routes: U): Effect.Effect<U["Type"], never, Router> =>
   Effect.map(Router, (router) => Option.getOrThrow(routeOf(router, routes, router.location())) as U["Type"])
@@ -414,7 +414,7 @@ export const currentRoute = <U extends Routes>(routes: U): Effect.Effect<U["Type
  *
  * @stability experimental
  * @category accessors
- * @since 4.1.3
+ * @since 4.1.5
  */
 export const props = <U extends Routes>(routes: U): Effect.Effect<{ readonly route: U["Type"] }, never, Router> =>
   Effect.map(currentRoute(routes), (route) => ({ route }))
@@ -438,7 +438,7 @@ export const props = <U extends Routes>(routes: U): Effect.Effect<{ readonly rou
  *
  * @stability experimental
  * @category subscriptions
- * @since 4.1.3
+ * @since 4.1.5
  */
 export const subscription = <U extends Routes, Msg>(
   routes: U,
@@ -517,7 +517,7 @@ const PageTypeId = "~effect/ui/Router/Page" as const
  *
  * @stability experimental
  * @category models
- * @since 4.1.3
+ * @since 4.1.5
  */
 export interface Page<out R = never> {
   readonly [PageTypeId]: { readonly _R: Types.Covariant<R> }
@@ -531,7 +531,7 @@ export interface Page<out R = never> {
  *
  * @stability experimental
  * @category utility types
- * @since 4.1.3
+ * @since 4.1.5
  */
 export type PageRequirements<C> = C extends unknown ? Component.LoaderServices<Component.Model<C>> : never
 
@@ -564,7 +564,7 @@ interface ErasedPage {
  *
  * @stability experimental
  * @category subscriptions
- * @since 4.1.3
+ * @since 4.1.5
  */
 export const page = <C extends Component.Any>(
   component: C & PageInput<C>,
@@ -579,7 +579,7 @@ const pageVariance = { _R: (_: never) => _ }
  *
  * @stability experimental
  * @category models
- * @since 4.1.3
+ * @since 4.1.5
  */
 export type PrefetchMap<U extends Routes> = {
   readonly [K in U["Type"]["_tag"]]: (route: Extract<U["Type"], { readonly _tag: K }>) => ReadonlyArray<Page<any>>
@@ -590,7 +590,7 @@ export type PrefetchMap<U extends Routes> = {
  *
  * @stability experimental
  * @category utility types
- * @since 4.1.3
+ * @since 4.1.5
  */
 export type PrefetchRequirements<M> = {
   readonly [K in keyof M]: M[K] extends (route: any) => ReadonlyArray<infer P> ? PageRequirement<P> : never
@@ -678,7 +678,7 @@ type PageRequirement<P> = P extends Page<infer R> ? R : never
  *
  * @stability experimental
  * @category subscriptions
- * @since 4.1.3
+ * @since 4.1.5
  */
 export const prefetch = <U extends Routes, const M extends PrefetchMap<U>>(
   routes: U,
@@ -696,7 +696,7 @@ export const prefetch = <U extends Routes, const M extends PrefetchMap<U>>(
  *
  * @stability experimental
  * @category problems
- * @since 4.1.3
+ * @since 4.1.5
  */
 export class PrefetchThrew extends Data.TaggedClass("PrefetchThrew")<{
   readonly message: string
@@ -715,7 +715,7 @@ export class PrefetchThrew extends Data.TaggedClass("PrefetchThrew")<{
  *
  * @stability experimental
  * @category problems
- * @since 4.1.3
+ * @since 4.1.5
  */
 export class PrefetchReadNotProvided extends Data.TaggedClass("PrefetchReadNotProvided")<{
   readonly message: string
@@ -733,7 +733,7 @@ export class PrefetchReadNotProvided extends Data.TaggedClass("PrefetchReadNotPr
  *
  * @stability experimental
  * @category problems
- * @since 4.1.3
+ * @since 4.1.5
  */
 export class PrefetchPageNotMounted extends Data.TaggedClass("PrefetchPageNotMounted")<{
   readonly message: string
@@ -749,7 +749,7 @@ export class PrefetchPageNotMounted extends Data.TaggedClass("PrefetchPageNotMou
  *
  * @stability experimental
  * @category problems
- * @since 4.1.3
+ * @since 4.1.5
  */
 export class PrefetchEntryNotWatched extends Data.TaggedClass("PrefetchEntryNotWatched")<{
   readonly message: string
@@ -780,7 +780,7 @@ export class PrefetchEntryNotWatched extends Data.TaggedClass("PrefetchEntryNotW
  *
  * @stability experimental
  * @category models
- * @since 4.1.3
+ * @since 4.1.5
  */
 export interface History {
   readonly current: () => { readonly url: string; readonly state: unknown }
@@ -798,7 +798,7 @@ export interface History {
  *
  * @stability experimental
  * @category models
- * @since 4.1.3
+ * @since 4.1.5
  */
 export interface Settled {
   readonly location: Location
@@ -817,7 +817,7 @@ export interface Settled {
  *
  * @stability experimental
  * @category models
- * @since 4.1.3
+ * @since 4.1.5
  */
 export interface Options {
   readonly routes: Route.AnyUnion
@@ -839,7 +839,7 @@ export interface Options {
  *
  * @stability experimental
  * @category problems
- * @since 4.1.3
+ * @since 4.1.5
  */
 export class RouteMismatch extends Data.TaggedClass("RouteMismatch")<{
   readonly message: string
@@ -875,7 +875,7 @@ const writeState = (entry: EntryState): unknown => ({ [stateKey]: entry })
  *
  * @stability experimental
  * @category problems
- * @since 4.1.3
+ * @since 4.1.5
  */
 export class SnapshotWriteFailed extends Data.TaggedClass("SnapshotWriteFailed")<{
   readonly message: string
@@ -946,7 +946,7 @@ const commandLayers = Layer.mergeAll(
  *
  * @stability experimental
  * @category constructors
- * @since 4.1.3
+ * @since 4.1.5
  */
 export const make = (options: Options): Layer.Layer<Services> =>
   Layer.provideMerge(commandLayers, Layer.effectContext(Effect.suspend(() => build(options))))
@@ -1254,7 +1254,7 @@ const build = (options: Options): Effect.Effect<Context.Context<Router>, never, 
  *
  * @stability experimental
  * @category constructors
- * @since 4.1.3
+ * @since 4.1.5
  */
 export const memoryHistory = (url: string = "/"): History & {
   readonly entries: () => ReadonlyArray<string>
@@ -1308,7 +1308,7 @@ export const memoryHistory = (url: string = "/"): History & {
  *
  * @stability experimental
  * @category layers
- * @since 4.1.3
+ * @since 4.1.5
  */
 export const memory = (options: {
   readonly routes: Route.AnyUnion
@@ -1370,7 +1370,7 @@ export {
    *
    * @stability experimental
    * @category layers
-   * @since 4.1.3
+   * @since 4.1.5
    */
   static_ as static
 }

@@ -42,7 +42,7 @@
  * ```
  *
  * @stability experimental
- * @since 4.1.3
+ * @since 4.1.5
  */
 
 /**
@@ -50,7 +50,7 @@
  *
  * @stability experimental
  * @category models
- * @since 4.1.3
+ * @since 4.1.5
  */
 export type Entry =
   | Title
@@ -70,7 +70,7 @@ export type Entry =
  *
  * @stability experimental
  * @category models
- * @since 4.1.3
+ * @since 4.1.5
  */
 export interface Title {
   readonly _tag: "Title"
@@ -82,7 +82,7 @@ export interface Title {
  *
  * @stability experimental
  * @category models
- * @since 4.1.3
+ * @since 4.1.5
  */
 export interface TitleTemplate {
   readonly _tag: "TitleTemplate"
@@ -94,7 +94,7 @@ export interface TitleTemplate {
  *
  * @stability experimental
  * @category models
- * @since 4.1.3
+ * @since 4.1.5
  */
 export interface Meta {
   readonly _tag: "Meta"
@@ -113,7 +113,7 @@ export interface Meta {
  *
  * @stability experimental
  * @category models
- * @since 4.1.3
+ * @since 4.1.5
  */
 export interface LinkAttributes {
   readonly rel: string
@@ -133,7 +133,7 @@ export interface LinkAttributes {
  *
  * @stability experimental
  * @category models
- * @since 4.1.3
+ * @since 4.1.5
  */
 export interface Link {
   readonly _tag: "Link"
@@ -146,7 +146,7 @@ export interface Link {
  *
  * @stability experimental
  * @category models
- * @since 4.1.3
+ * @since 4.1.5
  */
 export interface Lang {
   readonly _tag: "Lang"
@@ -158,7 +158,7 @@ export interface Lang {
  *
  * @stability experimental
  * @category models
- * @since 4.1.3
+ * @since 4.1.5
  */
 export interface Dir {
   readonly _tag: "Dir"
@@ -176,7 +176,7 @@ export interface Dir {
  *
  * @stability experimental
  * @category models
- * @since 4.1.3
+ * @since 4.1.5
  */
 export interface JsonLd {
   readonly _tag: "JsonLd"
@@ -190,7 +190,7 @@ export interface JsonLd {
  *
  * @stability experimental
  * @category models
- * @since 4.1.3
+ * @since 4.1.5
  */
 export interface HtmlClass {
   readonly _tag: "HtmlClass"
@@ -202,7 +202,7 @@ export interface HtmlClass {
  *
  * @stability experimental
  * @category models
- * @since 4.1.3
+ * @since 4.1.5
  */
 export interface BodyClass {
   readonly _tag: "BodyClass"
@@ -214,7 +214,7 @@ export interface BodyClass {
  *
  * @stability experimental
  * @category models
- * @since 4.1.3
+ * @since 4.1.5
  */
 export interface HtmlData {
   readonly _tag: "HtmlData"
@@ -227,7 +227,7 @@ export interface HtmlData {
  *
  * @stability experimental
  * @category models
- * @since 4.1.3
+ * @since 4.1.5
  */
 export interface BodyData {
   readonly _tag: "BodyData"
@@ -241,7 +241,7 @@ export interface BodyData {
  *
  * @stability experimental
  * @category utility types
- * @since 4.1.3
+ * @since 4.1.5
  */
 export type DataName<N extends string> = N extends "data-eui" ? never : N extends `data-${string}` ? N : never
 
@@ -252,7 +252,7 @@ export type DataName<N extends string> = N extends "data-eui" ? never : N extend
  *
  * @stability experimental
  * @category utility types
- * @since 4.1.3
+ * @since 4.1.5
  */
 export type JsonLdValue<A extends object> =
   & A
@@ -263,7 +263,7 @@ export type JsonLdValue<A extends object> =
  *
  * @stability experimental
  * @category constants
- * @since 4.1.3
+ * @since 4.1.5
  */
 export const marker = "data-eui"
 
@@ -272,7 +272,7 @@ export const marker = "data-eui"
  *
  * @stability experimental
  * @category constructors
- * @since 4.1.3
+ * @since 4.1.5
  */
 export const title = (text: string): Title => ({ _tag: "Title", text })
 
@@ -286,7 +286,7 @@ export const title = (text: string): Title => ({ _tag: "Title", text })
  *
  * @stability experimental
  * @category constructors
- * @since 4.1.3
+ * @since 4.1.5
  */
 export const titleTemplate = (apply: (title: string) => string): TitleTemplate => ({ _tag: "TitleTemplate", apply })
 
@@ -300,7 +300,7 @@ export const titleTemplate = (apply: (title: string) => string): TitleTemplate =
  *
  * @stability experimental
  * @category constructors
- * @since 4.1.3
+ * @since 4.1.5
  */
 export const meta = (
   options:
@@ -324,7 +324,7 @@ export const meta = (
  *
  * @stability experimental
  * @category constructors
- * @since 4.1.3
+ * @since 4.1.5
  */
 export const link = (options: LinkAttributes & { readonly key?: string | undefined }): Link => {
   const { key, ...attributes } = options
@@ -336,7 +336,7 @@ export const link = (options: LinkAttributes & { readonly key?: string | undefin
  *
  * @stability experimental
  * @category constructors
- * @since 4.1.3
+ * @since 4.1.5
  */
 export const lang = (code: string): Lang => ({ _tag: "Lang", code })
 
@@ -345,7 +345,7 @@ export const lang = (code: string): Lang => ({ _tag: "Lang", code })
  *
  * @stability experimental
  * @category constructors
- * @since 4.1.3
+ * @since 4.1.5
  */
 export const dir = (dir: "ltr" | "rtl"): Dir => ({ _tag: "Dir", dir })
 
@@ -379,7 +379,7 @@ export const dir = (dir: "ltr" | "rtl"): Dir => ({ _tag: "Dir", dir })
  *
  * @stability experimental
  * @category constructors
- * @since 4.1.3
+ * @since 4.1.5
  */
 export const jsonLd = <const A extends object>(
   value: JsonLdValue<A>,
@@ -405,7 +405,7 @@ const splitTokens = (tokens: string | ReadonlyArray<string>): ReadonlyArray<stri
  *
  * @stability experimental
  * @category constructors
- * @since 4.1.3
+ * @since 4.1.5
  */
 export const htmlClass = (tokens: string | ReadonlyArray<string>): HtmlClass => ({
   _tag: "HtmlClass",
@@ -417,7 +417,7 @@ export const htmlClass = (tokens: string | ReadonlyArray<string>): HtmlClass => 
  *
  * @stability experimental
  * @category constructors
- * @since 4.1.3
+ * @since 4.1.5
  */
 export const bodyClass = (tokens: string | ReadonlyArray<string>): BodyClass => ({
   _tag: "BodyClass",
@@ -438,7 +438,7 @@ const checkDataName = (name: string) => {
  *
  * @stability experimental
  * @category constructors
- * @since 4.1.3
+ * @since 4.1.5
  */
 export const htmlData = <const N extends string>(name: N & DataName<N>, value: string): HtmlData => {
   checkDataName(name)
@@ -450,7 +450,7 @@ export const htmlData = <const N extends string>(name: N & DataName<N>, value: s
  *
  * @stability experimental
  * @category constructors
- * @since 4.1.3
+ * @since 4.1.5
  */
 export const bodyData = <const N extends string>(name: N & DataName<N>, value: string): BodyData => {
   checkDataName(name)
@@ -502,7 +502,7 @@ const canonical = (value: unknown, path: string): unknown => {
  *
  * @stability experimental
  * @category utils
- * @since 4.1.3
+ * @since 4.1.5
  */
 export const canonicalJson = (value: object): string => JSON.stringify(canonical(value, "$")).replaceAll("<", "\\u003c")
 
@@ -523,7 +523,7 @@ export const canonicalJson = (value: object): string => JSON.stringify(canonical
  *
  * @stability experimental
  * @category models
- * @since 4.1.3
+ * @since 4.1.5
  */
 export interface Head {
   readonly title: string | undefined
@@ -547,7 +547,7 @@ export interface Head {
  *
  * @stability experimental
  * @category constants
- * @since 4.1.3
+ * @since 4.1.5
  */
 export const empty: Head = {
   title: undefined,
@@ -570,7 +570,7 @@ export const empty: Head = {
  *
  * @stability experimental
  * @category models
- * @since 4.1.3
+ * @since 4.1.5
  */
 export interface Tree {
   readonly entries: ReadonlyArray<Entry>
@@ -584,7 +584,7 @@ export interface Tree {
  *
  * @stability experimental
  * @category utils
- * @since 4.1.3
+ * @since 4.1.5
  */
 export const identity = (entry: Meta | Link | JsonLd): string => {
   switch (entry._tag) {
@@ -611,7 +611,7 @@ export const identity = (entry: Meta | Link | JsonLd): string => {
  *
  * @stability experimental
  * @category utils
- * @since 4.1.3
+ * @since 4.1.5
  */
 export const attributes = (entry: Meta | Link): ReadonlyArray<readonly [string, string]> => {
   if (entry._tag === "Meta") {
@@ -656,7 +656,7 @@ const applyTemplate = (text: string, template: Template): string => {
  *
  * @stability experimental
  * @category combinators
- * @since 4.1.3
+ * @since 4.1.5
  */
 export const merge = (tree: Tree): Head => {
   let title: { readonly text: string; readonly templates: ReadonlyArray<Template> } | undefined

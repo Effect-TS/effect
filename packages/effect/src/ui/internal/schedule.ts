@@ -3,7 +3,7 @@
  * runtime and `Story` so the two can't drift apart.
  *
  * @internal
- * @since 4.1.3
+ * @since 4.1.5
  */
 import type * as Command from "../Command.ts"
 

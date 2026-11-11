@@ -47,7 +47,7 @@
  * ```
  *
  * @stability experimental
- * @since 4.1.3
+ * @since 4.1.5
  */
 import * as Context from "../../Context.ts"
 import * as Effect from "../../Effect.ts"
@@ -74,7 +74,7 @@ import * as View from "../View.ts"
  *
  * @stability experimental
  * @category services
- * @since 4.1.3
+ * @since 4.1.5
  */
 export class Host extends Context.Service<Host, {
   readonly focus: (element: globalThis.Element, options: { readonly preventScroll?: boolean | undefined }) => void
@@ -94,7 +94,7 @@ declare module "../Command.ts" {
  *
  * @stability experimental
  * @category models
- * @since 4.1.3
+ * @since 4.1.5
  */
 export interface Rect {
   readonly x: number
@@ -112,7 +112,7 @@ export interface Rect {
  *
  * @stability experimental
  * @category models
- * @since 4.1.3
+ * @since 4.1.5
  */
 export interface ScrollOptions {
   readonly behavior?: "auto" | "instant" | "smooth" | undefined
@@ -130,7 +130,7 @@ export interface ScrollOptions {
  *
  * @stability experimental
  * @category events
- * @since 4.1.3
+ * @since 4.1.5
  */
 export interface PointerPayload {
   readonly button: number
@@ -147,7 +147,7 @@ export interface PointerPayload {
  *
  * @stability experimental
  * @category events
- * @since 4.1.3
+ * @since 4.1.5
  */
 export interface KeyPayload {
   readonly key: string
@@ -163,7 +163,7 @@ export interface KeyPayload {
  *
  * @stability experimental
  * @category events
- * @since 4.1.3
+ * @since 4.1.5
  */
 export interface ValuePayload {
   readonly value: string
@@ -175,7 +175,7 @@ export interface ValuePayload {
  *
  * @stability experimental
  * @category events
- * @since 4.1.3
+ * @since 4.1.5
  */
 export interface InputPayload {
   readonly value: string
@@ -193,7 +193,7 @@ export interface InputPayload {
  *
  * @stability experimental
  * @category events
- * @since 4.1.3
+ * @since 4.1.5
  */
 export interface SubmitPayload {
   readonly fields: Readonly<Record<string, string>>
@@ -205,7 +205,7 @@ export interface SubmitPayload {
  *
  * @stability experimental
  * @category events
- * @since 4.1.3
+ * @since 4.1.5
  */
 export interface TogglePayload {
   readonly open: boolean
@@ -216,7 +216,7 @@ export interface TogglePayload {
  *
  * @stability experimental
  * @category events
- * @since 4.1.3
+ * @since 4.1.5
  */
 export interface ScrollPayload {
   readonly top: number
@@ -234,7 +234,7 @@ export interface ScrollPayload {
  *
  * @stability experimental
  * @category events
- * @since 4.1.3
+ * @since 4.1.5
  */
 export interface Events {
   readonly click: PointerPayload
@@ -258,7 +258,7 @@ export interface Events {
  *
  * @stability experimental
  * @category events
- * @since 4.1.3
+ * @since 4.1.5
  */
 export type EventsOf<K extends string> =
   & Events
@@ -280,7 +280,7 @@ export type EventsOf<K extends string> =
  *
  * @stability experimental
  * @category models
- * @since 4.1.3
+ * @since 4.1.5
  */
 export type ValueNode = HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
 
@@ -295,7 +295,7 @@ export type ValueNode = HTMLInputElement | HTMLTextAreaElement | HTMLSelectEleme
  *
  * @stability experimental
  * @category models
- * @since 4.1.3
+ * @since 4.1.5
  */
 export class Element<out Msg, out R = never, in out E = Record<string, unknown>, in out Node = unknown>
   extends View.ElementBuilder<Msg, R, E, Node>
@@ -303,7 +303,7 @@ export class Element<out Msg, out R = never, in out E = Record<string, unknown>,
   /**
    * Sets the `id` attribute.
    *
-   * @since 4.1.3
+   * @since 4.1.5
    */
   id(id: string): this {
     return this.attr("id", id)
@@ -311,7 +311,7 @@ export class Element<out Msg, out R = never, in out E = Record<string, unknown>,
   /**
    * Sets the `class` attribute.
    *
-   * @since 4.1.3
+   * @since 4.1.5
    */
   class(value: string): this {
     return this.attr("class", value)
@@ -319,7 +319,7 @@ export class Element<out Msg, out R = never, in out E = Record<string, unknown>,
   /**
    * Sets or removes the `disabled` boolean attribute.
    *
-   * @since 4.1.3
+   * @since 4.1.5
    */
   disabled(disabled: boolean): this {
     return this.attr("disabled", disabled ? "" : undefined)
@@ -328,7 +328,7 @@ export class Element<out Msg, out R = never, in out E = Record<string, unknown>,
    * The controlled `value` of an `input`, `textarea` or `select`. The element
    * always shows it, whatever the user types, until the Model changes.
    *
-   * @since 4.1.3
+   * @since 4.1.5
    */
   value<N extends ValueNode>(this: Element<Msg, R, E, N>, value: string): Element<Msg, R, E, N> {
     return this.prop("value", value)
@@ -336,7 +336,7 @@ export class Element<out Msg, out R = never, in out E = Record<string, unknown>,
   /**
    * The controlled `checked` state of a checkbox or radio button.
    *
-   * @since 4.1.3
+   * @since 4.1.5
    */
   checked(this: Element<Msg, R, E, HTMLInputElement>, checked: boolean): Element<Msg, R, E, HTMLInputElement> {
     return this.prop("checked", checked)
@@ -344,7 +344,7 @@ export class Element<out Msg, out R = never, in out E = Record<string, unknown>,
   /**
    * The controlled `selected` state of an `option`.
    *
-   * @since 4.1.3
+   * @since 4.1.5
    */
   selected(
     this: Element<Msg, R, E, HTMLOptionElement>,
@@ -355,7 +355,7 @@ export class Element<out Msg, out R = never, in out E = Record<string, unknown>,
   /**
    * The controlled `open` state of a `details` or `dialog`.
    *
-   * @since 4.1.3
+   * @since 4.1.5
    */
   open<N extends HTMLDetailsElement | HTMLDialogElement>(
     this: Element<Msg, R, E, N>,
@@ -366,7 +366,7 @@ export class Element<out Msg, out R = never, in out E = Record<string, unknown>,
   /**
    * Sugar for `on("click", handler)`.
    *
-   * @since 4.1.3
+   * @since 4.1.5
    */
   onClick(handler: View.Handler<Msg, PointerPayload>): this {
     return this.on("click" as any, handler as any)
@@ -374,7 +374,7 @@ export class Element<out Msg, out R = never, in out E = Record<string, unknown>,
   /**
    * Sugar for `on("dblclick", handler)`.
    *
-   * @since 4.1.3
+   * @since 4.1.5
    */
   onDoubleClick(handler: View.Handler<Msg, PointerPayload>): this {
     return this.on("dblclick" as any, handler as any)
@@ -382,7 +382,7 @@ export class Element<out Msg, out R = never, in out E = Record<string, unknown>,
   /**
    * Sugar for `on("keydown", handler)`.
    *
-   * @since 4.1.3
+   * @since 4.1.5
    */
   onKeyDown(handler: View.Handler<Msg, KeyPayload>): this {
     return this.on("keydown" as any, handler as any)
@@ -390,7 +390,7 @@ export class Element<out Msg, out R = never, in out E = Record<string, unknown>,
   /**
    * Sugar for `on("keyup", handler)`.
    *
-   * @since 4.1.3
+   * @since 4.1.5
    */
   onKeyUp(handler: View.Handler<Msg, KeyPayload>): this {
     return this.on("keyup" as any, handler as any)
@@ -398,7 +398,7 @@ export class Element<out Msg, out R = never, in out E = Record<string, unknown>,
   /**
    * Sugar for `on("focus", handler)`.
    *
-   * @since 4.1.3
+   * @since 4.1.5
    */
   onFocus(handler: View.Handler<Msg, {}>): this {
     return this.on("focus" as any, handler as any)
@@ -406,7 +406,7 @@ export class Element<out Msg, out R = never, in out E = Record<string, unknown>,
   /**
    * Sugar for `on("blur", handler)`.
    *
-   * @since 4.1.3
+   * @since 4.1.5
    */
   onBlur(handler: View.Handler<Msg, {}>): this {
     return this.on("blur" as any, handler as any)
@@ -414,7 +414,7 @@ export class Element<out Msg, out R = never, in out E = Record<string, unknown>,
   /**
    * Sugar for `on("input", handler)`, on the elements that have it.
    *
-   * @since 4.1.3
+   * @since 4.1.5
    */
   onInput<E2 extends E & { readonly input: unknown }>(
     this: Element<Msg, R, E2, Node>,
@@ -425,7 +425,7 @@ export class Element<out Msg, out R = never, in out E = Record<string, unknown>,
   /**
    * Sugar for `on("change", handler)`, on the elements that have it.
    *
-   * @since 4.1.3
+   * @since 4.1.5
    */
   onChange<E2 extends E & { readonly change: unknown }>(
     this: Element<Msg, R, E2, Node>,
@@ -436,7 +436,7 @@ export class Element<out Msg, out R = never, in out E = Record<string, unknown>,
   /**
    * Sugar for `on("submit", handler)`, on a `form`.
    *
-   * @since 4.1.3
+   * @since 4.1.5
    */
   onSubmit<E2 extends E & { readonly submit: unknown }>(
     this: Element<Msg, R, E2, Node>,
@@ -447,7 +447,7 @@ export class Element<out Msg, out R = never, in out E = Record<string, unknown>,
   /**
    * Sugar for `on("toggle", handler)`, on a `details` or `dialog`.
    *
-   * @since 4.1.3
+   * @since 4.1.5
    */
   onToggle<E2 extends E & { readonly toggle: unknown }>(
     this: Element<Msg, R, E2, Node>,
@@ -462,7 +462,7 @@ export class Element<out Msg, out R = never, in out E = Record<string, unknown>,
  *
  * @stability experimental
  * @category vocabulary
- * @since 4.1.3
+ * @since 4.1.5
  */
 export const containerTags = [
   "a",
@@ -560,7 +560,7 @@ export const containerTags = [
  *
  * @stability experimental
  * @category vocabulary
- * @since 4.1.3
+ * @since 4.1.5
  */
 export const voidTags = ["br", "col", "hr", "img", "input", "source", "track", "wbr"] as const
 
@@ -569,7 +569,7 @@ export const voidTags = ["br", "col", "hr", "img", "input", "source", "track", "
  *
  * @stability experimental
  * @category vocabulary
- * @since 4.1.3
+ * @since 4.1.5
  */
 export type ContainerTag = typeof containerTags[number]
 
@@ -578,7 +578,7 @@ export type ContainerTag = typeof containerTags[number]
  *
  * @stability experimental
  * @category vocabulary
- * @since 4.1.3
+ * @since 4.1.5
  */
 export type VoidTag = typeof voidTags[number]
 
@@ -590,7 +590,7 @@ export type VoidTag = typeof voidTags[number]
  *
  * @stability experimental
  * @category vocabulary
- * @since 4.1.3
+ * @since 4.1.5
  */
 export type Tags<Msg> =
   & {
@@ -605,7 +605,7 @@ export type Tags<Msg> =
  *
  * @stability experimental
  * @category vocabulary
- * @since 4.1.3
+ * @since 4.1.5
  */
 export interface Elements extends View.Elements {
   readonly Tags: Tags<this["Msg"]>
@@ -618,7 +618,7 @@ export interface Elements extends View.Elements {
  *
  * @stability experimental
  * @category vocabulary
- * @since 4.1.3
+ * @since 4.1.5
  */
 export const Elements: Elements | undefined = undefined
 
@@ -627,7 +627,7 @@ export const Elements: Elements | undefined = undefined
  *
  * @stability experimental
  * @category vocabulary
- * @since 4.1.3
+ * @since 4.1.5
  */
 export const name = "html"
 
@@ -645,7 +645,7 @@ const makeTags = (): Readonly<Record<string, (...children: ReadonlyArray<any>) =
  *
  * @stability experimental
  * @category vocabulary
- * @since 4.1.3
+ * @since 4.1.5
  */
 export const tags: Readonly<Record<string, (...children: ReadonlyArray<any>) => Element<any, any, any, any>>> =
   makeTags()
@@ -660,7 +660,7 @@ export const tags: Readonly<Record<string, (...children: ReadonlyArray<any>) => 
  *
  * @stability experimental
  * @category refs
- * @since 4.1.3
+ * @since 4.1.5
  */
 export const ref = <K extends keyof HTMLElementTagNameMap>(
   name: string,
@@ -673,7 +673,7 @@ export const ref = <K extends keyof HTMLElementTagNameMap>(
  *
  * @stability experimental
  * @category refs
- * @since 4.1.3
+ * @since 4.1.5
  */
 export interface Found {
   readonly found: boolean
@@ -702,7 +702,7 @@ const ScrollOptionsSchema = Schema.Struct({
  *
  * @stability experimental
  * @category refs
- * @since 4.1.3
+ * @since 4.1.5
  */
 export const Focus: Command.Factory<
   { readonly ref: Renderer.Ref<any>; readonly options?: { readonly preventScroll?: boolean | undefined } | undefined },
@@ -722,7 +722,7 @@ export const Focus: Command.Factory<
  *
  * @stability experimental
  * @category refs
- * @since 4.1.3
+ * @since 4.1.5
  */
 export const Blur: Command.Factory<{ readonly ref: Renderer.Ref<any> }, Found> = Command.make(
   "Html.blur",
@@ -738,7 +738,7 @@ export const Blur: Command.Factory<{ readonly ref: Renderer.Ref<any> }, Found> =
  *
  * @stability experimental
  * @category refs
- * @since 4.1.3
+ * @since 4.1.5
  */
 export const ScrollIntoView: Command.Factory<
   { readonly ref: Renderer.Ref<any>; readonly options?: ScrollOptions | undefined },
@@ -757,7 +757,7 @@ export const ScrollIntoView: Command.Factory<
  *
  * @stability experimental
  * @category refs
- * @since 4.1.3
+ * @since 4.1.5
  */
 export const Measure: Command.Factory<{ readonly ref: Renderer.Ref<any> }, Option.Option<Rect>> = Command.make(
   "Html.measure",
@@ -789,7 +789,7 @@ export const Measure: Command.Factory<{ readonly ref: Renderer.Ref<any> }, Optio
  *
  * @stability experimental
  * @category refs
- * @since 4.1.3
+ * @since 4.1.5
  */
 export const focus = <N extends HTMLElement | SVGElement, Msg>(
   ref: Renderer.Ref<N>,
@@ -803,7 +803,7 @@ export const focus = <N extends HTMLElement | SVGElement, Msg>(
  *
  * @stability experimental
  * @category refs
- * @since 4.1.3
+ * @since 4.1.5
  */
 export const blur = <N extends HTMLElement | SVGElement, Msg>(
   ref: Renderer.Ref<N>,
@@ -815,7 +815,7 @@ export const blur = <N extends HTMLElement | SVGElement, Msg>(
  *
  * @stability experimental
  * @category refs
- * @since 4.1.3
+ * @since 4.1.5
  */
 export const scrollIntoView = <N extends globalThis.Element, Msg>(
   ref: Renderer.Ref<N>,
@@ -830,7 +830,7 @@ export const scrollIntoView = <N extends globalThis.Element, Msg>(
  *
  * @stability experimental
  * @category refs
- * @since 4.1.3
+ * @since 4.1.5
  */
 export const measure = <N extends globalThis.Element, Msg>(
   ref: Renderer.Ref<N>,
