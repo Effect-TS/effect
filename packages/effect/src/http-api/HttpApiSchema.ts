@@ -54,7 +54,7 @@ declare module "../Schema.ts" {
  */
 export interface WithHeadersAnnotation {
   readonly body: Schema.Top
-  readonly headers: Schema.Top
+  readonly headers: Schema.Struct<Schema.Struct.Fields>
   /**
    * Codecs from the body and headers types to their response representation.
    * `HttpApiEndpoint` replaces them with the response encoding codecs.
@@ -1458,6 +1458,44 @@ const resolveHttpApiEncoding = SchemaAST.resolveAt<Encoding>("~httpApiEncoding")
  */
 export const getWithHeadersAnnotation = SchemaAST.resolveAt<WithHeadersAnnotation>("~httpApiWithHeaders")
 
+/**
+ * Returns the declared body and headers schemas of an `encodeToWithHeaders`
+ * response, or `undefined` for any other schema.
+ *
+ * **When to use**
+ *
+ * Use to inspect response schemas for code generation before a response exists,
+ * including schemas obtained through `HttpApi.reflect`.
+ *
+ * **Details**
+ *
+ * Both schemas keep their declared identity through endpoint construction and
+ * reflection, with or without `disableCodecs`. The headers schema is a
+ * `Schema.Struct`, so its fields can be inspected directly.
+ *
+ * **Gotchas**
+ *
+ * These are declared schemas, not the response codecs installed by an endpoint.
+ * Plain schemas, `WithHeaders` wrappers, and ordinary transformations from an
+ * identical `{ body, headers }` struct return `undefined`. So do schemas derived
+ * from the result with operations such as `.check`, `Schema.Union`, or
+ * `Schema.decodeTo` with a target that lacks this metadata, while `.annotate`,
+ * `Schema.brand`, and `Schema.decode` keep the parts.
+ *
+ * @see encodeToWithHeaders
+ * @see getResponseEncodingSchema
+ * @stability unstable
+ * @category getters
+ * @since 4.1.4
+ */
+export function getEncodeToWithHeadersParts(schema: Schema.Constraint): {
+  readonly body: Schema.Top
+  readonly headers: Schema.Struct<Schema.Struct.Fields>
+} | undefined {
+  const annotation = getWithHeadersAnnotation(schema.ast)
+  return annotation === undefined ? undefined : { body: annotation.body, headers: annotation.headers }
+}
+
 function findHttpApiStatusAnnotation(
   ast: SchemaAST.AST | SchemaAST.FilterGroup<any>
 ): Schema.Annotations.Annotations | undefined {
@@ -1533,7 +1571,35 @@ export function getStatusSuccessSchema(schema: Schema.Constraint): number {
 }
 
 /**
- * @internal
+ * Returns the buffered response encoding resolved from a schema's annotations,
+ * defaulting to `{ _tag: "Json", contentType: "application/json" }`.
+ *
+ * **When to use**
+ *
+ * Use to read response media types from declared schemas or schemas obtained
+ * through `HttpApi.reflect` without encoding a response value.
+ *
+ * **Details**
+ *
+ * For `WithHeaders`, the wrapper's encoding takes precedence over the inner
+ * schema's encoding. For `encodeToWithHeaders`, the body schema's encoding is
+ * used. Re-annotating the result changes what this function returns, not what
+ * the server sends.
+ *
+ * **Gotchas**
+ *
+ * - No-content schemas also receive the JSON default. Check `isNoContent` on
+ *   the body AST first: `schema.schema.ast` for `WithHeaders`, `parts.body.ast`
+ *   from `getEncodeToWithHeadersParts`, or `schema.ast` otherwise.
+ * - Streaming and upgrade schemas are outside this buffered-response contract;
+ *   their JSON fallback does not describe their wire representation.
+ * - Multipart encoding throws because multipart responses are not supported.
+ *
+ * @see getEncodeToWithHeadersParts
+ * @see isNoContent
+ * @stability unstable
+ * @category getters
+ * @since 4.1.4
  */
 export function getResponseEncodingSchema(schema: Schema.Constraint): ResponseEncoding {
   if (isWithHeaders(schema) && resolveHttpApiEncoding(schema.ast) === undefined) {
