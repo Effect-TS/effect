@@ -1002,7 +1002,7 @@ const encodeArray = (ast: SchemaAST.Arrays, value: ReadonlyArray<unknown>, path:
       ? ast.elements[i]
       : rest === undefined
       ? undefined
-      : i >= tailStart && tail.length > 0
+      : i >= tailStart
       ? tail[i - tailStart]
       : rest
     return element === undefined ? fallback(ast, item) : encodeAt(element, item, path)
