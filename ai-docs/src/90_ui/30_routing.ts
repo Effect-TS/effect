@@ -10,12 +10,13 @@ import { AsyncResult, Loader } from "effect/reactivity"
 import { Command, Component, Head, Route, Router } from "effect/ui"
 import { BrowserHost, BrowserRouter } from "effect/ui/html"
 import { NotePageLive } from "./20_composition.ts"
-import { ListNotes } from "./fixtures/notes/ListNotes.ts"
-import { Notes } from "./fixtures/services/Notes.ts"
+import { ListNotes } from "./fixtures/notes/loaders/ListNotes.ts"
+import { Notes } from "./fixtures/notes/services/Notes.ts"
 
 // A route union is a `Schema.TaggedUnion` with a parser and a printer that
 // agree. Params and query are decoded through their Schemas, and `/*` is the
 // catch-all. Always build URLs with `print`, never by hand.
+// routes.ts: separate from App.ts so pages can build links without a cycle.
 export const AppRoute = Route.union({
   Index: Route.make("/"),
   Note: Route.make("/notes/:id", { params: { id: Schema.String } }),
@@ -28,6 +29,7 @@ const noteUrl = (id: string) => AppRoute.print(AppRoute.make({ _tag: "Note", par
 const NotesSnapshot = Loader.Snapshot(ListNotes, "notes")
 const NotesIndexMessage = Schema.TaggedUnion({ NotesChanged: { snapshot: NotesSnapshot } })
 
+// pages/NotesIndex.ts
 export const NotesIndex = Component.make({
   name: "NotesIndex",
   model: Schema.Struct({ notes: NotesSnapshot }),
@@ -58,6 +60,7 @@ export const AppMessage = Schema.TaggedUnion({
   Navigated: {}
 })
 
+// App.ts
 export const App = Component.make({
   name: "App",
   // The root holds the route. The first one arrives through props and every

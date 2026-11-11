@@ -9,13 +9,14 @@ import { Effect, Schema } from "effect"
 import { AsyncResult, Loader } from "effect/reactivity"
 import { Component, Feature, Head } from "effect/ui"
 import { NoteEditor, SaveNote } from "./10_basics.ts"
-import { Note, NoteNotFound, NotesTag } from "./fixtures/domain/Note.ts"
-import { Notes } from "./fixtures/services/Notes.ts"
+import { Note, NoteNotFound, NotesTag } from "./fixtures/notes/domain/Note.ts"
+import { Notes } from "./fixtures/notes/services/Notes.ts"
 
 // A read is data loaded by its arguments and cached, so components watching
 // the same note share one entry and one fetch. Like a `Command.Service`, it
 // captures `Notes` when its Layer is built. `SaveNote` invalidates
 // `NotesTag`, so a save refetches it.
+// notes/loaders/GetNote.ts
 export class GetNote extends Loader.Service<GetNote>()(
   "notes/GetNote",
   {
@@ -34,6 +35,7 @@ export class GetNote extends Loader.Service<GetNote>()(
 // A feature is a component referred to by service. The service holds the
 // contract (props and events Schemas) and a Layer picks the implementation,
 // so a test can fake it and the app can load it lazily.
+// notes/components/NoteActivity.ts
 export class NoteActivity extends Feature.Service<NoteActivity>()("NoteActivity", {
   props: Schema.Struct({ noteId: Schema.String })
 }) {}
@@ -47,6 +49,7 @@ export const NotePageMessage = Schema.TaggedUnion({
   EditorFailed: {}
 })
 
+// pages/NotePage.ts
 export const NotePage = Component.make({
   name: "NotePage",
   props: Schema.Struct({ id: Schema.String }),
@@ -111,6 +114,7 @@ export const NotePage = Component.make({
 })
 
 // One implementation of the feature. Its props must fit the contract.
+// notes/components/ActivityLog.ts
 const ActivityLog = Component.make({
   name: "ActivityLog",
   props: NoteActivity.props,
@@ -130,6 +134,7 @@ const ActivityLog = Component.make({
 //   `{ local: true }` or a function of props for state each instance owns.
 // - Nothing is rebuilt when props change. Re-key the component instead.
 // - A Layer that can fail needs `{ onFailure: (failure) => message }`.
+// pages/NotePage.ts
 export const NotePageLive = NotePage.pipe(
   Component.provide([GetNote.layer, SaveNote.layer, NoteActivity.layer(ActivityLog)])
 )

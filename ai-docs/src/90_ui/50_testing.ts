@@ -14,8 +14,8 @@ import { HtmlQuery, ssr } from "effect/ui/html/testing"
 import { Query, Story, TestHost } from "effect/ui/testing"
 import { NoteEditor, NoteEditorEvents, SaveNote } from "./10_basics.ts"
 import { App, AppRoute } from "./30_routing.ts"
-import { type Note, NoteSaveError } from "./fixtures/domain/Note.ts"
-import { Notes } from "./fixtures/services/Notes.ts"
+import { type Note, NoteSaveError } from "./fixtures/notes/domain/Note.ts"
+import { Notes } from "./fixtures/notes/services/Notes.ts"
 
 const note: Note = { id: "n1", title: "Shopping", body: "Milk" }
 const edited: Note = { ...note, body: "Oat milk" }

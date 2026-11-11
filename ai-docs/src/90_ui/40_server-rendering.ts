@@ -10,8 +10,8 @@ import { HttpRouter, HttpServerRequest, HttpServerResponse } from "effect/http"
 import { Router } from "effect/ui"
 import { BrowserHost, BrowserRouter, HtmlServer } from "effect/ui/html"
 import { App, AppRoute } from "./30_routing.ts"
-import type { Note } from "./fixtures/domain/Note.ts"
-import { Notes } from "./fixtures/services/Notes.ts"
+import type { Note } from "./fixtures/notes/domain/Note.ts"
+import { Notes } from "./fixtures/notes/services/Notes.ts"
 
 // ---------------------------------------------------------------------------
 // Server
