@@ -214,6 +214,48 @@ describe("Loader hydration", () => {
     }).pipe(Effect.provide(Layer.merge(GetUser.layer, settleOnce(problems))))
   })
 
+  it.effect("misses lists the entries still in flight, and a dead fetcher isn't one", () => {
+    const { GetUser } = makeUsers("1 minute")
+    class Dead extends Loader.Service<Dead>()("users/Dead", {
+      args: {},
+      success: Schema.String,
+      error: Schema.Never,
+      staleTime: 0
+    }, Effect.succeed(() => Effect.die("boom"))) {}
+    return Effect.gen(function*() {
+      yield* GetUser.get({ id: "1" }).pipe(Effect.forkScoped)
+      yield* Dead.get({}).pipe(Effect.exit, Effect.forkScoped)
+      yield* flush
+      assert.deepStrictEqual((yield* cache).misses(), [{ read: "users/GetUser", logKey: `{"id":"1"}` }])
+      yield* advance(10)
+      assert.deepStrictEqual((yield* cache).misses(), [])
+    }).pipe(Effect.provide(Layer.mergeAll(GetUser.layer, Dead.layer, settleOnce([]))))
+  })
+
+  it.effect("checkWire passes what dehydrate shipped, and names an entry that doesn't round-trip", () => {
+    const { GetUser } = makeUsers("1 minute")
+    return Effect.gen(function*() {
+      yield* GetUser.get({ id: "1" }).pipe(Effect.forkScoped)
+      yield* advance(10)
+      const internals = yield* cache
+      const shipped = JSON.parse(JSON.stringify(internals.dehydrate()))
+      assert.deepStrictEqual(internals.checkWire(shipped), [])
+      assert.deepStrictEqual(internals.checkWire({ "users/GetUser": [[`{"id":"1"}`, 0, { id: 1 }, 10]] }), [
+        `the entry of "users/GetUser" at {"id":"1"} failed to decode or encode again`
+      ])
+      assert.deepStrictEqual(
+        internals.checkWire({ "users/GetUser": [[`{ "id": "1" }`, 0, { id: "1", name: "Ann" }, 10]] }),
+        [
+          `an entry of "users/GetUser" at {"id":"1"} has args that key differently once decoded`
+        ]
+      )
+      assert.deepStrictEqual(internals.checkWire({ Unknown: [["{}", 0, 1, 0]] }), [
+        `the read "Unknown" shipped entries, and this cache doesn't know it`
+      ])
+      assert.deepStrictEqual(internals.checkWire([1]), ["the ~loader state isn't the tuple shape"])
+    }).pipe(Effect.provide(Layer.merge(GetUser.layer, settleOnce([]))))
+  })
+
   it.effect("an entry that doesn't encode is left out and reported", () => {
     class GetCount extends Loader.Service<GetCount>()("counts/GetCount", {
       args: {},

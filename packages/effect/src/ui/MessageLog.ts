@@ -253,9 +253,9 @@ export interface CommandSettled extends Base {
 }
 
 /**
- * A Command that never ran: dropped by its `mode`, by the server, or because
- * an adopted Model already holds its result (a `server: true` Command replayed
- * by hydration or history restore).
+ * A Command that never ran: dropped by its `mode`, or by the server, where
+ * no Command runs. On the server only a Command from `update` is logged;
+ * `init`'s are dropped silently, since the client runs them when it adopts.
  *
  * @stability experimental
  * @category models
@@ -265,7 +265,7 @@ export interface CommandDropped extends Base {
   readonly _tag: "CommandDropped"
   readonly name: string
   readonly issued: Issued
-  readonly reason: "mode" | "server" | "adopted"
+  readonly reason: "mode" | "server"
 }
 
 /**
@@ -532,7 +532,7 @@ export const Wire = Schema.Union([
     ...Seq,
     name: Schema.String,
     issued: IssuedWire,
-    reason: Schema.Literals(["mode", "server", "adopted"])
+    reason: Schema.Literals(["mode", "server"])
   }),
   Schema.Struct({
     _tag: Schema.Literals(["Failed", "Crashed"]),

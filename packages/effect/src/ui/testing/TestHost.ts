@@ -466,18 +466,23 @@ export const layer = (options?: {
   }))
 
 /**
- * A tree mounted on `TestHost`.
+ * A tree mounted on `TestHost`'s scheduler, whatever host renders it: what
+ * a test reads and drives without looking at nodes.
+ *
+ * **Details**
+ *
+ * `mount` hands back a `TestRoot`, which adds the test host's node queries.
+ * `Ssr.ssr` hands back this part only, since its client renders into a real
+ * document.
  *
  * @stability experimental
  * @category models
  * @since 4.1.3
  */
-export interface TestRoot<out Model, in Msg, out Events> {
+export interface Root<out Model, in Msg, out Events> {
   /** The root instance's path, `/<name>`. */
   readonly path: string
   readonly session: string
-  /** The element the tree is mounted in. */
-  readonly container: TestElement
   /** The root's current Model, or `undefined` after it crashed. */
   readonly model: () => Model | undefined
   /** Sends a message to the root. The log shows it as a `Dispatch`. */
@@ -498,10 +503,22 @@ export interface TestRoot<out Model, in Msg, out Events> {
     read: R,
     args: Loader.Read.Args<R>
   ) => TestLoader.Entry<Loader.Read.Success<R>, Loader.Read.Error<R>> | undefined
-  /** The `frames` projection after each commit, without consecutive repeats. */
-  readonly frames: () => ReadonlyArray<string>
   /** The tree's merged document head, as last given to the host. */
   readonly head: () => Head.Head
+}
+
+/**
+ * A tree mounted on `TestHost`, with queries over its nodes.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.1.3
+ */
+export interface TestRoot<out Model, in Msg, out Events> extends Root<Model, Msg, Events> {
+  /** The element the tree is mounted in. */
+  readonly container: TestElement
+  /** The `frames` projection after each commit, without consecutive repeats. */
+  readonly frames: () => ReadonlyArray<string>
   /** The text of everything mounted. */
   readonly text: () => string
   readonly all: (locator: Query.Locator) => ReadonlyArray<TestNode>
@@ -564,28 +581,11 @@ export const mount = <Name extends string, Props, Model, Msg, Events, R, V exten
       Effect.provideService(Loader.Connectivity, testHost.connectivity),
       Effect.provideService(Loader.Problems, testHost.report)
     )
-    const pending = (): ReadonlyArray<Pending> => [
-      ...root.pending().map((run): Pending => ({ _tag: "Command", ...run })),
-      ...root.cache.pending().map((fetch): Pending => ({ _tag: "Fetch", path: root.path, ...fetch }))
-    ]
-    const unregister = testHost.register({ path: root.path, pending, crashed: root.crashed })
-    yield* Effect.addFinalizer(() => Effect.sync(unregister))
+    const neutral = yield* register(testHost, root, testHost.log)
     testRoot = {
-      path: root.path,
-      session: root.session,
+      ...neutral,
       container,
-      model: root.model as () => Model | undefined,
-      send: root.send,
-      emitted: root.emitted as ReadonlyArray<Events>,
-      log: () => testHost.log.entries().filter((entry) => entry.session === root.session),
-      pending,
-      fetches: () =>
-        testHost.log.entries().filter((entry): entry is MessageLog.FetchStarted =>
-          entry._tag === "FetchStarted" && entry.session === root.session
-        ),
-      entry: (read, args) => root.cache.inspect(Loader.defOf(read), args) as any,
       frames: () => frames.slice(),
-      head: root.head,
       text: () => Query.textOf(container),
       all: (locator) => Query.all(container as TestNode, locator),
       query: (locator) => Query.query(container as TestNode, locator),
@@ -594,6 +594,39 @@ export const mount = <Name extends string, Props, Model, Msg, Events, R, V exten
     frame()
     return testRoot
   }) as any
+
+/**
+ * Registers a mounted tree with `TestHost`, so `settle` waits for it and
+ * fails when it crashes, and builds its host-neutral view over `log`.
+ *
+ * @internal
+ */
+export const register = (
+  testHost: TestHost,
+  root: runtime.Root & Renderer.Root<any, any>,
+  log: MessageLog.Memory
+): Effect.Effect<Root<any, any, any>, never, Scope.Scope> =>
+  Effect.gen(function*() {
+    const pending = (): ReadonlyArray<Pending> => [
+      ...root.pending().map((run): Pending => ({ _tag: "Command", ...run })),
+      ...root.cache.pending().map((fetch): Pending => ({ _tag: "Fetch", path: root.path, ...fetch }))
+    ]
+    const unregister = testHost.register({ path: root.path, pending, crashed: root.crashed })
+    yield* Effect.addFinalizer(() => Effect.sync(unregister))
+    const entries = () => log.entries().filter((entry) => entry.session === root.session)
+    return {
+      path: root.path,
+      session: root.session,
+      model: root.model,
+      send: root.send,
+      emitted: root.emitted,
+      log: entries,
+      pending,
+      fetches: () => entries().filter((entry): entry is MessageLog.FetchStarted => entry._tag === "FetchStarted"),
+      entry: (read, args) => root.cache.inspect(Loader.defOf(read), args) as any,
+      head: root.head
+    }
+  })
 
 /**
  * A root mounted on the host crashed. `settle` fails with it.

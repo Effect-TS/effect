@@ -3,20 +3,20 @@
  * `BrowserHost.mount` hydrates.
  *
  * `renderToHtml` runs the tree the way the server must: provided Layers are
- * built, and of `init`'s Commands only those from a `Command.Service`
- * declared `server: true` run, so data reaches the Model through ordinary
- * messages. Rendering waits until nothing is in flight or the `budget` is
- * spent, then serialises once. Nothing else runs on the server: Commands
- * issued by `update`, Subscriptions and `onMount` work wait for the client.
+ * built, and data comes from loaders, which a per-request cache fetches once
+ * per key. Rendering waits until nothing is in flight or the `budget` is
+ * spent, then serialises once. No Command runs on the server, and
+ * Subscriptions other than loader watches and `onMount` work wait for the
+ * client.
  *
- * The result holds the body markup, the `state` the client adopts, the
- * root's Model (for the response status), and the document head as escaped
- * strings. The page puts them together; `serializeState` makes the state safe
- * to embed in a `<script>`.
+ * The result holds the body markup, the `state` the client adopts, with the
+ * loader entries that settled, the root's Model (for the response status),
+ * and the document head as escaped strings. The page puts them together;
+ * `serializeState` makes the state safe to embed in a `<script>`.
  *
  * Set the budget to what your page's data needs, or 0 for no waiting. A
- * budget miss renders the loading Model, with its title, and the client runs
- * the Commands that missed it.
+ * budget miss renders the loading Model, with its title, and the client
+ * fetches what missed it.
  *
  * **Example** (Rendering a page)
  *
@@ -70,8 +70,9 @@ import * as server from "./internal/server.ts"
  * **Details**
  *
  * `html` is the body markup for the app's container. `state` maps each
- * instance's path to its Schema-encoded Model, plus `~deferred` and
- * `~pending`; pass it to `BrowserHost.mount`. `model` is the root's Model
+ * instance's path to its Schema-encoded Model, plus `~deferred`, the
+ * settled loader entries under `~loader`, and `~static` for a static render;
+ * pass it to `BrowserHost.mount`. `model` is the root's Model
  * after the server run, for app code that sets the status (a 404 for a
  * missing record), or `undefined` if the root failed. `head` holds the
  * `<title>`, meta, link and JSON-LD tags, and `htmlAttributes` and
@@ -109,12 +110,23 @@ const serverHtmlHost: Context.Service.Shape<typeof Html.Host> = {
  * `MessageLog` Layer to log the server run; its entries stay on the server.
  *
  * `budget` (default 500 ms) is one deadline for the whole render. It limits
- * waiting on provided Layers and `init`'s server Commands, not the render.
- * A Layer that misses it, or that `Component.provide(..., { server: false })`
- * keeps off the server, renders its feature children's `fallback`, and the
- * client builds that instance fresh. A server Command that misses it is run
- * by the client after hydration. A defect renders the slot's `fallback`, and
+ * waiting on provided Layers and fetches, not the render. A Layer that misses
+ * it, or that `Component.provide(..., { server: false })` keeps off the
+ * server, renders its feature children's `fallback`, and the client builds
+ * that instance fresh. A fetch that misses it isn't shipped, and the client
+ * fetches it after hydration. A defect renders the slot's `fallback`, and
  * the client builds the slot fresh.
+ *
+ * `static: true` is for HTML built at deploy or held in a CDN, where the
+ * data's age is unknown. The client then hydrates every entry stale: it is
+ * invalidated at hydration, and refetched once, unless its read's
+ * `staleTime` is `"Infinity"`. There is no fetch-free window. The default
+ * is HTML rendered per request, whose entries hydrate fresh.
+ *
+ * **Gotchas**
+ *
+ * Read data is public: every entry that settled is in `state`, a typed
+ * Failure and an entry no view renders included.
  *
  * Route status is the app's: parse the URL with `AppRoute.parse` first and
  * answer a `NotFound` route with a 404.
@@ -126,19 +138,23 @@ const serverHtmlHost: Context.Service.Shape<typeof Html.Host> = {
 export const renderToHtml = <Name extends string, Props, Model, Msg, Events, R, V extends View.Elements>(
   component: Component.Component<Name, Props, Model, Msg, Events, R, V> & BrowserHost.HtmlRoot<V>,
   props: Props,
-  options?: { readonly budget?: Duration.Input | undefined }
+  options?: {
+    readonly budget?: Duration.Input | undefined
+    readonly static?: boolean | undefined
+  }
 ): Effect.Effect<Rendered<Model>, never, Exclude<R, Html.Host>> =>
-  Renderer.prerender(component, props, { budget: options?.budget, elements: [Html.name] }).pipe(
-    Effect.provideService(Html.Host, serverHtmlHost),
-    Effect.map((rendered) => ({
-      html: server.toHtml(rendered.nodes),
-      state: rendered.state,
-      model: rendered.model,
-      head: server.headTags(rendered.head),
-      htmlAttributes: server.attributes(server.htmlOwned(rendered.head)),
-      bodyAttributes: server.attributes(server.bodyOwned(rendered.head))
-    }))
-  ) as any
+  Renderer.prerender(component, props, { budget: options?.budget, elements: [Html.name], static: options?.static })
+    .pipe(
+      Effect.provideService(Html.Host, serverHtmlHost),
+      Effect.map((rendered) => ({
+        html: server.toHtml(rendered.nodes),
+        state: rendered.state,
+        model: rendered.model,
+        head: server.headTags(rendered.head),
+        htmlAttributes: server.attributes(server.htmlOwned(rendered.head)),
+        bodyAttributes: server.attributes(server.bodyOwned(rendered.head))
+      }))
+    ) as any
 
 /**
  * The state as JSON that is safe inside `<script type="application/json">`:

@@ -1,10 +1,11 @@
 /**
  * A two-page app on the Router: a root that holds the route, a home page, a
- * person page that loads on entry (a server Command), counts its visits (a
- * client-only Command) and counts clicks, and a slow page whose provided Layer
- * takes a second to build.
+ * person page that reads its name through a loader, counts its visits (a
+ * Command) and counts clicks, and a slow page whose provided Layer takes a
+ * second to build.
  */
 import { Context, Effect, Layer, Schema } from "effect"
+import { AsyncResult, Loader } from "effect/reactivity"
 import { Command, Component, Head, Route, Router } from "effect/ui"
 
 export const AppRoute = Route.union(
@@ -32,13 +33,41 @@ export const Home = Component.make({
   view: (_, h) => h.el("h1", "Home")
 })
 
-export const PersonMessage = Schema.TaggedUnion({ Loaded: { name: Schema.String }, Visited: {}, Bump: {} })
+/** Counts every fetch, so a test can see when a restore refetches. */
+export const personFetches = { count: 0 }
 
-export class LoadPerson extends Command.Service<LoadPerson>()(
-  "LoadPerson",
-  { args: { id: Schema.Number }, invalidates: () => [], server: true },
-  Effect.succeed(({ id }) => Effect.succeed(PersonMessage.make({ _tag: "Loaded", name: `Person ${id}` })))
+export class GetPerson extends Loader.Service<GetPerson>()(
+  "GetPerson",
+  {
+    args: { id: Schema.Number },
+    success: Schema.String,
+    error: Schema.Never,
+    staleTime: "30 seconds"
+  },
+  Effect.succeed(({ id }) =>
+    Effect.sync(() => {
+      personFetches.count++
+      return `Person ${id}`
+    })
+  )
 ) {}
+
+export const PersonSnapshot = Loader.Snapshot(GetPerson, "person")
+
+/** Renames optimistically, and never finishes: the patch stays live. */
+export class RenamePerson extends Command.Service<RenamePerson>()("RenamePerson", {
+  args: { id: Schema.Number },
+  invalidates: () => [],
+  optimistic: ({ id }) => [GetPerson.patch({ id }, () => "Renamed")]
+}, Effect.succeed(() => Effect.never)) {}
+
+export const PersonMessage = Schema.TaggedUnion({
+  Loaded: { snapshot: PersonSnapshot, name: Schema.String },
+  Visited: {},
+  Bump: {},
+  Rename: {},
+  Renamed: {}
+})
 
 export const CountVisit = Command.make(
   "CountVisit",
@@ -49,26 +78,44 @@ export const CountVisit = Command.make(
 export const Person = Component.make({
   name: "Person",
   props: Schema.Struct({ id: Schema.Number }),
-  model: Schema.Struct({ id: Schema.Number, name: Schema.String, count: Schema.Number, visits: Schema.Number }),
+  model: Schema.Struct({
+    id: Schema.Number,
+    person: PersonSnapshot,
+    name: Schema.String,
+    count: Schema.Number,
+    visits: Schema.Number
+  }),
   message: PersonMessage,
-  init: ($) =>
-    $.set({ id: $.props.id, name: "Loading", count: 0, visits: 0 }).run(LoadPerson.make({ id: $.props.id })).run(
-      CountVisit()
-    ),
-  update: (model, message) =>
+  loaders: { person: (_model, props) => ({ id: props.id }) },
+  init: ($) => $.set({ ...$.empty, id: $.props.id, name: "Loading", count: 0, visits: 0 }).run(CountVisit()),
+  update: (model, message, $) =>
     PersonMessage.match(message, {
-      Loaded: ({ name }) => ({ ...model, name }),
+      Loaded: ({ name, snapshot }) => ({ ...model, person: snapshot, name }),
+      Rename: () =>
+        $.run(RenamePerson.make({ id: model.id }).pipe(Command.map(() => PersonMessage.make({ _tag: "Renamed" })))),
+      Renamed: () => model,
       Visited: () => ({ ...model, visits: model.visits + 1 }),
       Bump: () => ({ ...model, count: model.count + 1 })
     }),
+  subscriptions: (_model, _props, watch) => [
+    watch({
+      person: (snapshot, result) =>
+        PersonMessage.make({
+          _tag: "Loaded",
+          snapshot,
+          name: AsyncResult.isSuccess(result) ? result.value : "Loading"
+        })
+    })
+  ],
   head: (model) => [Head.title(model.name), Head.meta({ name: "description", content: `About ${model.name}` })],
   view: (model, h) =>
     h.el(
       "div",
       h.el("h1", model.name),
-      h.el("button", `count ${model.count}`).on("click", PersonMessage.make({ _tag: "Bump" }))
+      h.el("button", `count ${model.count}`).on("click", PersonMessage.make({ _tag: "Bump" })),
+      h.el("button", "Rename").on("click", PersonMessage.make({ _tag: "Rename" }))
     )
-}).pipe(Component.provide(LoadPerson.layer))
+}).pipe(Component.provide(Layer.merge(GetPerson.layer, RenamePerson.layer)))
 
 export class SlowData extends Context.Service<SlowData, { readonly text: string }>()("test/SlowData") {}
 

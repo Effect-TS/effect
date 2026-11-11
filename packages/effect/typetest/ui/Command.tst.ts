@@ -91,9 +91,9 @@ describe("Command", () => {
   })
 
   describe("Service", () => {
-    it("takes server: true only for an Effect Command", () => {
+    it("has no server option: no Command runs on the server", () => {
       const service = Command.Service<"Load">()
-      expect(service).type.toBeCallableWith(
+      expect(service).type.not.toBeCallableWith(
         "Load",
         { args: {}, invalidates: () => [], server: true },
         Effect.succeed(() => Effect.succeed(1))
@@ -103,7 +103,6 @@ describe("Command", () => {
         { args: {}, invalidates: () => [], stream: true, server: true },
         Effect.succeed(() => Stream.fromIterable([1]))
       )
-      // Factories from make can't be server Commands.
       expect(Command.make).type.not.toBeCallableWith("Load", { args: {}, server: true }, () => Effect.succeed(1))
     })
 

@@ -63,10 +63,12 @@
  * @since 4.1.3
  */
 import * as Context from "../Context.ts"
+import * as Data from "../Data.ts"
 import * as Effect from "../Effect.ts"
 import * as Layer from "../Layer.ts"
 import * as Option from "../Option.ts"
 import * as Predicate from "../Predicate.ts"
+import * as Loader from "../reactivity/Loader.ts"
 import * as Schema from "../Schema.ts"
 import * as Scope from "../Scope.ts"
 import * as Stream from "../Stream.ts"
@@ -462,6 +464,21 @@ const readState = (state: unknown): EntryState | undefined => {
 
 const writeState = (entry: EntryState): unknown => ({ [stateKey]: entry })
 
+/**
+ * Writing the Model snapshot into `history.state` threw, as a browser does
+ * when the state is too large. The history entry was written with its index
+ * only, so the snapshot survives in memory and not across a reload.
+ *
+ * @stability experimental
+ * @category problems
+ * @since 4.1.3
+ */
+export class SnapshotWriteFailed extends Data.TaggedClass("SnapshotWriteFailed")<{
+  readonly message: string
+  /** What the history threw. */
+  readonly error: unknown
+}> {}
+
 const splitHash = (href: string): readonly [string, string] => {
   const at = href.indexOf("#", 1)
   return at < 0 ? [href, ""] : [href.slice(0, at), href.slice(at)]
@@ -502,15 +519,26 @@ const commandLayers = Layer.mergeAll(
  * subtree, because which instances the navigation unmounts is only known
  * after it. On back and forward, an instance created for the entry adopts its
  * saved Model, so only the re-keyed subtree is restored, and an instance that
- * stayed mounted keeps its own. As with hydration, `init` is replayed: its
- * Commands from `Command.Service`s declared `server: true` are dropped, so
- * nothing is fetched again, and its other Commands run.
+ * stayed mounted keeps its own. As with hydration, `init` is replayed and
+ * every one of its Commands runs.
+ *
+ * A restored loader field seeds the cache when its entry is cold, as after a
+ * reload: the entry is stored stale, so the first frame shows the data with
+ * `waiting: true` and one refetch runs. If the refetch fails, the data stays
+ * as the Failure's previous Success. A warm entry is used as it is. A field
+ * whose snapshot was taken under an optimistic patch is never a seed: it is
+ * dropped from the restored Model and starts from loading.
  *
  * The snapshot is kept in memory per entry. When a push leaves an entry, it's
  * also written into that entry's `state`, so it survives a reload. When back
  * or forward leaves an entry, the host has already moved to the other entry,
  * so the snapshot stays in memory only. After a reload, that entry restores
- * the snapshot written when a push last left it, or starts fresh.
+ * the snapshot written when a push last left it, or starts fresh. When that
+ * write throws, the entry is written with its index only and
+ * `SnapshotWriteFailed` is reported.
+ *
+ * Every navigation the Router makes closes the cache's fetch-free window
+ * after hydration, if adoption hasn't closed it yet.
  *
  * @stability experimental
  * @category constructors
@@ -530,6 +558,8 @@ const build = (options: Options): Effect.Effect<Context.Context<Router>, never, 
     if (Option.isNone(resolved)) {
       return yield* Effect.die(new Error(`The Router's routes don't parse the initial URL "${start.url}"`))
     }
+    // The problems sink of the first mounted root, or the one where the Router is built.
+    const fallbackReport = yield* Loader.Problems
     let index = readState(start.state)?.index ?? 0
     const initialUrl = canonical(routes, resolved.value, startUrl)
     if (resolved.value.redirected || readState(start.state) === undefined || initialUrl !== startUrl) {
@@ -560,7 +590,33 @@ const build = (options: Options): Effect.Effect<Context.Context<Router>, never, 
       options.onLeave?.(index)
       snapshots.set(index, snapshot())
     }
+    const report = (problem: SnapshotWriteFailed) => {
+      const root = primary()
+      try {
+        if (root !== undefined) root.report(problem)
+        else fallbackReport(problem)
+      } catch {
+        // A sink can't change what the Router does.
+      }
+    }
+    /** Writes the entry being left with its snapshot, so it survives a reload. A throw keeps the index only. */
+    const writeSnapshot = (url: string, entry: EntryState) => {
+      try {
+        history.replace(url, writeState(entry))
+      } catch (error) {
+        history.replace(url, writeState({ index: entry.index }))
+        report(
+          new SnapshotWriteFailed({
+            error,
+            message:
+              "[effect/ui] the Router couldn't write the Model snapshot into history.state. It is kept in memory only, so a reload starts the entry fresh."
+          })
+        )
+      }
+    }
     const set = (next: Location, announce: boolean) => {
+      // First, so whatever the navigation starts sees the cache with the hydration window closed.
+      for (const root of roots) root.navigated()
       const from = pathnameOf(current.url)
       current = next
       restoring = undefined
@@ -600,7 +656,7 @@ const build = (options: Options): Effect.Effect<Context.Context<Router>, never, 
       } else {
         leave()
         // The Model snapshot also goes into the entry itself, so it survives a reload.
-        history.replace(current.url + current.hash, writeState({ index, snapshot: snapshots.get(index) }))
+        writeSnapshot(current.url + current.hash, { index, snapshot: snapshots.get(index) })
         index++
         for (const key of snapshots.keys()) if (key >= index) snapshots.delete(key)
         history.push(printed + hash, writeState({ index }))

@@ -52,6 +52,7 @@
  * @since 4.1.3
  */
 import * as Context from "../Context.ts"
+import { TaggedClass } from "../Data.ts"
 import * as Effect from "../Effect.ts"
 import { dual } from "../Function.ts"
 import * as Layer from "../Layer.ts"
@@ -336,12 +337,6 @@ export interface Data extends Declared {
   /** The group key: canonical JSON of the encoded `group` fields, or `undefined` without `group`. */
   readonly groupKey: string | undefined
   /**
-   * Whether the Command comes from a `Command.Service` declared with
-   * `server: true`: a data read whose result the server already put in the
-   * Model. An adopted instance skips these when it replays `init`.
-   */
-  readonly server: boolean
-  /**
    * The args Schema, for the log.
    *
    * @internal
@@ -608,8 +603,6 @@ export interface Definition<in Args, out A, out IsStream extends boolean, out E 
   /** Whether the Command was declared with `stream: true`. */
   readonly stream: IsStream
   readonly mode: Mode
-  /** Whether the Command was declared with `server: true`. Always `false` for `make`. */
-  readonly server: boolean
   /** The `group` fields. Empty without `group`. */
   readonly group: ReadonlyArray<G>
   /**
@@ -763,13 +756,6 @@ export declare namespace Service {
     readonly invalidates: (args: ArgsOf<In>) => ReadonlyArray<Loader.Target>
     readonly optimistic?: ((args: ArgsOf<In>) => ReadonlyArray<Loader.Patch>) | undefined
     readonly writes?: ((success: A, args: ArgsOf<In>) => ReadonlyArray<Loader.Write>) | undefined
-    /**
-     * Marks a safe data read whose result reaches the Model through a
-     * message. An instance that adopts its Model, on history restore or
-     * hydration, skips these Commands when it replays `init` and runs the
-     * others. Can't be combined with `stream: true`.
-     */
-    readonly server?: boolean | undefined
   }
 }
 
@@ -1027,7 +1013,6 @@ export const make: {
       mode,
       groupKey: source?.key,
       "~group": source,
-      server: false,
       argsSchema,
       service: undefined,
       invalidates: noTargets,
@@ -1043,7 +1028,6 @@ export const make: {
     [DefinitionTypeId]: DefinitionTypeId,
     stream,
     mode,
-    server: false,
     group,
     args: argsSchema,
     "~group": groupOf
@@ -1085,11 +1069,6 @@ export const make: {
  * build that provides the service and by the root, not by the issuing
  * instance, and it gets a Scope of its own. A save completes after its
  * instance unmounts, and its message is then dropped.
- *
- * `server: true` marks a safe data read whose result reaches the Model
- * through a message. An instance that adopts its Model, on history restore,
- * skips it when `init` is replayed, and runs the Command's other `init`
- * Commands as on any mount.
  *
  * **Example** (Defining, issuing and faking a Command service)
  *
@@ -1155,7 +1134,6 @@ export const Service: <Self>() => {
     options: Service.Options<In, A, G> & {
       readonly stream: true
       readonly writes?: undefined
-      readonly server?: false | undefined
     },
     implementation:
       & Effect.Effect<(args: ArgsOf<In>) => Stream.Stream<A, Err, RInner>, E, R>
@@ -1170,7 +1148,6 @@ export const Service: <Self>() => {
   const Base = Context.Service<any, any>()(key)
   const stream = options.stream === true
   const mode = options.mode ?? "concurrent"
-  const server = !stream && options.server === true
   const group = options.group ?? []
   const argsSchema = argsSchemaOf(options.args)
   const groupOf = makeGroup(key, argsSchema, group)
@@ -1180,7 +1157,6 @@ export const Service: <Self>() => {
     static readonly [DefinitionTypeId] = DefinitionTypeId
     static readonly stream = stream
     static readonly mode = mode
-    static readonly server = server
     static readonly group = group
     static readonly args = argsSchema
     static readonly "~group" = groupOf
@@ -1224,7 +1200,6 @@ export const Service: <Self>() => {
         mode,
         groupKey: source?.key,
         "~group": source,
-        server,
         argsSchema,
         service: Base,
         invalidates: invalidates(args),
@@ -1410,3 +1385,26 @@ export const interrupt = <Args, G extends string>(
     "~group": source
   })
 }
+
+/**
+ * A server-side `update` issued a Command. No Command runs on the server, so
+ * it was dropped, and the log has a `CommandDropped` entry with reason
+ * `"server"` for the same `path`. It is reported every time.
+ *
+ * **Details**
+ *
+ * Data the server renders comes from a loader: a read fetched by the
+ * server's per-request cache. `init`'s Commands are dropped silently, since
+ * the client runs them when it adopts the Model.
+ *
+ * @stability experimental
+ * @category problems
+ * @since 4.1.3
+ */
+export class ServerCommandIssued extends TaggedClass("ServerCommandIssued")<{
+  readonly message: string
+  /** The path of the instance whose `update` issued it. */
+  readonly path: string
+  /** The Command's name. */
+  readonly command: string
+}> {}

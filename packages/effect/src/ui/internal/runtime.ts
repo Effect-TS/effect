@@ -132,8 +132,6 @@ interface RSlot {
 interface Run {
   readonly command: Command.Effectful<any, any, never> | Command.Streaming<any, any, never>
   readonly issued: MessageLog.Issued
-  /** On the server: the run's position among `init`'s Commands. */
-  readonly initIndex: number | undefined
   /** The run at the cache, begun at issue. `undefined` for a `Command.make` Command. */
   readonly handle: Loader.RunHandle | undefined
   /**
@@ -188,8 +186,6 @@ export interface Instance {
   readonly snapshot: Snapshot | undefined
   /** On the server: the client builds this instance fresh, because its Layer wasn't built. */
   deferred: boolean
-  /** On the server: positions of `init`'s server Commands that haven't completed. */
-  readonly serverPending: Set<number>
   readonly runs: Array<Run>
   /** Runs asked to stop whose fibers haven't exited: `h.running` still counts them. */
   readonly stopping: Set<Run>
@@ -242,6 +238,8 @@ export interface Root {
   readonly head: () => Head.Head
   /** Completes once no slot is waiting to adopt the server's nodes. */
   readonly adopted: Effect.Effect<void>
+  /** Hydration: the paths of the slots still waiting for their Layer before they adopt. */
+  readonly waiting: () => ReadonlyArray<string>
   /** On the server: calls `f` once nothing is in flight. */
   readonly whenIdle: (f: () => void) => void
   /** On the server: settles what's left synchronously, stops the tree and serialises it once. */
@@ -258,10 +256,20 @@ interface Options {
     | undefined
   /** Hydration: the server's state. The container holds the server's nodes. */
   readonly state?: Renderer.State | undefined
-  /** Server rendering. `start` is false once server Commands may no longer start. */
-  readonly server?: { readonly start: boolean; readonly host: Renderer.Host<any> } | undefined
+  /** Server rendering. */
+  readonly server?: ServerOptions | undefined
   /** Cache-wide options for the loader cache the runtime owns. */
   readonly loader?: LoaderOptions | undefined
+}
+
+interface ServerOptions {
+  readonly host: Renderer.Host<any>
+  /** False with a budget of 0: the per-request cache starts no fetch. */
+  readonly fetches: boolean
+  /** Written into the state for the client: the HTML is built at deploy or held in a CDN. */
+  readonly static: boolean
+  /** Called at `finish`, before the cache is serialised and its fetches are interrupted. */
+  readonly onFinish?: ((cache: ReturnType<typeof Loader.internals>) => void) | undefined
 }
 
 /** @internal */
@@ -284,9 +292,6 @@ const jsonCodecOf = (schema: Schema.Codec<any, any>) => {
   }
   return found
 }
-
-/** Whether replaying `init` for an adopted Model skips a Command: only server Commands are skipped. */
-const isReplayDropped = (command: Command.Command<any, any>): boolean => command._tag !== "Interrupt" && command.server
 
 const childName = (component: Component.Any | Feature.Any): string =>
   Feature.isService(component) ? component[Feature.TypeId].name : component.name
@@ -311,9 +316,6 @@ type Draft = MessageLog.Entry extends infer E ? E extends MessageLog.Entry ? Omi
   : never
 
 let sessions = 0
-
-/** Components and Commands already warned about being dropped on the server, so each warns once. */
-const warnedDrops = new Set<string>()
 
 /** Hydration: what an instance contributed to the head when it mounted, and its child instances then. */
 interface Snapshot {
@@ -362,15 +364,20 @@ export const mount = (
 
 /**
  * Renders a tree on the server: on a host that only keeps the node tree,
- * waiting for provided Layers and `init`'s server Commands until nothing is
- * in flight or the budget runs out, then serialising it once.
+ * waiting for provided Layers and the per-request cache's fetches until
+ * nothing is in flight or the budget runs out, then serialising it once.
  *
  * @internal
  */
 export const prerender = (
   component: Component.Any,
   rootProps: unknown,
-  options: { readonly budget: Duration.Input; readonly elements: ReadonlyArray<string> | "any" }
+  options: {
+    readonly budget: Duration.Input
+    readonly elements: ReadonlyArray<string> | "any"
+    readonly static?: boolean | undefined
+    readonly onFinish?: ServerOptions["onFinish"]
+  }
 ): Effect.Effect<Renderer.Prerendered<any>> =>
   // The render's own Scope closes however it ends, interrupted included: its work runs in fibers of its own.
   Effect.acquireUseRelease(
@@ -381,7 +388,7 @@ export const prerender = (
       const host = serverHost.make(options.elements)
       const ctx = Context.add(yield* Effect.context<never>(), Scope.Scope, scope)
       const root = start(component, rootProps, host.createElement("#root"), ctx, {
-        server: { start: started, host }
+        server: { host, fetches: started, static: options.static === true, onFinish: options.onFinish }
       })
       if (started) {
         yield* Effect.raceFirst(
@@ -416,13 +423,19 @@ const start = (
   const sharedBuilds = new WeakMap<Env, Map<Layer.Layer<any, any, any>, SharedBuild>>()
   const hooks = Option.getOrUndefined(Context.getOption(ctx, services.RootHooks))
 
+  // The problems sink, read once. A throw from it is swallowed: a check only reports.
+  const problems = Context.get(ctx, Loader.Problems)
+  const report = (problem: Loader.Problem.Any) => {
+    try {
+      problems(problem)
+    } catch {
+      // A sink can't change what the runtime does.
+    }
+  }
+
   // -- server ---------------------------------------------------------------
-  // Whether `init`'s server Commands may still start: false with no budget, or once it's spent.
-  let serverStarts = server?.start ?? false
   // Set by `finish`: the tree is serialised, and nothing it does from now on counts.
   let frozen = false
-  // Server Command runs not yet ended.
-  let active = 0
   const idleWaiters: Array<() => void> = []
 
   // -- hydration ------------------------------------------------------------
@@ -431,11 +444,9 @@ const start = (
   let hydrating: {
     readonly state: Renderer.State
     readonly deferred: ReadonlySet<string>
-    readonly pending: Readonly<Record<string, ReadonlyArray<number>>>
   } | undefined = options?.state === undefined || server !== undefined ? undefined : {
     state: options.state,
-    deferred: new Set(options.state["~deferred"] ?? []),
-    pending: options.state["~pending"] ?? {}
+    deferred: new Set(options.state["~deferred"] ?? [])
   }
   // Slots still waiting for their Layer before they adopt, and whether the first render is done.
   let waiting = 0
@@ -497,16 +508,47 @@ const start = (
     context: withScheduler(ctx),
     visibility: Context.get(ctx, Loader.Visibility),
     connectivity: Context.get(ctx, Loader.Connectivity),
-    report: Context.get(ctx, Loader.Problems),
+    report: problems,
     idleMs: Loader.cacheIdleMs(options?.loader?.idleTimeToLive),
-    settleOnce: server !== undefined
+    // The server's per-request cache: one fetch per key per request, and none with a budget of 0.
+    settleOnce: server !== undefined,
+    fetches: server === undefined || server.fetches
   })
   const withCache = (context: Context.Context<any>): Context.Context<any> =>
     Context.add(context, Loader.Cache, cache as unknown as Loader.Cache["Service"])
+  /**
+   * History restore: each loader field of a restored Model seeds a cold entry, stale, so the first
+   * frame shows the data with `waiting: true` while one refetch runs. A snapshot taken under a patch
+   * may hold a value that was never saved: it seeds nothing, and the field starts from loading.
+   */
+  const restoreLoaders = (component: Component.Any, model: unknown): unknown => {
+    const bound = component["~loaders"] as loaders.Bound | undefined
+    if (bound === undefined || typeof model !== "object" || model === null) return model
+    let out = model as Record<string, unknown>
+    for (const field of bound.fields) {
+      const snapshot = out[field.field]
+      const data = Loader.snapshotData(snapshot)
+      if (data === undefined) continue
+      if (!data.patched) {
+        Loader.internals(cache).seed(snapshot)
+        continue
+      }
+      if (out === model) out = Object.assign(Object.create(Object.getPrototypeOf(model)), model)
+      out[field.field] = bound.empty[field.field]
+    }
+    return out
+  }
   // Every fetch the cache starts is logged against the root.
   const offFetch = Loader.internals(cache).onFetch((event) => {
     if (!frozen) record({ _tag: "FetchStarted", path: `/${component.name}`, ...event })
   })
+  // On the server a fetch in flight holds the response, so one that ends may make the tree idle.
+  const offFetchEnd = server === undefined ? undefined : Loader.internals(cache).onFetchEnd(() => checkIdle())
+  // Hydration: the server's entries, held raw until their reads register. This opens the fetch-free
+  // window, which closes at adoption or the first navigation.
+  if (hydrating !== undefined && hydrating.state["~loader"] !== undefined) {
+    Loader.internals(cache).hydrate(hydrating.state["~loader"], { static: hydrating.state["~static"] === true })
+  }
   // Detached runs and the instance that issued them. The root is their second owner: closing it ends
   // them. The close then waits until every run fiber has exited, stopped ones included, and every
   // Scope close already started, such as an unmounted instance's, has finished.
@@ -519,6 +561,7 @@ const start = (
     Effect.suspend(() => {
       rootClosed = true
       offFetch()
+      offFetchEnd?.()
       releaseWatchHold()
       for (const [run, inst] of Array.from(detachedRuns)) stopRun(inst, run)
       return awaitAllOwned
@@ -631,7 +674,9 @@ const start = (
     idleCheck = true
     executor.schedule(() => {
       idleCheck = false
-      if (scheduled || dirty.size > 0 || deferred.length > 0 || active > 0 || building.size > 0) return
+      if (scheduled || dirty.size > 0 || deferred.length > 0 || building.size > 0) return
+      // Any fetch in flight holds the response: a watch's, a `get`'s, a prefetch nobody renders.
+      if (Loader.internals(cache).pending().length > 0) return
       for (const f of idleWaiters.splice(0)) f()
     })
   }
@@ -735,6 +780,8 @@ const start = (
       hydration.adopted(root.snapshot.failed ? Head.empty : Head.merge(snapshotTree(root.snapshot)))
     }
     templates = undefined
+    // The fetch-free window closes at adoption, unless a navigation closed it first.
+    Loader.internals(cache).closeWindow()
     for (const f of adoptedWaiters.splice(0)) f()
   }
 
@@ -965,7 +1012,6 @@ const start = (
         ? undefined
         : { entries: [], children: [], settled: false, failed: false },
       deferred: false,
-      serverPending: new Set(),
       runs: [],
       stopping: new Set(),
       subscriptions: new Map(),
@@ -1138,13 +1184,12 @@ const start = (
         Object.hasOwn(hydrating.state, path)
       ? jsonCodecOf(component.model).decode(hydrating.state[path])
       : Option.none()
-    const pendingPositions = Option.isSome(fromServer) ? hydrating!.pending[path] ?? [] : []
 
     /**
      * Runs `init` and renders. An instance adopting a Model (from the server, or from
-     * history restore) replays `init` only for its Commands: the adopted Model wins, events
-     * are dropped, and server Commands are skipped unless the server lists them as pending.
-     * Given the server's nodes, it adopts them when its view matches, and otherwise builds fresh.
+     * history restore) replays `init` only for its Commands, every one of them: the adopted
+     * Model wins and events are dropped. Given the server's nodes, it adopts them when its
+     * view matches, and otherwise builds fresh.
      */
     const begin = (range: Range | undefined, serverModel: Option.Option<unknown>) => {
       const first = guard(inst, "init", () => {
@@ -1159,11 +1204,13 @@ const start = (
       let adopted = serverModel
       if (first !== undefined && Option.isNone(adopted) && hooks !== undefined) {
         const restored = hooks.restore(path)
-        if (restored !== undefined) adopted = jsonCodecOf(component.model).decode(restored)
+        if (restored !== undefined) {
+          adopted = Option.map(
+            jsonCodecOf(component.model).decode(restored),
+            (model) => restoreLoaders(component, model)
+          )
+        }
       }
-      const pendingSet = new Set(Option.isSome(serverModel) ? pendingPositions : [])
-      const skipped = (command: Command.Command<any, any>, index: number) =>
-        Option.isSome(adopted) && isReplayDropped(command) && !pendingSet.has(index)
       let mountedSeq = -1
       if (first !== undefined) {
         inst.model = Option.isSome(adopted) ? adopted.value : first.model
@@ -1178,26 +1225,6 @@ const start = (
           events: first.events,
           adopted: Option.isSome(adopted)
         })
-        first.commands.forEach((command, index) => {
-          if (!skipped(command, index)) return
-          record({
-            _tag: "CommandDropped",
-            path,
-            name: command.name,
-            issued: { seq: mountedSeq, index },
-            reason: "adopted"
-          })
-        })
-        for (const position of pendingSet) {
-          if (position >= first.commands.length) {
-            forkNow(
-              ctx,
-              Effect.logWarning(
-                `${path}: the server lists init's Command ${position} as pending, and init issued ${first.commands.length}. init isn't deterministic.`
-              )
-            )
-          }
-        }
       }
       logEarly()
       if (first === undefined) return
@@ -1238,9 +1265,7 @@ const start = (
       if (inst.failure !== undefined) return
       if (Option.isSome(adopted)) {
         apply(inst, { model: inst.model, commands: [], events: [] }, mountedSeq, true)
-        first.commands.forEach((command, index) => {
-          if (!skipped(command, index)) issue(inst, command, { seq: mountedSeq, index }, index)
-        })
+        first.commands.forEach((command, index) => issue(inst, command, { seq: mountedSeq, index }, index))
       } else apply(inst, { ...first, model: inst.model }, mountedSeq, true)
       // The Commands of the updates folded before the render: issued where `init`'s are, after them.
       for (const entry of early) {
@@ -1351,18 +1376,19 @@ const start = (
     // A patch that threw on an earlier Command of the same step failed the instance.
     if (inst.closed) return
     if (server !== undefined) {
-      // On the server only `init`'s server Commands run. The rest run on the client.
-      if (command._tag === "Interrupt") {
-        if (initIndex === undefined) return
-      } else if (initIndex === undefined || !command.server || inst.env.never) {
-        record({ _tag: "CommandDropped", path: inst.path, name: command.name, issued, reason: "server" })
-        if (initIndex === undefined) warnDropped(inst, command.name)
-        return
-      } else {
-        inst.serverPending.add(initIndex)
-        // With the budget spent, or none, it stays pending for the client.
-        if (!serverStarts) return
-      }
+      // No Command runs on the server. `init`'s are dropped silently, since the client reruns them when
+      // it adopts, and an interrupt has nothing to stop. One from `update` is logged and reported.
+      if (initIndex !== undefined || command._tag === "Interrupt") return
+      record({ _tag: "CommandDropped", path: inst.path, name: command.name, issued, reason: "server" })
+      report(
+        new Command.ServerCommandIssued({
+          path: inst.path,
+          command: command.name,
+          message:
+            `[effect/ui] ${inst.path}'s update issued ${command.name} during server rendering, and it was dropped. No Command runs on the server: read data with a loader.`
+        })
+      )
+      return
     }
     const decision = schedule.schedule(entriesOf(inst), command)
     if (command._tag === "Interrupt") {
@@ -1392,7 +1418,6 @@ const start = (
         const run: Run = {
           command,
           issued,
-          initIndex,
           handle,
           detached: command._tag === "Effect" && command.service !== undefined && command.mode !== "switch",
           status: decision.action === "start" ? "running" : "queued",
@@ -1402,12 +1427,10 @@ const start = (
         }
         inst.runs.push(run)
         if (run.detached) detachedRuns.set(run, inst)
-        if (server !== undefined) active++
         if (run.status === "running") startRun(inst, run)
         return
       }
       case "drop": {
-        if (initIndex !== undefined) inst.serverPending.delete(initIndex)
         record({ _tag: "CommandDropped", path: inst.path, name: command.name, issued, reason: "mode" })
         return
       }
@@ -1420,22 +1443,6 @@ const start = (
     if (index >= 0) inst.runs.splice(index, 1)
     detachedRuns.delete(run)
     if (inst.closed && inst.runs.length === 0) orphans.delete(inst)
-    if (server !== undefined) {
-      active--
-      checkIdle()
-    }
-  }
-
-  const warnDropped = (inst: Instance, name: string) => {
-    const key = `${inst.component.name}\u0000${name}`
-    if (warnedDrops.has(key)) return
-    warnedDrops.add(key)
-    forkNow(
-      ctx,
-      Effect.logWarning(
-        `${inst.component.name}'s update issued ${name} during server rendering, and it was dropped. Only init's server Commands run on the server.`
-      )
-    )
   }
 
   /**
@@ -1480,7 +1487,6 @@ const start = (
    */
   const stopRun = (inst: Instance, run: Run) => {
     if (run.done) return
-    if (run.initIndex !== undefined && !frozen) inst.serverPending.delete(run.initIndex)
     removeRun(inst, run)
     const fiber = run.fiber
     if (fiber === undefined) {
@@ -1645,7 +1651,6 @@ const start = (
     }
     if (run.done) return
     removeRun(inst, run)
-    if (run.initIndex !== undefined) inst.serverPending.delete(run.initIndex)
     record({
       _tag: "CommandEnded",
       path: inst.path,
@@ -1671,8 +1676,11 @@ const start = (
   /** `watchesOnly`: before the first render, when only the cache watchers register. */
   const syncSubscriptions = (inst: Instance, watchesOnly = false) => {
     const subscriptions = inst.component.subscriptions
-    // Subscriptions never run on the server, and a waiting slot has no Model yet.
-    if (inst.closed || inst.waiting || server !== undefined || subscriptions === undefined) return
+    // A waiting slot has no Model yet.
+    if (inst.closed || inst.waiting || subscriptions === undefined) return
+    // On the server only the watch markers register, and only for a component with a loader field, so
+    // no other component gains a way to fail. Nothing under a Layer kept off the server is sampled.
+    if (server !== undefined && (inst.component["~loaders"] === undefined || inst.env.never)) return
     const wanted = guard(inst, "subscription", () => subscriptions(inst.model, inst.props))
     if (wanted === undefined) return
     const byKey = new Map<string, Subscription.Subscription<any, any>>()
@@ -1684,7 +1692,8 @@ const start = (
       } else if (!byKey.has(subscription.key)) byKey.set(subscription.key, subscription)
     }
     const folds = syncWatches(inst, markers)
-    if (!watchesOnly) syncStreams(inst, byKey)
+    // Streams never run on the server.
+    if (!watchesOnly && server === undefined) syncStreams(inst, byKey)
     // The cache never calls back with the state at registration. Each new watcher's settled value
     // is folded through `update` here, once the watchers and Streams follow the Model that asked for
     // them, and so before this instance's next render.
@@ -2408,7 +2417,14 @@ const start = (
     return out
   }
   if (hooks !== undefined) {
-    handle = { container, flush: () => flushes, snapshot }
+    handle = {
+      container,
+      flush: () => flushes,
+      snapshot,
+      // The first navigation closes the fetch-free window, if adoption hasn't yet.
+      navigated: () => Loader.internals(cache).closeWindow(),
+      report
+    }
     const detach = hooks.attach(handle)
     Effect.runSync(Scope.addFinalizer(rootScope, Effect.sync(detach)))
   }
@@ -2427,12 +2443,14 @@ const start = (
 
   /** Serialises the tree once, in document order, with the state the client adopts. */
   const finish = () => {
-    serverStarts = false
     if (scheduled || dirty.size > 0 || deferred.length > 0) flush()
     frozen = true
+    server?.onFinish?.(Loader.internals(cache))
+    // In the same synchronous step as the Models: fetches in flight are interrupted, and their entries
+    // revert to cold and aren't shipped. Nothing is dispatched for them.
+    const loader = Loader.internals(cache).dehydrate()
     const state: Record<string, unknown> = {}
     const deferredPaths: Array<string> = []
-    const pendingPaths: Record<string, ReadonlyArray<number>> = {}
     // `under`: inside a deferred instance, whose subtree the client builds fresh.
     const instance = (inst: Instance, under: boolean): Renderer.ServerNode => {
       let inner = under
@@ -2447,7 +2465,6 @@ const start = (
           inner = true
         } else {
           state[inst.path] = encoded.value
-          if (inst.serverPending.size > 0) pendingPaths[inst.path] = [...inst.serverPending].sort((a, b) => a - b)
         }
       }
       return {
@@ -2479,7 +2496,15 @@ const start = (
       }
     }
     const nodes = [instance(root, false)]
-    return { nodes, state: { ...state, "~deferred": deferredPaths, "~pending": pendingPaths } }
+    return {
+      nodes,
+      state: {
+        ...state,
+        "~deferred": deferredPaths,
+        "~loader": loader,
+        ...(server?.static === true ? { "~static": true } : {})
+      }
+    }
   }
 
   const runsOf = (inst: Instance): Array<Pending> =>
@@ -2508,6 +2533,15 @@ const start = (
       if (adoptedDone && !reportPending) resume(Effect.void)
       else adoptedWaiters.push(() => resume(Effect.void))
     }),
+    waiting: () => {
+      const out: Array<string> = []
+      const visit = (inst: Instance) => {
+        if (inst.waiting) out.push(inst.path)
+        for (const child of inst.children.values()) visit(child)
+      }
+      visit(root)
+      return out
+    },
     whenIdle: (f) => {
       idleWaiters.push(f)
       checkIdle()

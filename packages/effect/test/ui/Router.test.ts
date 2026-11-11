@@ -3,7 +3,7 @@ import { Effect, type Layer, Option, Schema, type Scope, Stream } from "effect"
 import { TestClock } from "effect/testing"
 import { Component, Head, type MessageLog, Router } from "effect/ui"
 import { Query, TestHost } from "effect/ui/testing"
-import { App, AppRoute } from "./fixtures/router.ts"
+import { App, AppRoute, GetPerson, personFetches, PersonSnapshot } from "./fixtures/router.ts"
 
 const click = (root: TestHost.TestRoot<any, any, any>, text: string) =>
   Query.fire(root.get(Query.text(text, { exact: true })), "click")
@@ -56,7 +56,8 @@ describe("Router", () => {
 
         // Route changes arrive as Subscription messages, so they're in the log.
         const changes = root.log().filter((entry): entry is MessageLog.Update =>
-          entry._tag === "Update" && entry.source._tag === "Subscription"
+          entry._tag === "Update" && entry.source._tag === "Subscription" &&
+          (entry.message as any)._tag === "ChangedRoute"
         )
         assert.deepStrictEqual(changes.map((entry) => AppRoute.print((entry.message as any).route)), [
           "/",
@@ -68,7 +69,7 @@ describe("Router", () => {
     )
   })
 
-  it.effect("restores a page's Model on back and forward, skipping only its server Commands", () => {
+  it.effect("restores a page's Model on back and forward, and reruns every init Command", () => {
     const { history, layer } = setup("/people/1")
     return run(
       layer,
@@ -91,11 +92,8 @@ describe("Router", () => {
           entry._tag === "Mounted" && entry.path === path
         )
         assert.deepStrictEqual(mounted.map((entry) => entry.adopted), [false, true])
-        const dropped = root.log().filter((entry): entry is MessageLog.CommandDropped =>
-          entry._tag === "CommandDropped" && entry.path === path
-        )
-        assert.deepStrictEqual(dropped.map((entry) => [entry.name, entry.reason]), [["LoadPerson", "adopted"]])
-        // A client-only init Command runs again, as on any mount.
+        // Nothing is dropped on replay: init's Command runs again, as on any mount.
+        assert.isFalse(root.log().some((entry) => entry._tag === "CommandDropped"))
         const visits = root.log().filter((entry): entry is MessageLog.Update =>
           entry._tag === "Update" && entry.path === path && (entry.message as any)._tag === "Visited"
         )
@@ -133,6 +131,114 @@ describe("Router", () => {
       yield* run(layer, page).pipe(Effect.scoped)
       yield* run(Router.make({ routes: AppRoute, history }), reloaded).pipe(Effect.scoped)
     })
+  })
+
+  it.effect("seeds a cold entry from a restored loader field, stale, and refetches it once", () => {
+    const { history, layer } = setup("/people/1")
+    const page = Effect.gen(function*() {
+      const root = yield* mountAt("/people/1")
+      yield* TestHost.settle
+      click(root, "Home")
+      yield* TestHost.settle
+    })
+    return Effect.gen(function*() {
+      personFetches.count = 0
+      yield* run(layer, page).pipe(Effect.scoped)
+      assert.strictEqual(personFetches.count, 1)
+      yield* run(
+        Router.make({ routes: AppRoute, history }),
+        Effect.gen(function*() {
+          const root = yield* mountAt("/")
+          yield* TestHost.settle
+          history.go(-1)
+          yield* TestHost.settle
+          // The new cache is cold: the restored snapshot seeds it, so the page mounts with the data,
+          // stale, and one refetch runs.
+          const restored = root.log().find((entry): entry is MessageLog.Mounted =>
+            entry._tag === "Mounted" && entry.path === "/App/Person[/people/1]"
+          )
+          assert.isTrue(restored?.adopted)
+          assert.isTrue(root.text().includes("Person 1"))
+          assert.deepStrictEqual(
+            root.fetches().map((fetch) => [fetch.read, fetch.trigger]),
+            [["GetPerson", "watch"]]
+          )
+          assert.strictEqual(personFetches.count, 2)
+          assert.strictEqual(root.entry(GetPerson, { id: 1 })?.stale, false)
+        })
+      ).pipe(Effect.scoped)
+    })
+  })
+
+  it.effect("drops a loader field whose snapshot was taken under a patch from the restored Model", () => {
+    const { history, layer } = setup("/people/1")
+    const path = "/App/Person[/people/1]"
+    const encode = Schema.encodeSync(Schema.toCodecJson(PersonSnapshot))
+    return Effect.gen(function*() {
+      yield* run(
+        layer,
+        Effect.gen(function*() {
+          const root = yield* mountAt("/people/1")
+          yield* TestHost.settle
+          // The rename never finishes, so its patch is live when the push snapshots the page.
+          click(root, "Rename")
+          yield* TestHost.settle
+          assert.isTrue(root.text().includes("Renamed"))
+          click(root, "Home")
+          yield* TestHost.settle
+        })
+      ).pipe(Effect.scoped)
+      yield* run(
+        Router.make({ routes: AppRoute, history }),
+        Effect.gen(function*() {
+          const root = yield* mountAt("/")
+          yield* TestHost.settle
+          history.go(-1)
+          yield* TestHost.settle
+          const restored = root.log().find((entry): entry is MessageLog.Mounted =>
+            entry._tag === "Mounted" && entry.path === path
+          )
+          assert.isDefined(restored)
+          assert.isTrue(restored.adopted)
+          // The rest of the Model is restored; the loader field starts from loading, and the fetch fills it.
+          const model = restored.model as { readonly person: typeof PersonSnapshot.Type; readonly name: string }
+          assert.deepStrictEqual(encode(model.person), [])
+          assert.strictEqual(model.name, "Renamed")
+          assert.isTrue(root.text().includes("Person 1"))
+        })
+      ).pipe(Effect.scoped)
+    })
+  })
+
+  it.effect("keeps the snapshot in memory and reports SnapshotWriteFailed when history.state rejects it", () => {
+    const inner = Router.memoryHistory("/people/1")
+    const history: Router.History = {
+      ...inner,
+      replace: (url, state) => {
+        if (JSON.stringify(state).includes("snapshot")) throw new Error("DataCloneError")
+        inner.replace(url, state)
+      }
+    }
+    return run(
+      Router.make({ routes: AppRoute, history }),
+      Effect.gen(function*() {
+        const root = yield* mountAt("/people/1")
+        yield* TestHost.settle
+        click(root, "count 0")
+        yield* TestHost.settle
+        click(root, "Home")
+        // settle fails on the problem once it has run everything.
+        const unexpected = yield* Effect.flip(TestHost.settle)
+        assert.strictEqual(unexpected._tag, "ProblemsError")
+        const [problem] = yield* TestHost.expectProblem("SnapshotWriteFailed")
+        assert.instanceOf(problem, Router.SnapshotWriteFailed)
+        // The entry keeps its index only, and back still restores from memory.
+        history.go(-1)
+        yield* TestHost.settle
+        assert.isFalse(JSON.stringify(inner.current().state).includes("snapshot"))
+        assert.isTrue(root.text().includes("count 1"))
+      })
+    )
   })
 
   it.effect("blocks navigation and reverts back and forward while Router.blocked runs", () => {

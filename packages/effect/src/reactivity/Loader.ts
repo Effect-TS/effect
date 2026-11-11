@@ -2031,9 +2031,23 @@ interface CacheInternals {
   readonly seed: (snapshot: unknown) => boolean
   /** Called at every fetch start. */
   readonly onFetch: (listener: (event: FetchEvent) => void) => () => void
+  /** Called once a stored fetch has ended and its entry has emitted. */
+  readonly onFetchEnd: (listener: () => void) => () => void
   readonly inspect: (def: ReadDef, args: unknown) => EntryInfo | undefined
   /** The stored fetches in flight, and those held until a live patch's run exits. */
   readonly pending: () => ReadonlyArray<PendingFetch>
+  /**
+   * The entries with no settled result whose fetch is in flight, or, with
+   * fetches off, that a watcher or `get` waits on. An entry whose fetcher
+   * died isn't one: its fetch ended.
+   */
+  readonly misses: () => ReadonlyArray<{ readonly read: string; readonly logKey: string }>
+  /**
+   * Decodes every entry of a `~loader` payload with the reads this cache
+   * knows, args key included, and encodes it again. Returns a line per entry
+   * that doesn't come back as it was shipped.
+   */
+  readonly checkWire: (raw: unknown) => ReadonlyArray<string>
 }
 
 interface PendingFetch {
@@ -2523,11 +2537,14 @@ export const makeCache = (options: {
    * and reported, and no idle timer, interval or host edge runs.
    */
   readonly settleOnce?: boolean | undefined
+  /** `false`: no fetch ever starts, as on a server render with a budget of 0. */
+  readonly fetches?: boolean | undefined
 }): CacheInternals => {
   const { connectivity, context, visibility } = options
   const clock = Context.get(context, Clock.Clock)
   const defaultIdleMs = options.idleMs
   const settleOnce = options.settleOnce === true
+  const fetches = options.fetches !== false
 
   const reads = new Map<string, ReadDef>()
   const duplicates = new WeakSet<ReadDef>()
@@ -2536,6 +2553,7 @@ export const makeCache = (options: {
   const fakeBuilds = new WeakMap<Fetcher, Build>()
   const attached = new Set<Build>()
   const fetchListeners = new Set<(event: FetchEvent) => void>()
+  const fetchEndListeners = new Set<() => void>()
   const timers = new Set<Fiber.Fiber<any, any>>()
   // Every fetch fiber until its cleanup has finished, and per entry the interrupted one its next fetch waits for.
   const fetchFibers = new Set<Fiber.Fiber<any, any>>()
@@ -2907,10 +2925,11 @@ export const makeCache = (options: {
   const startFetch = (entry: Entry, trigger: Trigger, build: Build, restart: boolean): void => {
     const fetch: FetchRec = { trigger, build, fiber: undefined }
     entry.fetch = fetch
+    cancelIdle(entry)
+    // Reported before the entry turns ordinary, so the event says whether it fetched inside the window.
+    emitFetch(entry, trigger, restart, true)
     // A fetch after hydration makes the entry ordinary: a `get` joins it.
     entry.hydrated = false
-    cancelIdle(entry)
-    emitFetch(entry, trigger, restart, true)
     // The fetcher never starts inside the call that asked for it, nor before the fetch it replaces has finished
     // its cleanup. The wait is uninterruptible, so a chain of restarts still ends in order.
     const key = drainKey(entry)
@@ -2927,6 +2946,13 @@ export const makeCache = (options: {
       build.fibers.delete(fiber)
       if (draining.get(key) === fiber) draining.delete(key)
       onFetchExit(entry, fetch, exit)
+      for (const listener of Array.from(fetchEndListeners)) {
+        try {
+          listener()
+        } catch {
+          // A listener can't change what the cache does.
+        }
+      }
     })
     emit(entry)
   }
@@ -2946,7 +2972,7 @@ export const makeCache = (options: {
    * made when the last live owner exits.
    */
   const ensureFetch = (entry: Entry, trigger: Trigger, build: Build): void => {
-    if (entry.fetch !== undefined || disposed) return
+    if (entry.fetch !== undefined || disposed || !fetches) return
     if (settleOnce && entry.result !== undefined) return
     if (hasLive(entry)) {
       entry.deferred ??= trigger
@@ -3764,6 +3790,46 @@ export const makeCache = (options: {
     }
     return out
   }
+  const checkWire: CacheInternals["checkWire"] = (input) => {
+    const parsed = parseRaw(input)
+    if (parsed === undefined) return ["the ~loader state isn't the tuple shape"]
+    const out: Array<string> = []
+    for (const [name, byKey] of parsed) {
+      const def = reads.get(name)
+      if (def === undefined) {
+        out.push("the read " + quote(name) + " shipped entries, and this cache doesn't know it")
+        continue
+      }
+      const codec = def.codec()
+      for (const [wireKey, tuple] of byKey) {
+        let args: unknown
+        let logKey: string
+        try {
+          args = codec.decodeArgs(wireKey)
+          const argsKey = def.argsKey(args)
+          logKey = def.logKey(args, argsKey)
+          if (argsKey !== wireKey) {
+            out.push("an entry of " + quote(name) + " at " + logKey + " has args that key differently once decoded")
+            continue
+          }
+        } catch {
+          out.push("the args of an entry of " + quote(name) + " failed to decode")
+          continue
+        }
+        try {
+          const again = tuple[1] === 0
+            ? codec.encodeSuccess(codec.decodeSuccess(tuple[2]))
+            : tuple[2].map((error) => codec.encodeError(codec.decodeError(error)))
+          if (JSON.stringify(again) !== JSON.stringify(tuple[2])) {
+            out.push("the entry of " + quote(name) + " at " + logKey + " encodes differently once decoded")
+          }
+        } catch {
+          out.push("the entry of " + quote(name) + " at " + logKey + " failed to decode or encode again")
+        }
+      }
+    }
+    return out
+  }
   const seed: CacheInternals["seed"] = (snapshot) => {
     const data = snapshotData(snapshot)
     // A per-request cache never refetches a settled entry, so a seed there would be final.
@@ -3831,6 +3897,23 @@ export const makeCache = (options: {
         fetchListeners.delete(listener)
       }
     },
+    onFetchEnd: (listener) => {
+      fetchEndListeners.add(listener)
+      return () => {
+        fetchEndListeners.delete(listener)
+      }
+    },
+    misses: () => {
+      const out: Array<{ readonly read: string; readonly logKey: string }> = []
+      for (const entry of allEntries()) {
+        if (entry.result !== undefined) continue
+        const missed = entry.fetch !== undefined ||
+          (!fetches && (entry.watchers.size > 0 || entry.waiters.size > 0))
+        if (missed) out.push({ read: entry.def.name, logKey: logKeyOf(entry) })
+      }
+      return out
+    },
+    checkWire,
     pending: () => {
       const out: Array<PendingFetch> = []
       for (const entry of allEntries()) {
