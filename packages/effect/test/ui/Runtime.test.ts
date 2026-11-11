@@ -1974,54 +1974,100 @@ describe("Runtime", () => {
     Effect.gen(function*() {
       const host = TestHost.makeHost()
       for (const site of ["Problems", "init", "view", "Layer"] as const) {
-        const scope = yield* Scope.make()
-        const container = host.createElement("#app") as TestHost.TestElement
-        let closing: Fiber.Fiber<void> | undefined
-        const close = () => {
-          closing ??= Effect.runFork(Scope.close(scope, Exit.void))
-        }
-        let childrenAtRelease = -1
-        const App = Component.provide(
-          Component.make({
-            name: "App",
-            model: Schema.Number,
-            message: Schema.Never,
-            init: () => {
-              if (site === "init") close()
-              return 0
+        // The fiber closing the owner yields once, at its `at`-th check, and its tasks run on `flush`.
+        for (let at = 1;; at++) {
+          let checks = 0
+          const tasks: Array<() => void> = []
+          const dispatcher: Scheduler.SchedulerDispatcher = {
+            scheduleTask: (task) => {
+              tasks.push(task)
             },
-            update: (n) => n,
-            view: (_, h) => {
-              if (site === "view") close()
-              return h.el("div", "ok")
+            flush: () => {
+              while (tasks.length > 0) tasks.shift()!()
             }
-          }),
-          Layer.effectDiscard(Effect.andThen(
-            Effect.addFinalizer(() =>
+          }
+          const scheduler: Scheduler.Scheduler = {
+            executionMode: "async",
+            shouldYield: () => ++checks === at,
+            makeDispatcher: () => dispatcher
+          }
+          let listeners = 0
+          const signal: Loader.Signal = {
+            get: () => true,
+            subscribe: () => {
+              listeners++
+              return () => {
+                listeners--
+              }
+            }
+          }
+          const scope = yield* Scope.make()
+          const container = host.createElement("#app") as TestHost.TestElement
+          let closing: Fiber.Fiber<void> | undefined
+          const close = () => {
+            closing ??= Effect.runFork(
+              Scope.close(scope, Exit.void).pipe(Effect.provideService(Scheduler.Scheduler, scheduler))
+            )
+          }
+          let childrenAtRelease = -1
+          const App = Component.provide(
+            Component.make({
+              name: "App",
+              model: Schema.Number,
+              message: Schema.Never,
+              init: () => {
+                if (site === "init") close()
+                return 0
+              },
+              update: (n) => n,
+              view: (_, h) => {
+                if (site === "view") close()
+                return h.el("div", "ok")
+              }
+            }),
+            Layer.effectDiscard(Effect.andThen(
+              Effect.addFinalizer(() =>
+                Effect.sync(() => {
+                  childrenAtRelease = container.children.length
+                })
+              ),
               Effect.sync(() => {
-                childrenAtRelease = container.children.length
+                if (site === "Layer") close()
               })
-            ),
-            Effect.sync(() => {
-              if (site === "Layer") close()
-            })
-          ))
-        )
-        const mounted = yield* Effect.exit(
-          Renderer.mount(App, {}, container, { state: { "~loader": "malformed" } }).pipe(
-            Scope.provide(scope),
-            Effect.provide(Renderer.layer(host)),
-            Effect.provideService(Loader.Problems, () => {
-              if (site === "Problems") close()
-            })
+            ))
           )
-        )
-        const closed = yield* Fiber.await(closing!)
-        // The close waits for setup, then closes the instances before it removes the root's nodes.
-        assert.deepStrictEqual(
-          [site, Exit.hasInterrupts(mounted), closed._tag, childrenAtRelease, container.children.length],
-          [site, true, "Success", 1, 0]
-        )
+          const mounted = yield* Effect.exit(
+            Renderer.mount(App, {}, container, { state: { "~loader": "malformed" } }).pipe(
+              Scope.provide(scope),
+              Effect.provide(Renderer.layer(host)),
+              Effect.provideService(Loader.Visibility, signal),
+              Effect.provideService(Loader.Connectivity, signal),
+              Effect.provideService(Loader.Problems, () => {
+                if (site === "Problems") close()
+              })
+            )
+          )
+          // A close that yielded before it closed the owner leaves the mount to succeed.
+          const ownerClosed = scope.state._tag === "Closed"
+          dispatcher.flush()
+          // The close waits for setup, then closes the instances before it removes the root's nodes.
+          assert.deepStrictEqual(
+            [
+              site,
+              at,
+              Exit.hasInterrupts(mounted),
+              closing!.pollUnsafe()?._tag,
+              childrenAtRelease,
+              listeners,
+              container.children.length
+            ],
+            [site, at, ownerClosed, "Success", 1, 0, 0]
+          )
+          if (checks < at) {
+            assert.isTrue(ownerClosed)
+            break
+          }
+        }
       }
     }))
 

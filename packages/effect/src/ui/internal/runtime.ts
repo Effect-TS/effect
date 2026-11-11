@@ -13,6 +13,7 @@ import * as Equal from "../../Equal.ts"
 import * as Exit from "../../Exit.ts"
 import * as Fiber from "../../Fiber.ts"
 import { scopeAddFinalizerUnsafe } from "../../internal/effect.ts"
+import * as Latch from "../../Latch.ts"
 import * as Layer from "../../Layer.ts"
 import * as Option from "../../Option.ts"
 import * as AsyncResult from "../../reactivity/AsyncResult.ts"
@@ -491,20 +492,13 @@ const start = (
     const owner = Context.get(ctx, Scope.Scope)
     if (isClosed(owner)) return Effect.interrupt
     const scope = Scope.makeUnsafe("sequential")
-    let settingUp = true
-    let closeAfterSetup: (() => void) | undefined
-    scopeAddFinalizerUnsafe(owner, {}, (exit) =>
-      settingUp
-        ? Effect.callback<void>((resume) => {
-          closeAfterSetup = () => resume(Scope.close(scope, exit))
-        })
-        : Scope.close(scope, exit))
+    const setUp = Latch.makeUnsafe(false)
+    scopeAddFinalizerUnsafe(owner, {}, (exit) => setUp.whenOpen(Scope.close(scope, exit)))
     let root: Root & Renderer.Root<any, any>
     try {
       root = setup(component, rootProps, container, Context.add(ctx, Scope.Scope, scope), cache, options)
     } finally {
-      settingUp = false
-      closeAfterSetup?.()
+      setUp.openUnsafe()
     }
     // A callback may have closed the owner during setup.
     return isClosed(owner) ? Effect.interrupt : Effect.succeed(root)
