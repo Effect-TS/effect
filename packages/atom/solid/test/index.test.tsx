@@ -47,6 +47,22 @@ describe("atom-solid", () => {
       dispose()
     })
 
+    it("returns function values without calling them", () => {
+      const registry = AtomRegistry.make()
+      const first = () => "first"
+      const second = () => "second"
+      const useSecond = Atom.make(false)
+      const atom = Atom.make((get) => get(useSecond) ? second : first)
+      let observed: (() => string) | undefined
+      const dispose = renderAtomValue(atom, (value) => {
+        observed = value
+      }, { registry })
+      assert.strictEqual(observed, first)
+      registry.set(useSecond, true)
+      assert.strictEqual(observed, second)
+      dispose()
+    })
+
     it("works with computed Atom", () => {
       const baseAtom = Atom.make(10)
       const computedAtom = Atom.make((get) => get(baseAtom) * 2)
@@ -111,6 +127,20 @@ describe("atom-solid", () => {
       assert.strictEqual(observed, 0)
       ref.set(1)
       assert.strictEqual(observed, 1)
+      dispose()
+    })
+
+    it("returns function values without calling them", () => {
+      const first = () => "first"
+      const second = () => "second"
+      const ref = AtomRef.make<() => string>(first)
+      let observed: (() => string) | undefined
+      const dispose = renderAtomRef(ref, (value) => {
+        observed = value
+      })
+      assert.strictEqual(observed, first)
+      ref.set(second)
+      assert.strictEqual(observed, second)
       dispose()
     })
 
