@@ -22,7 +22,7 @@ const hosted = <A, E, R>(effect: Effect.Effect<A, E, R>) =>
 
 const routed = Effect.fnUntraced(function*(url: string) {
   const router = Router.memory({ routes: AppRoute, url })
-  const route = yield* Router.route(AppRoute).pipe(Effect.provide(router))
+  const route = yield* Router.currentRoute(AppRoute).pipe(Effect.provide(router))
   return { props: { route }, router }
 })
 

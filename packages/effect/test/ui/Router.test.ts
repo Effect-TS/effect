@@ -20,20 +20,20 @@ const run = <A, E>(
   effect: Effect.Effect<A, E, Router.Services | TestHost.TestHost | Scope.Scope>
 ) => effect.pipe(Effect.provide(layer), Effect.provide(TestHost.layer()))
 
-const mount = Effect.flatMap(Router.route(AppRoute), (route) => TestHost.mount(App, { route }))
+const mount = Effect.flatMap(Router.currentRoute(AppRoute), (route) => TestHost.mount(App, { route }))
 
 describe("Router", () => {
   it.effect("reads the current route from memory and static Routers", () =>
     Effect.gen(function*() {
-      const current = Router.route(AppRoute)
+      const current = Router.currentRoute(AppRoute)
       const router = yield* Router.Router
       assert.strictEqual((yield* current)._tag, "Home")
       yield* router.navigate("/people/2")
       assert.deepStrictEqual(yield* current, AppRoute.make({ _tag: "Person", params: { id: 2 } }))
       const subset = Route.union({ Person: Route.make("/people/:id", { params: { id: Schema.Number } }) })
-      assert.deepStrictEqual(yield* Router.route(subset), subset.make({ _tag: "Person", params: { id: 2 } }))
+      assert.deepStrictEqual(yield* Router.currentRoute(subset), subset.make({ _tag: "Person", params: { id: 2 } }))
       yield* router.navigate("/")
-      assert.isTrue(Exit.isFailure(yield* Effect.exit(Router.route(subset))))
+      assert.isTrue(Exit.isFailure(yield* Effect.exit(Router.currentRoute(subset))))
       assert.strictEqual(
         (yield* current.pipe(Effect.provide(Router.static({ routes: AppRoute, url: "/people/3" }))))._tag,
         "Person"
