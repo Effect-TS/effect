@@ -50,7 +50,7 @@
  * ```
  *
  * @stability experimental
- * @since 4.1.3
+ * @since 4.1.5
  */
 import * as Layer from "../Layer.ts"
 import type * as Option from "../Option.ts"
@@ -71,7 +71,7 @@ import * as View from "./View.ts"
  *
  * @stability experimental
  * @category type ids
- * @since 4.1.3
+ * @since 4.1.5
  */
 export const TypeId = "~effect/ui/Component" as const
 
@@ -80,7 +80,7 @@ export const TypeId = "~effect/ui/Component" as const
  *
  * @stability experimental
  * @category type ids
- * @since 4.1.3
+ * @since 4.1.5
  */
 export type TypeId = typeof TypeId
 
@@ -89,7 +89,7 @@ export type TypeId = typeof TypeId
  *
  * @stability experimental
  * @category type ids
- * @since 4.1.3
+ * @since 4.1.5
  */
 export const StepTypeId = "~effect/ui/Component/Step" as const
 
@@ -98,7 +98,7 @@ export const StepTypeId = "~effect/ui/Component/Step" as const
  *
  * @stability experimental
  * @category type ids
- * @since 4.1.3
+ * @since 4.1.5
  */
 export type StepTypeId = typeof StepTypeId
 
@@ -108,7 +108,7 @@ export type StepTypeId = typeof StepTypeId
  *
  * @stability experimental
  * @category models
- * @since 4.1.3
+ * @since 4.1.5
  */
 export interface Next<out Model, out Msg, out Events, out R = never> {
   readonly model: Model
@@ -123,7 +123,7 @@ export interface Next<out Model, out Msg, out Events, out R = never> {
  *
  * @stability experimental
  * @category models
- * @since 4.1.3
+ * @since 4.1.5
  */
 export interface ListIssue {
   readonly field: string
@@ -136,7 +136,7 @@ export interface ListIssue {
  *
  * @stability experimental
  * @category models
- * @since 4.1.3
+ * @since 4.1.5
  */
 export interface InitStep<in out Model, in out Msg, in out Events, out R = never> extends Pipeable.Pipeable {
   readonly [StepTypeId]: StepTypeId
@@ -168,7 +168,7 @@ export interface InitStep<in out Model, in out Msg, in out Events, out R = never
  *
  * @stability experimental
  * @category models
- * @since 4.1.3
+ * @since 4.1.5
  */
 export interface Step<in out Model, in out Msg, in out Events, out R = never> extends InitStep<Model, Msg, Events, R> {
   /** The load mores and resets issued, in order. */
@@ -206,7 +206,7 @@ export interface Step<in out Model, in out Msg, in out Events, out R = never> ex
  *
  * @stability experimental
  * @category models
- * @since 4.1.3
+ * @since 4.1.5
  */
 export interface Update<in out Model, in out Msg, in out Events, out Props> extends Step<Model, Msg, Events, never> {
   readonly props: Props
@@ -217,7 +217,7 @@ export interface Update<in out Model, in out Msg, in out Events, out Props> exte
  *
  * @stability experimental
  * @category models
- * @since 4.1.3
+ * @since 4.1.5
  */
 export interface Init<in out Model, in out Msg, in out Events, out Props> {
   readonly props: Props
@@ -235,7 +235,7 @@ export interface Init<in out Model, in out Msg, in out Events, out Props> {
  *
  * @stability experimental
  * @category utility types
- * @since 4.1.3
+ * @since 4.1.5
  */
 export type StepRequirements<U> = U extends InitStep<infer _Model, infer _Msg, infer _Events, infer R> ? R : never
 
@@ -285,7 +285,7 @@ const makeInit = (props: unknown, empty: object): Init<any, any, any, any> => ({
  *
  * @stability experimental
  * @category guards
- * @since 4.1.3
+ * @since 4.1.5
  */
 export const isStep = (u: unknown): u is InitStep<unknown, unknown, unknown, unknown> =>
   Predicate.hasProperty(u, StepTypeId)
@@ -311,7 +311,7 @@ const toNext = (result: unknown): Next<any, any, any, any> =>
  *
  * @stability experimental
  * @category models
- * @since 4.1.3
+ * @since 4.1.5
  */
 export interface Mountable<in out Props, out Events, out R = never> extends Pipeable.Pipeable {
   readonly [TypeId]: Mountable.Variance<Props, Events, R>
@@ -349,14 +349,14 @@ export interface Mountable<in out Props, out Events, out R = never> extends Pipe
  * Helper types for `Mountable`.
  *
  * @stability experimental
- * @since 4.1.3
+ * @since 4.1.5
  */
 export declare namespace Mountable {
   /**
    * Phantom variance for a component's props, events and requirements.
    *
    * @category models
-   * @since 4.1.3
+   * @since 4.1.5
    */
   export interface Variance<in out Props, out Events, out R> {
     readonly _Props: Types.Invariant<Props>
@@ -370,7 +370,7 @@ export declare namespace Mountable {
  *
  * @stability experimental
  * @category models
- * @since 4.1.3
+ * @since 4.1.5
  */
 export interface Component<
   out Name extends string,
@@ -403,7 +403,7 @@ export interface Component<
  *
  * @stability experimental
  * @category utility types
- * @since 4.1.3
+ * @since 4.1.5
  */
 export type LoaderHelpers<Model> = [LoaderFields<Model>] extends [never] ? {} : {
   readonly loaded: Loaded<Model>
@@ -416,7 +416,7 @@ export type LoaderHelpers<Model> = [LoaderFields<Model>] extends [never] ? {} : 
  *
  * @stability experimental
  * @category models
- * @since 4.1.3
+ * @since 4.1.5
  */
 export type Any = Mountable<any, any, any>
 
@@ -425,7 +425,7 @@ export type Any = Mountable<any, any, any>
  *
  * @stability experimental
  * @category utility types
- * @since 4.1.3
+ * @since 4.1.5
  */
 export type Props<C> = C extends Mountable<infer P, infer _Events, infer _R> ? P : never
 
@@ -434,7 +434,7 @@ export type Props<C> = C extends Mountable<infer P, infer _Events, infer _R> ? P
  *
  * @stability experimental
  * @category utility types
- * @since 4.1.3
+ * @since 4.1.5
  */
 export type Events<C> = C extends Mountable<infer _Props, infer E, infer _R> ? E : never
 
@@ -443,7 +443,7 @@ export type Events<C> = C extends Mountable<infer _Props, infer E, infer _R> ? E
  *
  * @stability experimental
  * @category utility types
- * @since 4.1.3
+ * @since 4.1.5
  */
 export type Requirements<C> = C extends Mountable<infer _Props, infer _Events, infer R> ? R : never
 
@@ -452,7 +452,7 @@ export type Requirements<C> = C extends Mountable<infer _Props, infer _Events, i
  *
  * @stability experimental
  * @category utility types
- * @since 4.1.3
+ * @since 4.1.5
  */
 export type Model<C> = C extends Component<infer _N, infer _P, infer M, infer _Msg, infer _E, infer _R, infer _V> ? M
   : never
@@ -462,7 +462,7 @@ export type Model<C> = C extends Component<infer _N, infer _P, infer M, infer _M
  *
  * @stability experimental
  * @category utility types
- * @since 4.1.3
+ * @since 4.1.5
  */
 export type Message<C> = C extends Component<infer _N, infer _P, infer _M, infer Msg, infer _E, infer _R, infer _V> ?
   Msg
@@ -474,7 +474,7 @@ export type Message<C> = C extends Component<infer _N, infer _P, infer _M, infer
  *
  * @stability experimental
  * @category utility types
- * @since 4.1.3
+ * @since 4.1.5
  */
 export type LoaderFields<Model> = LoaderKey<
   Model,
@@ -487,7 +487,7 @@ export type LoaderFields<Model> = LoaderKey<
  *
  * @stability experimental
  * @category utility types
- * @since 4.1.3
+ * @since 4.1.5
  */
 export type SingleFields<Model> = LoaderKey<Model, Loader.Snapshot<any, any> | Loader.SnapshotList<any, any>>
 
@@ -497,7 +497,7 @@ export type SingleFields<Model> = LoaderKey<Model, Loader.Snapshot<any, any> | L
  *
  * @stability experimental
  * @category utility types
- * @since 4.1.3
+ * @since 4.1.5
  */
 export type ListFields<Model> = LoaderKey<Model, Loader.SnapshotList<any, any>>
 
@@ -507,7 +507,7 @@ export type ListFields<Model> = LoaderKey<Model, Loader.SnapshotList<any, any>>
  *
  * @stability experimental
  * @category utility types
- * @since 4.1.3
+ * @since 4.1.5
  */
 export type KeyedFields<Model> = LoaderKey<Model, Loader.SnapshotMap<any, any>>
 
@@ -521,7 +521,7 @@ type LoaderKey<Model, S, K extends keyof Model = keyof Model & string> = [Model]
  *
  * @stability experimental
  * @category utility types
- * @since 4.1.3
+ * @since 4.1.5
  */
 export type ReadOf<S> = S extends Loader.Snapshot<infer R, any> ? R
   : S extends Loader.SnapshotMap<infer R, any> ? R
@@ -534,7 +534,7 @@ export type ReadOf<S> = S extends Loader.Snapshot<infer R, any> ? R
  *
  * @stability experimental
  * @category utility types
- * @since 4.1.3
+ * @since 4.1.5
  */
 export type ResultOf<S> = AsyncResult.AsyncResult<Loader.Read.Success<ReadOf<S>>, Loader.Read.Error<ReadOf<S>>>
 
@@ -544,7 +544,7 @@ export type ResultOf<S> = AsyncResult.AsyncResult<Loader.Read.Success<ReadOf<S>>
  *
  * @stability experimental
  * @category utility types
- * @since 4.1.3
+ * @since 4.1.5
  */
 export type LoaderServices<Model> = ServiceOf<ReadOf<Model[LoaderFields<Model>]>>
 
@@ -555,7 +555,7 @@ type ServiceOf<R> = R extends { readonly Identifier: infer Self } ? Self : never
  *
  * @stability experimental
  * @category utility types
- * @since 4.1.3
+ * @since 4.1.5
  */
 export type Empty<Model> = { readonly [K in LoaderFields<Model>]: Model[K] }
 
@@ -567,7 +567,7 @@ export type Empty<Model> = { readonly [K in LoaderFields<Model>]: Model[K] }
  *
  * @stability experimental
  * @category utility types
- * @since 4.1.3
+ * @since 4.1.5
  */
 export type Loaded<Model> = {
   readonly [K in LoaderFields<Model>]: Model[K] extends Loader.SnapshotMap<any, any> ? KeyedLoaded<ReadOf<Model[K]>>
@@ -586,7 +586,7 @@ export type Loaded<Model> = {
  *
  * @stability experimental
  * @category models
- * @since 4.1.3
+ * @since 4.1.5
  */
 export interface LoadedList<R extends Loader.ListRead.Any> {
   readonly items: ReadonlyArray<Loader.ListRead.Item<R>>
@@ -601,7 +601,7 @@ export interface LoadedList<R extends Loader.ListRead.Any> {
  *
  * @stability experimental
  * @category models
- * @since 4.1.3
+ * @since 4.1.5
  */
 export interface KeyedEntry<R extends Loader.Read.Any> {
   readonly args: Loader.Read.Args<R>
@@ -621,7 +621,7 @@ export interface KeyedEntry<R extends Loader.Read.Any> {
  *
  * @stability experimental
  * @category models
- * @since 4.1.3
+ * @since 4.1.5
  */
 export interface KeyedLoaded<R extends Loader.Read.Any> extends ReadonlyArray<KeyedEntry<R>> {
   readonly get: (args: Loader.Read.Args<R>) => Option.Option<KeyedEntry<R>>
@@ -632,7 +632,7 @@ export interface KeyedLoaded<R extends Loader.Read.Any> extends ReadonlyArray<Ke
  *
  * @stability experimental
  * @category models
- * @since 4.1.3
+ * @since 4.1.5
  */
 export interface KeyedChange<R extends Loader.Read.Any> {
   readonly args: Loader.Read.Args<R>
@@ -647,7 +647,7 @@ export interface KeyedChange<R extends Loader.Read.Any> {
  *
  * @stability experimental
  * @category utility types
- * @since 4.1.3
+ * @since 4.1.5
  */
 export type Previous<Model> = {
   readonly [K in SingleFields<Model>]: Model[K] extends Loader.SnapshotList<infer R, any>
@@ -662,7 +662,7 @@ export type Previous<Model> = {
  *
  * @stability experimental
  * @category utility types
- * @since 4.1.3
+ * @since 4.1.5
  */
 export type Patched<Model> = { readonly [K in SingleFields<Model>]: boolean }
 
@@ -674,7 +674,7 @@ export type Patched<Model> = { readonly [K in SingleFields<Model>]: boolean }
  *
  * @stability experimental
  * @category utility types
- * @since 4.1.3
+ * @since 4.1.5
  */
 export type Loaders<Model, Props> = {
   readonly [K in LoaderFields<Model>]: (
@@ -690,7 +690,7 @@ export type Loaders<Model, Props> = {
  *
  * @stability experimental
  * @category type ids
- * @since 4.1.3
+ * @since 4.1.5
  */
 export const WatchTypeId = "~effect/ui/Component/Watch" as const
 
@@ -699,7 +699,7 @@ export const WatchTypeId = "~effect/ui/Component/Watch" as const
  *
  * @stability experimental
  * @category type ids
- * @since 4.1.3
+ * @since 4.1.5
  */
 export type WatchTypeId = typeof WatchTypeId
 
@@ -709,7 +709,7 @@ export type WatchTypeId = typeof WatchTypeId
  *
  * @stability experimental
  * @category models
- * @since 4.1.3
+ * @since 4.1.5
  */
 export interface Watches<in out Model, out Msg> extends Subscription.Subscription<Msg, LoaderServices<Model>> {
   readonly [WatchTypeId]: Types.Invariant<Model>
@@ -724,7 +724,7 @@ export interface Watches<in out Model, out Msg> extends Subscription.Subscriptio
  *
  * @stability experimental
  * @category models
- * @since 4.1.3
+ * @since 4.1.5
  */
 export type Watch<Model, Msg> = (
   handlers: {
@@ -744,7 +744,7 @@ export type Watch<Model, Msg> = (
  *
  * @stability experimental
  * @category models
- * @since 4.1.3
+ * @since 4.1.5
  */
 export interface Subscriptions<in out Model, in out Msg> {
   /** Watches every loader field of the Model: one handler per field. */
@@ -756,7 +756,7 @@ export interface Subscriptions<in out Model, in out Msg> {
  *
  * @stability experimental
  * @category guards
- * @since 4.1.3
+ * @since 4.1.5
  */
 export const isComponent = (u: unknown): u is Any => Predicate.hasProperty(u, TypeId)
 
@@ -820,7 +820,7 @@ const Proto = {
  *
  * @stability experimental
  * @category constructors
- * @since 4.1.3
+ * @since 4.1.5
  */
 export const make = <
   const Name extends string,
@@ -925,7 +925,7 @@ export const make = <
  *
  * @stability experimental
  * @category models
- * @since 4.1.3
+ * @since 4.1.5
  */
 export interface ProvideOptions<in E, out Msg> {
   /**
@@ -955,7 +955,7 @@ export interface ProvideOptions<in E, out Msg> {
  *
  * @stability experimental
  * @category models
- * @since 4.1.3
+ * @since 4.1.5
  */
 export interface LocalOption {
   readonly local?: boolean | undefined
@@ -968,7 +968,7 @@ export interface LocalOption {
  *
  * @stability experimental
  * @category utility types
- * @since 4.1.3
+ * @since 4.1.5
  */
 export type Provided<C, ROut, RIn> = C extends
   Component<infer N, infer P, infer M, infer Msg, infer E, infer _R, infer V>
@@ -983,7 +983,7 @@ export type Provided<C, ROut, RIn> = C extends
  *
  * @stability experimental
  * @category utility types
- * @since 4.1.3
+ * @since 4.1.5
  */
 export type RuntimeService =
   | Command.FrameworkService
@@ -997,7 +997,7 @@ export type RuntimeService =
  *
  * @stability experimental
  * @category models
- * @since 4.1.3
+ * @since 4.1.5
  */
 export type ProvideInput = Layer.Any | ReadonlyArray<Layer.Any> | ((props: any) => Layer.Any)
 
@@ -1005,14 +1005,14 @@ export type ProvideInput = Layer.Any | ReadonlyArray<Layer.Any> | ((props: any) 
  * Helper types for `provide`.
  *
  * @stability experimental
- * @since 4.1.3
+ * @since 4.1.5
  */
 export declare namespace ProvideInput {
   /**
    * The Layer type of an input.
    *
    * @category utility types
-   * @since 4.1.3
+   * @since 4.1.5
    */
   export type LayerOf<L> = L extends (props: any) => infer R ? R : L extends ReadonlyArray<infer E> ? E : L
 
@@ -1020,7 +1020,7 @@ export declare namespace ProvideInput {
    * The services an input provides.
    *
    * @category utility types
-   * @since 4.1.3
+   * @since 4.1.5
    */
   export type Success<L> = LayerOf<L> extends infer X ? X extends Layer.Layer<infer A, any, any> ? A : never : never
 
@@ -1028,7 +1028,7 @@ export declare namespace ProvideInput {
    * The error an input can fail with.
    *
    * @category utility types
-   * @since 4.1.3
+   * @since 4.1.5
    */
   export type Error<L> = LayerOf<L> extends infer X ? X extends Layer.Layer<any, infer E, any> ? E : never : never
 
@@ -1036,7 +1036,7 @@ export declare namespace ProvideInput {
    * The services an input requires.
    *
    * @category utility types
-   * @since 4.1.3
+   * @since 4.1.5
    */
   export type Services<L> = LayerOf<L> extends infer X ? X extends Layer.Layer<any, any, infer R> ? R : never : never
 }
@@ -1047,7 +1047,7 @@ export declare namespace ProvideInput {
  *
  * @stability experimental
  * @category utility types
- * @since 4.1.3
+ * @since 4.1.5
  */
 export type ProvideRest<L, Msg> = [ProvideInput.Error<L>] extends [never] ?
   [options?: LocalOption & { readonly onFailure?: ProvideOptions<never, Msg>["onFailure"] | undefined }]
@@ -1059,7 +1059,7 @@ export type ProvideRest<L, Msg> = [ProvideInput.Error<L>] extends [never] ?
  *
  * @stability experimental
  * @category utility types
- * @since 4.1.3
+ * @since 4.1.5
  */
 export type RequiresOnFailure<L, O> = [ProvideInput.Error<L>] extends [never] ? unknown
   : [O] extends [never] ? { readonly "This Layer can fail. Pass { onFailure } to handle": ProvideInput.Error<L> }
@@ -1071,7 +1071,7 @@ export type RequiresOnFailure<L, O> = [ProvideInput.Error<L>] extends [never] ? 
  *
  * @stability experimental
  * @category utility types
- * @since 4.1.3
+ * @since 4.1.5
  */
 export type CurriedCantFail<L> = [ProvideInput.Error<L>] extends [never] ? unknown
   : {
@@ -1153,7 +1153,7 @@ const toLayer = (layers: Layer.Any | ReadonlyArray<Layer.Any>): Layer.Layer<any,
  *
  * @stability experimental
  * @category composition
- * @since 4.1.3
+ * @since 4.1.5
  */
 export const provide: {
   <Props, ROut, RIn>(

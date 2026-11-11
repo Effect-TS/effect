@@ -55,7 +55,7 @@
  * ```
  *
  * @stability experimental
- * @since 4.1.3
+ * @since 4.1.5
  */
 import * as Cause from "../../Cause.ts"
 import * as Duration from "../../Duration.ts"
@@ -87,7 +87,7 @@ import * as Query from "./Query.ts"
  *
  * @stability experimental
  * @category models
- * @since 4.1.3
+ * @since 4.1.5
  */
 export interface Pending<Msg> {
   readonly command: Command.Effectful<Msg, any, never> | Command.Streaming<Msg, any, never>
@@ -105,7 +105,7 @@ export interface Pending<Msg> {
  *
  * @stability experimental
  * @category models
- * @since 4.1.3
+ * @since 4.1.5
  */
 export interface AwaitedField {
   readonly field: string
@@ -123,7 +123,7 @@ export interface AwaitedField {
  *
  * @stability experimental
  * @category models
- * @since 4.1.3
+ * @since 4.1.5
  */
 export interface Story<Props, Model, Msg, Events> {
   readonly component: Component.Component<any, Props, Model, Msg, Events, any, any>
@@ -169,7 +169,7 @@ export interface Story<Props, Model, Msg, Events> {
  *
  * @stability experimental
  * @category models
- * @since 4.1.3
+ * @since 4.1.5
  */
 export interface LoaderInfo {
   readonly field: string
@@ -183,7 +183,7 @@ export interface LoaderInfo {
  *
  * @stability experimental
  * @category models
- * @since 4.1.3
+ * @since 4.1.5
  */
 export type KeyedLoad<R extends Loader.Read.Any> =
   | {
@@ -204,7 +204,7 @@ export type KeyedLoad<R extends Loader.Read.Any> =
  *
  * @stability experimental
  * @category models
- * @since 4.1.3
+ * @since 4.1.5
  */
 export type Target = Command.Definition.Any | Command.Effectful<any, any, never> | Command.Streaming<any, any, never>
 
@@ -214,7 +214,7 @@ export type Target = Command.Definition.Any | Command.Effectful<any, any, never>
  *
  * @stability experimental
  * @category models
- * @since 4.1.3
+ * @since 4.1.5
  */
 export type StreamTarget = Command.Definition<any, any, true, any, any> | Command.Streaming<any, any, never>
 
@@ -258,7 +258,7 @@ type AnyComponent =
  *
  * @stability experimental
  * @category models
- * @since 4.1.3
+ * @since 4.1.5
  */
 export interface Steps<C extends AnyComponent> extends Pipeable {
   /** The story after the last step. */
@@ -435,7 +435,7 @@ export interface Steps<C extends AnyComponent> extends Pipeable {
  * Helper types for `Steps`.
  *
  * @stability experimental
- * @since 4.1.3
+ * @since 4.1.5
  */
 export declare namespace Steps {
   /**
@@ -443,7 +443,7 @@ export declare namespace Steps {
    *
    * @stability experimental
    * @category models
-   * @since 4.1.3
+   * @since 4.1.5
    */
   export type Any = Steps<AnyComponent>
 }
@@ -1320,7 +1320,7 @@ class StepsImpl implements Steps<AnyComponent> {
  *
  * @stability experimental
  * @category constructors
- * @since 4.1.3
+ * @since 4.1.5
  */
 export const make = <C extends AnyComponent>(
   component: C,
@@ -1348,7 +1348,7 @@ export const make = <C extends AnyComponent>(
  *
  * @stability experimental
  * @category constructors
- * @since 4.1.3
+ * @since 4.1.5
  */
 export const start = <C extends AnyComponent>(component: C, props: Component.Props<C>): Steps<C> => {
   const first = component.init(props)
@@ -1372,7 +1372,7 @@ export const start = <C extends AnyComponent>(component: C, props: Component.Pro
  *
  * @stability experimental
  * @category queries
- * @since 4.1.3
+ * @since 4.1.5
  */
 export const children = <Msg>(
   view: View.Node<Msg, any>,
@@ -1398,7 +1398,7 @@ const findChild = <Msg>(view: View.Node<Msg, any>, key: string, step: string): V
  *
  * @stability experimental
  * @category queries
- * @since 4.1.3
+ * @since 4.1.5
  */
 export const fallback = <Msg>(
   view: View.Node<Msg, any>,
@@ -1412,7 +1412,7 @@ export const fallback = <Msg>(
  *
  * @stability experimental
  * @category queries
- * @since 4.1.3
+ * @since 4.1.5
  */
 export const layerFailure = <C extends Component.Any>(
   component: C,
@@ -1445,7 +1445,7 @@ export const layerFailure = <C extends Component.Any>(
  *
  * @stability experimental
  * @category queries
- * @since 4.1.3
+ * @since 4.1.5
  */
 export const head = <Name extends string, Props, Model, Msg, Events, R, V extends View.Elements>(
   component: Component.Component<Name, Props, Model, Msg, Events, R, V>,
@@ -1466,7 +1466,7 @@ export const head = <Name extends string, Props, Model, Msg, Events, R, V extend
  *
  * @stability experimental
  * @category models
- * @since 4.1.3
+ * @since 4.1.5
  */
 export interface Divergence<Model, Msg, Events> {
   readonly seq: number
@@ -1480,7 +1480,7 @@ export interface Divergence<Model, Msg, Events> {
  *
  * @stability experimental
  * @category models
- * @since 4.1.3
+ * @since 4.1.5
  */
 export interface Outcome<Model, Events> {
   readonly model: Model
@@ -1496,7 +1496,7 @@ export interface Outcome<Model, Events> {
  *
  * @stability experimental
  * @category models
- * @since 4.1.3
+ * @since 4.1.5
  */
 export interface Replay<Model, Msg, Events> {
   readonly path: string
@@ -1534,7 +1534,7 @@ const findPlaceholder = (value: unknown): string | undefined => {
  *
  * @stability experimental
  * @category replay
- * @since 4.1.3
+ * @since 4.1.5
  */
 export const fromLog = <Name extends string, Props, Model, Msg, Events, R, V extends View.Elements>(
   component: Component.Component<Name, Props, Model, Msg, Events, R, V>,

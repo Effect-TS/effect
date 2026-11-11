@@ -38,7 +38,7 @@
  * ```
  *
  * @stability experimental
- * @since 4.1.3
+ * @since 4.1.5
  */
 import * as Context from "../../Context.ts"
 import * as Effect from "../../Effect.ts"
@@ -199,7 +199,7 @@ const payloadOf = (name: string, event: Event, target: EventTarget | null, eleme
  *
  * @stability experimental
  * @category constructors
- * @since 4.1.3
+ * @since 4.1.5
  */
 export const makeHost = (
   document: Document,
@@ -393,7 +393,7 @@ export const makeHost = (
  *
  * @stability experimental
  * @category constructors
- * @since 4.1.3
+ * @since 4.1.5
  */
 export const htmlHost: Context.Service.Shape<typeof Html.Host> = {
   focus: (element, options) => (element as HTMLElement).focus(options as FocusOptions),
@@ -449,7 +449,7 @@ const signals = (document: Document) => {
  *
  * @stability experimental
  * @category layers
- * @since 4.1.3
+ * @since 4.1.5
  */
 export const layer = (options?: {
   readonly document?: Document | undefined
@@ -473,7 +473,7 @@ export const layer = (options?: {
  *
  * @stability experimental
  * @category utility types
- * @since 4.1.3
+ * @since 4.1.5
  */
 export type HtmlRoot<V> = [Renderer.HostOf<V>] extends [Html.Host] ? unknown
   : { readonly "BrowserHost.mount shows HTML elements. This root's vocabulary needs": Renderer.HostOf<V> }
@@ -483,7 +483,7 @@ export type HtmlRoot<V> = [Renderer.HostOf<V>] extends [Html.Host] ? unknown
  *
  * @stability experimental
  * @category models
- * @since 4.1.3
+ * @since 4.1.5
  */
 export interface MountOptions<V extends View.Elements, RF = never> {
   /** Shown in the root's place when the root itself fails. */
@@ -563,7 +563,7 @@ export interface MountOptions<V extends View.Elements, RF = never> {
  *
  * @stability experimental
  * @category layers
- * @since 4.1.3
+ * @since 4.1.5
  */
 export const mount = <
   Name extends string,
@@ -599,7 +599,7 @@ export const mount = <
  *
  * @stability experimental
  * @category constructors
- * @since 4.1.3
+ * @since 4.1.5
  */
 export const mountEffect = <
   Name extends string,

@@ -30,7 +30,7 @@
  * ```
  *
  * @stability experimental
- * @since 4.1.3
+ * @since 4.1.5
  */
 import * as Stream from "../Stream.ts"
 
@@ -39,7 +39,7 @@ import * as Stream from "../Stream.ts"
  *
  * @stability experimental
  * @category type ids
- * @since 4.1.3
+ * @since 4.1.5
  */
 export const TypeId = "~effect/ui/Subscription" as const
 
@@ -48,7 +48,7 @@ export const TypeId = "~effect/ui/Subscription" as const
  *
  * @stability experimental
  * @category type ids
- * @since 4.1.3
+ * @since 4.1.5
  */
 export type TypeId = typeof TypeId
 
@@ -64,7 +64,7 @@ export type TypeId = typeof TypeId
  *
  * @stability experimental
  * @category models
- * @since 4.1.3
+ * @since 4.1.5
  */
 export interface Subscription<out Msg, out R = never> {
   readonly [TypeId]: TypeId
@@ -77,7 +77,7 @@ export interface Subscription<out Msg, out R = never> {
  *
  * @stability experimental
  * @category models
- * @since 4.1.3
+ * @since 4.1.5
  */
 export type Dep = string | number | boolean | null
 
@@ -86,7 +86,7 @@ export type Dep = string | number | boolean | null
  *
  * @stability experimental
  * @category models
- * @since 4.1.3
+ * @since 4.1.5
  */
 export type Deps = Dep | ReadonlyArray<Dep>
 
@@ -95,7 +95,7 @@ export type Deps = Dep | ReadonlyArray<Dep>
  *
  * @stability experimental
  * @category utility types
- * @since 4.1.3
+ * @since 4.1.5
  */
 export type Requirements<S> = S extends Subscription<infer _Msg, infer R> ? R : never
 
@@ -134,7 +134,7 @@ const encodeName = (name: string): string => name.replaceAll(":", "::")
  *
  * @stability experimental
  * @category constructors
- * @since 4.1.3
+ * @since 4.1.5
  */
 export const keyOf = (name: string, deps?: Deps): string =>
   deps === undefined
@@ -176,7 +176,7 @@ export const keyOf = (name: string, deps?: Deps): string =>
  *
  * @stability experimental
  * @category constructors
- * @since 4.1.3
+ * @since 4.1.5
  */
 export const make: {
   <Msg, R = never>(name: string, stream: Stream.Stream<Msg, never, R>): Subscription<Msg, R>

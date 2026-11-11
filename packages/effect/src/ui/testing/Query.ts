@@ -25,7 +25,7 @@
  * ```
  *
  * @stability experimental
- * @since 4.1.3
+ * @since 4.1.5
  */
 
 /**
@@ -33,7 +33,7 @@
  *
  * @stability experimental
  * @category models
- * @since 4.1.3
+ * @since 4.1.5
  */
 export interface Node {
   readonly tag?: string | undefined
@@ -47,7 +47,7 @@ export interface Node {
  *
  * @stability experimental
  * @category models
- * @since 4.1.3
+ * @since 4.1.5
  */
 export interface Locator {
   readonly description: string
@@ -59,7 +59,7 @@ export interface Locator {
  *
  * @stability experimental
  * @category getters
- * @since 4.1.3
+ * @since 4.1.5
  */
 export const textOf = (node: Node): string =>
   node.text !== undefined && node.tag === undefined ? node.text : (node.children ?? []).map(textOf).join("")
@@ -69,7 +69,7 @@ export const textOf = (node: Node): string =>
  *
  * @stability experimental
  * @category getters
- * @since 4.1.3
+ * @since 4.1.5
  */
 export const elements = <N extends Node>(root: N): ReadonlyArray<N> => {
   const out: Array<N> = []
@@ -92,7 +92,7 @@ const make = (description: string, all: <N extends Node>(root: N) => ReadonlyArr
  *
  * @stability experimental
  * @category locators
- * @since 4.1.3
+ * @since 4.1.5
  */
 export const text = (text: string, options?: { readonly exact?: boolean | undefined }): Locator => {
   const matches = (node: Node) => options?.exact === true ? textOf(node).trim() === text : textOf(node).includes(text)
@@ -110,7 +110,7 @@ export const text = (text: string, options?: { readonly exact?: boolean | undefi
  *
  * @stability experimental
  * @category locators
- * @since 4.1.3
+ * @since 4.1.5
  */
 export const attr = (name: string, value?: string): Locator =>
   make(
@@ -126,7 +126,7 @@ export const attr = (name: string, value?: string): Locator =>
  *
  * @stability experimental
  * @category locators
- * @since 4.1.3
+ * @since 4.1.5
  */
 export const testId = (id: string): Locator => attr("data-testid", id)
 
@@ -135,7 +135,7 @@ export const testId = (id: string): Locator => attr("data-testid", id)
  *
  * @stability experimental
  * @category locators
- * @since 4.1.3
+ * @since 4.1.5
  */
 export const tag = (tag: string): Locator =>
   make(`<${tag}>`, (root) => elements(root).filter((node) => node.tag === tag))
@@ -145,7 +145,7 @@ export const tag = (tag: string): Locator =>
  *
  * @stability experimental
  * @category locators
- * @since 4.1.3
+ * @since 4.1.5
  */
 export const inside = (container: Locator, locator: Locator): Locator =>
   make(`${locator.description} inside ${container.description}`, (root) => {
@@ -163,7 +163,7 @@ export const inside = (container: Locator, locator: Locator): Locator =>
  *
  * @stability experimental
  * @category queries
- * @since 4.1.3
+ * @since 4.1.5
  */
 export const all = <N extends Node>(root: N, locator: Locator): ReadonlyArray<N> => locator.all(root)
 
@@ -172,7 +172,7 @@ export const all = <N extends Node>(root: N, locator: Locator): ReadonlyArray<N>
  *
  * @stability experimental
  * @category queries
- * @since 4.1.3
+ * @since 4.1.5
  */
 export const query = <N extends Node>(root: N, locator: Locator): N | undefined => {
   const found = locator.all(root)
@@ -185,7 +185,7 @@ export const query = <N extends Node>(root: N, locator: Locator): N | undefined 
  *
  * @stability experimental
  * @category queries
- * @since 4.1.3
+ * @since 4.1.5
  */
 export const get = <N extends Node>(root: N, locator: Locator): N => {
   const found = query(root, locator)
@@ -198,7 +198,7 @@ export const get = <N extends Node>(root: N, locator: Locator): N => {
  *
  * @stability experimental
  * @category models
- * @since 4.1.3
+ * @since 4.1.5
  */
 export interface Firable extends Node {
   readonly fire: (event: string, payload: unknown) => void
@@ -216,6 +216,6 @@ export interface Firable extends Node {
  *
  * @stability experimental
  * @category events
- * @since 4.1.3
+ * @since 4.1.5
  */
 export const fire = (node: Firable, event: string, payload: unknown = {}): void => node.fire(event, payload)

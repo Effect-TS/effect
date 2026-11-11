@@ -14,7 +14,7 @@
  * implement one.
  *
  * @stability experimental
- * @since 4.1.3
+ * @since 4.1.5
  */
 import type * as Cause from "../Cause.ts"
 import type * as Context from "../Context.ts"
@@ -38,7 +38,7 @@ import type * as View from "./View.ts"
  *
  * @stability experimental
  * @category models
- * @since 4.1.3
+ * @since 4.1.5
  */
 export type Handlers = Readonly<Record<string, View.Handler<unknown, any>>>
 
@@ -48,7 +48,7 @@ export type Handlers = Readonly<Record<string, View.Handler<unknown, any>>>
  *
  * @stability experimental
  * @category models
- * @since 4.1.3
+ * @since 4.1.5
  */
 export type Dispatch = (event: string, handler: View.Handler<unknown, any>, payload: unknown) => void
 
@@ -81,7 +81,7 @@ export type Dispatch = (event: string, handler: View.Handler<unknown, any>, payl
  *
  * @stability experimental
  * @category models
- * @since 4.1.3
+ * @since 4.1.5
  */
 export interface Host<Node> {
   createElement(tag: string): Node
@@ -135,7 +135,7 @@ export interface Host<Node> {
  *
  * @stability experimental
  * @category models
- * @since 4.1.3
+ * @since 4.1.5
  */
 export interface Hydration<Node> {
   firstChild(node: Node): Node | undefined
@@ -173,7 +173,7 @@ export interface Hydration<Node> {
  *
  * @stability experimental
  * @category models
- * @since 4.1.3
+ * @since 4.1.5
  */
 export interface State {
   readonly [path: string]: unknown
@@ -188,7 +188,7 @@ export interface State {
  *
  * @stability experimental
  * @category models
- * @since 4.1.3
+ * @since 4.1.5
  */
 export type ServerNode =
   | {
@@ -207,7 +207,7 @@ export type ServerNode =
  *
  * @stability experimental
  * @category models
- * @since 4.1.3
+ * @since 4.1.5
  */
 export interface Prerendered<out Model> {
   readonly nodes: ReadonlyArray<ServerNode>
@@ -222,7 +222,7 @@ export interface Prerendered<out Model> {
  *
  * @stability experimental
  * @category services
- * @since 4.1.3
+ * @since 4.1.5
  */
 export interface Renderer {
   readonly host: Host<any>
@@ -233,7 +233,7 @@ export interface Renderer {
  *
  * @stability experimental
  * @category services
- * @since 4.1.3
+ * @since 4.1.5
  */
 export const Renderer: Context.Service<Renderer, Renderer> = services.Renderer
 
@@ -242,7 +242,7 @@ export const Renderer: Context.Service<Renderer, Renderer> = services.Renderer
  *
  * @stability experimental
  * @category layers
- * @since 4.1.3
+ * @since 4.1.5
  */
 export const layer = <Node>(host: Host<Node>): Layer.Layer<Renderer> => Layer.succeed(Renderer, { host })
 
@@ -258,7 +258,7 @@ export const layer = <Node>(host: Host<Node>): Layer.Layer<Renderer> => Layer.su
  *
  * @stability experimental
  * @category models
- * @since 4.1.3
+ * @since 4.1.5
  */
 export interface Ref<in out Node> {
   readonly name: string
@@ -274,7 +274,7 @@ export interface Ref<in out Node> {
  *
  * @stability experimental
  * @category constructors
- * @since 4.1.3
+ * @since 4.1.5
  */
 export const ref = <Node = unknown>(name: string): Ref<Node> => refAt(name, name)
 
@@ -304,7 +304,7 @@ const isRef = (u: unknown): u is Ref<any> =>
  *
  * @stability experimental
  * @category schemas
- * @since 4.1.3
+ * @since 4.1.5
  */
 export const Ref: Schema.decodeTo<Schema.declare<Ref<any>>, Schema.String> = Schema.String.pipe(
   Schema.decodeTo(
@@ -331,7 +331,7 @@ export const Ref: Schema.decodeTo<Schema.declare<Ref<any>>, Schema.String> = Sch
  *
  * @stability experimental
  * @category services
- * @since 4.1.3
+ * @since 4.1.5
  */
 export interface Refs {
   readonly lookup: <Node>(ref: Ref<Node>) => Effect.Effect<Option.Option<Node>>
@@ -342,7 +342,7 @@ export interface Refs {
  *
  * @stability experimental
  * @category services
- * @since 4.1.3
+ * @since 4.1.5
  */
 export const Refs: Context.Service<Refs, Refs> = services.Refs
 
@@ -351,7 +351,7 @@ export const Refs: Context.Service<Refs, Refs> = services.Refs
  *
  * @stability experimental
  * @category models
- * @since 4.1.3
+ * @since 4.1.5
  */
 export interface Root<out Model, in Msg> {
   /** The root instance's path, `/<name>`. */
@@ -378,7 +378,7 @@ export interface Root<out Model, in Msg> {
  *
  * @stability experimental
  * @category utility types
- * @since 4.1.3
+ * @since 4.1.5
  */
 export type HostOf<V> = [V] extends [never] ? never : V extends View.Elements ? V["Host"] : never
 
@@ -425,7 +425,7 @@ export type HostOf<V> = [V] extends [never] ? never : V extends View.Elements ? 
  *
  * @stability experimental
  * @category constructors
- * @since 4.1.3
+ * @since 4.1.5
  */
 export const mount: <
   Name extends string,
@@ -459,7 +459,7 @@ export const mount: <
  *
  * @stability experimental
  * @category models
- * @since 4.1.3
+ * @since 4.1.5
  */
 export interface LoaderOptions {
   /** How long an entry stays once nothing watches it. 5 minutes by default; a read can override it. */
@@ -505,7 +505,7 @@ export interface LoaderOptions {
  *
  * @stability experimental
  * @category constructors
- * @since 4.1.3
+ * @since 4.1.5
  */
 export const prerender: <Name extends string, Props, Model, Msg, Events, R, V extends View.Elements, RP = never>(
   component: Component.Component<Name, Props, Model, Msg, Events, R, V>,
@@ -527,6 +527,6 @@ export const prerender: <Name extends string, Props, Model, Msg, Events, R, V ex
  *
  * @stability experimental
  * @category models
- * @since 4.1.3
+ * @since 4.1.5
  */
 export type Failure = AsyncResult.Failure<never, unknown> & { readonly cause: Cause.Cause<unknown> }

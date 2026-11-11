@@ -48,7 +48,7 @@
  * ```
  *
  * @stability experimental
- * @since 4.1.3
+ * @since 4.1.5
  */
 import * as Context from "../Context.ts"
 import { TaggedClass } from "../Data.ts"
@@ -70,7 +70,7 @@ import type * as Renderer from "./Renderer.ts"
  *
  * @stability experimental
  * @category type ids
- * @since 4.1.3
+ * @since 4.1.5
  */
 export const TypeId = "~effect/ui/Command" as const
 
@@ -79,7 +79,7 @@ export const TypeId = "~effect/ui/Command" as const
  *
  * @stability experimental
  * @category type ids
- * @since 4.1.3
+ * @since 4.1.5
  */
 export type TypeId = typeof TypeId
 
@@ -88,7 +88,7 @@ export type TypeId = typeof TypeId
  *
  * @stability experimental
  * @category type ids
- * @since 4.1.3
+ * @since 4.1.5
  */
 export const DefinitionTypeId = "~effect/ui/Command/Definition" as const
 
@@ -97,7 +97,7 @@ export const DefinitionTypeId = "~effect/ui/Command/Definition" as const
  *
  * @stability experimental
  * @category type ids
- * @since 4.1.3
+ * @since 4.1.5
  */
 export type DefinitionTypeId = typeof DefinitionTypeId
 
@@ -107,7 +107,7 @@ export type DefinitionTypeId = typeof DefinitionTypeId
  *
  * @stability experimental
  * @category type ids
- * @since 4.1.3
+ * @since 4.1.5
  */
 export const UnmatchedTypeId = "~effect/ui/Command/Unmatched" as const
 
@@ -116,7 +116,7 @@ export const UnmatchedTypeId = "~effect/ui/Command/Unmatched" as const
  *
  * @stability experimental
  * @category type ids
- * @since 4.1.3
+ * @since 4.1.5
  */
 export type UnmatchedTypeId = typeof UnmatchedTypeId
 
@@ -133,7 +133,7 @@ export type UnmatchedTypeId = typeof UnmatchedTypeId
  *
  * @stability experimental
  * @category models
- * @since 4.1.3
+ * @since 4.1.5
  */
 export type Mode = "concurrent" | "switch" | "drop" | "queue"
 
@@ -142,7 +142,7 @@ export type Mode = "concurrent" | "switch" | "drop" | "queue"
  *
  * @stability experimental
  * @category models
- * @since 4.1.3
+ * @since 4.1.5
  */
 export type ArgsInput = Schema.Struct.Fields | Schema.Struct<Schema.Struct.Fields>
 
@@ -151,7 +151,7 @@ export type ArgsInput = Schema.Struct.Fields | Schema.Struct<Schema.Struct.Field
  *
  * @stability experimental
  * @category utility types
- * @since 4.1.3
+ * @since 4.1.5
  */
 export type ArgsFields<In> = In extends Schema.Struct<infer Fields> ? Fields
   : In extends Schema.Struct.Fields ? In
@@ -163,7 +163,7 @@ export type ArgsFields<In> = In extends Schema.Struct<infer Fields> ? Fields
  *
  * @stability experimental
  * @category utility types
- * @since 4.1.3
+ * @since 4.1.5
  */
 export type ArgsOf<In> = Schema.Struct<ArgsFields<In>>["Type"]
 
@@ -174,7 +174,7 @@ type Json = string | number | boolean | null | undefined | ReadonlyArray<Json> |
  *
  * @stability experimental
  * @category utility types
- * @since 4.1.3
+ * @since 4.1.5
  */
 export type GroupField<In> =
   & {
@@ -190,7 +190,7 @@ export type GroupField<In> =
  *
  * @stability experimental
  * @category utility types
- * @since 4.1.3
+ * @since 4.1.5
  */
 export type GroupPick<Args, G extends string> = Pick<Args, G & keyof Args>
 
@@ -200,7 +200,7 @@ export type GroupPick<Args, G extends string> = Pick<Args, G & keyof Args>
  *
  * @stability experimental
  * @category utility types
- * @since 4.1.3
+ * @since 4.1.5
  */
 export type GroupArg<Args, G extends string> = [G] extends [never] ? [] : [group?: GroupPick<Args, G>]
 
@@ -209,7 +209,7 @@ export type GroupArg<Args, G extends string> = [G] extends [never] ? [] : [group
  *
  * @stability experimental
  * @category utility types
- * @since 4.1.3
+ * @since 4.1.5
  */
 export type MakeArgs<Args> = {} extends Args ? [args?: Args] : [args: Args]
 
@@ -231,7 +231,7 @@ export type MakeArgs<Args> = {} extends Args ? [args?: Args] : [args: Args]
  *
  * @stability experimental
  * @category models
- * @since 4.1.3
+ * @since 4.1.5
  */
 export interface Options<In extends ArgsInput, G extends string> {
   readonly args: In
@@ -268,7 +268,7 @@ export interface Options<In extends ArgsInput, G extends string> {
  *
  * @stability experimental
  * @category models
- * @since 4.1.3
+ * @since 4.1.5
  */
 export interface FrameworkServices {
   readonly Scope: Scope.Scope
@@ -281,7 +281,7 @@ export interface FrameworkServices {
  *
  * @stability experimental
  * @category models
- * @since 4.1.3
+ * @since 4.1.5
  */
 export type FrameworkService = FrameworkServices[keyof FrameworkServices]
 
@@ -292,7 +292,7 @@ export type FrameworkService = FrameworkServices[keyof FrameworkServices]
  *
  * @stability experimental
  * @category utility types
- * @since 4.1.3
+ * @since 4.1.5
  */
 export type CapturesServices<R> = [Exclude<R, FrameworkService>] extends [never] ? unknown
   : {
@@ -307,7 +307,7 @@ export type CapturesServices<R> = [Exclude<R, FrameworkService>] extends [never]
  *
  * @stability experimental
  * @category models
- * @since 4.1.3
+ * @since 4.1.5
  */
 export interface Declared {
   /** What the run invalidates when its fiber exits, however it exits. */
@@ -331,7 +331,7 @@ export interface Declared {
  *
  * @stability experimental
  * @category models
- * @since 4.1.3
+ * @since 4.1.5
  */
 export interface Data extends Declared {
   /** The Command's name: the factory's name or the service's key. */
@@ -362,7 +362,7 @@ export interface Data extends Declared {
  *
  * @stability experimental
  * @category models
- * @since 4.1.3
+ * @since 4.1.5
  */
 export interface Proto<out Msg, in Source = Msg, in SourceE = never> extends Pipeable.Pipeable, Data {
   readonly [TypeId]: Variance<Msg, Source, SourceE>
@@ -389,7 +389,7 @@ export interface Proto<out Msg, in Source = Msg, in SourceE = never> extends Pip
  *
  * @stability experimental
  * @category models
- * @since 4.1.3
+ * @since 4.1.5
  */
 export interface Variance<out Msg, in Source, in SourceE = never> {
   readonly _Msg: Types.Covariant<Msg>
@@ -403,7 +403,7 @@ export interface Variance<out Msg, in Source, in SourceE = never> {
  *
  * @stability experimental
  * @category models
- * @since 4.1.3
+ * @since 4.1.5
  */
 export type Kind = "Effect" | "Stream"
 
@@ -426,7 +426,7 @@ export type Kind = "Effect" | "Stream"
  *
  * @stability experimental
  * @category models
- * @since 4.1.3
+ * @since 4.1.5
  */
 export interface Issued<out Msg, out R, in Source, out K extends Kind, in SourceE = never>
   extends Proto<Msg, Source, SourceE>
@@ -457,7 +457,7 @@ export interface Issued<out Msg, out R, in Source, out K extends Kind, in Source
  *
  * @stability experimental
  * @category models
- * @since 4.1.3
+ * @since 4.1.5
  */
 export interface Unmatched<out A, out E, out R, out K extends Kind> extends Pipeable.Pipeable, Data {
   readonly [UnmatchedTypeId]: {
@@ -477,7 +477,7 @@ export interface Unmatched<out A, out E, out R, out K extends Kind> extends Pipe
  *
  * @stability experimental
  * @category models
- * @since 4.1.3
+ * @since 4.1.5
  */
 export type Effectful<Msg, R = never, Source = Msg, SourceE = never> = Issued<Msg, R, Source, "Effect", SourceE>
 
@@ -486,7 +486,7 @@ export type Effectful<Msg, R = never, Source = Msg, SourceE = never> = Issued<Ms
  *
  * @stability experimental
  * @category models
- * @since 4.1.3
+ * @since 4.1.5
  */
 export type Streaming<Msg, R = never, Source = Msg, SourceE = never> = Issued<Msg, R, Source, "Stream", SourceE>
 
@@ -500,7 +500,7 @@ export type Streaming<Msg, R = never, Source = Msg, SourceE = never> = Issued<Ms
  *
  * @stability experimental
  * @category models
- * @since 4.1.3
+ * @since 4.1.5
  */
 export interface Interrupt extends Pipeable.Pipeable {
   readonly [TypeId]: Variance<never, unknown>
@@ -524,7 +524,7 @@ export interface Interrupt extends Pipeable.Pipeable {
  *
  * @stability experimental
  * @category models
- * @since 4.1.3
+ * @since 4.1.5
  */
 export type Command<Msg, R = never> = Effectful<Msg, R, never, never> | Streaming<Msg, R, never, never> | Interrupt
 
@@ -533,7 +533,7 @@ export type Command<Msg, R = never> = Effectful<Msg, R, never, never> | Streamin
  *
  * @stability experimental
  * @category utility types
- * @since 4.1.3
+ * @since 4.1.5
  */
 export type Requirements<C> = C extends Issued<infer _Msg, infer R, infer _S, infer _K, infer _SE> ? R : never
 
@@ -542,7 +542,7 @@ export type Requirements<C> = C extends Issued<infer _Msg, infer R, infer _S, in
  *
  * @stability experimental
  * @category utility types
- * @since 4.1.3
+ * @since 4.1.5
  */
 export type Message<C> = C extends Proto<infer Msg, infer _Source, infer _SourceE> ? Msg
   : C extends Definition<infer _Args, infer Msg, infer _S, infer _E, infer _G> ? Msg
@@ -554,7 +554,7 @@ export type Message<C> = C extends Proto<infer Msg, infer _Source, infer _Source
  *
  * @stability experimental
  * @category utility types
- * @since 4.1.3
+ * @since 4.1.5
  */
 export type Result<C> = C extends Proto<infer _Msg, infer Source, infer _SourceE> ? Source
   : C extends Unmatched<infer A, infer _E, infer _R, infer _K> ? A
@@ -567,7 +567,7 @@ export type Result<C> = C extends Proto<infer _Msg, infer Source, infer _SourceE
  *
  * @stability experimental
  * @category utility types
- * @since 4.1.3
+ * @since 4.1.5
  */
 export type Failure<C> = C extends Proto<infer _Msg, infer _Source, infer SourceE> ? SourceE
   : C extends Unmatched<infer _A, infer E, infer _R, infer _K> ? E
@@ -581,7 +581,7 @@ export type Failure<C> = C extends Proto<infer _Msg, infer _Source, infer Source
  *
  * @stability experimental
  * @category utility types
- * @since 4.1.3
+ * @since 4.1.5
  */
 export type Mapped<C, B> = C extends Issued<infer _Msg, infer R, infer Source, infer K, infer SourceE> ?
   (K extends Kind ? Issued<B, R, Source, K, SourceE> : never)
@@ -601,7 +601,7 @@ export type Mapped<C, B> = C extends Issued<infer _Msg, infer R, infer Source, i
  *
  * @stability experimental
  * @category models
- * @since 4.1.3
+ * @since 4.1.5
  */
 export interface Definition<in Args, out A, out IsStream extends boolean, out E = never, out G extends string = never> {
   readonly [DefinitionTypeId]: Definition.Variance<Args, A, IsStream, E, G>
@@ -622,14 +622,14 @@ export interface Definition<in Args, out A, out IsStream extends boolean, out E 
  * Helper types for `Definition`.
  *
  * @stability experimental
- * @since 4.1.3
+ * @since 4.1.5
  */
 export declare namespace Definition {
   /**
    * Phantom variance for a definition's args, success, kind, failure and group.
    *
    * @category models
-   * @since 4.1.3
+   * @since 4.1.5
    */
   export interface Variance<in Args, out A, out IsStream extends boolean, out E, out G extends string> {
     readonly _Args: Types.Contravariant<Args>
@@ -643,7 +643,7 @@ export declare namespace Definition {
    * Any Command definition.
    *
    * @category models
-   * @since 4.1.3
+   * @since 4.1.5
    */
   export type Any = Definition<any, any, boolean, any, any>
 
@@ -651,7 +651,7 @@ export declare namespace Definition {
    * The args struct a definition is issued with.
    *
    * @category utility types
-   * @since 4.1.3
+   * @since 4.1.5
    */
   export type Args<D> = D extends Definition<infer A, infer _A, infer _S, infer _E, infer _G> ? A : never
 
@@ -659,7 +659,7 @@ export declare namespace Definition {
    * Whether a definition was declared with `stream: true`.
    *
    * @category utility types
-   * @since 4.1.3
+   * @since 4.1.5
    */
   export type IsStream<D> = D extends Definition<infer _Args, infer _A, infer S, infer _E, infer _G> ? S : never
 }
@@ -669,7 +669,7 @@ export declare namespace Definition {
  *
  * @stability experimental
  * @category models
- * @since 4.1.3
+ * @since 4.1.5
  */
 export interface Factory<in out Args, in out Msg, out IsStream extends boolean = false, out G extends string = never>
   extends Definition<Args, Msg, IsStream, never, G>
@@ -692,7 +692,7 @@ export interface Factory<in out Args, in out Msg, out IsStream extends boolean =
  *
  * @stability experimental
  * @category models
- * @since 4.1.3
+ * @since 4.1.5
  */
 export interface Service<
   in out Self,
@@ -727,7 +727,7 @@ export interface Service<
  * Helper types for `Service`.
  *
  * @stability experimental
- * @since 4.1.3
+ * @since 4.1.5
  */
 export declare namespace Service {
   /**
@@ -735,7 +735,7 @@ export declare namespace Service {
    * returns the body's result. It may use framework services on each call.
    *
    * @category models
-   * @since 4.1.3
+   * @since 4.1.5
    */
   export type Implementation<Args, A, IsStream extends boolean, Err = never> = IsStream extends true ?
     (args: Args) => Stream.Stream<A, Err, FrameworkService>
@@ -755,7 +755,7 @@ export declare namespace Service {
    * - `writes` lists the entries a success writes. A Stream Command has none.
    *
    * @category models
-   * @since 4.1.3
+   * @since 4.1.5
    */
   export interface Options<In extends ArgsInput, A, G extends string> extends CommandOptions<In, G> {
     readonly invalidates: (args: ArgsOf<In>) => ReadonlyArray<Loader.Target>
@@ -887,7 +887,7 @@ const makeGroup = (
  *
  * @stability experimental
  * @category guards
- * @since 4.1.3
+ * @since 4.1.5
  */
 export const isCommand = (u: unknown): u is Command<unknown, unknown> => Predicate.hasProperty(u, TypeId)
 
@@ -897,7 +897,7 @@ export const isCommand = (u: unknown): u is Command<unknown, unknown> => Predica
  *
  * @stability experimental
  * @category guards
- * @since 4.1.3
+ * @since 4.1.5
  */
 export const isUnmatched = (u: unknown): u is Unmatched<unknown, unknown, unknown, Kind> =>
   Predicate.hasProperty(u, UnmatchedTypeId)
@@ -908,7 +908,7 @@ export const isUnmatched = (u: unknown): u is Unmatched<unknown, unknown, unknow
  *
  * @stability experimental
  * @category guards
- * @since 4.1.3
+ * @since 4.1.5
  */
 export const isDefinition = (u: unknown): u is Definition.Any => Predicate.hasProperty(u, DefinitionTypeId)
 
@@ -917,7 +917,7 @@ export const isDefinition = (u: unknown): u is Definition.Any => Predicate.hasPr
  *
  * @stability experimental
  * @category accessors
- * @since 4.1.3
+ * @since 4.1.5
  */
 export const nameOf = (definition: Definition.Any): string =>
   Context.isKey(definition) ? definition.key : (definition as Factory<any, any, any>).name
@@ -972,7 +972,7 @@ export const groupKeyOf = (definition: Definition.Any, group: unknown): string |
  *
  * @stability experimental
  * @category constructors
- * @since 4.1.3
+ * @since 4.1.5
  */
 export const make: {
   <
@@ -1104,7 +1104,7 @@ export const make: {
  *
  * @stability experimental
  * @category constructors
- * @since 4.1.3
+ * @since 4.1.5
  */
 export const Service: <Self>() => {
   <
@@ -1262,7 +1262,7 @@ export const Service: <Self>() => {
  *
  * @stability experimental
  * @category mapping
- * @since 4.1.3
+ * @since 4.1.5
  */
 export const map: {
   <A, B>(
@@ -1321,7 +1321,7 @@ export const map: {
  *
  * @stability experimental
  * @category mapping
- * @since 4.1.3
+ * @since 4.1.5
  */
 export const match: {
   <A, E, B, C>(options: {
@@ -1348,7 +1348,7 @@ export const match: {
  *
  * @stability experimental
  * @category utility types
- * @since 4.1.3
+ * @since 4.1.5
  */
 export type AwaitsRefetch<C> = C extends Unmatched<infer _A, infer _E, infer R, infer K> ? AwaitsRefetchOf<R, K>
   : C extends Issued<infer _Msg, infer R, infer _S, infer K, infer _SE> ? AwaitsRefetchOf<R, K>
@@ -1424,7 +1424,7 @@ type AwaitsRefetchOf<R, K> = [K] extends ["Effect"] ? [R] extends [never] ? {
  *
  * @stability experimental
  * @category mapping
- * @since 4.1.3
+ * @since 4.1.5
  */
 export const afterRefetch: {
   (budget: Duration.Input): <C extends Awaitable>(self: C & AwaitsRefetch<C>) => C
@@ -1467,7 +1467,7 @@ export const afterRefetch: {
  *
  * @stability experimental
  * @category constructors
- * @since 4.1.3
+ * @since 4.1.5
  */
 export const interrupt = <Args, G extends string>(
   definition: Definition<Args, any, boolean, any, G>,
@@ -1495,7 +1495,7 @@ export const interrupt = <Args, G extends string>(
  *
  * @stability experimental
  * @category problems
- * @since 4.1.3
+ * @since 4.1.5
  */
 export class ServerCommandIssued extends TaggedClass("ServerCommandIssued")<{
   readonly message: string

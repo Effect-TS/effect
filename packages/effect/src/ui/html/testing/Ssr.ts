@@ -47,7 +47,7 @@
  * ```
  *
  * @stability experimental
- * @since 4.1.3
+ * @since 4.1.5
  */
 import * as Clock from "../../../Clock.ts"
 import * as Context from "../../../Context.ts"
@@ -91,7 +91,7 @@ import * as server from "../internal/server.ts"
  *
  * @stability experimental
  * @category models
- * @since 4.1.3
+ * @since 4.1.5
  */
 export interface Ssr<out Model, in Msg, out Events = never> {
   readonly html: string
@@ -114,7 +114,7 @@ export interface Ssr<out Model, in Msg, out Events = never> {
  *
  * @stability experimental
  * @category errors
- * @since 4.1.3
+ * @since 4.1.5
  */
 export class SsrError extends Data.TaggedError("SsrError")<{
   readonly problems: ReadonlyArray<string>
@@ -254,7 +254,7 @@ const stepLimit = 10_000
  *
  * @stability experimental
  * @category constructors
- * @since 4.1.3
+ * @since 4.1.5
  */
 export const ssr = <Name extends string, Props, Model, Msg, Events, R, V extends View.Elements, RP = never>(
   component: Component.Component<Name, Props, Model, Msg, Events, R, V> & BrowserHost.HtmlRoot<V>,

@@ -36,7 +36,7 @@
  * ```
  *
  * @stability experimental
- * @since 4.1.3
+ * @since 4.1.5
  */
 import * as Context from "../Context.ts"
 import * as Effect from "../Effect.ts"
@@ -51,7 +51,7 @@ import type * as Component from "./Component.ts"
  *
  * @stability experimental
  * @category type ids
- * @since 4.1.3
+ * @since 4.1.5
  */
 export const TypeId = "~effect/ui/Feature" as const
 
@@ -60,7 +60,7 @@ export const TypeId = "~effect/ui/Feature" as const
  *
  * @stability experimental
  * @category type ids
- * @since 4.1.3
+ * @since 4.1.5
  */
 export type TypeId = typeof TypeId
 
@@ -76,7 +76,7 @@ export type TypeId = typeof TypeId
  *
  * @stability experimental
  * @category models
- * @since 4.1.3
+ * @since 4.1.5
  */
 export interface Implementation<in out Props, out Events> {
   readonly component: Component.Mountable<Props, Events, never>
@@ -88,7 +88,7 @@ export interface Implementation<in out Props, out Events> {
  *
  * @stability experimental
  * @category models
- * @since 4.1.3
+ * @since 4.1.5
  */
 export interface Service<in out Self, in out Props, in out Events>
   extends Context.Key<Self, Implementation<Props, Events>>
@@ -110,7 +110,7 @@ export interface Service<in out Self, in out Props, in out Events>
  *
  * @stability experimental
  * @category models
- * @since 4.1.3
+ * @since 4.1.5
  */
 export type Any = Service<any, any, any>
 
@@ -119,7 +119,7 @@ export type Any = Service<any, any, any>
  *
  * @stability experimental
  * @category guards
- * @since 4.1.3
+ * @since 4.1.5
  */
 export const isService = (u: unknown): u is Any => Predicate.hasProperty(u, TypeId)
 
@@ -164,7 +164,7 @@ export const isService = (u: unknown): u is Any => Predicate.hasProperty(u, Type
  *
  * @stability experimental
  * @category constructors
- * @since 4.1.3
+ * @since 4.1.5
  */
 export const Service: <Self>() => <
   const Name extends string,

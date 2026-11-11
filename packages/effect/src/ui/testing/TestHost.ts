@@ -41,7 +41,7 @@
  * ```
  *
  * @stability experimental
- * @since 4.1.3
+ * @since 4.1.5
  */
 import * as Cause from "../../Cause.ts"
 import * as Clock from "../../Clock.ts"
@@ -78,7 +78,7 @@ import * as Query from "./Query.ts"
  *
  * @stability experimental
  * @category models
- * @since 4.1.3
+ * @since 4.1.5
  */
 export interface TestElement extends Query.Firable {
   readonly _tag: "Element"
@@ -96,7 +96,7 @@ export interface TestElement extends Query.Firable {
  *
  * @stability experimental
  * @category models
- * @since 4.1.3
+ * @since 4.1.5
  */
 export interface TestText extends Query.Firable {
   readonly _tag: "Text"
@@ -110,7 +110,7 @@ export interface TestText extends Query.Firable {
  *
  * @stability experimental
  * @category models
- * @since 4.1.3
+ * @since 4.1.5
  */
 export type TestNode = TestElement | TestText
 
@@ -151,7 +151,7 @@ const detach = (node: TestNode) => {
  *
  * @stability experimental
  * @category constructors
- * @since 4.1.3
+ * @since 4.1.5
  */
 export const makeHost = (): Renderer.Host<TestNode> & {
   readonly operations: () => ReadonlyArray<string>
@@ -241,7 +241,7 @@ export const makeHost = (): Renderer.Host<TestNode> & {
  *
  * @stability experimental
  * @category services
- * @since 4.1.3
+ * @since 4.1.5
  */
 export interface TestHost {
   readonly host: ReturnType<typeof makeHost>
@@ -276,7 +276,7 @@ export interface TestHost {
  *
  * @stability experimental
  * @category models
- * @since 4.1.3
+ * @since 4.1.5
  */
 export interface Tree {
   readonly pending: () => ReadonlyArray<Pending>
@@ -290,7 +290,7 @@ export interface Tree {
  *
  * @stability experimental
  * @category models
- * @since 4.1.3
+ * @since 4.1.5
  */
 export type Pending = PendingCommand | PendingFetch
 
@@ -302,7 +302,7 @@ export type Pending = PendingCommand | PendingFetch
  *
  * @stability experimental
  * @category models
- * @since 4.1.3
+ * @since 4.1.5
  */
 export interface PendingCommand {
   readonly _tag: "Command"
@@ -319,7 +319,7 @@ export interface PendingCommand {
  *
  * @stability experimental
  * @category models
- * @since 4.1.3
+ * @since 4.1.5
  */
 export interface PendingFetch {
   readonly _tag: "Fetch"
@@ -337,7 +337,7 @@ export interface PendingFetch {
  *
  * @stability experimental
  * @category problems
- * @since 4.1.3
+ * @since 4.1.5
  */
 export class DrainExhausted extends Data.TaggedClass("DrainExhausted")<{
   readonly message: string
@@ -348,7 +348,7 @@ export class DrainExhausted extends Data.TaggedClass("DrainExhausted")<{
  *
  * @stability experimental
  * @category services
- * @since 4.1.3
+ * @since 4.1.5
  */
 export const TestHost: Context.Service<TestHost, TestHost> = Context.Service<TestHost>("effect/ui/testing/TestHost")
 
@@ -372,7 +372,7 @@ export const TestHost: Context.Service<TestHost, TestHost> = Context.Service<Tes
  *
  * @stability experimental
  * @category layers
- * @since 4.1.3
+ * @since 4.1.5
  */
 export const layer = (options?: {
   readonly budget?: number | undefined
@@ -479,7 +479,7 @@ export const layer = (options?: {
  *
  * @stability experimental
  * @category models
- * @since 4.1.3
+ * @since 4.1.5
  */
 export interface Root<out Model, in Msg, out Events> {
   /** The root instance's path, `/<name>`. */
@@ -516,7 +516,7 @@ export interface Root<out Model, in Msg, out Events> {
  *
  * @stability experimental
  * @category models
- * @since 4.1.3
+ * @since 4.1.5
  */
 export interface TestRoot<out Model, in Msg, out Events> extends Root<Model, Msg, Events> {
   /** The element the tree is mounted in. */
@@ -550,7 +550,7 @@ export interface TestRoot<out Model, in Msg, out Events> extends Root<Model, Msg
  *
  * @stability experimental
  * @category constructors
- * @since 4.1.3
+ * @since 4.1.5
  */
 export const mount = <
   Name extends string,
@@ -650,7 +650,7 @@ export const register = (
  *
  * @stability experimental
  * @category errors
- * @since 4.1.3
+ * @since 4.1.5
  */
 export class RootCrashed extends Data.TaggedError("RootCrashed")<{
   readonly path: string
@@ -666,7 +666,7 @@ export class RootCrashed extends Data.TaggedError("RootCrashed")<{
  *
  * @stability experimental
  * @category errors
- * @since 4.1.3
+ * @since 4.1.5
  */
 export class SettleError extends Data.TaggedError("SettleError")<{
   readonly message: string
@@ -699,7 +699,7 @@ const nextMacrotask = Effect.callback<void>((resume) => {
  *
  * @stability experimental
  * @category combinators
- * @since 4.1.3
+ * @since 4.1.5
  */
 export const settle: Effect.Effect<void, SettleError | RootCrashed | TestLoader.ProblemsError, TestHost> = Effect
   .gen(function*() {
@@ -759,7 +759,7 @@ const describePending = (pending: Pending): string =>
  *
  * @stability experimental
  * @category testing
- * @since 4.1.3
+ * @since 4.1.5
  */
 export const setVisible = (visible: boolean): Effect.Effect<void, never, TestHost> =>
   TestHost.useSync((testHost) => testHost.visibility.set(visible))
@@ -771,7 +771,7 @@ export const setVisible = (visible: boolean): Effect.Effect<void, never, TestHos
  *
  * @stability experimental
  * @category testing
- * @since 4.1.3
+ * @since 4.1.5
  */
 export const setOnline = (online: boolean): Effect.Effect<void, never, TestHost> =>
   TestHost.useSync((testHost) => testHost.connectivity.set(online))
@@ -781,7 +781,7 @@ export const setOnline = (online: boolean): Effect.Effect<void, never, TestHost>
  *
  * @stability experimental
  * @category testing
- * @since 4.1.3
+ * @since 4.1.5
  */
 export const problems: Effect.Effect<ReadonlyArray<Loader.Problem.Any>, never, TestHost> = TestHost.useSync(
   (testHost) => testHost.problems()
@@ -797,7 +797,7 @@ export const problems: Effect.Effect<ReadonlyArray<Loader.Problem.Any>, never, T
  *
  * @stability experimental
  * @category testing
- * @since 4.1.3
+ * @since 4.1.5
  */
 export const expectProblem = <Tag extends string>(tag: Tag): Effect.Effect<
   ReadonlyArray<
@@ -823,7 +823,7 @@ const summary = (value: unknown): string => {
  *
  * @stability experimental
  * @category formatting
- * @since 4.1.3
+ * @since 4.1.5
  */
 export const formatLog = (entries: ReadonlyArray<MessageLog.Entry>): string =>
   entries.map((entry) => {
@@ -877,7 +877,7 @@ export const formatLog = (entries: ReadonlyArray<MessageLog.Entry>): string =>
  *
  * @stability experimental
  * @category models
- * @since 4.1.3
+ * @since 4.1.5
  */
 export interface Stub<Self, Props, Events> {
   /** Provides the stub as the feature's implementation. */
@@ -895,7 +895,7 @@ export interface Stub<Self, Props, Events> {
  *
  * @stability experimental
  * @category constructors
- * @since 4.1.3
+ * @since 4.1.5
  */
 export const stub = <Self, Props, Events>(feature: Feature.Service<Self, Props, Events>): Stub<Self, Props, Events> => {
   const name: string = feature[Feature.TypeId].name
