@@ -495,15 +495,14 @@ describe("Loader lists", () => {
 /** The server's per-request cache. */
 const settleOnce = Layer.effect(
   Loader.Cache,
-  Effect.gen(function*() {
-    return Loader.makeCache({
-      scope: yield* Effect.scope,
-      context: yield* Effect.context<never>(),
+  Effect.map(
+    Loader.makeCache({
       idleMs: 300_000,
       visibility: Loader.makeSignal(true),
       connectivity: Loader.makeSignal(true),
       report: () => {},
       settleOnce: true
-    }) as unknown as Context.Service.Shape<typeof Loader.Cache>
-  })
+    }),
+    (cache) => cache as unknown as Context.Service.Shape<typeof Loader.Cache>
+  )
 )

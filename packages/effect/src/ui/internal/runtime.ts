@@ -398,9 +398,13 @@ export const mount = (
   container: unknown,
   options?: Options
 ): Effect.Effect<Root & Renderer.Root<any, any>, never, Scope.Scope | Renderer.Renderer> =>
-  Effect.contextWith((ctx: Context.Context<Scope.Scope | Renderer.Renderer>) =>
-    Effect.sync(() => start(component, rootProps, container, ctx, { ...options, server: undefined }))
-  )
+  Effect.contextWith((ctx: Context.Context<Scope.Scope | Renderer.Renderer>) => {
+    const startOptions = { ...options, server: undefined }
+    return Effect.map(
+      makeLoaderCache(ctx, startOptions),
+      (cache) => start(component, rootProps, container, ctx, cache, startOptions)
+    )
+  })
 
 /**
  * Renders a tree on the server: on a host that only keeps the node tree,
@@ -427,9 +431,11 @@ export const prerender = (
       const started = !Duration.isZero(budget)
       const host = serverHost.make(options.elements)
       const ctx = Context.add(yield* Effect.context<never>(), Scope.Scope, scope)
-      const root = start(component, rootProps, host.createElement("#root"), ctx, {
+      const startOptions: Options = {
         server: { host, fetches: started, static: options.static === true, onFinish: options.onFinish }
-      })
+      }
+      const cache = yield* makeLoaderCache(ctx, startOptions)
+      const root = start(component, rootProps, host.createElement("#root"), ctx, cache, startOptions)
       if (started) {
         yield* Effect.raceFirst(
           Effect.callback<void>((resume) => {
@@ -444,11 +450,33 @@ export const prerender = (
     (scope, exit) => Scope.close(scope, exit)
   )
 
+/**
+ * The cache the root owns, disposed with the root's Scope. The runtime re-adds it wherever work runs,
+ * so `Component.provide` can't shadow it.
+ */
+const makeLoaderCache = (ctx: Context.Context<any>, options: Options | undefined) => {
+  const server = options?.server
+  const scheduler = Context.get(ctx, Executor.CurrentExecutor).scheduler
+  return Loader.makeCache({
+    visibility: Context.get(ctx, Loader.Visibility),
+    connectivity: Context.get(ctx, Loader.Connectivity),
+    report: Context.get(ctx, Loader.Problems),
+    idleMs: Loader.cacheIdleMs(options?.loader?.idleTimeToLive),
+    // The server's per-request cache: one fetch per key per request, and none with a budget of 0.
+    settleOnce: server !== undefined,
+    fetches: server === undefined || server.fetches
+  }).pipe(
+    // Its fetches and timers run on the runtime's scheduler, so `TestHost.settle` drains them.
+    Effect.provideContext(scheduler === undefined ? ctx : Context.add(ctx, Scheduler.Scheduler, scheduler))
+  )
+}
+
 const start = (
   component: Component.Any,
   rootProps: unknown,
   container: unknown,
   ctx: Context.Context<any>,
+  cache: ReturnType<typeof Loader.internals>,
   options: Options | undefined
 ): Root & Renderer.Root<any, any> => {
   const server = options?.server
@@ -540,20 +568,6 @@ const start = (
   }
 
   // -- loader cache ---------------------------------------------------------
-  // The runtime owns the cache and re-adds it wherever work runs, so `Component.provide` can't shadow
-  // it. The three references are read once, here.
-  const cache = Loader.makeCache({
-    scope: rootScope,
-    // Its fetches and timers run on the runtime's scheduler, so `TestHost.settle` drains them.
-    context: withScheduler(ctx),
-    visibility: Context.get(ctx, Loader.Visibility),
-    connectivity: Context.get(ctx, Loader.Connectivity),
-    report: problems,
-    idleMs: Loader.cacheIdleMs(options?.loader?.idleTimeToLive),
-    // The server's per-request cache: one fetch per key per request, and none with a budget of 0.
-    settleOnce: server !== undefined,
-    fetches: server === undefined || server.fetches
-  })
   const withCache = (context: Context.Context<any>): Context.Context<any> =>
     Context.add(context, Loader.Cache, cache as unknown as Loader.Cache["Service"])
   /**

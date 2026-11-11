@@ -54,18 +54,16 @@ const makeUsers = (staleTime: Duration.Input = 0) => {
 const settleOnce = (problems: Array<Loader.Problem.Any>) =>
   Layer.effect(
     Loader.Cache,
-    Effect.gen(function*() {
-      const context = yield* Effect.context<never>()
-      return Loader.makeCache({
-        scope: yield* Effect.scope,
-        context,
+    Effect.map(
+      Loader.makeCache({
         idleMs: 300_000,
         visibility: Loader.makeSignal(true),
         connectivity: Loader.makeSignal(true),
         report: (problem) => problems.push(problem),
         settleOnce: true
-      }) as unknown as Context.Service.Shape<typeof Loader.Cache>
-    })
+      }),
+      (cache) => cache as unknown as Context.Service.Shape<typeof Loader.Cache>
+    )
   )
 
 const cache = Loader.Cache.useSync(Loader.internals)

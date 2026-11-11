@@ -587,6 +587,28 @@ describe("Loader", () => {
     }).pipe(Effect.provide(TestLoader.layer()))
   })
 
+  it.effect("makeCache builds the cache when it runs and disposes it with its Scope", () => {
+    let listeners = 0
+    const signal: Loader.Signal = {
+      get: () => true,
+      subscribe: () => {
+        listeners++
+        return () => {
+          listeners--
+        }
+      }
+    }
+    return Effect.gen(function*() {
+      const make = Loader.makeCache({ visibility: signal, connectivity: signal, report: () => {}, idleMs: 300_000 })
+      assert.strictEqual(listeners, 0)
+      const scope = yield* Scope.make()
+      yield* make.pipe(Scope.provide(scope))
+      assert.strictEqual(listeners, 2)
+      yield* Scope.close(scope, Exit.void)
+      assert.strictEqual(listeners, 0)
+    })
+  })
+
   it.effect("a cache waits for its fetches' cleanup when it is disposed", () => {
     const events: Array<string> = []
     const cleanup = Latch.makeUnsafe()

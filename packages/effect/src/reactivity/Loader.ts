@@ -1816,11 +1816,8 @@ export const layer = (options?: {
   return Layer.effect(
     Cache,
     Effect.gen(function*() {
-      const scope = yield* Effect.scope
       const context = yield* Effect.context<never>()
-      return makeCache({
-        scope,
-        context,
+      return yield* makeCache({
         idleMs,
         visibility: Context.get(context, Visibility),
         connectivity: Context.get(context, Connectivity),
@@ -3528,15 +3525,13 @@ const parseRaw = (input: unknown): Map<string, Map<string, RawTuple>> | undefine
 }
 
 /**
- * Builds a cache synchronously. `context` supplies the `Clock` and the
+ * Builds a cache. The Effect's context supplies the `Clock` and the
  * scheduler, and every fetch and timer is forked with it. The cache is
- * disposed when `scope` closes.
+ * disposed when the Effect's `Scope` closes.
  *
  * @internal
  */
 export const makeCache = (options: {
-  readonly scope: Scope.Scope
-  readonly context: Context.Context<never>
   readonly visibility: Signal
   readonly connectivity: Signal
   /** The problems sink. A throw from it is swallowed. */
@@ -3551,8 +3546,17 @@ export const makeCache = (options: {
   readonly settleOnce?: boolean | undefined
   /** `false`: no fetch ever starts, as on a server render with a budget of 0. */
   readonly fetches?: boolean | undefined
-}): CacheInternals => {
-  const { connectivity, context, visibility } = options
+}): Effect.Effect<CacheInternals, never, Scope.Scope> =>
+  Effect.contextWith((context: Context.Context<Scope.Scope>) => {
+    const built = buildCache(context, options)
+    return Effect.as(Effect.addFinalizer(() => built.dispose), built.cache)
+  })
+
+const buildCache = (
+  context: Context.Context<never>,
+  options: Parameters<typeof makeCache>[0]
+): { readonly cache: CacheInternals; readonly dispose: Effect.Effect<void> } => {
+  const { connectivity, visibility } = options
   const clock = Context.get(context, Clock.Clock)
   const defaultIdleMs = options.idleMs
   const settleOnce = options.settleOnce === true
@@ -5396,28 +5400,25 @@ export const makeCache = (options: {
     }
   }
 
-  Effect.runSync(Scope.addFinalizer(
-    options.scope,
-    Effect.suspend(() => {
-      disposed = true
-      offVisibility()
-      offConnectivity()
-      for (const build of attached) build.listeners.delete(buildClosed)
-      attached.clear()
-      for (const entry of allEntries()) {
-        if (entry.fetch !== undefined) dropFetch(entry, entry.fetch)
-        resumeAll(entry.waiters, Exit.interrupt())
-        resumeAll(entry.moreWaiters, Exit.interrupt())
-      }
-      for (const shared of Array.from(sharedFetches)) endShared(shared, Exit.interrupt())
-      for (const fiber of Array.from(timers)) fiber.interruptUnsafe()
-      timers.clear()
-      // A run's wait outlives no cache: its owner is closing too.
-      awaits.clear()
-      // Disposal ends when every fetch has finished its cleanup.
-      return Fiber.interruptAll(fetchFibers)
-    })
-  ))
+  const dispose = Effect.suspend(() => {
+    disposed = true
+    offVisibility()
+    offConnectivity()
+    for (const build of attached) build.listeners.delete(buildClosed)
+    attached.clear()
+    for (const entry of allEntries()) {
+      if (entry.fetch !== undefined) dropFetch(entry, entry.fetch)
+      resumeAll(entry.waiters, Exit.interrupt())
+      resumeAll(entry.moreWaiters, Exit.interrupt())
+    }
+    for (const shared of Array.from(sharedFetches)) endShared(shared, Exit.interrupt())
+    for (const fiber of Array.from(timers)) fiber.interruptUnsafe()
+    timers.clear()
+    // A run's wait outlives no cache: its owner is closing too.
+    awaits.clear()
+    // Disposal ends when every fetch has finished its cleanup.
+    return Fiber.interruptAll(fetchFibers)
+  })
 
-  return self
+  return { cache: self, dispose }
 }
