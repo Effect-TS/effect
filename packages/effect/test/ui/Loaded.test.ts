@@ -481,6 +481,119 @@ describe("Loaded", () => {
     })
   })
 
+  it.effect("watch: a bare Failure stored while a pass is open, or in an earlier one, is withheld in either layout", () => {
+    const swap = (timing: "this pass" | "an earlier pass", extracted: boolean) => {
+      // The fetcher waits for the test to finish it.
+      const finish = new Map<string, (effect: Effect.Effect<string, string>) => void>()
+      const messages: Array<string> = []
+      class Read extends Loader.Service<Read>()(
+        "test/Read",
+        { args: { id: Schema.String }, success: Schema.String, error: Schema.String, staleTime: "1 second" },
+        Effect.succeed(({ id }) => Effect.callback<string, string>((resume) => void finish.set(id, resume)))
+      ) {}
+      const Message = Schema.TaggedUnion({ Changed: { data: Loader.Snapshot(Read, "data"), state: Schema.String } })
+      const Watcher = Component.make({
+        name: "Watcher",
+        props: Schema.Struct({ tag: Schema.String }),
+        model: Schema.Struct({ data: Loader.Snapshot(Read, "data") }),
+        message: Message,
+        loaders: { data: () => ({ id: "fail" }) },
+        init: ($) => $.empty,
+        update: (_model, message, $) => {
+          messages.push(`${$.props.tag} ${message.state}`)
+          return { data: message.data }
+        },
+        subscriptions: (_model, _props, watch) => [
+          watch({
+            data: (data, result) => Message.make({ _tag: "Changed", data, state: `${result._tag}:${result.waiting}` })
+          })
+        ],
+        view: (_model, h) => h.el("p", `${h.props.tag}=${h.loaded.data._tag}:${h.loaded.data.waiting}`)
+      })
+      const Shell = Component.make({
+        name: "Shell",
+        props: Schema.Struct({ show: Schema.Boolean }),
+        model: Schema.Null,
+        message: Schema.Never,
+        init: () => null,
+        update: (model) => model,
+        view: (_model, h) => h.el("div", h.props.show ? [h.child(Watcher, { key: "old", props: { tag: "o" } })] : [])
+      })
+      const PageMessage = Schema.TaggedUnion({
+        Changed: { other: Loader.Snapshot(Read, "other") },
+        Enable: {},
+        Swap: {}
+      })
+      const Page = Component.make({
+        name: "Page",
+        model: Schema.Struct({
+          other: Loader.Snapshot(Read, "other"),
+          enabled: Schema.Boolean,
+          swapped: Schema.Boolean
+        }),
+        message: PageMessage,
+        loaders: { other: (model) => model.enabled ? { id: "other" } : undefined },
+        init: ($) => ({ ...$.empty, enabled: false, swapped: false }),
+        update: (model, message) =>
+          PageMessage.match(message, {
+            Changed: ({ other }) => ({ ...model, other }),
+            Enable: () => ({ ...model, enabled: true }),
+            Swap: () => ({ ...model, swapped: true })
+          }),
+        subscriptions: (
+          _model,
+          _props,
+          watch
+        ) => [watch({ other: (other) => PageMessage.make({ _tag: "Changed", other }) })],
+        view: (model, h) =>
+          h.el(
+            "div",
+            h.el("section", model.swapped ? [h.child(Watcher, { key: "new", props: { tag: "n" } })] : []),
+            extracted
+              ? h.child(Shell, { key: "shell", props: { show: !model.swapped } })
+              : h.el("div", model.swapped ? [] : [h.child(Watcher, { key: "old", props: { tag: "o" } })])
+          )
+      })
+      return run(
+        Read.layer,
+        Effect.gen(function*() {
+          const root = yield* TestHost.mount(Page, {})
+          yield* TestHost.settle
+          // An unrelated loader opens a pass, and the old watcher's fetch fails while it is open.
+          root.send(PageMessage.make({ _tag: "Enable" }))
+          finish.get("fail")!(Effect.fail("missing"))
+          if (timing === "an earlier pass") yield* TestHost.settle
+          messages.length = 0
+          root.send(PageMessage.make({ _tag: "Swap" }))
+          yield* TestHost.settle
+          return {
+            messages,
+            text: root.text(),
+            frames: root.frames(),
+            stored: root.entry(Read, { id: "fail" })?.stored._tag,
+            fetches: root.fetches().map((fetch) => `${fetch.trigger} ${fetch.logKey}`)
+          }
+        })
+      )
+    }
+    return Effect.gen(function*() {
+      for (const timing of ["this pass", "an earlier pass"] as const) {
+        const expected = {
+          // The new watcher never sees the Failure: it is dropped and refetched.
+          messages: [],
+          text: "n=Initial:true",
+          frames: timing === "this pass"
+            ? ["o=Initial:true", "n=Initial:true"]
+            : ["o=Initial:true", "o=Failure:false", "n=Initial:true"],
+          stored: "Initial" as const,
+          fetches: ["watch {\"id\":\"fail\"}", "watch {\"id\":\"other\"}", "watch {\"id\":\"fail\"}"]
+        }
+        assert.deepStrictEqual(yield* swap(timing, false), expected, `${timing}, inlined`)
+        assert.deepStrictEqual(yield* swap(timing, true), expected, `${timing}, extracted`)
+      }
+    })
+  })
+
   it.effect("watch: joining a bare Failure delivers it in the pass that registered, so no loading frame commits", () => {
     const app = makeApp()
     const messages: Array<string> = []

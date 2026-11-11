@@ -164,7 +164,8 @@ describe("Loader", () => {
       // Join: old survives the hold.
       const releaseJoin = cache.hold()
       const joining = watchOne("joining")
-      assert.deepStrictEqual(joining.current(), AsyncResult.initial(true))
+      // It reads what it would had the Failure been dropped: cold, with no fetch yet.
+      assert.deepStrictEqual(joining.current(), AsyncResult.initial())
       releaseJoin()
       assert.deepStrictEqual(seen, ["old Failure(nope)", "joining Failure(nope)"])
       assert.strictEqual(show(joining.current() as Seen), "Failure(nope)")
@@ -175,7 +176,7 @@ describe("Loader", () => {
       const releaseSwap = cache.hold()
       const next = watchOne("next")
       old.unregister()
-      assert.deepStrictEqual(next.patchedView().result, AsyncResult.initial(true))
+      assert.deepStrictEqual(next.patchedView().result, AsyncResult.initial())
       releaseSwap()
       assert.deepStrictEqual(next.current(), AsyncResult.initial(true))
       db.mode = "ok"
@@ -185,6 +186,85 @@ describe("Loader", () => {
       next.unregister()
     }).pipe(provide)
   })
+
+  it.effect("under a hold, a bare Failure stored during it or an earlier one is withheld, in either order", () =>
+    Effect.gen(function*() {
+      for (const timing of ["this hold", "an earlier hold"] as const) {
+        for (const order of ["register first", "release first"] as const) {
+          const { GetUser, db, provide } = makeUsers({ staleTime: "30 seconds" })
+          const result = yield* Effect.gen(function*() {
+            const cache = Loader.internals(yield* Loader.Cache)
+            const def = Loader.defOf(GetUser)
+            const fetcher = (yield* GetUser) as unknown as (args: unknown) => Effect.Effect<any, any>
+            const seen: Array<string> = []
+            const watchOne = (name: string) =>
+              cache.watch(def, { id: "1" }, fetcher, (result) => seen.push(name + " " + show(result as Seen)))
+            db.mode = "fail"
+            const old = watchOne("old")
+            const first = cache.hold()
+            // The fetch fails while the hold is open.
+            yield* advance(10)
+            if (timing === "an earlier hold") first()
+            const release = timing === "this hold" ? first : cache.hold()
+            seen.length = 0
+            if (order === "release first") old.unregister()
+            const next = watchOne("next")
+            const before = show(next.current() as Seen)
+            if (order === "register first") old.unregister()
+            release()
+            const after = show(next.current() as Seen)
+            db.mode = "ok"
+            yield* advance(10)
+            next.unregister()
+            return { before, after, seen, triggers: yield* triggers }
+          }).pipe(provide)
+          assert.deepStrictEqual(result, {
+            before: "Initial",
+            after: "Initial waiting",
+            seen: ["next Ann"],
+            triggers: ["watch", "watch"]
+          }, `${timing}, ${order}`)
+        }
+      }
+    }))
+
+  it.effect("under a hold, the window counts only the watchers that survive it", () =>
+    Effect.gen(function*() {
+      for (const survives of [false, true]) {
+        for (const order of ["register first", "release first"] as const) {
+          const { GetUser, provide } = makeUsers({ staleTime: "30 seconds" })
+          const result = yield* Effect.gen(function*() {
+            const cache = Loader.internals(yield* Loader.Cache)
+            const def = Loader.defOf(GetUser)
+            const fetcher = (yield* GetUser) as unknown as (args: unknown) => Effect.Effect<any, any>
+            const seen: Array<string> = []
+            cache.hydrate({ "users/GetUser": [["{\"id\":\"1\"}", 1, ["nope"], 0]] })
+            const release = cache.hold()
+            const inside = cache.watch(def, { id: "1" }, fetcher, () => {})
+            cache.closeWindow()
+            if (!survives && order === "release first") inside.unregister()
+            const outside = cache.watch(def, { id: "1" }, fetcher, (result) => seen.push(show(result as Seen)))
+            const before = show(outside.current() as Seen)
+            if (!survives && order === "register first") inside.unregister()
+            release()
+            const after = show(outside.current() as Seen)
+            yield* advance(10)
+            outside.unregister()
+            inside.unregister()
+            return { before, after, seen, triggers: yield* triggers }
+          }).pipe(provide)
+          assert.deepStrictEqual(
+            result,
+            survives
+              // A join on the hydrated Failure: delivered at release, with no fetch.
+              ? { before: "Initial", after: "Failure(nope)", seen: ["Failure(nope)"], triggers: [] }
+              // The watcher that came inside the window left after it closed: dropped and fetched.
+              : { before: "Initial", after: "Initial waiting", seen: ["Ann"], triggers: ["watch"] },
+            `${survives ? "survives" : "leaves"}, ${order}`
+          )
+        }
+      }
+    }))
 
   it.effect("get serves a fresh value, fetches a stale one and joins a fetch in flight", () => {
     const { GetUser, db, provide } = makeUsers({ staleTime: "30 seconds" })
