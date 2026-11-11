@@ -1,7 +1,7 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Effect, type Layer, Option, Schema, type Scope, Stream } from "effect"
+import { Effect, Exit, type Layer, Option, Schema, type Scope, Stream } from "effect"
 import { TestClock } from "effect/testing"
-import { Component, Head, type MessageLog, Router } from "effect/ui"
+import { Component, Head, type MessageLog, Route, Router } from "effect/ui"
 import { Query, TestHost } from "effect/ui/testing"
 import { App, AppRoute, GetPerson, personFetches, PersonSnapshot } from "./fixtures/router.ts"
 
@@ -20,15 +20,32 @@ const run = <A, E>(
   effect: Effect.Effect<A, E, Router.Services | TestHost.TestHost | Scope.Scope>
 ) => effect.pipe(Effect.provide(layer), Effect.provide(TestHost.layer()))
 
-const mountAt = (url: string) => TestHost.mount(App, { route: Option.getOrThrow(AppRoute.parse(url)) })
+const mount = Effect.flatMap(Router.current(AppRoute), (route) => TestHost.mount(App, { route }))
 
 describe("Router", () => {
+  it.effect("reads the current route from memory and static Routers", () =>
+    Effect.gen(function*() {
+      const current = Router.current(AppRoute)
+      const router = yield* Router.Router
+      assert.strictEqual((yield* current)._tag, "Home")
+      yield* router.navigate("/people/2")
+      assert.deepStrictEqual(yield* current, AppRoute.make({ _tag: "Person", params: { id: 2 } }))
+      const subset = Route.union({ Person: Route.make("/people/:id", { params: { id: Schema.Number } }) })
+      assert.deepStrictEqual(yield* Router.current(subset), subset.make({ _tag: "Person", params: { id: 2 } }))
+      yield* router.navigate("/")
+      assert.isTrue(Exit.isFailure(yield* Effect.exit(Router.current(subset))))
+      assert.strictEqual(
+        (yield* current.pipe(Effect.provide(Router.static({ routes: AppRoute, url: "/people/3" }))))._tag,
+        "Person"
+      )
+    }).pipe(Effect.provide(Router.memory({ routes: AppRoute, url: "/" }))))
+
   it.effect("navigates by Command, back and forward, and the head follows the route", () => {
     const { history, layer, settled } = setup()
     return run(
       layer,
       Effect.gen(function*() {
-        const root = yield* mountAt("/")
+        const root = yield* mount
         yield* TestHost.settle
         assert.strictEqual(root.head().title, "Home · App")
         assert.strictEqual(root.head().html.lang, "en")
@@ -74,7 +91,7 @@ describe("Router", () => {
     return run(
       layer,
       Effect.gen(function*() {
-        const root = yield* mountAt("/people/1")
+        const root = yield* mount
         yield* TestHost.settle
         click(root, "count 0")
         yield* TestHost.settle
@@ -112,7 +129,7 @@ describe("Router", () => {
   it.effect("restores a Model written into the history entry after the Router is rebuilt, as on a reload", () => {
     const { history, layer } = setup("/people/1")
     const page = Effect.gen(function*() {
-      const root = yield* mountAt("/people/1")
+      const root = yield* mount
       yield* TestHost.settle
       click(root, "count 0")
       yield* TestHost.settle
@@ -121,7 +138,7 @@ describe("Router", () => {
       yield* TestHost.settle
     })
     const reloaded = Effect.gen(function*() {
-      const root = yield* mountAt("/")
+      const root = yield* mount
       yield* TestHost.settle
       history.go(-1)
       yield* TestHost.settle
@@ -136,7 +153,7 @@ describe("Router", () => {
   it.effect("seeds a cold entry from a restored loader field, stale, and refetches it once", () => {
     const { history, layer } = setup("/people/1")
     const page = Effect.gen(function*() {
-      const root = yield* mountAt("/people/1")
+      const root = yield* mount
       yield* TestHost.settle
       click(root, "Home")
       yield* TestHost.settle
@@ -148,7 +165,7 @@ describe("Router", () => {
       yield* run(
         Router.make({ routes: AppRoute, history }),
         Effect.gen(function*() {
-          const root = yield* mountAt("/")
+          const root = yield* mount
           yield* TestHost.settle
           history.go(-1)
           yield* TestHost.settle
@@ -178,7 +195,7 @@ describe("Router", () => {
       yield* run(
         layer,
         Effect.gen(function*() {
-          const root = yield* mountAt("/people/1")
+          const root = yield* mount
           yield* TestHost.settle
           // The rename never finishes, so its patch is live when the push snapshots the page.
           click(root, "Rename")
@@ -191,7 +208,7 @@ describe("Router", () => {
       yield* run(
         Router.make({ routes: AppRoute, history }),
         Effect.gen(function*() {
-          const root = yield* mountAt("/")
+          const root = yield* mount
           yield* TestHost.settle
           history.go(-1)
           yield* TestHost.settle
@@ -222,7 +239,7 @@ describe("Router", () => {
     return run(
       Router.make({ routes: AppRoute, history }),
       Effect.gen(function*() {
-        const root = yield* mountAt("/people/1")
+        const root = yield* mount
         yield* TestHost.settle
         click(root, "count 0")
         yield* TestHost.settle
@@ -246,7 +263,7 @@ describe("Router", () => {
     return run(
       layer,
       Effect.gen(function*() {
-        const root = yield* mountAt("/")
+        const root = yield* mount
         yield* TestHost.settle
         click(root, "Person 1")
         yield* TestHost.settle
@@ -280,7 +297,7 @@ describe("Router", () => {
     return run(
       layer,
       Effect.gen(function*() {
-        const root = yield* mountAt("/")
+        const root = yield* mount
         yield* TestHost.settle
         click(root, "Slow")
         yield* TestHost.settle
@@ -301,7 +318,7 @@ describe("Router", () => {
         const router = yield* Router.Router
         assert.deepStrictEqual(history.entries(), ["/people/2"])
         assert.strictEqual(router.location().action, "initial")
-        const root = yield* mountAt(router.location().url)
+        const root = yield* mount
         yield* TestHost.settle
         assert.strictEqual(settled.length, 0)
 

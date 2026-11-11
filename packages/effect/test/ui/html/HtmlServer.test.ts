@@ -20,10 +20,11 @@ const hosted = <A, E, R>(effect: Effect.Effect<A, E, R>) =>
     Exclude<R, TestHost.TestHost | Scope.Scope | Renderer.Renderer>
   >
 
-const routed = (url: string) => {
-  const route = Option.getOrThrow(AppRoute.parse(url))
-  return { props: { route }, router: Router.memory({ routes: AppRoute, url }) }
-}
+const routed = Effect.fnUntraced(function*(url: string) {
+  const router = Router.memory({ routes: AppRoute, url })
+  const route = yield* Router.current(AppRoute).pipe(Effect.provide(router))
+  return { props: { route }, router }
+})
 
 const slowPeople = Layer.succeed(People, {
   bio: (id: number) => Effect.as(Effect.sleep("300 millis"), `Bio of person ${id}`)
@@ -42,7 +43,7 @@ const container = (html: string) =>
 describe("HtmlServer", { concurrent: false }, () => {
   it.effect("renders the routed example with its route data, and hydration adopts it", () =>
     Effect.gen(function*() {
-      const { props, router } = routed("/people/1")
+      const { props, router } = yield* routed("/people/1")
       const rendered = yield* HtmlServer.renderToHtml(App, props).pipe(
         Effect.provide([People.layer, router])
       )
@@ -77,7 +78,7 @@ describe("HtmlServer", { concurrent: false }, () => {
 
   it.effect("hydrates slots that missed the budget: a fetch in flight and a deferred Layer", () =>
     hosted(Effect.gen(function*() {
-      const person = routed("/people/2")
+      const person = yield* routed("/people/2")
       const missed = yield* ssr(App, person.props, { budget: "50 millis" }).pipe(
         Effect.provide([slowPeople, person.router])
       )
@@ -92,7 +93,7 @@ describe("HtmlServer", { concurrent: false }, () => {
       yield* TestHost.settle
       expect(missed.container.querySelector("#bio")!.textContent).toBe("Bio of person 2")
 
-      const slow = routed("/slow")
+      const slow = yield* routed("/slow")
       const deferred = yield* ssr(App, slow.props, { budget: "50 millis" }).pipe(
         Effect.provide([People.layer, slow.router])
       )
@@ -105,7 +106,7 @@ describe("HtmlServer", { concurrent: false }, () => {
 
   it.effect("starts no fetch with a budget of 0, and the client fetches what missed it", () =>
     hosted(Effect.gen(function*() {
-      const { props, router } = routed("/people/1")
+      const { props, router } = yield* routed("/people/1")
       const result = yield* ssr(App, props, { budget: 0 }).pipe(Effect.provide([People.layer, router]))
       expect(result.html).toContain("<p id=\"bio\">Loading</p>")
       expect(result.serverLog.filter((entry) => entry._tag === "FetchStarted")).toEqual([])
@@ -1032,7 +1033,7 @@ describe("HtmlServer loaders", { concurrent: false }, () => {
         update: (model, message, $) => message._tag === "Navigated" ? $.set(model).run(Refresh.make()) : model,
         view: (_, h) => h.div(h.child(Item, { key: "a", props: { id: 1 } }), h.child(Slow, { key: "s", props: {} }))
       }).pipe(Component.provide(Refresh.layer))
-      const { router } = routed("/")
+      const { router } = yield* routed("/")
       yield* hosted(Effect.gen(function*() {
         const result = yield* ssr(Page, {}).pipe(Effect.provide(router))
         expect(result.root.fetches().map((fetch) => [fetch.trigger, fetch.inWindow])).toEqual([["invalidation", false]])

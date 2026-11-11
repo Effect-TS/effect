@@ -23,7 +23,7 @@
  *
  * ```ts
  * import { BrowserHost, BrowserRouter, Html } from "effect/ui/html"
- * import { Effect, Layer, Option, Schema } from "effect"
+ * import { Effect, Schema } from "effect"
  * import { Component, Route, Router } from "effect/ui"
  *
  * const AppRoute = Route.union({
@@ -52,8 +52,7 @@
  * })
  *
  * const main = Effect.gen(function*() {
- *   const router = yield* Router.Router
- *   yield* BrowserHost.mount(App, { route: router.location().route as AppRoute }, document.getElementById("app")!)
+ *   yield* BrowserHost.mount(App, { route: yield* Router.current(AppRoute) }, document.getElementById("app")!)
  *   return yield* Effect.never
  * }).pipe(
  *   Effect.scoped,
