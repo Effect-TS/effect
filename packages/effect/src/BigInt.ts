@@ -752,39 +752,37 @@ export const sqrtUnsafe = (n: bigint): bigint => {
 export const sqrt = (n: bigint): Option.Option<bigint> =>
   isGreaterThanOrEqualTo(n, bigint0) ? Option.some(sqrtUnsafe(n)) : Option.none()
 
-// `self` and `degree` must be at least 2. `self` is below 2 ** bits, so a degree of at least `bits` leaves a root of 1.
-// Otherwise the root is estimated from the leading `MANTISSA_BITS` bits of `self`, raised by a relative margin of
-// 2 ** -40 to lie above it despite rounding. By the AM-GM inequality, one Newton step on whole numbers from any
-// positive value lands at or above the floor, so the estimate need not be accurate, and from there Newton's method
-// decreases to the floor and stops (Brent and Zimmermann, Modern Computer Arithmetic, §1.5.2, Algorithm 1.14 RootInt).
+// `self` must be non-negative and `degree` a positive integer. Newton's method on whole numbers, started from a
+// floating-point estimate that is rounded up because a start below the root overshoots it. The first step lands at
+// or above the floor from any positive start, and later steps decrease to the floor (Brent and Zimmermann, Modern
+// Computer Arithmetic, §1.5.2, Algorithm 1.14).
 const rootFloor = (self: bigint, degree: number): bigint => {
+  if (self < bigint2 || degree === 1) {
+    return self
+  }
   const bits = self.toString(2).length
+  // self < 2 ** bits <= 2 ** degree
   if (degree >= bits) {
     return bigint1
   }
   const k = BigInt(degree)
+  const k1 = k - bigint1
+  const step = (x: bigint): bigint => (k1 * x + self / x ** k1) / k
   const shift = Math.max(bits - MANTISSA_BITS, 0)
-  const exponent = (shift + Math.log2(Number(self >> BigInt(shift)) + 1)) / degree * (1 + 2 ** -40)
+  const exponent = (shift + Math.log2(Number(self >> BigInt(shift)))) / degree
   const scale = Math.max(Math.floor(exponent) - (MANTISSA_BITS - 1), 0)
-  const estimate = BigInt(Math.ceil(2 ** (exponent - scale))) << BigInt(scale)
-  let x = ((k - bigint1) * estimate + self / estimate ** (k - bigint1)) / k
-  while (true) {
-    const y = ((k - bigint1) * x + self / x ** (k - bigint1)) / k
-    if (y >= x) {
-      return x
-    }
+  let x = step(BigInt(Math.ceil(2 ** (exponent - scale))) << BigInt(scale))
+  let y = step(x)
+  while (y < x) {
     x = y
+    y = step(x)
   }
+  return x
 }
 
 /**
  * Computes the integer n-th root of a `bigint`, rounding toward zero, returning
  * `Option.none()` when the root does not exist.
- *
- * **When to use**
- *
- * Use to compute an integer root of any degree while representing a root that
- * does not exist as `Option.none`.
  *
  * **Details**
  *
@@ -795,8 +793,8 @@ const rootFloor = (self: bigint, degree: number): bigint => {
  *
  * **Gotchas**
  *
- * The degree must be a positive safe integer. Anything else, including `0`, `0.5`, `NaN`
- * and `Infinity`, throws a `RangeError` instead of being rounded.
+ * The degree must be a positive safe integer. Anything else, including `0`,
+ * `0.5`, `NaN` and `Infinity`, throws a `RangeError` instead of being rounded.
  *
  * **Example** (Calculating n-th roots safely)
  *
@@ -823,13 +821,10 @@ export const root: {
   if (!Number.isSafeInteger(degree) || degree < 1) {
     throw new RangeError(`Degree must be a positive safe integer, got ${degree}`)
   }
-  if (self < bigint0 && degree % 2 === 0) {
-    return Option.none()
+  if (self >= bigint0) {
+    return Option.some(rootFloor(self, degree))
   }
-  if (degree === 1 || self === -bigint1 || self === bigint0 || self === bigint1) {
-    return Option.some(self)
-  }
-  return Option.some(self < bigint0 ? -rootFloor(-self, degree) : rootFloor(self, degree))
+  return degree % 2 === 0 ? Option.none() : Option.some(-rootFloor(-self, degree))
 })
 
 /**
@@ -837,18 +832,13 @@ export const root: {
  *
  * **When to use**
  *
- * Use when the degree is known to be positive, and the input non-negative or
- * the degree odd, and you want a root that does not exist to throw instead of
- * returning `Option.none`.
- *
- * **Details**
- *
- * Returns the same root as {@link root}.
+ * Use when the root is known to exist, because the input is non-negative or
+ * the degree odd.
  *
  * **Gotchas**
  *
- * Throws a `RangeError` when the degree is below `1`, when it is even and the
- * input negative, or when it is not a safe integer.
+ * Throws a `RangeError` when the degree is even and the input negative, or
+ * when the degree is not a positive safe integer.
  *
  * **Example** (Calculating n-th roots unsafely)
  *

@@ -29,7 +29,6 @@ describe("BigInt", () => {
     assertSome(BigInt.root(2n ** 100n, 2 ** 40), 1n)
     assertSome(BigInt.root(2n ** 262144n, 8192), 2n ** 32n)
     assertNone(BigInt.root(-16n, 4))
-    assert.throws(() => BigInt.root(16n, 0.5), RangeError)
   })
 
   it("root and rootUnsafe require a positive safe integer degree", () => {

@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Add `BigInt.root` and `Rational.root`, with `rootUnsafe` variants, for integer n-th roots of bigints and exact n-th roots of rationals.
+Add `BigInt.root` for integer n-th roots and `Rational.root` for exact n-th roots, each with a `rootUnsafe` variant.

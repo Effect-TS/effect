@@ -652,6 +652,10 @@ export const powUnsafe: {
   (self: Rational, exponent: number): Rational
 } = dual(2, (self: Rational, exponent: number): Rational => Option.getOrThrowWith(pow(self, exponent), divisionByZero))
 
+// A root of magnitude at most one is exact only when it equals `n`, which avoids raising it to a huge degree.
+const exactRoot = (n: bigint, degree: number): Option.Option<bigint> =>
+  Option.filter(BI.root(n, degree), (r) => (BI.abs(r) <= bigint1 ? r : r ** BigInt(degree)) === n)
+
 /**
  * Takes the exact n-th root of a rational, returning `Option.none()` when the
  * root is not rational.
@@ -665,8 +669,8 @@ export const powUnsafe: {
  *
  * **Gotchas**
  *
- * The degree must be a positive safe integer. Anything else, including `0`, `0.5`, `NaN`
- * and `Infinity`, throws a `RangeError` instead of being rounded.
+ * The degree must be a positive safe integer. Anything else, including `0`,
+ * `0.5`, `NaN` and `Infinity`, throws a `RangeError` instead of being rounded.
  *
  * **Example** (Taking exact roots)
  *
@@ -688,31 +692,21 @@ export const powUnsafe: {
 export const root: {
   (degree: number): (self: Rational) => Option.Option<Rational>
   (self: Rational, degree: number): Option.Option<Rational>
-} = dual(2, (self: Rational, degree: number): Option.Option<Rational> => {
-  const numerator = BI.root(self.numerator, degree)
-  if (
-    Option.isNone(numerator) || (numerator.value >= -BigInt("1") && numerator.value <= BigInt("1")
-        ? numerator.value
-        : numerator.value ** BigInt(degree)) !== self.numerator
-  ) {
-    return Option.none()
-  }
-  const denominator = BI.rootUnsafe(self.denominator, degree)
-  if ((denominator === BigInt("1") ? denominator : denominator ** BigInt(degree)) !== self.denominator) {
-    return Option.none()
-  }
-  // Roots of coprime integers stay coprime, and the denominator stays positive.
-  return Option.some(canonical(numerator.value, denominator))
-})
+} = dual(
+  2,
+  (self: Rational, degree: number): Option.Option<Rational> =>
+    Option.flatMap(exactRoot(self.numerator, degree), (numerator) =>
+      // Roots of coprime integers stay coprime, and the denominator stays positive.
+      Option.map(exactRoot(self.denominator, degree), (denominator) => canonical(numerator, denominator)))
+)
 
 /**
  * Takes the exact n-th root of a rational.
  *
  * **Gotchas**
  *
- * Throws a `RangeError` when the root is not rational, when the degree is
- * below `1` or even with a negative rational, and when the degree is not a
- * safe integer.
+ * Throws a `RangeError` when the root is not rational, or when the degree is
+ * not a positive safe integer.
  *
  * **Example** (Undoing a compounded ratio)
  *
