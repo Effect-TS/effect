@@ -763,6 +763,24 @@ describe("Stream", () => {
         )
         assert.deepStrictEqual(result, [3, 5])
       }))
+
+    it.effect("filterEffect - passes stream indices across chunks on each execution", () =>
+      Effect.gen(function*() {
+        const indices: Array<number> = []
+        const stream = Stream.make("a", "b", "c", "d", "e").pipe(
+          Stream.rechunk(2),
+          Stream.filterEffect((_, i) => {
+            indices.push(i)
+            return Effect.succeed(i < 2)
+          })
+        )
+        for (let run = 0; run < 2; run++) {
+          indices.length = 0
+          const result = yield* Stream.runCollect(stream)
+          assert.deepStrictEqual(indices, [0, 1, 2, 3, 4])
+          assert.deepStrictEqual(result, ["a", "b"])
+        }
+      }))
   })
 
   describe("taking", () => {
