@@ -1176,11 +1176,13 @@ const strategyUsageTTL = Effect.fnUntraced(function*<A, E>(ttl: Duration.Input) 
         const hasExcess = activeSize(pool) > targetSize(pool)
         let oldest: PoolItem<A, E> | undefined
         for (const item of pool.state.items) {
-          if (item.refCount > 0 || pool.state.invalidated.has(item) || reservations.has(item)) continue
+          if (item.refCount > 0 || pool.state.invalidated.has(item)) continue
           const deadline = item.idleSince + ttlMillis
           if (deadline > now) {
             wakeAt = Math.min(wakeAt, deadline)
-          } else if (hasExcess && (oldest === undefined || item.idleSince < oldest.idleSince)) {
+          } else if (
+            hasExcess && !reservations.has(item) && (oldest === undefined || item.idleSince < oldest.idleSince)
+          ) {
             oldest = item
           }
         }
