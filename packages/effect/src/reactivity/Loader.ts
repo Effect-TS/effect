@@ -3547,10 +3547,14 @@ export const makeCache = (options: {
   /** `false`: no fetch ever starts, as on a server render with a budget of 0. */
   readonly fetches?: boolean | undefined
 }): Effect.Effect<CacheInternals, never, Scope.Scope> =>
-  Effect.contextWith((context: Context.Context<Scope.Scope>) => {
-    const built = buildCache(context, options)
-    return Effect.as(Effect.addFinalizer(() => built.dispose), built.cache)
-  })
+  Effect.map(
+    // Uninterruptible from the build to the finalizer's registration, so no build goes without disposal.
+    Effect.acquireRelease(
+      Effect.contextWith((context: Context.Context<never>) => Effect.sync(() => buildCache(context, options))),
+      (built) => built.dispose
+    ),
+    (built) => built.cache
+  )
 
 const buildCache = (
   context: Context.Context<never>,

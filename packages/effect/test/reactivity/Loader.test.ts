@@ -8,6 +8,7 @@ import {
   Layer,
   Option,
   Redacted,
+  Scheduler,
   Schema,
   SchemaTransformation,
   Scope,
@@ -605,6 +606,41 @@ describe("Loader", () => {
       yield* make.pipe(Scope.provide(scope))
       assert.strictEqual(listeners, 2)
       yield* Scope.close(scope, Exit.void)
+      assert.strictEqual(listeners, 0)
+    })
+  })
+
+  it.effect("makeCache disposes a cache whose build is interrupted", () => {
+    let listeners = 0
+    const signal: Loader.Signal = {
+      get: () => true,
+      subscribe: () => {
+        listeners++
+        return () => {
+          listeners--
+        }
+      }
+    }
+    // Yields once, right after the build subscribes both signals.
+    let yielded = false
+    const scheduler = new Scheduler.MixedScheduler()
+    scheduler.shouldYield = () => {
+      if (listeners !== 2 || yielded) return false
+      yielded = true
+      return true
+    }
+    return Effect.gen(function*() {
+      const scope = yield* Scope.make()
+      const fiber = Effect.runFork(
+        Loader.makeCache({ visibility: signal, connectivity: signal, report: () => {}, idleMs: 300_000 }).pipe(
+          Scope.provide(scope),
+          Effect.provideService(Scheduler.Scheduler, scheduler)
+        )
+      )
+      fiber.interruptUnsafe()
+      yield* Fiber.await(fiber)
+      yield* Scope.close(scope, Exit.void)
+      assert.isTrue(yielded)
       assert.strictEqual(listeners, 0)
     })
   })
