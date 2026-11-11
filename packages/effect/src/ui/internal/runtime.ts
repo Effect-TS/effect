@@ -142,8 +142,6 @@ interface Run {
   readonly detached: boolean
   status: schedule.Status
   fiber: Fiber.Fiber<unknown, unknown> | undefined
-  /** Stops listening to the owning build's close. */
-  release: (() => void) | undefined
   done: boolean
   /** From fiber exit until delivery: the message an awaiting run holds, and its source. */
   held: { readonly message: unknown; readonly source: MessageLog.Source } | undefined
@@ -1559,7 +1557,6 @@ const start = (
           detached: command._tag === "Effect" && command.service !== undefined && command.mode !== "switch",
           status: decision.action === "start" ? "running" : "queued",
           fiber: undefined,
-          release: undefined,
           done: false,
           held: undefined,
           waiting: false,
@@ -1727,8 +1724,9 @@ const start = (
       )
       run.fiber = fiber
       track(liveRuns, fiber)
-      if (build !== undefined) run.release = build.onClose(() => stopAndAwait(inst, run))
-      fiber.addObserver((exit) => ended(inst, run, exit, source))
+      // Until the fiber exits, the owning build's close stops the run.
+      const offClose = build?.onClose(() => stopAndAwait(inst, run))
+      fiber.addObserver((exit) => ended(inst, run, exit, source, offClose))
     }
     // After a handled Layer failure, work runs against the parent's services.
     if (inst.env.failure !== undefined) go(settled(inst.env).ctx!)
@@ -1743,13 +1741,13 @@ const start = (
     inst: Instance,
     run: Run,
     exit: Exit.Exit<unknown, unknown>,
-    source: MessageLog.Source
+    source: MessageLog.Source,
+    offClose: (() => void) | undefined
   ) => {
     const command = run.command
     // Only acts when the work never began.
     run.handle?.finish({ _tag: "Stopped" })
-    run.release?.()
-    run.release = undefined
+    offClose?.()
     // A stopped run sent no message, so `h.running` ends here.
     if (inst.stopping.delete(run) && !inst.closed) markDirty(inst)
     if (run.done) return
