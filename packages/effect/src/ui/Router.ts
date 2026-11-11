@@ -888,12 +888,40 @@ const splitHash = (href: string): readonly [string, string] => {
   return at < 0 ? [href, ""] : [href.slice(0, at), href.slice(at)]
 }
 
-/** A redirect or a trailing slash is replaced with the printed route. Anything else keeps its URL. */
+/**
+ * A redirect or a trailing slash is replaced with the printed route, and query params dropped as
+ * invalid are removed. Anything else keeps its URL.
+ */
 const canonical = (
   routes: Route.AnyUnion,
   resolved: Route.Resolved<{ readonly _tag: string }>,
   url: string
-): string => resolved.redirected ? routes.print(resolved.route) : url
+): string =>
+  resolved.redirected
+    ? routes.print(resolved.route)
+    : resolved.invalid.length > 0
+    ? withoutParams(url, new Set(resolved.invalid))
+    : url
+
+const decodeKey = (pair: string): string | undefined => {
+  const at = pair.indexOf("=")
+  try {
+    return decodeURIComponent((at < 0 ? pair : pair.slice(0, at)).replaceAll("+", " "))
+  } catch {
+    return undefined
+  }
+}
+
+/** The URL without the query params under `keys`, the others kept as written. */
+const withoutParams = (url: string, keys: ReadonlySet<string>): string => {
+  const at = url.indexOf("?")
+  if (at < 0) return url
+  const kept = url.slice(at + 1).split("&").filter((pair) => {
+    const key = decodeKey(pair)
+    return pair !== "" && (key === undefined || !keys.has(key))
+  })
+  return kept.length === 0 ? url.slice(0, at) : `${url.slice(0, at)}?${kept.join("&")}`
+}
 
 const pathnameOf = (url: string): string => {
   const at = url.indexOf("?")

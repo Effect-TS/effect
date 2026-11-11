@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Option, Schema } from "effect"
+import { Effect, Option, Schema } from "effect"
 import { Route } from "effect/ui"
 
 const makeRoutes = () =>
@@ -41,15 +41,66 @@ describe("Route", () => {
     })
   })
 
-  it("makes a query that fails to decode a 404, without falling through", () => {
+  it("makes a required query field that fails to decode a 404, without falling through", () => {
     const routes = makeRoutes()
     assert.deepStrictEqual(parse(routes, "/search?q=a+b&page=2"), {
       _tag: "Search",
       params: {},
       query: { q: "a b", page: 2 }
     })
-    assert.strictEqual(parse(routes, "/search?q=a&page=x")?._tag, "NotFound")
     assert.strictEqual(parse(routes, "/search")?._tag, "NotFound")
+    assert.strictEqual(parse(routes, "/search?q=a&q=b")?._tag, "NotFound")
+  })
+
+  it("treats an optional field that fails to decode as absent, and names it", () => {
+    const routes = makeRoutes()
+    assert.deepStrictEqual(Option.getOrThrow(routes.resolve("/search?q=a&page=x")), {
+      route: { _tag: "Search", params: {}, query: { q: "a" } },
+      redirected: false,
+      notFound: false,
+      invalid: ["page"]
+    })
+    assert.deepStrictEqual(Option.getOrThrow(routes.resolve("/people/1?tab=a&tab=b")), {
+      route: { _tag: "Person", params: { id: 1 }, query: {} },
+      redirected: false,
+      notFound: false,
+      invalid: ["tab"]
+    })
+  })
+
+  it("decodes a lone value into an array field", () => {
+    const routes = Route.union({
+      Tags: Route.make("/", { query: { tag: Schema.optional(Schema.Array(Schema.String)) } })
+    })
+    const route = routes.make({ _tag: "Tags", query: { tag: ["x"] } })
+    assert.strictEqual(routes.print(route), "/?tag=x")
+    assert.deepStrictEqual(parse(routes, "/?tag=x"), route)
+  })
+
+  it("decodes, makes and leaves out a query field's decoding default", () => {
+    const routes = Route.union({
+      Search: Route.make("/search", {
+        query: {
+          q: Schema.optional(Schema.String),
+          page: Schema.Number.pipe(Schema.withDecodingDefaultKey(Effect.succeed(1))),
+          sort: Schema.Literals(["name", "date"]).pipe(Schema.withDecodingDefaultKey(Effect.succeed("name" as const)))
+        }
+      })
+    })
+    const defaults: typeof routes.Type = { _tag: "Search", params: {}, query: { page: 1, sort: "name" } }
+    assert.deepStrictEqual(routes.make({ _tag: "Search" }), defaults)
+    assert.deepStrictEqual(parse(routes, "/search"), defaults)
+    assert.deepStrictEqual(Option.getOrThrow(routes.resolve("/search?page=abc")), {
+      route: defaults,
+      redirected: false,
+      notFound: false,
+      invalid: ["page"]
+    })
+    assert.strictEqual(routes.print(routes.make({ _tag: "Search", query: { q: "a" } })), "/search?q=a")
+    assert.strictEqual(
+      routes.print(routes.make({ _tag: "Search", query: { page: 2, sort: "date" } })),
+      "/search?page=2&sort=date"
+    )
   })
 
   it("treats Object.prototype names as ordinary query keys", () => {
@@ -79,7 +130,8 @@ describe("Route", () => {
     assert.deepStrictEqual(resolved, {
       route: { _tag: "Person", params: { id: 1 }, query: {} },
       redirected: true,
-      notFound: false
+      notFound: false,
+      invalid: []
     })
     assert.strictEqual(parse(routes, "/People/1")?._tag, "NotFound")
     assert.strictEqual(parse(routes, "/people/1#bio")?._tag, "Person")
@@ -90,7 +142,8 @@ describe("Route", () => {
     assert.deepStrictEqual(Option.getOrThrow(routes.resolve("/old/3")), {
       route: { _tag: "Person", params: { id: 3 }, query: {} },
       redirected: true,
-      notFound: false
+      notFound: false,
+      invalid: []
     })
   })
 
@@ -101,13 +154,15 @@ describe("Route", () => {
     assert.deepStrictEqual(Option.getOrThrow(routes.resolve("/a/b")), {
       route: { _tag: "NotFound", params: { "*": "a/b" }, query: {} },
       redirected: false,
-      notFound: true
+      notFound: true,
+      invalid: []
     })
-    // A query that fails to decode falls back to the catch-all.
+    // A required query field that fails to decode falls back to the catch-all.
     assert.deepStrictEqual(Option.getOrThrow(routes.resolve("/search?page=x")), {
       route: { _tag: "NotFound", params: { "*": "search" }, query: {} },
       redirected: false,
-      notFound: true
+      notFound: true,
+      invalid: []
     })
     const noCatchAll = Route.union({ Home: Route.make("/") })
     assert.isFalse(Option.getOrThrow(noCatchAll.resolve("/")).notFound)
@@ -137,6 +192,7 @@ describe("Route", () => {
     assert.strictEqual(routes.base(), "/en")
     assert.strictEqual(routes.print(routes.make({ _tag: "Home" })), "/en")
     assert.strictEqual(routes.print(routes.make({ _tag: "NewPerson" })), "/en/people/new")
+    assert.strictEqual(routes.printPath(routes.make({ _tag: "Search", query: { q: "x" } })), "/en/search")
     assert.strictEqual(parse(routes, "/en/people/5")?._tag, "Person")
     assert.strictEqual(parse(routes, "/en")?._tag, "Home")
     assert.isUndefined(parse(routes, "/fr/people/5"))
@@ -146,6 +202,7 @@ describe("Route", () => {
     const routes = makeRoutes()
     routes.setBase("#")
     assert.strictEqual(routes.print(routes.make({ _tag: "Person", params: { id: 1 } })), "#/people/1")
+    assert.strictEqual(routes.printPath(routes.make({ _tag: "Search", query: { q: "x" } })), "#/search")
     assert.deepStrictEqual(parse(routes, "#/search?q=x"), { _tag: "Search", params: {}, query: { q: "x" } })
     assert.strictEqual(parse(routes, "#")?._tag, "Home")
     assert.isUndefined(parse(routes, "/people/1"))

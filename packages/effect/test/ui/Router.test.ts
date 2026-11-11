@@ -93,6 +93,17 @@ describe("Router", { concurrent: false }, () => {
     )
   })
 
+  it.effect("removes query params dropped as invalid from the URL, keeping the others", () => {
+    const routes = Route.union({ Search: Route.make("/", { query: { page: Schema.optional(Schema.Number) } }) })
+    const history = Router.memoryHistory("/?utm=x&page=abc")
+    return Effect.gen(function*() {
+      const router = yield* Router.Router
+      assert.deepStrictEqual(history.entries(), ["/?utm=x"])
+      yield* router.navigate("/?page=x&utm=y")
+      assert.deepStrictEqual(history.entries(), ["/?utm=x", "/?utm=y"])
+    }).pipe(Effect.provide(Router.memory({ routes, history })))
+  })
+
   it.effect("reads the current route from memory and static Routers", () =>
     Effect.gen(function*() {
       const current = Router.currentRoute(AppRoute)
