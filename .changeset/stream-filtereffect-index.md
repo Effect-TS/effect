@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Fix `Stream.filterEffect` passing chunk-relative indices to its predicate. The index now counts elements across the whole stream, like `Stream.map` and `Stream.mapEffect`.
+Fix `Stream.filterEffect` predicate indices restarting at each chunk instead of counting across the whole stream.
