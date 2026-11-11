@@ -178,7 +178,7 @@ interface KeyedRun {
   group: loaders.Group
   readonly logKey: string
   readonly values: Map<string, { readonly args: unknown; readonly result: Settled; readonly patched: boolean }>
-  readonly changes: Map<string, loaders.KeyedChange>
+  readonly changes: Set<string>
   /**
    * The declared keys when the field last sent a message. Every message carries the pruned
    * collection, so a held key outside this set is pruned once, and an `update` that ignores that
@@ -2084,7 +2084,7 @@ const start = (
         if (marker.keyed) {
           const run = inst.keyed.get(marker.label)!
           run.values.set(entry.argsKey, { args: entry.args, result, patched })
-          run.changes.set(entry.argsKey, { args: entry.args, result })
+          run.changes.add(entry.argsKey)
           return requestKeyed(inst)
         }
         const toMsg = running.marker.toMsg
@@ -2148,7 +2148,7 @@ const start = (
         group,
         logKey: Subscription.keyOf(`~loaded/${group.label}`),
         values: new Map(),
-        changes: new Map(),
+        changes: new Set(),
         sentFor: undefined
       })
     }
@@ -2192,8 +2192,8 @@ const start = (
     const group = run.group
     const declared = new Set(group.entries.map((entry) => entry.argsKey))
     const changes = group.entries.flatMap((entry) => {
-      const change = run.changes.get(entry.argsKey)
-      return change === undefined ? [] : [change]
+      const value = run.changes.has(entry.argsKey) ? run.values.get(entry.argsKey) : undefined
+      return value === undefined ? [] : [{ args: value.args, result: value.result }]
     })
     const held = Loader.snapshotMapData((inst.model as Record<string, unknown> | undefined)?.[group.field])
     const sentFor = run.sentFor
