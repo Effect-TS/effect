@@ -3078,7 +3078,7 @@ const processNumberClear = (state: NumberState) =>
     state: { ...state, cursor: 0, value: "", error: Option.none() }
   }))
 
-// `${-0}` is "0", so a typed "-0" would lose its sign before the next digit
+// Preserve the sign while the user is still entering a number.
 const formatNumberInput = (value: number): string => Object.is(value, -0) ? "-0" : `${value}`
 
 const defaultIntProcessor = (input: string, state: NumberState) => {

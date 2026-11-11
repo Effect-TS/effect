@@ -246,7 +246,7 @@ describe("Prompt.Int", () => {
       assert.strictEqual(result, 7)
     }).pipe(Effect.provide(TestLayer)))
 
-  it.effect("keeps the minus sign when a zero is typed after it", () =>
+  it.effect("preserves the sign of a negative integer with a leading zero", () =>
     Effect.gen(function*() {
       yield* MockTerminal.inputText("-07")
       yield* MockTerminal.inputKey("enter")
