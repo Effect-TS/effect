@@ -1169,8 +1169,8 @@ const strategyUsageTTL = Effect.fnUntraced(function*<A, E>(ttl: Duration.Input) 
   const clock = yield* Clock
   const ttlMillis = Duration.toMillis(Duration.fromInputUnsafe(ttl))
   return identity<Strategy<A, E>>({
-    run: (pool) => {
-      const process: Effect.Effect<void> = Effect.suspend(() => {
+    run: (pool) =>
+      Effect.suspend(() => {
         const now = clock.currentTimeMillisUnsafe()
         let wakeAt = now + ttlMillis
         const hasExcess = activeSize(pool) > targetSize(pool)
@@ -1189,9 +1189,7 @@ const strategyUsageTTL = Effect.fnUntraced(function*<A, E>(ttl: Duration.Input) 
         return oldest === undefined
           ? clock.sleep(Duration.millis(wakeAt - now))
           : invalidatePoolItem(pool, oldest)
-      })
-      return Effect.forever(process, { disableYield: true })
-    },
+      }).pipe(Effect.forever({ disableYield: true })),
     onAcquire: (_) => Effect.void,
     reclaim: (_) => Effect.undefined
   })
