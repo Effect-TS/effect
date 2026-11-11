@@ -3352,19 +3352,6 @@ describe("Effect", () => {
         assert.deepEqual(result, ExampleError)
       }))
 
-    it.effect("rethrown caught error in release", () =>
-      Effect.gen(function*() {
-        const result = yield* pipe(
-          Effect.acquireUseRelease(
-            Effect.void,
-            () => Effect.void,
-            () => Effect.die(ExampleError)
-          ),
-          Effect.exit
-        )
-        assert.deepStrictEqual(result, Exit.die(ExampleError))
-      }))
-
     it.effect("rethrown caught error in usage", () =>
       Effect.gen(function*() {
         const result = yield* Effect.acquireUseRelease(

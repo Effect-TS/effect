@@ -56,6 +56,15 @@ export const exclude = [
   "**/vitest.*"
 ]
 
+// These suites install schema compilers into the global registry, which
+// cannot be undone, so each file needs its own module graph.
+const effectIsolatedTests = [
+  "test/schema/HMR.test.ts",
+  "test/schema/SchemaAOTCompiler*.test.ts",
+  "test/schema/SchemaCompiler*.test.ts",
+  "test/schema/SchemaJITCompiler*.test.ts"
+]
+
 const shared: ViteUserConfig = {
   optimizeDeps: {
     exclude: ["bun:sqlite"]
@@ -92,25 +101,31 @@ export default defineConfig({
     ...(mssqlIntegrationTestsDisabled ? { testNamePattern: /^(?!.*SqlMessageStorage > mssql > )/ } : {}),
     projects: [
       ...project("scripts", "scripts", true, {}, undefined, ["codemods/jsdoc.test.ts"]),
+      // Node reuses workers across effect test files, which skips re-importing
+      // the effect module graph for every file.
       ...project(
         "effect",
         "packages/effect",
         true,
-        {},
-        isBun
-          ? [
-            ...exclude,
-            // These tests assert Node-specific Web API or stack trace behavior.
-            "test/reactivity/Atom.test.ts",
-            "test/schema/Schema.test.ts",
-            "test/schema/SchemaGetter.test.ts",
-            "test/schema/toCodec.test.ts",
-            "test/schema/toDifferJsonPatch.test.ts",
-            "test/http/HttpEffect.test.ts",
-            "test/http/HttpServerRequest.test.ts"
-          ]
-          : undefined
+        { test: { isolate: !isNode } },
+        [
+          ...exclude,
+          ...effectIsolatedTests,
+          ...(isBun
+            ? [
+              // These tests assert Node-specific Web API or stack trace behavior.
+              "test/reactivity/Atom.test.ts",
+              "test/schema/Schema.test.ts",
+              "test/schema/SchemaGetter.test.ts",
+              "test/schema/toCodec.test.ts",
+              "test/schema/toDifferJsonPatch.test.ts",
+              "test/http/HttpEffect.test.ts",
+              "test/http/HttpServerRequest.test.ts"
+            ]
+            : [])
+        ]
       ),
+      ...project("effect-isolated", "packages/effect", true, {}, undefined, effectIsolatedTests),
       ...project("@effect/ai-amazon-bedrock", "packages/ai/amazon-bedrock"),
       ...project("@effect/ai-anthropic", "packages/ai/anthropic"),
       ...project("@effect/ai-cloudflare", "packages/ai/cloudflare"),
