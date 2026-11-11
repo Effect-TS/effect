@@ -904,7 +904,6 @@ const release = <Props, Model, Msg, Events>(
 ): Story<Props, Model, Msg, Events> => {
   let out = story
   for (;;) {
-    if (entry.command.mode !== "queue" && !out.pending.includes(entry)) return out
     const next = schedule.deliverable(
       toEntries(out.pending),
       toEntries([entry])[0],
