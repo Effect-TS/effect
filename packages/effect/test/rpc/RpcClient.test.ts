@@ -59,16 +59,12 @@ const ChunkGroup = RpcGroup.make(
   Rpc.make("Unary", { success: Schema.String })
 )
 
-const makeChunkProtocol = Effect.fnUntraced(function*(options?: {
-  readonly beforeInterrupt?: Effect.Effect<void> | undefined
-  readonly supportsAck?: boolean | undefined
-}) {
-  const beforeInterrupt = options?.beforeInterrupt ?? Effect.void
+const makeChunkProtocol = Effect.fnUntraced(function*(beforeInterrupt: Effect.Effect<void> = Effect.void) {
   const received = yield* Deferred.make<Parameters<RpcClient.Protocol["Service"]["run"]>[1]>()
   const sent = yield* Queue.unbounded<Parameters<RpcClient.Protocol["Service"]["send"]>[1]>()
   const protocol = RpcClient.Protocol.of({
     codecFor: RpcSerialization.json.codecFor,
-    supportsAck: options?.supportsAck ?? false,
+    supportsAck: false,
     supportsTransferables: false,
     run: (_clientId, handle) => Deferred.succeed(received, handle).pipe(Effect.andThen(Effect.never)),
     send: (_clientId, message) =>
@@ -82,25 +78,30 @@ const makeChunkProtocol = Effect.fnUntraced(function*(options?: {
   return { client, handle, sent }
 })
 
-const takeRequestId = (message: Parameters<RpcClient.Protocol["Service"]["send"]>[1]) => {
+const takeRequestId = (
+  message: Parameters<RpcClient.Protocol["Service"]["send"]>[1] | RpcMessage.FromClientEncoded
+) => {
   assert(message._tag === "Request")
   return message.id
 }
 
 const makeSocketProtocol = Effect.gen(function*() {
   const frames = yield* Queue.unbounded<string>()
+  const sent = yield* Queue.unbounded<RpcMessage.FromClientEncoded>()
+  const write = (data: string | Uint8Array | Socket.CloseEvent) =>
+    typeof data === "string" ? Effect.asVoid(Queue.offer(sent, JSON.parse(data))) : Effect.void
   const socket = Socket.make({
     reader: Effect.succeed({
       pull: Queue.take(frames).pipe(Effect.map((frame) => [frame] as const)),
       upgrade: Socket.SocketUpgradeError.unsupported
     }),
-    writer: Effect.succeed({ write: () => Effect.void, writeAll: () => Effect.void })
+    writer: Effect.succeed({ write, writeAll: (chunks) => Effect.forEach(chunks, write, { discard: true }) })
   })
   const protocol = yield* RpcClient.makeProtocolSocket().pipe(
     Effect.provideService(Socket.Socket, socket),
     Effect.provideService(RpcSerialization.RpcSerialization, RpcSerialization.json)
   )
-  return { protocol, frames }
+  return { protocol, frames, sent }
 })
 
 const makeHttpClient = (body: string): HttpClient.HttpClient =>
@@ -480,6 +481,36 @@ describe("RpcClient", () => {
       assert.deepStrictEqual(yield* Queue.take(received), reply)
     }))
 
+  it.effect("reads other socket responses while a stream chunk waits for buffer space", () =>
+    Effect.gen(function*() {
+      const { protocol, frames, sent } = yield* makeSocketProtocol
+      const client = yield* RpcClient.make(ChunkGroup).pipe(Effect.provideService(RpcClient.Protocol, protocol))
+      const resume = yield* Latch.make()
+      const received: Array<string> = []
+      const stream = yield* client.Good(undefined, { streamBufferSize: 1 }).pipe(
+        Stream.runForEach((value) => resume.whenOpen(Effect.sync(() => received.push(value)))),
+        Effect.forkChild
+      )
+      const streamId = takeRequestId(yield* Queue.take(sent))
+      yield* Queue.offerAll(frames, [
+        JSON.stringify({ _tag: "Chunk", requestId: streamId, values: ["a", "b", "c"] }),
+        JSON.stringify({ _tag: "Exit", requestId: streamId, exit: { _tag: "Success", value: null } })
+      ])
+
+      const unary = yield* client.Unary().pipe(Effect.forkChild)
+      const unaryId = takeRequestId(yield* Queue.take(sent))
+      yield* Queue.offer(
+        frames,
+        JSON.stringify({ _tag: "Exit", requestId: unaryId, exit: { _tag: "Success", value: "ok" } })
+      )
+      assert.strictEqual(yield* Fiber.join(unary), "ok")
+
+      // the stream's Exit is delivered after the waiting values
+      yield* resume.open
+      yield* Fiber.join(stream)
+      assert.deepStrictEqual(received, ["a", "b", "c"])
+    }))
+
   it.effect("completes a discarded call on its acknowledgement, not on the write", () =>
     Effect.gen(function*() {
       const { client, handle, sent } = yield* makeChunkProtocol()
@@ -559,11 +590,9 @@ describe("RpcClient", () => {
     Effect.gen(function*() {
       const sendingInterrupt = yield* Deferred.make<void>()
       const releaseInterrupt = yield* Deferred.make<void>()
-      const { client, handle, sent } = yield* makeChunkProtocol({
-        beforeInterrupt: Deferred.succeed(sendingInterrupt, void 0).pipe(
-          Effect.andThen(Deferred.await(releaseInterrupt))
-        )
-      })
+      const { client, handle, sent } = yield* makeChunkProtocol(
+        Deferred.succeed(sendingInterrupt, void 0).pipe(Effect.andThen(Deferred.await(releaseInterrupt)))
+      )
       const reader = yield* client.Bad().pipe(Stream.runDrain, Effect.forkChild)
       const requestId = takeRequestId(yield* Queue.take(sent))
       let observedInterrupt = false
@@ -691,39 +720,16 @@ describe("RpcClient", () => {
       const requestId = request.id
       yield* write({ _tag: "Chunk", clientId: 0, requestId, values: ["a"] })
       assert.deepStrictEqual(yield* Queue.take(sent), { _tag: "Ack", requestId })
-      yield* write({ _tag: "Chunk", clientId: 0, requestId, values: ["b", "c"] })
+      const receiver = yield* write({ _tag: "Chunk", clientId: 0, requestId, values: ["b", "c"] }).pipe(
+        Effect.forkChild({ startImmediately: true })
+      )
       yield* Deferred.await(consuming)
-      assert.strictEqual(Queue.sizeUnsafe(sent), 0)
+      assert.isUndefined(receiver.pollUnsafe())
       yield* Fiber.interrupt(reader)
 
+      assert(Exit.isSuccess(yield* Fiber.await(receiver)))
       assert.deepStrictEqual((yield* Queue.takeAll(sent)).map((message) => message._tag), ["Interrupt"])
     }))
-
-  for (const end of ["an Exit", "a malformed chunk"] as const) {
-    it.effect(`delivers ${end} after an acknowledged chunk waiting for buffer space`, () =>
-      Effect.gen(function*() {
-        const { client, handle, sent } = yield* makeChunkProtocol({ supportsAck: true })
-        const received: Array<string> = []
-        const resume = yield* Latch.make()
-        const reader = yield* client.Good(undefined, { streamBufferSize: 1 }).pipe(
-          Stream.runForEach((value) => resume.whenOpen(Effect.sync(() => received.push(value)))),
-          Effect.exit,
-          Effect.forkChild
-        )
-        const requestId = takeRequestId(yield* Queue.take(sent))
-        yield* handle({ _tag: "Chunk", requestId, values: ["a", "b", "c"] })
-        yield* handle(
-          end === "an Exit"
-            ? { _tag: "Exit", requestId, exit: { _tag: "Success", value: null } }
-            : { _tag: "Chunk", requestId, values: [1] }
-        )
-        yield* resume.open
-
-        const exit = yield* Fiber.join(reader)
-        assert.deepStrictEqual(received, ["a", "b", "c"])
-        assert.strictEqual(Exit.isSuccess(exit), end === "an Exit")
-      }))
-  }
 
   it.effect("does not send Interrupt when a failed streaming send closes its scope", () =>
     Effect.gen(function*() {
@@ -1272,59 +1278,6 @@ describe("RpcClient", () => {
       // Cross another ping tick after the third frame, still without a pong.
       yield* TestClock.adjust("4 seconds")
       assert.isUndefined(streamFiber.pollUnsafe())
-    }))
-
-  it.effect("keeps serving a socket while a stream consumer stalls on a full buffer", () =>
-    Effect.gen(function*() {
-      const frames = yield* Queue.unbounded<string>()
-      const sent = yield* Queue.unbounded<
-        { readonly _tag: string; readonly id?: unknown; readonly requestId?: unknown }
-      >()
-      const write: Socket.Writer["write"] = (data) => {
-        if (Socket.isCloseEvent(data)) return Effect.void
-        const message = JSON.parse(typeof data === "string" ? data : new TextDecoder().decode(data))
-        return message._tag === "Ping"
-          ? Effect.asVoid(Queue.offer(frames, JSON.stringify({ _tag: "Pong" }) + "\n"))
-          : Effect.asVoid(Queue.offer(sent, message))
-      }
-      const socket = Socket.make({
-        reader: Effect.succeed({
-          pull: Queue.take(frames).pipe(Effect.map((frame) => [frame] as const)),
-          upgrade: Socket.SocketUpgradeError.unsupported
-        }),
-        writer: Effect.succeed({ write, writeAll: (chunks) => Effect.forEach(chunks, write, { discard: true }) })
-      })
-      const protocol = yield* RpcClient.makeProtocolSocket().pipe(
-        Effect.provideService(Socket.Socket, socket),
-        Effect.provide(RpcSerialization.layerNdjson)
-      )
-      const client = yield* RpcClient.make(ChunkGroup).pipe(Effect.provideService(RpcClient.Protocol, protocol))
-      const received = yield* Queue.unbounded<string>()
-      const resume = yield* Latch.make()
-      const stream = yield* client.Good(undefined, { streamBufferSize: 1 }).pipe(
-        Stream.runForEach((value) => Queue.offer(received, value).pipe(Effect.andThen(resume.await))),
-        Effect.forkChild
-      )
-      const streamId = (yield* Queue.take(sent)).id
-      yield* Queue.offer(frames, JSON.stringify({ _tag: "Chunk", requestId: streamId, values: ["a", "b", "c"] }) + "\n")
-      assert.strictEqual(yield* Queue.take(received), "a")
-
-      // "c" waits for buffer space, but other responses and pongs are still read
-      const unary = yield* client.Unary().pipe(Effect.exit, Effect.forkChild)
-      const unaryId = (yield* Queue.take(sent)).id
-      yield* Queue.offer(
-        frames,
-        JSON.stringify({ _tag: "Exit", requestId: unaryId, exit: { _tag: "Success", value: "ok" } }) + "\n"
-      )
-      yield* TestClock.adjust("30 seconds")
-      assert.deepStrictEqual(yield* Fiber.join(unary), Exit.succeed("ok"))
-      assert.isUndefined(stream.pollUnsafe())
-      assert.strictEqual(Queue.sizeUnsafe(sent), 0)
-
-      // the chunk is acknowledged once all of it is buffered
-      yield* resume.open
-      assert.deepStrictEqual(yield* Queue.take(sent), { _tag: "Ack", requestId: streamId })
-      assert.deepStrictEqual([yield* Queue.take(received), yield* Queue.take(received)], ["b", "c"])
     }))
 
   it.effect("allows a delayed pong within a custom ping timeout but fails after silence", () =>

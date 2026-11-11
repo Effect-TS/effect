@@ -566,7 +566,7 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any, E, const Flatten extend
         const requestId = message.requestId
         const entry = entries.get(requestId)
         if (!entry || entry._tag !== "Queue") return Effect.void
-        const deliver = Queue.offerAll(entry.queue, message.values).pipe(
+        return Queue.offerAll(entry.queue, message.values).pipe(
           supportsAck
             ? Effect.flatMap((dropped) =>
               // values are dropped when the queue was shutdown by an interrupted
@@ -579,14 +579,6 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any, E, const Flatten extend
             : identity,
           Effect.catchCause((cause) => Queue.failCause(entry.queue, cause))
         )
-        // Without acks, waiting here is the only backpressure on the server. With
-        // acks the server sends its next chunk only after the Ack, so a chunk
-        // waiting for buffer space waits in the stream's scope instead of
-        // stalling the responses of other requests. Starting immediately queues
-        // the offer before a later Exit is handled, keeping the Exit behind it.
-        return supportsAck
-          ? Effect.asVoid(Effect.forkIn(deliver, entry.scope, { startImmediately: true }))
-          : deliver
       }
       case "Exit": {
         const requestId = message.requestId
@@ -664,6 +656,7 @@ export const make: <Rpcs extends Rpc.Any, const Flatten extends boolean = false>
     readonly flatten?: Flatten | undefined
   } | undefined
 ) {
+  const scope = yield* Effect.scope
   const clientId = clientIdCounter++
   const { codecFor, run, send, supportsAck, supportsTransferables } = yield* Protocol
   const rpcSchemas = makeRpcSchemas(codecFor)
@@ -758,7 +751,13 @@ export const make: <Rpcs extends Rpc.Any, const Flatten extends boolean = false>
             decodeChunk(message.values).pipe(
               Effect.provideContext(entry.context),
               Effect.orDie,
-              Effect.flatMap((chunk) => write({ _tag: "Chunk", clientId: 0, requestId, values: chunk }))
+              Effect.flatMap((chunk) => {
+                const deliver = write({ _tag: "Chunk", clientId: 0, requestId, values: chunk })
+                // The server waits for each chunk's Ack, so a chunk waiting for
+                // buffer space must not block other responses on this
+                // connection. Starting immediately keeps it ahead of the Exit.
+                return supportsAck ? Effect.asVoid(Effect.forkIn(deliver, scope, { startImmediately: true })) : deliver
+              })
             )
           ).pipe(
             Effect.onError((cause) =>

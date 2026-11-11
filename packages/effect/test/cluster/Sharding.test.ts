@@ -1773,6 +1773,25 @@ describe.concurrent("Sharding", () => {
       Layer.merge(TestEntityState.layer)
     ))))
 
+  it.effect("bounds a deduplicated stream by its slowest caller", () =>
+    Effect.gen(function*() {
+      yield* TestClock.adjust(1)
+      const state = yield* TestEntityState
+      const client = (yield* TestEntity.client)("1")
+      // never read, with room for one value
+      yield* client.StreamWithKey({ key: "shared" }, { asQueue: true, streamBufferSize: 1 })
+      const received: Array<number> = []
+      yield* client.StreamWithKey({ key: "shared" }).pipe(
+        Stream.runForEach((value) => Effect.sync(() => received.push(value))),
+        Effect.forkChild
+      )
+      for (let i = 0; i < 10; i++) {
+        yield* Queue.offer(state.streamMessages, void 0)
+        yield* TestClock.adjust(1000)
+      }
+      assert.deepStrictEqual(received, [0])
+    }).pipe(Effect.provide(TestSharding)))
+
   it.effect("client discard stores durable requests without waiting for replies", () =>
     Effect.gen(function*() {
       yield* TestClock.adjust(1)
