@@ -11,11 +11,18 @@ import { Effect, Layer } from "effect"
 import { TestClock } from "effect/testing"
 import { Router } from "effect/ui"
 import { HtmlQuery, ssr } from "effect/ui/html/testing"
+// Tests render views, so they register the HTML elements too. An app with
+// many test files does it once, in a Vitest setup file.
+// oxlint-disable-next-line no-unassigned-import
+import "effect/ui/html/register"
 import { Query, Story, TestHost } from "effect/ui/testing"
-import { NoteEditor, NoteEditorEvents, SaveNote } from "./10_basics.ts"
-import { App, AppRoute } from "./30_routing.ts"
+// One file here, to read top to bottom. In an app each `describe` sits next
+// to what it tests: `notes/components/NoteEditor.test.ts` and `App.test.ts`.
+import { App } from "./fixtures/App.ts"
+import { NoteEditor, NoteEditorEvents, SaveNote } from "./fixtures/notes/components/NoteEditor.ts"
 import { type Note, NoteSaveError } from "./fixtures/notes/domain/Note.ts"
 import { Notes } from "./fixtures/notes/services/Notes.ts"
+import { AppRoute } from "./fixtures/routes.ts"
 
 const note: Note = { id: "n1", title: "Shopping", body: "Milk" }
 const edited: Note = { ...note, body: "Oat milk" }

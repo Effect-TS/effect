@@ -444,23 +444,29 @@ browser host and router, and server rendering.
 
 ### Organizing an app
 
-Group files by feature, then by kind within each feature. The examples use this
-layout in a real app (the path comments mark definitions kept inline for teaching):
+The examples below are one notes app. Each example is an entry module, for
+the browser, the server or the tests. It mounts a component and provides the
+Layers that component still needs, and it defines no components. The app is in
+`ai-docs/src/90_ui/fixtures`, laid out as it would be under `src/` in a real
+app. Read an example, then the files it imports.
+
+Group files by feature, then by kind within each feature:
 
 ```text
-App.ts                      // root component, imports pages
-routes.ts                   // AppRoute
-notes/
-  domain/Note.ts            // schema, errors, NotesTag
-  services/Notes.ts         // service and its Layers
-  loaders/ListNotes.ts
-  loaders/GetNote.ts
-  components/NoteEditor.ts  // NoteEditor and its SaveNote command
-  components/NoteActivity.ts
-  components/ActivityLog.ts
-pages/
-  NotesIndex.ts
-  NotePage.ts
+fixtures/
+  App.ts                      // root component, imports pages
+  routes.ts                   // AppRoute
+  notes/
+    domain/Note.ts            // Schema, errors, NotesTag
+    services/Notes.ts         // service and its Layers
+    loaders/ListNotes.ts
+    loaders/GetNote.ts
+    components/NoteEditor.ts  // NoteEditor and its SaveNote command
+    components/NoteActivity.ts
+    components/ActivityLog.ts
+  pages/
+    NotesIndex.ts
+    NotePage.ts
 ```
 
 A second feature is a sibling of `notes/`, with its own `domain`, `services`,
@@ -474,22 +480,31 @@ A command belongs in the file of the component that runs it, not in a shared
 method and give each component its own command. Loaders have their own folder
 because pages, multiple components and server rendering all read them.
 
+Entry modules sit beside these folders. Each one imports
+`effect/ui/html/register` before it renders anything.
+
 - **[Building a component with effect/ui](./ai-docs/src/90_ui/10_basics.ts)**:
   Build a note editor from Schemas and pure functions. It saves through a
-  `Command.Service`, autosaves with a Subscription, and is mounted in the
-  browser with `BrowserHost`.
+  `Command.Service` and autosaves with a Subscription. This is the browser
+  entry module, which mounts it with `BrowserHost`. The editor is in
+  `fixtures/notes/components/NoteEditor.ts`.
 - **[Composing components, data and Layers](./ai-docs/src/90_ui/20_composition.ts)**:
   Load a note with a `Loader` read and show it with child components. The
-  example handles a child's events, provides Layers with
-  `Component.provide`, and makes one child swappable with `Feature.Service`.
+  page handles a child's events, provides Layers with `Component.provide`,
+  and makes one child swappable with `Feature.Service`. This entry module
+  mounts the page, which is in `fixtures/pages/NotePage.ts`.
 - **[Routing and the document head](./ai-docs/src/90_ui/30_routing.ts)**:
   Define typed routes with `Route` and keep the current route in the root's
-  Model. The example also sets the title and meta tags with `Head` and runs
-  in the browser with `BrowserRouter`.
-- **[Server rendering and hydration](./ai-docs/src/90_ui/40_server-rendering.ts)**:
-  Render a routed app to HTML on the server with `HtmlServer.renderToHtml`,
-  embed its state in the page, and hydrate it in the browser with
-  `BrowserHost`.
+  Model. The app also sets the title and meta tags with `Head`. This entry
+  module mounts it with `BrowserRouter`. The routes are in
+  `fixtures/routes.ts` and the root component is in `fixtures/App.ts`.
+- **[Rendering on the server](./ai-docs/src/90_ui/40_server-rendering.ts)**:
+  Render the routed app to HTML with `HtmlServer.renderToHtml` and embed
+  its state in the page. This is the server's entry module. It serves the
+  same `fixtures/App.ts` the browser mounts.
+- **[Hydrating in the browser](./ai-docs/src/90_ui/45_hydration.ts)**:
+  Hydrate what the server rendered with `BrowserHost`. This is the browser
+  entry module of the server-rendered app, served as `/client.js`.
 - **[Testing effect/ui components](./ai-docs/src/90_ui/50_testing.ts)**:
   Test a component as a pure `Story`, a Command against a fake Layer, and a
   whole tree on `TestHost`. The last test renders on the server and hydrates
