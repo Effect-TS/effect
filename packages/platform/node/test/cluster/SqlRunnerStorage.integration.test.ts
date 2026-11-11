@@ -835,6 +835,11 @@ describe("SqlRunnerStorage", () => {
                   // Cross vtgate's lock-heartbeat interval, not MySQL's wait_timeout
                   // (which vtgate ignores). Each session is used sequentially.
                   yield* Effect.sleep(5100)
+                  // Alternate the first operation after idling: refreshing first
+                  // covers the runner heartbeat without warming every release.
+                  if (round % 2 === 0) {
+                    assert.deepStrictEqual(yield* storage.refresh(runnerAddress1, [shard]), [shard])
+                  }
                   yield* storage.release(runnerAddress1, shard)
                   assert.deepStrictEqual(yield* storage.refresh(runnerAddress1, [shard]), [])
                   yield* storage.releaseAll(runnerAddress1)
