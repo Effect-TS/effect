@@ -3078,7 +3078,7 @@ const processNumberClear = (state: NumberState) =>
     state: { ...state, cursor: 0, value: "", error: Option.none() }
   }))
 
-// Preserve the sign while the user is still entering a number.
+// `${-0}` is "0", which would drop a minus sign the user just typed.
 const formatNumberInput = (value: number): string => Object.is(value, -0) ? "-0" : `${value}`
 
 const defaultIntProcessor = (input: string, state: NumberState) => {

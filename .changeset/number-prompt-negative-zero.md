@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Preserve negative signs when entering numbers with leading zeros in `Prompt.Int` and `Prompt.Number`.
+Fix `Prompt.Int` and `Prompt.Number` dropping the minus sign when a zero follows it, so typing `-0.05` no longer submits `0.05`.
