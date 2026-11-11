@@ -432,6 +432,46 @@ export const isEmpty = (self: string): self is "" => self.length === 0
  */
 export const isNonEmpty = (self: string): boolean => self.length > 0
 
+// An unpaired UTF-16 surrogate. With the `u` flag, a surrogate pair matches as
+// one code point, outside the class.
+const loneSurrogate = /[\uD800-\uDFFF]/u
+const loneSurrogates = /[\uD800-\uDFFF]/gu
+
+interface WellFormedNative {
+  readonly isWellFormed?: () => boolean
+  readonly toWellFormed?: () => string
+}
+
+/**
+ * Checks whether a `string` has no unpaired UTF-16 surrogates, so that it is
+ * valid Unicode and can be encoded as UTF-8 without loss.
+ *
+ * **Details**
+ *
+ * Uses `String.prototype.isWellFormed` (ES2024) when the runtime has it, which
+ * is much faster than a regular expression on non-ASCII text.
+ *
+ * **Example** (Checking for unpaired surrogates)
+ *
+ * ```ts import.meta.vitest
+ * import { String } from "effect"
+ *
+ * String.isWellFormed("abc") // => true
+ * String.isWellFormed("\uD83D\uDE00") // => true
+ * String.isWellFormed("a\uD800b") // => false
+ * ```
+ *
+ * @see {@link toWellFormed} to replace unpaired surrogates
+ *
+ * @stability unstable
+ * @category predicates
+ * @since 4.1.5
+ */
+export const isWellFormed: (self: string) => boolean =
+  typeof (globalThis.String.prototype as WellFormedNative).isWellFormed === "function"
+    ? (self) => (self as WellFormedNative).isWellFormed!()
+    : (self) => !loneSurrogate.test(self)
+
 /**
  * Returns the JavaScript string length, measured in UTF-16 code units.
  *
@@ -773,6 +813,35 @@ export const matchAll = (regExp: RegExp) => (self: string): IterableIterator<Reg
  * @since 2.0.0
  */
 export const normalize = (form?: "NFC" | "NFD" | "NFKC" | "NFKD") => (self: string): string => self.normalize(form)
+
+/**
+ * Replaces every unpaired UTF-16 surrogate in a `string` with the replacement
+ * character U+FFFD, as UTF-8 encoders such as `TextEncoder` do.
+ *
+ * **Details**
+ *
+ * Uses `String.prototype.toWellFormed` (ES2024) when the runtime has it. A
+ * string without unpaired surrogates is returned as is.
+ *
+ * **Example** (Replacing unpaired surrogates)
+ *
+ * ```ts import.meta.vitest
+ * import { String } from "effect"
+ *
+ * String.toWellFormed("a\uD800b") // => "a\uFFFDb"
+ * String.toWellFormed("\uD83D\uDE00") // => "\uD83D\uDE00"
+ * ```
+ *
+ * @see {@link isWellFormed} to check for unpaired surrogates
+ *
+ * @stability unstable
+ * @category transforming
+ * @since 4.1.5
+ */
+export const toWellFormed: (self: string) => string =
+  typeof (globalThis.String.prototype as WellFormedNative).toWellFormed === "function"
+    ? (self) => (self as WellFormedNative).toWellFormed!()
+    : (self) => isWellFormed(self) ? self : self.replace(loneSurrogates, "\uFFFD")
 
 /**
  * Pads the string from the end with a given fill string to a specified length.

@@ -21,9 +21,9 @@ import * as Cause from "../Cause.ts"
 import * as Channel from "../Channel.ts"
 import * as Data from "../Data.ts"
 import * as Effect from "../Effect.ts"
-import { isWellFormed } from "../internal/string.ts"
 import * as Predicate from "../Predicate.ts"
 import * as Pull from "../Pull.ts"
+import { isWellFormed } from "../String.ts"
 
 const XmlErrorTypeId = "~effect/encoding/Xml/XmlError"
 
