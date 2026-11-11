@@ -17,6 +17,7 @@ import * as Sse from "../encoding/Sse.ts"
 import { constVoid, type LazyArg } from "../Function.ts"
 import { hasBody, type HttpMethod } from "../http/HttpMethod.ts"
 import * as HttpStatus from "../http/HttpStatus.ts"
+import * as MediaType from "../http/internal/mediaType.ts"
 import type * as Multipart_ from "../http/Multipart.ts"
 import * as ProblemDetails from "../http/ProblemDetails.ts"
 import * as Predicate from "../Predicate.ts"
@@ -25,7 +26,6 @@ import * as SchemaAST from "../SchemaAST.ts"
 import * as SchemaTransformation from "../SchemaTransformation.ts"
 import * as Socket from "../socket/Socket.ts"
 import * as Stream from "../Stream.ts"
-import * as MediaType from "./internal/mediaType.ts"
 
 declare module "../Schema.ts" {
   namespace Annotations {
