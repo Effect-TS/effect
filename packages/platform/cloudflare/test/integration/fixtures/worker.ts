@@ -578,6 +578,7 @@ const ensureApp = (env: unknown) => {
 }
 
 let initializationStarted = false
+let initializationStartedAt: number | undefined
 let initializationCompleted = false
 let initializationFailure = false
 let initializationOpen = true
@@ -589,11 +590,13 @@ const waitForInitializationControl = () =>
 
 const blockInitialization = () => {
   initializationStarted = false
+  initializationStartedAt = undefined
   initializationOpen = false
 }
 
 const initializeApp = CloudflareDurableObjects.setInitializer(async (env) => {
   initializationStarted = true
+  initializationStartedAt = Date.now()
   if (initializationFailure) {
     throw new Error("deliberate Cloudflare application initialization failure")
   }
@@ -983,6 +986,7 @@ export default {
     if (url.pathname === "/initialization/state") {
       return Response.json({
         started: initializationStarted,
+        elapsedMillis: initializationStartedAt === undefined ? 0 : Date.now() - initializationStartedAt,
         completed: initializationCompleted,
         callsStarted: Array.from(initializationCallsStarted).sort(),
         callsCompleted: Array.from(initializationCallsCompleted).sort()
