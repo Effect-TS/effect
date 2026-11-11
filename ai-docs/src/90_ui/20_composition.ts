@@ -8,7 +8,6 @@
 import { Effect, Schema } from "effect"
 import { AsyncResult, Loader } from "effect/reactivity"
 import { Component, Feature, Head } from "effect/ui"
-import { Html } from "effect/ui/html"
 import { NoteEditor, SaveNote } from "./10_basics.ts"
 import { Note, NoteNotFound, NotesTag } from "./fixtures/domain/Note.ts"
 import { Notes } from "./fixtures/services/Notes.ts"
@@ -17,13 +16,20 @@ import { Notes } from "./fixtures/services/Notes.ts"
 // same note share one entry and one fetch. Like a `Command.Service`, it
 // captures `Notes` when its Layer is built. `SaveNote` invalidates
 // `NotesTag`, so a save refetches it.
-export class GetNote extends Loader.Service<GetNote>()("notes/GetNote", {
-  args: { id: Schema.String },
-  success: Note,
-  error: NoteNotFound,
-  staleTime: "30 seconds",
-  tags: [NotesTag]
-}, Effect.map(Notes, (notes) => ({ id }) => notes.get(id))) {}
+export class GetNote extends Loader.Service<GetNote>()(
+  "notes/GetNote",
+  {
+    args: { id: Schema.String },
+    success: Note,
+    error: NoteNotFound,
+    staleTime: "30 seconds",
+    tags: [NotesTag]
+  },
+  Effect.gen(function*() {
+    const notes = yield* Notes
+    return ({ id }) => notes.get(id)
+  })
+) {}
 
 // A feature is a component referred to by service. The service holds the
 // contract (props and events Schemas) and a Layer picks the implementation,
@@ -46,7 +52,6 @@ export const NotePage = Component.make({
   props: Schema.Struct({ id: Schema.String }),
   model: Schema.Struct({ note: NoteSnapshot, title: Schema.String, notice: Schema.String }),
   message: NotePageMessage,
-  elements: Html,
   // Per loader field, the arguments of its read. `undefined` disables it.
   loaders: { note: (_model, props) => ({ id: props.id }) },
   // `$.empty` holds an empty snapshot for every loader field.
@@ -109,7 +114,6 @@ const ActivityLog = Component.make({
   props: NoteActivity.props,
   model: Schema.Struct({}),
   message: Schema.Never,
-  elements: Html,
   init: () => ({}),
   update: (model) => model,
   view: (_, h) => h.aside(`No activity yet on note ${h.props.noteId}.`)

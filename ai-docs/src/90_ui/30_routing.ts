@@ -8,7 +8,7 @@
 import { Effect, Schema } from "effect"
 import { AsyncResult, Loader } from "effect/reactivity"
 import { Command, Component, Head, Route, Router } from "effect/ui"
-import { BrowserHost, BrowserRouter, Html } from "effect/ui/html"
+import { BrowserHost, BrowserRouter } from "effect/ui/html"
 import { NotePageLive } from "./20_composition.ts"
 import { ListNotes } from "./fixtures/notes/ListNotes.ts"
 import { Notes } from "./fixtures/services/Notes.ts"
@@ -32,7 +32,6 @@ export const NotesIndex = Component.make({
   name: "NotesIndex",
   model: Schema.Struct({ notes: NotesSnapshot }),
   message: NotesIndexMessage,
-  elements: Html,
   loaders: { notes: () => ({}) },
   init: ($) => $.empty,
   update: (_model, message) => ({ notes: message.snapshot }),
@@ -66,7 +65,6 @@ export const App = Component.make({
   props: Schema.Struct({ route: AppRoute }),
   model: Schema.Struct({ route: AppRoute }),
   message: AppMessage,
-  elements: Html,
   init: ($) => ({ route: $.props.route }),
   update: (model, message, $) =>
     AppMessage.match(message, {

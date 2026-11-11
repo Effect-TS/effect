@@ -60,9 +60,10 @@ describe("NoteEditor", () => {
 describe("SaveNote", () => {
   it.effect("writes through Notes, and fails with a typed error", () =>
     Effect.gen(function*() {
+      const notes = yield* Notes
       // `.effect` is the Command's work, before any `Command.match`.
       assert.deepStrictEqual(yield* SaveNote.make({ note: edited }).effect, edited)
-      assert.deepStrictEqual(yield* Effect.flatMap(Notes, (notes) => notes.get(note.id)), edited)
+      assert.deepStrictEqual(yield* notes.get(note.id), edited)
 
       const error = yield* Effect.flip(SaveNote.make({ note: { ...note, title: "" } }).effect)
       assert.strictEqual(error._tag, "NoteSaveError")
