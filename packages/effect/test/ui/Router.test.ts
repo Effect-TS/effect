@@ -2,7 +2,8 @@ import { assert, describe, it } from "@effect/vitest"
 import { Effect, Exit, type Layer, Option, Schema, type Scope, Stream } from "effect"
 import { AsyncResult, Loader } from "effect/reactivity"
 import { TestClock } from "effect/testing"
-import { Component, Head, type MessageLog, Route, Router } from "effect/ui"
+import { Component, Head, type MessageLog, type Renderer, Route, Router } from "effect/ui"
+import * as runtime from "effect/ui/internal/runtime"
 import { Query, TestHost } from "effect/ui/testing"
 import * as Prefetching from "./fixtures/prefetch.ts"
 import { App, AppRoute, GetPerson, personFetches, PersonSnapshot } from "./fixtures/router.ts"
@@ -512,7 +513,11 @@ describe("Router.prefetch", { concurrent: false }, () => {
   const { Routes } = Prefetching
   const prefetching = (
     url: string,
-    effect: Effect.Effect<void, unknown, Router.Services | GetPerson | TestHost.TestHost | Scope.Scope>
+    effect: Effect.Effect<
+      void,
+      unknown,
+      Router.Services | GetPerson | TestHost.TestHost | Renderer.Renderer | Scope.Scope
+    >
   ) =>
     effect.pipe(
       Effect.provide(GetPerson.layer),
@@ -618,6 +623,63 @@ describe("Router.prefetch", { concurrent: false }, () => {
         // A Layer build begun since the push failed: the whole check is skipped.
         yield* router.navigate("/failing")
         yield* TestHost.settle
+        assert.deepStrictEqual(tags(yield* TestHost.problems), [])
+      })
+    ))
+
+  it.effect("keys intent and the guard by the printed route, whatever the query spelling", () =>
+    prefetching(
+      "/people/1",
+      Effect.gen(function*() {
+        const router = yield* Router.Router
+        Prefetching.probe.seen.length = 0
+        Prefetching.probe.location = () => router.location().url
+        yield* mountApp
+        yield* TestHost.settle
+        // A query the routes don't declare doesn't change the printed route.
+        yield* router.intent("/people/1?unused=a")
+        assert.deepStrictEqual(Prefetching.probe.seen, [])
+        yield* router.intent("/people/2?unused=a")
+        yield* router.intent("/people/2?unused=b")
+        yield* router.intent("/people/2")
+        assert.deepStrictEqual(Prefetching.probe.seen, ["/people/1"])
+        // A push records its run under the printed route too.
+        yield* router.navigate("/people/4?unused=a")
+        yield* TestHost.settle
+        yield* router.navigate("/")
+        yield* TestHost.settle
+        yield* router.intent("/people/4")
+        assert.deepStrictEqual(Prefetching.probe.seen, ["/people/1", "/people/1"])
+        yield* TestClock.adjust("30 seconds")
+        yield* router.intent("/people/4?unused=b")
+        assert.deepStrictEqual(Prefetching.probe.seen, ["/people/1", "/people/1", "/"])
+      })
+    ))
+
+  it.effect("records watches only while a check after a push is outstanding", () =>
+    prefetching(
+      "/people/1",
+      Effect.gen(function*() {
+        const router = yield* Router.Router
+        const testHost = yield* TestHost.TestHost
+        const route = yield* Router.currentRoute(Routes)
+        const root = yield* runtime.mount(Prefetching.App, { route }, testHost.host.createElement("#app"))
+        const recorded = () => {
+          const out: Array<string> = []
+          const visit = (inst: runtime.Instance) => {
+            if (inst.watched !== undefined) out.push(inst.path)
+            for (const child of inst.children.values()) visit(child)
+          }
+          visit(root.instance)
+          return out
+        }
+        yield* TestHost.settle
+        assert.deepStrictEqual(recorded(), [])
+        // The second push supersedes the first before it settles: both checks end.
+        yield* router.navigate("/people/2")
+        yield* router.navigate("/people/3")
+        yield* TestHost.settle
+        assert.deepStrictEqual(recorded(), [])
         assert.deepStrictEqual(tags(yield* TestHost.problems), [])
       })
     ))

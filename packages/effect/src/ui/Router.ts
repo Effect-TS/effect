@@ -477,9 +477,17 @@ export interface Page<out R = never> {
  * @category utility types
  * @since 4.1.3
  */
-export type PageRequirements<C> = C extends Component.Component<any, any, infer M, any, any, any, any> ?
-  Component.LoaderServices<M>
-  : never
+export type PageRequirements<C> = Component.LoaderServices<Component.Model<C>>
+
+// A `Mountable` has its Model erased, and with it the reads `Router.page` adds to the declarer.
+type PageInput<C> = [Component.Model<C>] extends [never] ? ErasedPage
+  : 0 extends (1 & Component.Model<C>) ? ErasedPage
+  : unknown
+
+interface ErasedPage {
+  readonly "Router.page needs the component's Model to find its reads. Pass the component, not a Mountable":
+    unique symbol
+}
 
 /**
  * Names a page for a `Router.prefetch` handler: a component and its props.
@@ -487,17 +495,22 @@ export type PageRequirements<C> = C extends Component.Component<any, any, infer 
  * **Details**
  *
  * The props argument is left out when the component takes none, as with
- * `h.child`. It takes a component, not a feature. The page's own reads join
- * the declaring component's requirements, so a read the page provides itself
- * is a compile error at `mount`: provide it at the declarer, or return `[]`
- * for that route.
+ * `h.child`. The page's own reads join the declaring component's
+ * requirements, so a read the page provides itself is a compile error at
+ * `mount`: provide it at the declarer, or return `[]` for that route.
+ *
+ * **Gotchas**
+ *
+ * It takes a component as `Component.make` returns it, with or without
+ * `Component.provide`. A `Component.Mountable` has its Model erased, and
+ * with it the reads, so it is rejected, and so is a feature.
  *
  * @stability experimental
  * @category subscriptions
  * @since 4.1.3
  */
 export const page = <C extends Component.Any>(
-  component: C,
+  component: C & PageInput<C>,
   ...props: {} extends Component.Props<C> ? [props?: Component.Props<C>] : [props: Component.Props<C>]
 ): Page<PageRequirements<C>> => ({ [PageTypeId]: pageVariance, component, props: props[0] ?? {} })
 
@@ -912,7 +925,7 @@ const build = (options: Options): Effect.Effect<Context.Context<Router>, never, 
       readonly index: number
       since: number | undefined
       /** The checks of the declarations the navigation ran, run when it settles. */
-      readonly checks: ReadonlyArray<() => void>
+      readonly checks: ReadonlyArray<services.PrefetchCheck>
     } | undefined
     let reverting = 0
 
@@ -952,20 +965,25 @@ const build = (options: Options): Effect.Effect<Context.Context<Router>, never, 
     }
     // The mounted `Router.prefetch` declarations.
     const declarers = new Set<services.Declarer>()
-    /** Runs every declaration covering the location's route, and returns their checks. */
+    /** Runs every declaration covering the location's route, and returns a navigation's checks. */
     const runDeclarations = (
       location: { readonly route: { readonly _tag: string }; readonly url: string },
       intent: boolean
-    ): Array<() => void> => {
-      const checks: Array<() => void> = []
+    ): Array<services.PrefetchCheck> => {
+      const checks: Array<services.PrefetchCheck> = []
       for (const declarer of Array.from(declarers)) {
         const union = declarer.routes()
         const route = union === routes ? Option.some(location.route) : union.parse(location.url)
         if (Option.isNone(route)) continue
-        const check = declarer.run(route.value, location.url, intent)
+        const check = declarer.run(route.value, intent)
         if (check !== undefined) checks.push(check)
       }
       return checks
+    }
+    /** Ends the checks of a navigation that won't settle: superseded, or the Router closed. */
+    const dropChecks = () => {
+      if (pending === undefined) return
+      for (const check of pending.checks) check.dropped()
     }
     /**
      * `prefetch`: a push, a link click or a replace that changes the pathname runs the destination's
@@ -978,7 +996,10 @@ const build = (options: Options): Effect.Effect<Context.Context<Router>, never, 
       const from = pathnameOf(current.url)
       current = next
       restoring = undefined
-      if (announce) pending = { location: next, from, index, since: undefined, checks }
+      if (announce) {
+        dropChecks()
+        pending = { location: next, from, index, since: undefined, checks }
+      }
       Effect.runSync(SubscriptionRef.set(ref, next))
     }
 
@@ -1061,7 +1082,13 @@ const build = (options: Options): Effect.Effect<Context.Context<Router>, never, 
       restoring = saved === undefined ? undefined : new Map(Object.entries(saved))
     }
     const unlisten = history.listen(popped)
-    yield* Effect.addFinalizer(() => Effect.sync(unlisten))
+    yield* Effect.addFinalizer(() =>
+      Effect.sync(() => {
+        unlisten()
+        dropChecks()
+        pending = undefined
+      })
+    )
 
     const hooks: services.RootHooks = {
       attach: (root) => {
@@ -1088,7 +1115,7 @@ const build = (options: Options): Effect.Effect<Context.Context<Router>, never, 
         const done = pending
         pending = undefined
         restoring = undefined
-        for (const check of done.checks) check()
+        for (const check of done.checks) check.settled()
         options.onSettled?.({
           location: done.location,
           from: done.from,
@@ -1140,9 +1167,10 @@ const build = (options: Options): Effect.Effect<Context.Context<Router>, never, 
           const [url] = split(href)
           const found = routes.resolve(url)
           if (Option.isNone(found)) return
-          // A redirect prefetches its target. The current route is already mounted.
-          const printed = canonical(routes, found.value, url)
-          if (printed === current.url) return
+          // Identity is the printed route: a redirect prefetches its target, and two spellings of one route
+          // value are one route. The current route is already mounted.
+          const printed = routes.print(found.value.route)
+          if (printed === routes.print(current.route)) return
           runDeclarations({ route: found.value.route, url: printed }, true)
         })
     }

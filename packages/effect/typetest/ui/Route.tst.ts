@@ -1,6 +1,6 @@
 import { Effect, Schema } from "effect"
 import { Loader } from "effect/reactivity"
-import { Command, Component, Head, Route, Router, type Subscription } from "effect/ui"
+import { Command, Component, Feature, Head, Route, Router, type Subscription } from "effect/ui"
 import { TestHost } from "effect/ui/testing"
 import { describe, expect, it } from "tstyche"
 
@@ -190,6 +190,18 @@ describe("Router.prefetch", () => {
     // Hoisted to the declarer, it does.
     const Hoisted = Declarer.pipe(Component.provide(GetPerson.layer))
     expect<Component.Requirements<typeof Hoisted>>().type.toBe<Router.Router>()
+  })
+
+  it("rejects a Mountable, whose erased Model hides the page's reads", () => {
+    const Erased: Component.Mountable<{ readonly id: number }, never, GetPerson> = PersonPage
+    expect(Router.page).type.not.toBeCallableWith(Erased, { id: 1 })
+    class Badge extends Feature.Service<Badge>()("Badge", { props: Schema.Struct({}), events: Schema.Never }) {}
+    expect(Router.page).type.not.toBeCallableWith(Badge)
+    expect(Router.page(PersonPage, { id: 1 })).type.toBe<Router.Page<GetPerson>>()
+    // Provided, it is still a component, and still names its reads.
+    expect(Router.page(PersonPage.pipe(Component.provide(GetPerson.layer)), { id: 1 })).type.toBe<
+      Router.Page<GetPerson>
+    >()
   })
 
   it("takes props like h.child, and a handler for every route", () => {

@@ -75,11 +75,24 @@ export interface Declarer {
   /** The union the declaration's map covers. It follows the latest `subscriptions` run. */
   readonly routes: () => Route.AnyUnion
   /**
-   * Runs the declaration for `route`, printed as `url`, synchronously. An
-   * intent is dropped when the declaration ran for `url` less than 30 seconds
-   * ago. Returns the check to run once a push settles.
+   * Runs the declaration for `route` synchronously. An intent is dropped when
+   * the declaration ran for the same printed route less than 30 seconds ago.
+   * A navigation returns the check to run once it settles.
    */
-  readonly run: (route: { readonly _tag: string }, url: string, intent: boolean) => (() => void) | undefined
+  readonly run: (route: { readonly _tag: string }, intent: boolean) => PrefetchCheck | undefined
+}
+
+/**
+ * The check after a navigation that ran a declaration. The Router calls
+ * exactly one of the two: `settled` when the navigation settles, `dropped`
+ * when another navigation supersedes it or the Router closes. Either ends the
+ * watch recording the check holds open.
+ *
+ * @internal
+ */
+export interface PrefetchCheck {
+  readonly settled: () => void
+  readonly dropped: () => void
 }
 
 /**

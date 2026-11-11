@@ -11,7 +11,8 @@ import { PersonSnapshot } from "./router.ts"
 
 export const Routes = Route.union({
   Home: Route.make("/"),
-  Person: Route.make("/people/:id", { params: { id: Schema.Number } }),
+  // A declared query: a key it doesn't declare is dropped, so it doesn't change the printed route.
+  Person: Route.make("/people/:id", { params: { id: Schema.Number }, query: { tab: Schema.optional(Schema.String) } }),
   Walk: Route.make("/walk"),
   Broken: Route.make("/broken"),
   Empty: Route.make("/empty"),

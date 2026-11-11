@@ -213,8 +213,11 @@ export interface Instance {
   readonly stopping: Set<Run>
   readonly subscriptions: Map<string, SubscriptionRun>
   readonly watches: Map<string, WatchRun>
-  /** Every entry a watch of this instance registered on, by read name and args key. */
-  readonly watched: Set<string>
+  /**
+   * Every entry a watch of this instance registered on, by read name and args key. Kept only for an
+   * instance created while a check after a navigation is outstanding, and dropped when none is.
+   */
+  watched: Set<string> | undefined
   /** The instance's `Router.prefetch` declaration, registered with the Router. */
   prefetch: { declaration: services.Prefetch; readonly release: () => void } | undefined
   readonly keyed: Map<string, KeyedRun>
@@ -630,6 +633,10 @@ const start = (
   let lastFailedBuild = 0
   // Counts instances as they are created.
   let instancesMade = 0
+  // The checks after a navigation still outstanding, and the instances created meanwhile, whose
+  // watches are recorded for them.
+  let recording = 0
+  const recorded = new Set<Instance>()
   // Each provided Layer build still pending, stamped with the flush it began in.
   let flushes = 0
   const building = new Set<{ readonly flush: number }>()
@@ -1081,7 +1088,7 @@ const start = (
       stopping: new Set(),
       subscriptions: new Map(),
       watches: new Map(),
-      watched: new Set(),
+      watched: undefined,
       prefetch: undefined,
       keyed: new Map(),
       keyedQueued: false,
@@ -1113,6 +1120,10 @@ const start = (
         if (message !== undefined) inst.dispatch(message, { _tag: "DomEvent", name: event })
       }
     }
+    if (recording > 0) {
+      inst.watched = new Set()
+      recorded.add(inst)
+    }
 
     // Finalizers run in reverse: Commands stop first, then `Unmounted` is logged.
     // Descendants, Subscriptions and mounts use child Scopes forked later, so they close before both.
@@ -1121,6 +1132,8 @@ const start = (
       Effect.sync(() => {
         inst.closed = true
         dirty.delete(inst)
+        recorded.delete(inst)
+        inst.watched = undefined
         // Normally done already by whoever closed the Scope, in the patcher's pre-pass.
         releaseWatches(inst)
         record({ _tag: "Unmounted", path })
@@ -1934,7 +1947,7 @@ const start = (
       record({ _tag: "SubscriptionStarted", path: inst.path, key: logKey })
       // A disabled loader: the marker is inert.
       if (marker.argsKey === undefined) continue
-      inst.watched.add(entryKey(def.name, marker.argsKey))
+      inst.watched?.add(entryKey(def.name, marker.argsKey))
       const entry = { args: marker.args, argsKey: marker.argsKey }
       const source: MessageLog.Source = { _tag: "Subscription", key: logKey }
       let last:
@@ -2131,19 +2144,20 @@ const start = (
       inst.prefetch.declaration = declaration
       return
     }
-    // The routes each declaration ran for, and when: an intent within 30 seconds of a run is dropped.
+    // The printed routes the declaration ran for, and when: an intent within 30 seconds of a run is dropped.
     const ran = new Map<string, number>()
     const state: NonNullable<Instance["prefetch"]> = {
       declaration,
       release: hooks.declare({
         routes: () => state.declaration.routes,
-        run: (route, url, intent) => {
+        run: (route, intent) => {
           if (inst.closed || inst.failure !== undefined) return undefined
           const now = clock.currentTimeMillisUnsafe()
           for (const [key, at] of ran) if (now - at >= intentGuardMillis) ran.delete(key)
-          if (intent && ran.has(url)) return undefined
-          ran.set(url, now)
-          return runDeclaration(inst, state.declaration, route)
+          const printed = state.declaration.routes.print(route)
+          if (intent && ran.has(printed)) return undefined
+          ran.set(printed, now)
+          return runDeclaration(inst, state.declaration, route, intent)
         }
       })
     }
@@ -2164,13 +2178,14 @@ const start = (
 
   /**
    * Runs a declaration for a route in the declarer's context: every page is walked and its reads
-   * prefetched. Returns the check to run once the navigation settles.
+   * prefetched. A navigation gets the check to run once it settles.
    */
   const runDeclaration = (
     inst: Instance,
     declaration: services.Prefetch,
-    route: { readonly _tag: string }
-  ): (() => void) | undefined => {
+    route: { readonly _tag: string },
+    intent: boolean
+  ): services.PrefetchCheck | undefined => {
     // A declarer whose own Layer is still building, or failed, sees none of its reads yet.
     const envCtx = inst.env.ctx
     if (envCtx === undefined) return undefined
@@ -2183,9 +2198,32 @@ const start = (
       report(prefetchThrew(inst, `Router.prefetch ${route._tag}`, error))
       return undefined
     }
+    if (intent) {
+      for (const page of pages) walkPage(inst, envCtx, page)
+      return undefined
+    }
     const since = { born: instancesMade, build: builds }
     const walked = pages.map((page) => walkPage(inst, envCtx, page))
-    return () => checkPrefetch(inst, walked, since)
+    // Records the watches of the instances created from here until the check ends.
+    recording++
+    let open = true
+    const end = () => {
+      if (!open) return
+      open = false
+      if (--recording > 0) return
+      for (const at of recorded) at.watched = undefined
+      recorded.clear()
+    }
+    return {
+      settled: () => {
+        try {
+          checkPrefetch(inst, walked, since)
+        } finally {
+          end()
+        }
+      },
+      dropped: end
+    }
   }
 
   const prefetchThrew = (inst: Instance, page: string, error: unknown) =>
@@ -2269,6 +2307,9 @@ const start = (
    * The check after a navigation that ran declarations settles. Per page, by component name: none
    * mounted is reported; instances older than the navigation are skipped; the ones created since are
    * checked per entry. Skipped whole when a Layer build begun since the navigation failed.
+   *
+   * It looks at the instances created since the navigation and their watches, recorded meanwhile.
+   * Only a page none of them is an instance of costs a walk of the tree, once per check.
    */
   const checkPrefetch = (
     inst: Instance,
@@ -2276,15 +2317,30 @@ const start = (
     since: { readonly born: number; readonly build: number }
   ) => {
     if (lastFailedBuild > since.build) return
-    for (const page of pages) {
-      const found: Array<Instance> = []
+    const fresh = new Map<string, Array<Instance>>()
+    for (const at of recorded) {
+      if (at.closed || at.born <= since.born) continue
+      const found = fresh.get(at.component.name)
+      if (found === undefined) fresh.set(at.component.name, [at])
+      else found.push(at)
+    }
+    let mounted: Set<string> | undefined
+    const mountedNames = () => {
+      if (mounted !== undefined) return mounted
+      const names = new Set<string>()
       const collect = (at: Instance) => {
         if (at.closed) return
-        if (at.component.name === page.name) found.push(at)
+        names.add(at.component.name)
         for (const child of at.children.values()) collect(child)
       }
       collect(root)
-      if (found.length === 0) {
+      return mounted = names
+    }
+    for (const page of pages) {
+      const found = fresh.get(page.name)
+      if (found === undefined) {
+        // Older than the navigation, it is skipped. None at all is reported.
+        if (mountedNames().has(page.name)) continue
         report(
           new Router.PrefetchPageNotMounted({
             message: `${inst.path}: Router.prefetch declared the page ${page.name}, and none was mounted`,
@@ -2294,14 +2350,13 @@ const start = (
         )
         continue
       }
-      const fresh = found.filter((at) => at.born > since.born)
-      if (fresh.length === 0) continue
+      // Every instance below a fresh one is fresh too, so its watches were recorded.
       const watched = new Set<string>()
       const gather = (at: Instance) => {
-        for (const key of at.watched) watched.add(key)
+        if (at.watched !== undefined) { for (const key of at.watched) watched.add(key) }
         for (const child of at.children.values()) gather(child)
       }
-      for (const at of fresh) gather(at)
+      for (const at of found) gather(at)
       for (const [key, entry] of page.entries) {
         if (watched.has(key)) continue
         report(
