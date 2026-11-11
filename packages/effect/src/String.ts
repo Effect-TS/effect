@@ -467,10 +467,10 @@ interface WellFormedNative {
  * @category predicates
  * @since 4.1.5
  */
-export const isWellFormed: (self: string) => boolean =
-  typeof (globalThis.String.prototype as WellFormedNative).isWellFormed === "function"
-    ? (self) => (self as WellFormedNative).isWellFormed!()
-    : (self) => !loneSurrogate.test(self)
+export const isWellFormed = (self: string): boolean =>
+  typeof (self as WellFormedNative).isWellFormed === "function"
+    ? (self as WellFormedNative).isWellFormed!()
+    : !loneSurrogate.test(self)
 
 /**
  * Returns the JavaScript string length, measured in UTF-16 code units.
@@ -838,10 +838,12 @@ export const normalize = (form?: "NFC" | "NFD" | "NFKC" | "NFKD") => (self: stri
  * @category transforming
  * @since 4.1.5
  */
-export const toWellFormed: (self: string) => string =
-  typeof (globalThis.String.prototype as WellFormedNative).toWellFormed === "function"
-    ? (self) => (self as WellFormedNative).toWellFormed!()
-    : (self) => isWellFormed(self) ? self : self.replace(loneSurrogates, "\uFFFD")
+export const toWellFormed = (self: string): string =>
+  typeof (self as WellFormedNative).toWellFormed === "function"
+    ? (self as WellFormedNative).toWellFormed!()
+    : isWellFormed(self)
+    ? self
+    : self.replace(loneSurrogates, "\uFFFD")
 
 /**
  * Pads the string from the end with a given fill string to a specified length.
