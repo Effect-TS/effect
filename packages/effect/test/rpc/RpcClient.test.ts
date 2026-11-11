@@ -78,9 +78,7 @@ const makeChunkProtocol = Effect.fnUntraced(function*(beforeInterrupt: Effect.Ef
   return { client, handle, sent }
 })
 
-const takeRequestId = (
-  message: Parameters<RpcClient.Protocol["Service"]["send"]>[1] | RpcMessage.FromClientEncoded
-) => {
+const takeRequestId = (message: Parameters<RpcClient.Protocol["Service"]["send"]>[1]) => {
   assert(message._tag === "Request")
   return message.id
 }
@@ -95,7 +93,7 @@ const makeSocketProtocol = Effect.gen(function*() {
       pull: Queue.take(frames).pipe(Effect.map((frame) => [frame] as const)),
       upgrade: Socket.SocketUpgradeError.unsupported
     }),
-    writer: Effect.succeed({ write, writeAll: (chunks) => Effect.forEach(chunks, write, { discard: true }) })
+    writer: Effect.succeed({ write, writeAll: () => Effect.void })
   })
   const protocol = yield* RpcClient.makeProtocolSocket().pipe(
     Effect.provideService(Socket.Socket, socket),

@@ -667,11 +667,10 @@ export const make: <Rpcs extends Rpc.Any, const Flatten extends boolean = false>
     readonly context: Context.Context<never>
     readonly schemas: RpcSchemas
     readonly discard: boolean
-    // Completed when the request ends, retiring its unfinished Ack sends
     acksDone?: Deferred.Deferred<void> | undefined
   }
   const entries = new Map<RequestId, ClientEntry>()
-  // Every removal goes through here, so no Ack send outlives its request
+  // Entries are only removed here, so no Ack send outlives its request.
   const removeEntry = (requestId: RequestId): ClientEntry | undefined => {
     const entry = entries.get(requestId)
     if (!entry) return
@@ -733,9 +732,8 @@ export const make: <Rpcs extends Rpc.Any, const Flatten extends boolean = false>
         case "Ack": {
           const entry = entries.get(message.requestId)
           if (!entry) return Effect.void
-          // Chunks are delivered off the read loop, so a send can outlast its
-          // request and overlap the next Ack. Only the send is cut short, so
-          // the delivery and its queue are unaffected.
+          // A send that outlasts its request is cut short. Racing interrupts
+          // only the send, leaving the delivery and its queue unaffected.
           entry.acksDone ??= Deferred.makeUnsafe()
           return Effect.raceFirst(
             send(clientId, { _tag: "Ack", requestId: message.requestId }),
@@ -769,7 +767,7 @@ export const make: <Rpcs extends Rpc.Any, const Flatten extends boolean = false>
                 // The server waits for each chunk's Ack, so a chunk waiting for
                 // buffer space must not block other responses on this
                 // connection. Starting immediately keeps it ahead of the Exit.
-                return supportsAck ? Effect.asVoid(Effect.forkIn(deliver, scope, { startImmediately: true })) : deliver
+                return supportsAck ? Effect.forkIn(deliver, scope, { startImmediately: true }) : deliver
               })
             )
           ).pipe(
