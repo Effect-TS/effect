@@ -2205,12 +2205,7 @@ export const makeSignal = (initial = true): SettableSignal => {
   const listeners = new Set<(value: boolean) => void>()
   return {
     get: () => current,
-    subscribe: (listener) => {
-      listeners.add(listener)
-      return () => {
-        listeners.delete(listener)
-      }
-    },
+    subscribe: (listener) => addListener(listeners, listener),
     set: (value) => {
       if (value === current) return
       current = value
@@ -2220,6 +2215,14 @@ export const makeSignal = (initial = true): SettableSignal => {
 }
 
 const alwaysTrue: Signal = { get: () => true, subscribe: () => () => {} }
+
+/** Adds a listener to a set. Returns its removal. */
+const addListener = <A>(listeners: Set<A>, listener: A): () => void => {
+  listeners.add(listener)
+  return () => {
+    listeners.delete(listener)
+  }
+}
 
 // -----------------------------------------------------------------------------
 // Problems
@@ -2353,13 +2356,19 @@ const makeDef = (name: string, options: {
   }
   const args: Schema.Top = Schema.isSchema(options.args) ? options.args : Schema.Struct(options.args)
   // Built on first use: deriving a codec walks the Schema.
-  let encodeArgs: ((args: unknown) => unknown) | undefined
-  let encodeLogArgs: ((args: unknown) => unknown) | undefined | null = null
+  const encodeArgs = lazy(() => argsEncoder(args.ast))
+  const encodeLogArgs = lazy(() => {
+    const redacted = redactAST(args.ast)
+    // No `Schema.Redacted` in the args: the log key is the args key.
+    return redacted === args.ast ? undefined : argsEncoder(redacted)
+  })
+  const drop = lazy(() => dropUndefinedOf(args.ast))
+  const codec = lazy(() => makeCodec(args, options.success, options.error))
   const argsKey = (value: unknown): string => {
-    encodeArgs ??= argsEncoder(args.ast)
+    const encode = encodeArgs()
     let encoded: unknown
     try {
-      encoded = encodeArgs(value)
+      encoded = encode(value)
     } catch {
       // The Schema issue prints the value, so it isn't passed on.
       throw new Error("[Loader] read " + quote(name) + ": the args don't encode with the read's args Schema")
@@ -2375,31 +2384,24 @@ const makeDef = (name: string, options: {
     }
   }
   const logKey = (value: unknown, key: string): string => {
-    if (encodeLogArgs === null) {
-      const redacted = redactAST(args.ast)
-      // No `Schema.Redacted` in the args: the log key is the args key.
-      encodeLogArgs = redacted === args.ast ? undefined : argsEncoder(redacted)
-    }
-    if (encodeLogArgs === undefined) return key
+    const encode = encodeLogArgs()
+    if (encode === undefined) return key
     try {
-      return canonical(encodeLogArgs(value))
+      return canonical(encode(value))
     } catch {
       return "\"~unserialisable\""
     }
   }
-  let codec: ReadCodec | undefined
-  let drop: ((args: unknown) => unknown) | null | undefined
-  const normalize = (value: unknown): unknown => {
-    if (drop === undefined) drop = dropUndefinedOf(args.ast)
-    return drop === null ? value : drop(value)
-  }
   return {
     name,
     args,
-    normalize,
+    normalize: (value) => {
+      const dropFrom = drop()
+      return dropFrom === null ? value : dropFrom(value)
+    },
     success: options.success,
     error: options.error,
-    codec: () => codec ??= makeCodec(args, options.success, options.error),
+    codec,
     staleMs,
     idleMs,
     refetchInterval,
@@ -3476,10 +3478,14 @@ const moreLoading: More<never> = { _tag: "Loading" }
 const moreAvailable: More<never> = { _tag: "Available" }
 const moreEnd: More<never> = { _tag: "End" }
 
-/** The `page` and `cursor` of a list's `FetchEvent`: the first page has no cursor. */
-const pageFields = (
-  page: { readonly page: number; readonly cursor: Schema.Json | undefined } | undefined
-): { readonly page?: number; readonly cursor?: Schema.Json } =>
+/** A page of a list as a `FetchEvent` names it. The first page has no cursor. */
+interface PageRef {
+  readonly page: number
+  readonly cursor: Schema.Json | undefined
+}
+
+/** The `page` and `cursor` of a list's `FetchEvent`. */
+const pageFields = (page: PageRef | undefined): { readonly page?: number; readonly cursor?: Schema.Json } =>
   page === undefined ? {} : page.cursor === undefined ? { page: page.page } : { page: page.page, cursor: page.cursor }
 
 /** @internal */
@@ -3612,6 +3618,25 @@ export const makeCache = (options: {
     } catch {
       // A check only reports: a sink that throws changes nothing.
     }
+  }
+  const notify = <A>(listeners: ReadonlySet<(a: A) => void>, a: A): void => {
+    for (const listener of Array.from(listeners)) {
+      try {
+        listener(a)
+      } catch {
+        // A listener can't change what the cache does.
+      }
+    }
+  }
+  /** Taken before any resumes: a caller resumed here can run before this returns, and call again. */
+  const resumeAll = <A>(
+    waiters: Set<{ readonly resume: (exit: Exit.Exit<A, any>) => void }>,
+    exit: Exit.Exit<A, any>
+  ): void => {
+    if (waiters.size === 0) return
+    const taken = Array.from(waiters)
+    waiters.clear()
+    for (const waiter of taken) waiter.resume(exit)
   }
 
   // -- registry and index -----------------------------------------------------
@@ -3800,10 +3825,10 @@ export const makeCache = (options: {
     trigger: Trigger,
     restart: boolean,
     stored: boolean,
-    page?: { readonly page: number; readonly cursor: Schema.Json | undefined } | undefined
+    page?: PageRef | undefined
   ): void => {
     if (fetchListeners.size === 0) return
-    const event: FetchEvent = {
+    notify(fetchListeners, {
       read: entry.def.name,
       logKey: logKeyOf(entry),
       trigger,
@@ -3811,17 +3836,7 @@ export const makeCache = (options: {
       inWindow: inWindow(entry),
       stored,
       ...pageFields(page)
-    }
-    fetchEvent(event)
-  }
-  const fetchEvent = (event: FetchEvent): void => {
-    for (const listener of Array.from(fetchListeners)) {
-      try {
-        listener(event)
-      } catch {
-        // A listener can't change what the cache does.
-      }
-    }
+    })
   }
 
   // -- idle timer -------------------------------------------------------------
@@ -4010,12 +4025,6 @@ export const makeCache = (options: {
     if (entry.moreError !== undefined) return { _tag: "Failed", error: entry.moreError.error }
     return hasMoreOf(entry) ? moreAvailable : moreEnd
   }
-  const resumeMore = (entry: Entry, exit: Exit.Exit<LoadedMore<any>, any>): void => {
-    if (entry.moreWaiters.size === 0) return
-    const waiters = Array.from(entry.moreWaiters)
-    entry.moreWaiters.clear()
-    for (const waiter of waiters) waiter.resume(exit)
-  }
   const loadedMore = (entry: Entry): LoadedMore<any> => ({ pages: heldPages(entry), hasMore: hasMoreOf(entry) })
   /**
    * A list's pages, one request after the other, from after `base`: from the first page when it is empty. It
@@ -4126,7 +4135,7 @@ export const makeCache = (options: {
     if (append && !hasMoreOf(entry)) {
       if (!isStale(entry)) {
         entry.target = undefined
-        resumeMore(entry, Exit.succeed(loadedMore(entry)))
+        resumeAll(entry.moreWaiters, Exit.succeed(loadedMore(entry)))
         emit(entry)
         return afterQuiet(entry)
       }
@@ -4145,7 +4154,7 @@ export const makeCache = (options: {
     entry.fetch = fetch
     cancelIdle(entry)
     let body: () => Effect.Effect<any, any> = () => build.fetcher(entry.args)
-    let page: { readonly page: number; readonly cursor: Schema.Json | undefined } | undefined
+    let page: PageRef | undefined
     const list = entry.def.list
     if (list !== undefined) {
       // The next load more or walk clears a failed append's error.
@@ -4192,13 +4201,7 @@ export const makeCache = (options: {
       build.fibers.delete(fiber)
       if (draining.get(key) === fiber) draining.delete(key)
       onFetchExit(entry, fetch, exit)
-      for (const listener of Array.from(fetchEndListeners)) {
-        try {
-          listener()
-        } catch {
-          // A listener can't change what the cache does.
-        }
-      }
+      notify(fetchEndListeners, undefined)
     })
     emit(entry)
   }
@@ -4226,11 +4229,7 @@ export const makeCache = (options: {
     }
     startFetch(entry, trigger, build, false)
   }
-  /** A restarted fetch keeps its trigger. Ten in a row with no settle between are reported, once. */
-  const restartFetch = (entry: Entry, dropped: FetchRec, build: Build): void => {
-    countRestart(entry)
-    startFetch(entry, dropped.trigger, build, true)
-  }
+  /** Ten restarts in a row with no settle between are reported, once. */
   const countRestart = (entry: Entry): void => {
     entry.restarts++
     if (entry.restarts === restartLimit) {
@@ -4245,12 +4244,6 @@ export const makeCache = (options: {
       )
     }
   }
-  const resumeWaiters = (entry: Entry, exit: Exit.Exit<any, any>): void => {
-    if (entry.waiters.size === 0) return
-    const waiters = Array.from(entry.waiters)
-    entry.waiters.clear()
-    for (const waiter of waiters) waiter.resume(exit)
-  }
   /** A settle or a stored write: patches held after success are confirmed and go. */
   const store = (entry: Entry, result: Settled): void => {
     entry.result = result
@@ -4264,47 +4257,27 @@ export const makeCache = (options: {
     scheduleInterval(entry)
   }
   /**
-   * A fetch ended with nothing to store and nothing to restart it: the entry keeps its previous state, its
-   * freshness included. Only a defect marks the previous Success stale.
+   * Stores a fetch's Fails over the entry's last Success, and returns whether it did. An unwatched entry never
+   * holds a Failure with no previous Success, except on the server, so that one isn't stored.
    */
-  const revert = (entry: Entry): void => {
-    entry.target = undefined
-    entry.owed = undefined
-    resumeWaiters(entry, Exit.interrupt())
-    resumeMore(entry, Exit.interrupt())
-    emit(entry)
-    rearmInterval(entry)
-    afterQuiet(entry)
-  }
-  const onFetchExit = (entry: Entry, fetch: FetchRec, exit: Exit.Exit<any, any>): void => {
-    if (entry.fetch !== fetch || disposed) return
-    if (entry.def.list !== undefined) return onWalkExit(entry, fetch, exit)
-    entry.fetch = undefined
+  const storeFailure = (entry: Entry, cause: Cause.Cause<any>): boolean => {
     const previous = entry.result
-    const waiterExit = callerExit(exit)
-    let defect: Cause.Cause<never> | undefined
-    let stored = false
-    if (exit._tag === "Success") {
-      store(entry, AsyncResult.success(exit.value, { timestamp: now() }))
-      stored = true
-    } else if (Cause.hasDies(exit.cause)) {
-      // Never stored: the previous state stays, marked stale, so a remount fetches fresh.
-      defect = diesOnly(exit.cause)
-      if (previous !== undefined) entry.invalidated = true
-    } else if (Cause.hasFails(exit.cause)) {
-      const previousSuccess = previous === undefined
-        ? Option.none<AsyncResult.Success<any, any>>()
-        : previous._tag === "Success"
-        ? Option.some(previous)
-        : previous.previousSuccess
-      // An unwatched entry never holds a Failure with no previous Success, except on the server.
-      if (entry.watchers.size > 0 || settleOnce || Option.isSome(previousSuccess)) {
-        store(entry, AsyncResult.failure(failsOnly(exit.cause), { previousSuccess }))
-        stored = true
-      }
-    }
-    // Otherwise interrupted, such as by the fetcher itself: a revert, never a Failure.
-    resumeWaiters(entry, waiterExit)
+    const previousSuccess = previous === undefined
+      ? Option.none<AsyncResult.Success<any, any>>()
+      : previous._tag === "Success"
+      ? Option.some(previous)
+      : previous.previousSuccess
+    if (entry.watchers.size === 0 && !settleOnce && Option.isNone(previousSuccess)) return false
+    store(entry, AsyncResult.failure(cause, { previousSuccess }))
+    return true
+  }
+  /** A fetcher's defect is never stored: the previous state stays, marked stale, so a remount fetches fresh. */
+  const markDefect = (entry: Entry, cause: Cause.Cause<any>): Cause.Cause<never> => {
+    if (entry.result !== undefined) entry.invalidated = true
+    return diesOnly(cause)
+  }
+  /** What ends every fetch, after its result is in: the defect and the emission, then the timers. */
+  const afterFetch = (entry: Entry, stored: boolean, defect: Cause.Cause<never> | undefined): void => {
     if (defect !== undefined) {
       for (const watcher of Array.from(entry.watchers)) {
         if (watcher.active) watcher.onDefect?.(defect)
@@ -4313,6 +4286,37 @@ export const makeCache = (options: {
     emit(entry)
     if (!stored) rearmInterval(entry)
     afterQuiet(entry)
+  }
+  /**
+   * A fetch ended with nothing to store and nothing to restart it: the entry keeps its previous state, its
+   * freshness included. Only a defect marks the previous Success stale.
+   */
+  const revert = (entry: Entry): void => {
+    entry.target = undefined
+    entry.owed = undefined
+    resumeAll(entry.waiters, Exit.interrupt())
+    resumeAll(entry.moreWaiters, Exit.interrupt())
+    emit(entry)
+    rearmInterval(entry)
+    afterQuiet(entry)
+  }
+  const onFetchExit = (entry: Entry, fetch: FetchRec, exit: Exit.Exit<any, any>): void => {
+    if (entry.fetch !== fetch || disposed) return
+    if (entry.def.list !== undefined) return onWalkExit(entry, fetch, exit)
+    entry.fetch = undefined
+    let defect: Cause.Cause<never> | undefined
+    let stored = false
+    if (exit._tag === "Success") {
+      store(entry, AsyncResult.success(exit.value, { timestamp: now() }))
+      stored = true
+    } else if (Cause.hasDies(exit.cause)) {
+      defect = markDefect(entry, exit.cause)
+    } else if (Cause.hasFails(exit.cause)) {
+      stored = storeFailure(entry, failsOnly(exit.cause))
+    }
+    // Otherwise interrupted, such as by the fetcher itself: a revert, never a Failure.
+    resumeAll(entry.waiters, callerExit(exit))
+    afterFetch(entry, stored, defect)
   }
   /**
    * A list's walk or append ended. A walk swaps the pages in at once. A Fail on a page the list held is a Failure
@@ -4348,26 +4352,14 @@ export const makeCache = (options: {
         if (error !== undefined && Option.isSome(error)) entry.moreError = { error: error.value }
         stored = true
       } else {
-        const previousSuccess = previous === undefined
-          ? Option.none<AsyncResult.Success<any, any>>()
-          : previous._tag === "Success"
-          ? Option.some(previous)
-          : previous.previousSuccess
-        if (entry.watchers.size > 0 || settleOnce || Option.isSome(previousSuccess)) {
-          store(entry, AsyncResult.failure(out.cause!, { previousSuccess }))
-          stored = true
-        }
+        stored = storeFailure(entry, out.cause!)
       }
       const server = entry.result
       getExit = server?._tag === "Success" ? Exit.succeed(server.value) : failed ?? Exit.interrupt()
       moreExit = failed ?? Exit.succeed(loadedMore(entry))
     } else {
       getExit = moreExit = callerExit(exit)
-      if (Cause.hasDies(exit.cause)) {
-        // Never stored: the previous state stays, marked stale, so a remount fetches fresh.
-        defect = diesOnly(exit.cause)
-        if (previous !== undefined) entry.invalidated = true
-      }
+      if (Cause.hasDies(exit.cause)) defect = markDefect(entry, exit.cause)
     }
     // Taken before anything resumes: a caller resumed here can run before this returns, and call again.
     const more = Array.from(entry.moreWaiters)
@@ -4384,31 +4376,27 @@ export const makeCache = (options: {
       waiters = Array.from(entry.waiters)
       entry.waiters.clear()
     }
-    if (defect !== undefined) {
-      for (const watcher of Array.from(entry.watchers)) {
-        if (watcher.active) watcher.onDefect?.(defect)
-      }
-    }
-    emit(entry)
-    if (!stored) rearmInterval(entry)
-    afterQuiet(entry)
+    afterFetch(entry, stored, defect)
     for (const waiter of more) waiter.resume(moreExit)
     for (const waiter of waiters) waiter.resume(getExit)
   }
-  /** The dropped fetch restarts under a surviving build, or the entry reverts. */
-  const restartOrRevert = (entry: Entry, dropped: FetchRec, fallback: Build | undefined): void => {
-    const next = survivingBuild(entry) ?? fallback
-    if (next !== undefined) restartFetch(entry, dropped, next)
-    else revert(entry)
+  /**
+   * Interrupts the fetch and restarts it with its trigger, under a surviving build or else its own, which is all
+   * a prefetch has. With no open build the entry reverts.
+   */
+  const replaceFetch = (entry: Entry, fetch: FetchRec): void => {
+    dropFetch(entry, fetch)
+    const build = survivingBuild(entry) ?? (fetch.build.closed ? undefined : fetch.build)
+    if (build === undefined) return revert(entry)
+    countRestart(entry)
+    startFetch(entry, fetch.trigger, build, true)
   }
   function buildClosed(build: Build): void {
     attached.delete(build)
     if (disposed) return
     for (const entry of allEntries()) {
       const fetch = entry.fetch
-      if (fetch === undefined || fetch.build !== build) continue
-      dropFetch(entry, fetch)
-      restartOrRevert(entry, fetch, undefined)
+      if (fetch !== undefined && fetch.build === build) replaceFetch(entry, fetch)
     }
     for (const shared of Array.from(sharedFetches)) {
       if (shared.build !== build) continue
@@ -4485,10 +4473,7 @@ export const makeCache = (options: {
     const fiber = shared.fiber
     shared.fiber = undefined
     if (exit._tag === "Failure" && fiber !== undefined) fiber.interruptUnsafe()
-    const callers = Array.from(shared.callers)
-    shared.callers.clear()
-    const out = callerExit(exit)
-    for (const caller of callers) caller.resume(out)
+    resumeAll(shared.callers, callerExit(exit))
   }
   const startShared = (entry: Entry, build: Build, callers: Iterable<Waiter>, restart: boolean): Shared => {
     const shared: Shared = { entry, build, callers: new Set(), fiber: undefined }
@@ -4672,10 +4657,10 @@ export const makeCache = (options: {
       if (run !== undefined && run.isStarted() && run.invalidates(registered, argsKey)) {
         const existing = lookup(registered, argsKey)
         const logKey = () => registered.logKey(args, argsKey)
-        const event = (page: { readonly page: number; readonly cursor: Schema.Json | undefined } | undefined): void => {
+        const event = (page: PageRef | undefined): void => {
           if (existing !== undefined) return emitFetch(existing, "get", false, false, page)
           if (fetchListeners.size === 0) return
-          fetchEvent({
+          notify<FetchEvent>(fetchListeners, {
             read: registered.name,
             logKey: logKey(),
             trigger: "get",
@@ -4822,12 +4807,8 @@ export const makeCache = (options: {
     // A refetch held back by a patch keeps the trigger it was held with.
     const trigger = entry.deferred ?? cause
     entry.deferred = undefined
-    const fetch = entry.fetch
-    if (fetch !== undefined) {
-      // In flight: interrupted and restarted, watched or not. A prefetch restarts under its own build.
-      dropFetch(entry, fetch)
-      return restartOrRevert(entry, fetch, fetch.build.closed ? undefined : fetch.build)
-    }
+    // In flight: interrupted and restarted, watched or not.
+    if (entry.fetch !== undefined) return replaceFetch(entry, entry.fetch)
     if (entry.watchers.size > 0) {
       const build = survivingBuild(entry)
       if (build !== undefined) ensureFetch(entry, trigger, build)
@@ -4890,7 +4871,7 @@ export const makeCache = (options: {
     const build = survivingBuild(entry)
     if (build !== undefined) return startList(entry, trigger, build)
     entry.target = undefined
-    resumeMore(entry, Exit.interrupt())
+    resumeAll(entry.moreWaiters, Exit.interrupt())
   }
   /** `Equal.equals`, true when it throws: a check that only reports never fails a run. */
   const equalsOrTrue = (a: unknown, b: unknown): boolean => {
@@ -4912,10 +4893,7 @@ export const makeCache = (options: {
     store(entry, AsyncResult.success(value, { timestamp: now() }))
     if (!fresh) entry.invalidated = true
     // A fetch that began before the write would overwrite it with older data.
-    if (fetch !== undefined) {
-      dropFetch(entry, fetch)
-      restartOrRevert(entry, fetch, fetch.build.closed ? undefined : fetch.build)
-    }
+    if (fetch !== undefined) replaceFetch(entry, fetch)
     if (entry.idle !== undefined) startIdle(entry)
     emit(entry)
     afterQuiet(entry)
@@ -5235,8 +5213,8 @@ export const makeCache = (options: {
     const out: Dehydrated = {}
     for (const entry of allEntries()) {
       if (entry.fetch !== undefined) dropFetch(entry, entry.fetch)
-      resumeWaiters(entry, Exit.interrupt())
-      resumeMore(entry, Exit.interrupt())
+      resumeAll(entry.waiters, Exit.interrupt())
+      resumeAll(entry.moreWaiters, Exit.interrupt())
       entry.target = undefined
       if (entry.shared !== undefined) endShared(entry.shared, Exit.interrupt())
       const result = entry.result
@@ -5376,18 +5354,8 @@ export const makeCache = (options: {
     closeWindow,
     isWindowOpen: () => windowOpen,
     seed,
-    onFetch: (listener) => {
-      fetchListeners.add(listener)
-      return () => {
-        fetchListeners.delete(listener)
-      }
-    },
-    onFetchEnd: (listener) => {
-      fetchEndListeners.add(listener)
-      return () => {
-        fetchEndListeners.delete(listener)
-      }
-    },
+    onFetch: (listener) => addListener(fetchListeners, listener),
+    onFetchEnd: (listener) => addListener(fetchEndListeners, listener),
     misses: () => {
       const out: Array<{ readonly read: string; readonly logKey: string }> = []
       for (const entry of allEntries()) {
@@ -5446,8 +5414,8 @@ export const makeCache = (options: {
       attached.clear()
       for (const entry of allEntries()) {
         if (entry.fetch !== undefined) dropFetch(entry, entry.fetch)
-        resumeWaiters(entry, Exit.interrupt())
-        resumeMore(entry, Exit.interrupt())
+        resumeAll(entry.waiters, Exit.interrupt())
+        resumeAll(entry.moreWaiters, Exit.interrupt())
       }
       for (const shared of Array.from(sharedFetches)) endShared(shared, Exit.interrupt())
       for (const fiber of Array.from(timers)) fiber.interruptUnsafe()
