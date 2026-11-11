@@ -1,5 +1,21 @@
 # @effect/ai-openai-compat
 
+## 4.1.4
+
+### Patch Changes
+
+- [#10516](https://github.com/Effect-TS/effect/pull/10516) [`0555dbd`](https://github.com/Effect-TS/effect/commit/0555dbd7fdb24037b19914b927926ff8747ca148) Thanks @imranbarbhuiya! - Fix `OpenAiLanguageModel` sending `developer` instead of `system` messages for models such as `olmo-2` and provider-prefixed IDs such as `openai/gpt-oss-120b`.
+
+- [#10515](https://github.com/Effect-TS/effect/pull/10515) [`4e66f06`](https://github.com/Effect-TS/effect/commit/4e66f06e40aab7e15bcaa3ecafe3161ae48cd3f5) Thanks @imranbarbhuiya! - Fix failed responses and dropped stream chunks when OpenAI-compatible servers send `null` for optional chat completion and embeddings response fields. The affected `OpenAiClient` response types now include `null`.
+
+- [#10514](https://github.com/Effect-TS/effect/pull/10514) [`f056504`](https://github.com/Effect-TS/effect/commit/f05650482e44eec870d6dbb73115918049b7421a) Thanks @imranbarbhuiya! - Send PDF file parts as Chat Completions `file` content parts instead of dropping them or flattening them into message text. PDF URLs now fail with `InvalidUserInputError`; pass bytes, base64 or a file ID instead.
+
+- [#10534](https://github.com/Effect-TS/effect/pull/10534) [`176e097`](https://github.com/Effect-TS/effect/commit/176e0977978810fbb0d7170731c8c48cb2d136e0) Thanks @clean99! - Preserve nonempty chat completion refusals in finish metadata and remap only refusal-bearing `stop` responses to `content-filter`, including streaming responses.
+
+- [#10533](https://github.com/Effect-TS/effect/pull/10533) [`5ec3989`](https://github.com/Effect-TS/effect/commit/5ec3989a29c9381483989e2d642e44bea936cbf3) Thanks @gabedemesa! - Fix `OpenAiLanguageModel` advertising non-strict tools with strict-mode schemas, which turned records into entry arrays and optional properties into required nullable ones.
+- Updated dependencies [[`f527f90`](https://github.com/Effect-TS/effect/commit/f527f901bd72bb8ebf9901a0628dcb183dda8613), [`ee5550a`](https://github.com/Effect-TS/effect/commit/ee5550aac159874ab3e60ffe45c22f877fdec104), [`7fce132`](https://github.com/Effect-TS/effect/commit/7fce132039af71918fd90920c56429a5094a9ed4), [`9116189`](https://github.com/Effect-TS/effect/commit/91161899bfbef159d04b7cafd52ad94c3b30304b), [`edb2eaa`](https://github.com/Effect-TS/effect/commit/edb2eaaa4e65c3f802e5189f758d4ad1e41c794d), [`8176cdb`](https://github.com/Effect-TS/effect/commit/8176cdbce8b3f159c80291bfc3b63fbd91ee2fc9), [`3a65e9e`](https://github.com/Effect-TS/effect/commit/3a65e9efb80c1cdcb4965658cb473c9e5a79be62), [`fdd319e`](https://github.com/Effect-TS/effect/commit/fdd319e4592a566a4ea9c9ad8cc60f2d62959feb), [`72c3fb4`](https://github.com/Effect-TS/effect/commit/72c3fb43160f5206e5a10ece94aefd270b6e5ee8), [`9c41784`](https://github.com/Effect-TS/effect/commit/9c41784ba367a0432c19bdb3865bf360681cc268)]:
+  - effect@4.1.4
+
 ## 4.1.3
 
 ### Patch Changes
