@@ -35,18 +35,23 @@ describe("BigInt", () => {
     assertNone(BigInt.root(-16n, 4))
     assertNone(BigInt.root(16n, 0))
     assertNone(BigInt.root(16n, -2))
-    // A degree at least the bit length leaves a root of one, with no power computed.
+
+    // A degree at least the bit length leaves a root of ±1.
     assertSome(BigInt.root(2n ** 100n, 2 ** 40), 1n)
     assertSome(BigInt.root(-(2n ** 100n), Number.MAX_SAFE_INTEGER), -1n)
     assertSome(BigInt.root(2n ** 100n, 101), 1n)
+
     assertSome(BigInt.root(2n ** 100n, 100), 2n)
     assertSome(BigInt.root(2n ** 80000n, 5000), 65536n)
     assertSome(BigInt.root(2n ** 80000n - 1n, 5000), 65535n)
     assertSome(BigInt.root(2n ** 262144n, 8192), 2n ** 32n)
+
     for (const x of [0n, 1n, 2n, 3n, 4n, 15n, 16n, 17n, 2n ** 64n - 1n, 2n ** 64n, 10n ** 30n + 1n]) {
       assertSome(BigInt.root(x, 2), BigInt.sqrtUnsafe(x))
     }
+
     assertSome(BigInt.root(3)(27n), 3n)
+
     for (const degree of [0.5, NaN, Infinity, 2 ** 53]) {
       throws(() => BigInt.root(16n, degree), new RangeError(`Degree must be a safe integer, got ${degree}`))
     }

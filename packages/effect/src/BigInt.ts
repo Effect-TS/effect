@@ -53,6 +53,7 @@ export const BigInt = globalThis.BigInt
 const bigint0 = BigInt(0)
 const bigint1 = BigInt(1)
 const bigint2 = BigInt(2)
+const MANTISSA_BITS = 53
 
 /**
  * Checks whether a value is a `bigint`.
@@ -751,29 +752,24 @@ export const sqrtUnsafe = (n: bigint): bigint => {
 export const sqrt = (n: bigint): Option.Option<bigint> =>
   isGreaterThanOrEqualTo(n, bigint0) ? Option.some(sqrtUnsafe(n)) : Option.none()
 
-// `self` must be at least 2 and `degree` at least 2. `self` is below 2 ** bits,
-// so a degree of at least `bits` leaves a root below 2, which is 1. Otherwise
-// the root is estimated from the leading 53 bits of `self`, raised by a
-// relative margin of 2 ** -40 so that it lies above the root despite rounding.
-// One Newton step on whole numbers from any positive value lands at or above the
-// floor of the root, by the inequality of arithmetic and geometric means, so the
-// result does not depend on the estimate being accurate. From there, Newton's
-// method on whole numbers decreases to the floor of the root and stops there
-// (Brent and Zimmermann, Modern Computer Arithmetic, §1.5.2, Algorithm 1.14
-// RootInt).
+// `self` and `degree` must be at least 2. `self` is below 2 ** bits, so a degree of at least `bits` leaves a root of 1.
+// Otherwise the root is estimated from the leading 53 bits of `self`, raised by a relative margin of 2 ** -40 to lie
+// above it despite rounding. By the AM-GM inequality, one Newton step on whole numbers from any positive value lands at
+// or above the floor of the root, so the estimate need not be accurate, and from there Newton's method decreases to the
+// floor and stops (Brent and Zimmermann, Modern Computer Arithmetic, §1.5.2, Algorithm 1.14 RootInt).
 const rootFloor = (self: bigint, degree: number): bigint => {
   const bits = self.toString(2).length
   if (degree >= bits) {
     return bigint1
   }
-  const n = BigInt(degree)
-  const shift = Math.max(bits - 53, 0)
+  const k = BigInt(degree)
+  const shift = Math.max(bits - MANTISSA_BITS, 0)
   const exponent = (shift + Math.log2(Number(self >> BigInt(shift)) + 1)) / degree * (1 + 2 ** -40)
-  const scale = Math.max(Math.floor(exponent) - 52, 0)
+  const scale = Math.max(Math.floor(exponent) - (MANTISSA_BITS - 1), 0)
   const estimate = BigInt(Math.ceil(2 ** (exponent - scale))) << BigInt(scale)
-  let x = ((n - bigint1) * estimate + self / estimate ** (n - bigint1)) / n
+  let x = ((k - bigint1) * estimate + self / estimate ** (k - bigint1)) / k
   while (true) {
-    const y = ((n - bigint1) * x + self / x ** (n - bigint1)) / n
+    const y = ((k - bigint1) * x + self / x ** (k - bigint1)) / k
     if (y >= x) {
       return x
     }
