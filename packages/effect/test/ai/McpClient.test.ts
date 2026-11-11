@@ -901,55 +901,62 @@ describe("McpClient skills", () => {
     }))
   )
 
-  it.effect("should list, get and browse skills and read their files verified", () =>
-    Effect.gen(function*() {
-      const client = yield* connect(McpProtocol.v2026_07_28, skillsServerLayer, { skills: true })
-      const skills = yield* client.listSkills()
-      assert.deepStrictEqual(skills.map((skill) => skill.uri).sort(), [
-        "skill://acme/invoices/SKILL.md",
-        "skill://acme/refunds/SKILL.md"
-      ])
-      const refunds = yield* client.getSkill({ uri: "skill://acme/refunds/SKILL.md" })
-      assert.deepStrictEqual(refunds, skills.find((skill) => skill.uri === refunds.uri))
-      assert.deepStrictEqual(refunds.frontmatter, { name: "refunds", description: "Process refunds" })
+  for (const protocol of protocols) {
+    describe(protocol.protocolVersion, () => {
+      it.effect("should list, get and browse skills and read their files verified", () =>
+        Effect.gen(function*() {
+          const client = yield* connect(protocol, skillsServerLayer, { skills: true })
+          const skills = yield* client.listSkills()
+          assert.deepStrictEqual(skills.map((skill) => skill.uri).sort(), [
+            "skill://acme/invoices/SKILL.md",
+            "skill://acme/refunds/SKILL.md"
+          ])
+          const refunds = yield* client.getSkill({ uri: "skill://acme/refunds/SKILL.md" })
+          assert.deepStrictEqual(refunds, skills.find((skill) => skill.uri === refunds.uri))
+          assert.deepStrictEqual(refunds.frontmatter, { name: "refunds", description: "Process refunds" })
 
-      const children = yield* client.readResourceDirectory({ uri: "skill://acme/refunds" })
-      assert.deepStrictEqual(children.map((child) => child.name), ["refunds", "assets", "references"])
+          const children = yield* client.readResourceDirectory({ uri: "skill://acme/refunds" })
+          assert.deepStrictEqual(children.map((child) => child.name), ["refunds", "assets", "references"])
 
-      assert(refunds.resources !== "dynamic")
-      for (const { uri } of refunds.resources) {
-        const result = yield* client.readSkillResource({ skill: refunds, uri })
-        assert.strictEqual(result.contents[0].uri, uri)
-      }
-      const logo = yield* client.readSkillResource({ skill: refunds, uri: "skill://acme/refunds/assets/logo.png" })
-      assert.deepStrictEqual("blob" in logo.contents[0] ? logo.contents[0].blob : undefined, PNG)
-    }))
+          assert(refunds.resources !== "dynamic")
+          for (const { uri } of refunds.resources) {
+            const result = yield* client.readSkillResource({ skill: refunds, uri })
+            assert.strictEqual(result.contents[0].uri, uri)
+          }
+          const logo = yield* client.readSkillResource({ skill: refunds, uri: "skill://acme/refunds/assets/logo.png" })
+          assert.deepStrictEqual("blob" in logo.contents[0] ? logo.contents[0].blob : undefined, PNG)
+        }))
 
-  it.effect("should not call the extension's methods on a server that does not declare it", () =>
-    Effect.gen(function*() {
-      const client = yield* connect(McpProtocol.v2026_07_28, serverLayer, { skills: true })
-      assert.deepStrictEqual(yield* client.listSkills(), [])
-      for (
-        const effect of <ReadonlyArray<Effect.Effect<unknown, McpClientError.McpClientError>>> [
-          client.getSkill({ uri: "skill://acme/refunds/SKILL.md" }),
-          client.readResourceDirectory({ uri: "skill://acme" })
-        ]
-      ) {
-        assert.strictEqual((yield* Effect.flip(effect)).reason._tag, "UnsupportedError")
-      }
-    }))
-
-  it.effect("should reject the extension on legacy protocols", () =>
-    Effect.gen(function*() {
-      const error = yield* scriptedHttp(
-        (message) => scriptedReply(McpProtocol.v2025_11_25, message),
-        { protocol: McpProtocol.v2025_11_25, extensions: { skills: true } }
-      ).pipe(Effect.flip)
-      assert.strictEqual(error.reason._tag, "UnsupportedError")
-    }))
+      it.effect("should not call the extension's methods on a server that does not declare it", () =>
+        Effect.gen(function*() {
+          const client = yield* connect(protocol, serverLayer, { skills: true })
+          assert.deepStrictEqual(yield* client.listSkills(), [])
+          for (
+            const effect of <ReadonlyArray<Effect.Effect<unknown, McpClientError.McpClientError>>> [
+              client.getSkill({ uri: "skill://acme/refunds/SKILL.md" }),
+              client.readResourceDirectory({ uri: "skill://acme" })
+            ]
+          ) {
+            assert.strictEqual((yield* Effect.flip(effect)).reason._tag, "UnsupportedError")
+          }
+        }))
+    })
+  }
 
   it.effect("should declare the extension only when enabled", () =>
     Effect.gen(function*() {
+      for (const skills of [true, false]) {
+        const { sent } = yield* scriptedHttp(
+          (message) => scriptedReply(McpProtocol.v2025_11_25, message),
+          { protocol: McpProtocol.v2025_11_25, extensions: { skills } }
+        )
+        const initialize = sent.map(({ message }) => message).find((message) => methodOf(message) === "initialize")
+        assert.deepStrictEqual(
+          (initialize as McpSchema.JsonRpcRequest).params?.capabilities,
+          skills ? { extensions: { "io.modelcontextprotocol/skills": {} } } : {}
+        )
+      }
+
       const discoveredCapabilities = (
         sent: ReadonlyArray<{ readonly message?: McpSchema.JsonRpcMessage | undefined }>
       ) => {
