@@ -2684,6 +2684,11 @@ export interface RunHandle {
    * Calls nothing when none is outstanding now. Returns the cancel.
    */
   readonly onRefetched: (f: () => void) => () => void
+  /**
+   * The milliseconds on the cache's `Clock` since a success applied the
+   * invalidation of a run begun with `afterRefetch`, and `0` before that.
+   */
+  readonly sinceApplied: () => number
 }
 
 /**
@@ -5063,6 +5068,7 @@ export const makeCache = (options: {
     }
     let awaited: Await | undefined
     let awaitedEntries: ReadonlyArray<AwaitedEntry> | undefined
+    let appliedAt: number | undefined
     const entryRef = (entry: Entry): AwaitedEntry => ({ read: entry.def.name, logKey: logKeyOf(entry) })
     const handle: RunHandle = {
       command: run.command,
@@ -5077,6 +5083,7 @@ export const makeCache = (options: {
           if (rec.listener === f) rec.listener = undefined
         }
       },
+      sinceApplied: () => appliedAt === undefined ? 0 : now() - appliedAt,
       invalidates: (def, argsKey) => targetsHit(targets, def.name, def.tags, argsKey),
       start: () => {
         if (run.started || run.done) return
@@ -5112,6 +5119,7 @@ export const makeCache = (options: {
             for (const entry of run.entries) settleRunEntry(entry)
             const entries = new Set(invalidated.filter((entry) => entry.watchers.size > 0 && owesRefetch(entry)))
             awaitedEntries = Array.from(entries, entryRef)
+            appliedAt = now()
             if (entries.size > 0) awaits.add(awaited = { entries, listener: undefined })
             return
           }

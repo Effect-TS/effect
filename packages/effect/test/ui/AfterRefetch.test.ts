@@ -17,6 +17,12 @@ const makeApp = (options?: {
   readonly budget?: Duration.Input | undefined
   /** `self`: the card's own entry. `all`: every entry of the read. `unwatched`: an entry nobody watches. */
   readonly invalidates?: "self" | "all" | "unwatched" | undefined
+  /** `false`: issue the rename without `Command.afterRefetch`. */
+  readonly wait?: false | undefined
+  /** The first `Renamed` issues a rename to this name. */
+  readonly chain?: string | undefined
+  /** How long the run's Scope takes to close after the body: a finalizer. */
+  readonly cleanup?: Duration.Input | undefined
 }) => {
   const db = {
     names: new Map<string, string>([["1", "Ann"], ["2", "Bea"]]),
@@ -54,6 +60,9 @@ const makeApp = (options?: {
     },
     Effect.succeed(({ id, name }: { readonly id: string; readonly name: string }) =>
       Effect.gen(function*() {
+        order.push(`body ${name}`)
+        const cleanup = options?.cleanup
+        if (cleanup !== undefined) yield* Effect.addFinalizer(() => Effect.sleep(cleanup))
         yield* Effect.sleep("10 millis")
         if (name === "") return yield* Effect.fail("empty")
         db.names.set(id, name)
@@ -70,14 +79,15 @@ const makeApp = (options?: {
     Stop: {}
   })
   const budget = options?.budget ?? "Infinity"
-  const rename = (id: string, name: string) =>
-    RenameUser.make({ id, name }).pipe(
+  const rename = (id: string, name: string) => {
+    const matched = RenameUser.make({ id, name }).pipe(
       Command.match({
         onSuccess: (name) => CardMessage.make({ _tag: "Renamed", name }),
         onFailure: () => CardMessage.make({ _tag: "Failed", name })
-      }),
-      Command.afterRefetch(budget)
+      })
     )
+    return options?.wait === false ? matched : Command.afterRefetch(matched, budget)
+  }
   const Card = Component.make({
     name: "Card",
     props: Schema.Struct({ id: Schema.String, tag: Schema.String }),
@@ -90,7 +100,11 @@ const makeApp = (options?: {
       return CardMessage.match(message, {
         UserChanged: ({ user }) => ({ ...model, user }),
         Rename: ({ name }) => $.set(model).run(rename($.props.id, name)),
-        Renamed: ({ name }) => ({ ...model, done: [...model.done, name] }),
+        Renamed: ({ name }) => {
+          const next = { ...model, done: [...model.done, name] }
+          const chain = options?.chain
+          return chain !== undefined && model.done.length === 0 ? $.set(next).run(rename($.props.id, chain)) : next
+        },
         Failed: ({ name }) => ({ ...model, done: [...model.done, "failed " + name] }),
         Stop: () => $.set(model).run(Command.interrupt(RenameUser))
       })
@@ -293,6 +307,128 @@ describe("Command.afterRefetch", () => {
     )
   })
 
+  it.effect("the budget runs from the invalidation, not from when the run's Scope has closed", () => {
+    const app = makeApp({ budget: "50 millis", cleanup: "30 millis" })
+    return run(
+      app.layer,
+      Effect.gen(function*() {
+        const root = yield* TestHost.mount(app.Card, { id: "1", tag: "a" })
+        yield* tick
+        app.db.delay.set("1", 1000)
+        renameOn(root, app, "Bob")
+        // The body ends and the invalidation applies at 10 ms. The fiber exits 30 ms later.
+        yield* tick
+        yield* TestClock.adjust("30 millis")
+        yield* TestHost.settle
+        assert.deepStrictEqual(statuses(root), ["awaiting"])
+        yield* TestClock.adjust("19 millis")
+        assert.deepStrictEqual(statuses(root), ["awaiting"])
+        yield* TestClock.adjust("1 millis")
+        assert.deepStrictEqual(statuses(root), [])
+        assert.deepStrictEqual(commandLog(root).at(-1), {
+          _tag: "CommandEnded",
+          waitEnded: "budget",
+          outstanding: [user1]
+        })
+        yield* TestClock.adjust("1 second")
+      })
+    )
+  })
+
+  it.effect("a budget spent while the run's Scope closes ends the wait at fiber exit", () => {
+    const app = makeApp({ budget: "50 millis", cleanup: "100 millis" })
+    return run(
+      app.layer,
+      Effect.gen(function*() {
+        const root = yield* TestHost.mount(app.Card, { id: "1", tag: "a" })
+        yield* tick
+        app.db.delay.set("1", 1000)
+        renameOn(root, app, "Bob")
+        yield* tick
+        yield* TestClock.adjust("99 millis")
+        assert.deepStrictEqual(statuses(root), ["running"])
+        yield* TestClock.adjust("1 millis")
+        yield* TestHost.settle
+        assert.strictEqual(root.text(), "a=Bob~… [Bob];")
+        assert.deepStrictEqual(commandLog(root).at(-1), {
+          _tag: "CommandEnded",
+          waitEnded: "budget",
+          outstanding: [user1]
+        })
+        yield* TestClock.adjust("1 second")
+      })
+    )
+  })
+
+  it.effect("a keyed field: the last key's message, then onSuccess, then one view", () => {
+    const app = makeApp({ invalidates: "all" })
+    const Users = Loader.SnapshotMap(app.GetUser, "users")
+    const BoardMessage = Schema.TaggedUnion({ Changed: { users: Users }, Rename: {}, Renamed: {} })
+    const order: Array<string> = []
+    const Board = Component.make({
+      name: "Board",
+      model: Schema.Struct({ users: Users, renamed: Schema.Boolean }),
+      message: BoardMessage,
+      loaders: { users: () => [{ id: "1" }, { id: "2" }] },
+      init: ($) => ({ ...$.empty, renamed: false }),
+      update: (model, message, $) => {
+        order.push(`update ${message._tag}`)
+        return BoardMessage.match(message, {
+          Changed: ({ users }) => ({ ...model, users }),
+          Rename: () =>
+            $.set(model).run(
+              app.RenameUser.make({ id: "1", name: "Bob" }).pipe(
+                Command.match({
+                  onSuccess: () => BoardMessage.make({ _tag: "Renamed" }),
+                  onFailure: () => BoardMessage.make({ _tag: "Renamed" })
+                }),
+                Command.afterRefetch("Infinity")
+              )
+            ),
+          Renamed: () => ({ ...model, renamed: true })
+        })
+      },
+      subscriptions: (_model, _props, watch) => [
+        watch({
+          users: (users, _loaded, changes) => {
+            order.push(`changes ${changes.map((change) => change.args.id).join(",")}`)
+            return BoardMessage.make({ _tag: "Changed", users })
+          }
+        })
+      ],
+      view: (model, h) => {
+        const text = h.loaded.users.map(({ result }) =>
+          AsyncResult.match(result, {
+            onInitial: () => "…",
+            onSuccess: (success) => success.value.name + (success.waiting ? "…" : ""),
+            onFailure: () => "failed"
+          })
+        ).join(",") + (model.renamed ? " renamed" : "")
+        order.push(`view ${text}`)
+        return h.el("p", text)
+      }
+    })
+    return run(
+      app.layer,
+      Effect.gen(function*() {
+        const root = yield* TestHost.mount(Board, {})
+        yield* tick
+        app.db.delay.set("2", 20)
+        root.send(BoardMessage.make({ _tag: "Rename" }))
+        yield* tick
+        assert.deepStrictEqual(commandLog(root), [{ _tag: "CommandAwaiting", entries: [user1, user2] }])
+        order.length = 0
+        yield* tick
+        // The first key settles on its own: the message still waits on the second.
+        assert.deepStrictEqual(order, ["changes 1", "update Changed", "view Bob,Bea…"])
+        order.length = 0
+        yield* tick
+        // The keyed message goes through the flush's deferred drain, and the delivery goes behind it.
+        assert.deepStrictEqual(order, ["changes 2", "update Changed", "update Renamed", "view Bob,Bea renamed"])
+      })
+    )
+  })
+
   it.effect("a zero budget doesn't wait", () => {
     const app = makeApp({ budget: 0 })
     return run(
@@ -453,6 +589,30 @@ describe("Command.afterRefetch", () => {
             "update a Renamed Bob",
             "update a Failed "
           ]
+        )
+      })
+    )
+  })
+
+  it.effect("queue: a run issued by a delivered success queues behind the run already queued", () => {
+    // No wait: the run is awaiting only while its message is delivered.
+    const app = makeApp({ mode: "queue", wait: false, chain: "Dan" })
+    return run(
+      app.layer,
+      Effect.gen(function*() {
+        const root = yield* TestHost.mount(app.Card, { id: "1", tag: "a" })
+        yield* tick
+        renameOn(root, app, "Bob")
+        renameOn(root, app, "Cy")
+        yield* tick
+        // Bob's update issued Dan, and Cy was promoted first.
+        assert.deepStrictEqual(statuses(root), ["running", "queued"])
+        yield* tick
+        yield* tick
+        assert.deepStrictEqual(app.order.filter((line) => line.startsWith("body")), ["body Bob", "body Cy", "body Dan"])
+        assert.deepStrictEqual(
+          app.order.filter((line) => line.startsWith("update a Renamed")),
+          ["update a Renamed Bob", "update a Renamed Cy", "update a Renamed Dan"]
         )
       })
     )
@@ -663,6 +823,25 @@ describe("Command.afterRefetch", () => {
           .send(dropping.CardMessage.make({ _tag: "Rename", name: "Cy" }))
           .loaded("user", { id: "1", name: "Bob" }))
       assert.strictEqual(story.dropped.length, 1)
+    })
+
+    it("loaded on a field that was cold when a Command was issued doesn't throw: its patch never registered", () => {
+      Story.make(app.Card, { id: "1", tag: "a" }, (s) =>
+        s
+          .send(app.CardMessage.make({ _tag: "Rename", name: "Bob" }))
+          .loaded("user", ann)
+          .resolve(app.RenameUser, "Bob")
+          .check((story) => assert.deepStrictEqual(story.pending.map((entry) => entry.status), ["awaiting"]))
+          .loaded("user", { id: "1", name: "Bob" })
+          .model((model) => assert.deepStrictEqual(model.done, ["Bob"])))
+      // Nor does a field that held only a Failure.
+      Story.make(app.Card, { id: "1", tag: "a" }, (s) =>
+        s
+          .loadFailed("user", "down")
+          .send(app.CardMessage.make({ _tag: "Rename", name: "Bob" }))
+          .loaded("user", ann)
+          .resolve(app.RenameUser, "Bob")
+          .loaded("user", { id: "1", name: "Bob" }))
     })
 
     it("loaded throws on a field a running Command patches, unless the value is patched", () => {

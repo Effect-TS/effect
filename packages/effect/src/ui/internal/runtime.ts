@@ -1827,19 +1827,21 @@ const start = (
     )
     if (message === undefined || run.done) return
     // From here until delivery the run is awaiting: on its own wait, or under `queue` behind an earlier
-    // message of its group. Either way the next queued run starts now.
+    // message of its group. Either way the next queued run starts now, before any `update` this
+    // delivers can issue another run of the group, which would otherwise start ahead of it.
     const status = run.status
     run.status = "awaiting"
     run.held = { message: message.value, source: send.source() }
+    promote(inst, run, status)
     if (waits) beginWait(inst, run)
     release(inst, run)
-    promote(inst, run, status)
   }
 
   /**
    * At fiber exit of a run issued with `Command.afterRefetch`: the awaited set is fixed, and the wait
-   * ends on its last refetch or on the budget. An empty set, a zero budget or a set that already
-   * settled ends it here.
+   * ends on its last refetch or on the budget. An empty set, a spent budget or a set that already
+   * settled ends it here. The budget runs from when the cache applied the invalidation, which can be
+   * earlier than fiber exit: a detached run's Scope closes in between.
    */
   const beginWait = (inst: Instance, run: Run) => {
     const handle = run.handle
@@ -1853,7 +1855,10 @@ const start = (
     run.waiting = true
     const budget = run.command.afterRefetch!
     if (handle.outstanding().length === 0) return endWait(run, "settled")
-    if (Duration.isZero(budget)) return endWait(run, "budget")
+    const remaining = Duration.isFinite(budget)
+      ? Math.max(0, Duration.toMillis(budget) - handle.sinceApplied())
+      : Infinity
+    if (remaining === 0) return endWait(run, "budget")
     // After the cache's emission: a single field's message is already sent, and a keyed field's is
     // queued in the flush's deferred work, which the delivery goes behind.
     const ended = (by: MessageLog.WaitEnded) => {
@@ -1861,8 +1866,8 @@ const start = (
       defer(() => release(inst, run))
     }
     const off = handle.onRefetched(() => ended("settled"))
-    const timer = Duration.isFinite(budget)
-      ? forkNow(ctx, Effect.andThen(Effect.sleep(budget), Effect.sync(() => ended("budget"))))
+    const timer = Number.isFinite(remaining)
+      ? forkNow(ctx, Effect.andThen(Effect.sleep(Duration.millis(remaining)), Effect.sync(() => ended("budget"))))
       : undefined
     run.cancelWait = () => {
       off()

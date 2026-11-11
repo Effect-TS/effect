@@ -345,8 +345,9 @@ export interface Steps<C extends AnyComponent> extends Pipeable {
    *
    * Unless `waiting` or `patched`, it is a settle: it ends a
    * `Command.afterRefetch` wait on the field. It throws while a running or
-   * queued Command patches the field, since no fetch settles under a live
-   * patch: only a `patched` value is sent then.
+   * queued Command's patch is live on the field, since no fetch settles under
+   * a live patch: only a `patched` value is sent then. As in the cache, a
+   * patch is live only when the field held a Success at issue.
    */
   loaded<F extends Component.SingleFields<Component.Model<C>>>(
     field: F,
@@ -870,11 +871,12 @@ const apply = <Props, Model, Msg, Events>(
     if (command._tag === "Interrupt") continue
     switch (decision.action) {
       case "start":
-      case "queue":
-        out = update(out, {
-          pending: [...out.pending, { command, status: decision.action === "start" ? "running" : "queued" }]
-        })
+      case "queue": {
+        const entry: Pending<Msg> = { command, status: decision.action === "start" ? "running" : "queued" }
+        livePatches.set(entry, registeredPatches(out, command))
+        out = update(out, { pending: [...out.pending, entry] })
         break
+      }
       case "drop":
         out = update(out, { dropped: [...out.dropped, command] })
         break
@@ -900,13 +902,13 @@ const exited = <Props, Model, Msg, Events>(
     ? undefined
     : { command: entry.command, status: "awaiting", message: held.message, awaiting: held.awaiting }
   const next = schedule.next(toEntries(story.pending.filter((other) => other !== entry)), toEntries([entry])[0])
-  const pending = story.pending.flatMap((other): Array<Pending<Msg>> =>
-    other === entry
-      ? awaiting === undefined ? [] : [awaiting]
-      : other === next?.value
-      ? [{ command: other.command, status: "running" }]
-      : [other]
-  )
+  const pending = story.pending.flatMap((other): Array<Pending<Msg>> => {
+    if (other === entry) return awaiting === undefined ? [] : [awaiting]
+    if (other !== next?.value) return [other]
+    const running: Pending<Msg> = { command: other.command, status: "running" }
+    livePatches.set(running, livePatches.get(other) ?? [])
+    return [running]
+  })
   const out = update(story, { pending })
   return awaiting === undefined ? out : release(out, awaiting)
 }
@@ -1013,14 +1015,53 @@ const awaitedFields = (
 }
 
 /**
+ * The patches a pending run registered at issue, as `field` and args key: as in the cache, a patch
+ * registers only over an entry that holds a Success then, and one over a cold or failed entry holds
+ * nothing back.
+ */
+const livePatches = new WeakMap<Pending<any>, ReadonlyArray<{ readonly field: string; readonly argsKey: string }>>()
+
+/** The component's own loader fields, at their current args, that `command`'s patches register on. */
+const registeredPatches = (
+  story: Story<any, any, any, any>,
+  command: Command.Effectful<any, any, never> | Command.Streaming<any, any, never>
+): ReadonlyArray<{ readonly field: string; readonly argsKey: string }> => {
+  const bound = boundOf(story.component)
+  if (command.optimistic.length === 0 || bound === undefined) return []
+  const out: Array<{ readonly field: string; readonly argsKey: string }> = []
+  const context = bound.context(story.model, story.props)
+  for (const field of bound.fields) {
+    const def = Loader.defOf(field.read)
+    const current = context.argsOf(field.field)
+    const held = current.entries !== undefined ? Loader.snapshotMapData(story.model[field.field])?.entries : undefined
+    const args = current.entries !== undefined
+      ? current.entries.map((entry) => entry.args)
+      : current.argsKey === undefined
+      ? []
+      : [current.args]
+    for (const each of args) {
+      const argsKey = def.argsKey(each)
+      const data = held !== undefined
+        ? Loader.snapshotData(held.get(argsKey))
+        : Loader.snapshotData(story.model[field.field])
+      if (data?.argsKey !== argsKey || data.result?._tag !== "Success") continue
+      if (!Loader.invalidatesEntry({ invalidates: [], optimistic: command.optimistic }, field.read, each)) continue
+      out.push({ field: field.field, argsKey })
+    }
+  }
+  return out
+}
+
+/**
  * Throws when a running or queued Command's optimistic patch is live on the entry of `field` at
  * `args`: the runtime settles no fetch there, so only a patched value can be sent.
  */
 const checkUnpatched = (story: Story<any, any, any, any>, step: string, field: string, args: unknown): void => {
   const read = boundOf(story.component)!.fields.find((f) => f.field === field)!.read
+  const argsKey = Loader.defOf(read).argsKey(args)
   const patcher = story.pending.find((entry) =>
-    entry.status !== "awaiting" && entry.command.optimistic.length > 0 &&
-    Loader.invalidatesEntry({ invalidates: [], optimistic: entry.command.optimistic }, read, args)
+    entry.status !== "awaiting" &&
+    livePatches.get(entry)?.some((patch) => patch.field === field && patch.argsKey === argsKey) === true
   )
   if (patcher !== undefined) {
     throw new Error(
