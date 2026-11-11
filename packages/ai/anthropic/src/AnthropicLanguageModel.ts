@@ -1088,11 +1088,12 @@ const prepareMessages = Effect.fnUntraced(
                         part.params.type === "text_editor_code_execution"
                       )
                     ) {
+                      const { type, ...params } = part.params
                       content.push({
                         type: "server_tool_use",
                         id: part.id,
-                        name: part.params.type,
-                        input: part.params as any
+                        name: type,
+                        input: params as any
                       })
                     } else if (
                       // code execution 20250825 programmatic tool calling:
@@ -1190,7 +1191,9 @@ const prepareMessages = Effect.fnUntraced(
                         content: part.result as any
                       })
                     } else if (
-                      part.result.type === "text_editor_code_execution_tool_result" ||
+                      part.result.type === "text_editor_code_execution_view_result" ||
+                      part.result.type === "text_editor_code_execution_create_result" ||
+                      part.result.type === "text_editor_code_execution_str_replace_result" ||
                       part.result.type === "text_editor_code_execution_tool_result_error"
                     ) {
                       content.push({
@@ -1796,7 +1799,11 @@ const makeResponse = Effect.fnUntraced(
         }
 
         case "server_tool_use": {
-          const toolName = toolNameMapper.getCustomName(part.name)
+          const toolName = toolNameMapper.getCustomName(
+            part.name === "bash_code_execution" || part.name === "text_editor_code_execution"
+              ? "code_execution"
+              : part.name
+          )
 
           if (
             part.name === "bash_code_execution" ||
@@ -1912,26 +1919,15 @@ const makeResponse = Effect.fnUntraced(
         case "text_editor_code_execution_tool_result": {
           const toolName = toolNameMapper.getCustomName("code_execution")
 
-          if (
-            part.content.type === "bash_code_execution_tool_result_error" ||
-            part.content.type === "text_editor_code_execution_tool_result_error"
-          ) {
-            parts.push({
-              type: "tool-result",
-              id: part.tool_use_id,
-              name: toolName,
-              isFailure: true,
-              result: part.content
-            })
-          } else {
-            parts.push({
-              type: "tool-result",
-              id: part.tool_use_id,
-              name: toolName,
-              isFailure: false,
-              result: part.content
-            })
-          }
+          parts.push({
+            type: "tool-result",
+            id: part.tool_use_id,
+            name: toolName,
+            isFailure: part.content.type === "bash_code_execution_tool_result_error" ||
+              part.content.type === "text_editor_code_execution_tool_result_error",
+            result: part.content,
+            providerExecuted: true
+          })
 
           break
         }
@@ -2531,26 +2527,15 @@ const makeStreamResponse = Effect.fnUntraced(
                 const part = event.content_block
                 const toolName = toolNameMapper.getCustomName("code_execution")
 
-                if (
-                  part.content.type === "bash_code_execution_tool_result_error" ||
-                  part.content.type === "text_editor_code_execution_tool_result_error"
-                ) {
-                  parts.push({
-                    type: "tool-result",
-                    id: part.tool_use_id,
-                    name: toolName,
-                    isFailure: true,
-                    result: part.content
-                  })
-                } else {
-                  parts.push({
-                    type: "tool-result",
-                    id: part.tool_use_id,
-                    name: toolName,
-                    isFailure: false,
-                    result: part.content
-                  })
-                }
+                parts.push({
+                  type: "tool-result",
+                  id: part.tool_use_id,
+                  name: toolName,
+                  isFailure: part.content.type === "bash_code_execution_tool_result_error" ||
+                    part.content.type === "text_editor_code_execution_tool_result_error",
+                  result: part.content,
+                  providerExecuted: true
+                })
                 break
               }
 

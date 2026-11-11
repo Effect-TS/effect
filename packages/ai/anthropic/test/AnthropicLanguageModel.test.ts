@@ -2694,6 +2694,137 @@ describe("AnthropicLanguageModel", () => {
       })
     }
 
+    const codeExecutionOperations = [
+      {
+        name: "bash_code_execution",
+        input: { command: "printf hello" },
+        result: { type: "bash_code_execution_result", stdout: "hello", stderr: "", return_code: 0, content: [] }
+      },
+      {
+        name: "text_editor_code_execution",
+        input: { command: "create", path: "/tmp/example.txt", file_text: "hello" },
+        result: { type: "text_editor_code_execution_create_result", is_file_update: false }
+      },
+      {
+        name: "text_editor_code_execution",
+        input: { command: "view", path: "/tmp/example.txt" },
+        result: {
+          type: "text_editor_code_execution_view_result",
+          content: "hello",
+          file_type: "text",
+          num_lines: 1,
+          start_line: 1,
+          total_lines: 1
+        }
+      },
+      {
+        name: "text_editor_code_execution",
+        input: { command: "str_replace", path: "/tmp/example.txt", old_str: "hello", new_str: "world" },
+        result: {
+          type: "text_editor_code_execution_str_replace_result",
+          lines: ["world"],
+          new_lines: 1,
+          new_start: 1,
+          old_lines: 1,
+          old_start: 1
+        }
+      },
+      {
+        name: "bash_code_execution",
+        input: { command: "pwd" },
+        result: { type: "bash_code_execution_tool_result_error", error_code: "unavailable" }
+      },
+      {
+        name: "text_editor_code_execution",
+        input: { command: "view", path: "/tmp/missing.txt" },
+        result: {
+          type: "text_editor_code_execution_tool_result_error",
+          error_code: "file_not_found",
+          error_message: null
+        }
+      }
+    ]
+
+    for (const mode of ["generateText", "streamText"] as const) {
+      it.effect(`completes and replays CodeExecution_20250825 operations (${mode})`, () => {
+        const requests: Array<HttpClientRequest.HttpClientRequest> = []
+        const tool = AnthropicTool.CodeExecution_20250825()
+        const toolkit = Toolkit.make(tool)
+        const content = codeExecutionOperations.flatMap(({ input, name, result }, index) => [
+          { type: "server_tool_use", id: `srvtoolu_${index}`, name, input },
+          { type: `${name}_tool_result`, tool_use_id: `srvtoolu_${index}`, content: result }
+        ])
+        return Effect.gen(function*() {
+          const prompt = Prompt.make("Create, read, and edit a file, then run a command")
+          const parts: ReadonlyArray<AiResponse.AnyPart> = mode === "generateText"
+            ? (yield* LanguageModel.generateText({ prompt, toolkit })).content
+            : globalThis.Array.from(yield* Stream.runCollect(LanguageModel.streamText({ prompt, toolkit })))
+
+          assert.deepStrictEqual(
+            parts.filter((part) => part.type === "tool-call").map(({ id, name, params, providerExecuted }) => ({
+              id,
+              name,
+              params,
+              providerExecuted
+            })),
+            codeExecutionOperations.map(({ input, name }, index) => ({
+              id: `srvtoolu_${index}`,
+              name: tool.name,
+              params: { type: name, ...input },
+              providerExecuted: true
+            }))
+          )
+          assert.deepStrictEqual(
+            parts.filter((part) => part.type === "tool-result").map((
+              { id, isFailure, name, providerExecuted, result }
+            ) => ({
+              id,
+              isFailure,
+              name,
+              providerExecuted,
+              result
+            })),
+            codeExecutionOperations.map(({ result }, index) => ({
+              id: `srvtoolu_${index}`,
+              isFailure: result.type.endsWith("_error"),
+              name: tool.name,
+              providerExecuted: true,
+              result
+            }))
+          )
+
+          yield* LanguageModel.generateText({
+            prompt: Prompt.concat(prompt, Prompt.fromResponseParts(parts)),
+            toolkit
+          })
+
+          const firstBody = yield* getRequestBody(requests[0])
+          assert.deepStrictEqual(firstBody.tools, [{ name: "code_execution", type: "code_execution_20250825" }])
+          const body = yield* getRequestBody(requests[1])
+          assert.deepStrictEqual(body.messages.map((message: any) => message.role), ["user", "assistant"])
+          assert.deepStrictEqual(body.messages[1].content, content)
+        }).pipe(
+          Effect.provide(AnthropicLanguageModel.model("claude-sonnet-4-20250514")),
+          Effect.provide(makeLayer(requests, content))
+        )
+      })
+    }
+
+    it("preserves code-only and legacy code execution parameter schemas", () => {
+      const input = { code: "print(1)" }
+      assert.strictEqual(AnthropicTool.CodeExecution_20250825_Parameters.fields.code, Schema.String)
+      assert.deepStrictEqual(Schema.decodeUnknownSync(AnthropicTool.CodeExecution_20250825_Parameters)(input), input)
+      assert.deepStrictEqual(
+        Schema.decodeUnknownSync(AnthropicTool.CodeExecution_20250825().parametersSchema)(input),
+        input
+      )
+      const legacyInput = { type: "programmatic-tool-call", ...input } as const
+      assert.deepStrictEqual(
+        Schema.decodeUnknownSync(AnthropicTool.CodeExecution_20250522().parametersSchema)(legacyInput),
+        legacyInput
+      )
+    })
+
     it.effect("sends defer_loading only for tools that opt in", () =>
       Effect.gen(function*() {
         const requests: Array<HttpClientRequest.HttpClientRequest> = []
