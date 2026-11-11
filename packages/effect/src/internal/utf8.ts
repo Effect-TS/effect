@@ -9,6 +9,7 @@ const INLINE_LIMIT = 32
 /**
  * The string of the UTF-8 bytes from `start` to `end`, or `undefined` for
  * invalid UTF-8. A byte order mark is kept.
+ * Requires integer offsets satisfying `0 <= start <= end <= buf.length`.
  *
  * @internal
  */
