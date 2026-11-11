@@ -104,27 +104,12 @@ export type WireType = typeof WireType[keyof typeof WireType]
  * @since 4.1.5
  */
 export class ProtobufWriter {
-  private buf: Uint8Array<ArrayBuffer>
-  private view: DataView
+  // A writer holds no buffer until its first write, and again after `finish`.
+  private buf: Uint8Array<ArrayBuffer> = EMPTY
+  private view: DataView = EMPTY_VIEW
   private pos = 0
   // The starts of the length-delimited values that are not joined yet.
   private readonly forks: Array<number> = []
-
-  /**
-   * Creates a writer.
-   *
-   * @since 4.1.5
-   */
-  constructor() {
-    if (spareBuf === undefined) {
-      this.buf = new Uint8Array(INITIAL_SIZE)
-      this.view = new DataView(this.buf.buffer)
-    } else {
-      this.buf = spareBuf
-      this.view = spareView!
-      spareBuf = spareView = undefined
-    }
-  }
 
   /**
    * Returns the written bytes, and resets the writer. Throws if a
@@ -134,8 +119,7 @@ export class ProtobufWriter {
    */
   finish(): Uint8Array<ArrayBuffer> {
     if (this.forks.length > 0) throw new Error("ProtobufWriter.finish with a fork that is not joined")
-    // The buffer goes to the next writer. This writer allocates a buffer when
-    // it writes again.
+    // The buffer goes to the next message, of this writer or another.
     const out = this.buf.slice(0, this.pos)
     if (this.buf.length > 0 && this.buf.length <= SPARE_MAX) {
       spareBuf = this.buf
@@ -366,7 +350,6 @@ export class ProtobufWriter {
       this.fillLength(start)
       return this
     }
-    // A UTF-16 code unit takes at most three bytes.
     this.ensure(n * 3)
     const buf = this.buf
     let pos = this.pos
@@ -405,7 +388,16 @@ export class ProtobufWriter {
   }
 
   private ensure(n: number): void {
-    if (this.pos + n <= this.buf.length) return
+    if (this.pos + n > this.buf.length) this.grow(n)
+  }
+
+  private grow(n: number): void {
+    if (this.buf.length === 0 && spareBuf !== undefined) {
+      this.buf = spareBuf
+      this.view = spareView!
+      spareBuf = spareView = undefined
+      if (n <= this.buf.length) return
+    }
     let size = this.buf.length === 0 ? INITIAL_SIZE : this.buf.length * 2
     while (size < this.pos + n) size *= 2
     const next = new Uint8Array(size)
@@ -433,7 +425,6 @@ export class ProtobufWriter {
     return this.pos++
   }
 
-  // Fills in the length of the value after the placeholder at `start`.
   private fillLength(start: number): void {
     const length = this.pos - start - 1
     if (length < 0x80) {
@@ -477,38 +468,30 @@ export const make = (): ProtobufWriter => new ProtobufWriter()
 // internal
 // -----------------------------------------------------------------------------
 
-const BIGINT_ZERO = BigInt(0)
-
 // 64-bit integers are split into their unsigned 32-bit halves through a view,
 // which is faster than bigint arithmetic.
 const halvesView = new DataView(new ArrayBuffer(8))
 
-// A decimal string is read as a `bigint`, which throws for anything else.
+// A string is read with `BigInt`.
 const split64 = (n: bigint | number | string): void => {
   if (typeof n === "number") {
     n = Math.trunc(n)
     halvesView.setUint32(0, n >>> 0, true)
     halvesView.setUint32(4, Math.floor(n / 4294967296) >>> 0, true)
   } else {
-    splitBigInt(typeof n === "string" ? BigInt(n) : n)
+    halvesView.setBigUint64(0, typeof n === "string" ? BigInt(n) : n, true)
   }
-}
-
-const splitBigInt = (n: bigint): void => {
-  if (n < BIGINT_ZERO) halvesView.setBigInt64(0, n, true)
-  else halvesView.setBigUint64(0, n, true)
 }
 
 const utf8Encoder = new TextEncoder()
 
-// The buffer of the last finished writer, which the next writer starts with.
-// Only a writer created while another one is active allocates a buffer.
+// The buffer of the last finished message, which the next one is written
+// into. Only a message started while another is being written allocates one.
 let spareBuf: Uint8Array<ArrayBuffer> | undefined
 let spareView: DataView | undefined
 const SPARE_MAX = 1 << 20
 const INITIAL_SIZE = 1024
 
-// A finished writer holds no buffer until it writes again.
 const EMPTY = new Uint8Array(0)
 const EMPTY_VIEW = new DataView(EMPTY.buffer)
 

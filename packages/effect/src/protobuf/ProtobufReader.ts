@@ -231,7 +231,6 @@ export class ProtobufReader {
     return this.fail("a varint of at most 32 bits")
   }
 
-  // A varint of up to ten bytes, truncated to its low 32 bits.
   /**
    * Reads a `uint32` varint.
    *
@@ -461,10 +460,8 @@ export class ProtobufReader {
    * @since 4.1.5
    */
   float(): number {
-    this.need(4)
-    copyScratch(this.buf, this.pos, 4)
-    this.pos += 4
-    return scratchFloat32[0]
+    halvesView.setInt32(0, this.sfixed32(), true)
+    return halvesView.getFloat32(0, true)
   }
 
   /**
@@ -474,9 +471,9 @@ export class ProtobufReader {
    */
   double(): number {
     this.need(8)
-    copyScratch(this.buf, this.pos, 8)
-    this.pos += 8
-    return scratchFloat64[0]
+    halvesView.setInt32(0, this.sfixed32(), true)
+    halvesView.setInt32(4, this.sfixed32(), true)
+    return halvesView.getFloat64(0, true)
   }
 
   // Reads a length prefix and returns the offset where the data ends.
@@ -635,7 +632,8 @@ const COMPLETE = "a complete value"
 const VARINT_64 = "a varint of at most 10 bytes"
 
 // 64-bit integers are read as their unsigned 32-bit halves, and joined through
-// a view, which is faster than bigint arithmetic.
+// a view, which is faster than bigint arithmetic. Floats are read through it
+// too, which saves a `DataView` of the input for each reader.
 const halvesView = new DataView(new ArrayBuffer(8))
 
 const int64FromHalves = (lo: number, hi: number): bigint => {
@@ -648,20 +646,4 @@ const uint64FromHalves = (lo: number, hi: number): bigint => {
   halvesView.setUint32(0, lo, true)
   halvesView.setUint32(4, hi, true)
   return halvesView.getBigUint64(0, true)
-}
-
-// Floats are read through these rather than a `DataView` of the input, which
-// would be created for each reader.
-const scratch = new Uint8Array(8)
-const scratchFloat32 = new Float32Array(scratch.buffer, 0, 1)
-const scratchFloat64 = new Float64Array(scratch.buffer)
-const littleEndian = new Uint8Array(new Uint16Array([1]).buffer)[0] === 1
-
-// Copies `n` little-endian bytes into the scratch floats, in platform order.
-const copyScratch = (buf: Uint8Array, pos: number, n: number): void => {
-  if (littleEndian) {
-    for (let i = 0; i < n; i++) scratch[i] = buf[pos + i]
-  } else {
-    for (let i = 0; i < n; i++) scratch[n - 1 - i] = buf[pos + i]
-  }
 }

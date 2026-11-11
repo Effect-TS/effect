@@ -7,7 +7,9 @@
  * `writeStatus(w.tag(15, LEN).fork(), status).join()`.
  */
 
+import * as Hex from "../../encoding/Hex.ts"
 import * as ProtobufWriter from "../../protobuf/ProtobufWriter.ts"
+import * as Result from "../../Result.ts"
 import type { AnyValue, ArrayValue, KeyValue, KeyValueList, Resource } from "../OtlpResource.ts"
 import type { ResourceSpan, ScopeSpan, TraceData } from "../OtlpTracer.ts"
 
@@ -18,16 +20,13 @@ const I64 = ProtobufWriter.WireType.I64
 const LEN = ProtobufWriter.WireType.Len
 const I32 = ProtobufWriter.WireType.I32
 
-// Trace and span ids are 16 and 8 bytes, parsed into these arrays.
-const traceIdScratch = new Uint8Array(16)
-const spanIdScratch = new Uint8Array(8)
-
-// The bytes of a hex id. Each pair of characters is parsed with `parseInt`,
-// and a trailing odd character is ignored.
+// The bytes of a hex id. An id that is not valid hex is parsed pair by pair
+// with `parseInt`, and a trailing odd character is ignored.
 const hexBytes = (hex: string): Uint8Array => {
-  const length = hex.length >>> 1
-  const bytes = length === 16 ? traceIdScratch : length === 8 ? spanIdScratch : new Uint8Array(length)
-  for (let i = 0; i < length; i++) {
+  const decoded = Hex.decode(hex)
+  if (Result.isSuccess(decoded)) return decoded.success
+  const bytes = new Uint8Array(hex.length >>> 1)
+  for (let i = 0; i < bytes.length; i++) {
     bytes[i] = parseInt(hex.slice(i * 2, i * 2 + 2), 16)
   }
   return bytes
@@ -36,8 +35,6 @@ const hexBytes = (hex: string): Uint8Array => {
 // Common types (opentelemetry.proto.common.v1)
 
 /**
- * Encodes an AnyValue message.
- *
  * message AnyValue {
  *   oneof value {
  *     string string_value = 1;
@@ -70,8 +67,6 @@ const writeAnyValue = (w: Writer, value: AnyValue): Writer => {
 }
 
 /**
- * Encodes an ArrayValue message.
- *
  * message ArrayValue {
  *   repeated AnyValue values = 1;
  * }
@@ -82,8 +77,6 @@ const writeArrayValue = (w: Writer, value: ArrayValue): Writer => {
 }
 
 /**
- * Encodes a KeyValueList message.
- *
  * message KeyValueList {
  *   repeated KeyValue values = 1;
  * }
@@ -94,8 +87,6 @@ const writeKeyValueList = (w: Writer, value: KeyValueList): Writer => {
 }
 
 /**
- * Encodes a KeyValue message.
- *
  * message KeyValue {
  *   string key = 1;
  *   AnyValue value = 2;
@@ -115,8 +106,6 @@ interface InstrumentationScope {
 }
 
 /**
- * Encodes an InstrumentationScope message.
- *
  * message InstrumentationScope {
  *   string name = 1;
  *   string version = 2;
@@ -135,8 +124,6 @@ const writeInstrumentationScope = (w: Writer, scope: InstrumentationScope): Writ
 // Resource types (opentelemetry.proto.resource.v1)
 
 /**
- * Encodes a Resource message.
- *
  * message Resource {
  *   repeated KeyValue attributes = 1;
  *   uint32 dropped_attributes_count = 2;
@@ -154,8 +141,6 @@ interface Status {
 }
 
 /**
- * Encodes a Status message.
- *
  * message Status {
  *   string message = 2;
  *   StatusCode code = 3;
@@ -175,8 +160,6 @@ interface Event {
 }
 
 /**
- * Encodes an Event message.
- *
  * message Event {
  *   fixed64 time_unix_nano = 1;
  *   string name = 2;
@@ -202,8 +185,6 @@ interface Link {
 }
 
 /**
- * Encodes a Link message.
- *
  * message Link {
  *   bytes trace_id = 1;
  *   bytes span_id = 2;
@@ -243,8 +224,6 @@ interface Span {
 }
 
 /**
- * Encodes a Span message.
- *
  * message Span {
  *   bytes trace_id = 1;
  *   bytes span_id = 2;
@@ -285,8 +264,6 @@ const writeSpan = (w: Writer, span: Span): Writer => {
 }
 
 /**
- * Encodes a ScopeSpans message.
- *
  * message ScopeSpans {
  *   InstrumentationScope scope = 1;
  *   repeated Span spans = 2;
@@ -301,8 +278,6 @@ const writeScopeSpans = (w: Writer, scopeSpans: ScopeSpan): Writer => {
 }
 
 /**
- * Encodes a ResourceSpans message.
- *
  * message ResourceSpans {
  *   Resource resource = 1;
  *   repeated ScopeSpans scope_spans = 2;
@@ -341,8 +316,6 @@ interface NumberDataPoint {
 }
 
 /**
- * Encodes a NumberDataPoint message.
- *
  * message NumberDataPoint {
  *   repeated KeyValue attributes = 7;
  *   fixed64 start_time_unix_nano = 2;
@@ -356,7 +329,6 @@ interface NumberDataPoint {
  * }
  */
 const writeNumberDataPoint = (w: Writer, point: NumberDataPoint): Writer => {
-  // An absent start time is omitted.
   if (point.startTimeUnixNano !== undefined) w.tag(2, I64).fixed64(point.startTimeUnixNano)
   w.tag(3, I64).fixed64(point.timeUnixNano)
   if (point.asDouble !== undefined) w.tag(4, I64).double(point.asDouble)
@@ -380,8 +352,6 @@ interface HistogramDataPoint {
 }
 
 /**
- * Encodes a HistogramDataPoint message.
- *
  * message HistogramDataPoint {
  *   repeated KeyValue attributes = 9;
  *   fixed64 start_time_unix_nano = 2;
@@ -396,7 +366,6 @@ interface HistogramDataPoint {
  * }
  */
 const writeHistogramDataPoint = (w: Writer, point: HistogramDataPoint): Writer => {
-  // An absent start time is omitted.
   if (point.startTimeUnixNano !== undefined) w.tag(2, I64).fixed64(point.startTimeUnixNano)
   w.tag(3, I64).fixed64(point.timeUnixNano)
   w.tag(4, I64).fixed64(point.count)
@@ -416,8 +385,6 @@ interface Gauge {
 }
 
 /**
- * Encodes a Gauge message.
- *
  * message Gauge {
  *   repeated NumberDataPoint data_points = 1;
  * }
@@ -434,8 +401,6 @@ interface Sum {
 }
 
 /**
- * Encodes a Sum message.
- *
  * message Sum {
  *   repeated NumberDataPoint data_points = 1;
  *   AggregationTemporality aggregation_temporality = 2;
@@ -455,8 +420,6 @@ interface Histogram {
 }
 
 /**
- * Encodes a Histogram message.
- *
  * message Histogram {
  *   repeated HistogramDataPoint data_points = 1;
  *   AggregationTemporality aggregation_temporality = 2;
@@ -490,8 +453,6 @@ interface SummaryDataPoint {
 }
 
 /**
- * Encodes a SummaryDataPoint message.
- *
  * message SummaryDataPoint {
  *   repeated KeyValue attributes = 7;
  *   fixed64 start_time_unix_nano = 2;
@@ -508,7 +469,6 @@ interface SummaryDataPoint {
  * }
  */
 const writeSummaryDataPoint = (w: Writer, point: SummaryDataPoint): Writer => {
-  // An absent start time is omitted.
   if (point.startTimeUnixNano !== undefined) w.tag(2, I64).fixed64(point.startTimeUnixNano)
   w.tag(3, I64).fixed64(point.timeUnixNano)
   w.tag(4, I64).fixed64(point.count)
@@ -524,8 +484,6 @@ interface Summary {
 }
 
 /**
- * Encodes a Summary message.
- *
  * message Summary {
  *   repeated SummaryDataPoint data_points = 1;
  * }
@@ -546,8 +504,6 @@ interface Metric {
 }
 
 /**
- * Encodes a Metric message.
- *
  * message Metric {
  *   string name = 1;
  *   string description = 2;
@@ -579,8 +535,6 @@ interface ScopeMetrics {
 }
 
 /**
- * Encodes a ScopeMetrics message.
- *
  * message ScopeMetrics {
  *   InstrumentationScope scope = 1;
  *   repeated Metric metrics = 2;
@@ -601,8 +555,6 @@ interface ResourceMetrics {
 }
 
 /**
- * Encodes a ResourceMetrics message.
- *
  * message ResourceMetrics {
  *   Resource resource = 1;
  *   repeated ScopeMetrics scope_metrics = 2;
@@ -649,8 +601,6 @@ interface LogRecord {
 }
 
 /**
- * Encodes a LogRecord message.
- *
  * message LogRecord {
  *   fixed64 time_unix_nano = 1;
  *   fixed64 observed_time_unix_nano = 11;
@@ -687,8 +637,6 @@ interface ScopeLogs {
 }
 
 /**
- * Encodes a ScopeLogs message.
- *
  * message ScopeLogs {
  *   InstrumentationScope scope = 1;
  *   repeated LogRecord log_records = 2;
@@ -709,8 +657,6 @@ interface ResourceLogs {
 }
 
 /**
- * Encodes a ResourceLogs message.
- *
  * message ResourceLogs {
  *   Resource resource = 1;
  *   repeated ScopeLogs scope_logs = 2;
