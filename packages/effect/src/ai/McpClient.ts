@@ -259,11 +259,6 @@ export const isMcpClient = (value: unknown): value is McpClient => Predicate.has
  * `crypto.subtle`.
  * Schema decoding requires the schema's services from the caller.
  *
- * **Gotchas**
- *
- * The Skills extension requires protocol 2026-07-28. With `skills: true` on an
- * earlier protocol, construction fails with an `UnsupportedError`.
- *
  * @stability experimental
  * @category constructors
  * @since 4.0.6
@@ -296,12 +291,6 @@ export const make: (options: {
   const protocol = transport.protocol
   const version = protocol.protocolVersion
   const modern = version === "2026-07-28"
-  const skillsEnabled = options.extensions?.skills === true
-  if (skillsEnabled && !modern) {
-    return yield* fail(
-      new UnsupportedError({ description: "The MCP Skills extension requires at least protocol 2026-07-28" })
-    )
-  }
   const timeout = options.timeout ?? DEFAULT_TIMEOUT
   const discoveryLimits = yield* resolveDiscoveryLimits(options.discoveryLimits, DEFAULT_DISCOVERY_LIMITS)
   const closed = yield* Deferred.make<never, McpClientError>()
@@ -321,6 +310,7 @@ export const make: (options: {
 
   // Modern requests carry the client identity in every request.
   // https://modelcontextprotocol.io/specification/2026-07-28/basic/index
+  const skillsEnabled = options.extensions?.skills === true
   const clientCapabilities = skillsEnabled ? { extensions: { [McpSkills.EXTENSION_ID]: {} } } : {}
   const meta = {
     "io.modelcontextprotocol/protocolVersion": version,
