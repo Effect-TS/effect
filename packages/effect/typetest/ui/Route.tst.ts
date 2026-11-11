@@ -1,5 +1,7 @@
-import { Schema } from "effect"
+import { Effect, Schema } from "effect"
+import { Loader } from "effect/reactivity"
 import { Command, Component, Head, Route, Router, type Subscription } from "effect/ui"
+import { TestHost } from "effect/ui/testing"
 import { describe, expect, it } from "tstyche"
 
 const AppRoute = Route.union({
@@ -119,5 +121,82 @@ describe("Router", () => {
       head: (_model: {}, props: { readonly title: string }) => [Head.title(props.title)],
       view: (_: {}, h: any) => h.text("")
     })
+  })
+})
+
+class GetPerson extends Loader.Service<GetPerson>()(
+  "typetest/GetPerson",
+  { args: { id: Schema.Number }, success: Schema.String, error: Schema.Never, staleTime: "1 minute" },
+  Effect.succeed(({ id }) => Effect.succeed(`Person ${id}`))
+) {}
+
+const PersonSnapshot = Loader.Snapshot(GetPerson, "person")
+const PersonMessage = Schema.TaggedUnion({ Loaded: { snapshot: PersonSnapshot } })
+
+const PersonPage = Component.make({
+  name: "PersonPage",
+  props: Schema.Struct({ id: Schema.Number }),
+  model: Schema.Struct({ person: PersonSnapshot }),
+  message: PersonMessage,
+  loaders: { person: (_model, props) => ({ id: props.id }) },
+  init: ($) => $.empty,
+  update: (_, message) => ({ person: message.snapshot }),
+  subscriptions: (
+    _model,
+    _props,
+    watch
+  ) => [watch({ person: (snapshot) => PersonMessage.make({ _tag: "Loaded", snapshot }) })],
+  view: (_, h) => h.text("person")
+})
+
+const HomePage = Component.make({
+  name: "HomePage",
+  model: Schema.Struct({}),
+  message: Schema.Never,
+  init: () => ({}),
+  update: (model) => model,
+  view: (_, h) => h.text("home")
+})
+
+/** Declares the person page, which provides its own read. */
+const Declarer = Component.make({
+  name: "Declarer",
+  model: Schema.Struct({}),
+  message: Schema.Never,
+  init: () => ({}),
+  update: (model) => model,
+  subscriptions: () => [
+    Router.prefetch(AppRoute, {
+      Home: () => [Router.page(HomePage)],
+      Person: ({ params }) => [Router.page(PersonPage.pipe(Component.provide(GetPerson.layer)), { id: params.id })],
+      Files: () => [],
+      NotFound: () => []
+    })
+  ],
+  view: (_, h) => h.text("app")
+})
+
+describe("Router.prefetch", () => {
+  it("adds a page's own reads to the declarer's requirements, even when the page provides them", () => {
+    expect<Component.Requirements<typeof Declarer>>().type.toBe<Router.Router | GetPerson>()
+    const mounted = TestHost.mount(Declarer, {}).pipe(
+      Effect.provide(Router.memory({ routes: AppRoute })),
+      Effect.provide(TestHost.layer()),
+      Effect.scoped
+    )
+    // The page's provide can't satisfy the declarer: a compile error at mount.
+    expect(Effect.runPromise).type.not.toBeCallableWith(mounted)
+    expect(Effect.runPromise).type.toBeCallableWith(mounted.pipe(Effect.provide(GetPerson.layer)))
+    // Hoisted to the declarer, it does.
+    const Hoisted = Declarer.pipe(Component.provide(GetPerson.layer))
+    expect<Component.Requirements<typeof Hoisted>>().type.toBe<Router.Router>()
+  })
+
+  it("takes props like h.child, and a handler for every route", () => {
+    expect(Router.page).type.toBeCallableWith(HomePage)
+    expect(Router.page).type.not.toBeCallableWith(PersonPage)
+    expect(Router.page).type.not.toBeCallableWith(PersonPage, { id: "1" })
+    expect(Router.prefetch).type.not.toBeCallableWith(AppRoute, { Home: () => [] })
+    expect(Router.prefetch).type.toBeCallableWith(AppRoute.subset(["Home"]), { Home: () => [] })
   })
 })

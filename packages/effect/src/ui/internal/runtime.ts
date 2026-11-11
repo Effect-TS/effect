@@ -26,6 +26,7 @@ import * as Feature from "../Feature.ts"
 import * as Head from "../Head.ts"
 import * as MessageLog from "../MessageLog.ts"
 import type * as Renderer from "../Renderer.ts"
+import * as Router from "../Router.ts"
 import * as Subscription from "../Subscription.ts"
 import * as View from "../View.ts"
 import * as Executor from "./executor.ts"
@@ -182,6 +183,8 @@ type Settled = AsyncResult.Success<any, any> | AsyncResult.Failure<any, any>
 /** @internal */
 export interface Instance {
   readonly path: string
+  /** Counts the root's instances in creation order: the check after a push skips older ones. */
+  readonly born: number
   readonly depth: number
   readonly component: Component.Any
   readonly parent: Instance | undefined
@@ -210,7 +213,10 @@ export interface Instance {
   readonly stopping: Set<Run>
   readonly subscriptions: Map<string, SubscriptionRun>
   readonly watches: Map<string, WatchRun>
-  /** The keyed fields, by label. */
+  /** Every entry a watch of this instance registered on, by read name and args key. */
+  readonly watched: Set<string>
+  /** The instance's `Router.prefetch` declaration, registered with the Router. */
+  prefetch: { declaration: services.Prefetch; readonly release: () => void } | undefined
   readonly keyed: Map<string, KeyedRun>
   /** A drain of the keyed fields is queued in the flush's deferred work. */
   keyedQueued: boolean
@@ -317,6 +323,12 @@ const jsonCodecOf = (schema: Schema.Codec<any, any>) => {
   }
   return found
 }
+
+/** An entry of the cache, by read name and args key: what a watch registered on, or a prefetch fetched. */
+const entryKey = (read: string, argsKey: string): string => `${read}\u0000${argsKey}`
+
+/** How long a declaration that ran for a route drops intents for it. Fixed. */
+const intentGuardMillis = 30_000
 
 const childName = (component: Component.Any | Feature.Any): string =>
   Feature.isService(component) ? component[Feature.TypeId].name : component.name
@@ -613,6 +625,11 @@ const start = (
   const deferred: Array<() => void> = []
   let committed: Array<() => void> = []
   let scheduled = false
+  // Counts provided Layer builds as they begin, and the last one that failed, for the check after a push.
+  let builds = 0
+  let lastFailedBuild = 0
+  // Counts instances as they are created.
+  let instancesMade = 0
   // Each provided Layer build still pending, stamped with the flush it began in.
   let flushes = 0
   const building = new Set<{ readonly flush: number }>()
@@ -964,6 +981,8 @@ const start = (
     readonly env: Env
     readonly scope: Scope.Closeable
     refs: number
+    /** When the build began, counted with `builds`. */
+    readonly stamp: number
   }
 
   const buildLayer = (
@@ -992,7 +1011,12 @@ const start = (
       return found
     }
     // Not owned by the first user's Scope: every user releases it, and the last one closes it.
-    const entry: SharedBuild = { env: buildingEnv(parentEnv), scope: Scope.makeUnsafe("sequential"), refs: 1 }
+    const entry: SharedBuild = {
+      env: buildingEnv(parentEnv),
+      scope: Scope.makeUnsafe("sequential"),
+      refs: 1,
+      stamp: ++builds
+    }
     byLayer.set(layer, entry)
     whenReady(parentEnv, (parentCtx) => {
       const fiber = buildLayer(layer, parentCtx, entry.scope, (exit) => {
@@ -1032,6 +1056,7 @@ const start = (
     const scope = Scope.forkUnsafe(parent?.scope ?? rootScope, "sequential")
     const inst: Instance = {
       path,
+      born: ++instancesMade,
       depth: parent === undefined ? 0 : parent.depth + 1,
       component,
       parent,
@@ -1056,6 +1081,8 @@ const start = (
       stopping: new Set(),
       subscriptions: new Map(),
       watches: new Map(),
+      watched: new Set(),
+      prefetch: undefined,
       keyed: new Map(),
       keyedQueued: false,
       loadMores: new Set(),
@@ -1153,8 +1180,10 @@ const start = (
           Effect.runSync(Scope.addFinalizer(scope, Effect.sync(() => releaseShared(parentEnv, sharedLayer!, shared))))
         }
         let settleBuild: (() => void) | undefined
+        const buildStamp = shared !== undefined ? shared.stamp : ++builds
         const fail = (cause: Cause.Cause<unknown>) => {
           settleBuild?.()
+          lastFailedBuild = Math.max(lastFailedBuild, buildStamp)
           if (inst.closed) return
           lifecycle({ _tag: "LayerFailed", path, cause })
           const handle = component.layerFailure
@@ -1785,7 +1814,25 @@ const start = (
     if (wanted === undefined) return
     const byKey = new Map<string, Subscription.Subscription<any, any>>()
     const markers = new Map<string, loaders.Marker>()
+    let declaration: services.Prefetch | undefined
     for (const subscription of wanted) {
+      const declared = (subscription as { readonly [services.prefetch]?: services.Prefetch })[services.prefetch]
+      if (declared !== undefined) {
+        if (declaration !== undefined) {
+          return failInstance(
+            inst,
+            Cause.die(
+              new Error(
+                `${inst.path}: subscriptions returned Router.prefetch twice. An instance declares its routes' reads in one map.`
+              )
+            ),
+            "subscription",
+            "effect/ui/Router/prefetch"
+          )
+        }
+        declaration = declared
+        continue
+      }
       const marker = loaders.markerOf(subscription)
       const group = marker === undefined ? loaders.groupOf(subscription) : undefined
       if (marker !== undefined) {
@@ -1800,6 +1847,8 @@ const start = (
       }
     }
     const folds = syncWatches(inst, markers)
+    // Nothing is prefetched on the server.
+    if (server === undefined) syncPrefetch(inst, declaration)
     // Streams never run on the server.
     if (!watchesOnly && server === undefined) syncStreams(inst, byKey)
     // The cache never calls back with the state at registration. Each new watcher's settled value
@@ -1885,6 +1934,7 @@ const start = (
       record({ _tag: "SubscriptionStarted", path: inst.path, key: logKey })
       // A disabled loader: the marker is inert.
       if (marker.argsKey === undefined) continue
+      inst.watched.add(entryKey(def.name, marker.argsKey))
       const entry = { args: marker.args, argsKey: marker.argsKey }
       const source: MessageLog.Source = { _tag: "Subscription", key: logKey }
       let last:
@@ -2067,11 +2117,207 @@ const start = (
   }
   /** Drops an instance's watchers, and its descendants', at once. Closing its Scope comes after. */
   const releaseWatches = (inst: Instance) => {
+    releasePrefetch(inst)
     for (const running of inst.watches.values()) releaseWatch(running)
     for (const cancel of inst.loadMores) cancel()
     inst.loadMores.clear()
     for (const child of inst.children.values()) releaseWatches(child)
   }
+  // -- Router.prefetch --------------------------------------------------------
+  /** Registers, updates or drops the instance's declaration. The latest `subscriptions` run's map wins. */
+  const syncPrefetch = (inst: Instance, declaration: services.Prefetch | undefined) => {
+    if (declaration === undefined || hooks === undefined) return releasePrefetch(inst)
+    if (inst.prefetch !== undefined) {
+      inst.prefetch.declaration = declaration
+      return
+    }
+    // The routes each declaration ran for, and when: an intent within 30 seconds of a run is dropped.
+    const ran = new Map<string, number>()
+    const state: NonNullable<Instance["prefetch"]> = {
+      declaration,
+      release: hooks.declare({
+        routes: () => state.declaration.routes,
+        run: (route, url, intent) => {
+          if (inst.closed || inst.failure !== undefined) return undefined
+          const now = clock.currentTimeMillisUnsafe()
+          for (const [key, at] of ran) if (now - at >= intentGuardMillis) ran.delete(key)
+          if (intent && ran.has(url)) return undefined
+          ran.set(url, now)
+          return runDeclaration(inst, state.declaration, route)
+        }
+      })
+    }
+    inst.prefetch = state
+  }
+  const releasePrefetch = (inst: Instance) => {
+    const prefetch = inst.prefetch
+    if (prefetch === undefined) return
+    inst.prefetch = undefined
+    prefetch.release()
+  }
+
+  interface WalkedPage {
+    readonly name: string
+    /** The entries the walk prefetched, by entry key. */
+    readonly entries: Map<string, { readonly read: string; readonly logKey: string }>
+  }
+
+  /**
+   * Runs a declaration for a route in the declarer's context: every page is walked and its reads
+   * prefetched. Returns the check to run once the navigation settles.
+   */
+  const runDeclaration = (
+    inst: Instance,
+    declaration: services.Prefetch,
+    route: { readonly _tag: string }
+  ): (() => void) | undefined => {
+    // A declarer whose own Layer is still building, or failed, sees none of its reads yet.
+    const envCtx = inst.env.ctx
+    if (envCtx === undefined) return undefined
+    const handler = declaration.map[route._tag]
+    if (handler === undefined) return undefined
+    let pages: ReadonlyArray<services.Page>
+    try {
+      pages = handler(route)
+    } catch (error) {
+      report(prefetchThrew(inst, `Router.prefetch ${route._tag}`, error))
+      return undefined
+    }
+    const since = { born: instancesMade, build: builds }
+    const walked = pages.map((page) => walkPage(inst, envCtx, page))
+    return () => checkPrefetch(inst, walked, since)
+  }
+
+  const prefetchThrew = (inst: Instance, page: string, error: unknown) =>
+    new Router.PrefetchThrew({
+      message: `${inst.path}: ${page} threw while Router.prefetch walked it, so the rest of its walk was skipped`,
+      path: inst.path,
+      page,
+      error
+    })
+
+  /**
+   * Walks one page with no instance: `init` with its props, its Commands discarded, then what its
+   * loaders would watch first, then its initial view, recursing into component children. A throw stops
+   * the page's walk. The declarer is unaffected.
+   */
+  const walkPage = (inst: Instance, envCtx: Context.Context<any>, page: services.Page): WalkedPage => {
+    const component = page.component as Component.Any
+    const walked: WalkedPage = { name: component.name, entries: new Map() }
+    const visit = (component: Component.Any, props: unknown, provided: boolean) => {
+      // Behind a `provide`, a read the declarer can't see may be given below it: the skip is silent.
+      const behind = provided || component.layer !== undefined
+      const model = component.init(props).model
+      const bound = component["~loaders"] as loaders.Bound | undefined
+      if (bound !== undefined) {
+        const context = bound.context(model, props)
+        for (const field of bound.fields) {
+          const current = context.argsOf(field.field)
+          const entries: ReadonlyArray<loaders.Keyed> = current.entries ??
+            (current.argsKey === undefined ? [] : [{ args: current.args, argsKey: current.argsKey }])
+          if (entries.length === 0) continue
+          const def = Loader.defOf(field.read)
+          const fetcher = Context.getOption(envCtx, field.read as any)
+          if (Option.isNone(fetcher)) {
+            if (!behind) {
+              report(
+                new Router.PrefetchReadNotProvided({
+                  message: `${inst.path}: Router.prefetch skipped the read ${
+                    JSON.stringify(def.name)
+                  } of ${component.name}, because the declaring component can't see it. Provide it at the declarer.`,
+                  path: inst.path,
+                  page: walked.name,
+                  read: def.name
+                })
+              )
+            }
+            continue
+          }
+          for (const entry of entries) {
+            Loader.internals(cache).prefetch(def, entry.args, fetcher.value as (args: any) => Effect.Effect<any, any>)
+            walked.entries.set(entryKey(def.name, entry.argsKey), {
+              read: def.name,
+              logKey: def.logKey(entry.args, entry.argsKey)
+            })
+          }
+        }
+      }
+      const visitNode = (node: View.Node<any, any>): void => {
+        switch (node._tag) {
+          case "Text":
+            return
+          case "Element":
+            for (const child of node.children) visitNode(child)
+            return
+          case "Child":
+            // A feature has no implementation until its Layer is built.
+            if (Feature.isService(node.component)) return
+            return visit(node.component, node.props, behind)
+        }
+      }
+      visitNode(component.view(model, props))
+    }
+    try {
+      visit(component, page.props, false)
+    } catch (error) {
+      report(prefetchThrew(inst, component.name, error))
+    }
+    return walked
+  }
+
+  /**
+   * The check after a navigation that ran declarations settles. Per page, by component name: none
+   * mounted is reported; instances older than the navigation are skipped; the ones created since are
+   * checked per entry. Skipped whole when a Layer build begun since the navigation failed.
+   */
+  const checkPrefetch = (
+    inst: Instance,
+    pages: ReadonlyArray<WalkedPage>,
+    since: { readonly born: number; readonly build: number }
+  ) => {
+    if (lastFailedBuild > since.build) return
+    for (const page of pages) {
+      const found: Array<Instance> = []
+      const collect = (at: Instance) => {
+        if (at.closed) return
+        if (at.component.name === page.name) found.push(at)
+        for (const child of at.children.values()) collect(child)
+      }
+      collect(root)
+      if (found.length === 0) {
+        report(
+          new Router.PrefetchPageNotMounted({
+            message: `${inst.path}: Router.prefetch declared the page ${page.name}, and none was mounted`,
+            path: inst.path,
+            page: page.name
+          })
+        )
+        continue
+      }
+      const fresh = found.filter((at) => at.born > since.born)
+      if (fresh.length === 0) continue
+      const watched = new Set<string>()
+      const gather = (at: Instance) => {
+        for (const key of at.watched) watched.add(key)
+        for (const child of at.children.values()) gather(child)
+      }
+      for (const at of fresh) gather(at)
+      for (const [key, entry] of page.entries) {
+        if (watched.has(key)) continue
+        report(
+          new Router.PrefetchEntryNotWatched({
+            message:
+              `${inst.path}: Router.prefetch fetched ${entry.logKey} for ${page.name}, and the page never watched it`,
+            path: inst.path,
+            page: page.name,
+            read: entry.read,
+            logKey: entry.logKey
+          })
+        )
+      }
+    }
+  }
+
   /** The same for whatever a rendered node holds: called before its replacement is created. */
   const releaseRendered = (rendered: Rendered): void => {
     switch (rendered._tag) {

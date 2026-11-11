@@ -6,6 +6,7 @@
 import * as Context from "../../Context.ts"
 import type * as Head from "../Head.ts"
 import type { Refs as RefsShape, Renderer as RendererShape } from "../Renderer.ts"
+import type * as Route from "../Route.ts"
 
 /** @internal */
 export const Renderer = Context.Service<RendererShape, RendererShape>("effect/ui/Renderer")
@@ -61,6 +62,48 @@ export interface RootHooks {
   readonly afterFlush: (root: RootHandle, info: FlushInfo) => void
   /** The encoded Model a new instance at `path` adopts, if the router is restoring one. */
   readonly restore: (path: string) => unknown
+  /** Registers an instance's `Router.prefetch` declaration. The returned function unregisters it. */
+  readonly declare: (declarer: Declarer) => () => void
+}
+
+/**
+ * A mounted instance's `Router.prefetch` declaration, as the router sees it.
+ *
+ * @internal
+ */
+export interface Declarer {
+  /** The union the declaration's map covers. It follows the latest `subscriptions` run. */
+  readonly routes: () => Route.AnyUnion
+  /**
+   * Runs the declaration for `route`, printed as `url`, synchronously. An
+   * intent is dropped when the declaration ran for `url` less than 30 seconds
+   * ago. Returns the check to run once a push settles.
+   */
+  readonly run: (route: { readonly _tag: string }, url: string, intent: boolean) => (() => void) | undefined
+}
+
+/**
+ * A `Router.prefetch` Subscription carries its declaration under this key.
+ * The runtime reads it at every `subscriptions` run and runs no Stream for it.
+ *
+ * @internal
+ */
+export const prefetch: unique symbol = Symbol.for("effect/ui/Router/prefetch") as any
+
+/** @internal */
+export interface Prefetch {
+  readonly routes: Route.AnyUnion
+  readonly map: Readonly<Record<string, (route: any) => ReadonlyArray<Page>>>
+}
+
+/**
+ * One page a declaration names: a component and its props.
+ *
+ * @internal
+ */
+export interface Page {
+  readonly component: unknown
+  readonly props: unknown
 }
 
 /** @internal */

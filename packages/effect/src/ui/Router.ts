@@ -79,7 +79,9 @@ import * as Schema from "../Schema.ts"
 import * as Scope from "../Scope.ts"
 import * as Stream from "../Stream.ts"
 import * as SubscriptionRef from "../SubscriptionRef.ts"
+import type * as Types from "../Types.ts"
 import * as Command from "./Command.ts"
+import type * as Component from "./Component.ts"
 import type * as Head from "./Head.ts"
 import * as services from "./internal/services.ts"
 import type * as Route from "./Route.ts"
@@ -150,6 +152,14 @@ export interface Router {
   readonly block: (key: string) => Effect.Effect<void, never, Scope.Scope>
   /** Whether any block is held. */
   readonly blocked: () => boolean
+  /**
+   * The user showed intent to follow a link to `href`: each mounted
+   * `Router.prefetch` declaration covering its route runs, unless it ran for
+   * that route less than 30 seconds ago. An href the routes don't parse, or
+   * one for the current route, does nothing. `BrowserRouter` calls it on
+   * hover, focus and touch, and a test calls it directly.
+   */
+  readonly intent: (href: string) => Effect.Effect<void>
 }
 
 /**
@@ -440,6 +450,250 @@ export const subscription = <U extends Routes, Msg>(
 }
 
 // ---------------------------------------------------------------------------
+// Prefetch
+// ---------------------------------------------------------------------------
+
+const PageTypeId = "~effect/ui/Router/Page" as const
+
+/**
+ * A page a `Router.prefetch` handler names: a component and its props.
+ * `R` is the reads the component's own loaders name.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.1.3
+ */
+export interface Page<out R = never> {
+  readonly [PageTypeId]: { readonly _R: Types.Covariant<R> }
+  readonly component: Component.Any
+  readonly props: unknown
+}
+
+/**
+ * The reads a component's own loaders name: what `Router.page` adds to the
+ * declarer's requirements.
+ *
+ * @stability experimental
+ * @category utility types
+ * @since 4.1.3
+ */
+export type PageRequirements<C> = C extends Component.Component<any, any, infer M, any, any, any, any> ?
+  Component.LoaderServices<M>
+  : never
+
+/**
+ * Names a page for a `Router.prefetch` handler: a component and its props.
+ *
+ * **Details**
+ *
+ * The props argument is left out when the component takes none, as with
+ * `h.child`. It takes a component, not a feature. The page's own reads join
+ * the declaring component's requirements, so a read the page provides itself
+ * is a compile error at `mount`: provide it at the declarer, or return `[]`
+ * for that route.
+ *
+ * @stability experimental
+ * @category subscriptions
+ * @since 4.1.3
+ */
+export const page = <C extends Component.Any>(
+  component: C,
+  ...props: {} extends Component.Props<C> ? [props?: Component.Props<C>] : [props: Component.Props<C>]
+): Page<PageRequirements<C>> => ({ [PageTypeId]: pageVariance, component, props: props[0] ?? {} })
+
+const pageVariance = { _R: (_: never) => _ }
+
+/**
+ * The map `Router.prefetch` takes: a handler per route tag, given the route
+ * value as `match` gives it, returning the route's pages.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.1.3
+ */
+export type PrefetchMap<U extends Routes> = {
+  readonly [K in U["Type"]["_tag"]]: (route: Extract<U["Type"], { readonly _tag: K }>) => ReadonlyArray<Page<any>>
+}
+
+/**
+ * The reads every page of a `Router.prefetch` map names.
+ *
+ * @stability experimental
+ * @category utility types
+ * @since 4.1.3
+ */
+export type PrefetchRequirements<M> = {
+  readonly [K in keyof M]: M[K] extends (route: any) => ReadonlyArray<infer P> ? PageRequirement<P> : never
+}[keyof M]
+
+// Distributes over the pages, so a handler returning `[]` adds nothing.
+type PageRequirement<P> = P extends Page<infer R> ? R : never
+
+/**
+ * Declares the reads of each route's pages, so they are fetched before the
+ * pages mount: on link intent and on navigation.
+ *
+ * **Details**
+ *
+ * Return it from a component's `subscriptions`. The map is exhaustive over
+ * the routes it is given: pass `AppRoute.subset(...)` to declare a section's
+ * routes only, and return `[]` for a route with nothing to fetch. For each
+ * page the runtime runs `init` with the page's props, discarding its
+ * Commands, prefetches what its loaders would watch first, and walks its
+ * initial view into its component children. A loader that waits on loaded
+ * data is skipped, and so is a feature child.
+ *
+ * The declaration runs in the declaring instance's context, so the reads must
+ * be provided at the declarer or above it. A read below the page that the
+ * declarer can't see is skipped, and reported as `PrefetchReadNotProvided`
+ * unless a `Component.provide` sits between the page and the component that
+ * needs it. A throw from `init`, a loader or `view` during the walk stops
+ * that page's walk and is reported as `PrefetchThrew`.
+ *
+ * It runs on `intent(href)`, which `BrowserRouter` calls on hover, focus
+ * and touch, at most once per route every 30 seconds per declarer. A push, a
+ * link click and a replace that changes the pathname run it as well, before
+ * the route changes, and never wait for it. Back, forward, a reload and the
+ * first mount run nothing. Once a push settles, each declared page with no
+ * mounted instance is reported as `PrefetchPageNotMounted`, and each entry
+ * an instance created since the push never watched as
+ * `PrefetchEntryNotWatched`.
+ *
+ * With `staleTime: 0` a prefetch buys the instant paint only: the page still
+ * refetches when it mounts. A read
+ * with a `staleTime` between 0 and 30 seconds gets a stale paint and a
+ * refetch where a second hover would have refreshed it, because of the guard.
+ *
+ * One `Router.prefetch` per instance: a second one throws. Nothing runs on
+ * the server.
+ *
+ * **Example** (Prefetching a detail page)
+ *
+ * ```ts
+ * import { Effect, Schema } from "effect"
+ * import { Loader } from "effect/reactivity"
+ * import { Component, Route, Router } from "effect/ui"
+ *
+ * const AppRoute = Route.union({
+ *   Home: Route.make("/"),
+ *   Person: Route.make("/people/:id", { params: { id: Schema.Number } })
+ * })
+ *
+ * class GetPerson extends Loader.Service<GetPerson>()("GetPerson", {
+ *   args: { id: Schema.Number },
+ *   success: Schema.String
+ * }, Effect.succeed(({ id }) => Effect.succeed(`Person ${id}`))) {}
+ *
+ * const PersonMessage = Schema.TaggedUnion({ Loaded: {} })
+ *
+ * const Person = Component.make({
+ *   name: "Person",
+ *   props: Schema.Struct({ id: Schema.Number }),
+ *   model: Schema.Struct({ person: Loader.Snapshot(GetPerson, "person") }),
+ *   message: PersonMessage,
+ *   loaders: { person: (_model, props) => ({ id: props.id }) },
+ *   init: ($) => $.empty,
+ *   update: (model) => model,
+ *   subscriptions: (_model, _props, watch) => [watch({ person: () => PersonMessage.make({ _tag: "Loaded" }) })],
+ *   view: (_model, h) => h.el("p", "Person")
+ * })
+ *
+ * const subscriptions = () => [
+ *   Router.prefetch(AppRoute, {
+ *     Home: () => [],
+ *     Person: ({ params }) => [Router.page(Person, { id: params.id })]
+ *   })
+ * ]
+ * ```
+ *
+ * @stability experimental
+ * @category subscriptions
+ * @since 4.1.3
+ */
+export const prefetch = <U extends Routes, const M extends PrefetchMap<U>>(
+  routes: U,
+  map: M
+): Subscription.Subscription<never, Router | PrefetchRequirements<M>> => {
+  const declaration: services.Prefetch = { routes, map: map as services.Prefetch["map"] }
+  return Object.assign(Subscription.make("effect/ui/Router/prefetch", Stream.never), {
+    [services.prefetch]: declaration
+  }) as Subscription.Subscription<never, Router | PrefetchRequirements<M>>
+}
+
+/**
+ * A component or view threw while a `Router.prefetch` declaration walked a
+ * page. That page's walk stopped. The declarer is unaffected.
+ *
+ * @stability experimental
+ * @category problems
+ * @since 4.1.3
+ */
+export class PrefetchThrew extends Data.TaggedClass("PrefetchThrew")<{
+  readonly message: string
+  /** The declaring instance's path. */
+  readonly path: string
+  /** The page's component name. */
+  readonly page: string
+  /** What `init`, a loader or `view` threw. */
+  readonly error: unknown
+}> {}
+
+/**
+ * A read in a `Router.prefetch` walk is missing from the declarer's context,
+ * with no `Component.provide` between the page and the component that needs
+ * it. That read was skipped.
+ *
+ * @stability experimental
+ * @category problems
+ * @since 4.1.3
+ */
+export class PrefetchReadNotProvided extends Data.TaggedClass("PrefetchReadNotProvided")<{
+  readonly message: string
+  /** The declaring instance's path. */
+  readonly path: string
+  /** The page's component name. */
+  readonly page: string
+  /** The read's name. */
+  readonly read: string
+}> {}
+
+/**
+ * After a push settled, a page its `Router.prefetch` declaration named has
+ * no mounted instance.
+ *
+ * @stability experimental
+ * @category problems
+ * @since 4.1.3
+ */
+export class PrefetchPageNotMounted extends Data.TaggedClass("PrefetchPageNotMounted")<{
+  readonly message: string
+  /** The declaring instance's path. */
+  readonly path: string
+  /** The page's component name. */
+  readonly page: string
+}> {}
+
+/**
+ * After a push settled, the page instances created since the push never
+ * watched an entry the `Router.prefetch` declaration fetched for them.
+ *
+ * @stability experimental
+ * @category problems
+ * @since 4.1.3
+ */
+export class PrefetchEntryNotWatched extends Data.TaggedClass("PrefetchEntryNotWatched")<{
+  readonly message: string
+  /** The declaring instance's path. */
+  readonly path: string
+  /** The page's component name. */
+  readonly page: string
+  /** The read's name. */
+  readonly read: string
+  /** The entry's log key. */
+  readonly logKey: string
+}> {}
+
+// ---------------------------------------------------------------------------
 // History and the engine
 // ---------------------------------------------------------------------------
 
@@ -657,6 +911,8 @@ const build = (options: Options): Effect.Effect<Context.Context<Router>, never, 
       readonly from: string
       readonly index: number
       since: number | undefined
+      /** The checks of the declarations the navigation ran, run when it settles. */
+      readonly checks: ReadonlyArray<() => void>
     } | undefined
     let reverting = 0
 
@@ -694,13 +950,35 @@ const build = (options: Options): Effect.Effect<Context.Context<Router>, never, 
         )
       }
     }
-    const set = (next: Location, announce: boolean) => {
+    // The mounted `Router.prefetch` declarations.
+    const declarers = new Set<services.Declarer>()
+    /** Runs every declaration covering the location's route, and returns their checks. */
+    const runDeclarations = (
+      location: { readonly route: { readonly _tag: string }; readonly url: string },
+      intent: boolean
+    ): Array<() => void> => {
+      const checks: Array<() => void> = []
+      for (const declarer of Array.from(declarers)) {
+        const union = declarer.routes()
+        const route = union === routes ? Option.some(location.route) : union.parse(location.url)
+        if (Option.isNone(route)) continue
+        const check = declarer.run(route.value, location.url, intent)
+        if (check !== undefined) checks.push(check)
+      }
+      return checks
+    }
+    /**
+     * `prefetch`: a push, a link click or a replace that changes the pathname runs the destination's
+     * declarations, after the hydration window closes and before the route changes.
+     */
+    const set = (next: Location, announce: boolean, prefetch: boolean) => {
       // First, so whatever the navigation starts sees the cache with the hydration window closed.
       for (const root of roots) root.navigated()
+      const checks = prefetch ? runDeclarations(next, false) : []
       const from = pathnameOf(current.url)
       current = next
       restoring = undefined
-      if (announce) pending = { location: next, from, index, since: undefined }
+      if (announce) pending = { location: next, from, index, since: undefined, checks }
       Effect.runSync(SubscriptionRef.set(ref, next))
     }
 
@@ -732,7 +1010,7 @@ const build = (options: Options): Effect.Effect<Context.Context<Router>, never, 
         snapshots.delete(index)
         history.replace(printed + hash, writeState({ index }))
         const samePath = pathnameOf(printed) === pathnameOf(current.url)
-        set({ route, url: printed, hash, action: "replace", seq }, !samePath)
+        set({ route, url: printed, hash, action: "replace", seq }, !samePath, !samePath)
       } else {
         leave()
         // The Model snapshot also goes into the entry itself, so it survives a reload.
@@ -740,7 +1018,7 @@ const build = (options: Options): Effect.Effect<Context.Context<Router>, never, 
         index++
         for (const key of snapshots.keys()) if (key >= index) snapshots.delete(key)
         history.push(printed + hash, writeState({ index }))
-        set({ route, url: printed, hash, action: "push", seq }, true)
+        set({ route, url: printed, hash, action: "push", seq }, true, true)
       }
       return "navigated"
     }
@@ -779,7 +1057,7 @@ const build = (options: Options): Effect.Effect<Context.Context<Router>, never, 
       leave()
       index = target
       const saved = snapshots.get(target) ?? entry?.snapshot
-      set({ route: found.value.route, url: printed, hash, action: "pop", seq: current.seq + 1 }, true)
+      set({ route: found.value.route, url: printed, hash, action: "pop", seq: current.seq + 1 }, true, false)
       restoring = saved === undefined ? undefined : new Map(Object.entries(saved))
     }
     const unlisten = history.listen(popped)
@@ -798,12 +1076,19 @@ const build = (options: Options): Effect.Effect<Context.Context<Router>, never, 
         restoring.delete(path)
         return found
       },
+      declare: (declarer) => {
+        declarers.add(declarer)
+        return () => {
+          declarers.delete(declarer)
+        }
+      },
       afterFlush: (root, info) => {
         if (pending === undefined || pending.since === undefined || root !== primary()) return
         if (info.flush < pending.since || info.buildsPendingSince(pending.since) > 0) return
         const done = pending
         pending = undefined
         restoring = undefined
+        for (const check of done.checks) check()
         options.onSettled?.({
           location: done.location,
           from: done.from,
@@ -849,7 +1134,17 @@ const build = (options: Options): Effect.Effect<Context.Context<Router>, never, 
             })
           )
         }),
-      blocked: () => blocks.size > 0
+      blocked: () => blocks.size > 0,
+      intent: (href) =>
+        Effect.sync(() => {
+          const [url] = split(href)
+          const found = routes.resolve(url)
+          if (Option.isNone(found)) return
+          // A redirect prefetches its target. The current route is already mounted.
+          const printed = canonical(routes, found.value, url)
+          if (printed === current.url) return
+          runDeclarations({ route: found.value.route, url: printed }, true)
+        })
     }
     engines.set(router, {
       delivered: (seq) => {
@@ -969,7 +1264,8 @@ const static_ = (options: { readonly routes: Route.AnyUnion; readonly url: strin
           forward: blocked,
           load: () => blocked,
           block: () => Effect.void,
-          blocked: () => false
+          blocked: () => false,
+          intent: () => Effect.void
         })
       })
     )

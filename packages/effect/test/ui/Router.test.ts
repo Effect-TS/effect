@@ -4,6 +4,7 @@ import { AsyncResult, Loader } from "effect/reactivity"
 import { TestClock } from "effect/testing"
 import { Component, Head, type MessageLog, Route, Router } from "effect/ui"
 import { Query, TestHost } from "effect/ui/testing"
+import * as Prefetching from "./fixtures/prefetch.ts"
 import { App, AppRoute, GetPerson, personFetches, PersonSnapshot } from "./fixtures/router.ts"
 
 const click = (root: TestHost.TestRoot<any, any, any>, text: string) =>
@@ -505,4 +506,141 @@ describe("Router", { concurrent: false }, () => {
       assert.strictEqual(router.location().route._tag, "Person")
       assert.strictEqual(yield* router.push(AppRoute.make({ _tag: "Home" })), "blocked")
     }).pipe(Effect.provide(Router.static({ routes: AppRoute, url: "/old/4" }))))
+})
+
+describe("Router.prefetch", { concurrent: false }, () => {
+  const { Routes } = Prefetching
+  const prefetching = (
+    url: string,
+    effect: Effect.Effect<void, unknown, Router.Services | GetPerson | TestHost.TestHost | Scope.Scope>
+  ) =>
+    effect.pipe(
+      Effect.provide(GetPerson.layer),
+      Effect.provide(Router.memory({ routes: Routes, url })),
+      Effect.provide(TestHost.layer())
+    )
+  const mountApp = Effect.flatMap(Router.currentRoute(Routes), (route) => TestHost.mount(Prefetching.App, { route }))
+  const fetched = (root: TestHost.TestRoot<any, any, any>) =>
+    root.fetches().map((fetch) => [`${fetch.read}${fetch.logKey}`, fetch.trigger, fetch.path])
+  const tags = (problems: ReadonlyArray<Loader.Problem.Any>) => problems.map((problem) => problem._tag)
+
+  it.effect("walks a page with no instance on intent, and drops a repeat for 30 seconds", () =>
+    prefetching(
+      "/",
+      Effect.gen(function*() {
+        const router = yield* Router.Router
+        const root = yield* mountApp
+        yield* TestHost.settle
+        const before = root.fetches().length
+        yield* router.intent("/walk")
+        // The page's read and its component child's. The feature is skipped, and so is the note behind a provide.
+        assert.deepStrictEqual(fetched(root).slice(before), [
+          ["GetPerson{\"id\":1}", "prefetch", "/App"],
+          ["GetPerson{\"id\":2}", "prefetch", "/App"]
+        ])
+        const missing = yield* TestHost.expectProblem("PrefetchReadNotProvided")
+        assert.deepStrictEqual(
+          missing.map((
+            problem
+          ) => [(problem as Router.PrefetchReadNotProvided).page, (problem as Router.PrefetchReadNotProvided).read]),
+          [["Walked", "GetNote"]]
+        )
+        // A throw stops that page's walk only, after its loaders ran.
+        yield* router.intent("/broken")
+        assert.deepStrictEqual(fetched(root).slice(before + 2).map(([key]) => key), [
+          "GetPerson{\"id\":3}",
+          "GetPerson{\"id\":4}"
+        ])
+        const threw = yield* TestHost.expectProblem("PrefetchThrew")
+        assert.deepStrictEqual(threw.map((problem) => (problem as Router.PrefetchThrew).page), ["Broken"])
+        // The current route, and an href the routes don't parse, do nothing.
+        yield* router.intent("/")
+        yield* router.intent("/nowhere")
+        // Within 30 seconds the declaration doesn't run again, so nothing is reported.
+        yield* TestClock.adjust("29 seconds")
+        yield* router.intent("/walk")
+        assert.deepStrictEqual(tags(yield* TestHost.problems), [])
+        yield* TestClock.adjust("1 second")
+        yield* router.intent("/walk")
+        assert.strictEqual((yield* TestHost.expectProblem("PrefetchReadNotProvided")).length, 1)
+        yield* TestHost.settle
+      })
+    ))
+
+  it.effect("runs the destination's declaration on push before the route changes, and nothing on mount or back", () =>
+    prefetching(
+      "/people/1",
+      Effect.gen(function*() {
+        const router = yield* Router.Router
+        Prefetching.probe.seen.length = 0
+        Prefetching.probe.location = () => router.location().url
+        const root = yield* mountApp
+        yield* TestHost.settle
+        yield* router.navigate("/people/2")
+        yield* TestHost.settle
+        // The page found its entry fetched by the prefetch, and nothing was reported.
+        assert.deepStrictEqual(Prefetching.probe.seen, ["/people/1"])
+        yield* router.back
+        yield* TestHost.settle
+        assert.deepStrictEqual(fetched(root).filter(([key]) => key !== "GetPerson{\"id\":0}"), [
+          ["GetPerson{\"id\":1}", "watch", "/App"],
+          ["GetPerson{\"id\":2}", "prefetch", "/App"]
+        ])
+        assert.deepStrictEqual(Prefetching.probe.seen, ["/people/1"])
+      })
+    ))
+
+  it.effect("checks the declared pages once a push settles", () =>
+    prefetching(
+      "/",
+      Effect.gen(function*() {
+        const router = yield* Router.Router
+        yield* mountApp
+        yield* TestHost.settle
+        // A page created since the push that never watched a declared entry.
+        yield* router.navigate("/people/7")
+        yield* Effect.exit(TestHost.settle)
+        const unwatched = yield* TestHost.expectProblem("PrefetchEntryNotWatched")
+        assert.deepStrictEqual(
+          unwatched.map((
+            problem
+          ) => [(problem as Router.PrefetchEntryNotWatched).page, (problem as Router.PrefetchEntryNotWatched).logKey]),
+          [["Detail", "{\"id\":70}"]]
+        )
+        // No instance of the declared page.
+        yield* router.navigate("/empty")
+        yield* Effect.exit(TestHost.settle)
+        const unmounted = yield* TestHost.expectProblem("PrefetchPageNotMounted")
+        assert.deepStrictEqual(unmounted.map((problem) => (problem as Router.PrefetchPageNotMounted).page), ["Detail"])
+        // The sidebar is older than the push: skipped.
+        yield* router.navigate("/")
+        yield* TestHost.settle
+        // A Layer build begun since the push failed: the whole check is skipped.
+        yield* router.navigate("/failing")
+        yield* TestHost.settle
+        assert.deepStrictEqual(tags(yield* TestHost.problems), [])
+      })
+    ))
+
+  it.effect("throws at subscriptions on a second Router.prefetch", () =>
+    prefetching(
+      "/",
+      Effect.gen(function*() {
+        const Twice = Component.make({
+          name: "Twice",
+          model: Schema.Struct({}),
+          message: Schema.Never,
+          init: () => ({}),
+          update: (model) => model,
+          subscriptions: () => [
+            Router.prefetch(Routes.subset(["Home"]), { Home: () => [] }),
+            Router.prefetch(Routes.subset(["Walk"]), { Walk: () => [] })
+          ],
+          view: (_, h) => h.el("p", "Twice")
+        })
+        yield* TestHost.mount(Twice, {})
+        const error = yield* Effect.flip(TestHost.settle)
+        assert.strictEqual(error._tag, "RootCrashed")
+      })
+    ))
 })

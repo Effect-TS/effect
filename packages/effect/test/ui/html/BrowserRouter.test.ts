@@ -198,6 +198,50 @@ describe("BrowserRouter", { concurrent: false }, () => {
       expect(window.location.pathname).toBe("/")
     }).pipe(Effect.scoped))
 
+  it.effect("reports link intent after 50 ms of hover or focus, at once on touch, for the links a click follows", () =>
+    Effect.gen(function*() {
+      const { app, router } = yield* start("/")
+      const intents: Array<string> = []
+      const intent = router.intent
+      ;(router as { intent: Router.Router["intent"] }).intent = (href) => {
+        intents.push(href)
+        return intent(href)
+      }
+      const person = link(app, "Person 1")
+      const inner = person.appendChild(document.createElement("span"))
+      const fire = (target: Element, type: string, relatedTarget: Element | null = null) =>
+        target.dispatchEvent(new MouseEvent(type, { bubbles: true, relatedTarget }))
+      // Hover: 50 ms on the Clock. Moving onto an element inside the anchor neither cancels nor restarts.
+      fire(person, "mouseover")
+      yield* TestClock.adjust("30 millis")
+      fire(person, "mouseout", inner)
+      fire(inner, "mouseover", person)
+      yield* TestClock.adjust("19 millis")
+      expect(intents).toEqual([])
+      yield* TestClock.adjust("1 millis")
+      expect(intents).toEqual(["/people/1"])
+      // Leaving the anchor cancels the wait.
+      fire(inner, "mouseout", document.body)
+      fire(link(app, "Slow"), "mouseover")
+      fire(link(app, "Slow"), "mouseout", document.body)
+      yield* TestClock.adjust("1 second")
+      expect(intents).toEqual(["/people/1"])
+      // Focus waits too, and touch doesn't.
+      link(app, "Slow").dispatchEvent(new FocusEvent("focusin", { bubbles: true }))
+      yield* TestClock.adjust("50 millis")
+      link(app, "Home").dispatchEvent(new Event("touchstart", { bubbles: true }))
+      expect(intents).toEqual(["/people/1", "/slow", "/"])
+      // The links a click leaves to the browser show no intent.
+      person.setAttribute("target", "_blank")
+      person.dispatchEvent(new Event("touchstart", { bubbles: true }))
+      person.removeAttribute("target")
+      person.setAttribute("download", "")
+      person.dispatchEvent(new Event("touchstart", { bubbles: true }))
+      person.removeAttribute("download")
+      link(app, "Elsewhere").dispatchEvent(new Event("touchstart", { bubbles: true }))
+      expect(intents).toEqual(["/people/1", "/slow", "/"])
+    }).pipe(Effect.scoped))
+
   it.effect("follows a GET form the app has no submit handler for, and leaves a handled one alone", () =>
     Effect.gen(function*() {
       const { app, root } = yield* start("/")

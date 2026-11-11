@@ -77,11 +77,15 @@
  */
 import * as Context from "../../Context.ts"
 import * as Effect from "../../Effect.ts"
+import type * as Fiber from "../../Fiber.ts"
 import * as Layer from "../../Layer.ts"
 import * as Option from "../../Option.ts"
 import type * as Route from "../Route.ts"
 import * as Router from "../Router.ts"
 import * as submit from "./internal/submit.ts"
+
+/** How long a hover or focus rests on a link before it counts as intent. Fixed. */
+const intentDelay = "50 millis"
 
 /**
  * The options of `layer`.
@@ -115,6 +119,10 @@ export interface Options {
  *
  * There's one per document: building a second fails as a defect, and the
  * claim is released when the Layer's Scope closes.
+ *
+ * It reports link intent to `Router.prefetch` declarations through
+ * `intent`: a hover or focus that rests on a link for 50 ms, on the Effect
+ * `Clock`, and a touch at once. Only links a click would follow count.
  *
  * @stability experimental
  * @category layers
@@ -306,20 +314,71 @@ const make = (options: Options, inFragment: boolean): Layer.Layer<Router.Service
       event.preventDefault()
       Effect.runSync(router.navigate(href))
     }
-    const onClick = (event: MouseEvent) => {
-      if (event.defaultPrevented || event.button !== 0) return
-      if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return
-      const anchor = event.composedPath().find((node): node is Element =>
+    /** The nearest anchor with an `href` on the event's path. */
+    const anchorOf = (event: Event): Element | undefined =>
+      event.composedPath().find((node): node is Element =>
         "localName" in node && (node as Element).localName === "a" && (node as Element).hasAttribute("href")
       )
-      if (anchor === undefined) return
+    /** The href a click on `anchor` would follow, or undefined when the browser keeps it. */
+    const hrefOf = (anchor: Element): string | undefined => {
       const targetAttribute = anchor.getAttribute("target")
       if (
         (targetAttribute !== null && targetAttribute !== "" && targetAttribute !== "_self") ||
         anchor.hasAttribute("download")
-      ) return
-      const rawHref = anchor.getAttribute("href")!
-      follow(event, local(new URL(rawHref, document.baseURI)))
+      ) return undefined
+      const href = local(new URL(anchor.getAttribute("href")!, document.baseURI))
+      return href === undefined || Option.isNone(routes.parse(href)) ? undefined : href
+    }
+    const onClick = (event: MouseEvent) => {
+      if (event.defaultPrevented || event.button !== 0) return
+      if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return
+      const anchor = anchorOf(event)
+      if (anchor === undefined) return
+      follow(event, hrefOf(anchor))
+    }
+
+    // --- intent ------------------------------------------------------------
+    // Hover and focus count after 50 ms on the Effect Clock, touch at once. Moving between elements
+    // inside one anchor neither cancels nor restarts the wait.
+    const services = yield* Effect.context<never>()
+    let intended: Element | undefined
+    let waiting: Fiber.Fiber<void> | undefined
+    const cancelIntent = () => {
+      intended = undefined
+      if (waiting !== undefined) {
+        waiting.interruptUnsafe()
+        waiting = undefined
+      }
+    }
+    const onEnter = (event: Event) => {
+      const anchor = anchorOf(event)
+      if (anchor === intended) return
+      cancelIntent()
+      if (anchor === undefined) return
+      intended = anchor
+      const href = hrefOf(anchor)
+      if (href === undefined) return
+      waiting = Effect.runForkWith(services)(
+        Effect.andThen(
+          Effect.sleep(intentDelay),
+          Effect.suspend(() => {
+            waiting = undefined
+            return router.intent(href)
+          })
+        )
+      )
+    }
+    const onLeave = (event: FocusEvent | MouseEvent) => {
+      if (intended === undefined) return
+      const next = event.relatedTarget
+      if (next !== null && "nodeType" in next && intended.contains(next as Node)) return
+      cancelIntent()
+    }
+    const onTouch = (event: TouchEvent) => {
+      cancelIntent()
+      const anchor = anchorOf(event)
+      const href = anchor === undefined ? undefined : hrefOf(anchor)
+      if (href !== undefined) Effect.runSync(router.intent(href))
     }
     const onSubmit = (event: SubmitEvent) => {
       // BrowserHost prevents every submission of a form the app rendered. If the app has no
@@ -349,10 +408,21 @@ const make = (options: Options, inFragment: boolean): Layer.Layer<Router.Service
     }
     document.addEventListener("click", onClick)
     document.addEventListener("submit", onSubmit)
+    document.addEventListener("mouseover", onEnter)
+    document.addEventListener("focusin", onEnter)
+    document.addEventListener("mouseout", onLeave)
+    document.addEventListener("focusout", onLeave)
+    document.addEventListener("touchstart", onTouch, { passive: true })
     yield* Effect.addFinalizer(() =>
       Effect.sync(() => {
+        cancelIntent()
         document.removeEventListener("click", onClick)
         document.removeEventListener("submit", onSubmit)
+        document.removeEventListener("mouseover", onEnter)
+        document.removeEventListener("focusin", onEnter)
+        document.removeEventListener("mouseout", onLeave)
+        document.removeEventListener("focusout", onLeave)
+        document.removeEventListener("touchstart", onTouch)
       })
     )
     return context

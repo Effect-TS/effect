@@ -1194,6 +1194,81 @@ describe("HtmlServer loaders", { concurrent: false }, () => {
       }))
     }))
 
+  it.effect("runs a push's Router.prefetch after the navigation closes the fetch-free window", () =>
+    Effect.gen(function*() {
+      // Always stale: inside the window a prefetch leaves the hydrated entry alone, and after it, fetches it.
+      class GetNow extends Loader.Service<GetNow>()("GetNow", {
+        args: { id: Schema.Number },
+        success: Schema.String,
+        error: Schema.Never,
+        staleTime: 0
+      }, Effect.succeed(({ id }) => Effect.succeed(`Now ${id}`))) {}
+      const NowSnapshot = Loader.Snapshot(GetNow, "now")
+      const NowMessage = Schema.TaggedUnion({ Loaded: { snapshot: NowSnapshot } })
+      const Now = Component.make({
+        name: "Now",
+        props: Schema.Struct({ id: Schema.Number }),
+        model: Schema.Struct({ now: NowSnapshot }),
+        message: NowMessage,
+        elements: Html,
+        loaders: { now: (_model, props) => ({ id: props.id }) },
+        init: ($) => $.empty,
+        update: (_, message) => ({ now: message.snapshot }),
+        subscriptions: (_model, _props, watch) => [
+          watch({ now: (snapshot) => NowMessage.make({ _tag: "Loaded", snapshot }) })
+        ],
+        view: (_, h) => h.p("now")
+      })
+      // Holds the window open on the client: the slot waits 10 millis for its Layer.
+      class Store extends Context.Service<Store, string>()("test/Store") {}
+      let builds = 0
+      const Slow = Component.make({
+        name: "Slow",
+        model: Schema.Struct({}),
+        message: Schema.Never,
+        elements: Html,
+        init: () => ({}),
+        update: (model) => model,
+        view: (_, h) => h.p("slow")
+      }).pipe(Component.provide(Layer.effect(
+        Store,
+        Effect.suspend(() => builds++ === 0 ? Effect.succeed("ready") : Effect.as(Effect.sleep("10 millis"), "ready"))
+      )))
+      const Message = Schema.TaggedUnion({ Navigated: {} })
+      const Page = Component.make({
+        name: "Page",
+        model: Schema.Struct({}),
+        message: Message,
+        elements: Html,
+        // On the client, init navigates while the slot holds the window open.
+        init: ($) =>
+          $.set({}).run(
+            Router.push(AppRoute, Option.getOrThrow(AppRoute.parse("/people/1"))).pipe(
+              Command.map(() => Message.make({ _tag: "Navigated" }))
+            )
+          ),
+        update: (model) => model,
+        subscriptions: () => [
+          Router.prefetch(AppRoute, {
+            Home: () => [],
+            Person: ({ params }) => [Router.page(Now, { id: params.id })],
+            Search: () => [],
+            Slow: () => [],
+            NotFound: () => []
+          })
+        ],
+        // The mounted page is older than the push, so the check after it skips it.
+        view: (_, h) => h.div(h.child(Now, { key: "a", props: { id: 1 } }), h.child(Slow, { key: "s", props: {} }))
+      }).pipe(Component.provide(GetNow.layer))
+      const { router } = yield* routed("/")
+      yield* hosted(Effect.gen(function*() {
+        const result = yield* ssr(Page, {}).pipe(Effect.provide(router))
+        expect(result.root.fetches().map((fetch) => [fetch.logKey, fetch.trigger, fetch.inWindow])).toEqual([
+          ["{\"id\":1}", "prefetch", false]
+        ])
+      }))
+    }))
+
   it.effect("allows a caller-only fetch inside the window: it stores nothing", () =>
     hosted(Effect.gen(function*() {
       const { GetItem, Item } = makeItems()
