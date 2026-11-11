@@ -744,6 +744,136 @@ describe("toCodeDocument", { concurrent: false }, () => {
       })
     })
 
+    it("resolves named and type-only imports and only repeats callbacks whose inputs changed", async () => {
+      const calls: Array<SchemaRepresentation.Code> = []
+      let unaffectedCalls = 0
+      const document = SchemaRepresentation.toCodeDocument({
+        references: {
+          Box: { _tag: "String", checks: [] },
+          BoxType: { _tag: "Number", checks: [] }
+        },
+        representations: [{
+          _tag: "Declaration",
+          checks: [],
+          typeParameters: [{ _tag: "Reference", $ref: "Box" }],
+          annotations: {
+            toCode: ({ typeParameters }: SchemaRepresentation.Generation.DeclarationInput) => {
+              calls.push(typeParameters[0])
+              return {
+                runtime: `Box(${typeParameters[0].runtime}).annotate({ description: "Box" })`,
+                Type: `BoxType<${typeParameters[0].Type}>`,
+                importDeclarations: [
+                  `import { /* namespace member */ Option as Box } from 'effect/Schema';`,
+                  `import { type Option as BoxType } from "effect/Option"`
+                ]
+              }
+            }
+          }
+        }, {
+          _tag: "Declaration",
+          checks: [],
+          typeParameters: [],
+          annotations: {
+            toCode: () => {
+              unaffectedCalls++
+              return {
+                runtime: "Schema.String",
+                Type: "string",
+                importDeclarations: [`import { Option as Box } from "effect/Schema"`]
+              }
+            }
+          }
+        }]
+      })
+      assert.lengthOf(calls, 2)
+      assert.deepStrictEqual(calls[0], { runtime: "Box", Type: "Box" })
+      const name = document.references.nonRecursives[0].$ref
+      assert.notStrictEqual(name, "Box")
+      assert.deepStrictEqual(calls[1], { runtime: name, Type: name })
+      assert.strictEqual(unaffectedCalls, 1)
+      const source = render(document)
+      register("named import collision", source, ["import(\"effect/Option\").Option<string>", "string"])
+      await withGeneratedModule<Generated>(source, ({ TestRoot0, TestRoot1 }) => {
+        assertSamples(TestRoot0, { accepts: [Option.some("a")], rejects: [Option.some(1)] })
+        assert.strictEqual(Schema.resolveAnnotations(TestRoot0)?.description, "Box")
+        assertSamples(TestRoot1, { accepts: ["a"], rejects: [1] })
+      })
+    })
+
+    it("resolves imports colliding with symbol and enum artifacts", async () => {
+      const symbol = Symbol.for("import collision")
+      const input = SchemaRepresentation.toRepresentations([
+        Schema.UniqueSymbol(symbol).ast,
+        Schema.Enum({ A: "a" }).ast
+      ])
+      const document = SchemaRepresentation.toCodeDocument({
+        ...input,
+        representations: [{
+          _tag: "Declaration",
+          checks: [],
+          typeParameters: input.representations,
+          annotations: {
+            toCode: ({ typeParameters }: SchemaRepresentation.Generation.DeclarationInput) => ({
+              runtime: `Schema.Struct({ s: ${typeParameters[0].runtime}, e: ${typeParameters[1].runtime} })`,
+              Type: `{ readonly s: ${typeParameters[0].Type}; readonly e: ${typeParameters[1].Type} }`,
+              importDeclarations: [
+                `import * as _symbol from "effect/Option"`,
+                `import { Enum as _Enum } from "effect/Schema"`
+              ]
+            })
+          }
+        }]
+      })
+      const source = render(document)
+      register("artifact import collision", source)
+      await withGeneratedModule<Generated>(source, ({ TestRoot0 }) => {
+        assertSamples(TestRoot0, {
+          accepts: [{ s: symbol, e: "a" }],
+          rejects: [{ s: Symbol("import collision"), e: "a" }, { s: symbol, e: "b" }]
+        })
+      })
+    })
+
+    it("resolves imports returned by check callbacks", async () => {
+      const document = SchemaRepresentation.toCodeDocument({
+        references: { Is: { _tag: "String", checks: [] } },
+        representations: [{
+          _tag: "Unknown",
+          checks: [{
+            _tag: "Filter",
+            aborted: false,
+            representation: { id: "test/import", payload: null, schemas: [{ _tag: "Reference", $ref: "Is" }] },
+            annotations: {
+              toCode: ({ schemas }: SchemaRepresentation.Generation.CheckInput) => ({
+                runtime: `Schema.makeFilter(Is(${schemas[0].runtime}))`,
+                importDeclarations: [`import { is as Is } from "effect/Schema"`]
+              })
+            }
+          }]
+        }]
+      })
+      const source = render(document)
+      register("check import collision", source)
+      await withGeneratedModule<Generated>(source, ({ TestRoot0 }) => {
+        assertSamples(TestRoot0, { accepts: ["a"], rejects: [1] })
+      })
+    })
+
+    it("keeps generated names from shadowing emitted globals", async () => {
+      const names = ["NaN", "Infinity", "Array", "ReadonlyArray", "globalThis"]
+      const schemas = names.map((identifier) => Schema.String.annotate({ identifier }))
+      const document = generate(
+        Schema.Array(Schema.Number).annotate({ examples: [[NaN, Infinity]] }),
+        ...schemas
+      )
+      const source = render(document)
+      register("global name collisions", source, ["ReadonlyArray<number>"])
+      await withGeneratedModule<Generated>(source, ({ TestRoot0 }) => {
+        assertSamples(TestRoot0, { accepts: [[1, 2]], rejects: [["a"]] })
+        assert.deepStrictEqual(Schema.resolveAnnotations(TestRoot0)?.examples, [[NaN, Infinity]])
+      })
+    })
+
     it("deduplicates imports across definitions and roots", async () => {
       const Named = Schema.Option(Schema.String).annotate({ identifier: "Named" })
       const document = generate(Named, Schema.Array(Named), Schema.Option(Schema.Number))

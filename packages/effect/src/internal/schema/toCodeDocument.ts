@@ -2,14 +2,25 @@ import * as Arr from "../../Array.ts"
 import { format, formatPropertyKey } from "../../Formatter.ts"
 import type * as Schema from "../../Schema.ts"
 import type * as SchemaRepresentation from "../../SchemaRepresentation.ts"
+import { type Binding, code, deferred, type Fragment, join, Module, type Render } from "../codegen.ts"
 import { errorWithPath } from "../errors.ts"
 import * as InternalRecord from "../record.ts"
 import * as InternalAnnotations from "./annotations.ts"
+import * as CodeImports from "./codeImports.ts"
 
 type Path = ReadonlyArray<string | number>
 type CheckRepresentationAnnotation = SchemaRepresentation.CheckRepresentationAnnotation<
   SchemaRepresentation.Representation
 >
+
+interface Code {
+  readonly runtime: Fragment
+  readonly Type: Fragment
+}
+
+function makeFragments(runtime: Fragment, Type: Fragment): Code {
+  return { runtime, Type }
+}
 
 /** @internal */
 export function makeCode(runtime: string, Type: string): SchemaRepresentation.Code {
@@ -100,6 +111,7 @@ function isSimpleLiveLiteral(
 }
 
 interface TopologicalSort {
+  readonly dependencies: ReadonlyMap<string, ReadonlySet<string>>
   readonly nonRecursives: ReadonlyArray<{
     readonly $ref: string
     readonly representation: SchemaRepresentation.Representation
@@ -246,41 +258,71 @@ function topologicalSort(
       InternalRecord.assignProperty(recursives, $ref, references[$ref])
     }
   }
-  return { nonRecursives, recursives }
+  return { nonRecursives, recursives, dependencies: eagerDependencies }
 }
 
 /** @internal */
 export function toCodeDocument(
   document: SchemaRepresentation.MultiDocument
 ): SchemaRepresentation.CodeDocument {
-  const artifacts: Array<SchemaRepresentation.Artifact> = []
+  const module = new Module(["Schema", "globalThis", "Array", "ReadonlyArray", "NaN", "Infinity"])
+  const artifacts: Array<{ readonly _tag: "Symbol" | "Enum"; readonly binding: Binding }> = []
   const sorted = topologicalSort(document.references)
-  const sanitizedReferences = new Map<string, string>()
-  const symbols = new Map<symbol, string>()
-  const uniqueIdentifiers = new Set<string>(["Schema"])
+  const sanitizedReferences = new Map<string, Binding>()
+  const symbols = new Map<symbol, Binding>()
+  const parsedImports = new Map<string, CodeImports.Imports>()
+  const callbackImports = new Map<object, ReadonlyArray<CodeImports.Imports>>()
 
   for (const { $ref } of sorted.nonRecursives) ensureUniqueIdentifier($ref)
   for (const $ref of Object.keys(sorted.recursives)) ensureUniqueIdentifier($ref)
 
-  const nonRecursives = sorted.nonRecursives.map(({ $ref, representation }) => ({
-    $ref: ensureUniqueIdentifier($ref),
-    code: recur(representation, ["references", $ref])
-  }))
-  const recursives: Record<string, SchemaRepresentation.Code> = {}
-  for (const [$ref, representation] of Object.entries(sorted.recursives)) {
-    InternalRecord.assignProperty(recursives, ensureUniqueIdentifier($ref), recur(representation, ["references", $ref]))
+  for (
+    const [$ref, representation] of [
+      ...sorted.nonRecursives.map(({ $ref, representation }) => [$ref, representation] as const),
+      ...Object.entries(sorted.recursives)
+    ]
+  ) {
+    const fragments = recur(representation, ["references", $ref])
+    module.define(
+      ensureUniqueIdentifier($ref),
+      [fragments.runtime, fragments.Type],
+      Array.from(sorted.dependencies.get($ref)!, ensureUniqueIdentifier)
+    )
   }
-  const codes = document.representations.map((representation, index) =>
+  const roots = document.representations.map((representation, index) =>
     recur(representation, ["representations", index])
   )
-
-  return {
-    codes,
-    references: { nonRecursives, recursives },
-    artifacts
+  const output = module.finalize(roots.flatMap((code) => [code.runtime, code.Type]))
+  const definitions = new Map(
+    output.declarations.map(({ binding, fragments }) => [binding, makeCode(fragments[0], fragments[1])] as const)
+  )
+  const nonRecursives = sorted.nonRecursives.map(({ $ref }) => {
+    const binding = ensureUniqueIdentifier($ref)
+    return { $ref: output.names.get(binding)!, code: definitions.get(binding)! }
+  })
+  const recursives: Record<string, SchemaRepresentation.Code> = {}
+  for (const $ref of Object.keys(sorted.recursives)) {
+    const binding = ensureUniqueIdentifier($ref)
+    InternalRecord.assignProperty(recursives, output.names.get(binding)!, definitions.get(binding)!)
   }
 
-  function ensureUniqueIdentifier(original: string): string {
+  return {
+    codes: roots.map((_, index) => makeCode(output.roots[index * 2], output.roots[index * 2 + 1])),
+    references: { nonRecursives, recursives },
+    artifacts: [
+      ...CodeImports.render(Array.from(callbackImports.values()).flat()).map((importDeclaration) => ({
+        _tag: "Import" as const,
+        importDeclaration
+      })),
+      ...artifacts.map(({ _tag, binding }) => ({
+        _tag,
+        identifier: output.names.get(binding)!,
+        code: definitions.get(binding)!
+      }))
+    ]
+  }
+
+  function ensureUniqueIdentifier(original: string): Binding {
     const existing = sanitizedReferences.get(original)
     if (existing !== undefined) return existing
     const candidate = freshIdentifier(original)
@@ -288,45 +330,86 @@ export function toCodeDocument(
     return candidate
   }
 
-  function freshIdentifier(seed: string): string {
-    const sanitized = sanitizeJavaScriptIdentifier(seed)
-    let candidate = sanitized
-    let suffix = 0
-    while (uniqueIdentifiers.has(candidate)) candidate = `${sanitized}${++suffix}`
-    uniqueIdentifiers.add(candidate)
-    return candidate
+  function freshIdentifier(seed: string): Binding {
+    return module.declare(sanitizeJavaScriptIdentifier(seed))
   }
 
-  function addImport(importDeclaration: string): void {
-    if (!artifacts.some((artifact) => artifact._tag === "Import" && artifact.importDeclaration === importDeclaration)) {
-      artifacts.push({ _tag: "Import", importDeclaration })
+  function compileCallback(
+    inputs: ReadonlyArray<Code>,
+    callback: (
+      inputs: ReadonlyArray<SchemaRepresentation.Code>
+    ) => SchemaRepresentation.Generation.DeclarationOutput | SchemaRepresentation.Generation.CheckOutput,
+    path: Path
+  ): Code {
+    let previous: ReadonlyArray<SchemaRepresentation.Code> | undefined
+    let output: SchemaRepresentation.Generation.DeclarationOutput | SchemaRepresentation.Generation.CheckOutput
+    let lastRender: Render | undefined
+    const identity = {}
+    const evaluate = (render: Render) => {
+      if (lastRender === render) return output
+      lastRender = render
+      const parameters = inputs.map((input) => makeCode(render(input.runtime), render(input.Type)))
+      // Keep callback results when their inputs are unchanged, including across finalization.
+      if (
+        previous === undefined ||
+        parameters.some((input, index) =>
+          input.runtime !== previous![index].runtime || input.Type !== previous![index].Type
+        )
+      ) {
+        output = callback(parameters)
+        previous = parameters
+        const imports = (output.importDeclarations ?? []).map((source, index) => {
+          try {
+            let parsed = parsedImports.get(source)
+            if (parsed === undefined) {
+              parsed = CodeImports.parse(source)
+              parsedImports.set(source, parsed)
+            }
+            for (const binding of parsed) {
+              if (binding.kind !== "SideEffect") module.addImport(binding)
+            }
+            return parsed
+          } catch (error) {
+            throw errorWithPath(
+              error instanceof Error ? error.message : String(error),
+              [...path, "importDeclarations", index]
+            )
+          }
+        })
+        callbackImports.set(identity, imports)
+      }
+      return output
     }
+    return makeFragments(
+      deferred((render) => evaluate(render).runtime),
+      deferred((render) => {
+        const output = evaluate(render)
+        return "Type" in output ? output.Type : "never"
+      })
+    )
   }
 
-  function addSymbol(symbol: symbol): string {
+  function addSymbol(symbol: symbol): Binding {
     const existing = symbols.get(symbol)
     if (existing !== undefined) return existing
     const identifier = freshIdentifier("_symbol")
     symbols.set(symbol, identifier)
     const key = globalThis.Symbol.keyFor(symbol)
     const description = symbol.description
-    artifacts.push({
-      _tag: "Symbol",
-      identifier,
-      code: makeCode(
-        key === undefined
-          ? `globalThis.Symbol(${description === undefined ? "" : format(description)})`
-          : `globalThis.Symbol.for(${format(key)})`,
-        `typeof ${identifier}`
-      )
-    })
+    artifacts.push({ _tag: "Symbol", binding: identifier })
+    module.define(identifier, [
+      key === undefined
+        ? `globalThis.Symbol(${description === undefined ? "" : format(description)})`
+        : `globalThis.Symbol.for(${format(key)})`,
+      code`typeof ${identifier}`
+    ])
     return identifier
   }
 
   function annotationSchemas(
     representation: CheckRepresentationAnnotation | undefined,
     path: Path
-  ): ReadonlyArray<SchemaRepresentation.Code> {
+  ): ReadonlyArray<Code> {
     return representation?.schemas?.map((schema, index) => recur(schema, [...path, "schemas", index])) ?? []
   }
 
@@ -346,53 +429,60 @@ export function toCodeDocument(
   function compileCheck(
     check: SchemaRepresentation.Check,
     path: Path
-  ): string {
+  ): Fragment {
     const callback = check.annotations?.toCode
-    let runtime: string
+    let runtime: Fragment
     if (callback !== undefined) {
       const schemas = annotationSchemas(check.representation, [...path, "representation"])
-      const output = (callback as SchemaRepresentation.Generation.Check)({ schemas })
-      for (const importDeclaration of output.importDeclarations ?? []) addImport(importDeclaration)
-      runtime = output.runtime
+      runtime = compileCallback(
+        schemas,
+        (schemas) => (callback as SchemaRepresentation.Generation.Check)({ schemas }),
+        [...path, "annotations", "toCode"]
+      ).runtime
     } else if (check._tag === "Filter") {
       throw errorWithPath("Missing toCode callback", [...path, "annotations", "toCode"])
     } else {
-      runtime = `Schema.makeFilterGroup([${
-        check.checks.map((child, index) => compileCheck(child, [...path, "checks", index])).join(", ")
+      runtime = code`Schema.makeFilterGroup([${
+        join(check.checks.map((child, index) => compileCheck(child, [...path, "checks", index])), ", ")
       }])`
     }
-    runtime += runtimeAnnotate(check.annotations)
-    if (check._tag === "Filter" && check.aborted) runtime += ".abort()"
+    runtime = code`${runtime}${runtimeAnnotate(check.annotations)}`
+    if (check._tag === "Filter" && check.aborted) runtime = code`${runtime}.abort()`
     return runtime
   }
 
   function applyNode(
-    base: SchemaRepresentation.Code,
+    base: Code,
     representation: Exclude<SchemaRepresentation.Representation, SchemaRepresentation.Reference>,
     path: Path
-  ): SchemaRepresentation.Code {
-    let runtime = base.runtime + runtimeAnnotate(representation.annotations)
+  ): Code {
+    let runtime = code`${base.runtime}${runtimeAnnotate(representation.annotations)}`
     for (let index = 0; index < representation.checks.length; index++) {
       const check = representation.checks[index]
       const compiledCheck = compileCheck(check, [...path, "checks", index])
       // Only collapse a bare number's leading canonical check.
-      runtime = runtime === "Schema.Number" && Object.hasOwn(canonicalNumberChecks, compiledCheck)
-        ? canonicalNumberChecks[compiledCheck]
-        : `${runtime}.check(${compiledCheck})`
+      const current = runtime
+      runtime = deferred((render) => {
+        const base = render(current)
+        const check = render(compiledCheck)
+        return base === "Schema.Number" && Object.hasOwn(canonicalNumberChecks, check)
+          ? canonicalNumberChecks[check]
+          : `${base}.check(${check})`
+      })
     }
-    return makeCode(runtime, base.Type)
+    return makeFragments(runtime, base.Type)
   }
 
   function recur(
     representation: SchemaRepresentation.Representation,
     path: Path
-  ): SchemaRepresentation.Code {
+  ): Code {
     if (representation._tag === "Reference") {
       if (!Object.hasOwn(document.references, representation.$ref)) {
         throw errorWithPath(`Invalid reference ${representation.$ref}`, [...path, "$ref"])
       }
       const identifier = ensureUniqueIdentifier(representation.$ref)
-      return makeCode(identifier, identifier)
+      return makeFragments(identifier, identifier)
     }
     return applyNode(on(representation, path), representation, path)
   }
@@ -400,7 +490,7 @@ export function toCodeDocument(
   function on(
     representation: Exclude<SchemaRepresentation.Representation, SchemaRepresentation.Reference>,
     path: Path
-  ): SchemaRepresentation.Code {
+  ): Code {
     switch (representation._tag) {
       case "Declaration": {
         const callback = representation.annotations?.toCode
@@ -410,175 +500,177 @@ export function toCodeDocument(
         const typeParameters = representation.typeParameters.map((typeParameter, index) =>
           recur(typeParameter, [...path, "typeParameters", index])
         )
-        const output = (callback as SchemaRepresentation.Generation.Declaration)({ typeParameters })
-        for (const importDeclaration of output.importDeclarations ?? []) addImport(importDeclaration)
-        return makeCode(output.runtime, output.Type)
+        return compileCallback(
+          typeParameters,
+          (typeParameters) => (callback as SchemaRepresentation.Generation.Declaration)({ typeParameters }),
+          [...path, "annotations", "toCode"]
+        )
       }
       case "Suspend": {
         const thunk = recur(representation.thunk, [...path, "thunk"])
-        return makeCode(`Schema.suspend((): Schema.Codec<${thunk.Type}> => ${thunk.runtime})`, thunk.Type)
+        return makeFragments(code`Schema.suspend((): Schema.Codec<${thunk.Type}> => ${thunk.runtime})`, thunk.Type)
       }
       case "Null":
-        return makeCode("Schema.Null", "null")
+        return makeFragments("Schema.Null", "null")
       case "Undefined":
-        return makeCode("Schema.Undefined", "undefined")
+        return makeFragments("Schema.Undefined", "undefined")
       case "Void":
-        return makeCode("Schema.Void", "void")
+        return makeFragments("Schema.Void", "void")
       case "Never":
-        return makeCode("Schema.Never", "never")
+        return makeFragments("Schema.Never", "never")
       case "Unknown":
-        return makeCode("Schema.Unknown", "unknown")
+        return makeFragments("Schema.Unknown", "unknown")
       case "Any":
-        return makeCode("Schema.Any", "any")
+        return makeFragments("Schema.Any", "any")
       case "String":
-        return makeCode("Schema.String", "string")
+        return makeFragments("Schema.String", "string")
       case "Number":
-        return makeCode("Schema.Number", "number")
+        return makeFragments("Schema.Number", "number")
       case "Boolean":
-        return makeCode("Schema.Boolean", "boolean")
+        return makeFragments("Schema.Boolean", "boolean")
       case "BigInt":
-        return makeCode("Schema.BigInt", "bigint")
+        return makeFragments("Schema.BigInt", "bigint")
       case "Symbol":
-        return makeCode("Schema.Symbol", "symbol")
+        return makeFragments("Schema.Symbol", "symbol")
       case "Literal": {
         const literal = format(representation.literal)
-        return makeCode(`Schema.Literal(${literal})`, literal)
+        return makeFragments(`Schema.Literal(${literal})`, literal)
       }
       case "UniqueSymbol": {
         const identifier = addSymbol(representation.symbol)
-        return makeCode(`Schema.UniqueSymbol(${identifier})`, `typeof ${identifier}`)
+        return makeFragments(code`Schema.UniqueSymbol(${identifier})`, code`typeof ${identifier}`)
       }
       case "ObjectKeyword":
-        return makeCode("Schema.ObjectKeyword", "object")
+        return makeFragments("Schema.ObjectKeyword", "object")
       case "Enum": {
         const identifier = freshIdentifier("_Enum")
-        artifacts.push({
-          _tag: "Enum",
-          identifier,
-          code: makeCode(
-            `enum ${identifier} { ${
-              representation.enums.map(([name, value]) => `${format(name)} = ${format(value)}`).join(
-                ", "
-              )
-            } }`,
-            `typeof ${identifier}`
-          )
-        })
-        return makeCode(`Schema.Enum(${identifier})`, identifier)
+        artifacts.push({ _tag: "Enum", binding: identifier })
+        module.define(identifier, [
+          code`enum ${identifier} { ${
+            representation.enums.map(([name, value]) => `${format(name)} = ${format(value)}`).join(
+              ", "
+            )
+          } }`,
+          code`typeof ${identifier}`
+        ])
+        return makeFragments(code`Schema.Enum(${identifier})`, identifier)
       }
       case "TemplateLiteral": {
         const parts = representation.parts.map((part, index) => recur(part, [...path, "parts", index]))
-        const Type = `\`${parts.map((part) => `\${${part.Type}}`).join("")}\``
-        return makeCode(`Schema.TemplateLiteral([${parts.map((part) => part.runtime).join(", ")}])`, Type)
+        const Type = code`\`${join(parts.map((part) => code`\${${part.Type}}`), "")}\``
+        return makeFragments(code`Schema.TemplateLiteral([${join(parts.map((part) => part.runtime), ", ")}])`, Type)
       }
       case "Arrays": {
         const elements = representation.elements.map((element, index) => {
           const type = recur(element.type, [...path, "elements", index, "type"])
-          return makeCode(
-            `${element.isOptional ? "Schema.optionalKey(" : ""}${type.runtime}${element.isOptional ? ")" : ""}${
+          return makeFragments(
+            code`${element.isOptional ? "Schema.optionalKey(" : ""}${type.runtime}${element.isOptional ? ")" : ""}${
               runtimeAnnotate(element.annotations, "annotateKey")
             }`,
-            element.isOptional ? `(${type.Type})?` : type.Type
+            element.isOptional ? code`(${type.Type})?` : type.Type
           )
         })
         const rest = representation.rest.map((item, index) => recur(item, [...path, "rest", index]))
-        let code: SchemaRepresentation.Code
+        let result: Code
         if (Arr.isArrayNonEmpty(rest)) {
           const item = rest[0]
           if (elements.length === 0 && rest.length === 1) {
-            code = makeCode(`Schema.Array(${item.runtime})`, `ReadonlyArray<${item.Type}>`)
+            result = makeFragments(code`Schema.Array(${item.runtime})`, code`ReadonlyArray<${item.Type}>`)
           } else {
             const types = [
               ...elements.map((element) => element.Type),
-              `...Array<${item.Type}>`,
+              code`...Array<${item.Type}>`,
               ...rest.slice(1).map((item) => item.Type)
             ]
-            code = makeCode(
-              `Schema.TupleWithRest(Schema.Tuple([${elements.map((element) => element.runtime).join(", ")}]), [${
-                rest.map((item) => item.runtime).join(", ")
+            result = makeFragments(
+              code`Schema.TupleWithRest(Schema.Tuple([${join(elements.map((element) => element.runtime), ", ")}]), [${
+                join(rest.map((item) => item.runtime), ", ")
               }])`,
-              `readonly [${types.join(", ")}]`
+              code`readonly [${join(types, ", ")}]`
             )
           }
         } else {
-          code = makeCode(
-            `Schema.Tuple([${elements.map((element) => element.runtime).join(", ")}])`,
-            `readonly [${elements.map((element) => element.Type).join(", ")}]`
+          result = makeFragments(
+            code`Schema.Tuple([${join(elements.map((element) => element.runtime), ", ")}])`,
+            code`readonly [${join(elements.map((element) => element.Type), ", ")}]`
           )
         }
-        return code
+        return result
       }
       case "Objects": {
         const properties = representation.propertySignatures.map((property, index) => {
           const isSymbol = typeof property.name === "symbol"
           const name = isSymbol
-            ? `[${addSymbol(property.name)}]`
+            ? code`[${addSymbol(property.name)}]`
             : formatPropertyKey(property.name)
           const type = recur(property.type, [...path, "propertySignatures", index, "type"])
           let runtime = type.runtime
-          if (property.isMutable) runtime = `Schema.mutableKey(${runtime})`
-          if (property.isOptional) runtime = `Schema.optionalKey(${runtime})`
-          runtime += runtimeAnnotate(property.annotations, "annotateKey")
-          const runtimeName = formatObjectLiteralKey(property.name, name)
-          const typeName = `${property.isMutable ? "" : "readonly "}${name}${property.isOptional ? "?" : ""}`
+          if (property.isMutable) runtime = code`Schema.mutableKey(${runtime})`
+          if (property.isOptional) runtime = code`Schema.optionalKey(${runtime})`
+          runtime = code`${runtime}${runtimeAnnotate(property.annotations, "annotateKey")}`
+          const runtimeName = property.name === "__proto__" ? code`[${name}]` : name
+          const typeName = code`${property.isMutable ? "" : "readonly "}${name}${property.isOptional ? "?" : ""}`
           return {
-            code: makeCode(`${runtimeName}: ${runtime}`, `${typeName}: ${type.Type}`)
+            code: makeFragments(code`${runtimeName}: ${runtime}`, code`${typeName}: ${type.Type}`)
           }
         })
         const indexSignatures = representation.indexSignatures.map((signature, index) => ({
           parameter: recur(signature.parameter, [...path, "indexSignatures", index, "parameter"]),
           type: recur(signature.type, [...path, "indexSignatures", index, "type"])
         }))
-        const propertyRuntimes = properties.map((property) => property.code.runtime).join(", ")
-        const propertyTypes = properties.map((property) => property.code.Type).join(", ")
-        let code: SchemaRepresentation.Code
+        const propertyRuntimes = join(properties.map((property) => property.code.runtime), ", ")
+        const propertyTypes = join(properties.map((property) => property.code.Type), ", ")
+        let result: Code
         if (indexSignatures.length === 0) {
-          code = makeCode(
-            `Schema.Struct({ ${propertyRuntimes} })`,
-            `{ ${propertyTypes} }`
+          result = makeFragments(
+            code`Schema.Struct({ ${propertyRuntimes} })`,
+            code`{ ${propertyTypes} }`
           )
         } else if (properties.length === 0 && indexSignatures.length === 1) {
           const signature = indexSignatures[0]
-          code = makeCode(
-            `Schema.Record(${signature.parameter.runtime}, ${signature.type.runtime})`,
-            `{ readonly [x: ${signature.parameter.Type}]: ${signature.type.Type} }`
+          result = makeFragments(
+            code`Schema.Record(${signature.parameter.runtime}, ${signature.type.runtime})`,
+            code`{ readonly [x: ${signature.parameter.Type}]: ${signature.type.Type} }`
           )
         } else {
-          const indexRuntimes = indexSignatures.map((signature) =>
-            `Schema.Record(${signature.parameter.runtime}, ${signature.type.runtime})`
-          ).join(", ")
-          const indexTypes = indexSignatures.map((signature) =>
-            `readonly [x: ${signature.parameter.Type}]: ${signature.type.Type}`
+          const indexRuntimes = join(
+            indexSignatures.map((signature) =>
+              code`Schema.Record(${signature.parameter.runtime}, ${signature.type.runtime})`
+            ),
+            ", "
           )
-          code = properties.length === 0
-            ? makeCode(
-              `Schema.StructWithRest(Schema.Struct({ ${propertyRuntimes} }), [${indexRuntimes}])`,
-              `{ ${indexTypes.join(", ")} }`
+          const indexTypes = indexSignatures.map((signature) =>
+            code`readonly [x: ${signature.parameter.Type}]: ${signature.type.Type}`
+          )
+          result = properties.length === 0
+            ? makeFragments(
+              code`Schema.StructWithRest(Schema.Struct({ ${propertyRuntimes} }), [${indexRuntimes}])`,
+              code`{ ${join(indexTypes, ", ")} }`
             )
-            : makeCode(
-              `Schema.StructWithRest(Schema.Struct({ ${propertyRuntimes} }), [${indexRuntimes}])`,
-              [`{ ${propertyTypes} }`, ...indexTypes.map((indexType) => `{ ${indexType} }`)].join(" & ")
+            : makeFragments(
+              code`Schema.StructWithRest(Schema.Struct({ ${propertyRuntimes} }), [${indexRuntimes}])`,
+              join([code`{ ${propertyTypes} }`, ...indexTypes.map((indexType) => code`{ ${indexType} }`)], " & ")
             )
         }
-        return code
+        return result
       }
       case "Union": {
         if (representation.options === undefined && representation.types.length === 0) {
-          return makeCode("Schema.Never", "never")
+          return makeFragments("Schema.Never", "never")
         }
         if (representation.options === undefined && representation.types.every(isSimpleLiveLiteral)) {
           const literals = representation.types.map((literal) => format(literal.literal))
           return literals.length === 1
-            ? makeCode(`Schema.Literal(${literals[0]})`, literals[0])
-            : makeCode(`Schema.Literals([${literals.join(", ")}])`, literals.join(" | "))
+            ? makeFragments(`Schema.Literal(${literals[0]})`, literals[0])
+            : makeFragments(`Schema.Literals([${literals.join(", ")}])`, literals.join(" | "))
         }
         const types = representation.types.map((type, index) => recur(type, [...path, "types", index]))
         const options = representation.options === undefined
           ? ""
           : `, ${unionOptionsRuntime(representation.options)}`
-        return makeCode(
-          `Schema.Union([${types.map((type) => type.runtime).join(", ")}]${options})`,
-          types.length === 0 ? "never" : types.map((type) => type.Type).join(" | ")
+        return makeFragments(
+          code`Schema.Union([${join(types.map((type) => type.runtime), ", ")}]${options})`,
+          types.length === 0 ? "never" : join(types.map((type) => type.Type), " | ")
         )
       }
     }

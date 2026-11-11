@@ -316,6 +316,32 @@ describe("SchemaRepresentation.toCodeDocument annotations", () => {
     )
   })
 
+  it("reports conflicting imports without retrying callbacks indefinitely", () => {
+    let calls = 0
+    expectError(
+      () =>
+        SchemaRepresentation.toCodeDocument({
+          references: { A: StringRepresentation },
+          representations: [{
+            _tag: "Declaration",
+            typeParameters: [{ _tag: "Reference", $ref: "A" }],
+            checks: [],
+            annotations: {
+              toCode: ({ typeParameters }: SchemaRepresentation.Generation.DeclarationInput) => {
+                calls++
+                return {
+                  ...typeParameters[0],
+                  importDeclarations: [`import * as ${typeParameters[0].Type} from "acme/Custom"`]
+                }
+              }
+            }
+          }]
+        }),
+      `Import introduced a new naming conflict after finalization: A1\n  at ["representations"][0]["annotations"]["toCode"]["importDeclarations"][0]`
+    )
+    assert.strictEqual(calls, 2)
+  })
+
   it("generates content media types, optional pre-rest elements and numeric properties", () => {
     const output = SchemaRepresentation.toCodeDocument({
       representations: [
