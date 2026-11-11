@@ -101,8 +101,8 @@ export const Person = Component.make({
       Visited: () => ({ ...model, visits: model.visits + 1 }),
       Bump: () => ({ ...model, count: model.count + 1 })
     }),
-  subscriptions: (_model, _props, watch) => [
-    watch({
+  subscriptions: (_model, _props, $) => [
+    $.watch({
       person: (snapshot, result) =>
         PersonMessage.make({
           _tag: "Loaded",

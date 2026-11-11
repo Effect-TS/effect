@@ -163,8 +163,8 @@ export const UserCard = Component.make({
         ),
       Liked: () => model
     }),
-  subscriptions: (_model, _props, watch) => [
-    watch({ user: (snapshot) => UserCardMessage.make({ _tag: "UserChanged", snapshot }) })
+  subscriptions: (_model, _props, $) => [
+    $.watch({ user: (snapshot) => UserCardMessage.make({ _tag: "UserChanged", snapshot }) })
   ],
   view: (_model, h) =>
     AsyncResult.match(h.loaded.user, {
@@ -231,8 +231,8 @@ export const RenameForm = Component.make({
         error: Option.some(reason)
       })
     }),
-  subscriptions: (_model, _props, watch) => [
-    watch({ user: (snapshot) => RenameFormMessage.make({ _tag: "UserChanged", snapshot }) })
+  subscriptions: (_model, _props, $) => [
+    $.watch({ user: (snapshot) => RenameFormMessage.make({ _tag: "UserChanged", snapshot }) })
   ],
   view: (model, h) =>
     AsyncResult.match(h.loaded.user, {
@@ -296,8 +296,8 @@ export const ListPage = Component.make({
       UsersChanged: ({ snapshot }) => ({ ...model, users: snapshot }),
       GoTo: ({ page }) => ({ ...model, page })
     }),
-  subscriptions: (_model, _props, watch) => [
-    watch({ users: (snapshot) => ListPageMessage.make({ _tag: "UsersChanged", snapshot }) })
+  subscriptions: (_model, _props, $) => [
+    $.watch({ users: (snapshot) => ListPageMessage.make({ _tag: "UsersChanged", snapshot }) })
   ],
   view: (model, h) => {
     const current = h.loaded.users

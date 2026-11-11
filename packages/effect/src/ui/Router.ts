@@ -608,7 +608,7 @@ type PageRequirement<P> = P extends Page<infer R> ? R : never
  *   loaders: { person: (_model, props) => ({ id: props.id }) },
  *   init: ($) => $.empty,
  *   update: (model) => model,
- *   subscriptions: (_model, _props, watch) => [watch({ person: () => PersonMessage.make({ _tag: "Loaded" }) })],
+ *   subscriptions: (_model, _props, $) => [$.watch({ person: () => PersonMessage.make({ _tag: "Loaded" }) })],
  *   view: (_model, h) => h.el("p", "Person")
  * })
  *

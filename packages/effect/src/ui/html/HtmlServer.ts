@@ -48,7 +48,8 @@
  * ```
  *
  * On the client, mount the same component with the same props and the parsed
- * state: `BrowserHost.mount(App, {}, container, { state })`.
+ * state: `BrowserHost.mount(App, {}, container, { state })`, or
+ * `BrowserHost.mountEffect` to wait for `root.adopted`.
  *
  * @stability experimental
  * @since 4.1.3

@@ -1388,8 +1388,8 @@ export interface SnapshotMapSchema<R extends Read.Any, Label extends string> ext
  *   loaders: { users: (_model, props) => props.ids.map((id) => ({ id })) },
  *   init: ($) => $.empty,
  *   update: (_model, message) => ({ users: message.users }),
- *   subscriptions: (_model, _props, watch) => [
- *     watch({ users: (users) => Message.make({ _tag: "UsersChanged", users }) })
+ *   subscriptions: (_model, _props, $) => [
+ *     $.watch({ users: (users) => Message.make({ _tag: "UsersChanged", users }) })
  *   ],
  *   view: (_model, h) =>
  *     h.ul(h.loaded.users.map(({ args, result }) =>

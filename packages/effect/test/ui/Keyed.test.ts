@@ -120,8 +120,8 @@ const makeApp = (options?: {
         },
         Renamed: () => model
       }),
-    subscriptions: (_model, _props, watch) => [
-      watch({
+    subscriptions: (_model, _props, $) => [
+      $.watch({
         users: (users, loaded, changes) => {
           // The opened array is the collection at the loader's keys.
           assert.strictEqual(loaded.length, new Set(loaded.map((entry) => entry.args.id)).size)
@@ -285,8 +285,8 @@ describe("Keyed loader fields", () => {
         order.push(`update [${changed.join(",")}]`)
         return { users }
       },
-      subscriptions: (_model, _props, watch) => [
-        watch({
+      subscriptions: (_model, _props, $) => [
+        $.watch({
           users: (users, _loaded, changes) =>
             Message.make({ _tag: "UsersChanged", users, changed: changes.map((change) => change.args.id) })
         })
@@ -657,8 +657,8 @@ describe("Keyed loader fields", () => {
           },
           UserChanged: ({ user }) => ({ ...model, user })
         }),
-      subscriptions: (_model, _props, watch) => [
-        watch({
+      subscriptions: (_model, _props, $) => [
+        $.watch({
           users: (users, _loaded, changes) =>
             Message.make({ _tag: "UsersChanged", users, changed: changes.map((change) => change.args.id) }),
           user: (user) => Message.make({ _tag: "UserChanged", user })
@@ -721,8 +721,8 @@ describe("Keyed loader fields", () => {
       loaders: { users: () => [{ id: "2" }, { id: "1" }] },
       init: ($) => $.empty,
       update: (model, message) => message._tag === "UsersChanged" ? { users: message.users } : model,
-      subscriptions: (_model, _props, watch) => [
-        watch({ users: (users) => app.BoardMessage.make({ _tag: "UsersChanged", users, changed: [] }) })
+      subscriptions: (_model, _props, $) => [
+        $.watch({ users: (users) => app.BoardMessage.make({ _tag: "UsersChanged", users, changed: [] }) })
       ],
       view: (_model, h) => {
         const one = h.loaded.users.get({ id: "1" })
@@ -778,7 +778,7 @@ describe("Loader.SnapshotMap", () => {
           loaders: { people: () => [] },
           init: ($: any) => $.empty,
           update: (model: unknown) => model,
-          subscriptions: (_m: unknown, _p: unknown, watch: any) => [watch({ people: () => undefined })],
+          subscriptions: (_m: unknown, _p: unknown, $: any) => [$.watch({ people: () => undefined })],
           view: () => null as never
         } as any),
       /write Loader.SnapshotMap\(read, "people"\)/
@@ -824,8 +824,8 @@ describe("Keyed redaction", () => {
       subscriptions: (
         _model,
         _props,
-        watch
-      ) => [watch({ accounts: (accounts) => Message.make({ _tag: "Changed", accounts }) })],
+        $
+      ) => [$.watch({ accounts: (accounts) => Message.make({ _tag: "Changed", accounts }) })],
       view: (_model, h) =>
         h.el(
           "p",
@@ -935,8 +935,8 @@ const makeSelection = (app: ReturnType<typeof makeApp>) => {
         Show: ({ ids }) => ({ ...model, ids }),
         UsersChanged: ({ users, kept }) => ({ ...model, users, selected: kept ? model.selected : model.ids[0] })
       }),
-    subscriptions: (model, _props, watch) => [
-      watch({
+    subscriptions: (model, _props, $) => [
+      $.watch({
         users: (users, loaded) =>
           Message.make({ _tag: "UsersChanged", users, kept: Option.isSome(loaded.get({ id: model.selected })) })
       })
@@ -1046,8 +1046,8 @@ describe("Keyed history restore", () => {
             ),
           Navigated: () => model
         }),
-      subscriptions: (_model, _props, watch) => [
-        watch({ users: (users) => Message.make({ _tag: "UsersChanged", users }) })
+      subscriptions: (_model, _props, $) => [
+        $.watch({ users: (users) => Message.make({ _tag: "UsersChanged", users }) })
       ],
       view: (_model, h) => h.el("p", h.loaded.users.map(({ args }) => args.id).join(","))
     })

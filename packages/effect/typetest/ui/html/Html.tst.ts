@@ -1,4 +1,4 @@
-import { Effect, Schema, type Scope } from "effect"
+import { Effect, type Layer, Schema, type Scope } from "effect"
 import { Component, Renderer, type View } from "effect/ui"
 import { BrowserHost, Html } from "effect/ui/html"
 import { HtmlQuery } from "effect/ui/html/testing"
@@ -167,10 +167,14 @@ describe("BrowserHost", () => {
     view: (count, h) => h.button(String(count)).onClick(Msg.make({ _tag: "Mounted" }))
   })
 
-  it("mount needs only a Scope for an HTML root", () => {
-    expect(BrowserHost.mount(Counter, {}, document.body)).type.toBe<
+  it("mountEffect needs only a Scope for an HTML root", () => {
+    expect(BrowserHost.mountEffect(Counter, {}, document.body)).type.toBe<
       Effect.Effect<Renderer.Root<number, Msg>, never, Scope.Scope>
     >()
+  })
+
+  it("mount is a Layer that needs nothing for an HTML root", () => {
+    expect(BrowserHost.mount(Counter, {}, document.body)).type.toBe<Layer.Layer<never>>()
   })
 
   it("Renderer.mount of an HTML root needs Html.Host", () => {
@@ -191,5 +195,6 @@ describe("BrowserHost", () => {
       view: (_, h) => h.view()
     })
     expect(BrowserHost.mount).type.not.toBeCallableWith(App, {}, document.body)
+    expect(BrowserHost.mountEffect).type.not.toBeCallableWith(App, {}, document.body)
   })
 })

@@ -123,14 +123,13 @@ export const NoteEditor = Component.make({
 
 const scratchpad: Note = { id: "scratchpad", title: "Scratchpad", body: "" }
 
-// A component's requirements are in its type, so this doesn't compile until
-// `SaveNote` is provided. `mount` renders into the container for the life of
-// its Scope: keep it open, and run `main` from the browser entry module with
-// `Effect.runFork(main)`.
-export const main = Effect.gen(function*() {
-  yield* BrowserHost.mount(NoteEditor, { note: scratchpad }, document.getElementById("app")!)
-  return yield* Effect.never
-}).pipe(
-  Effect.scoped,
-  Effect.provide(SaveNote.layer.pipe(Layer.provide(Notes.layerHttp)))
-)
+// `mount` is a Layer: the tree is mounted for as long as the Layer is built.
+// The component's requirements are the Layer's, so this doesn't compile until
+// `SaveNote` is provided. `Layer.suspend` delays the `document` lookup until
+// the app runs, because other modules import this one.
+export const NoteEditorLive = Layer.suspend(() =>
+  BrowserHost.mount(NoteEditor, { note: scratchpad }, document.getElementById("app")!)
+).pipe(Layer.provide(SaveNote.layer.pipe(Layer.provide(Notes.layerHttp))))
+
+// Run it from the browser entry module with `Effect.runFork(main)`.
+export const main = Layer.launch(NoteEditorLive)

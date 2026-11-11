@@ -80,8 +80,8 @@ const makeApp = (options?: { readonly staleTime?: "30 seconds" | 0 | "Infinity";
         },
         Renamed: () => ({ ...model, saving: false })
       }),
-    subscriptions: (_model, _props, watch) => [
-      watch({ user: (user) => CardMessage.make({ _tag: "UserChanged", user }) })
+    subscriptions: (_model, _props, $) => [
+      $.watch({ user: (user) => CardMessage.make({ _tag: "UserChanged", user }) })
     ],
     view: (model, h) => {
       const text = AsyncResult.match(h.loaded.user, {
@@ -404,8 +404,8 @@ describe("Loaded", () => {
         messages.push(`${$.props.tag} ${message.state}`)
         return { user: message.user }
       },
-      subscriptions: (_model, _props, watch) => [
-        watch({
+      subscriptions: (_model, _props, $) => [
+        $.watch({
           user: (user, result) =>
             WatchMessage.make({ _tag: "Changed", user, state: `${result._tag}:${result.waiting}` })
         })
@@ -503,8 +503,8 @@ describe("Loaded", () => {
           messages.push(`${$.props.tag} ${message.state}`)
           return { data: message.data }
         },
-        subscriptions: (_model, _props, watch) => [
-          watch({
+        subscriptions: (_model, _props, $) => [
+          $.watch({
             data: (data, result) => Message.make({ _tag: "Changed", data, state: `${result._tag}:${result.waiting}` })
           })
         ],
@@ -543,8 +543,8 @@ describe("Loaded", () => {
         subscriptions: (
           _model,
           _props,
-          watch
-        ) => [watch({ other: (other) => PageMessage.make({ _tag: "Changed", other }) })],
+          $
+        ) => [$.watch({ other: (other) => PageMessage.make({ _tag: "Changed", other }) })],
         view: (model, h) =>
           h.el(
             "div",
@@ -648,8 +648,8 @@ describe("Loaded", () => {
       subscriptions: (
         _model,
         _props,
-        watch
-      ) => [watch({ user: (user) => EmitterMessage.make({ _tag: "UserChanged", user }) })],
+        $
+      ) => [$.watch({ user: (user) => EmitterMessage.make({ _tag: "UserChanged", user }) })],
       view: (_model, h) => h.el("p", "emitter")
     })
     const ParentMessage = Schema.TaggedUnion({ Switch: {}, Noted: { label: Schema.String } })
@@ -712,8 +712,8 @@ describe("Loaded", () => {
       subscriptions: (
         _model,
         _props,
-        watch
-      ) => [watch({ user: (user) => BadMessage.make({ _tag: "UserChanged", user }) })],
+        $
+      ) => [$.watch({ user: (user) => BadMessage.make({ _tag: "UserChanged", user }) })],
       view: (_model, h) => h.el("p", "bad").on("click", BadMessage.make({ _tag: "Crash" }))
     })
     const Host = Component.make({
@@ -780,8 +780,8 @@ describe("Loaded", () => {
       subscriptions: (
         _model,
         _props,
-        watch
-      ) => [watch({ user: (user) => PollMessage.make({ _tag: "UserChanged", user }) })],
+        $
+      ) => [$.watch({ user: (user) => PollMessage.make({ _tag: "UserChanged", user }) })],
       view: (model, h) => h.el("p", model.done ? "done" : "not yet")
     })
     return run(
@@ -842,8 +842,8 @@ describe("Loaded", () => {
       subscriptions: (
         _model,
         _props,
-        watch
-      ) => [watch({ user: (user) => Message.make({ _tag: "UserChanged", user }) })],
+        $
+      ) => [$.watch({ user: (user) => Message.make({ _tag: "UserChanged", user }) })],
       view: (_model, h) => {
         seen.push(`view ${h.loaded.user._tag}`)
         return h.el("i", "noter")
@@ -1063,7 +1063,7 @@ describe("Loaded", () => {
     const unwatched = Component.make({ ...base, model, loaders, subscriptions: () => [] } as any)
     assert.throws(() => unwatched.subscriptions!({ user: undefined }, {}), /subscriptions must return/)
     const unhandled = Component.make(
-      { ...base, model, loaders, subscriptions: (_m: any, _p: any, watch: any) => [watch({})] } as any
+      { ...base, model, loaders, subscriptions: (_m: any, _p: any, $: any) => [$.watch({})] } as any
     )
     assert.throws(() => unhandled.subscriptions!({ user: undefined }, {}), /no handler/)
   })
@@ -1084,8 +1084,8 @@ describe("Loaded", () => {
       },
       init: ($: any) => $.empty,
       update: (model: any, message: any) => ({ ...model, ...message }),
-      subscriptions: (_model: any, _props: any, watch: any) => [
-        watch({ a: (a: any) => Message.make({ _tag: "A", a }), b: (b: any) => Message.make({ _tag: "B", b }) })
+      subscriptions: (_model: any, _props: any, $: any) => [
+        $.watch({ a: (a: any) => Message.make({ _tag: "A", a }), b: (b: any) => Message.make({ _tag: "B", b }) })
       ],
       view: (_model: any, h: any) => h.el("p", "never")
     } as any)
@@ -1126,8 +1126,8 @@ describe("Loaded", () => {
       subscriptions: (
         _model,
         _props,
-        watch
-      ) => [watch({ account: (account) => Message.make({ _tag: "Changed", account }) })],
+        $
+      ) => [$.watch({ account: (account) => Message.make({ _tag: "Changed", account }) })],
       view: (_model, h) =>
         h.el("p", AsyncResult.isSuccess(h.loaded.account) ? Redacted.value(h.loaded.account.value.secret) : "…")
     })
@@ -1182,8 +1182,8 @@ describe("Loaded", () => {
       subscriptions: (
         _model,
         _props,
-        watch
-      ) => [watch({ user: (user) => Message.make({ _tag: "UserChanged", user }) })],
+        $
+      ) => [$.watch({ user: (user) => Message.make({ _tag: "UserChanged", user }) })],
       view: (_model, h) => h.el("p", "breaker")
     })
     return run(

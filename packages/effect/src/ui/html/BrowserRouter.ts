@@ -23,7 +23,7 @@
  *
  * ```ts import.meta.vitest
  * import { BrowserHost, BrowserRouter, Html } from "effect/ui/html"
- * import { Effect, Schema } from "effect"
+ * import { Effect, Layer, Schema } from "effect"
  * import { Component, Route, Router } from "effect/ui"
  * import { TestHost } from "effect/ui/testing"
  *
@@ -52,12 +52,13 @@
  *     )
  * })
  *
- * const main = Effect.gen(function*() {
- *   yield* BrowserHost.mount(App, { route: yield* Router.currentRoute(AppRoute) }, document.getElementById("app")!)
- *   return yield* Effect.never
- * }).pipe(
- *   Effect.scoped,
- *   Effect.provide(BrowserRouter.layer({ routes: AppRoute }))
+ * // The first route comes from the Router, so the mount Layer is unwrapped
+ * // from an Effect.
+ * const main = Router.currentRoute(AppRoute).pipe(
+ *   Effect.map((route) => BrowserHost.mount(App, { route }, document.getElementById("app")!)),
+ *   Layer.unwrap,
+ *   Layer.provide(BrowserRouter.layer({ routes: AppRoute })),
+ *   Layer.launch
  * )
  *
  * // Exercise the same component without a browser.

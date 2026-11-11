@@ -58,8 +58,8 @@ const makeApp = () => {
         More: () => $.loadMore("messages"),
         Refresh: () => $.reset("messages")
       }),
-    subscriptions: (_model, _props, watch) => [
-      watch({ messages: (snapshot) => ChatMessage.make({ _tag: "Changed", snapshot }) })
+    subscriptions: (_model, _props, $) => [
+      $.watch({ messages: (snapshot) => ChatMessage.make({ _tag: "Changed", snapshot }) })
     ],
     view: (_model, h) =>
       h.el(

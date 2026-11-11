@@ -61,7 +61,7 @@ describe("BrowserHost", { concurrent: false }, () => {
     it.effect("adds, toggles, deletes and clears todos", () =>
       Effect.gen(function*() {
         const app = yield* container
-        const root = yield* BrowserHost.mount(TodoApp, {}, app)
+        const root = yield* BrowserHost.mountEffect(TodoApp, {}, app)
         const field = HtmlQuery.getByRole(app, "textbox", { name: "New todo" }) as HTMLInputElement
         const add = HtmlQuery.getByRole(app, "button", { name: "Add" })
 
@@ -105,7 +105,7 @@ describe("BrowserHost", { concurrent: false }, () => {
     it.effect("submits with Enter in the field", () =>
       Effect.gen(function*() {
         const app = yield* container
-        const root = yield* BrowserHost.mount(TodoApp, {}, app)
+        const root = yield* BrowserHost.mountEffect(TodoApp, {}, app)
         const field = HtmlQuery.getByRole(app, "textbox", { name: "New todo" })
         HtmlQuery.input(field, "Ship it")
         yield* tick
@@ -120,7 +120,7 @@ describe("BrowserHost", { concurrent: false }, () => {
     it.effect("a field keeps the Model's value when update rejects what the user typed", () =>
       Effect.gen(function*() {
         const app = yield* container
-        const root = yield* BrowserHost.mount(TodoApp, {}, app)
+        const root = yield* BrowserHost.mountEffect(TodoApp, {}, app)
         const field = HtmlQuery.getByRole(app, "textbox", { name: "New todo" }) as HTMLInputElement
         HtmlQuery.input(field, "Short title")
         yield* tick
@@ -161,7 +161,7 @@ describe("BrowserHost", { concurrent: false }, () => {
     it.effect("an ignored or unhandled change is put back", () =>
       Effect.gen(function*() {
         const app = yield* container
-        yield* BrowserHost.mount(Form, {}, app)
+        yield* BrowserHost.mountEffect(Form, {}, app)
         const ignored = HtmlQuery.getByRole(app, "textbox", { name: "Ignored" }) as HTMLInputElement
         const unhandled = HtmlQuery.getByRole(app, "textbox", { name: "Unhandled" }) as HTMLTextAreaElement
         const select = HtmlQuery.getByRole(app, "combobox", { name: "Pick" }) as HTMLSelectElement
@@ -180,7 +180,7 @@ describe("BrowserHost", { concurrent: false }, () => {
     it.effect("a checkbox keeps the Model's state when update rejects the click", () =>
       Effect.gen(function*() {
         const app = yield* container
-        yield* BrowserHost.mount(Form, {}, app)
+        yield* BrowserHost.mountEffect(Form, {}, app)
         const box = HtmlQuery.getByRole(app, "checkbox", { name: "Agree" }) as HTMLInputElement
         HtmlQuery.click(box)
         yield* tick
@@ -205,7 +205,7 @@ describe("BrowserHost", { concurrent: false }, () => {
             )
         })
         const app = yield* container
-        yield* BrowserHost.mount(Resettable, {}, app)
+        yield* BrowserHost.mountEffect(Resettable, {}, app)
         const name = HtmlQuery.getByRole(app, "textbox", { name: "Name" }) as HTMLInputElement
         const agree = HtmlQuery.getByRole(app, "checkbox", { name: "Agree" }) as HTMLInputElement
         const pick = HtmlQuery.getByRole(app, "combobox", { name: "Pick" }) as HTMLSelectElement
@@ -218,7 +218,7 @@ describe("BrowserHost", { concurrent: false }, () => {
     it.effect("accepting what the user typed leaves the caret where it is", () =>
       Effect.gen(function*() {
         const app = yield* container
-        yield* BrowserHost.mount(TodoApp, {}, app)
+        yield* BrowserHost.mountEffect(TodoApp, {}, app)
         const field = HtmlQuery.getByRole(app, "textbox", { name: "New todo" }) as HTMLInputElement
         HtmlQuery.input(field, "abcdef")
         yield* tick
@@ -280,7 +280,7 @@ describe("BrowserHost", { concurrent: false }, () => {
     it.effect("only the innermost element with a handler gets an event", () =>
       Effect.gen(function*() {
         const app = yield* container
-        const root = yield* BrowserHost.mount(Events, {}, app)
+        const root = yield* BrowserHost.mountEffect(Events, {}, app)
         HtmlQuery.click(HtmlQuery.getByRole(app, "button", { name: "Inner" }))
         HtmlQuery.click(HtmlQuery.getByRole(app, "button", { name: "Plain" }))
         yield* tick
@@ -290,7 +290,7 @@ describe("BrowserHost", { concurrent: false }, () => {
     it.effect("focus doesn't bubble", () =>
       Effect.gen(function*() {
         const app = yield* container
-        const root = yield* BrowserHost.mount(Events, {}, app)
+        const root = yield* BrowserHost.mountEffect(Events, {}, app)
         ;(HtmlQuery.getByRole(app, "textbox", { name: "Focus me" }) as HTMLInputElement).focus()
         ;(HtmlQuery.getByRole(app, "textbox", { name: "Keys" }) as HTMLInputElement).focus()
         yield* tick
@@ -300,7 +300,7 @@ describe("BrowserHost", { concurrent: false }, () => {
     it.effect("payloads are plain data", () =>
       Effect.gen(function*() {
         const app = yield* container
-        const root = yield* BrowserHost.mount(Events, {}, app)
+        const root = yield* BrowserHost.mountEffect(Events, {}, app)
         HtmlQuery.keyDown(HtmlQuery.getByRole(app, "textbox", { name: "Keys" }), "Enter", { shift: true })
         yield* tick
         expect(root.model()).toEqual(["key Enter shift"])
@@ -309,7 +309,7 @@ describe("BrowserHost", { concurrent: false }, () => {
     it.effect("submit sends the form's fields and prevents the browser's submission", () =>
       Effect.gen(function*() {
         const app = yield* container
-        const root = yield* BrowserHost.mount(Events, {}, app)
+        const root = yield* BrowserHost.mountEffect(Events, {}, app)
         const form = app.querySelector("form")!
         const event = new Event("submit", { bubbles: true, cancelable: true })
         form.dispatchEvent(event)
@@ -324,7 +324,7 @@ describe("BrowserHost", { concurrent: false }, () => {
         const outside = yield* container
         outside.innerHTML = "<form></form>"
         // `Events` handles submit on its own form, so the document listener is already there.
-        yield* BrowserHost.mount(Events, {}, app)
+        yield* BrowserHost.mountEffect(Events, {}, app)
         const Bare = Component.make({
           name: "Bare",
           model: Schema.Null,
@@ -335,7 +335,7 @@ describe("BrowserHost", { concurrent: false }, () => {
           view: (_, h) => h.form(h.input().attr("name", "q"))
         })
         const bare = yield* container
-        yield* BrowserHost.mount(Bare, {}, bare)
+        yield* BrowserHost.mountEffect(Bare, {}, bare)
         const submitted = (form: HTMLFormElement) => {
           const event = new Event("submit", { bubbles: true, cancelable: true })
           form.dispatchEvent(event)
@@ -367,7 +367,7 @@ describe("BrowserHost", { concurrent: false }, () => {
             })
         })
         const app = yield* container
-        yield* BrowserHost.mount(Prototype, {}, app)
+        yield* BrowserHost.mountEffect(Prototype, {}, app)
         HtmlQuery.submit(app.querySelector("form")!)
         const { entries, fields } = seen[0]!
         expect(Object.keys(fields)).toEqual(["constructor", "__proto__", "toString"])
@@ -413,7 +413,7 @@ describe("BrowserHost", { concurrent: false }, () => {
     it.effect("ref Commands reach the element; onMount gets it", () =>
       Effect.gen(function*() {
         const app = yield* container
-        const root = yield* BrowserHost.mount(Refs, {}, app)
+        const root = yield* BrowserHost.mountEffect(Refs, {}, app)
         yield* tick
         root.send(Message.make({ _tag: "Focus" }))
         root.send(Message.make({ _tag: "FocusMissing" }))
@@ -459,7 +459,7 @@ describe("BrowserHost", { concurrent: false }, () => {
     it.effect("a nested component of another vocabulary fails its own slot", () =>
       Effect.gen(function*() {
         const app = yield* container
-        yield* BrowserHost.mount(Page, {}, app)
+        yield* BrowserHost.mountEffect(Page, {}, app)
         yield* tick
         expect(app.textContent).toBe("beforewrong hostafter")
       }).pipe(Effect.scoped))
@@ -468,7 +468,7 @@ describe("BrowserHost", { concurrent: false }, () => {
       Effect.gen(function*() {
         const app = yield* container
         const scope = yield* Scope.make()
-        const root = yield* BrowserHost.mount(TodoApp, {}, app).pipe(Scope.provide(scope))
+        const root = yield* BrowserHost.mountEffect(TodoApp, {}, app).pipe(Scope.provide(scope))
         const field = HtmlQuery.getByRole(app, "textbox", { name: "New todo" })
         yield* Scope.close(scope, Exit.void)
         expect(app.childNodes.length).toBe(0)
@@ -477,6 +477,21 @@ describe("BrowserHost", { concurrent: false }, () => {
         HtmlQuery.input(field, "late")
         yield* tick
         expect(root.model()?.draft ?? "").toBe("")
+      }).pipe(Effect.scoped))
+
+    it.effect("mount is a Layer: the tree is live while it is built, and closing it removes the nodes", () =>
+      Effect.gen(function*() {
+        const app = yield* container
+        const scope = yield* Scope.make()
+        yield* Layer.buildWithScope(BrowserHost.mount(TodoApp, {}, app), scope)
+        HtmlQuery.input(HtmlQuery.getByRole(app, "textbox", { name: "New todo" }), "Buy milk")
+        yield* tick
+        HtmlQuery.click(HtmlQuery.getByRole(app, "button", { name: "Add" }))
+        yield* tick
+        const list = HtmlQuery.getByRole(app, "list", { name: "Todos" })
+        expect(HtmlQuery.queryAllByRole(list, "listitem").map((item) => item.textContent)).toEqual(["Buy milk×"])
+        yield* Scope.close(scope, Exit.void)
+        expect(app.childNodes.length).toBe(0)
       }).pipe(Effect.scoped))
   })
 })
