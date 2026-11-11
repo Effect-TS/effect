@@ -345,10 +345,8 @@ const make = (options: Options, inFragment: boolean): Layer.Layer<Router.Service
     let waiting: Fiber.Fiber<void> | undefined
     const cancelIntent = () => {
       intended = undefined
-      if (waiting !== undefined) {
-        waiting.interruptUnsafe()
-        waiting = undefined
-      }
+      waiting?.interruptUnsafe()
+      waiting = undefined
     }
     const onEnter = (event: Event) => {
       const anchor = anchorOf(event)
