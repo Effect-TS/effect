@@ -21,6 +21,7 @@ import * as Cause from "../Cause.ts"
 import * as Channel from "../Channel.ts"
 import * as Data from "../Data.ts"
 import * as Effect from "../Effect.ts"
+import { isWellFormed } from "../internal/string.ts"
 import * as Predicate from "../Predicate.ts"
 import * as Pull from "../Pull.ts"
 
@@ -678,17 +679,11 @@ const invalidChar = /[\0-\x08\x0B\x0C\x0E-\x1F\uFFFE\uFFFF\uD800-\uDFFF]/u
 // oxlint-disable-next-line no-control-regex
 const invalidDecodedChar = /[\0-\x08\x0B\x0C\x0E-\x1F\uFFFE\uFFFF]/
 
-// `isWellFormed` (ES2024) finds unpaired surrogates much faster than a `u`
-// regex, which is slow on non-ASCII text
-const isWellFormed: ((s: string) => boolean) | undefined =
-  typeof (String.prototype as { isWellFormed?: unknown }).isWellFormed === "function" ?
-    (s) => (s as unknown as { isWellFormed(): boolean }).isWellFormed() :
-    undefined
-
 // Returns the index of the first character outside the XML `Char` production,
-// or -1
+// or -1. `isWellFormed` finds unpaired surrogates much faster than the `u`
+// regex, which is slow on non-ASCII text.
 const searchInvalid = (s: string): number =>
-  isWellFormed !== undefined && s.search(invalidDecodedChar) === -1 && isWellFormed(s) ? -1 : s.search(invalidChar)
+  s.search(invalidDecodedChar) === -1 && isWellFormed(s) ? -1 : s.search(invalidChar)
 
 const isChar = (c: number): boolean =>
   c === TAB || c === LF || c === CR || (c >= 0x20 && c <= 0xD7FF) || (c >= 0xE000 && c <= 0xFFFD) ||
@@ -727,9 +722,7 @@ const scanName = (s: string, i: number, end: number): number => {
 }
 
 // Name characters exclude every invalid character but unpaired surrogates
-const isName = (s: string): boolean =>
-  s.length > 0 && scanName(s, 0, s.length) === s.length &&
-  (isWellFormed !== undefined ? isWellFormed(s) : !invalidChar.test(s))
+const isName = (s: string): boolean => s.length > 0 && scanName(s, 0, s.length) === s.length && isWellFormed(s)
 
 const skipSpace = (s: string, i: number, end: number): number => {
   while (i < end && isSpace(s.charCodeAt(i))) i++
