@@ -2815,10 +2815,7 @@ const start = (
       const old = byKey.get(keyOf(view, index))
       if (old === undefined || !same(old, view) || kept.has(old)) return
       kept.add(old)
-      switch (old._tag) {
-        case "Element":
-          return releaseRemoved(old.children, (view as View.Element<any, any>).children)
-      }
+      if (old._tag === "Element") releaseRemoved(old.children, (view as View.Element<any, any>).children)
     })
     for (const old of olds) if (!kept.has(old)) releaseRendered(old)
   }
