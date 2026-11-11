@@ -118,6 +118,35 @@ describe("Loader snapshots", () => {
     assert.deepStrictEqual([decoded?.result?.waiting, decoded?.patched, decoded?.argsKey], [false, true, `{"id":"1"}`])
   })
 
+  it("keeps waiting in memory through the type side, so a message built with make carries it", () => {
+    const waiting = Loader.makeSnapshot(
+      def,
+      "user",
+      at,
+      AsyncResult.success({ id: "1", name: "Ann" }, { timestamp: 5, waiting: true })
+    )
+    const Message = Schema.TaggedStruct("Changed", { user: Loader.Snapshot(GetUser, "user") })
+    const made = Message.make({ user: waiting as unknown as Loader.Snapshot<typeof GetUser, "user"> })
+    assert.isTrue(Loader.snapshotData(made.user)?.result?.waiting)
+    const failing = Loader.makeSnapshot(def, "user", at, AsyncResult.failure(Cause.fail("nope"), { waiting: true }))
+    const decoded = Schema.decodeUnknownSync(Loader.Snapshot(GetUser, "user"))(failing)
+    assert.isTrue(Loader.snapshotData(decoded)?.result?.waiting)
+  })
+
+  it("accepts a patched value as it is, so make doesn't throw on a value PatchInvalid reported", () => {
+    const patched = Loader.makeSnapshot(
+      def,
+      "user",
+      at,
+      AsyncResult.success({ id: "1", name: 42 }, { timestamp: 5 }),
+      true
+    )
+    const schema = Loader.Snapshot(GetUser, "user")
+    assert.isTrue(Equal.equals(Schema.decodeUnknownSync(schema)(patched), patched))
+    const unpatched = Loader.makeSnapshot(def, "user", at, AsyncResult.success({ id: "1", name: 42 }, { timestamp: 5 }))
+    assert.throws(() => Schema.decodeUnknownSync(schema)(unpatched))
+  })
+
   it("is branded by read and label", () => {
     class Other extends Loader.Service<Other>()("users/Other", {
       args: { id: Schema.String },

@@ -182,7 +182,15 @@ export const layer = (options?: {
       TestLoader,
       Effect.gen(function*() {
         const cache = Loader.internals(yield* Loader.Cache)
-        const off = cache.onFetch((event) => fetches.push(event))
+        const off = cache.onFetch((event) =>
+          fetches.push({
+            read: event.read,
+            logKey: event.logKey,
+            trigger: event.trigger,
+            restart: event.restart,
+            stored: event.stored
+          })
+        )
         yield* Effect.addFinalizer(() =>
           Effect.suspend(() => {
             off()

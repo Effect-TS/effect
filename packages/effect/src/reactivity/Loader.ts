@@ -1861,6 +1861,8 @@ interface FetchEvent {
   readonly trigger: Trigger
   /** True when this start replaces an interrupted fetch. It keeps the trigger. */
   readonly restart: boolean
+  /** The entry was hydrated and the fetch-free window is still open. */
+  readonly inWindow: boolean
   /**
    * False for a fetcher call whose result is handed to `get` callers and never
    * stored: a run reading back its own target, or a `get` under a live patch.
@@ -2013,6 +2015,15 @@ interface CacheInternals {
   /** Called at every fetch start. */
   readonly onFetch: (listener: (event: FetchEvent) => void) => () => void
   readonly inspect: (def: ReadDef, args: unknown) => EntryInfo | undefined
+  /** The stored fetches in flight, and those held until a live patch's run exits. */
+  readonly pending: () => ReadonlyArray<PendingFetch>
+}
+
+interface PendingFetch {
+  readonly read: string
+  readonly logKey: string
+  readonly status: "running" | "held"
+  readonly trigger: Trigger
 }
 
 /** @internal */
@@ -2097,20 +2108,26 @@ const settledMap = (
   success: (u: unknown) => Effect.Effect<unknown, SchemaIssue.Issue>,
   error: (u: unknown) => Effect.Effect<unknown, SchemaIssue.Issue>
 ): Effect.Effect<Settled, SchemaIssue.Issue> => {
-  // `waiting` is never carried over: a decoded snapshot is never waiting.
+  // `waiting` is carried over, so a watch handler's `make` keeps it. The JSON codec never sets it, so a decoded
+  // snapshot is never waiting.
+  const waiting = result.waiting
   if (result._tag === "Success") {
-    return Effect.map(success(result.value), (value) => AsyncResult.success(value, { timestamp: result.timestamp }))
+    return Effect.map(
+      success(result.value),
+      (value) => AsyncResult.success(value, { timestamp: result.timestamp, waiting })
+    )
   }
   const fails = result.cause.reasons.filter(Cause.isFailReason)
   return Effect.flatMap(
     Effect.forEach(fails, (reason) => error(reason.error)),
     (errors) => {
       const cause = Cause.fromReasons(errors.map((e) => Cause.makeFailReason(e)))
-      if (Option.isNone(result.previousSuccess)) return Effect.succeed(AsyncResult.failure(cause))
+      if (Option.isNone(result.previousSuccess)) return Effect.succeed(AsyncResult.failure(cause, { waiting }))
       const previous = result.previousSuccess.value
       return Effect.map(success(previous.value), (value) =>
         AsyncResult.failure(cause, {
-          previousSuccess: Option.some(AsyncResult.success(value, { timestamp: previous.timestamp }))
+          previousSuccess: Option.some(AsyncResult.success(value, { timestamp: previous.timestamp })),
+          waiting
         }))
     }
   )
@@ -2157,7 +2174,9 @@ const snapshotSchema = (
       return Effect.flatMap(
         Effect.all([
           args(data.args, options),
-          settledMap(result, (u) => success(u, options), (u) => error(u, options))
+          // A patched value is used as it is: a patch that fails `success` is reported as `PatchInvalid`, and a
+          // watch handler's `make` mustn't throw on it.
+          settledMap(result, (u) => data.patched ? Effect.succeed(u) : success(u, options), (u) => error(u, options))
         ]),
         ([args, result]) => {
           if (decoding) {
@@ -2687,7 +2706,14 @@ export const makeCache = (options: {
   }
   const emitFetch = (entry: Entry, trigger: Trigger, restart: boolean, stored: boolean): void => {
     if (fetchListeners.size === 0) return
-    const event: FetchEvent = { read: entry.def.name, logKey: logKeyOf(entry), trigger, restart, stored }
+    const event: FetchEvent = {
+      read: entry.def.name,
+      logKey: logKeyOf(entry),
+      trigger,
+      restart,
+      inWindow: inWindow(entry),
+      stored
+    }
     for (const listener of Array.from(fetchListeners)) {
       try {
         listener(event)
@@ -3161,6 +3187,7 @@ export const makeCache = (options: {
             logKey: registered.logKey(args, argsKey),
             trigger: "get",
             restart: false,
+            inWindow: false,
             stored: false
           }
           for (const listener of Array.from(fetchListeners)) {
@@ -3694,6 +3721,20 @@ export const makeCache = (options: {
       return () => {
         fetchListeners.delete(listener)
       }
+    },
+    pending: () => {
+      const out: Array<PendingFetch> = []
+      for (const entry of allEntries()) {
+        const trigger = entry.fetch?.trigger ?? entry.deferred
+        if (trigger === undefined) continue
+        out.push({
+          read: entry.def.name,
+          logKey: logKeyOf(entry),
+          status: entry.fetch !== undefined ? "running" : "held",
+          trigger
+        })
+      }
+      return out
     },
     inspect: (def, args) => {
       const registered = register(def)
