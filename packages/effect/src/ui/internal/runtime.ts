@@ -583,7 +583,7 @@ const start = (
         const kept: Array<unknown> = []
         for (const one of map.entries.values()) {
           if (Loader.snapshotData(one)!.patched) continue
-          Loader.internals(cache).seed(one)
+          cache.seed(one)
           kept.push(one)
         }
         if (kept.length === map.entries.size) continue
@@ -594,7 +594,7 @@ const start = (
       const data = Loader.snapshotData(snapshot)
       if (data === undefined) continue
       if (!data.patched) {
-        Loader.internals(cache).seed(snapshot)
+        cache.seed(snapshot)
         continue
       }
       if (out === model) out = Object.assign(Object.create(Object.getPrototypeOf(model)), model)
@@ -603,15 +603,15 @@ const start = (
     return out
   }
   // Every fetch the cache starts is logged against the root.
-  const offFetch = Loader.internals(cache).onFetch((event) => {
+  const offFetch = cache.onFetch((event) => {
     if (!frozen) record({ _tag: "FetchStarted", path: `/${component.name}`, ...event })
   })
   // On the server a fetch in flight holds the response, so one that ends may make the tree idle.
-  const offFetchEnd = server === undefined ? undefined : Loader.internals(cache).onFetchEnd(() => checkIdle())
+  const offFetchEnd = server === undefined ? undefined : cache.onFetchEnd(() => checkIdle())
   // Hydration: the server's entries, held raw until their reads register. This opens the fetch-free
   // window, which closes at adoption or the first navigation.
   if (hydrating !== undefined && hydrating.state["~loader"] !== undefined) {
-    Loader.internals(cache).hydrate(hydrating.state["~loader"], { static: hydrating.state["~static"] === true })
+    cache.hydrate(hydrating.state["~loader"], { static: hydrating.state["~static"] === true })
   }
   // Detached runs and the instance that issued them. The root is their second owner: closing it ends
   // them. The close then waits until every run fiber has exited, stopped ones included, and every
@@ -666,7 +666,7 @@ const start = (
   let draining = false
   const holdWatches = () => {
     if (watchHold !== undefined) return
-    watchHold = Loader.internals(cache).hold()
+    watchHold = cache.hold()
     if (!draining) wake()
   }
   const isHolding = () => watchHold !== undefined
@@ -749,7 +749,7 @@ const start = (
       idleCheck = false
       if (scheduled || dirty.size > 0 || deferred.length > 0 || building.size > 0) return
       // Any fetch in flight holds the response: a watch's, a `get`'s, a prefetch nobody renders.
-      if (Loader.internals(cache).pending().length > 0) return
+      if (cache.pending().length > 0) return
       for (const f of idleWaiters.splice(0)) f()
     })
   }
@@ -854,7 +854,7 @@ const start = (
     }
     templates = undefined
     // The fetch-free window closes at adoption, unless a navigation closed it first.
-    Loader.internals(cache).closeWindow()
+    cache.closeWindow()
     for (const f of adoptedWaiters.splice(0)) f()
   }
 
@@ -1469,7 +1469,7 @@ const start = (
       return
     }
     const def = Loader.defOf(field.read)
-    if (list.op === "reset") return Loader.internals(cache).reset(def, args)
+    if (list.op === "reset") return cache.reset(def, args)
     const go = (envCtx: Context.Context<any>) => {
       if (inst.closed) return
       const fetcher = Context.getOption(envCtx, field.read as any)
@@ -1477,7 +1477,7 @@ const start = (
       if (Option.isNone(fetcher)) return
       let cancel: (() => void) | undefined
       let done = false
-      cancel = Loader.internals(cache).loadMore(def, args, fetcher.value as any, () => {
+      cancel = cache.loadMore(def, args, fetcher.value as any, () => {
         done = true
         if (cancel !== undefined) inst.loadMores.delete(cancel)
       })
@@ -2116,7 +2116,7 @@ const start = (
           )
         }
         holdWatches()
-        const handle = Loader.internals(cache).watch(
+        const handle = cache.watch(
           def,
           marker.args,
           fetcher.value as (args: any) => Effect.Effect<any, any>,
@@ -2390,7 +2390,7 @@ const start = (
             continue
           }
           for (const entry of entries) {
-            Loader.internals(cache).prefetch(def, entry.args, fetcher.value as (args: any) => Effect.Effect<any, any>)
+            cache.prefetch(def, entry.args, fetcher.value as (args: any) => Effect.Effect<any, any>)
             walked.entries.set(entryKey(def.name, entry.argsKey), {
               read: def.name,
               logKey: def.logKey(entry.args, entry.argsKey)
@@ -3081,7 +3081,7 @@ const start = (
       flush: () => flushes,
       snapshot,
       // The first navigation closes the fetch-free window, if adoption hasn't yet.
-      navigated: () => Loader.internals(cache).closeWindow(),
+      navigated: () => cache.closeWindow(),
       report
     }
     const detach = hooks.attach(handle)
@@ -3104,10 +3104,10 @@ const start = (
   const finish = () => {
     if (scheduled || dirty.size > 0 || deferred.length > 0) flush()
     frozen = true
-    server?.onFinish?.(Loader.internals(cache))
+    server?.onFinish?.(cache)
     // In the same synchronous step as the Models: fetches in flight are interrupted, and their entries
     // revert to cold and aren't shipped. Nothing is dispatched for them.
-    const loader = Loader.internals(cache).dehydrate()
+    const loader = cache.dehydrate()
     const state: Record<string, unknown> = {}
     const deferredPaths: Array<string> = []
     // `under`: inside a deferred instance, whose subtree the client builds fresh.
@@ -3183,7 +3183,7 @@ const start = (
     send: (message) => root.dispatch(message, { _tag: "Dispatch" }),
     // A detached run whose instance is gone still counts: `TestHost.settle` waits for it.
     pending: () => [...pendingOf(root), ...Array.from(orphans).flatMap(runsOf)],
-    cache: Loader.internals(cache),
+    cache,
     crashed: () => root.failure,
     flush: () => flushes,
     buildsPendingSince,
