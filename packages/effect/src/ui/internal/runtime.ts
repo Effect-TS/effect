@@ -1700,9 +1700,9 @@ const start = (
         spanId: undefined,
         traceId: undefined
       }
-      const send = Object.assign((message: unknown) => {
+      const send = (message: unknown) => {
         if (!run.done) inst.dispatch(message, source)
-      }, { source: () => source })
+      }
       // The fiber runs the definition's own work, so its exit tells a success from a typed failure.
       const program = Effect.useSpan(
         command.name,
@@ -1735,7 +1735,7 @@ const start = (
       run.fiber = fiber
       track(liveRuns, fiber)
       if (build !== undefined) run.release = build.onClose(() => stopAndAwait(inst, run))
-      fiber.addObserver((exit) => ended(inst, run, exit, send))
+      fiber.addObserver((exit) => ended(inst, run, exit, source))
     }
     // After a handled Layer failure, work runs against the parent's services.
     if (inst.env.failure !== undefined) go(settled(inst.env).ctx!)
@@ -1750,7 +1750,7 @@ const start = (
     inst: Instance,
     run: Run,
     exit: Exit.Exit<unknown, unknown>,
-    send: { readonly source: () => MessageLog.Source }
+    source: MessageLog.Source
   ) => {
     const command = run.command
     // Only acts when the work never began.
@@ -1823,7 +1823,7 @@ const start = (
     // delivers can issue another run of the group, which would otherwise start ahead of it.
     const status = run.status
     run.status = "awaiting"
-    run.held = { message: message.value, source: send.source() }
+    run.held = { message: message.value, source }
     promote(inst, run, status)
     if (waits) beginWait(inst, run)
     release(inst, run)
