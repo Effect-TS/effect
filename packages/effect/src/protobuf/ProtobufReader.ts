@@ -9,8 +9,10 @@
  * - The reader knows nothing about messages or schemas. The caller reads a
  *   tag, picks the value to read by its field number, and skips the fields it
  *   does not know with {@link ProtobufReader.skip}.
- * - A nested message is read with its own reader, from
- *   {@link ProtobufReader.delimited}.
+ * - A nested message is read in place, between {@link ProtobufReader.enter},
+ *   which reads its length and stops the reader at its end, and
+ *   {@link ProtobufReader.leave}, which continues with the enclosing message.
+ *   Offsets are always positions in the whole input.
  *
  * **Gotchas**
  *
@@ -48,17 +50,20 @@
  *
  * // message Shape { string name = 1; Point origin = 2; }
  * const { Len, Varint } = ProtobufWriter.WireType
- * const w = new ProtobufWriter.ProtobufWriter()
+ * const w = ProtobufWriter.make()
  * w.tag(1, Len).string("box")
  * w.tag(2, Len).fork()
  * w.tag(2, Varint).int32(-1)
  * w.join()
  *
- * const r = new ProtobufReader.ProtobufReader(w.finish())
+ * const r = ProtobufReader.make(w.finish())
  * r.tag()
  * r.string() // => "box"
  * r.tag()
- * readPoint(r.delimited()) // => { x: 0, y: -1 }
+ * r.enter()
+ * readPoint(r) // => { x: 0, y: -1 }
+ * r.leave()
+ * r.isDone() // => true
  * ```
  *
  * @stability experimental
@@ -66,17 +71,24 @@
  */
 import * as Data from "../Data.ts"
 import * as Utf8 from "../internal/utf8.ts"
-import * as ProtobufWriter from "./ProtobufWriter.ts"
+import * as internal from "./internal/wireType.ts"
 
 /**
- * The wire types of the protobuf format, the same as
- * {@link ProtobufWriter.WireType}.
+ * The wire types of the protobuf format, which a tag carries with the field
+ * number. The same as `ProtobufWriter.WireType`.
  *
  * @stability experimental
  * @category constants
  * @since 4.1.5
  */
-export const WireType: typeof ProtobufWriter.WireType = ProtobufWriter.WireType
+export const WireType: {
+  readonly Varint: 0
+  readonly I64: 1
+  readonly Len: 2
+  readonly StartGroup: 3
+  readonly EndGroup: 4
+  readonly I32: 5
+} = internal.WireType
 
 /**
  * A protobuf wire type, from 0 through 5.
@@ -85,7 +97,7 @@ export const WireType: typeof ProtobufWriter.WireType = ProtobufWriter.WireType
  * @category models
  * @since 4.1.5
  */
-export type WireType = ProtobufWriter.WireType
+export type WireType = typeof WireType[keyof typeof WireType]
 
 /**
  * The error thrown by a {@link ProtobufReader} for malformed input.
@@ -100,7 +112,7 @@ export type WireType = ProtobufWriter.WireType
  * import { ProtobufReader } from "effect/protobuf"
  *
  * // A varint whose last byte is missing
- * const r = new ProtobufReader.ProtobufReader(new Uint8Array([0x08, 0x96]))
+ * const r = ProtobufReader.make(new Uint8Array([0x08, 0x96]))
  * r.tag()
  * try {
  *   r.int32()
@@ -125,7 +137,7 @@ export class ProtobufReaderError extends Data.TaggedError("ProtobufReaderError")
  * **Details**
  *
  * Every method throws a {@link ProtobufReaderError} for malformed input.
- * 64-bit integers are read as a `bigint`.
+ * 64-bit integers are read as a `bigint`. Create one with {@link make}.
  *
  * **Example** (Reading a field)
  *
@@ -133,7 +145,7 @@ export class ProtobufReaderError extends Data.TaggedError("ProtobufReaderError")
  * import { ProtobufReader } from "effect/protobuf"
  *
  * // message Test { int32 a = 1; } with a = 150
- * const r = new ProtobufReader.ProtobufReader(new Uint8Array([0x08, 0x96, 0x01]))
+ * const r = ProtobufReader.make(new Uint8Array([0x08, 0x96, 0x01]))
  * const tag = r.tag()
  * ProtobufReader.fieldNumber(tag) // => 1
  * r.int32() // => 150
@@ -147,6 +159,9 @@ export class ProtobufReaderError extends Data.TaggedError("ProtobufReaderError")
 export class ProtobufReader {
   private readonly buf: Uint8Array
   private pos = 0
+  // The end of the message being read, and the ends of the messages it is in.
+  private limit: number
+  private readonly limits: Array<number> = []
   // The halves of the last 64-bit varint.
   private lo = 0
   private hi = 0
@@ -158,6 +173,7 @@ export class ProtobufReader {
    */
   constructor(bytes: Uint8Array) {
     this.buf = bytes
+    this.limit = bytes.length
   }
 
   /**
@@ -170,12 +186,12 @@ export class ProtobufReader {
   }
 
   /**
-   * Whether every byte has been read.
+   * Whether every byte of the message being read has been read.
    *
    * @since 4.1.5
    */
   isDone(): boolean {
-    return this.pos >= this.buf.length
+    return this.pos >= this.limit
   }
 
   private fail(expected: string): never {
@@ -194,12 +210,12 @@ export class ProtobufReader {
   }
 
   private byte(): number {
-    if (this.pos >= this.buf.length) this.fail(COMPLETE)
+    if (this.pos >= this.limit) this.fail(COMPLETE)
     return this.buf[this.pos++]
   }
 
   private need(n: number): void {
-    if (this.pos + n > this.buf.length) this.fail(COMPLETE)
+    if (this.pos + n > this.limit) this.fail(COMPLETE)
   }
 
   // A varint of at most 32 bits, as tags and lengths are. Longer ones are
@@ -225,13 +241,13 @@ export class ProtobufReader {
     const buf = this.buf
     let p = this.pos
     let b = buf[p]
-    // Most varints are a single byte. Past the end, `b` is undefined.
-    if (b < 0x80) {
+    // Most varints are a single byte.
+    if (b < 0x80 && p < this.limit) {
       this.pos = p + 1
       return b
     }
     // With ten bytes left, no varint can run past the end.
-    if (p + 10 > buf.length) return this.uint32Checked()
+    if (p + 10 > this.limit) return this.uint32Checked()
     b = buf[p++]
     let result = b & 0x7F
     if (b >= 0x80) {
@@ -295,13 +311,13 @@ export class ProtobufReader {
     const buf = this.buf
     let p = this.pos
     let b = buf[p]
-    if (b < 0x80) {
+    if (b < 0x80 && p < this.limit) {
       this.pos = p + 1
       this.lo = b
       this.hi = 0
       return
     }
-    if (p + 10 > buf.length) return this.varint64Checked()
+    if (p + 10 > this.limit) return this.varint64Checked()
     b = buf[p++]
     let lo = b & 0x7F
     let hi = 0
@@ -497,16 +513,29 @@ export class ProtobufReader {
   }
 
   /**
-   * * Reads a length-delimited value, such as a nested message, and returns a
-   * reader of its bytes. The bytes are not copied.
+   * Reads the length of a length-delimited value, such as a nested message or
+   * a packed repeated field, and stops the reader at its end until
+   * {@link ProtobufReader.leave}.
    *
    * @since 4.1.5
    */
-  delimited(): ProtobufReader {
+  enter(): void {
     const end = this.end()
-    const reader = new ProtobufReader(this.buf.subarray(this.pos, end))
-    this.pos = end
-    return reader
+    this.limits.push(this.limit)
+    this.limit = end
+  }
+
+  /**
+   * Skips what is left of the value of the last {@link ProtobufReader.enter},
+   * and continues with the enclosing message.
+   *
+   * @since 4.1.5
+   */
+  leave(): void {
+    const limit = this.limits.pop()
+    if (limit === undefined) throw new Error("ProtobufReader.leave without an enter")
+    this.pos = this.limit
+    this.limit = limit
   }
 
   /**
@@ -575,16 +604,28 @@ export const fieldNumber = (tag: number): number => tag >>> 3
  */
 export const wireType = (tag: number): WireType => (tag & 7) as WireType
 
+/**
+ * Creates a reader of `bytes`, which are not copied.
+ *
+ * **Example** (Creating a reader)
+ *
+ * ```ts import.meta.vitest
+ * import { ProtobufReader } from "effect/protobuf"
+ *
+ * ProtobufReader.make(new Uint8Array([0x96, 0x01])).uint32() // => 150
+ * ```
+ *
+ * @stability experimental
+ * @category constructors
+ * @since 4.1.5
+ */
+export const make = (bytes: Uint8Array): ProtobufReader => new ProtobufReader(bytes)
+
 // -----------------------------------------------------------------------------
 // internal
 // -----------------------------------------------------------------------------
 
-const VARINT = ProtobufWriter.WireType.Varint
-const I64 = ProtobufWriter.WireType.I64
-const LEN = ProtobufWriter.WireType.Len
-const START_GROUP = ProtobufWriter.WireType.StartGroup
-const END_GROUP = ProtobufWriter.WireType.EndGroup
-const I32 = ProtobufWriter.WireType.I32
+const { EndGroup: END_GROUP, I32, I64, Len: LEN, StartGroup: START_GROUP, Varint: VARINT } = internal.WireType
 
 // Groups nest at most this deep, so that skipping one cannot overflow the
 // stack.

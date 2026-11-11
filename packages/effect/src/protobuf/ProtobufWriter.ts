@@ -14,8 +14,8 @@
  *
  * **Gotchas**
  *
- * - Values are not validated. Integers outside the range of their type wrap
- *   around, as with `DataView`.
+ * - Values are not validated. As with `DataView`, numbers are truncated to
+ *   integers, and integers outside the range of their type wrap around.
  * - Unpaired UTF-16 surrogates in strings are written as U+FFFD, as with
  *   `TextEncoder`.
  *
@@ -27,7 +27,7 @@
  * // message Point { int32 x = 1; int32 y = 2; }
  * // message Shape { string name = 1; Point origin = 2; }
  * const { Len, Varint } = ProtobufWriter.WireType
- * const w = new ProtobufWriter.ProtobufWriter()
+ * const w = ProtobufWriter.make()
  * w.tag(1, Len).string("box")
  * w.tag(2, Len).fork()
  * w.tag(1, Varint).int32(3)
@@ -40,6 +40,7 @@
  * @stability experimental
  * @since 4.1.5
  */
+import * as internal from "./internal/wireType.ts"
 
 /**
  * The wire types of the protobuf format, which a tag carries with the field
@@ -58,14 +59,14 @@
  * @category constants
  * @since 4.1.5
  */
-export const WireType = {
-  Varint: 0,
-  I64: 1,
-  Len: 2,
-  StartGroup: 3,
-  EndGroup: 4,
-  I32: 5
-} as const
+export const WireType: {
+  readonly Varint: 0
+  readonly I64: 1
+  readonly Len: 2
+  readonly StartGroup: 3
+  readonly EndGroup: 4
+  readonly I32: 5
+} = internal.WireType
 
 /**
  * A protobuf wire type, from 0 through 5.
@@ -84,7 +85,7 @@ export type WireType = typeof WireType[keyof typeof WireType]
  * Every write returns the writer, so writes chain: `w.tag(1, WireType.Len).string("a")`.
  * 64-bit integers are given as a `bigint`, a `number` that is an integer, or a
  * decimal `string`. {@link ProtobufWriter.finish} returns the bytes and resets
- * the writer, which can then write a new message.
+ * the writer, which can then write a new message. Create one with {@link make}.
  *
  * **Example** (Writing a field)
  *
@@ -92,7 +93,7 @@ export type WireType = typeof WireType[keyof typeof WireType]
  * import { ProtobufWriter } from "effect/protobuf"
  *
  * // message Test { int32 a = 1; } with a = 150
- * new ProtobufWriter.ProtobufWriter()
+ * ProtobufWriter.make()
  *   .tag(1, ProtobufWriter.WireType.Varint)
  *   .int32(150)
  *   .finish() // => new Uint8Array([0x08, 0x96, 0x01])
@@ -126,11 +127,13 @@ export class ProtobufWriter {
   }
 
   /**
-   * Returns the written bytes, and resets the writer.
+   * Returns the written bytes, and resets the writer. Throws if a
+   * {@link ProtobufWriter.fork} is not joined.
    *
    * @since 4.1.5
    */
   finish(): Uint8Array<ArrayBuffer> {
+    if (this.forks.length > 0) throw new Error("ProtobufWriter.finish with a fork that is not joined")
     // The buffer goes to the next writer. This writer allocates a buffer when
     // it writes again.
     const out = this.buf.slice(0, this.pos)
@@ -141,7 +144,6 @@ export class ProtobufWriter {
     this.buf = EMPTY
     this.view = EMPTY_VIEW
     this.pos = 0
-    this.forks.length = 0
     return out
   }
 
@@ -201,6 +203,7 @@ export class ProtobufWriter {
    * @since 4.1.5
    */
   int32(n: number): this {
+    n = n | 0
     if (n >= 0) return this.uint32(n)
     return this.varint64(n >>> 0, 0xFFFFFFFF)
   }
@@ -350,13 +353,21 @@ export class ProtobufWriter {
   string(s: string): this {
     const n = s.length
     const start = this.reserveLength()
-    // A UTF-16 code unit takes at most three bytes.
-    this.ensure(n * 3)
     if (n > SHORT_STRING) {
-      this.pos += utf8Encoder.encodeInto(s, this.buf.subarray(this.pos)).written
+      // Room for ASCII first. If that runs out, the rest takes at most three
+      // bytes per UTF-16 code unit.
+      this.ensure(n)
+      const { read, written } = utf8Encoder.encodeInto(s, this.buf.subarray(this.pos))
+      this.pos += written
+      if (read < n) {
+        this.ensure((n - read) * 3)
+        this.pos += utf8Encoder.encodeInto(s.slice(read), this.buf.subarray(this.pos)).written
+      }
       this.fillLength(start)
       return this
     }
+    // A UTF-16 code unit takes at most three bytes.
+    this.ensure(n * 3)
     const buf = this.buf
     let pos = this.pos
     for (let i = 0; i < n; i++) {
@@ -445,6 +456,23 @@ export class ProtobufWriter {
   }
 }
 
+/**
+ * Creates a writer.
+ *
+ * **Example** (Creating a writer)
+ *
+ * ```ts import.meta.vitest
+ * import { ProtobufWriter } from "effect/protobuf"
+ *
+ * ProtobufWriter.make().uint32(150).finish() // => new Uint8Array([0x96, 0x01])
+ * ```
+ *
+ * @stability experimental
+ * @category constructors
+ * @since 4.1.5
+ */
+export const make = (): ProtobufWriter => new ProtobufWriter()
+
 // -----------------------------------------------------------------------------
 // internal
 // -----------------------------------------------------------------------------
@@ -458,6 +486,7 @@ const halvesView = new DataView(new ArrayBuffer(8))
 // A decimal string is read as a `bigint`, which throws for anything else.
 const split64 = (n: bigint | number | string): void => {
   if (typeof n === "number") {
+    n = Math.trunc(n)
     halvesView.setUint32(0, n >>> 0, true)
     halvesView.setUint32(4, Math.floor(n / 4294967296) >>> 0, true)
   } else {

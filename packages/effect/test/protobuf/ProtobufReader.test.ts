@@ -5,7 +5,7 @@ import * as Result from "effect/Result"
 
 type Reader = ProtobufReader.ProtobufReader
 
-const reader = (hex: string): Reader => new ProtobufReader.ProtobufReader(Result.getOrThrow(Hex.decode(hex)))
+const reader = (hex: string): Reader => ProtobufReader.make(Result.getOrThrow(Hex.decode(hex)))
 
 const failure = (hex: string, f: (r: Reader) => unknown): string => {
   try {
@@ -16,6 +16,20 @@ const failure = (hex: string, f: (r: Reader) => unknown): string => {
   }
   throw new Error("expected a ProtobufReaderError")
 }
+
+// A varint read after the tag of a nested message, as a uint32 and an int64
+const nested = (name: string, hex: string, message: string): Array<[string, string, (r: Reader) => unknown, string]> =>
+  [(r: Reader) => r.uint32(), (r: Reader) => r.int64()].map((read, i) => [
+    `${name} the end of a nested message (${i === 0 ? "uint32" : "int64"})`,
+    hex,
+    (r: Reader) => {
+      r.tag()
+      r.enter()
+      r.tag()
+      read(r)
+    },
+    message
+  ])
 
 describe("ProtobufReader", () => {
   it.each<[string, string, (r: Reader) => unknown, unknown]>([
@@ -43,7 +57,7 @@ describe("ProtobufReader", () => {
 
   it("reads bytes as a copy", () => {
     const input = new Uint8Array([2, 1, 2])
-    const bytes = new ProtobufReader.ProtobufReader(input).bytes()
+    const bytes = ProtobufReader.make(input).bytes()
     input[1] = 9
     assert.deepStrictEqual(bytes, new Uint8Array([1, 2]))
   })
@@ -54,18 +68,25 @@ describe("ProtobufReader", () => {
     assert.strictEqual(ProtobufReader.wireType(tag), ProtobufReader.WireType.Len)
   })
 
-  it("reads a nested message up to its end", () => {
-    // { 1: { 1: 150 }, 2: 7 }
-    const r = reader("0a030896011007")
+  it("reads nested messages up to their end, and leaves them early", () => {
+    // { 1: { 1: 150 }, 2: { 1: 150 }, 3: 7 }
+    const r = reader("0a0308960112030896011807")
     r.tag()
-    const nested = r.delimited()
-    nested.tag()
-    assert.strictEqual(nested.uint32(), 150)
-    assert.isTrue(nested.isDone())
-    assert.throws(() => nested.uint32(), ProtobufReader.ProtobufReaderError)
-    assert.strictEqual(ProtobufReader.fieldNumber(r.tag()), 2)
+    r.enter()
+    assert.strictEqual(ProtobufReader.fieldNumber(r.tag()), 1)
+    assert.strictEqual(r.uint32(), 150)
+    assert.isTrue(r.isDone())
+    r.leave()
+    r.tag()
+    r.enter()
+    r.leave()
+    assert.strictEqual(ProtobufReader.fieldNumber(r.tag()), 3)
     assert.strictEqual(r.uint32(), 7)
     assert.isTrue(r.isDone())
+  })
+
+  it("throws for a leave without an enter", () => {
+    assert.throws(() => reader("").leave(), /leave without an enter/)
   })
 
   it("skips every wire type, including nested groups", () => {
@@ -98,6 +119,22 @@ describe("ProtobufReader", () => {
     ],
     ["a truncated fixed64", "01020304", (r) => r.fixed64(), "Expected a complete value at offset 0"],
     ["a length past the end", "0561", (r) => r.string(), "Expected a complete value at offset 1"],
+    // { 1: { 1: <truncated> }, 2: 7, ... }, long enough for the unchecked varint path
+    ...nested("a varint running past", "0a02089610071007100710071007", "Expected a complete value at offset 4"),
+    // { 1: { 1: <missing> }, 2: 7 }
+    ...nested("a varint after", "0a01081007", "Expected a complete value at offset 3"),
+    [
+      "a length past the end of a nested message",
+      // { 1: { 1: "abcde" } } with a nested length of 2
+      "0a020a056162636465",
+      (r) => {
+        r.tag()
+        r.enter()
+        r.tag()
+        r.string()
+      },
+      "Expected a complete value at offset 4"
+    ],
     ["a length over 32 bits", "ffffffff1f", (r) => r.bytes(), "Expected a varint of at most 32 bits at offset 5"],
     ["invalid UTF-8", "01ff", (r) => r.string(), "Expected valid UTF-8 at offset 1"],
     [

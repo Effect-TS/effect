@@ -326,7 +326,7 @@ const writeResourceSpans = (w: Writer, resourceSpans: ResourceSpan): Writer => {
  * @internal
  */
 export const encodeTracesData = (tracesData: TraceData): Uint8Array => {
-  const w = new ProtobufWriter.ProtobufWriter()
+  const w = ProtobufWriter.make()
   for (const item of tracesData.resourceSpans) writeResourceSpans(w.tag(1, LEN).fork(), item).join()
   return w.finish()
 }
@@ -630,7 +630,7 @@ interface MetricsData {
  * @internal
  */
 export const encodeMetricsData = (metricsData: MetricsData): Uint8Array => {
-  const w = new ProtobufWriter.ProtobufWriter()
+  const w = ProtobufWriter.make()
   for (const item of metricsData.resourceMetrics) writeResourceMetrics(w.tag(1, LEN).fork(), item).join()
   return w.finish()
 }
@@ -738,7 +738,7 @@ interface LogsData {
  * @internal
  */
 export const encodeLogsData = (logsData: LogsData): Uint8Array => {
-  const w = new ProtobufWriter.ProtobufWriter()
+  const w = ProtobufWriter.make()
   for (const item of logsData.resourceLogs) writeResourceLogs(w.tag(1, LEN).fork(), item).join()
   return w.finish()
 }
