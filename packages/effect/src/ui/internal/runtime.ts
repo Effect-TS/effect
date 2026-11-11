@@ -1356,10 +1356,7 @@ const start = (
         first.commands.forEach((command, index) => issue(inst, command, { seq: mountedSeq, index }, index))
       } else apply(inst, { ...first, model: inst.model }, mountedSeq, true)
       // The Commands of the updates folded before the render: issued where `init`'s are, after them.
-      for (const entry of early) {
-        if (inst.closed) return
-        issue(inst, entry.command, entry.issued, undefined)
-      }
+      for (const entry of early) issue(inst, entry.command, entry.issued, undefined)
     }
 
     if (failedEarly !== undefined) {
