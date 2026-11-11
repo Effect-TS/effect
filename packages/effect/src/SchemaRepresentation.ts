@@ -2565,6 +2565,13 @@ export type Artifact =
 /**
  * Generated schema code together with named references and auxiliary artifacts.
  *
+ * **Details**
+ *
+ * Emit artifacts first, then `references.nonRecursives` in array order, then
+ * `references.recursives` in any order, and finally `codes`.
+ * `nonRecursives` also includes recursive definitions needed eagerly to construct
+ * another named definition. `recursives` contains the remaining recursive definitions.
+ *
  * @stability stable
  * @category models
  * @since 4.0.0
@@ -2811,7 +2818,15 @@ export function toJsonSchemaMultiDocument(
  *
  * Use when custom declarations and checks provide `toCode` callbacks and must be emitted without a central handler registry.
  *
+ * **Details**
+ *
+ * Preserves explicit `Suspend` representations and orders definitions by their construction dependencies.
+ * Emit the returned definitions in the order described by {@link CodeDocument}.
+ *
  * **Gotchas**
+ *
+ * The input must represent valid schema construction, with suspension explicit wherever needed.
+ * The compiler does not introduce suspensions for bare recursive references.
  *
  * Opaque declarations and leaf checks require `toCode` callbacks. Callback results are used directly, and exceptions raised by a callback pass through unchanged.
  *

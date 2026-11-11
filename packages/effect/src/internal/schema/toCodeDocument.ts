@@ -99,8 +99,7 @@ function isSimpleLiveLiteral(
     representation.annotations === undefined
 }
 
-/** @internal */
-export interface TopologicalSort {
+interface TopologicalSort {
   readonly nonRecursives: ReadonlyArray<{
     readonly $ref: string
     readonly representation: SchemaRepresentation.Representation
@@ -108,14 +107,13 @@ export interface TopologicalSort {
   readonly recursives: Readonly<Record<string, SchemaRepresentation.Representation>>
 }
 
-/** @internal */
-export function topologicalSort(
+function topologicalSort(
   references: SchemaRepresentation.References
 ): TopologicalSort {
   const identifiers = Object.keys(references)
   const identifierSet = new Set(identifiers)
 
-  function collectRefs(root: SchemaRepresentation.Representation): ReadonlySet<string> {
+  function collectRefs(root: SchemaRepresentation.Representation, includeSuspended: boolean): ReadonlySet<string> {
     const refs = new Set<string>()
     const visited = new WeakSet<object>()
     const stack: Array<SchemaRepresentation.Representation> = [root]
@@ -149,7 +147,7 @@ export function topologicalSort(
           stack.push(...representation.typeParameters)
           break
         case "Suspend":
-          stack.push(representation.thunk)
+          if (includeSuspended) stack.push(representation.thunk)
           break
         case "TemplateLiteral":
           stack.push(...representation.parts)
@@ -173,65 +171,81 @@ export function topologicalSort(
   }
 
   const dependencies = new Map<string, ReadonlySet<string>>(
-    identifiers.map((identifier) => [identifier, collectRefs(references[identifier])])
+    identifiers.map((identifier) => [identifier, collectRefs(references[identifier], true)])
   )
+  const eagerDependencies = new Map<string, ReadonlySet<string>>(
+    identifiers.map((identifier) => [identifier, collectRefs(references[identifier], false)])
+  )
+
+  // Recursion describes the full schema graph, including suspended references.
   const recursive = new Set<string>()
-  const state = new Map<string, 0 | 1 | 2>()
+  const indices = new Map<string, number>()
+  const lowLinks = new Map<string, number>()
   const stack: Array<string> = []
+  const onStack = new Set<string>()
 
   function visit(identifier: string): void {
-    const current = state.get(identifier) ?? 0
-    if (current === 1) {
-      const start = stack.indexOf(identifier)
-      for (let index = start; index < stack.length; index++) recursive.add(stack[index])
-      return
-    }
-    if (current === 2) return
-    state.set(identifier, 1)
+    const index = indices.size
+    indices.set(identifier, index)
+    lowLinks.set(identifier, index)
     stack.push(identifier)
-    for (const dependency of dependencies.get(identifier)!) visit(dependency)
-    stack.pop()
-    state.set(identifier, 2)
+    onStack.add(identifier)
+    for (const dependency of dependencies.get(identifier)!) {
+      if (!indices.has(dependency)) {
+        visit(dependency)
+        lowLinks.set(identifier, Math.min(lowLinks.get(identifier)!, lowLinks.get(dependency)!))
+      } else if (onStack.has(dependency)) {
+        lowLinks.set(identifier, Math.min(lowLinks.get(identifier)!, indices.get(dependency)!))
+      }
+    }
+    if (lowLinks.get(identifier) !== index) return
+    const component: Array<string> = []
+    let member: string
+    do {
+      member = stack.pop()!
+      onStack.delete(member)
+      component.push(member)
+    } while (member !== identifier)
+    if (component.length > 1 || dependencies.get(identifier)!.has(identifier)) {
+      for (const member of component) recursive.add(member)
+    }
   }
 
-  for (const identifier of identifiers) visit(identifier)
-
-  const inDegree = new Map<string, number>()
-  const dependents = new Map<string, Set<string>>()
   for (const identifier of identifiers) {
-    if (!recursive.has(identifier)) {
-      inDegree.set(identifier, 0)
-      dependents.set(identifier, new Set())
-    }
-  }
-  for (const [identifier, internalDependencies] of dependencies) {
-    if (recursive.has(identifier)) continue
-    for (const dependency of internalDependencies) {
-      if (recursive.has(dependency)) continue
-      inDegree.set(identifier, inDegree.get(identifier)! + 1)
-      dependents.get(dependency)!.add(identifier)
-    }
+    if (!indices.has(identifier)) visit(identifier)
   }
 
-  const queue: Array<string> = []
-  for (const [identifier, degree] of inDegree) {
-    if (degree === 0) queue.push(identifier)
+  // Every eager dependency belongs in the ordered group, so the remaining
+  // recursive definitions can be emitted in any order.
+  const firstGroup = new Set<string>()
+  for (const identifier of identifiers) {
+    if (!recursive.has(identifier)) firstGroup.add(identifier)
+    for (const dependency of eagerDependencies.get(identifier)!) firstGroup.add(dependency)
   }
+
+  // Explicit suspensions already break construction cycles in a valid input.
+  const ordered: Array<string> = []
+  const visited = new Set<string>()
+  function order(identifier: string): void {
+    if (visited.has(identifier)) return
+    visited.add(identifier)
+    for (const dependency of eagerDependencies.get(identifier)!) order(dependency)
+    ordered.push(identifier)
+  }
+  for (const identifier of identifiers) order(identifier)
+
   const nonRecursives: Array<{
     readonly $ref: string
     readonly representation: SchemaRepresentation.Representation
   }> = []
-  for (let index = 0; index < queue.length; index++) {
-    const $ref = queue[index]
-    nonRecursives.push({ $ref, representation: references[$ref] })
-    for (const dependent of dependents.get($ref)!) {
-      const degree = inDegree.get(dependent)! - 1
-      inDegree.set(dependent, degree)
-      if (degree === 0) queue.push(dependent)
+  const recursives: Record<string, SchemaRepresentation.Representation> = {}
+  for (const $ref of ordered) {
+    if (firstGroup.has($ref)) {
+      nonRecursives.push({ $ref, representation: references[$ref] })
+    } else {
+      InternalRecord.assignProperty(recursives, $ref, references[$ref])
     }
   }
-  const recursives: Record<string, SchemaRepresentation.Representation> = {}
-  for (const identifier of recursive) InternalRecord.assignProperty(recursives, identifier, references[identifier])
   return { nonRecursives, recursives }
 }
 
@@ -243,8 +257,6 @@ export function toCodeDocument(
   const sorted = topologicalSort(document.references)
   const sanitizedReferences = new Map<string, string>()
   const uniqueIdentifiers = new Set<string>(["Schema"])
-  let compilingRecursiveDefinition = false
-  let explicitSuspendDepth = 0
 
   for (const { $ref } of sorted.nonRecursives) ensureUniqueIdentifier($ref)
   for (const $ref of Object.keys(sorted.recursives)) ensureUniqueIdentifier($ref)
@@ -255,9 +267,7 @@ export function toCodeDocument(
   }))
   const recursives: Record<string, SchemaRepresentation.Code> = {}
   for (const [$ref, representation] of Object.entries(sorted.recursives)) {
-    compilingRecursiveDefinition = true
     InternalRecord.assignProperty(recursives, ensureUniqueIdentifier($ref), recur(representation, ["references", $ref]))
-    compilingRecursiveDefinition = false
   }
   const codes = document.representations.map((representation, index) =>
     recur(representation, ["representations", index])
@@ -378,12 +388,6 @@ export function toCodeDocument(
         throw errorWithPath(`Invalid reference ${representation.$ref}`, [...path, "$ref"])
       }
       const identifier = ensureUniqueIdentifier(representation.$ref)
-      if (
-        compilingRecursiveDefinition && explicitSuspendDepth === 0 &&
-        Object.hasOwn(sorted.recursives, representation.$ref)
-      ) {
-        return makeCode(`Schema.suspend((): Schema.Codec<${identifier}> => ${identifier})`, identifier)
-      }
       return makeCode(identifier, identifier)
     }
     return applyNode(on(representation, path), representation, path)
@@ -407,9 +411,7 @@ export function toCodeDocument(
         return makeCode(output.runtime, output.Type)
       }
       case "Suspend": {
-        explicitSuspendDepth++
         const thunk = recur(representation.thunk, [...path, "thunk"])
-        explicitSuspendDepth--
         return makeCode(`Schema.suspend((): Schema.Codec<${thunk.Type}> => ${thunk.runtime})`, thunk.Type)
       }
       case "Null":

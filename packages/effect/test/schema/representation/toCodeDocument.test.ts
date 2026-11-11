@@ -1564,46 +1564,12 @@ describe("toCodeDocument", () => {
   })
 
   describe("suspend", () => {
-    it("implicit recursive reference", () => {
-      assertMultiDocument({
-        representations: [{ _tag: "Reference", $ref: "Category" }],
-        references: {
-          Category: {
-            _tag: "Objects",
-            propertySignatures: [{
-              name: "children",
-              type: {
-                _tag: "Arrays",
-                elements: [],
-                rest: [{ _tag: "Reference", $ref: "Category" }],
-                checks: []
-              },
-              isOptional: false,
-              isMutable: false
-            }],
-            indexSignatures: [],
-            checks: []
-          }
-        }
-      }, {
-        codes: makeCode("Category", "Category"),
-        references: {
-          recursives: {
-            Category: makeCode(
-              `Schema.Struct({ "children": Schema.Array(Schema.suspend((): Schema.Codec<Category> => Category)) })`,
-              `{ readonly "children": ReadonlyArray<Category> }`
-            )
-          }
-        }
-      })
-    })
-
     it("supports __proto__ as a recursive reference", () => {
       const references = Object.fromEntries([["__proto__", {
         _tag: "Objects",
         propertySignatures: [{
           name: "next",
-          type: { _tag: "Reference", $ref: "__proto__" },
+          type: { _tag: "Suspend", thunk: { _tag: "Reference", $ref: "__proto__" }, checks: [] },
           isOptional: true,
           isMutable: false
         }],
@@ -1697,7 +1663,7 @@ describe("toCodeDocument", () => {
         references: {
           recursives: {
             A: makeCode(
-              `Schema.Struct({ "a": Schema.optionalKey(Schema.suspend((): Schema.Codec<Suspend_> => Suspend_)) }).annotate({ "identifier": "A" })`,
+              `Schema.Struct({ "a": Schema.optionalKey(Suspend_) }).annotate({ "identifier": "A" })`,
               `{ readonly "a"?: Suspend_ }`
             ),
             Suspend_: makeCode(
@@ -1747,7 +1713,7 @@ describe("toCodeDocument", () => {
     }).annotate({ identifier: "Tree" })
     const Forest = Schema.Struct({ trees: Schema.Array(Tree) }).annotate({ identifier: "Forest" })
     const { codes, references } = SchemaRepresentation.toCodeDocument(
-      SchemaRepresentation.toRepresentations([Forest.ast])
+      SchemaRepresentation.toRepresentations([Forest.ast, OuterCategory.ast])
     )
     const definitions = [
       ...references.nonRecursives.map(({ $ref, code }) => [$ref, code] as const),
@@ -1758,13 +1724,51 @@ describe("toCodeDocument", () => {
       `import * as Schema from "effect/Schema"`,
       ...definitions.map(([name, code]) => `export type ${name} = ${code.Type}\nexport const ${name} = ${code.runtime}`)
     ].join("\n")
-    await withGeneratedModule<{ readonly Root: Schema.Codec<unknown> }>(source, ({ Root }) => {
+    await withGeneratedModule<{
+      readonly Root: Schema.Codec<unknown>
+      readonly Category: Schema.Codec<unknown>
+    }>(source, ({ Category, Root }) => {
       const decode = Schema.decodeUnknownSync(Root)
       const valid = { trees: [{ meta: { n: 1 }, children: [{ meta: { n: 2 }, children: [] }] }] }
       assert.deepStrictEqual(decode(valid), valid)
       const invalid = { trees: [{ meta: { n: 1 }, children: [{ meta: { n: "invalid" }, children: [] }] }] }
       assert.isTrue(Schema.isSchemaError(assert.throws(() => decode(invalid))))
+      const category = { name: "root", children: [{ name: "child", children: [] }] }
+      assert.deepStrictEqual(Schema.decodeUnknownSync(Category)(category), category)
     })
+  })
+
+  it("initializes recursive definitions with numeric identifiers in either record order", async () => {
+    type Nested = ReadonlyArray<Nested>
+    const Nested = Schema.Array(
+      Schema.suspend((): Schema.Codec<Nested> => Nested).annotate({ identifier: "1" })
+    ).annotate({ identifier: "0" })
+    const { codes, references } = SchemaRepresentation.toCodeDocument(
+      SchemaRepresentation.toRepresentations([Nested.ast, OuterCategory.ast])
+    )
+    const recursives = Object.entries(references.recursives)
+    for (const entries of [recursives, [...recursives].reverse()]) {
+      const definitions = [
+        ...references.nonRecursives.map(({ $ref, code }) => [$ref, code] as const),
+        ...entries,
+        ["Root", codes[0]] as const
+      ]
+      const source = [
+        `import * as Schema from "effect/Schema"`,
+        ...definitions.map(([name, code]) =>
+          `export type ${name} = ${code.Type}\nexport const ${name} = ${code.runtime}`
+        )
+      ].join("\n")
+      await withGeneratedModule<{
+        readonly Root: Schema.Codec<unknown>
+        readonly Category: Schema.Codec<unknown>
+      }>(source, ({ Category, Root }) => {
+        const nested = [[], [[]]]
+        assert.deepStrictEqual(Schema.decodeUnknownSync(Root)(nested), nested)
+        const category = { name: "root", children: [] }
+        assert.deepStrictEqual(Schema.decodeUnknownSync(Category)(category), category)
+      })
+    }
   })
 
   describe("brand", () => {

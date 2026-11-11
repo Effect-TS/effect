@@ -11,8 +11,8 @@
  * `SchemaRepresentation`.
  *
  * The renderer keeps the emitted module usable for both human maintainers and
- * automated code-generation consumers by grouping recursive declarations,
- * reusable references, and locally registered schemas. It also contains the
+ * automated code-generation consumers by emitting reusable references in
+ * construction order before locally registered schemas. It also contains the
  * HttpApi-specific multipart file substitutions that map generated schemas to
  * Effect's multipart runtime types.
  *
@@ -84,54 +84,21 @@ function makeWithRepresentation() {
       return ""
     }
 
-    const nonRecursiveReferences = generated.codeDocument.references.nonRecursives
-    const recursiveReferences = Object.entries(generated.codeDocument.references.recursives)
-
-    const nonRecursives = nonRecursiveReferences.map(({ $ref, code }) =>
-      renderSchemaTypeAndRuntime($ref, code, typeOnly, options)
-    )
-
-    const recursiveDeclarations: Array<string> = []
-    const recursives: Array<string> = []
-
-    if (typeOnly) {
-      for (const [$ref, code] of recursiveReferences) {
-        recursives.push(renderSchemaTypeAndRuntime($ref, code, true, options))
-      }
-    } else {
-      const recursivelyForwardReferenced = collectForwardReferencedRecursives(
-        nonRecursiveReferences,
-        recursiveReferences
+    const references = [
+      ...generated.codeDocument.references.nonRecursives.map(({ $ref, code }) =>
+        renderSchemaTypeAndRuntime($ref, code, typeOnly, options)
+      ),
+      ...Object.entries(generated.codeDocument.references.recursives).map(([$ref, code]) =>
+        renderSchemaTypeAndRuntime($ref, code, typeOnly, options)
       )
-      const recursiveInternalNames = makeRecursiveInternalNameMap(
-        recursivelyForwardReferenced,
-        [
-          ...nonRecursiveReferences.map(({ $ref }) => $ref),
-          ...recursiveReferences.map(([$ref]) => $ref),
-          ...generated.nameMap
-        ]
-      )
-
-      for (const [$ref, code] of recursiveReferences) {
-        if (recursivelyForwardReferenced.has($ref)) {
-          const internalName = recursiveInternalNames.get($ref)!
-          recursiveDeclarations.push(renderRecursiveReferenceDeclaration($ref, code, internalName))
-          recursives.push(`const ${internalName} = ${code.runtime}`)
-          continue
-        }
-
-        recursives.push(renderSchemaTypeAndRuntime($ref, code, false, options))
-      }
-    }
+    ]
 
     const codes = generated.nameMap.map((name, i) =>
       renderSchemaTypeAndRuntime(name, generated.codeDocument.codes[i], typeOnly, options)
     )
 
     return renderImportArtifacts(generated.codeDocument, !typeOnly) +
-      render("recursive declarations", recursiveDeclarations) +
-      render("non-recursive definitions", nonRecursives) +
-      render("recursive definitions", recursives) +
+      render("definitions", references) +
       render("schemas", codes)
   }
 
@@ -140,51 +107,7 @@ function makeWithRepresentation() {
     components: JsonSchema.Definitions,
     options?: GenerateOptions
   ) {
-    const generated = makeCodeDocument(source, components, options)
-    if (generated === undefined) {
-      return ""
-    }
-
-    const nonRecursiveReferences = generated.codeDocument.references.nonRecursives
-    const recursiveReferences = Object.entries(generated.codeDocument.references.recursives)
-
-    const nonRecursives = nonRecursiveReferences.map(({ $ref, code }) =>
-      renderSchemaTypeAndRuntime($ref, code, false, options)
-    )
-
-    const recursivelyForwardReferenced = collectForwardReferencedRecursives(nonRecursiveReferences, recursiveReferences)
-    const recursiveInternalNames = makeRecursiveInternalNameMap(
-      recursivelyForwardReferenced,
-      [
-        ...nonRecursiveReferences.map(({ $ref }) => $ref),
-        ...recursiveReferences.map(([$ref]) => $ref),
-        ...generated.nameMap
-      ]
-    )
-
-    const recursiveDeclarations: Array<string> = []
-    const recursives: Array<string> = []
-
-    for (const [$ref, code] of recursiveReferences) {
-      if (recursivelyForwardReferenced.has($ref)) {
-        const internalName = recursiveInternalNames.get($ref)!
-        recursiveDeclarations.push(renderRecursiveReferenceDeclaration($ref, code, internalName))
-        recursives.push(`const ${internalName} = ${code.runtime}`)
-        continue
-      }
-
-      recursives.push(renderSchemaTypeAndRuntime($ref, code, false, options))
-    }
-
-    const codes = generated.nameMap.map((name, i) =>
-      renderSchemaTypeAndRuntime(name, generated.codeDocument.codes[i], false, options)
-    )
-
-    return renderImportArtifacts(generated.codeDocument, true) +
-      render("recursive declarations", recursiveDeclarations) +
-      render("non-recursive definitions", nonRecursives) +
-      render("recursive definitions", recursives) +
-      render("schemas", codes)
+    return generate(source, components, false, options)
   }
 
   function makeCodeDocument(
@@ -327,17 +250,6 @@ function multipartCode(
   return undefined
 }
 
-function renderRecursiveReferenceDeclaration(
-  $ref: string,
-  code: SchemaRepresentation.Code,
-  internalName: string
-): string {
-  return [
-    `export type ${$ref} = ${code.Type}`,
-    `export const ${$ref} = Schema.suspend((): Schema.Codec<${$ref}> => ${internalName})`
-  ].join("\n")
-}
-
 function render(title: string, as: ReadonlyArray<string>) {
   if (as.length === 0) return ""
   return "// " + title + "\n" + as.join("\n") + "\n"
@@ -349,59 +261,4 @@ function renderImportArtifacts(codeDocument: SchemaRepresentation.CodeDocument, 
     artifact._tag === "Import" ? [artifact.importDeclaration] : []
   )
   return imports.length === 0 ? "" : imports.join("\n") + "\n"
-}
-
-const tokenPattern = /[A-Za-z_$][A-Za-z0-9_$]*/g
-
-function collectForwardReferencedRecursives(
-  nonRecursives: ReadonlyArray<{
-    readonly $ref: string
-    readonly code: SchemaRepresentation.Code
-  }>,
-  recursives: ReadonlyArray<readonly [string, SchemaRepresentation.Code]>
-): Set<string> {
-  const recursiveNames = new Set(recursives.map(([name]) => name))
-  const recursiveIndexes = new Map(recursives.map(([name], index) => [name, index]))
-  const referenced = new Set<string>()
-
-  for (const { code } of nonRecursives) {
-    for (const token of code.runtime.matchAll(tokenPattern)) {
-      const identifier = token[0]
-      if (recursiveNames.has(identifier)) {
-        referenced.add(identifier)
-      }
-    }
-  }
-
-  for (let index = 0; index < recursives.length; index++) {
-    const [, code] = recursives[index]
-    for (const token of code.runtime.matchAll(tokenPattern)) {
-      const identifier = token[0]
-      const referencedIndex = recursiveIndexes.get(identifier)
-      if (referencedIndex !== undefined && referencedIndex > index) {
-        referenced.add(identifier)
-      }
-    }
-  }
-
-  return referenced
-}
-
-function makeRecursiveInternalNameMap(
-  recursiveNames: ReadonlySet<string>,
-  existingNames: ReadonlyArray<string>
-): Map<string, string> {
-  const usedNames = new Set(existingNames)
-  const internalNames = new Map<string, string>()
-
-  for (const name of recursiveNames) {
-    let candidate = `__recursive_${name}`
-    while (usedNames.has(candidate)) {
-      candidate = `_${candidate}`
-    }
-    usedNames.add(candidate)
-    internalNames.set(name, candidate)
-  }
-
-  return internalNames
 }
