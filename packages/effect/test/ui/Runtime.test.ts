@@ -1970,6 +1970,61 @@ describe("Runtime", () => {
       }
     }))
 
+  it.effect("Renderer.mount whose owner a setup callback closes mounts nothing, and cleans up in order", () =>
+    Effect.gen(function*() {
+      const host = TestHost.makeHost()
+      for (const site of ["Problems", "init", "view", "Layer"] as const) {
+        const scope = yield* Scope.make()
+        const container = host.createElement("#app") as TestHost.TestElement
+        let closing: Fiber.Fiber<void> | undefined
+        const close = () => {
+          closing ??= Effect.runFork(Scope.close(scope, Exit.void))
+        }
+        let childrenAtRelease = -1
+        const App = Component.provide(
+          Component.make({
+            name: "App",
+            model: Schema.Number,
+            message: Schema.Never,
+            init: () => {
+              if (site === "init") close()
+              return 0
+            },
+            update: (n) => n,
+            view: (_, h) => {
+              if (site === "view") close()
+              return h.el("div", "ok")
+            }
+          }),
+          Layer.effectDiscard(Effect.andThen(
+            Effect.addFinalizer(() =>
+              Effect.sync(() => {
+                childrenAtRelease = container.children.length
+              })
+            ),
+            Effect.sync(() => {
+              if (site === "Layer") close()
+            })
+          ))
+        )
+        const mounted = yield* Effect.exit(
+          Renderer.mount(App, {}, container, { state: { "~loader": "malformed" } }).pipe(
+            Scope.provide(scope),
+            Effect.provide(Renderer.layer(host)),
+            Effect.provideService(Loader.Problems, () => {
+              if (site === "Problems") close()
+            })
+          )
+        )
+        const closed = yield* Fiber.await(closing!)
+        // The close waits for setup, then closes the instances before it removes the root's nodes.
+        assert.deepStrictEqual(
+          [site, Exit.hasInterrupts(mounted), closed._tag, childrenAtRelease, container.children.length],
+          [site, true, "Success", 1, 0]
+        )
+      }
+    }))
+
   it.effect("Renderer.mount mounts in a container on the Renderer's host", () =>
     provideHost(Effect.gen(function*() {
       const testHost = yield* TestHost.TestHost

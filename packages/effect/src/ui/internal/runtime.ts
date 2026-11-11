@@ -473,8 +473,11 @@ const makeLoaderCache = (ctx: Context.Context<any>, options: Options | undefined
 }
 
 /**
- * Sets up the root in one synchronous step, so the Scope can't close while it's half set up. A Scope
- * that has already closed gets no root: the setup is interrupted.
+ * Sets up the root in one synchronous step, so no fiber can close its owner Scope halfway. The root
+ * registers its finalizers on a Scope of its own, which the owner closes. A callback that closes the
+ * owner during setup, such as a `Problems` sink or an `init`, only starts the close: it waits for
+ * setup to end, then runs every root finalizer in order, and the setup is interrupted. An owner
+ * already closing or closed gets no root.
  */
 const start = (
   component: Component.Any,
@@ -484,11 +487,30 @@ const start = (
   cache: ReturnType<typeof Loader.internals>,
   options: Options | undefined
 ): Effect.Effect<Root & Renderer.Root<any, any>> =>
-  Effect.suspend(() =>
-    Context.get(ctx, Scope.Scope).state._tag === "Closed"
-      ? Effect.interrupt
-      : Effect.succeed(setup(component, rootProps, container, ctx, cache, options))
-  )
+  Effect.suspend(() => {
+    const owner = Context.get(ctx, Scope.Scope)
+    if (isClosed(owner)) return Effect.interrupt
+    const scope = Scope.makeUnsafe("sequential")
+    let settingUp = true
+    let closeAfterSetup: (() => void) | undefined
+    scopeAddFinalizerUnsafe(owner, {}, (exit) =>
+      settingUp
+        ? Effect.callback<void>((resume) => {
+          closeAfterSetup = () => resume(Scope.close(scope, exit))
+        })
+        : Scope.close(scope, exit))
+    let root: Root & Renderer.Root<any, any>
+    try {
+      root = setup(component, rootProps, container, Context.add(ctx, Scope.Scope, scope), cache, options)
+    } finally {
+      settingUp = false
+      closeAfterSetup?.()
+    }
+    // A callback may have closed the owner during setup.
+    return isClosed(owner) ? Effect.interrupt : Effect.succeed(root)
+  })
+
+const isClosed = (scope: Scope.Scope): boolean => scope.state._tag === "Closed"
 
 const setup = (
   component: Component.Any,
