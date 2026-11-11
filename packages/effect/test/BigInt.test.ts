@@ -1,6 +1,6 @@
 import { assert, describe, it } from "@effect/vitest"
 import * as BigInt from "effect/BigInt"
-import { assertNone, assertSome } from "./utils/assert.ts"
+import { assertNone, assertSome, throws } from "./utils/assert.ts"
 
 describe("BigInt", () => {
   it("re-exports the global BigInt constructor", () => {
@@ -30,6 +30,14 @@ describe("BigInt", () => {
     assertSome(BigInt.root(2n ** 262144n, 8192), 2n ** 32n)
     assertNone(BigInt.root(-16n, 4))
     assert.throws(() => BigInt.root(16n, 0.5), RangeError)
+  })
+
+  it("root and rootUnsafe require a positive safe integer degree", () => {
+    for (const degree of [0, -1, 0.5, NaN, Infinity, Number.MAX_SAFE_INTEGER + 1]) {
+      for (const root of [BigInt.root, BigInt.rootUnsafe]) {
+        throws(() => root(0n, degree), new RangeError(`Degree must be a positive safe integer, got ${degree}`))
+      }
+    }
   })
 
   it("toNumber converts bigints in the safe integer range", () => {

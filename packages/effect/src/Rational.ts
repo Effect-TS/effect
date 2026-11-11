@@ -661,12 +661,11 @@ export const powUnsafe: {
  * A rational in lowest terms is the n-th power of a rational exactly when its
  * numerator and denominator are n-th powers of integers. An odd degree also
  * takes the root of a negative rational. Returns `Option.none()` when the
- * degree is below `1`, when it is even and the rational negative, or when the
- * root is irrational.
+ * degree is even and the rational negative, or when the root is irrational.
  *
  * **Gotchas**
  *
- * The degree must be a safe integer. Anything else, including `0.5`, `NaN`
+ * The degree must be a positive safe integer. Anything else, including `0`, `0.5`, `NaN`
  * and `Infinity`, throws a `RangeError` instead of being rounded.
  *
  * **Example** (Taking exact roots)
@@ -691,11 +690,15 @@ export const root: {
   (self: Rational, degree: number): Option.Option<Rational>
 } = dual(2, (self: Rational, degree: number): Option.Option<Rational> => {
   const numerator = BI.root(self.numerator, degree)
-  if (Option.isNone(numerator) || numerator.value ** BigInt(degree) !== self.numerator) {
+  if (
+    Option.isNone(numerator) || (numerator.value >= -BigInt("1") && numerator.value <= BigInt("1")
+        ? numerator.value
+        : numerator.value ** BigInt(degree)) !== self.numerator
+  ) {
     return Option.none()
   }
   const denominator = BI.rootUnsafe(self.denominator, degree)
-  if (denominator ** BigInt(degree) !== self.denominator) {
+  if ((denominator === BigInt("1") ? denominator : denominator ** BigInt(degree)) !== self.denominator) {
     return Option.none()
   }
   // Roots of coprime integers stay coprime, and the denominator stays positive.

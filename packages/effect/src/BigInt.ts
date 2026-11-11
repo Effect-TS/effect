@@ -791,12 +791,11 @@ const rootFloor = (self: bigint, degree: number): bigint => {
  * For a non-negative input, returns the largest `bigint` whose `degree`-th
  * power is less than or equal to the input. An odd degree also accepts a
  * negative input and returns the negated root of its absolute value. Returns
- * `Option.none()` when the degree is below `1`, or when it is even and the
- * input negative.
+ * `Option.none()` when the degree is even and the input negative.
  *
  * **Gotchas**
  *
- * The degree must be a safe integer. Anything else, including `0.5`, `NaN`
+ * The degree must be a positive safe integer. Anything else, including `0`, `0.5`, `NaN`
  * and `Infinity`, throws a `RangeError` instead of being rounded.
  *
  * **Example** (Calculating n-th roots safely)
@@ -821,10 +820,10 @@ export const root: {
   (degree: number): (self: bigint) => Option.Option<bigint>
   (self: bigint, degree: number): Option.Option<bigint>
 } = dual(2, (self: bigint, degree: number): Option.Option<bigint> => {
-  if (!Number.isSafeInteger(degree)) {
-    throw new RangeError(`Degree must be a safe integer, got ${degree}`)
+  if (!Number.isSafeInteger(degree) || degree < 1) {
+    throw new RangeError(`Degree must be a positive safe integer, got ${degree}`)
   }
-  if (degree < 1 || (self < bigint0 && degree % 2 === 0)) {
+  if (self < bigint0 && degree % 2 === 0) {
     return Option.none()
   }
   if (degree === 1 || self === -bigint1 || self === bigint0 || self === bigint1) {
