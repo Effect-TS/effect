@@ -10,6 +10,7 @@ import {
   LayerMap,
   Option,
   Redacted,
+  Scheduler,
   Schema,
   SchemaTransformation,
   Scope,
@@ -1919,6 +1920,44 @@ describe("Runtime", () => {
       assert.strictEqual(childrenAtRelease, 1)
       assert.strictEqual(container.children.length, 0)
     })))
+
+  it.effect("Renderer.mount interrupted at any yield point leaves nothing behind once its Scope closes", () =>
+    Effect.gen(function*() {
+      // No TestHost executor: the mount runs on the scheduler below throughout, the loader cache's build included.
+      const host = TestHost.makeHost()
+      for (let at = 1;; at++) {
+        let listeners = 0
+        const signal: Loader.Signal = {
+          get: () => true,
+          subscribe: () => {
+            listeners++
+            return () => {
+              listeners--
+            }
+          }
+        }
+        // Yields once, at the `at`-th check.
+        let checks = 0
+        const scheduler = new Scheduler.MixedScheduler()
+        scheduler.shouldYield = () => ++checks === at
+        const container = host.createElement("#app") as TestHost.TestElement
+        const scope = yield* Scope.make()
+        const fiber = Effect.runFork(
+          Renderer.mount(Counter, { initial: 1 }, container).pipe(
+            Scope.provide(scope),
+            Effect.provide(Renderer.layer(host)),
+            Effect.provideService(Loader.Visibility, signal),
+            Effect.provideService(Loader.Connectivity, signal),
+            Effect.provideService(Scheduler.Scheduler, scheduler)
+          )
+        )
+        fiber.interruptUnsafe()
+        yield* Fiber.await(fiber)
+        yield* Scope.close(scope, Exit.void)
+        assert.deepStrictEqual([at, listeners, container.children.length], [at, 0, 0])
+        if (checks < at) break
+      }
+    }))
 
   it.effect("Renderer.mount mounts in a container on the Renderer's host", () =>
     provideHost(Effect.gen(function*() {

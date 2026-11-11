@@ -12,6 +12,7 @@ import * as Effect from "../../Effect.ts"
 import * as Equal from "../../Equal.ts"
 import * as Exit from "../../Exit.ts"
 import * as Fiber from "../../Fiber.ts"
+import { scopeAddFinalizerUnsafe } from "../../internal/effect.ts"
 import * as Layer from "../../Layer.ts"
 import * as Option from "../../Option.ts"
 import * as AsyncResult from "../../reactivity/AsyncResult.ts"
@@ -400,7 +401,7 @@ export const mount = (
 ): Effect.Effect<Root & Renderer.Root<any, any>, never, Scope.Scope | Renderer.Renderer> =>
   Effect.contextWith((ctx: Context.Context<Scope.Scope | Renderer.Renderer>) => {
     const startOptions = { ...options, server: undefined }
-    return Effect.map(
+    return Effect.flatMap(
       makeLoaderCache(ctx, startOptions),
       (cache) => start(component, rootProps, container, ctx, cache, startOptions)
     )
@@ -435,7 +436,7 @@ export const prerender = (
         server: { host, fetches: started, static: options.static === true, onFinish: options.onFinish }
       }
       const cache = yield* makeLoaderCache(ctx, startOptions)
-      const root = start(component, rootProps, host.createElement("#root"), ctx, cache, startOptions)
+      const root = yield* start(component, rootProps, host.createElement("#root"), ctx, cache, startOptions)
       if (started) {
         yield* Effect.raceFirst(
           Effect.callback<void>((resume) => {
@@ -471,14 +472,18 @@ const makeLoaderCache = (ctx: Context.Context<any>, options: Options | undefined
   )
 }
 
-const start = (
+/**
+ * Sets up the root. Uninterruptible, so every root finalizer is registered once it starts. The rest of
+ * the runtime runs outside any fiber and registers its finalizers synchronously.
+ */
+const start = Effect.fnUntraced(function*(
   component: Component.Any,
   rootProps: unknown,
   container: unknown,
   ctx: Context.Context<any>,
   cache: ReturnType<typeof Loader.internals>,
   options: Options | undefined
-): Root & Renderer.Root<any, any> => {
+): Effect.fn.Return<Root & Renderer.Root<any, any>> {
   const server = options?.server
   const host: Renderer.Host<any> = server !== undefined ? server.host : Context.get(ctx, services.Renderer).host
   const log = Context.get(ctx, MessageLog.MessageLog)
@@ -566,6 +571,14 @@ const start = (
   const closeScope = (scope: Scope.Closeable) => {
     track(closing, forkNow(ctx, Scope.close(scope, Exit.void)))
   }
+  /** Adds a finalizer without running an Effect. On a Scope already closed, it runs as a tracked close. */
+  const addFinalizer = (scope: Scope.Scope, finalizer: Effect.Effect<unknown>) => {
+    if (scope.state._tag === "Closed") track(closing, forkNow(ctx, Effect.asVoid(finalizer)))
+    else scopeAddFinalizerUnsafe(scope, {}, () => finalizer)
+  }
+  /** The close interrupts the fiber without waiting for it to exit. */
+  const interruptOnClose = (scope: Scope.Scope, fiber: Fiber.Fiber<unknown, unknown>) =>
+    addFinalizer(scope, Effect.sync(() => fiber.interruptUnsafe()))
 
   // -- loader cache ---------------------------------------------------------
   const withCache = (context: Context.Context<any>): Context.Context<any> =>
@@ -625,7 +638,7 @@ const start = (
   // Closed instances whose detached runs are still running or queued.
   const orphans = new Set<Instance>()
   let rootClosed = false
-  Effect.runSync(Scope.addFinalizer(
+  yield* Scope.addFinalizer(
     rootScope,
     Effect.suspend(() => {
       rootClosed = true
@@ -635,7 +648,7 @@ const start = (
       for (const [run, inst] of Array.from(detachedRuns)) stopRun(inst, run)
       return awaitAllOwned
     })
-  ))
+  )
 
   // -- flush ----------------------------------------------------------------
   const dirty = new Set<Instance>()
@@ -1049,9 +1062,7 @@ const start = (
           resolveEnv(entry.env, Context.merge(parentCtx, exit.value))
         }
       })
-      if (fiber !== undefined) {
-        Effect.runSync(Scope.addFinalizer(entry.scope, Effect.sync(() => fiber.interruptUnsafe())))
-      }
+      if (fiber !== undefined) interruptOnClose(entry.scope, fiber)
     }, (cause) => failEnv(entry.env, cause))
     return entry
   }
@@ -1141,7 +1152,7 @@ const start = (
 
     // Finalizers run in reverse: Commands stop first, then `Unmounted` is logged.
     // Descendants, Subscriptions and mounts use child Scopes forked later, so they close before both.
-    Effect.runSync(Scope.addFinalizer(
+    addFinalizer(
       scope,
       Effect.sync(() => {
         inst.closed = true
@@ -1157,8 +1168,8 @@ const start = (
           settleWaiting()
         }
       })
-    ))
-    Effect.runSync(Scope.addFinalizer(
+    )
+    addFinalizer(
       scope,
       Effect.suspend(() => {
         inst.closed = true
@@ -1175,7 +1186,7 @@ const start = (
         if (inst.runs.length > 0) orphans.add(inst)
         return awaitRuns(waits)
       })
-    ))
+    )
 
     // Entries about the Layer wait until `Mounted` is logged.
     let buffering = true
@@ -1205,7 +1216,7 @@ const start = (
         const own = shared !== undefined ? shared.env : buildingEnv(parentEnv)
         inst.env = own
         if (shared !== undefined) {
-          Effect.runSync(Scope.addFinalizer(scope, Effect.sync(() => releaseShared(parentEnv, sharedLayer!, shared))))
+          addFinalizer(scope, Effect.sync(() => releaseShared(parentEnv, sharedLayer!, shared)))
         }
         let settleBuild: (() => void) | undefined
         const buildStamp = shared !== undefined ? shared.stamp : ++builds
@@ -1256,9 +1267,7 @@ const start = (
               resolveEnv(own, Context.merge(parentCtx, exit.value))
             })
             // A build still running ends with its instance.
-            if (fiber !== undefined) {
-              Effect.runSync(Scope.addFinalizer(scope, Effect.sync(() => fiber.interruptUnsafe())))
-            }
+            if (fiber !== undefined) interruptOnClose(scope, fiber)
           }, fail)
         }
         if (own.ctx === undefined && own.failure === undefined && failedEarly === undefined) {
@@ -1273,7 +1282,7 @@ const start = (
             checkIdle()
           }
           whenReady(own, settleBuild, settleBuild)
-          Effect.runSync(Scope.addFinalizer(scope, Effect.sync(settleBuild)))
+          addFinalizer(scope, Effect.sync(settleBuild))
         }
       }
     }
@@ -2005,7 +2014,7 @@ const start = (
             }))
         )
         running.fiber = fiber
-        Effect.runSync(Scope.addFinalizer(running.scope, Effect.sync(() => fiber.interruptUnsafe())))
+        interruptOnClose(running.scope, fiber)
         // A Stream that ends stays stopped until its key leaves and comes back.
         fiber.addObserver((exit) => {
           if (Exit.isFailure(exit) && !Cause.hasInterruptsOnly(exit.cause)) {
@@ -2538,12 +2547,7 @@ const start = (
           Effect.flatMap(Effect.suspend(() => mount.run(node)), (message) =>
             Effect.sync(() => inst.dispatch(message, source)))
         )
-        Effect.runSync(Scope.addFinalizer(
-          mountScope,
-          Effect.sync(() =>
-            fiber.interruptUnsafe()
-          )
-        ))
+        interruptOnClose(mountScope, fiber)
         fiber.addObserver((exit) => {
           if (Exit.isFailure(exit) && !Cause.hasInterruptsOnly(exit.cause)) {
             failInstance(inst, exit.cause, "mount", mount.name)
@@ -2988,7 +2992,7 @@ const start = (
   // Registered before the root instance forks its Scope from `rootScope`: finalizers run in
   // reverse, so every instance Scope (and its Layers' finalizers) closes before the nodes go.
   let rootRendered: () => ReadonlyArray<Rendered> = () => []
-  Effect.runSync(Scope.addFinalizer(
+  yield* Scope.addFinalizer(
     rootScope,
     Effect.sync(() => {
       for (const node of rootRendered().flatMap(nodesOf)) host.remove(node)
@@ -3001,7 +3005,7 @@ const start = (
         host.head?.(merged)
       }
     })
-  ))
+  )
   // Hydration: the root's range among the container's nodes, which may hold more than the app.
   const rootPath = `/${component.name}`
   let rootRange: Range | undefined
@@ -3070,7 +3074,7 @@ const start = (
       report
     }
     const detach = hooks.attach(handle)
-    Effect.runSync(Scope.addFinalizer(rootScope, Effect.sync(detach)))
+    yield* Scope.addFinalizer(rootScope, Effect.sync(detach))
   }
   afterCommitHooks()
   rendering = false
@@ -3192,4 +3196,4 @@ const start = (
     },
     finish
   }
-}
+}, Effect.uninterruptible)
