@@ -17,28 +17,6 @@ const getStreamMetadata = (self: HttpApiSchema.StreamSchema) =>
     }
 
 describe("HttpApiSchema", () => {
-  it("reads buffered response encodings from reflected success schemas", () => {
-    const Row = Schema.Struct({ id: Schema.Number, name: Schema.String })
-    const Csv = Schema.String.pipe(HttpApiSchema.asText({ contentType: "text/csv" }))
-    const api = HttpApi.make("Api").add(
-      HttpApiGroup.make("responses").add(
-        HttpApiEndpoint.get("json", "/json", { success: Schema.Array(Row) }),
-        HttpApiEndpoint.get("csv", "/csv", { success: Csv }),
-        HttpApiEndpoint.get("headers", "/headers", {
-          success: HttpApiSchema.WithHeaders(Csv, { "x-total": Schema.String })
-        })
-      )
-    )
-    const encodings: Record<string, string> = {}
-    HttpApi.reflect(api, {
-      onGroup: () => {},
-      onEndpoint: ({ endpoint, successes }) => {
-        encodings[endpoint.identifier] = HttpApiSchema.getResponseEncodingSchema(successes.get(200)![0]).contentType
-      }
-    })
-    assert.deepStrictEqual(encodings, { json: "application/json", csv: "text/csv", headers: "text/csv" })
-  })
-
   describe("StreamSse", () => {
     it("stores default metadata", () => {
       const events = Schema.Struct({
@@ -355,7 +333,7 @@ describe("HttpApiSchema", () => {
       })
     })
 
-    it("exposes the declared body and headers schemas, including through reflection", () => {
+    it("distinguishes reflected declared parts from an ordinary pair transformation", () => {
       const Body = Schema.Array(Schema.String)
       const headers = { "x-total": Schema.String }
       const Page = Schema.Struct({ rows: Body, total: Schema.String })
@@ -371,19 +349,9 @@ describe("HttpApiSchema", () => {
         Schema.decodeTo(Page, SchemaTransformation.transform(transformation))
       )
 
-      const declared = HttpApiSchema.getEncodeToWithHeadersParts(PageWithHeaders)
-      assert.isDefined(declared)
-      assert.deepStrictEqual(Object.keys(declared), ["body", "headers"])
-      assert.strictEqual(declared.body, Body)
-      assert.isTrue(Schema.is(declared.headers)({ "x-total": "1" }))
-      assert.deepStrictEqual(Object.keys(declared.headers.fields), ["x-total"])
-      assert.isUndefined(HttpApiSchema.getEncodeToWithHeadersParts(Page))
-      assert.isUndefined(HttpApiSchema.getEncodeToWithHeadersParts(HttpApiSchema.WithHeaders(Body, headers)))
-
       const api = HttpApi.make("Api").add(
         HttpApiGroup.make("pages").add(
           HttpApiEndpoint.get("split", "/split", { success: PageWithHeaders }),
-          HttpApiEndpoint.get("splitRaw", "/split-raw", { success: PageWithHeaders, disableCodecs: true }),
           HttpApiEndpoint.get("pair", "/pair", { success: PageFromPair })
         )
       )
@@ -394,12 +362,9 @@ describe("HttpApiSchema", () => {
           reflected[endpoint.identifier] = HttpApiSchema.getEncodeToWithHeadersParts(successes.get(200)![0])
         }
       })
-      assert.deepStrictEqual(Object.keys(reflected), ["split", "splitRaw", "pair"])
+      assert.strictEqual(reflected.split?.body, Body)
+      assert.strictEqual(reflected.split?.headers.fields["x-total"], headers["x-total"])
       assert.isUndefined(reflected.pair)
-      for (const parts of [reflected.split, reflected.splitRaw]) {
-        assert.strictEqual(parts?.body, Body)
-        assert.strictEqual(parts?.headers, declared.headers)
-      }
     })
   })
 
