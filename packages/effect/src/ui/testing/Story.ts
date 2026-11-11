@@ -537,7 +537,7 @@ const loadStep = (
     previous: Option.Option<AsyncResult.Success<any, any>>
   ) => AsyncResult.Success<any, any> | AsyncResult.Failure<any, any>,
   patched: boolean,
-  more?: (previous: Option.Option<AsyncResult.Success<any, any>>) => Loader.More<any> | undefined
+  more?: Loader.More<any>
 ): Story<any, any, any, any> => {
   const bound = boundOf(story.component)
   if (bound === undefined || !bound.fields.some((f) => f.field === field)) {
@@ -556,11 +556,7 @@ const loadStep = (
     { args: marker.args, argsKey: marker.argsKey },
     result,
     patched,
-    more !== undefined
-      ? more(previous)
-      : def.list !== undefined && result._tag === "Success"
-      ? moreOfPages(def, result.value)
-      : undefined
+    more ?? (def.list !== undefined && result._tag === "Success" ? moreOfPages(def, result.value) : undefined)
   )
   return dispatch(story, marker.toMsg(snapshot, result))
 }
@@ -597,34 +593,30 @@ const listField = (story: Story<any, any, any, any>, step: string, field: string
   }
 }
 
-/** Settles a field's pending load more with `result`, sent at the field's pages. */
+/** Settles a field's pending load more with `result`, sent at the field's pages. A live patch makes it throw. */
 const settleMore = (
   story: Story<any, any, any, any>,
   step: string,
   field: string,
-  build: (pages: ReadonlyArray<unknown>) => {
-    readonly pages: ReadonlyArray<unknown>
-    readonly more: (pages: ReadonlyArray<unknown>) => Loader.More<any>
-  }
+  pagesOf: (pages: ReadonlyArray<unknown>) => ReadonlyArray<unknown>,
+  more?: Loader.More<any>
 ): Story<any, any, any, any> => {
+  const marker = markerAt(story, field)
+  if (marker?.argsKey !== undefined) checkUnpatched(story, step, field, marker.args)
   listField(story, step, field)
   if (!story.loadingMore.includes(field)) {
     throw new Error(`Story.${step}: no load more of "${field}" is pending`)
   }
-  const settled = settlePending(story, field)
-  let more: Loader.More<any> | undefined
   return loadStep(
-    settled,
+    settlePending(story, field),
     step,
     field,
     (previous) => {
       if (Option.isNone(previous)) throw new Error(`Story.${step}: "${field}" holds no pages at its loader's args`)
-      const next = build(previous.value.value)
-      more = next.more(next.pages)
-      return AsyncResult.success(next.pages, { timestamp: previous.value.timestamp })
+      return AsyncResult.success(pagesOf(previous.value.value), { timestamp: previous.value.timestamp })
     },
     false,
-    () => more
+    more
   )
 }
 
@@ -651,23 +643,20 @@ const applyList = (story: Story<any, any, any, any>, list: Component.ListIssue):
       list.field,
       () => data.result as AsyncResult.Success<any, any>,
       data.patched,
-      () => ({
-        _tag: "Loading"
-      })
+      { _tag: "Loading" }
     )
   }
   const reset = settlePending(story, list.field)
   if (Option.isNone(previous)) return reset
   const first = AsyncResult.success(previous.value.value.slice(0, 1), { timestamp: previous.value.timestamp })
-  const stored = data?.argsKey === marker.argsKey ? data.result : undefined
   return loadStep(
     reset,
     "reset",
     list.field,
     // A Failure stays one, over the first page only, while the walk runs.
     () =>
-      stored?._tag === "Failure"
-        ? AsyncResult.failure(stored.cause, { previousSuccess: Option.some(first), waiting: true })
+      data?.result?._tag === "Failure"
+        ? AsyncResult.failure(data.result.cause, { previousSuccess: Option.some(first), waiting: true })
         : AsyncResult.success(first.value, { timestamp: first.timestamp, waiting: true }),
     false
   )
@@ -965,12 +954,6 @@ const settleStep = <S extends Story<any, any, any, any>>(
   return waiting ? loaded : settleWaits(loaded, awaitedAt(loaded, field, marker.argsKey)) as S
 }
 
-/** `checkUnpatched` at a single or list field's current args. */
-const unpatchedAt = (story: Story<any, any, any, any>, step: string, field: string): void => {
-  const marker = markerAt(story, field)
-  if (marker?.argsKey !== undefined) checkUnpatched(story, step, field, marker.args)
-}
-
 /** Whether `awaited` is the entry of `field` at `argsKey`. */
 const awaitedAt = (story: Story<any, any, any, any>, field: string, argsKey: string) => {
   const def = Loader.defOf(boundOf(story.component)!.fields.find((f) => f.field === field)!.read)
@@ -1265,18 +1248,10 @@ class StepsImpl implements Steps<AnyComponent> {
     )
   }
   loadedMore(field: string, page: unknown): this {
-    unpatchedAt(this.current, "loadedMore", field)
-    return this.step(settleMore(this.current, "loadedMore", field, (pages) => ({
-      pages: [...pages, page],
-      more: (pages) => moreOfPages(Loader.defOf(markerAt(this.current, field).read), pages)
-    })))
+    return this.step(settleMore(this.current, "loadedMore", field, (pages) => [...pages, page]))
   }
   loadMoreFailed(field: string, error: unknown): this {
-    unpatchedAt(this.current, "loadMoreFailed", field)
-    return this.step(settleMore(this.current, "loadMoreFailed", field, (pages) => ({
-      pages,
-      more: () => ({ _tag: "Failed", error })
-    })))
+    return this.step(settleMore(this.current, "loadMoreFailed", field, (pages) => pages, { _tag: "Failed", error }))
   }
   loadFailed(field: string, ...rest: Array<any>): this {
     if (isKeyed(this.current, field)) {
