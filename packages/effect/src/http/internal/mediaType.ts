@@ -1,4 +1,8 @@
 /**
+ * The media type of a `content-type` header, lowercased and without its
+ * parameters, such as `"application/json"` for
+ * `"Application/JSON; charset=utf-8"`.
+ *
  * @internal
  */
 export function normalize(contentType: string): string {
