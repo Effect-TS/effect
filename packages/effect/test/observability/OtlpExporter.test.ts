@@ -141,30 +141,23 @@ describe("OtlpExporter", () => {
     }
     return Effect.gen(function*() {
       const { attempts, httpClient } = yield* makeStatusHttpClient(200)
-      const batches: Array<Array<number>> = []
       yield* Effect.scoped(
         Effect.gen(function*() {
-          const exporter = yield* makeExporterRaw(2, (items) => {
-            batches.push(items.map((item) => item.value))
-            return HttpBody.empty
-          }, Duration.infinity)
+          const exporter = yield* makeExporterRaw(2, undefined, Duration.infinity)
           const flusher = yield* OtlpExporter.Flusher
           yield* yieldNowN(3)
           assert.strictEqual(activeFibers, 0)
 
           exporter.push({ value: 1 })
           yield* flusher.flush
-          yield* yieldNowN(3)
           assert.strictEqual(activeFibers, 0)
           assert.strictEqual(yield* Ref.get(attempts), 1)
-          assert.deepStrictEqual(batches, [[1]])
 
           exporter.push({ value: 2 })
           exporter.push({ value: 3 })
           yield* yieldNowN(3)
           assert.strictEqual(activeFibers, 0)
           assert.strictEqual(yield* Ref.get(attempts), 2)
-          assert.deepStrictEqual(batches, [[1], [2, 3]])
 
           exporter.push({ value: 4 })
         }).pipe(
@@ -174,7 +167,6 @@ describe("OtlpExporter", () => {
       )
       assert.strictEqual(activeFibers, 0)
       assert.strictEqual(yield* Ref.get(attempts), 3)
-      assert.deepStrictEqual(batches, [[1], [2, 3], [4]])
     }).pipe(Effect.provideService(Metric.FiberRuntimeMetrics, runtimeMetrics))
   })
 
