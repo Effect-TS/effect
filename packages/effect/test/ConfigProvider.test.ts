@@ -1,4 +1,4 @@
-import { describe, it } from "@effect/vitest"
+import { describe, it, vi } from "@effect/vitest"
 import { deepStrictEqual } from "@effect/vitest/utils"
 import { ConfigProvider, Effect, FileSystem, Layer, Path, PlatformError, Result } from "effect"
 
@@ -316,44 +316,37 @@ describe("ConfigProvider", () => {
   })
 
   describe("fromEnv", () => {
-    for (const preserveEmptyStrings of [false, true]) {
-      it.effect(`snapshots implicit env on execution and shares it with derived providers (${preserveEmptyStrings})`, () =>
-        Effect.gen(function*() {
-          const prefix = preserveEmptyStrings ? "EFFECTCONFIGPROVIDERSNAPSHOTOPTIONS" : "EFFECTCONFIGPROVIDERSNAPSHOT"
-          const key = `${prefix}_VALUE`
-          const previous = process.env[key]
-          try {
-            delete process.env[key]
-            const provider = preserveEmptyStrings
-              ? ConfigProvider.fromEnv({ preserveEmptyStrings })
-              : ConfigProvider.fromEnv()
-            const derived = provider.pipe(ConfigProvider.constantCase)
-            const independent = ConfigProvider.fromEnv()
-            const path = [prefix, "VALUE"]
-            const derivedPath = [prefix.toLowerCase(), "value"]
-            const lookup = preserveEmptyStrings ? derived.load(derivedPath) : provider.load(path)
+    it.effect("snapshots implicit env when the first lookup runs and shares it with derived providers", () =>
+      Effect.gen(function*() {
+        const prefix = "EFFECTCONFIGPROVIDERSNAPSHOT"
+        const key = `${prefix}_VALUE`
+        const path = [prefix, "VALUE"]
+        const derivedPath = [prefix.toLowerCase(), "value"]
+        vi.stubEnv(key, undefined)
+        try {
+          const provider = ConfigProvider.fromEnv({ preserveEmptyStrings: true })
+          const derived = provider.pipe(ConfigProvider.constantCase)
+          const lookup = derived.load(derivedPath)
+          const independent = ConfigProvider.fromEnv()
 
-            process.env[key] = "first"
-            deepStrictEqual(yield* lookup, ConfigProvider.makeValue("first"))
+          vi.stubEnv(key, "first")
+          deepStrictEqual(yield* lookup, ConfigProvider.makeValue("first"))
 
-            process.env[key] = "second"
-            deepStrictEqual(yield* provider.load(path), ConfigProvider.makeValue("first"))
-            deepStrictEqual(yield* derived.load(derivedPath), ConfigProvider.makeValue("first"))
-            deepStrictEqual(yield* lookup, ConfigProvider.makeValue("first"))
-            deepStrictEqual(yield* independent.load(path), ConfigProvider.makeValue("second"))
-            deepStrictEqual(
-              yield* provider.load([prefix]),
-              ConfigProvider.makeRecord(new Set(["VALUE"]))
-            )
-          } finally {
-            if (previous === undefined) {
-              delete process.env[key]
-            } else {
-              process.env[key] = previous
-            }
-          }
-        }))
-    }
+          vi.stubEnv(key, "second")
+          deepStrictEqual(yield* lookup, ConfigProvider.makeValue("first"))
+          deepStrictEqual(yield* provider.load(path), ConfigProvider.makeValue("first"))
+          deepStrictEqual(yield* provider.load([prefix]), ConfigProvider.makeRecord(new Set(["VALUE"])))
+          deepStrictEqual(yield* independent.load(path), ConfigProvider.makeValue("second"))
+
+          vi.stubEnv(key, "third")
+          deepStrictEqual(
+            yield* independent.pipe(ConfigProvider.constantCase).load(derivedPath),
+            ConfigProvider.makeValue("second")
+          )
+        } finally {
+          vi.unstubAllEnvs()
+        }
+      }))
 
     it.effect("captures explicit env names at construction but reads values live", () =>
       Effect.gen(function*() {

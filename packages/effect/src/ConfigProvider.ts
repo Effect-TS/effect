@@ -906,12 +906,8 @@ export function fromEnvRecord(
  * `Record`.
  *
  * The default environment merges `process.env` and `import.meta.env` (when
- * available), taking a snapshot when the first lookup effect executes, not when
- * this provider or a lookup effect is created. Later lookups reuse that snapshot,
- * including lookups through providers derived with input transformations.
- * Override by passing `{ env: { ... } }`: names are captured at construction,
- * while values are read from the supplied record on each lookup.
- * Use `fromEnvRecord({ ...process.env })` to take a snapshot at a chosen moment.
+ * available). Override by passing `{ env: { ... } }`, which behaves like
+ * {@link fromEnvRecord}.
  *
  * Literal empty strings are treated as missing values when loaded as values by
  * default. Pass `{ preserveEmptyStrings: true }` to keep empty strings as
@@ -919,6 +915,15 @@ export function fromEnvRecord(
  * names present in the source.
  *
  * Never fails with `SourceError` — all lookups are synchronous.
+ *
+ * **Gotchas**
+ *
+ * Without `env`, the environment is read once, when the first lookup effect
+ * runs, not when the provider is created. Later lookups, including those
+ * through providers derived with {@link mapInput}, {@link nested}, or
+ * {@link constantCase}, reuse that snapshot and do not observe later
+ * environment changes. Use `fromEnvRecord({ ...process.env })` to take the
+ * snapshot at a chosen moment.
  *
  * **Example** (Reading from a custom env record)
  *
@@ -952,7 +957,7 @@ export function fromEnv(options?: {
   readonly preserveEmptyStrings?: boolean | undefined
 }): ConfigProvider {
   if (options?.env !== undefined) {
-    return fromEnvRecord(options.env, { preserveEmptyStrings: options.preserveEmptyStrings })
+    return fromEnvRecord(options.env, options)
   }
   let provider: ConfigProvider | undefined
   return make((path) =>
@@ -962,7 +967,7 @@ export function fromEnv(options?: {
           readonly process?: { readonly env?: Record<string, string | undefined> }
         }).process?.env,
         ...(import.meta as any)?.env
-      }, { preserveEmptyStrings: options?.preserveEmptyStrings })).load(path)
+      }, options)).load(path)
     )
   )
 }
