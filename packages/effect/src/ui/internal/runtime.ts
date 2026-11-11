@@ -162,6 +162,7 @@ interface WatchRun {
 
 /** @internal */
 export interface Instance {
+  serverSampled?: boolean
   readonly path: string
   readonly depth: number
   readonly component: Component.Any
@@ -451,6 +452,7 @@ const start = (
   // Slots still waiting for their Layer before they adopt, and whether the first render is done.
   let waiting = 0
   let started = false
+  const hydrated = hydrating !== undefined
   let adoptedDone = hydrating === undefined
   const adoptedWaiters: Array<() => void> = []
   const settleWaiting = () => {
@@ -1678,11 +1680,29 @@ const start = (
     const subscriptions = inst.component.subscriptions
     // A waiting slot has no Model yet.
     if (inst.closed || inst.waiting || subscriptions === undefined) return
-    // On the server only the watch markers register, and only for a component with a loader field, so
-    // no other component gains a way to fail. Nothing under a Layer kept off the server is sampled.
-    if (server !== undefined && (inst.component["~loaders"] === undefined || inst.env.never)) return
-    const wanted = guard(inst, "subscription", () => subscriptions(inst.model, inst.props))
+    // Sample the root once for server checks, and loader components for watch markers.
+    // Nothing under a Layer kept off the server is sampled.
+    const checkRoot = server !== undefined && inst.parent === undefined && !inst.serverSampled
+    if (server !== undefined) {
+      if (inst.env.never || (!checkRoot && inst.component["~loaders"] === undefined)) return
+      if (checkRoot) inst.serverSampled = true
+    }
+    const wanted = checkRoot
+      ? subscriptions(inst.model, inst.props)
+      : guard(inst, "subscription", () => subscriptions(inst.model, inst.props))
     if (wanted === undefined) return
+    if (checkRoot) {
+      for (const subscription of wanted) {
+        if (typeof subscription !== "object" || subscription === null) continue
+        const hook = (subscription as {
+          readonly [services.onServer]?: (
+            ctx: Context.Context<never>,
+            report: (problem: Loader.Problem.Any) => void
+          ) => void
+        })[services.onServer]
+        if (hook !== undefined) whenReady(inst.env, (envCtx) => hook(envCtx, report))
+      }
+    }
     const byKey = new Map<string, Subscription.Subscription<any, any>>()
     const markers = new Map<string, loaders.Marker>()
     for (const subscription of wanted) {
@@ -1716,7 +1736,7 @@ const start = (
         if (inst.closed || inst.subscriptions.get(key) !== running) return
         const source: MessageLog.Source = { _tag: "Subscription", key }
         const fiber = forkLater(
-          withCache(Context.add(envCtx, Scope.Scope, running.scope)),
+          withCache(Context.add(Context.add(envCtx, Scope.Scope, running.scope), services.CurrentRoot, () => handle)),
           Stream.runForEach(subscription.stream, (message) =>
             Effect.sync(() => {
               ;(subscription as { readonly [services.onDeliver]?: (message: unknown) => void })[services.onDeliver]?.(
@@ -2419,6 +2439,7 @@ const start = (
   if (hooks !== undefined) {
     handle = {
       container,
+      hydrated,
       flush: () => flushes,
       snapshot,
       // The first navigation closes the fetch-free window, if adoption hasn't yet.

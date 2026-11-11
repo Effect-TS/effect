@@ -53,7 +53,8 @@ describe("Router", () => {
             )
           )
           : model,
-      subscriptions: () => [Router.subscription(AppRoute, () => Message.make({ _tag: "Done" }))],
+      subscriptions: () => [Router.subscription(AppRoute, AppRoute.make({ _tag: "Home" }), () =>
+        Message.make({ _tag: "Done" }))],
       view: (_, h) => h.text("")
     })
     expect<Component.Requirements<typeof Nav>>().type.toBe<Router.Push | Router.Router>()
@@ -79,8 +80,14 @@ describe("Router", () => {
 
   it("subscribes only to a route union", () => {
     const Tagged = Schema.TaggedUnion({ Home: {} })
-    expect(Router.subscription).type.not.toBeCallableWith(Tagged, () => 1)
-    expect(Router.subscription(AppRoute, (route) => route._tag)).type.toBe<
+    expect(Router.subscription).type.not.toBeCallableWith(Tagged, { _tag: "Home" }, () => 1)
+    expect(Router.subscription).type.not.toBeCallableWith(AppRoute, { _tag: "Person" }, () => 1)
+    expect(Router.subscription).type.not.toBeCallableWith(
+      AppRoute.subset(["Home"]),
+      AppRoute.make({ _tag: "Person", params: { id: 1 } }),
+      () => 1
+    )
+    expect(Router.subscription(AppRoute, AppRoute.make({ _tag: "Home" }), (route) => route._tag)).type.toBe<
       Subscription.Subscription<AppRoute["_tag"], Router.Router>
     >()
   })

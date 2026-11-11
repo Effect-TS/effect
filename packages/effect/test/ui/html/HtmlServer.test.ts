@@ -1,9 +1,9 @@
 // @vitest-environment happy-dom
-import { expect, it } from "@effect/vitest"
-import { Context, Effect, Fiber, Layer, Option, Schema, type Scope } from "effect"
+import { assert, expect, it } from "@effect/vitest"
+import { Context, Effect, Exit, Fiber, Layer, Option, Schema, type Scope, type Stream } from "effect"
 import { AsyncResult, Loader } from "effect/reactivity"
 import { TestClock } from "effect/testing"
-import { Command, Component, Feature, Head, MessageLog, type Renderer, Router } from "effect/ui"
+import { Command, Component, Feature, Head, MessageLog, type Renderer, Router, Subscription } from "effect/ui"
 import { BrowserHost, Html, HtmlServer } from "effect/ui/html"
 import { ssr } from "effect/ui/html/testing"
 import { TestHost } from "effect/ui/testing"
@@ -41,6 +41,63 @@ const container = (html: string) =>
   )
 
 describe("HtmlServer", { concurrent: false }, () => {
+  it.effect("samples root subscriptions once on the server without building Streams, and surfaces throws", () =>
+    Effect.gen(function*() {
+      let sampled = 0
+      let built = 0
+      const Root = Component.make({
+        name: "LazyRoot",
+        model: Schema.Number,
+        message: Schema.Never,
+        init: () => 0,
+        update: (model) => model,
+        subscriptions: () => {
+          sampled++
+          return [Subscription.make("browser", null, (): Stream.Stream<never> => {
+            built++
+            throw new Error("browser-only builder")
+          })]
+        },
+        view: (_, h) => h.text("root")
+      })
+      const result = yield* HtmlServer.renderToHtml(Root, {})
+      assert.include(result.html, "root")
+      assert.strictEqual(sampled, 1)
+      assert.strictEqual(built, 0)
+      const Broken = Component.make({
+        name: "BrokenRoot",
+        model: Schema.Number,
+        message: Schema.Never,
+        init: () => 0,
+        update: (model) => model,
+        subscriptions: () => {
+          throw new Error("subscription declaration failed")
+        },
+        view: (_, h) => h.text("unreachable")
+      })
+      const error = yield* Effect.exit(HtmlServer.renderToHtml(Broken, {}))
+      assert.isTrue(Exit.isFailure(error))
+    }))
+
+  it.effect("reports a server route mismatch even after navigation, but accepts a fresh snapshot", () => {
+    const problems: Array<Loader.Problem.Any> = []
+    return Effect.gen(function*() {
+      const router = yield* Router.Router
+      const route = yield* Router.currentRoute(AppRoute)
+      yield* router.navigate("/")
+      const stale = yield* HtmlServer.renderToHtml(App, { route })
+      assert.include(stale.html, "Person 1")
+      assert.strictEqual(problems.length, 1)
+      assert.strictEqual(problems[0]._tag, "RouteMismatch")
+      problems.length = 0
+      yield* HtmlServer.renderToHtml(App, { route: yield* Router.currentRoute(AppRoute) })
+      assert.deepStrictEqual(problems, [])
+    }).pipe(
+      Effect.provide([People.layer, Router.memory({ routes: AppRoute, url: "/people/1" })]),
+      Effect.provideService(Loader.Problems, (problem) => problems.push(problem))
+    )
+  })
+
   it.effect("renders the routed example with its route data, and hydration adopts it", () =>
     Effect.gen(function*() {
       const { props, router } = yield* routed("/people/1")

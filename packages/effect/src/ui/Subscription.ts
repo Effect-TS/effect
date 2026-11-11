@@ -32,7 +32,7 @@
  * @stability experimental
  * @since 4.1.3
  */
-import type * as Stream from "../Stream.ts"
+import * as Stream from "../Stream.ts"
 
 /**
  * Identifies a Subscription.
@@ -154,7 +154,8 @@ export const keyOf = (name: string, deps?: Deps): string =>
  * With deps, the builder sees only its deps, never the Model, so a Stream
  * can't hold stale Model values. The deps are joined into the key
  * (`room:"42"`, see `keyOf`), so `room:"1"` and `room:"2"` are never both
- * connected: the old key closes before the new one starts.
+ * connected: the old key closes before the new one starts. The builder runs
+ * lazily when the Stream starts, never while declaring subscriptions on the server.
  *
  * **Example** (Keying a Subscription on a prop)
  *
@@ -190,4 +191,4 @@ export const make: {
 ): Subscription<any, any> =>
   build === undefined
     ? { [TypeId]: TypeId, key: keyOf(name), stream: depsOrStream }
-    : { [TypeId]: TypeId, key: keyOf(name, depsOrStream), stream: build(depsOrStream) }
+    : { [TypeId]: TypeId, key: keyOf(name, depsOrStream), stream: Stream.suspend(() => build(depsOrStream)) }

@@ -1,9 +1,10 @@
 // @vitest-environment happy-dom
-import { expect, it } from "@effect/vitest"
+import { assert, expect, it } from "@effect/vitest"
 import { Context, Effect, Exit, Layer, Option, Scope } from "effect"
+import { Loader } from "effect/reactivity"
 import { TestClock } from "effect/testing"
 import { Router } from "effect/ui"
-import { BrowserHost, BrowserRouter } from "effect/ui/html"
+import { BrowserHost, BrowserRouter, HtmlServer } from "effect/ui/html"
 import { HtmlQuery } from "effect/ui/html/testing"
 import { describe } from "vitest"
 import { App, AppRoute, People } from "./fixtures/routed.ts"
@@ -74,6 +75,37 @@ const clickReporting = (element: Element, init?: MouseEventInit) => {
 }
 
 describe("BrowserRouter", { concurrent: false }, () => {
+  it.effect("exempts hydrated hash roots, but checks client-only hash roots", () => {
+    const problems: Array<Loader.Problem.Any> = []
+    return Effect.gen(function*() {
+      AppRoute.setBase("#")
+      yield* Effect.addFinalizer(() => Effect.sync(() => AppRoute.setBase("")))
+      const route = AppRoute.make({ _tag: "Home" })
+      const rendered = yield* HtmlServer.renderToHtml(App, { route }, { static: true }).pipe(
+        Effect.provide(Router.static({ routes: AppRoute, url: "#/" }))
+      )
+      window.history.replaceState(null, "", "/#/people/1")
+      const context = yield* Layer.build(BrowserRouter.layerHash({ routes: AppRoute }))
+      const hydratedContainer = yield* container
+      hydratedContainer.innerHTML = rendered.html
+      const home = hydratedContainer.querySelector("h1")
+      const hydrated = yield* Effect.flatMap(
+        Router.currentRoute(AppRoute),
+        (route) => BrowserHost.mount(App, { route }, hydratedContainer, { state: rendered.state })
+      ).pipe(Effect.provideContext(context))
+      assert.strictEqual(hydratedContainer.querySelector("h1"), home)
+      yield* tick
+      assert.strictEqual(hydrated.model()?.route._tag, "Person")
+      assert.deepStrictEqual(problems, [])
+      const clientContainer = yield* container
+      const client = yield* BrowserHost.mount(App, { route }, clientContainer).pipe(Effect.provideContext(context))
+      yield* tick
+      assert.strictEqual(client.model()?.route._tag, "Person")
+      assert.strictEqual(problems.length, 1)
+      assert.strictEqual(problems[0]._tag, "RouteMismatch")
+    }).pipe(Effect.provide(People.layer), Effect.provideService(Loader.Problems, (problem) => problems.push(problem)))
+  })
+
   it.effect("navigates by link, back and forward, and the head and announcement follow", () =>
     Effect.gen(function*() {
       const { app, root } = yield* start("/")

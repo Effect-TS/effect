@@ -19,6 +19,7 @@ export const Refs = Context.Service<RefsShape, RefsShape>("effect/ui/Renderer/Re
  * @internal
  */
 export interface RootHandle {
+  readonly hydrated: boolean
   readonly container: unknown
   /** The current flush: 0 for the first render, then one more per flush. */
   readonly flush: () => number
@@ -71,3 +72,11 @@ export const RootHooks = Context.Service<RootHooks, RootHooks>("effect/ui/intern
  * @internal
  */
 export const onDeliver: unique symbol = Symbol.for("effect/ui/Subscription/onDeliver") as any
+
+/** @internal */
+export const CurrentRoot = Context.Reference<() => RootHandle | undefined>("effect/ui/internal/CurrentRoot", {
+  defaultValue: () => () => undefined
+})
+
+/** @internal */
+export const onServer: unique symbol = Symbol.for("effect/ui/Subscription/onServer") as any

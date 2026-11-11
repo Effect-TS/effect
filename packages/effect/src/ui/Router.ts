@@ -18,7 +18,7 @@
  * `Router.subscription`, so every route change is in the log. The Router is
  * shaped like a `SubscriptionRef`: `changes` starts with the current
  * location, so a change made before the Subscription starts isn't lost. The
- * root's `update` must therefore ignore a route it already has.
+ * Subscription suppresses the first delivery when the root already holds it.
  *
  * Pages are chosen with the union's exhaustive `match` and keyed by the whole
  * printed route, so a route change re-keys the page:
@@ -56,7 +56,7 @@
  *         $.run(Router.push(AppRoute, route).pipe(Command.map(() => Message.make({ _tag: "Navigated" })))),
  *       Navigated: () => model
  *     }),
- *   subscriptions: () => [Router.subscription(AppRoute, (route) => Message.make({ _tag: "ChangedRoute", route }))],
+ *   subscriptions: (model) => [Router.subscription(AppRoute, model.route, (route) => Message.make({ _tag: "ChangedRoute", route }))],
  *   view: (model, h) => h.el("p", model.route._tag)
  * })
  *
@@ -357,10 +357,13 @@ export const currentRoute = <U extends Routes>(routes: U): Effect.Effect<U["Type
  *
  * **Details**
  *
- * It maps each location's route to a message. The first one is the current
- * route, which the root usually has already, so `update` must ignore a route
- * equal to its own. Pass the union given to the Router Layer; a subset only
- * sees its own routes.
+ * Pass the route held in the Model. The first location is suppressed when its
+ * tag and printed URL match that route. Otherwise it is delivered, and a
+ * `RouteMismatch` is reported if the Router has not navigated (sequence 0).
+ * Hydrated hash roots skip that report. Later locations are always delivered.
+ * The key stays stable as the held route changes. A subset only sees its own
+ * routes. On the server the root is checked once without running its Streams,
+ * regardless of the navigation sequence.
  *
  * Use this helper rather than `Router.changes` directly: the browser Router
  * times scroll, announcements and focus from the flush in which the root
@@ -372,18 +375,45 @@ export const currentRoute = <U extends Routes>(routes: U): Effect.Effect<U["Type
  */
 export const subscription = <U extends Routes, Msg>(
   routes: U,
+  held: U["Type"],
   f: (route: U["Type"]) => Msg
 ): Subscription.Subscription<Msg, Router> => {
   const seqs = new WeakMap<object, number>()
   let last: number | undefined
   let engine: Engine | undefined
   const union: Route.AnyUnion = routes
-  const stream = Stream.unwrap(Effect.map(Router, (router) => {
+  const have = union.print(held) as string
+  const same = (route: { readonly _tag: string }) => route._tag === held._tag && union.print(route) === have
+  const mismatch = (route: { readonly _tag: string }) =>
+    new RouteMismatch({
+      have,
+      router: union.print(route) as string,
+      message: `The component holds "${have}" but the Router is at "${
+        union.print(route)
+      }". Initialize the root with Router.currentRoute.`
+    })
+  const stream = Stream.unwrap(Effect.gen(function*() {
+    const router = yield* Router
+    const report = yield* Loader.Problems
+    const root = (yield* services.CurrentRoot)()
     engine = engines.get(router)
+    let first = true
     return router.changes.pipe(
       Stream.map((location) => {
         const route = router.routes === union ? Option.some(location.route) : union.parse(location.url)
+        const initial = first
+        first = false
         if (Option.isNone(route)) return Option.none<Msg>()
+        if (initial) {
+          if (same(route.value)) return Option.none<Msg>()
+          if (location.seq === 0 && !(engine?.hash && root?.hydrated)) {
+            try {
+              report(mismatch(route.value))
+            } catch {
+              // A problem sink cannot prevent route delivery.
+            }
+          }
+        }
         const message = f(route.value as U["Type"])
         if (typeof message === "object" && message !== null) seqs.set(message, location.seq)
         else last = location.seq
@@ -394,6 +424,13 @@ export const subscription = <U extends Routes, Msg>(
     )
   }))
   return Object.assign(Subscription.make("effect/ui/Router", stream), {
+    [services.onServer]: (ctx: Context.Context<never>, report: (problem: Loader.Problem.Any) => void) => {
+      const router = Context.getOption(ctx as Context.Context<Router>, Router)
+      if (Option.isNone(router)) return
+      const location = router.value.location()
+      const route = router.value.routes === union ? Option.some(location.route) : union.parse(location.url)
+      if (Option.isSome(route) && !same(route.value)) report(mismatch(route.value))
+    },
     [services.onDeliver]: (message: unknown) => {
       const seq = typeof message === "object" && message !== null ? seqs.get(message) : last
       if (seq !== undefined) engine?.delivered(seq)
@@ -472,7 +509,21 @@ export interface Options {
   readonly onLeave?: ((index: number) => void) | undefined
 }
 
+/**
+ * Reports that an initial held route differs from the Router location.
+ *
+ * @stability experimental
+ * @category problems
+ * @since 4.1.3
+ */
+export class RouteMismatch extends Data.TaggedClass("RouteMismatch")<{
+  readonly message: string
+  readonly have: string
+  readonly router: string
+}> {}
+
 interface Engine {
+  readonly hash: boolean
   readonly delivered: (seq: number) => void
 }
 
@@ -801,6 +852,7 @@ const build = (options: Options): Effect.Effect<Context.Context<Router>, never, 
       blocked: () => blocks.size > 0
     }
     engines.set(router, {
+      hash: routes.base() === "#",
       delivered: (seq) => {
         const root = primary()
         if (
@@ -932,7 +984,9 @@ export {
    *
    * Navigation Commands return `"blocked"` and change nothing. The server
    * parses the URL itself first, to answer a `NotFound` route with a 404 and a
-   * redirect with a 301.
+   * redirect with a 301. For a prerendered hash-routing shell, first call
+   * `routes.setBase("#")` and render at `"#/"`, so links and keys agree with
+   * `BrowserRouter.layerHash` during hydration.
    *
    * @stability experimental
    * @category layers

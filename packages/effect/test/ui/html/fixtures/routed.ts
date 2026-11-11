@@ -102,7 +102,7 @@ export const App = Component.make({
       Filter: () => model
     }),
   subscriptions: (model) => [
-    Router.subscription(AppRoute, (route) => Message.make({ _tag: "ChangedRoute", route })),
+    Router.subscription(AppRoute, model.route, (route) => Message.make({ _tag: "ChangedRoute", route })),
     model.blocked && Router.blocked("editing")
   ],
   head: () => [Head.titleTemplate((title) => `${title} · App`), Head.lang("en"), Head.htmlClass("routed")],

@@ -165,7 +165,7 @@ export const App = Component.make({
       Navigated: ({ outcome }) => ({ ...model, outcomes: [...model.outcomes, outcome] })
     }),
   subscriptions: (model) => [
-    Router.subscription(AppRoute, (route) => AppMessage.make({ _tag: "ChangedRoute", route })),
+    Router.subscription(AppRoute, model.route, (route) => AppMessage.make({ _tag: "ChangedRoute", route })),
     model.blocked && Router.blocked("editing")
   ],
   head: () => [Head.titleTemplate((title) => `${title} · App`), Head.lang("en")],

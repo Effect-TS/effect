@@ -1,5 +1,6 @@
 import { assert, describe, it } from "@effect/vitest"
 import { Effect, Exit, type Layer, Option, Schema, type Scope, Stream } from "effect"
+import { Loader } from "effect/reactivity"
 import { TestClock } from "effect/testing"
 import { Component, Head, type MessageLog, Route, Router } from "effect/ui"
 import { Query, TestHost } from "effect/ui/testing"
@@ -23,6 +24,75 @@ const run = <A, E>(
 const mount = Effect.flatMap(Router.currentRoute(AppRoute), (route) => TestHost.mount(App, { route }))
 
 describe("Router", () => {
+  it.effect("suppresses the matching initial route and keeps one subscription across navigation", () =>
+    run(
+      Router.memory({ routes: AppRoute }),
+      Effect.gen(function*() {
+        const root = yield* mount
+        yield* TestHost.settle
+        assert.isFalse(root.log().some((entry) => entry._tag === "Update" && entry.source._tag === "Subscription"))
+        const router = yield* Router.Router
+        yield* router.navigate("/people/2")
+        yield* TestHost.settle
+        yield* router.navigate("/")
+        yield* TestHost.settle
+        assert.strictEqual(
+          root.log().filter((entry) => entry._tag === "SubscriptionStarted" && entry.key === "effect/ui/Router").length,
+          1
+        )
+        assert.deepStrictEqual(yield* TestHost.problems, [])
+      })
+    ))
+
+  it.effect("reports an initial mismatch once, but accepts a delayed root after navigation", () => {
+    const problems: Array<Loader.Problem.Any> = []
+    return run(
+      Router.memory({ routes: AppRoute, url: "/people/1" }),
+      Effect.gen(function*() {
+        const root = yield* TestHost.mount(App, { route: AppRoute.make({ _tag: "Person", params: { id: 2 } }) })
+        yield* Effect.exit(TestHost.settle)
+        const reported = yield* TestHost.expectProblem("RouteMismatch")
+        assert.strictEqual(reported.length, 1)
+        assert.strictEqual((reported[0] as Router.RouteMismatch).have, "/people/2")
+        assert.strictEqual((reported[0] as Router.RouteMismatch).router, "/people/1")
+        assert.strictEqual(root.model()?.route._tag, "Person")
+        const router = yield* Router.Router
+        yield* router.navigate("/people/2")
+        const delayed = yield* TestHost.mount(App, { route: AppRoute.make({ _tag: "Home" }) })
+        yield* TestHost.settle
+        assert.deepStrictEqual(delayed.model()?.route, AppRoute.make({ _tag: "Person", params: { id: 2 } }))
+        assert.deepStrictEqual(yield* TestHost.problems, [])
+        assert.deepStrictEqual(problems, [])
+      })
+    ).pipe(Effect.provideService(Loader.Problems, (problem) => problems.push(problem)))
+  })
+
+  it.effect("a subset ignores an initial location outside it without checking a later navigation", () => {
+    const People = AppRoute.subset(["Person"])
+    const problems: Array<Loader.Problem.Any> = []
+    return Effect.gen(function*() {
+      const router = yield* Router.Router
+      const messages: Array<typeof People.Type> = []
+      const subscription = Router.subscription(
+        People,
+        People.make({ _tag: "Person", params: { id: 1 } }),
+        (route) => route
+      )
+      yield* Stream.runForEach(subscription.stream, (route) =>
+        Effect.sync(() => {
+          messages.push(route)
+        })).pipe(Effect.forkScoped)
+      yield* Effect.yieldNow
+      yield* router.navigate("/people/2")
+      yield* Effect.yieldNow
+      assert.deepStrictEqual(messages, [People.make({ _tag: "Person", params: { id: 2 } })])
+      assert.deepStrictEqual(problems, [])
+    }).pipe(
+      Effect.provide(Router.memory({ routes: AppRoute })),
+      Effect.provideService(Loader.Problems, (problem) => problems.push(problem))
+    )
+  })
+
   it.effect("reads the current route from memory and static Routers", () =>
     Effect.gen(function*() {
       const current = Router.currentRoute(AppRoute)
@@ -77,7 +147,6 @@ describe("Router", () => {
           (entry.message as any)._tag === "ChangedRoute"
         )
         assert.deepStrictEqual(changes.map((entry) => AppRoute.print((entry.message as any).route)), [
-          "/",
           "/people/1",
           "/",
           "/people/1"
@@ -375,7 +444,7 @@ describe("Router", () => {
       message: Schema.Struct({ route: AppRoute }),
       init: ($) => $.props.route,
       update: (_, { route }) => route,
-      subscriptions: () => [Router.subscription(AppRoute, (route) => ({ route }))],
+      subscriptions: (held) => [Router.subscription(AppRoute, held, (route) => ({ route }))],
       head: () => [Head.title("App")],
       view: (route, h) =>
         route._tag === "Person"

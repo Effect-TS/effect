@@ -43,7 +43,7 @@
  *   elements: Html,
  *   init: ($) => $.props.route,
  *   update: (route, message) => AppRoute.print(message.route) === AppRoute.print(route) ? route : message.route,
- *   subscriptions: () => [Router.subscription(AppRoute, (route) => Message.make({ _tag: "ChangedRoute", route }))],
+ *   subscriptions: (model) => [Router.subscription(AppRoute, model.route, (route) => Message.make({ _tag: "ChangedRoute", route }))],
  *   view: (route, h) =>
  *     h.div(
  *       h.a("Ada").attr("href", AppRoute.print(AppRoute.make({ _tag: "Person", params: { id: 1 } }))),
@@ -117,7 +117,11 @@ export const layer = (options: Options): Layer.Layer<Router.Services> => make(op
  * **Details**
  *
  * Parsing and printing work as with `layer`, with the base `"#"`. As the
- * fragment holds the route, there are no in-page `#hash` links.
+ * fragment holds the route, there are no in-page `#hash` links. To hydrate a
+ * prerendered shell, set `routes.setBase("#")` before rendering on the server
+ * with `Router.static` at `"#/"`. Hydration adopts that shell, then delivers
+ * the browser route without reporting an initial `RouteMismatch`. Client-only
+ * hash roots are still checked.
  *
  * @stability experimental
  * @category layers

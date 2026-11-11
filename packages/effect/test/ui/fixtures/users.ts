@@ -334,7 +334,9 @@ export const App = Component.make({
   elements: Html,
   init: ($) => $.props.route,
   update: (_route, message) => message.route,
-  subscriptions: () => [Router.subscription(AppRoute, (route) => AppMessage.make({ _tag: "RouteChanged", route }))],
+  subscriptions: (
+    model
+  ) => [Router.subscription(AppRoute, model, (route) => AppMessage.make({ _tag: "RouteChanged", route }))],
   view: (route, h) =>
     h.div(
       h.header(h.a("Users").attr("href", AppRoute.print(AppRoute.make({ _tag: "List" })))),
