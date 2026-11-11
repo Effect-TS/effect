@@ -316,6 +316,60 @@ describe("ConfigProvider", () => {
   })
 
   describe("fromEnv", () => {
+    for (const preserveEmptyStrings of [false, true]) {
+      it.effect(`snapshots implicit env on execution and shares it with derived providers (${preserveEmptyStrings})`, () =>
+        Effect.gen(function*() {
+          const prefix = preserveEmptyStrings ? "EFFECTCONFIGPROVIDERSNAPSHOTOPTIONS" : "EFFECTCONFIGPROVIDERSNAPSHOT"
+          const key = `${prefix}_VALUE`
+          const previous = process.env[key]
+          try {
+            delete process.env[key]
+            const provider = preserveEmptyStrings
+              ? ConfigProvider.fromEnv({ preserveEmptyStrings })
+              : ConfigProvider.fromEnv()
+            const derived = provider.pipe(ConfigProvider.constantCase)
+            const independent = ConfigProvider.fromEnv()
+            const path = [prefix, "VALUE"]
+            const derivedPath = [prefix.toLowerCase(), "value"]
+            const lookup = preserveEmptyStrings ? derived.load(derivedPath) : provider.load(path)
+
+            process.env[key] = "first"
+            deepStrictEqual(yield* lookup, ConfigProvider.makeValue("first"))
+
+            process.env[key] = "second"
+            deepStrictEqual(yield* provider.load(path), ConfigProvider.makeValue("first"))
+            deepStrictEqual(yield* derived.load(derivedPath), ConfigProvider.makeValue("first"))
+            deepStrictEqual(yield* lookup, ConfigProvider.makeValue("first"))
+            deepStrictEqual(yield* independent.load(path), ConfigProvider.makeValue("second"))
+            deepStrictEqual(
+              yield* provider.load([prefix]),
+              ConfigProvider.makeRecord(new Set(["VALUE"]))
+            )
+          } finally {
+            if (previous === undefined) {
+              delete process.env[key]
+            } else {
+              process.env[key] = previous
+            }
+          }
+        }))
+    }
+
+    it.effect("captures explicit env names at construction but reads values live", () =>
+      Effect.gen(function*() {
+        const env: Record<string, string> = { A: "initial" }
+        const provider = ConfigProvider.fromEnv({ env })
+        env.A = "before lookup"
+        env.B = "added"
+
+        deepStrictEqual(yield* provider.load([]), ConfigProvider.makeRecord(new Set(["A"])))
+        deepStrictEqual(yield* provider.load(["A"]), ConfigProvider.makeValue("before lookup"))
+
+        env.A = "after lookup"
+        deepStrictEqual(yield* provider.load(["A"]), ConfigProvider.makeValue("after lookup"))
+        deepStrictEqual(yield* provider.load([]), ConfigProvider.makeRecord(new Set(["A"])))
+      }))
+
     it("env without an underscore", async () => {
       const env = { A: "value1" }
       const provider = ConfigProvider.fromEnv({ env })
