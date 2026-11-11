@@ -770,8 +770,9 @@ function stringSample(
         yield { value: units.slice(0, length - count).join(""), start: 0, limit }
       }
     }
-    // Follow `array.ts`: halve deletions at each unit, then simplify it. Resume at the changed unit,
-    // retaining the accepted deletion size there; suffix truncations must preserve that cap too.
+    // Follows the removal order of `array.ts` (fast-check v4.9.0's ArrayArbitrary, MIT).
+    // Resume at the changed unit, retaining the accepted deletion size there;
+    // suffix truncations must preserve that cap too.
     for (let index = start, cap = limit; index < length; index++, cap = infinity) {
       for (let count = Math.min(length - index, removable, cap); count > 0; count = Math.floor(count / 2)) {
         yield edit(index, count, count)
