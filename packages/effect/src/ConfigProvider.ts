@@ -906,7 +906,12 @@ export function fromEnvRecord(
  * `Record`.
  *
  * The default environment merges `process.env` and `import.meta.env` (when
- * available). Override by passing `{ env: { ... } }`.
+ * available), taking a snapshot when the first lookup effect executes, not when
+ * this provider or a lookup effect is created. Later lookups reuse that snapshot,
+ * including lookups through providers derived with input transformations.
+ * Override by passing `{ env: { ... } }`: names are captured at construction,
+ * while values are read from the supplied record on each lookup.
+ * Use `fromEnvRecord({ ...process.env })` to take a snapshot at a chosen moment.
  *
  * Literal empty strings are treated as missing values when loaded as values by
  * default. Pass `{ preserveEmptyStrings: true }` to keep empty strings as
@@ -946,13 +951,20 @@ export function fromEnv(options?: {
   readonly env?: Record<string, string> | undefined
   readonly preserveEmptyStrings?: boolean | undefined
 }): ConfigProvider {
-  const env: Record<string, string | undefined> = options?.env ?? {
-    ...(globalThis as {
-      readonly process?: { readonly env?: Record<string, string | undefined> }
-    }).process?.env,
-    ...(import.meta as any)?.env
+  if (options?.env !== undefined) {
+    return fromEnvRecord(options.env, { preserveEmptyStrings: options.preserveEmptyStrings })
   }
-  return fromEnvRecord(env, { preserveEmptyStrings: options?.preserveEmptyStrings })
+  let provider: ConfigProvider | undefined
+  return make((path) =>
+    Effect.suspend(() =>
+      (provider ??= fromEnvRecord({
+        ...(globalThis as {
+          readonly process?: { readonly env?: Record<string, string | undefined> }
+        }).process?.env,
+        ...(import.meta as any)?.env
+      }, { preserveEmptyStrings: options?.preserveEmptyStrings })).load(path)
+    )
+  )
 }
 
 type EnvTrieNode = {
