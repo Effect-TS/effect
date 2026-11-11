@@ -23,7 +23,7 @@ const setup = (url: string) => {
 const run = <A, E>(deps: Layer.Layer<any>, effect: Effect.Effect<A, E, any>) =>
   effect.pipe(Effect.provide(deps), Effect.scoped, Effect.provide(TestHost.layer())) as Effect.Effect<A, E>
 
-const mount = Effect.flatMap(Router.current(users.AppRoute), (route) => TestHost.mount(users.App, { route }))
+const mount = Effect.flatMap(Router.route(users.AppRoute), (route) => TestHost.mount(users.App, { route }))
 
 const navigate = Effect.fnUntraced(function*(url: string) {
   const router = yield* Router.Router

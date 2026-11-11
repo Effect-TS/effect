@@ -22,7 +22,7 @@ const start = Effect.fnUntraced(function*(url: string, options?: Partial<Browser
   const app = yield* container
   const context = yield* Layer.build(BrowserRouter.layer({ routes: AppRoute, ...options }))
   const router = Context.get(context, Router.Router)
-  const root = yield* Effect.flatMap(Router.current(AppRoute), (route) => BrowserHost.mount(App, { route }, app)).pipe(
+  const root = yield* Effect.flatMap(Router.route(AppRoute), (route) => BrowserHost.mount(App, { route }, app)).pipe(
     Effect.provide(People.layer),
     Effect.provideContext(context)
   )

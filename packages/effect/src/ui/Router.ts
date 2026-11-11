@@ -13,7 +13,7 @@
  * **Where the route lives**
  *
  * The root's Model holds the route. Read the initial route with
- * `Router.current(AppRoute)` at mount and pass it through the root's props.
+ * `Router.route(AppRoute)` at mount and pass it through the root's props.
  * Later changes arrive as a message from
  * `Router.subscription`, so every route change is in the log. The Router is
  * shaped like a `SubscriptionRef`: `changes` starts with the current
@@ -61,7 +61,7 @@
  * })
  *
  * const mount = Effect.gen(function*() {
- *   return yield* TestHost.mount(App, { route: yield* Router.current(AppRoute) })
+ *   return yield* TestHost.mount(App, { route: yield* Router.route(AppRoute) })
  * }).pipe(Effect.provide(Router.memory({ routes: AppRoute, url: "/about" })))
  * ```
  *
@@ -346,7 +346,7 @@ const engines = new WeakMap<Router, Engine>()
  * @category accessors
  * @since 4.1.3
  */
-export const current = <U extends Routes>(routes: U): Effect.Effect<U["Type"], never, Router> =>
+export const route = <U extends Routes>(routes: U): Effect.Effect<U["Type"], never, Router> =>
   Effect.map(Router, (router) => {
     const location = router.location()
     return (router.routes === routes ? location.route : Option.getOrThrow(routes.parse(location.url))) as U["Type"]

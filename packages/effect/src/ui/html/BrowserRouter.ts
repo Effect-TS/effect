@@ -52,7 +52,7 @@
  * })
  *
  * const main = Effect.gen(function*() {
- *   yield* BrowserHost.mount(App, { route: yield* Router.current(AppRoute) }, document.getElementById("app")!)
+ *   yield* BrowserHost.mount(App, { route: yield* Router.route(AppRoute) }, document.getElementById("app")!)
  *   return yield* Effect.never
  * }).pipe(
  *   Effect.scoped,
