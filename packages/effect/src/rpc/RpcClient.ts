@@ -566,7 +566,7 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any, E, const Flatten extend
         const requestId = message.requestId
         const entry = entries.get(requestId)
         if (!entry || entry._tag !== "Queue") return Effect.void
-        return Queue.offerAll(entry.queue, message.values).pipe(
+        const deliver = Queue.offerAll(entry.queue, message.values).pipe(
           supportsAck
             ? Effect.flatMap((dropped) =>
               // values are dropped when the queue was shutdown by an interrupted
@@ -579,6 +579,14 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any, E, const Flatten extend
             : identity,
           Effect.catchCause((cause) => Queue.failCause(entry.queue, cause))
         )
+        // Without acks, waiting here is the only backpressure on the server. With
+        // acks the server sends its next chunk only after the Ack, so a chunk
+        // waiting for buffer space waits in the stream's scope instead of
+        // stalling the responses of other requests. Starting immediately queues
+        // the offer before a later Exit is handled, keeping the Exit behind it.
+        return supportsAck
+          ? Effect.asVoid(Effect.forkIn(deliver, entry.scope, { startImmediately: true }))
+          : deliver
       }
       case "Exit": {
         const requestId = message.requestId
