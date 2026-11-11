@@ -367,7 +367,8 @@ describe("RpcClient", () => {
         const caller = yield* client.Ping().pipe(Effect.forkChild)
         const requestId = takeRequestId(yield* Queue.take(sent))
         yield* Effect.yieldNow
-        yield* handle(terminal)
+        // a repeated id is completed once
+        yield* handle(terminal._tag === "Defect" ? terminal : { ...terminal, requestIds: [requestId, requestId] })
         const exit = caller.pollUnsafe()
         assert(exit !== undefined, "terminal delivery must complete the caller before client shutdown")
         assert(Exit.isFailure(exit))
@@ -511,10 +512,11 @@ describe("RpcClient", () => {
       assert.deepStrictEqual(received, ["a", "b", "c"])
     }))
 
-  for (const end of ["is cancelled", "completes"] as const) {
-    it.effect(`interrupts pending Acks when their stream ${end}`, () =>
+  for (const end of ["is cancelled", "completes", "fails to send"] as const) {
+    it.effect(`interrupts pending Acks when their request ${end}`, () =>
       Effect.gen(function*() {
         const interruptedAcks = yield* Queue.unbounded<string | number>()
+        const failRequest = yield* Deferred.make<void, RpcClientError>()
         const received = yield* Deferred.make<Parameters<RpcClient.Protocol["Service"]["run"]>[1]>()
         const sent = yield* Queue.unbounded<Parameters<RpcClient.Protocol["Service"]["send"]>[1]>()
         const protocol = RpcClient.Protocol.of({
@@ -525,7 +527,9 @@ describe("RpcClient", () => {
           send: (_clientId, message) =>
             message._tag === "Ack"
               ? Effect.onInterrupt(Effect.never, () => Queue.offer(interruptedAcks, message.requestId))
-              : Effect.asVoid(Queue.offer(sent, message))
+              : Queue.offer(sent, message).pipe(
+                Effect.andThen(end === "fails to send" ? Deferred.await(failRequest) : Effect.void)
+              )
         })
         const client = yield* RpcClient.make(ChunkGroup).pipe(Effect.provideService(RpcClient.Protocol, protocol))
         const handle = yield* Deferred.await(received)
@@ -539,9 +543,17 @@ describe("RpcClient", () => {
         if (end === "is cancelled") {
           yield* Scope.close(scope, Exit.void)
           assert.deepStrictEqual(yield* Queue.take(sent), { _tag: "Interrupt", requestId })
-        } else {
+        } else if (end === "completes") {
           yield* handle({ _tag: "Exit", requestId, exit: { _tag: "Success", value: null } })
           assert.deepStrictEqual(yield* Queue.collect(queue), ["a", "b"])
+        } else {
+          // the peer can reply before the local send of the request fails
+          const error = new RpcClientError({
+            reason: new RpcClientDefect({ message: "send failed", cause: undefined })
+          })
+          yield* Deferred.fail(failRequest, error)
+          assert.deepStrictEqual(yield* Queue.takeN(queue, 2), ["a", "b"])
+          assert.strictEqual(yield* Queue.take(queue).pipe(Effect.flip), error)
         }
         assert.deepStrictEqual(yield* Queue.takeN(interruptedAcks, 2), [requestId, requestId])
       }))

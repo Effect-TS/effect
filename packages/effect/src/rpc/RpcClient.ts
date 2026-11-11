@@ -671,18 +671,20 @@ export const make: <Rpcs extends Rpc.Any, const Flatten extends boolean = false>
     acksDone?: Deferred.Deferred<void> | undefined
   }
   const entries = new Map<RequestId, ClientEntry>()
-  const removeEntry = (requestId: RequestId, entry: ClientEntry) => {
+  // Every removal goes through here, so no Ack send outlives its request
+  const removeEntry = (requestId: RequestId): ClientEntry | undefined => {
+    const entry = entries.get(requestId)
+    if (!entry) return
     entries.delete(requestId)
     if (entry.acksDone) Deferred.doneUnsafe(entry.acksDone, Exit.void)
+    return entry
   }
   // Completed before the protocol stops running this client, so requests made
   // while it shuts down are not handed to a transport that is being torn down.
   const closing = Deferred.makeUnsafe<void>()
 
   const interruptRequest = (requestId: RequestId): Effect.Effect<void, RpcClientError> => {
-    const entry = entries.get(requestId)
-    if (!entry) return Effect.void
-    removeEntry(requestId, entry)
+    if (!removeEntry(requestId)) return Effect.void
     return send(clientId, { _tag: "Interrupt", requestId }) as Effect.Effect<void, RpcClientError>
   }
 
@@ -712,7 +714,7 @@ export const make: <Rpcs extends Rpc.Any, const Flatten extends boolean = false>
               // Checked after encoding, which can suspend while the client
               // starts shutting down.
               if (Deferred.isDoneUnsafe(closing)) {
-                entries.delete(message.id)
+                removeEntry(message.id)
                 return Effect.interrupt
               }
               return send(clientId, {
@@ -724,7 +726,7 @@ export const make: <Rpcs extends Rpc.Any, const Flatten extends boolean = false>
             }),
             // An interrupted request keeps its entry until the interrupt is sent.
             Effect.onError((cause) =>
-              Cause.hasInterruptsOnly(cause) ? Effect.void : Effect.sync(() => entries.delete(message.id))
+              Cause.hasInterruptsOnly(cause) ? Effect.void : Effect.sync(() => removeEntry(message.id))
             )
           ) as Effect.Effect<void, RpcClientError>
         }
@@ -790,9 +792,8 @@ export const make: <Rpcs extends Rpc.Any, const Flatten extends boolean = false>
       }
       case "Exit": {
         const requestId = RequestId(message.requestId)
-        const entry = entries.get(requestId)
+        const entry = removeEntry(requestId)
         if (!entry) return Effect.void
-        removeEntry(requestId, entry)
         // the success of a discarded call is its acknowledgement, which has no
         // value, and an older server may send the handler result instead
         if (entry.discard && message.exit._tag === "Success") {
@@ -810,15 +811,14 @@ export const make: <Rpcs extends Rpc.Any, const Flatten extends boolean = false>
       }
       // Clear entries before resuming callers, as they can start new requests
       case "Defect": {
-        for (const [requestId, entry] of Array.from(entries)) removeEntry(requestId, entry)
+        for (const requestId of Array.from(entries.keys())) removeEntry(requestId)
         return write({ _tag: "Defect", clientId: 0, defect: decodeDefect(message.defect as any) })
       }
       case "ClientProtocolError": {
         const exit = Exit.fail(message.error)
-        const requestIds = message.requestIds === undefined
+        const requestIds = (message.requestIds === undefined
           ? Array.from(entries.keys())
-          : message.requestIds.map(RequestId).filter((requestId) => entries.has(requestId))
-        for (const requestId of requestIds) removeEntry(requestId, entries.get(requestId)!)
+          : message.requestIds.map(RequestId)).filter((requestId) => removeEntry(requestId) !== undefined)
         return Effect.forEach(
           requestIds,
           (requestId) => write({ _tag: "Exit", clientId: 0, requestId, exit: exit as any })
