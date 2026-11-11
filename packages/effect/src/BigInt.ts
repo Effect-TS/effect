@@ -697,7 +697,7 @@ export const lcm: {
  * ```
  *
  * @see {@link sqrt} for returning `Option.none` when the input is negative
- * @see {@link rootUnsafe} for roots of any degree
+ * @see {@link nthRootUnsafe} for roots of any degree
  *
  * @stability stable
  * @category math
@@ -743,7 +743,7 @@ export const sqrtUnsafe = (n: bigint): bigint => {
  * ```
  *
  * @see {@link sqrtUnsafe} for square root computation that throws on negative input
- * @see {@link root} for roots of any degree
+ * @see {@link nthRoot} for roots of any degree
  *
  * @stability stable
  * @category math
@@ -801,20 +801,20 @@ const rootFloor = (self: bigint, degree: number): bigint => {
  * ```ts import.meta.vitest
  * import { BigInt, Option } from "effect"
  *
- * BigInt.root(27n, 3) // => Option.some(3n)
- * BigInt.root(30n, 3) // => Option.some(3n)
- * BigInt.root(-27n, 3) // => Option.some(-3n)
- * BigInt.root(-16n, 4) // => Option.none()
+ * BigInt.nthRoot(27n, 3) // => Option.some(3n)
+ * BigInt.nthRoot(30n, 3) // => Option.some(3n)
+ * BigInt.nthRoot(-27n, 3) // => Option.some(-3n)
+ * BigInt.nthRoot(-16n, 4) // => Option.none()
  * ```
  *
- * @see {@link rootUnsafe} for throwing when the root does not exist
+ * @see {@link nthRootUnsafe} for throwing when the root does not exist
  * @see {@link sqrt} for square roots
  *
  * @stability unstable
  * @category math
  * @since 4.1.5
  */
-export const root: {
+export const nthRoot: {
   (degree: number): (self: bigint) => Option.Option<bigint>
   (self: bigint, degree: number): Option.Option<bigint>
 } = dual(2, (self: bigint, degree: number): Option.Option<bigint> => {
@@ -845,25 +845,25 @@ export const root: {
  * ```ts import.meta.vitest
  * import { BigInt } from "effect"
  *
- * BigInt.rootUnsafe(1024n, 10) // => 2n
- * BigInt.rootUnsafe(1023n, 10) // => 1n
+ * BigInt.nthRootUnsafe(1024n, 10) // => 2n
+ * BigInt.nthRootUnsafe(1023n, 10) // => 1n
  * ```
  *
- * @see {@link root} for returning `Option.none` when the root does not exist
+ * @see {@link nthRoot} for returning `Option.none` when the root does not exist
  * @see {@link sqrtUnsafe} for square roots
  *
  * @stability unstable
  * @category math
  * @since 4.1.5
  */
-export const rootUnsafe: {
+export const nthRootUnsafe: {
   (degree: number): (self: bigint) => bigint
   (self: bigint, degree: number): bigint
 } = dual(
   2,
   (self: bigint, degree: number): bigint =>
     Option.getOrThrowWith(
-      root(self, degree),
+      nthRoot(self, degree),
       () => new RangeError(`Cannot take an integer root of degree ${degree} of ${self}`)
     )
 )

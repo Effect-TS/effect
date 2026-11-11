@@ -19,21 +19,21 @@ describe("BigInt", () => {
     assertNone(BigInt.sqrt(-1n))
   })
 
-  it("root returns integer n-th roots rounded toward zero", () => {
-    assertSome(BigInt.root(26n, 3), 2n)
-    assertSome(BigInt.root(3)(27n), 3n)
-    assertSome(BigInt.root(28n, 3), 3n)
-    assertSome(BigInt.root(-26n, 3), -2n)
-    assertSome(BigInt.root(0n, 4), 0n)
-    assertSome(BigInt.root(-7n, 1), -7n)
-    assertSome(BigInt.root(2n ** 100n, 2 ** 40), 1n)
-    assertSome(BigInt.root(2n ** 262144n, 8192), 2n ** 32n)
-    assertNone(BigInt.root(-16n, 4))
+  it("nthRoot returns integer n-th roots rounded toward zero", () => {
+    assertSome(BigInt.nthRoot(26n, 3), 2n)
+    assertSome(BigInt.nthRoot(3)(27n), 3n)
+    assertSome(BigInt.nthRoot(28n, 3), 3n)
+    assertSome(BigInt.nthRoot(-26n, 3), -2n)
+    assertSome(BigInt.nthRoot(0n, 4), 0n)
+    assertSome(BigInt.nthRoot(-7n, 1), -7n)
+    assertSome(BigInt.nthRoot(2n ** 100n, 2 ** 40), 1n)
+    assertSome(BigInt.nthRoot(2n ** 262144n, 8192), 2n ** 32n)
+    assertNone(BigInt.nthRoot(-16n, 4))
   })
 
-  it("root and rootUnsafe require a positive safe integer degree", () => {
+  it("nthRoot and nthRootUnsafe require a positive safe integer degree", () => {
     for (const degree of [0, -1, 0.5, NaN, Infinity, Number.MAX_SAFE_INTEGER + 1]) {
-      for (const root of [BigInt.root, BigInt.rootUnsafe]) {
+      for (const root of [BigInt.nthRoot, BigInt.nthRootUnsafe]) {
         throws(() => root(0n, degree), new RangeError(`Degree must be a positive safe integer, got ${degree}`))
       }
     }
@@ -166,8 +166,8 @@ describe("BigInt", () => {
     assert.throws(() => BigInt.sqrtUnsafe(-1n), RangeError)
   })
 
-  it("rootUnsafe returns integer n-th roots and throws when there is none", () => {
-    assert.strictEqual(BigInt.rootUnsafe(10)(1023n), 1n)
-    assert.throws(() => BigInt.rootUnsafe(-16n, 4), RangeError)
+  it("nthRootUnsafe returns integer n-th roots and throws when there is none", () => {
+    assert.strictEqual(BigInt.nthRootUnsafe(10)(1023n), 1n)
+    assert.throws(() => BigInt.nthRootUnsafe(-16n, 4), RangeError)
   })
 })

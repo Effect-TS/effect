@@ -83,23 +83,23 @@ describe("Rational", () => {
     }
   })
 
-  it("root is exact, and none when the root is not rational", () => {
-    assertSome(Rational.root($("8/27"), 3), $("2/3"))
-    assertSome(Rational.root(3)($("-8/27")), $("-2/3"))
-    assertRational(Rational.rootUnsafe(3)($("-8/27")), -2n, 3n)
-    assertNone(Rational.root($("2"), 2))
-    assertNone(Rational.root($("1/2"), 2))
-    assertSome(Rational.root(zero, Number.MAX_SAFE_INTEGER), zero)
-    assertSome(Rational.root(one, Number.MAX_SAFE_INTEGER), one)
-    assertSome(Rational.root($("-1"), Number.MAX_SAFE_INTEGER), $("-1"))
-    assertNone(Rational.root($("2"), Number.MAX_SAFE_INTEGER))
-    assertNone(Rational.root($("1/2"), Number.MAX_SAFE_INTEGER))
-    throws(() => Rational.rootUnsafe($("2"), 2), new RangeError("Cannot take a rational root of degree 2 of 2/1"))
+  it("nthRoot is exact, and none when the root is not rational", () => {
+    assertSome(Rational.nthRoot($("8/27"), 3), $("2/3"))
+    assertSome(Rational.nthRoot(3)($("-8/27")), $("-2/3"))
+    assertRational(Rational.nthRootUnsafe(3)($("-8/27")), -2n, 3n)
+    assertNone(Rational.nthRoot($("2"), 2))
+    assertNone(Rational.nthRoot($("1/2"), 2))
+    assertSome(Rational.nthRoot(zero, Number.MAX_SAFE_INTEGER), zero)
+    assertSome(Rational.nthRoot(one, Number.MAX_SAFE_INTEGER), one)
+    assertSome(Rational.nthRoot($("-1"), Number.MAX_SAFE_INTEGER), $("-1"))
+    assertNone(Rational.nthRoot($("2"), Number.MAX_SAFE_INTEGER))
+    assertNone(Rational.nthRoot($("1/2"), Number.MAX_SAFE_INTEGER))
+    throws(() => Rational.nthRootUnsafe($("2"), 2), new RangeError("Cannot take a rational root of degree 2 of 2/1"))
   })
 
-  it("root and rootUnsafe require a positive safe integer degree", () => {
+  it("nthRoot and nthRootUnsafe require a positive safe integer degree", () => {
     for (const degree of [0, -1, 0.5, NaN, Infinity, Number.MAX_SAFE_INTEGER + 1]) {
-      for (const root of [Rational.root, Rational.rootUnsafe]) {
+      for (const root of [Rational.nthRoot, Rational.nthRootUnsafe]) {
         throws(() => root(zero, degree), new RangeError(`Degree must be a positive safe integer, got ${degree}`))
       }
     }

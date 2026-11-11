@@ -594,7 +594,7 @@ const divisionByZero = () => new RangeError("Division by zero")
  * ```
  *
  * @see {@link powUnsafe} for throwing when zero is raised to a negative exponent
- * @see {@link root} for the inverse of a power
+ * @see {@link nthRoot} for the inverse of a power
  *
  * @stability unstable
  * @category math
@@ -654,7 +654,7 @@ export const powUnsafe: {
 
 // A root of magnitude at most one is exact only when it equals `n`, which avoids raising it to a huge degree.
 const exactRoot = (n: bigint, degree: number): Option.Option<bigint> =>
-  Option.filter(BI.root(n, degree), (r) => (BI.abs(r) <= bigint1 ? r : r ** BigInt(degree)) === n)
+  Option.filter(BI.nthRoot(n, degree), (r) => (BI.abs(r) <= bigint1 ? r : r ** BigInt(degree)) === n)
 
 /**
  * Takes the exact n-th root of a rational, returning `Option.none()` when the
@@ -677,19 +677,19 @@ const exactRoot = (n: bigint, degree: number): Option.Option<bigint> =>
  * ```ts import.meta.vitest
  * import { Option, Rational } from "effect"
  *
- * Rational.root(Rational.makeUnsafe(8n, 27n), 3) // => Option.some(Rational.makeUnsafe(2n, 3n))
- * Rational.root(Rational.makeUnsafe(-8n, 27n), 3) // => Option.some(Rational.makeUnsafe(-2n, 3n))
- * Rational.root(Rational.fromBigInt(2n), 2) // => Option.none()
+ * Rational.nthRoot(Rational.makeUnsafe(8n, 27n), 3) // => Option.some(Rational.makeUnsafe(2n, 3n))
+ * Rational.nthRoot(Rational.makeUnsafe(-8n, 27n), 3) // => Option.some(Rational.makeUnsafe(-2n, 3n))
+ * Rational.nthRoot(Rational.fromBigInt(2n), 2) // => Option.none()
  * ```
  *
- * @see {@link rootUnsafe} for throwing when the root is not rational
+ * @see {@link nthRootUnsafe} for throwing when the root is not rational
  * @see {@link pow} for integer powers
  *
  * @stability unstable
  * @category math
  * @since 4.1.5
  */
-export const root: {
+export const nthRoot: {
   (degree: number): (self: Rational) => Option.Option<Rational>
   (self: Rational, degree: number): Option.Option<Rational>
 } = dual(
@@ -713,24 +713,24 @@ export const root: {
  * ```ts import.meta.vitest
  * import { Rational } from "effect"
  *
- * Rational.rootUnsafe(Rational.makeUnsafe(531441n, 4096n), 12) // => Rational.makeUnsafe(3n, 2n)
+ * Rational.nthRootUnsafe(Rational.makeUnsafe(531441n, 4096n), 12) // => Rational.makeUnsafe(3n, 2n)
  * ```
  *
- * @see {@link root} for returning `Option.none` when the root is not rational
+ * @see {@link nthRoot} for returning `Option.none` when the root is not rational
  * @see {@link powUnsafe} for integer powers
  *
  * @stability unstable
  * @category math
  * @since 4.1.5
  */
-export const rootUnsafe: {
+export const nthRootUnsafe: {
   (degree: number): (self: Rational) => Rational
   (self: Rational, degree: number): Rational
 } = dual(
   2,
   (self: Rational, degree: number): Rational =>
     Option.getOrThrowWith(
-      root(self, degree),
+      nthRoot(self, degree),
       () => new RangeError(`Cannot take a rational root of degree ${degree} of ${format(self)}`)
     )
 )
