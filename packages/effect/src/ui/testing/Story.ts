@@ -496,13 +496,20 @@ const keyedField = (story: Story<any, any, any, any>, step: string, field: strin
  * stored keys the loader still returns with `loads` over them, and
  * `changes` holds `loads`.
  */
+/** Per keyed field, the declared keys when it last sent a message, as the runtime tracks them. */
+type SentFor = Map<string, ReadonlySet<string>>
+
+const declaredKeys = (group: loaders.Group): ReadonlySet<string> => new Set(group.entries.map((entry) => entry.argsKey))
+
 const sendKeyed = (
   story: Story<any, any, any, any>,
+  sentFor: SentFor,
   group: loaders.Group,
   loads: ReadonlyArray<
     { readonly argsKey: string; readonly result: AsyncResult.AsyncResult<any, any>; readonly patched: boolean }
   >
 ): Story<any, any, any, any> => {
+  sentFor.set(group.field, declaredKeys(group))
   const def = Loader.defOf(group.read)
   const held = Loader.snapshotMapData(story.model[group.field])?.entries
   const byKey = new Map(loads.map((load) => [load.argsKey, load]))
@@ -528,6 +535,7 @@ const sendKeyed = (
 /** Loads keys of a keyed field: each args must be one the loader currently returns. */
 const loadKeyedStep = (
   story: Story<any, any, any, any>,
+  sentFor: SentFor,
   step: string,
   field: string,
   loads: ReadonlyArray<KeyedLoad<any>>
@@ -537,6 +545,7 @@ const loadKeyedStep = (
   const held = Loader.snapshotMapData(story.model[field])?.entries
   return sendKeyed(
     story,
+    sentFor,
     group,
     loads.map((load) => {
       const argsKey = def.argsKey(load.args)
@@ -570,9 +579,10 @@ const loadKeyedStep = (
 /**
  * After a step: a keyed field whose Model holds a key its loader no longer
  * returns gets the pruned collection, with no changes, as the runtime sends
- * it at the next sync.
+ * it at the next sync. As in the runtime, a key set gets one: an `update`
+ * that ignores it doesn't get it again until the key set changes.
  */
-const pruneKeyed = (story: Story<any, any, any, any>): Story<any, any, any, any> => {
+const pruneKeyed = (story: Story<any, any, any, any>, sentFor: SentFor): Story<any, any, any, any> => {
   const bound = boundOf(story.component)
   if (bound === undefined) return story
   let out = story
@@ -581,9 +591,13 @@ const pruneKeyed = (story: Story<any, any, any, any>): Story<any, any, any, any>
     const held = Loader.snapshotMapData(out.model?.[field.field])
     if (held === undefined || held.entries.size === 0) continue
     const group = groupOf(out, field.field)!
-    const declared = new Set(group.entries.map((entry) => entry.argsKey))
+    const declared = declaredKeys(group)
+    const sent = sentFor.get(field.field)
+    if (sent !== undefined && sent.size === declared.size && Array.from(sent).every((key) => declared.has(key))) {
+      continue
+    }
     if (Array.from(held.entries.keys()).every((key) => declared.has(key))) continue
-    out = sendKeyed(out, group, [])
+    out = sendKeyed(out, sentFor, group, [])
   }
   return out
 }
@@ -740,6 +754,7 @@ const findStream = (story: Story<any, any, any, any>, target: StreamTarget, step
 
 class StepsImpl implements Steps<AnyComponent> {
   current: Story<any, any, any, any>
+  private readonly sentFor: SentFor = new Map()
   constructor(current: Story<any, any, any, any>) {
     this.current = current
   }
@@ -747,12 +762,14 @@ class StepsImpl implements Steps<AnyComponent> {
     return pipeArguments(this, arguments)
   }
   private step(next: Story<any, any, any, any>): this {
-    this.current = next === this.current ? next : pruneKeyed(next)
+    this.current = next === this.current ? next : pruneKeyed(next, this.sentFor)
     return this
   }
 
   given(model: unknown): this {
     const next = typeof model === "function" ? model(this.current.model) : model
+    // A Model set by hand: its keyed fields haven't been sent a message for any key set.
+    this.sentFor.clear()
     return this.step(update(this.current, { model: next, pending: [], emitted: [], interrupted: [], dropped: [] }))
   }
   props(next: unknown): this {
@@ -798,7 +815,7 @@ class StepsImpl implements Steps<AnyComponent> {
   loaded(field: string, ...rest: Array<any>): this {
     if (isKeyed(this.current, field)) {
       const [args, value, options] = rest
-      return this.step(loadKeyedStep(this.current, "loaded", field, [{ args, value, ...options }]))
+      return this.step(loadKeyedStep(this.current, this.sentFor, "loaded", field, [{ args, value, ...options }]))
     }
     const [value, options] = rest as [
       unknown,
@@ -815,7 +832,9 @@ class StepsImpl implements Steps<AnyComponent> {
   loadFailed(field: string, ...rest: Array<any>): this {
     if (isKeyed(this.current, field)) {
       const [args, error, options] = rest
-      return this.step(loadKeyedStep(this.current, "loadFailed", field, [{ args, error, waiting: options?.waiting }]))
+      return this.step(
+        loadKeyedStep(this.current, this.sentFor, "loadFailed", field, [{ args, error, waiting: options?.waiting }])
+      )
     }
     const [error, options] = rest as [unknown, { readonly waiting?: boolean | undefined } | undefined]
     return this.step(loadStep(
@@ -827,7 +846,7 @@ class StepsImpl implements Steps<AnyComponent> {
     ))
   }
   loadedMany(field: string, entries: ReadonlyArray<KeyedLoad<any>>): this {
-    return this.step(loadKeyedStep(this.current, "loadedMany", field, entries))
+    return this.step(loadKeyedStep(this.current, this.sentFor, "loadedMany", field, entries))
   }
 
   model(f: (model: any) => void): this {

@@ -169,7 +169,16 @@ interface KeyedRun {
   readonly logKey: string
   readonly values: Map<string, { readonly args: unknown; readonly result: Settled; readonly patched: boolean }>
   readonly changes: Map<string, loaders.KeyedChange>
+  /** Its message is queued for the flush's deferred work. */
   scheduled: boolean
+  /** A change arrived during a sync, such as a new watcher's first value: that sync sends it. */
+  fromSync: boolean
+  /**
+   * The declared keys when the field last sent a message. Every message carries the pruned
+   * collection, so a held key outside this set is pruned once, and an `update` that ignores that
+   * message doesn't get it again until the key set changes.
+   */
+  sentFor: ReadonlySet<string> | undefined
 }
 
 type Settled = AsyncResult.Success<any, any> | AsyncResult.Failure<any, any>
@@ -1756,7 +1765,8 @@ const start = (
       inst.syncing--
     }
     // In the same sync: a keyed field's first values are one message, and so is a pruned key set.
-    if (inst.syncing === 0) { for (const run of inst.keyed.values()) deliverKeyed(inst, run) }
+    // Changes from outside the sync stay queued for the flush.
+    if (inst.syncing === 0) { for (const run of inst.keyed.values()) deliverKeyed(inst, run, true) }
   }
   const syncStreams = (inst: Instance, byKey: Map<string, Subscription.Subscription<any, any>>) => {
     // Close first, so `room:1` and `room:2` are never both connected.
@@ -1846,6 +1856,7 @@ const start = (
           const run = inst.keyed.get(marker.label)!
           run.values.set(entry.argsKey, { args: entry.args, result, patched })
           run.changes.set(entry.argsKey, { args: entry.args, result })
+          if (inst.syncing > 0) run.fromSync = true
           return requestKeyed(inst, run)
         }
         const toMsg = running.marker.toMsg
@@ -1910,7 +1921,9 @@ const start = (
         logKey: Subscription.keyOf(`~loaded/${group.label}`),
         values: new Map(),
         changes: new Map(),
-        scheduled: false
+        scheduled: false,
+        fromSync: false,
+        sentFor: undefined
       })
     }
   }
@@ -1924,20 +1937,23 @@ const start = (
     run.scheduled = true
     defer(() => {
       run.scheduled = false
-      deliverKeyed(inst, run)
+      deliverKeyed(inst, run, false)
     })
   }
   /**
    * Sends a keyed field's message when a key changed, or when the Model holds a key the loader no
-   * longer returns. The collection is sampled from the watchers now: each current key's last value.
+   * longer returns and no message went out for this key set. After a sync, only that sync's changes
+   * and a prune send: earlier changes wait for the flush. The collection is sampled from the
+   * watchers now: each current key's last value.
    */
-  const deliverKeyed = (inst: Instance, run: KeyedRun) => {
+  const deliverKeyed = (inst: Instance, run: KeyedRun, afterSync: boolean) => {
     if (inst.closed || inst.failure !== undefined) return
     const group = run.group
     const declared = new Set(group.entries.map((entry) => entry.argsKey))
     const held = Loader.snapshotMapData((inst.model as Record<string, unknown> | undefined)?.[group.field])
+    const sentFor = run.sentFor
     let prune = false
-    if (held !== undefined) {
+    if (held !== undefined && !(sentFor !== undefined && sameKeys(sentFor, declared))) {
       for (const key of held.entries.keys()) {
         if (!declared.has(key)) {
           prune = true
@@ -1945,7 +1961,7 @@ const start = (
         }
       }
     }
-    if (run.changes.size === 0 && !prune) return
+    if (!prune && (afterSync ? !run.fromSync : run.changes.size === 0)) return
     const def = Loader.defOf(group.read)
     const snapshots = Loader.makeSnapshotMap(
       def,
@@ -1962,6 +1978,9 @@ const start = (
       return change === undefined ? [] : [change]
     })
     run.changes.clear()
+    run.fromSync = false
+    // Before the dispatch: its `update` syncs again, and must not see this key set as unsent.
+    run.sentFor = declared
     const message = guard(
       inst,
       "subscription",
@@ -1969,6 +1988,11 @@ const start = (
       run.logKey
     )
     if (message !== undefined) inst.dispatch(message.value, { _tag: "Subscription", key: run.logKey })
+  }
+  const sameKeys = (a: ReadonlySet<string>, b: ReadonlySet<string>): boolean => {
+    if (a.size !== b.size) return false
+    for (const key of a) if (!b.has(key)) return false
+    return true
   }
   const releaseWatch = (running: WatchRun) => {
     if (running.released) return

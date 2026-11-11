@@ -834,15 +834,21 @@ export interface SnapshotMapSchema<R extends Read.Any, Label extends string> ext
  * args must be a struct. The runtime collects the keys' changes until the
  * next flush and sends one message with the whole collection, so N results
  * that land together are one `update`. A change to the key set that removes a
- * stored key sends a message with the pruned collection. On the wire it is
- * an array of `Snapshot`'s tuples, one per key, in no meaningful order, and
- * a duplicate args key is a decode error.
+ * stored key sends a message with the pruned collection, once per key set,
+ * so an `update` that ignores it doesn't get it again. On the wire it is an
+ * array of `Snapshot`'s tuples, one per key, in no meaningful order, and a
+ * duplicate args key is a decode error.
  *
  * **Gotchas**
  *
  * - N cold keys start N fetches: batch them in the fetcher with a
  *   `RequestResolver`. Keys that register in one pass share a batch; child
  *   rows whose Layers build at different times don't.
+ * - A `refetchInterval` runs one timer per entry, not per field. N keys
+ *   refetch on N timers, each of which may wake on its own, so a refresh
+ *   can be several fetch batches and several messages rather than one.
+ *   Batching the cold keys of one pass doesn't extend to interval
+ *   refetches.
  * - A fetcher defect on any key fails the instance holding the field. A
  *   defect in a batching resolver's `runAll` fails every watcher in the
  *   batch, so a child per row doesn't confine a defect to one row either.

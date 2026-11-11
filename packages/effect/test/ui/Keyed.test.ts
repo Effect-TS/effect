@@ -21,6 +21,8 @@ const makeApp = (options?: {
   readonly interval?: boolean
   /** The resolver's batch window, longer than its default of one yield. */
   readonly delay?: "50 millis"
+  /** `update` ignores a message with no changes: a prune. */
+  readonly ignorePrunes?: boolean
 }) => {
   const db = { calls: 0, batches: [] as Array<number>, names: new Map([["1", "Ann"], ["2", "Bea"], ["3", "Cy"]]) }
   const order: Array<string> = []
@@ -101,7 +103,7 @@ const makeApp = (options?: {
         Show: ({ ids }) => ({ ...model, ids }),
         UsersChanged: ({ users, changed }) => {
           order.push(`update ${$.props.tag} [${changed.join(",")}]`)
-          return { ...model, users }
+          return options?.ignorePrunes === true && changed.length === 0 ? model : { ...model, users }
         },
         Rename: ({ id, name }) => {
           order.push(`update ${$.props.tag} Rename`)
@@ -130,7 +132,7 @@ const makeApp = (options?: {
       order.push(`view ${h.props.tag} ${text}`)
       return h.el("p", `${h.props.tag}: ${text}`).on(
         "click",
-        BoardMessage.make({ _tag: "Rename", id: "1", name: "Bob" })
+        BoardMessage.make({ _tag: "Rename", id: "1", name: `Bob${h.props.tag}` })
       )
     }
   })
@@ -278,6 +280,31 @@ describe("Keyed loader fields", () => {
     )
   })
 
+  it.effect("an ignored prune isn't sent again until the key set changes", () => {
+    const app = makeApp({ ignorePrunes: true })
+    return run(
+      app.layer,
+      Effect.gen(function*() {
+        const root = yield* TestHost.mount(app.Board, { tag: "a", ids: ["1", "2", "3"] })
+        yield* load
+        app.order.length = 0
+        root.send(app.BoardMessage.make({ _tag: "Show", ids: ["1", "3"] }))
+        yield* TestHost.settle
+        assert.deepStrictEqual(updates(app.order), ["update a []"])
+        // The Model still holds key 2; the view follows the loader.
+        const model = root.model() as { readonly users: typeof app.Users.Type }
+        assert.strictEqual(tuples(app.Users, model.users).length, 3)
+        assert.strictEqual(root.text(), "a: 1=Ann 3=Cy")
+        root.send(app.BoardMessage.make({ _tag: "Show", ids: ["3", "1"] }))
+        yield* TestHost.settle
+        assert.deepStrictEqual(updates(app.order), ["update a []"])
+        root.send(app.BoardMessage.make({ _tag: "Show", ids: ["1"] }))
+        yield* TestHost.settle
+        assert.deepStrictEqual(updates(app.order), ["update a []", "update a []"])
+      })
+    )
+  })
+
   it.effect("a reorder or an added duplicate sends nothing, and the view follows the loader's order", () => {
     const app = makeApp()
     return run(
@@ -393,13 +420,81 @@ describe("Keyed loader fields", () => {
         yield* TestHost.settle
         assert.deepStrictEqual(app.order, [
           "update a Rename",
-          "update a [1:Bob]",
-          "update b [1:Bob]",
-          "view a 1=Bob~ 2=Bea",
-          "view b 2=Bea 1=Bob~"
+          "update a [1:Boba]",
+          "update b [1:Boba]",
+          "view a 1=Boba~ 2=Bea",
+          "view b 2=Bea 1=Boba~"
         ])
         // One frame, with both fields patched.
-        assert.deepStrictEqual(root.frames().slice(before), ["a: 1=Bob~ 2=Beab: 2=Bea 1=Bob~"])
+        assert.deepStrictEqual(root.frames().slice(before), ["a: 1=Boba~ 2=Beab: 2=Bea 1=Boba~"])
+      })
+    )
+  })
+
+  it.effect("two patches issued before one flush are one message per field, in that flush's frame", () => {
+    const app = makeApp()
+    return run(
+      app.layer,
+      Effect.gen(function*() {
+        const root = yield* TestHost.mount(app.List, { boards: ["a:1,2", "b:2,1"] })
+        yield* load
+        app.order.length = 0
+        const before = root.frames().length
+        Query.fire(root.get(Query.text("a: 1=Ann 2=Bea", { exact: true })), "click")
+        Query.fire(root.get(Query.text("b: 2=Bea 1=Ann", { exact: true })), "click")
+        yield* TestHost.settle
+        assert.deepStrictEqual(app.order, [
+          "update a Rename",
+          "update b Rename",
+          "update a [1:Bobb]",
+          "update b [1:Bobb]",
+          "view a 1=Bobb~ 2=Bea",
+          "view b 2=Bea 1=Bobb~"
+        ])
+        assert.deepStrictEqual(root.frames().slice(before), ["a: 1=Bobb~ 2=Beab: 2=Bea 1=Bobb~"])
+      })
+    )
+  })
+
+  it.effect("a single field over a key of the batch doesn't split the keyed field's message", () => {
+    const app = makeApp()
+    const Message = Schema.TaggedUnion({
+      UsersChanged: { users: app.Users, changed: Schema.Array(Schema.String) },
+      UserChanged: { user: Loader.Snapshot(app.GetUser, "user") }
+    })
+    const changed: Array<ReadonlyArray<string>> = []
+    const Mixed = Component.make({
+      name: "Mixed",
+      model: Schema.Struct({ users: app.Users, user: Loader.Snapshot(app.GetUser, "user") }),
+      message: Message,
+      loaders: { users: () => [{ id: "1" }, { id: "2" }, { id: "3" }], user: () => ({ id: "1" }) },
+      init: ($) => $.empty,
+      update: (model, message) =>
+        Message.match(message, {
+          UsersChanged: ({ users, changed: keys }) => {
+            changed.push(keys)
+            return { ...model, users }
+          },
+          UserChanged: ({ user }) => ({ ...model, user })
+        }),
+      subscriptions: (_model, _props, watch) => [
+        watch({
+          users: (users, _loaded, changes) =>
+            Message.make({ _tag: "UsersChanged", users, changed: changes.map((change) => change.args.id) }),
+          user: (user) => Message.make({ _tag: "UserChanged", user })
+        })
+      ],
+      view: (_model, h) =>
+        h.el("p", h.loaded.users.map(({ result }) => AsyncResult.isSuccess(result) ? "y" : "n").join(""))
+    })
+    return run(
+      app.layer,
+      Effect.gen(function*() {
+        const root = yield* TestHost.mount(Mixed, {})
+        yield* load
+        assert.deepStrictEqual(app.db.batches, [3])
+        assert.deepStrictEqual(changed, [["1", "2", "3"]])
+        assert.strictEqual(root.text(), "yyy")
       })
     )
   })
@@ -617,6 +712,27 @@ describe("Story keyed steps", () => {
       /doesn't return the args/
     )
   })
+
+  it("sends an ignored prune once per key set, as the runtime does", () => {
+    const app = makeApp({ ignorePrunes: true })
+    Story.make(app.Board, { tag: "a", ids: ["1", "2", "3"] }, (s) =>
+      s
+        .loadedMany("users", [
+          { args: { id: "1" }, value: { id: "1", name: "Ann" } },
+          { args: { id: "2" }, value: { id: "2", name: "Bea" } },
+          { args: { id: "3" }, value: { id: "3", name: "Cy" } }
+        ])
+        .send(app.BoardMessage.make({ _tag: "Show", ids: ["1", "3"] }))
+        .send(app.BoardMessage.make({ _tag: "Show", ids: ["3", "1"] }))
+        .loaded("users", { id: "1" }, { id: "1", name: "Al" })
+        .send(app.BoardMessage.make({ _tag: "Show", ids: ["1"] })))
+    assert.deepStrictEqual(updates(app.order), [
+      "update a [1:Ann,2:Bea,3:Cy]",
+      "update a []",
+      "update a [1:Al]",
+      "update a []"
+    ])
+  })
 })
 
 describe("Keyed history restore", () => {
@@ -671,7 +787,7 @@ describe("Keyed history restore", () => {
           // The rename never finishes, so its patch on key 1 is live when the push snapshots the page.
           Query.fire(root.get(Query.text("a: 1=Ann 2=Bea", { exact: true })), "click")
           yield* TestHost.settle
-          assert.isTrue(root.text().includes("1=Bob~"))
+          assert.isTrue(root.text().includes("1=Boba~"))
           Query.fire(root.get(Query.text("Home", { exact: true })), "click")
           yield* TestHost.settle
         })
