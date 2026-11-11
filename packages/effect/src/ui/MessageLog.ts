@@ -27,6 +27,7 @@
 import * as Cause from "../Cause.ts"
 import * as Context from "../Context.ts"
 import * as Effect from "../Effect.ts"
+import { memoize } from "../Function.ts"
 import { redactAST } from "../internal/schemaRedact.ts"
 import * as Layer from "../Layer.ts"
 import * as Queue from "../Queue.ts"
@@ -838,42 +839,31 @@ const encodeGroup = (command: Command.Command<any, any>): string | null => {
     : canonical(encodeArgs(source.schema, source.picked))
 }
 
-const leafEncoders = new WeakMap<SchemaAST.AST, ((value: unknown) => unknown) | undefined>()
-const encoderOf = (ast: SchemaAST.AST): ((value: unknown) => unknown) | undefined => {
-  if (leafEncoders.has(ast)) return leafEncoders.get(ast)
-  let encode: ((value: unknown) => unknown) | undefined
+/** The redacting codec of `ast`, or `null` when it has none. */
+const encoderOf = memoize((ast: SchemaAST.AST): ((value: unknown) => unknown) | null => {
   try {
-    encode = Schema.encodeUnknownSync(
+    return Schema.encodeUnknownSync(
       Schema.toCodecJson(Schema.make<Schema.Codec<unknown, unknown>>(redactAST(ast)))
     )
   } catch {
-    encode = undefined
+    return null
   }
-  leafEncoders.set(ast, encode)
-  return encode
-}
-const guards = new WeakMap<SchemaAST.AST, (value: unknown) => boolean>()
-const guardOf = (ast: SchemaAST.AST): (value: unknown) => boolean => {
-  let guard = guards.get(ast)
-  if (guard === undefined) {
-    const is = Schema.is(Schema.make<Schema.Top>(ast))
-    guard = (value) => {
-      try {
-        return is(value)
-      } catch {
-        return false
-      }
+})
+const guardOf = memoize((ast: SchemaAST.AST): (value: unknown) => boolean => {
+  const is = Schema.is(Schema.make<Schema.Top>(ast))
+  return (value) => {
+    try {
+      return is(value)
+    } catch {
+      return false
     }
-    guards.set(ast, guard)
   }
-  return guard
-}
+})
 const isPlainRecord = (value: unknown): value is Record<PropertyKey, unknown> =>
   typeof value === "object" && value !== null && !Array.isArray(value) && !Redacted.isRedacted(value)
 /** Whether `ast` declares a `Schema.Redacted` anywhere. */
 const holdsRedacted = (ast: SchemaAST.AST): boolean => redactAST(ast) !== ast
 
-const overlaps = new WeakMap<SchemaAST.AST, boolean>()
 /**
  * Whether `ast` holds, anywhere, an object with an index signature that
  * declares a `Schema.Redacted` beside another signature, named or indexed. A
@@ -882,9 +872,7 @@ const overlaps = new WeakMap<SchemaAST.AST, boolean>()
  * one's redaction can be lost, so the whole codec is never used for such a
  * Schema.
  */
-const holdsRedactedOverlap = (ast: SchemaAST.AST): boolean => {
-  const cached = overlaps.get(ast)
-  if (cached !== undefined) return cached
+const holdsRedactedOverlap = memoize((ast: SchemaAST.AST): boolean => {
   const seen = new Set<SchemaAST.AST>()
   const visit = (node: SchemaAST.AST): boolean => {
     if (seen.has(node)) return false
@@ -908,10 +896,8 @@ const holdsRedactedOverlap = (ast: SchemaAST.AST): boolean => {
         return false
     }
   }
-  const result = visit(ast)
-  overlaps.set(ast, result)
-  return result
-}
+  return visit(ast)
+})
 
 const redacted: Schema.Json = { "~redacted": true }
 const failed: Schema.Json = { "~unserialisable": "encode" }
@@ -937,8 +923,8 @@ const guarded = (f: () => Schema.Json): Schema.Json => {
  */
 const encodeAt = (ast: SchemaAST.AST, value: unknown, path: Set<object>): Schema.Json => {
   if (typeof value === "object" && value !== null && path.has(value)) return { "~unserialisable": "cycle" }
-  const encode = holdsRedactedOverlap(ast) ? undefined : encoderOf(ast)
-  if (encode !== undefined) {
+  const encode = holdsRedactedOverlap(ast) ? null : encoderOf(ast)
+  if (encode !== null) {
     try {
       // A Schema such as `Schema.Any` passes a value through, so the result goes through `structural` too.
       return structural(encode(value))
