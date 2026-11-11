@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Effect, Layer, Option, Schema } from "effect"
+import { Cause, Effect, Layer, Option, Schema } from "effect"
 import { AsyncResult, Loader } from "effect/reactivity"
 import { TestClock } from "effect/testing"
 import { Command, Component, MessageLog, Route, Router } from "effect/ui"
@@ -198,6 +198,39 @@ describe("Loaded lists", () => {
       assert.include(JSON.stringify(result.state["~loader"]), "ssr0")
       assert.notInclude(JSON.stringify(result.state["~loader"]), "ssr1")
     })
+  })
+
+  it("Story: a failure on a held page settles a pending load more, and reset keeps a Failure", () => {
+    const app = makeApp()
+    const pageAt = (index: number, next: number | null) => ({
+      messages: [{ id: "m" + index, text: "r" + index }],
+      next
+    })
+    const final = Story.make(
+      app.Chat,
+      { room: "r" },
+      (s) =>
+        s.loaded("messages", [pageAt(0, 1), pageAt(1, 2)], { waiting: true })
+          .send(app.ChatMessage.make({ _tag: "More" }))
+          .check((story) => assert.deepStrictEqual(story.loadingMore, ["messages"]))
+          // Still walking: the load more waits on.
+          .loaded("messages", [pageAt(0, 1), pageAt(1, 2)], { waiting: true })
+          .check((story) => assert.deepStrictEqual(story.loadingMore, ["messages"]))
+          .loadFailed("messages", "nope")
+          .check((story) => assert.deepStrictEqual(story.loadingMore, []))
+          .send(app.ChatMessage.make({ _tag: "Refresh" }))
+    )
+    const result = Loader.snapshotData(final.model.messages)!.result!
+    assert.strictEqual(result._tag, "Failure")
+    if (result._tag === "Failure") {
+      assert.isTrue(result.waiting)
+      assert.deepStrictEqual(Cause.findErrorOption(result.cause), Option.some("nope"))
+      assert.deepStrictEqual(
+        Option.map(result.previousSuccess, (success) => success.value),
+        Option.some([pageAt(0, 1)])
+      )
+    }
+    final.get(Query.text("failed", { exact: true }))
   })
 
   it("Story: a load more is pending until a step settles it, and reset sends the first page", () => {

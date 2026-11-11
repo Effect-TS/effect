@@ -300,7 +300,7 @@ export interface Steps<C extends AnyComponent> extends Pipeable {
    * Loads a loader field with a Success: builds the snapshot at the loader's
    * current args and sends it through the declared watch handler. Throws when
    * the loader is disabled. For a list field `value` is the page array, and
-   * it settles a pending load more.
+   * unless `waiting` it settles a pending load more.
    */
   loaded<F extends Component.SingleFields<Component.Model<C>>>(
     field: F,
@@ -320,7 +320,8 @@ export interface Steps<C extends AnyComponent> extends Pipeable {
   /**
    * Loads a loader field with a typed failure, as `loaded` does. The failure
    * keeps the field's last Success as `previousSuccess` when the field holds
-   * one at the loader's current args.
+   * one at the loader's current args. Unless `waiting`, it settles a list
+   * field's pending load more.
    */
   loadFailed<F extends Component.SingleFields<Component.Model<C>>>(
     field: F,
@@ -563,7 +564,7 @@ const settleMore = (
   if (!story.loadingMore.includes(field)) {
     throw new Error(`Story.${step}: no load more of "${field}" is pending`)
   }
-  const settled = update(story, { loadingMore: story.loadingMore.filter((other) => other !== field) })
+  const settled = settlePending(story, field)
   let more: Loader.More<any> | undefined
   return loadStep(
     settled,
@@ -608,17 +609,28 @@ const applyList = (story: Story<any, any, any, any>, list: Component.ListIssue):
       })
     )
   }
-  const reset = update(story, { loadingMore: story.loadingMore.filter((other) => other !== list.field) })
+  const reset = settlePending(story, list.field)
   if (Option.isNone(previous)) return reset
-  const first = previous.value.value.slice(0, 1)
+  const first = AsyncResult.success(previous.value.value.slice(0, 1), { timestamp: previous.value.timestamp })
+  const stored = data?.argsKey === marker.argsKey ? data.result : undefined
   return loadStep(
     reset,
     "reset",
     list.field,
-    () => AsyncResult.success(first, { timestamp: previous.value.timestamp, waiting: true }),
+    // A Failure stays one, over the first page only, while the walk runs.
+    () =>
+      stored?._tag === "Failure"
+        ? AsyncResult.failure(stored.cause, { previousSuccess: Option.some(first), waiting: true })
+        : AsyncResult.success(first.value, { timestamp: first.timestamp, waiting: true }),
     false
   )
 }
+
+/** Ends a list field's pending load more: a settle of the field, Success or Failure, ends the walk it waits on. */
+const settlePending = (story: Story<any, any, any, any>, field: string): Story<any, any, any, any> =>
+  story.loadingMore.includes(field)
+    ? update(story, { loadingMore: story.loadingMore.filter((other) => other !== field) })
+    : story
 
 /** The watch group of a keyed field at the story's Model and props. */
 const groupOf = (story: Story<any, any, any, any>, field: string): loaders.Group | undefined => {
@@ -989,12 +1001,9 @@ class StepsImpl implements Steps<AnyComponent> {
       unknown,
       { readonly waiting?: boolean | undefined; readonly patched?: boolean | undefined } | undefined
     ]
-    // A list's pages settle its pending load more.
-    const current = this.current.loadingMore.includes(field)
-      ? update(this.current, { loadingMore: this.current.loadingMore.filter((other) => other !== field) })
-      : this.current
+    // A list's pages settle its pending load more, unless a walk is still running.
     return this.step(loadStep(
-      current,
+      options?.waiting === true ? this.current : settlePending(this.current, field),
       "loaded",
       field,
       () => AsyncResult.success(value, { waiting: options?.waiting, timestamp: 0 }),
@@ -1021,8 +1030,9 @@ class StepsImpl implements Steps<AnyComponent> {
       )
     }
     const [error, options] = rest as [unknown, { readonly waiting?: boolean | undefined } | undefined]
+    // A failure ends the walk a pending load more waits on, unless a walk is still running.
     return this.step(loadStep(
-      this.current,
+      options?.waiting === true ? this.current : settlePending(this.current, field),
       "loadFailed",
       field,
       (previousSuccess) => AsyncResult.failure(Cause.fail(error), { previousSuccess, waiting: options?.waiting }),

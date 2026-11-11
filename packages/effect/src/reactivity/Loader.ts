@@ -770,6 +770,15 @@ export interface ListService<
  * - A refetch of a list of 30 pages is 30 requests, one after the other.
  * - Every list read with the same arguments shares its page count, which
  *   only goes up until `reset` or the entry is collected.
+ * - The server renders the first page only, so the page size is the one
+ *   lever on how much of a list a server render shows.
+ * - Every page a list field holds is saved in `history.state` on each
+ *   navigation. `$.reset` drops the pages after the first, and is the way
+ *   to keep that small.
+ * - A list appends. A page that replaces the one before is ordinary args,
+ *   such as a cursor in the Model, with `h.previous` showing the old page
+ *   while the new one loads. Reset that cursor when a filter changes, or the
+ *   new filter opens at the old cursor.
  *
  * **Example** (A list of messages)
  *
@@ -1240,7 +1249,8 @@ export interface SnapshotListSchema<R extends ListRead.Any, Label extends string
  * `SnapshotMap`, and a read that isn't a list here, are type errors. On the
  * wire a Success adds whether the list holds more pages: a load more running
  * or failed is written as more, and a restored list shows `Available` or
- * `End`.
+ * `End`. Every held page is written, so `$.reset` is the way to keep a
+ * long list's `history.state` small.
  *
  * @stability experimental
  * @category schemas
@@ -3335,6 +3345,8 @@ interface Entry {
   fetch: FetchRec | undefined
   /** Restarts since the last settle. */
   restarts: number
+  /** A list's walk a patch dropped: the walk that starts once nothing holds it is its restart. */
+  heldRestart: boolean
   idle: Idle | undefined
   /** The interval worked out for the current settle. `undefined`: not worked out yet. */
   interval: { readonly ms: number | undefined } | undefined
@@ -3604,6 +3616,7 @@ export const makeCache = (options: {
       waiters: new Set(),
       fetch: undefined,
       restarts: 0,
+      heldRestart: false,
       idle: undefined,
       interval: undefined,
       intervalDue: undefined,
@@ -4029,7 +4042,10 @@ export const makeCache = (options: {
       return
     }
   }
-  /** A list's pages for callers alone, never stored: a walk to `count` pages. A page past the first may fail. */
+  /**
+   * A list's pages for callers alone, never stored: a walk to `count` pages, the pages the entry holds. A typed
+   * failure on any of them fails the callers, as a caller-only fetch's does.
+   */
   const callerWalk = (
     def: ReadDef,
     args: unknown,
@@ -4040,10 +4056,7 @@ export const makeCache = (options: {
   ): Effect.Effect<ReadonlyArray<unknown>, any> =>
     Effect.flatMap(
       walk(def, args, logKey, build, [], () => count, onPage),
-      (out) =>
-        out.failedAt === undefined || out.failedAt > 0
-          ? Effect.succeed(out.pages)
-          : Effect.failCause(out.cause!)
+      (out) => out.failedAt === undefined ? Effect.succeed(out.pages) : Effect.failCause(out.cause!)
     )
   /**
    * Starts what a list's load more waits for: an append over a Success when the target is one page past it, or
@@ -4066,6 +4079,10 @@ export const makeCache = (options: {
 
   // -- fetching ---------------------------------------------------------------
   const startFetch = (entry: Entry, trigger: Trigger, build: Build, restart: boolean, append = false): void => {
+    if (entry.heldRestart && !append) {
+      entry.heldRestart = false
+      restart = true
+    }
     const fetch: FetchRec = { trigger, build, fiber: undefined, append }
     entry.fetch = fetch
     cancelIdle(entry)
@@ -4153,6 +4170,10 @@ export const makeCache = (options: {
   }
   /** A restarted fetch keeps its trigger. Ten in a row with no settle between are reported, once. */
   const restartFetch = (entry: Entry, dropped: FetchRec, build: Build): void => {
+    countRestart(entry)
+    startFetch(entry, dropped.trigger, build, true)
+  }
+  const countRestart = (entry: Entry): void => {
     entry.restarts++
     if (entry.restarts === restartLimit) {
       const logKey = logKeyOf(entry)
@@ -4165,7 +4186,6 @@ export const makeCache = (options: {
         })
       )
     }
-    startFetch(entry, dropped.trigger, build, true)
   }
   const resumeWaiters = (entry: Entry, exit: Exit.Exit<any, any>): void => {
     if (entry.waiters.size === 0) return
@@ -4179,6 +4199,7 @@ export const makeCache = (options: {
     entry.settledAt = now()
     entry.invalidated = false
     entry.restarts = 0
+    entry.heldRestart = false
     entry.interval = undefined
     entry.hydrated = false
     if (entry.patches.length > 0) entry.patches = entry.patches.filter((patch) => patch.live)
@@ -4641,7 +4662,9 @@ export const makeCache = (options: {
     // Nothing under a live patch.
     if (hasLive(entry)) return
     // A list that holds pages, stale ones included, isn't loaded again.
-    if (inWindow(entry) || !isStale(entry) || heldPages(entry).length > 0) return resetIdle(entry)
+    if (inWindow(entry) || !isStale(entry) || (entry.def.list !== undefined && heldPages(entry).length > 0)) {
+      return resetIdle(entry)
+    }
     ensureFetch(entry, "prefetch", buildOf(fetcher))
     afterQuiet(entry)
   }
@@ -4794,6 +4817,8 @@ export const makeCache = (options: {
         }
       }
       if (entry.def.list !== undefined && entry.fetch === undefined) heldLoadMore(entry, deferred ?? "loadMore")
+      // A dropped walk nothing restarted isn't owed a restart by a later fetch.
+      if (entry.fetch === undefined) entry.heldRestart = false
     }
     emit(entry)
     afterQuiet(entry)
@@ -4963,6 +4988,12 @@ export const makeCache = (options: {
       if (fetch !== undefined) {
         dropFetch(entry, fetch)
         entry.deferred ??= fetch.trigger
+        // A patch restarts a list's walk from the first page, once nothing holds it. A dropped append is a held
+        // load more, not a restart.
+        if (entry.def.list !== undefined && !fetch.append) {
+          countRestart(entry)
+          entry.heldRestart = true
+        }
         if (entry.waiters.size > 0) {
           const waiters = Array.from(entry.waiters)
           entry.waiters.clear()

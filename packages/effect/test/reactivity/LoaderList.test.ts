@@ -186,7 +186,11 @@ describe("Loader lists", () => {
         "interval@1"
       ])
       // The walk under the patch stopped at its first page, and walks both from the first once the run exits.
-      assert.deepStrictEqual((yield* pagesLog).slice(before), ["invalidation@0", "invalidation@0", "invalidation@1"])
+      assert.deepStrictEqual((yield* pagesLog).slice(before), [
+        "invalidation@0",
+        "invalidation@0 restart",
+        "invalidation@1"
+      ])
       assert.strictEqual(w.seen.at(-1), "b0,b1")
     }).pipe(provide)
   })
@@ -415,6 +419,76 @@ describe("Loader lists", () => {
       assert.deepStrictEqual(w.seen, ["a0,a1 waiting", "b0,b1"])
       assert.deepStrictEqual(yield* pagesLog, ["watch@0", "watch@1"])
     }).pipe(provide)
+  })
+  it.effect("a patch that drops a walk counts as a restart: ten in a row report FetchRestarted", () => {
+    const { ListMessages, provide } = makeList()
+    return Effect.gen(function*() {
+      yield* watch(ListMessages.changes(room))
+      yield* advance(10)
+      const cache = Loader.internals(yield* Loader.Cache)
+      yield* ListMessages.invalidate(room)
+      for (let i = 0; i < 10; i++) {
+        yield* advance(5)
+        // Each patch drops the walk in flight, and the walk starts again from the first page when its run exits.
+        const handle = cache.beginRun({
+          command: "Edit",
+          invalidates: [],
+          optimistic: [ListMessages.patch(room, (page) => page)]
+        })
+        yield* Effect.forkScoped(handle.run(Effect.void, undefined))
+        yield* flush
+      }
+      const problem = yield* TestLoader.expectProblem("FetchRestarted")
+      assert.strictEqual(problem.length, 1)
+      const log = (yield* pagesLog).slice(1)
+      assert.deepStrictEqual(log, ["invalidation@0", ...Array.from({ length: 10 }, () => "invalidation@0 restart")])
+      yield* advance(10)
+      // The settle ends the streak.
+      assert.deepStrictEqual((yield* TestLoader.entry(ListMessages, room))?.fetch, "none")
+    }).pipe(provide)
+  })
+
+  it.effect("a run reading back a list it invalidates fails when a held page fails", () => {
+    const { ListMessages, db, provide } = makeList()
+    return Effect.gen(function*() {
+      yield* watch(ListMessages.changes(room))
+      yield* advance(10)
+      yield* Effect.forkScoped(ListMessages.loadMore(room))
+      yield* advance(10)
+      db.fail.add(1)
+      const cache = Loader.internals(yield* Loader.Cache)
+      const handle = cache.beginRun({ command: "Edit", invalidates: [ListMessages.entry(room)] })
+      const fiber = yield* Effect.forkScoped(Effect.exit(handle.run(ListMessages.get(room), undefined)))
+      yield* advance(30)
+      const exit = yield* Fiber.join(fiber)
+      assert.isTrue(Exit.isFailure(exit))
+      if (Exit.isFailure(exit)) assert.deepStrictEqual(Cause.findErrorOption(exit.cause), Option.some("nope1"))
+      assert.deepStrictEqual((yield* pagesLog).slice(2, 4), ["get@0 unstored", "get@1 unstored"])
+    }).pipe(provide)
+  })
+
+  it.effect("prefetch of a stale ordinary read loads it again, whatever its value", () => {
+    let calls = 0
+    class GetTags extends Loader.Service<GetTags>()("chat/GetTags", {
+      args: { id: Schema.String },
+      success: Schema.NullOr(Schema.Array(Schema.String)),
+      error: Schema.Never,
+      staleTime: 0
+    }, Effect.succeed(({ id }) => Effect.sync(() => (calls++, id === "none" ? null : ["a"])))) {}
+    return Effect.gen(function*() {
+      for (const id of ["some", "none"]) {
+        yield* GetTags.get({ id })
+        yield* GetTags.prefetch({ id })
+        yield* flush
+      }
+      assert.strictEqual(calls, 4)
+      assert.deepStrictEqual((yield* TestLoader.fetches).map((fetch) => fetch.trigger), [
+        "get",
+        "prefetch",
+        "get",
+        "prefetch"
+      ])
+    }).pipe(Effect.provide(Layer.merge(GetTags.layer, TestLoader.layer())))
   })
 })
 

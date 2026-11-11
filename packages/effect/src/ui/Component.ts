@@ -193,7 +193,11 @@ export interface Step<in out Model, in out Msg, in out Events, out R = never> ex
    * watch, and nothing is issued for a disabled field.
    */
   loadMore(field: ListFields<Model>): Step<Model, Msg, Events, R>
-  /** Drops a list field's pages after the first, then refetches it. */
+  /**
+   * Drops a list field's pages after the first, then refetches it. Every held
+   * page is saved in `history.state` on navigation, so this is how a long
+   * list keeps that small.
+   */
   reset(field: ListFields<Model>): Step<Model, Msg, Events, R>
 }
 
