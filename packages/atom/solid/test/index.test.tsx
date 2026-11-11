@@ -108,7 +108,7 @@ describe("atom-solid", () => {
     it("returns function values without calling them", () => {
       const first = () => "first"
       const second = () => "second"
-      const ref = AtomRef.make<() => string>(first)
+      const ref = AtomRef.make(first)
       let observed: (() => string) | undefined
       const dispose = renderAtomRef(ref, (value) => {
         observed = value
