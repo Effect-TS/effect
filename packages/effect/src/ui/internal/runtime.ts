@@ -302,7 +302,7 @@ interface Options {
   /** Server rendering. */
   readonly server?: ServerOptions | undefined
   /** Cache-wide options for the loader cache the runtime owns. */
-  readonly loader?: LoaderOptions | undefined
+  readonly loader?: Renderer.LoaderOptions | undefined
 }
 
 interface ServerOptions {
@@ -313,12 +313,6 @@ interface ServerOptions {
   readonly static: boolean
   /** Called at `finish`, before the cache is serialised and its fetches are interrupted. */
   readonly onFinish?: ((cache: ReturnType<typeof Loader.internals>) => void) | undefined
-}
-
-/** @internal */
-export interface LoaderOptions {
-  /** How long an entry stays once nothing watches it. 5 minutes by default. */
-  readonly idleTimeToLive?: Duration.Input | undefined
 }
 
 /** A component's Model as JSON, for history restore. */
