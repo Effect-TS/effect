@@ -119,6 +119,35 @@ describeWithFallback("Base64", () => {
     assert.deepStrictEqual(Result.getOrThrow(Base64.decode("Zm9=")), new Uint8Array([102, 111]))
   })
 
+  it("encodes without padding", () => {
+    const bytes = new Uint8Array([251, 255, 128])
+    const vectors = ["", "+w", "+/8", "+/+A"]
+    for (const [length, encoded] of vectors.entries()) {
+      assert.strictEqual(Base64.encodeUnpadded(bytes.subarray(0, length)), encoded)
+    }
+    assert.strictEqual(Base64.encodeUnpadded("hello"), "aGVsbG8")
+  })
+
+  it("decodes either alphabet, with or without padding", () => {
+    const bytes = new Uint8Array([251, 255])
+    for (const encoded of ["+/8=", "+/8", "-_8=", "-_8", "+_8", "-/8="]) {
+      assert.deepStrictEqual(Result.getOrThrow(Base64.decodeLenient(encoded)), bytes, encoded)
+    }
+    const long = Uint8Array.from({ length: 200 }, (_, i) => (i * 151) & 0xff)
+    assert.deepStrictEqual(Result.getOrThrow(Base64.decodeLenient(Base64.encodeUnpadded(long))), long)
+  })
+
+  it("rejects invalid lenient input", () => {
+    for (const input of ["Zm9vY", "Zg=", "Zm9!", "Zg=v"]) {
+      const result = Base64.decodeLenient(input)
+      assert.isTrue(Result.isFailure(result), input)
+      if (Result.isFailure(result)) {
+        const { input: actual, kind, module } = result.failure
+        assert.deepStrictEqual({ kind, module, input: actual }, { kind: "Decode", module: "Base64", input })
+      }
+    }
+  })
+
   it("rejects invalid input with both decoders", () => {
     const length = (length: number) => `Length must be a multiple of 4, but is ${length}`
     const misplacedPadding = "Found a '=' character, but it is not at the end"
