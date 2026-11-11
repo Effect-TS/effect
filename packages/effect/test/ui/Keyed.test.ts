@@ -915,6 +915,78 @@ describe("Story keyed steps", () => {
   })
 })
 
+/**
+ * A selected row that must be in the collection: the view throws otherwise. A prune's handler
+ * reports whether the selection is still there, and its `update` moves it to the first id.
+ */
+const makeSelection = (app: ReturnType<typeof makeApp>) => {
+  const Message = Schema.TaggedUnion({
+    Show: { ids: Schema.Array(Schema.String) },
+    UsersChanged: { users: app.Users, kept: Schema.Boolean }
+  })
+  const Selection = Component.make({
+    name: "Selection",
+    model: Schema.Struct({ ids: Schema.Array(Schema.String), selected: Schema.String, users: app.Users }),
+    message: Message,
+    loaders: { users: (model) => model.ids.map((id) => ({ id })) },
+    init: ($) => ({ ...$.empty, ids: ["1", "2"], selected: "2" }),
+    update: (model, message) =>
+      Message.match(message, {
+        Show: ({ ids }) => ({ ...model, ids }),
+        UsersChanged: ({ users, kept }) => ({ ...model, users, selected: kept ? model.selected : model.ids[0] })
+      }),
+    subscriptions: (model, _props, watch) => [
+      watch({
+        users: (users, loaded) =>
+          Message.make({ _tag: "UsersChanged", users, kept: Option.isSome(loaded.get({ id: model.selected })) })
+      })
+    ],
+    view: (model, h) => {
+      const row = h.loaded.users.get({ id: model.selected })
+      if (Option.isNone(row)) throw new Error(`no row for the selection ${model.selected}`)
+      const result = row.value.result
+      return h.el("p", AsyncResult.isSuccess(result) ? result.value.name : "…")
+    }
+  })
+  return { Message, Selection }
+}
+
+describe("Keyed selection repaired by the prune handler", () => {
+  it.effect("the runtime never renders the selection outside the collection", () => {
+    const app = makeApp()
+    const { Message, Selection } = makeSelection(app)
+    return run(
+      app.layer,
+      Effect.gen(function*() {
+        const root = yield* TestHost.mount(Selection, {})
+        yield* load
+        assert.strictEqual(root.text(), "Bea")
+        root.send(Message.make({ _tag: "Show", ids: ["1"] }))
+        yield* TestHost.settle
+        assert.strictEqual(root.text(), "Ann")
+        assert.isUndefined(root.log().find((entry) => entry._tag === "Failed"))
+      })
+    )
+  })
+
+  it("Story renders the step once its prunes have settled, as the runtime does", () => {
+    const app = makeApp()
+    const { Message, Selection } = makeSelection(app)
+    Story.make(Selection, {}, (s) =>
+      s
+        .loadedMany("users", [
+          { args: { id: "1" }, value: { id: "1", name: "Ann" } },
+          { args: { id: "2" }, value: { id: "2", name: "Bea" } }
+        ])
+        .check((story) => assert.strictEqual(Query.textOf(story.get(Query.tag("p"))), "Bea"))
+        .send(Message.make({ _tag: "Show", ids: ["1"] }))
+        .check((story) => {
+          assert.strictEqual(Query.textOf(story.get(Query.tag("p"))), "Ann")
+          assert.deepStrictEqual(heldIds(app, story.model), ["1"])
+        }))
+  })
+})
+
 describe("Story keyed rounds", () => {
   it("sends a prune whose update prunes again in a second round, as the runtime does", () => {
     const app = makeApp({ pruneTrims: true })
@@ -949,6 +1021,69 @@ describe("Story keyed rounds", () => {
 })
 
 describe("Keyed history restore", () => {
+  it.effect("a membership change and a push in one update save the pruned collection in the entry left", () => {
+    const app = makeApp()
+    const PageRoute = Route.union({ Home: Route.make("/"), Next: Route.make("/next") })
+    const Message = Schema.TaggedUnion({
+      UsersChanged: { users: app.Users },
+      ShowAndGo: { ids: Schema.Array(Schema.String) },
+      Navigated: {}
+    })
+    const Page = Component.make({
+      name: "Page",
+      model: Schema.Struct({ ids: Schema.Array(Schema.String), users: app.Users }),
+      message: Message,
+      loaders: { users: (model) => model.ids.map((id) => ({ id })) },
+      init: ($) => ({ ...$.empty, ids: ["1", "2"] }),
+      update: (model, message, $) =>
+        Message.match(message, {
+          UsersChanged: ({ users }) => ({ ...model, users }),
+          ShowAndGo: ({ ids }) =>
+            $.set({ ...model, ids }).run(
+              Router.push(PageRoute, PageRoute.make({ _tag: "Next" })).pipe(
+                Command.map(() => Message.make({ _tag: "Navigated" }))
+              )
+            ),
+          Navigated: () => model
+        }),
+      subscriptions: (_model, _props, watch) => [
+        watch({ users: (users) => Message.make({ _tag: "UsersChanged", users }) })
+      ],
+      view: (_model, h) => h.el("p", h.loaded.users.map(({ args }) => args.id).join(","))
+    })
+    const base = Router.memoryHistory("/")
+    const written: Array<{ readonly url: string; readonly state: unknown }> = []
+    const history: Router.History = {
+      ...base,
+      replace: (url, state) => {
+        written.push({ url, state })
+        base.replace(url, state)
+      }
+    }
+    return Effect.gen(function*() {
+      const root = yield* TestHost.mount(Page, {})
+      yield* load
+      root.send(Message.make({ _tag: "ShowAndGo", ids: ["1"] }))
+      yield* TestHost.settle
+      assert.deepStrictEqual(base.entries(), ["/", "/next"])
+      const home = written.filter((entry) => entry.url === "/")
+      const left = home[home.length - 1]?.state as
+        | {
+          readonly "effect/ui": {
+            readonly snapshot: Record<string, { readonly users: ReadonlyArray<ReadonlyArray<unknown>> }>
+          }
+        }
+        | undefined
+      const saved = left?.["effect/ui"].snapshot["/Page"]
+      assert.deepStrictEqual(saved?.users.map((tuple) => tuple[0]), ["{\"id\":\"1\"}"])
+      assert.strictEqual(root.text(), "1")
+    }).pipe(
+      Effect.provide(Layer.merge(Router.make({ routes: PageRoute, history }), app.layer)),
+      Effect.scoped,
+      Effect.provide(TestHost.layer())
+    )
+  })
+
   it.effect("drops each tuple taken under a patch and seeds the rest, stale", () => {
     const app = makeApp()
     const ShellRoute = Route.union({ Home: Route.make("/"), Board: Route.make("/board") })

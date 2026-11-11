@@ -115,7 +115,11 @@ export interface Story<Props, Model, Msg, Events> {
   readonly interrupted: ReadonlyArray<Command.Effectful<Msg, any, never> | Command.Streaming<Msg, any, never>>
   /** Commands ignored by `mode: "drop"`. */
   readonly dropped: ReadonlyArray<Command.Effectful<Msg, any, never> | Command.Streaming<Msg, any, never>>
-  /** The view of the current Model and props, rendered when they change, so a defect in `view` fails that step. */
+  /**
+   * The view of the current Model and props, rendered once the step that
+   * changed them has sent its keyed prunes, so a defect in `view` fails that
+   * step.
+   */
   readonly view: () => View.Node<Msg, any>
   /** The Subscription keys the current Model and props ask for, without the loader watches. Nothing runs. */
   readonly subscriptions: () => ReadonlyArray<string>
@@ -381,13 +385,19 @@ type Fields<Props, Model, Msg, Events> = Pick<
   "component" | "props" | "model" | "pending" | "emitted" | "interrupted" | "dropped"
 >
 
-/** Builds a record around a rendered view. */
+/**
+ * Builds a record around a view that renders when first read. A step reads
+ * it once its keyed prunes have settled, so the records in between, which
+ * the runtime never renders, aren't rendered either.
+ */
 const record = <Props, Model, Msg, Events>(
   fields: Fields<Props, Model, Msg, Events>,
-  view: View.Node<Msg, any>
+  render: () => View.Node<Msg, any>
 ): Story<Props, Model, Msg, Events> => {
+  let rendered: View.Node<Msg, any> | undefined
+  const view = () => rendered ??= render()
   // A view value is a `Query` tree; a child slot is a node with no tag or text.
-  const root = view as Query.Node
+  const root = () => view() as Query.Node
   return {
     component: fields.component,
     props: fields.props,
@@ -396,7 +406,7 @@ const record = <Props, Model, Msg, Events>(
     emitted: fields.emitted,
     interrupted: fields.interrupted,
     dropped: fields.dropped,
-    view: () => view,
+    view,
     subscriptions: () =>
       (fields.component.subscriptions?.(fields.model, fields.props) ?? [])
         .map((sub) => sub.key)
@@ -411,10 +421,12 @@ const record = <Props, Model, Msg, Events>(
         args: context.argsOf(field.field).args
       }))
     },
-    root,
-    get: (locator) => Query.get(root, locator),
-    query: (locator) => Query.query(root, locator),
-    all: (locator) => Query.all(root, locator)
+    get root() {
+      return root()
+    },
+    get: (locator) => Query.get(root(), locator),
+    query: (locator) => Query.query(root(), locator),
+    all: (locator) => Query.all(root(), locator)
   }
 }
 
@@ -422,11 +434,20 @@ const update = <Props, Model, Msg, Events>(
   story: Story<Props, Model, Msg, Events>,
   patch: Partial<Fields<Props, Model, Msg, Events>>
 ): Story<Props, Model, Msg, Events> => {
-  const fields = { ...story, ...patch }
+  const fields: Fields<Props, Model, Msg, Events> = {
+    component: story.component,
+    props: story.props,
+    model: story.model,
+    pending: story.pending,
+    emitted: story.emitted,
+    interrupted: story.interrupted,
+    dropped: story.dropped,
+    ...patch
+  }
   // A defect in `view` fails the step that changed the Model, the props or what's pending.
   const view = fields.model === story.model && fields.props === story.props && fields.pending === story.pending
-    ? story.view()
-    : story.component.view(fields.model, fields.props, runningOf(fields.pending))
+    ? story.view
+    : () => story.component.view(fields.model, fields.props, runningOf(fields.pending))
   return record(fields, view)
 }
 
@@ -772,12 +793,15 @@ class StepsImpl implements Steps<AnyComponent> {
   private readonly sentFor: SentFor = new Map()
   constructor(current: Story<any, any, any, any>) {
     this.current = current
+    current.view()
   }
   pipe() {
     return pipeArguments(this, arguments)
   }
   private step(next: Story<any, any, any, any>): this {
     this.current = next === this.current ? next : pruneKeyed(next, this.sentFor)
+    // Rendered once the step has settled, so a defect in `view` fails it.
+    this.current.view()
     return this
   }
 
@@ -960,7 +984,7 @@ export const start = <C extends AnyComponent>(component: C, props: Component.Pro
     emitted: [],
     interrupted: [],
     dropped: []
-  }, component.view(first.model, props, runningOf([])))
+  }, () => component.view(first.model, props, runningOf([])))
   return new StepsImpl(apply(empty, first)) as Steps<C>
 }
 

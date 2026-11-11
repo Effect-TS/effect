@@ -834,8 +834,9 @@ export interface SnapshotMapSchema<R extends Read.Any, Label extends string> ext
  * args must be a struct. The runtime sends at most one message per keyed
  * field per drain round, with the whole collection. A drain runs before the
  * instance's first view, before a kept child's view when its props change,
- * and once in a flush for changes from outside a render, so N results that
- * land together are one `update`. The message's `changes` are the
+ * before the Router saves the page a navigation leaves, and once in a flush
+ * for changes from outside a render, so N results that land together are
+ * one `update`. The message's `changes` are the
  * declared keys whose result changed since its last message, a new warm
  * key's first value included. A key set that drops a stored key also makes
  * a message due, once per key set, so an `update` that ignores it doesn't

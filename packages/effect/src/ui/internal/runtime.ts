@@ -2578,6 +2578,9 @@ const start = (
   const snapshot = (): Record<string, unknown> => {
     const out: Record<string, unknown> = {}
     const visit = (inst: Instance) => {
+      // A keyed field's pending messages go first, so the bag holds only the declared keys. A
+      // navigation issued in the `update` that changed them runs before the flush's drain.
+      if (inst.keyed.size > 0) drainKeyed(inst)
       if (inst.closed || inst.failure !== undefined || inst.waiting) return
       const encoded = jsonCodecOf(inst.component.model).encode(inst.model)
       if (Option.isSome(encoded)) out[inst.path] = encoded.value
