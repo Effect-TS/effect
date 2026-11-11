@@ -114,6 +114,45 @@ export interface Next<out Model, out Msg, out Events, out R = never> {
   readonly model: Model
   readonly commands: ReadonlyArray<Command.Command<Msg, R>>
   readonly events: ReadonlyArray<Events>
+  /** The load mores and resets of list fields `update` issued, in order. */
+  readonly lists?: ReadonlyArray<ListIssue> | undefined
+}
+
+/**
+ * A `$.loadMore(field)` or `$.reset(field)` an `update` issued.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.1.3
+ */
+export interface ListIssue {
+  readonly field: string
+  readonly op: "loadMore" | "reset"
+}
+
+/**
+ * What `$.set` in `init` returns: a step without `loadMore` and `reset`,
+ * which `init` can't issue.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.1.3
+ */
+export interface InitStep<in out Model, in out Msg, in out Events, out R = never> extends Pipeable.Pipeable {
+  readonly [StepTypeId]: StepTypeId
+  readonly model: Model
+  readonly commands: ReadonlyArray<Command.Command<Msg, R>>
+  readonly emitted: ReadonlyArray<Events>
+  /** Replaces the Model. */
+  set(model: Model): InitStep<Model, Msg, Events, R>
+  /** Changes the Model with a function of the current one. */
+  modify(f: (model: Model) => Model): InitStep<Model, Msg, Events, R>
+  /** Runs Commands in this instance's Scope, as `Step.run` does. */
+  run<const C extends ReadonlyArray<Command.Command<Msg, any>>>(
+    ...commands: C
+  ): InitStep<Model, Msg, Events, R | Command.Requirements<C[number]>>
+  /** Reports to the parent. */
+  emit(...emitted: ReadonlyArray<Events>): InitStep<Model, Msg, Events, R>
 }
 
 /**
@@ -131,11 +170,9 @@ export interface Next<out Model, out Msg, out Events, out R = never> {
  * @category models
  * @since 4.1.3
  */
-export interface Step<in out Model, in out Msg, in out Events, out R = never> extends Pipeable.Pipeable {
-  readonly [StepTypeId]: StepTypeId
-  readonly model: Model
-  readonly commands: ReadonlyArray<Command.Command<Msg, R>>
-  readonly emitted: ReadonlyArray<Events>
+export interface Step<in out Model, in out Msg, in out Events, out R = never> extends InitStep<Model, Msg, Events, R> {
+  /** The load mores and resets issued, in order. */
+  readonly lists: ReadonlyArray<ListIssue>
   /** Replaces the Model. */
   set(model: Model): Step<Model, Msg, Events, R>
   /** Changes the Model with a function of the current one. */
@@ -150,6 +187,14 @@ export interface Step<in out Model, in out Msg, in out Events, out R = never> ex
   ): Step<Model, Msg, Events, R | Command.Requirements<C[number]>>
   /** Reports to the parent. */
   emit(...emitted: ReadonlyArray<Events>): Step<Model, Msg, Events, R>
+  /**
+   * Loads the next page of a list field. The runtime takes the args from the
+   * field's loader, after this `update`'s Model. The page arrives through the
+   * watch, and nothing is issued for a disabled field.
+   */
+  loadMore(field: ListFields<Model>): Step<Model, Msg, Events, R>
+  /** Drops a list field's pages after the first, then refetches it. */
+  reset(field: ListFields<Model>): Step<Model, Msg, Events, R>
 }
 
 /**
@@ -178,7 +223,7 @@ export interface Init<in out Model, in out Msg, in out Events, out Props> {
    */
   readonly empty: Empty<Model>
   /** Sets the first Model. */
-  set(model: Model): Step<Model, Msg, Events, never>
+  set(model: Model): InitStep<Model, Msg, Events, never>
 }
 
 /**
@@ -188,7 +233,7 @@ export interface Init<in out Model, in out Msg, in out Events, out Props> {
  * @category utility types
  * @since 4.1.3
  */
-export type StepRequirements<U> = U extends Step<infer _Model, infer _Msg, infer _Events, infer R> ? R : never
+export type StepRequirements<U> = U extends InitStep<infer _Model, infer _Msg, infer _Events, infer R> ? R : never
 
 const StepProto = {
   [StepTypeId]: StepTypeId,
@@ -196,32 +241,39 @@ const StepProto = {
     return Pipeable.pipeArguments(this, arguments)
   },
   set(this: Step<any, any, any, any>, model: unknown) {
-    return makeStep(model, this.commands, this.emitted)
+    return makeStep(model, this.commands, this.emitted, this.lists)
   },
   modify(this: Step<any, any, any, any>, f: (model: any) => any) {
-    return makeStep(f(this.model), this.commands, this.emitted)
+    return makeStep(f(this.model), this.commands, this.emitted, this.lists)
   },
   run(this: Step<any, any, any, any>, ...commands: ReadonlyArray<Command.Command<any, any>>) {
-    return makeStep(this.model, [...this.commands, ...commands], this.emitted)
+    return makeStep(this.model, [...this.commands, ...commands], this.emitted, this.lists)
   },
   emit(this: Step<any, any, any, any>, ...emitted: ReadonlyArray<unknown>) {
-    return makeStep(this.model, this.commands, [...this.emitted, ...emitted])
+    return makeStep(this.model, this.commands, [...this.emitted, ...emitted], this.lists)
+  },
+  loadMore(this: Step<any, any, any, any>, field: string) {
+    return makeStep(this.model, this.commands, this.emitted, [...this.lists, { field, op: "loadMore" }])
+  },
+  reset(this: Step<any, any, any, any>, field: string) {
+    return makeStep(this.model, this.commands, this.emitted, [...this.lists, { field, op: "reset" }])
   }
 }
 
 const makeStep = (
   model: unknown,
   commands: ReadonlyArray<Command.Command<any, any>>,
-  emitted: ReadonlyArray<unknown>
-): Step<any, any, any, any> => Object.assign(Object.create(StepProto), { model, commands, emitted })
+  emitted: ReadonlyArray<unknown>,
+  lists: ReadonlyArray<ListIssue>
+): Step<any, any, any, any> => Object.assign(Object.create(StepProto), { model, commands, emitted, lists })
 
 const makeUpdate = (model: unknown, props: unknown): Update<any, any, any, any> =>
-  Object.assign(Object.create(StepProto), { model, commands: [], emitted: [], props })
+  Object.assign(Object.create(StepProto), { model, commands: [], emitted: [], lists: [], props })
 
 const makeInit = (props: unknown, empty: object = {}): Init<any, any, any, any> => ({
   props,
   empty,
-  set: (model) => makeStep(model, [], []) as Step<any, any, any, never>
+  set: (model) => makeStep(model, [], [], []) as Step<any, any, any, never>
 })
 
 /**
@@ -231,12 +283,17 @@ const makeInit = (props: unknown, empty: object = {}): Init<any, any, any, any> 
  * @category guards
  * @since 4.1.3
  */
-export const isStep = (u: unknown): u is Step<unknown, unknown, unknown, unknown> =>
+export const isStep = (u: unknown): u is InitStep<unknown, unknown, unknown, unknown> =>
   Predicate.hasProperty(u, StepTypeId)
 
 const toNext = (result: unknown): Next<any, any, any, any> =>
   isStep(result)
-    ? { model: result.model, commands: result.commands, events: result.emitted }
+    ? {
+      model: result.model,
+      commands: result.commands,
+      events: result.emitted,
+      lists: (result as Step<any, any, any>).lists
+    }
     : { model: result, commands: [], events: [] }
 
 /**
@@ -415,19 +472,35 @@ export type Message<C> = C extends Component<infer _N, infer _P, infer _M, infer
  * @category utility types
  * @since 4.1.3
  */
-export type LoaderFields<Model> = [Model] extends [object] ?
-  LoaderKey<Model, keyof Model & string, Loader.Snapshot<any, any> | Loader.SnapshotMap<any, any>>
+export type LoaderFields<Model> = [Model] extends [object] ? LoaderKey<
+    Model,
+    keyof Model & string,
+    Loader.Snapshot<any, any> | Loader.SnapshotMap<any, any> | Loader.SnapshotList<any, any>
+  >
   : never
 
 /**
- * The single loader fields of a Model: those that hold a `Loader.Snapshot`.
+ * The single loader fields of a Model: those that hold a `Loader.Snapshot`
+ * or a `Loader.SnapshotList`.
  *
  * @stability experimental
  * @category utility types
  * @since 4.1.3
  */
 export type SingleFields<Model> = [Model] extends [object] ?
-  LoaderKey<Model, keyof Model & string, Loader.Snapshot<any, any>>
+  LoaderKey<Model, keyof Model & string, Loader.Snapshot<any, any> | Loader.SnapshotList<any, any>>
+  : never
+
+/**
+ * The list fields of a Model: those that hold a `Loader.SnapshotList`.
+ * `$.loadMore` and `$.reset` take one.
+ *
+ * @stability experimental
+ * @category utility types
+ * @since 4.1.3
+ */
+export type ListFields<Model> = [Model] extends [object] ?
+  LoaderKey<Model, keyof Model & string, Loader.SnapshotList<any, any>>
   : never
 
 /**
@@ -455,6 +528,7 @@ type LoaderKey<Model, K extends keyof Model, S> = K extends unknown ? Model[K] e
  */
 export type ReadOf<S> = S extends Loader.Snapshot<infer R, any> ? R
   : S extends Loader.SnapshotMap<infer R, any> ? R
+  : S extends Loader.SnapshotList<infer R, any> ? R
   : never
 
 /**
@@ -500,7 +574,28 @@ export type Empty<Model> = { readonly [K in LoaderFields<Model>]: Model[K] }
  */
 export type Loaded<Model> = {
   readonly [K in LoaderFields<Model>]: Model[K] extends Loader.SnapshotMap<any, any> ? KeyedLoaded<ReadOf<Model[K]>>
+    : Model[K] extends Loader.SnapshotList<infer R, any> ? AsyncResult.AsyncResult<LoadedList<R>, Loader.Read.Error<R>>
     : ResultOf<Model[K]>
+}
+
+/**
+ * A list field as `h.loaded` opens it, inside its `AsyncResult`.
+ *
+ * **Details**
+ *
+ * `items` is every page's items, flat, after patches, with one item per
+ * the definition's `key`: the first of a key stays. `pages` is the page
+ * array. `more` is `Loading` while a load more runs or waits its turn, and
+ * `Failed` with the error of the last one that failed.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.1.3
+ */
+export interface LoadedList<R extends Loader.ListRead.Any> {
+  readonly items: ReadonlyArray<Loader.ListRead.Item<R>>
+  readonly pages: ReadonlyArray<Loader.ListRead.Page<R>>
+  readonly more: Loader.More<Loader.Read.Error<R>>
 }
 
 /**
@@ -559,7 +654,9 @@ export interface KeyedChange<R extends Loader.Read.Any> {
  * @since 4.1.3
  */
 export type Previous<Model> = {
-  readonly [K in SingleFields<Model>]: Option.Option<Loader.Read.Success<ReadOf<Model[K]>>>
+  readonly [K in SingleFields<Model>]: Model[K] extends Loader.SnapshotList<infer R, any>
+    ? Option.Option<Omit<LoadedList<R>, "more">>
+    : Option.Option<Loader.Read.Success<ReadOf<Model[K]>>>
 }
 
 /**
@@ -640,6 +737,8 @@ export type Watch<Model, Msg> = (
         loaded: KeyedLoaded<ReadOf<Model[K]>>,
         changes: ReadonlyArray<KeyedChange<ReadOf<Model[K]>>>
       ) => Msg
+      : Model[K] extends Loader.SnapshotList<infer R, any>
+        ? (snapshot: Model[K], loaded: AsyncResult.AsyncResult<LoadedList<R>, Loader.Read.Error<R>>) => Msg
       : (snapshot: Model[K], result: ResultOf<Model[K]>) => Msg
   }
 ) => Watches<Model, Msg>
@@ -720,7 +819,7 @@ export const make = <
   Msg,
   Props = {},
   Events = never,
-  UI extends Model | Step<Model, Msg, Events, any> = Model,
+  UI extends Model | InitStep<Model, Msg, Events, any> = Model,
   U extends Model | Step<Model, Msg, Events, any> = Model,
   UV extends View.Node<Msg, any> = View.Node<Msg>,
   S extends Subscription.Subscription<Msg, any> = never,

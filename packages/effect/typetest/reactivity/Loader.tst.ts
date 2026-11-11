@@ -1,4 +1,4 @@
-import { Context, Effect, Layer, Schema, type Stream } from "effect"
+import { Context, Effect, Layer, Option, Schema, type Stream } from "effect"
 import { type AsyncResult, Loader } from "effect/reactivity"
 import { describe, expect, it } from "tstyche"
 
@@ -105,5 +105,82 @@ describe("Loader", () => {
     expect(Model.make).type.not.toBeCallableWith({
       user: {} as Loader.Snapshot<typeof Count, "user">
     })
+  })
+})
+
+const Page = Schema.Struct({ users: Schema.Array(User), next: Schema.NullOr(Schema.Number) })
+
+class ListUsers extends Loader.ListService<ListUsers>()("ListUsers", {
+  args: { team: Schema.String },
+  page: Page,
+  items: (page) => page.users,
+  key: (user) => user.id,
+  error: NotFound,
+  cursor: Schema.Number,
+  next: (lastPage) => lastPage.next === null ? Option.none() : Option.some(lastPage.next),
+  staleTime: "1 minute"
+}, Effect.succeed((_args, _cursor) => Effect.succeed({ users: [], next: null }))) {}
+
+describe("ListService", () => {
+  it("infers the page, item, cursor and error from the definition", () => {
+    expect<Loader.ListRead.Page<typeof ListUsers>>().type.toBe<typeof Page.Type>()
+    expect<Loader.ListRead.Item<typeof ListUsers>>().type.toBe<User>()
+    expect<Loader.Read.Success<typeof ListUsers>>().type.toBe<ReadonlyArray<typeof Page.Type>>()
+    expect<Loader.Read.Error<typeof ListUsers>>().type.toBe<NotFound>()
+    expect(ListUsers.items([])).type.toBe<ReadonlyArray<User>>()
+  })
+
+  it("types the fetcher's cursor by the cursor Schema", () => {
+    Loader.ListService<"Fetcher">()(
+      "Fetcher",
+      {
+        args: { team: Schema.String },
+        page: Page,
+        items: (page) => page.users,
+        key: (user) => user.id,
+        error: Schema.Never,
+        cursor: Schema.Number,
+        next: () => Option.none(),
+        staleTime: 0
+      },
+      Effect.succeed((_args, cursor) => {
+        expect(cursor).type.toBe<Option.Option<number>>()
+        return Effect.succeed({ users: [], next: null })
+      })
+    )
+  })
+
+  // The documented gotcha: inference reads the object in order, so `key` written before `items` sees no item type.
+  it("leaves the item unknown in key when key comes before items", () => {
+    Loader.ListService<"KeyFirst">()("KeyFirst", {
+      args: { team: Schema.String },
+      page: Page,
+      key: (user) => {
+        expect(user).type.toBe<unknown>()
+        return String(user)
+      },
+      items: (page) => page.users,
+      error: Schema.Never,
+      cursor: Schema.Number,
+      next: () => Option.none(),
+      staleTime: 0
+    }, Effect.succeed(() => Effect.succeed({ users: [], next: null })))
+  })
+
+  it("is a target and a patch target", () => {
+    expect(
+      Loader.invalidatesEntry(
+        {
+          invalidates: [ListUsers, ListUsers.entry({ team: "t" })],
+          optimistic: [ListUsers.patch({ team: "t" }, (page) => page), ListUsers.patchAll((page) => page)]
+        },
+        ListUsers,
+        { team: "t" }
+      )
+    ).type.toBe<boolean>()
+  })
+
+  it("has no set", () => {
+    expect(ListUsers).type.not.toHaveProperty("set")
   })
 })

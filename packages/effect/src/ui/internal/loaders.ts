@@ -12,7 +12,7 @@ import * as SchemaAST from "../../SchemaAST.ts"
 import * as Stream from "../../Stream.ts"
 import * as Subscription from "../Subscription.ts"
 
-/** The annotation `Loader.Snapshot` and `Loader.SnapshotMap` put on their Schemas. */
+/** The annotation `Loader.Snapshot`, `Loader.SnapshotList` and `Loader.SnapshotMap` put on their Schemas. */
 const annotationKey = "~effect/reactivity/Loader/Snapshot/field"
 
 interface Annotation {
@@ -20,9 +20,11 @@ interface Annotation {
   readonly label: string
   readonly definition: Loader.Read.Any
   readonly keyed: boolean
+  readonly list?: boolean | undefined
 }
 
-const schemaName = (keyed: boolean) => keyed ? "Loader.SnapshotMap" : "Loader.Snapshot"
+const schemaName = (found: Annotation) =>
+  found.keyed ? "Loader.SnapshotMap" : found.list === true ? "Loader.SnapshotList" : "Loader.Snapshot"
 
 /**
  * One loader field of a Model.
@@ -35,6 +37,8 @@ export interface Field {
   readonly read: Loader.Read.Any
   /** A `Loader.SnapshotMap` field. */
   readonly keyed: boolean
+  /** A `Loader.SnapshotList` field. */
+  readonly list: boolean
 }
 
 /**
@@ -110,7 +114,7 @@ export const checkModel = (name: string, schema: Schema.Top): ReadonlyArray<Fiel
   const seen = new Set<SchemaAST.AST>()
   const nested = (found: Annotation) =>
     new Error(
-      `${name}: the Model holds ${schemaName(found.keyed)}(${JSON.stringify(found.read)}, ${
+      `${name}: the Model holds ${schemaName(found)}(${JSON.stringify(found.read)}, ${
         JSON.stringify(found.label)
       }) below its top level. A loader field is a field of the Model's own struct: use a keyed field or a child instance for more.`
     )
@@ -121,12 +125,12 @@ export const checkModel = (name: string, schema: Schema.Top): ReadonlyArray<Fiel
         if (field === undefined) throw nested(found)
         if (found.label !== field) {
           throw new Error(
-            `${name}: the Model field "${field}" holds ${schemaName(found.keyed)}(${JSON.stringify(found.read)}, ${
+            `${name}: the Model field "${field}" holds ${schemaName(found)}(${JSON.stringify(found.read)}, ${
               JSON.stringify(found.label)
-            }). A snapshot's label is its field's name: write ${schemaName(found.keyed)}(read, "${field}").`
+            }). A snapshot's label is its field's name: write ${schemaName(found)}(read, "${field}").`
           )
         }
-        out.push({ field, label: found.label, read: found.definition, keyed: found.keyed })
+        out.push({ field, label: found.label, read: found.definition, keyed: found.keyed, list: found.list === true })
         return
       }
     }
@@ -178,7 +182,40 @@ const previous = (snapshot: unknown, argsKey: string | undefined): Option.Option
   if (argsKey === undefined) return Option.none()
   const data = Loader.snapshotData(snapshot)
   if (data?.result === undefined || data.argsKey === argsKey || data.result._tag !== "Success") return Option.none()
-  return Option.some(data.result.value)
+  return Option.some(data.def.list === undefined ? data.result.value : listOf(data.def, data.result.value))
+}
+
+/** A list's pages, with their items: the dedupe runs once per page array. */
+const lists = new WeakMap<object, { readonly items: ReadonlyArray<unknown>; readonly pages: ReadonlyArray<unknown> }>()
+const listOf = (def: ReadDef, pages: ReadonlyArray<unknown>) => {
+  let out = lists.get(pages)
+  if (out === undefined) {
+    out = { items: Loader.listItems(def, pages), pages }
+    lists.set(pages, out)
+  }
+  return out
+}
+
+/** One opened list per snapshot, so a view and a watch handler share it. */
+const openedLists = new WeakMap<object, AsyncResult.AsyncResult<any, any>>()
+
+/**
+ * A list's result opened as `h.loaded` shows it: `{ items, pages, more }`.
+ *
+ * @internal
+ */
+export const openList = (
+  snapshot: unknown,
+  result: AsyncResult.AsyncResult<any, any>
+): AsyncResult.AsyncResult<any, any> => {
+  if (result._tag === "Initial") return result
+  const data = Loader.snapshotData(snapshot)!
+  const cached = data.result === result ? openedLists.get(snapshot as object) : undefined
+  if (cached !== undefined) return cached
+  const more = data.more ?? { _tag: "End" }
+  const opened = AsyncResult.map(result, (pages: ReadonlyArray<unknown>) => ({ ...listOf(data.def, pages), more }))
+  if (data.result === result) openedLists.set(snapshot as object, opened)
+  return opened
 }
 
 /**
@@ -328,7 +365,7 @@ export const bind = (
   }
   // The three views share prototypes built once here, so a render defines no property.
   const view = (
-    read: (snapshot: unknown, argsKey: string | undefined) => unknown,
+    read: (snapshot: unknown, argsKey: string | undefined, field: Field) => unknown,
     keyed: ((state: State, field: Field) => unknown) | undefined
   ) => {
     const proto = {}
@@ -338,7 +375,9 @@ export const bind = (
         enumerable: true,
         get(this: any) {
           const state: State = this[stateKey]
-          return field.keyed ? keyed!(state, field) : read(state.model[field.field], argsOf(state, field).argsKey)
+          return field.keyed
+            ? keyed!(state, field)
+            : read(state.model[field.field], argsOf(state, field).argsKey, field)
         }
       })
     }
@@ -352,7 +391,10 @@ export const bind = (
     }
     return opened
   }
-  const loadedProto = view(open, openField)
+  const loadedProto = view((snapshot, argsKey, field) => {
+    const result = open(snapshot, argsKey)
+    return field.list ? openList(snapshot, result) : result
+  }, openField)
   const previousProto = view(previous, undefined)
   const patchedProto = view(patched, undefined)
   const viewOf = (proto: object, state: State) => {
@@ -380,8 +422,13 @@ export const bind = (
             throw new Error(`${name}: watch has no handler for the loader field "${field.field}".`)
           }
           const current = argsOf(state, field)
+          // A list's handler gets the list opened, as `h.loaded` shows it.
+          const fieldMsg = field.list
+            ? (snapshot: unknown, result: AsyncResult.AsyncResult<any, any>) =>
+              toMsg(snapshot, openList(snapshot, result))
+            : toMsg
           const watchOf = (args: unknown, argsKey: string | undefined, keyed: boolean) => {
-            const marker: Marker = { read: field.read, label: field.label, args, argsKey, toMsg: toMsg as any, keyed }
+            const marker: Marker = { read: field.read, label: field.label, args, argsKey, toMsg: fieldMsg, keyed }
             return {
               [Subscription.TypeId]: Subscription.TypeId,
               // New args are a new key, so the old watcher goes before the new one registers.

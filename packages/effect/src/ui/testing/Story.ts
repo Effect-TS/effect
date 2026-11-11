@@ -115,6 +115,8 @@ export interface Story<Props, Model, Msg, Events> {
   readonly interrupted: ReadonlyArray<Command.Effectful<Msg, any, never> | Command.Streaming<Msg, any, never>>
   /** Commands ignored by `mode: "drop"`. */
   readonly dropped: ReadonlyArray<Command.Effectful<Msg, any, never> | Command.Streaming<Msg, any, never>>
+  /** The list fields with a load more `update` issued and no step has settled yet. */
+  readonly loadingMore: ReadonlyArray<string>
   /**
    * The view of the current Model and props, rendered once the step that
    * changed them has sent its keyed prunes, so a defect in `view` fails that
@@ -297,7 +299,8 @@ export interface Steps<C extends AnyComponent> extends Pipeable {
   /**
    * Loads a loader field with a Success: builds the snapshot at the loader's
    * current args and sends it through the declared watch handler. Throws when
-   * the loader is disabled.
+   * the loader is disabled. For a list field `value` is the page array, and
+   * it settles a pending load more.
    */
   loaded<F extends Component.SingleFields<Component.Model<C>>>(
     field: F,
@@ -330,6 +333,23 @@ export interface Steps<C extends AnyComponent> extends Pipeable {
     args: Loader.Read.Args<Component.ReadOf<Component.Model<C>[F]>>,
     error: Loader.Read.Error<Component.ReadOf<Component.Model<C>[F]>>,
     options?: { readonly waiting?: boolean | undefined }
+  ): this
+  /**
+   * Settles a list field's pending load more with its next page: sends the
+   * field's pages with `page` appended. Throws when no load more is pending.
+   */
+  loadedMore<F extends Component.ListFields<Component.Model<C>>>(
+    field: F,
+    page: Loader.ListRead.Page<Component.ReadOf<Component.Model<C>[F]>>
+  ): this
+  /**
+   * Settles a list field's pending load more with a failure: the pages stay,
+   * and `more` is `Failed` with `error`. Throws when no load more is
+   * pending.
+   */
+  loadMoreFailed<F extends Component.ListFields<Component.Model<C>>>(
+    field: F,
+    error: Loader.Read.Error<Component.ReadOf<Component.Model<C>[F]>>
   ): this
   /**
    * Loads several keys of a keyed field in one message, as the runtime sends
@@ -382,7 +402,7 @@ export declare namespace Steps {
 
 type Fields<Props, Model, Msg, Events> = Pick<
   Story<Props, Model, Msg, Events>,
-  "component" | "props" | "model" | "pending" | "emitted" | "interrupted" | "dropped"
+  "component" | "props" | "model" | "pending" | "emitted" | "interrupted" | "dropped" | "loadingMore"
 >
 
 /**
@@ -406,6 +426,7 @@ const record = <Props, Model, Msg, Events>(
     emitted: fields.emitted,
     interrupted: fields.interrupted,
     dropped: fields.dropped,
+    loadingMore: fields.loadingMore,
     view,
     subscriptions: () =>
       (fields.component.subscriptions?.(fields.model, fields.props) ?? [])
@@ -442,10 +463,12 @@ const update = <Props, Model, Msg, Events>(
     emitted: story.emitted,
     interrupted: story.interrupted,
     dropped: story.dropped,
+    loadingMore: story.loadingMore,
     ...patch
   }
   // A defect in `view` fails the step that changed the Model, the props or what's pending.
-  const view = fields.model === story.model && fields.props === story.props && fields.pending === story.pending
+  const view = fields.model === story.model && fields.props === story.props && fields.pending === story.pending &&
+      fields.loadingMore === story.loadingMore
     ? story.view
     : () => story.component.view(fields.model, fields.props, runningOf(fields.pending))
   return record(fields, view)
@@ -465,34 +488,136 @@ const loadStep = (
   build: (
     previous: Option.Option<AsyncResult.Success<any, any>>
   ) => AsyncResult.Success<any, any> | AsyncResult.Failure<any, any>,
-  patched: boolean
+  patched: boolean,
+  more?: (previous: Option.Option<AsyncResult.Success<any, any>>) => Loader.More<any> | undefined
 ): Story<any, any, any, any> => {
   const bound = boundOf(story.component)
   if (bound === undefined || !bound.fields.some((f) => f.field === field)) {
     throw new Error(`Story.${step}: "${field}" is not a loader field of ${story.component.name}`)
   }
-  const marker = (story.component.subscriptions?.(story.model, story.props) ?? [])
-    .map((sub) => loaders.markerOf(sub))
-    .find((marker) => marker?.label === field)!
+  const marker = markerAt(story, field)
   if (marker.argsKey === undefined) {
     throw new Error(`Story.${step}: the loader of "${field}" is disabled for the current Model and props`)
   }
+  const previous = storedAt(story, field, marker.argsKey)
+  const result = build(previous)
+  const def = Loader.defOf(marker.read)
+  const snapshot = Loader.makeSnapshot(
+    def,
+    marker.label,
+    { args: marker.args, argsKey: marker.argsKey },
+    result,
+    patched,
+    more !== undefined
+      ? more(previous)
+      : def.list !== undefined && result._tag === "Success"
+      ? moreOfPages(def, result.value)
+      : undefined
+  )
+  return dispatch(story, marker.toMsg(snapshot, result))
+}
+
+const markerAt = (story: Story<any, any, any, any>, field: string): loaders.Marker =>
+  (story.component.subscriptions?.(story.model, story.props) ?? [])
+    .map((sub) => loaders.markerOf(sub))
+    .find((marker) => marker?.label === field)!
+
+/** The field's last Success at `argsKey`: its value, or a Failure's previous one. */
+const storedAt = (
+  story: Story<any, any, any, any>,
+  field: string,
+  argsKey: string
+): Option.Option<AsyncResult.Success<any, any>> => {
   const data = Loader.snapshotData(story.model[field])
-  const stored = data?.argsKey === marker.argsKey ? data.result : undefined
-  const previous: Option.Option<AsyncResult.Success<any, any>> = stored === undefined
+  const stored = data?.argsKey === argsKey ? data.result : undefined
+  return stored === undefined
     ? Option.none()
     : stored._tag === "Success"
     ? Option.some(stored)
     : stored.previousSuccess
-  const result = build(previous)
-  const snapshot = Loader.makeSnapshot(
-    Loader.defOf(marker.read),
-    marker.label,
-    { args: marker.args, argsKey: marker.argsKey },
-    result,
-    patched
+}
+
+/** Whether a page array has a next page, by the definition's `next`. */
+const moreOfPages = (def: ReturnType<typeof Loader.defOf>, pages: ReadonlyArray<unknown>): Loader.More<never> =>
+  pages.length > 0 && Option.isSome(def.list!.next(pages[pages.length - 1], pages))
+    ? { _tag: "Available" }
+    : { _tag: "End" }
+
+const listField = (story: Story<any, any, any, any>, step: string, field: string): void => {
+  if (boundOf(story.component)?.fields.some((f) => f.field === field && f.list) !== true) {
+    throw new Error(`Story.${step}: "${field}" is not a list field of ${story.component.name}`)
+  }
+}
+
+/** Settles a field's pending load more with `result`, sent at the field's pages. */
+const settleMore = (
+  story: Story<any, any, any, any>,
+  step: string,
+  field: string,
+  build: (pages: ReadonlyArray<unknown>) => {
+    readonly pages: ReadonlyArray<unknown>
+    readonly more: (pages: ReadonlyArray<unknown>) => Loader.More<any>
+  }
+): Story<any, any, any, any> => {
+  listField(story, step, field)
+  if (!story.loadingMore.includes(field)) {
+    throw new Error(`Story.${step}: no load more of "${field}" is pending`)
+  }
+  const settled = update(story, { loadingMore: story.loadingMore.filter((other) => other !== field) })
+  let more: Loader.More<any> | undefined
+  return loadStep(
+    settled,
+    step,
+    field,
+    (previous) => {
+      if (Option.isNone(previous)) throw new Error(`Story.${step}: "${field}" holds no pages at its loader's args`)
+      const next = build(previous.value.value)
+      more = next.more(next.pages)
+      return AsyncResult.success(next.pages, { timestamp: previous.value.timestamp })
+    },
+    false,
+    () => more
   )
-  return dispatch(story, marker.toMsg(snapshot, result))
+}
+
+/**
+ * A `$.loadMore` or `$.reset` from `update`, as the runtime runs it at the field's
+ * current args: a load more is pending, and sends `Loading`; a reset sends the
+ * first page, waiting, and ends a pending load more.
+ */
+const applyList = (story: Story<any, any, any, any>, list: Component.ListIssue): Story<any, any, any, any> => {
+  const marker = markerAt(story, list.field)
+  if (marker?.argsKey === undefined) return story
+  const previous = storedAt(story, list.field, marker.argsKey)
+  const def = Loader.defOf(marker.read)
+  const data = Loader.snapshotData(story.model[list.field])
+  if (list.op === "loadMore") {
+    if (story.loadingMore.includes(list.field)) return story
+    // At the end, or with nothing held at these args, nothing is sent and nothing waits.
+    if (Option.isNone(previous) || moreOfPages(def, previous.value.value)._tag === "End") return story
+    const loading = update(story, { loadingMore: [...story.loadingMore, list.field] })
+    if (data?.result?._tag !== "Success") return loading
+    return loadStep(
+      loading,
+      "loadMore",
+      list.field,
+      () => data.result as AsyncResult.Success<any, any>,
+      data.patched,
+      () => ({
+        _tag: "Loading"
+      })
+    )
+  }
+  const reset = update(story, { loadingMore: story.loadingMore.filter((other) => other !== list.field) })
+  if (Option.isNone(previous)) return reset
+  const first = previous.value.value.slice(0, 1)
+  return loadStep(
+    reset,
+    "reset",
+    list.field,
+    () => AsyncResult.success(first, { timestamp: previous.value.timestamp, waiting: true }),
+    false
+  )
 }
 
 /** The watch group of a keyed field at the story's Model and props. */
@@ -683,13 +808,15 @@ const apply = <Props, Model, Msg, Events>(
         break
     }
   }
-  return update(story, {
+  let out = update(story, {
     model: next.model,
     pending,
     emitted: [...story.emitted, ...next.events],
     interrupted,
     dropped
   })
+  for (const list of next.lists ?? []) out = applyList(out, list)
+  return out
 }
 
 /** Removes a resolved run and starts the next queued run of its group, if any. */
@@ -809,7 +936,9 @@ class StepsImpl implements Steps<AnyComponent> {
     const next = typeof model === "function" ? model(this.current.model) : model
     // A Model set by hand: its keyed fields haven't been sent a message for any key set.
     this.sentFor.clear()
-    return this.step(update(this.current, { model: next, pending: [], emitted: [], interrupted: [], dropped: [] }))
+    return this.step(
+      update(this.current, { model: next, pending: [], emitted: [], interrupted: [], dropped: [], loadingMore: [] })
+    )
   }
   props(next: unknown): this {
     const props = typeof next === "function" ? next(this.current.props) : next
@@ -860,13 +989,29 @@ class StepsImpl implements Steps<AnyComponent> {
       unknown,
       { readonly waiting?: boolean | undefined; readonly patched?: boolean | undefined } | undefined
     ]
+    // A list's pages settle its pending load more.
+    const current = this.current.loadingMore.includes(field)
+      ? update(this.current, { loadingMore: this.current.loadingMore.filter((other) => other !== field) })
+      : this.current
     return this.step(loadStep(
-      this.current,
+      current,
       "loaded",
       field,
       () => AsyncResult.success(value, { waiting: options?.waiting, timestamp: 0 }),
       options?.patched === true
     ))
+  }
+  loadedMore(field: string, page: unknown): this {
+    return this.step(settleMore(this.current, "loadedMore", field, (pages) => ({
+      pages: [...pages, page],
+      more: (pages) => moreOfPages(Loader.defOf(markerAt(this.current, field).read), pages)
+    })))
+  }
+  loadMoreFailed(field: string, error: unknown): this {
+    return this.step(settleMore(this.current, "loadMoreFailed", field, (pages) => ({
+      pages,
+      more: () => ({ _tag: "Failed", error })
+    })))
   }
   loadFailed(field: string, ...rest: Array<any>): this {
     if (isKeyed(this.current, field)) {
@@ -963,6 +1108,13 @@ export const make = <C extends AnyComponent>(
   if (story.pending.length > 0) {
     throw new Error(`Story.make: Commands still pending at the end: ${describePending(story.pending)}`)
   }
+  if (story.loadingMore.length > 0) {
+    throw new Error(
+      `Story.make: a load more still pending at the end on ${
+        story.loadingMore.map((field) => JSON.stringify(field)).join(", ")
+      }`
+    )
+  }
   return story
 }
 
@@ -983,7 +1135,8 @@ export const start = <C extends AnyComponent>(component: C, props: Component.Pro
     pending: [],
     emitted: [],
     interrupted: [],
-    dropped: []
+    dropped: [],
+    loadingMore: []
   }, () => component.view(first.model, props, runningOf([])))
   return new StepsImpl(apply(empty, first)) as Steps<C>
 }
@@ -1108,6 +1261,8 @@ export interface Outcome<Model, Events> {
   readonly model: Model
   readonly events: ReadonlyArray<Events>
   readonly commands: ReadonlyArray<ReturnType<typeof MessageLog.encodeCommand>>
+  /** The `$.loadMore` and `$.reset` calls, compared and never run. */
+  readonly lists: ReadonlyArray<Component.ListIssue>
 }
 
 /**
@@ -1204,6 +1359,7 @@ export const fromLog = <Name extends string, Props, Model, Msg, Events, R, V ext
         model: entry.model as Model,
         events: entry.events as ReadonlyArray<Events>,
         commands: (entry as MessageLog.Update).commands.map(MessageLog.encodeCommand),
+        lists: entry._tag === "Update" ? entry.lists ?? [] : [],
         message: entry._tag === "Update" ? entry.message as Msg : undefined
       }
     }
@@ -1213,6 +1369,7 @@ export const fromLog = <Name extends string, Props, Model, Msg, Events, R, V ext
       model: decode(entry, "model", wire.model) as Model,
       events: wire.events.map((emitted) => decode(entry, "events", emitted)) as ReadonlyArray<Events>,
       commands: wire.commands,
+      lists: wire._tag === "Update" ? wire.lists ?? [] : [],
       message: wire._tag === "Update" ? decode(entry, "message", wire.message) as Msg : undefined
     }
   }
@@ -1232,10 +1389,15 @@ export const fromLog = <Name extends string, Props, Model, Msg, Events, R, V ext
     }
     const next = component.update(model, recorded.message as Msg, recorded.props)
     replayed++
-    const recomputed = { model: next.model, events: next.events, commands: next.commands.map(MessageLog.encodeCommand) }
+    const recomputed = {
+      model: next.model,
+      events: next.events,
+      commands: next.commands.map(MessageLog.encodeCommand),
+      lists: next.lists ?? []
+    }
     if (
       !sameModel(recomputed.model, recorded.model) || !sameEvents(recomputed.events, recorded.events) ||
-      !sameCommands(recomputed.commands, recorded.commands)
+      !sameCommands(recomputed.commands, recorded.commands) || !sameCommands(recomputed.lists, recorded.lists)
     ) {
       return {
         path,
@@ -1244,7 +1406,12 @@ export const fromLog = <Name extends string, Props, Model, Msg, Events, R, V ext
         divergence: {
           seq: entry.seq,
           message: recorded.message as Msg,
-          recorded: { model: recorded.model, events: recorded.events, commands: recorded.commands },
+          recorded: {
+            model: recorded.model,
+            events: recorded.events,
+            commands: recorded.commands,
+            lists: recorded.lists
+          },
           recomputed
         }
       }

@@ -459,7 +459,9 @@ const readClass = (def: ReadDef, fetcher: Effect.Effect<Fetcher, any, any>) => {
       })
     )
     static get(args: unknown) {
-      return withCache((cache, context) => cache.get(def, args, fetcherOf(context, Base), Context.get(context, CurrentRun)))
+      return withCache((cache, context) =>
+        cache.get(def, args, fetcherOf(context, Base), Context.get(context, CurrentRun))
+      )
     }
     static prefetch(args: unknown) {
       return withCache((cache, context) => Effect.sync(() => cache.prefetch(def, args, fetcherOf(context, Base))))
@@ -551,9 +553,7 @@ export type ListTypeId = "~effect/reactivity/Loader/List"
  * @category models
  * @since 4.1.3
  */
-export interface ListRead<in out Args, in out Page, in out Item, in out E>
-  extends Read<Args, ReadonlyArray<Page>, E>
-{
+export interface ListRead<in out Args, in out Page, in out Item, in out E> extends Read<Args, ReadonlyArray<Page>, E> {
   readonly [ListTypeId]: ListRead.Variance<Page, Item>
 }
 
@@ -1180,9 +1180,76 @@ export interface SnapshotSchema<R extends Read.Any, Label extends string> extend
  * @since 4.1.3
  */
 export const Snapshot = <R extends Read.Any, const Label extends string>(
-  read: R,
+  read: R & NotList,
   label: Label
 ): SnapshotSchema<R, Label> => snapshotSchema(read, label) as any
+
+/** A read that isn't a list: a list's field is `SnapshotList`. */
+interface NotList {
+  readonly [ListTypeId]?: never
+}
+
+/**
+ * An opaque snapshot of one list, held in a Model field. The effect/ui
+ * runtime builds it and opens it; nothing else can.
+ *
+ * **Details**
+ *
+ * It holds what a `Snapshot` holds, with the page array as its value, and
+ * whether the list holds more pages to load. On the wire that is one bit,
+ * never `Loading` or `Failed`.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.1.3
+ */
+export interface SnapshotList<in out R extends ListRead.Any, in out Label extends string> {
+  readonly "~effect/reactivity/Loader/SnapshotList": {
+    readonly _R: Types.Invariant<R>
+    readonly _Label: Types.Invariant<Label>
+  }
+}
+
+/**
+ * The Schema `Loader.SnapshotList` returns. Its type parameters are the
+ * read's `args` Schema, the page array's and the `error` Schema.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.1.3
+ */
+export interface SnapshotListSchema<R extends ListRead.Any, Label extends string> extends
+  Schema.declareConstructor<
+    SnapshotList<R, Label>,
+    SnapshotList<R, Label>,
+    readonly [
+      Schema.Codec<Read.Args<R>, unknown>,
+      Schema.Codec<Read.Success<R>, unknown>,
+      Schema.Codec<Read.Error<R>, unknown>
+    ]
+  >
+{}
+
+/**
+ * The Schema of a Model field that holds a snapshot of a list read, branded
+ * by the read and the label.
+ *
+ * **Details**
+ *
+ * It follows `Snapshot`'s rules. A list read in `Snapshot` or
+ * `SnapshotMap`, and a read that isn't a list here, are type errors. On the
+ * wire a Success adds whether the list holds more pages: a load more running
+ * or failed is written as more, and a restored list shows `Available` or
+ * `End`.
+ *
+ * @stability experimental
+ * @category schemas
+ * @since 4.1.3
+ */
+export const SnapshotList = <R extends ListRead.Any, const Label extends string>(
+  read: R,
+  label: Label
+): SnapshotListSchema<R, Label> => snapshotSchema(read, label) as any
 
 /**
  * An opaque collection of snapshots of one read, one per args key, held in a
@@ -1333,7 +1400,7 @@ export interface SnapshotMapSchema<R extends Read.Any, Label extends string> ext
  * @since 4.1.3
  */
 export const SnapshotMap = <R extends Read.Any, const Label extends string>(
-  read: R & SnapshotMap.StructArgs<R>,
+  read: R & SnapshotMap.StructArgs<R> & NotList,
   label: Label
 ): SnapshotMapSchema<R, Label> => snapshotMapSchema(read, label) as any
 
@@ -2518,9 +2585,9 @@ interface FetchEvent {
    */
   readonly stored: boolean
   /** On a list read: the index of the page this request loads. */
-  readonly page?: number | undefined
-  /** On a list read: the encoded cursor of the page, `undefined` for the first. */
-  readonly cursor?: Schema.Json | undefined
+  readonly page?: number
+  /** On a list read: the encoded cursor of the page, absent for the first. */
+  readonly cursor?: Schema.Json
 }
 
 interface WatchHandle {
@@ -2623,7 +2690,7 @@ interface CacheInternals {
     def: ReadDef,
     args: unknown,
     fetcher: Fetcher,
-    onChange: (result: Settled, patched: boolean) => void,
+    onChange: (result: Settled, patched: boolean, more: More<any> | undefined) => void,
     onDefect?: ((cause: Cause.Cause<never>) => void) | undefined,
     options?: { readonly patched?: boolean | undefined } | undefined
   ) => WatchHandle
@@ -2761,6 +2828,8 @@ interface SnapshotData {
   readonly result: Settled | undefined
   /** The value includes an unconfirmed patch. Only ever true over a Success. */
   readonly patched: boolean
+  /** A list's: whether it holds more pages. `undefined` for any other read, and the empty snapshot. */
+  readonly more: More<any> | undefined
 }
 
 class SnapshotImpl implements Equal.Equal {
@@ -2773,7 +2842,7 @@ class SnapshotImpl implements Equal.Equal {
     const a = this[SnapshotTypeId]
     const b = that[SnapshotTypeId]
     return a.def.name === b.def.name && a.label === b.label && a.argsKey === b.argsKey && a.patched === b.patched &&
-      Equal.equals(a.result, b.result)
+      sameMore(a.more, b.more) && Equal.equals(a.result, b.result)
   }
   [Hash.symbol](): number {
     const data = this[SnapshotTypeId]
@@ -2787,7 +2856,8 @@ export const makeSnapshot = (
   label: string,
   entry: { readonly args: unknown; readonly argsKey: string } | undefined,
   result: Settled | undefined,
-  patched = false
+  patched = false,
+  more?: More<any> | undefined
 ): SnapshotImpl =>
   new SnapshotImpl({
     def,
@@ -2796,7 +2866,8 @@ export const makeSnapshot = (
     // As the key sees them, so the args Schema never meets an `undefined` the key dropped.
     args: entry === undefined ? undefined : def.normalize(entry.args),
     result: entry === undefined ? undefined : result,
-    patched: entry !== undefined && patched && result?._tag === "Success"
+    patched: entry !== undefined && patched && result?._tag === "Success",
+    more: def.list === undefined || entry === undefined || result === undefined ? undefined : more ?? moreEnd
   })
 
 /** @internal */
@@ -2857,8 +2928,15 @@ const snapshotSchema = (
       [def.args.ast, def.success.ast, def.error.ast],
       snapshotRun(def, label, true),
       {
-        expected: "Loader.Snapshot(" + quote(def.name) + ", " + quote(label) + ")",
-        [snapshotAnnotationKey]: { read: def.name, label, definition: read, keyed: false },
+        expected: (def.list === undefined ? "Loader.Snapshot(" : "Loader.SnapshotList(") + quote(def.name) + ", " +
+          quote(label) + ")",
+        [snapshotAnnotationKey]: {
+          read: def.name,
+          label,
+          definition: read,
+          keyed: false,
+          list: def.list !== undefined
+        },
         toCodecJson: snapshotJson(def, label)
       } as Schema.Annotations.Annotations,
       undefined,
@@ -2952,7 +3030,10 @@ const snapshotWire = (def: ReadDef, label: string, [args, success, error]: Reado
   return {
     tuple: Schema.Union([
       Schema.Tuple([]),
-      Schema.Tuple([Schema.String, Schema.Literal(0), success, Schema.Number, Schema.Boolean]),
+      def.list === undefined
+        ? Schema.Tuple([Schema.String, Schema.Literal(0), success, Schema.Number, Schema.Boolean])
+        // A list adds whether it holds more pages: `Loading` and `Failed` are written as more.
+        : Schema.Tuple([Schema.String, Schema.Literal(0), success, Schema.Number, Schema.Boolean, Schema.Boolean]),
       Schema.Tuple([
         Schema.String,
         Schema.Literal(1),
@@ -2962,14 +3043,15 @@ const snapshotWire = (def: ReadDef, label: string, [args, success, error]: Reado
     ]),
     decode: (tuple: any, options: SchemaAST.ParseOptions): Effect.Effect<SnapshotImpl, SchemaIssue.Issue> => {
       if (tuple.length === 0) return Effect.succeed(makeSnapshot(def, label, undefined, undefined))
-      const [key, tag, payload, fourth, fifth] = tuple
+      const [key, tag, payload, fourth, fifth, sixth] = tuple
       return Effect.map(fromKey(key, options), (args) => {
         const data = { def, label, argsKey: key as string, args }
         if (tag === 0) {
           return new SnapshotImpl({
             ...data,
             result: AsyncResult.success(payload, { timestamp: fourth }),
-            patched: fifth === true
+            patched: fifth === true,
+            more: def.list === undefined ? undefined : sixth === true ? moreAvailable : moreEnd
           })
         }
         return new SnapshotImpl({
@@ -2982,7 +3064,8 @@ const snapshotWire = (def: ReadDef, label: string, [args, success, error]: Reado
                 : Option.some(AsyncResult.success(fourth[0], { timestamp: fourth[1] }))
             }
           ),
-          patched: false
+          patched: false,
+          more: def.list === undefined ? undefined : moreEnd
         })
       })
     },
@@ -2992,7 +3075,16 @@ const snapshotWire = (def: ReadDef, label: string, [args, success, error]: Reado
       if (result === undefined) return Effect.succeed([])
       return Effect.map(toKey(data.args, options), (key) =>
         result._tag === "Success"
-          ? [key, 0, result.value, result.timestamp, data.patched]
+          ? def.list === undefined
+            ? [key, 0, result.value, result.timestamp, data.patched]
+            : [
+              key,
+              0,
+              result.value,
+              result.timestamp,
+              data.patched,
+              data.more !== undefined && data.more._tag !== "End"
+            ]
           : [
             key,
             1,
@@ -3137,7 +3229,7 @@ const snapshotMapSchema = (
 // -----------------------------------------------------------------------------
 
 interface Watcher {
-  readonly onChange: (result: Settled, patched: boolean) => void
+  readonly onChange: (result: Settled, patched: boolean, more: More<any> | undefined) => void
   readonly onDefect: ((cause: Cause.Cause<never>) => void) | undefined
   readonly build: Build
   /** On a list read, the `More` it last saw. */
@@ -3333,7 +3425,14 @@ const moreLoading: More<never> = { _tag: "Loading" }
 const moreAvailable: More<never> = { _tag: "Available" }
 const moreEnd: More<never> = { _tag: "End" }
 
-const sameMore = (a: More<any> | undefined, b: More<any> | undefined): boolean =>
+/** The `page` and `cursor` of a list's `FetchEvent`: the first page has no cursor. */
+const pageFields = (
+  page: { readonly page: number; readonly cursor: Schema.Json | undefined } | undefined
+): { readonly page?: number; readonly cursor?: Schema.Json } =>
+  page === undefined ? {} : page.cursor === undefined ? { page: page.page } : { page: page.page, cursor: page.cursor }
+
+/** @internal */
+export const sameMore = (a: More<any> | undefined, b: More<any> | undefined): boolean =>
   a === b ||
   (a !== undefined && b !== undefined && a._tag === b._tag &&
     (a._tag !== "Failed" || Equal.equals(a.error, (b as { readonly error: unknown }).error)))
@@ -3624,7 +3723,7 @@ export const makeCache = (options: {
       watcher.last = result
       watcher.lastPatched = patched
       watcher.lastMore = more
-      watcher.onChange(result as Settled, patched)
+      watcher.onChange(result as Settled, patched, more)
     }
   }
   const emitFetch = (
@@ -3642,7 +3741,7 @@ export const makeCache = (options: {
       restart,
       inWindow: inWindow(entry),
       stored,
-      ...page
+      ...pageFields(page)
     }
     fetchEvent(event)
   }
@@ -4504,7 +4603,7 @@ export const makeCache = (options: {
             restart: false,
             inWindow: false,
             stored: false,
-            ...page
+            ...pageFields(page)
           })
         }
         if (existing !== undefined) resetIdle(existing)
@@ -4600,7 +4699,9 @@ export const makeCache = (options: {
       const previous = result.previousSuccess.value
       if (previous.value.length > 1) {
         entry.result = AsyncResult.failure(result.cause, {
-          previousSuccess: Option.some(AsyncResult.success(previous.value.slice(0, 1), { timestamp: previous.timestamp }))
+          previousSuccess: Option.some(
+            AsyncResult.success(previous.value.slice(0, 1), { timestamp: previous.timestamp })
+          )
         })
       }
     }

@@ -161,7 +161,7 @@ export interface Base {
 
 /**
  * One `update` call: the message, what sent it, the props it saw, the Model
- * after it, and the Commands and events it returned.
+ * after it, and the Commands, events, load mores and resets it returned.
  *
  * @stability experimental
  * @category models
@@ -177,6 +177,8 @@ export interface Update extends Base {
   readonly model: unknown
   readonly commands: ReadonlyArray<Command.Command<any, any>>
   readonly events: ReadonlyArray<unknown>
+  /** The `$.loadMore` and `$.reset` calls, in order. The wire omits it when empty. */
+  readonly lists?: ReadonlyArray<Component.ListIssue> | undefined
 }
 
 /**
@@ -325,8 +327,8 @@ export interface FetchStarted extends Base {
   readonly restart: boolean
   readonly inWindow: boolean
   readonly stored: boolean
-  readonly page?: number | undefined
-  readonly cursor?: Schema.Json | undefined
+  readonly page?: number
+  readonly cursor?: Schema.Json
 }
 
 /**
@@ -514,7 +516,10 @@ export const Wire = Schema.Union([
     props: Schema.Json,
     model: Schema.Json,
     commands: Schema.Array(CommandWire),
-    events: Schema.Array(Schema.Json)
+    events: Schema.Array(Schema.Json),
+    lists: Schema.optionalKey(
+      Schema.Array(Schema.Struct({ field: Schema.String, op: Schema.Literals(["loadMore", "reset"]) }))
+    )
   }),
   Schema.TaggedStruct("Mounted", {
     ...Seq,
@@ -656,7 +661,8 @@ export const makeEncoder = (options?: {
             props: through(entry.component, "props", entry.props) as Schema.Json,
             model: capped(entry.component, "model", entry.model),
             commands: entry.commands.map(encodeCommand),
-            events: entry.events.map((emitted) => through(entry.component, "events", emitted) as Schema.Json)
+            events: entry.events.map((emitted) => through(entry.component, "events", emitted) as Schema.Json),
+            ...(entry.lists === undefined || entry.lists.length === 0 ? undefined : { lists: entry.lists })
           }
         case "Mounted":
           return {

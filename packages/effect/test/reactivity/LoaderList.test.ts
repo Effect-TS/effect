@@ -19,6 +19,7 @@ type Page = typeof Page.Type
 // the request, so a walk is told apart from the pages it replaces.
 const makeList = (options: {
   readonly staleTime?: Duration.Input
+  readonly refetchInterval?: Duration.Input
   readonly next?: (lastPage: Page, allPages: ReadonlyArray<Page>) => Option.Option<number>
 } = {}) => {
   const db = {
@@ -28,23 +29,29 @@ const makeList = (options: {
     fail: new Set<number>(),
     page: (index: number): Page["messages"] => [{ id: "m" + index, text: db.version + index }]
   }
-  class ListMessages extends Loader.ListService<ListMessages>()("chat/ListMessages", {
-    args: { room: Schema.String },
-    page: Page,
-    items: (page) => page.messages,
-    key: (message) => message.id,
-    error: Schema.String,
-    cursor: Schema.Number,
-    next: options.next ?? ((lastPage) => Option.fromNullishOr(lastPage.next)),
-    staleTime: options.staleTime ?? "30 seconds"
-  }, Effect.sync(() => (_args, cursor) =>
-    Effect.gen(function*() {
-      const index = Option.getOrElse(cursor, () => 0)
-      const page = { messages: db.page(index), next: index + 1 < db.length ? index + 1 : null }
-      if (db.delay > 0) yield* Effect.sleep(db.delay)
-      if (db.fail.has(index)) return yield* Effect.fail("nope" + index)
-      return page
-    }))) {}
+  class ListMessages extends Loader.ListService<ListMessages>()(
+    "chat/ListMessages",
+    {
+      args: { room: Schema.String },
+      page: Page,
+      items: (page) => page.messages,
+      key: (message) => message.id,
+      error: Schema.String,
+      cursor: Schema.Number,
+      next: options.next ?? ((lastPage) => Option.fromNullishOr(lastPage.next)),
+      staleTime: options.staleTime ?? "30 seconds",
+      refetchInterval: options.refetchInterval
+    },
+    Effect.sync(() => (_args, cursor) =>
+      Effect.gen(function*() {
+        const index = Option.getOrElse(cursor, () => 0)
+        const page = { messages: db.page(index), next: index + 1 < db.length ? index + 1 : null }
+        if (db.delay > 0) yield* Effect.sleep(db.delay)
+        if (db.fail.has(index)) return yield* Effect.fail("nope" + index)
+        return page
+      })
+    )
+  ) {}
   return { db, ListMessages, provide: Effect.provide(Layer.merge(ListMessages.layer, TestLoader.layer())) }
 }
 
@@ -62,7 +69,9 @@ const watch = Effect.fnUntraced(function*<R>(
   changes: Stream.Stream<AsyncResult.AsyncResult<ReadonlyArray<Page>, string>, never, R>
 ) {
   const seen: Array<string> = []
-  const fiber = yield* Effect.forkScoped(Stream.runForEach(changes, (result) => Effect.sync(() => seen.push(show(result)))))
+  const fiber = yield* Effect.forkScoped(
+    Stream.runForEach(changes, (result) => Effect.sync(() => seen.push(show(result))))
+  )
   yield* flush
   return { seen, fiber }
 })
@@ -102,7 +111,9 @@ describe("Loader lists", () => {
       assert.deepStrictEqual(w.seen, ["a0", "a0,a1"])
       // An append changes no timestamp.
       const after = yield* ListMessages.peek(room)
-      assert.isTrue(AsyncResult.isSuccess(before) && AsyncResult.isSuccess(after) && before.timestamp === after.timestamp)
+      assert.isTrue(
+        AsyncResult.isSuccess(before) && AsyncResult.isSuccess(after) && before.timestamp === after.timestamp
+      )
 
       // A refetch walks from the first page, and swaps the pages in at the end.
       db.version = "b"
@@ -128,6 +139,55 @@ describe("Loader lists", () => {
         "invalidation@2"
       ])
       assert.deepStrictEqual((yield* TestLoader.fetches).map((fetch) => fetch.cursor), [undefined, 1, undefined, 1, 2])
+    }).pipe(provide)
+  })
+
+  it.effect("get, prefetch, connectivity and interval walk the held pages, and a patch issued mid-walk restarts it", () => {
+    const { ListMessages, db, provide } = makeList({ staleTime: 0, refetchInterval: "1 minute" })
+    return Effect.gen(function*() {
+      yield* ListMessages.prefetch({ room: "p" })
+      yield* advance(10)
+      const w = yield* watch(ListMessages.changes(room))
+      yield* advance(10)
+      yield* Effect.forkScoped(ListMessages.loadMore(room))
+      yield* advance(10)
+      const get = yield* Effect.forkScoped(ListMessages.get(room))
+      yield* advance(20)
+      assert.strictEqual((yield* Fiber.join(get)).length, 2)
+      yield* TestLoader.setOnline(false)
+      yield* TestLoader.setOnline(true)
+      yield* advance(20)
+      yield* advance("1 minute")
+      yield* advance(20)
+      const before = (yield* TestLoader.fetches).length
+      db.version = "b"
+      yield* ListMessages.invalidate(room)
+      yield* advance(5)
+      const cache = Loader.internals(yield* Loader.Cache)
+      const handle = cache.beginRun({
+        command: "Edit",
+        invalidates: [],
+        optimistic: [ListMessages.patch(room, (page) => page)]
+      })
+      yield* advance(30)
+      // Held while the patch is live.
+      assert.strictEqual((yield* TestLoader.entry(ListMessages, room))?.fetch, "held")
+      yield* Effect.forkScoped(handle.run(Effect.void, undefined))
+      yield* advance(30)
+      assert.deepStrictEqual((yield* pagesLog).slice(0, before), [
+        "prefetch@0",
+        "watch@0",
+        "loadMore@1",
+        "get@0",
+        "get@1",
+        "connectivity@0",
+        "connectivity@1",
+        "interval@0",
+        "interval@1"
+      ])
+      // The walk under the patch stopped at its first page, and walks both from the first once the run exits.
+      assert.deepStrictEqual((yield* pagesLog).slice(before), ["invalidation@0", "invalidation@0", "invalidation@1"])
+      assert.strictEqual(w.seen.at(-1), "b0,b1")
     }).pipe(provide)
   })
 
@@ -327,6 +387,33 @@ describe("Loader lists", () => {
       // The pages stay, stale.
       assert.strictEqual(show(yield* ListMessages.peek(room)), "a0,a1,a1")
       assert.isTrue((yield* TestLoader.entry(ListMessages, room))?.stale)
+    }).pipe(provide)
+  })
+  it.effect("a restored snapshot seeds a cold list stale and walks its pages; a warm entry and a patched snapshot seed nothing", () => {
+    const { ListMessages, db, provide } = makeList()
+    return Effect.gen(function*() {
+      const cache = yield* Loader.Cache
+      const def = Loader.defOf(ListMessages)
+      const pages = [{ messages: db.page(0), next: 1 }, { messages: db.page(1), next: 2 }]
+      const snapshot = (patched: boolean) =>
+        Loader.makeSnapshot(
+          def,
+          "messages",
+          { args: room, argsKey: def.argsKey(room) },
+          AsyncResult.success(pages, { timestamp: 0 }),
+          patched,
+          { _tag: "Available" }
+        )
+      // Under a patch: never seeded.
+      assert.isFalse(Loader.internals(cache).seed(snapshot(true)))
+      assert.isTrue(Loader.internals(cache).seed(snapshot(false)))
+      // Warm now: the entry keeps its own pages.
+      assert.isFalse(Loader.internals(cache).seed(snapshot(false)))
+      db.version = "b"
+      const w = yield* watch(ListMessages.changes(room))
+      yield* advance(20)
+      assert.deepStrictEqual(w.seen, ["a0,a1 waiting", "b0,b1"])
+      assert.deepStrictEqual(yield* pagesLog, ["watch@0", "watch@1"])
     }).pipe(provide)
   })
 })

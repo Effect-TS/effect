@@ -262,3 +262,111 @@ describe("Keyed loader fields", () => {
         .loadedMany("users", [{ args: { id: 1 }, value: { id: "1", name: "Ann", teamId: "t" } }]))
   })
 })
+
+const ChatItem = Schema.Struct({ id: Schema.String, text: Schema.String })
+const ChatPage = Schema.Struct({ messages: Schema.Array(ChatItem), next: Schema.NullOr(Schema.Number) })
+
+class ListMessages extends Loader.ListService<ListMessages>()("typetest/ListMessages", {
+  args: { room: Schema.String },
+  page: ChatPage,
+  items: (page) => page.messages,
+  key: (message) => message.id,
+  error: Schema.String,
+  cursor: Schema.Number,
+  next: (lastPage) => Option.fromNullishOr(lastPage.next),
+  staleTime: "1 minute"
+}, Effect.succeed((_args, _cursor) => Effect.succeed({ messages: [], next: null }))) {}
+
+const Messages = Loader.SnapshotList(ListMessages, "messages")
+const ChatMessage = Schema.TaggedUnion({ Changed: { snapshot: Messages }, More: {}, Refresh: {} })
+
+const Chat = Component.make({
+  name: "Chat",
+  props: Schema.Struct({ room: Schema.String }),
+  model: Schema.Struct({ messages: Messages, user: Loader.Snapshot(GetUser, "user") }),
+  message: ChatMessage,
+  elements: Html,
+  loaders: { messages: (_model, props) => ({ room: props.room }), user: () => ({ id: "1" }) },
+  init: ($) => $.set($.empty),
+  update: (model, message, $) =>
+    ChatMessage.match(message, {
+      Changed: ({ snapshot }) => ({ ...model, messages: snapshot }),
+      More: () => $.loadMore("messages"),
+      Refresh: () => $.reset("messages")
+    }),
+  subscriptions: (_model, _props, watch) => [
+    watch({
+      messages: (snapshot, loaded) => {
+        expect(loaded).type.toBe<
+          AsyncResult.AsyncResult<Component.LoadedList<typeof ListMessages>, string>
+        >()
+        return ChatMessage.make({ _tag: "Changed", snapshot })
+      },
+      user: () => ChatMessage.make({ _tag: "More" })
+    })
+  ],
+  view: (_model, h) => {
+    expect(h.loaded.messages).type.toBe<AsyncResult.AsyncResult<Component.LoadedList<typeof ListMessages>, string>>()
+    expect(h.previous.messages).type.toBe<Option.Option<Omit<Component.LoadedList<typeof ListMessages>, "more">>>()
+    expect(h.patched.messages).type.toBe<boolean>()
+    return h.p("")
+  }
+})
+
+describe("List fields", () => {
+  it("open to items, pages and more", () => {
+    expect<Component.LoadedList<typeof ListMessages>>().type.toBe<{
+      readonly items: ReadonlyArray<{ readonly id: string; readonly text: string }>
+      readonly pages: ReadonlyArray<typeof ChatPage.Type>
+      readonly more: Loader.More<string>
+    }>()
+    expect<Component.ListFields<Component.Model<typeof Chat>>>().type.toBe<"messages">()
+  })
+
+  it("keep a list read and a plain read in their own Schema", () => {
+    // @ts-expect-error Argument of type 'typeof ListMessages' is not assignable to parameter of type 'never'
+    Loader.Snapshot(ListMessages, "messages")
+    // @ts-expect-error Argument of type 'typeof ListMessages' is not assignable to parameter of type 'never'
+    Loader.SnapshotMap(ListMessages, "messages")
+    // @ts-expect-error Argument of type 'typeof GetUser' is not assignable to parameter of type 'Any'
+    Loader.SnapshotList(GetUser, "user")
+  })
+
+  it("take loadMore and reset for a list field only, and not in init", () => {
+    Component.make({
+      name: "Chat",
+      props: Schema.Struct({ room: Schema.String }),
+      model: Schema.Struct({ messages: Messages, user: Loader.Snapshot(GetUser, "user") }),
+      message: ChatMessage,
+      elements: Html,
+      loaders: { messages: (_model, props) => ({ room: props.room }), user: () => ({ id: "1" }) },
+      // @ts-expect-error Property 'loadMore' does not exist
+      init: ($) => $.set($.empty).loadMore("messages"),
+      update: (model, _message, $) =>
+        // @ts-expect-error Argument of type '"user"' is not assignable to parameter of type '"messages"'
+        $.set(model).loadMore("user"),
+      subscriptions: (_model, _props, watch) => [
+        watch({
+          messages: (snapshot) => ChatMessage.make({ _tag: "Changed", snapshot }),
+          user: () => ChatMessage.make({ _tag: "More" })
+        })
+      ],
+      view: (_model, h) => h.p("")
+    })
+  })
+
+  it("take the Story's list steps, typed by the page and error", () => {
+    const page = { messages: [{ id: "m0", text: "a" }], next: null }
+    Story.make(Chat, { room: "r" }, (s) =>
+      s
+        .loaded("messages", [page])
+        .send(ChatMessage.make({ _tag: "More" }))
+        .loadedMore("messages", page)
+        .send(ChatMessage.make({ _tag: "More" }))
+        .loadMoreFailed("messages", "nope")
+        // @ts-expect-error Argument of type '"user"' is not assignable to parameter of type '"messages"'
+        .loadedMore("user", page)
+        // @ts-expect-error Argument of type 'number' is not assignable to parameter of type 'string'
+        .loadMoreFailed("messages", 1))
+  })
+})

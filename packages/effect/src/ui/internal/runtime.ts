@@ -214,6 +214,8 @@ export interface Instance {
   readonly keyed: Map<string, KeyedRun>
   /** A drain of the keyed fields is queued in the flush's deferred work. */
   keyedQueued: boolean
+  /** The cancels of this instance's load mores still waiting: closing it drops them. */
+  readonly loadMores: Set<() => void>
   /**
    * Set while the first emissions are folded before the first render: the Commands of those
    * updates, issued after `init`'s.
@@ -1056,6 +1058,7 @@ const start = (
       watches: new Map(),
       keyed: new Map(),
       keyedQueued: false,
+      loadMores: new Set(),
       mounting: undefined,
       dispatch(message, source) {
         if (inst.closed || inst.waiting || frozen) return
@@ -1070,7 +1073,8 @@ const start = (
           props: inst.props,
           model: next.model,
           commands: next.commands,
-          events: next.events
+          events: next.events,
+          lists: next.lists ?? []
         })
         apply(inst, next, entrySeq, false)
       },
@@ -1380,10 +1384,55 @@ const start = (
     )
     if (!initial) markDirty(inst)
     syncSubscriptions(inst)
+    // After the watches follow the Model, so a load more reaches the args this Model's loader returns.
+    if (!initial && next.lists !== undefined) {
+      for (const list of next.lists) issueList(inst, list)
+    }
     if (next.events.length === 0) return
     // An emit from `init` waits until the parent, which is still being built, has its first Model.
     if (initial) defer(() => deliverEvents(inst, next.events, entrySeq))
     else deliverEvents(inst, next.events, entrySeq)
+  }
+  /**
+   * A `$.loadMore` or `$.reset`: the args come from the field's loader. A disabled field does nothing,
+   * and on the server both are dropped and reported, as a Command is.
+   */
+  const issueList = (inst: Instance, list: Component.ListIssue) => {
+    if (inst.closed) return
+    const bound = inst.component["~loaders"] as loaders.Bound | undefined
+    const field = bound?.fields.find((field) => field.field === list.field && field.list)
+    if (bound === undefined || field === undefined) return
+    const args = bound.context(inst.model, inst.props).argsOf(field.field).args
+    if (args === undefined) return
+    const call = `$.${list.op}(${JSON.stringify(list.field)})`
+    if (server !== undefined) {
+      report(
+        new Command.ServerCommandIssued({
+          path: inst.path,
+          command: call,
+          message:
+            `[effect/ui] ${inst.path}'s update issued ${call} during server rendering, and it was dropped. The server renders a list's first page only.`
+        })
+      )
+      return
+    }
+    const def = Loader.defOf(field.read)
+    if (list.op === "reset") return Loader.internals(cache).reset(def, args)
+    const go = (envCtx: Context.Context<any>) => {
+      if (inst.closed) return
+      const fetcher = Context.getOption(envCtx, field.read as any)
+      // The field's watch reports a read nothing provides.
+      if (Option.isNone(fetcher)) return
+      let cancel: (() => void) | undefined
+      let done = false
+      cancel = Loader.internals(cache).loadMore(def, args, fetcher.value as any, () => {
+        done = true
+        if (cancel !== undefined) inst.loadMores.delete(cancel)
+      })
+      if (!done) inst.loadMores.add(cancel)
+    }
+    if (inst.env.failure !== undefined) go(settled(inst.env).ctx!)
+    else whenReady(inst.env, go)
   }
   const deliverEvents = (inst: Instance, events: ReadonlyArray<unknown>, entrySeq: number) => {
     const parent = inst.parent
@@ -1838,12 +1887,25 @@ const start = (
       if (marker.argsKey === undefined) continue
       const entry = { args: marker.args, argsKey: marker.argsKey }
       const source: MessageLog.Source = { _tag: "Subscription", key: logKey }
-      let last: { readonly result: AsyncResult.AsyncResult<any, any>; readonly patched: boolean } | undefined
-      const send = (result: AsyncResult.Success<any, any> | AsyncResult.Failure<any, any>, patched: boolean) => {
+      let last:
+        | {
+          readonly result: AsyncResult.AsyncResult<any, any>
+          readonly patched: boolean
+          readonly more: Loader.More<any> | undefined
+        }
+        | undefined
+      const send = (
+        result: AsyncResult.Success<any, any> | AsyncResult.Failure<any, any>,
+        patched: boolean,
+        more: Loader.More<any> | undefined
+      ) => {
         if (running.released || inst.closed) return
-        // An emission equal to this watcher's last is skipped.
-        if (last !== undefined && last.patched === patched && Equal.equals(last.result, result)) return
-        last = { result, patched }
+        // An emission equal to this watcher's last is skipped. A list's `more` changing is a message.
+        if (
+          last !== undefined && last.patched === patched && Loader.sameMore(last.more, more) &&
+          Equal.equals(last.result, result)
+        ) return
+        last = { result, patched, more }
         if (marker.keyed) {
           const run = inst.keyed.get(marker.label)!
           run.values.set(entry.argsKey, { args: entry.args, result, patched })
@@ -1854,7 +1916,7 @@ const start = (
         const message = guard(
           inst,
           "subscription",
-          () => ({ value: toMsg(Loader.makeSnapshot(def, marker.label, entry, result, patched), result) }),
+          () => ({ value: toMsg(Loader.makeSnapshot(def, marker.label, entry, result, patched, more), result) }),
           logKey
         )
         // The instance's own message path. It may run inside another instance's `update`: a patch
@@ -1889,7 +1951,7 @@ const start = (
         // cache has already called back with the newer value, which `send` skips as equal.
         const fold = () => {
           const current = handle.patchedView()
-          if (current.result._tag !== "Initial") send(current.result, current.patched)
+          if (current.result._tag !== "Initial") send(current.result, current.patched, handle.more())
         }
         // Registered later, once the instance's Layer is ready: there is no loop to wait for.
         if (folds !== undefined) folds.push(fold)
@@ -2006,6 +2068,8 @@ const start = (
   /** Drops an instance's watchers, and its descendants', at once. Closing its Scope comes after. */
   const releaseWatches = (inst: Instance) => {
     for (const running of inst.watches.values()) releaseWatch(running)
+    for (const cancel of inst.loadMores) cancel()
+    inst.loadMores.clear()
     for (const child of inst.children.values()) releaseWatches(child)
   }
   /** The same for whatever a rendered node holds: called before its replacement is created. */
