@@ -95,6 +95,28 @@ const hashRouter = Effect.suspend(() => {
 })
 
 describe("BrowserRouter", { concurrent: false }, () => {
+  it.effect("hydrates a server render when both sides take their props from their own Router", () => {
+    const problems: Array<Loader.Problem.Any> = []
+    return Effect.gen(function*() {
+      const rendered = yield* HtmlServer.renderToHtml(App, Router.props(AppRoute)).pipe(
+        Effect.provide([People.layer, Router.static({ routes: AppRoute, url: "/people/1" })])
+      )
+      window.history.replaceState(null, "", "/people/1")
+      const app = yield* container
+      app.innerHTML = rendered.html
+      const heading = app.querySelector("h1")
+      yield* Layer.build(
+        BrowserHost.mount(App, Router.props(AppRoute), app, { state: rendered.state }).pipe(
+          Layer.provide([BrowserRouter.layer({ routes: AppRoute }), People.layer])
+        )
+      )
+      yield* tick
+      assert.strictEqual(app.querySelector("h1"), heading)
+      assert.strictEqual(heading?.textContent, "Person 1")
+      assert.deepStrictEqual(problems, [])
+    }).pipe(Effect.provideService(Loader.Problems, (problem) => problems.push(problem)))
+  })
+
   it.effect("exempts hydrated hash roots, but checks client-only hash roots", () => {
     const problems: Array<Loader.Problem.Any> = []
     return Effect.gen(function*() {

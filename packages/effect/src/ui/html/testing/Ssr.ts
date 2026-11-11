@@ -224,6 +224,9 @@ const stepLimit = 10_000
  * under `it.effect`. Both sides run with the caller's services, so provide
  * the ones the tree needs, such as `Router.memory`, around it.
  *
+ * `props` may be an Effect, such as `Router.props(AppRoute)`. Each side runs
+ * it once, before `init`, as a real server and browser would.
+ *
  * The server phase drives itself: it steps the clock to each wake of the
  * tree's own sleepers, a fetch or a Layer build, until the render is idle or
  * `budget` (default 500 ms) is spent. Once the server's Scope has closed the
@@ -253,9 +256,9 @@ const stepLimit = 10_000
  * @category constructors
  * @since 4.1.3
  */
-export const ssr = <Name extends string, Props, Model, Msg, Events, R, V extends View.Elements>(
+export const ssr = <Name extends string, Props, Model, Msg, Events, R, V extends View.Elements, RP = never>(
   component: Component.Component<Name, Props, Model, Msg, Events, R, V> & BrowserHost.HtmlRoot<V>,
-  props: Props,
+  props: Props | Effect.Effect<Props, never, RP>,
   options?: {
     readonly budget?: Duration.Input | undefined
     readonly static?: boolean | undefined
@@ -266,7 +269,7 @@ export const ssr = <Name extends string, Props, Model, Msg, Events, R, V extends
 ): Effect.Effect<
   Ssr<Model, Msg, Events>,
   SsrError,
-  Exclude<R, Html.Host> | TestHost.TestHost | Scope.Scope
+  Exclude<R | RP, Html.Host> | TestHost.TestHost | Scope.Scope
 > =>
   Effect.gen(function*() {
     const testHost = yield* TestHost.TestHost
@@ -424,7 +427,7 @@ export const ssr = <Name extends string, Props, Model, Msg, Events, R, V extends
           Context.add(Loader.Problems, testHost.report)
         )
       )
-    ) as Effect.Effect<runtime.Root & Renderer.Root<any, any>, never, Exclude<R, Html.Host> | Scope.Scope>
+    ) as Effect.Effect<runtime.Root & Renderer.Root<any, any>, never, Exclude<R | RP, Html.Host> | Scope.Scope>
     const root = yield* TestHost.register(testHost, mounted, clientLog, () => frames.slice())
     let adoptedDone = false
     yield* Effect.forkChild(Effect.andThen(mounted.adopted, Effect.sync(() => adoptedDone = true)))

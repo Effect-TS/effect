@@ -398,6 +398,11 @@ export type HostOf<V> = [V] extends [never] ? never : V extends View.Elements ? 
  * the wrong host is a type error. Nested components are checked when they
  * mount, and a mismatch fails their slot.
  *
+ * `props` is the root's props or an Effect of them, such as
+ * `Router.props(AppRoute)`. An Effect is run once, before `init`, and its
+ * requirements are added to the mount's. `init` still only sees plain props,
+ * so a Story or a test can pass them directly.
+ *
  * With `state` from a server render, the tree hydrates: each instance adopts
  * its server Model instead of running `init` and, on a host with
  * `hydration`, adopts the server's nodes inside `container`. `init` is
@@ -413,13 +418,28 @@ export type HostOf<V> = [V] extends [never] ? never : V extends View.Elements ? 
  * of each watch after adoption is delivered to `update`, and the view
  * doesn't change, since it equals the adopted snapshot.
  *
+ * **Gotchas**
+ *
+ * Any Effect passed as `props` is run, so a root's props can't themselves be
+ * an Effect. Props decoded from a Schema never are.
+ *
  * @stability experimental
  * @category constructors
  * @since 4.1.3
  */
-export const mount: <Name extends string, Props, Model, Msg, Events, R, V extends View.Elements, RF = never>(
+export const mount: <
+  Name extends string,
+  Props,
+  Model,
+  Msg,
+  Events,
+  R,
+  V extends View.Elements,
+  RF = never,
+  RP = never
+>(
   component: Component.Component<Name, Props, Model, Msg, Events, R, V>,
-  props: Props,
+  props: Props | Effect.Effect<Props, never, RP>,
   container: unknown,
   options?: {
     readonly fallback?:
@@ -431,7 +451,7 @@ export const mount: <Name extends string, Props, Model, Msg, Events, R, V extend
     readonly state?: State | undefined
     readonly loader?: LoaderOptions | undefined
   }
-) => Effect.Effect<Root<Model, Msg>, never, R | RF | HostOf<V> | Renderer | Scope.Scope> = runtime.mount as any
+) => Effect.Effect<Root<Model, Msg>, never, R | RF | RP | HostOf<V> | Renderer | Scope.Scope> = runtime.mount as any
 
 /**
  * Cache-wide options for the loader cache a mount owns. The app never
@@ -479,19 +499,23 @@ export interface LoaderOptions {
  * `elements` lists the vocabularies the server renders, by name, as a host's
  * `elements` does.
  *
+ * `props` may be an Effect, as with `mount`: it is run once, before `init`,
+ * and its requirements are added to the render's. The client resolves its
+ * own, so with `Router.props` both sides read the route from their Router.
+ *
  * @stability experimental
  * @category constructors
  * @since 4.1.3
  */
-export const prerender: <Name extends string, Props, Model, Msg, Events, R, V extends View.Elements>(
+export const prerender: <Name extends string, Props, Model, Msg, Events, R, V extends View.Elements, RP = never>(
   component: Component.Component<Name, Props, Model, Msg, Events, R, V>,
-  props: Props,
+  props: Props | Effect.Effect<Props, never, RP>,
   options?: {
     readonly budget?: Duration.Input | undefined
     readonly elements?: ReadonlyArray<string> | "any" | undefined
     readonly static?: boolean | undefined
   }
-) => Effect.Effect<Prerendered<Model>, never, R> = (component, props, options) =>
+) => Effect.Effect<Prerendered<Model>, never, R | RP> = (component, props, options) =>
   runtime.prerender(component as any, props, {
     budget: options?.budget ?? "500 millis",
     elements: options?.elements ?? "any",

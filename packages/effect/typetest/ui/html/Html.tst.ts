@@ -1,6 +1,6 @@
 import { Effect, type Layer, Schema, type Scope } from "effect"
-import { Component, Renderer, type View } from "effect/ui"
-import { BrowserHost, Html } from "effect/ui/html"
+import { Component, Renderer, Route, Router, type View } from "effect/ui"
+import { BrowserHost, Html, HtmlServer } from "effect/ui/html"
 import { HtmlQuery } from "effect/ui/html/testing"
 import type { Query } from "effect/ui/testing"
 import { describe, expect, it } from "tstyche"
@@ -175,6 +175,26 @@ describe("BrowserHost", () => {
 
   it("mount is a Layer that needs nothing for an HTML root", () => {
     expect(BrowserHost.mount(Counter, {}, document.body)).type.toBe<Layer.Layer<never>>()
+  })
+
+  it("mount and renderToHtml with Router.props need the Router", () => {
+    const AppRoute = Route.union({ Home: Route.make("/"), NotFound: Route.make("/*") })
+    const App = Component.make({
+      name: "App",
+      props: Schema.Struct({ route: AppRoute }),
+      model: AppRoute,
+      message: Schema.Never,
+      elements: Html,
+      init: ($) => $.props.route,
+      update: (route) => route,
+      view: (route, h) => h.h1(route._tag)
+    })
+    expect(BrowserHost.mount(App, Router.props(AppRoute), document.body)).type.toBe<
+      Layer.Layer<never, never, Router.Router>
+    >()
+    expect(HtmlServer.renderToHtml(App, Router.props(AppRoute))).type.toBe<
+      Effect.Effect<HtmlServer.Rendered<typeof AppRoute.Type>, never, Router.Router>
+    >()
   })
 
   it("Renderer.mount of an HTML root needs Html.Host", () => {

@@ -117,6 +117,10 @@ const serverHtmlHost: Context.Service.Shape<typeof Html.Host> = {
  * fetches it after hydration. A defect renders the slot's `fallback`, and
  * the client builds the slot fresh.
  *
+ * `props` may be an Effect, such as `Router.props(AppRoute)` under
+ * `Router.static`, run once before `init`. Its requirements are added to the
+ * render's. The client resolves its own props the same way, from its Router.
+ *
  * `static: true` is for HTML built at deploy or held in a CDN, where the
  * data's age is unknown. The client then hydrates every entry stale: it is
  * invalidated at hydration, and refetched once, unless its read's
@@ -135,14 +139,23 @@ const serverHtmlHost: Context.Service.Shape<typeof Html.Host> = {
  * @category constructors
  * @since 4.1.3
  */
-export const renderToHtml = <Name extends string, Props, Model, Msg, Events, R, V extends View.Elements>(
+export const renderToHtml = <
+  Name extends string,
+  Props,
+  Model,
+  Msg,
+  Events,
+  R,
+  V extends View.Elements,
+  RP = never
+>(
   component: Component.Component<Name, Props, Model, Msg, Events, R, V> & BrowserHost.HtmlRoot<V>,
-  props: Props,
+  props: Props | Effect.Effect<Props, never, RP>,
   options?: {
     readonly budget?: Duration.Input | undefined
     readonly static?: boolean | undefined
   }
-): Effect.Effect<Rendered<Model>, never, Exclude<R, Html.Host>> =>
+): Effect.Effect<Rendered<Model>, never, Exclude<R | RP, Html.Host>> =>
   Renderer.prerender(component, props, { budget: options?.budget, elements: [Html.name], static: options?.static })
     .pipe(
       Effect.provideService(Html.Host, serverHtmlHost),
