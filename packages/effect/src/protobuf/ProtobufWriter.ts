@@ -323,6 +323,27 @@ export class ProtobufWriter {
    */
   bytes(bytes: Uint8Array): this {
     this.uint32(bytes.length)
+    return this.raw(bytes)
+  }
+
+  /**
+   * Writes bytes as they are, without a length prefix, such as fields that
+   * are already encoded.
+   *
+   * **Example** (Copying encoded fields)
+   *
+   * ```ts import.meta.vitest
+   * import { ProtobufWriter } from "effect/protobuf"
+   *
+   * const { Varint } = ProtobufWriter.WireType
+   * const fields = ProtobufWriter.make().tag(1, Varint).uint32(150).finish()
+   *
+   * ProtobufWriter.make().tag(2, Varint).bool(true).raw(fields).finish() // => new Uint8Array([0x10, 0x01, 0x08, 0x96, 0x01])
+   * ```
+   *
+   * @since 4.1.5
+   */
+  raw(bytes: Uint8Array): this {
     this.ensure(bytes.length)
     this.buf.set(bytes, this.pos)
     this.pos += bytes.length

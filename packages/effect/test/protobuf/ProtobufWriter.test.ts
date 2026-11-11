@@ -34,6 +34,7 @@ describe("ProtobufWriter", () => {
     ["float 1", (w) => w.float(1), "0000803f"],
     ["double 1", (w) => w.double(1), "000000000000f03f"],
     ["bytes", (w) => w.bytes(new Uint8Array([1, 2])), "020102"],
+    ["raw bytes, without a length", (w) => w.raw(new Uint8Array([1, 2])), "0102"],
     // Two-, three- and four-byte characters, then lone surrogates as U+FFFD
     ["string", (w) => w.string("é日😀\uDC00\uD800a"), "10c3a9e697a5f09f9880efbfbdefbfbd61"],
     ["string longer than the buffer", (w) => w.string("é".repeat(1000)), "d00f" + "c3a9".repeat(1000)]
