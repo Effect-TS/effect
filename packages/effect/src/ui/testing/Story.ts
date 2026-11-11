@@ -755,23 +755,15 @@ const loadKeyedStep = (
       const patched = "value" in load && load.patched === true
       if (!patched) checkUnpatched(story, step, field, argsKey)
       if (!patched && load.waiting !== true) settled.add(argsKey)
-      if ("value" in load) {
-        return {
-          argsKey,
-          result: AsyncResult.success(load.value, { waiting: load.waiting, timestamp: 0 }),
-          patched: load.patched === true
-        }
-      }
-      const stored = Loader.snapshotData(held?.get(argsKey))?.result
-      const previousSuccess: Option.Option<AsyncResult.Success<any, any>> = stored === undefined
-        ? Option.none()
-        : stored._tag === "Success"
-        ? Option.some(stored)
-        : stored.previousSuccess
       return {
         argsKey,
-        result: AsyncResult.failure(Cause.fail(load.error), { previousSuccess, waiting: load.waiting }),
-        patched: false
+        result: "value" in load
+          ? AsyncResult.success(load.value, { waiting: load.waiting, timestamp: 0 })
+          : AsyncResult.failWithPrevious(load.error, {
+            previous: Option.fromUndefinedOr(Loader.snapshotData(held?.get(argsKey))?.result),
+            waiting: load.waiting
+          }),
+        patched
       }
     })
   )
