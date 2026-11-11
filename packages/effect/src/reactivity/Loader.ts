@@ -1970,6 +1970,15 @@ interface CacheInternals {
     onDefect?: ((cause: Cause.Cause<never>) => void) | undefined,
     options?: { readonly patched?: boolean | undefined } | undefined
   ) => WatchHandle
+  /**
+   * Holds the zero-to-one decisions until the returned release is called, by
+   * every holder. Watchers register and unregister at once, and `onChange`
+   * works as usual. At release, an entry fetches, if it is stale, and arms its
+   * interval when every watcher it has was registered during the hold: no
+   * watcher from before the hold survived it, whatever order the releases and
+   * registrations came in. The effect/ui runtime holds for each render pass.
+   */
+  readonly hold: () => () => void
   /** The server value. Doesn't create the entry or reset its idle timer. */
   readonly peek: (def: ReadDef, args: unknown) => AsyncResult.AsyncResult<any, any>
   /** `run` is the caller's, from `CurrentRun`. */
@@ -2304,6 +2313,8 @@ interface Watcher {
   readonly build: Build
   /** Gets the patched view, not the server value. */
   readonly patched: boolean
+  /** The hold it registered under, or -1. */
+  readonly generation: number
   last: AsyncResult.AsyncResult<any, any>
   lastPatched: boolean
   active: boolean
@@ -3106,9 +3117,14 @@ export const makeCache = (options: {
     const entry = ensureEntry(register(def), args)
     const build = buildOf(fetcher)
     const first = entry.watchers.size === 0
-    // Only the zero-to-one transition is a fetch trigger: a joining watcher never refetches. Inside the
-    // fetch-free window a hydrated entry isn't fetched.
-    if (first && isStale(entry) && !inWindow(entry)) ensureFetch(entry, "watch", build)
+    if (holds > 0) {
+      // Decided at release. The window is read now, as the decision would have been.
+      held.set(entry, (held.get(entry) ?? false) || inWindow(entry))
+    } else if (first && isStale(entry) && !inWindow(entry)) {
+      // Only the zero-to-one transition is a fetch trigger: a joining watcher never refetches. Inside the
+      // fetch-free window a hydrated entry isn't fetched.
+      ensureFetch(entry, "watch", build)
+    }
     const patched = watchOptions?.patched === true
     const current = patched ? patchedViewOf(entry, view(entry)) : { result: view(entry), patched: false }
     const watcher: Watcher = {
@@ -3116,13 +3132,14 @@ export const makeCache = (options: {
       onDefect,
       build,
       patched,
+      generation: holds > 0 ? generation : -1,
       last: current.result,
       lastPatched: current.patched,
       active: true
     }
     entry.watchers.add(watcher)
     cancelIdle(entry)
-    if (first) scheduleInterval(entry)
+    if (first && holds === 0) scheduleInterval(entry)
     return {
       logKey: () => logKeyOf(entry),
       current: () => view(entry),
@@ -3136,6 +3153,48 @@ export const makeCache = (options: {
         if (isBareFailure(entry.result) && !settleOnce && !inWindow(entry)) entry.result = undefined
         afterQuiet(entry)
       }
+    }
+  }
+
+  // -- hold -------------------------------------------------------------------
+  let holds = 0
+  // Raised when a hold begins with none open. A watcher at this generation or later registered during it.
+  let generation = 0
+  // Each entry a watcher registered on during the hold, and whether one of them came inside the window.
+  const held = new Map<Entry, boolean>()
+  const hold: CacheInternals["hold"] = () => {
+    if (holds++ === 0) generation++
+    const since = generation
+    let released = false
+    return () => {
+      if (released) return
+      released = true
+      if (holds > 1) {
+        holds--
+        return
+      }
+      // Still held while deciding: a fetch started here can reach a watcher whose handler registers another,
+      // which is decided in the next round, as part of this hold.
+      while (held.size > 0) {
+        const entries = Array.from(held)
+        held.clear()
+        for (const [entry, windowed] of entries) {
+          if (entry.removed || entry.watchers.size === 0) continue
+          let build: Build | undefined
+          let fresh = true
+          for (const watcher of entry.watchers) {
+            if (watcher.generation < since) {
+              fresh = false
+              break
+            }
+            if (build === undefined && !watcher.build.closed) build = watcher.build
+          }
+          if (!fresh) continue
+          if (!windowed && build !== undefined && isStale(entry)) ensureFetch(entry, "watch", build)
+          scheduleInterval(entry)
+        }
+      }
+      holds--
     }
   }
 
@@ -3706,6 +3765,7 @@ export const makeCache = (options: {
       register(def)
     },
     watch,
+    hold,
     peek,
     get,
     prefetch,

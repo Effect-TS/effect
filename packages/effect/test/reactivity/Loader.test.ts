@@ -114,6 +114,39 @@ describe("Loader", () => {
     }).pipe(provide)
   })
 
+  it.effect("under a hold, the zero-to-one decision waits for release and ignores the order of releases and registrations", () => {
+    const { GetUser, db, provide } = makeUsers({ staleTime: "30 seconds" })
+    return Effect.gen(function*() {
+      const cache = Loader.internals(yield* Loader.Cache)
+      const def = Loader.defOf(GetUser)
+      const fetcher = (yield* GetUser) as unknown as (args: unknown) => Effect.Effect<any, any>
+      const watchOne = () => cache.watch(def, { id: "1" }, fetcher, () => {})
+      const old = watchOne()
+      yield* advance(10)
+      yield* advance("31 seconds")
+      // The new watcher registers before the old one goes: a join, were it decided then.
+      const release = cache.hold()
+      const next = watchOne()
+      old.unregister()
+      yield* flush
+      assert.strictEqual((yield* TestLoader.entry(GetUser, { id: "1" }))?.fetch, "none")
+      release()
+      assert.strictEqual(next.current().waiting, true)
+      yield* advance(10)
+      assert.strictEqual(db.calls, 2)
+      // A watcher from before the hold survives it: a join.
+      yield* advance("31 seconds")
+      const releaseAgain = cache.hold()
+      const joining = watchOne()
+      releaseAgain()
+      yield* advance(10)
+      assert.strictEqual(db.calls, 2)
+      next.unregister()
+      joining.unregister()
+      assert.deepStrictEqual(yield* triggers, ["watch", "watch"])
+    }).pipe(provide)
+  })
+
   it.effect("get serves a fresh value, fetches a stale one and joins a fetch in flight", () => {
     const { GetUser, db, provide } = makeUsers({ staleTime: "30 seconds" })
     return Effect.gen(function*() {

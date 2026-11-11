@@ -519,6 +519,7 @@ const start = (
     Effect.suspend(() => {
       rootClosed = true
       offFetch()
+      releaseWatchHold()
       for (const [run, inst] of Array.from(detachedRuns)) stopRun(inst, run)
       return awaitAllOwned
     })
@@ -539,6 +540,24 @@ const start = (
       scheduled = true
       executor.schedule(flush)
     }
+  }
+  /**
+   * The cache hold of the current render pass. A watcher registered outside a drain opens one and
+   * schedules a flush, and the drain releases it once nothing is left to render: every release and
+   * registration of the pass is in before any zero-to-one decision is made.
+   */
+  let watchHold: (() => void) | undefined
+  let draining = false
+  const holdWatches = () => {
+    if (watchHold !== undefined) return
+    watchHold = Loader.internals(cache).hold()
+    if (!draining) wake()
+  }
+  const isHolding = () => watchHold !== undefined
+  const releaseWatchHold = () => {
+    const release = watchHold
+    watchHold = undefined
+    release?.()
   }
   const markDirty = (inst: Instance) => {
     dirty.add(inst)
@@ -572,10 +591,23 @@ const start = (
    * renders and the head is merged again.
    */
   function drain() {
+    draining = true
+    try {
+      drainLoop()
+    } finally {
+      draining = false
+    }
+  }
+  function drainLoop() {
     do {
-      while (dirty.size > 0 || deferred.length > 0) {
+      while (dirty.size > 0 || deferred.length > 0 || isHolding()) {
         if (deferred.length > 0) {
           deferred.shift()!()
+          continue
+        }
+        if (dirty.size === 0) {
+          // A fetch started here reaches its watchers now, so their updates render in this pass.
+          releaseWatchHold()
           continue
         }
         let next: Instance | undefined
@@ -586,7 +618,7 @@ const start = (
         if (!next!.closed) render(next!)
       }
       mergeHead()
-    } while (dirty.size > 0 || deferred.length > 0)
+    } while (dirty.size > 0 || deferred.length > 0 || isHolding())
   }
   /**
    * Decides whether the server is idle once the current callback has finished:
@@ -1759,6 +1791,7 @@ const start = (
             logKey
           )
         }
+        holdWatches()
         const handle = Loader.internals(cache).watch(
           def,
           marker.args,
@@ -2130,11 +2163,11 @@ const start = (
   }
 
   /**
-   * The patcher's pre-pass, run over an instance's whole tree before any of it is patched. What the
-   * patch will remove lets go of its cache watchers, at any depth below the elements it keeps, and a
-   * kept child whose props changed moves its watchers to its new args. New instances are created
-   * before old ones are destroyed, and in document order, so without this a route swap over one
-   * stale entry would count as a join and not refetch.
+   * The patcher's pre-pass, run over an instance's whole tree before any of it is patched: what the
+   * patch will remove lets go of its cache watchers, at any depth below the elements it keeps, before
+   * anything new is created. It can't see what a kept child's own re-render removes, nor what another
+   * instance rendered later in the pass removes. The cache hold each render pass runs under is what
+   * makes the zero-to-one decision independent of that order.
    */
   const releaseRemoved = (olds: ReadonlyArray<Rendered>, news: ReadonlyArray<View.Node<any, any>>) => {
     const byKey = new Map<string, Rendered>()
@@ -2147,22 +2180,10 @@ const start = (
       switch (old._tag) {
         case "Element":
           return releaseRemoved(old.children, (view as View.Element<any, any>).children)
-        case "Child": {
-          const child = view as View.Child<any, any>
-          const instance = old.inst
-          if (instance.closed || propsEqual(child.props, instance.props)) return
-          instance.props = child.props
-          syncSubscriptions(instance)
-          // `patch` renders it with the props it now has.
-          if (!instance.closed) propsSynced.set(instance, child.props)
-          return
-        }
       }
     })
     for (const old of olds) if (!kept.has(old)) releaseRendered(old)
   }
-  /** Kept children whose new props the pre-pass already applied, with those props. */
-  const propsSynced = new WeakMap<Instance, unknown>()
 
   const patchProps = (
     node: unknown,
@@ -2235,14 +2256,10 @@ const start = (
         }
         instance.onEmit = child.onEmit
         instance.onFailure = child.onFailure
-        const synced = propsSynced.get(instance) === child.props
-        propsSynced.delete(instance)
-        if (synced || !propsEqual(child.props, instance.props)) {
-          if (!synced) {
-            instance.props = child.props
-            // Watches first: new args over a settled entry fold its value before this render.
-            syncSubscriptions(instance)
-          }
+        if (!propsEqual(child.props, instance.props)) {
+          instance.props = child.props
+          // Watches first: new args over a settled entry fold its value before this render.
+          syncSubscriptions(instance)
           if (!instance.closed) {
             dirty.delete(instance)
             render(instance)

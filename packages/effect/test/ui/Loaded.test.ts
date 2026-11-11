@@ -313,12 +313,130 @@ describe("Loaded", () => {
         yield* TestHost.settle
         assert.deepStrictEqual(root.fetches().map((fetch) => [fetch.logKey, fetch.trigger]), [
           ["{\"id\":\"1\"}", "watch"],
-          ["{\"id\":\"2\"}", "watch"],
-          ["{\"id\":\"1\"}", "watch"]
+          ["{\"id\":\"1\"}", "watch"],
+          ["{\"id\":\"2\"}", "watch"]
         ])
         assert.strictEqual(root.entry(app.GetUser, { id: "1" })?.watchers, 1)
         yield* load
         assert.strictEqual(root.text(), "b=Anna=Bea")
+      })
+    )
+  })
+
+  it.effect("watch: a removal inside a kept child's re-render counts as it would if the child were inlined", () => {
+    const app = makeApp()
+    // The second section of the two-section test, extracted into a component.
+    const Shell = Component.make({
+      name: "Shell",
+      props: Schema.Struct({ show: Schema.Boolean }),
+      model: Schema.Null,
+      message: Schema.Never,
+      init: () => null,
+      update: (model) => model,
+      view: (_model, h) =>
+        h.el("div", h.props.show ? [h.child(app.Card, { key: "old", props: { id: "1", tag: "o" } })] : [])
+    })
+    const Page = Component.make({
+      name: "Page",
+      model: Schema.Boolean,
+      message: Schema.Boolean,
+      init: () => false,
+      update: (_model, message) => message,
+      view: (swapped, h) =>
+        h.el(
+          "div",
+          h.el("section", swapped ? [h.child(app.Card, { key: "new", props: { id: "1", tag: "n" } })] : []),
+          h.child(Shell, { key: "shell", props: { show: !swapped } })
+        )
+    })
+    return run(
+      app.layer,
+      Effect.gen(function*() {
+        const root = yield* TestHost.mount(Page, {})
+        yield* load
+        yield* TestClock.adjust("31 seconds")
+        root.send(true)
+        yield* TestHost.settle
+        assert.deepStrictEqual(triggers(root), ["watch", "watch"])
+        assert.strictEqual(root.entry(app.GetUser, { id: "1" })?.watchers, 1)
+        assert.strictEqual(root.text(), "n=Ann…")
+        // The waiting value renders in the pass that decided the fetch: no frame shows it settled.
+        assert.deepStrictEqual(root.frames(), ["o=loading", "o=Ann", "n=Ann…"])
+        yield* load
+        assert.strictEqual(app.db.calls, 2)
+      })
+    )
+  })
+
+  it.effect("watch: a kept child moving onto a stale entry that a later sibling leaves is a zero-to-one", () => {
+    const app = makeApp()
+    return run(
+      app.layer,
+      Effect.gen(function*() {
+        const root = yield* TestHost.mount(app.List, { cards: ["a:2", "b:1"] })
+        yield* load
+        yield* TestClock.adjust("31 seconds")
+        // a, kept and first, re-keys to 1 before b, which watched 1, is removed.
+        root.send(app.ListMessage.make({ _tag: "Set", cards: ["a:1"] }))
+        yield* TestHost.settle
+        assert.deepStrictEqual(root.fetches().map((fetch) => fetch.logKey).slice(2), ["{\"id\":\"1\"}"])
+        assert.strictEqual(root.entry(app.GetUser, { id: "1" })?.watchers, 1)
+        assert.strictEqual(root.text(), "a=Ann…")
+        yield* load
+        assert.strictEqual(app.db.calls, 3)
+      })
+    )
+  })
+
+  it.effect("a kept child's warm re-key emits through the onEmit of the view that re-keyed it", () => {
+    const app = makeApp()
+    const EmitterMessage = Schema.TaggedUnion({ UserChanged: { user: Loader.Snapshot(app.GetUser, "user") } })
+    const Emitter = Component.make({
+      name: "Emitter",
+      props: Schema.Struct({ id: Schema.String }),
+      model: Schema.Struct({ user: Loader.Snapshot(app.GetUser, "user") }),
+      message: EmitterMessage,
+      events: Schema.String,
+      loaders: { user: (_model, props) => ({ id: props.id }) },
+      init: ($) => $.empty,
+      update: (_model, message, $) => $.set({ user: message.user }).emit($.props.id),
+      subscriptions: (
+        _model,
+        _props,
+        watch
+      ) => [watch({ user: (user) => EmitterMessage.make({ _tag: "UserChanged", user }) })],
+      view: (_model, h) => h.el("p", "emitter")
+    })
+    const ParentMessage = Schema.TaggedUnion({ Switch: {}, Noted: { label: Schema.String } })
+    const Parent = Component.make({
+      name: "Parent",
+      model: Schema.Struct({ switched: Schema.Boolean, labels: Schema.Array(Schema.String) }),
+      message: ParentMessage,
+      init: () => ({ switched: false, labels: [] }),
+      update: (model, message) =>
+        message._tag === "Switch"
+          ? { ...model, switched: true }
+          : { ...model, labels: [...model.labels, message.label] },
+      view: (model, h) =>
+        h.el(
+          "div",
+          // Keeps user 2 warm.
+          h.child(app.Card, { key: "warm", props: { id: "2", tag: "w" } }),
+          h.child(Emitter, {
+            key: "emitter",
+            props: { id: model.switched ? "2" : "1" },
+            onEmit: (id) => ParentMessage.make({ _tag: "Noted", label: (model.switched ? "new " : "old ") + id })
+          })
+        )
+    })
+    return run(
+      app.layer,
+      Effect.gen(function*() {
+        const root = yield* TestHost.mount(Parent, {})
+        yield* load
+        root.send(ParentMessage.make({ _tag: "Switch" }))
+        yield* TestHost.settle
+        assert.deepStrictEqual(root.model()?.labels, ["old 1", "new 2"])
       })
     )
   })
@@ -445,9 +563,8 @@ describe("Loaded", () => {
         // A new instance on user 1, and card b re-keyed from user 2 to user 1.
         root.send(app.ListMessage.make({ _tag: "Set", cards: ["a:1", "c:1", "b:1"] }))
         yield* TestHost.settle
-        // Each folds the cache's value through update before its first render. b's new args are
-        // applied in the patcher's pre-pass, before c is created.
-        assert.deepStrictEqual(app.order, ["update b UserChanged", "update c UserChanged", "view c Ann", "view b Ann"])
+        // Each folds the cache's value through update before its first render.
+        assert.deepStrictEqual(app.order, ["update c UserChanged", "view c Ann", "update b UserChanged", "view b Ann"])
         assert.strictEqual(root.text(), "a=Annc=Annb=Ann")
         assert.strictEqual(app.db.calls, 2)
       })
