@@ -678,6 +678,24 @@ describe("toCodeDocument", { concurrent: false }, () => {
       )
     }
 
+    it("keeps distinct symbols with identical descriptions distinct", async () => {
+      const document = generate(
+        Schema.UniqueSymbol(Symbol("same")),
+        Schema.UniqueSymbol(Symbol("same"))
+      )
+      const symbols = document.artifacts.filter((artifact) => artifact._tag === "Symbol")
+      assert.lengthOf(symbols, 2)
+      const source = render(document)
+      register("distinct symbols with identical descriptions", source)
+      await withGeneratedModule<Record<string, unknown>>(source, (module) => {
+        const first = module[symbols[0].identifier]
+        const second = module[symbols[1].identifier]
+        assert.notStrictEqual(first, second)
+        assertSamples(module.TestRoot0 as Schema.Codec<unknown>, { accepts: [first], rejects: [second] })
+        assertSamples(module.TestRoot1 as Schema.Codec<unknown>, { accepts: [second], rejects: [first] })
+      })
+    })
+
     for (const identifier of ["ID", "hello", "Abc", "Schema", "1a", "0", "a-b", "café", "🤖", "", "__proto__"]) {
       example("identifier " + identifier, Schema.String.annotate({ identifier }), "string", {
         accepts: ["a"],

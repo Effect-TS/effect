@@ -256,6 +256,7 @@ export function toCodeDocument(
   const artifacts: Array<SchemaRepresentation.Artifact> = []
   const sorted = topologicalSort(document.references)
   const sanitizedReferences = new Map<string, string>()
+  const symbols = new Map<symbol, string>()
   const uniqueIdentifiers = new Set<string>(["Schema"])
 
   for (const { $ref } of sorted.nonRecursives) ensureUniqueIdentifier($ref)
@@ -303,7 +304,10 @@ export function toCodeDocument(
   }
 
   function addSymbol(symbol: symbol): string {
+    const existing = symbols.get(symbol)
+    if (existing !== undefined) return existing
     const identifier = freshIdentifier("_symbol")
+    symbols.set(symbol, identifier)
     const key = globalThis.Symbol.keyFor(symbol)
     const description = symbol.description
     artifacts.push({
