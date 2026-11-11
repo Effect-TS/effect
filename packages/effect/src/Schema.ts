@@ -11370,7 +11370,7 @@ export function CauseReason<E extends Constraint, D extends Constraint>(
       },
       toCode: ({ typeParameters }) => ({
         runtime: `Schema.CauseReason(${typeParameters[0].runtime}, ${typeParameters[1].runtime})`,
-        Type: `Cause.Failure<${typeParameters[0].Type}, ${typeParameters[1].Type}>`,
+        Type: `Cause.Reason<${typeParameters[0].Type}>`,
         importDeclarations: [`import * as Cause from "effect/Cause"`]
       }),
       expected: "Cause.Failure",
@@ -11491,7 +11491,7 @@ export function Cause<E extends Constraint, D extends Constraint>(error: E, defe
       },
       toCode: ({ typeParameters }) => ({
         runtime: `Schema.Cause(${typeParameters[0].runtime}, ${typeParameters[1].runtime})`,
-        Type: `Cause.Cause<${typeParameters[0].Type}, ${typeParameters[1].Type}>`,
+        Type: `Cause.Cause<${typeParameters[0].Type}>`,
         importDeclarations: [`import * as Cause from "effect/Cause"`]
       }),
       expected: "Cause",
@@ -15695,7 +15695,7 @@ export function Exit<
         runtime: `Schema.Exit(${typeParameters[0].runtime}, ${typeParameters[1].runtime}, ${
           typeParameters[2].runtime
         })`,
-        Type: `Exit.Exit<${typeParameters[0].Type}, ${typeParameters[1].Type}, ${typeParameters[2].Type}>`,
+        Type: `Exit.Exit<${typeParameters[0].Type}, ${typeParameters[1].Type}>`,
         importDeclarations: [`import * as Exit from "effect/Exit"`]
       }),
       expected: "Exit",
