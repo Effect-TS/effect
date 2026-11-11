@@ -725,6 +725,7 @@ function stringShrinker(
   codePoints: boolean,
   pattern: Regexp.Compiled | undefined
 ): (value: string) => Model.Sample<string> {
+  minimum = Math.max(minimum, pattern?.minimumLength ?? 0)
   const sample = (value: string, start = 0, limit = infinity): Model.Sample<string> =>
     Model.makeSampleWithLazyShrinks(value, () => {
       const candidates = shrinks(value, start, limit)
@@ -736,8 +737,15 @@ function stringShrinker(
   function* shrinks(value: string, start: number, limit: number): Generator<Model.Sample<string>> {
     const units = codePoints ? Array.from(value) : value.split("")
     const length = units.length
-    const splice = (index: number, count: number, insert = "") =>
-      units.slice(0, index).join("") + insert + units.slice(index + count).join("")
+    // Each removed unit costs at least one UTF-16 code unit.
+    const removable = Math.min(length - minimumUnits, value.length - minimum)
+    const edit = (index: number, count: number, insert = "") => {
+      const prefix = units.slice(0, index).join("")
+      const value = prefix + insert + units.slice(index + count).join("")
+      // Joining a trailing high surrogate to a low surrogate changes the preceding code point.
+      const start = codePoints && index > 0 && value.codePointAt(prefix.length - 1)! > 0xffff ? index - 1 : index
+      return { value, start }
+    }
     // Pattern testing only saves budget: filters would discard the candidate, but discards still count against
     // `maxShrinks`. `seen` drops duplicate deletions, which are common once units have been simplified.
     const seen = new Set([value])
@@ -752,23 +760,23 @@ function stringShrinker(
       }
     }
     if (start === 0) {
-      for (let count = length - minimumUnits; count > 0; count = Math.floor(count / 2)) {
-        const candidate = splice(length - count, count)
-        if (accept(candidate)) yield sample(candidate, 0, limit)
+      for (let count = removable; count > 0; count = Math.floor(count / 2)) {
+        const candidate = edit(length - count, count)
+        if (accept(candidate.value)) yield sample(candidate.value, 0, limit)
       }
     }
     for (let index = start, cap = limit; index < length; index++, cap = infinity) {
-      for (let count = Math.min(length - index, length - minimumUnits, cap); count > 0; count = Math.floor(count / 2)) {
-        const candidate = splice(index, count)
-        if (accept(candidate)) yield sample(candidate, index, count)
+      for (let count = Math.min(length - index, removable, cap); count > 0; count = Math.floor(count / 2)) {
+        const candidate = edit(index, count)
+        if (accept(candidate.value)) yield sample(candidate.value, candidate.start, count)
       }
       // Structural pattern candidates already canonicalise characters.
       if (pattern !== undefined) continue
       // Unit simplification follows fast-check v4.9.0's string arbitrary (MIT), halving toward the null unit.
       // https://github.com/dubzzz/fast-check/blob/v4.9.0/packages/fast-check/src/arbitrary/string.ts
       for (const code of shrinkInteger(units[index].codePointAt(0)!, 0, true)) {
-        const candidate = splice(index, 1, globalThis.String.fromCodePoint(code.value))
-        if (accept(candidate)) yield sample(candidate, index, 0)
+        const candidate = edit(index, 1, globalThis.String.fromCodePoint(code.value))
+        if (accept(candidate.value)) yield sample(candidate.value, candidate.start, 0)
       }
     }
   }

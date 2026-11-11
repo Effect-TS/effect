@@ -1113,31 +1113,38 @@ describe("Arbitrary", () => {
         }
       }))
 
-    it.effect("does not test deletions below a pattern's minimum length", () =>
-      Effect.gen(function*() {
-        const pattern = /^a{64}$/
-        const schema = Schema.String.check(Schema.isPattern(pattern))
-        const test = RegExp.prototype.test
-        let shorterCandidates = 0
-        const spy = vi.spyOn(RegExp.prototype, "test").mockImplementation(function(this: RegExp, value) {
-          if (this.source === pattern.source && value.length < 64) shorterCandidates++
-          return test.call(this, value)
-        })
-        try {
-          const result = yield* Arbitrary.checkEffect(Arbitrary.schema(schema), () => false, {
-            runs: 1,
-            seed: 123,
-            size: 64,
-            maxShrinks: 1
+    for (
+      const [name, base, pattern, expected] of [
+        ["code units", Schema.String, /^a{64}$/, "a".repeat(64)],
+        ["code points", Schema.String.check(Schema.isMinCodePoints(1)), /^a{64}$/, "a".repeat(64)],
+        ["astral code points", Schema.String.check(Schema.isMinCodePoints(1)), /^\u{1F600}{8}$/u, "😀".repeat(8)]
+      ] as const
+    ) {
+      it.effect(`does not test deletions below a pattern's minimum length (${name})`, () =>
+        Effect.gen(function*() {
+          const schema = base.check(Schema.isPattern(pattern))
+          const test = RegExp.prototype.test
+          let shorterCandidates = 0
+          const spy = vi.spyOn(RegExp.prototype, "test").mockImplementation(function(this: RegExp, value) {
+            if (this.source === pattern.source && value.length < expected.length) shorterCandidates++
+            return test.call(this, value)
           })
+          try {
+            const result = yield* Arbitrary.checkEffect(Arbitrary.schema(schema), () => false, {
+              runs: 1,
+              seed: 123,
+              size: expected.length,
+              maxShrinks: 1
+            })
 
-          assert.strictEqual(result._tag, "Falsified")
-          if (result._tag === "Falsified") assert.strictEqual(result.shrunkInput, "a".repeat(64))
-        } finally {
-          spy.mockRestore()
-        }
-        assert.strictEqual(shorterCandidates, 0)
-      }), { concurrent: false })
+            assert.strictEqual(result._tag, "Falsified")
+            if (result._tag === "Falsified") assert.strictEqual(result.shrunkInput, expected)
+          } finally {
+            spy.mockRestore()
+          }
+          assert.strictEqual(shorterCandidates, 0)
+        }), { concurrent: false })
+    }
 
     describe("deletes failure-irrelevant String units anywhere", () => {
       const cases: ReadonlyArray<{
@@ -1236,6 +1243,26 @@ describe("Arbitrary", () => {
 
         assert.strictEqual(result._tag, "Falsified")
         if (result._tag === "Falsified") assert.strictEqual(result.shrunkInput, "\u{10000}")
+      }))
+
+    it.effect("keeps shrinking after deletions join surrogate units", () =>
+      Effect.gen(function*() {
+        const schema = Schema.String.check(
+          Schema.isPattern(/^(?:[ax]*|\uD800a?\uDC00x)$/),
+          Schema.isMaxCodePoints(4),
+          Schema.isMaxLength(4)
+        )
+        const arbitrary = Arbitrary.schema(schema)
+        const failures = ["\uD800a\uDC00x", "\u{10000}x", "x"]
+        const property = (s: string) => !failures.includes(s)
+        const result = yield* Arbitrary.checkEffect(arbitrary, property, { runs: 1, seed: 9, size: 4 })
+
+        assert.strictEqual(result._tag, "Falsified")
+        if (result._tag === "Falsified") {
+          assert.strictEqual(result.initialInput, failures[0])
+          assert.strictEqual(result.shrunkInput, "x")
+          assert.deepStrictEqual(yield* Arbitrary.checkEffect(arbitrary, property, { replay: result.replay }), result)
+        }
       }))
 
     it.effect("structurally shrinks regular-expression repetitions", () =>
