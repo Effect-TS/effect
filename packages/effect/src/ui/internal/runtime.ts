@@ -1320,13 +1320,12 @@ const start = (
       // The first emission of each watch is folded through `update` before the first render, parent
       // before child, so a new instance over a warm entry never commits "Loading". An instance adopting
       // the server's Model renders it first, to match the server's nodes, and gets the emissions after.
-      let early: NonNullable<Instance["mounting"]> = []
+      const early: NonNullable<Instance["mounting"]> = []
       if (Option.isNone(serverModel) && component["~loaders"] !== undefined) {
         inst.mounting = early
         syncSubscriptions(inst, true)
         // The keyed fields' first values, and whatever their handlers cause, before the first view.
         drainKeyed(inst)
-        early = inst.mounting ?? early
         inst.mounting = undefined
         if (inst.closed || inst.failure !== undefined) return
       }
