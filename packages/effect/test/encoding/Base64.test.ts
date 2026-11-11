@@ -128,13 +128,14 @@ describeWithFallback("Base64", () => {
       for (const encoded of ["+/8=", "+/8", "-_8=", "-_8"]) {
         assert.deepStrictEqual(Result.getOrThrow(Base64.decodeLenient(prefix + encoded)), bytes)
       }
+      assert.deepStrictEqual(Result.getOrThrow(Base64.decodeLenient(prefix + "+w")), bytes.subarray(0, -1))
       assert.strictEqual(Base64.encodeUnpadded(bytes), prefix + "+/8")
     }
   })
 
   it("rejects invalid lenient input and preserves the original input", () => {
     for (const prefix of ["", "AAAA".repeat(48)]) {
-      for (const suffix of ["Zm9vY", "Zg=", "+/!\r\n=", "Zg=v"]) {
+      for (const suffix of ["Zm9vY", "Zg=", "-_!\r\n=", "Zg=v"]) {
         const input = prefix + suffix
         const result = Base64.decodeLenient(input)
         assert.isTrue(Result.isFailure(result), input)
