@@ -3,7 +3,7 @@ import { assert, expect, it } from "@effect/vitest"
 import { Context, Effect, Exit, Layer, Option, Scope } from "effect"
 import { Loader } from "effect/reactivity"
 import { TestClock } from "effect/testing"
-import { Router } from "effect/ui"
+import { Component, Router } from "effect/ui"
 import { BrowserHost, BrowserRouter, HtmlServer } from "effect/ui/html"
 import { HtmlQuery } from "effect/ui/html/testing"
 import { describe } from "vitest"
@@ -74,18 +74,29 @@ const clickReporting = (element: Element, init?: MouseEventInit) => {
   return prevented
 }
 
+const homeRoute = AppRoute.make({ _tag: "Home" })
+
+/** Prerenders `component` at Home as a hash-routing shell. The `#` base lasts for the Scope. */
+const hashShell = Effect.fnUntraced(function*(component: typeof App) {
+  AppRoute.setBase("#")
+  yield* Effect.addFinalizer(() => Effect.sync(() => AppRoute.setBase("")))
+  return yield* HtmlServer.renderToHtml(component, { route: homeRoute }, { static: true }).pipe(
+    Effect.provide(Router.static({ routes: AppRoute, url: "#/" }))
+  )
+})
+
+/** The hash Router, with the browser at the deep link `/#/people/1`. */
+const hashRouter = Effect.suspend(() => {
+  window.history.replaceState(null, "", "/#/people/1")
+  return Layer.build(BrowserRouter.layerHash({ routes: AppRoute }))
+})
+
 describe("BrowserRouter", { concurrent: false }, () => {
   it.effect("exempts hydrated hash roots, but checks client-only hash roots", () => {
     const problems: Array<Loader.Problem.Any> = []
     return Effect.gen(function*() {
-      AppRoute.setBase("#")
-      yield* Effect.addFinalizer(() => Effect.sync(() => AppRoute.setBase("")))
-      const route = AppRoute.make({ _tag: "Home" })
-      const rendered = yield* HtmlServer.renderToHtml(App, { route }, { static: true }).pipe(
-        Effect.provide(Router.static({ routes: AppRoute, url: "#/" }))
-      )
-      window.history.replaceState(null, "", "/#/people/1")
-      const context = yield* Layer.build(BrowserRouter.layerHash({ routes: AppRoute }))
+      const rendered = yield* hashShell(App)
+      const context = yield* hashRouter
       const hydratedContainer = yield* container
       hydratedContainer.innerHTML = rendered.html
       const home = hydratedContainer.querySelector("h1")
@@ -98,11 +109,39 @@ describe("BrowserRouter", { concurrent: false }, () => {
       assert.strictEqual(hydrated.model()?.route._tag, "Person")
       assert.deepStrictEqual(problems, [])
       const clientContainer = yield* container
-      const client = yield* BrowserHost.mount(App, { route }, clientContainer).pipe(Effect.provideContext(context))
+      const client = yield* BrowserHost.mount(App, { route: homeRoute }, clientContainer).pipe(
+        Effect.provideContext(context)
+      )
       yield* tick
       assert.strictEqual(client.model()?.route._tag, "Person")
       assert.strictEqual(problems.length, 1)
       assert.strictEqual(problems[0]._tag, "RouteMismatch")
+    }).pipe(Effect.provide(People.layer), Effect.provideService(Loader.Problems, (problem) => problems.push(problem)))
+  })
+
+  it.effect("checks hash roots that cannot adopt a server Model", () => {
+    const problems: Array<Loader.Problem.Any> = []
+    return Effect.gen(function*() {
+      const Deferred = App.pipe(Component.provide(People.layer, { server: false }))
+      const deferred = yield* hashShell(Deferred)
+      const rendered = yield* hashShell(App)
+      const context = yield* hashRouter
+      for (
+        const [component, state] of [
+          [Deferred, deferred.state],
+          [App, {}],
+          [App, { ...rendered.state, "/App": null }]
+        ] as const
+      ) {
+        const element = yield* container
+        const root = yield* BrowserHost.mount(component, { route: homeRoute }, element, { state }).pipe(
+          Effect.provideContext(context)
+        )
+        yield* tick
+        assert.strictEqual(root.model()?.route._tag, "Person")
+        assert.strictEqual(problems.filter((problem) => problem._tag === "RouteMismatch").length, 1)
+        problems.length = 0
+      }
     }).pipe(Effect.provide(People.layer), Effect.provideService(Loader.Problems, (problem) => problems.push(problem)))
   })
 

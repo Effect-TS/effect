@@ -79,6 +79,33 @@ describe("HtmlServer", { concurrent: false }, () => {
       assert.isTrue(Exit.isFailure(error))
     }))
 
+  it.effect("checks only the first Router subscription on the server", () => {
+    const problems: Array<Loader.Problem.Any> = []
+    const Root = Component.make({
+      name: "FirstRoute",
+      model: Schema.Number,
+      message: Schema.Never,
+      init: () => 0,
+      update: (model) => model,
+      subscriptions: () => [
+        Router.subscription(AppRoute, AppRoute.make({ _tag: "Home" }), () => {
+          throw new Error("Stream ran")
+        }),
+        Router.subscription(AppRoute, AppRoute.make({ _tag: "Slow" }), () => {
+          throw new Error("Stream ran")
+        })
+      ],
+      view: (_, h) => h.text("root")
+    })
+    return Effect.gen(function*() {
+      yield* HtmlServer.renderToHtml(Root, {})
+      assert.deepStrictEqual(problems, [])
+    }).pipe(
+      Effect.provide(Router.static({ routes: AppRoute, url: "/" })),
+      Effect.provideService(Loader.Problems, (problem) => problems.push(problem))
+    )
+  })
+
   it.effect("reports a server route mismatch even after navigation, but accepts a fresh snapshot", () => {
     const problems: Array<Loader.Problem.Any> = []
     return Effect.gen(function*() {

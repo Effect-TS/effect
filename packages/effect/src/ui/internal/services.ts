@@ -19,6 +19,7 @@ export const Refs = Context.Service<RefsShape, RefsShape>("effect/ui/Renderer/Re
  * @internal
  */
 export interface RootHandle {
+  /** Whether the root actually adopted a server Model, including after a deferred Layer resolves. */
   readonly hydrated: boolean
   readonly container: unknown
   /** The current flush: 0 for the first render, then one more per flush. */
@@ -78,5 +79,16 @@ export const CurrentRoot = Context.Reference<() => RootHandle | undefined>("effe
   defaultValue: () => () => undefined
 })
 
-/** @internal */
+/**
+ * A Subscription may carry a function under this key. No Stream runs on the
+ * server, so there the runtime calls it once per render, for the root's
+ * Subscriptions only, with the root's context and the problems sink.
+ *
+ * @internal
+ */
 export const onServer: unique symbol = Symbol.for("effect/ui/Subscription/onServer") as any
+
+/** @internal */
+export interface OnServer {
+  readonly [onServer]?: (context: Context.Context<never>, report: RootHandle["report"]) => void
+}

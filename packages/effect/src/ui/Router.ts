@@ -51,7 +51,7 @@
  *   init: ($) => ({ route: $.props.route }),
  *   update: (model, message, $) =>
  *     Message.match(message, {
- *       ChangedRoute: ({ route }) => AppRoute.print(route) === AppRoute.print(model.route) ? model : { route },
+ *       ChangedRoute: ({ route }) => ({ route }),
  *       Go: ({ route }) =>
  *         $.run(Router.push(AppRoute, route).pipe(Command.map(() => Message.make({ _tag: "Navigated" })))),
  *       Navigated: () => model
@@ -329,6 +329,10 @@ export type Services = Router | Push | Replace | Back | Forward | Load
 
 const engines = new WeakMap<Router, Engine>()
 
+/** A location's route as a value of `union`: the Router's own route for its union, a parse of the URL for another. */
+const routeOf = (router: Router, union: Route.AnyUnion, location: Location): Option.Option<{ readonly _tag: string }> =>
+  router.routes === union ? Option.some(location.route) : union.parse(location.url)
+
 /**
  * Reads the Router's current route as a value of the given union.
  *
@@ -347,10 +351,7 @@ const engines = new WeakMap<Router, Engine>()
  * @since 4.1.3
  */
 export const currentRoute = <U extends Routes>(routes: U): Effect.Effect<U["Type"], never, Router> =>
-  Effect.map(Router, (router) => {
-    const location = router.location()
-    return (router.routes === routes ? location.route : Option.getOrThrow(routes.parse(location.url))) as U["Type"]
-  })
+  Effect.map(Router, (router) => Option.getOrThrow(routeOf(router, routes, router.location())) as U["Type"])
 
 /**
  * The Subscription that feeds route changes into a root's `update`.
@@ -382,16 +383,17 @@ export const subscription = <U extends Routes, Msg>(
   let last: number | undefined
   let engine: Engine | undefined
   const union: Route.AnyUnion = routes
-  const have = union.print(held) as string
+  const have = union.print(held)
   const same = (route: { readonly _tag: string }) => route._tag === held._tag && union.print(route) === have
-  const mismatch = (route: { readonly _tag: string }) =>
-    new RouteMismatch({
+  const mismatch = (route: { readonly _tag: string }) => {
+    const router = union.print(route)
+    return new RouteMismatch({
       have,
-      router: union.print(route) as string,
-      message: `The component holds "${have}" but the Router is at "${
-        union.print(route)
-      }". Initialize the root with Router.currentRoute.`
+      router,
+      message:
+        `The component holds "${have}" but the Router is at "${router}". Initialize the root with Router.currentRoute.`
     })
+  }
   const stream = Stream.unwrap(Effect.gen(function*() {
     const router = yield* Router
     const report = yield* Loader.Problems
@@ -400,13 +402,13 @@ export const subscription = <U extends Routes, Msg>(
     let first = true
     return router.changes.pipe(
       Stream.map((location) => {
-        const route = router.routes === union ? Option.some(location.route) : union.parse(location.url)
+        const route = routeOf(router, union, location)
         const initial = first
         first = false
         if (Option.isNone(route)) return Option.none<Msg>()
         if (initial) {
           if (same(route.value)) return Option.none<Msg>()
-          if (location.seq === 0 && !(engine?.hash && root?.hydrated)) {
+          if (location.seq === 0 && !(router.routes.base() === "#" && root?.hydrated)) {
             try {
               report(mismatch(route.value))
             } catch {
@@ -427,8 +429,7 @@ export const subscription = <U extends Routes, Msg>(
     [services.onServer]: (ctx: Context.Context<never>, report: (problem: Loader.Problem.Any) => void) => {
       const router = Context.getOption(ctx as Context.Context<Router>, Router)
       if (Option.isNone(router)) return
-      const location = router.value.location()
-      const route = router.value.routes === union ? Option.some(location.route) : union.parse(location.url)
+      const route = routeOf(router.value, union, router.value.location())
       if (Option.isSome(route) && !same(route.value)) report(mismatch(route.value))
     },
     [services.onDeliver]: (message: unknown) => {
@@ -523,7 +524,6 @@ export class RouteMismatch extends Data.TaggedClass("RouteMismatch")<{
 }> {}
 
 interface Engine {
-  readonly hash: boolean
   readonly delivered: (seq: number) => void
 }
 
@@ -852,7 +852,6 @@ const build = (options: Options): Effect.Effect<Context.Context<Router>, never, 
       blocked: () => blocks.size > 0
     }
     engines.set(router, {
-      hash: routes.base() === "#",
       delivered: (seq) => {
         const root = primary()
         if (

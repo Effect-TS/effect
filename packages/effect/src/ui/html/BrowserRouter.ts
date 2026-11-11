@@ -21,10 +21,11 @@
  *
  * **Example** (A two-page app)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { BrowserHost, BrowserRouter, Html } from "effect/ui/html"
  * import { Effect, Schema } from "effect"
  * import { Component, Route, Router } from "effect/ui"
+ * import { TestHost } from "effect/ui/testing"
  *
  * const AppRoute = Route.union({
  *   Home: Route.make("/"),
@@ -42,8 +43,8 @@
  *   message: Message,
  *   elements: Html,
  *   init: ($) => $.props.route,
- *   update: (route, message) => AppRoute.print(message.route) === AppRoute.print(route) ? route : message.route,
- *   subscriptions: (model) => [Router.subscription(AppRoute, model.route, (route) => Message.make({ _tag: "ChangedRoute", route }))],
+ *   update: (_, message) => message.route,
+ *   subscriptions: (model) => [Router.subscription(AppRoute, model, (route) => Message.make({ _tag: "ChangedRoute", route }))],
  *   view: (route, h) =>
  *     h.div(
  *       h.a("Ada").attr("href", AppRoute.print(AppRoute.make({ _tag: "Person", params: { id: 1 } }))),
@@ -58,6 +59,17 @@
  *   Effect.scoped,
  *   Effect.provide(BrowserRouter.layer({ routes: AppRoute }))
  * )
+ *
+ * // Exercise the same component without a browser.
+ * await Effect.runPromise(Effect.gen(function*() {
+ *   const root = yield* TestHost.mount(App, { route: yield* Router.currentRoute(AppRoute) })
+ *   yield* TestHost.settle
+ *   root.model()?._tag // => "Person"
+ * }).pipe(
+ *   Effect.provide(Router.memory({ routes: AppRoute, url: "/people/1" })),
+ *   Effect.scoped,
+ *   Effect.provide(TestHost.layer())
+ * ))
  * ```
  *
  * @stability experimental

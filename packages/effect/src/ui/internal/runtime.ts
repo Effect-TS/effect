@@ -176,7 +176,6 @@ type Settled = AsyncResult.Success<any, any> | AsyncResult.Failure<any, any>
 
 /** @internal */
 export interface Instance {
-  serverSampled?: boolean
   readonly path: string
   readonly depth: number
   readonly component: Component.Any
@@ -470,7 +469,6 @@ const start = (
   // Slots still waiting for their Layer before they adopt, and whether the first render is done.
   let waiting = 0
   let started = false
-  const hydrated = hydrating !== undefined
   let adoptedDone = hydrating === undefined
   const adoptedWaiters: Array<() => void> = []
   const settleWaiting = () => {
@@ -1710,6 +1708,8 @@ const start = (
   }
 
   // -- Subscriptions --------------------------------------------------------
+  // On the server: whether the root's Subscriptions were sampled for their checks.
+  let rootChecked = false
   /** `watchesOnly`: before the first render, when only the cache watchers register. */
   const syncSubscriptions = (inst: Instance, watchesOnly = false) => {
     const subscriptions = inst.component.subscriptions
@@ -1717,27 +1717,16 @@ const start = (
     if (inst.closed || inst.waiting || subscriptions === undefined) return
     // Sample the root once for server checks, and loader components for watch markers.
     // Nothing under a Layer kept off the server is sampled.
-    const checkRoot = server !== undefined && inst.parent === undefined && !inst.serverSampled
+    const checkRoot = server !== undefined && inst.parent === undefined && !rootChecked
     if (server !== undefined) {
       if (inst.env.never || (!checkRoot && inst.component["~loaders"] === undefined)) return
-      if (checkRoot) inst.serverSampled = true
+      if (checkRoot) rootChecked = true
     }
+    // A throw from the root's check fails the render: `guard` would defer the root to the client, unchecked.
     const wanted = checkRoot
       ? subscriptions(inst.model, inst.props)
       : guard(inst, "subscription", () => subscriptions(inst.model, inst.props))
     if (wanted === undefined) return
-    if (checkRoot) {
-      for (const subscription of wanted) {
-        if (typeof subscription !== "object" || subscription === null) continue
-        const hook = (subscription as {
-          readonly [services.onServer]?: (
-            ctx: Context.Context<never>,
-            report: (problem: Loader.Problem.Any) => void
-          ) => void
-        })[services.onServer]
-        if (hook !== undefined) whenReady(inst.env, (envCtx) => hook(envCtx, report))
-      }
-    }
     const byKey = new Map<string, Subscription.Subscription<any, any>>()
     const markers = new Map<string, loaders.Marker>()
     for (const subscription of wanted) {
@@ -1747,6 +1736,12 @@ const start = (
         if (!markers.has(subscription.key)) markers.set(subscription.key, marker)
       } else if (group !== undefined) syncGroup(inst, group)
       else if (!byKey.has(subscription.key)) byKey.set(subscription.key, subscription)
+    }
+    if (checkRoot) {
+      for (const subscription of byKey.values()) {
+        const hook = (subscription as services.OnServer)[services.onServer]
+        if (hook !== undefined) whenReady(inst.env, (envCtx) => hook(envCtx, report))
+      }
     }
     inst.syncing++
     try {
@@ -2564,7 +2559,9 @@ const start = (
   if (hooks !== undefined) {
     handle = {
       container,
-      hydrated,
+      get hydrated() {
+        return root.adoptsChildren
+      },
       flush: () => flushes,
       snapshot,
       // The first navigation closes the fetch-free window, if adoption hasn't yet.

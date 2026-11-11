@@ -96,8 +96,7 @@ export const App = Component.make({
   init: ($) => ({ route: $.props.route, blocked: false }),
   update: (model, message) =>
     Message.match(message, {
-      ChangedRoute: (changed) =>
-        AppRoute.print(changed.route) === AppRoute.print(model.route) ? model : { ...model, route: changed.route },
+      ChangedRoute: ({ route }) => ({ ...model, route }),
       Block: () => ({ ...model, blocked: true }),
       Filter: () => model
     }),
