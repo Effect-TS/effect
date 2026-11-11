@@ -109,7 +109,8 @@ export const App = Component.make({
 //
 // A root's props can be an Effect. `Router.props` reads `{ route }` from the
 // Router when the root mounts. A root with other props maps
-// `Router.currentRoute(AppRoute)` instead.
+// `Router.currentRoute(AppRoute)` instead. Both die if the union can't parse
+// the URL, which the `/*` catch-all rules out.
 export const AppLive = Layer.suspend(() =>
   BrowserHost.mount(App, Router.props(AppRoute), document.getElementById("app")!)
 ).pipe(Layer.provide([BrowserRouter.layer({ routes: AppRoute }), Notes.layerHttp]))
