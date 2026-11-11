@@ -28,13 +28,15 @@ import * as Cause from "../Cause.ts"
 import * as Context from "../Context.ts"
 import * as Effect from "../Effect.ts"
 import { memoize } from "../Function.ts"
+import { redactAST } from "../internal/schemaRedact.ts"
 import * as Layer from "../Layer.ts"
 import * as Queue from "../Queue.ts"
+import type * as Loader from "../reactivity/Loader.ts"
+import { canonical } from "../reactivity/Loader.ts"
 import * as Redacted from "../Redacted.ts"
 import * as Schedule from "../Schedule.ts"
 import * as Schema from "../Schema.ts"
 import * as SchemaAST from "../SchemaAST.ts"
-import * as SchemaGetter from "../SchemaGetter.ts"
 import * as Socket from "../socket/Socket.ts"
 import type * as Command from "./Command.ts"
 import type * as Component from "./Component.ts"
@@ -160,7 +162,7 @@ export interface Base {
 
 /**
  * One `update` call: the message, what sent it, the props it saw, the Model
- * after it, and the Commands and events it returned.
+ * after it, and the Commands, events, load mores and resets it returned.
  *
  * @stability experimental
  * @category models
@@ -176,6 +178,8 @@ export interface Update extends Base {
   readonly model: unknown
   readonly commands: ReadonlyArray<Command.Command<any, any>>
   readonly events: ReadonlyArray<unknown>
+  /** The `$.loadMore` and `$.reset` calls, in order. The wire omits it when empty. */
+  readonly lists?: ReadonlyArray<Component.ListIssue> | undefined
 }
 
 /**
@@ -243,12 +247,68 @@ export interface CommandSettled extends Base {
   readonly _tag: "CommandEnded" | "CommandInterrupted"
   readonly name: string
   readonly issued: Issued
+  /**
+   * Whether the run was detached: an Effect-shaped `Command.Service` run
+   * outside `switch`, owned by its Layer build. When its instance was gone
+   * by then, its message was dropped, and this entry is all that reports it.
+   */
+  readonly detached: boolean
+  /**
+   * For a run issued with `Command.afterRefetch` that succeeded, how its wait
+   * ended: `"settled"` when every awaited entry refetched, `"nothing"` when
+   * the awaited set was empty, `"budget"` when the budget ran out,
+   * `"switch"` or `"interrupt"` when the run was cut, which delivered its
+   * message at once, and `"closed"` when the instance closed and the message
+   * was dropped. Absent for any other run.
+   */
+  readonly waitEnded?: WaitEnded | undefined
+  /** With `waitEnded`: the awaited entries still refetching when the wait was cut. */
+  readonly outstanding?: ReadonlyArray<AwaitedEntry> | undefined
 }
 
 /**
- * A Command that never ran: dropped by its `mode`, by the server, or because
- * an adopted Model already holds its result (a `server: true` Command replayed
- * by hydration or history restore).
+ * How a `Command.afterRefetch` wait ended.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.1.3
+ */
+export type WaitEnded = "settled" | "nothing" | "budget" | "switch" | "interrupt" | "closed"
+
+/**
+ * An entry a `Command.afterRefetch` run waits for: the read's name and the
+ * entry's log key.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.1.3
+ */
+export interface AwaitedEntry {
+  readonly read: string
+  readonly logKey: string
+}
+
+/**
+ * A run issued with `Command.afterRefetch` succeeded and waits for the
+ * refetches its invalidation started, written at its fiber's exit after
+ * the batch's fetch entries. `entries` is the awaited set, which isn't empty:
+ * an empty one logs no entry, and `CommandEnded` has `waitEnded: "nothing"`.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.1.3
+ */
+export interface CommandAwaiting extends Base {
+  readonly _tag: "CommandAwaiting"
+  readonly name: string
+  readonly issued: Issued
+  readonly entries: ReadonlyArray<AwaitedEntry>
+}
+
+/**
+ * A Command that never ran: dropped by its `mode`, or by the server, where
+ * no Command runs. On the server only a Command from `update` is logged;
+ * `init`'s are dropped silently, since the client runs them when it adopts.
  *
  * @stability experimental
  * @category models
@@ -258,7 +318,7 @@ export interface CommandDropped extends Base {
   readonly _tag: "CommandDropped"
   readonly name: string
   readonly issued: Issued
-  readonly reason: "mode" | "server" | "adopted"
+  readonly reason: "mode" | "server"
 }
 
 /**
@@ -289,6 +349,40 @@ export interface SessionStarted extends Base {
 }
 
 /**
+ * The loader cache started a fetch. `path` is the root's path.
+ *
+ * **Details**
+ *
+ * `logKey` is the entry's args key with every `Schema.Redacted` argument
+ * redacted, so two entries that differ only in a secret share it.
+ * `restart` marks a fetch that replaced an interrupted one, under the same
+ * trigger. `inWindow` marks a fetch of a hydrated entry while the
+ * fetch-free window is open. `stored: false` marks a fetcher call whose
+ * result goes to `get` callers only. A caller that joins a fetch in flight
+ * logs nothing.
+ *
+ * A list read logs each page it requests as its own entry: `page` is the
+ * page's index, from 0, and `cursor` the cursor encoded by the list's
+ * `cursor` Schema, absent for the first page. A read that isn't a list has
+ * neither.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.1.3
+ */
+export interface FetchStarted extends Base {
+  readonly _tag: "FetchStarted"
+  readonly read: string
+  readonly logKey: string
+  readonly trigger: Loader.Trigger
+  readonly restart: boolean
+  readonly inWindow: boolean
+  readonly stored: boolean
+  readonly page?: number
+  readonly cursor?: Schema.Json
+}
+
+/**
  * Any log entry.
  *
  * @stability experimental
@@ -303,8 +397,10 @@ export type Entry =
   | LayerFailed
   | SubscriptionChanged
   | CommandSettled
+  | CommandAwaiting
   | CommandDropped
   | Failed
+  | FetchStarted
 
 /**
  * A ring buffer log whose entries can be read back.
@@ -424,9 +520,10 @@ const IssuedWire = Schema.Struct({ seq: Schema.Number, index: Schema.Number })
 const CommandWire = Schema.Struct({
   _tag: Schema.Literals(["Effect", "Stream", "Interrupt"]),
   name: Schema.String,
-  key: Schema.NullOr(Schema.String),
-  args: Schema.Array(Schema.Json)
+  group: Schema.NullOr(Schema.String),
+  args: Schema.Json
 })
+const AwaitedEntryWire = Schema.Struct({ read: Schema.String, logKey: Schema.String })
 const CauseWire = Schema.Struct({ pretty: Schema.String, reasons: Schema.Array(Schema.Json) })
 const SourceWire = Schema.Union([
   Schema.TaggedStruct("DomEvent", { name: Schema.String }),
@@ -449,9 +546,11 @@ const SourceWire = Schema.Union([
  * **Details**
  *
  * Models, messages, props and events are encoded through the component's
- * Schemas. Command args are encoded structurally, best effort: a value with
- * no JSON form becomes `{ "~unserialisable": "<kind>" }`, a `Redacted`
- * becomes `{ "~redacted": true }`, and a Model over `maxEntryBytes` becomes
+ * Schemas. Command args are encoded through the Command's `args` Schema,
+ * field by field, and a field that doesn't encode falls back to a structural
+ * encoding, best effort: a value with no JSON form becomes
+ * `{ "~unserialisable": "<kind>" }`, a `Redacted` becomes
+ * `{ "~redacted": true }`, and a Model or message over `maxEntryBytes` becomes
  * `{ "~truncated": bytes }`. A Cause is sent as `Cause.pretty` plus its
  * reasons, best effort.
  *
@@ -470,7 +569,10 @@ export const Wire = Schema.Union([
     props: Schema.Json,
     model: Schema.Json,
     commands: Schema.Array(CommandWire),
-    events: Schema.Array(Schema.Json)
+    events: Schema.Array(Schema.Json),
+    lists: Schema.optionalKey(
+      Schema.Array(Schema.Struct({ field: Schema.String, op: Schema.Literals(["loadMore", "reset"]) }))
+    )
   }),
   Schema.TaggedStruct("Mounted", {
     ...Seq,
@@ -488,13 +590,22 @@ export const Wire = Schema.Union([
     _tag: Schema.Literals(["CommandEnded", "CommandInterrupted"]),
     ...Seq,
     name: Schema.String,
-    issued: IssuedWire
+    issued: IssuedWire,
+    detached: Schema.Boolean,
+    waitEnded: Schema.optionalKey(Schema.Literals(["settled", "nothing", "budget", "switch", "interrupt", "closed"])),
+    outstanding: Schema.optionalKey(Schema.Array(AwaitedEntryWire))
+  }),
+  Schema.TaggedStruct("CommandAwaiting", {
+    ...Seq,
+    name: Schema.String,
+    issued: IssuedWire,
+    entries: Schema.Array(AwaitedEntryWire)
   }),
   Schema.TaggedStruct("CommandDropped", {
     ...Seq,
     name: Schema.String,
     issued: IssuedWire,
-    reason: Schema.Literals(["mode", "server", "adopted"])
+    reason: Schema.Literals(["mode", "server"])
   }),
   Schema.Struct({
     _tag: Schema.Literals(["Failed", "Crashed"]),
@@ -502,6 +613,27 @@ export const Wire = Schema.Union([
     source: Schema.String,
     name: Schema.NullOr(Schema.String),
     cause: CauseWire
+  }),
+  Schema.TaggedStruct("FetchStarted", {
+    ...Seq,
+    read: Schema.String,
+    logKey: Schema.String,
+    trigger: Schema.Literals([
+      "watch",
+      "get",
+      "prefetch",
+      "visibility",
+      "connectivity",
+      "interval",
+      "invalidation",
+      "loadMore",
+      "reset"
+    ]),
+    restart: Schema.Boolean,
+    inWindow: Schema.Boolean,
+    stored: Schema.Boolean,
+    page: Schema.optionalKey(Schema.Number),
+    cursor: Schema.optionalKey(Schema.Json)
   })
 ])
 
@@ -533,41 +665,6 @@ export type WireEntry = Exclude<Wire, { readonly _tag: "Hello" }>
 export interface Encoder {
   readonly encode: (entry: Entry) => WireEntry
 }
-
-const isRedactedAST = (ast: SchemaAST.AST): boolean =>
-  ast._tag === "Declaration" &&
-  (ast.annotations?.representation as { readonly id?: unknown } | undefined)?.id === "effect/schema/Redacted"
-
-const redactedLink = Schema.link<Redacted.Redacted<unknown>>()(
-  Schema.Struct({ "~redacted": Schema.Literal(true) }),
-  {
-    decode: SchemaGetter.forbidden(() => "a redacted value was sent as a placeholder and can't be decoded"),
-    encode: SchemaGetter.transform(() => ({ "~redacted": true as const }))
-  }
-)
-
-/**
- * Gives every `Schema.Redacted` node in `ast` the placeholder encoding, wherever
- * it is: in a field, an element or a union member, in a declaration's type
- * parameters (`Option`, `ReadonlyMap`, ...), behind a `suspend`, or on the
- * encoded side of a transformation. A node's own codec is replaced too, so
- * `RedactedFromValue` can't unwrap its value. Declaration type parameters
- * matter most: a declaration encodes its contents with them, before any JSON
- * codec derived for the declaration itself runs.
- */
-const redactAST: (ast: SchemaAST.AST) => SchemaAST.AST = memoize((ast: SchemaAST.AST): SchemaAST.AST => {
-  if (isRedactedAST(ast)) {
-    const out = SchemaAST.replaceEncoding(ast, [redactedLink])
-    return ast.context === undefined ? out : SchemaAST.replaceContextLastLink(out, ast.context)
-  }
-  if (ast.encoding !== undefined) {
-    const body = SchemaAST.replaceEncoding(ast, undefined)
-    const redactedBody = redactAST(body)
-    const encoding = SchemaAST.mapOrSame(ast.encoding, (link) => SchemaAST.mapLink(link, redactAST))
-    return redactedBody === body && encoding === ast.encoding ? ast : SchemaAST.replaceEncoding(redactedBody, encoding)
-  }
-  return "recur" in ast ? ast.recur(redactAST) : ast
-})
 
 /**
  * Makes an encoder. `onWarning` is called once per component and field the
@@ -605,8 +702,9 @@ export const makeEncoder = (options?: {
       return { "~unserialisable": "encode" }
     }
   }
-  const model = (component: Component.Any, value: unknown): Schema.Json => {
-    const encoded = through(component, "model", value) as Schema.Json
+  // A watch's message carries a whole snapshot, so messages are capped like Models.
+  const capped = (component: Component.Any, field: "model" | "message", value: unknown): Schema.Json => {
+    const encoded = through(component, field, value) as Schema.Json
     if (maxEntryBytes === Infinity) return encoded
     const bytes = utf8Length(JSON.stringify(encoded))
     return bytes > maxEntryBytes ? { "~truncated": bytes } : encoded
@@ -620,11 +718,12 @@ export const makeEncoder = (options?: {
             _tag: "Update",
             component: entry.component.name,
             source: encodeSource(entry.source),
-            message: through(entry.component, "message", entry.message) as Schema.Json,
+            message: capped(entry.component, "message", entry.message),
             props: through(entry.component, "props", entry.props) as Schema.Json,
-            model: model(entry.component, entry.model),
+            model: capped(entry.component, "model", entry.model),
             commands: entry.commands.map(encodeCommand),
-            events: entry.events.map((emitted) => through(entry.component, "events", emitted) as Schema.Json)
+            events: entry.events.map((emitted) => through(entry.component, "events", emitted) as Schema.Json),
+            ...(entry.lists === undefined || entry.lists.length === 0 ? undefined : { lists: entry.lists })
           }
         case "Mounted":
           return {
@@ -632,7 +731,7 @@ export const makeEncoder = (options?: {
             _tag: "Mounted",
             component: entry.component.name,
             props: through(entry.component, "props", entry.props) as Schema.Json,
-            model: model(entry.component, entry.model),
+            model: capped(entry.component, "model", entry.model),
             commands: entry.commands.map(encodeCommand),
             events: entry.events.map((emitted) => through(entry.component, "events", emitted) as Schema.Json),
             adopted: entry.adopted
@@ -655,7 +754,23 @@ export const makeEncoder = (options?: {
           return { ...base(entry), _tag: entry._tag, key: entry.key }
         case "CommandEnded":
         case "CommandInterrupted":
-          return { ...base(entry), _tag: entry._tag, name: entry.name, issued: entry.issued }
+          return {
+            ...base(entry),
+            _tag: entry._tag,
+            name: entry.name,
+            issued: entry.issued,
+            detached: entry.detached,
+            ...(entry.waitEnded === undefined ? undefined : { waitEnded: entry.waitEnded }),
+            ...(entry.outstanding === undefined ? undefined : { outstanding: entry.outstanding })
+          }
+        case "CommandAwaiting":
+          return {
+            ...base(entry),
+            _tag: "CommandAwaiting",
+            name: entry.name,
+            issued: entry.issued,
+            entries: entry.entries
+          }
         case "CommandDropped":
           return {
             ...base(entry),
@@ -668,6 +783,19 @@ export const makeEncoder = (options?: {
         case "LayerPending":
         case "LayerReady":
           return { ...base(entry), _tag: entry._tag }
+        case "FetchStarted":
+          return {
+            ...base(entry),
+            _tag: "FetchStarted",
+            read: entry.read,
+            logKey: entry.logKey,
+            trigger: entry.trigger,
+            restart: entry.restart,
+            inWindow: entry.inWindow,
+            stored: entry.stored,
+            ...(entry.page === undefined ? undefined : { page: entry.page }),
+            ...(entry.cursor === undefined ? undefined : { cursor: entry.cursor })
+          }
       }
     }
   }
@@ -685,7 +813,10 @@ const encodeSource = (source: Source): typeof SourceWire.Type => {
 }
 
 /**
- * Encodes a Command by name, key and args, the args structurally.
+ * Encodes a Command by name, group and args. Args and group fields use the
+ * Command's `args` Schema, replacing every `Schema.Redacted` with a
+ * placeholder. A leaf that fails to encode falls back to structural encoding.
+ * An `Interrupt` has `null` args.
  *
  * @stability experimental
  * @category Wire
@@ -694,9 +825,214 @@ const encodeSource = (source: Source): typeof SourceWire.Type => {
 export const encodeCommand = (command: Command.Command<any, any>): typeof CommandWire.Type => ({
   _tag: command._tag,
   name: command.name,
-  key: command.key ?? null,
-  args: command._tag === "Interrupt" ? [] : command.args.map((arg) => structural(arg))
+  group: encodeGroup(command),
+  args: command._tag === "Interrupt" ? null : encodeArgs(command.argsSchema, command.args)
 })
+
+// The scheduling key holds the group fields' real encoding, so the log re-encodes them redacted.
+const encodeGroup = (command: Command.Command<any, any>): string | null => {
+  if (command.groupKey === undefined) return null
+  const source = (command as { readonly "~group"?: Command.GroupSource | undefined })["~group"]
+  return source === undefined
+    ? JSON.stringify({ "~redacted": true })
+    : canonical(encodeArgs(source.schema, source.picked))
+}
+
+/** The redacting codec of `ast`, or `null` when it has none. */
+const encoderOf = memoize((ast: SchemaAST.AST): ((value: unknown) => unknown) | null => {
+  try {
+    return Schema.encodeUnknownSync(
+      Schema.toCodecJson(Schema.make<Schema.Codec<unknown, unknown>>(redactAST(ast)))
+    )
+  } catch {
+    return null
+  }
+})
+const guardOf = memoize((ast: SchemaAST.AST): (value: unknown) => boolean => {
+  const is = Schema.is(Schema.make<Schema.Top>(ast))
+  return (value) => {
+    try {
+      return is(value)
+    } catch {
+      return false
+    }
+  }
+})
+const isPlainRecord = (value: unknown): value is Record<PropertyKey, unknown> =>
+  typeof value === "object" && value !== null && !Array.isArray(value) && !Redacted.isRedacted(value)
+/** Whether `ast` declares a `Schema.Redacted` anywhere. */
+const holdsRedacted = (ast: SchemaAST.AST): boolean => redactAST(ast) !== ast
+
+/**
+ * Detects objects anywhere in `ast` with a redacted index signature beside
+ * another named or indexed signature. Each matching signature parses a key,
+ * but the codec keeps only the named property's output or the last index
+ * signature's. This can discard another signature's redaction, so these
+ * Schemas bypass the whole codec.
+ */
+const holdsRedactedOverlap = memoize((ast: SchemaAST.AST): boolean => {
+  const seen = new Set<SchemaAST.AST>()
+  const visit = (node: SchemaAST.AST): boolean => {
+    if (seen.has(node)) return false
+    seen.add(node)
+    if (node.encoding !== undefined && node.encoding.some((link) => visit(link.to))) return true
+    switch (node._tag) {
+      case "Objects":
+        return (node.indexSignatures.length + node.propertySignatures.length > 1 &&
+          node.indexSignatures.some((index) => holdsRedacted(index.type))) ||
+          node.propertySignatures.some((property) => visit(property.type)) ||
+          node.indexSignatures.some((index) => visit(index.type))
+      case "Arrays":
+        return node.elements.some(visit) || node.rest.some(visit)
+      case "Union":
+        return node.types.some(visit)
+      case "Suspend":
+        return visit(node.thunk())
+      case "Declaration":
+        return node.typeParameters.some(visit)
+      default:
+        return false
+    }
+  }
+  return visit(ast)
+})
+
+const redacted: Schema.Json = { "~redacted": true }
+const failed: Schema.Json = { "~unserialisable": "encode" }
+/** Reading a value can throw, from a getter. The log gets a placeholder for it instead. */
+const guarded = (f: () => Schema.Json): Schema.Json => {
+  try {
+    return f()
+  } catch {
+    return failed
+  }
+}
+
+/**
+ * Encodes `value` through `ast`. When the whole fails, a struct, record,
+ * tuple or array is encoded part by part, and a union through the member the
+ * value belongs to, so only the leaf that fails falls back. A failing leaf
+ * whose Schema declares a `Schema.Redacted` anywhere is a placeholder, since
+ * `structural` can't tell which of its values is secret.
+ *
+ * Nothing is read that the codec wouldn't read, until a leaf falls back. A
+ * cyclic value makes the codec overflow the stack, which is a failure like
+ * any other: the walk goes on part by part, and the repeat is a placeholder.
+ */
+const encodeAt = (ast: SchemaAST.AST, value: unknown, path: Set<object>): Schema.Json => {
+  if (typeof value === "object" && value !== null && path.has(value)) return { "~unserialisable": "cycle" }
+  const encode = holdsRedactedOverlap(ast) ? null : encoderOf(ast)
+  if (encode !== null) {
+    try {
+      // A Schema such as `Schema.Any` passes a value through, so the result goes through `structural` too.
+      return structural(encode(value))
+    } catch {
+      // Encoded part by part below.
+    }
+  }
+  if (ast.encoding === undefined) {
+    switch (ast._tag) {
+      case "Suspend":
+        return encodeAt(ast.thunk(), value, path)
+      case "Objects":
+        if (isPlainRecord(value)) return within(path, value, () => encodeObject(ast, value, path))
+        break
+      case "Arrays":
+        if (Array.isArray(value)) return within(path, value, () => encodeArray(ast, value, path))
+        break
+      case "Union": {
+        const member = ast.types.find((type) => guardOf(type)(value))
+        if (member !== undefined) return encodeAt(member, value, path)
+        break
+      }
+    }
+  }
+  return fallback(ast, value)
+}
+const within = <A>(path: Set<object>, value: object, f: () => A): A => {
+  path.add(value)
+  try {
+    return f()
+  } finally {
+    path.delete(value)
+  }
+}
+/**
+ * The keys the parser outputs, each with every Schema that applies to it: its
+ * property signature, if it has one, and every index signature it matches. The
+ * parser runs all of them, even when it keeps only one output, so each one's
+ * redaction counts. A key that matches nothing is left out. Only keys are read
+ * here, never values.
+ */
+const encodeObject = (ast: SchemaAST.Objects, value: Record<PropertyKey, unknown>, path: Set<object>): Schema.Json => {
+  const applies = new Map<string, Array<SchemaAST.AST>>()
+  for (const property of ast.propertySignatures) {
+    if (typeof property.name === "string" && Object.hasOwn(value, property.name)) {
+      applies.set(property.name, [property.type])
+    }
+  }
+  const properties = new Set(applies.keys())
+  for (const index of ast.indexSignatures) {
+    for (const key of SchemaAST.getIndexSignatureKeys(value, index.parameter)) {
+      if (typeof key !== "string") continue
+      const types = applies.get(key)
+      if (types === undefined) applies.set(key, [index.type])
+      else if (!types.includes(index.type)) types.push(index.type)
+    }
+  }
+  const out: Record<string, Schema.Json> = {}
+  for (const [key, types] of applies) {
+    // Under two Schemas, either one's redaction could apply, so it's a placeholder. Otherwise the
+    // parser's output is kept: the property's, or else the last index signature's.
+    const type = properties.has(key) ? types[0]! : types[types.length - 1]!
+    out[key] = types.length > 1 && types.some(holdsRedacted)
+      ? redacted
+      : guarded(() => encodeAt(type, value[key], path))
+  }
+  return out
+}
+/** Elements, then the rest, then the trailing elements, which take the last positions. */
+const encodeArray = (ast: SchemaAST.Arrays, value: ReadonlyArray<unknown>, path: Set<object>): Schema.Json => {
+  const [rest, ...tail] = ast.rest
+  const tailStart = Math.max(ast.elements.length, value.length - tail.length)
+  return value.map((item, i) => {
+    const element = i < ast.elements.length
+      ? ast.elements[i]
+      : rest === undefined
+      ? undefined
+      : i >= tailStart
+      ? tail[i - tailStart]
+      : rest
+    return element === undefined ? fallback(ast, item) : encodeAt(element, item, path)
+  })
+}
+const fallback = (ast: SchemaAST.AST, value: unknown): Schema.Json =>
+  holdsRedacted(ast) ? redacted : guarded(() => structural(value))
+
+/**
+ * Encodes a value through a Schema with every `Schema.Redacted` redacted. A
+ * leaf that fails to encode, such as a `File` under `Schema.instanceOf`,
+ * falls back to `structural` on its own, and its siblings keep their codecs.
+ * It never throws: a value that can't be read is a placeholder.
+ *
+ * @internal
+ */
+export const encodeArgs = (schema: Schema.Top, value: unknown): Schema.Json => {
+  const path = new Set<object>()
+  // A struct or a class is encoded field by field.
+  const fields = (schema as { readonly fields?: Schema.Struct.Fields }).fields
+  if (fields !== undefined && isPlainRecord(value)) {
+    return within(path, value, () => {
+      const out: Record<string, Schema.Json> = {}
+      for (const key of Object.keys(fields)) {
+        if (!Object.hasOwn(value, key)) continue
+        out[key] = guarded(() => encodeAt((fields[key] as Schema.Top).ast, value[key], path))
+      }
+      return out
+    })
+  }
+  return guarded(() => encodeAt(schema.ast, value, path))
+}
 
 const encodeCause = (cause: Cause.Cause<unknown>): typeof CauseWire.Type => ({
   pretty: Cause.pretty(cause),

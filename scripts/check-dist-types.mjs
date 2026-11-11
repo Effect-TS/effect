@@ -52,7 +52,17 @@ try {
   // Only `effect/ui/html` may need the DOM lib.
   Fs.writeFileSync(
     Path.join(dir, "index.ts"),
-    ["effect", "effect/Effect", "effect/Schema", "effect/crypto/KeyFormat", "effect/jose", "effect/ui", "effect/ui/testing"]
+    [
+      "effect",
+      "effect/Effect",
+      "effect/Schema",
+      "effect/crypto/KeyFormat",
+      "effect/jose",
+      "effect/reactivity/Loader",
+      "effect/testing/TestLoader",
+      "effect/ui",
+      "effect/ui/testing"
+    ]
       .map((entry, i) => `import * as _${i} from "${entry}"\nexport { _${i} }\n`).join("")
   )
   config.compilerOptions.lib = ["ES2024"]

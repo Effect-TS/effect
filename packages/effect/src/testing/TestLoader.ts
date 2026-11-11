@@ -1,0 +1,329 @@
+/**
+ * A test harness for `effect/reactivity/Loader` with controllable host
+ * signals, fetch records, read-only entry views, and problem collection.
+ * Uses the public cache Layer.
+ *
+ * Stale times, idle times and intervals use the `Clock`, so
+ * `TestClock.adjust` drives them.
+ *
+ * **Example** (Asserting on what the cache fetched)
+ *
+ * ```ts import.meta.vitest
+ * import { Effect, Layer, Schema } from "effect"
+ * import { Loader } from "effect/reactivity"
+ * import { TestLoader } from "effect/testing"
+ *
+ * class GetUser extends Loader.Service<GetUser>()("users/GetUser", {
+ *   args: { id: Schema.String },
+ *   success: Schema.String,
+ *   error: Schema.Never,
+ *   staleTime: "30 seconds"
+ * }, Effect.succeed(({ id }) => Effect.succeed(`user-${id}`))) {}
+ *
+ * const program = Effect.gen(function*() {
+ *   yield* GetUser.get({ id: "1" })
+ *   yield* GetUser.get({ id: "1" })
+ *   return yield* TestLoader.fetches
+ * }).pipe(Effect.provide(Layer.merge(GetUser.layer, TestLoader.layer())))
+ *
+ * await Effect.runPromise(program) // => [{ read: "users/GetUser", logKey: `{"id":"1"}`, trigger: "get", restart: false, stored: true }]
+ * ```
+ *
+ * @stability experimental
+ * @since 4.1.3
+ */
+import * as Context from "../Context.ts"
+import * as Data from "../Data.ts"
+import type * as Duration from "../Duration.ts"
+import * as Effect from "../Effect.ts"
+import * as Layer from "../Layer.ts"
+import type * as AsyncResult from "../reactivity/AsyncResult.ts"
+import * as Loader from "../reactivity/Loader.ts"
+
+/**
+ * A fetch the cache started: the read's name, the entry's log key, the
+ * trigger, whether it replaced an interrupted fetch, and whether its result
+ * is stored.
+ *
+ * **Details**
+ *
+ * The log key is the entry's key with every `Schema.Redacted` argument
+ * redacted. A caller that joins a fetch in flight records nothing.
+ *
+ * `stored` is false for a fetcher call made for `get` callers alone: a
+ * run reading back an entry it invalidates, or a `get` on a stale entry
+ * under a live patch. Its trigger is `get`.
+ *
+ * A list read records each page it requests: `page` is its index, from 0,
+ * and `cursor` the encoded cursor, absent for the first page.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.1.3
+ */
+export interface Fetch {
+  readonly read: string
+  readonly logKey: string
+  readonly trigger: Loader.Trigger
+  readonly restart: boolean
+  readonly stored: boolean
+  readonly page?: number | undefined
+  readonly cursor?: unknown
+}
+
+/**
+ * A read-only view of one cache entry.
+ *
+ * **Details**
+ *
+ * `stored` is the entry's server state, `Initial` during a first fetch.
+ * `view` is that state with every patch applied, and `patched` whether it
+ * includes one. `stale` is whether the next trigger would refetch it,
+ * `watchers` how many watch it. `fetch` is `held` while a refetch waits for
+ * a live patch's run to exit, and `trigger` is what started the fetch in
+ * flight, or what the held one will start with. `patches` counts the live
+ * patches and those held after their run succeeded. `more`, on a list
+ * read only, is whether it holds more pages to load.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.1.3
+ */
+export interface Entry<A, E> {
+  readonly stored: AsyncResult.AsyncResult<A, E>
+  readonly view: AsyncResult.AsyncResult<A, E>
+  readonly patched: boolean
+  readonly stale: boolean
+  readonly watchers: number
+  readonly fetch: "none" | "running" | "held"
+  readonly trigger: Loader.Trigger | undefined
+  readonly patches: { readonly live: number; readonly held: number }
+  readonly more?: Loader.More<E> | undefined
+}
+
+/**
+ * The defect a `TestLoader` Scope closes with when the cache reported problems
+ * the test didn't take with `expectProblem`.
+ *
+ * @stability experimental
+ * @category errors
+ * @since 4.1.3
+ */
+export class ProblemsError extends Data.TaggedError("ProblemsError")<{
+  readonly problems: ReadonlyArray<Loader.Problem.Any>
+}> {
+  override get message(): string {
+    return "The cache reported " + this.problems.length + " problem(s) the test didn't expect:\n" +
+      this.problems.map((problem) => "  " + problem._tag + ": " + problem.message).join("\n")
+  }
+}
+
+/**
+ * The `TestLoader` service: the controls and the records of one test cache.
+ *
+ * @stability experimental
+ * @category services
+ * @since 4.1.3
+ */
+export interface TestLoader {
+  /** Sets `Loader.Visibility`. It starts true. */
+  readonly setVisible: (visible: boolean) => void
+  /** Sets `Loader.Connectivity`. It starts true. */
+  readonly setOnline: (online: boolean) => void
+  /** Every fetch started so far, in order. */
+  readonly fetches: () => ReadonlyArray<Fetch>
+  /** The entry of a read and arguments, or `undefined` when the cache has none. */
+  readonly entry: <R extends Loader.Read.Any>(
+    read: R,
+    args: Loader.Read.Args<R>
+  ) => Entry<Loader.Read.Success<R>, Loader.Read.Error<R>> | undefined
+  /** The problems reported and not yet taken. */
+  readonly problems: () => ReadonlyArray<Loader.Problem.Any>
+  /** Takes every reported problem with this tag. Throws when there is none. */
+  readonly expectProblem: <Tag extends string>(tag: Tag) => ReadonlyArray<
+    [Extract<Loader.Problem, { readonly _tag: Tag }>] extends [never] ? Loader.Problem.Any
+      : Extract<Loader.Problem, { readonly _tag: Tag }>
+  >
+}
+
+/**
+ * The `TestLoader` service.
+ *
+ * @stability experimental
+ * @category services
+ * @since 4.1.3
+ */
+export const TestLoader: Context.Service<TestLoader, TestLoader> = Context.Service<TestLoader>(
+  "effect/testing/TestLoader"
+)
+
+/**
+ * Layer that provides `Loader.Cache` for a test, together with `TestLoader`.
+ *
+ * **Details**
+ *
+ * The cache is the one `Loader.layer` builds, with the same options. Its
+ * `Loader.Visibility` and `Loader.Connectivity` are settable and start true,
+ * and its problems go to the collector instead of the console.
+ *
+ * **Gotchas**
+ *
+ * A reported problem fails the test: the Layer's Scope closes with a
+ * `ProblemsError` defect unless `expectProblem` took every problem first.
+ *
+ * @stability experimental
+ * @category layers
+ * @since 4.1.3
+ */
+export const layer = (options?: {
+  readonly idleTimeToLive?: Duration.Input | undefined
+}): Layer.Layer<TestLoader | Loader.Cache> => {
+  const cacheLayer = Loader.layer(options)
+  return Layer.unwrap(Effect.sync(() => {
+    const visibility = Loader.makeSignal(true)
+    const connectivity = Loader.makeSignal(true)
+    let problems: Array<Loader.Problem.Any> = []
+    const fetches: Array<Fetch> = []
+    const harness = Layer.effect(
+      TestLoader,
+      Effect.gen(function*() {
+        const cache = Loader.internals(yield* Loader.Cache)
+        const off = cache.onFetch((event) =>
+          fetches.push({
+            read: event.read,
+            logKey: event.logKey,
+            trigger: event.trigger,
+            restart: event.restart,
+            stored: event.stored,
+            ...(event.page === undefined
+              ? undefined
+              : event.cursor === undefined
+              ? { page: event.page }
+              : { page: event.page, cursor: event.cursor })
+          })
+        )
+        yield* Effect.addFinalizer(() =>
+          Effect.suspend(() => {
+            off()
+            return problems.length === 0 ? Effect.void : Effect.die(new ProblemsError({ problems }))
+          })
+        )
+        return {
+          setVisible: visibility.set,
+          setOnline: connectivity.set,
+          fetches: () => fetches.slice(),
+          entry: (read: Loader.Read.Any, args: unknown) => cache.inspect(Loader.defOf(read), args),
+          problems: () => problems.slice(),
+          expectProblem: (tag: string) => {
+            const matched = problems.filter((problem) => problem._tag === tag)
+            if (matched.length === 0) {
+              throw new Error(
+                "[TestLoader] expected a " + tag + " problem, and the cache reported " +
+                  (problems.length === 0 ? "none" : problems.map((problem) => problem._tag).join(", "))
+              )
+            }
+            problems = problems.filter((problem) => problem._tag !== tag)
+            return matched
+          }
+        } as unknown as TestLoader
+      })
+    )
+    return Layer.provideMerge(harness, cacheLayer).pipe(
+      Layer.provide(Layer.mergeAll(
+        Layer.succeed(Loader.Visibility, visibility),
+        Layer.succeed(Loader.Connectivity, connectivity),
+        Layer.succeed(Loader.Problems, (problem: Loader.Problem.Any) => {
+          problems.push(problem)
+        })
+      ))
+    )
+  }))
+}
+
+/**
+ * Sets `Loader.Visibility` for the test cache.
+ *
+ * **Details**
+ *
+ * Going from false to true, with the cache online, refetches every watched
+ * entry that is stale or whose interval elapsed while it was hidden.
+ *
+ * @stability experimental
+ * @category testing
+ * @since 4.1.3
+ */
+export const setVisible = (visible: boolean): Effect.Effect<void, never, TestLoader> =>
+  TestLoader.useSync((loader) => loader.setVisible(visible))
+
+/**
+ * Sets `Loader.Connectivity` for the test cache.
+ *
+ * **Details**
+ *
+ * Going from false to true, with the cache visible, refetches every watched
+ * entry that is stale or whose interval elapsed while it was offline.
+ *
+ * @stability experimental
+ * @category testing
+ * @since 4.1.3
+ */
+export const setOnline = (online: boolean): Effect.Effect<void, never, TestLoader> =>
+  TestLoader.useSync((loader) => loader.setOnline(online))
+
+/**
+ * Returns every fetch the test cache started so far, in order.
+ *
+ * @stability experimental
+ * @category testing
+ * @since 4.1.3
+ */
+export const fetches: Effect.Effect<ReadonlyArray<Fetch>, never, TestLoader> = TestLoader.useSync(
+  (loader) => loader.fetches()
+)
+
+/**
+ * Returns a read-only view of one entry, or `undefined` when the cache has no
+ * entry for the read and arguments. It doesn't create the entry or keep it
+ * alive.
+ *
+ * @stability experimental
+ * @category testing
+ * @since 4.1.3
+ */
+export const entry = <R extends Loader.Read.Any>(
+  read: R,
+  args: Loader.Read.Args<R>
+): Effect.Effect<Entry<Loader.Read.Success<R>, Loader.Read.Error<R>> | undefined, never, TestLoader> =>
+  TestLoader.useSync((loader) => loader.entry(read, args))
+
+/**
+ * Returns reported problems not yet consumed by `expectProblem`.
+ *
+ * @stability experimental
+ * @category testing
+ * @since 4.1.3
+ */
+export const problems: Effect.Effect<ReadonlyArray<Loader.Problem.Any>, never, TestLoader> = TestLoader.useSync(
+  (loader) => loader.problems()
+)
+
+/**
+ * Removes and returns every reported problem with the given tag, preventing
+ * those problems from failing the test.
+ *
+ * **Gotchas**
+ *
+ * Dies when the cache reported no problem with that tag.
+ *
+ * @stability experimental
+ * @category testing
+ * @since 4.1.3
+ */
+export const expectProblem = <Tag extends string>(tag: Tag): Effect.Effect<
+  ReadonlyArray<
+    [Extract<Loader.Problem, { readonly _tag: Tag }>] extends [never] ? Loader.Problem.Any
+      : Extract<Loader.Problem, { readonly _tag: Tag }>
+  >,
+  never,
+  TestLoader
+> => TestLoader.useSync((loader) => loader.expectProblem(tag))

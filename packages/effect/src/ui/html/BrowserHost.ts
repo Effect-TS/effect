@@ -46,6 +46,7 @@ import * as Context from "../../Context.ts"
 import * as Effect from "../../Effect.ts"
 import * as Layer from "../../Layer.ts"
 import type * as AsyncResult from "../../reactivity/AsyncResult.ts"
+import * as Loader from "../../reactivity/Loader.ts"
 import type * as Scope from "../../Scope.ts"
 import type * as Component from "../Component.ts"
 import * as Renderer from "../Renderer.ts"
@@ -415,14 +416,38 @@ export const htmlHost: Context.Service.Shape<typeof Html.Host> = {
   }
 }
 
+// Visibility follows `visibilitychange` only, never the window's `focus`. Connectivity
+// starts true and follows `online` and `offline` on the document's own window.
+const signals = (document: Document) => {
+  const visibility = Loader.makeSignal(document.visibilityState !== "hidden")
+  const connectivity = Loader.makeSignal(true)
+  const view = document.defaultView
+  const onVisibility = () => visibility.set(document.visibilityState !== "hidden")
+  const onOnline = () => connectivity.set(true)
+  const onOffline = () => connectivity.set(false)
+  document.addEventListener("visibilitychange", onVisibility)
+  view?.addEventListener("online", onOnline)
+  view?.addEventListener("offline", onOffline)
+  return {
+    visibility,
+    connectivity,
+    dispose: () => {
+      document.removeEventListener("visibilitychange", onVisibility)
+      view?.removeEventListener("online", onOnline)
+      view?.removeEventListener("offline", onOffline)
+    }
+  }
+}
+
 /**
- * Provides the DOM host as the `Renderer`, and `Html.Host`, for the life of
- * the Layer.
+ * Provides the DOM host as the `Renderer`, `Html.Host`, and the document's
+ * `Loader.Visibility` and `Loader.Connectivity`, for the life of the Layer.
  *
  * **Details**
  *
  * `document` defaults to the global `document`. Closing the Layer removes the
- * host's listeners.
+ * host's listeners. The signals use the document and its `defaultView`,
+ * never globals.
  *
  * @stability experimental
  * @category layers
@@ -432,9 +457,16 @@ export const layer = (options?: {
   readonly document?: Document | undefined
 }): Layer.Layer<Renderer.Renderer | Html.Host> =>
   Layer.effectContext(Effect.gen(function*() {
-    const host = makeHost(options?.document ?? globalThis.document)
+    const document = options?.document ?? globalThis.document
+    const host = makeHost(document)
     yield* Effect.addFinalizer(() => Effect.sync(host.dispose))
-    return Context.make(Renderer.Renderer, { host }).pipe(Context.add(Html.Host, htmlHost))
+    const signal = signals(document)
+    yield* Effect.addFinalizer(() => Effect.sync(signal.dispose))
+    return Context.make(Renderer.Renderer, { host }).pipe(
+      Context.add(Html.Host, htmlHost),
+      Context.add(Loader.Visibility, signal.visibility),
+      Context.add(Loader.Connectivity, signal.connectivity)
+    )
   }))
 
 /**
@@ -495,6 +527,7 @@ export const mount = <Name extends string, Props, Model, Msg, Events, R, V exten
       ) => View.Node<never, RF>)
       | undefined
     readonly state?: Renderer.State | undefined
+    readonly loader?: Renderer.LoaderOptions | undefined
   }
 ): Effect.Effect<Renderer.Root<Model, Msg>, never, Exclude<R | RF, Html.Host> | Scope.Scope> =>
   Effect.gen(function*() {

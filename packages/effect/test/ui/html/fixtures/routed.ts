@@ -1,10 +1,11 @@
 /**
  * The routed example: a root that holds the route, a home page, a person
- * page that loads its bio on entry with a server Command, a search route
- * and a slow page whose provided Layer takes a second to build.
+ * page that reads its bio through a loader, a search route and a slow page
+ * whose provided Layer takes a second to build.
  */
 import { Context, Effect, Layer, Schema } from "effect"
-import { Command, Component, Head, Route, Router } from "effect/ui"
+import { AsyncResult, Loader } from "effect/reactivity"
+import { Component, Head, Route, Router } from "effect/ui"
 import { Html } from "effect/ui/html"
 
 export const AppRoute = Route.union({
@@ -34,33 +35,41 @@ export class People extends Context.Service<People, {
   static readonly layer = Layer.succeed(People, { bio: (id: number) => Effect.succeed(`Bio of person ${id}`) })
 }
 
-export const PersonMessage = Schema.TaggedUnion({ Loaded: { bio: Schema.String } })
-
 /** Route data: read on the server, so the page's HTML holds it. */
-export class LoadBio extends Command.Service<LoadBio>()(
-  "LoadBio",
-  Effect.gen(function*() {
-    const people = yield* People
-    return (id: number) => Effect.map(people.bio(id), (bio) => PersonMessage.make({ _tag: "Loaded", bio }))
-  }),
-  { server: true }
-) {}
+export class GetBio extends Loader.Service<GetBio>()("GetBio", {
+  args: { id: Schema.Number },
+  success: Schema.String,
+  error: Schema.Never,
+  staleTime: "30 seconds"
+}, Effect.map(People, (people) => ({ id }) => people.bio(id))) {}
+
+const BioSnapshot = Loader.Snapshot(GetBio, "bio")
+
+export const PersonMessage = Schema.TaggedUnion({ Loaded: { snapshot: BioSnapshot } })
 
 export const Person = Component.make({
   name: "Person",
   props: Schema.Struct({ id: Schema.Number }),
-  model: Schema.Struct({ id: Schema.Number, bio: Schema.optional(Schema.String) }),
+  model: Schema.Struct({ id: Schema.Number, bio: BioSnapshot }),
   message: PersonMessage,
   elements: Html,
-  init: ($) => $.set({ id: $.props.id }).run(LoadBio.make($.props.id)),
-  update: (model, message) => ({ ...model, bio: message.bio }),
+  loaders: { bio: (_model, props) => ({ id: props.id }) },
+  init: ($) => ({ ...$.empty, id: $.props.id }),
+  update: (model, message) => ({ ...model, bio: message.snapshot }),
+  subscriptions: (_model, _props, watch) => [
+    watch({ bio: (snapshot) => PersonMessage.make({ _tag: "Loaded", snapshot }) })
+  ],
   head: (model) => [
     Head.title(`Person ${model.id}`),
     Head.meta({ name: "description", content: `About person ${model.id}` }),
     Head.jsonLd({ "@type": "Person", identifier: model.id })
   ],
-  view: (model, h) => h.div(h.h1(`Person ${model.id}`), h.p(model.bio ?? "Loading").attr("id", "bio"))
-}).pipe(Component.provide(LoadBio.layer))
+  view: (model, h) =>
+    h.div(
+      h.h1(`Person ${model.id}`),
+      h.p(AsyncResult.isSuccess(h.loaded.bio) ? h.loaded.bio.value : "Loading").attr("id", "bio")
+    )
+}).pipe(Component.provide(GetBio.layer))
 
 export class SlowData extends Context.Service<SlowData, string>()("test/SlowData") {}
 
@@ -76,25 +85,27 @@ export const Slow = Component.make({
   view: (_, h) => h.h1("Slow")
 }).pipe(Component.provide(Layer.effect(SlowData, Effect.as(Effect.sleep("1 second"), "ready"))))
 
-export const Message = Schema.TaggedUnion({ ChangedRoute: { route: AppRoute }, Block: {}, Done: {}, Filter: {} })
+export const Message = Schema.TaggedUnion({ ChangedRoute: { route: AppRoute }, Block: {}, Filter: {} })
 
 export const App = Component.make({
   name: "App",
   props: Schema.Struct({ route: AppRoute }),
-  model: AppRoute,
+  model: Schema.Struct({ route: AppRoute, blocked: Schema.Boolean }),
   message: Message,
   elements: Html,
-  init: ($) => $.props.route,
-  update: (route, message, $) =>
+  init: ($) => ({ route: $.props.route, blocked: false }),
+  update: (model, message) =>
     Message.match(message, {
-      ChangedRoute: (changed) => AppRoute.print(changed.route) === AppRoute.print(route) ? route : changed.route,
-      Block: () => $.run(Router.Block.make("editing").pipe(Command.map(() => Message.make({ _tag: "Done" })))),
-      Done: () => route,
-      Filter: () => route
+      ChangedRoute: ({ route }) => ({ ...model, route }),
+      Block: () => ({ ...model, blocked: true }),
+      Filter: () => model
     }),
-  subscriptions: () => [Router.subscription(AppRoute, (route) => Message.make({ _tag: "ChangedRoute", route }))],
+  subscriptions: (model) => [
+    Router.subscription(AppRoute, model.route, (route) => Message.make({ _tag: "ChangedRoute", route })),
+    model.blocked && Router.blocked("editing")
+  ],
   head: () => [Head.titleTemplate((title) => `${title} · App`), Head.lang("en"), Head.htmlClass("routed")],
-  view: (route, h) =>
+  view: ({ route }, h) =>
     h.div(
       h.nav(
         h.a("Home").attr("href", AppRoute.print(AppRoute.make({ _tag: "Home" }))),

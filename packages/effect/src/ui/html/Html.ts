@@ -61,6 +61,7 @@
 import * as Context from "../../Context.ts"
 import * as Effect from "../../Effect.ts"
 import * as Option from "../../Option.ts"
+import * as Schema from "../../Schema.ts"
 import * as Command from "../Command.ts"
 import * as Renderer from "../Renderer.ts"
 import * as View from "../View.ts"
@@ -691,11 +692,19 @@ const withElement = <A>(
   ref: Renderer.Ref<any>,
   f: (host: Context.Service.Shape<typeof Host>, element: globalThis.Element) => A
 ): Effect.Effect<Option.Option<A>, never, Renderer.Refs | Host> =>
-  Effect.flatMap(Effect.service(Renderer.Refs), (refs) =>
+  Renderer.Refs.use((refs) =>
     Effect.flatMap(refs.lookup(ref), (node) =>
       Option.isNone(node)
         ? Effect.succeed(Option.none())
-        : Effect.map(Effect.service(Host), (host) => Option.some(f(host, node.value as globalThis.Element)))))
+        : Host.useSync((host) => Option.some(f(host, node.value as globalThis.Element))))
+  )
+
+const FocusOptions = Schema.Struct({ preventScroll: Schema.optional(Schema.Boolean) })
+const ScrollOptionsSchema = Schema.Struct({
+  behavior: Schema.optional(Schema.Literals(["auto", "instant", "smooth"])),
+  block: Schema.optional(Schema.Literals(["center", "end", "nearest", "start"])),
+  inline: Schema.optional(Schema.Literals(["center", "end", "nearest", "start"]))
+})
 
 /**
  * The Command behind `focus`, for a story's `.resolve(Html.Focus, { found })`.
@@ -705,11 +714,12 @@ const withElement = <A>(
  * @since 4.1.3
  */
 export const Focus: Command.Factory<
-  [ref: Renderer.Ref<any>, options?: { readonly preventScroll?: boolean | undefined } | undefined],
+  { readonly ref: Renderer.Ref<any>; readonly options?: { readonly preventScroll?: boolean | undefined } | undefined },
   Found
 > = Command.make(
   "Html.focus",
-  (ref: Renderer.Ref<any>, options?: { readonly preventScroll?: boolean | undefined } | undefined) =>
+  { args: { ref: Renderer.Ref, options: Schema.optional(FocusOptions) } },
+  ({ options, ref }) =>
     Effect.map(
       withElement(ref, (host, element) => host.focus(element, options ?? {})),
       (done): Found => ({ found: Option.isSome(done) })
@@ -723,9 +733,10 @@ export const Focus: Command.Factory<
  * @category refs
  * @since 4.1.3
  */
-export const Blur: Command.Factory<[ref: Renderer.Ref<any>], Found> = Command.make(
+export const Blur: Command.Factory<{ readonly ref: Renderer.Ref<any> }, Found> = Command.make(
   "Html.blur",
-  (ref: Renderer.Ref<any>) =>
+  { args: { ref: Renderer.Ref } },
+  ({ ref }) =>
     Effect.map(withElement(ref, (host, element) => host.blur(element)), (done): Found => ({
       found: Option.isSome(done)
     }))
@@ -738,14 +749,17 @@ export const Blur: Command.Factory<[ref: Renderer.Ref<any>], Found> = Command.ma
  * @category refs
  * @since 4.1.3
  */
-export const ScrollIntoView: Command.Factory<[ref: Renderer.Ref<any>, options?: ScrollOptions | undefined], Found> =
-  Command.make(
-    "Html.scrollIntoView",
-    (ref: Renderer.Ref<any>, options?: ScrollOptions | undefined) =>
-      Effect.map(withElement(ref, (host, element) => host.scrollIntoView(element, options ?? {})), (done): Found => ({
-        found: Option.isSome(done)
-      }))
-  )
+export const ScrollIntoView: Command.Factory<
+  { readonly ref: Renderer.Ref<any>; readonly options?: ScrollOptions | undefined },
+  Found
+> = Command.make(
+  "Html.scrollIntoView",
+  { args: { ref: Renderer.Ref, options: Schema.optional(ScrollOptionsSchema) } },
+  ({ options, ref }) =>
+    Effect.map(withElement(ref, (host, element) => host.scrollIntoView(element, options ?? {})), (done): Found => ({
+      found: Option.isSome(done)
+    }))
+)
 
 /**
  * The Command behind `measure`.
@@ -754,9 +768,10 @@ export const ScrollIntoView: Command.Factory<[ref: Renderer.Ref<any>, options?: 
  * @category refs
  * @since 4.1.3
  */
-export const Measure: Command.Factory<[ref: Renderer.Ref<any>], Option.Option<Rect>> = Command.make(
+export const Measure: Command.Factory<{ readonly ref: Renderer.Ref<any> }, Option.Option<Rect>> = Command.make(
   "Html.measure",
-  (ref: Renderer.Ref<any>) => withElement(ref, (host, element) => host.measure(element))
+  { args: { ref: Renderer.Ref } },
+  ({ ref }) => withElement(ref, (host, element) => host.measure(element))
 )
 
 /**
@@ -789,7 +804,8 @@ export const focus = <N extends HTMLElement | SVGElement, Msg>(
   ref: Renderer.Ref<N>,
   f: (result: Found) => Msg,
   options?: { readonly preventScroll?: boolean | undefined }
-): Command.Mapped<Command.Effectful<Found>, Msg> => Command.map(Focus(ref, options), f)
+): Command.Mapped<Command.Effectful<Found>, Msg> =>
+  Command.map(Focus(options === undefined ? { ref } : { ref, options }), f)
 
 /**
  * Takes focus away from the element `ref` names, and sends `f`'s message.
@@ -801,7 +817,7 @@ export const focus = <N extends HTMLElement | SVGElement, Msg>(
 export const blur = <N extends HTMLElement | SVGElement, Msg>(
   ref: Renderer.Ref<N>,
   f: (result: Found) => Msg
-): Command.Mapped<Command.Effectful<Found>, Msg> => Command.map(Blur(ref), f)
+): Command.Mapped<Command.Effectful<Found>, Msg> => Command.map(Blur({ ref }), f)
 
 /**
  * Scrolls the element `ref` names into view, and sends `f`'s message.
@@ -814,7 +830,8 @@ export const scrollIntoView = <N extends globalThis.Element, Msg>(
   ref: Renderer.Ref<N>,
   f: (result: Found) => Msg,
   options?: ScrollOptions
-): Command.Mapped<Command.Effectful<Found>, Msg> => Command.map(ScrollIntoView(ref, options), f)
+): Command.Mapped<Command.Effectful<Found>, Msg> =>
+  Command.map(ScrollIntoView(options === undefined ? { ref } : { ref, options }), f)
 
 /**
  * Measures the element `ref` names, and sends `f`'s message with its box, or
@@ -827,4 +844,4 @@ export const scrollIntoView = <N extends globalThis.Element, Msg>(
 export const measure = <N extends globalThis.Element, Msg>(
   ref: Renderer.Ref<N>,
   f: (rect: Option.Option<Rect>) => Msg
-): Command.Mapped<Command.Effectful<Option.Option<Rect>>, Msg> => Command.map(Measure(ref), f)
+): Command.Mapped<Command.Effectful<Option.Option<Rect>>, Msg> => Command.map(Measure({ ref }), f)

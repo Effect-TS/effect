@@ -1,4 +1,4 @@
-import { Effect, Schema, Stream } from "effect"
+import { Data, Effect, Schema, Stream } from "effect"
 import { Command, Component } from "effect/ui"
 import { Story } from "effect/ui/testing"
 import { describe, expect, it } from "tstyche"
@@ -79,30 +79,41 @@ describe("Story", () => {
   it("resolves a Command with the definition's own message", () => {
     expect(todoItem.resolve).type.toBeCallableWith(SaveTodo, TodoItemMessage.make({ _tag: "Saved" }))
     expect(todoItem.resolve).type.not.toBeCallableWith(SaveTodo, SearchMessage.make({ _tag: "Tick" }))
-    expect(searchBox.resolve).type.toBeCallableWith(Search("x"), SearchMessage.make({ _tag: "Results", items: [] }))
-    expect(searchBox.resolve).type.not.toBeCallableWith(Search("x"), TodoItemMessage.make({ _tag: "Saved" }))
+    expect(searchBox.resolve).type.toBeCallableWith(
+      Search({ text: "x" }),
+      SearchMessage.make({ _tag: "Results", items: [] })
+    )
+    expect(searchBox.resolve).type.not.toBeCallableWith(Search({ text: "x" }), TodoItemMessage.make({ _tag: "Saved" }))
   })
 
   it("an issued Command whose result never arrives is a target, and takes no result", () => {
-    const Hold = Command.make("Hold", (_key: string) => Effect.never)
-    const Watch = Command.make("Watch", (_key: string) => Stream.never, { stream: true })
-    expect(counter.expectExact).type.toBeCallableWith(Hold("one"), Watch("one"))
-    expect(counter.expectHas).type.toBeCallableWith(Hold("one"))
-    expect(counter.end).type.toBeCallableWith(Watch("one"))
-    expect(counter.end).type.not.toBeCallableWith(Hold("one"))
-    expect(counter.resolve).type.not.toBeCallableWith(Hold("one"), "anything")
-    expect(counter.next).type.not.toBeCallableWith(Watch("one"), "anything")
+    const Hold = Command.make("Hold", { args: { key: Schema.String } }, () => Effect.never)
+    const Watch = Command.make("Watch", { args: { key: Schema.String }, stream: true }, () => Stream.never)
+    expect(counter.expectExact).type.toBeCallableWith(Hold({ key: "one" }), Watch({ key: "one" }))
+    expect(counter.expectHas).type.toBeCallableWith(Hold({ key: "one" }))
+    expect(counter.end).type.toBeCallableWith(Watch({ key: "one" }))
+    expect(counter.end).type.not.toBeCallableWith(Hold({ key: "one" }))
+    expect(counter.resolve).type.not.toBeCallableWith(Hold({ key: "one" }), "anything")
+    expect(counter.next).type.not.toBeCallableWith(Watch({ key: "one" }), "anything")
   })
 
   it("a mapped Command as the target takes the definition's own result", () => {
     const Uploaded = Schema.TaggedUnion({ Uploaded: { url: Schema.String } })
-    const UploadFile = Command.make("UploadFile", (name: string) => Effect.succeed(`https://cdn/${name}`))
-    const mapped = UploadFile("me.png").pipe(Command.map((url) => Uploaded.make({ _tag: "Uploaded", url })))
+    const UploadFile = Command.make(
+      "UploadFile",
+      { args: { name: Schema.String } },
+      ({ name }) => Effect.succeed(`https://cdn/${name}`)
+    )
+    const mapped = UploadFile({ name: "me.png" }).pipe(Command.map((url) => Uploaded.make({ _tag: "Uploaded", url })))
     expect(mapped).type.toBe<Command.Effectful<typeof Uploaded.Type, never, string>>()
     expect(counter.resolve).type.toBeCallableWith(mapped, "https://cdn/me.png")
     expect(counter.resolve).type.not.toBeCallableWith(mapped, Uploaded.make({ _tag: "Uploaded", url: "" }))
-    const Progress = Command.make("Progress", (_: string) => Stream.fromIterable([1, 2]), { stream: true })
-    const mappedStream = Progress("x").pipe(
+    const Progress = Command.make(
+      "Progress",
+      { args: { name: Schema.String }, stream: true },
+      () => Stream.fromIterable([1, 2])
+    )
+    const mappedStream = Progress({ name: "x" }).pipe(
       Command.map((percent) => Uploaded.make({ _tag: "Uploaded", url: String(percent) }))
     )
     expect(counter.next).type.toBeCallableWith(mappedStream, 50)
@@ -115,5 +126,19 @@ describe("Story", () => {
     expect(searchBox.end).type.toBeCallableWith(Upload)
     expect(searchBox.next).type.not.toBeCallableWith(Search, SearchMessage.make({ _tag: "Results", items: [] }))
     expect(searchBox.end).type.not.toBeCallableWith(SaveTodo)
+  })
+
+  it("fail takes the typed failure of a Command whose body can fail", () => {
+    class SaveFailed extends Data.TaggedError("SaveFailed")<{ readonly reason: string }> {}
+    class Save extends Command.Service<Save>()(
+      "Save",
+      { args: {}, invalidates: () => [] },
+      Effect.succeed(() => Effect.fail(new SaveFailed({ reason: "x" })))
+    ) {}
+    const matched = Save.make().pipe(Command.match({ onSuccess: () => 1, onFailure: () => 2 }))
+    expect(counter.fail).type.toBeCallableWith(Save, new SaveFailed({ reason: "disk full" }))
+    expect(counter.fail).type.toBeCallableWith(matched, new SaveFailed({ reason: "disk full" }))
+    expect(counter.fail).type.not.toBeCallableWith(Save, new Error("other"))
+    expect(todoItem.fail).type.not.toBeCallableWith(SaveTodo, new Error("never fails"))
   })
 })

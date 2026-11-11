@@ -1,18 +1,30 @@
 // @vitest-environment happy-dom
-import { expect, it } from "@effect/vitest"
-import { Context, Effect, Fiber, Layer, Option, Schema } from "effect"
-import { Command, Component, Feature, Head, Router } from "effect/ui"
+import { assert, expect, it } from "@effect/vitest"
+import { Clock, Context, Duration, Effect, Exit, Fiber, Layer, Option, Schema, type Scope, Stream } from "effect"
+import { AsyncResult, Loader } from "effect/reactivity"
+import { TestClock } from "effect/testing"
+import { Command, Component, Feature, Head, MessageLog, type Renderer, Router, Subscription } from "effect/ui"
 import { BrowserHost, Html, HtmlServer } from "effect/ui/html"
 import { ssr } from "effect/ui/html/testing"
+import { TestHost } from "effect/ui/testing"
 import { describe } from "vitest"
 import { App, AppRoute, People } from "./fixtures/routed.ts"
 
 const tick = Effect.promise(() => new Promise<void>((resolve) => setTimeout(resolve, 30)))
 
-const routed = (url: string) => {
-  const route = Option.getOrThrow(AppRoute.parse(url))
-  return { props: { route }, router: Router.memory({ routes: AppRoute, url }) }
-}
+/** Runs a block that hydrates with `ssr` on its own `TestHost`, which owns the client tree. */
+const hosted = <A, E, R>(effect: Effect.Effect<A, E, R>) =>
+  effect.pipe(Effect.scoped, Effect.provide(TestHost.layer())) as Effect.Effect<
+    A,
+    E,
+    Exclude<R, TestHost.TestHost | Scope.Scope | Renderer.Renderer>
+  >
+
+const routed = Effect.fnUntraced(function*(url: string) {
+  const router = Router.memory({ routes: AppRoute, url })
+  const route = yield* Router.currentRoute(AppRoute).pipe(Effect.provide(router))
+  return { props: { route }, router }
+})
 
 const slowPeople = Layer.succeed(People, {
   bio: (id: number) => Effect.as(Effect.sleep("300 millis"), `Bio of person ${id}`)
@@ -29,16 +41,100 @@ const container = (html: string) =>
   )
 
 describe("HtmlServer", { concurrent: false }, () => {
+  it.effect("samples root subscriptions once on the server without building Streams, and surfaces throws", () =>
+    Effect.gen(function*() {
+      let sampled = 0
+      let built = 0
+      const Root = Component.make({
+        name: "LazyRoot",
+        model: Schema.Number,
+        message: Schema.Never,
+        init: () => 0,
+        update: (model) => model,
+        subscriptions: () => {
+          sampled++
+          return [Subscription.make("browser", null, (): Stream.Stream<never> => {
+            built++
+            throw new Error("browser-only builder")
+          })]
+        },
+        view: (_, h) => h.text("root")
+      })
+      const result = yield* HtmlServer.renderToHtml(Root, {})
+      assert.include(result.html, "root")
+      assert.strictEqual(sampled, 1)
+      assert.strictEqual(built, 0)
+      const Broken = Component.make({
+        name: "BrokenRoot",
+        model: Schema.Number,
+        message: Schema.Never,
+        init: () => 0,
+        update: (model) => model,
+        subscriptions: () => {
+          throw new Error("subscription declaration failed")
+        },
+        view: (_, h) => h.text("unreachable")
+      })
+      const error = yield* Effect.exit(HtmlServer.renderToHtml(Broken, {}))
+      assert.isTrue(Exit.isFailure(error))
+    }))
+
+  it.effect("checks only the first Router subscription on the server", () => {
+    const problems: Array<Loader.Problem.Any> = []
+    const Root = Component.make({
+      name: "FirstRoute",
+      model: Schema.Number,
+      message: Schema.Never,
+      init: () => 0,
+      update: (model) => model,
+      subscriptions: () => [
+        Router.subscription(AppRoute, AppRoute.make({ _tag: "Home" }), () => {
+          throw new Error("Stream ran")
+        }),
+        Router.subscription(AppRoute, AppRoute.make({ _tag: "Slow" }), () => {
+          throw new Error("Stream ran")
+        })
+      ],
+      view: (_, h) => h.text("root")
+    })
+    return Effect.gen(function*() {
+      yield* HtmlServer.renderToHtml(Root, {})
+      assert.deepStrictEqual(problems, [])
+    }).pipe(
+      Effect.provide(Router.static({ routes: AppRoute, url: "/" })),
+      Effect.provideService(Loader.Problems, (problem) => problems.push(problem))
+    )
+  })
+
+  it.effect("reports a server route mismatch even after navigation, but accepts a fresh snapshot", () => {
+    const problems: Array<Loader.Problem.Any> = []
+    return Effect.gen(function*() {
+      const router = yield* Router.Router
+      const route = yield* Router.currentRoute(AppRoute)
+      yield* router.navigate("/")
+      const stale = yield* HtmlServer.renderToHtml(App, { route })
+      assert.include(stale.html, "Person 1")
+      assert.strictEqual(problems.length, 1)
+      assert.strictEqual(problems[0]._tag, "RouteMismatch")
+      problems.length = 0
+      yield* HtmlServer.renderToHtml(App, { route: yield* Router.currentRoute(AppRoute) })
+      assert.deepStrictEqual(problems, [])
+    }).pipe(
+      Effect.provide([People.layer, Router.memory({ routes: AppRoute, url: "/people/1" })]),
+      Effect.provideService(Loader.Problems, (problem) => problems.push(problem))
+    )
+  })
+
   it.effect("renders the routed example with its route data, and hydration adopts it", () =>
     Effect.gen(function*() {
-      const { props, router } = routed("/people/1")
+      const { props, router } = yield* routed("/people/1")
       const rendered = yield* HtmlServer.renderToHtml(App, props).pipe(
         Effect.provide([People.layer, router])
       )
       expect(rendered.html).toContain("<p id=\"bio\">Bio of person 1</p>")
       expect(rendered.html).toContain("<!--[/App/Person[/people/1]-->")
-      expect(rendered.state["/App/Person[/people/1]"]).toEqual({ id: 1, bio: "Bio of person 1" })
-      expect(rendered.state["~pending"]).toEqual({})
+      expect(rendered.state["~loader"]).toEqual({ GetBio: [["{\"id\":1}", 0, "Bio of person 1", 0]] })
+      expect("~pending" in rendered.state).toBe(false)
       expect(rendered.head).toBe(
         "<title data-eui>Person 1 · App</title>" +
           "<meta name=\"description\" content=\"About person 1\" data-eui>" +
@@ -46,56 +142,105 @@ describe("HtmlServer", { concurrent: false }, () => {
       )
       expect(rendered.htmlAttributes).toBe("lang=\"en\" class=\"routed\" data-eui=\"lang class\"")
 
-      const result = yield* ssr(App, props).pipe(Effect.provide([People.layer, router]))
-      expect(result.adopted).toEqual(["/App", "/App/Person[/people/1]"])
-      // The bio is already in the Model, so the client doesn't load it again.
-      expect(result.commands).toEqual([])
-      expect(result.log).toContainEqual(
-        expect.objectContaining({ _tag: "CommandDropped", name: "LoadBio", reason: "adopted" })
-      )
-      expect(result.document.title).toBe("Person 1 · App")
+      yield* hosted(Effect.gen(function*() {
+        const result = yield* ssr(App, props).pipe(Effect.provide([People.layer, router]))
+        expect(result.adopted).toEqual(["/App", "/App/Person[/people/1]"])
+        expect(result.misses).toEqual([])
+        // The bio is hydrated, so the client doesn't fetch it, and the watch's first emission still
+        // reaches update.
+        expect(result.root.fetches()).toEqual([])
+        expect(result.log).toContainEqual(
+          expect.objectContaining({
+            _tag: "Update",
+            path: "/App/Person[/people/1]",
+            source: expect.objectContaining({ _tag: "Subscription" })
+          })
+        )
+        expect(result.document.title).toBe("Person 1 · App")
+      }))
     }).pipe(Effect.scoped))
 
-  it.live("hydrates slots that missed the budget: a pending server Command and a deferred Layer", () =>
-    Effect.gen(function*() {
-      const person = routed("/people/2")
-      const pending = yield* ssr(App, person.props, { budget: "50 millis" }).pipe(
+  it.effect("hydrates slots that missed the budget: a fetch in flight and a deferred Layer", () =>
+    hosted(Effect.gen(function*() {
+      const person = yield* routed("/people/2")
+      const missed = yield* ssr(App, person.props, {
+        budget: "50 millis",
+        frames: (container) => container.querySelector("#bio")?.textContent ?? ""
+      }).pipe(
         Effect.provide([slowPeople, person.router])
       )
-      expect(pending.html).toContain("<p id=\"bio\">Loading</p>")
-      expect(pending.state["~pending"]).toEqual({ "/App/Person[/people/2]": [0] })
-      expect(pending.commands).toEqual([{ path: "/App/Person[/people/2]", name: "LoadBio", index: 0 }])
-      yield* Effect.sleep("400 millis")
-      expect(pending.container.querySelector("#bio")!.textContent).toBe("Bio of person 2")
+      expect(missed.html).toContain("<p id=\"bio\">Loading</p>")
+      // The fetch in flight at the budget was interrupted and isn't shipped: the client fetches it.
+      expect(missed.misses).toEqual([{ read: "GetBio", logKey: "{\"id\":2}" }])
+      expect(missed.state["~loader"]).toEqual({})
+      expect(missed.root.fetches().map((fetch) => [fetch.read, fetch.trigger, fetch.inWindow])).toEqual([
+        ["GetBio", "watch", false]
+      ])
+      yield* TestClock.adjust("300 millis")
+      yield* TestHost.settle
+      expect(missed.container.querySelector("#bio")!.textContent).toBe("Bio of person 2")
+      // From the server's markup through hydration to the fetch the client made.
+      expect(missed.root.frames()).toEqual(["Loading", "Bio of person 2"])
 
-      const slow = routed("/slow")
+      const slow = yield* routed("/slow")
       const deferred = yield* ssr(App, slow.props, { budget: "50 millis" }).pipe(
         Effect.provide([People.layer, slow.router])
       )
       expect(deferred.state["~deferred"]).toEqual(["/App/Slow[/slow]"])
       expect(deferred.state["/App/Slow[/slow]"]).toBeUndefined()
+      yield* TestClock.adjust("1 second")
+      yield* TestHost.settle
       expect(deferred.container.querySelector("h1")!.textContent).toBe("Slow")
-    }).pipe(Effect.scoped))
+    })))
 
-  it.effect("runs only init's server Commands, applies events, and defers failures and opted-out Layers", () =>
+  it.effect("starts no fetch with a budget of 0, and the client fetches what missed it", () =>
+    hosted(Effect.gen(function*() {
+      const { props, router } = yield* routed("/people/1")
+      const result = yield* ssr(App, props, { budget: 0 }).pipe(Effect.provide([People.layer, router]))
+      expect(result.html).toContain("<p id=\"bio\">Loading</p>")
+      expect(result.serverLog.filter((entry) => entry._tag === "FetchStarted")).toEqual([])
+      expect(result.misses).toEqual([{ read: "GetBio", logKey: "{\"id\":1}" }])
+      yield* TestHost.settle
+      expect(result.container.querySelector("#bio")!.textContent).toBe("Bio of person 1")
+    })))
+
+  it.effect("runs no Command on the server, applies events, and defers failures and opted-out Layers", () =>
     Effect.gen(function*() {
-      const ChildMessage = Schema.TaggedUnion({ Loaded: {}, Tracked: {} })
-      class Load extends Command.Service<Load>()(
-        "Load",
-        Effect.succeed(() => Effect.succeed(ChildMessage.make({ _tag: "Loaded" }))),
-        { server: true }
-      ) {}
-      const Track = Command.make("Track", () => Effect.succeed(ChildMessage.make({ _tag: "Tracked" })))
+      class GetText extends Loader.Service<GetText>()("GetText", {
+        args: {},
+        success: Schema.String,
+        error: Schema.Never,
+        staleTime: "30 seconds"
+      }, Effect.succeed(() => Effect.succeed("loaded"))) {}
+      const Text = Loader.Snapshot(GetText, "text")
+      const ChildMessage = Schema.TaggedUnion({ Loaded: { snapshot: Text }, Tracked: {} })
+      const Track = Command.make("Track", { args: {} }, () => Effect.succeed(ChildMessage.make({ _tag: "Tracked" })))
+      let builds = 0
       const Child = Component.make({
         name: "Child",
-        model: Schema.String,
+        model: Schema.Struct({ text: Text, status: Schema.String }),
         message: ChildMessage,
         events: Schema.Literal("loaded"),
         elements: Html,
-        init: ($) => $.set("loading").run(Load.make()),
-        update: (_, message, $) => message._tag === "Loaded" ? $.set("loaded").run(Track()).emit("loaded") : "tracked",
-        view: (model, h) => h.span(model)
-      }).pipe(Component.provide(Load.layer))
+        loaders: { text: () => ({}) },
+        // init's Command is dropped silently: the client runs it when it adopts.
+        init: ($) => $.set({ ...$.empty, status: "loading" }).run(Track()),
+        update: (model, message, $) =>
+          message._tag === "Loaded"
+            ? $.set({ text: message.snapshot, status: "loaded" }).run(Command.interrupt(Track)).run(Track()).emit(
+              "loaded"
+            )
+            : { ...model, status: "tracked" },
+        subscriptions: (_model, _props, watch) => [
+          watch({ text: (snapshot) => ChildMessage.make({ _tag: "Loaded", snapshot }) }),
+          // subscriptions() runs on the server for the watch, but a Stream's builder doesn't.
+          Subscription.make("browser", 0, () => {
+            builds++
+            return Stream.never
+          })
+        ],
+        view: (model, h) => h.span(model.status)
+      }).pipe(Component.provide(GetText.layer))
       const Broken = Component.make({
         name: "Broken",
         model: Schema.Struct({}),
@@ -135,18 +280,83 @@ describe("HtmlServer", { concurrent: false }, () => {
       })
 
       // The opted-out Layer doesn't spend the budget: under the TestClock, waiting for it would never end.
-      const result = yield* ssr(Parent, {}, { budget: "1 hour" })
+      const log = MessageLog.makeMemory({ size: 1000 })
+      const problems: Array<Loader.Problem.Any> = []
+      const result = yield* HtmlServer.renderToHtml(Parent, {}, { budget: "1 hour" }).pipe(
+        Effect.provideService(MessageLog.MessageLog, log),
+        Effect.provideService(Loader.Problems, (problem) => problems.push(problem))
+      )
       expect(result.html).toContain("<p>ready</p>")
       expect(result.html).toContain("<span>loaded</span>")
       expect(result.html).toContain("<!--[/Parent/Broken[b]--><p>broken</p><!--]/Parent/Broken[b]-->")
       expect(result.state["~deferred"]).toEqual(["/Parent/Broken[b]", "/Parent/Live[c]"])
-      expect(result.serverLog).toContainEqual(
-        expect.objectContaining({ _tag: "CommandDropped", name: "Track", reason: "server" })
-      )
-      expect(result.container.textContent).toBe("readyloadedbrokenlive")
-    }).pipe(Effect.scoped))
+      expect(builds).toBe(0)
+      // Only update's Commands are logged and reported, its interrupt included. init's was dropped silently.
+      const dropped = log.entries().filter((entry) => entry._tag === "CommandDropped")
+      expect(dropped).toEqual([
+        expect.objectContaining({ path: "/Parent/Child[a]", name: "Track", reason: "server" }),
+        expect.objectContaining({ path: "/Parent/Child[a]", name: "Track", reason: "server" })
+      ])
+      expect(problems).toEqual([
+        expect.objectContaining({ _tag: "ServerCommandIssued", path: "/Parent/Child[a]", command: "Track" }),
+        expect.objectContaining({ _tag: "ServerCommandIssued", path: "/Parent/Child[a]", command: "Track" })
+      ])
+    }))
 
-  it.live("keeps a slot whose Layer is still building inert until it adopts, then fires onMount", () =>
+  it.effect("reports ServerCommandIssued every time, and fails ssr with it", () =>
+    Effect.gen(function*() {
+      const Message = Schema.TaggedUnion({ Go: {} })
+      const Log = Command.make("Log", { args: {} }, () => Effect.never)
+      const Page = Component.make({
+        name: "Page",
+        model: Schema.Number,
+        message: Message,
+        elements: Html,
+        init: ($) => $.set(0).run(Log()),
+        update: (count, _, $) => $.set(count + 1).run(Log()),
+        view: (count, h) => h.p(String(count)).onMount("go", () => Effect.succeed(Message.make({ _tag: "Go" })))
+      })
+      // An event from a child drives the parent's update twice on the server.
+      const Child = Component.make({
+        name: "Child",
+        model: Schema.Struct({}),
+        message: Schema.Never,
+        events: Schema.Literal("twice"),
+        elements: Html,
+        init: ($) => $.set({}).emit("twice").emit("twice"),
+        update: (model) => model,
+        view: (_, h) => h.span("child")
+      })
+      const Parent = Component.make({
+        name: "Parent",
+        model: Schema.Number,
+        message: Message,
+        elements: Html,
+        init: () => 0,
+        update: (count, _, $) => $.set(count + 1).run(Log()),
+        view: (count, h) =>
+          h.div(h.p(String(count)), h.child(Child, { key: "c", props: {}, onEmit: () => Message.make({ _tag: "Go" }) }))
+      })
+      const problems: Array<Loader.Problem.Any> = []
+      const rendered = yield* HtmlServer.renderToHtml(Parent, {}).pipe(
+        Effect.provideService(Loader.Problems, (problem) => problems.push(problem))
+      )
+      expect(rendered.html).toContain("<p>2</p>")
+      expect(problems.map((problem) => problem._tag)).toEqual(["ServerCommandIssued", "ServerCommandIssued"])
+
+      yield* hosted(Effect.gen(function*() {
+        const error = yield* Effect.flip(ssr(Parent, {}))
+        expect(error.problems.filter((problem) => problem.startsWith("ServerCommandIssued:"))).toHaveLength(2)
+        yield* TestHost.expectProblem("ServerCommandIssued")
+      }))
+      // init's Command on its own is no problem.
+      yield* hosted(Effect.gen(function*() {
+        const result = yield* ssr(Page, {})
+        expect(result.commands).toEqual([{ path: "/Page", name: "Log", index: 0 }])
+      }))
+    }))
+
+  it.effect("keeps a slot whose Layer is still building inert until it adopts, then fires onMount", () =>
     Effect.gen(function*() {
       class Store extends Context.Service<Store, string>()("test/Store") {}
       const Message = Schema.TaggedUnion({ Mounted: {}, Clicked: {} })
@@ -164,7 +374,9 @@ describe("HtmlServer", { concurrent: false }, () => {
             .onMount("mounted", () => Effect.succeed(Message.make({ _tag: "Mounted" })))
       }).pipe(Component.provide(Layer.effect(Store, Effect.as(Effect.sleep("50 millis"), "ready"))))
 
-      const rendered = yield* HtmlServer.renderToHtml(Panel, {})
+      const fiber = yield* Effect.forkChild(HtmlServer.renderToHtml(Panel, {}))
+      yield* TestClock.adjust("50 millis")
+      const rendered = yield* Fiber.join(fiber)
       expect(rendered.state["~deferred"]).toEqual([])
       const app = yield* container(rendered.html)
       const button = app.querySelector("button")!
@@ -173,6 +385,7 @@ describe("HtmlServer", { concurrent: false }, () => {
       yield* tick
       expect(button.textContent).toBe("0 server")
 
+      yield* TestClock.adjust("50 millis")
       yield* root.adopted
       yield* tick
       expect(app.querySelector("button")).toBe(button)
@@ -218,24 +431,30 @@ describe("HtmlServer", { concurrent: false }, () => {
       expect(b).toBe(second)
       expect(app.querySelector("ul")!.childNodes.length).toBe(2)
     }).pipe(Effect.scoped))
-  it.live("waits for the slot a Layer that settles in budget wakes, and for the work it starts", () =>
+  it.effect("waits for the slot a Layer that settles in budget wakes, and for the fetches it starts", () =>
     Effect.gen(function*() {
-      const PanelMessage = Schema.TaggedUnion({ Loaded: { text: Schema.String } })
-      class LoadText extends Command.Service<LoadText>()(
-        "LoadText",
-        Effect.succeed(() => Effect.succeed(PanelMessage.make({ _tag: "Loaded", text: "data" }))),
-        { server: true }
-      ) {}
+      class GetText extends Loader.Service<GetText>()("GetText", {
+        args: {},
+        success: Schema.String,
+        error: Schema.Never,
+        staleTime: "30 seconds"
+      }, Effect.succeed(() => Effect.as(Effect.sleep("10 millis"), "data"))) {}
+      const Text = Loader.Snapshot(GetText, "text")
+      const PanelMessage = Schema.TaggedUnion({ Loaded: { snapshot: Text } })
       class Panel extends Feature.Service<Panel>()("Panel", { props: Schema.Struct({}), events: Schema.Never }) {}
       const PanelLive = Component.make({
         name: "PanelLive",
-        model: Schema.String,
+        model: Schema.Struct({ text: Text }),
         message: PanelMessage,
         elements: Html,
-        init: ($) => $.set("loading").run(LoadText.make()),
-        update: (_, message) => message.text,
-        view: (text, h) => h.p(text)
-      }).pipe(Component.provide(LoadText.layer))
+        loaders: { text: () => ({}) },
+        init: ($) => $.empty,
+        update: (_, message) => ({ text: message.snapshot }),
+        subscriptions: (_model, _props, watch) => [
+          watch({ text: (snapshot) => PanelMessage.make({ _tag: "Loaded", snapshot }) })
+        ],
+        view: (_, h) => h.p(AsyncResult.isSuccess(h.loaded.text) ? h.loaded.text.value : "loading")
+      }).pipe(Component.provide(GetText.layer))
       const Page = Component.make({
         name: "Page",
         model: Schema.Struct({}),
@@ -249,22 +468,37 @@ describe("HtmlServer", { concurrent: false }, () => {
           )
       }).pipe(Component.provide(Layer.merge(Panel.layer(PanelLive), Layer.effectDiscard(Effect.sleep("20 millis")))))
 
-      const rendered = yield* HtmlServer.renderToHtml(Page, {})
+      const fiber = yield* Effect.forkChild(HtmlServer.renderToHtml(Page, {}))
+      yield* TestClock.adjust("20 millis")
+      yield* TestClock.adjust("10 millis")
+      const rendered = yield* Fiber.join(fiber)
       expect(rendered.html).toContain("<p>data</p>")
       expect(rendered.state["~deferred"]).toEqual([])
+      expect(rendered.state["~loader"]).toEqual({ GetText: [["{}", 0, "data", 30]] })
     }))
 
-  it.effect("fails and defers the instance whose last server Command dies", () =>
+  it.effect("fails and defers the instance whose fetcher dies, and ships no entry for it", () =>
     Effect.gen(function*() {
-      class Die extends Command.Service<Die>()("Die", Effect.succeed(() => Effect.die("boom")), { server: true }) {}
+      class Die extends Loader.Service<Die>()("Die", {
+        args: {},
+        success: Schema.String,
+        error: Schema.Never,
+        staleTime: "30 seconds"
+      }, Effect.succeed(() => Effect.die("boom"))) {}
+      const Text = Loader.Snapshot(Die, "text")
+      const Message = Schema.TaggedUnion({ Loaded: { snapshot: Text } })
       const Doomed = Component.make({
         name: "Doomed",
-        model: Schema.String,
-        message: Schema.Never,
+        model: Schema.Struct({ text: Text }),
+        message: Message,
         elements: Html,
-        init: ($) => $.set("loading").run(Die.make()),
-        update: (model) => model,
-        view: (text, h) => h.p(text)
+        loaders: { text: () => ({}) },
+        init: ($) => $.empty,
+        update: (_, message) => ({ text: message.snapshot }),
+        subscriptions: (_model, _props, watch) => [
+          watch({ text: (snapshot) => Message.make({ _tag: "Loaded", snapshot }) })
+        ],
+        view: (_, h) => h.p("loading")
       }).pipe(Component.provide(Die.layer))
       const Page = Component.make({
         name: "Page",
@@ -282,10 +516,10 @@ describe("HtmlServer", { concurrent: false }, () => {
       const rendered = yield* HtmlServer.renderToHtml(Page, {})
       expect(rendered.html).toContain("<!--[/Page/Doomed[d]--><p>failed</p><!--]/Page/Doomed[d]-->")
       expect(rendered.state["~deferred"]).toEqual(["/Page/Doomed[d]"])
-      expect(rendered.state["~pending"]).toEqual({})
+      expect(rendered.state["~loader"]).toEqual({})
     }))
 
-  it.live("closes everything it started when the render is interrupted", () =>
+  it.effect("closes everything it started when the render is interrupted", () =>
     Effect.gen(function*() {
       let acquired = 0
       let released = 0
@@ -304,14 +538,15 @@ describe("HtmlServer", { concurrent: false }, () => {
         view: (_, h) => h.p("page")
       }).pipe(Component.provide(Held))
       const fiber = yield* Effect.forkChild(HtmlServer.renderToHtml(Page, {}))
-      yield* Effect.sleep("20 millis")
+      yield* TestClock.adjust("20 millis")
+      expect([acquired, released]).toEqual([1, 0])
       yield* Fiber.interrupt(fiber)
-      yield* Effect.sleep("150 millis")
+      yield* TestClock.adjust("150 millis")
       expect([acquired, released]).toEqual([1, 1])
     }))
 
   it.effect("writes only text inside a textarea, and hydration rebuilds just that text", () =>
-    Effect.gen(function*() {
+    hosted(Effect.gen(function*() {
       const Word = Component.make({
         name: "Word",
         model: Schema.Struct({}),
@@ -336,10 +571,10 @@ describe("HtmlServer", { concurrent: false }, () => {
       )
       expect(result.adopted).toEqual(["/Form", "/Form/Word[a]"])
       expect(result.container.querySelector("textarea")!.value).toBe("hello")
-    }).pipe(Effect.scoped))
+    })))
 
   it.effect("judges adoption when it commits, before onMount updates replace nodes", () =>
-    Effect.gen(function*() {
+    hosted(Effect.gen(function*() {
       const Message = Schema.TaggedUnion({ Mounted: {} })
       const Swap = Component.make({
         name: "Swap",
@@ -354,9 +589,9 @@ describe("HtmlServer", { concurrent: false }, () => {
             : h.p("server").onMount("swap", () => Effect.succeed(Message.make({ _tag: "Mounted" })))
       })
       const result = yield* ssr(Swap, {})
-      yield* Effect.yieldNow
+      yield* TestHost.settle
       expect(result.container.textContent).toBe("mounted")
-    }).pipe(Effect.scoped))
+    })))
   it.effect("keeps marker paths through the parser's normalisation of CR, NUL and lone surrogates", () =>
     Effect.gen(function*() {
       const Leaf = Component.make({
@@ -391,8 +626,8 @@ describe("HtmlServer", { concurrent: false }, () => {
       expect(app.innerHTML).toBe("<p>leaf</p>")
     }).pipe(Effect.scoped))
 
-  it.live("compares the head at adoption, so a mount update while a slot waits isn't a mismatch", () =>
-    Effect.gen(function*() {
+  it.effect("compares the head at adoption, so a mount update while a slot waits isn't a mismatch", () =>
+    hosted(Effect.gen(function*() {
       class Slow extends Context.Service<Slow, string>()("test/Slow") {}
       const Waiting = Component.make({
         name: "Waiting",
@@ -420,11 +655,11 @@ describe("HtmlServer", { concurrent: false }, () => {
       })
       const result = yield* ssr(Titled, {})
       expect(result.adopted).toEqual(["/Titled", "/Titled/Waiting[w]"])
-      yield* tick
+      yield* TestHost.settle
       expect(result.document.title).toBe("mounted")
-    }).pipe(Effect.scoped))
+    })))
   it.effect("compares the head the client evaluated, over the instance tree, not one rebuilt from paths", () =>
-    Effect.gen(function*() {
+    hosted(Effect.gen(function*() {
       // Alternates per evaluation, so evaluating it again after adoption would agree with the server.
       let runs = 0
       const Unstable = Component.make({
@@ -488,9 +723,9 @@ describe("HtmlServer", { concurrent: false }, () => {
       expect(nested.problems).toEqual([
         "head title: the server has \"Inner (server)\", the client \"Inner (client)\""
       ])
-    }).pipe(Effect.scoped))
-  it.live("snapshots the instances adoption saw, so removing one while a slot waits isn't a mismatch", () =>
-    Effect.gen(function*() {
+    })))
+  it.effect("snapshots the instances adoption saw, so removing one while a slot waits isn't a mismatch", () =>
+    hosted(Effect.gen(function*() {
       class Slow extends Context.Service<Slow, string>()("test/Slow") {}
       const Waiting = Component.make({
         name: "Waiting",
@@ -528,12 +763,12 @@ describe("HtmlServer", { concurrent: false }, () => {
       const result = yield* ssr(Page, {})
       expect(result.head.title).toBe("title")
       expect(result.adopted).toEqual(["/Page", "/Page/Titled[t]", "/Page/Waiting[w]"])
-      yield* tick
+      yield* TestHost.settle
       expect(result.container.textContent).toBe("gonewaiting")
-    }).pipe(Effect.scoped))
+    })))
 
   it.effect("reports the template results the client's merge computed, without calling templates again", () =>
-    Effect.gen(function*() {
+    hosted(Effect.gen(function*() {
       const Leaf = Component.make({
         name: "Leaf",
         model: Schema.Struct({}),
@@ -572,9 +807,9 @@ describe("HtmlServer", { concurrent: false }, () => {
       const error = yield* Effect.flip(ssr(differs.Parent, {}))
       expect(differs.calls()).toBe(2)
       expect(error.problems).toEqual(["head title: the server has \"server\", the client \"client\""])
-    }).pipe(Effect.scoped))
+    })))
   it.effect("leaves an instance its own title template fails out of the adoption head, as the server does", () =>
-    Effect.gen(function*() {
+    hosted(Effect.gen(function*() {
       const Leaf = Component.make({
         name: "Leaf",
         model: Schema.Struct({}),
@@ -618,9 +853,9 @@ describe("HtmlServer", { concurrent: false }, () => {
       expect(result.head.title).toBeUndefined()
       expect(result.state["~deferred"]).toEqual(["/Parent/Broken[a]", "/Parent/Broken[b]"])
       expect(result.container.textContent).toBe("fallback afallback b")
-    }).pipe(Effect.scoped))
+    })))
 
-  it.live("keeps no template results outside an adoption report", () =>
+  it.effect("keeps no template results outside an adoption report", () =>
     Effect.gen(function*() {
       let calls = 0
       // One entry shared by every head evaluation, so a cache keyed on entries would keep it.
@@ -665,10 +900,477 @@ describe("HtmlServer", { concurrent: false }, () => {
       // Hydration: one call on the server's merge, one on the client's, then one per update once
       // the report is made.
       calls = 0
-      const result = yield* ssr(Layout, {})
-      expect(calls).toBe(2)
-      yield* bumpThrice(result.root)
-      expect(calls).toBe(5)
-      expect(result.document.title).toBe("leaf - App")
+      yield* hosted(Effect.gen(function*() {
+        const result = yield* ssr(Layout, {})
+        expect(calls).toBe(2)
+        for (let i = 0; i < 3; i++) {
+          result.root.send(Message.make({ _tag: "Bump" }))
+          yield* TestHost.settle
+        }
+        expect(calls).toBe(5)
+        expect(result.document.title).toBe("leaf - App")
+      }))
     }).pipe(Effect.scoped))
+})
+
+/** A read that counts its fetches and fails for id 404, and an `Item` that watches it by its props. */
+const makeItems = () => {
+  const calls: Array<number> = []
+  class GetItem extends Loader.Service<GetItem>()(
+    "GetItem",
+    {
+      args: { id: Schema.Number },
+      success: Schema.String,
+      error: Schema.String,
+      staleTime: "1 minute"
+    },
+    Effect.succeed(({ id }) =>
+      Effect.suspend(() => {
+        calls.push(id)
+        return id === 404 ? Effect.fail("missing") : Effect.succeed(`Item ${id}`)
+      })
+    )
+  ) {}
+  const ItemSnapshot = Loader.Snapshot(GetItem, "item")
+  const Message = Schema.TaggedUnion({ Loaded: { snapshot: ItemSnapshot, ok: Schema.Boolean } })
+  const loaded = (snapshot: typeof ItemSnapshot.Type, result: AsyncResult.AsyncResult<string, string>) =>
+    Message.make({ _tag: "Loaded", snapshot, ok: AsyncResult.isSuccess(result) })
+  const show = (result: AsyncResult.AsyncResult<string, string>) =>
+    AsyncResult.isSuccess(result) ? result.value : AsyncResult.isFailure(result) ? "failed" : "loading"
+  const Item = Component.make({
+    name: "Item",
+    model: Schema.Struct({ item: ItemSnapshot }),
+    message: Message,
+    props: Schema.Struct({ id: Schema.Number }),
+    elements: Html,
+    loaders: { item: (_model, props) => ({ id: props.id }) },
+    init: ($) => $.empty,
+    update: (_, message) => ({ item: message.snapshot }),
+    subscriptions: (_model, _props, watch) => [watch({ item: loaded })],
+    view: (_, h) => h.p(show(h.loaded.item))
+  }).pipe(Component.provide(GetItem.layer))
+  return { calls, GetItem, ItemSnapshot, Message, Item, loaded, show }
+}
+
+describe("HtmlServer loaders", { concurrent: false }, () => {
+  it.effect("fetches each key once per request and ships every settled entry, typed Failures included", () =>
+    hosted(Effect.gen(function*() {
+      const { Item, calls } = makeItems()
+      const Page = Component.make({
+        name: "Page",
+        model: Schema.Struct({}),
+        message: Schema.Never,
+        elements: Html,
+        init: () => ({}),
+        update: (model) => model,
+        view: (_, h) =>
+          h.div(
+            h.child(Item, { key: "a", props: { id: 1 } }),
+            h.child(Item, { key: "b", props: { id: 1 } }),
+            h.child(Item, { key: "c", props: { id: 404 } })
+          )
+      })
+      const result = yield* ssr(Page, {})
+      expect(result.html).toContain("<p>Item 1</p>")
+      expect(result.html).toContain("<p>failed</p>")
+      expect(result.state["~loader"]).toEqual({
+        GetItem: expect.arrayContaining([["{\"id\":1}", 0, "Item 1", 0], ["{\"id\":404}", 1, ["missing"], 0]])
+      })
+      expect((result.state["~loader"] as any).GetItem).toHaveLength(2)
+      // The client adopts both entries without fetching, and each watch's first emission is delivered.
+      expect(calls).toEqual([1, 404])
+      expect(result.root.fetches()).toEqual([])
+      expect(
+        result.log.filter((entry) => entry._tag === "Update" && entry.source._tag === "Subscription").map((entry) =>
+          entry.path
+        )
+      ).toEqual(["/Page/Item[a]", "/Page/Item[b]", "/Page/Item[c]"])
+      expect(result.container.textContent).toBe("Item 1Item 1failed")
+    })))
+
+  it.effect("runs rounds: a watch message that changes the args fetches the next key", () =>
+    hosted(Effect.gen(function*() {
+      const { ItemSnapshot, Message, GetItem, loaded, show, calls } = makeItems()
+      const Pager = Component.make({
+        name: "Pager",
+        model: Schema.Struct({ page: Schema.Number, item: ItemSnapshot }),
+        message: Message,
+        elements: Html,
+        loaders: { item: (model) => ({ id: model.page }) },
+        init: ($) => ({ ...$.empty, page: 1 }),
+        update: (model, message) => {
+          const page = message.ok && model.page < 3 ? model.page + 1 : model.page
+          return { page, item: message.snapshot }
+        },
+        subscriptions: (_model, _props, watch) => [watch({ item: loaded })],
+        view: (_, h) => h.p(show(h.loaded.item))
+      }).pipe(Component.provide(GetItem.layer))
+      const result = yield* ssr(Pager, {})
+      expect(result.html).toContain("<p>Item 3</p>")
+      expect(calls).toEqual([1, 2, 3])
+      expect((result.state["~loader"] as any).GetItem.map((tuple: ReadonlyArray<unknown>) => tuple[0])).toEqual([
+        "{\"id\":1}",
+        "{\"id\":2}",
+        "{\"id\":3}"
+      ])
+      expect(result.root.fetches()).toEqual([])
+    })))
+
+  it.effect("ships the k of N keys of a keyed field that settled in budget, and the client fetches the rest", () =>
+    hosted(Effect.gen(function*() {
+      const calls: Array<number> = []
+      class GetSlowItem extends Loader.Service<GetSlowItem>()(
+        "GetSlowItem",
+        { args: { id: Schema.Number }, success: Schema.String, error: Schema.String, staleTime: "1 minute" },
+        Effect.succeed(({ id }) =>
+          Effect.suspend(() => {
+            calls.push(id)
+            return id === 404
+              ? Effect.fail("missing")
+              : Effect.as(Effect.sleep(id === 3 ? "300 millis" : "0 millis"), `Item ${id}`)
+          })
+        )
+      ) {}
+      const Items = Loader.SnapshotMap(GetSlowItem, "items")
+      const Message = Schema.TaggedUnion({ Loaded: { items: Items } })
+      const List = Component.make({
+        name: "List",
+        model: Schema.Struct({ items: Items }),
+        message: Message,
+        elements: Html,
+        loaders: { items: () => [{ id: 1 }, { id: 404 }, { id: 3 }] },
+        init: ($) => $.empty,
+        update: (_, message) => ({ items: message.items }),
+        subscriptions: (
+          _model,
+          _props,
+          watch
+        ) => [watch({ items: (items) => Message.make({ _tag: "Loaded", items }) })],
+        view: (_, h) =>
+          h.ul(h.loaded.items.map(({ args, result }) =>
+            h.li(
+              AsyncResult.isSuccess(result) ? result.value : AsyncResult.isFailure(result) ? "failed" : "loading"
+            ).key(String(args.id))
+          ))
+      }).pipe(Component.provide(GetSlowItem.layer))
+      const result = yield* ssr(List, {}, { budget: "50 millis" })
+      expect(result.html).toContain("<li>Item 1</li><li>failed</li><li>loading</li>")
+      // The Model field is the settled keys' tuples; the entries ship as ordinary entries of the read.
+      expect(result.state["/List"]).toEqual({
+        items: [["{\"id\":1}", 0, "Item 1", 0, false], ["{\"id\":404}", 1, ["missing"], null]]
+      })
+      expect((result.state["~loader"] as any).GetSlowItem).toHaveLength(2)
+      expect(result.misses).toEqual([{ read: "GetSlowItem", logKey: "{\"id\":3}" }])
+      // The client adopts the two settled keys and fetches only the third.
+      expect(result.root.fetches().map((fetch) => fetch.logKey)).toEqual(["{\"id\":3}"])
+      yield* TestClock.adjust("300 millis")
+      yield* TestHost.settle
+      expect(result.container.textContent).toBe("Item 1failedItem 3")
+      expect(calls).toEqual([1, 404, 3, 3])
+    })))
+
+  it.effect("fails ssr when an entry doesn't encode, and doesn't ship it", () =>
+    hosted(Effect.gen(function*() {
+      class GetCount extends Loader.Service<GetCount>()("GetCount", {
+        args: {},
+        success: Schema.Number,
+        error: Schema.Never,
+        staleTime: "1 minute"
+      }, Effect.succeed(() => Effect.succeed("x" as unknown as number))) {}
+      const Count = Loader.Snapshot(GetCount, "count")
+      const Message = Schema.TaggedUnion({ Loaded: { snapshot: Count } })
+      const Page = Component.make({
+        name: "Page",
+        model: Schema.Struct({ count: Count }),
+        message: Message,
+        elements: Html,
+        loaders: { count: () => ({}) },
+        init: ($) => $.empty,
+        update: (model) => model,
+        subscriptions: (_model, _props, watch) => [watch({
+          count: (snapshot) => Message.make({ _tag: "Loaded", snapshot })
+        })],
+        view: (_, h) => h.p("count")
+      }).pipe(Component.provide(GetCount.layer))
+      const error = yield* Effect.flip(ssr(Page, {}))
+      expect(error.problems).toContainEqual(expect.stringMatching(/^EncodeFailed:/))
+      yield* TestHost.expectProblem("EncodeFailed")
+    })))
+
+  it.effect("fails ssr when the client fetches a hydrated entry inside the window, unless static", () =>
+    Effect.gen(function*() {
+      const { GetItem, Item, calls } = makeItems()
+      class Store extends Context.Service<Store, string>()("test/Store") {}
+      let builds = 0
+      // Built at once on the server, and 10 millis later on the client.
+      const Slow = Component.make({
+        name: "Slow",
+        model: Schema.Struct({}),
+        message: Schema.Never,
+        elements: Html,
+        init: () => ({}),
+        update: (model) => model,
+        view: (_, h) => h.p("slow")
+      }).pipe(Component.provide(Layer.effect(
+        Store,
+        Effect.suspend(() =>
+          builds++ % 2 === 0 ? Effect.succeed("ready") : Effect.as(Effect.sleep("10 millis"), "ready")
+        )
+      )))
+      const Message = Schema.TaggedUnion({ Refreshed: {} })
+      class Refresh extends Command.Service<Refresh>()("Refresh", {
+        args: {},
+        invalidates: () => [GetItem]
+      }, Effect.succeed(() => Effect.succeed(Message.make({ _tag: "Refreshed" })))) {}
+      const Page = Component.make({
+        name: "Page",
+        model: Schema.Struct({}),
+        message: Message,
+        elements: Html,
+        // init's Command reruns on the client, and its invalidation refetches the hydrated entry while
+        // the slot below still holds the window open.
+        init: ($) => $.set({}).run(Refresh.make()),
+        update: (model) => model,
+        view: (_, h) => h.div(h.child(Item, { key: "a", props: { id: 1 } }), h.child(Slow, { key: "s", props: {} }))
+      }).pipe(Component.provide(Refresh.layer))
+      yield* hosted(Effect.gen(function*() {
+        const error = yield* Effect.flip(ssr(Page, {}))
+        expect(error.problems).toEqual([
+          "GetItem {\"id\":1}: fetched inside the fetch-free window (invalidation)"
+        ])
+      }))
+      calls.length = 0
+      yield* hosted(Effect.gen(function*() {
+        const result = yield* ssr(Page, {}, { static: true })
+        expect(result.state["~static"]).toBe(true)
+        // Static HTML has no window, and its entry has an unknown age: stale, so it refetches once.
+        expect(calls).toEqual([1, 1])
+        expect(result.root.fetches().some((fetch) => fetch.inWindow)).toBe(false)
+      }))
+    }))
+
+  it.effect("closes the window at the first navigation, before a waiting slot adopts", () =>
+    Effect.gen(function*() {
+      const { GetItem, Item, calls } = makeItems()
+      class Store extends Context.Service<Store, string>()("test/Store") {}
+      let builds = 0
+      const Slow = Component.make({
+        name: "Slow",
+        model: Schema.Struct({}),
+        message: Schema.Never,
+        elements: Html,
+        init: () => ({}),
+        update: (model) => model,
+        view: (_, h) => h.p("slow")
+      }).pipe(Component.provide(Layer.effect(
+        Store,
+        Effect.suspend(() => builds++ === 0 ? Effect.succeed("ready") : Effect.as(Effect.sleep("10 millis"), "ready"))
+      )))
+      const Message = Schema.TaggedUnion({ Navigated: {}, Refreshed: {} })
+      class Refresh extends Command.Service<Refresh>()("Refresh", {
+        args: {},
+        invalidates: () => [GetItem]
+      }, Effect.succeed(() => Effect.succeed(Message.make({ _tag: "Refreshed" })))) {}
+      const Page = Component.make({
+        name: "Page",
+        model: Schema.Struct({}),
+        message: Message,
+        elements: Html,
+        // On the client, init navigates, and only then invalidates: the fetch lands after the window closed.
+        init: ($) =>
+          $.set({}).run(
+            Router.push(AppRoute, Option.getOrThrow(AppRoute.parse("/slow"))).pipe(
+              Command.map(() => Message.make({ _tag: "Navigated" }))
+            )
+          ),
+        update: (model, message, $) => message._tag === "Navigated" ? $.set(model).run(Refresh.make()) : model,
+        view: (_, h) => h.div(h.child(Item, { key: "a", props: { id: 1 } }), h.child(Slow, { key: "s", props: {} }))
+      }).pipe(Component.provide(Refresh.layer))
+      const { router } = yield* routed("/")
+      yield* hosted(Effect.gen(function*() {
+        const result = yield* ssr(Page, {}).pipe(Effect.provide(router))
+        expect(result.root.fetches().map((fetch) => [fetch.trigger, fetch.inWindow])).toEqual([["invalidation", false]])
+        expect(calls).toEqual([1, 1])
+      }))
+    }))
+
+  it.effect("runs a push's Router.prefetch after the navigation closes the fetch-free window", () =>
+    Effect.gen(function*() {
+      // Always stale: inside the window a prefetch leaves the hydrated entry alone, and after it, fetches it.
+      class GetNow extends Loader.Service<GetNow>()("GetNow", {
+        args: { id: Schema.Number },
+        success: Schema.String,
+        error: Schema.Never,
+        staleTime: 0
+      }, Effect.succeed(({ id }) => Effect.succeed(`Now ${id}`))) {}
+      const NowSnapshot = Loader.Snapshot(GetNow, "now")
+      const NowMessage = Schema.TaggedUnion({ Loaded: { snapshot: NowSnapshot } })
+      const Now = Component.make({
+        name: "Now",
+        props: Schema.Struct({ id: Schema.Number }),
+        model: Schema.Struct({ now: NowSnapshot }),
+        message: NowMessage,
+        elements: Html,
+        loaders: { now: (_model, props) => ({ id: props.id }) },
+        init: ($) => $.empty,
+        update: (_, message) => ({ now: message.snapshot }),
+        subscriptions: (_model, _props, watch) => [
+          watch({ now: (snapshot) => NowMessage.make({ _tag: "Loaded", snapshot }) })
+        ],
+        view: (_, h) => h.p("now")
+      })
+      // Holds the window open on the client: the slot waits 10 millis for its Layer.
+      class Store extends Context.Service<Store, string>()("test/Store") {}
+      let builds = 0
+      const Slow = Component.make({
+        name: "Slow",
+        model: Schema.Struct({}),
+        message: Schema.Never,
+        elements: Html,
+        init: () => ({}),
+        update: (model) => model,
+        view: (_, h) => h.p("slow")
+      }).pipe(Component.provide(Layer.effect(
+        Store,
+        Effect.suspend(() => builds++ === 0 ? Effect.succeed("ready") : Effect.as(Effect.sleep("10 millis"), "ready"))
+      )))
+      const Message = Schema.TaggedUnion({ Navigated: {} })
+      const Page = Component.make({
+        name: "Page",
+        model: Schema.Struct({}),
+        message: Message,
+        elements: Html,
+        // On the client, init navigates while the slot holds the window open.
+        init: ($) =>
+          $.set({}).run(
+            Router.push(AppRoute, Option.getOrThrow(AppRoute.parse("/people/1"))).pipe(
+              Command.map(() => Message.make({ _tag: "Navigated" }))
+            )
+          ),
+        update: (model) => model,
+        subscriptions: () => [
+          Router.prefetch(AppRoute, {
+            Home: () => [],
+            Person: ({ params }) => [Router.page(Now, { id: params.id })],
+            Search: () => [],
+            Slow: () => [],
+            NotFound: () => []
+          })
+        ],
+        // The mounted page is older than the push, so the check after it skips it.
+        view: (_, h) => h.div(h.child(Now, { key: "a", props: { id: 1 } }), h.child(Slow, { key: "s", props: {} }))
+      }).pipe(Component.provide(GetNow.layer))
+      const { router } = yield* routed("/")
+      yield* hosted(Effect.gen(function*() {
+        const result = yield* ssr(Page, {}).pipe(Effect.provide(router))
+        expect(result.root.fetches().map((fetch) => [fetch.logKey, fetch.trigger, fetch.inWindow])).toEqual([
+          ["{\"id\":1}", "prefetch", false]
+        ])
+      }))
+    }))
+
+  it.effect("allows a caller-only fetch inside the window: it stores nothing", () =>
+    hosted(Effect.gen(function*() {
+      const { GetItem, Item } = makeItems()
+      class ReadBack extends Command.Service<ReadBack>()(
+        "ReadBack",
+        {
+          args: {},
+          invalidates: () => [GetItem]
+        },
+        Effect.map(Effect.context<InstanceType<typeof GetItem>>(), (context) => () =>
+          // Reads back its own invalidation target, then never ends, so the fetch stays caller-only.
+          Effect.andThen(GetItem.get({ id: 1 }).pipe(Effect.provide(context), Effect.ignore), Effect.never))
+      ) {}
+      class Store extends Context.Service<Store, string>()("test/Store") {}
+      let builds = 0
+      const Slow = Component.make({
+        name: "Slow",
+        model: Schema.Struct({}),
+        message: Schema.Never,
+        elements: Html,
+        init: () => ({}),
+        update: (model) => model,
+        view: (_, h) => h.p("slow")
+      }).pipe(Component.provide(Layer.effect(
+        Store,
+        Effect.suspend(() => builds++ === 0 ? Effect.succeed("ready") : Effect.as(Effect.sleep("10 millis"), "ready"))
+      )))
+      const Page = Component.make({
+        name: "Page",
+        model: Schema.Struct({}),
+        message: Schema.Never,
+        elements: Html,
+        init: ($) => $.set({}).run(ReadBack.make()),
+        update: (model) => model,
+        view: (_, h) => h.div(h.child(Item, { key: "a", props: { id: 1 } }), h.child(Slow, { key: "s", props: {} }))
+      }).pipe(Component.provide(ReadBack.layer.pipe(Layer.provideMerge(GetItem.layer))))
+      const result = yield* ssr(Page, {})
+      expect(result.root.fetches().map((fetch) => [fetch.stored, fetch.inWindow])).toEqual([[false, true]])
+    })))
+
+  it.effect("spends the whole budget on the client before failing, for a sleep its clock didn't see", () =>
+    hosted(Effect.gen(function*() {
+      const clock = yield* Clock.Clock
+      class Store extends Context.Service<Store, string>()("test/Store") {}
+      let builds = 0
+      const Panel = Component.make({
+        name: "Panel",
+        model: Schema.Struct({}),
+        message: Schema.Never,
+        elements: Html,
+        init: () => ({}),
+        update: (model) => model,
+        view: (_, h) => h.p("panel")
+      }).pipe(Component.provide(Layer.effect(
+        Store,
+        Effect.suspend(() =>
+          builds++ === 0 ? Effect.succeed("ready") : Effect.as(clock.sleep(Duration.millis(10)), "ready")
+        )
+      )))
+      const Page = Component.make({
+        name: "Page",
+        model: Schema.Struct({}),
+        message: Schema.Never,
+        elements: Html,
+        init: () => ({}),
+        update: (model) => model,
+        view: (_, h) => h.child(Panel, { key: "p", props: {} })
+      })
+      const result = yield* ssr(Page, {}, { budget: "100 millis" })
+      expect(result.adopted).toEqual(["/Page", "/Page/Panel[p]"])
+    })))
+
+  it.effect("fails ssr naming the slots still waiting for their Layer when the budget is spent", () =>
+    hosted(Effect.gen(function*() {
+      class Store extends Context.Service<Store, string>()("test/Store") {}
+      let builds = 0
+      const Panel = Component.make({
+        name: "Panel",
+        model: Schema.Struct({}),
+        message: Schema.Never,
+        elements: Html,
+        init: () => ({}),
+        update: (model) => model,
+        view: (_, h) => h.p("panel")
+      }).pipe(
+        Component.provide(Layer.effect(
+          Store,
+          Effect.suspend(() => builds++ === 0 ? Effect.succeed("ready") : Effect.never)
+        ))
+      )
+      const Page = Component.make({
+        name: "Page",
+        model: Schema.Struct({}),
+        message: Schema.Never,
+        elements: Html,
+        init: () => ({}),
+        update: (model) => model,
+        view: (_, h) => h.div(h.child(Panel, { key: "p", props: {} }))
+      })
+      const error = yield* Effect.flip(ssr(Page, {}, { budget: "1 second" }))
+      expect(error.problems).toEqual([
+        "/Page/Panel[p]: still waiting for its Layer to adopt when the budget was spent"
+      ])
+    })))
 })

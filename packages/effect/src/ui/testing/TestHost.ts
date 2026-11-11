@@ -43,15 +43,20 @@
  * @stability experimental
  * @since 4.1.3
  */
+import * as Cause from "../../Cause.ts"
+import * as Clock from "../../Clock.ts"
 import * as Context from "../../Context.ts"
 import * as Data from "../../Data.ts"
+import type * as Duration from "../../Duration.ts"
 import * as Effect from "../../Effect.ts"
 import * as Layer from "../../Layer.ts"
 import * as Queue from "../../Queue.ts"
 import type * as AsyncResult from "../../reactivity/AsyncResult.ts"
+import * as Loader from "../../reactivity/Loader.ts"
 import * as Schema from "../../Schema.ts"
 import type * as Scope from "../../Scope.ts"
 import * as Stream from "../../Stream.ts"
+import * as TestLoader from "../../testing/TestLoader.ts"
 import * as Component from "../Component.ts"
 import * as Feature from "../Feature.ts"
 import type * as Head from "../Head.ts"
@@ -152,15 +157,24 @@ export const makeHost = (): Renderer.Host<TestNode> & {
   readonly operations: () => ReadonlyArray<string>
   readonly clearOperations: () => void
   readonly commits: () => number
+  /** Calls `listener` after every commit. Returns the unsubscribe. */
+  readonly onCommit: (listener: () => void) => () => void
 } => {
   let operations: Array<string> = []
   let commits = 0
+  const listeners = new Set<() => void>()
   return {
     operations: () => operations,
     clearOperations: () => {
       operations = []
     },
     commits: () => commits,
+    onCommit: (listener) => {
+      listeners.add(listener)
+      return () => {
+        listeners.delete(listener)
+      }
+    },
     createElement(tag) {
       operations.push(`create <${tag}>`)
       return makeElement(tag)
@@ -214,6 +228,7 @@ export const makeHost = (): Renderer.Host<TestNode> & {
     runsMounts: false,
     commit: () => {
       commits++
+      for (const listener of Array.from(listeners)) listener()
     },
     head: () => {
       operations.push("head")
@@ -231,30 +246,102 @@ export const makeHost = (): Renderer.Host<TestNode> & {
 export interface TestHost {
   readonly host: ReturnType<typeof makeHost>
   readonly log: MessageLog.Memory
-  /** Drains the test scheduler once. Returns whether it ran out of budget. */
+  /** Drains the test scheduler once. Returns whether it finished within the budget. */
   readonly drain: (budget: number) => boolean
   /** Whether the test scheduler has work queued. */
   readonly busy: () => boolean
-  /** The Commands still running or queued in every tree mounted on this host. */
+  /** The Command runs and fetches still in flight in every tree mounted on this host. */
   readonly pending: () => ReadonlyArray<Pending>
   readonly budget: number
-  /** Adds a mounted tree to `pending`, until the returned function is called. */
-  readonly register: (tree: { readonly pending: () => ReadonlyArray<Pending> }) => () => void
+  /** Adds a mounted tree to `pending` and `settle`, until the returned function is called. */
+  readonly register: (tree: Tree) => () => void
+  /** The settable `Loader.Visibility` every mount gets. */
+  readonly visibility: Loader.Signal & { readonly set: (value: boolean) => void }
+  /** The settable `Loader.Connectivity` every mount gets. */
+  readonly connectivity: Loader.Signal & { readonly set: (value: boolean) => void }
+  /** The problems reported and not yet taken. */
+  readonly problems: () => ReadonlyArray<Loader.Problem.Any>
+  /** Collects a problem. Every mount's cache reports here. */
+  readonly report: (problem: Loader.Problem.Any) => void
+  /** Takes every problem with this tag. Throws when there is none. */
+  readonly expectProblem: (tag: string) => ReadonlyArray<Loader.Problem.Any>
+  /** Wraps a `Clock` so that a woken sleeper drains the test scheduler. */
+  readonly drainingClock: (clock: Clock.Clock, context: Context.Context<never>) => Clock.Clock
+  /** The trees mounted on this host. */
+  readonly trees: () => ReadonlySet<Tree>
 }
 
 /**
- * A Command run still in flight: the instance that issued it, its name, and
- * whether it's `running` or `queued`.
+ * A tree registered with `TestHost`.
  *
  * @stability experimental
  * @category models
  * @since 4.1.3
  */
-export interface Pending {
+export interface Tree {
+  readonly pending: () => ReadonlyArray<Pending>
+  /** The root's failure, once it crashed. */
+  readonly crashed: () => Cause.Cause<unknown> | undefined
+  readonly path: string
+}
+
+/**
+ * Work still in flight: a Command run or a fetch.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.1.3
+ */
+export type Pending = PendingCommand | PendingFetch
+
+/**
+ * A Command run still in flight: the instance that issued it, its name, and
+ * whether it's `running`, `queued` or `awaiting`: its fiber exited and its
+ * message waits, on a `Command.afterRefetch` wait or, under `queue`, behind
+ * an earlier message of its group.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.1.3
+ */
+export interface PendingCommand {
+  readonly _tag: "Command"
   readonly path: string
   readonly name: string
   readonly status: string
+  /** A detached run: owned by its Layer build, it may outlive its instance. */
+  readonly detached: boolean
 }
+
+/**
+ * A fetch the cache holds: `running`, or `held` until a live patch's run
+ * exits, with the trigger it started or will start with.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.1.3
+ */
+export interface PendingFetch {
+  readonly _tag: "Fetch"
+  /** The root's path. */
+  readonly path: string
+  readonly read: string
+  readonly logKey: string
+  readonly status: "running" | "held"
+  readonly trigger: Loader.Trigger
+}
+
+/**
+ * A drain woken by the clock ran out of budget. What was queued stays queued,
+ * and the next `settle` runs it and fails on this problem.
+ *
+ * @stability experimental
+ * @category problems
+ * @since 4.1.3
+ */
+export class DrainExhausted extends Data.TaggedClass("DrainExhausted")<{
+  readonly message: string
+}> {}
 
 /**
  * The `TestHost` service.
@@ -271,8 +358,17 @@ export const TestHost: Context.Service<TestHost, TestHost> = Context.Service<Tes
  *
  * **Details**
  *
- * `budget` is how many scheduler tasks `settle` runs before it gives up
- * (100,000 by default), and `logSize` the size of the log's ring buffer.
+ * `budget` is how many scheduler tasks `settle` and a clock wake run before
+ * they give up (100,000 by default), and `logSize` the size of the log's ring
+ * buffer, unbounded by default.
+ *
+ * The Layer owns settable `Loader.Visibility` and `Loader.Connectivity`, both
+ * starting true, and collects the problems every mounted cache reports.
+ *
+ * **Gotchas**
+ *
+ * A problem fails the test: `settle` fails with a `ProblemsError`, and the
+ * Layer's Scope closes with one as a defect, unless `expectProblem` took it.
  *
  * @stability experimental
  * @category layers
@@ -282,25 +378,88 @@ export const layer = (options?: {
   readonly budget?: number | undefined
   readonly logSize?: number | undefined
 }): Layer.Layer<TestHost | Renderer.Renderer> =>
-  Layer.effectContext(Effect.sync(() => {
+  Layer.effectContext(Effect.gen(function*() {
     const host = makeHost()
     const executor = new Executor.TestExecutor()
-    const log = MessageLog.makeMemory({ size: options?.logSize })
-    const trees = new Set<{ readonly pending: () => ReadonlyArray<Pending> }>()
+    const log = MessageLog.makeMemory({ size: options?.logSize ?? Infinity })
+    const trees = new Set<Tree>()
+    const budget = options?.budget ?? 100_000
+    let problems: Array<Loader.Problem.Any> = []
+    let draining = false
+    // Re-entrant calls return at once: the outer drain runs what they would.
+    const drain = (n: number): boolean => {
+      if (draining) return true
+      draining = true
+      try {
+        return executor.drain(n)
+      } finally {
+        draining = false
+      }
+    }
+    const report = (problem: Loader.Problem.Any) => {
+      problems.push(problem)
+    }
+    const drainingClock = (clock: Clock.Clock, context: Context.Context<never>): Clock.Clock => {
+      const run = Effect.runForkWith(context)
+      const sleep = (duration: Duration.Duration): Effect.Effect<void> =>
+        Effect.callback<void>((resume) => {
+          const fiber = run(clock.sleep(duration))
+          let done = false
+          fiber.addObserver(() => {
+            // Cancelled: the sleeper is gone, and nothing woke.
+            if (done) return
+            done = true
+            resume(Effect.void)
+            if (!drain(budget)) {
+              report(
+                new DrainExhausted({
+                  message: `[TestHost] a clock wake ran ${budget} tasks and work is still being scheduled.`
+                })
+              )
+            }
+          })
+          return Effect.sync(() => {
+            if (done) return
+            done = true
+            fiber.interruptUnsafe()
+          })
+        })
+      return Object.assign(Object.create(clock), { sleep }) as Clock.Clock
+    }
     const service: TestHost = {
       host,
       log,
-      drain: (budget) => executor.drain(budget),
+      drain,
       busy: () => executor.size > 0,
       pending: () => [...trees].flatMap((tree) => tree.pending()),
-      budget: options?.budget ?? 100_000,
+      budget,
       register: (tree) => {
         trees.add(tree)
         return () => {
           trees.delete(tree)
         }
-      }
+      },
+      visibility: Loader.makeSignal(true),
+      connectivity: Loader.makeSignal(true),
+      problems: () => problems.slice(),
+      report,
+      expectProblem: (tag) => {
+        const matched = problems.filter((problem) => problem._tag === tag)
+        if (matched.length === 0) {
+          throw new Error(
+            "[TestHost] expected a " + tag + " problem, and the cache reported " +
+              (problems.length === 0 ? "none" : problems.map((problem) => problem._tag).join(", "))
+          )
+        }
+        problems = problems.filter((problem) => problem._tag !== tag)
+        return matched
+      },
+      drainingClock,
+      trees: () => trees
     }
+    yield* Effect.addFinalizer(() =>
+      Effect.suspend(() => problems.length === 0 ? Effect.void : Effect.die(new TestLoader.ProblemsError({ problems })))
+    )
     return Context.make(TestHost, service).pipe(
       Context.add(Renderer.Renderer, { host }),
       Context.add(Executor.CurrentExecutor, executor),
@@ -309,18 +468,23 @@ export const layer = (options?: {
   }))
 
 /**
- * A tree mounted on `TestHost`.
+ * A tree mounted on `TestHost`'s scheduler, whatever host renders it: what
+ * a test reads and drives without looking at nodes.
+ *
+ * **Details**
+ *
+ * `mount` hands back a `TestRoot`, which adds the test host's node queries.
+ * `Ssr.ssr` hands back this part only, since its client renders into a real
+ * document.
  *
  * @stability experimental
  * @category models
  * @since 4.1.3
  */
-export interface TestRoot<out Model, in Msg, out Events> {
+export interface Root<out Model, in Msg, out Events> {
   /** The root instance's path, `/<name>`. */
   readonly path: string
   readonly session: string
-  /** The element the tree is mounted in. */
-  readonly container: TestElement
   /** The root's current Model, or `undefined` after it crashed. */
   readonly model: () => Model | undefined
   /** Sends a message to the root. The log shows it as a `Dispatch`. */
@@ -329,10 +493,34 @@ export interface TestRoot<out Model, in Msg, out Events> {
   readonly emitted: ReadonlyArray<Events>
   /** This mount's log entries, oldest first. */
   readonly log: () => ReadonlyArray<MessageLog.Entry>
-  /** The Commands still running or queued in this tree. */
+  /** The Command runs and fetches still in flight in this tree. */
   readonly pending: () => ReadonlyArray<Pending>
+  /** Every fetch the tree's cache started, oldest first: the log's `FetchStarted` entries. */
+  readonly fetches: () => ReadonlyArray<MessageLog.FetchStarted>
+  /**
+   * A read-only view of the cache's entry for a read and arguments, or
+   * `undefined` when it has none. It doesn't create the entry or keep it alive.
+   */
+  readonly entry: <R extends Loader.Read.Any>(
+    read: R,
+    args: Loader.Read.Args<R>
+  ) => TestLoader.Entry<Loader.Read.Success<R>, Loader.Read.Error<R>> | undefined
   /** The tree's merged document head, as last given to the host. */
   readonly head: () => Head.Head
+  /** The `frames` projection after each commit, without consecutive repeats. */
+  readonly frames: () => ReadonlyArray<string>
+}
+
+/**
+ * A tree mounted on `TestHost`, with queries over its nodes.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.1.3
+ */
+export interface TestRoot<out Model, in Msg, out Events> extends Root<Model, Msg, Events> {
+  /** The element the tree is mounted in. */
+  readonly container: TestElement
   /** The text of everything mounted. */
   readonly text: () => string
   readonly all: (locator: Query.Locator) => ReadonlyArray<TestNode>
@@ -346,9 +534,16 @@ export interface TestRoot<out Model, in Msg, out Events> {
  *
  * **Details**
  *
- * The first render happens at once. Commands, Subscriptions and Layer builds
- * wait for `settle`. The test host shows every vocabulary, so any root
- * mounts.
+ * The first render happens at once. Commands, Subscriptions, fetches and
+ * Layer builds wait for `settle`. The test host shows every vocabulary, so
+ * any root mounts.
+ *
+ * The mount uses the host's `Loader.Visibility`, `Loader.Connectivity` and
+ * problem collector even if a nearer provide overrides them. Its `Clock`
+ * drains the test scheduler whenever a sleeper wakes, so `TestClock.adjust`
+ * runs the awakened work without waiting for `settle`.
+ * `frames` projects the tree after each commit for `root.frames()`, and
+ * defaults to `root.text()`.
  *
  * @stability experimental
  * @category constructors
@@ -364,31 +559,94 @@ export const mount = <Name extends string, Props, Model, Msg, Events, R, V exten
         h: View.Helper<never, {}> & View.Tags<V, never>
       ) => View.Node<never, RF>)
       | undefined
+    readonly loader?: Renderer.LoaderOptions | undefined
+    readonly frames?: ((root: TestRoot<Model, Msg, Events>) => string) | undefined
   }
 ): Effect.Effect<TestRoot<Model, Msg, Events>, never, R | RF | TestHost | Scope.Scope> =>
   Effect.gen(function*() {
     const testHost = yield* TestHost
     const container = makeElement("#root")
-    const root = yield* runtime.mount(component, props, container, options as any)
-    const unregister = testHost.register(root)
-    yield* Effect.addFinalizer(() => Effect.sync(unregister))
-    const testRoot: TestRoot<Model, Msg, Events> = {
-      path: root.path,
-      session: root.session,
+    const outer = yield* Effect.context<never>()
+    const project = options?.frames ?? ((root: TestRoot<Model, Msg, Events>) => root.text())
+    const frames: Array<string> = []
+    let testRoot: TestRoot<Model, Msg, Events> | undefined
+    const frame = () => {
+      if (testRoot === undefined) return
+      const next = project(testRoot)
+      if (frames.length === 0 || frames[frames.length - 1] !== next) frames.push(next)
+    }
+    const offCommit = testHost.host.onCommit(frame)
+    yield* Effect.addFinalizer(() => Effect.sync(offCommit))
+    const root = yield* runtime.mount(component, props, container, options as any).pipe(
+      Effect.provideService(Clock.Clock, testHost.drainingClock(Context.get(outer, Clock.Clock), outer)),
+      Effect.provideService(Loader.Visibility, testHost.visibility),
+      Effect.provideService(Loader.Connectivity, testHost.connectivity),
+      Effect.provideService(Loader.Problems, testHost.report)
+    )
+    const neutral = yield* register(testHost, root, testHost.log, () => frames.slice())
+    testRoot = {
+      ...neutral,
       container,
-      model: root.model as () => Model | undefined,
-      send: root.send,
-      emitted: root.emitted as ReadonlyArray<Events>,
-      log: () => testHost.log.entries().filter((entry) => entry.session === root.session),
-      pending: root.pending,
-      head: root.head,
       text: () => Query.textOf(container),
       all: (locator) => Query.all(container as TestNode, locator),
       query: (locator) => Query.query(container as TestNode, locator),
       get: (locator) => Query.get(container as TestNode, locator)
     }
+    frame()
     return testRoot
   }) as any
+
+/**
+ * Registers a mounted tree with `TestHost`, so `settle` waits for it and
+ * fails when it crashes, and builds its host-neutral view over `log` and
+ * the frames its host recorded.
+ *
+ * @internal
+ */
+export const register = (
+  testHost: TestHost,
+  root: runtime.Root & Renderer.Root<any, any>,
+  log: MessageLog.Memory,
+  frames: () => ReadonlyArray<string>
+): Effect.Effect<Root<any, any, any>, never, Scope.Scope> =>
+  Effect.gen(function*() {
+    const pending = (): ReadonlyArray<Pending> => [
+      ...root.pending().map((run): Pending => ({ _tag: "Command", ...run })),
+      ...root.cache.pending().map((fetch): Pending => ({ _tag: "Fetch", path: root.path, ...fetch }))
+    ]
+    const unregister = testHost.register({ path: root.path, pending, crashed: root.crashed })
+    yield* Effect.addFinalizer(() => Effect.sync(unregister))
+    const entries = () => log.entries().filter((entry) => entry.session === root.session)
+    return {
+      path: root.path,
+      session: root.session,
+      model: root.model,
+      send: root.send,
+      emitted: root.emitted,
+      log: entries,
+      pending,
+      fetches: () => entries().filter((entry): entry is MessageLog.FetchStarted => entry._tag === "FetchStarted"),
+      entry: (read, args) => root.cache.inspect(Loader.defOf(read), args) as any,
+      head: root.head,
+      frames
+    }
+  })
+
+/**
+ * A root mounted on the host crashed. `settle` fails with it.
+ *
+ * @stability experimental
+ * @category errors
+ * @since 4.1.3
+ */
+export class RootCrashed extends Data.TaggedError("RootCrashed")<{
+  readonly path: string
+  readonly cause: Cause.Cause<unknown>
+}> {
+  override get message(): string {
+    return `The root ${this.path} crashed:\n${Cause.pretty(this.cause)}`
+  }
+}
 
 /**
  * `settle` ran out of budget: something keeps scheduling work.
@@ -415,18 +673,34 @@ const nextMacrotask = Effect.callback<void>((resume) => {
  * **Details**
  *
  * A fiber blocked on a Queue or on `TestClock` counts as idle, so a
- * Subscription waiting for its next value, or a Command sleeping on the clock,
- * doesn't keep `settle` from returning; adjust `TestClock` and settle again.
- * Work that resolves a Promise gets a few macrotasks to come back. When the
- * budget runs out, `settle` fails with the log's tail and the Commands still
- * pending.
+ * Subscription waiting for its next value, or a Command or fetch sleeping on
+ * the clock, doesn't keep `settle` from returning; adjust `TestClock`, which
+ * runs what it wakes. Work that resolves a Promise gets a few macrotasks to
+ * come back. A run or fetch that never returns is left in `pending()`.
+ *
+ * **Gotchas**
+ *
+ * When the budget runs out, `settle` fails with a `SettleError` holding the
+ * log's tail and what is pending. A crashed root fails it with `RootCrashed`,
+ * and a problem nothing took with `expectProblem` with a `ProblemsError`.
  *
  * @stability experimental
  * @category combinators
  * @since 4.1.3
  */
-export const settle: Effect.Effect<void, SettleError, TestHost> = Effect.gen(function*() {
-  const testHost = yield* TestHost
+export const settle: Effect.Effect<void, SettleError | RootCrashed | TestLoader.ProblemsError, TestHost> = Effect
+  .gen(function*() {
+    const testHost = yield* TestHost
+    yield* drainAll(testHost)
+    for (const tree of testHost.trees()) {
+      const cause = tree.crashed()
+      if (cause !== undefined) return yield* new RootCrashed({ path: tree.path, cause })
+    }
+    const problems = testHost.problems()
+    if (problems.length > 0) return yield* new TestLoader.ProblemsError({ problems })
+  })
+
+const drainAll = Effect.fnUntraced(function*(testHost: TestHost) {
   let budget = testHost.budget
   let quiet = 0
   while (quiet < 3) {
@@ -441,8 +715,8 @@ export const settle: Effect.Effect<void, SettleError, TestHost> = Effect.gen(fun
             `TestHost.settle ran ${testHost.budget} tasks and work is still being scheduled.`,
             "Last log entries:",
             formatLog(log),
-            "Pending Commands:",
-            pending.length === 0 ? "  (none)" : pending.map((p) => `  ${p.path} ${p.name} (${p.status})`).join("\n")
+            "Pending:",
+            pending.length === 0 ? "  (none)" : pending.map(describePending).join("\n")
           ].join("\n"),
           pending,
           log
@@ -451,12 +725,75 @@ export const settle: Effect.Effect<void, SettleError, TestHost> = Effect.gen(fun
       budget = Math.max(0, before - 1)
       continue
     }
+    // A run or fetch sleeping on the clock looks the same as one waiting on a Promise, so anything
+    // in flight gets the grace.
     if (testHost.pending().length === 0) return
     // Something may come back from outside the scheduler, such as a resolved Promise.
     quiet++
     yield* nextMacrotask
   }
 })
+
+const describePending = (pending: Pending): string =>
+  pending._tag === "Command"
+    ? `  ${pending.path} ${pending.name} (${pending.status}${pending.detached ? ", detached" : ""})`
+    : `  ${pending.path} fetch ${pending.read} ${pending.logKey} (${pending.status}, ${pending.trigger})`
+
+/**
+ * Sets the host's `Loader.Visibility`, which every mount on it reads. It
+ * starts true. Going from false to true, while online, refetches every
+ * watched entry that is stale or whose interval elapsed.
+ *
+ * @stability experimental
+ * @category testing
+ * @since 4.1.3
+ */
+export const setVisible = (visible: boolean): Effect.Effect<void, never, TestHost> =>
+  TestHost.useSync((testHost) => testHost.visibility.set(visible))
+
+/**
+ * Sets the host's `Loader.Connectivity`, which every mount on it reads. It
+ * starts true. Going from false to true, while visible, refetches every
+ * watched entry that is stale or whose interval elapsed.
+ *
+ * @stability experimental
+ * @category testing
+ * @since 4.1.3
+ */
+export const setOnline = (online: boolean): Effect.Effect<void, never, TestHost> =>
+  TestHost.useSync((testHost) => testHost.connectivity.set(online))
+
+/**
+ * Returns the problems reported on this host that no `expectProblem` took.
+ *
+ * @stability experimental
+ * @category testing
+ * @since 4.1.3
+ */
+export const problems: Effect.Effect<ReadonlyArray<Loader.Problem.Any>, never, TestHost> = TestHost.useSync(
+  (testHost) => testHost.problems()
+)
+
+/**
+ * Takes every reported problem with the given tag, so it no longer fails
+ * `settle` or the test, and returns them.
+ *
+ * **Gotchas**
+ *
+ * Dies when no problem with that tag was reported.
+ *
+ * @stability experimental
+ * @category testing
+ * @since 4.1.3
+ */
+export const expectProblem = <Tag extends string>(tag: Tag): Effect.Effect<
+  ReadonlyArray<
+    [Extract<Loader.Problem | DrainExhausted, { readonly _tag: Tag }>] extends [never] ? Loader.Problem.Any
+      : Extract<Loader.Problem | DrainExhausted, { readonly _tag: Tag }>
+  >,
+  never,
+  TestHost
+> => TestHost.useSync((testHost) => testHost.expectProblem(tag) as any)
 
 const summary = (value: unknown): string => {
   if (typeof value === "object" && value !== null && "_tag" in value) return String((value as any)._tag)
@@ -508,9 +845,15 @@ export const formatLog = (entries: ReadonlyArray<MessageLog.Entry>): string =>
         return `${head} ${entry.key}`
       case "CommandEnded":
       case "CommandInterrupted":
-        return `${head} ${entry.name}`
+        return `${head} ${entry.name}${entry.waitEnded === undefined ? "" : ` (wait ${entry.waitEnded})`}`
+      case "CommandAwaiting":
+        return `${head} ${entry.name} on ${
+          entry.entries.map((awaited) => `${awaited.read} ${awaited.logKey}`).join(", ")
+        }`
       case "CommandDropped":
         return `${head} ${entry.name} (${entry.reason})`
+      case "FetchStarted":
+        return `${head} ${entry.read} ${entry.logKey} (${entry.trigger}${entry.restart ? ", restart" : ""})`
       default:
         return head
     }

@@ -48,6 +48,12 @@ export * as AtomRpc from "./AtomRpc.ts"
 export * as Hydration from "./Hydration.ts"
 
 /**
+ * @stability experimental
+ * @since 4.1.3
+ */
+export * as Loader from "./Loader.ts"
+
+/**
  * @stability unstable
  * @since 4.0.0
  */

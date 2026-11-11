@@ -1,5 +1,7 @@
-import { Schema } from "effect"
-import { Command, Component, Head, Route, Router, type Subscription } from "effect/ui"
+import { Effect, Schema } from "effect"
+import { Loader } from "effect/reactivity"
+import { Command, Component, Feature, Head, Route, Router, type Subscription } from "effect/ui"
+import { TestHost } from "effect/ui/testing"
 import { describe, expect, it } from "tstyche"
 
 const AppRoute = Route.union({
@@ -53,7 +55,8 @@ describe("Router", () => {
             )
           )
           : model,
-      subscriptions: () => [Router.subscription(AppRoute, () => Message.make({ _tag: "Done" }))],
+      subscriptions: () => [Router.subscription(AppRoute, AppRoute.make({ _tag: "Home" }), () =>
+        Message.make({ _tag: "Done" }))],
       view: (_, h) => h.text("")
     })
     expect<Component.Requirements<typeof Nav>>().type.toBe<Router.Push | Router.Router>()
@@ -79,10 +82,32 @@ describe("Router", () => {
 
   it("subscribes only to a route union", () => {
     const Tagged = Schema.TaggedUnion({ Home: {} })
-    expect(Router.subscription).type.not.toBeCallableWith(Tagged, () => 1)
-    expect(Router.subscription(AppRoute, (route) => route._tag)).type.toBe<
+    expect(Router.subscription).type.not.toBeCallableWith(Tagged, { _tag: "Home" }, () => 1)
+    expect(Router.subscription).type.not.toBeCallableWith(AppRoute, { _tag: "Person" }, () => 1)
+    expect(Router.subscription).type.not.toBeCallableWith(
+      AppRoute.subset(["Home"]),
+      AppRoute.make({ _tag: "Person", params: { id: 1 } }),
+      () => 1
+    )
+    expect(Router.subscription(AppRoute, AppRoute.make({ _tag: "Home" }), (route) => route._tag)).type.toBe<
       Subscription.Subscription<AppRoute["_tag"], Router.Router>
     >()
+  })
+
+  it("blocked is a Subscription a component returns while the Model says so", () => {
+    expect(Router.blocked("form")).type.toBe<Subscription.Subscription<never, Router.Router>>()
+    const Form = Component.make({
+      name: "Form",
+      model: Schema.Struct({ dirty: Schema.Boolean }),
+      message: Schema.Never,
+      init: () => ({ dirty: false }),
+      update: (model) => model,
+      subscriptions: (model) => [model.dirty && Router.blocked("form")],
+      view: (_, h) => h.text("")
+    })
+    expect<Component.Requirements<typeof Form>>().type.toBe<Router.Router>()
+    expect(Router).type.not.toHaveProperty("Block")
+    expect(Router).type.not.toHaveProperty("Unblock")
   })
 
   it("gives head only the Model", () => {
@@ -96,5 +121,122 @@ describe("Router", () => {
       head: (_model: {}, props: { readonly title: string }) => [Head.title(props.title)],
       view: (_: {}, h: any) => h.text("")
     })
+  })
+})
+
+class GetPerson extends Loader.Service<GetPerson>()(
+  "typetest/GetPerson",
+  { args: { id: Schema.Number }, success: Schema.String, error: Schema.Never, staleTime: "1 minute" },
+  Effect.succeed(({ id }) => Effect.succeed(`Person ${id}`))
+) {}
+
+const PersonSnapshot = Loader.Snapshot(GetPerson, "person")
+const PersonMessage = Schema.TaggedUnion({ Loaded: { snapshot: PersonSnapshot } })
+
+const PersonPage = Component.make({
+  name: "PersonPage",
+  props: Schema.Struct({ id: Schema.Number }),
+  model: Schema.Struct({ person: PersonSnapshot }),
+  message: PersonMessage,
+  loaders: { person: (_model, props) => ({ id: props.id }) },
+  init: ($) => $.empty,
+  update: (_, message) => ({ person: message.snapshot }),
+  subscriptions: (
+    _model,
+    _props,
+    watch
+  ) => [watch({ person: (snapshot) => PersonMessage.make({ _tag: "Loaded", snapshot }) })],
+  view: (_, h) => h.text("person")
+})
+
+const HomePage = Component.make({
+  name: "HomePage",
+  model: Schema.Struct({}),
+  message: Schema.Never,
+  init: () => ({}),
+  update: (model) => model,
+  view: (_, h) => h.text("home")
+})
+
+/** Declares the person page, which provides its own read. */
+const Declarer = Component.make({
+  name: "Declarer",
+  model: Schema.Struct({}),
+  message: Schema.Never,
+  init: () => ({}),
+  update: (model) => model,
+  subscriptions: () => [
+    Router.prefetch(AppRoute, {
+      Home: () => [Router.page(HomePage)],
+      Person: ({ params }) => [Router.page(PersonPage.pipe(Component.provide(GetPerson.layer)), { id: params.id })],
+      Files: () => [],
+      NotFound: () => []
+    })
+  ],
+  view: (_, h) => h.text("app")
+})
+
+describe("Router.prefetch", () => {
+  it("adds a page's own reads to the declarer's requirements, even when the page provides them", () => {
+    expect<Component.Requirements<typeof Declarer>>().type.toBe<Router.Router | GetPerson>()
+    const mounted = TestHost.mount(Declarer, {}).pipe(
+      Effect.provide(Router.memory({ routes: AppRoute })),
+      Effect.provide(TestHost.layer()),
+      Effect.scoped
+    )
+    // The page's provide can't satisfy the declarer: a compile error at mount.
+    expect(Effect.runPromise).type.not.toBeCallableWith(mounted)
+    expect(Effect.runPromise).type.toBeCallableWith(mounted.pipe(Effect.provide(GetPerson.layer)))
+    // Hoisted to the declarer, it does.
+    const Hoisted = Declarer.pipe(Component.provide(GetPerson.layer))
+    expect<Component.Requirements<typeof Hoisted>>().type.toBe<Router.Router>()
+  })
+
+  it("rejects a Mountable, whose erased Model hides the page's reads", () => {
+    const Erased: Component.Mountable<{ readonly id: number }, never, GetPerson> = PersonPage
+    expect(Router.page).type.not.toBeCallableWith(Erased, { id: 1 })
+    class Badge extends Feature.Service<Badge>()("Badge", { props: Schema.Struct({}), events: Schema.Never }) {}
+    expect(Router.page).type.not.toBeCallableWith(Badge)
+    expect(Router.page(PersonPage, { id: 1 })).type.toBe<Router.Page<GetPerson>>()
+    // Provided, it is still a component, and still names its reads.
+    expect(Router.page(PersonPage.pipe(Component.provide(GetPerson.layer)), { id: 1 })).type.toBe<
+      Router.Page<GetPerson>
+    >()
+  })
+
+  it("keeps each member's reads, and rejects an erased member, for a union of components", () => {
+    const Selected = Math.random() > 0.5 ? PersonPage : HomePage
+    expect(Router.page(Selected, { id: 1 })).type.toBe<Router.Page<GetPerson>>()
+    const Provided = Math.random() > 0.5 ? PersonPage.pipe(Component.provide(GetPerson.layer)) : HomePage
+    expect(Router.page(Provided, { id: 1 })).type.toBe<Router.Page<GetPerson>>()
+    const Erased: Component.Mountable<{ readonly id: number }, never, GetPerson> = PersonPage
+    const Mixed = Math.random() > 0.5 ? Erased : HomePage
+    expect(Router.page).type.not.toBeCallableWith(Mixed, { id: 1 })
+    // Declared, the union's reads join the declarer's requirements.
+    const Declarer = Component.make({
+      name: "UnionDeclarer",
+      model: Schema.Struct({}),
+      message: Schema.Never,
+      init: () => ({}),
+      update: (model) => model,
+      subscriptions: () => [
+        Router.prefetch(AppRoute, {
+          Home: () => [],
+          Person: ({ params }) => [Router.page(Selected, { id: params.id })],
+          Files: () => [],
+          NotFound: () => []
+        })
+      ],
+      view: (_, h) => h.text("app")
+    })
+    expect<Component.Requirements<typeof Declarer>>().type.toBe<Router.Router | GetPerson>()
+  })
+
+  it("takes props like h.child, and a handler for every route", () => {
+    expect(Router.page).type.toBeCallableWith(HomePage)
+    expect(Router.page).type.not.toBeCallableWith(PersonPage)
+    expect(Router.page).type.not.toBeCallableWith(PersonPage, { id: "1" })
+    expect(Router.prefetch).type.not.toBeCallableWith(AppRoute, { Home: () => [] })
+    expect(Router.prefetch).type.toBeCallableWith(AppRoute.subset(["Home"]), { Home: () => [] })
   })
 })

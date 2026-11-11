@@ -1,6 +1,7 @@
 // @vitest-environment happy-dom
-import { expect, it } from "@effect/vitest"
-import { Effect, Exit, Option, Schema, Scope } from "effect"
+import { assert, expect, it } from "@effect/vitest"
+import { Context, Effect, Exit, Layer, Option, Schema, Scope } from "effect"
+import { Loader } from "effect/reactivity"
 import { Component, View } from "effect/ui"
 import { BrowserHost, Html } from "effect/ui/html"
 import { HtmlQuery } from "effect/ui/html/testing"
@@ -28,6 +29,34 @@ interface Native extends View.Elements {
 }
 
 describe("BrowserHost", { concurrent: false }, () => {
+  it.effect("the layer provides the document's visibility and connectivity, and stops listening when closed", () =>
+    Effect.gen(function*() {
+      const scope = yield* Scope.make()
+      const context = yield* Layer.buildWithScope(BrowserHost.layer(), scope)
+      const visibility = Context.get(context, Loader.Visibility)
+      const connectivity = Context.get(context, Loader.Connectivity)
+      const seen: Array<string> = []
+      visibility.subscribe(() => seen.push(`visible ${visibility.get()}`))
+      connectivity.subscribe(() => seen.push(`online ${connectivity.get()}`))
+      assert.deepStrictEqual([visibility.get(), connectivity.get()], [true, true])
+      const setVisibility = (state: DocumentVisibilityState) => {
+        Object.defineProperty(document, "visibilityState", { value: state, configurable: true })
+        document.dispatchEvent(new Event("visibilitychange"))
+      }
+      setVisibility("hidden")
+      setVisibility("visible")
+      window.dispatchEvent(new Event("offline"))
+      window.dispatchEvent(new Event("online"))
+      // The window's focus is not visibility.
+      window.dispatchEvent(new Event("blur"))
+      assert.deepStrictEqual(seen, ["visible false", "visible true", "online false", "online true"])
+      yield* Scope.close(scope, Exit.void)
+      setVisibility("hidden")
+      window.dispatchEvent(new Event("offline"))
+      assert.deepStrictEqual([visibility.get(), connectivity.get()], [true, true])
+      delete (document as { visibilityState?: unknown }).visibilityState
+    }))
+
   describe("a todo app", () => {
     it.effect("adds, toggles, deletes and clears todos", () =>
       Effect.gen(function*() {
