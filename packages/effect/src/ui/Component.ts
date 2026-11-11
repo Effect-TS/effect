@@ -626,7 +626,8 @@ export interface Watches<in out Model, out Msg> extends Subscription.Subscriptio
  * The third argument of `subscriptions`: takes one handler per loader field.
  * A single field's handler gets the snapshot to store and the result it was
  * built from. A keyed field's gets the collection to store, the entries it
- * opens to, and the keys whose result changed.
+ * opens to, and the keys whose result changed since its last message, which
+ * are none for a message that only prunes removed keys.
  *
  * @stability experimental
  * @category models

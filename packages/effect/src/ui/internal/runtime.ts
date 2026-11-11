@@ -169,10 +169,6 @@ interface KeyedRun {
   readonly logKey: string
   readonly values: Map<string, { readonly args: unknown; readonly result: Settled; readonly patched: boolean }>
   readonly changes: Map<string, loaders.KeyedChange>
-  /** Its message is queued for the flush's deferred work. */
-  scheduled: boolean
-  /** A change arrived during a sync, such as a new watcher's first value: that sync sends it. */
-  fromSync: boolean
   /**
    * The declared keys when the field last sent a message. Every message carries the pruned
    * collection, so a held key outside this set is pruned once, and an `update` that ignores that
@@ -216,8 +212,8 @@ export interface Instance {
   readonly watches: Map<string, WatchRun>
   /** The keyed fields, by label. */
   readonly keyed: Map<string, KeyedRun>
-  /** Above 0 while the watches follow the Model: a keyed field's message waits for the sync to end. */
-  syncing: number
+  /** A drain of the keyed fields is queued in the flush's deferred work. */
+  keyedQueued: boolean
   /**
    * Set while the first emissions are folded before the first render: the Commands of those
    * updates, issued after `init`'s.
@@ -1059,7 +1055,7 @@ const start = (
       subscriptions: new Map(),
       watches: new Map(),
       keyed: new Map(),
-      syncing: 0,
+      keyedQueued: false,
       mounting: undefined,
       dispatch(message, source) {
         if (inst.closed || inst.waiting || frozen) return
@@ -1279,6 +1275,8 @@ const start = (
       if (Option.isNone(serverModel) && component["~loaders"] !== undefined) {
         inst.mounting = early
         syncSubscriptions(inst, true)
+        // The keyed fields' first values, and whatever their handlers cause, before the first view.
+        drainKeyed(inst)
         early = inst.mounting ?? early
         inst.mounting = undefined
         if (inst.closed || inst.failure !== undefined) return
@@ -1752,21 +1750,15 @@ const start = (
         if (hook !== undefined) whenReady(inst.env, (envCtx) => hook(envCtx, report))
       }
     }
-    inst.syncing++
-    try {
-      const folds = syncWatches(inst, markers)
-      // Streams never run on the server.
-      if (!watchesOnly && server === undefined) syncStreams(inst, byKey)
-      // The cache never calls back with the state at registration. Each new watcher's settled value
-      // is folded through `update` here, once the watchers and Streams follow the Model that asked for
-      // them, and so before this instance's next render.
-      for (const fold of folds) fold()
-    } finally {
-      inst.syncing--
-    }
-    // In the same sync: a keyed field's first values are one message, and so is a pruned key set.
-    // Changes from outside the sync stay queued for the flush.
-    if (inst.syncing === 0) { for (const run of inst.keyed.values()) deliverKeyed(inst, run, true) }
+    const folds = syncWatches(inst, markers)
+    // Streams never run on the server.
+    if (!watchesOnly && server === undefined) syncStreams(inst, byKey)
+    // The cache never calls back with the state at registration. Each new watcher's settled value
+    // is folded through `update` here, once the watchers and Streams follow the Model that asked for
+    // them, and so before this instance's next render. A keyed field's go to its next drain.
+    for (const fold of folds) fold()
+    // The key set may have changed: the next drain checks for a prune.
+    if (inst.keyed.size > 0) requestKeyed(inst)
   }
   const syncStreams = (inst: Instance, byKey: Map<string, Subscription.Subscription<any, any>>) => {
     // Close first, so `room:1` and `room:2` are never both connected.
@@ -1856,8 +1848,7 @@ const start = (
           const run = inst.keyed.get(marker.label)!
           run.values.set(entry.argsKey, { args: entry.args, result, patched })
           run.changes.set(entry.argsKey, { args: entry.args, result })
-          if (inst.syncing > 0) run.fromSync = true
-          return requestKeyed(inst, run)
+          return requestKeyed(inst)
         }
         const toMsg = running.marker.toMsg
         const message = guard(
@@ -1921,35 +1912,52 @@ const start = (
         logKey: Subscription.keyOf(`~loaded/${group.label}`),
         values: new Map(),
         changes: new Map(),
-        scheduled: false,
-        fromSync: false,
         sentFor: undefined
       })
     }
   }
   /**
-   * A key of a keyed field changed outside a sync. Its changes are collected until the flush, whose
-   * deferred work runs before any render: one message for every key that changed meanwhile, and a
-   * patch registered at issue still reaches the field before the flush renders the issuing update.
+   * Queues a drain of the instance's keyed fields in the flush's deferred work, which runs before
+   * any render: changes from outside a render collect until then, and a patch registered at issue
+   * still reaches the field before the flush renders the issuing update.
    */
-  const requestKeyed = (inst: Instance, run: KeyedRun) => {
-    if (inst.syncing > 0 || run.scheduled) return
-    run.scheduled = true
+  const requestKeyed = (inst: Instance) => {
+    if (inst.keyedQueued) return
+    inst.keyedQueued = true
     defer(() => {
-      run.scheduled = false
-      deliverKeyed(inst, run, false)
+      inst.keyedQueued = false
+      drainKeyed(inst)
     })
   }
   /**
-   * Sends a keyed field's message when a key changed, or when the Model holds a key the loader no
-   * longer returns and no message went out for this key set. After a sync, only that sync's changes
-   * and a prune send: earlier changes wait for the flush. The collection is sampled from the
-   * watchers now: each current key's last value.
+   * Sends each keyed field's message that is due, at most one per field per round, and runs
+   * rounds until none is due: a handler's `update` can change the key set, or another keyed
+   * field's keys. Runs at mount before the first view, before a kept child's view when its props
+   * change, and as the deferred job. Nothing bounds the rounds, as nothing bounds a single loader
+   * whose args toggle.
    */
-  const deliverKeyed = (inst: Instance, run: KeyedRun, afterSync: boolean) => {
-    if (inst.closed || inst.failure !== undefined) return
+  const drainKeyed = (inst: Instance) => {
+    let sent = true
+    while (sent) {
+      sent = false
+      for (const run of inst.keyed.values()) {
+        if (inst.closed || inst.failure !== undefined || inst.waiting) return
+        if (deliverKeyed(inst, run)) sent = true
+      }
+    }
+  }
+  /**
+   * Sends a keyed field's message when a declared key's watcher emitted since the last one, or when
+   * the Model holds a key the loader no longer returns and no message went out for this key set.
+   * The collection is sampled from the watchers now: each declared key's last value.
+   */
+  const deliverKeyed = (inst: Instance, run: KeyedRun): boolean => {
     const group = run.group
     const declared = new Set(group.entries.map((entry) => entry.argsKey))
+    const changes = group.entries.flatMap((entry) => {
+      const change = run.changes.get(entry.argsKey)
+      return change === undefined ? [] : [change]
+    })
     const held = Loader.snapshotMapData((inst.model as Record<string, unknown> | undefined)?.[group.field])
     const sentFor = run.sentFor
     let prune = false
@@ -1961,7 +1969,8 @@ const start = (
         }
       }
     }
-    if (!prune && (afterSync ? !run.fromSync : run.changes.size === 0)) return
+    run.changes.clear()
+    if (!prune && changes.length === 0) return false
     const def = Loader.defOf(group.read)
     const snapshots = Loader.makeSnapshotMap(
       def,
@@ -1973,12 +1982,6 @@ const start = (
           : [Loader.makeSnapshot(def, group.label, entry, value.result, value.patched)]
       })
     )
-    const changes = group.entries.flatMap((entry) => {
-      const change = run.changes.get(entry.argsKey)
-      return change === undefined ? [] : [change]
-    })
-    run.changes.clear()
-    run.fromSync = false
     // Before the dispatch: its `update` syncs again, and must not see this key set as unsent.
     run.sentFor = declared
     const message = guard(
@@ -1988,6 +1991,7 @@ const start = (
       run.logKey
     )
     if (message !== undefined) inst.dispatch(message.value, { _tag: "Subscription", key: run.logKey })
+    return true
   }
   const sameKeys = (a: ReadonlySet<string>, b: ReadonlySet<string>): boolean => {
     if (a.size !== b.size) return false
@@ -2431,8 +2435,10 @@ const start = (
         instance.onFailure = child.onFailure
         if (!propsEqual(child.props, instance.props)) {
           instance.props = child.props
-          // Watches first: new args over a settled entry fold its value before this render.
+          // Watches first: new args over a settled entry fold its value before this render, and the
+          // keyed fields' messages go before it too.
           syncSubscriptions(instance)
+          drainKeyed(instance)
           if (!instance.closed) {
             dirty.delete(instance)
             render(instance)

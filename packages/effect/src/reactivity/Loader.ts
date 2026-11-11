@@ -831,13 +831,20 @@ export interface SnapshotMapSchema<R extends Read.Any, Label extends string> ext
  *
  * It follows `Snapshot`'s rules: only the runtime builds one, the label is
  * its field's name, and it sits at the top level of the Model. The read's
- * args must be a struct. The runtime collects the keys' changes until the
- * next flush and sends one message with the whole collection, so N results
- * that land together are one `update`. A change to the key set that removes a
- * stored key sends a message with the pruned collection, once per key set,
- * so an `update` that ignores it doesn't get it again. On the wire it is an
- * array of `Snapshot`'s tuples, one per key, in no meaningful order, and a
- * duplicate args key is a decode error.
+ * args must be a struct. The runtime sends at most one message per keyed
+ * field per drain round, with the whole collection. A drain runs before the
+ * instance's first view, before a kept child's view when its props change,
+ * and once in a flush for changes from outside a render, so N results that
+ * land together are one `update`. The message's `changes` are the
+ * declared keys whose result changed since its last message, a new warm
+ * key's first value included. A key set that drops a stored key also makes
+ * a message due, once per key set, so an `update` that ignores it doesn't
+ * get it again. A message can prune and carry changes at once, and a pure
+ * prune has none. When a handler's `update` changes the key set again, or
+ * another keyed field's, the next round sends that, until no message is
+ * due. Nothing bounds the rounds. On the wire it is an array of
+ * `Snapshot`'s tuples, one per key, in no meaningful order, and a duplicate
+ * args key is a decode error.
  *
  * **Gotchas**
  *
@@ -854,6 +861,12 @@ export interface SnapshotMapSchema<R extends Read.Any, Label extends string> ext
  *   batch, so a child per row doesn't confine a defect to one row either.
  * - The Model field holds every settled key, so a large collection makes
  *   every `history.state` push, the SSR state and each log entry larger.
+ * - An `update` whose prune message changes the key set so that it prunes
+ *   again, forever, never lets the flush end. `Story` throws on it after
+ *   100 rounds in one step.
+ * - A mount over a stale key can send two messages before its first frame:
+ *   the stale value, then the same value waiting once the fetch starts. Only
+ *   the second commits.
  *
  * **Example** (Watching a user per id)
  *

@@ -576,30 +576,45 @@ const loadKeyedStep = (
   )
 }
 
+/** How many rounds of prune messages one step may send before it throws. */
+const pruneRounds = 100
+
 /**
  * After a step: a keyed field whose Model holds a key its loader no longer
- * returns gets the pruned collection, with no changes, as the runtime sends
- * it at the next sync. As in the runtime, a key set gets one: an `update`
- * that ignores it doesn't get it again until the key set changes.
+ * returns gets the pruned collection, with no changes, as the runtime's
+ * drain sends it. As in the runtime, a key set gets one: an `update` that
+ * ignores it doesn't get it again until the key set changes. A prune's
+ * `update` can change the key set again, so rounds run until none is due,
+ * at most one message per field per round. The runtime doesn't bound them;
+ * a step throws after `pruneRounds`.
  */
 const pruneKeyed = (story: Story<any, any, any, any>, sentFor: SentFor): Story<any, any, any, any> => {
   const bound = boundOf(story.component)
   if (bound === undefined) return story
   let out = story
-  for (const field of bound.fields) {
-    if (!field.keyed) continue
-    const held = Loader.snapshotMapData(out.model?.[field.field])
-    if (held === undefined || held.entries.size === 0) continue
-    const group = groupOf(out, field.field)!
-    const declared = declaredKeys(group)
-    const sent = sentFor.get(field.field)
-    if (sent !== undefined && sent.size === declared.size && Array.from(sent).every((key) => declared.has(key))) {
-      continue
+  for (let round = 0;; round++) {
+    let pruned = false
+    for (const field of bound.fields) {
+      if (!field.keyed) continue
+      const held = Loader.snapshotMapData(out.model?.[field.field])
+      if (held === undefined || held.entries.size === 0) continue
+      const group = groupOf(out, field.field)!
+      const declared = declaredKeys(group)
+      const sent = sentFor.get(field.field)
+      if (sent !== undefined && sent.size === declared.size && Array.from(sent).every((key) => declared.has(key))) {
+        continue
+      }
+      if (Array.from(held.entries.keys()).every((key) => declared.has(key))) continue
+      if (round === pruneRounds) {
+        throw new Error(
+          `Story: ${story.component.name}'s keyed field "${field.field}" was still sent a prune message after ${pruneRounds} rounds in one step. Each prune's update changes its key set again, and the runtime would send prune messages without limit.`
+        )
+      }
+      out = sendKeyed(out, sentFor, group, [])
+      pruned = true
     }
-    if (Array.from(held.entries.keys()).every((key) => declared.has(key))) continue
-    out = sendKeyed(out, sentFor, group, [])
+    if (!pruned) return out
   }
-  return out
 }
 
 /** `h.running` in a story: derived from what's pending. */
