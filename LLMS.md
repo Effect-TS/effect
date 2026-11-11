@@ -432,3 +432,32 @@ The cluster modules let you model stateful services as entities and distribute
 them across multiple machines.
 
 - **[Defining cluster entities](./ai-docs/src/80_cluster/10_entities.ts)**: Define distributed entity RPCs and run them in a cluster.
+
+## Building user interfaces with `effect/ui`
+
+`effect/ui` is a frontend framework composed with Layers. A component is a
+value: Schemas for its props, Model, messages and events, plus pure `init`,
+`update` and `view` functions. Side effects are Commands and Subscriptions
+that the runtime runs, and data is loaded with `Loader` reads from
+`effect/reactivity`. `effect/ui/html` adds the HTML elements, the browser
+host and router, and server rendering.
+
+- **[Building a component with effect/ui](./ai-docs/src/90_ui/10_basics.ts)**:
+  Define a component from Schemas and pure functions, run its side effects
+  through a `Command.Service`, autosave with a Subscription, and mount it in
+  the browser with `BrowserHost`.
+- **[Composing components, data and Layers](./ai-docs/src/90_ui/20_composition.ts)**:
+  Load data with a `Loader` read, render child components and handle what
+  they emit, provide Layers with `Component.provide`, and declare a swappable
+  `Feature.Service`.
+- **[Routing and the document head](./ai-docs/src/90_ui/30_routing.ts)**:
+  Define typed routes with `Route`, keep the current route in the root's
+  Model with `Router`, set the title and meta tags with `Head`, and run the
+  app in the browser with `BrowserRouter`.
+- **[Server rendering and hydration](./ai-docs/src/90_ui/40_server-rendering.ts)**:
+  Render a routed app to HTML on the server with `HtmlServer.renderToHtml`,
+  embed its state in the page, and hydrate it in the browser with
+  `BrowserHost.mount`.
+- **[Testing effect/ui components](./ai-docs/src/90_ui/50_testing.ts)**:
+  Test one component as a pure `Story`, a Command against a fake Layer, a
+  whole tree on `TestHost`, and server rendering plus hydration with `ssr`.
