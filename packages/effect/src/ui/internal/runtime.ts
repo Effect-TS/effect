@@ -1651,13 +1651,7 @@ const start = (
       inst.stopping.add(run)
       fiber.interruptUnsafe()
     }
-    record({
-      _tag: "CommandInterrupted",
-      path: inst.path,
-      name: run.command.name,
-      issued: run.issued,
-      detached: run.detached
-    })
+    recordInterrupted(inst, run)
     if (!inst.closed) markDirty(inst)
     promote(inst, run)
   }
@@ -1760,40 +1754,29 @@ const start = (
     if (inst.stopping.delete(run) && !inst.closed) markDirty(inst)
     if (run.done) return
     const interrupted = Exit.isFailure(exit) && !Cause.hasDies(exit.cause) && !Cause.hasFails(exit.cause)
+    const waits = command._tag === "Effect" && command.afterRefetch !== undefined && Exit.isSuccess(exit)
     if (inst.closed) {
       // Only a detached run outlives its instance. Its message is dropped, and a failure tells only the log.
       removeRun(inst, run)
-      if (Exit.isFailure(exit) && !interrupted) {
-        forkNow(ctx, Effect.logError(`${inst.path} is gone, and its Command ${command.name} failed`, exit.cause))
+      if (interrupted) recordInterrupted(inst, run)
+      else {
+        if (Exit.isFailure(exit)) {
+          forkNow(ctx, Effect.logError(`${inst.path} is gone, and its Command ${command.name} failed`, exit.cause))
+        }
+        if (waits) run.waited = { waitEnded: "closed", outstanding: run.handle?.outstanding() ?? [] }
+        recordEnded(inst, run)
       }
-      record({
-        _tag: interrupted ? "CommandInterrupted" : "CommandEnded",
-        path: inst.path,
-        name: command.name,
-        issued: run.issued,
-        detached: true,
-        ...(command._tag === "Effect" && command.afterRefetch !== undefined && Exit.isSuccess(exit)
-          ? { waitEnded: "closed", outstanding: run.handle?.outstanding() ?? [] }
-          : undefined)
-      })
       promote(inst, run)
       return
     }
     if (interrupted) {
       removeRun(inst, run)
-      record({
-        _tag: "CommandInterrupted",
-        path: inst.path,
-        name: command.name,
-        issued: run.issued,
-        detached: run.detached
-      })
+      recordInterrupted(inst, run)
       markDirty(inst)
       promote(inst, run)
       return
     }
     const reject = command.reject
-    const waits = command._tag === "Effect" && command.afterRefetch !== undefined && Exit.isSuccess(exit)
     if (Exit.isFailure(exit) && (Cause.hasDies(exit.cause) || reject === undefined)) {
       // A typed failure nothing maps is a defect too: an unmatched Command got past the types.
       removeRun(inst, run)
@@ -1901,6 +1884,14 @@ const start = (
       issued: run.issued,
       detached: run.detached,
       ...run.waited
+    })
+  const recordInterrupted = (inst: Instance, run: Run) =>
+    record({
+      _tag: "CommandInterrupted",
+      path: inst.path,
+      name: run.command.name,
+      issued: run.issued,
+      detached: run.detached
     })
 
   /** `h.running` for one instance: a run of the Command, of the group if given, queued or running. */
