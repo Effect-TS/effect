@@ -715,72 +715,78 @@ const generateRepeatedUniqueValues = (
   return loop()
 }
 
-// Follows the removal order of `array.ts` (fast-check v4.9.0's ArrayArbitrary, MIT): at each unit, delete the longest
-// allowed run starting there, halve it down to one unit, then simplify that unit. A shrunk candidate resumes at the
-// unit it changed (`start`) and caps the first deletions there at the accepted size (`limit`). Suffix truncations only
-// run from the start. Units are code points under code point bounds, so surrogate pairs stay whole.
-function stringShrinker(
-  minimum: number,
-  minimumUnits: number,
-  codePoints: boolean,
-  pattern: Regexp.Compiled | undefined
-): (value: string) => Model.Sample<string> {
-  minimum = Math.max(minimum, pattern?.minimumLength ?? 0)
-  const sample = (value: string, start = 0, limit = infinity): Model.Sample<string> =>
+interface StringShrink {
+  readonly value: string
+  readonly start: number
+  readonly limit: number
+}
+
+function stringSample(
+  value: string,
+  options: {
+    readonly minimumLength: number
+    readonly minimumCodePoints: number | undefined
+    readonly pattern: Regexp.Compiled | undefined
+  }
+): Model.Sample<string> {
+  const { minimumCodePoints, pattern } = options
+  const minimum = Math.max(options.minimumLength, pattern?.minimumLength ?? 0)
+  const codePoints = minimumCodePoints !== undefined
+  const minimumUnits = minimumCodePoints ?? minimum
+  const sample = ({ value, start, limit }: StringShrink): Model.Sample<string> =>
     Model.makeSampleWithLazyShrinks(value, () => {
       const candidates = shrinks(value, start, limit)
+      const seen = new Set([value])
       return Effect.suspend(() => {
-        const next = candidates.next()
-        return next.done ? done() : Effect.succeed(next.value)
+        for (let next = candidates.next(); !next.done; next = candidates.next()) {
+          const candidate = next.value.value
+          // Reject pattern mismatches here so they do not consume the runner's shrink budget.
+          if (candidate.length < minimum || seen.has(candidate) || pattern?.test(candidate) === false) continue
+          seen.add(candidate)
+          return Effect.succeed(sample(next.value))
+        }
+        return done()
       })
     })
-  function* shrinks(value: string, start: number, limit: number): Generator<Model.Sample<string>> {
+  function* shrinks(value: string, start: number, limit: number): Generator<StringShrink> {
+    if (pattern !== undefined) {
+      for (const candidate of pattern.shrink(value, minimum)) {
+        yield { value: candidate, start: 0, limit: infinity }
+      }
+    }
     const units = codePoints ? Array.from(value) : value.split("")
     const length = units.length
     // Each removed unit costs at least one UTF-16 code unit.
     const removable = Math.min(length - minimumUnits, value.length - minimum)
-    const edit = (index: number, count: number, insert = "") => {
+    const edit = (index: number, count: number, limit: number, insert = ""): StringShrink => {
       const prefix = units.slice(0, index).join("")
       const value = prefix + insert + units.slice(index + count).join("")
       // Joining a trailing high surrogate to a low surrogate changes the preceding code point.
       const start = codePoints && index > 0 && value.codePointAt(prefix.length - 1)! > 0xffff ? index - 1 : index
-      return { value, start }
-    }
-    // Pattern testing only saves budget: filters would discard the candidate, but discards still count against
-    // `maxShrinks`. `seen` drops duplicate deletions, which are common once units have been simplified.
-    const seen = new Set([value])
-    const accept = (candidate: string) => {
-      if (candidate.length < minimum || seen.has(candidate) || pattern?.test(candidate) === false) return false
-      seen.add(candidate)
-      return true
-    }
-    if (pattern !== undefined) {
-      for (const candidate of pattern.shrink(value, minimum)) {
-        if (accept(candidate)) yield sample(candidate)
-      }
+      return { value, start, limit }
     }
     if (start === 0) {
       for (let count = removable; count > 0; count = Math.floor(count / 2)) {
-        const candidate = edit(length - count, count)
-        if (accept(candidate.value)) yield sample(candidate.value, 0, limit)
+        yield { value: units.slice(0, length - count).join(""), start: 0, limit }
       }
     }
+    // Follow `array.ts`: halve deletions at each unit, then simplify it. Resume at the changed unit,
+    // retaining the accepted deletion size there; suffix truncations must preserve that cap too.
     for (let index = start, cap = limit; index < length; index++, cap = infinity) {
       for (let count = Math.min(length - index, removable, cap); count > 0; count = Math.floor(count / 2)) {
-        const candidate = edit(index, count)
-        if (accept(candidate.value)) yield sample(candidate.value, candidate.start, count)
+        yield edit(index, count, count)
       }
       // Structural pattern candidates already canonicalise characters.
       if (pattern !== undefined) continue
       // Unit simplification follows fast-check v4.9.0's string arbitrary (MIT), halving toward the null unit.
       // https://github.com/dubzzz/fast-check/blob/v4.9.0/packages/fast-check/src/arbitrary/string.ts
-      for (const code of shrinkInteger(units[index].codePointAt(0)!, 0, true)) {
-        const candidate = edit(index, 1, globalThis.String.fromCodePoint(code.value))
-        if (accept(candidate.value)) yield sample(candidate.value, candidate.start, 0)
+      const code = units[index].codePointAt(0)!
+      for (let gap = code; gap > 0; gap = Math.floor(gap / 2)) {
+        yield edit(index, 1, 0, globalThis.String.fromCodePoint(code - gap))
       }
     }
   }
-  return sample
+  return sample({ value, start: 0, limit: infinity })
 }
 
 // Edge-case injection is inspired by fast-check v4.9.0's cached dangerous slices (MIT). The concrete corpus is
@@ -1139,7 +1145,11 @@ export function compile<S extends Schema.Constraint>(schema: S): Model.Compiled<
               : randomString(state, minimum, upper)
             if (value === undefined) return Model.discarded
             return state.shrinks
-              ? stringShrinker(minimum, hasCodePoints ? minCodePoints : minimum, hasCodePoints, pattern)(value)
+              ? stringSample(value, {
+                minimumLength: minimum,
+                minimumCodePoints: hasCodePoints ? minCodePoints : undefined,
+                pattern
+              })
               : Model.makeSample(value)
           }
         )
