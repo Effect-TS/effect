@@ -1169,21 +1169,29 @@ const strategyUsageTTL = Effect.fnUntraced(function*<A, E>(ttl: Duration.Input) 
   const ttlMillis = Duration.toMillis(Duration.fromInputUnsafe(ttl))
   return identity<Strategy<A, E>>({
     run: (pool) => {
+      // Sleeps until the next idle item expires, so an item is released ttl
+      // after its last use rather than up to twice that.
       const process: Effect.Effect<void> = Effect.suspend(() => {
-        if (activeSize(pool) <= targetSize(pool)) return Effect.void
-        const expired = clock.currentTimeMillisUnsafe() - ttlMillis
+        const now = clock.currentTimeMillisUnsafe()
+        const expired = now - ttlMillis
         let oldest: PoolItem<A, E> | undefined
-        for (const item of pool.state.items) {
-          if (item.refCount > 0 || item.idleSince > expired) continue
-          if (pool.state.invalidated.has(item) || reservations.has(item)) continue
-          if (oldest === undefined || item.idleSince < oldest.idleSince) oldest = item
+        let nextExpiry = now + ttlMillis
+        if (activeSize(pool) > targetSize(pool)) {
+          for (const item of pool.state.items) {
+            if (item.refCount > 0) continue
+            if (pool.state.invalidated.has(item) || reservations.has(item)) continue
+            if (item.idleSince > expired) {
+              nextExpiry = Math.min(nextExpiry, item.idleSince + ttlMillis)
+              continue
+            }
+            if (oldest === undefined || item.idleSince < oldest.idleSince) oldest = item
+          }
         }
-        return oldest === undefined ? Effect.void : Effect.flatMap(invalidatePoolItem(pool, oldest), () => process)
+        return oldest === undefined
+          ? Effect.sleep(nextExpiry - now)
+          : Effect.flatMap(invalidatePoolItem(pool, oldest), () => process)
       })
-      return process.pipe(
-        Effect.delay(ttl),
-        Effect.forever({ disableYield: true })
-      )
+      return process.pipe(Effect.forever({ disableYield: true }))
     },
     onAcquire: (_) => Effect.void,
     reclaim: (_) => Effect.undefined

@@ -316,6 +316,27 @@ describe("Pool", () => {
         strictEqual(acquired, 3)
       }))
 
+    it.effect("releases an item ttl after its last use when it goes idle between sweeps", () =>
+      Effect.gen(function*() {
+        const finalized: Array<string> = []
+        const pool = yield* Pool.makeWithTTL({
+          acquire: Effect.acquireRelease(
+            Effect.succeed("resource"),
+            (value) => Effect.sync(() => finalized.push(value))
+          ),
+          min: 0,
+          max: 1,
+          timeToLive: 1000,
+          timeToLiveStrategy: "usage"
+        })
+        yield* TestClock.adjust(50)
+        yield* Pool.use(pool, Effect.succeed)
+        yield* TestClock.adjust(999)
+        deepStrictEqual(finalized, [])
+        yield* TestClock.adjust(1)
+        deepStrictEqual(finalized, ["resource"])
+      }))
+
     it.effect("retains items used every 3 seconds across TTL sweeps", () =>
       Effect.gen(function*() {
         let acquired = 0
