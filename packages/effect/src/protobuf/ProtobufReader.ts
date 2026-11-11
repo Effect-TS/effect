@@ -137,7 +137,9 @@ export class ProtobufReaderError extends Data.TaggedError("ProtobufReaderError")
  * **Details**
  *
  * Every method throws a {@link ProtobufReaderError} for malformed input.
- * 64-bit integers are read as a `bigint`. Create one with {@link make}.
+ * 64-bit integers are read as a `bigint`, or as a `number` with
+ * {@link ProtobufReader.int64Number} and its siblings. Create one with
+ * {@link make}.
  *
  * **Example** (Reading a field)
  *
@@ -401,6 +403,68 @@ export class ProtobufReader {
   }
 
   /**
+   * Reads a `uint64` varint as a `number`.
+   *
+   * **Details**
+   *
+   * Outside the safe integer range the number is rounded, as `Number` rounds
+   * a `bigint`, which `Number.isSafeInteger` detects. It saves creating a
+   * `bigint` for each value.
+   *
+   * @since 4.1.5
+   */
+  uint64Number(): number {
+    this.varint64()
+    return this.hi * TWO_32 + this.lo
+  }
+
+  /**
+   * Reads an `int64` varint as a `number`.
+   *
+   * **Details**
+   *
+   * Outside the safe integer range the number is rounded, as `Number` rounds
+   * a `bigint`, which `Number.isSafeInteger` detects. It saves creating a
+   * `bigint` for each value.
+   *
+   * **Example** (Reading an `int64` as a number)
+   *
+   * ```ts import.meta.vitest
+   * import { ProtobufReader, ProtobufWriter } from "effect/protobuf"
+   *
+   * const bytes = ProtobufWriter.make().int64(-2).int64(2n ** 60n).finish()
+   * const r = ProtobufReader.make(bytes)
+   * r.int64Number() // => -2
+   * Number.isSafeInteger(r.int64Number()) // => false
+   * ```
+   *
+   * @since 4.1.5
+   */
+  int64Number(): number {
+    this.varint64()
+    return (this.hi | 0) * TWO_32 + this.lo
+  }
+
+  /**
+   * Reads a `sint64` varint, with the zigzag encoding, as a `number`.
+   *
+   * **Details**
+   *
+   * Outside the safe integer range the number is rounded, as `Number` rounds
+   * a `bigint`, which `Number.isSafeInteger` detects. It saves creating a
+   * `bigint` for each value.
+   *
+   * @since 4.1.5
+   */
+  sint64Number(): number {
+    this.varint64()
+    const mask = -(this.lo & 1)
+    const lo = ((this.lo >>> 1) | (this.hi << 31)) ^ mask
+    const hi = (this.hi >>> 1) ^ mask
+    return hi * TWO_32 + (lo >>> 0)
+  }
+
+  /**
    * Reads a `bool` varint: any nonzero value is `true`.
    *
    * @since 4.1.5
@@ -452,6 +516,40 @@ export class ProtobufReader {
     this.need(8)
     const lo = this.fixed32()
     return int64FromHalves(lo, this.fixed32())
+  }
+
+  /**
+   * Reads a little-endian `fixed64` as a `number`.
+   *
+   * **Details**
+   *
+   * Outside the safe integer range the number is rounded, as `Number` rounds
+   * a `bigint`, which `Number.isSafeInteger` detects. It saves creating a
+   * `bigint` for each value.
+   *
+   * @since 4.1.5
+   */
+  fixed64Number(): number {
+    this.need(8)
+    const lo = this.fixed32()
+    return this.fixed32() * TWO_32 + lo
+  }
+
+  /**
+   * Reads a little-endian `sfixed64` as a `number`.
+   *
+   * **Details**
+   *
+   * Outside the safe integer range the number is rounded, as `Number` rounds
+   * a `bigint`, which `Number.isSafeInteger` detects. It saves creating a
+   * `bigint` for each value.
+   *
+   * @since 4.1.5
+   */
+  sfixed64Number(): number {
+    this.need(8)
+    const lo = this.fixed32()
+    return this.sfixed32() * TWO_32 + lo
   }
 
   /**
@@ -635,6 +733,10 @@ const VARINT_64 = "a varint of at most 10 bytes"
 // a view, which is faster than bigint arithmetic. Floats are read through it
 // too, which saves a `DataView` of the input for each reader.
 const halvesView = new DataView(new ArrayBuffer(8))
+
+// A 64-bit integer is its high half times this plus its unsigned low half,
+// which rounds once, as `Number` rounds a `bigint`.
+const TWO_32 = 4294967296
 
 const int64FromHalves = (lo: number, hi: number): bigint => {
   halvesView.setUint32(0, lo, true)

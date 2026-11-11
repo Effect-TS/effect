@@ -1,6 +1,6 @@
 import { assert, describe, it } from "@effect/vitest"
 import * as Hex from "effect/encoding/Hex"
-import { ProtobufReader } from "effect/protobuf"
+import { ProtobufReader, ProtobufWriter } from "effect/protobuf"
 import * as Result from "effect/Result"
 
 type Reader = ProtobufReader.ProtobufReader
@@ -46,6 +46,12 @@ describe("ProtobufReader", () => {
     ["sfixed32 -2", "feffffff", (r) => r.sfixed32(), -2],
     ["fixed64 max", "ffffffffffffffff", (r) => r.fixed64(), 2n ** 64n - 1n],
     ["sfixed64 -2n", "feffffffffffffff", (r) => r.sfixed64(), -2n],
+    ["uint64Number max, rounded", "ffffffffffffffffff01", (r) => r.uint64Number(), 2 ** 64],
+    ["int64Number -1", "ffffffffffffffffff01", (r) => r.int64Number(), -1],
+    ["sint64Number -2^63", "ffffffffffffffffff01", (r) => r.sint64Number(), -(2 ** 63)],
+    ["sint64Number 1", "02", (r) => r.sint64Number(), 1],
+    ["fixed64Number max, rounded", "ffffffffffffffff", (r) => r.fixed64Number(), 2 ** 64],
+    ["sfixed64Number -2", "feffffffffffffff", (r) => r.sfixed64Number(), -2],
     ["float 1", "0000803f", (r) => r.float(), 1],
     ["double -0.5", "000000000000e0bf", (r) => r.double(), -0.5],
     ["string", "09c3a9e697a5f09f9880", (r) => r.string(), "é日😀"]
@@ -53,6 +59,23 @@ describe("ProtobufReader", () => {
     const r = reader(hex)
     assert.strictEqual(read(r), expected)
     assert.isTrue(r.isDone())
+  })
+
+  it("rounds 64-bit numbers as Number rounds a bigint", () => {
+    const values = [
+      2n ** 53n + 1n,
+      2n ** 53n + 3n,
+      2n ** 63n - 1n,
+      -(2n ** 53n) - 3n,
+      2n ** 60n + 2n ** 8n + 1n,
+      -(2n ** 63n)
+    ]
+    for (const n of values) {
+      const r = ProtobufReader.make(ProtobufWriter.make().int64(n).sint64(n).sfixed64(n).finish())
+      assert.strictEqual(r.int64Number(), Number(n))
+      assert.strictEqual(r.sint64Number(), Number(n))
+      assert.strictEqual(r.sfixed64Number(), Number(n))
+    }
   })
 
   it("reads bytes as a copy", () => {
