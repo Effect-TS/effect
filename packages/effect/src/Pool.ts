@@ -1169,24 +1169,22 @@ const strategyUsageTTL = Effect.fnUntraced(function*<A, E>(ttl: Duration.Input) 
   const ttlMillis = Duration.toMillis(Duration.fromInputUnsafe(ttl))
   return identity<Strategy<A, E>>({
     run: (pool) => {
-      // Sleeps until the next idle item expires, so an item is released ttl
-      // after its last use rather than up to twice that.
       const process: Effect.Effect<void> = Effect.suspend(() => {
+        if (activeSize(pool) <= targetSize(pool)) return Effect.sleep(ttl)
         const now = clock.currentTimeMillisUnsafe()
-        const expired = now - ttlMillis
         let oldest: PoolItem<A, E> | undefined
         let nextExpiry = now + ttlMillis
-        if (activeSize(pool) > targetSize(pool)) {
-          for (const item of pool.state.items) {
-            if (item.refCount > 0) continue
-            if (pool.state.invalidated.has(item) || reservations.has(item)) continue
-            if (item.idleSince > expired) {
-              nextExpiry = Math.min(nextExpiry, item.idleSince + ttlMillis)
-              continue
-            }
-            if (oldest === undefined || item.idleSince < oldest.idleSince) oldest = item
+        for (const item of pool.state.items) {
+          if (item.refCount > 0) continue
+          if (pool.state.invalidated.has(item) || reservations.has(item)) continue
+          const expiresAt = item.idleSince + ttlMillis
+          if (expiresAt > now) {
+            nextExpiry = Math.min(nextExpiry, expiresAt)
+            continue
           }
+          if (oldest === undefined || item.idleSince < oldest.idleSince) oldest = item
         }
+        // Waking at the next expiry, not after a fixed ttl, releases an item ttl after its last use.
         return oldest === undefined
           ? Effect.sleep(nextExpiry - now)
           : Effect.flatMap(invalidatePoolItem(pool, oldest), () => process)
