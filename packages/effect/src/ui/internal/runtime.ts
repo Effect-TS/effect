@@ -217,7 +217,7 @@ export interface Instance {
   /** On the server: the client builds this instance fresh, because its Layer wasn't built. */
   deferred: boolean
   readonly runs: Array<Run>
-  /** Runs asked to stop whose fibers haven't exited: `h.running` still counts them. */
+  /** Runs asked to stop whose fibers haven't exited: `h.isRunning` still counts them. */
   readonly stopping: Set<Run>
   readonly subscriptions: Map<string, SubscriptionRun>
   readonly watches: Map<string, WatchRun>
@@ -1807,7 +1807,7 @@ const setup = (
     // Only acts when the work never began.
     run.handle?.finish({ _tag: "Stopped" })
     offClose?.()
-    // A stopped run sent no message, so `h.running` ends here.
+    // A stopped run sent no message, so `h.isRunning` ends here.
     if (inst.stopping.delete(run) && !inst.closed) markDirty(inst)
     if (run.done) return
     const interrupted = Exit.isFailure(exit) && !Cause.hasDies(exit.cause) && !Cause.hasFails(exit.cause)
@@ -1930,7 +1930,7 @@ const setup = (
     if (run.done) return
     removeRun(inst, run)
     recordEnded(inst, run)
-    // `h.running` ends with the message, which rendered the run still in the schedule.
+    // `h.isRunning` ends with the message, which rendered the run still in the schedule.
     if (!inst.closed) markDirty(inst)
   }
   const recordEnded = (inst: Instance, run: Run) =>
@@ -1951,7 +1951,7 @@ const setup = (
       detached: run.detached
     })
 
-  /** `h.running` for one instance: a run of the Command, of the group if given, queued or running. */
+  /** `h.isRunning` for one instance: a run of the Command, of the group if given, queued or running. */
   const runningOf = (inst: Instance) => (name: string, groupKey: string | undefined): boolean => {
     const matches = (run: Run) =>
       run.command.name === name && (groupKey === undefined || run.command.groupKey === groupKey)

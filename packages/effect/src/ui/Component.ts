@@ -38,13 +38,13 @@
  *       Save: () => $.run(SaveTodo.make($.props.todo)),
  *       Saved: () => model
  *     }),
- *   // `h.running` is true from the Save until its message has been handled.
+ *   // `h.isRunning` is true from the Save until its message has been handled.
  *   view: (_, h) =>
  *     h.el(
  *       "li",
  *       h.el("button", h.props.todo.done ? "[x]" : "[ ]").on("click", TodoItemMessage.make({ _tag: "Toggle" })),
  *       h.el("span", h.props.todo.title),
- *       h.running(SaveTodo) ? " saving" : ""
+ *       h.isRunning(SaveTodo) ? " saving" : ""
  *     )
  * })
  * ```
@@ -322,7 +322,7 @@ export interface Mountable<in out Props, out Events, out R = never> extends Pipe
   readonly events: Schema.Codec<Events, any>
   readonly init: (props: Props) => Next<any, any, Events, R>
   readonly update: (model: any, msg: never, props: Props) => Next<any, any, Events, R>
-  /** `running` answers `h.running` for the instance being rendered. Without it nothing is running. */
+  /** `running` answers `h.isRunning` for the instance being rendered. Without it nothing is running. */
   readonly view: (
     model: any,
     props: Props,

@@ -113,8 +113,8 @@ export const NoteEditor = Component.make({
       h.textarea().attr("aria-label", "Body").value(model.draft)
         .class("note-body", model.draft !== model.saved && "unsaved")
         .onInput(({ value }) => NoteEditorMessage.make({ _tag: "Edited", body: value })),
-      // `h.running` is true while this instance has a save queued or running.
-      h.button(h.running(SaveNote) ? "Saving…" : "Save").attr("type", "submit")
+      // `h.isRunning` is true while this instance has a save queued or running.
+      h.button(h.isRunning(SaveNote) ? "Saving…" : "Save").attr("type", "submit")
         .disabled(model.draft === model.saved),
       model.error !== null && h.p(model.error).attr("role", "alert")
     ).onSubmit(NoteEditorMessage.make({ _tag: "Save" }))

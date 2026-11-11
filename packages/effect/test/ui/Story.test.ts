@@ -197,7 +197,7 @@ describe("Story", () => {
         h.el("div", [
           h.el("button", "save").on("click", Msg.make({ _tag: "Save" })),
           h.el("button", "stop").on("click", Msg.make({ _tag: "Stop" })),
-          h.text(h.running(Save) ? "saving" : model)
+          h.text(h.isRunning(Save) ? "saving" : model)
         ])
     })
 
@@ -215,7 +215,7 @@ describe("Story", () => {
       )
     })
 
-    it("h.running is derived from the pending Commands", () => {
+    it("h.isRunning is derived from the pending Commands", () => {
       Story.make(Editor, {}, (s) =>
         s.view((view) => assert.include(View.textOf(view), "idle"))
           .click("save")

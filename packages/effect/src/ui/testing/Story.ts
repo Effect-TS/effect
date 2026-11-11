@@ -41,8 +41,8 @@
  *       Save: () => $.run(SaveTodo.make({ id: $.props.id })),
  *       Saved: () => ({ saved: true })
  *     }),
- *   // In a story, `h.running` is derived from the pending Commands.
- *   view: (_, h) => h.el("button", h.running(SaveTodo) ? "saving" : "save").on("click", Message.make({ _tag: "Save" }))
+ *   // In a story, `h.isRunning` is derived from the pending Commands.
+ *   view: (_, h) => h.el("button", h.isRunning(SaveTodo) ? "saving" : "save").on("click", Message.make({ _tag: "Save" }))
  * })
  *
  * Story.make(TodoItem, { id: "t1" }, (s) =>
@@ -811,7 +811,7 @@ const pruneKeyed = (story: Story<any, any, any, any>, sentFor: SentFor): Story<a
   }
 }
 
-/** `h.running` in a story: derived from what's pending. */
+/** `h.isRunning` in a story: derived from what's pending. */
 const runningOf = (pending: ReadonlyArray<Pending<any>>) => (name: string, groupKey: string | undefined): boolean =>
   pending.some((entry) =>
     entry.command.name === name && (groupKey === undefined || entry.command.groupKey === groupKey)
