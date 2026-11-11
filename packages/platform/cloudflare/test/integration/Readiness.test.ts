@@ -84,6 +84,14 @@ describe("Cloudflare cluster integration | initialization readiness", () => {
           Effect.map(cluster.fetchJson("/initialization/state"), (state) => state.started)
         )
 
+        // Start a genuinely cold caller after the build is stale. Starting it
+        // immediately leaves only the gap between the two callers in which a
+        // 20ms poll can observe a stale build while the waiter is still fresh.
+        yield* cluster.waitUntil(
+          "The first initialization did not become stale",
+          Effect.map(cluster.fetchJson("/initialization/state"), (state) => state.elapsedMillis >= 15_000),
+          20_000
+        )
         yield* cluster.fetchJson("/initialization/fail")
         const replacement = yield* cluster.fetchJson("/initialization/call?kind=workflow")
         assert.isFalse(replacement.ok)
