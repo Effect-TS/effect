@@ -987,13 +987,13 @@ const build = (options: Options): Effect.Effect<Context.Context<Router>, never, 
       for (const check of pending.checks) check.dropped()
     }
     /**
-     * `prefetch`: a push, a link click or a replace that changes the pathname runs the destination's
+     * A push, a link click or a replace that changes the pathname runs the destination's
      * declarations, after the hydration window closes and before the route changes.
      */
-    const set = (next: Location, announce: boolean, prefetch: boolean) => {
+    const set = (next: Location, announce: boolean) => {
       // First, so whatever the navigation starts sees the cache with the hydration window closed.
       for (const root of roots) root.navigated()
-      const checks = prefetch ? runDeclarations(next, false) : []
+      const checks = announce && next.action !== "pop" ? runDeclarations(next, false) : []
       const from = pathnameOf(current.url)
       current = next
       restoring = undefined
@@ -1032,7 +1032,7 @@ const build = (options: Options): Effect.Effect<Context.Context<Router>, never, 
         snapshots.delete(index)
         history.replace(printed + hash, writeState({ index }))
         const samePath = pathnameOf(printed) === pathnameOf(current.url)
-        set({ route, url: printed, hash, action: "replace", seq }, !samePath, !samePath)
+        set({ route, url: printed, hash, action: "replace", seq }, !samePath)
       } else {
         leave()
         // The Model snapshot also goes into the entry itself, so it survives a reload.
@@ -1040,7 +1040,7 @@ const build = (options: Options): Effect.Effect<Context.Context<Router>, never, 
         index++
         for (const key of snapshots.keys()) if (key >= index) snapshots.delete(key)
         history.push(printed + hash, writeState({ index }))
-        set({ route, url: printed, hash, action: "push", seq }, true, true)
+        set({ route, url: printed, hash, action: "push", seq }, true)
       }
       return "navigated"
     }
@@ -1079,7 +1079,7 @@ const build = (options: Options): Effect.Effect<Context.Context<Router>, never, 
       leave()
       index = target
       const saved = snapshots.get(target) ?? entry?.snapshot
-      set({ route: found.value.route, url: printed, hash, action: "pop", seq: current.seq + 1 }, true, false)
+      set({ route: found.value.route, url: printed, hash, action: "pop", seq: current.seq + 1 }, true)
       restoring = saved === undefined ? undefined : new Map(Object.entries(saved))
     }
     const unlisten = history.listen(popped)
