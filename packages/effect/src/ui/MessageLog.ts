@@ -308,6 +308,11 @@ export interface SessionStarted extends Base {
  * result goes to `get` callers only. A caller that joins a fetch in flight
  * logs nothing.
  *
+ * A list read logs each page it requests as its own entry: `page` is the
+ * page's index, from 0, and `cursor` the cursor encoded by the list's
+ * `cursor` Schema, absent for the first page. A read that isn't a list has
+ * neither.
+ *
  * @stability experimental
  * @category models
  * @since 4.1.3
@@ -320,6 +325,8 @@ export interface FetchStarted extends Base {
   readonly restart: boolean
   readonly inWindow: boolean
   readonly stored: boolean
+  readonly page?: number | undefined
+  readonly cursor?: Schema.Json | undefined
 }
 
 /**
@@ -545,10 +552,22 @@ export const Wire = Schema.Union([
     ...Seq,
     read: Schema.String,
     logKey: Schema.String,
-    trigger: Schema.Literals(["watch", "get", "prefetch", "visibility", "connectivity", "interval", "invalidation"]),
+    trigger: Schema.Literals([
+      "watch",
+      "get",
+      "prefetch",
+      "visibility",
+      "connectivity",
+      "interval",
+      "invalidation",
+      "loadMore",
+      "reset"
+    ]),
     restart: Schema.Boolean,
     inWindow: Schema.Boolean,
-    stored: Schema.Boolean
+    stored: Schema.Boolean,
+    page: Schema.optionalKey(Schema.Number),
+    cursor: Schema.optionalKey(Schema.Json)
   })
 ])
 
@@ -690,7 +709,9 @@ export const makeEncoder = (options?: {
             trigger: entry.trigger,
             restart: entry.restart,
             inWindow: entry.inWindow,
-            stored: entry.stored
+            stored: entry.stored,
+            ...(entry.page === undefined ? undefined : { page: entry.page }),
+            ...(entry.cursor === undefined ? undefined : { cursor: entry.cursor })
           }
       }
     }

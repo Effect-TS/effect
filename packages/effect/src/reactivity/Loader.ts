@@ -433,15 +433,20 @@ export const Service: <Self>() => <
   fetcher: Effect.Effect<Fetcher, any, any>
 ): any => {
   const def = makeDef(name, options)
-  const Base = Context.Service<any, Fetcher>()(name)
-  const withCache = <A, E, R>(
-    f: (cache: CacheInternals, context: Context.Context<never>) => Effect.Effect<A, E, R>
-  ): Effect.Effect<A, E, any> =>
-    Effect.flatMap(
-      Effect.context<never>(),
-      (context) => f(internals(Context.getUnsafe(context, Cache)), context)
-    )
-  const fetcherOf = (context: Context.Context<never>): Fetcher => Context.getUnsafe(context, Base)
+  const ReadService = readClass(def, fetcher)
+  return class extends ReadService {
+    static set(args: unknown, value: unknown) {
+      return write(ReadService, args, value)
+    }
+  }
+}
+
+/**
+ * The class every read is: the fetcher's service, its Layer and the statics
+ * that look the cache up. A list read adds its own.
+ */
+const readClass = (def: ReadDef, fetcher: Effect.Effect<Fetcher, any, any>) => {
+  const Base = Context.Service<any, Fetcher>()(def.name)
   class ReadService extends Base {
     static readonly [TypeId]: any = def
     static readonly layer = Layer.effect(
@@ -454,10 +459,10 @@ export const Service: <Self>() => <
       })
     )
     static get(args: unknown) {
-      return withCache((cache, context) => cache.get(def, args, fetcherOf(context), Context.get(context, CurrentRun)))
+      return withCache((cache, context) => cache.get(def, args, fetcherOf(context, Base), Context.get(context, CurrentRun)))
     }
     static prefetch(args: unknown) {
-      return withCache((cache, context) => Effect.sync(() => cache.prefetch(def, args, fetcherOf(context))))
+      return withCache((cache, context) => Effect.sync(() => cache.prefetch(def, args, fetcherOf(context, Base))))
     }
     static invalidate(args?: unknown) {
       return withCache((cache) =>
@@ -479,7 +484,7 @@ export const Service: <Self>() => <
                 last = result
                 Queue.offerUnsafe(queue, result)
               }
-              const handle = cache.watch(def, args, fetcherOf(context), offer, (cause) => {
+              const handle = cache.watch(def, args, fetcherOf(context, Base), offer, (cause) => {
                 Queue.failCauseUnsafe(queue, cause)
               })
               // The cache never calls back for the state at registration.
@@ -504,11 +509,428 @@ export const Service: <Self>() => <
     static patchAll(f: (value: any, args: any) => any) {
       return patchAll(ReadService, f)
     }
-    static set(args: unknown, value: unknown) {
-      return write(ReadService, args, value)
-    }
   }
   return ReadService
+}
+
+const withCache = <A, E, R>(
+  f: (cache: CacheInternals, context: Context.Context<never>) => Effect.Effect<A, E, R>
+): Effect.Effect<A, E, any> =>
+  Effect.flatMap(
+    Effect.context<never>(),
+    (context) => f(internals(Context.getUnsafe(context, Cache)), context)
+  )
+
+const fetcherOf = (context: Context.Context<never>, service: Context.Key<any, Fetcher>): Fetcher =>
+  Context.getUnsafe(context, service)
+
+/**
+ * Identifies a list read: a class made by `ListService`.
+ *
+ * @stability experimental
+ * @category type IDs
+ * @since 4.1.3
+ */
+export const ListTypeId: ListTypeId = "~effect/reactivity/Loader/List"
+
+/**
+ * Identifies a list read: a class made by `ListService`.
+ *
+ * @stability experimental
+ * @category type IDs
+ * @since 4.1.3
+ */
+export type ListTypeId = "~effect/reactivity/Loader/List"
+
+/**
+ * A list read: a read whose entry holds every page loaded so far, as an
+ * array. Its result is the page array, so `peek`, `changes` and `get`
+ * return the pages, and a patch maps them one page at a time.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.1.3
+ */
+export interface ListRead<in out Args, in out Page, in out Item, in out E>
+  extends Read<Args, ReadonlyArray<Page>, E>
+{
+  readonly [ListTypeId]: ListRead.Variance<Page, Item>
+}
+
+/**
+ * Helper types for `ListRead`.
+ *
+ * @stability experimental
+ * @since 4.1.3
+ */
+export declare namespace ListRead {
+  /**
+   * Phantom variance for a list read's page and item.
+   *
+   * @category models
+   * @since 4.1.3
+   */
+  export interface Variance<in out Page, in out Item> {
+    readonly _Page: Types.Invariant<Page>
+    readonly _Item: Types.Invariant<Item>
+  }
+
+  /**
+   * Any list read.
+   *
+   * @category models
+   * @since 4.1.3
+   */
+  export type Any = ListRead<any, any, any, any> | ListRead<any, any, any, never>
+
+  /**
+   * The page of a list read.
+   *
+   * @category utility types
+   * @since 4.1.3
+   */
+  export type Page<R> = R extends ListRead<infer _Args, infer Page, infer _Item, infer _E> ? Page : never
+
+  /**
+   * The item of a list read: what its `items` returns for a page.
+   *
+   * @category utility types
+   * @since 4.1.3
+   */
+  export type Item<R> = R extends ListRead<infer _Args, infer _Page, infer Item, infer _E> ? Item : never
+}
+
+/**
+ * Whether a list holds more pages to load, as a view sees it.
+ *
+ * **Details**
+ *
+ * - `End`: the definition's `next` returned `None` for the last page.
+ * - `Available`: there is a next page, and nothing is loading it.
+ * - `Loading`: a load more is running or waiting its turn, such as behind a
+ *   refetch of the held pages or a live patch.
+ * - `Failed`: the last load more failed with `error`. The held pages stay.
+ *   The next load more, or the next refetch from page 1, clears it, and so
+ *   does the last watcher leaving.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.1.3
+ */
+export type More<E> =
+  | { readonly _tag: "End" }
+  | { readonly _tag: "Available" }
+  | { readonly _tag: "Loading" }
+  | { readonly _tag: "Failed"; readonly error: E }
+
+/**
+ * What a list read's `loadMore` resolves with: every page held once the
+ * load ended, and whether there is a next one.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.1.3
+ */
+export interface LoadedMore<Page> {
+  readonly pages: ReadonlyArray<Page>
+  readonly hasMore: boolean
+}
+
+/**
+ * A list read class, as returned by `ListService`.
+ *
+ * **Details**
+ *
+ * It's a `Context.Service` whose value is the read's fetcher, which takes
+ * the arguments and the cursor of the page to load, `None` for the first.
+ * Its result is the page array. It has the statics of a read, except `set`,
+ * and adds `loadMore`, `reset` and `items`.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.1.3
+ */
+export interface ListService<
+  in out Self,
+  in out Name extends string,
+  in out Args,
+  in out Page,
+  in out Item,
+  in out Cursor,
+  in out E,
+  out LE,
+  out LR
+> extends
+  Context.ServiceClass<Self, Name, (args: Args, cursor: Option.Option<Cursor>) => Effect.Effect<Page, E>>,
+  ListRead<Args, Page, Item, E>
+{
+  /** The fetcher's Layer, as for any read. */
+  readonly layer: Layer.Layer<Self, LE, LR>
+  /**
+   * Returns the held pages when they're fresh, and otherwise loads the list
+   * again from the first page, as many pages as it holds, joining a load in
+   * flight. As for any read, a call waiting on a load that reverts is
+   * interrupted.
+   */
+  get(args: Args): Effect.Effect<ReadonlyArray<Page>, E, Self | Cache>
+  /**
+   * Loads the first page when the list is cold. When it holds pages, stale
+   * ones included, it only keeps the entry from being collected.
+   */
+  prefetch(args: Args): Effect.Effect<void, never, Self | Cache>
+  /** Marks one list, or every list of the read, stale, as for any read. */
+  invalidate(args?: Args): Effect.Effect<void, never, Cache>
+  /** Watches a list and emits its page array, as `changes` does for any read. */
+  changes(args: Args): Stream.Stream<AsyncResult.AsyncResult<ReadonlyArray<Page>, E>, never, Self | Cache>
+  /** Reads a list's page array without loading anything. */
+  peek(args: Args): Effect.Effect<AsyncResult.AsyncResult<ReadonlyArray<Page>, E>, never, Cache>
+  /**
+   * Loads the page after the held ones, and resolves with every page held
+   * and whether there is a next one.
+   *
+   * **Details**
+   *
+   * It appends from the last held page, whatever the list's age. When a
+   * refetch from the first page is running or waiting, it makes that refetch
+   * load one page more instead. Under a live patch it waits for the patch's
+   * run to exit. It fails with the error of the page it waited for, and does
+   * nothing when the list has ended.
+   */
+  loadMore(args: Args): Effect.Effect<LoadedMore<Page>, E, Self | Cache>
+  /**
+   * Drops every held page after the first, then invalidates the list, so it
+   * loads again from the first page with only that page held.
+   */
+  reset(args: Args): Effect.Effect<void, never, Cache>
+  /**
+   * The items of a page array, in order, with a later item whose `key` was
+   * already seen left out.
+   */
+  items(pages: ReadonlyArray<Page>): ReadonlyArray<Item>
+  /** One list, as an invalidation target. */
+  entry(args: Args): EntryTarget<ListRead<Args, Page, Item, E>>
+  /**
+   * An optimistic patch of one list, applied to each held page. It can't
+   * change the page count, and implies invalidation of the list.
+   */
+  patch(args: Args, f: (page: Page, index: number) => Page): Patch<ListRead<Args, Page, Item, E>>
+  /**
+   * An optimistic patch of every list of the read that holds pages when the
+   * run is issued, applied to each page. It implies invalidation of the whole
+   * read.
+   */
+  patchAll(f: (page: Page, args: Args, index: number) => Page): Patch<ListRead<Args, Page, Item, E>>
+}
+
+/**
+ * Defines a list read: a read that holds every page of an accumulating list
+ * in one entry, and loads more of them on request.
+ *
+ * **When to use**
+ *
+ * Use when a new page appends to what the screen shows, such as an infinite
+ * feed or a "load more" button, on a cursor API or an offset one. When a new
+ * page replaces the old one, use an ordinary read with the page in its args
+ * and `h.previous`, even on a cursor API.
+ *
+ * **Details**
+ *
+ * - `page` is the Schema of one page. The entry's value is the page array.
+ * - `items` lists the items of a page and `key` gives an item's identity.
+ *   Both are required, so the items of a page array come out deduped by
+ *   `key`, the first one winning: an offset API that shifts returns an item
+ *   twice.
+ * - `cursor` is the Schema of a cursor, and `next` derives the cursor of
+ *   the page after `lastPage` from the server's pages, `None` when the
+ *   list has ended. It must be pure. The cursor is never stored.
+ * - The fetcher takes the arguments and the cursor, `None` for the first
+ *   page.
+ * - The other options are a read's. `staleTime` counts from the end of the
+ *   last load that started at the first page: loading more changes no
+ *   timestamp.
+ *
+ * One entry holds every page of one list, and one load runs per list. A
+ * refetch loads the pages again from the first one, in sequence, as many as
+ * the list holds, and swaps them in at the end; a list that got shorter ends
+ * early. An invalidation, a patch and the close of the build that loads
+ * restart it from the first page, keeping the pages to reach. A visibility,
+ * connectivity or interval refetch that arrives while a page is being
+ * appended runs once that page is in.
+ *
+ * A failed load more keeps the held pages and sets an error that a view
+ * reads as `More`'s `Failed`. A refetch that fails on a page the list
+ * holds is a Failure with the held pages as its previous Success; one that
+ * fails on the page past them swaps the pages it loaded in, and sets that
+ * error. Nothing retries.
+ *
+ * **Gotchas**
+ *
+ * - Write `items` before `key`. TypeScript infers the item type from the
+ *   first of the two it reads, so with `key` first an item is `unknown`.
+ * - A refetch of a list of 30 pages is 30 requests, one after the other.
+ * - Every list read with the same arguments shares its page count, which
+ *   only goes up until `reset` or the entry is collected.
+ *
+ * **Example** (A list of messages)
+ *
+ * ```ts import.meta.vitest
+ * import { Effect, Layer, Option, Schema } from "effect"
+ * import { Loader } from "effect/reactivity"
+ *
+ * const Page = Schema.Struct({
+ *   messages: Schema.Array(Schema.Struct({ id: Schema.String, text: Schema.String })),
+ *   next: Schema.NullOr(Schema.Number)
+ * })
+ *
+ * class ListMessages extends Loader.ListService<ListMessages>()("chat/ListMessages", {
+ *   args: { room: Schema.String },
+ *   page: Page,
+ *   items: (page) => page.messages,
+ *   key: (message) => message.id,
+ *   error: Schema.Never,
+ *   cursor: Schema.Number,
+ *   next: (lastPage) => Option.fromNullishOr(lastPage.next),
+ *   staleTime: "30 seconds"
+ * }, Effect.succeed(({ room }, cursor) => {
+ *   const from = Option.getOrElse(cursor, () => 0)
+ *   return Effect.succeed({
+ *     messages: [{ id: `${room}-${from}`, text: `message ${from}` }],
+ *     next: from < 2 ? from + 1 : null
+ *   })
+ * })) {}
+ *
+ * const program = Effect.gen(function*() {
+ *   yield* ListMessages.get({ room: "a" })
+ *   const { pages, hasMore } = yield* ListMessages.loadMore({ room: "a" })
+ *   return [ListMessages.items(pages).map((message) => message.text), hasMore]
+ * }).pipe(Effect.provide(Layer.merge(ListMessages.layer, Loader.layer())))
+ *
+ * await Effect.runPromise(program) // => [["message 0", "message 1"], true]
+ * ```
+ *
+ * @stability experimental
+ * @category constructors
+ * @since 4.1.3
+ */
+export const ListService: <Self>() => <
+  const Name extends string,
+  const Args extends Service.NoServices | { readonly [x: string]: Service.NoServices },
+  PageSchema extends Service.NoServices,
+  Item,
+  CursorSchema extends Service.NoServices,
+  Error extends Service.NoServices,
+  LE,
+  LR
+>(
+  name: Name,
+  options: {
+    readonly args: Args
+    readonly page: PageSchema
+    readonly items: (page: PageSchema["Type"]) => ReadonlyArray<Item>
+    readonly key: (item: NoInfer<Item>) => string
+    readonly error: Error
+    readonly cursor: CursorSchema
+    readonly next: (
+      lastPage: PageSchema["Type"],
+      allPages: readonly [PageSchema["Type"], ...Array<PageSchema["Type"]>]
+    ) => Option.Option<CursorSchema["Type"]>
+    readonly staleTime: Duration.Input
+    readonly idleTimeToLive?: Duration.Input | undefined
+    readonly refetchInterval?:
+      | RefetchInterval<Service.ArgsType<Args>, ReadonlyArray<PageSchema["Type"]>, Error["Type"]>
+      | undefined
+    readonly tags?: ReadonlyArray<Tag> | undefined
+  },
+  fetcher: Effect.Effect<
+    (
+      args: Service.ArgsType<Args>,
+      cursor: Option.Option<CursorSchema["Type"]>
+    ) => Effect.Effect<PageSchema["Type"], Error["Type"]>,
+    LE,
+    LR
+  >
+) => ListService<
+  Self,
+  Name,
+  Service.ArgsType<Args>,
+  PageSchema["Type"],
+  Item,
+  CursorSchema["Type"],
+  Error["Type"],
+  LE,
+  Exclude<LR, Scope.Scope>
+> = () =>
+(
+  name: string,
+  options: {
+    readonly args: Schema.Top | Schema.Struct.Fields
+    readonly page: Schema.Top
+    readonly items: (page: any) => ReadonlyArray<any>
+    readonly key: (item: any) => string
+    readonly error: Schema.Top
+    readonly cursor: Schema.Top
+    readonly next: (lastPage: any, allPages: any) => Option.Option<any>
+    readonly staleTime: Duration.Input
+    readonly idleTimeToLive?: Duration.Input | undefined
+    readonly refetchInterval?: RefetchInterval<any, any, any> | undefined
+    readonly tags?: ReadonlyArray<Tag> | undefined
+  },
+  fetcher: Effect.Effect<Fetcher, any, any>
+): any => {
+  const def = makeDef(name, { ...options, success: Schema.Array(options.page) }, {
+    items: options.items,
+    key: options.key,
+    next: options.next,
+    cursor: options.cursor
+  })
+  const ReadService = readClass(def, fetcher)
+  return class extends ReadService {
+    static readonly [ListTypeId]: any = ListTypeId
+    static loadMore(args: unknown) {
+      return withCache((cache, context) =>
+        Effect.callback<any, any>((resume) => {
+          const cancel = cache.loadMore(def, args, fetcherOf(context, ReadService), resume)
+          return Effect.sync(cancel)
+        })
+      )
+    }
+    static reset(args: unknown) {
+      return withCache((cache) => Effect.sync(() => cache.reset(def, args)))
+    }
+    static items(pages: ReadonlyArray<unknown>) {
+      return listItems(def, pages)
+    }
+    static override patch(args: unknown, f: (page: any, index: number) => any) {
+      return patchOne(ReadService, args, (pages: ReadonlyArray<unknown>) => pages.map((page, i) => f(page, i)))
+    }
+    static override patchAll(f: (page: any, args: any, index: number) => any) {
+      return patchAll(
+        ReadService,
+        (pages: ReadonlyArray<unknown>, args: unknown) => pages.map((page, i) => f(page, args, i))
+      )
+    }
+  }
+}
+
+/**
+ * The items of a page array, in order, with a later item whose key was
+ * already seen left out.
+ *
+ * @internal
+ */
+export const listItems = (def: ReadDef, pages: ReadonlyArray<unknown>): ReadonlyArray<unknown> => {
+  const list = def.list!
+  const seen = new Set<string>()
+  const out: Array<unknown> = []
+  for (const page of pages) {
+    for (const item of list.items(page)) {
+      const key = list.key(item)
+      if (seen.has(key)) continue
+      seen.add(key)
+      out.push(item)
+    }
+  }
+  return out
 }
 
 /**
@@ -930,12 +1352,23 @@ export const SnapshotMap = <R extends Read.Any, const Label extends string>(
  *   true, and a watched entry was stale or its interval had elapsed.
  * - `interval`: a watched entry's `refetchInterval` fired.
  * - `invalidation`: an invalidation hit a watched entry.
+ * - `loadMore`: a list read's `loadMore`.
+ * - `reset`: a list read's `reset` hit a watched list.
  *
  * @stability experimental
  * @category models
  * @since 4.1.3
  */
-export type Trigger = "watch" | "get" | "prefetch" | "visibility" | "connectivity" | "interval" | "invalidation"
+export type Trigger =
+  | "watch"
+  | "get"
+  | "prefetch"
+  | "visibility"
+  | "connectivity"
+  | "interval"
+  | "invalidation"
+  | "loadMore"
+  | "reset"
 
 /**
  * A boolean a host reports, with a synchronous getter and a listener. It is
@@ -1045,6 +1478,35 @@ export class IntervalInvalid extends Data.TaggedClass("IntervalInvalid")<{
  * @since 4.1.3
  */
 export class FetchRestarted extends Data.TaggedClass("FetchRestarted")<{
+  readonly message: string
+  readonly read: string
+  readonly logKey: string
+}> {}
+
+/**
+ * A list's walk got a page again: `next` returned a cursor that encodes
+ * equal to one the walk already used. Nothing changes; it's reported once per
+ * walk.
+ *
+ * @stability experimental
+ * @category problems
+ * @since 4.1.3
+ */
+export class PageRepeated extends Data.TaggedClass("PageRepeated")<{
+  readonly message: string
+  readonly read: string
+  readonly logKey: string
+}> {}
+
+/**
+ * A page of a list holds two items with one `key`. The first survives in
+ * `items`. A duplicate across two pages is left out without a report.
+ *
+ * @stability experimental
+ * @category problems
+ * @since 4.1.3
+ */
+export class DuplicateKeyInPage extends Data.TaggedClass("DuplicateKeyInPage")<{
   readonly message: string
   readonly read: string
   readonly logKey: string
@@ -1193,6 +1655,8 @@ export type Problem =
   | IntervalThrew
   | IntervalInvalid
   | FetchRestarted
+  | PageRepeated
+  | DuplicateKeyInPage
   | PatchInvalid
   | PatchMutated
   | UncoveredWrite
@@ -1714,6 +2178,16 @@ interface ReadDef {
   readonly logKey: (args: unknown, argsKey: string) => string
   /** The JSON codecs of the read's Schemas, built on first use. Each throws on a value that doesn't fit. */
   readonly codec: () => ReadCodec
+  /** Set on a list read. Its `success` is the page array. */
+  readonly list: ListDef | undefined
+}
+
+interface ListDef {
+  readonly items: (page: any) => ReadonlyArray<any>
+  readonly key: (item: any) => string
+  readonly next: (lastPage: any, allPages: any) => Option.Option<any>
+  /** The cursor through its JSON codec, for the log. Throws on a cursor that doesn't encode. */
+  readonly encodeCursor: (cursor: unknown) => unknown
 }
 
 interface ReadCodec {
@@ -1777,6 +2251,11 @@ const makeDef = (name: string, options: {
   readonly idleTimeToLive?: Duration.Input | undefined
   readonly refetchInterval?: RefetchInterval<any, any, any> | undefined
   readonly tags?: ReadonlyArray<{ readonly name: string }> | undefined
+}, list?: {
+  readonly items: (page: any) => ReadonlyArray<any>
+  readonly key: (item: any) => string
+  readonly next: (lastPage: any, allPages: any) => Option.Option<any>
+  readonly cursor: Schema.Top
 }): ReadDef => {
   const staleMs = nonNegative(name, "staleTime", options.staleTime)
   const idleMs = options.idleTimeToLive === undefined
@@ -1849,7 +2328,23 @@ const makeDef = (name: string, options: {
     refetchInterval,
     tags: (options.tags ?? []).map((tag) => tag.name),
     argsKey,
-    logKey
+    logKey,
+    list: list === undefined ? undefined : makeListDef(list)
+  }
+}
+
+const makeListDef = (options: {
+  readonly items: (page: any) => ReadonlyArray<any>
+  readonly key: (item: any) => string
+  readonly next: (lastPage: any, allPages: any) => Option.Option<any>
+  readonly cursor: Schema.Top
+}): ListDef => {
+  let encode: ((cursor: unknown) => unknown) | undefined
+  return {
+    items: options.items,
+    key: options.key,
+    next: options.next,
+    encodeCursor: (cursor) => (encode ??= Schema.encodeUnknownSync(jsonCodec(options.cursor)))(cursor)
   }
 }
 
@@ -1963,7 +2458,8 @@ const applyPatch = (patch: Patch, name: string, argsKey: string, args: unknown, 
 // Builds: which Layer build owns a fetch
 // -----------------------------------------------------------------------------
 
-type Fetcher = (args: any) => Effect.Effect<any, any>
+/** A list read's fetcher takes the cursor as well. */
+type Fetcher = (args: any, cursor?: any) => Effect.Effect<any, any>
 
 /**
  * One Layer build of a read's service. The service value is a plain function,
@@ -1983,7 +2479,7 @@ interface Build {
  * never share an identity.
  */
 const makeBuild = (fetcher: Fetcher): Build => {
-  const wrapped: Fetcher = (args) => fetcher(args)
+  const wrapped: Fetcher = (args, cursor) => fetcher(args, cursor)
   const build: Build = { fetcher: wrapped, closed: false, listeners: new Set(), fibers: new Set() }
   Object.defineProperty(wrapped, BuildTypeId, { value: build })
   return build
@@ -2021,6 +2517,10 @@ interface FetchEvent {
    * stored: a run reading back its own target, or a `get` under a live patch.
    */
   readonly stored: boolean
+  /** On a list read: the index of the page this request loads. */
+  readonly page?: number | undefined
+  /** On a list read: the encoded cursor of the page, `undefined` for the first. */
+  readonly cursor?: Schema.Json | undefined
 }
 
 interface WatchHandle {
@@ -2029,6 +2529,8 @@ interface WatchHandle {
   readonly current: () => AsyncResult.AsyncResult<any, any>
   /** The patched view right now, and whether it includes an unconfirmed patch. */
   readonly patchedView: () => PatchedView
+  /** On a list read, whether it holds more pages to load. `undefined` otherwise. */
+  readonly more: () => More<any> | undefined
   /** Drops the watcher count synchronously. Idempotent. */
   readonly unregister: () => void
 }
@@ -2051,6 +2553,8 @@ interface EntryInfo {
   /** The trigger of the fetch in flight, or the one a held fetch will start with. */
   readonly trigger: Trigger | undefined
   readonly patches: { readonly live: number; readonly held: number }
+  /** On a list read only: whether it holds more pages to load. */
+  readonly more?: More<any> | undefined
 }
 
 /**
@@ -2145,6 +2649,18 @@ interface CacheInternals {
   /** `run` is the caller's, from `CurrentRun`. */
   readonly get: (def: ReadDef, args: unknown, fetcher: Fetcher, run: RunHandle | undefined) => Effect.Effect<any, any>
   readonly prefetch: (def: ReadDef, args: unknown, fetcher: Fetcher) => void
+  /**
+   * A list's load more. `resume` gets the pages and whether there is more
+   * once the walk or append reaching the next page ends. Returns the cancel.
+   */
+  readonly loadMore: (
+    def: ReadDef,
+    args: unknown,
+    fetcher: Fetcher,
+    resume: (exit: Exit.Exit<LoadedMore<any>, any>) => void
+  ) => () => void
+  /** A list's reset: drops the pages after the first, then invalidates. */
+  readonly reset: (def: ReadDef, args: unknown) => void
   /**
    * One synchronous batch: an entry hit twice restarts once. `byHand` is a
    * read's own `invalidate`, which a settle-once cache reports and ignores.
@@ -2624,6 +3140,8 @@ interface Watcher {
   readonly onChange: (result: Settled, patched: boolean) => void
   readonly onDefect: ((cause: Cause.Cause<never>) => void) | undefined
   readonly build: Build
+  /** On a list read, the `More` it last saw. */
+  lastMore: More<any> | undefined
   /** Gets the patched view, not the server value. */
   readonly patched: boolean
   /** The hold it registered under, or -1. */
@@ -2651,6 +3169,22 @@ interface FetchRec {
   readonly trigger: Trigger
   readonly build: Build
   fiber: Fiber.Fiber<any, any> | undefined
+  /** On a list read: an append of one page, instead of a walk from the first. */
+  readonly append: boolean
+}
+
+/** A `loadMore` caller, waiting for the walk or append that reaches its page. */
+interface MoreWaiter {
+  readonly build: Build
+  readonly resume: (exit: Exit.Exit<LoadedMore<any>, any>) => void
+}
+
+/** What a list's walk ended with. A Fail on a page ends it early, with the pages before. */
+interface WalkOutcome {
+  readonly pages: ReadonlyArray<unknown>
+  readonly hasMore: boolean
+  readonly failedAt: number | undefined
+  readonly cause: Cause.Cause<any> | undefined
 }
 
 /**
@@ -2727,6 +3261,16 @@ interface Entry {
   reached: number
   /** Hydrated, and nothing has fetched or written it since. Only means something while the window is open. */
   hydrated: boolean
+  // -- list reads only --
+  /** The page count a running or owed walk loads to. */
+  target: number | undefined
+  /** A trigger that arrived during an append, run as a walk when it ends. */
+  owed: Trigger | undefined
+  /** The error of the last failed append, until the next load more or walk, or the last watcher leaving. */
+  moreError: { readonly error: unknown } | undefined
+  /** Whether the list's settled pages have a next one, worked out once per result. */
+  hasMore: { readonly result: Settled; readonly value: boolean } | undefined
+  readonly moreWaiters: Set<MoreWaiter>
 }
 
 const runBody = <A, E, R>(
@@ -2782,6 +3326,35 @@ const withWaiting = (result: Settled, waiting: boolean): Settled =>
     : result._tag === "Success"
     ? AsyncResult.success(result.value, { waiting, timestamp: result.timestamp })
     : AsyncResult.failure(result.cause, { previousSuccess: result.previousSuccess, waiting })
+
+const constVoid = (): void => {}
+
+const moreLoading: More<never> = { _tag: "Loading" }
+const moreAvailable: More<never> = { _tag: "Available" }
+const moreEnd: More<never> = { _tag: "End" }
+
+const sameMore = (a: More<any> | undefined, b: More<any> | undefined): boolean =>
+  a === b ||
+  (a !== undefined && b !== undefined && a._tag === b._tag &&
+    (a._tag !== "Failed" || Equal.equals(a.error, (b as { readonly error: unknown }).error)))
+
+/** A cursor as the log shows it: encoded, or `undefined` when it doesn't encode. */
+const logCursor = (list: ListDef, cursor: unknown): Schema.Json | undefined => {
+  try {
+    return list.encodeCursor(cursor) as Schema.Json
+  } catch {
+    return undefined
+  }
+}
+
+/** A cursor's identity within one walk: its encoding as JSON. */
+const cursorKey = (list: ListDef, cursor: unknown): string | undefined => {
+  try {
+    return JSON.stringify(list.encodeCursor(cursor))
+  } catch {
+    return undefined
+  }
+}
 
 const settledEffect = (result: Settled): Effect.Effect<any, any> =>
   result._tag === "Success" ? Effect.succeed(result.value) : Effect.failCause(result.cause)
@@ -2942,7 +3515,12 @@ export const makeCache = (options: {
       born: ++seq,
       touched: 0,
       reached: 0,
-      hydrated: false
+      hydrated: false,
+      target: undefined,
+      owed: undefined,
+      moreError: undefined,
+      hasMore: undefined,
+      moreWaiters: new Set()
     }
     let byKey = index.get(def.name)
     if (byKey === undefined) index.set(def.name, byKey = new Map())
@@ -2984,6 +3562,7 @@ export const makeCache = (options: {
   const survivingBuild = (entry: Entry): Build | undefined => {
     for (const watcher of entry.watchers) if (!watcher.build.closed) return watcher.build
     for (const waiter of entry.waiters) if (!waiter.build.closed) return waiter.build
+    for (const waiter of entry.moreWaiters) if (!waiter.build.closed) return waiter.build
     return undefined
   }
 
@@ -2996,9 +3575,9 @@ export const makeCache = (options: {
   const hasLive = (entry: Entry): boolean => entry.patches.some((patch) => patch.live)
   /** Inside the fetch-free window, a hydrated entry. */
   const inWindow = (entry: Entry): boolean => windowOpen && entry.hydrated
-  /** The server value. `waiting` means only that a stored fetch is in flight. */
+  /** The server value. `waiting` means only that a stored fetch is in flight, and not a list's append. */
   const view = (entry: Entry): AsyncResult.AsyncResult<any, any> => {
-    const waiting = entry.fetch !== undefined
+    const waiting = entry.fetch !== undefined && !entry.fetch.append
     return entry.result === undefined ? AsyncResult.initial(waiting) : withWaiting(entry.result, waiting)
   }
   /** The server value with every patch applied in issue order. A patch that throws is dropped from the entry. */
@@ -3023,6 +3602,7 @@ export const makeCache = (options: {
     if (entry.watchers.size === 0) return
     const server = view(entry)
     if (server._tag === "Initial") return
+    const more = moreOf(entry)
     let patchedView: PatchedView | undefined
     for (const watcher of Array.from(entry.watchers)) {
       if (!watcher.active) continue
@@ -3038,13 +3618,22 @@ export const makeCache = (options: {
         result = patchedView.result
         patched = patchedView.patched
       }
-      if (patched === watcher.lastPatched && Equal.equals(result, watcher.last)) continue
+      if (patched === watcher.lastPatched && sameMore(more, watcher.lastMore) && Equal.equals(result, watcher.last)) {
+        continue
+      }
       watcher.last = result
       watcher.lastPatched = patched
+      watcher.lastMore = more
       watcher.onChange(result as Settled, patched)
     }
   }
-  const emitFetch = (entry: Entry, trigger: Trigger, restart: boolean, stored: boolean): void => {
+  const emitFetch = (
+    entry: Entry,
+    trigger: Trigger,
+    restart: boolean,
+    stored: boolean,
+    page?: { readonly page: number; readonly cursor: Schema.Json | undefined } | undefined
+  ): void => {
     if (fetchListeners.size === 0) return
     const event: FetchEvent = {
       read: entry.def.name,
@@ -3052,8 +3641,12 @@ export const makeCache = (options: {
       trigger,
       restart,
       inWindow: inWindow(entry),
-      stored
+      stored,
+      ...page
     }
+    fetchEvent(event)
+  }
+  const fetchEvent = (event: FetchEvent): void => {
     for (const listener of Array.from(fetchListeners)) {
       try {
         listener(event)
@@ -3072,8 +3665,8 @@ export const makeCache = (options: {
   }
   // A live patch blocks collection. A patch held after success doesn't.
   const idleEligible = (entry: Entry): boolean =>
-    !entry.removed && entry.watchers.size === 0 && entry.waiters.size === 0 && entry.fetch === undefined &&
-    !hasLive(entry)
+    !entry.removed && entry.watchers.size === 0 && entry.waiters.size === 0 && entry.moreWaiters.size === 0 &&
+    entry.fetch === undefined && !hasLive(entry)
   const idleTtl = (entry: Entry): number => entry.def.idleMs ?? defaultIdleMs
   // Built like `RcMap`'s: an `expiresAt` a reset moves, and a sleep that goes round again.
   const startIdle = (entry: Entry): void => {
@@ -3162,7 +3755,12 @@ export const makeCache = (options: {
   }
   const fireInterval = (entry: Entry): void => {
     // Paused: the due time stays, and the edge pass picks it up.
-    if (paused() || entry.fetch !== undefined || entry.watchers.size === 0) return
+    if (paused() || entry.watchers.size === 0) return
+    if (entry.fetch !== undefined) {
+      // During a list's append it is owed. During a walk it is dropped, as during any fetch.
+      if (entry.fetch.append) entry.owed ??= "interval"
+      return
+    }
     const build = survivingBuild(entry)
     if (build !== undefined) ensureFetch(entry, "interval", build)
   }
@@ -3212,13 +3810,196 @@ export const makeCache = (options: {
   }
   const intervalElapsed = (entry: Entry): boolean => entry.intervalDue !== undefined && entry.intervalDue <= now()
 
+  // -- lists ------------------------------------------------------------------
+  /** The pages a list holds: its Success's, or its Failure's previous Success's. */
+  const heldPages = (entry: Entry): ReadonlyArray<unknown> => {
+    const result = entry.result
+    if (result === undefined) return []
+    if (result._tag === "Success") return result.value
+    return Option.isSome(result.previousSuccess) ? result.previousSuccess.value.value : []
+  }
+  const hasMoreOf = (entry: Entry): boolean => {
+    const result = entry.result
+    if (result === undefined || result._tag !== "Success") return false
+    if (entry.hasMore?.result === result) return entry.hasMore.value
+    const pages = result.value as ReadonlyArray<unknown>
+    let value = false
+    if (pages.length > 0) {
+      try {
+        value = Option.isSome(entry.def.list!.next(pages[pages.length - 1], pages))
+      } catch {
+        // A hydrated or seeded list: the walk that loads past it reports the defect.
+      }
+    }
+    entry.hasMore = { result, value }
+    return value
+  }
+  const moreOf = (entry: Entry): More<any> | undefined => {
+    if (entry.def.list === undefined) return undefined
+    if (entry.target !== undefined && entry.target > heldPages(entry).length) return moreLoading
+    if (entry.moreError !== undefined) return { _tag: "Failed", error: entry.moreError.error }
+    return hasMoreOf(entry) ? moreAvailable : moreEnd
+  }
+  const resumeMore = (entry: Entry, exit: Exit.Exit<LoadedMore<any>, any>): void => {
+    if (entry.moreWaiters.size === 0) return
+    const waiters = Array.from(entry.moreWaiters)
+    entry.moreWaiters.clear()
+    for (const waiter of waiters) waiter.resume(exit)
+  }
+  const loadedMore = (entry: Entry): LoadedMore<any> => ({ pages: heldPages(entry), hasMore: hasMoreOf(entry) })
+  /**
+   * A list's pages, one request after the other, from after `base`: from the first page when it is empty. It
+   * loads to `target()` pages and stops early at the end. A Fail ends it with the pages before; a defect or an
+   * interrupt is its exit. `next`, `items` and `key` throwing are defects.
+   */
+  const walk = (
+    def: ReadDef,
+    args: unknown,
+    logKey: () => string,
+    build: Build,
+    base: ReadonlyArray<unknown>,
+    target: () => number,
+    onPage: (page: number, cursor: Schema.Json | undefined) => void
+  ): Effect.Effect<WalkOutcome, any> =>
+    Effect.suspend(() => {
+      const list = def.list!
+      const pages = base.slice()
+      const used = new Set<string>()
+      let repeated = false
+      const ended = (hasMore: boolean): Effect.Effect<WalkOutcome> =>
+        Effect.succeed({ pages, hasMore, failedAt: undefined, cause: undefined })
+      const step = (cursor: Option.Option<unknown>, first: boolean): Effect.Effect<WalkOutcome, any> => {
+        const index = pages.length
+        if (Option.isSome(cursor)) {
+          const key = cursorKey(list, cursor.value)
+          if (key !== undefined) {
+            if (used.has(key) && !repeated) {
+              repeated = true
+              const at = logKey()
+              report(
+                new PageRepeated({
+                  read: def.name,
+                  logKey: at,
+                  message: "[Loader] a walk of " + quote(def.name) + " at " + at + " got page " + index +
+                    " with a cursor it already used. Check the list's next."
+                })
+              )
+            }
+            used.add(key)
+          }
+        }
+        if (!first) onPage(index, Option.isSome(cursor) ? logCursor(list, cursor.value) : undefined)
+        return Effect.flatMap(Effect.exit(build.fetcher(args, cursor)), (exit): Effect.Effect<WalkOutcome, any> => {
+          if (exit._tag === "Failure") {
+            if (Cause.hasDies(exit.cause) || !Cause.hasFails(exit.cause)) return exit
+            return Effect.succeed({ pages, hasMore: true, failedAt: index, cause: failsOnly(exit.cause) })
+          }
+          return Effect.suspend(() => {
+            const page = exit.value
+            checkPage(def, logKey, page)
+            pages.push(page)
+            const next = list.next(page, pages)
+            if (Option.isNone(next)) return ended(false)
+            if (pages.length >= target()) return ended(true)
+            return step(next, false)
+          })
+        })
+      }
+      if (pages.length === 0) return step(Option.none(), true)
+      const next = list.next(pages[pages.length - 1], pages)
+      return Option.isNone(next) ? ended(false) : step(next, true)
+    })
+  const checkPage = (def: ReadDef, logKey: () => string, page: unknown): void => {
+    const list = def.list!
+    const seen = new Set<string>()
+    for (const item of list.items(page)) {
+      const key = list.key(item)
+      if (!seen.has(key)) {
+        seen.add(key)
+        continue
+      }
+      const at = logKey()
+      report(
+        new DuplicateKeyInPage({
+          read: def.name,
+          logKey: at,
+          message: "[Loader] a page of " + quote(def.name) + " at " + at +
+            " holds two items with one key. The first is kept."
+        })
+      )
+      return
+    }
+  }
+  /** A list's pages for callers alone, never stored: a walk to `count` pages. A page past the first may fail. */
+  const callerWalk = (
+    def: ReadDef,
+    args: unknown,
+    logKey: () => string,
+    build: Build,
+    count: number,
+    onPage: (page: number, cursor: Schema.Json | undefined) => void
+  ): Effect.Effect<ReadonlyArray<unknown>, any> =>
+    Effect.flatMap(
+      walk(def, args, logKey, build, [], () => count, onPage),
+      (out) =>
+        out.failedAt === undefined || out.failedAt > 0
+          ? Effect.succeed(out.pages)
+          : Effect.failCause(out.cause!)
+    )
+  /**
+   * Starts what a list's load more waits for: an append over a Success when the target is one page past it, or
+   * a walk from the first page. A fresh list that has ended loads nothing.
+   */
+  const startList = (entry: Entry, trigger: Trigger, build: Build): void => {
+    const held = heldPages(entry).length
+    const append = entry.result?._tag === "Success" && entry.target === held + 1
+    if (append && !hasMoreOf(entry)) {
+      if (!isStale(entry)) {
+        entry.target = undefined
+        resumeMore(entry, Exit.succeed(loadedMore(entry)))
+        emit(entry)
+        return afterQuiet(entry)
+      }
+      return startFetch(entry, trigger, build, false)
+    }
+    startFetch(entry, trigger, build, false, append)
+  }
+
   // -- fetching ---------------------------------------------------------------
-  const startFetch = (entry: Entry, trigger: Trigger, build: Build, restart: boolean): void => {
-    const fetch: FetchRec = { trigger, build, fiber: undefined }
+  const startFetch = (entry: Entry, trigger: Trigger, build: Build, restart: boolean, append = false): void => {
+    const fetch: FetchRec = { trigger, build, fiber: undefined, append }
     entry.fetch = fetch
     cancelIdle(entry)
+    let body: () => Effect.Effect<any, any> = () => build.fetcher(entry.args)
+    let page: { readonly page: number; readonly cursor: Schema.Json | undefined } | undefined
+    const list = entry.def.list
+    if (list !== undefined) {
+      // The next load more or walk clears a failed append's error.
+      entry.moreError = undefined
+      const logKey = () => logKeyOf(entry)
+      const onPage = (index: number, cursor: Schema.Json | undefined): void => {
+        if (entry.fetch === fetch) emitFetch(entry, trigger, false, true, { page: index, cursor })
+      }
+      if (append) {
+        const base = heldPages(entry)
+        let cursor: Schema.Json | undefined
+        try {
+          const next = list.next(base[base.length - 1], base)
+          if (Option.isSome(next)) cursor = logCursor(list, next.value)
+        } catch {
+          // The walk dies with it.
+        }
+        page = { page: base.length, cursor }
+        body = () => walk(entry.def, entry.args, logKey, build, base, () => base.length + 1, onPage)
+      } else {
+        // The server renders the first page.
+        entry.target = settleOnce ? 1 : Math.max(entry.target ?? 0, heldPages(entry).length, 1)
+        page = { page: 0, cursor: undefined }
+        body = () => walk(entry.def, entry.args, logKey, build, [], () => entry.target ?? 1, onPage)
+      }
+    }
     // Reported before the entry turns ordinary, so the event says whether it fetched inside the window.
-    emitFetch(entry, trigger, restart, true)
+    emitFetch(entry, trigger, restart, true, page)
     // A fetch after hydration makes the entry ordinary: a `get` joins it.
     entry.hydrated = false
     // The fetcher never starts inside the call that asked for it, nor before the fetch it replaces has finished
@@ -3227,7 +4008,7 @@ export const makeCache = (options: {
     const previous = draining.get(key)
     const fiber = runFork(Effect.andThen(
       previous === undefined ? Effect.yieldNow : Effect.uninterruptible(Fiber.await(previous)),
-      Effect.suspend(() => build.fetcher(entry.args))
+      Effect.suspend(body)
     ))
     fetch.fiber = fiber
     fetchFibers.add(fiber)
@@ -3309,13 +4090,17 @@ export const makeCache = (options: {
    * freshness included. Only a defect marks the previous Success stale.
    */
   const revert = (entry: Entry): void => {
+    entry.target = undefined
+    entry.owed = undefined
     resumeWaiters(entry, Exit.interrupt())
+    resumeMore(entry, Exit.interrupt())
     emit(entry)
     rearmInterval(entry)
     afterQuiet(entry)
   }
   const onFetchExit = (entry: Entry, fetch: FetchRec, exit: Exit.Exit<any, any>): void => {
     if (entry.fetch !== fetch || disposed) return
+    if (entry.def.list !== undefined) return onWalkExit(entry, fetch, exit)
     entry.fetch = undefined
     const previous = entry.result
     const waiterExit = callerExit(exit)
@@ -3350,6 +4135,87 @@ export const makeCache = (options: {
     emit(entry)
     if (!stored) rearmInterval(entry)
     afterQuiet(entry)
+  }
+  /**
+   * A list's walk or append ended. A walk swaps the pages in at once. A Fail on a page the list held is a Failure
+   * over the held pages; on a page past them, the pages loaded are swapped in and the error is the append's.
+   */
+  const onWalkExit = (entry: Entry, fetch: FetchRec, exit: Exit.Exit<WalkOutcome, any>): void => {
+    entry.fetch = undefined
+    const previous = entry.result
+    const held = heldPages(entry).length
+    entry.target = undefined
+    const owed = entry.owed
+    entry.owed = undefined
+    let getExit: Exit.Exit<any, any>
+    let moreExit: Exit.Exit<LoadedMore<any>, any>
+    let defect: Cause.Cause<never> | undefined
+    let stored = false
+    if (exit._tag === "Success") {
+      const out = exit.value
+      const failed = out.cause === undefined ? undefined : Exit.failCause(out.cause)
+      const error = out.cause === undefined ? undefined : Cause.findErrorOption(out.cause)
+      if (fetch.append) {
+        if (failed === undefined && previous?._tag === "Success") {
+          // An append changes no timestamp and settles nothing.
+          entry.result = AsyncResult.success(out.pages, { timestamp: previous.timestamp })
+          entry.hasMore = { result: entry.result, value: out.hasMore }
+          entry.hydrated = false
+        } else if (error !== undefined && Option.isSome(error)) {
+          entry.moreError = { error: error.value }
+        }
+      } else if (failed === undefined || (out.failedAt! >= held && out.failedAt! > 0)) {
+        store(entry, AsyncResult.success(out.pages, { timestamp: now() }))
+        entry.hasMore = { result: entry.result!, value: out.hasMore }
+        if (error !== undefined && Option.isSome(error)) entry.moreError = { error: error.value }
+        stored = true
+      } else {
+        const previousSuccess = previous === undefined
+          ? Option.none<AsyncResult.Success<any, any>>()
+          : previous._tag === "Success"
+          ? Option.some(previous)
+          : previous.previousSuccess
+        if (entry.watchers.size > 0 || settleOnce || Option.isSome(previousSuccess)) {
+          store(entry, AsyncResult.failure(out.cause!, { previousSuccess }))
+          stored = true
+        }
+      }
+      const server = entry.result
+      getExit = server?._tag === "Success" ? Exit.succeed(server.value) : failed ?? Exit.interrupt()
+      moreExit = failed ?? Exit.succeed(loadedMore(entry))
+    } else {
+      getExit = moreExit = callerExit(exit)
+      if (Cause.hasDies(exit.cause)) {
+        // Never stored: the previous state stays, marked stale, so a remount fetches fresh.
+        defect = diesOnly(exit.cause)
+        if (previous !== undefined) entry.invalidated = true
+      }
+    }
+    // Taken before anything resumes: a caller resumed here can run before this returns, and call again.
+    const more = Array.from(entry.moreWaiters)
+    entry.moreWaiters.clear()
+    let waiters: Array<Waiter> = []
+    // A trigger owed during an append runs as a walk now, and the `get` callers waiting for it stay.
+    const build = owed !== undefined && fetch.append && defect === undefined &&
+        (entry.watchers.size > 0 || entry.waiters.size > 0)
+      ? survivingBuild(entry)
+      : undefined
+    if (build !== undefined) {
+      ensureFetch(entry, owed!, build)
+    } else {
+      waiters = Array.from(entry.waiters)
+      entry.waiters.clear()
+    }
+    if (defect !== undefined) {
+      for (const watcher of Array.from(entry.watchers)) {
+        if (watcher.active) watcher.onDefect?.(defect)
+      }
+    }
+    emit(entry)
+    if (!stored) rearmInterval(entry)
+    afterQuiet(entry)
+    for (const waiter of more) waiter.resume(moreExit)
+    for (const waiter of waiters) waiter.resume(getExit)
   }
   /** The dropped fetch restarts under a surviving build, or the entry reverts. */
   const restartOrRevert = (entry: Entry, dropped: FetchRec, fallback: Build | undefined): void => {
@@ -3390,7 +4256,13 @@ export const makeCache = (options: {
    * fetch it was converted from, or its own fetch under a build that closed.
    */
   const runShared = (shared: Shared, restart: boolean): void => {
-    emitFetch(shared.entry, "get", restart, false)
+    emitFetch(
+      shared.entry,
+      "get",
+      restart,
+      false,
+      shared.entry.def.list === undefined ? undefined : { page: 0, cursor: undefined }
+    )
     const build = shared.build
     const previous: Array<Fiber.Fiber<any, any>> = []
     const stored = draining.get(drainKey(shared.entry))
@@ -3402,9 +4274,22 @@ export const makeCache = (options: {
       replaced.interruptUnsafe()
       previous.push(replaced)
     }
+    const entry = shared.entry
+    const body = entry.def.list === undefined
+      ? Effect.suspend(() => build.fetcher(entry.args))
+      : callerWalk(
+        entry.def,
+        entry.args,
+        () => logKeyOf(entry),
+        build,
+        Math.max(heldPages(entry).length, 1),
+        (page, cursor) => {
+          if (shared.fiber === fiber) emitFetch(entry, "get", false, false, { page, cursor })
+        }
+      )
     const fiber = runFork(Effect.andThen(
       previous.length === 0 ? Effect.yieldNow : Effect.uninterruptible(Fiber.awaitAll(previous)),
-      Effect.suspend(() => build.fetcher(shared.entry.args))
+      body
     ))
     shared.fiber = fiber
     fetchFibers.add(fiber)
@@ -3479,6 +4364,7 @@ export const makeCache = (options: {
       onChange,
       onDefect,
       build,
+      lastMore: moreOf(entry),
       patched,
       generation: holds > 0 ? generation : -1,
       windowed,
@@ -3494,12 +4380,14 @@ export const makeCache = (options: {
       logKey: () => logKeyOf(entry),
       current: () => withheld() ? provisionalView() : view(entry),
       patchedView: () => withheld() ? { result: provisionalView(), patched: false } : patchedViewOf(entry, view(entry)),
+      more: () => moreOf(entry),
       unregister: () => {
         if (!watcher.active) return
         watcher.active = false
         entry.watchers.delete(watcher)
         if (entry.watchers.size > 0) return
         stopInterval(entry)
+        entry.moreError = undefined
         if (isBareFailure(entry.result) && !settleOnce && !inWindow(entry)) entry.result = undefined
         afterQuiet(entry)
       }
@@ -3589,6 +4477,8 @@ export const makeCache = (options: {
       const waiter: Waiter = { build, resume, shared: undefined }
       entry.waiters.add(waiter)
       cancelIdle(entry)
+      // During a list's append, the walk it waits for is owed.
+      if (entry.fetch?.append) entry.owed ??= "get"
       ensureFetch(entry, "get", build)
       return Effect.sync(() => leave(entry, waiter))
     })
@@ -3603,27 +4493,28 @@ export const makeCache = (options: {
       // joined and never stored.
       if (run !== undefined && run.isStarted() && run.invalidates(registered, argsKey)) {
         const existing = lookup(registered, argsKey)
-        if (existing !== undefined) {
-          resetIdle(existing)
-          emitFetch(existing, "get", false, false)
-        } else if (fetchListeners.size > 0) {
-          const event: FetchEvent = {
+        const logKey = () => registered.logKey(args, argsKey)
+        const event = (page: { readonly page: number; readonly cursor: Schema.Json | undefined } | undefined): void => {
+          if (existing !== undefined) return emitFetch(existing, "get", false, false, page)
+          if (fetchListeners.size === 0) return
+          fetchEvent({
             read: registered.name,
-            logKey: registered.logKey(args, argsKey),
+            logKey: logKey(),
             trigger: "get",
             restart: false,
             inWindow: false,
-            stored: false
-          }
-          for (const listener of Array.from(fetchListeners)) {
-            try {
-              listener(event)
-            } catch {
-              // A listener can't change what the cache does.
-            }
-          }
+            stored: false,
+            ...page
+          })
         }
-        return buildOf(fetcher).fetcher(args)
+        if (existing !== undefined) resetIdle(existing)
+        if (registered.list === undefined) {
+          event(undefined)
+          return buildOf(fetcher).fetcher(args)
+        }
+        event({ page: 0, cursor: undefined })
+        const count = existing === undefined ? 1 : Math.max(heldPages(existing).length, 1)
+        return callerWalk(registered, args, logKey, buildOf(fetcher), count, (page, cursor) => event({ page, cursor }))
       }
       const entry = ensureEntry(registered, args, argsKey)
       const result = entry.result
@@ -3650,9 +4541,73 @@ export const makeCache = (options: {
     const entry = ensureEntry(register(def), args)
     // Nothing under a live patch.
     if (hasLive(entry)) return
-    if (inWindow(entry) || !isStale(entry)) return resetIdle(entry)
+    // A list that holds pages, stale ones included, isn't loaded again.
+    if (inWindow(entry) || !isStale(entry) || heldPages(entry).length > 0) return resetIdle(entry)
     ensureFetch(entry, "prefetch", buildOf(fetcher))
     afterQuiet(entry)
+  }
+
+  // The order of checks: a fetch in flight, the end, a live patch, the hydration window.
+  const loadMore: CacheInternals["loadMore"] = (def, args, fetcher, resume) => {
+    if (disposed) {
+      resume(Exit.interrupt())
+      return constVoid
+    }
+    const entry = ensureEntry(register(def), args)
+    const build = buildOf(fetcher)
+    const result = entry.result
+    // A per-request cache loads the first page only.
+    if (settleOnce && result !== undefined) {
+      resume(result._tag === "Success" ? Exit.succeed(loadedMore(entry)) : Exit.failCause(result.cause))
+      return constVoid
+    }
+    const waiter: MoreWaiter = { build, resume }
+    entry.moreWaiters.add(waiter)
+    cancelIdle(entry)
+    const held = heldPages(entry).length
+    const fetch = entry.fetch
+    if (fetch !== undefined) {
+      // A walk running loads one page more. An append running is this load more.
+      if (!fetch.append) entry.target = Math.max(entry.target ?? held, held + 1)
+    } else if (result?._tag === "Success" && !hasMoreOf(entry) && entry.target === undefined) {
+      entry.moreWaiters.delete(waiter)
+      resume(Exit.succeed(loadedMore(entry)))
+      afterQuiet(entry)
+      return constVoid
+    } else {
+      entry.target = Math.max(entry.target ?? held, held + 1)
+      if (hasLive(entry)) entry.deferred ??= "loadMore"
+      // Inside the fetch-free window it is owed until the window closes.
+      else if (!inWindow(entry) && fetches) startList(entry, "loadMore", build)
+    }
+    entry.moreError = undefined
+    emit(entry)
+    return () => {
+      if (entry.moreWaiters.delete(waiter)) afterQuiet(entry)
+    }
+  }
+
+  const reset: CacheInternals["reset"] = (def, args) => {
+    if (disposed || settleOnce) return
+    const registered = register(def)
+    const entry = lookup(registered, registered.argsKey(args))
+    if (entry === undefined) return
+    // Truncated first, so the walk it starts loads one page.
+    const result = entry.result
+    if (result?._tag === "Success" && result.value.length > 1) {
+      entry.result = AsyncResult.success(result.value.slice(0, 1), { timestamp: result.timestamp })
+    } else if (result?._tag === "Failure" && Option.isSome(result.previousSuccess)) {
+      const previous = result.previousSuccess.value
+      if (previous.value.length > 1) {
+        entry.result = AsyncResult.failure(result.cause, {
+          previousSuccess: Option.some(AsyncResult.success(previous.value.slice(0, 1), { timestamp: previous.timestamp }))
+        })
+      }
+    }
+    entry.moreError = undefined
+    if (entry.target !== undefined) entry.target = 1
+    invalidateEntry(entry, "reset")
+    emit(entry)
   }
 
   // -- invalidation -----------------------------------------------------------
@@ -3672,18 +4627,18 @@ export const makeCache = (options: {
     if (targets.tags.size > 0) raw.clear()
     return out
   }
-  const invalidateEntry = (entry: Entry): void => {
+  const invalidateEntry = (entry: Entry, cause: Trigger = "invalidation"): void => {
     entry.touched = ++seq
     // A never-fetched entry is a no-op.
     if (entry.result === undefined && entry.fetch === undefined) return
     if (entry.result !== undefined) entry.invalidated = true
     // Under a live patch the refetch waits for the last live owner.
     if (hasLive(entry)) {
-      entry.deferred ??= "invalidation"
+      entry.deferred ??= cause
       return
     }
     // A refetch held back by a patch keeps the trigger it was held with.
-    const trigger = entry.deferred ?? "invalidation"
+    const trigger = entry.deferred ?? cause
     entry.deferred = undefined
     const fetch = entry.fetch
     if (fetch !== undefined) {
@@ -3737,9 +4692,21 @@ export const makeCache = (options: {
           armInterval(entry)
         }
       }
+      if (entry.def.list !== undefined && entry.fetch === undefined) heldLoadMore(entry, deferred ?? "loadMore")
     }
     emit(entry)
     afterQuiet(entry)
+  }
+  /** A load more that waited, for a live patch or the fetch-free window, starts once nothing holds it. */
+  const heldLoadMore = (entry: Entry, trigger: Trigger): void => {
+    if (entry.target === undefined || entry.target <= heldPages(entry).length) {
+      entry.target = undefined
+      return
+    }
+    const build = survivingBuild(entry)
+    if (build !== undefined) return startList(entry, trigger, build)
+    entry.target = undefined
+    resumeMore(entry, Exit.interrupt())
   }
   /** `Equal.equals`, true when it throws: a check that only reports never fails a run. */
   const equalsOrTrue = (a: unknown, b: unknown): boolean => {
@@ -4043,6 +5010,9 @@ export const makeCache = (options: {
         entry.result = undefined
         afterQuiet(entry)
       }
+      if (entry.def.list !== undefined && entry.fetch === undefined && !hasLive(entry)) {
+        heldLoadMore(entry, "loadMore")
+      }
     }
   }
   const dehydrate: CacheInternals["dehydrate"] = () => {
@@ -4050,6 +5020,8 @@ export const makeCache = (options: {
     for (const entry of allEntries()) {
       if (entry.fetch !== undefined) dropFetch(entry, entry.fetch)
       resumeWaiters(entry, Exit.interrupt())
+      resumeMore(entry, Exit.interrupt())
+      entry.target = undefined
       if (entry.shared !== undefined) endShared(entry.shared, Exit.interrupt())
       const result = entry.result
       if (result === undefined) {
@@ -4142,7 +5114,11 @@ export const makeCache = (options: {
   /** One synchronous pass over watched entries, on a false-to-true edge with both signals then true. */
   const edgePass = (trigger: "visibility" | "connectivity"): void => {
     for (const entry of allEntries()) {
-      if (entry.watchers.size === 0 || entry.fetch !== undefined) continue
+      if (entry.watchers.size === 0) continue
+      if (entry.fetch !== undefined) {
+        if (entry.fetch.append && (isStale(entry) || intervalElapsed(entry))) entry.owed ??= trigger
+        continue
+      }
       if (isStale(entry) || intervalElapsed(entry)) {
         const build = survivingBuild(entry)
         if (build !== undefined) ensureFetch(entry, trigger, build)
@@ -4175,6 +5151,8 @@ export const makeCache = (options: {
     peek,
     get,
     prefetch,
+    loadMore,
+    reset,
     invalidate,
     beginRun,
     dehydrate,
@@ -4236,7 +5214,8 @@ export const makeCache = (options: {
         patches: {
           live: entry.patches.filter((patch) => patch.live).length,
           held: entry.patches.filter((patch) => !patch.live).length
-        }
+        },
+        ...(entry.def.list === undefined ? undefined : { more: moreOf(entry) })
       }
     }
   }
@@ -4252,6 +5231,7 @@ export const makeCache = (options: {
       for (const entry of allEntries()) {
         if (entry.fetch !== undefined) dropFetch(entry, entry.fetch)
         resumeWaiters(entry, Exit.interrupt())
+        resumeMore(entry, Exit.interrupt())
       }
       for (const shared of Array.from(sharedFetches)) endShared(shared, Exit.interrupt())
       for (const fiber of Array.from(timers)) fiber.interruptUnsafe()

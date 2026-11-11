@@ -55,6 +55,9 @@ import * as Loader from "../reactivity/Loader.ts"
  * run reading back an entry it invalidates, or a `get` on a stale entry
  * under a live patch. Its trigger is `get`.
  *
+ * A list read records each page it requests: `page` is its index, from 0,
+ * and `cursor` the encoded cursor, absent for the first page.
+ *
  * @stability experimental
  * @category models
  * @since 4.1.3
@@ -65,6 +68,8 @@ export interface Fetch {
   readonly trigger: Loader.Trigger
   readonly restart: boolean
   readonly stored: boolean
+  readonly page?: number | undefined
+  readonly cursor?: unknown
 }
 
 /**
@@ -78,7 +83,8 @@ export interface Fetch {
  * `watchers` how many watch it. `fetch` is `held` while a refetch waits for
  * a live patch's run to exit, and `trigger` is what started the fetch in
  * flight, or what the held one will start with. `patches` counts the live
- * patches and those held after their run succeeded.
+ * patches and those held after their run succeeded. `more`, on a list
+ * read only, is whether it holds more pages to load.
  *
  * @stability experimental
  * @category models
@@ -93,6 +99,7 @@ export interface Entry<A, E> {
   readonly fetch: "none" | "running" | "held"
   readonly trigger: Loader.Trigger | undefined
   readonly patches: { readonly live: number; readonly held: number }
+  readonly more?: Loader.More<E> | undefined
 }
 
 /**
@@ -188,7 +195,12 @@ export const layer = (options?: {
             logKey: event.logKey,
             trigger: event.trigger,
             restart: event.restart,
-            stored: event.stored
+            stored: event.stored,
+            ...(event.page === undefined
+              ? undefined
+              : event.cursor === undefined
+              ? { page: event.page }
+              : { page: event.page, cursor: event.cursor })
           })
         )
         yield* Effect.addFinalizer(() =>
