@@ -528,14 +528,17 @@ const boundOf = (component: AnyComponent): loaders.Bound | undefined =>
 const isKeyed = (story: Story<any, any, any, any>, field: string): boolean =>
   boundOf(story.component)?.fields.some((f) => f.field === field && f.keyed) === true
 
+/** The result a load step sends, from the field's last Success at the loader's current args. */
+type Build = (
+  previous: Option.Option<AsyncResult.Success<any, any>>
+) => AsyncResult.Success<any, any> | AsyncResult.Failure<any, any>
+
 /** Builds the snapshot of `result` at the loader's current args and sends it through the watch handler. */
 const loadStep = (
   story: Story<any, any, any, any>,
   step: string,
   field: string,
-  build: (
-    previous: Option.Option<AsyncResult.Success<any, any>>
-  ) => AsyncResult.Success<any, any> | AsyncResult.Failure<any, any>,
+  build: Build,
   patched: boolean,
   more?: Loader.More<any>
 ): Story<any, any, any, any> => {
@@ -602,7 +605,7 @@ const settleMore = (
   more?: Loader.More<any>
 ): Story<any, any, any, any> => {
   const marker = markerAt(story, field)
-  if (marker?.argsKey !== undefined) checkUnpatched(story, step, field, marker.args)
+  if (marker?.argsKey !== undefined) checkUnpatched(story, step, field, marker.argsKey)
   listField(story, step, field)
   if (!story.loadingMore.includes(field)) {
     throw new Error(`Story.${step}: no load more of "${field}" is pending`)
@@ -750,7 +753,7 @@ const loadKeyedStep = (
         )
       }
       const patched = "value" in load && load.patched === true
-      if (!patched) checkUnpatched(story, step, field, load.args)
+      if (!patched) checkUnpatched(story, step, field, argsKey)
       if (!patched && load.waiting !== true) settled.add(argsKey)
       if ("value" in load) {
         return {
@@ -939,25 +942,22 @@ const settleWaits = <Props, Model, Msg, Events>(
  * A single or list field's `loaded` or `loadFailed`: unless `patched`, a live patch makes it throw,
  * and unless `waiting` too, it settles the field's entry for the waits on it, after its message.
  */
-const settleStep = <S extends Story<any, any, any, any>>(
-  story: S,
+const settleStep = (
+  story: Story<any, any, any, any>,
   step: string,
   field: string,
   patched: boolean,
   waiting: boolean,
-  load: () => S
-): S => {
+  build: Build
+): Story<any, any, any, any> => {
   const marker = markerAt(story, field)
-  if (patched || marker?.argsKey === undefined) return load()
-  checkUnpatched(story, step, field, marker.args)
-  const loaded = load()
-  return waiting ? loaded : settleWaits(loaded, awaitedAt(loaded, field, marker.argsKey)) as S
-}
-
-/** Whether `awaited` is the entry of `field` at `argsKey`. */
-const awaitedAt = (story: Story<any, any, any, any>, field: string, argsKey: string) => {
-  const def = Loader.defOf(boundOf(story.component)!.fields.find((f) => f.field === field)!.read)
-  return (awaited: AwaitedField): boolean => awaited.field === field && def.argsKey(awaited.args) === argsKey
+  if (!patched && marker?.argsKey !== undefined) checkUnpatched(story, step, field, marker.argsKey)
+  // A settle ends the walk a list's pending load more waits on, unless a walk is still running.
+  const loaded = loadStep(waiting ? story : settlePending(story, field), step, field, build, patched)
+  return patched || waiting ? loaded : settleWaits(
+    loaded,
+    (awaited) => awaited.field === field && Loader.defOf(marker.read).argsKey(awaited.args) === marker.argsKey
+  )
 }
 
 /**
@@ -1037,11 +1037,9 @@ const registeredPatches = (
 
 /**
  * Throws when a running or queued Command's optimistic patch is live on the entry of `field` at
- * `args`: the runtime settles no fetch there, so only a patched value can be sent.
+ * `argsKey`: the runtime settles no fetch there, so only a patched value can be sent.
  */
-const checkUnpatched = (story: Story<any, any, any, any>, step: string, field: string, args: unknown): void => {
-  const read = boundOf(story.component)!.fields.find((f) => f.field === field)!.read
-  const argsKey = Loader.defOf(read).argsKey(args)
+const checkUnpatched = (story: Story<any, any, any, any>, step: string, field: string, argsKey: string): void => {
   const patcher = story.pending.find((entry) =>
     entry.status !== "awaiting" &&
     livePatches.get(entry)?.some((patch) => patch.field === field && patch.argsKey === argsKey) === true
@@ -1235,16 +1233,15 @@ class StepsImpl implements Steps<AnyComponent> {
       unknown,
       { readonly waiting?: boolean | undefined; readonly patched?: boolean | undefined } | undefined
     ]
-    // A list's pages settle its pending load more, unless a walk is still running.
     return this.step(
-      settleStep(this.current, "loaded", field, options?.patched === true, options?.waiting === true, () =>
-        loadStep(
-          options?.waiting === true ? this.current : settlePending(this.current, field),
-          "loaded",
-          field,
-          () => AsyncResult.success(value, { waiting: options?.waiting, timestamp: 0 }),
-          options?.patched === true
-        ))
+      settleStep(
+        this.current,
+        "loaded",
+        field,
+        options?.patched === true,
+        options?.waiting === true,
+        () => AsyncResult.success(value, { waiting: options?.waiting, timestamp: 0 })
+      )
     )
   }
   loadedMore(field: string, page: unknown): this {
@@ -1261,15 +1258,16 @@ class StepsImpl implements Steps<AnyComponent> {
       )
     }
     const [error, options] = rest as [unknown, { readonly waiting?: boolean | undefined } | undefined]
-    // A failure ends the walk a pending load more waits on, unless a walk is still running.
-    return this.step(settleStep(this.current, "loadFailed", field, false, options?.waiting === true, () =>
-      loadStep(
-        options?.waiting === true ? this.current : settlePending(this.current, field),
+    return this.step(
+      settleStep(
+        this.current,
         "loadFailed",
         field,
-        (previousSuccess) => AsyncResult.failure(Cause.fail(error), { previousSuccess, waiting: options?.waiting }),
-        false
-      )))
+        false,
+        options?.waiting === true,
+        (previousSuccess) => AsyncResult.failure(Cause.fail(error), { previousSuccess, waiting: options?.waiting })
+      )
+    )
   }
   loadedMany(field: string, entries: ReadonlyArray<KeyedLoad<any>>): this {
     return this.step(loadKeyedStep(this.current, this.sentFor, "loadedMany", field, entries))
