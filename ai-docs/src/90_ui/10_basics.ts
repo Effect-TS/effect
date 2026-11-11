@@ -103,11 +103,15 @@ export const NoteEditor = Component.make({
   // Children are rest arguments, and `false`, `null` and `undefined` render
   // nothing. A handler is a message, or a function from a plain payload such
   // as `{ value }` for `input`. It never sees the DOM event. `value` is
-  // controlled, so the field always shows the Model's draft.
+  // controlled, so the field always shows the Model's draft. `class` takes
+  // several tokens and skips `false`, `null` and `undefined` the same way,
+  // so a conditional class is `cond && "name"`. `Html.classNames` builds
+  // the same string anywhere else.
   view: (model, h) =>
     h.form(
       h.h2(h.props.note.title),
       h.textarea().attr("aria-label", "Body").value(model.draft)
+        .class("note-body", model.draft !== model.saved && "unsaved")
         .onInput(({ value }) => NoteEditorMessage.make({ _tag: "Edited", body: value })),
       // `h.running` is true while this instance has a save queued or running.
       h.button(h.running(SaveNote) ? "Saving…" : "Save").attr("type", "submit")

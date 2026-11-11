@@ -125,6 +125,20 @@ describe("Html", () => {
     })
   })
 
+  it("class takes string tokens and rejects true and numbers", () => {
+    const button = new Html.Element<Msg>("button", [])
+    const saving = false as boolean
+    const count = 0 as number
+    expect(button.class("rounded", saving && "opacity-50", null, undefined)).type.toBe<Html.Element<Msg>>()
+    expect(button.class).type.not.toBeCallableWith("rounded", true)
+    expect(button.class).type.not.toBeCallableWith("rounded", 1)
+    expect(button.class).type.not.toBeCallableWith(saving || "opacity-50")
+    expect(button.class).type.not.toBeCallableWith(count && "badge")
+    expect(Html.classNames).type.not.toBeCallableWith("rounded", true)
+    expect(Html.classNames).type.not.toBeCallableWith("rounded", 1)
+    expect(Html.classNames("rounded", saving && "opacity-50")).type.toBe<string>()
+  })
+
   it("ref Commands add nothing to a component's requirements", () => {
     const Form = Component.make({
       name: "Form",
