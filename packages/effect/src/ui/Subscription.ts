@@ -155,7 +155,8 @@ export const keyOf = (name: string, deps?: Deps): string =>
  * can't hold stale Model values. The deps are joined into the key
  * (`room:"42"`, see `keyOf`), so `room:"1"` and `room:"2"` are never both
  * connected: the old key closes before the new one starts. The builder runs
- * lazily when the Stream starts, never while declaring subscriptions on the server.
+ * when the Stream starts, not when `subscriptions` returns the Subscription,
+ * so it never runs on the server.
  *
  * **Example** (Keying a Subscription on a prop)
  *

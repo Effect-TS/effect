@@ -1,6 +1,6 @@
 import { assert, describe, it } from "@effect/vitest"
 import { Effect, Exit, type Layer, Option, Schema, type Scope, Stream } from "effect"
-import { Loader } from "effect/reactivity"
+import { AsyncResult, Loader } from "effect/reactivity"
 import { TestClock } from "effect/testing"
 import { Component, Head, type MessageLog, Route, Router } from "effect/ui"
 import { Query, TestHost } from "effect/ui/testing"
@@ -23,7 +23,8 @@ const run = <A, E>(
 
 const mount = Effect.flatMap(Router.currentRoute(AppRoute), (route) => TestHost.mount(App, { route }))
 
-describe("Router", () => {
+// Sequential: the restore tests change the person fixture's shared fetcher.
+describe("Router", { concurrent: false }, () => {
   it.effect("suppresses the matching initial route and keeps one subscription across navigation", () =>
     run(
       Router.memory({ routes: AppRoute }),
@@ -219,42 +220,67 @@ describe("Router", () => {
     })
   })
 
-  it.effect("seeds a cold entry from a restored loader field, stale, and refetches it once", () => {
-    const { history, layer } = setup("/people/1")
-    const page = Effect.gen(function*() {
-      const root = yield* mount
-      yield* TestHost.settle
-      click(root, "Home")
-      yield* TestHost.settle
+  for (const fail of [false, true]) {
+    it.effect(`seeds a cold entry from a restored loader field, stale, and refetches it once (${fail ? "failure" : "success"})`, () => {
+      const { history, layer } = setup("/people/1")
+      const page = Effect.gen(function*() {
+        const root = yield* mount
+        yield* TestHost.settle
+        click(root, "Home")
+        yield* TestHost.settle
+      })
+      return Effect.gen(function*() {
+        personFetches.count = 0
+        yield* run(layer, page).pipe(Effect.scoped)
+        assert.strictEqual(personFetches.count, 1)
+        personFetches.delay = 10
+        personFetches.fail = fail
+        yield* run(
+          Router.make({ routes: AppRoute, history }),
+          Effect.gen(function*() {
+            const root = yield* mount
+            yield* TestHost.settle
+            history.go(-1)
+            yield* TestHost.settle
+            // The new cache is cold: the restored snapshot seeds it, so the page mounts with the data,
+            // stale, while one refetch runs.
+            const restored = root.log().find((entry): entry is MessageLog.Mounted =>
+              entry._tag === "Mounted" && entry.path === "/App/Person[/people/1]"
+            )
+            assert.isTrue(restored?.adopted)
+            assert.strictEqual(
+              root.frames().at(-1),
+              "HomePerson 1Person 2SlowBackBlockUnblockPerson 1Refreshingcount 0Rename"
+            )
+            assert.strictEqual(root.entry(GetPerson, { id: 1 })?.fetch, "running")
+            yield* TestClock.adjust("10 millis")
+            yield* TestHost.settle
+            assert.deepStrictEqual(root.fetches().map((fetch) => [fetch.read, fetch.trigger]), [["GetPerson", "watch"]])
+            assert.strictEqual(personFetches.count, 2)
+            const entry = root.entry(GetPerson, { id: 1 })!
+            if (fail) {
+              // The failed refetch keeps the seed as its previous success.
+              assert.strictEqual(entry.stored._tag, "Failure")
+              assert.isTrue(AsyncResult.isFailure(entry.stored) && Option.isSome(entry.stored.previousSuccess))
+              assert.deepStrictEqual(
+                AsyncResult.isFailure(entry.stored)
+                  ? Option.map(entry.stored.previousSuccess, (s) => s.value)
+                  : undefined,
+                Option.some("Person 1")
+              )
+            } else {
+              assert.strictEqual(entry.stored._tag, "Success")
+              assert.isFalse(entry.stale)
+            }
+            assert.isFalse(root.text().includes("Refreshing"))
+          })
+        ).pipe(
+          Effect.scoped,
+          Effect.ensuring(Effect.sync(() => Object.assign(personFetches, { delay: 0, fail: false })))
+        )
+      })
     })
-    return Effect.gen(function*() {
-      personFetches.count = 0
-      yield* run(layer, page).pipe(Effect.scoped)
-      assert.strictEqual(personFetches.count, 1)
-      yield* run(
-        Router.make({ routes: AppRoute, history }),
-        Effect.gen(function*() {
-          const root = yield* mount
-          yield* TestHost.settle
-          history.go(-1)
-          yield* TestHost.settle
-          // The new cache is cold: the restored snapshot seeds it, so the page mounts with the data,
-          // stale, and one refetch runs.
-          const restored = root.log().find((entry): entry is MessageLog.Mounted =>
-            entry._tag === "Mounted" && entry.path === "/App/Person[/people/1]"
-          )
-          assert.isTrue(restored?.adopted)
-          assert.isTrue(root.text().includes("Person 1"))
-          assert.deepStrictEqual(
-            root.fetches().map((fetch) => [fetch.read, fetch.trigger]),
-            [["GetPerson", "watch"]]
-          )
-          assert.strictEqual(personFetches.count, 2)
-          assert.strictEqual(root.entry(GetPerson, { id: 1 })?.stale, false)
-        })
-      ).pipe(Effect.scoped)
-    })
-  })
+  }
 
   it.effect("drops a loader field whose snapshot was taken under a patch from the restored Model", () => {
     const { history, layer } = setup("/people/1")

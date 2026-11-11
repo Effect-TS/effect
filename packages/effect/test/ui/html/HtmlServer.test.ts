@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import { assert, expect, it } from "@effect/vitest"
-import { Context, Effect, Exit, Fiber, Layer, Option, Schema, type Scope, type Stream } from "effect"
+import { Clock, Context, Duration, Effect, Exit, Fiber, Layer, Option, Schema, type Scope, Stream } from "effect"
 import { AsyncResult, Loader } from "effect/reactivity"
 import { TestClock } from "effect/testing"
 import { Command, Component, Feature, Head, MessageLog, type Renderer, Router, Subscription } from "effect/ui"
@@ -136,7 +136,10 @@ describe("HtmlServer", { concurrent: false }, () => {
   it.effect("hydrates slots that missed the budget: a fetch in flight and a deferred Layer", () =>
     hosted(Effect.gen(function*() {
       const person = yield* routed("/people/2")
-      const missed = yield* ssr(App, person.props, { budget: "50 millis" }).pipe(
+      const missed = yield* ssr(App, person.props, {
+        budget: "50 millis",
+        frames: (container) => container.querySelector("#bio")?.textContent ?? ""
+      }).pipe(
         Effect.provide([slowPeople, person.router])
       )
       expect(missed.html).toContain("<p id=\"bio\">Loading</p>")
@@ -149,6 +152,8 @@ describe("HtmlServer", { concurrent: false }, () => {
       yield* TestClock.adjust("300 millis")
       yield* TestHost.settle
       expect(missed.container.querySelector("#bio")!.textContent).toBe("Bio of person 2")
+      // From the server's markup through hydration to the fetch the client made.
+      expect(missed.root.frames()).toEqual(["Loading", "Bio of person 2"])
 
       const slow = yield* routed("/slow")
       const deferred = yield* ssr(App, slow.props, { budget: "50 millis" }).pipe(
@@ -183,6 +188,7 @@ describe("HtmlServer", { concurrent: false }, () => {
       const Text = Loader.Snapshot(GetText, "text")
       const ChildMessage = Schema.TaggedUnion({ Loaded: { snapshot: Text }, Tracked: {} })
       const Track = Command.make("Track", { args: {} }, () => Effect.succeed(ChildMessage.make({ _tag: "Tracked" })))
+      let builds = 0
       const Child = Component.make({
         name: "Child",
         model: Schema.Struct({ text: Text, status: Schema.String }),
@@ -194,10 +200,17 @@ describe("HtmlServer", { concurrent: false }, () => {
         init: ($) => $.set({ ...$.empty, status: "loading" }).run(Track()),
         update: (model, message, $) =>
           message._tag === "Loaded"
-            ? $.set({ text: message.snapshot, status: "loaded" }).run(Track()).emit("loaded")
+            ? $.set({ text: message.snapshot, status: "loaded" }).run(Command.interrupt(Track)).run(Track()).emit(
+              "loaded"
+            )
             : { ...model, status: "tracked" },
         subscriptions: (_model, _props, watch) => [
-          watch({ text: (snapshot) => ChildMessage.make({ _tag: "Loaded", snapshot }) })
+          watch({ text: (snapshot) => ChildMessage.make({ _tag: "Loaded", snapshot }) }),
+          // subscriptions() runs on the server for the watch, but a Stream's builder doesn't.
+          Subscription.make("browser", 0, () => {
+            builds++
+            return Stream.never
+          })
         ],
         view: (model, h) => h.span(model.status)
       }).pipe(Component.provide(GetText.layer))
@@ -250,12 +263,15 @@ describe("HtmlServer", { concurrent: false }, () => {
       expect(result.html).toContain("<span>loaded</span>")
       expect(result.html).toContain("<!--[/Parent/Broken[b]--><p>broken</p><!--]/Parent/Broken[b]-->")
       expect(result.state["~deferred"]).toEqual(["/Parent/Broken[b]", "/Parent/Live[c]"])
-      // Only update's Command is logged and reported. init's was dropped silently.
+      expect(builds).toBe(0)
+      // Only update's Commands are logged and reported, its interrupt included. init's was dropped silently.
       const dropped = log.entries().filter((entry) => entry._tag === "CommandDropped")
       expect(dropped).toEqual([
+        expect.objectContaining({ path: "/Parent/Child[a]", name: "Track", reason: "server" }),
         expect.objectContaining({ path: "/Parent/Child[a]", name: "Track", reason: "server" })
       ])
       expect(problems).toEqual([
+        expect.objectContaining({ _tag: "ServerCommandIssued", path: "/Parent/Child[a]", command: "Track" }),
         expect.objectContaining({ _tag: "ServerCommandIssued", path: "/Parent/Child[a]", command: "Track" })
       ])
     }))
@@ -1097,6 +1113,78 @@ describe("HtmlServer loaders", { concurrent: false }, () => {
         expect(calls).toEqual([1, 1])
       }))
     }))
+
+  it.effect("allows a caller-only fetch inside the window: it stores nothing", () =>
+    hosted(Effect.gen(function*() {
+      const { GetItem, Item } = makeItems()
+      class ReadBack extends Command.Service<ReadBack>()(
+        "ReadBack",
+        {
+          args: {},
+          invalidates: () => [GetItem]
+        },
+        Effect.map(Effect.context<InstanceType<typeof GetItem>>(), (context) => () =>
+          // Reads back its own invalidation target, then never ends, so the fetch stays caller-only.
+          Effect.andThen(GetItem.get({ id: 1 }).pipe(Effect.provide(context), Effect.ignore), Effect.never))
+      ) {}
+      class Store extends Context.Service<Store, string>()("test/Store") {}
+      let builds = 0
+      const Slow = Component.make({
+        name: "Slow",
+        model: Schema.Struct({}),
+        message: Schema.Never,
+        elements: Html,
+        init: () => ({}),
+        update: (model) => model,
+        view: (_, h) => h.p("slow")
+      }).pipe(Component.provide(Layer.effect(
+        Store,
+        Effect.suspend(() => builds++ === 0 ? Effect.succeed("ready") : Effect.as(Effect.sleep("10 millis"), "ready"))
+      )))
+      const Page = Component.make({
+        name: "Page",
+        model: Schema.Struct({}),
+        message: Schema.Never,
+        elements: Html,
+        init: ($) => $.set({}).run(ReadBack.make()),
+        update: (model) => model,
+        view: (_, h) => h.div(h.child(Item, { key: "a", props: { id: 1 } }), h.child(Slow, { key: "s", props: {} }))
+      }).pipe(Component.provide(ReadBack.layer.pipe(Layer.provideMerge(GetItem.layer))))
+      const result = yield* ssr(Page, {})
+      expect(result.root.fetches().map((fetch) => [fetch.stored, fetch.inWindow])).toEqual([[false, true]])
+    })))
+
+  it.effect("spends the whole budget on the client before failing, for a sleep its clock didn't see", () =>
+    hosted(Effect.gen(function*() {
+      const clock = yield* Clock.Clock
+      class Store extends Context.Service<Store, string>()("test/Store") {}
+      let builds = 0
+      const Panel = Component.make({
+        name: "Panel",
+        model: Schema.Struct({}),
+        message: Schema.Never,
+        elements: Html,
+        init: () => ({}),
+        update: (model) => model,
+        view: (_, h) => h.p("panel")
+      }).pipe(Component.provide(Layer.effect(
+        Store,
+        Effect.suspend(() =>
+          builds++ === 0 ? Effect.succeed("ready") : Effect.as(clock.sleep(Duration.millis(10)), "ready")
+        )
+      )))
+      const Page = Component.make({
+        name: "Page",
+        model: Schema.Struct({}),
+        message: Schema.Never,
+        elements: Html,
+        init: () => ({}),
+        update: (model) => model,
+        view: (_, h) => h.child(Panel, { key: "p", props: {} })
+      })
+      const result = yield* ssr(Page, {}, { budget: "100 millis" })
+      expect(result.adopted).toEqual(["/Page", "/Page/Panel[p]"])
+    })))
 
   it.effect("fails ssr naming the slots still waiting for their Layer when the budget is spent", () =>
     hosted(Effect.gen(function*() {

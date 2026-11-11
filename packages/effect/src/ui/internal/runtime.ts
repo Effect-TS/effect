@@ -1379,8 +1379,8 @@ const start = (
     if (inst.closed) return
     if (server !== undefined) {
       // No Command runs on the server. `init`'s are dropped silently, since the client reruns them when
-      // it adopts, and an interrupt has nothing to stop. One from `update` is logged and reported.
-      if (initIndex !== undefined || command._tag === "Interrupt") return
+      // it adopts. One from `update`, an interrupt included, is logged and reported.
+      if (initIndex !== undefined) return
       record({ _tag: "CommandDropped", path: inst.path, name: command.name, issued, reason: "server" })
       report(
         new Command.ServerCommandIssued({
