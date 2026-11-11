@@ -1,23 +1,26 @@
 /**
- * @title Server rendering and hydration
+ * @title Rendering on the server
  *
- * Render a routed app to HTML on the server with `HtmlServer.renderToHtml`,
- * embed its state in the page, and hydrate it in the browser with
- * `BrowserHost`.
+ * Render the routed app to HTML with `HtmlServer.renderToHtml` and embed
+ * its state in the page. This is the server's entry module. It serves the
+ * same `fixtures/App.ts` the browser mounts.
  */
-import { Effect, Option } from "effect"
+import { NodeHttpServer, NodeRuntime } from "@effect/platform-node"
+import { Effect, Layer, Option } from "effect"
 import { HttpRouter, HttpServerRequest, HttpServerResponse } from "effect/http"
 import { Router } from "effect/ui"
-import { BrowserHost, BrowserRouter, HtmlServer } from "effect/ui/html"
-import { App, AppRoute } from "./30_routing.ts"
+import { HtmlServer } from "effect/ui/html"
+// The server renders views too, so it registers the HTML elements as well.
+// The import reads no DOM global.
+// oxlint-disable-next-line no-unassigned-import
+import "effect/ui/html/register"
+import { createServer } from "node:http"
+import { App } from "./fixtures/App.ts"
 import type { Note } from "./fixtures/notes/domain/Note.ts"
 import { Notes } from "./fixtures/notes/services/Notes.ts"
+import { AppRoute } from "./fixtures/routes.ts"
 
-// ---------------------------------------------------------------------------
-// Server
-// ---------------------------------------------------------------------------
-
-export const renderPage = Effect.fnUntraced(function*(url: string) {
+const renderPage = Effect.fnUntraced(function*(url: string) {
   // The response status is the app's job, so resolve the URL before rendering.
   const resolved = AppRoute.resolve(url)
   if (Option.isNone(resolved)) {
@@ -68,37 +71,18 @@ const seed: ReadonlyArray<Note> = [{ id: "welcome", title: "Welcome", body: "Wri
 
 // Provide the app's requirements as you would for a mount. Here the server
 // holds the notes itself, and `Notes.layerHttp` is the browser's
-// implementation.
-export const PageRoutes = HttpRouter.add(
+// implementation. A handler's requirements belong to the request, so the
+// Layer goes through `provideRequest`, which builds it once for the routes.
+const PageRoutes = HttpRouter.add(
   "GET",
   "*",
-  Effect.flatMap(HttpServerRequest.HttpServerRequest, (request) => renderPage(request.url)).pipe(
-    Effect.provide(Notes.layerMemory(seed))
-  )
+  Effect.flatMap(HttpServerRequest.HttpServerRequest, (request) => renderPage(request.url))
+).pipe(HttpRouter.provideRequest(Notes.layerMemory(seed)))
+
+// A real server also serves `/client.js`, the bundle of the next example,
+// and the `/api` routes `Notes.layerHttp` calls.
+const ServerLive = HttpRouter.serve(PageRoutes).pipe(
+  Layer.provide(NodeHttpServer.layer(createServer, { port: 3000 }))
 )
 
-// ---------------------------------------------------------------------------
-// Client: the module served as /client.js
-// ---------------------------------------------------------------------------
-
-// Mount the same component with the same props, plus the server's state.
-// `Router.props` reads the route from the browser's URL. Each instance then
-// adopts the server's Model and DOM nodes instead of rebuilding them, and
-// the reads the server shipped aren't fetched again.
-//
-// A Layer that can never be ready on the server, such as a live connection,
-// is kept off it with `Component.provide(C, layer, { server: false })`. The
-// server then renders that slot's fallback and the client builds it fresh.
-export const hydrate = Effect.gen(function*() {
-  const state = JSON.parse(document.getElementById("state")!.textContent!)
-  const root = yield* BrowserHost.mountEffect(App, Router.props(AppRoute), document.getElementById("app")!, {
-    state
-  })
-  // `mountEffect` is `mount` as an Effect that returns the root. `adopted`
-  // completes once every slot is live. Until then a waiting slot is inert.
-  yield* root.adopted
-  return yield* Effect.never
-}).pipe(
-  Effect.scoped,
-  Effect.provide([BrowserRouter.layer({ routes: AppRoute }), Notes.layerHttp])
-)
+Layer.launch(ServerLive).pipe(NodeRuntime.runMain)
