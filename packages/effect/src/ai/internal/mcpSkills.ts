@@ -1,6 +1,6 @@
 /**
- * The Skills extension (SEP-2640): wire schemas and the catalog behind a
- * static skill.
+ * The Skills extension (SEP-2640): wire schemas, the catalog behind a static
+ * skill, and the handlers shared by the sessionful adapters.
  */
 import * as Cause from "../../Cause.ts"
 import * as Digest from "../../crypto/Digest.ts"
