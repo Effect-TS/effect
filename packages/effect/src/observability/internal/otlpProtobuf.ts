@@ -1,8 +1,10 @@
 /**
  * OTLP Protobuf encoding for traces, metrics, and logs.
  *
- * Implements the protobuf wire format according to:
- * https://github.com/open-telemetry/opentelemetry-proto
+ * Writes the messages of https://github.com/open-telemetry/opentelemetry-proto
+ * with a `ProtobufWriter`. Each `write*` function writes the fields of one
+ * message and returns the writer, so nested messages chain:
+ * `writeStatus(w.tag(15, LEN).fork(), status).join()`.
  */
 
 import * as ProtobufWriter from "../../protobuf/ProtobufWriter.ts"
@@ -11,92 +13,24 @@ import type { ResourceSpan, ScopeSpan, TraceData } from "../OtlpTracer.ts"
 
 type Writer = ProtobufWriter.ProtobufWriter
 
-const WIRE_VARINT = ProtobufWriter.WireType.Varint
-const WIRE_I64 = ProtobufWriter.WireType.I64
-const WIRE_LEN = ProtobufWriter.WireType.Len
-const WIRE_I32 = ProtobufWriter.WireType.I32
-
-// Field writers
-
-// A 64-bit integer for the writer. Safe integers are written as they are, and
-// everything else goes through `BigInt`, which throws for non-integers.
-const int64 = (value: string | number | bigint): bigint | number =>
-  typeof value === "number" && Number.isSafeInteger(value) ? value : BigInt(value)
-
-// Negative numbers are written as ten-byte varints, as for `int64`.
-const varintField = (w: Writer, number: number, value: string | number | bigint): void => {
-  w.tag(number, WIRE_VARINT)
-  if (typeof value === "number" && value >>> 0 === value) w.uint32(value)
-  else w.int64(int64(value))
-}
-
-const boolField = (w: Writer, number: number, value: boolean): void => {
-  w.tag(number, WIRE_VARINT)
-  w.uint32(value ? 1 : 0)
-}
-
-const fixed64Field = (w: Writer, number: number, value: string | number | bigint): void => {
-  w.tag(number, WIRE_I64)
-  w.fixed64(int64(value))
-}
-
-const fixed32Field = (w: Writer, number: number, value: number): void => {
-  w.tag(number, WIRE_I32)
-  w.fixed32(value)
-}
-
-const doubleField = (w: Writer, number: number, value: number): void => {
-  w.tag(number, WIRE_I64)
-  w.double(value)
-}
-
-const stringField = (w: Writer, number: number, value: string): void => {
-  w.tag(number, WIRE_LEN)
-  w.string(value)
-}
-
-// Empty strings are omitted.
-const optionalStringField = (w: Writer, number: number, value: string | undefined): void => {
-  if (value !== undefined && value !== "") stringField(w, number, value)
-}
+const VARINT = ProtobufWriter.WireType.Varint
+const I64 = ProtobufWriter.WireType.I64
+const LEN = ProtobufWriter.WireType.Len
+const I32 = ProtobufWriter.WireType.I32
 
 // Trace and span ids are 16 and 8 bytes, parsed into these arrays.
 const traceIdScratch = new Uint8Array(16)
 const spanIdScratch = new Uint8Array(8)
 
-// The bytes of a hex string, such as a trace or span id. Each pair of
-// characters is parsed with `parseInt`, and a trailing odd character is
-// ignored.
-const hexField = (w: Writer, number: number, hex: string): void => {
+// The bytes of a hex id. Each pair of characters is parsed with `parseInt`,
+// and a trailing odd character is ignored.
+const hexBytes = (hex: string): Uint8Array => {
   const length = hex.length >>> 1
   const bytes = length === 16 ? traceIdScratch : length === 8 ? spanIdScratch : new Uint8Array(length)
   for (let i = 0; i < length; i++) {
     bytes[i] = parseInt(hex.slice(i * 2, i * 2 + 2), 16)
   }
-  w.tag(number, WIRE_LEN)
-  w.bytes(bytes)
-}
-
-const messageField = <A>(w: Writer, number: number, write: (w: Writer, value: A) => void, value: A): void => {
-  w.tag(number, WIRE_LEN)
-  const start = w.beginDelimited()
-  write(w, value)
-  w.endDelimited(start)
-}
-
-const repeatedField = <A>(
-  w: Writer,
-  number: number,
-  write: (w: Writer, value: A) => void,
-  values: ReadonlyArray<A>
-): void => {
-  for (let i = 0; i < values.length; i++) messageField(w, number, write, values[i])
-}
-
-const encoder = <A>(write: (w: Writer, value: A) => void) => (value: A): Uint8Array => {
-  const w = new ProtobufWriter.ProtobufWriter()
-  write(w, value)
-  return w.finish()
+  return bytes
 }
 
 // Common types (opentelemetry.proto.common.v1)
@@ -116,23 +50,23 @@ const encoder = <A>(write: (w: Writer, value: A) => void) => (value: A): Uint8Ar
  *   }
  * }
  */
-const writeAnyValue = (w: Writer, value: AnyValue): void => {
+const writeAnyValue = (w: Writer, value: AnyValue): Writer => {
   if (value.stringValue !== undefined && value.stringValue !== null) {
-    stringField(w, 1, value.stringValue)
+    w.tag(1, LEN).string(value.stringValue)
   } else if (value.boolValue !== undefined && value.boolValue !== null) {
-    boolField(w, 2, value.boolValue)
+    w.tag(2, VARINT).bool(value.boolValue)
   } else if (value.intValue !== undefined && value.intValue !== null) {
-    varintField(w, 3, value.intValue)
+    w.tag(3, VARINT).int64(value.intValue)
   } else if (value.doubleValue !== undefined && value.doubleValue !== null) {
-    doubleField(w, 4, value.doubleValue)
+    w.tag(4, I64).double(value.doubleValue)
   } else if (value.arrayValue !== undefined) {
-    messageField(w, 5, writeArrayValue, value.arrayValue)
+    writeArrayValue(w.tag(5, LEN).fork(), value.arrayValue).join()
   } else if (value.kvlistValue !== undefined) {
-    messageField(w, 6, writeKeyValueList, value.kvlistValue)
+    writeKeyValueList(w.tag(6, LEN).fork(), value.kvlistValue).join()
   } else if (value.bytesValue !== undefined) {
-    w.tag(7, WIRE_LEN)
-    w.bytes(value.bytesValue)
+    w.tag(7, LEN).bytes(value.bytesValue)
   }
+  return w
 }
 
 /**
@@ -142,8 +76,10 @@ const writeAnyValue = (w: Writer, value: AnyValue): void => {
  *   repeated AnyValue values = 1;
  * }
  */
-const writeArrayValue = (w: Writer, value: { readonly values: ReadonlyArray<AnyValue> }): void =>
-  repeatedField(w, 1, writeAnyValue, value.values)
+const writeArrayValue = (w: Writer, value: { readonly values: ReadonlyArray<AnyValue> }): Writer => {
+  for (const item of value.values) writeAnyValue(w.tag(1, LEN).fork(), item).join()
+  return w
+}
 
 /**
  * Encodes a KeyValueList message.
@@ -152,8 +88,10 @@ const writeArrayValue = (w: Writer, value: { readonly values: ReadonlyArray<AnyV
  *   repeated KeyValue values = 1;
  * }
  */
-const writeKeyValueList = (w: Writer, value: { readonly values: ReadonlyArray<KeyValue> }): void =>
-  repeatedField(w, 1, writeKeyValue, value.values)
+const writeKeyValueList = (w: Writer, value: { readonly values: ReadonlyArray<KeyValue> }): Writer => {
+  for (const item of value.values) writeKeyValue(w.tag(1, LEN).fork(), item).join()
+  return w
+}
 
 /**
  * Encodes a KeyValue message.
@@ -163,9 +101,10 @@ const writeKeyValueList = (w: Writer, value: { readonly values: ReadonlyArray<Ke
  *   AnyValue value = 2;
  * }
  */
-const writeKeyValue = (w: Writer, kv: KeyValue): void => {
-  stringField(w, 1, kv.key)
-  messageField(w, 2, writeAnyValue, kv.value)
+const writeKeyValue = (w: Writer, kv: KeyValue): Writer => {
+  w.tag(1, LEN).string(kv.key)
+  writeAnyValue(w.tag(2, LEN).fork(), kv.value).join()
+  return w
 }
 
 /**
@@ -183,11 +122,12 @@ const writeInstrumentationScope = (w: Writer, scope: {
   readonly version?: string
   readonly attributes?: ReadonlyArray<KeyValue>
   readonly droppedAttributesCount?: number
-}): void => {
-  stringField(w, 1, scope.name)
-  optionalStringField(w, 2, scope.version)
-  if (scope.attributes) repeatedField(w, 3, writeKeyValue, scope.attributes)
-  if (scope.droppedAttributesCount) varintField(w, 4, scope.droppedAttributesCount)
+}): Writer => {
+  w.tag(1, LEN).string(scope.name)
+  if (scope.version) w.tag(2, LEN).string(scope.version)
+  if (scope.attributes) { for (const item of scope.attributes) writeKeyValue(w.tag(3, LEN).fork(), item).join() }
+  if (scope.droppedAttributesCount) w.tag(4, VARINT).uint32(scope.droppedAttributesCount)
+  return w
 }
 
 // Resource types (opentelemetry.proto.resource.v1)
@@ -200,9 +140,10 @@ const writeInstrumentationScope = (w: Writer, scope: {
  *   uint32 dropped_attributes_count = 2;
  * }
  */
-const writeResource = (w: Writer, resource: Resource): void => {
-  repeatedField(w, 1, writeKeyValue, resource.attributes)
-  if (resource.droppedAttributesCount > 0) varintField(w, 2, resource.droppedAttributesCount)
+const writeResource = (w: Writer, resource: Resource): Writer => {
+  for (const item of resource.attributes) writeKeyValue(w.tag(1, LEN).fork(), item).join()
+  if (resource.droppedAttributesCount > 0) w.tag(2, VARINT).uint32(resource.droppedAttributesCount)
+  return w
 }
 
 /**
@@ -216,9 +157,10 @@ const writeResource = (w: Writer, resource: Resource): void => {
 const writeStatus = (w: Writer, status: {
   readonly code: number
   readonly message?: string
-}): void => {
-  optionalStringField(w, 2, status.message)
-  varintField(w, 3, status.code)
+}): Writer => {
+  if (status.message) w.tag(2, LEN).string(status.message)
+  w.tag(3, VARINT).int32(status.code)
+  return w
 }
 
 /**
@@ -236,11 +178,12 @@ const writeEvent = (w: Writer, event: {
   readonly name: string
   readonly attributes: ReadonlyArray<KeyValue>
   readonly droppedAttributesCount: number
-}): void => {
-  fixed64Field(w, 1, event.timeUnixNano)
-  stringField(w, 2, event.name)
-  repeatedField(w, 3, writeKeyValue, event.attributes)
-  if (event.droppedAttributesCount > 0) varintField(w, 4, event.droppedAttributesCount)
+}): Writer => {
+  w.tag(1, I64).fixed64(event.timeUnixNano)
+  w.tag(2, LEN).string(event.name)
+  for (const item of event.attributes) writeKeyValue(w.tag(3, LEN).fork(), item).join()
+  if (event.droppedAttributesCount > 0) w.tag(4, VARINT).uint32(event.droppedAttributesCount)
+  return w
 }
 
 /**
@@ -262,13 +205,14 @@ const writeLink = (w: Writer, link: {
   readonly attributes: ReadonlyArray<KeyValue>
   readonly droppedAttributesCount: number
   readonly flags?: number
-}): void => {
-  hexField(w, 1, link.traceId)
-  hexField(w, 2, link.spanId)
-  optionalStringField(w, 3, link.traceState)
-  repeatedField(w, 4, writeKeyValue, link.attributes)
-  if (link.droppedAttributesCount > 0) varintField(w, 5, link.droppedAttributesCount)
-  if (link.flags !== undefined) fixed32Field(w, 6, link.flags)
+}): Writer => {
+  w.tag(1, LEN).bytes(hexBytes(link.traceId))
+  w.tag(2, LEN).bytes(hexBytes(link.spanId))
+  if (link.traceState) w.tag(3, LEN).string(link.traceState)
+  for (const item of link.attributes) writeKeyValue(w.tag(4, LEN).fork(), item).join()
+  if (link.droppedAttributesCount > 0) w.tag(5, VARINT).uint32(link.droppedAttributesCount)
+  if (link.flags !== undefined) w.tag(6, I32).fixed32(link.flags)
+  return w
 }
 
 /**
@@ -310,23 +254,24 @@ const writeSpan = (w: Writer, span: {
   readonly droppedLinksCount: number
   readonly status: Parameters<typeof writeStatus>[1]
   readonly flags?: number
-}): void => {
-  hexField(w, 1, span.traceId)
-  hexField(w, 2, span.spanId)
-  optionalStringField(w, 3, span.traceState)
-  if (span.parentSpanId !== undefined) hexField(w, 4, span.parentSpanId)
-  stringField(w, 5, span.name)
-  varintField(w, 6, span.kind)
-  fixed64Field(w, 7, span.startTimeUnixNano)
-  fixed64Field(w, 8, span.endTimeUnixNano)
-  repeatedField(w, 9, writeKeyValue, span.attributes)
-  if (span.droppedAttributesCount > 0) varintField(w, 10, span.droppedAttributesCount)
-  repeatedField(w, 11, writeEvent, span.events)
-  if (span.droppedEventsCount > 0) varintField(w, 12, span.droppedEventsCount)
-  repeatedField(w, 13, writeLink, span.links)
-  if (span.droppedLinksCount > 0) varintField(w, 14, span.droppedLinksCount)
-  messageField(w, 15, writeStatus, span.status)
-  if (span.flags !== undefined) fixed32Field(w, 16, span.flags)
+}): Writer => {
+  w.tag(1, LEN).bytes(hexBytes(span.traceId))
+  w.tag(2, LEN).bytes(hexBytes(span.spanId))
+  if (span.traceState) w.tag(3, LEN).string(span.traceState)
+  if (span.parentSpanId !== undefined) w.tag(4, LEN).bytes(hexBytes(span.parentSpanId))
+  w.tag(5, LEN).string(span.name)
+  w.tag(6, VARINT).int32(span.kind)
+  w.tag(7, I64).fixed64(span.startTimeUnixNano)
+  w.tag(8, I64).fixed64(span.endTimeUnixNano)
+  for (const item of span.attributes) writeKeyValue(w.tag(9, LEN).fork(), item).join()
+  if (span.droppedAttributesCount > 0) w.tag(10, VARINT).uint32(span.droppedAttributesCount)
+  for (const item of span.events) writeEvent(w.tag(11, LEN).fork(), item).join()
+  if (span.droppedEventsCount > 0) w.tag(12, VARINT).uint32(span.droppedEventsCount)
+  for (const item of span.links) writeLink(w.tag(13, LEN).fork(), item).join()
+  if (span.droppedLinksCount > 0) w.tag(14, VARINT).uint32(span.droppedLinksCount)
+  writeStatus(w.tag(15, LEN).fork(), span.status).join()
+  if (span.flags !== undefined) w.tag(16, I32).fixed32(span.flags)
+  return w
 }
 
 /**
@@ -338,10 +283,11 @@ const writeSpan = (w: Writer, span: {
  *   string schema_url = 3;
  * }
  */
-const writeScopeSpans = (w: Writer, scopeSpans: ScopeSpan): void => {
-  messageField(w, 1, writeInstrumentationScope, scopeSpans.scope)
-  repeatedField(w, 2, writeSpan, scopeSpans.spans)
-  optionalStringField(w, 3, scopeSpans.schemaUrl)
+const writeScopeSpans = (w: Writer, scopeSpans: ScopeSpan): Writer => {
+  writeInstrumentationScope(w.tag(1, LEN).fork(), scopeSpans.scope).join()
+  for (const item of scopeSpans.spans) writeSpan(w.tag(2, LEN).fork(), item).join()
+  if (scopeSpans.schemaUrl) w.tag(3, LEN).string(scopeSpans.schemaUrl)
+  return w
 }
 
 /**
@@ -353,10 +299,11 @@ const writeScopeSpans = (w: Writer, scopeSpans: ScopeSpan): void => {
  *   string schema_url = 3;
  * }
  */
-const writeResourceSpans = (w: Writer, resourceSpans: ResourceSpan): void => {
-  messageField(w, 1, writeResource, resourceSpans.resource)
-  repeatedField(w, 2, writeScopeSpans, resourceSpans.scopeSpans)
-  optionalStringField(w, 3, resourceSpans.schemaUrl)
+const writeResourceSpans = (w: Writer, resourceSpans: ResourceSpan): Writer => {
+  writeResource(w.tag(1, LEN).fork(), resourceSpans.resource).join()
+  for (const item of resourceSpans.scopeSpans) writeScopeSpans(w.tag(2, LEN).fork(), item).join()
+  if (resourceSpans.schemaUrl) w.tag(3, LEN).string(resourceSpans.schemaUrl)
+  return w
 }
 
 /**
@@ -368,9 +315,11 @@ const writeResourceSpans = (w: Writer, resourceSpans: ResourceSpan): void => {
  *
  * @internal
  */
-export const encodeTracesData = encoder((w, tracesData: TraceData): void =>
-  repeatedField(w, 1, writeResourceSpans, tracesData.resourceSpans)
-)
+export const encodeTracesData = (tracesData: TraceData): Uint8Array => {
+  const w = new ProtobufWriter.ProtobufWriter()
+  for (const item of tracesData.resourceSpans) writeResourceSpans(w.tag(1, LEN).fork(), item).join()
+  return w.finish()
+}
 
 /**
  * Encodes a NumberDataPoint message.
@@ -394,14 +343,15 @@ const writeNumberDataPoint = (w: Writer, point: {
   readonly asDouble?: number | undefined
   readonly asInt?: string | number | bigint | undefined
   readonly flags?: number | undefined
-}): void => {
+}): Writer => {
   // An absent start time is omitted.
-  if (point.startTimeUnixNano !== undefined) fixed64Field(w, 2, point.startTimeUnixNano)
-  fixed64Field(w, 3, point.timeUnixNano)
-  if (point.asDouble !== undefined) doubleField(w, 4, point.asDouble)
-  if (point.asInt !== undefined) fixed64Field(w, 6, point.asInt)
-  repeatedField(w, 7, writeKeyValue, point.attributes)
-  if (point.flags !== undefined) varintField(w, 8, point.flags)
+  if (point.startTimeUnixNano !== undefined) w.tag(2, I64).fixed64(point.startTimeUnixNano)
+  w.tag(3, I64).fixed64(point.timeUnixNano)
+  if (point.asDouble !== undefined) w.tag(4, I64).double(point.asDouble)
+  if (point.asInt !== undefined) w.tag(6, I64).fixed64(point.asInt)
+  for (const item of point.attributes) writeKeyValue(w.tag(7, LEN).fork(), item).join()
+  if (point.flags !== undefined) w.tag(8, VARINT).uint32(point.flags)
+  return w
 }
 
 /**
@@ -431,19 +381,20 @@ const writeHistogramDataPoint = (w: Writer, point: {
   readonly min?: number | undefined
   readonly max?: number | undefined
   readonly flags?: number | undefined
-}): void => {
+}): Writer => {
   // An absent start time is omitted.
-  if (point.startTimeUnixNano !== undefined) fixed64Field(w, 2, point.startTimeUnixNano)
-  fixed64Field(w, 3, point.timeUnixNano)
-  fixed64Field(w, 4, point.count)
-  if (point.sum !== undefined) doubleField(w, 5, point.sum)
+  if (point.startTimeUnixNano !== undefined) w.tag(2, I64).fixed64(point.startTimeUnixNano)
+  w.tag(3, I64).fixed64(point.timeUnixNano)
+  w.tag(4, I64).fixed64(point.count)
+  if (point.sum !== undefined) w.tag(5, I64).double(point.sum)
   // Bucket counts and bounds are written unpacked, one field per value
-  for (let i = 0; i < point.bucketCounts.length; i++) fixed64Field(w, 6, point.bucketCounts[i])
-  for (let i = 0; i < point.explicitBounds.length; i++) doubleField(w, 7, point.explicitBounds[i])
-  repeatedField(w, 9, writeKeyValue, point.attributes)
-  if (point.flags !== undefined) varintField(w, 10, point.flags)
-  if (point.min !== undefined) doubleField(w, 11, point.min)
-  if (point.max !== undefined) doubleField(w, 12, point.max)
+  for (let i = 0; i < point.bucketCounts.length; i++) w.tag(6, I64).fixed64(point.bucketCounts[i])
+  for (let i = 0; i < point.explicitBounds.length; i++) w.tag(7, I64).double(point.explicitBounds[i])
+  for (const item of point.attributes) writeKeyValue(w.tag(9, LEN).fork(), item).join()
+  if (point.flags !== undefined) w.tag(10, VARINT).uint32(point.flags)
+  if (point.min !== undefined) w.tag(11, I64).double(point.min)
+  if (point.max !== undefined) w.tag(12, I64).double(point.max)
+  return w
 }
 
 /**
@@ -455,7 +406,10 @@ const writeHistogramDataPoint = (w: Writer, point: {
  */
 const writeGauge = (w: Writer, gauge: {
   readonly dataPoints: ReadonlyArray<Parameters<typeof writeNumberDataPoint>[1]>
-}): void => repeatedField(w, 1, writeNumberDataPoint, gauge.dataPoints)
+}): Writer => {
+  for (const item of gauge.dataPoints) writeNumberDataPoint(w.tag(1, LEN).fork(), item).join()
+  return w
+}
 
 /**
  * Encodes a Sum message.
@@ -470,10 +424,11 @@ const writeSum = (w: Writer, sum: {
   readonly dataPoints: ReadonlyArray<Parameters<typeof writeNumberDataPoint>[1]>
   readonly aggregationTemporality: number
   readonly isMonotonic: boolean
-}): void => {
-  repeatedField(w, 1, writeNumberDataPoint, sum.dataPoints)
-  varintField(w, 2, sum.aggregationTemporality)
-  boolField(w, 3, sum.isMonotonic)
+}): Writer => {
+  for (const item of sum.dataPoints) writeNumberDataPoint(w.tag(1, LEN).fork(), item).join()
+  w.tag(2, VARINT).int32(sum.aggregationTemporality)
+  w.tag(3, VARINT).bool(sum.isMonotonic)
+  return w
 }
 
 /**
@@ -487,14 +442,16 @@ const writeSum = (w: Writer, sum: {
 const writeHistogram = (w: Writer, histogram: {
   readonly dataPoints: ReadonlyArray<Parameters<typeof writeHistogramDataPoint>[1]>
   readonly aggregationTemporality: number
-}): void => {
-  repeatedField(w, 1, writeHistogramDataPoint, histogram.dataPoints)
-  varintField(w, 2, histogram.aggregationTemporality)
+}): Writer => {
+  for (const item of histogram.dataPoints) writeHistogramDataPoint(w.tag(1, LEN).fork(), item).join()
+  w.tag(2, VARINT).int32(histogram.aggregationTemporality)
+  return w
 }
 
-const writeValueAtQuantile = (w: Writer, q: { readonly quantile: number; readonly value: number }): void => {
-  doubleField(w, 1, q.quantile)
-  doubleField(w, 2, q.value)
+const writeValueAtQuantile = (w: Writer, q: { readonly quantile: number; readonly value: number }): Writer => {
+  w.tag(1, I64).double(q.quantile)
+  w.tag(2, I64).double(q.value)
+  return w
 }
 
 /**
@@ -523,15 +480,16 @@ const writeSummaryDataPoint = (w: Writer, point: {
   readonly sum: number
   readonly quantileValues: ReadonlyArray<{ readonly quantile: number; readonly value: number }>
   readonly flags?: number | undefined
-}): void => {
+}): Writer => {
   // An absent start time is omitted.
-  if (point.startTimeUnixNano !== undefined) fixed64Field(w, 2, point.startTimeUnixNano)
-  fixed64Field(w, 3, point.timeUnixNano)
-  fixed64Field(w, 4, point.count)
-  doubleField(w, 5, point.sum)
-  repeatedField(w, 6, writeValueAtQuantile, point.quantileValues)
-  repeatedField(w, 7, writeKeyValue, point.attributes)
-  if (point.flags !== undefined) varintField(w, 8, point.flags)
+  if (point.startTimeUnixNano !== undefined) w.tag(2, I64).fixed64(point.startTimeUnixNano)
+  w.tag(3, I64).fixed64(point.timeUnixNano)
+  w.tag(4, I64).fixed64(point.count)
+  w.tag(5, I64).double(point.sum)
+  for (const item of point.quantileValues) writeValueAtQuantile(w.tag(6, LEN).fork(), item).join()
+  for (const item of point.attributes) writeKeyValue(w.tag(7, LEN).fork(), item).join()
+  if (point.flags !== undefined) w.tag(8, VARINT).uint32(point.flags)
+  return w
 }
 
 /**
@@ -543,7 +501,10 @@ const writeSummaryDataPoint = (w: Writer, point: {
  */
 const writeSummary = (w: Writer, summary: {
   readonly dataPoints: ReadonlyArray<Parameters<typeof writeSummaryDataPoint>[1]>
-}): void => repeatedField(w, 1, writeSummaryDataPoint, summary.dataPoints)
+}): Writer => {
+  for (const item of summary.dataPoints) writeSummaryDataPoint(w.tag(1, LEN).fork(), item).join()
+  return w
+}
 
 /**
  * Encodes a Metric message.
@@ -569,14 +530,15 @@ const writeMetric = (w: Writer, metric: {
   readonly sum?: Parameters<typeof writeSum>[1] | undefined
   readonly histogram?: Parameters<typeof writeHistogram>[1] | undefined
   readonly summary?: Parameters<typeof writeSummary>[1] | undefined
-}): void => {
-  stringField(w, 1, metric.name)
-  optionalStringField(w, 2, metric.description)
-  optionalStringField(w, 3, metric.unit)
-  if (metric.gauge !== undefined) messageField(w, 5, writeGauge, metric.gauge)
-  if (metric.sum !== undefined) messageField(w, 7, writeSum, metric.sum)
-  if (metric.histogram !== undefined) messageField(w, 9, writeHistogram, metric.histogram)
-  if (metric.summary !== undefined) messageField(w, 11, writeSummary, metric.summary)
+}): Writer => {
+  w.tag(1, LEN).string(metric.name)
+  if (metric.description) w.tag(2, LEN).string(metric.description)
+  if (metric.unit) w.tag(3, LEN).string(metric.unit)
+  if (metric.gauge !== undefined) writeGauge(w.tag(5, LEN).fork(), metric.gauge).join()
+  if (metric.sum !== undefined) writeSum(w.tag(7, LEN).fork(), metric.sum).join()
+  if (metric.histogram !== undefined) writeHistogram(w.tag(9, LEN).fork(), metric.histogram).join()
+  if (metric.summary !== undefined) writeSummary(w.tag(11, LEN).fork(), metric.summary).join()
+  return w
 }
 
 /**
@@ -592,10 +554,11 @@ const writeScopeMetrics = (w: Writer, scopeMetrics: {
   readonly scope: { readonly name: string; readonly version?: string }
   readonly metrics: ReadonlyArray<Parameters<typeof writeMetric>[1]>
   readonly schemaUrl?: string
-}): void => {
-  messageField(w, 1, writeInstrumentationScope, scopeMetrics.scope)
-  repeatedField(w, 2, writeMetric, scopeMetrics.metrics)
-  optionalStringField(w, 3, scopeMetrics.schemaUrl)
+}): Writer => {
+  writeInstrumentationScope(w.tag(1, LEN).fork(), scopeMetrics.scope).join()
+  for (const item of scopeMetrics.metrics) writeMetric(w.tag(2, LEN).fork(), item).join()
+  if (scopeMetrics.schemaUrl) w.tag(3, LEN).string(scopeMetrics.schemaUrl)
+  return w
 }
 
 /**
@@ -611,10 +574,11 @@ const writeResourceMetrics = (w: Writer, resourceMetrics: {
   readonly resource: Resource
   readonly scopeMetrics: ReadonlyArray<Parameters<typeof writeScopeMetrics>[1]>
   readonly schemaUrl?: string
-}): void => {
-  messageField(w, 1, writeResource, resourceMetrics.resource)
-  repeatedField(w, 2, writeScopeMetrics, resourceMetrics.scopeMetrics)
-  optionalStringField(w, 3, resourceMetrics.schemaUrl)
+}): Writer => {
+  writeResource(w.tag(1, LEN).fork(), resourceMetrics.resource).join()
+  for (const item of resourceMetrics.scopeMetrics) writeScopeMetrics(w.tag(2, LEN).fork(), item).join()
+  if (resourceMetrics.schemaUrl) w.tag(3, LEN).string(resourceMetrics.schemaUrl)
+  return w
 }
 
 /**
@@ -626,9 +590,13 @@ const writeResourceMetrics = (w: Writer, resourceMetrics: {
  *
  * @internal
  */
-export const encodeMetricsData = encoder((w, metricsData: {
+export const encodeMetricsData = (metricsData: {
   readonly resourceMetrics: ReadonlyArray<Parameters<typeof writeResourceMetrics>[1]>
-}): void => repeatedField(w, 1, writeResourceMetrics, metricsData.resourceMetrics))
+}): Uint8Array => {
+  const w = new ProtobufWriter.ProtobufWriter()
+  for (const item of metricsData.resourceMetrics) writeResourceMetrics(w.tag(1, LEN).fork(), item).join()
+  return w.finish()
+}
 
 /**
  * Encodes a LogRecord message.
@@ -657,19 +625,20 @@ const writeLogRecord = (w: Writer, record: {
   readonly flags?: number | undefined
   readonly traceId?: string | undefined
   readonly spanId?: string | undefined
-}): void => {
-  fixed64Field(w, 1, record.timeUnixNano)
-  if (record.severityNumber !== undefined) varintField(w, 2, record.severityNumber)
-  optionalStringField(w, 3, record.severityText)
-  if (record.body !== undefined) messageField(w, 5, writeAnyValue, record.body)
-  repeatedField(w, 6, writeKeyValue, record.attributes)
+}): Writer => {
+  w.tag(1, I64).fixed64(record.timeUnixNano)
+  if (record.severityNumber !== undefined) w.tag(2, VARINT).int32(record.severityNumber)
+  if (record.severityText) w.tag(3, LEN).string(record.severityText)
+  if (record.body !== undefined) writeAnyValue(w.tag(5, LEN).fork(), record.body).join()
+  for (const item of record.attributes) writeKeyValue(w.tag(6, LEN).fork(), item).join()
   if (record.droppedAttributesCount !== undefined && record.droppedAttributesCount > 0) {
-    varintField(w, 7, record.droppedAttributesCount)
+    w.tag(7, VARINT).uint32(record.droppedAttributesCount)
   }
-  if (record.flags !== undefined) fixed32Field(w, 8, record.flags)
-  if (record.traceId !== undefined && record.traceId !== "") hexField(w, 9, record.traceId)
-  if (record.spanId !== undefined && record.spanId !== "") hexField(w, 10, record.spanId)
-  if (record.observedTimeUnixNano !== undefined) fixed64Field(w, 11, record.observedTimeUnixNano)
+  if (record.flags !== undefined) w.tag(8, I32).fixed32(record.flags)
+  if (record.traceId) w.tag(9, LEN).bytes(hexBytes(record.traceId))
+  if (record.spanId) w.tag(10, LEN).bytes(hexBytes(record.spanId))
+  if (record.observedTimeUnixNano !== undefined) w.tag(11, I64).fixed64(record.observedTimeUnixNano)
+  return w
 }
 
 /**
@@ -685,10 +654,11 @@ const writeScopeLogs = (w: Writer, scopeLogs: {
   readonly scope: { readonly name: string; readonly version?: string }
   readonly logRecords: ReadonlyArray<Parameters<typeof writeLogRecord>[1]>
   readonly schemaUrl?: string
-}): void => {
-  messageField(w, 1, writeInstrumentationScope, scopeLogs.scope)
-  repeatedField(w, 2, writeLogRecord, scopeLogs.logRecords)
-  optionalStringField(w, 3, scopeLogs.schemaUrl)
+}): Writer => {
+  writeInstrumentationScope(w.tag(1, LEN).fork(), scopeLogs.scope).join()
+  for (const item of scopeLogs.logRecords) writeLogRecord(w.tag(2, LEN).fork(), item).join()
+  if (scopeLogs.schemaUrl) w.tag(3, LEN).string(scopeLogs.schemaUrl)
+  return w
 }
 
 /**
@@ -704,10 +674,11 @@ const writeResourceLogs = (w: Writer, resourceLogs: {
   readonly resource: Resource
   readonly scopeLogs: ReadonlyArray<Parameters<typeof writeScopeLogs>[1]>
   readonly schemaUrl?: string
-}): void => {
-  messageField(w, 1, writeResource, resourceLogs.resource)
-  repeatedField(w, 2, writeScopeLogs, resourceLogs.scopeLogs)
-  optionalStringField(w, 3, resourceLogs.schemaUrl)
+}): Writer => {
+  writeResource(w.tag(1, LEN).fork(), resourceLogs.resource).join()
+  for (const item of resourceLogs.scopeLogs) writeScopeLogs(w.tag(2, LEN).fork(), item).join()
+  if (resourceLogs.schemaUrl) w.tag(3, LEN).string(resourceLogs.schemaUrl)
+  return w
 }
 
 /**
@@ -719,6 +690,10 @@ const writeResourceLogs = (w: Writer, resourceLogs: {
  *
  * @internal
  */
-export const encodeLogsData = encoder((w, logsData: {
+export const encodeLogsData = (logsData: {
   readonly resourceLogs: ReadonlyArray<Parameters<typeof writeResourceLogs>[1]>
-}): void => repeatedField(w, 1, writeResourceLogs, logsData.resourceLogs))
+}): Uint8Array => {
+  const w = new ProtobufWriter.ProtobufWriter()
+  for (const item of logsData.resourceLogs) writeResourceLogs(w.tag(1, LEN).fork(), item).join()
+  return w.finish()
+}

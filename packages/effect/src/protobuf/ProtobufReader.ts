@@ -47,14 +47,12 @@
  * }
  *
  * // message Shape { string name = 1; Point origin = 2; }
+ * const { Len, Varint } = ProtobufWriter.WireType
  * const w = new ProtobufWriter.ProtobufWriter()
- * w.tag(1, ProtobufWriter.WireType.Len)
- * w.string("box")
- * w.tag(2, ProtobufWriter.WireType.Len)
- * const origin = w.beginDelimited()
- * w.tag(2, ProtobufWriter.WireType.Varint)
- * w.int32(-1)
- * w.endDelimited(origin)
+ * w.tag(1, Len).string("box")
+ * w.tag(2, Len).fork()
+ * w.tag(2, Varint).int32(-1)
+ * w.join()
  *
  * const r = new ProtobufReader.ProtobufReader(w.finish())
  * r.tag()

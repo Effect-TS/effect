@@ -32,12 +32,20 @@ describe("ProtobufWriter", () => {
     ["sint32 -2147483648", (w: ProtobufWriter.ProtobufWriter) => w.sint32(-2147483648), "ffffffff0f"],
     ["int64 -1n", (w: ProtobufWriter.ProtobufWriter) => w.int64(-1n), "ffffffffffffffffff01"],
     ["int64 2^53 as number", (w: ProtobufWriter.ProtobufWriter) => w.int64(2 ** 53), "8080808080808010"],
+    ["int64 2^32 - 1 as number", (w: ProtobufWriter.ProtobufWriter) => w.int64(2 ** 32 - 1), "ffffffff0f"],
+    ["int64 2^32 as number", (w: ProtobufWriter.ProtobufWriter) => w.int64(2 ** 32), "8080808010"],
+    ["int64 -1 as string", (w: ProtobufWriter.ProtobufWriter) => w.int64("-1"), "ffffffffffffffffff01"],
     ["uint64 max", (w: ProtobufWriter.ProtobufWriter) => w.uint64(2n ** 64n - 1n), "ffffffffffffffffff01"],
     ["sint64 -2^63", (w: ProtobufWriter.ProtobufWriter) => w.sint64(-(2n ** 63n)), "ffffffffffffffffff01"],
     ["bool true", (w: ProtobufWriter.ProtobufWriter) => w.bool(true), "01"],
     ["fixed32 1", (w: ProtobufWriter.ProtobufWriter) => w.fixed32(1), "01000000"],
     ["sfixed32 -2", (w: ProtobufWriter.ProtobufWriter) => w.sfixed32(-2), "feffffff"],
     ["fixed64 1n", (w: ProtobufWriter.ProtobufWriter) => w.fixed64(1n), "0100000000000000"],
+    [
+      "fixed64 max as string",
+      (w: ProtobufWriter.ProtobufWriter) => w.fixed64("18446744073709551615"),
+      "ffffffffffffffff"
+    ],
     ["sfixed64 -2n", (w: ProtobufWriter.ProtobufWriter) => w.sfixed64(-2n), "feffffffffffffff"],
     ["float 1", (w: ProtobufWriter.ProtobufWriter) => w.float(1), "0000803f"],
     ["double 1", (w: ProtobufWriter.ProtobufWriter) => w.double(1), "000000000000f03f"],
@@ -50,21 +58,28 @@ describe("ProtobufWriter", () => {
     assert.strictEqual(write(f), hex)
   })
 
-  it("widens the length prefix of a delimited value over 127 bytes", () => {
+  it("nests forks and widens length prefixes over 127 bytes", () => {
+    const { Len, Varint } = ProtobufWriter.WireType
     const w = new ProtobufWriter.ProtobufWriter()
-    w.tag(1, ProtobufWriter.WireType.Len)
-    const start = w.beginDelimited()
-    w.bytes(new Uint8Array(200))
-    w.endDelimited(start)
-    w.tag(2, ProtobufWriter.WireType.Varint)
-    w.uint32(7)
+    w.tag(1, Len).fork()
+    w.tag(1, Len).fork().tag(1, Len).bytes(new Uint8Array(200)).join()
+    w.join()
+    w.tag(2, Varint).uint32(7)
     const r = new ProtobufReader.ProtobufReader(w.finish())
     r.tag()
-    const inner = r.delimited()
+    const outer = r.delimited()
+    outer.tag()
+    const inner = outer.delimited()
+    inner.tag()
     assert.strictEqual(inner.bytes().length, 200)
     assert.isTrue(inner.isDone())
+    assert.isTrue(outer.isDone())
     assert.strictEqual(ProtobufReader.fieldNumber(r.tag()), 2)
     assert.strictEqual(r.uint32(), 7)
+  })
+
+  it("throws for a join without a fork", () => {
+    assert.throws(() => new ProtobufWriter.ProtobufWriter().join(), /join without a fork/)
   })
 
   it("round-trips strings longer than the short-string path", () => {

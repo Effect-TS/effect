@@ -9,9 +9,8 @@
  * - The writer knows nothing about messages or schemas. The caller writes
  *   each tag and value in the order it wants them on the wire.
  * - A nested message, string, or bytes field is length-delimited. Nested
- *   messages are written in place between {@link ProtobufWriter.beginDelimited}
- *   and {@link ProtobufWriter.endDelimited}, which fill in the length prefix
- *   afterwards.
+ *   messages are written in place between {@link ProtobufWriter.fork} and
+ *   {@link ProtobufWriter.join}, which fills in the length prefix afterwards.
  *
  * **Gotchas**
  *
@@ -27,16 +26,13 @@
  *
  * // message Point { int32 x = 1; int32 y = 2; }
  * // message Shape { string name = 1; Point origin = 2; }
+ * const { Len, Varint } = ProtobufWriter.WireType
  * const w = new ProtobufWriter.ProtobufWriter()
- * w.tag(1, ProtobufWriter.WireType.Len)
- * w.string("box")
- * w.tag(2, ProtobufWriter.WireType.Len)
- * const origin = w.beginDelimited()
- * w.tag(1, ProtobufWriter.WireType.Varint)
- * w.int32(3)
- * w.tag(2, ProtobufWriter.WireType.Varint)
- * w.int32(-1)
- * w.endDelimited(origin)
+ * w.tag(1, Len).string("box")
+ * w.tag(2, Len).fork()
+ * w.tag(1, Varint).int32(3)
+ * w.tag(2, Varint).int32(-1)
+ * w.join()
  *
  * w.finish().length // => 20
  * ```
@@ -85,9 +81,10 @@ export type WireType = typeof WireType[keyof typeof WireType]
  *
  * **Details**
  *
- * 64-bit integers are given as a `bigint`, or as a `number` that is a safe
- * integer. {@link ProtobufWriter.finish} returns the bytes and resets the
- * writer, which can then write a new message.
+ * Every write returns the writer, so writes chain: `w.tag(1, WireType.Len).string("a")`.
+ * 64-bit integers are given as a `bigint`, a `number` that is an integer, or a
+ * decimal `string`. {@link ProtobufWriter.finish} returns the bytes and resets
+ * the writer, which can then write a new message.
  *
  * **Example** (Writing a field)
  *
@@ -95,10 +92,10 @@ export type WireType = typeof WireType[keyof typeof WireType]
  * import { ProtobufWriter } from "effect/protobuf"
  *
  * // message Test { int32 a = 1; } with a = 150
- * const w = new ProtobufWriter.ProtobufWriter()
- * w.tag(1, ProtobufWriter.WireType.Varint)
- * w.int32(150)
- * w.finish() // => new Uint8Array([0x08, 0x96, 0x01])
+ * new ProtobufWriter.ProtobufWriter()
+ *   .tag(1, ProtobufWriter.WireType.Varint)
+ *   .int32(150)
+ *   .finish() // => new Uint8Array([0x08, 0x96, 0x01])
  * ```
  *
  * @stability experimental
@@ -109,6 +106,8 @@ export class ProtobufWriter {
   private buf: Uint8Array<ArrayBuffer>
   private view: DataView
   private pos = 0
+  // The starts of the length-delimited values that are not joined yet.
+  private readonly forks: Array<number> = []
 
   /**
    * Creates a writer.
@@ -142,17 +141,32 @@ export class ProtobufWriter {
     this.buf = EMPTY
     this.view = EMPTY_VIEW
     this.pos = 0
+    this.forks.length = 0
     return out
   }
 
-  private ensure(n: number): void {
-    if (this.pos + n <= this.buf.length) return
-    let size = this.buf.length === 0 ? INITIAL_SIZE : this.buf.length * 2
-    while (size < this.pos + n) size *= 2
-    const next = new Uint8Array(size)
-    next.set(this.buf.subarray(0, this.pos))
-    this.buf = next
-    this.view = new DataView(next.buffer)
+  /**
+   * Starts a length-delimited value, such as a nested message or a packed
+   * repeated field, after its tag. {@link ProtobufWriter.join} ends it.
+   *
+   * @since 4.1.5
+   */
+  fork(): this {
+    this.forks.push(this.reserveLength())
+    return this
+  }
+
+  /**
+   * Ends the length-delimited value of the last {@link ProtobufWriter.fork},
+   * filling in its length.
+   *
+   * @since 4.1.5
+   */
+  join(): this {
+    const start = this.forks.pop()
+    if (start === undefined) throw new Error("ProtobufWriter.join without a fork")
+    this.fillLength(start)
+    return this
   }
 
   /**
@@ -160,8 +174,8 @@ export class ProtobufWriter {
    *
    * @since 4.1.5
    */
-  tag(fieldNumber: number, wireType: WireType): void {
-    this.uint32(fieldNumber * 8 + wireType)
+  tag(fieldNumber: number, wireType: WireType): this {
+    return this.uint32(fieldNumber * 8 + wireType)
   }
 
   /**
@@ -169,7 +183,7 @@ export class ProtobufWriter {
    *
    * @since 4.1.5
    */
-  uint32(n: number): void {
+  uint32(n: number): this {
     this.ensure(5)
     const buf = this.buf
     n = n >>> 0
@@ -178,29 +192,17 @@ export class ProtobufWriter {
       n = n >>> 7
     }
     buf[this.pos++] = n
+    return this
   }
 
-  // A 64-bit varint from its unsigned 32-bit halves.
-  private varint64(lo: number, hi: number): void {
-    this.ensure(10)
-    const buf = this.buf
-    while (hi > 0 || lo > 0x7F) {
-      buf[this.pos++] = (lo & 0x7F) | 0x80
-      lo = ((lo >>> 7) | (hi << 25)) >>> 0
-      hi = hi >>> 7
-    }
-    buf[this.pos++] = lo
-  }
-
-  // Negative numbers are sign-extended to ten bytes, as for `int64`.
   /**
    * Writes an `int32` varint. Negative values take ten bytes, as for `int64`.
    *
    * @since 4.1.5
    */
-  int32(n: number): void {
-    if (n >= 0) this.uint32(n)
-    else this.varint64(n >>> 0, 0xFFFFFFFF)
+  int32(n: number): this {
+    if (n >= 0) return this.uint32(n)
+    return this.varint64(n >>> 0, 0xFFFFFFFF)
   }
 
   /**
@@ -208,8 +210,8 @@ export class ProtobufWriter {
    *
    * @since 4.1.5
    */
-  sint32(n: number): void {
-    this.uint32(((n << 1) ^ (n >> 31)) >>> 0)
+  sint32(n: number): this {
+    return this.uint32(((n << 1) ^ (n >> 31)) >>> 0)
   }
 
   /**
@@ -217,8 +219,8 @@ export class ProtobufWriter {
    *
    * @since 4.1.5
    */
-  uint64(n: bigint | number): void {
-    this.int64(n)
+  uint64(n: bigint | number | string): this {
+    return this.int64(n)
   }
 
   /**
@@ -226,9 +228,10 @@ export class ProtobufWriter {
    *
    * @since 4.1.5
    */
-  int64(n: bigint | number): void {
+  int64(n: bigint | number | string): this {
+    if (typeof n === "number" && n >>> 0 === n) return this.uint32(n)
     split64(n)
-    this.varint64(halvesView.getUint32(0, true), halvesView.getUint32(4, true))
+    return this.varint64(halvesView.getUint32(0, true), halvesView.getUint32(4, true))
   }
 
   /**
@@ -236,12 +239,12 @@ export class ProtobufWriter {
    *
    * @since 4.1.5
    */
-  sint64(n: bigint | number): void {
+  sint64(n: bigint | number | string): this {
     split64(n)
     const lo = halvesView.getUint32(0, true)
     const hi = halvesView.getUint32(4, true)
     const sign = (hi | 0) >> 31
-    this.varint64(((lo << 1) ^ sign) >>> 0, (((hi << 1) | (lo >>> 31)) ^ sign) >>> 0)
+    return this.varint64(((lo << 1) ^ sign) >>> 0, (((hi << 1) | (lo >>> 31)) ^ sign) >>> 0)
   }
 
   /**
@@ -249,9 +252,10 @@ export class ProtobufWriter {
    *
    * @since 4.1.5
    */
-  bool(value: boolean): void {
+  bool(value: boolean): this {
     this.ensure(1)
     this.buf[this.pos++] = value ? 1 : 0
+    return this
   }
 
   /**
@@ -259,10 +263,11 @@ export class ProtobufWriter {
    *
    * @since 4.1.5
    */
-  fixed32(n: number): void {
+  fixed32(n: number): this {
     this.ensure(4)
     this.view.setUint32(this.pos, n >>> 0, true)
     this.pos += 4
+    return this
   }
 
   /**
@@ -270,10 +275,11 @@ export class ProtobufWriter {
    *
    * @since 4.1.5
    */
-  sfixed32(n: number): void {
+  sfixed32(n: number): this {
     this.ensure(4)
     this.view.setInt32(this.pos, n | 0, true)
     this.pos += 4
+    return this
   }
 
   /**
@@ -281,12 +287,13 @@ export class ProtobufWriter {
    *
    * @since 4.1.5
    */
-  fixed64(n: bigint | number): void {
+  fixed64(n: bigint | number | string): this {
     split64(n)
     this.ensure(8)
     this.view.setUint32(this.pos, halvesView.getUint32(0, true), true)
     this.view.setUint32(this.pos + 4, halvesView.getUint32(4, true), true)
     this.pos += 8
+    return this
   }
 
   /**
@@ -294,8 +301,8 @@ export class ProtobufWriter {
    *
    * @since 4.1.5
    */
-  sfixed64(n: bigint | number): void {
-    this.fixed64(n)
+  sfixed64(n: bigint | number | string): this {
+    return this.fixed64(n)
   }
 
   /**
@@ -303,10 +310,11 @@ export class ProtobufWriter {
    *
    * @since 4.1.5
    */
-  float(n: number): void {
+  float(n: number): this {
     this.ensure(4)
     this.view.setFloat32(this.pos, n, true)
     this.pos += 4
+    return this
   }
 
   /**
@@ -314,48 +322,11 @@ export class ProtobufWriter {
    *
    * @since 4.1.5
    */
-  double(n: number): void {
+  double(n: number): this {
     this.ensure(8)
     this.view.setFloat64(this.pos, n, true)
     this.pos += 8
-  }
-
-  /**
-   * * Starts a length-delimited value, such as a nested message, and returns its
-   * start for {@link endDelimited}. Write the tag before.
-   *
-   * @since 4.1.5
-   */
-  beginDelimited(): number {
-    // A one-byte length placeholder, which `endDelimited` widens if needed.
-    this.ensure(1)
-    return this.pos++
-  }
-
-  /**
-   * Ends the length-delimited value started at `start`, filling in its length.
-   *
-   * @since 4.1.5
-   */
-  endDelimited(start: number): void {
-    const length = this.pos - start - 1
-    if (length < 0x80) {
-      this.buf[start] = length
-      return
-    }
-    let size = 1
-    for (let n = length; n > 0x7F; n >>>= 7) size++
-    this.ensure(size - 1)
-    const buf = this.buf
-    buf.copyWithin(start + size, start + 1, this.pos)
-    this.pos += size - 1
-    let n = length
-    let p = start
-    while (n > 0x7F) {
-      buf[p++] = (n & 0x7F) | 0x80
-      n = n >>> 7
-    }
-    buf[p] = n
+    return this
   }
 
   /**
@@ -363,11 +334,12 @@ export class ProtobufWriter {
    *
    * @since 4.1.5
    */
-  bytes(bytes: Uint8Array): void {
+  bytes(bytes: Uint8Array): this {
     this.uint32(bytes.length)
     this.ensure(bytes.length)
     this.buf.set(bytes, this.pos)
     this.pos += bytes.length
+    return this
   }
 
   /**
@@ -375,15 +347,15 @@ export class ProtobufWriter {
    *
    * @since 4.1.5
    */
-  string(s: string): void {
+  string(s: string): this {
     const n = s.length
-    const start = this.beginDelimited()
+    const start = this.reserveLength()
     // A UTF-16 code unit takes at most three bytes.
     this.ensure(n * 3)
     if (n > SHORT_STRING) {
       this.pos += utf8Encoder.encodeInto(s, this.buf.subarray(this.pos)).written
-      this.endDelimited(start)
-      return
+      this.fillLength(start)
+      return this
     }
     const buf = this.buf
     let pos = this.pos
@@ -417,7 +389,59 @@ export class ProtobufWriter {
       buf[pos++] = 0x80 | (c & 0x3F)
     }
     this.pos = pos
-    this.endDelimited(start)
+    this.fillLength(start)
+    return this
+  }
+
+  private ensure(n: number): void {
+    if (this.pos + n <= this.buf.length) return
+    let size = this.buf.length === 0 ? INITIAL_SIZE : this.buf.length * 2
+    while (size < this.pos + n) size *= 2
+    const next = new Uint8Array(size)
+    next.set(this.buf.subarray(0, this.pos))
+    this.buf = next
+    this.view = new DataView(next.buffer)
+  }
+
+  // A 64-bit varint from its unsigned 32-bit halves.
+  private varint64(lo: number, hi: number): this {
+    this.ensure(10)
+    const buf = this.buf
+    while (hi > 0 || lo > 0x7F) {
+      buf[this.pos++] = (lo & 0x7F) | 0x80
+      lo = ((lo >>> 7) | (hi << 25)) >>> 0
+      hi = hi >>> 7
+    }
+    buf[this.pos++] = lo
+    return this
+  }
+
+  // A one-byte length placeholder, which `fillLength` widens if needed.
+  private reserveLength(): number {
+    this.ensure(1)
+    return this.pos++
+  }
+
+  // Fills in the length of the value after the placeholder at `start`.
+  private fillLength(start: number): void {
+    const length = this.pos - start - 1
+    if (length < 0x80) {
+      this.buf[start] = length
+      return
+    }
+    let size = 1
+    for (let n = length; n > 0x7F; n >>>= 7) size++
+    this.ensure(size - 1)
+    const buf = this.buf
+    buf.copyWithin(start + size, start + 1, this.pos)
+    this.pos += size - 1
+    let n = length
+    let p = start
+    while (n > 0x7F) {
+      buf[p++] = (n & 0x7F) | 0x80
+      n = n >>> 7
+    }
+    buf[p] = n
   }
 }
 
@@ -431,15 +455,19 @@ const BIGINT_ZERO = BigInt(0)
 // which is faster than bigint arithmetic.
 const halvesView = new DataView(new ArrayBuffer(8))
 
-const split64 = (n: bigint | number): void => {
+// A decimal string is read as a `bigint`, which throws for anything else.
+const split64 = (n: bigint | number | string): void => {
   if (typeof n === "number") {
     halvesView.setUint32(0, n >>> 0, true)
     halvesView.setUint32(4, Math.floor(n / 4294967296) >>> 0, true)
-  } else if (n < BIGINT_ZERO) {
-    halvesView.setBigInt64(0, n, true)
   } else {
-    halvesView.setBigUint64(0, n, true)
+    splitBigInt(typeof n === "string" ? BigInt(n) : n)
   }
+}
+
+const splitBigInt = (n: bigint): void => {
+  if (n < BIGINT_ZERO) halvesView.setBigInt64(0, n, true)
+  else halvesView.setBigUint64(0, n, true)
 }
 
 const utf8Encoder = new TextEncoder()
