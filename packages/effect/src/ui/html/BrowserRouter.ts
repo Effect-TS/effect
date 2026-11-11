@@ -42,7 +42,7 @@
  *   message: Message,
  *   elements: Html,
  *   init: ($) => $.props.route,
- *   update: (route, message) => AppRoute.print(message.route) === AppRoute.print(route) ? route : message.route,
+ *   update: (_, message) => message.route,
  *   subscriptions: (model) => [Router.subscription(AppRoute, model.route, (route) => Message.make({ _tag: "ChangedRoute", route }))],
  *   view: (route, h) =>
  *     h.div(

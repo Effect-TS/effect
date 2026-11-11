@@ -45,9 +45,8 @@ describe("Router", { concurrent: false }, () => {
       })
     ))
 
-  it.effect("reports an initial mismatch once, but accepts a delayed root after navigation", () => {
-    const problems: Array<Loader.Problem.Any> = []
-    return run(
+  it.effect("reports an initial mismatch once, but accepts a delayed root after navigation", () =>
+    run(
       Router.memory({ routes: AppRoute, url: "/people/1" }),
       Effect.gen(function*() {
         const root = yield* TestHost.mount(App, { route: AppRoute.make({ _tag: "Person", params: { id: 2 } }) })
@@ -63,10 +62,8 @@ describe("Router", { concurrent: false }, () => {
         yield* TestHost.settle
         assert.deepStrictEqual(delayed.model()?.route, AppRoute.make({ _tag: "Person", params: { id: 2 } }))
         assert.deepStrictEqual(yield* TestHost.problems, [])
-        assert.deepStrictEqual(problems, [])
       })
-    ).pipe(Effect.provideService(Loader.Problems, (problem) => problems.push(problem)))
-  })
+    ))
 
   it.effect("a subset ignores an initial location outside it without checking a later navigation", () => {
     const People = AppRoute.subset(["Person"])

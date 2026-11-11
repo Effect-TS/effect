@@ -79,5 +79,16 @@ export const CurrentRoot = Context.Reference<() => RootHandle | undefined>("effe
   defaultValue: () => () => undefined
 })
 
-/** @internal */
+/**
+ * A Subscription may carry a function under this key. No Stream runs on the
+ * server, so there the runtime calls it once per render, for the root's
+ * Subscriptions only, with the root's context and the problems sink.
+ *
+ * @internal
+ */
 export const onServer: unique symbol = Symbol.for("effect/ui/Subscription/onServer") as any
+
+/** @internal */
+export interface OnServer {
+  readonly [onServer]?: (context: Context.Context<never>, report: RootHandle["report"]) => void
+}

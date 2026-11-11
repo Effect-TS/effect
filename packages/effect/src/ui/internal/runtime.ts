@@ -162,7 +162,6 @@ interface WatchRun {
 
 /** @internal */
 export interface Instance {
-  serverSampled?: boolean
   readonly path: string
   readonly depth: number
   readonly component: Component.Any
@@ -1674,6 +1673,8 @@ const start = (
   }
 
   // -- Subscriptions --------------------------------------------------------
+  // On the server: whether the root's Subscriptions were sampled for their checks.
+  let rootChecked = false
   /** `watchesOnly`: before the first render, when only the cache watchers register. */
   const syncSubscriptions = (inst: Instance, watchesOnly = false) => {
     const subscriptions = inst.component.subscriptions
@@ -1681,11 +1682,12 @@ const start = (
     if (inst.closed || inst.waiting || subscriptions === undefined) return
     // Sample the root once for server checks, and loader components for watch markers.
     // Nothing under a Layer kept off the server is sampled.
-    const checkRoot = server !== undefined && inst.parent === undefined && !inst.serverSampled
+    const checkRoot = server !== undefined && inst.parent === undefined && !rootChecked
     if (server !== undefined) {
       if (inst.env.never || (!checkRoot && inst.component["~loaders"] === undefined)) return
-      if (checkRoot) inst.serverSampled = true
+      if (checkRoot) rootChecked = true
     }
+    // A throw from the root's check fails the render: `guard` would defer the root to the client, unchecked.
     const wanted = checkRoot
       ? subscriptions(inst.model, inst.props)
       : guard(inst, "subscription", () => subscriptions(inst.model, inst.props))
@@ -1700,13 +1702,7 @@ const start = (
     }
     if (checkRoot) {
       for (const subscription of byKey.values()) {
-        if (typeof subscription !== "object" || subscription === null) continue
-        const hook = (subscription as {
-          readonly [services.onServer]?: (
-            ctx: Context.Context<never>,
-            report: (problem: Loader.Problem.Any) => void
-          ) => void
-        })[services.onServer]
+        const hook = (subscription as services.OnServer)[services.onServer]
         if (hook !== undefined) whenReady(inst.env, (envCtx) => hook(envCtx, report))
       }
     }

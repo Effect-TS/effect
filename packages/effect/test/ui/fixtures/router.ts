@@ -159,10 +159,7 @@ export const App = Component.make({
   init: ($) => ({ route: $.props.route, outcomes: [], blocked: false }),
   update: (model, message, $) =>
     AppMessage.match(message, {
-      ChangedRoute: ({ route }) =>
-        route._tag === model.route._tag && AppRoute.print(route) === AppRoute.print(model.route)
-          ? model
-          : { ...model, route },
+      ChangedRoute: ({ route }) => ({ ...model, route }),
       Go: ({ route }) => $.run(Router.push(AppRoute, route).pipe(Command.map(navigated))),
       Back: () => $.run(Router.Back.make().pipe(Command.map(navigated))),
       Block: () => ({ ...model, blocked: true }),
