@@ -1,2020 +1,1072 @@
-import { assert } from "@effect/vitest"
-import { Brand, JsonSchema, Schema, SchemaRepresentation } from "effect"
-import { TestSchema } from "effect/testing"
-import { describe, it } from "vitest"
-import { assertTrue, deepStrictEqual, strictEqual, throws } from "../../utils/assert.ts"
-import { withGeneratedModule } from "../../utils/generatedModule.ts"
+import { afterAll, assert, describe, it } from "@effect/vitest"
+import {
+  Brand,
+  Cause,
+  Exit,
+  HashMap,
+  JsonSchema,
+  Option,
+  Redacted,
+  Result,
+  Schema,
+  type SchemaAST,
+  SchemaRepresentation
+} from "effect"
+import { checkGeneratedModules, withGeneratedModule } from "../../utils/generatedModule.ts"
 
-type Category = {
-  readonly name: string
-  readonly children: ReadonlyArray<Category>
+type Generated = Record<string, Schema.Codec<unknown>>
+type Samples = { readonly accepts: ReadonlyArray<unknown>; readonly rejects: ReadonlyArray<unknown> }
+
+const compilation = new Map<string, string>()
+
+function generate(...schemas: readonly [Schema.Constraint, ...Array<Schema.Constraint>]) {
+  const input = SchemaRepresentation.toRepresentations([
+    schemas[0].ast,
+    ...schemas.slice(1).map((schema) => schema.ast)
+  ])
+  const document = SchemaRepresentation.toCodeDocument(input)
+  assert.lengthOf(document.codes, schemas.length)
+  assert.strictEqual(
+    document.references.nonRecursives.length + Object.keys(document.references.recursives).length,
+    Object.keys(input.references).length,
+    "Every input definition is emitted"
+  )
+  return document
 }
 
-const OuterCategory = Schema.Struct({
-  name: Schema.String,
-  children: Schema.Array(Schema.suspend((): Schema.Codec<Category> => OuterCategory))
-}).annotate({ identifier: "Category" })
+function render(document: SchemaRepresentation.CodeDocument, reverseRecursives = false): string {
+  const names = [
+    ...document.references.nonRecursives.map(({ $ref }) => $ref),
+    ...Object.keys(document.references.recursives)
+  ]
+  assert.strictEqual(new Set(names).size, names.length, "Each definition must be emitted exactly once")
+  const imports = document.artifacts.filter((artifact) => artifact._tag === "Import")
+  assert.strictEqual(new Set(imports.map((artifact) => artifact.importDeclaration)).size, imports.length)
+  const recursives = Object.entries(document.references.recursives)
+  if (reverseRecursives) recursives.reverse()
+  const definitions = [
+    ...document.references.nonRecursives.map(({ $ref, code }) => [$ref, code] as const),
+    ...recursives,
+    ...document.codes.map((code, i) => ["TestRoot" + i, code] as const)
+  ]
+  assert.isFalse(names.some((name) => name.startsWith("TestRoot")), "Fixture names must not shadow test exports")
+  return [
+    "import * as Schema from \"effect/Schema\"",
+    ...document.artifacts.map((artifact) =>
+      artifact._tag === "Import"
+        ? artifact.importDeclaration
+        : artifact._tag === "Enum"
+        ? "export " + artifact.code.runtime
+        : "export const " + artifact.identifier + " = " + artifact.code.runtime
+    ),
+    ...definitions.map(([name, code]) =>
+      "export type " + name + " = " + code.Type + "\nexport const " + name + " = " + code.runtime
+    )
+  ].join("\n")
+}
 
-const InnerCategory = Schema.Struct({
-  name: Schema.String,
-  children: Schema.Array(
-    Schema.suspend((): Schema.Codec<Category> => InnerCategory.annotate({ identifier: "Category" }))
+function assertSamples(schema: Schema.Codec<unknown>, { accepts, rejects }: Samples): void {
+  const decode = Schema.decodeUnknownSync(schema)
+  const encode = Schema.encodeSync(schema)
+  for (const value of accepts) {
+    const decoded = decode(value)
+    assert.deepStrictEqual(decoded, value)
+    assert.deepStrictEqual(encode(decoded), value)
+  }
+  for (const value of rejects) {
+    assert.isTrue(Result.isFailure(Schema.decodeUnknownResult(schema)(value)), "Expected a schema validation failure")
+  }
+}
+
+// Equality also checks readonly, optional, any and never distinctions.
+const typeAssertions = [
+  "type Equal<A, B> = (<T>() => T extends A ? 1 : 2) extends (<T>() => T extends B ? 1 : 2) ? true : false",
+  "type Normalize<T> = T extends object ? { [K in keyof T]: T[K] } : T",
+  "type Assert<A extends true> = A"
+].join("\n")
+
+function register(name: string, source: string, expectedTypes: ReadonlyArray<string> = []): void {
+  const checks = expectedTypes.flatMap((expected, i) => [
+    "type Alias" + i + " = Assert<Equal<Normalize<TestRoot" + i + ">, Normalize<" + expected + ">>>",
+    "type Inferred" + i + " = Assert<Equal<Normalize<typeof TestRoot" + i + ".Type>, Normalize<" + expected + ">>>"
+  ])
+  compilation.set(
+    String(compilation.size).padStart(3, "0") + "_" + name.replaceAll(/[^a-zA-Z0-9_-]/g, "_"),
+    source + "\n" + typeAssertions + "\n" + checks.join("\n")
   )
-})
+}
 
-describe("toCodeDocument", () => {
-  type Expected = {
-    readonly codes: SchemaRepresentation.Code | ReadonlyArray<SchemaRepresentation.Code>
-    readonly references?: {
-      readonly nonRecursives?: ReadonlyArray<{
-        readonly $ref: string
-        readonly code: SchemaRepresentation.Code
-      }>
-      readonly recursives?: {
-        readonly [$ref: string]: SchemaRepresentation.Code
-      }
+function example(name: string, schema: Schema.Top, expectedType: string, samples: Samples): void {
+  it(name, async () => {
+    const document = generate(schema)
+    assert.lengthOf(document.codes, 1)
+    const source = render(document)
+    register(name, source, [expectedType])
+    await withGeneratedModule<Generated>(source, ({ TestRoot0 }) => assertSamples(TestRoot0, samples))
+    // Exercise annotations on every schema shape without normalizing generated code.
+    const annotated = render(generate(schema.annotate({ description: "generated annotation" })))
+    await withGeneratedModule<Generated>(annotated, ({ TestRoot0 }) => {
+      assert.strictEqual(Schema.resolveAnnotations(TestRoot0)?.description, "generated annotation")
+      assertSamples(TestRoot0, samples)
+    })
+  })
+}
+
+function fromJson(schema: JsonSchema.JsonSchema): Schema.Top {
+  return SchemaRepresentation.fromJsonSchemaDocument(JsonSchema.fromSchemaDraft2020_12(schema), {
+    onEnter: (js) =>
+      js.type === "object" && js.additionalProperties === undefined ? { ...js, additionalProperties: false } : js
+  })
+}
+
+describe("toCodeDocument", { concurrent: false }, () => {
+  describe("values and generated types", () => {
+    example("Null", Schema.Null, "null", { accepts: [null], rejects: [undefined, 0] })
+    example("Undefined", Schema.Undefined, "undefined", { accepts: [undefined], rejects: [null, 0] })
+    example("Void", Schema.Void, "void", { accepts: [undefined], rejects: [] })
+    example("Never", Schema.Never, "never", { accepts: [], rejects: [undefined, null, {}, 0] })
+    example("Unknown", Schema.Unknown, "unknown", { accepts: [null, undefined, {}, 1], rejects: [] })
+    example("Any", Schema.Any, "any", { accepts: [null, undefined, {}, 1], rejects: [] })
+    example("String", Schema.String, "string", { accepts: ["", "a"], rejects: [1, null] })
+    example("Number", Schema.Number, "number", { accepts: [0, NaN, Infinity], rejects: ["1", null] })
+    example("Boolean", Schema.Boolean, "boolean", { accepts: [true, false], rejects: [0, "true"] })
+    example("BigInt", Schema.BigInt, "bigint", { accepts: [0n, -1n], rejects: [0, "0"] })
+    example("Symbol", Schema.Symbol, "symbol", { accepts: [Symbol(), Symbol.for("a")], rejects: ["a"] })
+    example("ObjectKeyword", Schema.ObjectKeyword, "object", { accepts: [{}, []], rejects: [null, 1] })
+    example("empty annotations", Schema.Null.annotate({}), "null", { accepts: [null], rejects: [undefined] })
+    for (const value of ["a", 1, true, 100n, "quote\"\n\\`"] as const) {
+      example(
+        "Literal " + String(value),
+        Schema.Literal(value),
+        typeof value === "bigint" ? "100n" : JSON.stringify(value),
+        {
+          accepts: [value],
+          rejects: [null, "different"]
+        }
+      )
     }
-    readonly artifacts?: ReadonlyArray<SchemaRepresentation.Artifact>
-  }
-
-  function assertSchema(input: {
-    readonly schema: Schema.Constraint
-  }, expected: Expected) {
-    const multiDocument = SchemaRepresentation.toRepresentations([input.schema.ast])
-    assertMultiDocument(multiDocument, expected)
-  }
-
-  function assertJsonSchema(input: {
-    readonly schema: JsonSchema.JsonSchema
-  }, expected: Expected) {
-    const schema = SchemaRepresentation.fromJsonSchemaDocument(
-      JsonSchema.fromSchemaDraft2020_12(input.schema),
+    example("empty tuple", Schema.Tuple([]), "readonly []", { accepts: [[]], rejects: [[1], null] })
+    example("required tuple", Schema.Tuple([Schema.String]), "readonly [string]", {
+      accepts: [["a"]],
+      rejects: [[], [1]]
+    })
+    example("optional tuple", Schema.Tuple([Schema.optionalKey(Schema.String)]), "readonly [string?]", {
+      accepts: [[], ["a"]],
+      rejects: [[1], ["a", "b"], [undefined]]
+    })
+    example(
+      "optional union tuple",
+      Schema.Tuple([Schema.optionalKey(Schema.Union([Schema.String, Schema.Number]))]),
+      "readonly [(string | number)?]",
+      { accepts: [[], ["a"], [1]], rejects: [[true]] }
+    )
+    example(
+      "optional literals tuple",
+      Schema.Tuple([Schema.optionalKey(Schema.Literals(["a", "b"]))]),
+      "readonly [(\"a\" | \"b\")?]",
+      { accepts: [[], ["a"], ["b"]], rejects: [["c"]] }
+    )
+    example(
+      "optional nested tuple",
+      Schema.Tuple([Schema.optionalKey(Schema.Tuple([Schema.String]))]),
+      "readonly [(readonly [string])?]",
+      { accepts: [[], [["a"]]], rejects: [[[]], [["a", "b"]]] }
+    )
+    example("Array", Schema.Array(Schema.String), "ReadonlyArray<string>", {
+      accepts: [[], ["a", "b"]],
+      rejects: [[1], null]
+    })
+    example(
+      "required tuple with rest",
+      Schema.TupleWithRest(Schema.Tuple([Schema.String]), [Schema.Number]),
+      "readonly [string, ...Array<number>]",
+      { accepts: [["a"], ["a", 1, 2]], rejects: [[], ["a", true]] }
+    )
+    example(
+      "optional tuple with rest",
+      Schema.TupleWithRest(Schema.Tuple([Schema.optionalKey(Schema.Union([Schema.String, Schema.Number]))]), [
+        Schema.Boolean
+      ]),
+      "readonly [(string | number)?, ...Array<boolean>]",
       {
-        onEnter: (js) =>
-          js.type === "object" && js.additionalProperties === undefined
-            ? { ...js, additionalProperties: false }
-            : js
+        accepts: [[], ["a"], [1, true, false]],
+        rejects: [[true], ["a", 1]]
       }
     )
-    assertMultiDocument(SchemaRepresentation.toRepresentations([schema.ast]), expected)
-  }
-
-  function assertMultiDocument(
-    multiDocument: SchemaRepresentation.MultiDocument,
-    expected: Expected
-  ) {
-    const codeDocument = SchemaRepresentation.toCodeDocument(multiDocument)
-    deepStrictEqual(
-      canonicalizeGeneratedCode(codeDocument),
-      canonicalizeGeneratedCode({
-        codes: Array.isArray(expected.codes) ? expected.codes : [expected.codes],
-        references: {
-          nonRecursives: expected.references?.nonRecursives ?? [],
-          recursives: expected.references?.recursives ?? {}
-        },
-        artifacts: expected.artifacts ?? []
-      })
-    )
-  }
-
-  function canonicalizeGeneratedCode(input: unknown): unknown {
-    if (typeof input === "string") {
-      return input
-        .replaceAll(/"expected": "(?:\\.|[^"\\])*"(?:, )?/g, "")
-        .replaceAll(", }", " }")
-        .replaceAll(".annotate({  })", "")
-    }
-    if (Array.isArray(input)) return input.map(canonicalizeGeneratedCode)
-    if (typeof input !== "object" || input === null) return input
-    return Object.fromEntries(
-      Object.entries(input).map(([key, value]) => [key, canonicalizeGeneratedCode(value)])
-    )
-  }
-
-  const makeCode = SchemaRepresentation.makeCode
-  const templateType = (...types: ReadonlyArray<string>) => `\`${types.map((type) => `\${${type}}`).join("")}\``
-
-  describe("Declaration", () => {
-    it("declaration without a toCode annotation", () => {
-      throws(
-        () => assertSchema({ schema: Schema.instanceOf(URL) }, { codes: makeCode("", "") }),
-        "Missing toCode callback\n  at [\"representations\"][0][\"annotations\"][\"toCode\"]"
-      )
-    })
-
-    it("requires a toCode callback for a named content declaration", () => {
-      const content = Schema.instanceOf(URL).annotate({ identifier: "Content" })
-      const document = SchemaRepresentation.toRepresentations([Schema.fromJsonString(content).ast])
-
-      throws(
-        () => SchemaRepresentation.toCodeDocument(document),
-        "Missing toCode callback\n  at [\"references\"][\"Content\"][\"annotations\"][\"toCode\"]"
-      )
-    })
-
-    it("Error", () => {
-      assertSchema({ schema: Schema.ErrorInstance() }, {
-        codes: makeCode(`Schema.ErrorInstance()`, "globalThis.Error")
-      })
-    })
-
-    it("Error with stack", () => {
-      assertSchema({ schema: Schema.ErrorInstance({ includeStack: true }) }, {
-        codes: makeCode(`Schema.ErrorInstance({"includeStack":true})`, "globalThis.Error")
-      })
-    })
-
-    it("Error with excluded cause", () => {
-      assertSchema({ schema: Schema.ErrorInstance({ excludeCause: true }) }, {
-        codes: makeCode(`Schema.ErrorInstance({"excludeCause":true})`, "globalThis.Error")
-      })
-    })
-
-    it("RegExp", () => {
-      assertSchema({ schema: Schema.RegExp }, {
-        codes: makeCode(`Schema.RegExp`, "globalThis.RegExp")
-      })
-    })
-
-    it("URL", () => {
-      assertSchema({ schema: Schema.URL }, {
-        codes: makeCode(`Schema.URL`, "globalThis.URL")
-      })
-    })
-
-    it("Uint8Array", () => {
-      assertSchema({ schema: Schema.Uint8Array }, {
-        codes: makeCode(`Schema.Uint8Array`, "globalThis.Uint8Array")
-      })
-    })
-
-    it("URLSearchParams", () => {
-      assertSchema({ schema: Schema.URLSearchParams }, {
-        codes: makeCode(`Schema.URLSearchParams`, "globalThis.URLSearchParams")
-      })
-    })
-
-    it("File", () => {
-      assertSchema({ schema: Schema.File }, {
-        codes: makeCode(`Schema.File`, "globalThis.File")
-      })
-    })
-
-    it("FormData", () => {
-      assertSchema({ schema: Schema.FormData }, {
-        codes: makeCode(`Schema.FormData`, "globalThis.FormData")
-      })
-    })
-
-    it("Option(String)", () => {
-      assertSchema(
-        { schema: Schema.Option(Schema.String) },
-        {
-          codes: makeCode("Schema.Option(Schema.String)", "Option.Option<string>"),
-          artifacts: [{
-            _tag: "Import",
-            importDeclaration: `import * as Option from "effect/Option"`
-          }]
-        }
-      )
-    })
-
-    it("Result(String, Number)", () => {
-      assertSchema(
-        { schema: Schema.Result(Schema.String, Schema.Number) },
-        {
-          codes: makeCode("Schema.Result(Schema.String, Schema.Number)", "Result.Result<string, number>"),
-          artifacts: [{
-            _tag: "Import",
-            importDeclaration: `import * as Result from "effect/Result"`
-          }]
-        }
-      )
-    })
-
-    it("Redacted options", () => {
-      assertSchema(
-        {
-          schema: Schema.Redacted(Schema.String, {
-            label: "password",
-            disallowJsonEncode: true
-          })
-        },
-        {
-          codes: makeCode(
-            `Schema.Redacted(Schema.String, {"label":"password","disallowJsonEncode":true})`,
-            "Redacted.Redacted<string>"
-          ),
-          artifacts: [{
-            _tag: "Import",
-            importDeclaration: `import * as Redacted from "effect/Redacted"`
-          }]
-        }
-      )
-    })
-
-    it("CauseReason(String, Number)", () => {
-      assertSchema({ schema: Schema.CauseReason(Schema.String, Schema.Number) }, {
-        codes: makeCode("Schema.CauseReason(Schema.String, Schema.Number)", "Cause.Failure<string, number>"),
-        artifacts: [{ _tag: "Import", importDeclaration: `import * as Cause from "effect/Cause"` }]
-      })
-    })
-
-    it("Cause(String, Number)", () => {
-      assertSchema({ schema: Schema.Cause(Schema.String, Schema.Number) }, {
-        codes: makeCode("Schema.Cause(Schema.String, Schema.Number)", "Cause.Cause<string, number>"),
-        artifacts: [{ _tag: "Import", importDeclaration: `import * as Cause from "effect/Cause"` }]
-      })
-    })
-
-    it("Exit(String, Number, String)", () => {
-      assertSchema({ schema: Schema.Exit(Schema.String, Schema.Number, Schema.Boolean) }, {
-        codes: makeCode(
-          "Schema.Exit(Schema.String, Schema.Number, Schema.Boolean)",
-          "Exit.Exit<string, number, boolean>"
-        ),
-        artifacts: [{ _tag: "Import", importDeclaration: `import * as Exit from "effect/Exit"` }]
-      })
-    })
-  })
-
-  it("Null", () => {
-    assertSchema({ schema: Schema.Null }, {
-      codes: makeCode("Schema.Null", "null")
-    })
-    assertSchema(
-      { schema: Schema.Null.annotate({ "description": "a" }) },
+    example(
+      "tuple with post-rest element",
+      Schema.TupleWithRest(Schema.Tuple([Schema.String]), [Schema.Number, Schema.Boolean]),
+      "readonly [string, ...Array<number>, boolean]",
       {
-        codes: makeCode(`Schema.Null.annotate({ "description": "a" })`, "null")
+        accepts: [["a", true], ["a", 1, 2, false]],
+        rejects: [["a"], ["a", true, 1]]
       }
     )
-    assertSchema({ schema: Schema.Null.annotate({}) }, {
-      codes: makeCode("Schema.Null", "null")
-    })
-  })
-
-  it("Undefined", () => {
-    assertSchema({ schema: Schema.Undefined }, {
-      codes: makeCode("Schema.Undefined", "undefined")
-    })
-    assertSchema(
-      { schema: Schema.Undefined.annotate({ "description": "a" }) },
+    example(
+      "rest with post-rest and no prefix",
+      Schema.TupleWithRest(Schema.Tuple([]), [Schema.Number, Schema.Boolean]),
+      "readonly [...Array<number>, boolean]",
+      { accepts: [[true], [1, 2, false]], rejects: [[], [true, 1]] }
+    )
+    example("empty struct", Schema.Struct({}), "{}", { accepts: [{}], rejects: [null] })
+    example(
+      "required properties",
+      Schema.Struct({ a: Schema.String, b: Schema.Number }),
+      "{ readonly a: string; readonly b: number }",
       {
-        codes: makeCode(`Schema.Undefined.annotate({ "description": "a" })`, "undefined")
+        accepts: [{ a: "a", b: 1 }],
+        rejects: [{ a: "a" }, { a: 1, b: 1 }]
+      }
+    )
+    example("optional property", Schema.Struct({ a: Schema.optionalKey(Schema.String) }), "{ readonly a?: string }", {
+      accepts: [{}, { a: "a" }],
+      rejects: [{ a: 1 }, { a: undefined }]
+    })
+    example("mutable property", Schema.Struct({ a: Schema.mutableKey(Schema.String) }), "{ a: string }", {
+      accepts: [{ a: "a" }],
+      rejects: [{}, { a: 1 }]
+    })
+    example(
+      "optional mutable property",
+      Schema.Struct({ a: Schema.optionalKey(Schema.mutableKey(Schema.String)) }),
+      "{ a?: string }",
+      { accepts: [{}, { a: "a" }], rejects: [{ a: 1 }] }
+    )
+    example(
+      "required __proto__ property",
+      Schema.Struct({ ["__proto__"]: Schema.String }),
+      "{ readonly \"__proto__\": string }",
+      {
+        accepts: [{ ["__proto__"]: "value" }],
+        rejects: [{}, { ["__proto__"]: 123 }]
+      }
+    )
+    example(
+      "optional __proto__ property",
+      Schema.Struct({ ["__proto__"]: Schema.optionalKey(Schema.String) }),
+      "{ readonly \"__proto__\"?: string }",
+      {
+        accepts: [{}, { ["__proto__"]: "value" }],
+        rejects: [{ ["__proto__"]: 123 }]
+      }
+    )
+    example("escaped property", Schema.Struct({ ["\"\n\\"]: Schema.String }), "{ readonly \"\\\"\\n\\\\\": string }", {
+      accepts: [{ ["\"\n\\"]: "a" }],
+      rejects: [{}, { ["\"\n\\"]: 1 }]
+    })
+    example("numeric property", Schema.Struct({ 1: Schema.Boolean }), "{ readonly 1: boolean }", {
+      accepts: [{ 1: true }],
+      rejects: [{}, { 1: "true" }]
+    })
+    example("Record", Schema.Record(Schema.String, Schema.Number), "{ readonly [x: string]: number }", {
+      accepts: [{}, { a: 1, b: 2 }],
+      rejects: [{ a: "a" }]
+    })
+    example(
+      "StructWithRest",
+      Schema.StructWithRest(Schema.Struct({ a: Schema.Number }), [
+        Schema.Record(Schema.String, Schema.Number)
+      ]),
+      "{ readonly a: number } & { readonly [x: string]: number }",
+      {
+        accepts: [{ a: 1 }, { a: 1, b: 2 }],
+        rejects: [{}, { a: 1, b: "a" }]
+      }
+    )
+    example(
+      "multiple index signatures",
+      Schema.StructWithRest(Schema.Struct({}), [
+        Schema.Record(Schema.String, Schema.Number),
+        Schema.Record(Schema.Symbol, Schema.Boolean)
+      ]),
+      "{ readonly [x: string]: number; readonly [x: symbol]: boolean }",
+      {
+        accepts: [{}, { a: 1, [Symbol.for("a")]: true }],
+        rejects: [{ a: false }, { [Symbol.for("a")]: 1 }]
+      }
+    )
+    example("Union anyOf", Schema.Union([Schema.String, Schema.Number]), "string | number", {
+      accepts: ["a", 1],
+      rejects: [true, null]
+    })
+    example(
+      "Union multiple members",
+      Schema.Union([Schema.String, Schema.Number, Schema.Boolean]),
+      "string | number | boolean",
+      {
+        accepts: ["a", 1, true],
+        rejects: [null]
+      }
+    )
+    example("Union overlapping anyOf", Schema.Union([Schema.String, Schema.Literal("a")]), "string", {
+      accepts: ["a", "b"],
+      rejects: [1]
+    })
+    example(
+      "Union overlapping oneOf",
+      Schema.Union([Schema.String, Schema.Literal("a")], { mode: "oneOf" }),
+      "string",
+      {
+        accepts: ["b"],
+        rejects: ["a", 1]
+      }
+    )
+    example("non-recursive suspension", Schema.suspend(() => Schema.String), "string", { accepts: ["a"], rejects: [1] })
+    example("brands omitted", Schema.String.pipe(Schema.brand("a"), Schema.brand("b")), "string", {
+      accepts: ["a"],
+      rejects: [1]
+    })
+    example(
+      "union brands omitted",
+      Schema.Union([Schema.String, Schema.Number]).pipe(Schema.brand("a")),
+      "string | number",
+      {
+        accepts: ["a", 1],
+        rejects: [true]
       }
     )
   })
 
-  it("Void", () => {
-    assertSchema({ schema: Schema.Void }, {
-      codes: makeCode("Schema.Void", "void")
-    })
-    assertSchema(
-      { schema: Schema.Void.annotate({ "description": "a" }) },
-      {
-        codes: makeCode(`Schema.Void.annotate({ "description": "a" })`, "void")
-      }
-    )
-  })
-
-  it("Never", () => {
-    assertSchema({ schema: Schema.Never }, {
-      codes: makeCode("Schema.Never", "never")
-    })
-    assertSchema(
-      { schema: Schema.Never.annotate({ "description": "a" }) },
-      {
-        codes: makeCode(`Schema.Never.annotate({ "description": "a" })`, "never")
-      }
-    )
-  })
-
-  it("Unknown", () => {
-    assertSchema({ schema: Schema.Unknown }, {
-      codes: makeCode("Schema.Unknown", "unknown")
-    })
-    assertSchema(
-      { schema: Schema.Unknown.annotate({ "description": "a" }) },
-      {
-        codes: makeCode(`Schema.Unknown.annotate({ "description": "a" })`, "unknown")
-      }
-    )
-  })
-
-  it("Any", () => {
-    assertSchema({ schema: Schema.Any }, {
-      codes: makeCode("Schema.Any", "any")
-    })
-    assertSchema(
-      { schema: Schema.Any.annotate({ "description": "a" }) },
-      {
-        codes: makeCode(`Schema.Any.annotate({ "description": "a" })`, "any")
-      }
-    )
-  })
-
-  describe("String", () => {
-    it("String", () => {
-      assertSchema({ schema: Schema.String }, {
-        codes: makeCode("Schema.String", "string")
-      })
-    })
-
-    it("String & identifier", () => {
-      assertSchema({ schema: Schema.String.annotate({ identifier: "ID" }) }, {
-        codes: makeCode("ID", "ID"),
-        references: {
-          nonRecursives: [
-            {
-              $ref: "ID",
-              code: makeCode(`Schema.String.annotate({ "identifier": "ID" })`, "string")
-            }
-          ]
-        }
-      })
-    })
-
-    it("renames an identifier that collides with the Schema import", () => {
-      assertSchema({ schema: Schema.String.annotate({ identifier: "Schema" }) }, {
-        codes: makeCode("Schema1", "Schema1"),
-        references: {
-          nonRecursives: [{
-            $ref: "Schema1",
-            code: makeCode(`Schema.String.annotate({ "identifier": "Schema" })`, "string")
-          }]
-        }
-      })
-    })
-
-    it("String & annotations", () => {
-      assertSchema(
-        { schema: Schema.String.annotate({ "description": "a" }) },
-        {
-          codes: makeCode(`Schema.String.annotate({ "description": "a" })`, "string")
-        }
-      )
-    })
-
-    it("String & check", () => {
-      assertSchema(
-        { schema: Schema.String.check(Schema.isMinLength(1)) },
-        {
-          codes: makeCode(`Schema.String.check(Schema.isMinLength(1))`, "string")
-        }
-      )
-    })
-
-    it("String & annotations & check", () => {
-      assertSchema(
-        { schema: Schema.String.annotate({ "description": "a" }).check(Schema.isMinLength(1)) },
-        {
-          codes: makeCode(
-            `Schema.String.annotate({ "description": "a" }).check(Schema.isMinLength(1))`,
-            "string"
-          )
-        }
-      )
-    })
-
-    it("String & code point checks", () => {
-      for (
-        const [check, code] of [
-          [Schema.isMinCodePoints(2), "Schema.isMinCodePoints(2)"],
-          [Schema.isMaxCodePoints(3), "Schema.isMaxCodePoints(3)"],
-          [Schema.isBetweenCodePoints(2, 3), "Schema.isBetweenCodePoints(2, 3)"]
-        ] as const
-      ) {
-        assertSchema(
-          { schema: Schema.String.check(check) },
-          { codes: makeCode(`Schema.String.check(${code})`, "string") }
-        )
-      }
-    })
-
-    it("String & check + annotations", () => {
-      assertSchema(
-        { schema: Schema.String.check(Schema.isMinLength(1, { description: "a" })) },
-        {
-          codes: makeCode(`Schema.String.check(Schema.isMinLength(1).annotate({ "description": "a" }))`, "string")
-        }
-      )
-    })
-
-    it("String & check & annotations", () => {
-      assertSchema(
-        { schema: Schema.String.check(Schema.isMinLength(1)).annotate({ "description": "a" }) },
-        {
-          codes: makeCode(`Schema.String.check(Schema.isMinLength(1).annotate({ "description": "a" }))`, "string")
-        }
-      )
-    })
-
-    describe("checks", () => {
-      it("isStartingWith", () => {
-        assertSchema(
-          { schema: Schema.String.check(Schema.isStartingWith("a")) },
-          {
-            codes: makeCode(`Schema.String.check(Schema.isStartingWith("a"))`, "string")
-          }
-        )
-      })
-
-      it("isEndingWith", () => {
-        assertSchema(
-          { schema: Schema.String.check(Schema.isEndingWith("a")) },
-          {
-            codes: makeCode(`Schema.String.check(Schema.isEndingWith("a"))`, "string")
-          }
-        )
-      })
-
-      it("isIncluding", () => {
-        assertSchema(
-          { schema: Schema.String.check(Schema.isIncluding("a")) },
-          {
-            codes: makeCode(`Schema.String.check(Schema.isIncluding("a"))`, "string")
-          }
-        )
-      })
-
-      it("isGUID with annotations", () => {
-        assertSchema(
-          { schema: Schema.String.check(Schema.isGUID({ message: "message" })) },
-          {
-            codes: makeCode(`Schema.String.check(Schema.isGUID().annotate({ "message": "message" }))`, "string")
-          }
-        )
-      })
-
-      it("isAscii", () => {
-        assertSchema(
-          { schema: Schema.String.check(Schema.isAscii()) },
-          {
-            codes: makeCode(`Schema.String.check(Schema.isAscii())`, "string")
-          }
-        )
-      })
-    })
-  })
-
-  describe("Number", () => {
-    it("Finite", () => {
-      assertSchema({ schema: Schema.Finite }, {
-        codes: makeCode("Schema.Finite", "number")
-      })
-      assertSchema({ schema: Schema.Number.check(Schema.isFinite(), Schema.isGreaterThan(0)) }, {
-        codes: makeCode("Schema.Finite.check(Schema.isGreaterThan(0))", "number")
-      })
-    })
-
-    it("Int", () => {
-      assertSchema({ schema: Schema.Int }, {
-        codes: makeCode("Schema.Int", "number")
-      })
-    })
-
-    it("Number & non-canonical finite check", () => {
-      const expectRuntime = (schema: Schema.Constraint, runtime: string) =>
-        assertSchema({ schema }, { codes: makeCode(runtime, "number") })
-      const finite = `Schema.isFinite().annotate({ "expected": "a finite number" })`
-      expectRuntime(
-        Schema.Number.annotate({ description: "a" }).check(Schema.isFinite()),
-        `Schema.Number.annotate({ "description": "a" }).check(${finite})`
-      )
-      expectRuntime(
-        Schema.Number.check(Schema.isGreaterThan(0), Schema.isFinite()),
-        `Schema.Number.check(Schema.isGreaterThan(0)).check(${finite})`
-      )
-      expectRuntime(
-        Schema.Number.check(Schema.isFinite({ expected: "a real number" })),
-        `Schema.Number.check(Schema.isFinite().annotate({ "expected": "a real number" }))`
-      )
-      expectRuntime(Schema.Number.check(Schema.isFinite().abort()), `Schema.Number.check(Schema.isFinite().abort())`)
-      expectRuntime(
-        Schema.Number.check(Schema.makeFilterGroup([Schema.isFinite(), Schema.isGreaterThan(0)])),
-        `Schema.Number.check(Schema.makeFilterGroup([Schema.isFinite(), Schema.isGreaterThan(0)]))`
-      )
-    })
-
-    it("Number", () => {
-      assertSchema({ schema: Schema.Number }, {
-        codes: makeCode("Schema.Number", "number")
-      })
-      assertSchema(
-        { schema: Schema.Number.annotate({ "description": "a" }) },
-        {
-          codes: makeCode(`Schema.Number.annotate({ "description": "a" })`, "number")
-        }
-      )
-    })
-
-    it("Number & check", () => {
-      assertSchema(
-        { schema: Schema.Number.check(Schema.isGreaterThan(10)) },
-        {
-          codes: makeCode(`Schema.Number.check(Schema.isGreaterThan(10))`, "number")
-        }
-      )
-    })
-  })
-
-  it("Boolean", () => {
-    assertSchema({ schema: Schema.Boolean }, {
-      codes: makeCode("Schema.Boolean", "boolean")
-    })
-    assertSchema(
-      { schema: Schema.Boolean.annotate({ "description": "a" }) },
-      {
-        codes: makeCode(`Schema.Boolean.annotate({ "description": "a" })`, "boolean")
-      }
-    )
-  })
-
-  describe("BigInt", () => {
-    it("BigInt", () => {
-      assertSchema({ schema: Schema.BigInt }, {
-        codes: makeCode("Schema.BigInt", "bigint")
-      })
-      assertSchema(
-        { schema: Schema.BigInt.annotate({ "description": "a" }) },
-        {
-          codes: makeCode(`Schema.BigInt.annotate({ "description": "a" })`, "bigint")
-        }
-      )
-    })
-
-    it("BigInt & check", () => {
-      assertSchema(
-        { schema: Schema.BigInt.check(Schema.isGreaterThanBigInt(10n)) },
-        {
-          codes: makeCode(`Schema.BigInt.check(Schema.isGreaterThanBigInt(10n))`, "bigint")
-        }
-      )
-    })
-  })
-
-  it("Symbol", () => {
-    assertSchema({ schema: Schema.Symbol }, {
-      codes: makeCode("Schema.Symbol", "symbol")
-    })
-    assertSchema(
-      { schema: Schema.Symbol.annotate({ "description": "a" }) },
-      {
-        codes: makeCode(`Schema.Symbol.annotate({ "description": "a" })`, "symbol")
-      }
-    )
-  })
-
-  it("ObjectKeyword", () => {
-    assertSchema({ schema: Schema.ObjectKeyword }, {
-      codes: makeCode("Schema.ObjectKeyword", "object")
-    })
-    assertSchema(
-      { schema: Schema.ObjectKeyword.annotate({ "description": "a" }) },
-      {
-        codes: makeCode(`Schema.ObjectKeyword.annotate({ "description": "a" })`, "object")
-      }
-    )
-  })
-
-  describe("Literal", () => {
-    it("string literal", () => {
-      assertSchema({ schema: Schema.Literal("a") }, {
-        codes: makeCode(`Schema.Literal("a")`, `"a"`)
-      })
-      assertSchema(
-        { schema: Schema.Literal("a").annotate({ "description": "a" }) },
-        {
-          codes: makeCode(`Schema.Literal("a").annotate({ "description": "a" })`, `"a"`)
-        }
-      )
-    })
-
-    it("number literal", () => {
-      assertSchema({ schema: Schema.Literal(1) }, {
-        codes: makeCode(`Schema.Literal(1)`, "1")
-      })
-      assertSchema(
-        { schema: Schema.Literal(1).annotate({ "description": "a" }) },
-        {
-          codes: makeCode(`Schema.Literal(1).annotate({ "description": "a" })`, "1")
-        }
-      )
-    })
-
-    it("boolean literal", () => {
-      assertSchema({ schema: Schema.Literal(true) }, {
-        codes: makeCode(`Schema.Literal(true)`, "true")
-      })
-      assertSchema(
-        { schema: Schema.Literal(true).annotate({ "description": "a" }) },
-        {
-          codes: makeCode(`Schema.Literal(true).annotate({ "description": "a" })`, "true")
-        }
-      )
-    })
-
-    it("bigint literal", () => {
-      assertSchema({ schema: Schema.Literal(100n) }, {
-        codes: makeCode(`Schema.Literal(100n)`, "100n")
-      })
-      assertSchema(
-        { schema: Schema.Literal(100n).annotate({ "description": "a" }) },
-        {
-          codes: makeCode(`Schema.Literal(100n).annotate({ "description": "a" })`, "100n")
-        }
-      )
-    })
-  })
-
-  describe("UniqueSymbol", () => {
-    it("should create a Symbol artifact", () => {
-      assertSchema(
-        { schema: Schema.UniqueSymbol(Symbol("a")) },
-        {
-          codes: makeCode(`Schema.UniqueSymbol(_symbol)`, "typeof _symbol"),
-          artifacts: [{
-            _tag: "Symbol",
-            identifier: "_symbol",
-            code: makeCode(`globalThis.Symbol("a")`, `typeof _symbol`)
-          }]
-        }
-      )
-      assertSchema(
-        { schema: Schema.UniqueSymbol(Symbol()) },
-        {
-          codes: makeCode(`Schema.UniqueSymbol(_symbol)`, "typeof _symbol"),
-          artifacts: [{
-            _tag: "Symbol",
-            identifier: "_symbol",
-            code: makeCode(`globalThis.Symbol()`, `typeof _symbol`)
-          }]
-        }
-      )
-    })
-
-    it("should create a global Symbol artifact", () => {
-      assertSchema(
-        { schema: Schema.UniqueSymbol(Symbol.for("a")) },
-        {
-          codes: makeCode(`Schema.UniqueSymbol(_symbol)`, "typeof _symbol"),
-          artifacts: [{
-            _tag: "Symbol",
-            identifier: "_symbol",
-            code: makeCode(`globalThis.Symbol.for("a")`, `typeof _symbol`)
-          }]
-        }
-      )
-      assertSchema(
-        { schema: Schema.UniqueSymbol(Symbol.for("a")).annotate({ "description": "a" }) },
-        {
-          codes: makeCode(
-            `Schema.UniqueSymbol(_symbol).annotate({ "description": "a" })`,
-            "typeof _symbol"
-          ),
-          artifacts: [{
-            _tag: "Symbol",
-            identifier: "_symbol",
-            code: makeCode(`globalThis.Symbol.for("a")`, `typeof _symbol`)
-          }]
-        }
-      )
-    })
-  })
-
-  describe("Enum", () => {
-    it("string values", () => {
-      assertSchema(
-        {
-          schema: Schema.Enum({
-            A: "a",
-            B: "b"
-          })
-        },
-        {
-          codes: makeCode(`Schema.Enum(_Enum)`, `_Enum`),
-          artifacts: [{
-            _tag: "Enum",
-            identifier: "_Enum",
-            code: makeCode(`enum _Enum { "A" = "a", "B" = "b" }`, `typeof _Enum`)
-          }]
-        }
-      )
-      assertSchema(
-        {
-          schema: Schema.Enum({
-            A: "a",
-            B: "b"
-          }).annotate({ "description": "a" })
-        },
-        {
-          codes: makeCode(
-            `Schema.Enum(_Enum).annotate({ "description": "a" })`,
-            `_Enum`
-          ),
-          artifacts: [{
-            _tag: "Enum",
-            identifier: "_Enum",
-            code: makeCode(`enum _Enum { "A" = "a", "B" = "b" }`, `typeof _Enum`)
-          }]
-        }
-      )
-    })
-
-    it("number values", () => {
-      assertSchema(
-        {
-          schema: Schema.Enum({
-            One: 1,
-            Two: 2
-          })
-        },
-        {
-          codes: makeCode(`Schema.Enum(_Enum)`, `_Enum`),
-          artifacts: [{
-            _tag: "Enum",
-            identifier: "_Enum",
-            code: makeCode(`enum _Enum { "One" = 1, "Two" = 2 }`, `typeof _Enum`)
-          }]
-        }
-      )
-      assertSchema(
-        {
-          schema: Schema.Enum({
-            One: 1,
-            Two: 2
-          }).annotate({ "description": "a" })
-        },
-        {
-          codes: makeCode(
-            `Schema.Enum(_Enum).annotate({ "description": "a" })`,
-            `_Enum`
-          ),
-          artifacts: [{
-            _tag: "Enum",
-            identifier: "_Enum",
-            code: makeCode(`enum _Enum { "One" = 1, "Two" = 2 }`, `typeof _Enum`)
-          }]
-        }
-      )
-    })
-
-    it("mixed values", () => {
-      assertSchema(
-        {
-          schema: Schema.Enum({
-            A: "a",
-            One: 1
-          })
-        },
-        {
-          codes: makeCode(`Schema.Enum(_Enum)`, `_Enum`),
-          artifacts: [{
-            _tag: "Enum",
-            identifier: "_Enum",
-            code: makeCode(`enum _Enum { "A" = "a", "One" = 1 }`, `typeof _Enum`)
-          }]
-        }
-      )
-      assertSchema(
-        {
-          schema: Schema.Enum({
-            A: "a",
-            One: 1
-          }).annotate({ "description": "a" })
-        },
-        {
-          codes: makeCode(
-            `Schema.Enum(_Enum).annotate({ "description": "a" })`,
-            `_Enum`
-          ),
-          artifacts: [{
-            _tag: "Enum",
-            identifier: "_Enum",
-            code: makeCode(`enum _Enum { "A" = "a", "One" = 1 }`, `typeof _Enum`)
-          }]
-        }
-      )
-    })
-  })
-
-  describe("TemplateLiteral", () => {
-    it("empty template literal", () => {
-      assertSchema(
-        { schema: Schema.TemplateLiteral([]) },
-        {
-          codes: makeCode(`Schema.TemplateLiteral([])`, "``")
-        }
-      )
-    })
-
-    it("string literal", () => {
-      assertSchema(
-        { schema: Schema.TemplateLiteral([Schema.Literal("a")]) },
-        {
-          codes: makeCode(`Schema.TemplateLiteral([Schema.Literal("a")])`, templateType(`"a"`))
-        }
-      )
-    })
-
-    it("number literal", () => {
-      assertSchema(
-        { schema: Schema.TemplateLiteral([Schema.Literal(1)]) },
-        {
-          codes: makeCode(`Schema.TemplateLiteral([Schema.Literal(1)])`, templateType("1"))
-        }
-      )
-    })
-
-    it("bigint literal", () => {
-      assertSchema(
-        { schema: Schema.TemplateLiteral([Schema.Literal(1n)]) },
-        {
-          codes: makeCode(`Schema.TemplateLiteral([Schema.Literal(1n)])`, templateType("1n"))
-        }
-      )
-    })
-
-    it("multiple consecutive literals", () => {
-      assertSchema(
-        { schema: Schema.TemplateLiteral([Schema.Literal("a"), Schema.Literal("b"), Schema.Literal("c")]) },
-        {
-          codes: makeCode(
-            `Schema.TemplateLiteral([Schema.Literal("a"), Schema.Literal("b"), Schema.Literal("c")])`,
-            templateType(`"a"`, `"b"`, `"c"`)
-          )
-        }
-      )
-    })
-
-    it("special characters in literals", () => {
-      assertSchema(
-        { schema: Schema.TemplateLiteral([Schema.Literal("a b"), Schema.String]) },
-        {
-          codes: makeCode(
-            `Schema.TemplateLiteral([Schema.Literal("a b"), Schema.String])`,
-            templateType(`"a b"`, "string")
-          )
-        }
-      )
-      assertSchema(
-        { schema: Schema.TemplateLiteral([Schema.Literal("\n"), Schema.String]) },
-        {
-          codes: makeCode(
-            `Schema.TemplateLiteral([Schema.Literal("\\n"), Schema.String])`,
-            templateType(`"\\n"`, "string")
-          )
-        }
-      )
-
-      for (const literal of ["`", "${number}", "\\"]) {
-        const code = SchemaRepresentation.toCodeDocument(
-          SchemaRepresentation.toRepresentations([
-            Schema.TemplateLiteral([Schema.Literal(literal)]).ast
-          ])
-        ).codes[0]
-        strictEqual(code.Type, templateType(JSON.stringify(literal)))
-      }
-    })
-
-    it("only schemas", () => {
-      assertSchema(
-        { schema: Schema.TemplateLiteral([Schema.String]) },
-        {
-          codes: makeCode(`Schema.TemplateLiteral([Schema.String])`, "`${string}`")
-        }
-      )
-      assertSchema(
-        { schema: Schema.TemplateLiteral([Schema.Number]) },
-        {
-          codes: makeCode(`Schema.TemplateLiteral([Schema.Number])`, "`${number}`")
-        }
-      )
-      assertSchema(
-        { schema: Schema.TemplateLiteral([Schema.BigInt]) },
-        {
-          codes: makeCode(`Schema.TemplateLiteral([Schema.BigInt])`, "`${bigint}`")
-        }
-      )
-      assertSchema(
-        { schema: Schema.TemplateLiteral([Schema.String, Schema.Number]) },
-        {
-          codes: makeCode(
-            `Schema.TemplateLiteral([Schema.String, Schema.Number])`,
-            "`${string}${number}`"
-          )
-        }
-      )
-    })
-
-    it("schema & literal", () => {
-      assertSchema(
-        { schema: Schema.TemplateLiteral([Schema.String, Schema.Literal("a")]) },
-        {
-          codes: makeCode(
-            `Schema.TemplateLiteral([Schema.String, Schema.Literal("a")])`,
-            templateType("string", `"a"`)
-          )
-        }
-      )
-      assertSchema(
-        { schema: Schema.TemplateLiteral([Schema.Number, Schema.Literal("a")]) },
-        {
-          codes: makeCode(
-            `Schema.TemplateLiteral([Schema.Number, Schema.Literal("a")])`,
-            templateType("number", `"a"`)
-          )
-        }
-      )
-      assertSchema(
-        { schema: Schema.TemplateLiteral([Schema.BigInt, Schema.Literal("a")]) },
-        {
-          codes: makeCode(
-            `Schema.TemplateLiteral([Schema.BigInt, Schema.Literal("a")])`,
-            templateType("bigint", `"a"`)
-          )
-        }
-      )
-    })
-
-    it("literal & schema", () => {
-      assertSchema(
-        { schema: Schema.TemplateLiteral([Schema.Literal("a"), Schema.String]) },
-        {
-          codes: makeCode(
-            `Schema.TemplateLiteral([Schema.Literal("a"), Schema.String])`,
-            templateType(`"a"`, "string")
-          )
-        }
-      )
-      assertSchema(
-        { schema: Schema.TemplateLiteral([Schema.Literal("a"), Schema.Number]) },
-        {
-          codes: makeCode(
-            `Schema.TemplateLiteral([Schema.Literal("a"), Schema.Number])`,
-            templateType(`"a"`, "number")
-          )
-        }
-      )
-      assertSchema(
-        { schema: Schema.TemplateLiteral([Schema.Literal("a"), Schema.BigInt]) },
-        {
-          codes: makeCode(
-            `Schema.TemplateLiteral([Schema.Literal("a"), Schema.BigInt])`,
-            templateType(`"a"`, "bigint")
-          )
-        }
-      )
-    })
-
-    it("schema & literal & schema", () => {
-      assertSchema(
-        { schema: Schema.TemplateLiteral([Schema.String, Schema.Literal("-"), Schema.Number]) },
-        {
-          codes: makeCode(
-            `Schema.TemplateLiteral([Schema.String, Schema.Literal("-"), Schema.Number])`,
-            templateType("string", `"-"`, "number")
-          )
-        }
-      )
-      assertSchema(
-        {
-          schema: Schema.TemplateLiteral([Schema.String, Schema.Literal("-"), Schema.Number]).annotate({
-            "description": "ad"
-          })
-        },
-        {
-          codes: makeCode(
-            `Schema.TemplateLiteral([Schema.String, Schema.Literal("-"), Schema.Number]).annotate({ "description": "ad" })`,
-            templateType("string", `"-"`, "number")
-          )
-        }
-      )
-    })
-
-    it("TemplateLiteral as part", () => {
-      assertSchema(
-        {
-          schema: Schema.TemplateLiteral([
-            Schema.Literal("a"),
-            Schema.TemplateLiteral([Schema.String, Schema.Literals(["-", "+"]), Schema.Number])
-          ])
-        },
-        {
-          codes: makeCode(
-            `Schema.TemplateLiteral([Schema.Literal("a"), Schema.TemplateLiteral([Schema.String, Schema.Literals(["-", "+"]), Schema.Number])])`,
-            templateType(`"a"`, templateType("string", `"-" | "+"`, "number"))
-          )
-        }
-      )
-    })
-
-    it("Union as part", () => {
-      assertSchema(
-        {
-          schema: Schema.TemplateLiteral([Schema.Literal("a"), Schema.Union([Schema.String, Schema.Number])])
-        },
-        {
-          codes: makeCode(
-            `Schema.TemplateLiteral([Schema.Literal("a"), Schema.Union([Schema.String, Schema.Number])])`,
-            templateType(`"a"`, "string | number")
-          )
-        }
-      )
-    })
-
-    it("Literals as part", () => {
-      assertSchema(
-        {
-          schema: Schema.TemplateLiteral([Schema.Literals(["a", "b"]), Schema.String])
-        },
-        {
-          codes: makeCode(
-            `Schema.TemplateLiteral([Schema.Literals(["a", "b"]), Schema.String])`,
-            templateType(`"a" | "b"`, "string")
-          )
-        }
-      )
-    })
-
-    it("omits brands from parts", () => {
-      const schema = Schema.TemplateLiteral([
-        Schema.String.pipe(Schema.brand("StringPart")),
-        Schema.Union([
-          Schema.Number.pipe(Schema.brand("NumberPart")),
-          Schema.String.pipe(Schema.brand("OtherStringPart"))
-        ])
-      ])
-      const code = SchemaRepresentation.toCodeDocument(
-        SchemaRepresentation.toRepresentations([schema.ast])
-      ).codes[0]
-
-      strictEqual(
-        code.runtime,
-        `Schema.TemplateLiteral([Schema.String, Schema.Union([Schema.Number, Schema.String])])`
-      )
-      strictEqual(code.Type, templateType("string", "number | string"))
-    })
-
-    it("uses references for branded parts", () => {
-      const part = Schema.String.pipe(Schema.brand("Part")).annotate({ identifier: "Part" })
-      const code = SchemaRepresentation.toCodeDocument(
-        SchemaRepresentation.toRepresentations([Schema.TemplateLiteral([part]).ast])
-      ).codes[0]
-
-      strictEqual(code.runtime, "Schema.TemplateLiteral([Part])")
-      strictEqual(code.Type, templateType("Part"))
-    })
-
-    it("multiple unions", () => {
-      assertSchema(
-        {
-          schema: Schema.TemplateLiteral([
-            Schema.Union([Schema.Literal("a"), Schema.Literal("b")]),
-            Schema.String,
-            Schema.Union([Schema.Number, Schema.BigInt])
-          ])
-        },
-        {
-          codes: makeCode(
-            `Schema.TemplateLiteral([Schema.Literals(["a", "b"]), Schema.String, Schema.Union([Schema.Number, Schema.BigInt])])`,
-            templateType(`"a" | "b"`, "string", "number | bigint")
-          )
-        }
-      )
-    })
-
-    it("does not expand combinations of unions", () => {
-      const part = Schema.Literals(["a", "b"])
-      const schema = Schema.TemplateLiteral(Array.from({ length: 20 }, () => part))
-      const Type = SchemaRepresentation.toCodeDocument(
-        SchemaRepresentation.toRepresentations([schema.ast])
-      ).codes[0].Type
-
-      strictEqual(Type, templateType(...Array.from({ length: 20 }, () => `"a" | "b"`)))
-      assertTrue(Type.length < 500)
-    })
-  })
-
-  describe("Tuple", () => {
-    it("empty tuple", () => {
-      assertSchema({ schema: Schema.Tuple([]) }, {
-        codes: makeCode("Schema.Tuple([])", "readonly []")
-      })
-      assertSchema(
-        { schema: Schema.Tuple([]).annotate({ "description": "a" }) },
-        {
-          codes: makeCode(`Schema.Tuple([]).annotate({ "description": "a" })`, "readonly []")
-        }
-      )
-    })
-
-    it("required element", () => {
-      assertSchema(
-        { schema: Schema.Tuple([Schema.String]) },
-        {
-          codes: makeCode(`Schema.Tuple([Schema.String])`, "readonly [string]")
-        }
-      )
-      assertSchema(
-        { schema: Schema.Tuple([Schema.String]).annotate({ "description": "a" }) },
-        {
-          codes: makeCode(
-            `Schema.Tuple([Schema.String]).annotate({ "description": "a" })`,
-            "readonly [string]"
-          )
-        }
-      )
-    })
-
-    it("optional element", () => {
-      assertSchema(
-        { schema: Schema.Tuple([Schema.optionalKey(Schema.String)]) },
-        {
-          codes: makeCode(`Schema.Tuple([Schema.optionalKey(Schema.String)])`, `readonly [(string)?]`)
-        }
-      )
-      assertSchema(
-        { schema: Schema.Tuple([Schema.optionalKey(Schema.String)]).annotate({ "description": "a" }) },
-        {
-          codes: makeCode(
-            `Schema.Tuple([Schema.optionalKey(Schema.String)]).annotate({ "description": "a" })`,
-            `readonly [(string)?]`
-          )
-        }
-      )
-    })
-
-    it("optional union elements", () => {
-      assertSchema(
-        { schema: Schema.Tuple([Schema.optionalKey(Schema.Union([Schema.String, Schema.Number]))]) },
-        {
-          codes: makeCode(
-            `Schema.Tuple([Schema.optionalKey(Schema.Union([Schema.String, Schema.Number]))])`,
-            `readonly [(string | number)?]`
-          )
-        }
-      )
-      assertSchema(
-        { schema: Schema.Tuple([Schema.optionalKey(Schema.Literals(["a", "b"]))]) },
-        {
-          codes: makeCode(
-            `Schema.Tuple([Schema.optionalKey(Schema.Literals(["a", "b"]))])`,
-            `readonly [("a" | "b")?]`
-          )
-        }
-      )
-    })
-
-    it("optional readonly tuple element", () => {
-      assertSchema(
-        { schema: Schema.Tuple([Schema.optionalKey(Schema.Tuple([Schema.String]))]) },
-        {
-          codes: makeCode(
-            `Schema.Tuple([Schema.optionalKey(Schema.Tuple([Schema.String]))])`,
-            `readonly [(readonly [string])?]`
-          )
-        }
-      )
-    })
-
-    it("optional union element imported from JSON Schema", () => {
-      assertJsonSchema({
-        schema: {
-          type: "array",
-          prefixItems: [{ anyOf: [{ type: "string" }, { type: "number" }] }],
-          items: false
-        }
-      }, {
-        codes: makeCode(
-          `Schema.Tuple([Schema.optionalKey(Schema.Union([Schema.String, Schema.Finite]))])`,
-          `readonly [(string | number)?]`
-        )
-      })
-    })
-
-    it("annotateKey", () => {
-      assertSchema(
-        { schema: Schema.Tuple([Schema.String.annotateKey({ "description": "a" })]) },
-        {
-          codes: makeCode(
-            `Schema.Tuple([Schema.String.annotateKey({ "description": "a" })])`,
-            "readonly [string]"
-          )
-        }
-      )
-    })
-  })
-
-  it("Array", () => {
-    assertSchema(
-      { schema: Schema.Array(Schema.String) },
-      {
-        codes: makeCode("Schema.Array(Schema.String)", "ReadonlyArray<string>")
-      }
-    )
-    assertSchema(
-      { schema: Schema.Array(Schema.String).annotate({ "description": "a" }) },
-      {
-        codes: makeCode(
-          `Schema.Array(Schema.String).annotate({ "description": "a" })`,
-          "ReadonlyArray<string>"
-        )
-      }
-    )
-  })
-
-  it("TupleWithRest", () => {
-    assertSchema(
-      {
-        schema: Schema.TupleWithRest(
-          Schema.Tuple([Schema.optionalKey(Schema.Union([Schema.String, Schema.Number]))]),
-          [Schema.Boolean]
-        )
-      },
-      {
-        codes: makeCode(
-          `Schema.TupleWithRest(Schema.Tuple([Schema.optionalKey(Schema.Union([Schema.String, Schema.Number]))]), [Schema.Boolean])`,
-          `readonly [(string | number)?, ...Array<boolean>]`
-        )
-      }
-    )
-    assertSchema(
-      { schema: Schema.TupleWithRest(Schema.Tuple([Schema.String]), [Schema.Number]) },
-      {
-        codes: makeCode(
-          `Schema.TupleWithRest(Schema.Tuple([Schema.String]), [Schema.Number])`,
-          "readonly [string, ...Array<number>]"
-        )
-      }
-    )
-    assertSchema(
-      {
-        schema: Schema.TupleWithRest(Schema.Tuple([Schema.String]), [Schema.Number]).annotate({
-          "description": "a"
-        })
-      },
-      {
-        codes: makeCode(
-          `Schema.TupleWithRest(Schema.Tuple([Schema.String]), [Schema.Number]).annotate({ "description": "a" })`,
-          "readonly [string, ...Array<number>]"
-        )
-      }
-    )
-    assertSchema(
-      { schema: Schema.TupleWithRest(Schema.Tuple([Schema.String]), [Schema.Number, Schema.Boolean]) },
-      {
-        codes: makeCode(
-          `Schema.TupleWithRest(Schema.Tuple([Schema.String]), [Schema.Number, Schema.Boolean])`,
-          "readonly [string, ...Array<number>, boolean]"
-        )
-      }
-    )
-  })
-
-  describe("Struct", () => {
-    it("preserves a required __proto__ property in generated code", async () => {
-      const schema = Schema.Struct({ ["__proto__"]: Schema.String })
-      assertSchema({ schema }, {
-        codes: makeCode(
-          `Schema.Struct({ ["__proto__"]: Schema.String })`,
-          `{ readonly "__proto__": string }`
-        )
-      })
-
-      const document = SchemaRepresentation.toCodeDocument(SchemaRepresentation.toRepresentations([schema.ast]))
-      const generated: typeof schema = new Function("Schema", `return ${document.codes[0].runtime}`)(Schema)
-      assert.deepStrictEqual(Object.keys(generated.fields), ["__proto__"])
-      const decoding = new TestSchema.Asserts(generated).decoding()
-      await decoding.succeed({ ["__proto__"]: "value" })
-      await decoding.fail({}, `Missing key\n  at ["__proto__"]`)
-      await decoding.fail({ ["__proto__"]: 123 }, `Expected string\n  at ["__proto__"]`)
-    })
-
-    it("preserves an optional __proto__ property in generated code", async () => {
-      const schema = Schema.Struct({ ["__proto__"]: Schema.optionalKey(Schema.String) })
-      assertSchema({ schema }, {
-        codes: makeCode(
-          `Schema.Struct({ ["__proto__"]: Schema.optionalKey(Schema.String) })`,
-          `{ readonly "__proto__"?: string }`
-        )
-      })
-
-      const document = SchemaRepresentation.toCodeDocument(SchemaRepresentation.toRepresentations([schema.ast]))
-      const generated: typeof schema = new Function("Schema", `return ${document.codes[0].runtime}`)(Schema)
-      assert.deepStrictEqual(Object.keys(generated.fields), ["__proto__"])
-      const decoding = new TestSchema.Asserts(generated).decoding()
-      await decoding.succeed({})
-      await decoding.succeed({ ["__proto__"]: "value" })
-      await decoding.fail({ ["__proto__"]: 123 }, `Expected string\n  at ["__proto__"]`)
-    })
-
-    it("empty struct", () => {
-      assertSchema({ schema: Schema.Struct({}) }, {
-        codes: makeCode("Schema.Struct({  })", "{  }")
-      })
-      assertSchema(
-        { schema: Schema.Struct({}).annotate({ "description": "a" }) },
-        {
-          codes: makeCode(`Schema.Struct({  }).annotate({ "description": "a" })`, "{  }")
-        }
-      )
-    })
-
-    it("required properties", () => {
-      assertSchema(
-        {
-          schema: Schema.Struct({
-            a: Schema.String
-          })
-        },
-        {
-          codes: makeCode(
-            `Schema.Struct({ "a": Schema.String })`,
-            `{ readonly "a": string }`
-          )
-        }
-      )
-      assertSchema(
-        {
-          schema: Schema.Struct({
-            a: Schema.String,
-            b: Schema.Number
-          })
-        },
-        {
-          codes: makeCode(
-            `Schema.Struct({ "a": Schema.String, "b": Schema.Number })`,
-            `{ readonly "a": string, readonly "b": number }`
-          )
-        }
-      )
-    })
-
-    it("optional properties", () => {
-      assertSchema(
-        {
-          schema: Schema.Struct({
-            a: Schema.optionalKey(Schema.String)
-          })
-        },
-        {
-          codes: makeCode(
-            `Schema.Struct({ "a": Schema.optionalKey(Schema.String) })`,
-            `{ readonly "a"?: string }`
-          )
-        }
-      )
-    })
-
-    it("mutable properties", () => {
-      assertSchema(
-        {
-          schema: Schema.Struct({
-            a: Schema.mutableKey(Schema.String)
-          })
-        },
-        {
-          codes: makeCode(
-            `Schema.Struct({ "a": Schema.mutableKey(Schema.String) })`,
-            `{ "a": string }`
-          )
-        }
-      )
-    })
-
-    it("optional and mutable properties", () => {
-      assertSchema(
-        {
-          schema: Schema.Struct({
-            a: Schema.optionalKey(Schema.mutableKey(Schema.String))
-          })
-        },
-        {
-          codes: makeCode(
-            `Schema.Struct({ "a": Schema.optionalKey(Schema.mutableKey(Schema.String)) })`,
-            `{ "a"?: string }`
-          )
-        }
-      )
-    })
-
-    it("annotateKey", () => {
-      assertSchema(
-        {
-          schema: Schema.Struct({
-            a: Schema.String.annotateKey({ "description": "a" })
-          })
-        },
-        {
-          codes: makeCode(
-            `Schema.Struct({ "a": Schema.String.annotateKey({ "description": "a" }) })`,
-            `{ readonly "a": string }`
-          )
-        }
-      )
-    })
-
-    it("struct with symbol property key", () => {
-      const sym = Symbol.for("a")
-      assertSchema(
-        {
-          schema: Schema.Struct({
-            [sym]: Schema.String
-          })
-        },
-        {
-          codes: makeCode(
-            `Schema.Struct({ [_symbol]: Schema.String })`,
-            `{ readonly [_symbol]: string }`
-          ),
-          artifacts: [{
-            _tag: "Symbol",
-            identifier: "_symbol",
-            code: makeCode(`globalThis.Symbol.for("a")`, `typeof _symbol`)
-          }]
-        }
-      )
-    })
-  })
-
-  it("Record(String, Number)", () => {
-    assertSchema(
-      {
-        schema: Schema.Record(Schema.String, Schema.Number)
-      },
-      {
-        codes: makeCode("Schema.Record(Schema.String, Schema.Number)", "{ readonly [x: string]: number }")
-      }
-    )
-    assertSchema(
-      {
-        schema: Schema.Record(Schema.String, Schema.Number).annotate({ "description": "a" })
-      },
-      {
-        codes: makeCode(
-          `Schema.Record(Schema.String, Schema.Number).annotate({ "description": "a" })`,
-          "{ readonly [x: string]: number }"
-        )
-      }
-    )
-  })
-
-  it("StructWithRest", () => {
-    assertSchema(
-      {
-        schema: Schema.StructWithRest(Schema.Struct({ a: Schema.Number }), [
-          Schema.Record(Schema.String, Schema.Number)
-        ])
-      },
-      {
-        codes: makeCode(
-          `Schema.StructWithRest(Schema.Struct({ "a": Schema.Number }), [Schema.Record(Schema.String, Schema.Number)])`,
-          `{ readonly "a": number } & { readonly [x: string]: number }`
-        )
-      }
-    )
-    assertSchema(
-      {
-        schema: Schema.StructWithRest(Schema.Struct({ a: Schema.Number }), [
-          Schema.Record(Schema.String, Schema.Number)
-        ]).annotate({ description: "a" })
-      },
-      {
-        codes: makeCode(
-          `Schema.StructWithRest(Schema.Struct({ "a": Schema.Number }), [Schema.Record(Schema.String, Schema.Number)]).annotate({ "description": "a" })`,
-          `{ readonly "a": number } & { readonly [x: string]: number }`
-        )
-      }
-    )
-  })
-
-  describe("Union", () => {
-    it("union with anyOf mode (default)", () => {
-      assertSchema(
-        {
-          schema: Schema.Union([Schema.String, Schema.Number])
-        },
-        {
-          codes: makeCode("Schema.Union([Schema.String, Schema.Number])", "string | number")
-        }
-      )
-      assertSchema(
-        {
-          schema: Schema.Union([Schema.String, Schema.Number]).annotate({ "description": "z" })
-        },
-        {
-          codes: makeCode(
-            `Schema.Union([Schema.String, Schema.Number]).annotate({ "description": "z" })`,
-            "string | number"
-          )
-        }
-      )
-    })
-
-    it("union with oneOf mode", () => {
-      assertSchema(
-        {
-          schema: Schema.Union([Schema.String, Schema.Number], { mode: "oneOf" })
-        },
-        {
-          codes: makeCode(
-            `Schema.Union([Schema.String, Schema.Number], { mode: "oneOf" })`,
-            "string | number"
-          )
-        }
-      )
-      assertSchema(
-        {
-          schema: Schema.Union([Schema.String, Schema.Number], { mode: "oneOf" }).annotate({ "description": "aa" })
-        },
-        {
-          codes: makeCode(
-            `Schema.Union([Schema.String, Schema.Number], { mode: "oneOf" }).annotate({ "description": "aa" })`,
-            "string | number"
-          )
-        }
-      )
-    })
-
-    it("union with multiple types", () => {
-      assertSchema(
-        {
-          schema: Schema.Union([Schema.String, Schema.Number, Schema.Boolean])
-        },
-        {
-          codes: makeCode(
-            "Schema.Union([Schema.String, Schema.Number, Schema.Boolean])",
-            "string | number | boolean"
-          )
-        }
-      )
-      assertSchema(
-        {
-          schema: Schema.Union([Schema.String, Schema.Number, Schema.Boolean]).annotate({ "description": "a" })
-        },
-        {
-          codes: makeCode(
-            `Schema.Union([Schema.String, Schema.Number, Schema.Boolean]).annotate({ "description": "a" })`,
-            "string | number | boolean"
-          )
-        }
-      )
-    })
-  })
-
-  describe("suspend", () => {
-    it("supports __proto__ as a recursive reference", () => {
-      const references = Object.fromEntries([["__proto__", {
-        _tag: "Objects",
-        propertySignatures: [{
-          name: "next",
-          type: { _tag: "Suspend", thunk: { _tag: "Reference", $ref: "__proto__" }, checks: [] },
-          isOptional: true,
-          isMutable: false
-        }],
-        indexSignatures: [],
-        checks: []
-      }]]) as SchemaRepresentation.References
-
-      assertMultiDocument({
-        representations: [{ _tag: "Reference", $ref: "__proto__" }],
-        references
-      }, {
-        codes: makeCode("__proto__", "__proto__"),
-        references: {
-          recursives: Object.fromEntries([[
-            "__proto__",
-            makeCode(
-              `Schema.Struct({ "next": Schema.optionalKey(Schema.suspend((): Schema.Codec<__proto__> => __proto__)) })`,
-              `{ readonly "next"?: __proto__ }`
-            )
-          ]])
-        }
-      })
-    })
-
-    it("non-recursive", () => {
-      assertSchema(
-        {
-          schema: Schema.suspend(() => Schema.String)
-        },
-        {
-          codes: makeCode(`Schema.suspend((): Schema.Codec<string> => Schema.String)`, "string")
-        }
-      )
-    })
-
-    it("no identifier annotation", () => {
-      type A = {
-        readonly a?: A
-      }
-      const A = Schema.Struct({
-        a: Schema.optionalKey(Schema.suspend((): Schema.Codec<A> => A))
-      })
-
-      assertSchema({ schema: A }, {
-        codes: makeCode(`Objects_`, `Objects_`),
-        references: {
-          recursives: {
-            Objects_: makeCode(
-              `Schema.Struct({ "a": Schema.optionalKey(Schema.suspend((): Schema.Codec<Objects_> => Objects_)) })`,
-              `{ readonly "a"?: Objects_ }`
-            )
-          }
-        }
-      })
-    })
-
-    it("outer identifier annotation", () => {
-      type A = {
-        readonly a?: A
-      }
-      const A = Schema.Struct({
-        a: Schema.optionalKey(Schema.suspend((): Schema.Codec<A> => A))
-      }).annotate({ identifier: "A" }) // outer identifier annotation
-
-      assertSchema({ schema: A }, {
-        codes: makeCode(`A`, `A`),
-        references: {
-          recursives: {
-            A: makeCode(
-              `Schema.Struct({ "a": Schema.optionalKey(Schema.suspend((): Schema.Codec<A> => A)) }).annotate({ "identifier": "A" })`,
-              `{ readonly "a"?: A }`
-            )
-          }
-        }
-      })
-    })
-
-    it("inner identifier annotation", () => {
-      type A = {
-        readonly a?: A
-      }
-      const A = Schema.Struct({
-        a: Schema.optionalKey(Schema.suspend((): Schema.Codec<A> => A.annotate({ identifier: "A" })))
-      })
-
-      assertSchema({ schema: A }, {
-        codes: makeCode(
-          `Schema.Struct({ "a": Schema.optionalKey(Suspend_) })`,
-          `{ readonly "a"?: Suspend_ }`
-        ),
-        references: {
-          recursives: {
-            A: makeCode(
-              `Schema.Struct({ "a": Schema.optionalKey(Suspend_) }).annotate({ "identifier": "A" })`,
-              `{ readonly "a"?: Suspend_ }`
-            ),
-            Suspend_: makeCode(
-              `Schema.suspend((): Schema.Codec<A> => A)`,
-              `A`
-            )
-          }
-        }
-      })
-    })
-
-    it("suspend identifier annotation", () => {
-      type A = {
-        readonly a?: A
-      }
-      const A = Schema.Struct({
-        a: Schema.optionalKey(Schema.suspend((): Schema.Codec<A> => A).annotate({ identifier: "A" }))
-      })
-
-      assertSchema({ schema: A }, {
-        codes: makeCode(`Objects_`, `Objects_`),
-        references: {
-          recursives: {
-            A: makeCode(
-              `Schema.suspend((): Schema.Codec<Objects_> => Objects_).annotate({ "identifier": "A" })`,
-              `Objects_`
-            ),
-            Objects_: makeCode(
-              `Schema.Struct({ "a": Schema.optionalKey(Schema.suspend((): Schema.Codec<A> => A)) })`,
-              `{ readonly "a"?: A }`
-            )
-          }
-        }
-      })
-    })
-  })
-
-  it("initializes and validates mixed recursive and non-recursive definitions", async () => {
-    const Meta = Schema.Struct({ n: Schema.Number }).annotate({ identifier: "Meta" })
-    interface Tree {
-      readonly meta: typeof Meta.Type
-      readonly children: ReadonlyArray<Tree>
-    }
-    const Tree = Schema.Struct({
-      meta: Meta,
-      children: Schema.Array(Schema.suspend((): Schema.Codec<Tree> => Tree))
-    }).annotate({ identifier: "Tree" })
-    const Forest = Schema.Struct({ trees: Schema.Array(Tree) }).annotate({ identifier: "Forest" })
-    const { codes, references } = SchemaRepresentation.toCodeDocument(
-      SchemaRepresentation.toRepresentations([Forest.ast, OuterCategory.ast])
-    )
-    const definitions = [
-      ...references.nonRecursives.map(({ $ref, code }) => [$ref, code] as const),
-      ...Object.entries(references.recursives),
-      ["Root", codes[0]] as const
+  describe("checks", () => {
+    const stringChecks: ReadonlyArray<
+      readonly [string, SchemaAST.Check<string>, ReadonlyArray<string>, ReadonlyArray<string>]
+    > = [
+      ["min length", Schema.isMinLength(1), ["a"], [""]],
+      ["min code points", Schema.isMinCodePoints(2), ["😀a"], ["😀"]],
+      ["max code points", Schema.isMaxCodePoints(3), ["😀😀😀"], ["abcd"]],
+      ["between code points", Schema.isBetweenCodePoints(2, 3), ["😀a", "abc"], ["😀", "abcd"]],
+      ["starts with", Schema.isStartingWith("a"), ["ab"], ["ba"]],
+      ["ends with", Schema.isEndingWith("a"), ["ba"], ["ab"]],
+      ["includes", Schema.isIncluding("a"), ["bab"], ["bb"]],
+      ["GUID", Schema.isGUID({ message: "message" }), ["00000000-0000-0000-0000-000000000000"], ["a"]],
+      ["ASCII", Schema.isAscii(), ["abc"], ["é"]],
+      ["pattern and flags", Schema.isPattern(/^a+$/i), ["AAA"], ["b"]]
     ]
-    const source = [
-      `import * as Schema from "effect/Schema"`,
-      ...definitions.map(([name, code]) => `export type ${name} = ${code.Type}\nexport const ${name} = ${code.runtime}`)
-    ].join("\n")
-    await withGeneratedModule<{
-      readonly Root: Schema.Codec<unknown>
-      readonly Category: Schema.Codec<unknown>
-    }>(source, ({ Category, Root }) => {
-      const decode = Schema.decodeUnknownSync(Root)
-      const valid = { trees: [{ meta: { n: 1 }, children: [{ meta: { n: 2 }, children: [] }] }] }
-      assert.deepStrictEqual(decode(valid), valid)
-      const invalid = { trees: [{ meta: { n: 1 }, children: [{ meta: { n: "invalid" }, children: [] }] }] }
-      assert.isTrue(Schema.isSchemaError(assert.throws(() => decode(invalid))))
-      const category = { name: "root", children: [{ name: "child", children: [] }] }
-      assert.deepStrictEqual(Schema.decodeUnknownSync(Category)(category), category)
+    for (const [name, check, accepts, rejects] of stringChecks) {
+      example(name, Schema.String.check(check), "string", { accepts, rejects })
+    }
+    example("Finite", Schema.Finite, "number", { accepts: [0, 1.5], rejects: [NaN, Infinity, -Infinity] })
+    example("Int", Schema.Int, "number", { accepts: [0, 1], rejects: [1.5, Infinity] })
+    example("canonical finite then check", Schema.Number.check(Schema.isFinite(), Schema.isGreaterThan(0)), "number", {
+      accepts: [1],
+      rejects: [0, Infinity]
     })
-  })
-
-  it("initializes recursive definitions with numeric identifiers in either record order", async () => {
-    type Nested = ReadonlyArray<Nested>
-    const Nested = Schema.Array(
-      Schema.suspend((): Schema.Codec<Nested> => Nested).annotate({ identifier: "1" })
-    ).annotate({ identifier: "0" })
-    const { codes, references } = SchemaRepresentation.toCodeDocument(
-      SchemaRepresentation.toRepresentations([Nested.ast, OuterCategory.ast])
+    example("check then finite", Schema.Number.check(Schema.isGreaterThan(0), Schema.isFinite()), "number", {
+      accepts: [1],
+      rejects: [0, Infinity]
+    })
+    example(
+      "finite with node annotation",
+      Schema.Number.annotate({ description: "a" }).check(Schema.isFinite()),
+      "number",
+      {
+        accepts: [1],
+        rejects: [Infinity]
+      }
     )
-    const recursives = Object.entries(references.recursives)
-    for (const entries of [recursives, [...recursives].reverse()]) {
-      const definitions = [
-        ...references.nonRecursives.map(({ $ref, code }) => [$ref, code] as const),
-        ...entries,
-        ["Root", codes[0]] as const
-      ]
-      const source = [
-        `import * as Schema from "effect/Schema"`,
-        ...definitions.map(([name, code]) =>
-          `export type ${name} = ${code.Type}\nexport const ${name} = ${code.runtime}`
-        )
-      ].join("\n")
-      await withGeneratedModule<{
-        readonly Root: Schema.Codec<unknown>
-        readonly Category: Schema.Codec<unknown>
-      }>(source, ({ Category, Root }) => {
-        const nested = [[], [[]]]
-        assert.deepStrictEqual(Schema.decodeUnknownSync(Root)(nested), nested)
-        const category = { name: "root", children: [] }
-        assert.deepStrictEqual(Schema.decodeUnknownSync(Category)(category), category)
+    example("finite custom expected", Schema.Number.check(Schema.isFinite({ expected: "a real number" })), "number", {
+      accepts: [1],
+      rejects: [Infinity]
+    })
+    example("aborting finite", Schema.Number.check(Schema.isFinite().abort()), "number", {
+      accepts: [1],
+      rejects: [Infinity]
+    })
+    example(
+      "filter group",
+      Schema.Number.check(Schema.makeFilterGroup([Schema.isFinite(), Schema.isGreaterThan(0)])),
+      "number",
+      { accepts: [1], rejects: [0, Infinity] }
+    )
+    example("greater than", Schema.Number.check(Schema.isGreaterThan(10)), "number", { accepts: [11], rejects: [10] })
+    example("greater than bigint", Schema.BigInt.check(Schema.isGreaterThanBigInt(10n)), "bigint", {
+      accepts: [11n],
+      rejects: [10n]
+    })
+    const Int = Brand.check<number & Brand.Brand<"Int">>(Schema.isInt())
+    const Positive = Brand.check<number & Brand.Brand<"Positive">>(Schema.isGreaterThan(0))
+    example(
+      "fromBrand retains checks",
+      Schema.Number.pipe(Schema.fromBrand("Int", Int), Schema.fromBrand("Positive", Positive)),
+      "number",
+      { accepts: [1], rejects: [0, -1, 1.5] }
+    )
+    for (
+      const [name, check, accepts, rejects] of [
+        ["date greater", Schema.isGreaterThanDate(new Date(0)), [1], [0, -1]],
+        ["date greater equal", Schema.isGreaterThanOrEqualToDate(new Date(0)), [0, 1], [-1]],
+        ["date less", Schema.isLessThanDate(new Date(0)), [-1], [0, 1]],
+        ["date less equal", Schema.isLessThanOrEqualToDate(new Date(0)), [-1, 0], [1]],
+        ["date between", Schema.isBetweenDate({ minimum: new Date(0), maximum: new Date(1) }), [0, 1], [-1, 2]]
+      ] as const
+    ) {
+      example(name, Schema.Date.check(check), "globalThis.Date", {
+        accepts: accepts.map((n) => new Date(n)),
+        rejects: rejects.map((n) => new Date(n))
+      })
+    }
+    for (
+      const [name, check, accepts, rejects] of [
+        ["set min size", Schema.isMinSize(2), [["a", "b"]], [["a"]]],
+        ["set max size", Schema.isMaxSize(2), [["a", "b"]], [["a", "b", "c"]]],
+        ["set between size", Schema.isBetweenSize(2, 2), [["a", "b"]], [["a"], ["a", "b", "c"]]]
+      ] as const
+    ) {
+      example(name, Schema.ReadonlySet(Schema.String).check(check), "ReadonlySet<string>", {
+        accepts: accepts.map((values) => new Set(values)),
+        rejects: rejects.map((values) => new Set(values))
       })
     }
   })
 
-  describe("brand", () => {
-    it("omits brands", () => {
-      assertSchema(
+  describe("declarations", () => {
+    example("Error", Schema.ErrorInstance(), "globalThis.Error", { accepts: [new Error("error")], rejects: ["error"] })
+    example("Error with stack", Schema.ErrorInstance({ includeStack: true }), "globalThis.Error", {
+      accepts: [new Error("error")],
+      rejects: ["error"]
+    })
+    example("Error without cause", Schema.ErrorInstance({ excludeCause: true }), "globalThis.Error", {
+      accepts: [new Error("error")],
+      rejects: ["error"]
+    })
+    example("RegExp", Schema.RegExp, "globalThis.RegExp", { accepts: [/a+/gi], rejects: ["/a/"] })
+    example("URL", Schema.URL, "globalThis.URL", {
+      accepts: [new URL("https://example.com")],
+      rejects: ["https://example.com"]
+    })
+    example("Uint8Array", Schema.Uint8Array, "globalThis.Uint8Array", {
+      accepts: [new Uint8Array([1])],
+      rejects: [[1]]
+    })
+    example("URLSearchParams", Schema.URLSearchParams, "globalThis.URLSearchParams", {
+      accepts: [new URLSearchParams("a=1")],
+      rejects: ["a=1"]
+    })
+    example("File", Schema.File, "globalThis.File", { accepts: [new File(["a"], "a.txt")], rejects: ["a.txt"] })
+    example("FormData", Schema.FormData, "globalThis.FormData", { accepts: [new FormData()], rejects: [{}] })
+    example("Date", Schema.Date, "globalThis.Date", { accepts: [new Date(0)], rejects: [0] })
+    example("Option", Schema.Option(Schema.String), "Option.Option<string>", {
+      accepts: [Option.none(), Option.some("a")],
+      rejects: [Option.some(1), null]
+    })
+    example("Result", Schema.Result(Schema.String, Schema.Number), "Result.Result<string, number>", {
+      accepts: [Result.succeed("a"), Result.fail(1)],
+      rejects: [Result.succeed(1), Result.fail("a")]
+    })
+    example(
+      "Redacted",
+      Schema.Redacted(Schema.String, { label: "password", disallowJsonEncode: true }),
+      "Redacted.Redacted<string>",
+      {
+        accepts: [Redacted.make("a", { label: "password" })],
+        rejects: [Redacted.make(1), "a"]
+      }
+    )
+    example("CauseReason", Schema.CauseReason(Schema.String, Schema.Number), "Cause.Reason<string>", {
+      accepts: [Cause.makeFailReason("a"), Cause.makeDieReason(1)],
+      rejects: [Cause.makeFailReason(1), Cause.makeDieReason("a")]
+    })
+    example("Cause", Schema.Cause(Schema.String, Schema.Number), "Cause.Cause<string>", {
+      accepts: [Cause.fail("a"), Cause.die(1)],
+      rejects: [Cause.fail(1), Cause.die("a")]
+    })
+    example("Exit", Schema.Exit(Schema.String, Schema.Number, Schema.Boolean), "Exit.Exit<string, number>", {
+      accepts: [Exit.succeed("a"), Exit.fail(1), Exit.die(true)],
+      rejects: [Exit.succeed(1), Exit.fail("a"), Exit.die(1)]
+    })
+    example("ReadonlySet", Schema.ReadonlySet(Schema.String), "ReadonlySet<string>", {
+      accepts: [new Set(), new Set(["a"])],
+      rejects: [new Set([1]), []]
+    })
+    example("HashMap", Schema.HashMap(Schema.String, Schema.Number), "HashMap.HashMap<string, number>", {
+      accepts: [HashMap.empty(), HashMap.make(["a", 1])],
+      rejects: [HashMap.make(["a", "b"]), {}]
+    })
+  })
+
+  describe("templates", () => {
+    example("empty template", Schema.TemplateLiteral([]), "\"\"", { accepts: [""], rejects: ["a"] })
+    for (const value of ["a", 1, 1n, "`", "${number}", "\\", "\n"] as const) {
+      example(
+        "template literal " + typeof value + " " + String(value),
+        Schema.TemplateLiteral([Schema.Literal(value)]),
+        JSON.stringify(String(value)),
         {
-          schema: Schema.String.pipe(Schema.brand("a"), Schema.brand("b"))
-        },
-        {
-          codes: makeCode(`Schema.String`, `string`)
+          accepts: [String(value)],
+          rejects: ["wrong", 1]
         }
       )
-    })
-
-    it("omits brands from unions", () => {
-      assertSchema(
+    }
+    example(
+      "consecutive literals",
+      Schema.TemplateLiteral([Schema.Literal("a"), Schema.Literal("b"), Schema.Literal("c")]),
+      "\"abc\"",
+      { accepts: ["abc"], rejects: ["ab", "acb"] }
+    )
+    const template = (types: ReadonlyArray<string>) => "`" + types.map((type) => "${" + type + "}").join("") + "`"
+    for (
+      const [name, part, type, valid, invalid] of [
+        ["string", Schema.String, "string", "x", null],
+        ["number", Schema.Number, "number", "1.5", "x"],
+        ["bigint", Schema.BigInt, "bigint", "123", "1.5"]
+      ] as const
+    ) {
+      example("template " + name, Schema.TemplateLiteral([part]), template([type]), {
+        accepts: [valid],
+        rejects: [invalid]
+      })
+      example(
+        "template " + name + " then literal",
+        Schema.TemplateLiteral([part, Schema.Literal("a")]),
+        template([type, "\"a\""]),
         {
-          schema: Schema.Union([Schema.String, Schema.Number]).pipe(Schema.brand("a"))
-        },
-        {
-          codes: makeCode(`Schema.Union([Schema.String, Schema.Number])`, `string | number`)
+          accepts: [valid + "a"],
+          rejects: ["b"]
         }
       )
-    })
-
-    it("preserves checks added by fromBrand", () => {
-      type Int = number & Brand.Brand<"Int">
-      const Int = Brand.check<Int>(Schema.isInt())
-      type Positive = number & Brand.Brand<"Positive">
-      const Positive = Brand.check<Positive>(Schema.isGreaterThan(0))
-
-      assertSchema(
+      example(
+        "template literal then " + name,
+        Schema.TemplateLiteral([Schema.Literal("a b\n"), part]),
+        template(["\"a b\\n\"", type]),
         {
-          schema: Schema.Number.pipe(
-            Schema.fromBrand("Int", Int),
-            Schema.fromBrand("Positive", Positive)
+          accepts: ["a b\n" + valid],
+          rejects: ["a"]
+        }
+      )
+    }
+    example(
+      "template schemas",
+      Schema.TemplateLiteral([Schema.String, Schema.Number]),
+      template(["string", "number"]),
+      {
+        accepts: ["abc123"],
+        rejects: ["abc"]
+      }
+    )
+    example(
+      "template separated schemas",
+      Schema.TemplateLiteral([Schema.String, Schema.Literal("-"), Schema.Number]),
+      template(["string", "\"-\"", "number"]),
+      { accepts: ["abc-123"], rejects: ["abc-x"] }
+    )
+    example(
+      "nested template",
+      Schema.TemplateLiteral([
+        Schema.Literal("a"),
+        Schema.TemplateLiteral([Schema.String, Schema.Literals(["-", "+"]), Schema.Number])
+      ]),
+      template(["\"a\"", template(["string", "\"-\" | \"+\"", "number"])]),
+      {
+        accepts: ["abc-123", "abc+123"],
+        rejects: ["bc-123", "abc+x"]
+      }
+    )
+    example(
+      "template union",
+      Schema.TemplateLiteral([Schema.Literal("a"), Schema.Union([Schema.String, Schema.Number])]),
+      template(["\"a\"", "string | number"]),
+      { accepts: ["abc", "a123"], rejects: ["bc"] }
+    )
+    example(
+      "template literals",
+      Schema.TemplateLiteral([Schema.Literals(["a", "b"]), Schema.String]),
+      template(["\"a\" | \"b\"", "string"]),
+      { accepts: ["a", "bc"], rejects: ["c"] }
+    )
+    example(
+      "template multiple unions",
+      Schema.TemplateLiteral([
+        Schema.Union([Schema.Literal("a"), Schema.Literal("b")]),
+        Schema.String,
+        Schema.Union([Schema.Number, Schema.BigInt])
+      ]),
+      template(["\"a\" | \"b\"", "string", "number | bigint"]),
+      { accepts: ["ab1", "bc1"], rejects: ["c1", "ab"] }
+    )
+    example(
+      "template brands omitted",
+      Schema.TemplateLiteral([
+        Schema.String.pipe(Schema.brand("StringPart")),
+        Schema.Union([Schema.Number.pipe(Schema.brand("NumberPart")), Schema.String.pipe(Schema.brand("OtherPart"))])
+      ]),
+      template(["string", "number | string"]),
+      { accepts: ["abc", "123"], rejects: [1] }
+    )
+    example(
+      "template named branded part",
+      Schema.TemplateLiteral([
+        Schema.String.pipe(Schema.brand("Part")).annotate({ identifier: "Part" })
+      ]),
+      "string",
+      { accepts: ["abc"], rejects: [1] }
+    )
+
+    it("keeps union combinations compact", () => {
+      const part = Schema.Literals(["a", "b"])
+      const document = generate(Schema.TemplateLiteral(Array.from({ length: 20 }, () => part)))
+      // Deliberately avoid asking tsc to expand a million-member union.
+      assert.strictEqual(document.codes[0].Type, template(Array.from({ length: 20 }, () => "\"a\" | \"b\"")))
+      assert.isBelow(document.codes[0].Type.length, 500)
+    })
+  })
+
+  describe("artifacts and identifiers", () => {
+    for (
+      const [name, values, accepts, rejects] of [
+        ["string enum", { A: "a", B: "b" }, ["a", "b"], ["c", 1]],
+        ["numeric enum", { One: 1, Two: 2 }, [1, 2], [0, "One"]],
+        ["mixed enum", { A: "a", One: 1 }, ["a", 1], ["b", 2]]
+      ] as const
+    ) {
+      it(name, async () => {
+        const schema = Schema.Enum(values).annotate({ description: "enum" })
+        const source = render(generate(schema))
+        register(
+          name,
+          source + [
+            "",
+            "declare const alias: TestRoot0",
+            "declare const inferred: typeof TestRoot0.Type",
+            "const asInferred: typeof TestRoot0.Type = alias",
+            "const asAlias: TestRoot0 = inferred",
+            "// @ts-expect-error An unknown member must not be assignable",
+            "const invalid: TestRoot0 = \"not a member\""
+          ].join("\n")
+        )
+        await withGeneratedModule<Generated>(source, ({ TestRoot0 }) => {
+          assertSamples(TestRoot0, { accepts, rejects })
+          assert.strictEqual(Schema.resolveAnnotations(TestRoot0)?.description, "enum")
+        })
+      })
+    }
+
+    for (const symbol of [Symbol(), Symbol("a"), Symbol.for("a")]) {
+      it(
+        "preserves " + (Symbol.keyFor(symbol) === undefined ? "local " : "global ") + String(symbol) + " identity",
+        async () => {
+          const document = generate(
+            Schema.UniqueSymbol(symbol).annotate({ description: "symbol" }),
+            Schema.Struct({ [symbol]: Schema.String })
           )
-        },
-        {
-          codes: makeCode(
-            `Schema.Int.check(Schema.isGreaterThan(0).annotate({ "expected": "a value greater than 0" }))`,
-            `number`
-          )
+          const source = render(document)
+          register("symbol " + (Symbol.keyFor(symbol) ?? "local " + symbol.description), source)
+          await withGeneratedModule<Record<string, unknown>>(source, (module) => {
+            assert.strictEqual(
+              Schema.resolveAnnotations(module.TestRoot0 as Schema.Codec<unknown>)?.description,
+              "symbol"
+            )
+            const artifact = document.artifacts.find((artifact) => artifact._tag === "Symbol")!
+            const value = module[artifact.identifier] as symbol
+            const propertySchema = module.TestRoot1 as Schema.Codec<unknown>
+            assert.strictEqual(propertySchema.ast._tag, "Objects")
+            if (propertySchema.ast._tag !== "Objects") return assert.fail("Expected an object schema")
+            const key = propertySchema.ast.propertySignatures[0].name
+            assert.strictEqual(value.description, symbol.description)
+            assert.strictEqual(Symbol.keyFor(value), Symbol.keyFor(symbol))
+            assertSamples(module.TestRoot0 as Schema.Codec<unknown>, {
+              accepts: [value],
+              rejects: [Symbol(symbol.description)]
+            })
+            assertSamples(module.TestRoot1 as Schema.Codec<unknown>, {
+              accepts: [{ [key]: "a" }],
+              rejects: [{}, { [key]: 1 }]
+            })
+            // The same source symbol denotes the same key and literal in both roots.
+            assert.strictEqual(key, value)
+          })
         }
       )
-    })
-  })
+    }
 
-  describe("Date", () => {
-    it("Date", () => {
-      assertSchema({ schema: Schema.Date }, {
-        codes: makeCode(`Schema.Date`, "globalThis.Date")
+    for (const identifier of ["ID", "hello", "Abc", "Schema", "1a", "0", "a-b", "café", "🤖", "", "__proto__"]) {
+      example("identifier " + identifier, Schema.String.annotate({ identifier }), "string", {
+        accepts: ["a"],
+        rejects: [1]
       })
-    })
+    }
 
-    describe("checks", () => {
-      it("isGreaterThanDate", () => {
-        assertSchema(
-          { schema: Schema.Date.check(Schema.isGreaterThanDate(new Date(0))) },
-          {
-            codes: makeCode(`Schema.Date.check(Schema.isGreaterThanDate(new globalThis.Date(0)))`, "globalThis.Date")
-          }
-        )
-      })
-
-      it("isGreaterThanOrEqualToDate", () => {
-        assertSchema(
-          { schema: Schema.Date.check(Schema.isGreaterThanOrEqualToDate(new Date(0))) },
-          {
-            codes: makeCode(
-              `Schema.Date.check(Schema.isGreaterThanOrEqualToDate(new globalThis.Date(0)))`,
-              "globalThis.Date"
-            )
-          }
-        )
-      })
-
-      it("isLessThanDate", () => {
-        assertSchema(
-          { schema: Schema.Date.check(Schema.isLessThanDate(new Date(0))) },
-          {
-            codes: makeCode(`Schema.Date.check(Schema.isLessThanDate(new globalThis.Date(0)))`, "globalThis.Date")
-          }
-        )
-      })
-
-      it("isLessThanOrEqualToDate", () => {
-        assertSchema(
-          { schema: Schema.Date.check(Schema.isLessThanOrEqualToDate(new Date(0))) },
-          {
-            codes: makeCode(
-              `Schema.Date.check(Schema.isLessThanOrEqualToDate(new globalThis.Date(0)))`,
-              "globalThis.Date"
-            )
-          }
-        )
-      })
-
-      it("isBetweenDate", () => {
-        assertSchema(
-          { schema: Schema.Date.check(Schema.isBetweenDate({ minimum: new Date(0), maximum: new Date(1) })) },
-          {
-            codes: makeCode(
-              `Schema.Date.check(Schema.isBetweenDate({ minimum: new globalThis.Date(0), maximum: new globalThis.Date(1), exclusiveMinimum: undefined, exclusiveMaximum: undefined }))`,
-              "globalThis.Date"
-            )
-          }
-        )
-      })
-    })
-  })
-
-  describe("ReadonlySet", () => {
-    it("ReadonlySet(String)", () => {
-      assertSchema({ schema: Schema.ReadonlySet(Schema.String) }, {
-        codes: makeCode(
-          `Schema.ReadonlySet(Schema.String)`,
-          "globalThis.ReadonlySet<string>"
-        )
-      })
-    })
-
-    describe("checks", () => {
-      it("isMinSize", () => {
-        assertSchema(
-          { schema: Schema.ReadonlySet(Schema.String).check(Schema.isMinSize(2)) },
-          {
-            codes: makeCode(
-              `Schema.ReadonlySet(Schema.String).check(Schema.isMinSize(2))`,
-              "globalThis.ReadonlySet<string>"
-            )
-          }
-        )
-      })
-
-      it("isMaxSize", () => {
-        assertSchema(
-          { schema: Schema.ReadonlySet(Schema.String).check(Schema.isMaxSize(2)) },
-          {
-            codes: makeCode(
-              `Schema.ReadonlySet(Schema.String).check(Schema.isMaxSize(2))`,
-              "globalThis.ReadonlySet<string>"
-            )
-          }
-        )
-      })
-    })
-
-    it("isBetweenSize", () => {
-      assertSchema(
-        { schema: Schema.ReadonlySet(Schema.String).check(Schema.isBetweenSize(2, 2)) },
-        {
-          codes: makeCode(
-            `Schema.ReadonlySet(Schema.String).check(Schema.isBetweenSize(2, 2))`,
-            "globalThis.ReadonlySet<string>"
-          )
+    it("keeps colliding sanitized identifiers distinct", async () => {
+      const schemas = ["a-b", "a_b", "A_b", "Schema"].map((identifier, i) => Schema.Literal(i).annotate({ identifier }))
+      const document = generate(schemas[0], ...schemas.slice(1))
+      assert.lengthOf(document.references.nonRecursives, schemas.length)
+      const source = render(document)
+      register("colliding identifiers", source, ["0", "1", "2", "3"])
+      await withGeneratedModule<Generated>(source, (module) => {
+        for (let i = 0; i < schemas.length; i++) {
+          assertSamples(module["TestRoot" + i], { accepts: [i], rejects: [(i + 1) % 4] })
         }
-      )
+      })
     })
-  })
 
-  describe("HashMap", () => {
-    it("HashMap(String, Number)", () => {
-      assertSchema({ schema: Schema.HashMap(Schema.String, Schema.Number) }, {
-        codes: makeCode(
-          `Schema.HashMap(Schema.String, Schema.Number)`,
-          "HashMap.HashMap<string, number>"
-        ),
-        artifacts: [{ _tag: "Import", importDeclaration: `import * as HashMap from "effect/HashMap"` }]
+    it("avoids collisions between references and symbol or enum artifacts", async () => {
+      const symbol = Symbol.for("artifact")
+      const document = generate(
+        Schema.String.annotate({ identifier: "_symbol" }),
+        Schema.Number.annotate({ identifier: "_Enum" }),
+        Schema.UniqueSymbol(symbol),
+        Schema.Enum({ A: "a" })
+      )
+      const source = render(document)
+      register("artifact collisions", source)
+      await withGeneratedModule<Generated>(source, (module) => {
+        assertSamples(module.TestRoot0, { accepts: ["a"], rejects: [1] })
+        assertSamples(module.TestRoot1, { accepts: [1], rejects: ["a"] })
+        assertSamples(module.TestRoot2, { accepts: [symbol], rejects: [Symbol("artifact")] })
+        assertSamples(module.TestRoot3, { accepts: ["a"], rejects: ["b"] })
+      })
+    })
+
+    it("avoids collisions between reference names and declaration imports", async () => {
+      const Named = Schema.String.annotate({ identifier: "Option" })
+      const source = render(generate(Named, Schema.Option(Named)))
+      register("declaration import collision", source)
+      await withGeneratedModule<Generated>(source, (module) => {
+        assertSamples(module.TestRoot0, { accepts: ["a"], rejects: [1] })
+        assertSamples(module.TestRoot1, { accepts: [Option.some("a")], rejects: [Option.some(1)] })
+      })
+    })
+
+    it("deduplicates imports across definitions and roots", async () => {
+      const Named = Schema.Option(Schema.String).annotate({ identifier: "Named" })
+      const document = generate(Named, Schema.Array(Named), Schema.Option(Schema.Number))
+      const imports = document.artifacts.filter((artifact) => artifact._tag === "Import")
+      assert.lengthOf(imports, 1)
+      const source = render(document)
+      register("shared imports", source, [
+        "Option.Option<string>",
+        "ReadonlyArray<Option.Option<string>>",
+        "Option.Option<number>"
+      ])
+      await withGeneratedModule<Generated>(source, (module) => {
+        assertSamples(module.TestRoot0, { accepts: [Option.some("a")], rejects: [Option.some(1)] })
+        assertSamples(module.TestRoot1, { accepts: [[Option.none()]], rejects: [[Option.some(1)]] })
+        assertSamples(module.TestRoot2, { accepts: [Option.some(1)], rejects: [Option.some("a")] })
       })
     })
   })
 
-  describe("allOf", () => {
-    it("should resolve references", () => {
-      assertJsonSchema({
-        schema: {
-          allOf: [
-            { $ref: "#/$defs/A" }
-          ],
-          $defs: {
-            A: {
-              type: "string"
+  describe("definition initialization", () => {
+    type Node = { readonly a?: Node }
+    const Anonymous = Schema.Struct({ a: Schema.optionalKey(Schema.suspend((): Schema.Codec<Node> => Anonymous)) })
+    const Outer = Schema.Struct({ a: Schema.optionalKey(Schema.suspend((): Schema.Codec<Node> => Outer)) })
+      .annotate({ identifier: "A" })
+    const Inner = Schema.Struct({
+      a: Schema.optionalKey(Schema.suspend((): Schema.Codec<Node> => Inner.annotate({ identifier: "A" })))
+    })
+    const NamedSuspend = Schema.Struct({
+      a: Schema.optionalKey(Schema.suspend((): Schema.Codec<Node> => NamedSuspend).annotate({ identifier: "A" }))
+    })
+    const Proto = Schema.Struct({ a: Schema.optionalKey(Schema.suspend((): Schema.Codec<Node> => Proto)) })
+      .annotate({ identifier: "__proto__" })
+
+    for (
+      const [name, schema] of [
+        ["anonymous", Anonymous],
+        ["outer identifier", Outer],
+        ["inner identifier", Inner],
+        ["suspend identifier", NamedSuspend],
+        ["__proto__ recursive identifier", Proto]
+      ] as const
+    ) {
+      it("self recursion with " + name, async () => {
+        const document = generate(schema)
+        const source = render(document, true)
+        assert.lengthOf(source.match(/Schema\.suspend\(/g) ?? [], 1, "Only the original suspension is emitted")
+        register(name, source + "\ntype Expected = { readonly a?: Expected }", ["Expected"])
+        await withGeneratedModule<Generated>(source, ({ TestRoot0 }) => {
+          assertSamples(TestRoot0, { accepts: [{}, { a: { a: {} } }], rejects: [{ a: { a: 1 } }] })
+        })
+      })
+    }
+
+    it("initializes mixed dependencies and disconnected recursive components in either record order", async () => {
+      const Meta = Schema.Struct({ n: Schema.Number }).annotate({ identifier: "Meta" })
+      type Tree = { readonly meta: { readonly n: number }; readonly children: ReadonlyArray<Tree> }
+      const Tree = Schema.Struct({
+        meta: Meta,
+        children: Schema.Array(Schema.suspend((): Schema.Codec<Tree> => Tree))
+      }).annotate({ identifier: "Tree" })
+      const Forest = Schema.Struct({ trees: Schema.Array(Tree) }).annotate({ identifier: "Forest" })
+      const input = SchemaRepresentation.toRepresentations([Forest.ast, Tree.ast, Outer.ast, Proto.ast, Forest.ast])
+      for (const references of [input.references, Object.fromEntries(Object.entries(input.references).reverse())]) {
+        const document = SchemaRepresentation.toCodeDocument({ ...input, references })
+        assert.lengthOf(document.references.nonRecursives, 3)
+        assert.sameMembers(Object.keys(document.references.recursives), ["A", "__proto__"])
+        assert.deepStrictEqual(document.references.nonRecursives.map(({ $ref }) => $ref), ["Meta", "Tree", "Forest"])
+        for (const reverse of [false, true]) {
+          const source = render(document, reverse)
+          assert.lengthOf(source.match(/Schema\.suspend\(/g) ?? [], 3, "Only the original suspensions are emitted")
+          register(
+            "mixed dependencies " + reverse,
+            source +
+              "\ntype ExpectedTree = { readonly meta: { readonly n: number }; readonly children: ReadonlyArray<ExpectedTree> }",
+            [
+              "{ readonly trees: ReadonlyArray<ExpectedTree> }",
+              "ExpectedTree"
+            ]
+          )
+          await withGeneratedModule<Generated>(source, (module) => {
+            const tree = { meta: { n: 1 }, children: [{ meta: { n: 2 }, children: [] }] }
+            assertSamples(module.TestRoot0, {
+              accepts: [{ trees: [tree] }],
+              rejects: [{ trees: [{ ...tree, children: [{ meta: { n: "bad" }, children: [] }] }] }]
+            })
+            assertSamples(module.TestRoot1, { accepts: [tree], rejects: [{ meta: { n: "bad" }, children: [] }] })
+            for (const root of [module.TestRoot2, module.TestRoot3]) {
+              assertSamples(root, { accepts: [{ a: {} }], rejects: [{ a: 1 }] })
+            }
+            assert.strictEqual(module.TestRoot0, module.TestRoot4, "Repeated roots reuse the definition")
+            assert.strictEqual(module.TestRoot1, module.Tree)
+          })
+        }
+      }
+    })
+
+    it("emits every member of a productive mutual cycle", async () => {
+      type A = { readonly b?: B }
+      type B = { readonly a: A }
+      const A = Schema.Struct({ b: Schema.optionalKey(Schema.suspend((): Schema.Codec<B> => B)) })
+        .annotate({ identifier: "A" })
+      const B = Schema.Struct({ a: A }).annotate({ identifier: "B" })
+      for (const schemas of [[A, B], [B, A]] as const) {
+        const document = generate(schemas[0], ...schemas.slice(1))
+        assert.deepStrictEqual(document.references.nonRecursives.map(({ $ref }) => $ref), ["A"])
+        assert.deepStrictEqual(Object.keys(document.references.recursives), ["B"])
+        const source = render(document)
+        assert.lengthOf(source.match(/Schema\.suspend\(/g) ?? [], 1, "Only the original suspension is emitted")
+        register("mutual cycle " + (schemas[0] === A), source)
+        await withGeneratedModule<Generated>(source, (module) => {
+          assertSamples(module.A, {
+            accepts: [{}, { b: { a: { b: { a: {} } } } }],
+            rejects: [{ b: {} }, { b: { a: 1 } }]
+          })
+          assertSamples(module.B, { accepts: [{ a: {} }], rejects: [{}, { a: { b: {} } }] })
+        })
+      }
+    })
+
+    it("keeps numeric identifiers independent of recursive record enumeration", async () => {
+      type Nested = ReadonlyArray<Nested>
+      const Nested = Schema.Array(Schema.suspend((): Schema.Codec<Nested> => Nested).annotate({ identifier: "1" }))
+        .annotate({ identifier: "0" })
+      const document = generate(Nested, Outer, Proto)
+      assert.lengthOf(document.references.nonRecursives, 1)
+      assert.lengthOf(Object.keys(document.references.recursives), 3)
+      for (const reverse of [false, true]) {
+        const source = render(document, reverse)
+        register("numeric references " + reverse, source + "\ntype Nested = ReadonlyArray<Nested>", ["Nested"])
+        await withGeneratedModule<Generated>(source, (module) => {
+          assertSamples(module.TestRoot0, { accepts: [[], [[], [[]]]], rejects: [[1], [[], ["bad"]]] })
+          for (const root of [module.TestRoot1, module.TestRoot2]) {
+            assertSamples(root, { accepts: [{ a: {} }], rejects: [{ a: 1 }] })
+          }
+        })
+      }
+    })
+
+    it("orders a diamond dependency once regardless of input order", async () => {
+      const Leaf = Schema.String.annotate({ identifier: "Leaf" })
+      const Left = Schema.Struct({ value: Leaf }).annotate({ identifier: "Left" })
+      const Right = Schema.Array(Leaf).annotate({ identifier: "Right" })
+      const Root = Schema.Struct({ left: Left, right: Right }).annotate({ identifier: "Root" })
+      const input = SchemaRepresentation.toRepresentations([Root.ast, Leaf.ast])
+      const document = SchemaRepresentation.toCodeDocument({
+        ...input,
+        references: Object.fromEntries(Object.entries(input.references).reverse())
+      })
+      assert.lengthOf(document.references.nonRecursives, 4)
+      assert.isEmpty(document.references.recursives)
+      const order = document.references.nonRecursives.map(({ $ref }) => $ref)
+      for (
+        const [dependency, dependent] of [["Leaf", "Left"], ["Leaf", "Right"], ["Left", "Root"], ["Right", "Root"]]
+      ) {
+        assert.isBelow(order.indexOf(dependency), order.indexOf(dependent))
+      }
+      const source = render(document)
+      register("diamond dependencies", source, [
+        "{ readonly left: { readonly value: string }; readonly right: ReadonlyArray<string> }",
+        "string"
+      ])
+      await withGeneratedModule<Generated>(source, ({ TestRoot0 }) => {
+        assertSamples(TestRoot0, {
+          accepts: [{ left: { value: "a" }, right: ["b"] }],
+          rejects: [{ left: { value: "a" }, right: [1] }]
+        })
+      })
+    })
+
+    const Child = Schema.String.annotate({ identifier: "Child" })
+    for (
+      const [name, schema, accepts, rejects] of [
+        ["tuple element", Schema.Tuple([Child]), [["a"]], [[1]]],
+        ["array rest", Schema.Array(Child), [["a"]], [[1]]],
+        ["tuple rest", Schema.TupleWithRest(Schema.Tuple([Schema.Number]), [Child]), [[1, "a"]], [[1, 2]]],
+        ["tuple post-rest", Schema.TupleWithRest(Schema.Tuple([Schema.Boolean]), [Schema.Number, Child]), [[
+          true,
+          1,
+          "a"
+        ]], [[true, 1, 2]]],
+        ["property", Schema.Struct({ value: Child }), [{ value: "a" }], [{ value: 1 }]],
+        ["index value", Schema.Record(Schema.String, Child), [{ a: "a" }], [{ a: 1 }]],
+        ["index parameter", Schema.Record(Child, Schema.Number), [{ a: 1 }], [{ a: "a" }]],
+        ["union member", Schema.Union([Schema.Number, Child]), [1, "a"], [true]],
+        ["template part", Schema.TemplateLiteral([Child, Schema.Literal("!")]), ["a!"], ["a"]],
+        ["declaration parameter", Schema.Option(Child), [Option.some("a")], [Option.some(1)]]
+      ] as const
+    ) {
+      it("orders an eager reference in a " + name, async () => {
+        const input = SchemaRepresentation.toRepresentations([schema.annotate({ identifier: "Parent" }).ast])
+        // Put the dependent first so a test cannot pass by preserving input order.
+        const document = SchemaRepresentation.toCodeDocument({
+          ...input,
+          references: { Parent: input.references.Parent, Child: input.references.Child }
+        })
+        assert.deepStrictEqual(document.references.nonRecursives.map(({ $ref }) => $ref), ["Child", "Parent"])
+        const source = render(document)
+        register("dependency " + name, source)
+        await withGeneratedModule<Generated>(source, ({ TestRoot0 }) => assertSamples(TestRoot0, { accepts, rejects }))
+      })
+    }
+
+    for (const group of [false, true]) {
+      it("orders dependencies passed to a " + (group ? "grouped" : "direct") + " check callback", async () => {
+        const check: SchemaRepresentation.Filter = {
+          _tag: "Filter",
+          aborted: false,
+          representation: { id: "test/check", payload: null, schemas: [{ _tag: "Reference", $ref: "Child" }] },
+          annotations: {
+            toCode: ({ schemas }: SchemaRepresentation.Generation.CheckInput) => {
+              assert.deepStrictEqual(schemas, [{ runtime: "Child", Type: "Child" }])
+              return { runtime: "Schema.makeFilter(Schema.is(" + schemas[0].runtime + "))" }
             }
           }
         }
-      }, {
-        codes: makeCode(`A`, "A"),
-        references: {
-          nonRecursives: [{
-            $ref: "A",
-            code: makeCode(
-              `Schema.String.annotate({ "identifier": "A" })`,
-              "string"
-            )
-          }]
-        }
+        const document = SchemaRepresentation.toCodeDocument({
+          representations: [{ _tag: "Reference", $ref: "Parent" }],
+          references: {
+            Parent: { _tag: "Unknown", checks: group ? [{ _tag: "FilterGroup", checks: [check] }] : [check] },
+            Child: { _tag: "String", checks: [] }
+          }
+        })
+        assert.deepStrictEqual(document.references.nonRecursives.map(({ $ref }) => $ref), ["Child", "Parent"])
+        const source = render(document)
+        register("check dependency " + group, source)
+        await withGeneratedModule<Generated>(
+          source,
+          ({ TestRoot0 }) => assertSamples(TestRoot0, { accepts: ["a"], rejects: [1] })
+        )
       })
-    })
+    }
 
-    it("should resolve references in definitions", () => {
-      assertJsonSchema({
-        schema: {
-          $ref: "#/$defs/A",
-          $defs: {
-            A: {
-              allOf: [
-                { $ref: "#/$defs/B" },
-                {
-                  type: "object",
-                  properties: {
-                    a: {
-                      type: "string"
-                    },
-                    b: {}
-                  },
-                  required: ["a"]
-                }
-              ]
-            },
-            B: {
+    it("emits unreachable definitions", async () => {
+      const document = SchemaRepresentation.toCodeDocument({
+        representations: [{ _tag: "String", checks: [] }],
+        references: { Unused: { _tag: "Number", checks: [] } }
+      })
+      const source = render(document)
+      register("unreachable", source)
+      await withGeneratedModule<Generated>(
+        source,
+        ({ Unused }) => assertSamples(Unused, { accepts: [1], rejects: ["a"] })
+      )
+    })
+  })
+
+  describe("JSON Schema inputs", () => {
+    example(
+      "imported optional union tuple",
+      fromJson({
+        type: "array",
+        prefixItems: [{ anyOf: [{ type: "string" }, { type: "number" }] }],
+        items: false
+      }),
+      "readonly [(string | number)?]",
+      { accepts: [[], ["a"], [1]], rejects: [[true], [1, 2]] }
+    )
+    example(
+      "allOf reference",
+      fromJson({ allOf: [{ $ref: "#/$defs/A" }], $defs: { A: { type: "string" } } }),
+      "string",
+      { accepts: ["a"], rejects: [1] }
+    )
+    example(
+      "allOf references within definitions",
+      fromJson({
+        $ref: "#/$defs/A",
+        $defs: {
+          A: {
+            allOf: [{ $ref: "#/$defs/B" }, {
               type: "object",
-              properties: {
-                b: {
-                  type: "number"
-                },
-                a: {}
-              },
-              required: ["b"]
-            }
-          }
+              properties: { a: { type: "string" }, b: {} },
+              required: ["a"]
+            }]
+          },
+          B: { type: "object", properties: { b: { type: "number" }, a: {} }, required: ["b"] }
         }
-      }, {
-        codes: makeCode(`A`, "A"),
-        references: {
-          nonRecursives: [
-            {
-              $ref: "A",
-              code: makeCode(
-                `Schema.Struct({ "b": Schema.Finite, "a": Schema.String }).annotate({ "identifier": "A" })`,
-                `{ readonly "b": number, readonly "a": string }`
-              )
-            }
-          ]
+      }),
+      "{ readonly a: string; readonly b: number }",
+      {
+        accepts: [{ a: "a", b: 1 }],
+        rejects: [{ a: "a" }, { b: 1 }, { a: "a", b: "b" }]
+      }
+    )
+  })
+
+  describe("metadata and errors", () => {
+    it("preserves Void's discarded input behavior", async () => {
+      await withGeneratedModule<Generated>(render(generate(Schema.Void)), ({ TestRoot0 }) => {
+        for (const input of [null, 1, "a"]) assert.strictEqual(Schema.decodeUnknownSync(TestRoot0)(input), undefined)
+      })
+    })
+
+    it("preserves node, check and key annotations at their original locations", async () => {
+      const schemas = [
+        Schema.String.annotate({ description: "node" }).check(Schema.isMinLength(1)),
+        Schema.String.check(Schema.isMinLength(1, { description: "check" })),
+        Schema.String.check(Schema.isMinLength(1)).annotate({ description: "check" }),
+        Schema.Number.check(Schema.isFinite({ expected: "a real number" })),
+        Schema.Number.check(Schema.isFinite().abort()),
+        Schema.Number.check(Schema.isGreaterThan(0), Schema.isFinite()),
+        Schema.String.check(Schema.isGUID({ message: "message" })),
+        Schema.Tuple([Schema.String.annotateKey({ description: "element" })]),
+        Schema.Struct({ a: Schema.String.annotateKey({ description: "property" }) }),
+        Schema.suspend(() => Schema.String),
+        Schema.ErrorInstance({ includeStack: true }),
+        Schema.ErrorInstance({ excludeCause: true }),
+        Schema.Redacted(Schema.String, { label: "password", disallowJsonEncode: true })
+      ]
+      const source = render(generate(schemas[0], ...schemas.slice(1)))
+      register("annotation locations", source)
+      await withGeneratedModule<Generated>(source, (module) => {
+        // The live AST exposes placement and all serializable annotations; this
+        // catches dropped "expected" metadata without depending on printed syntax.
+        for (let i = 0; i < schemas.length; i++) {
+          assert.deepStrictEqual(
+            SchemaRepresentation.toJson(Schema.toRepresentation(module["TestRoot" + i])),
+            SchemaRepresentation.toJson(Schema.toRepresentation(schemas[i]))
+          )
         }
       })
     })
+
+    for (
+      const [name, schema, path] of [
+        ["declaration", Schema.instanceOf(URL), "[\"representations\"][0][\"annotations\"][\"toCode\"]"],
+        [
+          "named content declaration",
+          Schema.fromJsonString(Schema.instanceOf(URL).annotate({ identifier: "Content" })),
+          "[\"references\"][\"Content\"][\"annotations\"][\"toCode\"]"
+        ]
+      ] as const
+    ) {
+      it("reports missing callback for " + name, () => {
+        assert.throws(() => generate(schema), "Missing toCode callback\n  at " + path)
+      })
+    }
   })
+
+  // Compile just the modules exercised by this run, once, including filtered runs.
+  afterAll(async () => {
+    if (compilation.size > 0) await checkGeneratedModules(compilation)
+  }, 60_000)
 })

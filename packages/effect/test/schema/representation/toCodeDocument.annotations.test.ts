@@ -605,39 +605,6 @@ describe("SchemaRepresentation.toCodeDocument annotations", () => {
     ])
   })
 
-  it("emits every member of a mutually recursive reference cycle", () => {
-    const output = SchemaRepresentation.toCodeDocument({
-      representations: [{ _tag: "Reference", $ref: "A" }],
-      references: {
-        A: { _tag: "Reference", $ref: "B" },
-        B: { _tag: "Reference", $ref: "A" }
-      }
-    })
-
-    assert.deepStrictEqual(output.references, {
-      nonRecursives: [],
-      recursives: {
-        A: { runtime: "Schema.suspend((): Schema.Codec<B> => B)", Type: "B" },
-        B: { runtime: "Schema.suspend((): Schema.Codec<A> => A)", Type: "A" }
-      }
-    })
-  })
-
-  it("emits a non-recursive definition that depends on a recursive definition", () => {
-    const output = SchemaRepresentation.toCodeDocument({
-      representations: [{ _tag: "Reference", $ref: "B" }],
-      references: {
-        A: { _tag: "Reference", $ref: "A" },
-        B: { _tag: "Reference", $ref: "A" }
-      }
-    })
-
-    assert.deepStrictEqual(output.references, {
-      nonRecursives: [{ $ref: "B", code: { runtime: "A", Type: "A" } }],
-      recursives: { A: { runtime: "Schema.suspend((): Schema.Codec<A> => A)", Type: "A" } }
-    })
-  })
-
   it("reports missing references with their document path", () => {
     const document: SchemaRepresentation.MultiDocument = {
       representations: [{ _tag: "Reference", $ref: "Missing" }],
