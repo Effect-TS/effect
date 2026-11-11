@@ -1,4 +1,4 @@
-import { assert, describe, it } from "@effect/vitest"
+import { assert, describe, it, vi } from "@effect/vitest"
 import {
   Cause,
   Context,
@@ -1073,6 +1073,30 @@ describe("Arbitrary", () => {
         if (result._tag === "Falsified") assert.strictEqual(result.shrunkInput.length, 4)
       }))
 
+    it.effect("does not build String shrink candidates for passing properties", () =>
+      Effect.gen(function*() {
+        const text = Schema.String.check(Schema.isMaxLength(64))
+        const cases = Arbitrary.array(Arbitrary.schema(text), { maxLength: 4 })
+        const fromCharCode = vi.spyOn(String, "fromCharCode")
+        const fromCodePoint = vi.spyOn(String, "fromCodePoint")
+        let generatedUnits = 0
+        try {
+          const result = yield* Arbitrary.checkEffect(cases, (values) => {
+            for (const value of values) generatedUnits += value.length
+            return Effect.succeed(true)
+          }, { seed: 119120, runs: 20, size: 64 })
+          const constructedCharacters = fromCharCode.mock.calls.length + fromCodePoint.mock.calls.length
+
+          assert.deepStrictEqual(result, { _tag: "Passed", runs: 20, discards: 0 })
+          assert.isAbove(generatedUnits, 0)
+          // Passing checks only need to construct the generated strings, not shrink candidates.
+          assert.isAtMost(constructedCharacters, generatedUnits)
+        } finally {
+          fromCharCode.mockRestore()
+          fromCodePoint.mockRestore()
+        }
+      }), { concurrent: false })
+
     it.effect("shrinks fixed-length String code units toward null", () =>
       Effect.gen(function*() {
         const schema = Schema.String.check(Schema.isMinLength(3), Schema.isMaxLength(3))
@@ -1088,6 +1112,32 @@ describe("Arbitrary", () => {
           assert.strictEqual(result.shrunkInput, "\0\0\0")
         }
       }))
+
+    it.effect("does not test deletions below a pattern's minimum length", () =>
+      Effect.gen(function*() {
+        const pattern = /^a{64}$/
+        const schema = Schema.String.check(Schema.isPattern(pattern))
+        const test = RegExp.prototype.test
+        let shorterCandidates = 0
+        const spy = vi.spyOn(RegExp.prototype, "test").mockImplementation(function(this: RegExp, value) {
+          if (this.source === pattern.source && value.length < 64) shorterCandidates++
+          return test.call(this, value)
+        })
+        try {
+          const result = yield* Arbitrary.checkEffect(Arbitrary.schema(schema), () => false, {
+            runs: 1,
+            seed: 123,
+            size: 64,
+            maxShrinks: 1
+          })
+
+          assert.strictEqual(result._tag, "Falsified")
+          if (result._tag === "Falsified") assert.strictEqual(result.shrunkInput, "a".repeat(64))
+        } finally {
+          spy.mockRestore()
+        }
+        assert.strictEqual(shorterCandidates, 0)
+      }), { concurrent: false })
 
     describe("deletes failure-irrelevant String units anywhere", () => {
       const cases: ReadonlyArray<{
@@ -1169,6 +1219,23 @@ describe("Arbitrary", () => {
           assert.notStrictEqual(result.initialInput, "\u{10000}")
           assert.strictEqual(result.shrunkInput, "\u{10000}")
         }
+      }))
+
+    it.effect("simplifies code points formed by joining surrogate units", () =>
+      Effect.gen(function*() {
+        const schema = Schema.String.check(Schema.isMaxCodePoints(2))
+        // Keep the leading high surrogate while the second code point shrinks
+        // into a low surrogate, joining them into one code point.
+        const property = (s: string) => !(/^[\uD800-\uDBFF][\s\S]{2,}$/.test(s) || /^[\u{10000}-\u{103FF}]$/u.test(s))
+        const result = yield* Arbitrary.checkEffect(Arbitrary.schema(schema), property, {
+          runs: 1,
+          seed: 55,
+          size: 4,
+          maxShrinks: 1_000
+        })
+
+        assert.strictEqual(result._tag, "Falsified")
+        if (result._tag === "Falsified") assert.strictEqual(result.shrunkInput, "\u{10000}")
       }))
 
     it.effect("structurally shrinks regular-expression repetitions", () =>
