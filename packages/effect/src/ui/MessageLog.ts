@@ -720,42 +720,52 @@ const isPlainRecord = (value: unknown): value is Record<PropertyKey, unknown> =>
 /** Whether `ast` declares a `Schema.Redacted` anywhere. */
 const holdsRedacted = (ast: SchemaAST.AST): boolean => redactAST(ast) !== ast
 
-/** One `encodeArgs` call: the objects on the path being walked, and which values reach a cycle. */
-interface Walk {
-  readonly path: Set<object>
-  readonly cyclic: (value: unknown) => boolean
+const overlaps = new WeakMap<SchemaAST.AST, boolean>()
+/**
+ * Whether `ast` holds, anywhere, an object with two or more index signatures
+ * where one declares a `Schema.Redacted`. A key both match is parsed by each,
+ * and the codec keeps the last one's output, so another one's redaction can
+ * be lost. The whole codec is never used for such a Schema.
+ */
+const holdsRedactedOverlap = (ast: SchemaAST.AST): boolean => {
+  const cached = overlaps.get(ast)
+  if (cached !== undefined) return cached
+  const seen = new Set<SchemaAST.AST>()
+  const visit = (node: SchemaAST.AST): boolean => {
+    if (seen.has(node)) return false
+    seen.add(node)
+    if (node.encoding !== undefined && node.encoding.some((link) => visit(link.to))) return true
+    switch (node._tag) {
+      case "Objects":
+        return (node.indexSignatures.length > 1 && node.indexSignatures.some((index) => holdsRedacted(index.type))) ||
+          node.propertySignatures.some((property) => visit(property.type)) ||
+          node.indexSignatures.some((index) => visit(index.type))
+      case "Arrays":
+        return node.elements.some(visit) || node.rest.some(visit)
+      case "Union":
+        return node.types.some(visit)
+      case "Suspend":
+        return visit(node.thunk())
+      case "Declaration":
+        return node.typeParameters.some(visit)
+      default:
+        return false
+    }
+  }
+  const result = visit(ast)
+  overlaps.set(ast, result)
+  return result
 }
 
-/** Memoised per value: whether walking it reaches a value already on the way to it. */
-const makeCyclic = (): (value: unknown) => boolean => {
-  const known = new Map<object, boolean>()
-  const onPath = new Set<object>()
-  const children = (value: object): Iterable<unknown> =>
-    value instanceof Map
-      ? Array.from(value).flat()
-      : value instanceof Set
-      ? value
-      : Array.isArray(value)
-      ? value
-      : Object.values(value)
-  const cyclic = (value: unknown): boolean => {
-    if (typeof value !== "object" || value === null) return false
-    if (onPath.has(value)) return true
-    const cached = known.get(value)
-    if (cached !== undefined) return cached
-    onPath.add(value)
-    let result = false
-    for (const child of children(value)) {
-      if (cyclic(child)) {
-        result = true
-        break
-      }
-    }
-    onPath.delete(value)
-    known.set(value, result)
-    return result
+const redacted: Schema.Json = { "~redacted": true }
+const failed: Schema.Json = { "~unserialisable": "encode" }
+/** Reading a value can throw, from a getter. The log gets a placeholder for it instead. */
+const guarded = (f: () => Schema.Json): Schema.Json => {
+  try {
+    return f()
+  } catch {
+    return failed
   }
-  return cyclic
 }
 
 /**
@@ -765,14 +775,13 @@ const makeCyclic = (): (value: unknown) => boolean => {
  * whose Schema declares a `Schema.Redacted` anywhere is a placeholder, since
  * `structural` can't tell which of its values is secret.
  *
- * A value that reaches a cycle never goes through a codec, which would recurse
- * without end. It's walked like a failure, and the repeat is a placeholder.
+ * Nothing is read that the codec wouldn't read, until a leaf falls back. A
+ * cyclic value makes the codec overflow the stack, which is a failure like
+ * any other: the walk goes on part by part, and the repeat is a placeholder.
  */
-const encodeAt = (ast: SchemaAST.AST, value: unknown, walk: Walk): Schema.Json => {
-  const object = typeof value === "object" && value !== null
-  if (object && walk.path.has(value)) return { "~unserialisable": "cycle" }
-  const cyclic = object && walk.cyclic(value)
-  const encode = cyclic ? undefined : encoderOf(ast)
+const encodeAt = (ast: SchemaAST.AST, value: unknown, path: Set<object>): Schema.Json => {
+  if (typeof value === "object" && value !== null && path.has(value)) return { "~unserialisable": "cycle" }
+  const encode = holdsRedactedOverlap(ast) ? undefined : encoderOf(ast)
   if (encode !== undefined) {
     try {
       // A Schema such as `Schema.Any` passes a value through, so the result goes through `structural` too.
@@ -784,58 +793,64 @@ const encodeAt = (ast: SchemaAST.AST, value: unknown, walk: Walk): Schema.Json =
   if (ast.encoding === undefined) {
     switch (ast._tag) {
       case "Suspend":
-        return encodeAt(ast.thunk(), value, walk)
+        return encodeAt(ast.thunk(), value, path)
       case "Objects":
-        if (isPlainRecord(value)) return within(walk, value, () => encodeObject(ast, value, walk))
+        if (isPlainRecord(value)) return within(path, value, () => encodeObject(ast, value, path))
         break
       case "Arrays":
-        if (Array.isArray(value)) return within(walk, value, () => encodeArray(ast, value, walk))
+        if (Array.isArray(value)) return within(path, value, () => encodeArray(ast, value, path))
         break
       case "Union": {
-        // A guard on a cyclic value would recurse without end too.
-        const member = cyclic ? undefined : ast.types.find((type) => guardOf(type)(value))
-        if (member !== undefined) return encodeAt(member, value, walk)
+        const member = ast.types.find((type) => guardOf(type)(value))
+        if (member !== undefined) return encodeAt(member, value, path)
         break
       }
     }
   }
   return fallback(ast, value)
 }
-const within = <A>(walk: Walk, value: object, f: () => A): A => {
-  walk.path.add(value)
+const within = <A>(path: Set<object>, value: object, f: () => A): A => {
+  path.add(value)
   try {
     return f()
   } finally {
-    walk.path.delete(value)
+    path.delete(value)
   }
 }
 /**
- * A key is encoded by its property signature and every index signature it
- * matches, like the parser. When one of those declares a `Schema.Redacted`,
- * it's the one used, so a secret never goes out under a sibling's Schema. A
- * key that matches nothing is left out, as the parser leaves it out.
+ * The keys the parser outputs, each with the Schemas that apply to it. A
+ * property key is the property's alone. Any other key gets every index
+ * signature it matches, and one that matches none is left out. Only keys are
+ * read here, never values.
  */
-const encodeObject = (ast: SchemaAST.Objects, value: Record<PropertyKey, unknown>, walk: Walk): Schema.Json => {
-  const candidates = new Map<string, Array<SchemaAST.AST>>()
-  const add = (key: PropertyKey, type: SchemaAST.AST) => {
-    if (typeof key !== "string" || !Object.hasOwn(value, key)) return
-    const list = candidates.get(key)
-    if (list === undefined) candidates.set(key, [type])
-    else list.push(type)
+const encodeObject = (ast: SchemaAST.Objects, value: Record<PropertyKey, unknown>, path: Set<object>): Schema.Json => {
+  const applies = new Map<string, Array<SchemaAST.AST>>()
+  for (const property of ast.propertySignatures) {
+    if (typeof property.name === "string" && Object.hasOwn(value, property.name)) {
+      applies.set(property.name, [property.type])
+    }
   }
-  for (const property of ast.propertySignatures) add(property.name, property.type)
+  const properties = new Set(applies.keys())
   for (const index of ast.indexSignatures) {
-    for (const key of SchemaAST.getIndexSignatureKeys(value, index.parameter)) add(key, index.type)
+    for (const key of SchemaAST.getIndexSignatureKeys(value, index.parameter)) {
+      if (typeof key !== "string" || properties.has(key)) continue
+      const types = applies.get(key)
+      if (types === undefined) applies.set(key, [index.type])
+      else if (!types.includes(index.type)) types.push(index.type)
+    }
   }
   const out: Record<string, Schema.Json> = {}
-  for (const [key, types] of candidates) {
-    const type = types.find(holdsRedacted) ?? types[0]!
-    out[key] = encodeAt(type, value[key], walk)
+  for (const [key, types] of applies) {
+    // Under two Schemas, either one's redaction could apply, so it's a placeholder. Otherwise the
+    // last one wins, as in the parser.
+    out[key] = types.length > 1 && types.some(holdsRedacted)
+      ? redacted
+      : guarded(() => encodeAt(types[types.length - 1]!, value[key], path))
   }
   return out
 }
 /** Elements, then the rest, then the trailing elements, which take the last positions. */
-const encodeArray = (ast: SchemaAST.Arrays, value: ReadonlyArray<unknown>, walk: Walk): Schema.Json => {
+const encodeArray = (ast: SchemaAST.Arrays, value: ReadonlyArray<unknown>, path: Set<object>): Schema.Json => {
   const [rest, ...tail] = ast.rest
   const tailStart = Math.max(ast.elements.length, value.length - tail.length)
   return value.map((item, i) => {
@@ -846,34 +861,35 @@ const encodeArray = (ast: SchemaAST.Arrays, value: ReadonlyArray<unknown>, walk:
       : i >= tailStart && tail.length > 0
       ? tail[i - tailStart]
       : rest
-    return element === undefined ? fallback(ast, item) : encodeAt(element, item, walk)
+    return element === undefined ? fallback(ast, item) : encodeAt(element, item, path)
   })
 }
 const fallback = (ast: SchemaAST.AST, value: unknown): Schema.Json =>
-  holdsRedacted(ast) ? { "~redacted": true } : structural(value)
+  holdsRedacted(ast) ? redacted : guarded(() => structural(value))
 
 /**
  * Encodes a value through a Schema with every `Schema.Redacted` redacted. A
  * leaf that fails to encode, such as a `File` under `Schema.instanceOf`,
  * falls back to `structural` on its own, and its siblings keep their codecs.
+ * It never throws: a value that can't be read is a placeholder.
  *
  * @internal
  */
 export const encodeArgs = (schema: Schema.Top, value: unknown): Schema.Json => {
-  const walk: Walk = { path: new Set(), cyclic: makeCyclic() }
+  const path = new Set<object>()
   // A struct or a class is encoded field by field.
   const fields = (schema as { readonly fields?: Schema.Struct.Fields }).fields
   if (fields !== undefined && isPlainRecord(value)) {
-    return within(walk, value, () => {
+    return within(path, value, () => {
       const out: Record<string, Schema.Json> = {}
       for (const key of Object.keys(fields)) {
         if (!Object.hasOwn(value, key)) continue
-        out[key] = encodeAt((fields[key] as Schema.Top).ast, value[key], walk)
+        out[key] = guarded(() => encodeAt((fields[key] as Schema.Top).ast, value[key], path))
       }
       return out
     })
   }
-  return encodeAt(schema.ast, value, walk)
+  return guarded(() => encodeAt(schema.ast, value, path))
 }
 
 const encodeCause = (cause: Cause.Cause<unknown>): typeof CauseWire.Type => ({

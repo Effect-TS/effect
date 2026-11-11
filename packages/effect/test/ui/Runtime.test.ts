@@ -1345,7 +1345,7 @@ describe("Runtime", () => {
               Schema.Record(Schema.TemplateLiteral(["file-", Schema.String]), Schema.instanceOf(File)),
               Schema.Record(Schema.TemplateLiteral(["secret-", Schema.String]), EncodedSecret)
             ]),
-            // Both signatures match `secret-a`: the one that declares a Redacted encodes it.
+            // Both signatures match `secret-a`, and one declares a Redacted, so it's a placeholder.
             overlapping: Schema.StructWithRest(Schema.Struct({}), [
               Schema.Record(Schema.String, Schema.Unknown),
               Schema.Record(Schema.TemplateLiteral(["secret-", Schema.String]), EncodedSecret)
@@ -1369,6 +1369,91 @@ describe("Runtime", () => {
         overlapping: { "secret-a": { "~redacted": true }, other: {} }
       })
       assert.notInclude(JSON.stringify(encoded), "must-not-log")
+    })
+
+    it("the Wire redacts a key that two record signatures match, through the codec and in the fallback", () => {
+      const EncodedSecret = Schema.Redacted(Schema.String).pipe(
+        Schema.decodeTo(
+          Schema.String,
+          SchemaTransformation.transform({ decode: Redacted.value, encode: Redacted.make })
+        )
+      )
+      // Two signatures that redact different fields. With `withFile` a leaf fails, so the codec falls back.
+      const Entries = (withFile: boolean) =>
+        Schema.StructWithRest(Schema.Struct({}), [
+          Schema.Record(
+            Schema.String,
+            Schema.Struct({
+              a: EncodedSecret,
+              b: Schema.String,
+              ...(withFile ? { file: Schema.instanceOf(File) } : {})
+            })
+          ),
+          Schema.Record(
+            Schema.TemplateLiteral(["secret-", Schema.String]),
+            Schema.Struct({
+              a: Schema.String,
+              b: EncodedSecret,
+              ...(withFile ? { file: Schema.instanceOf(File) } : {})
+            })
+          )
+        ])
+      const Save = Command.make(
+        "Save",
+        { args: { codec: Entries(false), fallback: Entries(true) } },
+        () => Effect.succeed(1)
+      )
+      const file = new File(["x"], "a.txt")
+      const encoded = MessageLog.encodeCommand(Save({
+        codec: { "secret-a": { a: "hidden-one", b: "hidden-two" }, plain: { a: "hidden-three", b: "shown" } },
+        fallback: {
+          "secret-a": { a: "hidden-one", b: "hidden-two", file },
+          plain: { a: "hidden-three", b: "shown", file }
+        }
+      } as any))
+      assert.deepStrictEqual(encoded.args, {
+        codec: { "secret-a": { "~redacted": true }, plain: { a: { "~redacted": true }, b: "shown" } },
+        fallback: { "secret-a": { "~redacted": true }, plain: { a: { "~redacted": true }, b: "shown", file: {} } }
+      })
+      assert.notInclude(JSON.stringify(encoded), "hidden")
+    })
+
+    it("the Wire reads only what the Schema declares, and a value that throws is a placeholder", () => {
+      const Save = Command.make(
+        "Save",
+        {
+          args: {
+            codec: Schema.Struct({ id: Schema.NumberFromString }),
+            fallback: Schema.Struct({ id: Schema.NumberFromString, file: Schema.instanceOf(File) }),
+            throws: Schema.Struct({ id: Schema.NumberFromString, file: Schema.instanceOf(File) })
+          }
+        },
+        () => Effect.succeed(1)
+      )
+      const file = new File(["x"], "a.txt")
+      const unread = <A extends object>(value: A): A =>
+        Object.defineProperty(value, "unused", {
+          enumerable: true,
+          get: () => {
+            throw new Error("must not be read")
+          }
+        })
+      const throws = Object.defineProperty({ file }, "id", {
+        enumerable: true,
+        get: () => {
+          throw new Error("declared, and it throws")
+        }
+      })
+      const encoded = MessageLog.encodeCommand(Save({
+        codec: unread({ id: 1 }),
+        fallback: unread({ id: 2, file }),
+        throws: throws as any
+      }))
+      assert.deepStrictEqual(encoded.args, {
+        codec: { id: "1" },
+        fallback: { id: "2", file: {} },
+        throws: { id: { "~unserialisable": "encode" }, file: {} }
+      })
     })
 
     it("the Wire encodes a cyclic arg with a placeholder for the cycle, instead of overflowing", () => {
