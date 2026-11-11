@@ -26,10 +26,7 @@ const dir = Fs.mkdtempSync(Path.join(Os.tmpdir(), "effect-dist-types-"))
 try {
   Fs.writeFileSync(
     Path.join(dir, "index.ts"),
-    entrypoints.map(([entry], i) => `import * as _${i} from "${entry}"\nexport { _${i} }\n`).join("") +
-      // These readers must stay in the published declarations (see Effect-TS/effect#10524).
-      'import { HttpApiSchema } from "effect/http-api"\n' +
-      "export const { getEncodeToWithHeadersParts, getResponseEncodingSchema } = HttpApiSchema\n"
+    entrypoints.map(([entry], i) => `import * as _${i} from "${entry}"\nexport { _${i} }\n`).join("")
   )
   const config = {
     compilerOptions: {
