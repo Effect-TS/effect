@@ -12,8 +12,9 @@
  *
  * **Where the route lives**
  *
- * The root's Model holds the route. The initial route comes in through the
- * root's props, and later changes arrive as a message from
+ * The root's Model holds the route. Read the initial route with
+ * `Router.currentRoute(AppRoute)` at mount and pass it through the root's props.
+ * Later changes arrive as a message from
  * `Router.subscription`, so every route change is in the log. The Router is
  * shaped like a `SubscriptionRef`: `changes` starts with the current
  * location, so a change made before the Subscription starts isn't lost. The
@@ -26,8 +27,9 @@
  * **Example** (A root that follows the route)
  *
  * ```ts import.meta.vitest
- * import { Schema } from "effect"
+ * import { Effect, Schema } from "effect"
  * import { Command, Component, Route, Router } from "effect/ui"
+ * import { TestHost } from "effect/ui/testing"
  *
  * const AppRoute = Route.union({
  *   Home: Route.make("/"),
@@ -57,6 +59,10 @@
  *   subscriptions: () => [Router.subscription(AppRoute, (route) => Message.make({ _tag: "ChangedRoute", route }))],
  *   view: (model, h) => h.el("p", model.route._tag)
  * })
+ *
+ * const mount = Effect.gen(function*() {
+ *   return yield* TestHost.mount(App, { route: yield* Router.currentRoute(AppRoute) })
+ * }).pipe(Effect.provide(Router.memory({ routes: AppRoute, url: "/about" })))
  * ```
  *
  * @stability experimental
@@ -322,6 +328,29 @@ export type Services = Router | Push | Replace | Back | Forward | Load
 // ---------------------------------------------------------------------------
 
 const engines = new WeakMap<Router, Engine>()
+
+/**
+ * Reads the Router's current route as a value of the given union.
+ *
+ * **When to use**
+ *
+ * Use to initialize a routed root's props from its Router rather than stating
+ * the initial URL again at the mount site.
+ *
+ * **Gotchas**
+ *
+ * Dies if the given union cannot parse the current location. Pass the union
+ * used by the Router Layer, or a subset that includes the current route.
+ *
+ * @stability experimental
+ * @category accessors
+ * @since 4.1.3
+ */
+export const currentRoute = <U extends Routes>(routes: U): Effect.Effect<U["Type"], never, Router> =>
+  Effect.map(Router, (router) => {
+    const location = router.location()
+    return (router.routes === routes ? location.route : Option.getOrThrow(routes.parse(location.url))) as U["Type"]
+  })
 
 /**
  * The Subscription that feeds route changes into a root's `update`.

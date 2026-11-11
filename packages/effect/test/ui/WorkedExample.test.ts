@@ -3,7 +3,7 @@
  * in `fixtures/users.ts`.
  */
 import { assert, describe, it } from "@effect/vitest"
-import { Effect, Layer, Option, Schema } from "effect"
+import { Effect, Layer, Schema } from "effect"
 import { TestClock } from "effect/testing"
 import { Component, Router } from "effect/ui"
 import { Html } from "effect/ui/html"
@@ -23,7 +23,7 @@ const setup = (url: string) => {
 const run = <A, E>(deps: Layer.Layer<any>, effect: Effect.Effect<A, E, any>) =>
   effect.pipe(Effect.provide(deps), Effect.scoped, Effect.provide(TestHost.layer())) as Effect.Effect<A, E>
 
-const mountAt = (url: string) => TestHost.mount(users.App, { route: Option.getOrThrow(users.AppRoute.parse(url)) })
+const mount = Effect.flatMap(Router.currentRoute(users.AppRoute), (route) => TestHost.mount(users.App, { route }))
 
 const navigate = Effect.fnUntraced(function*(url: string) {
   const router = yield* Router.Router
@@ -90,7 +90,7 @@ describe("the worked example", () => {
     return run(
       deps,
       Effect.gen(function*() {
-        const root = yield* mountAt("/users/1")
+        const root = yield* mount
         yield* TestHost.settle
         yield* TestClock.adjust("10 millis")
         click(root, "Rename")
@@ -120,7 +120,7 @@ describe("the worked example", () => {
     return run(
       deps,
       Effect.gen(function*() {
-        const root = yield* mountAt("/users/1")
+        const root = yield* mount
         yield* TestHost.settle
         yield* TestClock.adjust("10 millis")
         // The entry goes stale while it is on screen.
@@ -148,7 +148,7 @@ describe("the worked example", () => {
     return run(
       deps,
       Effect.gen(function*() {
-        const root = yield* mountAt("/users/1")
+        const root = yield* mount
         yield* TestHost.settle
         yield* TestClock.adjust("10 millis")
         yield* navigate("/")
@@ -175,7 +175,7 @@ describe("the worked example", () => {
     return run(
       deps,
       Effect.gen(function*() {
-        const root = yield* mountAt("/")
+        const root = yield* mount
         yield* TestHost.settle
         yield* TestClock.adjust("10 millis")
         assert.include(root.text(), "Ann")
@@ -205,7 +205,7 @@ describe("the worked example", () => {
     return run(
       deps,
       Effect.gen(function*() {
-        const root = yield* mountAt("/users/1")
+        const root = yield* mount
         yield* TestHost.settle
         yield* TestClock.adjust("10 millis")
         click(root, "Rename")
@@ -229,7 +229,7 @@ describe("the worked example", () => {
     return run(
       deps,
       Effect.gen(function*() {
-        const root = yield* mountAt("/users/1")
+        const root = yield* mount
         yield* TestHost.settle
         yield* TestClock.adjust("10 millis")
         click(root, "Rename")
