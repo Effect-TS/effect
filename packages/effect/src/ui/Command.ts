@@ -186,7 +186,7 @@ export type GroupField<In> =
 
 /**
  * The `group` fields of a Command's args: what `Command.interrupt` and
- * `h.running` take to address one group.
+ * `h.isRunning` take to address one group.
  *
  * @stability experimental
  * @category utility types
@@ -195,7 +195,7 @@ export type GroupField<In> =
 export type GroupPick<Args, G extends string> = Pick<Args, G & keyof Args>
 
 /**
- * The optional group argument of `Command.interrupt` and `h.running`: none
+ * The optional group argument of `Command.interrupt` and `h.isRunning`: none
  * for a Command without a `group`.
  *
  * @stability experimental
@@ -1395,7 +1395,7 @@ type AwaitsRefetchOf<R, K> = [K] extends ["Effect"] ? [R] extends [never] ? {
  * - A typed failure is delivered at once. An interrupt before the body
  *   succeeds sends nothing. If the issuing instance closes during the wait,
  *   the message is dropped.
- * - `h.running` stays true through the wait. Under `queue` the next run
+ * - `h.isRunning` stays true through the wait. Under `queue` the next run
  *   starts when the body exits, and messages keep issue order; under
  *   `drop` a waiting run still counts as running.
  * - Each awaited entry emits when it settles, so the field's message comes

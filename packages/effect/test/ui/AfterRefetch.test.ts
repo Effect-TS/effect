@@ -118,7 +118,7 @@ const makeApp = (options?: {
         onSuccess: (success) => success.value.name + (h.patched.user ? "~" : "") + (success.waiting ? "…" : ""),
         onFailure: () => "failed"
       })
-      const shown = `${h.props.tag}=${text}${h.running(RenameUser) ? " saving" : ""}${
+      const shown = `${h.props.tag}=${text}${h.isRunning(RenameUser) ? " saving" : ""}${
         model.done.length === 0 ? "" : " [" + model.done.join(",") + "]"
       };`
       order.push(`view ${shown}`)
@@ -746,7 +746,7 @@ describe("Command.afterRefetch", () => {
             assert.deepStrictEqual(story.pending.map((entry) => [entry.status, entry.awaiting]), [
               ["awaiting", [{ field: "user", args: { id: "1" } }]]
             ])
-            // h.running stays true through the wait.
+            // h.isRunning stays true through the wait.
             assert.isDefined(story.query(Query.text("saving")))
             assert.deepStrictEqual(story.model.done, [])
             app.order.length = 0

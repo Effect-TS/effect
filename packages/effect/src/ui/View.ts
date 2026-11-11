@@ -569,7 +569,7 @@ export interface Helper<Msg, Props> {
    * Per instance and view only: `update` ignores a submit while saving with
    * `mode: "drop"`.
    */
-  running<Args, G extends string>(
+  isRunning<Args, G extends string>(
     command: Command.Definition<Args, any, boolean, any, G>,
     ...group: Command.GroupArg<Args, G>
   ): boolean
@@ -592,7 +592,7 @@ export interface Helper<Msg, Props> {
 }
 
 /**
- * What `h.running` asks: whether the instance has a run of the named Command,
+ * What `h.isRunning` asks: whether the instance has a run of the named Command,
  * of the group key if given.
  *
  * @internal
@@ -604,14 +604,14 @@ const notRunning: Running = () => false
 class HelperImpl<Msg, Props> implements Helper<Msg, Props> {
   readonly props: Props
   readonly elements: Vocabulary<any> | undefined
-  readonly isRunning: Running
+  readonly runningFn: Running
   constructor(props: Props, elements: Vocabulary<any> | undefined, running: Running | undefined) {
     this.props = props
     this.elements = elements
-    this.isRunning = running ?? notRunning
+    this.runningFn = running ?? notRunning
   }
-  running(command: Command.Definition.Any, group?: unknown): boolean {
-    return this.isRunning(Command.nameOf(command), Command.groupKeyOf(command, group))
+  isRunning(command: Command.Definition.Any, group?: unknown): boolean {
+    return this.runningFn(Command.nameOf(command), Command.groupKeyOf(command, group))
   }
   el(tag: string, ...inputs: ReadonlyArray<Input<Msg>>): ElementBuilder<Msg, any> {
     const nodes = children(inputs)

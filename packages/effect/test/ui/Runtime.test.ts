@@ -506,7 +506,7 @@ describe("Runtime", () => {
           h.el("button", "save").on("click", EditorMsg.make({ _tag: "Save" })),
           h.el("button", "rename").on("click", EditorMsg.make({ _tag: "Rename" })),
           h.el("button", "stop").on("click", EditorMsg.make({ _tag: "Stop" })),
-          h.text(h.running(Save) ? "saving" : "idle")
+          h.text(h.isRunning(Save) ? "saving" : "idle")
         ])
     })
 
@@ -882,7 +882,7 @@ describe("Runtime", () => {
         assert.strictEqual(root.pending().length, 3)
       })))
 
-    it.effect("h.running ends when an interrupted run's fiber exits, and the instance re-renders", () =>
+    it.effect("h.isRunning ends when an interrupted run's fiber exits, and the instance re-renders", () =>
       provideHost(Effect.gen(function*() {
         const server = makeServer()
         const App = Component.provide(

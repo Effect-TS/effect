@@ -246,7 +246,7 @@ export const RenameForm = Component.make({
           h.button("Cancel").attr("type", "button").disabled(Option.isNone(model.draft))
             .onClick(RenameFormMessage.make({ _tag: "Cancel" })),
           // This instance has a save of this user queued or running.
-          h.running(RenameUser, { id: h.props.id }) && h.small("Saving…"),
+          h.isRunning(RenameUser, { id: h.props.id }) && h.small("Saving…"),
           Option.match(model.error, {
             onNone: () => null,
             onSome: (reason) => h.p(reason).attr("role", "alert")

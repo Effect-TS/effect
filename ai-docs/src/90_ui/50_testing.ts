@@ -58,18 +58,21 @@ describe("NoteEditor", () => {
 // Command: its implementation against a fake of the service it captures.
 // ---------------------------------------------------------------------------
 
-describe("SaveNote", () => {
-  it.effect("writes through Notes, and fails with a typed error", () =>
-    Effect.gen(function*() {
-      const notes = yield* Notes
-      // `.effect` is the Command's work, before any `Command.match`.
-      assert.deepStrictEqual(yield* SaveNote.make({ note: edited }).effect, edited)
-      assert.deepStrictEqual(yield* notes.get(note.id), edited)
+it.layer(SaveNote.layer.pipe(Layer.provideMerge(Notes.layerMemory([note]))), { buildPerTest: true })(
+  "SaveNote",
+  (it) => {
+    it.effect("writes through Notes, and fails with a typed error", () =>
+      Effect.gen(function*() {
+        const notes = yield* Notes
+        // `.effect` is the Command's work, before any `Command.match`.
+        assert.deepStrictEqual(yield* SaveNote.make({ note: edited }).effect, edited)
+        assert.deepStrictEqual(yield* notes.get(note.id), edited)
 
-      const error = yield* Effect.flip(SaveNote.make({ note: { ...note, title: "" } }).effect)
-      assert.strictEqual(error._tag, "NoteSaveError")
-    }).pipe(Effect.provide(SaveNote.layer.pipe(Layer.provideMerge(Notes.layerMemory([note]))))))
-})
+        const error = yield* Effect.flip(SaveNote.make({ note: { ...note, title: "" } }).effect)
+        assert.strictEqual(error._tag, "NoteSaveError")
+      }))
+  }
+)
 
 // ---------------------------------------------------------------------------
 // Runtime: anything that crosses a child slot, a Layer or the Router.
@@ -77,14 +80,14 @@ describe("SaveNote", () => {
 
 // `Router.memory` is the Router for tests. The app's own requirements are
 // provided as in production, except that `Notes` is the in-memory fake.
-const provideApp = <A, E, R>(effect: Effect.Effect<A, E, R>) =>
-  effect.pipe(
-    Effect.provide([Router.memory({ routes: AppRoute, url: "/notes/n1" }), Notes.layerMemory([note])]),
-    Effect.scoped,
-    Effect.provide(TestHost.layer())
-  )
+// Build fresh services for each test so edits and navigation cannot leak.
+const AppTest = Layer.mergeAll(
+  Router.memory({ routes: AppRoute, url: "/notes/n1" }),
+  Notes.layerMemory([note]),
+  TestHost.layer()
+)
 
-describe("App", () => {
+it.layer(AppTest, { buildPerTest: true })("App", (it) => {
   it.effect("loads a note, autosaves an edit and shows the notice", () =>
     Effect.gen(function*() {
       // `Router.props` reads the root's `{ route }` from the Router.
@@ -99,7 +102,7 @@ describe("App", () => {
       yield* TestClock.adjust("2 seconds")
       yield* TestHost.settle
       assert.strictEqual(Query.textOf(root.get(HtmlQuery.role("status"))), "Saved")
-    }).pipe(provideApp))
+    }))
 
   it.effect("hydrates what the server rendered", () =>
     Effect.gen(function*() {
@@ -110,5 +113,5 @@ describe("App", () => {
       assert.include(result.html, "Milk")
       // The paths of the instances that adopted the server's Model.
       assert.include(result.adopted, "/App/NotePage[/notes/n1]/NoteEditor[n1]")
-    }).pipe(provideApp))
+    }))
 })
