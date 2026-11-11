@@ -473,17 +473,31 @@ const makeLoaderCache = (ctx: Context.Context<any>, options: Options | undefined
 }
 
 /**
- * Sets up the root. Uninterruptible, so every root finalizer is registered once it starts. The rest of
- * the runtime runs outside any fiber and registers its finalizers synchronously.
+ * Sets up the root in one synchronous step, so the Scope can't close while it's half set up. A Scope
+ * that has already closed gets no root: the setup is interrupted.
  */
-const start = Effect.fnUntraced(function*(
+const start = (
   component: Component.Any,
   rootProps: unknown,
   container: unknown,
   ctx: Context.Context<any>,
   cache: ReturnType<typeof Loader.internals>,
   options: Options | undefined
-): Effect.fn.Return<Root & Renderer.Root<any, any>> {
+): Effect.Effect<Root & Renderer.Root<any, any>> =>
+  Effect.suspend(() =>
+    Context.get(ctx, Scope.Scope).state._tag === "Closed"
+      ? Effect.interrupt
+      : Effect.succeed(setup(component, rootProps, container, ctx, cache, options))
+  )
+
+const setup = (
+  component: Component.Any,
+  rootProps: unknown,
+  container: unknown,
+  ctx: Context.Context<any>,
+  cache: ReturnType<typeof Loader.internals>,
+  options: Options | undefined
+): Root & Renderer.Root<any, any> => {
   const server = options?.server
   const host: Renderer.Host<any> = server !== undefined ? server.host : Context.get(ctx, services.Renderer).host
   const log = Context.get(ctx, MessageLog.MessageLog)
@@ -638,7 +652,7 @@ const start = Effect.fnUntraced(function*(
   // Closed instances whose detached runs are still running or queued.
   const orphans = new Set<Instance>()
   let rootClosed = false
-  yield* Scope.addFinalizer(
+  addFinalizer(
     rootScope,
     Effect.suspend(() => {
       rootClosed = true
@@ -2992,7 +3006,7 @@ const start = Effect.fnUntraced(function*(
   // Registered before the root instance forks its Scope from `rootScope`: finalizers run in
   // reverse, so every instance Scope (and its Layers' finalizers) closes before the nodes go.
   let rootRendered: () => ReadonlyArray<Rendered> = () => []
-  yield* Scope.addFinalizer(
+  addFinalizer(
     rootScope,
     Effect.sync(() => {
       for (const node of rootRendered().flatMap(nodesOf)) host.remove(node)
@@ -3074,7 +3088,7 @@ const start = Effect.fnUntraced(function*(
       report
     }
     const detach = hooks.attach(handle)
-    yield* Scope.addFinalizer(rootScope, Effect.sync(detach))
+    addFinalizer(rootScope, Effect.sync(detach))
   }
   afterCommitHooks()
   rendering = false
@@ -3196,4 +3210,4 @@ const start = Effect.fnUntraced(function*(
     },
     finish
   }
-}, Effect.uninterruptible)
+}

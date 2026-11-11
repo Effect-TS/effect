@@ -1921,41 +1921,52 @@ describe("Runtime", () => {
       assert.strictEqual(container.children.length, 0)
     })))
 
-  it.effect("Renderer.mount interrupted at any yield point leaves nothing behind once its Scope closes", () =>
+  it.effect("Renderer.mount stopped at any yield point leaves nothing behind once its Scope closes", () =>
     Effect.gen(function*() {
       // No TestHost executor: the mount runs on the scheduler below throughout, the loader cache's build included.
       const host = TestHost.makeHost()
-      for (let at = 1;; at++) {
-        let listeners = 0
-        const signal: Loader.Signal = {
-          get: () => true,
-          subscribe: () => {
-            listeners++
-            return () => {
-              listeners--
+      // The mount is interrupted and its Scope closes after it exits, or while it's pending. Or the Scope
+      // closes under a pending mount that isn't interrupted, which then mounts nothing.
+      for (const mode of ["interrupt, then close", "interrupt and close", "close"] as const) {
+        for (let at = 1;; at++) {
+          let listeners = 0
+          const signal: Loader.Signal = {
+            get: () => true,
+            subscribe: () => {
+              listeners++
+              return () => {
+                listeners--
+              }
             }
           }
-        }
-        // Yields once, at the `at`-th check.
-        let checks = 0
-        const scheduler = new Scheduler.MixedScheduler()
-        scheduler.shouldYield = () => ++checks === at
-        const container = host.createElement("#app") as TestHost.TestElement
-        const scope = yield* Scope.make()
-        const fiber = Effect.runFork(
-          Renderer.mount(Counter, { initial: 1 }, container).pipe(
-            Scope.provide(scope),
-            Effect.provide(Renderer.layer(host)),
-            Effect.provideService(Loader.Visibility, signal),
-            Effect.provideService(Loader.Connectivity, signal),
-            Effect.provideService(Scheduler.Scheduler, scheduler)
+          // Yields once, at the `at`-th check.
+          let checks = 0
+          const scheduler = new Scheduler.MixedScheduler()
+          scheduler.shouldYield = () => ++checks === at
+          const container = host.createElement("#app") as TestHost.TestElement
+          const scope = yield* Scope.make()
+          const fiber = Effect.runFork(
+            Renderer.mount(Counter, { initial: 1 }, container).pipe(
+              Scope.provide(scope),
+              Effect.provide(Renderer.layer(host)),
+              Effect.provideService(Loader.Visibility, signal),
+              Effect.provideService(Loader.Connectivity, signal),
+              Effect.provideService(Scheduler.Scheduler, scheduler)
+            )
           )
-        )
-        fiber.interruptUnsafe()
-        yield* Fiber.await(fiber)
-        yield* Scope.close(scope, Exit.void)
-        assert.deepStrictEqual([at, listeners, container.children.length], [at, 0, 0])
-        if (checks < at) break
+          if (mode !== "close") fiber.interruptUnsafe()
+          if (mode === "interrupt, then close") yield* Fiber.await(fiber)
+          const closed = yield* Effect.exit(Scope.close(scope, Exit.void))
+          yield* Fiber.await(fiber)
+          assert.deepStrictEqual([mode, at, closed._tag, listeners, container.children.length], [
+            mode,
+            at,
+            "Success",
+            0,
+            0
+          ])
+          if (checks < at) break
+        }
       }
     }))
 
