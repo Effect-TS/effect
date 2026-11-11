@@ -667,6 +667,8 @@ export const make: <Rpcs extends Rpc.Any, const Flatten extends boolean = false>
     readonly context: Context.Context<never>
     readonly schemas: RpcSchemas
     readonly discard: boolean
+    // The delivery fiber of a chunk whose Ack is being sent
+    acking?: Fiber.Fiber<unknown, unknown> | undefined
   }
   const entries = new Map<RequestId, ClientEntry>()
   // Completed before the protocol stops running this client, so requests made
@@ -674,8 +676,10 @@ export const make: <Rpcs extends Rpc.Any, const Flatten extends boolean = false>
   const closing = Deferred.makeUnsafe<void>()
 
   const interruptRequest = (requestId: RequestId): Effect.Effect<void, RpcClientError> => {
-    if (!entries.has(requestId)) return Effect.void
+    const entry = entries.get(requestId)
+    if (!entry) return Effect.void
     entries.delete(requestId)
+    entry.acking?.interruptUnsafe()
     return send(clientId, { _tag: "Interrupt", requestId }) as Effect.Effect<void, RpcClientError>
   }
 
@@ -724,9 +728,13 @@ export const make: <Rpcs extends Rpc.Any, const Flatten extends boolean = false>
         case "Ack": {
           const entry = entries.get(message.requestId)
           if (!entry) return Effect.void
-          return send(clientId, {
-            _tag: "Ack",
-            requestId: message.requestId
+          return Effect.withFiber((fiber) => {
+            entry.acking = fiber
+            return send(clientId, { _tag: "Ack", requestId: message.requestId }).pipe(
+              Effect.ensuring(Effect.sync(() => {
+                if (entry.acking === fiber) entry.acking = undefined
+              }))
+            )
           }) as Effect.Effect<void, RpcClientError>
         }
         case "Interrupt": {

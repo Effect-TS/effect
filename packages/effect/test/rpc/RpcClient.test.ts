@@ -511,6 +511,33 @@ describe("RpcClient", () => {
       assert.deepStrictEqual(received, ["a", "b", "c"])
     }))
 
+  it.effect("interrupts a pending Ack when its stream is cancelled", () =>
+    Effect.gen(function*() {
+      const ackInterrupted = yield* Deferred.make<void>()
+      const received = yield* Deferred.make<Parameters<RpcClient.Protocol["Service"]["run"]>[1]>()
+      const sent = yield* Queue.unbounded<Parameters<RpcClient.Protocol["Service"]["send"]>[1]>()
+      const protocol = RpcClient.Protocol.of({
+        codecFor: RpcSerialization.json.codecFor,
+        supportsAck: true,
+        supportsTransferables: false,
+        run: (_clientId, handle) => Deferred.succeed(received, handle).pipe(Effect.andThen(Effect.never)),
+        send: (_clientId, message) =>
+          message._tag === "Ack"
+            ? Effect.onInterrupt(Effect.never, () => Deferred.succeed(ackInterrupted, void 0))
+            : Effect.asVoid(Queue.offer(sent, message))
+      })
+      const client = yield* RpcClient.make(ChunkGroup).pipe(Effect.provideService(RpcClient.Protocol, protocol))
+      const handle = yield* Deferred.await(received)
+      const scope = yield* Scope.make()
+      yield* client.Good(undefined, { asQueue: true }).pipe(Scope.provide(scope))
+      const requestId = takeRequestId(yield* Queue.take(sent))
+      yield* handle({ _tag: "Chunk", requestId, values: ["a"] })
+
+      yield* Scope.close(scope, Exit.void)
+      assert.deepStrictEqual(yield* Queue.take(sent), { _tag: "Interrupt", requestId })
+      yield* Deferred.await(ackInterrupted)
+    }))
+
   it.effect("completes a discarded call on its acknowledgement, not on the write", () =>
     Effect.gen(function*() {
       const { client, handle, sent } = yield* makeChunkProtocol()
