@@ -921,7 +921,7 @@ export const layerTest: Layer.Layer<
       Layer.provide(Layer.succeed(FetchHttpClient.RequestInit)({ keepalive: false }))
     )
   ),
-  Layer.provideMerge(layer(http.createServer, { port: 0 }))
+  Layer.provideMerge(layer(http.createServer, { port: 0, host: "127.0.0.1" }))
 )
 
 // -----------------------------------------------------------------------------

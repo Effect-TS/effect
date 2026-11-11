@@ -64,6 +64,13 @@ const IdParams = Schema.Struct({
 const todoResponse = HttpServerResponse.schemaJson(Todo)
 
 describe("HttpServer", () => {
+  it.effect("layerTest binds to IPv4 loopback", () =>
+    Effect.gen(function*() {
+      const server = yield* HttpServer.HttpServer
+      assert(NetAddress.isInetAddress(server.address))
+      assert.strictEqual(NetAddress.formatIp(server.address.address), "127.0.0.1")
+    }).pipe(Effect.provide(NodeHttpServer.layerTest)))
+
   it.effect.each([8 * 1024, 512 * 1024])(
     "delivers a partial-read 413 and drains or closes for %i leftover bytes",
     (leftoverBytes) =>
