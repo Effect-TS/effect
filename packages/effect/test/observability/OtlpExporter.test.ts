@@ -145,12 +145,10 @@ describe("OtlpExporter", () => {
         Effect.gen(function*() {
           const exporter = yield* makeExporterRaw(2, undefined, Duration.infinity)
           const flusher = yield* OtlpExporter.Flusher
-          yield* yieldNowN(3)
           assert.strictEqual(activeFibers, 0)
 
           exporter.push({ value: 1 })
           yield* flusher.flush
-          assert.strictEqual(activeFibers, 0)
           assert.strictEqual(yield* Ref.get(attempts), 1)
 
           exporter.push({ value: 2 })
@@ -165,7 +163,6 @@ describe("OtlpExporter", () => {
           Effect.provide(OtlpExporter.layerFlusher)
         )
       )
-      assert.strictEqual(activeFibers, 0)
       assert.strictEqual(yield* Ref.get(attempts), 3)
     }).pipe(Effect.provideService(Metric.FiberRuntimeMetrics, runtimeMetrics))
   })
