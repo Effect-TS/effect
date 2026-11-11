@@ -15,7 +15,6 @@ import * as Fiber from "../../Fiber.ts"
 import * as Layer from "../../Layer.ts"
 import * as Option from "../../Option.ts"
 import * as AsyncResult from "../../reactivity/AsyncResult.ts"
-import * as loaderInternal from "../../reactivity/internal/loader.ts"
 import * as Loader from "../../reactivity/Loader.ts"
 import * as Scheduler from "../../Scheduler.ts"
 import * as Schema from "../../Schema.ts"
@@ -135,7 +134,7 @@ interface Run {
   /** On the server: the run's position among `init`'s Commands. */
   readonly initIndex: number | undefined
   /** The run at the cache, begun at issue. `undefined` for a `Command.make` Command. */
-  readonly handle: loaderInternal.RunHandle | undefined
+  readonly handle: Loader.RunHandle | undefined
   /**
    * An Effect-shaped `Command.Service` run outside `switch`: owned by the Layer build that provides
    * its service and by the root, not by its instance, with a Scope of its own.
@@ -472,14 +471,14 @@ const start = (
   // -- loader cache ---------------------------------------------------------
   // The runtime owns the cache and re-adds it wherever work runs, so `Component.provide` can't shadow
   // it. The three references are read once, here.
-  const cache = loaderInternal.makeCache({
+  const cache = Loader.makeCache({
     scope: rootScope,
     // Its fetches and timers run on the runtime's scheduler, so `TestHost.settle` drains them.
     context: withScheduler(ctx),
     visibility: Context.get(ctx, Loader.Visibility),
     connectivity: Context.get(ctx, Loader.Connectivity),
     report: Context.get(ctx, Loader.Problems),
-    idleMs: loaderInternal.cacheIdleMs(options?.loader?.idleTimeToLive),
+    idleMs: Loader.cacheIdleMs(options?.loader?.idleTimeToLive),
     settleOnce: server !== undefined
   })
   const withCache = (context: Context.Context<any>): Context.Context<any> =>
@@ -1287,13 +1286,13 @@ const start = (
       case "queue": {
         // The cache begins the run at issue, so its patches are live before it starts, and before
         // `switch` stops the earlier runs: the new patch layers over the old until the old fiber exits.
-        let handle: loaderInternal.RunHandle | undefined
+        let handle: Loader.RunHandle | undefined
         if (command.service !== undefined) {
           try {
             handle = cache.beginRun({
               command: command.name,
-              invalidates: command.invalidates as ReadonlyArray<loaderInternal.Target>,
-              optimistic: command.optimistic as ReadonlyArray<loaderInternal.Patch>
+              invalidates: command.invalidates as ReadonlyArray<Loader.Target>,
+              optimistic: command.optimistic as ReadonlyArray<Loader.Patch>
             })
           } catch (error) {
             // Like a throw in `update`: the run doesn't start and the issuing instance fails.
@@ -1474,7 +1473,7 @@ const start = (
             ? work
             : run.handle.run(
               work,
-              command.writes as ((success: unknown) => ReadonlyArray<loaderInternal.Write>) | undefined
+              command.writes as ((success: unknown) => ReadonlyArray<Loader.Write>) | undefined
             )
         }
       )

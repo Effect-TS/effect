@@ -692,11 +692,12 @@ const withElement = <A>(
   ref: Renderer.Ref<any>,
   f: (host: Context.Service.Shape<typeof Host>, element: globalThis.Element) => A
 ): Effect.Effect<Option.Option<A>, never, Renderer.Refs | Host> =>
-  Effect.flatMap(Effect.service(Renderer.Refs), (refs) =>
+  Renderer.Refs.use((refs) =>
     Effect.flatMap(refs.lookup(ref), (node) =>
       Option.isNone(node)
         ? Effect.succeed(Option.none())
-        : Effect.map(Effect.service(Host), (host) => Option.some(f(host, node.value as globalThis.Element)))))
+        : Host.useSync((host) => Option.some(f(host, node.value as globalThis.Element))))
+  )
 
 const FocusOptions = Schema.Struct({ preventScroll: Schema.optional(Schema.Boolean) })
 const ScrollOptionsSchema = Schema.Struct({

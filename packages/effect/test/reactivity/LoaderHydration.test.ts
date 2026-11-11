@@ -15,7 +15,6 @@ import {
 } from "effect"
 import { redactAST } from "effect/internal/schemaRedact"
 import { AsyncResult, Loader } from "effect/reactivity"
-import * as internal from "effect/reactivity/internal/loader"
 import { TestClock, TestLoader } from "effect/testing"
 
 const User = Schema.Struct({ id: Schema.String, name: Schema.String })
@@ -57,30 +56,30 @@ const settleOnce = (problems: Array<Loader.Problem.Any>) =>
     Loader.Cache,
     Effect.gen(function*() {
       const context = yield* Effect.context<never>()
-      return internal.makeCache({
+      return Loader.makeCache({
         scope: yield* Effect.scope,
         context,
         idleMs: 300_000,
-        visibility: internal.makeSignal(true),
-        connectivity: internal.makeSignal(true),
+        visibility: Loader.makeSignal(true),
+        connectivity: Loader.makeSignal(true),
         report: (problem) => problems.push(problem),
         settleOnce: true
       }) as unknown as Context.Service.Shape<typeof Loader.Cache>
     })
   )
 
-const cache = Effect.map(Effect.service(Loader.Cache), internal.internals)
+const cache = Loader.Cache.useSync(Loader.internals)
 
 const fetchLog = Effect.map(TestLoader.fetches, (fetches) => fetches.map((fetch) => fetch.trigger))
 
 describe("Loader snapshots", () => {
   const { GetUser } = makeUsers()
-  const def = internal.defOf(GetUser)
+  const def = Loader.defOf(GetUser)
   const at = { args: { id: "1" }, argsKey: def.argsKey({ id: "1" }) }
   const json = Schema.toCodecJson(Loader.Snapshot(GetUser, "user"))
 
   it("encodes as a tuple through the read's own Schemas, and decodes to an equal snapshot", () => {
-    const success = internal.makeSnapshot(
+    const success = Loader.makeSnapshot(
       def,
       "user",
       at,
@@ -90,7 +89,7 @@ describe("Loader snapshots", () => {
     assert.deepStrictEqual(encoded, [`{"id":"1"}`, 0, { id: "1", name: "Ann" }, 5, false])
     assert.isTrue(Equal.equals(Schema.decodeUnknownSync(json)(encoded), success))
 
-    const failure = internal.makeSnapshot(
+    const failure = Loader.makeSnapshot(
       def,
       "user",
       at,
@@ -102,20 +101,20 @@ describe("Loader snapshots", () => {
     assert.deepStrictEqual(failureEncoded, [`{"id":"1"}`, 1, ["nope"], [{ id: "1", name: "Ann" }, 5]])
     assert.isTrue(Equal.equals(Schema.decodeUnknownSync(json)(failureEncoded), failure))
 
-    const empty = internal.makeSnapshot(def, "user", undefined, undefined)
+    const empty = Loader.makeSnapshot(def, "user", undefined, undefined)
     assert.deepStrictEqual(Schema.encodeUnknownSync(json)(empty), [])
     assert.isTrue(Equal.equals(Schema.decodeUnknownSync(json)([]), empty))
   })
 
   it("never carries waiting, and records the patched flag only over a Success", () => {
-    const waiting = internal.makeSnapshot(
+    const waiting = Loader.makeSnapshot(
       def,
       "user",
       at,
       AsyncResult.success({ id: "1", name: "Ann" }, { timestamp: 5, waiting: true }),
       true
     )
-    const decoded = internal.snapshotData(Schema.decodeUnknownSync(json)(Schema.encodeUnknownSync(json)(waiting)))
+    const decoded = Loader.snapshotData(Schema.decodeUnknownSync(json)(Schema.encodeUnknownSync(json)(waiting)))
     assert.deepStrictEqual([decoded?.result?.waiting, decoded?.patched, decoded?.argsKey], [false, true, `{"id":"1"}`])
   })
 
@@ -126,7 +125,7 @@ describe("Loader snapshots", () => {
       error: Schema.String,
       staleTime: 0
     }, Effect.succeed(({ id }) => Effect.succeed({ id, name: "" }))) {}
-    const snapshot = internal.makeSnapshot(def, "user", undefined, undefined)
+    const snapshot = Loader.makeSnapshot(def, "user", undefined, undefined)
     assert.isTrue(Schema.is(Loader.Snapshot(GetUser, "user"))(snapshot))
     assert.isFalse(Schema.is(Loader.Snapshot(GetUser, "users"))(snapshot))
     assert.isFalse(Schema.is(Loader.Snapshot(Other, "user"))(snapshot))
@@ -140,9 +139,9 @@ describe("Loader snapshots", () => {
       error: Schema.Never,
       staleTime: 0
     }, Effect.succeed(() => Effect.succeed({ value: Redacted.make("v") }))) {}
-    const secretDef = internal.defOf(GetSecret)
+    const secretDef = Loader.defOf(GetSecret)
     const args = { token: Redacted.make("t") }
-    const snapshot = internal.makeSnapshot(
+    const snapshot = Loader.makeSnapshot(
       secretDef,
       "secret",
       { args, argsKey: secretDef.argsKey(args) },
@@ -306,8 +305,8 @@ describe("Loader hydration", () => {
 
 describe("Loader history restore", () => {
   const snapshotOf = (read: Loader.Read.Any, name: string, patched = false) => {
-    const def = internal.defOf(read)
-    return internal.makeSnapshot(
+    const def = Loader.defOf(read)
+    return Loader.makeSnapshot(
       def,
       "user",
       { args: { id: "1" }, argsKey: def.argsKey({ id: "1" }) },
@@ -350,9 +349,9 @@ describe("Loader snapshot identity", () => {
       { args: { n: Schema.Number }, success: Schema.String, error: Schema.Never, staleTime: "1 minute" },
       Effect.sync(() => ({ n }) => Effect.succeed(Object.is(n, -0) ? "minus zero" : "zero"))
     ) {}
-    const def = internal.defOf(GetPoint)
+    const def = Loader.defOf(GetPoint)
     const json = Schema.toCodecJson(Loader.Snapshot(GetPoint, "point"))
-    const snapshot = internal.makeSnapshot(
+    const snapshot = Loader.makeSnapshot(
       def,
       "point",
       { args: { n: -0 }, argsKey: def.argsKey({ n: -0 }) },
@@ -361,7 +360,7 @@ describe("Loader snapshot identity", () => {
     // Through text, as page state and history.state carry it: JSON text has no -0 in an args object.
     const text = JSON.stringify(Schema.encodeUnknownSync(json)(snapshot))
     const decoded = Schema.decodeUnknownSync(json)(JSON.parse(text))
-    assert.strictEqual(internal.snapshotData(decoded)?.argsKey, `{"n":-0}`)
+    assert.strictEqual(Loader.snapshotData(decoded)?.argsKey, `{"n":-0}`)
     assert.isTrue(Equal.equals(decoded, snapshot))
     // A key that doesn't key back to itself is rejected, not seeded under another entry.
     assert.isTrue(Exit.isFailure(Schema.decodeUnknownExit(json)([`{ "n": 0 }`, 0, "x", 1, false])))
@@ -379,13 +378,13 @@ describe("Loader snapshot identity", () => {
       { args: { s: Schema.Trim }, success: Schema.String, error: Schema.Never, staleTime: "1 minute" },
       Effect.sync(() => ({ s }) => Effect.succeed(s))
     ) {}
-    const def = internal.defOf(GetTrimmed)
+    const def = Loader.defOf(GetTrimmed)
     const json = Schema.toCodecJson(Loader.Snapshot(GetTrimmed, "trimmed"))
     // " a " decodes to "a", whose key is {"s":"a"}: the snapshot would name an entry it wasn't taken from.
     assert.isTrue(Exit.isFailure(Schema.decodeUnknownExit(json)([`{"s":" a "}`, 0, "cached", 1, false])))
     const decoded = Schema.decodeUnknownSync(json)([`{"s":"a"}`, 0, "cached", 1, false])
-    assert.deepStrictEqual(internal.snapshotData(decoded)?.args, { s: "a" })
-    assert.strictEqual(internal.snapshotData(decoded)?.argsKey, def.argsKey({ s: "a" }))
+    assert.deepStrictEqual(Loader.snapshotData(decoded)?.args, { s: "a" })
+    assert.strictEqual(Loader.snapshotData(decoded)?.argsKey, def.argsKey({ s: "a" }))
   })
 
   it("a snapshot of an entry keyed with an optional undefined dropped encodes as the key does", () => {
@@ -398,10 +397,10 @@ describe("Loader snapshot identity", () => {
       { args: Args, success: Schema.String, error: Schema.Never, staleTime: "1 minute" },
       Effect.sync(() => ({ id }) => Effect.succeed(id))
     ) {}
-    const def = internal.defOf(GetPage)
+    const def = Loader.defOf(GetPage)
     const json = Schema.toCodecJson(Loader.Snapshot(GetPage, "page"))
     const args = { id: "1", page: undefined }
-    const snapshot = internal.makeSnapshot(
+    const snapshot = Loader.makeSnapshot(
       def,
       "page",
       { args, argsKey: def.argsKey(args) },
@@ -410,7 +409,7 @@ describe("Loader snapshot identity", () => {
     const encoded = Schema.encodeUnknownSync(json)(snapshot)
     assert.deepStrictEqual(encoded, [`{"id":"1"}`, 0, "one", 1, false])
     const decoded = Schema.decodeUnknownSync(json)(JSON.parse(JSON.stringify(encoded)))
-    assert.strictEqual(internal.snapshotData(decoded)?.argsKey, def.argsKey(args))
+    assert.strictEqual(Loader.snapshotData(decoded)?.argsKey, def.argsKey(args))
   })
 })
 

@@ -57,8 +57,7 @@ import { dual } from "../Function.ts"
 import * as Layer from "../Layer.ts"
 import * as Pipeable from "../Pipeable.ts"
 import * as Predicate from "../Predicate.ts"
-import { canonical } from "../reactivity/internal/loader.ts"
-import type * as Loader from "../reactivity/Loader.ts"
+import * as Loader from "../reactivity/Loader.ts"
 import * as Schema from "../Schema.ts"
 import * as Scope from "../Scope.ts"
 import * as Stream from "../Stream.ts"
@@ -889,7 +888,7 @@ const makeGroup = (
     const picked: Record<string, unknown> = {}
     const source = (args ?? {}) as Record<string, unknown>
     for (const field of group) if (Object.hasOwn(source, field)) picked[field] = source[field]
-    return { key: canonical(encode(picked)), schema: pickSchema, picked }
+    return { key: Loader.canonical(encode(picked)), schema: pickSchema, picked }
   }
 }
 

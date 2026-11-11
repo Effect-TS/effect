@@ -303,11 +303,7 @@ export class Load extends Command.Service<Load>()("effect/ui/Router/Load", {
 export const blocked = (key: string): Subscription.Subscription<never, Router> =>
   Subscription.make(
     `effect/ui/Router/blocked/${key}`,
-    Stream.unwrap(Effect.gen(function*() {
-      const router = yield* Router
-      yield* router.block(key)
-      return Stream.never
-    }))
+    Stream.unwrap(Router.use((router) => Effect.as(router.block(key), Stream.never)))
   )
 
 /**

@@ -129,7 +129,7 @@ describe("Command", () => {
       expect(Command.Service<"Bad">()).type.not.toBeCallableWith(
         "Bad",
         { args: {}, invalidates: () => [] },
-        Effect.succeed(() => Effect.flatMap(Effect.service(Db), (db) => db.save))
+        Effect.succeed(() => Db.use((db) => db.save))
       )
     })
   })
@@ -140,12 +140,12 @@ describe("Command", () => {
       expect(Command.make).type.toBeCallableWith(
         "Look",
         { args: {} },
-        () => Effect.flatMap(Effect.service(Renderer.Refs), () => Effect.succeed(1))
+        () => Renderer.Refs.use(() => Effect.succeed(1))
       )
       expect(Command.make).type.not.toBeCallableWith(
         "Bad",
         { args: {} },
-        () => Effect.flatMap(Effect.service(Db), (db) => db.save)
+        () => Db.use((db) => db.save)
       )
     })
   })

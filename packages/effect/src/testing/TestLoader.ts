@@ -39,7 +39,6 @@ import type * as Duration from "../Duration.ts"
 import * as Effect from "../Effect.ts"
 import * as Layer from "../Layer.ts"
 import type * as AsyncResult from "../reactivity/AsyncResult.ts"
-import * as internal from "../reactivity/internal/loader.ts"
 import * as Loader from "../reactivity/Loader.ts"
 
 /**
@@ -175,14 +174,14 @@ export const layer = (options?: {
 }): Layer.Layer<TestLoader | Loader.Cache> => {
   const cacheLayer = Loader.layer(options)
   return Layer.unwrap(Effect.sync(() => {
-    const visibility = internal.makeSignal(true)
-    const connectivity = internal.makeSignal(true)
+    const visibility = Loader.makeSignal(true)
+    const connectivity = Loader.makeSignal(true)
     let problems: Array<Loader.Problem.Any> = []
     const fetches: Array<Fetch> = []
     const harness = Layer.effect(
       TestLoader,
       Effect.gen(function*() {
-        const cache = internal.internals(yield* Loader.Cache)
+        const cache = Loader.internals(yield* Loader.Cache)
         const off = cache.onFetch((event) => fetches.push(event))
         yield* Effect.addFinalizer(() =>
           Effect.suspend(() => {
@@ -194,7 +193,7 @@ export const layer = (options?: {
           setVisible: visibility.set,
           setOnline: connectivity.set,
           fetches: () => fetches.slice(),
-          entry: (read: Loader.Read.Any, args: unknown) => cache.inspect(internal.defOf(read), args),
+          entry: (read: Loader.Read.Any, args: unknown) => cache.inspect(Loader.defOf(read), args),
           problems: () => problems.slice(),
           expectProblem: (tag: string) => {
             const matched = problems.filter((problem) => problem._tag === tag)
@@ -235,7 +234,7 @@ export const layer = (options?: {
  * @since 4.1.3
  */
 export const setVisible = (visible: boolean): Effect.Effect<void, never, TestLoader> =>
-  Effect.map(Effect.service(TestLoader), (loader) => loader.setVisible(visible))
+  TestLoader.useSync((loader) => loader.setVisible(visible))
 
 /**
  * Sets `Loader.Connectivity` for the test cache.
@@ -250,7 +249,7 @@ export const setVisible = (visible: boolean): Effect.Effect<void, never, TestLoa
  * @since 4.1.3
  */
 export const setOnline = (online: boolean): Effect.Effect<void, never, TestLoader> =>
-  Effect.map(Effect.service(TestLoader), (loader) => loader.setOnline(online))
+  TestLoader.useSync((loader) => loader.setOnline(online))
 
 /**
  * Returns every fetch the test cache started so far, in order.
@@ -259,8 +258,7 @@ export const setOnline = (online: boolean): Effect.Effect<void, never, TestLoade
  * @category testing
  * @since 4.1.3
  */
-export const fetches: Effect.Effect<ReadonlyArray<Fetch>, never, TestLoader> = Effect.map(
-  Effect.service(TestLoader),
+export const fetches: Effect.Effect<ReadonlyArray<Fetch>, never, TestLoader> = TestLoader.useSync(
   (loader) => loader.fetches()
 )
 
@@ -277,7 +275,7 @@ export const entry = <R extends Loader.Read.Any>(
   read: R,
   args: Loader.Read.Args<R>
 ): Effect.Effect<Entry<Loader.Read.Success<R>, Loader.Read.Error<R>> | undefined, never, TestLoader> =>
-  Effect.map(Effect.service(TestLoader), (loader) => loader.entry(read, args))
+  TestLoader.useSync((loader) => loader.entry(read, args))
 
 /**
  * Returns the problems the test cache reported and no `expectProblem` took.
@@ -286,8 +284,7 @@ export const entry = <R extends Loader.Read.Any>(
  * @category testing
  * @since 4.1.3
  */
-export const problems: Effect.Effect<ReadonlyArray<Loader.Problem.Any>, never, TestLoader> = Effect.map(
-  Effect.service(TestLoader),
+export const problems: Effect.Effect<ReadonlyArray<Loader.Problem.Any>, never, TestLoader> = TestLoader.useSync(
   (loader) => loader.problems()
 )
 
@@ -310,4 +307,4 @@ export const expectProblem = <Tag extends string>(tag: Tag): Effect.Effect<
   >,
   never,
   TestLoader
-> => Effect.map(Effect.service(TestLoader), (loader) => loader.expectProblem(tag))
+> => TestLoader.useSync((loader) => loader.expectProblem(tag))

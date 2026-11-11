@@ -15,7 +15,6 @@ import {
 } from "effect"
 import type { Duration } from "effect"
 import { AsyncResult, Loader } from "effect/reactivity"
-import * as internal from "effect/reactivity/internal/loader"
 import { TestClock, TestLoader } from "effect/testing"
 
 const User = Schema.Struct({ id: Schema.String, name: Schema.String })
@@ -339,7 +338,7 @@ describe("Loader", () => {
       yield* watch(GetUser.changes({ id: "1" }))
       yield* advance(10)
       // Targets get their public constructors with Commands. Until then a tag is only reachable here.
-      const cache = internal.internals(yield* Loader.Cache)
+      const cache = Loader.internals(yield* Loader.Cache)
       cache.invalidate([{ _tag: "Tag", name: "nothing-lists-this" }])
       yield* advance(10)
       assert.strictEqual(db.calls, 1)

@@ -2,7 +2,6 @@ import { assert, describe, it } from "@effect/vitest"
 import { Cause, Deferred, Effect, Equal, Exit, Fiber, Hash, Latch, Layer, Option, Schema, Scope } from "effect"
 import type { Duration } from "effect"
 import { AsyncResult, Loader } from "effect/reactivity"
-import * as internal from "effect/reactivity/internal/loader"
 import { TestClock, TestLoader } from "effect/testing"
 
 const User = Schema.Struct({ id: Schema.String, name: Schema.String })
@@ -68,11 +67,11 @@ const makeCount = (staleTime: Duration.Input = "30 seconds") => {
 
 // Watches the patched view, as a loader field does, and records what it emits.
 const watchPatched = Effect.fnUntraced(function*<R extends Loader.Read.Any>(read: R, args: Loader.Read.Args<R>) {
-  const cache = internal.internals(yield* Loader.Cache)
-  const fetcher = yield* (read as any) as Effect.Effect<internal.Fetcher>
+  const cache = Loader.internals(yield* Loader.Cache)
+  const fetcher = yield* (read as any) as Effect.Effect<(args: any) => Effect.Effect<any, any>>
   const seen: Array<string> = []
   const handle = cache.watch(
-    internal.defOf(read),
+    Loader.defOf(read),
     args,
     fetcher,
     (result, patched) => seen.push(show(result, patched)),
@@ -94,16 +93,16 @@ interface RunOptions {
 
 // Issues a run, as the effect/ui runtime does: its patches register now, and `start` runs the body in it.
 const issue = Effect.fnUntraced(function*(options: RunOptions) {
-  const cache = internal.internals(yield* Loader.Cache)
+  const cache = Loader.internals(yield* Loader.Cache)
   const handle = cache.beginRun({
     command: options.command ?? "Save",
-    invalidates: (options.invalidates ?? []) as ReadonlyArray<internal.Target>,
-    optimistic: options.optimistic as ReadonlyArray<internal.Patch> | undefined
+    invalidates: (options.invalidates ?? []) as ReadonlyArray<Loader.Target>,
+    optimistic: options.optimistic as ReadonlyArray<Loader.Patch> | undefined
   })
   return {
     handle,
     start: <A, E, R>(body: Effect.Effect<A, E, R>, writes?: (success: A) => ReadonlyArray<Loader.Write>) =>
-      Effect.forkScoped(handle.run(body, writes as ((success: A) => ReadonlyArray<internal.Write>) | undefined))
+      Effect.forkScoped(handle.run(body, writes as ((success: A) => ReadonlyArray<Loader.Write>) | undefined))
   }
 })
 

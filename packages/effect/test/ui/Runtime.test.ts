@@ -1899,7 +1899,7 @@ describe("Runtime", () => {
       class Show extends Command.Service<Show>()(
         "test/Show",
         { args: {}, invalidates: () => [] },
-        Effect.map(Effect.service(Greeter), (greeter) => () => Effect.succeed(greeter.room))
+        Greeter.useSync((greeter) => () => Effect.succeed(greeter.room))
       ) {}
       const RoomView = Component.make({
         name: "RoomView",
