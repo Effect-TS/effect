@@ -725,9 +725,9 @@ function compileJsonSchema(
           return pattern
         }
         case "Literal":
-          return RegEx.escape(globalThis.String(part.literal))
+          return getLiteralPattern(part.literal)
         case "Enum":
-          return getAlternationPattern(part.enums.map(([_, value]) => RegEx.escape(globalThis.String(value))))
+          return getAlternationPattern(part.enums.map(([_, value]) => getLiteralPattern(value)))
         case "String":
           return InternalAST.STRING_PATTERN
         case "Number":
@@ -745,6 +745,10 @@ function compileJsonSchema(
       }
     }
   }
+}
+
+function getLiteralPattern(value: InternalAST.LiteralValue): string {
+  return RegEx.escape(globalThis.String(value))
 }
 
 function getAlternationPattern(patterns: ReadonlyArray<string>): string {
