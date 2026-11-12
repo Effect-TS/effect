@@ -133,7 +133,8 @@ describe("Story", () => {
               { preventDefault: true }
             ),
             h.el("form", h.el("button", "Ignored")).on("submit", () => undefined),
-            h.el("form", h.el("button", "Unhandled"))
+            h.el("form", h.el("button", "Unhandled")),
+            h.el("p", "Menu").on("contextmenu", () => undefined, { preventDefault: "always" })
           )
       })
       const keyDown = (key: string) => (s: Story.Steps<typeof Composer>) =>
@@ -154,6 +155,9 @@ describe("Story", () => {
         s.fire(Query.text("Unhandled"), "submit")
         assert.isTrue(s.current.defaultPrevented)
         assert.strictEqual(s.current.model, 3)
+        // "always" cancels whatever the handler returns.
+        s.fire(Query.text("Menu"), "contextmenu")
+        assert.isTrue(s.current.defaultPrevented)
       })
     })
   })

@@ -11,7 +11,7 @@ import { Effect, Layer } from "effect"
 import { HttpClient, HttpClientResponse } from "effect/http"
 import { TestClock } from "effect/testing"
 import { Component, Router } from "effect/ui"
-import { HtmlQuery, ssr } from "effect/ui/html/testing"
+import { HtmlQuery, HtmlStory, ssr } from "effect/ui/html/testing"
 // Tests render views, so they register the HTML elements too. An app with
 // many test files does it once, in a Vitest setup file.
 // oxlint-disable-next-line no-unassigned-import
@@ -23,6 +23,7 @@ import { App } from "./fixtures/App.ts"
 import { NoteEditor, NoteEditorEvents, NoteEditorNoDeps, SaveNote } from "./fixtures/notes/components/NoteEditor.ts"
 import { type Note, NoteSaveError } from "./fixtures/notes/domain/Note.ts"
 import { Notes } from "./fixtures/notes/services/Notes.ts"
+import { NotesIndexNoDeps } from "./fixtures/pages/NotesIndex.ts"
 import { AppRoute } from "./fixtures/routes.ts"
 
 const note: Note = { id: "n1", title: "Shopping", body: "Milk" }
@@ -72,6 +73,24 @@ describe("NoteEditor", () => {
         .fire(Query.tag("form"), "submit")
         .fail(SaveNote, new NoteSaveError({ reason: "You are offline" }))
         .check((story) => assert.strictEqual(Query.textOf(story.get(HtmlQuery.role("alert"))), "You are offline")))
+  })
+})
+
+describe("NotesIndex", () => {
+  it("pins a note dropped on the pinned list", () => {
+    const pinned = HtmlQuery.role("complementary", { name: "Pinned" })
+    Story.make(NotesIndexNoDeps, {}, (s) =>
+      s.loaded("notes", [note])
+        // A drop with a hand-written payload. `HtmlStory.drop` picks the
+        // target the browser host would, and throws when none accepts the
+        // payload's types, as the browser refuses the drop.
+        .pipe(HtmlStory.drop(pinned, { data: { "application/x-note": note.id } }))
+        .model((model) => assert.deepStrictEqual(model.pinned, [note.id]))
+        .check((story) => assert.isTrue(story.defaultPrevented)))
+    assert.throws(() =>
+      Story.start(NotesIndexNoDeps, {}).loaded("notes", [note])
+        .pipe(HtmlStory.drop(pinned, { files: [new File(["hello"], "notes.txt")] }))
+    )
   })
 })
 

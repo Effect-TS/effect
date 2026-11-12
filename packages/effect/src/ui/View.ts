@@ -81,22 +81,28 @@ export type Handler<Msg, Payload> = Msg | ((payload: Payload) => Msg | undefined
  *
  * **Details**
  *
- * With `preventDefault`, the host cancels the event's default action when the
- * handler produces a message, after the handler runs and before the message
- * is sent. A handler that returns `undefined` leaves the event alone, so one
- * handler decides per event, such as Enter but not Shift+Enter. A message
- * value always prevents. A host whose events have no default ignores it.
+ * With `preventDefault: true`, the host cancels the event's default action
+ * when the handler produces a message, after the handler runs and before the
+ * message is sent. A handler that returns `undefined` leaves the event alone,
+ * so one handler decides per event, such as Enter but not Shift+Enter. A
+ * message value always prevents. With `preventDefault: "always"`, the host
+ * cancels the default whatever the handler returns. A host whose events have
+ * no default ignores it.
  *
  * Nothing stops an event's propagation. A host gives each event to the
  * innermost element with a handler for it, and only that one, even when the
  * handler returns `undefined`.
+ *
+ * A vocabulary may extend these options for its own events, such as what a
+ * drop target accepts. They stay plain data on the element: hosts and tests
+ * read what they know and ignore the rest.
  *
  * @stability experimental
  * @category models
  * @since 4.1.5
  */
 export interface EventOptions {
-  readonly preventDefault?: boolean | undefined
+  readonly preventDefault?: boolean | "always" | undefined
 }
 
 /**

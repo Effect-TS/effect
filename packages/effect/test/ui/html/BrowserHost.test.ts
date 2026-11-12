@@ -2,7 +2,7 @@
 import { assert, expect, it } from "@effect/vitest"
 import { Context, Effect, Exit, Layer, Option, Schema, Scope } from "effect"
 import { Loader } from "effect/reactivity"
-import { Command, Component, Route, Router, View } from "effect/ui"
+import { Command, Component, MessageLog, Route, Router, View } from "effect/ui"
 import { BrowserHost, Html } from "effect/ui/html"
 import { HtmlQuery } from "effect/ui/html/testing"
 import { describe } from "vitest"
@@ -566,6 +566,217 @@ describe("BrowserHost", { concurrent: false }, () => {
         expect(Object.keys(fields)).toEqual(["constructor", "__proto__", "toString"])
         expect([fields.constructor, fields["__proto__"], fields.toString]).toEqual(["a", "b", "c"])
         expect(entries).toEqual([["constructor", "a"], ["__proto__", "b"], ["toString", "c"], ["toString", "d"]])
+      }).pipe(Effect.scoped))
+  })
+
+  describe("drag and drop", () => {
+    /** A `DataTransfer` as a browser shows it: string types as set, and `"Files"` when it carries files. */
+    class Transfer {
+      dropEffect = "none"
+      effectAllowed = "uninitialized"
+      readonly strings = new Map<string, string>()
+      constructor(readonly files: ReadonlyArray<File> = []) {}
+      get types() {
+        return [...this.strings.keys(), ...(this.files.length > 0 ? ["Files"] : [])]
+      }
+      setData(type: string, value: string) {
+        this.strings.set(type.toLowerCase(), value)
+      }
+      getData(type: string) {
+        return this.strings.get(type.toLowerCase()) ?? ""
+      }
+    }
+    /** Fires a drag event at `element`, reporting whether its default was cancelled. */
+    const drag = (element: Element, name: string, transfer: Transfer, at = { x: 0, y: 0 }) => {
+      const event = new MouseEvent(name, { bubbles: true, cancelable: true, clientX: at.x, clientY: at.y })
+      Object.defineProperty(event, "dataTransfer", { value: transfer })
+      element.dispatchEvent(event)
+      return event.defaultPrevented
+    }
+    const box = (element: Element, left: number, top: number, width: number, height: number) => {
+      element.getBoundingClientRect = () => ({ left, top, width, height }) as DOMRect
+    }
+    const byLabel = (app: Element, label: string) => app.querySelector(`[aria-label="${label}"]`)!
+
+    const Board = Component.make({
+      name: "Board",
+      model: Schema.Array(Schema.String),
+      message: Schema.String,
+      elements: Html,
+      init: (): ReadonlyArray<string> => [],
+      update: (log, message) => [...log, message],
+      view: (_, h) =>
+        h.div(
+          // Either order keeps the data and the handler.
+          h.p("Milk").attr("aria-label", "Milk").draggable({ "application/x-todo": "milk" }, { effectAllowed: "move" })
+            .onDragStart("start milk").onDragEnd(({ dropped }) => `end milk dropped=${dropped}`),
+          h.p("Eggs").attr("aria-label", "Eggs").onDragStart("start eggs").draggable({ "application/x-todo": "eggs" }),
+          h.section(
+            h.p("Header").attr("aria-label", "Header"),
+            h.p("Body").attr("aria-label", "Body"),
+            h.div(h.p("Inner child").attr("aria-label", "Inner child")).attr("aria-label", "Inner")
+              .onDrop(({ data }) => `inner drop ${data["application/x-todo"]}`, { accepts: ["text/uri-list"] })
+              .onDragEnter("inner enter").onDragLeave("inner leave")
+          ).attr("aria-label", "Done")
+            .onDrop(
+              ({ data, files, height, width, x, y }) =>
+                `drop ${
+                  data["application/x-todo"] ?? files.map((file) => file.name).join(",")
+                } at ${x},${y} of ${width}x${height}`,
+              { accepts: ["application/x-todo", "Files"], dropEffect: "move" }
+            )
+            .onDragEnter("enter").onDragLeave("leave")
+            .onDragOver(({ x, y }) => `over ${x},${y}`)
+        )
+    })
+
+    it.effect("a drag between two elements carries the source's data, and the source hears it was dropped", () =>
+      Effect.gen(function*() {
+        const app = yield* container
+        const root = yield* BrowserHost.mountEffect(Board, {}, app)
+        const done = byLabel(app, "Done")
+        box(done, 10, 20, 200, 100)
+        for (const name of ["Milk", "Eggs"]) {
+          const transfer = new Transfer()
+          drag(byLabel(app, name), "dragstart", transfer)
+          expect(transfer.getData("application/x-todo")).toBe(name.toLowerCase())
+          if (name === "Milk") expect(transfer.effectAllowed).toBe("move")
+        }
+        const transfer = new Transfer()
+        drag(byLabel(app, "Milk"), "dragstart", transfer)
+        expect(drag(done, "dragenter", transfer)).toBe(true)
+        expect(transfer.dropEffect).toBe("move")
+        expect(drag(done, "drop", transfer, { x: 60, y: 45 })).toBe(true)
+        // The browser reports no effect on `dragend` here; the host saw the drop.
+        drag(byLabel(app, "Milk"), "dragend", transfer)
+        yield* tick
+        expect(root.model()).toEqual([
+          "start milk",
+          "start eggs",
+          "start milk",
+          "enter",
+          "drop milk at 50,25 of 200x100",
+          "leave",
+          "end milk dropped=true"
+        ])
+      }).pipe(Effect.scoped))
+
+    it.effect("a drag of a type no target accepts is left alone, so the browser refuses the drop", () =>
+      Effect.gen(function*() {
+        const app = yield* container
+        const root = yield* BrowserHost.mountEffect(Board, {}, app)
+        const transfer = new Transfer()
+        transfer.setData("text/plain", "hello")
+        const done = byLabel(app, "Done")
+        expect([drag(done, "dragenter", transfer), drag(done, "dragover", transfer), drag(done, "drop", transfer)])
+          .toEqual([false, false, false])
+        drag(byLabel(app, "Milk"), "dragend", transfer)
+        yield* tick
+        expect(root.model()).toEqual(["end milk dropped=false"])
+      }).pipe(Effect.scoped))
+
+    it.effect("a file drop sends the files, and the log's wire encoding replaces a message it can't encode", () =>
+      Effect.gen(function*() {
+        const Message = Schema.TaggedUnion({ Dropped: { files: Schema.Array(Schema.instanceOf(File)) } })
+        const Uploader = Component.make({
+          name: "Uploader",
+          model: Schema.Array(Schema.String),
+          message: Message,
+          elements: Html,
+          init: (): ReadonlyArray<string> => [],
+          // Plain facts about the files go in the Model; the files themselves would go on to a Command.
+          update: (names, { files }) => [...names, ...files.map((file) => `${file.name} ${file.size}`)],
+          view: (_, h) =>
+            h.div().attr("aria-label", "Upload").onDrop(
+              ({ files }) => Message.make({ _tag: "Dropped", files }),
+              { accepts: ["Files"], dropEffect: "copy" }
+            )
+        })
+        const log = MessageLog.makeMemory()
+        const app = yield* container
+        const root = yield* BrowserHost.mountEffect(Uploader, {}, app).pipe(
+          Effect.provideService(MessageLog.MessageLog, log)
+        )
+        const transfer = new Transfer([new File(["hello"], "notes.txt")])
+        const upload = byLabel(app, "Upload")
+        expect(drag(upload, "dragover", transfer)).toBe(true)
+        expect(drag(upload, "drop", transfer)).toBe(true)
+        yield* tick
+        expect(root.model()).toEqual(["notes.txt 5"])
+        const update = log.entries().find((entry) => entry._tag === "Update")!
+        const warnings: Array<string> = []
+        const wire = MessageLog.makeEncoder({ onWarning: (warning) => warnings.push(warning) }).encode(update)
+        expect((wire as MessageLog.WireEntry & { readonly message: unknown }).message).toEqual({
+          "~unserialisable": "encode"
+        })
+        expect(warnings).toHaveLength(1)
+      }).pipe(Effect.scoped))
+
+    it.effect("enter and leave follow the active target, not its children, and a window exit leaves", () =>
+      Effect.gen(function*() {
+        const app = yield* container
+        const root = yield* BrowserHost.mountEffect(Board, {}, app)
+        const todo = new Transfer()
+        todo.setData("application/x-todo", "milk")
+        const [header, body] = [byLabel(app, "Header"), byLabel(app, "Body")]
+        drag(header, "dragenter", todo)
+        // The spec's order: the enter of the element reached, then the leave of the one left.
+        drag(body, "dragenter", todo)
+        drag(header, "dragleave", todo)
+        yield* tick
+        // The other order, with the check for a window exit in between.
+        drag(body, "dragleave", todo)
+        drag(header, "dragenter", todo)
+        yield* tick
+        expect(root.model()).toEqual(["enter"])
+        // Leaving the document: a leave with no enter after it.
+        drag(header, "dragleave", todo)
+        expect(root.model()).toEqual(["enter"])
+        yield* tick
+        expect(root.model()).toEqual(["enter", "leave"])
+
+        // A nested target that accepts the drag takes over from the outer one, and hands back.
+        const link = new Transfer()
+        link.setData("text/uri-list", "https://example.com")
+        link.setData("application/x-todo", "milk")
+        drag(body, "dragenter", link)
+        drag(byLabel(app, "Inner child"), "dragenter", link)
+        drag(body, "dragleave", link)
+        drag(body, "dragenter", link)
+        drag(byLabel(app, "Inner child"), "dragleave", link)
+        yield* tick
+        expect(root.model()?.slice(2)).toEqual(["enter", "leave", "inner enter", "inner leave", "enter"])
+      }).pipe(Effect.scoped))
+
+    it.effect("dragover is sent once per frame when the position changed, and a queued one is dropped", () =>
+      Effect.gen(function*() {
+        const app = yield* container
+        const root = yield* BrowserHost.mountEffect(Board, {}, app)
+        const done = byLabel(app, "Done")
+        box(done, 0, 0, 100, 100)
+        const todo = new Transfer()
+        todo.setData("application/x-todo", "milk")
+        drag(done, "dragenter", todo)
+        for (const y of [1, 2, 3]) drag(done, "dragover", todo, { x: 5, y })
+        yield* tick
+        drag(done, "dragover", todo, { x: 5, y: 3 })
+        yield* tick
+        // Queued, then the target stops being active before the frame.
+        drag(done, "dragover", todo, { x: 5, y: 9 })
+        drag(byLabel(app, "Milk"), "dragenter", todo)
+        yield* tick
+        // Queued, then the drag ends with a drop.
+        drag(done, "dragover", todo, { x: 5, y: 7 })
+        drag(done, "drop", todo, { x: 5, y: 7 })
+        yield* tick
+        expect(root.model()).toEqual([
+          "enter",
+          "over 5,3",
+          "leave",
+          "enter",
+          "drop milk at 5,7 of 100x100",
+          "leave"
+        ])
       }).pipe(Effect.scoped))
   })
 

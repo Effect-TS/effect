@@ -145,9 +145,9 @@ export interface Story<Props, Model, Msg, Events> {
   /**
    * Whether the `click` or `fire` step that made this record cancelled its
    * event's default, as the browser host would: its handler was set with
-   * `preventDefault` and produced a message, or the event is `submit`, which
-   * is always cancelled, whatever the handler returns and with no handler at
-   * all.
+   * `preventDefault: true` and produced a message, or with
+   * `preventDefault: "always"`, or the event is `submit`, which is always
+   * cancelled, whatever the handler returns and with no handler at all.
    *
    * **Details**
    *
@@ -1152,7 +1152,8 @@ const fireAt = <Props, Model, Msg, Events>(
   }
   // Run once: the message decides whether the default is cancelled, then it's sent.
   const message = handle(handler.handlers[event], payload)
-  const prevented = submit || (message !== undefined && handler.eventOptions[event]?.preventDefault === true)
+  const preventDefault = handler.eventOptions[event]?.preventDefault
+  const prevented = submit || preventDefault === "always" || (message !== undefined && preventDefault === true)
   return { story: dispatch(story, message), prevented }
 }
 

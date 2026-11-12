@@ -14,6 +14,13 @@
  * returns `undefined`, so it decides per event. A form's `submit` is always
  * cancelled, with or without a handler. Nothing stops an event's propagation:
  * only the innermost element with a handler for an event gets it.
+ *
+ * Drag and drop is declared, not handled: `draggable(data)` makes a drag
+ * source and `onDrop(handler, { accepts })` a drop target, and the host does
+ * the browser's part. Enter and leave go to the active drop target only, not
+ * to every element the pointer crosses as `mouseenter` does. Drag and drop
+ * needs a pointer, so give every drag a button or menu that sends the same
+ * message.
  * `value`, `checked`, `selected` and `open` are controlled: the host puts the
  * Model's value back after every patch and after every event that could have
  * changed it, so the element always shows what the Model says.
@@ -260,13 +267,115 @@ export interface ScrollPayload {
 }
 
 /**
+ * The payload of `drop`: the dragged strings by type, the dragged files, and
+ * the pointer's position in the drop target's box, from its top-left corner,
+ * with the box's size. `y < height / 2` tells the upper half from the lower.
+ *
+ * **Details**
+ *
+ * `data` holds every string type the drag carries, read when it's dropped,
+ * since a browser hides them until then. `files` is empty unless the drag
+ * carries files. A `File` isn't plain data: send it on to a Command, and keep
+ * plain facts about it, such as its name and size, in the Model, which must
+ * stay encodable.
+ *
+ * @stability experimental
+ * @category events
+ * @since 4.1.5
+ */
+export interface DropPayload {
+  readonly data: Readonly<Record<string, string>>
+  readonly files: ReadonlyArray<File>
+  readonly x: number
+  readonly y: number
+  readonly width: number
+  readonly height: number
+}
+
+/**
+ * The payload of `dragover`: the pointer's position in the drop target's box,
+ * from its top-left corner, with the box's size.
+ *
+ * @stability experimental
+ * @category events
+ * @since 4.1.5
+ */
+export interface DragOverPayload {
+  readonly x: number
+  readonly y: number
+  readonly width: number
+  readonly height: number
+}
+
+/**
+ * The payload of `dragend`, on the drag's source: whether the drag was
+ * dropped, on one of the app's drop targets or anywhere the browser reports
+ * it accepted, or was cancelled.
+ *
+ * @stability experimental
+ * @category events
+ * @since 4.1.5
+ */
+export interface DragEndPayload {
+  readonly dropped: boolean
+}
+
+/**
+ * What a drop does, as a drop target shows it with the pointer: `"copy"`,
+ * `"move"` or `"link"`.
+ *
+ * @stability experimental
+ * @category events
+ * @since 4.1.5
+ */
+export type DropEffect = "copy" | "move" | "link"
+
+/**
+ * The drop effects a drag source allows. A drop target whose `dropEffect` the
+ * source doesn't allow can't take the drop.
+ *
+ * @stability experimental
+ * @category events
+ * @since 4.1.5
+ */
+export type EffectAllowed = "none" | "copy" | "copyLink" | "copyMove" | "link" | "linkMove" | "move" | "all"
+
+/**
+ * A drag source, set with `draggable`: the strings it carries by type, and
+ * the drop effects it allows. Stored as the element's `dragstart` options.
+ *
+ * @stability experimental
+ * @category events
+ * @since 4.1.5
+ */
+export interface DragSourceOptions extends View.EventOptions {
+  readonly data: Readonly<Record<string, string>>
+  readonly effectAllowed?: EffectAllowed | undefined
+}
+
+/**
+ * A drop target, set with `onDrop`: the drag types it accepts, matched without
+ * case with `"Files"` for files, and the drop effect it shows. Stored as the
+ * element's `drop` options.
+ *
+ * @stability experimental
+ * @category events
+ * @since 4.1.5
+ */
+export interface DropTargetOptions extends View.EventOptions {
+  readonly accepts: ReadonlyArray<string>
+  readonly dropEffect?: DropEffect | undefined
+}
+
+/**
  * The events every HTML element has, with their payloads.
  *
  * **Details**
  *
  * `focus`, `blur`, `mouseenter`, `mouseleave` and `scroll` don't bubble: only
  * the element they happen on gets them. The others go to the innermost element
- * with a handler.
+ * with a handler, except the drop target's events: `dragenter`, `dragleave`,
+ * `dragover` and `drop` go to the active drop target, as `onDrop` describes.
  *
  * @stability experimental
  * @category events
@@ -287,6 +396,12 @@ export interface Events {
   readonly focusin: {}
   readonly focusout: {}
   readonly scroll: ScrollPayload
+  readonly dragstart: {}
+  readonly dragend: DragEndPayload
+  readonly dragenter: {}
+  readonly dragleave: {}
+  readonly dragover: DragOverPayload
+  readonly drop: DropPayload
 }
 
 /**
@@ -469,6 +584,98 @@ export class Element<out Msg, out R = never, in out E = Record<string, unknown>,
    */
   onBlur(handler: View.Handler<Msg, {}>): this {
     return this.on("blur" as any, handler as any)
+  }
+  /**
+   * Makes this element a drag source carrying `data`, strings by type such
+   * as `{ "application/x-todo": id }`, and sets `draggable="true"`. The host
+   * puts the data on the drag when it starts. Calling it again replaces the
+   * data; it keeps an `onDragStart` handler, in either order.
+   *
+   * @since 4.1.5
+   */
+  draggable(
+    data: Readonly<Record<string, string>>,
+    options?: { readonly effectAllowed?: EffectAllowed | undefined } | undefined
+  ): this {
+    const source: DragSourceOptions = { data, effectAllowed: options?.effectAllowed }
+    return this.with({ eventOptions: { ...this.eventOptions, dragstart: source } }).attr("draggable", "true")
+  }
+  /**
+   * Sugar for `on("dragstart", handler)` that keeps the data set with
+   * `draggable`, in either order.
+   *
+   * @since 4.1.5
+   */
+  onDragStart(handler: View.Handler<Msg, {}>): this {
+    return this.on("dragstart" as any, handler as any, this.eventOptions.dragstart)
+  }
+  /**
+   * Sugar for `on("dragend", handler)`, on the drag's source: `dropped` is
+   * false when the drag was cancelled.
+   *
+   * @since 4.1.5
+   */
+  onDragEnd(handler: View.Handler<Msg, DragEndPayload>): this {
+    return this.on("dragend" as any, handler as any)
+  }
+  /**
+   * Makes this element a drop target for drags carrying one of the
+   * `accepts` types, and sends the drop.
+   *
+   * **Details**
+   *
+   * While an accepted drag is over the target, the host cancels `dragenter`
+   * and `dragover` so the browser allows the drop, and shows `dropEffect`. A
+   * drag it doesn't accept is left alone, so the browser shows that it can't
+   * be dropped and no `drop` comes. The drop's default is always cancelled,
+   * whatever the handler returns, so a handler that returns `undefined`
+   * still stops a dropped file from opening in the page.
+   *
+   * The active drop target is the innermost one on the pointer's path that
+   * accepts the drag. Unlike `mouseenter`, `onDragEnter` and `onDragLeave` go
+   * to the active target only: moving between its children sends nothing,
+   * and moving into a nested target leaves the outer one. Every
+   * `onDragEnter` is followed by one `onDragLeave`, when the drag moves to
+   * another target or off any, leaves the window, is dropped (after `onDrop`)
+   * or ends.
+   *
+   * @since 4.1.5
+   */
+  onDrop(handler: View.Handler<Msg, DropPayload>, options: Omit<DropTargetOptions, "preventDefault">): this {
+    const target: DropTargetOptions = { ...options, preventDefault: "always" }
+    return this.on("drop" as any, handler as any, target)
+  }
+  /**
+   * Sugar for `on("dragenter", handler)`. Sent when this drop target becomes
+   * the active one, as `onDrop` describes; it does nothing on an element
+   * without `onDrop`.
+   *
+   * @since 4.1.5
+   */
+  onDragEnter(handler: View.Handler<Msg, {}>): this {
+    return this.on("dragenter" as any, handler as any)
+  }
+  /**
+   * Sugar for `on("dragleave", handler)`. Sent when this drop target stops
+   * being the active one, as `onDrop` describes.
+   *
+   * @since 4.1.5
+   */
+  onDragLeave(handler: View.Handler<Msg, {}>): this {
+    return this.on("dragleave" as any, handler as any)
+  }
+  /**
+   * Sugar for `on("dragover", handler)`, for an active drop target that
+   * needs the pointer's position, such as a list reordered by halves of its
+   * items. The host sends at most one per animation frame, only when the
+   * position changed, and drops a queued one when the target stops being
+   * active, goes away or the drag ends. The browser's default is handled by
+   * `onDrop`'s `accepts` either way.
+   *
+   * @since 4.1.5
+   */
+  onDragOver(handler: View.Handler<Msg, DragOverPayload>): this {
+    return this.on("dragover" as any, handler as any)
   }
   /**
    * Sugar for `on("input", handler)`, on the elements that have it.
