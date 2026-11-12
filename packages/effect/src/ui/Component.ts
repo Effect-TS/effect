@@ -704,6 +704,10 @@ export type Loaders<Model, Props> = {
  * during the wait restart it, so only the last args are fetched. Unmounting
  * cancels the wait. A keyed field's new keys wait each on their own.
  *
+ * Args that change while their fetch runs interrupt it, and nothing is
+ * stored for them, unless another loader still watches the entry or a `get`
+ * or a prefetch joined the fetch.
+ *
  * **Example** (A search that fetches once the query holds still)
  *
  * ```ts import.meta.vitest

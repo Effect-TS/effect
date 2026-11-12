@@ -2114,7 +2114,8 @@ const setup = (
       if (markers.has(key)) continue
       inst.watches.delete(key)
       record({ _tag: "SubscriptionStopped", path: inst.path, key: running.logKey })
-      releaseWatch(running)
+      // A debounced loader's old args are obsolete: their fetch goes, unless another reader still needs it.
+      releaseWatch(running, running.marker.debounce !== undefined)
       if (running.marker.keyed) {
         const run = inst.keyed.get(running.marker.label)
         run?.values.delete(running.marker.argsKey!)
@@ -2341,11 +2342,11 @@ const setup = (
     for (const key of a) if (!b.has(key)) return false
     return true
   }
-  const releaseWatch = (running: WatchRun) => {
+  const releaseWatch = (running: WatchRun, abandon = false) => {
     if (running.released) return
     running.released = true
     running.debounce?.interruptUnsafe()
-    running.handle?.unregister()
+    running.handle?.unregister(abandon)
   }
   /** Drops an instance's watchers, and its descendants', at once. Closing its Scope comes after. */
   const releaseWatches = (inst: Instance) => {

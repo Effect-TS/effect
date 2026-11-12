@@ -13,7 +13,11 @@ const makeApp = (options?: {
   readonly interval?: boolean
   readonly debounce?: "300 millis"
 }) => {
-  const db = { calls: 0, names: new Map<string, string>([["1", "Ann"], ["2", "Bea"]]) }
+  const db = {
+    calls: 0,
+    interrupted: [] as Array<string>,
+    names: new Map<string, string>([["1", "Ann"], ["2", "Bea"]])
+  }
   const order: Array<string> = []
 
   class GetUser extends Loader.Service<GetUser>()(
@@ -31,7 +35,7 @@ const makeApp = (options?: {
         yield* Effect.sleep("10 millis")
         const name = db.names.get(id)
         return name === undefined ? yield* Effect.fail("missing") : { id, name }
-      })
+      }).pipe(Effect.onInterrupt(() => Effect.sync(() => db.interrupted.push(id))))
     )
   ) {}
 
@@ -236,6 +240,36 @@ describe("Loaded", () => {
         yield* load
         assert.strictEqual(root.text(), "a=Bea")
         assert.deepStrictEqual(root.fetches().map((fetch) => fetch.logKey), ["{\"id\":\"1\"}", "{\"id\":\"2\"}"])
+      })
+    )
+  })
+
+  it.effect("debounce: new args interrupt the old args' fetch, unless another watcher still needs it", () => {
+    const app = makeApp({ debounce: "300 millis" })
+    const set = (...cards: Array<string>) => app.ListMessage.make({ _tag: "Set", cards })
+    return run(
+      app.layer,
+      Effect.gen(function*() {
+        const root = yield* TestHost.mount(app.List, { cards: ["a:1", "b:2"] })
+        yield* TestHost.settle
+        // Mid-fetch: a's fetch is a's alone, and b's is shared once a moves onto it.
+        yield* TestClock.adjust("5 millis")
+        root.send(set("a:2", "b:2"))
+        yield* TestHost.settle
+        yield* load
+        assert.deepStrictEqual(app.db.interrupted, ["1"])
+        assert.isUndefined(root.entry(app.GetUser, { id: "1" }))
+        assert.strictEqual(root.text(), "a=Beab=Bea")
+        assert.strictEqual(app.db.calls, 2)
+        // c leaves 1 mid-fetch while d still watches it: the fetch runs on.
+        const other = yield* TestHost.mount(app.List, { cards: ["c:1", "d:1"] })
+        yield* TestHost.settle
+        yield* TestClock.adjust("5 millis")
+        other.send(set("c:", "d:1"))
+        yield* load
+        assert.deepStrictEqual(app.db.interrupted, ["1"])
+        assert.strictEqual(other.text(), "c=idled=Ann")
+        assert.strictEqual(app.db.calls, 3)
       })
     )
   })

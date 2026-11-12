@@ -2599,8 +2599,12 @@ interface WatchHandle {
   readonly patchedView: () => PatchedView
   /** On a list read, whether it holds more pages to load. `undefined` otherwise. */
   readonly more: () => More<any> | undefined
-  /** Drops the watcher count synchronously. Idempotent. */
-  readonly unregister: () => void
+  /**
+   * Drops the watcher count synchronously. Idempotent. With `abandon`, the
+   * last watcher leaving interrupts a fetch a watcher started that nothing
+   * else waits for, and the entry reverts.
+   */
+  readonly unregister: (abandon?: boolean) => void
 }
 
 interface PatchedView {
@@ -3293,6 +3297,8 @@ interface Waiter {
 
 interface FetchRec {
   readonly trigger: Trigger
+  /** A prefetch joined it, so it outlives its watchers. */
+  kept: boolean
   readonly build: Build
   fiber: Fiber.Fiber<any, any> | undefined
   /** On a list read: an append of one page, instead of a walk from the first. */
@@ -4150,7 +4156,7 @@ const buildCache = (
       entry.heldRestart = false
       restart = true
     }
-    const fetch: FetchRec = { trigger, build, fiber: undefined, append }
+    const fetch: FetchRec = { trigger, kept: false, build, fiber: undefined, append }
     entry.fetch = fetch
     cancelIdle(entry)
     let body: () => Effect.Effect<any, any> = () => build.fetcher(entry.args)
@@ -4544,7 +4550,7 @@ const buildCache = (
       current: () => withheld() ? provisionalView() : view(entry),
       patchedView: () => withheld() ? { result: provisionalView(), patched: false } : patchedViewOf(entry, view(entry)),
       more: () => moreOf(entry),
-      unregister: () => {
+      unregister: (abandon) => {
         if (!watcher.active) return
         watcher.active = false
         entry.watchers.delete(watcher)
@@ -4552,6 +4558,15 @@ const buildCache = (
         stopInterval(entry)
         entry.moreError = undefined
         if (isBareFailure(entry.result) && !settleOnce && !inWindow(entry)) entry.result = undefined
+        const fetch = entry.fetch
+        if (
+          abandon === true && fetch !== undefined && fetch.trigger === "watch" && !fetch.kept &&
+          entry.waiters.size === 0 && entry.moreWaiters.size === 0
+        ) {
+          // Nothing else asked for it: a `get` waits, and a prefetch is kept.
+          dropFetch(entry, fetch)
+          return revert(entry)
+        }
         afterQuiet(entry)
       }
     }
@@ -4708,6 +4723,7 @@ const buildCache = (
     if (inWindow(entry) || !isStale(entry) || (entry.def.list !== undefined && heldPages(entry).length > 0)) {
       return resetIdle(entry)
     }
+    if (entry.fetch !== undefined) entry.fetch.kept = true
     ensureFetch(entry, "prefetch", buildOf(fetcher))
     afterQuiet(entry)
   }
