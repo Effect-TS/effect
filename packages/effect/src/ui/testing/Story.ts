@@ -682,7 +682,7 @@ const storedAt = (
 /**
  * The slots `given` starts from, written with no `onChange` message. Each
  * named loader holds its given results at the args it returns, and a keyed
- * loader that isn't named keeps the stored keys it still returns. Args can
+ * loader that isn't named keeps the keys it held before that it still returns. Args can
  * read other loaders' results, so the writes repeat until none changes: the
  * result doesn't depend on the order of the names or on the slots held before.
  */
@@ -694,13 +694,15 @@ const givenSlots = (
   for (const name of names) loaderOf(story, "given", name)
   const bound = boundOf(story.component)
   if (bound === undefined) return story.slots
-  const slots: { [name: string]: unknown } = { ...(story.slots ?? bound.empty) }
+  const before = story.slots ?? bound.empty
+  const slots: { [name: string]: unknown } = { ...before }
   // The slot a loader should hold for the current slots, or undefined while a named loader is
   // disabled or doesn't return the given args.
   const target = (entry: loaders.Entry): unknown => {
     const current = bound.context(story.model, story.props, { ...slots }).argsOf(entry.name)
     if (!Object.hasOwn(loaded, entry.name)) {
-      const held = Loader.snapshotMapData(slots[entry.name])?.entries
+      // From the slots held before: a key an earlier round dropped can come back once the args settle.
+      const held = Loader.snapshotMapData(before[entry.name])?.entries
       if (held === undefined) return slots[entry.name]
       return bound.slotMany(
         entry,

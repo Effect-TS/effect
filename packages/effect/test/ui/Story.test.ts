@@ -704,6 +704,49 @@ describe("Story", () => {
       )
     })
 
+    it("given keeps a keyed result its loader returns again once the given results settle", () => {
+      const Message = Schema.TaggedUnion({ FriendsChanged: {} })
+      const Circle = Component.make({
+        name: "Circle",
+        props: Schema.Struct({}),
+        model: Schema.Struct({ id: Schema.String, changes: Schema.Number }),
+        message: Message,
+        elements: Html,
+        loaders: {
+          // Declared before the loader it reads, so a first pass sees the old user at the new Model's args.
+          friends: {
+            loadMany: users.GetUser,
+            args: (_model, _props, loaded) =>
+              AsyncResult.isSuccess(loaded.user) ? [{ id: loaded.user.value.email }] : [],
+            onChange: () => Message.make({ _tag: "FriendsChanged" })
+          },
+          user: { load: users.GetUser, args: (model) => ({ id: model.id }) }
+        },
+        init: () => ({ id: "1", changes: 0 }),
+        update: (model) => ({ ...model, changes: model.changes + 1 }),
+        view: (model, h) =>
+          h.p(
+            `${
+              h.loaded.friends.map((entry) => AsyncResult.isSuccess(entry.result) ? entry.result.value.name : "?").join(
+                "+"
+              )
+            } ${model.changes}`
+          )
+      })
+      Story.make(Circle, {}, (s) =>
+        s.given({ id: "1", changes: 0 }, {
+          user: user("1", "Ann", "shared"),
+          friends: [{ args: { id: "shared" }, value: user("shared", "Sam") }]
+        })
+          .check((story) => assert.strictEqual(text(story), "Sam 0"))
+          // The new user points at the same friend: the held result stays.
+          .given({ id: "2", changes: 0 }, { user: user("2", "Bob", "shared") })
+          .check((story) => assert.strictEqual(text(story), "Sam 0"))
+          // A friend the new user doesn't point at is still dropped, silently.
+          .given({ id: "3", changes: 0 }, { user: user("3", "Cy", "other") })
+          .check((story) => assert.strictEqual(text(story), "? 0")))
+    })
+
     it("given with no loaded results works on a component without loaders", () => {
       Story.make(
         Counter,
