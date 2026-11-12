@@ -943,8 +943,8 @@ class Tester {
   /**
    * Calls the op behind `capability`. When the descriptor lacks it, the op
    * must fail with `Unsupported` naming it. When it is listed, the op must
-   * not fail with `Unsupported` for a listed capability, so a descriptor that
-   * lies in either direction fails.
+   * not fail with `Unsupported` at all, whichever capability that names, so a
+   * descriptor that lies in either direction fails.
    */
   probe(capability: Capability): Effect.Effect<void, ConformanceFailure, Registry> {
     const listed = this.has(capability)
@@ -955,8 +955,7 @@ class Tester {
         const error = Exit.findErrorOption(exit)
         const reason = Option.isSome(error) && isChatError(error.value) ? error.value.reason : undefined
         const holds = listed
-          ? Exit.isSuccess(exit) ||
-            (reason !== undefined && !(reason._tag === "Unsupported" && this.has(reason.capability)))
+          ? Exit.isSuccess(exit) || (reason !== undefined && reason._tag !== "Unsupported")
           : reason?._tag === "Unsupported" && reason.capability === capability
         return holds ? Effect.void : Effect.fail(failure(
           this.rule,
