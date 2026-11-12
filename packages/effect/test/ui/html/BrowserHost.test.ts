@@ -844,7 +844,8 @@ describe("BrowserHost", { concurrent: false }, () => {
   describe("modal dialogs", () => {
     /**
      * Records `showModal` and `close`, and makes `showModal` throw on a dialog that isn't in the document,
-     * as browsers do. happy-dom has no top layer, so the dialogs' own state is all a test can see here.
+     * as browsers do. A `close` on a detached dialog is marked: it can't restore focus. happy-dom has no
+     * top layer, so the dialogs' own state is all a test can see here.
      */
     const dialogCalls = Effect.acquireRelease(
       Effect.sync(() => {
@@ -859,7 +860,7 @@ describe("BrowserHost", { concurrent: false }, () => {
             showModal.call(this)
           }),
           vi.spyOn(proto, "close").mockImplementation(function(this: HTMLDialogElement, value?: string) {
-            calls.push(`close ${label(this)}`)
+            calls.push(`close ${label(this)}${this.isConnected ? "" : " (detached)"}`)
             close.call(this, value)
           })
         ]
@@ -1033,6 +1034,38 @@ describe("BrowserHost", { concurrent: false }, () => {
         const { calls } = yield* dialogCalls
         yield* BrowserHost.mountEffect(Nested, {}, yield* container)
         expect(calls).toEqual(["showModal Outer", "showModal Inner"])
+      }).pipe(Effect.scoped))
+
+    it.effect("a shown dialog is closed before it's removed, inner first, without telling the app", () =>
+      Effect.gen(function*() {
+        const { calls } = yield* dialogCalls
+        const { app, root } = yield* mountConfirm({ state: "modal", acceptEscape: false })
+        HtmlQuery.click(HtmlQuery.getByRole(app, "button", { name: "Remove" }))
+        yield* tick
+        expect(calls).toEqual(["showModal Delete note?", "close Delete note?"])
+        expect(root.model()!.log).toEqual([])
+
+        // A drawer: a child component mounted only while it's open.
+        calls.length = 0
+        const DrawerMessage = Schema.TaggedUnion({ Close: {} })
+        const Drawer = Component.make({
+          name: "Drawer",
+          model: Schema.Boolean,
+          message: DrawerMessage,
+          elements: Html,
+          init: () => true,
+          update: () => false,
+          view: (open, h) =>
+            h.div(
+              h.button("Close").onClick(DrawerMessage.make({ _tag: "Close" })),
+              open && h.child(Nested, { key: "nested" })
+            )
+        })
+        const drawer = yield* container
+        yield* BrowserHost.mountEffect(Drawer, {}, drawer)
+        HtmlQuery.click(HtmlQuery.getByRole(drawer, "button", { name: "Close" }))
+        yield* tick
+        expect(calls).toEqual(["showModal Outer", "showModal Inner", "close Inner", "close Outer"])
       }).pipe(Effect.scoped))
   })
 
