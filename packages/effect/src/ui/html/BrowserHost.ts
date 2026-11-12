@@ -20,8 +20,10 @@
  * report each close a task later, so the host keeps one record per time it
  * showed the dialog, and each `close` event ends the oldest: it reaches
  * `onClose` only for the latest showing, and not for a close the host made
- * to switch between modal and non-modal. A dialog removed while modal is
- * simply gone: the browser takes it out of the top layer.
+ * itself. Before removing a dialog it showed that is still open, or an
+ * element containing one, the host closes it, inner dialogs first, so focus
+ * goes back to where it was before the dialog opened, as it does when the
+ * Model closes it. That close isn't the app's either.
  *
  * A popover's `popoverOpen` is shown with `showPopover()` at the commit,
  * after the modal dialogs, since a modal opening closes the auto popovers
@@ -306,9 +308,9 @@ export const makeHost = (
   /**
    * Each time a dialog was shown, oldest first, until its `close` event arrives. Browsers report every
    * close in a later task, so several can be queued: each event ends the oldest showing, and only the
-   * close of the latest showing, not made to change mode, is the app's.
+   * close of the latest showing, not made by the host to change mode or before a removal, is the app's.
    */
-  const showings = new WeakMap<globalThis.Element, Array<{ modeChange: boolean; closed: boolean }>>()
+  const showings = new WeakMap<globalThis.Element, Array<{ byHost: boolean; closed: boolean }>>()
   const showingsOf = (dialog: globalThis.Element) => {
     let list = showings.get(dialog)
     if (list === undefined) {
@@ -319,6 +321,8 @@ export const makeHost = (
   }
   /** Dialogs whose Model says `"modal"`, checked at every commit. */
   const modalWanted = new Set<HTMLDialogElement>()
+  /** Dialogs with a showing the host recorded, closed before a removal takes them out. Pruned at commit. */
+  const shown = new Set<HTMLDialogElement>()
   /**
    * Whether `:modal` works here, found on the first `showModal()`. Where it does, a dialog the host
    * showed but the browser no longer has as modal, such as one moved in the document, is shown again.
@@ -349,17 +353,34 @@ export const makeHost = (
     if (!dialog.open) return
     const list = showingsOf(dialog)
     const latest = list.at(-1)
-    if (latest === undefined || latest.closed) list.push({ modeChange: false, closed: false })
+    if (latest === undefined || latest.closed) list.push({ byHost: false, closed: false })
+    shown.add(dialog)
   }
 
-  const closeDialog = (dialog: HTMLDialogElement, asModeChange: boolean) => {
+  const closeDialog = (dialog: HTMLDialogElement, byHost: boolean) => {
     if (!dialog.open) return
     modals.delete(dialog)
     adoptShowing(dialog)
+    shown.delete(dialog)
     const current = showingsOf(dialog).at(-1)!
     current.closed = true
-    current.modeChange = asModeChange
+    current.byHost = byHost
     dialog.close()
+  }
+
+  /**
+   * Closes the open dialogs the host showed that are `node` or inside it, before it's removed. Once it's
+   * out of the document, `close()` would leave focus on the body. Inner dialogs close first, so each one
+   * hands focus back to the dialog it opened from before that one hands it on.
+   */
+  const closeShownIn = (node: globalThis.Node) => {
+    const inside: Array<HTMLDialogElement> = []
+    for (const dialog of shown) {
+      if (dialog.open && node.contains(dialog)) inside.push(dialog)
+    }
+    if (inside.length === 0) return
+    inside.sort((a, b) => (a.compareDocumentPosition(b) & 4) !== 0 ? 1 : -1)
+    for (const dialog of inside) closeDialog(dialog, true)
   }
 
   /** Shows `dialog` as `want` says, from what it shows now. The caller checks `modal` needs it connected. */
@@ -377,7 +398,8 @@ export const makeHost = (
     } else {
       dialog.show()
     }
-    showingsOf(dialog).push({ modeChange: false, closed: false })
+    showingsOf(dialog).push({ byHost: false, closed: false })
+    shown.add(dialog)
   }
 
   // -- popovers ----------------------------------------------------------------
@@ -682,11 +704,11 @@ export const makeHost = (
         // event uncancelable; the close that follows is then put back by the reconciliation below.
         if (wanted.get(dialog)?.get("open") === "modal") event.preventDefault()
       } else {
-        // `close` comes a task after the close, and ends the oldest showing. A mode change's close isn't
+        // `close` comes a task after the close, and ends the oldest showing. The host's own close isn't
         // the app's, and neither is the close of a showing the dialog has been shown again since.
         const list = showings.get(dialog)
         const ended = list?.shift()
-        if (ended !== undefined && (ended.modeChange || list!.length > 0)) return
+        if (ended !== undefined && (ended.byHost || list!.length > 0)) return
         if (!dialog.open) modals.delete(dialog)
       }
     }
@@ -818,6 +840,7 @@ export const makeHost = (
       parent.insertBefore(node, ref ?? null)
     },
     remove: (node) => {
+      if (shown.size > 0) closeShownIn(node)
       node.parentNode?.removeChild(node)
     },
     parentOf: (node) => node.parentNode ?? undefined,
@@ -855,6 +878,9 @@ export const makeHost = (
       getAttr: (node, name) => (node as globalThis.Element).getAttribute(name) ?? undefined
     },
     commit() {
+      for (const dialog of shown) {
+        if (!dialog.open || !dialog.isConnected) shown.delete(dialog)
+      }
       if (modalWanted.size === 0) return showPopovers()
       const dialogs: Array<HTMLDialogElement> = []
       for (const dialog of modalWanted) {
