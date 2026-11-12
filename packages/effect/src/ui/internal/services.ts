@@ -4,6 +4,7 @@
  * @internal
  */
 import * as Context from "../../Context.ts"
+import type * as Effect from "../../Effect.ts"
 import type * as Head from "../Head.ts"
 import type { Refs as RefsShape, Renderer as RendererShape } from "../Renderer.ts"
 import type * as Route from "../Route.ts"
@@ -25,6 +26,8 @@ export interface RootHandle {
   readonly container: unknown
   /** The current flush: 0 for the first render, then one more per flush. */
   readonly flush: () => number
+  /** Whether a flush is running, so what it delivers now renders in `flush()` and not the next one. */
+  readonly flushing: () => boolean
   /** The JSON-encoded Model of every mounted instance, by path. Models that don't encode are left out. */
   readonly snapshot: () => Record<string, unknown>
   /**
@@ -148,3 +151,43 @@ export const onServer: unique symbol = Symbol.for("effect/ui/Subscription/onServ
 export interface OnServer {
   readonly [onServer]?: (context: Context.Context<never>, report: RootHandle["report"]) => void
 }
+
+/**
+ * A Subscription may carry a function under this key, which the runtime calls
+ * instead of running its Stream. It attaches `emit` to its source and returns
+ * `initial`, run on the scheduler as the Stream would start, and `close`, run
+ * when the Subscription stops. `emit` dispatches synchronously, with
+ * `onDeliver` first. It returns `undefined` when it can't attach, and the
+ * runtime runs the Stream instead.
+ *
+ * `Router.subscription` uses it, so a navigation reaches the root inside the
+ * flush whose Command made it.
+ *
+ * @internal
+ */
+export const direct: unique symbol = Symbol.for("effect/ui/Subscription/direct") as any
+
+/** @internal */
+export interface Direct {
+  readonly [direct]?: (
+    context: Context.Context<never>,
+    emit: (message: unknown) => void
+  ) => { readonly initial: Effect.Effect<void>; readonly close: () => void } | undefined
+}
+
+/**
+ * The names of the navigation Commands start with this prefix: `Push`,
+ * `Replace`, `Back`, `Forward`, `Load` and `PatchQuery`.
+ *
+ * @internal
+ */
+export const navigationPrefix = "effect/ui/Router/"
+
+/**
+ * Whether a Command is a navigation, which the runtime runs in the deferred
+ * work of the flush that issued it rather than on the scheduler.
+ *
+ * @internal
+ */
+export const isNavigation = (command: { readonly name: string; readonly service?: unknown }): boolean =>
+  command.service !== undefined && command.name.startsWith(navigationPrefix)

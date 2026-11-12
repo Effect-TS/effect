@@ -432,6 +432,13 @@ export const props = <U extends Routes>(routes: U): Effect.Effect<{ readonly rou
  * routes. On the server the root is checked once without running its Streams,
  * regardless of the navigation sequence.
  *
+ * A navigation Command such as `Router.push` runs in the flush its `update`
+ * caused, and this Subscription delivers the new route from inside it. The
+ * root and its pages render the new route in that flush, so a field whose
+ * value is read from the query keeps what the user typed and where the caret
+ * is. A navigation issued from `init` while the root mounts runs after it has
+ * mounted.
+ *
  * Use this helper rather than `Router.changes` directly: the browser Router
  * times scroll, announcements and focus from the flush in which the root
  * received the change.
@@ -460,6 +467,31 @@ export const subscription = <U extends Routes, Msg>(
         `The component holds "${have}" but the Router is at "${router}". Initialize the root with Router.props or Router.currentRoute.`
     })
   }
+  /** The message for a location, if any. `initial`: the first location this Subscription sees. */
+  const messageOf = (
+    router: Router,
+    report: (problem: Loader.Problem.Any) => void,
+    root: services.RootHandle | undefined,
+    location: Location,
+    initial: boolean
+  ): Option.Option<Msg> => {
+    const route = routeOf(router, union, location)
+    if (Option.isNone(route)) return Option.none()
+    if (initial) {
+      if (same(route.value)) return Option.none()
+      if (location.seq === 0 && !(router.routes.base() === "#" && root?.hydrated)) {
+        try {
+          report(mismatch(route.value))
+        } catch {
+          // A problem sink cannot prevent route delivery.
+        }
+      }
+    }
+    const message = f(route.value as U["Type"])
+    if (typeof message === "object" && message !== null) seqs.set(message, location.seq)
+    else last = location.seq
+    return Option.some(message)
+  }
   const stream = Stream.unwrap(Effect.gen(function*() {
     const router = yield* Router
     const report = yield* Loader.Problems
@@ -468,30 +500,40 @@ export const subscription = <U extends Routes, Msg>(
     let first = true
     return router.changes.pipe(
       Stream.map((location) => {
-        const route = routeOf(router, union, location)
         const initial = first
         first = false
-        if (Option.isNone(route)) return Option.none<Msg>()
-        if (initial) {
-          if (same(route.value)) return Option.none<Msg>()
-          if (location.seq === 0 && !(router.routes.base() === "#" && root?.hydrated)) {
-            try {
-              report(mismatch(route.value))
-            } catch {
-              // A problem sink cannot prevent route delivery.
-            }
-          }
-        }
-        const message = f(route.value as U["Type"])
-        if (typeof message === "object" && message !== null) seqs.set(message, location.seq)
-        else last = location.seq
-        return Option.some(message)
+        return messageOf(router, report, root, location, initial)
       }),
       Stream.filter(Option.isSome),
       Stream.map((message) => message.value)
     )
   }))
+  // The runtime attaches to the Router's engine instead of running the Stream, so a navigation is
+  // delivered from inside the Router's `set`: in the flush whose Command made it.
+  const direct: NonNullable<services.Direct[typeof services.direct]> = (context, emit) => {
+    const router = Context.get(context as Context.Context<Router>, Router)
+    const found = engines.get(router)
+    if (found === undefined) return undefined
+    engine = found
+    const report = Context.get(context as Context.Context<any>, Loader.Problems)
+    // Read at delivery: the root attaches to the Router after its first render.
+    const root = Context.get(context, services.CurrentRoot)
+    let first = true
+    const deliver = (location: Location) => {
+      const initial = first
+      first = false
+      const message = messageOf(router, report, root(), location, initial)
+      if (Option.isSome(message)) emit(message.value)
+    }
+    return {
+      initial: Effect.sync(() => {
+        if (first) deliver(router.location())
+      }),
+      close: found.listen(deliver)
+    }
+  }
   return Object.assign(Subscription.make("effect/ui/Router", stream), {
+    [services.direct]: direct,
     [services.onServer]: (ctx: Context.Context<never>, report: (problem: Loader.Problem.Any) => void) => {
       const router = Context.getOption(ctx as Context.Context<Router>, Router)
       if (Option.isNone(router)) return
@@ -792,8 +834,9 @@ export interface History {
 }
 
 /**
- * A navigation the Router has finished: the first flush after the root
- * received it in which no provided Layer build begun since is still pending.
+ * A navigation the Router has finished: the first flush, from the one in
+ * which the root received it, in which no provided Layer build begun since is
+ * still pending.
  * The browser Router scrolls, announces and moves focus then.
  *
  * @stability experimental
@@ -849,6 +892,8 @@ export class RouteMismatch extends Data.TaggedClass("RouteMismatch")<{
 
 interface Engine {
   readonly delivered: (seq: number) => void
+  /** Calls `f` with each location `set` moves to, synchronously. */
+  readonly listen: (f: (location: Location) => void) => () => void
 }
 
 interface EntryState {
@@ -1074,18 +1119,21 @@ const build = (options: Options): Effect.Effect<Context.Context<Router>, never, 
      * A push, a link click or a replace that changes the pathname runs the destination's
      * declarations, after the hydration window closes and before the route changes.
      */
-    const set = (next: Location, announce: boolean) => {
+    const listeners = new Set<(location: Location) => void>()
+    /** `saved`: the Models a pop restores. Set before the route is delivered, which can render at once. */
+    const set = (next: Location, announce: boolean, saved?: Record<string, unknown> | undefined) => {
       // First, so whatever the navigation starts sees the cache with the hydration window closed.
       for (const root of roots) root.navigated()
       const checks = announce && next.action !== "pop" ? runDeclarations(next, false) : []
       const from = pathnameOf(current.url)
       current = next
-      restoring = undefined
+      restoring = saved === undefined ? undefined : new Map(Object.entries(saved))
       if (announce) {
         dropChecks()
         pending = { location: next, from, index, since: undefined, checks }
       }
       Effect.runSync(SubscriptionRef.set(ref, next))
+      for (const listener of Array.from(listeners)) listener(next)
     }
 
     const navigate = (href: string, replace: boolean): Outcome => {
@@ -1163,8 +1211,7 @@ const build = (options: Options): Effect.Effect<Context.Context<Router>, never, 
       leave()
       index = target
       const saved = snapshots.get(target) ?? entry?.snapshot
-      set({ route: found.value.route, url: printed, hash, action: "pop", seq: current.seq + 1 }, true)
-      restoring = saved === undefined ? undefined : new Map(Object.entries(saved))
+      set({ route: found.value.route, url: printed, hash, action: "pop", seq: current.seq + 1 }, true, saved)
     }
     const unlisten = history.listen(popped)
     yield* Effect.addFinalizer(() =>
@@ -1265,7 +1312,14 @@ const build = (options: Options): Effect.Effect<Context.Context<Router>, never, 
         if (
           pending !== undefined && pending.location.seq === seq && pending.since === undefined && root !== undefined
         ) {
-          pending.since = root.flush() + 1
+          // Delivered inside a flush, the root renders it in that flush; otherwise in the next.
+          pending.since = root.flushing() ? root.flush() : root.flush() + 1
+        }
+      },
+      listen: (f) => {
+        listeners.add(f)
+        return () => {
+          listeners.delete(f)
         }
       }
     })

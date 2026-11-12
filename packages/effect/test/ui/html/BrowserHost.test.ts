@@ -2,7 +2,7 @@
 import { assert, expect, it } from "@effect/vitest"
 import { Context, Effect, Exit, Layer, Option, Schema, Scope } from "effect"
 import { Loader } from "effect/reactivity"
-import { Component, View } from "effect/ui"
+import { Command, Component, Route, Router, View } from "effect/ui"
 import { BrowserHost, Html } from "effect/ui/html"
 import { HtmlQuery } from "effect/ui/html/testing"
 import { describe } from "vitest"
@@ -229,6 +229,136 @@ describe("BrowserHost", { concurrent: false }, () => {
         expect(field.value).toBe("abXcdef")
         expect(field.selectionStart).toBe(3)
       }).pipe(Effect.scoped))
+  })
+
+  describe("a field bound to the URL", () => {
+    const SearchRoute = Route.union({
+      Search: Route.make("/search", { query: { q: Schema.optional(Schema.String) } }),
+      NotFound: Route.make("/*")
+    })
+    const SearchMessage = Schema.TaggedUnion({
+      Typed: { value: Schema.String },
+      Navigated: { outcome: Schema.Literals(["navigated", "blocked"]) }
+    })
+    // The query is the only copy of the text: the page's Model holds none. Digits are rejected.
+    const SearchPage = Component.make({
+      name: "SearchPage",
+      props: Schema.Struct({ route: SearchRoute.subset(["Search"]) }),
+      model: Schema.Struct({}),
+      message: SearchMessage,
+      elements: Html,
+      init: () => ({}),
+      update: (model, message, $) =>
+        SearchMessage.match(message, {
+          Typed: ({ value }) =>
+            /\d/.test(value)
+              ? model
+              : $.run(
+                Router.replace(SearchRoute, SearchRoute.make({ _tag: "Search", query: { q: value || undefined } }))
+                  .pipe(
+                    Command.map((outcome) => SearchMessage.make({ _tag: "Navigated", outcome }))
+                  )
+              ),
+          Navigated: () => model
+        }),
+      view: (_, h) =>
+        h.input().attr("aria-label", "Search").value(h.props.route.query.q ?? "").onInput(({ value }) =>
+          SearchMessage.make({ _tag: "Typed", value })
+        )
+    })
+    const AppMessage = Schema.TaggedUnion({ ChangedRoute: { route: SearchRoute } })
+    const SearchApp = Component.make({
+      name: "SearchApp",
+      props: Schema.Struct({ route: SearchRoute }),
+      model: Schema.Struct({ route: SearchRoute }),
+      message: AppMessage,
+      elements: Html,
+      init: ($) => ({ route: $.props.route }),
+      update: (_, { route }) => ({ route }),
+      subscriptions: (model) => [
+        Router.subscription(SearchRoute, model.route, (route) => AppMessage.make({ _tag: "ChangedRoute", route }))
+      ],
+      view: (model, h) =>
+        SearchRoute.match(model.route, {
+          Search: (route) => h.child(SearchPage, { key: SearchRoute.printPath(route), props: { route } }),
+          NotFound: () => h.p("Not found")
+        })
+    })
+
+    /**
+     * Runs a test with the app mounted at `/search`. Every value the host writes to the field is
+     * recorded, and `type` changes it as the user would, without recording.
+     */
+    const withSearch = <A, E>(
+      body: (search: {
+        readonly field: HTMLInputElement
+        readonly history: ReturnType<typeof Router.memoryHistory>
+        readonly type: (value: string) => void
+        readonly writes: ReadonlyArray<string>
+      }) => Effect.Effect<A, E, Scope.Scope>
+    ) => {
+      const history = Router.memoryHistory("/search")
+      return Effect.gen(function*() {
+        const app = yield* container
+        yield* BrowserHost.mountEffect(SearchApp, Router.props(SearchRoute), app)
+        const field = HtmlQuery.getByRole(app, "textbox", { name: "Search" }) as HTMLInputElement
+        const native = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!
+        const writes: Array<string> = []
+        Object.defineProperty(field, "value", {
+          configurable: true,
+          get: () => native.get!.call(field),
+          set: (value: string) => {
+            writes.push(value)
+            native.set!.call(field, value)
+          }
+        })
+        const type = (value: string) => {
+          native.set!.call(field, value)
+          field.dispatchEvent(new InputEvent("input", { bubbles: true, data: value, inputType: "insertText" }))
+        }
+        return yield* body({ field, history, type, writes })
+      }).pipe(Effect.scoped, Effect.provide(Router.memory({ routes: SearchRoute, history })))
+    }
+
+    it.effect("an accepted keystroke writes nothing back, and the caret stays", () =>
+      withSearch(({ field, history, type, writes }) =>
+        Effect.gen(function*() {
+          type("abcdef")
+          yield* tick
+          field.setSelectionRange(2, 2)
+          type("abXcdef")
+          field.setSelectionRange(3, 3)
+          yield* tick
+          expect(field.value).toBe("abXcdef")
+          expect(field.selectionStart).toBe(3)
+          expect(history.entries()).toEqual(["/search?q=abXcdef"])
+          expect(writes).toEqual([])
+        })
+      ))
+
+    it.effect("two keystrokes inside one round trip write nothing back", () =>
+      withSearch(({ field, history, type, writes }) =>
+        Effect.gen(function*() {
+          type("a")
+          type("ab")
+          yield* tick
+          expect(field.value).toBe("ab")
+          expect(history.entries()).toEqual(["/search?q=ab"])
+          expect(writes).toEqual([])
+        })
+      ))
+
+    it.effect("a rejected keystroke is put back", () =>
+      withSearch(({ field, history, type }) =>
+        Effect.gen(function*() {
+          type("ab")
+          yield* tick
+          type("ab1")
+          yield* tick
+          expect(field.value).toBe("ab")
+          expect(history.entries()).toEqual(["/search?q=ab"])
+        })
+      ))
   })
 
   describe("events", () => {

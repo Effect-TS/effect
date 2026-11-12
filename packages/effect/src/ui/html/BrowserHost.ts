@@ -522,7 +522,8 @@ export interface MountOptions<V extends View.Elements, RF = never> {
  * themselves be an Effect.
  *
  * Commands and Subscriptions run on the default scheduler, the render flush
- * on a microtask.
+ * on a microtask. A navigation Command runs in the flush its `update` caused,
+ * which renders the new route.
  *
  * **Hydration.** Pass the `state` from `HtmlServer.renderToHtml`, with the
  * server's HTML already in `container` and the same props, to adopt the

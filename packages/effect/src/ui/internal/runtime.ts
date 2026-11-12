@@ -596,7 +596,10 @@ const setup = (
   /** Starts at once, so a Layer that builds synchronously is ready for the first frame. */
   const forkNow = <A, E>(context: Context.Context<any>, effect: Effect.Effect<A, E, any>): Fiber.Fiber<A, E> =>
     Effect.runForkWith(withScheduler(context))(effect)
-  /** Starts on the scheduler, never inside the `update` that issued it. */
+  /**
+   * Starts on the scheduler, never inside the `update` that issued it. A navigation Command starts
+   * sooner, in the deferred work of the flush its `update` caused: see `startRun`.
+   */
   const forkLater = <A, E>(context: Context.Context<any>, effect: Effect.Effect<A, E, any>): Fiber.Fiber<A, E> =>
     forkNow(context, Effect.andThen(Effect.yieldNow, effect))
   // Every run fiber and every Scope close the runtime has forked, until they exit. The root waits for both.
@@ -690,6 +693,8 @@ const setup = (
   )
 
   // -- flush ----------------------------------------------------------------
+  // Set once the root has mounted and is attached to the Router, if there is one.
+  let attached = false
   const dirty = new Set<Instance>()
   const deferred: Array<() => void> = []
   let committed: Array<() => void> = []
@@ -1731,7 +1736,15 @@ const setup = (
   )
 
   const startRun = (inst: Instance, run: Run) => {
-    const go = (envCtx: Context.Context<any>) => {
+    // A navigation runs in the deferred work of the flush its `update` caused, before that flush
+    // renders. The Router delivers the route from inside the navigation, so the root and its pages
+    // render the new route in that flush and never once more with the old one, which would write a
+    // controlled input's old value back. One issued while the root mounts, from an `init`, runs on
+    // the scheduler as other Commands do: the root isn't attached to the Router yet.
+    const go = attached && services.isNavigation(run.command)
+      ? (envCtx: Context.Context<any>) => defer(() => goNow(envCtx, forkNow))
+      : (envCtx: Context.Context<any>) => goNow(envCtx, forkLater)
+    const goNow = (envCtx: Context.Context<any>, fork: typeof forkNow) => {
       if (run.done || frozen) return
       const command = run.command
       let build: Command.Build | undefined
@@ -1777,7 +1790,7 @@ const setup = (
             )
         }
       )
-      const fiber = forkLater(
+      const fiber = fork(
         context,
         run.detached ? Effect.onExit(program, (exit) => Scope.close(scope as Scope.Closeable, exit)) : program
       )
@@ -2042,15 +2055,25 @@ const setup = (
       const go = (envCtx: Context.Context<any>) => {
         if (inst.closed || inst.subscriptions.get(key) !== running) return
         const source: MessageLog.Source = { _tag: "Subscription", key }
+        const context = withCache(
+          Context.add(Context.add(envCtx, Scope.Scope, running.scope), services.CurrentRoot, () => handle)
+        )
+        const emit = (message: unknown) => {
+          ;(subscription as { readonly [services.onDeliver]?: (message: unknown) => void })[services.onDeliver]?.(
+            message
+          )
+          inst.dispatch(message, source)
+        }
+        // Attached to its source, it dispatches synchronously, and only its first check waits.
+        const attachedTo = (subscription as services.Direct)[services.direct]?.(context, (message) => {
+          if (!inst.closed && inst.subscriptions.get(key) === running) emit(message)
+        })
+        if (attachedTo !== undefined) addFinalizer(running.scope, Effect.sync(attachedTo.close))
         const fiber = forkLater(
-          withCache(Context.add(Context.add(envCtx, Scope.Scope, running.scope), services.CurrentRoot, () => handle)),
-          Stream.runForEach(subscription.stream, (message) =>
-            Effect.sync(() => {
-              ;(subscription as { readonly [services.onDeliver]?: (message: unknown) => void })[services.onDeliver]?.(
-                message
-              )
-              inst.dispatch(message, source)
-            }))
+          context,
+          attachedTo !== undefined
+            ? attachedTo.initial
+            : Stream.runForEach(subscription.stream, (message) => Effect.sync(() => emit(message)))
         )
         running.fiber = fiber
         interruptOnClose(running.scope, fiber)
@@ -3090,7 +3113,8 @@ const setup = (
     const out: Record<string, unknown> = {}
     const visit = (inst: Instance) => {
       // A keyed field's pending messages go first, so the bag holds only the declared keys. A
-      // navigation issued in the `update` that changed them runs before the flush's drain.
+      // navigation issued in the `update` that changed them runs in the flush's deferred work, which
+      // can come before the drain gets to them.
       if (inst.keyed.size > 0) drainKeyed(inst)
       if (inst.closed || inst.failure !== undefined || inst.waiting) return
       const encoded = jsonCodecOf(inst.component.model).encode(inst.model)
@@ -3107,6 +3131,7 @@ const setup = (
         return root.adoptsChildren
       },
       flush: () => flushes,
+      flushing: () => rendering,
       snapshot,
       // The first navigation closes the fetch-free window, if adoption hasn't yet.
       navigated: () => cache.closeWindow(),
@@ -3115,6 +3140,7 @@ const setup = (
     const detach = hooks.attach(handle)
     addFinalizer(rootScope, Effect.sync(detach))
   }
+  attached = true
   afterCommitHooks()
   rendering = false
   runCommitted()

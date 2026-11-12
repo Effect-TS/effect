@@ -27,6 +27,42 @@ const mount = TestHost.mount(App, Router.props(AppRoute))
 
 // Sequential: the restore tests change the person fixture's shared fetcher.
 describe("Router", { concurrent: false }, () => {
+  it.effect("logs a navigation's update, route and outcome before the page it mounts", () => {
+    const { layer } = setup()
+    return run(
+      layer,
+      Effect.gen(function*() {
+        const root = yield* mount
+        yield* TestHost.settle
+        const start = root.log().length
+        click(root, "Person 1")
+        yield* TestHost.settle
+        const entries = root.log().slice(start).map((entry) => {
+          switch (entry._tag) {
+            case "Update":
+              return `Update ${entry.path} ${(entry.message as { _tag: string })._tag}(${entry.source._tag})`
+            case "CommandEnded":
+              return `CommandEnded ${entry.name}`
+            case "Mounted":
+            case "Unmounted":
+              return `${entry._tag} ${entry.path}`
+            default:
+              return entry._tag
+          }
+        })
+        assert.deepStrictEqual(entries.slice(0, 7), [
+          "Update /App Go(DomEvent)",
+          "Update /App ChangedRoute(Subscription)",
+          "Update /App Navigated(Command)",
+          "CommandEnded effect/ui/Router/Push",
+          "Mounted /App/Person[/people/1]",
+          "SubscriptionStarted",
+          "Unmounted /App/Home[/]"
+        ])
+      })
+    ).pipe(Effect.scoped)
+  })
+
   it.effect("suppresses the matching initial route and keeps one subscription across navigation", () =>
     run(
       Router.memory({ routes: AppRoute }),
