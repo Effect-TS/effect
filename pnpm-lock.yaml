@@ -348,6 +348,12 @@ importers:
         specifier: ^3.5.45
         version: 3.5.45(typescript@7.0.2)
 
+  packages/chat/slack:
+    devDependencies:
+      effect:
+        specifier: workspace:^
+        version: link:../../effect
+
   packages/effect:
     devDependencies:
       '@types/node':

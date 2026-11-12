@@ -1,0 +1,136 @@
+{
+  "case": "chat.meMessage mentioning the bot; read back",
+  "recordedAt": "2026-11-12T18:43:28.103Z",
+  "calls": [
+    {
+      "method": "chat.meMessage",
+      "encoding": "form",
+      "note": "chat.meMessage via form encoding",
+      "request": {
+        "channel": "C0CH1LGJ4F3",
+        "text": "Fixture: me message waves at <@U0CCLMD4S1L>"
+      },
+      "httpStatus": 200,
+      "response": {
+        "ok": true,
+        "channel": "C0CH1LGJ4F3",
+        "ts": "1794509006.465359"
+      }
+    },
+    {
+      "method": "conversations.history",
+      "encoding": "form",
+      "request": {
+        "channel": "C0CH1LGJ4F3",
+        "latest": "1794509006.465359",
+        "inclusive": true,
+        "limit": 1
+      },
+      "httpStatus": 200,
+      "response": {
+        "ok": true,
+        "latest": "1794509006.465359",
+        "messages": [
+          {
+            "subtype": "me_message",
+            "user": "U0CCLMD4S1L",
+            "type": "message",
+            "ts": "1794509006.465359",
+            "bot_id": "B0CCQH77VA5",
+            "app_id": "A0CCHBHDK7X",
+            "text": "Fixture: me message waves at <@U0CCLMD4S1L|janitor2>",
+            "blocks": [
+              {
+                "type": "rich_text",
+                "block_id": "+CZAP",
+                "elements": [
+                  {
+                    "type": "rich_text_section",
+                    "elements": [
+                      {
+                        "type": "text",
+                        "text": "Fixture: me message waves at "
+                      },
+                      {
+                        "type": "user",
+                        "user_id": "U0CCLMD4S1L"
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ],
+        "has_more": true,
+        "pin_count": 0,
+        "channel_actions_ts": null,
+        "channel_actions_count": 0,
+        "response_metadata": {
+          "next_cursor": "bmV4dF90czoxNzk0NTA5MDA0ODExODc5"
+        }
+      }
+    },
+    {
+      "method": "conversations.replies",
+      "encoding": "form",
+      "request": {
+        "channel": "C0CH1LGJ4F3",
+        "ts": "1794509006.465359",
+        "limit": 10
+      },
+      "httpStatus": 200,
+      "response": {
+        "ok": true,
+        "messages": [
+          {
+            "subtype": "me_message",
+            "user": "U0CCLMD4S1L",
+            "type": "message",
+            "ts": "1794509006.465359",
+            "bot_id": "B0CCQH77VA5",
+            "app_id": "A0CCHBHDK7X",
+            "text": "Fixture: me message waves at <@U0CCLMD4S1L|janitor2>",
+            "blocks": [
+              {
+                "type": "rich_text",
+                "block_id": "TYkp0",
+                "elements": [
+                  {
+                    "type": "rich_text_section",
+                    "elements": [
+                      {
+                        "type": "text",
+                        "text": "Fixture: me message waves at "
+                      },
+                      {
+                        "type": "user",
+                        "user_id": "U0CCLMD4S1L"
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ],
+        "has_more": false
+      }
+    },
+    {
+      "method": "chat.meMessage",
+      "encoding": "json",
+      "note": "same method with JSON body",
+      "request": {
+        "channel": "C0CH1LGJ4F3",
+        "text": "Fixture: me message (json body)"
+      },
+      "httpStatus": 200,
+      "response": {
+        "ok": true,
+        "channel": "C0CH1LGJ4F3",
+        "ts": "1794509008.079609"
+      }
+    }
+  ]
+}

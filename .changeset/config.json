@@ -23,6 +23,7 @@
       "@effect/ai-openai-compat",
       "@effect/ai-openrouter",
       "@effect/atom-react",
+      "@effect/chat-slack",
       "@effect/atom-solid",
       "@effect/atom-vue",
       "@effect/docgen",

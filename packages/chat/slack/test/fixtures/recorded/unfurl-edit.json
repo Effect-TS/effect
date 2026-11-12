@@ -1,0 +1,1207 @@
+{
+  "case": "does a message posted with unfurl_links/unfurl_media false gain an unfurl when chat.update adds a link? plus a control posted with the link and unfurls enabled; plus a second edit case posted WITHOUT unfurl params (defaults) then edited to add the link; plus edit case 3 / control 3 using URLs not previously posted in the channel (rules out Slack's same-URL unfurl de-duplication)",
+  "recordedAt": "2026-11-12T18:47:34.080Z",
+  "firstRecordedAt": "2026-11-12T18:46:15.379Z",
+  "calls": [
+    {
+      "method": "chat.postMessage",
+      "encoding": "json",
+      "note": "edit case: initial post, unfurls disabled",
+      "request": {
+        "channel": "C0CH1LGJ4F3",
+        "markdown_text": "no link yet",
+        "unfurl_links": false,
+        "unfurl_media": false
+      },
+      "httpStatus": 200,
+      "response": {
+        "ok": true,
+        "channel": "C0CH1LGJ4F3",
+        "ts": "1794509128.969019",
+        "message": {
+          "user": "U0CCLMD4S1L",
+          "type": "message",
+          "ts": "1794509128.969019",
+          "bot_id": "B0CCQH77VA5",
+          "app_id": "A0CCHBHDK7X",
+          "text": "no link yet",
+          "team": "T05479Z6JBW",
+          "bot_profile": {
+            "id": "B0CCQH77VA5",
+            "deleted": false,
+            "name": "Janitor",
+            "updated": 1793135255,
+            "app_id": "A0CCHBHDK7X",
+            "user_id": "U0CCLMD4S1L",
+            "icons": {
+              "image_36": "https://scrubbed.invalid/image_36",
+              "image_48": "https://scrubbed.invalid/image_48",
+              "image_72": "https://scrubbed.invalid/image_72"
+            },
+            "team_id": "T05479Z6JBW"
+          },
+          "blocks": [
+            {
+              "type": "rich_text",
+              "block_id": "owsBih",
+              "elements": [
+                {
+                  "type": "rich_text_section",
+                  "elements": [
+                    {
+                      "type": "text",
+                      "text": "no link yet"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "method": "chat.postMessage",
+      "encoding": "json",
+      "note": "control: link posted directly, unfurls enabled",
+      "request": {
+        "channel": "C0CH1LGJ4F3",
+        "markdown_text": "Fixture control: https://github.com/Effect-TS/effect",
+        "unfurl_links": true,
+        "unfurl_media": true
+      },
+      "httpStatus": 200,
+      "response": {
+        "ok": true,
+        "channel": "C0CH1LGJ4F3",
+        "ts": "1794509129.029199",
+        "message": {
+          "user": "U0CCLMD4S1L",
+          "type": "message",
+          "ts": "1794509129.029199",
+          "bot_id": "B0CCQH77VA5",
+          "app_id": "A0CCHBHDK7X",
+          "text": "Fixture control: <https://github.com/Effect-TS/effect|github.com/Effect-TS/effect>",
+          "team": "T05479Z6JBW",
+          "bot_profile": {
+            "id": "B0CCQH77VA5",
+            "deleted": false,
+            "name": "Janitor",
+            "updated": 1793135255,
+            "app_id": "A0CCHBHDK7X",
+            "user_id": "U0CCLMD4S1L",
+            "icons": {
+              "image_36": "https://scrubbed.invalid/image_36",
+              "image_48": "https://scrubbed.invalid/image_48",
+              "image_72": "https://scrubbed.invalid/image_72"
+            },
+            "team_id": "T05479Z6JBW"
+          },
+          "blocks": [
+            {
+              "type": "rich_text",
+              "block_id": "gacOs0",
+              "elements": [
+                {
+                  "type": "rich_text_section",
+                  "elements": [
+                    {
+                      "type": "text",
+                      "text": "Fixture control: "
+                    },
+                    {
+                      "type": "link",
+                      "url": "https://github.com/Effect-TS/effect",
+                      "text": "github.com/Effect-TS/effect",
+                      "truncated": true
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "method": "chat.update",
+      "encoding": "json",
+      "note": "edit case: add a link (chat.update has no unfurl params)",
+      "request": {
+        "channel": "C0CH1LGJ4F3",
+        "ts": "1794509128.969019",
+        "markdown_text": "now with a link: https://github.com/Effect-TS/effect"
+      },
+      "httpStatus": 200,
+      "response": {
+        "ok": true,
+        "channel": "C0CH1LGJ4F3",
+        "ts": "1794509128.969019",
+        "text": "now with a link: <https://github.com/Effect-TS/effect|github.com/Effect-TS/effect>",
+        "message": {
+          "user": "U0CCLMD4S1L",
+          "type": "message",
+          "edited": {
+            "user": "U0CCLMD4S1L",
+            "ts": "1794509130.000000"
+          },
+          "bot_id": "B0CCQH77VA5",
+          "app_id": "A0CCHBHDK7X",
+          "text": "now with a link: <https://github.com/Effect-TS/effect|github.com/Effect-TS/effect>",
+          "team": "T05479Z6JBW",
+          "bot_profile": {
+            "id": "B0CCQH77VA5",
+            "deleted": false,
+            "name": "Janitor",
+            "updated": 1793135255,
+            "app_id": "A0CCHBHDK7X",
+            "user_id": "U0CCLMD4S1L",
+            "icons": {
+              "image_36": "https://scrubbed.invalid/image_36",
+              "image_48": "https://scrubbed.invalid/image_48",
+              "image_72": "https://scrubbed.invalid/image_72"
+            },
+            "team_id": "T05479Z6JBW"
+          },
+          "blocks": [
+            {
+              "type": "rich_text",
+              "block_id": "sv5KYB",
+              "elements": [
+                {
+                  "type": "rich_text_section",
+                  "elements": [
+                    {
+                      "type": "text",
+                      "text": "now with a link: "
+                    },
+                    {
+                      "type": "link",
+                      "url": "https://github.com/Effect-TS/effect",
+                      "text": "github.com/Effect-TS/effect",
+                      "truncated": true
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "method": "conversations.history",
+      "encoding": "form",
+      "note": "edit case after 20s",
+      "request": {
+        "channel": "C0CH1LGJ4F3",
+        "latest": "1794509128.969019",
+        "inclusive": true,
+        "limit": 1
+      },
+      "httpStatus": 200,
+      "response": {
+        "ok": true,
+        "latest": "1794509128.969019",
+        "messages": [
+          {
+            "user": "U0CCLMD4S1L",
+            "type": "message",
+            "ts": "1794509128.969019",
+            "edited": {
+              "user": "U0CCLMD4S1L",
+              "ts": "1794509130.000000"
+            },
+            "bot_id": "B0CCQH77VA5",
+            "app_id": "A0CCHBHDK7X",
+            "text": "now with a link: <https://github.com/Effect-TS/effect|github.com/Effect-TS/effect>",
+            "team": "T05479Z6JBW",
+            "bot_profile": {
+              "id": "B0CCQH77VA5",
+              "deleted": false,
+              "name": "Janitor",
+              "updated": 1793135255,
+              "app_id": "A0CCHBHDK7X",
+              "user_id": "U0CCLMD4S1L",
+              "icons": {
+                "image_36": "https://scrubbed.invalid/image_36",
+                "image_48": "https://scrubbed.invalid/image_48",
+                "image_72": "https://scrubbed.invalid/image_72"
+              },
+              "team_id": "T05479Z6JBW"
+            },
+            "blocks": [
+              {
+                "type": "rich_text",
+                "block_id": "sv5KYB",
+                "elements": [
+                  {
+                    "type": "rich_text_section",
+                    "elements": [
+                      {
+                        "type": "text",
+                        "text": "now with a link: "
+                      },
+                      {
+                        "type": "link",
+                        "url": "https://github.com/Effect-TS/effect",
+                        "text": "github.com/Effect-TS/effect",
+                        "truncated": true
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ],
+        "has_more": true,
+        "pin_count": 0,
+        "channel_actions_ts": null,
+        "channel_actions_count": 0,
+        "response_metadata": {
+          "next_cursor": "bmV4dF90czoxNzk0NTA5MTEwOTk5Nzk5"
+        }
+      }
+    },
+    {
+      "method": "conversations.replies",
+      "encoding": "form",
+      "note": "edit case after 20s",
+      "request": {
+        "channel": "C0CH1LGJ4F3",
+        "ts": "1794509128.969019",
+        "limit": 1
+      },
+      "httpStatus": 200,
+      "response": {
+        "ok": true,
+        "messages": [
+          {
+            "user": "U0CCLMD4S1L",
+            "type": "message",
+            "ts": "1794509128.969019",
+            "edited": {
+              "user": "U0CCLMD4S1L",
+              "ts": "1794509130.000000"
+            },
+            "bot_id": "B0CCQH77VA5",
+            "app_id": "A0CCHBHDK7X",
+            "text": "now with a link: <https://github.com/Effect-TS/effect|github.com/Effect-TS/effect>",
+            "team": "T05479Z6JBW",
+            "bot_profile": {
+              "id": "B0CCQH77VA5",
+              "deleted": false,
+              "name": "Janitor",
+              "updated": 1793135255,
+              "app_id": "A0CCHBHDK7X",
+              "user_id": "U0CCLMD4S1L",
+              "icons": {
+                "image_36": "https://scrubbed.invalid/image_36",
+                "image_48": "https://scrubbed.invalid/image_48",
+                "image_72": "https://scrubbed.invalid/image_72"
+              },
+              "team_id": "T05479Z6JBW"
+            },
+            "blocks": [
+              {
+                "type": "rich_text",
+                "block_id": "sv5KYB",
+                "elements": [
+                  {
+                    "type": "rich_text_section",
+                    "elements": [
+                      {
+                        "type": "text",
+                        "text": "now with a link: "
+                      },
+                      {
+                        "type": "link",
+                        "url": "https://github.com/Effect-TS/effect",
+                        "text": "github.com/Effect-TS/effect",
+                        "truncated": true
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ],
+        "has_more": false
+      }
+    },
+    {
+      "method": "conversations.history",
+      "encoding": "form",
+      "note": "control after 20s",
+      "request": {
+        "channel": "C0CH1LGJ4F3",
+        "latest": "1794509129.029199",
+        "inclusive": true,
+        "limit": 1
+      },
+      "httpStatus": 200,
+      "response": {
+        "ok": true,
+        "latest": "1794509129.029199",
+        "messages": [
+          {
+            "user": "U0CCLMD4S1L",
+            "type": "message",
+            "ts": "1794509129.029199",
+            "bot_id": "B0CCQH77VA5",
+            "app_id": "A0CCHBHDK7X",
+            "text": "Fixture control: <https://github.com/Effect-TS/effect|github.com/Effect-TS/effect>",
+            "team": "T05479Z6JBW",
+            "bot_profile": {
+              "id": "B0CCQH77VA5",
+              "deleted": false,
+              "name": "Janitor",
+              "updated": 1793135255,
+              "app_id": "A0CCHBHDK7X",
+              "user_id": "U0CCLMD4S1L",
+              "icons": {
+                "image_36": "https://scrubbed.invalid/image_36",
+                "image_48": "https://scrubbed.invalid/image_48",
+                "image_72": "https://scrubbed.invalid/image_72"
+              },
+              "team_id": "T05479Z6JBW"
+            },
+            "attachments": [
+              {
+                "from_url": "https://github.com/Effect-TS/effect",
+                "image_url": "https://scrubbed.invalid/image_url",
+                "image_width": 1200,
+                "image_height": 600,
+                "image_bytes": 42222,
+                "service_icon": "https://a.slack-edge.com/80588/img/unfurl_icons/github.png",
+                "original_url": "https://github.com/Effect-TS/effect",
+                "id": 1,
+                "fallback": "GitHub: GitHub - Effect-TS/effect: Build production-ready applications in TypeScript",
+                "text": "Build production-ready applications in TypeScript. Contribute to Effect-TS/effect development by creating an account on GitHub.",
+                "title": "GitHub - Effect-TS/effect: Build production-ready applications in TypeScript",
+                "title_link": "https://github.com/Effect-TS/effect",
+                "service_name": "GitHub",
+                "media_type": "external_link"
+              }
+            ],
+            "blocks": [
+              {
+                "type": "rich_text",
+                "block_id": "gacOs0",
+                "elements": [
+                  {
+                    "type": "rich_text_section",
+                    "elements": [
+                      {
+                        "type": "text",
+                        "text": "Fixture control: "
+                      },
+                      {
+                        "type": "link",
+                        "url": "https://github.com/Effect-TS/effect",
+                        "text": "github.com/Effect-TS/effect",
+                        "truncated": true
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ],
+        "has_more": true,
+        "pin_count": 0,
+        "channel_actions_ts": null,
+        "channel_actions_count": 0,
+        "response_metadata": {
+          "next_cursor": "bmV4dF90czoxNzk0NTA5MTI4OTY5MDE5"
+        }
+      }
+    },
+    {
+      "method": "conversations.replies",
+      "encoding": "form",
+      "note": "control after 20s",
+      "request": {
+        "channel": "C0CH1LGJ4F3",
+        "ts": "1794509129.029199",
+        "limit": 1
+      },
+      "httpStatus": 200,
+      "response": {
+        "ok": true,
+        "messages": [
+          {
+            "user": "U0CCLMD4S1L",
+            "type": "message",
+            "ts": "1794509129.029199",
+            "bot_id": "B0CCQH77VA5",
+            "app_id": "A0CCHBHDK7X",
+            "text": "Fixture control: <https://github.com/Effect-TS/effect|github.com/Effect-TS/effect>",
+            "team": "T05479Z6JBW",
+            "bot_profile": {
+              "id": "B0CCQH77VA5",
+              "deleted": false,
+              "name": "Janitor",
+              "updated": 1793135255,
+              "app_id": "A0CCHBHDK7X",
+              "user_id": "U0CCLMD4S1L",
+              "icons": {
+                "image_36": "https://scrubbed.invalid/image_36",
+                "image_48": "https://scrubbed.invalid/image_48",
+                "image_72": "https://scrubbed.invalid/image_72"
+              },
+              "team_id": "T05479Z6JBW"
+            },
+            "attachments": [
+              {
+                "from_url": "https://github.com/Effect-TS/effect",
+                "image_url": "https://scrubbed.invalid/image_url",
+                "image_width": 1200,
+                "image_height": 600,
+                "image_bytes": 42222,
+                "service_icon": "https://a.slack-edge.com/80588/img/unfurl_icons/github.png",
+                "original_url": "https://github.com/Effect-TS/effect",
+                "id": 1,
+                "fallback": "GitHub: GitHub - Effect-TS/effect: Build production-ready applications in TypeScript",
+                "text": "Build production-ready applications in TypeScript. Contribute to Effect-TS/effect development by creating an account on GitHub.",
+                "title": "GitHub - Effect-TS/effect: Build production-ready applications in TypeScript",
+                "title_link": "https://github.com/Effect-TS/effect",
+                "service_name": "GitHub",
+                "media_type": "external_link"
+              }
+            ],
+            "blocks": [
+              {
+                "type": "rich_text",
+                "block_id": "gacOs0",
+                "elements": [
+                  {
+                    "type": "rich_text_section",
+                    "elements": [
+                      {
+                        "type": "text",
+                        "text": "Fixture control: "
+                      },
+                      {
+                        "type": "link",
+                        "url": "https://github.com/Effect-TS/effect",
+                        "text": "github.com/Effect-TS/effect",
+                        "truncated": true
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ],
+        "has_more": false
+      }
+    },
+    {
+      "method": "conversations.history",
+      "encoding": "form",
+      "note": "edit case after ~45s",
+      "request": {
+        "channel": "C0CH1LGJ4F3",
+        "latest": "1794509128.969019",
+        "inclusive": true,
+        "limit": 1
+      },
+      "httpStatus": 200,
+      "response": {
+        "ok": true,
+        "latest": "1794509128.969019",
+        "messages": [
+          {
+            "user": "U0CCLMD4S1L",
+            "type": "message",
+            "ts": "1794509128.969019",
+            "edited": {
+              "user": "U0CCLMD4S1L",
+              "ts": "1794509130.000000"
+            },
+            "bot_id": "B0CCQH77VA5",
+            "app_id": "A0CCHBHDK7X",
+            "text": "now with a link: <https://github.com/Effect-TS/effect|github.com/Effect-TS/effect>",
+            "team": "T05479Z6JBW",
+            "bot_profile": {
+              "id": "B0CCQH77VA5",
+              "deleted": false,
+              "name": "Janitor",
+              "updated": 1793135255,
+              "app_id": "A0CCHBHDK7X",
+              "user_id": "U0CCLMD4S1L",
+              "icons": {
+                "image_36": "https://scrubbed.invalid/image_36",
+                "image_48": "https://scrubbed.invalid/image_48",
+                "image_72": "https://scrubbed.invalid/image_72"
+              },
+              "team_id": "T05479Z6JBW"
+            },
+            "blocks": [
+              {
+                "type": "rich_text",
+                "block_id": "sv5KYB",
+                "elements": [
+                  {
+                    "type": "rich_text_section",
+                    "elements": [
+                      {
+                        "type": "text",
+                        "text": "now with a link: "
+                      },
+                      {
+                        "type": "link",
+                        "url": "https://github.com/Effect-TS/effect",
+                        "text": "github.com/Effect-TS/effect",
+                        "truncated": true
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ],
+        "has_more": true,
+        "pin_count": 0,
+        "channel_actions_ts": null,
+        "channel_actions_count": 0,
+        "response_metadata": {
+          "next_cursor": "bmV4dF90czoxNzk0NTA5MTEwOTk5Nzk5"
+        }
+      }
+    },
+    {
+      "method": "conversations.history",
+      "encoding": "form",
+      "note": "control after ~45s",
+      "request": {
+        "channel": "C0CH1LGJ4F3",
+        "latest": "1794509129.029199",
+        "inclusive": true,
+        "limit": 1
+      },
+      "httpStatus": 200,
+      "response": {
+        "ok": true,
+        "latest": "1794509129.029199",
+        "messages": [
+          {
+            "user": "U0CCLMD4S1L",
+            "type": "message",
+            "ts": "1794509129.029199",
+            "bot_id": "B0CCQH77VA5",
+            "app_id": "A0CCHBHDK7X",
+            "text": "Fixture control: <https://github.com/Effect-TS/effect|github.com/Effect-TS/effect>",
+            "team": "T05479Z6JBW",
+            "bot_profile": {
+              "id": "B0CCQH77VA5",
+              "deleted": false,
+              "name": "Janitor",
+              "updated": 1793135255,
+              "app_id": "A0CCHBHDK7X",
+              "user_id": "U0CCLMD4S1L",
+              "icons": {
+                "image_36": "https://scrubbed.invalid/image_36",
+                "image_48": "https://scrubbed.invalid/image_48",
+                "image_72": "https://scrubbed.invalid/image_72"
+              },
+              "team_id": "T05479Z6JBW"
+            },
+            "attachments": [
+              {
+                "from_url": "https://github.com/Effect-TS/effect",
+                "image_url": "https://scrubbed.invalid/image_url",
+                "image_width": 1200,
+                "image_height": 600,
+                "image_bytes": 42222,
+                "service_icon": "https://a.slack-edge.com/80588/img/unfurl_icons/github.png",
+                "original_url": "https://github.com/Effect-TS/effect",
+                "id": 1,
+                "fallback": "GitHub: GitHub - Effect-TS/effect: Build production-ready applications in TypeScript",
+                "text": "Build production-ready applications in TypeScript. Contribute to Effect-TS/effect development by creating an account on GitHub.",
+                "title": "GitHub - Effect-TS/effect: Build production-ready applications in TypeScript",
+                "title_link": "https://github.com/Effect-TS/effect",
+                "service_name": "GitHub",
+                "media_type": "external_link"
+              }
+            ],
+            "blocks": [
+              {
+                "type": "rich_text",
+                "block_id": "gacOs0",
+                "elements": [
+                  {
+                    "type": "rich_text_section",
+                    "elements": [
+                      {
+                        "type": "text",
+                        "text": "Fixture control: "
+                      },
+                      {
+                        "type": "link",
+                        "url": "https://github.com/Effect-TS/effect",
+                        "text": "github.com/Effect-TS/effect",
+                        "truncated": true
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ],
+        "has_more": true,
+        "pin_count": 0,
+        "channel_actions_ts": null,
+        "channel_actions_count": 0,
+        "response_metadata": {
+          "next_cursor": "bmV4dF90czoxNzk0NTA5MTI4OTY5MDE5"
+        }
+      }
+    },
+    {
+      "method": "chat.postMessage",
+      "encoding": "json",
+      "note": "edit case 2: initial post with no unfurl params",
+      "request": {
+        "channel": "C0CH1LGJ4F3",
+        "markdown_text": "no link yet (default unfurl settings)"
+      },
+      "httpStatus": 200,
+      "response": {
+        "ok": true,
+        "channel": "C0CH1LGJ4F3",
+        "ts": "1794509187.550629",
+        "message": {
+          "user": "U0CCLMD4S1L",
+          "type": "message",
+          "ts": "1794509187.550629",
+          "bot_id": "B0CCQH77VA5",
+          "app_id": "A0CCHBHDK7X",
+          "text": "no link yet (default unfurl settings)",
+          "team": "T05479Z6JBW",
+          "bot_profile": {
+            "id": "B0CCQH77VA5",
+            "deleted": false,
+            "name": "Janitor",
+            "updated": 1793135255,
+            "app_id": "A0CCHBHDK7X",
+            "user_id": "U0CCLMD4S1L",
+            "icons": {
+              "image_36": "https://scrubbed.invalid/image_36",
+              "image_48": "https://scrubbed.invalid/image_48",
+              "image_72": "https://scrubbed.invalid/image_72"
+            },
+            "team_id": "T05479Z6JBW"
+          },
+          "blocks": [
+            {
+              "type": "rich_text",
+              "block_id": "DWET6I",
+              "elements": [
+                {
+                  "type": "rich_text_section",
+                  "elements": [
+                    {
+                      "type": "text",
+                      "text": "no link yet (default unfurl settings)"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "method": "chat.update",
+      "encoding": "json",
+      "note": "edit case 2: add a link",
+      "request": {
+        "channel": "C0CH1LGJ4F3",
+        "ts": "1794509187.550629",
+        "markdown_text": "edited to add https://github.com/Effect-TS/effect"
+      },
+      "httpStatus": 200,
+      "response": {
+        "ok": true,
+        "channel": "C0CH1LGJ4F3",
+        "ts": "1794509187.550629",
+        "text": "edited to add <https://github.com/Effect-TS/effect|github.com/Effect-TS/effect>",
+        "message": {
+          "user": "U0CCLMD4S1L",
+          "type": "message",
+          "edited": {
+            "user": "U0CCLMD4S1L",
+            "ts": "1794509188.000000"
+          },
+          "bot_id": "B0CCQH77VA5",
+          "app_id": "A0CCHBHDK7X",
+          "text": "edited to add <https://github.com/Effect-TS/effect|github.com/Effect-TS/effect>",
+          "team": "T05479Z6JBW",
+          "bot_profile": {
+            "id": "B0CCQH77VA5",
+            "deleted": false,
+            "name": "Janitor",
+            "updated": 1793135255,
+            "app_id": "A0CCHBHDK7X",
+            "user_id": "U0CCLMD4S1L",
+            "icons": {
+              "image_36": "https://scrubbed.invalid/image_36",
+              "image_48": "https://scrubbed.invalid/image_48",
+              "image_72": "https://scrubbed.invalid/image_72"
+            },
+            "team_id": "T05479Z6JBW"
+          },
+          "blocks": [
+            {
+              "type": "rich_text",
+              "block_id": "rDlbGF",
+              "elements": [
+                {
+                  "type": "rich_text_section",
+                  "elements": [
+                    {
+                      "type": "text",
+                      "text": "edited to add "
+                    },
+                    {
+                      "type": "link",
+                      "url": "https://github.com/Effect-TS/effect",
+                      "text": "github.com/Effect-TS/effect",
+                      "truncated": true
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "method": "conversations.history",
+      "encoding": "form",
+      "note": "edit case 2 after ~25s",
+      "request": {
+        "channel": "C0CH1LGJ4F3",
+        "latest": "1794509187.550629",
+        "inclusive": true,
+        "limit": 1
+      },
+      "httpStatus": 200,
+      "response": {
+        "ok": true,
+        "latest": "1794509187.550629",
+        "messages": [
+          {
+            "user": "U0CCLMD4S1L",
+            "type": "message",
+            "ts": "1794509187.550629",
+            "edited": {
+              "user": "U0CCLMD4S1L",
+              "ts": "1794509188.000000"
+            },
+            "bot_id": "B0CCQH77VA5",
+            "app_id": "A0CCHBHDK7X",
+            "text": "edited to add <https://github.com/Effect-TS/effect|github.com/Effect-TS/effect>",
+            "team": "T05479Z6JBW",
+            "bot_profile": {
+              "id": "B0CCQH77VA5",
+              "deleted": false,
+              "name": "Janitor",
+              "updated": 1793135255,
+              "app_id": "A0CCHBHDK7X",
+              "user_id": "U0CCLMD4S1L",
+              "icons": {
+                "image_36": "https://scrubbed.invalid/image_36",
+                "image_48": "https://scrubbed.invalid/image_48",
+                "image_72": "https://scrubbed.invalid/image_72"
+              },
+              "team_id": "T05479Z6JBW"
+            },
+            "blocks": [
+              {
+                "type": "rich_text",
+                "block_id": "rDlbGF",
+                "elements": [
+                  {
+                    "type": "rich_text_section",
+                    "elements": [
+                      {
+                        "type": "text",
+                        "text": "edited to add "
+                      },
+                      {
+                        "type": "link",
+                        "url": "https://github.com/Effect-TS/effect",
+                        "text": "github.com/Effect-TS/effect",
+                        "truncated": true
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ],
+        "has_more": true,
+        "pin_count": 0,
+        "channel_actions_ts": null,
+        "channel_actions_count": 0,
+        "response_metadata": {
+          "next_cursor": "bmV4dF90czoxNzk0NTA5MTI5MDI5MTk5"
+        }
+      }
+    },
+    {
+      "method": "chat.postMessage",
+      "encoding": "json",
+      "note": "edit case 3: initial post, default unfurl settings",
+      "request": {
+        "channel": "C0CH1LGJ4F3",
+        "markdown_text": "no link yet (case 3)"
+      },
+      "httpStatus": 200,
+      "response": {
+        "ok": true,
+        "channel": "C0CH1LGJ4F3",
+        "ts": "1794509227.845499",
+        "message": {
+          "user": "U0CCLMD4S1L",
+          "type": "message",
+          "ts": "1794509227.845499",
+          "bot_id": "B0CCQH77VA5",
+          "app_id": "A0CCHBHDK7X",
+          "text": "no link yet (case 3)",
+          "team": "T05479Z6JBW",
+          "bot_profile": {
+            "id": "B0CCQH77VA5",
+            "deleted": false,
+            "name": "Janitor",
+            "updated": 1793135255,
+            "app_id": "A0CCHBHDK7X",
+            "user_id": "U0CCLMD4S1L",
+            "icons": {
+              "image_36": "https://scrubbed.invalid/image_36",
+              "image_48": "https://scrubbed.invalid/image_48",
+              "image_72": "https://scrubbed.invalid/image_72"
+            },
+            "team_id": "T05479Z6JBW"
+          },
+          "blocks": [
+            {
+              "type": "rich_text",
+              "block_id": "Y7Owd/",
+              "elements": [
+                {
+                  "type": "rich_text_section",
+                  "elements": [
+                    {
+                      "type": "text",
+                      "text": "no link yet (case 3)"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "method": "chat.postMessage",
+      "encoding": "json",
+      "note": "control 3: fresh URL posted directly, default unfurl settings",
+      "request": {
+        "channel": "C0CH1LGJ4F3",
+        "markdown_text": "Fixture control 3: https://github.com/Effect-TS/effect/issues/2"
+      },
+      "httpStatus": 200,
+      "response": {
+        "ok": true,
+        "channel": "C0CH1LGJ4F3",
+        "ts": "1794509227.900709",
+        "message": {
+          "user": "U0CCLMD4S1L",
+          "type": "message",
+          "ts": "1794509227.900709",
+          "bot_id": "B0CCQH77VA5",
+          "app_id": "A0CCHBHDK7X",
+          "text": "Fixture control 3: <https://github.com/Effect-TS/effect/issues/2|github.com/Effect-TS/effect/issues/2>",
+          "team": "T05479Z6JBW",
+          "bot_profile": {
+            "id": "B0CCQH77VA5",
+            "deleted": false,
+            "name": "Janitor",
+            "updated": 1793135255,
+            "app_id": "A0CCHBHDK7X",
+            "user_id": "U0CCLMD4S1L",
+            "icons": {
+              "image_36": "https://scrubbed.invalid/image_36",
+              "image_48": "https://scrubbed.invalid/image_48",
+              "image_72": "https://scrubbed.invalid/image_72"
+            },
+            "team_id": "T05479Z6JBW"
+          },
+          "blocks": [
+            {
+              "type": "rich_text",
+              "block_id": "2ktf5k",
+              "elements": [
+                {
+                  "type": "rich_text_section",
+                  "elements": [
+                    {
+                      "type": "text",
+                      "text": "Fixture control 3: "
+                    },
+                    {
+                      "type": "link",
+                      "url": "https://github.com/Effect-TS/effect/issues/2",
+                      "text": "github.com/Effect-TS/effect/issues/2",
+                      "truncated": true
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "method": "chat.update",
+      "encoding": "json",
+      "note": "edit case 3: add a fresh URL",
+      "request": {
+        "channel": "C0CH1LGJ4F3",
+        "ts": "1794509227.845499",
+        "markdown_text": "edited to add https://github.com/Effect-TS/effect/issues/1"
+      },
+      "httpStatus": 200,
+      "response": {
+        "ok": true,
+        "channel": "C0CH1LGJ4F3",
+        "ts": "1794509227.845499",
+        "text": "edited to add <https://github.com/Effect-TS/effect/issues/1|github.com/Effect-TS/effect/issues/1>",
+        "message": {
+          "user": "U0CCLMD4S1L",
+          "type": "message",
+          "edited": {
+            "user": "U0CCLMD4S1L",
+            "ts": "1794509228.000000"
+          },
+          "bot_id": "B0CCQH77VA5",
+          "app_id": "A0CCHBHDK7X",
+          "text": "edited to add <https://github.com/Effect-TS/effect/issues/1|github.com/Effect-TS/effect/issues/1>",
+          "team": "T05479Z6JBW",
+          "bot_profile": {
+            "id": "B0CCQH77VA5",
+            "deleted": false,
+            "name": "Janitor",
+            "updated": 1793135255,
+            "app_id": "A0CCHBHDK7X",
+            "user_id": "U0CCLMD4S1L",
+            "icons": {
+              "image_36": "https://scrubbed.invalid/image_36",
+              "image_48": "https://scrubbed.invalid/image_48",
+              "image_72": "https://scrubbed.invalid/image_72"
+            },
+            "team_id": "T05479Z6JBW"
+          },
+          "blocks": [
+            {
+              "type": "rich_text",
+              "block_id": "xucmzr",
+              "elements": [
+                {
+                  "type": "rich_text_section",
+                  "elements": [
+                    {
+                      "type": "text",
+                      "text": "edited to add "
+                    },
+                    {
+                      "type": "link",
+                      "url": "https://github.com/Effect-TS/effect/issues/1",
+                      "text": "github.com/Effect-TS/effect/issues/1",
+                      "truncated": true
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "method": "conversations.history",
+      "encoding": "form",
+      "note": "edit case 3 after ~25s",
+      "request": {
+        "channel": "C0CH1LGJ4F3",
+        "latest": "1794509227.845499",
+        "inclusive": true,
+        "limit": 1
+      },
+      "httpStatus": 200,
+      "response": {
+        "ok": true,
+        "latest": "1794509227.845499",
+        "messages": [
+          {
+            "user": "U0CCLMD4S1L",
+            "type": "message",
+            "ts": "1794509227.845499",
+            "edited": {
+              "user": "U0CCLMD4S1L",
+              "ts": "1794509228.000000"
+            },
+            "bot_id": "B0CCQH77VA5",
+            "app_id": "A0CCHBHDK7X",
+            "text": "edited to add <https://github.com/Effect-TS/effect/issues/1|github.com/Effect-TS/effect/issues/1>",
+            "team": "T05479Z6JBW",
+            "bot_profile": {
+              "id": "B0CCQH77VA5",
+              "deleted": false,
+              "name": "Janitor",
+              "updated": 1793135255,
+              "app_id": "A0CCHBHDK7X",
+              "user_id": "U0CCLMD4S1L",
+              "icons": {
+                "image_36": "https://scrubbed.invalid/image_36",
+                "image_48": "https://scrubbed.invalid/image_48",
+                "image_72": "https://scrubbed.invalid/image_72"
+              },
+              "team_id": "T05479Z6JBW"
+            },
+            "blocks": [
+              {
+                "type": "rich_text",
+                "block_id": "xucmzr",
+                "elements": [
+                  {
+                    "type": "rich_text_section",
+                    "elements": [
+                      {
+                        "type": "text",
+                        "text": "edited to add "
+                      },
+                      {
+                        "type": "link",
+                        "url": "https://github.com/Effect-TS/effect/issues/1",
+                        "text": "github.com/Effect-TS/effect/issues/1",
+                        "truncated": true
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ],
+        "has_more": true,
+        "pin_count": 0,
+        "channel_actions_ts": null,
+        "channel_actions_count": 0,
+        "response_metadata": {
+          "next_cursor": "bmV4dF90czoxNzk0NTA5MTg3NTUwNjI5"
+        }
+      }
+    },
+    {
+      "method": "conversations.history",
+      "encoding": "form",
+      "note": "control 3 after ~25s",
+      "request": {
+        "channel": "C0CH1LGJ4F3",
+        "latest": "1794509227.900709",
+        "inclusive": true,
+        "limit": 1
+      },
+      "httpStatus": 200,
+      "response": {
+        "ok": true,
+        "latest": "1794509227.900709",
+        "messages": [
+          {
+            "user": "U0CCLMD4S1L",
+            "type": "message",
+            "ts": "1794509227.900709",
+            "bot_id": "B0CCQH77VA5",
+            "app_id": "A0CCHBHDK7X",
+            "text": "Fixture control 3: <https://github.com/Effect-TS/effect/issues/2|github.com/Effect-TS/effect/issues/2>",
+            "team": "T05479Z6JBW",
+            "bot_profile": {
+              "id": "B0CCQH77VA5",
+              "deleted": false,
+              "name": "Janitor",
+              "updated": 1793135255,
+              "app_id": "A0CCHBHDK7X",
+              "user_id": "U0CCLMD4S1L",
+              "icons": {
+                "image_36": "https://scrubbed.invalid/image_36",
+                "image_48": "https://scrubbed.invalid/image_48",
+                "image_72": "https://scrubbed.invalid/image_72"
+              },
+              "team_id": "T05479Z6JBW"
+            },
+            "attachments": [
+              {
+                "from_url": "https://github.com/Effect-TS/effect/issues/2",
+                "service_icon": "https://a.slack-edge.com/80588/img/unfurl_icons/github.png",
+                "original_url": "https://github.com/Effect-TS/effect/issues/2",
+                "id": 1,
+                "fallback": "GitHub: Rpc - Zero Boilerplate by mikearnaldi · Pull Request #2 · Effect-TS/effect",
+                "text": "Reinterpret an effect to be executed against an http endpoint, missing server implementation and http",
+                "title": "Rpc - Zero Boilerplate by mikearnaldi · Pull Request #2 · Effect-TS/effect",
+                "title_link": "https://github.com/Effect-TS/effect/issues/2",
+                "service_name": "GitHub",
+                "media_type": "external_link"
+              }
+            ],
+            "blocks": [
+              {
+                "type": "rich_text",
+                "block_id": "2ktf5k",
+                "elements": [
+                  {
+                    "type": "rich_text_section",
+                    "elements": [
+                      {
+                        "type": "text",
+                        "text": "Fixture control 3: "
+                      },
+                      {
+                        "type": "link",
+                        "url": "https://github.com/Effect-TS/effect/issues/2",
+                        "text": "github.com/Effect-TS/effect/issues/2",
+                        "truncated": true
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ],
+        "has_more": true,
+        "pin_count": 0,
+        "channel_actions_ts": null,
+        "channel_actions_count": 0,
+        "response_metadata": {
+          "next_cursor": "bmV4dF90czoxNzk0NTA5MjI3ODQ1NDk5"
+        }
+      }
+    }
+  ]
+}

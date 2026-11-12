@@ -1,0 +1,220 @@
+{
+  "case": "read-only: the agent-view (assistant) thread root in the app DM",
+  "recordedAt": "2026-11-12T18:43:52.781Z",
+  "calls": [
+    {
+      "method": "conversations.replies",
+      "encoding": "form",
+      "request": {
+        "channel": "D0CCGDG0E75",
+        "ts": "1794454526.171439",
+        "limit": 5
+      },
+      "httpStatus": 200,
+      "response": {
+        "ok": true,
+        "messages": [
+          {
+            "user": "U0CCLMD4S1L",
+            "type": "message",
+            "ts": "1794454526.171439",
+            "bot_id": "B0CCQH77VA5",
+            "app_id": "A0CCHBHDK7X",
+            "text": "G3 stop button test (EFF-3676). A stream starts in this thread now. Click Stop as soon as you see it.",
+            "team": "T05479Z6JBW",
+            "bot_profile": {
+              "id": "B0CCQH77VA5",
+              "deleted": false,
+              "name": "Janitor",
+              "updated": 1793135255,
+              "app_id": "A0CCHBHDK7X",
+              "user_id": "U0CCLMD4S1L",
+              "icons": {
+                "image_36": "https://scrubbed.invalid/image_36",
+                "image_48": "https://scrubbed.invalid/image_48",
+                "image_72": "https://scrubbed.invalid/image_72"
+              },
+              "team_id": "T05479Z6JBW"
+            },
+            "thread_ts": "1794454526.171439",
+            "reply_count": 1,
+            "reply_users_count": 1,
+            "latest_reply": "1794454526.283939",
+            "reply_users": [
+              "U0CCLMD4S1L"
+            ],
+            "is_locked": false,
+            "subscribed": false,
+            "blocks": [
+              {
+                "type": "rich_text",
+                "block_id": "1af",
+                "elements": [
+                  {
+                    "type": "rich_text_section",
+                    "elements": [
+                      {
+                        "type": "text",
+                        "text": "G3 stop button test (EFF-3676). A stream starts in this thread now. Click Stop as soon as you see it."
+                      }
+                    ]
+                  }
+                ]
+              }
+            ],
+            "agent_session": {
+              "status": "active",
+              "agent_bot_user_ids": [
+                "U0CCLMD4S1L"
+              ],
+              "encoded_initiator_user_id": "U080YLYB277",
+              "agent_statuses": [
+                {
+                  "agent_bot_user_id": "U0CCLMD4S1L",
+                  "status": "active",
+                  "is_stoppable": true
+                }
+              ]
+            }
+          },
+          {
+            "user": "U0CCLMD4S1L",
+            "type": "message",
+            "ts": "1794454526.283939",
+            "bot_id": "B0CCQH77VA5",
+            "app_id": "A0CCHBHDK7X",
+            "text": "G3 stream started. tick 2 after-click",
+            "team": "T05479Z6JBW",
+            "bot_profile": {
+              "id": "B0CCQH77VA5",
+              "deleted": false,
+              "name": "Janitor",
+              "updated": 1793135255,
+              "app_id": "A0CCHBHDK7X",
+              "user_id": "U0CCLMD4S1L",
+              "icons": {
+                "image_36": "https://scrubbed.invalid/image_36",
+                "image_48": "https://scrubbed.invalid/image_48",
+                "image_72": "https://scrubbed.invalid/image_72"
+              },
+              "team_id": "T05479Z6JBW"
+            },
+            "thread_ts": "1794454526.171439",
+            "parent_user_id": "U0CCLMD4S1L",
+            "blocks": [
+              {
+                "type": "rich_text",
+                "block_id": "qmE9gL",
+                "elements": [
+                  {
+                    "type": "rich_text_section",
+                    "elements": [
+                      {
+                        "type": "text",
+                        "text": "G3 stream started. tick 2 after-click"
+                      }
+                    ]
+                  }
+                ]
+              }
+            ],
+            "ai_context": {
+              "type": "default",
+              "result_status": "stopped_by_user",
+              "stopped_by_user_id": "U080YLYB277"
+            },
+            "streaming_state": "completed"
+          }
+        ],
+        "has_more": false
+      }
+    },
+    {
+      "method": "conversations.history",
+      "encoding": "form",
+      "request": {
+        "channel": "D0CCGDG0E75",
+        "latest": "1794454526.171439",
+        "inclusive": true,
+        "limit": 1
+      },
+      "httpStatus": 200,
+      "response": {
+        "ok": true,
+        "latest": "1794454526.171439",
+        "messages": [
+          {
+            "user": "U0CCLMD4S1L",
+            "type": "message",
+            "ts": "1794454526.171439",
+            "bot_id": "B0CCQH77VA5",
+            "app_id": "A0CCHBHDK7X",
+            "text": "G3 stop button test (EFF-3676). A stream starts in this thread now. Click Stop as soon as you see it.",
+            "team": "T05479Z6JBW",
+            "bot_profile": {
+              "id": "B0CCQH77VA5",
+              "deleted": false,
+              "name": "Janitor",
+              "updated": 1793135255,
+              "app_id": "A0CCHBHDK7X",
+              "user_id": "U0CCLMD4S1L",
+              "icons": {
+                "image_36": "https://scrubbed.invalid/image_36",
+                "image_48": "https://scrubbed.invalid/image_48",
+                "image_72": "https://scrubbed.invalid/image_72"
+              },
+              "team_id": "T05479Z6JBW"
+            },
+            "thread_ts": "1794454526.171439",
+            "reply_count": 1,
+            "reply_users_count": 1,
+            "latest_reply": "1794454526.283939",
+            "reply_users": [
+              "U0CCLMD4S1L"
+            ],
+            "is_locked": false,
+            "subscribed": false,
+            "blocks": [
+              {
+                "type": "rich_text",
+                "block_id": "CgoC",
+                "elements": [
+                  {
+                    "type": "rich_text_section",
+                    "elements": [
+                      {
+                        "type": "text",
+                        "text": "G3 stop button test (EFF-3676). A stream starts in this thread now. Click Stop as soon as you see it."
+                      }
+                    ]
+                  }
+                ]
+              }
+            ],
+            "agent_session": {
+              "status": "active",
+              "agent_bot_user_ids": [
+                "U0CCLMD4S1L"
+              ],
+              "encoded_initiator_user_id": "U080YLYB277",
+              "agent_statuses": [
+                {
+                  "agent_bot_user_id": "U0CCLMD4S1L",
+                  "status": "active",
+                  "is_stoppable": true
+                }
+              ]
+            }
+          }
+        ],
+        "has_more": true,
+        "pin_count": 0,
+        "channel_actions_ts": null,
+        "channel_actions_count": 0,
+        "response_metadata": {
+          "next_cursor": "bmV4dF90czoxNzk0NDQ4Njg1MjkxNzk5"
+        }
+      }
+    }
+  ]
+}

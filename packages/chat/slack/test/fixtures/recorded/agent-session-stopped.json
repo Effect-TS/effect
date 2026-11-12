@@ -1,0 +1,80 @@
+{
+  "source": "EFF-3676 live runs G1 to G3, as janitor received them. G2 and G3 envelopes are as in G1, which was logged in full; their event objects are verbatim.",
+  "cases": {
+    "channelThread": {
+      "type": "event_callback",
+      "team_id": "T05479Z6JBW",
+      "api_app_id": "A0CCHBHDK7X",
+      "event_id": "Ev0CH0C5627L",
+      "event_time": 1794454026,
+      "is_ext_shared_channel": false,
+      "authorizations": [
+        {
+          "team_id": "T05479Z6JBW",
+          "user_id": "U0CCLMD4S1L",
+          "is_bot": true,
+          "is_enterprise_install": false
+        }
+      ],
+      "event": {
+        "type": "agent_session_stopped",
+        "channel": "C0CH1LGJ4F3",
+        "user": "U080YLYB277",
+        "thread_ts": "1794454017.568519",
+        "event_ts": "1794454026.522466",
+        "streaming_message_ts": [
+          "1794454017.726189"
+        ]
+      }
+    },
+    "noStream": {
+      "type": "event_callback",
+      "team_id": "T05479Z6JBW",
+      "api_app_id": "A0CCHBHDK7X",
+      "event_id": "Ev0CGV9VQVEH",
+      "event_time": 1794454026,
+      "is_ext_shared_channel": false,
+      "authorizations": [
+        {
+          "team_id": "T05479Z6JBW",
+          "user_id": "U0CCLMD4S1L",
+          "is_bot": true,
+          "is_enterprise_install": false
+        }
+      ],
+      "event": {
+        "type": "agent_session_stopped",
+        "channel": "C0CH1LGJ4F3",
+        "user": "U080YLYB277",
+        "thread_ts": "1794454354.780449",
+        "event_ts": "1794454367.470649"
+      }
+    },
+    "direct": {
+      "type": "event_callback",
+      "team_id": "T05479Z6JBW",
+      "api_app_id": "A0CCHBHDK7X",
+      "event_id": "Ev0CGUC5LUKD",
+      "event_time": 1794454026,
+      "is_ext_shared_channel": false,
+      "authorizations": [
+        {
+          "team_id": "T05479Z6JBW",
+          "user_id": "U0CCLMD4S1L",
+          "is_bot": true,
+          "is_enterprise_install": false
+        }
+      ],
+      "event": {
+        "type": "agent_session_stopped",
+        "channel": "D0CCGDG0E75",
+        "user": "U080YLYB277",
+        "thread_ts": "1794454526.171439",
+        "event_ts": "1794454532.803025",
+        "streaming_message_ts": [
+          "1794454526.283939"
+        ]
+      }
+    }
+  }
+}
