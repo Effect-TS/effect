@@ -115,7 +115,7 @@ describe("Loader", () => {
     }).pipe(provide)
   })
 
-  it.effect("the last watcher abandoning its fetch interrupts it, unless a get or a prefetch joined it", () => {
+  it.effect("the last watcher abandoning its fetch interrupts it, unless a get or a prefetch joined it or a fetch it restarted", () => {
     const { GetUser, db, provide } = makeUsers({ staleTime: "30 seconds" })
     return Effect.gen(function*() {
       const cache = Loader.internals(yield* Loader.Cache)
@@ -142,7 +142,22 @@ describe("Loader", () => {
       prefetched.unregister(true)
       yield* advance(10)
       assert.isTrue(AsyncResult.isSuccess((yield* TestLoader.entry(GetUser, { id: "3" }))!.stored))
-      assert.strictEqual(db.calls, 3)
+      // The prefetch's claim carries over to the fetch an invalidation restarts it with.
+      const restarted = watchOne("4")
+      yield* GetUser.prefetch({ id: "4" })
+      yield* GetUser.invalidate({ id: "4" })
+      yield* flush
+      restarted.unregister(true)
+      yield* advance(10)
+      assert.isTrue(AsyncResult.isSuccess((yield* TestLoader.entry(GetUser, { id: "4" }))!.stored))
+      // Once that fetch settles the claim is spent: the next one a watcher starts is abandoned.
+      yield* GetUser.invalidate({ id: "4" })
+      const after = watchOne("4")
+      yield* flush
+      after.unregister(true)
+      yield* advance(10)
+      assert.isTrue((yield* TestLoader.entry(GetUser, { id: "4" }))!.stale)
+      assert.strictEqual(db.calls, 5)
     }).pipe(provide)
   })
 

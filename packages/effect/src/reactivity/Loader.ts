@@ -3297,8 +3297,6 @@ interface Waiter {
 
 interface FetchRec {
   readonly trigger: Trigger
-  /** A prefetch joined it, so it outlives its watchers. */
-  kept: boolean
   readonly build: Build
   fiber: Fiber.Fiber<any, any> | undefined
   /** On a list read: an append of one page, instead of a walk from the first. */
@@ -3383,6 +3381,11 @@ interface Entry {
   restarts: number
   /** A list's walk a patch dropped: the walk that starts once nothing holds it is its restart. */
   heldRestart: boolean
+  /**
+   * A prefetch joined the fetch in flight. It and the fetches that restart it outlive their watchers, until one
+   * settles or the entry reverts.
+   */
+  kept: boolean
   idle: Idle | undefined
   /** The interval worked out for the current settle. `undefined`: not worked out yet. */
   interval: { readonly ms: number | undefined } | undefined
@@ -3689,6 +3692,7 @@ const buildCache = (
       fetch: undefined,
       restarts: 0,
       heldRestart: false,
+      kept: false,
       idle: undefined,
       interval: undefined,
       intervalDue: undefined,
@@ -4156,7 +4160,7 @@ const buildCache = (
       entry.heldRestart = false
       restart = true
     }
-    const fetch: FetchRec = { trigger, kept: false, build, fiber: undefined, append }
+    const fetch: FetchRec = { trigger, build, fiber: undefined, append }
     entry.fetch = fetch
     cancelIdle(entry)
     let body: () => Effect.Effect<any, any> = () => build.fetcher(entry.args)
@@ -4298,6 +4302,7 @@ const buildCache = (
    * freshness included. Only a defect marks the previous Success stale.
    */
   const revert = (entry: Entry): void => {
+    entry.kept = false
     entry.target = undefined
     entry.owed = undefined
     resumeAll(entry.waiters, Exit.interrupt())
@@ -4308,6 +4313,7 @@ const buildCache = (
   }
   const onFetchExit = (entry: Entry, fetch: FetchRec, exit: Exit.Exit<any, any>): void => {
     if (entry.fetch !== fetch || disposed) return
+    entry.kept = false
     if (entry.def.list !== undefined) return onWalkExit(entry, fetch, exit)
     entry.fetch = undefined
     let defect: Cause.Cause<never> | undefined
@@ -4560,7 +4566,7 @@ const buildCache = (
         if (isBareFailure(entry.result) && !settleOnce && !inWindow(entry)) entry.result = undefined
         const fetch = entry.fetch
         if (
-          abandon === true && fetch !== undefined && fetch.trigger === "watch" && !fetch.kept &&
+          abandon === true && fetch !== undefined && fetch.trigger === "watch" && !entry.kept &&
           entry.waiters.size === 0 && entry.moreWaiters.size === 0
         ) {
           // Nothing else asked for it: a `get` waits, and a prefetch is kept.
@@ -4723,7 +4729,7 @@ const buildCache = (
     if (inWindow(entry) || !isStale(entry) || (entry.def.list !== undefined && heldPages(entry).length > 0)) {
       return resetIdle(entry)
     }
-    if (entry.fetch !== undefined) entry.fetch.kept = true
+    if (entry.fetch !== undefined) entry.kept = true
     ensureFetch(entry, "prefetch", buildOf(fetcher))
     afterQuiet(entry)
   }
@@ -4872,8 +4878,11 @@ const buildCache = (
         }
       }
       if (entry.def.list !== undefined && entry.fetch === undefined) heldLoadMore(entry, deferred ?? "loadMore")
-      // A dropped walk nothing restarted isn't owed a restart by a later fetch.
-      if (entry.fetch === undefined) entry.heldRestart = false
+      // A dropped walk nothing restarted isn't owed a restart by a later fetch, and a prefetch's claim is spent.
+      if (entry.fetch === undefined) {
+        entry.heldRestart = false
+        entry.kept = false
+      }
     }
     emit(entry)
     afterQuiet(entry)
