@@ -8,6 +8,7 @@ import {
   Fiber,
   Layer,
   LayerMap,
+  Metric,
   Option,
   Redacted,
   Scheduler,
@@ -1285,9 +1286,10 @@ describe("Runtime", () => {
           }
         })))
 
-      it.effect("a build whose users unmount while it waits to start again isn't started", () =>
+      it.effect("a build whose users unmount while it waits to start again ends there, and isn't started", () =>
         provideHost(Effect.gen(function*() {
           let starts = 0
+          let fibers = 0
           const cleanupStarted = yield* Deferred.make<void>()
           const finishCleanup = yield* Deferred.make<void>()
           const held = Layer.effect(
@@ -1299,7 +1301,12 @@ describe("Runtime", () => {
           )
           const A = Component.provide(StoreId, ReadStore.layer.pipe(Layer.provide(held)))
           const B = Component.provide(StoreId, ReadStore.layer.pipe(Layer.provide(held)))
-          const root = yield* TestHost.mount(Siblings({ a: A, b: B }), {})
+          const root = yield* TestHost.mount(Siblings({ a: A, b: B }), {}).pipe(
+            Effect.provideService(Metric.FiberRuntimeMetrics, {
+              recordFiberStart: () => fibers++,
+              recordFiberEnd: () => fibers--
+            })
+          )
           yield* TestHost.settle
           drop(root, "a")
           yield* TestHost.settle
@@ -1307,8 +1314,11 @@ describe("Runtime", () => {
           // B is waiting for A's cleanup to end.
           drop(root, "b")
           yield* TestHost.settle
+          // Only A's cleanup is still running.
+          assert.strictEqual(fibers, 1)
           yield* Deferred.succeed(finishCleanup, undefined)
           yield* TestHost.settle
+          assert.strictEqual(fibers, 0)
           assert.strictEqual(starts, 1)
         })))
 
