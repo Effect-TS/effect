@@ -94,16 +94,20 @@ describe("ChatTest", () => {
             reason: new ChatError.Unsupported({ capability })
           })
         )
+      const listed = new Set(adapter.descriptor.capabilities)
+      listed.delete("opener")
       yield* registry.register({
         ...adapter,
+        descriptor: { ...adapter.descriptor, capabilities: listed },
         getThread: () => unsupported("getThread"),
-        getUser: () => unsupported("getUser")
+        // names a capability the descriptor does leave out, but not the one probed
+        getUser: () => unsupported("opener")
       })
       const rules = yield* suite
-      for (const capability of ["getThread", "getUser"] as const) {
-        const failure = yield* Effect.flip(rules[`unsupported/${capability}`])
-        assert.strictEqual(failure.actual, `Unsupported(${capability})`)
-      }
+      const getThread = yield* Effect.flip(rules["unsupported/getThread"])
+      assert.strictEqual(getThread.actual, "Unsupported(getThread)")
+      const getUser = yield* Effect.flip(rules["unsupported/getUser"])
+      assert.strictEqual(getUser.actual, "Unsupported(opener)")
     }).pipe(Effect.provide(ChatTest.layer())))
 
   it.live("deletes every bot message the suite posts", () =>
