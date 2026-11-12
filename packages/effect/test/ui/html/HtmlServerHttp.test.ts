@@ -86,6 +86,10 @@ describe("HtmlServerHttp.layerHttp", () => {
     const valid = await request(lists, "/list?page=2&utm_source=mail")
     assert.strictEqual(valid.status, 200)
     assert.include(valid.body, "Page 2")
+    // A path that also needs normalising: the dropped param still keeps it temporary.
+    const normalised = await request(lists, "/list/?page=x")
+    assert.strictEqual(normalised.status, 302)
+    assert.strictEqual(normalised.headers.get("location"), "/list")
   })
 
   it("lets status replace the default, from the route and the root's Model", async () => {
