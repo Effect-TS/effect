@@ -726,6 +726,9 @@ function compileJsonSchema(
         }
         case "Literal":
           return RegEx.escape(globalThis.String(part.literal))
+        case "Enum":
+          if (part.enums.length === 0) return "(?!)"
+          return `(?:${part.enums.map(([_, value]) => RegEx.escape(globalThis.String(value))).join("|")})`
         case "String":
           return InternalAST.STRING_PATTERN
         case "Number":
