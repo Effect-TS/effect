@@ -37,7 +37,11 @@ export const recordedMessages = (name: string): Map<string, any> => {
   return out
 }
 
-/** An `event_callback` envelope around a message as a read returned it. */
+/**
+ * An `event_callback` envelope built around a message as a Web API read
+ * returned it. Reconstructed, not delivered by Slack: the captured
+ * deliveries are in `fixtures/events`.
+ */
 export const messageEnvelope = (
   message: Record<string, unknown>,
   options?: {

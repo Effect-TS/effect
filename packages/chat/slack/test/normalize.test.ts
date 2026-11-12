@@ -18,7 +18,11 @@ const created = (events: ReadonlyArray<ChatEvent.ChatEvent>): ChatEvent.MessageC
   return event
 }
 
-/** The `message` and `app_mention` for one recorded message, checked as a pair. */
+/**
+ * A `message` and an `app_mention` envelope built from one read-back message,
+ * checked as a pair. This shows the two shapes normalise alike. It is not a
+ * captured pair: Slack sends no `app_mention` for the bot's own messages.
+ */
 const pair = Effect.fnUntraced(function*(
   message: Record<string, unknown>,
   options?: { readonly channel?: string; readonly channelType?: string }
