@@ -2,7 +2,7 @@
 import { assert, expect, it } from "@effect/vitest"
 import { Context, Effect, Exit, Layer, Option, Schema, Scope } from "effect"
 import { Loader } from "effect/reactivity"
-import { Command, Component, MessageLog, Route, Router, View } from "effect/ui"
+import { Command, Component, MessageLog, type Renderer, Route, Router, View } from "effect/ui"
 import { BrowserHost, Html } from "effect/ui/html"
 import { HtmlQuery } from "effect/ui/html/testing"
 import { describe } from "vitest"
@@ -746,6 +746,65 @@ describe("BrowserHost", { concurrent: false }, () => {
         drag(byLabel(app, "Inner child"), "dragleave", link)
         yield* tick
         expect(root.model()?.slice(2)).toEqual(["enter", "leave", "inner enter", "inner leave", "enter"])
+      }).pipe(Effect.scoped))
+
+    /** Binds handlers on a bare host, as the renderer does, and records what they send. */
+    const bare = (seen: Array<unknown>) => {
+      const host = BrowserHost.makeHost(document)
+      const dispatch: Renderer.Dispatch = (_, handler, payload, onMessage) => {
+        const message = typeof handler === "function" ? (handler as (payload: unknown) => unknown)(payload) : handler
+        if (message === undefined) return
+        onMessage?.()
+        seen.push(message)
+      }
+      return Effect.acquireRelease(Effect.succeed({ host, dispatch }), () => Effect.sync(() => host.dispose()))
+    }
+    /** The options `onDrop` stores, for a target bound by hand. */
+    const accepting = (...accepts: ReadonlyArray<string>): Renderer.EventOptions => {
+      const drop: Html.DropTargetOptions = { accepts, preventDefault: "always" }
+      return { drop }
+    }
+
+    it.effect("a queued dragover is dropped when a render takes the target's onDrop away or changes what it accepts", () =>
+      Effect.gen(function*() {
+        for (const rebound of [{}, { drop: () => undefined }]) {
+          const seen: Array<unknown> = []
+          const { dispatch, host } = yield* bare(seen)
+          const element = (yield* container).appendChild(document.createElement("div"))
+          const over = (payload: Html.DragOverPayload) => `over ${payload.y}`
+          host.setEvents(element, { drop: () => undefined, dragover: over }, dispatch, accepting("application/x-todo"))
+          const todo = new Transfer()
+          todo.setData("application/x-todo", "milk")
+          drag(element, "dragenter", todo)
+          drag(element, "dragover", todo, { x: 0, y: 5 })
+          // Before the frame, the element keeps its position handler, but no longer takes this drag.
+          host.setEvents(element, { ...rebound, dragover: over }, dispatch, accepting("text/uri-list"))
+          yield* tick
+          expect(seen).toEqual([])
+        }
+      }).pipe(Effect.scoped))
+
+    it.effect("dropped starts over with every drag, even from a source with only onDragEnd", () =>
+      Effect.gen(function*() {
+        const seen: Array<unknown> = []
+        const { dispatch, host } = yield* bare(seen)
+        const app = yield* container
+        const link = app.appendChild(document.createElement("a"))
+        const target = app.appendChild(document.createElement("div"))
+        host.setEvents(link, { dragend: ({ dropped }: Html.DragEndPayload) => `dropped=${dropped}` }, dispatch, {})
+        host.setEvents(target, { drop: () => undefined }, dispatch, accepting("text/uri-list"))
+        const first = new Transfer()
+        first.setData("text/uri-list", "https://example.com")
+        drag(link, "dragstart", first)
+        drag(target, "dragover", first)
+        drag(target, "drop", first)
+        drag(link, "dragend", first)
+        // A second drag, cancelled: the browser reports no effect.
+        const second = new Transfer()
+        second.setData("text/uri-list", "https://example.com")
+        drag(link, "dragstart", second)
+        drag(link, "dragend", second)
+        expect(seen).toEqual(["dropped=true", "dropped=false"])
       }).pipe(Effect.scoped))
 
     it.effect("dragover is sent once per frame when the position changed, and a queued one is dropped", () =>

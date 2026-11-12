@@ -669,7 +669,8 @@ export class Element<out Msg, out R = never, in out E = Record<string, unknown>,
    * needs the pointer's position, such as a list reordered by halves of its
    * items. The host sends at most one per animation frame, only when the
    * position changed, and drops a queued one when the target stops being
-   * active, goes away or the drag ends. The browser's default is handled by
+   * active, goes away, stops accepting the drag after a render or the drag
+   * ends. The browser's default is handled by
    * `onDrop`'s `accepts` either way.
    *
    * @since 4.1.5
