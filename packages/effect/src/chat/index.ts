@@ -39,6 +39,12 @@ export * as ChatHandler from "./ChatHandler.ts"
  * @stability unstable
  * @since 4.1.5
  */
+export * as ChatMarkdown from "./ChatMarkdown.ts"
+
+/**
+ * @stability unstable
+ * @since 4.1.5
+ */
 export * as ChatMessage from "./ChatMessage.ts"
 
 /**

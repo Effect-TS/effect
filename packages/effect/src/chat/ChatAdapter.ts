@@ -11,7 +11,8 @@
  *   the op fails with `Unsupported`, naming the capability.
  * - A post notifies nobody unless asked: mentions in Markdown do not notify by
  *   default.
- * - Length is checked before the call, with `checkMessageLength`.
+ * - Length is checked before the call, with `checkMessageLength`, in the
+ *   unit the descriptor's `measure` counts.
  * - Adapters retry `retry` failures with `retrySafe` and never retry
  *   `uncertain` ones.
  *
@@ -42,9 +43,14 @@ import { RetriesDisabled } from "./internal/retries.ts"
  *
  * - An op whose capability is missing from `capabilities` fails with
  *   `Unsupported`.
- * - `limits.messageLength` is the length of one message. What is counted,
- *   and in which unit, is still open; `checkMessageLength` holds the one
- *   place it is measured.
+ * - `limits.messageLength` is the platform's own limit for one message, in
+ *   the platform's own unit.
+ * - `measure` gives what a Markdown string costs against
+ *   `limits.messageLength` and `limits.streamLength`. It is pure and makes
+ *   no call to the platform. It is an upper bound, never less than what the
+ *   adapter sends for the text, and it adds up:
+ *   `measure(a + b) <= measure(a) + measure(b)`. It measures ASCII letters
+ *   at one each.
  * - `limits.minWriteInterval` is the default floor between two writes to one
  *   thread, for streamed and multi-part posts.
  * - `limits.streamLength` and `limits.streamAge` apply to native streams
@@ -58,6 +64,7 @@ import { RetriesDisabled } from "./internal/retries.ts"
 export interface Descriptor {
   readonly platform: string
   readonly capabilities: ReadonlySet<Capability>
+  readonly measure: (markdown: string) => number
   readonly limits: {
     readonly messageLength: number
     readonly filesPerMessage: number
@@ -288,18 +295,19 @@ export const layer = <E, R>(
 
 /**
  * Fails with `TooLarge` when Markdown does not fit the descriptor's
- * `limits.messageLength`.
+ * `limits.messageLength`, measured with the descriptor's `measure`.
  *
  * **When to use**
  *
  * Use when implementing `post`, `edit` and `NativeStream.start` in an adapter,
  * so a message that is too long fails without a call to the platform.
  *
- * **Gotchas**
+ * **Details**
  *
- * It compares `markdown.length` with the limit. That measure is provisional:
- * a platform that counts the escaped string it is sent can still refuse a
- * message that passes.
+ * Pass the string the adapter is about to send, after escaping. For a
+ * `measure` that counts what escaping adds, measuring the escaped string
+ * gives the exact cost, so a post is neither refused when the platform would
+ * take it nor passed when the platform would refuse it on length.
  *
  * @stability unstable
  * @category validation
@@ -310,7 +318,7 @@ export const checkMessageLength = (
   op: string,
   markdown: string
 ): Effect.Effect<void, ChatError> =>
-  markdown.length <= descriptor.limits.messageLength ? Effect.void : Effect.fail(
+  descriptor.measure(markdown) <= descriptor.limits.messageLength ? Effect.void : Effect.fail(
     new ChatError({ platform: descriptor.platform, op, reason: new TooLarge({ detail: "message_too_long" }) })
   )
 
