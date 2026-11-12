@@ -105,7 +105,7 @@ describe("Story", () => {
       ({ name }) => Effect.succeed(`https://cdn/${name}`)
     )
     const mapped = UploadFile({ name: "me.png" }).pipe(Command.map((url) => Uploaded.make({ _tag: "Uploaded", url })))
-    expect(mapped).type.toBe<Command.Effectful<typeof Uploaded.Type, never, string>>()
+    expect(mapped).type.toBe<Command.Issued<typeof Uploaded.Type, never, string, "Effect">>()
     expect(counter.resolve).type.toBeCallableWith(mapped, "https://cdn/me.png")
     expect(counter.resolve).type.not.toBeCallableWith(mapped, Uploaded.make({ _tag: "Uploaded", url: "" }))
     const Progress = Command.make(

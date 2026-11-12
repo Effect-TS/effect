@@ -90,7 +90,7 @@ import * as Query from "./Query.ts"
  * @since 4.1.5
  */
 export interface Pending<Msg> {
-  readonly command: Command.Effectful<Msg, any, never> | Command.Streaming<Msg, any, never>
+  readonly command: Command.Issued<Msg, any, never, "Effect"> | Command.Issued<Msg, any, never, "Stream">
   readonly status: "running" | "queued" | "awaiting"
   /** On an awaiting run: the message it delivers when its wait ends. */
   readonly message?: Msg | undefined
@@ -144,9 +144,11 @@ export interface Story<Props, Model, Msg, Events, Loaded = { readonly [name: str
    * Commands interrupted by `switch`, by an interrupt Command, or by `given`.
    * An awaiting run that is cut delivers its message instead, and isn't here.
    */
-  readonly interrupted: ReadonlyArray<Command.Effectful<Msg, any, never> | Command.Streaming<Msg, any, never>>
+  readonly interrupted: ReadonlyArray<
+    Command.Issued<Msg, any, never, "Effect"> | Command.Issued<Msg, any, never, "Stream">
+  >
   /** Commands ignored by `mode: "drop"`. */
-  readonly dropped: ReadonlyArray<Command.Effectful<Msg, any, never> | Command.Streaming<Msg, any, never>>
+  readonly dropped: ReadonlyArray<Command.Issued<Msg, any, never, "Effect"> | Command.Issued<Msg, any, never, "Stream">>
   /** The list loaders with a load more `update` issued and no step has settled yet. */
   readonly loadingMore: ReadonlyArray<string>
   /**
@@ -244,7 +246,7 @@ export type Target =
  * @category models
  * @since 4.1.5
  */
-export type StreamTarget = Command.Definition<any, any, true, any, any> | Command.Streaming<any, any, never>
+export type StreamTarget = Command.Definition<any, any, true, any, any> | Command.Issued<any, any, never, "Stream">
 
 // A component with no messages has `Msg = never`, and its `update` can't take `any`, so it needs its own member.
 type AnyComponent =
@@ -1129,7 +1131,7 @@ function* currentEntries(
  */
 const awaitedLoaders = (
   story: Story<any, any, any, any>,
-  command: Command.Effectful<any, any, never> | Command.Streaming<any, any, never>,
+  command: Command.Issued<any, any, never, "Effect"> | Command.Issued<any, any, never, "Stream">,
   result: unknown
 ): ReadonlyArray<AwaitedLoader> => {
   const budget = command.afterRefetch
@@ -1160,7 +1162,7 @@ const livePatches = new WeakMap<Pending<any>, ReadonlyArray<{ readonly name: str
 /** The component's own loaders, at their current args, that `command`'s patches register on. */
 const registeredPatches = (
   story: Story<any, any, any, any>,
-  command: Command.Effectful<any, any, never> | Command.Streaming<any, any, never>
+  command: Command.Issued<any, any, never, "Effect"> | Command.Issued<any, any, never, "Stream">
 ): ReadonlyArray<{ readonly name: string; readonly argsKey: string }> => {
   if (command.optimistic.length === 0) return []
   const out: Array<{ readonly name: string; readonly argsKey: string }> = []
@@ -1195,8 +1197,9 @@ const checkUnpatched = (story: Story<any, any, any, any>, step: string, name: st
   }
 }
 
-const describe = (command: Command.Effectful<any, any, never> | Command.Streaming<any, any, never>): string =>
-  `${command.name}(${JSON.stringify(MessageLog.encodeArgs(command.argsSchema, command.args))})`
+const describe = (
+  command: Command.Issued<any, any, never, "Effect"> | Command.Issued<any, any, never, "Stream">
+): string => `${command.name}(${JSON.stringify(MessageLog.encodeArgs(command.argsSchema, command.args))})`
 
 const describePending = (pending: ReadonlyArray<Pending<any>>): string =>
   pending.length === 0 ?

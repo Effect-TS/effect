@@ -21,7 +21,7 @@ describe("Router.patchQuery", () => {
       { readonly q?: string | undefined; readonly page?: number | undefined }
     >()
     expect(Router.patchQuery(AppRoute, search, { q: "a" })).type.toBe<
-      Command.Effectful<Router.PatchOutcome, Router.PatchQuery>
+      Command.Issued<Router.PatchOutcome, Router.PatchQuery, Router.PatchOutcome, "Effect">
     >()
     expect(Router.patchQuery).type.toBeCallableWith(AppRoute, search, {})
     // undefined removes a param, or resets a defaulted one.

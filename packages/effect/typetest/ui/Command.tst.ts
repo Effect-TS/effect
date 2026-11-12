@@ -44,8 +44,12 @@ describe("Command", () => {
   describe("map", () => {
     it("keeps the kind and the source result", () => {
       const toMessage = (text: string) => Message.make({ _tag: "Got", n: text.length })
-      expect(Fx().pipe(Command.map(toMessage))).type.toBe<Command.Effectful<typeof Message.Type, never, string>>()
-      expect(St().pipe(Command.map(toMessage))).type.toBe<Command.Streaming<typeof Message.Type, never, string>>()
+      expect(Fx().pipe(Command.map(toMessage))).type.toBe<
+        Command.Issued<typeof Message.Type, never, string, "Effect">
+      >()
+      expect(St().pipe(Command.map(toMessage))).type.toBe<
+        Command.Issued<typeof Message.Type, never, string, "Stream">
+      >()
       expect(Command.map(Command.interrupt(Fx), toMessage)).type.toBe<Command.Interrupt>()
     })
 
@@ -53,8 +57,8 @@ describe("Command", () => {
       const input = condition ? Fx() : St()
       const mapped = input.pipe(Command.map((text) => Message.make({ _tag: "Got", n: text.length })))
       expect(mapped).type.toBe<
-        | Command.Effectful<typeof Message.Type, never, string>
-        | Command.Streaming<typeof Message.Type, never, string>
+        | Command.Issued<typeof Message.Type, never, string, "Effect">
+        | Command.Issued<typeof Message.Type, never, string, "Stream">
       >()
       expect($.run).type.toBeCallableWith(mapped)
       expect($.run).type.toBeCallableWith(Command.map(input, (text) => Message.make({ _tag: "Got", n: text.length })))
@@ -66,22 +70,27 @@ describe("Command", () => {
         Command.map((a) => a.length),
         Command.map((n) => Message.make({ _tag: "Got", n }))
       )
-      expect(chained).type.toBe<Command.Effectful<typeof Message.Type, SA, string>>()
+      expect(chained).type.toBe<Command.Issued<typeof Message.Type, SA, string, "Effect">>()
       const stream = SB.make().pipe(
         Command.map((n) => n + 1),
         Command.map((n) => Message.make({ _tag: "Got", n }))
       )
-      expect(stream).type.toBe<Command.Streaming<typeof Message.Type, SB, number>>()
+      expect(stream).type.toBe<Command.Issued<typeof Message.Type, SB, number, "Stream">>()
     })
 
     it("data-first maps keep each branch's source and requirements across a mixed union", () => {
       const input = condition ? Command.map(SA.make(), (a) => a.length) : SB.make()
-      expect(input).type.toBe<Command.Effectful<number, SA, string> | Command.Streaming<number, SB, number>>()
+      expect(input).type.toBe<
+        Command.Issued<number, SA, string, "Effect"> | Command.Issued<number, SB, number, "Stream">
+      >()
       const once = Command.map(input, (n) => n + 1)
-      expect(once).type.toBe<Command.Effectful<number, SA, string> | Command.Streaming<number, SB, number>>()
+      expect(once).type.toBe<
+        Command.Issued<number, SA, string, "Effect"> | Command.Issued<number, SB, number, "Stream">
+      >()
       const twice = Command.map(once, (n) => Message.make({ _tag: "Got", n }))
       expect(twice).type.toBe<
-        Command.Effectful<typeof Message.Type, SA, string> | Command.Streaming<typeof Message.Type, SB, number>
+        | Command.Issued<typeof Message.Type, SA, string, "Effect">
+        | Command.Issued<typeof Message.Type, SB, number, "Stream">
       >()
       expect($.run).type.toBeCallableWith(twice)
       // The pipeable form infers one source for its input, so a mixed-source union
@@ -93,18 +102,19 @@ describe("Command", () => {
   describe("as", () => {
     it("preserves kind, source and requirements in both forms", () => {
       const message = Message.make({ _tag: "Got", n: 1 })
-      expect(SA.make().pipe(Command.as(message))).type.toBe<Command.Effectful<typeof Message.Type, SA, string>>()
-      expect(Command.as(SB.make(), message)).type.toBe<Command.Streaming<typeof Message.Type, SB, number>>()
+      expect(SA.make().pipe(Command.as(message))).type.toBe<Command.Issued<typeof Message.Type, SA, string, "Effect">>()
+      expect(Command.as(SB.make(), message)).type.toBe<Command.Issued<typeof Message.Type, SB, number, "Stream">>()
       expect(Command.as(Command.interrupt(Fx), message)).type.toBe<Command.Interrupt>()
       const input = condition ? SA.make() : SB.make()
       expect(Command.as(input, message)).type.toBe<
-        Command.Effectful<typeof Message.Type, SA, string> | Command.Streaming<typeof Message.Type, SB, number>
+        | Command.Issued<typeof Message.Type, SA, string, "Effect">
+        | Command.Issued<typeof Message.Type, SB, number, "Stream">
       >()
       const matched = Save.make({ id: "t1", title: "" }).pipe(
         Command.match({ onSuccess: () => 1, onFailure: () => 0 }),
         Command.as(message)
       )
-      expect(matched).type.toBe<Command.Effectful<typeof Message.Type, Save, string, SaveFailed>>()
+      expect(matched).type.toBe<Command.Issued<typeof Message.Type, Save, string, "Effect", SaveFailed>>()
       expect(Command.as).type.not.toBeCallableWith(Save.make({ id: "t1", title: "" }), message)
       expect(Command.interrupt(Fx).pipe).type.not.toBeCallableWith(Command.as(message))
     })
@@ -210,7 +220,7 @@ describe("Command", () => {
     })
 
     it("maps both channels, keeping the source result and failure", () => {
-      expect(matched).type.toBe<Command.Effectful<typeof Message.Type, Save, string, SaveFailed>>()
+      expect(matched).type.toBe<Command.Issued<typeof Message.Type, Save, string, "Effect", SaveFailed>>()
       expect($.run).type.toBeCallableWith(matched)
       expect<Command.Failure<typeof matched>>().type.toBe<SaveFailed>()
     })
@@ -233,12 +243,14 @@ describe("Command", () => {
         Command.afterRefetch("Infinity"),
         Command.match({ onSuccess: (title) => title.length, onFailure: (error) => error.reason.length })
       )
-      expect(matched).type.toBe<Command.Effectful<number, Save, string, SaveFailed>>()
-      expect(matched.pipe(Command.afterRefetch(5))).type.toBe<Command.Effectful<number, Save, string, SaveFailed>>()
-      expect(SA.make().pipe(Command.map((a) => a.length), Command.afterRefetch("1 second"))).type.toBe<
-        Command.Effectful<number, SA, string>
+      expect(matched).type.toBe<Command.Issued<number, Save, string, "Effect", SaveFailed>>()
+      expect(matched.pipe(Command.afterRefetch(5))).type.toBe<
+        Command.Issued<number, Save, string, "Effect", SaveFailed>
       >()
-      expect(Command.afterRefetch(SA.make(), "1 second")).type.toBe<Command.Effectful<string, SA, string>>()
+      expect(SA.make().pipe(Command.map((a) => a.length), Command.afterRefetch("1 second"))).type.toBe<
+        Command.Issued<number, SA, string, "Effect">
+      >()
+      expect(Command.afterRefetch(SA.make(), "1 second")).type.toBe<Command.Issued<string, SA, string, "Effect">>()
     })
 
     it("rejects a Stream Command and a Command.make Command", () => {

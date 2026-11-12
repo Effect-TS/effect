@@ -141,7 +141,7 @@ interface RSlot {
 // ---------------------------------------------------------------------------
 
 interface Run {
-  readonly command: Command.Effectful<any, any, never> | Command.Streaming<any, any, never>
+  readonly command: Command.Issued<any, any, never, "Effect"> | Command.Issued<any, any, never, "Stream">
   readonly issued: MessageLog.Issued
   /** The run at the cache, begun at issue. `undefined` for a `Command.make` Command. */
   readonly handle: Loader.RunHandle | undefined

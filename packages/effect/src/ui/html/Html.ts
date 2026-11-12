@@ -1324,7 +1324,7 @@ export const focus = <N extends HTMLElement | SVGElement, Msg>(
   ref: Renderer.Ref<N>,
   f: (result: Found) => Msg,
   options?: { readonly preventScroll?: boolean | undefined }
-): Command.Mapped<Command.Effectful<Found>, Msg> =>
+): Command.Mapped<Command.Issued<Found, never, Found, "Effect">, Msg> =>
   Command.map(Focus(options === undefined ? { ref } : { ref, options }), f)
 
 /**
@@ -1337,7 +1337,7 @@ export const focus = <N extends HTMLElement | SVGElement, Msg>(
 export const blur = <N extends HTMLElement | SVGElement, Msg>(
   ref: Renderer.Ref<N>,
   f: (result: Found) => Msg
-): Command.Mapped<Command.Effectful<Found>, Msg> => Command.map(Blur({ ref }), f)
+): Command.Mapped<Command.Issued<Found, never, Found, "Effect">, Msg> => Command.map(Blur({ ref }), f)
 
 /**
  * Scrolls the element `ref` names into view, and sends `f`'s message.
@@ -1350,7 +1350,7 @@ export const scrollIntoView = <N extends globalThis.Element, Msg>(
   ref: Renderer.Ref<N>,
   f: (result: Found) => Msg,
   options?: ScrollOptions
-): Command.Mapped<Command.Effectful<Found>, Msg> =>
+): Command.Mapped<Command.Issued<Found, never, Found, "Effect">, Msg> =>
   Command.map(ScrollIntoView(options === undefined ? { ref } : { ref, options }), f)
 
 /**
@@ -1364,4 +1364,5 @@ export const scrollIntoView = <N extends globalThis.Element, Msg>(
 export const measure = <N extends globalThis.Element, Msg>(
   ref: Renderer.Ref<N>,
   f: (rect: Option.Option<Rect>) => Msg
-): Command.Mapped<Command.Effectful<Option.Option<Rect>>, Msg> => Command.map(Measure({ ref }), f)
+): Command.Mapped<Command.Issued<Option.Option<Rect>, never, Option.Option<Rect>, "Effect">, Msg> =>
+  Command.map(Measure({ ref }), f)

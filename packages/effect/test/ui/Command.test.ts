@@ -256,7 +256,7 @@ describe("Command", () => {
     const queueing = Command.make("Q", { args: { key: Schema.String }, mode: "queue", group: ["key"] }, done)
     const q = (key: string) => queueing({ key })
     const entry = (
-      command: Command.Effectful<any, any>,
+      command: Command.Issued<any, any, any, "Effect">,
       status: "running" | "queued" = "running"
     ): schedule.Entry<string> => ({
       name: command.name,

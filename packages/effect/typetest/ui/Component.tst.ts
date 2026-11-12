@@ -110,7 +110,7 @@ describe("Component", () => {
         { args: {} },
         () => Effect.map(Scope.Scope, () => Message.make({ _tag: "Done" }))
       )
-      expect(UsesScope()).type.toBe<Command.Effectful<typeof Message.Type, never>>()
+      expect(UsesScope()).type.toBe<Command.Issued<typeof Message.Type, never, typeof Message.Type, "Effect">>()
       const C = Component.make({
         name: "C",
         model: Schema.Struct({}),
@@ -141,7 +141,7 @@ describe("Component", () => {
   describe("Command.Service", () => {
     it("types the implementation by the message it returns", () => {
       expect(SaveTodo.make({ id: "t1", title: "milk", done: false })).type.toBe<
-        Command.Effectful<TodoItemMessage, SaveTodo>
+        Command.Issued<TodoItemMessage, SaveTodo, TodoItemMessage, "Effect">
       >()
       expect(Layer.succeed(SaveTodo)).type.toBeCallableWith(() =>
         Effect.succeed(TodoItemMessage.make({ _tag: "Saved" }))
