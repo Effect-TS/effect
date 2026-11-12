@@ -772,6 +772,15 @@ export interface Helper<Msg, Props> {
     command: Command.Definition<Args, any, boolean, any, G>,
     ...group: Command.GroupArg<Args, G>
   ): boolean
+  /** A component by value. Its requirements surface in the parent's. */
+  child<Props, Events, RC, RF = never>(
+    component: Component.Mountable<Props, Events, RC>,
+    options: Child.Options<Props, Events, Msg> & {
+      /** Shown if the child fails, until its key changes. Without it, the slot is blank. */
+      readonly fallback?: ((result: AsyncResult.Failure<never, unknown>) => Content<Msg, RF>) | undefined
+    }
+  ): Child<Msg, RC | NoInfer<RF>>
+  // Keep this overload last so a missing feature fallback is the final diagnostic.
   /** A feature by service. The parent requires the service only. */
   child<Self, Props, Events, RF = never>(
     service: Feature.Service<Self, Props, Events>,
@@ -782,14 +791,6 @@ export interface Helper<Msg, Props> {
       ) => Content<Msg, RF>
     }
   ): Child<Msg, Self | NoInfer<RF>>
-  /** A component by value. Its requirements surface in the parent's. */
-  child<Props, Events, RC, RF = never>(
-    component: Component.Mountable<Props, Events, RC>,
-    options: Child.Options<Props, Events, Msg> & {
-      /** Shown if the child fails, until its key changes. Without it, the slot is blank. */
-      readonly fallback?: ((result: AsyncResult.Failure<never, unknown>) => Content<Msg, RF>) | undefined
-    }
-  ): Child<Msg, RC | NoInfer<RF>>
 }
 
 /**

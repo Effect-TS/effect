@@ -20,7 +20,8 @@
  *   typed error, which the issue site maps to a message with `Command.match`.
  *
  * A `Command.Service` declares what it does to the loader cache:
- * `invalidates` is required, and `optimistic` and `writes` are optional.
+ * `invalidates`, `optimistic` and `writes` are optional. Omitting
+ * `invalidates` means the run invalidates nothing.
  *
  * **Example** (A Command service with a captured dependency)
  *
@@ -33,7 +34,6 @@
  *
  * class DeleteTodo extends Command.Service<DeleteTodo>()("todos/DeleteTodo", {
  *   args: { id: Schema.String },
- *   invalidates: () => []
  * }, Effect.gen(function*() {
  *   const kv = yield* KeyValueStore.KeyValueStore
  *   return ({ id }) => kv.remove(`todo/${id}`)
@@ -723,9 +723,9 @@ export declare namespace Service {
    *
    * On top of `Options`:
    *
-   * - `invalidates` is required: what a run invalidates, from the args
+   * - `invalidates` is optional: what a run invalidates, from the args
    *   only, so it's known at issue. It's applied on every exit of a started
-   *   run. A Command that invalidates nothing writes `() => []`.
+   *   run. Omitting it invalidates nothing.
    * - `optimistic` lists patches, from the args only, registered at issue.
    * - `writes` lists the entries a success writes. A Stream Command has none.
    *
@@ -733,7 +733,7 @@ export declare namespace Service {
    * @since 4.1.5
    */
   export interface Options<In extends ArgsInput, A, G extends string> extends CommandOptions<In, G> {
-    readonly invalidates: (args: ArgsOf<In>) => ReadonlyArray<Loader.Target>
+    readonly invalidates?: ((args: ArgsOf<In>) => ReadonlyArray<Loader.Target>) | undefined
     readonly optimistic?: ((args: ArgsOf<In>) => ReadonlyArray<Loader.Patch>) | undefined
     readonly writes?: ((success: A, args: ArgsOf<In>) => ReadonlyArray<Loader.Write>) | undefined
   }
@@ -1039,7 +1039,7 @@ export const make: {
  * fail issues a Command directly, mapped with `Command.map`.
  *
  * The options declare what a run does to the loader cache, from the args:
- * `invalidates` (required), `optimistic` patches, live from issue, and
+ * `invalidates` (optional), `optimistic` patches, live from issue, and
  * `writes` of the success. The runtime applies them when the run's fiber
  * exits, before its message is sent.
  *
@@ -1061,7 +1061,6 @@ export const make: {
  *   args: { id: Schema.String, title: Schema.String },
  *   mode: "queue",
  *   group: ["id"],
- *   invalidates: () => []
  * }, Effect.gen(function*() {
  *   const kv = yield* KeyValueStore.KeyValueStore
  *   return ({ id, title }) => kv.set(`todo/${id}`, title)
@@ -1180,7 +1179,7 @@ export const Service: <Self>() => {
         "~group": source,
         argsSchema,
         service: Base,
-        invalidates: invalidates(args),
+        invalidates: invalidates?.(args) ?? noTargets,
         optimistic: optimistic?.(args) ?? noTargets,
         writes: writes === undefined ? undefined : (success) => writes(success, args),
         afterRefetch: undefined,
@@ -1317,7 +1316,6 @@ export const as: {
  *
  * class Save extends Command.Service<Save>()("Save", {
  *   args: { title: Schema.String },
- *   invalidates: () => []
  * }, Effect.succeed(({ title }: { readonly title: string }) =>
  *   title === "" ? Effect.fail(new SaveFailed({ reason: "empty" })) : Effect.void
  * )) {}
@@ -1422,7 +1420,6 @@ type AwaitsRefetchOf<R, K> = [K] extends ["Effect"] ? [R] extends [never] ? {
  *
  * class RenameUser extends Command.Service<RenameUser>()("RenameUser", {
  *   args: { id: Schema.String, name: Schema.String },
- *   invalidates: () => []
  * }, Effect.succeed(() => Effect.void)) {}
  *
  * const rename = RenameUser.make({ id: "1", name: "Ada" }).pipe(
