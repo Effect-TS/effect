@@ -20,8 +20,8 @@ const created = (events: ReadonlyArray<ChatEvent.ChatEvent>): ChatEvent.MessageC
 
 /**
  * A `message` and an `app_mention` envelope built from one read-back message,
- * checked as a pair. This shows the two shapes normalise alike. It is not a
- * captured pair: Slack sends no `app_mention` for the bot's own messages.
+ * checked as a pair. This shows the two shapes normalise alike for every
+ * recorded message. It is not a captured pair: those are in `events.test.ts`.
  */
 const pair = Effect.fnUntraced(function*(
   message: Record<string, unknown>,

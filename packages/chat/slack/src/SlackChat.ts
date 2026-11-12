@@ -17,7 +17,8 @@
  *   `not_authorized`; it then stops making them, and replies still work.
  * - A click on the stop button stops nothing by itself: the consumer gets a
  *   `StopRequested` and ends the reply. Until it does, the user sees a
- *   disabled button.
+ *   disabled button. Every click is a separate `StopRequested`, and only
+ *   the first in a thread lists the open stream in `messageIds`.
  *
  * @stability unstable
  * @since 4.1.5

@@ -1,5 +1,5 @@
 {
-  "source": "EFF-3676 live runs G1 to G3, as janitor received them. G2 and G3 envelopes are as in G1, which was logged in full; their event objects are verbatim.",
+  "source": "EFF-3676 live runs G1 to G3, as janitor received them. G2 and G3 envelopes are as in G1, which was logged in full; their event objects are as logged. G2's has no streaming_message_ts because that log dropped it; Slack sends an empty array (see fixtures/events/stop-no-stream.json). It is kept to show an absent field is tolerated.",
   "cases": {
     "channelThread": {
       "type": "event_callback",
