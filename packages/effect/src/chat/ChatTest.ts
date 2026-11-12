@@ -411,7 +411,7 @@ const makeFake = (options: {
           yield* findThread("nativeStream.start", thread)
           yield* checkMessageLength(descriptor, "nativeStream.start", content.markdown)
           if (descriptor.measure(content.markdown) > streamLength()) {
-            return yield* fail("nativeStream.start", new TooLarge({ detail: "msg_too_long" }))
+            return yield* fail("nativeStream.start", new TooLarge({ subject: "text", detail: "msg_too_long" }))
           }
           let replyTo: ReplyTo | undefined
           if (content.replyTo !== undefined) {
@@ -450,7 +450,7 @@ const makeFake = (options: {
           }
           const sent = markdown.slice(0, markdown.length - held)
           if (descriptor.measure(message.text + sent) > streamLength()) {
-            return yield* fail("nativeStream.append", new TooLarge({ detail: "msg_too_long" }))
+            return yield* fail("nativeStream.append", new TooLarge({ subject: "text", detail: "msg_too_long" }))
           }
           message.text += sent
           return { state: "open" as const, held }
@@ -497,7 +497,7 @@ const makeFake = (options: {
             files.length > descriptor.limits.filesPerMessage ||
             files.some((file) => file.content.length > descriptor.limits.uploadBytes)
           ) {
-            return yield* fail("post", new TooLarge({ detail: "file_too_large" }))
+            return yield* fail("post", new TooLarge({ subject: "files", detail: "file_too_large" }))
           }
           let replyTo: ReplyTo | undefined
           if (content.replyTo !== undefined) {
@@ -1066,15 +1066,17 @@ class Tester {
   expectReason<A>(
     tag: ChatErrorReason["_tag"],
     effect: Effect.Effect<A, ChatError>,
-    onSuccess?: (a: A) => void
+    onSuccess?: (a: A) => void,
+    refine?: { readonly expected: string; readonly test: (reason: ChatErrorReason) => boolean }
   ): Effect.Effect<void, ConformanceFailure> {
     return Effect.flatMap(Effect.exit(effect), (exit) => {
       if (Exit.isSuccess(exit)) onSuccess?.(exit.value)
       const error = Exit.findErrorOption(exit)
-      const matches = Option.isSome(error) && isChatError(error.value) && error.value.reason._tag === tag
+      const matches = Option.isSome(error) && isChatError(error.value) && error.value.reason._tag === tag &&
+        (refine === undefined || refine.test(error.value.reason))
       return matches ? Effect.void : Effect.fail(failure(
         this.rule,
-        tag,
+        refine === undefined ? tag : refine.expected,
         describeExit(exit),
         Option.getOrUndefined(error)
       ))
@@ -1170,6 +1172,12 @@ const conformanceFile = (rule: string): File => ({
 
 const findIn = (messages: ReadonlyArray<ChatMessage.ChatMessage>, id: string) =>
   messages.find((message) => message.id === id)
+
+/** A refusal of the text must not blame the files, or `ChatMarkdown` would post again without them. */
+const textTooLarge = {
+  expected: "TooLarge without subject files",
+  test: (reason: ChatErrorReason) => reason._tag === "TooLarge" && reason.subject !== "files"
+}
 
 const mentionLike = "@everyone @here <@U0000> <!here> <!channel> <@&1> <#C0000>"
 
@@ -1326,7 +1334,8 @@ export const conformance = (options: {
     t.expectReason(
       "TooLarge",
       t.chat.post(t.thread, { markdown: "x".repeat(t.descriptor.limits.messageLength + 1) }),
-      (posted) => t.created.push({ thread: t.thread, id: posted.id })
+      (posted) => t.created.push({ thread: t.thread, id: posted.id }),
+      textTooLarge
     ))
 
   rule("descriptor/measureFits", [], (t) =>
@@ -1402,7 +1411,9 @@ export const conformance = (options: {
     Effect.flatMap(t.post({}), (posted) =>
       t.expectReason(
         "TooLarge",
-        t.chat.edit(t.thread, posted.id, { markdown: "x".repeat(t.descriptor.limits.messageLength + 1) })
+        t.chat.edit(t.thread, posted.id, { markdown: "x".repeat(t.descriptor.limits.messageLength + 1) }),
+        undefined,
+        textTooLarge
       )))
 
   rule("delete/gone", ["delete", "fetchMessage"], (t) =>

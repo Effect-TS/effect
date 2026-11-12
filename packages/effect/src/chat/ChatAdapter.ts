@@ -319,7 +319,11 @@ export const checkMessageLength = (
   markdown: string
 ): Effect.Effect<void, ChatError> =>
   descriptor.measure(markdown) <= descriptor.limits.messageLength ? Effect.void : Effect.fail(
-    new ChatError({ platform: descriptor.platform, op, reason: new TooLarge({ detail: "message_too_long" }) })
+    new ChatError({
+      platform: descriptor.platform,
+      op,
+      reason: new TooLarge({ subject: "text", detail: "message_too_long" })
+    })
   )
 
 const maxRetries = 3
