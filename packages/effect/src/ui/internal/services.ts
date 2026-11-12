@@ -151,11 +151,13 @@ export interface OnServer {
  * A Subscription may carry a function under this key, which the runtime calls
  * instead of running its Stream. It attaches `emit` to its source and returns
  * `initial`, run on the scheduler as the Stream would start, and `close`, run
- * when the Subscription stops. `emit` dispatches synchronously. A defect in
- * the Subscription's own code goes to `fail`, which fails the subscribing
- * instance as a failed Stream would, so it never reaches the source. It
- * returns `undefined` when it can't attach, and the runtime runs the Stream
- * instead.
+ * when the Subscription stops. `emit` dispatches synchronously, unless the
+ * Subscription has stopped, and then the message is dropped. It calls
+ * `accepted` right before a dispatch, and never for a dropped message. A
+ * defect in the Subscription's own code goes to `fail`, which fails the
+ * subscribing instance as a failed Stream would, so it never reaches the
+ * source. It returns `undefined` when it can't attach, and the runtime runs
+ * the Stream instead.
  *
  * `Router.subscription` uses it, so a navigation reaches the root inside the
  * flush whose Command made it.
@@ -168,7 +170,7 @@ export const direct: unique symbol = Symbol.for("effect/ui/Subscription/direct")
 export interface Direct {
   readonly [direct]?: (
     context: Context.Context<never>,
-    emit: (message: unknown) => void,
+    emit: (message: unknown, accepted: () => void) => void,
     fail: (cause: Cause.Cause<unknown>) => void
   ) => { readonly initial: Effect.Effect<void>; readonly close: () => void } | undefined
 }

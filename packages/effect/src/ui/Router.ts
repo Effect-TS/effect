@@ -696,10 +696,9 @@ export const subscription = <U extends Routes, Msg>(
         // The subscriber's mapper: its defect fails the subscriber, not the navigation or the other listeners.
         return fail(Cause.die(error))
       }
-      if (Option.isNone(message)) return
-      // The root has the route as of this flush, which is what the navigation settles from.
-      engine.delivered(location.seq)
-      emit(message.value)
+      // Once the runtime takes the message, the root has the route as of this flush, which is what the
+      // navigation settles from. A message it drops, as the Subscription stops, settles nothing.
+      if (Option.isSome(message)) emit(message.value, () => engine.delivered(location.seq))
     }
     return {
       initial: Effect.sync(() => {

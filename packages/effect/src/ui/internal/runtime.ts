@@ -2067,8 +2067,10 @@ const setup = (
         )
         // Attached to its source, it dispatches synchronously, and only its first check waits.
         const current = () => !inst.closed && inst.subscriptions.get(key) === running
-        const attachedTo = (subscription as services.Direct)[services.direct]?.(context, (message) => {
-          if (current()) inst.dispatch(message, source)
+        const attachedTo = (subscription as services.Direct)[services.direct]?.(context, (message, accepted) => {
+          if (!current()) return
+          accepted()
+          inst.dispatch(message, source)
         }, (cause) => {
           if (current()) failInstance(inst, cause, "subscription", key)
         })

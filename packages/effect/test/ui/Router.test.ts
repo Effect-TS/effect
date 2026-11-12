@@ -161,6 +161,56 @@ describe("Router", { concurrent: false }, () => {
     }).pipe(Effect.provide(Router.memory({ routes })), Effect.provide(TestHost.layer()))
   })
 
+  it.effect("settles a navigation once the root has its route, not when its message is dropped", () => {
+    const routes = Route.union({ Home: Route.make("/"), Other: Route.make("/other") })
+    const Message = Schema.TaggedUnion({ Follow: { on: Schema.Boolean }, Changed: { route: routes } })
+    const settled: Array<string | undefined> = []
+    let onRoute = () => {}
+    const Root = Component.make({
+      name: "Root",
+      props: Schema.Struct({ route: routes }),
+      model: Schema.Struct({ route: routes, following: Schema.Boolean }),
+      message: Message,
+      init: ($) => ({ route: $.props.route, following: true }),
+      update: (model, message) =>
+        message._tag === "Changed" ? { ...model, route: message.route } : { ...model, following: message.on },
+      subscriptions: (model) =>
+        model.following
+          ? [Router.subscription(routes, model.route, (route) => {
+            onRoute()
+            return Message.make({ _tag: "Changed", route })
+          })]
+          : [],
+      head: (model) => [Head.title(model.route._tag)],
+      view: (model, h) => h.el("p", model.route._tag)
+    })
+    return Effect.gen(function*() {
+      const root = yield* TestHost.mount(Root, Router.props(routes))
+      yield* TestHost.settle
+      // The root stops following while its Subscription maps the route, so the runtime drops the message.
+      onRoute = () => {
+        onRoute = () => {}
+        root.send(Message.make({ _tag: "Follow", on: false }))
+      }
+      const router = yield* Router.Router
+      assert.strictEqual(yield* router.navigate("/other"), "navigated")
+      yield* TestHost.settle
+      assert.strictEqual(root.text(), "Home")
+      assert.deepStrictEqual(settled, [])
+      root.send(Message.make({ _tag: "Follow", on: true }))
+      yield* TestHost.settle
+      assert.strictEqual(root.text(), "Other")
+      assert.deepStrictEqual(settled, ["Other"])
+    }).pipe(
+      Effect.provide(Router.make({
+        routes,
+        history: Router.memoryHistory("/"),
+        onSettled: (done) => settled.push(done.head.title)
+      })),
+      Effect.provide(TestHost.layer())
+    )
+  })
+
   it.effect("removes query params dropped as invalid from the URL, keeping the others", () => {
     const routes = Route.union({
       Search: Route.make("/", {
