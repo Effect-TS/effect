@@ -1,15 +1,17 @@
 import { execFile } from "node:child_process"
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs"
-import { join } from "node:path"
-import { pathToFileURL } from "node:url"
+import { dirname, join } from "node:path"
+import { fileURLToPath, pathToFileURL } from "node:url"
 import { promisify } from "node:util"
 import { transformWithOxc } from "vite"
+
+const moduleDirectory = dirname(fileURLToPath(import.meta.url))
 
 export async function withGeneratedModule<Module>(
   source: string,
   use: (module: Module) => void | Promise<void>
 ): Promise<void> {
-  const directory = mkdtempSync(join(import.meta.dirname, ".generated-module-"))
+  const directory = mkdtempSync(join(moduleDirectory, ".generated-module-"))
   try {
     const file = join(directory, "module.mjs")
     // Transpile only: enum artifacts need more than Node's type stripping.
@@ -27,7 +29,7 @@ export async function withGeneratedModule<Module>(
 
 /** Check all generated modules in one compiler invocation. */
 export async function checkGeneratedModules(sources: ReadonlyMap<string, string>): Promise<void> {
-  const directory = mkdtempSync(join(import.meta.dirname, ".generated-types-"))
+  const directory = mkdtempSync(join(moduleDirectory, ".generated-types-"))
   try {
     for (const [name, source] of sources) writeFileSync(join(directory, `${name}.ts`), source)
     const config = join(directory, "tsconfig.json")
@@ -50,7 +52,7 @@ export async function checkGeneratedModules(sources: ReadonlyMap<string, string>
       })
     )
     try {
-      await promisify(execFile)(join(import.meta.dirname, "../../../../node_modules/.bin/tsc"), [
+      await promisify(execFile)(join(moduleDirectory, "../../../../node_modules/.bin/tsc"), [
         "-p",
         config,
         "--pretty",
