@@ -1569,8 +1569,9 @@ export interface Outcome<Model, Events> {
 }
 
 /**
- * The result of `fromLog`: the Model the replay reached, how many messages it
- * re-ran, and the first divergence, if any.
+ * The result of `fromLog`: the state the replay reached (the Model, props and
+ * loader slots), how many messages it re-ran, and the first divergence, if
+ * any. On a divergence, the state is the one before the message that diverged.
  *
  * @stability experimental
  * @category models
@@ -1579,6 +1580,12 @@ export interface Outcome<Model, Events> {
 export interface Replay<Model, Msg, Events> {
   readonly path: string
   readonly model: Model
+  /** The props last recorded for the instance. */
+  readonly props: unknown
+  /** The loader slots, beside the Model. Opaque: `loaded` opens them. */
+  readonly slots: Component.Slots | undefined
+  /** The loaders' results, by name, as `h.loaded` opens them for the Model, props and slots reached. */
+  readonly loaded: () => { readonly [name: string]: unknown }
   readonly replayed: number
   readonly divergence: Divergence<Model, Msg, Events> | undefined
 }
@@ -1608,6 +1615,11 @@ const findPlaceholder = (value: unknown): string | undefined => {
  * Commands are compared, never run. Models and events are compared with
  * `Schema.toEquivalence`, and Commands by their Wire encoding.
  *
+ * The slots start empty at a `Mounted` entry, or from what an `Update`
+ * entry recorded when the replay starts there. Each later `LoaderChanged`
+ * entry writes its slot, so the result holds the slots as the instance last
+ * had them, including loads that settled after the last message.
+ *
  * It takes live entries or Wire frames. A Wire value sent as a placeholder,
  * such as a truncated Model, can't be decoded, and the error names the entry.
  *
@@ -1627,11 +1639,31 @@ export const fromLog = <Name extends string, Props, Model, Msg, Events, R, V ext
   const path = options?.path ??
     (entries.find((entry) => nameOf(entry) === component.name) as MessageLog.Base | undefined)?.path
   if (path === undefined) throw new Error(`Story.fromLog: the log has no entry for ${component.name}`)
-  const relevant = entries.filter((entry) =>
-    (entry._tag === "Update" || entry._tag === "Mounted") && entry.path === path
-  ) as ReadonlyArray<MessageLog.Update | MessageLog.Mounted | Extract<MessageLog.Wire, { _tag: "Update" | "Mounted" }>>
-  if (relevant.length === 0) throw new Error(`Story.fromLog: the log has no entry for ${path}`)
+  const all = entries.filter((entry) =>
+    (entry._tag === "Update" || entry._tag === "Mounted" || entry._tag === "LoaderChanged") && entry.path === path
+  ) as ReadonlyArray<
+    | MessageLog.Update
+    | MessageLog.Mounted
+    | MessageLog.LoaderChanged
+    | Extract<MessageLog.Wire, { _tag: "Update" | "Mounted" | "LoaderChanged" }>
+  >
+  // The replay starts at the first Model. A slot written before it is in that Update's record, or belongs to an
+  // earlier mount.
+  const start = all.findIndex((entry) => entry._tag !== "LoaderChanged")
+  if (start === -1) throw new Error(`Story.fromLog: the log has no entry for ${path}`)
+  const first = all[start] as
+    | MessageLog.Update
+    | MessageLog.Mounted
+    | Extract<MessageLog.Wire, { _tag: "Update" | "Mounted" }>
   const bound = (component as unknown as { readonly "~loaders": loaders.Bound | undefined })["~loaders"]
+  const slotOf = (entry: MessageLog.LoaderChanged | Extract<MessageLog.Wire, { _tag: "LoaderChanged" }>) => {
+    if (typeof entry.component !== "string") return entry.slot
+    const schema = bound?.logSchemas[entry.name]
+    if (schema === undefined) {
+      throw new Error(`Story.fromLog: entry #${entry.seq} (${path}) writes "${entry.name}", which isn't a loader`)
+    }
+    return decodeWith(entry, `loader "${entry.name}"`, schema, entry.slot)
+  }
 
   const decoders = new Map<Schema.Top, (value: unknown) => unknown>()
   const decode = (
@@ -1657,7 +1689,7 @@ export const fromLog = <Name extends string, Props, Model, Msg, Events, R, V ext
       )
     }
   }
-  const read = (entry: (typeof relevant)[number]) => {
+  const read = (entry: typeof first) => {
     if (typeof entry.component !== "string") {
       return {
         loaded: entry._tag === "Update" ? (entry as MessageLog.Update).loaded : undefined,
@@ -1687,16 +1719,37 @@ export const fromLog = <Name extends string, Props, Model, Msg, Events, R, V ext
   const sameEvents = Schema.toEquivalence(Schema.Array(component.events as Schema.Codec<Events, unknown>))
   const sameCommands = (a: ReadonlyArray<unknown>, b: ReadonlyArray<unknown>) => JSON.stringify(a) === JSON.stringify(b)
 
-  let model = read(relevant[0]!).model
+  const initial = read(first)
+  let model = initial.model
+  let props: unknown = initial.props
+  let slots: Component.Slots | undefined = initial.loaded
   let replayed = 0
-  for (const entry of relevant.slice(1)) {
-    const recorded = read(entry)
-    if (entry._tag === "Mounted") {
-      // Mounted again at the same path: the replay starts over from it.
-      model = recorded.model
+  const result = (divergence: Divergence<Model, Msg, Events> | undefined): Replay<Model, Msg, Events> => {
+    const reached = { model, props, slots }
+    return {
+      path,
+      ...reached,
+      loaded: () => bound?.context(reached.model, reached.props, reached.slots).loaded ?? {},
+      replayed,
+      divergence
+    }
+  }
+  for (const entry of all.slice(start + 1)) {
+    if (entry._tag === "LoaderChanged") {
+      slots = { ...(slots ?? bound?.empty), [entry.name]: slotOf(entry) }
       continue
     }
-    const next = component.update(model, recorded.message as Msg, recorded.props, recorded.loaded)
+    const recorded = read(entry)
+    if (entry._tag === "Mounted") {
+      // Mounted again at the same path: the replay starts over from it, with every slot empty.
+      model = recorded.model
+      props = recorded.props
+      slots = undefined
+      continue
+    }
+    // The Update's record is what `update` read, so it holds even when earlier slot writes were evicted.
+    if (recorded.loaded !== undefined) slots = recorded.loaded
+    const next = component.update(model, recorded.message as Msg, recorded.props, slots)
     replayed++
     const recomputed = {
       model: next.model,
@@ -1708,24 +1761,20 @@ export const fromLog = <Name extends string, Props, Model, Msg, Events, R, V ext
       !sameModel(recomputed.model, recorded.model) || !sameEvents(recomputed.events, recorded.events) ||
       !sameCommands(recomputed.commands, recorded.commands) || !sameCommands(recomputed.lists, recorded.lists)
     ) {
-      return {
-        path,
-        model,
-        replayed,
-        divergence: {
-          seq: entry.seq,
-          message: recorded.message as Msg,
-          recorded: {
-            model: recorded.model,
-            events: recorded.events,
-            commands: recorded.commands,
-            lists: recorded.lists
-          },
-          recomputed
-        }
-      }
+      return result({
+        seq: entry.seq,
+        message: recorded.message as Msg,
+        recorded: {
+          model: recorded.model,
+          events: recorded.events,
+          commands: recorded.commands,
+          lists: recorded.lists
+        },
+        recomputed
+      })
     }
     model = recomputed.model
+    props = recorded.props
   }
-  return { path, model, replayed, divergence: undefined }
+  return result(undefined)
 }

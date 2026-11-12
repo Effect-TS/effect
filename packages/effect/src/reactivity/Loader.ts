@@ -2727,9 +2727,13 @@ const snapshotRun = (def: ReadDef, label: string, decoding: boolean) => {
           args(data.args, options),
           // A patched value is used as it is: a patch that fails `success` is reported as `PatchInvalid`, and a
           // check of a slot mustn't throw on it.
-          settledMap(result, (u) => data.patched ? Effect.succeed(u) : success(u, options), (u) => error(u, options))
+          settledMap(result, (u) => data.patched ? Effect.succeed(u) : success(u, options), (u) => error(u, options)),
+          // A failed load more holds a typed error too, which the message log's form carries.
+          data.more?._tag === "Failed"
+            ? Effect.map(error(data.more.error, options), (error): More<unknown> => ({ _tag: "Failed", error }))
+            : Effect.succeed(data.more)
         ]),
-        ([args, result]) => {
+        ([args, result, more]) => {
           if (decoding) {
             let back: string | undefined
             try {
@@ -2739,7 +2743,7 @@ const snapshotRun = (def: ReadDef, label: string, decoding: boolean) => {
             }
             if (back !== data.argsKey) return Effect.fail(snapshotIssue(def, "the args key isn't the key of its args"))
           }
-          return Effect.succeed(new SnapshotImpl({ ...data, args, result }))
+          return Effect.succeed(new SnapshotImpl({ ...data, args, result, more }))
         }
       )
     }

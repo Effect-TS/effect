@@ -41,7 +41,8 @@ In tests, `Story` load steps such as `loaded("note", note)` take the loader's
 name and write its slot. The `MessageLog` records each slot write as a
 `LoaderChanged` entry, and an `Update` entry only for an `onChange` message.
 Each `Update` entry records the slots `update` read, so `Story.fromLog`
-replays `$.loaded` as it was.
+replays `$.loaded` as it was, and its result's `loaded()` holds the slots
+the instance ended with.
 
 ### Organizing an app
 

@@ -140,6 +140,77 @@ describe("Loaded lists", () => {
     )
   })
 
+  it.effect("a failed load more's error goes through its Schema in the log, and a Wire replay reads it", () => {
+    // The error is a number encoded as a string, so a codec that skips it fails to encode.
+    class ListCodes extends Loader.ListService<ListCodes>()(
+      "codes/ListCodes",
+      {
+        args: {},
+        page: Schema.Array(Schema.String),
+        items: (page) => page,
+        key: (code) => code,
+        error: Schema.NumberFromString,
+        cursor: Schema.Number,
+        next: () => Option.some(1),
+        staleTime: "30 seconds"
+      },
+      Effect.succeed((_args, cursor) =>
+        Option.isSome(cursor) ? Effect.fail(42) : Effect.sleep("10 millis").pipe(Effect.as(["a"]))
+      )
+    ) {}
+    const CodesMessage = Schema.TaggedUnion({ More: {}, Look: {} })
+    const Codes = Component.make({
+      name: "Codes",
+      model: Schema.String,
+      message: CodesMessage,
+      elements: Html,
+      loaders: { codes: { load: ListCodes, args: () => ({}) } },
+      init: () => "",
+      update: (model, message, $) =>
+        CodesMessage.match(message, {
+          More: () => $.loadMore("codes"),
+          // What update reads of the failed load more, so a replay reproduces it only with the error.
+          Look: () => {
+            const codes = $.loaded.codes
+            if (!AsyncResult.isSuccess(codes)) return model
+            const more = codes.value.more
+            return more._tag === "Failed" ? "failed " + more.error : more._tag
+          }
+        }),
+      view: (model, h) => h.p(model)
+    })
+    const warnings: Array<string> = []
+    const encoder = MessageLog.makeEncoder({ onWarning: (warning) => warnings.push(warning) })
+    return run(
+      ListCodes.layer,
+      Effect.gen(function*() {
+        const root = yield* TestHost.mount(Codes, {})
+        yield* page
+        root.send(CodesMessage.make({ _tag: "More" }))
+        yield* TestHost.settle
+        root.send(CodesMessage.make({ _tag: "Look" }))
+        yield* TestHost.settle
+        assert.strictEqual(root.model(), "failed 42")
+
+        const wire = root.log().map(encoder.encode)
+        assert.deepStrictEqual(warnings, [])
+        const changed = wire.filter((entry) => entry._tag === "LoaderChanged") as ReadonlyArray<
+          { readonly slot: ReadonlyArray<unknown> }
+        >
+        assert.deepStrictEqual(changed.at(-1)!.slot.at(-1), [false, { Failed: "42" }])
+        const replay = Story.fromLog(Codes, wire)
+        assert.isUndefined(replay.divergence)
+        assert.strictEqual(replay.model, "failed 42")
+        const codes = replay.loaded().codes as AsyncResult.AsyncResult<Component.LoadedList<typeof ListCodes>, number>
+        assert.isTrue(AsyncResult.isSuccess(codes))
+        assert.deepStrictEqual(AsyncResult.isSuccess(codes) ? codes.value.more : undefined, {
+          _tag: "Failed",
+          error: 42
+        })
+      })
+    )
+  })
+
   it.effect("a load more on a disabled loader does nothing", () => {
     const app = makeApp()
     return run(

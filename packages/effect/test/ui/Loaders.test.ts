@@ -117,6 +117,12 @@ const load = TestHost.settle.pipe(Effect.andThen(TestClock.adjust("10 millis")),
 const loaderChanges = (log: ReadonlyArray<MessageLog.Entry>, path: string) =>
   log.filter((entry): entry is MessageLog.LoaderChanged => entry._tag === "LoaderChanged" && entry.path === path)
 
+/** The note a replay ends with, as `h.loaded.note` would show it. */
+const noteOf = (replay: Story.Replay<any, any, any>) => {
+  const note = replay.loaded().note as AsyncResult.AsyncResult<string, never>
+  return AsyncResult.isSuccess(note) ? note.value : note._tag
+}
+
 const updates = (log: ReadonlyArray<MessageLog.Entry>, path: string) =>
   log.filter((entry): entry is MessageLog.Update => entry._tag === "Update" && entry.path === path)
 
@@ -294,9 +300,12 @@ describe("a loader without onChange", { concurrent: false }, () => {
         assert.isUndefined(replay.divergence)
         assert.strictEqual(replay.replayed, 1)
         assert.deepStrictEqual(replay.model, { clicks: 2, last: "Note 1" })
+        // The first Update's record gives the slots back, so the final state has the note.
+        assert.strictEqual(noteOf(replay), "Note 1")
         const fromWire = Story.fromLog(app.Note, bounded.map(MessageLog.makeEncoder().encode))
         assert.isUndefined(fromWire.divergence)
         assert.deepStrictEqual(fromWire.model, { clicks: 2, last: "Note 1" })
+        assert.strictEqual(noteOf(fromWire), "Note 1")
       })
     )
   })
@@ -331,6 +340,75 @@ describe("a loader without onChange", { concurrent: false }, () => {
         assert.strictEqual(fromWire.replayed, 4)
       })
     )
+  })
+
+  it.effect("replay ends with the slots a load wrote after the last message, live and through the Wire", () => {
+    const app = makeApp()
+    return run(
+      app.layer,
+      Effect.gen(function*() {
+        const root = yield* TestHost.mount(app.Note, { id: "1" })
+        // Nothing is loaded yet: the replay ends with the slot empty.
+        assert.strictEqual(noteOf(Story.fromLog(app.Note, root.log())), "Initial")
+        click(root, "clicks 0")
+        yield* TestHost.settle
+        const before = Story.fromLog(app.Note, root.log())
+        assert.strictEqual(noteOf(before), "Initial")
+        yield* load
+        assert.strictEqual(root.text(), "Note 1clicks 1")
+        const log = root.log()
+        assert.deepStrictEqual(log.filter((entry) => entry.path === "/Note").map((entry) => entry._tag).slice(-2), [
+          "Update",
+          "LoaderChanged"
+        ])
+        for (
+          const replay of [
+            Story.fromLog(app.Note, log),
+            Story.fromLog(app.Note, log.map(MessageLog.makeEncoder().encode))
+          ]
+        ) {
+          assert.isUndefined(replay.divergence)
+          assert.strictEqual(replay.replayed, 1)
+          assert.deepStrictEqual(replay.model, { clicks: 1, last: "none" })
+          assert.deepStrictEqual(replay.props, { id: "1" })
+          assert.strictEqual(noteOf(replay), "Note 1")
+        }
+      })
+    )
+  })
+
+  it.effect("replay ends with a load that settled without any message", () => {
+    const app = makeApp()
+    return run(
+      app.layer,
+      Effect.gen(function*() {
+        const root = yield* TestHost.mount(app.Note, { id: "1" })
+        yield* load
+        const replay = Story.fromLog(app.Note, root.log().map(MessageLog.makeEncoder().encode))
+        assert.strictEqual(replay.replayed, 0)
+        assert.strictEqual(noteOf(replay), "Note 1")
+      })
+    )
+  })
+
+  it.effect("a Mounted entry at the same path starts the slots over", () => {
+    const app = makeApp()
+    return Effect.gen(function*() {
+      const first = yield* run(
+        app.layer,
+        Effect.gen(function*() {
+          const root = yield* TestHost.mount(app.Note, { id: "1" })
+          yield* load
+          return root.log()
+        })
+      )
+      // A second mount on a cold cache: the earlier session's slot isn't carried over.
+      const second = yield* run(app.layer, Effect.map(TestHost.mount(app.Note, { id: "2" }), (root) => root.log()))
+      const replay = Story.fromLog(app.Note, [...first, ...second])
+      assert.strictEqual(noteOf(Story.fromLog(app.Note, first)), "Note 1")
+      assert.strictEqual(noteOf(replay), "Initial")
+      assert.deepStrictEqual(replay.props, { id: "2" })
+    })
   })
 
   it("Story.head opens the loaders at the props it is given, with every slot empty", () => {
