@@ -1,10 +1,11 @@
-import { Schema } from "effect"
+import { Layer, Schema } from "effect"
 import { AsyncResult, Loader } from "effect/reactivity"
 import { Component, Head } from "effect/ui"
 import { ActivityLog } from "../notes/components/ActivityLog.ts"
 import { NoteActivity } from "../notes/components/NoteActivity.ts"
-import { NoteEditor, SaveNote } from "../notes/components/NoteEditor.ts"
+import { NoteEditor } from "../notes/components/NoteEditor.ts"
 import { GetNote } from "../notes/loaders/GetNote.ts"
+import { Notes } from "../notes/services/Notes.ts"
 
 // The Model stores what a read returned as a snapshot, under the field's name.
 const NoteSnapshot = Loader.Snapshot(GetNote, "note")
@@ -15,7 +16,7 @@ export const NotePageMessage = Schema.TaggedUnion({
   EditorFailed: {}
 })
 
-export const NotePage = Component.make({
+export const NotePageNoDeps = Component.make({
   name: "NotePage",
   props: Schema.Struct({ id: Schema.String }),
   model: Schema.Struct({ note: NoteSnapshot, title: Schema.String, notice: Schema.String }),
@@ -78,15 +79,19 @@ export const NotePage = Component.make({
     })
 })
 
-// `Component.provide` is `Effect.provide` for a component and everything
-// below it. `NotePage` requires `GetNote | SaveNote | NoteActivity`. This
-// one requires only `Notes`, which the app provides at the root.
+// `NotePageNoDeps` requires `GetNote | NoteActivity`. `NoteEditor` already
+// provides its own `SaveNote`, so that one doesn't surface here. The plain
+// name is the page with its Layers provided, which is what `App` uses.
 //
-// - Provide Layers where their context lives: the page, the feature or the app.
+// - Provide domain Layers in the component that needs them, not at the root.
+//   The root keeps platform Layers: the Router, the HTTP client, logging.
 // - A Layer value is built once and shared by the instances using it. Pass
 //   `{ local: true }` or a function of props for state each instance owns.
 // - Nothing is rebuilt when props change. Re-key the component instead.
 // - A Layer that can fail needs `{ onFailure: (failure) => message }`.
-export const NotePageLive = NotePage.pipe(
-  Component.provide([GetNote.layer, SaveNote.layer, NoteActivity.layer(ActivityLog)])
+export const NotePage = NotePageNoDeps.pipe(
+  Component.provide([
+    GetNote.layer.pipe(Layer.provide(Notes.layerHttp)),
+    NoteActivity.layer(ActivityLog)
+  ])
 )

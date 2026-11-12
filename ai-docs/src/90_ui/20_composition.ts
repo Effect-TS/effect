@@ -7,6 +7,7 @@
  * mounts the page, which is in `fixtures/pages/NotePage.ts`.
  */
 import { Effect, Layer } from "effect"
+import { FetchHttpClient } from "effect/http"
 import { BrowserHost } from "effect/ui/html"
 // oxlint-disable-next-line no-unassigned-import
 import "effect/ui/html/register"
@@ -18,14 +19,15 @@ import "effect/ui/html/register"
 // - `fixtures/notes/components/NoteEditor.ts`: a child by value
 // - `fixtures/notes/components/NoteActivity.ts`: a child by service
 // - `fixtures/notes/components/ActivityLog.ts`: that service's implementation
-import { Notes } from "./fixtures/notes/services/Notes.ts"
-import { NotePageLive } from "./fixtures/pages/NotePage.ts"
+import { NotePage } from "./fixtures/pages/NotePage.ts"
 
-// `NotePageLive` provides its own loader, command and feature Layers with
-// `Component.provide`. Only `Notes` is left for the entry module, so the
-// page's file doesn't decide where the notes come from.
-const NotePageMount = BrowserHost.mount(NotePageLive, { id: "welcome" }, document.getElementById("app")!).pipe(
-  Layer.provide(Notes.layerHttp)
+// `NotePage` provides its loader and feature Layers with
+// `Component.provide`, and the editor inside it provides its own command.
+// The plain name is always the component with its Layers provided, and
+// `NotePageNoDeps` is the one without. Only the HTTP client is left for the
+// entry module.
+const Main = BrowserHost.mount(NotePage, { id: "welcome" }, document.getElementById("app")!).pipe(
+  Layer.provide(FetchHttpClient.layer)
 )
 
-Layer.launch(NotePageMount).pipe(Effect.runFork)
+Layer.launch(Main).pipe(Effect.runFork)

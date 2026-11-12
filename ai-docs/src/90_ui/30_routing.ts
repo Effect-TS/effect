@@ -7,6 +7,7 @@
  * `fixtures/routes.ts` and the root component is in `fixtures/App.ts`.
  */
 import { Effect, Layer } from "effect"
+import { FetchHttpClient } from "effect/http"
 import { Router } from "effect/ui"
 import { BrowserHost, BrowserRouter } from "effect/ui/html"
 // oxlint-disable-next-line no-unassigned-import
@@ -18,7 +19,6 @@ import "effect/ui/html/register"
 // - `fixtures/pages/NotesIndex.ts`: a page that links with printed routes
 // - `fixtures/pages/NotePage.ts`: the page from the previous example
 import { App } from "./fixtures/App.ts"
-import { Notes } from "./fixtures/notes/services/Notes.ts"
 import { AppRoute } from "./fixtures/routes.ts"
 
 // `BrowserRouter.layer` provides the `Router` service and the navigation
@@ -30,8 +30,11 @@ import { AppRoute } from "./fixtures/routes.ts"
 // Router when the root mounts. A root with other props maps
 // `Router.currentRoute(AppRoute)` instead. Both die if the union can't parse
 // the URL, which the `/*` catch-all rules out.
-const AppLive = BrowserHost.mount(App, Router.props(AppRoute), document.getElementById("app")!).pipe(
-  Layer.provide([BrowserRouter.layer({ routes: AppRoute }), Notes.layerHttp])
+//
+// The Router and the HTTP client are the only Layers here. The pages provide
+// their own domain Layers.
+const Main = BrowserHost.mount(App, Router.props(AppRoute), document.getElementById("app")!).pipe(
+  Layer.provide([BrowserRouter.layer({ routes: AppRoute }), FetchHttpClient.layer])
 )
 
-Layer.launch(AppLive).pipe(Effect.runFork)
+Layer.launch(Main).pipe(Effect.runFork)

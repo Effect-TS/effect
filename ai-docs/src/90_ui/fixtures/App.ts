@@ -1,6 +1,6 @@
 import { Schema } from "effect"
 import { Command, Component, Head, Router } from "effect/ui"
-import { NotePageLive } from "./pages/NotePage.ts"
+import { NotePage } from "./pages/NotePage.ts"
 import { NotesIndex } from "./pages/NotesIndex.ts"
 import { AppRoute } from "./routes.ts"
 
@@ -12,6 +12,8 @@ export const AppMessage = Schema.TaggedUnion({
   Navigated: {}
 })
 
+// The root needs no domain Layers of its own, because each page provides
+// what it uses. Only the Router is left, so there is no `AppNoDeps`.
 export const App = Component.make({
   name: "App",
   // The root holds the route. The first one arrives through props and every
@@ -45,7 +47,7 @@ export const App = Component.make({
         // route change mounts a fresh page instead of reusing the old Model.
         AppRoute.match(route, {
           Index: (route) => h.child(NotesIndex, { key: AppRoute.print(route) }),
-          Note: (route) => h.child(NotePageLive, { key: AppRoute.print(route), props: { id: route.params.id } }),
+          Note: (route) => h.child(NotePage, { key: AppRoute.print(route), props: { id: route.params.id } }),
           NotFound: () =>
             h.section(
               h.h1("Page not found"),

@@ -1,7 +1,8 @@
-import { Schema } from "effect"
+import { Layer, Schema } from "effect"
 import { AsyncResult, Loader } from "effect/reactivity"
 import { Component, Head } from "effect/ui"
 import { ListNotes } from "../notes/loaders/ListNotes.ts"
+import { Notes } from "../notes/services/Notes.ts"
 import { AppRoute } from "../routes.ts"
 
 const noteUrl = (id: string) => AppRoute.print(AppRoute.make({ _tag: "Note", params: { id } }))
@@ -9,7 +10,7 @@ const noteUrl = (id: string) => AppRoute.print(AppRoute.make({ _tag: "Note", par
 const NotesSnapshot = Loader.Snapshot(ListNotes, "notes")
 const NotesIndexMessage = Schema.TaggedUnion({ NotesChanged: { snapshot: NotesSnapshot } })
 
-export const NotesIndex = Component.make({
+export const NotesIndexNoDeps = Component.make({
   name: "NotesIndex",
   model: Schema.Struct({ notes: NotesSnapshot }),
   message: NotesIndexMessage,
@@ -31,4 +32,8 @@ export const NotesIndex = Component.make({
       onSuccess: ({ value: notes }) =>
         h.ul(notes.map((note) => h.li(h.a(note.title).attr("href", noteUrl(note.id))).key(note.id)))
     })
-}).pipe(Component.provide(ListNotes.layer))
+})
+
+export const NotesIndex = NotesIndexNoDeps.pipe(
+  Component.provide(ListNotes.layer.pipe(Layer.provide(Notes.layerHttp)))
+)

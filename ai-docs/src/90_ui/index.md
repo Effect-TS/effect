@@ -11,7 +11,7 @@ browser host and router, and server rendering.
 
 The examples below are one notes app. Each example is an entry module, for
 the browser, the server or the tests. It mounts a component and provides the
-Layers that component still needs, and it defines no components. The app is in
+platform Layers, and it defines no components. The app is in
 `ai-docs/src/90_ui/fixtures`, laid out as it would be under `src/` in a real
 app. Read an example, then the files it imports.
 
@@ -32,6 +32,7 @@ fixtures/
   pages/
     NotesIndex.ts
     NotePage.ts
+  server/NotesApi.ts          // the JSON API that Notes calls
 ```
 
 A second feature is a sibling of `notes/`, with its own `domain`, `services`,
@@ -45,5 +46,15 @@ A command belongs in the file of the component that runs it, not in a shared
 method and give each component its own command. Loaders have their own folder
 because pages, multiple components and server rendering all read them.
 
+A component provides the domain Layers it needs in its own file, with
+`Component.provide`: its commands, its loaders and the services they capture.
+The plain name, such as `NotePage`, is the component with those Layers
+provided, and it is the one parents and entry modules use. The component
+without them is exported as `NotePageNoDeps`, for a test that provides its
+own. A component that needs no domain Layers has only the plain name.
+
 Entry modules sit beside these folders. Each one imports
-`effect/ui/html/register` before it renders anything.
+`effect/ui/html/register` before it renders anything, and provides only
+platform Layers such as the Router, the HTTP client and logging. Domain Layers
+are never provided there. The server and a test of the whole app swap the HTTP
+client, not the services.

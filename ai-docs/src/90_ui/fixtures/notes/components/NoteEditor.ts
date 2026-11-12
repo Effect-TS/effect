@@ -1,4 +1,4 @@
-import { Effect, Schema, Stream } from "effect"
+import { Effect, Layer, Schema, Stream } from "effect"
 import { Command, Component, Subscription } from "effect/ui"
 import { Note, NotesTag } from "../domain/Note.ts"
 import { Notes } from "../services/Notes.ts"
@@ -39,7 +39,9 @@ export class SaveNote extends Command.Service<SaveNote>()(
   })
 ) {}
 
-export const NoteEditor = Component.make({
+// The component as defined, which requires `SaveNote`. It is exported so a
+// test can provide its own Layers.
+export const NoteEditorNoDeps = Component.make({
   name: "NoteEditor",
   props: Schema.Struct({ note: Note }),
   model: Schema.Struct({
@@ -108,3 +110,12 @@ export const NoteEditor = Component.make({
       model.error !== null && h.p(model.error).attr("role", "alert")
     ).onSubmit(NoteEditorMessage.make({ _tag: "Save" }))
 })
+
+// The component the app uses, under the plain name. `Component.provide` is
+// `Effect.provide` for a component and everything below it. A component
+// provides the domain Layers it needs itself, so a parent or an entry module
+// can use it without knowing what it runs. Only `HttpClient` is left, for
+// the entry module.
+export const NoteEditor = NoteEditorNoDeps.pipe(
+  Component.provide(SaveNote.layer.pipe(Layer.provide(Notes.layerHttp)))
+)

@@ -3,11 +3,19 @@
  *
  * Render the routed app to HTML with `HtmlServer.renderToHtml` and embed
  * its state in the page. This is the server's entry module. It serves the
- * same `fixtures/App.ts` the browser mounts.
+ * same `fixtures/App.ts` the browser mounts, and the JSON API in
+ * `fixtures/server/NotesApi.ts`.
  */
 import { NodeHttpServer, NodeRuntime } from "@effect/platform-node"
 import { Effect, Layer, Option } from "effect"
-import { HttpRouter, HttpServerRequest, HttpServerResponse } from "effect/http"
+import {
+  FetchHttpClient,
+  HttpClient,
+  HttpClientRequest,
+  HttpRouter,
+  HttpServerRequest,
+  HttpServerResponse
+} from "effect/http"
 import { Router } from "effect/ui"
 import { HtmlServer } from "effect/ui/html"
 // The server renders views too, so it registers the HTML elements as well.
@@ -16,9 +24,8 @@ import { HtmlServer } from "effect/ui/html"
 import "effect/ui/html/register"
 import { createServer } from "node:http"
 import { App } from "./fixtures/App.ts"
-import type { Note } from "./fixtures/notes/domain/Note.ts"
-import { Notes } from "./fixtures/notes/services/Notes.ts"
 import { AppRoute } from "./fixtures/routes.ts"
+import { NotesApi } from "./fixtures/server/NotesApi.ts"
 
 const renderPage = Effect.fnUntraced(function*(url: string) {
   // The response status is the app's job, so resolve the URL before rendering.
@@ -67,22 +74,33 @@ const renderPage = Effect.fnUntraced(function*(url: string) {
   })
 })
 
-const seed: ReadonlyArray<Note> = [{ id: "welcome", title: "Welcome", body: "Write something." }]
+const port = 3000
 
-// Provide the app's requirements as you would for a mount. Here the server
-// holds the notes itself, and `Notes.layerHttp` is the browser's
-// implementation. A handler's requirements belong to the request, so the
-// Layer goes through `provideRequest`, which builds it once for the routes.
+// The components provide their own domain Layers on the server too, so the
+// render reads notes through `Notes.layerHttp`, as the browser does. The
+// one platform Layer it needs is the HTTP client. A server has no page URL
+// to resolve `/api` against, so this one calls the server's own address.
+const ApiClient = Layer.effect(
+  HttpClient.HttpClient,
+  Effect.map(
+    HttpClient.HttpClient,
+    HttpClient.mapRequest(HttpClientRequest.prependUrl(`http://localhost:${port}`))
+  )
+).pipe(Layer.provide(FetchHttpClient.layer))
+
+// A handler's requirements belong to the request, so the Layer goes through
+// `provideRequest`, which builds it once for the routes.
 const PageRoutes = HttpRouter.add(
   "GET",
   "*",
   Effect.flatMap(HttpServerRequest.HttpServerRequest, (request) => renderPage(request.url))
-).pipe(HttpRouter.provideRequest(Notes.layerMemory(seed)))
+).pipe(HttpRouter.provideRequest(ApiClient))
 
-// A real server also serves `/client.js`, the bundle of the next example,
-// and the `/api` routes `Notes.layerHttp` calls.
-const ServerLive = HttpRouter.serve(PageRoutes).pipe(
-  Layer.provide(NodeHttpServer.layer(createServer, { port: 3000 }))
+// `NotesApi` is the JSON API the app calls, from the server render and from
+// the browser. A real server also serves `/client.js`, the bundle of the
+// next example.
+const Main = HttpRouter.serve(Layer.mergeAll(NotesApi, PageRoutes)).pipe(
+  Layer.provide(NodeHttpServer.layer(createServer, { port }))
 )
 
-Layer.launch(ServerLive).pipe(NodeRuntime.runMain)
+Layer.launch(Main).pipe(NodeRuntime.runMain)
