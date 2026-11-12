@@ -32,6 +32,13 @@
  * in a dialog are the app's like any other, so read the choice in
  * `onSubmit`, not `returnValue`.
  *
+ * Any element can be a popover with `.popover(mode, open)`, its state
+ * separate from a `dialog`'s or `details`'s `open`. A `"manual"` popover is
+ * controlled by the Model. An `"auto"` popover is followed: the browser
+ * closes it on Escape, a click outside or another popover opening, `onToggle`
+ * reports it, and the Model must follow. Position a popover next to its
+ * trigger with CSS anchor positioning.
+ *
  * **Example** (Registering the vocabulary for the app)
  *
  * ```ts
@@ -262,6 +269,48 @@ export interface TogglePayload {
 }
 
 /**
+ * The payload of `toggle`, which any element can get as a popover: `open`
+ * is whether it's showing now, and `newState` and `oldState` are what the
+ * browser reported.
+ *
+ * **Details**
+ *
+ * Browsers coalesce the toggles queued for an element into one, from the
+ * first change's `oldState` to the latest `newState`, so the two can be
+ * equal, such as `"closed"` to `"closed"` for a popover shown and dismissed
+ * before the event. `open` and `newState` are the state when it's sent;
+ * follow them rather than the transition. On a `details` or `dialog`, a
+ * browser without `ToggleEvent` gets states derived from `open`.
+ *
+ * @stability experimental
+ * @category events
+ * @since 4.1.5
+ */
+export interface PopoverTogglePayload extends TogglePayload {
+  readonly newState: "open" | "closed"
+  readonly oldState: "open" | "closed"
+}
+
+/**
+ * How a popover behaves, set with `popover`.
+ *
+ * **Details**
+ *
+ * A `"manual"` popover is controlled: it shows what the Model says, and the
+ * browser host puts it back when anything else changes it. An `"auto"`
+ * popover is followed: the browser closes it on Escape, a click outside,
+ * another auto popover opening or a modal dialog opening, the host reports
+ * that as `toggle`, and the Model must follow. The host shows or hides an
+ * auto popover only when the Model's value changes, and never reverts the
+ * browser.
+ *
+ * @stability experimental
+ * @category events
+ * @since 4.1.5
+ */
+export type PopoverMode = "manual" | "auto"
+
+/**
  * The payload of `scroll`: the element's scroll offsets.
  *
  * @stability experimental
@@ -409,6 +458,7 @@ export interface Events {
   readonly dragleave: {}
   readonly dragover: DragOverPayload
   readonly drop: DropPayload
+  readonly toggle: PopoverTogglePayload
 }
 
 /**
@@ -576,6 +626,35 @@ export class Element<out Msg, out R = never, in out E = Record<string, unknown>,
    */
   modal<N extends HTMLDialogElement>(this: Element<Msg, R, E, N>, modal: boolean): Element<Msg, R, E, N> {
     return this.prop("open", modal ? "modal" : false)
+  }
+  /**
+   * Makes this element a popover in the top layer, `"manual"` or `"auto"`,
+   * showing while `open` is true. Its state is its own, separate from a
+   * `details` or `dialog`'s `open`. The last call wins.
+   *
+   * **Details**
+   *
+   * A `"manual"` popover is controlled: the browser host shows and hides it
+   * as the Model says, and when anything else changes it, such as a
+   * `popovertarget` button, puts it back on the next frame. Use `onClick`
+   * to open it.
+   *
+   * An `"auto"` popover is followed: the browser closes it on Escape, a
+   * click outside, another auto popover opening or a modal dialog opening,
+   * and sends `onToggle`. The Model must follow it. The host shows or hides
+   * it only when the Model's value changes, so a Model that ignores the
+   * toggle still says open while the popover is closed, and it reopens only
+   * once the value goes to `false` and back. `popovertarget` and `commandfor`
+   * buttons work with an auto popover.
+   *
+   * The server renders a popover closed, and the browser host shows it at
+   * the first commit once the page is live. A popover removed while showing
+   * closes without a `toggle`.
+   *
+   * @since 4.1.5
+   */
+  popover(mode: PopoverMode, open: boolean): this {
+    return this.attr("popover", mode).prop("popoverOpen", open)
   }
   /**
    * Sugar for `on("click", handler, options)`.
@@ -761,7 +840,8 @@ export class Element<out Msg, out R = never, in out E = Record<string, unknown>,
     return this.on("submit", handler)
   }
   /**
-   * Sugar for `on("toggle", handler)`, on a `details` or `dialog`.
+   * Sugar for `on("toggle", handler)`: a `details`, a `dialog` or a popover
+   * opened or closed.
    *
    * @since 4.1.5
    */

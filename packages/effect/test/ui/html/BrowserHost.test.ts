@@ -7,6 +7,7 @@ import { BrowserHost, Html } from "effect/ui/html"
 import { HtmlQuery } from "effect/ui/html/testing"
 import { describe, vi } from "vitest"
 import { Confirm, ConfirmMessage, Nested } from "./fixtures/confirm.ts"
+import { Menu, MenuMessage, ModalMenu, popoverStub } from "./fixtures/popover.ts"
 import { maxTitle, TodoApp } from "./fixtures/todos.ts"
 
 /** Lets the render flush, Commands and the controlled-property restore run. */
@@ -1032,6 +1033,149 @@ describe("BrowserHost", { concurrent: false }, () => {
         const { calls } = yield* dialogCalls
         yield* BrowserHost.mountEffect(Nested, {}, yield* container)
         expect(calls).toEqual(["showModal Outer", "showModal Inner"])
+      }).pipe(Effect.scoped))
+  })
+
+  describe("popovers", () => {
+    const mountMenu = Effect.fnUntraced(
+      function*(props: { readonly mode: "manual" | "auto"; readonly open: boolean; readonly follow: boolean }) {
+        const stub = yield* popoverStub
+        const app = yield* container
+        const root = yield* BrowserHost.mountEffect(Menu, props, app)
+        yield* tick
+        const menu = () => app.querySelector("[aria-label=Menu]")
+        const send = (message: typeof MenuMessage.Type) => Effect.andThen(Effect.sync(() => root.send(message)), tick)
+        // Runs the queued toggle tasks, then lets the reconciliation frame run.
+        const settle = Effect.andThen(Effect.sync(stub.run), tick)
+        return { menu, root, send, settle, stub }
+      }
+    )
+    const shows = (calls: ReadonlyArray<string>) => calls.filter((call) => call.startsWith("showPopover")).length
+
+    it.effect("a manual popover is controlled: shown and hidden by the Model, and put back after other changes", () =>
+      Effect.gen(function*() {
+        const { menu, root, send, settle, stub } = yield* mountMenu({ mode: "manual", open: true, follow: false })
+        expect(stub.calls).toEqual(["showPopover Menu"])
+        yield* settle
+        // Something else hides it, such as a `popovertarget` button: it's shown again.
+        stub.dismiss(menu()!)
+        yield* settle
+        expect(stub.showing.has(menu()!)).toBe(true)
+        expect(shows(stub.calls)).toBe(2)
+        // Its own show's toggle changes nothing more: no loop.
+        yield* settle
+        expect(shows(stub.calls)).toBe(2)
+        expect(root.model()!.log).toEqual(["closed->open", "open->closed", "closed->open"])
+
+        // Hidden then shown again by the Model before the toggle task: one coalesced, stale notification.
+        yield* send(MenuMessage.make({ _tag: "Set", open: false }))
+        yield* send(MenuMessage.make({ _tag: "Set", open: true }))
+        yield* settle
+        expect(root.model()!.log.at(-1)).toBe("open->open")
+        expect(stub.showing.has(menu()!)).toBe(true)
+        expect(shows(stub.calls)).toBe(3)
+        yield* send(MenuMessage.make({ _tag: "Set", open: false }))
+        yield* settle
+        expect(stub.showing.has(menu()!)).toBe(false)
+        expect(stub.calls.at(-1)).toBe("hidePopover Menu")
+      }).pipe(Effect.scoped))
+
+    it.effect("a manual popover with no toggle handler is put back by the host alone", () =>
+      Effect.gen(function*() {
+        const stub = yield* popoverStub
+        const host = BrowserHost.makeHost(document)
+        yield* Effect.addFinalizer(() => Effect.sync(() => host.dispose()))
+        const element = (yield* container).appendChild(document.createElement("div"))
+        host.setAttr(element, "popover", "manual")
+        host.setProp(element, "popoverOpen", true)
+        host.commit?.()
+        stub.run()
+        // Nothing re-renders: the toggle's reconciliation alone shows it again.
+        stub.dismiss(element)
+        stub.run()
+        yield* tick
+        expect(stub.showing.has(element)).toBe(true)
+        stub.run()
+        yield* tick
+        expect(shows(stub.calls)).toBe(2)
+      }).pipe(Effect.scoped))
+
+    it.effect("an auto popover is followed: a light dismiss is reported and never reverted", () =>
+      Effect.gen(function*() {
+        const following = yield* mountMenu({ mode: "auto", open: true, follow: true })
+        yield* following.settle
+        following.stub.dismiss(following.menu()!)
+        yield* following.settle
+        expect(following.root.model()!.open).toBe(false)
+        expect(shows(following.stub.calls)).toBe(1)
+
+        // A Model that ignores the toggle still says open, and the popover stays closed across renders.
+        const ignoring = yield* mountMenu({ mode: "auto", open: true, follow: false })
+        yield* ignoring.settle
+        ignoring.stub.dismiss(ignoring.menu()!)
+        yield* ignoring.settle
+        expect(ignoring.root.model()!.open).toBe(true)
+        expect(ignoring.stub.showing.has(ignoring.menu()!)).toBe(false)
+        // It shows again only once the Model's value goes to false and back.
+        yield* ignoring.send(MenuMessage.make({ _tag: "Set", open: false }))
+        yield* ignoring.send(MenuMessage.make({ _tag: "Set", open: true }))
+        expect(ignoring.stub.showing.has(ignoring.menu()!)).toBe(true)
+      }).pipe(Effect.scoped))
+
+    it.effect("a coalesced toggle with equal states still reaches the Model, which converges on the latest", () =>
+      Effect.gen(function*() {
+        const { menu, root, send, settle, stub } = yield* mountMenu({ mode: "auto", open: false, follow: true })
+        // The Model opens it, and the browser dismisses it before the toggle task: one `closed->closed`.
+        yield* send(MenuMessage.make({ _tag: "Set", open: true }))
+        stub.dismiss(menu()!)
+        yield* settle
+        expect(root.model()!.log).toEqual(["closed->closed"])
+        expect(root.model()!.open).toBe(false)
+        yield* settle
+        expect(stub.showing.has(menu()!)).toBe(false)
+        expect(shows(stub.calls)).toBe(1)
+      }).pipe(Effect.scoped))
+
+    it.effect("a mode change applies the Model's state under the new mode", () =>
+      Effect.gen(function*() {
+        const { menu, send, settle, stub } = yield* mountMenu({ mode: "manual", open: true, follow: false })
+        // Changing the attribute hides it; the new mode shows it again from the Model.
+        yield* send(MenuMessage.make({ _tag: "Mode", mode: "auto" }))
+        expect(stub.showing.has(menu()!)).toBe(true)
+        yield* settle
+        stub.dismiss(menu()!)
+        yield* settle
+        expect(stub.showing.has(menu()!)).toBe(false)
+        yield* send(MenuMessage.make({ _tag: "Mode", mode: "manual" }))
+        expect(stub.showing.has(menu()!)).toBe(true)
+        expect(shows(stub.calls)).toBe(3)
+      }).pipe(Effect.scoped))
+
+    it.effect("a detached or removed popover is never shown, and a popover in a modal opens after it", () =>
+      Effect.gen(function*() {
+        const { menu, root, send, stub } = yield* mountMenu({ mode: "manual", open: true, follow: false })
+        const host = BrowserHost.makeHost(document)
+        yield* Effect.addFinalizer(() => Effect.sync(() => host.dispose()))
+        const detached = document.createElement("div")
+        host.setAttr(detached, "popover", "manual")
+        host.setProp(detached, "popoverOpen", true)
+        // showPopover would throw on it.
+        host.commit?.()
+        expect(stub.calls).toEqual(["showPopover Menu"])
+
+        const shown = menu()!
+        yield* send(MenuMessage.make({ _tag: "Remove" }))
+        expect(menu()).toBeNull()
+        yield* send(MenuMessage.make({ _tag: "Set", open: false }))
+        yield* send(MenuMessage.make({ _tag: "Set", open: true }))
+        expect(stub.calls.filter((call) => call.startsWith("showPopover"))).toHaveLength(1)
+        expect(root.model()!.log).toEqual([])
+        expect(shown.isConnected).toBe(false)
+
+        stub.calls.length = 0
+        yield* BrowserHost.mountEffect(ModalMenu, {}, yield* container)
+        // A modal opening closes the auto popovers showing, so the popover in it opens after it.
+        expect(stub.calls).toEqual(["showModal Settings", "showPopover Menu"])
       }).pipe(Effect.scoped))
   })
 

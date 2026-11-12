@@ -67,11 +67,20 @@ describe("NoteEditor", () => {
         .check((story) => assert.isFalse(story.defaultPrevented)))
   })
 
-  it("asks before discarding, and Escape keeps the changes", () => {
+  it("discards from the actions menu after asking, and Escape keeps the changes", () => {
     const discard = HtmlQuery.role("dialog", { name: "Discard your changes?" })
+    const actions = HtmlQuery.role("menu", { name: "Note actions" })
+    // A closed popover is hidden from role queries, so opening it finds it with `hidden`.
+    const closedActions = HtmlQuery.role("menu", { name: "Note actions", hidden: true })
     Story.make(NoteEditor, { note }, (s) =>
       s.fire(body, "input", { value: edited.body })
+        // The browser opens the menu from its button; a story sends the
+        // toggle the browser host would.
+        .fire(closedActions, "toggle", { open: true, newState: "open", oldState: "closed" })
+        .check((story) => assert.strictEqual(HtmlQuery.popoverState(story.get(actions)), "open"))
         .click("Discard changes")
+        // Choosing an item closes the menu.
+        .check((story) => assert.isUndefined(story.query(actions)))
         // A dialog's state is `props.open` in a story: closed, open or modal.
         .check((story) => assert.strictEqual(HtmlQuery.dialogState(story.get(discard)), "modal"))
         // Escape is a close request, sent to `onCancel`. Here `update` closes
@@ -80,6 +89,7 @@ describe("NoteEditor", () => {
         .fire(discard, "cancel")
         .check((story) => assert.isUndefined(story.query(discard)))
         .model((model) => assert.strictEqual(model.draft, edited.body))
+        .fire(closedActions, "toggle", { open: true, newState: "open", oldState: "closed" })
         .click("Discard changes")
         // The dialog's form is the app's: its choice is in `entries`.
         .fire(Query.inside(discard, Query.tag("form")), "submit", {

@@ -23,6 +23,15 @@
  * to switch between modal and non-modal. A dialog removed while modal is
  * simply gone: the browser takes it out of the top layer.
  *
+ * A popover's `popoverOpen` is shown with `showPopover()` at the commit,
+ * after the modal dialogs, since a modal opening closes the auto popovers
+ * already showing, and hidden with `hidePopover()`. A `"manual"` popover is
+ * applied at every commit and put back on the frame after any other change;
+ * an `"auto"` one is applied only when the Model's value or the mode
+ * changes, and the browser's changes are left for the Model to follow.
+ * Every `toggle` is sent, including a coalesced one whose states are equal,
+ * since it may be the only report of a change.
+ *
  * A handler set with `{ preventDefault: true }` cancels its event's default
  * when it produces a message, before the message is sent, and leaves the
  * event alone when it returns `undefined`. Nothing else is cancelled, and the
@@ -150,7 +159,7 @@ const dragSourceEvents: ReadonlyArray<string> = ["dragstart", "dragend"]
 /** Events the host listens to whether or not a handler wants them. */
 const alwaysEvents: ReadonlyArray<string> = [...changeEvents, "submit"]
 
-const controlled: ReadonlySet<string> = new Set(["value", "checked", "selected", "open"])
+const controlled: ReadonlySet<string> = new Set(["value", "checked", "selected", "open", "popoverOpen"])
 
 const emptyValue = (name: string): unknown => name === "value" ? "" : false
 
@@ -215,8 +224,21 @@ const payloadOf = (name: string, event: Event, target: EventTarget | null, eleme
       const form = (element.localName === "form" ? element : target) as HTMLFormElement
       return fieldsOf(form, (event as SubmitEvent).submitter ?? null)
     }
-    case "toggle":
-      return { open: (element as HTMLDetailsElement).open === true }
+    case "toggle": {
+      const e = event as Partial<ToggleEvent>
+      // A popover's state is its own; a `details` or `dialog` reads `open`, with states derived where the
+      // browser has no `ToggleEvent`.
+      const open = element.hasAttribute("popover")
+        ? e.newState === "open"
+        : (element as HTMLDetailsElement).open === true
+      const newState = e.newState === "open" || e.newState === "closed" ? e.newState : open ? "open" : "closed"
+      const oldState = e.oldState === "open" || e.oldState === "closed"
+        ? e.oldState
+        : newState === "open"
+        ? "closed"
+        : "open"
+      return { open, newState, oldState }
+    }
     case "close":
       return { returnValue: (element as HTMLDialogElement).returnValue ?? "" }
     case "scroll":
@@ -356,6 +378,52 @@ export const makeHost = (
     showingsOf(dialog).push({ modeChange: false, closed: false })
   }
 
+  // -- popovers ----------------------------------------------------------------
+  // A popover's `popoverOpen` is separate from `open`. A manual popover is applied at every commit and put
+  // back after any other change; an auto popover is applied only when the Model's value or the mode
+  // changes, and the browser's changes are left for the Model to follow. `showPopover()` needs a connected
+  // element with the attribute, so a popover is shown at the commit, after the modal dialogs: a modal
+  // opening closes the auto popovers already showing.
+  /** Popovers whose Model says open, shown at the next commit. */
+  const popoversToShow = new Set<HTMLElement>()
+  /** The mode each popover's state was last applied under. */
+  const popoverModes = new WeakMap<globalThis.Node, string | null>()
+
+  const popoverShowing = (element: HTMLElement): boolean => {
+    try {
+      return element.matches(":popover-open")
+    } catch {
+      return false
+    }
+  }
+
+  /** Applies the Model's state: hiding at once, showing at the commit, or at once when `now` and it can. */
+  const applyPopover = (element: HTMLElement, want: boolean, now = false) => {
+    if (want) {
+      if (!now) popoversToShow.add(element)
+      else if (element.isConnected && element.hasAttribute("popover") && !popoverShowing(element)) {
+        element.showPopover()
+      }
+      return
+    }
+    popoversToShow.delete(element)
+    if (popoverShowing(element)) element.hidePopover()
+  }
+
+  /** Shows the popovers queued for this commit that are still connected and wanted, in document order. */
+  const showPopovers = () => {
+    if (popoversToShow.size === 0) return
+    const popovers = [...popoversToShow]
+    popoversToShow.clear()
+    popovers.sort((a, b) => (a.compareDocumentPosition(b) & 4) !== 0 ? -1 : 1)
+    for (const element of popovers) {
+      // One that left the document is forgotten; a render that brings it back queues it again.
+      if (!element.isConnected || !element.hasAttribute("popover")) continue
+      if (wanted.get(element)?.get("popoverOpen") !== true || popoverShowing(element)) continue
+      element.showPopover()
+    }
+  }
+
   const restoreNode = (node: globalThis.Node) => {
     const values = wanted.get(node)
     if (values === undefined) return
@@ -364,6 +432,12 @@ export const makeHost = (
       if (name === "open" && isDialog(node)) {
         // A dialog that left the document can't be shown; a later commit shows it if it comes back.
         if (node.isConnected) showDialog(node, value as boolean | "modal")
+      } else if (name === "popoverOpen") {
+        // Only a manual popover is put back. An auto popover's changes are the browser's, for the Model
+        // to follow.
+        if ((node as globalThis.Element).getAttribute("popover") === "manual") {
+          applyPopover(node as HTMLElement, value === true, true)
+        }
       } else if (element[name] !== value) element[name] = value
     }
   }
@@ -664,6 +738,23 @@ export const makeHost = (
     },
     setProp(node, name, value) {
       const element = node as any
+      if (name === "popoverOpen") {
+        const want = value === true
+        let values = wanted.get(node)
+        if (values === undefined) {
+          values = new Map()
+          wanted.set(node, values)
+        }
+        const previous = values.get(name)
+        values.set(name, want)
+        const mode = (node as globalThis.Element).getAttribute("popover")
+        const modeChanged = popoverModes.get(node) !== mode
+        popoverModes.set(node, mode)
+        // Edge-triggered: an auto popover the browser closed stays closed until the Model's value changes.
+        if (mode === "auto" && !modeChanged && previous === want) return
+        applyPopover(node as HTMLElement, want)
+        return
+      }
       if (name === "open" && isDialog(node)) {
         const want = value === "modal" ? "modal" : value === true
         let values = wanted.get(node)
@@ -746,7 +837,7 @@ export const makeHost = (
       getAttr: (node, name) => (node as globalThis.Element).getAttribute(name) ?? undefined
     },
     commit() {
-      if (modalWanted.size === 0) return
+      if (modalWanted.size === 0) return showPopovers()
       const dialogs: Array<HTMLDialogElement> = []
       for (const dialog of modalWanted) {
         // A dialog that left the tree for good is forgotten. One that's back is shown again.
@@ -756,6 +847,7 @@ export const makeHost = (
       // Document order: a dialog opens before one nested in it or after it, which then stacks on top.
       dialogs.sort((a, b) => (a.compareDocumentPosition(b) & 4) !== 0 ? -1 : 1)
       for (const dialog of dialogs) showDialog(dialog, "modal")
+      showPopovers()
     },
     dispose: () => {
       for (const [name, f] of listening) document.removeEventListener(name, f, { capture: true })

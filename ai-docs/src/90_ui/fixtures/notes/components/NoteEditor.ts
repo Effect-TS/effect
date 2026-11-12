@@ -11,6 +11,7 @@ export const NoteEditorMessage = Schema.TaggedUnion({
   Saved: { note: Note },
   SaveFailed: { reason: Schema.String },
   AskDiscard: {},
+  ActionsToggled: { open: Schema.Boolean },
   Answered: { choice: Schema.String },
   KeepEditing: {}
 })
@@ -52,13 +53,21 @@ export const NoteEditorNoDeps = Component.make({
     saved: Schema.String,
     edits: Schema.Number,
     error: Schema.NullOr(Schema.String),
-    confirming: Schema.Boolean
+    confirming: Schema.Boolean,
+    actionsOpen: Schema.Boolean
   }),
   message: NoteEditorMessage,
   events: NoteEditorEvents,
   // `init`, `update` and `view` are pure. They read props from `$.props` and
   // `h.props`. A props change re-renders, but never reaches `update`.
-  init: ($) => ({ draft: $.props.note.body, saved: $.props.note.body, edits: 0, error: null, confirming: false }),
+  init: ($) => ({
+    draft: $.props.note.body,
+    saved: $.props.note.body,
+    edits: 0,
+    error: null,
+    confirming: false,
+    actionsOpen: false
+  }),
   update: (model, message, $) =>
     NoteEditorMessage.match(message, {
       // With nothing to run or emit, return the next Model.
@@ -80,7 +89,11 @@ export const NoteEditorNoDeps = Component.make({
       Saved: ({ note }) => $.set({ ...model, saved: note.body }).emit(NoteEditorEvents.make({ _tag: "Saved", note })),
       SaveFailed: ({ reason }) => ({ ...model, error: reason }),
       // The confirm dialog's state is in the Model, like any other.
-      AskDiscard: () => ({ ...model, confirming: true }),
+      // Choosing a menu item closes the menu; the Model says so.
+      AskDiscard: () => ({ ...model, confirming: true, actionsOpen: false }),
+      // An auto popover is followed: the browser opens it from its button and
+      // closes it on Escape or a click outside, and the Model keeps up.
+      ActionsToggled: ({ open }) => ({ ...model, actionsOpen: open }),
       Answered: ({ choice }) =>
         choice === "discard"
           ? { ...model, draft: model.saved, confirming: false }
@@ -129,8 +142,21 @@ export const NoteEditorNoDeps = Component.make({
         // `h.isRunning` is true while this instance has a save queued or running.
         h.button(h.isRunning(SaveNote) ? "Saving…" : "Save").attr("type", "submit")
           .disabled(model.draft === model.saved),
-        h.button("Discard changes").attr("type", "button").disabled(model.draft === model.saved)
-          .onClick(NoteEditorMessage.make({ _tag: "AskDiscard" })),
+        // A menu is an auto popover in the top layer, so no ancestor's
+        // `overflow` clips it. Its button is a `popovertarget` invoker: the
+        // browser opens and closes it with no handler, and `onToggle` keeps
+        // the Model in step with that and with Escape or a click outside.
+        // CSS anchor positioning puts the menu under its button; a browser
+        // without it shows the menu centred.
+        h.button("More actions").attr("type", "button").attr("popovertarget", `actions-${h.props.note.id}`)
+          .attr("style", `anchor-name: --actions-${h.props.note.id}`),
+        h.div(
+          h.button("Discard changes").attr("type", "button").disabled(model.draft === model.saved)
+            .onClick(NoteEditorMessage.make({ _tag: "AskDiscard" }))
+        ).attr("id", `actions-${h.props.note.id}`).attr("role", "menu").attr("aria-label", "Note actions")
+          .attr("style", `position-anchor: --actions-${h.props.note.id}; position-area: bottom span-left; margin: 0`)
+          .popover("auto", model.actionsOpen)
+          .onToggle(({ open }) => NoteEditorMessage.make({ _tag: "ActionsToggled", open })),
         model.error !== null && h.p(model.error).attr("role", "alert")
       ).attr("aria-label", "Edit note").onSubmit(NoteEditorMessage.make({ _tag: "Save" })),
       // A modal dialog is open while the Model says so. The browser host shows
