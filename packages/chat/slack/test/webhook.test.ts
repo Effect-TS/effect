@@ -143,6 +143,13 @@ describe("webhook", () => {
         yield* Effect.promise(() => request(body))
       )
       assert.strictEqual(slow.status, 503)
+      // The deadline covers the bot user lookup too.
+      const slowBot = yield* handle(
+        { botUserId: Effect.never, deadline: Duration.millis(20) },
+        yield* Effect.promise(() => request(body))
+      )
+      assert.strictEqual(slowBot.status, 503)
+      assert.strictEqual(slowBot.events.length, 0)
     }))
 
   it.live("layerWebhook serves the path", () =>
