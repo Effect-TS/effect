@@ -2525,6 +2525,12 @@ describe("toJsonSchemaDocument", () => {
         pattern: "^(?:a\\.b|1)_$"
       }
     })
+    assertJsonSchemaDocument(Schema.TemplateLiteral([Schema.Enum({}), "_"]), {
+      schema: {
+        type: "string",
+        pattern: "^(?!)_$"
+      }
+    })
   })
 
   describe("TemplateLiteral segments", () => {
