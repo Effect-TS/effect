@@ -521,16 +521,18 @@ const paramFieldsOf = (route: Any): Schema.Struct.Fields =>
 /** A query field as the parser and the printer see it. */
 interface QueryField {
   readonly key: string
-  /** Decodes `{ [key]: raw }` to `{ [key]: value }`. */
+  /**
+   * Decodes `{ [key]: raw }` to `{ [key]: value }`. An optional or defaulted field also decodes
+   * `{}`, its key absent, and a default is evaluated each time.
+   */
   readonly decode: (raw: unknown) => Option.Option<object>
-  /** What the field decodes to with its key absent, if it does: an optional or defaulted field. */
-  readonly absent: Option.Option<object>
   /** The encoded default, which `print` leaves out. */
   readonly omit: unknown
 }
 
 const queryFieldOf = (key: string, field: Schema.Constraint): QueryField => {
   const codec = Schema.toCodecStringTree(Schema.Struct({ [key]: field })) as unknown as Schema.Codec<object, unknown>
+  // The default as it is now, once: `print` leaves out a param equal to this one.
   const absent = decodeAbsent(codec)
   let omit: unknown = undefined
   if (Option.isSome(absent) && Object.hasOwn(absent.value, key)) {
@@ -540,7 +542,7 @@ const queryFieldOf = (key: string, field: Schema.Constraint): QueryField => {
       // A default that doesn't encode is always printed.
     }
   }
-  return { key, decode: Schema.decodeUnknownOption(codec), absent, omit }
+  return { key, decode: Schema.decodeUnknownOption(codec), omit }
 }
 
 const sameEncoded = (a: unknown, b: unknown): boolean =>
@@ -550,7 +552,8 @@ const sameEncoded = (a: unknown, b: unknown): boolean =>
 /**
  * Decodes the declared fields one by one: each from its raw value, or from a lone value wrapped
  * for an array field. A value that fails, or a repeated key on a single-valued field, is treated
- * as absent when the field is optional or defaulted, and makes the URL a 404 otherwise.
+ * as absent when the field is optional or defaulted, and makes the URL a 404 otherwise. Absence is
+ * decoded for each URL, since a default is an Effect.
  */
 const decodeQuery = (
   fields: ReadonlyArray<QueryField>,
@@ -560,13 +563,13 @@ const decodeQuery = (
   const invalid: Array<string> = []
   for (const field of fields) {
     const raw = Object.hasOwn(query, field.key) ? query[field.key] : undefined
-    let decoded = raw === undefined ? field.absent : field.decode({ [field.key]: raw })
+    let decoded = field.decode(raw === undefined ? {} : { [field.key]: raw })
     if (Option.isNone(decoded) && typeof raw === "string") decoded = field.decode({ [field.key]: [raw] })
-    if (Option.isNone(decoded)) {
-      if (Option.isNone(field.absent)) return Option.none()
+    if (Option.isNone(decoded) && raw !== undefined) {
+      decoded = field.decode({})
       invalid.push(field.key)
-      decoded = field.absent
     }
+    if (Option.isNone(decoded)) return Option.none()
     entries.push(...Object.entries(decoded.value))
   }
   return Option.some({ value: Object.fromEntries(entries), invalid })

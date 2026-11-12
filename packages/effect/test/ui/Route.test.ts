@@ -103,6 +103,19 @@ describe("Route", () => {
     )
   })
 
+  it("evaluates a query field's decoding default for each URL", () => {
+    let fallback = 1
+    const routes = Route.union({
+      Search: Route.make("/search", {
+        query: { page: Schema.Number.pipe(Schema.withDecodingDefaultKey(Effect.sync(() => fallback))) }
+      })
+    })
+    fallback = 2
+    assert.strictEqual(Option.getOrThrow(routes.parse("/search")).query.page, 2)
+    fallback = 3
+    assert.strictEqual(Option.getOrThrow(routes.parse("/search?page=abc")).query.page, 3)
+  })
+
   it("treats Object.prototype names as ordinary query keys", () => {
     const routes = makeRoutes()
     assert.strictEqual(parse(routes, "/?constructor=x")?._tag, "Home")
