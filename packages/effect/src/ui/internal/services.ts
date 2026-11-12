@@ -23,6 +23,8 @@ export const Refs = Context.Service<RefsShape, RefsShape>("effect/ui/Renderer/Re
 export interface RootHandle {
   /** Whether the root actually adopted a server Model, including after a deferred Layer resolves. */
   readonly hydrated: boolean
+  /** Whether the root's server state came from a `static: true` render: it carries `~static`. */
+  readonly static: boolean
   readonly container: unknown
   /** The current flush: 0 for the first render, then one more per flush. */
   readonly flush: () => number

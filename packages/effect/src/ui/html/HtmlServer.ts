@@ -135,8 +135,11 @@ const serverHtmlHost: Context.Service.Shape<typeof Html.Host> = {
  * `static: true` is for HTML built at deploy or held in a CDN, where the
  * data's age is unknown. The client then hydrates every entry stale: it is
  * invalidated at hydration, and refetched once, unless its read's
- * `staleTime` is `"Infinity"`. There is no fetch-free window. The default
- * is HTML rendered per request, whose entries hydrate fresh.
+ * `staleTime` is `"Infinity"`. There is no fetch-free window. A page
+ * prerendered without a query, such as `/search`, may be served for
+ * `/search?q=x`: `Router.subscription` then delivers the Router's route
+ * without reporting `RouteMismatch`. The default is HTML rendered per
+ * request, whose entries hydrate fresh.
  *
  * **Gotchas**
  *

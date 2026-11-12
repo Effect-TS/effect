@@ -130,13 +130,55 @@ describe("Router", { concurrent: false }, () => {
   })
 
   it.effect("removes query params dropped as invalid from the URL, keeping the others", () => {
-    const routes = Route.union({ Search: Route.make("/", { query: { page: Schema.optional(Schema.Number) } }) })
+    const routes = Route.union({
+      Search: Route.make("/", {
+        query: { page: Schema.optional(Schema.Number), sort: Schema.optional(Schema.String) }
+      })
+    })
     const history = Router.memoryHistory("/?utm=x&page=abc")
     return Effect.gen(function*() {
       const router = yield* Router.Router
       assert.deepStrictEqual(history.entries(), ["/?utm=x"])
-      yield* router.navigate("/?page=x&utm=y")
-      assert.deepStrictEqual(history.entries(), ["/?utm=x", "/?utm=y"])
+      yield* router.navigate("/?page=x&sort=a&utm=y")
+      assert.deepStrictEqual(history.entries(), ["/?utm=x", "/?sort=a&utm=y"])
+    }).pipe(Effect.provide(Router.memory({ routes, history })))
+  })
+
+  it.effect("does nothing for a navigation to a route that prints the same as the current one", () => {
+    const routes = Route.union({
+      Home: Route.make("/"),
+      Search: Route.make("/search", { query: { q: Schema.optional(Schema.String) } })
+    })
+    const history = Router.memoryHistory("/search?q=x&utm=1")
+    const x = routes.make({ _tag: "Search", query: { q: "x" } })
+    return Effect.gen(function*() {
+      const router = yield* Router.Router
+      const messages: Array<typeof routes.Type> = []
+      yield* Stream.runForEach(
+        Router.subscription(routes, x, (route) => route).stream,
+        (route) => Effect.sync(() => messages.push(route))
+      ).pipe(Effect.forkScoped)
+      yield* Effect.yieldNow
+      assert.strictEqual(yield* router.replace(x), "navigated")
+      assert.strictEqual(yield* router.push(x), "navigated")
+      assert.strictEqual(yield* router.navigate("/search?utm=2&q=x"), "navigated")
+      assert.strictEqual(yield* router.navigate("/search?q=x", { replace: true }), "navigated")
+      yield* Effect.yieldNow
+      assert.deepStrictEqual(history.entries(), ["/search?q=x&utm=1"])
+      assert.strictEqual(router.location().seq, 0)
+      assert.strictEqual(router.location().url, "/search?q=x&utm=1")
+      // A new hash alone is a hash change on the current URL.
+      yield* router.navigate("/search?q=x#top")
+      assert.deepStrictEqual(history.entries(), ["/search?q=x&utm=1", "/search?q=x&utm=1#top"])
+      assert.strictEqual(router.location().seq, 0)
+      yield* Effect.yieldNow
+      assert.deepStrictEqual(messages, [])
+      const y = routes.make({ _tag: "Search", query: { q: "y" } })
+      yield* router.replace(y)
+      yield* Effect.yieldNow
+      assert.deepStrictEqual(history.entries(), ["/search?q=x&utm=1", "/search?q=y"])
+      assert.strictEqual(router.location().seq, 1)
+      assert.deepStrictEqual(messages, [y])
     }).pipe(Effect.provide(Router.memory({ routes, history })))
   })
 

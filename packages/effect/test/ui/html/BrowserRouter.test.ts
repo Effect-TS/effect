@@ -1,13 +1,31 @@
 // @vitest-environment happy-dom
 import { assert, expect, it } from "@effect/vitest"
-import { Context, Effect, Exit, Layer, Option, Scope } from "effect"
+import { Context, Effect, Exit, Layer, Option, Schema, Scope } from "effect"
 import { Loader } from "effect/reactivity"
 import { TestClock } from "effect/testing"
-import { Component, Router } from "effect/ui"
-import { BrowserHost, BrowserRouter, HtmlServer } from "effect/ui/html"
+import { Component, Route, Router } from "effect/ui"
+import { BrowserHost, BrowserRouter, Html, HtmlServer } from "effect/ui/html"
 import { HtmlQuery } from "effect/ui/html/testing"
 import { describe } from "vitest"
 import { App, AppRoute, People } from "./fixtures/routed.ts"
+
+const SearchRoute = Route.union({
+  Search: Route.make("/search", { query: { q: Schema.optional(Schema.String) } }),
+  Other: Route.make("/other")
+})
+
+/** A root that holds a route with an optional query. */
+const SearchApp = Component.make({
+  name: "SearchApp",
+  props: Schema.Struct({ route: SearchRoute }),
+  model: SearchRoute,
+  message: SearchRoute,
+  elements: Html,
+  init: ($) => $.props.route,
+  update: (_, route) => route,
+  subscriptions: (route) => [Router.subscription(SearchRoute, route, (next) => next)],
+  view: (route, h) => h.h1(SearchRoute.print(route))
+})
 
 /** Lets popstate, the render flush, Commands and the announcement frame run. */
 const tick = Effect.promise(() => new Promise<void>((resolve) => setTimeout(resolve, 30)))
@@ -142,6 +160,51 @@ describe("BrowserRouter", { concurrent: false }, () => {
       assert.strictEqual(problems.length, 1)
       assert.strictEqual(problems[0]._tag, "RouteMismatch")
     }).pipe(Effect.provide(People.layer), Effect.provideService(Loader.Problems, (problem) => problems.push(problem)))
+  })
+
+  it.effect("exempts roots hydrated from a static render when only the query differs", () => {
+    const problems: Array<Loader.Problem.Any> = []
+    const search = SearchRoute.make({ _tag: "Search", query: {} })
+    const prerender = (url: string, route: typeof SearchRoute.Type, isStatic: boolean) =>
+      HtmlServer.renderToHtml(SearchApp, { route }, { static: isStatic }).pipe(
+        Effect.provide(Router.static({ routes: SearchRoute, url }))
+      )
+    const hydrate = Effect.fnUntraced(function*(
+      context: Context.Context<Router.Services>,
+      rendered: HtmlServer.Rendered<unknown>
+    ) {
+      const element = yield* container
+      element.innerHTML = rendered.html
+      const root = yield* Effect.flatMap(
+        Router.currentRoute(SearchRoute),
+        (route) => BrowserHost.mountEffect(SearchApp, { route }, element, { state: rendered.state })
+      ).pipe(Effect.provideContext(context))
+      yield* tick
+      return root
+    })
+    const mismatches = () => problems.filter((problem) => problem._tag === "RouteMismatch").length
+    return Effect.gen(function*() {
+      const prerendered = yield* prerender("/search", search, true)
+      const dynamic = yield* prerender("/search", search, false)
+      const other = yield* prerender("/other", SearchRoute.make({ _tag: "Other" }), true)
+      window.history.replaceState(null, "", "/search?q=x")
+      const context = yield* Layer.build(BrowserRouter.layer({ routes: SearchRoute }))
+
+      // Static, query only: no report, and the route is delivered.
+      const root = yield* hydrate(context, prerendered)
+      assert.deepStrictEqual(root.model(), SearchRoute.make({ _tag: "Search", query: { q: "x" } }))
+      assert.strictEqual(mismatches(), 0)
+
+      // A dynamic render with another query is the bug the check exists for.
+      const fromDynamic = yield* hydrate(context, dynamic)
+      assert.deepStrictEqual(fromDynamic.model(), SearchRoute.make({ _tag: "Search", query: { q: "x" } }))
+      assert.strictEqual(mismatches(), 1)
+
+      // A static render of another path still reports.
+      const fromOther = yield* hydrate(context, other)
+      assert.deepStrictEqual(fromOther.model(), SearchRoute.make({ _tag: "Search", query: { q: "x" } }))
+      assert.strictEqual(mismatches(), 2)
+    }).pipe(Effect.provideService(Loader.Problems, (problem) => problems.push(problem)))
   })
 
   it.effect("checks hash roots that cannot adopt a server Model", () => {

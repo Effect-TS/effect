@@ -564,6 +564,8 @@ const setup = (
   let waiting = 0
   let started = false
   let adoptedDone = hydrating === undefined
+  // Kept past adoption, which drops `hydrating`: the Router reads it when the root's first route arrives.
+  const fromStatic = hydrating?.state["~static"] === true
   const adoptedWaiters: Array<() => void> = []
   const settleWaiting = () => {
     waiting--
@@ -3130,6 +3132,7 @@ const setup = (
       get hydrated() {
         return root.adoptsChildren
       },
+      static: fromStatic,
       flush: () => flushes,
       flushing: () => rendering,
       snapshot,

@@ -134,7 +134,10 @@ export type Outcome = "navigated" | "blocked"
  * `changes` starts with the current location, then emits each route change.
  * A change to the `#hash` alone within the same route isn't a route change.
  * `navigate` takes an href: one the routes parse is pushed (or replaced), and
- * anything else is a full page load.
+ * anything else is a full page load. A navigation to the current route, with
+ * the same tag and printed route, keeps the URL with its undeclared params,
+ * so it bumps no sequence and delivers no route; only a new `#hash` is
+ * written.
  *
  * @stability experimental
  * @category models
@@ -427,7 +430,10 @@ export const props = <U extends Routes>(routes: U): Effect.Effect<{ readonly rou
  * Pass the route held in the Model. The first location is suppressed when its
  * tag and printed URL match that route. Otherwise it is delivered, and a
  * `RouteMismatch` is reported if the Router has not navigated (sequence 0).
- * Hydrated hash roots skip that report. Later locations are always delivered.
+ * Hydrated hash roots skip that report, and so do roots hydrated from a
+ * `static: true` render whose route differs from the Router's in its query
+ * only, as a page prerendered at `/search` and opened at `/search?q=x`.
+ * Later locations are always delivered.
  * The key stays stable as the held route changes. A subset only sees its own
  * routes. On the server the root is checked once without running its Streams,
  * regardless of the navigation sequence.
@@ -458,6 +464,9 @@ export const subscription = <U extends Routes, Msg>(
   const union: Route.AnyUnion = routes
   const have = union.print(held)
   const same = (route: { readonly _tag: string }) => route._tag === held._tag && union.print(route) === have
+  /** Whether the route differs from the held one in its query only. */
+  const samePath = (route: { readonly _tag: string }) =>
+    route._tag === held._tag && union.printPath(route) === union.printPath(held)
   const mismatch = (route: { readonly _tag: string }) => {
     const router = union.print(route)
     return new RouteMismatch({
@@ -479,7 +488,11 @@ export const subscription = <U extends Routes, Msg>(
     if (Option.isNone(route)) return Option.none()
     if (initial) {
       if (same(route.value)) return Option.none()
-      if (location.seq === 0 && !(router.routes.base() === "#" && root?.hydrated)) {
+      // A hydrated hash root rendered a shell, and a root hydrated from a static render was prerendered
+      // without the query: neither could hold the Router's route.
+      const exempt = root?.hydrated === true &&
+        (router.routes.base() === "#" || (root.static && samePath(route.value)))
+      if (location.seq === 0 && !exempt) {
         try {
           report(mismatch(route.value))
         } catch {
@@ -1146,14 +1159,19 @@ const build = (options: Options): Effect.Effect<Context.Context<Router>, never, 
       }
       const route = found.value.route
       const printed = canonical(routes, found.value, url)
-      if (printed === current.url) {
+      // A route equal to the current one, by tag and printed route, keeps the URL with its undeclared
+      // params and isn't a navigation. Only the hash can change.
+      if (
+        printed === current.url ||
+        (route._tag === current.route._tag && routes.print(route) === routes.print(current.route))
+      ) {
         if (hash === current.hash) return "navigated"
         // A change to the hash alone: a new entry, and no route change.
-        if (replace) history.replace(printed + hash, writeState({ index }))
+        if (replace) history.replace(current.url + hash, writeState({ index }))
         else {
           leave()
           index++
-          history.push(printed + hash, writeState({ index }))
+          history.push(current.url + hash, writeState({ index }))
         }
         current = { ...current, hash }
         options.onHash?.(hash, "push", index)
