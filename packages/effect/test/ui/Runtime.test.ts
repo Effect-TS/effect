@@ -1240,7 +1240,7 @@ describe("Runtime", () => {
           assert.strictEqual(root.text(), "[a][b]")
         })))
 
-      it.effect("its first builder unmounting mid-build leaves the other users to mount normally", () =>
+      it.effect("its first builder unmounting mid-build leaves every other user to mount normally", () =>
         provideHost(Effect.gen(function*() {
           let builds = 0
           const slow = Layer.effect(
@@ -1249,16 +1249,44 @@ describe("Runtime", () => {
           )
           const A = Component.provide(StoreId, ReadStore.layer.pipe(Layer.provide(slow)))
           const B = Component.provide(StoreId, ReadStore.layer.pipe(Layer.provide(slow)))
-          const root = yield* TestHost.mount(Siblings({ a: A, b: B }), {})
+          const C = Component.provide(StoreId, ReadStore.layer.pipe(Layer.provide(slow)))
+          const root = yield* TestHost.mount(Siblings({ a: A, b: B, c: C }), {})
           yield* TestHost.settle
           drop(root, "a")
           yield* TestHost.settle
           yield* TestClock.adjust("1 second")
           yield* TestHost.settle
-          assert.strictEqual(root.text(), "[1]")
-          const b = tags(root, "/Siblings/StoreId[b]")
-          assert.include(b, "LayerReady")
-          assert.notInclude(b, "LayerFailed")
+          assert.strictEqual(root.text(), "[1][1]")
+          for (const key of ["b", "c"]) {
+            const survivor = tags(root, `/Siblings/StoreId[${key}]`)
+            assert.include(survivor, "LayerReady")
+            assert.notInclude(survivor, "LayerFailed")
+          }
+        })))
+
+      it.effect("a Layer that interrupts itself fails once, though another build was interrupted meanwhile", () =>
+        provideHost(Effect.gen(function*() {
+          let builds = 0
+          const A = Component.provide(StoreId, ReadStore.layer.pipe(Layer.provide(Layer.effect(Store, Effect.never))))
+          const B = Component.provide(
+            StoreId,
+            ReadStore.layer.pipe(Layer.provide(Layer.effect(
+              Store,
+              Effect.sleep("1 second").pipe(
+                Effect.andThen(Effect.sync(() => builds++)),
+                Effect.andThen(Effect.interrupt)
+              )
+            ))),
+            { onFailure: () => "failed" }
+          )
+          const root = yield* TestHost.mount(Siblings({ a: A, b: B }), {})
+          yield* TestHost.settle
+          drop(root, "a")
+          yield* TestHost.settle
+          yield* TestClock.adjust("2 seconds")
+          yield* TestHost.settle
+          assert.strictEqual(builds, 1)
+          assert.strictEqual(root.text(), "[failed]")
         })))
     })
   })
