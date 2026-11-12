@@ -40,6 +40,7 @@ import * as SchemaAST from "../SchemaAST.ts"
 import * as Socket from "../socket/Socket.ts"
 import type * as Command from "./Command.ts"
 import type * as Component from "./Component.ts"
+import type * as loaders from "./internal/loaders.ts"
 
 /**
  * The service the runtime records entries to.
@@ -760,7 +761,7 @@ export const makeEncoder = (options?: {
     }
   }
   const encodeLoaded = (component: Component.Any, loaded: Component.Slots): Schema.Json => {
-    const schema = (component["~loaders"] as LoaderSchemas | undefined)?.logSchema
+    const schema = (component["~loaders"] as loaders.Bound | undefined)?.logSchema
     return schema === undefined
       ? { "~unserialisable": "encode" }
       : cap(encodeWith(schema, `${component.name}.loaders`, loaded) as Schema.Json)
@@ -809,7 +810,7 @@ export const makeEncoder = (options?: {
             props: through(entry.component, "props", entry.props) as Schema.Json
           }
         case "LoaderChanged": {
-          const schema = (entry.component["~loaders"] as LoaderSchemas | undefined)?.logSchemas[entry.name]
+          const schema = (entry.component["~loaders"] as loaders.Bound | undefined)?.logSchema.fields[entry.name]
           return {
             ...base(entry),
             _tag: "LoaderChanged",
@@ -883,12 +884,6 @@ export const makeEncoder = (options?: {
       }
     }
   }
-}
-
-/** What the encoder reads of a component's bound loaders. */
-interface LoaderSchemas {
-  readonly logSchemas: { readonly [name: string]: Schema.Top }
-  readonly logSchema: Schema.Top
 }
 
 const base = (entry: Base) => ({ seq: entry.seq, at: entry.at, session: entry.session, path: entry.path })

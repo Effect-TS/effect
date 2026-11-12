@@ -352,7 +352,7 @@ export const stateCodecOf = (component: Component.Any) => {
   let found = stateCodecs.get(component)
   if (found === undefined) {
     const schema = (component as Component.Component<any, any, any, any, any, any, any>).model
-    const bound = component["~loaders"] as loaders.Bound | undefined
+    const bound = loaders.boundOf(component)
     if (bound === undefined) {
       const codec = jsonCodecOf(schema)
       found = {
@@ -680,7 +680,7 @@ const setup = (
    * was never saved: it seeds nothing, and the loader starts from loading.
    */
   const restoreLoaders = (component: Component.Any, slots: loaders.Slots | undefined): loaders.Slots | undefined => {
-    const bound = component["~loaders"] as loaders.Bound | undefined
+    const bound = loaders.boundOf(component)
     if (bound === undefined || slots === undefined) return slots
     const out: Record<string, unknown> = {}
     for (const entry of bound.entries) {
@@ -1238,6 +1238,7 @@ const setup = (
     range: Range | undefined
   ): Instance => {
     const scope = Scope.forkUnsafe(parent?.scope ?? rootScope, "sequential")
+    const bound = loaders.boundOf(component)
     const inst: Instance = {
       path,
       born: ++instancesMade,
@@ -1289,9 +1290,7 @@ const setup = (
           events: next.events,
           lists: next.lists ?? [],
           // What `update` saw in `$.loaded`, so a replay from any surviving entry sees it too.
-          ...(component["~loaders"] === undefined ? undefined : {
-            loaded: inst.slots ?? (component["~loaders"] as loaders.Bound).empty
-          })
+          ...(bound === undefined ? undefined : { loaded: inst.slots ?? bound.empty })
         })
         apply(inst, next, entrySeq, false)
       },
@@ -1500,7 +1499,6 @@ const setup = (
           adopted: Option.isSome(adopted)
         })
         // Restored or hydrated slots, so a replay of the log starts from them.
-        const bound = component["~loaders"] as loaders.Bound | undefined
         if (bound !== undefined && inst.slots !== undefined) {
           for (const entry of bound.entries) {
             const slot = inst.slots[entry.name]
@@ -1516,7 +1514,7 @@ const setup = (
       // child, so a new instance over a warm entry never commits "Loading". An instance adopting the
       // server's state renders it first, to match the server's nodes, and gets the emissions after.
       const early: NonNullable<Instance["mounting"]> = []
-      if (Option.isNone(serverModel) && component["~loaders"] !== undefined) {
+      if (Option.isNone(serverModel) && bound !== undefined) {
         inst.mounting = early
         syncSubscriptions(inst, true)
         // The keyed loaders' first values, and whatever their `onChange` causes, before the first view.
@@ -1635,7 +1633,7 @@ const setup = (
    */
   const issueList = (inst: Instance, list: Component.ListIssue) => {
     if (inst.closed) return
-    const bound = inst.component["~loaders"] as loaders.Bound | undefined
+    const bound = loaders.boundOf(inst.component)
     const field = bound?.byName.get(list.name)
     if (bound === undefined || field === undefined || !field.list) return
     const args = bound.context(inst.model, inst.props, inst.slots).argsOf(field.name).args
@@ -2109,7 +2107,7 @@ const setup = (
   /** `watchesOnly`: before the first render, when only the cache watchers register. */
   const syncSubscriptions = (inst: Instance, watchesOnly = false) => {
     const subscriptions = inst.component.subscriptions
-    const bound = inst.component["~loaders"] as loaders.Bound | undefined
+    const bound = loaders.boundOf(inst.component)
     // A waiting slot has no Model yet.
     if (inst.closed || inst.waiting || (subscriptions === undefined && bound === undefined)) return
     // Sample the root once for server checks, and loader components for their watches.
@@ -2301,7 +2299,7 @@ const setup = (
           run.changes.add(entry.argsKey)
           return requestKeyed(inst)
         }
-        const bound = inst.component["~loaders"] as loaders.Bound
+        const bound = loaders.boundOf(inst.component)!
         const loader = bound.byName.get(marker.name)!
         // It may run inside another instance's `update`: a patch registered at issue reaches every
         // watcher before that `update` returns.
@@ -2439,7 +2437,7 @@ const setup = (
     }
     run.changes.clear()
     if (!prune && changes.length === 0) return false
-    const bound = inst.component["~loaders"] as loaders.Bound
+    const bound = loaders.boundOf(inst.component)!
     const loader = bound.byName.get(group.name)!
     const slot = bound.slotMany(
       loader,
@@ -2464,7 +2462,7 @@ const setup = (
     key: string
   ) => {
     if (inst.closed || inst.waiting || frozen) return
-    const bound = inst.component["~loaders"] as loaders.Bound
+    const bound = loaders.boundOf(inst.component)!
     // The same snapshot, as when a watcher's first value is what the server or history already gave.
     if (Equal.equals((inst.slots ?? bound.empty)[loader.name], slot)) return
     inst.slots = { ...(inst.slots ?? bound.empty), [loader.name]: slot }
@@ -2605,7 +2603,7 @@ const setup = (
       // Behind a `provide`, a read the declarer can't see may be given below it: the skip is silent.
       const behind = provided || component.layer !== undefined
       const model = component.init(props).model
-      const bound = component["~loaders"] as loaders.Bound | undefined
+      const bound = loaders.boundOf(component)
       if (bound !== undefined) {
         const context = bound.context(model, props, undefined)
         for (const field of bound.entries) {

@@ -60,6 +60,7 @@ import type * as Scope from "../../../Scope.ts"
 import * as TestClock from "../../../testing/TestClock.ts"
 import type * as Component from "../../Component.ts"
 import * as Head from "../../Head.ts"
+import * as loaders from "../../internal/loaders.ts"
 import * as runtime from "../../internal/runtime.ts"
 import * as MessageLog from "../../MessageLog.ts"
 import * as Renderer from "../../Renderer.ts"
@@ -459,7 +460,7 @@ export const ssr = <Name extends string, Props, Model, Msg, Events, R, V extends
       }
       const encoded = runtime.stateCodecOf(entry.component).encode(
         entry.model,
-        Object.keys(slots).length === 0 ? undefined : { ...(entry.component["~loaders"] as any)?.empty, ...slots }
+        { ...loaders.boundOf(entry.component)?.empty, ...slots }
       )
       const json = encoded._tag === "Some" ? JSON.stringify(encoded.value) : undefined
       if (json !== JSON.stringify(state[path])) {

@@ -182,7 +182,8 @@ const load = TestHost.settle.pipe(Effect.andThen(TestClock.adjust("10 millis")),
  */
 const slotCodec = (component: Component.Any, name: string) =>
   Schema.toCodecJson(
-    (component["~loaders"] as { readonly schemas: Record<string, Schema.Codec<unknown, unknown>> }).schemas[name]
+    (component["~loaders"] as { readonly schema: Schema.Struct<Record<string, Schema.Codec<unknown, unknown>>> })
+      .schema.fields[name]
   )
 
 /** A keyed slot's tuples as its JSON codec writes them: the old snapshot's JSON. */

@@ -87,6 +87,14 @@ export interface KeyedChange {
  */
 export type Slots = Readonly<Record<string, unknown>>
 
+/**
+ * A component's bound `loaders`. `undefined` without any.
+ *
+ * @internal
+ */
+export const boundOf = (component: { readonly "~loaders": unknown }): Bound | undefined =>
+  component["~loaders"] as Bound | undefined
+
 const markerKey = "~effect/ui/Component/watchMarker"
 const groupKey = "~effect/ui/Component/watchGroup"
 
@@ -137,12 +145,8 @@ const listOf = (def: ReadDef, pages: ReadonlyArray<unknown>) => {
 /** One opened list per snapshot, so a view and `onChange` share it. */
 const openedLists = new WeakMap<object, AsyncResult.AsyncResult<any, any>>()
 
-/**
- * A list's result opened as `h.loaded` shows it: `{ items, pages, more }`.
- *
- * @internal
- */
-export const openList = (
+/** A list's result opened as `h.loaded` shows it: `{ items, pages, more }`. */
+const openList = (
   snapshot: unknown,
   result: AsyncResult.AsyncResult<any, any>
 ): AsyncResult.AsyncResult<any, any> => {
@@ -159,10 +163,8 @@ export const openList = (
 /**
  * A keyed slot opened at the loader's keys: an entry per key in its order,
  * each the stored result or `Initial`, waiting, and `get` by args.
- *
- * @internal
  */
-export const openKeyed = (
+const openKeyed = (
   def: ReadDef,
   snapshots: unknown,
   entries: ReadonlyArray<Keyed>
@@ -207,10 +209,8 @@ const isRead = (u: unknown): u is Loader.Read.Any => Predicate.hasProperty(u, Lo
 /**
  * Checks the entries of `loaders`. Throws at module load on an entry that
  * isn't `{ load, args }` or `{ loadMany, args }`.
- *
- * @internal
  */
-export const parse = (component: string, loaders: unknown): ReadonlyArray<Entry> => {
+const parse = (component: string, loaders: unknown): ReadonlyArray<Entry> => {
   if (loaders === undefined) return []
   if (typeof loaders !== "object" || loaders === null) {
     throw new Error(`${component}: loaders must be a record of { load, args } or { loadMany, args } entries.`)
@@ -264,24 +264,26 @@ export interface Context {
   readonly changed: (name: string, changes: ReadonlyArray<KeyedChange>) => { readonly value: unknown } | undefined
 }
 
+/**
+ * The Schema of an instance's slots: a struct with each loader's slot Schema.
+ *
+ * @internal
+ */
+export type SlotsSchema = Schema.Struct<{ readonly [name: string]: Schema.Codec<unknown, unknown> }>
+
 /** @internal */
 export interface Bound {
   readonly entries: ReadonlyArray<Entry>
   readonly byName: ReadonlyMap<string, Entry>
   /** Every slot empty: an instance's slots before a loader writes one. */
   readonly empty: Slots
-  /** The Schema of each slot, by loader name, for page state and history. */
-  readonly schemas: { readonly [name: string]: Schema.Top }
-  /** The Schema of the slots: a struct of `schemas`. */
-  readonly schema: Schema.Codec<Slots, unknown>
+  /** The Schema of the slots for page state and history: a field per loader, by name. */
+  readonly schema: SlotsSchema
   /**
-   * The Schema of each slot for the message log, by loader name. It keeps
-   * `waiting` and a list's exact `more`, which `update` can read and page
-   * state drops.
+   * The Schema of the slots for the message log. It keeps `waiting` and a
+   * list's exact `more`, which `update` can read and page state drops.
    */
-  readonly logSchemas: { readonly [name: string]: Schema.Top }
-  /** The Schema of the slots for the message log: a struct of `logSchemas`. */
-  readonly logSchema: Schema.Codec<Slots, unknown>
+  readonly logSchema: SlotsSchema
   readonly context: (model: unknown, props: unknown, slots: Slots | undefined) => Context
   /** A single or list loader's slot holding `result` at `entry`. */
   readonly slot: (
@@ -331,8 +333,6 @@ export const bind = (component: string, loaders: unknown): Bound | undefined => 
       : Loader.snapshotSchema(entry.read, entry.name, true)
   }
   Object.freeze(empty)
-  const schema = Schema.Struct(fields) as unknown as Schema.Codec<Slots, unknown>
-  const logSchema = Schema.Struct(logFields) as unknown as Schema.Codec<Slots, unknown>
   const stateKey = Symbol()
   const argsOf = (state: State, entry: Entry): Current => {
     let current = state.memo.get(entry.name)
@@ -450,10 +450,8 @@ export const bind = (component: string, loaders: unknown): Bound | undefined => 
     entries,
     byName,
     empty,
-    schemas: fields,
-    schema,
-    logSchemas: logFields,
-    logSchema,
+    schema: Schema.Struct(fields) as unknown as SlotsSchema,
+    logSchema: Schema.Struct(logFields) as unknown as SlotsSchema,
     context: (model, props, slots = empty) => {
       const found = contexts.get(slots)
       if (found !== undefined && found.model === model && found.props === props) return found.context

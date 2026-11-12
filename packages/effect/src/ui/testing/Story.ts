@@ -68,7 +68,7 @@ import * as Schema from "../../Schema.ts"
 import * as Command from "../Command.ts"
 import type * as Component from "../Component.ts"
 import type * as Head from "../Head.ts"
-import type * as loaders from "../internal/loaders.ts"
+import * as loaders from "../internal/loaders.ts"
 import * as schedule from "../internal/schedule.ts"
 import * as MessageLog from "../MessageLog.ts"
 import * as View from "../View.ts"
@@ -598,8 +598,7 @@ const update = <Props, Model, Msg, Events>(
   return record(fields, view)
 }
 
-const boundOf = (component: AnyComponent): loaders.Bound | undefined =>
-  (component as unknown as { readonly "~loaders": loaders.Bound | undefined })["~loaders"]
+const boundOf = loaders.boundOf
 
 const isKeyed = (story: Story<any, any, any, any>, name: string): boolean =>
   boundOf(story.component)?.byName.get(name)?.keyed === true
@@ -690,8 +689,7 @@ const givenSlots = (
   story: Story<any, any, any, any>,
   loaded: { readonly [name: string]: unknown }
 ): Component.Slots | undefined => {
-  const names = Object.keys(loaded)
-  for (const name of names) loaderOf(story, "given", name)
+  for (const name of Object.keys(loaded)) loaderOf(story, "given", name)
   const bound = boundOf(story.component)
   if (bound === undefined) return story.slots
   const before = story.slots ?? bound.empty
@@ -703,11 +701,10 @@ const givenSlots = (
     if (!Object.hasOwn(loaded, entry.name)) {
       // From the slots held before: a key an earlier round dropped can come back once the args settle.
       const held = Loader.snapshotMapData(before[entry.name])?.entries
-      if (held === undefined) return slots[entry.name]
       return bound.slotMany(
         entry,
         current.entries!.flatMap((key) => {
-          const stored = held.get(key.argsKey)
+          const stored = held?.get(key.argsKey)
           return stored === undefined ? [] : [stored]
         })
       )
@@ -737,30 +734,27 @@ const givenSlots = (
     )
   }
   const written = bound.entries.filter((entry) => entry.keyed || Object.hasOwn(loaded, entry.name))
-  // Each round settles at least one more level of loaders whose args read another's result.
-  for (let round = 0; round <= written.length; round++) {
-    let changed = false
+  // Each round settles at least one more level of loaders whose args read another's result, so a
+  // write still due after a round per loader never settles.
+  for (let round = 0, changed = true; changed; round++) {
+    changed = false
     for (const entry of written) {
       const next = target(entry)
-      if (next !== undefined && !Equal.equals(slots[entry.name], next)) {
-        slots[entry.name] = next
-        changed = true
+      if (next === undefined || Equal.equals(slots[entry.name], next)) continue
+      if (round > written.length) {
+        throw new Error(
+          `Story.given: the loader "${entry.name}" doesn't settle: its args keep changing with the given results`
+        )
       }
+      slots[entry.name] = next
+      changed = true
     }
-    if (!changed) break
   }
-  for (const entry of written) {
-    const next = target(entry)
-    if (next === undefined) {
-      throw new Error(
-        `Story.given: the loader "${entry.name}" is disabled, or doesn't return the given args, for the Model and props`
-      )
-    }
-    if (!Equal.equals(slots[entry.name], next)) {
-      throw new Error(
-        `Story.given: the loader "${entry.name}" doesn't settle: its args keep changing with the given results`
-      )
-    }
+  const unmet = written.find((entry) => target(entry) === undefined)
+  if (unmet !== undefined) {
+    throw new Error(
+      `Story.given: the loader "${unmet.name}" is disabled, or doesn't return the given args, for the Model and props`
+    )
   }
   return slots
 }
@@ -1743,24 +1737,23 @@ const replayLog = <Name extends string, Props, Model, Msg, Events, R, V extends 
   entries: ReadonlyArray<MessageLog.Entry | MessageLog.Wire>,
   options?: { readonly path?: string | undefined }
 ): Replay<Model, Msg, Events, any, any> => {
-  const nameOf = (entry: MessageLog.Entry | MessageLog.Wire): string | undefined =>
-    entry._tag === "Update" || entry._tag === "Mounted" || entry._tag === "LoaderChanged" ||
-      entry._tag === "PropsChanged"
-      ? typeof entry.component === "string" ? entry.component : entry.component.name
-      : undefined
-  const path = options?.path ??
-    (entries.find((entry) => nameOf(entry) === component.name) as MessageLog.Base | undefined)?.path
-  if (path === undefined) throw new Error(`Story.fromLog: the log has no entry for ${component.name}`)
-  const all = entries.filter((entry) =>
-    (entry._tag === "Update" || entry._tag === "Mounted" || entry._tag === "LoaderChanged" ||
-      entry._tag === "PropsChanged") && entry.path === path
-  ) as ReadonlyArray<
+  // The entries that carry an instance's state, each with its component.
+  type Stateful =
     | MessageLog.Update
     | MessageLog.Mounted
     | MessageLog.LoaderChanged
     | MessageLog.PropsChanged
     | Extract<MessageLog.Wire, { _tag: "Update" | "Mounted" | "LoaderChanged" | "PropsChanged" }>
-  >
+  const stateful = entries.filter((entry): entry is Stateful =>
+    entry._tag === "Update" || entry._tag === "Mounted" || entry._tag === "LoaderChanged" ||
+    entry._tag === "PropsChanged"
+  )
+  const path = options?.path ??
+    stateful.find((entry) =>
+      (typeof entry.component === "string" ? entry.component : entry.component.name) === component.name
+    )?.path
+  if (path === undefined) throw new Error(`Story.fromLog: the log has no entry for ${component.name}`)
+  const all = stateful.filter((entry) => entry.path === path)
   // The replay starts at the first Model. Props and slots written before it are in that Update's record, or
   // belong to an earlier mount.
   const start = all.findIndex((entry) => entry._tag === "Update" || entry._tag === "Mounted")
@@ -1769,10 +1762,10 @@ const replayLog = <Name extends string, Props, Model, Msg, Events, R, V extends 
     | MessageLog.Update
     | MessageLog.Mounted
     | Extract<MessageLog.Wire, { _tag: "Update" | "Mounted" }>
-  const bound = (component as unknown as { readonly "~loaders": loaders.Bound | undefined })["~loaders"]
+  const bound = boundOf(component)
   const slotOf = (entry: MessageLog.LoaderChanged | Extract<MessageLog.Wire, { _tag: "LoaderChanged" }>) => {
     if (typeof entry.component !== "string") return entry.slot
-    const schema = bound?.logSchemas[entry.name]
+    const schema = bound?.logSchema.fields[entry.name]
     if (schema === undefined) {
       throw new Error(`Story.fromLog: entry #${entry.seq} (${path}) writes "${entry.name}", which isn't a loader`)
     }
