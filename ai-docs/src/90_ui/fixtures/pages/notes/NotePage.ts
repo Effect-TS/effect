@@ -1,5 +1,5 @@
 import { Layer, Schema } from "effect"
-import { AsyncResult, Loader } from "effect/reactivity"
+import { AsyncResult } from "effect/reactivity"
 import { Component, Head } from "effect/ui"
 import { ActivityLog } from "../../notes/components/ActivityLog.ts"
 import { NoteActivity } from "../../notes/components/NoteActivity.ts"
@@ -7,11 +7,7 @@ import { NoteEditor } from "../../notes/components/NoteEditor.ts"
 import { GetNote } from "../../notes/loaders/GetNote.ts"
 import { Notes } from "../../notes/services/Notes.ts"
 
-// The Model stores what a read returned as a snapshot, under the field's name.
-const NoteSnapshot = Loader.Snapshot(GetNote, "note")
-
 export const NotePageMessage = Schema.TaggedUnion({
-  NoteChanged: { snapshot: NoteSnapshot, title: Schema.String },
   Saved: {},
   EditorFailed: {}
 })
@@ -19,36 +15,28 @@ export const NotePageMessage = Schema.TaggedUnion({
 export const NotePageNoDeps = Component.make({
   name: "NotePage",
   props: Schema.Struct({ id: Schema.String }),
-  model: Schema.Struct({ note: NoteSnapshot, title: Schema.String, notice: Schema.String }),
+  // The Model holds no copy of the note. The runtime keeps each loader's
+  // last result in a slot beside the Model, and the Model plus the slots is
+  // the instance's state.
+  model: Schema.Struct({ notice: Schema.String }),
   message: NotePageMessage,
-  // Returns the arguments of each loader field's read, or `undefined` to
-  // disable it.
-  loaders: { note: (_model, props) => ({ id: props.id }) },
-  // `$.empty` holds an empty snapshot for every loader field.
-  init: ($) => ({ ...$.empty, title: "Loading note", notice: "" }),
+  // Each loader names its read and returns the read's args, or `undefined`
+  // to disable it. The runtime watches the read at those args and writes
+  // every change to the slot, which re-renders the page. No message or
+  // `update` case is involved.
+  loaders: { note: { load: GetNote, args: (_model, props) => ({ id: props.id }) } },
+  init: () => ({ notice: "" }),
+  // `update` can read the slots too, as `$.loaded`.
   update: (model, message) =>
     NotePageMessage.match(message, {
-      NoteChanged: ({ snapshot, title }) => ({ ...model, note: snapshot, title }),
       Saved: () => ({ ...model, notice: "Saved" }),
       EditorFailed: () => ({ ...model, notice: "The editor crashed" })
     }),
-  // With loader fields, `subscriptions` must start with `$.watch`. It takes
-  // one handler per field, and each handler turns a change into the message
-  // that stores the snapshot.
-  subscriptions: (_model, _props, $) => [
-    $.watch({
-      note: (snapshot, result) =>
-        NotePageMessage.make({
-          _tag: "NoteChanged",
-          snapshot,
-          title: AsyncResult.isSuccess(result) ? result.value.title : "Note"
-        })
-    })
-  ],
-  // `head` only sees the Model, so `update` copies the title into it.
-  head: (model) => [Head.title(model.title)],
+  // `head` gets the Model and the loaders' results, so the title comes
+  // straight from the loaded note.
+  head: (_model, loaded) => [Head.title(AsyncResult.isSuccess(loaded.note) ? loaded.note.value.title : "Note")],
   view: (model, h) =>
-    // `h.loaded.note` is the field as an `AsyncResult`.
+    // `h.loaded.note` is the loader's slot as an `AsyncResult`.
     AsyncResult.match(h.loaded.note, {
       onInitial: () => h.p("Loading note…"),
       onFailure: () => h.p("This note doesn't exist."),

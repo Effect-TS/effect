@@ -136,7 +136,6 @@ const detailUrl = (id: string) => AppRoute.print(AppRoute.make({ _tag: "Detail",
 // UserCard: one user, with a like button
 
 export const UserCardMessage = Schema.TaggedUnion({
-  UserChanged: { snapshot: Loader.Snapshot(GetUser, "user") },
   Like: {},
   Liked: {}
 })
@@ -144,16 +143,15 @@ export const UserCardMessage = Schema.TaggedUnion({
 export const UserCard = Component.make({
   name: "UserCard",
   props: Schema.Struct({ id: Schema.String }),
-  model: Schema.Struct({ user: Loader.Snapshot(GetUser, "user") }),
+  model: Schema.Struct({}),
   message: UserCardMessage,
   elements: Html,
   loaders: {
-    user: (_model, props) => ({ id: props.id })
+    user: { load: GetUser, args: (_model, props) => ({ id: props.id }) }
   },
-  init: ($) => $.empty,
+  init: () => ({}),
   update: (model, message, $) =>
     UserCardMessage.match(message, {
-      UserChanged: ({ snapshot }) => ({ user: snapshot }),
       Like: () =>
         $.run(
           LikeUser.make({ id: $.props.id }).pipe(Command.match({
@@ -163,9 +161,6 @@ export const UserCard = Component.make({
         ),
       Liked: () => model
     }),
-  subscriptions: (_model, _props, $) => [
-    $.watch({ user: (snapshot) => UserCardMessage.make({ _tag: "UserChanged", snapshot }) })
-  ],
   view: (_model, h) =>
     AsyncResult.match(h.loaded.user, {
       onInitial: () => h.p("Loading user…"),
@@ -186,7 +181,6 @@ export const UserCard = Component.make({
 // RenameForm: edits a user's name through a derived draft
 
 export const RenameFormMessage = Schema.TaggedUnion({
-  UserChanged: { snapshot: Loader.Snapshot(GetUser, "user") },
   Edit: { name: Schema.String },
   Cancel: {},
   Save: {},
@@ -198,19 +192,17 @@ export const RenameForm = Component.make({
   name: "RenameForm",
   props: Schema.Struct({ id: Schema.String }),
   model: Schema.Struct({
-    user: Loader.Snapshot(GetUser, "user"),
     draft: Schema.Option(Schema.String),
     error: Schema.Option(Schema.String)
   }),
   message: RenameFormMessage,
   elements: Html,
   loaders: {
-    user: (_model, props) => ({ id: props.id })
+    user: { load: GetUser, args: (_model, props) => ({ id: props.id }) }
   },
-  init: ($) => ({ ...$.empty, draft: Option.none(), error: Option.none() }),
+  init: () => ({ draft: Option.none(), error: Option.none() }),
   update: (model, message, $) =>
     RenameFormMessage.match(message, {
-      UserChanged: ({ snapshot }) => ({ ...model, user: snapshot }),
       Edit: ({ name }) => ({ ...model, draft: Option.some(name), error: Option.none() }),
       Cancel: () => ({ ...model, draft: Option.none(), error: Option.none() }),
       Save: () =>
@@ -233,9 +225,6 @@ export const RenameForm = Component.make({
         error: Option.some(reason)
       })
     }),
-  subscriptions: (_model, _props, $) => [
-    $.watch({ user: (snapshot) => RenameFormMessage.make({ _tag: "UserChanged", snapshot }) })
-  ],
   view: (model, h) =>
     AsyncResult.match(h.loaded.user, {
       onInitial: () => h.p("Loading…"),
@@ -280,31 +269,26 @@ export const DetailPage = Component.make({
 // ListPage: a paged list that keeps the previous page on screen while the next one loads
 
 export const ListPageMessage = Schema.TaggedUnion({
-  UsersChanged: { snapshot: Loader.Snapshot(ListUsers, "users") },
   GoTo: { page: Schema.Number }
 })
 
 export const ListPage = Component.make({
   name: "ListPage",
-  model: Schema.Struct({ page: Schema.Number, users: Loader.Snapshot(ListUsers, "users") }),
+  model: Schema.Struct({ page: Schema.Number }),
   message: ListPageMessage,
   elements: Html,
   loaders: {
-    users: (model) => ({ page: model.page })
+    users: { load: ListUsers, args: (model) => ({ page: model.page }) }
   },
-  init: ($) => ({ ...$.empty, page: 0 }),
+  init: () => ({ page: 0 }),
   update: (model, message) =>
     ListPageMessage.match(message, {
-      UsersChanged: ({ snapshot }) => ({ ...model, users: snapshot }),
       GoTo: ({ page }) => ({ ...model, page })
     }),
-  subscriptions: (_model, _props, $) => [
-    $.watch({ users: (snapshot) => ListPageMessage.make({ _tag: "UsersChanged", snapshot }) })
-  ],
   view: (model, h) => {
     const current = h.loaded.users
     if (AsyncResult.isFailure(current)) return h.p("The users couldn't be loaded.")
-    // The requested page once it is here. Until then the page the snapshot still holds, if any.
+    // The requested page once it is here. Until then the page the loader still holds, if any.
     const shown = AsyncResult.isSuccess(current) ? Option.some(current.value) : h.previous.users
     return Option.match(shown, {
       onNone: () => h.p("Loading users…"),

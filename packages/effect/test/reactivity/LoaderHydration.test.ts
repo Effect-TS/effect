@@ -68,13 +68,17 @@ const settleOnce = (problems: Array<Loader.Problem.Any>) =>
 
 const cache = Loader.Cache.useSync(Loader.internals)
 
+/** The Schema of a loader slot holding a snapshot of `read`, as the effect/ui runtime builds it. */
+const slotSchema = (read: Loader.Read.Any, label: string) =>
+  Loader.snapshotSchema(read, label) as Schema.Codec<unknown, unknown>
+
 const fetchLog = Effect.map(TestLoader.fetches, (fetches) => fetches.map((fetch) => fetch.trigger))
 
 describe("Loader snapshots", () => {
   const { GetUser } = makeUsers()
   const def = Loader.defOf(GetUser)
   const at = { args: { id: "1" }, argsKey: def.argsKey({ id: "1" }) }
-  const json = Schema.toCodecJson(Loader.Snapshot(GetUser, "user"))
+  const json = Schema.toCodecJson(slotSchema(GetUser, "user"))
 
   it("encodes as a tuple through the read's own Schemas, and decodes to an equal snapshot", () => {
     const success = Loader.makeSnapshot(
@@ -116,18 +120,18 @@ describe("Loader snapshots", () => {
     assert.deepStrictEqual([decoded?.result?.waiting, decoded?.patched, decoded?.argsKey], [false, true, `{"id":"1"}`])
   })
 
-  it("keeps waiting in memory through the type side, so a message built with make carries it", () => {
+  it("keeps waiting in memory through the type side, so a slots struct built with make carries it", () => {
     const waiting = Loader.makeSnapshot(
       def,
       "user",
       at,
       AsyncResult.success({ id: "1", name: "Ann" }, { timestamp: 5, waiting: true })
     )
-    const Message = Schema.TaggedStruct("Changed", { user: Loader.Snapshot(GetUser, "user") })
-    const made = Message.make({ user: waiting as unknown as Loader.Snapshot<typeof GetUser, "user"> })
+    const Slots = Schema.Struct({ user: slotSchema(GetUser, "user") })
+    const made = Slots.make({ user: waiting })
     assert.isTrue(Loader.snapshotData(made.user)?.result?.waiting)
     const failing = Loader.makeSnapshot(def, "user", at, AsyncResult.failure(Cause.fail("nope"), { waiting: true }))
-    const decoded = Schema.decodeUnknownSync(Loader.Snapshot(GetUser, "user"))(failing)
+    const decoded = Schema.decodeUnknownSync(slotSchema(GetUser, "user"))(failing)
     assert.isTrue(Loader.snapshotData(decoded)?.result?.waiting)
   })
 
@@ -139,7 +143,7 @@ describe("Loader snapshots", () => {
       AsyncResult.success({ id: "1", name: 42 }, { timestamp: 5 }),
       true
     )
-    const schema = Loader.Snapshot(GetUser, "user")
+    const schema = slotSchema(GetUser, "user")
     assert.isTrue(Equal.equals(Schema.decodeUnknownSync(schema)(patched), patched))
     const unpatched = Loader.makeSnapshot(def, "user", at, AsyncResult.success({ id: "1", name: 42 }, { timestamp: 5 }))
     assert.throws(() => Schema.decodeUnknownSync(schema)(unpatched))
@@ -153,10 +157,10 @@ describe("Loader snapshots", () => {
       staleTime: 0
     }, Effect.succeed(({ id }) => Effect.succeed({ id, name: "" }))) {}
     const snapshot = Loader.makeSnapshot(def, "user", undefined, undefined)
-    assert.isTrue(Schema.is(Loader.Snapshot(GetUser, "user"))(snapshot))
-    assert.isFalse(Schema.is(Loader.Snapshot(GetUser, "users"))(snapshot))
-    assert.isFalse(Schema.is(Loader.Snapshot(Other, "user"))(snapshot))
-    assert.isFalse(Schema.is(Loader.Snapshot(GetUser, "user"))({ user: "forged" }))
+    assert.isTrue(Schema.is(slotSchema(GetUser, "user"))(snapshot))
+    assert.isFalse(Schema.is(slotSchema(GetUser, "users"))(snapshot))
+    assert.isFalse(Schema.is(slotSchema(Other, "user"))(snapshot))
+    assert.isFalse(Schema.is(slotSchema(GetUser, "user"))({ user: "forged" }))
   })
 
   it("a Schema.Redacted in a read's args and success is redacted by the log's walk, and kept in the clear otherwise", () => {
@@ -174,15 +178,16 @@ describe("Loader snapshots", () => {
       { args, argsKey: secretDef.argsKey(args) },
       AsyncResult.success({ value: Redacted.make("v") }, { timestamp: 1 })
     )
-    const Model = Schema.Struct({ secret: Loader.Snapshot(GetSecret, "secret") })
+    // The slots of a component with a `secret` loader, as the runtime and the log build them.
+    const Slots = Schema.Struct({ secret: slotSchema(GetSecret, "secret") })
     const logged = Schema.encodeUnknownSync(
-      Schema.toCodecJson(Schema.make<Schema.Codec<unknown, unknown>>(redactAST(Model.ast)))
+      Schema.toCodecJson(Schema.make<Schema.Codec<unknown, unknown>>(redactAST(Slots.ast)))
     )({ secret: snapshot })
     assert.deepStrictEqual(logged, {
       secret: [`{"token":{"~redacted":true}}`, 0, { value: { "~redacted": true } }, 1, false]
     })
     // Page state and history.state keep the real key and value.
-    const page = Schema.encodeUnknownSync(Schema.toCodecJson(Model))({ secret: snapshot })
+    const page = Schema.encodeUnknownSync(Schema.toCodecJson(Slots))({ secret: snapshot })
     assert.deepStrictEqual(page, { secret: [`{"token":"t"}`, 0, { value: "v" }, 1, false] })
   })
 })
@@ -419,7 +424,7 @@ describe("Loader snapshot identity", () => {
       Effect.sync(() => ({ n }) => Effect.succeed(Object.is(n, -0) ? "minus zero" : "zero"))
     ) {}
     const def = Loader.defOf(GetPoint)
-    const json = Schema.toCodecJson(Loader.Snapshot(GetPoint, "point"))
+    const json = Schema.toCodecJson(slotSchema(GetPoint, "point"))
     const snapshot = Loader.makeSnapshot(
       def,
       "point",
@@ -448,7 +453,7 @@ describe("Loader snapshot identity", () => {
       Effect.sync(() => ({ s }) => Effect.succeed(s))
     ) {}
     const def = Loader.defOf(GetTrimmed)
-    const json = Schema.toCodecJson(Loader.Snapshot(GetTrimmed, "trimmed"))
+    const json = Schema.toCodecJson(slotSchema(GetTrimmed, "trimmed"))
     // " a " decodes to "a", whose key is {"s":"a"}: the snapshot would name an entry it wasn't taken from.
     assert.isTrue(Exit.isFailure(Schema.decodeUnknownExit(json)([`{"s":" a "}`, 0, "cached", 1, false])))
     const decoded = Schema.decodeUnknownSync(json)([`{"s":"a"}`, 0, "cached", 1, false])
@@ -467,7 +472,7 @@ describe("Loader snapshot identity", () => {
       Effect.sync(() => ({ id }) => Effect.succeed(id))
     ) {}
     const def = Loader.defOf(GetPage)
-    const json = Schema.toCodecJson(Loader.Snapshot(GetPage, "page"))
+    const json = Schema.toCodecJson(slotSchema(GetPage, "page"))
     const args = { id: "1", page: undefined }
     const snapshot = Loader.makeSnapshot(
       def,

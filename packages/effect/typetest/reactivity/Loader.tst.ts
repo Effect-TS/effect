@@ -92,20 +92,6 @@ describe("Loader", () => {
     >()
     expect(writes).type.toBe<ReadonlyArray<Loader.Write>>()
   })
-
-  it("a snapshot is branded by its read and label, and needs no services", () => {
-    const Model = Schema.Struct({ user: Loader.Snapshot(GetUser, "user") })
-    expect<typeof Model.Type["user"]>().type.toBe<Loader.Snapshot<typeof GetUser, "user">>()
-    expect<typeof Model.DecodingServices>().type.toBe<never>()
-    expect<typeof Model.EncodingServices>().type.toBe<never>()
-    expect(Model.make).type.toBeCallableWith({ user: {} as Loader.Snapshot<typeof GetUser, "user"> })
-    expect(Model.make).type.not.toBeCallableWith({
-      user: {} as Loader.Snapshot<typeof GetUser, "other">
-    })
-    expect(Model.make).type.not.toBeCallableWith({
-      user: {} as Loader.Snapshot<typeof Count, "user">
-    })
-  })
 })
 
 const Page = Schema.Struct({ users: Schema.Array(User), next: Schema.NullOr(Schema.Number) })

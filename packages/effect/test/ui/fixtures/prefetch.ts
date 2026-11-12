@@ -7,7 +7,7 @@
 import { Context, Effect, Layer, Schema } from "effect"
 import { Loader } from "effect/reactivity"
 import { Component, Feature, Route, Router } from "effect/ui"
-import { PersonSnapshot } from "./router.ts"
+import { GetPerson } from "./router.ts"
 
 export const Routes = Route.union({
   Home: Route.make("/"),
@@ -28,67 +28,44 @@ export class GetNote extends Loader.Service<GetNote>()("GetNote", {
   staleTime: "1 minute"
 }, Effect.succeed(({ id }) => Effect.succeed(`Note ${id}`))) {}
 
-const NoteSnapshot = Loader.Snapshot(GetNote, "note")
-
-const reader = <const Name extends string>(name: Name) => {
-  const Message = Schema.TaggedUnion({ Loaded: { snapshot: PersonSnapshot } })
-  return Component.make({
+const reader = <const Name extends string>(name: Name) =>
+  Component.make({
     name,
     props: Schema.Struct({ id: Schema.Number }),
-    model: Schema.Struct({ person: PersonSnapshot }),
-    message: Message,
-    loaders: { person: (_model, props) => ({ id: props.id }) },
-    init: ($) => $.empty,
-    update: (_, message) => ({ person: message.snapshot }),
-    subscriptions: (
-      _model,
-      _props,
-      $
-    ) => [$.watch({ person: (snapshot) => Message.make({ _tag: "Loaded", snapshot }) })],
+    model: Schema.Struct({}),
+    message: Schema.Never,
+    loaders: { person: { load: GetPerson, args: (_model, props) => ({ id: props.id }) } },
+    init: () => ({}),
+    update: (model) => model,
     view: (_, h) => h.el("p", name)
   })
-}
 
 export const Sidebar = reader("Sidebar")
 export const Detail = reader("Detail")
 export const Card = reader("Card")
 
-const NoteMessage = Schema.TaggedUnion({ Loaded: { snapshot: NoteSnapshot } })
-
 /** Reads `GetNote`, which the declarer can't see. */
 export const Note = Component.make({
   name: "Note",
   props: Schema.Struct({ id: Schema.Number }),
-  model: Schema.Struct({ note: NoteSnapshot }),
-  message: NoteMessage,
-  loaders: { note: (_model, props) => ({ id: props.id }) },
-  init: ($) => $.empty,
-  update: (_, message) => ({ note: message.snapshot }),
-  subscriptions: (
-    _model,
-    _props,
-    $
-  ) => [$.watch({ note: (snapshot) => NoteMessage.make({ _tag: "Loaded", snapshot }) })],
+  model: Schema.Struct({}),
+  message: Schema.Never,
+  loaders: { note: { load: GetNote, args: (_model, props) => ({ id: props.id }) } },
+  init: () => ({}),
+  update: (model) => model,
   view: (_, h) => h.el("p", "Note")
 })
 
 export class Badge extends Feature.Service<Badge>()("test/Badge", { props: Schema.Struct({}) }) {}
 
-const PersonMessage = Schema.TaggedUnion({ Loaded: { snapshot: PersonSnapshot } })
-
 /** Reads person 1, and shows a card for person 2, a feature, and a note with and without a `provide`. */
 export const Walked = Component.make({
   name: "Walked",
-  model: Schema.Struct({ person: PersonSnapshot }),
-  message: PersonMessage,
-  loaders: { person: () => ({ id: 1 }) },
-  init: ($) => $.empty,
-  update: (_, message) => ({ person: message.snapshot }),
-  subscriptions: (
-    _model,
-    _props,
-    $
-  ) => [$.watch({ person: (snapshot) => PersonMessage.make({ _tag: "Loaded", snapshot }) })],
+  model: Schema.Struct({}),
+  message: Schema.Never,
+  loaders: { person: { load: GetPerson, args: () => ({ id: 1 }) } },
+  init: () => ({}),
+  update: (model) => model,
   view: (_, h) =>
     h.el(
       "div",
@@ -102,16 +79,11 @@ export const Walked = Component.make({
 /** Reads person 3, then its view throws. */
 export const Broken = Component.make({
   name: "Broken",
-  model: Schema.Struct({ person: PersonSnapshot }),
-  message: PersonMessage,
-  loaders: { person: () => ({ id: 3 }) },
-  init: ($) => $.empty,
-  update: (_, message) => ({ person: message.snapshot }),
-  subscriptions: (
-    _model,
-    _props,
-    $
-  ) => [$.watch({ person: (snapshot) => PersonMessage.make({ _tag: "Loaded", snapshot }) })],
+  model: Schema.Struct({}),
+  message: Schema.Never,
+  loaders: { person: { load: GetPerson, args: () => ({ id: 3 }) } },
+  init: () => ({}),
+  update: (model) => model,
   view: () => {
     throw new Error("Broken view")
   }

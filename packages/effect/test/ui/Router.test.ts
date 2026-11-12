@@ -6,7 +6,7 @@ import { Command, Component, Head, type MessageLog, type Renderer, Route, Router
 import * as runtime from "effect/ui/internal/runtime"
 import { Query, TestHost } from "effect/ui/testing"
 import * as Prefetching from "./fixtures/prefetch.ts"
-import { App, AppRoute, GetPerson, personFetches, PersonSnapshot } from "./fixtures/router.ts"
+import { App, AppRoute, GetPerson, personFetches } from "./fixtures/router.ts"
 
 const click = (root: TestHost.TestRoot<any, any, any>, text: string) =>
   Query.fire(root.get(Query.text(text, { exact: true })), "click")
@@ -414,10 +414,12 @@ describe("Router", { concurrent: false }, () => {
             yield* TestHost.settle
             // The new cache is cold: the restored snapshot seeds it, so the page mounts with the data,
             // stale, while one refetch runs.
-            const restored = root.log().find((entry): entry is MessageLog.Mounted =>
-              entry._tag === "Mounted" && entry.path === "/App/Person[/people/1]"
-            )
-            assert.isTrue(restored?.adopted)
+            const log = root.log()
+            const index = log.findIndex((entry) => entry._tag === "Mounted" && entry.path === "/App/Person[/people/1]")
+            assert.isTrue((log[index] as MessageLog.Mounted).adopted)
+            // The restored slot is logged right after Mounted.
+            const slot = log[index + 1]
+            assert.isTrue(slot?._tag === "LoaderChanged" && slot.name === "person")
             assert.strictEqual(
               root.frames().at(-1),
               "HomePerson 1Person 2SlowBackBlockUnblockPerson 1Refreshingcount 0Rename"
@@ -452,10 +454,9 @@ describe("Router", { concurrent: false }, () => {
     })
   }
 
-  it.effect("drops a loader field whose snapshot was taken under a patch from the restored Model", () => {
+  it.effect("drops a loader slot taken under a patch from the restored state", () => {
     const { history, layer } = setup("/people/1")
     const path = "/App/Person[/people/1]"
-    const encode = Schema.encodeSync(Schema.toCodecJson(PersonSnapshot))
     return Effect.gen(function*() {
       yield* run(
         layer,
@@ -477,15 +478,20 @@ describe("Router", { concurrent: false }, () => {
           yield* TestHost.settle
           history.go(-1)
           yield* TestHost.settle
-          const restored = root.log().find((entry): entry is MessageLog.Mounted =>
-            entry._tag === "Mounted" && entry.path === path
-          )
+          const log = root.log()
+          const index = log.findIndex((entry) => entry._tag === "Mounted" && entry.path === path)
+          const restored = log[index] as MessageLog.Mounted
           assert.isDefined(restored)
           assert.isTrue(restored.adopted)
-          // The rest of the Model is restored; the loader field starts from loading, and the fetch fills it.
-          const model = restored.model as { readonly person: typeof PersonSnapshot.Type; readonly name: string }
-          assert.deepStrictEqual(encode(model.person), [])
-          assert.strictEqual(model.name, "Renamed")
+          // The Model is restored; the slot isn't (a restored slot is logged right after Mounted), so the
+          // loader starts from loading, and the fetch fills it.
+          assert.strictEqual((restored.model as { readonly name: string }).name, "Renamed")
+          assert.notStrictEqual(log[index + 1]?._tag, "LoaderChanged")
+          assert.isTrue(
+            log.slice(index + 1).some((entry) =>
+              entry._tag === "LoaderChanged" && entry.path === path && entry.name === "person"
+            )
+          )
           assert.isTrue(root.text().includes("Person 1"))
         })
       ).pipe(Effect.scoped)

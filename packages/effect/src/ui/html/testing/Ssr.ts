@@ -56,11 +56,11 @@ import * as Duration from "../../../Duration.ts"
 import * as Effect from "../../../Effect.ts"
 import * as Fiber from "../../../Fiber.ts"
 import * as Loader from "../../../reactivity/Loader.ts"
-import * as Schema from "../../../Schema.ts"
 import type * as Scope from "../../../Scope.ts"
 import * as TestClock from "../../../testing/TestClock.ts"
 import type * as Component from "../../Component.ts"
 import * as Head from "../../Head.ts"
+import * as loaders from "../../internal/loaders.ts"
 import * as runtime from "../../internal/runtime.ts"
 import * as MessageLog from "../../MessageLog.ts"
 import * as Renderer from "../../Renderer.ts"
@@ -195,14 +195,6 @@ const compareHeads = (serverHead: Head.Head, client: Head.Head): Array<string> =
   const b = entries(client)
   for (const identity of new Set([...a.keys(), ...b.keys()])) same(identity, a.get(identity), b.get(identity))
   return problems
-}
-
-const encodeJson = (schema: Schema.Codec<any, any>, value: unknown): string | undefined => {
-  try {
-    return JSON.stringify(Schema.encodeUnknownSync(Schema.toCodecJson(schema as Schema.Codec<unknown, unknown>))(value))
-  } catch {
-    return undefined
-  }
 }
 
 const nextMacrotask = Effect.callback<void>((resume) => {
@@ -459,12 +451,21 @@ export const ssr = <Name extends string, Props, Model, Msg, Events, R, V extends
         problems.push(`${path}: the client didn't adopt the server's Model`)
         continue
       }
-      const encoded = encodeJson(entry.component.model, entry.model)
-      if (encoded !== JSON.stringify(state[path])) {
+      // The adopted slots are logged right after the adoption, one entry per slot the server wrote.
+      const slots: Record<string, unknown> = {}
+      for (const later of log.slice(log.indexOf(entry) + 1)) {
+        if (later.path !== path) continue
+        if (later._tag !== "LoaderChanged") break
+        slots[later.name] = later.slot
+      }
+      const encoded = runtime.stateCodecOf(entry.component).encode(
+        entry.model,
+        { ...loaders.boundOf(entry.component)?.empty, ...slots }
+      )
+      const json = encoded._tag === "Some" ? JSON.stringify(encoded.value) : undefined
+      if (json !== JSON.stringify(state[path])) {
         problems.push(
-          `${path}: the adopted Model encodes to ${encoded ?? "nothing"}, the server's is ${
-            JSON.stringify(state[path])
-          }`
+          `${path}: the adopted state encodes to ${json ?? "nothing"}, the server's is ${JSON.stringify(state[path])}`
         )
       }
     }

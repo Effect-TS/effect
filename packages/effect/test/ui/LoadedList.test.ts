@@ -38,29 +38,28 @@ const makeApp = () => {
     )
   ) {}
 
-  const Messages = Loader.SnapshotList(ListMessages, "messages")
-  const ChatMessage = Schema.TaggedUnion({ Changed: { snapshot: Messages }, More: {}, Refresh: {} })
+  const ChatMessage = Schema.TaggedUnion({ Changed: {}, More: {}, Refresh: {} })
   const Chat = Component.make({
     name: "Chat",
     props: Schema.Struct({ room: Schema.String }),
-    model: Schema.Struct({ messages: Messages }),
+    model: Schema.Struct({}),
     message: ChatMessage,
     elements: Html,
-    loaders: { messages: (_model, props) => props.room === "" ? undefined : { room: props.room } },
-    init: ($) => $.empty,
+    loaders: {
+      messages: {
+        load: ListMessages,
+        args: (_model, props) => props.room === "" ? undefined : { room: props.room },
+        onChange: () => ChatMessage.make({ _tag: "Changed" })
+      }
+    },
+    init: () => ({}),
     update: (model, message, $) =>
       ChatMessage.match(message, {
         // On the server, a load more is dropped and reported.
-        Changed: ({ snapshot }) =>
-          $.set({ ...model, messages: snapshot }).pipe((step) =>
-            $.props.room === "ssr" ? step.loadMore("messages") : step
-          ),
+        Changed: () => $.props.room === "ssr" ? $.loadMore("messages") : model,
         More: () => $.loadMore("messages"),
         Refresh: () => $.reset("messages")
       }),
-    subscriptions: (_model, _props, $) => [
-      $.watch({ messages: (snapshot) => ChatMessage.make({ _tag: "Changed", snapshot }) })
-    ],
     view: (_model, h) =>
       h.el("p").on("click", ChatMessage.make({ _tag: "More" })).children(
         AsyncResult.match(h.loaded.messages, {
@@ -71,7 +70,7 @@ const makeApp = () => {
         })
       )
   })
-  return { db, ListMessages, Messages, ChatMessage, Chat, layer: ListMessages.layer }
+  return { db, ListMessages, ChatMessage, Chat, layer: ListMessages.layer }
 }
 
 const run = <A, E>(layer: Layer.Layer<any>, effect: Effect.Effect<A, E, any>) =>
@@ -91,7 +90,7 @@ describe("Loaded lists", () => {
         assert.strictEqual(root.text(), "r0 /1 Available")
         root.send(app.ChatMessage.make({ _tag: "More" }))
         yield* TestHost.settle
-        // A change of `more` is a message of its own.
+        // A change of `more` is a slot write of its own.
         assert.strictEqual(root.text(), "r0 /1 Loading")
         yield* page
         // The second page repeats m0: the first stays.
@@ -112,9 +111,9 @@ describe("Loaded lists", () => {
           entry._tag === "Update" ? (entry as MessageLog.Update).lists ?? [] : []
         )
         assert.deepStrictEqual(lists, [
-          { field: "messages", op: "loadMore" },
-          { field: "messages", op: "loadMore" },
-          { field: "messages", op: "reset" }
+          { name: "messages", op: "loadMore" },
+          { name: "messages", op: "loadMore" },
+          { name: "messages", op: "reset" }
         ])
       })
     )
@@ -141,7 +140,78 @@ describe("Loaded lists", () => {
     )
   })
 
-  it.effect("a load more on a disabled field does nothing", () => {
+  it.effect("a failed load more's error goes through its Schema in the log, and a Wire replay reads it", () => {
+    // The error is a number encoded as a string, so a codec that skips it fails to encode.
+    class ListCodes extends Loader.ListService<ListCodes>()(
+      "codes/ListCodes",
+      {
+        args: {},
+        page: Schema.Array(Schema.String),
+        items: (page) => page,
+        key: (code) => code,
+        error: Schema.NumberFromString,
+        cursor: Schema.Number,
+        next: () => Option.some(1),
+        staleTime: "30 seconds"
+      },
+      Effect.succeed((_args, cursor) =>
+        Option.isSome(cursor) ? Effect.fail(42) : Effect.sleep("10 millis").pipe(Effect.as(["a"]))
+      )
+    ) {}
+    const CodesMessage = Schema.TaggedUnion({ More: {}, Look: {} })
+    const Codes = Component.make({
+      name: "Codes",
+      model: Schema.String,
+      message: CodesMessage,
+      elements: Html,
+      loaders: { codes: { load: ListCodes, args: () => ({}) } },
+      init: () => "",
+      update: (model, message, $) =>
+        CodesMessage.match(message, {
+          More: () => $.loadMore("codes"),
+          // What update reads of the failed load more, so a replay reproduces it only with the error.
+          Look: () => {
+            const codes = $.loaded.codes
+            if (!AsyncResult.isSuccess(codes)) return model
+            const more = codes.value.more
+            return more._tag === "Failed" ? "failed " + more.error : more._tag
+          }
+        }),
+      view: (model, h) => h.p(model)
+    })
+    const warnings: Array<string> = []
+    const encoder = MessageLog.makeEncoder({ onWarning: (warning) => warnings.push(warning) })
+    return run(
+      ListCodes.layer,
+      Effect.gen(function*() {
+        const root = yield* TestHost.mount(Codes, {})
+        yield* page
+        root.send(CodesMessage.make({ _tag: "More" }))
+        yield* TestHost.settle
+        root.send(CodesMessage.make({ _tag: "Look" }))
+        yield* TestHost.settle
+        assert.strictEqual(root.model(), "failed 42")
+
+        const wire = root.log().map(encoder.encode)
+        assert.deepStrictEqual(warnings, [])
+        const changed = wire.filter((entry) => entry._tag === "LoaderChanged") as ReadonlyArray<
+          { readonly slot: ReadonlyArray<unknown> }
+        >
+        assert.deepStrictEqual(changed.at(-1)!.slot.at(-1), [false, { Failed: "42" }])
+        const replay = Story.fromLog(Codes, wire)
+        assert.isUndefined(replay.divergence)
+        assert.strictEqual(replay.model, "failed 42")
+        const codes = replay.loaded().codes
+        assert.isTrue(AsyncResult.isSuccess(codes))
+        assert.deepStrictEqual(AsyncResult.isSuccess(codes) ? codes.value.more : undefined, {
+          _tag: "Failed",
+          error: 42
+        })
+      })
+    )
+  })
+
+  it.effect("a load more on a disabled loader does nothing", () => {
     const app = makeApp()
     return run(
       app.layer,
@@ -155,9 +225,31 @@ describe("Loaded lists", () => {
     )
   })
 
-  it.effect("the snapshot writes one has-more bit and never Loading or Failed", () => {
+  it.effect("page state writes one has-more bit, and the log keeps Loading", () => {
     const app = makeApp()
-    const codec = Schema.toCodecJson(app.Messages)
+    const encoder = MessageLog.makeEncoder()
+    const json = (log: boolean) =>
+      Schema.toCodecJson(Loader.snapshotSchema(app.ListMessages, "messages", log)) as unknown as Schema.Codec<
+        unknown,
+        unknown
+      >
+    const state = json(false)
+    const log = json(true)
+    /** The last slot written for "messages": as page state encodes it, as the Wire does, and each decoded back. */
+    const lastSlot = (root: Pick<TestHost.TestRoot<any, any, any>, "log">) => {
+      const entry = [...root.log()].reverse().find((entry): entry is MessageLog.LoaderChanged =>
+        entry._tag === "LoaderChanged" && entry.name === "messages"
+      )!
+      const encoded = Schema.encodeUnknownSync(state)(entry.slot) as ReadonlyArray<unknown>
+      const wire = (encoder.encode(entry) as { readonly slot: ReadonlyArray<unknown> }).slot
+      return {
+        slot: entry.slot,
+        encoded,
+        decoded: Schema.decodeUnknownSync(state)(encoded),
+        wire,
+        replayed: Schema.decodeUnknownSync(log)(wire)
+      }
+    }
     return run(
       app.layer,
       Effect.gen(function*() {
@@ -165,17 +257,23 @@ describe("Loaded lists", () => {
         yield* page
         root.send(app.ChatMessage.make({ _tag: "More" }))
         yield* TestHost.settle
-        const loading = Schema.encodeSync(codec)(root.model()!.messages) as ReadonlyArray<unknown>
-        assert.strictEqual(loading.length, 6)
-        assert.strictEqual(loading[5], true)
-        const decoded = Loader.snapshotData(Schema.decodeSync(codec)(loading as any))
-        assert.deepStrictEqual(decoded?.more, { _tag: "Available" })
+        const loading = lastSlot(root)
+        assert.deepStrictEqual(Loader.snapshotData(loading.slot)?.more, { _tag: "Loading" })
+        assert.strictEqual(loading.encoded.length, 6)
+        assert.strictEqual(loading.encoded[5], true)
+        assert.deepStrictEqual(Loader.snapshotData(loading.decoded)?.more, { _tag: "Available" })
+        // The log's form ends with [waiting, more], so a replayed update reads the load more as in flight.
+        assert.strictEqual(loading.wire.length, 7)
+        assert.deepStrictEqual(loading.wire[6], [false, "Loading"])
+        assert.deepStrictEqual(Loader.snapshotData(loading.replayed)?.more, { _tag: "Loading" })
         yield* page
         root.send(app.ChatMessage.make({ _tag: "More" }))
         yield* page
-        const ended = Schema.encodeSync(codec)(root.model()!.messages) as ReadonlyArray<unknown>
-        assert.strictEqual(ended[5], false)
-        assert.deepStrictEqual(Loader.snapshotData(Schema.decodeSync(codec)(ended as any))?.more, { _tag: "End" })
+        const ended = lastSlot(root)
+        assert.strictEqual(ended.encoded[5], false)
+        assert.deepStrictEqual(Loader.snapshotData(ended.decoded)?.more, { _tag: "End" })
+        assert.deepStrictEqual(ended.wire[6], [false, "End"])
+        assert.deepStrictEqual(Loader.snapshotData(ended.replayed)?.more, { _tag: "End" })
       })
     )
   })
@@ -219,17 +317,34 @@ describe("Loaded lists", () => {
           .check((story) => assert.deepStrictEqual(story.loadingMore, []))
           .send(app.ChatMessage.make({ _tag: "Refresh" }))
     )
-    const result = Loader.snapshotData(final.model.messages)!.result!
+    const result = final.loaded().messages
     assert.strictEqual(result._tag, "Failure")
     if (result._tag === "Failure") {
       assert.isTrue(result.waiting)
       assert.deepStrictEqual(Cause.findErrorOption(result.cause), Option.some("nope"))
       assert.deepStrictEqual(
-        Option.map(result.previousSuccess, (success) => success.value),
+        Option.map(result.previousSuccess, (success) => success.value.pages),
         Option.some([pageAt(0, 1)])
       )
     }
     final.get(Query.text("failed", { exact: true }))
+  })
+
+  it("Story: given starts a list loader from its pages, with more from the last page", () => {
+    const app = makeApp()
+    const pageAt = (index: number, next: number | null) => ({
+      messages: [{ id: "m" + index, text: "r" + index }],
+      next
+    })
+    Story.make(app.Chat, { room: "r" }, (s) =>
+      s.given({}, { messages: [pageAt(0, 1), pageAt(1, 2)] })
+        .check((story) => story.get(Query.text("r0,r1 /2 Available", { exact: true })))
+        .given({}, { messages: [pageAt(0, 1), pageAt(1, null)] })
+        .check((story) => {
+          story.get(Query.text("r0,r1 /2 End", { exact: true }))
+          const messages = story.loaded().messages
+          assert.deepStrictEqual(AsyncResult.isSuccess(messages) ? messages.value.more : undefined, { _tag: "End" })
+        }))
   })
 
   it("Story: a load more is pending until a step settles it, and reset sends the first page", () => {
@@ -316,7 +431,7 @@ describe("Loaded lists", () => {
         yield* TestHost.settle
         history.go(-1)
         yield* TestHost.settle
-        // The two pages show at once, from the saved snapshot, while they load again.
+        // The two pages show at once, from the restored slot, while they load again.
         assert.strictEqual(root.text(), "r0,r1 /2 Available")
         yield* page
         yield* page

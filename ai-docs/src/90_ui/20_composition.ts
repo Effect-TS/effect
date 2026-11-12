@@ -14,8 +14,8 @@ import "effect/ui/html/register"
 // A page is one file under `pages/`, in the folder for its URL. It imports
 // what it is composed from out of the features:
 //
-// - `fixtures/pages/notes/NotePage.ts`: the page, its loader field and its Layers
-// - `fixtures/notes/loaders/GetNote.ts`: the read behind the loader field
+// - `fixtures/pages/notes/NotePage.ts`: the page, its loader and its Layers
+// - `fixtures/notes/loaders/GetNote.ts`: the read behind the loader
 // - `fixtures/notes/components/NoteEditor.ts`: a child by value
 // - `fixtures/notes/components/NoteActivity.ts`: a child by service
 // - `fixtures/notes/components/ActivityLog.ts`: that service's implementation

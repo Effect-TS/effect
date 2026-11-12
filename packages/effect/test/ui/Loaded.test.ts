@@ -59,24 +59,30 @@ const makeApp = (options?: {
   // An empty id disables the loader.
   const userArgs = (_model: unknown, props: { readonly id: string }) => props.id === "" ? undefined : { id: props.id }
   const CardMessage = Schema.TaggedUnion({
-    UserChanged: { user: Loader.Snapshot(GetUser, "user") },
+    UserChanged: { state: Schema.String },
     Rename: { name: Schema.String },
     Renamed: {}
   })
   const Card = Component.make({
     name: "Card",
     props: Schema.Struct({ id: Schema.String, tag: Schema.String }),
-    model: Schema.Struct({ user: Loader.Snapshot(GetUser, "user"), saving: Schema.Boolean }),
+    model: Schema.Struct({ saving: Schema.Boolean }),
     message: CardMessage,
     loaders: {
-      user: options?.debounce === undefined ? userArgs : Component.debounce(options.debounce, userArgs)
+      user: {
+        load: GetUser,
+        debounce: options?.debounce,
+        args: userArgs,
+        // The slot is written by the runtime: the message only lets update see the change.
+        onChange: (result) => CardMessage.make({ _tag: "UserChanged", state: result._tag })
+      }
     },
-    init: ($) => ({ ...$.empty, saving: false }),
+    init: () => ({ saving: false }),
     update: (model, message, $) =>
       CardMessage.match(message, {
-        UserChanged: ({ user }) => {
+        UserChanged: () => {
           order.push(`update ${$.props.tag} UserChanged`)
-          return { ...model, user }
+          return model
         },
         Rename: ({ name }) => {
           order.push(`update ${$.props.tag} Rename`)
@@ -89,9 +95,6 @@ const makeApp = (options?: {
         },
         Renamed: () => ({ ...model, saving: false })
       }),
-    subscriptions: (_model, _props, $) => [
-      $.watch({ user: (user) => CardMessage.make({ _tag: "UserChanged", user }) })
-    ],
     view: (model, h) => {
       const text = AsyncResult.match(h.loaded.user, {
         onInitial: (initial) =>
@@ -294,7 +297,7 @@ describe("Loaded", () => {
     )
   })
 
-  it.effect("$.empty opens a disabled loader as Initial, not waiting, and nothing is fetched", () => {
+  it.effect("a disabled loader opens as Initial, not waiting, and nothing is fetched", () => {
     const app = makeApp()
     return run(
       app.layer,
@@ -476,26 +479,24 @@ describe("Loaded", () => {
 
   /** Watches user `id`, and records each message's result as "tag Tag:waiting". */
   const makeWatcher = (app: ReturnType<typeof makeApp>, messages: Array<string>) => {
-    const WatchMessage = Schema.TaggedUnion({
-      Changed: { user: Loader.Snapshot(app.GetUser, "user"), state: Schema.String }
-    })
+    const WatchMessage = Schema.TaggedUnion({ Changed: { state: Schema.String } })
     return Component.make({
       name: "Watcher",
       props: Schema.Struct({ id: Schema.String, tag: Schema.String }),
-      model: Schema.Struct({ user: Loader.Snapshot(app.GetUser, "user") }),
+      model: Schema.Struct({}),
       message: WatchMessage,
-      loaders: { user: (_model, props) => ({ id: props.id }) },
-      init: ($) => $.empty,
-      update: (_model, message, $) => {
-        messages.push(`${$.props.tag} ${message.state}`)
-        return { user: message.user }
+      loaders: {
+        user: {
+          load: app.GetUser,
+          args: (_model, props) => ({ id: props.id }),
+          onChange: (result) => WatchMessage.make({ _tag: "Changed", state: `${result._tag}:${result.waiting}` })
+        }
       },
-      subscriptions: (_model, _props, $) => [
-        $.watch({
-          user: (user, result) =>
-            WatchMessage.make({ _tag: "Changed", user, state: `${result._tag}:${result.waiting}` })
-        })
-      ],
+      init: () => ({}),
+      update: (model, message, $) => {
+        messages.push(`${$.props.tag} ${message.state}`)
+        return model
+      },
       view: (_model, h) => h.el("p", `${h.props.tag}=${h.loaded.user._tag}:${h.loaded.user.waiting}`)
     })
   }
@@ -577,23 +578,24 @@ describe("Loaded", () => {
         { args: { id: Schema.String }, success: Schema.String, error: Schema.String, staleTime: "1 second" },
         Effect.succeed(({ id }) => Effect.callback<string, string>((resume) => void finish.set(id, resume)))
       ) {}
-      const Message = Schema.TaggedUnion({ Changed: { data: Loader.Snapshot(Read, "data"), state: Schema.String } })
+      const Message = Schema.TaggedUnion({ Changed: { state: Schema.String } })
       const Watcher = Component.make({
         name: "Watcher",
         props: Schema.Struct({ tag: Schema.String }),
-        model: Schema.Struct({ data: Loader.Snapshot(Read, "data") }),
+        model: Schema.Struct({}),
         message: Message,
-        loaders: { data: () => ({ id: "fail" }) },
-        init: ($) => $.empty,
-        update: (_model, message, $) => {
-          messages.push(`${$.props.tag} ${message.state}`)
-          return { data: message.data }
+        loaders: {
+          data: {
+            load: Read,
+            args: () => ({ id: "fail" }),
+            onChange: (result) => Message.make({ _tag: "Changed", state: `${result._tag}:${result.waiting}` })
+          }
         },
-        subscriptions: (_model, _props, $) => [
-          $.watch({
-            data: (data, result) => Message.make({ _tag: "Changed", data, state: `${result._tag}:${result.waiting}` })
-          })
-        ],
+        init: () => ({}),
+        update: (model, message, $) => {
+          messages.push(`${$.props.tag} ${message.state}`)
+          return model
+        },
         view: (_model, h) => h.el("p", `${h.props.tag}=${h.loaded.data._tag}:${h.loaded.data.waiting}`)
       })
       const Shell = Component.make({
@@ -606,31 +608,20 @@ describe("Loaded", () => {
         view: (_model, h) => h.el("div", h.props.show ? [h.child(Watcher, { key: "old", props: { tag: "o" } })] : [])
       })
       const PageMessage = Schema.TaggedUnion({
-        Changed: { other: Loader.Snapshot(Read, "other") },
         Enable: {},
         Swap: {}
       })
       const Page = Component.make({
         name: "Page",
-        model: Schema.Struct({
-          other: Loader.Snapshot(Read, "other"),
-          enabled: Schema.Boolean,
-          swapped: Schema.Boolean
-        }),
+        model: Schema.Struct({ enabled: Schema.Boolean, swapped: Schema.Boolean }),
         message: PageMessage,
-        loaders: { other: (model) => model.enabled ? { id: "other" } : undefined },
-        init: ($) => ({ ...$.empty, enabled: false, swapped: false }),
+        loaders: { other: { load: Read, args: (model) => model.enabled ? { id: "other" } : undefined } },
+        init: () => ({ enabled: false, swapped: false }),
         update: (model, message) =>
           PageMessage.match(message, {
-            Changed: ({ other }) => ({ ...model, other }),
             Enable: () => ({ ...model, enabled: true }),
             Swap: () => ({ ...model, swapped: true })
           }),
-        subscriptions: (
-          _model,
-          _props,
-          $
-        ) => [$.watch({ other: (other) => PageMessage.make({ _tag: "Changed", other }) })],
         view: (model, h) =>
           h.el(
             "div",
@@ -721,21 +712,22 @@ describe("Loaded", () => {
 
   it.effect("a kept child's warm re-key emits through the onEmit of the view that re-keyed it", () => {
     const app = makeApp()
-    const EmitterMessage = Schema.TaggedUnion({ UserChanged: { user: Loader.Snapshot(app.GetUser, "user") } })
+    const EmitterMessage = Schema.TaggedUnion({ UserChanged: {} })
     const Emitter = Component.make({
       name: "Emitter",
       props: Schema.Struct({ id: Schema.String }),
-      model: Schema.Struct({ user: Loader.Snapshot(app.GetUser, "user") }),
+      model: Schema.Struct({}),
       message: EmitterMessage,
       events: Schema.String,
-      loaders: { user: (_model, props) => ({ id: props.id }) },
-      init: ($) => $.empty,
-      update: (_model, message, $) => $.set({ user: message.user }).emit($.props.id),
-      subscriptions: (
-        _model,
-        _props,
-        $
-      ) => [$.watch({ user: (user) => EmitterMessage.make({ _tag: "UserChanged", user }) })],
+      loaders: {
+        user: {
+          load: app.GetUser,
+          args: (_model, props) => ({ id: props.id }),
+          onChange: () => EmitterMessage.make({ _tag: "UserChanged" })
+        }
+      },
+      init: () => ({}),
+      update: (model, _message, $) => $.set(model).emit($.props.id),
       view: (_model, h) => h.el("p", "emitter")
     })
     const ParentMessage = Schema.TaggedUnion({ Switch: {}, Noted: { label: Schema.String } })
@@ -784,22 +776,16 @@ describe("Loaded", () => {
       { args: {} },
       () => Effect.never.pipe(Effect.ensuring(Effect.uninterruptible(cleanup)))
     )
-    const BadMessage = Schema.TaggedUnion({ UserChanged: { user: Loader.Snapshot(app.GetUser, "user") }, Crash: {} })
+    const BadMessage = Schema.TaggedUnion({ Crash: {} })
     const Bad = Component.make({
       name: "Bad",
-      model: Schema.Struct({ user: Loader.Snapshot(app.GetUser, "user") }),
+      model: Schema.Struct({}),
       message: BadMessage,
-      loaders: { user: () => ({ id: "1" }) },
-      init: ($) => $.set($.empty).run(Hold()),
-      update: (model, message) => {
-        if (message._tag === "Crash") throw new Error("crash")
-        return { ...model, user: message.user }
+      loaders: { user: { load: app.GetUser, args: () => ({ id: "1" }) } },
+      init: ($) => $.set({}).run(Hold()),
+      update: (): {} => {
+        throw new Error("crash")
       },
-      subscriptions: (
-        _model,
-        _props,
-        $
-      ) => [$.watch({ user: (user) => BadMessage.make({ _tag: "UserChanged", user }) })],
       view: (_model, h) => h.el("p").on("click", BadMessage.make({ _tag: "Crash" })).children("bad")
     })
     const Host = Component.make({
@@ -842,7 +828,6 @@ describe("Loaded", () => {
   it.effect("settle waits for a resolved Promise while an interval sleeps on the clock", () => {
     const app = makeApp({ interval: true })
     const PollMessage = Schema.TaggedUnion({
-      UserChanged: { user: Loader.Snapshot(app.GetUser, "user") },
       Go: {},
       Done: {}
     })
@@ -853,21 +838,15 @@ describe("Loaded", () => {
     )
     const Poll = Component.make({
       name: "Poll",
-      model: Schema.Struct({ user: Loader.Snapshot(app.GetUser, "user"), done: Schema.Boolean }),
+      model: Schema.Struct({ done: Schema.Boolean }),
       message: PollMessage,
-      loaders: { user: () => ({ id: "1" }) },
-      init: ($) => ({ ...$.empty, done: false }),
+      loaders: { user: { load: app.GetUser, args: () => ({ id: "1" }) } },
+      init: () => ({ done: false }),
       update: (model, message, $) =>
         PollMessage.match(message, {
-          UserChanged: ({ user }) => ({ ...model, user }),
           Go: () => $.set(model).run(Go()),
           Done: () => ({ ...model, done: true })
         }),
-      subscriptions: (
-        _model,
-        _props,
-        $
-      ) => [$.watch({ user: (user) => PollMessage.make({ _tag: "UserChanged", user }) })],
       view: (model, h) => h.el("p", model.done ? "done" : "not yet")
     })
     return run(
@@ -905,7 +884,7 @@ describe("Loaded", () => {
   it.effect("a Command issued by the folded first emission starts after init's, and after the first render", () => {
     const app = makeApp()
     const seen: Array<string> = []
-    const Message = Schema.TaggedUnion({ UserChanged: { user: Loader.Snapshot(app.GetUser, "user") }, Noted: {} })
+    const Message = Schema.TaggedUnion({ UserChanged: {}, Noted: {} })
     const Note = Command.make("Note", { args: { text: Schema.String } }, ({ text }) =>
       Effect.sync(() => {
         seen.push(`command ${text}`)
@@ -913,23 +892,24 @@ describe("Loaded", () => {
       }))
     const Noter = Component.make({
       name: "Noter",
-      model: Schema.Struct({ user: Loader.Snapshot(app.GetUser, "user") }),
+      model: Schema.Struct({}),
       message: Message,
-      loaders: { user: () => ({ id: "1" }) },
-      init: ($) => $.set($.empty).run(Note({ text: "init" })),
+      loaders: {
+        user: {
+          load: app.GetUser,
+          args: () => ({ id: "1" }),
+          onChange: () => Message.make({ _tag: "UserChanged" })
+        }
+      },
+      init: ($) => $.set({}).run(Note({ text: "init" })),
       update: (model, message, $) =>
         Message.match(message, {
-          UserChanged: ({ user }) => {
+          UserChanged: () => {
             seen.push("update UserChanged")
-            return $.set({ user }).run(Note({ text: "fold" }))
+            return $.set(model).run(Note({ text: "fold" }))
           },
           Noted: () => model
         }),
-      subscriptions: (
-        _model,
-        _props,
-        $
-      ) => [$.watch({ user: (user) => Message.make({ _tag: "UserChanged", user }) })],
       view: (_model, h) => {
         seen.push(`view ${h.loaded.user._tag}`)
         return h.el("i", "noter")
@@ -991,7 +971,7 @@ describe("Loaded", () => {
         app.order.length = 0
         Query.fire(root.get(Query.text("a=Ann", { exact: true })), "click")
         yield* TestHost.settle
-        // Both instances fold the patched snapshot before the one flush that renders the issuing update.
+        // Both instances get the patched slot (and its onChange) before the one flush that renders the issuing update.
         assert.deepStrictEqual(app.order, [
           "update a Rename",
           "update a UserChanged",
@@ -1120,59 +1100,65 @@ describe("Loaded", () => {
     )
   })
 
-  it("Component.make rejects a nested or mislabelled snapshot, a missing loader, and missing watch subscriptions", () => {
+  it("Component.make rejects a loaders entry that isn't { load, args } or { loadMany, args }", () => {
     const app = makeApp()
-    const base = {
-      name: "Bad",
-      message: Schema.Never,
-      init: () => ({}),
-      update: (model: any) => model,
-      view: (_: any, h: any) => h.text("")
-    }
-    const snapshot = Loader.Snapshot(app.GetUser, "user")
+    class ListUsers extends Loader.ListService<ListUsers>()(
+      "users/ListUsers",
+      {
+        args: {},
+        page: Schema.Array(User),
+        items: (page) => page,
+        key: (user) => user.id,
+        error: Schema.Never,
+        cursor: Schema.Number,
+        next: () => Option.none(),
+        staleTime: "30 seconds"
+      },
+      Effect.succeed(() => Effect.succeed([]))
+    ) {}
+    const make = (loaders: unknown) =>
+      Component.make({
+        name: "Bad",
+        model: Schema.Struct({}),
+        message: Schema.Never,
+        loaders,
+        init: () => ({}),
+        update: (model: any) => model,
+        view: (_: any, h: any) => h.text("")
+      } as any)
+    const args = () => ({ id: "1" })
+    assert.throws(() => make(42), /Bad: loaders must be a record/)
+    assert.throws(() => make({ user: args }), /Bad: loaders\.user must be \{ load, args \} or \{ loadMany, args \}/)
+    assert.throws(() => make({ user: { args } }), /loaders\.user must have exactly one of load and loadMany/)
     assert.throws(
-      () => Component.make({ ...base, model: Schema.Struct({ user: Schema.Array(snapshot) }) } as any),
-      /below its top level/
+      () => make({ user: { load: app.GetUser, loadMany: app.GetUser, args } }),
+      /must have exactly one of load and loadMany/
     )
+    assert.throws(() => make({ user: { load: "users/GetUser", args } }), /has a load that isn't a read/)
+    assert.throws(() => make({ user: { loadMany: {}, args } }), /has a loadMany that isn't a read/)
+    assert.throws(() => make({ user: { load: app.GetUser } }), /must have an args function/)
     assert.throws(
-      () => Component.make({ ...base, model: Schema.Struct({ user: Schema.NullOr(snapshot) }) } as any),
-      /below its top level/
+      () => make({ user: { load: app.GetUser, args, onChange: 1 } }),
+      /has an onChange that isn't a function/
     )
-    assert.throws(
-      () => Component.make({ ...base, model: Schema.Struct({ person: snapshot }) } as any),
-      /A snapshot's label is its field's name/
-    )
-    const model = Schema.Struct({ user: snapshot })
-    assert.throws(() => Component.make({ ...base, model } as any), /has no loader/)
-    const loaders = { user: () => ({ id: "1" }) }
-    assert.throws(() => Component.make({ ...base, model, loaders } as any), /subscriptions must return/)
-    const unwatched = Component.make({ ...base, model, loaders, subscriptions: () => [] } as any)
-    assert.throws(() => unwatched.subscriptions!({ user: undefined }, {}), /subscriptions must return/)
-    const unhandled = Component.make(
-      { ...base, model, loaders, subscriptions: (_m: any, _p: any, $: any) => [$.watch({})] } as any
-    )
-    assert.throws(() => unhandled.subscriptions!({ user: undefined }, {}), /no handler/)
+    assert.throws(() => make({ users: { loadMany: ListUsers, args: () => [{}] } }), /A list read takes load/)
+    // The well-formed entries pass.
+    make({ user: { load: app.GetUser, args }, users: { load: ListUsers, args: () => ({}) } })
+    make({ users: { loadMany: app.GetUser, args: () => [{ id: "1" }] } })
   })
 
   it.effect("loaders that read each other in a cycle fail the instance, and settle fails with RootCrashed", () => {
     const app = makeApp()
-    const Message = Schema.TaggedUnion({
-      A: { a: Loader.Snapshot(app.GetUser, "a") },
-      B: { b: Loader.Snapshot(app.GetUser, "b") }
-    })
     const Cycle = Component.make({
       name: "Cycle",
-      model: Schema.Struct({ a: Loader.Snapshot(app.GetUser, "a"), b: Loader.Snapshot(app.GetUser, "b") }),
-      message: Message,
+      model: Schema.Struct({}),
+      message: Schema.Never,
       loaders: {
-        a: (_model: any, _props: any, loaded: any) => (loaded.b, { id: "1" }),
-        b: (_model: any, _props: any, loaded: any) => (loaded.a, { id: "2" })
+        a: { load: app.GetUser, args: (_model: any, _props: any, loaded: any) => (loaded.b, { id: "1" }) },
+        b: { load: app.GetUser, args: (_model: any, _props: any, loaded: any) => (loaded.a, { id: "2" }) }
       },
-      init: ($: any) => $.empty,
-      update: (model: any, message: any) => ({ ...model, ...message }),
-      subscriptions: (_model: any, _props: any, $: any) => [
-        $.watch({ a: (a: any) => Message.make({ _tag: "A", a }), b: (b: any) => Message.make({ _tag: "B", b }) })
-      ],
+      init: () => ({}),
+      update: (model: any) => model,
       view: (_model: any, h: any) => h.el("p", "never")
     } as any)
     return run(
@@ -1200,20 +1186,14 @@ describe("Loaded", () => {
         Effect.succeed({ id: "acc", secret: Redacted.make(`secret-of-${Redacted.value(token)}`) })
       )
     ) {}
-    const Message = Schema.TaggedUnion({ Changed: { account: Loader.Snapshot(GetAccount, "account") } })
     const Page = Component.make({
       name: "Page",
       props: Schema.Struct({ token: Schema.Redacted(Schema.String) }),
-      model: Schema.Struct({ account: Loader.Snapshot(GetAccount, "account") }),
-      message: Message,
-      loaders: { account: (_model, props) => ({ token: props.token }) },
-      init: ($) => $.empty,
-      update: (_model, message) => ({ account: message.account }),
-      subscriptions: (
-        _model,
-        _props,
-        $
-      ) => [$.watch({ account: (account) => Message.make({ _tag: "Changed", account }) })],
+      model: Schema.Struct({}),
+      message: Schema.Never,
+      loaders: { account: { load: GetAccount, args: (_model, props) => ({ token: props.token }) } },
+      init: () => ({}),
+      update: (model) => model,
       view: (_model, h) =>
         h.el("p", AsyncResult.isSuccess(h.loaded.account) ? Redacted.value(h.loaded.account.value.secret) : "…")
     })
@@ -1222,12 +1202,19 @@ describe("Loaded", () => {
       Effect.gen(function*() {
         const root = yield* TestHost.mount(Page, { token: Redacted.make("tok-123") })
         yield* TestHost.settle
-        // Page state keeps the real values: the snapshot's key and value as the Model's JSON codec writes them.
+        // Page state keeps the real values: the slot's key and value as the state's JSON codec writes them.
         assert.strictEqual(root.text(), "secret-of-tok-123")
-        const state = JSON.stringify(Schema.encodeUnknownSync(Schema.toCodecJson(Page.model))(root.model()))
+        const changed = root.log().filter((entry) => entry._tag === "LoaderChanged")
+        assert.deepStrictEqual(changed.map((entry) => entry.name), ["account"])
+        // Page state is { model, loaded }, with the slots encoded by the loaders' Schemas.
+        const loaded = (Page["~loaders"] as { readonly schema: Schema.Codec<unknown, unknown> }).schema
+        const codec = Schema.toCodecJson(Schema.Struct({ model: Page.model, loaded }))
+        const state = JSON.stringify(
+          Schema.encodeUnknownSync(codec)({ model: root.model(), loaded: { account: changed[0].slot } })
+        )
         assert.include(state, "tok-123")
         assert.include(state, "secret-of-tok-123")
-        // The log doesn't: not the args in the log key, nor the value in the folded snapshot.
+        // The log doesn't: not the args in the log key, nor the value in the written slot.
         const fetch = root.fetches()[0]
         assert.notInclude(fetch.logKey, "tok-123")
         const encoder = MessageLog.makeEncoder()
@@ -1252,24 +1239,15 @@ describe("Loaded", () => {
       },
       Effect.succeed(() => Effect.never)
     ) {}
-    const Message = Schema.TaggedUnion({ UserChanged: { user: Loader.Snapshot(app.GetUser, "user") }, Break: {} })
+    const Message = Schema.TaggedUnion({ Break: {} })
     const Breaker = Component.make({
       name: "Breaker",
-      model: Schema.Struct({ user: Loader.Snapshot(app.GetUser, "user") }),
+      model: Schema.Struct({}),
       message: Message,
-      loaders: { user: () => ({ id: "1" }) },
-      init: ($) => $.empty,
-      update: (model, message, $) =>
-        Message.match(message, {
-          UserChanged: ({ user }) => ({ user }),
-          Break: () =>
-            $.set(model).run(BadRename.make({ id: "1" }).pipe(Command.map(() => Message.make({ _tag: "Break" }))))
-        }),
-      subscriptions: (
-        _model,
-        _props,
-        $
-      ) => [$.watch({ user: (user) => Message.make({ _tag: "UserChanged", user }) })],
+      loaders: { user: { load: app.GetUser, args: () => ({ id: "1" }) } },
+      init: () => ({}),
+      update: (model, _message, $) =>
+        $.set(model).run(BadRename.make({ id: "1" }).pipe(Command.map(() => Message.make({ _tag: "Break" })))),
       view: (_model, h) => h.el("p", "breaker")
     })
     return run(
