@@ -157,37 +157,17 @@ export type MakeField<S extends Schema.Constraint> = S extends {
   : S
 
 /**
- * The fields of a params or query Struct, each as `MakeField` gives it.
- *
- * @stability experimental
- * @category utility types
- * @since 4.1.5
- */
-export type MakeFields<Fields extends Schema.Struct.Fields> = { readonly [K in keyof Fields]: MakeField<Fields[K]> }
-
-/**
- * A params or query Struct, which `make` fills in, defaults included, when
- * no field needs a value.
+ * A params or query Struct, each field as `MakeField` gives it, which `make`
+ * fills in, defaults included, when no field needs a value.
  *
  * @stability experimental
  * @category utility types
  * @since 4.1.5
  */
 export type FieldsSchema<Fields extends Schema.Struct.Fields> = {} extends
-  Schema.Struct<MakeFields<Fields>>["~type.make.in"] ? Schema.withConstructorDefault<Schema.Struct<MakeFields<Fields>>>
-  : Schema.Struct<MakeFields<Fields>>
-
-/**
- * The Schema of one route's values in a union.
- *
- * @stability experimental
- * @category models
- * @since 4.1.5
- */
-export type Case<Tag extends string, R> = Schema.TaggedStruct<Tag, {
-  readonly params: FieldsSchema<ParamFields<R>>
-  readonly query: FieldsSchema<QueryFields<R>>
-}>
+  Schema.Struct<{ readonly [K in keyof Fields]: MakeField<Fields[K]> }>["~type.make.in"]
+  ? Schema.withConstructorDefault<Schema.Struct<{ readonly [K in keyof Fields]: MakeField<Fields[K]> }>>
+  : Schema.Struct<{ readonly [K in keyof Fields]: MakeField<Fields[K]> }>
 
 /**
  * A redirect: a template whose raw params and query map to a route value.
@@ -240,8 +220,15 @@ export interface Resolved<A> {
  * @category models
  * @since 4.1.5
  */
-export interface Union<Routes extends Record<string, Any>>
-  extends Schema.TaggedUnion<{ readonly [K in keyof Routes & string]: Case<K, Routes[K]> }>
+export interface Union<Routes extends Record<string, Any>> extends
+  Schema.TaggedUnion<
+    {
+      readonly [K in keyof Routes & string]: Schema.TaggedStruct<K, {
+        readonly params: FieldsSchema<ParamFields<Routes[K]>>
+        readonly query: FieldsSchema<QueryFields<Routes[K]>>
+      }>
+    }
+  >
 {
   /** The route definitions, by tag. */
   readonly routes: Routes
