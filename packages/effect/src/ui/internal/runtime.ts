@@ -2072,8 +2072,11 @@ const setup = (
           inst.dispatch(message, source)
         }
         // Attached to its source, it dispatches synchronously, and only its first check waits.
+        const current = () => !inst.closed && inst.subscriptions.get(key) === running
         const attachedTo = (subscription as services.Direct)[services.direct]?.(context, (message) => {
-          if (!inst.closed && inst.subscriptions.get(key) === running) emit(message)
+          if (current()) emit(message)
+        }, (cause) => {
+          if (current()) failInstance(inst, cause, "subscription", key)
         })
         if (attachedTo !== undefined) addFinalizer(running.scope, Effect.sync(attachedTo.close))
         const fiber = forkLater(

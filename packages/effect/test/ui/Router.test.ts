@@ -129,6 +129,38 @@ describe("Router", { concurrent: false }, () => {
     )
   })
 
+  it.effect("fails the subscribing instance on a mapper defect, not the navigation or other subscribers", () => {
+    const routes = Route.union({ Home: Route.make("/"), Other: Route.make("/other") })
+    const subscriber = (name: string, map: (route: typeof routes.Type) => typeof routes.Type) =>
+      Component.make({
+        name,
+        props: Schema.Struct({ route: routes }),
+        model: Schema.Struct({ route: routes }),
+        message: routes,
+        init: ($) => ({ route: $.props.route }),
+        update: (_, route) => ({ route }),
+        subscriptions: (model) => [Router.subscription(routes, model.route, map)],
+        view: (model, h) => h.el("p", model.route._tag)
+      })
+    const Broken = subscriber("Broken", () => {
+      throw new Error("bad mapper")
+    })
+    const Healthy = subscriber("Healthy", (route) => route)
+    return Effect.gen(function*() {
+      const broken = yield* TestHost.mount(Broken, Router.props(routes))
+      const healthy = yield* TestHost.mount(Healthy, Router.props(routes))
+      yield* TestHost.settle
+      const router = yield* Router.Router
+      assert.strictEqual(yield* router.navigate("/other"), "navigated")
+      yield* Effect.exit(TestHost.settle)
+      assert.strictEqual(router.location().url, "/other")
+      assert.strictEqual(healthy.text(), "Other")
+      const failed = broken.log().find((entry) => entry._tag === "Failed") as MessageLog.Failed
+      assert.strictEqual(failed.source, "subscription")
+      assert.isUndefined(broken.model())
+    }).pipe(Effect.provide(Router.memory({ routes })), Effect.provide(TestHost.layer()))
+  })
+
   it.effect("removes query params dropped as invalid from the URL, keeping the others", () => {
     const routes = Route.union({
       Search: Route.make("/", {

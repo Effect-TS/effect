@@ -83,6 +83,7 @@
  * @stability experimental
  * @since 4.1.5
  */
+import * as Cause from "../Cause.ts"
 import * as Context from "../Context.ts"
 import * as Data from "../Data.ts"
 import * as Duration from "../Duration.ts"
@@ -684,7 +685,7 @@ export const subscription = <U extends Routes, Msg>(
   }))
   // The runtime attaches to the Router's engine instead of running the Stream, so a navigation is
   // delivered from inside the Router's `set`: in the flush whose Command made it.
-  const direct: NonNullable<services.Direct[typeof services.direct]> = (context, emit) => {
+  const direct: NonNullable<services.Direct[typeof services.direct]> = (context, emit, fail) => {
     const router = Context.get(context as Context.Context<Router>, Router)
     const found = engines.get(router)
     if (found === undefined) return undefined
@@ -696,7 +697,13 @@ export const subscription = <U extends Routes, Msg>(
     const deliver = (location: Location) => {
       const initial = first
       first = false
-      const message = messageOf(router, report, root(), location, initial)
+      let message: Option.Option<Msg>
+      try {
+        message = messageOf(router, report, root(), location, initial)
+      } catch (error) {
+        // The subscriber's mapper: its defect fails the subscriber, not the navigation or the other listeners.
+        return fail(Cause.die(error))
+      }
       if (Option.isSome(message)) emit(message.value)
     }
     return {
