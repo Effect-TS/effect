@@ -910,9 +910,6 @@ describe("BrowserHost", { concurrent: false }, () => {
         close.call(rejecting.dialog()!)
         yield* tick
         expect(rejecting.dialog()!.open).toBe(true)
-        // A close reported after the dialog is open again is stale: no message, nothing reopened.
-        rejecting.dialog()!.dispatchEvent(new Event("close"))
-        yield* tick
         expect(rejecting.root.model()!.log).toEqual(["escape rejected", "escape rejected", "closed"])
         expect(calls).toEqual(["showModal Delete note?", "showModal Delete note?"])
 
@@ -950,6 +947,64 @@ describe("BrowserHost", { concurrent: false }, () => {
         yield* tick
         expect(calls.filter((call) => call.startsWith("showModal"))).toHaveLength(2)
       }).pipe(Effect.scoped))
+
+    it.each(
+      [
+        { name: "two mode switches, then a close", states: [true, "modal", false], closes: ["closed"] },
+        { name: "a close, a reopen, then a close", states: [false, "modal", false], closes: ["closed"] },
+        { name: "a close, then a reopen", states: [false, "modal"], closes: [] }
+      ] as const
+    )("close events reported a task later end the right showing: $name", ({ closes, states }) => {
+      // Browsers close at once and report it in a later task; happy-dom reports it at once.
+      const host = BrowserHost.makeHost(document)
+      const dialog = document.body.appendChild(document.createElement("dialog"))
+      const tasks: Array<() => void> = []
+      const close = vi.spyOn(dialog, "close").mockImplementation(() => {
+        dialog.open = false
+        tasks.push(() => dialog.dispatchEvent(new Event("close")))
+      })
+      const seen: Array<unknown> = []
+      try {
+        host.setEvents(dialog, { close: "closed" }, (_, handler) => seen.push(handler), {})
+        host.setProp(dialog, "open", "modal")
+        host.commit?.()
+        for (const state of states) {
+          host.setProp(dialog, "open", state)
+          host.commit?.()
+        }
+        for (const task of tasks) task()
+        expect(seen).toEqual(closes)
+      } finally {
+        close.mockRestore()
+        host.dispose()
+        dialog.remove()
+      }
+    })
+
+    it("a close the browser makes is the app's, unless the host has shown the dialog again first", () => {
+      const host = BrowserHost.makeHost(document)
+      const dialog = document.body.appendChild(document.createElement("dialog"))
+      const seen: Array<unknown> = []
+      try {
+        host.setEvents(dialog, { close: "closed" }, (_, handler) => seen.push(handler), {})
+        host.setProp(dialog, "open", "modal")
+        host.commit?.()
+        // A forced close reported before the reconciliation shows it again.
+        dialog.open = false
+        dialog.dispatchEvent(new Event("close"))
+        expect(seen).toEqual(["closed"])
+        host.commit?.()
+        expect(dialog.open).toBe(true)
+        // A forced close the reconciliation got to first: its report is stale.
+        dialog.open = false
+        host.commit?.()
+        dialog.dispatchEvent(new Event("close"))
+        expect(seen).toEqual(["closed"])
+      } finally {
+        host.dispose()
+        dialog.remove()
+      }
+    })
 
     it.effect("nested modals open outer first, so the inner one is on top", () =>
       Effect.gen(function*() {

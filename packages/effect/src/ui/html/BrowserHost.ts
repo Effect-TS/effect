@@ -10,15 +10,18 @@
  * natively, whether or not it has a `submit` handler.
  *
  * A `dialog` set with `modal(true)` is shown with `showModal()` at the commit
- * after it's in the document, outer dialogs before the ones nested in them,
- * and closed with `close()`. The host cancels a modal's `cancel` and sends it
- * to `onCancel`, so the Model decides. When the browser closes it anyway, as
- * Chromium does after repeated cancelled requests, the host shows it again
- * on the next frame while the Model still wants it, which moves focus to its
- * first focusable element. A `close` reported after the dialog was shown
- * again is stale and sends nothing, and the close the host makes to switch
- * between modal and non-modal isn't sent either. A dialog removed while
- * modal is simply gone: the browser takes it out of the top layer.
+ * after it's in the document, and closed with `close()`. Dialogs shown in
+ * the same commit open in document order, so one nested in another is on
+ * top; one shown later is on top of those already open. The host cancels a
+ * modal's `cancel` and sends it to `onCancel`, so the Model decides. When
+ * the browser closes it anyway, as Chromium does after repeated cancelled
+ * requests, the host shows it again on the next frame while the Model still
+ * wants it, which moves focus to its first focusable element. Browsers
+ * report each close a task later, so the host keeps one record per time it
+ * showed the dialog, and each `close` event ends the oldest: it reaches
+ * `onClose` only for the latest showing, and not for a close the host made
+ * to switch between modal and non-modal. A dialog removed while modal is
+ * simply gone: the browser takes it out of the top layer.
  *
  * A handler set with `{ preventDefault: true }` cancels its event's default
  * when it produces a message, before the message is sent, and leaves the
@@ -276,8 +279,20 @@ export const makeHost = (
   // dialog leaves the page inert in browsers.
   /** Dialogs the host showed with `showModal()` and hasn't seen close since. */
   const modals = new WeakSet<globalThis.Element>()
-  /** Dialogs the host closed only to change mode: their `close` event isn't the app's. */
-  const quiet = new WeakSet<globalThis.Element>()
+  /**
+   * Each time a dialog was shown, oldest first, until its `close` event arrives. Browsers report every
+   * close in a later task, so several can be queued: each event ends the oldest showing, and only the
+   * close of the latest showing, not made to change mode, is the app's.
+   */
+  const showings = new WeakMap<globalThis.Element, Array<{ modeChange: boolean; closed: boolean }>>()
+  const showingsOf = (dialog: globalThis.Element) => {
+    let list = showings.get(dialog)
+    if (list === undefined) {
+      list = []
+      showings.set(dialog, list)
+    }
+    return list
+  }
   /** Dialogs whose Model says `"modal"`, checked at every commit. */
   const modalWanted = new Set<HTMLDialogElement>()
   /**
@@ -304,7 +319,15 @@ export const makeHost = (
   const closeDialog = (dialog: HTMLDialogElement, asModeChange: boolean) => {
     if (!dialog.open) return
     modals.delete(dialog)
-    if (asModeChange) quiet.add(dialog)
+    // A showing the host didn't start, such as a server-rendered `open`, gets its record now.
+    const list = showingsOf(dialog)
+    let current = list.at(-1)
+    if (current === undefined || current.closed) {
+      current = { modeChange: false, closed: false }
+      list.push(current)
+    }
+    current.closed = true
+    current.modeChange = asModeChange
     dialog.close()
   }
 
@@ -322,6 +345,7 @@ export const makeHost = (
     } else {
       dialog.show()
     }
+    showingsOf(dialog).push({ modeChange: false, closed: false })
   }
 
   const restoreNode = (node: globalThis.Node) => {
@@ -560,11 +584,12 @@ export const makeHost = (
         // event uncancelable; the close that follows is then put back by the reconciliation below.
         if (wanted.get(dialog)?.get("open") === "modal") event.preventDefault()
       } else {
-        // `close` comes a task after the close. A mode change's close isn't the app's, and one the
-        // dialog has since reopened from is stale.
-        if (quiet.delete(dialog)) return
-        if (dialog.open) return
-        modals.delete(dialog)
+        // `close` comes a task after the close, and ends the oldest showing. A mode change's close isn't
+        // the app's, and neither is the close of a showing the dialog has been shown again since.
+        const list = showings.get(dialog)
+        const ended = list?.shift()
+        if (ended !== undefined && (ended.modeChange || list!.length > 0)) return
+        if (!dialog.open) modals.delete(dialog)
       }
     }
     if (name === "dragstart") startDrag(event as DragEvent)
