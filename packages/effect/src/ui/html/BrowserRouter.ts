@@ -18,6 +18,10 @@
  * which no Layer build begun since is still pending), the router scrolls,
  * announces the page in a live region and moves focus. A push goes to the top
  * or to its `#hash` element, and back and forward restore the saved position.
+ * A quiet navigation (see `Router.Settled`), such as `Router.patchQuery`,
+ * stays on the page: nothing is announced and focus stays. Back and forward
+ * still restore the saved position, and a `patchQuery` given
+ * `{ scroll: true }` scrolls to the top.
  *
  * **Example** (A two-page app)
  *
@@ -235,6 +239,14 @@ const make = (options: Options, inFragment: boolean): Layer.Layer<Router.Service
 
     const onSettled = (settled: Router.Settled) => {
       const { action, hash } = settled.location
+      if (settled.quiet) {
+        // Within the page: no announcement and no focus move, and scroll only for a pop or when asked.
+        if (scroll && settled.scroll) {
+          const saved = action === "pop" ? positions.get(settled.index) : undefined
+          window.scrollTo(saved?.x ?? 0, saved?.y ?? 0)
+        }
+        return
+      }
       const container = settled.container as Element
       // Decided in the announcing flush, applied after scroll.
       const autofocus = focus ? container.querySelector<HTMLElement>("[autofocus]") : null

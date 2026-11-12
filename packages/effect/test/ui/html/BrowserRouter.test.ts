@@ -3,7 +3,7 @@ import { assert, expect, it } from "@effect/vitest"
 import { Context, Effect, Exit, Layer, Option, Schema, Scope } from "effect"
 import { Loader } from "effect/reactivity"
 import { TestClock } from "effect/testing"
-import { Component, Route, Router } from "effect/ui"
+import { Command, Component, Route, Router } from "effect/ui"
 import { BrowserHost, BrowserRouter, Html, HtmlServer } from "effect/ui/html"
 import { HtmlQuery } from "effect/ui/html/testing"
 import { describe } from "vitest"
@@ -25,6 +25,68 @@ const SearchApp = Component.make({
   update: (_, route) => route,
   subscriptions: (route) => [Router.subscription(SearchRoute, route, (next) => next)],
   view: (route, h) => h.h1(SearchRoute.print(route))
+})
+
+const ListRoute = Route.union({
+  List: Route.make("/list", {
+    query: {
+      q: Schema.optional(Schema.String),
+      page: Schema.Number.pipe(Schema.withDecodingDefaultKey(Effect.succeed(1)))
+    }
+  }),
+  Other: Route.make("/other")
+})
+const ListOnly = ListRoute.subset(["List"])
+
+const ListMessage = Schema.TaggedUnion({ Typed: { value: Schema.String }, Next: {}, Patched: {} })
+const patched = Command.map(() => ListMessage.make({ _tag: "Patched" }))
+
+/** A page whose search text and page number live in the query only. */
+const ListPage = Component.make({
+  name: "ListPage",
+  props: Schema.Struct({ route: ListOnly }),
+  model: Schema.Struct({}),
+  message: ListMessage,
+  elements: Html,
+  init: () => ({}),
+  update: (model, message, $) =>
+    ListMessage.match(message, {
+      Typed: ({ value }) => $.run(Router.patchQuery(ListRoute, $.props.route, { q: value || undefined }).pipe(patched)),
+      Next: () =>
+        $.run(
+          Router.patchQuery(ListRoute, $.props.route, { page: $.props.route.query.page + 1 }, {
+            history: "push",
+            scroll: true
+          }).pipe(patched)
+        ),
+      Patched: () => model
+    }),
+  view: (_, h) =>
+    h.div(
+      h.h1(`List page ${h.props.route.query.page}`),
+      h.input().attr("aria-label", "Search").value(h.props.route.query.q ?? "").onInput(({ value }) =>
+        ListMessage.make({ _tag: "Typed", value })
+      ),
+      h.button("Next").onClick(ListMessage.make({ _tag: "Next" })),
+      h.a("Page 2").attr("href", ListRoute.print(ListRoute.make({ _tag: "List", query: { page: 2 } })))
+    )
+})
+
+/** Holds the route, and keys the list page by its path. */
+const ListApp = Component.make({
+  name: "ListApp",
+  props: Schema.Struct({ route: ListRoute }),
+  model: ListRoute,
+  message: ListRoute,
+  elements: Html,
+  init: ($) => $.props.route,
+  update: (_, route) => route,
+  subscriptions: (route) => [Router.subscription(ListRoute, route, (next) => next)],
+  view: (route, h) =>
+    ListRoute.match(route, {
+      List: (route) => h.child(ListPage, { key: ListRoute.printPath(route), props: { route } }),
+      Other: () => h.h1("Other")
+    })
 })
 
 /** Lets popstate, the render flush, Commands and the announcement frame run. */
@@ -443,6 +505,70 @@ describe("BrowserRouter", { concurrent: false }, () => {
       const second = yield* Effect.exit(Layer.build(BrowserRouter.layer({ routes: AppRoute })))
       expect(Exit.isFailure(second)).toBe(true)
     }).pipe(Effect.scoped))
+
+  describe("quiet navigations", () => {
+    /** Mounts the list app at `url`, with a marker in the live region that only a loud navigation clears. */
+    const startList = Effect.fnUntraced(function*(url: string) {
+      window.history.replaceState(null, "", url)
+      const app = yield* container
+      const context = yield* Layer.build(BrowserRouter.layer({ routes: ListRoute }))
+      yield* Effect.flatMap(Router.currentRoute(ListRoute), (route) => BrowserHost.mountEffect(ListApp, { route }, app))
+        .pipe(Effect.provideContext(context))
+      yield* tick
+      region()!.textContent = "marker"
+      const field = HtmlQuery.getByRole(app, "textbox", { name: "Search" }) as HTMLInputElement
+      return { app, field }
+    })
+    const url = () => window.location.pathname + window.location.search
+
+    it.effect("a query patch announces nothing and leaves focus and scroll alone", () =>
+      Effect.gen(function*() {
+        const { field } = yield* startList("/list?utm_source=news")
+        window.scrollTo(0, 50)
+        field.focus()
+        HtmlQuery.input(field, "ab")
+        yield* tick
+        expect(url()).toBe("/list?q=ab&utm_source=news")
+        expect(document.activeElement).toBe(field)
+        expect(window.scrollY).toBe(50)
+        expect(region()?.textContent).toBe("marker")
+      }).pipe(Effect.scoped))
+
+    it.effect("a quiet push scrolls to the top when asked, and back restores the position, both quietly", () =>
+      Effect.gen(function*() {
+        const { app, field } = yield* startList("/list")
+        const next = HtmlQuery.getByRole(app, "button", { name: "Next" })
+        window.scrollTo(0, 80)
+        next.focus()
+        HtmlQuery.click(next)
+        yield* tick
+        expect(url()).toBe("/list?page=2")
+        expect(HtmlQuery.getByRole(app, "heading").textContent).toBe("List page 2")
+        expect(window.scrollY).toBe(0)
+        expect(document.activeElement).toBe(next)
+        window.scrollTo(0, 30)
+        window.history.back()
+        yield* tick
+        expect(url()).toBe("/list")
+        expect(HtmlQuery.getByRole(app, "heading").textContent).toBe("List page 1")
+        expect(window.scrollY).toBe(80)
+        expect(document.activeElement).toBe(next)
+        expect(region()?.textContent).toBe("marker")
+        // The page keyed by its path stayed mounted.
+        expect(HtmlQuery.getByRole(app, "textbox", { name: "Search" })).toBe(field)
+      }).pipe(Effect.scoped))
+
+    it.effect("a link to its own page's query is loud", () =>
+      Effect.gen(function*() {
+        const { app } = yield* startList("/list")
+        window.scrollTo(0, 80)
+        expect(clickReporting(link(app, "Page 2"))).toBe(true)
+        yield* tick
+        expect(url()).toBe("/list?page=2")
+        expect(window.scrollY).toBe(0)
+        expect(region()?.textContent).toBe("List page 2")
+      }).pipe(Effect.scoped))
+  })
 
   it.effect("keeps the route in the fragment with layerHash", () =>
     Effect.gen(function*() {

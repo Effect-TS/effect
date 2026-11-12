@@ -386,6 +386,38 @@ describe("Story", () => {
           .resolve(Router.Push, "navigated")
           .model((model) => assert.strictEqual(model.outcome, "navigated")))
     })
+
+    it("a query patch is named by its class, issued with the patch, and resolves with its own outcome", () => {
+      const Routes = Route.union({ Search: Route.make("/search", { query: { q: Schema.optional(Schema.String) } }) })
+      const BoxMessage = Schema.TaggedUnion({
+        Typed: { value: Schema.String },
+        Patched: { outcome: Schema.Literals(["navigated", "blocked", "stale"]) }
+      })
+      const Box = Component.make({
+        name: "Box",
+        props: Schema.Struct({ route: Routes }),
+        model: Schema.Struct({ outcome: Schema.String }),
+        message: BoxMessage,
+        init: () => ({ outcome: "" }),
+        update: (_model, message, $) =>
+          BoxMessage.match(message, {
+            Typed: ({ value }) =>
+              $.run(
+                Router.patchQuery(Routes, $.props.route, { q: value || undefined }).pipe(
+                  Command.map((outcome) => BoxMessage.make({ _tag: "Patched", outcome }))
+                )
+              ),
+            Patched: ({ outcome }) => ({ outcome })
+          }),
+        view: (model, h) => h.el("p", model.outcome)
+      })
+      const route = Routes.make({ _tag: "Search" })
+      Story.make(Box, { route }, (s) =>
+        s.send(BoxMessage.make({ _tag: "Typed", value: "ada" }))
+          .expectExact(Router.patchQuery(Routes, route, { q: "ada" }))
+          .resolve(Router.PatchQuery, "stale")
+          .model((model) => assert.strictEqual(model.outcome, "stale")))
+    })
   })
 
   describe("view defects", () => {

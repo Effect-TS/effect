@@ -238,7 +238,7 @@ describe("BrowserHost", { concurrent: false }, () => {
     })
     const SearchMessage = Schema.TaggedUnion({
       Typed: { value: Schema.String },
-      Navigated: { outcome: Schema.Literals(["navigated", "blocked"]) }
+      Patched: { outcome: Schema.Literals(["navigated", "blocked", "stale"]) }
     })
     // The query is the only copy of the text: the page's Model holds none. Digits are rejected.
     const SearchPage = Component.make({
@@ -254,12 +254,11 @@ describe("BrowserHost", { concurrent: false }, () => {
             /\d/.test(value)
               ? model
               : $.run(
-                Router.replace(SearchRoute, SearchRoute.make({ _tag: "Search", query: { q: value || undefined } }))
-                  .pipe(
-                    Command.map((outcome) => SearchMessage.make({ _tag: "Navigated", outcome }))
-                  )
+                Router.patchQuery(SearchRoute, $.props.route, { q: value || undefined }).pipe(
+                  Command.map((outcome) => SearchMessage.make({ _tag: "Patched", outcome }))
+                )
               ),
-          Navigated: () => model
+          Patched: () => model
         }),
       view: (_, h) =>
         h.input().attr("aria-label", "Search").value(h.props.route.query.q ?? "").onInput(({ value }) =>
@@ -286,7 +285,7 @@ describe("BrowserHost", { concurrent: false }, () => {
     })
 
     /**
-     * Runs a test with the app mounted at `/search`. Every value the host writes to the field is
+     * Runs a test with the app mounted at `url`. Every value the host writes to the field is
      * recorded, and `type` changes it as the user would, without recording.
      */
     const withSearch = <A, E>(
@@ -295,9 +294,10 @@ describe("BrowserHost", { concurrent: false }, () => {
         readonly history: ReturnType<typeof Router.memoryHistory>
         readonly type: (value: string) => void
         readonly writes: ReadonlyArray<string>
-      }) => Effect.Effect<A, E, Scope.Scope>
+      }) => Effect.Effect<A, E, Scope.Scope>,
+      url = "/search"
     ) => {
-      const history = Router.memoryHistory("/search")
+      const history = Router.memoryHistory(url)
       return Effect.gen(function*() {
         const app = yield* container
         yield* BrowserHost.mountEffect(SearchApp, Router.props(SearchRoute), app)
@@ -347,6 +347,28 @@ describe("BrowserHost", { concurrent: false }, () => {
           expect(writes).toEqual([])
         })
       ))
+
+    it.effect("fast typing loses no characters, keeps the caret and keeps the params the route doesn't declare", () =>
+      withSearch(({ field, history, type, writes }) =>
+        Effect.gen(function*() {
+          let text = ""
+          for (const char of "effect") {
+            text += char
+            type(text)
+            field.setSelectionRange(text.length, text.length)
+          }
+          yield* tick
+          field.setSelectionRange(1, 1)
+          type("eXffect")
+          field.setSelectionRange(2, 2)
+          type("eXYffect")
+          field.setSelectionRange(3, 3)
+          yield* tick
+          expect(field.value).toBe("eXYffect")
+          expect(field.selectionStart).toBe(3)
+          expect(history.entries()).toEqual(["/search?q=eXYffect&utm_source=news"])
+          expect(writes).toEqual([])
+        }), "/search?utm_source=news"))
 
     it.effect("a rejected keystroke is put back", () =>
       withSearch(({ field, history, type }) =>
