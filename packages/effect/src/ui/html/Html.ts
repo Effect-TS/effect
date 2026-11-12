@@ -634,10 +634,17 @@ export class Element<out Msg, out R = never, in out E = Record<string, unknown>,
    * The active drop target is the innermost one on the pointer's path that
    * accepts the drag. Unlike `mouseenter`, `onDragEnter` and `onDragLeave` go
    * to the active target only: moving between its children sends nothing,
-   * and moving into a nested target leaves the outer one. Every
-   * `onDragEnter` is followed by one `onDragLeave`, when the drag moves to
-   * another target or off any, leaves the window, is dropped (after `onDrop`)
-   * or ends.
+   * and moving into a nested target leaves the outer one.
+   *
+   * The active target is worked out from the drag's events, not from
+   * rendering. After an `onDragEnter`, one `onDragLeave` follows when a later
+   * drag event finds the drag over another target or none, the drag leaves
+   * the window, is dropped (after `onDrop`) or ends. A render that removes
+   * the target's `onDrop` or changes what it accepts takes effect on the next
+   * `dragenter` or `dragover`, or when the drag ends, not during the render,
+   * and the leave then goes to the handler the element has at that point.
+   * Nothing is sent once the element's `onDragLeave` is removed or its
+   * component is gone.
    *
    * @since 4.1.5
    */
