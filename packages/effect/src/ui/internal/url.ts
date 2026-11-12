@@ -1,3 +1,9 @@
+/**
+ * Query-string helpers shared by the Router and the server render, for the URL
+ * a resolved route is replaced with.
+ *
+ * @internal
+ */
 import type * as Route from "../Route.ts"
 
 /** The decoded key of a raw `key=value` query pair, or `undefined` if it isn't valid percent-encoding. */
@@ -10,7 +16,11 @@ const decodeKey = (pair: string): string | undefined => {
   }
 }
 
-/** The raw query pairs of `url` whose keys aren't in `keys`, as written and in order. */
+/**
+ * The raw query pairs of `url` whose keys aren't in `keys`, as written and in order.
+ *
+ * @internal
+ */
 export const pairsWithout = (url: string, keys: ReadonlySet<string>): ReadonlyArray<string> => {
   const at = url.indexOf("?")
   if (at < 0) return []
@@ -20,7 +30,11 @@ export const pairsWithout = (url: string, keys: ReadonlySet<string>): ReadonlyAr
   })
 }
 
-/** The URL with the raw `pairs` appended to its query. */
+/**
+ * The URL with the raw `pairs` appended to its query.
+ *
+ * @internal
+ */
 export const withPairs = (url: string, pairs: ReadonlyArray<string>): string =>
   pairs.length === 0 ? url : `${url}${url.includes("?") ? "&" : "?"}${pairs.join("&")}`
 
@@ -28,6 +42,8 @@ export const withPairs = (url: string, pairs: ReadonlyArray<string>): string =>
  * The URL a resolved one is replaced with, on the server and in the Router: a redirect or a
  * trailing slash becomes the printed route, and query params dropped as invalid are removed, the
  * others kept as written. Anything else keeps its URL.
+ *
+ * @internal
  */
 export const canonical = (
   routes: Route.AnyUnion,
