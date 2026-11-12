@@ -90,8 +90,8 @@ export interface TestElement extends Query.Firable {
   readonly props: Record<string, unknown>
   readonly children: Array<TestNode>
   parent: TestElement | undefined
-  handlers: Renderer.Handlers
-  eventOptions: Renderer.EventOptions
+  handlers: Readonly<Record<string, View.Handler<unknown, any>>>
+  eventOptions: Readonly<Record<string, View.EventOptions>>
   dispatch: Renderer.Dispatch | undefined
 }
 

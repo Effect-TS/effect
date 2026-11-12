@@ -103,16 +103,21 @@ describe("Component loaders", () => {
     expect<Component.SingleNames<L>>().type.toBe<"user" | "team">()
     expect<Component.KeyedNames<L>>().type.toBe<never>()
     expect<Component.ListNames<L>>().type.toBe<never>()
-    expect<Component.ReadOf<L["user"]>>().type.toBe<typeof GetUser>()
-    expect<Component.Loaded<L>>().type.toBe<{
-      readonly user: AsyncResult.AsyncResult<typeof User.Type, string>
-      readonly team: AsyncResult.AsyncResult<typeof Team.Type, never>
+    expect<L>().type.toBe<
+      { readonly user: Component.Load<typeof GetUser>; readonly team: Component.Load<typeof GetTeam> }
+    >()
+    expect<Component.LoadedOf<L["user"]>>().type.toBe<AsyncResult.AsyncResult<typeof User.Type, string>>()
+    expect<Component.LoaderHelpers<L>>().type.toBe<{
+      readonly loaded: {
+        readonly user: AsyncResult.AsyncResult<typeof User.Type, string>
+        readonly team: AsyncResult.AsyncResult<typeof Team.Type, never>
+      }
+      readonly previous: {
+        readonly user: Option.Option<typeof User.Type>
+        readonly team: Option.Option<typeof Team.Type>
+      }
+      readonly patched: { readonly user: boolean; readonly team: boolean }
     }>()
-    expect<Component.Previous<L>>().type.toBe<{
-      readonly user: Option.Option<typeof User.Type>
-      readonly team: Option.Option<typeof Team.Type>
-    }>()
-    expect<Component.Patched<L>>().type.toBe<{ readonly user: boolean; readonly team: boolean }>()
     expect<Component.LoaderServices<L>>().type.toBe<GetUser | GetTeam>()
     expect<Component.Requirements<typeof Card>>().type.toBe<GetUser | GetTeam>()
   })
@@ -254,11 +259,14 @@ describe("Story loader steps", () => {
         Component.Model<typeof Card>,
         Component.Message<typeof Card>,
         never,
-        Component.Loaded<Component.Loaders<typeof Card>>
+        {
+          readonly user: AsyncResult.AsyncResult<typeof User.Type, string>
+          readonly team: AsyncResult.AsyncResult<typeof Team.Type, never>
+        }
       >
     >()
     // `loaded()` is typed as `h.loaded` is.
-    expect(story.loaded().user).type.toBe<Component.ResultOf<typeof GetUser>>()
+    expect(story.loaded().user).type.toBe<AsyncResult.AsyncResult<typeof User.Type, string>>()
     expect(story.loaded()).type.not.toHaveProperty("n")
   })
 
@@ -276,7 +284,7 @@ describe("Story loader steps", () => {
   it("fromLog types the replay's props and loaded results", () => {
     const replay = Story.fromLog(Card, [])
     expect(replay.props).type.toBe<{ readonly id: string }>()
-    expect(replay.loaded().user).type.toBe<Component.ResultOf<typeof GetUser>>()
+    expect(replay.loaded().user).type.toBe<AsyncResult.AsyncResult<typeof User.Type, string>>()
     expect(replay.loaded()).type.not.toHaveProperty("n")
   })
 })
@@ -332,21 +340,21 @@ describe("Keyed loaders", () => {
     expect<Component.SingleNames<L>>().type.toBe<never>()
     expect<Component.ListNames<L>>().type.toBe<never>()
     expect<Component.Requirements<typeof List>>().type.toBe<GetUser>()
-    expect<Component.Loaded<L>["users"]>().type.toBe<Component.KeyedLoaded<typeof GetUser>>()
-    expect<Component.Loaded<L>["users"][number]["args"]>().type.toBe<{ readonly id: string }>()
-    expect<Component.Loaded<L>["users"][number]["result"]>().type.toBe<
+    expect<Component.LoadedOf<L["users"]>>().type.toBe<Component.KeyedLoaded<typeof GetUser>>()
+    expect<Component.LoadedOf<L["users"]>[number]["args"]>().type.toBe<{ readonly id: string }>()
+    expect<Component.LoadedOf<L["users"]>[number]["result"]>().type.toBe<
       AsyncResult.AsyncResult<typeof User.Type, string>
     >()
-    expect<ReturnType<Component.Loaded<L>["users"]["get"]>>().type.toBe<
+    expect<ReturnType<Component.LoadedOf<L["users"]>["get"]>>().type.toBe<
       Option.Option<Component.KeyedEntry<typeof GetUser>>
     >()
-    expect<Parameters<Component.Loaded<L>["users"]["get"]>[0]>().type.toBe<{ readonly id: string }>()
+    expect<Parameters<Component.LoadedOf<L["users"]>["get"]>[0]>().type.toBe<{ readonly id: string }>()
   })
 
   it("have no previous or patched view", () => {
     type L = Component.Loaders<typeof List>
-    expect<Component.Previous<L>>().type.toBe<{}>()
-    expect<Component.Patched<L>>().type.toBe<{}>()
+    expect<Component.LoaderHelpers<L>["previous"]>().type.toBe<{}>()
+    expect<Component.LoaderHelpers<L>["patched"]>().type.toBe<{}>()
   })
 
   it("a keyed loader's loaded doesn't have its own name", () => {
@@ -424,7 +432,7 @@ describe("Keyed loaders", () => {
       update: (model) => model,
       view: () => null as never
     })
-    expect<Component.Loaded<Component.Loaders<typeof Keyed>>["counts"]>().type.toBe<
+    expect<Component.LoadedOf<Component.Loaders<typeof Keyed>["counts"]>>().type.toBe<
       Component.KeyedLoaded<typeof GetCount>
     >()
   })

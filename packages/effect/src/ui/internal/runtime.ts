@@ -99,7 +99,7 @@ const failEnv = (env: Env, cause: Cause.Cause<unknown>) => {
   for (const waiter of env.waiters.splice(0)) waiter.failed?.(cause)
 }
 const memoMapOf = (env: Env): Layer.MemoMap => env.memoMap ??= Layer.CurrentMemoMap.forkOrCreate(env.ctx!)
-const unavailable = (env: Env): View.Child.Fallback =>
+const unavailable = (env: Env): AsyncResult.Initial<never, unknown> | AsyncResult.Failure<never, unknown> =>
   env.failure !== undefined ? AsyncResult.failure(env.failure) : AsyncResult.initial(true)
 
 // ---------------------------------------------------------------------------
@@ -141,7 +141,7 @@ interface RSlot {
 // ---------------------------------------------------------------------------
 
 interface Run {
-  readonly command: Command.Effectful<any, any, never> | Command.Streaming<any, any, never>
+  readonly command: Command.Issued<any, any, never, "Effect"> | Command.Issued<any, any, never, "Stream">
   readonly issued: MessageLog.Issued
   /** The run at the cache, begun at issue. `undefined` for a `Command.make` Command. */
   readonly handle: Loader.RunHandle | undefined

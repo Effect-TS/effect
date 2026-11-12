@@ -175,7 +175,9 @@ export interface Child<out Msg, out R = never> {
   readonly props: unknown
   readonly onEmit: (events: any) => Msg | undefined
   /** What the slot shows while its child can't be shown. Required for a feature child. */
-  readonly fallback: ((result: Child.Fallback) => Content<Msg, any>) | undefined
+  readonly fallback:
+    | ((result: AsyncResult.Initial<never, unknown> | AsyncResult.Failure<never, unknown>) => Content<Msg, any>)
+    | undefined
   /** Also tells the parent that the child failed. */
   readonly onFailure: ((failure: AsyncResult.Failure<never, unknown>) => Msg | undefined) | undefined
   /** Phantom: the child's requirements surface in its parent's. */
@@ -189,15 +191,6 @@ export interface Child<out Msg, out R = never> {
  * @since 4.1.5
  */
 export declare namespace Child {
-  /**
-   * What a slot's `fallback` receives: the child's service is still building,
-   * or the child failed.
-   *
-   * @category models
-   * @since 4.1.5
-   */
-  export type Fallback = AsyncResult.Initial<never, unknown> | AsyncResult.Failure<never, unknown>
-
   /**
    * The options of `h.child`. `props` may be left out when the component takes
    * none.
@@ -353,18 +346,6 @@ export const build = <Msg, R, const C extends ReadonlyArray<Input<Msg>>>(
 })
 
 /**
- * The fields an element builder holds, which `build` copies onto the element.
- *
- * @stability experimental
- * @category models
- * @since 4.1.5
- */
-export type BuilderFields = Pick<
-  Element<unknown>,
-  "elementKey" | "attrs" | "props" | "handlers" | "eventOptions" | "refKey" | "mount"
->
-
-/**
  * Copies a builder with some of its fields replaced, keeping its class. Every
  * chain method is written with it, so a builder stays a value.
  *
@@ -374,7 +355,9 @@ export type BuilderFields = Pick<
  */
 export const withFields = <B extends ElementBuilder<any, any, any, any>>(
   builder: B,
-  fields: Partial<BuilderFields>
+  fields: Partial<
+    Pick<Element<unknown>, "elementKey" | "attrs" | "props" | "handlers" | "eventOptions" | "refKey" | "mount">
+  >
 ): B => Object.assign(Object.create(Object.getPrototypeOf(builder)), builder, fields)
 
 /**
@@ -794,7 +777,9 @@ export interface Helper<Msg, Props> {
     service: Feature.Service<Self, Props, Events>,
     options: Child.Options<Props, Events, Msg> & {
       /** Required: the service may be building (`Initial`) or failed (`Failure`). */
-      readonly fallback: (result: Child.Fallback) => Content<Msg, RF>
+      readonly fallback: (
+        result: AsyncResult.Initial<never, unknown> | AsyncResult.Failure<never, unknown>
+      ) => Content<Msg, RF>
     }
   ): Child<Msg, Self | NoInfer<RF>>
   /** A component by value. Its requirements surface in the parent's. */
