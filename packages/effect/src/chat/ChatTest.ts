@@ -959,7 +959,7 @@ export const checkEvent = (event: ChatEvent.ChatEvent, options: {
         "the event's thread equal to the message's",
         () => ChatThread.toString(event.thread)
       )
-    } else {
+    } else if (event._tag !== "StopRequested") {
       const { _tag, ...fields } = event
       const flipped = _tag === "ReactionAdded"
         ? ChatEvent.ReactionRemoved.make(fields)
