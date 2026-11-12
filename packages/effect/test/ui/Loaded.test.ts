@@ -8,8 +8,16 @@ import { Query, TestHost } from "effect/ui/testing"
 const User = Schema.Struct({ id: Schema.String, name: Schema.String })
 
 /** A fresh read, mutation and components per test: the db is closed over. */
-const makeApp = (options?: { readonly staleTime?: "30 seconds" | 0 | "Infinity"; readonly interval?: boolean }) => {
-  const db = { calls: 0, names: new Map<string, string>([["1", "Ann"], ["2", "Bea"]]) }
+const makeApp = (options?: {
+  readonly staleTime?: "30 seconds" | 0 | "Infinity"
+  readonly interval?: boolean
+  readonly debounce?: "300 millis"
+}) => {
+  const db = {
+    calls: 0,
+    interrupted: [] as Array<string>,
+    names: new Map<string, string>([["1", "Ann"], ["2", "Bea"]])
+  }
   const order: Array<string> = []
 
   class GetUser extends Loader.Service<GetUser>()(
@@ -27,7 +35,7 @@ const makeApp = (options?: { readonly staleTime?: "30 seconds" | 0 | "Infinity";
         yield* Effect.sleep("10 millis")
         const name = db.names.get(id)
         return name === undefined ? yield* Effect.fail("missing") : { id, name }
-      })
+      }).pipe(Effect.onInterrupt(() => Effect.sync(() => db.interrupted.push(id))))
     )
   ) {}
 
@@ -48,6 +56,8 @@ const makeApp = (options?: { readonly staleTime?: "30 seconds" | 0 | "Infinity";
     )
   ) {}
 
+  // An empty id disables the loader.
+  const userArgs = (_model: unknown, props: { readonly id: string }) => props.id === "" ? undefined : { id: props.id }
   const CardMessage = Schema.TaggedUnion({
     UserChanged: { user: Loader.Snapshot(GetUser, "user") },
     Rename: { name: Schema.String },
@@ -59,8 +69,7 @@ const makeApp = (options?: { readonly staleTime?: "30 seconds" | 0 | "Infinity";
     model: Schema.Struct({ user: Loader.Snapshot(GetUser, "user"), saving: Schema.Boolean }),
     message: CardMessage,
     loaders: {
-      // An empty id disables the loader.
-      user: (_model, props) => props.id === "" ? undefined : { id: props.id }
+      user: options?.debounce === undefined ? userArgs : Component.debounce(options.debounce, userArgs)
     },
     init: ($) => ({ ...$.empty, saving: false }),
     update: (model, message, $) =>
@@ -87,7 +96,7 @@ const makeApp = (options?: { readonly staleTime?: "30 seconds" | 0 | "Infinity";
       const text = AsyncResult.match(h.loaded.user, {
         onInitial: (initial) =>
           Option.isSome(h.previous.user)
-            ? `was ${h.previous.user.value.name}`
+            ? `was ${h.previous.user.value.name}${initial.waiting ? "…" : ""}`
             : initial.waiting
             ? "loading"
             : "idle",
@@ -204,6 +213,83 @@ describe("Loaded", () => {
         const entry = root.entry(app.GetUser, { id: "1" })!
         assert.strictEqual(entry.watchers, 1)
         assert.isTrue(AsyncResult.isSuccess(entry.stored))
+      })
+    )
+  })
+
+  it.effect("debounce: a burst of args changes shows the previous value, then fetches the last args once", () => {
+    const app = makeApp({ debounce: "300 millis" })
+    const set = (...cards: Array<string>) => app.ListMessage.make({ _tag: "Set", cards })
+    return run(
+      app.layer,
+      Effect.gen(function*() {
+        const root = yield* TestHost.mount(app.List, { cards: ["a:1"] })
+        // The first args at mount don't wait.
+        yield* load
+        assert.strictEqual(root.text(), "a=Ann")
+        for (const id of ["2", "3", "2"]) {
+          root.send(set(`a:${id}`))
+          yield* TestHost.settle
+          yield* TestClock.adjust("100 millis")
+        }
+        // Initial, waiting, with the old value as previous.
+        assert.strictEqual(root.text(), "a=was Ann…")
+        assert.strictEqual(app.db.calls, 1)
+        // 300 ms after the last change.
+        yield* TestClock.adjust("200 millis")
+        yield* load
+        assert.strictEqual(root.text(), "a=Bea")
+        assert.deepStrictEqual(root.fetches().map((fetch) => fetch.logKey), ["{\"id\":\"1\"}", "{\"id\":\"2\"}"])
+      })
+    )
+  })
+
+  it.effect("debounce: new args interrupt the old args' fetch, unless another watcher still needs it", () => {
+    const app = makeApp({ debounce: "300 millis" })
+    const set = (...cards: Array<string>) => app.ListMessage.make({ _tag: "Set", cards })
+    return run(
+      app.layer,
+      Effect.gen(function*() {
+        const root = yield* TestHost.mount(app.List, { cards: ["a:1", "b:2"] })
+        yield* TestHost.settle
+        // Mid-fetch: a's fetch is a's alone, and b's is shared once a moves onto it.
+        yield* TestClock.adjust("5 millis")
+        root.send(set("a:2", "b:2"))
+        yield* TestHost.settle
+        yield* load
+        assert.deepStrictEqual(app.db.interrupted, ["1"])
+        assert.isUndefined(root.entry(app.GetUser, { id: "1" }))
+        assert.strictEqual(root.text(), "a=Beab=Bea")
+        assert.strictEqual(app.db.calls, 2)
+        // c leaves 1 mid-fetch while d still watches it: the fetch runs on.
+        const other = yield* TestHost.mount(app.List, { cards: ["c:1", "d:1"] })
+        yield* TestHost.settle
+        yield* TestClock.adjust("5 millis")
+        other.send(set("c:", "d:1"))
+        yield* load
+        assert.deepStrictEqual(app.db.interrupted, ["1"])
+        assert.strictEqual(other.text(), "c=idled=Ann")
+        assert.strictEqual(app.db.calls, 3)
+      })
+    )
+  })
+
+  it.effect("debounce: args whose entry is fresh, and a disabled loader, don't wait", () => {
+    const app = makeApp({ debounce: "300 millis" })
+    const set = (...cards: Array<string>) => app.ListMessage.make({ _tag: "Set", cards })
+    return run(
+      app.layer,
+      Effect.gen(function*() {
+        const root = yield* TestHost.mount(app.List, { cards: ["a:1", "b:2"] })
+        yield* load
+        // b leaves, so a moves onto a fresh entry nothing watches.
+        root.send(set("a:2"))
+        yield* TestHost.settle
+        assert.strictEqual(root.text(), "a=Bea")
+        root.send(set("a:"))
+        yield* TestHost.settle
+        assert.strictEqual(root.text(), "a=idle")
+        assert.strictEqual(app.db.calls, 2)
       })
     )
   })

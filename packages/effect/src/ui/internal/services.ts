@@ -3,7 +3,9 @@
  *
  * @internal
  */
+import type * as Cause from "../../Cause.ts"
 import * as Context from "../../Context.ts"
+import type * as Effect from "../../Effect.ts"
 import type * as Head from "../Head.ts"
 import type { Refs as RefsShape, Renderer as RendererShape } from "../Renderer.ts"
 import type * as Route from "../Route.ts"
@@ -22,9 +24,13 @@ export const Refs = Context.Service<RefsShape, RefsShape>("effect/ui/Renderer/Re
 export interface RootHandle {
   /** Whether the root actually adopted a server Model, including after a deferred Layer resolves. */
   readonly hydrated: boolean
+  /** Whether the root's server state came from a `static: true` render: it carries `~static`. */
+  readonly static: boolean
   readonly container: unknown
   /** The current flush: 0 for the first render, then one more per flush. */
   readonly flush: () => number
+  /** Whether a flush is running, so what it delivers now renders in `flush()` and not the next one. */
+  readonly flushing: () => boolean
   /** The JSON-encoded Model of every mounted instance, by path. Models that don't encode are left out. */
   readonly snapshot: () => Record<string, unknown>
   /**
@@ -122,14 +128,6 @@ export interface Page {
 /** @internal */
 export const RootHooks = Context.Service<RootHooks, RootHooks>("effect/ui/internal/RootHooks")
 
-/**
- * A Subscription may carry a function under this key. The runtime calls it with
- * each message right before dispatching it, in the same synchronous step.
- *
- * @internal
- */
-export const onDeliver: unique symbol = Symbol.for("effect/ui/Subscription/onDeliver") as any
-
 /** @internal */
 export const CurrentRoot = Context.Reference<() => RootHandle | undefined>("effect/ui/internal/CurrentRoot", {
   defaultValue: () => () => undefined
@@ -148,3 +146,42 @@ export const onServer: unique symbol = Symbol.for("effect/ui/Subscription/onServ
 export interface OnServer {
   readonly [onServer]?: (context: Context.Context<never>, report: RootHandle["report"]) => void
 }
+
+/**
+ * A Subscription may carry a function under this key, which the runtime calls
+ * instead of running its Stream. It attaches `emit` to its source and returns
+ * `initial`, run on the scheduler as the Stream would start, and `close`, run
+ * when the Subscription stops. `emit` dispatches synchronously, unless the
+ * Subscription has stopped, and then the message is dropped. It calls
+ * `accepted` right before a dispatch, and never for a dropped message. A
+ * defect in the Subscription's own code goes to `fail`, which fails the
+ * subscribing instance as a failed Stream would, so it never reaches the
+ * source. It returns `undefined` when it can't attach, and the runtime runs
+ * the Stream instead.
+ *
+ * `Router.subscription` uses it, so a navigation reaches the root inside the
+ * flush whose Command made it.
+ *
+ * @internal
+ */
+export const direct: unique symbol = Symbol.for("effect/ui/Subscription/direct") as any
+
+/** @internal */
+export interface Direct {
+  readonly [direct]?: (
+    context: Context.Context<never>,
+    emit: (message: unknown, accepted: () => void) => void,
+    fail: (cause: Cause.Cause<unknown>) => void
+  ) => { readonly initial: Effect.Effect<void>; readonly close: () => void } | undefined
+}
+
+/**
+ * Whether a Command is a navigation, which the runtime runs in the deferred
+ * work of the flush that issued it rather than on the scheduler: `Push`,
+ * `Replace`, `PatchQuery`, `Back`, `Forward` and `Load`, whose names
+ * share the prefix.
+ *
+ * @internal
+ */
+export const isNavigation = (command: { readonly name: string; readonly service?: unknown }): boolean =>
+  command.service !== undefined && command.name.startsWith("effect/ui/Router/")

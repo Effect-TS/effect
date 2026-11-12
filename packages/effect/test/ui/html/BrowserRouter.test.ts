@@ -1,13 +1,94 @@
 // @vitest-environment happy-dom
 import { assert, expect, it } from "@effect/vitest"
-import { Context, Effect, Exit, Layer, Option, Scope } from "effect"
+import { Context, Effect, Exit, Layer, Option, Schema, Scope } from "effect"
 import { Loader } from "effect/reactivity"
 import { TestClock } from "effect/testing"
-import { Component, Router } from "effect/ui"
-import { BrowserHost, BrowserRouter, HtmlServer } from "effect/ui/html"
+import { Command, Component, Route, Router } from "effect/ui"
+import { BrowserHost, BrowserRouter, Html, HtmlServer } from "effect/ui/html"
 import { HtmlQuery } from "effect/ui/html/testing"
 import { describe } from "vitest"
 import { App, AppRoute, People } from "./fixtures/routed.ts"
+
+const SearchRoute = Route.union({
+  Search: Route.make("/search", { query: { q: Schema.optional(Schema.String) } }),
+  Other: Route.make("/other")
+})
+
+/** A root that holds a route with an optional query. */
+const SearchApp = Component.make({
+  name: "SearchApp",
+  props: Schema.Struct({ route: SearchRoute }),
+  model: SearchRoute,
+  message: SearchRoute,
+  elements: Html,
+  init: ($) => $.props.route,
+  update: (_, route) => route,
+  subscriptions: (route) => [Router.subscription(SearchRoute, route, (next) => next)],
+  view: (route, h) => h.h1(SearchRoute.print(route))
+})
+
+const ListRoute = Route.union({
+  List: Route.make("/list", {
+    query: {
+      q: Schema.optional(Schema.String),
+      page: Schema.Number.pipe(Schema.withDecodingDefaultKey(Effect.succeed(1)))
+    }
+  }),
+  Other: Route.make("/other")
+})
+const ListOnly = ListRoute.subset(["List"])
+
+const ListMessage = Schema.TaggedUnion({ Typed: { value: Schema.String }, Next: {}, Patched: {} })
+const patched = Command.map(() => ListMessage.make({ _tag: "Patched" }))
+
+/** A page whose search text and page number live in the query only. */
+const ListPage = Component.make({
+  name: "ListPage",
+  props: Schema.Struct({ route: ListOnly }),
+  model: Schema.Struct({}),
+  message: ListMessage,
+  elements: Html,
+  init: () => ({}),
+  update: (model, message, $) =>
+    ListMessage.match(message, {
+      Typed: ({ value }) => $.run(Router.patchQuery(ListRoute, $.props.route, { q: value || undefined }).pipe(patched)),
+      Next: () =>
+        $.run(
+          Router.patchQuery(ListRoute, $.props.route, { page: $.props.route.query.page + 1 }, {
+            history: "push",
+            scroll: true
+          }).pipe(patched)
+        ),
+      Patched: () => model
+    }),
+  view: (_, h) =>
+    h.div(
+      h.h1(`List page ${h.props.route.query.page}`),
+      h.input().attr("aria-label", "Search").value(h.props.route.query.q ?? "").onInput(({ value }) =>
+        ListMessage.make({ _tag: "Typed", value })
+      ),
+      h.button("Next").onClick(ListMessage.make({ _tag: "Next" })),
+      h.a("Page 2").attr("href", ListRoute.print(ListRoute.make({ _tag: "List", query: { page: 2 } }))),
+      h.a("Results").attr("href", "#results")
+    )
+})
+
+/** Holds the route, and keys the list page by its path. */
+const ListApp = Component.make({
+  name: "ListApp",
+  props: Schema.Struct({ route: ListRoute }),
+  model: ListRoute,
+  message: ListRoute,
+  elements: Html,
+  init: ($) => $.props.route,
+  update: (_, route) => route,
+  subscriptions: (route) => [Router.subscription(ListRoute, route, (next) => next)],
+  view: (route, h) =>
+    ListRoute.match(route, {
+      List: (route) => h.child(ListPage, { key: ListRoute.printPath(route), props: { route } }),
+      Other: () => h.h1("Other")
+    })
+})
 
 /** Lets popstate, the render flush, Commands and the announcement frame run. */
 const tick = Effect.promise(() => new Promise<void>((resolve) => setTimeout(resolve, 30)))
@@ -142,6 +223,51 @@ describe("BrowserRouter", { concurrent: false }, () => {
       assert.strictEqual(problems.length, 1)
       assert.strictEqual(problems[0]._tag, "RouteMismatch")
     }).pipe(Effect.provide(People.layer), Effect.provideService(Loader.Problems, (problem) => problems.push(problem)))
+  })
+
+  it.effect("exempts roots hydrated from a static render when only the query differs", () => {
+    const problems: Array<Loader.Problem.Any> = []
+    const search = SearchRoute.make({ _tag: "Search", query: {} })
+    const prerender = (url: string, route: typeof SearchRoute.Type, isStatic: boolean) =>
+      HtmlServer.renderToHtml(SearchApp, { route }, { static: isStatic }).pipe(
+        Effect.provide(Router.static({ routes: SearchRoute, url }))
+      )
+    const hydrate = Effect.fnUntraced(function*(
+      context: Context.Context<Router.Services>,
+      rendered: HtmlServer.Rendered<unknown>
+    ) {
+      const element = yield* container
+      element.innerHTML = rendered.html
+      const root = yield* Effect.flatMap(
+        Router.currentRoute(SearchRoute),
+        (route) => BrowserHost.mountEffect(SearchApp, { route }, element, { state: rendered.state })
+      ).pipe(Effect.provideContext(context))
+      yield* tick
+      return root
+    })
+    const mismatches = () => problems.filter((problem) => problem._tag === "RouteMismatch").length
+    return Effect.gen(function*() {
+      const prerendered = yield* prerender("/search", search, true)
+      const dynamic = yield* prerender("/search", search, false)
+      const other = yield* prerender("/other", SearchRoute.make({ _tag: "Other" }), true)
+      window.history.replaceState(null, "", "/search?q=x")
+      const context = yield* Layer.build(BrowserRouter.layer({ routes: SearchRoute }))
+
+      // Static, query only: no report, and the route is delivered.
+      const root = yield* hydrate(context, prerendered)
+      assert.deepStrictEqual(root.model(), SearchRoute.make({ _tag: "Search", query: { q: "x" } }))
+      assert.strictEqual(mismatches(), 0)
+
+      // A dynamic render with another query is the bug the check exists for.
+      const fromDynamic = yield* hydrate(context, dynamic)
+      assert.deepStrictEqual(fromDynamic.model(), SearchRoute.make({ _tag: "Search", query: { q: "x" } }))
+      assert.strictEqual(mismatches(), 1)
+
+      // A static render of another path still reports.
+      const fromOther = yield* hydrate(context, other)
+      assert.deepStrictEqual(fromOther.model(), SearchRoute.make({ _tag: "Search", query: { q: "x" } }))
+      assert.strictEqual(mismatches(), 2)
+    }).pipe(Effect.provideService(Loader.Problems, (problem) => problems.push(problem)))
   })
 
   it.effect("checks hash roots that cannot adopt a server Model", () => {
@@ -380,6 +506,137 @@ describe("BrowserRouter", { concurrent: false }, () => {
       const second = yield* Effect.exit(Layer.build(BrowserRouter.layer({ routes: AppRoute })))
       expect(Exit.isFailure(second)).toBe(true)
     }).pipe(Effect.scoped))
+
+  describe("quiet navigations", () => {
+    /** Mounts the list app at `url`, with a marker in the live region that only a loud navigation clears. */
+    const startList = Effect.fnUntraced(function*(url: string) {
+      window.history.replaceState(null, "", url)
+      const app = yield* container
+      const context = yield* Layer.build(BrowserRouter.layer({ routes: ListRoute }))
+      yield* Effect.flatMap(Router.currentRoute(ListRoute), (route) => BrowserHost.mountEffect(ListApp, { route }, app))
+        .pipe(Effect.provideContext(context))
+      yield* tick
+      region()!.textContent = "marker"
+      const field = HtmlQuery.getByRole(app, "textbox", { name: "Search" }) as HTMLInputElement
+      return { app, field }
+    })
+    const url = () => window.location.pathname + window.location.search
+
+    it.effect("a query patch announces nothing and leaves focus and scroll alone", () =>
+      Effect.gen(function*() {
+        const { field } = yield* startList("/list?utm_source=news")
+        window.scrollTo(0, 50)
+        field.focus()
+        HtmlQuery.input(field, "ab")
+        yield* tick
+        expect(url()).toBe("/list?q=ab&utm_source=news")
+        expect(document.activeElement).toBe(field)
+        expect(window.scrollY).toBe(50)
+        expect(region()?.textContent).toBe("marker")
+      }).pipe(Effect.scoped))
+
+    it.effect("a quiet push scrolls to the top when asked, and back restores the position, both quietly", () =>
+      Effect.gen(function*() {
+        const { app, field } = yield* startList("/list")
+        const next = HtmlQuery.getByRole(app, "button", { name: "Next" })
+        window.scrollTo(0, 80)
+        next.focus()
+        HtmlQuery.click(next)
+        yield* tick
+        expect(url()).toBe("/list?page=2")
+        expect(HtmlQuery.getByRole(app, "heading").textContent).toBe("List page 2")
+        expect(window.scrollY).toBe(0)
+        expect(document.activeElement).toBe(next)
+        window.scrollTo(0, 30)
+        window.history.back()
+        yield* tick
+        expect(url()).toBe("/list")
+        expect(HtmlQuery.getByRole(app, "heading").textContent).toBe("List page 1")
+        expect(window.scrollY).toBe(80)
+        expect(document.activeElement).toBe(next)
+        expect(region()?.textContent).toBe("marker")
+        // The page keyed by its path stayed mounted.
+        expect(HtmlQuery.getByRole(app, "textbox", { name: "Search" })).toBe(field)
+      }).pipe(Effect.scoped))
+
+    it.effect("throttles the query writes of typing to one per 200 ms, writing the latest", () =>
+      Effect.gen(function*() {
+        const { app, field } = yield* startList("/list")
+        for (const value of ["a", "ab", "abc"]) {
+          HtmlQuery.input(field, value)
+          yield* tick
+        }
+        // The page shows the latest query at once; the address bar has the first.
+        expect(url()).toBe("/list?q=a")
+        expect((HtmlQuery.getByRole(app, "textbox", { name: "Search" }) as HTMLInputElement).value).toBe("abc")
+        yield* TestClock.adjust("199 millis")
+        expect(url()).toBe("/list?q=a")
+        yield* TestClock.adjust("1 millis")
+        expect(url()).toBe("/list?q=abc")
+      }).pipe(Effect.scoped))
+
+    it.effect("writes the pending query on pagehide, and stops listening when its Scope closes", () =>
+      Effect.gen(function*() {
+        const listening = new Set<unknown>()
+        const recording = new Proxy(window, {
+          get(target, key) {
+            if (key === "addEventListener") {
+              return (type: string, f: EventListener, options?: unknown) => {
+                if (type === "pagehide") listening.add(f)
+                target.addEventListener(type, f, options as AddEventListenerOptions)
+              }
+            }
+            if (key === "removeEventListener") {
+              return (type: string, f: EventListener, options?: unknown) => {
+                if (type === "pagehide") listening.delete(f)
+                target.removeEventListener(type, f, options as EventListenerOptions)
+              }
+            }
+            const value = Reflect.get(target, key)
+            return typeof value === "function" ? value.bind(target) : value
+          }
+        }) as Window
+        window.history.replaceState(null, "", "/list")
+        yield* Effect.gen(function*() {
+          const context = yield* Layer.build(BrowserRouter.layer({ routes: ListRoute, window: recording }))
+          const router = Context.get(context, Router.Router)
+          const held = ListOnly.make({ _tag: "List" })
+          yield* router.patchQuery(held, { q: "a" })
+          yield* router.patchQuery(held, { q: "ab" })
+          expect(url()).toBe("/list?q=a")
+          expect(listening.size).toBe(1)
+          window.dispatchEvent(new Event("pagehide"))
+          expect(url()).toBe("/list?q=ab")
+        }).pipe(Effect.scoped)
+        expect(listening.size).toBe(0)
+      }))
+
+    it.effect("writes the pending query before following an in-page #hash link", () =>
+      Effect.gen(function*() {
+        const { app, field } = yield* startList("/list")
+        HtmlQuery.input(field, "a")
+        yield* tick
+        HtmlQuery.input(field, "ab")
+        yield* tick
+        expect(url()).toBe("/list?q=a")
+        // The link resolves against the document's URL, which must be the Router's.
+        expect(clickReporting(link(app, "Results"))).toBe(true)
+        yield* tick
+        expect(url() + window.location.hash).toBe("/list?q=ab#results")
+        expect((HtmlQuery.getByRole(app, "textbox", { name: "Search" }) as HTMLInputElement).value).toBe("ab")
+      }).pipe(Effect.scoped))
+
+    it.effect("a link to its own page's query is loud", () =>
+      Effect.gen(function*() {
+        const { app } = yield* startList("/list")
+        window.scrollTo(0, 80)
+        expect(clickReporting(link(app, "Page 2"))).toBe(true)
+        yield* tick
+        expect(url()).toBe("/list?page=2")
+        expect(window.scrollY).toBe(0)
+        expect(region()?.textContent).toBe("List page 2")
+      }).pipe(Effect.scoped))
+  })
 
   it.effect("keeps the route in the fragment with layerHash", () =>
     Effect.gen(function*() {

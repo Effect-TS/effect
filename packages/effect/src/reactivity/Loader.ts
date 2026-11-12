@@ -2599,8 +2599,12 @@ interface WatchHandle {
   readonly patchedView: () => PatchedView
   /** On a list read, whether it holds more pages to load. `undefined` otherwise. */
   readonly more: () => More<any> | undefined
-  /** Drops the watcher count synchronously. Idempotent. */
-  readonly unregister: () => void
+  /**
+   * Drops the watcher count synchronously. Idempotent. With `abandon`, the
+   * last watcher leaving interrupts a fetch a watcher started that nothing
+   * else waits for, and the entry reverts.
+   */
+  readonly unregister: (abandon?: boolean) => void
 }
 
 interface PatchedView {
@@ -3377,6 +3381,11 @@ interface Entry {
   restarts: number
   /** A list's walk a patch dropped: the walk that starts once nothing holds it is its restart. */
   heldRestart: boolean
+  /**
+   * A prefetch joined the fetch in flight. It and the fetches that restart it outlive their watchers, until one
+   * settles or the entry reverts.
+   */
+  kept: boolean
   idle: Idle | undefined
   /** The interval worked out for the current settle. `undefined`: not worked out yet. */
   interval: { readonly ms: number | undefined } | undefined
@@ -3683,6 +3692,7 @@ const buildCache = (
       fetch: undefined,
       restarts: 0,
       heldRestart: false,
+      kept: false,
       idle: undefined,
       interval: undefined,
       intervalDue: undefined,
@@ -4292,6 +4302,7 @@ const buildCache = (
    * freshness included. Only a defect marks the previous Success stale.
    */
   const revert = (entry: Entry): void => {
+    entry.kept = false
     entry.target = undefined
     entry.owed = undefined
     resumeAll(entry.waiters, Exit.interrupt())
@@ -4302,6 +4313,7 @@ const buildCache = (
   }
   const onFetchExit = (entry: Entry, fetch: FetchRec, exit: Exit.Exit<any, any>): void => {
     if (entry.fetch !== fetch || disposed) return
+    entry.kept = false
     if (entry.def.list !== undefined) return onWalkExit(entry, fetch, exit)
     entry.fetch = undefined
     let defect: Cause.Cause<never> | undefined
@@ -4544,7 +4556,7 @@ const buildCache = (
       current: () => withheld() ? provisionalView() : view(entry),
       patchedView: () => withheld() ? { result: provisionalView(), patched: false } : patchedViewOf(entry, view(entry)),
       more: () => moreOf(entry),
-      unregister: () => {
+      unregister: (abandon) => {
         if (!watcher.active) return
         watcher.active = false
         entry.watchers.delete(watcher)
@@ -4552,6 +4564,15 @@ const buildCache = (
         stopInterval(entry)
         entry.moreError = undefined
         if (isBareFailure(entry.result) && !settleOnce && !inWindow(entry)) entry.result = undefined
+        const fetch = entry.fetch
+        if (
+          abandon === true && fetch !== undefined && fetch.trigger === "watch" && !entry.kept &&
+          entry.waiters.size === 0 && entry.moreWaiters.size === 0
+        ) {
+          // Nothing else asked for it: a `get` waits, and a prefetch is kept.
+          dropFetch(entry, fetch)
+          return revert(entry)
+        }
         afterQuiet(entry)
       }
     }
@@ -4708,6 +4729,7 @@ const buildCache = (
     if (inWindow(entry) || !isStale(entry) || (entry.def.list !== undefined && heldPages(entry).length > 0)) {
       return resetIdle(entry)
     }
+    if (entry.fetch !== undefined) entry.kept = true
     ensureFetch(entry, "prefetch", buildOf(fetcher))
     afterQuiet(entry)
   }
@@ -4856,8 +4878,11 @@ const buildCache = (
         }
       }
       if (entry.def.list !== undefined && entry.fetch === undefined) heldLoadMore(entry, deferred ?? "loadMore")
-      // A dropped walk nothing restarted isn't owed a restart by a later fetch.
-      if (entry.fetch === undefined) entry.heldRestart = false
+      // A dropped walk nothing restarted isn't owed a restart by a later fetch, and a prefetch's claim is spent.
+      if (entry.fetch === undefined) {
+        entry.heldRestart = false
+        entry.kept = false
+      }
     }
     emit(entry)
     afterQuiet(entry)

@@ -1,6 +1,16 @@
 import { Context, Effect, Layer, Schema } from "effect"
 import { HttpClient, HttpClientRequest, HttpClientResponse } from "effect/http"
-import { Note, NoteNotFound, NoteSaveError } from "../domain/Note.ts"
+import { Note, NoteNotFound, NoteResults, NoteSaveError, type NoteSort } from "../domain/Note.ts"
+
+// What a search asks for. `page` starts at 1.
+export interface NoteSearch {
+  readonly q: string
+  readonly page: number
+  readonly sort: NoteSort
+}
+
+// The number of notes on one page of search results.
+export const pageSize = 20
 
 // All of the UI's I/O goes through this service. Commands and loader reads
 // capture it, so a component's `update` and `view` never name it.
@@ -8,6 +18,7 @@ export class Notes extends Context.Service<Notes, {
   readonly list: Effect.Effect<ReadonlyArray<Note>>
   get(id: string): Effect.Effect<Note, NoteNotFound>
   save(note: Note): Effect.Effect<Note, NoteSaveError>
+  search(search: NoteSearch): Effect.Effect<NoteResults>
 }>()("app/Notes") {
   // The app's implementation, which calls its own JSON API. It requires only
   // an `HttpClient`. That is a platform Layer, so the entry module provides
@@ -44,7 +55,13 @@ export class Notes extends Context.Service<Notes, {
           Effect.mapError((cause) => new NoteSaveError({ reason: cause.message }))
         )
 
-      return Notes.of({ list, get, save })
+      const search = ({ page, q, sort }: NoteSearch) =>
+        client.get("/notes/search", { urlParams: { q, page, sort } }).pipe(
+          Effect.flatMap(HttpClientResponse.schemaBodyJson(NoteResults)),
+          Effect.orDie
+        )
+
+      return Notes.of({ list, get, save, search })
     })
   )
 
@@ -68,6 +85,17 @@ export class Notes extends Context.Service<Notes, {
             if (note.title === "") return Effect.fail(new NoteSaveError({ reason: "A note needs a title" }))
             notes.set(note.id, note)
             return Effect.succeed(note)
+          }),
+        search: ({ page, q, sort }) =>
+          Effect.sync(() => {
+            const needle = q.toLowerCase()
+            const found = Array.from(notes.values())
+              .filter((note) => `${note.title} ${note.body}`.toLowerCase().includes(needle))
+              .sort((a, b) => sort === "asc" ? a.title.localeCompare(b.title) : b.title.localeCompare(a.title))
+            return {
+              notes: found.slice((page - 1) * pageSize, page * pageSize),
+              pages: Math.max(1, Math.ceil(found.length / pageSize))
+            }
           })
       })
     })

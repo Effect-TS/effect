@@ -18,6 +18,10 @@
  * which no Layer build begun since is still pending), the router scrolls,
  * announces the page in a live region and moves focus. A push goes to the top
  * or to its `#hash` element, and back and forward restore the saved position.
+ * A quiet navigation (see `Router.Settled`), such as `Router.patchQuery`,
+ * stays on the page: nothing is announced and focus stays. Back and forward
+ * still restore the saved position, and a `patchQuery` given
+ * `{ scroll: true }` scrolls to the top.
  *
  * **Example** (A two-page app)
  *
@@ -87,6 +91,15 @@ import * as submit from "./internal/submit.ts"
 const intentDelay = "50 millis"
 
 /**
+ * The least time between two same-page replaces. WebKit throws after 100
+ * history calls in 10 seconds, and Chromium and Firefox allow 200 (Chromium
+ * drops the rest, Firefox throws). 200 ms is at most 50 replaces in 10
+ * seconds, half of WebKit's budget, leaving the rest for pushes and back and
+ * forward.
+ */
+const replaceInterval = "200 millis"
+
+/**
  * The options of `layer`.
  *
  * @stability experimental
@@ -122,6 +135,12 @@ export interface Options {
  * Reports link intent to `Router.prefetch` declarations through `intent`
  * after 50 ms of hover or focus on the Effect `Clock`, or immediately on
  * touch. Only links a click would follow count.
+ *
+ * Replaces that stay on the page, such as a `Router.patchQuery` per
+ * keystroke, are written to `window.history` at most once per 200 ms on the
+ * Effect `Clock`, to stay under the browsers' rate limits. The route changes
+ * at once; the address bar gets the latest URL at the end of the interval, or
+ * before a navigation, a link click, a form submission or `pagehide`.
  *
  * @stability experimental
  * @category layers
@@ -235,6 +254,14 @@ const make = (options: Options, inFragment: boolean): Layer.Layer<Router.Service
 
     const onSettled = (settled: Router.Settled) => {
       const { action, hash } = settled.location
+      if (settled.quiet) {
+        // Within the page: no announcement and no focus move, and scroll only for a pop or when asked.
+        if (scroll && settled.scroll) {
+          const saved = action === "pop" ? positions.get(settled.index) : undefined
+          window.scrollTo(saved?.x ?? 0, saved?.y ?? 0)
+        }
+        return
+      }
       const container = settled.container as Element
       // Decided in the announcing flush, applied after scroll.
       const autofocus = focus ? container.querySelector<HTMLElement>("[autofocus]") : null
@@ -282,9 +309,19 @@ const make = (options: Options, inFragment: boolean): Layer.Layer<Router.Service
       }
     }
 
+    /** Writes a pending same-page replace now. Links and forms resolve against the document's URL. */
+    let flushHistory = () => {}
     const routerLayer = Router.make({
       routes,
       history: browserHistory,
+      throttle: {
+        interval: replaceInterval,
+        flushOn: (flush) => {
+          flushHistory = flush
+          window.addEventListener("pagehide", flush)
+          return () => window.removeEventListener("pagehide", flush)
+        }
+      },
       onSettled,
       onHash: (hash, action, index) => {
         if (!scroll) return
@@ -333,6 +370,7 @@ const make = (options: Options, inFragment: boolean): Layer.Layer<Router.Service
       if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return
       const anchor = anchorOf(event)
       if (anchor === undefined) return
+      flushHistory()
       follow(event, hrefOf(anchor))
     }
 
@@ -384,6 +422,7 @@ const make = (options: Options, inFragment: boolean): Layer.Layer<Router.Service
       if (event.defaultPrevented && !ownedUnhandled) return
       const form = event.target as HTMLFormElement | null
       if (form === null || form.localName !== "form") return
+      flushHistory()
       const submitter = event.submitter as HTMLButtonElement | null
       const method = (submitter?.getAttribute("formmethod") ?? form.getAttribute("method") ?? "get").toLowerCase()
       const targetAttribute = submitter?.getAttribute("formtarget") ?? form.getAttribute("target")

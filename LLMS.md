@@ -461,12 +461,14 @@ fixtures/
     services/Notes.ts         // service and its Layers
     loaders/ListNotes.ts
     loaders/GetNote.ts
+    loaders/SearchNotes.ts
     components/NoteEditor.ts  // NoteEditor and its SaveNote command
     components/NoteActivity.ts
     components/ActivityLog.ts
   pages/
     NotesIndex.ts             // /
     notes/NotePage.ts         // /notes/:id
+    search/SearchPage.ts      // /search
   server/NotesApi.ts          // the JSON API that Notes calls
 ```
 
@@ -516,6 +518,12 @@ client, not the services.
   Model. The app also sets the title and meta tags with `Head`. This entry
   module mounts it with `BrowserRouter`. The routes are in
   `fixtures/routes.ts` and the root component is in `fixtures/App.ts`.
+- **[Search, filters and pagination in the URL](./ai-docs/src/90_ui/35_url-state.ts)**:
+  Keep a search page's text, order and page number in the query, so a link
+  or a reload shows the same results. The page reads them from its route,
+  writes them with `Router.patchQuery`, and fetches with a debounced loader.
+  This entry module mounts the routed app. The page is in
+  `fixtures/pages/search/SearchPage.ts`.
 - **[Rendering on the server](./ai-docs/src/90_ui/40_server-rendering.ts)**:
   Serve the routed app's pages with `layerHttp` from
   `effect/ui/html/HtmlServerHttp`, next to the JSON API. This is the
