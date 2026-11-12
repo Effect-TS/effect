@@ -2,6 +2,7 @@ import { assert, describe, it } from "@effect/vitest"
 import { Cause, Data, Effect, Layer, Option, Schema } from "effect"
 import { AsyncResult } from "effect/reactivity"
 import { Command, Component, Route, Router, View } from "effect/ui"
+import { Html } from "effect/ui/html"
 import { Query, Story } from "effect/ui/testing"
 import {
   Counter,
@@ -540,14 +541,14 @@ describe("Story", () => {
           .loadFailed("user", new users.UserNotFound({ id: "1" }))
           .check((story) => assert.strictEqual(text(story), "This user doesn't exist."))
           .check((story) => {
-            const result = story.loaded().user as AsyncResult.AsyncResult<unknown, unknown>
+            const result = story.loaded().user
             assert.isTrue(AsyncResult.isFailure(result) && Option.isSome(result.previousSuccess))
           })
           // Another user's result doesn't carry over.
           .props({ id: "2" })
           .loadFailed("user", new users.UserNotFound({ id: "2" }))
           .check((story) => {
-            const result = story.loaded().user as AsyncResult.AsyncResult<unknown, unknown>
+            const result = story.loaded().user
             assert.isTrue(AsyncResult.isFailure(result) && Option.isNone(result.previousSuccess))
           }))
     })
@@ -561,13 +562,90 @@ describe("Story", () => {
           .given((model) => ({ ...model, draft: Option.none() }))
           .check((story) => {
             assert.strictEqual(story.model.draft._tag, "None")
-            assert.strictEqual((story.loaded().user as AsyncResult.AsyncResult<unknown, unknown>)._tag, "Success")
+            assert.strictEqual(story.loaded().user._tag, "Success")
           })
           .subscriptions((keys) => assert.deepStrictEqual(keys, [])))
       assert.throws(
         () => Story.make(users.RenameForm, { id: "1" }, (s) => s.loaded("draft" as any, "x")),
         /draft/
       )
+    })
+
+    it("given starts from loaded results: one render, dependent and keyed loaders, and no onChange message", () => {
+      const Message = Schema.TaggedUnion({ UserChanged: {}, Bump: {} })
+      const renders: Array<string> = []
+      const Team = Component.make({
+        name: "Team",
+        props: Schema.Struct({ id: Schema.String }),
+        model: Schema.Struct({ changes: Schema.Number }),
+        message: Message,
+        elements: Html,
+        loaders: {
+          // Declared before the loader it depends on, so the order of the record doesn't matter.
+          friend: {
+            load: users.GetUser,
+            args: (_model, _props, loaded) =>
+              AsyncResult.isSuccess(loaded.user) ? { id: loaded.user.value.email } : undefined
+          },
+          user: {
+            load: users.GetUser,
+            args: (_model, props) => ({ id: props.id }),
+            onChange: () => Message.make({ _tag: "UserChanged" })
+          },
+          others: { loadMany: users.GetUser, args: () => [{ id: "8" }, { id: "9" }] },
+          list: { load: users.ListUsers, args: () => ({ page: 0 }) }
+        },
+        init: () => ({ changes: 0 }),
+        update: (model) => ({ changes: model.changes + 1 }),
+        view: (model, h) => {
+          const name = (result: AsyncResult.AsyncResult<users.User, unknown>) =>
+            AsyncResult.isSuccess(result) ? result.value.name : "?"
+          const out = [
+            name(h.loaded.user),
+            name(h.loaded.friend),
+            h.loaded.others.map((entry) => name(entry.result)).join("+"),
+            AsyncResult.isSuccess(h.loaded.list) ? String(h.loaded.list.value.users.length) : "?",
+            String(model.changes)
+          ].join(" ")
+          renders.push(out)
+          return h.p(out)
+        }
+      })
+      const user = (id: string, name: string, email = "") => ({ id, name, email, likes: 0 })
+      const final = Story.make(Team, { id: "1" }, (s) => {
+        renders.length = 0
+        s.given({ changes: 0 }, {
+          friend: user("2", "Bea"),
+          user: user("1", "Ann", "2"),
+          others: [{ args: { id: "9" }, value: user("9", "Ivy") }],
+          list: { page: 0, pages: 1, users: [user("1", "Ann")] }
+        })
+          .check((story) => assert.strictEqual(text(story), "Ann Bea ?+Ivy 1 0"))
+          // A load step after it still sends onChange.
+          .loaded("user", user("1", "Anna", "2"))
+          .check((story) => assert.strictEqual(text(story), "Anna Bea ?+Ivy 1 1"))
+      })
+      assert.deepStrictEqual(renders, ["Ann Bea ?+Ivy 1 0", "Anna Bea ?+Ivy 1 1"])
+      assert.strictEqual(final.loaded().friend._tag, "Success")
+      assert.throws(
+        () => Story.make(Team, { id: "1" }, (s) => s.given({ changes: 0 }, { friend: user("2", "Bea") })),
+        /friend.*disabled/
+      )
+      // A keyed entry at args the loader doesn't return.
+      assert.throws(
+        () =>
+          Story.make(
+            Team,
+            { id: "1" },
+            (s) => s.given({ changes: 0 }, { others: [{ args: { id: "7" }, value: user("7", "Uma") }] })
+          ),
+        /others.*given args/
+      )
+      // Loaders that aren't named keep their slots.
+      Story.make(Team, { id: "1" }, (s) =>
+        s.given({ changes: 0 }, { user: user("1", "Ann", "2") })
+          .given({ changes: 5 }, { friend: user("2", "Bea") })
+          .check((story) => assert.strictEqual(text(story), "Ann Bea ?+? ? 5")))
     })
   })
 })

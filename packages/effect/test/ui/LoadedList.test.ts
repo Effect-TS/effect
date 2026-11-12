@@ -201,7 +201,7 @@ describe("Loaded lists", () => {
         const replay = Story.fromLog(Codes, wire)
         assert.isUndefined(replay.divergence)
         assert.strictEqual(replay.model, "failed 42")
-        const codes = replay.loaded().codes as AsyncResult.AsyncResult<Component.LoadedList<typeof ListCodes>, number>
+        const codes = replay.loaded().codes
         assert.isTrue(AsyncResult.isSuccess(codes))
         assert.deepStrictEqual(AsyncResult.isSuccess(codes) ? codes.value.more : undefined, {
           _tag: "Failed",
@@ -317,10 +317,7 @@ describe("Loaded lists", () => {
           .check((story) => assert.deepStrictEqual(story.loadingMore, []))
           .send(app.ChatMessage.make({ _tag: "Refresh" }))
     )
-    const result = final.loaded().messages as AsyncResult.AsyncResult<
-      { readonly pages: ReadonlyArray<unknown> },
-      string
-    >
+    const result = final.loaded().messages
     assert.strictEqual(result._tag, "Failure")
     if (result._tag === "Failure") {
       assert.isTrue(result.waiting)
@@ -331,6 +328,23 @@ describe("Loaded lists", () => {
       )
     }
     final.get(Query.text("failed", { exact: true }))
+  })
+
+  it("Story: given starts a list loader from its pages, with more from the last page", () => {
+    const app = makeApp()
+    const pageAt = (index: number, next: number | null) => ({
+      messages: [{ id: "m" + index, text: "r" + index }],
+      next
+    })
+    Story.make(app.Chat, { room: "r" }, (s) =>
+      s.given({}, { messages: [pageAt(0, 1), pageAt(1, 2)] })
+        .check((story) => story.get(Query.text("r0,r1 /2 Available", { exact: true })))
+        .given({}, { messages: [pageAt(0, 1), pageAt(1, null)] })
+        .check((story) => {
+          story.get(Query.text("r0,r1 /2 End", { exact: true }))
+          const messages = story.loaded().messages
+          assert.deepStrictEqual(AsyncResult.isSuccess(messages) ? messages.value.more : undefined, { _tag: "End" })
+        }))
   })
 
   it("Story: a load more is pending until a step settles it, and reset sends the first page", () => {

@@ -247,9 +247,37 @@ describe("Story loader steps", () => {
         .loadFailed("team", "missing")
         // @ts-expect-error Argument of type '"other"' is not assignable
         .loadFailed("other", "missing"))
-    expect(Story.make(Card, { id: "1" }, (s) => s.loaded("user", { id: "1", name: "Ann", teamId: "t" }))).type.toBe<
-      Story.Story<{ readonly id: string }, Component.Model<typeof Card>, Component.Message<typeof Card>, never>
+    const story = Story.make(Card, { id: "1" }, (s) => s.loaded("user", { id: "1", name: "Ann", teamId: "t" }))
+    expect(story).type.toBe<
+      Story.Story<
+        { readonly id: string },
+        Component.Model<typeof Card>,
+        Component.Message<typeof Card>,
+        never,
+        Component.Loaded<Component.Loaders<typeof Card>>
+      >
     >()
+    // `loaded()` is typed as `h.loaded` is.
+    expect(story.loaded().user).type.toBe<Component.ResultOf<typeof GetUser>>()
+    expect(story.loaded()).type.not.toHaveProperty("n")
+  })
+
+  it("given takes loaded results by loader name", () => {
+    Story.make(Card, { id: "1" }, (s) =>
+      s
+        .given((model) => model, { user: { id: "1", name: "Ann", teamId: "t" }, team: { id: "t", title: "T" } })
+        .given((model) => model, { team: { id: "t", title: "T" } })
+        // @ts-expect-error 'title' does not exist
+        .given((model) => model, { user: { id: "t", title: "T" } })
+        // @ts-expect-error 'n' does not exist
+        .given((model) => model, { n: 1 }))
+  })
+
+  it("fromLog types the replay's props and loaded results", () => {
+    const replay = Story.fromLog(Card, [])
+    expect(replay.props).type.toBe<{ readonly id: string }>()
+    expect(replay.loaded().user).type.toBe<Component.ResultOf<typeof GetUser>>()
+    expect(replay.loaded()).type.not.toHaveProperty("n")
   })
 })
 

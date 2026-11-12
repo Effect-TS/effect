@@ -38,7 +38,9 @@ moving focus once a read fails. It returns a message, which `update` gets
 after the slot is written.
 
 In tests, `Story` load steps such as `loaded("note", note)` take the loader's
-name and write its slot. The `MessageLog` records each slot write as a
+name and write its slot. To start from loaded data without sending
+`onChange`'s message, pass the results to `given`:
+`s.given(model, { note })`. The `MessageLog` records each slot write as a
 `LoaderChanged` entry, and an `Update` entry only for an `onChange` message.
 Each `Update` entry records the slots `update` read, so `Story.fromLog`
 replays `$.loaded` as it was. New props from a parent are logged as a

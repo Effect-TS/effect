@@ -125,7 +125,7 @@ export interface AwaitedLoader {
  * @category models
  * @since 4.1.5
  */
-export interface Story<Props, Model, Msg, Events> {
+export interface Story<Props, Model, Msg, Events, Loaded = { readonly [name: string]: unknown }> {
   readonly component: Component.Component<any, Props, Model, Msg, Events, any, any>
   readonly props: Props
   readonly model: Model
@@ -135,7 +135,7 @@ export interface Story<Props, Model, Msg, Events> {
    */
   readonly slots: Component.Slots | undefined
   /** The loaders' results, by name, as `h.loaded` opens them for the current Model, props and slots. */
-  readonly loaded: () => { readonly [name: string]: unknown }
+  readonly loaded: () => Loaded
   /** Commands issued but not yet resolved, oldest first. */
   readonly pending: ReadonlyArray<Pending<Msg>>
   /** Everything emitted to the parent so far. */
@@ -221,6 +221,19 @@ export type KeyedLoad<R extends Loader.Read.Any> =
   }
 
 /**
+ * Loaded results for `given`: per loader, the Success value its slot
+ * starts with, or the entries of a `loadMany` loader.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.1.5
+ */
+export type GivenLoaded<L> = {
+  readonly [K in keyof L]?: L[K] extends Component.LoadMany<infer R> ? ReadonlyArray<KeyedLoad<R>>
+    : Loader.Read.Success<Component.ReadOf<L[K]>>
+}
+
+/**
  * A pending Command's definition, or an issued Command to also match the
  * arguments.
  *
@@ -284,14 +297,33 @@ type AnyComponent =
  */
 export interface Steps<C extends AnyComponent> extends Pipeable {
   /** The story after the last step. */
-  readonly current: Story<Component.Props<C>, Component.Model<C>, Component.Message<C>, Component.Events<C>>
+  readonly current: Story<
+    Component.Props<C>,
+    Component.Model<C>,
+    Component.Message<C>,
+    Component.Events<C>,
+    Component.Loaded<Component.Loaders<C>>
+  >
 
   /**
    * Starts from any Model, forgetting what was issued and emitted so far. An
    * updater is called with the current Model: `given(f)` is exactly
    * `given(f(current.model))`.
+   *
+   * **Details**
+   *
+   * `loaded` starts the loaders it names from loaded results: a Success
+   * value, a list loader's page array, or a keyed loader's entries as
+   * `loadedMany` takes them. Each slot is written at the loader's args for
+   * the new Model, with no `onChange` message, and the view renders once. A
+   * loader whose args read another's result is written after it. It throws if
+   * a named loader is disabled, or a keyed entry's args aren't ones the loader
+   * returns. Loaders it doesn't name keep their slots.
    */
-  given(model: Component.Model<C> | ((model: Component.Model<C>) => Component.Model<C>)): this
+  given(
+    model: Component.Model<C> | ((model: Component.Model<C>) => Component.Model<C>),
+    loaded?: GivenLoaded<Component.Loaders<C>>
+  ): this
   /**
    * Changes the props. A props change never reaches `update`: it re-renders the
    * view and changes the Subscription keys.
@@ -640,6 +672,70 @@ const storedAt = (
     : stored._tag === "Success"
     ? Option.some(stored)
     : stored.previousSuccess
+}
+
+/**
+ * The slots `given` starts from: each named loader written with a Success at its args, and no
+ * `onChange` message. A loader whose args read another's result is written once that one is.
+ */
+const givenSlots = (
+  story: Story<any, any, any, any>,
+  loaded: { readonly [name: string]: unknown }
+): Component.Slots => {
+  let names = Object.keys(loaded)
+  for (const name of names) loaderOf(story, "given", name)
+  const bound = boundOf(story.component)!
+  const slots: { [name: string]: unknown } = { ...(story.slots ?? bound.empty) }
+  while (names.length > 0) {
+    const rest: Array<string> = []
+    for (const name of names) {
+      const entry = bound.byName.get(name)!
+      const def = Loader.defOf(entry.read)
+      const current = bound.context(story.model, story.props, { ...slots }).argsOf(name)
+      if (entry.keyed) {
+        const loads = (loaded[name] as ReadonlyArray<KeyedLoad<any>>).map((load) => ({
+          load,
+          argsKey: def.argsKey(load.args)
+        }))
+        const keys = current.entries!
+        if (!loads.every((load) => keys.some((key) => key.argsKey === load.argsKey))) {
+          rest.push(name)
+          continue
+        }
+        slots[name] = bound.slotMany(
+          entry,
+          keys.flatMap((key) => {
+            const load = loads.find((load) => load.argsKey === key.argsKey)?.load
+            if (load === undefined) return []
+            const result = "value" in load
+              ? AsyncResult.success(load.value, { waiting: load.waiting, timestamp: 0 })
+              : AsyncResult.failure(Cause.fail(load.error), { waiting: load.waiting })
+            return [bound.slot(entry, key, result as any, false, undefined)]
+          })
+        )
+        continue
+      }
+      if (current.argsKey === undefined) {
+        rest.push(name)
+        continue
+      }
+      const value = loaded[name]
+      slots[name] = bound.slot(
+        entry,
+        { args: current.args, argsKey: current.argsKey },
+        AsyncResult.success(value, { timestamp: 0 }),
+        false,
+        def.list !== undefined ? moreOfPages(def, value as ReadonlyArray<unknown>) : undefined
+      )
+    }
+    if (rest.length === names.length) {
+      throw new Error(
+        `Story.given: the loader "${rest[0]}" is disabled, or doesn't return the given args, for the Model and props`
+      )
+    }
+    names = rest
+  }
+  return slots
 }
 
 /** Whether a page array has a next page, by the definition's `next`. */
@@ -1185,8 +1281,8 @@ const findStream = (story: Story<any, any, any, any>, target: StreamTarget, step
 }
 
 class StepsImpl implements Steps<AnyComponent> {
-  current: Story<any, any, any, any>
-  constructor(current: Story<any, any, any, any>) {
+  current: Story<any, any, any, any, any>
+  constructor(current: Story<any, any, any, any, any>) {
     this.current = current
     current.view()
   }
@@ -1202,11 +1298,17 @@ class StepsImpl implements Steps<AnyComponent> {
     return this
   }
 
-  given(model: unknown): this {
+  given(model: unknown, loaded?: { readonly [name: string]: unknown }): this {
     const next = typeof model === "function" ? model(this.current.model) : model
-    return this.step(
-      update(this.current, { model: next, pending: [], emitted: [], interrupted: [], dropped: [], loadingMore: [] })
-    )
+    const out = update(this.current, {
+      model: next,
+      pending: [],
+      emitted: [],
+      interrupted: [],
+      dropped: [],
+      loadingMore: []
+    })
+    return this.step(loaded === undefined ? out : update(out, { slots: givenSlots(out, loaded) }))
   }
   props(next: unknown): this {
     const props = typeof next === "function" ? next(this.current.props) : next
@@ -1333,7 +1435,7 @@ class StepsImpl implements Steps<AnyComponent> {
     f(this.current.loaders())
     return this
   }
-  check(f: (story: Story<any, any, any, any>) => void): this {
+  check(f: (story: Story<any, any, any, any, any>) => void): this {
     f(this.current)
     return this
   }
@@ -1578,15 +1680,21 @@ export interface Outcome<Model, Events> {
  * @category models
  * @since 4.1.5
  */
-export interface Replay<Model, Msg, Events> {
+export interface Replay<
+  Model,
+  Msg,
+  Events,
+  Loaded = { readonly [name: string]: unknown },
+  Props = unknown
+> {
   readonly path: string
   readonly model: Model
   /** The props the instance had, from its latest `Mounted`, `PropsChanged` or `Update` entry. */
-  readonly props: unknown
+  readonly props: Props
   /** The loader slots, beside the Model. Opaque: `loaded` opens them. */
   readonly slots: Component.Slots | undefined
   /** The loaders' results, by name, as `h.loaded` opens them for the Model, props and slots reached. */
-  readonly loaded: () => { readonly [name: string]: unknown }
+  readonly loaded: () => Loaded
   readonly replayed: number
   readonly divergence: Divergence<Model, Msg, Events> | undefined
 }
@@ -1602,39 +1710,11 @@ const findPlaceholder = (value: unknown): string | undefined => {
   return undefined
 }
 
-/**
- * Re-runs a logged session of one component, purely, and reports the first
- * place it doesn't reproduce.
- *
- * **Details**
- *
- * The replay starts at the oldest surviving `Mounted` or `Update` entry for
- * the path (the first one logged for a component with this name, unless
- * `path` is given), takes its Model, and re-runs every following message with
- * the props and loader slots it was recorded with, so every `update` sees
- * `$.loaded` as it did when it ran, whichever entries the log still holds.
- * Commands are compared, never run. Models and events are compared with
- * `Schema.toEquivalence`, and Commands by their Wire encoding.
- *
- * The props and slots are tracked with the Model, so the result is the state
- * the instance ended with. They start from the first entry: a `Mounted`
- * entry's props and empty slots, or an `Update` entry's recorded props and
- * slots. Each later `PropsChanged` entry sets the props and each
- * `LoaderChanged` entry writes its slot, so props from the parent and loads
- * that settled after the last message are in the result too.
- *
- * It takes live entries or Wire frames. A Wire value sent as a placeholder,
- * such as a truncated Model, can't be decoded, and the error names the entry.
- *
- * @stability experimental
- * @category replay
- * @since 4.1.5
- */
-export const fromLog = <Name extends string, Props, Model, Msg, Events, R, V extends View.Elements>(
+const replayLog = <Name extends string, Props, Model, Msg, Events, R, V extends View.Elements>(
   component: Component.Component<Name, Props, Model, Msg, Events, R, V>,
   entries: ReadonlyArray<MessageLog.Entry | MessageLog.Wire>,
   options?: { readonly path?: string | undefined }
-): Replay<Model, Msg, Events> => {
+): Replay<Model, Msg, Events, any, any> => {
   const nameOf = (entry: MessageLog.Entry | MessageLog.Wire): string | undefined =>
     entry._tag === "Update" || entry._tag === "Mounted" || entry._tag === "LoaderChanged" ||
       entry._tag === "PropsChanged"
@@ -1730,7 +1810,7 @@ export const fromLog = <Name extends string, Props, Model, Msg, Events, R, V ext
   let props: unknown = initial.props
   let slots: Component.Slots | undefined = initial.loaded
   let replayed = 0
-  const result = (divergence: Divergence<Model, Msg, Events> | undefined): Replay<Model, Msg, Events> => {
+  const result = (divergence: Divergence<Model, Msg, Events> | undefined): Replay<Model, Msg, Events, any, any> => {
     const reached = { model, props, slots }
     return {
       path,
@@ -1788,3 +1868,43 @@ export const fromLog = <Name extends string, Props, Model, Msg, Events, R, V ext
   }
   return result(undefined)
 }
+
+/**
+ * Re-runs a logged session of one component, purely, and reports the first
+ * place it doesn't reproduce.
+ *
+ * **Details**
+ *
+ * The replay starts at the oldest surviving `Mounted` or `Update` entry for
+ * the path (the first one logged for a component with this name, unless
+ * `path` is given), takes its Model, and re-runs every following message with
+ * the props and loader slots it was recorded with, so every `update` sees
+ * `$.loaded` as it did when it ran, whichever entries the log still holds.
+ * Commands are compared, never run. Models and events are compared with
+ * `Schema.toEquivalence`, and Commands by their Wire encoding.
+ *
+ * The props and slots are tracked with the Model, so the result is the state
+ * the instance ended with. They start from the first entry: a `Mounted`
+ * entry's props and empty slots, or an `Update` entry's recorded props and
+ * slots. Each later `PropsChanged` entry sets the props and each
+ * `LoaderChanged` entry writes its slot, so props from the parent and loads
+ * that settled after the last message are in the result too.
+ *
+ * It takes live entries or Wire frames. A Wire value sent as a placeholder,
+ * such as a truncated Model, can't be decoded, and the error names the entry.
+ *
+ * @stability experimental
+ * @category replay
+ * @since 4.1.5
+ */
+export const fromLog: <C extends AnyComponent>(
+  component: C,
+  entries: ReadonlyArray<MessageLog.Entry | MessageLog.Wire>,
+  options?: { readonly path?: string | undefined }
+) => Replay<
+  Component.Model<C>,
+  Component.Message<C>,
+  Component.Events<C>,
+  Component.Loaded<Component.Loaders<C>>,
+  Component.Props<C>
+> = replayLog as any
