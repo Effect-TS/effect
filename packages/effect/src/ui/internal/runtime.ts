@@ -49,6 +49,11 @@ import * as services from "./services.ts"
 interface Env {
   ctx: Context.Context<any> | undefined
   failure: Cause.Cause<unknown> | undefined
+  /**
+   * What the shared Layers resolving from this Env are built with, made on first use: a fork of the
+   * map its Context was built with, so it reuses what an ancestor built and keeps what it builds.
+   */
+  memoMap: Layer.MemoMap | undefined
   readonly parent: Env | undefined
   /** On the server: a Layer that is never built there, or one below it. It never settles. */
   readonly never: boolean
@@ -61,6 +66,7 @@ interface Env {
 const readyEnv = (ctx: Context.Context<any>, parent?: Env): Env => ({
   ctx,
   failure: undefined,
+  memoMap: undefined,
   parent,
   waiters: [],
   never: false
@@ -68,6 +74,7 @@ const readyEnv = (ctx: Context.Context<any>, parent?: Env): Env => ({
 const buildingEnv = (parent: Env, never = parent.never): Env => ({
   ctx: undefined,
   failure: undefined,
+  memoMap: undefined,
   parent,
   waiters: [],
   never
@@ -91,6 +98,7 @@ const failEnv = (env: Env, cause: Cause.Cause<unknown>) => {
   env.failure = cause
   for (const waiter of env.waiters.splice(0)) waiter.failed?.(cause)
 }
+const memoMapOf = (env: Env): Layer.MemoMap => env.memoMap ??= Layer.CurrentMemoMap.forkOrCreate(env.ctx!)
 const unavailable = (env: Env): View.Child.Fallback =>
   env.failure !== undefined ? AsyncResult.failure(env.failure) : AsyncResult.initial(true)
 
@@ -1069,23 +1077,78 @@ const setup = (
     readonly stamp: number
   }
 
+  /** Builds the runtime interrupted while they ran: a build that waited on one of them was interrupted too. */
+  let interruptedBuilds = 0
+  /**
+   * Builds `layer` in a Scope of its own under `scope`, which a failed build closes, so a memoised
+   * Layer that failed is built again by its next user. With a `memoMap` the build shares it, else it
+   * forks the context's.
+   *
+   * A build that ends with only interrupts while it is still `wanted`, after the runtime interrupted
+   * another build meanwhile, was waiting on a memoised Layer that build had started: it starts again.
+   */
   const buildLayer = (
     layer: Layer.Layer<any, any, any>,
     context: Context.Context<any>,
+    memoMap: Layer.MemoMap | undefined,
     scope: Scope.Scope,
+    wanted: () => boolean,
     onExit: (exit: Exit.Exit<Context.Context<any>, unknown>) => void
-  ): Fiber.Fiber<Context.Context<any>, unknown> | undefined => {
-    const fiber = forkNow(withCache(context), Layer.buildWithScope(layer, scope))
-    const exit = fiber.pollUnsafe()
-    if (exit !== undefined) {
-      onExit(exit)
-      return undefined
+  ) => {
+    const attempt = () => {
+      const buildScope = Scope.forkUnsafe(scope, "sequential")
+      const interruptedBefore = interruptedBuilds
+      let interrupted = false
+      const fiber = forkNow(
+        withCache(context),
+        memoMap === undefined
+          ? Layer.buildWithScope(layer, buildScope)
+          : Layer.buildWithMemoMap(layer, memoMap, buildScope)
+      )
+      const done = (exit: Exit.Exit<Context.Context<any>, unknown>) => {
+        if (Exit.isSuccess(exit)) return onExit(exit)
+        if (
+          !interrupted && Cause.hasInterruptsOnly(exit.cause) && interruptedBuilds !== interruptedBefore && wanted()
+        ) {
+          // The interrupt can reach here from inside the close that sent it, before that close is
+          // tracked: after a yield, wait for every close, then this build's, so the interrupted memo
+          // entries are gone and the next attempt builds them.
+          const retry: Fiber.Fiber<unknown> = forkNow(
+            ctx,
+            Effect.yieldNow.pipe(
+              Effect.andThen(Effect.suspend(() => Fiber.awaitAll(Array.from(closing).filter((f) => f !== retry)))),
+              Effect.andThen(Scope.close(buildScope, Exit.void)),
+              Effect.andThen(Effect.sync(() => wanted() && attempt()))
+            )
+          )
+          track(closing, retry)
+          return
+        }
+        closeScope(buildScope)
+        onExit(exit)
+      }
+      const exit = fiber.pollUnsafe()
+      if (exit !== undefined) return done(exit)
+      fiber.addObserver(done)
+      // A build still running ends with its Scope.
+      addFinalizer(
+        buildScope,
+        Effect.sync(() => {
+          if (fiber.pollUnsafe() !== undefined) return
+          interrupted = true
+          interruptedBuilds++
+          fiber.interruptUnsafe()
+        })
+      )
     }
-    fiber.addObserver(onExit)
-    return fiber
+    attempt()
   }
 
-  /** A Layer value is built once per (parent Env, Layer), and the last instance to let go closes it. */
+  /**
+   * A Layer value is built once per (parent Env, Layer), and the last instance to let go closes it.
+   * It's built with the parent Env's memo map, so the memoised Layers inside it are built once per
+   * Env too, and closed when the last build using them is.
+   */
   const acquireShared = (parentEnv: Env, layer: Layer.Layer<any, any, any>): SharedBuild => {
     let byLayer = sharedBuilds.get(parentEnv)
     if (byLayer === undefined) sharedBuilds.set(parentEnv, byLayer = new Map())
@@ -1103,7 +1166,7 @@ const setup = (
     }
     byLayer.set(layer, entry)
     whenReady(parentEnv, (parentCtx) => {
-      const fiber = buildLayer(layer, parentCtx, entry.scope, (exit) => {
+      buildLayer(layer, parentCtx, memoMapOf(parentEnv), entry.scope, () => entry.refs > 0, (exit) => {
         if (Exit.isFailure(exit)) {
           // A failed build is evicted, so the next user builds again.
           if (byLayer!.get(layer) === entry) byLayer!.delete(layer)
@@ -1112,7 +1175,6 @@ const setup = (
           resolveEnv(entry.env, Context.merge(parentCtx, exit.value))
         }
       })
-      if (fiber !== undefined) interruptOnClose(entry.scope, fiber)
     }, (cause) => failEnv(entry.env, cause))
     return entry
   }
@@ -1314,14 +1376,12 @@ const setup = (
             } catch (defect) {
               return fail(Cause.die(defect))
             }
-            const fiber = buildLayer(layer, parentCtx, scope, (exit) => {
+            buildLayer(layer, parentCtx, undefined, scope, () => !inst.closed, (exit) => {
               if (inst.closed) return
               if (Exit.isFailure(exit)) return fail(exit.cause)
               ready()
               resolveEnv(own, Context.merge(parentCtx, exit.value))
             })
-            // A build still running ends with its instance.
-            if (fiber !== undefined) interruptOnClose(scope, fiber)
           }, fail)
         }
         if (own.ctx === undefined && own.failure === undefined && failedEarly === undefined) {
