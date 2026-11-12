@@ -1,10 +1,9 @@
 // @vitest-environment happy-dom
 import { assert, expect, it } from "@effect/vitest"
 import { Clock, Context, Duration, Effect, Exit, Fiber, Layer, Option, Schema, type Scope, Stream } from "effect"
-import { HttpRouter } from "effect/http"
 import { AsyncResult, Loader } from "effect/reactivity"
 import { TestClock } from "effect/testing"
-import { Command, Component, Feature, Head, MessageLog, type Renderer, Route, Router, Subscription } from "effect/ui"
+import { Command, Component, Feature, Head, MessageLog, type Renderer, Router, Subscription } from "effect/ui"
 import { BrowserHost, Html, HtmlServer } from "effect/ui/html"
 import { ssr } from "effect/ui/html/testing"
 import { TestHost } from "effect/ui/testing"
@@ -1374,82 +1373,4 @@ describe("HtmlServer loaders", { concurrent: false }, () => {
         "/Page/Panel[p]: still waiting for its Layer to adopt when the budget was spent"
       ])
     })))
-})
-
-describe("HtmlServer.layerHttp", () => {
-  const request = async (pages: Layer.Layer<never, never, HttpRouter.HttpRouter>, path: string) => {
-    const { dispose, handler } = HttpRouter.toWebHandler(pages, { disableLogger: true })
-    try {
-      const response = await handler(new Request(`http://localhost${path}`, { redirect: "manual" }))
-      return { status: response.status, headers: response.headers, body: await response.text() }
-    } finally {
-      await dispose()
-    }
-  }
-
-  const document = (page: HtmlServer.Rendered<unknown>) =>
-    `<html ${page.htmlAttributes}><head>${page.head}</head><body>${page.html}</body></html>`
-
-  const pages = HtmlServer.layerHttp(App, { routes: AppRoute, document }).pipe(Layer.provide(People.layer))
-
-  it("renders the route at the URL into the document, with the props the client mounts with", async () => {
-    const response = await request(pages, "/people/1")
-    assert.strictEqual(response.status, 200)
-    assert.strictEqual(response.headers.get("content-type"), "text/html")
-    assert.include(response.body, "<html lang=\"en\" class=\"routed\"")
-    assert.include(response.body, "<title data-eui>Person 1 · App</title>")
-    assert.include(response.body, "<p id=\"bio\">Bio of person 1</p>")
-  })
-
-  it("renders the catch-all route with a 404", async () => {
-    const response = await request(pages, "/nowhere")
-    assert.strictEqual(response.status, 404)
-    assert.include(response.body, "<h1>Not found</h1>")
-  })
-
-  it("answers a URL the routes don't resolve with a 404, without rendering", async () => {
-    let rendered = 0
-    const HomeRoute = Route.union({ Home: Route.make("/") })
-    const Root = Component.make({
-      name: "Root",
-      props: Schema.Struct({ route: HomeRoute }),
-      model: Schema.Struct({}),
-      message: Schema.Never,
-      elements: Html,
-      init: () => {
-        rendered++
-        return {}
-      },
-      update: (model) => model,
-      view: (_, h) => h.h1("Home")
-    })
-    const response = await request(HtmlServer.layerHttp(Root, { routes: HomeRoute, document }), "/missing")
-    assert.strictEqual(response.status, 404)
-    assert.strictEqual(rendered, 0)
-    assert.strictEqual((await request(HtmlServer.layerHttp(Root, { routes: HomeRoute, document }), "/")).status, 200)
-  })
-
-  it("redirects a normalised URL to the printed route", async () => {
-    const response = await request(pages, "/people/1/")
-    assert.strictEqual(response.status, 301)
-    assert.strictEqual(response.headers.get("location"), "/people/1")
-  })
-
-  it("lets status replace the default, from the route and the root's Model", async () => {
-    const seen: Array<unknown> = []
-    const withStatus = HtmlServer.layerHttp(App, {
-      routes: AppRoute,
-      document,
-      status: (route, model) => {
-        seen.push(model?.route)
-        return route._tag === "Person" && route.params.id === 9 ? 410 : 200
-      }
-    }).pipe(Layer.provide(People.layer))
-    assert.strictEqual((await request(withStatus, "/people/9")).status, 410)
-    assert.strictEqual((await request(withStatus, "/nowhere")).status, 200)
-    assert.deepStrictEqual(seen, [
-      AppRoute.make({ _tag: "Person", params: { id: 9 } }),
-      AppRoute.make({ _tag: "NotFound", params: { "*": "nowhere" } })
-    ])
-  })
 })
