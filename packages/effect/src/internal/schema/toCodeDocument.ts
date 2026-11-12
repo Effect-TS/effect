@@ -2,7 +2,22 @@ import * as Arr from "../../Array.ts"
 import { format, formatPropertyKey } from "../../Formatter.ts"
 import type * as Schema from "../../Schema.ts"
 import type * as SchemaRepresentation from "../../SchemaRepresentation.ts"
-import { type Binding, code, deferred, type Fragment, type Import, join, literal, Module } from "../codegen.ts"
+import {
+  addImport,
+  addSideEffect,
+  type Binding,
+  code,
+  declare,
+  deferred,
+  define,
+  finalize,
+  type Fragment,
+  type Import,
+  join,
+  literal,
+  make,
+  provideImport
+} from "../codegen.ts"
 import { errorWithPath } from "../errors.ts"
 import * as InternalRecord from "../record.ts"
 import * as InternalAnnotations from "./annotations.ts"
@@ -244,9 +259,9 @@ function classifyReferences(
 export function toCodeDocument(
   document: SchemaRepresentation.MultiDocument
 ): SchemaRepresentation.CodeDocument {
-  const module = new Module()
+  const module = make()
   // Consumers provide this namespace; track it without emitting a duplicate import.
-  const schemaImport = module.provideImport({
+  const schemaImport = provideImport(module, {
     module: "effect/Schema",
     kind: "Namespace",
     imported: "*",
@@ -265,7 +280,8 @@ export function toCodeDocument(
 
   for (const [$ref, binding] of references) {
     const fragments = recur(document.references[$ref], ["references", $ref])
-    module.define(
+    define(
+      module,
       binding,
       [fragments.runtime, fragments.Type],
       Array.from(groups.dependencies.get($ref)!, ($ref) => references.get($ref)!)
@@ -274,7 +290,7 @@ export function toCodeDocument(
   const roots = document.representations.map((representation, index) =>
     recur(representation, ["representations", index])
   )
-  const output = module.finalize(roots.flatMap((code) => [code.runtime, code.Type]))
+  const output = finalize(module, roots.flatMap((code) => [code.runtime, code.Type]))
   const definitions = new Map(
     output.declarations.map(({ binding, fragments }) => [binding, makeCode(fragments[0], fragments[1])] as const)
   )
@@ -306,7 +322,7 @@ export function toCodeDocument(
   }
 
   function freshIdentifier(seed: string): Binding {
-    return module.declare(sanitizeJavaScriptIdentifier(seed))
+    return declare(module, sanitizeJavaScriptIdentifier(seed))
   }
 
   function compileCallback(
@@ -337,7 +353,7 @@ export function toCodeDocument(
         }
         for (const imported of parsed) {
           if (imported.kind === "SideEffect") {
-            module.addSideEffect(imported.module, imported.attributes)
+            addSideEffect(module, imported.module, imported.attributes)
             continue
           }
           if (references.has(imported.local) && imported.local !== "Schema" && !imports.has(imported.local)) {
@@ -356,7 +372,7 @@ export function toCodeDocument(
             ? imported
             : { ...imported, typeOnly: previous.typeOnly && imported.typeOnly }
           imports.set(imported.local, input)
-          references.set(imported.local, module.addImport(input))
+          references.set(imported.local, addImport(module, input))
         }
       } catch (error) {
         throw errorWithPath(error instanceof Error ? error.message : String(error), [
@@ -384,7 +400,7 @@ export function toCodeDocument(
     const key = globalThis.Symbol.keyFor(symbol)
     const description = symbol.description
     artifacts.push({ _tag: "Symbol", binding: identifier })
-    module.define(identifier, [
+    define(module, identifier, [
       key === undefined
         ? `globalThis.Symbol(${description === undefined ? "" : format(description)})`
         : `globalThis.Symbol.for(${format(key)})`,
@@ -532,7 +548,7 @@ export function toCodeDocument(
       case "Enum": {
         const identifier = freshIdentifier("_Enum")
         artifacts.push({ _tag: "Enum", binding: identifier })
-        module.define(identifier, [
+        define(module, identifier, [
           code`enum ${identifier} { ${
             representation.enums.map(([name, value]) => `${format(name)} = ${format(value)}`).join(
               ", "

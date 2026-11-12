@@ -1,18 +1,18 @@
 import { assert, describe, it } from "@effect/vitest"
-import { code, importNamespace, Module } from "effect/internal/codegen"
+import { code, declare, finalize, importNamespace, make } from "effect/internal/codegen"
 import { parse } from "effect/internal/schema/codeExpression"
 
 describe("code generation expressions", () => {
   it("rewrites namespace references inside arguments without rewriting members, keys or text", () => {
-    const module = new Module()
-    module.declare("Tools")
+    const module = make()
+    declare(module, "Tools")
     const references = new Map([
       ["Tools", importNamespace("tools", "Tools")],
       ["Other", importNamespace("other", "Other")]
     ])
     const source =
       "Tools.api({ Tools: \"Tools.api\", nested: Other.value(), Tools }, /* Tools.api */ new globalThis.Date(0)).Tools()"
-    const output = module.finalize([parse(source, references, "runtime")])
+    const output = finalize(module, [parse(source, references, "runtime")])
     assert.deepStrictEqual(output.roots, [
       "Tools1.api({ Tools: \"Tools.api\", nested: Other.value(), Tools: Tools1 }, /* Tools.api */ new globalThis.Date(0)).Tools()"
     ])
@@ -20,24 +20,24 @@ describe("code generation expressions", () => {
   })
 
   it("inserts supplied fragments without parsing or renaming their contents", () => {
-    const module = new Module()
-    const Option = module.declare("Option")
+    const module = make()
+    const Option = declare(module, "Option")
     const imported = importNamespace("effect/Option", "Option")
     const references = new Map([
       ["Option", imported],
       ["ARG", code`readonly [${Option}, \`value-\${string}\`]`]
     ])
-    const output = module.finalize([parse("Option.Option<ARG>", references, "Type")])
+    const output = finalize(module, [parse("Option.Option<ARG>", references, "Type")])
     assert.deepStrictEqual(output.roots, ["Option1.Option<readonly [Option, `value-${string}`]>"])
   })
 
   it("supports nested calls, literal arguments and the generated type forms", () => {
-    const module = new Module()
+    const module = make()
     const references = new Map()
     const runtime = "Schema.makeFilter(() => true).annotate({ ...metadata, example: [-1, 2n, true, null] })"
     const Type = "{ readonly value?: globalThis.ReadonlyArray<string | number> } & { readonly [key: string]: unknown }"
     assert.deepStrictEqual(
-      module.finalize([parse(runtime, references, "runtime"), parse(Type, references, "Type")]).roots,
+      finalize(module, [parse(runtime, references, "runtime"), parse(Type, references, "Type")]).roots,
       [runtime, Type]
     )
   })

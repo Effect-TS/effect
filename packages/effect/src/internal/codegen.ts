@@ -13,10 +13,6 @@ export interface DeclarationBinding extends Binding {
   readonly name: string
 }
 
-interface LocalBinding extends DeclarationBinding {
-  readonly owner: Module
-}
-
 export type Fragment = string | Binding | {
   readonly _tag: "Parts"
   readonly parts: ReadonlyArray<Fragment>
@@ -242,17 +238,10 @@ export interface Scope {
   readonly _tag: "Scope"
 }
 
-class ScopeState implements Scope {
-  readonly _tag = "Scope"
-  readonly taken = new Set<string>()
-  readonly nested = new Set<string>()
-  readonly owner: Module
-  readonly parent: ScopeState | undefined
-
-  constructor(owner: Module, parent?: ScopeState) {
-    this.owner = owner
-    this.parent = parent
-  }
+interface ScopeState {
+  readonly taken: Set<string>
+  readonly nested: Set<string>
+  readonly parent: Scope | undefined
 }
 
 interface UsedImport {
@@ -306,223 +295,265 @@ function printImports(imports: ReadonlyArray<UsedImport | string>): ReadonlyArra
   return lines
 }
 
-/** Definitions are ordered by the supplied dependencies, before source appended with `add`. */
-export class Module {
-  private readonly reserved: ReadonlySet<string>
-  private readonly root = new ScopeState(this)
-  private readonly declarations = new Map<Binding, Declaration>()
-  private readonly imports = new Map<string, ImportBinding>()
-  private readonly provided = new Map<string, ImportBinding>()
-  private readonly sideEffects = new Set<string>()
-  private readonly importOrder: Array<ImportBinding | string> = []
-  private readonly body: Array<Fragment> = []
-  private readonly bindings: Array<LocalBinding> = []
+/** Mutable state for generating one module. */
+export interface Module {
+  readonly reserved: ReadonlySet<string>
+  readonly root: Scope
+  readonly scopes: Map<Scope, ScopeState>
+  readonly declarations: Map<Binding, Declaration>
+  readonly imports: Map<string, ImportBinding>
+  readonly provided: Map<string, ImportBinding>
+  readonly sideEffects: Set<string>
+  readonly importOrder: Array<ImportBinding | string>
+  readonly body: Array<Fragment>
+  readonly bindings: Map<Binding, string>
+}
 
-  constructor(reserved: ReadonlyArray<string> = []) {
-    this.reserved = new Set([...keywords, "globalThis", ...reserved])
+export function make(reserved: ReadonlyArray<string> = []): Module {
+  const root: Scope = { _tag: "Scope" }
+  return {
+    reserved: new Set([...keywords, "globalThis", ...reserved]),
+    root,
+    scopes: new Map([[root, {
+      taken: new Set<string>(),
+      nested: new Set<string>(),
+      parent: undefined
+    }]]),
+    declarations: new Map(),
+    imports: new Map(),
+    provided: new Map(),
+    sideEffects: new Set(),
+    importOrder: [],
+    body: [],
+    bindings: new Map()
   }
+}
 
-  private getScope(scope: Scope = this.root): ScopeState {
-    if (!(scope instanceof ScopeState) || scope.owner !== this) throw new Error("Scope belongs to another module")
-    return scope
+function getScope(self: Module, scope: Scope): ScopeState {
+  const state = self.scopes.get(scope)
+  if (state === undefined) throw new Error("Scope belongs to another module")
+  return state
+}
+
+export function scope(self: Module, parent: Scope = self.root): Scope {
+  getScope(self, parent)
+  const scope: Scope = { _tag: "Scope" }
+  self.scopes.set(scope, { taken: new Set(), nested: new Set(), parent })
+  return scope
+}
+
+function reserve(self: Module, scope: Scope, name: string): void {
+  const state = getScope(self, scope)
+  state.taken.add(name)
+  for (let current = state.parent; current !== undefined;) {
+    const parent = getScope(self, current)
+    parent.nested.add(name)
+    current = parent.parent
   }
+}
 
-  scope(parent?: Scope): Scope {
-    return new ScopeState(this, this.getScope(parent))
-  }
-
-  declare(
-    preferredName: string,
-    options?: { readonly exact?: boolean | undefined; readonly scope?: Scope | undefined }
-  ): DeclarationBinding {
-    const scope = this.getScope(options?.scope)
-    const takenBy = (name: string): string | undefined => {
-      if (this.reserved.has(name)) return "it is reserved"
-      if (scope.nested.has(name)) return "a nested scope declares it"
-      for (let current: ScopeState | undefined = scope; current !== undefined; current = current.parent) {
-        if (current.taken.has(name)) {
-          return current === scope
-            ? "this scope declares it"
-            : "an enclosing scope declares it"
-        }
+export function declare(
+  self: Module,
+  preferredName: string,
+  options?: { readonly exact?: boolean | undefined; readonly scope?: Scope | undefined }
+): DeclarationBinding {
+  const scope = options?.scope ?? self.root
+  const state = getScope(self, scope)
+  const takenBy = (name: string): string | undefined => {
+    if (self.reserved.has(name)) return "it is reserved"
+    if (state.nested.has(name)) return "a nested scope declares it"
+    for (let current: Scope | undefined = scope; current !== undefined;) {
+      const state = getScope(self, current)
+      if (state.taken.has(name)) {
+        return current === scope
+          ? "this scope declares it"
+          : "an enclosing scope declares it"
       }
-      return undefined
+      current = state.parent
     }
-    if (options?.exact) {
-      const reason = isIdentifier(preferredName) ? takenBy(preferredName) : "it is not an identifier"
-      if (reason !== undefined) throw new Error(`Cannot declare exact name ${literal(preferredName)}: ${reason}`)
-    }
-    const name = options?.exact ? preferredName : this.allocate(preferredName, (name) => takenBy(name) !== undefined)
-    scope.taken.add(name)
-    for (let current = scope.parent; current !== undefined; current = current.parent) current.nested.add(name)
-    const local: LocalBinding = { ...binding(preferredName), owner: this, name }
-    this.bindings.push(local)
-    return local
+    return undefined
   }
-
-  define(binding: Binding, fragments: ReadonlyArray<Fragment>, dependencies: ReadonlyArray<Binding> = []): void {
-    if (!("owner" in binding) || binding.owner !== this) {
-      throw new Error("Expected a declaration binding owned by this module")
-    }
-    if (this.declarations.has(binding)) {
-      throw new Error(`Duplicate definition: ${binding.preferredName}`)
-    }
-    this.declarations.set(binding, { binding, fragments, dependencies })
+  if (options?.exact) {
+    const reason = isIdentifier(preferredName) ? takenBy(preferredName) : "it is not an identifier"
+    if (reason !== undefined) throw new Error(`Cannot declare exact name ${literal(preferredName)}: ${reason}`)
   }
+  const name = options?.exact ? preferredName : allocate(preferredName, (name) => takenBy(name) !== undefined)
+  const local: DeclarationBinding = { ...binding(preferredName), name }
+  reserve(self, scope, name)
+  self.bindings.set(local, name)
+  return local
+}
 
-  addImport(input: Import): Binding {
-    const key = JSON.stringify([importKey(input), input.local, input.typeOnly])
-    const existing = this.imports.get(key)
-    if (existing !== undefined) return existing
-    const result = imported(input)
-    this.imports.set(key, result)
-    this.importOrder.push(result)
-    return result
+export function define(
+  self: Module,
+  binding: Binding,
+  fragments: ReadonlyArray<Fragment>,
+  dependencies: ReadonlyArray<Binding> = []
+): void {
+  if (!self.bindings.has(binding)) {
+    throw new Error("Expected a declaration binding owned by this module")
   }
-
-  provideImport(input: Import): Binding {
-    const key = importKey(input)
-    const existing = this.provided.get(key)
-    if (existing !== undefined && existing.import.local === input.local) return existing
-    if (
-      existing !== undefined || this.reserved.has(input.local) || this.root.taken.has(input.local) ||
-      this.root.nested.has(input.local)
-    ) {
-      throw new Error(`Conflicting predefined import: ${input.local}`)
-    }
-    this.root.taken.add(input.local)
-    const result = imported(input)
-    this.provided.set(key, result)
-    return result
+  if (self.declarations.has(binding)) {
+    throw new Error(`Duplicate definition: ${binding.preferredName}`)
   }
+  self.declarations.set(binding, { binding, fragments, dependencies })
+}
 
-  addSideEffect(module: string, attributes = ""): void {
-    const source = `import ${literal(module)}${attributes}`
-    if (!this.sideEffects.has(source)) {
-      this.sideEffects.add(source)
-      this.importOrder.push(source)
-    }
+export function addImport(self: Module, input: Import): Binding {
+  const key = JSON.stringify([importKey(input), input.local, input.typeOnly])
+  const existing = self.imports.get(key)
+  if (existing !== undefined) return existing
+  const result = imported(input)
+  self.imports.set(key, result)
+  self.importOrder.push(result)
+  return result
+}
+
+export function provideImport(self: Module, input: Import): Binding {
+  const key = importKey(input)
+  const existing = self.provided.get(key)
+  if (existing !== undefined && existing.import.local === input.local) return existing
+  const root = getScope(self, self.root)
+  if (
+    existing !== undefined || self.reserved.has(input.local) || root.taken.has(input.local) ||
+    root.nested.has(input.local)
+  ) {
+    throw new Error(`Conflicting predefined import: ${input.local}`)
   }
+  const result = imported(input)
+  reserve(self, self.root, input.local)
+  self.provided.set(key, result)
+  return result
+}
 
-  add(fragment: Fragment): void {
-    this.body.push(fragment)
+export function addSideEffect(self: Module, module: string, attributes = ""): void {
+  const source = `import ${literal(module)}${attributes}`
+  if (!self.sideEffects.has(source)) {
+    self.sideEffects.add(source)
+    self.importOrder.push(source)
   }
+}
 
-  private allocate(preferredName: string, isTaken: (name: string) => boolean): string {
-    const base = preferredName.replace(/[^$_\u200c\u200d\p{ID_Continue}]/gu, "_") || "_"
-    const valid = /^[$_\p{ID_Start}]/u.test(base) ? base : `_${base}`
-    let name = valid
-    let suffix = 0
-    while (isTaken(name)) name = `${valid}${++suffix}`
-    return name
-  }
+export function add(self: Module, fragment: Fragment): void {
+  self.body.push(fragment)
+}
 
-  private renderer(names: Map<Binding, string>, imports: Map<string, UsedImport>): Render {
-    const taken = new Set([...this.reserved, ...this.root.taken, ...this.root.nested])
-    const cache = new Map<Fragment, string>()
-    const render: Render = (fragment) => {
-      if (typeof fragment === "string") return fragment
-      const previous = cache.get(fragment)
-      if (previous !== undefined) return previous
-      let value: string
-      switch (fragment._tag) {
-        case "Parts":
-          value = fragment.parts.map(render).join("")
-          break
-        case "Deferred":
-          value = fragment.render(render)
-          break
-        case "Indent":
-          value = render(fragment.content).replace(/\n(?=[^\n])/g, "\n  ")
-          break
-        case "Binding": {
-          if ("import" in fragment) {
-            const input = (fragment as ImportBinding).import
-            const key = importKey(input)
-            const provided = this.provided.get(key)
-            if (provided !== undefined) {
-              value = provided.import.local
-            } else {
-              let used = imports.get(key)
-              if (used === undefined) {
-                const local = this.allocate(input.local, (name) => taken.has(name))
-                taken.add(local)
-                used = { input, local, runtime: false }
-                imports.set(key, used)
-              }
-              used.runtime ||= !input.typeOnly
-              value = used.local
-            }
-            names.set(fragment, value)
+function allocate(preferredName: string, isTaken: (name: string) => boolean): string {
+  const base = preferredName.replace(/[^$_\u200c\u200d\p{ID_Continue}]/gu, "_") || "_"
+  const valid = /^[$_\p{ID_Start}]/u.test(base) ? base : `_${base}`
+  let name = valid
+  let suffix = 0
+  while (isTaken(name)) name = `${valid}${++suffix}`
+  return name
+}
+
+function renderer(self: Module, names: Map<Binding, string>, imports: Map<string, UsedImport>): Render {
+  const root = getScope(self, self.root)
+  const taken = new Set([...self.reserved, ...root.taken, ...root.nested])
+  const cache = new Map<Fragment, string>()
+  const render: Render = (fragment) => {
+    if (typeof fragment === "string") return fragment
+    const previous = cache.get(fragment)
+    if (previous !== undefined) return previous
+    let value: string
+    switch (fragment._tag) {
+      case "Parts":
+        value = fragment.parts.map(render).join("")
+        break
+      case "Deferred":
+        value = fragment.render(render)
+        break
+      case "Indent":
+        value = render(fragment.content).replace(/\n(?=[^\n])/g, "\n  ")
+        break
+      case "Binding": {
+        if ("import" in fragment) {
+          const input = (fragment as ImportBinding).import
+          const key = importKey(input)
+          const provided = self.provided.get(key)
+          if (provided !== undefined) {
+            value = provided.import.local
           } else {
-            const name = names.get(fragment)
-            if (name === undefined) throw new Error("Binding belongs to another module")
-            value = name
+            let used = imports.get(key)
+            if (used === undefined) {
+              const local = allocate(input.local, (name) => taken.has(name))
+              taken.add(local)
+              used = { input, local, runtime: false }
+              imports.set(key, used)
+            }
+            used.runtime ||= !input.typeOnly
+            value = used.local
           }
-          break
+          names.set(fragment, value)
+        } else {
+          const name = names.get(fragment)
+          if (name === undefined) throw new Error("Binding belongs to another module")
+          value = name
         }
-      }
-      cache.set(fragment, value)
-      return value
-    }
-    return render
-  }
-
-  finalize(roots: ReadonlyArray<Fragment> = []): {
-    readonly names: ReadonlyMap<Binding, string>
-    readonly declarations: ReadonlyArray<{ readonly binding: Binding; readonly fragments: ReadonlyArray<string> }>
-    readonly roots: ReadonlyArray<string>
-    readonly imports: ReadonlyArray<string>
-    readonly body: ReadonlyArray<string>
-  } {
-    const visiting = new Set<Binding>()
-    const visited = new Set<Binding>()
-    const ordered: Array<Declaration> = []
-    const visit = (binding: Binding): void => {
-      if (visited.has(binding) || "import" in binding) return
-      if (visiting.has(binding)) throw new Error(`Cyclic initialization dependency: ${binding.preferredName}`)
-      const declaration = this.declarations.get(binding)
-      if (declaration === undefined) throw new Error(`Missing definition: ${binding.preferredName}`)
-      visiting.add(binding)
-      for (const dependency of declaration.dependencies) visit(dependency)
-      visiting.delete(binding)
-      visited.add(binding)
-      ordered.push(declaration)
-    }
-    for (const declaration of this.declarations.values()) visit(declaration.binding)
-
-    const names = new Map<Binding, string>(this.bindings.map((binding) => [binding, binding.name]))
-    const imports = new Map<string, UsedImport>()
-    const render = this.renderer(names, imports)
-    const output = {
-      names,
-      declarations: ordered.map(({ binding, fragments }) => ({ binding, fragments: fragments.map(render) })),
-      roots: roots.map(render),
-      body: this.body.map(render)
-    }
-    const orderedImports: Array<string | UsedImport> = []
-    for (const entry of this.importOrder) {
-      if (typeof entry === "string") {
-        orderedImports.push(entry)
-      } else {
-        const key = importKey(entry.import)
-        const used = imports.get(key)
-        if (used !== undefined && (!used.runtime || !entry.import.typeOnly)) {
-          orderedImports.push(used)
-          imports.delete(key)
-        }
+        break
       }
     }
-    return { ...output, imports: printImports([...orderedImports, ...imports.values()]) }
+    cache.set(fragment, value)
+    return value
   }
+  return render
+}
 
-  print(): string {
-    const output = this.finalize()
-    return [
-      output.imports.join("\n"),
-      ...output.declarations.flatMap((declaration) => declaration.fragments),
-      ...output.body
-    ]
-      .filter((part) => part !== "").join("\n\n") + "\n"
+/** Definitions precede appended source and follow their supplied dependencies. */
+export function finalize(self: Module, roots: ReadonlyArray<Fragment> = []): {
+  readonly names: ReadonlyMap<Binding, string>
+  readonly declarations: ReadonlyArray<{ readonly binding: Binding; readonly fragments: ReadonlyArray<string> }>
+  readonly roots: ReadonlyArray<string>
+  readonly imports: ReadonlyArray<string>
+  readonly body: ReadonlyArray<string>
+} {
+  const visiting = new Set<Binding>()
+  const visited = new Set<Binding>()
+  const ordered: Array<Declaration> = []
+  const visit = (binding: Binding): void => {
+    if (visited.has(binding) || "import" in binding) return
+    if (visiting.has(binding)) throw new Error(`Cyclic initialization dependency: ${binding.preferredName}`)
+    const declaration = self.declarations.get(binding)
+    if (declaration === undefined) throw new Error(`Missing definition: ${binding.preferredName}`)
+    visiting.add(binding)
+    for (const dependency of declaration.dependencies) visit(dependency)
+    visiting.delete(binding)
+    visited.add(binding)
+    ordered.push(declaration)
   }
+  for (const binding of self.declarations.keys()) visit(binding)
+
+  const names = new Map(self.bindings)
+  const imports = new Map<string, UsedImport>()
+  const render = renderer(self, names, imports)
+  const output = {
+    names,
+    declarations: ordered.map(({ binding, fragments }) => ({ binding, fragments: fragments.map(render) })),
+    roots: roots.map(render),
+    body: self.body.map(render)
+  }
+  const orderedImports: Array<string | UsedImport> = []
+  for (const entry of self.importOrder) {
+    if (typeof entry === "string") {
+      orderedImports.push(entry)
+    } else {
+      const key = importKey(entry.import)
+      const used = imports.get(key)
+      if (used !== undefined && (!used.runtime || !entry.import.typeOnly)) {
+        orderedImports.push(used)
+        imports.delete(key)
+      }
+    }
+  }
+  return { ...output, imports: printImports([...orderedImports, ...imports.values()]) }
+}
+
+export function print(self: Module): string {
+  const output = finalize(self)
+  return [
+    output.imports.join("\n"),
+    ...output.declarations.flatMap((declaration) => declaration.fragments),
+    ...output.body
+  ]
+    .filter((part) => part !== "").join("\n\n") + "\n"
 }

@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Module } from "effect/internal/codegen"
+import { addImport, addSideEffect, finalize, make } from "effect/internal/codegen"
 import * as Imports from "effect/internal/schema/codeImports"
 
 describe("code generation imports", () => {
@@ -54,17 +54,17 @@ describe("code generation imports", () => {
       import { type Only } from "inline-type";
       import type {} from "unused";
     `)
-    const module = new Module()
+    const module = make()
     const bindings = [parsed, parsed].flatMap((imports) =>
       imports.flatMap((imported) => {
         if (imported.kind === "SideEffect") {
-          module.addSideEffect(imported.module, imported.attributes)
+          addSideEffect(module, imported.module, imported.attributes)
           return []
         }
-        return [module.addImport(imported)]
+        return [addImport(module, imported)]
       })
     )
-    assert.deepStrictEqual(module.finalize(bindings).imports, [
+    assert.deepStrictEqual(finalize(module, bindings).imports, [
       "import \"side-effect\"",
       "import { Value } from \"first\"",
       "import Data from \"data.json\" with { \"type\": \"json\" }",
