@@ -127,7 +127,7 @@ export declare namespace ToJsonSchema {
 /**
  * Input and output contracts for code generation annotations.
  *
- * @stability stable
+ * @stability experimental
  * @since 4.0.0
  */
 export declare namespace Generation {
@@ -139,6 +139,7 @@ export declare namespace Generation {
    * Interpolate the supplied code strings unchanged into the result. They may
    * contain temporary references that are resolved after the callback returns.
    *
+   * @stability experimental
    * @category models
    * @since 4.0.0
    */
@@ -149,6 +150,7 @@ export declare namespace Generation {
   /**
    * Output of declaration code generation.
    *
+   * @stability experimental
    * @category models
    * @since 4.0.0
    */
@@ -161,6 +163,7 @@ export declare namespace Generation {
   /**
    * Declaration code generator.
    *
+   * @stability experimental
    * @category models
    * @since 4.0.0
    */
@@ -174,6 +177,7 @@ export declare namespace Generation {
    * Interpolate the supplied code strings unchanged into the result. They may
    * contain temporary references that are resolved after the callback returns.
    *
+   * @stability experimental
    * @category models
    * @since 4.0.0
    */
@@ -184,6 +188,7 @@ export declare namespace Generation {
   /**
    * Output of check code generation.
    *
+   * @stability experimental
    * @category models
    * @since 4.0.0
    */
@@ -195,6 +200,7 @@ export declare namespace Generation {
   /**
    * Check code generator.
    *
+   * @stability experimental
    * @category models
    * @since 4.0.0
    */
@@ -2531,7 +2537,7 @@ export interface FromJsonSchemaOptions extends FromJsonSchemaExperimentalOptions
 /**
  * Runtime and TypeScript source generated for one schema.
  *
- * @stability stable
+ * @stability experimental
  * @category models
  * @since 4.0.0
  */
@@ -2543,7 +2549,7 @@ export interface Code {
 /**
  * Creates generated runtime and TypeScript source strings for a schema.
  *
- * @stability stable
+ * @stability experimental
  * @category constructors
  * @since 4.0.0
  */
@@ -2552,7 +2558,7 @@ export const makeCode: (runtime: string, Type: string) => Code = InternalToCodeD
 /**
  * Auxiliary source artifact emitted while generating schema code.
  *
- * @stability stable
+ * @stability experimental
  * @category models
  * @since 4.0.0
  */
@@ -2582,7 +2588,7 @@ export type Artifact =
  * `nonRecursives` also includes recursive definitions needed eagerly to construct
  * another named definition. `recursives` contains the remaining recursive definitions.
  *
- * @stability stable
+ * @stability experimental
  * @category models
  * @since 4.0.0
  */
@@ -2847,7 +2853,7 @@ export function toJsonSchemaMultiDocument(
  * syntax, including local declarations, parameterized functions, template expressions,
  * and conditional or mapped types, throws with the callback's document path.
  *
- * @stability stable
+ * @stability experimental
  * @category transforming
  * @since 4.0.0
  */

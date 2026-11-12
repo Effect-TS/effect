@@ -19153,6 +19153,13 @@ export declare namespace Annotations {
     readonly toCodecArbitrary?: ToArbitrary.Declaration<T, TypeParameters> | undefined
     readonly toEquivalence?: ToEquivalence.Declaration<T, TypeParameters> | undefined
     readonly toFormatter?: ToFormatter.Declaration<T, TypeParameters> | undefined
+    /**
+     * Generates runtime and TypeScript source for this declaration.
+     *
+     * @see {@link SchemaRepresentation.toCodeDocument}
+     * @stability experimental
+     * @since 4.0.0
+     */
     readonly toCode?: SchemaRepresentation.Generation.Declaration | undefined
     /**
      * Used to collect sentinels from a Declaration SchemaAST.
@@ -19191,6 +19198,13 @@ export declare namespace Annotations {
      * @see {@link SchemaRepresentation.ToJsonSchema.CheckOutput} for the result contract
      */
     readonly toJsonSchema?: SchemaRepresentation.ToJsonSchema.Check | undefined
+    /**
+     * Generates runtime source for this filter.
+     *
+     * @see {@link SchemaRepresentation.toCodeDocument}
+     * @stability experimental
+     * @since 4.0.0
+     */
     readonly toCode?: SchemaRepresentation.Generation.Check | undefined
     /**
      * Complete message to use when this filter or refinement fails.
