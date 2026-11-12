@@ -734,6 +734,61 @@ describe("RpcServer", () => {
       assert.deepStrictEqual(output, [pong])
     }))
 
+  // Feeds the chunks to an ndJSON-RPC server over stdio from one stdin subscription, waits up to a second for
+  // the reply to `ping`, then returns the server's lines and how many times it subscribed to stdin.
+  const parseErrorOutput = Effect.fnUntraced(function*(chunks: ReadonlyArray<string>) {
+    const answered = yield* Deferred.make<void>()
+    const closeStdin = yield* Deferred.make<void>()
+    const output: Array<string> = []
+    let subscriptions = 0
+    const group = RpcGroup.make(Rpc.make("ping", { payload: { n: Schema.Number }, success: Schema.String }))
+    const server = yield* Layer.launch(
+      RpcServer.layer(group).pipe(
+        Layer.provide(group.toLayer({ ping: () => Effect.succeed("pong") })),
+        Layer.provide(RpcServer.layerProtocolStdio),
+        Layer.provide(RpcSerialization.layerNdJsonRpc()),
+        Layer.provide(Stdio.layerTest({
+          stdin: Stream.suspend(() => {
+            subscriptions++
+            return Stream.fromIterable(chunks.map((chunk) => new TextEncoder().encode(chunk))).pipe(
+              Stream.concat(Stream.fromEffect(Deferred.await(closeStdin)).pipe(Stream.drain))
+            )
+          }),
+          stdout: () =>
+            Sink.forEach((data) =>
+              Effect.sync(() => output.push(String(data))).pipe(
+                Effect.andThen(
+                  output.join("").includes("\"pong\"") ? Deferred.succeed(answered, undefined) : Effect.void
+                )
+              )
+            )
+        }))
+      )
+    ).pipe(Effect.forkScoped)
+    yield* Deferred.await(answered).pipe(Effect.timeoutOption("1 second"))
+    yield* Deferred.succeed(closeStdin, undefined)
+    yield* Fiber.interrupt(server)
+    return {
+      lines: output.join("").split("\n").filter((line) => line !== "").map((line) => JSON.parse(line)),
+      subscriptions
+    }
+  })
+  const parseError = { jsonrpc: "2.0", id: null, error: { code: -32700, message: "Parse error" } }
+
+  it.live("answers a malformed NDJSON line with a parse error and serves the request in the same chunk", () =>
+    Effect.gen(function*() {
+      const { lines, subscriptions } = yield* parseErrorOutput(["{\n" + JSON.stringify(ping) + "\n"])
+      assert.deepStrictEqual(lines, [parseError, pong])
+      assert.strictEqual(subscriptions, 1)
+    }))
+
+  it.live("answers a malformed NDJSON line with a parse error and serves the request in the next chunk", () =>
+    Effect.gen(function*() {
+      const { lines, subscriptions } = yield* parseErrorOutput(["{\n", JSON.stringify(ping) + "\n"])
+      assert.deepStrictEqual(lines, [parseError, pong])
+      assert.strictEqual(subscriptions, 1)
+    }))
+
   it.effect("should backpressure STDIO sends when the output buffer is full", () =>
     Effect.gen(function*() {
       const protocolReady = yield* Deferred.make<RpcServer.Protocol["Service"]>()

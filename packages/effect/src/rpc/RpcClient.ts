@@ -1134,7 +1134,7 @@ const makeHttpExchange = (
     let hasResponse = false
     yield* Stream.runForEachArray(response.stream, (chunk) =>
       Effect.try({
-        try: () => chunk.flatMap(parser.decode) as Array<FromServerEncoded>,
+        try: () => chunk.flatMap((data) => parser.decode(data)) as Array<FromServerEncoded>,
         catch: (cause) => protocolDefect("Error decoding HTTP response", cause)
       }).pipe(
         Effect.flatMap((responses) => {

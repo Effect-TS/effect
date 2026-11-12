@@ -1605,14 +1605,31 @@ export const makeProtocolStdio = Effect.gen(function*() {
 
     yield* stdio.stdin.pipe(
       Stream.runForEach((data) => {
-        const decoded = parser.decode(data) as ReadonlyArray<FromClientEncoded>
-        if (decoded.length === 0) return Effect.void
+        // A malformed frame is answered on stdout and the rest of the chunk is still served, on the same
+        // subscription: retrying would resubscribe to stdin, which loses input that cannot be replayed.
+        const errors: Array<unknown> = []
+        let decoded: ReadonlyArray<FromClientEncoded>
+        try {
+          decoded = parser.decode(data, (error) => errors.push(error)) as ReadonlyArray<FromClientEncoded>
+        } catch (cause) {
+          errors.push(cause)
+          decoded = []
+        }
+        if (errors.length === 0 && decoded.length === 0) return Effect.void
+        let e = 0
         let i = 0
         return Effect.whileLoop({
+          while: () => e < errors.length,
+          body: () => {
+            const encoded = parser.encode(ResponseDefectEncoded(errors[e++]))
+            return encoded === undefined ? Effect.void : Queue.offer(queue, encoded)
+          },
+          step: constVoid
+        }).pipe(Effect.andThen(Effect.whileLoop({
           while: () => i < decoded.length,
           body: () => writeRequest(0, decoded[i++]),
           step: constVoid
-        })
+        })))
       }),
       Effect.sandbox,
       Effect.tapError(Effect.logError),

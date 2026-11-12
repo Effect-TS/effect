@@ -2692,9 +2692,9 @@ const mcpStdioSerialization = (
       const parser = serialization.makeUnsafe()
       let selectedProtocol: McpProtocol.ProtocolAdapter | undefined
       return {
-        decode: (data) => {
+        decode: (data, onError) => {
           const decoded: Array<unknown> = []
-          for (const frame of frames.decode(data)) {
+          for (const frame of frames.decode(data, onError)) {
             if (Array.isArray(frame)) {
               const acceptsBatch = selectedProtocol?.runtime.transport.jsonRpc.acceptsBatches === true
               if (

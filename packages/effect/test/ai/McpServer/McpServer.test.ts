@@ -3486,6 +3486,32 @@ describe("McpServer", () => {
         Runtime.defaultTeardown(exit, (code) => assert.strictEqual(code, 0))
       }))
 
+    it.live("should answer a malformed line with a parse error and initialize from the same chunk", () =>
+      Effect.gen(function*() {
+        const fixture = yield* makeMcpStdioHarness(McpProtocol.v2025_11_25)
+        const initialize = {
+          jsonrpc: "2.0",
+          id: 1,
+          method: "initialize",
+          params: {
+            protocolVersion: "2025-11-25",
+            capabilities: {},
+            clientInfo: { name: "stdio-client", version: "1.0.0" }
+          }
+        }
+        yield* fixture.sendChunk(`{\n${JSON.stringify(initialize)}\n`)
+        const first = yield* fixture.takeMessage.pipe(Effect.timeoutOption("1 second"))
+        const second = yield* fixture.takeMessage.pipe(Effect.timeoutOption("1 second"))
+        assert.deepStrictEqual(Option.getOrUndefined(first), {
+          jsonrpc: "2.0",
+          id: null,
+          error: { code: -32700, message: "Parse error" }
+        })
+        const response = Option.getOrUndefined(second)
+        strictEqual(response?.id, 1)
+        assertTrue(response?.result !== undefined)
+      }))
+
     it.effect("should give each layerStdio server its own protocol in one layer graph", () =>
       Effect.gen(function*() {
         const encoder = new TextEncoder()

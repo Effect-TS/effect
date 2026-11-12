@@ -70,12 +70,16 @@ export class RpcSerialization extends Context.Service<RpcSerialization, {
  * A stateful parser for an RPC serialization format, able to decode input
  * chunks into protocol messages and encode messages for transport.
  *
+ * `decode` throws on a malformed frame. A streaming format that is given
+ * `onError` instead reports each malformed frame to it and keeps decoding the
+ * frames around it.
+ *
  * @stability unstable
  * @category serialization
  * @since 4.0.0
  */
 export interface Parser {
-  readonly decode: (data: Uint8Array | string) => ReadonlyArray<unknown>
+  readonly decode: (data: Uint8Array | string, onError?: (error: NdjsonDecodeError) => void) => ReadonlyArray<unknown>
   readonly encode: (response: unknown) => Uint8Array | string | undefined
 }
 
@@ -171,10 +175,11 @@ export const makeNdjson = (options?: StreamOptions): RpcSerialization["Service"]
       let buffer = ""
       const failMaxBufferSize = (maxBufferSize: number): never => {
         buffer = ""
+        decoder = undefined
         throw new MaxBufferSizeExceeded({ maxBufferSize })
       }
       return ({
-        decode: (bytes) => {
+        decode: (bytes, onError) => {
           buffer += typeof bytes === "string" ? bytes : (decoder ??= new TextDecoder()).decode(bytes, { stream: true })
           let position = 0
           let nlIndex = buffer.indexOf("\n", position)
@@ -189,8 +194,13 @@ export const makeNdjson = (options?: StreamOptions): RpcSerialization["Service"]
               try {
                 items.push(JSON.parse(line))
               } catch (cause) {
-                buffer = ""
-                throw new NdjsonDecodeError({ cause })
+                const error = new NdjsonDecodeError({ cause })
+                if (onError === undefined) {
+                  buffer = ""
+                  decoder = undefined
+                  throw error
+                }
+                onError(error)
               }
             }
             nlIndex = buffer.indexOf("\n", position)
@@ -298,8 +308,8 @@ export const ndJsonRpc = (options?: {
         readonly responses: Map<string, RpcMessage.FromServerEncoded>
       }>()
       return ({
-        decode: (bytes) => {
-          const frames = parser.decode(bytes)
+        decode: (bytes, onError) => {
+          const frames = parser.decode(bytes, onError)
           if (frames.length === 0) return []
           const messages: Array<RpcMessage.FromClientEncoded | RpcMessage.FromServerEncoded> = []
           for (let i = 0; i < frames.length; i++) {
@@ -539,6 +549,13 @@ function encodeJsonRpcMessage(response: RpcMessage.FromServerEncoded | RpcMessag
       } as any
     }
     case "Defect":
+      if (response.defect instanceof NdjsonDecodeError) {
+        return {
+          jsonrpc: "2.0",
+          id: null,
+          error: { code: -32700, message: "Parse error" }
+        }
+      }
       return {
         jsonrpc: "2.0",
         id: jsonRpcInternalError,
