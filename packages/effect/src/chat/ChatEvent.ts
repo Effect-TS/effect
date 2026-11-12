@@ -130,10 +130,13 @@ export type ReactionRemoved = typeof ReactionRemoved.Type
  *
  * **Details**
  *
- * - Nothing has been stopped. The streams in `messageIds` stay open and keep
- *   taking text until the consumer ends them, and the platform shows a
- *   disabled button until then.
- * - `messageIds` is empty when no stream was open.
+ * - Nothing has been stopped. The thread's streams stay open and keep taking
+ *   text until the consumer ends them, and the platform shows a disabled
+ *   button until then.
+ * - `messageIds` holds the streams the platform named. It is empty when no
+ *   stream was open, but an empty list does not mean none is: Slack names
+ *   the stream only on the first click in a thread. End the thread's reply
+ *   whatever it holds.
  * - `id` is the platform's id for the request, Slack's `event_ts`. Two
  *   deliveries of one request share it.
  * - It has no `kind`.
