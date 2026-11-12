@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
-import { type Cause, Duration, Effect, Fiber, Queue, Stream } from "effect"
+import { type Cause, Deferred, Duration, Effect, Fiber, Queue, Stream } from "effect"
 import { ChatError, ChatMarkdown, ChatTest } from "effect/chat"
 import type { ChatThread } from "effect/chat"
 import { TestClock } from "effect/testing"
@@ -185,6 +185,55 @@ describe("ChatMarkdown", () => {
         assert.strictEqual(error.cause._tag === "Chat" && error.cause.error.reason._tag, "Forbidden")
         assert.deepStrictEqual([error.posted, error.remaining], [[], "Report"])
       }).pipe(Effect.provide(ChatTest.layer())))
+
+    it.effect("fails when the text is refused, not the files", () =>
+      Effect.gen(function*() {
+        const { test, thread } = yield* setup
+        yield* test.failNext("post", new ChatError.TooLarge({ detail: "msg_blocks_too_long" }), { times: 2 })
+        const error = yield* Effect.flip(ChatMarkdown.post(thread, "Report", {
+          files,
+          unattachedNote: () => " (file not attached)"
+        }))
+        assert.strictEqual(error.cause._tag === "Chat" && error.cause.error.reason._tag, "TooLarge")
+        assert.deepStrictEqual([error.posted, error.uncertain, error.remaining], [[], undefined, "Report"])
+        assert.deepStrictEqual(yield* texts(test, thread), [])
+      }).pipe(Effect.provide(ChatTest.layer())))
+
+    it.effect("does not retry without the files for a failure unrelated to them", () =>
+      Effect.gen(function*() {
+        const { test, thread } = yield* setup
+        yield* test.failNext("post", new ChatError.NotFound({ detail: "channel_not_found" }))
+        const error = yield* Effect.flip(ChatMarkdown.post(thread, "Report", {
+          files,
+          unattachedNote: () => " (file not attached)"
+        }))
+        assert.strictEqual(error.cause._tag === "Chat" && error.cause.error.reason._tag, "NotFound")
+        assert.strictEqual((yield* test.calls).filter((call) => call.op === "post").length, 1)
+      }).pipe(Effect.provide(ChatTest.layer())))
+
+    it.effect("keeps the files and blank text that follow the last cut", () =>
+      Effect.gen(function*() {
+        const { test, thread } = yield* setup
+        const input = "abcde\n\n"
+        const result = yield* ChatMarkdown.post(thread, input, { files })
+        assert.deepStrictEqual(result.parts.map((part) => [part.markdown, part.text]), [["abcde", input]])
+        const messages = yield* test.messages(thread)
+        assert.deepStrictEqual(messages.map((message) => message.attachments.length), [1])
+      }).pipe(Effect.provide(ChatTest.layer({ limits: { messageLength: 5 } }))))
+
+    it.effect("sends the files with the overflow file", () =>
+      Effect.gen(function*() {
+        const { test, thread } = yield* setup
+        const input = paragraphs(5, 20)
+        const result = yield* ChatMarkdown.post(thread, input, {
+          files,
+          maxParts: 2,
+          overflow: { file: { name: "rest.md" } }
+        })
+        assert.strictEqual(joined(result.parts), input)
+        const last = (yield* test.messages(thread)).at(-1)!
+        assert.deepStrictEqual(last.attachments.map((attachment) => attachment.name), ["rest.md", "a.txt"])
+      }).pipe(Effect.provide(ChatTest.layer({ limits: { messageLength: 30 } }))))
 
     it.effect("reports the text of an uncertain post as uncertain", () =>
       Effect.gen(function*() {
@@ -436,6 +485,86 @@ describe("ChatMarkdown", () => {
         yield* send("```ts\ncode\n")
         yield* Fiber.interrupt(fiber)
         assert.deepStrictEqual(yield* texts(test, thread), ["```ts\ncode\n```"])
+      }).pipe(Effect.provide(ChatTest.layer())))
+
+    it.effect("does not post again when interrupted while onPart runs", () =>
+      Effect.gen(function*() {
+        const { test, thread } = yield* setup
+        const entered = yield* Deferred.make<void>()
+        const release = yield* Deferred.make<void>()
+        const { fiber, send } = yield* feed(thread, {
+          recipient: "U1",
+          onPart: () => Effect.andThen(Deferred.succeed(entered, undefined), Deferred.await(release))
+        })
+        yield* send("hello\n")
+        yield* Deferred.await(entered)
+        const interrupt = yield* Effect.forkChild(Fiber.interrupt(fiber))
+        yield* settle
+        yield* Deferred.succeed(release, undefined)
+        yield* Fiber.join(interrupt)
+        assert.deepStrictEqual(yield* texts(test, thread), ["hello\n"])
+        const ops = (yield* test.calls).map((call) => call.op)
+        assert.deepStrictEqual(ops.filter((op) => op === "nativeStream.start").length, 1)
+        assert.include(ops, "nativeStream.stop")
+      }).pipe(Effect.provide(ChatTest.layer())))
+
+    it.effect("repairs with the retried chunk while the upstream is paused", () =>
+      Effect.gen(function*() {
+        const { test, thread } = yield* setup
+        const { send } = yield* feed(thread, { recipient: "U1" })
+        yield* send("one\n")
+        yield* test.failNext("nativeStream.append", new ChatError.RateLimited({ retryAfter: Duration.millis(100) }), {
+          times: 3
+        })
+        yield* send("two\n")
+        yield* TestClock.adjust("200 millis")
+        yield* settle
+        const ops = (yield* test.calls).map((call) => call.op)
+        assert.strictEqual(ops.filter((op) => op === "nativeStream.append").length, 3)
+        assert.include(ops, "nativeStream.stop")
+        assert.deepStrictEqual(yield* texts(test, thread), ["one\ntwo\n"])
+      }).pipe(Effect.provide(ChatTest.layer())))
+
+    it.effect("partitions an uncertain repair followed by a denied edit", () =>
+      Effect.gen(function*() {
+        const { test, thread } = yield* setup
+        const { fiber, send } = yield* feed(thread, { recipient: "U1" })
+        yield* send("one\n")
+        yield* test.failNext("nativeStream.append", new ChatError.Unknown({}), { landed: true })
+        yield* test.failNext("edit", new ChatError.Unknown({}), { landed: true })
+        yield* send("two\n")
+        yield* test.failNext("edit", new ChatError.Forbidden({}))
+        yield* send("three\n")
+        const error = yield* Effect.flip(Fiber.join(fiber))
+        assert.deepStrictEqual([joined(error.posted), error.uncertain, error.remaining], ["one\n", "two\n", "three\n"])
+      }).pipe(Effect.provide(ChatTest.layer())))
+
+    it.effect("leaves room in a native stream to close a code fence", () =>
+      Effect.gen(function*() {
+        const { test, thread } = yield* setup
+        const { end, send } = yield* feed(thread, { recipient: "U1" })
+        yield* send("~~~\n")
+        yield* send("a".repeat(16))
+        const result = yield* end
+        assert.strictEqual(joined(result.parts), "~~~\n" + "a".repeat(16))
+        const messages = yield* texts(test, thread)
+        assert.isTrue(messages.length > 1)
+        for (const message of messages) {
+          assert.isTrue(message.endsWith("\n~~~"), message)
+          assert.isAtMost(codePoints(message), 20)
+        }
+      }).pipe(Effect.provide(ChatTest.layer({ limits: { messageLength: 20 } }))))
+
+    it.effect("closes a code fence before rotating on age", () =>
+      Effect.gen(function*() {
+        const { test, thread } = yield* setup
+        const { end, send } = yield* feed(thread, { recipient: "U1" })
+        yield* send("```ts\none\n")
+        yield* TestClock.adjust("9 minutes")
+        yield* send("two\n")
+        const result = yield* end
+        assert.deepStrictEqual(result.parts.map((part) => part.text), ["```ts\none\n", "two\n"])
+        assert.deepStrictEqual(yield* texts(test, thread), ["```ts\none\n```", "```ts\ntwo\n```"])
       }).pipe(Effect.provide(ChatTest.layer())))
 
     it.effect("rotates a native stream on age", () =>
