@@ -377,11 +377,9 @@ export const makeHost = (
    * one hands focus back to where it was when it opened, which may be in a dialog shown before it.
    */
   const closeShownIn = (node: globalThis.Node) => {
-    const inside: Array<HTMLDialogElement> = []
-    for (const dialog of shown) {
-      if (dialog.open && node.contains(dialog)) inside.push(dialog)
+    for (const dialog of Array.from(shown).reverse()) {
+      if (node.contains(dialog)) closeDialog(dialog, true)
     }
-    for (let i = inside.length - 1; i >= 0; i--) closeDialog(inside[i], true)
   }
 
   /** Shows `dialog` as `want` says, from what it shows now. The caller checks `modal` needs it connected. */
