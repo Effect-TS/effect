@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Layer, Schema } from "effect"
+import { Effect, Layer, Schema } from "effect"
 import { HttpRouter } from "effect/http"
 import { Component, Route } from "effect/ui"
 import { Html, type HtmlServer } from "effect/ui/html"
@@ -63,6 +63,33 @@ describe("HtmlServerHttp.layerHttp", () => {
     const response = await request(pages, "/people/1/")
     assert.strictEqual(response.status, 301)
     assert.strictEqual(response.headers.get("location"), "/people/1")
+  })
+
+  it("redirects a URL with query params dropped as invalid temporarily, keeping the others", async () => {
+    const ListRoute = Route.union({
+      List: Route.make("/list", { query: { page: Schema.Int.pipe(Schema.withDecodingDefaultKey(Effect.succeed(1))) } })
+    })
+    const List = Component.make({
+      name: "List",
+      props: Schema.Struct({ route: ListRoute }),
+      model: Schema.Struct({}),
+      message: Schema.Never,
+      elements: Html,
+      init: () => ({}),
+      update: (model) => model,
+      view: (_, h) => h.p(`Page ${h.props.route.query.page}`)
+    })
+    const lists = layerHttp(List, { routes: ListRoute, document })
+    const response = await request(lists, "/list?page=x&utm_source=mail")
+    assert.strictEqual(response.status, 302)
+    assert.strictEqual(response.headers.get("location"), "/list?utm_source=mail")
+    const valid = await request(lists, "/list?page=2&utm_source=mail")
+    assert.strictEqual(valid.status, 200)
+    assert.include(valid.body, "Page 2")
+    // A path that also needs normalising: the dropped param still keeps it temporary.
+    const normalised = await request(lists, "/list/?page=x")
+    assert.strictEqual(normalised.status, 302)
+    assert.strictEqual(normalised.headers.get("location"), "/list")
   })
 
   it("lets status replace the default, from the route and the root's Model", async () => {

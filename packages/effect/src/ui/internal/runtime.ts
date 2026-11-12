@@ -167,6 +167,8 @@ interface WatchRun {
   readonly logKey: string
   handle: ReturnType<ReturnType<typeof Loader.internals>["watch"]> | undefined
   released: boolean
+  /** A debounced loader's sleep on the Clock: the watcher registers when it ends. */
+  debounce: Fiber.Fiber<unknown> | undefined
 }
 
 /**
@@ -221,6 +223,8 @@ export interface Instance {
   readonly stopping: Set<Run>
   readonly subscriptions: Map<string, SubscriptionRun>
   readonly watches: Map<string, WatchRun>
+  /** The watches followed a Model after mount: from then on, a debounced loader's new args may wait. */
+  watchesSynced: boolean
   /**
    * Every entry a watch of this instance registered on, by read name and args key. Kept only for an
    * instance created while a check after a navigation is outstanding, and dropped when none is.
@@ -564,6 +568,8 @@ const setup = (
   let waiting = 0
   let started = false
   let adoptedDone = hydrating === undefined
+  // Kept past adoption, which drops `hydrating`: the Router reads it when the root's first route arrives.
+  const fromStatic = hydrating?.state["~static"] === true
   const adoptedWaiters: Array<() => void> = []
   const settleWaiting = () => {
     waiting--
@@ -596,7 +602,10 @@ const setup = (
   /** Starts at once, so a Layer that builds synchronously is ready for the first frame. */
   const forkNow = <A, E>(context: Context.Context<any>, effect: Effect.Effect<A, E, any>): Fiber.Fiber<A, E> =>
     Effect.runForkWith(withScheduler(context))(effect)
-  /** Starts on the scheduler, never inside the `update` that issued it. */
+  /**
+   * Starts on the scheduler, never inside the `update` that issued it. A navigation Command starts
+   * sooner, in the deferred work of the flush its `update` caused: see `startRun`.
+   */
   const forkLater = <A, E>(context: Context.Context<any>, effect: Effect.Effect<A, E, any>): Fiber.Fiber<A, E> =>
     forkNow(context, Effect.andThen(Effect.yieldNow, effect))
   // Every run fiber and every Scope close the runtime has forked, until they exit. The root waits for both.
@@ -690,6 +699,8 @@ const setup = (
   )
 
   // -- flush ----------------------------------------------------------------
+  // Set once the root has mounted and is attached to the Router, if there is one.
+  let attached = false
   const dirty = new Set<Instance>()
   const deferred: Array<() => void> = []
   let committed: Array<() => void> = []
@@ -1152,6 +1163,7 @@ const setup = (
       stopping: new Set(),
       subscriptions: new Map(),
       watches: new Map(),
+      watchesSynced: false,
       watched: undefined,
       prefetch: undefined,
       keyed: new Map(),
@@ -1731,7 +1743,15 @@ const setup = (
   )
 
   const startRun = (inst: Instance, run: Run) => {
-    const go = (envCtx: Context.Context<any>) => {
+    // A navigation runs in the deferred work of the flush its `update` caused, before that flush
+    // renders. The Router delivers the route from inside the navigation, so the root and its pages
+    // render the new route in that flush and never once more with the old one, which would write a
+    // controlled input's old value back. One issued while the root mounts, from an `init`, runs on
+    // the scheduler as other Commands do: the root isn't attached to the Router yet.
+    const go = attached && services.isNavigation(run.command)
+      ? (envCtx: Context.Context<any>) => defer(() => goNow(envCtx, forkNow))
+      : (envCtx: Context.Context<any>) => goNow(envCtx, forkLater)
+    const goNow = (envCtx: Context.Context<any>, fork: typeof forkNow) => {
       if (run.done || frozen) return
       const command = run.command
       let build: Command.Build | undefined
@@ -1777,7 +1797,7 @@ const setup = (
             )
         }
       )
-      const fiber = forkLater(
+      const fiber = fork(
         context,
         run.detached ? Effect.onExit(program, (exit) => Scope.close(scope as Scope.Closeable, exit)) : program
       )
@@ -2042,15 +2062,24 @@ const setup = (
       const go = (envCtx: Context.Context<any>) => {
         if (inst.closed || inst.subscriptions.get(key) !== running) return
         const source: MessageLog.Source = { _tag: "Subscription", key }
+        const context = withCache(
+          Context.add(Context.add(envCtx, Scope.Scope, running.scope), services.CurrentRoot, () => handle)
+        )
+        // Attached to its source, it dispatches synchronously, and only its first check waits.
+        const current = () => !inst.closed && inst.subscriptions.get(key) === running
+        const attachedTo = (subscription as services.Direct)[services.direct]?.(context, (message, accepted) => {
+          if (!current()) return
+          accepted()
+          inst.dispatch(message, source)
+        }, (cause) => {
+          if (current()) failInstance(inst, cause, "subscription", key)
+        })
+        if (attachedTo !== undefined) addFinalizer(running.scope, Effect.sync(attachedTo.close))
         const fiber = forkLater(
-          withCache(Context.add(Context.add(envCtx, Scope.Scope, running.scope), services.CurrentRoot, () => handle)),
-          Stream.runForEach(subscription.stream, (message) =>
-            Effect.sync(() => {
-              ;(subscription as { readonly [services.onDeliver]?: (message: unknown) => void })[services.onDeliver]?.(
-                message
-              )
-              inst.dispatch(message, source)
-            }))
+          context,
+          attachedTo !== undefined
+            ? attachedTo.initial
+            : Stream.runForEach(subscription.stream, (message) => Effect.sync(() => inst.dispatch(message, source)))
         )
         running.fiber = fiber
         interruptOnClose(running.scope, fiber)
@@ -2071,13 +2100,18 @@ const setup = (
    * Registers and unregisters cache watchers from the watch markers, synchronously: the watcher
    * count, and with it whether a watch is a zero-to-one or a join, never waits for the scheduler.
    * New args are a new key, so the old watcher goes before the new one registers.
+   *
+   * A debounced loader's new args, after mount and on the client, register once its delay has passed
+   * on the Clock, unless registering now fetches nothing. Newer args are a new key: the waiting
+   * watcher goes, and its sleep with it.
    */
   const syncWatches = (inst: Instance, markers: Map<string, loaders.Marker>): ReadonlyArray<() => void> => {
     for (const [key, running] of inst.watches) {
       if (markers.has(key)) continue
       inst.watches.delete(key)
       record({ _tag: "SubscriptionStopped", path: inst.path, key: running.logKey })
-      releaseWatch(running)
+      // A debounced loader's old args are obsolete: their fetch goes, unless another reader still needs it.
+      releaseWatch(running, running.marker.debounce !== undefined)
       if (running.marker.keyed) {
         const run = inst.keyed.get(running.marker.label)
         run?.values.delete(running.marker.argsKey!)
@@ -2097,7 +2131,7 @@ const setup = (
       const logKey = marker.argsKey === undefined
         ? key
         : Subscription.keyOf(`~loaded/${marker.label}`, def.logKey(marker.args, marker.argsKey))
-      const running: WatchRun = { marker, logKey, handle: undefined, released: false }
+      const running: WatchRun = { marker, logKey, handle: undefined, released: false, debounce: undefined }
       inst.watches.set(key, running)
       record({ _tag: "SubscriptionStarted", path: inst.path, key: logKey })
       // A disabled loader: the marker is inert.
@@ -2175,12 +2209,38 @@ const setup = (
         if (folds !== undefined) folds.push(fold)
         else fold()
       }
-      if (inst.env.failure !== undefined) go(settled(inst.env).ctx!)
-      else whenReady(inst.env, go)
+      const start = () => {
+        if (inst.env.failure !== undefined) go(settled(inst.env).ctx!)
+        else whenReady(inst.env, go)
+      }
+      if (
+        marker.debounce === undefined || server !== undefined || !inst.watchesSynced || !wouldFetch(def, marker.args)
+      ) {
+        start()
+        continue
+      }
+      // Its first value is folded when it registers: there is no loop to wait for.
+      running.debounce = forkNow(
+        ctx,
+        Effect.andThen(
+          Effect.sleep(Duration.millis(marker.debounce)),
+          Effect.sync(() => {
+            running.debounce = undefined
+            start()
+          })
+        )
+      )
     }
+    // The first Model after mount: the values folded before the first render never wait.
+    if (inst.mounting === undefined) inst.watchesSynced = true
     const out = folds
     folds = undefined
     return out
+  }
+  /** Whether a watcher registering on the entry now starts a fetch: no watcher, nothing in flight, and stale or cold. */
+  const wouldFetch = (def: ReturnType<typeof Loader.defOf>, args: unknown): boolean => {
+    const info = cache.inspect(def, args)
+    return info === undefined || (info.watchers === 0 && info.fetch === "none" && info.stale)
   }
   /** A keyed field's handler and keys follow the Model. */
   const syncGroup = (inst: Instance, group: loaders.Group) => {
@@ -2278,10 +2338,11 @@ const setup = (
     for (const key of a) if (!b.has(key)) return false
     return true
   }
-  const releaseWatch = (running: WatchRun) => {
+  const releaseWatch = (running: WatchRun, abandon = false) => {
     if (running.released) return
     running.released = true
-    running.handle?.unregister()
+    running.debounce?.interruptUnsafe()
+    running.handle?.unregister(abandon)
   }
   /** Drops an instance's watchers, and its descendants', at once. Closing its Scope comes after. */
   const releaseWatches = (inst: Instance) => {
@@ -3090,7 +3151,8 @@ const setup = (
     const out: Record<string, unknown> = {}
     const visit = (inst: Instance) => {
       // A keyed field's pending messages go first, so the bag holds only the declared keys. A
-      // navigation issued in the `update` that changed them runs before the flush's drain.
+      // navigation issued in the `update` that changed them runs in the flush's deferred work, which
+      // can come before the drain gets to them.
       if (inst.keyed.size > 0) drainKeyed(inst)
       if (inst.closed || inst.failure !== undefined || inst.waiting) return
       const encoded = jsonCodecOf(inst.component.model).encode(inst.model)
@@ -3106,7 +3168,9 @@ const setup = (
       get hydrated() {
         return root.adoptsChildren
       },
+      static: fromStatic,
       flush: () => flushes,
+      flushing: () => rendering,
       snapshot,
       // The first navigation closes the fetch-free window, if adoption hasn't yet.
       navigated: () => cache.closeWindow(),
@@ -3115,6 +3179,7 @@ const setup = (
     const detach = hooks.attach(handle)
     addFinalizer(rootScope, Effect.sync(detach))
   }
+  attached = true
   afterCommitHooks()
   rendering = false
   runCommitted()

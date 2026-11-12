@@ -1,11 +1,15 @@
 import { Effect, Schema } from "effect"
 import { HttpRouter, HttpServerRequest, HttpServerResponse } from "effect/http"
-import { Note } from "../notes/domain/Note.ts"
+import { Note, NoteResults, NoteSort } from "../notes/domain/Note.ts"
 import { Notes } from "../notes/services/Notes.ts"
 
 const notesJson = HttpServerResponse.schemaJson(Schema.Array(Note))
 const noteJson = HttpServerResponse.schemaJson(Note)
+const resultsJson = HttpServerResponse.schemaJson(NoteResults)
 const noteId = HttpRouter.schemaPathParams(Schema.Struct({ id: Schema.String }))
+const noteSearch = HttpRouter.schemaParams(
+  Schema.Struct({ q: Schema.String, page: Schema.NumberFromString, sort: NoteSort })
+)
 
 // The JSON API that `Notes.layerHttp` calls, as plain routes to keep it
 // short. Define a real API with `HttpApi`.
@@ -23,6 +27,16 @@ export const NotesApi = HttpRouter.addAll([
     Effect.gen(function*() {
       const notes = yield* Notes
       return yield* notesJson(yield* notes.list)
+    })
+  ),
+  // A literal segment beats a param, so `/api/notes/search` isn't read as
+  // the note with id "search".
+  HttpRouter.route(
+    "GET",
+    "/api/notes/search",
+    Effect.gen(function*() {
+      const notes = yield* Notes
+      return yield* resultsJson(yield* notes.search(yield* noteSearch))
     })
   ),
   HttpRouter.route(

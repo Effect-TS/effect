@@ -115,6 +115,52 @@ describe("Loader", () => {
     }).pipe(provide)
   })
 
+  it.effect("the last watcher abandoning its fetch interrupts it, unless a get or a prefetch joined it or a fetch it restarted", () => {
+    const { GetUser, db, provide } = makeUsers({ staleTime: "30 seconds" })
+    return Effect.gen(function*() {
+      const cache = Loader.internals(yield* Loader.Cache)
+      const def = Loader.defOf(GetUser)
+      const fetcher = (yield* GetUser) as unknown as (args: unknown) => Effect.Effect<any, any>
+      const watchOne = (id: string) => cache.watch(def, { id }, fetcher, () => {})
+      // Alone: the fetch goes, and the cold entry with it.
+      const alone = watchOne("1")
+      yield* flush
+      alone.unregister(true)
+      yield* advance(10)
+      assert.isUndefined(yield* TestLoader.entry(GetUser, { id: "1" }))
+      // Joined by a get, which still gets its value.
+      const waited = watchOne("2")
+      const got = yield* Effect.forkScoped(GetUser.get({ id: "2" }))
+      yield* flush
+      waited.unregister(true)
+      yield* advance(10)
+      assert.deepStrictEqual(yield* Fiber.join(got), { id: "2", name: "Ann" })
+      // Joined by a prefetch, which outlives its caller.
+      const prefetched = watchOne("3")
+      yield* GetUser.prefetch({ id: "3" })
+      yield* flush
+      prefetched.unregister(true)
+      yield* advance(10)
+      assert.isTrue(AsyncResult.isSuccess((yield* TestLoader.entry(GetUser, { id: "3" }))!.stored))
+      // The prefetch's claim carries over to the fetch an invalidation restarts it with.
+      const restarted = watchOne("4")
+      yield* GetUser.prefetch({ id: "4" })
+      yield* GetUser.invalidate({ id: "4" })
+      yield* flush
+      restarted.unregister(true)
+      yield* advance(10)
+      assert.isTrue(AsyncResult.isSuccess((yield* TestLoader.entry(GetUser, { id: "4" }))!.stored))
+      // Once that fetch settles the claim is spent: the next one a watcher starts is abandoned.
+      yield* GetUser.invalidate({ id: "4" })
+      const after = watchOne("4")
+      yield* flush
+      after.unregister(true)
+      yield* advance(10)
+      assert.isTrue((yield* TestLoader.entry(GetUser, { id: "4" }))!.stale)
+      assert.strictEqual(db.calls, 5)
+    }).pipe(provide)
+  })
+
   it.effect("under a hold, the zero-to-one decision waits for release and ignores the order of releases and registrations", () => {
     const { GetUser, db, provide } = makeUsers({ staleTime: "30 seconds" })
     return Effect.gen(function*() {

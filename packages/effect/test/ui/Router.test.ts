@@ -2,7 +2,7 @@ import { assert, describe, it } from "@effect/vitest"
 import { Effect, Exit, type Layer, Option, Schema, type Scope, Stream } from "effect"
 import { AsyncResult, Loader } from "effect/reactivity"
 import { TestClock } from "effect/testing"
-import { Component, Head, type MessageLog, type Renderer, Route, Router } from "effect/ui"
+import { Command, Component, Head, type MessageLog, type Renderer, Route, Router } from "effect/ui"
 import * as runtime from "effect/ui/internal/runtime"
 import { Query, TestHost } from "effect/ui/testing"
 import * as Prefetching from "./fixtures/prefetch.ts"
@@ -27,6 +27,42 @@ const mount = TestHost.mount(App, Router.props(AppRoute))
 
 // Sequential: the restore tests change the person fixture's shared fetcher.
 describe("Router", { concurrent: false }, () => {
+  it.effect("logs a navigation's update, route and outcome before the page it mounts", () => {
+    const { layer } = setup()
+    return run(
+      layer,
+      Effect.gen(function*() {
+        const root = yield* mount
+        yield* TestHost.settle
+        const start = root.log().length
+        click(root, "Person 1")
+        yield* TestHost.settle
+        const entries = root.log().slice(start).map((entry) => {
+          switch (entry._tag) {
+            case "Update":
+              return `Update ${entry.path} ${(entry.message as { _tag: string })._tag}(${entry.source._tag})`
+            case "CommandEnded":
+              return `CommandEnded ${entry.name}`
+            case "Mounted":
+            case "Unmounted":
+              return `${entry._tag} ${entry.path}`
+            default:
+              return entry._tag
+          }
+        })
+        assert.deepStrictEqual(entries.slice(0, 7), [
+          "Update /App Go(DomEvent)",
+          "Update /App ChangedRoute(Subscription)",
+          "Update /App Navigated(Command)",
+          "CommandEnded effect/ui/Router/Push",
+          "Mounted /App/Person[/people/1]",
+          "SubscriptionStarted",
+          "Unmounted /App/Home[/]"
+        ])
+      })
+    ).pipe(Effect.scoped)
+  })
+
   it.effect("suppresses the matching initial route and keeps one subscription across navigation", () =>
     run(
       Router.memory({ routes: AppRoute }),
@@ -91,6 +127,141 @@ describe("Router", { concurrent: false }, () => {
       Effect.provide(Router.memory({ routes: AppRoute })),
       Effect.provideService(Loader.Problems, (problem) => problems.push(problem))
     )
+  })
+
+  it.effect("fails the subscribing instance on a mapper defect, not the navigation or other subscribers", () => {
+    const routes = Route.union({ Home: Route.make("/"), Other: Route.make("/other") })
+    const subscriber = (name: string, map: (route: typeof routes.Type) => typeof routes.Type) =>
+      Component.make({
+        name,
+        props: Schema.Struct({ route: routes }),
+        model: Schema.Struct({ route: routes }),
+        message: routes,
+        init: ($) => ({ route: $.props.route }),
+        update: (_, route) => ({ route }),
+        subscriptions: (model) => [Router.subscription(routes, model.route, map)],
+        view: (model, h) => h.el("p", model.route._tag)
+      })
+    const Broken = subscriber("Broken", () => {
+      throw new Error("bad mapper")
+    })
+    const Healthy = subscriber("Healthy", (route) => route)
+    return Effect.gen(function*() {
+      const broken = yield* TestHost.mount(Broken, Router.props(routes))
+      const healthy = yield* TestHost.mount(Healthy, Router.props(routes))
+      yield* TestHost.settle
+      const router = yield* Router.Router
+      assert.strictEqual(yield* router.navigate("/other"), "navigated")
+      yield* Effect.exit(TestHost.settle)
+      assert.strictEqual(router.location().url, "/other")
+      assert.strictEqual(healthy.text(), "Other")
+      const failed = broken.log().find((entry) => entry._tag === "Failed") as MessageLog.Failed
+      assert.strictEqual(failed.source, "subscription")
+      assert.isUndefined(broken.model())
+    }).pipe(Effect.provide(Router.memory({ routes })), Effect.provide(TestHost.layer()))
+  })
+
+  it.effect("settles a navigation once the root has its route, not when its message is dropped", () => {
+    const routes = Route.union({ Home: Route.make("/"), Other: Route.make("/other") })
+    const Message = Schema.TaggedUnion({ Follow: { on: Schema.Boolean }, Changed: { route: routes } })
+    const settled: Array<string | undefined> = []
+    let onRoute = () => {}
+    const Root = Component.make({
+      name: "Root",
+      props: Schema.Struct({ route: routes }),
+      model: Schema.Struct({ route: routes, following: Schema.Boolean }),
+      message: Message,
+      init: ($) => ({ route: $.props.route, following: true }),
+      update: (model, message) =>
+        message._tag === "Changed" ? { ...model, route: message.route } : { ...model, following: message.on },
+      subscriptions: (model) =>
+        model.following
+          ? [Router.subscription(routes, model.route, (route) => {
+            onRoute()
+            return Message.make({ _tag: "Changed", route })
+          })]
+          : [],
+      head: (model) => [Head.title(model.route._tag)],
+      view: (model, h) => h.el("p", model.route._tag)
+    })
+    return Effect.gen(function*() {
+      const root = yield* TestHost.mount(Root, Router.props(routes))
+      yield* TestHost.settle
+      // The root stops following while its Subscription maps the route, so the runtime drops the message.
+      onRoute = () => {
+        onRoute = () => {}
+        root.send(Message.make({ _tag: "Follow", on: false }))
+      }
+      const router = yield* Router.Router
+      assert.strictEqual(yield* router.navigate("/other"), "navigated")
+      yield* TestHost.settle
+      assert.strictEqual(root.text(), "Home")
+      assert.deepStrictEqual(settled, [])
+      root.send(Message.make({ _tag: "Follow", on: true }))
+      yield* TestHost.settle
+      assert.strictEqual(root.text(), "Other")
+      assert.deepStrictEqual(settled, ["Other"])
+    }).pipe(
+      Effect.provide(Router.make({
+        routes,
+        history: Router.memoryHistory("/"),
+        onSettled: (done) => settled.push(done.head.title)
+      })),
+      Effect.provide(TestHost.layer())
+    )
+  })
+
+  it.effect("removes query params dropped as invalid from the URL, keeping the others", () => {
+    const routes = Route.union({
+      Search: Route.make("/", {
+        query: { page: Schema.optional(Schema.Number), sort: Schema.optional(Schema.String) }
+      })
+    })
+    const history = Router.memoryHistory("/?utm=x&page=abc")
+    return Effect.gen(function*() {
+      const router = yield* Router.Router
+      assert.deepStrictEqual(history.entries(), ["/?utm=x"])
+      yield* router.navigate("/?page=x&sort=a&utm=y")
+      assert.deepStrictEqual(history.entries(), ["/?utm=x", "/?sort=a&utm=y"])
+    }).pipe(Effect.provide(Router.memory({ routes, history })))
+  })
+
+  it.effect("does nothing for a navigation to a route that prints the same as the current one", () => {
+    const routes = Route.union({
+      Home: Route.make("/"),
+      Search: Route.make("/search", { query: { q: Schema.optional(Schema.String) } })
+    })
+    const history = Router.memoryHistory("/search?q=x&utm=1")
+    const x = routes.make({ _tag: "Search", query: { q: "x" } })
+    return Effect.gen(function*() {
+      const router = yield* Router.Router
+      const messages: Array<typeof routes.Type> = []
+      yield* Stream.runForEach(
+        Router.subscription(routes, x, (route) => route).stream,
+        (route) => Effect.sync(() => messages.push(route))
+      ).pipe(Effect.forkScoped)
+      yield* Effect.yieldNow
+      assert.strictEqual(yield* router.replace(x), "navigated")
+      assert.strictEqual(yield* router.push(x), "navigated")
+      assert.strictEqual(yield* router.navigate("/search?utm=2&q=x"), "navigated")
+      assert.strictEqual(yield* router.navigate("/search?q=x", { replace: true }), "navigated")
+      yield* Effect.yieldNow
+      assert.deepStrictEqual(history.entries(), ["/search?q=x&utm=1"])
+      assert.strictEqual(router.location().seq, 0)
+      assert.strictEqual(router.location().url, "/search?q=x&utm=1")
+      // A new hash alone is a hash change on the current URL.
+      yield* router.navigate("/search?q=x#top")
+      assert.deepStrictEqual(history.entries(), ["/search?q=x&utm=1", "/search?q=x&utm=1#top"])
+      assert.strictEqual(router.location().seq, 0)
+      yield* Effect.yieldNow
+      assert.deepStrictEqual(messages, [])
+      const y = routes.make({ _tag: "Search", query: { q: "y" } })
+      yield* router.replace(y)
+      yield* Effect.yieldNow
+      assert.deepStrictEqual(history.entries(), ["/search?q=x&utm=1", "/search?q=y"])
+      assert.strictEqual(router.location().seq, 1)
+      assert.deepStrictEqual(messages, [y])
+    }).pipe(Effect.provide(Router.memory({ routes, history })))
   })
 
   it.effect("reads the current route from memory and static Routers", () =>
@@ -509,6 +680,282 @@ describe("Router", { concurrent: false }, () => {
     }).pipe(Effect.provide(Router.static({ routes: AppRoute, url: "/old/4" }))))
 })
 
+describe("Router.patchQuery", { concurrent: false }, () => {
+  const Routes = Route.union({
+    Home: Route.make("/"),
+    Search: Route.make("/search", {
+      query: {
+        q: Schema.optional(Schema.String),
+        page: Schema.Number.pipe(Schema.withDecodingDefaultKey(Effect.succeed(1)))
+      }
+    }),
+    Item: Route.make("/items/:id", { params: { id: Schema.Number }, query: { tab: Schema.optional(Schema.String) } }),
+    NotFound: Route.make("/*")
+  })
+  const SearchOnly = Routes.subset(["Search"])
+
+  type Write = readonly [Router.QueryPatch<typeof SearchOnly.Type>, { readonly history?: "push" | "replace" }?]
+  /** The patches the page's buttons write, by label. */
+  const writes: Record<string, ReadonlyArray<Write>> = {
+    "q=a": [[{ q: "a" }]],
+    "page=2": [[{ page: 2 }]],
+    "push page=3": [[{ page: 3 }, { history: "push" }]],
+    "clear": [[{ q: undefined, page: undefined }]],
+    "both": [[{ q: "x" }], [{ page: 5 }]]
+  }
+  const PageMessage = Schema.TaggedUnion({
+    Write: { label: Schema.String },
+    Dirty: {},
+    Outcome: { outcome: Schema.String }
+  })
+  /** Holds its whole route as props, and writes the query with patchQuery. */
+  const SearchPage = Component.make({
+    name: "SearchPage",
+    props: Schema.Struct({ route: SearchOnly }),
+    model: Schema.Struct({ outcomes: Schema.Array(Schema.String), dirty: Schema.Boolean }),
+    message: PageMessage,
+    init: () => ({ outcomes: [], dirty: false }),
+    update: (model, message, $) =>
+      PageMessage.match(message, {
+        Write: ({ label }) =>
+          $.run(
+            ...writes[label]!.map(([patch, options]) =>
+              Router.patchQuery(Routes, $.props.route, patch, options).pipe(
+                Command.map((outcome) => PageMessage.make({ _tag: "Outcome", outcome }))
+              )
+            )
+          ),
+        Dirty: () => ({ ...model, dirty: true }),
+        Outcome: ({ outcome }) => ({ ...model, outcomes: [...model.outcomes, outcome] })
+      }),
+    subscriptions: (model) => [model.dirty && Router.blocked("draft")],
+    view: (model, h) =>
+      h.el(
+        "div",
+        h.el("p", `q=${h.props.route.query.q ?? ""} page=${h.props.route.query.page};`),
+        h.el("p", `outcomes ${model.outcomes.join(",")};`),
+        ...Object.keys(writes).map((label) =>
+          h.el("button", label).on("click", PageMessage.make({ _tag: "Write", label }))
+        ),
+        h.el("button", "dirty").on("click", PageMessage.make({ _tag: "Dirty" }))
+      )
+  })
+  const AppMessage = Schema.TaggedUnion({ ChangedRoute: { route: Routes } })
+  /** A root that holds the route, keying the search page with `key`. */
+  const makeApp = (key: (route: typeof SearchOnly.Type) => string) =>
+    Component.make({
+      name: "App",
+      props: Schema.Struct({ route: Routes }),
+      model: Schema.Struct({ route: Routes }),
+      message: AppMessage,
+      init: ($) => ({ route: $.props.route }),
+      update: (_, { route }) => ({ route }),
+      subscriptions: (model) => [
+        Router.subscription(Routes, model.route, (route) => AppMessage.make({ _tag: "ChangedRoute", route }))
+      ],
+      view: (model, h) =>
+        Routes.match(model.route, {
+          Search: (route) => h.child(SearchPage, { key: key(route), props: { route } }),
+          Home: () => h.el("h1", "Home"),
+          Item: () => h.el("h1", "Item"),
+          NotFound: () => h.el("h1", "Not found")
+        })
+    })
+  const App = makeApp((route) => SearchOnly.printPath(route))
+
+  const searchSetup = (url: string) => {
+    const history = Router.memoryHistory(url)
+    const settled: Array<Router.Settled> = []
+    const layer = Router.make({ routes: Routes, history, onSettled: (done) => settled.push(done) })
+    return { history, settled, layer }
+  }
+  const quietness = (settled: ReadonlyArray<Router.Settled>) =>
+    settled.map((done) => `${done.location.action} ${done.location.url} ${done.quiet ? "quiet" : "loud"}`)
+  const mounts = (root: TestHost.TestRoot<any, any, any>) =>
+    root.log().filter((entry) => entry._tag === "Mounted" && entry.path.startsWith("/App/SearchPage")).length
+
+  it.effect("patches the Router's current query, replacing, and keeps undeclared params after the declared ones", () => {
+    const { history, layer, settled } = searchSetup("/search?utm_source=news&q=z")
+    return run(
+      layer,
+      Effect.gen(function*() {
+        const root = yield* TestHost.mount(App, Router.props(Routes))
+        yield* TestHost.settle
+        click(root, "q=a")
+        yield* TestHost.settle
+        assert.deepStrictEqual(history.entries(), ["/search?q=a&utm_source=news"])
+        click(root, "page=2")
+        yield* TestHost.settle
+        assert.deepStrictEqual(history.entries(), ["/search?q=a&page=2&utm_source=news"])
+        assert.isTrue(root.text().includes("q=a page=2;"))
+        // undefined removes a param, or resets it to its default.
+        click(root, "clear")
+        yield* TestHost.settle
+        assert.deepStrictEqual(history.entries(), ["/search?utm_source=news"])
+        assert.deepStrictEqual(root.model()?.route, Routes.make({ _tag: "Search" }))
+        // Two writers in one round trip both land: each patches the Router's query, not the held route.
+        click(root, "both")
+        yield* TestHost.settle
+        assert.deepStrictEqual(history.entries(), ["/search?q=x&page=5&utm_source=news"])
+        assert.isTrue(root.text().includes("q=x page=5;"))
+        assert.isTrue(root.text().includes("outcomes navigated,navigated,navigated,navigated,navigated;"))
+        // The page keyed by its path stayed mounted.
+        assert.strictEqual(mounts(root), 1)
+        // Every navigation settles, quietly. The first of the two writers was superseded before it settled.
+        assert.deepStrictEqual(quietness(settled), [
+          "replace /search?q=a&utm_source=news quiet",
+          "replace /search?q=a&page=2&utm_source=news quiet",
+          "replace /search?utm_source=news quiet",
+          "replace /search?q=x&page=5&utm_source=news quiet"
+        ])
+        assert.deepStrictEqual(yield* TestHost.problems, [])
+      })
+    )
+  })
+
+  it.effect("pushes with history push, quietly, and back and forward between query-only entries are quiet", () => {
+    const { history, layer, settled } = searchSetup("/search")
+    return run(
+      layer,
+      Effect.gen(function*() {
+        const router = yield* Router.Router
+        const root = yield* TestHost.mount(App, Router.props(Routes))
+        yield* TestHost.settle
+        click(root, "push page=3")
+        yield* TestHost.settle
+        assert.deepStrictEqual(history.entries(), ["/search", "/search?page=3"])
+        history.go(-1)
+        yield* TestHost.settle
+        assert.isTrue(root.text().includes("q= page=1;"))
+        history.go(1)
+        yield* TestHost.settle
+        assert.isTrue(root.text().includes("q= page=3;"))
+        // The page kept its live Model through both pops.
+        assert.strictEqual(mounts(root), 1)
+        assert.isTrue(root.text().includes("outcomes navigated;"))
+        // A replace to the same path is quiet; a push to the same path, as a link, stays loud.
+        yield* router.navigate("/search?page=4", { replace: true })
+        yield* TestHost.settle
+        yield* router.navigate("/search?page=5")
+        yield* TestHost.settle
+        // Leaving the page, and coming back to it, is loud.
+        yield* router.navigate("/")
+        yield* TestHost.settle
+        history.go(-1)
+        yield* TestHost.settle
+        assert.deepStrictEqual(quietness(settled), [
+          "push /search?page=3 quiet",
+          "pop /search quiet",
+          "pop /search?page=3 quiet",
+          "replace /search?page=4 quiet",
+          "push /search?page=5 loud",
+          "push / loud",
+          "pop /search?page=5 loud"
+        ])
+      })
+    )
+  })
+
+  it.effect("returns stale when the Router's path no longer matches the held route", () =>
+    Effect.gen(function*() {
+      const router = yield* Router.Router
+      const item1 = Routes.make({ _tag: "Item", params: { id: 1 } })
+      assert.strictEqual(yield* router.patchQuery(item1, { tab: "a" }), "navigated")
+      assert.strictEqual(router.location().url, "/items/1?tab=a")
+      yield* router.navigate("/items/2")
+      assert.strictEqual(yield* router.patchQuery(item1, { tab: "b" }), "stale")
+      assert.strictEqual(yield* router.patchQuery(Routes.make({ _tag: "Home" }), {}), "stale")
+      assert.strictEqual(router.location().url, "/items/2")
+      // A patch that changes nothing is no navigation.
+      const seq = router.location().seq
+      assert.strictEqual(
+        yield* router.patchQuery(Routes.make({ _tag: "Item", params: { id: 2 } }), { tab: undefined }),
+        "navigated"
+      )
+      assert.strictEqual(router.location().seq, seq)
+      // The static Router changes nothing.
+      const fixed = yield* Router.Router.pipe(Effect.provide(Router.static({ routes: Routes, url: "/items/1" })))
+      assert.strictEqual(yield* fixed.patchQuery(item1, { tab: "a" }), "blocked")
+    }).pipe(Effect.provide(Router.memory({ routes: Routes, url: "/items/1" }))))
+
+  it.effect("isn't blocked, and neither are pops within the page, while a block is held", () => {
+    const { history, layer, settled } = searchSetup("/search")
+    return run(
+      layer,
+      Effect.gen(function*() {
+        const router = yield* Router.Router
+        const root = yield* TestHost.mount(App, Router.props(Routes))
+        yield* TestHost.settle
+        click(root, "dirty")
+        yield* TestHost.settle
+        click(root, "q=a")
+        yield* TestHost.settle
+        click(root, "push page=3")
+        yield* TestHost.settle
+        assert.deepStrictEqual(history.entries(), ["/search?q=a", "/search?q=a&page=3"])
+        assert.isTrue(root.text().includes("outcomes navigated,navigated;"))
+        // Back within the page isn't reverted.
+        history.go(-1)
+        yield* TestHost.settle
+        assert.strictEqual(history.index(), 0)
+        assert.isTrue(root.text().includes("q=a page=1;"))
+        // Leaving the page is still blocked.
+        assert.strictEqual(yield* router.push(Routes.make({ _tag: "Home" })), "blocked")
+        assert.strictEqual(yield* router.replace(Routes.make({ _tag: "Search", query: { q: "b" } })), "blocked")
+        assert.deepStrictEqual(quietness(settled), [
+          "replace /search?q=a quiet",
+          "push /search?q=a&page=3 quiet",
+          "pop /search?q=a quiet"
+        ])
+        assert.deepStrictEqual(yield* TestHost.problems, [])
+      })
+    )
+  })
+
+  it.effect("reports a block held when the patch ran that's gone when it settles", () => {
+    // Keyed by the whole printed route, the page remounts on a query change and loses its block.
+    const Remounting = makeApp((route) => SearchOnly.print(route))
+    const { layer } = searchSetup("/search")
+    return run(
+      layer,
+      Effect.gen(function*() {
+        const root = yield* TestHost.mount(Remounting, Router.props(Routes))
+        yield* TestHost.settle
+        click(root, "dirty")
+        yield* TestHost.settle
+        click(root, "q=a")
+        yield* Effect.exit(TestHost.settle)
+        const lost = yield* TestHost.expectProblem("PatchQueryLostBlock")
+        assert.deepStrictEqual(lost.map((problem) => (problem as Router.PatchQueryLostBlock).keys), [["draft"]])
+        // Without a block, nothing is reported.
+        click(root, "page=2")
+        yield* TestHost.settle
+        assert.deepStrictEqual(yield* TestHost.problems, [])
+      })
+    )
+  })
+
+  it.effect("patches the query under the # base", () => {
+    Routes.setBase("#")
+    const history = Router.memoryHistory("#/search?utm=1&q=a")
+    return Effect.gen(function*() {
+      const router = yield* Router.Router
+      const held = Routes.make({ _tag: "Search", query: { q: "a" } })
+      assert.deepStrictEqual(history.entries(), ["#/search?utm=1&q=a"])
+      assert.strictEqual(yield* router.patchQuery(held, { page: 2 }), "navigated")
+      assert.deepStrictEqual(history.entries(), ["#/search?q=a&page=2&utm=1"])
+      assert.strictEqual(yield* router.patchQuery(held, { q: undefined }, { history: "push" }), "navigated")
+      assert.deepStrictEqual(history.entries(), ["#/search?q=a&page=2&utm=1", "#/search?page=2&utm=1"])
+      assert.deepStrictEqual(router.location().route, Routes.make({ _tag: "Search", query: { page: 2 } }))
+      yield* router.navigate("#/items/1")
+      assert.strictEqual(yield* router.patchQuery(held, { page: 3 }), "stale")
+    }).pipe(
+      Effect.provide(Router.memory({ routes: Routes, history })),
+      Effect.ensuring(Effect.sync(() => Routes.setBase("")))
+    )
+  })
+})
+
 describe("Router.prefetch", { concurrent: false }, () => {
   const { Routes } = Prefetching
   const prefetching = (
@@ -684,6 +1131,31 @@ describe("Router.prefetch", { concurrent: false }, () => {
       })
     ))
 
+  it.effect("runs the declaration on a quiet patchQuery push, and checks it when it settles", () =>
+    prefetching(
+      "/people/7",
+      Effect.gen(function*() {
+        const router = yield* Router.Router
+        Prefetching.probe.seen.length = 0
+        Prefetching.probe.location = () => router.location().url
+        yield* mountApp
+        yield* TestHost.settle
+        const held = Routes.make({ _tag: "Person", params: { id: 7 } })
+        // A replace stays on the page: no declaration runs.
+        yield* router.patchQuery(held, { tab: "a" })
+        yield* TestHost.settle
+        assert.deepStrictEqual(Prefetching.probe.seen, [])
+        yield* router.patchQuery(held, { tab: "b" }, { history: "push" })
+        yield* Effect.exit(TestHost.settle)
+        assert.deepStrictEqual(Prefetching.probe.seen, ["/people/7?tab=a"])
+        const unwatched = yield* TestHost.expectProblem("PrefetchEntryNotWatched")
+        assert.deepStrictEqual(
+          unwatched.map((problem) => (problem as Router.PrefetchEntryNotWatched).logKey),
+          ["{\"id\":70}"]
+        )
+      })
+    ))
+
   it.effect("throws at subscriptions on a second Router.prefetch", () =>
     prefetching(
       "/",
@@ -705,4 +1177,262 @@ describe("Router.prefetch", { concurrent: false }, () => {
         assert.strictEqual(error._tag, "RootCrashed")
       })
     ))
+})
+
+describe("Router throttle", { concurrent: false }, () => {
+  const Routes = Route.union({
+    Search: Route.make("/search", { query: { q: Schema.optional(Schema.String) } }),
+    Other: Route.make("/other")
+  })
+
+  /** A memory history that records every call the Router makes on it. */
+  const recorded = (url: string, fails: (url: string) => boolean = () => false) => {
+    const inner = Router.memoryHistory(url)
+    const writes: Array<string> = []
+    const history: Router.History = {
+      ...inner,
+      push: (url, state) => {
+        writes.push(`push ${url}`)
+        inner.push(url, state)
+      },
+      replace: (url, state) => {
+        writes.push(`replace ${url}`)
+        if (fails(url)) throw new Error("SecurityError")
+        inner.replace(url, state)
+      },
+      go: (delta) => {
+        writes.push(`go ${delta}`)
+        inner.go(delta)
+      },
+      load: (href) => {
+        writes.push(`load ${href}`)
+        inner.load(href)
+      }
+    }
+    return { inner, writes, history }
+  }
+
+  /** A Router throttling same-page replaces to one per 200 ms, with the flush it registers. */
+  const throttled = (url: string, fails?: (url: string) => boolean) => {
+    const { history, inner, writes } = recorded(url, fails)
+    const flushes: Array<() => void> = []
+    const cleanups: Array<string> = []
+    const problems: Array<Loader.Problem.Any> = []
+    const layer = Router.make({
+      routes: Routes,
+      history,
+      throttle: {
+        interval: "200 millis",
+        flushOn: (flush) => {
+          flushes.push(flush)
+          return () => {
+            cleanups.push("flushOn")
+          }
+        }
+      }
+    })
+    const runIt = <A, E>(effect: Effect.Effect<A, E, Router.Services | Scope.Scope>) =>
+      Effect.suspend(() => {
+        // The Router's own initial write isn't part of the test.
+        writes.length = 0
+        return effect
+      }).pipe(
+        Effect.provide(layer),
+        Effect.provideService(Loader.Problems, (problem) => {
+          problems.push(problem)
+        }),
+        Effect.scoped
+      )
+    return { inner, writes, flushes, cleanups, problems, run: runIt }
+  }
+
+  const replaceQuery = (q: string) =>
+    Router.Router.use((router) => router.navigate(`/search?q=${q}`, { replace: true }))
+
+  it.effect("writes a same-page replace at once, then only the latest one per interval", () => {
+    const t = throttled("/search")
+    return t.run(Effect.gen(function*() {
+      const router = yield* Router.Router
+      yield* replaceQuery("a")
+      yield* replaceQuery("ab")
+      yield* replaceQuery("abc")
+      // The Router moved at once; the history has the first write only.
+      assert.strictEqual(router.location().url, "/search?q=abc")
+      assert.deepStrictEqual(t.writes, ["replace /search?q=a"])
+      yield* TestClock.adjust("199 millis")
+      assert.deepStrictEqual(t.writes, ["replace /search?q=a"])
+      yield* TestClock.adjust("1 millis")
+      assert.deepStrictEqual(t.writes, ["replace /search?q=a", "replace /search?q=abc"])
+      // The deferred write carries the entry's state.
+      assert.deepStrictEqual(t.inner.current(), { url: "/search?q=abc", state: { "effect/ui": { index: 0 } } })
+      // The write it made starts another interval.
+      yield* replaceQuery("abcd")
+      assert.strictEqual(t.writes.length, 2)
+      yield* TestClock.adjust("200 millis")
+      assert.deepStrictEqual(t.writes.slice(2), ["replace /search?q=abcd"])
+      // Once an interval passes with nothing to write, the next write is immediate again.
+      yield* TestClock.adjust("1 second")
+      yield* replaceQuery("x")
+      assert.deepStrictEqual(t.writes.slice(3), ["replace /search?q=x"])
+      assert.deepStrictEqual(t.problems, [])
+    }))
+  })
+
+  /** Each way the Router leaves or rewrites the entry, with the calls it makes after the pending write. */
+  const flushes: ReadonlyArray<
+    readonly [
+      string,
+      (t: ReturnType<typeof throttled>) => Effect.Effect<unknown, never, Router.Router>,
+      ReadonlyArray<string>
+    ]
+  > = [
+    ["a push", () => Router.Router.use((router) => router.navigate("/other")), [
+      "replace /search?q=ab",
+      "push /other"
+    ]],
+    [
+      "a hash push",
+      () => Router.Router.use((router) => router.navigate("/search?q=ab#x")),
+      ["replace /search?q=ab", "push /search?q=ab#x"]
+    ],
+    [
+      "a hash replace",
+      () => Router.Router.use((router) => router.navigate("/search?q=ab#x", { replace: true })),
+      ["replace /search?q=ab#x"]
+    ],
+    [
+      "a replace to another page",
+      () => Router.Router.use((router) => router.navigate("/other", { replace: true })),
+      ["replace /other"]
+    ],
+    ["back", () => Router.Router.use((router) => router.back), [
+      "replace /search?q=ab",
+      "go -1"
+    ]],
+    ["forward", () => Router.Router.use((router) => router.forward), [
+      "replace /search?q=ab",
+      "go 1"
+    ]],
+    ["a load", () => Router.Router.use((router) => router.load("https://example.com/")), [
+      "replace /search?q=ab",
+      "load https://example.com/"
+    ]],
+    [
+      "a navigation the routes don't parse",
+      () => Router.Router.use((router) => router.navigate("/elsewhere")),
+      ["replace /search?q=ab", "load /elsewhere"]
+    ],
+    ["the host's flush, as on pagehide", (t) => Effect.sync(() => t.flushes[0]!()), ["replace /search?q=ab"]]
+  ]
+  for (const [name, trigger, expected] of flushes) {
+    it.effect(`writes the pending replace before ${name}, and never after`, () => {
+      const t = throttled("/search")
+      return t.run(Effect.gen(function*() {
+        yield* replaceQuery("a")
+        yield* replaceQuery("ab")
+        yield* trigger(t)
+        assert.deepStrictEqual(t.writes, ["replace /search?q=a", ...expected])
+        yield* TestClock.adjust("1 second")
+        assert.deepStrictEqual(t.writes, ["replace /search?q=a", ...expected])
+      }))
+    })
+  }
+
+  it.effect("drops the pending replace on a pop, which has already left its entry", () => {
+    const t = throttled("/other")
+    return t.run(Effect.gen(function*() {
+      const router = yield* Router.Router
+      yield* router.navigate("/search")
+      yield* replaceQuery("a")
+      yield* replaceQuery("ab")
+      t.writes.length = 0
+      // The back button: the history moves, then reports the entry it landed on.
+      t.inner.go(-1)
+      assert.strictEqual(router.location().url, "/other")
+      yield* TestClock.adjust("1 second")
+      assert.deepStrictEqual(t.writes, [])
+      assert.deepStrictEqual(t.inner.entries(), ["/other", "/search?q=a"])
+    }))
+  })
+
+  it.effect("keeps the pending replace across a blocked pop the Router reverts, and writes it to its own entry", () => {
+    const t = throttled("/other")
+    return t.run(Effect.gen(function*() {
+      const router = yield* Router.Router
+      yield* router.navigate("/search")
+      yield* router.block("dirty")
+      // A patch isn't blocked.
+      const held = Routes.make({ _tag: "Search" })
+      yield* router.patchQuery(held, { q: "a" })
+      yield* router.patchQuery(held, { q: "ab" })
+      t.writes.length = 0
+      // The back button, while blocked: the Router moves the history forward again.
+      t.inner.go(-1)
+      assert.strictEqual(router.location().url, "/search?q=ab")
+      yield* TestClock.adjust("200 millis")
+      assert.deepStrictEqual(t.writes, ["go 1", "replace /search?q=ab"])
+      assert.deepStrictEqual(t.inner.entries(), ["/other", "/search?q=ab"])
+      assert.strictEqual(t.inner.current().url, "/search?q=ab")
+    }))
+  })
+
+  it.effect("writes the pending replace when its Scope closes, and releases the host's flush", () => {
+    const t = throttled("/search")
+    return t.run(Effect.gen(function*() {
+      yield* replaceQuery("a")
+      yield* replaceQuery("ab")
+    })).pipe(
+      Effect.tap(() =>
+        Effect.sync(() => {
+          assert.deepStrictEqual(t.writes, ["replace /search?q=a", "replace /search?q=ab"])
+          assert.deepStrictEqual(t.cleanups, ["flushOn"])
+        })
+      )
+    )
+  })
+
+  it.effect("reports a same-page replace the history throws on, at once or deferred, and keeps the route", () => {
+    const t = throttled("/search", (url) => url.includes("q=b"))
+    return t.run(Effect.gen(function*() {
+      const router = yield* Router.Router
+      assert.strictEqual(yield* replaceQuery("b"), "navigated")
+      assert.strictEqual(router.location().url, "/search?q=b")
+      yield* replaceQuery("bc")
+      yield* TestClock.adjust("200 millis")
+      assert.deepStrictEqual(t.writes, ["replace /search?q=b", "replace /search?q=bc"])
+      assert.deepStrictEqual(t.problems.map((problem) => [problem._tag, (problem as Router.HistoryWriteFailed).url]), [
+        ["HistoryWriteFailed", "/search?q=b"],
+        ["HistoryWriteFailed", "/search?q=bc"]
+      ])
+      assert.instanceOf(t.problems[0], Router.HistoryWriteFailed)
+      assert.strictEqual(router.location().url, "/search?q=bc")
+    }))
+  })
+
+  it.effect("reports a same-page replace the history throws on without a throttle", () => {
+    const { history } = recorded("/search", (url) => url.includes("q="))
+    const problems: Array<Loader.Problem.Any> = []
+    return Effect.gen(function*() {
+      const router = yield* Router.Router
+      assert.strictEqual(yield* replaceQuery("a"), "navigated")
+      assert.strictEqual(router.location().url, "/search?q=a")
+      assert.deepStrictEqual(problems.map((problem) => problem._tag), ["HistoryWriteFailed"])
+    }).pipe(
+      Effect.provide(Router.make({ routes: Routes, history })),
+      Effect.provideService(Loader.Problems, (problem) => {
+        problems.push(problem)
+      })
+    )
+  })
+
+  it.effect("Router.memory writes every replace at once", () => {
+    const history = Router.memoryHistory("/search")
+    return Effect.gen(function*() {
+      yield* replaceQuery("a")
+      yield* replaceQuery("ab")
+      assert.deepStrictEqual(history.entries(), ["/search?q=ab"])
+      yield* replaceQuery("abc")
+      assert.deepStrictEqual(history.entries(), ["/search?q=abc"])
+    }).pipe(Effect.provide(Router.memory({ routes: Routes, history })))
+  })
 })

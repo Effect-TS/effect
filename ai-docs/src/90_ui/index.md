@@ -26,12 +26,14 @@ fixtures/
     services/Notes.ts         // service and its Layers
     loaders/ListNotes.ts
     loaders/GetNote.ts
+    loaders/SearchNotes.ts
     components/NoteEditor.ts  // NoteEditor and its SaveNote command
     components/NoteActivity.ts
     components/ActivityLog.ts
   pages/
     NotesIndex.ts             // /
     notes/NotePage.ts         // /notes/:id
+    search/SearchPage.ts      // /search
   server/NotesApi.ts          // the JSON API that Notes calls
 ```
 

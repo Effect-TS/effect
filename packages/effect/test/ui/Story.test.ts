@@ -1,7 +1,7 @@
 import { assert, describe, it } from "@effect/vitest"
 import { Cause, Data, Effect, Layer, Option, Schema } from "effect"
 import { AsyncResult, Loader } from "effect/reactivity"
-import { Command, Component, View } from "effect/ui"
+import { Command, Component, Route, Router, View } from "effect/ui"
 import { Query, Story } from "effect/ui/testing"
 import {
   Counter,
@@ -352,6 +352,71 @@ describe("Story", () => {
         s.send(Message.make({ _tag: "Upload" }))
           .resolve(mapped, "https://cdn/me.png")
           .model((model) => assert.strictEqual(model.url, "https://cdn/me.png")))
+    })
+  })
+
+  describe("navigation", () => {
+    const AppRoute = Route.union({ Home: Route.make("/"), About: Route.make("/about") })
+    const Message = Schema.TaggedUnion({
+      Go: {},
+      Navigated: { outcome: Schema.Literals(["navigated", "blocked"]) }
+    })
+    const Nav = Component.make({
+      name: "Nav",
+      model: Schema.Struct({ outcome: Schema.String }),
+      message: Message,
+      init: () => ({ outcome: "" }),
+      update: (_model, message, $) =>
+        Message.match(message, {
+          Go: () =>
+            $.run(
+              Router.push(AppRoute, AppRoute.make({ _tag: "About" })).pipe(
+                Command.map((outcome) => Message.make({ _tag: "Navigated", outcome }))
+              )
+            ),
+          Navigated: ({ outcome }) => ({ outcome })
+        }),
+      view: (model, h) => h.el("p", model.outcome)
+    })
+
+    it("a navigation Command stays pending until resolved, like any other", () => {
+      Story.make(Nav, {}, (s) =>
+        s.send(Message.make({ _tag: "Go" }))
+          .model((model) => assert.strictEqual(model.outcome, ""))
+          .resolve(Router.Push, "navigated")
+          .model((model) => assert.strictEqual(model.outcome, "navigated")))
+    })
+
+    it("a query patch is named by its class, issued with the patch, and resolves with its own outcome", () => {
+      const Routes = Route.union({ Search: Route.make("/search", { query: { q: Schema.optional(Schema.String) } }) })
+      const BoxMessage = Schema.TaggedUnion({
+        Typed: { value: Schema.String },
+        Patched: { outcome: Schema.Literals(["navigated", "blocked", "stale"]) }
+      })
+      const Box = Component.make({
+        name: "Box",
+        props: Schema.Struct({ route: Routes }),
+        model: Schema.Struct({ outcome: Schema.String }),
+        message: BoxMessage,
+        init: () => ({ outcome: "" }),
+        update: (_model, message, $) =>
+          BoxMessage.match(message, {
+            Typed: ({ value }) =>
+              $.run(
+                Router.patchQuery(Routes, $.props.route, { q: value || undefined }).pipe(
+                  Command.map((outcome) => BoxMessage.make({ _tag: "Patched", outcome }))
+                )
+              ),
+            Patched: ({ outcome }) => ({ outcome })
+          }),
+        view: (model, h) => h.el("p", model.outcome)
+      })
+      const route = Routes.make({ _tag: "Search" })
+      Story.make(Box, { route }, (s) =>
+        s.send(BoxMessage.make({ _tag: "Typed", value: "ada" }))
+          .expectExact(Router.patchQuery(Routes, route, { q: "ada" }))
+          .resolve(Router.PatchQuery, "stale")
+          .model((model) => assert.strictEqual(model.outcome, "stale")))
     })
   })
 

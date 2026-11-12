@@ -65,6 +65,8 @@ export interface Marker {
   readonly toMsg: (snapshot: unknown, result: AsyncResult.AsyncResult<any, any>) => unknown
   /** Set for one key of a keyed field: its values are collected into the field's message. */
   readonly keyed: boolean
+  /** From `Component.debounce`: how many milliseconds a fetch for changed args waits. */
+  readonly debounce: number | undefined
 }
 
 /**
@@ -87,6 +89,7 @@ export interface KeyedChange {
 }
 
 const markerKey = "~effect/ui/Component/watchMarker"
+const debounceKey = "~effect/ui/Component/debounce"
 const groupKey = "~effect/ui/Component/watchGroup"
 const watchesKey = "~effect/ui/Component/watches"
 
@@ -264,6 +267,19 @@ type ReadDef = ReturnType<typeof Loader.defOf>
 
 type LoaderFn = (model: any, props: any, loaded: any) => unknown
 
+/**
+ * A loader that waits `millis` before a fetch for changed args. A new
+ * function: the one passed in is used elsewhere as it is.
+ *
+ * @internal
+ */
+export const debounce = <F extends LoaderFn>(millis: number, f: F): F =>
+  Object.assign((model: unknown, props: unknown, loaded: unknown) => f(model, props, loaded), {
+    [debounceKey]: millis
+  }) as unknown as F
+
+const debounceOf = (f: LoaderFn): number | undefined => (f as { readonly [debounceKey]?: number })[debounceKey]
+
 /** A field's evaluated loader arguments, deduplicated by key for keyed fields. */
 type Current =
   | { readonly args: unknown; readonly argsKey: string | undefined; readonly entries?: undefined }
@@ -419,13 +435,22 @@ export const bind = (
             throw new Error(`${name}: $.watch has no handler for the loader field "${field.field}".`)
           }
           const current = argsOf(state, field)
+          const delay = debounceOf(loaders![field.field])
           // A list's handler gets the list opened, as `h.loaded` shows it.
           const fieldMsg = field.list
             ? (snapshot: unknown, result: AsyncResult.AsyncResult<any, any>) =>
               toMsg(snapshot, openList(snapshot, result))
             : toMsg
           const watchOf = (args: unknown, argsKey: string | undefined, keyed: boolean) => {
-            const marker: Marker = { read: field.read, label: field.label, args, argsKey, toMsg: fieldMsg, keyed }
+            const marker: Marker = {
+              read: field.read,
+              label: field.label,
+              args,
+              argsKey,
+              toMsg: fieldMsg,
+              keyed,
+              debounce: delay
+            }
             return {
               [Subscription.TypeId]: Subscription.TypeId,
               // New args are a new key, so the old watcher goes before the new one registers.
