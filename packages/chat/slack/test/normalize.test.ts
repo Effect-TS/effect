@@ -1,3 +1,4 @@
+import { extract } from "@effect/chat-slack/internal/mentions"
 import { messageSubtypes } from "@effect/chat-slack/internal/normalize"
 import * as SlackChat from "@effect/chat-slack/SlackChat"
 import { assert, describe, it } from "@effect/vitest"
@@ -141,6 +142,70 @@ describe("normalize", () => {
         [{ id: "U1AAAA", start: 3 }]
       )
     }))
+
+  it.effect("a real mention with no token in text, past a literal, ends", () =>
+    Effect.gen(function*() {
+      // Block items: real U1, literal U9, real U2. Text has only U1.
+      const event = created(SlackChat.normalize(
+        messageEnvelope({
+          ts: "1794509003.000004",
+          user: "U080YLYB277",
+          text: "<@U1AAAA>",
+          blocks: [{
+            type: "rich_text",
+            elements: [{
+              type: "rich_text_section",
+              elements: [
+                { type: "user", user_id: "U1AAAA" },
+                { type: "text", text: " <@U9ZZZZ> " },
+                { type: "user", user_id: "U2BBBB" }
+              ]
+            }]
+          }]
+        }),
+        context
+      ))
+      yield* checkEvent(event, checkOptions)
+      assert.deepStrictEqual(
+        event.message.mentions.map(({ id, start }) => ({ id, start })),
+        [{ id: "U1AAAA", start: 0 }]
+      )
+    }))
+
+  it("alignment ends and reports only real items, for every small case", () => {
+    const ids = ["U1AAAA", "U2BBBB", "U3CCCC"]
+    let seed = 7
+    const next = (bound: number) => {
+      seed = (seed * 1103515245 + 12345) % 2147483648
+      return seed % bound
+    }
+    for (let round = 0; round < 2_000; round++) {
+      const items = Array.from({ length: next(6) }, () => ({ id: ids[next(3)], real: next(2) === 0 }))
+      const text = Array.from({ length: next(6) }, () => `<@${ids[next(3)]}>`).join(" ")
+      const blocks = [{
+        type: "rich_text",
+        elements: [{
+          type: "rich_text_section",
+          elements: items.map((item) =>
+            item.real ? { type: "user", user_id: item.id } : { type: "text", text: ` <@${item.id}> ` }
+          )
+        }]
+      }]
+      const mentions = extract(text, blocks, botUserId)
+      const real = items.filter((item) => item.real).map((item) => item.id)
+      assert.isAtMost(mentions.length, real.length)
+      for (const id of new Set(mentions.map((mention) => mention.id))) {
+        assert.isAtMost(
+          mentions.filter((mention) => mention.id === id).length,
+          real.filter((item) => item === id).length,
+          JSON.stringify({ text, items })
+        )
+      }
+      const starts = mentions.map((mention) => mention.start)
+      assert.strictEqual(new Set(starts).size, starts.length)
+      for (const mention of mentions) assert.strictEqual(text.slice(mention.start, mention.end), `<@${mention.id}>`)
+    }
+  })
 
   it.effect("a /me line that mentions the bot is a message", () =>
     Effect.gen(function*() {

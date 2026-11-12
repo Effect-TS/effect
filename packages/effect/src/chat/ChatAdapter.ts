@@ -215,6 +215,10 @@ export interface Ops {
  * - `stop` closes the stream. `stopped` says whether a user had clicked stop
  *   on it. It succeeds with `stopped: false` on a stream that is already
  *   closed.
+ * - `continues` on `start` is the message id of the reply's previous part,
+ *   absent for a reply's first message. It tells the adapter which reply the
+ *   stream belongs to, so state kept per reply, such as a rate limit's
+ *   backoff, carries over a rotation and never passes to another reply.
  *
  * @stability unstable
  * @category models
@@ -225,6 +229,7 @@ export interface NativeStream {
     readonly markdown: string
     readonly replyTo?: ReplyTo | undefined
     readonly recipient?: string | undefined
+    readonly continues?: string | undefined
   }) => Effect.Effect<Posted, ChatError>
   readonly append: (
     thread: ChatThread,

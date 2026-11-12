@@ -633,6 +633,25 @@ describe("ChatMarkdown", () => {
       yield* registry.register({ ...adapter, nativeStream: { ...native, ...f(native) } })
     })
 
+    it.effect("a rotated stream's start names the part it continues", () =>
+      Effect.gen(function*() {
+        const { thread } = yield* setup
+        const continues: Array<string | undefined> = []
+        yield* patchNative((native) => ({
+          start: (thread, options) =>
+            Effect.suspend(() => {
+              continues.push(options.continues)
+              return native.start(thread, options)
+            })
+        }))
+        const { end, send } = yield* feed(thread, { recipient: "U1" })
+        yield* send("one\n")
+        yield* TestClock.adjust("9 minutes")
+        yield* send("two\n")
+        const result = yield* end
+        assert.deepStrictEqual(continues, [undefined, result.parts[0].messageId])
+      }).pipe(Effect.provide(ChatTest.layer())))
+
     it.effect("sends a stop again when interrupted during it", () =>
       Effect.gen(function*() {
         const { thread } = yield* setup

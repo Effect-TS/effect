@@ -780,6 +780,7 @@ const reply = <E, R, R2>(options: ReplyOptions<E, R, R2>): Effect.Effect<Result,
             native!.start(thread, {
               markdown,
               ...(parts.length === 0 && options.replyTo !== undefined ? { replyTo: options.replyTo } : {}),
+              ...(parts.length === 0 ? {} : { continues: parts[parts.length - 1].messageId }),
               recipient: options.recipient
             }),
             (posted) => toPart(part, posted, markdown, end),

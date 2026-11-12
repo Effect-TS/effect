@@ -103,12 +103,14 @@ const streamUnsupported = new Set(["channel_type_not_supported", "feature_disabl
 /** Floor between two edits to one message: the spec's starting number, provisional until measured. */
 const editIntervalMillis = 3_000
 
-/** How long a message's pace is kept after its last write. */
+/** How long a reply's backoff is kept after its last write. */
 const paceIdleMillis = 15 * 60 * 1000
 
-interface Pace {
-  readonly intervalMillis: number
-  readonly nextAt: number
+/** A reply's pace after a 429, shared by every message the reply writes. */
+interface Backoff {
+  intervalMillis: number
+  nextAt: number
+  lastWrite: number
 }
 
 interface StreamState {
@@ -140,73 +142,63 @@ export const make = (options: {
   const fail = (op: string, reason: ChatErrorReason) => Effect.fail(Errors.chatError(op, reason))
 
   /**
-   * The pace of the writes that grow one reply: stream appends, stream
-   * starts after a rotation, and edits.
+   * The pace of the writes that grow one reply: stream appends, the starts
+   * of its later parts, and edits.
    *
    * - Edits to one message are at least `editIntervalMillis` apart.
    * - After a 429, the next write waits for the retry-after, and each later
    *   write waits twice the interval it waited before, for the rest of the
-   *   reply. A stream stopped with `end: "rotating"` hands its pace to the
-   *   next stream started in that thread, the reply's next part.
+   *   reply. The backoff is keyed by message and shared: a stream started
+   *   with `continues` takes the backoff of the message it continues, and a
+   *   stop with `end: "done"` drops it.
+   * - Each attempt reads the pace afresh, so a write retried after a 429
+   *   waits for it.
    */
-  const paces = new Map<string, Pace>()
-  const rotated = new Map<string, Pace>()
+  const backoffs = new Map<string, Backoff>()
+  const nextEdit = new Map<string, number>()
 
-  const remember = (map: Map<string, Pace>, key: string, pace: Pace, now: number) => {
-    if (map.size >= 64) { for (const [old, value] of map) if (value.nextAt < now - paceIdleMillis) map.delete(old) }
-    map.set(key, pace)
+  const evict = (now: number) => {
+    if (nextEdit.size >= 64) { for (const [key, at] of nextEdit) if (at <= now) nextEdit.delete(key) }
+    if (backoffs.size >= 64) {
+      for (const [key, backoff] of backoffs) if (backoff.lastWrite < now - paceIdleMillis) backoffs.delete(key)
+    }
   }
 
   const paced = <A>(
-    options: {
-      /** The pace this write waits for. */
-      readonly current: Pace | undefined
-      /** The interval doubled by a first 429. */
-      readonly baseMillis: number
-      /** Kept between two writes even without a 429. */
-      readonly floorMillis?: number | undefined
-      readonly save: (pace: Pace, now: number) => void
-    },
-    write: Effect.Effect<A, ChatError>
+    messageId: string,
+    write: Effect.Effect<A, ChatError>,
+    kind: "edit" | "stream"
   ): Effect.Effect<A, ChatError> =>
     Effect.gen(function*() {
-      const { current } = options
-      if (current !== undefined) {
-        const wait = current.nextAt - (yield* Clock.currentTimeMillis)
-        if (wait > 0) yield* Effect.sleep(Duration.millis(wait))
-      }
+      const at = Math.max(backoffs.get(messageId)?.nextAt ?? 0, kind === "edit" ? nextEdit.get(messageId) ?? 0 : 0)
+      const wait = at - (yield* Clock.currentTimeMillis)
+      if (wait > 0) yield* Effect.sleep(Duration.millis(wait))
       return yield* write.pipe(
         Effect.tap(() =>
           Effect.map(Clock.currentTimeMillis, (now) => {
-            const intervalMillis = current?.intervalMillis ?? options.floorMillis
-            if (intervalMillis !== undefined) options.save({ intervalMillis, nextAt: now + intervalMillis }, now)
+            evict(now)
+            const backoff = backoffs.get(messageId)
+            if (backoff !== undefined) {
+              backoff.nextAt = now + backoff.intervalMillis
+              backoff.lastWrite = now
+            }
+            if (kind === "edit") nextEdit.set(messageId, now + editIntervalMillis)
           })
         ),
         Effect.tapError((error) =>
           error.reason._tag !== "RateLimited" ? Effect.void : Effect.map(Clock.currentTimeMillis, (now) => {
-            const intervalMillis = 2 *
-              (current?.intervalMillis ?? Math.max(options.baseMillis, options.floorMillis ?? 0))
+            evict(now)
+            const base = kind === "edit" ? editIntervalMillis : Duration.toMillis(descriptor.limits.minWriteInterval)
+            const backoff = backoffs.get(messageId) ?? { intervalMillis: base, nextAt: now, lastWrite: now }
+            backoff.intervalMillis *= 2
             const retryAfter = error.retryAfter
-            options.save({
-              intervalMillis,
-              nextAt: now + (retryAfter === undefined ? intervalMillis : Duration.toMillis(retryAfter))
-            }, now)
+            backoff.nextAt = now + (retryAfter === undefined ? backoff.intervalMillis : Duration.toMillis(retryAfter))
+            backoff.lastWrite = now
+            backoffs.set(messageId, backoff)
           })
         )
       )
     })
-
-  const pacedMessage = <A>(
-    messageId: string,
-    write: Effect.Effect<A, ChatError>,
-    floorMillis?: number
-  ): Effect.Effect<A, ChatError> =>
-    paced({
-      current: paces.get(messageId),
-      baseMillis: Duration.toMillis(descriptor.limits.minWriteInterval),
-      floorMillis,
-      save: (pace, now) => remember(paces, messageId, pace, now)
-    }, write)
 
   const call = (
     op: string,
@@ -445,10 +437,6 @@ export const make = (options: {
       }
       const escaped = Escape.escape(start.markdown, postOptions.notify ?? {}, { flush: true })
       yield* checkSent(op, escaped.sent)
-      const replyKey = `${parts.channel}/${parts.threadTs}`
-      const handedOver = rotated.get(replyKey)
-      rotated.delete(replyKey)
-      let pace = handedOver
       const startCall = call(op, "chat.startStream", {
         channel: parts.channel,
         thread_ts: parts.threadTs,
@@ -469,19 +457,12 @@ export const make = (options: {
             )
         )
       )
-      const answer = yield* (handedOver === undefined ? startCall : paced({
-        current: handedOver,
-        baseMillis: handedOver.intervalMillis,
-        save: (next) => {
-          pace = next
-        }
-      }, startCall)).pipe(Effect.tapError(() =>
-        Effect.map(Clock.currentTimeMillis, (now) => {
-          if (pace !== undefined) remember(rotated, replyKey, pace, now)
-        })
-      ))
+      // A later part of a reply goes at the reply's pace, and keeps it.
+      const continues = start.continues
+      const answer = yield* (continues === undefined ? startCall : paced(continues, startCall, "stream"))
       const ts = yield* tsOf(op, true)(answer)
-      if (pace !== undefined) remember(paces, ts, pace, yield* Clock.currentTimeMillis)
+      const backoff = continues === undefined ? undefined : backoffs.get(continues)
+      if (backoff !== undefined) backoffs.set(ts, backoff)
       streams.set(ts, { escape: escaped.state, text: escaped.sent, stopped: false })
       return { id: ts, thread, timestamp: Normalize.timestamp(ts) }
     }),
@@ -497,13 +478,14 @@ export const make = (options: {
       const held = markdown.length - escaped.consumed
       if (escaped.sent === "") return { state: "open" as const, held }
       yield* checkSent(op, state.text + escaped.sent)
-      return yield* pacedMessage(
+      return yield* paced(
         messageId,
         call(op, "chat.appendStream", {
           channel: parts.channel,
           ts: messageId,
           markdown_text: escaped.sent
-        }, { write: true, retry: false })
+        }, { write: true, retry: false }),
+        "stream"
       ).pipe(
         Effect.map(() => {
           streams.set(messageId, { escape: escaped.state, text: state.text + escaped.sent, stopped: false })
@@ -526,10 +508,10 @@ export const make = (options: {
       const postOptions = yield* CurrentPostOptions
       const state = streams.get(messageId)
       streams.delete(messageId)
-      const pace = paces.get(messageId)
-      paces.delete(messageId)
-      if (pace !== undefined && stopOptions.end === "rotating") {
-        remember(rotated, `${parts.channel}/${parts.threadTs}`, pace, yield* Clock.currentTimeMillis)
+      // A rotating stop keeps the reply's backoff for its next part.
+      const backoff = backoffs.get(messageId)
+      if (backoff !== undefined && stopOptions.end === "done") {
+        for (const [key, value] of backoffs) if (value === backoff) backoffs.delete(key)
       }
       const status = stopOptions.end === "rotating" ? "processing" : postOptions.sessionStatusAtEnd
       const body = { channel: parts.channel, ts: messageId }
@@ -617,13 +599,13 @@ export const make = (options: {
       const postOptions = yield* CurrentPostOptions
       const sent = Escape.escape(content.markdown, postOptions.notify ?? {}, { flush: true }).sent
       yield* checkSent("edit", sent)
-      yield* retrySafe(pacedMessage(
+      yield* retrySafe(paced(
         messageId,
         call("edit", "chat.update", { channel: parts.channel, ts: messageId, markdown_text: sent }, {
           write: true,
           retry: false
         }),
-        editIntervalMillis
+        "edit"
       ))
     }),
     delete: Effect.fnUntraced(function*(thread, messageId) {
