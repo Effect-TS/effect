@@ -618,17 +618,11 @@ const setup = (
    */
   const forkLater = <A, E>(context: Context.Context<any>, effect: Effect.Effect<A, E, any>): Fiber.Fiber<A, E> =>
     forkNow(context, Effect.andThen(Effect.yieldNow, effect))
-  // Every run fiber, Scope close and Layer build retry the runtime has forked, until they exit. The root
-  // waits for all of them.
+  // Every run fiber and every Scope close the runtime has forked, until they exit. The root waits for both.
   const liveRuns = new Set<Fiber.Fiber<unknown, unknown>>()
   const closing = new Set<Fiber.Fiber<void>>()
-  /** Layer builds the runtime interrupted, until their own cleanup ends. Retries wait for them. */
+  /** Layer builds the runtime interrupted, until their own cleanup ends: see `buildLayer`. */
   const releasedBuilds = new Set<Fiber.Fiber<unknown, unknown>>()
-  /**
-   * Layer builds waiting to start again: see `buildLayer`. They wait for `closing` and `releasedBuilds`,
-   * never for each other.
-   */
-  const retries = new Set<Fiber.Fiber<void>>()
   const track = <A, E>(fibers: Set<Fiber.Fiber<A, E>>, fiber: Fiber.Fiber<A, E>) => {
     fibers.add(fiber)
     fiber.addObserver(() => fibers.delete(fiber))
@@ -712,8 +706,6 @@ const setup = (
       offFetchEnd?.()
       releaseWatchHold()
       for (const [run, inst] of Array.from(detachedRuns)) stopRun(inst, run)
-      // Nothing is left to build for: a retry still waiting for an interrupted build's cleanup ends now.
-      for (const retry of retries) retry.interruptUnsafe()
       return awaitAllOwned
     })
   )
@@ -1098,19 +1090,17 @@ const setup = (
    *
    * A build the runtime interrupts on release can be building a memoised Layer that others wait on,
    * and they end with its interrupt. A build that ends with only interrupts, that one among them,
-   * starts again while it's still `wanted`. A Layer that interrupts itself still fails.
+   * starts again while `scope` is open. A Layer that interrupts itself still fails.
    */
   const buildLayer = (
     layer: Layer.Layer<any, any, any>,
     context: Context.Context<any>,
     memoMap: Layer.MemoMap | undefined,
     scope: Scope.Scope,
-    wanted: () => boolean,
     onExit: (exit: Exit.Exit<Context.Context<any>, unknown>) => void
   ) => {
     const attempt = () => {
       const buildScope = Scope.forkUnsafe(scope, "sequential")
-      let released = false
       const fiber = forkNow(
         withCache(context),
         memoMap === undefined
@@ -1121,29 +1111,25 @@ const setup = (
         if (Exit.isSuccess(exit)) return onExit(exit)
         // Closing lets go of this attempt's memo entries, the interrupted ones included.
         closeScope(buildScope)
+        // A build released with `scope` was interrupted for itself: `scope` is closed by then.
         if (
-          !released && Cause.hasInterruptsOnly(exit.cause) && Cause.interruptors(exit.cause).has(buildInterrupter) &&
-          wanted()
-        ) {
-          // The interrupt can arrive from inside the close that sent it, before that close is tracked.
-          // After a yield, once every close and every interrupted build's own cleanup has ended, the
-          // other waiters' included, the interrupted entries are gone and their resources released.
-          // One still held makes the next attempt fail the same way, and try again.
-          track(
-            retries,
-            forkNow(
-              ctx,
-              Effect.yieldNow.pipe(
-                Effect.andThen(Effect.suspend(() => Fiber.awaitAll([...closing, ...releasedBuilds]))),
-                Effect.andThen(Effect.sync(() => {
-                  if (wanted()) attempt()
-                }))
-              )
-            )
+          isClosed(scope) || !Cause.hasInterruptsOnly(exit.cause) ||
+          !Cause.interruptors(exit.cause).has(buildInterrupter)
+        ) return onExit(exit)
+        // The interrupt can arrive from inside the close that sent it, before that close is tracked.
+        // After a yield, once every close and every interrupted build's own cleanup has ended, the
+        // other waiters' included, the interrupted entries are gone and their resources released.
+        // One still held makes the next attempt fail the same way, and try again. Nothing waits for
+        // the retry: once `scope` has closed it does nothing.
+        forkNow(
+          ctx,
+          Effect.yieldNow.pipe(
+            Effect.andThen(Effect.suspend(() => Fiber.awaitAll([...closing, ...releasedBuilds]))),
+            Effect.andThen(Effect.sync(() => {
+              if (!isClosed(scope)) attempt()
+            }))
           )
-          return
-        }
-        onExit(exit)
+        )
       }
       const exit = fiber.pollUnsafe()
       if (exit !== undefined) return done(exit)
@@ -1153,7 +1139,6 @@ const setup = (
         buildScope,
         Effect.sync(() => {
           if (fiber.pollUnsafe() !== undefined) return
-          released = true
           // The interrupted Layer runs its own cleanup in the fiber, after the close has ended.
           track(releasedBuilds, fiber)
           fiber.interruptUnsafe(buildInterrupter)
@@ -1185,7 +1170,7 @@ const setup = (
     }
     byLayer.set(layer, entry)
     whenReady(parentEnv, (parentCtx) => {
-      buildLayer(layer, parentCtx, memoMapOf(parentEnv), entry.scope, () => entry.refs > 0, (exit) => {
+      buildLayer(layer, parentCtx, memoMapOf(parentEnv), entry.scope, (exit) => {
         if (Exit.isFailure(exit)) {
           // A failed build is evicted, so the next user builds again.
           if (byLayer!.get(layer) === entry) byLayer!.delete(layer)
@@ -1395,7 +1380,7 @@ const setup = (
             } catch (defect) {
               return fail(Cause.die(defect))
             }
-            buildLayer(layer, parentCtx, undefined, scope, () => !inst.closed, (exit) => {
+            buildLayer(layer, parentCtx, undefined, scope, (exit) => {
               if (inst.closed) return
               if (Exit.isFailure(exit)) return fail(exit.cause)
               ready()
@@ -1819,9 +1804,9 @@ const setup = (
     waits.length === 0 ? Effect.void : Effect.all(waits, { concurrency: "unbounded", discard: true })
   // Repeats until nothing is left, since a close that finishes can stop more runs.
   const awaitAllOwned: Effect.Effect<void> = Effect.suspend(() =>
-    liveRuns.size === 0 && closing.size === 0 && retries.size === 0
+    liveRuns.size === 0 && closing.size === 0
       ? Effect.void
-      : Effect.andThen(Fiber.awaitAll([...liveRuns, ...closing, ...retries]), awaitAllOwned)
+      : Effect.andThen(Fiber.awaitAll([...liveRuns, ...closing]), awaitAllOwned)
   )
 
   const startRun = (inst: Instance, run: Run) => {
