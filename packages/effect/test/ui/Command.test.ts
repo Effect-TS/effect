@@ -225,6 +225,28 @@ describe("Command", () => {
     })
   })
 
+  describe("as", () => {
+    it.effect("replaces effect and stream messages while keeping the issued Command", () =>
+      Effect.gen(function*() {
+        const message = { _tag: "Done" }
+        const original = Search({ text: "x" })
+        const mapped = original.pipe(Command.as(message))
+        assert.strictEqual(yield* mapped.effect, message)
+        assert.strictEqual(mapped.resolve({ _tag: "Results", items: [] }), message)
+        assert.deepStrictEqual([mapped.name, mapped.args, mapped.mode], ["Search", { text: "x" }, "switch"])
+        const stream = Command.as(Ticks.make({ n: 2 }), message)
+        assert.deepStrictEqual(yield* Stream.runCollect(stream.stream), [message, message])
+        const matched = Save.make({ title: "" }).pipe(
+          Command.match({ onSuccess: () => "ok", onFailure: () => "failed" }),
+          Command.as(message)
+        )
+        assert.strictEqual(yield* matched.effect, message)
+        assert.strictEqual(matched.reject?.(new SaveFailed({ reason: "empty" })), message)
+        const interrupt = Command.interrupt(Ticks)
+        assert.strictEqual(Command.as(interrupt, message), interrupt)
+      }).pipe(Effect.provide(Ticks.layer), Effect.provide(Save.layer)))
+  })
+
   describe("schedule", () => {
     const Message = Schema.TaggedUnion({ Done: {} })
     const done = () => Effect.succeed(Message.make({ _tag: "Done" }))
