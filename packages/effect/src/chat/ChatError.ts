@@ -351,13 +351,19 @@ export class NotFound extends Schema.TaggedError<NotFound>("effect/chat/ChatErro
  *
  * **Details**
  *
- * Retry value `denied`.
+ * - Retry value `denied`.
+ * - `subject` says what was too large, when the adapter can tell: `text` for
+ *   the message text, `files` for the files sent with it. An adapter sets it
+ *   on every refusal of `post`, `edit` and `NativeStream` it can attribute.
+ *   `ChatMarkdown` posts again without the files, ending in the consumer's
+ *   note, only for `files`.
  *
  * @stability unstable
  * @category errors
  * @since 4.1.5
  */
 export class TooLarge extends Schema.TaggedError<TooLarge>("effect/chat/ChatError/TooLarge")("TooLarge", {
+  subject: Schema.optionalKey(Schema.Literals(["text", "files"])),
   detail,
   cause
 }) {

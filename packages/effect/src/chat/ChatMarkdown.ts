@@ -145,8 +145,8 @@ export class ChatMarkdownError<E = never> extends Data.TaggedError("ChatMarkdown
  * - `minWriteInterval` is the floor between two writes. It defaults to the
  *   adapter's `limits.minWriteInterval`.
  * - `onPart` runs for every message the call creates, the overflow file
- *   included, uninterruptibly with its post, so an interrupt can neither lose
- *   an id nor post the message twice. It has to be quick.
+ *   included, uninterruptibly once its post returns, so an interrupt can
+ *   neither lose an id nor post the message twice. It has to be quick.
  *
  * @stability unstable
  * @category models
@@ -356,6 +356,15 @@ interface Current {
   markdown: string
   startedAt: number
   retries: number
+  /** A stop to send, and what follows it. Kept until the platform answers, so a stop cut off is sent again. */
+  closing: Closing | undefined
+  /** A user clicked stop during a repair: the part is written up to here, then the reply ends. */
+  stoppedAt: number | undefined
+}
+
+interface Closing {
+  readonly end: "done" | "rotating"
+  readonly onStop: (stopped: boolean) => void
 }
 
 interface ReplyOptions<E, R, R2> extends Options<R2> {
@@ -373,18 +382,24 @@ interface ReplyOptions<E, R, R2> extends Options<R2> {
 const firstError = <A>(exit: Exit.Exit<A, ChatError>): ChatError | undefined =>
   Option.getOrUndefined(Exit.findErrorOption(exit))
 
+/** Whether a write was cut off before the platform answered. */
+const unanswered = <A>(exit: Exit.Exit<A, ChatError>): boolean =>
+  Exit.isFailure(exit) && Cause.hasInterruptsOnly(exit.cause)
+
 /**
- * Whether a post with files may have failed because of the files. No reason
- * says which part was refused, so a post that fails like this is tried again
- * without them. A refusal of the text comes back again and fails the call.
+ * Whether a post with files may have failed because of the files, so it is
+ * tried again without them. A `TooLarge` counts only when the adapter says
+ * the files were too large: a refusal of text that measured as fitting fails
+ * the reply.
  */
 const isFileRefusal = <A>(exit: Exit.Exit<A, ChatError>): boolean => {
   const reason = firstError(exit)?.reason
   switch (reason?._tag) {
     case "Forbidden":
-    case "TooLarge":
     case "InvalidRequest":
       return true
+    case "TooLarge":
+      return reason.subject === "files"
     case "Unsupported":
       return reason.capability === "files"
     default:
@@ -445,7 +460,9 @@ const reply = <E, R, R2>(options: ReplyOptions<E, R, R2>): Effect.Effect<Result,
       attempted: -1,
       markdown: "",
       startedAt: 0,
-      retries: 0
+      retries: 0,
+      closing: undefined,
+      stoppedAt: undefined
     })
 
     let current = newPart(0, undefined)
@@ -475,51 +492,70 @@ const reply = <E, R, R2>(options: ReplyOptions<E, R, R2>): Effect.Effect<Result,
     const wrote = Effect.flatMap(now, (time) => Effect.sync(() => void (lastWrite = time)))
 
     /**
-     * Writes after the floor. \`commit\` records the result before an interrupt
-     * can land, so the finalizer never sees a write that happened as one that
-     * did not. With \`whole\`, the write itself is uninterruptible too: an
-     * append interrupted in flight could have landed, and sending it again
-     * would repeat text. Edits and stops are safe to repeat.
+     * Sends an edit or a stop after the floor. Both are safe to send again, so
+     * they stay interruptible. `commit` records the answer, or that there was
+     * none, before an interrupt can land.
      */
     const write = <A>(
       effect: Effect.Effect<A, ChatError>,
-      commit: (exit: Exit.Exit<A, ChatError>) => void,
-      whole: boolean
-    ): Effect.Effect<Exit.Exit<A, ChatError>> =>
+      commit: (exit: Exit.Exit<A, ChatError>) => void
+    ): Effect.Effect<void> =>
       Effect.andThen(
         pace,
         Effect.uninterruptibleMask((restore) =>
-          Effect.exit(whole ? effect : restore(effect)).pipe(
+          Effect.exit(restore(effect)).pipe(
             Effect.ensuring(wrote),
-            Effect.tap((exit) => Effect.sync(() => commit(exit)))
+            Effect.flatMap((exit) => Effect.sync(() => commit(exit)))
           )
         )
       )
 
+    /** The post, start or append in flight. */
+    let inflight: Fiber.Fiber<unknown> | undefined
+
     /**
-     * Creates a message, records it and runs \`onPart\` for it, as one
-     * uninterruptible step, so an interrupt can neither lose an id nor make
-     * the finalizer create the message again.
+     * Sends a post, a start or an append after the floor. Sending one again
+     * could repeat text, so an interrupt of the reply does not cut it off: it
+     * runs in a fiber of its own, which commits the answer, and the finalizer
+     * waits for it. Only the finish timeout cuts it off, and `commit` then
+     * records that there was no answer.
+     */
+    const send = <A>(
+      effect: Effect.Effect<A, ChatError>,
+      commit: (exit: Exit.Exit<A, ChatError>, time: number) => Effect.Effect<void, never, R2>
+    ): Effect.Effect<Exit.Exit<A, ChatError>, never, R2> =>
+      Effect.andThen(
+        pace,
+        Effect.uninterruptibleMask((restore) =>
+          Effect.forkChild(
+            Effect.uninterruptibleMask((restoreRequest) =>
+              Effect.exit(restoreRequest(effect)).pipe(
+                Effect.ensuring(wrote),
+                Effect.tap((exit) => Effect.flatMap(now, (time) => commit(exit, time))),
+                Effect.ensuring(Effect.sync(() => void (inflight = undefined)))
+              )
+            )
+          ).pipe(Effect.flatMap((fiber) => {
+            inflight = fiber
+            return restore(Fiber.join(fiber))
+          }))
+        )
+      )
+
+    /**
+     * Creates a message, records it and runs `onPart` for it, in one commit,
+     * so an interrupt can neither lose an id nor make the finalizer create the
+     * message again.
      */
     const create = (
       effect: Effect.Effect<Posted, ChatError>,
       part: (posted: Posted) => Part,
       commit: (exit: Exit.Exit<Posted, ChatError>, time: number) => void
     ): Effect.Effect<Exit.Exit<Posted, ChatError>, never, R2> =>
-      Effect.andThen(
-        pace,
-        Effect.uninterruptible(
-          Effect.exit(effect).pipe(
-            Effect.ensuring(wrote),
-            Effect.tap((exit) =>
-              Effect.flatMap(now, (time) => {
-                commit(exit, time)
-                return Exit.isSuccess(exit) ? onPart(part(exit.value)) : Effect.void
-              })
-            )
-          )
-        )
-      )
+      send(effect, (exit, time) => {
+        commit(exit, time)
+        return Exit.isSuccess(exit) ? onPart(part(exit.value)) : Effect.void
+      })
 
     const finishPart = (end: number) => {
       const part = current
@@ -544,8 +580,8 @@ const reply = <E, R, R2>(options: ReplyOptions<E, R, R2>): Effect.Effect<Result,
     // --- post-then-edit --------------------------------------------------------
 
     /**
-     * Writes the current part as \`input[start, end)\`. \`last\` marks the part's
-     * final write, and \`withFiles\` the reply's last part, which takes the files.
+     * Writes the current part as `input[start, end)`. `last` marks the part's
+     * final write, and `withFiles` the reply's last part, which takes the files.
      */
     const writeEdit = (end: number, last: boolean, withFiles: boolean): Effect.Effect<void, never, R2> =>
       Effect.suspend(() => {
@@ -555,17 +591,19 @@ const reply = <E, R, R2>(options: ReplyOptions<E, R, R2>): Effect.Effect<Result,
         if (part.posted === undefined) return postPart(part, end, markdown, withFiles && hasFiles)
         if (part.confirmed === end && part.markdown === markdown) return Effect.void
         const edit = chat.edit(thread, part.posted.id, { markdown })
-        return Effect.asVoid(write(last ? edit : Chat.withoutRetries(edit), (exit) => {
+        return write(last ? edit : Chat.withoutRetries(edit), (exit) => {
           if (Exit.isSuccess(exit)) {
             part.confirmed = part.uncertain = end
             part.markdown = markdown
             return
           }
+          // Cut off, so it may have landed. The finalizer edits again.
+          if (unanswered(exit)) part.uncertain = Math.max(part.uncertain, end)
           const error = firstError(exit)
           if (error === undefined) return
           if (error.retry === "uncertain") part.uncertain = Math.max(part.uncertain, end)
           if (last || error.retry === "denied") failChat(error)
-        }, false))
+        })
       })
 
     const postPart = (
@@ -583,6 +621,7 @@ const reply = <E, R, R2>(options: ReplyOptions<E, R, R2>): Effect.Effect<Result,
           part.confirmed = part.uncertain = end
           return
         }
+        if (unanswered(exit)) part.uncertain = end
         const error = firstError(exit)
         if (error === undefined) return
         if (error.retry === "uncertain") part.uncertain = end
@@ -605,7 +644,6 @@ const reply = <E, R, R2>(options: ReplyOptions<E, R, R2>): Effect.Effect<Result,
       return Effect.flatMap(attempt(markdown, files, unattachedNote !== undefined), (exit) => {
         if (unattachedNote === undefined || !isFileRefusal(exit)) return Effect.void
         // The platform may have refused the files: the last part goes out without them, ending in the note.
-        // A refusal of the text itself comes back again, and fails the call.
         const text = unattachedNote(files!)
         if (measure(markdown + text) <= limits.messageLength) {
           return Effect.asVoid(attempt(markdown + text, undefined, false))
@@ -639,6 +677,14 @@ const reply = <E, R, R2>(options: ReplyOptions<E, R, R2>): Effect.Effect<Result,
     const stepEdit = (final: boolean): Effect.Effect<void, never, R2> =>
       Effect.suspend(() => {
         const part = current
+        if (part.stoppedAt !== undefined) {
+          // A user clicked stop during a repair: settle what was sent, then end the reply.
+          return Effect.map(writeEdit(part.stoppedAt, false, false), () => {
+            if (!isRunning()) return
+            finishPart(part.confirmed)
+            done(true)
+          })
+        }
         const body = input.slice(part.start)
         if (part.posted === undefined && isBlank(body) && !(final && hasFiles && parts.length === 0)) {
           if (final) finishReply(part.start)
@@ -668,24 +714,41 @@ const reply = <E, R, R2>(options: ReplyOptions<E, R, R2>): Effect.Effect<Result,
 
     // --- native ----------------------------------------------------------------
 
-    /** Stops the native stream and says whether a user had clicked stop. A stop carries no text, so its failures are ignored. */
-    const stopStream = (part: Current, end: "done" | "rotating"): Effect.Effect<boolean> =>
-      Effect.suspend(() => {
+    /** Sends the stop the current part is closing with. A stop carries no text, so its failures are ignored. */
+    const sendStop = (part: Current, closing: Closing): Effect.Effect<void> =>
+      write(native!.stop(thread, part.posted!.id, { end: closing.end }), (exit) => {
+        // Cut off, so the stream may still be open. The finalizer sends the stop again.
+        if (unanswered(exit)) return
+        part.closing = undefined
         part.native = false
-        if (part.posted === undefined) return Effect.succeed(false)
-        return Effect.map(
-          write(native!.stop(thread, part.posted.id, { end }), () => {}, false),
-          (exit) => Exit.isSuccess(exit) && exit.value.stopped
-        )
+        closing.onStop(Exit.isSuccess(exit) && exit.value.stopped)
       })
 
-    /** Ends a native part at \`end\`. The reply ends when \`last\`, or when a user had clicked stop. */
-    const rollNative = (part: Current, end: number, last: boolean): Effect.Effect<void> =>
-      Effect.map(stopStream(part, last ? "done" : "rotating"), (stopped) => {
-        finishPart(end)
-        if (stopped) done(true)
-        else if (last) finishReply(end)
-      })
+    /** Ends a native part at `end` once its stop is answered. The reply ends when `last`, or when a user had clicked stop. */
+    const rollNative = (part: Current, end: number, last: boolean) => {
+      part.closing = {
+        end: last ? "done" : "rotating",
+        onStop: (stopped) => {
+          finishPart(end)
+          if (stopped) done(true)
+          else if (last) finishReply(end)
+        }
+      }
+    }
+
+    /**
+     * Stops the stream and carries on by post-then-edit: the next edit writes
+     * the part's whole known text, the chunk that failed included.
+     */
+    const repair = (part: Current) => {
+      part.closing = {
+        end: "rotating",
+        onStop: (stopped) => {
+          part.attempted = -1
+          if (stopped) part.stoppedAt = Math.max(part.uncertain, part.sent)
+        }
+      }
+    }
 
     const startNative = (final: boolean): Effect.Effect<void, never, R2> =>
       Effect.suspend(() => {
@@ -705,7 +768,7 @@ const reply = <E, R, R2>(options: ReplyOptions<E, R, R2>): Effect.Effect<Result,
         const end = part.start + cut
         const roll = cut < text.length
         const markdown = roll || final ? render(part.prefix, text.slice(0, cut), part.fence) : part.prefix + text
-        return Effect.flatMap(
+        return Effect.asVoid(
           create(
             native!.start(thread, {
               markdown,
@@ -720,8 +783,10 @@ const reply = <E, R, R2>(options: ReplyOptions<E, R, R2>): Effect.Effect<Result,
                 part.markdown = markdown
                 part.confirmed = part.uncertain = part.sent = end
                 part.startedAt = time
+                if (roll || final) rollNative(part, end, !roll)
                 return
               }
+              if (unanswered(exit)) part.uncertain = end
               const error = firstError(exit)
               if (error === undefined) return
               if (error.reason._tag === "Unsupported" && !renderedNatively) {
@@ -732,15 +797,14 @@ const reply = <E, R, R2>(options: ReplyOptions<E, R, R2>): Effect.Effect<Result,
               if (error.retry === "uncertain") part.uncertain = end
               failChat(error)
             }
-          ),
-          (exit) => Exit.isSuccess(exit) && (roll || final) ? rollNative(part, end, !roll) : Effect.void
+          )
         )
       })
 
     /**
      * What the next append sends, and whether the part ends after it. Every
      * append leaves room to close the code fence it ends in, so a part that
-     * rolls over on length always ends with its fence closed. \`rotate\` sends
+     * rolls over on length always ends with its fence closed. `rotate` sends
      * just that closing fence, for a stream about to rotate on age.
      */
     const nextAppend = (part: Current, final: boolean, rotate: boolean) => {
@@ -770,20 +834,24 @@ const reply = <E, R, R2>(options: ReplyOptions<E, R, R2>): Effect.Effect<Result,
       return size(cut + closeAt(cut)) <= streamLength ? { piece: cut, extra: closeAt(cut), roll: true } : closeOnly
     }
 
+    /**
+     * Appends the next piece. What follows, a rollover, a repair or a retry,
+     * is recorded in the commit, so an interrupt can't lose it.
+     */
     const appendNative = (final: boolean, rotate: boolean): Effect.Effect<void, never, R2> =>
       Effect.suspend(() => {
         const part = current
         const { extra, piece, roll } = nextAppend(part, final, rotate)
         if (piece === "" && extra === "") {
-          return roll || final ? rollNative(part, part.sent, !roll) : Effect.void
+          if (roll || final) rollNative(part, part.sent, !roll)
+          return Effect.void
         }
         part.attempted = input.length
         const markdown = piece + extra
-        let next: { readonly _tag: "None" | "Roll" | "Repair" | "StopAndFail" } | {
-          readonly _tag: "Retry"
-          readonly wait: number
-        } = { _tag: "None" }
-        const commit = (exit: Exit.Exit<{ readonly state: string; readonly held: number }, ChatError>) => {
+        const commit = (
+          exit: Exit.Exit<{ readonly state: string; readonly held: number }, ChatError>,
+          time: number
+        ) => {
           if (Exit.isSuccess(exit)) {
             const { held, state } = exit.value
             if (state === "stopped") {
@@ -799,67 +867,38 @@ const reply = <E, R, R2>(options: ReplyOptions<E, R, R2>): Effect.Effect<Result,
               part.sent += Math.min(piece.length, added)
               part.confirmed = part.uncertain = part.sent
               part.markdown += markdown.slice(0, added)
-              if (roll || (final && part.sent === input.length)) next = { _tag: "Roll" }
+              if (roll || (final && part.sent === input.length)) rollNative(part, part.sent, !roll)
             }
+            return
+          }
+          // Cut off by the finish timeout, so it may have landed.
+          if (unanswered(exit)) {
+            part.uncertain = part.sent + piece.length
+            return
+          }
+          const error = firstError(exit)
+          if (error === undefined) return
+          if (error.reason._tag === "TooLarge") {
+            // A forced rollover: the next part starts with the chunk.
+            rollNative(part, part.sent, false)
+          } else if (error.retry === "retry") {
+            part.retries++
+            if (part.retries >= appendRetryLimit) repair(part)
+            else retryAt = time + (error.retryAfter === undefined ? interval : Duration.toMillis(error.retryAfter))
+          } else if (error.retry === "uncertain") {
+            part.uncertain = part.sent + piece.length
+            repair(part)
           } else {
-            const error = firstError(exit)
-            if (error === undefined) {
-              // Interrupted before the append ran.
-            } else if (error.reason._tag === "TooLarge") {
-              next = { _tag: "Roll" }
-            } else if (error.retry === "retry") {
-              part.retries++
-              next = part.retries >= appendRetryLimit
-                ? { _tag: "Repair" }
-                : {
-                  _tag: "Retry",
-                  wait: error.retryAfter === undefined ? interval : Duration.toMillis(error.retryAfter)
-                }
-            } else if (error.retry === "uncertain") {
-              part.uncertain = part.sent + piece.length
-              next = { _tag: "Repair" }
-            } else {
-              failChat(error)
-              next = { _tag: "StopAndFail" }
-            }
+            failChat(error)
+            part.closing = { end: "done", onStop: () => {} }
           }
         }
-        return Effect.flatMap(
-          write(native!.append(thread, part.posted!.id, markdown, { flush: final || roll }), commit, true),
-          (exit): Effect.Effect<void, never, R2> => {
-            switch (next._tag) {
-              case "None":
-                return Effect.void
-              case "Roll":
-                // A TooLarge forces a rollover; the next part starts with the chunk.
-                return rollNative(part, part.sent, Exit.isSuccess(exit) && !roll)
-              case "Repair":
-                return repair(part)
-              case "StopAndFail":
-                return Effect.asVoid(stopStream(part, "done"))
-              case "Retry": {
-                const wait = next.wait
-                return Effect.flatMap(now, (time) => Effect.sync(() => void (retryAt = time + wait)))
-              }
-            }
-          }
+        return Effect.asVoid(
+          send(
+            native!.append(thread, part.posted!.id, markdown, { flush: final || roll }),
+            (exit, time) => Effect.sync(() => commit(exit, time))
+          )
         )
-      })
-
-    /**
-     * Stops the stream and carries on by post-then-edit: the next edit writes
-     * the part's whole known text, the chunk that failed included.
-     */
-    const repair = (part: Current): Effect.Effect<void, never, R2> =>
-      Effect.flatMap(stopStream(part, "rotating"), (stopped) => {
-        part.attempted = -1
-        if (!stopped) return Effect.void
-        // A user had clicked stop: settle what was sent, then end the reply.
-        return Effect.map(writeEdit(Math.max(part.uncertain, part.sent), false, false), () => {
-          if (!isRunning()) return
-          finishPart(part.confirmed)
-          done(true)
-        })
       })
 
     const stepNative = (final: boolean): Effect.Effect<void, never, R2> =>
@@ -911,6 +950,7 @@ const reply = <E, R, R2>(options: ReplyOptions<E, R, R2>): Effect.Effect<Result,
               return done(false)
             }
             if (fallback && isFileRefusal(exit)) return
+            if (unanswered(exit)) overflowUncertain = true
             const error = firstError(exit)
             if (error === undefined) return
             overflowUncertain = error.retry === "uncertain"
@@ -926,8 +966,11 @@ const reply = <E, R, R2>(options: ReplyOptions<E, R, R2>): Effect.Effect<Result,
 
     // --- the loop --------------------------------------------------------------
 
+    /** Whether there is a write to make. A stop is sent even after the reply failed. */
+    const active = () => isRunning() || current.closing !== undefined
+
     const hasWork = (): boolean => {
-      if (!isRunning() || upstream !== undefined) return true
+      if (!isRunning() || upstream !== undefined || current.closing !== undefined) return true
       if (overflowStart !== undefined) {
         return !isBlank(input.slice(overflowStart)) && (overflow === "fail" || overflowBytes > limits.uploadBytes)
       }
@@ -952,14 +995,17 @@ const reply = <E, R, R2>(options: ReplyOptions<E, R, R2>): Effect.Effect<Result,
     })
 
     const step = (final: boolean): Effect.Effect<void, never, R2> => {
+      const closing = current.closing
+      if (closing !== undefined) return sendStop(current, closing)
       if (overflowStart !== undefined) return stepOverflow(final)
       return current.native ? stepNative(final) : stepEdit(final)
     }
 
     const loop: Effect.Effect<void, never, R2> = Effect.suspend(() =>
-      isRunning() ?
+      active() ?
         Effect.flatMap(awaitWork, () => {
-          if (!isRunning() || (upstream !== undefined && Exit.isFailure(upstream))) return Effect.void
+          if (!active()) return Effect.void
+          if (current.closing === undefined && upstream !== undefined && Exit.isFailure(upstream)) return Effect.void
           // The write takes whatever arrived while it waited for the floor.
           return Effect.andThen(pace, Effect.suspend(() => step(upstream !== undefined))).pipe(Effect.andThen(loop))
         }) :
@@ -970,10 +1016,14 @@ const reply = <E, R, R2>(options: ReplyOptions<E, R, R2>): Effect.Effect<Result,
     const finish: Effect.Effect<void, never, R2> = Effect.suspend(() => {
       finishing = true
       const drain: Effect.Effect<void, never, R2> = Effect.suspend(() =>
-        isRunning() ? Effect.andThen(step(true), drain) : Effect.void
+        active() ? Effect.andThen(step(true), drain) : Effect.void
       )
-      // Interruptible, so the timeout can cut it short when it runs in the interrupt finalizer.
-      return Effect.asVoid(Effect.timeoutOption(Effect.interruptible(drain), finishTimeout))
+      // A write in flight commits first. Interruptible, so the timeout can cut it short in the interrupt finalizer.
+      const awaitInflight = Effect.suspend(() => inflight === undefined ? Effect.void : Fiber.await(inflight))
+      return Effect.timeoutOption(Effect.interruptible(Effect.andThen(awaitInflight, drain)), finishTimeout).pipe(
+        Effect.andThen(Effect.suspend(() => inflight === undefined ? Effect.void : Fiber.interrupt(inflight))),
+        Effect.asVoid
+      )
     })
 
     const toError = (cause: FailureCause<E>): ChatMarkdownError<E> => {
@@ -1052,11 +1102,13 @@ const reply = <E, R, R2>(options: ReplyOptions<E, R, R2>): Effect.Effect<Result,
  * - `files` go with the last part, or with the overflow file when there is
  *   one. Blank text after the last cut stays with the last part.
  * - With `unattachedNote`, a post with files that fails `Forbidden`,
- *   `TooLarge`, `InvalidRequest` or `Unsupported` for `files` is tried
- *   once more without them, ending in the note, or followed by the note when
- *   it does not fit. No reason says whether the files or the text were
- *   refused: a refused text fails again, and that failure fails the call.
- *   Without `unattachedNote` the first failure fails the call.
+ *   `InvalidRequest`, `Unsupported` for `files`, or `TooLarge` with
+ *   `subject: "files"` is tried once more without them, ending in the note,
+ *   or followed by the note when it does not fit. Any failure of that post
+ *   fails the call. Without `unattachedNote` the first failure fails the
+ *   call.
+ * - A `TooLarge` that does not name the files fails the call, even for text
+ *   that measured as fitting.
  * - An empty input posts nothing and succeeds with no parts, unless there are
  *   files, which then go out in a message of their own.
  *
@@ -1114,13 +1166,14 @@ export const post = <R = never>(
  *   Three in a row, or one `uncertain` failure, stop the stream, edit the part
  *   to its whole known text, the failed chunk included, and carry on by
  *   post-then-edit. `TooLarge` starts the next part with the chunk.
- * - An append in flight finishes before an interrupt takes effect, so the
- *   finalizer never sends its text twice.
  * - `Result.stopped` is true when a user clicked stop on the reply. The
  *   upstream is then interrupted.
  * - When the upstream fails or the call is interrupted, what was received is
  *   written out, with an open code fence closed, within a short timeout, and
- *   left posted.
+ *   left posted. A post, start or append in flight is not cut off by the
+ *   interrupt, since sending it again could repeat text: the finalizer waits
+ *   for it, then sends what follows, a stop cut off by the interrupt
+ *   included. Only the timeout cuts a write off.
  *
  * **Gotchas**
  *
