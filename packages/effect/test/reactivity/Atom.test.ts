@@ -296,6 +296,10 @@ describe("Atom", { concurrent: false }, () => {
         expect(location.pathname + location.search).toEqual(destination)
         expect(r.get(q)).toEqual("old")
         expect(r.get(page)).toEqual(Option.some(1))
+        r.set(page, Option.some(3))
+        await vitest.advanceTimersByTimeAsync(500)
+        expect(urls).toEqual([destination.replace("page=1", "page=3")])
+        expect(r.get(q)).toEqual("old")
       } finally {
         r.dispose()
         vitest.unstubAllGlobals()
