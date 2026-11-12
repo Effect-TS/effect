@@ -1311,8 +1311,14 @@ const build = (options: Options): Effect.Effect<Context.Context<Router>, never, 
         // A sink can't change what the Router does.
       }
     }
-    /** Replaces the current entry, reporting a throw instead of failing the navigation. */
+    /** The latest same-page replace made while `cooling`, written when it ends. */
+    let queued: { readonly url: string; readonly state: unknown } | undefined
+    /**
+     * Replaces the current entry, which supersedes a queued replace. A throw is reported instead of
+     * failing the navigation.
+     */
     const replaceNow = (url: string, state: unknown) => {
+      queued = undefined
       try {
         history.replace(url, state)
       } catch (error) {
@@ -1329,16 +1335,11 @@ const build = (options: Options): Effect.Effect<Context.Context<Router>, never, 
     // --- throttled replaces --------------------------------------------------
     const context = yield* Effect.context<never>()
     const interval = options.throttle === undefined ? undefined : Duration.fromInputUnsafe(options.throttle.interval)
-    /** The latest same-page replace made while `cooling`, written when it ends. */
-    let queued: { readonly url: string; readonly state: unknown } | undefined
     /** The interval after a throttled write, on the Effect `Clock`. */
     let cooling: Fiber.Fiber<void> | undefined
     /** Writes the queued replace now, before the Router leaves or rewrites the entry. */
     const flush = () => {
-      const write = queued
-      if (write === undefined) return
-      queued = undefined
-      replaceNow(write.url, write.state)
+      if (queued !== undefined) replaceNow(queued.url, queued.state)
     }
     const cool = (interval: Duration.Duration) => {
       cooling = Effect.runForkWith(context)(Effect.andThen(
@@ -1471,10 +1472,7 @@ const build = (options: Options): Effect.Effect<Context.Context<Router>, never, 
         snapshots.delete(index)
         // A quiet replace stays on the page, so its path is the current one.
         if (mode.quiet) replaceQuiet(href, writeState({ index }))
-        else {
-          queued = undefined
-          replaceNow(href, writeState({ index }))
-        }
+        else replaceNow(href, writeState({ index }))
         set({ ...location, action: "replace", seq }, mode)
       } else {
         leave()
@@ -1506,10 +1504,8 @@ const build = (options: Options): Effect.Effect<Context.Context<Router>, never, 
       ) {
         if (hash === current.hash) return "navigated"
         // A change to the hash alone: a new entry, and no route change.
-        if (replace) {
-          queued = undefined
-          replaceNow(current.url + hash, writeState({ index }))
-        } else {
+        if (replace) replaceNow(current.url + hash, writeState({ index }))
+        else {
           flush()
           leave()
           index++
