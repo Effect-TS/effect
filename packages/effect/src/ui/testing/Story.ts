@@ -201,6 +201,9 @@ export interface LoaderInfo {
 
 /**
  * One key of a `loadMany` loader for `loadedMany`: its args and a Success
+// The read of a loader entry, for the steps that name a loader.
+type ReadOf<D> = D extends Component.Load<infer R> ? R : D extends Component.LoadMany<infer R> ? R : never
+
  * value or a typed failure.
  *
  * @stability experimental
@@ -221,19 +224,6 @@ export type KeyedLoad<R extends Loader.Read.Any> =
   }
 
 /**
- * Loaded results for `given`: per loader, the Success value its slot
- * starts with, or the entries of a `loadMany` loader.
- *
- * @stability experimental
- * @category models
- * @since 4.1.5
- */
-export type GivenLoaded<L> = {
-  readonly [K in keyof L]?: L[K] extends Component.LoadMany<infer R> ? ReadonlyArray<KeyedLoad<R>>
-    : Loader.Read.Success<Component.ReadOf<L[K]>>
-}
-
-/**
  * A pending Command's definition, or an issued Command to also match the
  * arguments.
  *
@@ -241,7 +231,10 @@ export type GivenLoaded<L> = {
  * @category models
  * @since 4.1.5
  */
-export type Target = Command.Definition.Any | Command.Effectful<any, any, never> | Command.Streaming<any, any, never>
+export type Target =
+  | Command.Definition.Any
+  | Command.Issued<any, any, never, "Effect">
+  | Command.Issued<any, any, never, "Stream">
 
 /**
  * A stream Command's definition, or an issued stream Command: what `next` and
@@ -302,7 +295,7 @@ export interface Steps<C extends AnyComponent> extends Pipeable {
     Component.Model<C>,
     Component.Message<C>,
     Component.Events<C>,
-    Component.Loaded<Component.Loaders<C>>
+    { readonly [K in keyof Component.Loaders<C>]: Component.LoadedOf<Component.Loaders<C>[K]> }
   >
 
   /**
@@ -327,7 +320,11 @@ export interface Steps<C extends AnyComponent> extends Pipeable {
    */
   given(
     model: Component.Model<C> | ((model: Component.Model<C>) => Component.Model<C>),
-    loaded?: GivenLoaded<Component.Loaders<C>>
+    loaded?: {
+      readonly [K in keyof Component.Loaders<C>]?: Component.Loaders<C>[K] extends Component.LoadMany<infer R>
+        ? ReadonlyArray<KeyedLoad<R>>
+        : Loader.Read.Success<ReadOf<Component.Loaders<C>[K]>>
+    }
   ): this
   /**
    * Changes the props. A props change never reaches `update`: it re-renders the
@@ -413,7 +410,7 @@ export interface Steps<C extends AnyComponent> extends Pipeable {
    */
   loaded<N extends Component.SingleNames<Component.Loaders<C>>>(
     name: N,
-    value: Loader.Read.Success<Component.ReadOf<Component.Loaders<C>[N]>>,
+    value: Loader.Read.Success<ReadOf<Component.Loaders<C>[N]>>,
     options?: { readonly waiting?: boolean | undefined; readonly patched?: boolean | undefined }
   ): this
   /**
@@ -422,8 +419,8 @@ export interface Steps<C extends AnyComponent> extends Pipeable {
    */
   loaded<N extends Component.KeyedNames<Component.Loaders<C>>>(
     name: N,
-    args: Loader.Read.Args<Component.ReadOf<Component.Loaders<C>[N]>>,
-    value: Loader.Read.Success<Component.ReadOf<Component.Loaders<C>[N]>>,
+    args: Loader.Read.Args<ReadOf<Component.Loaders<C>[N]>>,
+    value: Loader.Read.Success<ReadOf<Component.Loaders<C>[N]>>,
     options?: { readonly waiting?: boolean | undefined; readonly patched?: boolean | undefined }
   ): this
   /**
@@ -434,14 +431,14 @@ export interface Steps<C extends AnyComponent> extends Pipeable {
    */
   loadFailed<N extends Component.SingleNames<Component.Loaders<C>>>(
     name: N,
-    error: Loader.Read.Error<Component.ReadOf<Component.Loaders<C>[N]>>,
+    error: Loader.Read.Error<ReadOf<Component.Loaders<C>[N]>>,
     options?: { readonly waiting?: boolean | undefined }
   ): this
   /** Loads one key of a `loadMany` loader with a typed failure, as `loadedMany` does with one entry. */
   loadFailed<N extends Component.KeyedNames<Component.Loaders<C>>>(
     name: N,
-    args: Loader.Read.Args<Component.ReadOf<Component.Loaders<C>[N]>>,
-    error: Loader.Read.Error<Component.ReadOf<Component.Loaders<C>[N]>>,
+    args: Loader.Read.Args<ReadOf<Component.Loaders<C>[N]>>,
+    error: Loader.Read.Error<ReadOf<Component.Loaders<C>[N]>>,
     options?: { readonly waiting?: boolean | undefined }
   ): this
   /**
@@ -451,7 +448,7 @@ export interface Steps<C extends AnyComponent> extends Pipeable {
    */
   loadedMore<N extends Component.ListNames<Component.Loaders<C>>>(
     name: N,
-    page: Loader.ListRead.Page<Component.ReadOf<Component.Loaders<C>[N]>>
+    page: Loader.ListRead.Page<ReadOf<Component.Loaders<C>[N]>>
   ): this
   /**
    * Settles a list loader's pending load more with a failure: the pages stay,
@@ -460,7 +457,7 @@ export interface Steps<C extends AnyComponent> extends Pipeable {
    */
   loadMoreFailed<N extends Component.ListNames<Component.Loaders<C>>>(
     name: N,
-    error: Loader.Read.Error<Component.ReadOf<Component.Loaders<C>[N]>>
+    error: Loader.Read.Error<ReadOf<Component.Loaders<C>[N]>>
   ): this
   /**
    * Loads several keys of a `loadMany` loader in one write, as the runtime
@@ -470,7 +467,7 @@ export interface Steps<C extends AnyComponent> extends Pipeable {
    */
   loadedMany<N extends Component.KeyedNames<Component.Loaders<C>>>(
     name: N,
-    entries: ReadonlyArray<KeyedLoad<Component.ReadOf<Component.Loaders<C>[N]>>>
+    entries: ReadonlyArray<KeyedLoad<ReadOf<Component.Loaders<C>[N]>>>
   ): this
 
   /** Checks the Model. `f` throws to fail the test. */
@@ -1926,6 +1923,6 @@ export const fromLog: <C extends AnyComponent>(
   Component.Model<C>,
   Component.Message<C>,
   Component.Events<C>,
-  Component.Loaded<Component.Loaders<C>>,
+  { readonly [K in keyof Component.Loaders<C>]: Component.LoadedOf<Component.Loaders<C>[K]> },
   Component.Props<C>
 > = replayLog as any
