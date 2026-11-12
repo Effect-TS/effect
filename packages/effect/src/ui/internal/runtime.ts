@@ -1188,12 +1188,15 @@ const setup = (
         })
         apply(inst, next, entrySeq, false)
       },
-      fire(event, handler, payload) {
+      fire(event, handler, payload, onMessage) {
         if (inst.closed || inst.waiting) return
         const message = typeof handler === "function"
           ? guard(inst, "domEvent", () => (handler as (payload: unknown) => unknown)(payload), event)
           : handler
-        if (message !== undefined) inst.dispatch(message, { _tag: "DomEvent", name: event })
+        if (message === undefined) return
+        // Before the message is sent, so the host can still act on its event.
+        onMessage?.()
+        inst.dispatch(message, { _tag: "DomEvent", name: event })
       }
     }
     if (recording > 0) {
@@ -2679,7 +2682,7 @@ const setup = (
       case "Element": {
         const node = host.createElement(view.tag)
         for (const name in view.attrs) host.setAttr(node, name, view.attrs[name])
-        host.setEvents(node, view.handlers, inst.fire)
+        host.setEvents(node, view.handlers, inst.fire, view.eventOptions)
         const children = view.children.map((child) => create(inst, child, env))
         place(node, children, undefined)
         // Properties go after the children, so a `select`'s `value` has its options to match.
@@ -2847,7 +2850,7 @@ const setup = (
         for (const name in view.attrs) {
           if (hydration!.getAttr(node, name) !== view.attrs[name]) host.setAttr(node, name, view.attrs[name])
         }
-        host.setEvents(node, view.handlers, inst.fire)
+        host.setEvents(node, view.handlers, inst.fire, view.eventOptions)
         if (plans === undefined) { for (const child of childNodes(node)) host.remove(child) }
         const children = plans === undefined
           ? view.children.map((child) => create(inst, child, env))
@@ -2964,7 +2967,9 @@ const setup = (
         for (const name in element.attrs) {
           if (prev.attrs[name] !== element.attrs[name]) host.setAttr(rendered.node, name, element.attrs[name])
         }
-        if (element.handlers !== prev.handlers) host.setEvents(rendered.node, element.handlers, inst.fire)
+        if (element.handlers !== prev.handlers || element.eventOptions !== prev.eventOptions) {
+          host.setEvents(rendered.node, element.handlers, inst.fire, element.eventOptions)
+        }
         const children = patchList(inst, rendered.node, rendered.children, element.children, undefined, env)
         patchProps(rendered.node, prev.props, element.props)
         // A mount belongs to the element, not to one view run: it keeps running across patches.

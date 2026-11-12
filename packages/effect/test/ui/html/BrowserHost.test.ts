@@ -497,6 +497,47 @@ describe("BrowserHost", { concurrent: false }, () => {
         expect(submitted(outside.querySelector("form")!)).toBe(false)
       }).pipe(Effect.scoped))
 
+    it.effect("preventDefault cancels the default only when the handler sends, before the message is sent", () =>
+      Effect.gen(function*() {
+        let event: Event | undefined
+        const seen: Array<string> = []
+        const Composer = Component.make({
+          name: "Composer",
+          model: Schema.Number,
+          message: Schema.Literals(["Send", "Menu"]),
+          elements: Html,
+          init: () => 0,
+          update: (count, message) => {
+            seen.push(`${message} prevented=${event?.defaultPrevented}`)
+            return count + 1
+          },
+          view: (_, h) =>
+            h.div(
+              h.textarea().attr("aria-label", "Message").onKeyDown(
+                ({ composing, key, shift }) => key === "Enter" && !shift && !composing ? "Send" : undefined,
+                { preventDefault: true }
+              )
+            ).on("contextmenu", "Menu", { preventDefault: true })
+        })
+        const app = yield* container
+        yield* BrowserHost.mountEffect(Composer, {}, app)
+        const field = HtmlQuery.getByRole(app, "textbox", { name: "Message" })
+        const fire = (next: Event) => {
+          event = next
+          field.dispatchEvent(next)
+          return next.defaultPrevented
+        }
+        const key = (init: KeyboardEventInit) =>
+          fire(new KeyboardEvent("keydown", { bubbles: true, cancelable: true, ...init }))
+        expect(key({ key: "Enter" })).toBe(true)
+        expect(key({ key: "Enter", shiftKey: true })).toBe(false)
+        // The Enter that ends an IME composition is the input method's.
+        expect(key({ key: "Enter", isComposing: true })).toBe(false)
+        expect(fire(new MouseEvent("contextmenu", { bubbles: true, cancelable: true }))).toBe(true)
+        // `update` ran after the default was cancelled.
+        expect(seen).toEqual(["Send prevented=true", "Menu prevented=true"])
+      }).pipe(Effect.scoped))
+
     it.effect("fields named like Object.prototype members are kept", () =>
       Effect.gen(function*() {
         const seen: Array<Html.SubmitPayload> = []

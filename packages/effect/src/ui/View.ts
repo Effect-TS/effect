@@ -77,13 +77,37 @@ export interface Text {
 export type Handler<Msg, Payload> = Msg | ((payload: Payload) => Msg | undefined)
 
 /**
+ * How a host treats one event of an element, set with the handler by `on`.
+ *
+ * **Details**
+ *
+ * With `preventDefault`, the host cancels the event's default action when the
+ * handler produces a message, after the handler runs and before the message
+ * is sent. A handler that returns `undefined` leaves the event alone, so one
+ * handler decides per event, such as Enter but not Shift+Enter. A message
+ * value always prevents. A host whose events have no default ignores it.
+ *
+ * Nothing stops an event's propagation. A host gives each event to the
+ * innermost element with a handler for it, and only that one, even when the
+ * handler returns `undefined`.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.1.5
+ */
+export interface EventOptions {
+  readonly preventDefault?: boolean | undefined
+}
+
+/**
  * An element node, as data.
  *
  * **Details**
  *
  * `attrs` are strings set as attributes. `props` are typed values the host
  * decides the meaning of. `handlers` map an event name to its handler, so
- * re-rendering never touches listeners. `key` keeps the element's node when
+ * re-rendering never touches listeners, and `eventOptions` holds the
+ * `EventOptions` set with a handler. `key` keeps the element's node when
  * its siblings move; unkeyed elements match by position. `refKey` names the
  * element for ref Commands, and `mount` is the work started by `onMount`.
  *
@@ -98,6 +122,7 @@ export interface Element<out Msg, out R = never> {
   readonly attrs: Readonly<Record<string, string>>
   readonly props: Readonly<Record<string, unknown>>
   readonly handlers: Readonly<Record<string, Handler<Msg, any>>>
+  readonly eventOptions: Readonly<Record<string, EventOptions>>
   readonly refKey: string | undefined
   readonly mount: Mount<Msg> | undefined
   readonly children: ReadonlyArray<Node<Msg, R>>
@@ -310,6 +335,12 @@ export class ElementBuilder<
    */
   readonly handlers: Readonly<Record<string, Handler<Msg, any>>> = {}
   /**
+   * The options set with `on`, by event name.
+   *
+   * @since 4.1.5
+   */
+  readonly eventOptions: Readonly<Record<string, EventOptions>> = {}
+  /**
    * The ref set with `ref`, if any.
    *
    * @since 4.1.5
@@ -356,17 +387,28 @@ export class ElementBuilder<
    * @since 4.1.5
    */
   protected with(
-    patch: Partial<Pick<Element<Msg, R>, "elementKey" | "attrs" | "props" | "handlers" | "refKey" | "mount">>
+    patch: Partial<
+      Pick<Element<Msg, R>, "elementKey" | "attrs" | "props" | "handlers" | "eventOptions" | "refKey" | "mount">
+    >
   ): this {
     return Object.assign(Object.create(Object.getPrototypeOf(this)), this, patch)
   }
   /**
    * Sends a message when `event` fires: a value, or a function of the payload.
+   * `options` sets how the host treats the event, such as `preventDefault`.
+   * Setting `event` again replaces its handler and its options.
    *
    * @since 4.1.5
    */
-  on<K extends keyof Handlers & string>(event: K, handler: Handler<Msg, Handlers[K]>): this {
-    return this.with({ handlers: { ...this.handlers, [event]: handler } })
+  on<K extends keyof Handlers & string>(
+    event: K,
+    handler: Handler<Msg, Handlers[K]>,
+    options?: EventOptions | undefined
+  ): this {
+    const handlers = { ...this.handlers, [event]: handler }
+    if (options === undefined && !Object.hasOwn(this.eventOptions, event)) return this.with({ handlers })
+    const { [event]: _, ...rest } = this.eventOptions
+    return this.with({ handlers, eventOptions: options === undefined ? rest : { ...rest, [event]: options } })
   }
   /**
    * Keeps this element's node when its siblings move. Unique among siblings.

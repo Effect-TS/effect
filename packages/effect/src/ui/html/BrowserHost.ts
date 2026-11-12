@@ -9,6 +9,16 @@
  * event, never the event itself. A form the app renders never submits
  * natively, whether or not it has a `submit` handler.
  *
+ * A handler set with `{ preventDefault: true }` cancels its event's default
+ * when it produces a message, before the message is sent, and leaves the
+ * event alone when it returns `undefined`. Nothing else is cancelled, and the
+ * host never stops an event's propagation: the delegated listeners run on the
+ * document in the capture phase, so stopping it there would hide the event
+ * from the target and from every other listener. A cancelled click on a
+ * routed link isn't followed by `BrowserRouter`. `wheel`, `touchstart` and
+ * `touchmove` aren't in the vocabulary, since browsers make document listeners
+ * for them passive.
+ *
  * `value`, `checked`, `selected` and `open` are controlled. The host sets them
  * after the element's children exist, skips a no-op so the caret doesn't jump,
  * and puts the Model's value back after the user changes it and the Model
@@ -112,6 +122,7 @@ const emptyValue = (name: string): unknown => name === "value" ? "" : false
 interface Bound {
   readonly handlers: Renderer.Handlers
   readonly dispatch: Renderer.Dispatch
+  readonly options: Renderer.EventOptions
 }
 
 const modifiers = (event: Event) => {
@@ -152,8 +163,12 @@ const payloadOf = (name: string, event: Event, target: EventTarget | null, eleme
       return { button: e.button ?? 0, x: e.clientX ?? 0, y: e.clientY ?? 0, ...modifiers(event) }
     }
     case "keydown":
-    case "keyup":
-      return { key: (event as KeyboardEvent).key ?? "", ...modifiers(event) }
+    case "keyup": {
+      const e = event as KeyboardEvent
+      // Safari reports the key that ends a composition with `isComposing` false and `keyCode` 229.
+      const composing = e.isComposing === true || (e as { readonly keyCode?: number }).keyCode === 229
+      return { key: e.key ?? "", ...modifiers(event), composing }
+    }
     case "input":
     case "change": {
       const source = (target !== null && "value" in (target as object) ? target : element) as HTMLInputElement
@@ -293,7 +308,12 @@ export const makeHost = (
           event.preventDefault()
           submit.ownedUnhandled.delete(event)
         }
-        entry.dispatch(name, handler, payloadOf(name, event, event.target, node as globalThis.Element))
+        entry.dispatch(
+          name,
+          handler,
+          payloadOf(name, event, event.target, node as globalThis.Element),
+          entry.options[name]?.preventDefault === true ? () => event.preventDefault() : undefined
+        )
         break
       }
       if (own) break
@@ -354,8 +374,8 @@ export const makeHost = (
     },
     parentOf: (node) => node.parentNode ?? undefined,
     nextOf: (node) => node.nextSibling ?? undefined,
-    setEvents(node, handlers, dispatch) {
-      bound.set(node, { handlers, dispatch })
+    setEvents(node, handlers, dispatch, options) {
+      bound.set(node, { handlers, dispatch, options })
       for (const name in handlers) listen(name)
     },
     elements: [Html.name],

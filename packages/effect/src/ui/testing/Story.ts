@@ -143,6 +143,19 @@ export interface Story<Props, Model, Msg, Events> {
   /** The list fields with a load more `update` issued and no step has settled yet. */
   readonly loadingMore: ReadonlyArray<string>
   /**
+   * Whether the `click` or `fire` step that made this record cancelled its
+   * event's default, as the browser host would: its handler was set with
+   * `preventDefault` and produced a message, or the event is `submit`, which
+   * is always cancelled, whatever the handler returns and with no handler at
+   * all.
+   *
+   * Every other step that makes a record resets it to `false`, and so does
+   * an event whose default isn't cancelled. The checks, `model`, `view`,
+   * `check`, `expectExact` and the others, don't make a record, so they read
+   * it without resetting it.
+   */
+  readonly defaultPrevented: boolean
+  /**
    * The view of the current Model and props, rendered once the step that
    * changed them has sent its keyed prunes, so a defect in `view` fails that
    * step.
@@ -281,13 +294,16 @@ export interface Steps<C extends AnyComponent> extends Pipeable {
    * Clicks the one element `target` matches: the innermost element with a
    * `click` handler, that element or an ancestor, sends its message. A string
    * means `Query.text(target)`. Throws when nothing or several elements match,
-   * or when nothing handles the click.
+   * or when nothing handles the click. `defaultPrevented` tells whether the
+   * default was cancelled.
    */
   click(target: string | Query.Locator): this
   /**
    * Sends `event` with `payload`, `{}` by default, to the one element
    * `locator` matches: the innermost element with a handler for it, that
-   * element or an ancestor, sends its message.
+   * element or an ancestor, sends its message. Throws when nothing handles
+   * it, except for `submit`, which the browser host cancels with or without a
+   * handler. `defaultPrevented` tells whether the default was cancelled.
    */
   fire(locator: Query.Locator, event: string, payload?: unknown): this
   /** Sends the message the parent's `onEmit` maps `events` from the child with `key` to, if any. */
@@ -450,7 +466,15 @@ export declare namespace Steps {
 
 type Fields<Props, Model, Msg, Events> = Pick<
   Story<Props, Model, Msg, Events>,
-  "component" | "props" | "model" | "pending" | "emitted" | "interrupted" | "dropped" | "loadingMore"
+  | "component"
+  | "props"
+  | "model"
+  | "pending"
+  | "emitted"
+  | "interrupted"
+  | "dropped"
+  | "loadingMore"
+  | "defaultPrevented"
 >
 
 /**
@@ -474,6 +498,7 @@ const record = <Props, Model, Msg, Events>(
     interrupted: fields.interrupted,
     dropped: fields.dropped,
     loadingMore: fields.loadingMore,
+    defaultPrevented: fields.defaultPrevented,
     view,
     subscriptions: () =>
       (fields.component.subscriptions?.(fields.model, fields.props) ?? [])
@@ -511,6 +536,8 @@ const update = <Props, Model, Msg, Events>(
     interrupted: story.interrupted,
     dropped: story.dropped,
     loadingMore: story.loadingMore,
+    // Only a `click` or `fire` step sets it, last, once the step has settled.
+    defaultPrevented: false,
     ...patch
   }
   // A defect in `view` fails the step that changed the Model, the props or what's pending.
@@ -1091,14 +1118,19 @@ const pathTo = (root: View.Node<any, any>, node: Query.Node): Array<View.Node<an
   return undefined
 }
 
-/** Sends `event` to the one element `locator` matches, bubbling to the innermost element that handles it. */
+/**
+ * Sends `event` to the one element `locator` matches, bubbling to the
+ * innermost element that handles it, and tells whether its default was
+ * cancelled. Every element in a story is the app's, so a `submit` is always
+ * cancelled, and needs no handler.
+ */
 const fireAt = <Props, Model, Msg, Events>(
   story: Story<Props, Model, Msg, Events>,
   locator: Query.Locator,
   event: string,
   payload: unknown,
   step: string
-): Story<Props, Model, Msg, Events> => {
+): { readonly story: Story<Props, Model, Msg, Events>; readonly prevented: boolean } => {
   const found = story.all(locator)
   if (found.length !== 1) {
     throw new Error(
@@ -1111,8 +1143,15 @@ const fireAt = <Props, Model, Msg, Events>(
   const handler = pathTo(view, found[0])?.find((node): node is View.Element<Msg, any> =>
     node._tag === "Element" && Object.hasOwn(node.handlers, event)
   )
-  if (handler === undefined) throw new Error(`Story.${step}: nothing handles "${event}" at ${locator.description}`)
-  return dispatch(story, handle(handler.handlers[event], payload))
+  const submit = event === "submit"
+  if (handler === undefined) {
+    if (submit) return { story, prevented: true }
+    throw new Error(`Story.${step}: nothing handles "${event}" at ${locator.description}`)
+  }
+  // Run once: the message decides whether the default is cancelled, then it's sent.
+  const message = handle(handler.handlers[event], payload)
+  const prevented = submit || (message !== undefined && handler.eventOptions[event]?.preventDefault === true)
+  return { story: dispatch(story, message), prevented }
 }
 
 // Pending Commands are stored with their Source erased; `findRunning` matched `target`, so
@@ -1138,8 +1177,10 @@ class StepsImpl implements Steps<AnyComponent> {
   pipe() {
     return pipeArguments(this, arguments)
   }
-  private step(next: Story<any, any, any, any>): this {
-    this.current = next === this.current ? next : pruneKeyed(next, this.sentFor)
+  private step(next: Story<any, any, any, any>, defaultPrevented = false): this {
+    const settled = next === this.current ? next : pruneKeyed(next, this.sentFor)
+    // Set on the settled record, so a step that changed nothing still resets it.
+    this.current = settled.defaultPrevented === defaultPrevented ? settled : update(settled, { defaultPrevented })
     // Rendered once the step has settled, so a defect in `view` fails it.
     this.current.view()
     return this
@@ -1162,10 +1203,12 @@ class StepsImpl implements Steps<AnyComponent> {
   }
   click(target: string | Query.Locator): this {
     const locator = typeof target === "string" ? Query.text(target) : target
-    return this.step(fireAt(this.current, locator, "click", {}, "click"))
+    const { prevented, story } = fireAt(this.current, locator, "click", {}, "click")
+    return this.step(story, prevented)
   }
   fire(locator: Query.Locator, event: string, payload: unknown = {}): this {
-    return this.step(fireAt(this.current, locator, event, payload, "fire"))
+    const { prevented, story } = fireAt(this.current, locator, event, payload, "fire")
+    return this.step(story, prevented)
   }
   childEmit(key: string, events: unknown): this {
     return this.step(dispatch(this.current, findChild(this.current.view(), key, "childEmit").onEmit(events)))
@@ -1361,7 +1404,8 @@ export const start = <C extends AnyComponent>(component: C, props: Component.Pro
     emitted: [],
     interrupted: [],
     dropped: [],
-    loadingMore: []
+    loadingMore: [],
+    defaultPrevented: false
   }, () => component.view(first.model, props, runningOf([])))
   return new StepsImpl(apply(empty, first)) as Steps<C>
 }
