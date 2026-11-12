@@ -1,15 +1,18 @@
 /**
  * @title Rendering on the server
  *
- * Serve the routed app's pages with `HtmlServer.layerHttp`, next to the JSON
- * API. This is the server's entry module. It serves the same
- * `fixtures/App.ts` the browser mounts, and the JSON API in
- * `fixtures/server/NotesApi.ts`.
+ * Serve the routed app's pages with `layerHttp` from
+ * `effect/ui/html/HtmlServerHttp`, next to the JSON API. This is the
+ * server's entry module. It serves the same `fixtures/App.ts` the browser
+ * mounts, and the JSON API in `fixtures/server/NotesApi.ts`.
  */
 import { NodeHttpServer, NodeRuntime } from "@effect/platform-node"
 import { Effect, Layer } from "effect"
 import { FetchHttpClient, HttpClient, HttpClientRequest, HttpRouter } from "effect/http"
 import { HtmlServer } from "effect/ui/html"
+// `layerHttp` has its own entry point, outside `effect/ui/html`, so a
+// browser bundle never takes in the HTTP server modules.
+import { layerHttp } from "effect/ui/html/HtmlServerHttp"
 // The server renders views too, so it registers the HTML elements as well.
 // The import reads no DOM global.
 // oxlint-disable-next-line no-unassigned-import
@@ -41,7 +44,7 @@ const ApiClient = Layer.effect(
 // and fetches loader reads once per key in a per-request cache. It runs no
 // Command, and no Subscription other than a loader watch, so data the
 // server renders has to come from a loader read.
-const Pages = HtmlServer.layerHttp(App, {
+const Pages = layerHttp(App, {
   routes: AppRoute,
   // `budget` is one deadline for Layers and fetches, 500 ms by default. Set
   // it to what the page's data needs. Anything that misses it renders its
