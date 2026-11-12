@@ -202,27 +202,29 @@ describe("Xml", () => {
         })
       }))
 
-    it.effect("rejects encoding declarations that the bytes contradict", () =>
+    it.effect("distinguishes contradictory and unsupported encoding declarations", () =>
       Effect.gen(function*() {
         for (
-          const document of [
-            "<?xml version=\"1.0\" encoding=\"UTF-16\"?><a/>",
-            "<?xml version=\"1.0\" encoding=\"utf-32le\"?><a/>",
-            "<?xml version=\"1.0\" encoding=\"ISO-10646-UCS-2\"?><a/>",
-            BOM + "<?xml version=\"1.0\" encoding=\"ISO-8859-1\"?><a/>"
-          ]
+          const [prefix, encoding, kind] of [
+            ["", "UTF-16", "Syntax"],
+            ["", "utf-32le", "Syntax"],
+            ["", "ISO-10646-UCS-2", "Syntax"],
+            [BOM, "ISO-8859-1", "Syntax"],
+            [BOM, "US-ASCII", "Syntax"],
+            [BOM, "UTF8", "Unsupported"],
+            [BOM, "unicode-1-1-utf-8", "Unsupported"],
+            [BOM, "unknown", "Unsupported"]
+          ] as const
         ) {
+          const document = prefix + `<?xml version="1.0" encoding="${encoding}"?><a/>`
           for (const chunks of byteSplits(textEncoder.encode(document))) {
-            assert.deepStrictEqual(yield* failure(decodeBytes(chunks)), ["Syntax", 1, 1])
+            assert.deepStrictEqual(yield* failure(decodeBytes(chunks)), [kind, 1, 1])
           }
-          // Text input ignores the declared encoding
-          assert.deepStrictEqual(
-            (yield* decodeString([document])).map((event) => event._tag),
-            ["Declaration", "StartElement", "EndElement"]
-          )
         }
-        const utf8 = textEncoder.encode(BOM + "<?xml version=\"1.0\" encoding=\"UTF8\"?><a/>")
-        assert.deepStrictEqual(yield* failure(decodeBytes([utf8])), ["Unsupported", 1, 1])
+        assert.deepStrictEqual(
+          (yield* decodeString([BOM + "<?xml version=\"1.0\" encoding=\"UTF-16\"?><a/>"])).map((event) => event._tag),
+          ["Declaration", "StartElement", "EndElement"]
+        )
       }))
 
     it.effect("rejects UTF-16 byte order marks as unsupported across chunk boundaries", () =>
@@ -241,18 +243,16 @@ describe("Xml", () => {
 
     it.effect("decodes ASCII bytes under a US-ASCII declaration", () =>
       Effect.gen(function*() {
-        for (const prefix of ["", BOM]) {
-          const bytes = textEncoder.encode(
-            prefix + "<?xml version=\"1.0\" encoding=\"US-ASCII\"?><a>ASCII &#233;</a>"
-          )
-          for (const chunks of [[bytes], ...byteSplits(bytes)]) {
-            assert.deepStrictEqual(yield* decodeBytes(chunks), [
-              { _tag: "Declaration", version: "1.0", encoding: "US-ASCII" },
-              start("a"),
-              text("ASCII é"),
-              end("a")
-            ])
-          }
+        const bytes = textEncoder.encode(
+          "<?xml version=\"1.0\" encoding=\"US-ASCII\"?><a>ASCII &#233;</a>"
+        )
+        for (const chunks of [[bytes], ...byteSplits(bytes)]) {
+          assert.deepStrictEqual(yield* decodeBytes(chunks), [
+            { _tag: "Declaration", version: "1.0", encoding: "US-ASCII" },
+            start("a"),
+            text("ASCII é"),
+            end("a")
+          ])
         }
       }))
 

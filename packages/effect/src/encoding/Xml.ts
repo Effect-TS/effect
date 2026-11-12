@@ -385,8 +385,8 @@ export const decodeString = <IE = never, Done = unknown>(options?: DecodeOptions
  *   other than UTF-8 or US-ASCII fails with an `Unsupported` `XmlError`.
  *   Decode such bytes with a `TextDecoder` for that encoding and use `decodeString`.
  * - A declaration the bytes contradict fails with a `Syntax` `XmlError`
- *   instead: one naming UTF-16, UTF-32, UCS-2 or UCS-4, or one after a UTF-8
- *   byte order mark.
+ *   instead: one naming UTF-16, UTF-32, UCS-2 or UCS-4, or US-ASCII or
+ *   ISO-8859-1 after a UTF-8 byte order mark.
  *
  * @see {@link decodeString} for text input and the shared gotchas
  *
@@ -752,16 +752,8 @@ const normalizeAttribute = (s: string): string => s.replace(attributeWhitespace,
 
 const isReservedTarget = (target: string): boolean => target.length === 3 && target.toLowerCase() === "xml"
 
-const isUtf8 = (encoding: string): boolean => {
-  const lower = encoding.toLowerCase()
-  return lower === "utf-8" || lower === "us-ascii"
-}
-
 // 16- and 32-bit Unicode encodings
-const wideEncodingPattern = /^(?:utf-(?:16|32)(?:be|le)?|ucs-[24]|iso-10646-ucs-[24])$/i
-
-// Spellings of UTF-8 that `isUtf8` does not accept
-const utf8AliasPattern = /^(?:cs)?utf-?8$/i
+const wideEncodingPattern = /^(?:utf-(?:16|32)(?:be|le)?|ucs-[24]|iso-10646-ucs-[24])$/
 
 const declarationPattern =
   /^[ \t\r\n]+version[ \t\r\n]*=[ \t\r\n]*(?:"(1\.[0-9]+)"|'(1\.[0-9]+)')(?:[ \t\r\n]+encoding[ \t\r\n]*=[ \t\r\n]*(?:"([A-Za-z][A-Za-z0-9._-]*)"|'([A-Za-z][A-Za-z0-9._-]*)'))?(?:[ \t\r\n]+standalone[ \t\r\n]*=[ \t\r\n]*(?:"(yes|no)"|'(yes|no)'))?[ \t\r\n]*$/
@@ -1527,20 +1519,21 @@ class Parser {
     if (match === null) throw this.syntax("invalid XML declaration", i)
     const encoding = match[3] ?? match[4]
     const standalone = match[5] ?? match[6]
-    if (this.bytes && encoding !== undefined && !isUtf8(encoding)) {
-      // A declaration read as UTF-8 cannot be in a 16- or 32-bit encoding, and
-      // a UTF-8 byte order mark rules out the others
-      if ((this.bom && !utf8AliasPattern.test(encoding)) || wideEncodingPattern.test(encoding)) {
+    if (this.bytes && encoding !== undefined) {
+      const lower = encoding.toLowerCase()
+      if (wideEncodingPattern.test(lower) || (this.bom && (lower === "us-ascii" || lower === "iso-8859-1"))) {
         const evidence = this.bom ? "UTF-8 byte order mark" : "ASCII bytes of the declaration"
         throw this.syntax(`encoding ${encoding} does not match the ${evidence}`, i)
       }
-      throw this.error(
-        "Unsupported",
-        `encoding ${encoding} is not supported for byte input, decode the bytes to text first`,
-        this.base + i
-      )
+      if (lower !== "utf-8" && lower !== "us-ascii") {
+        throw this.error(
+          "Unsupported",
+          `encoding ${encoding} is not supported for byte input, decode the bytes to text first`,
+          this.base + i
+        )
+      }
+      this.ascii = lower === "us-ascii"
     }
-    this.ascii = this.bytes && encoding?.toLowerCase() === "us-ascii"
     const event: { -readonly [K in keyof Declaration]: Declaration[K] } = {
       _tag: "Declaration",
       version: match[1] ?? match[2]
