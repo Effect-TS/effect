@@ -1,7 +1,7 @@
 import { Context, Effect, Layer, Schema, Scope } from "effect"
 import type { KeyValueStore } from "effect/persistence"
 import type { Loader } from "effect/reactivity"
-import { Command, Component, Feature } from "effect/ui"
+import { Command, Component, Feature, type View } from "effect/ui"
 import { describe, expect, it } from "tstyche"
 import {
   Counter,
@@ -210,8 +210,17 @@ describe("Component", () => {
     }) {}
 
     it("accepts an implementation matching the contract and rejects another", () => {
-      expect(Todos.layer(TodoItem)).type.toBe<Layer.Layer<Todos, never, SaveTodo>>()
-      expect(Todos.layer).type.not.toBeCallableWith(Counter)
+      expect(Todos.toLayer(TodoItem)).type.toBe<Layer.Layer<Todos, never, SaveTodo>>()
+      expect(Todos.toLayer).type.not.toBeCallableWith(Counter)
+    })
+
+    it("names the missing fallback for a feature child", () => {
+      const h = null as unknown as View.Helper<never, {}>
+      // @ts-expect-error Overload 2 of 2...Property 'fallback' is missing
+      h.child(Todos, {
+        key: "main",
+        props: { todo: { id: "", title: "", done: false } }
+      })
     })
 
     it("surfaces only the feature service in the parent", () => {

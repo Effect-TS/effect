@@ -939,7 +939,7 @@ export const stub = <Self, Props, Events>(feature: Feature.Service<Self, Props, 
     ]
   })
   return {
-    layer: feature.layer(component as any),
+    layer: feature.toLayer(component as any),
     props: () => seen,
     emit: (events) => {
       for (const listener of listeners) listener(events)
