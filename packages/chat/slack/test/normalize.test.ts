@@ -96,6 +96,52 @@ describe("normalize", () => {
       assert.isFalse(event.message.author.isSelf)
     }))
 
+  it.effect("text never adds a mention the rich_text block lacks", () =>
+    Effect.gen(function*() {
+      const section = (
+        elements: Array<unknown>
+      ) => [{ type: "rich_text", elements: [{ type: "rich_text_section", elements }] }]
+      // Block items: literal U1, real U1, real U2, literal bot.
+      const event = created(SlackChat.normalize(
+        messageEnvelope({
+          ts: "1794509003.000002",
+          user: "U080YLYB277",
+          text: `<@U1AAAA> <@U2BBBB> <@${botUserId}>`,
+          blocks: section([
+            { type: "text", text: "<@U1AAAA>" },
+            { type: "user", user_id: "U1AAAA" },
+            { type: "text", text: " " },
+            { type: "user", user_id: "U2BBBB" },
+            { type: "text", text: ` <@${botUserId}>` }
+          ])
+        }),
+        context
+      ))
+      yield* checkEvent(event, checkOptions)
+      assert.deepStrictEqual(
+        event.message.mentions.map(({ id, isSelf, start }) => ({ id, isSelf, start })),
+        [{ id: "U1AAAA", isSelf: false, start: 0 }, { id: "U2BBBB", isSelf: false, start: 10 }]
+      )
+      // Two real U1 in the block and one token in text: one mention, at the token.
+      const short = created(SlackChat.normalize(
+        messageEnvelope({
+          ts: "1794509003.000003",
+          user: "U080YLYB277",
+          text: `hi <@U1AAAA> <@${botUserId}>`,
+          blocks: section([
+            { type: "user", user_id: "U1AAAA" },
+            { type: "user", user_id: "U1AAAA" },
+            { type: "text", text: ` <@${botUserId}>` }
+          ])
+        }),
+        context
+      ))
+      assert.deepStrictEqual(
+        short.message.mentions.map(({ id, start }) => ({ id, start })),
+        [{ id: "U1AAAA", start: 3 }]
+      )
+    }))
+
   it.effect("a /me line that mentions the bot is a message", () =>
     Effect.gen(function*() {
       const [message] = recordedMessages("me-message").values()

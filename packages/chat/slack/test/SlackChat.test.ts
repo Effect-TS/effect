@@ -75,9 +75,7 @@ describe("post", () => {
         const cases = [
           "a".repeat(12_001),
           // 3,001 `<` are 12,004 once escaped.
-          "<".repeat(3_001),
-          // 1,400 😀 are 1,400 code points but 14,000 with shortcodes.
-          "😀".repeat(1_400)
+          "<".repeat(3_001)
         ]
         for (const markdown of cases) {
           const failure = yield* reason(slack.post(channelThread, { markdown }))
@@ -86,6 +84,26 @@ describe("post", () => {
         assert.strictEqual(fake.calls.length, 0)
         // 12,000 astral letters fit.
         assert.strictEqual(slack.descriptor.measure("𝐀".repeat(12_000)), 12_000)
+      })
+    )
+  })
+
+  it.effect("leaves the emoji count to Slack", () => {
+    const fake = makeFake({
+      "chat.postMessage": [posted("1794509200.000100"), { ok: false, error: "msg_blocks_too_long" }]
+    })
+    return run(
+      fake,
+      Effect.gen(function*() {
+        const slack = yield* adapter
+        // 14,000 if `&lt;` cost 4, 11,000 as Slack counts it.
+        const markdown = "😀".repeat(1_000) + "<".repeat(1_000)
+        assert.isAtMost(slack.descriptor.measure(markdown), slack.descriptor.limits.messageLength)
+        yield* slack.post(channelThread, { markdown })
+        // 1,400 😀 are 14,000 with shortcodes: Slack refuses, nothing is posted.
+        const failure = yield* reason(slack.post(channelThread, { markdown: "😀".repeat(1_400) }))
+        assert.deepStrictEqual(failure, { op: "post", tag: "TooLarge", detail: "msg_blocks_too_long", retry: "denied" })
+        assert.strictEqual(fake.called("chat.postMessage").length, 2)
       })
     )
   })
@@ -142,6 +160,43 @@ describe("post", () => {
         assert.strictEqual(complete.thread_ts, root)
         assert.deepStrictEqual(JSON.parse(complete.files), [{ id: "F1", title: "a.txt" }])
         assert.strictEqual(fake.called("/upload/1").length, 1)
+      })
+    )
+  })
+})
+
+describe("files", () => {
+  const upload = {
+    "files.getUploadURLExternal": { ok: true, upload_url: "https://files.slack.test/upload/1", file_id: "F1" },
+    "files.completeUploadExternal": { ok: true, files: [{ id: "F1" }] }
+  }
+  const file = { name: "a.txt", contentType: "text/plain", content: new TextEncoder().encode("hello") }
+
+  it.effect("a refused read after the share is an uncertain post, not a refusal", () => {
+    const fake = makeFake({ ...upload, "files.info": { ok: false, error: "missing_scope" } })
+    return run(
+      fake,
+      Effect.gen(function*() {
+        const slack = yield* adapter
+        const failure = yield* reason(slack.post(replyThread, { markdown: "see", files: [file] }))
+        assert.deepStrictEqual(failure, { op: "post", tag: "Unknown", detail: "share_ts_unknown", retry: "uncertain" })
+        assert.strictEqual(fake.called("files.info").length, 1)
+      })
+    )
+  })
+
+  it.effect("a failing read after the share is polled again, then uncertain", () => {
+    const fake = makeFake({ ...upload, "files.info": { status: 500 } })
+    return run(
+      fake,
+      Effect.gen(function*() {
+        const slack = yield* adapter
+        const result = yield* Effect.forkChild(reason(slack.post(replyThread, { markdown: "see", files: [file] })))
+        yield* TestClock.adjust("10 minutes")
+        const failure = yield* Fiber.join(result)
+        assert.strictEqual(failure.tag, "Unknown")
+        assert.strictEqual(failure.retry, "uncertain")
+        assert.isAbove(fake.called("files.info").length, 1)
       })
     )
   })
@@ -468,6 +523,60 @@ describe("nativeStream", () => {
         // Another message is not slowed.
         yield* slack.edit(replyThread, "1794509200.000100", { markdown: "x" })
         assert.strictEqual(fake.called("chat.update").length, 1)
+      })
+    )
+  })
+
+  it.effect("the doubled interval outlives a rotation of the reply", () => {
+    const next = "1794509201.000100"
+    const fake = makeFake({
+      "chat.appendStream": [{ status: 429, headers: { "retry-after": "3" } }, posted(ts), posted(next)],
+      "chat.stopStream": { ok: true, message: { ts } },
+      "chat.startStream": posted(next)
+    })
+    return run(
+      fake,
+      Effect.gen(function*() {
+        const native = (yield* adapter).nativeStream!
+        assert.strictEqual((yield* reason(native.append(replyThread, ts, "a", { flush: true }))).tag, "RateLimited")
+        yield* native.stop(replyThread, ts, { end: "rotating" })
+        // The next part's start waits for the retry-after.
+        const start = yield* Effect.forkChild(native.start(replyThread, { markdown: "b", recipient: "U080YLYB277" }))
+        yield* TestClock.adjust("2999 millis")
+        assert.strictEqual(fake.called("chat.startStream").length, 0)
+        yield* TestClock.adjust("1 millis")
+        yield* Fiber.join(start)
+        // Its appends keep the doubled interval, two seconds.
+        const append = yield* Effect.forkChild(native.append(replyThread, next, "c", { flush: true }))
+        yield* TestClock.adjust("1999 millis")
+        assert.strictEqual(fake.called("chat.appendStream").length, 1)
+        yield* TestClock.adjust("1 millis")
+        yield* Fiber.join(append)
+        assert.strictEqual(fake.called("chat.appendStream").length, 2)
+        // A reply that ends hands nothing on.
+        yield* native.stop(replyThread, next, { end: "done" })
+        yield* native.start(replyThread, { markdown: "d", recipient: "U080YLYB277" })
+        assert.strictEqual(fake.called("chat.startStream").length, 2)
+      })
+    )
+  })
+
+  it.effect("edits to one message are three seconds apart", () => {
+    const other = "1794509200.000200"
+    const fake = makeFake({ "chat.update": { ok: true } })
+    return run(
+      fake,
+      Effect.gen(function*() {
+        const slack = yield* adapter
+        yield* slack.edit(replyThread, ts, { markdown: "a" })
+        const second = yield* Effect.forkChild(slack.edit(replyThread, ts, { markdown: "ab" }))
+        // Another message is not held back.
+        yield* slack.edit(replyThread, other, { markdown: "x" })
+        yield* TestClock.adjust("2999 millis")
+        assert.strictEqual(fake.called("chat.update").length, 2)
+        yield* TestClock.adjust("1 millis")
+        yield* Fiber.join(second)
+        assert.strictEqual(fake.called("chat.update").length, 3)
       })
     )
   })

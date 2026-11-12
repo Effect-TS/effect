@@ -98,9 +98,11 @@ export class SlackChat extends Context.Service<SlackChat, {
  * - Content goes out as `markdown_text`. A `<` outside inline and fenced
  *   code is sent as `&lt;`, so no mention token notifies unless
  *   `withPostOptions({ notify })` allows it.
- * - `post` fails with `TooLarge` before calling Slack when the text as sent
- *   passes 12,000 code points, or 13,200 with every emoji counted as its
- *   shortcode. `edit` applies only the first limit, as Slack does.
+ * - `post`, `edit` and stream writes fail with `TooLarge` before calling
+ *   Slack when the text as sent passes 12,000 code points. Slack's second
+ *   limit, 13,200 with every emoji counted as its shortcode, is left to
+ *   Slack, whose refusal is also `TooLarge` and posts nothing.
+ *   `descriptor.measure` keeps a part under both.
  * - A post with files uploads them and shares them as one message. Its text
  *   goes as Slack mrkdwn, since such a message takes no `markdown_text`.
  * - `replyTo` is not supported.
@@ -109,9 +111,10 @@ export class SlackChat extends Context.Service<SlackChat, {
  * - A thread root whose subtype is not a message, such as an agent-view
  *   chat's `assistant_app_thread` root, is treated as deleted: `opener`
  *   gives `None` and history starts at the first reply.
+ * - Edits to one message are at least 3 seconds apart.
  * - After a 429 on a stream append or an edit, the next write to that
  *   message waits for the retry-after, and later writes to it wait twice
- *   the interval.
+ *   the interval. A rotated stream keeps that pace for its next part.
  * - The native stream needs a thread and a recipient, and rotates before
  *   Slack's ten minute cap. A reply that ends after a click on the stop
  *   button moves the agent session off `processing`.
@@ -195,8 +198,9 @@ export const parts: (thread: ChatThread) => Option.Option<{
  * - An envelope for another app, another workspace or of another type is
  *   answered 200 and dropped.
  * - The events go through `normalize` to the `ChatHandler`, one at a time.
- * - Answers 503, so Slack retries, when the handler fails `NotAccepted` or
- *   runs past `deadline` (2.5 seconds by default), and 413 past
+ * - Answers 503, so Slack retries, when the handler fails `NotAccepted`, or
+ *   when reading the bot user and running the handler take longer than
+ *   `deadline` (2.5 seconds by default). Answers 413 past
  *   `maxBodyBytes` (1 MiB by default).
  * - Slack redelivers on a timeout or an error, so an event can arrive twice.
  *   `ChatEvent.dedupeKey` gives the two deliveries equal keys.

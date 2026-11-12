@@ -119,14 +119,69 @@ const richTextItems = (blocks: unknown): Array<Item> | undefined => {
   return items
 }
 
+const sameTarget = (a: Target, b: Target): boolean => a.kind === b.kind && a.id === b.id
+
+/** Past this many item and token pairs, the alignment is skipped for the fallback. */
+const maxAlignment = 1_000_000
+
+/**
+ * Aligns the tokens in `text` with the block's items, in order. Every real
+ * item takes a token it equals, a literal item may take one or be passed
+ * over, and a token may stand for no item. Of the alignments, the one that
+ * pairs the most items wins, the earliest pairing first. Gives the token
+ * index of each real item, or `undefined` when no alignment pairs them all.
+ */
+const align = (items: ReadonlyArray<Item>, found: ReadonlyArray<Token>): Array<number> | undefined => {
+  const n = items.length
+  const m = found.length
+  if ((n + 1) * (m + 1) > maxAlignment) return undefined
+  const impossible = -1
+  const width = m + 1
+  // best[i * width + j]: the most pairs for items i.. and tokens j.., or impossible.
+  const best = new Int32Array((n + 1) * width)
+  for (let i = n - 1; i >= 0; i--) {
+    best[i * width + m] = items[i].real ? impossible : 0
+  }
+  for (let i = n - 1; i >= 0; i--) {
+    for (let j = m - 1; j >= 0; j--) {
+      let score = best[i * width + j + 1]
+      if (!items[i].real) score = Math.max(score, best[(i + 1) * width + j])
+      if (sameTarget(items[i], found[j])) {
+        const rest = best[(i + 1) * width + j + 1]
+        if (rest !== impossible) score = Math.max(score, rest + 1)
+      }
+      best[i * width + j] = score
+    }
+  }
+  if (best[0] === impossible) return undefined
+  const out: Array<number> = []
+  let i = 0
+  let j = 0
+  while (i < n) {
+    const score = best[i * width + j]
+    const rest = j < m ? best[(i + 1) * width + j + 1] : impossible
+    if (j < m && sameTarget(items[i], found[j]) && rest !== impossible && rest + 1 === score) {
+      if (items[i].real) out.push(j)
+      i++
+      j++
+    } else if (!items[i].real && best[(i + 1) * width + j] === score) {
+      i++
+    } else {
+      j++
+    }
+  }
+  return out
+}
+
 /**
  * The mentions of a message with offsets into `text`.
  *
- * - With a `rich_text` block, the mentions are its real mention elements.
- *   The tokens in `text` are walked in order against the block's items: a
- *   token takes the next item it equals, and only a real item makes it a
- *   mention. When a real item is passed over without a token, the text scan
- *   below is used instead.
+ * - With a `rich_text` block, the mentions are exactly its real mention
+ *   elements. Their offsets come from aligning the tokens in `text` with the
+ *   block's items, in order. When no alignment places every real item,
+ *   because `text` has fewer occurrences of a token than the block, each
+ *   real item takes the next unused token it equals, and one with none left
+ *   is reported nowhere. `text` never adds a mention.
  * - Without one, `text` is scanned, skipping backtick code spans and fences.
  *   That covers Block Kit posts, attachment-only posts and system messages.
  *
@@ -145,20 +200,21 @@ export const extract = (
     isSelf: token.kind === "user" && token.id === botUserId
   })
   const items = richTextItems(blocks)
-  if (items !== undefined) {
-    const matched: Array<Mention> = []
-    let next = 0
-    let complete = true
-    for (const token of tokens(text, false)) {
-      let found = next
-      while (found < items.length && !(items[found].kind === token.kind && items[found].id === token.id)) found++
-      if (found === items.length) continue
-      if (items.slice(next, found).some((item) => item.real)) complete = false
-      if (items[found].real) matched.push(toMention(token))
-      next = found + 1
-    }
-    if (items.slice(next).some((item) => item.real)) complete = false
-    if (complete) return matched
+  if (items === undefined) return tokens(text, true).map(toMention)
+  const found = tokens(text, false)
+  const aligned = align(items, found)
+  if (aligned !== undefined) return aligned.map((index) => toMention(found[index]))
+  const used = new Set<number>()
+  const mentions: Array<Mention> = []
+  let from = 0
+  for (const item of items) {
+    if (!item.real) continue
+    let index = found.findIndex((token, k) => k >= from && !used.has(k) && sameTarget(item, token))
+    if (index < 0) index = found.findIndex((token, k) => !used.has(k) && sameTarget(item, token))
+    if (index < 0) continue
+    used.add(index)
+    from = index + 1
+    mentions.push(toMention(found[index]))
   }
-  return tokens(text, true).map(toMention)
+  return mentions.sort((x, y) => x.start - y.start)
 }

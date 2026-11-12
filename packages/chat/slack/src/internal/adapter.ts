@@ -17,6 +17,7 @@ import type * as HttpClient from "effect/http/HttpClient"
 import * as HttpClientRequest from "effect/http/HttpClientRequest"
 import * as Option from "effect/Option"
 import * as Redacted from "effect/Redacted"
+import * as Result from "effect/Result"
 import type * as Schema from "effect/Schema"
 import * as Stream from "effect/Stream"
 import * as Address from "./address.ts"
@@ -99,6 +100,9 @@ const shareInterval = Duration.millis(500)
 /** Codes on `chat.startStream` that mean the feature is off for this thread. */
 const streamUnsupported = new Set(["channel_type_not_supported", "feature_disabled", "not_allowed_token_type"])
 
+/** Floor between two edits to one message: the spec's starting number, provisional until measured. */
+const editIntervalMillis = 3_000
+
 /** How long a message's pace is kept after its last write. */
 const paceIdleMillis = 15 * 60 * 1000
 
@@ -136,40 +140,73 @@ export const make = (options: {
   const fail = (op: string, reason: ChatErrorReason) => Effect.fail(Errors.chatError(op, reason))
 
   /**
-   * Writes that grow one message: stream appends and edits. After a 429 on
-   * a message, its next write waits for the retry-after, and each later
-   * write waits twice the interval it waited before, for as long as the
-   * reply goes on.
+   * The pace of the writes that grow one reply: stream appends, stream
+   * starts after a rotation, and edits.
+   *
+   * - Edits to one message are at least `editIntervalMillis` apart.
+   * - After a 429, the next write waits for the retry-after, and each later
+   *   write waits twice the interval it waited before, for the rest of the
+   *   reply. A stream stopped with `end: "rotating"` hands its pace to the
+   *   next stream started in that thread, the reply's next part.
    */
   const paces = new Map<string, Pace>()
-  const paced = <A>(messageId: string, write: Effect.Effect<A, ChatError>): Effect.Effect<A, ChatError> =>
+  const rotated = new Map<string, Pace>()
+
+  const remember = (map: Map<string, Pace>, key: string, pace: Pace, now: number) => {
+    if (map.size >= 64) { for (const [old, value] of map) if (value.nextAt < now - paceIdleMillis) map.delete(old) }
+    map.set(key, pace)
+  }
+
+  const paced = <A>(
+    options: {
+      /** The pace this write waits for. */
+      readonly current: Pace | undefined
+      /** The interval doubled by a first 429. */
+      readonly baseMillis: number
+      /** Kept between two writes even without a 429. */
+      readonly floorMillis?: number | undefined
+      readonly save: (pace: Pace, now: number) => void
+    },
+    write: Effect.Effect<A, ChatError>
+  ): Effect.Effect<A, ChatError> =>
     Effect.gen(function*() {
-      const pace = paces.get(messageId)
-      if (pace !== undefined) {
-        const wait = pace.nextAt - (yield* Clock.currentTimeMillis)
+      const { current } = options
+      if (current !== undefined) {
+        const wait = current.nextAt - (yield* Clock.currentTimeMillis)
         if (wait > 0) yield* Effect.sleep(Duration.millis(wait))
       }
       return yield* write.pipe(
         Effect.tap(() =>
           Effect.map(Clock.currentTimeMillis, (now) => {
-            const current = paces.get(messageId)
-            if (current !== undefined) paces.set(messageId, { ...current, nextAt: now + current.intervalMillis })
+            const intervalMillis = current?.intervalMillis ?? options.floorMillis
+            if (intervalMillis !== undefined) options.save({ intervalMillis, nextAt: now + intervalMillis }, now)
           })
         ),
         Effect.tapError((error) =>
           error.reason._tag !== "RateLimited" ? Effect.void : Effect.map(Clock.currentTimeMillis, (now) => {
-            for (const [id, old] of paces) if (old.nextAt < now - paceIdleMillis) paces.delete(id)
-            const intervalMillis = 2 * (paces.get(messageId)?.intervalMillis ??
-              Duration.toMillis(descriptor.limits.minWriteInterval))
+            const intervalMillis = 2 *
+              (current?.intervalMillis ?? Math.max(options.baseMillis, options.floorMillis ?? 0))
             const retryAfter = error.retryAfter
-            paces.set(messageId, {
+            options.save({
               intervalMillis,
               nextAt: now + (retryAfter === undefined ? intervalMillis : Duration.toMillis(retryAfter))
-            })
+            }, now)
           })
         )
       )
     })
+
+  const pacedMessage = <A>(
+    messageId: string,
+    write: Effect.Effect<A, ChatError>,
+    floorMillis?: number
+  ): Effect.Effect<A, ChatError> =>
+    paced({
+      current: paces.get(messageId),
+      baseMillis: Duration.toMillis(descriptor.limits.minWriteInterval),
+      floorMillis,
+      save: (pace, now) => remember(paces, messageId, pace, now)
+    }, write)
 
   const call = (
     op: string,
@@ -190,15 +227,17 @@ export const make = (options: {
     return ts === undefined ? fail(op, Errors.invalidResponse(write, "missing_ts")) : Effect.succeed(ts)
   }
 
-  const checkSent = (op: string, sent: string, emoji: boolean): Effect.Effect<void, ChatError> => {
-    if (Length.codePoints(sent) > Length.messageLength) {
-      return fail(op, new TooLarge({ subject: "text", detail: "msg_too_long" }))
-    }
-    if (emoji && Length.blocksCost(sent) > Length.blocksLength) {
-      return fail(op, new TooLarge({ subject: "text", detail: "msg_blocks_too_long" }))
-    }
-    return Effect.void
-  }
+  /**
+   * Refuses text past 12,000 code points as sent, which Slack would refuse
+   * with `msg_too_long`. Slack's second count, with emoji as shortcodes, is
+   * left to Slack: `measure` only bounds it from above, because entities,
+   * code and Markdown markers render shorter than they are sent. Its refusal
+   * maps to `TooLarge` and leaves nothing behind.
+   */
+  const checkSent = (op: string, sent: string): Effect.Effect<void, ChatError> =>
+    Length.codePoints(sent) > Length.messageLength
+      ? fail(op, new TooLarge({ subject: "text", detail: "msg_too_long" }))
+      : Effect.void
 
   const messages = (answer: Json): ReadonlyArray<Json> =>
     isObject(answer) && Array.isArray(answer.messages) ? answer.messages : []
@@ -305,7 +344,7 @@ export const make = (options: {
       }
       // A message with files takes no `markdown_text`: its text goes as mrkdwn.
       const comment = markdown.trim() === "" ? undefined : Escape.toMrkdwn(markdown, notify)
-      if (comment !== undefined) yield* checkSent("post", comment, true)
+      if (comment !== undefined) yield* checkSent("post", comment)
       const staged = yield* Effect.forEach(files, stage)
       yield* call("post", "files.completeUploadExternal", {
         files: staged,
@@ -314,13 +353,24 @@ export const make = (options: {
         initial_comment: comment
       }, { write: true })
       // The answer carries no message ts. Slack fills the file's shares soon after.
+      // The message exists from here on, so not finding its ts is an
+      // uncertain outcome, never a refusal or a retryable failure.
+      let lastError: ChatError | undefined
       for (let attempt = 0; attempt < shareAttempts; attempt++) {
         if (attempt > 0) yield* Effect.sleep(shareInterval)
-        const info = yield* call("post", "files.info", { file: staged[0].id })
-        const ts = shareTs(info, parts.channel, parts.threadTs)
+        const info = yield* Effect.result(call("post", "files.info", { file: staged[0].id }))
+        if (Result.isFailure(info)) {
+          lastError = info.failure
+          if (lastError.reason.retry === "denied") break
+          continue
+        }
+        const ts = shareTs(info.success, parts.channel, parts.threadTs)
         if (ts !== undefined) return { id: ts, thread, timestamp: Normalize.timestamp(ts) }
       }
-      return yield* fail("post", new Unknown({ detail: "share_ts_unknown" }))
+      return yield* fail(
+        "post",
+        new Unknown({ detail: "share_ts_unknown", ...(lastError === undefined ? {} : { cause: lastError }) })
+      )
     })
 
   // History
@@ -394,8 +444,12 @@ export const make = (options: {
         return yield* fail(op, new Unsupported({ capability: "nativeStream" }))
       }
       const escaped = Escape.escape(start.markdown, postOptions.notify ?? {}, { flush: true })
-      yield* checkSent(op, escaped.sent, true)
-      const answer = yield* call(op, "chat.startStream", {
+      yield* checkSent(op, escaped.sent)
+      const replyKey = `${parts.channel}/${parts.threadTs}`
+      const handedOver = rotated.get(replyKey)
+      rotated.delete(replyKey)
+      let pace = handedOver
+      const startCall = call(op, "chat.startStream", {
         channel: parts.channel,
         thread_ts: parts.threadTs,
         recipient_user_id: start.recipient,
@@ -415,7 +469,19 @@ export const make = (options: {
             )
         )
       )
+      const answer = yield* (handedOver === undefined ? startCall : paced({
+        current: handedOver,
+        baseMillis: handedOver.intervalMillis,
+        save: (next) => {
+          pace = next
+        }
+      }, startCall)).pipe(Effect.tapError(() =>
+        Effect.map(Clock.currentTimeMillis, (now) => {
+          if (pace !== undefined) remember(rotated, replyKey, pace, now)
+        })
+      ))
       const ts = yield* tsOf(op, true)(answer)
+      if (pace !== undefined) remember(paces, ts, pace, yield* Clock.currentTimeMillis)
       streams.set(ts, { escape: escaped.state, text: escaped.sent, stopped: false })
       return { id: ts, thread, timestamp: Normalize.timestamp(ts) }
     }),
@@ -430,8 +496,8 @@ export const make = (options: {
       })
       const held = markdown.length - escaped.consumed
       if (escaped.sent === "") return { state: "open" as const, held }
-      yield* checkSent(op, state.text + escaped.sent, true)
-      return yield* paced(
+      yield* checkSent(op, state.text + escaped.sent)
+      return yield* pacedMessage(
         messageId,
         call(op, "chat.appendStream", {
           channel: parts.channel,
@@ -460,7 +526,11 @@ export const make = (options: {
       const postOptions = yield* CurrentPostOptions
       const state = streams.get(messageId)
       streams.delete(messageId)
+      const pace = paces.get(messageId)
       paces.delete(messageId)
+      if (pace !== undefined && stopOptions.end === "rotating") {
+        remember(rotated, `${parts.channel}/${parts.threadTs}`, pace, yield* Clock.currentTimeMillis)
+      }
       const status = stopOptions.end === "rotating" ? "processing" : postOptions.sessionStatusAtEnd
       const body = { channel: parts.channel, ts: messageId }
       const stop = status === undefined || !declaredAgent
@@ -531,7 +601,7 @@ export const make = (options: {
         return yield* postFiles(thread, parts, content.markdown, content.files, notify)
       }
       const sent = Escape.escape(content.markdown, notify, { flush: true }).sent
-      yield* checkSent("post", sent, true)
+      yield* checkSent("post", sent)
       const unfurl = postOptions.unfurl === true
       const ts = yield* call("post", "chat.postMessage", {
         channel: parts.channel,
@@ -546,14 +616,14 @@ export const make = (options: {
       const parts = yield* resolve("edit", thread)
       const postOptions = yield* CurrentPostOptions
       const sent = Escape.escape(content.markdown, postOptions.notify ?? {}, { flush: true }).sent
-      // Slack does not apply its emoji limit to `chat.update`.
-      yield* checkSent("edit", sent, false)
-      yield* retrySafe(paced(
+      yield* checkSent("edit", sent)
+      yield* retrySafe(pacedMessage(
         messageId,
         call("edit", "chat.update", { channel: parts.channel, ts: messageId, markdown_text: sent }, {
           write: true,
           retry: false
-        })
+        }),
+        editIntervalMillis
       ))
     }),
     delete: Effect.fnUntraced(function*(thread, messageId) {
