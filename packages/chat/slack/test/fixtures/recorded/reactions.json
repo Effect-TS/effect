@@ -1,0 +1,480 @@
+{
+  "case": "reactions.add / reactions.get / reactions.remove with standard, skin-toned and alias emoji names; emoji.list (custom emoji lookup) is missing_scope for this bot so no custom emoji could be recorded",
+  "recordedAt": "2026-11-12T18:44:35.155Z",
+  "customEmojiName": null,
+  "calls": [
+    {
+      "method": "emoji.list",
+      "encoding": "form",
+      "note": "bot lacks emoji:read; used to find a custom emoji",
+      "request": {},
+      "httpStatus": 200,
+      "response": {
+        "ok": false,
+        "error": "missing_scope",
+        "needed": "emoji:read",
+        "provided": "channels:history,groups:history,im:history,im:read,reactions:read,users:read,chat:write,app_mentions:read,im:write,reactions:write,assistant:write,channels:read,groups:read,files:read,files:write"
+      }
+    },
+    {
+      "method": "chat.postMessage",
+      "encoding": "json",
+      "request": {
+        "channel": "C0CH1LGJ4F3",
+        "markdown_text": "Fixture: reactions target"
+      },
+      "httpStatus": 200,
+      "response": {
+        "ok": true,
+        "channel": "C0CH1LGJ4F3",
+        "ts": "1794509073.518429",
+        "message": {
+          "user": "U0CCLMD4S1L",
+          "type": "message",
+          "ts": "1794509073.518429",
+          "bot_id": "B0CCQH77VA5",
+          "app_id": "A0CCHBHDK7X",
+          "text": "Fixture: reactions target",
+          "team": "T05479Z6JBW",
+          "bot_profile": {
+            "id": "B0CCQH77VA5",
+            "deleted": false,
+            "name": "Janitor",
+            "updated": 1793135255,
+            "app_id": "A0CCHBHDK7X",
+            "user_id": "U0CCLMD4S1L",
+            "icons": {
+              "image_36": "https://scrubbed.invalid/image_36",
+              "image_48": "https://scrubbed.invalid/image_48",
+              "image_72": "https://scrubbed.invalid/image_72"
+            },
+            "team_id": "T05479Z6JBW"
+          },
+          "blocks": [
+            {
+              "type": "rich_text",
+              "block_id": "C7NS1J",
+              "elements": [
+                {
+                  "type": "rich_text_section",
+                  "elements": [
+                    {
+                      "type": "text",
+                      "text": "Fixture: reactions target"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "method": "reactions.add",
+      "encoding": "json",
+      "request": {
+        "channel": "C0CH1LGJ4F3",
+        "timestamp": "1794509073.518429",
+        "name": "grinning"
+      },
+      "httpStatus": 200,
+      "response": {
+        "ok": true
+      }
+    },
+    {
+      "method": "reactions.add",
+      "encoding": "json",
+      "request": {
+        "channel": "C0CH1LGJ4F3",
+        "timestamp": "1794509073.518429",
+        "name": "+1::skin-tone-3"
+      },
+      "httpStatus": 200,
+      "response": {
+        "ok": true
+      }
+    },
+    {
+      "method": "reactions.add",
+      "encoding": "json",
+      "note": "alias name thumbsup with a tone",
+      "request": {
+        "channel": "C0CH1LGJ4F3",
+        "timestamp": "1794509073.518429",
+        "name": "thumbsup::skin-tone-4"
+      },
+      "httpStatus": 200,
+      "response": {
+        "ok": true
+      }
+    },
+    {
+      "method": "reactions.add",
+      "encoding": "json",
+      "note": "plain alias-free name",
+      "request": {
+        "channel": "C0CH1LGJ4F3",
+        "timestamp": "1794509073.518429",
+        "name": "smile"
+      },
+      "httpStatus": 200,
+      "response": {
+        "ok": true
+      }
+    },
+    {
+      "method": "reactions.add",
+      "encoding": "json",
+      "note": "adding the same reaction twice",
+      "request": {
+        "channel": "C0CH1LGJ4F3",
+        "timestamp": "1794509073.518429",
+        "name": "grinning"
+      },
+      "httpStatus": 200,
+      "response": {
+        "ok": false,
+        "error": "already_reacted"
+      }
+    },
+    {
+      "method": "reactions.add",
+      "encoding": "json",
+      "note": "unknown emoji name (also what a missing custom emoji would give)",
+      "request": {
+        "channel": "C0CH1LGJ4F3",
+        "timestamp": "1794509073.518429",
+        "name": "not_a_real_emoji_xyz"
+      },
+      "httpStatus": 200,
+      "response": {
+        "ok": false,
+        "error": "invalid_name"
+      }
+    },
+    {
+      "method": "reactions.add",
+      "encoding": "json",
+      "note": "name wrapped in colons",
+      "request": {
+        "channel": "C0CH1LGJ4F3",
+        "timestamp": "1794509073.518429",
+        "name": ":grinning:"
+      },
+      "httpStatus": 200,
+      "response": {
+        "ok": false,
+        "error": "invalid_name"
+      }
+    },
+    {
+      "method": "reactions.get",
+      "encoding": "form",
+      "request": {
+        "channel": "C0CH1LGJ4F3",
+        "timestamp": "1794509073.518429",
+        "full": true
+      },
+      "httpStatus": 200,
+      "response": {
+        "ok": true,
+        "type": "message",
+        "message": {
+          "user": "U0CCLMD4S1L",
+          "type": "message",
+          "ts": "1794509073.518429",
+          "bot_id": "B0CCQH77VA5",
+          "app_id": "A0CCHBHDK7X",
+          "text": "Fixture: reactions target",
+          "team": "T05479Z6JBW",
+          "bot_profile": {
+            "id": "B0CCQH77VA5",
+            "deleted": false,
+            "name": "Janitor",
+            "updated": 1793135255,
+            "app_id": "A0CCHBHDK7X",
+            "user_id": "U0CCLMD4S1L",
+            "icons": {
+              "image_36": "https://scrubbed.invalid/image_36",
+              "image_48": "https://scrubbed.invalid/image_48",
+              "image_72": "https://scrubbed.invalid/image_72"
+            },
+            "team_id": "T05479Z6JBW"
+          },
+          "blocks": [
+            {
+              "type": "rich_text",
+              "block_id": "C7NS1J",
+              "elements": [
+                {
+                  "type": "rich_text_section",
+                  "elements": [
+                    {
+                      "type": "text",
+                      "text": "Fixture: reactions target"
+                    }
+                  ]
+                }
+              ]
+            }
+          ],
+          "reactions": [
+            {
+              "name": "+1::skin-tone-3",
+              "users": [
+                "U0CCLMD4S1L"
+              ],
+              "count": 1
+            },
+            {
+              "name": "+1::skin-tone-4",
+              "users": [
+                "U0CCLMD4S1L"
+              ],
+              "count": 1
+            },
+            {
+              "name": "grinning",
+              "users": [
+                "U0CCLMD4S1L"
+              ],
+              "count": 1
+            },
+            {
+              "name": "smile",
+              "users": [
+                "U0CCLMD4S1L"
+              ],
+              "count": 1
+            }
+          ],
+          "permalink": "https://scrubbed.invalid/permalink"
+        },
+        "channel": "C0CH1LGJ4F3"
+      }
+    },
+    {
+      "method": "conversations.history",
+      "encoding": "form",
+      "request": {
+        "channel": "C0CH1LGJ4F3",
+        "latest": "1794509073.518429",
+        "inclusive": true,
+        "limit": 1
+      },
+      "httpStatus": 200,
+      "response": {
+        "ok": true,
+        "latest": "1794509073.518429",
+        "messages": [
+          {
+            "user": "U0CCLMD4S1L",
+            "type": "message",
+            "ts": "1794509073.518429",
+            "bot_id": "B0CCQH77VA5",
+            "app_id": "A0CCHBHDK7X",
+            "text": "Fixture: reactions target",
+            "team": "T05479Z6JBW",
+            "bot_profile": {
+              "id": "B0CCQH77VA5",
+              "deleted": false,
+              "name": "Janitor",
+              "updated": 1793135255,
+              "app_id": "A0CCHBHDK7X",
+              "user_id": "U0CCLMD4S1L",
+              "icons": {
+                "image_36": "https://scrubbed.invalid/image_36",
+                "image_48": "https://scrubbed.invalid/image_48",
+                "image_72": "https://scrubbed.invalid/image_72"
+              },
+              "team_id": "T05479Z6JBW"
+            },
+            "blocks": [
+              {
+                "type": "rich_text",
+                "block_id": "C7NS1J",
+                "elements": [
+                  {
+                    "type": "rich_text_section",
+                    "elements": [
+                      {
+                        "type": "text",
+                        "text": "Fixture: reactions target"
+                      }
+                    ]
+                  }
+                ]
+              }
+            ],
+            "reactions": [
+              {
+                "name": "+1::skin-tone-3",
+                "users": [
+                  "U0CCLMD4S1L"
+                ],
+                "count": 1
+              },
+              {
+                "name": "+1::skin-tone-4",
+                "users": [
+                  "U0CCLMD4S1L"
+                ],
+                "count": 1
+              },
+              {
+                "name": "grinning",
+                "users": [
+                  "U0CCLMD4S1L"
+                ],
+                "count": 1
+              },
+              {
+                "name": "smile",
+                "users": [
+                  "U0CCLMD4S1L"
+                ],
+                "count": 1
+              }
+            ]
+          }
+        ],
+        "has_more": true,
+        "pin_count": 0,
+        "channel_actions_ts": null,
+        "channel_actions_count": 0,
+        "response_metadata": {
+          "next_cursor": "bmV4dF90czoxNzk0NTA5MDQ5MjQ1NjA5"
+        }
+      }
+    },
+    {
+      "method": "reactions.remove",
+      "encoding": "json",
+      "note": "remove via the alias name used when adding",
+      "request": {
+        "channel": "C0CH1LGJ4F3",
+        "timestamp": "1794509073.518429",
+        "name": "thumbsup::skin-tone-4"
+      },
+      "httpStatus": 200,
+      "response": {
+        "ok": true
+      }
+    },
+    {
+      "method": "reactions.remove",
+      "encoding": "json",
+      "note": "removing using the name as returned by reactions.get",
+      "request": {
+        "channel": "C0CH1LGJ4F3",
+        "timestamp": "1794509073.518429",
+        "name": "+1::skin-tone-3"
+      },
+      "httpStatus": 200,
+      "response": {
+        "ok": true
+      }
+    },
+    {
+      "method": "reactions.remove",
+      "encoding": "json",
+      "note": "removing using the name as returned by reactions.get",
+      "request": {
+        "channel": "C0CH1LGJ4F3",
+        "timestamp": "1794509073.518429",
+        "name": "grinning"
+      },
+      "httpStatus": 200,
+      "response": {
+        "ok": true
+      }
+    },
+    {
+      "method": "reactions.remove",
+      "encoding": "json",
+      "note": "removing using the name as returned by reactions.get",
+      "request": {
+        "channel": "C0CH1LGJ4F3",
+        "timestamp": "1794509073.518429",
+        "name": "smile"
+      },
+      "httpStatus": 200,
+      "response": {
+        "ok": true
+      }
+    },
+    {
+      "method": "reactions.remove",
+      "encoding": "json",
+      "note": "removing a reaction that is no longer present",
+      "request": {
+        "channel": "C0CH1LGJ4F3",
+        "timestamp": "1794509073.518429",
+        "name": "grinning"
+      },
+      "httpStatus": 200,
+      "response": {
+        "ok": false,
+        "error": "no_reaction"
+      }
+    },
+    {
+      "method": "reactions.get",
+      "encoding": "form",
+      "request": {
+        "channel": "C0CH1LGJ4F3",
+        "timestamp": "1794509073.518429",
+        "full": true
+      },
+      "httpStatus": 200,
+      "response": {
+        "ok": true,
+        "type": "message",
+        "message": {
+          "user": "U0CCLMD4S1L",
+          "type": "message",
+          "ts": "1794509073.518429",
+          "bot_id": "B0CCQH77VA5",
+          "app_id": "A0CCHBHDK7X",
+          "text": "Fixture: reactions target",
+          "team": "T05479Z6JBW",
+          "bot_profile": {
+            "id": "B0CCQH77VA5",
+            "deleted": false,
+            "name": "Janitor",
+            "updated": 1793135255,
+            "app_id": "A0CCHBHDK7X",
+            "user_id": "U0CCLMD4S1L",
+            "icons": {
+              "image_36": "https://scrubbed.invalid/image_36",
+              "image_48": "https://scrubbed.invalid/image_48",
+              "image_72": "https://scrubbed.invalid/image_72"
+            },
+            "team_id": "T05479Z6JBW"
+          },
+          "blocks": [
+            {
+              "type": "rich_text",
+              "block_id": "C7NS1J",
+              "elements": [
+                {
+                  "type": "rich_text_section",
+                  "elements": [
+                    {
+                      "type": "text",
+                      "text": "Fixture: reactions target"
+                    }
+                  ]
+                }
+              ]
+            }
+          ],
+          "permalink": "https://scrubbed.invalid/permalink"
+        },
+        "channel": "C0CH1LGJ4F3"
+      }
+    }
+  ]
+}

@@ -133,6 +133,7 @@ export default defineConfig({
       ...project("@effect/ai-typesafe", "packages/ai/typesafe"),
       ...project("@effect/ai-openai-compat", "packages/ai/openai-compat"),
       ...project("@effect/ai-openrouter", "packages/ai/openrouter"),
+      ...project("@effect/chat-slack", "packages/chat/slack"),
       ...project("@effect/atom-react", "packages/atom/react", true, {
         test: {
           environment: "jsdom",

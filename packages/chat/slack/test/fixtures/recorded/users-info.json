@@ -1,0 +1,193 @@
+{
+  "case": "auth.test, users.info for the bot user and a human, bots.info for the bot, users.info on a bot id (error)",
+  "recordedAt": "2026-11-12T18:43:05.435Z",
+  "calls": [
+    {
+      "method": "auth.test",
+      "encoding": "json",
+      "request": {},
+      "httpStatus": 200,
+      "response": {
+        "ok": true,
+        "url": "https://effectfulworkspace.slack.com/",
+        "team": "Effectful",
+        "user": "janitor2",
+        "team_id": "T05479Z6JBW",
+        "user_id": "U0CCLMD4S1L",
+        "bot_id": "B0CCQH77VA5",
+        "is_enterprise_install": false
+      }
+    },
+    {
+      "method": "users.info",
+      "encoding": "form",
+      "note": "users.info is documented as form/GET; json also tried below",
+      "request": {
+        "user": "U0CCLMD4S1L"
+      },
+      "httpStatus": 200,
+      "response": {
+        "ok": true,
+        "user": {
+          "id": "U0CCLMD4S1L",
+          "name": "janitor2",
+          "is_bot": true,
+          "updated": 1794450518,
+          "is_app_user": false,
+          "team_id": "T05479Z6JBW",
+          "deleted": false,
+          "color": "619a4f",
+          "is_email_confirmed": false,
+          "real_name": "janitor",
+          "tz": "America/Los_Angeles",
+          "tz_label": "Pacific Standard Time",
+          "tz_offset": -28800,
+          "is_admin": false,
+          "is_owner": false,
+          "is_primary_owner": false,
+          "is_restricted": false,
+          "is_ultra_restricted": false,
+          "who_can_share_contact_card": "EVERYONE",
+          "profile": {
+            "real_name": "janitor",
+            "display_name": "",
+            "avatar_hash": "3d654eba937a",
+            "real_name_normalized": "janitor",
+            "display_name_normalized": "",
+            "image_24": "https://scrubbed.invalid/image_24",
+            "image_32": "https://scrubbed.invalid/image_32",
+            "image_48": "https://scrubbed.invalid/image_48",
+            "image_72": "https://scrubbed.invalid/image_72",
+            "image_192": "https://scrubbed.invalid/image_192",
+            "image_512": "https://scrubbed.invalid/image_512",
+            "image_1024": "https://scrubbed.invalid/image_1024",
+            "image_original": "https://scrubbed.invalid/image_original",
+            "is_custom_image": true,
+            "first_name": "janitor",
+            "last_name": "",
+            "team": "T05479Z6JBW",
+            "title": "",
+            "phone": "",
+            "skype": "",
+            "status_text": "",
+            "status_text_canonical": "",
+            "status_emoji": "",
+            "status_emoji_display_info": [],
+            "status_expiration": 0,
+            "bot_id": "B0CCQH77VA5",
+            "api_app_id": "A0CCHBHDK7X",
+            "always_active": true
+          }
+        }
+      }
+    },
+    {
+      "method": "users.info",
+      "encoding": "json",
+      "note": "same call with a JSON body",
+      "request": {
+        "user": "U0CCLMD4S1L"
+      },
+      "httpStatus": 200,
+      "response": {
+        "ok": false,
+        "error": "user_not_found"
+      }
+    },
+    {
+      "method": "users.info",
+      "encoding": "form",
+      "request": {
+        "user": "U080YLYB277"
+      },
+      "httpStatus": 200,
+      "response": {
+        "ok": true,
+        "user": {
+          "id": "U080YLYB277",
+          "name": "test.user",
+          "is_bot": false,
+          "updated": 1782289647,
+          "is_app_user": false,
+          "team_id": "T05479Z6JBW",
+          "deleted": false,
+          "color": "827327",
+          "is_email_confirmed": true,
+          "real_name": "Test User",
+          "tz": "Pacific/Auckland",
+          "tz_label": "New Zealand Daylight Time",
+          "tz_offset": 46800,
+          "is_admin": false,
+          "is_owner": false,
+          "is_primary_owner": false,
+          "is_restricted": false,
+          "is_ultra_restricted": false,
+          "who_can_share_contact_card": "EVERYONE",
+          "profile": {
+            "real_name": "Test User",
+            "display_name": "Test User",
+            "avatar_hash": "g51a1c442992",
+            "real_name_normalized": "Test User",
+            "display_name_normalized": "Test User",
+            "image_24": "https://scrubbed.invalid/image_24",
+            "image_32": "https://scrubbed.invalid/image_32",
+            "image_48": "https://scrubbed.invalid/image_48",
+            "image_72": "https://scrubbed.invalid/image_72",
+            "image_192": "https://scrubbed.invalid/image_192",
+            "image_512": "https://scrubbed.invalid/image_512",
+            "first_name": "Test User",
+            "last_name": "Test User",
+            "team": "T05479Z6JBW",
+            "title": "",
+            "phone": "",
+            "skype": "",
+            "status_text": "",
+            "status_text_canonical": "",
+            "status_emoji": "",
+            "status_emoji_display_info": [],
+            "status_expiration": 0,
+            "huddle_state": "default_unset",
+            "huddle_state_expiration_ts": 0
+          }
+        }
+      }
+    },
+    {
+      "method": "bots.info",
+      "encoding": "form",
+      "request": {
+        "bot": "B0CCQH77VA5"
+      },
+      "httpStatus": 200,
+      "response": {
+        "ok": true,
+        "bot": {
+          "id": "B0CCQH77VA5",
+          "deleted": false,
+          "name": "Janitor",
+          "updated": 1793135255,
+          "app_id": "A0CCHBHDK7X",
+          "user_id": "U0CCLMD4S1L",
+          "icons": {
+            "image_36": "https://scrubbed.invalid/image_36",
+            "image_48": "https://scrubbed.invalid/image_48",
+            "image_72": "https://scrubbed.invalid/image_72"
+          }
+        }
+      }
+    },
+    {
+      "method": "users.info",
+      "encoding": "form",
+      "note": "users.info with a B... bot id",
+      "request": {
+        "user": "B0CCQH77VA5"
+      },
+      "httpStatus": 200,
+      "response": {
+        "ok": false,
+        "error": "user_not_found"
+      }
+    }
+  ]
+}
