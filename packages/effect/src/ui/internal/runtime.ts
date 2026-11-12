@@ -622,7 +622,12 @@ const setup = (
   // waits for all of them.
   const liveRuns = new Set<Fiber.Fiber<unknown, unknown>>()
   const closing = new Set<Fiber.Fiber<void>>()
-  /** Layer builds waiting to start again: see `buildLayer`. They wait for `closing`, never for each other. */
+  /** Layer builds the runtime interrupted, until their own cleanup ends. Retries wait for them. */
+  const releasedBuilds = new Set<Fiber.Fiber<unknown, unknown>>()
+  /**
+   * Layer builds waiting to start again: see `buildLayer`. They wait for `closing` and `releasedBuilds`,
+   * never for each other.
+   */
   const retries = new Set<Fiber.Fiber<void>>()
   const track = <A, E>(fibers: Set<Fiber.Fiber<A, E>>, fiber: Fiber.Fiber<A, E>) => {
     fibers.add(fiber)
@@ -707,6 +712,8 @@ const setup = (
       offFetchEnd?.()
       releaseWatchHold()
       for (const [run, inst] of Array.from(detachedRuns)) stopRun(inst, run)
+      // Nothing is left to build for: a retry still waiting for an interrupted build's cleanup ends now.
+      for (const retry of retries) retry.interruptUnsafe()
       return awaitAllOwned
     })
   )
@@ -1119,14 +1126,15 @@ const setup = (
           wanted()
         ) {
           // The interrupt can arrive from inside the close that sent it, before that close is tracked.
-          // After a yield, once every close has ended, the other waiters' included, the interrupted
-          // entries are gone. One still held makes the next attempt fail the same way, and try again.
+          // After a yield, once every close and every interrupted build's own cleanup has ended, the
+          // other waiters' included, the interrupted entries are gone and their resources released.
+          // One still held makes the next attempt fail the same way, and try again.
           track(
             retries,
             forkNow(
               ctx,
               Effect.yieldNow.pipe(
-                Effect.andThen(Effect.suspend(() => Fiber.awaitAll(Array.from(closing)))),
+                Effect.andThen(Effect.suspend(() => Fiber.awaitAll([...closing, ...releasedBuilds]))),
                 Effect.andThen(Effect.sync(() => {
                   if (wanted()) attempt()
                 }))
@@ -1146,6 +1154,8 @@ const setup = (
         Effect.sync(() => {
           if (fiber.pollUnsafe() !== undefined) return
           released = true
+          // The interrupted Layer runs its own cleanup in the fiber, after the close has ended.
+          track(releasedBuilds, fiber)
           fiber.interruptUnsafe(buildInterrupter)
         })
       )

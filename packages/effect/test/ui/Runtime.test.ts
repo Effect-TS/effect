@@ -1243,9 +1243,27 @@ describe("Runtime", () => {
       it.effect("its first builder unmounting mid-build leaves every other user to mount normally", () =>
         provideHost(Effect.gen(function*() {
           let builds = 0
+          let active = false
+          const cleanupStarted = yield* Deferred.make<void>()
+          const finishCleanup = yield* Deferred.make<void>()
           const slow = Layer.effect(
             Store,
-            Effect.andThen(Effect.sleep("1 second"), Effect.sync(() => ({ id: ++builds })))
+            Effect.gen(function*() {
+              yield* Effect.acquireRelease(
+                Effect.sync(() => {
+                  if (active) throw new Error("acquired before prior release completed")
+                  active = true
+                }),
+                () =>
+                  Effect.gen(function*() {
+                    yield* Deferred.succeed(cleanupStarted, undefined)
+                    yield* Deferred.await(finishCleanup)
+                    active = false
+                  })
+              )
+              yield* Effect.sleep("1 second")
+              return { id: ++builds }
+            })
           )
           const A = Component.provide(StoreId, ReadStore.layer.pipe(Layer.provide(slow)))
           const B = Component.provide(StoreId, ReadStore.layer.pipe(Layer.provide(slow)))
@@ -1253,6 +1271,9 @@ describe("Runtime", () => {
           const root = yield* TestHost.mount(Siblings({ a: A, b: B, c: C }), {})
           yield* TestHost.settle
           drop(root, "a")
+          yield* TestHost.settle
+          yield* Deferred.await(cleanupStarted)
+          yield* Deferred.succeed(finishCleanup, undefined)
           yield* TestHost.settle
           yield* TestClock.adjust("1 second")
           yield* TestHost.settle
