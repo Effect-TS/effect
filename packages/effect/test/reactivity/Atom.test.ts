@@ -263,6 +263,46 @@ describe("Atom", { concurrent: false }, () => {
     }
   })
 
+  it.each(["/previous?q=old&page=1", "/current?q=old&page=1"])(
+    "searchParam discards pending writes when history navigates to %s",
+    async (destination) => {
+      const r = AtomRegistry.make()
+      const location = new URL("http://localhost/current?q=before&page=2")
+      const events = new EventTarget()
+      const urls: Array<string> = []
+      vitest.stubGlobal("window", {
+        location,
+        history: {
+          pushState: (_state: unknown, _title: string, url: string) => {
+            urls.push(url)
+            location.href = new URL(url, location).href
+          }
+        },
+        addEventListener: events.addEventListener.bind(events),
+        removeEventListener: events.removeEventListener.bind(events)
+      })
+
+      try {
+        const q = Atom.searchParam("q")
+        const page = Atom.searchParam("page", { schema: Schema.NumberFromString })
+        r.mount(q)
+        r.mount(page)
+        r.set(q, "pending")
+        r.set(page, Option.some(9))
+        location.href = new URL(destination, location).href
+        events.dispatchEvent(new Event("popstate"))
+        await vitest.advanceTimersByTimeAsync(500)
+        expect(urls).toEqual([])
+        expect(location.pathname + location.search).toEqual(destination)
+        expect(r.get(q)).toEqual("old")
+        expect(r.get(page)).toEqual(Option.some(1))
+      } finally {
+        r.dispose()
+        vitest.unstubAllGlobals()
+      }
+    }
+  )
+
   it("runtime", async () => {
     const count = counterRuntime.atom(Counter.use((_) => _.get)).pipe(
       Atom.withLabel("count")

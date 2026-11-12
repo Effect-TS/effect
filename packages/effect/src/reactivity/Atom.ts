@@ -2438,6 +2438,7 @@ export const searchParam = <S extends Schema.ConstraintCodec<any, string> = neve
       } else {
         searchParamState.updates.set(name, value)
       }
+      window.addEventListener("popstate", cancelSearchParamUpdates, { once: true })
       ctx.setSelf(value)
       if (searchParamState.timeout) {
         clearTimeout(searchParamState.timeout)
@@ -2453,7 +2454,14 @@ const searchParamState = {
   updating: false
 }
 
+function cancelSearchParamUpdates() {
+  clearTimeout(searchParamState.timeout)
+  searchParamState.timeout = undefined
+  searchParamState.updates.clear()
+}
+
 function updateSearchParams() {
+  window.removeEventListener("popstate", cancelSearchParamUpdates)
   searchParamState.timeout = undefined
   searchParamState.updating = true
   const searchParams = new URLSearchParams(window.location.search)
