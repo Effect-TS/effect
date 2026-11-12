@@ -13,6 +13,8 @@ export interface DeclarationBinding extends Binding {
   readonly name: string
 }
 
+// Object fragments throw on string coercion to prevent accidental "[object Object]" output.
+// Compose them with `code` so bindings and import aliases are resolved during rendering.
 export type Fragment = string | Binding | {
   readonly _tag: "Parts"
   readonly parts: ReadonlyArray<Fragment>
