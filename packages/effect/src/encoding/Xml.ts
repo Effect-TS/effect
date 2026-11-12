@@ -384,9 +384,9 @@ export const decodeString = <IE = never, Done = unknown>(options?: DecodeOptions
  * - An initial UTF-16 byte order mark or an XML declaration naming an encoding
  *   other than UTF-8 or US-ASCII fails with an `Unsupported` `XmlError`.
  *   Decode such bytes with a `TextDecoder` for that encoding and use `decodeString`.
- * - A declaration the bytes contradict fails with a `Syntax` `XmlError`
- *   instead: one naming UTF-16, UTF-32, UCS-2 or UCS-4, or US-ASCII or
- *   ISO-8859-1 after a UTF-8 byte order mark.
+ * - A declaration that the bytes contradict fails with a `Syntax` `XmlError`
+ *   instead. That covers UTF-16, UTF-32, UCS-2 and UCS-4 declarations, and
+ *   US-ASCII or ISO-8859-1 declarations after a UTF-8 byte order mark.
  *
  * @see {@link decodeString} for text input and the shared gotchas
  *
@@ -752,8 +752,8 @@ const normalizeAttribute = (s: string): string => s.replace(attributeWhitespace,
 
 const isReservedTarget = (target: string): boolean => target.length === 3 && target.toLowerCase() === "xml"
 
-// 16- and 32-bit Unicode encodings
-const wideEncodingPattern = /^(?:utf-(?:16|32)(?:be|le)?|ucs-[24]|iso-10646-ucs-[24])$/
+// Encodings whose declaration could not have been read as ASCII bytes
+const wideEncodingPattern = /^(?:utf-(?:16|32)(?:be|le)?|(?:iso-10646-)?ucs-[24])$/
 
 const declarationPattern =
   /^[ \t\r\n]+version[ \t\r\n]*=[ \t\r\n]*(?:"(1\.[0-9]+)"|'(1\.[0-9]+)')(?:[ \t\r\n]+encoding[ \t\r\n]*=[ \t\r\n]*(?:"([A-Za-z][A-Za-z0-9._-]*)"|'([A-Za-z][A-Za-z0-9._-]*)'))?(?:[ \t\r\n]+standalone[ \t\r\n]*=[ \t\r\n]*(?:"(yes|no)"|'(yes|no)'))?[ \t\r\n]*$/
