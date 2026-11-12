@@ -492,15 +492,16 @@ const matchShape = (
 }
 
 /** Whether the codec decodes `{}`, and what to. */
-const decodeAbsent = (codec: Schema.Codec<unknown, unknown>): Option.Option<unknown> =>
-  Schema.decodeUnknownOption(codec)({})
+const decodeAbsent = <A>(codec: Schema.Codec<A, unknown>): Option.Option<A> => Schema.decodeUnknownOption(codec)({})
 
 /** Gives a field with a decoding default that default as its constructor default too, so `make` fills it in. */
 const makeField = (key: string, field: Schema.Constraint): Schema.Constraint => {
   if (field.ast.context?.constructorDefault !== undefined) return field
-  const absent = decodeAbsent(Schema.Struct({ [key]: field }) as unknown as Schema.Codec<unknown, unknown>)
-  if (Option.isNone(absent) || !Object.hasOwn(absent.value as object, key)) return field
-  const value = (absent.value as Record<string, unknown>)[key]
+  const absent = decodeAbsent(
+    Schema.Struct({ [key]: field }) as unknown as Schema.Codec<Record<string, unknown>, unknown>
+  )
+  if (Option.isNone(absent) || !Object.hasOwn(absent.value, key)) return field
+  const value = absent.value[key]
   return (field as any).pipe(Schema.withConstructorDefault(Effect.succeed(value) as any))
 }
 
@@ -520,25 +521,26 @@ const paramFieldsOf = (route: Any): Schema.Struct.Fields =>
 /** A query field as the parser and the printer see it. */
 interface QueryField {
   readonly key: string
-  readonly decode: (raw: unknown) => Option.Option<unknown>
-  /** Whether the field decodes with its key absent: an optional or defaulted field. */
-  readonly optional: boolean
+  /** Decodes `{ [key]: raw }` to `{ [key]: value }`. */
+  readonly decode: (raw: unknown) => Option.Option<object>
+  /** What the field decodes to with its key absent, if it does: an optional or defaulted field. */
+  readonly absent: Option.Option<object>
   /** The encoded default, which `print` leaves out. */
   readonly omit: unknown
 }
 
 const queryFieldOf = (key: string, field: Schema.Constraint): QueryField => {
-  const codec = Schema.toCodecStringTree(Schema.Struct({ [key]: field })) as unknown as Schema.Codec<unknown, unknown>
+  const codec = Schema.toCodecStringTree(Schema.Struct({ [key]: field })) as unknown as Schema.Codec<object, unknown>
   const absent = decodeAbsent(codec)
   let omit: unknown = undefined
-  if (Option.isSome(absent) && Object.hasOwn(absent.value as object, key)) {
+  if (Option.isSome(absent) && Object.hasOwn(absent.value, key)) {
     try {
       omit = (Schema.encodeUnknownSync(codec)(absent.value) as Record<string, unknown>)[key]
     } catch {
       // A default that doesn't encode is always printed.
     }
   }
-  return { key, decode: Schema.decodeUnknownOption(codec), optional: Option.isSome(absent), omit }
+  return { key, decode: Schema.decodeUnknownOption(codec), absent, omit }
 }
 
 const sameEncoded = (a: unknown, b: unknown): boolean =>
@@ -546,39 +548,28 @@ const sameEncoded = (a: unknown, b: unknown): boolean =>
   (Array.isArray(a) && Array.isArray(b) && a.length === b.length && a.every((item, index) => item === b[index]))
 
 /**
- * Picks each declared field's raw value: as given, or a lone value wrapped for an array field. A
- * value that fails, or a repeated key on a single-valued field, is dropped when the field is
- * optional or defaulted, and makes the URL a 404 otherwise.
+ * Decodes the declared fields one by one: each from its raw value, or from a lone value wrapped
+ * for an array field. A value that fails, or a repeated key on a single-valued field, is treated
+ * as absent when the field is optional or defaulted, and makes the URL a 404 otherwise.
  */
-const pickQuery = (
+const decodeQuery = (
   fields: ReadonlyArray<QueryField>,
   query: RawQuery
-): { readonly raw: RawQuery; readonly invalid: ReadonlyArray<string> } | undefined => {
-  const raw: RawQuery = Object.create(null)
+): Option.Option<{ readonly value: unknown; readonly invalid: ReadonlyArray<string> }> => {
+  const entries: Array<[string, unknown]> = []
   const invalid: Array<string> = []
   for (const field of fields) {
-    const value = Object.hasOwn(query, field.key) ? query[field.key] : undefined
-    if (value === undefined) {
-      if (!field.optional) return undefined
-      continue
+    const raw = Object.hasOwn(query, field.key) ? query[field.key] : undefined
+    let decoded = raw === undefined ? field.absent : field.decode({ [field.key]: raw })
+    if (Option.isNone(decoded) && typeof raw === "string") decoded = field.decode({ [field.key]: [raw] })
+    if (Option.isNone(decoded)) {
+      if (Option.isNone(field.absent)) return Option.none()
+      invalid.push(field.key)
+      decoded = field.absent
     }
-    const one: RawQuery = Object.create(null)
-    one[field.key] = value
-    if (Option.isSome(field.decode(one))) {
-      raw[field.key] = value
-      continue
-    }
-    if (typeof value === "string") {
-      one[field.key] = [value]
-      if (Option.isSome(field.decode(one))) {
-        raw[field.key] = [value]
-        continue
-      }
-    }
-    if (!field.optional) return undefined
-    invalid.push(field.key)
+    entries.push(...Object.entries(decoded.value))
   }
-  return { raw, invalid }
+  return Option.some({ value: Object.fromEntries(entries), invalid })
 }
 
 const printerOf = (
@@ -615,7 +606,6 @@ const build = (
       unknown
     >
     const queryFields = Object.entries(route.query).map(([key, field]) => queryFieldOf(key, field))
-    const decodeQuery = Schema.decodeUnknownOption(queryCodec)
     entries.push({
       segments,
       rank: rankOf(segments),
@@ -623,11 +613,7 @@ const build = (
       route: {
         tag,
         decodeParams: Schema.decodeUnknownOption(paramsCodec),
-        decodeQuery: (query) => {
-          const picked = pickQuery(queryFields, query)
-          if (picked === undefined) return Option.none()
-          return Option.map(decodeQuery(picked.raw), (value) => ({ value, invalid: picked.invalid }))
-        }
+        decodeQuery: (query) => decodeQuery(queryFields, query)
       },
       redirect: undefined
     })
