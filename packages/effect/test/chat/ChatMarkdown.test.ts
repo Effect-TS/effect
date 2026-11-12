@@ -703,6 +703,103 @@ describe("ChatMarkdown", () => {
         assert.deepStrictEqual(yield* texts(test, thread), ["~~~\ncode"])
       }).pipe(Effect.provide(ChatTest.layer())))
 
+    /** Runs `stream` over a queue the test can fail. */
+    const feedFailable = Effect.fnUntraced(function*(thread: ChatThread.ChatThread) {
+      const queue = yield* Queue.unbounded<string, string>()
+      const fiber = yield* Effect.forkChild(
+        Effect.flip(ChatMarkdown.stream(thread, Stream.fromQueue(queue), { recipient: "U1" }))
+      )
+      return { queue, fiber }
+    })
+
+    /** Holds the first append until `release` completes, and records whether it was cut off. */
+    const holdFirstAppend = Effect.fnUntraced(function*() {
+      const entered = yield* Deferred.make<void>()
+      const release = yield* Deferred.make<void>()
+      const state = { cancelled: false }
+      let first = true
+      yield* patchNative((native) => ({
+        append: (...args) =>
+          Effect.suspend(() => {
+            if (!first) return native.append(...args)
+            first = false
+            return Effect.andThen(Deferred.succeed(entered, undefined), Deferred.await(release)).pipe(
+              Effect.andThen(native.append(...args)),
+              Effect.onInterrupt(() => Effect.sync(() => void (state.cancelled = true)))
+            )
+          })
+      }))
+      return { entered, release, state }
+    })
+
+    it.effect("bounds an append in flight when the upstream fails", () =>
+      Effect.gen(function*() {
+        const { test, thread } = yield* setup
+        const { entered, release, state } = yield* holdFirstAppend()
+        const { fiber, queue } = yield* feedFailable(thread)
+        yield* Queue.offer(queue, "one\n")
+        yield* settle
+        yield* Queue.offer(queue, "two\n")
+        yield* Deferred.await(entered)
+        yield* Queue.fail(queue, "boom")
+        yield* settle
+        yield* TestClock.adjust("6 seconds")
+        const finished = fiber.pollUnsafe() !== undefined
+        yield* Deferred.succeed(release, undefined)
+        const error = yield* Fiber.join(fiber)
+        assert.isTrue(finished)
+        assert.isTrue(state.cancelled)
+        assert.deepStrictEqual(error.cause, { _tag: "Upstream", error: "boom" })
+        assert.deepStrictEqual([joined(error.posted), error.uncertain, error.remaining], ["one\n", "two\n", ""])
+        yield* settle
+        assert.deepStrictEqual(yield* texts(test, thread), ["one\n"])
+      }).pipe(Effect.provide(ChatTest.layer())))
+
+    it.effect("keeps the answer of an append in flight when the upstream fails", () =>
+      Effect.gen(function*() {
+        const { test, thread } = yield* setup
+        const { entered, release } = yield* holdFirstAppend()
+        const { fiber, queue } = yield* feedFailable(thread)
+        yield* Queue.offer(queue, "one\n")
+        yield* settle
+        yield* Queue.offer(queue, "two\n")
+        yield* Deferred.await(entered)
+        yield* Queue.offer(queue, "three")
+        yield* Queue.fail(queue, "boom")
+        yield* settle
+        yield* Deferred.succeed(release, undefined)
+        const error = yield* Fiber.join(fiber)
+        assert.deepStrictEqual(error.cause, { _tag: "Upstream", error: "boom" })
+        assert.deepStrictEqual([joined(error.posted), error.uncertain, error.remaining], [
+          "one\ntwo\nthree",
+          undefined,
+          ""
+        ])
+        assert.deepStrictEqual(yield* texts(test, thread), ["one\ntwo\nthree"])
+      }).pipe(Effect.provide(ChatTest.layer())))
+
+    it.effect("bounds an append begun while finishing after the upstream fails", () =>
+      Effect.gen(function*() {
+        const { test, thread } = yield* setup
+        const { entered, release, state } = yield* holdFirstAppend()
+        const { fiber, queue } = yield* feedFailable(thread)
+        yield* Queue.offer(queue, "one\n")
+        yield* settle
+        yield* Queue.offer(queue, "two")
+        yield* settle
+        yield* Queue.fail(queue, "boom")
+        yield* Deferred.await(entered)
+        yield* TestClock.adjust("6 seconds")
+        const finished = fiber.pollUnsafe() !== undefined
+        yield* Deferred.succeed(release, undefined)
+        const error = yield* Fiber.join(fiber)
+        assert.isTrue(finished)
+        assert.isTrue(state.cancelled)
+        assert.deepStrictEqual([joined(error.posted), error.uncertain, error.remaining], ["one\n", "two", ""])
+        yield* settle
+        assert.deepStrictEqual(yield* texts(test, thread), ["one\n"])
+      }).pipe(Effect.provide(ChatTest.layer())))
+
     it.effect("waits for an append in flight when interrupted, then finishes the reply", () =>
       Effect.gen(function*() {
         const { test, thread } = yield* setup
