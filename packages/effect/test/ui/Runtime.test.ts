@@ -1289,6 +1289,7 @@ describe("Runtime", () => {
       it.effect("a build whose users unmount while it waits to start again ends there, and isn't started", () =>
         provideHost(Effect.gen(function*() {
           let starts = 0
+          let reports = 0
           let fibers = 0
           const cleanupStarted = yield* Deferred.make<void>()
           const finishCleanup = yield* Deferred.make<void>()
@@ -1300,7 +1301,12 @@ describe("Runtime", () => {
             ).pipe(Effect.andThen(Effect.never))
           )
           const A = Component.provide(StoreId, ReadStore.layer.pipe(Layer.provide(held)))
-          const B = Component.provide(StoreId, ReadStore.layer.pipe(Layer.provide(held)))
+          const B = Component.provide(StoreId, ReadStore.layer.pipe(Layer.provide(held)), {
+            onFailure: () => {
+              reports++
+              return "failed"
+            }
+          })
           const root = yield* TestHost.mount(Siblings({ a: A, b: B }), {}).pipe(
             Effect.provideService(Metric.FiberRuntimeMetrics, {
               recordFiberStart: () => fibers++,
@@ -1320,6 +1326,8 @@ describe("Runtime", () => {
           yield* TestHost.settle
           assert.strictEqual(fibers, 0)
           assert.strictEqual(starts, 1)
+          assert.strictEqual(reports, 0)
+          assert.notInclude(tags(root, "/Siblings/StoreId[b]"), "LayerFailed")
         })))
 
       it.effect("a Layer that interrupts itself fails once, though another build was interrupted meanwhile", () =>
