@@ -1040,7 +1040,14 @@ describe("Runtime", () => {
         yield* TestHost.settle
         assert.strictEqual(root.text(), "two")
         assert.strictEqual(root.get(Query.tag("span")), span)
-        assert.deepStrictEqual(tags(root, "/Host/Label[l]"), ["Mounted"])
+        // The new props are logged, and no Update: update never sees them.
+        assert.deepStrictEqual(tags(root, "/Host/Label[l]"), ["Mounted", "PropsChanged"])
+        const changed = root.log().find((entry) => entry._tag === "PropsChanged")
+        assert.deepStrictEqual(changed?._tag === "PropsChanged" ? changed.props : undefined, { text: "two" })
+        // Equal props log nothing.
+        root.send(Msg.make({ _tag: "Rename", text: "two" }))
+        yield* TestHost.settle
+        assert.deepStrictEqual(tags(root, "/Host/Label[l]"), ["Mounted", "PropsChanged"])
       })))
   })
 

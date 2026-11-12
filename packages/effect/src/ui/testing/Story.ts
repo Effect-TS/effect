@@ -1571,7 +1571,8 @@ export interface Outcome<Model, Events> {
 /**
  * The result of `fromLog`: the state the replay reached (the Model, props and
  * loader slots), how many messages it re-ran, and the first divergence, if
- * any. On a divergence, the state is the one before the message that diverged.
+ * any. On a divergence, the state is the one the diverging message was sent
+ * to: the Model before it, and the props and slots its `update` read.
  *
  * @stability experimental
  * @category models
@@ -1580,7 +1581,7 @@ export interface Outcome<Model, Events> {
 export interface Replay<Model, Msg, Events> {
   readonly path: string
   readonly model: Model
-  /** The props last recorded for the instance. */
+  /** The props the instance had, from its latest `Mounted`, `PropsChanged` or `Update` entry. */
   readonly props: unknown
   /** The loader slots, beside the Model. Opaque: `loaded` opens them. */
   readonly slots: Component.Slots | undefined
@@ -1615,10 +1616,12 @@ const findPlaceholder = (value: unknown): string | undefined => {
  * Commands are compared, never run. Models and events are compared with
  * `Schema.toEquivalence`, and Commands by their Wire encoding.
  *
- * The slots start empty at a `Mounted` entry, or from what an `Update`
- * entry recorded when the replay starts there. Each later `LoaderChanged`
- * entry writes its slot, so the result holds the slots as the instance last
- * had them, including loads that settled after the last message.
+ * The props and slots are tracked with the Model, so the result is the state
+ * the instance ended with. They start from the first entry: a `Mounted`
+ * entry's props and empty slots, or an `Update` entry's recorded props and
+ * slots. Each later `PropsChanged` entry sets the props and each
+ * `LoaderChanged` entry writes its slot, so props from the parent and loads
+ * that settled after the last message are in the result too.
  *
  * It takes live entries or Wire frames. A Wire value sent as a placeholder,
  * such as a truncated Model, can't be decoded, and the error names the entry.
@@ -1633,23 +1636,26 @@ export const fromLog = <Name extends string, Props, Model, Msg, Events, R, V ext
   options?: { readonly path?: string | undefined }
 ): Replay<Model, Msg, Events> => {
   const nameOf = (entry: MessageLog.Entry | MessageLog.Wire): string | undefined =>
-    entry._tag === "Update" || entry._tag === "Mounted" || entry._tag === "LoaderChanged"
+    entry._tag === "Update" || entry._tag === "Mounted" || entry._tag === "LoaderChanged" ||
+      entry._tag === "PropsChanged"
       ? typeof entry.component === "string" ? entry.component : entry.component.name
       : undefined
   const path = options?.path ??
     (entries.find((entry) => nameOf(entry) === component.name) as MessageLog.Base | undefined)?.path
   if (path === undefined) throw new Error(`Story.fromLog: the log has no entry for ${component.name}`)
   const all = entries.filter((entry) =>
-    (entry._tag === "Update" || entry._tag === "Mounted" || entry._tag === "LoaderChanged") && entry.path === path
+    (entry._tag === "Update" || entry._tag === "Mounted" || entry._tag === "LoaderChanged" ||
+      entry._tag === "PropsChanged") && entry.path === path
   ) as ReadonlyArray<
     | MessageLog.Update
     | MessageLog.Mounted
     | MessageLog.LoaderChanged
-    | Extract<MessageLog.Wire, { _tag: "Update" | "Mounted" | "LoaderChanged" }>
+    | MessageLog.PropsChanged
+    | Extract<MessageLog.Wire, { _tag: "Update" | "Mounted" | "LoaderChanged" | "PropsChanged" }>
   >
-  // The replay starts at the first Model. A slot written before it is in that Update's record, or belongs to an
-  // earlier mount.
-  const start = all.findIndex((entry) => entry._tag !== "LoaderChanged")
+  // The replay starts at the first Model. Props and slots written before it are in that Update's record, or
+  // belong to an earlier mount.
+  const start = all.findIndex((entry) => entry._tag === "Update" || entry._tag === "Mounted")
   if (start === -1) throw new Error(`Story.fromLog: the log has no entry for ${path}`)
   const first = all[start] as
     | MessageLog.Update
@@ -1739,6 +1745,10 @@ export const fromLog = <Name extends string, Props, Model, Msg, Events, R, V ext
       slots = { ...(slots ?? bound?.empty), [entry.name]: slotOf(entry) }
       continue
     }
+    if (entry._tag === "PropsChanged") {
+      props = typeof entry.component === "string" ? decode(entry, "props", entry.props) : entry.props
+      continue
+    }
     const recorded = read(entry)
     if (entry._tag === "Mounted") {
       // Mounted again at the same path: the replay starts over from it, with every slot empty.
@@ -1747,9 +1757,10 @@ export const fromLog = <Name extends string, Props, Model, Msg, Events, R, V ext
       slots = undefined
       continue
     }
-    // The Update's record is what `update` read, so it holds even when earlier slot writes were evicted.
+    // The Update's record is what `update` read, so it holds even when earlier entries were evicted.
+    props = recorded.props
     if (recorded.loaded !== undefined) slots = recorded.loaded
-    const next = component.update(model, recorded.message as Msg, recorded.props, slots)
+    const next = component.update(model, recorded.message as Msg, recorded.props as Props, slots)
     replayed++
     const recomputed = {
       model: next.model,
@@ -1774,7 +1785,6 @@ export const fromLog = <Name extends string, Props, Model, Msg, Events, R, V ext
       })
     }
     model = recomputed.model
-    props = recorded.props
   }
   return result(undefined)
 }

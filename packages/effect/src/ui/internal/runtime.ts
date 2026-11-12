@@ -3152,6 +3152,8 @@ const setup = (
         instance.onFailure = child.onFailure
         if (!propsEqual(child.props, instance.props)) {
           instance.props = child.props
+          // Before the slot writes the new props cause, so a replay opens them against these props.
+          record({ _tag: "PropsChanged", path: instance.path, component: instance.component, props: child.props })
           // Watches first: new args over a settled entry write its value before this render, and the
           // keyed loaders' slots are written before it too.
           syncSubscriptions(instance)

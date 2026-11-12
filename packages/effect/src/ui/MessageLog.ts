@@ -208,9 +208,30 @@ export interface Mounted extends Base {
 }
 
 /**
+ * A mounted instance got new props from its parent, without a re-key. Its
+ * loaders' args can read them, so `Story.fromLog` applies it to reach the
+ * state the instance ended with.
+ *
+ * **Details**
+ *
+ * It's logged before the slot writes the new props cause. Props equal to the
+ * current ones log nothing.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.1.5
+ */
+export interface PropsChanged extends Base {
+  readonly _tag: "PropsChanged"
+  /** The component, whose props Schema encodes them for the Wire. */
+  readonly component: Component.Any
+  readonly props: unknown
+}
+
+/**
  * A loader's slot changed: the runtime wrote what the loader's read last
- * returned at its args. `slot` is opaque. A replay doesn't need it, since
- * each `Update` records the slots it saw.
+ * returned at its args. `slot` is opaque. `Story.fromLog` applies it to
+ * reach the slots the instance ended with.
  *
  * **Details**
  *
@@ -424,6 +445,7 @@ export type Entry =
   | SessionStarted
   | Update
   | Mounted
+  | PropsChanged
   | LoaderChanged
   | Lifecycle
   | LayerFailed
@@ -616,6 +638,7 @@ export const Wire = Schema.Union([
     events: Schema.Array(Schema.Json),
     adopted: Schema.Boolean
   }),
+  Schema.TaggedStruct("PropsChanged", { ...Seq, component: Schema.String, props: Schema.Json }),
   Schema.TaggedStruct("LoaderChanged", { ...Seq, component: Schema.String, name: Schema.String, slot: Schema.Json }),
   Schema.Struct({ _tag: Schema.Literals(["Unmounted", "LayerPending", "LayerReady"]), ...Seq }),
   Schema.TaggedStruct("LayerFailed", { ...Seq, cause: CauseWire }),
@@ -777,6 +800,13 @@ export const makeEncoder = (options?: {
             commands: entry.commands.map(encodeCommand),
             events: entry.events.map((emitted) => through(entry.component, "events", emitted) as Schema.Json),
             adopted: entry.adopted
+          }
+        case "PropsChanged":
+          return {
+            ...base(entry),
+            _tag: "PropsChanged",
+            component: entry.component.name,
+            props: through(entry.component, "props", entry.props) as Schema.Json
           }
         case "LoaderChanged": {
           const schema = (entry.component["~loaders"] as LoaderSchemas | undefined)?.logSchemas[entry.name]

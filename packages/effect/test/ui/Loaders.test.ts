@@ -48,7 +48,8 @@ const makeApp = () => {
     message: NoteMessage,
     elements: Html,
     loaders: {
-      note: { load: GetNote, args: (_model, props) => ({ id: props.id }) }
+      // An empty id disables the loader.
+      note: { load: GetNote, args: (_model, props) => props.id === "" ? undefined : { id: props.id } }
     },
     init: () => ({ clicks: 0, last: "none" }),
     // What the loader holds when the click is handled, so a replay only reproduces it with the slots.
@@ -101,7 +102,31 @@ const makeApp = () => {
       }))
   })
 
-  return { server, GetNote, Touch, layer: Layer.mergeAll(GetNote.layer, Touch.layer), Note, NoteMessage, AppRoute, App }
+  // Passes its id to one Note under a fixed key, so a new id is new props, not a re-key.
+  const ShellMessage = Schema.TaggedUnion({ SetId: { id: Schema.String } })
+  const Shell = Component.make({
+    name: "Shell",
+    model: Schema.String,
+    message: ShellMessage,
+    elements: Html,
+    init: () => "1",
+    update: (_id, message) => message.id,
+    view: (id, h) => h.div(h.child(Note, { key: "note", props: { id } }))
+  })
+  const setId = (id: string) => ShellMessage.make({ _tag: "SetId", id })
+
+  return {
+    server,
+    GetNote,
+    Touch,
+    Shell,
+    setId,
+    layer: Layer.mergeAll(GetNote.layer, Touch.layer),
+    Note,
+    NoteMessage,
+    AppRoute,
+    App
+  }
 }
 
 const click = (root: TestHost.TestRoot<any, any, any>, text: string) =>
@@ -122,6 +147,10 @@ const noteOf = (replay: Story.Replay<any, any, any>) => {
   const note = replay.loaded().note as AsyncResult.AsyncResult<string, never>
   return AsyncResult.isSuccess(note) ? note.value : note._tag
 }
+
+/** The Note's Mounted entry, for its path under a parent. */
+const noteMount = (log: ReadonlyArray<MessageLog.Entry>) =>
+  log.find((entry): entry is MessageLog.Mounted => entry._tag === "Mounted" && entry.component.name === "Note")!
 
 const updates = (log: ReadonlyArray<MessageLog.Entry>, path: string) =>
   log.filter((entry): entry is MessageLog.Update => entry._tag === "Update" && entry.path === path)
@@ -409,6 +438,86 @@ describe("a loader without onChange", { concurrent: false }, () => {
       assert.strictEqual(noteOf(replay), "Initial")
       assert.deepStrictEqual(replay.props, { id: "2" })
     })
+  })
+
+  it.effect("replay follows props from the parent: a new id's load, then disabling the loader, live and through the Wire", () => {
+    const app = makeApp()
+    return run(
+      app.layer,
+      Effect.gen(function*() {
+        const root = yield* TestHost.mount(app.Shell, {})
+        yield* load
+        assert.strictEqual(root.text(), "Note 1clicks 0")
+        const path = noteMount(root.log()).path
+        /** Both replays of the Note: from the live log, and from the Wire. */
+        const replays = () => {
+          const log = root.log()
+          return [
+            Story.fromLog(app.Note, log, { path }),
+            Story.fromLog(app.Note, log.map(MessageLog.makeEncoder().encode), { path })
+          ]
+        }
+
+        root.send(app.setId("2"))
+        yield* load
+        assert.strictEqual(root.text(), "Note 2clicks 0")
+        // The props are logged before the slot write they cause.
+        assert.deepStrictEqual(
+          root.log().filter((entry) => entry.path === path).map((entry) => entry._tag).filter((tag) =>
+            tag === "PropsChanged" || tag === "LoaderChanged"
+          ),
+          ["LoaderChanged", "PropsChanged", "LoaderChanged"]
+        )
+        for (const replay of replays()) {
+          assert.isUndefined(replay.divergence)
+          assert.strictEqual(replay.replayed, 0)
+          assert.deepStrictEqual(replay.props, { id: "2" })
+          assert.strictEqual(noteOf(replay), "Note 2")
+        }
+
+        // Disabling writes no slot: only the props show that the loader is off.
+        root.send(app.setId(""))
+        yield* load
+        assert.strictEqual(root.text(), "loadingclicks 0")
+        for (const replay of replays()) {
+          assert.isUndefined(replay.divergence)
+          assert.deepStrictEqual(replay.props, { id: "" })
+          assert.strictEqual(noteOf(replay), "Initial")
+        }
+      })
+    )
+  })
+
+  it.effect("a divergence returns the props and slots the diverging update read", () => {
+    const app = makeApp()
+    return run(
+      app.layer,
+      Effect.gen(function*() {
+        const root = yield* TestHost.mount(app.Shell, {})
+        yield* load
+        root.send(app.setId("2"))
+        yield* load
+        click(root, "clicks 0")
+        yield* TestHost.settle
+        const path = noteMount(root.log()).path
+        // A log without the PropsChanged entry, whose last Update records a Model that update doesn't compute.
+        const tampered = root.log().filter((entry) => entry._tag !== "PropsChanged").map((entry) =>
+          entry._tag === "Update" && entry.path === path ? { ...entry, model: { clicks: 9, last: "Note 2" } } : entry
+        )
+        for (
+          const replay of [
+            Story.fromLog(app.Note, tampered, { path }),
+            Story.fromLog(app.Note, tampered.map(MessageLog.makeEncoder().encode), { path })
+          ]
+        ) {
+          assert.deepStrictEqual(replay.divergence?.recomputed.model, { clicks: 1, last: "Note 2" })
+          // The Model before the message, with the props and slots it was sent with.
+          assert.deepStrictEqual(replay.model, { clicks: 0, last: "none" })
+          assert.deepStrictEqual(replay.props, { id: "2" })
+          assert.strictEqual(noteOf(replay), "Note 2")
+        }
+      })
+    )
   })
 
   it("Story.head opens the loaders at the props it is given, with every slot empty", () => {
