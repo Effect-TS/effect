@@ -226,15 +226,22 @@ const popoverOpen = <N>(reader: Reader<N>, node: N): boolean => {
   }
 }
 
+/** Whether a dialog or popover is neither open as a dialog nor showing as a popover. */
+const notShown = <N>(reader: Reader<N>, node: N): boolean => {
+  const dialog = reader.tag(node) === "dialog"
+  const popover = reader.attr(node, "popover") !== undefined
+  if (!dialog && !popover) return false
+  return !((dialog && dialogOpen(reader, node)) || (popover && popoverOpen(reader, node)))
+}
+
 const isHidden = <N>(reader: Reader<N>, node: N): boolean =>
   reader.attr(node, "hidden") !== undefined ||
   reader.attr(node, "aria-hidden") === "true" ||
   (reader.tag(node) === "input" && (reader.attr(node, "type") ?? "").toLowerCase() === "hidden") ||
   reader.tag(node) === "template" ||
   // A closed dialog or a popover that isn't showing isn't rendered, so neither it nor anything in it is
-  // in the accessibility tree.
-  (reader.tag(node) === "dialog" && !dialogOpen(reader, node)) ||
-  (reader.attr(node, "popover") !== undefined && !popoverOpen(reader, node))
+  // in the accessibility tree. A dialog shown as a popover is rendered, though its `open` is false.
+  notShown(reader, node)
 
 const implicitRole = <N>(reader: Reader<N>, node: N, inSection: boolean): string | undefined => {
   const tag = reader.tag(node)

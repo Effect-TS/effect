@@ -96,6 +96,28 @@ describe("HtmlQuery", () => {
         expect(HtmlQuery.dialogState(document.createElement("dialog"))).toBe("closed")
       }).pipe(Effect.scoped, Effect.provide(TestHost.layer())))
 
+    it("a dialog shown as a popover is visible though its open is false; hidden attributes still hide", () => {
+      const dialog = (attrs: Record<string, string>, props: Record<string, unknown>, label: string) => ({
+        tag: "dialog",
+        attrs: { "aria-label": label, ...attrs },
+        props,
+        children: [{ tag: "button", children: [text(label)] }]
+      })
+      const tree = el(
+        "div",
+        {},
+        dialog({ popover: "manual" }, { popoverOpen: true }, "As popover"),
+        dialog({ popover: "manual" }, { popoverOpen: false }, "Popover closed"),
+        dialog({}, { open: false }, "Closed"),
+        dialog({}, { open: "modal" }, "Modal"),
+        dialog({ popover: "manual", hidden: "" }, { popoverOpen: true }, "Hidden")
+      )
+      const names = (role: string) => HtmlQuery.queryAllByRole(tree, role).map((node) => HtmlQuery.nameOf(tree, node))
+      expect(names("dialog")).toEqual(["As popover", "Modal"])
+      expect(names("button")).toEqual(["As popover", "Modal"])
+      expect(HtmlQuery.queryAllByRole(tree, "dialog", { hidden: true })).toHaveLength(5)
+    })
+
     it.effect("a popover that isn't showing and what's in it are hidden, and popoverState tells", () =>
       Effect.gen(function*() {
         const menu = HtmlQuery.role("menu", { name: "Menu" })
