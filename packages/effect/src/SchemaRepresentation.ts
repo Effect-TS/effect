@@ -7,7 +7,7 @@
 import * as InternalRecord from "./internal/record.ts"
 import * as InternalFromJsonSchemaDocument from "./internal/schema/fromJsonSchemaDocument.ts"
 import * as InternalFromRepresentation from "./internal/schema/fromRepresentation.ts"
-import * as InternalToCodeDocument from "./internal/schema/toCodeDocument.ts"
+import * as InternalCodegen from "./internal/schema/schemaCodegen.ts"
 import * as InternalToJsonSchemaDocument from "./internal/schema/toJsonSchemaDocument.ts"
 import * as InternalToRepresentation from "./internal/schema/toRepresentation.ts"
 import type * as JsonSchema from "./JsonSchema.ts"
@@ -2553,7 +2553,7 @@ export interface Code {
  * @category constructors
  * @since 4.0.0
  */
-export const makeCode: (runtime: string, Type: string) => Code = InternalToCodeDocument.makeCode
+export const makeCode: (runtime: string, Type: string) => Code = InternalCodegen.makeCode
 
 /**
  * Auxiliary source artifact emitted while generating schema code.
@@ -2587,6 +2587,7 @@ export type Artifact =
  * `references.recursives` in any order, and finally `codes`.
  * `nonRecursives` also includes recursive definitions needed eagerly to construct
  * another named definition. `recursives` contains the remaining recursive definitions.
+ * `codes[i]` corresponds to the input document's `representations[i]`.
  *
  * @stability experimental
  * @category models
@@ -2858,7 +2859,7 @@ export function toJsonSchemaMultiDocument(
  * @since 4.0.0
  */
 export function toCodeDocument(document: MultiDocument): CodeDocument {
-  return InternalToCodeDocument.toCodeDocument(document)
+  return InternalCodegen.toCodeDocument(document)
 }
 
 const RepresentationSchema = Schema.suspend(

@@ -9,6 +9,8 @@
  *
  * @since 4.0.0
  */
+import type * as Codegen from "effect/Codegen"
+import { namedImport, namespaceImport, printImports, provideImports } from "./internal/module.ts"
 import type {
   ParsedOpenApi,
   ParsedOpenApiSecurityScheme,
@@ -52,12 +54,14 @@ export const imports = (
   options?: {
     readonly multipart?: boolean | undefined
   }
-): string =>
-  [
-    `import * as ${importName} from "effect/Schema"`,
-    ...(options?.multipart === true ? [`import { Multipart } from "effect/http"`] : []),
-    `import { HttpApi, HttpApiEndpoint, HttpApiGroup, HttpApiMiddleware, HttpApiSchema, HttpApiSecurity, OpenApi } from "effect/http-api"`
-  ].join("\n")
+): string => printImports(moduleImports(importName, options?.multipart === true))
+
+const moduleImports = (importName: string, multipart: boolean): ReadonlyArray<Codegen.Import> => [
+  namespaceImport("effect/Schema", importName),
+  ...(multipart ? [namedImport("effect/http", "Multipart")] : []),
+  ...["HttpApi", "HttpApiEndpoint", "HttpApiGroup", "HttpApiMiddleware", "HttpApiSchema", "HttpApiSecurity", "OpenApi"]
+    .map((name) => namedImport("effect/http-api", name))
+]
 
 /**
  * Convert a parsed OpenAPI document into Effect HttpApi source code.
@@ -75,10 +79,30 @@ export const toImplementation = (
   _importName: string,
   name: string,
   parsed: ParsedOpenApi
-): string => {
-  const security = buildSecurityRenderModel(parsed)
-  const groups = groupOperations(parsed)
-  const groupSources = groups.map((group) => renderGroup(group, security.endpointMiddlewares))
+): string => planImplementation(name, parsed, makeNameAllocator())(parsed)
+
+/** @internal */
+export const registerModule = (
+  module: Codegen.Module,
+  importName: string,
+  name: string,
+  parsed: ParsedOpenApi
+): { readonly imports: string; readonly implementation: (parsed: ParsedOpenApi) => string } => {
+  const imports = moduleImports(importName, false)
+  provideImports(module, imports)
+  const api = module.declare(name)
+  const implementation = planImplementation(api.name, parsed, (name) => module.declare(name).name)
+  return { imports: printImports(imports), implementation }
+}
+
+const planImplementation = (
+  name: string,
+  parsed: ParsedOpenApi,
+  allocateName: (name: string) => string
+): (parsed: ParsedOpenApi) => string => {
+  const security = buildSecurityRenderModel(parsed, allocateName)
+  const groups = groupOperations(parsed, allocateName)
+  const positions = new Map(parsed.operations.map((operation, index) => [operation, index]))
   const metadataAnnotations = renderApiAnnotations(parsed)
 
   let apiValue = `export class ${name} extends HttpApi.make(${JSON.stringify(name)})`
@@ -90,15 +114,24 @@ export const toImplementation = (
   }
   apiValue += ` {}`
 
-  return [
-    ...security.securityDeclarations,
-    ...security.middlewareDeclarations,
-    ...groupSources,
-    apiValue
-  ].join("\n\n")
+  return (resolved) =>
+    [
+      ...security.securityDeclarations,
+      ...security.middlewareDeclarations,
+      ...groups.map((group) =>
+        renderGroup({
+          ...group,
+          operations: group.operations.map((operation) => resolved.operations[positions.get(operation)!])
+        }, security.endpointMiddlewares)
+      ),
+      apiValue
+    ].join("\n\n")
 }
 
-const groupOperations = (parsed: ParsedOpenApi): ReadonlyArray<GroupRenderModel> => {
+const groupOperations = (
+  parsed: ParsedOpenApi,
+  allocateName: (name: string) => string
+): ReadonlyArray<GroupRenderModel> => {
   const tagMetadata = new Map(parsed.tags.map((tag) => [tag.name, tag]))
   const byIdentifier = new Map<string, {
     readonly identifier: string
@@ -126,7 +159,6 @@ const groupOperations = (parsed: ParsedOpenApi): ReadonlyArray<GroupRenderModel>
     })
   }
 
-  const allocateName = makeNameAllocator()
   const groups: Array<GroupRenderModel> = []
   for (const group of byIdentifier.values()) {
     const baseName = ensureIdentifier(group.identifier, "Group")
@@ -370,8 +402,10 @@ const renderApiAnnotations = (parsed: ParsedOpenApi): ReadonlyArray<string> => {
   return annotations
 }
 
-const buildSecurityRenderModel = (parsed: ParsedOpenApi): SecurityRenderModel => {
-  const allocateName = makeNameAllocator()
+const buildSecurityRenderModel = (
+  parsed: ParsedOpenApi,
+  allocateName: (name: string) => string
+): SecurityRenderModel => {
   const securityDeclarations: Array<string> = []
   const middlewareDeclarations: Array<string> = []
   const endpointMiddlewares = new Map<string, ReadonlyArray<string>>()

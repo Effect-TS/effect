@@ -1,23 +1,18 @@
 import * as Arr from "../../Array.ts"
-import { format, formatPropertyKey } from "../../Formatter.ts"
-import type * as Schema from "../../Schema.ts"
-import type * as SchemaRepresentation from "../../SchemaRepresentation.ts"
 import {
-  addImport,
-  addSideEffect,
   type Binding,
   code,
-  declare,
+  type DeclarationBinding,
   deferred,
-  define,
-  finalize,
   type Fragment,
   type Import,
   join,
   literal,
-  make,
-  provideImport
-} from "../codegen.ts"
+  Module
+} from "../../Codegen.ts"
+import { format, formatPropertyKey } from "../../Formatter.ts"
+import type * as Schema from "../../Schema.ts"
+import type * as SchemaRepresentation from "../../SchemaRepresentation.ts"
 import { errorWithPath } from "../errors.ts"
 import * as InternalRecord from "../record.ts"
 import * as InternalAnnotations from "./annotations.ts"
@@ -89,9 +84,9 @@ function renderEmittableAnnotation(input: unknown): string | undefined {
 
 // Leading checks that turn a bare `Schema.Number` into a built-in schema.
 const canonicalNumberChecks: Record<string, string> = {
-  [`Schema.isFinite().annotate({ "expected": "a finite number" })`]: "Schema.Finite",
-  ["Schema.isInt()"]: "Schema.Int",
-  [`Schema.isInt().annotate({ "expected": "an integer" })`]: "Schema.Int"
+  [`.isFinite().annotate({ "expected": "a finite number" })`]: ".Finite",
+  [".isInt()"]: ".Int",
+  [`.isInt().annotate({ "expected": "an integer" })`]: ".Int"
 }
 
 function renderAnnotations(
@@ -127,9 +122,69 @@ function isSimpleLiveLiteral(
 }
 
 interface ReferenceGroups {
-  readonly dependencies: ReadonlyMap<string, ReadonlySet<string>>
   readonly nonRecursives: ReadonlyArray<string>
   readonly recursives: ReadonlyArray<string>
+}
+
+function collectRefs(
+  root: SchemaRepresentation.Representation,
+  includeSuspended: boolean,
+  identifierSet: ReadonlySet<string>
+): ReadonlySet<string> {
+  const refs = new Set<string>()
+  const visited = new WeakSet<object>()
+  const stack: Array<SchemaRepresentation.Representation> = [root]
+
+  function pushRepresentationSchemas(representation: CheckRepresentationAnnotation | undefined): void {
+    if (representation?.schemas !== undefined) stack.push(...representation.schemas)
+  }
+
+  function pushChecks(
+    checks: ReadonlyArray<SchemaRepresentation.Check>
+  ): void {
+    for (const check of checks) {
+      pushRepresentationSchemas(check.representation)
+      if (check._tag === "FilterGroup") pushChecks(check.checks)
+    }
+  }
+
+  while (stack.length > 0) {
+    const representation = stack.pop()!
+    if (visited.has(representation)) continue
+    visited.add(representation)
+    if (representation._tag === "Reference") {
+      if (identifierSet.has(representation.$ref)) refs.add(representation.$ref)
+      continue
+    }
+
+    pushChecks(representation.checks)
+    switch (representation._tag) {
+      case "Declaration":
+        pushRepresentationSchemas(representation.representation)
+        stack.push(...representation.typeParameters)
+        break
+      case "Suspend":
+        if (includeSuspended) stack.push(representation.thunk)
+        break
+      case "TemplateLiteral":
+        stack.push(...representation.parts)
+        break
+      case "Arrays":
+        for (const element of representation.elements) stack.push(element.type)
+        stack.push(...representation.rest)
+        break
+      case "Objects":
+        for (const property of representation.propertySignatures) stack.push(property.type)
+        for (const signature of representation.indexSignatures) {
+          stack.push(signature.parameter, signature.type)
+        }
+        break
+      case "Union":
+        stack.push(...representation.types)
+        break
+    }
+  }
+  return refs
 }
 
 function classifyReferences(
@@ -138,68 +193,11 @@ function classifyReferences(
   const identifiers = Object.keys(references)
   const identifierSet = new Set(identifiers)
 
-  function collectRefs(root: SchemaRepresentation.Representation, includeSuspended: boolean): ReadonlySet<string> {
-    const refs = new Set<string>()
-    const visited = new WeakSet<object>()
-    const stack: Array<SchemaRepresentation.Representation> = [root]
-
-    function pushRepresentationSchemas(representation: CheckRepresentationAnnotation | undefined): void {
-      if (representation?.schemas !== undefined) stack.push(...representation.schemas)
-    }
-
-    function pushChecks(
-      checks: ReadonlyArray<SchemaRepresentation.Check>
-    ): void {
-      for (const check of checks) {
-        pushRepresentationSchemas(check.representation)
-        if (check._tag === "FilterGroup") pushChecks(check.checks)
-      }
-    }
-
-    while (stack.length > 0) {
-      const representation = stack.pop()!
-      if (visited.has(representation)) continue
-      visited.add(representation)
-      if (representation._tag === "Reference") {
-        if (identifierSet.has(representation.$ref)) refs.add(representation.$ref)
-        continue
-      }
-
-      pushChecks(representation.checks)
-      switch (representation._tag) {
-        case "Declaration":
-          pushRepresentationSchemas(representation.representation)
-          stack.push(...representation.typeParameters)
-          break
-        case "Suspend":
-          if (includeSuspended) stack.push(representation.thunk)
-          break
-        case "TemplateLiteral":
-          stack.push(...representation.parts)
-          break
-        case "Arrays":
-          for (const element of representation.elements) stack.push(element.type)
-          stack.push(...representation.rest)
-          break
-        case "Objects":
-          for (const property of representation.propertySignatures) stack.push(property.type)
-          for (const signature of representation.indexSignatures) {
-            stack.push(signature.parameter, signature.type)
-          }
-          break
-        case "Union":
-          stack.push(...representation.types)
-          break
-      }
-    }
-    return refs
-  }
-
   const dependencies = new Map<string, ReadonlySet<string>>(
-    identifiers.map((identifier) => [identifier, collectRefs(references[identifier], true)])
+    identifiers.map((identifier) => [identifier, collectRefs(references[identifier], true, identifierSet)])
   )
   const eagerDependencies = new Map<string, ReadonlySet<string>>(
-    identifiers.map((identifier) => [identifier, collectRefs(references[identifier], false)])
+    identifiers.map((identifier) => [identifier, collectRefs(references[identifier], false, identifierSet)])
   )
 
   // Recursion describes the full schema graph, including suspended references.
@@ -250,79 +248,181 @@ function classifyReferences(
 
   return {
     nonRecursives: identifiers.filter((identifier) => firstGroup.has(identifier)),
-    recursives: identifiers.filter((identifier) => !firstGroup.has(identifier)),
-    dependencies: eagerDependencies
+    recursives: identifiers.filter((identifier) => !firstGroup.has(identifier))
   }
 }
+
+interface CompiledCode extends Code {
+  readonly dependencies: ReadonlyArray<Binding>
+}
+
+interface Definition {
+  readonly binding: DeclarationBinding
+  readonly code: CompiledCode
+}
+
+interface SymbolArtifact extends Definition {
+  readonly _tag: "Symbol"
+  runtime: boolean
+}
+
+type Artifact = SymbolArtifact | Definition & { readonly _tag: "Enum" }
 
 /** @internal */
 export function toCodeDocument(
   document: SchemaRepresentation.MultiDocument
 ): SchemaRepresentation.CodeDocument {
-  const module = make()
-  // Consumers provide this namespace; track it without emitting a duplicate import.
-  const schemaImport = provideImport(module, {
-    module: "effect/Schema",
-    kind: "Namespace",
-    imported: "*",
-    local: "Schema",
-    typeOnly: false,
-    attributes: ""
-  })
-  const artifacts: Array<{ readonly _tag: "Symbol" | "Enum"; readonly binding: Binding }> = []
-  const groups = classifyReferences(document.references)
-  const references = new Map(
-    [...groups.nonRecursives, ...groups.recursives].map(($ref) => [$ref, freshIdentifier($ref)])
-  )
-  const symbols = new Map<symbol, Binding>()
-  const parsedImports = new Map<string, CodeImports.Imports>()
-  let callbackIndex = 0
-
-  for (const [$ref, binding] of references) {
-    const fragments = recur(document.references[$ref], ["references", $ref])
-    define(
-      module,
-      binding,
-      [fragments.runtime, fragments.Type],
-      Array.from(groups.dependencies.get($ref)!, ($ref) => references.get($ref)!)
-    )
+  const module = new Module()
+  const schemaImport = module.provideImport(schemaNamespace)
+  const compiled = compile(document, module, schemaImport)
+  for (const { binding, code } of [...compiled.artifacts, ...compiled.definitions.values()]) {
+    module.define(binding, [code.runtime, code.Type], code.dependencies)
   }
-  const roots = document.representations.map((representation, index) =>
-    recur(representation, ["representations", index])
-  )
-  const output = finalize(module, roots.flatMap((code) => [code.runtime, code.Type]))
+  const output = module.finalize(compiled.codes.flatMap((code) => [code.runtime, code.Type]))
   const definitions = new Map(
     output.declarations.map(({ binding, fragments }) => [binding, makeCode(fragments[0], fragments[1])] as const)
   )
-  const firstGroup = new Set(groups.nonRecursives.map(($ref) => references.get($ref)!))
+  const firstGroup = new Set<Binding>(
+    compiled.groups.nonRecursives.map(($ref) => compiled.definitions.get($ref)!.binding)
+  )
   const nonRecursives = output.declarations.filter(({ binding }) => firstGroup.has(binding)).map(({ binding }) => ({
     $ref: output.names.get(binding)!,
     code: definitions.get(binding)!
   }))
   const recursives: Record<string, SchemaRepresentation.Code> = {}
-  for (const $ref of groups.recursives) {
-    const binding = references.get($ref)!
+  for (const $ref of compiled.groups.recursives) {
+    const binding = compiled.definitions.get($ref)!.binding
     InternalRecord.assignProperty(recursives, output.names.get(binding)!, definitions.get(binding)!)
   }
-
   return {
-    codes: roots.map((_, index) => makeCode(output.roots[index * 2], output.roots[index * 2 + 1])),
+    codes: compiled.codes.map((_, index) => makeCode(output.roots[index * 2], output.roots[index * 2 + 1])),
     references: { nonRecursives, recursives },
     artifacts: [
-      ...output.imports.map((importDeclaration) => ({
-        _tag: "Import" as const,
-        importDeclaration
-      })),
-      ...artifacts.map(({ _tag, binding }) => ({
+      ...output.imports.map((importDeclaration) => ({ _tag: "Import" as const, importDeclaration })),
+      ...compiled.artifacts.map(({ _tag, binding }) => ({
         _tag,
         identifier: output.names.get(binding)!,
         code: definitions.get(binding)!
       }))
     ]
   }
+}
 
-  function freshIdentifier(seed: string): Binding {
-    return declare(module, sanitizeJavaScriptIdentifier(seed))
+const schemaNamespace: Import = {
+  module: "effect/Schema",
+  kind: "Namespace",
+  imported: "*",
+  local: "Schema",
+  typeOnly: false,
+  attributes: ""
+}
+
+const moduleSymbols = new WeakMap<Module, Map<symbol, SymbolArtifact>>()
+
+/** @internal */
+export function addSchemas(
+  module: Module,
+  schemas: Readonly<Record<string, SchemaRepresentation.Representation>>,
+  options?: {
+    readonly references?: SchemaRepresentation.References | undefined
+    readonly typeOnly?: boolean | undefined
+  }
+): ReadonlyMap<string, DeclarationBinding> {
+  const entries = Object.entries(schemas)
+  const compiled = compile(
+    {
+      representations: entries.map(([, representation]) => representation),
+      references: options?.references ?? {}
+    },
+    module,
+    module.addImport(schemaNamespace),
+    options?.typeOnly === true
+  )
+  for (const artifact of compiled.artifacts) {
+    const source = artifact._tag === "Enum"
+      ? code`${options?.typeOnly ? "declare " : ""}${artifact.code.runtime}`
+      : deferred((render) =>
+        artifact.runtime
+          ? `const ${render(artifact.binding)} = ${render(artifact.code.runtime)}`
+          : `declare const ${render(artifact.binding)}: unique symbol`
+      )
+    module.define(artifact.binding, [source], artifact.code.dependencies)
+  }
+  for (const { binding, code: fragments } of compiled.definitions.values()) {
+    module.define(binding, [
+      code`export type ${binding} = ${fragments.Type}`,
+      ...(options?.typeOnly ? [] : [code`export const ${binding} = ${fragments.runtime}`])
+    ], fragments.dependencies)
+  }
+  const bindings = new Map<string, DeclarationBinding>()
+  for (const [index, [name, representation]] of entries.entries()) {
+    const existing = representation._tag === "Reference" && representation.$ref === name
+      ? compiled.definitions.get(name)
+      : undefined
+    if (existing !== undefined) {
+      bindings.set(name, existing.binding)
+      continue
+    }
+    const binding = module.declare(name)
+    const fragments = compiled.codes[index]
+    module.define(binding, [
+      code`export type ${binding} = ${fragments.Type}`,
+      ...(options?.typeOnly ? [] : [code`export const ${binding} = ${fragments.runtime}`])
+    ], fragments.dependencies)
+    bindings.set(name, binding)
+  }
+  return bindings
+}
+
+function compile(
+  document: {
+    readonly representations: ReadonlyArray<SchemaRepresentation.Representation>
+    readonly references: SchemaRepresentation.References
+  },
+  module: Module,
+  schemaImport: Binding,
+  typeOnly = false
+) {
+  const groups = classifyReferences(document.references)
+  const references = new Map(
+    [...groups.nonRecursives, ...groups.recursives].map(($ref) => [$ref, freshIdentifier($ref)])
+  )
+  const identifierSet = new Set(references.keys())
+  const artifacts: Array<Artifact> = []
+  const symbols = moduleSymbols.get(module) ?? new Map<symbol, SymbolArtifact>()
+  moduleSymbols.set(module, symbols)
+  const parsedImports = new Map<string, CodeImports.Imports>()
+  let callbackIndex = 0
+  let artifactDependencies = new Set<Binding>()
+  let suspendDepth = 0
+  const definitions = new Map<string, Definition>()
+  for (const [$ref, binding] of references) {
+    definitions.set($ref, { binding, code: compileRoot(document.references[$ref], ["references", $ref]) })
+  }
+  const codes = document.representations.map((representation, index) =>
+    compileRoot(representation, ["representations", index])
+  )
+  return { groups, definitions, artifacts, codes }
+
+  function compileRoot(representation: SchemaRepresentation.Representation, path: Path): CompiledCode {
+    artifactDependencies = new Set()
+    const fragments = recur(representation, path)
+    return {
+      ...fragments,
+      dependencies: [
+        ...Array.from(collectRefs(representation, false, identifierSet), ($ref) => references.get($ref)!),
+        ...artifactDependencies
+      ]
+    }
+  }
+
+  function dependOnArtifact(binding: DeclarationBinding): DeclarationBinding {
+    if (suspendDepth === 0) artifactDependencies.add(binding)
+    return binding
+  }
+
+  function freshIdentifier(seed: string): DeclarationBinding {
+    return module.declare(sanitizeJavaScriptIdentifier(seed))
   }
 
   function compileCallback(
@@ -353,7 +453,7 @@ export function toCodeDocument(
         }
         for (const imported of parsed) {
           if (imported.kind === "SideEffect") {
-            addSideEffect(module, imported.module, imported.attributes)
+            module.addSideEffect(imported.module, imported.attributes)
             continue
           }
           if (references.has(imported.local) && imported.local !== "Schema" && !imports.has(imported.local)) {
@@ -372,7 +472,7 @@ export function toCodeDocument(
             ? imported
             : { ...imported, typeOnly: previous.typeOnly && imported.typeOnly }
           imports.set(imported.local, input)
-          references.set(imported.local, addImport(module, input))
+          references.set(imported.local, module.addImport(input))
         }
       } catch (error) {
         throw errorWithPath(error instanceof Error ? error.message : String(error), [
@@ -392,21 +492,30 @@ export function toCodeDocument(
     return makeFragments(parse(output.runtime, "runtime"), "Type" in output ? parse(output.Type, "Type") : "never")
   }
 
-  function addSymbol(symbol: symbol): Binding {
+  function addSymbol(symbol: symbol): DeclarationBinding {
     const existing = symbols.get(symbol)
-    if (existing !== undefined) return existing
+    if (existing !== undefined) {
+      existing.runtime ||= !typeOnly
+      return dependOnArtifact(existing.binding)
+    }
     const identifier = freshIdentifier("_symbol")
-    symbols.set(symbol, identifier)
     const key = globalThis.Symbol.keyFor(symbol)
     const description = symbol.description
-    artifacts.push({ _tag: "Symbol", binding: identifier })
-    define(module, identifier, [
-      key === undefined
-        ? `globalThis.Symbol(${description === undefined ? "" : format(description)})`
-        : `globalThis.Symbol.for(${format(key)})`,
-      code`typeof ${identifier}`
-    ])
-    return identifier
+    const artifact: SymbolArtifact = {
+      _tag: "Symbol",
+      binding: identifier,
+      runtime: !typeOnly,
+      code: {
+        runtime: key === undefined
+          ? `globalThis.Symbol(${description === undefined ? "" : format(description)})`
+          : `globalThis.Symbol.for(${format(key)})`,
+        Type: code`typeof ${identifier}`,
+        dependencies: []
+      }
+    }
+    symbols.set(symbol, artifact)
+    artifacts.push(artifact)
+    return dependOnArtifact(identifier)
   }
 
   function annotationSchemas(
@@ -445,7 +554,7 @@ export function toCodeDocument(
     } else if (check._tag === "Filter") {
       throw errorWithPath("Missing toCode callback", [...path, "annotations", "toCode"])
     } else {
-      runtime = code`Schema.makeFilterGroup([${
+      runtime = code`${schemaImport}.makeFilterGroup([${
         join(check.checks.map((child, index) => compileCheck(child, [...path, "checks", index])), ", ")
       }])`
     }
@@ -468,8 +577,10 @@ export function toCodeDocument(
       runtime = deferred((render) => {
         const base = render(current)
         const check = render(compiledCheck)
-        return base === "Schema.Number" && Object.hasOwn(canonicalNumberChecks, check)
-          ? canonicalNumberChecks[check]
+        const namespace = render(schemaImport)
+        const suffix = check.startsWith(namespace + ".") ? check.slice(namespace.length) : ""
+        return base === `${namespace}.Number` && Object.hasOwn(canonicalNumberChecks, suffix)
+          ? namespace + canonicalNumberChecks[suffix]
           : `${base}.check(${check})`
       })
     }
@@ -510,80 +621,91 @@ export function toCodeDocument(
         )
       }
       case "Suspend": {
+        suspendDepth++
         const thunk = recur(representation.thunk, [...path, "thunk"])
-        return makeFragments(code`Schema.suspend((): Schema.Codec<${thunk.Type}> => ${thunk.runtime})`, thunk.Type)
+        suspendDepth--
+        return makeFragments(
+          code`${schemaImport}.suspend((): ${schemaImport}.Codec<${thunk.Type}> => ${thunk.runtime})`,
+          thunk.Type
+        )
       }
       case "Null":
-        return makeFragments("Schema.Null", "null")
+        return makeFragments(code`${schemaImport}.Null`, "null")
       case "Undefined":
-        return makeFragments("Schema.Undefined", "undefined")
+        return makeFragments(code`${schemaImport}.Undefined`, "undefined")
       case "Void":
-        return makeFragments("Schema.Void", "void")
+        return makeFragments(code`${schemaImport}.Void`, "void")
       case "Never":
-        return makeFragments("Schema.Never", "never")
+        return makeFragments(code`${schemaImport}.Never`, "never")
       case "Unknown":
-        return makeFragments("Schema.Unknown", "unknown")
+        return makeFragments(code`${schemaImport}.Unknown`, "unknown")
       case "Any":
-        return makeFragments("Schema.Any", "any")
+        return makeFragments(code`${schemaImport}.Any`, "any")
       case "String":
-        return makeFragments("Schema.String", "string")
+        return makeFragments(code`${schemaImport}.String`, "string")
       case "Number":
-        return makeFragments("Schema.Number", "number")
+        return makeFragments(code`${schemaImport}.Number`, "number")
       case "Boolean":
-        return makeFragments("Schema.Boolean", "boolean")
+        return makeFragments(code`${schemaImport}.Boolean`, "boolean")
       case "BigInt":
-        return makeFragments("Schema.BigInt", "bigint")
+        return makeFragments(code`${schemaImport}.BigInt`, "bigint")
       case "Symbol":
-        return makeFragments("Schema.Symbol", "symbol")
+        return makeFragments(code`${schemaImport}.Symbol`, "symbol")
       case "Literal": {
         const literal = format(representation.literal)
-        return makeFragments(`Schema.Literal(${literal})`, literal)
+        return makeFragments(code`${schemaImport}.Literal(${literal})`, literal)
       }
       case "UniqueSymbol": {
         const identifier = addSymbol(representation.symbol)
-        return makeFragments(code`Schema.UniqueSymbol(${identifier})`, code`typeof ${identifier}`)
+        return makeFragments(code`${schemaImport}.UniqueSymbol(${identifier})`, code`typeof ${identifier}`)
       }
       case "ObjectKeyword":
-        return makeFragments("Schema.ObjectKeyword", "object")
+        return makeFragments(code`${schemaImport}.ObjectKeyword`, "object")
       case "Enum": {
         const identifier = freshIdentifier("_Enum")
-        artifacts.push({ _tag: "Enum", binding: identifier })
-        define(module, identifier, [
-          code`enum ${identifier} { ${
-            representation.enums.map(([name, value]) => `${format(name)} = ${format(value)}`).join(
-              ", "
-            )
-          } }`,
-          code`typeof ${identifier}`
-        ])
-        return makeFragments(code`Schema.Enum(${identifier})`, identifier)
+        artifacts.push({
+          _tag: "Enum",
+          binding: identifier,
+          code: {
+            runtime: code`enum ${identifier} { ${
+              representation.enums.map(([name, value]) => `${format(name)} = ${format(value)}`).join(", ")
+            } }`,
+            Type: code`typeof ${identifier}`,
+            dependencies: []
+          }
+        })
+        dependOnArtifact(identifier)
+        return makeFragments(code`${schemaImport}.Enum(${identifier})`, identifier)
       }
       case "TemplateLiteral": {
         const parts = representation.parts.map((part, index) => recur(part, [...path, "parts", index]))
         const Type = code`\`${join(parts.map((part) => code`\${${part.Type}}`), "")}\``
-        return makeFragments(code`Schema.TemplateLiteral([${join(parts.map((part) => part.runtime), ", ")}])`, Type)
+        return makeFragments(
+          code`${schemaImport}.TemplateLiteral([${join(parts.map((part) => part.runtime), ", ")}])`,
+          Type
+        )
       }
       case "Arrays": {
         const elements = representation.elements.map((element, index) => {
           const type = recur(element.type, [...path, "elements", index, "type"])
           return makeFragments(
-            code`${element.isOptional ? "Schema.optionalKey(" : ""}${type.runtime}${element.isOptional ? ")" : ""}${
-              runtimeAnnotate(element.annotations, "annotateKey")
-            }`,
+            code`${element.isOptional ? code`${schemaImport}.optionalKey(` : ""}${type.runtime}${
+              element.isOptional ? ")" : ""
+            }${runtimeAnnotate(element.annotations, "annotateKey")}`,
             element.isOptional ? code`(${type.Type})?` : type.Type
           )
         })
         const rest = representation.rest.map((item, index) => recur(item, [...path, "rest", index]))
         if (!Arr.isArrayNonEmpty(rest)) {
           return makeFragments(
-            code`Schema.Tuple([${join(elements.map((element) => element.runtime), ", ")}])`,
+            code`${schemaImport}.Tuple([${join(elements.map((element) => element.runtime), ", ")}])`,
             code`readonly [${join(elements.map((element) => element.Type), ", ")}]`
           )
         }
         const item = rest[0]
         if (elements.length === 0 && rest.length === 1) {
           return makeFragments(
-            code`Schema.Array(${item.runtime})`,
+            code`${schemaImport}.Array(${item.runtime})`,
             code`globalThis.ReadonlyArray<${item.Type}>`
           )
         }
@@ -593,9 +715,9 @@ export function toCodeDocument(
           ...rest.slice(1).map((item) => item.Type)
         ]
         return makeFragments(
-          code`Schema.TupleWithRest(Schema.Tuple([${join(elements.map((element) => element.runtime), ", ")}]), [${
-            join(rest.map((item) => item.runtime), ", ")
-          }])`,
+          code`${schemaImport}.TupleWithRest(${schemaImport}.Tuple([${
+            join(elements.map((element) => element.runtime), ", ")
+          }]), [${join(rest.map((item) => item.runtime), ", ")}])`,
           code`readonly [${join(types, ", ")}]`
         )
       }
@@ -607,8 +729,8 @@ export function toCodeDocument(
             : formatPropertyKey(property.name)
           const type = recur(property.type, [...path, "propertySignatures", index, "type"])
           let runtime = type.runtime
-          if (property.isMutable) runtime = code`Schema.mutableKey(${runtime})`
-          if (property.isOptional) runtime = code`Schema.optionalKey(${runtime})`
+          if (property.isMutable) runtime = code`${schemaImport}.mutableKey(${runtime})`
+          if (property.isOptional) runtime = code`${schemaImport}.optionalKey(${runtime})`
           runtime = code`${runtime}${runtimeAnnotate(property.annotations, "annotateKey")}`
           const runtimeName = property.name === "__proto__" ? code`[${name}]` : name
           const typeName = code`${property.isMutable ? "" : "readonly "}${name}${property.isOptional ? "?" : ""}`
@@ -622,20 +744,20 @@ export function toCodeDocument(
         const propertyTypes = join(properties.map((property) => property.Type), ", ")
         if (indexSignatures.length === 0) {
           return makeFragments(
-            code`Schema.Struct({ ${propertyRuntimes} })`,
+            code`${schemaImport}.Struct({ ${propertyRuntimes} })`,
             code`{ ${propertyTypes} }`
           )
         }
         if (properties.length === 0 && indexSignatures.length === 1) {
           const signature = indexSignatures[0]
           return makeFragments(
-            code`Schema.Record(${signature.parameter.runtime}, ${signature.type.runtime})`,
+            code`${schemaImport}.Record(${signature.parameter.runtime}, ${signature.type.runtime})`,
             code`{ readonly [x: ${signature.parameter.Type}]: ${signature.type.Type} }`
           )
         }
         const indexRuntimes = join(
           indexSignatures.map((signature) =>
-            code`Schema.Record(${signature.parameter.runtime}, ${signature.type.runtime})`
+            code`${schemaImport}.Record(${signature.parameter.runtime}, ${signature.type.runtime})`
           ),
           ", "
         )
@@ -643,7 +765,7 @@ export function toCodeDocument(
           code`readonly [x: ${signature.parameter.Type}]: ${signature.type.Type}`
         )
         return makeFragments(
-          code`Schema.StructWithRest(Schema.Struct({ ${propertyRuntimes} }), [${indexRuntimes}])`,
+          code`${schemaImport}.StructWithRest(${schemaImport}.Struct({ ${propertyRuntimes} }), [${indexRuntimes}])`,
           properties.length === 0
             ? code`{ ${join(indexTypes, ", ")} }`
             : join([code`{ ${propertyTypes} }`, ...indexTypes.map((indexType) => code`{ ${indexType} }`)], " & ")
@@ -651,20 +773,20 @@ export function toCodeDocument(
       }
       case "Union": {
         if (representation.options === undefined && representation.types.length === 0) {
-          return makeFragments("Schema.Never", "never")
+          return makeFragments(code`${schemaImport}.Never`, "never")
         }
         if (representation.options === undefined && representation.types.every(isSimpleLiveLiteral)) {
           const literals = representation.types.map((literal) => format(literal.literal))
           return literals.length === 1
-            ? makeFragments(`Schema.Literal(${literals[0]})`, literals[0])
-            : makeFragments(`Schema.Literals([${literals.join(", ")}])`, literals.join(" | "))
+            ? makeFragments(code`${schemaImport}.Literal(${literals[0]})`, literals[0])
+            : makeFragments(code`${schemaImport}.Literals([${literals.join(", ")}])`, literals.join(" | "))
         }
         const types = representation.types.map((type, index) => recur(type, [...path, "types", index]))
         const options = representation.options === undefined
           ? ""
           : `, ${unionOptionsRuntime(representation.options)}`
         return makeFragments(
-          code`Schema.Union([${join(types.map((type) => type.runtime), ", ")}]${options})`,
+          code`${schemaImport}.Union([${join(types.map((type) => type.runtime), ", ")}]${options})`,
           types.length === 0 ? "never" : join(types.map((type) => type.Type), " | ")
         )
       }

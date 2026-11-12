@@ -1,4 +1,4 @@
-import type { Import } from "../codegen.ts"
+import type { Import } from "../../Codegen.ts"
 import { tokenize } from "./codeTokens.ts"
 
 export type Imports = ReadonlyArray<
@@ -22,7 +22,6 @@ const escapes: Readonly<Record<string, string>> = {
   "\r\n": ""
 }
 
-/** Parse import declarations into the writer's import descriptions. */
 export function parse(source: string): Imports {
   const fail = (): never => {
     throw new Error(`Invalid import declaration: ${source}`)

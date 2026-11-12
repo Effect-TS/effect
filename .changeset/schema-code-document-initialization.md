@@ -5,8 +5,8 @@
 "@effect/ai-anthropic": patch
 ---
 
-Fix recursive initialization, declaration name collisions, generated types, and shared symbol identity in `SchemaRepresentation.toCodeDocument` and the OpenAPI generator.
+Add the experimental `Codegen.Module` builder and fix recursive initialization, name collisions, generated types, and symbol identity in schema and OpenAPI generation.
 
 Custom `toCode` callbacks must interpolate supplied argument strings unchanged and return supported schema/type expressions. Move unsupported code, such as functions with local declarations, into imported helpers.
 
-The regenerated OpenAI and Anthropic clients preserve custom HTTP client error and service types. Some nullable OpenAI objects, such as `Batch.errors`, now strip undeclared fields and no longer expose index signatures; use their declared fields instead.
+Some nullable OpenAI objects, such as `Batch.errors`, now strip undeclared fields and no longer expose index signatures; use their declared fields instead.

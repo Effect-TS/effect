@@ -7,8 +7,7 @@
  * definitions for the document, and receive source text containing exported
  * TypeScript aliases plus Effect Schema runtime values. The generator first
  * normalizes OpenAPI-specific schema shapes into Effect's JSON Schema model,
- * then delegates recursive analysis and runtime expression construction to
- * `SchemaRepresentation`.
+ * then registers schema declarations in a shared `Codegen` module.
  *
  * The renderer keeps the emitted module usable for both human maintainers and
  * automated code-generation consumers by emitting reusable references in
@@ -19,6 +18,7 @@
  * @since 4.0.0
  */
 import * as Arr from "effect/Array"
+import * as Codegen from "effect/Codegen"
 import * as JsonSchema from "effect/JsonSchema"
 import * as Option from "effect/Option"
 import * as Rec from "effect/Record"
@@ -75,26 +75,18 @@ export function make() {
     typeOnly: boolean,
     options?: GenerateOptions
   ) {
-    const generated = makeCodeDocument(source, components, options)
-    if (generated === undefined) {
-      return ""
-    }
-
-    const references = [
-      ...generated.codeDocument.references.nonRecursives.map(({ $ref, code }) =>
-        renderSchemaTypeAndRuntime($ref, code, typeOnly, options)
-      ),
-      ...Object.entries(generated.codeDocument.references.recursives).map(([$ref, code]) =>
-        renderSchemaTypeAndRuntime($ref, code, typeOnly, options)
-      )
-    ]
-
-    const codes = generated.nameMap.map((name, i) =>
-      renderSchemaTypeAndRuntime(name, generated.codeDocument.codes[i], typeOnly, options)
-    )
-
-    return renderImportArtifacts(generated.codeDocument, !typeOnly) +
-      render([...references, ...codes])
+    const module = new Codegen.Module()
+    module.provideImport({
+      module: "effect/Schema",
+      kind: "Namespace",
+      imported: "*",
+      local: "Schema",
+      typeOnly: false,
+      attributes: ""
+    })
+    compile(module, store, source, components, typeOnly, options)
+    const output = module.finalize()
+    return render([...output.imports, ...output.declarations.flatMap((declaration) => declaration.fragments)])
   }
 
   function generateHttpApi(
@@ -105,100 +97,121 @@ export function make() {
     return generate(source, components, false, options)
   }
 
-  function makeCodeDocument(
-    source: Source,
-    components: JsonSchema.Definitions,
-    options?: GenerateOptions
-  ): {
-    readonly nameMap: Array<string>
-    readonly codeDocument: SchemaRepresentation.CodeDocument
-  } | undefined {
-    const nameMap: Array<string> = []
-    const schemas: Array<JsonSchema.JsonSchema> = []
-
-    const definitions: JsonSchema.Definitions = Rec.map(
-      components,
-      (js) => fromSchemaOpenApi(source, js).schema
-    )
-
-    for (const [name, js] of Object.entries(store)) {
-      nameMap.push(name)
-      schemas.push(fromSchemaOpenApi(source, js).schema)
-    }
-    // Unnamed roots, so included components are emitted as definitions without an alias
-    for (const name of options?.includeSchemas ?? []) {
-      if (!Object.hasOwn(components, name)) {
-        throw new Error(`Included schema ${name} is not a component`)
-      }
-      schemas.push(fromSchemaOpenApi(source, { $ref: `#/components/schemas/${name}` }).schema)
-    }
-
-    if (!Arr.isArrayNonEmpty(schemas)) {
-      return
-    }
-
-    const document = {
-      dialect: "draft-2020-12" as const,
-      schemas,
-      definitions
-    }
-    const schemasWithExamples: Array<JsonSchema.JsonSchema> = []
-    const preparedSchemas = new WeakMap<JsonSchema.JsonSchema, JsonSchema.JsonSchema>()
-    const preparedOutputs = new WeakSet<JsonSchema.JsonSchema>()
-    const importerOptions: SchemaRepresentation.FromJsonSchemaOptions = {
-      patterns: "apply",
-      closeObjects: options?.closeObjects,
-      onEnter(js: JsonSchema.JsonSchema) {
-        if (preparedOutputs.has(js)) return js
-        const cached = preparedSchemas.get(js)
-        if (cached !== undefined) return cached
-
-        const out = { ...js }
-        const transformed = { ...(options?.onEnter === undefined ? out : options.onEnter(out)) }
-        preparedSchemas.set(js, transformed)
-        preparedOutputs.add(transformed)
-        if (Array.isArray(transformed.examples)) {
-          schemasWithExamples.push(transformed)
-        }
-        return transformed
-      }
-    }
-    let rootSchemas = SchemaRepresentation.fromJsonSchemaMultiDocument(document, importerOptions)
-    if (Arr.isArrayNonEmpty(schemasWithExamples)) {
-      const exampleSchemas = SchemaRepresentation.fromJsonSchemaMultiDocument(
-        { ...document, schemas: schemasWithExamples },
-        importerOptions
-      )
-      for (let i = 0; i < schemasWithExamples.length; i++) {
-        const node = schemasWithExamples[i]
-        const examples = node.examples as ReadonlyArray<unknown>
-        const decode = Schema.decodeUnknownOption(Schema.toType(exampleSchemas[i]), { onExcessProperty: "error" })
-        const validExamples = examples.filter((example) => Option.isSome(decode(example)))
-        if (validExamples.length === examples.length) continue
-        if (validExamples.length === 0) {
-          delete node.examples
-        } else {
-          node.examples = validExamples
-        }
-      }
-      rootSchemas = SchemaRepresentation.fromJsonSchemaMultiDocument(document, importerOptions)
-    }
-    const codeDocument = SchemaRepresentation.toCodeDocument(
-      SchemaRepresentation.toRepresentations(Arr.map(rootSchemas, (schema) => schema.ast))
-    )
-
-    return {
-      nameMap,
-      codeDocument
-    }
-  }
-
   return {
     addSchema,
     generate,
     generateHttpApi,
     schemas: store as Readonly<Record<string, JsonSchema.JsonSchema>>
   } as const
+}
+
+/** @internal */
+export function compile(
+  module: Codegen.Module,
+  schemas: Readonly<Record<string, JsonSchema.JsonSchema>>,
+  source: Source,
+  components: JsonSchema.Definitions,
+  typeOnly: boolean,
+  options?: GenerateOptions
+): ReadonlyMap<string, Codegen.Binding> {
+  const prepared = prepareSchemas(schemas, source, components, options)
+  if (prepared === undefined) return new Map()
+  return module.addSchemas(prepared.schemas, {
+    references: prepared.references,
+    typeOnly
+  })
+}
+
+function prepareSchemas(
+  store: Readonly<Record<string, JsonSchema.JsonSchema>>,
+  source: Source,
+  components: JsonSchema.Definitions,
+  options?: GenerateOptions
+): {
+  readonly schemas: Readonly<Record<string, SchemaRepresentation.Representation>>
+  readonly references: SchemaRepresentation.References
+} | undefined {
+  const names: Array<string> = []
+  const schemas: Array<JsonSchema.JsonSchema> = []
+
+  const definitions: JsonSchema.Definitions = Rec.map(
+    components,
+    (js) => fromSchemaOpenApi(source, js).schema
+  )
+
+  for (const [name, js] of Object.entries(store)) {
+    names.push(name)
+    schemas.push(fromSchemaOpenApi(source, js).schema)
+  }
+  // Unnamed roots, so included components are emitted as definitions without an alias
+  for (const name of options?.includeSchemas ?? []) {
+    if (!Object.hasOwn(components, name)) {
+      throw new Error(`Included schema ${name} is not a component`)
+    }
+    schemas.push(fromSchemaOpenApi(source, { $ref: `#/components/schemas/${name}` }).schema)
+  }
+
+  if (!Arr.isArrayNonEmpty(schemas)) {
+    return
+  }
+
+  const document = {
+    dialect: "draft-2020-12" as const,
+    schemas,
+    definitions
+  }
+  const schemasWithExamples: Array<JsonSchema.JsonSchema> = []
+  const preparedSchemas = new WeakMap<JsonSchema.JsonSchema, JsonSchema.JsonSchema>()
+  const preparedOutputs = new WeakSet<JsonSchema.JsonSchema>()
+  const importerOptions: SchemaRepresentation.FromJsonSchemaOptions = {
+    patterns: "apply",
+    closeObjects: options?.closeObjects,
+    onEnter(js: JsonSchema.JsonSchema) {
+      if (preparedOutputs.has(js)) return js
+      const cached = preparedSchemas.get(js)
+      if (cached !== undefined) return cached
+
+      const out = { ...js }
+      const transformed = { ...(options?.onEnter === undefined ? out : options.onEnter(out)) }
+      preparedSchemas.set(js, transformed)
+      preparedOutputs.add(transformed)
+      if (Array.isArray(transformed.examples)) {
+        schemasWithExamples.push(transformed)
+      }
+      return transformed
+    }
+  }
+  let rootSchemas = SchemaRepresentation.fromJsonSchemaMultiDocument(document, importerOptions)
+  if (Arr.isArrayNonEmpty(schemasWithExamples)) {
+    const exampleSchemas = SchemaRepresentation.fromJsonSchemaMultiDocument(
+      { ...document, schemas: schemasWithExamples },
+      importerOptions
+    )
+    for (let i = 0; i < schemasWithExamples.length; i++) {
+      const node = schemasWithExamples[i]
+      const examples = node.examples as ReadonlyArray<unknown>
+      const decode = Schema.decodeUnknownOption(Schema.toType(exampleSchemas[i]), { onExcessProperty: "error" })
+      const validExamples = examples.filter((example) => Option.isSome(decode(example)))
+      if (validExamples.length === examples.length) continue
+      if (validExamples.length === 0) {
+        delete node.examples
+      } else {
+        node.examples = validExamples
+      }
+    }
+    rootSchemas = SchemaRepresentation.fromJsonSchemaMultiDocument(document, importerOptions)
+  }
+  const representation = SchemaRepresentation.toRepresentations(Arr.map(rootSchemas, (schema) => schema.ast))
+  return {
+    schemas: Object.fromEntries(names.map((name, index) => [
+      name,
+      multipartRepresentation(name, representation.representations[index], options?.multipartSchemaRefs)
+    ])),
+    references: Rec.map(
+      representation.references,
+      (schema, name) => multipartRepresentation(name, schema, options?.multipartSchemaRefs)
+    )
+  }
 }
 
 function fromSchemaOpenApi(source: Source, jsonSchema: JsonSchema.JsonSchema) {
@@ -210,18 +223,25 @@ function fromSchemaOpenApi(source: Source, jsonSchema: JsonSchema.JsonSchema) {
   }
 }
 
-function renderSchemaTypeAndRuntime(
-  $ref: string,
-  code: SchemaRepresentation.Code,
-  typeOnly: boolean,
-  options?: GenerateOptions
-) {
-  code = multipartCode($ref, options?.multipartSchemaRefs) ?? code
-  const strings = [`export type ${$ref} = ${code.Type}`]
-  if (!typeOnly) {
-    strings.push(`export const ${$ref} = ${code.runtime}`)
+function multipartRepresentation(
+  name: string | undefined,
+  schema: SchemaRepresentation.Representation,
+  refs: MultipartSchemaRefs | undefined
+): SchemaRepresentation.Representation {
+  if (name === undefined) return schema
+  const code = multipartCode(name, refs)
+  if (code === undefined) return schema
+  return {
+    _tag: "Declaration",
+    typeParameters: [],
+    checks: [],
+    annotations: {
+      toCode: () => ({
+        ...code,
+        importDeclarations: refs?.kind === "httpapi" ? ["import { Multipart } from \"effect/http\""] : []
+      })
+    }
   }
-  return strings.join("\n")
 }
 
 function multipartCode(
@@ -248,12 +268,4 @@ function multipartCode(
 function render(as: ReadonlyArray<string>) {
   if (as.length === 0) return ""
   return as.join("\n") + "\n"
-}
-
-function renderImportArtifacts(codeDocument: SchemaRepresentation.CodeDocument, enabled: boolean): string {
-  if (!enabled) return ""
-  const imports = codeDocument.artifacts.flatMap((artifact) =>
-    artifact._tag === "Import" ? [artifact.importDeclaration] : []
-  )
-  return imports.length === 0 ? "" : imports.join("\n") + "\n"
 }

@@ -10,6 +10,7 @@
  *
  * @since 4.0.0
  */
+import * as Codegen from "effect/Codegen"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import type { OpenAPISecurityScheme, OpenAPISpec, OpenAPISpecOperation } from "effect/http-api/OpenApi"
@@ -227,25 +228,58 @@ export const make = Effect.gen(function*() {
         multipartSchemaRefs: multipart.refs,
         includeSchemas: options.includeSchemas
       }
-      const generation = options.format === "httpapi"
-        ? generator.generateHttpApi(source, multipart.definitions, schemaOptions)
-        : generator.generate(source, multipart.definitions, options.format === "httpclient-type-only", schemaOptions)
-
-      if (options.format === "httpapi") {
-        const needsMultipartImport = generation.includes("Multipart.")
-        return String.stripMargin(
-          `|${HttpApiTransformer.imports(importName, { multipart: needsMultipartImport })}
-           |${generation}
-           |${HttpApiTransformer.toImplementation(importName, options.name, parsed)}`
+      const module = new Codegen.Module(
+        options.format === "httpapi" ? ["ReadonlyArray"] : [
+          "Array",
+          "Object",
+          "String",
+          "JSON",
+          "Uint8Array",
+          "ReadonlyArray",
+          "Record",
+          "Parameters",
+          "encodeURIComponent"
+        ]
+      )
+      const registration = options.format === "httpapi"
+        ? HttpApiTransformer.registerModule(module, importName, options.name, parsed)
+        : OpenApiTransformer.registerModule(
+          module,
+          importName,
+          options.name,
+          parsed,
+          options.format === "httpclient-type-only"
         )
-      }
-
+      const schemas = JsonSchemaGenerator.compile(
+        module,
+        generator.schemas,
+        source,
+        multipart.definitions,
+        options.format === "httpclient-type-only",
+        schemaOptions
+      )
+      const bound = ParsedOperation.mapSchemas(parsed, (name) => {
+        const binding = schemas.get(name)
+        if (binding === undefined) throw new Error(`Missing schema ${name}`)
+        return binding
+      })
+      module.add(Codegen.deferred((render) => {
+        const resolved = ParsedOperation.mapSchemas(bound, render)
+        if ("implementation" in registration) return registration.implementation(resolved)
+        const name = render(registration.client)
+        return String.stripMargin(
+          `|${openApiTransformer.toImplementation(importName, name, resolved)}
+           |
+           |${openApiTransformer.toTypes(importName, name, resolved)}`
+        )
+      }))
+      const output = module.finalize()
+      const declarations = [...output.imports, ...output.declarations.flatMap((declaration) => declaration.fragments)]
+      const generation = declarations.length === 0 ? "" : declarations.join("\n") + "\n"
       return String.stripMargin(
-        `|${openApiTransformer.imports(importName, parsed)}
+        `|${registration.imports}
          |${generation}
-         |${openApiTransformer.toImplementation(importName, options.name, parsed)}
-         |
-         |${openApiTransformer.toTypes(importName, options.name, parsed)}`
+         |${output.body.join("\n")}`
       )
     },
     (effect, _, options) =>

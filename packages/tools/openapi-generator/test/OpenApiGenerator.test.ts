@@ -13,6 +13,7 @@ import { spawn } from "node:child_process"
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs"
 import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
+import { withGeneratedModule } from "../../../effect/test/utils/generatedModule.ts"
 
 // The first compile check starts the shared TypeScript compiler runs under CI load.
 const compilationTimeout = 60_000
@@ -83,7 +84,7 @@ const assertTypeOnlyIncludes = Effect.fnUntraced(function*(
 
 interface CompileOptions {
   readonly exactOptionalPropertyTypes?: boolean | undefined
-  readonly formats?: ReadonlyArray<"httpclient" | "httpclient-type-only"> | undefined
+  readonly formats?: ReadonlyArray<OpenApiGenerator.OpenApiGeneratorFormat> | undefined
   readonly usage?: string | undefined
 }
 
@@ -95,7 +96,7 @@ const compileCases: Array<{ readonly spec: OpenAPISpec; readonly options: Compil
 
 const generateClients = ({ options, spec }: (typeof compileCases)[number]) => {
   const generate = (
-    format: "httpclient" | "httpclient-type-only",
+    format: OpenApiGenerator.OpenApiGeneratorFormat,
     layer: typeof OpenApiGenerator.layerTransformerSchema
   ) =>
     Effect.gen(function*() {
@@ -107,9 +108,9 @@ const generateClients = ({ options, spec }: (typeof compileCases)[number]) => {
   return Effect.all(formats.map((format) =>
     generate(
       format,
-      format === "httpclient"
-        ? OpenApiGenerator.layerTransformerSchema
-        : OpenApiGenerator.layerTransformerTs
+      format === "httpclient-type-only"
+        ? OpenApiGenerator.layerTransformerTs
+        : OpenApiGenerator.layerTransformerSchema
     ).pipe(Effect.map((client) => `${client}\n${options.usage ?? ""}`))
   ))
 }
@@ -174,7 +175,7 @@ const typeCheckCases = Effect.fnUntraced(
               skipLibCheck: true,
               strict: true,
               target: "ES2022",
-              types: [],
+              types: ["node"],
               verbatimModuleSyntax: true
             },
             files: caseIndexes.flatMap((caseIndex) => files[caseIndex])
@@ -3455,6 +3456,78 @@ export const __HttpApiMultipartFiles = Multipart.FilesSchema`,
   })
 
   describe("regression", () => {
+    const collisionNames = ["Data", "OperationConfig", "TestClient", "Config", "HttpApi", "DefaultGroup"]
+    const collisionSpec: OpenAPISpec = {
+      openapi: "3.1.0",
+      info: { title: "Shared module names", version: "1.0.0" },
+      components: {
+        schemas: {
+          ...Object.fromEntries(collisionNames.map((name) => [name, { type: "string" as const }])),
+          getUser200: {
+            type: "object",
+            properties: Object.fromEntries(
+              collisionNames.map((name) => [name, { $ref: `#/components/schemas/${name}` }])
+            ),
+            required: collisionNames,
+            additionalProperties: false
+          }
+        },
+        securitySchemes: {}
+      },
+      security: [],
+      tags: [],
+      paths: {
+        "/user": {
+          get: {
+            operationId: "getUser",
+            parameters: [],
+            security: [],
+            tags: ["default"],
+            responses: {
+              "200": {
+                description: "User",
+                content: { "application/json": { schema: { $ref: "#/components/schemas/getUser200" } } }
+              }
+            }
+          }
+        }
+      }
+    }
+
+    itGeneratedClientsCompile("resolves schema names against imports and generated declarations", collisionSpec, {
+      formats: ["httpclient", "httpclient-type-only", "httpapi"]
+    })
+
+    it.effect("uses the resolved schemas in client responses and HttpApi endpoints", () =>
+      Effect.gen(function*() {
+        const generator = yield* OpenApiGenerator.OpenApiGenerator
+        const value = Object.fromEntries(collisionNames.map((name) => [name, name]))
+        const clientSource = yield* generator.generate(collisionSpec, { name: "TestClient", format: "httpclient" })
+        yield* Effect.promise(() =>
+          withGeneratedModule<{
+            make: (client: HttpClient.HttpClient) => { getUser: () => Effect.Effect<unknown, unknown> }
+          }>(clientSource, async ({ make }) => {
+            const client = make(
+              HttpClient.make((request) => Effect.succeed(HttpClientResponse.fromWeb(request, Response.json(value))))
+                .pipe(HttpClient.mapRequest(HttpClientRequest.prependUrl("http://api.test")))
+            )
+            assert.deepStrictEqual(await Effect.runPromise(client.getUser()), value)
+          })
+        )
+        const apiSource = yield* generator.generate(collisionSpec, { name: "Config", format: "httpapi" })
+        yield* Effect.promise(() =>
+          withGeneratedModule<{
+            Config: { groups: { default: { endpoints: { getUser: { success: ReadonlySet<Schema.Codec<unknown>> } } } } }
+          }>(apiSource, ({ Config }) => {
+            const responses = Config.groups.default.endpoints.getUser.success
+            assert.strictEqual(responses.size, 1)
+            const success = [...responses][0]
+            assert.deepStrictEqual(Schema.decodeUnknownSync(success)(value), value)
+            assert.isFalse(Schema.is(success)({ ...value, Data: 1 }))
+          })
+        )
+      }).pipe(Effect.provide(OpenApiGenerator.layerTransformerSchema)))
+
     for (const format of ["httpclient", "httpclient-type-only"] as const) {
       for (const exactOptionalPropertyTypes of [true, false]) {
         itGeneratedClientsCompile(

@@ -10,9 +10,11 @@
  *
  * @since 4.0.0
  */
+import type * as Codegen from "effect/Codegen"
 import * as Context from "effect/Context"
 import * as Layer from "effect/Layer"
 import * as Predicate from "effect/Predicate"
+import { namedImport, namespaceImport, printImports, provideImports } from "./internal/module.ts"
 import type { ParsedOpenApi, ParsedOperation, ParsedOperationHttpClientResponses } from "./ParsedOperation.ts"
 import * as Utils from "./Utils.ts"
 
@@ -65,6 +67,42 @@ const computeImportRequirements = (operations: ReadonlyArray<ParsedOperation>): 
     }
   }
   return { eventStream, eventStreamData, eventStreamSchema, octetStream }
+}
+
+const moduleImports = (importName: string, parsed: ParsedOpenApi, typeOnly: boolean): ReadonlyArray<Codegen.Import> => {
+  const requirements = computeImportRequirements(parsed.operations)
+  const imports = [namespaceImport("effect/Data", "Data"), namespaceImport("effect/Effect", "Effect")]
+  if (!typeOnly) {
+    imports.push(namedImport("effect/Schema", "SchemaError", true), namespaceImport("effect/Schema", importName))
+  }
+  if (requiresStreaming(requirements)) imports.push(namespaceImport("effect/Stream", "Stream"))
+  if (!typeOnly && requirements.eventStream) imports.push(namespaceImport("effect/encoding/Sse", "Sse"))
+  imports.push(
+    namespaceImport("effect/http/HttpClient", "HttpClient", !requiresStreaming(requirements)),
+    namespaceImport("effect/http/HttpClientError", "HttpClientError"),
+    namespaceImport("effect/http/HttpClientRequest", "HttpClientRequest"),
+    namespaceImport("effect/http/HttpClientResponse", "HttpClientResponse")
+  )
+  return imports
+}
+
+/** @internal */
+export const registerModule = (
+  module: Codegen.Module,
+  importName: string,
+  name: string,
+  parsed: ParsedOpenApi,
+  typeOnly: boolean
+): { readonly client: Codegen.Binding; readonly imports: string } => {
+  const imports = moduleImports(importName, parsed, typeOnly)
+  provideImports(module, imports)
+  const locals = module.scope()
+  for (const name of ["E", "R"]) module.declare(name, { scope: locals, exact: true })
+  for (const name of ["make", "OperationConfig", "WithOptionalResponse"]) module.declare(name, { exact: true })
+  const client = module.declare(name)
+  module.declare(`${client.name}Error`, { exact: true })
+  module.declare(`${client.name}ErrorImpl`, { exact: true })
+  return { client, imports: printImports(imports) }
 }
 
 const requiresStreaming = (requirements: ImportRequirements): boolean =>
@@ -467,34 +505,7 @@ export const make = <E, R>(
   }
 
   return OpenApiTransformer.of({
-    imports: (importName, parsed) => {
-      const operations = parsed.operations
-      const requirements = computeImportRequirements(operations)
-      const imports = [
-        `import * as Data from "effect/Data"`,
-        `import * as Effect from "effect/Effect"`,
-        `import type { SchemaError } from "effect/Schema"`,
-        `import * as ${importName} from "effect/Schema"`
-      ]
-      if (requiresStreaming(requirements)) {
-        imports.push(`import * as Stream from "effect/Stream"`)
-      }
-      if (requirements.eventStream) {
-        imports.push(`import * as Sse from "effect/encoding/Sse"`)
-      }
-      // HttpClient needs to be a value import when streaming is used (for filterStatusOk)
-      if (requiresStreaming(requirements)) {
-        imports.push(`import * as HttpClient from "effect/http/HttpClient"`)
-      } else {
-        imports.push(`import type * as HttpClient from "effect/http/HttpClient"`)
-      }
-      imports.push(
-        `import * as HttpClientError from "effect/http/HttpClientError"`,
-        `import * as HttpClientRequest from "effect/http/HttpClientRequest"`,
-        `import * as HttpClientResponse from "effect/http/HttpClientResponse"`
-      )
-      return imports.join("\n")
-    },
+    imports: (importName, parsed) => printImports(moduleImports(importName, parsed, false)),
     toTypes: (importName, name, parsed) => operationsToInterface(importName, name, parsed.operations),
     toImplementation: (importName, name, parsed) => operationsToImpl(importName, name, parsed.operations)
   })
@@ -859,28 +870,7 @@ export const make = <E, R>(
   }
 
   return OpenApiTransformer.of({
-    imports: (_importName, parsed) => {
-      const operations = parsed.operations
-      const requirements = computeImportRequirements(operations)
-      const imports = [
-        `import * as Data from "effect/Data"`,
-        `import * as Effect from "effect/Effect"`
-      ]
-      if (requiresStreaming(requirements)) {
-        imports.push(
-          `import * as Stream from "effect/Stream"`,
-          `import * as HttpClient from "effect/http/HttpClient"`
-        )
-      } else {
-        imports.push(`import type * as HttpClient from "effect/http/HttpClient"`)
-      }
-      imports.push(
-        `import * as HttpClientError from "effect/http/HttpClientError"`,
-        `import * as HttpClientRequest from "effect/http/HttpClientRequest"`,
-        `import * as HttpClientResponse from "effect/http/HttpClientResponse"`
-      )
-      return imports.join("\n")
-    },
+    imports: (importName, parsed) => printImports(moduleImports(importName, parsed, true)),
     toTypes: (importName, name, parsed) => operationsToInterface(importName, name, parsed.operations),
     toImplementation: (importName, name, parsed) => operationsToImpl(importName, name, parsed.operations)
   })

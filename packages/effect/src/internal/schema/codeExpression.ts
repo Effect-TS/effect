@@ -1,4 +1,4 @@
-import { code, type Fragment, join } from "../codegen.ts"
+import { code, type Fragment, join } from "../../Codegen.ts"
 import { type Token, tokenize } from "./codeTokens.ts"
 
 /** Parse schema expressions and types, keeping their spelling except for tracked references. */
