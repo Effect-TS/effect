@@ -105,6 +105,14 @@ describe("Html", () => {
         expect(h.dialog().open).type.not.toBeCallableWith("modal")
         expect(h.details().modal).type.not.toBeCallableWith(true)
         expect(h.div().modal).type.not.toBeCallableWith(true)
+        // Any element can be a popover, manual or auto; its toggle carries both states.
+        expect(h.div().popover).type.toBeCallableWith("manual", true)
+        expect(h.button().popover).type.toBeCallableWith("auto", false)
+        expect(h.div().popover).type.not.toBeCallableWith("hint", true)
+        expect(h.div().onToggle).type.toBeCallableWith(
+          ({ newState, oldState, open }: Html.PopoverTogglePayload) =>
+            Msg.make({ _tag: "Typed", value: `${oldState}${newState}${open}` })
+        )
         return h.div()
       }
     })

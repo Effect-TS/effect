@@ -4,6 +4,7 @@ import { Effect } from "effect"
 import { HtmlQuery } from "effect/ui/html/testing"
 import { Query, Story, TestHost } from "effect/ui/testing"
 import { Confirm } from "./fixtures/confirm.ts"
+import { Menu, MenuMessage } from "./fixtures/popover.ts"
 import { TodoApp, TodoAppMessage } from "./fixtures/todos.ts"
 
 const el = (
@@ -93,6 +94,27 @@ describe("HtmlQuery", () => {
         // A static `open` attribute counts too.
         expect(HtmlQuery.dialogState(el("dialog", { open: "" }))).toBe("open")
         expect(HtmlQuery.dialogState(document.createElement("dialog"))).toBe("closed")
+      }).pipe(Effect.scoped, Effect.provide(TestHost.layer())))
+
+    it.effect("a popover that isn't showing and what's in it are hidden, and popoverState tells", () =>
+      Effect.gen(function*() {
+        const menu = HtmlQuery.role("menu", { name: "Menu" })
+        const rename = HtmlQuery.role("button", { name: "Rename" })
+        Story.make(Menu, { mode: "auto", open: false, follow: true }, (s) => {
+          s.check((story) => {
+            expect(story.query(menu)).toBeUndefined()
+            expect(story.query(rename)).toBeUndefined()
+            expect(HtmlQuery.popoverState(story.get(HtmlQuery.role("menu", { hidden: true })))).toBe("closed")
+          })
+            .send(MenuMessage.make({ _tag: "Set", open: true }))
+            .check((story) => expect(HtmlQuery.popoverState(story.get(menu))).toBe("open"))
+            // A light dismiss, as the browser host reports it; the Model follows.
+            .fire(menu, "toggle", { open: false, newState: "closed", oldState: "open" })
+            .check((story) => expect(story.query(menu)).toBeUndefined())
+        })
+        const root = yield* TestHost.mount(Menu, { mode: "manual" as const, open: true, follow: false })
+        expect(HtmlQuery.popoverState(root.get(menu))).toBe("open")
+        expect(HtmlQuery.popoverState(document.createElement("div"))).toBe("closed")
       }).pipe(Effect.scoped, Effect.provide(TestHost.layer())))
   })
 

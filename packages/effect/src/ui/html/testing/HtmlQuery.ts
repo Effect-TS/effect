@@ -212,13 +212,29 @@ const dialogOpen = <N>(reader: Reader<N>, node: N): boolean => {
   return open === undefined ? reader.attr(node, "open") !== undefined : open === true || open === "modal"
 }
 
+/**
+ * Whether a popover is showing: its `popoverOpen` property, set by `.popover`, or `:popover-open` on a DOM
+ * element. A DOM without `:popover-open` reports it closed.
+ */
+const popoverOpen = <N>(reader: Reader<N>, node: N): boolean => {
+  const open = reader.prop(node, "popoverOpen")
+  if (open !== undefined || !isDom(node)) return open === true
+  try {
+    return (node as unknown as globalThis.Element).matches(":popover-open")
+  } catch {
+    return false
+  }
+}
+
 const isHidden = <N>(reader: Reader<N>, node: N): boolean =>
   reader.attr(node, "hidden") !== undefined ||
   reader.attr(node, "aria-hidden") === "true" ||
   (reader.tag(node) === "input" && (reader.attr(node, "type") ?? "").toLowerCase() === "hidden") ||
   reader.tag(node) === "template" ||
-  // A closed dialog isn't rendered, so neither it nor anything in it is in the accessibility tree.
-  (reader.tag(node) === "dialog" && !dialogOpen(reader, node))
+  // A closed dialog or a popover that isn't showing isn't rendered, so neither it nor anything in it is
+  // in the accessibility tree.
+  (reader.tag(node) === "dialog" && !dialogOpen(reader, node)) ||
+  (reader.attr(node, "popover") !== undefined && !popoverOpen(reader, node))
 
 const implicitRole = <N>(reader: Reader<N>, node: N, inSection: boolean): string | undefined => {
   const tag = reader.tag(node)
@@ -612,6 +628,27 @@ export const dialogState = (node: unknown): "closed" | "open" | "modal" => {
   if (reader.prop(element, "open") === "modal") return "modal"
   return dialogOpen(reader, element) ? "open" : "closed"
 }
+
+/**
+ * Whether a popover is showing. It reads a story's view or a `TestHost`
+ * tree, where `.popover(mode, open)` sets `popoverOpen`, or a DOM element,
+ * through `:popover-open`.
+ *
+ * **Example** (Checking a menu)
+ *
+ * ```ts
+ * import { HtmlQuery } from "effect/ui/html/testing"
+ *
+ * declare const story: { get: (locator: unknown) => unknown }
+ * const menu = story.get(HtmlQuery.role("menu", { hidden: true }))
+ * console.log(HtmlQuery.popoverState(menu)) // "closed"
+ * ```
+ *
+ * @stability experimental
+ * @category getters
+ * @since 4.1.5
+ */
+export const popoverState = (node: unknown): "closed" | "open" => popoverOpen(readerOf(node), node) ? "open" : "closed"
 
 /**
  * Clicks `element` as the user would: a button submits its form, and a

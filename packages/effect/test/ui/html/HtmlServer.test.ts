@@ -9,6 +9,7 @@ import { ssr } from "effect/ui/html/testing"
 import { TestHost } from "effect/ui/testing"
 import { describe, vi } from "vitest"
 import { Confirm, ConfirmMessage } from "./fixtures/confirm.ts"
+import { Menu, popoverStub } from "./fixtures/popover.ts"
 import { App, AppRoute, People } from "./fixtures/routed.ts"
 
 const tick = Effect.promise(() => new Promise<void>((resolve) => setTimeout(resolve, 30)))
@@ -207,6 +208,20 @@ describe("HtmlServer", { concurrent: false }, () => {
       dialog.close()
       pending.shift()!()
       expect(root.model()!.log).toEqual(["closed"])
+    }).pipe(Effect.scoped))
+
+  it.effect("renders a popover closed with its mode, and hydration shows it", () =>
+    Effect.gen(function*() {
+      const props = { mode: "manual", open: true, follow: false } as const
+      const rendered = yield* HtmlServer.renderToHtml(Menu, props)
+      expect(rendered.html).toContain("<div aria-label=\"Menu\" role=\"menu\" popover=\"manual\">")
+      const stub = yield* popoverStub
+      const app = yield* container(rendered.html)
+      const menu = app.querySelector("[aria-label=Menu]")!
+      yield* BrowserHost.mountEffect(Menu, props, app, { state: rendered.state })
+      yield* tick
+      expect(app.querySelector("[aria-label=Menu]")).toBe(menu)
+      expect(stub.calls).toEqual(["showPopover Menu"])
     }).pipe(Effect.scoped))
 
   it.effect("hydrates slots that missed the budget: a fetch in flight and a deferred Layer", () =>
