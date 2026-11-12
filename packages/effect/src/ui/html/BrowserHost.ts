@@ -334,14 +334,19 @@ export const makeHost = (
   const typesOf = (event: Event): ReadonlyArray<string> =>
     Array.from((event as DragEvent).dataTransfer?.types ?? [], (type) => type.toLowerCase())
 
+  /** Whether `node` is, as bound now, a drop target that accepts a drag of `types`. */
+  const accepts = (node: globalThis.Node, types: ReadonlyArray<string>): boolean => {
+    const entry = bound.get(node)
+    if (entry === undefined || entry.handlers.drop === undefined) return false
+    const accepted = (entry.options.drop as Html.DropTargetOptions | undefined)?.accepts
+    return accepted?.some((type) => types.includes(type.toLowerCase())) === true
+  }
+
   const dropTargetOf = (event: Event): globalThis.Element | undefined => {
     const types = typesOf(event)
     if (types.length === 0) return undefined
     for (const node of event.composedPath()) {
-      const entry = bound.get(node as globalThis.Node)
-      if (entry === undefined || entry.handlers.drop === undefined) continue
-      const accepts = (entry.options.drop as Html.DropTargetOptions | undefined)?.accepts
-      if (accepts?.some((type) => types.includes(type.toLowerCase()))) return node as globalThis.Element
+      if (accepts(node as globalThis.Node, types)) return node as globalThis.Element
     }
     return undefined
   }
@@ -390,7 +395,7 @@ export const makeHost = (
   }
 
   /** Queues the active target's `dragover` for the next frame, unless its position is what it last got. */
-  const queueOver = (element: globalThis.Element, payload: Html.DragOverPayload) => {
+  const queueOver = (element: globalThis.Element, payload: Html.DragOverPayload, types: ReadonlyArray<string>) => {
     if (bound.get(element)?.handlers.dragover === undefined) return
     overQueued = payload
     if (overFrame !== undefined) return
@@ -398,7 +403,8 @@ export const makeHost = (
       overFrame = undefined
       const next = overQueued
       overQueued = undefined
-      if (next === undefined || active !== element || !element.isConnected) return
+      // A render since the event may have taken the element's `onDrop` away or changed what it accepts.
+      if (next === undefined || active !== element || !element.isConnected || !accepts(element, types)) return
       if (
         overSent !== undefined && overSent.x === next.x && overSent.y === next.y && overSent.width === next.width &&
         overSent.height === next.height
@@ -422,7 +428,7 @@ export const makeHost = (
           if (dropEffect !== undefined && event.dataTransfer !== null) event.dataTransfer.dropEffect = dropEffect
         }
         activate(target)
-        if (name === "dragover" && target !== undefined) queueOver(target, boxOf(event, target))
+        if (name === "dragover" && target !== undefined) queueOver(target, boxOf(event, target), typesOf(event))
         return
       }
       case "dragleave": {
@@ -576,8 +582,10 @@ export const makeHost = (
       for (const name in handlers) listen(name)
       // A drag source needs its `dragstart` without a handler, and a drop target all of its events.
       if (options.dragstart !== undefined) { for (const name of dragSourceEvents) listen(name) }
-      // `dragend` ends an in-app drag for the targets too.
-      if (handlers.drop !== undefined) { for (const name of [...dropTargetEvents, "dragend"]) listen(name) }
+      // `dragend` ends an in-app drag for the targets too. Whoever reads `dropped` needs `dragstart`, which
+      // resets it, even for a native drag source such as a link with only `onDragEnd`.
+      if (handlers.drop !== undefined) { for (const name of [...dropTargetEvents, ...dragSourceEvents]) listen(name) }
+      if (handlers.dragend !== undefined) { for (const name of dragSourceEvents) listen(name) }
     },
     elements: [Html.name],
     controlled,
