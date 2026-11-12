@@ -1282,6 +1282,40 @@ export const map: {
 })
 
 /**
+ * Replaces each message a Command produces with the supplied value.
+ *
+ * **When to use**
+ *
+ * Use when the component needs a fixed message rather than the Command's
+ * result: `command.pipe(Command.as(message))` is shorthand for
+ * `command.pipe(Command.map(() => message))`.
+ *
+ * **Details**
+ *
+ * Keeps the original name, args, options, source type and requirements, just
+ * like `map`. Stream Commands emit the same supplied value for each element.
+ * Apply `match` first to a Command whose body can fail. After `match`, both
+ * mapped channels are replaced. The data-first form leaves an `Interrupt`
+ * unchanged; the pipeable form only accepts issued Commands.
+ *
+ * **Gotchas**
+ *
+ * For a union with different source types or requirements, use the data-first
+ * form, `Command.as(input, message)`, to preserve each branch's types.
+ *
+ * @see map
+ * @stability experimental
+ * @category mapping
+ * @since 4.1.5
+ */
+export const as: {
+  <B>(message: B): <A, R, Source, K extends Kind, SourceE>(
+    self: Issued<A, R, Source, K, SourceE>
+  ) => Mapped<Issued<A, R, Source, K, SourceE>, B>
+  <C extends Command<any, any>, B>(self: C, message: B): Mapped<C, B>
+} = dual(2, <A, R, B>(self: Command<A, R>, message: B): Command<B, R> => map(self, () => message))
+
+/**
  * Maps both channels of a Command whose body can fail to messages.
  *
  * **When to use**

@@ -90,6 +90,26 @@ describe("Command", () => {
     })
   })
 
+  describe("as", () => {
+    it("preserves kind, source and requirements in both forms", () => {
+      const message = Message.make({ _tag: "Got", n: 1 })
+      expect(SA.make().pipe(Command.as(message))).type.toBe<Command.Effectful<typeof Message.Type, SA, string>>()
+      expect(Command.as(SB.make(), message)).type.toBe<Command.Streaming<typeof Message.Type, SB, number>>()
+      expect(Command.as(Command.interrupt(Fx), message)).type.toBe<Command.Interrupt>()
+      const input = condition ? SA.make() : SB.make()
+      expect(Command.as(input, message)).type.toBe<
+        Command.Effectful<typeof Message.Type, SA, string> | Command.Streaming<typeof Message.Type, SB, number>
+      >()
+      const matched = Save.make({ id: "t1", title: "" }).pipe(
+        Command.match({ onSuccess: () => 1, onFailure: () => 0 }),
+        Command.as(message)
+      )
+      expect(matched).type.toBe<Command.Effectful<typeof Message.Type, Save, string, SaveFailed>>()
+      expect(Command.as).type.not.toBeCallableWith(Save.make({ id: "t1", title: "" }), message)
+      expect(Command.interrupt(Fx).pipe).type.not.toBeCallableWith(Command.as(message))
+    })
+  })
+
   describe("Service", () => {
     it("has no server option: no Command runs on the server", () => {
       const service = Command.Service<"Load">()
