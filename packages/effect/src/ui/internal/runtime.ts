@@ -1116,11 +1116,25 @@ const setup = (
         ? Layer.buildWithScope(layer, buildScope)
         : Layer.buildWithMemoMap(layer, memoMap, buildScope)
       // The wait is part of the build, so it ends with its Scope too.
-      const fiber = forkNow(withCache(context), again ? Effect.andThen(buildsReleased, build) : build)
+      let waiting = again
+      const fiber = forkNow(
+        withCache(context),
+        again
+          ? Effect.andThen(
+            buildsReleased,
+            Effect.suspend(() => {
+              waiting = false
+              return build
+            })
+          )
+          : build
+      )
       const done = (exit: Exit.Exit<Context.Context<any>, unknown>) => {
         if (Exit.isSuccess(exit)) return onExit(exit)
         // Closing lets go of this attempt's memo entries, the interrupted ones included.
         closeScope(buildScope)
+        // Released while it waited: nothing was being built, so nothing failed.
+        if (waiting) return
         // A build released with `scope` was interrupted for itself: `scope` is closed by then.
         if (
           isClosed(scope) || !Cause.hasInterruptsOnly(exit.cause) ||
