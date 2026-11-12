@@ -125,6 +125,41 @@ export const ReactionRemoved = Schema.TaggedStruct("ReactionRemoved", reaction).
 export type ReactionRemoved = typeof ReactionRemoved.Type
 
 /**
+ * Schema for a user asking the bot to stop working in a thread, as Slack's
+ * stop button does.
+ *
+ * **Details**
+ *
+ * - Nothing has been stopped. The streams in `messageIds` stay open and keep
+ *   taking text until the consumer ends them, and the platform shows a
+ *   disabled button until then.
+ * - `messageIds` is empty when no stream was open.
+ * - `id` is the platform's id for the request, Slack's `event_ts`. Two
+ *   deliveries of one request share it.
+ * - It has no `kind`.
+ *
+ * @stability unstable
+ * @category schemas
+ * @since 4.1.5
+ */
+export const StopRequested = Schema.TaggedStruct("StopRequested", {
+  thread: ChatThread.ChatThread,
+  id: Schema.String,
+  userId: Schema.String,
+  messageIds: Schema.Array(Schema.String),
+  raw: Schema.Json
+}).annotate({ identifier: "ChatEvent.StopRequested" })
+
+/**
+ * A user asking the bot to stop working in a thread.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.1.5
+ */
+export type StopRequested = typeof StopRequested.Type
+
+/**
  * Schema for an inbound chat event.
  *
  * **Gotchas**
@@ -136,7 +171,7 @@ export type ReactionRemoved = typeof ReactionRemoved.Type
  * @category schemas
  * @since 4.1.5
  */
-export const ChatEvent = Schema.Union([MessageCreated, ReactionAdded, ReactionRemoved]).annotate({
+export const ChatEvent = Schema.Union([MessageCreated, ReactionAdded, ReactionRemoved, StopRequested]).annotate({
   identifier: "ChatEvent"
 })
 
@@ -162,6 +197,8 @@ export type ChatEvent = typeof ChatEvent.Type
  * - A message is `message/{thread}/{id}`, with the thread in its
  *   `{platform}:{id}` form.
  * - A reaction is `reaction/{messageId}/{userId}/{emoji}/{added|removed}`.
+ * - A stop request is `stop/{thread}/{id}`.
+ * - Slack's `message` and `app_mention` for one message share a key.
  *
  * @stability unstable
  * @category getters
@@ -175,5 +212,7 @@ export const dedupeKey = (event: ChatEvent): string => {
       return `reaction/${event.messageId}/${event.userId}/${event.emoji}/added`
     case "ReactionRemoved":
       return `reaction/${event.messageId}/${event.userId}/${event.emoji}/removed`
+    case "StopRequested":
+      return `stop/${ChatThread.toString(event.thread)}/${event.id}`
   }
 }
