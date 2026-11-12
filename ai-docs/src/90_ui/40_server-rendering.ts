@@ -1,22 +1,14 @@
 /**
  * @title Rendering on the server
  *
- * Render the routed app to HTML with `HtmlServer.renderToHtml` and embed
- * its state in the page. This is the server's entry module. It serves the
- * same `fixtures/App.ts` the browser mounts, and the JSON API in
+ * Serve the routed app's pages with `HtmlServer.layerHttp`, next to the JSON
+ * API. This is the server's entry module. It serves the same
+ * `fixtures/App.ts` the browser mounts, and the JSON API in
  * `fixtures/server/NotesApi.ts`.
  */
 import { NodeHttpServer, NodeRuntime } from "@effect/platform-node"
-import { Effect, Layer, Option } from "effect"
-import {
-  FetchHttpClient,
-  HttpClient,
-  HttpClientRequest,
-  HttpRouter,
-  HttpServerRequest,
-  HttpServerResponse
-} from "effect/http"
-import { Router } from "effect/ui"
+import { Effect, Layer } from "effect"
+import { FetchHttpClient, HttpClient, HttpClientRequest, HttpRouter } from "effect/http"
 import { HtmlServer } from "effect/ui/html"
 // The server renders views too, so it registers the HTML elements as well.
 // The import reads no DOM global.
@@ -26,53 +18,6 @@ import { createServer } from "node:http"
 import { App } from "./fixtures/App.ts"
 import { AppRoute } from "./fixtures/routes.ts"
 import { NotesApi } from "./fixtures/server/NotesApi.ts"
-
-const renderPage = Effect.fnUntraced(function*(url: string) {
-  // The response status is the app's job, so resolve the URL before rendering.
-  const resolved = AppRoute.resolve(url)
-  if (Option.isNone(resolved)) {
-    return HttpServerResponse.text("Not found", { status: 404 })
-  }
-  const { redirected, route } = resolved.value
-  // A redirect route or a trailing slash changed the URL.
-  if (redirected) {
-    return HttpServerResponse.redirect(AppRoute.print(route))
-  }
-
-  // The server runs `init`, `update` and `view`, builds the provided Layers
-  // and fetches loader reads once per key in a per-request cache. It runs no
-  // Command, and no Subscription other than a loader watch, so data the
-  // server renders has to come from a loader read.
-  //
-  // `budget` is one deadline for Layers and fetches, 500 ms by default. Set
-  // it to what the page's data needs. Anything that misses it renders its
-  // loading state, and the client fetches it.
-  const rendered = yield* HtmlServer.renderToHtml(App, { route }, { budget: "300 millis" }).pipe(
-    // The server's Router has one fixed location, and navigation does nothing.
-    Effect.provide(Router.static({ routes: AppRoute, url }))
-  )
-
-  // `head`, `htmlAttributes` and `bodyAttributes` come from the components'
-  // `head` and are already escaped. `serializeState` makes the state safe
-  // inside a script tag, which `JSON.stringify` doesn't. The state holds
-  // every Model and every settled read, so treat all of it as public.
-  const body = `<!doctype html>
-<html ${rendered.htmlAttributes}>
-  <head><meta charset="utf-8">${rendered.head}</head>
-  <body ${rendered.bodyAttributes}>
-    <div id="app">${rendered.html}</div>
-    <script type="application/json" id="state">${HtmlServer.serializeState(rendered.state)}</script>
-    <script type="module" src="/client.js"></script>
-  </body>
-</html>`
-
-  // `rendered.model` is the root's Model after the render. Use it when the
-  // status depends on loaded data.
-  return HttpServerResponse.text(body, {
-    status: route._tag === "NotFound" ? 404 : 200,
-    contentType: "text/html"
-  })
-})
 
 const port = 3000
 
@@ -88,18 +33,48 @@ const ApiClient = Layer.effect(
   )
 ).pipe(Layer.provide(FetchHttpClient.layer))
 
-// A handler's requirements belong to the request, so the Layer goes through
-// `provideRequest`, which builds it once for the routes.
-const PageRoutes = HttpRouter.add(
-  "GET",
-  "*",
-  Effect.flatMap(HttpServerRequest.HttpServerRequest, (request) => renderPage(request.url))
-).pipe(HttpRouter.provideRequest(ApiClient))
+// `layerHttp` resolves each URL with `AppRoute`, answers a redirect for a
+// redirected URL and a 404 for the `NotFound` route, and renders the rest
+// with `Router.props(AppRoute)`, the props the browser mounts with.
+//
+// The server runs `init`, `update` and `view`, builds the provided Layers
+// and fetches loader reads once per key in a per-request cache. It runs no
+// Command, and no Subscription other than a loader watch, so data the
+// server renders has to come from a loader read.
+const Pages = HtmlServer.layerHttp(App, {
+  routes: AppRoute,
+  // `budget` is one deadline for Layers and fetches, 500 ms by default. Set
+  // it to what the page's data needs. Anything that misses it renders its
+  // loading state, and the client fetches it.
+  budget: "300 millis",
+  // `head`, `htmlAttributes` and `bodyAttributes` come from the components'
+  // `head` and are already escaped. `serializeState` makes the state safe
+  // inside a script tag, which `JSON.stringify` doesn't. The state holds
+  // every Model and every settled read, so treat all of it as public.
+  document: (page) =>
+    `<!doctype html>
+<html ${page.htmlAttributes}>
+  <head><meta charset="utf-8">${page.head}</head>
+  <body ${page.bodyAttributes}>
+    <div id="app">${page.html}</div>
+    <script type="application/json" id="state">${HtmlServer.serializeState(page.state)}</script>
+    <script type="module" src="/client.js"></script>
+  </body>
+</html>`
+  // `status: (route, model) => number` replaces the default status, for what
+  // the route can't know, such as a note id that doesn't exist.
+}).pipe(
+  // The Layer captures the render's services when the server starts, so
+  // they are shared by every request. For a service that belongs to the
+  // request, such as the current user, call `HtmlServer.renderToHtml` from
+  // your own handler instead.
+  Layer.provide(ApiClient)
+)
 
 // `NotesApi` is the JSON API the app calls, from the server render and from
 // the browser. A real server also serves `/client.js`, the bundle of the
 // next example.
-const Main = HttpRouter.serve(Layer.mergeAll(NotesApi, PageRoutes)).pipe(
+const Main = HttpRouter.serve(Layer.mergeAll(NotesApi, Pages)).pipe(
   Layer.provide(NodeHttpServer.layer(createServer, { port }))
 )
 

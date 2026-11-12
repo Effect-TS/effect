@@ -1363,8 +1363,8 @@ export {
    * **Details**
    *
    * Navigation Commands return `"blocked"` and change nothing. The server
-   * parses the URL itself first, to answer a `NotFound` route with a 404 and a
-   * redirect with a 301. For a prerendered hash-routing shell, first call
+   * resolves the URL itself first, to answer a `notFound` route with a 404
+   * and a redirect with a 301. `HtmlServer.layerHttp` does both. For a prerendered hash-routing shell, first call
    * `routes.setBase("#")` and render at `"#/"`, so links and keys agree with
    * `BrowserRouter.layerHash` during hydration.
    *
