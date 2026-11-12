@@ -80,7 +80,9 @@
  */
 import * as Context from "../Context.ts"
 import * as Data from "../Data.ts"
+import * as Duration from "../Duration.ts"
 import * as Effect from "../Effect.ts"
+import type * as Fiber from "../Fiber.ts"
 import * as Layer from "../Layer.ts"
 import * as Option from "../Option.ts"
 import * as Predicate from "../Predicate.ts"
@@ -1062,6 +1064,18 @@ export interface Options {
   readonly onHash?: ((hash: string, action: "push" | "pop", index: number) => void) | undefined
   /** Called before the Router leaves the history entry at `index`. */
   readonly onLeave?: ((index: number) => void) | undefined
+  /**
+   * Throttles the replaces that stay on the page, such as a `patchQuery` per
+   * keystroke, to stay under the browser's rate limit on history calls. The
+   * first is written at once, and then the latest one at the end of each
+   * `interval`. The Router's location changes at once either way.
+   * `flushOn` is given the function that writes a pending replace now, as on
+   * `pagehide`, and returns its cleanup.
+   */
+  readonly throttle?: {
+    readonly interval: Duration.Input
+    readonly flushOn?: ((flush: () => void) => () => void) | undefined
+  } | undefined
 }
 
 /**
@@ -1103,6 +1117,23 @@ interface EntryState {
   readonly index: number
   readonly snapshot?: Record<string, unknown> | undefined
 }
+
+/**
+ * Reports that the history threw on a replace, as a browser does past its
+ * rate limit on history calls. The Router's location changed anyway, so the
+ * address bar shows an older URL until the next write.
+ *
+ * @stability experimental
+ * @category problems
+ * @since 4.1.5
+ */
+export class HistoryWriteFailed extends Data.TaggedClass("HistoryWriteFailed")<{
+  readonly message: string
+  /** The URL the Router tried to write. */
+  readonly url: string
+  /** What the history threw. */
+  readonly error: unknown
+}> {}
 
 const stateKey = "effect/ui"
 
@@ -1238,6 +1269,14 @@ const commandLayers = Layer.mergeAll(
  * write throws, the entry is written with its index only and
  * `SnapshotWriteFailed` is reported.
  *
+ * With `throttle`, a replace that stays on the page is written at once, and
+ * then at most once per interval, with the latest URL. A pending one is
+ * written before a push, a change to the hash, back, forward, a full page
+ * load, the host's `flushOn` and the Layer's Scope closing. It is dropped
+ * when the host moves to another entry by itself, as with the back button,
+ * since that entry is no longer current. A replace the history throws on is
+ * reported as `HistoryWriteFailed`, whether it was written at once or later.
+ *
  * Every navigation the Router makes closes the cache's fetch-free window
  * after hydration, if adoption hasn't closed it yet.
  *
@@ -1297,7 +1336,7 @@ const build = (options: Options): Effect.Effect<Context.Context<Router>, never, 
       options.onLeave?.(index)
       snapshots.set(index, snapshot())
     }
-    const report = (problem: SnapshotWriteFailed | PatchQueryLostBlock) => {
+    const report = (problem: SnapshotWriteFailed | PatchQueryLostBlock | HistoryWriteFailed) => {
       const root = primary()
       try {
         if (root !== undefined) root.report(problem)
@@ -1306,12 +1345,73 @@ const build = (options: Options): Effect.Effect<Context.Context<Router>, never, 
         // A sink can't change what the Router does.
       }
     }
+    /** Replaces the current entry, reporting a throw instead of failing the navigation. */
+    const replaceNow = (url: string, state: unknown) => {
+      try {
+        history.replace(url, state)
+      } catch (error) {
+        report(
+          new HistoryWriteFailed({
+            url,
+            error,
+            message:
+              `[effect/ui] the Router couldn't write "${url}" into the history. The route changed anyway, so the address bar shows an older URL until the next write.`
+          })
+        )
+      }
+    }
+    // --- throttled replaces --------------------------------------------------
+    const context = yield* Effect.context<never>()
+    const interval = options.throttle === undefined ? undefined : Duration.fromInputUnsafe(options.throttle.interval)
+    /** The latest same-page replace made while `cooling`, written when it ends. */
+    let queued: { readonly url: string; readonly state: unknown } | undefined
+    /** The interval after a throttled write, on the Effect `Clock`. */
+    let cooling: Fiber.Fiber<void> | undefined
+    /** Writes the queued replace now, before the Router leaves or rewrites the entry. */
+    const flush = () => {
+      const write = queued
+      if (write === undefined) return
+      queued = undefined
+      replaceNow(write.url, write.state)
+    }
+    const cool = (interval: Duration.Duration) => {
+      cooling = Effect.runForkWith(context)(Effect.andThen(
+        Effect.sleep(interval),
+        Effect.sync(() => {
+          cooling = undefined
+          if (queued === undefined) return
+          flush()
+          cool(interval)
+        })
+      ))
+    }
+    /** A replace that stays on the page: written at once, or as the latest one when the interval ends. */
+    const replaceQuiet = (url: string, state: unknown) => {
+      if (interval === undefined) return replaceNow(url, state)
+      if (cooling !== undefined) {
+        queued = { url, state }
+        return
+      }
+      replaceNow(url, state)
+      cool(interval)
+    }
+    const unflush = options.throttle?.flushOn?.(flush)
+    yield* Effect.addFinalizer(() =>
+      Effect.sync(() => {
+        unflush?.()
+        cooling?.interruptUnsafe()
+        cooling = undefined
+        flush()
+      })
+    )
     /** Writes the entry being left with its snapshot, so it survives a reload. A throw keeps the index only. */
     const writeSnapshot = (url: string, entry: EntryState) => {
+      // The current URL with the entry's snapshot: it supersedes a queued replace.
+      queued = undefined
       try {
         history.replace(url, writeState(entry))
       } catch (error) {
-        history.replace(url, writeState({ index: entry.index }))
+        replaceNow(url, writeState({ index: entry.index }))
         report(
           new SnapshotWriteFailed({
             error,
@@ -1403,7 +1503,12 @@ const build = (options: Options): Effect.Effect<Context.Context<Router>, never, 
       const href = location.url + location.hash
       if (replace) {
         snapshots.delete(index)
-        history.replace(href, writeState({ index }))
+        // A quiet replace stays on the page, so its path is the current one.
+        if (mode.quiet) replaceQuiet(href, writeState({ index }))
+        else {
+          queued = undefined
+          replaceNow(href, writeState({ index }))
+        }
         set({ ...location, action: "replace", seq }, mode)
       } else {
         leave()
@@ -1421,6 +1526,7 @@ const build = (options: Options): Effect.Effect<Context.Context<Router>, never, 
       const [url, hash] = split(href)
       const found = routes.resolve(url)
       if (Option.isNone(found)) {
+        flush()
         history.load(href)
         return "navigated"
       }
@@ -1434,8 +1540,11 @@ const build = (options: Options): Effect.Effect<Context.Context<Router>, never, 
       ) {
         if (hash === current.hash) return "navigated"
         // A change to the hash alone: a new entry, and no route change.
-        if (replace) history.replace(current.url + hash, writeState({ index }))
-        else {
+        if (replace) {
+          queued = undefined
+          replaceNow(current.url + hash, writeState({ index }))
+        } else {
+          flush()
           leave()
           index++
           history.push(current.url + hash, writeState({ index }))
@@ -1475,6 +1584,8 @@ const build = (options: Options): Effect.Effect<Context.Context<Router>, never, 
     }
 
     const popped = (href: string, state: unknown) => {
+      // The host has already moved to another entry, which a queued replace would overwrite.
+      queued = undefined
       const entry = readState(state)
       const target = entry?.index ?? 0
       if (reverting > 0) {
@@ -1583,17 +1694,20 @@ const build = (options: Options): Effect.Effect<Context.Context<Router>, never, 
         Effect.sync(() => patch(route, query, patchOptions?.history !== "push", patchOptions?.scroll === true)),
       back: Effect.sync(() => {
         if (blocks.size > 0) return "blocked"
+        flush()
         history.go(-1)
         return "navigated"
       }),
       forward: Effect.sync(() => {
         if (blocks.size > 0) return "blocked"
+        flush()
         history.go(1)
         return "navigated"
       }),
       load: (href) =>
         Effect.sync(() => {
           if (blocks.size > 0) return "blocked"
+          flush()
           history.load(href)
           return "navigated"
         }),

@@ -68,7 +68,8 @@ const ListPage = Component.make({
         ListMessage.make({ _tag: "Typed", value })
       ),
       h.button("Next").onClick(ListMessage.make({ _tag: "Next" })),
-      h.a("Page 2").attr("href", ListRoute.print(ListRoute.make({ _tag: "List", query: { page: 2 } })))
+      h.a("Page 2").attr("href", ListRoute.print(ListRoute.make({ _tag: "List", query: { page: 2 } }))),
+      h.a("Results").attr("href", "#results")
     )
 })
 
@@ -556,6 +557,73 @@ describe("BrowserRouter", { concurrent: false }, () => {
         expect(region()?.textContent).toBe("marker")
         // The page keyed by its path stayed mounted.
         expect(HtmlQuery.getByRole(app, "textbox", { name: "Search" })).toBe(field)
+      }).pipe(Effect.scoped))
+
+    it.effect("throttles the query writes of typing to one per 200 ms, writing the latest", () =>
+      Effect.gen(function*() {
+        const { app, field } = yield* startList("/list")
+        for (const value of ["a", "ab", "abc"]) {
+          HtmlQuery.input(field, value)
+          yield* tick
+        }
+        // The page shows the latest query at once; the address bar has the first.
+        expect(url()).toBe("/list?q=a")
+        expect((HtmlQuery.getByRole(app, "textbox", { name: "Search" }) as HTMLInputElement).value).toBe("abc")
+        yield* TestClock.adjust("199 millis")
+        expect(url()).toBe("/list?q=a")
+        yield* TestClock.adjust("1 millis")
+        expect(url()).toBe("/list?q=abc")
+      }).pipe(Effect.scoped))
+
+    it.effect("writes the pending query on pagehide, and stops listening when its Scope closes", () =>
+      Effect.gen(function*() {
+        const listening = new Set<unknown>()
+        const recording = new Proxy(window, {
+          get(target, key) {
+            if (key === "addEventListener") {
+              return (type: string, f: EventListener, options?: unknown) => {
+                if (type === "pagehide") listening.add(f)
+                target.addEventListener(type, f, options as AddEventListenerOptions)
+              }
+            }
+            if (key === "removeEventListener") {
+              return (type: string, f: EventListener, options?: unknown) => {
+                if (type === "pagehide") listening.delete(f)
+                target.removeEventListener(type, f, options as EventListenerOptions)
+              }
+            }
+            const value = Reflect.get(target, key)
+            return typeof value === "function" ? value.bind(target) : value
+          }
+        }) as Window
+        window.history.replaceState(null, "", "/list")
+        yield* Effect.gen(function*() {
+          const context = yield* Layer.build(BrowserRouter.layer({ routes: ListRoute, window: recording }))
+          const router = Context.get(context, Router.Router)
+          const held = ListOnly.make({ _tag: "List" })
+          yield* router.patchQuery(held, { q: "a" })
+          yield* router.patchQuery(held, { q: "ab" })
+          expect(url()).toBe("/list?q=a")
+          expect(listening.size).toBe(1)
+          window.dispatchEvent(new Event("pagehide"))
+          expect(url()).toBe("/list?q=ab")
+        }).pipe(Effect.scoped)
+        expect(listening.size).toBe(0)
+      }))
+
+    it.effect("writes the pending query before following an in-page #hash link", () =>
+      Effect.gen(function*() {
+        const { app, field } = yield* startList("/list")
+        HtmlQuery.input(field, "a")
+        yield* tick
+        HtmlQuery.input(field, "ab")
+        yield* tick
+        expect(url()).toBe("/list?q=a")
+        // The link resolves against the document's URL, which must be the Router's.
+        expect(clickReporting(link(app, "Results"))).toBe(true)
+        yield* tick
+        expect(url() + window.location.hash).toBe("/list?q=ab#results")
+        expect((HtmlQuery.getByRole(app, "textbox", { name: "Search" }) as HTMLInputElement).value).toBe("ab")
       }).pipe(Effect.scoped))
 
     it.effect("a link to its own page's query is loud", () =>
