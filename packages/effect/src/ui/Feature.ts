@@ -4,8 +4,8 @@
  *
  * A feature service holds the contract: the Props and Events Schemas. Model and
  * Message belong to the implementation. The app provides an implementation
- * with `Todos.layer(TodoList)`, and a test or storybook provides a fake with
- * `Todos.layer(FakeTodos)`. A parent renders it with `h.child(Todos, ...)` and
+ * with `Todos.toLayer(TodoList)`, and a test or storybook provides a fake with
+ * `Todos.toLayer(FakeTodos)`. A parent renders it with `h.child(Todos, ...)` and
  * requires `Todos` only: the implementation's requirements are closed where
  * the feature's Layer is built.
  *
@@ -32,7 +32,7 @@
  * })
  *
  * // The app picks the implementation. A test provides a fake the same way.
- * const TodosLive = Todos.layer(TodoList)
+ * const TodosLive = Todos.toLayer(TodoList)
  * ```
  *
  * @stability experimental
@@ -102,7 +102,7 @@ export interface Service<in out Self, in out Props, in out Events>
    * Provides this feature with `component`. The Layer requires whatever the
    * component requires, and closes it where the Layer is built.
    */
-  readonly layer: <R>(component: Component.Mountable<Props, Events, R>) => Layer.Layer<Self, never, R>
+  readonly toLayer: <R>(component: Component.Mountable<Props, Events, R>) => Layer.Layer<Self, never, R>
 }
 
 /**
@@ -134,9 +134,9 @@ export const isService = (u: unknown): u is Any => Predicate.hasProperty(u, Type
  *
  * **Details**
  *
- * The class is a `Context.Service` with `props`, `events` and `layer`. `name`
+ * The class is a `Context.Service` with `props`, `events` and `toLayer`. `name`
  * is also the path segment of every instance of the feature, so paths don't
- * change when the implementation does. `layer(C)` doesn't compile if `C`'s
+ * change when the implementation does. `toLayer(C)` doesn't compile if `C`'s
  * props or events don't fit the contract.
  *
  * **Example** (A feature with a fake for tests)
@@ -159,7 +159,7 @@ export const isService = (u: unknown): u is Any => Predicate.hasProperty(u, Type
  *   view: (_, h) => h.el("p", "no todos")
  * })
  *
- * const TodosFake = Todos.layer(FakeTodos)
+ * const TodosFake = Todos.toLayer(FakeTodos)
  * ```
  *
  * @stability experimental
@@ -195,7 +195,7 @@ export const Service: <Self>() => <
       static readonly [TypeId] = { name }
       static readonly props = schemas.props
       static readonly events = schemas.events ?? Schema.Never
-      static layer<R>(component: Component.Mountable<any, any, R>): Layer.Layer<any, never, R> {
+      static toLayer<R>(component: Component.Mountable<any, any, R>): Layer.Layer<any, never, R> {
         return Layer.effect(
           Base,
           Effect.map(Effect.context<R>(), (context) => ({

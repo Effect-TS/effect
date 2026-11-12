@@ -258,8 +258,7 @@ const RouteValue = Schema.declare(
  * @since 4.1.5
  */
 export class Push extends Command.Service<Push>()("effect/ui/Router/Push", {
-  args: { route: RouteValue },
-  invalidates: () => []
+  args: { route: RouteValue }
 }, Effect.map(Router, (router) => ({ route }: { readonly route: { readonly _tag: string } }) => router.push(route))) {}
 
 /**
@@ -273,8 +272,7 @@ export class Push extends Command.Service<Push>()("effect/ui/Router/Push", {
 export class Replace extends Command.Service<Replace>()(
   "effect/ui/Router/Replace",
   {
-    args: { route: RouteValue },
-    invalidates: () => []
+    args: { route: RouteValue }
   },
   Effect.map(Router, (router) => ({ route }: { readonly route: { readonly _tag: string } }) => router.replace(route))
 ) {}
@@ -340,8 +338,7 @@ export class PatchQuery extends Command.Service<PatchQuery>()(
       patch: QueryPatchValue,
       history: Schema.Literals(["push", "replace"]),
       scroll: Schema.Boolean
-    },
-    invalidates: () => []
+    }
   },
   Effect.map(Router, (router) =>
   ({ history, patch, route, scroll }: {
@@ -431,8 +428,7 @@ export const patchQuery = <U extends Routes, R extends U["Type"]>(
  * @since 4.1.5
  */
 export class Back extends Command.Service<Back>()("effect/ui/Router/Back", {
-  args: {},
-  invalidates: () => []
+  args: {}
 }, Effect.map(Router, (router) => () => router.back)) {}
 
 /**
@@ -443,8 +439,7 @@ export class Back extends Command.Service<Back>()("effect/ui/Router/Back", {
  * @since 4.1.5
  */
 export class Forward extends Command.Service<Forward>()("effect/ui/Router/Forward", {
-  args: {},
-  invalidates: () => []
+  args: {}
 }, Effect.map(Router, (router) => () => router.forward)) {}
 
 /**
@@ -455,8 +450,7 @@ export class Forward extends Command.Service<Forward>()("effect/ui/Router/Forwar
  * @since 4.1.5
  */
 export class Load extends Command.Service<Load>()("effect/ui/Router/Load", {
-  args: { href: Schema.String },
-  invalidates: () => []
+  args: { href: Schema.String }
 }, Effect.map(Router, (router) => ({ href }: { readonly href: string }) => router.load(href))) {}
 
 /**

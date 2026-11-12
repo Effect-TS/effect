@@ -21,7 +21,7 @@
  *
  * class SaveTodo extends Command.Service<SaveTodo>()(
  *   "todos/SaveTodo",
- *   { args: Todo, invalidates: () => [] },
+ *   { args: Todo },
  *   Effect.succeed(() => Effect.succeed(TodoItemMessage.make({ _tag: "Saved" })))
  * ) {}
  *
@@ -1194,7 +1194,7 @@ const toLayer = (layers: Layer.Any | ReadonlyArray<Layer.Any>): Layer.Layer<any,
  *
  * class SaveTodo extends Command.Service<SaveTodo>()(
  *   "todos/SaveTodo",
- *   { args: { id: Schema.String }, invalidates: () => [] },
+ *   { args: { id: Schema.String } },
  *   Effect.succeed(() => Effect.succeed(RowMessage.make({ _tag: "Saved" })))
  * ) {}
  *

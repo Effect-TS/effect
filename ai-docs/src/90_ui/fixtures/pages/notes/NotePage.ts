@@ -80,6 +80,6 @@ export const NotePageNoDeps = Component.make({
 export const NotePage = NotePageNoDeps.pipe(
   Component.provide([
     GetNote.layer.pipe(Layer.provide(Notes.layerHttp)),
-    NoteActivity.layer(ActivityLog)
+    NoteActivity.toLayer(ActivityLog)
   ])
 )

@@ -25,7 +25,7 @@ describe("Feature", () => {
   it.effect("layer closes the implementation's requirements with the build site's Context, minus Scope", () =>
     Effect.gen(function*() {
       const fake = Layer.succeed(SaveTodo, () => Effect.succeed(TodoItemMessage.make({ _tag: "Saved" })))
-      const layer = Todos.layer(TodoItem).pipe(Layer.provide(fake))
+      const layer = Todos.toLayer(TodoItem).pipe(Layer.provide(fake))
       const context = yield* Layer.build(layer)
       const todos = Context.get(context, Todos)
       assert.strictEqual<unknown>(todos.component, TodoItem)

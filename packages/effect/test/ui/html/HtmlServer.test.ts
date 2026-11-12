@@ -527,7 +527,7 @@ describe("HtmlServer", { concurrent: false }, () => {
           h.div(
             h.child(Panel, { key: "p", props: {}, fallback: () => h.p("fallback") })
           )
-      }).pipe(Component.provide(Layer.merge(Panel.layer(PanelLive), Layer.effectDiscard(Effect.sleep("20 millis")))))
+      }).pipe(Component.provide(Layer.merge(Panel.toLayer(PanelLive), Layer.effectDiscard(Effect.sleep("20 millis")))))
 
       const fiber = yield* Effect.forkChild(HtmlServer.renderToHtml(Page, {}))
       yield* TestClock.adjust("20 millis")

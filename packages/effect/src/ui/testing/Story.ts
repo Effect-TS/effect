@@ -26,7 +26,7 @@
  *
  * class SaveTodo extends Command.Service<SaveTodo>()(
  *   "todos/SaveTodo",
- *   { args: { id: Schema.String }, invalidates: () => [] },
+ *   { args: { id: Schema.String } },
  *   Effect.succeed(() => Effect.succeed(Message.make({ _tag: "Saved" })))
  * ) {}
  *

@@ -1401,7 +1401,7 @@ describe("Runtime", () => {
     it.effect("a feature child shows its fallback until the Layer above it is ready", () =>
       provideHost(Effect.gen(function*() {
         const slowBadge = Layer.merge(
-          Badge.layer(BadgeImpl),
+          Badge.toLayer(BadgeImpl),
           Layer.effectDiscard(Effect.sleep("1 second"))
         )
         const App = Component.provide(Shell, slowBadge)

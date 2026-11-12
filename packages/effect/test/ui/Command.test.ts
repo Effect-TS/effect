@@ -54,6 +54,15 @@ describe("Command", () => {
       assert.strictEqual(command.groupKey, undefined)
     })
 
+    it("defaults omitted invalidates to no targets", () => {
+      class NoInvalidation extends Command.Service<NoInvalidation>()(
+        "NoInvalidation",
+        { args: {} },
+        Effect.succeed(() => Effect.void)
+      ) {}
+      assert.deepStrictEqual(NoInvalidation.make().invalidates, [])
+    })
+
     it("computes invalidates and optimistic from the args at issue, and writes from the success", () => {
       class Rename extends Command.Service<Rename>()(
         "Rename",

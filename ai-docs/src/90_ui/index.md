@@ -7,6 +7,11 @@ and Subscriptions that the runtime runs for you, and data comes from `Loader`
 reads in `effect/reactivity`. `effect/ui/html` adds the HTML elements, the
 browser host and router, and server rendering.
 
+A `Command.Service` may omit `invalidates` when it invalidates no reads.
+Provide a feature implementation with `NoteActivity.toLayer(ActivityLog)`.
+When rendering a feature service with `h.child`, include a `fallback` for
+loading or failure; a child passed as a component value may omit it.
+
 ### Loading data
 
 A component declares the reads it shows in `loaders`, by name. Each entry
