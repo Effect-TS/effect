@@ -1273,6 +1273,27 @@ describe("Router throttle", { concurrent: false }, () => {
     }))
   })
 
+  it.effect("keeps the pending replace across a blocked pop the Router reverts, and writes it to its own entry", () => {
+    const t = throttled("/other")
+    return t.run(Effect.gen(function*() {
+      const router = yield* Router.Router
+      yield* router.navigate("/search")
+      yield* router.block("dirty")
+      // A patch isn't blocked.
+      const held = Routes.make({ _tag: "Search" })
+      yield* router.patchQuery(held, { q: "a" })
+      yield* router.patchQuery(held, { q: "ab" })
+      t.writes.length = 0
+      // The back button, while blocked: the Router moves the history forward again.
+      t.inner.go(-1)
+      assert.strictEqual(router.location().url, "/search?q=ab")
+      yield* TestClock.adjust("200 millis")
+      assert.deepStrictEqual(t.writes, ["go 1", "replace /search?q=ab"])
+      assert.deepStrictEqual(t.inner.entries(), ["/other", "/search?q=ab"])
+      assert.strictEqual(t.inner.current().url, "/search?q=ab")
+    }))
+  })
+
   it.effect("writes the pending replace when its Scope closes, and releases the host's flush", () => {
     const t = throttled("/search")
     return t.run(Effect.gen(function*() {

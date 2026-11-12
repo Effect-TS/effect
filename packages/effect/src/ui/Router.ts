@@ -1311,6 +1311,8 @@ const build = (options: Options): Effect.Effect<Context.Context<Router>, never, 
       readonly blocks: ReadonlyArray<string>
     } | undefined
     let reverting = 0
+    /** The replace queued on the entry a blocked pop left, written once the revert is back on it. */
+    let reverted: { readonly index: number; readonly url: string; readonly state: unknown } | undefined
 
     const primary = (): services.RootHandle | undefined => roots.values().next().value
     const snapshot = (): Record<string, unknown> => {
@@ -1571,12 +1573,18 @@ const build = (options: Options): Effect.Effect<Context.Context<Router>, never, 
 
     const popped = (href: string, state: unknown) => {
       // The host has already moved to another entry, which a queued replace would overwrite.
+      const left = queued
       queued = undefined
       const entry = readState(state)
       const target = entry?.index ?? 0
       if (reverting > 0) {
         reverting--
         index = target
+        if (reverting === 0 && reverted !== undefined) {
+          const write = reverted
+          reverted = undefined
+          if (write.index === target) replaceQuiet(write.url, write.state)
+        }
         return
       }
       const [url, hash] = split(href)
@@ -1586,6 +1594,8 @@ const build = (options: Options): Effect.Effect<Context.Context<Router>, never, 
       // Back and forward can't be blocked, only reverted. Within the page they aren't.
       if (blocks.size > 0 && !quiet) {
         if (target !== index) {
+          // Kept before the move back, which a synchronous history reports at once.
+          if (left !== undefined) reverted = { index, ...left }
           reverting++
           history.go(index - target)
         }
