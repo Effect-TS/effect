@@ -800,6 +800,107 @@ describe("ChatMarkdown", () => {
         assert.deepStrictEqual(yield* texts(test, thread), ["one\n"])
       }).pipe(Effect.provide(ChatTest.layer())))
 
+    /** Holds the first stop until `release` completes. */
+    const holdFirstStop = Effect.fnUntraced(function*() {
+      const entered = yield* Deferred.make<void>()
+      const release = yield* Deferred.make<void>()
+      let first = true
+      yield* patchNative((native) => ({
+        stop: (...args) =>
+          Effect.suspend(() => {
+            if (!first) return native.stop(...args)
+            first = false
+            return Effect.andThen(
+              Effect.andThen(Deferred.succeed(entered, undefined), Deferred.await(release)),
+              native.stop(...args)
+            )
+          })
+      }))
+      return { entered, release }
+    })
+
+    for (const failUpstream of [false, true]) {
+      it.effect(
+        failUpstream
+          ? "stops the stream after a denied append when the upstream then fails"
+          : "stops the stream after a denied append",
+        () =>
+          Effect.gen(function*() {
+            const { test, thread } = yield* setup
+            const chat = yield* Chat.Chat
+            const { entered, release } = yield* holdFirstStop()
+            const queue = yield* Queue.unbounded<string, string>()
+            const ids: Array<string> = []
+            const fiber = yield* Effect.forkChild(Effect.flip(ChatMarkdown.stream(thread, Stream.fromQueue(queue), {
+              recipient: "U1",
+              onPart: (part) => Effect.sync(() => void ids.push(part.messageId))
+            })))
+            yield* Queue.offer(queue, "one\n")
+            yield* settle
+            yield* test.failNext("nativeStream.append", new ChatError.Forbidden({}))
+            yield* Queue.offer(queue, "two\n")
+            yield* Deferred.await(entered)
+            if (failUpstream) yield* Queue.fail(queue, "boom")
+            yield* settle
+            yield* Deferred.succeed(release, undefined)
+            const error = yield* Fiber.join(fiber)
+            assert.strictEqual(error.cause._tag === "Chat" && error.cause.error.reason._tag, "Forbidden")
+            assert.deepStrictEqual([joined(error.posted), error.uncertain, error.remaining], [
+              "one\n",
+              undefined,
+              "two\n"
+            ])
+            const ops = (yield* test.calls).map((call) => call.op)
+            assert.strictEqual(ops.filter((op) => op === "nativeStream.append").length, 1)
+            assert.deepStrictEqual(yield* texts(test, thread), ["one\n"])
+            yield* chat.edit(thread, ids[0], { markdown: "edited" })
+          }).pipe(Effect.provide(ChatTest.layer()))
+      )
+    }
+
+    it.effect("bounds the stop of a failed reply by the finish timeout when the upstream fails", () =>
+      Effect.gen(function*() {
+        const { test, thread } = yield* setup
+        const entered = yield* Deferred.make<void>()
+        yield* patchNative(() => ({ stop: () => Effect.andThen(Deferred.succeed(entered, undefined), Effect.never) }))
+        const queue = yield* Queue.unbounded<string, string>()
+        const fiber = yield* Effect.forkChild(
+          Effect.flip(ChatMarkdown.stream(thread, Stream.fromQueue(queue), { recipient: "U1" }))
+        )
+        yield* Queue.offer(queue, "one\n")
+        yield* settle
+        yield* test.failNext("nativeStream.append", new ChatError.Forbidden({}))
+        yield* Queue.offer(queue, "two\n")
+        yield* Deferred.await(entered)
+        yield* Queue.fail(queue, "boom")
+        yield* settle
+        yield* TestClock.adjust("6 seconds")
+        const error = yield* Fiber.join(fiber)
+        assert.strictEqual(error.cause._tag === "Chat" && error.cause.error.reason._tag, "Forbidden")
+        assert.deepStrictEqual([joined(error.posted), error.remaining], ["one\n", "two\n"])
+      }).pipe(Effect.provide(ChatTest.layer())))
+
+    it.effect("stops the stream after a denied append when interrupted during the stop", () =>
+      Effect.gen(function*() {
+        const { test, thread } = yield* setup
+        const chat = yield* Chat.Chat
+        const { entered } = yield* holdFirstStop()
+        const ids: Array<string> = []
+        const { fiber, send } = yield* feed(thread, {
+          recipient: "U1",
+          onPart: (part) => Effect.sync(() => void ids.push(part.messageId))
+        })
+        yield* send("one\n")
+        yield* test.failNext("nativeStream.append", new ChatError.Forbidden({}))
+        yield* send("two\n")
+        yield* Deferred.await(entered)
+        yield* Fiber.interrupt(fiber)
+        const ops = (yield* test.calls).map((call) => call.op)
+        assert.strictEqual(ops.filter((op) => op === "nativeStream.append").length, 1)
+        assert.deepStrictEqual(yield* texts(test, thread), ["one\n"])
+        yield* chat.edit(thread, ids[0], { markdown: "edited" })
+      }).pipe(Effect.provide(ChatTest.layer())))
+
     it.effect("waits for an append in flight when interrupted, then finishes the reply", () =>
       Effect.gen(function*() {
         const { test, thread } = yield* setup

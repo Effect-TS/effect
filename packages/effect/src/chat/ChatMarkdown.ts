@@ -1089,6 +1089,10 @@ const reply = <E, R, R2>(options: ReplyOptions<E, R, R2>): Effect.Effect<Result,
         const error = Cause.findErrorOption(cause)
         if (Option.isNone(error)) return yield* Effect.failCause(cause as Cause.Cause<never>)
         state = { _tag: "Failed", cause: { _tag: "Upstream", error: error.value } }
+      } else if (current.closing !== undefined || inflight !== undefined) {
+        // The reply failed already, and the race cut off its stop or write. The finish sends only that stop,
+        // within the timeout, since a failed reply writes no more text, and keeps the error it failed with.
+        yield* finish
       }
       yield* Effect.annotateCurrentSpan("chat.markdown.transport", renderedNatively ? "native" : current.transport)
       if (state._tag === "Failed") return yield* Effect.fail(toError(state.cause))
