@@ -21,9 +21,9 @@
  * showed the dialog, and each `close` event ends the oldest: it reaches
  * `onClose` only for the latest showing, and not for a close the host made
  * itself. Before removing a dialog it showed that is still open, or an
- * element containing one, the host closes it, inner dialogs first, so focus
- * goes back to where it was before the dialog opened, as it does when the
- * Model closes it. That close isn't the app's either.
+ * element containing one, the host closes it, the latest shown first, so
+ * focus goes back to where it was before each one opened, as it does when
+ * the Model closes them. That close isn't the app's either.
  *
  * A popover's `popoverOpen` is shown with `showPopover()` at the commit,
  * after the modal dialogs, since a modal opening closes the auto popovers
@@ -321,7 +321,10 @@ export const makeHost = (
   }
   /** Dialogs whose Model says `"modal"`, checked at every commit. */
   const modalWanted = new Set<HTMLDialogElement>()
-  /** Dialogs with a showing the host recorded, closed before a removal takes them out. Pruned at commit. */
+  /**
+   * Dialogs with a showing the host recorded, in the order they were shown, closed before a removal takes
+   * them out. Pruned at commit.
+   */
   const shown = new Set<HTMLDialogElement>()
   /**
    * Whether `:modal` works here, found on the first `showModal()`. Where it does, a dialog the host
@@ -370,17 +373,15 @@ export const makeHost = (
 
   /**
    * Closes the open dialogs the host showed that are `node` or inside it, before it's removed. Once it's
-   * out of the document, `close()` would leave focus on the body. Inner dialogs close first, so each one
-   * hands focus back to the dialog it opened from before that one hands it on.
+   * out of the document, `close()` would leave focus on the body. The latest shown closes first, so each
+   * one hands focus back to where it was when it opened, which may be in a dialog shown before it.
    */
   const closeShownIn = (node: globalThis.Node) => {
     const inside: Array<HTMLDialogElement> = []
     for (const dialog of shown) {
       if (dialog.open && node.contains(dialog)) inside.push(dialog)
     }
-    if (inside.length === 0) return
-    inside.sort((a, b) => (a.compareDocumentPosition(b) & 4) !== 0 ? 1 : -1)
-    for (const dialog of inside) closeDialog(dialog, true)
+    for (let i = inside.length - 1; i >= 0; i--) closeDialog(inside[i], true)
   }
 
   /** Shows `dialog` as `want` says, from what it shows now. The caller checks `modal` needs it connected. */

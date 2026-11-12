@@ -1045,7 +1045,7 @@ describe("BrowserHost", { concurrent: false }, () => {
         expect(calls).toEqual(["showModal Outer", "showModal Inner"])
       }).pipe(Effect.scoped))
 
-    it.effect("a shown dialog is closed before it's removed, inner first, without telling the app", () =>
+    it.effect("a shown dialog is closed before it's removed, latest shown first, without telling the app", () =>
       Effect.gen(function*() {
         const { calls } = yield* dialogCalls
         const { app, root } = yield* mountConfirm({ state: "modal", acceptEscape: false })
@@ -1075,6 +1075,30 @@ describe("BrowserHost", { concurrent: false }, () => {
         HtmlQuery.click(HtmlQuery.getByRole(drawer, "button", { name: "Close" }))
         yield* tick
         expect(calls).toEqual(["showModal Outer", "showModal Inner", "close Inner", "close Outer"])
+
+        // Siblings shown later one before the other: the stack, not the document, sets the order.
+        calls.length = 0
+        const Stack = Component.make({
+          name: "Stack",
+          model: Schema.Number,
+          message: Schema.Number,
+          elements: Html,
+          init: () => 0,
+          update: (_, step) => step,
+          view: (step, h) =>
+            h.div(
+              step < 2 && h.div(
+                h.dialog.attr("aria-label", "First").key("first").modal(step === 1).children(h.p("First")),
+                h.dialog.attr("aria-label", "Second").key("second").modal(true).children(h.p("Second"))
+              )
+            )
+        })
+        const stack = yield* BrowserHost.mountEffect(Stack, {}, yield* container)
+        stack.send(1)
+        yield* tick
+        stack.send(2)
+        yield* tick
+        expect(calls).toEqual(["showModal Second", "showModal First", "close First", "close Second"])
       }).pipe(Effect.scoped))
   })
 
