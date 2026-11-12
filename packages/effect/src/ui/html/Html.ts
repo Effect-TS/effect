@@ -566,7 +566,8 @@ export class Element<out Msg, out R = never, in out E = Record<string, unknown>,
    * A form in the dialog is the app's, like any other: its submission comes
    * to `onSubmit`, with the submitter's `name` and `value` in `entries`, and
    * `method="dialog"` neither closes the dialog nor sets `returnValue`.
-   * `onClose` is sent for every close, the Model's included.
+   * `onClose` is sent for every close, the Model's included, except the
+   * closes the host makes to switch between modal and non-modal.
    *
    * The server renders a modal dialog closed, since HTML has no attribute
    * for one, and the browser host shows it once the page is live.
@@ -785,8 +786,9 @@ export class Element<out Msg, out R = never, in out E = Record<string, unknown>,
   }
   /**
    * Sugar for `on("close", handler)`, on a `dialog`: sent after every close,
-   * the Model's included, unless the dialog was shown again before the
-   * browser reported it.
+   * the Model's included, except the close the browser host makes to switch
+   * a dialog between modal and non-modal, and a close the browser reports
+   * after the dialog was shown again.
    *
    * @since 4.1.5
    */
