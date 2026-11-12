@@ -1285,6 +1285,33 @@ describe("Runtime", () => {
           }
         })))
 
+      it.effect("a build whose users unmount while it waits to start again isn't started", () =>
+        provideHost(Effect.gen(function*() {
+          let starts = 0
+          const cleanupStarted = yield* Deferred.make<void>()
+          const finishCleanup = yield* Deferred.make<void>()
+          const held = Layer.effect(
+            Store,
+            Effect.acquireRelease(
+              Effect.sync(() => starts++),
+              () => Effect.andThen(Deferred.succeed(cleanupStarted, undefined), Deferred.await(finishCleanup))
+            ).pipe(Effect.andThen(Effect.never))
+          )
+          const A = Component.provide(StoreId, ReadStore.layer.pipe(Layer.provide(held)))
+          const B = Component.provide(StoreId, ReadStore.layer.pipe(Layer.provide(held)))
+          const root = yield* TestHost.mount(Siblings({ a: A, b: B }), {})
+          yield* TestHost.settle
+          drop(root, "a")
+          yield* TestHost.settle
+          yield* Deferred.await(cleanupStarted)
+          // B is waiting for A's cleanup to end.
+          drop(root, "b")
+          yield* TestHost.settle
+          yield* Deferred.succeed(finishCleanup, undefined)
+          yield* TestHost.settle
+          assert.strictEqual(starts, 1)
+        })))
+
       it.effect("a Layer that interrupts itself fails once, though another build was interrupted meanwhile", () =>
         provideHost(Effect.gen(function*() {
           let builds = 0
