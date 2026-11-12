@@ -497,6 +497,15 @@ provided, and it is the one parents and entry modules use. The component
 without them is exported as `NotePageNoDeps`, for a test that provides its
 own. A component that needs no domain Layers has only the plain name.
 
+A memoised Layer is built once per Env, the services a component resolves
+from. Provides that resolve from the same Env share it, and so do the provides
+below them. It is closed when its last user unmounts. Components under
+different provided ancestors each build their own copy, so a service built for
+one page never sees another page's dependencies. A service that holds state,
+such as a session or a sync engine, is provided by the component that owns its
+lifetime, usually the root component. The components below keep naming it in
+their own provides and get that instance.
+
 Entry modules sit beside these folders. Each one imports
 `effect/ui/html/register` before it renders anything, and provides only
 platform Layers such as the Router, the HTTP client and logging. Domain Layers

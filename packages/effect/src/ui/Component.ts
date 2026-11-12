@@ -1165,6 +1165,15 @@ const toLayer = (layers: Layer.Any | ReadonlyArray<Layer.Any>): Layer.Layer<any,
  * A Layer passed as a value is built once per Env plus Layer identity,
  * reference-counted, and shared between the instances that resolve from it;
  * `{ local: true }` or a function of props builds once per instance, at mount.
+ * A memoised Layer inside a shared one is built once per Env too: every
+ * provide that resolves from that Env, or from an Env below it, gets the same
+ * instance, and the last of them to unmount closes it. Provides in sibling
+ * Envs build their own, so a service built for one never sees the other's
+ * dependencies. As with nested `Effect.provide`, a provide reuses what an Env
+ * above it built even where an Env between them provides a different
+ * dependency; `Layer.fresh` builds it again. A stateful service belongs to
+ * the component that owns its lifetime, usually the root: provide it there,
+ * and the provides below that name it get that instance.
  * An array of Layers is merged once with `Layer.mergeAll`, so the elements
  * don't see each other. Nothing is rebuilt when props change: re-key instead.
  * Nested provides let the inner one win, and the inner one can use the outer
