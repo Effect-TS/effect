@@ -30,16 +30,23 @@ fixtures/
     components/NoteActivity.ts
     components/ActivityLog.ts
   pages/
-    NotesIndex.ts
-    NotePage.ts
+    NotesIndex.ts             // /
+    notes/NotePage.ts         // /notes/:id
   server/NotesApi.ts          // the JSON API that Notes calls
 ```
 
 A second feature is a sibling of `notes/`, with its own `domain`, `services`,
-`loaders` and `components` folders. Keep one file per route in `pages/`: pages
-import features, but features never import pages. Keep `AppRoute` in `routes.ts`,
-outside `pages/` and separate from `App.ts`; pages can then build links without
-importing the root component that imports them.
+`loaders` and `components` folders. Pages import features, but features never
+import pages. Keep `AppRoute` in `routes.ts`, outside `pages/` and separate
+from `App.ts`; pages can then build links without importing the root component
+that imports them.
+
+Keep one file per route in `pages/`, in folders that mirror the URL. A page's
+folder is the static segments of its route's path, and its file is named after
+the component. `/` is `pages/NotesIndex.ts`, `/notes/:id` is
+`pages/notes/NotePage.ts`, and `/notes/:id/history` would be
+`pages/notes/history/NoteHistoryPage.ts`. A param segment gets no folder. The
+folder follows the URL, not the feature the page uses.
 
 A command belongs in the file of the component that runs it, not in a shared
 `commands/` folder. When two components need the same write, share the service

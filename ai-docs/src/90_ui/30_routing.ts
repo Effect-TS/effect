@@ -16,8 +16,10 @@ import "effect/ui/html/register"
 //
 // - `fixtures/routes.ts`: the route union, in its own file
 // - `fixtures/App.ts`: the root, which holds the route and picks the page
-// - `fixtures/pages/NotesIndex.ts`: a page that links with printed routes
-// - `fixtures/pages/NotePage.ts`: the page from the previous example
+// - `fixtures/pages/NotesIndex.ts`: the page at `/`, which links with
+//   printed routes
+// - `fixtures/pages/notes/NotePage.ts`: the page at `/notes/:id`, from the
+//   previous example
 import { App } from "./fixtures/App.ts"
 import { AppRoute } from "./fixtures/routes.ts"
 
