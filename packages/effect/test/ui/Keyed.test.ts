@@ -21,12 +21,10 @@ const makeApp = (options?: {
   readonly interval?: boolean
   /** The resolver's batch window, longer than its default of one yield. */
   readonly delay?: "50 millis"
-  /** `update` ignores a message with no changes: a prune. */
-  readonly ignorePrunes?: boolean
   /** A prune's `update` keeps only the first id, so a prune can cause one more. */
   readonly pruneTrims?: boolean
-  /** A prune's `update` keeps the collection and swaps the ids between `1` and `3`: it never ends. */
-  readonly pruneFlips?: boolean
+  /** A prune's `update` drops the last id, so each prune causes one more until one id is left. */
+  readonly pruneDrops?: boolean
 }) => {
   const db = { calls: 0, batches: [] as Array<number>, names: new Map([["1", "Ann"], ["2", "Bea"], ["3", "Cy"]]) }
   const order: Array<string> = []
@@ -77,10 +75,9 @@ const makeApp = (options?: {
     )
   ) {}
 
-  const Users = Loader.SnapshotMap(GetUser, "users")
   const BoardMessage = Schema.TaggedUnion({
     Show: { ids: Schema.Array(Schema.String) },
-    UsersChanged: { users: Users, changed: Schema.Array(Schema.String) },
+    UsersChanged: { changed: Schema.Array(Schema.String) },
     Rename: { id: Schema.String, name: Schema.String },
     Renamed: {}
   })
@@ -93,24 +90,35 @@ const makeApp = (options?: {
   const Board = Component.make({
     name: "Board",
     props: Schema.Struct({ tag: Schema.String, ids: Schema.Array(Schema.String) }),
-    model: Schema.Struct({ ids: Schema.Array(Schema.String), users: Users }),
+    model: Schema.Struct({ ids: Schema.Array(Schema.String) }),
     message: BoardMessage,
     loaders: {
-      users: (model) => {
-        loaderRuns++
-        return model.ids.map((id) => ({ id }))
+      users: {
+        loadMany: GetUser,
+        args: (model) => {
+          loaderRuns++
+          return model.ids.map((id) => ({ id }))
+        },
+        onChange: (loaded, changes) => {
+          // The opened array is the collection at the loader's keys.
+          assert.strictEqual(loaded.length, new Set(loaded.map((entry) => entry.args.id)).size)
+          return BoardMessage.make({
+            _tag: "UsersChanged",
+            changed: changes.map((change) => `${change.args.id}:${show(change.result)}`)
+          })
+        }
       }
     },
-    init: ($) => ({ ...$.empty, ids: $.props.ids }),
+    init: ($) => ({ ids: $.props.ids }),
     update: (model, message, $) =>
       BoardMessage.match(message, {
         Show: ({ ids }) => ({ ...model, ids }),
-        UsersChanged: ({ users, changed }) => {
+        UsersChanged: ({ changed }) => {
           order.push(`update ${$.props.tag} [${changed.join(",")}]`)
-          if (changed.length > 0) return { ...model, users }
-          if (options?.pruneTrims === true) return { users, ids: model.ids.slice(0, 1) }
-          if (options?.pruneFlips === true) return { ...model, ids: model.ids[0] === "1" ? ["3"] : ["1"] }
-          return options?.ignorePrunes === true ? model : { ...model, users }
+          if (changed.length > 0) return model
+          if (options?.pruneTrims === true) return { ids: model.ids.slice(0, 1) }
+          if (options?.pruneDrops === true && model.ids.length > 1) return { ids: model.ids.slice(0, -1) }
+          return model
         },
         Rename: ({ id, name }) => {
           order.push(`update ${$.props.tag} Rename`)
@@ -120,19 +128,6 @@ const makeApp = (options?: {
         },
         Renamed: () => model
       }),
-    subscriptions: (_model, _props, $) => [
-      $.watch({
-        users: (users, loaded, changes) => {
-          // The opened array is the collection at the loader's keys.
-          assert.strictEqual(loaded.length, new Set(loaded.map((entry) => entry.args.id)).size)
-          return BoardMessage.make({
-            _tag: "UsersChanged",
-            users,
-            changed: changes.map((change) => `${change.args.id}:${show(change.result)}`)
-          })
-        }
-      })
-    ],
     view: (_model, h) => {
       const text = h.loaded.users.map(({ args, result, patched }) => `${args.id}=${show(result)}${patched ? "~" : ""}`)
         .join(" ")
@@ -168,7 +163,6 @@ const makeApp = (options?: {
     order,
     loaderRuns: () => loaderRuns,
     GetUser,
-    Users,
     BoardMessage,
     Board,
     List,
@@ -182,17 +176,34 @@ const run = <A, E>(layer: Layer.Layer<any>, effect: Effect.Effect<A, E, any>) =>
 /** Starts what is due and lets the fetches finish: each batch takes 10 ms. */
 const load = TestHost.settle.pipe(Effect.andThen(TestClock.adjust("10 millis")), Effect.andThen(TestHost.settle))
 
-/** A keyed field's tuples as its JSON codec writes them. */
-const tuples = <A>(schema: Schema.Codec<A>, value: A): ReadonlyArray<ReadonlyArray<unknown>> =>
-  Schema.encodeSync(Schema.toCodecJson(schema))(value) as ReadonlyArray<ReadonlyArray<unknown>>
+/**
+ * A loader's slot JSON codec, as the runtime writes page state, history state and the log's Wire with
+ * it. The component's loaders carry the Schemas.
+ */
+const slotCodec = (component: Component.Any, name: string) =>
+  Schema.toCodecJson(
+    (component["~loaders"] as { readonly schemas: Record<string, Schema.Codec<unknown, unknown>> }).schemas[name]
+  )
+
+/** A keyed slot's tuples as its JSON codec writes them: the old snapshot's JSON. */
+const tuples = (component: Component.Any, name: string, slot: unknown): ReadonlyArray<ReadonlyArray<unknown>> =>
+  Schema.encodeSync(slotCodec(component, name))(slot) as ReadonlyArray<ReadonlyArray<unknown>>
+
+/** The last slot the runtime wrote for a loader at a path, from the log. */
+const slotOf = (log: ReadonlyArray<MessageLog.Entry>, path: string, name: string): unknown =>
+  [...log].reverse().find((entry): entry is MessageLog.LoaderChanged =>
+    entry._tag === "LoaderChanged" && entry.path === path && entry.name === name
+  )?.slot
 
 const updates = (order: ReadonlyArray<string>) => order.filter((line) => line.startsWith("update"))
 
-/** The args keys of a Board's keyed field, as its Model holds them. */
-const heldIds = (app: ReturnType<typeof makeApp>, model: unknown): ReadonlyArray<unknown> =>
-  tuples(app.Users, (model as { readonly users: typeof app.Users.Type }).users).map((tuple) =>
-    JSON.parse(tuple[0] as string).id
-  )
+/** The args ids a keyed slot holds. */
+const heldIds = (component: Component.Any, slot: unknown): ReadonlyArray<unknown> =>
+  tuples(component, "users", slot).map((tuple) => JSON.parse(tuple[0] as string).id)
+
+/** The ids the root Board's slot holds. */
+const boardIds = (app: ReturnType<typeof makeApp>, root: { readonly log: () => ReadonlyArray<MessageLog.Entry> }) =>
+  heldIds(app.Board, slotOf(root.log(), "/Board", "users"))
 
 describe("Keyed loader fields", () => {
   it.effect("N cold keys start N fetches in one batch, and its results are one message with N changes", () => {
@@ -217,6 +228,16 @@ describe("Keyed loader fields", () => {
           root.log().flatMap((entry) => entry._tag === "SubscriptionStarted" ? [entry.key] : []),
           ["1", "2", "3"].map((id) => `~loaded/users:${JSON.stringify(JSON.stringify({ id }))}`)
         )
+        // The slot's write is logged, then the Update of its onChange message.
+        const written = root.log().flatMap((entry) =>
+          entry._tag === "LoaderChanged" ?
+            [entry._tag] :
+            entry._tag === "Update" && entry.source._tag === "Subscription" &&
+              entry.source.key.startsWith("~loaded/users")
+            ? [entry._tag]
+            : []
+        )
+        assert.deepStrictEqual(written, ["LoaderChanged", "Update"])
       })
     )
   })
@@ -273,24 +294,25 @@ describe("Keyed loader fields", () => {
   it.effect("a kept child's new props over a warm key send its message before the child's one view", () => {
     const app = makeApp()
     const order: Array<string> = []
-    const Message = Schema.TaggedUnion({ UsersChanged: { users: app.Users, changed: Schema.Array(Schema.String) } })
+    const Message = Schema.TaggedUnion({ UsersChanged: { changed: Schema.Array(Schema.String) } })
     const Row = Component.make({
       name: "Row",
       props: Schema.Struct({ ids: Schema.Array(Schema.String) }),
-      model: Schema.Struct({ users: app.Users }),
+      model: Schema.Struct({}),
       message: Message,
-      loaders: { users: (_model, props) => props.ids.map((id) => ({ id })) },
-      init: ($) => $.empty,
-      update: (_model, { users, changed }) => {
-        order.push(`update [${changed.join(",")}]`)
-        return { users }
+      loaders: {
+        users: {
+          loadMany: app.GetUser,
+          args: (_model, props) => props.ids.map((id) => ({ id })),
+          onChange: (_loaded, changes) =>
+            Message.make({ _tag: "UsersChanged", changed: changes.map((change) => change.args.id) })
+        }
       },
-      subscriptions: (_model, _props, $) => [
-        $.watch({
-          users: (users, _loaded, changes) =>
-            Message.make({ _tag: "UsersChanged", users, changed: changes.map((change) => change.args.id) })
-        })
-      ],
+      init: () => ({}),
+      update: (model, { changed }) => {
+        order.push(`update [${changed.join(",")}]`)
+        return model
+      },
       view: (_model, h) => {
         const text = h.loaded.users.map(({ result }) => AsyncResult.isSuccess(result) ? result.value.name : "…")
           .join(" ")
@@ -361,7 +383,7 @@ describe("Keyed loader fields", () => {
         root.send(app.BoardMessage.make({ _tag: "Show", ids: ["1"] }))
         yield* TestHost.settle
         assert.deepStrictEqual(updates(app.order), ["update a []"])
-        assert.deepStrictEqual(heldIds(app, root.model()), ["1"])
+        assert.deepStrictEqual(boardIds(app, root), ["1"])
       })
     )
   })
@@ -378,7 +400,7 @@ describe("Keyed loader fields", () => {
         root.send(app.BoardMessage.make({ _tag: "Rename", id: "1", name: "Al" }))
         yield* TestHost.settle
         assert.deepStrictEqual(updates(app.order), ["update a Rename", "update a [1:Al]"])
-        assert.deepStrictEqual(heldIds(app, root.model()), ["1", "2"])
+        assert.deepStrictEqual(boardIds(app, root), ["1", "2"])
         assert.strictEqual(root.text(), "a: 1=Al~ 2=Bea")
       })
     )
@@ -397,7 +419,7 @@ describe("Keyed loader fields", () => {
         root.send(app.BoardMessage.make({ _tag: "Rename", id: "2", name: "Bo" }))
         yield* TestHost.settle
         assert.deepStrictEqual(updates(app.order), ["update a Rename", "update a Rename", "update a [1:Al,2:Bo]"])
-        assert.deepStrictEqual(heldIds(app, root.model()), ["1", "2"])
+        assert.deepStrictEqual(boardIds(app, root), ["1", "2"])
         assert.strictEqual(root.text(), "a: 1=Al~ 2=Bo~")
       })
     )
@@ -414,7 +436,7 @@ describe("Keyed loader fields", () => {
         root.send(app.BoardMessage.make({ _tag: "Show", ids: ["1", "2"] }))
         yield* TestHost.settle
         assert.deepStrictEqual(app.order, ["update a []", "update a []", "view a 1=Ann"])
-        assert.deepStrictEqual(heldIds(app, root.model()), ["1"])
+        assert.deepStrictEqual(boardIds(app, root), ["1"])
       })
     )
   })
@@ -438,7 +460,7 @@ describe("Keyed loader fields", () => {
     )
   })
 
-  it.effect("the prune message: a removed key leaves the collection, with no changes", () => {
+  it.effect("a prune: a removed key leaves the slot, and onChange gets no changes", () => {
     const app = makeApp()
     return run(
       app.layer,
@@ -449,19 +471,15 @@ describe("Keyed loader fields", () => {
         root.send(app.BoardMessage.make({ _tag: "Show", ids: ["1", "3"] }))
         yield* TestHost.settle
         assert.deepStrictEqual(updates(app.order), ["update a []"])
-        const model = root.model() as { readonly users: typeof app.Users.Type }
-        assert.deepStrictEqual(tuples(app.Users, model.users).map((tuple) => tuple[0]), [
-          "{\"id\":\"1\"}",
-          "{\"id\":\"3\"}"
-        ])
+        assert.deepStrictEqual(boardIds(app, root), ["1", "3"])
         assert.strictEqual(root.entry(app.GetUser, { id: "2" })?.watchers, 0)
         assert.strictEqual(root.text(), "a: 1=Ann 3=Cy")
       })
     )
   })
 
-  it.effect("an ignored prune isn't sent again until the key set changes", () => {
-    const app = makeApp({ ignorePrunes: true })
+  it.effect("a prune is written once, and not again until the slot holds a key the loader no longer returns", () => {
+    const app = makeApp()
     return run(
       app.layer,
       Effect.gen(function*() {
@@ -471,9 +489,8 @@ describe("Keyed loader fields", () => {
         root.send(app.BoardMessage.make({ _tag: "Show", ids: ["1", "3"] }))
         yield* TestHost.settle
         assert.deepStrictEqual(updates(app.order), ["update a []"])
-        // The Model still holds key 2; the view follows the loader.
-        const model = root.model() as { readonly users: typeof app.Users.Type }
-        assert.strictEqual(tuples(app.Users, model.users).length, 3)
+        // The slot no longer holds key 2, so a reorder of the rest prunes nothing.
+        assert.deepStrictEqual(boardIds(app, root), ["1", "3"])
         assert.strictEqual(root.text(), "a: 1=Ann 3=Cy")
         root.send(app.BoardMessage.make({ _tag: "Show", ids: ["3", "1"] }))
         yield* TestHost.settle
@@ -481,6 +498,7 @@ describe("Keyed loader fields", () => {
         root.send(app.BoardMessage.make({ _tag: "Show", ids: ["1"] }))
         yield* TestHost.settle
         assert.deepStrictEqual(updates(app.order), ["update a []", "update a []"])
+        assert.deepStrictEqual(boardIds(app, root), ["1"])
       })
     )
   })
@@ -638,34 +656,32 @@ describe("Keyed loader fields", () => {
 
   it.effect("a single field over a key of the batch doesn't split the keyed field's message", () => {
     const app = makeApp()
-    const Message = Schema.TaggedUnion({
-      UsersChanged: { users: app.Users, changed: Schema.Array(Schema.String) },
-      UserChanged: { user: Loader.Snapshot(app.GetUser, "user") }
-    })
+    const Message = Schema.TaggedUnion({ UsersChanged: { changed: Schema.Array(Schema.String) } })
     const changed: Array<ReadonlyArray<string>> = []
     const Mixed = Component.make({
       name: "Mixed",
-      model: Schema.Struct({ users: app.Users, user: Loader.Snapshot(app.GetUser, "user") }),
+      model: Schema.Struct({}),
       message: Message,
-      loaders: { users: () => [{ id: "1" }, { id: "2" }, { id: "3" }], user: () => ({ id: "1" }) },
-      init: ($) => $.empty,
-      update: (model, message) =>
-        Message.match(message, {
-          UsersChanged: ({ users, changed: keys }) => {
-            changed.push(keys)
-            return { ...model, users }
-          },
-          UserChanged: ({ user }) => ({ ...model, user })
-        }),
-      subscriptions: (_model, _props, $) => [
-        $.watch({
-          users: (users, _loaded, changes) =>
-            Message.make({ _tag: "UsersChanged", users, changed: changes.map((change) => change.args.id) }),
-          user: (user) => Message.make({ _tag: "UserChanged", user })
-        })
-      ],
+      loaders: {
+        users: {
+          loadMany: app.GetUser,
+          args: () => [{ id: "1" }, { id: "2" }, { id: "3" }],
+          onChange: (_loaded, changes) =>
+            Message.make({ _tag: "UsersChanged", changed: changes.map((change) => change.args.id) })
+        },
+        user: { load: app.GetUser, args: () => ({ id: "1" }) }
+      },
+      init: () => ({}),
+      update: (model, { changed: keys }) => {
+        changed.push(keys)
+        return model
+      },
       view: (_model, h) =>
-        h.el("p", h.loaded.users.map(({ result }) => AsyncResult.isSuccess(result) ? "y" : "n").join(""))
+        h.el(
+          "p",
+          h.loaded.users.map(({ result }) => AsyncResult.isSuccess(result) ? "y" : "n").join("") +
+            (AsyncResult.isSuccess(h.loaded.user) ? "+" : "-")
+        )
     })
     return run(
       app.layer,
@@ -674,7 +690,7 @@ describe("Keyed loader fields", () => {
         yield* load
         assert.deepStrictEqual(app.db.batches, [3])
         assert.deepStrictEqual(changed, [["1", "2", "3"]])
-        assert.strictEqual(root.text(), "yyy")
+        assert.strictEqual(root.text(), "yyy+")
       })
     )
   })
@@ -716,14 +732,11 @@ describe("Keyed loader fields", () => {
     const app = makeApp()
     const Probe = Component.make({
       name: "Probe",
-      model: Schema.Struct({ users: app.Users }),
-      message: app.BoardMessage,
-      loaders: { users: () => [{ id: "2" }, { id: "1" }] },
-      init: ($) => $.empty,
-      update: (model, message) => message._tag === "UsersChanged" ? { users: message.users } : model,
-      subscriptions: (_model, _props, $) => [
-        $.watch({ users: (users) => app.BoardMessage.make({ _tag: "UsersChanged", users, changed: [] }) })
-      ],
+      model: Schema.Struct({}),
+      message: Schema.Never,
+      loaders: { users: { loadMany: app.GetUser, args: () => [{ id: "2" }, { id: "1" }] } },
+      init: () => ({}),
+      update: (model) => model,
       view: (_model, h) => {
         const one = h.loaded.users.get({ id: "1" })
         const name = Option.match(one, {
@@ -745,61 +758,90 @@ describe("Keyed loader fields", () => {
   })
 })
 
-describe("Loader.SnapshotMap", () => {
-  it.effect("encodes to the single form's tuples, and a duplicate args key fails to decode", () => {
+describe("Keyed slots", () => {
+  it.effect("encode to the single form's tuples, and a duplicate args key fails to decode", () => {
     const app = makeApp()
     return run(
       app.layer,
       Effect.gen(function*() {
         const root = yield* TestHost.mount(app.Board, { tag: "a", ids: ["1", "9"] })
         yield* load
-        const codec = Schema.toCodecJson(app.Users)
-        const users = (root.model() as { readonly users: typeof app.Users.Type }).users
-        const encoded = Schema.encodeSync(codec)(users) as ReadonlyArray<unknown>
+        const slot = slotOf(root.log(), "/Board", "users")
+        const encoded = tuples(app.Board, "users", slot)
         assert.deepStrictEqual(encoded, [
           ["{\"id\":\"1\"}", 0, { id: "1", name: "Ann" }, 10, false],
           ["{\"id\":\"9\"}", 1, ["missing"], null]
         ])
-        assert.isTrue(Exit.isSuccess(Schema.decodeUnknownExit(codec)(encoded)))
-        assert.isTrue(Exit.isFailure(Schema.decodeUnknownExit(codec)([encoded[0], encoded[0]])))
-        assert.isTrue(Exit.isFailure(Schema.decodeUnknownExit(codec)([[]])))
+        // The log's Wire writes the slot with the same codec.
+        const changed = [...root.log()].reverse().find((entry) => entry._tag === "LoaderChanged")!
+        assert.deepStrictEqual((MessageLog.makeEncoder().encode(changed) as { readonly slot?: unknown }).slot, encoded)
+        const decode = Schema.decodeUnknownExit(slotCodec(app.Board, "users"))
+        assert.isTrue(Exit.isSuccess(decode(encoded)))
+        assert.isTrue(Exit.isFailure(decode([encoded[0], encoded[0]])))
+        assert.isTrue(Exit.isFailure(decode([[]])))
       })
     )
   })
 
-  it("throws at make for a keyed field whose label isn't its name, or nested", () => {
+  it("throws at make for a keyed entry that isn't { loadMany, args }", () => {
     const app = makeApp()
+    const make = (users: unknown) =>
+      Component.make({
+        name: "Bad",
+        model: Schema.Struct({}),
+        message: Schema.Never,
+        loaders: { users },
+        init: () => ({}),
+        update: (model: unknown) => model,
+        view: () => null as never
+      } as any)
     assert.throws(
-      () =>
-        Component.make({
-          name: "Bad",
-          model: Schema.Struct({ people: Loader.SnapshotMap(app.GetUser, "users") }),
-          message: Schema.Never,
-          loaders: { people: () => [] },
-          init: ($: any) => $.empty,
-          update: (model: unknown) => model,
-          subscriptions: (_m: unknown, _p: unknown, $: any) => [$.watch({ people: () => undefined })],
-          view: () => null as never
-        } as any),
-      /write Loader.SnapshotMap\(read, "people"\)/
+      () => make({ load: app.GetUser, loadMany: app.GetUser, args: () => [] }),
+      /Bad: loaders.users must have exactly one of load and loadMany/
     )
+    assert.throws(() => make({ loadMany: {}, args: () => [] }), /Bad: loaders.users has a loadMany that isn't a read/)
+    assert.throws(() => make({ loadMany: app.GetUser }), /Bad: loaders.users must have an args function/)
     assert.throws(
-      () =>
-        Component.make({
-          name: "Nested",
-          model: Schema.Struct({ inner: Schema.Struct({ users: Loader.SnapshotMap(app.GetUser, "users") }) }),
-          message: Schema.Never,
-          init: () => ({}),
-          update: (model: unknown) => model,
-          view: () => null as never
-        } as any),
-      /holds Loader.SnapshotMap\("users\/GetUser", "users"\) below its top level/
+      () => make({ loadMany: app.GetUser, args: () => [], onChange: 1 }),
+      /Bad: loaders.users has an onChange that isn't a function/
+    )
+  })
+
+  it.effect("fails the instance when its loadMany loader's args don't return an array", () => {
+    const app = makeApp()
+    const Bad = Component.make({
+      name: "Bad",
+      model: Schema.Struct({}),
+      message: Schema.Never,
+      loaders: { users: { loadMany: app.GetUser, args: () => ({ id: "1" }) as any } },
+      init: () => ({}),
+      update: (model) => model,
+      view: (_model, h) => h.el("p", "x")
+    })
+    const Host = Component.make({
+      name: "Host",
+      model: Schema.Struct({}),
+      message: Schema.Never,
+      init: () => ({}),
+      update: (model) => model,
+      view: (_model, h) => h.el("div", h.child(Bad, { key: "bad", props: {} }), h.el("p", "host"))
+    })
+    return run(
+      app.layer,
+      Effect.gen(function*() {
+        const root = yield* TestHost.mount(Host, {})
+        yield* TestHost.settle
+        assert.strictEqual(root.text(), "host")
+        const failed = root.log().find((entry): entry is MessageLog.Failed => entry._tag === "Failed")
+        assert.deepStrictEqual([failed?.path, failed?.source], ["/Host/Bad[bad]", "subscription"])
+        assert.include(TestHost.formatLog(root.log()), "is a loadMany loader, and its args must return an array")
+      })
     )
   })
 })
 
 describe("Keyed redaction", () => {
-  it.effect("Schema.Redacted in a keyed read's args and success: the log is redacted, the Model is not", () => {
+  it.effect("Schema.Redacted in a keyed read's args and success: the log is redacted, the state is not", () => {
     const Account = Schema.Struct({ secret: Schema.Redacted(Schema.String) })
     class GetAccount extends Loader.Service<GetAccount>()(
       "accounts/GetAccount",
@@ -811,21 +853,16 @@ describe("Keyed redaction", () => {
       },
       Effect.succeed(({ token }) => Effect.succeed({ secret: Redacted.make(`secret-of-${Redacted.value(token)}`) }))
     ) {}
-    const Accounts = Loader.SnapshotMap(GetAccount, "accounts")
-    const Message = Schema.TaggedUnion({ Changed: { accounts: Accounts } })
     const Page = Component.make({
       name: "Page",
       props: Schema.Struct({ tokens: Schema.Array(Schema.Redacted(Schema.String)) }),
-      model: Schema.Struct({ accounts: Accounts }),
-      message: Message,
-      loaders: { accounts: (_model, props) => props.tokens.map((token) => ({ token })) },
-      init: ($) => $.empty,
-      update: (_model, message) => ({ accounts: message.accounts }),
-      subscriptions: (
-        _model,
-        _props,
-        $
-      ) => [$.watch({ accounts: (accounts) => Message.make({ _tag: "Changed", accounts }) })],
+      model: Schema.Struct({}),
+      message: Schema.Never,
+      loaders: {
+        accounts: { loadMany: GetAccount, args: (_model, props) => props.tokens.map((token) => ({ token })) }
+      },
+      init: () => ({}),
+      update: (model) => model,
       view: (_model, h) =>
         h.el(
           "p",
@@ -841,13 +878,15 @@ describe("Keyed redaction", () => {
         const root = yield* TestHost.mount(Page, { tokens: [Redacted.make("tok-1"), Redacted.make("tok-2")] })
         yield* TestHost.settle
         assert.strictEqual(root.text(), "secret-of-tok-1 secret-of-tok-2")
-        const state = JSON.stringify(Schema.encodeUnknownSync(Schema.toCodecJson(Page.model))(root.model()))
+        // The slot as page state and history state hold it.
+        const state = JSON.stringify(tuples(Page, "accounts", slotOf(root.log(), "/Page", "accounts")))
         assert.include(state, "tok-2")
         assert.include(state, "secret-of-tok-2")
         const wire = JSON.stringify(root.log().map((entry) => MessageLog.makeEncoder().encode(entry)))
         assert.notInclude(wire, "tok-")
         assert.notInclude(wire, "secret-of")
         assert.include(wire, "SubscriptionStarted")
+        assert.include(wire, "LoaderChanged")
         assert.notInclude(TestHost.formatLog(root.log()), "tok-")
       })
     )
@@ -855,7 +894,7 @@ describe("Keyed redaction", () => {
 })
 
 describe("Story keyed steps", () => {
-  it("loads keys one at a time or many in one message, and sends the prune message itself", () => {
+  it("loads keys one at a time or many in one write, and writes the prune itself", () => {
     const app = makeApp()
     Story.make(app.Board, { tag: "a", ids: ["1", "2"] }, (s) =>
       s
@@ -868,18 +907,12 @@ describe("Story keyed steps", () => {
         .check((story) => assert.strictEqual(Query.textOf(story.get(Query.tag("p"))), "a: 1=Ann 2=Bea~"))
         .loadFailed("users", { id: "1" }, "gone", { waiting: true })
         .check((story) => {
-          const users = (story.model as { readonly users: typeof app.Users.Type }).users
-          const [ann] = tuples(app.Users, users)
+          const [ann] = tuples(app.Board, "users", story.slots?.users)
           // The failure keeps the key's last Success.
           assert.deepStrictEqual(ann, ["{\"id\":\"1\"}", 1, ["gone"], [{ id: "1", name: "Ann" }, 0]])
         })
         .send(app.BoardMessage.make({ _tag: "Show", ids: ["2"] }))
-        .check((story) => {
-          const users = (story.model as { readonly users: typeof app.Users.Type }).users
-          assert.deepStrictEqual(tuples(app.Users, users).map((tuple) => tuple[0]), [
-            "{\"id\":\"2\"}"
-          ])
-        }))
+        .check((story) => assert.deepStrictEqual(heldIds(app.Board, story.slots?.users), ["2"])))
     assert.deepStrictEqual(updates(app.order), [
       "update a [1:Ann,2:failed]",
       "update a [2:Bea]",
@@ -893,8 +926,8 @@ describe("Story keyed steps", () => {
     )
   })
 
-  it("sends an ignored prune once per key set, as the runtime does", () => {
-    const app = makeApp({ ignorePrunes: true })
+  it("writes a prune once per lost key set, as the runtime does", () => {
+    const app = makeApp()
     Story.make(app.Board, { tag: "a", ids: ["1", "2", "3"] }, (s) =>
       s
         .loadedMany("users", [
@@ -905,7 +938,8 @@ describe("Story keyed steps", () => {
         .send(app.BoardMessage.make({ _tag: "Show", ids: ["1", "3"] }))
         .send(app.BoardMessage.make({ _tag: "Show", ids: ["3", "1"] }))
         .loaded("users", { id: "1" }, { id: "1", name: "Al" })
-        .send(app.BoardMessage.make({ _tag: "Show", ids: ["1"] })))
+        .send(app.BoardMessage.make({ _tag: "Show", ids: ["1"] }))
+        .check((story) => assert.deepStrictEqual(heldIds(app.Board, story.slots?.users), ["1"])))
     assert.deepStrictEqual(updates(app.order), [
       "update a [1:Ann,2:Bea,3:Cy]",
       "update a []",
@@ -916,31 +950,32 @@ describe("Story keyed steps", () => {
 })
 
 /**
- * A selected row that must be in the collection: the view throws otherwise. A prune's handler
- * reports whether the selection is still there, and its `update` moves it to the first id.
+ * A selected row that must be in the collection: the view throws otherwise. A prune's `onChange`
+ * sends a message whose `update` checks `$.loaded` for the selection, and moves it to the first id.
  */
 const makeSelection = (app: ReturnType<typeof makeApp>) => {
   const Message = Schema.TaggedUnion({
     Show: { ids: Schema.Array(Schema.String) },
-    UsersChanged: { users: app.Users, kept: Schema.Boolean }
+    UsersChanged: {}
   })
   const Selection = Component.make({
     name: "Selection",
-    model: Schema.Struct({ ids: Schema.Array(Schema.String), selected: Schema.String, users: app.Users }),
+    model: Schema.Struct({ ids: Schema.Array(Schema.String), selected: Schema.String }),
     message: Message,
-    loaders: { users: (model) => model.ids.map((id) => ({ id })) },
-    init: ($) => ({ ...$.empty, ids: ["1", "2"], selected: "2" }),
-    update: (model, message) =>
+    loaders: {
+      users: {
+        loadMany: app.GetUser,
+        args: (model) => model.ids.map((id) => ({ id })),
+        onChange: () => Message.make({ _tag: "UsersChanged" })
+      }
+    },
+    init: () => ({ ids: ["1", "2"], selected: "2" }),
+    update: (model, message, $) =>
       Message.match(message, {
         Show: ({ ids }) => ({ ...model, ids }),
-        UsersChanged: ({ users, kept }) => ({ ...model, users, selected: kept ? model.selected : model.ids[0] })
+        UsersChanged: () =>
+          Option.isSome($.loaded.users.get({ id: model.selected })) ? model : { ...model, selected: model.ids[0] }
       }),
-    subscriptions: (model, _props, $) => [
-      $.watch({
-        users: (users, loaded) =>
-          Message.make({ _tag: "UsersChanged", users, kept: Option.isSome(loaded.get({ id: model.selected })) })
-      })
-    ],
     view: (model, h) => {
       const row = h.loaded.users.get({ id: model.selected })
       if (Option.isNone(row)) throw new Error(`no row for the selection ${model.selected}`)
@@ -982,7 +1017,7 @@ describe("Keyed selection repaired by the prune handler", () => {
         .send(Message.make({ _tag: "Show", ids: ["1"] }))
         .check((story) => {
           assert.strictEqual(Query.textOf(story.get(Query.tag("p"))), "Ann")
-          assert.deepStrictEqual(heldIds(app, story.model), ["1"])
+          assert.deepStrictEqual(heldIds(Selection, story.slots?.users), ["1"])
         }))
   })
 })
@@ -998,23 +1033,21 @@ describe("Story keyed rounds", () => {
           { args: { id: "3" }, value: { id: "3", name: "Cy" } }
         ])
         .send(app.BoardMessage.make({ _tag: "Show", ids: ["1", "2"] }))
-        .check((story) => assert.deepStrictEqual(heldIds(app, story.model), ["1"])))
+        .check((story) => assert.deepStrictEqual(heldIds(app.Board, story.slots?.users), ["1"])))
     assert.deepStrictEqual(updates(app.order), ["update a [1:Ann,2:Bea,3:Cy]", "update a []", "update a []"])
   })
 
   it("throws when a step's prunes don't settle in 100 rounds", () => {
-    const app = makeApp({ pruneFlips: true })
+    const app = makeApp({ pruneDrops: true })
+    // Each prune's update drops one more id, so 103 held keys take more than 100 rounds to settle.
+    const ids = Array.from({ length: 103 }, (_, i) => String(i))
     assert.throws(
       () =>
-        Story.make(app.Board, { tag: "a", ids: ["1", "2", "3"] }, (s) =>
+        Story.make(app.Board, { tag: "a", ids }, (s) =>
           s
-            .loadedMany("users", [
-              { args: { id: "1" }, value: { id: "1", name: "Ann" } },
-              { args: { id: "2" }, value: { id: "2", name: "Bea" } },
-              { args: { id: "3" }, value: { id: "3", name: "Cy" } }
-            ])
-            .send(app.BoardMessage.make({ _tag: "Show", ids: ["1", "3"] }))),
-      /Board's keyed field "users" was still sent a prune message after 100 rounds .* without limit/
+            .loadedMany("users", ids.map((id) => ({ args: { id }, value: { id, name: id } })))
+            .send(app.BoardMessage.make({ _tag: "Show", ids: ids.slice(0, -1) }))),
+      /Board's loader "users" was still pruned after 100 rounds .* without limit/
     )
     assert.strictEqual(updates(app.order).length, 101)
   })
@@ -1025,19 +1058,17 @@ describe("Keyed history restore", () => {
     const app = makeApp()
     const PageRoute = Route.union({ Home: Route.make("/"), Next: Route.make("/next") })
     const Message = Schema.TaggedUnion({
-      UsersChanged: { users: app.Users },
       ShowAndGo: { ids: Schema.Array(Schema.String) },
       Navigated: {}
     })
     const Page = Component.make({
       name: "Page",
-      model: Schema.Struct({ ids: Schema.Array(Schema.String), users: app.Users }),
+      model: Schema.Struct({ ids: Schema.Array(Schema.String) }),
       message: Message,
-      loaders: { users: (model) => model.ids.map((id) => ({ id })) },
-      init: ($) => ({ ...$.empty, ids: ["1", "2"] }),
+      loaders: { users: { loadMany: app.GetUser, args: (model) => model.ids.map((id) => ({ id })) } },
+      init: () => ({ ids: ["1", "2"] }),
       update: (model, message, $) =>
         Message.match(message, {
-          UsersChanged: ({ users }) => ({ ...model, users }),
           ShowAndGo: ({ ids }) =>
             $.set({ ...model, ids }).run(
               Router.push(PageRoute, PageRoute.make({ _tag: "Next" })).pipe(
@@ -1046,9 +1077,6 @@ describe("Keyed history restore", () => {
             ),
           Navigated: () => model
         }),
-      subscriptions: (_model, _props, $) => [
-        $.watch({ users: (users) => Message.make({ _tag: "UsersChanged", users }) })
-      ],
       view: (_model, h) => h.el("p", h.loaded.users.map(({ args }) => args.id).join(","))
     })
     const base = Router.memoryHistory("/")
@@ -1070,12 +1098,16 @@ describe("Keyed history restore", () => {
       const left = home[home.length - 1]?.state as
         | {
           readonly "effect/ui": {
-            readonly snapshot: Record<string, { readonly users: ReadonlyArray<ReadonlyArray<unknown>> }>
+            readonly snapshot: Record<string, {
+              readonly model: unknown
+              readonly loaded: { readonly users: ReadonlyArray<ReadonlyArray<unknown>> }
+            }>
           }
         }
         | undefined
       const saved = left?.["effect/ui"].snapshot["/Page"]
-      assert.deepStrictEqual(saved?.users.map((tuple) => tuple[0]), ["{\"id\":\"1\"}"])
+      assert.deepStrictEqual(saved?.model, { ids: ["1"] })
+      assert.deepStrictEqual(saved?.loaded.users.map((tuple) => tuple[0]), ["{\"id\":\"1\"}"])
       assert.strictEqual(root.text(), "1")
     }).pipe(
       Effect.provide(Layer.merge(Router.make({ routes: PageRoute, history }), app.layer)),
@@ -1148,12 +1180,17 @@ describe("Keyed history restore", () => {
           yield* TestHost.settle
           history.go(-1)
           yield* TestHost.settle
-          const restored = root.log().find((entry): entry is MessageLog.Mounted =>
-            entry._tag === "Mounted" && entry.path === "/Shell/Board[board]"
+          const log = root.log()
+          const mounted = log.findIndex((entry) => entry._tag === "Mounted" && entry.path === "/Shell/Board[board]")
+          const restored = log[mounted] as MessageLog.Mounted
+          assert.isTrue(restored.adopted)
+          // The restored slot is logged right after Mounted.
+          const seeded = log[mounted + 1]
+          assert.strictEqual(seeded._tag, "LoaderChanged")
+          assert.deepStrictEqual(
+            heldIds(app.Board, (seeded as MessageLog.LoaderChanged).slot),
+            ["2"]
           )
-          assert.isTrue(restored?.adopted)
-          const model = restored!.model as { readonly users: typeof app.Users.Type }
-          assert.deepStrictEqual(tuples(app.Users, model.users).map((tuple) => tuple[0]), ["{\"id\":\"2\"}"])
           // Key 2 is seeded stale and shows while it refetches; key 1 starts from loading.
           assert.isTrue(root.text().includes("a: 1=… 2=Bea…"))
           yield* load

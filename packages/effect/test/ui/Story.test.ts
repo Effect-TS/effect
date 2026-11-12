@@ -1,6 +1,6 @@
 import { assert, describe, it } from "@effect/vitest"
 import { Cause, Data, Effect, Layer, Option, Schema } from "effect"
-import { AsyncResult, Loader } from "effect/reactivity"
+import { AsyncResult } from "effect/reactivity"
 import { Command, Component, Route, Router, View } from "effect/ui"
 import { Query, Story } from "effect/ui/testing"
 import {
@@ -501,7 +501,7 @@ describe("Story", () => {
     })
   })
 
-  describe("loader fields", () => {
+  describe("loaders", () => {
     const text = (story: { readonly root: Query.Node }) => Query.textOf(story.root)
     const page = (n: number, names: ReadonlyArray<string>) => ({
       page: n,
@@ -509,16 +509,16 @@ describe("Story", () => {
       users: names.map((name, i) => ({ id: `${n}-${i}`, name, email: "", likes: 0 }))
     })
 
-    it("loaded sends the snapshot through the watch handler, at the loader's current args", () => {
+    it("loaded writes the loader's slot, at the loader's current args", () => {
       Story.make(users.ListPage, {}, (s) =>
         s
           .check((story) => assert.include(text(story), "Loading users…"))
           .loaders((loaders) =>
-            assert.deepStrictEqual(loaders, [{ field: "users", read: "users/ListUsers", args: { page: 0 } }])
+            assert.deepStrictEqual(loaders, [{ name: "users", read: "users/ListUsers", args: { page: 0 } }])
           )
           .loaded("users", page(0, ["Ann", "Bea"]))
           .check((story) => assert.include(text(story), "AnnBea"))
-          // The next page: h.previous keeps the page the snapshot holds until it is loaded.
+          // The next page: h.previous keeps the page the slot holds until it is loaded.
           .click("Next")
           .loaders((loaders) => assert.deepStrictEqual(loaders.map((loader) => loader.args), [{ page: 1 }]))
           .check((story) => {
@@ -532,36 +532,37 @@ describe("Story", () => {
           }))
     })
 
-    it("loadFailed keeps the field's Success at the current args as previousSuccess, and waiting shows", () => {
+    it("loadFailed keeps the loader's Success at the current args as previousSuccess, and waiting shows", () => {
       Story.make(users.UserCard, { id: "1" }, (s) =>
         s
           .loaded("user", { id: "1", name: "Ann", email: "ann@x", likes: 0 }, { waiting: true })
           .check((story) => assert.include(text(story), "Updating…"))
           .loadFailed("user", new users.UserNotFound({ id: "1" }))
           .check((story) => assert.strictEqual(text(story), "This user doesn't exist."))
-          .model(({ user }) => {
-            const result = Loader.snapshotData(user)?.result
-            assert.isTrue(
-              result !== undefined && AsyncResult.isFailure(result) && Option.isSome(result.previousSuccess)
-            )
+          .check((story) => {
+            const result = story.loaded().user as AsyncResult.AsyncResult<unknown, unknown>
+            assert.isTrue(AsyncResult.isFailure(result) && Option.isSome(result.previousSuccess))
           })
-          // Another user's snapshot doesn't carry over.
+          // Another user's result doesn't carry over.
           .props({ id: "2" })
           .loadFailed("user", new users.UserNotFound({ id: "2" }))
-          .model(({ user }) => {
-            const result = Loader.snapshotData(user)?.result
-            assert.isTrue(
-              result !== undefined && AsyncResult.isFailure(result) && Option.isNone(result.previousSuccess)
-            )
+          .check((story) => {
+            const result = story.loaded().user as AsyncResult.AsyncResult<unknown, unknown>
+            assert.isTrue(AsyncResult.isFailure(result) && Option.isNone(result.previousSuccess))
           }))
     })
 
-    it("given takes an updater, and loaded throws for a field that isn't a loader field", () => {
+    it("given takes an updater and keeps the slots, and loaded throws for a name that isn't a loader", () => {
       Story.make(users.RenameForm, { id: "1" }, (s) =>
         s
           .given((model) => ({ ...model, draft: Option.some("Zed") }))
           .loaded("user", { id: "1", name: "Ann", email: "", likes: 0 })
           .check((story) => assert.strictEqual(story.model.draft._tag, "Some"))
+          .given((model) => ({ ...model, draft: Option.none() }))
+          .check((story) => {
+            assert.strictEqual(story.model.draft._tag, "None")
+            assert.strictEqual((story.loaded().user as AsyncResult.AsyncResult<unknown, unknown>)._tag, "Success")
+          })
           .subscriptions((keys) => assert.deepStrictEqual(keys, [])))
       assert.throws(
         () => Story.make(users.RenameForm, { id: "1" }, (s) => s.loaded("draft" as any, "x")),

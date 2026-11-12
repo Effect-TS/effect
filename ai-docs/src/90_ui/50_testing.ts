@@ -112,6 +112,8 @@ describe("NotesIndex", () => {
   it("pins a note dropped on the pinned list", () => {
     const pinned = HtmlQuery.role("complementary", { name: "Pinned" })
     Story.make(NotesIndexNoDeps, {}, (s) =>
+      // Load steps take the loader's name. `loaded` writes the result to
+      // the `notes` slot, as the runtime would, and re-renders the view.
       s.loaded("notes", [note])
         // A drop with a hand-written payload. `HtmlStory.drop` picks the
         // target the browser host would, and throws when none accepts the
@@ -227,7 +229,7 @@ it.layer(AppTest, { buildPerTest: true })("App", (it) => {
       // `SsrError` if the two disagree.
       const result = yield* ssr(App, Router.props(AppRoute))
       assert.include(result.html, "Milk")
-      // The paths of the instances that adopted the server's Model.
+      // The paths of the instances that adopted the server's state.
       assert.include(result.adopted, "/App/NotePage[/notes/n1]/NoteEditor[n1]")
     }))
 })

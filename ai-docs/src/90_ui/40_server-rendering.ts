@@ -42,8 +42,9 @@ const ApiClient = Layer.effect(
 //
 // The server runs `init`, `update` and `view`, builds the provided Layers
 // and fetches loader reads once per key in a per-request cache. It runs no
-// Command, and no Subscription other than a loader watch, so data the
-// server renders has to come from a loader read.
+// Command and no Subscription. Its loaders are the exception: the runtime
+// watches their reads itself, so data the server renders has to come from a
+// loader read.
 const Pages = layerHttp(App, {
   routes: AppRoute,
   // `budget` is one deadline for Layers and fetches, 500 ms by default. Set
@@ -53,7 +54,8 @@ const Pages = layerHttp(App, {
   // `head`, `htmlAttributes` and `bodyAttributes` come from the components'
   // `head` and are already escaped. `serializeState` makes the state safe
   // inside a script tag, which `JSON.stringify` doesn't. The state holds
-  // every Model and every settled read, so treat all of it as public.
+  // every instance's state, its Model and its loaders' slots, and every
+  // settled read, so treat all of it as public.
   document: (page) =>
     `<!doctype html>
 <html ${page.htmlAttributes}>

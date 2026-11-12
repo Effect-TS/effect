@@ -148,15 +148,14 @@ describe("HtmlServer", { concurrent: false }, () => {
         const result = yield* ssr(App, Router.props(AppRoute)).pipe(Effect.provide([People.layer, router]))
         expect(result.adopted).toEqual(["/App", "/App/Person[/people/1]"])
         expect(result.misses).toEqual([])
-        // The bio is hydrated, so the client doesn't fetch it, and the watch's first emission still
-        // reaches update.
+        // The bio is hydrated, so the client doesn't fetch it. The hydrated slot is logged once, and the
+        // watch's first value equals it, so it isn't written again.
         expect(result.root.fetches()).toEqual([])
-        expect(result.log).toContainEqual(
-          expect.objectContaining({
-            _tag: "Update",
-            path: "/App/Person[/people/1]",
-            source: expect.objectContaining({ _tag: "Subscription" })
-          })
+        expect(
+          result.log.filter((entry) => entry._tag === "LoaderChanged").map((entry) => [entry.path, entry.name])
+        ).toEqual([["/App/Person[/people/1]", "bio"]])
+        expect(result.log.some((entry) => entry._tag === "Update" && entry.path === "/App/Person[/people/1]")).toBe(
+          false
         )
         expect(result.document.title).toBe("Person 1 · App")
       }))
@@ -276,28 +275,28 @@ describe("HtmlServer", { concurrent: false }, () => {
         error: Schema.Never,
         staleTime: "30 seconds"
       }, Effect.succeed(() => Effect.succeed("loaded"))) {}
-      const Text = Loader.Snapshot(GetText, "text")
-      const ChildMessage = Schema.TaggedUnion({ Loaded: { snapshot: Text }, Tracked: {} })
+      const ChildMessage = Schema.TaggedUnion({ Loaded: {}, Tracked: {} })
       const Track = Command.make("Track", { args: {} }, () => Effect.succeed(ChildMessage.make({ _tag: "Tracked" })))
       let builds = 0
       const Child = Component.make({
         name: "Child",
-        model: Schema.Struct({ text: Text, status: Schema.String }),
+        model: Schema.Struct({ status: Schema.String }),
         message: ChildMessage,
         events: Schema.Literal("loaded"),
         elements: Html,
-        loaders: { text: () => ({}) },
+        loaders: {
+          text: { load: GetText, args: () => ({}), onChange: () => ChildMessage.make({ _tag: "Loaded" }) }
+        },
         // init's Command is dropped silently: the client runs it when it adopts.
-        init: ($) => $.set({ ...$.empty, status: "loading" }).run(Track()),
+        init: ($) => $.set({ status: "loading" }).run(Track()),
         update: (model, message, $) =>
           message._tag === "Loaded"
-            ? $.set({ text: message.snapshot, status: "loaded" }).run(Command.interrupt(Track)).run(Track()).emit(
+            ? $.set({ status: "loaded" }).run(Command.interrupt(Track)).run(Track()).emit(
               "loaded"
             )
             : { ...model, status: "tracked" },
-        subscriptions: (_model, _props, $) => [
-          $.watch({ text: (snapshot) => ChildMessage.make({ _tag: "Loaded", snapshot }) }),
-          // subscriptions() runs on the server for the watch, but a Stream's builder doesn't.
+        subscriptions: () => [
+          // subscriptions() runs on the server, but a Stream's builder doesn't.
           Subscription.make("browser", 0, () => {
             builds++
             return Stream.never
@@ -506,20 +505,15 @@ describe("HtmlServer", { concurrent: false }, () => {
         error: Schema.Never,
         staleTime: "30 seconds"
       }, Effect.succeed(() => Effect.as(Effect.sleep("10 millis"), "data"))) {}
-      const Text = Loader.Snapshot(GetText, "text")
-      const PanelMessage = Schema.TaggedUnion({ Loaded: { snapshot: Text } })
       class Panel extends Feature.Service<Panel>()("Panel", { props: Schema.Struct({}), events: Schema.Never }) {}
       const PanelLive = Component.make({
         name: "PanelLive",
-        model: Schema.Struct({ text: Text }),
-        message: PanelMessage,
+        model: Schema.Struct({}),
+        message: Schema.Never,
         elements: Html,
-        loaders: { text: () => ({}) },
-        init: ($) => $.empty,
-        update: (_, message) => ({ text: message.snapshot }),
-        subscriptions: (_model, _props, $) => [
-          $.watch({ text: (snapshot) => PanelMessage.make({ _tag: "Loaded", snapshot }) })
-        ],
+        loaders: { text: { load: GetText, args: () => ({}) } },
+        init: () => ({}),
+        update: (model) => model,
         view: (_, h) => h.p(AsyncResult.isSuccess(h.loaded.text) ? h.loaded.text.value : "loading")
       }).pipe(Component.provide(GetText.layer))
       const Page = Component.make({
@@ -552,19 +546,14 @@ describe("HtmlServer", { concurrent: false }, () => {
         error: Schema.Never,
         staleTime: "30 seconds"
       }, Effect.succeed(() => Effect.die("boom"))) {}
-      const Text = Loader.Snapshot(Die, "text")
-      const Message = Schema.TaggedUnion({ Loaded: { snapshot: Text } })
       const Doomed = Component.make({
         name: "Doomed",
-        model: Schema.Struct({ text: Text }),
-        message: Message,
+        model: Schema.Struct({}),
+        message: Schema.Never,
         elements: Html,
-        loaders: { text: () => ({}) },
-        init: ($) => $.empty,
-        update: (_, message) => ({ text: message.snapshot }),
-        subscriptions: (_model, _props, $) => [
-          $.watch({ text: (snapshot) => Message.make({ _tag: "Loaded", snapshot }) })
-        ],
+        loaders: { text: { load: Die, args: () => ({}) } },
+        init: () => ({}),
+        update: (model) => model,
         view: (_, h) => h.p("loading")
       }).pipe(Component.provide(Die.layer))
       const Page = Component.make({
@@ -998,25 +987,20 @@ const makeItems = () => {
       })
     )
   ) {}
-  const ItemSnapshot = Loader.Snapshot(GetItem, "item")
-  const Message = Schema.TaggedUnion({ Loaded: { snapshot: ItemSnapshot, ok: Schema.Boolean } })
-  const loaded = (snapshot: typeof ItemSnapshot.Type, result: AsyncResult.AsyncResult<string, string>) =>
-    Message.make({ _tag: "Loaded", snapshot, ok: AsyncResult.isSuccess(result) })
   const show = (result: AsyncResult.AsyncResult<string, string>) =>
     AsyncResult.isSuccess(result) ? result.value : AsyncResult.isFailure(result) ? "failed" : "loading"
   const Item = Component.make({
     name: "Item",
-    model: Schema.Struct({ item: ItemSnapshot }),
-    message: Message,
+    model: Schema.Struct({}),
+    message: Schema.Never,
     props: Schema.Struct({ id: Schema.Number }),
     elements: Html,
-    loaders: { item: (_model, props) => ({ id: props.id }) },
-    init: ($) => $.empty,
-    update: (_, message) => ({ item: message.snapshot }),
-    subscriptions: (_model, _props, $) => [$.watch({ item: loaded })],
+    loaders: { item: { load: GetItem, args: (_model, props) => ({ id: props.id }) } },
+    init: () => ({}),
+    update: (model) => model,
     view: (_, h) => h.p(show(h.loaded.item))
   }).pipe(Component.provide(GetItem.layer))
-  return { calls, GetItem, ItemSnapshot, Message, Item, loaded, show }
+  return { calls, GetItem, Item, show }
 }
 
 describe("HtmlServer loaders", { concurrent: false }, () => {
@@ -1044,32 +1028,36 @@ describe("HtmlServer loaders", { concurrent: false }, () => {
         GetItem: expect.arrayContaining([["{\"id\":1}", 0, "Item 1", 0], ["{\"id\":404}", 1, ["missing"], 0]])
       })
       expect((result.state["~loader"] as any).GetItem).toHaveLength(2)
-      // The client adopts both entries without fetching, and each watch's first emission is delivered.
+      // The client adopts both entries without fetching, and each instance's hydrated slot is logged once.
       expect(calls).toEqual([1, 404])
       expect(result.root.fetches()).toEqual([])
-      expect(
-        result.log.filter((entry) => entry._tag === "Update" && entry.source._tag === "Subscription").map((entry) =>
-          entry.path
-        )
-      ).toEqual(["/Page/Item[a]", "/Page/Item[b]", "/Page/Item[c]"])
+      expect(result.log.filter((entry) => entry._tag === "LoaderChanged").map((entry) => entry.path)).toEqual([
+        "/Page/Item[a]",
+        "/Page/Item[b]",
+        "/Page/Item[c]"
+      ])
+      expect(result.log.some((entry) => entry._tag === "Update")).toBe(false)
       expect(result.container.textContent).toBe("Item 1Item 1failed")
     })))
 
-  it.effect("runs rounds: a watch message that changes the args fetches the next key", () =>
+  it.effect("runs rounds: an onChange message that changes the args fetches the next key", () =>
     hosted(Effect.gen(function*() {
-      const { ItemSnapshot, Message, GetItem, loaded, show, calls } = makeItems()
+      const { GetItem, show, calls } = makeItems()
+      const Message = Schema.TaggedUnion({ Loaded: { ok: Schema.Boolean } })
       const Pager = Component.make({
         name: "Pager",
-        model: Schema.Struct({ page: Schema.Number, item: ItemSnapshot }),
+        model: Schema.Struct({ page: Schema.Number }),
         message: Message,
         elements: Html,
-        loaders: { item: (model) => ({ id: model.page }) },
-        init: ($) => ({ ...$.empty, page: 1 }),
-        update: (model, message) => {
-          const page = message.ok && model.page < 3 ? model.page + 1 : model.page
-          return { page, item: message.snapshot }
+        loaders: {
+          item: {
+            load: GetItem,
+            args: (model) => ({ id: model.page }),
+            onChange: (result) => Message.make({ _tag: "Loaded", ok: AsyncResult.isSuccess(result) })
+          }
         },
-        subscriptions: (_model, _props, $) => [$.watch({ item: loaded })],
+        init: () => ({ page: 1 }),
+        update: (model, message) => ({ page: message.ok && model.page < 3 ? model.page + 1 : model.page }),
         view: (_, h) => h.p(show(h.loaded.item))
       }).pipe(Component.provide(GetItem.layer))
       const result = yield* ssr(Pager, {})
@@ -1098,21 +1086,14 @@ describe("HtmlServer loaders", { concurrent: false }, () => {
           })
         )
       ) {}
-      const Items = Loader.SnapshotMap(GetSlowItem, "items")
-      const Message = Schema.TaggedUnion({ Loaded: { items: Items } })
       const List = Component.make({
         name: "List",
-        model: Schema.Struct({ items: Items }),
-        message: Message,
+        model: Schema.Struct({}),
+        message: Schema.Never,
         elements: Html,
-        loaders: { items: () => [{ id: 1 }, { id: 404 }, { id: 3 }] },
-        init: ($) => $.empty,
-        update: (_, message) => ({ items: message.items }),
-        subscriptions: (
-          _model,
-          _props,
-          $
-        ) => [$.watch({ items: (items) => Message.make({ _tag: "Loaded", items }) })],
+        loaders: { items: { loadMany: GetSlowItem, args: () => [{ id: 1 }, { id: 404 }, { id: 3 }] } },
+        init: () => ({}),
+        update: (model) => model,
         view: (_, h) =>
           h.ul(h.loaded.items.map(({ args, result }) =>
             h.li.key(String(args.id)).children(
@@ -1122,9 +1103,10 @@ describe("HtmlServer loaders", { concurrent: false }, () => {
       }).pipe(Component.provide(GetSlowItem.layer))
       const result = yield* ssr(List, {}, { budget: "50 millis" })
       expect(result.html).toContain("<li>Item 1</li><li>failed</li><li>loading</li>")
-      // The Model field is the settled keys' tuples; the entries ship as ordinary entries of the read.
+      // The slot is the settled keys' tuples; the entries ship as ordinary entries of the read.
       expect(result.state["/List"]).toEqual({
-        items: [["{\"id\":1}", 0, "Item 1", 0, false], ["{\"id\":404}", 1, ["missing"], null]]
+        model: {},
+        loaded: { items: [["{\"id\":1}", 0, "Item 1", 0, false], ["{\"id\":404}", 1, ["missing"], null]] }
       })
       expect((result.state["~loader"] as any).GetSlowItem).toHaveLength(2)
       expect(result.misses).toEqual([{ read: "GetSlowItem", logKey: "{\"id\":3}" }])
@@ -1144,19 +1126,14 @@ describe("HtmlServer loaders", { concurrent: false }, () => {
         error: Schema.Never,
         staleTime: "1 minute"
       }, Effect.succeed(() => Effect.succeed("x" as unknown as number))) {}
-      const Count = Loader.Snapshot(GetCount, "count")
-      const Message = Schema.TaggedUnion({ Loaded: { snapshot: Count } })
       const Page = Component.make({
         name: "Page",
-        model: Schema.Struct({ count: Count }),
-        message: Message,
+        model: Schema.Struct({}),
+        message: Schema.Never,
         elements: Html,
-        loaders: { count: () => ({}) },
-        init: ($) => $.empty,
+        loaders: { count: { load: GetCount, args: () => ({}) } },
+        init: () => ({}),
         update: (model) => model,
-        subscriptions: (_model, _props, $) => [$.watch({
-          count: (snapshot) => Message.make({ _tag: "Loaded", snapshot })
-        })],
         view: (_, h) => h.p("count")
       }).pipe(Component.provide(GetCount.layer))
       const error = yield* Effect.flip(ssr(Page, {}))
@@ -1270,20 +1247,15 @@ describe("HtmlServer loaders", { concurrent: false }, () => {
         error: Schema.Never,
         staleTime: 0
       }, Effect.succeed(({ id }) => Effect.succeed(`Now ${id}`))) {}
-      const NowSnapshot = Loader.Snapshot(GetNow, "now")
-      const NowMessage = Schema.TaggedUnion({ Loaded: { snapshot: NowSnapshot } })
       const Now = Component.make({
         name: "Now",
         props: Schema.Struct({ id: Schema.Number }),
-        model: Schema.Struct({ now: NowSnapshot }),
-        message: NowMessage,
+        model: Schema.Struct({}),
+        message: Schema.Never,
         elements: Html,
-        loaders: { now: (_model, props) => ({ id: props.id }) },
-        init: ($) => $.empty,
-        update: (_, message) => ({ now: message.snapshot }),
-        subscriptions: (_model, _props, $) => [
-          $.watch({ now: (snapshot) => NowMessage.make({ _tag: "Loaded", snapshot }) })
-        ],
+        loaders: { now: { load: GetNow, args: (_model, props) => ({ id: props.id }) } },
+        init: () => ({}),
+        update: (model) => model,
         view: (_, h) => h.p("now")
       })
       // Holds the window open on the client: the slot waits 10 millis for its Layer.

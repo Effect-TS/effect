@@ -68,7 +68,7 @@ import * as Schema from "../../Schema.ts"
 import * as Command from "../Command.ts"
 import type * as Component from "../Component.ts"
 import type * as Head from "../Head.ts"
-import * as loaders from "../internal/loaders.ts"
+import type * as loaders from "../internal/loaders.ts"
 import * as schedule from "../internal/schedule.ts"
 import * as MessageLog from "../MessageLog.ts"
 import * as View from "../View.ts"
@@ -82,7 +82,7 @@ import * as Query from "./Query.ts"
  * `running` is what the runtime would be executing; `queued` is waiting behind
  * a running run of the same group under `mode: "queue"`. `awaiting` has
  * resolved or failed, and holds `message`: a `Command.afterRefetch` run
- * waits for the loader fields in `awaiting`, and under `mode: "queue"` a
+ * waits for the loaders in `awaiting`, and under `mode: "queue"` a
  * message also waits for the earlier ones of its group.
  *
  * @stability experimental
@@ -94,21 +94,21 @@ export interface Pending<Msg> {
   readonly status: "running" | "queued" | "awaiting"
   /** On an awaiting run: the message it delivers when its wait ends. */
   readonly message?: Msg | undefined
-  /** On an awaiting run: the loader fields its wait is still on, each at the args it awaits. */
-  readonly awaiting?: ReadonlyArray<AwaitedField> | undefined
+  /** On an awaiting run: the loaders its wait is still on, each at the args it awaits. */
+  readonly awaiting?: ReadonlyArray<AwaitedLoader> | undefined
 }
 
 /**
- * A loader field a `Command.afterRefetch` run waits for, at the args its
- * loader returned when the run resolved. A keyed field has one per awaited
- * key.
+ * A loader a `Command.afterRefetch` run waits for, by its name in
+ * `loaders`, at the args it returned when the run resolved. A `loadMany`
+ * loader has one per awaited key.
  *
  * @stability experimental
  * @category models
  * @since 4.1.5
  */
-export interface AwaitedField {
-  readonly field: string
+export interface AwaitedLoader {
+  readonly name: string
   readonly args: unknown
 }
 
@@ -129,6 +129,13 @@ export interface Story<Props, Model, Msg, Events> {
   readonly component: Component.Component<any, Props, Model, Msg, Events, any, any>
   readonly props: Props
   readonly model: Model
+  /**
+   * The loader slots, beside the Model: what each loader's read last
+   * returned. Opaque: `loaded` opens them.
+   */
+  readonly slots: Component.Slots | undefined
+  /** The loaders' results, by name, as `h.loaded` opens them for the current Model, props and slots. */
+  readonly loaded: () => { readonly [name: string]: unknown }
   /** Commands issued but not yet resolved, oldest first. */
   readonly pending: ReadonlyArray<Pending<Msg>>
   /** Everything emitted to the parent so far. */
@@ -140,7 +147,7 @@ export interface Story<Props, Model, Msg, Events> {
   readonly interrupted: ReadonlyArray<Command.Effectful<Msg, any, never> | Command.Streaming<Msg, any, never>>
   /** Commands ignored by `mode: "drop"`. */
   readonly dropped: ReadonlyArray<Command.Effectful<Msg, any, never> | Command.Streaming<Msg, any, never>>
-  /** The list fields with a load more `update` issued and no step has settled yet. */
+  /** The list loaders with a load more `update` issued and no step has settled yet. */
   readonly loadingMore: ReadonlyArray<string>
   /**
    * Whether the `click` or `fire` step that made this record cancelled its
@@ -165,7 +172,7 @@ export interface Story<Props, Model, Msg, Events> {
   readonly view: () => View.Node<Msg, any>
   /** The Subscription keys the current Model and props ask for, without the loader watches. Nothing runs. */
   readonly subscriptions: () => ReadonlyArray<string>
-  /** Each loader field with its read and the args its loader returns for the current Model and props. */
+  /** Each loader with its read and the args it returns for the current Model and props. */
   readonly loaders: () => ReadonlyArray<LoaderInfo>
   /** The view as a `Query` tree. */
   readonly root: Query.Node
@@ -178,23 +185,23 @@ export interface Story<Props, Model, Msg, Events> {
 }
 
 /**
- * One loader field in a story: the field, its read's name, and the args its
- * loader returns for the current Model and props, `undefined` when it is
- * disabled. A keyed field's args are its loader's unique args, in order.
+ * One loader in a story: its name, its read's name, and the args it returns
+ * for the current Model and props, `undefined` when it is disabled. A
+ * `loadMany` loader's args are its unique args, in order.
  *
  * @stability experimental
  * @category models
  * @since 4.1.5
  */
 export interface LoaderInfo {
-  readonly field: string
+  readonly name: string
   readonly read: string
   readonly args: unknown
 }
 
 /**
- * One key of a keyed field for `loadedMany`: its args and a Success value or
- * a typed failure.
+ * One key of a `loadMany` loader for `loadedMany`: its args and a Success
+ * value or a typed failure.
  *
  * @stability experimental
  * @category models
@@ -328,10 +335,10 @@ export interface Steps<C extends AnyComponent> extends Pipeable {
    * queued run of the same group starts when the running one resolves.
    *
    * A Command issued with `Command.afterRefetch` becomes `awaiting` on the
-   * component's own loader fields its declared targets match, less those its
+   * component's own loaders its declared targets match, less those its
    * `writes` store, and sends at once when there are none. A `loaded` or
-   * `loadFailed` step on the last of them sends the field's message, then
-   * this one. `waitExpired` ends the wait by budget. Under `mode: "queue"`
+   * `loadFailed` step on the last of them writes the loader's slot, then
+   * sends this one. `waitExpired` ends the wait by budget. Under `mode: "queue"`
    * a message also waits for the earlier ones of its group.
    */
   resolve<D extends Target>(target: D, result: Command.Result<D>): this
@@ -354,78 +361,79 @@ export interface Steps<C extends AnyComponent> extends Pipeable {
   waitExpired(target: Target): this
 
   /**
-   * Loads a loader field with a Success: builds the snapshot at the loader's
-   * current args and sends it through the declared watch handler. Throws when
-   * the loader is disabled. For a list field `value` is the page array, and
+   * Loads a loader with a Success: writes its slot at the loader's current
+   * args, then sends the message of its `onChange`, if any. Throws when the
+   * loader is disabled. For a list loader `value` is the page array, and
    * unless `waiting` it settles a pending load more.
    *
    * **Details**
    *
    * Unless `waiting` or `patched`, it is a settle: it ends a
-   * `Command.afterRefetch` wait on the field. It throws while a running or
-   * queued Command's patch is live on the field, since no fetch settles under
-   * a live patch: only a `patched` value is sent then. As in the cache, a
-   * patch is live only when the field held a Success at issue.
+   * `Command.afterRefetch` wait on the loader. It throws while a running or
+   * queued Command's patch is live on the loader, since no fetch settles
+   * under a live patch: only a `patched` value is written then. As in the
+   * cache, a patch is live only when the slot held a Success at issue.
    */
-  loaded<F extends Component.SingleFields<Component.Model<C>>>(
-    field: F,
-    value: Loader.Read.Success<Component.ReadOf<Component.Model<C>[F]>>,
+  loaded<N extends Component.SingleNames<Component.Loaders<C>>>(
+    name: N,
+    value: Loader.Read.Success<Component.ReadOf<Component.Loaders<C>[N]>>,
     options?: { readonly waiting?: boolean | undefined; readonly patched?: boolean | undefined }
   ): this
   /**
-   * Loads one key of a keyed field with a Success, as `loadedMany` does with
-   * one entry.
+   * Loads one key of a `loadMany` loader with a Success, as `loadedMany`
+   * does with one entry.
    */
-  loaded<F extends Component.KeyedFields<Component.Model<C>>>(
-    field: F,
-    args: Loader.Read.Args<Component.ReadOf<Component.Model<C>[F]>>,
-    value: Loader.Read.Success<Component.ReadOf<Component.Model<C>[F]>>,
+  loaded<N extends Component.KeyedNames<Component.Loaders<C>>>(
+    name: N,
+    args: Loader.Read.Args<Component.ReadOf<Component.Loaders<C>[N]>>,
+    value: Loader.Read.Success<Component.ReadOf<Component.Loaders<C>[N]>>,
     options?: { readonly waiting?: boolean | undefined; readonly patched?: boolean | undefined }
   ): this
   /**
-   * Loads a loader field with a typed failure, as `loaded` does. The failure
-   * keeps the field's last Success as `previousSuccess` when the field holds
-   * one at the loader's current args. Unless `waiting`, it settles a list
-   * field's pending load more.
+   * Loads a loader with a typed failure, as `loaded` does. The failure keeps
+   * the slot's last Success as `previousSuccess` when it holds one at the
+   * loader's current args. Unless `waiting`, it settles a list loader's
+   * pending load more.
    */
-  loadFailed<F extends Component.SingleFields<Component.Model<C>>>(
-    field: F,
-    error: Loader.Read.Error<Component.ReadOf<Component.Model<C>[F]>>,
+  loadFailed<N extends Component.SingleNames<Component.Loaders<C>>>(
+    name: N,
+    error: Loader.Read.Error<Component.ReadOf<Component.Loaders<C>[N]>>,
     options?: { readonly waiting?: boolean | undefined }
   ): this
-  /** Loads one key of a keyed field with a typed failure, as `loadedMany` does with one entry. */
-  loadFailed<F extends Component.KeyedFields<Component.Model<C>>>(
-    field: F,
-    args: Loader.Read.Args<Component.ReadOf<Component.Model<C>[F]>>,
-    error: Loader.Read.Error<Component.ReadOf<Component.Model<C>[F]>>,
+  /** Loads one key of a `loadMany` loader with a typed failure, as `loadedMany` does with one entry. */
+  loadFailed<N extends Component.KeyedNames<Component.Loaders<C>>>(
+    name: N,
+    args: Loader.Read.Args<Component.ReadOf<Component.Loaders<C>[N]>>,
+    error: Loader.Read.Error<Component.ReadOf<Component.Loaders<C>[N]>>,
     options?: { readonly waiting?: boolean | undefined }
   ): this
   /**
-   * Settles a list field's pending load more with its next page: sends the
-   * field's pages with `page` appended. Throws when no load more is pending.
+   * Settles a list loader's pending load more with its next page: writes the
+   * loader's pages with `page` appended. Throws when no load more is
+   * pending.
    */
-  loadedMore<F extends Component.ListFields<Component.Model<C>>>(
-    field: F,
-    page: Loader.ListRead.Page<Component.ReadOf<Component.Model<C>[F]>>
+  loadedMore<N extends Component.ListNames<Component.Loaders<C>>>(
+    name: N,
+    page: Loader.ListRead.Page<Component.ReadOf<Component.Loaders<C>[N]>>
   ): this
   /**
-   * Settles a list field's pending load more with a failure: the pages stay,
+   * Settles a list loader's pending load more with a failure: the pages stay,
    * and `more` is `Failed` with `error`. Throws when no load more is
    * pending.
    */
-  loadMoreFailed<F extends Component.ListFields<Component.Model<C>>>(
-    field: F,
-    error: Loader.Read.Error<Component.ReadOf<Component.Model<C>[F]>>
+  loadMoreFailed<N extends Component.ListNames<Component.Loaders<C>>>(
+    name: N,
+    error: Loader.Read.Error<Component.ReadOf<Component.Loaders<C>[N]>>
   ): this
   /**
-   * Loads several keys of a keyed field in one message, as the runtime sends
-   * a first emission or a batch: the collection holds the field's stored keys
-   * and these, and `changes` holds these. Throws on args the loader doesn't
-   * currently return.
+   * Loads several keys of a `loadMany` loader in one write, as the runtime
+   * writes a first emission or a batch: the slot holds the loader's stored
+   * keys and these, and `onChange`'s `changes` holds these. Throws on args
+   * the loader doesn't currently return.
    */
-  loadedMany<F extends Component.KeyedFields<Component.Model<C>>>(
-    field: F,
-    entries: ReadonlyArray<KeyedLoad<Component.ReadOf<Component.Model<C>[F]>>>
+  loadedMany<N extends Component.KeyedNames<Component.Loaders<C>>>(
+    name: N,
+    entries: ReadonlyArray<KeyedLoad<Component.ReadOf<Component.Loaders<C>[N]>>>
   ): this
 
   /** Checks the Model. `f` throws to fail the test. */
@@ -436,7 +444,7 @@ export interface Steps<C extends AnyComponent> extends Pipeable {
   emitted(f: (emitted: ReadonlyArray<Component.Events<C>>) => void): this
   /** Checks the Subscription keys the current Model and props ask for. `f` throws to fail the test. */
   subscriptions(f: (keys: ReadonlyArray<string>) => void): this
-  /** Checks the loader fields and their current args. `f` throws to fail the test. */
+  /** Checks the loaders and their current args. `f` throws to fail the test. */
   loaders(f: (loaders: ReadonlyArray<LoaderInfo>) => void): this
   /** Checks the whole story. `f` throws to fail the test. */
   check(f: (story: Steps<C>["current"]) => void): this
@@ -471,6 +479,7 @@ type Fields<Props, Model, Msg, Events> = Pick<
   | "component"
   | "props"
   | "model"
+  | "slots"
   | "pending"
   | "emitted"
   | "interrupted"
@@ -491,10 +500,13 @@ const record = <Props, Model, Msg, Events>(
   const view = () => rendered ??= render()
   // A view value is a `Query` tree; a child slot is a node with no tag or text.
   const root = () => view() as Query.Node
+  const context = () => boundOf(fields.component)?.context(fields.model, fields.props, fields.slots)
   return {
     component: fields.component,
     props: fields.props,
     model: fields.model,
+    slots: fields.slots,
+    loaded: () => context()?.loaded ?? {},
     pending: fields.pending,
     emitted: fields.emitted,
     interrupted: fields.interrupted,
@@ -503,17 +515,15 @@ const record = <Props, Model, Msg, Events>(
     defaultPrevented: fields.defaultPrevented,
     view,
     subscriptions: () =>
-      (fields.component.subscriptions?.(fields.model, fields.props) ?? [])
-        .map((sub) => sub.key)
-        .filter((key) => !loaders.isWatchKey(key)),
+      (fields.component.subscriptions?.(fields.model, fields.props, fields.slots) ?? []).map((sub) => sub.key),
     loaders: () => {
       const bound = boundOf(fields.component)
       if (bound === undefined) return []
-      const context = bound.context(fields.model, fields.props)
-      return bound.fields.map((field) => ({
-        field: field.field,
-        read: Loader.defOf(field.read).name,
-        args: context.argsOf(field.field).args
+      const current = context()!
+      return bound.entries.map((entry) => ({
+        name: entry.name,
+        read: Loader.defOf(entry.read).name,
+        args: current.argsOf(entry.name).args
       }))
     },
     get root() {
@@ -533,6 +543,7 @@ const update = <Props, Model, Msg, Events>(
     component: story.component,
     props: story.props,
     model: story.model,
+    slots: story.slots,
     pending: story.pending,
     emitted: story.emitted,
     interrupted: story.interrupted,
@@ -542,68 +553,87 @@ const update = <Props, Model, Msg, Events>(
     defaultPrevented: false,
     ...patch
   }
-  // A defect in `view` fails the step that changed the Model, the props or what's pending.
-  const view = fields.model === story.model && fields.props === story.props && fields.pending === story.pending &&
-      fields.loadingMore === story.loadingMore
+  // A defect in `view` fails the step that changed the Model, the slots, the props or what's pending.
+  const view = fields.model === story.model && fields.slots === story.slots && fields.props === story.props &&
+      fields.pending === story.pending && fields.loadingMore === story.loadingMore
     ? story.view
-    : () => story.component.view(fields.model, fields.props, runningOf(fields.pending))
+    : () => story.component.view(fields.model, fields.props, runningOf(fields.pending), fields.slots)
   return record(fields, view)
 }
 
 const boundOf = (component: AnyComponent): loaders.Bound | undefined =>
   (component as unknown as { readonly "~loaders": loaders.Bound | undefined })["~loaders"]
 
-const isKeyed = (story: Story<any, any, any, any>, field: string): boolean =>
-  boundOf(story.component)?.fields.some((f) => f.field === field && f.keyed) === true
+const isKeyed = (story: Story<any, any, any, any>, name: string): boolean =>
+  boundOf(story.component)?.byName.get(name)?.keyed === true
 
-/** The result a load step sends, from the field's last Success at the loader's current args. */
+/** The loader called `name`, or a throw naming the step. */
+const loaderOf = (story: Story<any, any, any, any>, step: string, name: string): loaders.Entry => {
+  const entry = boundOf(story.component)?.byName.get(name)
+  if (entry === undefined) throw new Error(`Story.${step}: "${name}" is not a loader of ${story.component.name}`)
+  return entry
+}
+
+/** A loader's args for the story's Model, props and slots. */
+const argsAt = (story: Story<any, any, any, any>, name: string) =>
+  boundOf(story.component)!.context(story.model, story.props, story.slots).argsOf(name)
+
+/**
+ * Writes a loader's slot, then sends the message of its `onChange`, if any, as the runtime does.
+ * A keyed loader's `onChange` also gets `changes`.
+ */
+const writeSlot = (
+  story: Story<any, any, any, any>,
+  entry: loaders.Entry,
+  slot: unknown,
+  changes: ReadonlyArray<loaders.KeyedChange>
+): Story<any, any, any, any> => {
+  const bound = boundOf(story.component)!
+  // As in the runtime, the same snapshot writes nothing.
+  if (Equal.equals((story.slots ?? bound.empty)[entry.name], slot)) return story
+  const out = update(story, { slots: { ...(story.slots ?? bound.empty), [entry.name]: slot } })
+  const message = bound.context(out.model, out.props, out.slots).changed(entry.name, changes)
+  return message === undefined ? out : dispatch(out, message.value)
+}
+
+/** The result a load step writes, from the loader's last Success at its current args. */
 type Build = (
   previous: Option.Option<AsyncResult.Success<any, any>>
 ) => AsyncResult.Success<any, any> | AsyncResult.Failure<any, any>
 
-/** Builds the snapshot of `result` at the loader's current args and sends it through the watch handler. */
+/** Writes `result` to a single or list loader's slot at its current args. */
 const loadStep = (
   story: Story<any, any, any, any>,
   step: string,
-  field: string,
+  name: string,
   build: Build,
   patched: boolean,
   more?: Loader.More<any>
 ): Story<any, any, any, any> => {
-  const bound = boundOf(story.component)
-  if (bound === undefined || !bound.fields.some((f) => f.field === field)) {
-    throw new Error(`Story.${step}: "${field}" is not a loader field of ${story.component.name}`)
+  const entry = loaderOf(story, step, name)
+  const current = argsAt(story, name)
+  if (current.argsKey === undefined) {
+    throw new Error(`Story.${step}: the loader "${name}" is disabled for the current Model and props`)
   }
-  const marker = markerAt(story, field)
-  if (marker.argsKey === undefined) {
-    throw new Error(`Story.${step}: the loader of "${field}" is disabled for the current Model and props`)
-  }
-  const previous = storedAt(story, field, marker.argsKey)
-  const result = build(previous)
-  const def = Loader.defOf(marker.read)
-  const snapshot = Loader.makeSnapshot(
-    def,
-    marker.label,
-    { args: marker.args, argsKey: marker.argsKey },
+  const result = build(storedAt(story, name, current.argsKey))
+  const def = Loader.defOf(entry.read)
+  const slot = boundOf(story.component)!.slot(
+    entry,
+    { args: current.args, argsKey: current.argsKey },
     result,
     patched,
     more ?? (def.list !== undefined && result._tag === "Success" ? moreOfPages(def, result.value) : undefined)
   )
-  return dispatch(story, marker.toMsg(snapshot, result))
+  return writeSlot(story, entry, slot, [])
 }
 
-const markerAt = (story: Story<any, any, any, any>, field: string): loaders.Marker =>
-  (story.component.subscriptions?.(story.model, story.props) ?? [])
-    .map((sub) => loaders.markerOf(sub))
-    .find((marker) => marker?.label === field)!
-
-/** The field's last Success at `argsKey`: its value, or a Failure's previous one. */
+/** The slot's last Success at `argsKey`: its value, or a Failure's previous one. */
 const storedAt = (
   story: Story<any, any, any, any>,
-  field: string,
+  name: string,
   argsKey: string
 ): Option.Option<AsyncResult.Success<any, any>> => {
-  const data = Loader.snapshotData(story.model[field])
+  const data = Loader.snapshotData(story.slots?.[name])
   const stored = data?.argsKey === argsKey ? data.result : undefined
   return stored === undefined
     ? Option.none()
@@ -618,32 +648,32 @@ const moreOfPages = (def: ReturnType<typeof Loader.defOf>, pages: ReadonlyArray<
     ? { _tag: "Available" }
     : { _tag: "End" }
 
-const listField = (story: Story<any, any, any, any>, step: string, field: string): void => {
-  if (boundOf(story.component)?.fields.some((f) => f.field === field && f.list) !== true) {
-    throw new Error(`Story.${step}: "${field}" is not a list field of ${story.component.name}`)
+const listLoader = (story: Story<any, any, any, any>, step: string, name: string): void => {
+  if (boundOf(story.component)?.byName.get(name)?.list !== true) {
+    throw new Error(`Story.${step}: "${name}" is not a list loader of ${story.component.name}`)
   }
 }
 
-/** Settles a field's pending load more with `result`, sent at the field's pages. A live patch makes it throw. */
+/** Settles a loader's pending load more with `result`, written at its pages. A live patch makes it throw. */
 const settleMore = (
   story: Story<any, any, any, any>,
   step: string,
-  field: string,
+  name: string,
   pagesOf: (pages: ReadonlyArray<unknown>) => ReadonlyArray<unknown>,
   more?: Loader.More<any>
 ): Story<any, any, any, any> => {
-  const marker = markerAt(story, field)
-  if (marker?.argsKey !== undefined) checkUnpatched(story, step, field, marker.argsKey)
-  listField(story, step, field)
-  if (!story.loadingMore.includes(field)) {
-    throw new Error(`Story.${step}: no load more of "${field}" is pending`)
+  listLoader(story, step, name)
+  const argsKey = argsAt(story, name).argsKey
+  if (argsKey !== undefined) checkUnpatched(story, step, name, argsKey)
+  if (!story.loadingMore.includes(name)) {
+    throw new Error(`Story.${step}: no load more of "${name}" is pending`)
   }
   return loadStep(
-    settlePending(story, field),
+    settlePending(story, name),
     step,
-    field,
+    name,
     (previous) => {
-      if (Option.isNone(previous)) throw new Error(`Story.${step}: "${field}" holds no pages at its loader's args`)
+      if (Option.isNone(previous)) throw new Error(`Story.${step}: "${name}" holds no pages at its args`)
       return AsyncResult.success(pagesOf(previous.value.value), { timestamp: previous.value.timestamp })
     },
     false,
@@ -652,38 +682,40 @@ const settleMore = (
 }
 
 /**
- * A `$.loadMore` or `$.reset` from `update`, as the runtime runs it at the field's
- * current args: a load more is pending, and sends `Loading`; a reset sends the
+ * A `$.loadMore` or `$.reset` from `update`, as the runtime runs it at the loader's
+ * current args: a load more is pending, and writes `Loading`; a reset writes the
  * first page, waiting, and ends a pending load more.
  */
 const applyList = (story: Story<any, any, any, any>, list: Component.ListIssue): Story<any, any, any, any> => {
-  const marker = markerAt(story, list.field)
-  if (marker?.argsKey === undefined) return story
-  const previous = storedAt(story, list.field, marker.argsKey)
-  const def = Loader.defOf(marker.read)
-  const data = Loader.snapshotData(story.model[list.field])
+  const entry = boundOf(story.component)?.byName.get(list.name)
+  if (entry === undefined || !entry.list) return story
+  const argsKey = argsAt(story, list.name).argsKey
+  if (argsKey === undefined) return story
+  const previous = storedAt(story, list.name, argsKey)
+  const def = Loader.defOf(entry.read)
+  const data = Loader.snapshotData(story.slots?.[list.name])
   if (list.op === "loadMore") {
-    if (story.loadingMore.includes(list.field)) return story
-    // At the end, or with nothing held at these args, nothing is sent and nothing waits.
+    if (story.loadingMore.includes(list.name)) return story
+    // At the end, or with nothing held at these args, nothing is written and nothing waits.
     if (Option.isNone(previous) || moreOfPages(def, previous.value.value)._tag === "End") return story
-    const loading = update(story, { loadingMore: [...story.loadingMore, list.field] })
+    const loading = update(story, { loadingMore: [...story.loadingMore, list.name] })
     if (data?.result?._tag !== "Success") return loading
     return loadStep(
       loading,
       "loadMore",
-      list.field,
+      list.name,
       () => data.result as AsyncResult.Success<any, any>,
       data.patched,
       { _tag: "Loading" }
     )
   }
-  const reset = settlePending(story, list.field)
+  const reset = settlePending(story, list.name)
   if (Option.isNone(previous)) return reset
   const first = AsyncResult.success(previous.value.value.slice(0, 1), { timestamp: previous.value.timestamp })
   return loadStep(
     reset,
     "reset",
-    list.field,
+    list.name,
     // A Failure stays one, over the first page only, while the walk runs.
     () =>
       data?.result?._tag === "Failure"
@@ -693,95 +725,81 @@ const applyList = (story: Story<any, any, any, any>, list: Component.ListIssue):
   )
 }
 
-/** Ends a list field's pending load more: a settle of the field, Success or Failure, ends the walk it waits on. */
-const settlePending = (story: Story<any, any, any, any>, field: string): Story<any, any, any, any> =>
-  story.loadingMore.includes(field)
-    ? update(story, { loadingMore: story.loadingMore.filter((other) => other !== field) })
+/** Ends a list loader's pending load more: a settle, Success or Failure, ends the walk it waits on. */
+const settlePending = (story: Story<any, any, any, any>, name: string): Story<any, any, any, any> =>
+  story.loadingMore.includes(name)
+    ? update(story, { loadingMore: story.loadingMore.filter((other) => other !== name) })
     : story
 
-/** The watch group of a keyed field at the story's Model and props. */
-const groupOf = (story: Story<any, any, any, any>, field: string): loaders.Group | undefined => {
-  for (const sub of story.component.subscriptions?.(story.model, story.props) ?? []) {
-    const group = loaders.groupOf(sub)
-    if (group?.field === field) return group
+/** A `loadMany` loader and its unique args, or a throw naming the step. */
+const keyedLoader = (
+  story: Story<any, any, any, any>,
+  step: string,
+  name: string
+): { readonly entry: loaders.Entry; readonly keys: ReadonlyArray<loaders.Keyed> } => {
+  const entry = boundOf(story.component)?.byName.get(name)
+  if (entry === undefined || !entry.keyed) {
+    throw new Error(`Story.${step}: "${name}" is not a loadMany loader of ${story.component.name}`)
   }
-  return undefined
-}
-
-const keyedField = (story: Story<any, any, any, any>, step: string, field: string): loaders.Group => {
-  const bound = boundOf(story.component)
-  if (bound === undefined || !bound.fields.some((f) => f.field === field && f.keyed)) {
-    throw new Error(`Story.${step}: "${field}" is not a keyed loader field of ${story.component.name}`)
-  }
-  return groupOf(story, field)!
+  return { entry, keys: argsAt(story, name).entries! }
 }
 
 /**
- * Sends a keyed field's message as the runtime does: the collection is the
- * stored keys the loader still returns with `loads` over them, and
- * `changes` holds `loads`.
+ * Writes a keyed loader's slot as the runtime does: the stored keys the
+ * loader still returns, with `loads` over them, and `changes` holds
+ * `loads`.
  */
-/** Per keyed field, the declared keys when it last sent a message, as the runtime tracks them. */
-type SentFor = Map<string, ReadonlySet<string>>
-
-const declaredKeys = (group: loaders.Group): ReadonlySet<string> => new Set(group.entries.map((entry) => entry.argsKey))
-
-const sendKeyed = (
+const writeKeyed = (
   story: Story<any, any, any, any>,
-  sentFor: SentFor,
-  group: loaders.Group,
+  entry: loaders.Entry,
+  keys: ReadonlyArray<loaders.Keyed>,
   loads: ReadonlyArray<
     { readonly argsKey: string; readonly result: AsyncResult.AsyncResult<any, any>; readonly patched: boolean }
   >
 ): Story<any, any, any, any> => {
-  sentFor.set(group.field, declaredKeys(group))
-  const def = Loader.defOf(group.read)
-  const held = Loader.snapshotMapData(story.model[group.field])?.entries
+  const bound = boundOf(story.component)!
+  const held = Loader.snapshotMapData(story.slots?.[entry.name])?.entries
   const byKey = new Map(loads.map((load) => [load.argsKey, load]))
-  const snapshots = Loader.makeSnapshotMap(
-    def,
-    group.label,
-    group.entries.flatMap((entry) => {
-      const load = byKey.get(entry.argsKey)
-      if (load !== undefined) {
-        return [Loader.makeSnapshot(def, group.label, entry, load.result as any, load.patched)]
-      }
-      const stored = held?.get(entry.argsKey)
+  const slot = bound.slotMany(
+    entry,
+    keys.flatMap((key) => {
+      const load = byKey.get(key.argsKey)
+      if (load !== undefined) return [bound.slot(entry, key, load.result as any, load.patched, undefined)]
+      const stored = held?.get(key.argsKey)
       return stored === undefined ? [] : [stored]
     })
   )
-  const changes = group.entries.flatMap((entry) => {
-    const load = byKey.get(entry.argsKey)
-    return load === undefined ? [] : [{ args: entry.args, result: load.result }]
+  const changes = keys.flatMap((key) => {
+    const load = byKey.get(key.argsKey)
+    return load === undefined ? [] : [{ args: key.args, result: load.result }]
   })
-  return dispatch(story, group.toMsg(snapshots, loaders.openKeyed(def, snapshots, group.entries), changes))
+  return writeSlot(story, entry, slot, changes)
 }
 
-/** Loads keys of a keyed field: each args must be one the loader currently returns. */
+/** Loads keys of a keyed loader: each args must be one the loader currently returns. */
 const loadKeyedStep = (
   story: Story<any, any, any, any>,
-  sentFor: SentFor,
   step: string,
-  field: string,
+  name: string,
   loads: ReadonlyArray<KeyedLoad<any>>
 ): Story<any, any, any, any> => {
-  const group = keyedField(story, step, field)
-  const def = Loader.defOf(group.read)
-  const held = Loader.snapshotMapData(story.model[field])?.entries
+  const { entry, keys } = keyedLoader(story, step, name)
+  const def = Loader.defOf(entry.read)
+  const held = Loader.snapshotMapData(story.slots?.[name])?.entries
   const settled = new Set<string>()
-  const sent = sendKeyed(
+  const written = writeKeyed(
     story,
-    sentFor,
-    group,
+    entry,
+    keys,
     loads.map((load) => {
       const argsKey = def.argsKey(load.args)
-      if (!group.entries.some((entry) => entry.argsKey === argsKey)) {
+      if (!keys.some((key) => key.argsKey === argsKey)) {
         throw new Error(
-          `Story.${step}: the loader of "${field}" doesn't return the args ${def.logKey(load.args, argsKey)}`
+          `Story.${step}: the loader "${name}" doesn't return the args ${def.logKey(load.args, argsKey)}`
         )
       }
       const patched = "value" in load && load.patched === true
-      if (!patched) checkUnpatched(story, step, field, argsKey)
+      if (!patched) checkUnpatched(story, step, name, argsKey)
       if (!patched && load.waiting !== true) settled.add(argsKey)
       return {
         argsKey,
@@ -795,45 +813,39 @@ const loadKeyedStep = (
       }
     })
   )
-  // After the field's message: the wait's own message comes second.
-  return settleWaits(sent, (awaited) => awaited.field === field && settled.has(def.argsKey(awaited.args)))
+  // After the slot's write: the wait's own message comes second.
+  return settleWaits(written, (awaited) => awaited.name === name && settled.has(def.argsKey(awaited.args)))
 }
 
-/** How many rounds of prune messages one step may send before it throws. */
+/** How many rounds of prunes one step may write before it throws. */
 const pruneRounds = 100
 
 /**
- * After a step: a keyed field whose Model holds a key its loader no longer
- * returns gets the pruned collection, with no changes, as the runtime's
- * drain sends it. As in the runtime, a key set gets one: an `update` that
- * ignores it doesn't get it again until the key set changes. A prune's
- * `update` can change the key set again, so rounds run until none is due,
- * at most one message per field per round. The runtime doesn't bound them;
- * a step throws after `pruneRounds`.
+ * After a step: a keyed loader whose slot holds a key it no longer returns
+ * gets the slot pruned, with no changes, as the runtime's drain writes it. A
+ * prune's `onChange` can change the key set again, so rounds run until none
+ * is due, at most one write per loader per round. The runtime doesn't bound
+ * them; a step throws after `pruneRounds`.
  */
-const pruneKeyed = (story: Story<any, any, any, any>, sentFor: SentFor): Story<any, any, any, any> => {
+const pruneKeyed = (story: Story<any, any, any, any>): Story<any, any, any, any> => {
   const bound = boundOf(story.component)
   if (bound === undefined) return story
   let out = story
   for (let round = 0;; round++) {
     let pruned = false
-    for (const field of bound.fields) {
-      if (!field.keyed) continue
-      const held = Loader.snapshotMapData(out.model?.[field.field])
+    for (const entry of bound.entries) {
+      if (!entry.keyed) continue
+      const held = Loader.snapshotMapData(out.slots?.[entry.name])
       if (held === undefined || held.entries.size === 0) continue
-      const group = groupOf(out, field.field)!
-      const declared = declaredKeys(group)
-      const sent = sentFor.get(field.field)
-      if (sent !== undefined && sent.size === declared.size && Array.from(sent).every((key) => declared.has(key))) {
-        continue
-      }
+      const keys = argsAt(out, entry.name).entries!
+      const declared = new Set(keys.map((key) => key.argsKey))
       if (Array.from(held.entries.keys()).every((key) => declared.has(key))) continue
       if (round === pruneRounds) {
         throw new Error(
-          `Story: ${story.component.name}'s keyed field "${field.field}" was still sent a prune message after ${pruneRounds} rounds in one step. Each prune's update changes its key set again, and the runtime would send prune messages without limit.`
+          `Story: ${story.component.name}'s loader "${entry.name}" was still pruned after ${pruneRounds} rounds in one step. Each prune's onChange changes its key set again, and the runtime would prune without limit.`
         )
       }
-      out = sendKeyed(out, sentFor, group, [])
+      out = writeKeyed(out, entry, keys, [])
       pruned = true
     }
     if (!pruned) return out
@@ -908,7 +920,7 @@ const apply = <Props, Model, Msg, Events>(
 const exited = <Props, Model, Msg, Events>(
   story: Story<Props, Model, Msg, Events>,
   entry: Pending<Msg>,
-  held: { readonly message: Msg; readonly awaiting: ReadonlyArray<AwaitedField> } | undefined
+  held: { readonly message: Msg; readonly awaiting: ReadonlyArray<AwaitedLoader> } | undefined
 ): Story<Props, Model, Msg, Events> => {
   const awaiting: Pending<Msg> | undefined = held === undefined
     ? undefined
@@ -942,10 +954,10 @@ const release = <Props, Model, Msg, Events>(
   }
 }
 
-/** Takes awaited fields off the awaiting runs, delivering what a wait that ends lets go. */
+/** Takes awaited loaders off the awaiting runs, delivering what a wait that ends lets go. */
 const settleWaits = <Props, Model, Msg, Events>(
   story: Story<Props, Model, Msg, Events>,
-  settled: (awaited: AwaitedField) => boolean
+  settled: (awaited: AwaitedLoader) => boolean
 ): Story<Props, Model, Msg, Events> => {
   let out = story
   for (const entry of story.pending) {
@@ -958,38 +970,39 @@ const settleWaits = <Props, Model, Msg, Events>(
 }
 
 /**
- * A single or list field's `loaded` or `loadFailed`: unless `patched`, a live patch makes it throw,
- * and unless `waiting` too, it settles the field's entry for the waits on it, after its message.
+ * A single or list loader's `loaded` or `loadFailed`: unless `patched`, a live patch makes it throw,
+ * and unless `waiting` too, it settles the loader's entry for the waits on it, after its write.
  */
 const settleStep = (
   story: Story<any, any, any, any>,
   step: string,
-  field: string,
+  name: string,
   patched: boolean,
   waiting: boolean,
   build: Build
 ): Story<any, any, any, any> => {
-  const marker = markerAt(story, field)
-  if (!patched && marker?.argsKey !== undefined) checkUnpatched(story, step, field, marker.argsKey)
+  const entry = loaderOf(story, step, name)
+  const argsKey = argsAt(story, name).argsKey
+  if (!patched && argsKey !== undefined) checkUnpatched(story, step, name, argsKey)
   // A settle ends the walk a list's pending load more waits on, unless a walk is still running.
-  const loaded = loadStep(waiting ? story : settlePending(story, field), step, field, build, patched)
+  const loaded = loadStep(waiting ? story : settlePending(story, name), step, name, build, patched)
   return patched || waiting ? loaded : settleWaits(
     loaded,
-    (awaited) => awaited.field === field && Loader.defOf(marker.read).argsKey(awaited.args) === marker.argsKey
+    (awaited) => awaited.name === name && Loader.defOf(entry.read).argsKey(awaited.args) === argsKey
   )
 }
 
-/** The component's own loader fields, each with the entries it is at: one per args its loader returns now. */
+/** The component's own loaders, each with the entries it is at: one per args it returns now. */
 function* currentEntries(
   story: Story<any, any, any, any>
-): Generator<{ readonly field: loaders.Field; readonly entries: ReadonlyArray<loaders.Keyed> }> {
+): Generator<{ readonly loader: loaders.Entry; readonly entries: ReadonlyArray<loaders.Keyed> }> {
   const bound = boundOf(story.component)
   if (bound === undefined) return
-  const context = bound.context(story.model, story.props)
-  for (const field of bound.fields) {
-    const current = context.argsOf(field.field)
+  const context = bound.context(story.model, story.props, story.slots)
+  for (const loader of bound.entries) {
+    const current = context.argsOf(loader.name)
     yield {
-      field,
+      loader,
       entries: current.entries ??
         (current.argsKey === undefined ? [] : [{ args: current.args, argsKey: current.argsKey }])
     }
@@ -997,14 +1010,14 @@ function* currentEntries(
 }
 
 /**
- * What a `Command.afterRefetch` run resolved with `result` waits for: the component's own loader
- * fields, at their current args, that its declared targets match, less the entries its `writes` store.
+ * What a `Command.afterRefetch` run resolved with `result` waits for: the component's own loaders,
+ * at their current args, that its declared targets match, less the entries its `writes` store.
  */
-const awaitedFields = (
+const awaitedLoaders = (
   story: Story<any, any, any, any>,
   command: Command.Effectful<any, any, never> | Command.Streaming<any, any, never>,
   result: unknown
-): ReadonlyArray<AwaitedField> => {
+): ReadonlyArray<AwaitedLoader> => {
   const budget = command.afterRefetch
   if (command._tag !== "Effect" || budget === undefined || Duration.isZero(budget)) return []
   if (boundOf(story.component) === undefined) return []
@@ -1012,57 +1025,58 @@ const awaitedFields = (
     name: Loader.defOf(write.read).name,
     argsKey: Loader.defOf(write.read).argsKey(write.args)
   }))
-  const out: Array<AwaitedField> = []
-  for (const { entries, field } of currentEntries(story)) {
-    const name = Loader.defOf(field.read).name
+  const out: Array<AwaitedLoader> = []
+  for (const { entries, loader } of currentEntries(story)) {
+    const read = Loader.defOf(loader.read).name
     for (const { args, argsKey } of entries) {
-      if (!Loader.invalidatesEntry(command, field.read, args)) continue
-      if (written.some((write) => write.name === name && write.argsKey === argsKey)) continue
-      out.push({ field: field.field, args })
+      if (!Loader.invalidatesEntry(command, loader.read, args)) continue
+      if (written.some((write) => write.name === read && write.argsKey === argsKey)) continue
+      out.push({ name: loader.name, args })
     }
   }
   return out
 }
 
 /**
- * Patches registered at issue, by field and args key. As in the cache, only entries that
+ * Patches registered at issue, by loader name and args key. As in the cache, only entries that
  * held a Success then register a patch; cold or failed entries don't delay settling.
  */
-const livePatches = new WeakMap<Pending<any>, ReadonlyArray<{ readonly field: string; readonly argsKey: string }>>()
+const livePatches = new WeakMap<Pending<any>, ReadonlyArray<{ readonly name: string; readonly argsKey: string }>>()
 
-/** The component's own loader fields, at their current args, that `command`'s patches register on. */
+/** The component's own loaders, at their current args, that `command`'s patches register on. */
 const registeredPatches = (
   story: Story<any, any, any, any>,
   command: Command.Effectful<any, any, never> | Command.Streaming<any, any, never>
-): ReadonlyArray<{ readonly field: string; readonly argsKey: string }> => {
+): ReadonlyArray<{ readonly name: string; readonly argsKey: string }> => {
   if (command.optimistic.length === 0) return []
-  const out: Array<{ readonly field: string; readonly argsKey: string }> = []
-  for (const { entries, field } of currentEntries(story)) {
-    const held = field.keyed ? Loader.snapshotMapData(story.model[field.field])?.entries : undefined
+  const out: Array<{ readonly name: string; readonly argsKey: string }> = []
+  for (const { entries, loader } of currentEntries(story)) {
+    const slot = story.slots?.[loader.name]
+    const held = loader.keyed ? Loader.snapshotMapData(slot)?.entries : undefined
     for (const { args, argsKey } of entries) {
-      const data = Loader.snapshotData(held !== undefined ? held.get(argsKey) : story.model[field.field])
+      const data = Loader.snapshotData(held !== undefined ? held.get(argsKey) : slot)
       if (data?.argsKey !== argsKey || data.result?._tag !== "Success") continue
-      if (!Loader.invalidatesEntry({ invalidates: [], optimistic: command.optimistic }, field.read, args)) continue
-      out.push({ field: field.field, argsKey })
+      if (!Loader.invalidatesEntry({ invalidates: [], optimistic: command.optimistic }, loader.read, args)) continue
+      out.push({ name: loader.name, argsKey })
     }
   }
   return out
 }
 
 /**
- * Throws when a running or queued Command's optimistic patch is live on the entry of `field` at
- * `argsKey`: the runtime settles no fetch there, so only a patched value can be sent.
+ * Throws when a running or queued Command's optimistic patch is live on the entry of loader `name`
+ * at `argsKey`: the runtime settles no fetch there, so only a patched value can be written.
  */
-const checkUnpatched = (story: Story<any, any, any, any>, step: string, field: string, argsKey: string): void => {
+const checkUnpatched = (story: Story<any, any, any, any>, step: string, name: string, argsKey: string): void => {
   const patcher = story.pending.find((entry) =>
     entry.status !== "awaiting" &&
-    livePatches.get(entry)?.some((patch) => patch.field === field && patch.argsKey === argsKey) === true
+    livePatches.get(entry)?.some((patch) => patch.name === name && patch.argsKey === argsKey) === true
   )
   if (patcher !== undefined) {
     throw new Error(
-      `Story.${step}: "${field}" is under the optimistic patch of ${
+      `Story.${step}: "${name}" is under the optimistic patch of ${
         describe(patcher.command)
-      } [${patcher.status}], and no fetch settles under a live patch. Resolve or fail it first, or send the patched value with \`{ patched: true }\`.`
+      } [${patcher.status}], and no fetch settles under a live patch. Resolve or fail it first, or write the patched value with \`{ patched: true }\`.`
     )
   }
 }
@@ -1077,7 +1091,7 @@ const describePending = (pending: ReadonlyArray<Pending<any>>): string =>
       `${describe(entry.command)} [${entry.status}${
         entry.awaiting === undefined || entry.awaiting.length === 0
           ? ""
-          : ` on ${entry.awaiting.map((awaited) => awaited.field).join(", ")}`
+          : ` on ${entry.awaiting.map((awaited) => awaited.name).join(", ")}`
       }]`
     ).join(", ")
 
@@ -1104,7 +1118,7 @@ const dispatch = <Props, Model, Msg, Events>(
   story: Story<Props, Model, Msg, Events>,
   message: Msg | undefined
 ): Story<Props, Model, Msg, Events> =>
-  message === undefined ? story : apply(story, story.component.update(story.model, message, story.props))
+  message === undefined ? story : apply(story, story.component.update(story.model, message, story.props, story.slots))
 
 /** `node` and its ancestors in `root`, innermost first, or `undefined` when `node` isn't in `root`. */
 const pathTo = (root: View.Node<any, any>, node: Query.Node): Array<View.Node<any, any>> | undefined => {
@@ -1172,7 +1186,6 @@ const findStream = (story: Story<any, any, any, any>, target: StreamTarget, step
 
 class StepsImpl implements Steps<AnyComponent> {
   current: Story<any, any, any, any>
-  private readonly sentFor: SentFor = new Map()
   constructor(current: Story<any, any, any, any>) {
     this.current = current
     current.view()
@@ -1181,7 +1194,7 @@ class StepsImpl implements Steps<AnyComponent> {
     return pipeArguments(this, arguments)
   }
   private step(next: Story<any, any, any, any>, defaultPrevented = false): this {
-    const settled = next === this.current ? next : pruneKeyed(next, this.sentFor)
+    const settled = next === this.current ? next : pruneKeyed(next)
     // Set on the settled record, so a step that changed nothing still resets it.
     this.current = settled.defaultPrevented === defaultPrevented ? settled : update(settled, { defaultPrevented })
     // Rendered once the step has settled, so a defect in `view` fails it.
@@ -1191,8 +1204,6 @@ class StepsImpl implements Steps<AnyComponent> {
 
   given(model: unknown): this {
     const next = typeof model === "function" ? model(this.current.model) : model
-    // A Model set by hand: its keyed fields haven't been sent a message for any key set.
-    this.sentFor.clear()
     return this.step(
       update(this.current, { model: next, pending: [], emitted: [], interrupted: [], dropped: [], loadingMore: [] })
     )
@@ -1225,7 +1236,7 @@ class StepsImpl implements Steps<AnyComponent> {
     const entry = findRunning(this.current, target, "resolve")
     return this.step(exited(this.current, entry, {
       message: resolveWith(entry, result),
-      awaiting: awaitedFields(this.current, entry.command, result)
+      awaiting: awaitedLoaders(this.current, entry.command, result)
     }))
   }
   fail(target: Target, error: unknown): this {
@@ -1255,10 +1266,10 @@ class StepsImpl implements Steps<AnyComponent> {
     }
     return this.step(settleWaits(this.current, (awaited) => entry.awaiting!.includes(awaited)))
   }
-  loaded(field: string, ...rest: Array<any>): this {
-    if (isKeyed(this.current, field)) {
+  loaded(name: string, ...rest: Array<any>): this {
+    if (isKeyed(this.current, name)) {
       const [args, value, options] = rest
-      return this.step(loadKeyedStep(this.current, this.sentFor, "loaded", field, [{ args, value, ...options }]))
+      return this.step(loadKeyedStep(this.current, "loaded", name, [{ args, value, ...options }]))
     }
     const [value, options] = rest as [
       unknown,
@@ -1268,40 +1279,38 @@ class StepsImpl implements Steps<AnyComponent> {
       settleStep(
         this.current,
         "loaded",
-        field,
+        name,
         options?.patched === true,
         options?.waiting === true,
         () => AsyncResult.success(value, { waiting: options?.waiting, timestamp: 0 })
       )
     )
   }
-  loadedMore(field: string, page: unknown): this {
-    return this.step(settleMore(this.current, "loadedMore", field, (pages) => [...pages, page]))
+  loadedMore(name: string, page: unknown): this {
+    return this.step(settleMore(this.current, "loadedMore", name, (pages) => [...pages, page]))
   }
-  loadMoreFailed(field: string, error: unknown): this {
-    return this.step(settleMore(this.current, "loadMoreFailed", field, (pages) => pages, { _tag: "Failed", error }))
+  loadMoreFailed(name: string, error: unknown): this {
+    return this.step(settleMore(this.current, "loadMoreFailed", name, (pages) => pages, { _tag: "Failed", error }))
   }
-  loadFailed(field: string, ...rest: Array<any>): this {
-    if (isKeyed(this.current, field)) {
+  loadFailed(name: string, ...rest: Array<any>): this {
+    if (isKeyed(this.current, name)) {
       const [args, error, options] = rest
-      return this.step(
-        loadKeyedStep(this.current, this.sentFor, "loadFailed", field, [{ args, error, waiting: options?.waiting }])
-      )
+      return this.step(loadKeyedStep(this.current, "loadFailed", name, [{ args, error, waiting: options?.waiting }]))
     }
     const [error, options] = rest as [unknown, { readonly waiting?: boolean | undefined } | undefined]
     return this.step(
       settleStep(
         this.current,
         "loadFailed",
-        field,
+        name,
         false,
         options?.waiting === true,
         (previousSuccess) => AsyncResult.failure(Cause.fail(error), { previousSuccess, waiting: options?.waiting })
       )
     )
   }
-  loadedMany(field: string, entries: ReadonlyArray<KeyedLoad<any>>): this {
-    return this.step(loadKeyedStep(this.current, this.sentFor, "loadedMany", field, entries))
+  loadedMany(name: string, entries: ReadonlyArray<KeyedLoad<any>>): this {
+    return this.step(loadKeyedStep(this.current, "loadedMany", name, entries))
   }
 
   model(f: (model: any) => void): this {
@@ -1382,7 +1391,7 @@ export const make = <C extends AnyComponent>(
   if (story.loadingMore.length > 0) {
     throw new Error(
       `Story.make: a load more still pending at the end on ${
-        story.loadingMore.map((field) => JSON.stringify(field)).join(", ")
+        story.loadingMore.map((name) => JSON.stringify(name)).join(", ")
       }`
     )
   }
@@ -1403,13 +1412,14 @@ export const start = <C extends AnyComponent>(component: C, props: Component.Pro
     component: component as Component.Component<any, any, any, any, any, any, any>,
     props,
     model: first.model,
+    slots: undefined,
     pending: [],
     emitted: [],
     interrupted: [],
     dropped: [],
     loadingMore: [],
     defaultPrevented: false
-  }, () => component.view(first.model, props, runningOf([])))
+  }, () => component.view(first.model, props, runningOf([]), undefined))
   return new StepsImpl(apply(empty, first)) as Steps<C>
 }
 
@@ -1470,8 +1480,10 @@ export const layerFailure = <C extends Component.Any>(
 ): Component.Message<C> | undefined => component.layerFailure?.(failure)
 
 /**
- * One instance's head entries for a Model: what its `head` option returns,
- * or none without one. The merge across the tree is a runtime test's.
+ * One instance's head entries for a Model, or for a story's Model and
+ * loaders: what its `head` option returns, or none without one. The merge
+ * across the tree is a runtime test's. Given a component and a Model, every
+ * loader is empty.
  *
  * **Example** (A page's title)
  *
@@ -1497,10 +1509,16 @@ export const layerFailure = <C extends Component.Any>(
  * @category queries
  * @since 4.1.5
  */
-export const head = <Name extends string, Props, Model, Msg, Events, R, V extends View.Elements>(
-  component: Component.Component<Name, Props, Model, Msg, Events, R, V>,
-  model: Model
-): ReadonlyArray<Head.Entry> => component.head?.(model) ?? []
+export const head: {
+  <Name extends string, Props, Model, Msg, Events, R, V extends View.Elements>(
+    component: Component.Component<Name, Props, Model, Msg, Events, R, V>,
+    model: Model
+  ): ReadonlyArray<Head.Entry>
+  <Props, Model, Msg, Events>(story: Story<Props, Model, Msg, Events>): ReadonlyArray<Head.Entry>
+} = (self: Component.Component<any, any, any, any, any, any, any> | Story<any, any, any, any>, model?: unknown) =>
+  "pending" in self
+    ? self.component.head?.(self.model, self.props, self.slots) ?? []
+    : self.head?.(model, undefined, undefined) ?? []
 
 // ---------------------------------------------------------------------------
 // Replay
@@ -1577,7 +1595,8 @@ const findPlaceholder = (value: unknown): string | undefined => {
  * `path` is given), takes its Model, and re-runs every following message with
  * the props it was recorded with. Commands are compared, never run. Models and
  * events are compared with `Schema.toEquivalence`, and Commands by their Wire
- * encoding.
+ * encoding. Each `LoaderChanged` entry for the path writes its loader's slot,
+ * so every `update` sees the loaders as it did when it ran.
  *
  * It takes live entries or Wire frames. A Wire value sent as a placeholder,
  * such as a truncated Model, can't be decoded, and the error names the entry.
@@ -1592,24 +1611,44 @@ export const fromLog = <Name extends string, Props, Model, Msg, Events, R, V ext
   options?: { readonly path?: string | undefined }
 ): Replay<Model, Msg, Events> => {
   const nameOf = (entry: MessageLog.Entry | MessageLog.Wire): string | undefined =>
-    entry._tag === "Update" || entry._tag === "Mounted"
+    entry._tag === "Update" || entry._tag === "Mounted" || entry._tag === "LoaderChanged"
       ? typeof entry.component === "string" ? entry.component : entry.component.name
       : undefined
   const path = options?.path ??
     (entries.find((entry) => nameOf(entry) === component.name) as MessageLog.Base | undefined)?.path
   if (path === undefined) throw new Error(`Story.fromLog: the log has no entry for ${component.name}`)
-  const relevant = entries.filter((entry) =>
-    (entry._tag === "Update" || entry._tag === "Mounted") && entry.path === path
-  ) as ReadonlyArray<MessageLog.Update | MessageLog.Mounted | Extract<MessageLog.Wire, { _tag: "Update" | "Mounted" }>>
-  if (relevant.length === 0) throw new Error(`Story.fromLog: the log has no entry for ${path}`)
+  const all = entries.filter((entry) =>
+    (entry._tag === "Update" || entry._tag === "Mounted" || entry._tag === "LoaderChanged") && entry.path === path
+  ) as ReadonlyArray<
+    | MessageLog.Update
+    | MessageLog.Mounted
+    | MessageLog.LoaderChanged
+    | Extract<MessageLog.Wire, { _tag: "Update" | "Mounted" | "LoaderChanged" }>
+  >
+  // The replay starts at the first Model: a slot written before it is part of what it starts from.
+  const start = all.findIndex((entry) => entry._tag !== "LoaderChanged")
+  if (start === -1) throw new Error(`Story.fromLog: the log has no entry for ${path}`)
+  const first = all[start] as
+    | MessageLog.Update
+    | MessageLog.Mounted
+    | Extract<MessageLog.Wire, { _tag: "Update" | "Mounted" }>
+  const bound = (component as unknown as { readonly "~loaders": loaders.Bound | undefined })["~loaders"]
+  const slotOf = (entry: MessageLog.LoaderChanged | Extract<MessageLog.Wire, { _tag: "LoaderChanged" }>) => {
+    if (typeof entry.component !== "string") return entry.slot
+    const schema = bound?.schemas[entry.name]
+    if (schema === undefined) {
+      throw new Error(`Story.fromLog: entry #${entry.seq} (${path}) writes "${entry.name}", which isn't a loader`)
+    }
+    return decodeWith(entry, `loader "${entry.name}"`, schema, entry.slot)
+  }
 
   const decoders = new Map<Schema.Top, (value: unknown) => unknown>()
   const decode = (
     entry: { readonly seq: number },
     field: "props" | "model" | "message" | "events",
     value: unknown
-  ): any => {
-    const schema = component[field] as Schema.Top
+  ): any => decodeWith(entry, field, component[field] as Schema.Top, value)
+  function decodeWith(entry: { readonly seq: number }, field: string, schema: Schema.Top, value: unknown): any {
     let run = decoders.get(schema)
     if (run === undefined) {
       run = Schema.decodeUnknownSync(Schema.toCodecJson(schema as Schema.Codec<unknown, unknown>))
@@ -1627,7 +1666,7 @@ export const fromLog = <Name extends string, Props, Model, Msg, Events, R, V ext
       )
     }
   }
-  const read = (entry: (typeof relevant)[number]) => {
+  const read = (entry: typeof first) => {
     if (typeof entry.component !== "string") {
       return {
         props: entry.props as Props,
@@ -1653,16 +1692,23 @@ export const fromLog = <Name extends string, Props, Model, Msg, Events, R, V ext
   const sameEvents = Schema.toEquivalence(Schema.Array(component.events as Schema.Codec<Events, unknown>))
   const sameCommands = (a: ReadonlyArray<unknown>, b: ReadonlyArray<unknown>) => JSON.stringify(a) === JSON.stringify(b)
 
-  let model = read(relevant[0]!).model
+  let model = read(first).model
+  // Slots written before the first Model belong to an earlier mount, so the replay starts with none.
+  let slots: Record<string, unknown> | undefined = undefined
   let replayed = 0
-  for (const entry of relevant.slice(1)) {
+  for (const entry of all.slice(start + 1)) {
+    if (entry._tag === "LoaderChanged") {
+      slots = { ...(slots ?? bound?.empty), [entry.name]: slotOf(entry) }
+      continue
+    }
     const recorded = read(entry)
     if (entry._tag === "Mounted") {
       // Mounted again at the same path: the replay starts over from it.
       model = recorded.model
+      slots = undefined
       continue
     }
-    const next = component.update(model, recorded.message as Msg, recorded.props)
+    const next = component.update(model, recorded.message as Msg, recorded.props, slots)
     replayed++
     const recomputed = {
       model: next.model,

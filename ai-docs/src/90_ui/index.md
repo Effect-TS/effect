@@ -7,6 +7,40 @@ and Subscriptions that the runtime runs for you, and data comes from `Loader`
 reads in `effect/reactivity`. `effect/ui/html` adds the HTML elements, the
 browser host and router, and server rendering.
 
+### Loading data
+
+A component declares the reads it shows in `loaders`, by name. Each entry
+names a read and returns its args from the Model, the props and the other
+loaders' results, or `undefined` to disable it:
+
+```ts
+loaders: {
+  note: { load: GetNote, args: (_model, props) => ({ id: props.id }) },
+  // Waits for the args to hold still before it fetches.
+  results: { load: SearchNotes, debounce: "300 millis", args: (model) => ({ q: model.q }) },
+  // One read at many args, one entry per args.
+  authors: { loadMany: GetUser, args: (_model, props) => props.authorIds.map((id) => ({ id })) }
+}
+```
+
+The runtime watches each read and keeps its last result in a slot beside the
+Model. A slot that changes re-renders the instance, without a message. The
+Model holds what the user did, and never a copy of loaded data. The Model plus
+the slots is the instance's state: the server ships it and the history entry
+keeps it as `{ model, loaded }`, so a hydrated or restored instance starts
+with the results it had.
+
+Every function of the component can read the slots, by loader name:
+`h.loaded` in `view`, `$.loaded` in `update`, and the `loaded` argument of
+`head(model, loaded)` and `subscriptions(model, props, loaded)`. Give an entry
+an `onChange` only when `update` has to react to a new result, such as
+moving focus once a read fails. It returns a message, which `update` gets
+after the slot is written.
+
+In tests, `Story` load steps such as `loaded("note", note)` take the loader's
+name and write its slot. The `MessageLog` records each slot write as a
+`LoaderChanged` entry, and an `Update` entry only for an `onChange` message.
+
 ### Organizing an app
 
 The examples below are one notes app. Each example is an entry module, for

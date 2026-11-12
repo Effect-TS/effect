@@ -201,6 +201,29 @@ export interface Mounted extends Base {
 }
 
 /**
+ * A loader's slot changed: the runtime wrote what the loader's read last
+ * returned at its args. `slot` is opaque, and `Story.fromLog` writes it back.
+ *
+ * **Details**
+ *
+ * An instance mounted with restored or hydrated slots logs one entry per
+ * non-empty slot right after `Mounted`. A loader with `onChange` logs this
+ * entry before the `Update` of the message it returns.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.1.5
+ */
+export interface LoaderChanged extends Base {
+  readonly _tag: "LoaderChanged"
+  /** The component, whose loader Schemas encode the slot for the Wire. */
+  readonly component: Component.Any
+  /** The loader's name in `loaders`. */
+  readonly name: string
+  readonly slot: unknown
+}
+
+/**
  * A lifecycle step with nothing to add but the path.
  *
  * @stability experimental
@@ -393,6 +416,7 @@ export type Entry =
   | SessionStarted
   | Update
   | Mounted
+  | LoaderChanged
   | Lifecycle
   | LayerFailed
   | SubscriptionChanged
@@ -571,7 +595,7 @@ export const Wire = Schema.Union([
     commands: Schema.Array(CommandWire),
     events: Schema.Array(Schema.Json),
     lists: Schema.optionalKey(
-      Schema.Array(Schema.Struct({ field: Schema.String, op: Schema.Literals(["loadMore", "reset"]) }))
+      Schema.Array(Schema.Struct({ name: Schema.String, op: Schema.Literals(["loadMore", "reset"]) }))
     )
   }),
   Schema.TaggedStruct("Mounted", {
@@ -583,6 +607,7 @@ export const Wire = Schema.Union([
     events: Schema.Array(Schema.Json),
     adopted: Schema.Boolean
   }),
+  Schema.TaggedStruct("LoaderChanged", { ...Seq, component: Schema.String, name: Schema.String, slot: Schema.Json }),
   Schema.Struct({ _tag: Schema.Literals(["Unmounted", "LayerPending", "LayerReady"]), ...Seq }),
   Schema.TaggedStruct("LayerFailed", { ...Seq, cause: CauseWire }),
   Schema.Struct({ _tag: Schema.Literals(["SubscriptionStarted", "SubscriptionStopped"]), ...Seq, key: Schema.String }),
@@ -682,8 +707,9 @@ export const makeEncoder = (options?: {
   const maxEntryBytes = options?.maxEntryBytes ?? Infinity
   const warned = new Set<string>()
   const encoders = new WeakMap<Schema.Top, (value: unknown) => unknown>()
-  const through = (component: Component.Any, field: "props" | "model" | "message" | "events", value: unknown) => {
-    const schema = component[field] as Schema.Top
+  const through = (component: Component.Any, field: "props" | "model" | "message" | "events", value: unknown) =>
+    encodeWith(component[field] as Schema.Top, `${component.name}.${field}`, value)
+  const encodeWith = (schema: Schema.Top, id: string, value: unknown) => {
     let encode = encoders.get(schema)
     if (encode === undefined) {
       encode = Schema.encodeUnknownSync(
@@ -694,7 +720,6 @@ export const makeEncoder = (options?: {
     try {
       return encode(value) as Schema.Json
     } catch (error) {
-      const id = `${component.name}.${field}`
       if (!warned.has(id)) {
         warned.add(id)
         options?.onWarning?.(`MessageLog: ${id} failed to encode, so it's sent as a placeholder: ${String(error)}`)
@@ -702,9 +727,10 @@ export const makeEncoder = (options?: {
       return { "~unserialisable": "encode" }
     }
   }
-  // A watch's message carries a whole snapshot, so messages are capped like Models.
-  const capped = (component: Component.Any, field: "model" | "message", value: unknown): Schema.Json => {
-    const encoded = through(component, field, value) as Schema.Json
+  // A message can carry a loader's whole result, so messages are capped like Models and slots.
+  const capped = (component: Component.Any, field: "model" | "message", value: unknown): Schema.Json =>
+    cap(through(component, field, value) as Schema.Json)
+  const cap = (encoded: Schema.Json): Schema.Json => {
     if (maxEntryBytes === Infinity) return encoded
     const bytes = utf8Length(JSON.stringify(encoded))
     return bytes > maxEntryBytes ? { "~truncated": bytes } : encoded
@@ -736,6 +762,18 @@ export const makeEncoder = (options?: {
             events: entry.events.map((emitted) => through(entry.component, "events", emitted) as Schema.Json),
             adopted: entry.adopted
           }
+        case "LoaderChanged": {
+          const schema = (entry.component["~loaders"] as LoaderSchemas | undefined)?.schemas[entry.name]
+          return {
+            ...base(entry),
+            _tag: "LoaderChanged",
+            component: entry.component.name,
+            name: entry.name,
+            slot: schema === undefined
+              ? { "~unserialisable": "encode" }
+              : cap(encodeWith(schema, `${entry.component.name}.loaders.${entry.name}`, entry.slot) as Schema.Json)
+          }
+        }
         case "LayerFailed":
           return { ...base(entry), _tag: "LayerFailed", cause: encodeCause(entry.cause) }
         case "Failed":
@@ -799,6 +837,11 @@ export const makeEncoder = (options?: {
       }
     }
   }
+}
+
+/** What the encoder reads of a component's bound loaders. */
+interface LoaderSchemas {
+  readonly schemas: { readonly [name: string]: Schema.Top }
 }
 
 const base = (entry: Base) => ({ seq: entry.seq, at: entry.at, session: entry.session, path: entry.path })

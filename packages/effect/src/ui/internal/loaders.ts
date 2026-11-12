@@ -1,44 +1,40 @@
 /**
- * What `Component.make` builds from `loaders`: the empty snapshots, the
- * opened views of `h` and the `$.watch` of `subscriptions`.
+ * What `Component.make` builds from `loaders`: the loader slots an instance
+ * holds beside its Model, their Schema, the opened views of `h` and `$`,
+ * and the watches the runtime registers.
+ *
+ * A slot holds a snapshot: the last settled result of the loader's read, at
+ * the args it was taken for. The Model plus the slots is an instance's state.
  *
  * @internal
  */
+import * as Duration from "../../Duration.ts"
 import * as Option from "../../Option.ts"
+import * as Predicate from "../../Predicate.ts"
 import * as AsyncResult from "../../reactivity/AsyncResult.ts"
 import * as Loader from "../../reactivity/Loader.ts"
-import type * as Schema from "../../Schema.ts"
-import * as SchemaAST from "../../SchemaAST.ts"
+import * as Schema from "../../Schema.ts"
 import * as Stream from "../../Stream.ts"
 import * as Subscription from "../Subscription.ts"
 
-/** The annotation `Loader.Snapshot`, `Loader.SnapshotList` and `Loader.SnapshotMap` put on their Schemas. */
-const annotationKey = "~effect/reactivity/Loader/Snapshot/field"
-
-interface Annotation {
-  readonly read: string
-  readonly label: string
-  readonly definition: Loader.Read.Any
-  readonly keyed: boolean
-  readonly list?: boolean | undefined
-}
-
-const schemaName = (found: Annotation) =>
-  found.keyed ? "Loader.SnapshotMap" : found.list === true ? "Loader.SnapshotList" : "Loader.Snapshot"
+type LoaderFn = (model: any, props: any, loaded: any) => unknown
 
 /**
- * One loader field of a Model.
+ * One entry of `loaders`.
  *
  * @internal
  */
-export interface Field {
-  readonly field: string
-  readonly label: string
+export interface Entry {
+  readonly name: string
   readonly read: Loader.Read.Any
-  /** A `Loader.SnapshotMap` field. */
+  /** A `loadMany` entry. */
   readonly keyed: boolean
-  /** A `Loader.SnapshotList` field. */
+  /** A `load` of a list read. */
   readonly list: boolean
+  readonly args: LoaderFn
+  /** From `debounce`: how many milliseconds a fetch for changed args waits. */
+  readonly debounce: number | undefined
+  readonly onChange: ((...args: Array<any>) => unknown) | undefined
 }
 
 /**
@@ -52,34 +48,30 @@ export interface Keyed {
 }
 
 /**
- * What one field's watch carries for the runtime.
+ * What one loader's watch carries for the runtime.
  *
  * @internal
  */
 export interface Marker {
   readonly read: Loader.Read.Any
-  readonly label: string
+  readonly name: string
   /** `undefined`: the loader is disabled, and the marker is inert. */
   readonly args: unknown
   readonly argsKey: string | undefined
-  readonly toMsg: (snapshot: unknown, result: AsyncResult.AsyncResult<any, any>) => unknown
-  /** Set for one key of a keyed field: its values are collected into the field's message. */
+  /** Set for one key of a keyed loader: its values are collected into the loader's slot. */
   readonly keyed: boolean
-  /** From `Component.debounce`: how many milliseconds a fetch for changed args waits. */
   readonly debounce: number | undefined
 }
 
 /**
- * A keyed field's ordered keys and handler, accompanying its per-key watch markers.
+ * A keyed loader's ordered keys, accompanying its per-key watch markers.
  *
  * @internal
  */
 export interface Group {
-  readonly field: string
+  readonly name: string
   readonly read: Loader.Read.Any
-  readonly label: string
   readonly entries: ReadonlyArray<Keyed>
-  readonly toMsg: (snapshots: unknown, loaded: unknown, changes: ReadonlyArray<KeyedChange>) => unknown
 }
 
 /** @internal */
@@ -88,10 +80,15 @@ export interface KeyedChange {
   readonly result: AsyncResult.AsyncResult<any, any>
 }
 
+/**
+ * An instance's loader slots, by loader name.
+ *
+ * @internal
+ */
+export type Slots = Readonly<Record<string, unknown>>
+
 const markerKey = "~effect/ui/Component/watchMarker"
-const debounceKey = "~effect/ui/Component/debounce"
 const groupKey = "~effect/ui/Component/watchGroup"
-const watchesKey = "~effect/ui/Component/watches"
 
 /** @internal */
 export const markerOf = (subscription: object): Marker | undefined =>
@@ -103,66 +100,6 @@ export const groupOf = (subscription: object): Group | undefined =>
 
 /** @internal */
 export const isWatchKey = (key: string): boolean => key.startsWith("~loaded/")
-
-/**
- * Returns the Model's snapshot fields. Throws if a snapshot is nested or its
- * label differs from its field name. Does not follow `Schema.suspend`.
- *
- * @internal
- */
-export const checkModel = (name: string, schema: Schema.Top): ReadonlyArray<Field> => {
-  const out: Array<Field> = []
-  const seen = new Set<SchemaAST.AST>()
-  const nested = (found: Annotation) =>
-    new Error(
-      `${name}: the Model holds ${schemaName(found)}(${JSON.stringify(found.read)}, ${
-        JSON.stringify(found.label)
-      }) below its top level. A loader field is a field of the Model's own struct: use a keyed field or a child instance for more.`
-    )
-  const visit = (ast: SchemaAST.AST, field: string | undefined): void => {
-    if (ast._tag === "Declaration") {
-      const found = SchemaAST.resolveAt<Annotation>(annotationKey)(ast)
-      if (found !== undefined) {
-        if (field === undefined) throw nested(found)
-        if (found.label !== field) {
-          throw new Error(
-            `${name}: the Model field "${field}" holds ${schemaName(found)}(${JSON.stringify(found.read)}, ${
-              JSON.stringify(found.label)
-            }). A snapshot's label is its field's name: write ${schemaName(found)}(read, "${field}").`
-          )
-        }
-        out.push({ field, label: found.label, read: found.definition, keyed: found.keyed, list: found.list === true })
-        return
-      }
-    }
-    if (seen.has(ast)) return
-    seen.add(ast)
-    switch (ast._tag) {
-      case "Declaration":
-        for (const param of ast.typeParameters) visit(param, undefined)
-        return
-      case "Objects": {
-        const top = ast === schema.ast
-        for (const signature of ast.propertySignatures) {
-          visit(signature.type, top && typeof signature.name === "string" ? signature.name : undefined)
-        }
-        for (const signature of ast.indexSignatures) visit(signature.type, undefined)
-        return
-      }
-      case "Arrays":
-        for (const element of ast.elements) visit(element, undefined)
-        for (const element of ast.rest) visit(element, undefined)
-        return
-      case "Union":
-        for (const member of ast.types) visit(member, undefined)
-        return
-      default:
-        return
-    }
-  }
-  visit(schema.ast, undefined)
-  return out
-}
 
 /** Strict open: the stored result at the loader's current args, else `Initial`, waiting when enabled. */
 const open = (snapshot: unknown, argsKey: string | undefined): AsyncResult.AsyncResult<any, any> => {
@@ -197,7 +134,7 @@ const listOf = (def: ReadDef, pages: ReadonlyArray<unknown>) => {
   return out
 }
 
-/** One opened list per snapshot, so a view and a watch handler share it. */
+/** One opened list per snapshot, so a view and `onChange` share it. */
 const openedLists = new WeakMap<object, AsyncResult.AsyncResult<any, any>>()
 
 /**
@@ -220,7 +157,7 @@ export const openList = (
 }
 
 /**
- * A keyed field opened at the loader's keys: an entry per key in its order,
+ * A keyed slot opened at the loader's keys: an entry per key in its order,
  * each the stored result or `Initial`, waiting, and `get` by args.
  *
  * @internal
@@ -248,9 +185,9 @@ export const openKeyed = (
 /**
  * Returns loader arguments deduplicated by key, in first-occurrence order.
  */
-const uniqueArgs = (name: string, field: string, def: ReadDef, args: unknown): ReadonlyArray<Keyed> => {
+const uniqueArgs = (component: string, name: string, def: ReadDef, args: unknown): ReadonlyArray<Keyed> => {
   if (!Array.isArray(args)) {
-    throw new Error(`${name}: loaders.${field} is a keyed loader and must return an array of args.`)
+    throw new Error(`${component}: loaders.${name} is a loadMany loader, and its args must return an array.`)
   }
   const seen = new Set<string>()
   const out: Array<Keyed> = []
@@ -265,149 +202,182 @@ const uniqueArgs = (name: string, field: string, def: ReadDef, args: unknown): R
 
 type ReadDef = ReturnType<typeof Loader.defOf>
 
-type LoaderFn = (model: any, props: any, loaded: any) => unknown
+const isRead = (u: unknown): u is Loader.Read.Any => Predicate.hasProperty(u, Loader.TypeId)
 
 /**
- * A loader that waits `millis` before a fetch for changed args. A new
- * function: the one passed in is used elsewhere as it is.
+ * Checks the entries of `loaders`. Throws at module load on an entry that
+ * isn't `{ load, args }` or `{ loadMany, args }`.
  *
  * @internal
  */
-export const debounce = <F extends LoaderFn>(millis: number, f: F): F =>
-  Object.assign((model: unknown, props: unknown, loaded: unknown) => f(model, props, loaded), {
-    [debounceKey]: millis
-  }) as unknown as F
+export const parse = (component: string, loaders: unknown): ReadonlyArray<Entry> => {
+  if (loaders === undefined) return []
+  if (typeof loaders !== "object" || loaders === null) {
+    throw new Error(`${component}: loaders must be a record of { load, args } or { loadMany, args } entries.`)
+  }
+  return Object.entries(loaders).map(([name, entry]): Entry => {
+    const fail = (why: string) => new Error(`${component}: loaders.${name} ${why}`)
+    if (typeof entry !== "object" || entry === null) throw fail("must be { load, args } or { loadMany, args }.")
+    const { args, debounce, load, loadMany, onChange } = entry as Record<string, unknown>
+    if ((load === undefined) === (loadMany === undefined)) throw fail("must have exactly one of load and loadMany.")
+    const read = load ?? loadMany
+    if (!isRead(read)) throw fail(`has a ${load === undefined ? "loadMany" : "load"} that isn't a read.`)
+    if (typeof args !== "function") throw fail("must have an args function.")
+    if (onChange !== undefined && typeof onChange !== "function") throw fail("has an onChange that isn't a function.")
+    const list = Loader.defOf(read).list !== undefined
+    if (loadMany !== undefined && list) throw fail("loads a list read with loadMany. A list read takes load.")
+    return {
+      name,
+      read,
+      keyed: loadMany !== undefined,
+      list,
+      args: args as LoaderFn,
+      debounce: debounce === undefined ? undefined : Duration.toMillis(debounce as Duration.Input),
+      onChange: onChange as Entry["onChange"]
+    }
+  })
+}
 
-const debounceOf = (f: LoaderFn): number | undefined => (f as { readonly [debounceKey]?: number })[debounceKey]
-
-/** A field's evaluated loader arguments, deduplicated by key for keyed fields. */
+/** A loader's evaluated arguments, deduplicated by key for a keyed loader. */
 type Current =
   | { readonly args: unknown; readonly argsKey: string | undefined; readonly entries?: undefined }
   | { readonly args: ReadonlyArray<unknown>; readonly argsKey: undefined; readonly entries: ReadonlyArray<Keyed> }
 
 /**
- * The views of one `(model, props)`: each loader runs at most once, and the
- * watch, `h.loaded`, `h.previous` and `h.patched` share its args.
+ * The views of one `(model, props, slots)`: each loader runs at most once,
+ * and the watches, `loaded`, `previous` and `patched` share its args.
  *
  * @internal
  */
 export interface Context {
-  readonly loaded: Record<string, AsyncResult.AsyncResult<any, any>>
+  readonly loaded: Record<string, any>
   readonly previous: Record<string, Option.Option<any>>
   readonly patched: Record<string, boolean>
-  readonly watch: (handlers: Record<string, (...args: Array<any>) => unknown>) => unknown
-  /** The args of each loader field, for a Story: a keyed field's are its unique args. */
-  readonly argsOf: (field: string) => Current
+  /** The watch markers and keyed groups of every loader, which the runtime registers. */
+  readonly watches: () => ReadonlyArray<Subscription.Subscription<any, any>>
+  /** The args of a loader: a keyed loader's are its unique args. */
+  readonly argsOf: (name: string) => Current
+  /**
+   * The message a loader's `onChange` returns for its slot as these views open
+   * it, or `undefined` without `onChange`. A keyed loader's also gets `changes`.
+   */
+  readonly changed: (name: string, changes: ReadonlyArray<KeyedChange>) => { readonly value: unknown } | undefined
 }
 
 /** @internal */
 export interface Bound {
-  readonly fields: ReadonlyArray<Field>
-  readonly empty: Readonly<Record<string, unknown>>
-  readonly context: (model: any, props: any) => Context
-  /** Replaces the `$.watch` Subscription with its per-field ones, which the runtime registers. */
-  readonly expand: (
-    subscriptions: ReadonlyArray<Subscription.Subscription<any, any> | false | null | undefined>
-  ) => Array<Subscription.Subscription<any, any>>
+  readonly entries: ReadonlyArray<Entry>
+  readonly byName: ReadonlyMap<string, Entry>
+  /** Every slot empty: an instance's slots before a loader writes one. */
+  readonly empty: Slots
+  /** The Schema of each slot, by loader name, for page state and the log. */
+  readonly schemas: { readonly [name: string]: Schema.Top }
+  /** The Schema of the slots: a struct of `schemas`. */
+  readonly schema: Schema.Codec<Slots, unknown>
+  readonly context: (model: unknown, props: unknown, slots: Slots | undefined) => Context
+  /** A single or list loader's slot holding `result` at `entry`. */
+  readonly slot: (
+    entry: Entry,
+    at: Keyed,
+    result: AsyncResult.Success<any, any> | AsyncResult.Failure<any, any>,
+    patched: boolean,
+    more: Loader.More<any> | undefined
+  ) => unknown
+  /** A keyed loader's slot holding `snapshots`, one per args key. */
+  readonly slotMany: (entry: Entry, snapshots: Iterable<unknown>) => unknown
 }
 
 interface State {
   readonly model: any
   readonly props: any
+  readonly slots: Slots
   readonly memo: Map<string, Current>
-  /** The opened keyed fields, built at the first read. */
+  /** The opened keyed slots, built at the first read. */
   readonly opened: Map<string, unknown>
   readonly running: Array<string>
   loaded: any
 }
 
 /**
- * Checks the Model and binds its snapshot fields to `loaders`. `undefined`
- * for a Model with none. Throws at module load on a nested snapshot, a label
- * that isn't its field's name, or a field with no loader.
+ * Binds `loaders`. `undefined` without any.
  *
  * @internal
  */
-export const bind = (
-  name: string,
-  model: Schema.Top,
-  loaders: Record<string, LoaderFn> | undefined
-): Bound | undefined => {
-  const fields = checkModel(name, model)
-  if (fields.length === 0) return undefined
-  for (const field of fields) {
-    if (typeof loaders?.[field.field] !== "function") {
-      throw new Error(
-        `${name}: the Model field "${field.field}" is a loader field and has no loader. Add loaders.${field.field}.`
-      )
-    }
-  }
+export const bind = (component: string, loaders: unknown): Bound | undefined => {
+  const entries = parse(component, loaders)
+  if (entries.length === 0) return undefined
+  const byName = new Map(entries.map((entry) => [entry.name, entry]))
   const empty: Record<string, unknown> = {}
-  for (const field of fields) {
-    const def = Loader.defOf(field.read)
-    empty[field.field] = field.keyed
-      ? Loader.makeSnapshotMap(def, field.label, [])
-      : Loader.makeSnapshot(def, field.label, undefined, undefined)
+  const fields: Record<string, Schema.Top> = {}
+  for (const entry of entries) {
+    const def = Loader.defOf(entry.read)
+    empty[entry.name] = entry.keyed
+      ? Loader.makeSnapshotMap(def, entry.name, [])
+      : Loader.makeSnapshot(def, entry.name, undefined, undefined)
+    fields[entry.name] = entry.keyed
+      ? Loader.snapshotMapSchema(entry.read, entry.name)
+      : Loader.snapshotSchema(entry.read, entry.name)
   }
   Object.freeze(empty)
+  const schema = Schema.Struct(fields) as unknown as Schema.Codec<Slots, unknown>
   const stateKey = Symbol()
-  const argsOf = (state: State, field: Field): Current => {
-    let current = state.memo.get(field.field)
+  const argsOf = (state: State, entry: Entry): Current => {
+    let current = state.memo.get(entry.name)
     if (current !== undefined) return current
-    if (state.running.includes(field.field)) {
+    if (state.running.includes(entry.name)) {
       throw new Error(
-        `${name}: the loaders ${
-          [...state.running.slice(state.running.indexOf(field.field)), field.field].join(" -> ")
+        `${component}: the loaders ${
+          [...state.running.slice(state.running.indexOf(entry.name)), entry.name].join(" -> ")
         } read each other in a cycle.`
       )
     }
-    state.running.push(field.field)
+    state.running.push(entry.name)
     let args: unknown
     try {
-      args = loaders![field.field](state.model, state.props, state.loaded)
+      args = entry.args(state.model, state.props, state.loaded)
     } finally {
       state.running.pop()
     }
-    const def = Loader.defOf(field.read)
-    if (field.keyed) {
-      const entries = uniqueArgs(name, field.field, def, args)
-      current = { args: entries.map((entry) => entry.args), argsKey: undefined, entries }
+    const def = Loader.defOf(entry.read)
+    if (entry.keyed) {
+      const keyed = uniqueArgs(component, entry.name, def, args)
+      current = { args: keyed.map((one) => one.args), argsKey: undefined, entries: keyed }
     } else current = { args, argsKey: args === undefined ? undefined : def.argsKey(args) }
-    state.memo.set(field.field, current)
+    state.memo.set(entry.name, current)
     return current
   }
   // The three views share prototypes built once here, so a render defines no property.
   const view = (
-    read: (snapshot: unknown, argsKey: string | undefined, field: Field) => unknown,
-    keyed: ((state: State, field: Field) => unknown) | undefined
+    read: (snapshot: unknown, argsKey: string | undefined, entry: Entry) => unknown,
+    keyed: ((state: State, entry: Entry) => unknown) | undefined
   ) => {
     const proto = {}
-    for (const field of fields) {
-      if (field.keyed && keyed === undefined) continue
-      Object.defineProperty(proto, field.field, {
+    for (const entry of entries) {
+      if (entry.keyed && keyed === undefined) continue
+      Object.defineProperty(proto, entry.name, {
         enumerable: true,
         get(this: any) {
           const state: State = this[stateKey]
-          return field.keyed
-            ? keyed!(state, field)
-            : read(state.model[field.field], argsOf(state, field).argsKey, field)
+          return entry.keyed
+            ? keyed!(state, entry)
+            : read(state.slots[entry.name], argsOf(state, entry).argsKey, entry)
         }
       })
     }
     return proto
   }
-  const openField = (state: State, field: Field) => {
-    let opened = state.opened.get(field.field)
+  const openSlot = (state: State, entry: Entry) => {
+    let opened = state.opened.get(entry.name)
     if (opened === undefined) {
-      opened = openKeyed(Loader.defOf(field.read), state.model[field.field], argsOf(state, field).entries!)
-      state.opened.set(field.field, opened)
+      opened = openKeyed(Loader.defOf(entry.read), state.slots[entry.name], argsOf(state, entry).entries!)
+      state.opened.set(entry.name, opened)
     }
     return opened
   }
-  const loadedProto = view((snapshot, argsKey, field) => {
+  const loadedProto = view((snapshot, argsKey, entry) => {
     const result = open(snapshot, argsKey)
-    return field.list ? openList(snapshot, result) : result
-  }, openField)
+    return entry.list ? openList(snapshot, result) : result
+  }, openSlot)
   const previousProto = view(previous, undefined)
   const patchedProto = view(patched, undefined)
   const viewOf = (proto: object, state: State) => {
@@ -415,99 +385,69 @@ export const bind = (
     out[stateKey] = state
     return out
   }
-  const byField = new Map(fields.map((field) => [field.field, field]))
-  const make = (model: any, props: any): Context => {
-    const state: State = { model, props, memo: new Map(), opened: new Map(), running: [], loaded: undefined }
+  const watchesOf = (state: State) =>
+    entries.flatMap((entry) => {
+      const current = argsOf(state, entry)
+      const watchOf = (args: unknown, argsKey: string | undefined, keyed: boolean) => {
+        const marker: Marker = { read: entry.read, name: entry.name, args, argsKey, keyed, debounce: entry.debounce }
+        return {
+          [Subscription.TypeId]: Subscription.TypeId,
+          // New args are a new key, so the old watcher goes before the new one registers.
+          key: Subscription.keyOf(`~loaded/${entry.name}`, argsKey),
+          stream: Stream.never,
+          [markerKey]: marker
+        } as unknown as Subscription.Subscription<any, any>
+      }
+      if (current.entries === undefined) return [watchOf(current.args, current.argsKey, false)]
+      // A keyed loader: one watcher per unique key, and the group that collects their values.
+      const group: Group = { name: entry.name, read: entry.read, entries: current.entries }
+      return [
+        {
+          [Subscription.TypeId]: Subscription.TypeId,
+          key: Subscription.keyOf(`~loaded/${entry.name}`),
+          stream: Stream.never,
+          [groupKey]: group
+        } as unknown as Subscription.Subscription<any, any>,
+        ...current.entries.map((one) => watchOf(one.args, one.argsKey, true))
+      ]
+    })
+  const make = (model: any, props: any, slots: Slots): Context => {
+    const state: State = { model, props, slots, memo: new Map(), opened: new Map(), running: [], loaded: undefined }
     const loaded = viewOf(loadedProto, state)
     state.loaded = loaded
     return {
       loaded,
       previous: viewOf(previousProto, state),
       patched: viewOf(patchedProto, state),
-      argsOf: (field) => argsOf(state, byField.get(field)!),
-      watch: (handlers) => ({
-        [Subscription.TypeId]: Subscription.TypeId,
-        key: "~loaded",
-        stream: Stream.never,
-        [watchesKey]: fields.flatMap((field) => {
-          const toMsg = handlers[field.field]
-          if (typeof toMsg !== "function") {
-            throw new Error(`${name}: $.watch has no handler for the loader field "${field.field}".`)
-          }
-          const current = argsOf(state, field)
-          const delay = debounceOf(loaders![field.field])
-          // A list's handler gets the list opened, as `h.loaded` shows it.
-          const fieldMsg = field.list
-            ? (snapshot: unknown, result: AsyncResult.AsyncResult<any, any>) =>
-              toMsg(snapshot, openList(snapshot, result))
-            : toMsg
-          const watchOf = (args: unknown, argsKey: string | undefined, keyed: boolean) => {
-            const marker: Marker = {
-              read: field.read,
-              label: field.label,
-              args,
-              argsKey,
-              toMsg: fieldMsg,
-              keyed,
-              debounce: delay
-            }
-            return {
-              [Subscription.TypeId]: Subscription.TypeId,
-              // New args are a new key, so the old watcher goes before the new one registers.
-              key: Subscription.keyOf(`~loaded/${field.label}`, argsKey),
-              stream: Stream.never,
-              [markerKey]: marker
-            }
-          }
-          if (current.entries === undefined) return [watchOf(current.args, current.argsKey, false)]
-          // A keyed field: one watcher per unique key, and the group that collects their values.
-          const group: Group = {
-            field: field.field,
-            read: field.read,
-            label: field.label,
-            entries: current.entries,
-            toMsg: toMsg as Group["toMsg"]
-          }
-          return [
-            {
-              [Subscription.TypeId]: Subscription.TypeId,
-              key: Subscription.keyOf(`~loaded/${field.label}`),
-              stream: Stream.never,
-              [groupKey]: group
-            },
-            ...current.entries.map((entry) => watchOf(entry.args, entry.argsKey, true))
-          ]
-        })
-      })
+      argsOf: (name) => argsOf(state, byName.get(name)!),
+      watches: () => watchesOf(state),
+      changed: (name, changes) => {
+        const entry = byName.get(name)!
+        if (entry.onChange === undefined) return undefined
+        return { value: entry.keyed ? entry.onChange(loaded[name], changes) : entry.onChange(loaded[name]) }
+      }
     }
   }
-  // One context per (model, props), shared by the watch and the view of that pair.
-  const contexts = new WeakMap<object, { readonly props: unknown; readonly context: Context }>()
+  // One context per (model, props, slots), shared by the watches and the view of that triple.
+  const contexts = new WeakMap<
+    object,
+    { readonly model: unknown; readonly props: unknown; readonly context: Context }
+  >()
   return {
-    fields,
+    entries,
+    byName,
     empty,
-    context: (model, props) => {
-      if (typeof model !== "object" || model === null) return make(model, props)
-      const found = contexts.get(model)
-      if (found !== undefined && found.props === props) return found.context
-      const context = make(model, props)
-      contexts.set(model, { props, context })
+    schemas: fields,
+    schema,
+    context: (model, props, slots = empty) => {
+      const found = contexts.get(slots)
+      if (found !== undefined && found.model === model && found.props === props) return found.context
+      const context = make(model, props, slots)
+      contexts.set(slots, { model, props, context })
       return context
     },
-    expand: (subscriptions) => {
-      const out: Array<Subscription.Subscription<any, any>> = []
-      let watched = false
-      for (const subscription of subscriptions) {
-        if (!subscription) continue
-        const watches = (subscription as any)[watchesKey] as Array<Subscription.Subscription<any, any>> | undefined
-        if (watches === undefined) out.push(subscription)
-        else if (!watched) {
-          watched = true
-          for (const watch of watches) out.push(watch)
-        }
-      }
-      if (!watched) throw new Error(`${name}: subscriptions must return the Subscription $.watch({ ... }) makes.`)
-      return out
-    }
+    slot: (entry, at, result, patched, more) =>
+      Loader.makeSnapshot(Loader.defOf(entry.read), entry.name, at, result, patched, more),
+    slotMany: (entry, snapshots) => Loader.makeSnapshotMap(Loader.defOf(entry.read), entry.name, snapshots)
   }
 }
