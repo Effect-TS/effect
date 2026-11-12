@@ -1480,10 +1480,15 @@ export const layerFailure = <C extends Component.Any>(
 ): Component.Message<C> | undefined => component.layerFailure?.(failure)
 
 /**
- * One instance's head entries for a Model, or for a story's Model and
- * loaders: what its `head` option returns, or none without one. The merge
- * across the tree is a runtime test's. Given a component and a Model, every
- * loader is empty.
+ * One instance's head entries for a Model and props, or for a story's Model,
+ * props and loaders: what its `head` option returns, or none without one.
+ * The merge across the tree is a runtime test's.
+ *
+ * **Details**
+ *
+ * Given a component, every loader slot is empty: each loader opens at the
+ * args it returns for the Model and props, as on a first render. The props
+ * may be left out when the component takes none.
  *
  * **Example** (A page's title)
  *
@@ -1512,13 +1517,18 @@ export const layerFailure = <C extends Component.Any>(
 export const head: {
   <Name extends string, Props, Model, Msg, Events, R, V extends View.Elements>(
     component: Component.Component<Name, Props, Model, Msg, Events, R, V>,
-    model: Model
+    model: Model,
+    ...props: {} extends Props ? [props?: Props] : [props: Props]
   ): ReadonlyArray<Head.Entry>
   <Props, Model, Msg, Events>(story: Story<Props, Model, Msg, Events>): ReadonlyArray<Head.Entry>
-} = (self: Component.Component<any, any, any, any, any, any, any> | Story<any, any, any, any>, model?: unknown) =>
+} = (
+  self: Component.Component<any, any, any, any, any, any, any> | Story<any, any, any, any>,
+  model?: unknown,
+  props?: unknown
+) =>
   "pending" in self
     ? self.component.head?.(self.model, self.props, self.slots) ?? []
-    : self.head?.(model, undefined, undefined) ?? []
+    : self.head?.(model, props ?? {}, undefined) ?? []
 
 // ---------------------------------------------------------------------------
 // Replay
@@ -1593,10 +1603,10 @@ const findPlaceholder = (value: unknown): string | undefined => {
  * The replay starts at the oldest surviving `Mounted` or `Update` entry for
  * the path (the first one logged for a component with this name, unless
  * `path` is given), takes its Model, and re-runs every following message with
- * the props it was recorded with. Commands are compared, never run. Models and
- * events are compared with `Schema.toEquivalence`, and Commands by their Wire
- * encoding. Each `LoaderChanged` entry for the path writes its loader's slot,
- * so every `update` sees the loaders as it did when it ran.
+ * the props and loader slots it was recorded with, so every `update` sees
+ * `$.loaded` as it did when it ran, whichever entries the log still holds.
+ * Commands are compared, never run. Models and events are compared with
+ * `Schema.toEquivalence`, and Commands by their Wire encoding.
  *
  * It takes live entries or Wire frames. A Wire value sent as a placeholder,
  * such as a truncated Model, can't be decoded, and the error names the entry.
@@ -1617,30 +1627,11 @@ export const fromLog = <Name extends string, Props, Model, Msg, Events, R, V ext
   const path = options?.path ??
     (entries.find((entry) => nameOf(entry) === component.name) as MessageLog.Base | undefined)?.path
   if (path === undefined) throw new Error(`Story.fromLog: the log has no entry for ${component.name}`)
-  const all = entries.filter((entry) =>
-    (entry._tag === "Update" || entry._tag === "Mounted" || entry._tag === "LoaderChanged") && entry.path === path
-  ) as ReadonlyArray<
-    | MessageLog.Update
-    | MessageLog.Mounted
-    | MessageLog.LoaderChanged
-    | Extract<MessageLog.Wire, { _tag: "Update" | "Mounted" | "LoaderChanged" }>
-  >
-  // The replay starts at the first Model: a slot written before it is part of what it starts from.
-  const start = all.findIndex((entry) => entry._tag !== "LoaderChanged")
-  if (start === -1) throw new Error(`Story.fromLog: the log has no entry for ${path}`)
-  const first = all[start] as
-    | MessageLog.Update
-    | MessageLog.Mounted
-    | Extract<MessageLog.Wire, { _tag: "Update" | "Mounted" }>
+  const relevant = entries.filter((entry) =>
+    (entry._tag === "Update" || entry._tag === "Mounted") && entry.path === path
+  ) as ReadonlyArray<MessageLog.Update | MessageLog.Mounted | Extract<MessageLog.Wire, { _tag: "Update" | "Mounted" }>>
+  if (relevant.length === 0) throw new Error(`Story.fromLog: the log has no entry for ${path}`)
   const bound = (component as unknown as { readonly "~loaders": loaders.Bound | undefined })["~loaders"]
-  const slotOf = (entry: MessageLog.LoaderChanged | Extract<MessageLog.Wire, { _tag: "LoaderChanged" }>) => {
-    if (typeof entry.component !== "string") return entry.slot
-    const schema = bound?.schemas[entry.name]
-    if (schema === undefined) {
-      throw new Error(`Story.fromLog: entry #${entry.seq} (${path}) writes "${entry.name}", which isn't a loader`)
-    }
-    return decodeWith(entry, `loader "${entry.name}"`, schema, entry.slot)
-  }
 
   const decoders = new Map<Schema.Top, (value: unknown) => unknown>()
   const decode = (
@@ -1666,9 +1657,10 @@ export const fromLog = <Name extends string, Props, Model, Msg, Events, R, V ext
       )
     }
   }
-  const read = (entry: typeof first) => {
+  const read = (entry: (typeof relevant)[number]) => {
     if (typeof entry.component !== "string") {
       return {
+        loaded: entry._tag === "Update" ? (entry as MessageLog.Update).loaded : undefined,
         props: entry.props as Props,
         model: entry.model as Model,
         events: entry.events as ReadonlyArray<Events>,
@@ -1679,6 +1671,9 @@ export const fromLog = <Name extends string, Props, Model, Msg, Events, R, V ext
     }
     const wire = entry as Extract<MessageLog.Wire, { _tag: "Update" | "Mounted" }>
     return {
+      loaded: wire._tag === "Update" && wire.loaded !== undefined && bound !== undefined
+        ? decodeWith(entry, "loaded", bound.logSchema, wire.loaded) as Component.Slots
+        : undefined,
       props: decode(entry, "props", wire.props) as Props,
       model: decode(entry, "model", wire.model) as Model,
       events: wire.events.map((emitted) => decode(entry, "events", emitted)) as ReadonlyArray<Events>,
@@ -1692,23 +1687,16 @@ export const fromLog = <Name extends string, Props, Model, Msg, Events, R, V ext
   const sameEvents = Schema.toEquivalence(Schema.Array(component.events as Schema.Codec<Events, unknown>))
   const sameCommands = (a: ReadonlyArray<unknown>, b: ReadonlyArray<unknown>) => JSON.stringify(a) === JSON.stringify(b)
 
-  let model = read(first).model
-  // Slots written before the first Model belong to an earlier mount, so the replay starts with none.
-  let slots: Record<string, unknown> | undefined = undefined
+  let model = read(relevant[0]!).model
   let replayed = 0
-  for (const entry of all.slice(start + 1)) {
-    if (entry._tag === "LoaderChanged") {
-      slots = { ...(slots ?? bound?.empty), [entry.name]: slotOf(entry) }
-      continue
-    }
+  for (const entry of relevant.slice(1)) {
     const recorded = read(entry)
     if (entry._tag === "Mounted") {
       // Mounted again at the same path: the replay starts over from it.
       model = recorded.model
-      slots = undefined
       continue
     }
-    const next = component.update(model, recorded.message as Msg, recorded.props, slots)
+    const next = component.update(model, recorded.message as Msg, recorded.props, recorded.loaded)
     replayed++
     const recomputed = {
       model: next.model,

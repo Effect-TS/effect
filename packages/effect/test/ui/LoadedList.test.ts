@@ -154,21 +154,30 @@ describe("Loaded lists", () => {
     )
   })
 
-  it.effect("the slot writes one has-more bit and never Loading or Failed", () => {
+  it.effect("page state writes one has-more bit, and the log keeps Loading", () => {
     const app = makeApp()
     const encoder = MessageLog.makeEncoder()
-    const codec = Schema.toCodecJson(Loader.snapshotSchema(app.ListMessages, "messages")) as unknown as Schema.Codec<
-      unknown,
-      unknown
-    >
-    const decode = Schema.decodeUnknownSync(codec)
-    /** The last slot written for "messages", as the Wire encodes it, and that decoded back. */
+    const json = (log: boolean) =>
+      Schema.toCodecJson(Loader.snapshotSchema(app.ListMessages, "messages", log)) as unknown as Schema.Codec<
+        unknown,
+        unknown
+      >
+    const state = json(false)
+    const log = json(true)
+    /** The last slot written for "messages": as page state encodes it, as the Wire does, and each decoded back. */
     const lastSlot = (root: Pick<TestHost.TestRoot<any, any, any>, "log">) => {
       const entry = [...root.log()].reverse().find((entry): entry is MessageLog.LoaderChanged =>
         entry._tag === "LoaderChanged" && entry.name === "messages"
       )!
-      const encoded = (encoder.encode(entry) as { readonly slot: ReadonlyArray<unknown> }).slot
-      return { encoded, decoded: decode(encoded) }
+      const encoded = Schema.encodeUnknownSync(state)(entry.slot) as ReadonlyArray<unknown>
+      const wire = (encoder.encode(entry) as { readonly slot: ReadonlyArray<unknown> }).slot
+      return {
+        slot: entry.slot,
+        encoded,
+        decoded: Schema.decodeUnknownSync(state)(encoded),
+        wire,
+        replayed: Schema.decodeUnknownSync(log)(wire)
+      }
     }
     return run(
       app.layer,
@@ -178,15 +187,22 @@ describe("Loaded lists", () => {
         root.send(app.ChatMessage.make({ _tag: "More" }))
         yield* TestHost.settle
         const loading = lastSlot(root)
+        assert.deepStrictEqual(Loader.snapshotData(loading.slot)?.more, { _tag: "Loading" })
         assert.strictEqual(loading.encoded.length, 6)
         assert.strictEqual(loading.encoded[5], true)
         assert.deepStrictEqual(Loader.snapshotData(loading.decoded)?.more, { _tag: "Available" })
+        // The log's form ends with [waiting, more], so a replayed update reads the load more as in flight.
+        assert.strictEqual(loading.wire.length, 7)
+        assert.deepStrictEqual(loading.wire[6], [false, "Loading"])
+        assert.deepStrictEqual(Loader.snapshotData(loading.replayed)?.more, { _tag: "Loading" })
         yield* page
         root.send(app.ChatMessage.make({ _tag: "More" }))
         yield* page
         const ended = lastSlot(root)
         assert.strictEqual(ended.encoded[5], false)
         assert.deepStrictEqual(Loader.snapshotData(ended.decoded)?.more, { _tag: "End" })
+        assert.deepStrictEqual(ended.wire[6], [false, "End"])
+        assert.deepStrictEqual(Loader.snapshotData(ended.replayed)?.more, { _tag: "End" })
       })
     )
   })

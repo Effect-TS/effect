@@ -270,10 +270,18 @@ export interface Bound {
   readonly byName: ReadonlyMap<string, Entry>
   /** Every slot empty: an instance's slots before a loader writes one. */
   readonly empty: Slots
-  /** The Schema of each slot, by loader name, for page state and the log. */
+  /** The Schema of each slot, by loader name, for page state and history. */
   readonly schemas: { readonly [name: string]: Schema.Top }
   /** The Schema of the slots: a struct of `schemas`. */
   readonly schema: Schema.Codec<Slots, unknown>
+  /**
+   * The Schema of each slot for the message log, by loader name. It keeps
+   * `waiting` and a list's exact `more`, which `update` can read and page
+   * state drops.
+   */
+  readonly logSchemas: { readonly [name: string]: Schema.Top }
+  /** The Schema of the slots for the message log: a struct of `logSchemas`. */
+  readonly logSchema: Schema.Codec<Slots, unknown>
   readonly context: (model: unknown, props: unknown, slots: Slots | undefined) => Context
   /** A single or list loader's slot holding `result` at `entry`. */
   readonly slot: (
@@ -309,6 +317,7 @@ export const bind = (component: string, loaders: unknown): Bound | undefined => 
   const byName = new Map(entries.map((entry) => [entry.name, entry]))
   const empty: Record<string, unknown> = {}
   const fields: Record<string, Schema.Top> = {}
+  const logFields: Record<string, Schema.Top> = {}
   for (const entry of entries) {
     const def = Loader.defOf(entry.read)
     empty[entry.name] = entry.keyed
@@ -317,9 +326,13 @@ export const bind = (component: string, loaders: unknown): Bound | undefined => 
     fields[entry.name] = entry.keyed
       ? Loader.snapshotMapSchema(entry.read, entry.name)
       : Loader.snapshotSchema(entry.read, entry.name)
+    logFields[entry.name] = entry.keyed
+      ? Loader.snapshotMapSchema(entry.read, entry.name, true)
+      : Loader.snapshotSchema(entry.read, entry.name, true)
   }
   Object.freeze(empty)
   const schema = Schema.Struct(fields) as unknown as Schema.Codec<Slots, unknown>
+  const logSchema = Schema.Struct(logFields) as unknown as Schema.Codec<Slots, unknown>
   const stateKey = Symbol()
   const argsOf = (state: State, entry: Entry): Current => {
     let current = state.memo.get(entry.name)
@@ -439,6 +452,8 @@ export const bind = (component: string, loaders: unknown): Bound | undefined => 
     empty,
     schemas: fields,
     schema,
+    logSchemas: logFields,
+    logSchema,
     context: (model, props, slots = empty) => {
       const found = contexts.get(slots)
       if (found !== undefined && found.model === model && found.props === props) return found.context

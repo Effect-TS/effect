@@ -2669,11 +2669,16 @@ const settledMap = (
  * redaction. Decoding takes the args from the key, decodes them all the way
  * and checks that they key back to it.
  *
+ * With `log`, a settled tuple ends with `[waiting, more]` too: the message
+ * log replays `update`, which can read both, so its form keeps what page
+ * state drops. `more` is `null` for a read that isn't a list.
+ *
  * @internal
  */
 export const snapshotSchema = (
   read: { readonly [TypeId]: unknown },
-  label: string
+  label: string,
+  log = false
 ): Schema.Top => {
   const def = defOf(read)
   return Schema.make(
@@ -2682,7 +2687,7 @@ export const snapshotSchema = (
       snapshotRun(def, label, true),
       {
         expected: "a loader slot " + quote(label) + " of " + quote(def.name),
-        toCodecJson: snapshotJson(def, label)
+        toCodecJson: snapshotJson(def, label, log)
       } as Schema.Annotations.Annotations,
       undefined,
       undefined,
@@ -2745,7 +2750,12 @@ const snapshotRun = (def: ReadDef, label: string, decoding: boolean) => {
  * The JSON form of a snapshot, built from the read's Schemas as a walk over the slots passes them: the
  * tuple Schema and the two steps between a tuple and a snapshot.
  */
-const snapshotWire = (def: ReadDef, label: string, [args, success, error]: ReadonlyArray<Schema.Top>) => {
+const snapshotWire = (
+  def: ReadDef,
+  label: string,
+  [args, success, error]: ReadonlyArray<Schema.Top>,
+  log: boolean
+) => {
   const invalid = (message: string) => snapshotIssue(def, message)
   const argsJson = Schema.toCodecJson(args as Schema.Codec<unknown, unknown>)
   const encodeArgs = SchemaParser.encodeUnknownEffect(argsJson)
@@ -2772,54 +2782,90 @@ const snapshotWire = (def: ReadDef, label: string, [args, success, error]: Reado
     // The declaration checks the key once the args are decoded all the way.
     return decodeArgs(parsed, options)
   }
+  // The log's form adds what page state drops: whether a fetch is in flight, and a list's exact more.
+  const transient = Schema.Tuple([
+    Schema.Boolean,
+    Schema.NullOr(Schema.Union([Schema.Literals(["End", "Available", "Loading"]), Schema.Struct({ Failed: error })]))
+  ])
+  const settled = (elements: ReadonlyArray<Schema.Top>) => Schema.Tuple(log ? [...elements, transient] : elements)
+  const decodeSettled = (
+    tuple: any,
+    options: SchemaAST.ParseOptions
+  ): Effect.Effect<SnapshotImpl, SchemaIssue.Issue> => {
+    if (!log) return decodeState(tuple, options)
+    const [waiting, more] = tuple[tuple.length - 1]
+    return Effect.map(decodeState(tuple.slice(0, -1), options), (snapshot) => {
+      const data = snapshot[SnapshotTypeId]
+      const result = data.result!
+      return new SnapshotImpl({
+        ...data,
+        result: !waiting ? result : result._tag === "Success"
+          ? AsyncResult.success(result.value, { timestamp: result.timestamp, waiting: true })
+          : AsyncResult.failure(result.cause, { previousSuccess: result.previousSuccess, waiting: true }),
+        more: def.list === undefined || more === null
+          ? data.more
+          : typeof more === "string"
+          ? { _tag: more } as More<never>
+          : { _tag: "Failed", error: more.Failed }
+      })
+    })
+  }
+  const decodeState = (tuple: any, options: SchemaAST.ParseOptions): Effect.Effect<SnapshotImpl, SchemaIssue.Issue> => {
+    const [key, tag, payload, fourth, fifth, sixth] = tuple
+    return Effect.map(fromKey(key, options), (args) => {
+      const data = { def, label, argsKey: key as string, args }
+      if (tag === 0) {
+        return new SnapshotImpl({
+          ...data,
+          result: AsyncResult.success(payload, { timestamp: fourth }),
+          patched: fifth === true,
+          more: def.list === undefined ? undefined : sixth === true ? moreAvailable : moreEnd
+        })
+      }
+      return new SnapshotImpl({
+        ...data,
+        result: AsyncResult.failure(
+          Cause.fromReasons((payload as ReadonlyArray<unknown>).map((e) => Cause.makeFailReason(e))),
+          {
+            previousSuccess: fourth === null
+              ? Option.none()
+              : Option.some(AsyncResult.success(fourth[0], { timestamp: fourth[1] }))
+          }
+        ),
+        patched: false,
+        more: def.list === undefined ? undefined : moreEnd
+      })
+    })
+  }
   return {
     tuple: Schema.Union([
       Schema.Tuple([]),
       def.list === undefined
-        ? Schema.Tuple([Schema.String, Schema.Literal(0), success, Schema.Number, Schema.Boolean])
+        ? settled([Schema.String, Schema.Literal(0), success, Schema.Number, Schema.Boolean])
         // A list adds whether it holds more pages: `Loading` and `Failed` are written as more.
-        : Schema.Tuple([Schema.String, Schema.Literal(0), success, Schema.Number, Schema.Boolean, Schema.Boolean]),
-      Schema.Tuple([
+        : settled([Schema.String, Schema.Literal(0), success, Schema.Number, Schema.Boolean, Schema.Boolean]),
+      settled([
         Schema.String,
         Schema.Literal(1),
         Schema.Array(error),
         Schema.NullOr(Schema.Tuple([success, Schema.Number]))
       ])
     ]),
-    decode: (tuple: any, options: SchemaAST.ParseOptions): Effect.Effect<SnapshotImpl, SchemaIssue.Issue> => {
-      if (tuple.length === 0) return Effect.succeed(makeSnapshot(def, label, undefined, undefined))
-      const [key, tag, payload, fourth, fifth, sixth] = tuple
-      return Effect.map(fromKey(key, options), (args) => {
-        const data = { def, label, argsKey: key as string, args }
-        if (tag === 0) {
-          return new SnapshotImpl({
-            ...data,
-            result: AsyncResult.success(payload, { timestamp: fourth }),
-            patched: fifth === true,
-            more: def.list === undefined ? undefined : sixth === true ? moreAvailable : moreEnd
-          })
-        }
-        return new SnapshotImpl({
-          ...data,
-          result: AsyncResult.failure(
-            Cause.fromReasons((payload as ReadonlyArray<unknown>).map((e) => Cause.makeFailReason(e))),
-            {
-              previousSuccess: fourth === null
-                ? Option.none()
-                : Option.some(AsyncResult.success(fourth[0], { timestamp: fourth[1] }))
-            }
-          ),
-          patched: false,
-          more: def.list === undefined ? undefined : moreEnd
-        })
-      })
-    },
+    decode: (tuple: any, options: SchemaAST.ParseOptions): Effect.Effect<SnapshotImpl, SchemaIssue.Issue> =>
+      tuple.length === 0
+        ? Effect.succeed(makeSnapshot(def, label, undefined, undefined))
+        : decodeSettled(tuple, options),
     encode: (snapshot: SnapshotImpl, options: SchemaAST.ParseOptions): Effect.Effect<any, SchemaIssue.Issue> => {
       const data = snapshot[SnapshotTypeId]
       const result = data.result
       if (result === undefined) return Effect.succeed([])
-      return Effect.map(toKey(data.args, options), (key) =>
-        result._tag === "Success"
+      const more = def.list === undefined || data.more === undefined
+        ? null
+        : data.more._tag === "Failed"
+        ? { Failed: data.more.error }
+        : data.more._tag
+      return Effect.map(toKey(data.args, options), (key) => {
+        const tuple: Array<unknown> = result._tag === "Success"
           ? def.list === undefined
             ? [key, 0, result.value, result.timestamp, data.patched]
             : [
@@ -2837,14 +2883,17 @@ const snapshotWire = (def: ReadDef, label: string, [args, success, error]: Reado
             Option.isSome(result.previousSuccess)
               ? [result.previousSuccess.value.value, result.previousSuccess.value.timestamp]
               : null
-          ])
+          ]
+        if (log) tuple.push([result.waiting, more])
+        return tuple
+      })
     }
   }
 }
 
 /** The JSON codec of a snapshot. */
-const snapshotJson = (def: ReadDef, label: string) => (typeParameters: ReadonlyArray<Schema.Top>) => {
-  const wire = snapshotWire(def, label, typeParameters)
+const snapshotJson = (def: ReadDef, label: string, log: boolean) => (typeParameters: ReadonlyArray<Schema.Top>) => {
+  const wire = snapshotWire(def, label, typeParameters, log)
   return Schema.link<SnapshotImpl>()(
     wire.tuple,
     SchemaTransformation.transformEffect<SnapshotImpl, any>({ decode: wire.decode, encode: wire.encode })
@@ -2911,13 +2960,14 @@ export const snapshotMapData = (u: unknown): SnapshotMapData | undefined =>
 /**
  * The Schema of a keyed loader slot: one snapshot per args key. On the wire
  * it is an array of `snapshotSchema`'s tuples, in no meaningful order, and a
- * duplicate args key is a decode error.
+ * duplicate args key is a decode error. `log` is as for `snapshotSchema`.
  *
  * @internal
  */
 export const snapshotMapSchema = (
   read: { readonly [TypeId]: unknown },
-  label: string
+  label: string,
+  log = false
 ): Schema.Top => {
   const def = defOf(read)
   const is = (u: unknown): u is SnapshotMapImpl =>
@@ -2938,7 +2988,7 @@ export const snapshotMapSchema = (
     }
   }
   const toCodecJson = (typeParameters: ReadonlyArray<Schema.Top>) => {
-    const wire = snapshotWire(def, label, typeParameters)
+    const wire = snapshotWire(def, label, typeParameters, log)
     return Schema.link<SnapshotMapImpl>()(
       Schema.Array(wire.tuple),
       SchemaTransformation.transformEffect<SnapshotMapImpl, ReadonlyArray<any>>({

@@ -1287,7 +1287,11 @@ const setup = (
           model: next.model,
           commands: next.commands,
           events: next.events,
-          lists: next.lists ?? []
+          lists: next.lists ?? [],
+          // What `update` saw in `$.loaded`, so a replay from any surviving entry sees it too.
+          ...(component["~loaders"] === undefined ? undefined : {
+            loaded: inst.slots ?? (component["~loaders"] as loaders.Bound).empty
+          })
         })
         apply(inst, next, entrySeq, false)
       },

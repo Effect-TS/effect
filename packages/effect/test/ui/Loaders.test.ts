@@ -1,9 +1,9 @@
 // @vitest-environment happy-dom
 import { assert, describe, it } from "@effect/vitest"
-import { Effect, type Layer, Schema } from "effect"
+import { Effect, Layer, Schema } from "effect"
 import { AsyncResult, Loader } from "effect/reactivity"
 import { TestClock } from "effect/testing"
-import { Component, MessageLog, Route, Router } from "effect/ui"
+import { Command, Component, Head, MessageLog, Route, Router } from "effect/ui"
 import { Html } from "effect/ui/html"
 import { ssr } from "effect/ui/html/testing"
 import { Query, Story, TestHost } from "effect/ui/testing"
@@ -32,7 +32,15 @@ const makeApp = () => {
     )
   ) {}
 
-  const NoteMessage = Schema.TaggedUnion({ Click: {} })
+  // Invalidates the note, so the loader refetches it while it keeps the old value.
+  class Touch extends Command.Service<Touch>()(
+    "notes/Touch",
+    { args: { id: Schema.String }, invalidates: ({ id }) => [GetNote.entry({ id })] },
+    Effect.succeed(() => Effect.void)
+  ) {}
+
+  const NoteMessage = Schema.TaggedUnion({ Click: {}, Touch: {}, Touched: {} })
+  const touched = NoteMessage.make({ _tag: "Touched" })
   const Note = Component.make({
     name: "Note",
     props: Schema.Struct({ id: Schema.String }),
@@ -44,10 +52,21 @@ const makeApp = () => {
     },
     init: () => ({ clicks: 0, last: "none" }),
     // What the loader holds when the click is handled, so a replay only reproduces it with the slots.
-    update: (model, _message, $) => ({
-      clicks: model.clicks + 1,
-      last: AsyncResult.isSuccess($.loaded.note) ? $.loaded.note.value : "none"
-    }),
+    update: (model, message, $) =>
+      NoteMessage.match(message, {
+        Click: () => ({
+          clicks: model.clicks + 1,
+          last: AsyncResult.isSuccess($.loaded.note)
+            ? $.loaded.note.value + ($.loaded.note.waiting ? " (waiting)" : "")
+            : "none"
+        }),
+        Touch: () =>
+          $.run(
+            Touch.make({ id: $.props.id }).pipe(Command.as(touched))
+          ),
+        Touched: () => model
+      }),
+    head: (_model, loaded) => [Head.title(AsyncResult.isSuccess(loaded.note) ? loaded.note.value : "Note")],
     view: (model, h) =>
       h.div(
         h.p(AsyncResult.match(h.loaded.note, {
@@ -82,7 +101,7 @@ const makeApp = () => {
       }))
   })
 
-  return { server, GetNote, Note, NoteMessage, AppRoute, App }
+  return { server, GetNote, Touch, layer: Layer.mergeAll(GetNote.layer, Touch.layer), Note, NoteMessage, AppRoute, App }
 }
 
 const click = (root: TestHost.TestRoot<any, any, any>, text: string) =>
@@ -105,7 +124,7 @@ describe("a loader without onChange", { concurrent: false }, () => {
   it.effect("renders the loaded value, and update reads it through $.loaded", () => {
     const app = makeApp()
     return run(
-      app.GetNote.layer,
+      app.layer,
       Effect.gen(function*() {
         const root = yield* TestHost.mount(app.Note, { id: "1" })
         assert.strictEqual(root.text(), "loadingclicks 0")
@@ -161,7 +180,7 @@ describe("a loader without onChange", { concurrent: false }, () => {
       assert.deepStrictEqual(result.root.model(), { clicks: 1, last: "Note 1" })
       assert.strictEqual(app.server.calls, 1)
     }).pipe(
-      Effect.provide(app.GetNote.layer),
+      Effect.provide(app.layer),
       Effect.scoped,
       Effect.provide(TestHost.layer())
     ) as Effect.Effect<void, unknown>
@@ -173,7 +192,7 @@ describe("a loader without onChange", { concurrent: false }, () => {
     const path = "/App/Note[/notes/1]"
     const mount = TestHost.mount(app.App, Router.props(app.AppRoute))
     const routed = <E>(effect: Effect.Effect<void, E, any>) =>
-      run(Router.make({ routes: app.AppRoute, history }), effect.pipe(Effect.provide(app.GetNote.layer)))
+      run(Router.make({ routes: app.AppRoute, history }), effect.pipe(Effect.provide(app.layer)))
     return Effect.gen(function*() {
       yield* routed(Effect.gen(function*() {
         const root = yield* mount
@@ -227,32 +246,98 @@ describe("a loader without onChange", { concurrent: false }, () => {
   it.effect("replays from the MessageLog with Story.fromLog, update reading the logged slots as $.loaded", () => {
     const app = makeApp()
     return run(
-      app.GetNote.layer,
+      app.layer,
       Effect.gen(function*() {
         const root = yield* TestHost.mount(app.Note, { id: "1" })
         click(root, "clicks 0")
         yield* load
         click(root, "clicks 1")
         yield* TestHost.settle
-        assert.deepStrictEqual(root.model(), { clicks: 2, last: "Note 1" })
+        click(root, "clicks 2")
+        yield* TestHost.settle
+        assert.deepStrictEqual(root.model(), { clicks: 3, last: "Note 1" })
+        const log = root.log()
 
-        const replay = Story.fromLog(app.Note, root.log())
+        const replay = Story.fromLog(app.Note, log)
         assert.isUndefined(replay.divergence)
-        assert.strictEqual(replay.replayed, 2)
-        assert.deepStrictEqual(replay.model, { clicks: 2, last: "Note 1" })
+        assert.strictEqual(replay.replayed, 3)
+        assert.deepStrictEqual(replay.model, { clicks: 3, last: "Note 1" })
 
-        // Through the Wire: the slots are decoded with the loader's Schema.
+        // Through the Wire: each Update's slots are decoded with the loaders' Schemas.
         const encoder = MessageLog.makeEncoder()
-        const wire = root.log().map(encoder.encode)
-        const fromWire = Story.fromLog(app.Note, wire)
+        const fromWire = Story.fromLog(app.Note, log.map(encoder.encode))
         assert.isUndefined(fromWire.divergence)
-        assert.deepStrictEqual(fromWire.model, { clicks: 2, last: "Note 1" })
-
-        // Without the LoaderChanged entries, update never sees the note, so the second click diverges.
-        const withoutSlots = Story.fromLog(app.Note, root.log().filter((entry) => entry._tag !== "LoaderChanged"))
-        assert.deepStrictEqual(withoutSlots.divergence?.recorded.model, { clicks: 2, last: "Note 1" })
-        assert.deepStrictEqual(withoutSlots.divergence?.recomputed.model, { clicks: 2, last: "none" })
+        assert.deepStrictEqual(fromWire.model, { clicks: 3, last: "Note 1" })
       })
     )
+  })
+
+  it.effect("replays a bounded log whose slot writes were evicted", () => {
+    const app = makeApp()
+    return run(
+      app.layer,
+      Effect.gen(function*() {
+        const root = yield* TestHost.mount(app.Note, { id: "1" })
+        yield* load
+        click(root, "clicks 0")
+        yield* TestHost.settle
+        click(root, "clicks 1")
+        yield* TestHost.settle
+        const log = root.log()
+        // What a ring buffer keeps once Mounted and the slot's only LoaderChanged have been evicted.
+        const first = log.findIndex((entry) => entry._tag === "Update" && entry.path === "/Note")
+        const bounded = log.slice(first)
+        assert.deepStrictEqual(loaderChanges(bounded, "/Note"), [])
+        assert.strictEqual(updates(bounded, "/Note").length, 2)
+
+        const replay = Story.fromLog(app.Note, bounded)
+        assert.isUndefined(replay.divergence)
+        assert.strictEqual(replay.replayed, 1)
+        assert.deepStrictEqual(replay.model, { clicks: 2, last: "Note 1" })
+        const fromWire = Story.fromLog(app.Note, bounded.map(MessageLog.makeEncoder().encode))
+        assert.isUndefined(fromWire.divergence)
+        assert.deepStrictEqual(fromWire.model, { clicks: 2, last: "Note 1" })
+      })
+    )
+  })
+
+  it.effect("replays an update that read a refetch in flight, live and through the Wire", () => {
+    const app = makeApp()
+    return run(
+      app.layer,
+      Effect.gen(function*() {
+        const root = yield* TestHost.mount(app.Note, { id: "1" })
+        yield* load
+        root.send(app.NoteMessage.make({ _tag: "Touch" }))
+        yield* TestHost.settle
+        // The refetch is in flight: the slot keeps the value, waiting.
+        click(root, "clicks 0")
+        yield* TestHost.settle
+        assert.deepStrictEqual(root.model(), { clicks: 1, last: "Note 1 (waiting)" })
+        yield* load
+        click(root, "clicks 1")
+        yield* TestHost.settle
+        assert.deepStrictEqual(root.model(), { clicks: 2, last: "Note 1" })
+        assert.strictEqual(app.server.calls, 2)
+
+        const log = root.log()
+        const replay = Story.fromLog(app.Note, log)
+        assert.isUndefined(replay.divergence)
+        assert.deepStrictEqual(replay.model, { clicks: 2, last: "Note 1" })
+        // Page state drops waiting, and the log's form keeps it.
+        const fromWire = Story.fromLog(app.Note, log.map(MessageLog.makeEncoder().encode))
+        assert.isUndefined(fromWire.divergence)
+        assert.deepStrictEqual(fromWire.model, { clicks: 2, last: "Note 1" })
+        assert.strictEqual(fromWire.replayed, 4)
+      })
+    )
+  })
+
+  it("Story.head opens the loaders at the props it is given, with every slot empty", () => {
+    const app = makeApp()
+    // The loader's args read the props, so head needs them to open it.
+    assert.deepStrictEqual(Story.head(app.Note, { clicks: 0, last: "none" }, { id: "1" }), [Head.title("Note")])
+    const story = Story.start(app.Note, { id: "1" }).loaded("note", "Note 1").current
+    assert.deepStrictEqual(Story.head(story), [Head.title("Note 1")])
   })
 })

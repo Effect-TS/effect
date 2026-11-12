@@ -161,8 +161,9 @@ export interface Base {
 }
 
 /**
- * One `update` call: the message, what sent it, the props it saw, the Model
- * after it, and the Commands, events, load mores and resets it returned.
+ * One `update` call: the message, what sent it, the props and loader slots
+ * it saw, the Model after it, and the Commands, events, load mores and resets
+ * it returned.
  *
  * @stability experimental
  * @category models
@@ -180,6 +181,12 @@ export interface Update extends Base {
   readonly events: ReadonlyArray<unknown>
   /** The `$.loadMore` and `$.reset` calls, in order. The wire omits it when empty. */
   readonly lists?: ReadonlyArray<Component.ListIssue> | undefined
+  /**
+   * The loader slots `update` read as `$.loaded`, by loader name: what
+   * `Story.fromLog` gives it back, as it gives back `props`. Only a
+   * component with loaders has them.
+   */
+  readonly loaded?: Component.Slots | undefined
 }
 
 /**
@@ -202,7 +209,8 @@ export interface Mounted extends Base {
 
 /**
  * A loader's slot changed: the runtime wrote what the loader's read last
- * returned at its args. `slot` is opaque, and `Story.fromLog` writes it back.
+ * returned at its args. `slot` is opaque. A replay doesn't need it, since
+ * each `Update` records the slots it saw.
  *
  * **Details**
  *
@@ -596,7 +604,8 @@ export const Wire = Schema.Union([
     events: Schema.Array(Schema.Json),
     lists: Schema.optionalKey(
       Schema.Array(Schema.Struct({ name: Schema.String, op: Schema.Literals(["loadMore", "reset"]) }))
-    )
+    ),
+    loaded: Schema.optionalKey(Schema.Json)
   }),
   Schema.TaggedStruct("Mounted", {
     ...Seq,
@@ -727,6 +736,12 @@ export const makeEncoder = (options?: {
       return { "~unserialisable": "encode" }
     }
   }
+  const encodeLoaded = (component: Component.Any, loaded: Component.Slots): Schema.Json => {
+    const schema = (component["~loaders"] as LoaderSchemas | undefined)?.logSchema
+    return schema === undefined
+      ? { "~unserialisable": "encode" }
+      : cap(encodeWith(schema, `${component.name}.loaders`, loaded) as Schema.Json)
+  }
   // A message can carry a loader's whole result, so messages are capped like Models and slots.
   const capped = (component: Component.Any, field: "model" | "message", value: unknown): Schema.Json =>
     cap(through(component, field, value) as Schema.Json)
@@ -749,7 +764,8 @@ export const makeEncoder = (options?: {
             model: capped(entry.component, "model", entry.model),
             commands: entry.commands.map(encodeCommand),
             events: entry.events.map((emitted) => through(entry.component, "events", emitted) as Schema.Json),
-            ...(entry.lists === undefined || entry.lists.length === 0 ? undefined : { lists: entry.lists })
+            ...(entry.lists === undefined || entry.lists.length === 0 ? undefined : { lists: entry.lists }),
+            ...(entry.loaded === undefined ? undefined : { loaded: encodeLoaded(entry.component, entry.loaded) })
           }
         case "Mounted":
           return {
@@ -763,7 +779,7 @@ export const makeEncoder = (options?: {
             adopted: entry.adopted
           }
         case "LoaderChanged": {
-          const schema = (entry.component["~loaders"] as LoaderSchemas | undefined)?.schemas[entry.name]
+          const schema = (entry.component["~loaders"] as LoaderSchemas | undefined)?.logSchemas[entry.name]
           return {
             ...base(entry),
             _tag: "LoaderChanged",
@@ -841,7 +857,8 @@ export const makeEncoder = (options?: {
 
 /** What the encoder reads of a component's bound loaders. */
 interface LoaderSchemas {
-  readonly schemas: { readonly [name: string]: Schema.Top }
+  readonly logSchemas: { readonly [name: string]: Schema.Top }
+  readonly logSchema: Schema.Top
 }
 
 const base = (entry: Base) => ({ seq: entry.seq, at: entry.at, session: entry.session, path: entry.path })

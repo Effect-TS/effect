@@ -772,9 +772,12 @@ describe("Keyed slots", () => {
           ["{\"id\":\"1\"}", 0, { id: "1", name: "Ann" }, 10, false],
           ["{\"id\":\"9\"}", 1, ["missing"], null]
         ])
-        // The log's Wire writes the slot with the same codec.
+        // The log's Wire writes the same tuples, each ending with [waiting, more] for a replayed update.
         const changed = [...root.log()].reverse().find((entry) => entry._tag === "LoaderChanged")!
-        assert.deepStrictEqual((MessageLog.makeEncoder().encode(changed) as { readonly slot?: unknown }).slot, encoded)
+        assert.deepStrictEqual(
+          (MessageLog.makeEncoder().encode(changed) as { readonly slot?: unknown }).slot,
+          encoded.map((tuple) => [...tuple, [false, null]])
+        )
         const decode = Schema.decodeUnknownExit(slotCodec(app.Board, "users"))
         assert.isTrue(Exit.isSuccess(decode(encoded)))
         assert.isTrue(Exit.isFailure(decode([encoded[0], encoded[0]])))
