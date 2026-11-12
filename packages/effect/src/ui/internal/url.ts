@@ -1,5 +1,7 @@
+import type * as Route from "../Route.ts"
+
 /** The decoded key of a raw `key=value` query pair, or `undefined` if it isn't valid percent-encoding. */
-export const decodeKey = (pair: string): string | undefined => {
+const decodeKey = (pair: string): string | undefined => {
   const at = pair.indexOf("=")
   try {
     return decodeURIComponent((at < 0 ? pair : pair.slice(0, at)).replaceAll("+", " "))
@@ -8,13 +10,32 @@ export const decodeKey = (pair: string): string | undefined => {
   }
 }
 
-/** The URL without the query params under `keys`, the others kept as written. */
-export const withoutParams = (url: string, keys: ReadonlySet<string>): string => {
+/** The raw query pairs of `url` whose keys aren't in `keys`, as written and in order. */
+export const pairsWithout = (url: string, keys: ReadonlySet<string>): ReadonlyArray<string> => {
   const at = url.indexOf("?")
-  if (at < 0) return url
-  const kept = url.slice(at + 1).split("&").filter((pair) => {
+  if (at < 0) return []
+  return url.slice(at + 1).split("&").filter((pair) => {
     const key = decodeKey(pair)
     return pair !== "" && (key === undefined || !keys.has(key))
   })
-  return kept.length === 0 ? url.slice(0, at) : `${url.slice(0, at)}?${kept.join("&")}`
+}
+
+/** The URL with the raw `pairs` appended to its query. */
+export const withPairs = (url: string, pairs: ReadonlyArray<string>): string =>
+  pairs.length === 0 ? url : `${url}${url.includes("?") ? "&" : "?"}${pairs.join("&")}`
+
+/**
+ * The URL a resolved one is replaced with, on the server and in the Router: a redirect or a
+ * trailing slash becomes the printed route, and query params dropped as invalid are removed, the
+ * others kept as written. Anything else keeps its URL.
+ */
+export const canonical = (
+  routes: Route.AnyUnion,
+  resolved: Route.Resolved<{ readonly _tag: string }>,
+  url: string
+): string => {
+  if (resolved.redirected) return routes.print(resolved.route)
+  const at = url.indexOf("?")
+  if (at < 0 || resolved.invalid.length === 0) return url
+  return withPairs(url.slice(0, at), pairsWithout(url, new Set(resolved.invalid)))
 }

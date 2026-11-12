@@ -102,7 +102,7 @@ import * as Command from "./Command.ts"
 import type * as Component from "./Component.ts"
 import type * as Head from "./Head.ts"
 import * as services from "./internal/services.ts"
-import { decodeKey, withoutParams } from "./internal/url.ts"
+import { canonical, pairsWithout, withPairs } from "./internal/url.ts"
 import type * as Route from "./Route.ts"
 import * as Subscription from "./Subscription.ts"
 
@@ -1180,38 +1180,9 @@ const splitHash = (href: string): readonly [string, string] => {
   return at < 0 ? [href, ""] : [href.slice(0, at), href.slice(at)]
 }
 
-/**
- * A redirect or a trailing slash is replaced with the printed route, and query params dropped as
- * invalid are removed. Anything else keeps its URL.
- */
-const canonical = (
-  routes: Route.AnyUnion,
-  resolved: Route.Resolved<{ readonly _tag: string }>,
-  url: string
-): string =>
-  resolved.redirected
-    ? routes.print(resolved.route)
-    : resolved.invalid.length > 0
-    ? withoutParams(url, new Set(resolved.invalid))
-    : url
-
 const pathnameOf = (url: string): string => {
   const at = url.indexOf("?")
   return at < 0 ? url : url.slice(0, at)
-}
-
-/** The URL with the raw `pairs` appended to its query. */
-const withPairs = (url: string, pairs: ReadonlyArray<string>): string =>
-  pairs.length === 0 ? url : `${url}${url.includes("?") ? "&" : "?"}${pairs.join("&")}`
-
-/** The raw query pairs of `url` whose keys aren't in `declared`, in order. */
-const undeclaredPairs = (url: string, declared: ReadonlySet<string>): ReadonlyArray<string> => {
-  const at = url.indexOf("?")
-  if (at < 0) return []
-  return url.slice(at + 1).split("&").filter((pair) => {
-    const key = decodeKey(pair)
-    return pair !== "" && (key === undefined || !declared.has(key))
-  })
 }
 
 /** What a Router's routes are: a `Route.union`, with its definitions and `make`. */
@@ -1572,7 +1543,8 @@ const build = (options: Options): Effect.Effect<Context.Context<Router>, never, 
       }
       // `make` fills in the default of a param the patch removed.
       const route = union.make({ _tag: at._tag, params: at.params, query })
-      const url = withPairs(routes.print(route), undeclaredPairs(current.url, declared))
+      // Params the route doesn't declare follow the declared ones, as written.
+      const url = withPairs(routes.print(route), pairsWithout(current.url, declared))
       if (url === current.url) return "navigated"
       go({ route, url, hash: current.hash }, replace, { quiet: true, scroll, blocks: Array.from(blocks.keys()) })
       return "navigated"

@@ -19,7 +19,7 @@ import type * as Layer from "../../Layer.ts"
 import * as Option from "../../Option.ts"
 import * as Scope from "../../Scope.ts"
 import type * as Component from "../Component.ts"
-import { withoutParams } from "../internal/url.ts"
+import { canonical } from "../internal/url.ts"
 import * as Router from "../Router.ts"
 import type * as View from "../View.ts"
 import type * as BrowserHost from "./BrowserHost.ts"
@@ -143,15 +143,12 @@ export const layerHttp = <
         return Effect.succeed(HttpServerResponse.text("Not found", { status: 404 }))
       }
       const { invalid, notFound, redirected, route } = resolved.value
-      // Temporary while params are dropped as invalid: the same params may decode later, if the routes change.
-      if (redirected) {
+      if (redirected || invalid.length > 0) {
+        // Temporary while params are dropped as invalid: the same params may decode later, if the routes change.
         return Effect.succeed(
-          HttpServerResponse.redirect(options.routes.print(route), { status: invalid.length > 0 ? 302 : 301 })
-        )
-      }
-      if (invalid.length > 0) {
-        return Effect.succeed(
-          HttpServerResponse.redirect(withoutParams(request.url, new Set(invalid)), { status: 302 })
+          HttpServerResponse.redirect(canonical(options.routes, resolved.value, request.url), {
+            status: invalid.length > 0 ? 302 : 301
+          })
         )
       }
       return render.pipe(
