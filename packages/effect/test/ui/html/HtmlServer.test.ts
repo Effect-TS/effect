@@ -8,7 +8,7 @@ import { BrowserHost, Html, HtmlServer } from "effect/ui/html"
 import { ssr } from "effect/ui/html/testing"
 import { TestHost } from "effect/ui/testing"
 import { describe, vi } from "vitest"
-import { Confirm } from "./fixtures/confirm.ts"
+import { Confirm, ConfirmMessage } from "./fixtures/confirm.ts"
 import { App, AppRoute, People } from "./fixtures/routed.ts"
 
 const tick = Effect.promise(() => new Promise<void>((resolve) => setTimeout(resolve, 30)))
@@ -179,6 +179,34 @@ describe("HtmlServer", { concurrent: false }, () => {
       expect(app.querySelector("dialog")).toBe(dialog)
       expect(showModal.mock.contexts).toEqual([dialog])
       expect(dialog.open).toBe(true)
+    }).pipe(Effect.scoped))
+
+  it.effect("a hydrated open dialog's close belongs to that showing, not to a modal shown since", () =>
+    Effect.gen(function*() {
+      const props = { state: "open", acceptEscape: false } as const
+      const rendered = yield* HtmlServer.renderToHtml(Confirm, props)
+      const app = yield* container(rendered.html)
+      const dialog = app.querySelector("dialog")!
+      const root = yield* BrowserHost.mountEffect(Confirm, props, app, { state: rendered.state })
+      expect(app.querySelector("dialog")).toBe(dialog)
+      // Browsers report a close a task later; happy-dom reports it at once.
+      const pending: Array<() => void> = []
+      const close = vi.spyOn(dialog, "close").mockImplementation(() => {
+        dialog.open = false
+        pending.push(() => dialog.dispatchEvent(new Event("close")))
+      })
+      yield* Effect.addFinalizer(() => Effect.sync(() => close.mockRestore()))
+      // The browser closes the adopted showing, and the Model shows a modal before the report.
+      dialog.close()
+      root.send(ConfirmMessage.make({ _tag: "Mode", state: "modal" }))
+      yield* Effect.promise(() => Promise.resolve())
+      expect(dialog.open).toBe(true)
+      pending.shift()!()
+      expect(root.model()!.log).toEqual([])
+      // The modal's own close still reaches the app.
+      dialog.close()
+      pending.shift()!()
+      expect(root.model()!.log).toEqual(["closed"])
     }).pipe(Effect.scoped))
 
   it.effect("hydrates slots that missed the budget: a fetch in flight and a deferred Layer", () =>
