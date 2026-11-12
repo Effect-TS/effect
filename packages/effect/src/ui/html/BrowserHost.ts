@@ -168,9 +168,9 @@ const controlled: ReadonlySet<string> = new Set(["value", "checked", "selected",
 const emptyValue = (name: string): unknown => name === "value" ? "" : false
 
 interface Bound {
-  readonly handlers: Renderer.Handlers
+  readonly handlers: Readonly<Record<string, View.Handler<unknown, any>>>
   readonly dispatch: Renderer.Dispatch
-  readonly options: Renderer.EventOptions
+  readonly options: Readonly<Record<string, View.EventOptions>>
 }
 
 const modifiers = (event: Event) => {

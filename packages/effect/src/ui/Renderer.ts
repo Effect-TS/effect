@@ -16,7 +16,6 @@
  * @stability experimental
  * @since 4.1.5
  */
-import type * as Cause from "../Cause.ts"
 import type * as Context from "../Context.ts"
 import type * as Duration from "../Duration.ts"
 import type * as Effect from "../Effect.ts"
@@ -32,25 +31,6 @@ import type * as Head from "./Head.ts"
 import * as runtime from "./internal/runtime.ts"
 import * as services from "./internal/services.ts"
 import type * as View from "./View.ts"
-
-/**
- * An element's handlers, by event name, as the view declared them.
- *
- * @stability experimental
- * @category models
- * @since 4.1.5
- */
-export type Handlers = Readonly<Record<string, View.Handler<unknown, any>>>
-
-/**
- * An element's event options, by event name, as the view declared them with
- * its handlers.
- *
- * @stability experimental
- * @category models
- * @since 4.1.5
- */
-export type EventOptions = Readonly<Record<string, View.EventOptions>>
 
 /**
  * How a host reports an event: the event's name, the handler it found on the
@@ -119,7 +99,12 @@ export interface Host<Node> {
   remove(node: Node): void
   parentOf(node: Node): Node | undefined
   nextOf(node: Node): Node | undefined
-  setEvents(node: Node, handlers: Handlers, dispatch: Dispatch, options: EventOptions): void
+  setEvents(
+    node: Node,
+    handlers: Readonly<Record<string, View.Handler<unknown, any>>>,
+    dispatch: Dispatch,
+    options: Readonly<Record<string, View.EventOptions>>
+  ): void
   readonly elements: ReadonlyArray<string> | "any"
   readonly controlled: ReadonlySet<string>
   readonly runsMounts: boolean
@@ -547,12 +532,3 @@ export const prerender: <Name extends string, Props, Model, Msg, Events, R, V ex
     elements: options?.elements ?? "any",
     static: options?.static
   })
-
-/**
- * A failure as `mount`'s `fallback` and a slot's `onFailure` see it.
- *
- * @stability experimental
- * @category models
- * @since 4.1.5
- */
-export type Failure = AsyncResult.Failure<never, unknown> & { readonly cause: Cause.Cause<unknown> }
