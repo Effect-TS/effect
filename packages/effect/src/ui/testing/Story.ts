@@ -149,6 +149,8 @@ export interface Story<Props, Model, Msg, Events> {
    * is always cancelled, whatever the handler returns and with no handler at
    * all.
    *
+   * **Details**
+   *
    * Every other step that makes a record resets it to `false`, and so does
    * an event whose default isn't cancelled. The checks, `model`, `view`,
    * `check`, `expectExact` and the others, don't make a record, so they read
