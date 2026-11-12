@@ -1138,6 +1138,127 @@ describe("Runtime", () => {
         assert.includeMembers(tags(root), ["LayerFailed", "Update"])
         assert.notInclude(tags(root), "Failed")
       })))
+
+    describe("a memoised sub-Layer", () => {
+      class Store extends Context.Service<Store, { readonly id: number }>()("test/Store") {}
+      class ReadStore extends Command.Service<ReadStore>()(
+        "test/ReadStore",
+        { args: {}, invalidates: () => [] },
+        Store.useSync((store) => () => Effect.succeed(String(store.id)))
+      ) {}
+      const StoreId = Component.make({
+        name: "StoreId",
+        model: Schema.String,
+        message: Schema.String,
+        init: ($) => $.set("").run(ReadStore.make()),
+        update: (_, id) => id,
+        view: (id, h) => h.text(`[${id}]`)
+      })
+      const DropMsg = Schema.TaggedUnion({ Drop: { key: Schema.String } })
+      /** Shows one child per key, in order, until the key is dropped. */
+      const Siblings = (children: Record<string, Component.Mountable<{}, never, never>>) =>
+        Component.make({
+          name: "Siblings",
+          model: Schema.Array(Schema.String),
+          message: DropMsg,
+          init: () => Object.keys(children),
+          update: (keys, { key }) => keys.filter((k) => k !== key),
+          view: (keys, h) => h.el("div", keys.map((key) => h.child(children[key], { key, props: {} })))
+        })
+      const drop = (root: TestHost.TestRoot<any, any, any>, key: string) =>
+        root.send(DropMsg.make({ _tag: "Drop", key }))
+
+      it.effect("is shared by every provide that resolves from the same Env, and closed by its last user", () =>
+        provideHost(Effect.gen(function*() {
+          let builds = 0
+          let closes = 0
+          const store = Layer.effect(
+            Store,
+            Effect.acquireRelease(Effect.sync(() => ({ id: ++builds })), () => Effect.sync(() => closes++))
+          )
+          // Two different provided Layers that each wrap the same stateful Layer.
+          const A = Component.provide(StoreId, ReadStore.layer.pipe(Layer.provide(store)))
+          const B = Component.provide(StoreId, ReadStore.layer.pipe(Layer.provide(store)))
+          const root = yield* TestHost.mount(Siblings({ a1: A, a2: A, b: B }), {})
+          yield* TestHost.settle
+          assert.strictEqual(root.text(), "[1][1][1]")
+          assert.strictEqual(builds, 1)
+          drop(root, "a1")
+          drop(root, "a2")
+          yield* TestHost.settle
+          assert.strictEqual(closes, 0)
+          drop(root, "b")
+          yield* TestHost.settle
+          assert.strictEqual(closes, 1)
+        })))
+
+      it.effect("is built again under an Env that provides different dependencies", () =>
+        provideHost(Effect.gen(function*() {
+          class Project extends Context.Service<Project, { readonly id: string }>()("test/Project") {}
+          class ReadProject extends Command.Service<ReadProject>()(
+            "test/ReadProject",
+            { args: {}, invalidates: () => [] },
+            Project.useSync((project) => () => Effect.succeed(project.id))
+          ) {}
+          const ProjectId = Component.make({
+            name: "ProjectId",
+            model: Schema.String,
+            message: Schema.String,
+            init: ($) => $.set("").run(ReadProject.make()),
+            update: (_, id) => id,
+            view: (id, h) => h.text(`[${id}]`)
+          })
+          // One Layer value, captured against whichever Project its Env has.
+          const Task = Component.provide(ProjectId, ReadProject.layer)
+          const PageView = Component.make({
+            name: "PageView",
+            props: Schema.Struct({ id: Schema.String }),
+            model: Schema.Null,
+            message: Schema.Never,
+            init: () => null,
+            update: (model) => model,
+            view: (_, h) => h.el("div", h.child(Task, { key: "task", props: {} }))
+          })
+          const Page = Component.provide(PageView, (props) => Layer.succeed(Project, { id: props.id }))
+          const Split = Component.make({
+            name: "Split",
+            model: Schema.Null,
+            message: Schema.Never,
+            init: () => null,
+            update: (model) => model,
+            view: (_, h) =>
+              h.el(
+                "div",
+                h.child(Page, { key: "a", props: { id: "a" } }),
+                h.child(Page, { key: "b", props: { id: "b" } })
+              )
+          })
+          const root = yield* TestHost.mount(Split, {})
+          yield* TestHost.settle
+          assert.strictEqual(root.text(), "[a][b]")
+        })))
+
+      it.effect("its first builder unmounting mid-build leaves the other users to mount normally", () =>
+        provideHost(Effect.gen(function*() {
+          let builds = 0
+          const slow = Layer.effect(
+            Store,
+            Effect.andThen(Effect.sleep("1 second"), Effect.sync(() => ({ id: ++builds })))
+          )
+          const A = Component.provide(StoreId, ReadStore.layer.pipe(Layer.provide(slow)))
+          const B = Component.provide(StoreId, ReadStore.layer.pipe(Layer.provide(slow)))
+          const root = yield* TestHost.mount(Siblings({ a: A, b: B }), {})
+          yield* TestHost.settle
+          drop(root, "a")
+          yield* TestHost.settle
+          yield* TestClock.adjust("1 second")
+          yield* TestHost.settle
+          assert.strictEqual(root.text(), "[1]")
+          const b = tags(root, "/Siblings/StoreId[b]")
+          assert.include(b, "LayerReady")
+          assert.notInclude(b, "LayerFailed")
+        })))
+    })
   })
 
   describe("features", () => {
