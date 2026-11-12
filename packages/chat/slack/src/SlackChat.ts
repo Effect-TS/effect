@@ -109,6 +109,9 @@ export class SlackChat extends Context.Service<SlackChat, {
  * - A thread root whose subtype is not a message, such as an agent-view
  *   chat's `assistant_app_thread` root, is treated as deleted: `opener`
  *   gives `None` and history starts at the first reply.
+ * - After a 429 on a stream append or an edit, the next write to that
+ *   message waits for the retry-after, and later writes to it wait twice
+ *   the interval.
  * - The native stream needs a thread and a recipient, and rotates before
  *   Slack's ten minute cap. A reply that ends after a click on the stop
  *   button moves the agent session off `processing`.

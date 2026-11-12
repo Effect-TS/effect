@@ -1,7 +1,15 @@
-import type { ChatAdapter, Descriptor, File, Posted, ThreadInfo } from "effect/chat/ChatAdapter"
+import {
+  type ChatAdapter,
+  type Descriptor,
+  type File,
+  type Posted,
+  retrySafe,
+  type ThreadInfo
+} from "effect/chat/ChatAdapter"
 import { type ChatError, type ChatErrorReason, TooLarge, Unknown, Unsupported } from "effect/chat/ChatError"
 import type { ChatMessage } from "effect/chat/ChatMessage"
 import type { ChatThread } from "effect/chat/ChatThread"
+import * as Clock from "effect/Clock"
 import * as DateTime from "effect/DateTime"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
@@ -91,6 +99,14 @@ const shareInterval = Duration.millis(500)
 /** Codes on `chat.startStream` that mean the feature is off for this thread. */
 const streamUnsupported = new Set(["channel_type_not_supported", "feature_disabled", "not_allowed_token_type"])
 
+/** How long a message's pace is kept after its last write. */
+const paceIdleMillis = 15 * 60 * 1000
+
+interface Pace {
+  readonly intervalMillis: number
+  readonly nextAt: number
+}
+
 interface StreamState {
   escape: Escape.State
   text: string
@@ -118,6 +134,42 @@ export const make = (options: {
   let declaredAgent = true
 
   const fail = (op: string, reason: ChatErrorReason) => Effect.fail(Errors.chatError(op, reason))
+
+  /**
+   * Writes that grow one message: stream appends and edits. After a 429 on
+   * a message, its next write waits for the retry-after, and each later
+   * write waits twice the interval it waited before, for as long as the
+   * reply goes on.
+   */
+  const paces = new Map<string, Pace>()
+  const paced = <A>(messageId: string, write: Effect.Effect<A, ChatError>): Effect.Effect<A, ChatError> =>
+    Effect.gen(function*() {
+      const pace = paces.get(messageId)
+      if (pace !== undefined) {
+        const wait = pace.nextAt - (yield* Clock.currentTimeMillis)
+        if (wait > 0) yield* Effect.sleep(Duration.millis(wait))
+      }
+      return yield* write.pipe(
+        Effect.tap(() =>
+          Effect.map(Clock.currentTimeMillis, (now) => {
+            const current = paces.get(messageId)
+            if (current !== undefined) paces.set(messageId, { ...current, nextAt: now + current.intervalMillis })
+          })
+        ),
+        Effect.tapError((error) =>
+          error.reason._tag !== "RateLimited" ? Effect.void : Effect.map(Clock.currentTimeMillis, (now) => {
+            for (const [id, old] of paces) if (old.nextAt < now - paceIdleMillis) paces.delete(id)
+            const intervalMillis = 2 * (paces.get(messageId)?.intervalMillis ??
+              Duration.toMillis(descriptor.limits.minWriteInterval))
+            const retryAfter = error.retryAfter
+            paces.set(messageId, {
+              intervalMillis,
+              nextAt: now + (retryAfter === undefined ? intervalMillis : Duration.toMillis(retryAfter))
+            })
+          })
+        )
+      )
+    })
 
   const call = (
     op: string,
@@ -379,11 +431,14 @@ export const make = (options: {
       const held = markdown.length - escaped.consumed
       if (escaped.sent === "") return { state: "open" as const, held }
       yield* checkSent(op, state.text + escaped.sent, true)
-      return yield* call(op, "chat.appendStream", {
-        channel: parts.channel,
-        ts: messageId,
-        markdown_text: escaped.sent
-      }, { write: true, retry: false }).pipe(
+      return yield* paced(
+        messageId,
+        call(op, "chat.appendStream", {
+          channel: parts.channel,
+          ts: messageId,
+          markdown_text: escaped.sent
+        }, { write: true, retry: false })
+      ).pipe(
         Effect.map(() => {
           streams.set(messageId, { escape: escaped.state, text: state.text + escaped.sent, stopped: false })
           return { state: "open" as const, held }
@@ -405,6 +460,7 @@ export const make = (options: {
       const postOptions = yield* CurrentPostOptions
       const state = streams.get(messageId)
       streams.delete(messageId)
+      paces.delete(messageId)
       const status = stopOptions.end === "rotating" ? "processing" : postOptions.sessionStatusAtEnd
       const body = { channel: parts.channel, ts: messageId }
       const stop = status === undefined || !declaredAgent
@@ -492,9 +548,13 @@ export const make = (options: {
       const sent = Escape.escape(content.markdown, postOptions.notify ?? {}, { flush: true }).sent
       // Slack does not apply its emoji limit to `chat.update`.
       yield* checkSent("edit", sent, false)
-      yield* call("edit", "chat.update", { channel: parts.channel, ts: messageId, markdown_text: sent }, {
-        write: true
-      })
+      yield* retrySafe(paced(
+        messageId,
+        call("edit", "chat.update", { channel: parts.channel, ts: messageId, markdown_text: sent }, {
+          write: true,
+          retry: false
+        })
+      ))
     }),
     delete: Effect.fnUntraced(function*(thread, messageId) {
       const parts = yield* resolve("delete", thread)

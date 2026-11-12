@@ -439,6 +439,39 @@ describe("nativeStream", () => {
     )
   })
 
+  it.effect("a 429 waits the retry-after, then doubles the interval for that message", () => {
+    const fake = makeFake({
+      "chat.appendStream": [{ status: 429, headers: { "retry-after": "3" } }, posted(ts)],
+      "chat.update": posted("1794509200.000100")
+    })
+    return run(
+      fake,
+      Effect.gen(function*() {
+        const slack = yield* adapter
+        const native = slack.nativeStream!
+        const limited = yield* reason(native.append(replyThread, ts, "a", { flush: true }))
+        assert.strictEqual(limited.tag, "RateLimited")
+        const appends = () => fake.called("chat.appendStream").length
+        const second = yield* Effect.forkChild(native.append(replyThread, ts, "b", { flush: true }))
+        yield* TestClock.adjust("2999 millis")
+        assert.strictEqual(appends(), 1)
+        yield* TestClock.adjust("1 millis")
+        yield* Fiber.join(second)
+        assert.strictEqual(appends(), 2)
+        // Two seconds now, twice the one second interval.
+        const third = yield* Effect.forkChild(native.append(replyThread, ts, "c", { flush: true }))
+        yield* TestClock.adjust("1999 millis")
+        assert.strictEqual(appends(), 2)
+        yield* TestClock.adjust("1 millis")
+        yield* Fiber.join(third)
+        assert.strictEqual(appends(), 3)
+        // Another message is not slowed.
+        yield* slack.edit(replyThread, "1794509200.000100", { markdown: "x" })
+        assert.strictEqual(fake.called("chat.update").length, 1)
+      })
+    )
+  })
+
   it.effect("stop on a closed stream succeeds", () => {
     const fake = makeFake({ "chat.stopStream": { ok: false, error: "message_not_in_streaming_state" } })
     return run(
