@@ -69,7 +69,7 @@ const paths = [
   { format: "httpclient-type-only", encoding: "sse-data" }
 ] as const
 
-describe("OpenApiTransformer", () => {
+describe("HttpClient generation", () => {
   it.effect("returns only the body when a nullable response config is undefined", () =>
     Effect.gen(function*() {
       const spec: OpenAPISpec = {

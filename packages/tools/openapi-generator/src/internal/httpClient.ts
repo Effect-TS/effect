@@ -1,44 +1,10 @@
-/**
- * OpenAPI-to-HttpClient code generation for the OpenAPI generator.
- *
- * This module defines the `OpenApiTransformer` service used to render parsed
- * OpenAPI operations into Effect `HttpClient` modules. It provides both
- * schema-backed and type-only transformer implementations, including generated
- * imports, public client interfaces, operation implementations, typed API
- * errors, optional response handling, and helpers for server-sent events and
- * binary response streams.
- *
- * @since 4.0.0
- */
+/** @internal */
 import type * as Codegen from "effect/Codegen"
-import * as Context from "effect/Context"
-import * as Layer from "effect/Layer"
 import * as Predicate from "effect/Predicate"
-import { namedImport, namespaceImport, printImports, provideImports } from "./internal/module.ts"
-import type { ParsedOpenApi, ParsedOperation, ParsedOperationHttpClientResponses } from "./ParsedOperation.ts"
-import * as Utils from "./Utils.ts"
-
-/**
- * Service used by the OpenAPI generator to render parsed operations as an
- * Effect HttpClient module.
- *
- * **Details**
- *
- * A transformer owns the code-generation dialect for imports, public client
- * types, and the implementation body. The generator swaps implementations to
- * choose between schema-backed clients and type-only clients.
- *
- * @category services
- * @since 4.0.0
- */
-export class OpenApiTransformer extends Context.Service<
-  OpenApiTransformer,
-  {
-    readonly imports: (importName: string, parsed: ParsedOpenApi) => string
-    readonly toTypes: (importName: string, name: string, parsed: ParsedOpenApi) => string
-    readonly toImplementation: (importName: string, name: string, parsed: ParsedOpenApi) => string
-  }
->()("OpenApiTransformer") {}
+import * as String from "effect/String"
+import type { ParsedOpenApi, ParsedOperation, ParsedOperationHttpClientResponses } from "../ParsedOperation.ts"
+import * as Utils from "../Utils.ts"
+import { namedImport, namespaceImport, printImports, provideImports } from "./module.ts"
 
 interface ImportRequirements {
   readonly eventStream: boolean
@@ -86,14 +52,13 @@ const moduleImports = (importName: string, parsed: ParsedOpenApi, typeOnly: bool
   return imports
 }
 
-/** @internal */
 export const registerModule = (
   module: Codegen.Module,
   importName: string,
   name: string,
   parsed: ParsedOpenApi,
   typeOnly: boolean
-): { readonly client: Codegen.Binding; readonly imports: string } => {
+): { readonly imports: string; readonly implementation: (parsed: ParsedOpenApi) => string } => {
   const imports = moduleImports(importName, parsed, typeOnly)
   provideImports(module, imports)
   const locals = module.scope()
@@ -102,7 +67,10 @@ export const registerModule = (
   const client = module.declare(name)
   module.declare(`${client.name}Error`, { exact: true })
   module.declare(`${client.name}ErrorImpl`, { exact: true })
-  return { client, imports: printImports(imports) }
+  return {
+    imports: printImports(imports),
+    implementation: (parsed) => (typeOnly ? renderTypeOnly : renderSchema)(importName, client.name, parsed)
+  }
 }
 
 const requiresStreaming = (requirements: ImportRequirements): boolean =>
@@ -166,19 +134,7 @@ const requestToImpl = (operation: ParsedOperation, pipeline: Array<string>, stre
   return streaming ? `Stream.unwrap(${effect})` : effect
 }
 
-/**
- * Create the transformer used for schema-backed HttpClient output.
- *
- * **Details**
- *
- * Generated clients import Effect Schema values and use them at runtime to
- * decode successful responses and typed API errors. Request parameters and
- * payloads are typed against each schema's encoded representation.
- *
- * @category code generation
- * @since 4.0.0
- */
-export const makeTransformerSchema = () => {
+const renderSchema = (importName: string, name: string, parsed: ParsedOpenApi): string => {
   const operationsToInterface = (
     _importName: string,
     name: string,
@@ -504,43 +460,14 @@ export const make = <E, R>(
     )
   }
 
-  return OpenApiTransformer.of({
-    imports: (importName, parsed) => printImports(moduleImports(importName, parsed, false)),
-    toTypes: (importName, name, parsed) => operationsToInterface(importName, name, parsed.operations),
-    toImplementation: (importName, name, parsed) => operationsToImpl(importName, name, parsed.operations)
-  })
+  return String.stripMargin(
+    `|${operationsToImpl(importName, name, parsed.operations)}
+     |
+     |${operationsToInterface(importName, name, parsed.operations)}`
+  )
 }
 
-/**
- * Layer that provides the schema-backed OpenApiTransformer service.
- *
- * **When to use**
- *
- * Use when you use this layer when generated HttpClient code should perform runtime response
- * decoding with generated Effect Schema values.
- *
- * @category layers
- * @since 4.0.0
- */
-export const layerTransformerSchema = Layer.sync(
-  OpenApiTransformer,
-  makeTransformerSchema
-)
-
-/**
- * Create the transformer used for type-only HttpClient output.
- *
- * **Details**
- *
- * Generated clients reference emitted TypeScript types directly and do not
- * import schema decoders for JSON response bodies. Responses are typed as the
- * declared operation result while preserving generated error and stream method
- * shapes.
- *
- * @category code generation
- * @since 4.0.0
- */
-export const makeTransformerTs = () => {
+const renderTypeOnly = (importName: string, name: string, parsed: ParsedOpenApi): string => {
   const operationsToInterface = (
     _importName: string,
     name: string,
@@ -869,29 +796,12 @@ export const make = <E, R>(
     )
   }
 
-  return OpenApiTransformer.of({
-    imports: (importName, parsed) => printImports(moduleImports(importName, parsed, true)),
-    toTypes: (importName, name, parsed) => operationsToInterface(importName, name, parsed.operations),
-    toImplementation: (importName, name, parsed) => operationsToImpl(importName, name, parsed.operations)
-  })
+  return String.stripMargin(
+    `|${operationsToImpl(importName, name, parsed.operations)}
+     |
+     |${operationsToInterface(importName, name, parsed.operations)}`
+  )
 }
-
-/**
- * Layer that provides the type-only OpenApiTransformer service.
- *
- * **When to use**
- *
- * Use when you use this layer for the `httpclient-type-only` generator format, where the
- * generated client relies on TypeScript types instead of runtime Schema
- * decoding.
- *
- * @category layers
- * @since 4.0.0
- */
-export const layerTransformerTs = Layer.sync(
-  OpenApiTransformer,
-  makeTransformerTs
-)
 
 const pathRequestSource = `const __encodePathParam = encodeURIComponent
   const __makePathRequest = (

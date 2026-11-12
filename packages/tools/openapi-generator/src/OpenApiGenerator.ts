@@ -23,8 +23,8 @@ import * as Rec from "effect/Record"
 import * as String from "effect/String"
 import SwaggerToOpenApi from "swagger2openapi"
 import * as HttpApiTransformer from "./HttpApiTransformer.ts"
+import * as HttpClientGenerator from "./internal/httpClient.ts"
 import * as JsonSchemaGenerator from "./JsonSchemaGenerator.ts"
-import * as OpenApiTransformer from "./OpenApiTransformer.ts"
 import * as ParsedOperation from "./ParsedOperation.ts"
 import * as Utils from "./Utils.ts"
 
@@ -198,7 +198,6 @@ export const make = Effect.gen(function*() {
   const generate = Effect.fn(
     function*(spec: OpenAPISpec, options: OpenApiGenerateOptions) {
       const generator = JsonSchemaGenerator.make()
-      const openApiTransformer = yield* OpenApiTransformer.OpenApiTransformer
       const emitWarning = makeWarningEmitter(options)
 
       if (isSwaggerSpec(spec)) {
@@ -243,7 +242,7 @@ export const make = Effect.gen(function*() {
       )
       const registration = options.format === "httpapi"
         ? HttpApiTransformer.registerModule(module, importName, options.name, parsed)
-        : OpenApiTransformer.registerModule(
+        : HttpClientGenerator.registerModule(
           module,
           importName,
           options.name,
@@ -263,16 +262,7 @@ export const make = Effect.gen(function*() {
         if (binding === undefined) throw new Error(`Missing schema ${name}`)
         return binding
       })
-      module.add(Codegen.deferred((render) => {
-        const resolved = ParsedOperation.mapSchemas(bound, render)
-        if ("implementation" in registration) return registration.implementation(resolved)
-        const name = render(registration.client)
-        return String.stripMargin(
-          `|${openApiTransformer.toImplementation(importName, name, resolved)}
-           |
-           |${openApiTransformer.toTypes(importName, name, resolved)}`
-        )
-      }))
+      module.add(Codegen.deferred((render) => registration.implementation(ParsedOperation.mapSchemas(bound, render))))
       const output = module.finalize()
       const declarations = [...output.imports, ...output.declarations.flatMap((declaration) => declaration.fragments)]
       const generation = declarations.length === 0 ? "" : declarations.join("\n") + "\n"
@@ -281,15 +271,7 @@ export const make = Effect.gen(function*() {
          |${generation}
          |${output.body.join("\n")}`
       )
-    },
-    (effect, _, options) =>
-      Effect.provideServiceEffect(
-        effect,
-        OpenApiTransformer.OpenApiTransformer,
-        options.format === "httpclient-type-only"
-          ? Effect.sync(OpenApiTransformer.makeTransformerTs)
-          : Effect.sync(OpenApiTransformer.makeTransformerSchema)
-      )
+    }
   )
 
   return { generate } as const
