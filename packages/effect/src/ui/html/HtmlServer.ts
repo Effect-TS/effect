@@ -147,9 +147,10 @@ const serverHtmlHost: Context.Service.Shape<typeof Html.Host> = {
  * Failures and entries no view renders.
  *
  * Route status is the app's: resolve the URL with `AppRoute.resolve` first,
- * answer a `notFound` route with a 404 and a `redirected` one with a
- * redirect. `HtmlServerHttp.layerHttp` does this for an app served
- * through `HttpRouter`.
+ * answer a `notFound` route with a 404, a `redirected` one with a
+ * permanent redirect, and one with `invalid` query keys with a temporary
+ * one. `HtmlServerHttp.layerHttp` does this for an app served through
+ * `HttpRouter`.
  *
  * @stability experimental
  * @category constructors

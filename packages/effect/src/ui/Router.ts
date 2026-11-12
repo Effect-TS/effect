@@ -96,6 +96,7 @@ import * as Command from "./Command.ts"
 import type * as Component from "./Component.ts"
 import type * as Head from "./Head.ts"
 import * as services from "./internal/services.ts"
+import { decodeKey, withoutParams } from "./internal/url.ts"
 import type * as Route from "./Route.ts"
 import * as Subscription from "./Subscription.ts"
 
@@ -1181,26 +1182,6 @@ const canonical = (
     : resolved.invalid.length > 0
     ? withoutParams(url, new Set(resolved.invalid))
     : url
-
-const decodeKey = (pair: string): string | undefined => {
-  const at = pair.indexOf("=")
-  try {
-    return decodeURIComponent((at < 0 ? pair : pair.slice(0, at)).replaceAll("+", " "))
-  } catch {
-    return undefined
-  }
-}
-
-/** The URL without the query params under `keys`, the others kept as written. */
-const withoutParams = (url: string, keys: ReadonlySet<string>): string => {
-  const at = url.indexOf("?")
-  if (at < 0) return url
-  const kept = url.slice(at + 1).split("&").filter((pair) => {
-    const key = decodeKey(pair)
-    return pair !== "" && (key === undefined || !keys.has(key))
-  })
-  return kept.length === 0 ? url.slice(0, at) : `${url.slice(0, at)}?${kept.join("&")}`
-}
 
 const pathnameOf = (url: string): string => {
   const at = url.indexOf("?")

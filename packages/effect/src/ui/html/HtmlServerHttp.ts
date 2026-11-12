@@ -19,6 +19,7 @@ import type * as Layer from "../../Layer.ts"
 import * as Option from "../../Option.ts"
 import * as Scope from "../../Scope.ts"
 import type * as Component from "../Component.ts"
+import { withoutParams } from "../internal/url.ts"
 import * as Router from "../Router.ts"
 import type * as View from "../View.ts"
 import type * as BrowserHost from "./BrowserHost.ts"
@@ -39,7 +40,9 @@ import * as HtmlServer from "./HtmlServer.ts"
  *
  * Per request it resolves the URL with `routes`. A URL that doesn't resolve
  * is a 404, and a redirected or normalised one is a 301 to
- * `routes.print(route)`. Otherwise it renders with `HtmlServer.renderToHtml` under
+ * `routes.print(route)`. A URL with query params dropped as invalid is a 302
+ * to the same URL without them, keeping the others as written. Otherwise it
+ * renders with `HtmlServer.renderToHtml` under
  * `Router.static` at the URL, with `Router.props(routes)` as the props,
  * the same props the client hydrates with. The response is
  * `document(rendered)` as `text/html`.
@@ -139,9 +142,15 @@ export const layerHttp = <
       if (Option.isNone(resolved)) {
         return Effect.succeed(HttpServerResponse.text("Not found", { status: 404 }))
       }
-      const { notFound, redirected, route } = resolved.value
+      const { invalid, notFound, redirected, route } = resolved.value
       if (redirected) {
         return Effect.succeed(HttpServerResponse.redirect(options.routes.print(route), { status: 301 }))
+      }
+      // Temporary: the same params may decode later, if the routes change.
+      if (invalid.length > 0) {
+        return Effect.succeed(
+          HttpServerResponse.redirect(withoutParams(request.url, new Set(invalid)), { status: 302 })
+        )
       }
       return render.pipe(
         Effect.provide(Router.static({ routes: options.routes, url: request.url })),
