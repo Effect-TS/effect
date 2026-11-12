@@ -32,6 +32,7 @@ import * as Exit from "../Exit.ts"
 import * as Fiber from "../Fiber.ts"
 import * as Latch from "../Latch.ts"
 import * as Option from "../Option.ts"
+import * as Scope from "../Scope.ts"
 import * as Stream from "../Stream.ts"
 import * as Chat from "./Chat.ts"
 import type { Descriptor, File, NativeStream, Posted } from "./ChatAdapter.ts"
@@ -420,6 +421,10 @@ const reply = <E, R, R2>(options: ReplyOptions<E, R, R2>): Effect.Effect<Result,
     const onPart = options.onPart ?? (() => Effect.void)
     const native = options.native
     const latch = Latch.makeUnsafe(false)
+    /** Opens when the upstream fails, which ends the loop even while a write is in flight. */
+    const upstreamFailed = Latch.makeUnsafe(false)
+    /** Holds the write fibers, so they outlive the loop and the finalizer can wait for them. */
+    const writes = Scope.makeUnsafe()
 
     let input = options.initial
     let upstream: Exit.Exit<void, E> | undefined = options.deltas === undefined ? Exit.void : undefined
@@ -515,10 +520,11 @@ const reply = <E, R, R2>(options: ReplyOptions<E, R, R2>): Effect.Effect<Result,
 
     /**
      * Sends a post, a start or an append after the floor. Sending one again
-     * could repeat text, so an interrupt of the reply does not cut it off: it
-     * runs in a fiber of its own, which commits the answer, and the finalizer
-     * waits for it. Only the finish timeout cuts it off, and `commit` then
-     * records that there was no answer.
+     * could repeat text, so neither an interrupt of the reply nor a failure of
+     * the upstream cuts it off: it runs in a fiber of its own, outside the
+     * loop, which commits the answer, and the finalizer waits for it. Only the
+     * finish timeout cuts it off, and `commit` then records that there was no
+     * answer.
      */
     const send = <A>(
       effect: Effect.Effect<A, ChatError>,
@@ -527,14 +533,15 @@ const reply = <E, R, R2>(options: ReplyOptions<E, R, R2>): Effect.Effect<Result,
       Effect.andThen(
         pace,
         Effect.uninterruptibleMask((restore) =>
-          Effect.forkChild(
+          Effect.forkIn(
             Effect.uninterruptibleMask((restoreRequest) =>
               Effect.exit(restoreRequest(effect)).pipe(
                 Effect.ensuring(wrote),
                 Effect.tap((exit) => Effect.flatMap(now, (time) => commit(exit, time))),
                 Effect.ensuring(Effect.sync(() => void (inflight = undefined)))
               )
-            )
+            ),
+            writes
           ).pipe(Effect.flatMap((fiber) => {
             inflight = fiber
             return restore(Fiber.join(fiber))
@@ -1063,12 +1070,17 @@ const reply = <E, R, R2>(options: ReplyOptions<E, R, R2>): Effect.Effect<Result,
           Effect.sync(() => {
             upstream = exit
             latch.openUnsafe()
+            if (Exit.isFailure(exit)) upstreamFailed.openUnsafe()
           })
       )
 
     return Effect.gen(function*() {
       const fiber = yield* Effect.forkChild(consume)
-      yield* Effect.onInterrupt(loop, () => Effect.andThen(Fiber.interrupt(fiber), finish))
+      // A failed upstream ends the loop at once, so the finish timeout starts even while a write is in flight.
+      yield* Effect.onInterrupt(
+        Effect.raceFirst(loop, upstreamFailed.await),
+        () => Effect.andThen(Fiber.interrupt(fiber), finish)
+      )
       yield* Fiber.interrupt(fiber)
       if (upstream !== undefined && Exit.isFailure(upstream) && (isRunning() || state._tag === "Done")) {
         const cause = upstream.cause
@@ -1081,7 +1093,7 @@ const reply = <E, R, R2>(options: ReplyOptions<E, R, R2>): Effect.Effect<Result,
       yield* Effect.annotateCurrentSpan("chat.markdown.transport", renderedNatively ? "native" : current.transport)
       if (state._tag === "Failed") return yield* Effect.fail(toError(state.cause))
       return { parts, stopped: state._tag === "Done" && state.stopped }
-    })
+    }).pipe(Effect.ensuring(Scope.close(writes, Exit.void)))
   })
 
 // -----------------------------------------------------------------------------
@@ -1170,10 +1182,12 @@ export const post = <R = never>(
  *   upstream is then interrupted.
  * - When the upstream fails or the call is interrupted, what was received is
  *   written out, with an open code fence closed, within a short timeout, and
- *   left posted. A post, start or append in flight is not cut off by the
- *   interrupt, since sending it again could repeat text: the finalizer waits
- *   for it, then sends what follows, a stop cut off by the interrupt
- *   included. Only the timeout cuts a write off.
+ *   left posted. The timeout starts at once, even while a write is in
+ *   flight. A post, start or append in flight is not cut off by the failure
+ *   or the interrupt, since sending it again could repeat text: the finalizer
+ *   waits for it, then sends what follows, a stop cut off by the interrupt
+ *   included. Only the timeout cuts a write off, and its text is then
+ *   reported as `uncertain`.
  *
  * **Gotchas**
  *
