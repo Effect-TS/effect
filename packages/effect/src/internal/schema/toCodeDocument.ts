@@ -113,11 +113,8 @@ function isSimpleLiveLiteral(
 
 interface ReferenceGroups {
   readonly dependencies: ReadonlyMap<string, ReadonlySet<string>>
-  readonly nonRecursives: ReadonlyArray<{
-    readonly $ref: string
-    readonly representation: SchemaRepresentation.Representation
-  }>
-  readonly recursives: Readonly<Record<string, SchemaRepresentation.Representation>>
+  readonly nonRecursives: ReadonlyArray<string>
+  readonly recursives: ReadonlyArray<string>
 }
 
 function classifyReferences(
@@ -236,26 +233,18 @@ function classifyReferences(
     for (const dependency of eagerDependencies.get(identifier)!) firstGroup.add(dependency)
   }
 
-  const nonRecursives: Array<{
-    readonly $ref: string
-    readonly representation: SchemaRepresentation.Representation
-  }> = []
-  const recursives: Record<string, SchemaRepresentation.Representation> = {}
-  for (const $ref of identifiers) {
-    if (firstGroup.has($ref)) {
-      nonRecursives.push({ $ref, representation: references[$ref] })
-    } else {
-      InternalRecord.assignProperty(recursives, $ref, references[$ref])
-    }
+  return {
+    nonRecursives: identifiers.filter((identifier) => firstGroup.has(identifier)),
+    recursives: identifiers.filter((identifier) => !firstGroup.has(identifier)),
+    dependencies: eagerDependencies
   }
-  return { nonRecursives, recursives, dependencies: eagerDependencies }
 }
 
 /** @internal */
 export function toCodeDocument(
   document: SchemaRepresentation.MultiDocument
 ): SchemaRepresentation.CodeDocument {
-  const module = new Module(["globalThis"])
+  const module = new Module()
   // Consumers provide this namespace; track it without emitting a duplicate import.
   const schemaImport = module.provideImport({
     module: "effect/Schema",
@@ -266,26 +255,20 @@ export function toCodeDocument(
     attributes: ""
   })
   const artifacts: Array<{ readonly _tag: "Symbol" | "Enum"; readonly binding: Binding }> = []
-  const sorted = classifyReferences(document.references)
-  const sanitizedReferences = new Map<string, Binding>()
+  const groups = classifyReferences(document.references)
+  const references = new Map(
+    [...groups.nonRecursives, ...groups.recursives].map(($ref) => [$ref, freshIdentifier($ref)])
+  )
   const symbols = new Map<symbol, Binding>()
   const parsedImports = new Map<string, CodeImports.Imports>()
   let callbackIndex = 0
 
-  for (const { $ref } of sorted.nonRecursives) ensureUniqueIdentifier($ref)
-  for (const $ref of Object.keys(sorted.recursives)) ensureUniqueIdentifier($ref)
-
-  for (
-    const [$ref, representation] of [
-      ...sorted.nonRecursives.map(({ $ref, representation }) => [$ref, representation] as const),
-      ...Object.entries(sorted.recursives)
-    ]
-  ) {
-    const fragments = recur(representation, ["references", $ref])
+  for (const [$ref, binding] of references) {
+    const fragments = recur(document.references[$ref], ["references", $ref])
     module.define(
-      ensureUniqueIdentifier($ref),
+      binding,
       [fragments.runtime, fragments.Type],
-      Array.from(sorted.dependencies.get($ref)!, ensureUniqueIdentifier)
+      Array.from(groups.dependencies.get($ref)!, ($ref) => references.get($ref)!)
     )
   }
   const roots = document.representations.map((representation, index) =>
@@ -295,14 +278,14 @@ export function toCodeDocument(
   const definitions = new Map(
     output.declarations.map(({ binding, fragments }) => [binding, makeCode(fragments[0], fragments[1])] as const)
   )
-  const firstGroup = new Set(sorted.nonRecursives.map(({ $ref }) => ensureUniqueIdentifier($ref)))
+  const firstGroup = new Set(groups.nonRecursives.map(($ref) => references.get($ref)!))
   const nonRecursives = output.declarations.filter(({ binding }) => firstGroup.has(binding)).map(({ binding }) => ({
     $ref: output.names.get(binding)!,
     code: definitions.get(binding)!
   }))
   const recursives: Record<string, SchemaRepresentation.Code> = {}
-  for (const $ref of Object.keys(sorted.recursives)) {
-    const binding = ensureUniqueIdentifier($ref)
+  for (const $ref of groups.recursives) {
+    const binding = references.get($ref)!
     InternalRecord.assignProperty(recursives, output.names.get(binding)!, definitions.get(binding)!)
   }
 
@@ -320,14 +303,6 @@ export function toCodeDocument(
         code: definitions.get(binding)!
       }))
     ]
-  }
-
-  function ensureUniqueIdentifier(original: string): Binding {
-    const existing = sanitizedReferences.get(original)
-    if (existing !== undefined) return existing
-    const candidate = freshIdentifier(original)
-    sanitizedReferences.set(original, candidate)
-    return candidate
   }
 
   function freshIdentifier(seed: string): Binding {
@@ -490,10 +465,10 @@ export function toCodeDocument(
     path: Path
   ): Code {
     if (representation._tag === "Reference") {
-      if (!Object.hasOwn(document.references, representation.$ref)) {
+      const identifier = references.get(representation.$ref)
+      if (identifier === undefined) {
         throw errorWithPath(`Invalid reference ${representation.$ref}`, [...path, "$ref"])
       }
-      const identifier = ensureUniqueIdentifier(representation.$ref)
       return makeFragments(identifier, identifier)
     }
     return applyNode(on(representation, path), representation, path)
@@ -583,34 +558,30 @@ export function toCodeDocument(
           )
         })
         const rest = representation.rest.map((item, index) => recur(item, [...path, "rest", index]))
-        let result: Code
-        if (Arr.isArrayNonEmpty(rest)) {
-          const item = rest[0]
-          if (elements.length === 0 && rest.length === 1) {
-            result = makeFragments(
-              code`Schema.Array(${item.runtime})`,
-              code`globalThis.ReadonlyArray<${item.Type}>`
-            )
-          } else {
-            const types = [
-              ...elements.map((element) => element.Type),
-              code`...globalThis.Array<${item.Type}>`,
-              ...rest.slice(1).map((item) => item.Type)
-            ]
-            result = makeFragments(
-              code`Schema.TupleWithRest(Schema.Tuple([${join(elements.map((element) => element.runtime), ", ")}]), [${
-                join(rest.map((item) => item.runtime), ", ")
-              }])`,
-              code`readonly [${join(types, ", ")}]`
-            )
-          }
-        } else {
-          result = makeFragments(
+        if (!Arr.isArrayNonEmpty(rest)) {
+          return makeFragments(
             code`Schema.Tuple([${join(elements.map((element) => element.runtime), ", ")}])`,
             code`readonly [${join(elements.map((element) => element.Type), ", ")}]`
           )
         }
-        return result
+        const item = rest[0]
+        if (elements.length === 0 && rest.length === 1) {
+          return makeFragments(
+            code`Schema.Array(${item.runtime})`,
+            code`globalThis.ReadonlyArray<${item.Type}>`
+          )
+        }
+        const types = [
+          ...elements.map((element) => element.Type),
+          code`...globalThis.Array<${item.Type}>`,
+          ...rest.slice(1).map((item) => item.Type)
+        ]
+        return makeFragments(
+          code`Schema.TupleWithRest(Schema.Tuple([${join(elements.map((element) => element.runtime), ", ")}]), [${
+            join(rest.map((item) => item.runtime), ", ")
+          }])`,
+          code`readonly [${join(types, ", ")}]`
+        )
       }
       case "Objects": {
         const properties = representation.propertySignatures.map((property, index) => {
@@ -625,49 +596,42 @@ export function toCodeDocument(
           runtime = code`${runtime}${runtimeAnnotate(property.annotations, "annotateKey")}`
           const runtimeName = property.name === "__proto__" ? code`[${name}]` : name
           const typeName = code`${property.isMutable ? "" : "readonly "}${name}${property.isOptional ? "?" : ""}`
-          return {
-            code: makeFragments(code`${runtimeName}: ${runtime}`, code`${typeName}: ${type.Type}`)
-          }
+          return makeFragments(code`${runtimeName}: ${runtime}`, code`${typeName}: ${type.Type}`)
         })
         const indexSignatures = representation.indexSignatures.map((signature, index) => ({
           parameter: recur(signature.parameter, [...path, "indexSignatures", index, "parameter"]),
           type: recur(signature.type, [...path, "indexSignatures", index, "type"])
         }))
-        const propertyRuntimes = join(properties.map((property) => property.code.runtime), ", ")
-        const propertyTypes = join(properties.map((property) => property.code.Type), ", ")
-        let result: Code
+        const propertyRuntimes = join(properties.map((property) => property.runtime), ", ")
+        const propertyTypes = join(properties.map((property) => property.Type), ", ")
         if (indexSignatures.length === 0) {
-          result = makeFragments(
+          return makeFragments(
             code`Schema.Struct({ ${propertyRuntimes} })`,
             code`{ ${propertyTypes} }`
           )
-        } else if (properties.length === 0 && indexSignatures.length === 1) {
+        }
+        if (properties.length === 0 && indexSignatures.length === 1) {
           const signature = indexSignatures[0]
-          result = makeFragments(
+          return makeFragments(
             code`Schema.Record(${signature.parameter.runtime}, ${signature.type.runtime})`,
             code`{ readonly [x: ${signature.parameter.Type}]: ${signature.type.Type} }`
           )
-        } else {
-          const indexRuntimes = join(
-            indexSignatures.map((signature) =>
-              code`Schema.Record(${signature.parameter.runtime}, ${signature.type.runtime})`
-            ),
-            ", "
-          )
-          const indexTypes = indexSignatures.map((signature) =>
-            code`readonly [x: ${signature.parameter.Type}]: ${signature.type.Type}`
-          )
-          result = properties.length === 0
-            ? makeFragments(
-              code`Schema.StructWithRest(Schema.Struct({ ${propertyRuntimes} }), [${indexRuntimes}])`,
-              code`{ ${join(indexTypes, ", ")} }`
-            )
-            : makeFragments(
-              code`Schema.StructWithRest(Schema.Struct({ ${propertyRuntimes} }), [${indexRuntimes}])`,
-              join([code`{ ${propertyTypes} }`, ...indexTypes.map((indexType) => code`{ ${indexType} }`)], " & ")
-            )
         }
-        return result
+        const indexRuntimes = join(
+          indexSignatures.map((signature) =>
+            code`Schema.Record(${signature.parameter.runtime}, ${signature.type.runtime})`
+          ),
+          ", "
+        )
+        const indexTypes = indexSignatures.map((signature) =>
+          code`readonly [x: ${signature.parameter.Type}]: ${signature.type.Type}`
+        )
+        return makeFragments(
+          code`Schema.StructWithRest(Schema.Struct({ ${propertyRuntimes} }), [${indexRuntimes}])`,
+          properties.length === 0
+            ? code`{ ${join(indexTypes, ", ")} }`
+            : join([code`{ ${propertyTypes} }`, ...indexTypes.map((indexType) => code`{ ${indexType} }`)], " & ")
+        )
       }
       case "Union": {
         if (representation.options === undefined && representation.types.length === 0) {

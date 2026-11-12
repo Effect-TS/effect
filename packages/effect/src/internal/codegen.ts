@@ -274,7 +274,6 @@ function printImports(imports: ReadonlyArray<UsedImport | string>): ReadonlyArra
       else group.push(used)
     }
   }
-  const emitted = new Set<string>()
   for (const used of imports) {
     if (typeof used === "string") {
       lines.push(used)
@@ -290,11 +289,11 @@ function printImports(imports: ReadonlyArray<UsedImport | string>): ReadonlyArra
       continue
     }
     const key = JSON.stringify([input.module, input.attributes])
-    if (emitted.has(key)) continue
-    const group = groups.get(key)!
+    const group = groups.get(key)
+    if (group === undefined) continue
     const typeOnly = group.every((used) => !used.runtime)
     if (!typeOnly && !runtime) continue
-    emitted.add(key)
+    groups.delete(key)
     const specifiers = group.map(({ input, local, runtime }) =>
       `${typeOnly || runtime ? "" : "type "}${isIdentifier(input.imported) ? input.imported : literal(input.imported)}${
         input.imported === local ? "" : ` as ${local}`
@@ -313,7 +312,7 @@ export class Module {
   private readonly root = new ScopeState(this)
   private readonly declarations = new Map<Binding, Declaration>()
   private readonly imports = new Map<string, ImportBinding>()
-  private readonly provided = new Map<string, { readonly local: string; readonly binding: ImportBinding }>()
+  private readonly provided = new Map<string, ImportBinding>()
   private readonly sideEffects = new Set<string>()
   private readonly importOrder: Array<ImportBinding | string> = []
   private readonly body: Array<Fragment> = []
@@ -384,7 +383,7 @@ export class Module {
   provideImport(input: Import): Binding {
     const key = importKey(input)
     const existing = this.provided.get(key)
-    if (existing !== undefined && existing.local === input.local) return existing.binding
+    if (existing !== undefined && existing.import.local === input.local) return existing
     if (
       existing !== undefined || this.reserved.has(input.local) || this.root.taken.has(input.local) ||
       this.root.nested.has(input.local)
@@ -393,7 +392,7 @@ export class Module {
     }
     this.root.taken.add(input.local)
     const result = imported(input)
-    this.provided.set(key, { local: input.local, binding: result })
+    this.provided.set(key, result)
     return result
   }
 
@@ -442,7 +441,7 @@ export class Module {
             const key = importKey(input)
             const provided = this.provided.get(key)
             if (provided !== undefined) {
-              value = provided.local
+              value = provided.import.local
             } else {
               let used = imports.get(key)
               if (used === undefined) {
@@ -502,23 +501,19 @@ export class Module {
       body: this.body.map(render)
     }
     const orderedImports: Array<string | UsedImport> = []
-    const emitted = new Set<string>()
     for (const entry of this.importOrder) {
       if (typeof entry === "string") {
         orderedImports.push(entry)
       } else {
         const key = importKey(entry.import)
         const used = imports.get(key)
-        if (used !== undefined && !emitted.has(key) && (!used.runtime || !entry.import.typeOnly)) {
-          emitted.add(key)
+        if (used !== undefined && (!used.runtime || !entry.import.typeOnly)) {
           orderedImports.push(used)
+          imports.delete(key)
         }
       }
     }
-    for (const [key, used] of imports) {
-      if (!emitted.has(key)) orderedImports.push(used)
-    }
-    return { ...output, imports: printImports(orderedImports) }
+    return { ...output, imports: printImports([...orderedImports, ...imports.values()]) }
   }
 
   print(): string {

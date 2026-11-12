@@ -59,10 +59,6 @@ type MultipartSchemaRefs = HttpApiMultipartSchemaRefs | { readonly kind: "client
  * @since 4.0.0
  */
 export function make() {
-  return makeWithRepresentation()
-}
-
-function makeWithRepresentation() {
   const store = Object.create(null) as Record<string, JsonSchema.JsonSchema>
 
   function addSchema(name: string, schema: JsonSchema.JsonSchema): string {
