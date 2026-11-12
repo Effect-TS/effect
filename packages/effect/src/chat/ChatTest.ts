@@ -15,6 +15,7 @@
  * @stability unstable
  * @since 4.1.5
  */
+import * as Clock from "../Clock.ts"
 import * as Context from "../Context.ts"
 import * as DateTime from "../DateTime.ts"
 import * as Duration from "../Duration.ts"
@@ -25,7 +26,7 @@ import * as Option from "../Option.ts"
 import * as Schema from "../Schema.ts"
 import * as Stream from "../Stream.ts"
 import * as Chat from "./Chat.ts"
-import type { ChatAdapter, Descriptor, File, Posted } from "./ChatAdapter.ts"
+import type { ChatAdapter, Descriptor, File, NativeStream, Posted } from "./ChatAdapter.ts"
 import { checkMessageLength, Registry, retrySafe } from "./ChatAdapter.ts"
 import type { Capability, ChatErrorReason } from "./ChatError.ts"
 import {
@@ -100,6 +101,13 @@ export interface Call {
  *   call the adapter received.
  * - `failNext` makes the next `times` calls of `op` fail with `reason`.
  *   `landed` makes the write happen anyway, which is what `uncertain` means.
+ *   The native stream's ops are `nativeStream.start`, `nativeStream.append`
+ *   and `nativeStream.stop`.
+ * - `clickStop` is a user clicking stop on a native stream. It closes
+ *   nothing, as on Slack: the stream keeps taking text, and
+ *   `NativeStream.stop` then reports `stopped: true`.
+ * - `closeStream` closes a native stream from outside, so the next append
+ *   gives `closed`, or `stopped` after a click.
  *
  * @stability unstable
  * @category services
@@ -124,6 +132,8 @@ export class ChatTest extends Context.Service<ChatTest, {
     readonly times?: number | undefined
     readonly landed?: boolean | undefined
   }) => Effect.Effect<void>
+  readonly clickStop: (messageId: string) => Effect.Effect<void>
+  readonly closeStream: (messageId: string) => Effect.Effect<void>
 }>()("effect/chat/ChatTest") {}
 
 // -----------------------------------------------------------------------------
@@ -141,8 +151,25 @@ const allCapabilities: ReadonlyArray<Capability> = [
   "startThread",
   "getThread",
   "opener",
-  "getUser"
+  "getUser",
+  "nativeStream"
 ]
+
+/** Counts code points. */
+const codePoints = (markdown: string): number => {
+  let count = 0
+  for (const _ of markdown) count++
+  return count
+}
+
+interface StoredStream {
+  readonly startedAt: number
+  open: boolean
+  clicked: boolean
+}
+
+/** An append holds back an unclosed `<` tail, as Slack does, up to this many characters. */
+const heldBound = 100
 
 interface StoredThread {
   readonly thread: ChatThread.ChatThread
@@ -200,19 +227,25 @@ const makeFake = (options: {
   readonly selfId: string
   readonly capabilities: ReadonlyArray<Capability>
   readonly limits: Partial<Descriptor["limits"]>
+  readonly measure: (markdown: string) => number
 }) => {
   const { platform, selfId } = options
+  const capabilities = new Set(options.capabilities)
+  const messageLength = options.limits.messageLength ?? 4000
   const descriptor: Descriptor = {
     platform,
-    capabilities: new Set(options.capabilities.filter((capability) => capability !== "nativeStream")),
+    capabilities,
+    measure: options.measure,
     limits: {
-      messageLength: 4000,
+      messageLength,
       filesPerMessage: 10,
       uploadBytes: 10 * 1024 * 1024,
       minWriteInterval: Duration.zero,
+      ...(capabilities.has("nativeStream") ? { streamLength: messageLength, streamAge: Duration.minutes(10) } : {}),
       ...options.limits
     }
   }
+  const streams = new Map<string, StoredStream>()
   const threads = new Map<string, StoredThread>()
   const messages = new Map<string, StoredMessage>()
   const order: Array<string> = []
@@ -335,9 +368,10 @@ const makeFake = (options: {
   const attempt = <A>(
     call: Omit<Call, "outcome">,
     needs: ReadonlyArray<Capability>,
-    body: Effect.Effect<A, ChatError>
+    body: Effect.Effect<A, ChatError>,
+    retries: boolean = true
   ): Effect.Effect<A, ChatError> =>
-    retrySafe(Effect.suspend(() => {
+    (retries ? retrySafe : <X>(effect: X) => effect)(Effect.suspend(() => {
       const record = (outcome: Call["outcome"]) => calls.push({ ...call, outcome })
       const missing = needs.find((capability) => !descriptor.capabilities.has(capability))
       if (missing !== undefined) {
@@ -356,8 +390,98 @@ const makeFake = (options: {
       )
     }))
 
+  /** Whether a native stream is open on the message, closing it once it is past `limits.streamAge`. */
+  const isOpen = (messageId: string) =>
+    Effect.map(Clock.currentTimeMillis, (now) => {
+      const stream = streams.get(messageId)
+      if (stream === undefined || !stream.open) return false
+      const age = descriptor.limits.streamAge
+      if (age !== undefined && now - stream.startedAt >= Duration.toMillis(age)) stream.open = false
+      return stream.open
+    })
+
+  const streamLength = () => descriptor.limits.streamLength ?? descriptor.limits.messageLength
+
+  const nativeStream: NativeStream = {
+    start: (thread, content) =>
+      attempt(
+        { op: "nativeStream.start", thread, markdown: content.markdown },
+        content.replyTo === undefined ? ["nativeStream"] : ["nativeStream", "replyTo"],
+        Effect.gen(function*() {
+          yield* findThread("nativeStream.start", thread)
+          yield* checkMessageLength(descriptor, "nativeStream.start", content.markdown)
+          if (descriptor.measure(content.markdown) > streamLength()) {
+            return yield* fail("nativeStream.start", new TooLarge({ detail: "msg_too_long" }))
+          }
+          let replyTo: ReplyTo | undefined
+          if (content.replyTo !== undefined) {
+            const target = yield* findMessage("nativeStream.start", thread, content.replyTo.messageId)
+            replyTo = { messageId: target.id, authorId: target.authorId }
+          }
+          const stored = yield* store({
+            thread,
+            authorId: selfId,
+            isBot: true,
+            isSelf: true,
+            text: content.markdown,
+            mentions: [],
+            replyTo,
+            attachments: []
+          })
+          streams.set(stored.id, { startedAt: yield* Clock.currentTimeMillis, open: true, clicked: false })
+          return { id: stored.id, thread, timestamp: stored.timestamp } satisfies Posted
+        })
+      ),
+    append: (thread, messageId, markdown, appendOptions) =>
+      attempt(
+        { op: "nativeStream.append", thread, messageId, markdown },
+        ["nativeStream"],
+        Effect.gen(function*() {
+          const message = yield* findMessage("nativeStream.append", thread, messageId)
+          const stream = streams.get(message.id)
+          if (stream === undefined || !(yield* isOpen(message.id))) {
+            return { state: stream?.clicked === true ? "stopped" as const : "closed" as const, held: 0 }
+          }
+          let held = 0
+          const open = markdown.lastIndexOf("<")
+          if (appendOptions?.flush !== true && open !== -1 && !markdown.includes(">", open)) {
+            held = markdown.length - open
+            if (held > heldBound) held = 0
+          }
+          const sent = markdown.slice(0, markdown.length - held)
+          if (descriptor.measure(message.text + sent) > streamLength()) {
+            return yield* fail("nativeStream.append", new TooLarge({ detail: "msg_too_long" }))
+          }
+          message.text += sent
+          return { state: "open" as const, held }
+        }),
+        false
+      ),
+    stop: (thread, messageId) =>
+      attempt(
+        { op: "nativeStream.stop", thread, messageId },
+        ["nativeStream"],
+        Effect.gen(function*() {
+          const message = yield* findMessage("nativeStream.stop", thread, messageId)
+          const stream = streams.get(message.id)
+          if (stream === undefined || !(yield* isOpen(message.id))) return { stopped: false }
+          stream.open = false
+          return { stopped: stream.clicked }
+        })
+      )
+  }
+
+  const streamFor = (op: string, messageId: string) =>
+    Effect.suspend(() => {
+      const stream = streams.get(messageId)
+      return stream === undefined
+        ? Effect.die(new Error("ChatTest." + op + ": no native stream " + messageId))
+        : Effect.succeed(stream)
+    })
+
   const adapter: ChatAdapter = {
     descriptor,
+    ...(capabilities.has("nativeStream") ? { nativeStream } : {}),
     post: (thread, content) => {
       const files = content.files ?? []
       const needs: Array<Capability> = []
@@ -401,6 +525,9 @@ const makeFake = (options: {
         Effect.gen(function*() {
           const message = yield* findMessage("edit", thread, messageId)
           if (!message.isSelf) return yield* fail("edit", new Forbidden({ detail: "cant_update_message" }))
+          if (yield* isOpen(message.id)) {
+            return yield* fail("edit", new InvalidRequest({ detail: "streaming_state_conflict" }))
+          }
           yield* checkMessageLength(descriptor, "edit", content.markdown)
           message.text = content.markdown
           message.mentions = []
@@ -413,6 +540,9 @@ const makeFake = (options: {
         Effect.gen(function*() {
           const message = yield* findMessage("delete", thread, messageId)
           if (!message.isSelf) return yield* fail("delete", new Forbidden({ detail: "cant_delete_message" }))
+          if (yield* isOpen(message.id)) {
+            return yield* fail("delete", new InvalidRequest({ detail: "cant_delete_message" }))
+          }
           messages.delete(message.id)
         })
       ),
@@ -567,7 +697,9 @@ const makeFake = (options: {
         const queue = faults.get(op) ?? []
         queue.push({ reason, remaining: failOptions?.times ?? 1, landed: failOptions?.landed ?? false })
         faults.set(op, queue)
-      })
+      }),
+    clickStop: (messageId) => Effect.map(streamFor("clickStop", messageId), (stream) => void (stream.clicked = true)),
+    closeStream: (messageId) => Effect.map(streamFor("closeStream", messageId), (stream) => void (stream.open = false))
   })
 
   return { adapter, service }
@@ -584,10 +716,17 @@ const makeFake = (options: {
  * **Details**
  *
  * - The platform defaults to `test` and the bot's user id to `bot`.
- * - Every capability is on by default, except `nativeStream`: the fake has no
- *   native stream yet.
- * - The default limits are 4000 characters per message, 10 files of up to
- *   10 MiB, and no write interval.
+ * - Every capability is on by default.
+ * - `measure` defaults to a count of code points, and the fake checks every
+ *   length with it.
+ * - The default limits are 4000 per message, 10 files of up to 10 MiB, and no
+ *   write interval. With `nativeStream` on, a stream takes up to
+ *   `messageLength` and lasts 10 minutes.
+ * - The native stream behaves the way Slack's was found to. An append past
+ *   `limits.streamLength` fails with `TooLarge` and adds nothing. A stream
+ *   past `limits.streamAge`, on `Clock`, is closed. An append without
+ *   `flush` holds back an unclosed `<` tail of up to 100 characters. An open
+ *   stream refuses `edit` and `delete`.
  * - Two layers merged with different platforms share one `Chat`, so routing
  *   can be tested. The `ChatTest` service in context is the last one merged.
  *
@@ -600,6 +739,7 @@ export const layer = (options?: {
   readonly selfId?: string | undefined
   readonly capabilities?: ReadonlyArray<Capability> | undefined
   readonly limits?: Partial<Descriptor["limits"]> | undefined
+  readonly measure?: ((markdown: string) => number) | undefined
 }): Layer.Layer<Chat.Chat | Registry | ChatTest> =>
   Layer.effect(
     ChatTest,
@@ -609,7 +749,8 @@ export const layer = (options?: {
         platform: options?.platform ?? "test",
         selfId: options?.selfId ?? "bot",
         capabilities: options?.capabilities ?? allCapabilities,
-        limits: options?.limits ?? {}
+        limits: options?.limits ?? {},
+        measure: options?.measure ?? codePoints
       })
       yield* registry.register(adapter)
       return service
@@ -1032,6 +1173,25 @@ const findIn = (messages: ReadonlyArray<ChatMessage.ChatMessage>, id: string) =>
 
 const mentionLike = "@everyone @here <@U0000> <!here> <!channel> <@&1> <#C0000>"
 
+/** Text a platform takes in any quantity: no emoji, which Slack limits separately. */
+const measureFitsBlock = "a < b & c > d\n\n```ts\nconst x = 1 < 2\n```\n\n\u{1D400}\u{1D401} caf\u00e9\n\n"
+
+const measureSamples: ReadonlyArray<string> = [
+  "",
+  "x",
+  "hello world",
+  "<",
+  "a < b",
+  "<@U0000>",
+  "&amp; > &",
+  "```\ncode < 1\n```\n",
+  "```",
+  "\u{1D400}\u{1D401}",
+  "\u{1F600}\u{1F44D}\u{1F3FD}",
+  ":grinning:",
+  "caf\u00e9"
+]
+
 interface ConformanceOptions {
   readonly platform: string
   readonly thread: ChatThread.ChatThread
@@ -1168,6 +1328,42 @@ export const conformance = (options: {
       t.chat.post(t.thread, { markdown: "x".repeat(t.descriptor.limits.messageLength + 1) }),
       (posted) => t.created.push({ thread: t.thread, id: posted.id })
     ))
+
+  rule("descriptor/measureFits", [], (t) =>
+    Effect.gen(function*() {
+      const { measure } = t.descriptor
+      const limit = t.descriptor.limits.messageLength
+      const largest = (make: (n: number) => string) => {
+        let low = 0
+        let high = limit
+        while (low < high) {
+          const middle = Math.ceil((low + high) / 2)
+          if (measure(make(middle)) <= limit) low = middle
+          else high = middle - 1
+        }
+        return make(low)
+      }
+      const blocks = largest((n) => measureFitsBlock.repeat(n))
+      const markdown = largest((n) => blocks + "x".repeat(n))
+      yield* t.post({ markdown })
+    }))
+
+  rule("descriptor/measureAdds", [], (t) =>
+    Effect.gen(function*() {
+      const { measure } = t.descriptor
+      for (const a of measureSamples) {
+        for (const b of measureSamples) {
+          yield* t.check(
+            measure(a + b) <= measure(a) + measure(b),
+            "measure(a + b) <= measure(a) + measure(b)",
+            () => JSON.stringify(a) + " + " + JSON.stringify(b) + " measures " + measure(a + b)
+          )
+        }
+      }
+      const letters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+      yield* t.check(measure(letters) === letters.length, "ASCII letters measured at one each", () =>
+        letters.length + " letters measure " + measure(letters))
+    }))
 
   rule("post/noMentions", ["fetchMessage"], (t) =>
     Effect.gen(function*() {
@@ -1346,7 +1542,54 @@ export const conformance = (options: {
       (opener) => t.check(Option.isNone(opener), "no opener", () => "an opener")
     ))
 
-  for (const capability of [...allCapabilities, "nativeStream" as const]) {
+  rule("descriptor/streamFitsMessage", ["nativeStream"], (t) => {
+    const { messageLength, streamLength } = t.descriptor.limits
+    return t.check(
+      streamLength !== undefined && streamLength <= messageLength,
+      "limits.streamLength at most " + messageLength,
+      () => "limits.streamLength " + streamLength
+    )
+  })
+
+  const openStream = Effect.fnUntraced(function*(t: Tester, markdown: string) {
+    const registry = yield* Registry
+    const adapter = yield* t.call(registry.get(platform))
+    const native = adapter.nativeStream!
+    const event = yield* t.userPosts()
+    const posted = yield* t.call(native.start(t.thread, { markdown, recipient: event.message.author.id }))
+    t.created.push({ thread: t.thread, id: posted.id })
+    return { native, posted }
+  })
+
+  rule("nativeStream/concatenates", ["nativeStream", "fetchMessage"], (t) =>
+    Effect.gen(function*() {
+      const first = conformanceText(t.rule) + " one"
+      const { native, posted } = yield* openStream(t, first)
+      const appended = yield* t.call(native.append(t.thread, posted.id, " two", { flush: true })).pipe(
+        Effect.ensuring(Effect.ignore(native.stop(t.thread, posted.id, { end: "done" })))
+      )
+      yield* t.check(appended.state === "open" && appended.held === 0, "an open append holding nothing", () =>
+        appended.state + " holding " + appended.held)
+      const message = yield* t.call(t.chat.fetchMessage(t.thread, posted.id))
+      yield* t.check(message.text === first + " two", JSON.stringify(first + " two"), () =>
+        JSON.stringify(message.text))
+    }))
+
+  rule("nativeStream/appendAfterStop", ["nativeStream", "fetchMessage"], (t) =>
+    Effect.gen(function*() {
+      const first = conformanceText(t.rule)
+      const { native, posted } = yield* openStream(t, first)
+      yield* t.call(native.stop(t.thread, posted.id, { end: "done" }))
+      const appended = yield* t.call(native.append(t.thread, posted.id, " after", { flush: true }))
+      const message = yield* t.call(t.chat.fetchMessage(t.thread, posted.id))
+      yield* t.check(
+        appended.state === "closed" && message.text === first,
+        "closed, with the text unchanged",
+        () => appended.state + " with " + JSON.stringify(message.text)
+      )
+    }))
+
+  for (const capability of allCapabilities) {
     rule("unsupported/" + capability, [], (t) => t.probe(capability))
   }
 
@@ -1370,7 +1613,8 @@ export const conformance = (options: {
         yield* t.post({})
         const elapsed = DateTime.distance(start, yield* DateTime.now)
         yield* t.check(
-          Duration.isGreaterThanOrEqualTo(elapsed, retryAfter),
+          // One millisecond of slack: a timer and the clock round to whole milliseconds apart.
+          Duration.toMillis(elapsed) + 1 >= Duration.toMillis(retryAfter),
           "a retry after " + Duration.format(retryAfter),
           () => "a retry after " + Duration.format(elapsed)
         )

@@ -1,6 +1,6 @@
 import { assert, describe, it } from "@effect/vitest"
 import { Effect, Exit, Option } from "effect"
-import { ChatAdapter, ChatError, ChatHandler, ChatTest, ChatThread } from "effect/chat"
+import { Chat, ChatAdapter, ChatError, ChatHandler, ChatTest, ChatThread } from "effect/chat"
 
 const kinds = { "@": "user", "@&": "role", "#": "channel", "!": "broadcast" } as const
 
@@ -31,7 +31,7 @@ const ruleNames = Object.keys(ChatTest.conformance({
   failNext: () => Effect.void
 }))
 
-const capabilities = ChatError.Capability.literals.filter((capability) => capability !== "nativeStream")
+const capabilities = ChatError.Capability.literals
 
 const runRule = (rule: string, options?: Parameters<typeof ChatTest.layer>[0]) =>
   Effect.flatMap(suite, (rules) => rules[rule]).pipe(Effect.provide(ChatTest.layer(options)))
@@ -153,4 +153,19 @@ describe("ChatTest", () => {
       )))
       assert.deepStrictEqual(received, ["MessageCreated", "self MessageCreated"])
     }).pipe(Effect.provide(ChatTest.layer())))
+
+  it.effect("checks lengths with the configured measure", () =>
+    Effect.gen(function*() {
+      const test = yield* ChatTest.ChatTest
+      const chat = yield* Chat.Chat
+      const thread = yield* test.makeThread()
+      yield* chat.post(thread, { markdown: "x".repeat(10) })
+      const exit = yield* Effect.exit(chat.post(thread, { markdown: "<".repeat(3) }))
+      assert.isTrue(Exit.isFailure(exit))
+      const error = Exit.isFailure(exit) ? Option.getOrUndefined(Exit.findErrorOption(exit)) : undefined
+      assert.strictEqual(error?.reason._tag, "TooLarge")
+    }).pipe(Effect.provide(ChatTest.layer({
+      limits: { messageLength: 10 },
+      measure: (markdown) => markdown.length + 3 * (markdown.split("<").length - 1)
+    }))))
 })
