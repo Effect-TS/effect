@@ -316,16 +316,23 @@ export const makeHost = (
       ? "modal"
       : true
 
+  /**
+   * Records the showing of an open dialog that has none, such as a server-rendered `open` adopted by
+   * hydration, so the close that ends it, the host's or the browser's, is attributed to it. A dialog
+   * whose latest record is still open already has one, so repeated reconciliation adds nothing.
+   */
+  const adoptShowing = (dialog: HTMLDialogElement) => {
+    if (!dialog.open) return
+    const list = showingsOf(dialog)
+    const latest = list.at(-1)
+    if (latest === undefined || latest.closed) list.push({ modeChange: false, closed: false })
+  }
+
   const closeDialog = (dialog: HTMLDialogElement, asModeChange: boolean) => {
     if (!dialog.open) return
     modals.delete(dialog)
-    // A showing the host didn't start, such as a server-rendered `open`, gets its record now.
-    const list = showingsOf(dialog)
-    let current = list.at(-1)
-    if (current === undefined || current.closed) {
-      current = { modeChange: false, closed: false }
-      list.push(current)
-    }
+    adoptShowing(dialog)
+    const current = showingsOf(dialog).at(-1)!
     current.closed = true
     current.modeChange = asModeChange
     dialog.close()
@@ -333,6 +340,7 @@ export const makeHost = (
 
   /** Shows `dialog` as `want` says, from what it shows now. The caller checks `modal` needs it connected. */
   const showDialog = (dialog: HTMLDialogElement, want: boolean | "modal") => {
+    adoptShowing(dialog)
     const current = shownAs(dialog)
     if (current === want) return
     if (want === false) return closeDialog(dialog, false)

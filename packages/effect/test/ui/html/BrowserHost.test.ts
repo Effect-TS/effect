@@ -1006,6 +1006,27 @@ describe("BrowserHost", { concurrent: false }, () => {
       }
     })
 
+    it("reconciling a dialog that's already open records its showing once", () => {
+      const host = BrowserHost.makeHost(document)
+      const dialog = document.body.appendChild(document.createElement("dialog"))
+      dialog.setAttribute("open", "")
+      const seen: Array<unknown> = []
+      try {
+        host.setEvents(dialog, { close: "closed" }, (_, handler) => seen.push(handler), {})
+        for (let i = 0; i < 3; i++) {
+          host.setProp(dialog, "open", true)
+          host.commit?.()
+        }
+        // One record: the browser's close of that showing is the app's. A second would make it stale.
+        dialog.open = false
+        dialog.dispatchEvent(new Event("close"))
+        expect(seen).toEqual(["closed"])
+      } finally {
+        host.dispose()
+        dialog.remove()
+      }
+    })
+
     it.effect("nested modals open outer first, so the inner one is on top", () =>
       Effect.gen(function*() {
         const { calls } = yield* dialogCalls
