@@ -1,0 +1,35 @@
+{
+  "case": "A file upload whose comment mentions the bot",
+  "provenance": {
+    "source": "Slack Events API deliveries to the janitor2 app (A0CCHBHDK7X), logged by janitor production's EFF-3709 fixture capture (Effect-TS/janitor a751115)",
+    "channel": "chat-testing-123 (C0CH1LGJ4F3), a private channel",
+    "author": "the janitor2 bot user (U0CCLMD4S1L), through the bot token",
+    "recordedAt": "2026-11-12T20:54:52.189Z",
+    "body": "The delivered JSON string, verbatim apart from the envelope token member, which the capture removes, and the members listed in a delivery's scrubbed, whose URLs are replaced",
+    "headers": "The capture's allowlist. The signature is never logged"
+  },
+  "actions": [
+    {
+      "action": "files.completeUploadExternal",
+      "ts": "1794516902.053009",
+      "file": "F0CJ4FGJTPS"
+    }
+  ],
+  "deliveries": [
+    {
+      "loggedAt": "2026-11-12T20:55:02.572Z",
+      "headers": {
+        "x-slack-request-timestamp": "1794516902",
+        "content-type": "application/json"
+      },
+      "body": "{\"team_id\":\"T05479Z6JBW\",\"context_team_id\":\"T05479Z6JBW\",\"context_enterprise_id\":null,\"api_app_id\":\"A0CCHBHDK7X\",\"event\":{\"type\":\"message\",\"text\":\"file for <@U0CCLMD4S1L> [EFF-3694 20:55:01]\",\"files\":[{\"id\":\"F0CJ4FGJTPS\",\"created\":1794516901,\"timestamp\":1794516901,\"mimetype\":\"text\\/plain\",\"filetype\":\"text\",\"pretty_type\":\"Plain Text\",\"user\":\"U0CCLMD4S1L\",\"user_team\":\"T05479Z6JBW\",\"editable\":true,\"size\":13,\"mode\":\"snippet\",\"is_external\":false,\"external_type\":\"\",\"is_public\":false,\"public_url_shared\":false,\"display_as_bot\":false,\"username\":\"\",\"name\":\"fixture.txt\",\"title\":\"fixture.txt\",\"is_modified_by_ai\":false,\"url_private\":\"https:\\/\\/scrubbed.invalid\\/url_private\",\"url_private_download\":\"https:\\/\\/scrubbed.invalid\\/url_private_download\",\"permalink\":\"https:\\/\\/scrubbed.invalid\\/permalink\",\"permalink_public\":\"https:\\/\\/scrubbed.invalid\\/permalink_public\",\"edit_link\":\"https:\\/\\/scrubbed.invalid\\/edit_link\",\"preview\":\"fixture file\\n\",\"preview_highlight\":\"<div class=\\\"CodeMirror cm-s-default CodeMirrorServer\\\">\\n<div class=\\\"CodeMirror-code\\\">\\n<div><pre>fixture file<\\/pre><\\/div>\\n<div><pre><\\/pre><\\/div>\\n<\\/div>\\n<\\/div>\\n\",\"lines\":2,\"lines_more\":0,\"preview_is_truncated\":false,\"skipped_shares\":true,\"has_rich_preview\":false,\"file_access\":\"visible\"}],\"upload\":true,\"user\":\"U0CCLMD4S1L\",\"display_as_bot\":false,\"blocks\":[{\"type\":\"rich_text\",\"block_id\":\"h2N+\",\"elements\":[{\"type\":\"rich_text_section\",\"elements\":[{\"type\":\"text\",\"text\":\"file for \"},{\"type\":\"user\",\"user_id\":\"U0CCLMD4S1L\"},{\"type\":\"text\",\"text\":\" [EFF-3694 20:55:01]\"}]}]}],\"ts\":\"1794516902.053009\",\"bot_id\":\"B0CCQH77VA5\",\"channel\":\"C0CH1LGJ4F3\",\"subtype\":\"file_share\",\"event_ts\":\"1794516902.053009\",\"channel_type\":\"group\"},\"type\":\"event_callback\",\"event_id\":\"Ev0CH3T4TU1H\",\"event_time\":1794516902,\"authorizations\":[{\"enterprise_id\":null,\"team_id\":\"T05479Z6JBW\",\"user_id\":\"U0CCLMD4S1L\",\"is_bot\":true,\"is_enterprise_install\":false}],\"is_ext_shared_channel\":false,\"event_context\":\"4-eyJldCI6Im1lc3NhZ2UiLCJ0aWQiOiJUMDU0NzlaNkpCVyIsImFpZCI6IkEwQ0NIQkhESzdYIiwiY2lkIjoiQzBDSDFMR0o0RjMifQ\"}",
+      "scrubbed": [
+        "edit_link",
+        "permalink",
+        "permalink_public",
+        "url_private",
+        "url_private_download"
+      ]
+    }
+  ]
+}
