@@ -9,6 +9,7 @@
 import { Effect, Layer } from "effect"
 // Only the `effect/ui/html` paths need the DOM lib types. `effect/ui` and
 // `effect/ui/testing` are host-neutral.
+import { FetchHttpClient } from "effect/http"
 import { BrowserHost } from "effect/ui/html"
 // Registers the HTML elements once for the app, so every `view` has
 // `h.form`, `h.button` and so on. Importing `effect/ui/html` alone doesn't
@@ -23,24 +24,26 @@ import "effect/ui/html/register"
 //
 // - `fixtures/notes/domain/Note.ts`: the Schema, the errors and `NotesTag`
 // - `fixtures/notes/services/Notes.ts`: the service all the I/O goes through
-// - `fixtures/notes/components/NoteEditor.ts`: the component and its command
-import { NoteEditor, SaveNote } from "./fixtures/notes/components/NoteEditor.ts"
+// - `fixtures/notes/components/NoteEditor.ts`: the component, its command
+//   and the Layers it provides for itself
+import { NoteEditor } from "./fixtures/notes/components/NoteEditor.ts"
 import type { Note } from "./fixtures/notes/domain/Note.ts"
-import { Notes } from "./fixtures/notes/services/Notes.ts"
 
 const scratchpad: Note = { id: "scratchpad", title: "Scratchpad", body: "" }
 
 // `mount` returns a Layer, and the tree stays mounted for as long as that
 // Layer is built. The component's requirements become the Layer's, so this
-// doesn't compile until `SaveNote` is provided. `SaveNote.layer` needs
-// `Notes` in turn, and the entry module is where the app picks the
-// implementation.
+// doesn't compile until they are all provided.
+//
+// `NoteEditor` provides its own domain Layers, `SaveNote` and `Notes`. An
+// entry module provides only platform Layers: the HTTP client here, and the
+// Router or a logger in a larger app. Domain Layers don't belong here.
 //
 // A module that others import wraps the mount in `Layer.suspend`, so that
 // `document` is read when the Layer is built and not on import.
-const NoteEditorLive = BrowserHost.mount(NoteEditor, { note: scratchpad }, document.getElementById("app")!).pipe(
-  Layer.provide(SaveNote.layer.pipe(Layer.provide(Notes.layerHttp)))
+const Main = BrowserHost.mount(NoteEditor, { note: scratchpad }, document.getElementById("app")!).pipe(
+  Layer.provide(FetchHttpClient.layer)
 )
 
 // Launching the Layer mounts the editor and keeps it mounted.
-Layer.launch(NoteEditorLive).pipe(Effect.runFork)
+Layer.launch(Main).pipe(Effect.runFork)

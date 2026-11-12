@@ -1,20 +1,25 @@
 import { Context, Effect, Layer, Schema } from "effect"
-import { FetchHttpClient, HttpClient, HttpClientRequest, HttpClientResponse } from "effect/http"
+import { HttpClient, HttpClientRequest, HttpClientResponse } from "effect/http"
 import { Note, NoteNotFound, NoteSaveError } from "../domain/Note.ts"
 
 // All of the UI's I/O goes through this service. Commands and loader reads
-// capture it, so components never name it and tests swap the Layer.
+// capture it, so a component's `update` and `view` never name it.
 export class Notes extends Context.Service<Notes, {
   readonly list: Effect.Effect<ReadonlyArray<Note>>
   get(id: string): Effect.Effect<Note, NoteNotFound>
   save(note: Note): Effect.Effect<Note, NoteSaveError>
 }>()("app/Notes") {
-  // The browser implementation, which calls the app's own JSON API.
+  // The app's implementation, which calls its own JSON API. It requires only
+  // an `HttpClient`. That is a platform Layer, so the entry module provides
+  // it: `FetchHttpClient` in the browser, a client that reaches the API on
+  // the server, and a fake in a test of the whole app.
   static readonly layerHttp = Layer.effect(
     Notes,
     Effect.gen(function*() {
       const client = (yield* HttpClient.HttpClient).pipe(
-        HttpClient.mapRequest(HttpClientRequest.prependUrl("/api")),
+        // `mapRequestInput` runs before the provided client's own request
+        // transforms, so one that adds a base URL sees `/api/notes`.
+        HttpClient.mapRequestInput(HttpClientRequest.prependUrl("/api")),
         HttpClient.filterStatusOk
       )
 
@@ -41,11 +46,11 @@ export class Notes extends Context.Service<Notes, {
 
       return Notes.of({ list, get, save })
     })
-  ).pipe(Layer.provide(FetchHttpClient.layer))
+  )
 
-  // An in-memory implementation, for tests and for rendering on a server that
-  // holds the data itself. A note with an empty title can't be saved, which
-  // gives tests a failure to exercise.
+  // An in-memory implementation, for tests of one command or component and
+  // for the server's own store. A note with an empty title can't be saved,
+  // which gives tests a failure to exercise.
   static readonly layerMemory = (seed: ReadonlyArray<Note>) =>
     Layer.sync(Notes, () => {
       const notes = new Map(seed.map((note) => [note.id, note]))

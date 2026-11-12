@@ -5,12 +5,12 @@
  * entry module of the server-rendered app, served as `/client.js`.
  */
 import { Effect } from "effect"
+import { FetchHttpClient } from "effect/http"
 import { Router } from "effect/ui"
 import { BrowserHost, BrowserRouter } from "effect/ui/html"
 // oxlint-disable-next-line no-unassigned-import
 import "effect/ui/html/register"
 import { App } from "./fixtures/App.ts"
-import { Notes } from "./fixtures/notes/services/Notes.ts"
 import { AppRoute } from "./fixtures/routes.ts"
 
 // Mount the same component with the same props, plus the server's state.
@@ -32,7 +32,7 @@ const hydrate = Effect.gen(function*() {
   return yield* Effect.never
 }).pipe(
   Effect.scoped,
-  Effect.provide([BrowserRouter.layer({ routes: AppRoute }), Notes.layerHttp])
+  Effect.provide([BrowserRouter.layer({ routes: AppRoute }), FetchHttpClient.layer])
 )
 
 Effect.runFork(hydrate)

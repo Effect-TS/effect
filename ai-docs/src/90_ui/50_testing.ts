@@ -8,8 +8,9 @@
 // @vitest-environment happy-dom
 import { assert, describe, it } from "@effect/vitest"
 import { Effect, Layer } from "effect"
+import { HttpClient, HttpClientResponse } from "effect/http"
 import { TestClock } from "effect/testing"
-import { Router } from "effect/ui"
+import { Component, Router } from "effect/ui"
 import { HtmlQuery, ssr } from "effect/ui/html/testing"
 // Tests render views, so they register the HTML elements too. An app with
 // many test files does it once, in a Vitest setup file.
@@ -19,7 +20,7 @@ import { Query, Story, TestHost } from "effect/ui/testing"
 // One file here, to read top to bottom. In an app each `describe` sits next
 // to what it tests: `notes/components/NoteEditor.test.ts` and `App.test.ts`.
 import { App } from "./fixtures/App.ts"
-import { NoteEditor, NoteEditorEvents, SaveNote } from "./fixtures/notes/components/NoteEditor.ts"
+import { NoteEditor, NoteEditorEvents, NoteEditorNoDeps, SaveNote } from "./fixtures/notes/components/NoteEditor.ts"
 import { type Note, NoteSaveError } from "./fixtures/notes/domain/Note.ts"
 import { Notes } from "./fixtures/notes/services/Notes.ts"
 import { AppRoute } from "./fixtures/routes.ts"
@@ -82,30 +83,74 @@ it.layer(SaveNote.layer.pipe(Layer.provideMerge(Notes.layerMemory([note]))), { b
 )
 
 // ---------------------------------------------------------------------------
-// Runtime: anything that crosses a child slot, a Layer or the Router.
+// Runtime: one component on `TestHost`, with the Layers the test picks.
 // ---------------------------------------------------------------------------
 
-// `Router.memory` is the Router for tests. The app's own requirements are
-// provided as in production, except that `Notes` is the in-memory fake.
-// Build fresh services for each test so edits and navigation cannot leak.
+// `NoteEditor` already provides the app's Layers, and an inner provide wins
+// over an outer one. So a test starts from `NoteEditorNoDeps` and provides
+// its own: the real command over the in-memory `Notes`.
+// Build fresh services for each test so edits cannot leak.
+const NoteEditorTest = NoteEditorNoDeps.pipe(Component.provide(SaveNote.layer))
+
+it.layer(Layer.mergeAll(Notes.layerMemory([note]), TestHost.layer()), { buildPerTest: true })(
+  "NoteEditor on TestHost",
+  (it) => {
+    it.effect("autosaves an edit", () =>
+      Effect.gen(function*() {
+        const notes = yield* Notes
+        const root = yield* TestHost.mount(NoteEditorTest, { note })
+        Query.fire(root.get(body), "input", { value: edited.body })
+        // `settle` drains Commands, fetches, Layer builds and the render flush.
+        yield* TestHost.settle
+        // The TestClock owns time. Adjusting it fires the autosave Subscription.
+        yield* TestClock.adjust("2 seconds")
+        yield* TestHost.settle
+        assert.deepStrictEqual(yield* notes.get(note.id), edited)
+        assert.deepStrictEqual(root.emitted, [NoteEditorEvents.make({ _tag: "Saved", note: edited })])
+      }))
+  }
+)
+
+// ---------------------------------------------------------------------------
+// Runtime: the whole app, across child slots, Layers and the Router.
+// ---------------------------------------------------------------------------
+
+// The app is tested as it ships, so its components keep their own domain
+// Layers. The test provides what an entry module provides. `Router.memory`
+// is the Router for tests, and the HTTP client is a fake of the notes API.
+const ApiFake = Layer.sync(HttpClient.HttpClient, () => {
+  const notes = new Map([[note.id, note]])
+  return HttpClient.make((request, url) =>
+    Effect.sync(() => {
+      const id = url.pathname.slice("/api/notes/".length)
+      if (request.method === "PUT" && request.body._tag === "Uint8Array") {
+        notes.set(id, JSON.parse(new TextDecoder().decode(request.body.body)))
+      }
+      const found = id === "" ? Array.from(notes.values()) : notes.get(id)
+      return HttpClientResponse.fromWeb(
+        request,
+        found === undefined ? new Response(null, { status: 404 }) : Response.json(found)
+      )
+    })
+  )
+})
+
 const AppTest = Layer.mergeAll(
   Router.memory({ routes: AppRoute, url: "/notes/n1" }),
-  Notes.layerMemory([note]),
+  ApiFake,
   TestHost.layer()
 )
 
 it.layer(AppTest, { buildPerTest: true })("App", (it) => {
-  it.effect("loads a note, autosaves an edit and shows the notice", () =>
+  it.effect("loads a note, saves an edit and shows the notice", () =>
     Effect.gen(function*() {
       // `Router.props` reads the root's `{ route }` from the Router.
       const root = yield* TestHost.mount(App, Router.props(AppRoute))
-      // `settle` drains Commands, fetches, Layer builds and the render flush.
       yield* TestHost.settle
       assert.strictEqual(root.head().title, "Shopping · Notes")
 
       Query.fire(root.get(body), "input", { value: edited.body })
       yield* TestHost.settle
-      // The TestClock owns time. Adjusting it fires the autosave Subscription.
       yield* TestClock.adjust("2 seconds")
       yield* TestHost.settle
       assert.strictEqual(Query.textOf(root.get(HtmlQuery.role("status"))), "Saved")
