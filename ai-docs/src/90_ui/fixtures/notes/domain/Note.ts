@@ -8,6 +8,17 @@ export const Note = Schema.Struct({
 })
 export type Note = typeof Note.Type
 
+// How search results are ordered, by title.
+export const NoteSort = Schema.Literals(["asc", "desc"])
+export type NoteSort = typeof NoteSort.Type
+
+// One page of search results, and how many pages there are.
+export const NoteResults = Schema.Struct({
+  notes: Schema.Array(Note),
+  pages: Schema.Number
+})
+export type NoteResults = typeof NoteResults.Type
+
 export class NoteNotFound extends Schema.TaggedError<NoteNotFound>()("NoteNotFound", {
   id: Schema.String
 }) {}

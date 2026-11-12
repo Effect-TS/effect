@@ -2,9 +2,13 @@ import { Schema } from "effect"
 import { Command, Component, Head, Router } from "effect/ui"
 import { NotePage } from "./pages/notes/NotePage.ts"
 import { NotesIndex } from "./pages/NotesIndex.ts"
+import { SearchPage } from "./pages/search/SearchPage.ts"
 import { AppRoute } from "./routes.ts"
 
 const indexRoute = AppRoute.make({ _tag: "Index" })
+// `make` fills in the query defaults, and `print` leaves them out, so this
+// prints as `/search`.
+const searchRoute = AppRoute.make({ _tag: "Search", query: {} })
 
 export const AppMessage = Schema.TaggedUnion({
   RouteChanged: { route: AppRoute },
@@ -18,7 +22,8 @@ export const App = Component.make({
   name: "App",
   // The root holds the route. The first one arrives through props and every
   // later change arrives as a message, which puts navigation in the message
-  // log.
+  // log. That includes every query change a page writes, and `init` stays
+  // pure.
   props: Schema.Struct({ route: AppRoute }),
   model: Schema.Struct({ route: AppRoute }),
   message: AppMessage,
@@ -41,13 +46,26 @@ export const App = Component.make({
   head: () => [Head.titleTemplate((title) => `${title} · Notes`), Head.lang("en")],
   view: ({ route }, h) =>
     h.div(
-      h.header(h.a("Notes").attr("href", AppRoute.print(indexRoute))),
+      h.header(
+        h.a("Notes").attr("href", AppRoute.print(indexRoute)),
+        h.a("Search").attr("href", AppRoute.print(searchRoute))
+      ),
       h.main(
-        // `match` is exhaustive. Key each page by its printed route, so a
-        // route change mounts a fresh page instead of reusing the old Model.
+        // `match` is exhaustive. Key each page by its path with `printPath`,
+        // so a new path mounts a fresh page instead of reusing the old Model.
+        // `printPath` leaves out the query, so a query change updates the
+        // page in place with new props, and its loaders keep their last
+        // results. Keyed by `print`, the search page would remount on every
+        // keystroke.
+        //
+        // A page that should start over when one param changes adds that
+        // param to its key, as `${AppRoute.printPath(route)}?sort=${route.query.sort}`.
         AppRoute.match(route, {
-          Index: (route) => h.child(NotesIndex, { key: AppRoute.print(route) }),
-          Note: (route) => h.child(NotePage, { key: AppRoute.print(route), props: { id: route.params.id } }),
+          Index: (route) => h.child(NotesIndex, { key: AppRoute.printPath(route) }),
+          // A page that uses its query takes the whole route as props.
+          Search: (route) => h.child(SearchPage, { key: AppRoute.printPath(route), props: { route } }),
+          // A page that doesn't can keep taking picked fields.
+          Note: (route) => h.child(NotePage, { key: AppRoute.printPath(route), props: { id: route.params.id } }),
           NotFound: () =>
             h.section(
               h.h1("Page not found"),

@@ -20,6 +20,8 @@ import "effect/ui/html/register"
 //   printed routes
 // - `fixtures/pages/notes/NotePage.ts`: the page at `/notes/:id`, from the
 //   previous example
+// - `fixtures/pages/search/SearchPage.ts`: the page at `/search`, from the
+//   next example
 import { App } from "./fixtures/App.ts"
 import { AppRoute } from "./fixtures/routes.ts"
 

@@ -21,17 +21,22 @@
  * location, so a change made before the Subscription starts isn't lost. The
  * Subscription suppresses the first delivery when the root already holds it.
  *
- * Pages are chosen with the union's exhaustive `match` and keyed by the whole
- * printed route, so a route change re-keys the page:
- * `h.child(Page, { key: AppRoute.print(route), props: route })`.
+ * Pages are chosen with the union's exhaustive `match` and keyed by their
+ * path, `AppRoute.printPath(route)`. A new path mounts a fresh page, and a
+ * change to the query alone updates the page in place:
+ * `h.child(SearchPage, { key: AppRoute.printPath(route), props: { route } })`.
+ * A page that should start over when a param changes adds the param to its
+ * key.
  *
  * **View state in the query**
  *
  * A value such as a search box's text or a page number can live in the
- * query alone, with no copy in any Model. The page takes its whole route as
- * props, typed by a one-case subset such as `AppRoute.subset(["Search"])`,
- * and is keyed by `AppRoute.printPath(route)`, so a query change updates it
- * in place. It writes the query with `Router.patchQuery`.
+ * query alone, with no copy in any Model. A page that uses its query takes
+ * its whole route as props, typed by a one-case subset such as
+ * `AppRoute.subset(["Search"])`, and reads `h.props.route.query`. A page
+ * with no query can take picked fields, such as `{ id: route.params.id }`.
+ * The page writes the query with `Router.patchQuery`, and a loader that
+ * reads it can wait for typing to stop with `Component.debounce`.
  *
  * **Example** (A root that follows the route)
  *
