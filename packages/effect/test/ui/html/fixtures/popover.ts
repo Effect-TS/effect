@@ -140,9 +140,10 @@ export const Menu = Component.make({
     }),
   view: (model, h) =>
     h.div(
-      model.shown && h.div(h.button("Rename")).attr("aria-label", "Menu").attr("role", "menu")
+      model.shown && h.div.attr("aria-label", "Menu").attr("role", "menu")
         .popover(model.mode, model.open)
         .onToggle(({ newState, oldState, open }) => MenuMessage.make({ _tag: "Toggled", open, newState, oldState }))
+        .children(h.button("Rename"))
     )
 })
 
@@ -155,8 +156,10 @@ export const ModalMenu = Component.make({
   init: () => null,
   update: (model) => model,
   view: (_, h) =>
-    h.dialog(h.div(h.button("Rename")).attr("aria-label", "Menu").popover("auto", true))
-      .attr("aria-label", "Settings").modal(true)
+    h.dialog
+      .attr("aria-label", "Settings").modal(true).children(
+        h.div.attr("aria-label", "Menu").popover("auto", true).children(h.button("Rename"))
+      )
 })
 
 const Popup = Component.make({
@@ -167,7 +170,7 @@ const Popup = Component.make({
   elements: Html,
   init: () => null,
   update: (model) => model,
-  view: (_, h) => h.div(h.button(h.props.label)).attr("aria-label", h.props.label).popover(h.props.mode, true)
+  view: (_, h) => h.div.attr("aria-label", h.props.label).popover(h.props.mode, true).children(h.button(h.props.label))
 })
 
 /**
@@ -184,7 +187,7 @@ export const Rows = Component.make({
   update: (_, reversed) => reversed,
   view: (reversed, h) => {
     const rows = ["A", "B"].map((label) =>
-      h.div(h.child(Popup, { key: label, props: { label, mode: h.props.mode } })).key(label)
+      h.div.key(label).children(h.child(Popup, { key: label, props: { label, mode: h.props.mode } }))
     )
     return h.div(reversed ? rows.reverse() : rows)
   }

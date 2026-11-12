@@ -42,7 +42,7 @@
  *       Saved: () => ({ saved: true })
  *     }),
  *   // In a story, `h.isRunning` is derived from the pending Commands.
- *   view: (_, h) => h.el("button", h.isRunning(SaveTodo) ? "saving" : "save").on("click", Message.make({ _tag: "Save" }))
+ *   view: (_, h) => h.el("button").on("click", Message.make({ _tag: "Save" })).children(h.isRunning(SaveTodo) ? "saving" : "save")
  * })
  *
  * Story.make(TodoItem, { id: "t1" }, (s) =>
@@ -262,7 +262,7 @@ type AnyComponent =
  *   message: Message,
  *   init: () => ({ count: 0 }),
  *   update: (model) => ({ count: model.count + 1 }),
- *   view: (model, h) => h.el("button", `+ ${model.count}`).on("click", Message.make({ _tag: "Increment" }))
+ *   view: (model, h) => h.el("button").on("click", Message.make({ _tag: "Increment" })).children(`+ ${model.count}`)
  * })
  *
  * const twice = (s: Story.Steps<typeof Counter>) => s.click("+").click("+")
@@ -1451,7 +1451,10 @@ export const fallback = <Msg>(
   view: View.Node<Msg, any>,
   key: string,
   result: View.Child.Fallback
-): View.Node<Msg, any> | undefined => findChild(view, key, "fallback").fallback?.(result)
+): View.Node<Msg, any> | undefined => {
+  const fallback = findChild(view, key, "fallback").fallback
+  return fallback === undefined ? undefined : View.toNode(fallback(result))
+}
 
 /**
  * The message `Component.provide`'s `onFailure` maps a Layer failure to, or

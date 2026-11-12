@@ -64,12 +64,12 @@ const ListPage = Component.make({
   view: (_, h) =>
     h.div(
       h.h1(`List page ${h.props.route.query.page}`),
-      h.input().attr("aria-label", "Search").value(h.props.route.query.q ?? "").onInput(({ value }) =>
+      h.input.attr("aria-label", "Search").value(h.props.route.query.q ?? "").onInput(({ value }) =>
         ListMessage.make({ _tag: "Typed", value })
       ),
-      h.button("Next").onClick(ListMessage.make({ _tag: "Next" })),
-      h.a("Page 2").attr("href", ListRoute.print(ListRoute.make({ _tag: "List", query: { page: 2 } }))),
-      h.a("Results").attr("href", "#results")
+      h.button.onClick(ListMessage.make({ _tag: "Next" })).children("Next"),
+      h.a.attr("href", ListRoute.print(ListRoute.make({ _tag: "List", query: { page: 2 } }))).children("Page 2"),
+      h.a.attr("href", "#results").children("Results")
     )
 })
 
@@ -360,7 +360,7 @@ describe("BrowserRouter", { concurrent: false }, () => {
         elements: Html,
         init: () => 0,
         update: (peeks) => peeks + 1,
-        view: (_, h) => h.a("Person 1").attr("href", "/people/1").onClick("Peek", { preventDefault: true })
+        view: (_, h) => h.a.attr("href", "/people/1").onClick("Peek", { preventDefault: true }).children("Person 1")
       })
       const app = yield* container
       const root = yield* BrowserHost.mountEffect(Peek, {}, app)

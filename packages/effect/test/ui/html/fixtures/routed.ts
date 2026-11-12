@@ -67,7 +67,7 @@ export const Person = Component.make({
   view: (model, h) =>
     h.div(
       h.h1(`Person ${model.id}`),
-      h.p(AsyncResult.isSuccess(h.loaded.bio) ? h.loaded.bio.value : "Loading").attr("id", "bio")
+      h.p.attr("id", "bio").children(AsyncResult.isSuccess(h.loaded.bio) ? h.loaded.bio.value : "Loading")
     )
 }).pipe(Component.provide(GetBio.layer))
 
@@ -108,21 +108,29 @@ export const App = Component.make({
   view: ({ route }, h) =>
     h.div(
       h.nav(
-        h.a("Home").attr("href", AppRoute.print(AppRoute.make({ _tag: "Home" }))),
-        h.a("Person 1").attr("href", AppRoute.print(AppRoute.make({ _tag: "Person", params: { id: 1 } }))),
-        h.a("Person 2 bio").attr("href", `${AppRoute.print(AppRoute.make({ _tag: "Person", params: { id: 2 } }))}#bio`),
-        h.a("Elsewhere").attr("href", "https://example.com/"),
-        h.a("Slow").attr("href", AppRoute.print(AppRoute.make({ _tag: "Slow" }))),
-        h.button("Block").onClick(Message.make({ _tag: "Block" })),
-        h.form(h.input().attr("name", "q").attr("value", "ada"), h.button("Search").attr("type", "submit"))
+        h.a.attr("href", AppRoute.print(AppRoute.make({ _tag: "Home" }))).children("Home"),
+        h.a.attr("href", AppRoute.print(AppRoute.make({ _tag: "Person", params: { id: 1 } }))).children("Person 1"),
+        h.a.attr("href", `${AppRoute.print(AppRoute.make({ _tag: "Person", params: { id: 2 } }))}#bio`).children(
+          "Person 2 bio"
+        ),
+        h.a.attr("href", "https://example.com/").children("Elsewhere"),
+        h.a.attr("href", AppRoute.print(AppRoute.make({ _tag: "Slow" }))).children("Slow"),
+        h.button.onClick(Message.make({ _tag: "Block" })).children("Block"),
+        h.form
           .attr("method", "get")
           .attr("action", "/search")
-          .attr("aria-label", "Search"),
-        h.form(h.input().attr("name", "q").attr("value", "x"), h.button("Filter").attr("type", "submit"))
+          .attr("aria-label", "Search").children(
+            h.input.attr("name", "q").attr("value", "ada"),
+            h.button.attr("type", "submit").children("Search")
+          ),
+        h.form
           .attr("method", "get")
           .attr("action", "/search")
           .attr("aria-label", "Filter")
-          .onSubmit(Message.make({ _tag: "Filter" }))
+          .onSubmit(Message.make({ _tag: "Filter" })).children(
+            h.input.attr("name", "q").attr("value", "x"),
+            h.button.attr("type", "submit").children("Filter")
+          )
       ),
       AppRoute.match(route, {
         Home: (route) => h.child(Home, { key: AppRoute.print(route), props: {} }),

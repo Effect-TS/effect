@@ -306,7 +306,7 @@ export interface Root {
 /** The options `start` takes. */
 interface Options {
   readonly fallback?:
-    | ((failure: AsyncResult.Failure<never, unknown>, h: any) => View.Node<never, any>)
+    | ((failure: AsyncResult.Failure<never, unknown>, h: any) => View.Content<never, any>)
     | undefined
   /** Hydration: the server's state. The container holds the server's nodes. */
   readonly state?: Renderer.State | undefined
@@ -1045,7 +1045,7 @@ const setup = (
     if (fallback === undefined) return
     try {
       const view = fallback(AsyncResult.failure(cause), View.makeHelper({}, root.component.elements()))
-      const node = buildStatic(view)
+      const node = buildStatic(View.toNode(view))
       const placeholder = nodesOf(root.rendered[0]!)[0]
       host.insertBefore(
         container,
@@ -2780,7 +2780,7 @@ const setup = (
       return {
         _tag: "Slot",
         v: view,
-        inner: create(inst, view.fallback(unavailable(env)), settled(env)),
+        inner: create(inst, View.toNode(view.fallback(unavailable(env))), settled(env)),
         failure: undefined
       }
     }
@@ -2810,7 +2810,7 @@ const setup = (
   }
 
   const fallbackFor = (view: View.Child<any, any>, failure: Cause.Cause<unknown>): View.Node<any, any> =>
-    view.fallback !== undefined ? view.fallback(AsyncResult.failure(failure)) : emptyText
+    view.fallback !== undefined ? View.toNode(view.fallback(AsyncResult.failure(failure))) : emptyText
 
   const failedSlot = (
     inst: Instance,
@@ -3051,7 +3051,7 @@ const setup = (
           destroy(inst, rendered.inner)
           return createChild(inst, child, env)
         }
-        const shown = child.fallback!(unavailable(env))
+        const shown = View.toNode(child.fallback!(unavailable(env)))
         return {
           _tag: "Slot",
           v: child,

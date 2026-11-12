@@ -42,7 +42,7 @@
  *   view: (_, h) =>
  *     h.el(
  *       "li",
- *       h.el("button", h.props.todo.done ? "[x]" : "[ ]").on("click", TodoItemMessage.make({ _tag: "Toggle" })),
+ *       h.el("button").on("click", TodoItemMessage.make({ _tag: "Toggle" })).children(h.props.todo.done ? "[x]" : "[ ]"),
  *       h.el("span", h.props.todo.title),
  *       h.isRunning(SaveTodo) ? " saving" : ""
  *     )
@@ -876,9 +876,9 @@ const Proto = {
  *   view: (model, h) =>
  *     h.el(
  *       "div",
- *       h.el("button", "-").on("click", CounterMessage.make({ _tag: "Decrement" })),
+ *       h.el("button").on("click", CounterMessage.make({ _tag: "Decrement" })).children("-"),
  *       h.el("span", String(model.count)),
- *       h.el("button", "+").on("click", CounterMessage.make({ _tag: "Increment" }))
+ *       h.el("button").on("click", CounterMessage.make({ _tag: "Increment" })).children("+")
  *     )
  * })
  * ```
@@ -895,7 +895,7 @@ export const make = <
   Events = never,
   UI extends Model | InitStep<Model, Msg, Events, any> = Model,
   U extends Model | Step<Model, Msg, Events, any> = Model,
-  UV extends View.Node<Msg, any> = View.Node<Msg>,
+  UV extends View.Content<Msg, any> = View.Node<Msg>,
   S extends Subscription.Subscription<Msg, any> = never,
   V extends View.Elements = View.Registered
 >(
@@ -967,7 +967,7 @@ export const make = <
         h.previous = context.previous
         h.patched = context.patched
       }
-      return options.view(model, h)
+      return View.toNode(options.view(model, h))
     },
     subscriptions: subscriptions === undefined
       ? undefined

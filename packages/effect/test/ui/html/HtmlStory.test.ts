@@ -13,13 +13,13 @@ const Board = Component.make({
   init: (): ReadonlyArray<string> => [],
   update: (log, message) => [...log, message],
   view: (_, h) =>
-    h.section(
-      h.div(h.p("Inner child")).attr("aria-label", "Inner")
-        .onDrop(() => "inner", { accepts: ["text/uri-list"] }),
-      h.p("Plain")
-    ).onDrop(
+    h.section.onDrop(
       ({ data, files }) => `outer ${data["application/x-todo"] ?? files.map((file) => file.name).join(",")}`,
       { accepts: ["application/x-todo", "Files"] }
+    ).children(
+      h.div.attr("aria-label", "Inner")
+        .onDrop(() => "inner", { accepts: ["text/uri-list"] }).children(h.p("Inner child")),
+      h.p("Plain")
     )
 })
 

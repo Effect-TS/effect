@@ -7,9 +7,13 @@
  * for the app by module augmentation of `Register` plus `registerElements`, or
  * set on one component with `elements`.
  *
- * Children are rest arguments. Arrays are flattened, and `false`, `null` and
- * `undefined` render nothing. Adjacent text merges into one text node when the
- * view is built, and empty text is dropped.
+ * An element's attributes and handlers come first and its children last:
+ * `h.el("form").on("submit", msg).children(...)`. `children` ends the chain
+ * and returns a node with no chain methods, and `h.el(tag, ...children)` is
+ * shorthand for it. A builder with no children is itself a valid child or
+ * view. Arrays of children are flattened, and `false`, `null` and
+ * `undefined` render nothing. Adjacent text merges into one text node when
+ * the view is built, and empty text is dropped.
  *
  * **Example** (A host-neutral view)
  *
@@ -20,7 +24,7 @@
  * const Message = Schema.TaggedUnion({ Increment: {} })
  *
  * const view = (count: number, h: View.Helper<typeof Message.Type, {}>) =>
- *   h.el("div", h.el("button", "+").on("click", Message.make({ _tag: "Increment" })), String(count))
+ *   h.el("div", h.el("button").on("click", Message.make({ _tag: "Increment" })).children("+"), String(count))
  * ```
  *
  * @stability experimental
@@ -171,7 +175,7 @@ export interface Child<out Msg, out R = never> {
   readonly props: unknown
   readonly onEmit: (events: any) => Msg | undefined
   /** What the slot shows while its child can't be shown. Required for a feature child. */
-  readonly fallback: ((result: Child.Fallback) => Node<Msg, any>) | undefined
+  readonly fallback: ((result: Child.Fallback) => Content<Msg, any>) | undefined
   /** Also tells the parent that the child failed. */
   readonly onFailure: ((failure: AsyncResult.Failure<never, unknown>) => Msg | undefined) | undefined
   /** Phantom: the child's requirements surface in its parent's. */
@@ -213,20 +217,31 @@ export declare namespace Child {
 }
 
 /**
- * One child argument of an element: a node, text, an array of them, or a hole
- * (`false`, `null`, `undefined`) that renders nothing.
+ * One child argument of an element: a node, an element builder, text, an
+ * array of them, or a hole (`false`, `null`, `undefined`) that renders
+ * nothing.
  *
  * @stability experimental
  * @category models
  * @since 4.1.5
  */
 export type Input<Msg> =
-  | Node<Msg, any>
+  | Content<Msg, any>
   | string
   | false
   | null
   | undefined
-  | ReadonlyArray<Node<Msg, any> | string | false | null | undefined>
+  | ReadonlyArray<Content<Msg, any> | string | false | null | undefined>
+
+/**
+ * What a view, a child and a fallback may return: a node, or an element
+ * builder with no children yet, such as `h.br` or `h.input.value(draft)`.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.1.5
+ */
+export type Content<Msg, R = never> = Node<Msg, R> | ElementBuilder<Msg, R, any, any>
 
 /**
  * The requirements of a tuple of children, collected one at a time, so two
@@ -241,6 +256,7 @@ export type Requirements<T> = T extends string | false | null | undefined ? neve
   : T extends ReadonlyArray<infer E> ? Requirements<E>
   : T extends Child<infer _Msg, infer R> ? R
   : T extends Element<infer _Msg, infer R> ? R
+  : T extends ElementBuilder<infer _Msg, infer R, any, any> ? R
   : never
 
 /**
@@ -253,8 +269,9 @@ export type Requirements<T> = T extends string | false | null | undefined ? neve
 export const text = (text: string): Text => ({ _tag: "Text", text })
 
 /**
- * Normalises element children: holes are dropped, arrays are flattened, and
- * adjacent text merges into one node with empty text dropped.
+ * Normalises element children: holes are dropped, arrays are flattened,
+ * element builders become elements with no children, and adjacent text
+ * merges into one node with empty text dropped.
  *
  * **Details**
  *
@@ -267,9 +284,9 @@ export const text = (text: string): Text => ({ _tag: "Text", text })
  */
 export const children = <Msg>(inputs: ReadonlyArray<Input<Msg>>): Array<Node<Msg, any>> => {
   const out: Array<Node<Msg, any>> = []
-  const push = (input: Node<Msg, any> | string | false | null | undefined) => {
+  const push = (input: Content<Msg, any> | string | false | null | undefined) => {
     if (input === false || input === null || input === undefined) return
-    const node: Node<Msg, any> = typeof input === "string" ? text(input) : input
+    const node: Node<Msg, any> = typeof input === "string" ? text(input) : toNode(input)
     if (node._tag === "Text") {
       if (node.text === "") return
       const last = out[out.length - 1]
@@ -284,21 +301,97 @@ export const children = <Msg>(inputs: ReadonlyArray<Input<Msg>>): Array<Node<Msg
     if (Array.isArray(input)) {
       for (const item of input) push(item)
     } else {
-      push(input as Node<Msg, any> | string | false | null | undefined)
+      push(input as Content<Msg, any> | string | false | null | undefined)
     }
   }
   return out
 }
 
 /**
- * The chained element builder returned by `h.el` and by a vocabulary's element
- * names.
+ * Whether a value is an element builder.
+ *
+ * @stability experimental
+ * @category guards
+ * @since 4.1.5
+ */
+export const isElementBuilder = (u: unknown): u is ElementBuilder<unknown, unknown, unknown, unknown> =>
+  u instanceof ElementBuilder
+
+/**
+ * Turns view content into a node: an element builder becomes its element
+ * with no children, and a node is returned as it is.
+ *
+ * @stability experimental
+ * @category constructors
+ * @since 4.1.5
+ */
+export const toNode = <Msg, R>(content: Content<Msg, R>): Node<Msg, R> =>
+  content instanceof ElementBuilder ? build(content, []) : content
+
+/**
+ * Builds the element node a builder describes, with the given children
+ * normalised as `children` does. What a builder's `children` method calls.
+ *
+ * @stability experimental
+ * @category constructors
+ * @since 4.1.5
+ */
+export const build = <Msg, R, const C extends ReadonlyArray<Input<Msg>>>(
+  builder: ElementBuilder<Msg, R, any, any>,
+  inputs: C
+): Element<Msg, R | Requirements<C[number]>> => ({
+  _tag: "Element",
+  tag: builder.tag,
+  elementKey: builder.elementKey,
+  attrs: builder.attrs,
+  props: builder.props,
+  handlers: builder.handlers,
+  eventOptions: builder.eventOptions,
+  refKey: builder.refKey,
+  mount: builder.mount,
+  children: inputs.length === 0 ? [] : children(inputs)
+})
+
+/**
+ * The fields an element builder holds, which `build` copies onto the element.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.1.5
+ */
+export type BuilderFields = Pick<
+  Element<unknown>,
+  "elementKey" | "attrs" | "props" | "handlers" | "eventOptions" | "refKey" | "mount"
+>
+
+/**
+ * Copies a builder with some of its fields replaced, keeping its class. Every
+ * chain method is written with it, so a builder stays a value.
+ *
+ * @stability experimental
+ * @category constructors
+ * @since 4.1.5
+ */
+export const withFields = <B extends ElementBuilder<any, any, any, any>>(
+  builder: B,
+  fields: Partial<BuilderFields>
+): B => Object.assign(Object.create(Object.getPrototypeOf(builder)), builder, fields)
+
+/**
+ * The element builder: `h.el(tag)` and a vocabulary's element names. It
+ * holds attributes, properties, handlers, a key, a ref and a mount, and no
+ * children: an element's children go in last, with `children`.
  *
  * **Details**
  *
- * Every setter returns a copy, so a view stays a value. `Handlers` maps an event
- * name to its payload; a vocabulary's element class fixes it and adds sugar.
- * The core builder leaves payloads untyped.
+ * Every method returns a copy, so a view stays a value. `Handlers` maps an
+ * event name to its payload; a vocabulary's element class fixes it and adds
+ * sugar. The core builder leaves payloads untyped.
+ *
+ * This base class has no `children`, so it's the shape of a void element.
+ * `ContainerBuilder` adds it, and a vocabulary does the same for the tags
+ * that take children. A builder is itself valid content: as a child or a
+ * view it renders as its element with no children.
  *
  * @stability experimental
  * @category models
@@ -309,13 +402,7 @@ export class ElementBuilder<
   out R = never,
   in out Handlers = Record<string, unknown>,
   in out HostNode = unknown
-> implements Element<Msg, R> {
-  /**
-   * The node kind.
-   *
-   * @since 4.1.5
-   */
-  readonly _tag = "Element"
+> {
   /**
    * The key set with `key`, if any.
    *
@@ -359,6 +446,13 @@ export class ElementBuilder<
    */
   readonly mount: Mount<Msg> | undefined = undefined
   /**
+   * Phantom: the requirements of the element's mount, which surface in the
+   * component's.
+   *
+   * @since 4.1.5
+   */
+  declare readonly "~R"?: (_: never) => R
+  /**
    * Phantom: the host node this element renders to, which types `ref` and
    * `onMount`.
    *
@@ -377,27 +471,8 @@ export class ElementBuilder<
    * @since 4.1.5
    */
   readonly tag: string
-  /**
-   * The element's children, normalised.
-   *
-   * @since 4.1.5
-   */
-  readonly children: ReadonlyArray<Node<Msg, R>>
-  constructor(tag: string, children: ReadonlyArray<Node<Msg, R>>) {
+  constructor(tag: string) {
     this.tag = tag
-    this.children = children
-  }
-  /**
-   * Copies this element with a patch applied.
-   *
-   * @since 4.1.5
-   */
-  protected with(
-    patch: Partial<
-      Pick<Element<Msg, R>, "elementKey" | "attrs" | "props" | "handlers" | "eventOptions" | "refKey" | "mount">
-    >
-  ): this {
-    return Object.assign(Object.create(Object.getPrototypeOf(this)), this, patch)
   }
   /**
    * Sends a message when `event` fires: a value, or a function of the payload.
@@ -412,9 +487,9 @@ export class ElementBuilder<
     options?: EventOptions | undefined
   ): this {
     const handlers = { ...this.handlers, [event]: handler }
-    if (options === undefined && !Object.hasOwn(this.eventOptions, event)) return this.with({ handlers })
+    if (options === undefined && !Object.hasOwn(this.eventOptions, event)) return withFields(this, { handlers })
     const { [event]: _, ...rest } = this.eventOptions
-    return this.with({ handlers, eventOptions: options === undefined ? rest : { ...rest, [event]: options } })
+    return withFields(this, { handlers, eventOptions: options === undefined ? rest : { ...rest, [event]: options } })
   }
   /**
    * Keeps this element's node when its siblings move. Unique among siblings.
@@ -422,7 +497,7 @@ export class ElementBuilder<
    * @since 4.1.5
    */
   key(key: string): this {
-    return this.with({ elementKey: key })
+    return withFields(this, { elementKey: key })
   }
   /**
    * Sets an attribute, or removes it with `undefined`.
@@ -431,7 +506,7 @@ export class ElementBuilder<
    */
   attr(name: string, value: string | undefined): this {
     const { [name]: _, ...rest } = this.attrs
-    return this.with({ attrs: value === undefined ? rest : { ...rest, [name]: value } })
+    return withFields(this, { attrs: value === undefined ? rest : { ...rest, [name]: value } })
   }
   /**
    * Sets a property. The host decides what it means.
@@ -439,7 +514,7 @@ export class ElementBuilder<
    * @since 4.1.5
    */
   prop(name: string, value: unknown): this {
-    return this.with({ props: { ...this.props, [name]: value } })
+    return withFields(this, { props: { ...this.props, [name]: value } })
   }
   /**
    * Names this element for ref Commands, which reach it through
@@ -449,7 +524,7 @@ export class ElementBuilder<
    * @since 4.1.5
    */
   ref(ref: Renderer.Ref<HostNode>): this {
-    return this.with({ refKey: ref.key })
+    return withFields(this, { refKey: ref.key })
   }
   /**
    * Runs `run` with this element's host node after it's committed, in a Scope
@@ -460,7 +535,8 @@ export class ElementBuilder<
    *
    * A defect fails the instance. It never runs on the server or on a host that
    * doesn't run mounts, such as `TestHost`, where a test sends the message
-   * itself. Call it last: it returns the core builder.
+   * itself. A vocabulary's element class overrides it to return its own
+   * class, so the chain goes on after it.
    *
    * @since 4.1.5
    */
@@ -468,8 +544,89 @@ export class ElementBuilder<
     name: string,
     run: (node: HostNode) => Effect.Effect<Msg, never, R2>
   ): ElementBuilder<Msg, R | R2, Handlers, HostNode> {
-    return this.with({ mount: { name, run } }) as any
+    return withFields(this, { mount: { name, run } }) as any
   }
+}
+
+/**
+ * The builder of an element that takes children: what `h.el` returns.
+ *
+ * **Details**
+ *
+ * `children` ends the chain and returns the element node, which has no chain
+ * methods, so attributes and handlers always come before the children.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.1.5
+ */
+export class ContainerBuilder<
+  out Msg,
+  out R = never,
+  in out Handlers = Record<string, unknown>,
+  in out HostNode = unknown
+> extends ElementBuilder<Msg, R, Handlers, HostNode> {
+  /**
+   * Like `ElementBuilder.onMount`, keeping `children`.
+   *
+   * @since 4.1.5
+   */
+  override onMount<R2>(
+    name: string,
+    run: (node: HostNode) => Effect.Effect<Msg, never, R2>
+  ): ContainerBuilder<Msg, R | R2, Handlers, HostNode> {
+    return super.onMount(name, run) as any
+  }
+  /**
+   * Ends the chain with the element's children: nodes, builders, text,
+   * arrays to flatten, and holes (`false`, `null`, `undefined`). Their
+   * requirements join the element's.
+   *
+   * @since 4.1.5
+   */
+  children<const C extends ReadonlyArray<Input<Msg>>>(...inputs: C): Element<Msg, R | Requirements<C[number]>> {
+    return build(this, inputs)
+  }
+}
+
+/**
+ * A root builder that is also callable: `b(...inputs)` is
+ * `b.children(...inputs)`. What a vocabulary puts on `h` for a tag that
+ * takes children, such as `h.button("Add")`.
+ *
+ * **Details**
+ *
+ * The chain methods return the builder `B`, which isn't callable, and the
+ * call returns a node, so `h.div(a).class("x")` doesn't compile.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.1.5
+ */
+export type Shorthand<B extends { readonly children: (...inputs: any) => any }> = Omit<B, never> & B["children"]
+
+/**
+ * Makes a builder callable as `Shorthand` describes, for a vocabulary's
+ * `tags`. Make one per tag, once: `h` shares it across renders.
+ *
+ * **Details**
+ *
+ * The result is a function with the builder's class and fields. Its chain
+ * methods copy only the builder's fields, so the function's own `name` and
+ * `length` never reach a node.
+ *
+ * @stability experimental
+ * @category vocabularies
+ * @since 4.1.5
+ */
+export const shorthand = <
+  B extends ElementBuilder<any, any, any, any> & { readonly children: (...inputs: any) => any }
+>(
+  builder: B
+): Shorthand<B> => {
+  const root = (...inputs: ReadonlyArray<Input<any>>) => (root as any).children(...inputs)
+  Object.setPrototypeOf(root, Object.getPrototypeOf(builder))
+  return Object.assign(root, builder) as any
 }
 
 /**
@@ -493,7 +650,13 @@ export interface Elements {
 }
 
 /**
- * The runtime half of a vocabulary: its element constructors, installed on `h`.
+ * The runtime half of a vocabulary: its root element builders, installed on
+ * `h` and shared by every render.
+ *
+ * **Details**
+ *
+ * A tag that takes children is a `shorthand` builder, so `h.span(title)`
+ * works; a void tag is a plain builder.
  *
  * @stability experimental
  * @category models
@@ -501,7 +664,7 @@ export interface Elements {
  */
 export interface Vocabulary<out V extends Elements = Elements> {
   readonly name: string
-  readonly tags: Readonly<Record<string, (...children: ReadonlyArray<any>) => ElementBuilder<any, any, any, any>>>
+  readonly tags: Readonly<Record<string, ElementBuilder<any, any, any, any>>>
   /**
    * The only tags that may hold text, for a vocabulary such as a native one
    * where text lives in a text primitive. `h.el` checks it at runtime. Text
@@ -603,11 +766,16 @@ export const registeredElements = (): Vocabulary<any> | undefined => registered
  */
 export interface Helper<Msg, Props> {
   readonly props: Props
-  /** Any host element by name, with untyped event payloads. What host-neutral code uses. */
-  el<const C extends ReadonlyArray<Input<Msg>>>(
+  /**
+   * Any host element by name, with untyped event payloads. What host-neutral
+   * code uses: `h.el("x-foo").attr("a", "b").children(...)`.
+   */
+  el(tag: string): ContainerBuilder<Msg>
+  /** Shorthand for `h.el(tag).children(...children)`, with at least one child. */
+  el<const C extends readonly [Input<Msg>, ...ReadonlyArray<Input<Msg>>]>(
     tag: string,
     ...children: C
-  ): ElementBuilder<Msg, Requirements<C[number]>>
+  ): Element<Msg, Requirements<C[number]>>
   /** A text node. The only way to put text in a native view. */
   text(text: string): Text
   /**
@@ -626,17 +794,17 @@ export interface Helper<Msg, Props> {
     service: Feature.Service<Self, Props, Events>,
     options: Child.Options<Props, Events, Msg> & {
       /** Required: the service may be building (`Initial`) or failed (`Failure`). */
-      readonly fallback: (result: Child.Fallback) => Node<Msg, RF>
+      readonly fallback: (result: Child.Fallback) => Content<Msg, RF>
     }
-  ): Child<Msg, Self | RF>
+  ): Child<Msg, Self | NoInfer<RF>>
   /** A component by value. Its requirements surface in the parent's. */
   child<Props, Events, RC, RF = never>(
     component: Component.Mountable<Props, Events, RC>,
     options: Child.Options<Props, Events, Msg> & {
       /** Shown if the child fails, until its key changes. Without it, the slot is blank. */
-      readonly fallback?: ((result: AsyncResult.Failure<never, unknown>) => Node<Msg, RF>) | undefined
+      readonly fallback?: ((result: AsyncResult.Failure<never, unknown>) => Content<Msg, RF>) | undefined
     }
-  ): Child<Msg, RC | RF>
+  ): Child<Msg, RC | NoInfer<RF>>
 }
 
 /**
@@ -661,15 +829,12 @@ class HelperImpl<Msg, Props> implements Helper<Msg, Props> {
   isRunning(command: Command.Definition.Any, group?: unknown): boolean {
     return this.runningFn(Command.nameOf(command), Command.groupKeyOf(command, group))
   }
-  el(tag: string, ...inputs: ReadonlyArray<Input<Msg>>): ElementBuilder<Msg, any> {
-    const nodes = children(inputs)
+  el(tag: string, ...inputs: ReadonlyArray<Input<Msg>>): any {
     const textParents = this.elements?.textParents
-    if (textParents !== undefined && !textParents.includes(tag) && nodes.some((node) => node._tag === "Text")) {
-      throw new Error(
-        `<${tag}> can't hold text in the ${this.elements!.name} vocabulary; text goes inside ${textParents.join(", ")}`
-      )
-    }
-    return new ElementBuilder(tag, nodes)
+    const builder = textParents === undefined || textParents.includes(tag)
+      ? new ContainerBuilder<Msg>(tag)
+      : new NoTextBuilder<Msg>(tag, this.elements!.name, textParents)
+    return inputs.length === 0 ? builder : builder.children(...inputs)
   }
   text(value: string): Text {
     return text(value)
@@ -680,7 +845,7 @@ class HelperImpl<Msg, Props> implements Helper<Msg, Props> {
       readonly key: string
       readonly props?: unknown
       readonly onEmit?: ((events: any) => Msg | undefined) | undefined
-      readonly fallback?: ((result: any) => Node<Msg, any>) | undefined
+      readonly fallback?: ((result: any) => Content<Msg, any>) | undefined
       readonly onFailure?: ((failure: AsyncResult.Failure<never, unknown>) => Msg | undefined) | undefined
     }
   ): Child<Msg, any> {
@@ -697,6 +862,28 @@ class HelperImpl<Msg, Props> implements Helper<Msg, Props> {
 }
 
 const ignore = () => undefined
+
+/** `h.el` of a tag that can't hold text in the helper's vocabulary. */
+class NoTextBuilder<Msg> extends ContainerBuilder<Msg> {
+  readonly vocabulary: string
+  readonly textParents: ReadonlyArray<string>
+  constructor(tag: string, vocabulary: string, textParents: ReadonlyArray<string>) {
+    super(tag)
+    this.vocabulary = vocabulary
+    this.textParents = textParents
+  }
+  override children<const C extends ReadonlyArray<Input<Msg>>>(...inputs: C): Element<Msg, Requirements<C[number]>> {
+    const node = super.children(...inputs)
+    if (node.children.some((child) => child._tag === "Text")) {
+      throw new Error(
+        `<${this.tag}> can't hold text in the ${this.vocabulary} vocabulary; text goes inside ${
+          this.textParents.join(", ")
+        }`
+      )
+    }
+    return node
+  }
+}
 
 const helperClasses = new WeakMap<Vocabulary<any>, typeof HelperImpl<any, any>>()
 

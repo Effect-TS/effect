@@ -20,7 +20,7 @@ const container = Effect.acquireRelease(
 
 // The tests share one document, and some of them move focus.
 interface NativeTags<Msg> {
-  readonly view: () => View.ElementBuilder<Msg>
+  readonly view: View.ElementBuilder<Msg>
 }
 interface NativeHost {
   readonly NativeHost: unique symbol
@@ -148,15 +148,15 @@ describe("BrowserHost", { concurrent: false }, () => {
       view: (model, h) =>
         h.div(
           // A handler that ignores the event: nothing reaches update.
-          h.input().attr("aria-label", "Ignored").value(model.text).onInput(() => undefined),
+          h.input.attr("aria-label", "Ignored").value(model.text).onInput(() => undefined),
           // No handler at all: the field is read-only, as the Model never changes.
-          h.textarea().attr("aria-label", "Unhandled").value(model.text),
-          h.input().attr("type", "checkbox").attr("aria-label", "Agree").checked(model.checked)
+          h.textarea.attr("aria-label", "Unhandled").value(model.text),
+          h.input.attr("type", "checkbox").attr("aria-label", "Agree").checked(model.checked)
             .onInput(({ checked }) => Message.make({ _tag: "Checked", checked })),
-          h.select(h.option("A").attr("value", "a"), h.option("B").attr("value", "b"))
+          h.select
             .attr("aria-label", "Pick")
-            .value("b"),
-          h.details(h.summary("More"), "Details").open(model.open)
+            .value("b").children(h.option.attr("value", "a").children("A"), h.option.attr("value", "b").children("B")),
+          h.details.open(model.open).children(h.summary("More"), "Details")
         )
     })
 
@@ -200,10 +200,13 @@ describe("BrowserHost", { concurrent: false }, () => {
           update: (model) => model,
           view: (_, h) =>
             h.form(
-              h.input().attr("aria-label", "Name").value("fixed"),
-              h.input().attr("type", "checkbox").attr("aria-label", "Agree").checked(true),
-              h.select(h.option("A").attr("value", "a"), h.option("B").attr("value", "b").selected(true))
-                .attr("aria-label", "Pick")
+              h.input.attr("aria-label", "Name").value("fixed"),
+              h.input.attr("type", "checkbox").attr("aria-label", "Agree").checked(true),
+              h.select
+                .attr("aria-label", "Pick").children(
+                  h.option.attr("value", "a").children("A"),
+                  h.option.attr("value", "b").selected(true).children("B")
+                )
             )
         })
         const app = yield* container
@@ -263,7 +266,7 @@ describe("BrowserHost", { concurrent: false }, () => {
           Patched: () => model
         }),
       view: (_, h) =>
-        h.input().attr("aria-label", "Search").value(h.props.route.query.q ?? "").onInput(({ value }) =>
+        h.input.attr("aria-label", "Search").value(h.props.route.query.q ?? "").onInput(({ value }) =>
           SearchMessage.make({ _tag: "Typed", value })
         )
     })
@@ -407,26 +410,28 @@ describe("BrowserHost", { concurrent: false }, () => {
         }),
       view: (_, h) =>
         h.div(
-          h.section(
-            h.button("Inner").onClick(Message.make({ _tag: "Clicked", where: "inner" })),
+          h.section.attr("aria-label", "Outer").onClick(Message.make({ _tag: "Clicked", where: "outer" })).children(
+            h.button.onClick(Message.make({ _tag: "Clicked", where: "inner" })).children("Inner"),
             h.button("Plain")
-          ).attr("aria-label", "Outer").onClick(Message.make({ _tag: "Clicked", where: "outer" })),
-          h.div(h.input().attr("aria-label", "Focus me"))
-            .on("focus", Message.make({ _tag: "Focused", where: "div" })),
-          h.input().attr("aria-label", "Keys")
+          ),
+          h.div
+            .on("focus", Message.make({ _tag: "Focused", where: "div" })).children(
+              h.input.attr("aria-label", "Focus me")
+            ),
+          h.input.attr("aria-label", "Keys")
             .onKeyDown(({ key, shift }) => Message.make({ _tag: "Key", key, shift }))
             .onFocus(Message.make({ _tag: "Focused", where: "keys" })),
-          h.form(
-            h.input().attr("name", "title").attr("aria-label", "Title").attr("value", "Hello"),
-            h.input().attr("type", "checkbox").attr("name", "tag").attr("value", "a").attr("checked", ""),
-            h.input().attr("type", "checkbox").attr("name", "tag").attr("value", "b").attr("checked", ""),
-            h.button("Send").attr("type", "submit")
-          ).onSubmit(({ entries, fields }) =>
+          h.form.onSubmit(({ entries, fields }) =>
             Message.make({
               _tag: "Submitted",
               title: fields.title ?? "",
               tags: entries.filter(([name]) => name === "tag").map(([, value]) => value)
             })
+          ).children(
+            h.input.attr("name", "title").attr("aria-label", "Title").attr("value", "Hello"),
+            h.input.attr("type", "checkbox").attr("name", "tag").attr("value", "a").attr("checked", ""),
+            h.input.attr("type", "checkbox").attr("name", "tag").attr("value", "b").attr("checked", ""),
+            h.button.attr("type", "submit").children("Send")
           )
         )
     })
@@ -486,7 +491,7 @@ describe("BrowserHost", { concurrent: false }, () => {
           elements: Html,
           init: () => null,
           update: (model) => model,
-          view: (_, h) => h.form(h.input().attr("name", "q"))
+          view: (_, h) => h.form(h.input.attr("name", "q"))
         })
         const bare = yield* container
         yield* BrowserHost.mountEffect(Bare, {}, bare)
@@ -514,12 +519,12 @@ describe("BrowserHost", { concurrent: false }, () => {
             return count + 1
           },
           view: (_, h) =>
-            h.div(
-              h.textarea().attr("aria-label", "Message").onKeyDown(
+            h.div.on("contextmenu", "Menu", { preventDefault: true }).children(
+              h.textarea.attr("aria-label", "Message").onKeyDown(
                 ({ composing, key, shift }) => key === "Enter" && !shift && !composing ? "Send" : undefined,
                 { preventDefault: true }
               )
-            ).on("contextmenu", "Menu", { preventDefault: true })
+            )
         })
         const app = yield* container
         yield* BrowserHost.mountEffect(Composer, {}, app)
@@ -551,15 +556,15 @@ describe("BrowserHost", { concurrent: false }, () => {
           init: () => null,
           update: (model) => model,
           view: (_, h) =>
-            h.form(
-              h.input().attr("name", "constructor").attr("value", "a"),
-              h.input().attr("name", "__proto__").attr("value", "b"),
-              h.input().attr("name", "toString").attr("value", "c"),
-              h.input().attr("name", "toString").attr("value", "d")
-            ).onSubmit((payload) => {
+            h.form.onSubmit((payload) => {
               seen.push(payload)
               return undefined
-            })
+            }).children(
+              h.input.attr("name", "constructor").attr("value", "a"),
+              h.input.attr("name", "__proto__").attr("value", "b"),
+              h.input.attr("name", "toString").attr("value", "c"),
+              h.input.attr("name", "toString").attr("value", "d")
+            )
         })
         const app = yield* container
         yield* BrowserHost.mountEffect(Prototype, {}, app)
@@ -610,16 +615,12 @@ describe("BrowserHost", { concurrent: false }, () => {
       view: (_, h) =>
         h.div(
           // Either order keeps the data and the handler.
-          h.p("Milk").attr("aria-label", "Milk").draggable({ "application/x-todo": "milk" }, { effectAllowed: "move" })
-            .onDragStart("start milk").onDragEnd(({ dropped }) => `end milk dropped=${dropped}`),
-          h.p("Eggs").attr("aria-label", "Eggs").onDragStart("start eggs").draggable({ "application/x-todo": "eggs" }),
-          h.section(
-            h.p("Header").attr("aria-label", "Header"),
-            h.p("Body").attr("aria-label", "Body"),
-            h.div(h.p("Inner child").attr("aria-label", "Inner child")).attr("aria-label", "Inner")
-              .onDrop(({ data }) => `inner drop ${data["application/x-todo"]}`, { accepts: ["text/uri-list"] })
-              .onDragEnter("inner enter").onDragLeave("inner leave")
-          ).attr("aria-label", "Done")
+          h.p.attr("aria-label", "Milk").draggable({ "application/x-todo": "milk" }, { effectAllowed: "move" })
+            .onDragStart("start milk").onDragEnd(({ dropped }) => `end milk dropped=${dropped}`).children("Milk"),
+          h.p.attr("aria-label", "Eggs").onDragStart("start eggs").draggable({ "application/x-todo": "eggs" }).children(
+            "Eggs"
+          ),
+          h.section.attr("aria-label", "Done")
             .onDrop(
               ({ data, files, height, width, x, y }) =>
                 `drop ${
@@ -628,7 +629,15 @@ describe("BrowserHost", { concurrent: false }, () => {
               { accepts: ["application/x-todo", "Files"], dropEffect: "move" }
             )
             .onDragEnter("enter").onDragLeave("leave")
-            .onDragOver(({ x, y }) => `over ${x},${y}`)
+            .onDragOver(({ x, y }) => `over ${x},${y}`).children(
+              h.p.attr("aria-label", "Header").children("Header"),
+              h.p.attr("aria-label", "Body").children("Body"),
+              h.div.attr("aria-label", "Inner")
+                .onDrop(({ data }) => `inner drop ${data["application/x-todo"]}`, { accepts: ["text/uri-list"] })
+                .onDragEnter("inner enter").onDragLeave("inner leave").children(
+                  h.p.attr("aria-label", "Inner child").children("Inner child")
+                )
+            )
         )
     })
 
@@ -689,7 +698,7 @@ describe("BrowserHost", { concurrent: false }, () => {
           // Plain facts about the files go in the Model; the files themselves would go on to a Command.
           update: (names, { files }) => [...names, ...files.map((file) => `${file.name} ${file.size}`)],
           view: (_, h) =>
-            h.div().attr("aria-label", "Upload").onDrop(
+            h.div.attr("aria-label", "Upload").onDrop(
               ({ files }) => Message.make({ _tag: "Dropped", files }),
               { accepts: ["Files"], dropEffect: "copy" }
             )
@@ -1057,7 +1066,7 @@ describe("BrowserHost", { concurrent: false }, () => {
           update: () => false,
           view: (open, h) =>
             h.div(
-              h.button("Close").onClick(DrawerMessage.make({ _tag: "Close" })),
+              h.button.onClick(DrawerMessage.make({ _tag: "Close" })).children("Close"),
               open && h.child(Nested, { key: "nested" })
             )
         })
@@ -1261,7 +1270,7 @@ describe("BrowserHost", { concurrent: false }, () => {
         }),
       view: (_, h) =>
         h.div(
-          h.input().attr("aria-label", "Field").ref(Field)
+          h.input.attr("aria-label", "Field").ref(Field)
             .onMount("tag", (element) => Effect.succeed(Message.make({ _tag: "Mounted", tag: element.localName })))
         )
     })
@@ -1283,7 +1292,7 @@ describe("BrowserHost", { concurrent: false }, () => {
   describe("hosts", () => {
     const Native: View.Vocabulary<Native> = {
       name: "native",
-      tags: { view: () => new View.ElementBuilder("view", []) }
+      tags: { view: new View.ElementBuilder("view") }
     }
     const NativeBox = Component.make({
       name: "NativeBox",
@@ -1292,7 +1301,7 @@ describe("BrowserHost", { concurrent: false }, () => {
       elements: Native,
       init: () => null,
       update: (model) => model,
-      view: (_, h) => h.view()
+      view: (_, h) => h.view
     })
     const Page = Component.make({
       name: "Page",

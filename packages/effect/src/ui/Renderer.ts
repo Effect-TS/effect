@@ -472,7 +472,7 @@ export const mount: <
       | ((
         failure: AsyncResult.Failure<never, unknown>,
         h: View.Helper<never, {}> & View.Tags<V, never>
-      ) => View.Node<never, RF>)
+      ) => View.Content<never, RF>)
       | undefined
     readonly state?: State | undefined
     readonly loader?: LoaderOptions | undefined

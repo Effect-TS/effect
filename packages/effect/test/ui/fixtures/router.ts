@@ -117,8 +117,8 @@ export const Person = Component.make({
       "div",
       h.el("h1", model.name),
       h.loaded.person.waiting ? h.el("p", "Refreshing") : null,
-      h.el("button", `count ${model.count}`).on("click", PersonMessage.make({ _tag: "Bump" })),
-      h.el("button", "Rename").on("click", PersonMessage.make({ _tag: "Rename" }))
+      h.el("button").on("click", PersonMessage.make({ _tag: "Bump" })).children(`count ${model.count}`),
+      h.el("button").on("click", PersonMessage.make({ _tag: "Rename" })).children("Rename")
     )
 }).pipe(Component.provide(Layer.merge(GetPerson.layer, RenamePerson.layer)))
 
@@ -173,7 +173,7 @@ export const App = Component.make({
   head: () => [Head.titleTemplate((title) => `${title} · App`), Head.lang("en")],
   view: (model, h) => {
     const go = (label: string, route: AppRoute) =>
-      h.el("button", label).on("click", AppMessage.make({ _tag: "Go", route }))
+      h.el("button").on("click", AppMessage.make({ _tag: "Go", route })).children(label)
     return h.el(
       "div",
       h.el(
@@ -182,9 +182,9 @@ export const App = Component.make({
         go("Person 1", AppRoute.make({ _tag: "Person", params: { id: 1 } })),
         go("Person 2", AppRoute.make({ _tag: "Person", params: { id: 2 } })),
         go("Slow", AppRoute.make({ _tag: "Slow" })),
-        h.el("button", "Back").on("click", AppMessage.make({ _tag: "Back" })),
-        h.el("button", "Block").on("click", AppMessage.make({ _tag: "Block" })),
-        h.el("button", "Unblock").on("click", AppMessage.make({ _tag: "Unblock" }))
+        h.el("button").on("click", AppMessage.make({ _tag: "Back" })).children("Back"),
+        h.el("button").on("click", AppMessage.make({ _tag: "Block" })).children("Block"),
+        h.el("button").on("click", AppMessage.make({ _tag: "Unblock" })).children("Unblock")
       ),
       AppRoute.match(model.route, {
         Home: (route) => h.child(Home, { key: AppRoute.print(route), props: {} }),

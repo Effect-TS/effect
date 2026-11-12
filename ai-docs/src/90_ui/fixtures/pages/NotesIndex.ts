@@ -45,29 +45,29 @@ export const NotesIndexNoDeps = Component.make({
       onSuccess: ({ value: notes }) =>
         h.div(
           h.ul(notes.map((note) =>
-            h.li(
-              h.a(note.title).attr("href", noteUrl(note.id)),
-              // Drag and drop needs a pointer, so every drag has a button
-              // that sends the same message, for the keyboard and touch.
-              h.button("Pin").attr("aria-label", `Pin ${note.title}`)
-                .onClick(NotesIndexMessage.make({ _tag: "Pinned", id: note.id }))
-            ).key(note.id)
+            h.li.key(note.id)
               // A drag source: the host puts this data on the drag.
-              .draggable({ [NoteType]: note.id }, { effectAllowed: "link" })
+              .draggable({ [NoteType]: note.id }, { effectAllowed: "link" }).children(
+                h.a.attr("href", noteUrl(note.id)).children(note.title),
+                // Drag and drop needs a pointer, so every drag has a button
+                // that sends the same message, for the keyboard and touch.
+                h.button.attr("aria-label", `Pin ${note.title}`)
+                  .onClick(NotesIndexMessage.make({ _tag: "Pinned", id: note.id })).children("Pin")
+              )
           )),
           // A drop target takes the drags whose types it accepts. Enter and
           // leave go to the target the drop would land on, once each, and
           // not to its children, so the highlight doesn't flicker.
-          h.aside(
-            h.h2("Pinned"),
-            h.ul(model.pinned.map((id) => h.li(notes.find((note) => note.id === id)?.title ?? id).key(id)))
-          ).attr("aria-label", "Pinned").class("pins", model.over && "drop-here")
+          h.aside.attr("aria-label", "Pinned").class("pins", model.over && "drop-here")
             .onDrop(
               ({ data }) => NotesIndexMessage.make({ _tag: "Pinned", id: data[NoteType] ?? "" }),
               { accepts: [NoteType], dropEffect: "link" }
             )
             .onDragEnter(NotesIndexMessage.make({ _tag: "Dragging", over: true }))
-            .onDragLeave(NotesIndexMessage.make({ _tag: "Dragging", over: false }))
+            .onDragLeave(NotesIndexMessage.make({ _tag: "Dragging", over: false })).children(
+              h.h2("Pinned"),
+              h.ul(model.pinned.map((id) => h.li.key(id).children(notes.find((note) => note.id === id)?.title ?? id)))
+            )
         )
     })
 })

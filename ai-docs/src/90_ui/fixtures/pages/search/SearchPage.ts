@@ -73,14 +73,18 @@ export const SearchPageNoDeps = Component.make({
 
     const resultsView = (results: NoteResults) =>
       h.div(
-        h.ul(results.notes.map((note) => h.li(h.a(note.title).attr("href", noteUrl(note.id))).key(note.id))),
-        h.nav(
-          h.button("Previous").attr("type", "button").disabled(page <= 1)
-            .onClick(SearchPageMessage.make({ _tag: "PageChosen", page: page - 1 })),
+        h.ul(
+          results.notes.map((note) =>
+            h.li.key(note.id).children(h.a.attr("href", noteUrl(note.id)).children(note.title))
+          )
+        ),
+        h.nav.attr("aria-label", "Pages").children(
+          h.button.attr("type", "button").disabled(page <= 1)
+            .onClick(SearchPageMessage.make({ _tag: "PageChosen", page: page - 1 })).children("Previous"),
           h.span(`Page ${page} of ${results.pages}`),
-          h.button("Next").attr("type", "button").disabled(page >= results.pages)
-            .onClick(SearchPageMessage.make({ _tag: "PageChosen", page: page + 1 }))
-        ).attr("aria-label", "Pages")
+          h.button.attr("type", "button").disabled(page >= results.pages)
+            .onClick(SearchPageMessage.make({ _tag: "PageChosen", page: page + 1 })).children("Next")
+        )
       )
 
     return h.section(
@@ -90,13 +94,14 @@ export const SearchPageNoDeps = Component.make({
       // and where the caret is. The browser Router writes the address bar at
       // most every 200 ms, to stay under the browsers' limits on history
       // calls.
-      h.input().attr("type", "search").attr("aria-label", "Search").value(q ?? "")
+      h.input.attr("type", "search").attr("aria-label", "Search").value(q ?? "")
         .onInput(({ value }) => SearchPageMessage.make({ _tag: "Typed", text: value })),
-      h.select(
-        h.option("A to Z").attr("value", "asc"),
-        h.option("Z to A").attr("value", "desc")
-      ).attr("aria-label", "Order").value(sort)
-        .onChange(({ value }) => SearchPageMessage.make({ _tag: "Sorted", sort: value === "desc" ? "desc" : "asc" })),
+      h.select.attr("aria-label", "Order").value(sort)
+        .onChange(({ value }) => SearchPageMessage.make({ _tag: "Sorted", sort: value === "desc" ? "desc" : "asc" }))
+        .children(
+          h.option.attr("value", "asc").children("A to Z"),
+          h.option.attr("value", "desc").children("Z to A")
+        ),
       AsyncResult.match(h.loaded.results, {
         // While a fetch waits or runs, `h.previous` holds the last results,
         // so the list stays on screen instead of flashing a loading state.

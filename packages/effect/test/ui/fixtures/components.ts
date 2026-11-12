@@ -27,9 +27,9 @@ export const Counter = Component.make({
   view: (model, h) =>
     h.el(
       "div",
-      h.el("button", "-").on("click", CounterMessage.make({ _tag: "Decrement" })),
+      h.el("button").on("click", CounterMessage.make({ _tag: "Decrement" })).children("-"),
       h.el("span", String(model.count)),
-      h.el("button", "+").on("click", CounterMessage.make({ _tag: "Increment" }))
+      h.el("button").on("click", CounterMessage.make({ _tag: "Increment" })).children("+")
     )
 })
 
@@ -84,9 +84,9 @@ export const TodoItem = Component.make({
   view: (model, h) =>
     h.el(
       "li",
-      h.el("button", h.props.todo.done ? "[x]" : "[ ]").on("click", TodoItemMessage.make({ _tag: "Toggle" })),
+      h.el("button").on("click", TodoItemMessage.make({ _tag: "Toggle" })).children(h.props.todo.done ? "[x]" : "[ ]"),
       h.el("span", h.props.todo.title),
-      h.el("button", model.saving ? "saving" : "save").on("click", TodoItemMessage.make({ _tag: "Save" }))
+      h.el("button").on("click", TodoItemMessage.make({ _tag: "Save" })).children(model.saving ? "saving" : "save")
     )
 })
 

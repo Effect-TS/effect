@@ -80,7 +80,7 @@ describe("Story", () => {
             "input",
             (payload: unknown) => Message.make({ _tag: "Typed", value: (payload as { readonly value: string }).value })
           ),
-          h.el("button", h.el("span", "Save")).on("click", Message.make({ _tag: "Pressed" })),
+          h.el("button").on("click", Message.make({ _tag: "Pressed" })).children(h.el("span", "Save")),
           h.el("p", "Save draft"),
           h.el("p", "plain")
         )
@@ -132,9 +132,9 @@ describe("Story", () => {
                 (payload as { readonly key: string }).key === "Enter" ? Sent.make({ _tag: "Send" }) : undefined,
               { preventDefault: true }
             ),
-            h.el("form", h.el("button", "Ignored")).on("submit", () => undefined),
+            h.el("form").on("submit", () => undefined).children(h.el("button", "Ignored")),
             h.el("form", h.el("button", "Unhandled")),
-            h.el("p", "Menu").on("contextmenu", () => undefined, { preventDefault: "always" })
+            h.el("p").on("contextmenu", () => undefined, { preventDefault: "always" }).children("Menu")
           )
       })
       const keyDown = (key: string) => (s: Story.Steps<typeof Composer>) =>
@@ -241,8 +241,8 @@ describe("Story", () => {
         }),
       view: (model, h) =>
         h.el("div", [
-          h.el("button", "save").on("click", Msg.make({ _tag: "Save" })),
-          h.el("button", "stop").on("click", Msg.make({ _tag: "Stop" })),
+          h.el("button").on("click", Msg.make({ _tag: "Save" })).children("save"),
+          h.el("button").on("click", Msg.make({ _tag: "Stop" })).children("stop"),
           h.text(h.isRunning(Save) ? "saving" : model)
         ])
     })

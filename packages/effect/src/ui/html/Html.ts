@@ -64,11 +64,11 @@
  *   init: () => "",
  *   update: (draft, message) => (message._tag === "Typed" ? message.value : ""),
  *   view: (draft, h) =>
- *     h.form(
- *       h.input().ref(NewTodo).attr("aria-label", "New todo").value(draft)
+ *     h.form.onSubmit(Message.make({ _tag: "Add" })).children(
+ *       h.input.ref(NewTodo).attr("aria-label", "New todo").value(draft)
  *         .onInput(({ value }) => Message.make({ _tag: "Typed", value })),
- *       h.button("Add").attr("type", "submit")
- *     ).onSubmit(Message.make({ _tag: "Add" }))
+ *       h.button.attr("type", "submit").children("Add")
+ *     )
  * })
  * ```
  *
@@ -89,7 +89,7 @@
  *   init: () => "",
  *   update: (draft, message) => (message._tag === "Typed" ? message.value : ""),
  *   view: (draft, h) =>
- *     h.textarea().attr("aria-label", "Message").value(draft)
+ *     h.textarea.attr("aria-label", "Message").value(draft)
  *       .onInput(({ value }) => Message.make({ _tag: "Typed", value }))
  *       // Enter that ends an IME composition only confirms the text.
  *       .onKeyDown(
@@ -493,21 +493,35 @@ export type EventsOf<K extends string> =
 export type ValueNode = HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
 
 /**
- * An HTML element builder: the core builder plus typed event sugar, controlled
- * properties and a few attribute helpers.
+ * The builder of a void HTML element, such as `h.input` or `h.br`: the core
+ * builder plus typed event sugar, controlled properties and a few attribute
+ * helpers, and no children. `Element` adds `children` for the other tags.
  *
  * **Details**
  *
  * `Events` are the tag's events and `Node` the DOM element it renders to,
- * which types `ref` and `onMount`. Every method returns a copy.
+ * which types `ref` and `onMount`. Every method returns a copy. A builder
+ * is itself a valid child or view, so `h.input.value(draft)` needs no
+ * terminal call.
  *
  * @stability experimental
  * @category models
  * @since 4.1.5
  */
-export class Element<out Msg, out R = never, in out E = Record<string, unknown>, in out Node = unknown>
+export class VoidElement<out Msg, out R = never, in out E = Record<string, unknown>, in out Node = unknown>
   extends View.ElementBuilder<Msg, R, E, Node>
 {
+  /**
+   * Like `View.ElementBuilder.onMount`, keeping the HTML methods.
+   *
+   * @since 4.1.5
+   */
+  override onMount<R2>(
+    name: string,
+    run: (node: Node) => Effect.Effect<Msg, never, R2>
+  ): VoidElement<Msg, R | R2, E, Node> {
+    return super.onMount(name, run) as any
+  }
   /**
    * Sets the `id` attribute.
    *
@@ -534,11 +548,11 @@ export class Element<out Msg, out R = never, in out E = Record<string, unknown>,
    * declare const h: Html.Tags<never>
    * declare const model: { readonly saving: boolean; readonly error: string | undefined }
    *
-   * const save = h.button("Save").class(
+   * const save = h.button.class(
    *   "rounded px-3 py-1",
    *   model.saving && "opacity-50",
    *   model.error !== undefined && "ring-2 ring-red-500"
-   * )
+   * ).children("Save")
    * ```
    *
    * @since 4.1.5
@@ -561,27 +575,24 @@ export class Element<out Msg, out R = never, in out E = Record<string, unknown>,
    *
    * @since 4.1.5
    */
-  value<N extends ValueNode>(this: Element<Msg, R, E, N>, value: string): Element<Msg, R, E, N> {
-    return this.prop("value", value)
+  value<N extends ValueNode>(this: VoidElement<Msg, R, E, N>, value: string): this {
+    return this.prop("value", value) as any
   }
   /**
    * The controlled `checked` state of a checkbox or radio button.
    *
    * @since 4.1.5
    */
-  checked(this: Element<Msg, R, E, HTMLInputElement>, checked: boolean): Element<Msg, R, E, HTMLInputElement> {
-    return this.prop("checked", checked)
+  checked(this: VoidElement<Msg, R, E, HTMLInputElement>, checked: boolean): this {
+    return this.prop("checked", checked) as any
   }
   /**
    * The controlled `selected` state of an `option`.
    *
    * @since 4.1.5
    */
-  selected(
-    this: Element<Msg, R, E, HTMLOptionElement>,
-    selected: boolean
-  ): Element<Msg, R, E, HTMLOptionElement> {
-    return this.prop("selected", selected)
+  selected(this: VoidElement<Msg, R, E, HTMLOptionElement>, selected: boolean): this {
+    return this.prop("selected", selected) as any
   }
   /**
    * The controlled `open` state of a `details` or `dialog`. On a `dialog`
@@ -590,11 +601,8 @@ export class Element<out Msg, out R = never, in out E = Record<string, unknown>,
    *
    * @since 4.1.5
    */
-  open<N extends HTMLDetailsElement | HTMLDialogElement>(
-    this: Element<Msg, R, E, N>,
-    open: boolean
-  ): Element<Msg, R, E, N> {
-    return this.prop("open", open)
+  open<N extends HTMLDetailsElement | HTMLDialogElement>(this: VoidElement<Msg, R, E, N>, open: boolean): this {
+    return this.prop("open", open) as any
   }
   /**
    * Shows a `dialog` as a modal while `modal` is true: in the top layer, with
@@ -624,8 +632,8 @@ export class Element<out Msg, out R = never, in out E = Record<string, unknown>,
    *
    * @since 4.1.5
    */
-  modal<N extends HTMLDialogElement>(this: Element<Msg, R, E, N>, modal: boolean): Element<Msg, R, E, N> {
-    return this.prop("open", modal ? "modal" : false)
+  modal<N extends HTMLDialogElement>(this: VoidElement<Msg, R, E, N>, modal: boolean): this {
+    return this.prop("open", modal ? "modal" : false) as any
   }
   /**
    * Makes this element a popover in the top layer, `"manual"` or `"auto"`,
@@ -719,7 +727,10 @@ export class Element<out Msg, out R = never, in out E = Record<string, unknown>,
     options?: { readonly effectAllowed?: EffectAllowed | undefined } | undefined
   ): this {
     const source: DragSourceOptions = { data, effectAllowed: options?.effectAllowed }
-    return this.with({ eventOptions: { ...this.eventOptions, dragstart: source } }).attr("draggable", "true")
+    return View.withFields(this, { eventOptions: { ...this.eventOptions, dragstart: source } }).attr(
+      "draggable",
+      "true"
+    )
   }
   /**
    * Sugar for `on("dragstart", handler)` that keeps the data set with
@@ -812,10 +823,10 @@ export class Element<out Msg, out R = never, in out E = Record<string, unknown>,
    * @since 4.1.5
    */
   onInput<E2 extends E & { readonly input: unknown }>(
-    this: Element<Msg, R, E2, Node>,
+    this: VoidElement<Msg, R, E2, Node>,
     handler: View.Handler<Msg, E2["input"]>
-  ): Element<Msg, R, E2, Node> {
-    return this.on("input", handler)
+  ): this {
+    return this.on("input", handler) as any
   }
   /**
    * Sugar for `on("change", handler)`, on the elements that have it.
@@ -823,10 +834,10 @@ export class Element<out Msg, out R = never, in out E = Record<string, unknown>,
    * @since 4.1.5
    */
   onChange<E2 extends E & { readonly change: unknown }>(
-    this: Element<Msg, R, E2, Node>,
+    this: VoidElement<Msg, R, E2, Node>,
     handler: View.Handler<Msg, E2["change"]>
-  ): Element<Msg, R, E2, Node> {
-    return this.on("change", handler)
+  ): this {
+    return this.on("change", handler) as any
   }
   /**
    * Sugar for `on("submit", handler)`, on a `form`. The browser host always
@@ -836,10 +847,10 @@ export class Element<out Msg, out R = never, in out E = Record<string, unknown>,
    * @since 4.1.5
    */
   onSubmit<E2 extends E & { readonly submit: unknown }>(
-    this: Element<Msg, R, E2, Node>,
+    this: VoidElement<Msg, R, E2, Node>,
     handler: View.Handler<Msg, E2["submit"]>
-  ): Element<Msg, R, E2, Node> {
-    return this.on("submit", handler)
+  ): this {
+    return this.on("submit", handler) as any
   }
   /**
    * Sugar for `on("toggle", handler)`: a `details`, a `dialog` or a popover
@@ -848,10 +859,10 @@ export class Element<out Msg, out R = never, in out E = Record<string, unknown>,
    * @since 4.1.5
    */
   onToggle<E2 extends E & { readonly toggle: unknown }>(
-    this: Element<Msg, R, E2, Node>,
+    this: VoidElement<Msg, R, E2, Node>,
     handler: View.Handler<Msg, E2["toggle"]>
-  ): Element<Msg, R, E2, Node> {
-    return this.on("toggle", handler)
+  ): this {
+    return this.on("toggle", handler) as any
   }
   /**
    * Sugar for `on("cancel", handler)`, on a `dialog`: a close request, such
@@ -861,10 +872,10 @@ export class Element<out Msg, out R = never, in out E = Record<string, unknown>,
    * @since 4.1.5
    */
   onCancel<E2 extends E & { readonly cancel: unknown }>(
-    this: Element<Msg, R, E2, Node>,
+    this: VoidElement<Msg, R, E2, Node>,
     handler: View.Handler<Msg, E2["cancel"]>
-  ): Element<Msg, R, E2, Node> {
-    return this.on("cancel", handler)
+  ): this {
+    return this.on("cancel", handler) as any
   }
   /**
    * Sugar for `on("close", handler)`, on a `dialog`: sent after every close,
@@ -875,10 +886,55 @@ export class Element<out Msg, out R = never, in out E = Record<string, unknown>,
    * @since 4.1.5
    */
   onClose<E2 extends E & { readonly close: unknown }>(
-    this: Element<Msg, R, E2, Node>,
+    this: VoidElement<Msg, R, E2, Node>,
     handler: View.Handler<Msg, E2["close"]>
-  ): Element<Msg, R, E2, Node> {
-    return this.on("close", handler)
+  ): this {
+    return this.on("close", handler) as any
+  }
+}
+
+/**
+ * The builder of an HTML element that takes children: a `VoidElement` plus
+ * `children`, which ends the chain.
+ *
+ * **Details**
+ *
+ * On `h`, a tag's root builder is also callable as shorthand for
+ * `children`, for an element with no attributes: `h.span(title)` is
+ * `h.span.children(title)`. Either way the result is a node with no chain
+ * methods, so attributes and handlers always come first:
+ * `h.form.onSubmit(msg).children(...)`.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.1.5
+ */
+export class Element<out Msg, out R = never, in out E = Record<string, unknown>, in out Node = unknown>
+  extends VoidElement<Msg, R, E, Node>
+{
+  /**
+   * Like `View.ElementBuilder.onMount`, keeping the HTML methods and
+   * `children`.
+   *
+   * @since 4.1.5
+   */
+  override onMount<R2>(
+    name: string,
+    run: (node: Node) => Effect.Effect<Msg, never, R2>
+  ): Element<Msg, R | R2, E, Node> {
+    return super.onMount(name, run) as any
+  }
+  /**
+   * Ends the chain with the element's children: nodes, builders, text,
+   * arrays to flatten, and holes (`false`, `null`, `undefined`). Their
+   * requirements join the element's.
+   *
+   * @since 4.1.5
+   */
+  children<const C extends ReadonlyArray<View.Input<Msg>>>(
+    ...inputs: C
+  ): View.Element<Msg, R | View.Requirements<C[number]>> {
+    return View.build(this, inputs)
   }
 }
 
@@ -1071,12 +1127,8 @@ export type VoidTag = typeof voidTags[number]
  * @since 4.1.5
  */
 export type Tags<Msg> =
-  & {
-    readonly [K in ContainerTag]: <const C extends ReadonlyArray<View.Input<Msg>>>(
-      ...children: C
-    ) => Element<Msg, View.Requirements<C[number]>, EventsOf<K>, HTMLElementTagNameMap[K]>
-  }
-  & { readonly [K in VoidTag]: () => Element<Msg, never, EventsOf<K>, HTMLElementTagNameMap[K]> }
+  & { readonly [K in ContainerTag]: View.Shorthand<Element<Msg, never, EventsOf<K>, HTMLElementTagNameMap[K]>> }
+  & { readonly [K in VoidTag]: VoidElement<Msg, never, EventsOf<K>, HTMLElementTagNameMap[K]> }
 
 /**
  * The type-level vocabulary, for `View.Register`.
@@ -1109,24 +1161,23 @@ export const Elements: Elements | undefined = undefined
  */
 export const name = "html"
 
-const makeTags = (): Readonly<Record<string, (...children: ReadonlyArray<any>) => Element<any, any, any, any>>> => {
-  const out: Record<string, (...children: ReadonlyArray<any>) => Element<any, any, any, any>> = {}
-  for (const tag of containerTags) {
-    out[tag] = (...children: ReadonlyArray<View.Input<any>>) => new Element(tag, View.children(children))
-  }
-  for (const tag of voidTags) out[tag] = () => new Element(tag, [])
+const makeTags = (): Readonly<Record<string, VoidElement<any, any, any, any>>> => {
+  const out: Record<string, VoidElement<any, any, any, any>> = {}
+  for (const tag of containerTags) out[tag] = View.shorthand(new Element(tag))
+  for (const tag of voidTags) out[tag] = new VoidElement(tag)
   return out
 }
 
 /**
- * The element constructors installed on `h`.
+ * The root element builders installed on `h`, one per tag, shared by every
+ * render: a callable `View.shorthand` builder for a tag that takes
+ * children, and a `VoidElement` for a void tag.
  *
  * @stability experimental
  * @category vocabulary
  * @since 4.1.5
  */
-export const tags: Readonly<Record<string, (...children: ReadonlyArray<any>) => Element<any, any, any, any>>> =
-  makeTags()
+export const tags: Readonly<Record<string, VoidElement<any, any, any, any>>> = makeTags()
 
 // ---------------------------------------------------------------------------
 // refs

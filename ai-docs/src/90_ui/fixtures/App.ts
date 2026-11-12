@@ -47,8 +47,8 @@ export const App = Component.make({
   view: ({ route }, h) =>
     h.div(
       h.header(
-        h.a("Notes").attr("href", AppRoute.print(indexRoute)),
-        h.a("Search").attr("href", AppRoute.print(searchRoute))
+        h.a.attr("href", AppRoute.print(indexRoute)).children("Notes"),
+        h.a.attr("href", AppRoute.print(searchRoute)).children("Search")
       ),
       h.main(
         // `match` is exhaustive. Key each page by its path with `printPath`,
@@ -69,7 +69,7 @@ export const App = Component.make({
           NotFound: () =>
             h.section(
               h.h1("Page not found"),
-              h.button("Back to all notes").onClick(AppMessage.make({ _tag: "GoHome" }))
+              h.button.onClick(AppMessage.make({ _tag: "GoHome" })).children("Back to all notes")
             )
         })
       )
