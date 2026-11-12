@@ -99,7 +99,7 @@ const failEnv = (env: Env, cause: Cause.Cause<unknown>) => {
   for (const waiter of env.waiters.splice(0)) waiter.failed?.(cause)
 }
 const memoMapOf = (env: Env): Layer.MemoMap => env.memoMap ??= Layer.CurrentMemoMap.forkOrCreate(env.ctx!)
-const unavailable = (env: Env): View.Child.Fallback =>
+const unavailable = (env: Env): AsyncResult.Initial<never, unknown> | AsyncResult.Failure<never, unknown> =>
   env.failure !== undefined ? AsyncResult.failure(env.failure) : AsyncResult.initial(true)
 
 // ---------------------------------------------------------------------------

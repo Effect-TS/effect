@@ -201,11 +201,11 @@ export interface LoaderInfo {
   readonly args: unknown
 }
 
-/**
- * One key of a `loadMany` loader for `loadedMany`: its args and a Success
 // The read of a loader entry, for the steps that name a loader.
 type ReadOf<D> = D extends Component.Load<infer R> ? R : D extends Component.LoadMany<infer R> ? R : never
 
+/**
+ * One key of a `loadMany` loader for `loadedMany`: its args and a Success
  * value or a typed failure.
  *
  * @stability experimental
@@ -1584,7 +1584,7 @@ const findChild = <Msg>(view: View.Node<Msg, any>, key: string, step: string): V
 export const fallback = <Msg>(
   view: View.Node<Msg, any>,
   key: string,
-  result: View.Child.Fallback
+  result: AsyncResult.Initial<never, unknown> | AsyncResult.Failure<never, unknown>
 ): View.Node<Msg, any> | undefined => {
   const fallback = findChild(view, key, "fallback").fallback
   return fallback === undefined ? undefined : View.toNode(fallback(result))
