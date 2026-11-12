@@ -26,7 +26,9 @@
  * A popover's `popoverOpen` is shown with `showPopover()` at the commit,
  * after the modal dialogs, since a modal opening closes the auto popovers
  * already showing, and hidden with `hidePopover()`. A `"manual"` popover is
- * applied at every commit and put back on the frame after any other change;
+ * applied at every commit, including when its component didn't render, since
+ * a move in the document closes it without a `toggle`, and put back on the
+ * frame after any other change;
  * an `"auto"` one is applied only when the Model's value or the mode
  * changes, and the browser's changes are left for the Model to follow.
  * Every `toggle` is sent, including a coalesced one whose states are equal,
@@ -386,6 +388,12 @@ export const makeHost = (
   // opening closes the auto popovers already showing.
   /** Popovers whose Model says open, shown at the next commit. */
   const popoversToShow = new Set<HTMLElement>()
+  /**
+   * Manual popovers, reconciled at every commit whether or not they rendered: moving an element, as a
+   * keyed reorder of an ancestor does, closes its popover without a `toggle`. One that has left the
+   * document is dropped.
+   */
+  const manualPopovers = new Set<HTMLElement>()
   /** The mode each popover's state was last applied under. */
   const popoverModes = new WeakMap<globalThis.Node, string | null>()
 
@@ -410,8 +418,16 @@ export const makeHost = (
     if (popoverShowing(element)) element.hidePopover()
   }
 
-  /** Shows the popovers queued for this commit that are still connected and wanted, in document order. */
+  /**
+   * Shows the popovers queued for this commit and the manual popovers that should be showing, if they're
+   * still connected and wanted, in document order, and hides the manual ones that shouldn't be.
+   */
   const showPopovers = () => {
+    for (const element of manualPopovers) {
+      if (!element.isConnected) manualPopovers.delete(element)
+      else if (wanted.get(element)?.get("popoverOpen") === true) popoversToShow.add(element)
+      else if (popoverShowing(element)) element.hidePopover()
+    }
     if (popoversToShow.size === 0) return
     const popovers = [...popoversToShow]
     popoversToShow.clear()
@@ -750,6 +766,8 @@ export const makeHost = (
         const mode = (node as globalThis.Element).getAttribute("popover")
         const modeChanged = popoverModes.get(node) !== mode
         popoverModes.set(node, mode)
+        if (mode === "manual") manualPopovers.add(node as HTMLElement)
+        else manualPopovers.delete(node as HTMLElement)
         // Edge-triggered: an auto popover the browser closed stays closed until the Model's value changes.
         if (mode === "auto" && !modeChanged && previous === want) return
         applyPopover(node as HTMLElement, want)

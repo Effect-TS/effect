@@ -7,7 +7,7 @@ import { BrowserHost, Html } from "effect/ui/html"
 import { HtmlQuery } from "effect/ui/html/testing"
 import { describe, vi } from "vitest"
 import { Confirm, ConfirmMessage, Nested } from "./fixtures/confirm.ts"
-import { Menu, MenuMessage, ModalMenu, popoverStub } from "./fixtures/popover.ts"
+import { Menu, MenuMessage, ModalMenu, popoverStub, Rows } from "./fixtures/popover.ts"
 import { maxTitle, TodoApp } from "./fixtures/todos.ts"
 
 /** Lets the render flush, Commands and the controlled-property restore run. */
@@ -1134,6 +1134,26 @@ describe("BrowserHost", { concurrent: false }, () => {
         yield* settle
         expect(stub.showing.has(menu()!)).toBe(false)
         expect(shows(stub.calls)).toBe(1)
+      }).pipe(Effect.scoped))
+
+    it.effect("a keyed move closes the popover in it: a manual one is shown again, an auto one isn't", () =>
+      Effect.gen(function*() {
+        const stub = yield* popoverStub
+        // Reversing the rows moves one of them; the browser closes the popover in it without a toggle.
+        for (const [mode, expected] of [["manual", [true, true]], ["auto", [true, false]]] as const) {
+          const app = yield* container
+          const root = yield* BrowserHost.mountEffect(Rows, { mode }, app)
+          yield* tick
+          // The opening toggles, and the reconciliation frame they schedule, are over before the move.
+          stub.run()
+          yield* tick
+          const showing = () => Array.from(app.querySelectorAll("[popover]"), (node) => stub.showing.has(node))
+          expect(showing()).toEqual([true, true])
+          root.send(true)
+          yield* tick
+          // A manual popover is reconciled at every commit; an auto one only when its Model's value changes.
+          expect(showing()).toEqual(expected)
+        }
       }).pipe(Effect.scoped))
 
     it.effect("a mode change applies the Model's state under the new mode", () =>

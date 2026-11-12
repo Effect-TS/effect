@@ -635,17 +635,19 @@ export class Element<out Msg, out R = never, in out E = Record<string, unknown>,
    * **Details**
    *
    * A `"manual"` popover is controlled: the browser host shows and hides it
-   * as the Model says, and when anything else changes it, such as a
-   * `popovertarget` button, puts it back on the next frame. Use `onClick`
-   * to open it.
+   * as the Model says at every commit, whether or not its component
+   * rendered, and when anything else changes it, such as a `popovertarget`
+   * button, puts it back on the next frame. Use `onClick` to open it.
    *
    * An `"auto"` popover is followed: the browser closes it on Escape, a
    * click outside, another auto popover opening or a modal dialog opening,
    * and sends `onToggle`. The Model must follow it. The host shows or hides
    * it only when the Model's value changes, so a Model that ignores the
    * toggle still says open while the popover is closed, and it reopens only
-   * once the value goes to `false` and back. `popovertarget` and `commandfor`
-   * buttons work with an auto popover.
+   * once the value goes to `false` and back. The same holds when the
+   * browser closes it without a `toggle`, as it does when the element moves
+   * in the document. `popovertarget` and `commandfor` buttons work with an
+   * auto popover.
    *
    * The server renders a popover closed, and the browser host shows it at
    * the first commit once the page is live. A popover removed while showing

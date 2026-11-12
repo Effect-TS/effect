@@ -7,7 +7,8 @@ import { Html } from "effect/ui/html"
  * Chromium 153 behaves: `showPopover()` throws on a disconnected element or one without the attribute, and
  * is a no-op when showing; the toggles queued for an element are coalesced into one event in a later task,
  * from the first `oldState` to the latest `newState`; changing the `popover` attribute hides it; and
- * `showModal()` closes the auto popovers showing. `dismiss` is a light dismiss, `run` runs the queued
+ * `showModal()` closes the auto popovers showing; and moving a connected element, as a keyed reorder
+ * does, closes the popovers in it without a toggle. `dismiss` is a light dismiss, `run` runs the queued
  * toggle tasks.
  */
 export const popoverStub = Effect.acquireRelease(
@@ -45,7 +46,16 @@ export const popoverStub = Effect.acquireRelease(
     const original = {
       matches: elementProto.matches,
       setAttribute: elementProto.setAttribute,
-      showModal: dialogProto.showModal
+      showModal: dialogProto.showModal,
+      insertBefore: elementProto.insertBefore
+    }
+    elementProto.insertBefore = function(this: Node, node: Node, ref: Node | null) {
+      if (node.isConnected) {
+        for (const element of Array.from(showing)) {
+          if (node.contains(element)) showing.delete(element)
+        }
+      }
+      return original.insertBefore.call(this, node, ref)
     }
     proto.showPopover = function(this: HTMLElement) {
       if (!this.isConnected) throw new DOMException("The popover isn't connected", "InvalidStateError")
@@ -79,6 +89,7 @@ export const popoverStub = Effect.acquireRelease(
       delete proto.hidePopover
       Object.assign(elementProto, { matches: original.matches, setAttribute: original.setAttribute })
       dialogProto.showModal = original.showModal
+      elementProto.insertBefore = original.insertBefore
     }
     return {
       calls,
@@ -146,4 +157,35 @@ export const ModalMenu = Component.make({
   view: (_, h) =>
     h.dialog(h.div(h.button("Rename")).attr("aria-label", "Menu").popover("auto", true))
       .attr("aria-label", "Settings").modal(true)
+})
+
+const Popup = Component.make({
+  name: "Popup",
+  props: Schema.Struct({ label: Schema.String, mode: Mode }),
+  model: Schema.Null,
+  message: Schema.Never,
+  elements: Html,
+  init: () => null,
+  update: (model) => model,
+  view: (_, h) => h.div(h.button(h.props.label)).attr("aria-label", h.props.label).popover(h.props.mode, true)
+})
+
+/**
+ * Two keyed rows, A and B, each holding a child with a popover of `mode`, open. Reversing them moves a
+ * row's subtree, and the children, whose props don't change, don't render again.
+ */
+export const Rows = Component.make({
+  name: "Rows",
+  props: Schema.Struct({ mode: Mode }),
+  model: Schema.Boolean,
+  message: Schema.Boolean,
+  elements: Html,
+  init: () => false,
+  update: (_, reversed) => reversed,
+  view: (reversed, h) => {
+    const rows = ["A", "B"].map((label) =>
+      h.div(h.child(Popup, { key: label, props: { label, mode: h.props.mode } })).key(label)
+    )
+    return h.div(reversed ? rows.reverse() : rows)
+  }
 })
