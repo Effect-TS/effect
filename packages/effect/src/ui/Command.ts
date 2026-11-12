@@ -185,24 +185,15 @@ export type GroupField<In> =
   & string
 
 /**
- * The `group` fields of a Command's args: what `Command.interrupt` and
- * `h.isRunning` take to address one group.
+ * The optional group argument of `Command.interrupt` and `h.isRunning`: the
+ * `group` fields of the Command's args, or none for a Command without a
+ * `group`.
  *
  * @stability experimental
  * @category utility types
  * @since 4.1.5
  */
-export type GroupPick<Args, G extends string> = Pick<Args, G & keyof Args>
-
-/**
- * The optional group argument of `Command.interrupt` and `h.isRunning`: none
- * for a Command without a `group`.
- *
- * @stability experimental
- * @category utility types
- * @since 4.1.5
- */
-export type GroupArg<Args, G extends string> = [G] extends [never] ? [] : [group?: GroupPick<Args, G>]
+export type GroupArg<Args, G extends string> = [G] extends [never] ? [] : [group?: Pick<Args, G & keyof Args>]
 
 /**
  * The arguments of `make`: optional when every field of the args is.
@@ -417,9 +408,9 @@ export type Kind = "Effect" | "Stream"
  * the success of the Command's definition before any `map`, and `SourceE`
  * its typed failure before `match`; they're what a story's `resolve` and
  * `fail` steps take. `K` is the kind, which decides whether `effect` or
- * `stream` holds the work; the other field is `undefined`. Use the
- * `Effectful` and `Streaming` aliases rather than naming `K` yourself, and
- * narrow a `Command` on `_tag` before reading the work.
+ * `stream` holds the work; the other field is `undefined`: `"Effect"` for a
+ * Command whose result is one message, `"Stream"` for one declared with
+ * `stream: true`. Narrow a `Command` on `_tag` before reading the work.
  *
  * One interface for both kinds, rather than two, is what lets
  * `command.pipe(Command.map((result) => ...))` infer `result`.
@@ -473,24 +464,6 @@ export interface Unmatched<out A, out E, out R, out K extends Kind> extends Pipe
 }
 
 /**
- * A Command whose result is one message.
- *
- * @stability experimental
- * @category models
- * @since 4.1.5
- */
-export type Effectful<Msg, R = never, Source = Msg, SourceE = never> = Issued<Msg, R, Source, "Effect", SourceE>
-
-/**
- * A Command declared with `stream: true`, whose result is a Stream of messages.
- *
- * @stability experimental
- * @category models
- * @since 4.1.5
- */
-export type Streaming<Msg, R = never, Source = Msg, SourceE = never> = Issued<Msg, R, Source, "Stream", SourceE>
-
-/**
  * A Command that interrupts the running and queued runs of another Command.
  *
  * **Details**
@@ -526,7 +499,7 @@ export interface Interrupt extends Pipeable.Pipeable {
  * @category models
  * @since 4.1.5
  */
-export type Command<Msg, R = never> = Effectful<Msg, R, never, never> | Streaming<Msg, R, never, never> | Interrupt
+export type Command<Msg, R = never> = Issued<Msg, R, never, "Effect"> | Issued<Msg, R, never, "Stream"> | Interrupt
 
 /**
  * The requirements of a Command, or of a union of them.
@@ -674,7 +647,9 @@ export declare namespace Definition {
 export interface Factory<in out Args, in out Msg, out IsStream extends boolean = false, out G extends string = never>
   extends Definition<Args, Msg, IsStream, never, G>
 {
-  (...args: MakeArgs<Args>): IsStream extends true ? Streaming<Msg> : Effectful<Msg>
+  (
+    ...args: MakeArgs<Args>
+  ): IsStream extends true ? Issued<Msg, never, Msg, "Stream"> : Issued<Msg, never, Msg, "Effect">
   readonly name: string
   /** The args Schema. */
   readonly args: Schema.Top
@@ -719,7 +694,7 @@ export interface Service<
    */
   make(
     ...args: MakeArgs<Args>
-  ): [Err] extends [never] ? (IsStream extends true ? Streaming<A, Self> : Effectful<A, Self>)
+  ): [Err] extends [never] ? (IsStream extends true ? Issued<A, Self, A, "Stream"> : Issued<A, Self, A, "Effect">)
     : Unmatched<A, Err, Self, IsStream extends true ? "Stream" : "Effect">
 }
 

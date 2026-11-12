@@ -218,7 +218,7 @@ export interface Update<in out Model, in out Msg, in out Events, out Props, L = 
 {
   readonly props: Props
   /** The loaders' results, as `h.loaded` shows them for the Model before this `update`. */
-  readonly loaded: Loaded<L>
+  readonly loaded: { readonly [K in keyof L]: LoadedOf<L[K]> }
 }
 
 /**
@@ -420,18 +420,36 @@ export interface Component<
 }
 
 /**
- * What `h` gains in `view` for a component with loaders: `loaded`,
- * `previous` and `patched`. `previous` and `patched` have no `loadMany`
- * loader.
+ * What `h` gains in `view` for a component with loaders.
+ *
+ * **Details**
+ *
+ * `loaded` holds each loader's result, as `$.loaded` does in `update`.
+ *
+ * `previous` holds, per single or list loader, the Success value its slot
+ * holds for args other than the loader's current ones. It's `Some` only while
+ * the loader is enabled, so it is `None` whenever `h.loaded` has the stored
+ * result.
+ *
+ * `patched` tells, per single or list loader, whether the value includes an
+ * optimistic patch the server hasn't confirmed. It is per entry, not per
+ * instance.
+ *
+ * `previous` and `patched` have no `loadMany` loader.
  *
  * @stability experimental
  * @category utility types
  * @since 4.1.5
  */
 export type LoaderHelpers<L> = [keyof L] extends [never] ? {} : {
-  readonly loaded: Loaded<L>
-  readonly previous: Previous<L>
-  readonly patched: Patched<L>
+  readonly loaded: { readonly [K in keyof L]: LoadedOf<L[K]> }
+  readonly previous: {
+    readonly [K in SingleNames<L>]: L[K] extends Load<infer R> ?
+      R extends Loader.ListRead.Any ? Option.Option<Omit<LoadedList<R>, "more">>
+      : Option.Option<Loader.Read.Success<R>>
+      : never
+  }
+  readonly patched: { readonly [K in SingleNames<L>]: boolean }
 }
 
 /**
@@ -527,20 +545,6 @@ export interface LoadMany<out R extends Loader.Read.Any> {
  */
 export type LoaderSpec = { readonly [name: string]: Load<any> | LoadMany<any> }
 
-/**
- * The `LoaderSpec` `make` infers from `loaders`: `S` holds each entry's
- * `load` and `M` each entry's `loadMany`.
- *
- * @stability experimental
- * @category utility types
- * @since 4.1.5
- */
-export type SpecOf<S, M> = {
-  readonly [K in keyof S]: M[K & keyof M] extends Loader.Read.Any ? LoadMany<M[K & keyof M]>
-    : S[K] extends Loader.Read.Any ? Load<S[K]>
-    : never
-}
-
 // A `load` beside a `loadMany` in one entry, or a list read under `loadMany`, is rejected.
 type OneRead<M> = [M] extends [Loader.Read.Any] ? { readonly "~error": "an entry takes one of load and loadMany" }
   : unknown
@@ -587,24 +591,6 @@ export type ListNames<L> =
 export type KeyedNames<L> = { readonly [K in keyof L]: L[K] extends LoadMany<any> ? K : never }[keyof L] & string
 
 /**
- * The read of a `Load` or a `LoadMany`.
- *
- * @stability experimental
- * @category utility types
- * @since 4.1.5
- */
-export type ReadOf<D> = D extends Load<infer R> ? R : D extends LoadMany<infer R> ? R : never
-
-/**
- * The result a read opens to: an `AsyncResult` of its success and error.
- *
- * @stability experimental
- * @category utility types
- * @since 4.1.5
- */
-export type ResultOf<R> = AsyncResult.AsyncResult<Loader.Read.Success<R>, Loader.Read.Error<R>>
-
-/**
  * The services a component's loaders add to its requirements: the reads
  * themselves, never what their fetchers use.
  *
@@ -612,13 +598,21 @@ export type ResultOf<R> = AsyncResult.AsyncResult<Loader.Read.Success<R>, Loader
  * @category utility types
  * @since 4.1.5
  */
-export type LoaderServices<L> = ServiceOf<ReadOf<L[keyof L]>>
+export type LoaderServices<L> = ServiceOf<L[keyof L]>
 
-type ServiceOf<R> = R extends { readonly Identifier: infer Self } ? Self : never
+type ServiceOf<D> = D extends { readonly read: { readonly Identifier: infer Self } } ? Self : never
 
 /**
- * One loader opened: a single read's result, a list's result opened to
- * `LoadedList`, or a keyed read's entries.
+ * One loader as `h.loaded`, `$.loaded`, and the `loaded` argument of `head`,
+ * `subscriptions` and a loader's `args` open it.
+ *
+ * **Details**
+ *
+ * A single loader opens to an `AsyncResult` of its read's success and error,
+ * a list loader to an `AsyncResult` of its `LoadedList`, and a `loadMany`
+ * loader to its entries in the order of its args. A single or list loader
+ * holds the result its slot took at the loader's current args, and otherwise
+ * `Initial`, waiting while the loader is enabled.
  *
  * @stability experimental
  * @category utility types
@@ -627,25 +621,8 @@ type ServiceOf<R> = R extends { readonly Identifier: infer Self } ? Self : never
 export type LoadedOf<D> = D extends LoadMany<infer R> ? KeyedLoaded<R>
   : D extends Load<infer R> ?
     R extends Loader.ListRead.Any ? AsyncResult.AsyncResult<LoadedList<R>, Loader.Read.Error<R>>
-    : ResultOf<R>
+    : AsyncResult.AsyncResult<Loader.Read.Success<R>, Loader.Read.Error<R>>
   : never
-
-/**
- * `h.loaded` in `view`, `$.loaded` in `update`, and `loaded` in `head`,
- * `subscriptions` and a loader's `args`.
- *
- * **Details**
- *
- * Per single or list loader, the result its slot holds when that was taken
- * at the loader's current args, and otherwise `Initial`, waiting while the
- * loader is enabled. A `loadMany` loader opens to its entries in the order
- * of its args.
- *
- * @stability experimental
- * @category utility types
- * @since 4.1.5
- */
-export type Loaded<L> = { readonly [K in keyof L]: LoadedOf<L[K]> }
 
 /**
  * A list loader as `h.loaded` opens it, inside its `AsyncResult`.
@@ -711,33 +688,6 @@ export interface KeyedChange<R extends Loader.Read.Any> {
   readonly args: Loader.Read.Args<R>
   readonly result: AsyncResult.AsyncResult<Loader.Read.Success<R>, Loader.Read.Error<R>>
 }
-
-/**
- * `h.previous` in `view`: per single or list loader, the Success value its
- * slot holds for args other than the loader's current ones. `Some` only while
- * the loader is enabled, so it is `None` whenever `h.loaded` has the stored
- * result.
- *
- * @stability experimental
- * @category utility types
- * @since 4.1.5
- */
-export type Previous<L> = {
-  readonly [K in SingleNames<L>]: ReadOf<L[K]> extends infer R extends Loader.ListRead.Any
-    ? Option.Option<Omit<LoadedList<R>, "more">>
-    : Option.Option<Loader.Read.Success<ReadOf<L[K]>>>
-}
-
-/**
- * `h.patched` in `view`: per single or list loader, whether the value
- * includes an optimistic patch the server hasn't confirmed. It is per entry,
- * not per instance.
- *
- * @stability experimental
- * @category utility types
- * @since 4.1.5
- */
-export type Patched<L> = { readonly [K in SingleNames<L>]: boolean }
 
 /**
  * What a loader's `args` returns: the args of a `load`'s read, or
@@ -915,6 +865,13 @@ export const make = <
   Events = never,
   S = {},
   M = {},
+  // The loaders as `Load` and `LoadMany` entries, by name. Nothing infers it, so it's always this default:
+  // the mapped types over it use `NoInfer`, or an annotated `loaded` argument would.
+  L = {
+    readonly [K in keyof S]: M[K & keyof M] extends Loader.Read.Any ? LoadMany<M[K & keyof M]>
+      : S[K] extends Loader.Read.Any ? Load<S[K]>
+      : never
+  },
   UI extends Model | InitStep<Model, Msg, Events, any> = Model,
   U extends Model | Step<Model, Msg, Events, any, any> = Model,
   UV extends View.Content<Msg, any> = View.Node<Msg>,
@@ -936,7 +893,7 @@ export const make = <
             readonly args: (
               model: Model,
               props: Props,
-              loaded: Omit<Loaded<SpecOf<S, M>>, K>
+              loaded: { readonly [P in Exclude<keyof NoInfer<L>, K>]: LoadedOf<NoInfer<L>[P]> }
             ) => ArgsFor<S[K], M[K & keyof M]>
             readonly debounce?: Duration.Input | undefined
             readonly onChange?: OnChange<S[K], M[K & keyof M], NoInfer<Msg>> | undefined
@@ -946,15 +903,24 @@ export const make = <
       )
       | undefined
     readonly init: ($: Init<Model, Msg, Events, Props>) => UI
-    readonly update: (model: Model, msg: Msg, $: Update<Model, Msg, Events, Props, SpecOf<S, M>>) => U
+    readonly update: (model: Model, msg: Msg, $: Update<Model, Msg, Events, Props, L>) => U
     readonly view: (
       model: Model,
-      h: View.Helper<Msg, Props> & View.Tags<V, Msg> & LoaderHelpers<SpecOf<S, M>>
+      h: View.Helper<Msg, Props> & View.Tags<V, Msg> & LoaderHelpers<L>
     ) => UV
     readonly subscriptions?:
-      | ((model: Model, props: Props, loaded: Loaded<SpecOf<S, M>>) => ReadonlyArray<Sub | false | null | undefined>)
+      | ((
+        model: Model,
+        props: Props,
+        loaded: { readonly [K in keyof NoInfer<L>]: LoadedOf<NoInfer<L>[K]> }
+      ) => ReadonlyArray<Sub | false | null | undefined>)
       | undefined
-    readonly head?: ((model: Model, loaded: Loaded<SpecOf<S, M>>) => ReadonlyArray<Head.Entry>) | undefined
+    readonly head?:
+      | ((
+        model: Model,
+        loaded: { readonly [K in keyof NoInfer<L>]: LoadedOf<NoInfer<L>[K]> }
+      ) => ReadonlyArray<Head.Entry>)
+      | undefined
     readonly elements?: View.Vocabulary<V> | undefined
   }
 ): Component<
@@ -968,11 +934,11 @@ export const make = <
     | StepRequirements<U>
     | View.Requirements<UV>
     | Subscription.Requirements<Sub>
-    | LoaderServices<SpecOf<S, M>>,
+    | LoaderServices<L>,
     Command.FrameworkService
   >,
   V,
-  SpecOf<S, M>
+  L
 > => {
   const bound = loaders.bind(options.name, options.loaders)
   const open = (model: unknown, props: unknown, slots: Slots | undefined): any =>

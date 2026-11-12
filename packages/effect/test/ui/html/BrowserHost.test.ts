@@ -771,7 +771,7 @@ describe("BrowserHost", { concurrent: false }, () => {
       return Effect.acquireRelease(Effect.succeed({ host, dispatch }), () => Effect.sync(() => host.dispose()))
     }
     /** The options `onDrop` stores, for a target bound by hand. */
-    const accepting = (...accepts: ReadonlyArray<string>): Renderer.EventOptions => {
+    const accepting = (...accepts: ReadonlyArray<string>): Readonly<Record<string, View.EventOptions>> => {
       const drop: Html.DropTargetOptions = { accepts, preventDefault: "always" }
       return { drop }
     }

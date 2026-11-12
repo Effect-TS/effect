@@ -295,8 +295,10 @@ export class Replace extends Command.Service<Replace>()(
  * @category commands
  * @since 4.1.5
  */
-export const push = <U extends Routes>(_routes: U, route: U["Type"]): Command.Effectful<Outcome, Push> =>
-  Push.make({ route })
+export const push = <U extends Routes>(
+  _routes: U,
+  route: U["Type"]
+): Command.Issued<Outcome, Push, Outcome, "Effect"> => Push.make({ route })
 
 /**
  * Replaces the current history entry with a route value of the given union.
@@ -312,8 +314,10 @@ export const push = <U extends Routes>(_routes: U, route: U["Type"]): Command.Ef
  * @category commands
  * @since 4.1.5
  */
-export const replace = <U extends Routes>(_routes: U, route: U["Type"]): Command.Effectful<Outcome, Replace> =>
-  Replace.make({ route })
+export const replace = <U extends Routes>(
+  _routes: U,
+  route: U["Type"]
+): Command.Issued<Outcome, Replace, Outcome, "Effect"> => Replace.make({ route })
 
 /** A query patch: the args Schema of `PatchQuery`. The log encodes it structurally. */
 const QueryPatchValue = Schema.declare(
@@ -411,7 +415,7 @@ export const patchQuery = <U extends Routes, R extends U["Type"]>(
     readonly history?: "push" | "replace" | undefined
     readonly scroll?: boolean | undefined
   } | undefined
-): Command.Effectful<PatchOutcome, PatchQuery> =>
+): Command.Issued<PatchOutcome, PatchQuery, PatchOutcome, "Effect"> =>
   PatchQuery.make({
     route,
     patch: patch as Readonly<Record<string, unknown>>,
