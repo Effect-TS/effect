@@ -43,14 +43,37 @@ import type * as View from "./View.ts"
 export type Handlers = Readonly<Record<string, View.Handler<unknown, any>>>
 
 /**
- * How a host reports an event: the event's name, the handler it found on the
- * innermost element with one, and the payload it built.
+ * An element's event options, by event name, as the view declared them with
+ * its handlers.
  *
  * @stability experimental
  * @category models
  * @since 4.1.5
  */
-export type Dispatch = (event: string, handler: View.Handler<unknown, any>, payload: unknown) => void
+export type EventOptions = Readonly<Record<string, View.EventOptions>>
+
+/**
+ * How a host reports an event: the event's name, the handler it found on the
+ * innermost element with one, and the payload it built.
+ *
+ * **Details**
+ *
+ * The handler runs once, synchronously. When it produces a message,
+ * `onMessage` runs before the message is sent, while the host's event is
+ * still being handled, so the host can cancel the event's default there. It
+ * doesn't run when the handler returns `undefined` or fails, or when the
+ * instance is gone or not yet started.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.1.5
+ */
+export type Dispatch = (
+  event: string,
+  handler: View.Handler<unknown, any>,
+  payload: unknown,
+  onMessage?: (() => void) | undefined
+) => void
 
 /**
  * What a target must provide to show views: node operations plus a few
@@ -63,7 +86,9 @@ export type Dispatch = (event: string, handler: View.Handler<unknown, any>, payl
  * `unknown`, so a host decides what a property means. Hosts own events: an
  * element's handlers are stored as data with `setEvents`, and the host turns
  * its own events into plain payloads and calls `dispatch` for the innermost
- * element with a handler, so re-rendering never touches listeners.
+ * element with a handler, so re-rendering never touches listeners. The
+ * element's `EventOptions` come with its handlers: a host with cancellable
+ * events honours `preventDefault` from `dispatch`'s `onMessage`.
  *
  * `elements` lists the vocabularies the host shows, by name, or is `"any"`.
  * `controlled` lists the properties re-applied after every patch, since the
@@ -93,7 +118,7 @@ export interface Host<Node> {
   remove(node: Node): void
   parentOf(node: Node): Node | undefined
   nextOf(node: Node): Node | undefined
-  setEvents(node: Node, handlers: Handlers, dispatch: Dispatch): void
+  setEvents(node: Node, handlers: Handlers, dispatch: Dispatch, options: EventOptions): void
   readonly elements: ReadonlyArray<string> | "any"
   readonly controlled: ReadonlySet<string>
   readonly runsMounts: boolean

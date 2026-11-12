@@ -53,6 +53,19 @@ describe("NoteEditor", () => {
     // `Story.make` fails if a Command is still pending at the end.
   })
 
+  it("saves on Ctrl+S instead of opening the browser's save dialog", () => {
+    Story.make(NoteEditor, { note }, (s) =>
+      s.fire(body, "input", { value: edited.body })
+        // `defaultPrevented` tells whether the last `fire` or `click` step
+        // cancelled the browser's default. Checks read it without resetting it.
+        .fire(body, "keydown", { key: "s", ctrl: true })
+        .check((story) => assert.isTrue(story.defaultPrevented))
+        .expectExact(SaveNote)
+        .resolve(SaveNote, edited)
+        // Any other step resets it.
+        .check((story) => assert.isFalse(story.defaultPrevented)))
+  })
+
   it("shows why a save failed", () => {
     Story.make(NoteEditor, { note }, (s) =>
       s.fire(body, "input", { value: edited.body })

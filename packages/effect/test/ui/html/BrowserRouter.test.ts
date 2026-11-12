@@ -349,6 +349,27 @@ describe("BrowserRouter", { concurrent: false }, () => {
       expect(window.location.pathname).toBe("/")
     }).pipe(Effect.scoped))
 
+  it.effect("doesn't follow a routed link whose click handler cancelled the default", () =>
+    Effect.gen(function*() {
+      window.history.replaceState(null, "", "/")
+      yield* Layer.build(BrowserRouter.layer({ routes: AppRoute }))
+      const Peek = Component.make({
+        name: "Peek",
+        model: Schema.Number,
+        message: Schema.Literal("Peek"),
+        elements: Html,
+        init: () => 0,
+        update: (peeks) => peeks + 1,
+        view: (_, h) => h.a("Person 1").attr("href", "/people/1").onClick("Peek", { preventDefault: true })
+      })
+      const app = yield* container
+      const root = yield* BrowserHost.mountEffect(Peek, {}, app)
+      expect(clickReporting(link(app, "Person 1"))).toBe(true)
+      yield* tick
+      expect(window.location.pathname).toBe("/")
+      expect(root.model()).toBe(1)
+    }).pipe(Effect.scoped))
+
   it.effect("reports link intent after 50 ms of hover or focus, at once on touch, for the links a click follows", () =>
     Effect.gen(function*() {
       const { app, router } = yield* start("/")

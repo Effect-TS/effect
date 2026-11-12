@@ -8,7 +8,12 @@
  * `elements: Html`.
  *
  * Event handlers get plain data, never a DOM event: `input` is `{ value }`,
- * `keydown` is `{ key, shift, ctrl, alt, meta }` and `submit` is `{ fields }`.
+ * `keydown` is `{ key, shift, ctrl, alt, meta, composing }` and `submit` is
+ * `{ fields }`. A handler set with `{ preventDefault: true }` cancels the
+ * browser's default when it produces a message and leaves it alone when it
+ * returns `undefined`, so it decides per event. A form's `submit` is always
+ * cancelled, with or without a handler. Nothing stops an event's propagation:
+ * only the innermost element with a handler for an event gets it.
  * `value`, `checked`, `selected` and `open` are controlled: the host puts the
  * Model's value back after every patch and after every event that could have
  * changed it, so the element always shows what the Model says.
@@ -43,6 +48,34 @@
  *         .onInput(({ value }) => Message.make({ _tag: "Typed", value })),
  *       h.button("Add").attr("type", "submit")
  *     ).onSubmit(Message.make({ _tag: "Add" }))
+ * })
+ * ```
+ *
+ * **Example** (Sending on Enter, keeping Shift+Enter's new line)
+ *
+ * ```ts import.meta.vitest
+ * import { Html } from "effect/ui/html"
+ * import { Schema } from "effect"
+ * import { Component } from "effect/ui"
+ *
+ * const Message = Schema.TaggedUnion({ Typed: { value: Schema.String }, Send: {} })
+ *
+ * const Composer = Component.make({
+ *   name: "Composer",
+ *   model: Schema.String,
+ *   message: Message,
+ *   elements: Html,
+ *   init: () => "",
+ *   update: (draft, message) => (message._tag === "Typed" ? message.value : ""),
+ *   view: (draft, h) =>
+ *     h.textarea().attr("aria-label", "Message").value(draft)
+ *       .onInput(({ value }) => Message.make({ _tag: "Typed", value }))
+ *       // Enter that ends an IME composition only confirms the text.
+ *       .onKeyDown(
+ *         ({ key, shift, composing }) =>
+ *           key === "Enter" && !shift && !composing ? Message.make({ _tag: "Send" }) : undefined,
+ *         { preventDefault: true }
+ *       )
  * })
  * ```
  *
@@ -143,7 +176,9 @@ export interface PointerPayload {
 }
 
 /**
- * The payload of `keydown` and `keyup`.
+ * The payload of `keydown` and `keyup`. `composing` is true while an input
+ * method composes text, including for the key that ends the composition, so
+ * a handler for Enter can leave it to the input method.
  *
  * @stability experimental
  * @category events
@@ -155,6 +190,7 @@ export interface KeyPayload {
   readonly ctrl: boolean
   readonly alt: boolean
   readonly meta: boolean
+  readonly composing: boolean
 }
 
 /**
@@ -387,36 +423,36 @@ export class Element<out Msg, out R = never, in out E = Record<string, unknown>,
     return this.prop("open", open)
   }
   /**
-   * Sugar for `on("click", handler)`.
+   * Sugar for `on("click", handler, options)`.
    *
    * @since 4.1.5
    */
-  onClick(handler: View.Handler<Msg, PointerPayload>): this {
-    return this.on("click" as any, handler as any)
+  onClick(handler: View.Handler<Msg, PointerPayload>, options?: View.EventOptions | undefined): this {
+    return this.on("click" as any, handler as any, options)
   }
   /**
-   * Sugar for `on("dblclick", handler)`.
+   * Sugar for `on("dblclick", handler, options)`.
    *
    * @since 4.1.5
    */
-  onDoubleClick(handler: View.Handler<Msg, PointerPayload>): this {
-    return this.on("dblclick" as any, handler as any)
+  onDoubleClick(handler: View.Handler<Msg, PointerPayload>, options?: View.EventOptions | undefined): this {
+    return this.on("dblclick" as any, handler as any, options)
   }
   /**
-   * Sugar for `on("keydown", handler)`.
+   * Sugar for `on("keydown", handler, options)`.
    *
    * @since 4.1.5
    */
-  onKeyDown(handler: View.Handler<Msg, KeyPayload>): this {
-    return this.on("keydown" as any, handler as any)
+  onKeyDown(handler: View.Handler<Msg, KeyPayload>, options?: View.EventOptions | undefined): this {
+    return this.on("keydown" as any, handler as any, options)
   }
   /**
-   * Sugar for `on("keyup", handler)`.
+   * Sugar for `on("keyup", handler, options)`.
    *
    * @since 4.1.5
    */
-  onKeyUp(handler: View.Handler<Msg, KeyPayload>): this {
-    return this.on("keyup" as any, handler as any)
+  onKeyUp(handler: View.Handler<Msg, KeyPayload>, options?: View.EventOptions | undefined): this {
+    return this.on("keyup" as any, handler as any, options)
   }
   /**
    * Sugar for `on("focus", handler)`.
@@ -457,7 +493,9 @@ export class Element<out Msg, out R = never, in out E = Record<string, unknown>,
     return this.on("change", handler)
   }
   /**
-   * Sugar for `on("submit", handler)`, on a `form`.
+   * Sugar for `on("submit", handler)`, on a `form`. The browser host always
+   * cancels the native submission of a form the app renders, so it takes no
+   * options.
    *
    * @since 4.1.5
    */

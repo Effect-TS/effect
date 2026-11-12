@@ -114,6 +114,48 @@ describe("Story", () => {
         /Story\.fire: nothing handles "change"/
       )
     })
+
+    it("defaultPrevented reports a cancelled default until the next step that makes a record", () => {
+      const Sent = Schema.TaggedUnion({ Send: {}, Submitted: {} })
+      const Composer = Component.make({
+        name: "Composer",
+        model: Schema.Number,
+        message: Sent,
+        init: () => 0,
+        update: (sent) => sent + 1,
+        view: (_sent, h) =>
+          h.el(
+            "div",
+            h.el("textarea").on(
+              "keydown",
+              (payload: unknown) =>
+                (payload as { readonly key: string }).key === "Enter" ? Sent.make({ _tag: "Send" }) : undefined,
+              { preventDefault: true }
+            ),
+            h.el("form", h.el("button", "Ignored")).on("submit", () => undefined),
+            h.el("form", h.el("button", "Unhandled"))
+          )
+      })
+      const keyDown = (key: string) => (s: Story.Steps<typeof Composer>) =>
+        s.fire(Query.tag("textarea"), "keydown", { key })
+      Story.make(Composer, {}, (s) => {
+        s.pipe(keyDown("Enter"))
+          // Checks read the record without making a new one.
+          .model((sent) => assert.strictEqual(sent, 1))
+          .check((story) => assert.isTrue(story.defaultPrevented))
+          .send(Sent.make({ _tag: "Submitted" }))
+          .check((story) => assert.isFalse(story.defaultPrevented))
+          .pipe(keyDown("Enter"))
+          .pipe(keyDown("a"))
+          .check((story) => assert.isFalse(story.defaultPrevented))
+        // A form's submission is always cancelled, whatever its handler returns, and with no handler.
+        s.fire(Query.text("Ignored"), "submit")
+        assert.isTrue(s.current.defaultPrevented)
+        s.fire(Query.text("Unhandled"), "submit")
+        assert.isTrue(s.current.defaultPrevented)
+        assert.strictEqual(s.current.model, 3)
+      })
+    })
   })
 
   describe("TodoItem", () => {

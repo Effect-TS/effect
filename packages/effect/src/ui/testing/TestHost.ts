@@ -75,6 +75,9 @@ import * as Query from "./Query.ts"
  *
  * `attrs` and `props` hold what the renderer set. To act as the user editing
  * a controlled property, set `props` directly, then fire the event.
+ * `eventOptions` holds the options set with the handlers. The test host has
+ * no default actions, so it applies none of them; a `Story` reports
+ * `defaultPrevented`.
  *
  * @stability experimental
  * @category models
@@ -88,6 +91,7 @@ export interface TestElement extends Query.Firable {
   readonly children: Array<TestNode>
   parent: TestElement | undefined
   handlers: Renderer.Handlers
+  eventOptions: Renderer.EventOptions
   dispatch: Renderer.Dispatch | undefined
 }
 
@@ -132,6 +136,7 @@ const makeElement = (tag: string): TestElement => ({
   children: [],
   parent: undefined,
   handlers: {},
+  eventOptions: {},
   dispatch: undefined,
   fire: fireFrom
 })
@@ -218,9 +223,10 @@ export const makeHost = (): Renderer.Host<TestNode> & {
       const parent = node.parent
       return parent === undefined ? undefined : parent.children[parent.children.indexOf(node) + 1]
     },
-    setEvents(node, handlers, dispatch) {
+    setEvents(node, handlers, dispatch, options) {
       const element = node as TestElement
       element.handlers = handlers
+      element.eventOptions = options
       element.dispatch = dispatch
     },
     elements: "any",

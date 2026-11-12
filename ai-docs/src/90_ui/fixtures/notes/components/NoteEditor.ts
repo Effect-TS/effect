@@ -103,7 +103,16 @@ export const NoteEditorNoDeps = Component.make({
       h.h2(h.props.note.title),
       h.textarea().attr("aria-label", "Body").value(model.draft)
         .class("note-body", model.draft !== model.saved && "unsaved")
-        .onInput(({ value }) => NoteEditorMessage.make({ _tag: "Edited", body: value })),
+        .onInput(({ value }) => NoteEditorMessage.make({ _tag: "Edited", body: value }))
+        // Ctrl+S or Cmd+S saves instead of opening the browser's save
+        // dialog. With `preventDefault`, the browser's default is cancelled
+        // only when the handler returns a message, so every other key types
+        // as usual. Nothing stops the event's propagation, and a form's
+        // `submit` is always cancelled, so `onSubmit` takes no options.
+        .onKeyDown(
+          ({ ctrl, key, meta }) => (ctrl || meta) && key === "s" ? NoteEditorMessage.make({ _tag: "Save" }) : undefined,
+          { preventDefault: true }
+        ),
       // `h.isRunning` is true while this instance has a save queued or running.
       h.button(h.isRunning(SaveNote) ? "Saving…" : "Save").attr("type", "submit")
         .disabled(model.draft === model.saved),
