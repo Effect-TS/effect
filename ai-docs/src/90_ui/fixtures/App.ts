@@ -1,6 +1,6 @@
 import { Schema } from "effect"
 import { Command, Component, Head, Router } from "effect/ui"
-import { NotePage } from "./pages/NotePage.ts"
+import { NotePage } from "./pages/notes/NotePage.ts"
 import { NotesIndex } from "./pages/NotesIndex.ts"
 import { AppRoute } from "./routes.ts"
 

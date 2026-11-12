@@ -12,6 +12,10 @@ const noteId = HttpRouter.schemaPathParams(Schema.Struct({ id: Schema.String }))
 //
 // The server holds the notes itself. On this side `Notes` is the store, and
 // the browser's `Notes.layerHttp` is a client of these routes.
+//
+// A handler can fail. The router answers a `SchemaError` with 400 and any
+// other failure with 500, so a request that doesn't decode needs no handling
+// here. Only the domain errors are mapped to a response.
 export const NotesApi = HttpRouter.addAll([
   HttpRouter.route(
     "GET",
@@ -19,7 +23,7 @@ export const NotesApi = HttpRouter.addAll([
     Effect.gen(function*() {
       const notes = yield* Notes
       return yield* notesJson(yield* notes.list)
-    }).pipe(Effect.orDie)
+    })
   ),
   HttpRouter.route(
     "GET",
@@ -29,8 +33,7 @@ export const NotesApi = HttpRouter.addAll([
       const { id } = yield* noteId
       return yield* noteJson(yield* notes.get(id))
     }).pipe(
-      Effect.catchTag("NoteNotFound", () => Effect.succeed(HttpServerResponse.empty({ status: 404 }))),
-      Effect.orDie
+      Effect.catchTag("NoteNotFound", () => Effect.succeed(HttpServerResponse.empty({ status: 404 })))
     )
   ),
   HttpRouter.route(
@@ -38,14 +41,15 @@ export const NotesApi = HttpRouter.addAll([
     "/api/notes/:id",
     Effect.gen(function*() {
       const notes = yield* Notes
+      const { id } = yield* noteId
       const note = yield* HttpServerRequest.schemaBodyJson(Note)
-      return yield* noteJson(yield* notes.save(note))
+      // The URL names the note that is written, whatever id the body carries.
+      return yield* noteJson(yield* notes.save({ ...note, id }))
     }).pipe(
       Effect.catchTag(
         "NoteSaveError",
         (error) => Effect.succeed(HttpServerResponse.text(error.reason, { status: 422 }))
-      ),
-      Effect.orDie
+      )
     )
   )
 ]).pipe(

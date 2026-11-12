@@ -1,11 +1,11 @@
 import { Layer, Schema } from "effect"
 import { AsyncResult, Loader } from "effect/reactivity"
 import { Component, Head } from "effect/ui"
-import { ActivityLog } from "../notes/components/ActivityLog.ts"
-import { NoteActivity } from "../notes/components/NoteActivity.ts"
-import { NoteEditor } from "../notes/components/NoteEditor.ts"
-import { GetNote } from "../notes/loaders/GetNote.ts"
-import { Notes } from "../notes/services/Notes.ts"
+import { ActivityLog } from "../../notes/components/ActivityLog.ts"
+import { NoteActivity } from "../../notes/components/NoteActivity.ts"
+import { NoteEditor } from "../../notes/components/NoteEditor.ts"
+import { GetNote } from "../../notes/loaders/GetNote.ts"
+import { Notes } from "../../notes/services/Notes.ts"
 
 // The Model stores what a read returned as a snapshot, under the field's name.
 const NoteSnapshot = Loader.Snapshot(GetNote, "note")
