@@ -7,7 +7,8 @@ import { Command, Component, Feature, Head, MessageLog, type Renderer, Router, S
 import { BrowserHost, Html, HtmlServer } from "effect/ui/html"
 import { ssr } from "effect/ui/html/testing"
 import { TestHost } from "effect/ui/testing"
-import { describe } from "vitest"
+import { describe, vi } from "vitest"
+import { Confirm } from "./fixtures/confirm.ts"
 import { App, AppRoute, People } from "./fixtures/routed.ts"
 
 const tick = Effect.promise(() => new Promise<void>((resolve) => setTimeout(resolve, 30)))
@@ -158,6 +159,26 @@ describe("HtmlServer", { concurrent: false }, () => {
         )
         expect(result.document.title).toBe("Person 1 · App")
       }))
+    }).pipe(Effect.scoped))
+
+  it.effect("renders a modal dialog closed, with no open attribute, and hydration shows it", () =>
+    Effect.gen(function*() {
+      const props = { state: "modal", acceptEscape: false } as const
+      const modal = yield* HtmlServer.renderToHtml(Confirm, props)
+      expect(modal.html).toContain("<dialog aria-label=\"Delete note?\">")
+      const open = yield* HtmlServer.renderToHtml(Confirm, { ...props, state: "open" })
+      expect(open.html).toContain("<dialog aria-label=\"Delete note?\" open>")
+
+      const showModal = vi.spyOn(window.HTMLDialogElement.prototype, "showModal")
+      yield* Effect.addFinalizer(() => Effect.sync(() => showModal.mockRestore()))
+      const app = yield* container(modal.html)
+      const dialog = app.querySelector("dialog")!
+      yield* BrowserHost.mountEffect(Confirm, props, app, { state: modal.state })
+      yield* tick
+      // The server's dialog is adopted and shown as a modal once it's live.
+      expect(app.querySelector("dialog")).toBe(dialog)
+      expect(showModal.mock.contexts).toEqual([dialog])
+      expect(dialog.open).toBe(true)
     }).pipe(Effect.scoped))
 
   it.effect("hydrates slots that missed the budget: a fetch in flight and a deferred Layer", () =>

@@ -21,9 +21,16 @@
  * to every element the pointer crosses as `mouseenter` does. Drag and drop
  * needs a pointer, so give every drag a button or menu that sends the same
  * message.
+ *
  * `value`, `checked`, `selected` and `open` are controlled: the host puts the
  * Model's value back after every patch and after every event that could have
  * changed it, so the element always shows what the Model says.
+ *
+ * A `dialog` is closed, open, or open as a modal: `.open(b)` and `.modal(b)`
+ * set the same state, and the last call wins. A modal's close requests, such
+ * as Escape, come to `onCancel`, and it closes when the Model says so. Forms
+ * in a dialog are the app's like any other, so read the choice in
+ * `onSubmit`, not `returnValue`.
  *
  * **Example** (Registering the vocabulary for the app)
  *
@@ -527,7 +534,9 @@ export class Element<out Msg, out R = never, in out E = Record<string, unknown>,
     return this.prop("selected", selected)
   }
   /**
-   * The controlled `open` state of a `details` or `dialog`.
+   * The controlled `open` state of a `details` or `dialog`. On a `dialog`
+   * it shows a non-modal dialog. `open` and `modal` set the same state, and
+   * the last call wins.
    *
    * @since 4.1.5
    */
@@ -536,6 +545,36 @@ export class Element<out Msg, out R = never, in out E = Record<string, unknown>,
     open: boolean
   ): Element<Msg, R, E, N> {
     return this.prop("open", open)
+  }
+  /**
+   * Shows a `dialog` as a modal while `modal` is true: in the top layer, with
+   * a backdrop, the rest of the page inert and focus kept inside, and closed
+   * otherwise. `open` and `modal` set the same state, `false`, `true` or
+   * `"modal"`, and the last call wins.
+   *
+   * **Details**
+   *
+   * The Model decides when the modal closes. The browser host cancels its
+   * close requests, such as Escape and, where `closedby` is supported, a
+   * click on the backdrop, and sends them as `onCancel`; a modal without
+   * `onCancel` ignores them. Browsers may still close a modal whose close
+   * requests keep being cancelled: Chromium 153 did after one or two
+   * cancelled Escapes, depending on user activation, and other browsers may
+   * differ. When the Model still says `true`, the host shows it again on the
+   * next frame, which moves focus to the dialog's first focusable element.
+   *
+   * A form in the dialog is the app's, like any other: its submission comes
+   * to `onSubmit`, with the submitter's `name` and `value` in `entries`, and
+   * `method="dialog"` neither closes the dialog nor sets `returnValue`.
+   * `onClose` is sent for every close, the Model's included.
+   *
+   * The server renders a modal dialog closed, since HTML has no attribute
+   * for one, and the browser host shows it once the page is live.
+   *
+   * @since 4.1.5
+   */
+  modal<N extends HTMLDialogElement>(this: Element<Msg, R, E, N>, modal: boolean): Element<Msg, R, E, N> {
+    return this.prop("open", modal ? "modal" : false)
   }
   /**
    * Sugar for `on("click", handler, options)`.
@@ -730,6 +769,32 @@ export class Element<out Msg, out R = never, in out E = Record<string, unknown>,
     handler: View.Handler<Msg, E2["toggle"]>
   ): Element<Msg, R, E2, Node> {
     return this.on("toggle", handler)
+  }
+  /**
+   * Sugar for `on("cancel", handler)`, on a `dialog`: a close request, such
+   * as Escape. For a modal the browser host cancels it, and the Model
+   * decides whether the dialog closes.
+   *
+   * @since 4.1.5
+   */
+  onCancel<E2 extends E & { readonly cancel: unknown }>(
+    this: Element<Msg, R, E2, Node>,
+    handler: View.Handler<Msg, E2["cancel"]>
+  ): Element<Msg, R, E2, Node> {
+    return this.on("cancel", handler)
+  }
+  /**
+   * Sugar for `on("close", handler)`, on a `dialog`: sent after every close,
+   * the Model's included, unless the dialog was shown again before the
+   * browser reported it.
+   *
+   * @since 4.1.5
+   */
+  onClose<E2 extends E & { readonly close: unknown }>(
+    this: Element<Msg, R, E2, Node>,
+    handler: View.Handler<Msg, E2["close"]>
+  ): Element<Msg, R, E2, Node> {
+    return this.on("close", handler)
   }
 }
 

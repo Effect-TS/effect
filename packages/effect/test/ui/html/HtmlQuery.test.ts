@@ -3,6 +3,7 @@ import { describe, expect, it } from "@effect/vitest"
 import { Effect } from "effect"
 import { HtmlQuery } from "effect/ui/html/testing"
 import { Query, Story, TestHost } from "effect/ui/testing"
+import { Confirm } from "./fixtures/confirm.ts"
 import { TodoApp, TodoAppMessage } from "./fixtures/todos.ts"
 
 const el = (
@@ -67,6 +68,32 @@ describe("HtmlQuery", () => {
       expect(HtmlQuery.queryAllByRole(tree, "button").map((node) => Query.textOf(node))).toEqual(["C"])
       expect(HtmlQuery.queryAllByRole(tree, "button", { hidden: true })).toHaveLength(3)
     })
+
+    it.effect("a closed dialog and what's in it are hidden, and dialogState tells closed, open and modal apart", () =>
+      Effect.gen(function*() {
+        const dialog = HtmlQuery.role("dialog", { name: "Delete note?" })
+        const keep = HtmlQuery.role("button", { name: "Keep" })
+        Story.make(Confirm, { state: "closed", acceptEscape: false }, (s) => {
+          s.check((story) => {
+            expect(story.query(dialog)).toBeUndefined()
+            expect(story.query(keep)).toBeUndefined()
+            expect(HtmlQuery.dialogState(story.get(HtmlQuery.role("dialog", { hidden: true })))).toBe("closed")
+          })
+            .click("Ask")
+            .check((story) => {
+              expect(HtmlQuery.dialogState(story.get(dialog))).toBe("modal")
+              expect(story.query(keep)).toBeDefined()
+            })
+            // Escape is rejected by `update`, so the dialog stays modal.
+            .fire(dialog, "cancel")
+            .check((story) => expect(HtmlQuery.dialogState(story.get(dialog))).toBe("modal"))
+        })
+        const open = yield* TestHost.mount(Confirm, { state: "open" as const, acceptEscape: false })
+        expect(HtmlQuery.dialogState(open.get(dialog))).toBe("open")
+        // A static `open` attribute counts too.
+        expect(HtmlQuery.dialogState(el("dialog", { open: "" }))).toBe("open")
+        expect(HtmlQuery.dialogState(document.createElement("dialog"))).toBe("closed")
+      }).pipe(Effect.scoped, Effect.provide(TestHost.layer())))
   })
 
   describe("names", () => {

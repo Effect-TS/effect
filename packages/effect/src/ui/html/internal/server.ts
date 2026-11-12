@@ -77,6 +77,7 @@ const elementAttributes = (node: ServerElement, selectValue: string | undefined)
       case "checked":
       case "selected":
       case "open":
+        // Only `true`: a modal dialog's `"modal"` has no attribute, so it renders closed until hydration.
         if (value === true) out.set(name, "")
         else out.delete(name)
         break

@@ -5,7 +5,8 @@ import { Loader } from "effect/reactivity"
 import { Command, Component, MessageLog, type Renderer, Route, Router, View } from "effect/ui"
 import { BrowserHost, Html } from "effect/ui/html"
 import { HtmlQuery } from "effect/ui/html/testing"
-import { describe } from "vitest"
+import { describe, vi } from "vitest"
+import { Confirm, ConfirmMessage, Nested } from "./fixtures/confirm.ts"
 import { maxTitle, TodoApp } from "./fixtures/todos.ts"
 
 /** Lets the render flush, Commands and the controlled-property restore run. */
@@ -836,6 +837,125 @@ describe("BrowserHost", { concurrent: false }, () => {
           "drop milk at 5,7 of 100x100",
           "leave"
         ])
+      }).pipe(Effect.scoped))
+  })
+
+  describe("modal dialogs", () => {
+    /**
+     * Records `showModal` and `close`, and makes `showModal` throw on a dialog that isn't in the document,
+     * as browsers do. happy-dom has no top layer, so the dialogs' own state is all a test can see here.
+     */
+    const dialogCalls = Effect.acquireRelease(
+      Effect.sync(() => {
+        const calls: Array<string> = []
+        const proto = window.HTMLDialogElement.prototype
+        const { close, showModal } = proto
+        const label = (dialog: HTMLDialogElement) => dialog.getAttribute("aria-label")
+        const spies = [
+          vi.spyOn(proto, "showModal").mockImplementation(function(this: HTMLDialogElement) {
+            if (!this.isConnected) throw new DOMException("The dialog isn't connected", "InvalidStateError")
+            calls.push(`showModal ${label(this)}`)
+            showModal.call(this)
+          }),
+          vi.spyOn(proto, "close").mockImplementation(function(this: HTMLDialogElement, value?: string) {
+            calls.push(`close ${label(this)}`)
+            close.call(this, value)
+          })
+        ]
+        return { calls, close, spies }
+      }),
+      ({ spies }) => Effect.sync(() => spies.forEach((spy) => spy.mockRestore()))
+    )
+    const mountConfirm = Effect.fnUntraced(
+      function*(props: { readonly state: "closed" | "open" | "modal"; readonly acceptEscape: boolean }) {
+        const app = yield* container
+        const root = yield* BrowserHost.mountEffect(Confirm, props, app)
+        yield* tick
+        const dialog = () => app.querySelector("dialog")
+        return { app, dialog, root }
+      }
+    )
+    const cancel = (dialog: Element, cancelable = true) => {
+      const event = new Event("cancel", { cancelable })
+      dialog.dispatchEvent(event)
+      return event.defaultPrevented
+    }
+
+    it.effect("a modal opens once it's in the document and closes from the Model, and its form is the app's", () =>
+      Effect.gen(function*() {
+        const { calls } = yield* dialogCalls
+        const { app, dialog, root } = yield* mountConfirm({ state: "modal", acceptEscape: false })
+        expect(calls).toEqual(["showModal Delete note?"])
+        expect(dialog()!.open).toBe(true)
+        // `method="dialog"` doesn't close it: the submission is the app's, and the Model closes it.
+        const form = app.querySelector("form")!
+        form.requestSubmit(HtmlQuery.getByRole(app, "button", { name: "Delete" }) as HTMLButtonElement)
+        yield* tick
+        expect(calls).toEqual(["showModal Delete note?", "close Delete note?"])
+        expect(dialog()!.open).toBe(false)
+        expect(dialog()!.returnValue).toBe("")
+        expect(root.model()!.log).toEqual(["delete", "closed"])
+        expect(HtmlQuery.dialogState(dialog())).toBe("closed")
+      }).pipe(Effect.scoped))
+
+    it.effect("Escape is the Model's: rejected stays open, a forced close reopens, accepted closes", () =>
+      Effect.gen(function*() {
+        const { calls, close } = yield* dialogCalls
+        const rejecting = yield* mountConfirm({ state: "modal", acceptEscape: false })
+        expect(cancel(rejecting.dialog()!)).toBe(true)
+        yield* tick
+        expect(rejecting.dialog()!.open).toBe(true)
+        // A browser that won't let the close request be cancelled closes the dialog itself.
+        expect(cancel(rejecting.dialog()!, false)).toBe(false)
+        close.call(rejecting.dialog()!)
+        yield* tick
+        expect(rejecting.dialog()!.open).toBe(true)
+        // A close reported after the dialog is open again is stale: no message, nothing reopened.
+        rejecting.dialog()!.dispatchEvent(new Event("close"))
+        yield* tick
+        expect(rejecting.root.model()!.log).toEqual(["escape rejected", "escape rejected", "closed"])
+        expect(calls).toEqual(["showModal Delete note?", "showModal Delete note?"])
+
+        calls.length = 0
+        const accepting = yield* mountConfirm({ state: "modal", acceptEscape: true })
+        expect(cancel(accepting.dialog()!)).toBe(true)
+        yield* tick
+        yield* tick
+        expect(accepting.dialog()!.open).toBe(false)
+        expect(accepting.root.model()!.log).toEqual(["escape", "closed"])
+        expect(calls).toEqual(["showModal Delete note?", "close Delete note?"])
+      }).pipe(Effect.scoped))
+
+    it.effect("a modal removed while open is forgotten, and switching mode closes without telling the app", () =>
+      Effect.gen(function*() {
+        const { calls } = yield* dialogCalls
+        const { app, dialog, root } = yield* mountConfirm({ state: "open", acceptEscape: false })
+        expect(dialog()!.open).toBe(true)
+        root.send(ConfirmMessage.make({ _tag: "Mode", state: "modal" }))
+        yield* tick
+        expect(calls).toEqual(["close Delete note?", "showModal Delete note?"])
+        root.send(ConfirmMessage.make({ _tag: "Mode", state: "open" }))
+        yield* tick
+        expect(calls.slice(2)).toEqual(["close Delete note?"])
+        expect(dialog()!.open).toBe(true)
+        expect(root.model()!.log).toEqual([])
+
+        root.send(ConfirmMessage.make({ _tag: "Mode", state: "modal" }))
+        yield* tick
+        HtmlQuery.click(HtmlQuery.getByRole(app, "button", { name: "Remove" }))
+        yield* tick
+        expect(dialog()).toBeNull()
+        // Later commits have nothing to show; showModal on the detached dialog would throw.
+        root.send(ConfirmMessage.make({ _tag: "Ask" }))
+        yield* tick
+        expect(calls.filter((call) => call.startsWith("showModal"))).toHaveLength(2)
+      }).pipe(Effect.scoped))
+
+    it.effect("nested modals open outer first, so the inner one is on top", () =>
+      Effect.gen(function*() {
+        const { calls } = yield* dialogCalls
+        yield* BrowserHost.mountEffect(Nested, {}, yield* container)
+        expect(calls).toEqual(["showModal Outer", "showModal Inner"])
       }).pipe(Effect.scoped))
   })
 

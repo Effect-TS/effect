@@ -9,6 +9,17 @@
  * event, never the event itself. A form the app renders never submits
  * natively, whether or not it has a `submit` handler.
  *
+ * A `dialog` set with `modal(true)` is shown with `showModal()` at the commit
+ * after it's in the document, outer dialogs before the ones nested in them,
+ * and closed with `close()`. The host cancels a modal's `cancel` and sends it
+ * to `onCancel`, so the Model decides. When the browser closes it anyway, as
+ * Chromium does after repeated cancelled requests, the host shows it again
+ * on the next frame while the Model still wants it, which moves focus to its
+ * first focusable element. A `close` reported after the dialog was shown
+ * again is stale and sends nothing, and the close the host makes to switch
+ * between modal and non-modal isn't sent either. A dialog removed while
+ * modal is simply gone: the browser takes it out of the top layer.
+ *
  * A handler set with `{ preventDefault: true }` cancels its event's default
  * when it produces a message, before the message is sent, and leaves the
  * event alone when it returns `undefined`. Nothing else is cancelled, and the
@@ -123,6 +134,9 @@ const ownEvents: ReadonlySet<string> = new Set([
 
 /** Events after which a controlled property may differ from what the Model says. */
 const changeEvents: ReadonlyArray<string> = ["input", "change", "toggle", "close", "reset"]
+
+const isDialog = (node: globalThis.Node): node is HTMLDialogElement =>
+  node.nodeType === 1 && (node as globalThis.Element).localName === "dialog"
 
 /** The drop target's events, which go to the active drop target and never bubble to a handler. */
 const dropTargetEvents: ReadonlySet<string> = new Set(["dragenter", "dragleave", "dragover", "drop"])
@@ -256,12 +270,69 @@ export const makeHost = (
       setTimeout(f, 0)
     }
 
+  // -- dialogs -----------------------------------------------------------------
+  // A dialog's `open` is `false`, `true` or `"modal"`. `showModal()` needs a connected dialog, so a modal
+  // is shown at the commit. Closing always goes through `close()`: setting `open` to false on a modal
+  // dialog leaves the page inert in browsers.
+  /** Dialogs the host showed with `showModal()` and hasn't seen close since. */
+  const modals = new WeakSet<globalThis.Element>()
+  /** Dialogs the host closed only to change mode: their `close` event isn't the app's. */
+  const quiet = new WeakSet<globalThis.Element>()
+  /** Dialogs whose Model says `"modal"`, checked at every commit. */
+  const modalWanted = new Set<HTMLDialogElement>()
+  /**
+   * Whether `:modal` works here, found on the first `showModal()`. Where it does, a dialog the host
+   * showed but the browser no longer has as modal, such as one moved in the document, is shown again.
+   * Some emulated documents claim the selector and never match it, so it's tested, not asked.
+   */
+  let modalPseudo: boolean | undefined
+  const matchesModal = (dialog: HTMLDialogElement): boolean => {
+    try {
+      return dialog.matches(":modal")
+    } catch {
+      return false
+    }
+  }
+
+  const shownAs = (dialog: HTMLDialogElement): boolean | "modal" =>
+    !dialog.open
+      ? false
+      : modals.has(dialog) && (modalPseudo !== true || matchesModal(dialog))
+      ? "modal"
+      : true
+
+  const closeDialog = (dialog: HTMLDialogElement, asModeChange: boolean) => {
+    if (!dialog.open) return
+    modals.delete(dialog)
+    if (asModeChange) quiet.add(dialog)
+    dialog.close()
+  }
+
+  /** Shows `dialog` as `want` says, from what it shows now. The caller checks `modal` needs it connected. */
+  const showDialog = (dialog: HTMLDialogElement, want: boolean | "modal") => {
+    const current = shownAs(dialog)
+    if (current === want) return
+    if (want === false) return closeDialog(dialog, false)
+    // Between non-modal and modal the browser needs a close first. That close isn't the app's.
+    if (current !== false) closeDialog(dialog, true)
+    if (want === "modal") {
+      dialog.showModal()
+      modals.add(dialog)
+      modalPseudo ??= matchesModal(dialog)
+    } else {
+      dialog.show()
+    }
+  }
+
   const restoreNode = (node: globalThis.Node) => {
     const values = wanted.get(node)
     if (values === undefined) return
     const element = node as any
     for (const [name, value] of values) {
-      if (element[name] !== value) element[name] = value
+      if (name === "open" && isDialog(node)) {
+        // A dialog that left the document can't be shown; a later commit shows it if it comes back.
+        if (node.isConnected) showDialog(node, value as boolean | "modal")
+      } else if (element[name] !== value) element[name] = value
     }
   }
   /** Restores `node` and what changing it also changes. */
@@ -482,6 +553,20 @@ export const makeHost = (
 
   const listener = (name: string) => (event: Event) => {
     if (dropTargetEvents.has(name)) return onDropTarget(name, event as DragEvent)
+    if ((name === "cancel" || name === "close") && event.target !== null && isDialog(event.target as globalThis.Node)) {
+      const dialog = event.target as HTMLDialogElement
+      if (name === "cancel") {
+        // A modal's close request is the Model's to answer, through `onCancel`. A browser can make the
+        // event uncancelable; the close that follows is then put back by the reconciliation below.
+        if (wanted.get(dialog)?.get("open") === "modal") event.preventDefault()
+      } else {
+        // `close` comes a task after the close. A mode change's close isn't the app's, and one the
+        // dialog has since reopened from is stale.
+        if (quiet.delete(dialog)) return
+        if (dialog.open) return
+        modals.delete(dialog)
+      }
+    }
     if (name === "dragstart") startDrag(event as DragEvent)
     // The app owns its forms' submissions, handled or not. Other forms in the document are left alone.
     // An unhandled one is marked, so the browser Router can still route a GET form.
@@ -546,6 +631,24 @@ export const makeHost = (
     },
     setProp(node, name, value) {
       const element = node as any
+      if (name === "open" && isDialog(node)) {
+        const want = value === "modal" ? "modal" : value === true
+        let values = wanted.get(node)
+        if (values === undefined) {
+          values = new Map()
+          wanted.set(node, values)
+        }
+        values.set(name, want)
+        if (want === "modal") {
+          // Shown at the commit, once it's connected, outer dialogs first.
+          modalWanted.add(node)
+          listen("cancel")
+          return
+        }
+        modalWanted.delete(node)
+        showDialog(node, want)
+        return
+      }
       if (controlled.has(name)) {
         let values = wanted.get(node)
         if (value === undefined) {
@@ -608,6 +711,18 @@ export const makeHost = (
         }
       },
       getAttr: (node, name) => (node as globalThis.Element).getAttribute(name) ?? undefined
+    },
+    commit() {
+      if (modalWanted.size === 0) return
+      const dialogs: Array<HTMLDialogElement> = []
+      for (const dialog of modalWanted) {
+        // A dialog that left the tree for good is forgotten. One that's back is shown again.
+        if (!dialog.isConnected) modalWanted.delete(dialog)
+        else dialogs.push(dialog)
+      }
+      // Document order: a dialog opens before one nested in it or after it, which then stacks on top.
+      dialogs.sort((a, b) => (a.compareDocumentPosition(b) & 4) !== 0 ? -1 : 1)
+      for (const dialog of dialogs) showDialog(dialog, "modal")
     },
     dispose: () => {
       for (const [name, f] of listening) document.removeEventListener(name, f, { capture: true })

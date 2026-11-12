@@ -206,11 +206,19 @@ interface Index<N> {
   readonly labelsFor: Map<string, Array<N>>
 }
 
+/** Whether a `dialog` is open: its `open` property, or its `open` attribute when no property was set. */
+const dialogOpen = <N>(reader: Reader<N>, node: N): boolean => {
+  const open = reader.prop(node, "open")
+  return open === undefined ? reader.attr(node, "open") !== undefined : open === true || open === "modal"
+}
+
 const isHidden = <N>(reader: Reader<N>, node: N): boolean =>
   reader.attr(node, "hidden") !== undefined ||
   reader.attr(node, "aria-hidden") === "true" ||
   (reader.tag(node) === "input" && (reader.attr(node, "type") ?? "").toLowerCase() === "hidden") ||
-  reader.tag(node) === "template"
+  reader.tag(node) === "template" ||
+  // A closed dialog isn't rendered, so neither it nor anything in it is in the accessibility tree.
+  (reader.tag(node) === "dialog" && !dialogOpen(reader, node))
 
 const implicitRole = <N>(reader: Reader<N>, node: N, inSection: boolean): string | undefined => {
   const tag = reader.tag(node)
@@ -568,6 +576,42 @@ export const role = (role: string, options?: RoleOptions): Query.Locator => ({
 // ---------------------------------------------------------------------------
 // acting on the DOM
 // ---------------------------------------------------------------------------
+
+/**
+ * Whether a dialog is closed, open, or open as a modal. It reads a story's
+ * view or a `TestHost` tree, where `.modal(true)` sets `open` to `"modal"`,
+ * or a DOM dialog, which is a modal when it matches `:modal`. A DOM without
+ * `:modal`, such as some test environments, reports a modal as `"open"`.
+ *
+ * **Example** (Checking a confirm dialog)
+ *
+ * ```ts
+ * import { HtmlQuery } from "effect/ui/html/testing"
+ *
+ * declare const story: { get: (locator: unknown) => unknown }
+ * const dialog = story.get(HtmlQuery.role("dialog", { name: "Delete note?" }))
+ * console.log(HtmlQuery.dialogState(dialog)) // "modal"
+ * ```
+ *
+ * @stability experimental
+ * @category getters
+ * @since 4.1.5
+ */
+export const dialogState = (node: unknown): "closed" | "open" | "modal" => {
+  if (isDom(node)) {
+    const dialog = node as HTMLDialogElement
+    if (!dialog.open) return "closed"
+    try {
+      return dialog.matches(":modal") ? "modal" : "open"
+    } catch {
+      return "open"
+    }
+  }
+  const reader = structuralReader
+  const element = node as Query.Node
+  if (reader.prop(element, "open") === "modal") return "modal"
+  return dialogOpen(reader, element) ? "open" : "closed"
+}
 
 /**
  * Clicks `element` as the user would: a button submits its form, and a
