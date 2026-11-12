@@ -88,7 +88,8 @@ export type Dispatch = (
  * its own events into plain payloads and calls `dispatch` for the innermost
  * element with a handler, so re-rendering never touches listeners. The
  * element's `EventOptions` come with its handlers: a host with cancellable
- * events honours `preventDefault` from `dispatch`'s `onMessage`.
+ * events honours `preventDefault: true` from `dispatch`'s `onMessage`, and
+ * `preventDefault: "always"` before it calls `dispatch`.
  *
  * `elements` lists the vocabularies the host shows, by name, or is `"any"`.
  * `controlled` lists the properties re-applied after every patch, since the

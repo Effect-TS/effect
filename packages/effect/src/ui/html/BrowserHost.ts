@@ -19,6 +19,18 @@
  * `touchmove` aren't in the vocabulary, since browsers make document listeners
  * for them passive.
  *
+ * The host does the drag and drop work a handler can't. On `dragstart` it puts
+ * the innermost drag source's `draggable` data on the drag. While a drag is
+ * over the app it works out the active drop target, the innermost element
+ * whose `onDrop` accepts the drag's types, on every `dragenter` and
+ * `dragover`, cancels those events there so the browser allows the drop, and
+ * sends the target's enter and leave when it changes, never for its
+ * children. A drag that leaves the window, or is cancelled, leaves the
+ * target: a `dragleave` from the latest `dragenter`'s element with no enter
+ * by the next task means the pointer left, whichever order the browser fires
+ * them in. `onDragOver` is sent at most once per animation frame. A drop on a
+ * target is always cancelled, and its strings and files are read then.
+ *
  * `value`, `checked`, `selected` and `open` are controlled. The host sets them
  * after the element's children exist, skips a no-op so the caret doesn't jump,
  * and puts the Model's value back after the user changes it and the Model
@@ -111,6 +123,12 @@ const ownEvents: ReadonlySet<string> = new Set([
 
 /** Events after which a controlled property may differ from what the Model says. */
 const changeEvents: ReadonlyArray<string> = ["input", "change", "toggle", "close", "reset"]
+
+/** The drop target's events, which go to the active drop target and never bubble to a handler. */
+const dropTargetEvents: ReadonlySet<string> = new Set(["dragenter", "dragleave", "dragover", "drop"])
+
+/** The events a drag source needs whether or not it has handlers for them. */
+const dragSourceEvents: ReadonlyArray<string> = ["dragstart", "dragend"]
 
 /** Events the host listens to whether or not a handler wants them. */
 const alwaysEvents: ReadonlyArray<string> = [...changeEvents, "submit"]
@@ -290,7 +308,175 @@ export const makeHost = (
     restoring.add(target as globalThis.Node)
   }
 
+  // -- drag and drop ---------------------------------------------------------
+  // The active drop target is the innermost element on the pointer's path whose `drop` options accept
+  // the drag's types. It's worked out again on every `dragenter` and `dragover`, so its enter and leave
+  // come from comparing targets, never from the browser's enter and leave on the target's children.
+  let active: globalThis.Element | undefined
+  /** The target of the latest `dragenter` anywhere in the document. */
+  let entered: EventTarget | null = null
+  let exitCheck: ReturnType<typeof setTimeout> | undefined
+  /** Whether one of the app's drop targets took a drop since the last `dragstart`. */
+  let droppedHere = false
+  let overFrame: number | undefined
+  let overQueued: Html.DragOverPayload | undefined
+  let overSent: Html.DragOverPayload | undefined
+
+  const frame = (f: () => void): number =>
+    view !== null && typeof view.requestAnimationFrame === "function"
+      ? view.requestAnimationFrame(f)
+      : setTimeout(f, 0) as unknown as number
+  const cancelFrame = (id: number) => {
+    if (view !== null && typeof view.cancelAnimationFrame === "function") view.cancelAnimationFrame(id)
+    else clearTimeout(id)
+  }
+
+  const typesOf = (event: Event): ReadonlyArray<string> =>
+    Array.from((event as DragEvent).dataTransfer?.types ?? [], (type) => type.toLowerCase())
+
+  const dropTargetOf = (event: Event): globalThis.Element | undefined => {
+    const types = typesOf(event)
+    if (types.length === 0) return undefined
+    for (const node of event.composedPath()) {
+      const entry = bound.get(node as globalThis.Node)
+      if (entry === undefined || entry.handlers.drop === undefined) continue
+      const accepts = (entry.options.drop as Html.DropTargetOptions | undefined)?.accepts
+      if (accepts?.some((type) => types.includes(type.toLowerCase()))) return node as globalThis.Element
+    }
+    return undefined
+  }
+
+  const boxOf = (event: Event, element: globalThis.Element): Html.DragOverPayload => {
+    const rect = element.getBoundingClientRect()
+    const e = event as MouseEvent
+    return { x: (e.clientX ?? 0) - rect.left, y: (e.clientY ?? 0) - rect.top, width: rect.width, height: rect.height }
+  }
+
+  /** Sends `name` to `element`'s own handler, if it has one. */
+  const sendTo = (element: globalThis.Element, name: string, payload: unknown) => {
+    const entry = bound.get(element)
+    const handler = entry?.handlers[name]
+    if (entry !== undefined && handler !== undefined) entry.dispatch(name, handler, payload)
+  }
+
+  const cancelOver = () => {
+    if (overFrame !== undefined) cancelFrame(overFrame)
+    overFrame = undefined
+    overQueued = undefined
+  }
+
+  /** Makes `next` the active drop target: the previous one leaves, then `next` enters. */
+  const activate = (next: globalThis.Element | undefined) => {
+    if (next === active) return
+    const previous = active
+    active = next
+    // A queued position belongs to the previous target.
+    cancelOver()
+    overSent = undefined
+    if (previous !== undefined) sendTo(previous, "dragleave", {})
+    if (next !== undefined) sendTo(next, "dragenter", {})
+  }
+
+  const cancelExitCheck = () => {
+    if (exitCheck !== undefined) clearTimeout(exitCheck)
+    exitCheck = undefined
+  }
+
+  /** Ends the drag for the drop targets: the active one leaves, and nothing stays queued. */
+  const endTargets = () => {
+    cancelExitCheck()
+    entered = null
+    activate(undefined)
+  }
+
+  /** Queues the active target's `dragover` for the next frame, unless its position is what it last got. */
+  const queueOver = (element: globalThis.Element, payload: Html.DragOverPayload) => {
+    if (bound.get(element)?.handlers.dragover === undefined) return
+    overQueued = payload
+    if (overFrame !== undefined) return
+    overFrame = frame(() => {
+      overFrame = undefined
+      const next = overQueued
+      overQueued = undefined
+      if (next === undefined || active !== element || !element.isConnected) return
+      if (
+        overSent !== undefined && overSent.x === next.x && overSent.y === next.y && overSent.width === next.width &&
+        overSent.height === next.height
+      ) return
+      overSent = next
+      sendTo(element, "dragover", next)
+    })
+  }
+
+  const onDropTarget = (name: string, event: DragEvent) => {
+    switch (name) {
+      case "dragenter":
+      case "dragover": {
+        // Any enter or over means the pointer is still in the document.
+        cancelExitCheck()
+        if (name === "dragenter") entered = event.target
+        const target = dropTargetOf(event)
+        if (target !== undefined) {
+          event.preventDefault()
+          const dropEffect = (bound.get(target)!.options.drop as Html.DropTargetOptions).dropEffect
+          if (dropEffect !== undefined && event.dataTransfer !== null) event.dataTransfer.dropEffect = dropEffect
+        }
+        activate(target)
+        if (name === "dragover" && target !== undefined) queueOver(target, boxOf(event, target))
+        return
+      }
+      case "dragleave": {
+        // A browser fires the leave of the element the pointer left and the enter of the one it reached
+        // in the same task, in either order. A leave from the latest enter's target with no enter after it
+        // by the next task means the pointer left the document, or the drag was cancelled.
+        if (event.target !== entered) return
+        cancelExitCheck()
+        exitCheck = setTimeout(() => {
+          exitCheck = undefined
+          endTargets()
+        }, 0)
+        return
+      }
+      case "drop": {
+        const target = dropTargetOf(event)
+        if (target === undefined) {
+          endTargets()
+          return
+        }
+        event.preventDefault()
+        droppedHere = true
+        const transfer = event.dataTransfer
+        // No prototype, so a type named `constructor` is kept like any other.
+        const data: Record<string, string> = Object.create(null)
+        for (const type of transfer?.types ?? []) {
+          if (type !== "Files") data[type] = transfer!.getData(type)
+        }
+        const files = Array.from(transfer?.files ?? [])
+        const payload: Html.DropPayload = { data, files, ...boxOf(event, target) }
+        sendTo(target, "drop", payload)
+        endTargets()
+        return
+      }
+    }
+  }
+
+  /** Puts the innermost drag source's data on the drag. */
+  const startDrag = (event: DragEvent) => {
+    droppedHere = false
+    const transfer = event.dataTransfer
+    if (transfer === null) return
+    for (const node of event.composedPath()) {
+      const source = bound.get(node as globalThis.Node)?.options.dragstart as Html.DragSourceOptions | undefined
+      if (source?.data === undefined) continue
+      for (const type in source.data) transfer.setData(type, source.data[type]!)
+      if (source.effectAllowed !== undefined) transfer.effectAllowed = source.effectAllowed
+      return
+    }
+  }
+
   const listener = (name: string) => (event: Event) => {
+    if (dropTargetEvents.has(name)) return onDropTarget(name, event as DragEvent)
+    if (name === "dragstart") startDrag(event as DragEvent)
     // The app owns its forms' submissions, handled or not. Other forms in the document are left alone.
     // An unhandled one is marked, so the browser Router can still route a GET form.
     if (name === "submit" && event.target !== null && bound.has(event.target as globalThis.Node)) {
@@ -308,18 +494,29 @@ export const makeHost = (
           event.preventDefault()
           submit.ownedUnhandled.delete(event)
         }
+        const preventDefault = entry.options[name]?.preventDefault
+        if (preventDefault === "always") event.preventDefault()
         entry.dispatch(
           name,
           handler,
-          payloadOf(name, event, event.target, node as globalThis.Element),
-          entry.options[name]?.preventDefault === true ? () => event.preventDefault() : undefined
+          name === "dragend"
+            ? dragEndPayload(event as DragEvent)
+            : payloadOf(name, event, event.target, node as globalThis.Element),
+          preventDefault === true ? () => event.preventDefault() : undefined
         )
         break
       }
       if (own) break
     }
     if (changeEvents.includes(name)) restoreSoon(event.target)
+    if (name === "dragend") endTargets()
   }
+
+  const dragEndPayload = (event: DragEvent): Html.DragEndPayload => ({
+    // The app saw its own drops. Elsewhere, browsers report a drop with the effect it had, though not
+    // every browser does so reliably.
+    dropped: droppedHere || (event.dataTransfer !== null && event.dataTransfer.dropEffect !== "none")
+  })
 
   const listen = (name: string) => {
     if (listening.has(name)) return
@@ -377,6 +574,10 @@ export const makeHost = (
     setEvents(node, handlers, dispatch, options) {
       bound.set(node, { handlers, dispatch, options })
       for (const name in handlers) listen(name)
+      // A drag source needs its `dragstart` without a handler, and a drop target all of its events.
+      if (options.dragstart !== undefined) { for (const name of dragSourceEvents) listen(name) }
+      // `dragend` ends an in-app drag for the targets too.
+      if (handlers.drop !== undefined) { for (const name of [...dropTargetEvents, "dragend"]) listen(name) }
     },
     elements: [Html.name],
     controlled,
@@ -403,6 +604,9 @@ export const makeHost = (
     dispose: () => {
       for (const [name, f] of listening) document.removeEventListener(name, f, { capture: true })
       listening.clear()
+      cancelExitCheck()
+      cancelOver()
+      active = undefined
     }
   }
 }
