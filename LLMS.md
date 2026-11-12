@@ -517,9 +517,9 @@ client, not the services.
   module mounts it with `BrowserRouter`. The routes are in
   `fixtures/routes.ts` and the root component is in `fixtures/App.ts`.
 - **[Rendering on the server](./ai-docs/src/90_ui/40_server-rendering.ts)**:
-  Render the routed app to HTML with `HtmlServer.renderToHtml` and embed
-  its state in the page. This is the server's entry module. It serves the
-  same `fixtures/App.ts` the browser mounts, and the JSON API in
+  Serve the routed app's pages with `HtmlServer.layerHttp`, next to the JSON
+  API. This is the server's entry module. It serves the same
+  `fixtures/App.ts` the browser mounts, and the JSON API in
   `fixtures/server/NotesApi.ts`.
 - **[Hydrating in the browser](./ai-docs/src/90_ui/45_hydration.ts)**:
   Hydrate what the server rendered with `BrowserHost`. This is the browser

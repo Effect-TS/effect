@@ -171,9 +171,16 @@ export interface Redirect {
 }
 
 /**
- * What `resolve` returns: the route a URL resolves to, and whether a redirect
- * or a normalisation (such as a trailing slash) changed the URL. The server
- * answers a changed URL with a redirect to `print(route)`.
+ * What `resolve` returns: the route a URL resolves to, whether a redirect or
+ * a normalisation (such as a trailing slash) changed the URL, and whether the
+ * route is the union's catch-all `"/*"` route.
+ *
+ * **Details**
+ *
+ * The server answers a changed URL with a redirect to `print(route)`, and a
+ * `notFound` route with a 404. `notFound` is true whether the catch-all
+ * matched the path or a query that failed to decode fell back to it. A union
+ * without a catch-all never sets it, because such URLs don't resolve.
  *
  * @stability experimental
  * @category models
@@ -182,6 +189,7 @@ export interface Redirect {
 export interface Resolved<A> {
   readonly route: A
   readonly redirected: boolean
+  readonly notFound: boolean
 }
 
 /**
@@ -521,14 +529,16 @@ const build = (
     const fallback = (): Option.Option<Resolved<any>> =>
       notFound === undefined ? Option.none() : Option.some({
         route: union.make({ _tag: notFound, params: { "*": input.join("/") }, query: {} } as any),
-        redirected: false
+        redirected: false,
+        notFound: true
       })
     if (query === undefined) return fallback()
     for (const entry of entries) {
       const raw = matchShape(entry.segments, input)
       if (raw === undefined) continue
       if (entry.redirect !== undefined) {
-        return Option.some({ route: entry.redirect.to(raw, query), redirected: true })
+        const route = entry.redirect.to(raw, query)
+        return Option.some({ route, redirected: true, notFound: route._tag === notFound })
       }
       const route = entry.route!
       const params = route.decodeParams(raw)
@@ -537,7 +547,8 @@ const build = (
       if (Option.isNone(decodedQuery)) return fallback()
       return Option.some({
         route: { _tag: route.tag, params: params.value, query: decodedQuery.value },
-        redirected: trimmed !== path
+        redirected: trimmed !== path,
+        notFound: route.tag === notFound
       })
     }
     return Option.none()

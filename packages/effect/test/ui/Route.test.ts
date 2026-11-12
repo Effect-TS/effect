@@ -76,7 +76,11 @@ describe("Route", () => {
   it("strips a trailing slash, matches case-sensitively and ignores the hash", () => {
     const routes = makeRoutes()
     const resolved = Option.getOrThrow(routes.resolve("/people/1/"))
-    assert.deepStrictEqual(resolved, { route: { _tag: "Person", params: { id: 1 }, query: {} }, redirected: true })
+    assert.deepStrictEqual(resolved, {
+      route: { _tag: "Person", params: { id: 1 }, query: {} },
+      redirected: true,
+      notFound: false
+    })
     assert.strictEqual(parse(routes, "/People/1")?._tag, "NotFound")
     assert.strictEqual(parse(routes, "/people/1#bio")?._tag, "Person")
   })
@@ -85,8 +89,29 @@ describe("Route", () => {
     const routes = makeRoutes()
     assert.deepStrictEqual(Option.getOrThrow(routes.resolve("/old/3")), {
       route: { _tag: "Person", params: { id: 3 }, query: {} },
-      redirected: true
+      redirected: true,
+      notFound: false
     })
+  })
+
+  it("reports notFound when the URL resolves to the catch-all", () => {
+    const routes = makeRoutes()
+    assert.isFalse(Option.getOrThrow(routes.resolve("/people/1")).notFound)
+    assert.isFalse(Option.getOrThrow(routes.resolve("/files/a")).notFound)
+    assert.deepStrictEqual(Option.getOrThrow(routes.resolve("/a/b")), {
+      route: { _tag: "NotFound", params: { "*": "a/b" }, query: {} },
+      redirected: false,
+      notFound: true
+    })
+    // A query that fails to decode falls back to the catch-all.
+    assert.deepStrictEqual(Option.getOrThrow(routes.resolve("/search?page=x")), {
+      route: { _tag: "NotFound", params: { "*": "search" }, query: {} },
+      redirected: false,
+      notFound: true
+    })
+    const noCatchAll = Route.union({ Home: Route.make("/") })
+    assert.isFalse(Option.getOrThrow(noCatchAll.resolve("/")).notFound)
+    assert.isTrue(Option.isNone(noCatchAll.resolve("/missing")))
   })
 
   it("prints through the same Schemas, with no trailing slash", () => {
