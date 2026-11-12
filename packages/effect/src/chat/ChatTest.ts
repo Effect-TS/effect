@@ -1,16 +1,16 @@
 /**
  * Testing tools for chat adapters and their consumers.
  *
- * \`layer\` builds a whole chat in memory: \`Chat\`, its registry and one fake
- * adapter with configurable capabilities and fault injection. \`conformance\`
+ * `layer` builds a whole chat in memory: `Chat`, its registry and one fake
+ * adapter with configurable capabilities and fault injection. `conformance`
  * is the suite of rules every adapter obeys, as plain Effects keyed by rule
- * name. \`checkMessage\` and \`checkEvent\` assert the invariants every message
+ * name. `checkMessage` and `checkEvent` assert the invariants every message
  * and event holds, for fixture tests and live runs.
  *
  * **Details**
  *
- * The fake adapter's mention syntax is \`<@id>\` for a user, \`<@&id>\` for a
- * role, \`<#id>\` for a channel and \`<!id>\` for a broadcast.
+ * The fake adapter's mention syntax is `<@id>` for a user, `<@&id>` for a
+ * role, `<#id>` for a channel and `<!id>` for a broadcast.
  *
  * @stability unstable
  * @since 4.1.5
@@ -48,13 +48,13 @@ import * as ChatMessage from "./ChatMessage.ts"
 import * as ChatThread from "./ChatThread.ts"
 
 /**
- * Reads a slice of \`ChatMessage.text\` as one of the platform's mention
+ * Reads a slice of `ChatMessage.text` as one of the platform's mention
  * tokens.
  *
  * **Details**
  *
  * The core does not know any platform's syntax, so the caller supplies it. A
- * slice that is not a mention token returns \`None\`.
+ * slice that is not a mention token returns `None`.
  *
  * **Gotchas**
  *
@@ -87,19 +87,19 @@ export interface Call {
 }
 
 /**
- * Service that controls the fake adapter built by \`layer\`.
+ * Service that controls the fake adapter built by `layer`.
  *
  * **Details**
  *
- * - \`makeThread\` creates a fresh address: a channel by default, a direct
+ * - `makeThread` creates a fresh address: a channel by default, a direct
  *   conversation, or a thread under a user's message in a fresh channel.
- * - \`userPosts\` puts another identity's message in a thread and returns its
- *   event without delivering it. \`deliver\` delivers an event the way an
- *   adapter does, by calling the \`ChatHandler\` service.
- * - \`messages\` is what a thread shows now, oldest first, and \`calls\` is every
+ * - `userPosts` puts another identity's message in a thread and returns its
+ *   event without delivering it. `deliver` delivers an event the way an
+ *   adapter does, by calling the `ChatHandler` service.
+ * - `messages` is what a thread shows now, oldest first, and `calls` is every
  *   call the adapter received.
- * - \`failNext\` makes the next \`times\` calls of \`op\` fail with \`reason\`.
- *   \`landed\` makes the write happen anyway, which is what \`uncertain\` means.
+ * - `failNext` makes the next `times` calls of `op` fail with `reason`.
+ *   `landed` makes the write happen anyway, which is what `uncertain` means.
  *
  * @stability unstable
  * @category services
@@ -574,22 +574,22 @@ const makeFake = (options: {
 }
 
 /**
- * Creates a whole chat in memory: \`Chat\`, its registry and one fake adapter.
+ * Creates a whole chat in memory: `Chat`, its registry and one fake adapter.
  *
  * **When to use**
  *
- * Use to test code that posts and reads through \`Chat\`, and to run the
+ * Use to test code that posts and reads through `Chat`, and to run the
  * conformance suite against the fake adapter.
  *
  * **Details**
  *
- * - The platform defaults to \`test\` and the bot's user id to \`bot\`.
- * - Every capability is on by default, except \`nativeStream\`: the fake has no
+ * - The platform defaults to `test` and the bot's user id to `bot`.
+ * - Every capability is on by default, except `nativeStream`: the fake has no
  *   native stream yet.
  * - The default limits are 4000 characters per message, 10 files of up to
  *   10 MiB, and no write interval.
- * - Two layers merged with different platforms share one \`Chat\`, so routing
- *   can be tested. The \`ChatTest\` service in context is the last one merged.
+ * - Two layers merged with different platforms share one `Chat`, so routing
+ *   can be tested. The `ChatTest` service in context is the last one merged.
  *
  * @stability unstable
  * @category layers
@@ -625,8 +625,8 @@ export const layer = (options?: {
  *
  * **Details**
  *
- * \`rule\` names what failed, and \`expected\` and \`actual\` say how. A platform
- * error behind the failure is in \`cause\`.
+ * `rule` names what failed, and `expected` and `actual` say how. A platform
+ * error behind the failure is in `cause`.
  *
  * @stability unstable
  * @category errors
@@ -663,9 +663,9 @@ const sameReplyTo = (a: ReplyTo | undefined, b: ReplyTo | undefined): boolean =>
  *
  * **Details**
  *
- * It compares \`id\`, \`thread\`, \`author.id\`, \`author.isBot\`, \`author.isSelf\`,
- * \`text\`, \`mentions\`, \`replyTo\`, \`timestamp\` and the attachment ids in order.
- * \`raw\`, \`author.name\` and the optional attachment fields are left out.
+ * It compares `id`, `thread`, `author.id`, `author.isBot`, `author.isSelf`,
+ * `text`, `mentions`, `replyTo`, `timestamp` and the attachment ids in order.
+ * `raw`, `author.name` and the optional attachment fields are left out.
  *
  * @stability unstable
  * @category comparisons
@@ -769,11 +769,11 @@ const checkMessageWith = Effect.fnUntraced(function*(rule: string, message: Chat
  *
  * **Details**
  *
- * - Every mention sits inside \`text\`, mentions do not overlap, and each slice
- *   parses with \`parseMention\` as a token of the mention's kind and id.
- * - \`thread.platform\` is the platform, and the thread survives its string
+ * - Every mention sits inside `text`, mentions do not overlap, and each slice
+ *   parses with `parseMention` as a token of the mention's kind and id.
+ * - `thread.platform` is the platform, and the thread survives its string
  *   codec.
- * - The message encodes and decodes through its Schema unchanged, \`raw\`
+ * - The message encodes and decodes through its Schema unchanged, `raw`
  *   included.
  * - Every attachment has an id and no URL.
  *
@@ -791,13 +791,13 @@ export const checkMessage = (message: ChatMessage.ChatMessage, options: {
  *
  * **Details**
  *
- * - A message event's message passes \`checkMessage\`, and the event's thread is
+ * - A message event's message passes `checkMessage`, and the event's thread is
  *   the message's.
- * - \`thread.platform\` is the platform, and the thread survives its string
+ * - `thread.platform` is the platform, and the thread survives its string
  *   codec.
- * - The event encodes and decodes through its Schema unchanged, \`raw\`
- *   included, and two decodes have the same \`dedupeKey\`.
- * - A reaction's \`dedupeKey\` differs between added and removed.
+ * - The event encodes and decodes through its Schema unchanged, `raw`
+ *   included, and two decodes have the same `dedupeKey`.
+ * - A reaction's `dedupeKey` differs between added and removed.
  *
  * @stability unstable
  * @category testing
@@ -940,15 +940,25 @@ class Tester {
     })
   }
 
-  expectUnsupported(capability: Capability): Effect.Effect<void, ConformanceFailure, Registry> {
-    const expected = "Unsupported(" + capability + ")"
+  /**
+   * Calls the op behind `capability`. When the descriptor lacks it, the op
+   * must fail with `Unsupported` naming it. When it is listed, the op must
+   * not fail with `Unsupported` for a listed capability, so a descriptor that
+   * lies in either direction fails.
+   */
+  probe(capability: Capability): Effect.Effect<void, ConformanceFailure, Registry> {
+    const listed = this.has(capability)
+    const expected = listed ? "no Unsupported for listed " + capability : "Unsupported(" + capability + ")"
     const expect = <A>(effect: Effect.Effect<A, ChatError>, onSuccess?: (a: A) => void) =>
       Effect.flatMap(Effect.exit(effect), (exit) => {
         if (Exit.isSuccess(exit)) onSuccess?.(exit.value)
         const error = Exit.findErrorOption(exit)
-        const matches = Option.isSome(error) && isChatError(error.value) &&
-          error.value.reason._tag === "Unsupported" && error.value.reason.capability === capability
-        return matches ? Effect.void : Effect.fail(failure(
+        const reason = Option.isSome(error) && isChatError(error.value) ? error.value.reason : undefined
+        const holds = listed
+          ? Exit.isSuccess(exit) ||
+            (reason !== undefined && !(reason._tag === "Unsupported" && this.has(reason.capability)))
+          : reason?._tag === "Unsupported" && reason.capability === capability
+        return holds ? Effect.void : Effect.fail(failure(
           this.rule,
           expected,
           describeExit(exit),
@@ -993,9 +1003,9 @@ class Tester {
           (registry) =>
             Effect.flatMap(this.call(registry.get(this.options.platform)), (adapter) =>
               this.check(
-                adapter.nativeStream === undefined,
-                "no nativeStream on an adapter whose descriptor lacks it",
-                () => "a nativeStream"
+                (adapter.nativeStream !== undefined) === listed,
+                listed ? "a nativeStream, as the descriptor lists it" : "no nativeStream, as the descriptor lacks it",
+                () => adapter.nativeStream === undefined ? "no nativeStream" : "a nativeStream"
               ))
         )
     }
@@ -1042,24 +1052,25 @@ interface ConformanceOptions {
  *
  * **Details**
  *
- * - Each rule needs the adapter under test registered in \`Chat\` and a way to
- *   make another identity's message appear in \`thread\`, which must be a
+ * - Each rule needs the adapter under test registered in `Chat` and a way to
+ *   make another identity's message appear in `thread`, which must be a
  *   channel the suite may write to.
  * - A rule is never skipped. When the descriptor lacks a capability a rule
- *   needs, the rule becomes its inverse: the op fails with \`Unsupported\`.
- *   There is an \`unsupported/{capability}\` rule for every capability, which
- *   passes when the capability is listed.
- * - A listed capability never fails with \`Unsupported\`, which every rule
+ *   needs, the rule becomes its inverse: the op fails with `Unsupported`.
+ *   There is an `unsupported/{capability}` rule for every capability. When
+ *   the capability is listed, it calls the op and fails if the op fails with
+ *   `Unsupported`, so a descriptor that lies in either direction fails.
+ * - A listed capability never fails with `Unsupported`, which every rule
  *   checks as it goes.
- * - The three \`retries/*\` rules exist only when \`failNext\` is given.
+ * - The three `retries/*` rules exist only when `failNext` is given.
  * - Every rule deletes what it posted when it ends, pass or fail, when the
  *   platform can delete.
  *
  * **Gotchas**
  *
  * The rules are provisional: they can be added, renamed, removed or tightened
- * in any release until the suite is frozen. The \`retries/retrySafe\` rule
- * waits for real time, so run the suite on a live \`Clock\`.
+ * in any release until the suite is frozen. The `retries/retrySafe` rule
+ * waits for real time, so run the suite on a live `Clock`.
  *
  * @stability unstable
  * @category testing
@@ -1093,7 +1104,7 @@ export const conformance = (options: {
       )
       const t = new Tester(name, chat, descriptor, options)
       const missing = needs.find((capability) => !t.has(capability))
-      return yield* (missing === undefined ? body(t) : t.expectUnsupported(missing)).pipe(
+      return yield* (missing === undefined ? body(t) : t.probe(missing)).pipe(
         Effect.ensuring(t.cleanup)
       )
     })
@@ -1337,7 +1348,7 @@ export const conformance = (options: {
     ))
 
   for (const capability of [...allCapabilities, "nativeStream" as const]) {
-    rule("unsupported/" + capability, [], (t) => t.has(capability) ? Effect.void : t.expectUnsupported(capability))
+    rule("unsupported/" + capability, [], (t) => t.probe(capability))
   }
 
   const failNext = options.failNext
@@ -1368,7 +1379,7 @@ export const conformance = (options: {
 
     rule("retries/neverUncertain", [], (t) =>
       Effect.gen(function*() {
-        yield* failNext("post", new Transport({ retry: "uncertain" }), { landed: true })
+        yield* failNext("post", new Transport({ retry: "uncertain" }))
         yield* t.expectReason(
           "Transport",
           t.chat.post(t.thread, { markdown: conformanceText(t.rule) }),

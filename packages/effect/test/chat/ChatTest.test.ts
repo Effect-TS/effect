@@ -9,16 +9,18 @@ const parseMention: ChatTest.ParseMention = (slice) => {
   return match === null ? Option.none() : Option.some({ kind: kinds[match[1] as keyof typeof kinds], id: match[2] })
 }
 
-const suite = Effect.gen(function*() {
-  const test = yield* ChatTest.ChatTest
-  const thread = yield* test.makeThread()
-  return ChatTest.conformance({
+const rulesFor = (test: ChatTest.ChatTest["Service"], thread: ChatThread.ChatThread) =>
+  ChatTest.conformance({
     platform: test.platform,
     thread,
     userPosts: (thread, text) => test.userPosts(thread, { text }),
     parseMention,
     failNext: test.failNext
   })
+
+const suite = Effect.gen(function*() {
+  const test = yield* ChatTest.ChatTest
+  return rulesFor(test, yield* test.makeThread())
 })
 
 const ruleNames = Object.keys(ChatTest.conformance({
@@ -78,6 +80,39 @@ describe("ChatTest", () => {
       })
       const failure = yield* Effect.flip(Effect.flatMap(suite, (rules) => rules["edit/keepsId"]))
       assert.strictEqual(failure.actual, "Unsupported(edit) for a listed capability")
+    }).pipe(Effect.provide(ChatTest.layer())))
+
+  it.effect("fails unsupported/{capability} for a listed op that fails with Unsupported", () =>
+    Effect.gen(function*() {
+      const registry = yield* ChatAdapter.Registry
+      const adapter = yield* registry.get("test")
+      const unsupported = (capability: ChatError.Capability) =>
+        Effect.fail(
+          new ChatError.ChatError({
+            platform: "test",
+            op: capability,
+            reason: new ChatError.Unsupported({ capability })
+          })
+        )
+      yield* registry.register({
+        ...adapter,
+        getThread: () => unsupported("getThread"),
+        getUser: () => unsupported("getUser")
+      })
+      const rules = yield* suite
+      for (const capability of ["getThread", "getUser"] as const) {
+        const failure = yield* Effect.flip(rules[`unsupported/${capability}`])
+        assert.strictEqual(failure.actual, `Unsupported(${capability})`)
+      }
+    }).pipe(Effect.provide(ChatTest.layer())))
+
+  it.live("deletes every bot message the suite posts", () =>
+    Effect.gen(function*() {
+      const test = yield* ChatTest.ChatTest
+      const thread = yield* test.makeThread()
+      yield* Effect.forEach(Object.values(rulesFor(test, thread)), (rule) => rule, { discard: true })
+      const left = (yield* test.messages(thread)).filter((message) => message.author.isSelf)
+      assert.deepStrictEqual(left.map((message) => message.text), [])
     }).pipe(Effect.provide(ChatTest.layer())))
 
   it.effect("checkMessage rejects a mention whose slice is not its token", () =>
