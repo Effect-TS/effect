@@ -571,47 +571,48 @@ describe("Story", () => {
       )
     })
 
-    it("given starts from loaded results: one render, dependent and keyed loaders, and no onChange message", () => {
-      const Message = Schema.TaggedUnion({ UserChanged: {}, Bump: {} })
-      const renders: Array<string> = []
-      const Team = Component.make({
-        name: "Team",
-        props: Schema.Struct({ id: Schema.String }),
-        model: Schema.Struct({ changes: Schema.Number }),
-        message: Message,
-        elements: Html,
-        loaders: {
-          // Declared before the loader it depends on, so the order of the record doesn't matter.
-          friend: {
-            load: users.GetUser,
-            args: (_model, _props, loaded) =>
-              AsyncResult.isSuccess(loaded.user) ? { id: loaded.user.value.email } : undefined
-          },
-          user: {
-            load: users.GetUser,
-            args: (_model, props) => ({ id: props.id }),
-            onChange: () => Message.make({ _tag: "UserChanged" })
-          },
-          others: { loadMany: users.GetUser, args: () => [{ id: "8" }, { id: "9" }] },
-          list: { load: users.ListUsers, args: () => ({ page: 0 }) }
+    const TeamMessage = Schema.TaggedUnion({ UserChanged: {}, Bump: {} })
+    const renders: Array<string> = []
+    const Team = Component.make({
+      name: "Team",
+      props: Schema.Struct({ id: Schema.String }),
+      model: Schema.Struct({ changes: Schema.Number }),
+      message: TeamMessage,
+      elements: Html,
+      loaders: {
+        // Declared before the loader it depends on, so the order of the record doesn't matter.
+        friend: {
+          load: users.GetUser,
+          args: (_model, _props, loaded) =>
+            AsyncResult.isSuccess(loaded.user) ? { id: loaded.user.value.email } : undefined
         },
-        init: () => ({ changes: 0 }),
-        update: (model) => ({ changes: model.changes + 1 }),
-        view: (model, h) => {
-          const name = (result: AsyncResult.AsyncResult<users.User, unknown>) =>
-            AsyncResult.isSuccess(result) ? result.value.name : "?"
-          const out = [
-            name(h.loaded.user),
-            name(h.loaded.friend),
-            h.loaded.others.map((entry) => name(entry.result)).join("+"),
-            AsyncResult.isSuccess(h.loaded.list) ? String(h.loaded.list.value.users.length) : "?",
-            String(model.changes)
-          ].join(" ")
-          renders.push(out)
-          return h.p(out)
-        }
-      })
-      const user = (id: string, name: string, email = "") => ({ id, name, email, likes: 0 })
+        user: {
+          load: users.GetUser,
+          args: (_model, props) => ({ id: props.id }),
+          onChange: () => TeamMessage.make({ _tag: "UserChanged" })
+        },
+        others: { loadMany: users.GetUser, args: () => [{ id: "8" }, { id: "9" }] },
+        list: { load: users.ListUsers, args: () => ({ page: 0 }) }
+      },
+      init: () => ({ changes: 0 }),
+      update: (model) => ({ changes: model.changes + 1 }),
+      view: (model, h) => {
+        const name = (result: AsyncResult.AsyncResult<users.User, unknown>) =>
+          AsyncResult.isSuccess(result) ? result.value.name : "?"
+        const out = [
+          name(h.loaded.user),
+          name(h.loaded.friend),
+          h.loaded.others.map((entry) => name(entry.result)).join("+"),
+          AsyncResult.isSuccess(h.loaded.list) ? String(h.loaded.list.value.users.length) : "?",
+          String(model.changes)
+        ].join(" ")
+        renders.push(out)
+        return h.p(out)
+      }
+    })
+    const user = (id: string, name: string, email = "") => ({ id, name, email, likes: 0 })
+
+    it("given starts from loaded results: one render, dependent and keyed loaders, and no onChange message", () => {
       const final = Story.make(Team, { id: "1" }, (s) => {
         renders.length = 0
         s.given({ changes: 0 }, {
@@ -646,6 +647,69 @@ describe("Story", () => {
         s.given({ changes: 0 }, { user: user("1", "Ann", "2") })
           .given({ changes: 5 }, { friend: user("2", "Bea") })
           .check((story) => assert.strictEqual(text(story), "Ann Bea ?+? ? 5")))
+    })
+
+    it("given replaces loaded results in any key order, against the new results, not the old slots", () => {
+      Story.make(
+        Team,
+        { id: "1" },
+        (s) =>
+          s.given({ changes: 0 }, { user: user("1", "Ann", "2"), friend: user("2", "Bea") })
+            .check((story) => assert.strictEqual(text(story), "Ann Bea ?+? ? 0"))
+            // The friend is named first, while the held user still points at "2".
+            .given({ changes: 0 }, { friend: user("3", "Cy"), user: user("1", "Ann", "3") })
+            .check((story) => assert.strictEqual(text(story), "Ann Cy ?+? ? 0"))
+      )
+    })
+
+    it("given prunes a keyed loader with no onChange message, and a later step's prune still sends it", () => {
+      const Message = Schema.TaggedUnion({ FriendsChanged: {} })
+      const Pals = Component.make({
+        name: "Pals",
+        props: Schema.Struct({ id: Schema.String }),
+        model: Schema.Struct({ changes: Schema.Number }),
+        message: Message,
+        elements: Html,
+        loaders: {
+          user: { load: users.GetUser, args: (_model, props) => ({ id: props.id }) },
+          friends: {
+            loadMany: users.GetUser,
+            args: (_model, _props, loaded) =>
+              AsyncResult.isSuccess(loaded.user) ? [{ id: loaded.user.value.email }] : [],
+            onChange: () => Message.make({ _tag: "FriendsChanged" })
+          }
+        },
+        init: () => ({ changes: 0 }),
+        update: (model) => ({ changes: model.changes + 1 }),
+        view: (model, h) =>
+          h.p(`${h.loaded.friends.filter((entry) => AsyncResult.isSuccess(entry.result)).length} ${model.changes}`)
+      })
+      Story.make(
+        Pals,
+        { id: "1" },
+        (s) =>
+          s.given({ changes: 0 }, {
+            user: user("1", "Ann", "2"),
+            friends: [{ args: { id: "2" }, value: user("2", "Bea") }]
+          })
+            .check((story) => assert.strictEqual(text(story), "1 0"))
+            // The friend id moves to "3": the held "2" is pruned, silently.
+            .given({ changes: 0 }, { user: user("1", "Ann", "3") })
+            .check((story) => assert.strictEqual(text(story), "0 0"))
+            .loadedMany("friends", [{ args: { id: "3" }, value: user("3", "Cy") }])
+            .check((story) => assert.strictEqual(text(story), "1 1"))
+            // An ordinary step's prune sends onChange.
+            .loaded("user", user("1", "Ann", "4"))
+            .check((story) => assert.strictEqual(text(story), "0 2"))
+      )
+    })
+
+    it("given with no loaded results works on a component without loaders", () => {
+      Story.make(
+        Counter,
+        { initial: 0 },
+        (s) => s.given({ count: 3 }, {}).check((story) => assert.strictEqual(story.model.count, 3))
+      )
     })
   })
 })

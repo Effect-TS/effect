@@ -312,13 +312,18 @@ export interface Steps<C extends AnyComponent> extends Pipeable {
    *
    * **Details**
    *
+   * `given` never runs `update`. Loaders keep their slots, except that a
+   * keyed loader drops the stored keys it no longer returns, with no
+   * `onChange` message. Later steps send `onChange` as usual.
+   *
    * `loaded` starts the loaders it names from loaded results: a Success
    * value, a list loader's page array, or a keyed loader's entries as
-   * `loadedMany` takes them. Each slot is written at the loader's args for
-   * the new Model, with no `onChange` message, and the view renders once. A
-   * loader whose args read another's result is written after it. It throws if
-   * a named loader is disabled, or a keyed entry's args aren't ones the loader
-   * returns. Loaders it doesn't name keep their slots.
+   * `loadedMany` takes them. Each slot is written at the args the loader
+   * returns for the new Model and the given results, so a loader whose args
+   * read another's result follows the new one, whatever the order of the keys
+   * and whatever the slots held before. The view renders once. It throws if a
+   * named loader is disabled, or a keyed entry's args aren't ones the loader
+   * returns.
    */
   given(
     model: Component.Model<C> | ((model: Component.Model<C>) => Component.Model<C>),
@@ -675,65 +680,85 @@ const storedAt = (
 }
 
 /**
- * The slots `given` starts from: each named loader written with a Success at its args, and no
- * `onChange` message. A loader whose args read another's result is written once that one is.
+ * The slots `given` starts from, written with no `onChange` message. Each
+ * named loader holds its given results at the args it returns, and a keyed
+ * loader that isn't named keeps the stored keys it still returns. Args can
+ * read other loaders' results, so the writes repeat until none changes: the
+ * result doesn't depend on the order of the names or on the slots held before.
  */
 const givenSlots = (
   story: Story<any, any, any, any>,
   loaded: { readonly [name: string]: unknown }
-): Component.Slots => {
-  let names = Object.keys(loaded)
+): Component.Slots | undefined => {
+  const names = Object.keys(loaded)
   for (const name of names) loaderOf(story, "given", name)
-  const bound = boundOf(story.component)!
+  const bound = boundOf(story.component)
+  if (bound === undefined) return story.slots
   const slots: { [name: string]: unknown } = { ...(story.slots ?? bound.empty) }
-  while (names.length > 0) {
-    const rest: Array<string> = []
-    for (const name of names) {
-      const entry = bound.byName.get(name)!
-      const def = Loader.defOf(entry.read)
-      const current = bound.context(story.model, story.props, { ...slots }).argsOf(name)
-      if (entry.keyed) {
-        const loads = (loaded[name] as ReadonlyArray<KeyedLoad<any>>).map((load) => ({
-          load,
-          argsKey: def.argsKey(load.args)
-        }))
-        const keys = current.entries!
-        if (!loads.every((load) => keys.some((key) => key.argsKey === load.argsKey))) {
-          rest.push(name)
-          continue
-        }
-        slots[name] = bound.slotMany(
-          entry,
-          keys.flatMap((key) => {
-            const load = loads.find((load) => load.argsKey === key.argsKey)?.load
-            if (load === undefined) return []
-            const result = "value" in load
-              ? AsyncResult.success(load.value, { waiting: load.waiting, timestamp: 0 })
-              : AsyncResult.failure(Cause.fail(load.error), { waiting: load.waiting })
-            return [bound.slot(entry, key, result as any, false, undefined)]
-          })
-        )
-        continue
-      }
-      if (current.argsKey === undefined) {
-        rest.push(name)
-        continue
-      }
-      const value = loaded[name]
-      slots[name] = bound.slot(
+  // The slot a loader should hold for the current slots, or undefined while a named loader is
+  // disabled or doesn't return the given args.
+  const target = (entry: loaders.Entry): unknown => {
+    const current = bound.context(story.model, story.props, { ...slots }).argsOf(entry.name)
+    if (!Object.hasOwn(loaded, entry.name)) {
+      const held = Loader.snapshotMapData(slots[entry.name])?.entries
+      if (held === undefined) return slots[entry.name]
+      return bound.slotMany(
         entry,
-        { args: current.args, argsKey: current.argsKey },
-        AsyncResult.success(value, { timestamp: 0 }),
-        false,
-        def.list !== undefined ? moreOfPages(def, value as ReadonlyArray<unknown>) : undefined
+        current.entries!.flatMap((key) => {
+          const stored = held.get(key.argsKey)
+          return stored === undefined ? [] : [stored]
+        })
       )
     }
-    if (rest.length === names.length) {
+    const def = Loader.defOf(entry.read)
+    if (entry.keyed) {
+      const keys = current.entries!
+      const snapshots: Array<unknown> = []
+      for (const load of loaded[entry.name] as ReadonlyArray<KeyedLoad<any>>) {
+        const key = keys.find((key) => key.argsKey === def.argsKey(load.args))
+        if (key === undefined) return undefined
+        const result = "value" in load
+          ? AsyncResult.success(load.value, { waiting: load.waiting, timestamp: 0 })
+          : AsyncResult.failure(Cause.fail(load.error), { waiting: load.waiting })
+        snapshots.push(bound.slot(entry, key, result as any, false, undefined))
+      }
+      return bound.slotMany(entry, snapshots)
+    }
+    if (current.argsKey === undefined) return undefined
+    const value = loaded[entry.name]
+    return bound.slot(
+      entry,
+      { args: current.args, argsKey: current.argsKey },
+      AsyncResult.success(value, { timestamp: 0 }),
+      false,
+      def.list !== undefined ? moreOfPages(def, value as ReadonlyArray<unknown>) : undefined
+    )
+  }
+  const written = bound.entries.filter((entry) => entry.keyed || Object.hasOwn(loaded, entry.name))
+  // Each round settles at least one more level of loaders whose args read another's result.
+  for (let round = 0; round <= written.length; round++) {
+    let changed = false
+    for (const entry of written) {
+      const next = target(entry)
+      if (next !== undefined && !Equal.equals(slots[entry.name], next)) {
+        slots[entry.name] = next
+        changed = true
+      }
+    }
+    if (!changed) break
+  }
+  for (const entry of written) {
+    const next = target(entry)
+    if (next === undefined) {
       throw new Error(
-        `Story.given: the loader "${rest[0]}" is disabled, or doesn't return the given args, for the Model and props`
+        `Story.given: the loader "${entry.name}" is disabled, or doesn't return the given args, for the Model and props`
       )
     }
-    names = rest
+    if (!Equal.equals(slots[entry.name], next)) {
+      throw new Error(
+        `Story.given: the loader "${entry.name}" doesn't settle: its args keep changing with the given results`
+      )
+    }
   }
   return slots
 }
@@ -1308,7 +1333,8 @@ class StepsImpl implements Steps<AnyComponent> {
       dropped: [],
       loadingMore: []
     })
-    return this.step(loaded === undefined ? out : update(out, { slots: givenSlots(out, loaded) }))
+    // Settled here, with no onChange message: the step's own prune then has nothing to write.
+    return this.step(update(out, { slots: givenSlots(out, loaded ?? {}) }))
   }
   props(next: unknown): this {
     const props = typeof next === "function" ? next(this.current.props) : next
