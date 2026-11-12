@@ -1363,6 +1363,9 @@ export interface Enum extends ASTNode {
   getParser(): SchemaParser.Parser
   /** @internal */
 
+  matchPart(s: string, _options: ParseOptions): string | number | undefined
+  /** @internal */
+
   toCodecStringTree(): AST
   /** @internal */
 
@@ -1415,6 +1418,10 @@ export const Enum: new(
     )
   }
   /** @internal */
+  matchPart(s: string, _options: ParseOptions): string | number | undefined {
+    return this.enums.find(([_, value]) => globalThis.String(value) === s)?.[1]
+  }
+  /** @internal */
   toCodecStringTree(): AST {
     if (this.enums.some(([_, v]) => typeof v === "number")) {
       const coercions = Object.fromEntries(this.enums.map(([_, v]) => [globalThis.String(v), v]))
@@ -1441,6 +1448,7 @@ type TemplateLiteralPart =
   | Number
   | BigInt
   | Literal
+  | Enum
   | TemplateLiteral
   | Union<TemplateLiteralPart>
 
@@ -1465,6 +1473,7 @@ function isTemplateLiteralPart(
       valid = true
       break
     case "Literal":
+    case "Enum":
       valid = !ast.checks
       break
     case "TemplateLiteral": {
@@ -4948,6 +4957,7 @@ const partFromString = applyToSelfOrLastLinkEncodingIdempotent((ast) => {
       return ast
     case "Number":
     case "Literal":
+    case "Enum":
     case "BigInt":
       return ast.toCodecStringTree()
     case "Union":

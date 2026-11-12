@@ -6476,12 +6476,16 @@ Expected a value between -2147483648 and 2147483647`
       await decoding.succeed("a")
     })
 
-    it("rejects checks on Literal, TemplateLiteral, and Union parts", () => {
+    it("rejects checks on Literal, Enum, TemplateLiteral, and Union parts", () => {
       const check = Schema.makeFilter(() => true)
 
       throws(
         () => Schema.TemplateLiteral([Schema.Literal("a").check(check)]),
         "Invalid TemplateLiteral part Literal"
+      )
+      throws(
+        () => Schema.TemplateLiteral([Schema.Enum({ A: "a" }).check(check)]),
+        "Invalid TemplateLiteral part Enum"
       )
       throws(
         () => Schema.TemplateLiteral([Schema.TemplateLiteral(["a"]).check(check)]),
@@ -6532,6 +6536,19 @@ Expected a value between -2147483648 and 2147483647`
 
       await decoding.fail(
         "a",
+        `Expected a string matching template literal parts`
+      )
+    })
+
+    it(`Enum + "_" + string`, async () => {
+      const schema = Schema.TemplateLiteral([Schema.Enum({ Task: "task", One: 1 }), "_", Schema.String])
+      const asserts = new TestSchema.Asserts(schema)
+
+      const decoding = asserts.decoding()
+      await decoding.succeed("task_build")
+      await decoding.succeed("1_build")
+      await decoding.fail(
+        "needs_build",
         `Expected a string matching template literal parts`
       )
     })
@@ -6956,6 +6973,18 @@ Expected a value between -2147483648 and 2147483647`
 
       const decoding = asserts.decoding()
       await decoding.succeed("h1", ["h", 1])
+    })
+
+    it(`"h" + Enum`, async () => {
+      const schema = Schema.TemplateLiteralParser(["h", Schema.Enum({ Task: "task", One: 1 })])
+      const asserts = new TestSchema.Asserts(schema)
+
+      const decoding = asserts.decoding()
+      await decoding.succeed("htask", ["h", "task"])
+      await decoding.succeed("h1", ["h", 1])
+
+      const encoding = asserts.encoding()
+      await encoding.succeed(["h", 1], "h1")
     })
 
     it(`"c" + (\`a\${string}b\`|"e") + "d"`, async () => {
