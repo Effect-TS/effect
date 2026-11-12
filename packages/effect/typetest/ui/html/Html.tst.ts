@@ -100,6 +100,11 @@ describe("Html", () => {
         expect(h.div().value).type.not.toBeCallableWith("text")
         expect(h.select().checked).type.not.toBeCallableWith(true)
         expect(h.input().open).type.not.toBeCallableWith(true)
+        // A dialog is also modal; `open` stays boolean, and nothing else is modal.
+        expect(h.dialog().modal).type.toBeCallableWith(true)
+        expect(h.dialog().open).type.not.toBeCallableWith("modal")
+        expect(h.details().modal).type.not.toBeCallableWith(true)
+        expect(h.div().modal).type.not.toBeCallableWith(true)
         return h.div()
       }
     })

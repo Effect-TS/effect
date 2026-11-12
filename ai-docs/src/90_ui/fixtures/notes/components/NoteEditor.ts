@@ -9,7 +9,10 @@ export const NoteEditorMessage = Schema.TaggedUnion({
   Edited: { body: Schema.String },
   Save: {},
   Saved: { note: Note },
-  SaveFailed: { reason: Schema.String }
+  SaveFailed: { reason: Schema.String },
+  AskDiscard: {},
+  Answered: { choice: Schema.String },
+  KeepEditing: {}
 })
 
 // What the editor reports to its parent.
@@ -48,13 +51,14 @@ export const NoteEditorNoDeps = Component.make({
     draft: Schema.String,
     saved: Schema.String,
     edits: Schema.Number,
-    error: Schema.NullOr(Schema.String)
+    error: Schema.NullOr(Schema.String),
+    confirming: Schema.Boolean
   }),
   message: NoteEditorMessage,
   events: NoteEditorEvents,
   // `init`, `update` and `view` are pure. They read props from `$.props` and
   // `h.props`. A props change re-renders, but never reaches `update`.
-  init: ($) => ({ draft: $.props.note.body, saved: $.props.note.body, edits: 0, error: null }),
+  init: ($) => ({ draft: $.props.note.body, saved: $.props.note.body, edits: 0, error: null, confirming: false }),
   update: (model, message, $) =>
     NoteEditorMessage.match(message, {
       // With nothing to run or emit, return the next Model.
@@ -74,7 +78,14 @@ export const NoteEditorNoDeps = Component.make({
           ),
       // `$.emit` reports to the parent.
       Saved: ({ note }) => $.set({ ...model, saved: note.body }).emit(NoteEditorEvents.make({ _tag: "Saved", note })),
-      SaveFailed: ({ reason }) => ({ ...model, error: reason })
+      SaveFailed: ({ reason }) => ({ ...model, error: reason }),
+      // The confirm dialog's state is in the Model, like any other.
+      AskDiscard: () => ({ ...model, confirming: true }),
+      Answered: ({ choice }) =>
+        choice === "discard"
+          ? { ...model, draft: model.saved, confirming: false }
+          : { ...model, confirming: false },
+      KeepEditing: () => ({ ...model, confirming: false })
     }),
   // A Subscription is a keyed Stream that runs while it is listed. Use one
   // when you can say "while ...", and a Command for a single event. This one
@@ -99,25 +110,47 @@ export const NoteEditorNoDeps = Component.make({
   // so a conditional class is `cond && "name"`. `Html.classNames` builds
   // the same string anywhere else.
   view: (model, h) =>
-    h.form(
-      h.h2(h.props.note.title),
-      h.textarea().attr("aria-label", "Body").value(model.draft)
-        .class("note-body", model.draft !== model.saved && "unsaved")
-        .onInput(({ value }) => NoteEditorMessage.make({ _tag: "Edited", body: value }))
-        // Ctrl+S or Cmd+S saves instead of opening the browser's save
-        // dialog. With `preventDefault`, the browser's default is cancelled
-        // only when the handler returns a message, so every other key types
-        // as usual. Nothing stops the event's propagation, and a form's
-        // `submit` is always cancelled, so `onSubmit` takes no options.
-        .onKeyDown(
-          ({ ctrl, key, meta }) => (ctrl || meta) && key === "s" ? NoteEditorMessage.make({ _tag: "Save" }) : undefined,
-          { preventDefault: true }
-        ),
-      // `h.isRunning` is true while this instance has a save queued or running.
-      h.button(h.isRunning(SaveNote) ? "Saving…" : "Save").attr("type", "submit")
-        .disabled(model.draft === model.saved),
-      model.error !== null && h.p(model.error).attr("role", "alert")
-    ).onSubmit(NoteEditorMessage.make({ _tag: "Save" }))
+    h.div(
+      h.form(
+        h.h2(h.props.note.title),
+        h.textarea().attr("aria-label", "Body").value(model.draft)
+          .class("note-body", model.draft !== model.saved && "unsaved")
+          .onInput(({ value }) => NoteEditorMessage.make({ _tag: "Edited", body: value }))
+          // Ctrl+S or Cmd+S saves instead of opening the browser's save
+          // dialog. With `preventDefault`, the browser's default is cancelled
+          // only when the handler returns a message, so every other key types
+          // as usual. Nothing stops the event's propagation, and a form's
+          // `submit` is always cancelled, so `onSubmit` takes no options.
+          .onKeyDown(
+            ({ ctrl, key, meta }) =>
+              (ctrl || meta) && key === "s" ? NoteEditorMessage.make({ _tag: "Save" }) : undefined,
+            { preventDefault: true }
+          ),
+        // `h.isRunning` is true while this instance has a save queued or running.
+        h.button(h.isRunning(SaveNote) ? "Saving…" : "Save").attr("type", "submit")
+          .disabled(model.draft === model.saved),
+        h.button("Discard changes").attr("type", "button").disabled(model.draft === model.saved)
+          .onClick(NoteEditorMessage.make({ _tag: "AskDiscard" })),
+        model.error !== null && h.p(model.error).attr("role", "alert")
+      ).attr("aria-label", "Edit note").onSubmit(NoteEditorMessage.make({ _tag: "Save" })),
+      // A modal dialog is open while the Model says so. The browser host shows
+      // it in the top layer, keeps focus inside and gives focus back when it
+      // closes. Escape is a close request: it comes to `onCancel`, and the
+      // dialog closes only when `update` says so. A form in the dialog is the
+      // app's like any other, so the choice is read from the submission's
+      // `entries`, not from `returnValue`, and `method="dialog"` isn't needed.
+      h.dialog(
+        h.h2("Discard your changes?"),
+        h.form(
+          h.button("Keep editing").attr("name", "choice").attr("value", "keep"),
+          h.button("Discard").attr("name", "choice").attr("value", "discard")
+        ).onSubmit(({ entries }) =>
+          NoteEditorMessage.make({ _tag: "Answered", choice: entries.find(([name]) => name === "choice")?.[1] ?? "" })
+        )
+      ).attr("aria-label", "Discard your changes?")
+        .modal(model.confirming)
+        .onCancel(NoteEditorMessage.make({ _tag: "KeepEditing" }))
+    )
 })
 
 // The component the app uses, under the plain name. `Component.provide` is

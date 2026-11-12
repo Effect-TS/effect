@@ -43,7 +43,7 @@ describe("NoteEditor", () => {
       s.fire(body, "input", { value: edited.body })
         // Nothing runs in a story, so Subscriptions are asserted by key.
         .subscriptions((keys) => assert.deepStrictEqual(keys, ["autosave:1"]))
-        .fire(Query.tag("form"), "submit")
+        .fire(HtmlQuery.role("form", { name: "Edit note" }), "submit")
         // Commands stay pending as data until a step resolves them.
         .expectExact(SaveNote)
         .check((story) => assert.deepStrictEqual(story.pending[0].command.args, { note: edited }))
@@ -67,10 +67,32 @@ describe("NoteEditor", () => {
         .check((story) => assert.isFalse(story.defaultPrevented)))
   })
 
+  it("asks before discarding, and Escape keeps the changes", () => {
+    const discard = HtmlQuery.role("dialog", { name: "Discard your changes?" })
+    Story.make(NoteEditor, { note }, (s) =>
+      s.fire(body, "input", { value: edited.body })
+        .click("Discard changes")
+        // A dialog's state is `props.open` in a story: closed, open or modal.
+        .check((story) => assert.strictEqual(HtmlQuery.dialogState(story.get(discard)), "modal"))
+        // Escape is a close request, sent to `onCancel`. Here `update` closes
+        // the dialog and keeps the draft. A closed dialog is hidden from role
+        // queries, as it is from the accessibility tree.
+        .fire(discard, "cancel")
+        .check((story) => assert.isUndefined(story.query(discard)))
+        .model((model) => assert.strictEqual(model.draft, edited.body))
+        .click("Discard changes")
+        // The dialog's form is the app's: its choice is in `entries`.
+        .fire(Query.inside(discard, Query.tag("form")), "submit", {
+          fields: { choice: "discard" },
+          entries: [["choice", "discard"]]
+        })
+        .model((model) => assert.strictEqual(model.draft, note.body)))
+  })
+
   it("shows why a save failed", () => {
     Story.make(NoteEditor, { note }, (s) =>
       s.fire(body, "input", { value: edited.body })
-        .fire(Query.tag("form"), "submit")
+        .fire(HtmlQuery.role("form", { name: "Edit note" }), "submit")
         .fail(SaveNote, new NoteSaveError({ reason: "You are offline" }))
         .check((story) => assert.strictEqual(Query.textOf(story.get(HtmlQuery.role("alert"))), "You are offline")))
   })
