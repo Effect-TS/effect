@@ -58,7 +58,8 @@ const Card = Component.make({
     AsyncResult.match(h.loaded.user, {
       onInitial: () => h.p(Option.isSome(h.previous.user) ? h.previous.user.value.name : "Loading"),
       onFailure: () => h.p("Missing"),
-      onSuccess: ({ value }) => h.p(value.name, h.patched.team ? "*" : "").onClick(Message.make({ _tag: "Bump" }))
+      onSuccess: ({ value }) =>
+        h.p.onClick(Message.make({ _tag: "Bump" })).children(value.name, h.patched.team ? "*" : "")
     })
 })
 
@@ -175,7 +176,7 @@ const List = Component.make({
   view: (_model, h) =>
     h.ul(
       h.loaded.users.map(({ args, result, patched }) =>
-        h.li(AsyncResult.isSuccess(result) ? result.value.name + (patched ? "*" : "") : "…").key(args.id)
+        h.li.key(args.id).children(AsyncResult.isSuccess(result) ? result.value.name + (patched ? "*" : "") : "…")
       )
     )
 })

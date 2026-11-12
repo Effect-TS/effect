@@ -27,10 +27,10 @@
  *   init: (): ReadonlyArray<string> => [],
  *   update: (ids, message) => [...ids, message.id],
  *   view: (ids, h) =>
- *     h.ul(...ids.map((id) => h.li(id))).attr("aria-label", "Done").onDrop(
+ *     h.ul.attr("aria-label", "Done").onDrop(
  *       ({ data }) => Message.make({ _tag: "Dropped", id: data["application/x-todo"] ?? "" }),
  *       { accepts: ["application/x-todo"], dropEffect: "move" }
- *     )
+ *     ).children(...ids.map((id) => h.li(id)))
  * })
  *
  * const story = Story.make(Done, {}, (s) =>

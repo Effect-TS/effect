@@ -62,15 +62,14 @@ const makeApp = () => {
       $.watch({ messages: (snapshot) => ChatMessage.make({ _tag: "Changed", snapshot }) })
     ],
     view: (_model, h) =>
-      h.el(
-        "p",
+      h.el("p").on("click", ChatMessage.make({ _tag: "More" })).children(
         AsyncResult.match(h.loaded.messages, {
           onInitial: () => "loading",
           onFailure: () => "failed",
           onSuccess: ({ value: { items, more, pages } }) =>
             items.map((message) => message.text).join(",") + " /" + pages.length + " " + more._tag
         })
-      ).on("click", ChatMessage.make({ _tag: "More" }))
+      )
   })
   return { db, ListMessages, Messages, ChatMessage, Chat, layer: ListMessages.layer }
 }

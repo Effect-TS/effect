@@ -378,7 +378,8 @@ describe("HtmlServer", { concurrent: false }, () => {
         elements: Html,
         init: ($) => $.set(0).run(Log()),
         update: (count, _, $) => $.set(count + 1).run(Log()),
-        view: (count, h) => h.p(String(count)).onMount("go", () => Effect.succeed(Message.make({ _tag: "Go" })))
+        view: (count, h) =>
+          h.p.onMount("go", () => Effect.succeed(Message.make({ _tag: "Go" }))).children(String(count))
       })
       // An event from a child drives the parent's update twice on the server.
       const Child = Component.make({
@@ -433,9 +434,11 @@ describe("HtmlServer", { concurrent: false }, () => {
         update: (model, message) =>
           message._tag === "Mounted" ? { ...model, mounted: true } : { ...model, clicks: model.clicks + 1 },
         view: (model, h) =>
-          h.button(`${model.clicks} ${model.mounted ? "mounted" : "server"}`)
+          h.button
             .onClick(Message.make({ _tag: "Clicked" }))
-            .onMount("mounted", () => Effect.succeed(Message.make({ _tag: "Mounted" })))
+            .onMount("mounted", () => Effect.succeed(Message.make({ _tag: "Mounted" }))).children(
+              `${model.clicks} ${model.mounted ? "mounted" : "server"}`
+            )
       }).pipe(Component.provide(Layer.effect(Store, Effect.as(Effect.sleep("50 millis"), "ready"))))
 
       const fiber = yield* Effect.forkChild(HtmlServer.renderToHtml(Panel, {}))
@@ -650,7 +653,7 @@ describe("HtmlServer", { concurrent: false }, () => {
         view: (mounted, h) =>
           mounted
             ? h.div("mounted")
-            : h.p("server").onMount("swap", () => Effect.succeed(Message.make({ _tag: "Mounted" })))
+            : h.p.onMount("swap", () => Effect.succeed(Message.make({ _tag: "Mounted" }))).children("server")
       })
       const result = yield* ssr(Swap, {})
       yield* TestHost.settle
@@ -712,10 +715,10 @@ describe("HtmlServer", { concurrent: false }, () => {
         update: () => "mounted",
         head: (title) => [Head.title(title)],
         view: (_, h) =>
-          h.div(h.child(Waiting, { key: "w", props: {} })).onMount(
+          h.div.onMount(
             "title",
             () => Effect.succeed(Message.make({ _tag: "Mounted" }))
-          )
+          ).children(h.child(Waiting, { key: "w", props: {} }))
       })
       const result = yield* ssr(Titled, {})
       expect(result.adopted).toEqual(["/Titled", "/Titled/Waiting[w]"])
@@ -819,10 +822,10 @@ describe("HtmlServer", { concurrent: false }, () => {
         init: () => true,
         update: () => false,
         view: (showTitled, h) =>
-          h.div(
+          h.div.onMount("hide", () => Effect.succeed(Message.make({ _tag: "Mounted" }))).children(
             showTitled ? h.child(Titled, { key: "t", props: {} }) : h.p("gone"),
             h.child(Waiting, { key: "w", props: {} })
-          ).onMount("hide", () => Effect.succeed(Message.make({ _tag: "Mounted" })))
+          )
       })
       const result = yield* ssr(Page, {})
       expect(result.head.title).toBe("title")
@@ -1112,9 +1115,9 @@ describe("HtmlServer loaders", { concurrent: false }, () => {
         ) => [$.watch({ items: (items) => Message.make({ _tag: "Loaded", items }) })],
         view: (_, h) =>
           h.ul(h.loaded.items.map(({ args, result }) =>
-            h.li(
+            h.li.key(String(args.id)).children(
               AsyncResult.isSuccess(result) ? result.value : AsyncResult.isFailure(result) ? "failed" : "loading"
-            ).key(String(args.id))
+            )
           ))
       }).pipe(Component.provide(GetSlowItem.layer))
       const result = yield* ssr(List, {}, { budget: "50 millis" })

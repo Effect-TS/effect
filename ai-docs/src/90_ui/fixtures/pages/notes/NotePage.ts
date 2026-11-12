@@ -74,7 +74,7 @@ export const NotePageNoDeps = Component.make({
             props: { noteId: note.id },
             fallback: (result) => h.p(AsyncResult.isInitial(result) ? "Loading activity…" : "No activity.")
           }),
-          model.notice !== "" && h.p(model.notice).attr("role", "status")
+          model.notice !== "" && h.p.attr("role", "status").children(model.notice)
         )
     })
 })

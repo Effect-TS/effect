@@ -45,7 +45,7 @@ const Row = Component.make({
   message: RowMessage,
   init: ($) => $.set(0).run(Hold()),
   update: (count) => count + 1,
-  view: (count, h) => h.el("li", `${h.props.id}:${count}`).on("click", RowMessage.make({ _tag: "Bump" }))
+  view: (count, h) => h.el("li").on("click", RowMessage.make({ _tag: "Bump" })).children(`${h.props.id}:${count}`)
 })
 
 const ListMessage = Schema.TaggedUnion({
@@ -94,11 +94,10 @@ describe("Runtime", () => {
         init: () => [],
         update: (seen, message) => [...seen, message._tag],
         view: (_, h) =>
-          h.el(
-            "div",
-            h.el("button", "inner").on("click", Msg.make({ _tag: "Inner" })),
+          h.el("div").on("click", Msg.make({ _tag: "Outer" })).children(
+            h.el("button").on("click", Msg.make({ _tag: "Inner" })).children("inner"),
             h.el("span", "plain")
-          ).on("click", Msg.make({ _tag: "Outer" }))
+          )
       })
       const root = yield* TestHost.mount(Nested, {})
       click(root, "inner")
@@ -164,7 +163,7 @@ describe("Runtime", () => {
       update: (): number => {
         throw new Error("boom")
       },
-      view: (_, h) => h.el("button", "bomb").on("click", BombMessage.make({ _tag: "Explode" }))
+      view: (_, h) => h.el("button").on("click", BombMessage.make({ _tag: "Explode" })).children("bomb")
     })
     const PageMessage = Schema.TaggedUnion({ BombFailed: {}, Retry: {} })
     const Page = Component.make({
@@ -486,6 +485,9 @@ describe("Runtime", () => {
       })
     ) {}
 
+    // The editor's buttons can run either command, so a mount provides both.
+    const commands = (server: Server) => Layer.mergeAll(Save.layer, Rename.layer).pipe(Layer.provide(api(server)))
+
     const EditorMsg = Schema.TaggedUnion({ Save: {}, Rename: {}, Stop: {}, Saved: { n: Schema.Number } })
     const Editor = Component.make({
       name: "Editor",
@@ -503,9 +505,9 @@ describe("Runtime", () => {
         }),
       view: (_, h) =>
         h.el("div", [
-          h.el("button", "save").on("click", EditorMsg.make({ _tag: "Save" })),
-          h.el("button", "rename").on("click", EditorMsg.make({ _tag: "Rename" })),
-          h.el("button", "stop").on("click", EditorMsg.make({ _tag: "Stop" })),
+          h.el("button").on("click", EditorMsg.make({ _tag: "Save" })).children("save"),
+          h.el("button").on("click", EditorMsg.make({ _tag: "Rename" })).children("rename"),
+          h.el("button").on("click", EditorMsg.make({ _tag: "Stop" })).children("stop"),
           h.text(h.isRunning(Save) ? "saving" : "idle")
         ])
     })
@@ -546,7 +548,7 @@ describe("Runtime", () => {
         const server = makeServer()
         const App = Component.provide(
           EditorPage,
-          Layer.mergeAll(Save.layer.pipe(Layer.provide(api(server))), fetcher(server))
+          Layer.mergeAll(commands(server), fetcher(server))
         )
         const root = yield* TestHost.mount(App, {})
         yield* TestHost.settle
@@ -585,7 +587,7 @@ describe("Runtime", () => {
       provideHost(Effect.gen(function*() {
         const server = makeServer()
         const App = Component.provide(
-          page(Component.provide(Editor, Save.layer.pipe(Layer.provide(api(server))))),
+          page(Component.provide(Editor, commands(server))),
           fetcher(server)
         )
         const root = yield* TestHost.mount(App, {})
@@ -621,7 +623,7 @@ describe("Runtime", () => {
         assert.strictEqual(server.interrupted, 1)
         assert.strictEqual(server.count, 0)
       }).pipe(
-        Effect.provide(Layer.mergeAll(Save.layer.pipe(Layer.provide(api(server))), fetcher(server))),
+        Effect.provide(Layer.mergeAll(commands(server), fetcher(server))),
         Effect.provide(TestHost.layer())
       )
     })
@@ -701,7 +703,7 @@ describe("Runtime", () => {
         message: Msg,
         init: ($) => $.set(null).run(Stubborn.make().pipe(Command.map(() => Msg.make({ _tag: "Done" })))),
         update: (model, message, $) => message._tag === "Stop" ? $.run(Command.interrupt(Stubborn)) : model,
-        view: (_, h) => h.el("button", "stop").on("click", Msg.make({ _tag: "Stop" }))
+        view: (_, h) => h.el("button").on("click", Msg.make({ _tag: "Stop" })).children("stop")
       })
       // A child whose `Command.make` run ends with it.
       const Holder = Component.make({
@@ -887,7 +889,7 @@ describe("Runtime", () => {
         const server = makeServer()
         const App = Component.provide(
           EditorPage,
-          Layer.mergeAll(Save.layer.pipe(Layer.provide(api(server))), fetcher(server))
+          Layer.mergeAll(commands(server), fetcher(server))
         )
         const root = yield* TestHost.mount(App, {})
         yield* TestHost.settle
@@ -905,7 +907,7 @@ describe("Runtime", () => {
         const server = makeServer()
         const App = Component.provide(
           EditorPage,
-          Layer.mergeAll(Rename.layer.pipe(Layer.provide(api(server))), fetcher(server))
+          Layer.mergeAll(commands(server), fetcher(server))
         )
         const root = yield* TestHost.mount(App, {})
         yield* TestHost.settle
@@ -926,7 +928,7 @@ describe("Runtime", () => {
         const server = makeServer()
         const App = Component.provide(
           page(Editor),
-          Layer.mergeAll(fetcher(server), Save.layer.pipe(Layer.provide(api(server))))
+          Layer.mergeAll(fetcher(server), commands(server))
         )
         const root = yield* TestHost.mount(App, {}, { loader: { idleTimeToLive: "1 second" } })
         yield* TestHost.settle
@@ -1872,6 +1874,22 @@ describe("Runtime", () => {
         assert.include(String(failed.cause), "text goes inside label")
       })))
 
+    it.effect("h.el checks text when children follow a chain", () =>
+      provideHost(Effect.gen(function*() {
+        const Chained = Component.make({
+          name: "Chained",
+          model: Schema.Number,
+          message: Schema.Never,
+          elements: Tiny,
+          init: () => 0,
+          update: (model) => model,
+          view: (_, h) => h.el("box").key("k").attr("id", "box").children("loose text")
+        })
+        const root = yield* TestHost.mount(Chained, {})
+        const failed = root.log().find((entry) => entry._tag === "Failed") as MessageLog.Failed
+        assert.include(String(failed.cause), "text goes inside label")
+      })))
+
     it.effect("a nested component whose vocabulary the host doesn't show fails its slot", () =>
       Effect.gen(function*() {
         const Inner = Component.make({
@@ -1917,8 +1935,8 @@ describe("Runtime", () => {
             }),
           view: (model, h) =>
             h.box(
-              h.field().value(model.value).on("input", ({ value }) => Msg.make({ _tag: "Typed", value })),
-              h.label(String(model.touched)).on("click", Msg.make({ _tag: "Touch" }))
+              h.field.value(model.value).on("input", ({ value }) => Msg.make({ _tag: "Typed", value })),
+              h.label.on("click", Msg.make({ _tag: "Touch" })).children(String(model.touched))
             )
         })
         const root = yield* TestHost.mount(Form, {})
@@ -1947,7 +1965,7 @@ describe("Runtime", () => {
           view: (tag, h) =>
             h.box(
               h.label(tag),
-              h.field().onMount(
+              h.field.onMount(
                 "focus",
                 (node) => Effect.succeed(Msg.make({ _tag: "Mounted", tag: (node as any).tag }))
               )
@@ -1972,7 +1990,7 @@ describe("Runtime", () => {
           elements: Tiny,
           init: () => "waiting",
           update: (_, message) => message,
-          view: (text, h) => h.box(h.label(text), h.field().onMount("focus", () => Effect.succeed("mounted")))
+          view: (text, h) => h.box(h.label(text), h.field.onMount("focus", () => Effect.succeed("mounted")))
         })
         const root = yield* TestHost.mount(Auto, {})
         yield* TestHost.settle

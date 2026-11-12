@@ -37,15 +37,15 @@ export const TodoItem = Component.make({
       Delete: () => $.emit(TodoItemEvents.make({ _tag: "Deleted", id: $.props.todo.id }))
     }),
   view: (_, h) =>
-    h.li(
+    h.li.class(h.props.todo.done && "done").children(
       h.label(
-        h.input().attr("type", "checkbox").checked(h.props.todo.done)
+        h.input.attr("type", "checkbox").checked(h.props.todo.done)
           .onInput(({ checked }) => TodoItemMessage.make({ _tag: "Toggle", done: checked })),
         h.props.todo.title
       ),
-      h.button("×").attr("aria-label", `Delete ${h.props.todo.title}`)
-        .onClick(TodoItemMessage.make({ _tag: "Delete" }))
-    ).class(h.props.todo.done && "done")
+      h.button.attr("aria-label", `Delete ${h.props.todo.title}`)
+        .onClick(TodoItemMessage.make({ _tag: "Delete" })).children("×")
+    )
 })
 
 // ---------------------------------------------------------------------------
@@ -98,12 +98,12 @@ export const TodoApp = Component.make({
     const left = model.todos.filter((todo) => !todo.done).length
     return h.main(
       h.h1("Todos"),
-      h.form(
-        h.input().attr("aria-label", "New todo").attr("placeholder", "What needs doing?").value(model.draft)
+      h.form.onSubmit(TodoAppMessage.make({ _tag: "Add" })).children(
+        h.input.attr("aria-label", "New todo").attr("placeholder", "What needs doing?").value(model.draft)
           .onInput(({ value }) => TodoAppMessage.make({ _tag: "Draft", value })),
-        h.button("Add").attr("type", "submit")
-      ).onSubmit(TodoAppMessage.make({ _tag: "Add" })),
-      h.ul(
+        h.button.attr("type", "submit").children("Add")
+      ),
+      h.ul.attr("aria-label", "Todos").children(
         model.todos.map((todo) =>
           h.child(TodoItem, {
             key: todo.id,
@@ -114,10 +114,10 @@ export const TodoApp = Component.make({
                 : TodoAppMessage.make({ _tag: "Deleted", id: emitted.id })
           })
         )
-      ).attr("aria-label", "Todos"),
+      ),
       h.p(`${left} ${left === 1 ? "item" : "items"} left`),
-      h.button("Clear done").disabled(left === model.todos.length)
-        .onClick(TodoAppMessage.make({ _tag: "ClearDone" }))
+      h.button.disabled(left === model.todos.length)
+        .onClick(TodoAppMessage.make({ _tag: "ClearDone" })).children("Clear done")
     )
   }
 })

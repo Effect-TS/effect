@@ -27,7 +27,7 @@
  *   message: Msg,
  *   init: () => 0,
  *   update: (count) => count + 1,
- *   view: (count, h) => h.el("button", String(count)).on("click", Msg.make({ _tag: "Increment" }))
+ *   view: (count, h) => h.el("button").on("click", Msg.make({ _tag: "Increment" })).children(String(count))
  * })
  *
  * const program = Effect.gen(function*() {
@@ -576,7 +576,7 @@ export const mount = <
       | ((
         failure: AsyncResult.Failure<never, unknown>,
         h: View.Helper<never, {}> & View.Tags<V, never>
-      ) => View.Node<never, RF>)
+      ) => View.Content<never, RF>)
       | undefined
     readonly loader?: Renderer.LoaderOptions | undefined
     readonly frames?: ((root: TestRoot<Model, Msg, Events>) => string) | undefined

@@ -122,7 +122,7 @@ const makeApp = (options?: {
         model.done.length === 0 ? "" : " [" + model.done.join(",") + "]"
       };`
       order.push(`view ${shown}`)
-      return h.el("p", shown).on("click", CardMessage.make({ _tag: "Rename", name: "Bob" }))
+      return h.el("p").on("click", CardMessage.make({ _tag: "Rename", name: "Bob" })).children(shown)
     }
   })
 

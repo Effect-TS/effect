@@ -105,7 +105,7 @@ const makeApp = (options?: {
         onFailure: () => "failed"
       })
       order.push(`view ${h.props.tag} ${text}${model.saving ? " saving" : ""}`)
-      return h.el("p", `${h.props.tag}=${text}`).on("click", CardMessage.make({ _tag: "Rename", name: "Bob" }))
+      return h.el("p").on("click", CardMessage.make({ _tag: "Rename", name: "Bob" })).children(`${h.props.tag}=${text}`)
     }
   })
 
@@ -800,7 +800,7 @@ describe("Loaded", () => {
         _props,
         $
       ) => [$.watch({ user: (user) => BadMessage.make({ _tag: "UserChanged", user }) })],
-      view: (_model, h) => h.el("p", "bad").on("click", BadMessage.make({ _tag: "Crash" }))
+      view: (_model, h) => h.el("p").on("click", BadMessage.make({ _tag: "Crash" })).children("bad")
     })
     const Host = Component.make({
       name: "Host",

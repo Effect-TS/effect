@@ -79,7 +79,7 @@
  *   elements: Html,
  *   init: () => 0,
  *   update: (count) => count + 1,
- *   view: (count, h) => h.button(String(count)).onClick(Message.make({ _tag: "Increment" }))
+ *   view: (count, h) => h.button.onClick(Message.make({ _tag: "Increment" })).children(String(count))
  * })
  *
  * // The tree is mounted for as long as the Layer is built.
@@ -1007,7 +1007,7 @@ export interface MountOptions<V extends View.Elements, RF = never> {
     | ((
       failure: AsyncResult.Failure<never, unknown>,
       h: View.Helper<never, {}> & View.Tags<V, never>
-    ) => View.Node<never, RF>)
+    ) => View.Content<never, RF>)
     | undefined
   /** The `state` of `HtmlServer.renderToHtml`, to hydrate the server's HTML. */
   readonly state?: Renderer.State | undefined

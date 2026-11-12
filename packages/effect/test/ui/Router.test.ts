@@ -735,9 +735,9 @@ describe("Router.patchQuery", { concurrent: false }, () => {
         h.el("p", `q=${h.props.route.query.q ?? ""} page=${h.props.route.query.page};`),
         h.el("p", `outcomes ${model.outcomes.join(",")};`),
         ...Object.keys(writes).map((label) =>
-          h.el("button", label).on("click", PageMessage.make({ _tag: "Write", label }))
+          h.el("button").on("click", PageMessage.make({ _tag: "Write", label })).children(label)
         ),
-        h.el("button", "dirty").on("click", PageMessage.make({ _tag: "Dirty" }))
+        h.el("button").on("click", PageMessage.make({ _tag: "Dirty" })).children("dirty")
       )
   })
   const AppMessage = Schema.TaggedUnion({ ChangedRoute: { route: Routes } })

@@ -1,4 +1,4 @@
-import { Effect, type Layer, Schema, type Scope } from "effect"
+import { Context, Effect, type Layer, Schema, type Scope } from "effect"
 import { Component, Renderer, Route, Router, type View } from "effect/ui"
 import { BrowserHost, Html, HtmlServer } from "effect/ui/html"
 import { HtmlQuery } from "effect/ui/html/testing"
@@ -16,8 +16,21 @@ type Msg = typeof Msg.Type
 
 const Field = Html.ref("Field", "input")
 
+class Clock extends Context.Service<Clock, { readonly now: Effect.Effect<number> }>()("Clock") {}
+class Logger extends Context.Service<Logger, { readonly log: (line: string) => Effect.Effect<void> }>()("Logger") {}
+
+const Ticker = Component.make({
+  name: "Ticker",
+  model: Schema.Number,
+  message: Schema.Number,
+  elements: Html,
+  init: () => 0,
+  update: (_, now) => now,
+  view: (now, h) => h.time.onMount("tick", () => Clock.use((clock) => clock.now)).children(String(now))
+})
+
 interface NativeTags<Msg> {
-  readonly view: () => View.ElementBuilder<Msg>
+  readonly view: View.ElementBuilder<Msg>
 }
 interface NativeHost {
   readonly NativeHost: unique symbol
@@ -42,12 +55,64 @@ describe("Html", () => {
       init: () => "",
       update: (model) => model,
       view: (_, h) => {
-        expect(h.div(h.span("text"), "more")).type.toBe<
-          Html.Element<Msg, never, Html.EventsOf<"div">, HTMLDivElement>
-        >()
-        expect(h.input()).type.toBe<Html.Element<Msg, never, Html.EventsOf<"input">, HTMLInputElement>>()
+        expect(h.div(h.span("text"), "more")).type.toBe<View.Element<Msg, never>>()
+        expect(h.div.class("box")).type.toBe<Html.Element<Msg, never, Html.EventsOf<"div">, HTMLDivElement>>()
+        expect(h.input).type.toBe<Html.VoidElement<Msg, never, Html.EventsOf<"input">, HTMLInputElement>>()
         expect(h).type.not.toHaveProperty("script")
-        expect(h.input).type.not.toBeCallableWith("child")
+        return h.div()
+      }
+    })
+  })
+
+  it("attributes come before children, in one place", () => {
+    Component.make({
+      name: "Order",
+      model: Schema.String,
+      message: Msg,
+      elements: Html,
+      init: () => "",
+      update: (model) => model,
+      view: (draft, h) => {
+        // The issue's example: attributes and handlers first, children last.
+        const form = h.form.onSubmit(Msg.make({ _tag: "Sent", title: draft })).children(
+          h.input.ref(Field).value(draft).onInput(({ value }) => Msg.make({ _tag: "Typed", value })),
+          h.button.attr("type", "submit").children("Add"),
+          h.span(draft),
+          h.br
+        )
+        expect(form).type.toBe<View.Element<Msg, never>>()
+        // Both terminal forms return a node with no chain methods.
+        expect(h.div("a")).type.not.toHaveProperty("class")
+        expect(h.div.children("a")).type.not.toHaveProperty("class")
+        expect(h.div("a")).type.not.toHaveProperty("attr")
+        expect(h.form.children()).type.not.toHaveProperty("onSubmit")
+        // A chained builder isn't callable: only the root is shorthand.
+        expect(h.div).type.toBeCallableWith("a")
+        expect(h.div.class("box")).type.not.toBeAssignableTo<(...args: never) => unknown>()
+        expect(h.div.class("box").children).type.toBeCallableWith("a", h.br, [h.span("b")], false, null, undefined)
+        // Void tags take no children and aren't callable.
+        expect(h.input).type.not.toHaveProperty("children")
+        expect(h.input.value(draft)).type.not.toHaveProperty("children")
+        expect(h.br).type.not.toBeAssignableTo<(...args: never) => unknown>()
+        expect(h.input).type.not.toBeAssignableTo<(...args: never) => unknown>()
+        // A builder is a valid child and a valid view without a terminal call.
+        expect(h.ul.children).type.toBeCallableWith(h.li, h.li.key("a"))
+        return h.div.class("root")
+      }
+    })
+  })
+
+  it("errors point at the offending child", () => {
+    Component.make({
+      name: "Errors",
+      model: Schema.String,
+      message: Msg,
+      elements: Html,
+      init: () => "",
+      update: (model) => model,
+      view: (_, h) => {
+        expect(h.div).type.not.toBeCallableWith(h.span("ok"), 1)
+        expect(h.div.class("x").children).type.not.toBeCallableWith(h.span("ok"), { _tag: "Element" })
         return h.div()
       }
     })
@@ -62,22 +127,22 @@ describe("Html", () => {
       init: () => "",
       update: (model) => model,
       view: (_, h) => {
-        expect(h.input().onInput).type.toBeCallableWith(
+        expect(h.input.onInput).type.toBeCallableWith(
           ({ checked }: Html.InputPayload) => Msg.make({ _tag: "Checked", checked })
         )
-        expect(h.textarea().on).type.toBeCallableWith(
+        expect(h.textarea.on).type.toBeCallableWith(
           "input",
           ({ value }: Html.ValuePayload) => Msg.make({ _tag: "Typed", value })
         )
-        expect(h.form().onSubmit).type.toBeCallableWith(({ fields }: Html.SubmitPayload) =>
+        expect(h.form.onSubmit).type.toBeCallableWith(({ fields }: Html.SubmitPayload) =>
           Msg.make({ _tag: "Sent", title: fields.title ?? "" })
         )
-        expect(h.button().onClick).type.toBeCallableWith(({ shift }: Html.PointerPayload) =>
+        expect(h.button.onClick).type.toBeCallableWith(({ shift }: Html.PointerPayload) =>
           shift ? undefined : Msg.make({ _tag: "Mounted" })
         )
-        expect(h.div().on).type.not.toBeCallableWith("input", Msg.make({ _tag: "Mounted" }))
-        expect(h.div().on).type.not.toBeCallableWith("submit", Msg.make({ _tag: "Mounted" }))
-        expect(h.button().onClick).type.not.toBeCallableWith("not a message")
+        expect(h.div.on).type.not.toBeCallableWith("input", Msg.make({ _tag: "Mounted" }))
+        expect(h.div.on).type.not.toBeCallableWith("submit", Msg.make({ _tag: "Mounted" }))
+        expect(h.button.onClick).type.not.toBeCallableWith("not a message")
         return h.div()
       }
     })
@@ -92,24 +157,24 @@ describe("Html", () => {
       init: () => "",
       update: (model) => model,
       view: (_, h) => {
-        expect(h.input().value).type.toBeCallableWith("text")
-        expect(h.select().value).type.toBeCallableWith("a")
-        expect(h.input().checked).type.toBeCallableWith(true)
-        expect(h.option().selected).type.toBeCallableWith(true)
-        expect(h.details().open).type.toBeCallableWith(true)
-        expect(h.div().value).type.not.toBeCallableWith("text")
-        expect(h.select().checked).type.not.toBeCallableWith(true)
-        expect(h.input().open).type.not.toBeCallableWith(true)
+        expect(h.input.value).type.toBeCallableWith("text")
+        expect(h.select.value).type.toBeCallableWith("a")
+        expect(h.input.checked).type.toBeCallableWith(true)
+        expect(h.option.selected).type.toBeCallableWith(true)
+        expect(h.details.open).type.toBeCallableWith(true)
+        expect(h.div.value).type.not.toBeCallableWith("text")
+        expect(h.select.checked).type.not.toBeCallableWith(true)
+        expect(h.input.open).type.not.toBeCallableWith(true)
         // A dialog is also modal; `open` stays boolean, and nothing else is modal.
-        expect(h.dialog().modal).type.toBeCallableWith(true)
-        expect(h.dialog().open).type.not.toBeCallableWith("modal")
-        expect(h.details().modal).type.not.toBeCallableWith(true)
-        expect(h.div().modal).type.not.toBeCallableWith(true)
+        expect(h.dialog.modal).type.toBeCallableWith(true)
+        expect(h.dialog.open).type.not.toBeCallableWith("modal")
+        expect(h.details.modal).type.not.toBeCallableWith(true)
+        expect(h.div.modal).type.not.toBeCallableWith(true)
         // Any element can be a popover, manual or auto; its toggle carries both states.
-        expect(h.div().popover).type.toBeCallableWith("manual", true)
-        expect(h.button().popover).type.toBeCallableWith("auto", false)
-        expect(h.div().popover).type.not.toBeCallableWith("hint", true)
-        expect(h.div().onToggle).type.toBeCallableWith(
+        expect(h.div.popover).type.toBeCallableWith("manual", true)
+        expect(h.button.popover).type.toBeCallableWith("auto", false)
+        expect(h.div.popover).type.not.toBeCallableWith("hint", true)
+        expect(h.div.onToggle).type.toBeCallableWith(
           ({ newState, oldState, open }: Html.PopoverTogglePayload) =>
             Msg.make({ _tag: "Typed", value: `${oldState}${newState}${open}` })
         )
@@ -128,9 +193,11 @@ describe("Html", () => {
       init: () => "",
       update: (model) => model,
       view: (_, h) => {
-        expect(h.input().ref).type.toBeCallableWith(Field)
-        expect(h.textarea().ref).type.not.toBeCallableWith(Field)
-        return h.input().onMount("focus", (element) => {
+        expect(h.input.ref).type.toBeCallableWith(Field)
+        expect(h.input.value("a").ref).type.toBeCallableWith(Field)
+        expect(h.textarea.ref).type.not.toBeCallableWith(Field)
+        expect(h.textarea.attr("rows", "2").ref).type.not.toBeCallableWith(Field)
+        return h.input.onMount("focus", (element) => {
           expect(element).type.toBe<HTMLInputElement>()
           return Effect.succeed(Msg.make({ _tag: "Mounted" }))
         })
@@ -138,8 +205,51 @@ describe("Html", () => {
     })
   })
 
+  it("requirements from onMount and from children reach the component", () => {
+    const Mounted = Component.make({
+      name: "Mounted",
+      model: Schema.Null,
+      message: Msg,
+      elements: Html,
+      init: () => null,
+      update: (model) => model,
+      view: (_, h) =>
+        h.div.onMount(
+          "log",
+          () => Logger.use((logger) => logger.log("up")).pipe(Effect.as(Msg.make({ _tag: "Mounted" })))
+        )
+          .class("box")
+          .children(h.child(Ticker, { key: "ticker" }))
+    })
+    expect(Mounted).type.toBe<Component.Component<"Mounted", {}, null, Msg, never, Logger | Clock, Html.Elements>>()
+    const Shorthand = Component.make({
+      name: "Shorthand",
+      model: Schema.Null,
+      message: Msg,
+      elements: Html,
+      init: () => null,
+      update: (model) => model,
+      view: (_, h) => h.section(h.p("clock"), [h.child(Ticker, { key: "ticker" })])
+    })
+    expect(Shorthand).type.toBe<Component.Component<"Shorthand", {}, null, Msg, never, Clock, Html.Elements>>()
+    const Bare = Component.make({
+      name: "Bare",
+      model: Schema.Null,
+      message: Msg,
+      elements: Html,
+      init: () => null,
+      update: (model) => model,
+      view: (_, h) =>
+        h.input.onMount(
+          "log",
+          () => Logger.use((logger) => logger.log("up")).pipe(Effect.as(Msg.make({ _tag: "Mounted" })))
+        )
+    })
+    expect(Bare).type.toBe<Component.Component<"Bare", {}, null, Msg, never, Logger, Html.Elements>>()
+  })
+
   it("class takes string tokens and rejects true and numbers", () => {
-    const button = new Html.Element<Msg>("button", [])
+    const button = new Html.Element<Msg>("button")
     const saving = false as boolean
     const count = 0 as number
     expect(button.class("rounded", saving && "opacity-50", null, undefined)).type.toBe<Html.Element<Msg>>()
@@ -160,7 +270,7 @@ describe("Html", () => {
       elements: Html,
       init: () => "",
       update: (_model, _, $) => $.run(Html.focus(Field, ({ found }) => Msg.make({ _tag: "Focused", found }))),
-      view: (_, h) => h.input().ref(Field)
+      view: (_, h) => h.input.ref(Field)
     })
     expect(Form).type.toBe<Component.Component<"Form", {}, string, Msg, never, never, Html.Elements>>()
   })
@@ -195,7 +305,7 @@ describe("BrowserHost", () => {
     elements: Html,
     init: () => 0,
     update: (count) => count + 1,
-    view: (count, h) => h.button(String(count)).onClick(Msg.make({ _tag: "Mounted" }))
+    view: (count, h) => h.button.onClick(Msg.make({ _tag: "Mounted" })).children(String(count))
   })
 
   it("mountEffect needs only a Scope for an HTML root", () => {
@@ -243,7 +353,7 @@ describe("BrowserHost", () => {
       elements: Native,
       init: () => 0,
       update: (count) => count,
-      view: (_, h) => h.view()
+      view: (_, h) => h.view
     })
     expect(BrowserHost.mount).type.not.toBeCallableWith(App, {}, document.body)
     expect(BrowserHost.mountEffect).type.not.toBeCallableWith(App, {}, document.body)

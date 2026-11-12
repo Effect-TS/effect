@@ -174,7 +174,9 @@ export const UserCard = Component.make({
         h.article(
           h.h2(user.name),
           h.p(user.email),
-          h.button(`♥ ${user.likes}`).attr("aria-label", "Like").onClick(UserCardMessage.make({ _tag: "Like" })),
+          h.button.attr("aria-label", "Like").onClick(UserCardMessage.make({ _tag: "Like" })).children(
+            `♥ ${user.likes}`
+          ),
           // waiting is only "a fetch is in flight". An optimistic patch alone doesn't set it.
           waiting && h.small("Updating…")
         )
@@ -239,19 +241,19 @@ export const RenameForm = Component.make({
       onInitial: () => h.p("Loading…"),
       onFailure: () => h.p("There is nothing to rename."),
       onSuccess: ({ value: user }) =>
-        h.form(
-          h.input().attr("aria-label", "Name").value(Option.getOrElse(model.draft, () => user.name))
+        h.form.onSubmit(RenameFormMessage.make({ _tag: "Save" })).children(
+          h.input.attr("aria-label", "Name").value(Option.getOrElse(model.draft, () => user.name))
             .onInput(({ value }) => RenameFormMessage.make({ _tag: "Edit", name: value })),
-          h.button("Save").attr("type", "submit").disabled(Option.isNone(model.draft)),
-          h.button("Cancel").attr("type", "button").disabled(Option.isNone(model.draft))
-            .onClick(RenameFormMessage.make({ _tag: "Cancel" })),
+          h.button.attr("type", "submit").disabled(Option.isNone(model.draft)).children("Save"),
+          h.button.attr("type", "button").disabled(Option.isNone(model.draft))
+            .onClick(RenameFormMessage.make({ _tag: "Cancel" })).children("Cancel"),
           // This instance has a save of this user queued or running.
           h.isRunning(RenameUser, { id: h.props.id }) && h.small("Saving…"),
           Option.match(model.error, {
             onNone: () => null,
-            onSome: (reason) => h.p(reason).attr("role", "alert")
+            onSome: (reason) => h.p.attr("role", "alert").children(reason)
           })
-        ).onSubmit(RenameFormMessage.make({ _tag: "Save" }))
+        )
     })
 })
 
@@ -270,7 +272,7 @@ export const DetailPage = Component.make({
   view: (model, h) =>
     h.section(
       h.child(UserCard, { key: "card", props: { id: h.props.id } }),
-      h.button(model.renaming ? "Close" : "Rename").onClick(DetailPageMessage.make({ _tag: "ToggleRename" })),
+      h.button.onClick(DetailPageMessage.make({ _tag: "ToggleRename" })).children(model.renaming ? "Close" : "Rename"),
       model.renaming && h.child(RenameForm, { key: "rename", props: { id: h.props.id } })
     )
 })
@@ -308,13 +310,15 @@ export const ListPage = Component.make({
       onNone: () => h.p("Loading users…"),
       onSome: ({ page, pages, users }) =>
         h.section(
-          h.ul(users.map((user) => h.li(h.a(user.name).attr("href", detailUrl(user.id))).key(user.id))),
+          h.ul(
+            users.map((user) => h.li.key(user.id).children(h.a.attr("href", detailUrl(user.id)).children(user.name)))
+          ),
           h.nav(
-            h.button("Previous").disabled(model.page === 0)
-              .onClick(ListPageMessage.make({ _tag: "GoTo", page: model.page - 1 })),
+            h.button.disabled(model.page === 0)
+              .onClick(ListPageMessage.make({ _tag: "GoTo", page: model.page - 1 })).children("Previous"),
             h.span(`Page ${page + 1} of ${pages}`),
-            h.button("Next").disabled(model.page >= pages - 1)
-              .onClick(ListPageMessage.make({ _tag: "GoTo", page: model.page + 1 })),
+            h.button.disabled(model.page >= pages - 1)
+              .onClick(ListPageMessage.make({ _tag: "GoTo", page: model.page + 1 })).children("Next"),
             model.page !== page && h.small(`Loading page ${model.page + 1}…`)
           )
         )
@@ -339,7 +343,7 @@ export const App = Component.make({
   ) => [Router.subscription(AppRoute, model, (route) => AppMessage.make({ _tag: "RouteChanged", route }))],
   view: (route, h) =>
     h.div(
-      h.header(h.a("Users").attr("href", AppRoute.print(AppRoute.make({ _tag: "List" })))),
+      h.header(h.a.attr("href", AppRoute.print(AppRoute.make({ _tag: "List" }))).children("Users")),
       h.main(
         AppRoute.match(route, {
           List: () => h.child(ListPage, { key: "list" }),

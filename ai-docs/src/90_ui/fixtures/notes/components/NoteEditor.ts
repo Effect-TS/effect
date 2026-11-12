@@ -115,8 +115,10 @@ export const NoteEditorNoDeps = Component.make({
     )
   ],
   // `h.form`, `h.button` and the other HTML elements are on `h` because the
-  // entry module imports `effect/ui/html/register`. Children are rest arguments, and `false`, `null` and `undefined` render
-  // nothing. A handler is a message, or a function from a plain payload such
+  // entry module imports `effect/ui/html/register`. Attributes and handlers
+  // chain on the tag, then `.children(...)` ends the element; `h.h2(title)`
+  // is short for `h.h2.children(title)`. `false`, `null` and `undefined`
+  // children render nothing. A handler is a message, or a function from a plain payload such
   // as `{ value }` for `input`. It never sees the DOM event. `value` is
   // controlled, so the field always shows the Model's draft. `class` takes
   // several tokens and skips `false`, `null` and `undefined` the same way,
@@ -124,9 +126,9 @@ export const NoteEditorNoDeps = Component.make({
   // the same string anywhere else.
   view: (model, h) =>
     h.div(
-      h.form(
+      h.form.attr("aria-label", "Edit note").onSubmit(NoteEditorMessage.make({ _tag: "Save" })).children(
         h.h2(h.props.note.title),
-        h.textarea().attr("aria-label", "Body").value(model.draft)
+        h.textarea.attr("aria-label", "Body").value(model.draft)
           .class("note-body", model.draft !== model.saved && "unsaved")
           .onInput(({ value }) => NoteEditorMessage.make({ _tag: "Edited", body: value }))
           // Ctrl+S or Cmd+S saves instead of opening the browser's save
@@ -140,42 +142,42 @@ export const NoteEditorNoDeps = Component.make({
             { preventDefault: true }
           ),
         // `h.isRunning` is true while this instance has a save queued or running.
-        h.button(h.isRunning(SaveNote) ? "Saving…" : "Save").attr("type", "submit")
-          .disabled(model.draft === model.saved),
+        h.button.attr("type", "submit")
+          .disabled(model.draft === model.saved).children(h.isRunning(SaveNote) ? "Saving…" : "Save"),
         // A menu is an auto popover in the top layer, so no ancestor's
         // `overflow` clips it. Its button is a `popovertarget` invoker: the
         // browser opens and closes it with no handler, and `onToggle` keeps
         // the Model in step with that and with Escape or a click outside.
         // CSS anchor positioning puts the menu under its button; a browser
         // without it shows the menu centred.
-        h.button("More actions").attr("type", "button").attr("popovertarget", `actions-${h.props.note.id}`)
-          .attr("style", `anchor-name: --actions-${h.props.note.id}`),
-        h.div(
-          h.button("Discard changes").attr("type", "button").disabled(model.draft === model.saved)
-            .onClick(NoteEditorMessage.make({ _tag: "AskDiscard" }))
-        ).attr("id", `actions-${h.props.note.id}`).attr("role", "menu").attr("aria-label", "Note actions")
+        h.button.attr("type", "button").attr("popovertarget", `actions-${h.props.note.id}`)
+          .attr("style", `anchor-name: --actions-${h.props.note.id}`).children("More actions"),
+        h.div.attr("id", `actions-${h.props.note.id}`).attr("role", "menu").attr("aria-label", "Note actions")
           .attr("style", `position-anchor: --actions-${h.props.note.id}; position-area: bottom span-left; margin: 0`)
           .popover("auto", model.actionsOpen)
-          .onToggle(({ open }) => NoteEditorMessage.make({ _tag: "ActionsToggled", open })),
-        model.error !== null && h.p(model.error).attr("role", "alert")
-      ).attr("aria-label", "Edit note").onSubmit(NoteEditorMessage.make({ _tag: "Save" })),
+          .onToggle(({ open }) => NoteEditorMessage.make({ _tag: "ActionsToggled", open })).children(
+            h.button.attr("type", "button").disabled(model.draft === model.saved)
+              .onClick(NoteEditorMessage.make({ _tag: "AskDiscard" })).children("Discard changes")
+          ),
+        model.error !== null && h.p.attr("role", "alert").children(model.error)
+      ),
       // A modal dialog is open while the Model says so. The browser host shows
       // it in the top layer, keeps focus inside and gives focus back when it
       // closes. Escape is a close request: it comes to `onCancel`, and the
       // dialog closes only when `update` says so. A form in the dialog is the
       // app's like any other, so the choice is read from the submission's
       // `entries`, not from `returnValue`, and `method="dialog"` isn't needed.
-      h.dialog(
-        h.h2("Discard your changes?"),
-        h.form(
-          h.button("Keep editing").attr("name", "choice").attr("value", "keep"),
-          h.button("Discard").attr("name", "choice").attr("value", "discard")
-        ).onSubmit(({ entries }) =>
-          NoteEditorMessage.make({ _tag: "Answered", choice: entries.find(([name]) => name === "choice")?.[1] ?? "" })
-        )
-      ).attr("aria-label", "Discard your changes?")
+      h.dialog.attr("aria-label", "Discard your changes?")
         .modal(model.confirming)
-        .onCancel(NoteEditorMessage.make({ _tag: "KeepEditing" }))
+        .onCancel(NoteEditorMessage.make({ _tag: "KeepEditing" })).children(
+          h.h2("Discard your changes?"),
+          h.form.onSubmit(({ entries }) =>
+            NoteEditorMessage.make({ _tag: "Answered", choice: entries.find(([name]) => name === "choice")?.[1] ?? "" })
+          ).children(
+            h.button.attr("name", "choice").attr("value", "keep").children("Keep editing"),
+            h.button.attr("name", "choice").attr("value", "discard").children("Discard")
+          )
+        )
     )
 })
 

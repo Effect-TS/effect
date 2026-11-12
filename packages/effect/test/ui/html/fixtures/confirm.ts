@@ -39,21 +39,22 @@ export const Confirm = Component.make({
       Remove: () => ({ ...model, shown: false })
     }),
   view: (model, h) => {
-    const dialog = h.dialog(
-      h.h2("Delete note?"),
-      h.form(
-        h.button("Keep").attr("name", "choice").attr("value", "keep"),
-        h.button("Delete").attr("name", "choice").attr("value", "delete")
-      ).attr("method", "dialog").onSubmit(({ entries }) =>
-        ConfirmMessage.make({ _tag: "Chosen", choice: entries.find(([name]) => name === "choice")?.[1] ?? "" })
-      )
-    ).attr("aria-label", "Delete note?")
+    const dialog = h.dialog.attr("aria-label", "Delete note?")
       .onCancel(ConfirmMessage.make({ _tag: "Escaped" }))
       .onClose(ConfirmMessage.make({ _tag: "Closed" }))
     return h.div(
-      h.button("Ask").onClick(ConfirmMessage.make({ _tag: "Ask" })),
-      h.button("Remove").onClick(ConfirmMessage.make({ _tag: "Remove" })),
-      model.shown && (model.state === "modal" ? dialog.modal(true) : dialog.open(model.state === "open"))
+      h.button.onClick(ConfirmMessage.make({ _tag: "Ask" })).children("Ask"),
+      h.button.onClick(ConfirmMessage.make({ _tag: "Remove" })).children("Remove"),
+      model.shown &&
+        (model.state === "modal" ? dialog.modal(true) : dialog.open(model.state === "open")).children(
+          h.h2("Delete note?"),
+          h.form.attr("method", "dialog").onSubmit(({ entries }) =>
+            ConfirmMessage.make({ _tag: "Chosen", choice: entries.find(([name]) => name === "choice")?.[1] ?? "" })
+          ).children(
+            h.button.attr("name", "choice").attr("value", "keep").children("Keep"),
+            h.button.attr("name", "choice").attr("value", "delete").children("Delete")
+          )
+        )
     )
   }
 })
@@ -67,6 +68,9 @@ export const Nested = Component.make({
   init: () => null,
   update: (model) => model,
   view: (_, h) =>
-    h.dialog(h.p("Outer"), h.dialog(h.p("Inner")).attr("aria-label", "Inner").modal(true))
-      .attr("aria-label", "Outer").modal(true)
+    h.dialog
+      .attr("aria-label", "Outer").modal(true).children(
+        h.p("Outer"),
+        h.dialog.attr("aria-label", "Inner").modal(true).children(h.p("Inner"))
+      )
 })

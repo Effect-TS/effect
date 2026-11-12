@@ -137,10 +137,10 @@ const makeApp = (options?: {
       const text = h.loaded.users.map(({ args, result, patched }) => `${args.id}=${show(result)}${patched ? "~" : ""}`)
         .join(" ")
       order.push(`view ${h.props.tag} ${text}`)
-      return h.el("p", `${h.props.tag}: ${text}`).on(
+      return h.el("p").on(
         "click",
         BoardMessage.make({ _tag: "Rename", id: "1", name: `Bob${h.props.tag}` })
-      )
+      ).children(`${h.props.tag}: ${text}`)
     }
   })
 
@@ -1113,10 +1113,10 @@ describe("Keyed history restore", () => {
       view: (model, h) =>
         h.el(
           "div",
-          h.el("button", "Home").on(
+          h.el("button").on(
             "click",
             ShellMessage.make({ _tag: "Go", route: ShellRoute.make({ _tag: "Home" }) })
-          ),
+          ).children("Home"),
           model._tag === "Board"
             ? h.child(app.Board, { key: "board", props: { tag: "a", ids: ["1", "2"] } })
             : h.el("p", "home")
