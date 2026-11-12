@@ -31,6 +31,16 @@ describe("code generation expressions", () => {
     assert.deepStrictEqual(output.roots, ["Option1.Option<readonly [Option, `value-${string}`]>"])
   })
 
+  it("preserves escaped strings, numeric literals and comments when renaming references", () => {
+    const module = make()
+    declare(module, "Tools")
+    const references = new Map([["Tools", importNamespace("tools", "Tools")]])
+    const source = String.raw`Tools.api("\x54ools", 'a\'b', 0xffn, .5e+2) /* Tools */`
+    assert.deepStrictEqual(finalize(module, [parse(source, references, "runtime")]).roots, [
+      String.raw`Tools1.api("\x54ools", 'a\'b', 0xffn, .5e+2) /* Tools */`
+    ])
+  })
+
   it("supports nested calls, literal arguments and the generated type forms", () => {
     const module = make()
     const references = new Map()
@@ -49,6 +59,7 @@ describe("code generation expressions", () => {
         "function () {}",
         "Tools.api(`text`)",
         "Tools.api(); other()",
+        String.raw`Tools.api({ \u0054ools })`,
         "Tools.api(/* unterminated"
       ]
     ) {

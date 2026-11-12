@@ -22,6 +22,7 @@ describe("code generation imports", () => {
       [`import { type as as } from "module"`, [["Named", "type", "as", false]]],
       [`import type from "module"`, [["Default", "default", "type", false]]],
       [`import { value as 𝒜 } from "module"`, [["Named", "value", "𝒜", false]]],
+      [String.raw`import * as \u{1d49c} from "m\x6f\u0064ule"`, [["Namespace", "*", "𝒜", false]]],
       [`import /* comment */ { "export-name" as Alias, value as \\u0058 } from "module"`, [
         ["Named", "export-name", "Alias", false],
         ["Named", "value", "X", false]
@@ -74,7 +75,18 @@ describe("code generation imports", () => {
   })
 
   it("rejects malformed imports", () => {
-    for (const source of ["import * Value from 'x'", "import { A from 'x'", "import A from 'unterminated"]) {
+    for (
+      const source of [
+        "import * Value from 'x'",
+        "import { A from 'x'",
+        "import A from 'unterminated",
+        "import A from 123",
+        "import /* unterminated",
+        String.raw`import A from "\u{110000}"`,
+        String.raw`import A from "\u123"`,
+        String.raw`import A from "\01"`
+      ]
+    ) {
       assert.throws(() => Imports.parse(source), "Invalid import declaration")
     }
   })

@@ -1,75 +1,18 @@
 import { code, type Fragment, join } from "../codegen.ts"
-
-interface Token {
-  readonly text: string
-  readonly start: number
-  readonly end: number
-  readonly kind: "identifier" | "literal" | "punctuation"
-}
+import { type Token, tokenize } from "./codeTokens.ts"
 
 /** Parse schema expressions and types, keeping their spelling except for tracked references. */
 export function parse(source: string, references: ReadonlyMap<string, Fragment>, kind: "runtime" | "Type"): Fragment {
-  const tokens: Array<Token> = []
   const replacements: Array<{ readonly token: Token; readonly fragment: Fragment }> = []
-  let offset = 0
   let index = 0
-  const fail = (position = tokens[index]?.start ?? offset): never => {
+  const fail = (position: number = tokens[index]?.start ?? source.length): never => {
     throw new Error(`Unsupported ${kind} syntax at offset ${position}: ${source}`)
   }
-  while (offset < source.length) {
-    if (/\s/u.test(source[offset])) {
-      offset++
-      continue
-    }
-    if (source.startsWith("//", offset)) {
-      while (offset < source.length && !/[\r\n\u2028\u2029]/u.test(source[offset])) offset++
-      continue
-    }
-    if (source.startsWith("/*", offset)) {
-      const end = source.indexOf("*/", offset + 2)
-      if (end === -1) fail(offset)
-      offset = end + 2
-      continue
-    }
-    const start = offset
-    const char = source[offset]
-    let tokenKind: Token["kind"] = "punctuation"
-    if (char === "'" || char === "\"") {
-      tokenKind = "literal"
-      offset++
-      while (offset < source.length && source[offset] !== char) {
-        if (source[offset] === "\\") {
-          offset++
-          if (source[offset] === "\r" && source[offset + 1] === "\n") offset++
-        } else if (source[offset] === "\r" || source[offset] === "\n") {
-          fail(offset)
-        }
-        offset++
-      }
-      if (source[offset++] !== char) fail(offset - 1)
-    } else {
-      const remaining = source.slice(offset)
-      const identifier = /^[$_\p{ID_Start}][$\u200c\u200d\p{ID_Continue}]*/u.exec(remaining)
-      const number = /^(?:0[xX][\da-fA-F]+n?|0[bB][01]+n?|0[oO][0-7]+n?|\d+n|(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?)/
-        .exec(remaining)
-      if (identifier !== null) {
-        tokenKind = "identifier"
-        offset += identifier[0].length
-      } else if (number !== null) {
-        tokenKind = "literal"
-        offset += number[0].length
-      } else if (remaining.startsWith("...")) {
-        offset += 3
-      } else if (remaining.startsWith("=>")) {
-        offset += 2
-      } else if (".()[]{}<>,:;?|&+-!".includes(char)) {
-        offset++
-      } else {
-        fail(offset)
-      }
-    }
-    tokens.push({ text: source.slice(start, offset), start, end: offset, kind: tokenKind })
+  const tokens = tokenize(source)
+  for (const token of tokens) {
+    if (token.kind === "identifier" && token.text.includes("\\")) fail(token.start)
   }
+  const isLiteral = (token: Token | undefined): boolean => token?.kind === "string" || token?.kind === "number"
 
   const at = (text: string): boolean => tokens[index]?.text === text
   const take = (text: string): boolean => at(text) ? (index++, true) : false
@@ -130,7 +73,7 @@ export function parse(source: string, references: ReadonlyMap<string, Fragment>,
             expression()
           }
           expect("]")
-        } else if (tokens[index]?.kind === "identifier" || tokens[index]?.kind === "literal") {
+        } else if (tokens[index]?.kind === "identifier" || isLiteral(tokens[index])) {
           index++
         } else {
           fail()
@@ -141,8 +84,8 @@ export function parse(source: string, references: ReadonlyMap<string, Fragment>,
         if (!take(",") && !take(";") && !at("}")) fail()
       }
     } else if (take("-")) {
-      if (tokens[index++]?.kind !== "literal") fail()
-    } else if (tokens[index]?.kind === "literal") {
+      if (!isLiteral(tokens[index++])) fail()
+    } else if (isLiteral(tokens[index])) {
       index++
     } else {
       path()
@@ -187,12 +130,12 @@ export function parse(source: string, references: ReadonlyMap<string, Fragment>,
           return
         }
         const key = tokens[index++]
-        if (key?.kind !== "identifier" && key?.kind !== "literal") fail()
+        if (key === undefined || (key.kind !== "identifier" && !isLiteral(key))) fail()
         if (take(":")) expression()
         else if (key.kind === "identifier") reference(key, true)
         else fail()
       })
-    } else if (tokens[index]?.kind === "literal") {
+    } else if (isLiteral(tokens[index])) {
       index++
     } else {
       if (["function", "class", "await", "yield", "import", "const", "let", "return"].includes(tokens[index]?.text)) {

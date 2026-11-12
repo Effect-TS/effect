@@ -1,4 +1,5 @@
 import type { Import } from "../codegen.ts"
+import { tokenize } from "./codeTokens.ts"
 
 export type Imports = ReadonlyArray<
   Import | {
@@ -8,112 +9,45 @@ export type Imports = ReadonlyArray<
   }
 >
 
-interface Token {
-  readonly kind: "identifier" | "string" | "punctuation"
-  readonly value: string
+const escapes: Readonly<Record<string, string>> = {
+  n: "\n",
+  r: "\r",
+  t: "\t",
+  b: "\b",
+  f: "\f",
+  v: "\v",
+  "0": "\0",
+  "\n": "",
+  "\r": "",
+  "\r\n": ""
 }
 
 /** Parse import declarations into the writer's import descriptions. */
 export function parse(source: string): Imports {
-  const tokens: Array<Token> = []
-  let offset = 0
   const fail = (): never => {
     throw new Error(`Invalid import declaration: ${source}`)
   }
-  const escape = (): string => {
-    const char = source[offset++]
-    if (char === undefined) return fail()
-    if (char === "\n") return ""
-    if (char === "\r") {
-      if (source[offset] === "\n") offset++
-      return ""
-    }
-    if (char === "x" || char === "u") {
-      const braced = char === "u" && source[offset] === "{"
-      if (braced) offset++
-      const end = braced ? source.indexOf("}", offset) : offset + (char === "u" ? 4 : 2)
-      const digits = source.slice(offset, end)
-      if (end < offset || !/^[\da-f]+$/i.test(digits) || (!braced && digits.length !== (char === "u" ? 4 : 2))) {
-        return fail()
-      }
-      const value = Number.parseInt(digits, 16)
-      if (value > 0x10ffff) return fail()
-      offset = end + (braced ? 1 : 0)
-      return String.fromCodePoint(value)
-    }
-    if (/[1-9]/.test(char) || (char === "0" && /\d/.test(source[offset] ?? ""))) return fail()
-    switch (char) {
-      case "n":
-        return "\n"
-      case "r":
-        return "\r"
-      case "t":
-        return "\t"
-      case "b":
-        return "\b"
-      case "f":
-        return "\f"
-      case "v":
-        return "\v"
-      case "0":
-        return "\0"
-      default:
-        return char
-    }
-  }
-  while (offset < source.length) {
-    const char = String.fromCodePoint(source.codePointAt(offset)!)
-    if (/\s/u.test(char)) {
-      offset++
-      continue
-    }
-    if (source.startsWith("//", offset)) {
-      while (offset < source.length && source[offset] !== "\n" && source[offset] !== "\r") offset++
-      continue
-    }
-    if (source.startsWith("/*", offset)) {
-      const end = source.indexOf("*/", offset + 2)
-      if (end === -1) return fail()
-      offset = end + 2
-      continue
-    }
-    if (char === "\"" || char === "'") {
-      offset++
-      let value = ""
-      while (offset < source.length && source[offset] !== char) {
-        const next = source[offset++]
-        if (next === "\n" || next === "\r") return fail()
-        value += next === "\\" ? escape() : next
-      }
-      if (source[offset++] !== char) return fail()
-      tokens.push({ kind: "string", value })
-      continue
-    }
-    if (/[$_\p{ID_Start}]/u.test(char) || char === "\\") {
-      let value = ""
-      do {
-        if (source[offset] === "\\") {
-          offset++
-          if (source[offset] !== "u") return fail()
-          value += escape()
-        } else {
-          const point = String.fromCodePoint(source.codePointAt(offset)!)
-          value += point
-          offset += point.length
+  const decode = (text: string): string =>
+    text.replace(
+      /\\(?:u\{([\da-fA-F]+)\}|u([\da-fA-F]{4})|x([\da-fA-F]{2})|(\r\n|[\s\S]))/gu,
+      (match, point, unit, hex, char, offset) => {
+        const digits = point ?? unit ?? hex
+        if (digits !== undefined) {
+          const value = Number.parseInt(digits, 16)
+          return value <= 0x10ffff ? String.fromCodePoint(value) : fail()
         }
-      } while (
-        offset < source.length &&
-        (/[$\u200c\u200d\p{ID_Continue}]/u.test(String.fromCodePoint(source.codePointAt(offset)!)) ||
-          source[offset] === "\\")
-      )
-      if (!/^[$_\p{ID_Start}][$\u200c\u200d\p{ID_Continue}]*$/u.test(value)) return fail()
-      tokens.push({ kind: "identifier", value })
-      continue
-    }
-    if (!"*{},:;".includes(char)) return fail()
-    tokens.push({ kind: "punctuation", value: char })
-    offset++
-  }
+        if (
+          char === "u" || char === "x" || /[1-9]/.test(char) ||
+          (char === "0" && /\d/.test(text[offset + match.length] ?? ""))
+        ) return fail()
+        return escapes[char] ?? char
+      }
+    )
+  const tokens = tokenize(source).map((token) => {
+    const value = decode(token.kind === "string" ? token.text.slice(1, -1) : token.text)
+    if (token.kind === "identifier" && !/^[$_\p{ID_Start}][$\u200c\u200d\p{ID_Continue}]*$/u.test(value)) return fail()
+    return { kind: token.kind, value }
+  })
 
   let index = 0
   const at = (value: string): boolean => tokens[index]?.value === value && tokens[index]?.kind !== "string"

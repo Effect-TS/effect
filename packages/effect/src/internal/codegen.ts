@@ -20,10 +20,6 @@ export type Fragment = string | Binding | {
   readonly parts: ReadonlyArray<Fragment>
   readonly toString: () => never
 } | {
-  readonly _tag: "Indent"
-  readonly content: Fragment
-  readonly toString: () => never
-} | {
   readonly _tag: "Deferred"
   readonly render: (render: Render) => string
   readonly toString: () => never
@@ -203,7 +199,8 @@ export function deferred(render: (render: Render) => string): Fragment {
 }
 
 export function indent(content: CodeHole): Fragment {
-  return { _tag: "Indent", content: join([content], ""), toString: cannotCoerce }
+  const fragment = join([content], "")
+  return deferred((render) => render(fragment).replace(/\n(?=[^\n])/g, "\n  "))
 }
 
 export function literal(value: string | number | bigint | boolean | null | undefined): string {
@@ -240,10 +237,11 @@ export interface Scope {
   readonly _tag: "Scope"
 }
 
-interface ScopeState {
+interface ScopeState extends Scope {
+  readonly owner: object
   readonly taken: Set<string>
   readonly nested: Set<string>
-  readonly parent: Scope | undefined
+  readonly parent: ScopeState | undefined
 }
 
 interface UsedImport {
@@ -300,8 +298,7 @@ function printImports(imports: ReadonlyArray<UsedImport | string>): ReadonlyArra
 /** Mutable state for generating one module. */
 export interface Module {
   readonly reserved: ReadonlySet<string>
-  readonly root: Scope
-  readonly scopes: Map<Scope, ScopeState>
+  readonly root: ScopeState
   readonly declarations: Map<Binding, Declaration>
   readonly imports: Map<string, ImportBinding>
   readonly provided: Map<string, ImportBinding>
@@ -312,15 +309,15 @@ export interface Module {
 }
 
 export function make(reserved: ReadonlyArray<string> = []): Module {
-  const root: Scope = { _tag: "Scope" }
   return {
     reserved: new Set([...keywords, "globalThis", ...reserved]),
-    root,
-    scopes: new Map([[root, {
+    root: {
+      _tag: "Scope",
+      owner: {},
       taken: new Set<string>(),
       nested: new Set<string>(),
       parent: undefined
-    }]]),
+    },
     declarations: new Map(),
     imports: new Map(),
     provided: new Map(),
@@ -332,25 +329,27 @@ export function make(reserved: ReadonlyArray<string> = []): Module {
 }
 
 function getScope(self: Module, scope: Scope): ScopeState {
-  const state = self.scopes.get(scope)
-  if (state === undefined) throw new Error("Scope belongs to another module")
+  const state = scope as ScopeState
+  if (state.owner !== self.root.owner) throw new Error("Scope belongs to another module")
   return state
 }
 
 export function scope(self: Module, parent: Scope = self.root): Scope {
-  getScope(self, parent)
-  const scope: Scope = { _tag: "Scope" }
-  self.scopes.set(scope, { taken: new Set(), nested: new Set(), parent })
+  const state = getScope(self, parent)
+  const scope: ScopeState = {
+    _tag: "Scope",
+    owner: state.owner,
+    taken: new Set(),
+    nested: new Set(),
+    parent: state
+  }
   return scope
 }
 
-function reserve(self: Module, scope: Scope, name: string): void {
-  const state = getScope(self, scope)
-  state.taken.add(name)
-  for (let current = state.parent; current !== undefined;) {
-    const parent = getScope(self, current)
-    parent.nested.add(name)
-    current = parent.parent
+function reserve(scope: ScopeState, name: string): void {
+  scope.taken.add(name)
+  for (let current = scope.parent; current !== undefined; current = current.parent) {
+    current.nested.add(name)
   }
 }
 
@@ -359,19 +358,16 @@ export function declare(
   preferredName: string,
   options?: { readonly exact?: boolean | undefined; readonly scope?: Scope | undefined }
 ): DeclarationBinding {
-  const scope = options?.scope ?? self.root
-  const state = getScope(self, scope)
+  const scope = getScope(self, options?.scope ?? self.root)
   const takenBy = (name: string): string | undefined => {
     if (self.reserved.has(name)) return "it is reserved"
-    if (state.nested.has(name)) return "a nested scope declares it"
-    for (let current: Scope | undefined = scope; current !== undefined;) {
-      const state = getScope(self, current)
-      if (state.taken.has(name)) {
+    if (scope.nested.has(name)) return "a nested scope declares it"
+    for (let current: ScopeState | undefined = scope; current !== undefined; current = current.parent) {
+      if (current.taken.has(name)) {
         return current === scope
           ? "this scope declares it"
           : "an enclosing scope declares it"
       }
-      current = state.parent
     }
     return undefined
   }
@@ -381,7 +377,7 @@ export function declare(
   }
   const name = options?.exact ? preferredName : allocate(preferredName, (name) => takenBy(name) !== undefined)
   const local: DeclarationBinding = { ...binding(preferredName), name }
-  reserve(self, scope, name)
+  reserve(scope, name)
   self.bindings.set(local, name)
   return local
 }
@@ -415,7 +411,7 @@ export function provideImport(self: Module, input: Import): Binding {
   const key = importKey(input)
   const existing = self.provided.get(key)
   if (existing !== undefined && existing.import.local === input.local) return existing
-  const root = getScope(self, self.root)
+  const root = self.root
   if (
     existing !== undefined || self.reserved.has(input.local) || root.taken.has(input.local) ||
     root.nested.has(input.local)
@@ -423,7 +419,7 @@ export function provideImport(self: Module, input: Import): Binding {
     throw new Error(`Conflicting predefined import: ${input.local}`)
   }
   const result = imported(input)
-  reserve(self, self.root, input.local)
+  reserve(root, input.local)
   self.provided.set(key, result)
   return result
 }
@@ -450,7 +446,7 @@ function allocate(preferredName: string, isTaken: (name: string) => boolean): st
 }
 
 function renderer(self: Module, names: Map<Binding, string>, imports: Map<string, UsedImport>): Render {
-  const root = getScope(self, self.root)
+  const root = self.root
   const taken = new Set([...self.reserved, ...root.taken, ...root.nested])
   const cache = new Map<Fragment, string>()
   const render: Render = (fragment) => {
@@ -464,9 +460,6 @@ function renderer(self: Module, names: Map<Binding, string>, imports: Map<string
         break
       case "Deferred":
         value = fragment.render(render)
-        break
-      case "Indent":
-        value = render(fragment.content).replace(/\n(?=[^\n])/g, "\n  ")
         break
       case "Binding": {
         if ("import" in fragment) {
