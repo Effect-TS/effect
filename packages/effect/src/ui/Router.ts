@@ -620,9 +620,6 @@ export const subscription = <U extends Routes, Msg>(
   held: U["Type"],
   f: (route: U["Type"]) => Msg
 ): Subscription.Subscription<Msg, Router> => {
-  const seqs = new WeakMap<object, number>()
-  let last: number | undefined
-  let engine: Engine | undefined
   const union: Route.AnyUnion = routes
   const have = union.print(held)
   const same = (route: { readonly _tag: string }) => route._tag === held._tag && union.print(route) === have
@@ -662,16 +659,12 @@ export const subscription = <U extends Routes, Msg>(
         }
       }
     }
-    const message = f(route.value as U["Type"])
-    if (typeof message === "object" && message !== null) seqs.set(message, location.seq)
-    else last = location.seq
-    return Option.some(message)
+    return Option.some(f(route.value as U["Type"]))
   }
   const stream = Stream.unwrap(Effect.gen(function*() {
     const router = yield* Router
     const report = yield* Loader.Problems
     const root = (yield* services.CurrentRoot)()
-    engine = engines.get(router)
     let first = true
     return router.changes.pipe(
       Stream.map((location) => {
@@ -687,9 +680,8 @@ export const subscription = <U extends Routes, Msg>(
   // delivered from inside the Router's `set`: in the flush whose Command made it.
   const direct: NonNullable<services.Direct[typeof services.direct]> = (context, emit, fail) => {
     const router = Context.get(context as Context.Context<Router>, Router)
-    const found = engines.get(router)
-    if (found === undefined) return undefined
-    engine = found
+    const engine = engines.get(router)
+    if (engine === undefined) return undefined
     const report = Context.get(context as Context.Context<any>, Loader.Problems)
     // Read at delivery: the root attaches to the Router after its first render.
     const root = Context.get(context, services.CurrentRoot)
@@ -704,13 +696,16 @@ export const subscription = <U extends Routes, Msg>(
         // The subscriber's mapper: its defect fails the subscriber, not the navigation or the other listeners.
         return fail(Cause.die(error))
       }
-      if (Option.isSome(message)) emit(message.value)
+      if (Option.isNone(message)) return
+      // The root has the route as of this flush, which is what the navigation settles from.
+      engine.delivered(location.seq)
+      emit(message.value)
     }
     return {
       initial: Effect.sync(() => {
         if (first) deliver(router.location())
       }),
-      close: found.listen(deliver)
+      close: engine.listen(deliver)
     }
   }
   return Object.assign(Subscription.make("effect/ui/Router", stream), {
@@ -720,10 +715,6 @@ export const subscription = <U extends Routes, Msg>(
       if (Option.isNone(router)) return
       const route = routeOf(router.value, union, router.value.location())
       if (Option.isSome(route) && !same(route.value)) report(mismatch(route.value))
-    },
-    [services.onDeliver]: (message: unknown) => {
-      const seq = typeof message === "object" && message !== null ? seqs.get(message) : last
-      if (seq !== undefined) engine?.delivered(seq)
     }
   })
 }

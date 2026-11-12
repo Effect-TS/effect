@@ -2065,16 +2065,10 @@ const setup = (
         const context = withCache(
           Context.add(Context.add(envCtx, Scope.Scope, running.scope), services.CurrentRoot, () => handle)
         )
-        const emit = (message: unknown) => {
-          ;(subscription as { readonly [services.onDeliver]?: (message: unknown) => void })[services.onDeliver]?.(
-            message
-          )
-          inst.dispatch(message, source)
-        }
         // Attached to its source, it dispatches synchronously, and only its first check waits.
         const current = () => !inst.closed && inst.subscriptions.get(key) === running
         const attachedTo = (subscription as services.Direct)[services.direct]?.(context, (message) => {
-          if (current()) emit(message)
+          if (current()) inst.dispatch(message, source)
         }, (cause) => {
           if (current()) failInstance(inst, cause, "subscription", key)
         })
@@ -2083,7 +2077,7 @@ const setup = (
           context,
           attachedTo !== undefined
             ? attachedTo.initial
-            : Stream.runForEach(subscription.stream, (message) => Effect.sync(() => emit(message)))
+            : Stream.runForEach(subscription.stream, (message) => Effect.sync(() => inst.dispatch(message, source)))
         )
         running.fiber = fiber
         interruptOnClose(running.scope, fiber)

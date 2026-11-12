@@ -128,14 +128,6 @@ export interface Page {
 /** @internal */
 export const RootHooks = Context.Service<RootHooks, RootHooks>("effect/ui/internal/RootHooks")
 
-/**
- * A Subscription may carry a function under this key. The runtime calls it with
- * each message right before dispatching it, in the same synchronous step.
- *
- * @internal
- */
-export const onDeliver: unique symbol = Symbol.for("effect/ui/Subscription/onDeliver") as any
-
 /** @internal */
 export const CurrentRoot = Context.Reference<() => RootHandle | undefined>("effect/ui/internal/CurrentRoot", {
   defaultValue: () => () => undefined
@@ -159,11 +151,11 @@ export interface OnServer {
  * A Subscription may carry a function under this key, which the runtime calls
  * instead of running its Stream. It attaches `emit` to its source and returns
  * `initial`, run on the scheduler as the Stream would start, and `close`, run
- * when the Subscription stops. `emit` dispatches synchronously, with
- * `onDeliver` first. A defect in the Subscription's own code goes to
- * `fail`, which fails the subscribing instance as a failed Stream would,
- * so it never reaches the source. It returns `undefined` when it can't
- * attach, and the runtime runs the Stream instead.
+ * when the Subscription stops. `emit` dispatches synchronously. A defect in
+ * the Subscription's own code goes to `fail`, which fails the subscribing
+ * instance as a failed Stream would, so it never reaches the source. It
+ * returns `undefined` when it can't attach, and the runtime runs the Stream
+ * instead.
  *
  * `Router.subscription` uses it, so a navigation reaches the root inside the
  * flush whose Command made it.
@@ -182,18 +174,12 @@ export interface Direct {
 }
 
 /**
- * The names of the navigation Commands start with this prefix: `Push`,
- * `Replace`, `Back`, `Forward`, `Load` and `PatchQuery`.
- *
- * @internal
- */
-export const navigationPrefix = "effect/ui/Router/"
-
-/**
  * Whether a Command is a navigation, which the runtime runs in the deferred
- * work of the flush that issued it rather than on the scheduler.
+ * work of the flush that issued it rather than on the scheduler: `Push`,
+ * `Replace`, `PatchQuery`, `Back`, `Forward` and `Load`, whose names
+ * share the prefix.
  *
  * @internal
  */
 export const isNavigation = (command: { readonly name: string; readonly service?: unknown }): boolean =>
-  command.service !== undefined && command.name.startsWith(navigationPrefix)
+  command.service !== undefined && command.name.startsWith("effect/ui/Router/")
