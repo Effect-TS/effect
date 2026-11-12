@@ -36,7 +36,7 @@
  * `AppRoute.subset(["Search"])`, and reads `h.props.route.query`. A page
  * with no query can take picked fields, such as `{ id: route.params.id }`.
  * The page writes the query with `Router.patchQuery`, and a loader that
- * reads it can wait for typing to stop with `Component.debounce`.
+ * reads it can wait for typing to stop with its `debounce` option.
  *
  * **Example** (A root that follows the route)
  *
@@ -746,7 +746,7 @@ export interface Page<out R = never> {
  * @category utility types
  * @since 4.1.5
  */
-export type PageRequirements<C> = C extends unknown ? Component.LoaderServices<Component.Model<C>> : never
+export type PageRequirements<C> = C extends unknown ? Component.LoaderServices<Component.Loaders<C>> : never
 
 // A `Mountable` has its Model erased, and with it the reads `Router.page` adds to the declarer. Checked
 // per member, so a union with one erased member is rejected too.
@@ -867,17 +867,14 @@ type PageRequirement<P> = P extends Page<infer R> ? R : never
  *   success: Schema.String
  * }, Effect.succeed(({ id }) => Effect.succeed(`Person ${id}`))) {}
  *
- * const PersonMessage = Schema.TaggedUnion({ Loaded: {} })
- *
  * const Person = Component.make({
  *   name: "Person",
  *   props: Schema.Struct({ id: Schema.Number }),
- *   model: Schema.Struct({ person: Loader.Snapshot(GetPerson, "person") }),
- *   message: PersonMessage,
- *   loaders: { person: (_model, props) => ({ id: props.id }) },
- *   init: ($) => $.empty,
+ *   model: Schema.Struct({}),
+ *   message: Schema.Never,
+ *   loaders: { person: { load: GetPerson, args: (_model, props) => ({ id: props.id }) } },
+ *   init: () => ({}),
  *   update: (model) => model,
- *   subscriptions: (_model, _props, $) => [$.watch({ person: () => PersonMessage.make({ _tag: "Loaded" }) })],
  *   view: (_model, h) => h.el("p", "Person")
  * })
  *
@@ -1151,9 +1148,10 @@ const readState = (state: unknown): EntryState | undefined => {
 const writeState = (entry: EntryState): unknown => ({ [stateKey]: entry })
 
 /**
- * Writing the Model snapshot into `history.state` threw, as a browser does
- * when the state is too large. The history entry was written with its index
- * only, so the snapshot survives in memory and not across a reload.
+ * Writing the instances' saved state (each Model, plus its loader slots) into
+ * `history.state` threw, as a browser does when the state is too large. The
+ * history entry was written with its index only, so the saved state survives
+ * in memory and not across a reload.
  *
  * @stability experimental
  * @category problems
@@ -1201,19 +1199,19 @@ const commandLayers = Layer.mergeAll(
  * settle timing; a host adds scroll, announcements and focus in `onSettled`.
  *
  * History restore: before leaving an entry, the Router saves the encoded
- * Model of every mounted instance by path. It can't save only the page's
+ * state of every mounted instance by path: its Model and loader slots. It can't save only the page's
  * subtree, because which instances the navigation unmounts is only known
  * after it. On back and forward, an instance created for the entry adopts its
- * saved Model, so only the re-keyed subtree is restored, and an instance that
+ * saved state, so only the re-keyed subtree is restored, and an instance that
  * stayed mounted keeps its own. As with hydration, `init` is replayed and
  * every one of its Commands runs.
  *
- * A restored loader field seeds the cache when its entry is cold, as after a
+ * A restored loader slot seeds the cache when its entry is cold, as after a
  * reload: the entry is stored stale, so the first frame shows the data with
  * `waiting: true` and one refetch runs. If the refetch fails, the data stays
- * as the Failure's previous Success. A warm entry is used as it is. A field
- * whose snapshot was taken under an optimistic patch is never a seed: it is
- * dropped from the restored Model and starts from loading.
+ * as the Failure's previous Success. A warm entry is used as it is. A slot
+ * taken under an optimistic patch is never a seed: it is dropped from the
+ * restored state and starts from loading.
  *
  * The snapshot is kept in memory per entry. When a push leaves an entry, it's
  * also written into that entry's `state`, so it survives a reload. When back
@@ -1373,7 +1371,7 @@ const build = (options: Options): Effect.Effect<Context.Context<Router>, never, 
           new SnapshotWriteFailed({
             error,
             message:
-              "[effect/ui] the Router couldn't write the Model snapshot into history.state. It is kept in memory only, so a reload starts the entry fresh."
+              "[effect/ui] the Router couldn't write the saved state into history.state. It is kept in memory only, so a reload starts the entry fresh."
           })
         )
       }

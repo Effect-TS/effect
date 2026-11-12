@@ -1,6 +1,6 @@
-import { Effect, Option, Schema } from "effect"
+import { Context, Effect, Option, Schema } from "effect"
 import { AsyncResult, Loader } from "effect/reactivity"
-import { Component } from "effect/ui"
+import { Component, Head } from "effect/ui"
 import { Html } from "effect/ui/html"
 import { Story } from "effect/ui/testing"
 import { describe, expect, it } from "tstyche"
@@ -21,121 +21,263 @@ class GetTeam extends Loader.Service<GetTeam>()(
 ) {}
 
 const Message = Schema.TaggedUnion({
-  UserChanged: { snapshot: Loader.Snapshot(GetUser, "user"), failed: Schema.Boolean },
-  TeamChanged: { snapshot: Loader.Snapshot(GetTeam, "team") },
+  UserChanged: { state: Schema.String, failed: Schema.Boolean },
+  TeamChanged: { state: Schema.String },
   Bump: {}
 })
 
 const Card = Component.make({
   name: "Card",
   props: Schema.Struct({ id: Schema.String }),
-  model: Schema.Struct({
-    user: Loader.Snapshot(GetUser, "user"),
-    team: Loader.Snapshot(GetTeam, "team"),
-    n: Schema.Number
-  }),
+  model: Schema.Struct({ n: Schema.Number }),
   message: Message,
   elements: Html,
   loaders: {
-    user: (_model, props) => ({ id: props.id }),
-    team: (_model, _props, loaded) => AsyncResult.isSuccess(loaded.user) ? { id: loaded.user.value.teamId } : undefined
+    user: {
+      load: GetUser,
+      args: (_model, props) => ({ id: props.id }),
+      onChange: (result) => {
+        expect(result).type.toBe<AsyncResult.AsyncResult<typeof User.Type, string>>()
+        return Message.make({ _tag: "UserChanged", state: result._tag, failed: AsyncResult.isFailure(result) })
+      }
+    },
+    team: {
+      load: GetTeam,
+      args: (_model, _props, loaded) => {
+        expect(loaded.user).type.toBe<AsyncResult.AsyncResult<typeof User.Type, string>>()
+        expect(loaded).type.not.toHaveProperty("team")
+        return AsyncResult.isSuccess(loaded.user) ? { id: loaded.user.value.teamId } : undefined
+      },
+      onChange: (result) => {
+        expect(result).type.toBe<AsyncResult.AsyncResult<typeof Team.Type, never>>()
+        return Message.make({ _tag: "TeamChanged", state: result._tag })
+      }
+    }
   },
-  init: ($) => ({ ...$.empty, n: 0 }),
-  update: (model, message) =>
-    Message.match(message, {
-      UserChanged: ({ snapshot }) => ({ ...model, user: snapshot }),
-      TeamChanged: ({ snapshot }) => ({ ...model, team: snapshot }),
+  init: () => ({ n: 0 }),
+  update: (model, message, $) => {
+    expect($.loaded.user).type.toBe<AsyncResult.AsyncResult<typeof User.Type, string>>()
+    expect($.loaded.team).type.toBe<AsyncResult.AsyncResult<typeof Team.Type, never>>()
+    return Message.match(message, {
+      UserChanged: () => model,
+      TeamChanged: () => model,
       Bump: () => ({ ...model, n: model.n + 1 })
-    }),
-  subscriptions: (_model, _props, $) => [
-    $.watch({
-      user: (snapshot, result) =>
-        Message.make({ _tag: "UserChanged", snapshot, failed: AsyncResult.isFailure(result) }),
-      team: (snapshot) => Message.make({ _tag: "TeamChanged", snapshot })
     })
-  ],
-  view: (_model, h) =>
-    AsyncResult.match(h.loaded.user, {
+  },
+  subscriptions: (_model, _props, loaded) => {
+    expect(loaded.user).type.toBe<AsyncResult.AsyncResult<typeof User.Type, string>>()
+    return []
+  },
+  head: (_model, loaded) => {
+    expect(loaded.team).type.toBe<AsyncResult.AsyncResult<typeof Team.Type, never>>()
+    return [Head.title("Card")]
+  },
+  view: (_model, h) => {
+    expect(h.loaded.user).type.toBe<AsyncResult.AsyncResult<typeof User.Type, string>>()
+    expect(h.previous.user).type.toBe<Option.Option<typeof User.Type>>()
+    expect(h.patched.team).type.toBe<boolean>()
+    return AsyncResult.match(h.loaded.user, {
       onInitial: () => h.p(Option.isSome(h.previous.user) ? h.previous.user.value.name : "Loading"),
       onFailure: () => h.p("Missing"),
       onSuccess: ({ value }) =>
         h.p.onClick(Message.make({ _tag: "Bump" })).children(value.name, h.patched.team ? "*" : "")
     })
+  }
 })
 
+class Api extends Context.Service<Api, { readonly name: (id: string) => Effect.Effect<string> }>()("typetest/Api") {}
+
+class GetName extends Loader.Service<GetName>()(
+  "typetest/GetName",
+  { args: { id: Schema.String }, success: Schema.String, error: Schema.Never, staleTime: 0 },
+  Effect.gen(function*() {
+    const api = yield* Api
+    return ({ id }) => api.name(id)
+  })
+) {}
+
 describe("Component loaders", () => {
-  it("infers every type from the Schemas", () => {
-    type M = Component.Model<typeof Card>
-    expect<Component.LoaderFields<M>>().type.toBe<"user" | "team">()
+  it("infers every type from the reads", () => {
+    type L = Component.Loaders<typeof Card>
+    expect<keyof L>().type.toBe<"user" | "team">()
+    expect<Component.SingleNames<L>>().type.toBe<"user" | "team">()
+    expect<Component.KeyedNames<L>>().type.toBe<never>()
+    expect<Component.ListNames<L>>().type.toBe<never>()
+    expect<Component.ReadOf<L["user"]>>().type.toBe<typeof GetUser>()
+    expect<Component.Loaded<L>>().type.toBe<{
+      readonly user: AsyncResult.AsyncResult<typeof User.Type, string>
+      readonly team: AsyncResult.AsyncResult<typeof Team.Type, never>
+    }>()
+    expect<Component.Previous<L>>().type.toBe<{
+      readonly user: Option.Option<typeof User.Type>
+      readonly team: Option.Option<typeof Team.Type>
+    }>()
+    expect<Component.Patched<L>>().type.toBe<{ readonly user: boolean; readonly team: boolean }>()
+    expect<Component.LoaderServices<L>>().type.toBe<GetUser | GetTeam>()
     expect<Component.Requirements<typeof Card>>().type.toBe<GetUser | GetTeam>()
   })
 
-  it("a loader's loaded doesn't have its own field", () => {
-    type M = Component.Model<typeof Card>
-    expect<Parameters<Component.Loaders<M, {}>["team"]>[2]>().type.toBe<
-      Omit<Component.Loaded<M>, "team">
-    >()
+  it("add their reads to the requirements, never what the fetchers use", () => {
+    const Named = Component.make({
+      name: "Named",
+      model: Schema.Struct({}),
+      message: Schema.Never,
+      loaders: { name: { load: GetName, args: () => ({ id: "1" }) } },
+      init: () => ({}),
+      update: (model) => model,
+      view: (_model, h) => h.text(AsyncResult.isSuccess(h.loaded.name) ? h.loaded.name.value : "")
+    })
+    expect<Component.Requirements<typeof Named>>().type.toBe<GetName>()
+    // Provided, the read's layer brings what its fetcher uses.
+    const Provided = Named.pipe(Component.provide(GetName.layer))
+    expect<Component.Requirements<typeof Provided>>().type.toBe<Api>()
+  })
+
+  it("a loader's loaded doesn't have its own name", () => {
     Component.make({
       name: "Self",
-      model: Schema.Struct({ user: Loader.Snapshot(GetUser, "user"), team: Loader.Snapshot(GetTeam, "team") }),
+      model: Schema.Struct({}),
       message: Message,
       loaders: {
-        // @ts-expect-error Property 'user' does not exist
-        user: (_model, _props, loaded) => AsyncResult.isSuccess(loaded.user) ? { id: "1" } : undefined,
-        team: (_model, _props, loaded) => AsyncResult.isSuccess(loaded.user) ? { id: "1" } : undefined
+        user: {
+          load: GetUser,
+          // @ts-expect-error Property 'user' does not exist
+          args: (_model, _props, loaded) => AsyncResult.isSuccess(loaded.user) ? { id: "1" } : undefined
+        },
+        team: {
+          load: GetTeam,
+          args: (_model, _props, loaded) => AsyncResult.isSuccess(loaded.user) ? { id: "1" } : undefined
+        }
       },
-      init: ($) => $.empty,
+      init: () => ({}),
       update: (model) => model,
-      subscriptions: (_m, _p, $) => [
-        $.watch({ user: () => Message.make({ _tag: "Bump" }), team: () => Message.make({ _tag: "Bump" }) })
-      ],
+      view: () => null as never
+    })
+  })
+
+  it("type args and onChange by the read", () => {
+    Component.make({
+      name: "Typed",
+      props: Schema.Struct({ id: Schema.String }),
+      model: Schema.Struct({}),
+      message: Message,
+      loaders: {
+        // @ts-expect-error Type 'number' is not assignable to type 'string'
+        user: { load: GetUser, args: () => ({ id: 1 }) },
+        team: {
+          load: GetTeam,
+          args: (_model, props) => ({ id: props.id }),
+          // @ts-expect-error not assignable
+          onChange: (_result: AsyncResult.AsyncResult<string, never>) => Message.make({ _tag: "Bump" })
+        }
+      },
+      init: () => ({}),
+      update: (model) => model,
+      view: () => null as never
+    })
+    Component.make({
+      name: "OnChangeMessage",
+      model: Schema.Struct({}),
+      message: Message,
+      loaders: {
+        // @ts-expect-error not assignable
+        user: { load: GetUser, args: () => ({ id: "1" }), onChange: () => "not a message" }
+      },
+      init: () => ({}),
+      update: (model) => model,
       view: () => null as never
     })
   })
 })
 
-describe("Component.debounce", () => {
-  it("types a loader from its field, single or keyed, as a plain loader is", () => {
+describe("debounce", () => {
+  it("is an entry option, and types the loader as a plain one, single or keyed", () => {
     Component.make({
       name: "Debounced",
       props: Schema.Struct({ id: Schema.String }),
-      model: Schema.Struct({ user: Loader.Snapshot(GetUser, "user"), team: Loader.SnapshotMap(GetTeam, "team") }),
+      model: Schema.Struct({}),
       message: Message,
       loaders: {
-        user: Component.debounce("300 millis", (_model, props, loaded) => {
-          expect(props).type.toBe<{ readonly id: string }>()
-          expect(loaded).type.not.toHaveProperty("user")
-          return props.id === "" ? undefined : { id: props.id }
-        }),
+        user: {
+          load: GetUser,
+          debounce: "300 millis",
+          args: (_model, props, loaded) => {
+            expect(props).type.toBe<{ readonly id: string }>()
+            expect(loaded).type.not.toHaveProperty("user")
+            return props.id === "" ? undefined : { id: props.id }
+          }
+        },
         // @ts-expect-error Type 'number' is not assignable to type 'string'
-        team: Component.debounce("300 millis", () => [{ id: 1 }])
+        team: { loadMany: GetTeam, debounce: "300 millis", args: () => [{ id: 1 }] }
       },
-      init: ($) => $.empty,
+      init: () => ({}),
       update: (model) => model,
-      subscriptions: (_m, _p, $) => [
-        $.watch({ user: () => Message.make({ _tag: "Bump" }), team: () => Message.make({ _tag: "Bump" }) })
-      ],
+      view: () => null as never
+    })
+  })
+
+  it("takes a Duration input", () => {
+    Component.make({
+      name: "BadDebounce",
+      model: Schema.Struct({}),
+      message: Message,
+      loaders: {
+        // @ts-expect-error not assignable
+        user: { load: GetUser, debounce: "soon", args: () => ({ id: "1" }) }
+      },
+      init: () => ({}),
+      update: (model) => model,
       view: () => null as never
     })
   })
 })
 
 describe("Story loader steps", () => {
-  it("take a loader field and its read's success or error", () => {
+  it("take a loader name and its read's success or error", () => {
     Story.make(Card, { id: "1" }, (s) =>
       s
         .loaded("user", { id: "1", name: "Ann", teamId: "t" })
         .loadFailed("user", "missing")
         .loaded("team", { id: "t", title: "T" }, { waiting: true, patched: true })
-        // @ts-expect-error Argument of type '"n"' is not assignable to parameter of type '"user" | "team"'
+        // @ts-expect-error Argument of type '"n"' is not assignable to parameter
         .loaded("n", 1)
         // @ts-expect-error 'title' does not exist
         .loaded("user", { id: "t", title: "T" })
         // @ts-expect-error Argument of type '"missing"' is not assignable to parameter of type 'never'
-        .loadFailed("team", "missing"))
-    expect(Story.make(Card, { id: "1" }, (s) => s.loaded("user", { id: "1", name: "Ann", teamId: "t" }))).type.toBe<
-      Story.Story<{ readonly id: string }, Component.Model<typeof Card>, Component.Message<typeof Card>, never>
+        .loadFailed("team", "missing")
+        // @ts-expect-error Argument of type '"other"' is not assignable
+        .loadFailed("other", "missing"))
+    const story = Story.make(Card, { id: "1" }, (s) => s.loaded("user", { id: "1", name: "Ann", teamId: "t" }))
+    expect(story).type.toBe<
+      Story.Story<
+        { readonly id: string },
+        Component.Model<typeof Card>,
+        Component.Message<typeof Card>,
+        never,
+        Component.Loaded<Component.Loaders<typeof Card>>
+      >
     >()
+    // `loaded()` is typed as `h.loaded` is.
+    expect(story.loaded().user).type.toBe<Component.ResultOf<typeof GetUser>>()
+    expect(story.loaded()).type.not.toHaveProperty("n")
+  })
+
+  it("given takes loaded results by loader name", () => {
+    Story.make(Card, { id: "1" }, (s) =>
+      s
+        .given((model) => model, { user: { id: "1", name: "Ann", teamId: "t" }, team: { id: "t", title: "T" } })
+        .given((model) => model, { team: { id: "t", title: "T" } })
+        // @ts-expect-error 'title' does not exist
+        .given((model) => model, { user: { id: "t", title: "T" } })
+        // @ts-expect-error 'n' does not exist
+        .given((model) => model, { n: 1 }))
+  })
+
+  it("fromLog types the replay's props and loaded results", () => {
+    const replay = Story.fromLog(Card, [])
+    expect(replay.props).type.toBe<{ readonly id: string }>()
+    expect(replay.loaded().user).type.toBe<Component.ResultOf<typeof GetUser>>()
+    expect(replay.loaded()).type.not.toHaveProperty("n")
   })
 })
 
@@ -146,33 +288,34 @@ class GetCount extends Loader.Service<GetCount>()(
 ) {}
 
 const ListMessage = Schema.TaggedUnion({
-  UsersChanged: { snapshots: Loader.SnapshotMap(GetUser, "users"), changed: Schema.Number },
+  UsersChanged: { changed: Schema.Number },
   Show: { ids: Schema.Array(Schema.String) }
 })
 
 const List = Component.make({
   name: "List",
-  model: Schema.Struct({ ids: Schema.Array(Schema.String), users: Loader.SnapshotMap(GetUser, "users") }),
+  model: Schema.Struct({ ids: Schema.Array(Schema.String), changed: Schema.Number }),
   message: ListMessage,
   elements: Html,
   loaders: {
-    users: (model) => model.ids.map((id) => ({ id }))
-  },
-  init: ($) => ({ ...$.empty, ids: [] }),
-  update: (model, message) =>
-    ListMessage.match(message, {
-      UsersChanged: ({ snapshots }) => ({ ...model, users: snapshots }),
-      Show: ({ ids }) => ({ ...model, ids })
-    }),
-  subscriptions: (_model, _props, $) => [
-    $.watch({
-      users: (snapshots, loaded, changes) => {
+    users: {
+      loadMany: GetUser,
+      args: (model) => model.ids.map((id) => ({ id })),
+      onChange: (loaded, changes) => {
         expect(loaded).type.toBe<Component.KeyedLoaded<typeof GetUser>>()
         expect(changes).type.toBe<ReadonlyArray<Component.KeyedChange<typeof GetUser>>>()
-        return ListMessage.make({ _tag: "UsersChanged", snapshots, changed: changes.length })
+        return ListMessage.make({ _tag: "UsersChanged", changed: changes.length })
       }
+    }
+  },
+  init: () => ({ ids: [], changed: 0 }),
+  update: (model, message, $) => {
+    expect($.loaded.users).type.toBe<Component.KeyedLoaded<typeof GetUser>>()
+    return ListMessage.match(message, {
+      UsersChanged: ({ changed }) => ({ ...model, changed }),
+      Show: ({ ids }) => ({ ...model, ids })
     })
-  ],
+  },
   view: (_model, h) =>
     h.ul(
       h.loaded.users.map(({ args, result, patched }) =>
@@ -181,96 +324,109 @@ const List = Component.make({
     )
 })
 
-describe("Keyed loader fields", () => {
+describe("Keyed loaders", () => {
   it("open to entries with args, result and patched, and get by args", () => {
-    type M = Component.Model<typeof List>
-    expect<Component.LoaderFields<M>>().type.toBe<"users">()
-    expect<Component.KeyedFields<M>>().type.toBe<"users">()
-    expect<Component.SingleFields<M>>().type.toBe<never>()
+    type L = Component.Loaders<typeof List>
+    expect<keyof L>().type.toBe<"users">()
+    expect<Component.KeyedNames<L>>().type.toBe<"users">()
+    expect<Component.SingleNames<L>>().type.toBe<never>()
+    expect<Component.ListNames<L>>().type.toBe<never>()
     expect<Component.Requirements<typeof List>>().type.toBe<GetUser>()
-    expect<Component.Loaded<M>["users"]>().type.toBe<Component.KeyedLoaded<typeof GetUser>>()
-    expect<Component.Loaded<M>["users"][number]["args"]>().type.toBe<{ readonly id: string }>()
-    expect<Component.Loaded<M>["users"][number]["result"]>().type.toBe<
+    expect<Component.Loaded<L>["users"]>().type.toBe<Component.KeyedLoaded<typeof GetUser>>()
+    expect<Component.Loaded<L>["users"][number]["args"]>().type.toBe<{ readonly id: string }>()
+    expect<Component.Loaded<L>["users"][number]["result"]>().type.toBe<
       AsyncResult.AsyncResult<typeof User.Type, string>
     >()
-    expect<ReturnType<Component.Loaded<M>["users"]["get"]>>().type.toBe<
+    expect<ReturnType<Component.Loaded<L>["users"]["get"]>>().type.toBe<
       Option.Option<Component.KeyedEntry<typeof GetUser>>
     >()
-    expect<Parameters<Component.Loaded<M>["users"]["get"]>[0]>().type.toBe<{ readonly id: string }>()
+    expect<Parameters<Component.Loaded<L>["users"]["get"]>[0]>().type.toBe<{ readonly id: string }>()
   })
 
   it("have no previous or patched view", () => {
-    type M = Component.Model<typeof List>
-    expect<Component.Previous<M>>().type.toBe<{}>()
-    expect<Component.Patched<M>>().type.toBe<{}>()
+    type L = Component.Loaders<typeof List>
+    expect<Component.Previous<L>>().type.toBe<{}>()
+    expect<Component.Patched<L>>().type.toBe<{}>()
   })
 
-  it("a keyed loader's loaded doesn't have its own field", () => {
-    type M = Component.Model<typeof List>
-    expect<Parameters<Component.Loaders<M, {}>["users"]>[2]>().type.toBe<Omit<Component.Loaded<M>, "users">>()
+  it("a keyed loader's loaded doesn't have its own name", () => {
     Component.make({
       name: "SelfKeyed",
-      model: Schema.Struct({ users: Loader.SnapshotMap(GetUser, "users"), team: Loader.Snapshot(GetTeam, "team") }),
+      model: Schema.Struct({}),
       message: Message,
       loaders: {
-        // @ts-expect-error Property 'users' does not exist
-        users: (_model, _props, loaded) => loaded.users === undefined ? [] : [{ id: "1" }],
-        team: (_model, _props, loaded) => loaded.users.length > 0 ? { id: "1" } : undefined
+        users: {
+          loadMany: GetUser,
+          // @ts-expect-error Property 'users' does not exist
+          args: (_model, _props, loaded) => loaded.users === undefined ? [] : [{ id: "1" }]
+        },
+        team: {
+          load: GetTeam,
+          args: (_model, _props, loaded) => {
+            expect(loaded.users).type.toBe<Component.KeyedLoaded<typeof GetUser>>()
+            return loaded.users.length > 0 ? { id: "1" } : undefined
+          }
+        }
       },
-      init: ($) => $.empty,
+      init: () => ({}),
       update: (model) => model,
-      subscriptions: (_m, _p, $) => [
-        $.watch({ users: () => Message.make({ _tag: "Bump" }), team: () => Message.make({ _tag: "Bump" }) })
-      ],
       view: () => null as never
     })
   })
 
-  it("take an array of args from the loader, and a handler of three arguments", () => {
-    const model = Schema.Struct({ ids: Schema.Array(Schema.String), users: Loader.SnapshotMap(GetUser, "users") })
+  it("take an array of args from the loader, and an onChange of entries and changes", () => {
+    const model = Schema.Struct({ ids: Schema.Array(Schema.String) })
     const base = {
       name: "Keyed",
       model,
       message: ListMessage,
-      init: ($: { readonly empty: { readonly users: Loader.SnapshotMap<typeof GetUser, "users"> } }) => ({
-        ...$.empty,
-        ids: []
-      }),
+      init: () => ({ ids: [] }),
       update: (m: typeof model.Type) => m,
       view: () => null as never
     }
     Component.make({
       ...base,
       // @ts-expect-error is missing the following properties from type 'readonly { readonly id: string; }[]'
-      loaders: { users: (m) => ({ id: m.ids[0] }) },
-      subscriptions: (_m, _p, $) => [$.watch({ users: () => ListMessage.make({ _tag: "Show", ids: [] }) })]
+      loaders: { users: { loadMany: GetUser, args: (m) => ({ id: m.ids[0] }) } }
     })
     Component.make({
       ...base,
-      loaders: { users: (m) => m.ids.map((id) => ({ id })) },
-      subscriptions: (_m, _p, $) => [
-        $.watch({
+      loaders: {
+        users: {
+          loadMany: GetUser,
+          args: (m) => m.ids.map((id) => ({ id })),
           // @ts-expect-error not assignable
-          users: (_snapshots, _result: AsyncResult.AsyncResult<unknown, unknown>) =>
-            ListMessage.make({ _tag: "Show", ids: [] })
-        })
-      ]
+          onChange: (_loaded: AsyncResult.AsyncResult<unknown, unknown>) => ListMessage.make({ _tag: "Show", ids: [] })
+        }
+      }
     })
   })
 
-  it("keep a single and a keyed snapshot apart", () => {
-    ListMessage.make({
-      _tag: "UsersChanged",
-      // @ts-expect-error is missing in type 'Snapshot<typeof GetUser, "users">'
-      snapshots: null as unknown as Loader.Snapshot<typeof GetUser, "users">,
-      changed: 0
+  it("keep a single and a keyed loader apart", () => {
+    Component.make({
+      name: "SingleArray",
+      model: Schema.Struct({}),
+      message: Message,
+      loaders: {
+        // @ts-expect-error Property 'id' is missing
+        user: { load: GetUser, args: () => [{ id: "1" }] }
+      },
+      init: () => ({}),
+      update: (model) => model,
+      view: () => null as never
     })
-  })
-
-  it("need a read with struct args", () => {
-    Loader.SnapshotMap(GetUser, "users")
-    // @ts-expect-error the read's args must be a struct
-    Loader.SnapshotMap(GetCount, "counts")
+    const Keyed = Component.make({
+      name: "Counts",
+      model: Schema.Struct({}),
+      message: Message,
+      loaders: { counts: { loadMany: GetCount, args: () => ["a", "b"] } },
+      init: () => ({}),
+      update: (model) => model,
+      view: () => null as never
+    })
+    expect<Component.Loaded<Component.Loaders<typeof Keyed>>["counts"]>().type.toBe<
+      Component.KeyedLoaded<typeof GetCount>
+    >()
   })
 
   it("take the Story's keyed steps, typed by the read", () => {
@@ -286,7 +442,9 @@ describe("Keyed loader fields", () => {
         // @ts-expect-error not assignable
         .loaded("users", { id: "1", name: "Ann", teamId: "t" })
         // @ts-expect-error not assignable
-        .loadedMany("users", [{ args: { id: 1 }, value: { id: "1", name: "Ann", teamId: "t" } }]))
+        .loadedMany("users", [{ args: { id: 1 }, value: { id: "1", name: "Ann", teamId: "t" } }])
+        // @ts-expect-error not assignable
+        .loadedMany("others", []))
   })
 })
 
@@ -304,34 +462,41 @@ class ListMessages extends Loader.ListService<ListMessages>()("typetest/ListMess
   staleTime: "1 minute"
 }, Effect.succeed((_args, _cursor) => Effect.succeed({ messages: [], next: null }))) {}
 
-const Messages = Loader.SnapshotList(ListMessages, "messages")
-const ChatMessage = Schema.TaggedUnion({ Changed: { snapshot: Messages }, More: {}, Refresh: {} })
+const ChatMessage = Schema.TaggedUnion({ Changed: { count: Schema.Number }, More: {}, Refresh: {} })
 
 const Chat = Component.make({
   name: "Chat",
   props: Schema.Struct({ room: Schema.String }),
-  model: Schema.Struct({ messages: Messages, user: Loader.Snapshot(GetUser, "user") }),
+  model: Schema.Struct({}),
   message: ChatMessage,
   elements: Html,
-  loaders: { messages: (_model, props) => ({ room: props.room }), user: () => ({ id: "1" }) },
-  init: ($) => $.set($.empty),
-  update: (model, message, $) =>
-    ChatMessage.match(message, {
-      Changed: ({ snapshot }) => ({ ...model, messages: snapshot }),
-      More: () => $.loadMore("messages"),
-      Refresh: () => $.reset("messages")
-    }),
-  subscriptions: (_model, _props, $) => [
-    $.watch({
-      messages: (snapshot, loaded) => {
+  loaders: {
+    messages: {
+      load: ListMessages,
+      args: (_model, props) => ({ room: props.room }),
+      onChange: (loaded) => {
         expect(loaded).type.toBe<
           AsyncResult.AsyncResult<Component.LoadedList<typeof ListMessages>, string>
         >()
-        return ChatMessage.make({ _tag: "Changed", snapshot })
-      },
-      user: () => ChatMessage.make({ _tag: "More" })
+        return ChatMessage.make({
+          _tag: "Changed",
+          count: AsyncResult.isSuccess(loaded) ? loaded.value.items.length : 0
+        })
+      }
+    },
+    user: { load: GetUser, args: () => ({ id: "1" }) }
+  },
+  init: () => ({}),
+  update: (model, message, $) => {
+    expect($.loaded.messages).type.toBe<
+      AsyncResult.AsyncResult<Component.LoadedList<typeof ListMessages>, string>
+    >()
+    return ChatMessage.match(message, {
+      Changed: () => model,
+      More: () => $.loadMore("messages"),
+      Refresh: () => $.reset("messages")
     })
-  ],
+  },
   view: (_model, h) => {
     expect(h.loaded.messages).type.toBe<AsyncResult.AsyncResult<Component.LoadedList<typeof ListMessages>, string>>()
     expect(h.previous.messages).type.toBe<Option.Option<Omit<Component.LoadedList<typeof ListMessages>, "more">>>()
@@ -340,45 +505,80 @@ const Chat = Component.make({
   }
 })
 
-describe("List fields", () => {
+describe("List loaders", () => {
   it("open to items, pages and more", () => {
     expect<Component.LoadedList<typeof ListMessages>>().type.toBe<{
       readonly items: ReadonlyArray<{ readonly id: string; readonly text: string }>
       readonly pages: ReadonlyArray<typeof ChatPage.Type>
       readonly more: Loader.More<string>
     }>()
-    expect<Component.ListFields<Component.Model<typeof Chat>>>().type.toBe<"messages">()
+    type L = Component.Loaders<typeof Chat>
+    expect<Component.ListNames<L>>().type.toBe<"messages">()
+    expect<Component.SingleNames<L>>().type.toBe<"messages" | "user">()
+    expect<Component.KeyedNames<L>>().type.toBe<never>()
+    expect<Component.Requirements<typeof Chat>>().type.toBe<ListMessages | GetUser>()
   })
 
-  it("keep a list read and a plain read in their own Schema", () => {
-    // @ts-expect-error Argument of type 'typeof ListMessages' is not assignable to parameter of type 'never'
-    Loader.Snapshot(ListMessages, "messages")
-    // @ts-expect-error Argument of type 'typeof ListMessages' is not assignable to parameter of type 'never'
-    Loader.SnapshotMap(ListMessages, "messages")
-    // @ts-expect-error Argument of type 'typeof GetUser' is not assignable to parameter of type 'Any'
-    Loader.SnapshotList(GetUser, "user")
-  })
-
-  it("take loadMore and reset for a list field only, and not in init", () => {
+  it("take loadMore and reset for a list loader only, and not in init", () => {
     Component.make({
       name: "Chat",
       props: Schema.Struct({ room: Schema.String }),
-      model: Schema.Struct({ messages: Messages, user: Loader.Snapshot(GetUser, "user") }),
+      model: Schema.Struct({}),
       message: ChatMessage,
       elements: Html,
-      loaders: { messages: (_model, props) => ({ room: props.room }), user: () => ({ id: "1" }) },
+      loaders: {
+        messages: { load: ListMessages, args: (_model, props) => ({ room: props.room }) },
+        user: { load: GetUser, args: () => ({ id: "1" }) }
+      },
       // @ts-expect-error Property 'loadMore' does not exist
-      init: ($) => $.set($.empty).loadMore("messages"),
-      update: (model, _message, $) =>
-        // @ts-expect-error Argument of type '"user"' is not assignable to parameter of type '"messages"'
-        $.set(model).loadMore("user"),
-      subscriptions: (_model, _props, $) => [
-        $.watch({
-          messages: (snapshot) => ChatMessage.make({ _tag: "Changed", snapshot }),
-          user: () => ChatMessage.make({ _tag: "More" })
-        })
-      ],
+      init: ($) => $.set({}).loadMore("messages"),
+      update: (model, message, $) =>
+        ChatMessage.match(message, {
+          // @ts-expect-error Argument of type '"user"' is not assignable to parameter of type '"messages"'
+          Changed: () => $.set(model).loadMore("user"),
+          // @ts-expect-error Argument of type '"missing"' is not assignable to parameter of type '"messages"'
+          More: () => $.set(model).loadMore("missing"),
+          // @ts-expect-error Argument of type '"user"' is not assignable to parameter of type '"messages"'
+          Refresh: () => $.set(model).reset("user")
+        }),
       view: (_model, h) => h.p("")
+    })
+    Component.make({
+      name: "Reset",
+      model: Schema.Struct({}),
+      message: ChatMessage,
+      loaders: { messages: { load: ListMessages, args: () => ({ room: "r" }) } },
+      init: () => ({}),
+      // @ts-expect-error Argument of type '"missing"' is not assignable to parameter of type '"messages"'
+      update: (_model, _message, $) => $.reset("missing"),
+      view: (_model, h) => h.text("")
+    })
+  })
+
+  it("keep a list read under load, and one of load and loadMany", () => {
+    Component.make({
+      name: "ListMany",
+      model: Schema.Struct({}),
+      message: ChatMessage,
+      loaders: {
+        // @ts-expect-error a list read takes load, not loadMany
+        messages: { loadMany: ListMessages, args: () => [{ room: "r" }] }
+      },
+      init: () => ({}),
+      update: (model) => model,
+      view: (_model, h) => h.text("")
+    })
+    Component.make({
+      name: "Both",
+      model: Schema.Struct({}),
+      message: ChatMessage,
+      loaders: {
+        // @ts-expect-error an entry takes one of load and loadMany
+        user: { load: GetUser, loadMany: GetUser, args: () => [{ id: "1" }] }
+      },
+      init: () => ({}),
+      update: (model) => model,
+      view: (_model, h) => h.text("")
     })
   })
 
@@ -393,6 +593,8 @@ describe("List fields", () => {
         .loadMoreFailed("messages", "nope")
         // @ts-expect-error Argument of type '"user"' is not assignable to parameter of type '"messages"'
         .loadedMore("user", page)
+        // @ts-expect-error Argument of type '"missing"' is not assignable to parameter of type '"messages"'
+        .loadMoreFailed("missing", "nope")
         // @ts-expect-error Argument of type 'number' is not assignable to parameter of type 'string'
         .loadMoreFailed("messages", 1))
   })

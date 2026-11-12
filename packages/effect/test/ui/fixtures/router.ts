@@ -56,8 +56,6 @@ export class GetPerson extends Loader.Service<GetPerson>()(
   )
 ) {}
 
-export const PersonSnapshot = Loader.Snapshot(GetPerson, "person")
-
 /** Renames optimistically, and never finishes: the patch stays live. */
 export class RenamePerson extends Command.Service<RenamePerson>()("RenamePerson", {
   args: { id: Schema.Number },
@@ -66,7 +64,7 @@ export class RenamePerson extends Command.Service<RenamePerson>()("RenamePerson"
 }, Effect.succeed(() => Effect.never)) {}
 
 export const PersonMessage = Schema.TaggedUnion({
-  Loaded: { snapshot: PersonSnapshot, name: Schema.String },
+  Loaded: { name: Schema.String },
   Visited: {},
   Bump: {},
   Rename: {},
@@ -84,33 +82,29 @@ export const Person = Component.make({
   props: Schema.Struct({ id: Schema.Number }),
   model: Schema.Struct({
     id: Schema.Number,
-    person: PersonSnapshot,
     name: Schema.String,
     count: Schema.Number,
     visits: Schema.Number
   }),
   message: PersonMessage,
-  loaders: { person: (_model, props) => ({ id: props.id }) },
-  init: ($) => $.set({ ...$.empty, id: $.props.id, name: "Loading", count: 0, visits: 0 }).run(CountVisit()),
+  loaders: {
+    person: {
+      load: GetPerson,
+      args: (_model, props) => ({ id: props.id }),
+      onChange: (result) =>
+        PersonMessage.make({ _tag: "Loaded", name: AsyncResult.isSuccess(result) ? result.value : "Loading" })
+    }
+  },
+  init: ($) => $.set({ id: $.props.id, name: "Loading", count: 0, visits: 0 }).run(CountVisit()),
   update: (model, message, $) =>
     PersonMessage.match(message, {
-      Loaded: ({ name, snapshot }) => ({ ...model, person: snapshot, name }),
+      Loaded: ({ name }) => ({ ...model, name }),
       Rename: () =>
         $.run(RenamePerson.make({ id: model.id }).pipe(Command.map(() => PersonMessage.make({ _tag: "Renamed" })))),
       Renamed: () => model,
       Visited: () => ({ ...model, visits: model.visits + 1 }),
       Bump: () => ({ ...model, count: model.count + 1 })
     }),
-  subscriptions: (_model, _props, $) => [
-    $.watch({
-      person: (snapshot, result) =>
-        PersonMessage.make({
-          _tag: "Loaded",
-          snapshot,
-          name: AsyncResult.isSuccess(result) ? result.value : "Loading"
-        })
-    })
-  ],
   head: (model) => [Head.title(model.name), Head.meta({ name: "description", content: `About ${model.name}` })],
   view: (model, h) =>
     h.el(

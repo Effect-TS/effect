@@ -1,5 +1,5 @@
 import { Effect, Schema } from "effect"
-import { Loader } from "effect/reactivity"
+import { AsyncResult, Loader } from "effect/reactivity"
 import { Command, Component, Feature, Head, Route, Router, type Subscription } from "effect/ui"
 import { TestHost } from "effect/ui/testing"
 import { describe, expect, it } from "tstyche"
@@ -146,23 +146,15 @@ class GetPerson extends Loader.Service<GetPerson>()(
   Effect.succeed(({ id }) => Effect.succeed(`Person ${id}`))
 ) {}
 
-const PersonSnapshot = Loader.Snapshot(GetPerson, "person")
-const PersonMessage = Schema.TaggedUnion({ Loaded: { snapshot: PersonSnapshot } })
-
 const PersonPage = Component.make({
   name: "PersonPage",
   props: Schema.Struct({ id: Schema.Number }),
-  model: Schema.Struct({ person: PersonSnapshot }),
-  message: PersonMessage,
-  loaders: { person: (_model, props) => ({ id: props.id }) },
-  init: ($) => $.empty,
-  update: (_, message) => ({ person: message.snapshot }),
-  subscriptions: (
-    _model,
-    _props,
-    $
-  ) => [$.watch({ person: (snapshot) => PersonMessage.make({ _tag: "Loaded", snapshot }) })],
-  view: (_, h) => h.text("person")
+  model: Schema.Struct({}),
+  message: Schema.Never,
+  loaders: { person: { load: GetPerson, args: (_model, props) => ({ id: props.id }) } },
+  init: () => ({}),
+  update: (model) => model,
+  view: (_, h) => h.text(AsyncResult.isSuccess(h.loaded.person) ? h.loaded.person.value : "person")
 })
 
 const HomePage = Component.make({
@@ -206,30 +198,18 @@ describe("Router.prefetch", () => {
     // Hoisted to the declarer, it does.
     const Hoisted = Declarer.pipe(Component.provide(GetPerson.layer))
     expect<Component.Requirements<typeof Hoisted>>().type.toBe<Router.Router>()
-  })
-
-  it("rejects a Mountable, whose erased Model hides the page's reads", () => {
-    const Erased: Component.Mountable<{ readonly id: number }, never, GetPerson> = PersonPage
-    expect(Router.page).type.not.toBeCallableWith(Erased, { id: 1 })
-    class Badge extends Feature.Service<Badge>()("Badge", { props: Schema.Struct({}), events: Schema.Never }) {}
-    expect(Router.page).type.not.toBeCallableWith(Badge)
     expect(Router.page(PersonPage, { id: 1 })).type.toBe<Router.Page<GetPerson>>()
     // Provided, it is still a component, and still names its reads.
     expect(Router.page(PersonPage.pipe(Component.provide(GetPerson.layer)), { id: 1 })).type.toBe<
       Router.Page<GetPerson>
     >()
-  })
-
-  it("keeps each member's reads, and rejects an erased member, for a union of components", () => {
+    // For a union of components, each member's reads are kept.
     const Selected = Math.random() > 0.5 ? PersonPage : HomePage
     expect(Router.page(Selected, { id: 1 })).type.toBe<Router.Page<GetPerson>>()
     const Provided = Math.random() > 0.5 ? PersonPage.pipe(Component.provide(GetPerson.layer)) : HomePage
     expect(Router.page(Provided, { id: 1 })).type.toBe<Router.Page<GetPerson>>()
-    const Erased: Component.Mountable<{ readonly id: number }, never, GetPerson> = PersonPage
-    const Mixed = Math.random() > 0.5 ? Erased : HomePage
-    expect(Router.page).type.not.toBeCallableWith(Mixed, { id: 1 })
     // Declared, the union's reads join the declarer's requirements.
-    const Declarer = Component.make({
+    const UnionDeclarer = Component.make({
       name: "UnionDeclarer",
       model: Schema.Struct({}),
       message: Schema.Never,
@@ -245,7 +225,24 @@ describe("Router.prefetch", () => {
       ],
       view: (_, h) => h.text("app")
     })
-    expect<Component.Requirements<typeof Declarer>>().type.toBe<Router.Router | GetPerson>()
+    expect<Component.Requirements<typeof UnionDeclarer>>().type.toBe<Router.Router | GetPerson>()
+  })
+
+  it("rejects a Mountable, whose erased Model hides the page's reads", () => {
+    const Erased: Component.Mountable<{ readonly id: number }, never, GetPerson> = PersonPage
+    expect(Router.page).type.not.toBeCallableWith(Erased, { id: 1 })
+    class Badge extends Feature.Service<Badge>()("Badge", { props: Schema.Struct({}), events: Schema.Never }) {}
+    expect(Router.page).type.not.toBeCallableWith(Badge)
+    expect(Router.page).type.toBeCallableWith(PersonPage, { id: 1 })
+    expect(Router.page).type.toBeCallableWith(PersonPage.pipe(Component.provide(GetPerson.layer)), { id: 1 })
+  })
+
+  it("rejects an erased member of a union of components", () => {
+    const Selected = Math.random() > 0.5 ? PersonPage : HomePage
+    expect(Router.page).type.toBeCallableWith(Selected, { id: 1 })
+    const Erased: Component.Mountable<{ readonly id: number }, never, GetPerson> = PersonPage
+    const Mixed = Math.random() > 0.5 ? Erased : HomePage
+    expect(Router.page).type.not.toBeCallableWith(Mixed, { id: 1 })
   })
 
   it("takes props like h.child, and a handler for every route", () => {

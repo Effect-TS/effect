@@ -43,22 +43,15 @@ export class GetBio extends Loader.Service<GetBio>()("GetBio", {
   staleTime: "30 seconds"
 }, Effect.map(People, (people) => ({ id }) => people.bio(id))) {}
 
-const BioSnapshot = Loader.Snapshot(GetBio, "bio")
-
-export const PersonMessage = Schema.TaggedUnion({ Loaded: { snapshot: BioSnapshot } })
-
 export const Person = Component.make({
   name: "Person",
   props: Schema.Struct({ id: Schema.Number }),
-  model: Schema.Struct({ id: Schema.Number, bio: BioSnapshot }),
-  message: PersonMessage,
+  model: Schema.Struct({ id: Schema.Number }),
+  message: Schema.Never,
   elements: Html,
-  loaders: { bio: (_model, props) => ({ id: props.id }) },
-  init: ($) => ({ ...$.empty, id: $.props.id }),
-  update: (model, message) => ({ ...model, bio: message.snapshot }),
-  subscriptions: (_model, _props, $) => [
-    $.watch({ bio: (snapshot) => PersonMessage.make({ _tag: "Loaded", snapshot }) })
-  ],
+  loaders: { bio: { load: GetBio, args: (_model, props) => ({ id: props.id }) } },
+  init: ($) => ({ id: $.props.id }),
+  update: (model) => model,
   head: (model) => [
     Head.title(`Person ${model.id}`),
     Head.meta({ name: "description", content: `About person ${model.id}` }),

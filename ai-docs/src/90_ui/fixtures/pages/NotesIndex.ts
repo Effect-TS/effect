@@ -1,5 +1,5 @@
 import { Layer, Match, Schema } from "effect"
-import { AsyncResult, Loader } from "effect/reactivity"
+import { AsyncResult } from "effect/reactivity"
 import { Component, Head } from "effect/ui"
 import { ListNotes } from "../notes/loaders/ListNotes.ts"
 import { Notes } from "../notes/services/Notes.ts"
@@ -7,9 +7,7 @@ import { AppRoute } from "../routes.ts"
 
 const noteUrl = (id: string) => AppRoute.print(AppRoute.make({ _tag: "Note", params: { id } }))
 
-const NotesSnapshot = Loader.Snapshot(ListNotes, "notes")
 export const NotesIndexMessage = Schema.TaggedUnion({
-  NotesChanged: { snapshot: NotesSnapshot },
   Pinned: { id: Schema.String },
   Dragging: { over: Schema.Boolean }
 })
@@ -20,19 +18,18 @@ const NoteType = "application/x-note"
 
 export const NotesIndexNoDeps = Component.make({
   name: "NotesIndex",
-  model: Schema.Struct({ notes: NotesSnapshot, pinned: Schema.Array(Schema.String), over: Schema.Boolean }),
+  // The Model holds only what the user did here. The notes live in the
+  // `notes` loader's slot, which the runtime keeps beside the Model.
+  model: Schema.Struct({ pinned: Schema.Array(Schema.String), over: Schema.Boolean }),
   message: NotesIndexMessage,
-  loaders: { notes: () => ({}) },
-  init: ($) => ({ ...$.empty, pinned: [], over: false }),
+  // `ListNotes` takes no args, so this read is the same for every instance.
+  loaders: { notes: { load: ListNotes, args: () => ({}) } },
+  init: () => ({ pinned: [], over: false }),
   update: (model, message) =>
     Match.valueTags(message, {
-      NotesChanged: ({ snapshot }) => ({ ...model, notes: snapshot }),
       Pinned: ({ id }) => ({ ...model, pinned: model.pinned.includes(id) ? model.pinned : [...model.pinned, id] }),
       Dragging: ({ over }) => ({ ...model, over })
     }),
-  subscriptions: (_model, _props, $) => [
-    $.watch({ notes: (snapshot) => NotesIndexMessage.make({ _tag: "NotesChanged", snapshot }) })
-  ],
   // Every mounted instance contributes head entries. They merge in document
   // order, and the later entry wins.
   head: () => [Head.title("All notes"), Head.meta({ name: "description", content: "Every note you wrote" })],

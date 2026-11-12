@@ -1123,291 +1123,6 @@ export const invalidatesEntry = <R extends Read.Any>(
 }
 
 /**
- * An opaque snapshot of one entry of a read, held in a Model field. The
- * effect/ui runtime builds it and opens it; nothing else can.
- *
- * **Details**
- *
- * It holds the read's name, the label, the entry's args key, a settled
- * result and whether that result includes an unconfirmed patch. It never
- * holds `Initial`, and `waiting` always decodes as false.
- *
- * @stability experimental
- * @category models
- * @since 4.1.3
- */
-export interface Snapshot<in out R extends Read.Any, in out Label extends string> {
-  readonly "~effect/reactivity/Loader/Snapshot": {
-    readonly _R: Types.Invariant<R>
-    readonly _Label: Types.Invariant<Label>
-  }
-}
-
-/**
- * The Schema `Loader.Snapshot` returns. Its type parameters are the read's
- * `args`, `success` and `error` Schemas.
- *
- * @stability experimental
- * @category models
- * @since 4.1.3
- */
-export interface SnapshotSchema<R extends Read.Any, Label extends string> extends
-  Schema.declareConstructor<
-    Snapshot<R, Label>,
-    Snapshot<R, Label>,
-    readonly [
-      Schema.Codec<Read.Args<R>, unknown>,
-      Schema.Codec<Read.Success<R>, unknown>,
-      Schema.Codec<Read.Error<R>, unknown>
-    ]
-  >
-{}
-
-/**
- * The Schema of a Model field that holds a snapshot of `read`, branded by
- * the read and the label.
- *
- * **Details**
- *
- * Two fields of one read can't take each other's snapshot: the type and the
- * check both carry the read and the label. The JSON codec writes the
- * entry's args key, built through the read's `args` Schema, and encodes the
- * value and the errors through the read's own Schemas, so a walk over a
- * Model's Schema reaches what a snapshot holds, a `Schema.Redacted`
- * included. Decoding rejects an args key that isn't canonical, so a snapshot
- * always names the entry it was taken from.
- *
- * @stability experimental
- * @category schemas
- * @since 4.1.3
- */
-export const Snapshot = <R extends Read.Any, const Label extends string>(
-  read: R & NotList,
-  label: Label
-): SnapshotSchema<R, Label> => snapshotSchema(read, label) as any
-
-/** A read that isn't a list: a list's field is `SnapshotList`. */
-interface NotList {
-  readonly [ListTypeId]?: never
-}
-
-/**
- * An opaque snapshot of one list, held in a Model field. The effect/ui
- * runtime builds it and opens it; nothing else can.
- *
- * **Details**
- *
- * It holds what a `Snapshot` holds, with the page array as its value, and
- * whether the list holds more pages to load. On the wire that is one bit,
- * never `Loading` or `Failed`.
- *
- * @stability experimental
- * @category models
- * @since 4.1.3
- */
-export interface SnapshotList<in out R extends ListRead.Any, in out Label extends string> {
-  readonly "~effect/reactivity/Loader/SnapshotList": {
-    readonly _R: Types.Invariant<R>
-    readonly _Label: Types.Invariant<Label>
-  }
-}
-
-/**
- * The Schema `Loader.SnapshotList` returns. Its type parameters are the
- * read's `args` Schema, the page array's and the `error` Schema.
- *
- * @stability experimental
- * @category models
- * @since 4.1.3
- */
-export interface SnapshotListSchema<R extends ListRead.Any, Label extends string> extends
-  Schema.declareConstructor<
-    SnapshotList<R, Label>,
-    SnapshotList<R, Label>,
-    readonly [
-      Schema.Codec<Read.Args<R>, unknown>,
-      Schema.Codec<Read.Success<R>, unknown>,
-      Schema.Codec<Read.Error<R>, unknown>
-    ]
-  >
-{}
-
-/**
- * The Schema of a Model field that holds a snapshot of a list read, branded
- * by the read and the label.
- *
- * **Details**
- *
- * It follows `Snapshot`'s rules. A list read in `Snapshot` or
- * `SnapshotMap`, and a read that isn't a list here, are type errors. On the
- * wire a Success adds whether the list holds more pages: a load more running
- * or failed is written as more, and a restored list shows `Available` or
- * `End`. Every held page is written, so `$.reset` is the way to keep a
- * long list's `history.state` small.
- *
- * @stability experimental
- * @category schemas
- * @since 4.1.3
- */
-export const SnapshotList = <R extends ListRead.Any, const Label extends string>(
-  read: R,
-  label: Label
-): SnapshotListSchema<R, Label> => snapshotSchema(read, label) as any
-
-/**
- * An opaque collection of snapshots of one read, one per args key, held in a
- * keyed Model field. The effect/ui runtime builds it and opens it; nothing
- * else can.
- *
- * @stability experimental
- * @category models
- * @since 4.1.3
- */
-export interface SnapshotMap<in out R extends Read.Any, in out Label extends string> {
-  readonly "~effect/reactivity/Loader/SnapshotMap": {
-    readonly _R: Types.Invariant<R>
-    readonly _Label: Types.Invariant<Label>
-  }
-}
-
-/**
- * Helper types for `SnapshotMap`.
- *
- * @stability experimental
- * @since 4.1.3
- */
-export declare namespace SnapshotMap {
-  /**
-   * `unknown` when the read's args are a struct, which a keyed field
-   * requires, and a type `read` can't satisfy otherwise.
-   *
-   * @category utility types
-   * @since 4.1.3
-   */
-  export type StructArgs<R extends Read.Any> = [Read.Args<R>] extends [{ readonly [x: string]: unknown }] ? unknown
-    : { readonly "~error": "Loader.SnapshotMap: the read's args must be a struct" }
-}
-
-/**
- * The Schema `Loader.SnapshotMap` returns. Its type parameters are the read's
- * `args`, `success` and `error` Schemas.
- *
- * @stability experimental
- * @category models
- * @since 4.1.3
- */
-export interface SnapshotMapSchema<R extends Read.Any, Label extends string> extends
-  Schema.declareConstructor<
-    SnapshotMap<R, Label>,
-    SnapshotMap<R, Label>,
-    readonly [
-      Schema.Codec<Read.Args<R>, unknown>,
-      Schema.Codec<Read.Success<R>, unknown>,
-      Schema.Codec<Read.Error<R>, unknown>
-    ]
-  >
-{}
-
-/**
- * The Schema of a keyed Model field: many entries of `read`, one per args
- * key, branded by the read and the label.
- *
- * **When to use**
- *
- * Use when one component shows many reads of one kind, such as a row per
- * user id. The loader returns an array of args, and `h.loaded.<field>`
- * opens to an entry per unique args in that order. Use a child instance per
- * row instead when a row owns state of its own, such as an inline edit.
- *
- * **Details**
- *
- * It follows `Snapshot`'s rules: only the runtime builds one, the label is
- * its field's name, and it sits at the top level of the Model. The read's
- * args must be a struct. The runtime sends at most one message per keyed
- * field per drain round, with the whole collection. A drain runs before the
- * instance's first view, before a kept child's view when its props change,
- * before the Router saves the page a navigation leaves, and once in a flush
- * for changes from outside a render, so N results that land together are
- * one `update`. The message's `changes` are the
- * declared keys whose result changed since its last message, a new warm
- * key's first value included. A key set that drops a stored key also makes
- * a message due, once per key set, so an `update` that ignores it doesn't
- * get it again. A message can prune and carry changes at once, and a pure
- * prune has none. When a handler's `update` changes the key set again, or
- * another keyed field's, the next round sends that, until no message is
- * due. Nothing bounds the rounds. On the wire it is an array of
- * `Snapshot`'s tuples, one per key, in no meaningful order, and a duplicate
- * args key is a decode error.
- *
- * **Gotchas**
- *
- * - N cold keys start N fetches: batch them in the fetcher with a
- *   `RequestResolver`. Keys that register in one pass share a batch; child
- *   rows whose Layers build at different times don't.
- * - A `refetchInterval` runs one timer per entry, not per field. N keys
- *   refetch on N timers, each of which may wake on its own, so a refresh
- *   can be several fetch batches and several messages rather than one.
- *   Batching the cold keys of one pass doesn't extend to interval
- *   refetches.
- * - A fetcher defect on any key fails the instance holding the field. A
- *   defect in a batching resolver's `runAll` fails every watcher in the
- *   batch, so a child per row doesn't confine a defect to one row either.
- * - The Model field holds every settled key, so a large collection makes
- *   every `history.state` push, the SSR state and each log entry larger.
- * - An `update` whose prune message changes the key set so that it prunes
- *   again, forever, never lets the flush end. `Story` throws on it after
- *   100 rounds in one step.
- * - A mount over a stale key can send two messages before its first frame:
- *   the stale value, then the same value waiting once the fetch starts. Only
- *   the second commits.
- *
- * **Example** (Watching a user per id)
- *
- * ```ts
- * import { Effect, Schema } from "effect"
- * import { AsyncResult, Loader } from "effect/reactivity"
- * import { Component } from "effect/ui"
- * import { Html } from "effect/ui/html"
- *
- * class GetUser extends Loader.Service<GetUser>()("users/GetUser", {
- *   args: { id: Schema.String },
- *   success: Schema.Struct({ id: Schema.String, name: Schema.String }),
- *   error: Schema.Never,
- *   staleTime: "30 seconds"
- * }, Effect.succeed(({ id }) => Effect.succeed({ id, name: `User ${id}` }))) {}
- *
- * const Users = Loader.SnapshotMap(GetUser, "users")
- * const Message = Schema.TaggedUnion({ UsersChanged: { users: Users } })
- *
- * const UserList = Component.make({
- *   name: "UserList",
- *   props: Schema.Struct({ ids: Schema.Array(Schema.String) }),
- *   model: Schema.Struct({ users: Users }),
- *   message: Message,
- *   elements: Html,
- *   loaders: { users: (_model, props) => props.ids.map((id) => ({ id })) },
- *   init: ($) => $.empty,
- *   update: (_model, message) => ({ users: message.users }),
- *   subscriptions: (_model, _props, $) => [
- *     $.watch({ users: (users) => Message.make({ _tag: "UsersChanged", users }) })
- *   ],
- *   view: (_model, h) =>
- *     h.ul(h.loaded.users.map(({ args, result }) =>
- *       h.li(AsyncResult.isSuccess(result) ? result.value.name : "…").key(args.id)
- *     ))
- * })
- * ```
- *
- * @stability experimental
- * @category schemas
- * @since 4.1.3
- */
-export const SnapshotMap = <R extends Read.Any, const Label extends string>(
-  read: R & SnapshotMap.StructArgs<R> & NotList,
-  label: Label
-): SnapshotMapSchema<R, Label> => snapshotMapSchema(read, label) as any
-
-/**
  * What started a fetch. Every fetch records exactly one, and the fetcher
  * never sees it.
  *
@@ -2850,12 +2565,10 @@ const CurrentRun: Context.Reference<RunHandle | undefined> = Context.Reference<R
 const SnapshotTypeId = "~effect/reactivity/Loader/Snapshot"
 
 /**
- * The annotation a snapshot Schema carries, so effect/ui finds the snapshot
- * fields of a Model.
+ * What a snapshot holds. A snapshot is what effect/ui keeps in an instance's
+ * loader slot, beside its Model: it is internal, and never part of a Model or
+ * a message.
  */
-const snapshotAnnotationKey = "~effect/reactivity/Loader/Snapshot/field"
-
-/** What a snapshot holds. */
 interface SnapshotData {
   readonly def: ReadDef
   readonly label: string
@@ -2917,7 +2630,7 @@ const settledMap = (
   success: (u: unknown) => Effect.Effect<unknown, SchemaIssue.Issue>,
   error: (u: unknown) => Effect.Effect<unknown, SchemaIssue.Issue>
 ): Effect.Effect<Settled, SchemaIssue.Issue> => {
-  // `waiting` is carried over, so a watch handler's `make` keeps it. The JSON codec never sets it, so a decoded
+  // `waiting` is carried over, so a check of a slot keeps it. The JSON codec never sets it, so a decoded
   // snapshot is never waiting.
   const waiting = result.waiting
   if (result._tag === "Success") {
@@ -2943,9 +2656,9 @@ const settledMap = (
 }
 
 /**
- * The Schema of a Model field that holds a snapshot of a read. Its type
+ * The Schema of a loader slot that holds a snapshot of a read. Its type
  * parameters are the read's `args`, `success` and `error` Schemas, so a walk
- * over the Model's AST, such as the log's redaction, reaches what a snapshot
+ * over the slots' AST, such as the log's redaction, reaches what a snapshot
  * holds. On the wire a snapshot is a tuple: `[]` when empty,
  * `[argsKey, 0, value, timestamp, patched]` for a Success, and
  * `[argsKey, 1, [error, ...], [value, timestamp] | null]` for a Failure with
@@ -2955,10 +2668,17 @@ const settledMap = (
  * it is the entry's key in page state and its log key under the log's
  * redaction. Decoding takes the args from the key, decodes them all the way
  * and checks that they key back to it.
+ *
+ * With `log`, a settled tuple ends with `[waiting, more]` too: the message
+ * log replays `update`, which can read both, so its form keeps what page
+ * state drops. `more` is `null` for a read that isn't a list.
+ *
+ * @internal
  */
-const snapshotSchema = (
+export const snapshotSchema = (
   read: { readonly [TypeId]: unknown },
-  label: string
+  label: string,
+  log = false
 ): Schema.Top => {
   const def = defOf(read)
   return Schema.make(
@@ -2966,16 +2686,8 @@ const snapshotSchema = (
       [def.args.ast, def.success.ast, def.error.ast],
       snapshotRun(def, label, true),
       {
-        expected: (def.list === undefined ? "Loader.Snapshot(" : "Loader.SnapshotList(") + quote(def.name) + ", " +
-          quote(label) + ")",
-        [snapshotAnnotationKey]: {
-          read: def.name,
-          label,
-          definition: read,
-          keyed: false,
-          list: def.list !== undefined
-        },
-        toCodecJson: snapshotJson(def, label)
+        expected: "a loader slot " + quote(label) + " of " + quote(def.name),
+        toCodecJson: snapshotJson(def, label, log)
       } as Schema.Annotations.Annotations,
       undefined,
       undefined,
@@ -3014,10 +2726,14 @@ const snapshotRun = (def: ReadDef, label: string, decoding: boolean) => {
         Effect.all([
           args(data.args, options),
           // A patched value is used as it is: a patch that fails `success` is reported as `PatchInvalid`, and a
-          // watch handler's `make` mustn't throw on it.
-          settledMap(result, (u) => data.patched ? Effect.succeed(u) : success(u, options), (u) => error(u, options))
+          // check of a slot mustn't throw on it.
+          settledMap(result, (u) => data.patched ? Effect.succeed(u) : success(u, options), (u) => error(u, options)),
+          // A failed load more holds a typed error too, which the message log's form carries.
+          data.more?._tag === "Failed"
+            ? Effect.map(error(data.more.error, options), (error): More<unknown> => ({ _tag: "Failed", error }))
+            : Effect.succeed(data.more)
         ]),
-        ([args, result]) => {
+        ([args, result, more]) => {
           if (decoding) {
             let back: string | undefined
             try {
@@ -3027,7 +2743,7 @@ const snapshotRun = (def: ReadDef, label: string, decoding: boolean) => {
             }
             if (back !== data.argsKey) return Effect.fail(snapshotIssue(def, "the args key isn't the key of its args"))
           }
-          return Effect.succeed(new SnapshotImpl({ ...data, args, result }))
+          return Effect.succeed(new SnapshotImpl({ ...data, args, result, more }))
         }
       )
     }
@@ -3035,10 +2751,15 @@ const snapshotRun = (def: ReadDef, label: string, decoding: boolean) => {
 }
 
 /**
- * The JSON form of a snapshot, built from the read's Schemas as the walk over the Model passes them: the
+ * The JSON form of a snapshot, built from the read's Schemas as a walk over the slots passes them: the
  * tuple Schema and the two steps between a tuple and a snapshot.
  */
-const snapshotWire = (def: ReadDef, label: string, [args, success, error]: ReadonlyArray<Schema.Top>) => {
+const snapshotWire = (
+  def: ReadDef,
+  label: string,
+  [args, success, error]: ReadonlyArray<Schema.Top>,
+  log: boolean
+) => {
   const invalid = (message: string) => snapshotIssue(def, message)
   const argsJson = Schema.toCodecJson(args as Schema.Codec<unknown, unknown>)
   const encodeArgs = SchemaParser.encodeUnknownEffect(argsJson)
@@ -3065,54 +2786,90 @@ const snapshotWire = (def: ReadDef, label: string, [args, success, error]: Reado
     // The declaration checks the key once the args are decoded all the way.
     return decodeArgs(parsed, options)
   }
+  // The log's form adds what page state drops: whether a fetch is in flight, and a list's exact more.
+  const transient = Schema.Tuple([
+    Schema.Boolean,
+    Schema.NullOr(Schema.Union([Schema.Literals(["End", "Available", "Loading"]), Schema.Struct({ Failed: error })]))
+  ])
+  const settled = (elements: ReadonlyArray<Schema.Top>) => Schema.Tuple(log ? [...elements, transient] : elements)
+  const decodeSettled = (
+    tuple: any,
+    options: SchemaAST.ParseOptions
+  ): Effect.Effect<SnapshotImpl, SchemaIssue.Issue> => {
+    if (!log) return decodeState(tuple, options)
+    const [waiting, more] = tuple[tuple.length - 1]
+    return Effect.map(decodeState(tuple.slice(0, -1), options), (snapshot) => {
+      const data = snapshot[SnapshotTypeId]
+      const result = data.result!
+      return new SnapshotImpl({
+        ...data,
+        result: !waiting ? result : result._tag === "Success"
+          ? AsyncResult.success(result.value, { timestamp: result.timestamp, waiting: true })
+          : AsyncResult.failure(result.cause, { previousSuccess: result.previousSuccess, waiting: true }),
+        more: def.list === undefined || more === null
+          ? data.more
+          : typeof more === "string"
+          ? { _tag: more } as More<never>
+          : { _tag: "Failed", error: more.Failed }
+      })
+    })
+  }
+  const decodeState = (tuple: any, options: SchemaAST.ParseOptions): Effect.Effect<SnapshotImpl, SchemaIssue.Issue> => {
+    const [key, tag, payload, fourth, fifth, sixth] = tuple
+    return Effect.map(fromKey(key, options), (args) => {
+      const data = { def, label, argsKey: key as string, args }
+      if (tag === 0) {
+        return new SnapshotImpl({
+          ...data,
+          result: AsyncResult.success(payload, { timestamp: fourth }),
+          patched: fifth === true,
+          more: def.list === undefined ? undefined : sixth === true ? moreAvailable : moreEnd
+        })
+      }
+      return new SnapshotImpl({
+        ...data,
+        result: AsyncResult.failure(
+          Cause.fromReasons((payload as ReadonlyArray<unknown>).map((e) => Cause.makeFailReason(e))),
+          {
+            previousSuccess: fourth === null
+              ? Option.none()
+              : Option.some(AsyncResult.success(fourth[0], { timestamp: fourth[1] }))
+          }
+        ),
+        patched: false,
+        more: def.list === undefined ? undefined : moreEnd
+      })
+    })
+  }
   return {
     tuple: Schema.Union([
       Schema.Tuple([]),
       def.list === undefined
-        ? Schema.Tuple([Schema.String, Schema.Literal(0), success, Schema.Number, Schema.Boolean])
+        ? settled([Schema.String, Schema.Literal(0), success, Schema.Number, Schema.Boolean])
         // A list adds whether it holds more pages: `Loading` and `Failed` are written as more.
-        : Schema.Tuple([Schema.String, Schema.Literal(0), success, Schema.Number, Schema.Boolean, Schema.Boolean]),
-      Schema.Tuple([
+        : settled([Schema.String, Schema.Literal(0), success, Schema.Number, Schema.Boolean, Schema.Boolean]),
+      settled([
         Schema.String,
         Schema.Literal(1),
         Schema.Array(error),
         Schema.NullOr(Schema.Tuple([success, Schema.Number]))
       ])
     ]),
-    decode: (tuple: any, options: SchemaAST.ParseOptions): Effect.Effect<SnapshotImpl, SchemaIssue.Issue> => {
-      if (tuple.length === 0) return Effect.succeed(makeSnapshot(def, label, undefined, undefined))
-      const [key, tag, payload, fourth, fifth, sixth] = tuple
-      return Effect.map(fromKey(key, options), (args) => {
-        const data = { def, label, argsKey: key as string, args }
-        if (tag === 0) {
-          return new SnapshotImpl({
-            ...data,
-            result: AsyncResult.success(payload, { timestamp: fourth }),
-            patched: fifth === true,
-            more: def.list === undefined ? undefined : sixth === true ? moreAvailable : moreEnd
-          })
-        }
-        return new SnapshotImpl({
-          ...data,
-          result: AsyncResult.failure(
-            Cause.fromReasons((payload as ReadonlyArray<unknown>).map((e) => Cause.makeFailReason(e))),
-            {
-              previousSuccess: fourth === null
-                ? Option.none()
-                : Option.some(AsyncResult.success(fourth[0], { timestamp: fourth[1] }))
-            }
-          ),
-          patched: false,
-          more: def.list === undefined ? undefined : moreEnd
-        })
-      })
-    },
+    decode: (tuple: any, options: SchemaAST.ParseOptions): Effect.Effect<SnapshotImpl, SchemaIssue.Issue> =>
+      tuple.length === 0
+        ? Effect.succeed(makeSnapshot(def, label, undefined, undefined))
+        : decodeSettled(tuple, options),
     encode: (snapshot: SnapshotImpl, options: SchemaAST.ParseOptions): Effect.Effect<any, SchemaIssue.Issue> => {
       const data = snapshot[SnapshotTypeId]
       const result = data.result
       if (result === undefined) return Effect.succeed([])
-      return Effect.map(toKey(data.args, options), (key) =>
-        result._tag === "Success"
+      const more = def.list === undefined || data.more === undefined
+        ? null
+        : data.more._tag === "Failed"
+        ? { Failed: data.more.error }
+        : data.more._tag
+      return Effect.map(toKey(data.args, options), (key) => {
+        const tuple: Array<unknown> = result._tag === "Success"
           ? def.list === undefined
             ? [key, 0, result.value, result.timestamp, data.patched]
             : [
@@ -3130,14 +2887,17 @@ const snapshotWire = (def: ReadDef, label: string, [args, success, error]: Reado
             Option.isSome(result.previousSuccess)
               ? [result.previousSuccess.value.value, result.previousSuccess.value.timestamp]
               : null
-          ])
+          ]
+        if (log) tuple.push([result.waiting, more])
+        return tuple
+      })
     }
   }
 }
 
 /** The JSON codec of a snapshot. */
-const snapshotJson = (def: ReadDef, label: string) => (typeParameters: ReadonlyArray<Schema.Top>) => {
-  const wire = snapshotWire(def, label, typeParameters)
+const snapshotJson = (def: ReadDef, label: string, log: boolean) => (typeParameters: ReadonlyArray<Schema.Top>) => {
+  const wire = snapshotWire(def, label, typeParameters, log)
   return Schema.link<SnapshotImpl>()(
     wire.tuple,
     SchemaTransformation.transformEffect<SnapshotImpl, any>({ decode: wire.decode, encode: wire.encode })
@@ -3201,9 +2961,17 @@ export const makeSnapshotMap = (
 export const snapshotMapData = (u: unknown): SnapshotMapData | undefined =>
   u instanceof SnapshotMapImpl ? u[SnapshotMapTypeId] : undefined
 
-const snapshotMapSchema = (
+/**
+ * The Schema of a keyed loader slot: one snapshot per args key. On the wire
+ * it is an array of `snapshotSchema`'s tuples, in no meaningful order, and a
+ * duplicate args key is a decode error. `log` is as for `snapshotSchema`.
+ *
+ * @internal
+ */
+export const snapshotMapSchema = (
   read: { readonly [TypeId]: unknown },
-  label: string
+  label: string,
+  log = false
 ): Schema.Top => {
   const def = defOf(read)
   const is = (u: unknown): u is SnapshotMapImpl =>
@@ -3224,7 +2992,7 @@ const snapshotMapSchema = (
     }
   }
   const toCodecJson = (typeParameters: ReadonlyArray<Schema.Top>) => {
-    const wire = snapshotWire(def, label, typeParameters)
+    const wire = snapshotWire(def, label, typeParameters, log)
     return Schema.link<SnapshotMapImpl>()(
       Schema.Array(wire.tuple),
       SchemaTransformation.transformEffect<SnapshotMapImpl, ReadonlyArray<any>>({
@@ -3249,8 +3017,7 @@ const snapshotMapSchema = (
       [def.args.ast, def.success.ast, def.error.ast],
       makeRun(true),
       {
-        expected: "Loader.SnapshotMap(" + quote(def.name) + ", " + quote(label) + ")",
-        [snapshotAnnotationKey]: { read: def.name, label, definition: read, keyed: true },
+        expected: "a keyed loader slot " + quote(label) + " of " + quote(def.name),
         toCodecJson
       } as Schema.Annotations.Annotations,
       undefined,

@@ -21,7 +21,7 @@ import "effect/ui/html/register"
 //   its path with `AppRoute.printPath`
 // - `fixtures/pages/search/SearchPage.ts`: the page, which takes its whole
 //   route as props, writes the query with `Router.patchQuery` and fetches
-//   with `Component.debounce`
+//   with a loader's `debounce` option
 // - `fixtures/notes/loaders/SearchNotes.ts`: the read behind the results,
 //   keyed by the whole search
 import { App } from "./fixtures/App.ts"

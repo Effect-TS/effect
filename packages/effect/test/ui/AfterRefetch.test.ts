@@ -72,7 +72,7 @@ const makeApp = (options?: {
   ) {}
 
   const CardMessage = Schema.TaggedUnion({
-    UserChanged: { user: Loader.Snapshot(GetUser, "user") },
+    UserChanged: {},
     Rename: { name: Schema.String },
     Renamed: { name: Schema.String },
     Failed: { name: Schema.String },
@@ -91,14 +91,20 @@ const makeApp = (options?: {
   const Card = Component.make({
     name: "Card",
     props: Schema.Struct({ id: Schema.String, tag: Schema.String }),
-    model: Schema.Struct({ user: Loader.Snapshot(GetUser, "user"), done: Schema.Array(Schema.String) }),
+    model: Schema.Struct({ done: Schema.Array(Schema.String) }),
     message: CardMessage,
-    loaders: { user: (_model, props) => ({ id: props.id }) },
-    init: ($) => ({ ...$.empty, done: [] }),
+    loaders: {
+      user: {
+        load: GetUser,
+        args: (_model, props) => ({ id: props.id }),
+        onChange: () => CardMessage.make({ _tag: "UserChanged" })
+      }
+    },
+    init: () => ({ done: [] }),
     update: (model, message, $) => {
       order.push(`update ${$.props.tag} ${message._tag}${"name" in message ? " " + message.name : ""}`)
       return CardMessage.match(message, {
-        UserChanged: ({ user }) => ({ ...model, user }),
+        UserChanged: () => model,
         Rename: ({ name }) => $.set(model).run(rename($.props.id, name)),
         Renamed: ({ name }) => {
           const next = { ...model, done: [...model.done, name] }
@@ -109,9 +115,6 @@ const makeApp = (options?: {
         Stop: () => $.set(model).run(Command.interrupt(RenameUser))
       })
     },
-    subscriptions: (_model, _props, $) => [
-      $.watch({ user: (user) => CardMessage.make({ _tag: "UserChanged", user }) })
-    ],
     view: (model, h) => {
       const text = AsyncResult.match(h.loaded.user, {
         onInitial: () => "loading",
@@ -197,7 +200,7 @@ const renameOn = (root: { readonly send: (message: any) => void }, app: ReturnTy
   root.send(app.CardMessage.make({ _tag: "Rename", name }))
 
 describe("Command.afterRefetch", () => {
-  it.effect("holds onSuccess until the refetch settles, after the field's message and in the same render", () => {
+  it.effect("holds onSuccess until the refetch settles, after the loader's onChange message and in the same render", () => {
     const app = makeApp()
     return run(
       app.layer,
@@ -360,21 +363,29 @@ describe("Command.afterRefetch", () => {
     )
   })
 
-  it.effect("a keyed field: the last key's message, then onSuccess, then one view", () => {
+  it.effect("a loadMany loader: the last key's onChange message, then onSuccess, then one view", () => {
     const app = makeApp({ invalidates: "all" })
-    const Users = Loader.SnapshotMap(app.GetUser, "users")
-    const BoardMessage = Schema.TaggedUnion({ Changed: { users: Users }, Rename: {}, Renamed: {} })
+    const BoardMessage = Schema.TaggedUnion({ Changed: {}, Rename: {}, Renamed: {} })
     const order: Array<string> = []
     const Board = Component.make({
       name: "Board",
-      model: Schema.Struct({ users: Users, renamed: Schema.Boolean }),
+      model: Schema.Struct({ renamed: Schema.Boolean }),
       message: BoardMessage,
-      loaders: { users: () => [{ id: "1" }, { id: "2" }] },
-      init: ($) => ({ ...$.empty, renamed: false }),
+      loaders: {
+        users: {
+          loadMany: app.GetUser,
+          args: () => [{ id: "1" }, { id: "2" }],
+          onChange: (_loaded, changes) => {
+            order.push(`changes ${changes.map((change) => change.args.id).join(",")}`)
+            return BoardMessage.make({ _tag: "Changed" })
+          }
+        }
+      },
+      init: () => ({ renamed: false }),
       update: (model, message, $) => {
         order.push(`update ${message._tag}`)
         return BoardMessage.match(message, {
-          Changed: ({ users }) => ({ ...model, users }),
+          Changed: () => model,
           Rename: () =>
             $.set(model).run(
               app.RenameUser.make({ id: "1", name: "Bob" }).pipe(
@@ -388,14 +399,6 @@ describe("Command.afterRefetch", () => {
           Renamed: () => ({ ...model, renamed: true })
         })
       },
-      subscriptions: (_model, _props, $) => [
-        $.watch({
-          users: (users, _loaded, changes) => {
-            order.push(`changes ${changes.map((change) => change.args.id).join(",")}`)
-            return BoardMessage.make({ _tag: "Changed", users })
-          }
-        })
-      ],
       view: (model, h) => {
         const text = h.loaded.users.map(({ result }) =>
           AsyncResult.match(result, {
@@ -460,7 +463,7 @@ describe("Command.afterRefetch", () => {
         yield* tick
         app.order.length = 0
         renameOn(root, app, "Cy")
-        // Bob's onSuccess comes inside the update that cut it, after Cy's patch has reached the field.
+        // Bob's onSuccess comes inside the update that cut it, after Cy's patch has reached the slot.
         assert.deepStrictEqual(app.order.slice(0, 3), [
           "update a Rename Cy",
           "update a UserChanged",
@@ -674,17 +677,15 @@ describe("Command.afterRefetch", () => {
         })))
       )
     ) {}
-    const Items = Loader.SnapshotList(ListItems, "items")
-    const ItemsMessage = Schema.TaggedUnion({ Changed: { snapshot: Items }, More: {}, Touch: {}, Touched: {} })
+    const ItemsMessage = Schema.TaggedUnion({ More: {}, Touch: {}, Touched: {} })
     const ItemsView = Component.make({
       name: "ItemsView",
-      model: Schema.Struct({ items: Items, touched: Schema.Boolean }),
+      model: Schema.Struct({ touched: Schema.Boolean }),
       message: ItemsMessage,
-      loaders: { items: () => ({}) },
-      init: ($) => ({ ...$.empty, touched: false }),
+      loaders: { items: { load: ListItems, args: () => ({}) } },
+      init: () => ({ touched: false }),
       update: (model, message, $) =>
         ItemsMessage.match(message, {
-          Changed: ({ snapshot }) => ({ ...model, items: snapshot }),
           More: () => $.loadMore("items"),
           Touch: () =>
             $.set({ ...model, touched: false }).run(
@@ -695,9 +696,6 @@ describe("Command.afterRefetch", () => {
             ),
           Touched: () => ({ ...model, touched: true })
         }),
-      subscriptions: (_model, _props, $) => [
-        $.watch({ items: (snapshot) => ItemsMessage.make({ _tag: "Changed", snapshot }) })
-      ],
       view: (model, h) =>
         h.el(
           "p",
@@ -736,7 +734,7 @@ describe("Command.afterRefetch", () => {
     const app = makeApp()
     const ann = { id: "1", name: "Ann" }
 
-    it("resolve awaits the component's own fields, and loaded sends the field's message, then onSuccess", () => {
+    it("resolve awaits the component's own loaders, and loaded sends the loader's onChange message, then onSuccess", () => {
       Story.make(app.Card, { id: "1", tag: "a" }, (s) =>
         s
           .loaded("user", ann)
@@ -744,7 +742,7 @@ describe("Command.afterRefetch", () => {
           .resolve(app.RenameUser, "Bob")
           .check((story) => {
             assert.deepStrictEqual(story.pending.map((entry) => [entry.status, entry.awaiting]), [
-              ["awaiting", [{ field: "user", args: { id: "1" } }]]
+              ["awaiting", [{ name: "user", args: { id: "1" } }]]
             ])
             // h.isRunning stays true through the wait.
             assert.isDefined(story.query(Query.text("saving")))
@@ -825,7 +823,7 @@ describe("Command.afterRefetch", () => {
       assert.strictEqual(story.dropped.length, 1)
     })
 
-    it("loaded on a field that was cold when a Command was issued doesn't throw: its patch never registered", () => {
+    it("loaded on a loader that was cold when a Command was issued doesn't throw: its patch never registered", () => {
       Story.make(app.Card, { id: "1", tag: "a" }, (s) =>
         s
           .send(app.CardMessage.make({ _tag: "Rename", name: "Bob" }))
@@ -834,7 +832,7 @@ describe("Command.afterRefetch", () => {
           .check((story) => assert.deepStrictEqual(story.pending.map((entry) => entry.status), ["awaiting"]))
           .loaded("user", { id: "1", name: "Bob" })
           .model((model) => assert.deepStrictEqual(model.done, ["Bob"])))
-      // Nor does a field that held only a Failure.
+      // Nor does a loader that held only a Failure.
       Story.make(app.Card, { id: "1", tag: "a" }, (s) =>
         s
           .loadFailed("user", "down")
@@ -844,7 +842,7 @@ describe("Command.afterRefetch", () => {
           .loaded("user", { id: "1", name: "Bob" }))
     })
 
-    it("loaded throws on a field a running Command patches, unless the value is patched", () => {
+    it("loaded throws on a loader a running Command patches, unless the value is patched", () => {
       assert.throws(
         () =>
           Story.make(app.Card, { id: "1", tag: "a" }, (s) =>

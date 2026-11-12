@@ -1,7 +1,8 @@
 import { assert, describe, it } from "@effect/vitest"
 import { Cause, Data, Effect, Layer, Option, Schema } from "effect"
-import { AsyncResult, Loader } from "effect/reactivity"
+import { AsyncResult } from "effect/reactivity"
 import { Command, Component, Route, Router, View } from "effect/ui"
+import { Html } from "effect/ui/html"
 import { Query, Story } from "effect/ui/testing"
 import {
   Counter,
@@ -501,7 +502,7 @@ describe("Story", () => {
     })
   })
 
-  describe("loader fields", () => {
+  describe("loaders", () => {
     const text = (story: { readonly root: Query.Node }) => Query.textOf(story.root)
     const page = (n: number, names: ReadonlyArray<string>) => ({
       page: n,
@@ -509,16 +510,16 @@ describe("Story", () => {
       users: names.map((name, i) => ({ id: `${n}-${i}`, name, email: "", likes: 0 }))
     })
 
-    it("loaded sends the snapshot through the watch handler, at the loader's current args", () => {
+    it("loaded writes the loader's slot, at the loader's current args", () => {
       Story.make(users.ListPage, {}, (s) =>
         s
           .check((story) => assert.include(text(story), "Loading users…"))
           .loaders((loaders) =>
-            assert.deepStrictEqual(loaders, [{ field: "users", read: "users/ListUsers", args: { page: 0 } }])
+            assert.deepStrictEqual(loaders, [{ name: "users", read: "users/ListUsers", args: { page: 0 } }])
           )
           .loaded("users", page(0, ["Ann", "Bea"]))
           .check((story) => assert.include(text(story), "AnnBea"))
-          // The next page: h.previous keeps the page the snapshot holds until it is loaded.
+          // The next page: h.previous keeps the page the slot holds until it is loaded.
           .click("Next")
           .loaders((loaders) => assert.deepStrictEqual(loaders.map((loader) => loader.args), [{ page: 1 }]))
           .check((story) => {
@@ -532,40 +533,225 @@ describe("Story", () => {
           }))
     })
 
-    it("loadFailed keeps the field's Success at the current args as previousSuccess, and waiting shows", () => {
+    it("loadFailed keeps the loader's Success at the current args as previousSuccess, and waiting shows", () => {
       Story.make(users.UserCard, { id: "1" }, (s) =>
         s
           .loaded("user", { id: "1", name: "Ann", email: "ann@x", likes: 0 }, { waiting: true })
           .check((story) => assert.include(text(story), "Updating…"))
           .loadFailed("user", new users.UserNotFound({ id: "1" }))
           .check((story) => assert.strictEqual(text(story), "This user doesn't exist."))
-          .model(({ user }) => {
-            const result = Loader.snapshotData(user)?.result
-            assert.isTrue(
-              result !== undefined && AsyncResult.isFailure(result) && Option.isSome(result.previousSuccess)
-            )
+          .check((story) => {
+            const result = story.loaded().user
+            assert.isTrue(AsyncResult.isFailure(result) && Option.isSome(result.previousSuccess))
           })
-          // Another user's snapshot doesn't carry over.
+          // Another user's result doesn't carry over.
           .props({ id: "2" })
           .loadFailed("user", new users.UserNotFound({ id: "2" }))
-          .model(({ user }) => {
-            const result = Loader.snapshotData(user)?.result
-            assert.isTrue(
-              result !== undefined && AsyncResult.isFailure(result) && Option.isNone(result.previousSuccess)
-            )
+          .check((story) => {
+            const result = story.loaded().user
+            assert.isTrue(AsyncResult.isFailure(result) && Option.isNone(result.previousSuccess))
           }))
     })
 
-    it("given takes an updater, and loaded throws for a field that isn't a loader field", () => {
+    it("given takes an updater and keeps the slots, and loaded throws for a name that isn't a loader", () => {
       Story.make(users.RenameForm, { id: "1" }, (s) =>
         s
           .given((model) => ({ ...model, draft: Option.some("Zed") }))
           .loaded("user", { id: "1", name: "Ann", email: "", likes: 0 })
           .check((story) => assert.strictEqual(story.model.draft._tag, "Some"))
+          .given((model) => ({ ...model, draft: Option.none() }))
+          .check((story) => {
+            assert.strictEqual(story.model.draft._tag, "None")
+            assert.strictEqual(story.loaded().user._tag, "Success")
+          })
           .subscriptions((keys) => assert.deepStrictEqual(keys, [])))
       assert.throws(
         () => Story.make(users.RenameForm, { id: "1" }, (s) => s.loaded("draft" as any, "x")),
         /draft/
+      )
+    })
+
+    const TeamMessage = Schema.TaggedUnion({ UserChanged: {}, Bump: {} })
+    const renders: Array<string> = []
+    const Team = Component.make({
+      name: "Team",
+      props: Schema.Struct({ id: Schema.String }),
+      model: Schema.Struct({ changes: Schema.Number }),
+      message: TeamMessage,
+      elements: Html,
+      loaders: {
+        // Declared before the loader it depends on, so the order of the record doesn't matter.
+        friend: {
+          load: users.GetUser,
+          args: (_model, _props, loaded) =>
+            AsyncResult.isSuccess(loaded.user) ? { id: loaded.user.value.email } : undefined
+        },
+        user: {
+          load: users.GetUser,
+          args: (_model, props) => ({ id: props.id }),
+          onChange: () => TeamMessage.make({ _tag: "UserChanged" })
+        },
+        others: { loadMany: users.GetUser, args: () => [{ id: "8" }, { id: "9" }] },
+        list: { load: users.ListUsers, args: () => ({ page: 0 }) }
+      },
+      init: () => ({ changes: 0 }),
+      update: (model) => ({ changes: model.changes + 1 }),
+      view: (model, h) => {
+        const name = (result: AsyncResult.AsyncResult<users.User, unknown>) =>
+          AsyncResult.isSuccess(result) ? result.value.name : "?"
+        const out = [
+          name(h.loaded.user),
+          name(h.loaded.friend),
+          h.loaded.others.map((entry) => name(entry.result)).join("+"),
+          AsyncResult.isSuccess(h.loaded.list) ? String(h.loaded.list.value.users.length) : "?",
+          String(model.changes)
+        ].join(" ")
+        renders.push(out)
+        return h.p(out)
+      }
+    })
+    const user = (id: string, name: string, email = "") => ({ id, name, email, likes: 0 })
+
+    it("given starts from loaded results: one render, dependent and keyed loaders, and no onChange message", () => {
+      const final = Story.make(Team, { id: "1" }, (s) => {
+        renders.length = 0
+        s.given({ changes: 0 }, {
+          friend: user("2", "Bea"),
+          user: user("1", "Ann", "2"),
+          others: [{ args: { id: "9" }, value: user("9", "Ivy") }],
+          list: { page: 0, pages: 1, users: [user("1", "Ann")] }
+        })
+          .check((story) => assert.strictEqual(text(story), "Ann Bea ?+Ivy 1 0"))
+          // A load step after it still sends onChange.
+          .loaded("user", user("1", "Anna", "2"))
+          .check((story) => assert.strictEqual(text(story), "Anna Bea ?+Ivy 1 1"))
+      })
+      assert.deepStrictEqual(renders, ["Ann Bea ?+Ivy 1 0", "Anna Bea ?+Ivy 1 1"])
+      assert.strictEqual(final.loaded().friend._tag, "Success")
+      assert.throws(
+        () => Story.make(Team, { id: "1" }, (s) => s.given({ changes: 0 }, { friend: user("2", "Bea") })),
+        /friend.*disabled/
+      )
+      // A keyed entry at args the loader doesn't return.
+      assert.throws(
+        () =>
+          Story.make(
+            Team,
+            { id: "1" },
+            (s) => s.given({ changes: 0 }, { others: [{ args: { id: "7" }, value: user("7", "Uma") }] })
+          ),
+        /others.*given args/
+      )
+      // Loaders that aren't named keep their slots.
+      Story.make(Team, { id: "1" }, (s) =>
+        s.given({ changes: 0 }, { user: user("1", "Ann", "2") })
+          .given({ changes: 5 }, { friend: user("2", "Bea") })
+          .check((story) => assert.strictEqual(text(story), "Ann Bea ?+? ? 5")))
+    })
+
+    it("given replaces loaded results in any key order, against the new results, not the old slots", () => {
+      Story.make(
+        Team,
+        { id: "1" },
+        (s) =>
+          s.given({ changes: 0 }, { user: user("1", "Ann", "2"), friend: user("2", "Bea") })
+            .check((story) => assert.strictEqual(text(story), "Ann Bea ?+? ? 0"))
+            // The friend is named first, while the held user still points at "2".
+            .given({ changes: 0 }, { friend: user("3", "Cy"), user: user("1", "Ann", "3") })
+            .check((story) => assert.strictEqual(text(story), "Ann Cy ?+? ? 0"))
+      )
+    })
+
+    it("given prunes a keyed loader with no onChange message, and a later step's prune still sends it", () => {
+      const Message = Schema.TaggedUnion({ FriendsChanged: {} })
+      const Pals = Component.make({
+        name: "Pals",
+        props: Schema.Struct({ id: Schema.String }),
+        model: Schema.Struct({ changes: Schema.Number }),
+        message: Message,
+        elements: Html,
+        loaders: {
+          user: { load: users.GetUser, args: (_model, props) => ({ id: props.id }) },
+          friends: {
+            loadMany: users.GetUser,
+            args: (_model, _props, loaded) =>
+              AsyncResult.isSuccess(loaded.user) ? [{ id: loaded.user.value.email }] : [],
+            onChange: () => Message.make({ _tag: "FriendsChanged" })
+          }
+        },
+        init: () => ({ changes: 0 }),
+        update: (model) => ({ changes: model.changes + 1 }),
+        view: (model, h) =>
+          h.p(`${h.loaded.friends.filter((entry) => AsyncResult.isSuccess(entry.result)).length} ${model.changes}`)
+      })
+      Story.make(
+        Pals,
+        { id: "1" },
+        (s) =>
+          s.given({ changes: 0 }, {
+            user: user("1", "Ann", "2"),
+            friends: [{ args: { id: "2" }, value: user("2", "Bea") }]
+          })
+            .check((story) => assert.strictEqual(text(story), "1 0"))
+            // The friend id moves to "3": the held "2" is pruned, silently.
+            .given({ changes: 0 }, { user: user("1", "Ann", "3") })
+            .check((story) => assert.strictEqual(text(story), "0 0"))
+            .loadedMany("friends", [{ args: { id: "3" }, value: user("3", "Cy") }])
+            .check((story) => assert.strictEqual(text(story), "1 1"))
+            // An ordinary step's prune sends onChange.
+            .loaded("user", user("1", "Ann", "4"))
+            .check((story) => assert.strictEqual(text(story), "0 2"))
+      )
+    })
+
+    it("given keeps a keyed result its loader returns again once the given results settle", () => {
+      const Message = Schema.TaggedUnion({ FriendsChanged: {} })
+      const Circle = Component.make({
+        name: "Circle",
+        props: Schema.Struct({}),
+        model: Schema.Struct({ id: Schema.String, changes: Schema.Number }),
+        message: Message,
+        elements: Html,
+        loaders: {
+          // Declared before the loader it reads, so a first pass sees the old user at the new Model's args.
+          friends: {
+            loadMany: users.GetUser,
+            args: (_model, _props, loaded) =>
+              AsyncResult.isSuccess(loaded.user) ? [{ id: loaded.user.value.email }] : [],
+            onChange: () => Message.make({ _tag: "FriendsChanged" })
+          },
+          user: { load: users.GetUser, args: (model) => ({ id: model.id }) }
+        },
+        init: () => ({ id: "1", changes: 0 }),
+        update: (model) => ({ ...model, changes: model.changes + 1 }),
+        view: (model, h) =>
+          h.p(
+            `${
+              h.loaded.friends.map((entry) => AsyncResult.isSuccess(entry.result) ? entry.result.value.name : "?").join(
+                "+"
+              )
+            } ${model.changes}`
+          )
+      })
+      Story.make(Circle, {}, (s) =>
+        s.given({ id: "1", changes: 0 }, {
+          user: user("1", "Ann", "shared"),
+          friends: [{ args: { id: "shared" }, value: user("shared", "Sam") }]
+        })
+          .check((story) => assert.strictEqual(text(story), "Sam 0"))
+          // The new user points at the same friend: the held result stays.
+          .given({ id: "2", changes: 0 }, { user: user("2", "Bob", "shared") })
+          .check((story) => assert.strictEqual(text(story), "Sam 0"))
+          // A friend the new user doesn't point at is still dropped, silently.
+          .given({ id: "3", changes: 0 }, { user: user("3", "Cy", "other") })
+          .check((story) => assert.strictEqual(text(story), "? 0")))
+    })
+
+    it("given with no loaded results works on a component without loaders", () => {
+      Story.make(
+        Counter,
+        { initial: 0 },
+        (s) => s.given({ count: 3 }, {}).check((story) => assert.strictEqual(story.model.count, 3))
       )
     })
   })

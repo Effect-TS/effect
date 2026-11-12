@@ -40,6 +40,7 @@ import * as SchemaAST from "../SchemaAST.ts"
 import * as Socket from "../socket/Socket.ts"
 import type * as Command from "./Command.ts"
 import type * as Component from "./Component.ts"
+import type * as loaders from "./internal/loaders.ts"
 
 /**
  * The service the runtime records entries to.
@@ -161,8 +162,9 @@ export interface Base {
 }
 
 /**
- * One `update` call: the message, what sent it, the props it saw, the Model
- * after it, and the Commands, events, load mores and resets it returned.
+ * One `update` call: the message, what sent it, the props and loader slots
+ * it saw, the Model after it, and the Commands, events, load mores and resets
+ * it returned.
  *
  * @stability experimental
  * @category models
@@ -180,6 +182,12 @@ export interface Update extends Base {
   readonly events: ReadonlyArray<unknown>
   /** The `$.loadMore` and `$.reset` calls, in order. The wire omits it when empty. */
   readonly lists?: ReadonlyArray<Component.ListIssue> | undefined
+  /**
+   * The loader slots `update` read as `$.loaded`, by loader name: what
+   * `Story.fromLog` gives it back, as it gives back `props`. Only a
+   * component with loaders has them.
+   */
+  readonly loaded?: Component.Slots | undefined
 }
 
 /**
@@ -198,6 +206,51 @@ export interface Mounted extends Base {
   readonly commands: ReadonlyArray<Command.Command<any, any>>
   readonly events: ReadonlyArray<unknown>
   readonly adopted: boolean
+}
+
+/**
+ * A mounted instance got new props from its parent, without a re-key. Its
+ * loaders' args can read them, so `Story.fromLog` applies it to reach the
+ * state the instance ended with.
+ *
+ * **Details**
+ *
+ * It's logged before the slot writes the new props cause. Props equal to the
+ * current ones log nothing.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.1.5
+ */
+export interface PropsChanged extends Base {
+  readonly _tag: "PropsChanged"
+  /** The component, whose props Schema encodes them for the Wire. */
+  readonly component: Component.Any
+  readonly props: unknown
+}
+
+/**
+ * A loader's slot changed: the runtime wrote what the loader's read last
+ * returned at its args. `slot` is opaque. `Story.fromLog` applies it to
+ * reach the slots the instance ended with.
+ *
+ * **Details**
+ *
+ * An instance mounted with restored or hydrated slots logs one entry per
+ * non-empty slot right after `Mounted`. A loader with `onChange` logs this
+ * entry before the `Update` of the message it returns.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.1.5
+ */
+export interface LoaderChanged extends Base {
+  readonly _tag: "LoaderChanged"
+  /** The component, whose loader Schemas encode the slot for the Wire. */
+  readonly component: Component.Any
+  /** The loader's name in `loaders`. */
+  readonly name: string
+  readonly slot: unknown
 }
 
 /**
@@ -393,6 +446,8 @@ export type Entry =
   | SessionStarted
   | Update
   | Mounted
+  | PropsChanged
+  | LoaderChanged
   | Lifecycle
   | LayerFailed
   | SubscriptionChanged
@@ -571,8 +626,9 @@ export const Wire = Schema.Union([
     commands: Schema.Array(CommandWire),
     events: Schema.Array(Schema.Json),
     lists: Schema.optionalKey(
-      Schema.Array(Schema.Struct({ field: Schema.String, op: Schema.Literals(["loadMore", "reset"]) }))
-    )
+      Schema.Array(Schema.Struct({ name: Schema.String, op: Schema.Literals(["loadMore", "reset"]) }))
+    ),
+    loaded: Schema.optionalKey(Schema.Json)
   }),
   Schema.TaggedStruct("Mounted", {
     ...Seq,
@@ -583,6 +639,8 @@ export const Wire = Schema.Union([
     events: Schema.Array(Schema.Json),
     adopted: Schema.Boolean
   }),
+  Schema.TaggedStruct("PropsChanged", { ...Seq, component: Schema.String, props: Schema.Json }),
+  Schema.TaggedStruct("LoaderChanged", { ...Seq, component: Schema.String, name: Schema.String, slot: Schema.Json }),
   Schema.Struct({ _tag: Schema.Literals(["Unmounted", "LayerPending", "LayerReady"]), ...Seq }),
   Schema.TaggedStruct("LayerFailed", { ...Seq, cause: CauseWire }),
   Schema.Struct({ _tag: Schema.Literals(["SubscriptionStarted", "SubscriptionStopped"]), ...Seq, key: Schema.String }),
@@ -682,8 +740,9 @@ export const makeEncoder = (options?: {
   const maxEntryBytes = options?.maxEntryBytes ?? Infinity
   const warned = new Set<string>()
   const encoders = new WeakMap<Schema.Top, (value: unknown) => unknown>()
-  const through = (component: Component.Any, field: "props" | "model" | "message" | "events", value: unknown) => {
-    const schema = component[field] as Schema.Top
+  const through = (component: Component.Any, field: "props" | "model" | "message" | "events", value: unknown) =>
+    encodeWith(component[field] as Schema.Top, `${component.name}.${field}`, value)
+  const encodeWith = (schema: Schema.Top, id: string, value: unknown) => {
     let encode = encoders.get(schema)
     if (encode === undefined) {
       encode = Schema.encodeUnknownSync(
@@ -694,7 +753,6 @@ export const makeEncoder = (options?: {
     try {
       return encode(value) as Schema.Json
     } catch (error) {
-      const id = `${component.name}.${field}`
       if (!warned.has(id)) {
         warned.add(id)
         options?.onWarning?.(`MessageLog: ${id} failed to encode, so it's sent as a placeholder: ${String(error)}`)
@@ -702,9 +760,16 @@ export const makeEncoder = (options?: {
       return { "~unserialisable": "encode" }
     }
   }
-  // A watch's message carries a whole snapshot, so messages are capped like Models.
-  const capped = (component: Component.Any, field: "model" | "message", value: unknown): Schema.Json => {
-    const encoded = through(component, field, value) as Schema.Json
+  const encodeLoaded = (component: Component.Any, loaded: Component.Slots): Schema.Json => {
+    const schema = (component["~loaders"] as loaders.Bound | undefined)?.logSchema
+    return schema === undefined
+      ? { "~unserialisable": "encode" }
+      : cap(encodeWith(schema, `${component.name}.loaders`, loaded) as Schema.Json)
+  }
+  // A message can carry a loader's whole result, so messages are capped like Models and slots.
+  const capped = (component: Component.Any, field: "model" | "message", value: unknown): Schema.Json =>
+    cap(through(component, field, value) as Schema.Json)
+  const cap = (encoded: Schema.Json): Schema.Json => {
     if (maxEntryBytes === Infinity) return encoded
     const bytes = utf8Length(JSON.stringify(encoded))
     return bytes > maxEntryBytes ? { "~truncated": bytes } : encoded
@@ -723,7 +788,8 @@ export const makeEncoder = (options?: {
             model: capped(entry.component, "model", entry.model),
             commands: entry.commands.map(encodeCommand),
             events: entry.events.map((emitted) => through(entry.component, "events", emitted) as Schema.Json),
-            ...(entry.lists === undefined || entry.lists.length === 0 ? undefined : { lists: entry.lists })
+            ...(entry.lists === undefined || entry.lists.length === 0 ? undefined : { lists: entry.lists }),
+            ...(entry.loaded === undefined ? undefined : { loaded: encodeLoaded(entry.component, entry.loaded) })
           }
         case "Mounted":
           return {
@@ -736,6 +802,25 @@ export const makeEncoder = (options?: {
             events: entry.events.map((emitted) => through(entry.component, "events", emitted) as Schema.Json),
             adopted: entry.adopted
           }
+        case "PropsChanged":
+          return {
+            ...base(entry),
+            _tag: "PropsChanged",
+            component: entry.component.name,
+            props: through(entry.component, "props", entry.props) as Schema.Json
+          }
+        case "LoaderChanged": {
+          const schema = (entry.component["~loaders"] as loaders.Bound | undefined)?.logSchema.fields[entry.name]
+          return {
+            ...base(entry),
+            _tag: "LoaderChanged",
+            component: entry.component.name,
+            name: entry.name,
+            slot: schema === undefined
+              ? { "~unserialisable": "encode" }
+              : cap(encodeWith(schema, `${entry.component.name}.loaders.${entry.name}`, entry.slot) as Schema.Json)
+          }
+        }
         case "LayerFailed":
           return { ...base(entry), _tag: "LayerFailed", cause: encodeCause(entry.cause) }
         case "Failed":

@@ -1,5 +1,5 @@
 import { Layer, Option, Schema } from "effect"
-import { AsyncResult, Loader } from "effect/reactivity"
+import { AsyncResult } from "effect/reactivity"
 import { Command, Component, Head, Router } from "effect/ui"
 import { type NoteResults, NoteSort } from "../../notes/domain/Note.ts"
 import { SearchNotes } from "../../notes/loaders/SearchNotes.ts"
@@ -13,13 +13,10 @@ const SearchRoute = AppRoute.subset(["Search"])
 
 const noteUrl = (id: string) => AppRoute.print(AppRoute.make({ _tag: "Note", params: { id } }))
 
-const ResultsSnapshot = Loader.Snapshot(SearchNotes, "results")
-
 export const SearchPageMessage = Schema.TaggedUnion({
   Typed: { text: Schema.String },
   Sorted: { sort: NoteSort },
   PageChosen: { page: Schema.Number },
-  ResultsChanged: { snapshot: ResultsSnapshot },
   Patched: {}
 })
 
@@ -29,21 +26,26 @@ export const SearchPageNoDeps = Component.make({
   name: "SearchPage",
   // The page takes its whole route as props. The URL is the only copy of
   // the text, the order and the page number. The Model holds no draft of
-  // them, so there is nothing to keep in sync with the URL.
+  // them, so there is nothing to keep in sync with the URL. The results live
+  // in the loader's slot, so the Model is empty.
   props: Schema.Struct({ route: SearchRoute }),
-  model: Schema.Struct({ results: ResultsSnapshot }),
+  model: Schema.Struct({}),
   message: SearchPageMessage,
   loaders: {
-    // Typing changes the args on every keystroke. `Component.debounce`
-    // fetches once they have held still for 300 ms. Args whose results are
-    // cached and fresh, such as a page seen moments ago, show at once, and so
-    // does the first fetch at mount.
-    results: Component.debounce("300 millis", (_model, props) => {
-      const { page, q, sort } = props.route.query
-      return { q: q ?? "", page, sort }
-    })
+    results: {
+      load: SearchNotes,
+      // Typing changes the args on every keystroke. `debounce` fetches once
+      // they have held still for 300 ms. Args whose results are cached and
+      // fresh, such as a page seen moments ago, show at once, and so does the
+      // first fetch at mount.
+      debounce: "300 millis",
+      args: (_model, props) => {
+        const { page, q, sort } = props.route.query
+        return { q: q ?? "", page, sort }
+      }
+    }
   },
-  init: ($) => $.empty,
+  init: () => ({}),
   update: (model, message, $) =>
     SearchPageMessage.match(message, {
       // `patchQuery` writes some of the query and keeps the rest. It
@@ -60,13 +62,9 @@ export const SearchPageNoDeps = Component.make({
         $.run(
           Router.patchQuery(AppRoute, $.props.route, { page }, { history: "push", scroll: true }).pipe(patched)
         ),
-      ResultsChanged: ({ snapshot }) => ({ ...model, results: snapshot }),
       // The new route comes back as props, through the root.
       Patched: () => model
     }),
-  subscriptions: (_model, _props, $) => [
-    $.watch({ results: (snapshot) => SearchPageMessage.make({ _tag: "ResultsChanged", snapshot }) })
-  ],
   head: () => [Head.title("Search notes")],
   view: (_model, h) => {
     const { page, q, sort } = h.props.route.query
