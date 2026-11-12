@@ -136,9 +136,9 @@ describe("Command", () => {
       expect(Command.make).type.not.toBeCallableWith("Load", { args: {}, server: true }, () => Effect.succeed(1))
     })
 
-    it("requires args and invalidates", () => {
+    it("requires args but allows omitted invalidates", () => {
       const service = Command.Service<"Load">()
-      expect(service).type.not.toBeCallableWith("Load", { args: {} }, Effect.succeed(() => Effect.succeed(1)))
+      expect(service).type.toBeCallableWith("Load", { args: {} }, Effect.succeed(() => Effect.succeed(1)))
       expect(service).type.not.toBeCallableWith(
         "Load",
         { invalidates: () => [] },
