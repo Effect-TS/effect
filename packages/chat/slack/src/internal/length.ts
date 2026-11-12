@@ -3,9 +3,6 @@ import { blocksCost } from "./emoji.ts"
 /** `msg_too_long`: code points of `markdown_text` as sent, inclusive. @internal */
 export const messageLength = 12_000
 
-/** `msg_blocks_too_long`: Slack's count with every emoji as its shortcode, inclusive. @internal */
-export const blocksLength = 13_200
-
 /** @internal */
 export const codePoints = (text: string): number => {
   let count = 0
@@ -39,6 +36,3 @@ export const measure = (markdown: string): number =>
     codePoints(markdown) + 3 * lessThan(markdown),
     Math.ceil(blocksCost(markdown) * 10 / 11)
   )
-
-/** @internal */
-export { blocksCost }

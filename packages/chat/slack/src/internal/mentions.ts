@@ -137,19 +137,20 @@ const align = (items: ReadonlyArray<Item>, found: ReadonlyArray<Token>): Array<n
   if ((n + 1) * (m + 1) > maxAlignment) return undefined
   const impossible = -1
   const width = m + 1
-  // best[i * width + j]: the most pairs for items i.. and tokens j.., or impossible.
+  // best[i * width + j]: the most pairs for items i.. and tokens j.., or
+  // impossible when some real item among i.. can't be paired. Row n, no
+  // items left, is all zero.
   const best = new Int32Array((n + 1) * width)
-  for (let i = n - 1; i >= 0; i--) {
-    best[i * width + m] = items[i].real ? impossible : 0
+  const pairs = (i: number, j: number): number => {
+    if (j === m || !sameTarget(items[i], found[j])) return impossible
+    const rest = best[(i + 1) * width + j + 1]
+    return rest === impossible ? impossible : rest + 1
   }
   for (let i = n - 1; i >= 0; i--) {
-    for (let j = m - 1; j >= 0; j--) {
-      let score = best[i * width + j + 1]
+    for (let j = m; j >= 0; j--) {
+      let score = pairs(i, j)
       if (!items[i].real) score = Math.max(score, best[(i + 1) * width + j])
-      if (sameTarget(items[i], found[j])) {
-        const rest = best[(i + 1) * width + j + 1]
-        if (rest !== impossible) score = Math.max(score, rest + 1)
-      }
+      if (j < m) score = Math.max(score, best[i * width + j + 1])
       best[i * width + j] = score
     }
   }
@@ -157,17 +158,19 @@ const align = (items: ReadonlyArray<Item>, found: ReadonlyArray<Token>): Array<n
   const out: Array<number> = []
   let i = 0
   let j = 0
+  // Every step moves i or j forward, so this ends after n + m steps.
   while (i < n) {
     const score = best[i * width + j]
-    const rest = j < m ? best[(i + 1) * width + j + 1] : impossible
-    if (j < m && sameTarget(items[i], found[j]) && rest !== impossible && rest + 1 === score) {
+    if (pairs(i, j) === score) {
       if (items[i].real) out.push(j)
       i++
       j++
     } else if (!items[i].real && best[(i + 1) * width + j] === score) {
       i++
-    } else {
+    } else if (j < m && best[i * width + j + 1] === score) {
       j++
+    } else {
+      return undefined
     }
   }
   return out

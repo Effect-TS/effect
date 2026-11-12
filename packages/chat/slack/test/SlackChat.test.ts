@@ -527,36 +527,65 @@ describe("nativeStream", () => {
     )
   })
 
-  it.effect("the doubled interval outlives a rotation of the reply", () => {
+  it.effect("the doubled interval goes to the part that continues the reply, not to another reply", () => {
     const next = "1794509201.000100"
+    const other = "1794509202.000100"
     const fake = makeFake({
-      "chat.appendStream": [{ status: 429, headers: { "retry-after": "3" } }, posted(ts), posted(next)],
+      "chat.appendStream": [{ status: 429, headers: { "retry-after": "3" } }, posted(other), posted(next)],
       "chat.stopStream": { ok: true, message: { ts } },
-      "chat.startStream": posted(next)
+      "chat.startStream": [posted(other), posted(next), posted("1794509203.000100")]
     })
     return run(
       fake,
       Effect.gen(function*() {
         const native = (yield* adapter).nativeStream!
+        const recipient = "U080YLYB277"
         assert.strictEqual((yield* reason(native.append(replyThread, ts, "a", { flush: true }))).tag, "RateLimited")
         yield* native.stop(replyThread, ts, { end: "rotating" })
-        // The next part's start waits for the retry-after.
-        const start = yield* Effect.forkChild(native.start(replyThread, { markdown: "b", recipient: "U080YLYB277" }))
+        // Another reply in the thread starts and appends at once.
+        yield* native.start(replyThread, { markdown: "x", recipient })
+        yield* native.append(replyThread, other, "y", { flush: true })
+        assert.strictEqual(fake.called("chat.appendStream").length, 2)
+        // The reply's next part waits for the retry-after.
+        const start = yield* Effect.forkChild(native.start(replyThread, { markdown: "b", recipient, continues: ts }))
         yield* TestClock.adjust("2999 millis")
-        assert.strictEqual(fake.called("chat.startStream").length, 0)
+        assert.strictEqual(fake.called("chat.startStream").length, 1)
         yield* TestClock.adjust("1 millis")
-        yield* Fiber.join(start)
+        assert.strictEqual((yield* Fiber.join(start)).id, next)
         // Its appends keep the doubled interval, two seconds.
         const append = yield* Effect.forkChild(native.append(replyThread, next, "c", { flush: true }))
         yield* TestClock.adjust("1999 millis")
-        assert.strictEqual(fake.called("chat.appendStream").length, 1)
+        assert.strictEqual(fake.called("chat.appendStream").length, 2)
         yield* TestClock.adjust("1 millis")
         yield* Fiber.join(append)
-        assert.strictEqual(fake.called("chat.appendStream").length, 2)
+        assert.strictEqual(fake.called("chat.appendStream").length, 3)
         // A reply that ends hands nothing on.
         yield* native.stop(replyThread, next, { end: "done" })
-        yield* native.start(replyThread, { markdown: "d", recipient: "U080YLYB277" })
-        assert.strictEqual(fake.called("chat.startStream").length, 2)
+        yield* native.start(replyThread, { markdown: "d", recipient, continues: next })
+        assert.strictEqual(fake.called("chat.startStream").length, 3)
+      })
+    )
+  })
+
+  it.effect("an edit retried after a 429 keeps the doubled interval", () => {
+    const fake = makeFake({
+      "chat.update": [{ status: 429, headers: { "retry-after": "1" } }, { ok: true }, { ok: true }]
+    })
+    return run(
+      fake,
+      Effect.gen(function*() {
+        const slack = yield* adapter
+        const first = yield* Effect.forkChild(slack.edit(replyThread, ts, { markdown: "a" }))
+        yield* TestClock.adjust("1 second")
+        yield* Fiber.join(first)
+        assert.strictEqual(fake.called("chat.update").length, 2)
+        // Six seconds, twice the three second floor.
+        const second = yield* Effect.forkChild(slack.edit(replyThread, ts, { markdown: "ab" }))
+        yield* TestClock.adjust("5999 millis")
+        assert.strictEqual(fake.called("chat.update").length, 2)
+        yield* TestClock.adjust("1 millis")
+        yield* Fiber.join(second)
+        assert.strictEqual(fake.called("chat.update").length, 3)
       })
     )
   })

@@ -114,7 +114,8 @@ export class SlackChat extends Context.Service<SlackChat, {
  * - Edits to one message are at least 3 seconds apart.
  * - After a 429 on a stream append or an edit, the next write to that
  *   message waits for the retry-after, and later writes to it wait twice
- *   the interval. A rotated stream keeps that pace for its next part.
+ *   the interval, for the rest of the reply. A stream started with
+ *   `continues` keeps the pace of the part it continues.
  * - The native stream needs a thread and a recipient, and rotates before
  *   Slack's ten minute cap. A reply that ends after a click on the stop
  *   button moves the agent session off `processing`.
