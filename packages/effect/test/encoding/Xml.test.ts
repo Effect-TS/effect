@@ -202,6 +202,31 @@ describe("Xml", () => {
         })
       }))
 
+    it.effect("distinguishes contradictory and unsupported encoding declarations", () =>
+      Effect.gen(function*() {
+        for (
+          const [prefix, encoding, kind] of [
+            ["", "UTF-16", "Syntax"],
+            ["", "utf-32le", "Syntax"],
+            ["", "ISO-10646-UCS-2", "Syntax"],
+            [BOM, "ISO-8859-1", "Syntax"],
+            [BOM, "US-ASCII", "Syntax"],
+            [BOM, "UTF8", "Unsupported"],
+            [BOM, "unicode-1-1-utf-8", "Unsupported"],
+            [BOM, "unknown", "Unsupported"]
+          ] as const
+        ) {
+          const document = prefix + `<?xml version="1.0" encoding="${encoding}"?><a/>`
+          for (const chunks of byteSplits(textEncoder.encode(document))) {
+            assert.deepStrictEqual(yield* failure(decodeBytes(chunks)), [kind, 1, 1])
+          }
+        }
+        assert.deepStrictEqual(
+          (yield* decodeString([BOM + "<?xml version=\"1.0\" encoding=\"UTF-16\"?><a/>"])).map((event) => event._tag),
+          ["Declaration", "StartElement", "EndElement"]
+        )
+      }))
+
     it.effect("rejects UTF-16 byte order marks as unsupported across chunk boundaries", () =>
       Effect.gen(function*() {
         for (
