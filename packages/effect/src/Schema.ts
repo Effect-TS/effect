@@ -11370,7 +11370,7 @@ export function CauseReason<E extends Constraint, D extends Constraint>(
       },
       toCode: ({ typeParameters }) => ({
         runtime: `Schema.CauseReason(${typeParameters[0].runtime}, ${typeParameters[1].runtime})`,
-        Type: `Cause.Failure<${typeParameters[0].Type}, ${typeParameters[1].Type}>`,
+        Type: `Cause.Reason<${typeParameters[0].Type}>`,
         importDeclarations: [`import * as Cause from "effect/Cause"`]
       }),
       expected: "Cause.Failure",
@@ -11491,7 +11491,7 @@ export function Cause<E extends Constraint, D extends Constraint>(error: E, defe
       },
       toCode: ({ typeParameters }) => ({
         runtime: `Schema.Cause(${typeParameters[0].runtime}, ${typeParameters[1].runtime})`,
-        Type: `Cause.Cause<${typeParameters[0].Type}, ${typeParameters[1].Type}>`,
+        Type: `Cause.Cause<${typeParameters[0].Type}>`,
         importDeclarations: [`import * as Cause from "effect/Cause"`]
       }),
       expected: "Cause",
@@ -15695,7 +15695,7 @@ export function Exit<
         runtime: `Schema.Exit(${typeParameters[0].runtime}, ${typeParameters[1].runtime}, ${
           typeParameters[2].runtime
         })`,
-        Type: `Exit.Exit<${typeParameters[0].Type}, ${typeParameters[1].Type}, ${typeParameters[2].Type}>`,
+        Type: `Exit.Exit<${typeParameters[0].Type}, ${typeParameters[1].Type}>`,
         importDeclarations: [`import * as Exit from "effect/Exit"`]
       }),
       expected: "Exit",
@@ -18897,6 +18897,27 @@ export function resolveAnnotations<S extends Constraint>(
 export function resolveAnnotationsKey<S extends Constraint>(schema: S): Annotations.Key<S["Type"]> | undefined {
   return schema.ast.context?.annotations
 }
+
+interface DeclarationCodeGenerationAnnotations {
+  /**
+   * Generates runtime and TypeScript source for this declaration.
+   *
+   * @stability experimental
+   * @since 4.0.0
+   */
+  readonly toCode?: SchemaRepresentation.Generation.Declaration | undefined
+}
+
+interface FilterCodeGenerationAnnotations {
+  /**
+   * Generates runtime source for this filter.
+   *
+   * @stability experimental
+   * @since 4.0.0
+   */
+  readonly toCode?: SchemaRepresentation.Generation.Check | undefined
+}
+
 /**
  * The `Annotations` namespace groups all annotation interfaces used to attach
  * metadata to schemas. Annotations control documentation, validation messages,
@@ -19091,7 +19112,7 @@ export declare namespace Annotations {
    * @since 4.0.0
    */
   interface Declaration<T, TypeParameters extends ReadonlyArray<Constraint> = readonly []>
-    extends Bottom<T, TypeParameters>
+    extends Bottom<T, TypeParameters>, DeclarationCodeGenerationAnnotations
   {
     readonly representation?: SchemaRepresentation.RepresentationAnnotation | undefined
     /**
@@ -19153,7 +19174,6 @@ export declare namespace Annotations {
     readonly toCodecArbitrary?: ToArbitrary.Declaration<T, TypeParameters> | undefined
     readonly toEquivalence?: ToEquivalence.Declaration<T, TypeParameters> | undefined
     readonly toFormatter?: ToFormatter.Declaration<T, TypeParameters> | undefined
-    readonly toCode?: SchemaRepresentation.Generation.Declaration | undefined
     /**
      * Used to collect sentinels from a Declaration SchemaAST.
      *
@@ -19169,7 +19189,7 @@ export declare namespace Annotations {
    * @category models
    * @since 4.0.0
    */
-  interface Filter extends Augment {
+  interface Filter extends Augment, FilterCodeGenerationAnnotations {
     readonly representation?: SchemaRepresentation.CheckRepresentationAnnotation<SchemaAST.AST> | undefined
     /**
      * Compiles this filter to a JSON Schema fragment.
@@ -19191,7 +19211,6 @@ export declare namespace Annotations {
      * @see {@link SchemaRepresentation.ToJsonSchema.CheckOutput} for the result contract
      */
     readonly toJsonSchema?: SchemaRepresentation.ToJsonSchema.Check | undefined
-    readonly toCode?: SchemaRepresentation.Generation.Check | undefined
     /**
      * Complete message to use when this filter or refinement fails.
      *

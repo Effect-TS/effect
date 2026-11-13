@@ -4,7 +4,7 @@
 
 Base: `cab7f2e3493e4a3dceda27cb1b6d28c4599cb939` (`cab7f2e3493e4a3dceda27cb1b6d28c4599cb939`)
 
-Head: `HEAD` (`3ec2199688bc2d3c5d85fce5132cc3d1eb4a1663`)
+Head: `7db415ae0e36bbfadeb967f4ea59158c6b93cbcc` (`7db415ae0e36bbfadeb967f4ea59158c6b93cbcc`)
 
 This file is generated from the API diff and `migration/annotations/*.yaml`.
 
@@ -15196,7 +15196,7 @@ Effect.map(self, Boolean.not)
 
 - `Schema.finite` -> `Schema.isFinite`: Rename the predicate to `isFinite` and apply it with `Schema.check` or a schema's `check` method.
 
-- `Schema.format` -> `SchemaRepresentation.toCodeDocument`: Build a representation with `SchemaRepresentation.toRepresentation`, `toMultiDocument`, then `toCodeDocument`.
+- `Schema.format` -> `none`: Schema.format was removed in v4 and has no replacement.
 
 - `Schema.fromBrand` -> `Schema.fromBrand`: Pass the constructor's single concrete string brand key as the first argument, followed by the constructor and then the schema. Apply fromBrand repeatedly for multiple brands; use Schema.Union for alternatives. Constructor checks remain at runtime, while the brand is type-only and does not add AST metadata.
 

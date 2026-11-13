@@ -7,7 +7,6 @@
 import * as InternalRecord from "./internal/record.ts"
 import * as InternalFromJsonSchemaDocument from "./internal/schema/fromJsonSchemaDocument.ts"
 import * as InternalFromRepresentation from "./internal/schema/fromRepresentation.ts"
-import * as InternalToCodeDocument from "./internal/schema/toCodeDocument.ts"
 import * as InternalToJsonSchemaDocument from "./internal/schema/toJsonSchemaDocument.ts"
 import * as InternalToRepresentation from "./internal/schema/toRepresentation.ts"
 import type * as JsonSchema from "./JsonSchema.ts"
@@ -127,13 +126,19 @@ export declare namespace ToJsonSchema {
 /**
  * Input and output contracts for code generation annotations.
  *
- * @stability stable
+ * @stability experimental
  * @since 4.0.0
  */
 export declare namespace Generation {
   /**
    * Input for declaration code generation.
    *
+   * **Details**
+   *
+   * Interpolate the supplied code strings unchanged into the result. They may
+   * contain temporary references that are resolved after the callback returns.
+   *
+   * @stability experimental
    * @category models
    * @since 4.0.0
    */
@@ -144,6 +149,7 @@ export declare namespace Generation {
   /**
    * Output of declaration code generation.
    *
+   * @stability experimental
    * @category models
    * @since 4.0.0
    */
@@ -156,6 +162,7 @@ export declare namespace Generation {
   /**
    * Declaration code generator.
    *
+   * @stability experimental
    * @category models
    * @since 4.0.0
    */
@@ -164,6 +171,12 @@ export declare namespace Generation {
   /**
    * Input for check code generation.
    *
+   * **Details**
+   *
+   * Interpolate the supplied code strings unchanged into the result. They may
+   * contain temporary references that are resolved after the callback returns.
+   *
+   * @stability experimental
    * @category models
    * @since 4.0.0
    */
@@ -174,6 +187,7 @@ export declare namespace Generation {
   /**
    * Output of check code generation.
    *
+   * @stability experimental
    * @category models
    * @since 4.0.0
    */
@@ -185,6 +199,7 @@ export declare namespace Generation {
   /**
    * Check code generator.
    *
+   * @stability experimental
    * @category models
    * @since 4.0.0
    */
@@ -2521,64 +2536,13 @@ export interface FromJsonSchemaOptions extends FromJsonSchemaExperimentalOptions
 /**
  * Runtime and TypeScript source generated for one schema.
  *
- * @stability stable
+ * @stability experimental
  * @category models
  * @since 4.0.0
  */
 export interface Code {
   readonly runtime: string
   readonly Type: string
-}
-
-/**
- * Creates generated runtime and TypeScript source strings for a schema.
- *
- * @stability stable
- * @category constructors
- * @since 4.0.0
- */
-export const makeCode: (runtime: string, Type: string) => Code = InternalToCodeDocument.makeCode
-
-/**
- * Auxiliary source artifact emitted while generating schema code.
- *
- * @stability stable
- * @category models
- * @since 4.0.0
- */
-export type Artifact =
-  | {
-    readonly _tag: "Symbol"
-    readonly identifier: string
-    readonly code: Code
-  }
-  | {
-    readonly _tag: "Enum"
-    readonly identifier: string
-    readonly code: Code
-  }
-  | {
-    readonly _tag: "Import"
-    readonly importDeclaration: string
-  }
-
-/**
- * Generated schema code together with named references and auxiliary artifacts.
- *
- * @stability stable
- * @category models
- * @since 4.0.0
- */
-export interface CodeDocument {
-  readonly codes: ReadonlyArray<Code>
-  readonly references: {
-    readonly nonRecursives: ReadonlyArray<{
-      readonly $ref: string
-      readonly code: Code
-    }>
-    readonly recursives: Readonly<Record<string, Code>>
-  }
-  readonly artifacts: ReadonlyArray<Artifact>
 }
 
 /**
@@ -2704,7 +2668,7 @@ export function toRepresentations(
  *
  * **When to use**
  *
- * Use when an API such as `toCodeDocument` requires a `MultiDocument`.
+ * Use when an API requires a `MultiDocument` but you have a single representation document.
  *
  * @stability stable
  * @category transforming
@@ -2802,25 +2766,6 @@ export function toJsonSchemaMultiDocument(
   options?: Schema.ToJsonSchemaOptions
 ): JsonSchema.MultiDocument<"draft-2020-12"> {
   return InternalToJsonSchemaDocument.toJsonSchemaMultiDocument(document, options)
-}
-
-/**
- * Generates TypeScript source for live schema representations and their definitions.
- *
- * **When to use**
- *
- * Use when custom declarations and checks provide `toCode` callbacks and must be emitted without a central handler registry.
- *
- * **Gotchas**
- *
- * Opaque declarations and leaf checks require `toCode` callbacks. Callback results are used directly, and exceptions raised by a callback pass through unchanged.
- *
- * @stability stable
- * @category transforming
- * @since 4.0.0
- */
-export function toCodeDocument(document: MultiDocument): CodeDocument {
-  return InternalToCodeDocument.toCodeDocument(document)
 }
 
 const RepresentationSchema = Schema.suspend(

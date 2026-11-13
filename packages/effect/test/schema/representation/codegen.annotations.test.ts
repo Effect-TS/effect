@@ -2,6 +2,8 @@ import { assert, describe, it } from "@effect/vitest"
 import { Schema, SchemaRepresentation } from "effect"
 import { runInNewContext } from "node:vm"
 import { assertInclude, throws } from "../../utils/assert.ts"
+import { withGeneratedModule } from "../../utils/generatedModule.ts"
+import { assertSchemas, declaration, declarationNames, makeModule } from "../../utils/schemaCodegen.ts"
 
 function expectError(thunk: () => void, expected: string | Error): void {
   if (typeof expected === "string") {
@@ -31,14 +33,15 @@ const EmptyUnionRepresentation: SchemaRepresentation.Representation = {
   checks: []
 }
 
-describe("SchemaRepresentation.toCodeDocument annotations", () => {
+describe("Codegen.Module.addSchemas annotations", () => {
   it("preserves explicit options on an empty union", () => {
-    assert.deepStrictEqual(
-      SchemaRepresentation.toCodeDocument({
+    assertSchemas(
+      makeModule({
         representations: [EmptyUnionRepresentation],
         references: {}
-      }).codes,
-      [{ runtime: `Schema.Union([], { mode: "anyOf" })`, Type: "never" }]
+      }),
+      { TestRoot0: { runtime: `Schema.Union([], { mode: "anyOf" })`, Type: "never" } },
+      ["import * as Schema from \"effect/Schema\""]
     )
   })
 
@@ -47,23 +50,19 @@ describe("SchemaRepresentation.toCodeDocument annotations", () => {
       Schema.String.check(Schema.isPattern(/^a+$/)).ast,
       Schema.Option(Schema.String).ast
     ])
-    const output = SchemaRepresentation.toCodeDocument(document)
+    const output = makeModule(document)
 
-    assert.deepStrictEqual(output.codes, [
-      {
+    assertSchemas(output, {
+      TestRoot0: {
         runtime:
           `Schema.String.check(Schema.isPattern(new globalThis.RegExp("^a+$")).annotate({ "expected": "a string matching the RegExp ^a+$" }))`,
         Type: "string"
       },
-      {
+      TestRoot1: {
         runtime: `Schema.Option(Schema.String).annotate({ "expected": "Option" })`,
         Type: "Option.Option<string>"
       }
-    ])
-    assert.deepStrictEqual(output.artifacts, [{
-      _tag: "Import",
-      importDeclaration: `import * as Option from "effect/Option"`
-    }])
+    }, ["import * as Schema from \"effect/Schema\"", `import * as Option from "effect/Option"`])
   })
 
   it("passes compiled dependencies to checks and deduplicates imports", () => {
@@ -87,15 +86,15 @@ describe("SchemaRepresentation.toCodeDocument annotations", () => {
       references: {}
     }
 
-    const output = SchemaRepresentation.toCodeDocument(document)
+    const output = makeModule(document)
     assert.strictEqual(
-      output.codes[0].runtime,
-      "Schema.String.check(Custom.first(Schema.String)).check(Custom.second(Schema.String))"
+      declaration(output, "TestRoot0")[1],
+      "export const TestRoot0 = Schema.String.check(Custom.first(Schema.String)).check(Custom.second(Schema.String))"
     )
-    assert.deepStrictEqual(output.artifacts, [{
-      _tag: "Import",
-      importDeclaration: `import * as Custom from "acme/Custom"`
-    }])
+    assert.sameMembers([...output.finalize().imports], [
+      "import * as Schema from \"effect/Schema\"",
+      `import * as Custom from "acme/Custom"`
+    ])
   })
 
   it("emits supported annotation trees atomically", () => {
@@ -114,12 +113,12 @@ describe("SchemaRepresentation.toCodeDocument annotations", () => {
       }).ast
     ])
 
-    const runtime = SchemaRepresentation.toCodeDocument(document).codes[0].runtime
+    const runtime = makeModule(document).print()
     assertInclude(runtime, `"bigint": 1n`)
     assertInclude(runtime, `"symbol": globalThis.Symbol.for("shared")`)
-    assertInclude(runtime, `"nan": NaN`)
-    assertInclude(runtime, `"positive": Infinity`)
-    assertInclude(runtime, `"negative": -Infinity`)
+    assertInclude(runtime, `"nan": globalThis.NaN`)
+    assertInclude(runtime, `"positive": globalThis.Infinity`)
+    assertInclude(runtime, `"negative": -globalThis.Infinity`)
     assertInclude(runtime, `"nullPrototype": {}`)
     assertInclude(runtime, `"crossRealm": { "value": 1 }`)
     assert.isFalse(runtime.includes("omitted"))
@@ -142,22 +141,23 @@ describe("SchemaRepresentation.toCodeDocument annotations", () => {
     const document = SchemaRepresentation.toRepresentations([schema.ast])
 
     assert.strictEqual(
-      SchemaRepresentation.toCodeDocument(document).codes[0].runtime,
-      `Schema.String.annotate({ "kept": { "value": 1 } })`
+      declaration(makeModule(document), "TestRoot0")[1],
+      "export const TestRoot0 = Schema.String.annotate({ \"kept\": { \"value\": 1 } })"
     )
   })
 
-  it("preserves top-level and nested __proto__ annotations in generated code", () => {
+  it("preserves top-level and nested __proto__ annotations in generated code", async () => {
     const value = { ["__proto__"]: { trusted: true } }
     const annotations = { ...value, examples: [value] }
     const schema = Schema.Unknown.annotate(annotations)
-    const document = SchemaRepresentation.toCodeDocument(SchemaRepresentation.toRepresentations([schema.ast]))
-    const generated: typeof schema = new Function("Schema", `return ${document.codes[0].runtime}`)(Schema)
-    assert.deepStrictEqual(Schema.resolveAnnotations(generated), annotations)
+    const document = makeModule(SchemaRepresentation.toRepresentations([schema.ast]))
+    await withGeneratedModule<{ TestRoot0: typeof schema }>(document.print(), ({ TestRoot0 }) => {
+      assert.deepStrictEqual(Schema.resolveAnnotations(TestRoot0), annotations)
+    })
   })
 
   it("preserves fallback identifiers", () => {
-    const output = SchemaRepresentation.toCodeDocument({
+    const output = makeModule({
       representations: [{
         _tag: "String",
         checks: [],
@@ -166,7 +166,7 @@ describe("SchemaRepresentation.toCodeDocument annotations", () => {
       references: {}
     })
 
-    assertInclude(output.codes[0].runtime, `.annotate({ "~identifier": "Person" })`)
+    assertInclude(output.print(), `.annotate({ "~identifier": "Person" })`)
   })
 
   it("emits tuple element and property annotations", () => {
@@ -202,16 +202,16 @@ describe("SchemaRepresentation.toCodeDocument annotations", () => {
       references: {}
     }
 
-    assert.deepStrictEqual(SchemaRepresentation.toCodeDocument(document).codes, [
-      {
+    assertSchemas(makeModule(document), {
+      TestRoot0: {
         runtime: `Schema.Tuple([Schema.String.annotateKey({ "element": { "value": 1 } })])`,
         Type: "readonly [string]"
       },
-      {
+      TestRoot1: {
         runtime: `Schema.Struct({ "value": Schema.Number.annotateKey({ "property": true }) })`,
         Type: `{ readonly "value": number }`
       }
-    ])
+    }, ["import * as Schema from \"effect/Schema\""])
   })
 
   it("uses group overrides without visiting children and preserves abort", () => {
@@ -244,12 +244,15 @@ describe("SchemaRepresentation.toCodeDocument annotations", () => {
       references: {}
     }
 
-    const output = SchemaRepresentation.toCodeDocument(document)
+    const output = makeModule(document)
     assert.strictEqual(visits, 1)
-    assert.strictEqual(output.codes[0].runtime, "Schema.String.check(Custom.group())")
     assert.strictEqual(
-      output.codes[1].runtime,
-      "Schema.String.check(Schema.makeFilterGroup([Custom.child().abort()]))"
+      declaration(output, "TestRoot0")[1],
+      "export const TestRoot0 = Schema.String.check(Custom.group())"
+    )
+    assert.strictEqual(
+      declaration(output, "TestRoot1")[1],
+      "export const TestRoot1 = Schema.String.check(Schema.makeFilterGroup([Custom.child().abort()]))"
     )
   })
 
@@ -270,15 +273,17 @@ describe("SchemaRepresentation.toCodeDocument annotations", () => {
         })
       }
     }
-    const output = SchemaRepresentation.toCodeDocument({
+    const output = makeModule({
       representations: [declaration],
       references: {}
     })
 
-    assert.deepStrictEqual(output.codes, [{
-      runtime: "Custom.box(Schema.String)",
-      Type: "Custom.Box<string>"
-    }])
+    assertSchemas(output, {
+      TestRoot0: {
+        runtime: "Custom.box(Schema.String)",
+        Type: "Custom.Box<string>"
+      }
+    }, ["import * as Schema from \"effect/Schema\"", "import * as Custom from \"acme/Custom\""])
   })
 
   it("reports missing toCode callbacks and preserves callback exceptions", () => {
@@ -290,7 +295,7 @@ describe("SchemaRepresentation.toCodeDocument annotations", () => {
       references: {}
     }
     expectError(
-      () => SchemaRepresentation.toCodeDocument(missing),
+      () => makeModule(missing),
       `Missing toCode callback\n  at ["representations"][0]["checks"][0]["annotations"]["toCode"]`
     )
 
@@ -311,13 +316,57 @@ describe("SchemaRepresentation.toCodeDocument annotations", () => {
       references: {}
     }
     expectError(
-      () => SchemaRepresentation.toCodeDocument(throwing),
+      () => makeModule(throwing),
       cause
     )
   })
 
+  it("rejects imports that reuse a callback argument without retrying", () => {
+    let calls = 0
+    expectError(
+      () =>
+        makeModule({
+          references: { A: StringRepresentation },
+          representations: [{
+            _tag: "Declaration",
+            typeParameters: [{ _tag: "Reference", $ref: "A" }],
+            checks: [],
+            annotations: {
+              toCode: ({ typeParameters }: SchemaRepresentation.Generation.DeclarationInput) => {
+                calls++
+                return {
+                  ...typeParameters[0],
+                  importDeclarations: [`import * as ${typeParameters[0].Type} from "acme/Custom"`]
+                }
+              }
+            }
+          }]
+        }),
+      `Import shadows a callback argument\n  at ["representations"][0]["annotations"]["toCode"]["importDeclarations"][0]`
+    )
+    assert.strictEqual(calls, 1)
+  })
+
+  it("reports unsupported callback syntax with its document path", () => {
+    assert.throws(
+      () =>
+        makeModule({
+          references: {},
+          representations: [{
+            _tag: "String",
+            checks: [{
+              _tag: "Filter",
+              aborted: false,
+              annotations: { toCode: () => ({ runtime: "Schema.makeFilter((value) => value)" }) }
+            }]
+          }]
+        }),
+      /Unsupported runtime syntax.*\n  at \["representations"\]\[0\]\["checks"\]\[0\]\["annotations"\]\["toCode"\]\["runtime"\]/
+    )
+  })
+
   it("generates content media types, optional pre-rest elements and numeric properties", () => {
-    const output = SchemaRepresentation.toCodeDocument({
+    const output = makeModule({
       representations: [
         {
           _tag: "String",
@@ -348,21 +397,20 @@ describe("SchemaRepresentation.toCodeDocument annotations", () => {
       references: {}
     })
 
-    assert.deepStrictEqual(output.codes, [
-      {
+    assertSchemas(output, {
+      TestRoot0: {
         runtime: `Schema.String.annotate({ "contentMediaType": "text/plain" })`,
         Type: "string"
       },
-      {
+      TestRoot1: {
         runtime: `Schema.TupleWithRest(Schema.Tuple([Schema.optionalKey(Schema.String)]), [Schema.Number])`,
-        Type: `readonly [(string)?, ...Array<number>]`
+        Type: `readonly [(string)?, ...globalThis.Array<number>]`
       },
-      {
+      TestRoot2: {
         runtime: `Schema.Struct({ 1: Schema.Boolean })`,
         Type: `{ readonly 1: boolean }`
       }
-    ])
-    assert.deepStrictEqual(output.artifacts, [])
+    }, ["import * as Schema from \"effect/Schema\""])
   })
 
   it("emits references that are not reachable from a root", () => {
@@ -372,87 +420,84 @@ describe("SchemaRepresentation.toCodeDocument annotations", () => {
         Unused: NumberRepresentation
       }
     }
-    assert.deepStrictEqual(SchemaRepresentation.toCodeDocument(document).references, {
-      nonRecursives: [{
-        $ref: "Unused",
-        code: { runtime: "Schema.Number", Type: "number" }
-      }],
-      recursives: {}
+    assertSchemas(makeModule(document), {
+      Unused: { runtime: "Schema.Number", Type: "number" },
+      TestRoot0: { runtime: "Schema.String", Type: "string" }
     })
   })
 
   it("capitalizes a lowercase reference identifier", () => {
-    const output = SchemaRepresentation.toCodeDocument({
+    const output = makeModule({
       representations: [StringRepresentation],
       references: { abc: NumberRepresentation }
     })
-    assert.strictEqual(output.references.nonRecursives[0].$ref, "Abc")
+    assert.strictEqual(declarationNames(output)[0], "Abc")
   })
 
   it("preserves a lowercase identifier annotation", () => {
     const schema = Schema.Struct({ a: Schema.String }).annotate({ identifier: "hello" })
-    const output = SchemaRepresentation.toCodeDocument(
+    const output = makeModule(
       SchemaRepresentation.toMultiDocument(Schema.toRepresentation(schema))
     )
-    assert.deepStrictEqual(output.references.nonRecursives[0], {
-      $ref: "Hello",
-      code: {
+    assertSchemas(output, {
+      Hello: {
         runtime: `Schema.Struct({ "a": Schema.String }).annotate({ "identifier": "hello" })`,
         Type: `{ readonly "a": string }`
-      }
+      },
+      TestRoot0: { runtime: "Hello", Type: "Hello" }
     })
   })
 
   it("preserves an uppercase reference identifier", () => {
-    const output = SchemaRepresentation.toCodeDocument({
+    const output = makeModule({
       representations: [StringRepresentation],
       references: { Abc: NumberRepresentation }
     })
-    assert.strictEqual(output.references.nonRecursives[0].$ref, "Abc")
+    assert.strictEqual(declarationNames(output)[0], "Abc")
   })
 
   it("prefixes a numeric reference identifier", () => {
-    const output = SchemaRepresentation.toCodeDocument({
+    const output = makeModule({
       representations: [StringRepresentation],
       references: { "1a": NumberRepresentation }
     })
-    assert.strictEqual(output.references.nonRecursives[0].$ref, "_1a")
+    assert.strictEqual(declarationNames(output)[0], "_1a")
   })
 
   it("replaces punctuation in a reference identifier", () => {
-    const output = SchemaRepresentation.toCodeDocument({
+    const output = makeModule({
       representations: [StringRepresentation],
       references: { "a-b": NumberRepresentation }
     })
-    assert.strictEqual(output.references.nonRecursives[0].$ref, "A_b")
+    assert.strictEqual(declarationNames(output)[0], "A_b")
   })
 
   it("replaces non-ASCII characters in a reference identifier", () => {
-    const output = SchemaRepresentation.toCodeDocument({
+    const output = makeModule({
       representations: [StringRepresentation],
       references: { café: NumberRepresentation }
     })
-    assert.strictEqual(output.references.nonRecursives[0].$ref, "Caf_")
+    assert.strictEqual(declarationNames(output)[0], "Caf_")
   })
 
   it("replaces an emoji reference identifier", () => {
-    const output = SchemaRepresentation.toCodeDocument({
+    const output = makeModule({
       representations: [StringRepresentation],
       references: { "🤖": NumberRepresentation }
     })
-    assert.strictEqual(output.references.nonRecursives[0].$ref, "_")
+    assert.strictEqual(declarationNames(output)[0], "_")
   })
 
   it("uses an underscore for an empty reference identifier", () => {
-    const output = SchemaRepresentation.toCodeDocument({
+    const output = makeModule({
       representations: [StringRepresentation],
       references: { "": NumberRepresentation }
     })
-    assert.strictEqual(output.references.nonRecursives[0].$ref, "_")
+    assert.strictEqual(declarationNames(output)[0], "_")
   })
 
   it("makes colliding sanitized reference identifiers unique", () => {
-    const output = SchemaRepresentation.toCodeDocument({
+    const output = makeModule({
       representations: [StringRepresentation],
       references: {
         "a-b": NumberRepresentation,
@@ -460,8 +505,8 @@ describe("SchemaRepresentation.toCodeDocument annotations", () => {
       }
     })
     assert.deepStrictEqual(
-      output.references.nonRecursives.map((reference) => reference.$ref),
-      ["A_b", "A_b1"]
+      declarationNames(output),
+      ["A_b", "A_b1", "TestRoot0"]
     )
   })
 
@@ -475,7 +520,7 @@ describe("SchemaRepresentation.toCodeDocument annotations", () => {
         toCode: () => ({ runtime: "Schema.makeFilter(() => true)" })
       }
     }
-    const output = SchemaRepresentation.toCodeDocument({
+    const output = makeModule({
       representations: [StringRepresentation],
       references: {
         A: StringRepresentation,
@@ -514,14 +559,14 @@ describe("SchemaRepresentation.toCodeDocument annotations", () => {
     })
 
     assert.deepStrictEqual(
-      output.references.nonRecursives.map((entry) => entry.$ref),
-      ["A", "B", "C", "D", "E", "F", "G", "H", "I"]
+      declarationNames(output),
+      ["A", "B", "C", "D", "E", "F", "G", "H", "I", "TestRoot0"]
     )
   })
 
   it("orders a shared dependency referenced from multiple representation positions once", () => {
     const shared: SchemaRepresentation.Reference = { _tag: "Reference", $ref: "A" }
-    const output = SchemaRepresentation.toCodeDocument({
+    const output = makeModule({
       representations: [StringRepresentation],
       references: {
         A: StringRepresentation,
@@ -541,13 +586,13 @@ describe("SchemaRepresentation.toCodeDocument annotations", () => {
     })
 
     assert.deepStrictEqual(
-      output.references.nonRecursives.map((entry) => entry.$ref),
-      ["A", "B", "C"]
+      declarationNames(output),
+      ["A", "B", "C", "TestRoot0"]
     )
   })
 
   it("generates a StructWithRest without fixed properties", () => {
-    const output = SchemaRepresentation.toCodeDocument({
+    const output = makeModule({
       representations: [{
         _tag: "Objects",
         propertySignatures: [],
@@ -560,11 +605,14 @@ describe("SchemaRepresentation.toCodeDocument annotations", () => {
       references: {}
     })
 
-    assert.strictEqual(output.codes[0].Type, `{ readonly [x: string]: number, readonly [x: symbol]: boolean }`)
+    assert.strictEqual(
+      declaration(output, "TestRoot0")[0],
+      "export type TestRoot0 = { readonly [x: string]: number, readonly [x: symbol]: boolean }"
+    )
   })
 
   it("preserves explicit options on a single-literal Union", () => {
-    const output = SchemaRepresentation.toCodeDocument({
+    const output = makeModule({
       representations: [{
         _tag: "Union",
         types: [{ _tag: "Literal", literal: "a", checks: [] }],
@@ -574,14 +622,16 @@ describe("SchemaRepresentation.toCodeDocument annotations", () => {
       references: {}
     })
 
-    assert.deepStrictEqual(output.codes[0], {
-      runtime: `Schema.Union([Schema.Literal("a")], { mode: "anyOf" })`,
-      Type: `"a"`
+    assertSchemas(output, {
+      TestRoot0: {
+        runtime: `Schema.Union([Schema.Literal("a")], { mode: "anyOf" })`,
+        Type: `"a"`
+      }
     })
   })
 
   it("preserves optional Union option properties", () => {
-    const output = SchemaRepresentation.toCodeDocument({
+    const output = makeModule({
       representations: [
         {
           _tag: "Union",
@@ -599,43 +649,10 @@ describe("SchemaRepresentation.toCodeDocument annotations", () => {
       references: {}
     })
 
-    assert.deepStrictEqual(output.codes, [
-      { runtime: "Schema.Union([Schema.String], {})", Type: "string" },
-      { runtime: `Schema.Union([Schema.Number], { mode: undefined })`, Type: "number" }
-    ])
-  })
-
-  it("emits every member of a mutually recursive reference cycle", () => {
-    const output = SchemaRepresentation.toCodeDocument({
-      representations: [{ _tag: "Reference", $ref: "A" }],
-      references: {
-        A: { _tag: "Reference", $ref: "B" },
-        B: { _tag: "Reference", $ref: "A" }
-      }
-    })
-
-    assert.deepStrictEqual(output.references, {
-      nonRecursives: [],
-      recursives: {
-        A: { runtime: "Schema.suspend((): Schema.Codec<B> => B)", Type: "B" },
-        B: { runtime: "Schema.suspend((): Schema.Codec<A> => A)", Type: "A" }
-      }
-    })
-  })
-
-  it("emits a non-recursive definition that depends on a recursive definition", () => {
-    const output = SchemaRepresentation.toCodeDocument({
-      representations: [{ _tag: "Reference", $ref: "B" }],
-      references: {
-        A: { _tag: "Reference", $ref: "A" },
-        B: { _tag: "Reference", $ref: "A" }
-      }
-    })
-
-    assert.deepStrictEqual(output.references, {
-      nonRecursives: [{ $ref: "B", code: { runtime: "A", Type: "A" } }],
-      recursives: { A: { runtime: "Schema.suspend((): Schema.Codec<A> => A)", Type: "A" } }
-    })
+    assertSchemas(output, {
+      TestRoot0: { runtime: "Schema.Union([Schema.String], {})", Type: "string" },
+      TestRoot1: { runtime: `Schema.Union([Schema.Number], { mode: undefined })`, Type: "number" }
+    }, ["import * as Schema from \"effect/Schema\""])
   })
 
   it("reports missing references with their document path", () => {
@@ -644,7 +661,7 @@ describe("SchemaRepresentation.toCodeDocument annotations", () => {
       references: {}
     }
     expectError(
-      () => SchemaRepresentation.toCodeDocument(document),
+      () => makeModule(document),
       `Invalid reference Missing\n  at ["representations"][0]["$ref"]`
     )
   })
@@ -652,7 +669,7 @@ describe("SchemaRepresentation.toCodeDocument annotations", () => {
   it("reports a missing reference from a definition", () => {
     expectError(
       () =>
-        SchemaRepresentation.toCodeDocument({
+        makeModule({
           representations: [StringRepresentation],
           references: { Value: { _tag: "Reference", $ref: "Missing" } }
         }),

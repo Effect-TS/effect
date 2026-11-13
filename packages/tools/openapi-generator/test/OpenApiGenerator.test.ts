@@ -13,6 +13,7 @@ import { spawn } from "node:child_process"
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs"
 import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
+import { withGeneratedModule } from "../../../effect/test/utils/generatedModule.ts"
 
 // The first compile check starts the shared TypeScript compiler runs under CI load.
 const compilationTimeout = 60_000
@@ -83,7 +84,7 @@ const assertTypeOnlyIncludes = Effect.fnUntraced(function*(
 
 interface CompileOptions {
   readonly exactOptionalPropertyTypes?: boolean | undefined
-  readonly formats?: ReadonlyArray<"httpclient" | "httpclient-type-only"> | undefined
+  readonly formats?: ReadonlyArray<OpenApiGenerator.OpenApiGeneratorFormat> | undefined
   readonly usage?: string | undefined
 }
 
@@ -95,7 +96,7 @@ const compileCases: Array<{ readonly spec: OpenAPISpec; readonly options: Compil
 
 const generateClients = ({ options, spec }: (typeof compileCases)[number]) => {
   const generate = (
-    format: "httpclient" | "httpclient-type-only",
+    format: OpenApiGenerator.OpenApiGeneratorFormat,
     layer: typeof OpenApiGenerator.layerTransformerSchema
   ) =>
     Effect.gen(function*() {
@@ -107,9 +108,9 @@ const generateClients = ({ options, spec }: (typeof compileCases)[number]) => {
   return Effect.all(formats.map((format) =>
     generate(
       format,
-      format === "httpclient"
-        ? OpenApiGenerator.layerTransformerSchema
-        : OpenApiGenerator.layerTransformerTs
+      format === "httpclient-type-only"
+        ? OpenApiGenerator.layerTransformerTs
+        : OpenApiGenerator.layerTransformerSchema
     ).pipe(Effect.map((client) => `${client}\n${options.usage ?? ""}`))
   ))
 }
@@ -174,7 +175,7 @@ const typeCheckCases = Effect.fnUntraced(
               skipLibCheck: true,
               strict: true,
               target: "ES2022",
-              types: [],
+              types: ["node"],
               verbatimModuleSyntax: true
             },
             files: caseIndexes.flatMap((caseIndex) => files[caseIndex])
@@ -881,8 +882,9 @@ import type * as HttpClient from "effect/http/HttpClient"
 import * as HttpClientError from "effect/http/HttpClientError"
 import * as HttpClientRequest from "effect/http/HttpClientRequest"
 import * as HttpClientResponse from "effect/http/HttpClientResponse"
-// schemas
+
 export type GetUser200 = { readonly "id": string, readonly "name": string }
+
 export const GetUser200 = Schema.Struct({ "id": Schema.String, "name": Schema.String }).annotate({ "description": "User object" })
 
 export interface OperationConfig {
@@ -1023,7 +1025,8 @@ export const TestClientError = <Tag extends string, E>(
     cause,
     response,
     request: response.request,
-  }) as any`
+  }) as any
+`
       ))
 
     it.effect("resolves JSON Pointer-escaped local references", () =>
@@ -1405,7 +1408,7 @@ import type * as HttpClient from "effect/http/HttpClient"
 import * as HttpClientError from "effect/http/HttpClientError"
 import * as HttpClientRequest from "effect/http/HttpClientRequest"
 import * as HttpClientResponse from "effect/http/HttpClientResponse"
-// schemas
+
 export type GetUser200 = { readonly "id": string, readonly "name": string }
 
 export interface OperationConfig {
@@ -1573,7 +1576,8 @@ export const TestClientError = <Tag extends string, E>(
     cause,
     response,
     request: response.request,
-  }) as any`
+  }) as any
+`
       ))
 
     it.effect("preserves response variants and routes binary and bodiless statuses", () =>
@@ -1697,7 +1701,7 @@ export const TestClientError = <Tag extends string, E>(
           ]
         },
         [
-          `import { HttpApi, HttpApiEndpoint, HttpApiGroup, HttpApiMiddleware, HttpApiSchema, HttpApiSecurity, OpenApi } from "effect/http-api"`,
+          `import { HttpApi, HttpApiEndpoint, HttpApiGroup, HttpApiSchema, OpenApi } from "effect/http-api"`,
           `export type GetUserPathParams = { readonly "id": string }`,
           `export const GetUserPathParams = Schema.Struct({ "id": Schema.String })`,
           `class UsersGroup extends HttpApiGroup.make("Users")`,
@@ -1966,13 +1970,16 @@ export const TestClientError = <Tag extends string, E>(
         [
           `import { Multipart } from "effect/http"`,
           `export type __HttpApiMultipartSingleFile = Multipart.PersistedFile
+
 export const __HttpApiMultipartSingleFile = Multipart.SingleFileSchema`,
           `export type __HttpApiMultipartFiles = ReadonlyArray<Multipart.PersistedFile>
+
 export const __HttpApiMultipartFiles = Multipart.FilesSchema`,
           `export type CreatePayloadRequestFormData = { readonly "file": __HttpApiMultipartSingleFile, readonly "files": __HttpApiMultipartFiles }`,
           `export const CreatePayloadRequestFormData = Schema.Struct({ "file": __HttpApiMultipartSingleFile, "files": __HttpApiMultipartFiles })`,
           `export type CreatePayloadRequestJson = { readonly "a": string }`,
           `export type CreatePayloadRequestText = string
+
 export const CreatePayloadRequestText = Schema.String`,
           `payload: [HttpApiSchema.NoContent, CreatePayloadRequestJson, CreatePayloadRequestFormData.pipe(HttpApiSchema.asMultipart()), CreatePayloadRequestFormUrlEncoded.pipe(HttpApiSchema.asFormUrlEncoded()), CreatePayloadRequestText.pipe(HttpApiSchema.asText()), CreatePayloadRequestBinary.pipe(HttpApiSchema.asUint8Array())]`,
           `success: [CreatePayload200, CreatePayload200Text.pipe(HttpApiSchema.asText()), CreatePayload200Binary.pipe(HttpApiSchema.asUint8Array()), HttpApiSchema.Empty(201)]`
@@ -2542,8 +2549,10 @@ export const CreatePayloadRequestText = Schema.String`,
         [
           `import { Multipart } from "effect/http"`,
           `export type __HttpApiMultipartSingleFile = Multipart.PersistedFile
+
 export const __HttpApiMultipartSingleFile = Multipart.SingleFileSchema`,
           `export type __HttpApiMultipartFiles = ReadonlyArray<Multipart.PersistedFile>
+
 export const __HttpApiMultipartFiles = Multipart.FilesSchema`,
           `export type UploadRequestFormData = { readonly "file": __HttpApiMultipartSingleFile, readonly "files": __HttpApiMultipartFiles }`,
           `export const UploadRequestFormData = Schema.Struct({ "file": __HttpApiMultipartSingleFile, "files": __HttpApiMultipartFiles })`,
@@ -3457,6 +3466,114 @@ export const __HttpApiMultipartFiles = Multipart.FilesSchema`,
   })
 
   describe("regression", () => {
+    const collisionNames = [
+      "Data",
+      "Effect",
+      "Schema",
+      "SchemaError",
+      "HttpClient",
+      "HttpClientError",
+      "HttpClientRequest",
+      "HttpClientResponse",
+      "OperationConfig",
+      "TestClient",
+      "Config",
+      "HttpApi",
+      "HttpApiEndpoint",
+      "HttpApiGroup",
+      "DefaultGroup"
+    ]
+    const collisionSpec: OpenAPISpec = {
+      openapi: "3.1.0",
+      info: { title: "Shared module names", version: "1.0.0" },
+      components: {
+        schemas: {
+          ...Object.fromEntries(collisionNames.map((name) => [name, { type: "string" as const }])),
+          getUser200: {
+            type: "object",
+            properties: Object.fromEntries(
+              collisionNames.map((name) => [name, { $ref: `#/components/schemas/${name}` }])
+            ),
+            required: collisionNames,
+            additionalProperties: false
+          }
+        },
+        securitySchemes: {}
+      },
+      security: [],
+      tags: [],
+      paths: {
+        "/user": {
+          get: {
+            operationId: "getUser",
+            parameters: [],
+            security: [],
+            tags: ["default"],
+            responses: {
+              "200": {
+                description: "User",
+                content: { "application/json": { schema: { $ref: "#/components/schemas/getUser200" } } }
+              }
+            }
+          }
+        }
+      }
+    }
+
+    itGeneratedClientsCompile("resolves schema names against imports and generated declarations", collisionSpec, {
+      formats: ["httpclient", "httpclient-type-only", "httpapi"]
+    })
+
+    itGeneratedClientsCompile("resolves schema imports in streaming clients", {
+      ...collisionSpec,
+      paths: {
+        "/events": {
+          get: {
+            operationId: "getEvents",
+            parameters: [],
+            security: [],
+            tags: ["default"],
+            responses: {
+              "200": {
+                description: "Events",
+                content: { "text/event-stream": { schema: { $ref: "#/components/schemas/Schema" } } }
+              }
+            }
+          }
+        }
+      }
+    }, { formats: ["httpclient"] })
+
+    it.effect("uses the resolved schemas in client responses and HttpApi endpoints", () =>
+      Effect.gen(function*() {
+        const generator = yield* OpenApiGenerator.OpenApiGenerator
+        const value = Object.fromEntries(collisionNames.map((name) => [name, name]))
+        const clientSource = yield* generator.generate(collisionSpec, { name: "TestClient", format: "httpclient" })
+        yield* Effect.promise(() =>
+          withGeneratedModule<{
+            make: (client: HttpClient.HttpClient) => { getUser: () => Effect.Effect<unknown, unknown> }
+          }>(clientSource, async ({ make }) => {
+            const client = make(
+              HttpClient.make((request) => Effect.succeed(HttpClientResponse.fromWeb(request, Response.json(value))))
+                .pipe(HttpClient.mapRequest(HttpClientRequest.prependUrl("http://api.test")))
+            )
+            assert.deepStrictEqual(await Effect.runPromise(client.getUser()), value)
+          })
+        )
+        const apiSource = yield* generator.generate(collisionSpec, { name: "Config", format: "httpapi" })
+        yield* Effect.promise(() =>
+          withGeneratedModule<{
+            Config: { groups: { default: { endpoints: { getUser: { success: ReadonlySet<Schema.Codec<unknown>> } } } } }
+          }>(apiSource, ({ Config }) => {
+            const responses = Config.groups.default.endpoints.getUser.success
+            assert.strictEqual(responses.size, 1)
+            const success = [...responses][0]
+            assert.deepStrictEqual(Schema.decodeUnknownSync(success)(value), value)
+            assert.isFalse(Schema.is(success)({ ...value, Data: 1 }))
+          })
+        )
+      }).pipe(Effect.provide(OpenApiGenerator.layerTransformerSchema)))
+
     for (const format of ["httpclient", "httpclient-type-only"] as const) {
       for (const exactOptionalPropertyTypes of [true, false]) {
         itGeneratedClientsCompile(
@@ -3899,8 +4016,7 @@ export const withoutLocale = client.getGreeting({ params: {} })
       security: [],
       tags: []
     }, {
-      exactOptionalPropertyTypes: false,
-      formats: ["httpclient"]
+      exactOptionalPropertyTypes: false
     })
 
     itGeneratedClientsCompile(
@@ -3997,7 +4113,7 @@ export const withString: UploadRequestFormData = { file, child: { file: "upload.
         [
           `export type Upload = string`,
           `export type CreateJsonRequestJson = Upload`,
-          `export type UploadRequestFormData = { readonly "file": __ClientMultipartFile, readonly "files": ReadonlyArray<__ClientMultipartFile> }`
+          `export type UploadRequestFormData = { readonly "file": __ClientMultipartFile, readonly "files": globalThis.ReadonlyArray<__ClientMultipartFile> }`
         ]
       ))
 

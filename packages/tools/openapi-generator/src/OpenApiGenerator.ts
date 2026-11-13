@@ -10,6 +10,7 @@
  *
  * @since 4.0.0
  */
+import * as Codegen from "effect/Codegen"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import type { OpenAPISecurityScheme, OpenAPISpec, OpenAPISpecOperation } from "effect/http-api/OpenApi"
@@ -19,11 +20,10 @@ import type * as JsonSchema from "effect/JsonSchema"
 import * as Layer from "effect/Layer"
 import * as Predicate from "effect/Predicate"
 import * as Rec from "effect/Record"
-import * as String from "effect/String"
 import SwaggerToOpenApi from "swagger2openapi"
 import * as HttpApiTransformer from "./HttpApiTransformer.ts"
+import * as HttpClientGenerator from "./internal/httpClient.ts"
 import * as JsonSchemaGenerator from "./JsonSchemaGenerator.ts"
-import * as OpenApiTransformer from "./OpenApiTransformer.ts"
 import * as ParsedOperation from "./ParsedOperation.ts"
 import * as Utils from "./Utils.ts"
 
@@ -197,7 +197,6 @@ export const make = Effect.gen(function*() {
   const generate = Effect.fn(
     function*(spec: OpenAPISpec, options: OpenApiGenerateOptions) {
       const generator = JsonSchemaGenerator.make()
-      const openApiTransformer = yield* OpenApiTransformer.OpenApiTransformer
       const emitWarning = makeWarningEmitter(options)
 
       if (isSwaggerSpec(spec)) {
@@ -227,35 +226,44 @@ export const make = Effect.gen(function*() {
         multipartSchemaRefs: multipart.refs,
         includeSchemas: options.includeSchemas
       }
-      const generation = options.format === "httpapi"
-        ? generator.generateHttpApi(source, multipart.definitions, schemaOptions)
-        : generator.generate(source, multipart.definitions, options.format === "httpclient-type-only", schemaOptions)
-
-      if (options.format === "httpapi") {
-        const needsMultipartImport = generation.includes("Multipart.")
-        return String.stripMargin(
-          `|${HttpApiTransformer.imports(importName, { multipart: needsMultipartImport })}
-           |${generation}
-           |${HttpApiTransformer.toImplementation(importName, options.name, parsed)}`
+      const module = new Codegen.Module(
+        options.format === "httpapi" ? ["ReadonlyArray"] : [
+          "Array",
+          "Object",
+          "String",
+          "JSON",
+          "Uint8Array",
+          "ReadonlyArray",
+          "Record",
+          "Parameters",
+          "encodeURIComponent"
+        ]
+      )
+      const registration = options.format === "httpapi"
+        ? HttpApiTransformer.registerModule(module, importName, options.name, parsed)
+        : HttpClientGenerator.registerModule(
+          module,
+          importName,
+          options.name,
+          parsed,
+          options.format === "httpclient-type-only"
         )
-      }
-
-      return String.stripMargin(
-        `|${openApiTransformer.imports(importName, parsed)}
-         |${generation}
-         |${openApiTransformer.toImplementation(importName, options.name, parsed)}
-         |
-         |${openApiTransformer.toTypes(importName, options.name, parsed)}`
+      const schemas = JsonSchemaGenerator.compile(
+        module,
+        generator.schemas,
+        source,
+        multipart.definitions,
+        options.format === "httpclient-type-only",
+        schemaOptions
       )
-    },
-    (effect, _, options) =>
-      Effect.provideServiceEffect(
-        effect,
-        OpenApiTransformer.OpenApiTransformer,
-        options.format === "httpclient-type-only"
-          ? Effect.sync(OpenApiTransformer.makeTransformerTs)
-          : Effect.sync(OpenApiTransformer.makeTransformerSchema)
-      )
+      const bound = ParsedOperation.mapSchemas(parsed, (name) => {
+        const binding = schemas.get(name)
+        if (binding === undefined) throw new Error(`Missing schema ${name}`)
+        return binding
+      })
+      module.add(Codegen.deferred((render) => render(registration(ParsedOperation.mapSchemas(bound, render)))))
+      return module.print()
+    }
   )
 
   return { generate } as const
