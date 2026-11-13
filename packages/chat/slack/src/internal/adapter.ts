@@ -143,6 +143,8 @@ interface StreamState {
   readonly settled: boolean
   /** Whether the cleanup edit has run or been skipped. */
   readonly cleaned: boolean
+  /** Whether the session status at the end has been set, for a stream stopped by the user. */
+  readonly ended: boolean
 }
 
 /**
@@ -568,6 +570,28 @@ export const make = (options: {
     yield* Effect.annotateCurrentSpan("slack.stream.cleanup", Result.isSuccess(edited) ? "edited" : "failed")
   })
 
+  /**
+   * Moves the agent session of a stopped stream off `processing`, once. It is
+   * marked only after the call, so an interrupted one runs again on the stop
+   * the layer's finaliser sends.
+   */
+  const endSession = (
+    channel: string,
+    threadTs: string | undefined,
+    messageId: string,
+    status: SessionStatus
+  ): Effect.Effect<void> =>
+    Effect.suspend(() => {
+      if (threadTs === undefined || streams.get(messageId)?.ended === true) return Effect.void
+      return Effect.andThen(
+        sessionStatus(channel, threadTs, status),
+        Effect.sync(() => {
+          const state = streams.get(messageId)
+          if (state !== undefined) streams.set(messageId, { ...state, ended: true })
+        })
+      )
+    })
+
   const cleanup = (op: string, channel: string, messageId: string, notify: Escape.Notify): Effect.Effect<void> =>
     Effect.suspend(() => {
       const state = streams.get(messageId)
@@ -624,7 +648,8 @@ export const make = (options: {
         sent,
         stopped: false,
         settled: true,
-        cleaned: false
+        cleaned: false,
+        ended: false
       })
       return { id: ts, thread, timestamp: Normalize.timestamp(ts) }
     }),
@@ -633,7 +658,15 @@ export const make = (options: {
       const parts = yield* resolve(op, thread)
       const postOptions = yield* CurrentPostOptions
       const state = streams.get(messageId) ??
-        { escape: Escape.initialState, markdown: "", sent: "", stopped: false, settled: true, cleaned: false }
+        {
+          escape: Escape.initialState,
+          markdown: "",
+          sent: "",
+          stopped: false,
+          settled: true,
+          cleaned: false,
+          ended: false
+        }
       const flush = appendOptions?.flush === true
       // A trailing high surrogate waits for its other half.
       const input = !flush && /[\ud800-\udbff]$/.test(markdown) ? markdown.slice(0, -1) : markdown
@@ -661,7 +694,8 @@ export const make = (options: {
             sent: state.sent + sent,
             stopped: false,
             settled: true,
-            cleaned: false
+            cleaned: false,
+            ended: false
           })
           return { state: "open" as const, held }
         }),
@@ -682,9 +716,7 @@ export const make = (options: {
             Effect.sync(() => streams.set(messageId, { ...state, stopped: true })).pipe(
               Effect.andThen(cleanup(op, parts.channel, messageId, postOptions.notify ?? {})),
               Effect.andThen(
-                parts.threadTs === undefined
-                  ? Effect.void
-                  : sessionStatus(parts.channel, parts.threadTs, postOptions.sessionStatusAtEnd ?? "active")
+                endSession(parts.channel, parts.threadTs, messageId, postOptions.sessionStatusAtEnd ?? "active")
               ),
               Effect.as({ state: "stopped" as const, held: 0 })
             )
@@ -726,13 +758,15 @@ export const make = (options: {
       const result = Option.isSome(answer) && isObject(answer.value) ? answer.value.result_status : undefined
       const stopped = state?.stopped === true || result === "stopped_by_user" ||
         (context !== undefined && context.result_status === "stopped_by_user")
+      // Remembered, so a stop sent again after a cut-off one, which Slack answers as not streaming, still ends the session.
+      const current = streams.get(messageId)
+      if (stopped && current !== undefined) streams.set(messageId, { ...current, stopped: true })
       yield* cleanup(op, parts.channel, messageId, postOptions.notify ?? {})
-      // Kept until now, so a stop sent again after a cut-off one still cleans up.
-      streams.delete(messageId)
-      // An append that found the stream stopped has set the session status already.
-      if (stopped && state?.stopped !== true && stopOptions.end === "done" && parts.threadTs !== undefined) {
-        yield* sessionStatus(parts.channel, parts.threadTs, postOptions.sessionStatusAtEnd ?? "active")
+      if (stopped && stopOptions.end === "done") {
+        yield* endSession(parts.channel, parts.threadTs, messageId, postOptions.sessionStatusAtEnd ?? "active")
       }
+      // Kept until now, so a stop sent again after a cut-off one still cleans up and ends the session.
+      streams.delete(messageId)
       return { stopped }
     })
   }
