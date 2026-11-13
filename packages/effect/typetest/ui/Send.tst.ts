@@ -66,6 +66,10 @@ declare const condition: boolean
 const EditorOrPlain = condition ? Editor : Plain
 const EditorOrNote = condition ? Editor : Note
 
+// Erased: its receives are `any`, which grants nothing.
+declare const ErasedPlain: Component.Component<"ErasedPlain", {}, null, EditorMessage, never, never, never, {}, any>
+declare const anyFeature: Feature.Any
+
 declare const untrusted: unknown
 declare const arbitraryObject: object
 
@@ -179,6 +183,9 @@ describe("h.child with a ref", () => {
       expect(h.child<{}, never, never>).type.not.toBeCallableWith(Plain, { ref: Rows })
       expect(h.child<{}, never, never>).type.not.toBeCallableWith(Editor, { ref: Rows })
       expect(h.child<{}, never, never>(Plain, { key: "a" })).type.not.toRaiseError()
+      // Rcv given explicitly is checked against the component.
+      expect(h.child<{}, never, never, Received>).type.not.toBeCallableWith(Plain, { ref: Draft })
+      expect(h.child<{}, never, never, Received>(Editor, { ref: Draft })).type.not.toRaiseError()
       return h.el("p")
     })
   })
@@ -188,6 +195,27 @@ describe("h.child with a ref", () => {
       expect(h.child(NeedsStore, { ref: Rows })).type.toBe<View.Child<typeof ParentMessage.Type, Store>>()
       expect(h.child(Editor.pipe(Component.provide(Layer.succeed(Store, { draft: "" }))), { ref: Draft })).type
         .not.toRaiseError()
+      // Provided inline, data-first.
+      expect(h.child(Component.provide(Editor, Layer.succeed(Store, { draft: "" })), { ref: Draft })).type.toBe<
+        View.Child<typeof ParentMessage.Type, never>
+      >()
+      expect(h.child(Component.provide(NeedsStore, Layer.empty), { ref: Rows })).type.toBe<
+        View.Child<typeof ParentMessage.Type, Store>
+      >()
+      expect(h.child).type.not.toBeCallableWith(Component.provide(Note, Layer.empty), { ref: Draft })
+      expect(h.child).type.not.toBeCallableWith(Component.provide(Plain, Layer.empty), { ref: Rows })
+      return h.el("p")
+    })
+  })
+
+  it("rejects a ref for an erased component or feature", () => {
+    const erased = Story.start(Plain, {}).current.component
+    ParentDef.view((_, h) => {
+      expect(h.child).type.not.toBeCallableWith(erased, { ref: Rows })
+      expect(h.child).type.not.toBeCallableWith(ErasedPlain, { ref: Rows })
+      expect(h.child).type.not.toBeCallableWith(anyFeature, { ref: Rows, fallback: () => h.el("p") })
+      expect(h.child(erased, { key: "a" })).type.not.toRaiseError()
+      expect(h.child(ErasedPlain, { key: "a" })).type.not.toRaiseError()
       return h.el("p")
     })
   })
@@ -226,6 +254,11 @@ describe("Feature receives", () => {
     expect(Todos.toLayer(Component.provide(NeedsStore, Layer.succeed(Store, { draft: "" })))).type.toBe<
       Layer.Layer<Todos, never, never>
     >()
+  })
+
+  it("toLayer rejects an erased component", () => {
+    expect(Todos.toLayer).type.not.toBeCallableWith(Story.start(Plain, {}).current.component)
+    expect(Todos.toLayer).type.not.toBeCallableWith(ErasedPlain)
   })
 })
 

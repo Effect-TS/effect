@@ -128,7 +128,8 @@ export interface AwaitedLoader {
  * @since 4.1.5
  */
 export interface Story<Props, Model, Msg, Events, Loaded = { readonly [name: string]: unknown }> {
-  readonly component: Component.Component<any, Props, Model, Msg, Events, any, any, any, any>
+  /** The component, erased to receive nothing: a story doesn't know what it receives. */
+  readonly component: Component.Component<any, Props, Model, Msg, Events, any, any, any, never>
   readonly props: Props
   readonly model: Model
   /**
@@ -1562,7 +1563,7 @@ export const start = <C extends AnyComponent>(component: C, props: Component.Pro
   const first = component.init(props)
   const empty = record<any, any, any, any>({
     // The record is stored with its types erased; `Steps<C>` restores them.
-    component: component as Component.Component<any, any, any, any, any, any, any, any, any>,
+    component: component as Component.Component<any, any, any, any, any, any, any, any, never>,
     props,
     model: first.model,
     slots: undefined,

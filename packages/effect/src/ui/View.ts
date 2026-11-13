@@ -792,10 +792,26 @@ export interface Helper<Msg, Props> {
     command: Command.Definition<Args, any, boolean, any, G>,
     ...group: Command.GroupArg<Args, G>
   ): boolean
-  /** A component by value. Its requirements surface in the parent's. */
-  child<Props, Events, RC, Rcv = never, RF = never>(
+  /**
+   * A component by value. Its requirements surface in the parent's. `Rcv` has
+   * no default: one would stop a nested call, such as an inline
+   * `Component.provide(C, layer)`, from being inferred.
+   */
+  child<Props, Events, RC, Rcv, RF = never>(
     component: Component.Mountable<Props, Events, RC, Rcv>,
-    options: Child.Options<Props, Events, Msg, NoInfer<Rcv>> & {
+    // `any` is an erased component, which receives nothing as far as anyone knows.
+    options: Child.Options<Props, Events, Msg, NoInfer<0 extends 1 & Rcv ? never : Rcv>> & {
+      /** Shown if the child fails, until its key changes. Without it, the slot is blank. */
+      readonly fallback?: ((result: AsyncResult.Failure<never, unknown>) => Content<Msg, RF>) | undefined
+    }
+  ): Child<Msg, RC | NoInfer<RF>>
+  /**
+   * A component by value, with `Props`, `Events` and `RC` given explicitly. It
+   * receives nothing as far as the types know, so it takes a key, not a ref.
+   */
+  child<Props, Events, RC, RF = never>(
+    component: Component.Mountable<Props, Events, RC>,
+    options: Child.Options<Props, Events, Msg> & {
       /** Shown if the child fails, until its key changes. Without it, the slot is blank. */
       readonly fallback?: ((result: AsyncResult.Failure<never, unknown>) => Content<Msg, RF>) | undefined
     }
@@ -804,7 +820,8 @@ export interface Helper<Msg, Props> {
   /** A feature by service. The parent requires the service only. */
   child<Self, Props, Events, Rcv = never, RF = never>(
     service: Feature.Service<Self, Props, Events, Rcv>,
-    options: Child.Options<Props, Events, Msg, NoInfer<Rcv>> & {
+    // `any` is an erased service, such as `Feature.Any`, which receives nothing as far as anyone knows.
+    options: Child.Options<Props, Events, Msg, NoInfer<0 extends 1 & Rcv ? never : Rcv>> & {
       /** Required: the service may be building (`Initial`) or failed (`Failure`). */
       readonly fallback: (
         result: AsyncResult.Initial<never, unknown> | AsyncResult.Failure<never, unknown>

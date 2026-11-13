@@ -118,13 +118,15 @@ export interface Service<in out Self, in out Props, in out Events, in out Receiv
 
 /**
  * Passes when an implementation receives every message its feature does, and
- * otherwise names the messages it misses in the compiler error.
+ * otherwise names the messages it misses in the compiler error. An erased
+ * implementation, whose receives are `any`, receives nothing.
  *
  * @stability experimental
  * @category utility types
  * @since 4.1.5
  */
-export type ReceivesAll<Receives, Rcv> = [Receives] extends [Rcv] ? unknown
+export type ReceivesAll<Receives, Rcv> = 0 extends 1 & Rcv ? ReceivesAll<Receives, never>
+  : [Receives] extends [Rcv] ? unknown
   : { readonly "This component doesn't receive every message the feature does. Missing": Exclude<Receives, Rcv> }
 
 /**
