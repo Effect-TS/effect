@@ -174,6 +174,11 @@ interface Bound {
   readonly options: Readonly<Record<string, View.EventOptions>>
 }
 
+const isEmpty = (record: object): boolean => {
+  for (const _ in record) return false
+  return true
+}
+
 const modifiers = (event: Event) => {
   const e = event as KeyboardEvent
   return { shift: e.shiftKey === true, ctrl: e.ctrlKey === true, alt: e.altKey === true, meta: e.metaKey === true }
@@ -287,6 +292,7 @@ export const makeHost = (
     // oxlint-disable-next-line no-console
     options?.warn ?? ((message) => console.warn(message))
   )
+  // Weak, so a node the page keeps after the app is gone doesn't keep the app's dispatch alive.
   const bound = new WeakMap<globalThis.Node, Bound>()
   // The last value the renderer set for each controlled property: what the element must show.
   const wanted = new WeakMap<globalThis.Node, Map<string, unknown>>()
@@ -846,6 +852,11 @@ export const makeHost = (
     parentOf: (node) => node.parentNode ?? undefined,
     nextOf: (node) => node.nextSibling ?? undefined,
     setEvents(node, handlers, dispatch, options) {
+      // An element with no events needs no entry, except a form: an entry marks it as the app's.
+      if (isEmpty(handlers) && isEmpty(options) && node.nodeName !== "FORM") {
+        bound.delete(node)
+        return
+      }
       bound.set(node, { handlers, dispatch, options })
       for (const name in handlers) listen(name)
       // A drag source needs its `dragstart` without a handler, and a drop target all of its events.

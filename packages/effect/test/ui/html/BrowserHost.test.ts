@@ -6,6 +6,7 @@ import { Command, Component, MessageLog, type Renderer, Route, Router, View } fr
 import { BrowserHost, Html } from "effect/ui/html"
 import { HtmlQuery } from "effect/ui/html/testing"
 import { describe, vi } from "vitest"
+import { collectGarbage } from "../../utils/gc.ts"
 import { Confirm, ConfirmMessage, Nested } from "./fixtures/confirm.ts"
 import { Menu, MenuMessage, ModalMenu, popoverStub, Rows } from "./fixtures/popover.ts"
 import { maxTitle, TodoApp } from "./fixtures/todos.ts"
@@ -449,6 +450,35 @@ describe("BrowserHost", { concurrent: false }, () => {
         HtmlQuery.click(HtmlQuery.getByRole(app, "button", { name: "Plain" }))
         yield* tick
         expect(root.model()).toEqual(["click inner", "click outer"])
+      }).pipe(Effect.scoped))
+
+    it.effect("a handler a render takes away no longer gets the event: the next element out does", () =>
+      Effect.gen(function*() {
+        const Toggle = Component.define({
+          name: "Toggle",
+          model: Schema.Array(Schema.String),
+          message: Message,
+          elements: Html
+        }).make({
+          init: (): ReadonlyArray<string> => [],
+          update: (log, message) => message._tag === "Clicked" ? [...log, message.where] : log,
+          view: (log, h) =>
+            h.section.onClick(Message.make({ _tag: "Clicked", where: "outer" })).children(
+              // The inner handler goes after the first click lands on it.
+              log.length === 0
+                ? h.button.onClick(Message.make({ _tag: "Clicked", where: "inner" })).children("Go")
+                : h.button("Go")
+            )
+        })
+        const app = yield* container
+        const root = yield* BrowserHost.mountEffect(Toggle, {}, app)
+        const button = HtmlQuery.getByRole(app, "button", { name: "Go" })
+        HtmlQuery.click(button)
+        yield* tick
+        HtmlQuery.click(HtmlQuery.getByRole(app, "button", { name: "Go" }))
+        yield* tick
+        assert.strictEqual(HtmlQuery.getByRole(app, "button", { name: "Go" }), button)
+        expect(root.model()).toEqual(["inner", "outer"])
       }).pipe(Effect.scoped))
 
     it.effect("focus doesn't bubble", () =>
@@ -1381,6 +1411,21 @@ describe("BrowserHost", { concurrent: false }, () => {
         HtmlQuery.input(field, "late")
         yield* tick
         expect(root.model()?.draft ?? "").toBe("")
+      }).pipe(Effect.scoped))
+
+    it.effect("a node the page keeps after the Scope closes doesn't keep the app alive", () =>
+      Effect.gen(function*() {
+        const app = yield* container
+        const scope = yield* Scope.make()
+        const model = yield* BrowserHost.mountEffect(TodoApp, {}, app).pipe(
+          Effect.map((root) => new WeakRef(root.model()!)),
+          Scope.provide(scope)
+        )
+        const field = HtmlQuery.getByRole(app, "textbox", { name: "New todo" })
+        yield* Scope.close(scope, Exit.void)
+        yield* collectGarbage
+        expect(model.deref()).toBeUndefined()
+        expect(field.isConnected).toBe(false)
       }).pipe(Effect.scoped))
 
     it.effect("mount is a Layer: the tree is live while it is built, and closing it removes the nodes", () =>

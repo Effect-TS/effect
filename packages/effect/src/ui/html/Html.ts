@@ -572,7 +572,7 @@ export class VoidElement<
    * @since 4.1.5
    */
   class(...tokens: ReadonlyArray<ClassToken>): this {
-    const value = classNames(...tokens)
+    const value = joinClassTokens(tokens)
     return this.attr("class", value === "" ? undefined : value)
   }
   /**
@@ -1007,10 +1007,13 @@ export type ClassToken = string | false | null | undefined
  * @category attributes
  * @since 4.1.5
  */
-export const classNames = (...tokens: ReadonlyArray<ClassToken>): string => {
+export const classNames = (...tokens: ReadonlyArray<ClassToken>): string => joinClassTokens(tokens)
+
+const joinClassTokens = (tokens: ReadonlyArray<ClassToken>): string => {
   let out = ""
-  for (const token of tokens) {
-    if (token) out = out === "" ? token : `${out} ${token}`
+  for (let i = 0; i < tokens.length; i++) {
+    const token = tokens[i]
+    if (token) out = out === "" ? token : out + " " + token
   }
   return out
 }

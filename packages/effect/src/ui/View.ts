@@ -433,27 +433,39 @@ export const text = (text: string): Text => ({ _tag: "Text", text })
  */
 export const children = <Msg>(inputs: ReadonlyArray<Input<Msg, any>>): Array<Node<Msg, any>> => {
   const out: Array<Node<Msg, any>> = []
-  const push = (input: Content<Msg, any> | string | false | null | undefined) => {
-    if (input === false || input === null || input === undefined) return
-    const node: Node<Msg, any> = typeof input === "string" ? text(input) : toNode(input)
-    if (node._tag === "Text") {
-      if (node.text === "") return
-      const last = out[out.length - 1]
-      if (last !== undefined && last._tag === "Text") {
-        out[out.length - 1] = text(last.text + node.text)
-        return
-      }
-    }
-    out.push(node)
-  }
-  for (const input of inputs) {
+  for (let i = 0; i < inputs.length; i++) {
+    const input = inputs[i]
     if (Array.isArray(input)) {
-      for (const item of input) push(item)
+      for (let j = 0; j < input.length; j++) pushChild(out, input[j])
     } else {
-      push(input as Content<Msg, any> | string | false | null | undefined)
+      pushChild(out, input as Content<Msg, any> | string | false | null | undefined)
     }
   }
   return out
+}
+
+const pushChild = <Msg>(
+  out: Array<Node<Msg, any>>,
+  input: Content<Msg, any> | string | false | null | undefined
+): void => {
+  if (input === false || input === null || input === undefined) return
+  if (typeof input === "string") {
+    if (input === "") return
+    const last = out.length === 0 ? undefined : out[out.length - 1]
+    if (last !== undefined && last._tag === "Text") out[out.length - 1] = text(last.text + input)
+    else out.push(text(input))
+    return
+  }
+  const node: Node<Msg, any> = toNode(input)
+  if (node._tag === "Text") {
+    if (node.text === "") return
+    const last = out.length === 0 ? undefined : out[out.length - 1]
+    if (last !== undefined && last._tag === "Text") {
+      out[out.length - 1] = text(last.text + node.text)
+      return
+    }
+  }
+  out.push(node)
 }
 
 /**
@@ -540,7 +552,11 @@ export const withFields = <B extends ElementBuilder<any, any, any, any>>(
       "elementKey" | "attrs" | "props" | "handlers" | "eventOptions" | "refKey" | "mount" | "owned"
     >
   >
-): B => Object.assign(Object.create(Object.getPrototypeOf(builder)), builder, fields)
+): B => Object.assign(copyBuilder(builder), fields)
+
+/** A copy of a builder, with its class and every field it holds. */
+const copyBuilder = <B extends ElementBuilder<any, any, any, any>>(builder: B): B =>
+  Object.assign(Object.create(Object.getPrototypeOf(builder)), builder)
 
 /**
  * A part of a headless component: it takes the builder of an element the
@@ -653,6 +669,45 @@ export const makePart = (
     owned: [...builder.owned, layer]
   })
 }
+
+/**
+ * `record` with `name` set to `value` as its last entry, or without `name`
+ * when `value` is `undefined`.
+ */
+const withEntry = <A>(
+  record: Readonly<Record<string, A>>,
+  name: string,
+  value: A | undefined
+): Readonly<Record<string, A>> => {
+  if (!Object.hasOwn(record, name)) return value === undefined ? record : assoc(record, name, value)
+  const out: Record<string, A> = {}
+  for (const key in record) {
+    if (key !== name) put(out, key, record[key]!)
+  }
+  if (value !== undefined) put(out, name, value)
+  return out
+}
+
+/**
+ * `{ ...record, [name]: value }`, written as a copy and a store: an object
+ * literal with a computed key is several times slower.
+ */
+const assoc = <A>(record: Readonly<Record<string, A>>, name: string, value: A): Readonly<Record<string, A>> => {
+  const out: Record<string, A> = { ...record }
+  put(out, name, value)
+  return out
+}
+
+/** Sets an own entry, `__proto__` included, which a plain store would take as the prototype. */
+const put = <A>(record: Record<string, A>, name: string, value: A): void => {
+  if (name === "__proto__") {
+    Object.defineProperty(record, name, { value, writable: true, enumerable: true, configurable: true })
+  } else {
+    record[name] = value
+  }
+}
+
+type Mutable<A> = { -readonly [K in keyof A]: A[K] }
 
 const blankFields = {
   elementKey: undefined,
@@ -805,10 +860,12 @@ export class ElementBuilder<
     handler: Handler<Msg, Handlers[K]>,
     options?: EventOptions | undefined
   ): this {
-    const handlers = { ...this.handlers, [event]: handler }
-    if (options === undefined && !Object.hasOwn(this.eventOptions, event)) return withFields(this, { handlers })
-    const { [event]: _, ...rest } = this.eventOptions
-    return withFields(this, { handlers, eventOptions: options === undefined ? rest : { ...rest, [event]: options } })
+    const out = copyBuilder(this) as Mutable<this>
+    out.handlers = assoc(this.handlers, event, handler)
+    if (options !== undefined || Object.hasOwn(this.eventOptions, event)) {
+      out.eventOptions = withEntry(this.eventOptions, event, options)
+    }
+    return out
   }
   /**
    * Keeps this element's node when its siblings move. Unique among siblings.
@@ -816,7 +873,9 @@ export class ElementBuilder<
    * @since 4.1.5
    */
   key(key: string): this {
-    return withFields(this, { elementKey: key })
+    const out = copyBuilder(this) as Mutable<this>
+    out.elementKey = key
+    return out
   }
   /**
    * Sets an attribute, or removes it with `undefined`.
@@ -824,8 +883,10 @@ export class ElementBuilder<
    * @since 4.1.5
    */
   attr(name: string, value: string | undefined): this {
-    const { [name]: _, ...rest } = this.attrs
-    return withFields(this, { attrs: value === undefined ? rest : { ...rest, [name]: value } })
+    const out = copyBuilder(this) as Mutable<this>
+    // Removing an attribute that isn't set leaves the record as it is.
+    if (value !== undefined || Object.hasOwn(this.attrs, name)) out.attrs = withEntry(this.attrs, name, value)
+    return out
   }
   /**
    * Sets a property. The host decides what it means.
@@ -833,7 +894,9 @@ export class ElementBuilder<
    * @since 4.1.5
    */
   prop(name: string, value: unknown): this {
-    return withFields(this, { props: { ...this.props, [name]: value } })
+    const out = copyBuilder(this) as Mutable<this>
+    out.props = assoc(this.props, name, value)
+    return out
   }
   /**
    * Names this element for ref Commands, which reach it through
@@ -843,7 +906,9 @@ export class ElementBuilder<
    * @since 4.1.5
    */
   ref(ref: Renderer.Ref<HostNode>): this {
-    return withFields(this, { refKey: ref.key })
+    const out = copyBuilder(this) as Mutable<this>
+    out.refKey = ref.key
+    return out
   }
   /**
    * Runs `run` with this element's host node after it's committed, in a Scope

@@ -153,8 +153,116 @@ describe("Runtime", () => {
           entry.path
         )
         assert.sameMembers(unmounted, ["/List", "/List/Row[a]", "/List/Row[b]"])
+        // Descendants close first.
+        assert.strictEqual(unmounted.at(-1), "/List")
         assert.deepStrictEqual(root.container.children, [])
       }).pipe(Effect.provide(TestHost.layer())))
+
+    const RowsMessage = Schema.TaggedUnion({
+      Show: { ids: Schema.Array(Schema.String) },
+      Select: { id: Schema.String }
+    })
+    const Rows = Component.define({
+      name: "Rows",
+      model: Schema.Struct({ ids: Schema.Array(Schema.String), selected: Schema.String }),
+      message: RowsMessage
+    }).make({
+      init: () => ({ ids: ["a", "b", "c", "d"], selected: "" }),
+      update: (model, message) =>
+        RowsMessage.match(message, {
+          Show: ({ ids }) => ({ ...model, ids }),
+          Select: ({ id }) => ({ ...model, selected: id })
+        }),
+      view: (model, h) =>
+        h.el(
+          "ul",
+          h.el("li", "head"),
+          model.ids.map((id) =>
+            h.el("li").key(id).attr("class", model.selected === id ? "on" : undefined).children(id)
+          ),
+          h.el("li", "foot")
+        )
+    })
+
+    it.effect("keyed elements keep their nodes across moves, beside siblings matched by position", () =>
+      provideHost(Effect.gen(function*() {
+        const root = yield* TestHost.mount(Rows, {})
+        yield* TestHost.settle
+        const testHost = yield* TestHost.TestHost
+        const items = () => root.all(Query.tag("li"))
+        const [head, a, b, c, d] = items()
+        testHost.host.clearOperations()
+        root.send(RowsMessage.make({ _tag: "Show", ids: ["a", "d", "c", "b"] }))
+        yield* TestHost.settle
+        assert.strictEqual(root.text(), "headadcbfoot")
+        assert.deepStrictEqual(items().slice(0, 5), [head, a, d, c, b])
+        assert.isFalse(testHost.host.operations().some((op) => op.startsWith("create") || op.startsWith("remove")))
+
+        root.send(RowsMessage.make({ _tag: "Show", ids: ["c", "e"] }))
+        yield* TestHost.settle
+        assert.strictEqual(root.text(), "headcefoot")
+        assert.strictEqual(items()[0], head)
+        assert.strictEqual(items()[1], c)
+        assert.notInclude(items(), a)
+      })))
+
+    it.effect("a re-render where nothing moved inserts no node", () =>
+      provideHost(Effect.gen(function*() {
+        const root = yield* TestHost.mount(Rows, {})
+        yield* TestHost.settle
+        const testHost = yield* TestHost.TestHost
+        testHost.host.clearOperations()
+        root.send(RowsMessage.make({ _tag: "Select", id: "b" }))
+        yield* TestHost.settle
+        root.send(RowsMessage.make({ _tag: "Select", id: "c" }))
+        yield* TestHost.settle
+        assert.deepStrictEqual(testHost.host.operations().filter((op) => !op.startsWith("head")), [
+          "attr <li> class=\"on\"",
+          "attr <li> class=(removed)",
+          "attr <li> class=\"on\""
+        ])
+      })))
+
+    it.effect("a reorder moves only the nodes out of order", () =>
+      provideHost(Effect.gen(function*() {
+        const root = yield* TestHost.mount(Rows, {})
+        yield* TestHost.settle
+        const testHost = yield* TestHost.TestHost
+        root.send(RowsMessage.make({ _tag: "Show", ids: ["a", "b", "c", "d", "e", "f"] }))
+        yield* TestHost.settle
+        const moves = () => testHost.host.operations().filter((op) => op.startsWith("insert <li>"))
+        testHost.host.clearOperations()
+        root.send(RowsMessage.make({ _tag: "Show", ids: ["f", "b", "c", "d", "e", "a"] }))
+        yield* TestHost.settle
+        assert.strictEqual(root.text(), "headfbcdeafoot")
+        assert.strictEqual(moves().length, 2)
+
+        testHost.host.clearOperations()
+        root.send(RowsMessage.make({ _tag: "Show", ids: ["x", "e", "b", "c", "f", "d"] }))
+        yield* TestHost.settle
+        assert.strictEqual(root.text(), "headxebcfdfoot")
+        // x is new, and b, c, d, the longest run already in order, stay: only e and f move.
+        assert.strictEqual(moves().length, 3)
+
+        // The first rows stayed in order: only d, out of order after them, moves.
+        testHost.host.clearOperations()
+        root.send(RowsMessage.make({ _tag: "Show", ids: ["x", "e", "b", "d", "c", "f"] }))
+        yield* TestHost.settle
+        assert.strictEqual(root.text(), "headxebdcffoot")
+        assert.deepStrictEqual(moves(), ["insert <li> before <li>"])
+      })))
+
+    it.effect("two siblings with one key fail the instance", () =>
+      provideHost(Effect.gen(function*() {
+        const root = yield* TestHost.mount(Rows, {}, { fallback: (_, h) => h.el("h1", "down") })
+        yield* TestHost.settle
+        root.send(RowsMessage.make({ _tag: "Show", ids: ["a", "a"] }))
+        const crashed = yield* Effect.flip(TestHost.settle)
+        assert.strictEqual(crashed._tag, "RootCrashed")
+        const failed = root.log().find((entry) => entry._tag === "Failed") as MessageLog.Failed
+        assert.strictEqual(failed.source, "view")
+        assert.include(Cause.pretty(failed.cause), "/Rows: two siblings share the key li[a]")
+      })))
   })
 
   describe("failures", () => {

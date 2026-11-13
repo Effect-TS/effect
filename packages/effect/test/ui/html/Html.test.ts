@@ -130,6 +130,73 @@ describe("Html", () => {
       assert.deepStrictEqual(primary.attrs, { type: "button", class: "primary" })
       assert.deepStrictEqual(h.button.attrs, {})
     })
+
+    it("setting an attribute again moves it last, and removing one keeps the others in order", () => {
+      const h = helper()
+      const base = h.button.attr("type", "button").attr("title", "Go").attr("name", "go")
+      assert.deepStrictEqual(Object.entries(base.attr("type", "submit").attrs), [
+        ["title", "Go"],
+        ["name", "go"],
+        ["type", "submit"]
+      ])
+      assert.deepStrictEqual(Object.entries(base.attr("title", undefined).attrs), [["type", "button"], ["name", "go"]])
+      assert.strictEqual(base.attr("hidden", undefined).attrs, base.attrs)
+      assert.deepStrictEqual(Object.keys(base.attrs), ["type", "title", "name"])
+    })
+
+    it("a handler set again without options drops the ones it had", () => {
+      const h = helper()
+      const once = h.button.on("click", add, { preventDefault: true }).on("focus", add, { preventDefault: "always" })
+      assert.deepStrictEqual(once.eventOptions, {
+        click: { preventDefault: true },
+        focus: { preventDefault: "always" }
+      })
+      const again = once.on("click", add)
+      assert.deepStrictEqual(again.handlers, { click: add, focus: add })
+      assert.deepStrictEqual(again.eventOptions, { focus: { preventDefault: "always" } })
+      assert.deepStrictEqual(once.eventOptions, {
+        click: { preventDefault: true },
+        focus: { preventDefault: "always" }
+      })
+      assert.strictEqual(h.button.on("click", add).eventOptions, h.button.eventOptions)
+    })
+
+    it("a builder class of the user's keeps the fields each of its builders holds", () => {
+      // Only a toned builder holds `tone`.
+      class Tagged extends View.ElementBuilder<TodoMessage> {
+        declare tone: string | undefined
+        toned(tone: string): this {
+          const out = this.attr("data-tone", tone)
+          out.tone = tone
+          return out
+        }
+      }
+      const plain = new Tagged("p").attr("id", "a")
+      const toned = new Tagged("p").toned("warm").attr("id", "b").key("k")
+      assert.isFalse("tone" in plain.attr("id", "c"))
+      assert.instanceOf(toned, Tagged)
+      assert.strictEqual(toned.tone, "warm")
+      assert.deepStrictEqual(toned.attrs, { "data-tone": "warm", id: "b" })
+      assert.strictEqual(toned.elementKey, "k")
+    })
+
+    it("fields added to a library builder are kept by its chain calls", () => {
+      const mark = Symbol("mark")
+      const decorated = Object.assign(new View.ElementBuilder<TodoMessage>("button"), { tone: "warm", [mark]: 1 })
+      const chained = decorated.attr("id", "save").key("k")
+      assert.strictEqual(chained.tone, "warm")
+      assert.strictEqual(chained[mark], 1)
+    })
+
+    it("__proto__ is an attribute or property like any other name", () => {
+      const h = helper()
+      const set = h.div.attr("__proto__", "a").attr("id", "x").prop("__proto__", { hidden: true })
+      assert.deepStrictEqual(Object.entries(set.attrs), [["__proto__", "a"], ["id", "x"]])
+      assert.deepStrictEqual(Object.entries(set.props), [["__proto__", { hidden: true }]])
+      assert.strictEqual(Object.getPrototypeOf(set.props), Object.prototype)
+      // Setting another attribute again copies `__proto__` across.
+      assert.deepStrictEqual(Object.entries(set.attr("id", "y").attrs), [["__proto__", "a"], ["id", "y"]])
+    })
   })
 
   describe("classNames", () => {
