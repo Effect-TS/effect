@@ -460,11 +460,34 @@ describe("ChatMarkdown", () => {
         assert.deepStrictEqual(calls.map((call) => [call.op, call.markdown]), [
           ["nativeStream.start", "hello\n"],
           ["nativeStream.append", "x < y\n"],
-          ["nativeStream.append", "< y\n```ts\ncode"],
+          ["nativeStream.append", "< y\n```ts\ncod"],
           ["nativeStream.append", "< y\n```ts\ncode\n```"],
           ["nativeStream.stop", undefined]
         ])
       }).pipe(Effect.provide(ChatTest.layer())))
+
+    for (const prefix of ["~~~\n", "x".repeat(301)]) {
+      for (const [first, rest, whole] of [["🇺", "🇸", "🇺🇸"], ["1", "\uFE0F\u20E3", "1️⃣"]]) {
+        it.effect(
+          `holds ${whole} across deltas ${prefix === "~~~\n" ? "inside a fence" : "in a long line"}`,
+          () =>
+            Effect.gen(function*() {
+              const { test, thread } = yield* setup
+              const { end, send } = yield* feed(thread, { recipient: "U1" })
+              yield* send(prefix + first)
+              assert.deepStrictEqual((yield* test.calls).map((call) => call.markdown), [prefix])
+              yield* send(rest + "\n")
+              assert.deepStrictEqual((yield* test.calls).map((call) => call.markdown), [prefix, whole + "\n"])
+              yield* send("z")
+              const result = yield* end
+              assert.strictEqual(joined(result.parts), prefix + whole + "\nz")
+              assert.deepStrictEqual(yield* texts(test, thread), [
+                prefix + whole + "\nz" + (prefix === "~~~\n" ? "\n~~~" : "")
+              ])
+            }).pipe(Effect.provide(ChatTest.layer()))
+        )
+      }
+    }
 
     it.effect("rolls a native stream over at a block boundary", () =>
       Effect.gen(function*() {
@@ -854,8 +877,8 @@ describe("ChatMarkdown", () => {
         yield* Deferred.await(entered)
         yield* TestClock.adjust("6 seconds")
         yield* Fiber.join(interrupt)
-        // The closing fence was cut off with the append.
-        assert.deepStrictEqual(yield* texts(test, thread), ["~~~\ncode"])
+        // The held cluster and closing fence were cut off with the append.
+        assert.deepStrictEqual(yield* texts(test, thread), ["~~~\ncod"])
       }).pipe(Effect.provide(ChatTest.layer())))
 
     /** Runs `stream` over a queue the test can fail. */
