@@ -56,6 +56,8 @@
       "@effect/ai-openrouter/*": ["./packages/ai/openrouter/src/*.ts"],
       "@effect/chat-slack": ["./packages/chat/slack/src/index.ts"],
       "@effect/chat-slack/*": ["./packages/chat/slack/src/*.ts"],
+      "@effect/chat-discord": ["./packages/chat/discord/src/index.ts"],
+      "@effect/chat-discord/*": ["./packages/chat/discord/src/*.ts"],
       "@effect/atom-react": ["./packages/atom/react/src/index.ts"],
       "@effect/atom-react/*": ["./packages/atom/react/src/*.ts"],
       "@effect/atom-vue": ["./packages/atom/vue/src/index.ts"],

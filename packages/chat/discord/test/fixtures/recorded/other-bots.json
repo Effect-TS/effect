@@ -1,0 +1,445 @@
+{
+  "case": "Messages by other bots in the guild's #general, read through REST: slash command replies (type 20) from Tim's Test Bot, Polly and Effect Bot, a plain message and a reply (type 19)",
+  "provenance": {
+    "kind": "recorded",
+    "source": "Discord REST v10 with the Janitor bot token, from a local script",
+    "where": "guild 840178841540362250 (Tim's test guild); #effect-chat-scratch 1570607253965246584, #effect-chat-forum 1570607255684915302 and #test 1570605581192929301",
+    "recordedAt": "2026-11-13T01:28Z, during EFF-3695",
+    "body": "Each response verbatim, apart from signed CDN URLs, whose query is replaced; see scrubbed"
+  },
+  "calls": [
+    {
+      "step": "other-bot-command-reply",
+      "method": "GET",
+      "path": "/channels/840178841540362253/messages/1112338250816831548",
+      "request": null,
+      "status": 200,
+      "response": {
+        "type": 20,
+        "content": "Hello",
+        "mentions": [],
+        "mention_roles": [],
+        "attachments": [],
+        "embeds": [],
+        "timestamp": "2023-05-28T11:15:05.240000+00:00",
+        "edited_timestamp": null,
+        "flags": 0,
+        "components": [],
+        "id": "1112338250816831548",
+        "channel_id": "840178841540362253",
+        "author": {
+          "id": "841095454762205184",
+          "username": "Tim's Test Bot",
+          "avatar": null,
+          "discriminator": "4902",
+          "public_flags": 0,
+          "flags": 0,
+          "bot": true,
+          "banner": null,
+          "accent_color": null,
+          "global_name": null,
+          "avatar_decoration_data": null,
+          "collectibles": null,
+          "display_name_styles": null,
+          "banner_color": null,
+          "clan": null,
+          "primary_guild": null
+        },
+        "pinned": false,
+        "mention_everyone": false,
+        "tts": false,
+        "application_id": "841095454762205184",
+        "interaction": {
+          "id": "1112338249915060285",
+          "type": 2,
+          "name": "hello",
+          "user": {
+            "id": "449108784879763458",
+            "username": "timsmart",
+            "avatar": "2eded1558c297f57913f8b7e4c6b7efc",
+            "discriminator": "0",
+            "public_flags": 0,
+            "flags": 0,
+            "banner": null,
+            "accent_color": null,
+            "global_name": "Tim Smart",
+            "avatar_decoration_data": null,
+            "collectibles": null,
+            "display_name_styles": null,
+            "banner_color": null,
+            "clan": null,
+            "primary_guild": null
+          }
+        },
+        "webhook_id": "841095454762205184"
+      }
+    },
+    {
+      "step": "other-bot-command-reply-empty",
+      "method": "GET",
+      "path": "/channels/840178841540362253/messages/1197424261783097434",
+      "request": null,
+      "status": 200,
+      "response": {
+        "type": 20,
+        "content": "",
+        "mentions": [],
+        "mention_roles": [],
+        "attachments": [],
+        "embeds": [
+          {
+            "type": "rich",
+            "title": "a text look",
+            "description": "Multiple votes are allowed.",
+            "color": 10070709,
+            "fields": [
+              {
+                "name": "jdhfhd (0)",
+                "value": "No votes",
+                "inline": false
+              },
+              {
+                "name": "jdkfjjfjdkfkf (0)",
+                "value": "No votes",
+                "inline": false
+              },
+              {
+                "name": "i48t84h (0)",
+                "value": "No votes",
+                "inline": false
+              }
+            ],
+            "content_scan_version": 4
+          }
+        ],
+        "timestamp": "2024-01-18T06:16:31.076000+00:00",
+        "edited_timestamp": "2024-01-18T06:16:46.623000+00:00",
+        "flags": 0,
+        "components": [
+          {
+            "type": 1,
+            "id": 1,
+            "components": [
+              {
+                "type": 2,
+                "id": 2,
+                "custom_id": "vote_65a8c23e75cb3d35044293e5_0",
+                "style": 1,
+                "label": "jdhfhd"
+              },
+              {
+                "type": 2,
+                "id": 3,
+                "custom_id": "vote_65a8c23e75cb3d35044293e5_1",
+                "style": 1,
+                "label": "jdkfjjfjdkfkf"
+              },
+              {
+                "type": 2,
+                "id": 4,
+                "custom_id": "vote_65a8c23e75cb3d35044293e5_2",
+                "style": 1,
+                "label": "i48t84h"
+              }
+            ]
+          }
+        ],
+        "id": "1197424261783097434",
+        "channel_id": "840178841540362253",
+        "author": {
+          "id": "848334981734596608",
+          "username": "Polly",
+          "avatar": "99eddd75a6c236bc0751205c93b2b03d",
+          "discriminator": "7293",
+          "public_flags": 0,
+          "flags": 0,
+          "bot": true,
+          "banner": null,
+          "accent_color": null,
+          "global_name": null,
+          "avatar_decoration_data": null,
+          "collectibles": null,
+          "display_name_styles": null,
+          "banner_color": null,
+          "clan": null,
+          "primary_guild": null
+        },
+        "pinned": false,
+        "mention_everyone": false,
+        "tts": false,
+        "application_id": "848334981734596608",
+        "interaction": {
+          "id": "1197424259857928223",
+          "type": 2,
+          "name": "poll",
+          "user": {
+            "id": "449108784879763458",
+            "username": "timsmart",
+            "avatar": "2eded1558c297f57913f8b7e4c6b7efc",
+            "discriminator": "0",
+            "public_flags": 0,
+            "flags": 0,
+            "banner": null,
+            "accent_color": null,
+            "global_name": "Tim Smart",
+            "avatar_decoration_data": null,
+            "collectibles": null,
+            "display_name_styles": null,
+            "banner_color": null,
+            "clan": null,
+            "primary_guild": null
+          }
+        },
+        "webhook_id": "848334981734596608"
+      }
+    },
+    {
+      "step": "other-bot-command-reply-effect-bot",
+      "method": "GET",
+      "path": "/channels/840178841540362253/messages/1113758855839612981",
+      "request": null,
+      "status": 200,
+      "response": {
+        "type": 20,
+        "content": "",
+        "mentions": [],
+        "mention_roles": [],
+        "attachments": [],
+        "embeds": [
+          {
+            "type": "rich",
+            "url": "https://effect-ts.github.io/io/modules/Effect.ts.html#flatmap-1",
+            "title": "Effect.flatMap",
+            "description": "This function is a pipeable operator that maps over an Effect value, flattening the result of the mapping function into a new Effect value. Signature\n\n```typescript\nexport declare const flatMap: {\n  <A, R1, E1, B>(f: (a: A) => Effect<R1, E1, B>): <R, E>(\n    self: Effect<R, E, A>,\n  ) => Effect<R1 | R, E1 | E, B>\n  <R, E, A, R1, E1, B>(\n    self: Effect<R, E, A>,\n    f: (a: A) => Effect<R1, E1, B>,\n  ): Effect<R | R1, E | E1, B>\n}\n\n```",
+            "color": 8924875,
+            "author": {
+              "name": "@effect/io"
+            },
+            "footer": {
+              "text": "Added in v1.0.0"
+            },
+            "content_scan_version": 4
+          }
+        ],
+        "timestamp": "2023-06-01T09:20:03.871000+00:00",
+        "edited_timestamp": null,
+        "flags": 0,
+        "components": [],
+        "id": "1113758855839612981",
+        "channel_id": "840178841540362253",
+        "author": {
+          "id": "1101072322271641661",
+          "username": "Effect Bot",
+          "avatar": null,
+          "discriminator": "5597",
+          "public_flags": 0,
+          "flags": 0,
+          "bot": true,
+          "banner": null,
+          "accent_color": null,
+          "global_name": null,
+          "avatar_decoration_data": null,
+          "collectibles": null,
+          "display_name_styles": null,
+          "banner_color": null,
+          "clan": null,
+          "primary_guild": null
+        },
+        "pinned": false,
+        "mention_everyone": false,
+        "tts": false,
+        "application_id": "1101072322271641661",
+        "interaction": {
+          "id": "1113758852408692758",
+          "type": 2,
+          "name": "docs",
+          "user": {
+            "id": "449108784879763458",
+            "username": "timsmart",
+            "avatar": "2eded1558c297f57913f8b7e4c6b7efc",
+            "discriminator": "0",
+            "public_flags": 0,
+            "flags": 0,
+            "banner": null,
+            "accent_color": null,
+            "global_name": "Tim Smart",
+            "avatar_decoration_data": null,
+            "collectibles": null,
+            "display_name_styles": null,
+            "banner_color": null,
+            "clan": null,
+            "primary_guild": null
+          }
+        },
+        "webhook_id": "1101072322271641661"
+      }
+    },
+    {
+      "step": "other-bot-plain",
+      "method": "GET",
+      "path": "/channels/840178841540362253/messages/959400132728750140",
+      "request": null,
+      "status": 200,
+      "response": {
+        "type": 0,
+        "content": "Pong!",
+        "mentions": [],
+        "mention_roles": [],
+        "attachments": [],
+        "embeds": [],
+        "timestamp": "2022-04-01T10:33:36.435000+00:00",
+        "edited_timestamp": null,
+        "flags": 0,
+        "components": [],
+        "id": "959400132728750140",
+        "channel_id": "840178841540362253",
+        "author": {
+          "id": "841095454762205184",
+          "username": "Tim's Test Bot",
+          "avatar": null,
+          "discriminator": "4902",
+          "public_flags": 0,
+          "flags": 0,
+          "bot": true,
+          "banner": null,
+          "accent_color": null,
+          "global_name": null,
+          "avatar_decoration_data": null,
+          "collectibles": null,
+          "display_name_styles": null,
+          "banner_color": null,
+          "clan": null,
+          "primary_guild": null
+        },
+        "pinned": false,
+        "mention_everyone": false,
+        "tts": false
+      }
+    },
+    {
+      "step": "other-bot-reply",
+      "method": "GET",
+      "path": "/channels/840178841540362253/messages/1103552217971167293",
+      "request": null,
+      "status": 200,
+      "response": {
+        "type": 19,
+        "content": "Hello!",
+        "mentions": [
+          {
+            "id": "449108784879763458",
+            "username": "timsmart",
+            "avatar": "2eded1558c297f57913f8b7e4c6b7efc",
+            "discriminator": "0",
+            "public_flags": 0,
+            "flags": 0,
+            "banner": null,
+            "accent_color": null,
+            "global_name": "Tim Smart",
+            "avatar_decoration_data": null,
+            "collectibles": null,
+            "display_name_styles": null,
+            "banner_color": null,
+            "clan": null,
+            "primary_guild": null
+          }
+        ],
+        "mention_roles": [],
+        "attachments": [],
+        "embeds": [],
+        "timestamp": "2023-05-04T05:22:31.773000+00:00",
+        "edited_timestamp": null,
+        "flags": 0,
+        "components": [],
+        "id": "1103552217971167293",
+        "channel_id": "840178841540362253",
+        "author": {
+          "id": "841095454762205184",
+          "username": "Tim's Test Bot",
+          "avatar": null,
+          "discriminator": "4902",
+          "public_flags": 0,
+          "flags": 0,
+          "bot": true,
+          "banner": null,
+          "accent_color": null,
+          "global_name": null,
+          "avatar_decoration_data": null,
+          "collectibles": null,
+          "display_name_styles": null,
+          "banner_color": null,
+          "clan": null,
+          "primary_guild": null
+        },
+        "pinned": false,
+        "mention_everyone": false,
+        "tts": false,
+        "message_reference": {
+          "type": 0,
+          "channel_id": "840178841540362253",
+          "message_id": "1103552216398303272",
+          "guild_id": "840178841540362250"
+        },
+        "referenced_message": {
+          "type": 19,
+          "content": "asdf",
+          "mentions": [
+            {
+              "id": "841095454762205184",
+              "username": "Tim's Test Bot",
+              "avatar": null,
+              "discriminator": "4902",
+              "public_flags": 0,
+              "flags": 0,
+              "bot": true,
+              "banner": null,
+              "accent_color": null,
+              "global_name": null,
+              "avatar_decoration_data": null,
+              "collectibles": null,
+              "display_name_styles": null,
+              "banner_color": null,
+              "clan": null,
+              "primary_guild": null
+            }
+          ],
+          "mention_roles": [],
+          "attachments": [],
+          "embeds": [],
+          "timestamp": "2023-05-04T05:22:31.398000+00:00",
+          "edited_timestamp": null,
+          "flags": 0,
+          "components": [],
+          "id": "1103552216398303272",
+          "channel_id": "840178841540362253",
+          "author": {
+            "id": "449108784879763458",
+            "username": "timsmart",
+            "avatar": "2eded1558c297f57913f8b7e4c6b7efc",
+            "discriminator": "0",
+            "public_flags": 0,
+            "flags": 0,
+            "banner": null,
+            "accent_color": null,
+            "global_name": "Tim Smart",
+            "avatar_decoration_data": null,
+            "collectibles": null,
+            "display_name_styles": null,
+            "banner_color": null,
+            "clan": null,
+            "primary_guild": null
+          },
+          "pinned": false,
+          "mention_everyone": false,
+          "tts": false,
+          "message_reference": {
+            "type": 0,
+            "channel_id": "840178841540362253",
+            "message_id": "1103552140401725440",
+            "guild_id": "840178841540362250"
+          }
+        }
+      }
+    }
+  ]
+}

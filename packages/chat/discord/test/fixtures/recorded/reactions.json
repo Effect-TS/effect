@@ -1,0 +1,197 @@
+{
+  "case": "A message read back while it carries a Unicode, a skin-toned and a custom reaction, in a channel and in a thread",
+  "provenance": {
+    "kind": "recorded",
+    "source": "Discord REST v10 with the Janitor bot token, from a local script",
+    "where": "guild 840178841540362250 (Tim's test guild); #effect-chat-scratch 1570607253965246584, #effect-chat-forum 1570607255684915302 and #test 1570605581192929301",
+    "recordedAt": "2026-11-13T01:17Z, during EFF-3695",
+    "body": "Each response verbatim, apart from signed CDN URLs, whose query is replaced; see scrubbed"
+  },
+  "calls": [
+    {
+      "step": "reaction-read-channel",
+      "method": "GET",
+      "path": "/channels/1570607253965246584/messages/1570608483965870101",
+      "request": null,
+      "status": 200,
+      "response": {
+        "type": 0,
+        "content": "Fixture: reactions target in a channel",
+        "mentions": [],
+        "mention_roles": [],
+        "attachments": [],
+        "embeds": [],
+        "timestamp": "2026-11-13T01:17:23.072000+00:00",
+        "edited_timestamp": null,
+        "flags": 0,
+        "components": [],
+        "id": "1570608483965870101",
+        "channel_id": "1570607253965246584",
+        "author": {
+          "id": "1564742987727118426",
+          "username": "Janitor",
+          "avatar": "07aaab1f8e37dd6b088b6f21d1332701",
+          "discriminator": "5426",
+          "public_flags": 0,
+          "flags": 0,
+          "bot": true,
+          "banner": null,
+          "accent_color": null,
+          "global_name": null,
+          "avatar_decoration_data": null,
+          "collectibles": null,
+          "display_name_styles": null,
+          "banner_color": null,
+          "clan": null,
+          "primary_guild": null
+        },
+        "pinned": false,
+        "mention_everyone": false,
+        "tts": false,
+        "reactions": [
+          {
+            "emoji": {
+              "id": null,
+              "name": "👍"
+            },
+            "count": 1,
+            "count_details": {
+              "burst": 0,
+              "normal": 1
+            },
+            "burst_colors": [],
+            "me_burst": false,
+            "burst_me": false,
+            "me": true,
+            "burst_count": 0
+          },
+          {
+            "emoji": {
+              "id": null,
+              "name": "👍🏽"
+            },
+            "count": 1,
+            "count_details": {
+              "burst": 0,
+              "normal": 1
+            },
+            "burst_colors": [],
+            "me_burst": false,
+            "burst_me": false,
+            "me": true,
+            "burst_count": 0
+          },
+          {
+            "emoji": {
+              "id": "1570607258226790481",
+              "name": "effectchat"
+            },
+            "count": 1,
+            "count_details": {
+              "burst": 0,
+              "normal": 1
+            },
+            "burst_colors": [],
+            "me_burst": false,
+            "burst_me": false,
+            "me": true,
+            "burst_count": 0
+          }
+        ]
+      }
+    },
+    {
+      "step": "reaction-read-thread",
+      "method": "GET",
+      "path": "/channels/1570608327602471024/messages/1570608491532386377",
+      "request": null,
+      "status": 200,
+      "response": {
+        "type": 0,
+        "content": "Fixture: reactions target in a thread",
+        "mentions": [],
+        "mention_roles": [],
+        "attachments": [],
+        "embeds": [],
+        "timestamp": "2026-11-13T01:17:24.876000+00:00",
+        "edited_timestamp": null,
+        "flags": 0,
+        "components": [],
+        "id": "1570608491532386377",
+        "channel_id": "1570608327602471024",
+        "author": {
+          "id": "1564742987727118426",
+          "username": "Janitor",
+          "avatar": "07aaab1f8e37dd6b088b6f21d1332701",
+          "discriminator": "5426",
+          "public_flags": 0,
+          "flags": 0,
+          "bot": true,
+          "banner": null,
+          "accent_color": null,
+          "global_name": null,
+          "avatar_decoration_data": null,
+          "collectibles": null,
+          "display_name_styles": null,
+          "banner_color": null,
+          "clan": null,
+          "primary_guild": null
+        },
+        "pinned": false,
+        "mention_everyone": false,
+        "tts": false,
+        "position": 2,
+        "reactions": [
+          {
+            "emoji": {
+              "id": null,
+              "name": "👍"
+            },
+            "count": 1,
+            "count_details": {
+              "burst": 0,
+              "normal": 1
+            },
+            "burst_colors": [],
+            "me_burst": false,
+            "burst_me": false,
+            "me": true,
+            "burst_count": 0
+          },
+          {
+            "emoji": {
+              "id": null,
+              "name": "👍🏽"
+            },
+            "count": 1,
+            "count_details": {
+              "burst": 0,
+              "normal": 1
+            },
+            "burst_colors": [],
+            "me_burst": false,
+            "burst_me": false,
+            "me": true,
+            "burst_count": 0
+          },
+          {
+            "emoji": {
+              "id": "1570607258226790481",
+              "name": "effectchat"
+            },
+            "count": 1,
+            "count_details": {
+              "burst": 0,
+              "normal": 1
+            },
+            "burst_colors": [],
+            "me_burst": false,
+            "burst_me": false,
+            "me": true,
+            "burst_count": 0
+          }
+        ]
+      }
+    }
+  ]
+}

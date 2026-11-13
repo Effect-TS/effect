@@ -1,0 +1,414 @@
+{
+  "case": "SUPPRESS_EMBEDS: set on a post, kept through an edit that sends no flags and one that sends them; a post without it gets an embed",
+  "provenance": {
+    "kind": "recorded",
+    "source": "Discord REST v10 with the Janitor bot token, from a local script",
+    "where": "guild 840178841540362250 (Tim's test guild); #effect-chat-scratch 1570607253965246584, #effect-chat-forum 1570607255684915302 and #test 1570605581192929301",
+    "recordedAt": "2026-11-13T01:18Z, during EFF-3695",
+    "body": "Each response verbatim, apart from signed CDN URLs, whose query is replaced; see scrubbed"
+  },
+  "calls": [
+    {
+      "step": "embed-post-suppressed",
+      "method": "POST",
+      "path": "/channels/1570607253965246584/messages",
+      "request": {
+        "content": "Fixture: https://effect.website suppressed on post",
+        "flags": 4,
+        "allowed_mentions": {
+          "parse": []
+        }
+      },
+      "status": 200,
+      "response": {
+        "type": 0,
+        "content": "Fixture: https://effect.website suppressed on post",
+        "mentions": [],
+        "mention_roles": [],
+        "attachments": [],
+        "embeds": [],
+        "timestamp": "2026-11-13T01:18:23.451000+00:00",
+        "edited_timestamp": null,
+        "flags": 4,
+        "components": [],
+        "id": "1570608737213878394",
+        "channel_id": "1570607253965246584",
+        "author": {
+          "id": "1564742987727118426",
+          "username": "Janitor",
+          "avatar": "07aaab1f8e37dd6b088b6f21d1332701",
+          "discriminator": "5426",
+          "public_flags": 0,
+          "flags": 0,
+          "bot": true,
+          "banner": null,
+          "accent_color": null,
+          "global_name": null,
+          "avatar_decoration_data": null,
+          "collectibles": null,
+          "display_name_styles": null,
+          "banner_color": null,
+          "clan": null,
+          "primary_guild": null
+        },
+        "pinned": false,
+        "mention_everyone": false,
+        "tts": false
+      }
+    },
+    {
+      "step": "embed-edit-adds-link-without-flag",
+      "method": "PATCH",
+      "path": "/channels/1570607253965246584/messages/1570608737213878394",
+      "request": {
+        "content": "Fixture: edit adds https://github.com/Effect-TS/effect without flags",
+        "allowed_mentions": {
+          "parse": []
+        }
+      },
+      "status": 200,
+      "response": {
+        "type": 0,
+        "content": "Fixture: edit adds https://github.com/Effect-TS/effect without flags",
+        "mentions": [],
+        "mention_roles": [],
+        "attachments": [],
+        "embeds": [],
+        "timestamp": "2026-11-13T01:18:23.451000+00:00",
+        "edited_timestamp": "2026-11-13T01:18:24.973811+00:00",
+        "flags": 4,
+        "components": [],
+        "id": "1570608737213878394",
+        "channel_id": "1570607253965246584",
+        "author": {
+          "id": "1564742987727118426",
+          "username": "Janitor",
+          "avatar": "07aaab1f8e37dd6b088b6f21d1332701",
+          "discriminator": "5426",
+          "public_flags": 0,
+          "flags": 0,
+          "bot": true,
+          "banner": null,
+          "accent_color": null,
+          "global_name": null,
+          "avatar_decoration_data": null,
+          "collectibles": null,
+          "display_name_styles": null,
+          "banner_color": null,
+          "clan": null,
+          "primary_guild": null
+        },
+        "pinned": false,
+        "mention_everyone": false,
+        "tts": false
+      }
+    },
+    {
+      "step": "embed-read-after-edit-without-flag",
+      "method": "GET",
+      "path": "/channels/1570607253965246584/messages/1570608737213878394",
+      "request": null,
+      "status": 200,
+      "response": {
+        "type": 0,
+        "content": "Fixture: edit adds https://github.com/Effect-TS/effect without flags",
+        "mentions": [],
+        "mention_roles": [],
+        "attachments": [],
+        "embeds": [],
+        "timestamp": "2026-11-13T01:18:23.451000+00:00",
+        "edited_timestamp": "2026-11-13T01:18:24.973000+00:00",
+        "flags": 4,
+        "components": [],
+        "id": "1570608737213878394",
+        "channel_id": "1570607253965246584",
+        "author": {
+          "id": "1564742987727118426",
+          "username": "Janitor",
+          "avatar": "07aaab1f8e37dd6b088b6f21d1332701",
+          "discriminator": "5426",
+          "public_flags": 0,
+          "flags": 0,
+          "bot": true,
+          "banner": null,
+          "accent_color": null,
+          "global_name": null,
+          "avatar_decoration_data": null,
+          "collectibles": null,
+          "display_name_styles": null,
+          "banner_color": null,
+          "clan": null,
+          "primary_guild": null
+        },
+        "pinned": false,
+        "mention_everyone": false,
+        "tts": false
+      }
+    },
+    {
+      "step": "embed-post-plain",
+      "method": "POST",
+      "path": "/channels/1570607253965246584/messages",
+      "request": {
+        "content": "Fixture: post without a link",
+        "flags": 4,
+        "allowed_mentions": {
+          "parse": []
+        }
+      },
+      "status": 200,
+      "response": {
+        "type": 0,
+        "content": "Fixture: post without a link",
+        "mentions": [],
+        "mention_roles": [],
+        "attachments": [],
+        "embeds": [],
+        "timestamp": "2026-11-13T01:18:30.633000+00:00",
+        "edited_timestamp": null,
+        "flags": 4,
+        "components": [],
+        "id": "1570608767337238549",
+        "channel_id": "1570607253965246584",
+        "author": {
+          "id": "1564742987727118426",
+          "username": "Janitor",
+          "avatar": "07aaab1f8e37dd6b088b6f21d1332701",
+          "discriminator": "5426",
+          "public_flags": 0,
+          "flags": 0,
+          "bot": true,
+          "banner": null,
+          "accent_color": null,
+          "global_name": null,
+          "avatar_decoration_data": null,
+          "collectibles": null,
+          "display_name_styles": null,
+          "banner_color": null,
+          "clan": null,
+          "primary_guild": null
+        },
+        "pinned": false,
+        "mention_everyone": false,
+        "tts": false
+      }
+    },
+    {
+      "step": "embed-edit-adds-link-with-flag",
+      "method": "PATCH",
+      "path": "/channels/1570607253965246584/messages/1570608767337238549",
+      "request": {
+        "content": "Fixture: edit adds https://github.com/Effect-TS/effect with flags",
+        "flags": 4,
+        "allowed_mentions": {
+          "parse": []
+        }
+      },
+      "status": 200,
+      "response": {
+        "type": 0,
+        "content": "Fixture: edit adds https://github.com/Effect-TS/effect with flags",
+        "mentions": [],
+        "mention_roles": [],
+        "attachments": [],
+        "embeds": [],
+        "timestamp": "2026-11-13T01:18:30.633000+00:00",
+        "edited_timestamp": "2026-11-13T01:18:33.390847+00:00",
+        "flags": 4,
+        "components": [],
+        "id": "1570608767337238549",
+        "channel_id": "1570607253965246584",
+        "author": {
+          "id": "1564742987727118426",
+          "username": "Janitor",
+          "avatar": "07aaab1f8e37dd6b088b6f21d1332701",
+          "discriminator": "5426",
+          "public_flags": 0,
+          "flags": 0,
+          "bot": true,
+          "banner": null,
+          "accent_color": null,
+          "global_name": null,
+          "avatar_decoration_data": null,
+          "collectibles": null,
+          "display_name_styles": null,
+          "banner_color": null,
+          "clan": null,
+          "primary_guild": null
+        },
+        "pinned": false,
+        "mention_everyone": false,
+        "tts": false
+      }
+    },
+    {
+      "step": "embed-read-after-edit-with-flag",
+      "method": "GET",
+      "path": "/channels/1570607253965246584/messages/1570608767337238549",
+      "request": null,
+      "status": 200,
+      "response": {
+        "type": 0,
+        "content": "Fixture: edit adds https://github.com/Effect-TS/effect with flags",
+        "mentions": [],
+        "mention_roles": [],
+        "attachments": [],
+        "embeds": [],
+        "timestamp": "2026-11-13T01:18:30.633000+00:00",
+        "edited_timestamp": "2026-11-13T01:18:33.390000+00:00",
+        "flags": 4,
+        "components": [],
+        "id": "1570608767337238549",
+        "channel_id": "1570607253965246584",
+        "author": {
+          "id": "1564742987727118426",
+          "username": "Janitor",
+          "avatar": "07aaab1f8e37dd6b088b6f21d1332701",
+          "discriminator": "5426",
+          "public_flags": 0,
+          "flags": 0,
+          "bot": true,
+          "banner": null,
+          "accent_color": null,
+          "global_name": null,
+          "avatar_decoration_data": null,
+          "collectibles": null,
+          "display_name_styles": null,
+          "banner_color": null,
+          "clan": null,
+          "primary_guild": null
+        },
+        "pinned": false,
+        "mention_everyone": false,
+        "tts": false
+      }
+    },
+    {
+      "step": "embed-post-unsuppressed",
+      "method": "POST",
+      "path": "/channels/1570607253965246584/messages",
+      "request": {
+        "content": "Fixture: https://effect.website not suppressed",
+        "allowed_mentions": {
+          "parse": []
+        }
+      },
+      "status": 200,
+      "response": {
+        "type": 0,
+        "content": "Fixture: https://effect.website not suppressed",
+        "mentions": [],
+        "mention_roles": [],
+        "attachments": [],
+        "embeds": [
+          {
+            "type": "article",
+            "url": "https://effect.website/",
+            "title": "Effect | Production Grade TypeScript",
+            "provider": {
+              "name": "Effect"
+            },
+            "thumbnail": {
+              "url": "https://effect.website/og/index.png?v=8c9f1acacbf10295",
+              "proxy_url": "https://images-ext-1.discordapp.net/external/ac8H1c0fSuUVZaaFa8Kq5Ea8pOu0WAeL2xGxrJ6Y6Qc/%3Fv%3D8c9f1acacbf10295/https/effect.website/og/index.png",
+              "width": 1200,
+              "height": 630,
+              "content_type": "image/png",
+              "placeholder": "xQcGBIAIl3iIeIdyi3gHeAIAAA==",
+              "placeholder_version": 1,
+              "flags": 0
+            }
+          }
+        ],
+        "timestamp": "2026-11-13T01:18:39.014000+00:00",
+        "edited_timestamp": null,
+        "flags": 0,
+        "components": [],
+        "id": "1570608802489700492",
+        "channel_id": "1570607253965246584",
+        "author": {
+          "id": "1564742987727118426",
+          "username": "Janitor",
+          "avatar": "07aaab1f8e37dd6b088b6f21d1332701",
+          "discriminator": "5426",
+          "public_flags": 0,
+          "flags": 0,
+          "bot": true,
+          "banner": null,
+          "accent_color": null,
+          "global_name": null,
+          "avatar_decoration_data": null,
+          "collectibles": null,
+          "display_name_styles": null,
+          "banner_color": null,
+          "clan": null,
+          "primary_guild": null
+        },
+        "pinned": false,
+        "mention_everyone": false,
+        "tts": false
+      }
+    },
+    {
+      "step": "embed-read-unsuppressed",
+      "method": "GET",
+      "path": "/channels/1570607253965246584/messages/1570608802489700492",
+      "request": null,
+      "status": 200,
+      "response": {
+        "type": 0,
+        "content": "Fixture: https://effect.website not suppressed",
+        "mentions": [],
+        "mention_roles": [],
+        "attachments": [],
+        "embeds": [
+          {
+            "type": "article",
+            "url": "https://effect.website/",
+            "title": "Effect | Production Grade TypeScript",
+            "provider": {
+              "name": "Effect"
+            },
+            "thumbnail": {
+              "url": "https://effect.website/og/index.png?v=8c9f1acacbf10295",
+              "proxy_url": "https://images-ext-1.discordapp.net/external/ac8H1c0fSuUVZaaFa8Kq5Ea8pOu0WAeL2xGxrJ6Y6Qc/%3Fv%3D8c9f1acacbf10295/https/effect.website/og/index.png",
+              "width": 1200,
+              "height": 630,
+              "content_type": "image/png",
+              "placeholder": "xQcGBIAIl3iIeIdyi3gHeAIAAA==",
+              "placeholder_version": 1,
+              "flags": 0
+            }
+          }
+        ],
+        "timestamp": "2026-11-13T01:18:39.014000+00:00",
+        "edited_timestamp": null,
+        "flags": 0,
+        "components": [],
+        "id": "1570608802489700492",
+        "channel_id": "1570607253965246584",
+        "author": {
+          "id": "1564742987727118426",
+          "username": "Janitor",
+          "avatar": "07aaab1f8e37dd6b088b6f21d1332701",
+          "discriminator": "5426",
+          "public_flags": 0,
+          "flags": 0,
+          "bot": true,
+          "banner": null,
+          "accent_color": null,
+          "global_name": null,
+          "avatar_decoration_data": null,
+          "collectibles": null,
+          "display_name_styles": null,
+          "banner_color": null,
+          "clan": null,
+          "primary_guild": null
+        },
+        "pinned": false,
+        "mention_everyone": false,
+        "tts": false
+      }
+    }
+  ]
+}

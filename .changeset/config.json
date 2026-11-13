@@ -24,6 +24,7 @@
       "@effect/ai-openrouter",
       "@effect/atom-react",
       "@effect/chat-slack",
+      "@effect/chat-discord",
       "@effect/atom-solid",
       "@effect/atom-vue",
       "@effect/docgen",
