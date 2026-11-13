@@ -1,7 +1,7 @@
 import * as Clickhouse from "@clickhouse/client"
 import { ClickhouseClient, ClickhouseMigrator, ClickhouseWebClient } from "@effect/sql-clickhouse"
 import { assert, describe, it } from "@effect/vitest"
-import { Effect, Fiber, Stream } from "effect"
+import { Cause, Effect, Exit, Fiber, Stream } from "effect"
 import * as Reactivity from "effect/reactivity/Reactivity"
 import * as SqlClient from "effect/sql/SqlClient"
 import * as Statement from "effect/sql/Statement"
@@ -17,6 +17,7 @@ const commandCalls: Array<Record<string, unknown>> = []
 const insertCalls: Array<Record<string, unknown>> = []
 let insertImpl: ((options: Record<string, unknown>) => Promise<unknown>) | undefined
 let queryImpl: ((options: Record<string, unknown>) => Promise<unknown>) | undefined
+let commandImpl: (() => Promise<unknown>) | undefined
 
 vi.mock("@clickhouse/client", () => ({
   createClient: vi.fn(() => ({
@@ -28,7 +29,7 @@ vi.mock("@clickhouse/client", () => ({
     },
     command: (options: Record<string, unknown>) => {
       commandCalls.push(options)
-      return Promise.resolve({})
+      return commandImpl ? commandImpl() : Promise.resolve({})
     },
     close: () => {
       closeCalls++
@@ -150,6 +151,46 @@ describe("ClickhouseClient", { concurrent: false }, () => {
         query_params: { queryId }
       }])
     }).pipe(
+      Effect.scoped,
+      Effect.provide(Reactivity.layer)
+    ))
+
+  it.effect("interrupts a query even when KILL QUERY fails", () =>
+    Effect.gen(function*() {
+      connectImmediately = true
+      commandImpl = () => Promise.reject(new Error("Not enough privileges"))
+      const client = yield* ClickhouseClient.make({ url: "http://localhost:8123" })
+      const fiber = yield* client.unsafe("SELECT 1").pipe(Effect.forkScoped)
+      yield* Effect.yieldNow
+
+      yield* Fiber.interrupt(fiber)
+      const exit = yield* Effect.exit(Fiber.join(fiber))
+
+      assert.isTrue(Exit.isFailure(exit) && Cause.hasInterruptsOnly(exit.cause))
+    }).pipe(
+      Effect.ensuring(Effect.sync(() => {
+        commandImpl = undefined
+      })),
+      Effect.scoped,
+      Effect.provide(Reactivity.layer)
+    ))
+
+  it.effect("stops waiting for an unanswered KILL QUERY after 5 seconds", () =>
+    Effect.gen(function*() {
+      connectImmediately = true
+      commandImpl = () => new Promise(() => {})
+      const client = yield* ClickhouseClient.make({ url: "http://localhost:8123" })
+      const fiber = yield* client.unsafe("SELECT 1").pipe(Effect.forkScoped)
+      yield* Effect.yieldNow
+
+      const interrupting = yield* Effect.forkChild(Fiber.interrupt(fiber))
+      yield* TestClock.adjust("5 seconds")
+
+      assert.isDefined(interrupting.pollUnsafe())
+    }).pipe(
+      Effect.ensuring(Effect.sync(() => {
+        commandImpl = undefined
+      })),
       Effect.scoped,
       Effect.provide(Reactivity.layer)
     ))

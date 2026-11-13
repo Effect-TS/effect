@@ -17,17 +17,14 @@ import * as NodeStream from "@effect/platform-node/NodeStream"
 import * as Config from "effect/Config"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
-import { dual } from "effect/Function"
-import * as Layer from "effect/Layer"
-import * as Reactivity from "effect/reactivity/Reactivity"
+import type * as Layer from "effect/Layer"
+import type * as Reactivity from "effect/reactivity/Reactivity"
 import type * as Scope from "effect/Scope"
-import * as Client from "effect/sql/SqlClient"
-import { SqlError } from "effect/sql/SqlError"
+import type * as Client from "effect/sql/SqlClient"
+import { type SqlError } from "effect/sql/SqlError"
 import type * as Statement from "effect/sql/Statement"
 import type { Readable } from "node:stream"
 import * as Core from "./internal/core.ts"
-
-type NodeSettings = NonNullable<Clickhouse.BaseQueryParams["clickhouse_settings"]>
 
 /**
  * Unique runtime identifier used to tag `ClickhouseClient` values.
@@ -133,64 +130,12 @@ export interface ClickhouseClientConfig extends Clickhouse.ClickHouseClientConfi
 export const make = (
   options: ClickhouseClientConfig
 ): Effect.Effect<ClickhouseClient & Client.SqlClient, SqlError, Scope.Scope | Reactivity.Reactivity> =>
-  Effect.map(Core.make(options, makeBackend), ({ backend, sql }) => {
-    const { client } = backend
-    return Object.assign(sql, {
-      [TypeId]: TypeId as TypeId,
-      config: options,
-      client,
-      param: Core.param,
-      asCommand<A, E, R>(effect: Effect.Effect<A, E, R>) {
-        return Effect.provideService(effect, ClientMethod, "command")
-      },
-      insertQuery<T = unknown>(options: {
-        readonly table: string
-        readonly values: Clickhouse.InsertValues<Readable, T>
-        readonly format?: Clickhouse.DataFormat
-        readonly columns?: NonNullable<Clickhouse.InsertParams<Readable, T>["columns"]>
-      }) {
-        return Core.runAbortable(
-          backend,
-          { message: "Failed to insert data", operation: "insert" },
-          (base) => client.insert({ format: "JSONEachRow", ...options, ...base })
-        )
-      },
-      withQueryId: dual(
-        2,
-        <A, E, R>(effect: Effect.Effect<A, E, R>, queryId: string) => Effect.provideService(effect, QueryId, queryId)
-      ),
-      withClickhouseSettings: dual(
-        2,
-        <A, E, R>(
-          effect: Effect.Effect<A, E, R>,
-          settings: NonNullable<Clickhouse.BaseQueryParams["clickhouse_settings"]>
-        ) => Effect.provideService(effect, ClickhouseSettings, settings)
-      )
-    })
-  })
-
-const makeBackend = (
-  options: ClickhouseClientConfig
-): Core.Backend<Clickhouse.ClickHouseClient, Clickhouse.ResultSet<unknown>, NodeSettings> => {
-  const client = Clickhouse.createClient(options)
-  return {
-    client,
-    settings: ClickhouseSettings,
-    adapter: {
-      ping: () => client.ping(),
-      close: () => client.close(),
-      query: (request) => client.query(request),
-      command: (request) => client.command(request),
-      stream: (result) =>
-        NodeStream.fromReadable<ReadonlyArray<Core.Row>, SqlError>({
-          // `ResultSet<unknown>` hides `stream()`, which is only valid for the
-          // streamable formats the driver requests whenever it streams.
-          evaluate: () => (result as Clickhouse.ResultSet<"JSONEachRow">).stream(),
-          onError: (cause) => new SqlError({ reason: Core.classifyError(cause, "Failed to execute stream", "stream") })
-        })
-    }
-  }
-}
+  Core.make(
+    TypeId,
+    options,
+    Clickhouse.createClient,
+    (evaluate, onError) => NodeStream.fromReadable({ evaluate: evaluate as () => Readable, onError })
+  ) as Effect.Effect<ClickhouseClient & Client.SqlClient, SqlError, Scope.Scope | Reactivity.Reactivity>
 
 /**
  * Fiber reference read by the low-level ClickHouse connection to choose query
@@ -220,9 +165,9 @@ export const QueryId: Context.Reference<string | undefined> = Core.QueryId
  * @category services
  * @since 4.0.0
  */
-export const ClickhouseSettings: Context.Reference<NodeSettings> = Context.Reference(Core.ClickhouseSettingsKey, {
-  defaultValue: () => ({})
-})
+export const ClickhouseSettings: Context.Reference<
+  NonNullable<Clickhouse.BaseQueryParams["clickhouse_settings"]>
+> = Core.ClickhouseSettings as Context.Reference<NonNullable<Clickhouse.BaseQueryParams["clickhouse_settings"]>>
 
 /**
  * Provides both `ClickhouseClient` and generic `SqlClient` services from a
@@ -237,16 +182,7 @@ export const layerConfig: (
 ) => Layer.Layer<ClickhouseClient | Client.SqlClient, Config.ConfigError | SqlError> = (
   config: Config.Wrap<ClickhouseClientConfig>
 ): Layer.Layer<ClickhouseClient | Client.SqlClient, Config.ConfigError | SqlError> =>
-  Layer.effectContext(
-    Config.unwrap(config).pipe(
-      Effect.flatMap(make),
-      Effect.map((client) =>
-        Context.make(ClickhouseClient, client).pipe(
-          Context.add(Client.SqlClient, client)
-        )
-      )
-    )
-  ).pipe(Layer.provide(Reactivity.layer))
+  Core.layer(ClickhouseClient, Effect.flatMap(Config.unwrap(config), make))
 
 /**
  * Provides both `ClickhouseClient` and generic `SqlClient` services from a
@@ -259,12 +195,7 @@ export const layerConfig: (
 export const layer = (
   config: ClickhouseClientConfig
 ): Layer.Layer<ClickhouseClient | Client.SqlClient, Config.ConfigError | SqlError> =>
-  Layer.effectContext(
-    Effect.map(make(config), (client) =>
-      Context.make(ClickhouseClient, client).pipe(
-        Context.add(Client.SqlClient, client)
-      ))
-  ).pipe(Layer.provide(Reactivity.layer))
+  Core.layer(ClickhouseClient, make(config))
 
 /**
  * Creates the SQL statement compiler for ClickHouse, emitting typed

@@ -13,7 +13,7 @@ npm install effect @effect/sql-clickhouse
 `ClickhouseClient` runs on Node.js and uses [`@clickhouse/client`](https://clickhouse.com/docs/integrations/javascript). On runtimes without Node built-ins, such as Cloudflare Workers, use `ClickhouseWebClient`, which talks to ClickHouse over `fetch` through [`@clickhouse/client-web`](https://clickhouse.com/docs/integrations/javascript#web-version).
 
 ```ts
-import { ClickhouseWebClient } from "@effect/sql-clickhouse"
+import * as ClickhouseWebClient from "@effect/sql-clickhouse/ClickhouseWebClient"
 import { Effect } from "effect"
 import { SqlClient } from "effect/sql"
 
@@ -23,7 +23,11 @@ const program = Effect.gen(function*() {
 }).pipe(Effect.provide(ClickhouseWebClient.layer({ url: "https://clickhouse.example.com:8443" })))
 ```
 
-Both clients provide the generic `SqlClient`, interrupt and kill running queries the same way, and work with `ClickhouseMigrator`. Import `ClickhouseWebClient` from `@effect/sql-clickhouse/ClickhouseWebClient` if your bundler does not tree-shake the package root; that module reaches neither `@clickhouse/client` nor any Node built-in.
+Import `ClickhouseWebClient` from `@effect/sql-clickhouse/ClickhouseWebClient`, not from the package root, which also exports the Node client.
+
+Both clients provide the generic `SqlClient`, interrupt and kill running queries the same way, and work with `ClickhouseMigrator`. Their ClickHouse-specific services are separate, so code that uses `param`, `asCommand` or `insertQuery` picks one of them; code that only needs `SqlClient` runs with either.
+
+Building the layer checks the connection with a query, so on Workers build it once and reuse it rather than once per request.
 
 ## Links
 

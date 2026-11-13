@@ -1,18 +1,15 @@
 /**
- * Runtime-neutral core shared by the Node and web ClickHouse clients.
- *
- * Everything here is written against the small `Adapter` contract, never
- * against a concrete `@clickhouse/client*` package, so that the web entry can
- * reuse it without pulling the Node client (and its Node built-ins) into its
- * import graph. It imports nothing from the ClickHouse packages: they each
- * bundle their own copy of the shared types, which TypeScript treats as
- * unrelated (`SettingsMap` has a private field), so the settings type is a
- * parameter that each runtime entry fills in with its own.
+ * Behaviour shared by `ClickhouseClient` and `ClickhouseWebClient`. Each
+ * entry passes in its driver client and a way to read a result body as a
+ * stream. This module must not import either driver, so that the web entry
+ * stays free of Node built-ins.
  */
 import * as Context from "effect/Context"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
-import type * as Reactivity from "effect/reactivity/Reactivity"
+import { dual } from "effect/Function"
+import * as Layer from "effect/Layer"
+import * as Reactivity from "effect/reactivity/Reactivity"
 import type * as Scope from "effect/Scope"
 import * as Client from "effect/sql/SqlClient"
 import type { Connection } from "effect/sql/SqlConnection"
@@ -31,70 +28,55 @@ import * as Stream from "effect/Stream"
 const ATTR_DB_SYSTEM_NAME = "db.system.name"
 const ATTR_DB_NAMESPACE = "db.namespace"
 
-export type DataFormat = "JSON" | "JSONCompact" | "JSONEachRow"
+type DataFormat = "JSON" | "JSONCompact" | "JSONEachRow"
 
-export interface CoreConfig {
-  readonly database?: string | undefined
-  readonly spanAttributes?: Record<string, unknown> | undefined
-  readonly transformResultNames?: ((str: string) => string) | undefined
-  readonly transformQueryNames?: ((str: string) => string) | undefined
-}
+// Opaque here: each entry types settings with its own driver's type.
+type Settings = Record<string, any>
 
-export interface QueryRequest<S> {
-  readonly query: string
-  readonly query_params: Record<string, unknown>
-  readonly abort_signal: AbortSignal
-  readonly query_id: string
-  readonly clickhouse_settings: S
-  readonly format: DataFormat
-}
-
-export interface CommandRequest<S> {
-  readonly query: string
-  readonly query_params: Record<string, unknown>
+interface RequestBase {
   readonly abort_signal?: AbortSignal
   readonly query_id?: string
-  readonly clickhouse_settings?: S
+  readonly clickhouse_settings?: Settings
 }
 
-export interface Row {
-  readonly json: () => object | Promise<object>
+interface Request extends RequestBase {
+  readonly query: string
+  readonly query_params: Record<string, unknown>
 }
 
-export interface QueryResultLike {
-  readonly json: () => Promise<unknown>
+interface ResultSet {
+  json(): Promise<unknown>
+  stream(): unknown
 }
-
-export type PingResult =
-  | { readonly success: true }
-  | { readonly success: false; readonly error: unknown }
 
 /**
- * The part of a ClickHouse client the SQL driver depends on. Each runtime
- * entry adapts its own `@clickhouse/client*` instance to this shape; `stream`
- * is the only place the response body type (Node `Readable` or web
- * `ReadableStream`) is visible.
+ * The methods both `@clickhouse/client` and `@clickhouse/client-web` clients
+ * provide. The drivers' own types are not assignable to each other, so the
+ * parameters here are only as specific as the core needs.
  */
-export interface Adapter<R extends QueryResultLike, S> {
-  readonly ping: () => Promise<PingResult>
-  readonly close: () => Promise<void>
-  readonly query: (request: QueryRequest<S>) => Promise<R>
-  readonly command: (request: CommandRequest<S>) => Promise<object>
-  readonly stream: (result: R) => Stream.Stream<ReadonlyArray<Row>, SqlError>
+export interface Driver {
+  ping(): Promise<{ readonly success: boolean; readonly error?: unknown }>
+  close(): Promise<void>
+  query(params: Request & { readonly format: DataFormat }): Promise<ResultSet>
+  command(params: Request): Promise<unknown>
+  // The values type is checked by each entry's `insertQuery` signature.
+  insert(
+    params: RequestBase & { readonly table: string; readonly values: any; readonly format: "JSONEachRow" }
+  ): Promise<unknown>
 }
 
-export interface Backend<C, R extends QueryResultLike, S> {
-  readonly client: C
-  readonly adapter: Adapter<R, S>
-  /** The runtime entry's typed reference for the `ClickhouseSettings` key. */
-  readonly settings: Context.Reference<S>
-}
+/**
+ * Reads a result body as a stream of row batches. `evaluate` returns the
+ * driver's stream: a Node `Readable` or a web `ReadableStream`.
+ */
+export type FromStream = (
+  evaluate: () => unknown,
+  onError: (cause: unknown) => SqlError
+) => Stream.Stream<ReadonlyArray<{ json(): unknown }>, SqlError>
 
 export const ClientMethod = Context.Reference<"query" | "command" | "insert">(
   "@effect/sql-clickhouse/ClickhouseClient/ClientMethod",
-  {
-    defaultValue: () => "query"
-  }
+  { defaultValue: () => "query" }
 )
 
 export const QueryId = Context.Reference<string | undefined>(
@@ -102,21 +84,10 @@ export const QueryId = Context.Reference<string | undefined>(
   { defaultValue: () => undefined }
 )
 
-/**
- * What a request needs from a backend: a way to kill the query on the server
- * and the typed settings reference.
- */
-export interface Runner<S> {
-  readonly adapter: Pick<Adapter<never, S>, "command">
-  readonly settings: Context.Reference<S>
-}
-
-/**
- * Key of the settings reference. Each runtime entry declares its own typed
- * `Context.Reference` for it, so settings provided through one entry reach the
- * same requests as settings provided through another.
- */
-export const ClickhouseSettingsKey = "@effect/sql-clickhouse/ClickhouseClient/ClickhouseSettings"
+export const ClickhouseSettings = Context.Reference<Settings>(
+  "@effect/sql-clickhouse/ClickhouseClient/ClickhouseSettings",
+  { defaultValue: () => ({}) }
+)
 
 const clickhouseCodeFromCause = (cause: unknown): number | undefined => {
   if (typeof cause !== "object" || cause === null || !("code" in cause)) {
@@ -135,7 +106,7 @@ const clickhouseCodeFromCause = (cause: unknown): number | undefined => {
 
 const clickhouseSyntaxErrorCodes = new Set([36, 60, 62, 242])
 
-export const classifyError = (
+const classifyError = (
   cause: unknown,
   message: string,
   operation: string,
@@ -160,47 +131,51 @@ export const classifyError = (
   return fallback === "connection" ? new ConnectionError(props) : new UnknownError(props)
 }
 
-export const killQuery = <S>(adapter: Runner<S>["adapter"], queryId: string) =>
+// Cancellation is best effort: a kill that fails or does not answer in time
+// must not turn an interruption into a defect or hold it up.
+const killQuery = (client: Driver, queryId: string) =>
   Effect.promise(() =>
-    adapter.command({
+    client.command({
       query: "KILL QUERY WHERE query_id = {queryId:String}",
       query_params: { queryId }
     })
+  ).pipe(
+    Effect.timeoutOption(Duration.seconds(5)),
+    Effect.ignoreCause
   )
 
-export const newQueryId = (): string => globalThis.crypto.randomUUID()
+const newQueryId = (): string => globalThis.crypto.randomUUID()
 
 /**
- * Runs one request with the fiber's query id and ClickHouse settings. On
- * interruption the HTTP request is aborted and the query is killed on the
- * server, since closing the connection does not stop a query that is still
- * being computed.
+ * Runs one request with the fiber's query id and settings. On interruption
+ * the HTTP request is aborted and the query is killed on the server, since
+ * closing the connection does not stop a query that is still being computed.
  */
-export const runAbortable = <A, S>(
-  backend: Runner<S>,
-  options: { readonly message: string; readonly operation: string },
+const runAbortable = <A>(
+  client: Driver,
+  message: string,
+  operation: string,
   request: (base: {
     readonly abort_signal: AbortSignal
     readonly query_id: string
-    readonly clickhouse_settings: S
+    readonly clickhouse_settings: Settings
   }) => Promise<A>
 ): Effect.Effect<A, SqlError> =>
-  Effect.withFiber<A, SqlError>((fiber) =>
+  Effect.withFiber((fiber) =>
     Effect.callback<A, SqlError>((resume) => {
       const queryId = fiber.getRef(QueryId) ?? newQueryId()
       const controller = new AbortController()
       request({
         abort_signal: controller.signal,
         query_id: queryId,
-        clickhouse_settings: fiber.getRef(backend.settings)
+        clickhouse_settings: fiber.getRef(ClickhouseSettings)
       }).then(
         (result) => resume(Effect.succeed(result)),
-        (cause) =>
-          resume(Effect.fail(new SqlError({ reason: classifyError(cause, options.message, options.operation) })))
+        (cause) => resume(Effect.fail(new SqlError({ reason: classifyError(cause, message, operation) })))
       )
       return Effect.suspend(() => {
         controller.abort()
-        return killQuery(backend.adapter, queryId)
+        return killQuery(client, queryId)
       })
     })
   )
@@ -258,52 +233,43 @@ interface ClickhouseParam extends Statement.Custom<"ClickhouseParam", string, un
 const clickhouseParam = Statement.custom<ClickhouseParam>("ClickhouseParam")
 const isClickhouseParam = Statement.isCustom<ClickhouseParam>("ClickhouseParam")
 
-export const param = (dataType: string, value: unknown): Statement.Fragment =>
-  Statement.fragment([clickhouseParam(dataType, value)])
+// Commands resolve to a summary without a body.
+const isResultSet = (result: unknown, method: keyof ResultSet): result is ResultSet =>
+  typeof result === "object" && result !== null && method in result
 
-const dataOf = <A>(body: unknown): ReadonlyArray<A> =>
-  // The caller picks the format, so the element type cannot be derived from `body`.
-  (typeof body === "object" && body !== null && "data" in body ? body.data : body) as ReadonlyArray<A>
-
-const isResultWith = <R extends QueryResultLike>(raw: R | object, key: "json" | "stream"): raw is R => key in raw
-
-class ConnectionImpl<R extends QueryResultLike, S> implements Connection {
-  private readonly backend: Pick<Backend<unknown, R, S>, "adapter" | "settings">
-  constructor(backend: Pick<Backend<unknown, R, S>, "adapter" | "settings">) {
-    this.backend = backend
+class ConnectionImpl implements Connection {
+  private readonly client: Driver
+  private readonly fromStream: FromStream
+  constructor(client: Driver, fromStream: FromStream) {
+    this.client = client
+    this.fromStream = fromStream
   }
 
   private runRaw(sql: string, params: ReadonlyArray<unknown>, format: DataFormat = "JSON") {
-    const paramsObj: Record<string, unknown> = {}
+    const query_params: Record<string, unknown> = {}
     for (let i = 0; i < params.length; i++) {
-      paramsObj[`p${i + 1}`] = params[i]
+      query_params[`p${i + 1}`] = params[i]
     }
-    return Effect.withFiber<R | object, SqlError>((fiber) => {
+    return Effect.withFiber((fiber) => {
       const method = fiber.getRef(ClientMethod)
-      return runAbortable<R | object, S>(
-        this.backend,
-        { message: "Failed to execute statement", operation: "execute" },
-        (base) =>
-          method === "command"
-            ? this.backend.adapter.command({ query: sql, query_params: paramsObj, ...base })
-            : this.backend.adapter.query({ query: sql, query_params: paramsObj, ...base, format })
-      )
+      return runAbortable(this.client, "Failed to execute statement", "execute", (base) =>
+        method === "command"
+          ? this.client.command({ query: sql, query_params, ...base })
+          : this.client.query({ query: sql, query_params, ...base, format }))
     })
   }
 
-  private run<A>(sql: string, params: ReadonlyArray<unknown>, format?: DataFormat) {
+  private run(sql: string, params: ReadonlyArray<unknown>, format?: DataFormat) {
     return this.runRaw(sql, params, format).pipe(
-      Effect.flatMap((result): Effect.Effect<ReadonlyArray<A>, SqlError> => {
-        if (isResultWith(result, "json")) {
-          return Effect.tryPromise({
-            // The row shape depends on the format the caller asked for: `JSON`
-            // wraps rows in `{ data }`, `JSONCompact` rows are arrays.
-            try: () => result.json().then((body) => dataOf<A>(body)),
+      Effect.flatMap((result): Effect.Effect<ReadonlyArray<any>, SqlError> =>
+        isResultSet(result, "json")
+          ? Effect.tryPromise({
+            // `JSON` wraps rows in `{ data }`; `JSONCompact` rows are arrays.
+            try: () => result.json().then((body: any) => "data" in body ? body.data : body),
             catch: (cause) => new SqlError({ reason: classifyError(cause, "Failed to parse result", "parseResult") })
           })
-        }
-        return Effect.succeed([])
-      })
+          : Effect.succeed([])
+      )
     )
   }
 
@@ -313,14 +279,14 @@ class ConnectionImpl<R extends QueryResultLike, S> implements Connection {
     transformRows: (<A extends object>(row: ReadonlyArray<A>) => ReadonlyArray<A>) | undefined
   ) {
     return transformRows
-      ? Effect.map(this.run<object>(sql, params), transformRows)
-      : this.run<object>(sql, params)
+      ? Effect.map(this.run(sql, params), transformRows)
+      : this.run(sql, params)
   }
   executeRaw(sql: string, params: ReadonlyArray<unknown>) {
     return this.runRaw(sql, params)
   }
   executeValues(sql: string, params: ReadonlyArray<unknown>) {
-    return this.run<ReadonlyArray<unknown>>(sql, params, "JSONCompact")
+    return this.run(sql, params, "JSONCompact")
   }
   executeValuesUnprepared(sql: string, params: ReadonlyArray<unknown>) {
     return this.executeValues(sql, params)
@@ -337,23 +303,25 @@ class ConnectionImpl<R extends QueryResultLike, S> implements Connection {
     params: ReadonlyArray<unknown>,
     transformRows: (<A extends object>(row: ReadonlyArray<A>) => ReadonlyArray<A>) | undefined
   ) {
-    const adapter = this.backend.adapter
     return Effect.withFiber((fiber) => {
       const queryId = fiber.getRef(QueryId) ?? newQueryId()
       return this.runRaw(sql, params, "JSONEachRow").pipe(
         Effect.provideService(QueryId, queryId),
         Effect.map((result) => {
-          if (!isResultWith(result, "stream")) {
+          if (!isResultSet(result, "stream")) {
             return Stream.empty
           }
           // Closing the socket does not stop a query the server is still
           // computing, so kill it unless the response was read to the end.
           let done = false
-          return adapter.stream(result).pipe(
+          return this.fromStream(
+            () => result.stream(),
+            (cause) => new SqlError({ reason: classifyError(cause, "Failed to execute stream", "stream") })
+          ).pipe(
             Stream.onEnd(Effect.sync(() => {
               done = true
             })),
-            Stream.ensuring(Effect.suspend(() => done ? Effect.void : Effect.ignoreCause(killQuery(adapter, queryId))))
+            Stream.ensuring(Effect.suspend(() => done ? Effect.void : killQuery(this.client, queryId)))
           )
         })
       )
@@ -361,7 +329,7 @@ class ConnectionImpl<R extends QueryResultLike, S> implements Connection {
       Stream.unwrap,
       Stream.chunks,
       Stream.mapEffect((chunk) => {
-        const promises: Array<Promise<object>> = []
+        const promises: Array<Promise<any>> = []
         for (const rows of chunk) {
           for (const row of rows) {
             promises.push(Promise.resolve(row.json()))
@@ -378,36 +346,36 @@ class ConnectionImpl<R extends QueryResultLike, S> implements Connection {
 }
 
 /**
- * Creates the backend client for `options`, verifies connectivity with a ping
- * (5 second limit), and builds the generic `SqlClient` over it. The backend
- * client is closed when the scope ends.
+ * Creates the driver client, verifies connectivity with a ping (5 second
+ * limit), and builds the ClickHouse `SqlClient` over it. The driver client is
+ * closed when the scope ends. The result has the members both entries'
+ * service interfaces declare; each entry narrows it to its own.
  */
-export const make = <Config extends CoreConfig, C, R extends QueryResultLike, S>(
+export const make = <
+  Config extends {
+    readonly database?: string | undefined
+    readonly spanAttributes?: Record<string, unknown> | undefined
+    readonly transformResultNames?: ((str: string) => string) | undefined
+    readonly transformQueryNames?: ((str: string) => string) | undefined
+  }
+>(
+  typeId: string,
   options: Config,
-  create: (options: Config) => Backend<C, R, S>
-): Effect.Effect<
-  { readonly sql: Client.SqlClient; readonly backend: Backend<C, R, S> },
-  SqlError,
-  Scope.Scope | Reactivity.Reactivity
-> =>
+  createClient: (options: Config) => Driver,
+  fromStream: FromStream
+): Effect.Effect<Client.SqlClient, SqlError, Scope.Scope | Reactivity.Reactivity> =>
   Effect.gen(function*() {
-    const compiler = makeCompiler(options.transformQueryNames)
-    const transformRows = options.transformResultNames
-      ? Statement.defaultTransforms(options.transformResultNames).array
-      : undefined
-
-    const backend = yield* Effect.acquireRelease(
-      Effect.sync(() => create(options)),
-      ({ adapter }) => Effect.promise(() => adapter.close())
+    const client = yield* Effect.acquireRelease(
+      Effect.sync(() => createClient(options)),
+      (client) => Effect.promise(() => client.close())
     )
 
     yield* Effect.tryPromise({
       try: async () => {
-        const result = await backend.adapter.ping()
+        const result = await client.ping()
         if (!result.success) {
           throw result.error
         }
-        return result
       },
       catch: (cause) =>
         new SqlError({ reason: classifyError(cause, "ClickhouseClient: Failed to connect", "connect", "connection") })
@@ -429,16 +397,49 @@ export const make = <Config extends CoreConfig, C, R extends QueryResultLike, S>
 
     const sql = yield* Client.make({
       driver: "clickhouse",
-      acquirer: Effect.succeed(new ConnectionImpl(backend)),
-      compiler,
+      acquirer: Effect.succeed(new ConnectionImpl(client, fromStream)),
+      compiler: makeCompiler(options.transformQueryNames),
       spanAttributes: [
         ...(options.spanAttributes ? Object.entries(options.spanAttributes) : []),
         [ATTR_DB_SYSTEM_NAME, "clickhouse"],
         [ATTR_DB_NAMESPACE, options.database ?? "default"]
       ],
       beginTransaction: "BEGIN TRANSACTION",
-      transformRows
+      transformRows: options.transformResultNames
+        ? Statement.defaultTransforms(options.transformResultNames).array
+        : undefined
     })
 
-    return { sql, backend }
+    return Object.assign(sql, {
+      [typeId]: typeId,
+      config: options,
+      client,
+      param: (dataType: string, value: unknown) => Statement.fragment([clickhouseParam(dataType, value)]),
+      asCommand: <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.provideService(effect, ClientMethod, "command"),
+      insertQuery: (options: { readonly table: string; readonly values: unknown }) =>
+        runAbortable(
+          client,
+          "Failed to insert data",
+          "insert",
+          (base) => client.insert({ format: "JSONEachRow", ...options, ...base })
+        ),
+      withQueryId: dual(
+        2,
+        <A, E, R>(effect: Effect.Effect<A, E, R>, queryId: string) => Effect.provideService(effect, QueryId, queryId)
+      ),
+      withClickhouseSettings: dual(
+        2,
+        <A, E, R>(effect: Effect.Effect<A, E, R>, settings: Settings) =>
+          Effect.provideService(effect, ClickhouseSettings, settings)
+      )
+    })
   })
+
+/** Provides a client under its own tag and as the generic `SqlClient`. */
+export const layer = <I, S extends Client.SqlClient, E>(
+  tag: Context.Service<I, S>,
+  make: Effect.Effect<S, E, Scope.Scope | Reactivity.Reactivity>
+): Layer.Layer<I | Client.SqlClient, E> =>
+  Layer.effectContext(
+    Effect.map(make, (client) => Context.make(tag, client).pipe(Context.add(Client.SqlClient, client)))
+  ).pipe(Layer.provide(Reactivity.layer))
