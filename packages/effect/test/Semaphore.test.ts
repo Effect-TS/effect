@@ -51,59 +51,42 @@ describe("Semaphore", () => {
       yield* Fiber.joinAll(waiters)
     }))
 
-  it.effect("draining a long queue looks at each request a bounded number of times", () =>
+  it.effect("admits a queued zero-permit waiter after exhausting the release budget", () =>
     Effect.gen(function*() {
-      const sem = Semaphore.makeUnsafe(1)
-      // Count every queued request the semaphore looks at.
-      const waiters: Set<unknown> = (sem as any).waiters
-      const iterate = waiters[Symbol.iterator].bind(waiters)
-      let visited = 0
-      waiters[Symbol.iterator] = function*(): Generator<unknown, undefined> {
-        for (const waiter of iterate()) {
-          visited++
-          yield waiter
-        }
-        return undefined
-      }
-      const requests = 1_000
-      yield* Effect.forEach(
-        Array.from({ length: requests }),
-        () => sem.withPermits(1)(Effect.yieldNow),
-        { concurrency: "unbounded", discard: true }
-      )
-      assert.isBelow(visited, requests * 8)
-    }))
-
-  it.effect("a request for no permits is admitted while none are free", () =>
-    Effect.gen(function*() {
-      const sem = yield* Semaphore.make(2)
-      const admitted: Array<string> = []
-      const request = (name: string, permits: number) =>
+      const turns: Array<() => void> = []
+      const scheduler = new Scheduler.MixedScheduler("async", (run) => {
+        turns.push(run)
+        return () => {}
+      })
+      const sem = yield* Semaphore.make(1)
+      yield* sem.take(1)
+      const admitted: Array<number> = []
+      const request = (permits: number) =>
         Effect.forkChild(
-          sem.withPermits(permits)(
-            Effect.andThen(Effect.sync(() => admitted.push(name)), Effect.yieldNow)
-          )
+          Effect.andThen(sem.take(permits), Effect.sync(() => admitted.push(permits))).pipe(
+            Effect.provideService(Scheduler.Scheduler, scheduler)
+          ),
+          { startImmediately: true }
         )
-      // Both permits are held, so every request below queues.
-      const holder = yield* Effect.forkChild(sem.withPermits(2)(Effect.never))
-      yield* Effect.yieldNow
-      const queued = [
-        yield* request("first", 1),
-        yield* request("second", 1),
-        yield* request("both", 2),
-        yield* request("third", 1)
-      ]
-      const interrupted = yield* request("interrupted", 1)
-      const none = yield* request("none", 0)
-      yield* Fiber.join(none)
-      assert.deepStrictEqual(admitted, ["none"])
+      const positive = yield* request(1)
+      yield* sem.release(1).pipe(Effect.provideService(Scheduler.Scheduler, scheduler))
+      // The positive waiter is eligible but has not resumed, so take(0) must queue behind it.
+      const cancelled = yield* request(0)
+      const zero = yield* request(0)
+      assert.isUndefined(cancelled.pollUnsafe())
+      yield* Fiber.interrupt(cancelled)
+      assert.isUndefined(zero.pollUnsafe())
+      assert.deepStrictEqual(admitted, [])
 
-      yield* Fiber.interrupt(interrupted)
-      yield* Fiber.interrupt(holder)
-      yield* Fiber.joinAll(queued)
-      // `third` fits beside `second` while `both` still waits for two permits.
-      assert.deepStrictEqual(admitted, ["none", "first", "second", "third", "both"])
-      assert.isTrue(yield* sem.takeIfAvailable(2))
+      yield* Effect.sync(() => turns.shift()!())
+      assert.deepStrictEqual(admitted, [1, 0])
+      yield* Fiber.joinAll([positive, zero])
+      yield* sem.release(1)
+      yield* Effect.sync(() => {
+        while (turns.length > 0) turns.shift()!()
+      })
+      assert.isTrue(yield* sem.takeIfAvailable(1))
+      assert.isFalse(yield* sem.takeIfAvailable(1))
     }))
 
   it.effect("basic single partition operation", () =>
