@@ -114,6 +114,30 @@ interface RElement {
   readonly node: unknown
   readonly children: Array<Rendered>
   readonly mountScope: Scope.Closeable | undefined
+  /** The mounts of the element's owned layers, by owner and mount name. */
+  readonly ownedMounts: ReadonlyArray<OwnedMount> | undefined
+}
+
+interface OwnedMount {
+  readonly owner: View.Owner
+  readonly name: string
+  readonly scope: Scope.Closeable | undefined
+}
+
+/** One owner's handler for an event on an element that parts decorated. */
+interface EventLayer {
+  readonly inst: Instance
+  readonly handler: View.Handler<any, any>
+  /** The layer's own `preventDefault: true`: only its message prevents the default. */
+  readonly prevents: boolean
+}
+
+/** What the host stores for an event with more than the author's layer. It is opaque to the host. */
+class Layered {
+  readonly layers: ReadonlyArray<EventLayer>
+  constructor(layers: ReadonlyArray<EventLayer>) {
+    this.layers = layers
+  }
 }
 
 interface RText {
@@ -200,6 +224,15 @@ export interface Instance {
   readonly depth: number
   readonly component: Component.Any
   readonly parent: Instance | undefined
+  /**
+   * Who wrote the tree this instance renders: the instance itself, or for a headless instance the
+   * author of the tree its slot sits in.
+   */
+  author: Instance
+  /** A headless instance: who its parts' layers belong to. */
+  readonly owner: View.Owner | undefined
+  /** A headless instance: the closure that is its view, as last declared. */
+  content: ((parts: any) => View.Content<any, any>) | undefined
   readonly scope: Scope.Closeable
   env: Env
   readonly children: Map<string, Instance>
@@ -747,6 +780,8 @@ const setup = (
   let lastFailedBuild = 0
   // Counts instances as they are created.
   let instancesMade = 0
+  // The headless instance behind each owner a part stamps on its layers.
+  const owners = new WeakMap<View.Owner, Instance>()
   // The checks after a navigation still outstanding, and the instances created meanwhile, whose
   // watches are recorded for them.
   let recording = 0
@@ -1059,10 +1094,11 @@ const setup = (
     }
     const onFailure = inst.onFailure
     if (onFailure !== undefined) {
-      // The parent's code, so a defect in it is the parent's, and it runs between renders.
+      // The code of whoever wrote the slot, so a defect in it is theirs, and it runs between renders.
+      const author = parent.author
       defer(() => {
-        const message = guard(parent, "onFailure", () => onFailure(AsyncResult.failure(cause)))
-        if (message !== undefined) parent.dispatch(message, { _tag: "Emit", path: inst.path, seq: failedSeq })
+        const message = guard(author, "onFailure", () => onFailure(AsyncResult.failure(cause)))
+        if (message !== undefined) author.dispatch(message, { _tag: "Emit", path: inst.path, seq: failedSeq })
       })
     }
     markDirty(parent)
@@ -1235,16 +1271,22 @@ const setup = (
     parentEnv: Env,
     onEmit: (events: unknown) => unknown,
     onFailure: ((failure: AsyncResult.Failure<never, unknown>) => unknown) | undefined,
-    range: Range | undefined
+    range: Range | undefined,
+    content?: ((parts: any) => View.Content<any, any>) | undefined
   ): Instance => {
     const scope = Scope.forkUnsafe(parent?.scope ?? rootScope, "sequential")
     const bound = loaders.boundOf(component)
+    const depth = parent === undefined ? 0 : parent.depth + 1
+    const owner: View.Owner | undefined = content === undefined ? undefined : { path, depth }
     const inst: Instance = {
       path,
       born: ++instancesMade,
-      depth: parent === undefined ? 0 : parent.depth + 1,
+      depth,
       component,
       parent,
+      author: undefined as any,
+      owner,
+      content,
       scope,
       env: parentEnv,
       children: new Map(),
@@ -1305,6 +1347,8 @@ const setup = (
         inst.dispatch(message, { _tag: "DomEvent", name: event })
       }
     }
+    inst.author = owner === undefined || parent === undefined ? inst : parent.author
+    if (owner !== undefined) owners.set(owner, inst)
     if (recording > 0) {
       inst.watched = new Set()
       recorded.add(inst)
@@ -1522,7 +1566,7 @@ const setup = (
         inst.mounting = undefined
         if (inst.closed || inst.failure !== undefined) return
       }
-      const tree = guard(inst, "view", () => component.view(inst.model, inst.props, runningOf(inst), inst.slots))
+      const tree = viewOf(inst)
       if (tree === undefined) return
       const plan = range !== undefined && Option.isSome(serverModel) ? matchList(inst, [tree], range.nodes) : undefined
       const rendered = guard(
@@ -1669,7 +1713,8 @@ const setup = (
     else whenReady(inst.env, go)
   }
   const deliverEvents = (inst: Instance, events: ReadonlyArray<unknown>, entrySeq: number) => {
-    const parent = inst.parent
+    // The slot's `onEmit` was written by the author of the tree it sits in.
+    const parent = inst.parent?.author
     for (const emitted of events) {
       if (inst.closed) return
       if (parent === undefined) {
@@ -2647,6 +2692,8 @@ const setup = (
           case "Child":
             // A feature has no implementation until its Layer is built.
             if (Feature.isService(node.component)) return
+            // A headless child's view is a closure over its parts, which this walk doesn't run.
+            if (node.view !== undefined) return
             return visit(node.component, node.props, behind)
         }
       }
@@ -2746,14 +2793,33 @@ const setup = (
   }
 
   // -- refs and mounts ------------------------------------------------------
-  const findRef = (rendered: Rendered, key: string): unknown =>
-    rendered._tag === "Element"
-      ? rendered.v.refKey === key
-        ? rendered.node
-        : firstDefined(rendered.children, (child) => findRef(child, key))
-      : rendered._tag === "Slot"
-      ? findRef(rendered.inner, key)
-      : undefined
+  /**
+   * The node `who` put the ref `key` on. `author` wrote the tree `rendered` is in: the author's layer
+   * of its elements is theirs, and an owned layer is its owner's. The search goes into headless
+   * children, whose trees the same author wrote, and stops at any other child.
+   */
+  const findRef = (rendered: Rendered, key: string, who: Instance, author: Instance): unknown => {
+    switch (rendered._tag) {
+      case "Element": {
+        const view = rendered.v
+        if (author === who && view.refKey === key) return rendered.node
+        if (who.owner !== undefined) {
+          for (const layer of view.owned) {
+            if (layer.owner === who.owner && layer.refKey === key) return rendered.node
+          }
+        }
+        return firstDefined(rendered.children, (child) => findRef(child, key, who, author))
+      }
+      case "Slot":
+        return findRef(rendered.inner, key, who, author)
+      case "Child":
+        return rendered.inst.owner === undefined
+          ? undefined
+          : firstDefined(rendered.inst.rendered, (child) => findRef(child, key, who, author))
+      case "Text":
+        return undefined
+    }
+  }
   const firstDefined = <A>(items: ReadonlyArray<A>, f: (item: A) => unknown): unknown => {
     for (const item of items) {
       const found = f(item)
@@ -2766,7 +2832,9 @@ const setup = (
     lookup: <Node>(ref: Renderer.Ref<Node>) =>
       Effect.callback<Option.Option<Node>>((resume) => {
         afterCommit(() => {
-          const node = inst.closed ? undefined : firstDefined(inst.rendered, (rendered) => findRef(rendered, ref.key))
+          const node = inst.closed
+            ? undefined
+            : firstDefined(inst.rendered, (rendered) => findRef(rendered, ref.key, inst, inst.author))
           resume(Effect.succeed(Option.fromUndefinedOr(node as Node | undefined)))
         })
       })
@@ -2776,9 +2844,13 @@ const setup = (
   // for its commit or its Layer checks this before it starts.
   const removedMounts = new WeakSet<Scope.Closeable>()
 
-  const startMount = (inst: Instance, mount: View.Mount<any>, node: unknown, env: Env) => {
+  /**
+   * `inst` is whose mount it is: it gets the message, and the failure. The Scope is forked from
+   * `under`, the instance rendering the element, so the mount ends with that instance too.
+   */
+  const startMount = (inst: Instance, mount: View.Mount<any>, node: unknown, env: Env, under: Instance = inst) => {
     if (!host.runsMounts) return undefined
-    const mountScope = Scope.forkUnsafe(inst.scope, "sequential")
+    const mountScope = Scope.forkUnsafe(under.scope, "sequential")
     afterCommit(() =>
       whenReady(env, (envCtx) => {
         if (inst.closed || removedMounts.has(mountScope)) return
@@ -2799,11 +2871,158 @@ const setup = (
     return mountScope
   }
 
+  // -- owned layers ---------------------------------------------------------
+  const ownerInstance = (inst: Instance, owner: View.Owner): Instance => {
+    const found = owners.get(owner)
+    if (found === undefined || found.closed) {
+      throw new Error(inst.path + ": a part of " + owner.path + " was applied outside its view")
+    }
+    return found
+  }
+
+  /** The event options of every layer as one record: the host reads one value per event. */
+  const mergeOptions = (
+    inst: Instance,
+    layers: ReadonlyArray<Readonly<Record<string, View.EventOptions>>>
+  ): Readonly<Record<string, View.EventOptions>> => {
+    const out: Record<string, Record<string, unknown>> = {}
+    for (const options of layers) {
+      for (const event in options) {
+        const merged = out[event] ??= {}
+        const option = options[event] as Readonly<Record<string, unknown>>
+        for (const key in option) {
+          const value = option[key]
+          if (value === undefined) continue
+          if (key === "preventDefault") {
+            if (merged[key] !== "always") merged[key] = value
+          } else if (key in merged) {
+            throw new Error(inst.path + ": two owners set the " + key + " option of " + event + " on one element")
+          } else {
+            merged[key] = value
+          }
+        }
+      }
+    }
+    return out
+  }
+
+  /**
+   * Gives the host an element's events. With only the author's layer the handlers go as they are.
+   * With owned layers, each event gets one `Layered` value, which the host hands back to `fireLayered`.
+   */
+  const setEvents = (inst: Instance, node: unknown, view: View.Element<any, any>) => {
+    const author = inst.author
+    if (view.owned.length === 0) return host.setEvents(node, view.handlers, author.fire, view.eventOptions)
+    // Deepest owner first, and the author last.
+    const owned = view.owned.length === 1
+      ? view.owned
+      : view.owned.slice().sort((a, b) => b.owner.depth - a.owner.depth)
+    const byEvent: Record<string, Array<EventLayer>> = {}
+    for (const layer of owned) {
+      const target = ownerInstance(inst, layer.owner)
+      for (const event in layer.handlers) {
+        ;(byEvent[event] ??= []).push({
+          inst: target,
+          handler: layer.handlers[event]!,
+          prevents: layer.eventOptions[event]?.preventDefault === true
+        })
+      }
+    }
+    for (const event in view.handlers) {
+      ;(byEvent[event] ??= []).push({
+        inst: author,
+        handler: view.handlers[event]!,
+        prevents: view.eventOptions[event]?.preventDefault === true
+      })
+    }
+    const handlers: Record<string, View.Handler<unknown, any>> = {}
+    for (const event in byEvent) handlers[event] = new Layered(byEvent[event]!) as any
+    host.setEvents(
+      node,
+      handlers,
+      fireLayered,
+      mergeOptions(inst, [...owned.map((layer) => layer.eventOptions), view.eventOptions])
+    )
+  }
+
+  const fireLayered: Renderer.Dispatch = (event, handler, payload, onMessage) => {
+    let told = false
+    for (const layer of (handler as unknown as Layered).layers) {
+      const target = layer.inst
+      if (target.closed || target.waiting) continue
+      const own = layer.handler
+      const message = typeof own === "function"
+        ? guard(target, "domEvent", () => (own as (payload: unknown) => unknown)(payload), event)
+        : own
+      if (message === undefined) continue
+      if (layer.prevents && !told) {
+        told = true
+        onMessage?.()
+      }
+      target.dispatch(message, { _tag: "DomEvent", name: event })
+    }
+  }
+
+  const startOwnedMounts = (
+    inst: Instance,
+    view: View.Element<any, any>,
+    node: unknown,
+    env: Env,
+    running?: ReadonlyArray<OwnedMount> | undefined
+  ): ReadonlyArray<OwnedMount> | undefined => {
+    if (view.owned.length === 0 && running === undefined) return undefined
+    const out: Array<OwnedMount> = []
+    for (const layer of view.owned) {
+      const mount = layer.mount
+      if (mount === undefined) continue
+      const kept = running?.find((entry) => entry.owner === layer.owner && entry.name === mount.name)
+      out.push(
+        kept ??
+          {
+            owner: layer.owner,
+            name: mount.name,
+            scope: startMount(ownerInstance(inst, layer.owner), mount, node, env, inst)
+          }
+      )
+    }
+    // The part is no longer applied to the element, which stays: its mount ends here.
+    if (running !== undefined) { for (const entry of running) if (!out.includes(entry)) stopMount(entry.scope) }
+    return out.length === 0 ? undefined : out
+  }
+
+  const stopMount = (scope: Scope.Closeable | undefined) => {
+    if (scope === undefined) return
+    removedMounts.add(scope)
+    closeScope(scope)
+  }
+
   // -- create ---------------------------------------------------------------
+  /** The instance's view. A headless instance's is its slot's closure, run against its parts. */
+  const viewOf = (inst: Instance): View.Node<any, any> | undefined => {
+    const owner = inst.owner
+    if (owner === undefined) {
+      return guard(
+        inst,
+        "view",
+        () => inst.component.view(inst.model, inst.props, runningOf(inst), inst.slots, inst.path)
+      )
+    }
+    const parts = guard(inst, "view", () => ({
+      value: (inst.component as unknown as Component.Headless.Any).parts(inst.model, inst.props, {
+        owner,
+        running: runningOf(inst),
+        loaded: inst.slots
+      })
+    }))
+    if (parts === undefined) return undefined
+    return guard(inst, "content", () => View.toNode(inst.content!(parts.value)))
+  }
+
   const render = (inst: Instance) => {
     if (inst.waiting) return
+    const tree = viewOf(inst)
+    if (tree === undefined) return
     guard(inst, "view", () => {
-      const tree = inst.component.view(inst.model, inst.props, runningOf(inst), inst.slots)
       const old = inst.rendered.flatMap(nodesOf)
       const parentNode = host.parentOf(old[0])!
       const ref = host.nextOf(old[old.length - 1])
@@ -2820,7 +3039,7 @@ const setup = (
       case "Element": {
         const node = host.createElement(view.tag)
         for (const name in view.attrs) host.setAttr(node, name, view.attrs[name])
-        host.setEvents(node, view.handlers, inst.fire, view.eventOptions)
+        setEvents(inst, node, view)
         const children = view.children.map((child) => create(inst, child, env))
         place(node, children, undefined)
         // Properties go after the children, so a `select`'s `value` has its options to match.
@@ -2830,7 +3049,8 @@ const setup = (
           v: view,
           node,
           children,
-          mountScope: view.mount !== undefined ? startMount(inst, view.mount, node, env) : undefined
+          mountScope: view.mount !== undefined ? startMount(inst.author, view.mount, node, env, inst) : undefined,
+          ownedMounts: startOwnedMounts(inst, view, node, env)
         }
       }
       case "Child":
@@ -2873,8 +3093,26 @@ const setup = (
     } else {
       component = target
     }
+    const headless = (component as unknown as Component.Headless.Any).parts !== undefined
+    if (headless !== (view.view !== undefined)) {
+      throw new Error(
+        headless
+          ? inst.path + ": " + component.name + " is headless, so its slot needs a view"
+          : inst.path + ": " + component.name + " has its own view, so its slot takes none"
+      )
+    }
     const path = `${inst.path}/${childName(target)}[${view.key}]`
-    const child = makeInstance(component, view.props, path, inst, childEnv, view.onEmit, view.onFailure, range)
+    const child = makeInstance(
+      component,
+      view.props,
+      path,
+      inst,
+      childEnv,
+      view.onEmit,
+      view.onFailure,
+      range,
+      view.view
+    )
     // Built fresh: the server's nodes go, and the parent places the new ones.
     if (range !== undefined && !range.claimed) removeRange(range)
     if (child.failure !== undefined) {
@@ -2896,7 +3134,7 @@ const setup = (
     failure: Cause.Cause<unknown>,
     env: Env
   ): Rendered => {
-    const shown = guard(inst, "fallback", () => fallbackFor(view, failure)) ?? emptyText
+    const shown = guard(inst.author, "fallback", () => fallbackFor(view, failure)) ?? emptyText
     return { _tag: "Slot", v: view, inner: create(inst, shown, settled(env)), failure }
   }
 
@@ -2988,7 +3226,7 @@ const setup = (
         for (const name in view.attrs) {
           if (hydration!.getAttr(node, name) !== view.attrs[name]) host.setAttr(node, name, view.attrs[name])
         }
-        host.setEvents(node, view.handlers, inst.fire, view.eventOptions)
+        setEvents(inst, node, view)
         if (plans === undefined) { for (const child of childNodes(node)) host.remove(child) }
         const children = plans === undefined
           ? view.children.map((child) => create(inst, child, env))
@@ -3000,7 +3238,8 @@ const setup = (
           v: view,
           node,
           children,
-          mountScope: view.mount !== undefined ? startMount(inst, view.mount, node, env) : undefined
+          mountScope: view.mount !== undefined ? startMount(inst.author, view.mount, node, env, inst) : undefined,
+          ownedMounts: startOwnedMounts(inst, view, node, env)
         }
       }
       case "Child":
@@ -3105,18 +3344,31 @@ const setup = (
         for (const name in element.attrs) {
           if (prev.attrs[name] !== element.attrs[name]) host.setAttr(rendered.node, name, element.attrs[name])
         }
-        if (element.handlers !== prev.handlers || element.eventOptions !== prev.eventOptions) {
-          host.setEvents(rendered.node, element.handlers, inst.fire, element.eventOptions)
+        if (
+          element.handlers !== prev.handlers || element.eventOptions !== prev.eventOptions ||
+          element.owned !== prev.owned
+        ) {
+          setEvents(inst, rendered.node, element)
         }
         const children = patchList(inst, rendered.node, rendered.children, element.children, undefined, env)
         patchProps(rendered.node, prev.props, element.props)
         // A mount belongs to the element, not to one view run: it keeps running across patches.
-        return { _tag: "Element", v: element, node: rendered.node, children, mountScope: rendered.mountScope }
+        // An owned layer's mount belongs to its part: it runs while the part is applied.
+        return {
+          _tag: "Element",
+          v: element,
+          node: rendered.node,
+          children,
+          mountScope: rendered.mountScope,
+          ownedMounts: element.owned === prev.owned
+            ? rendered.ownedMounts
+            : startOwnedMounts(inst, element, rendered.node, env, rendered.ownedMounts ?? [])
+        }
       }
       case "Slot": {
         const child = view as View.Child<any, any>
         if (rendered.failure !== undefined) {
-          const shown = guard(inst, "fallback", () => fallbackFor(child, rendered.failure!)) ?? emptyText
+          const shown = guard(inst.author, "fallback", () => fallbackFor(child, rendered.failure!)) ?? emptyText
           return {
             _tag: "Slot",
             v: child,
@@ -3148,7 +3400,8 @@ const setup = (
         }
         instance.onEmit = child.onEmit
         instance.onFailure = child.onFailure
-        if (!propsEqual(child.props, instance.props)) {
+        const changed = !propsEqual(child.props, instance.props)
+        if (changed) {
           instance.props = child.props
           // Before the slot writes the new props cause, so a replay opens them against these props.
           record({ _tag: "PropsChanged", path: instance.path, component: instance.component, props: child.props })
@@ -3156,10 +3409,12 @@ const setup = (
           // keyed loaders' slots are written before it too.
           syncSubscriptions(instance)
           drainKeyed(instance)
-          if (!instance.closed) {
-            dirty.delete(instance)
-            render(instance)
-          }
+        }
+        // A headless child's view is the closure, which is new on every render of whoever declared it.
+        if (instance.owner !== undefined) instance.content = child.view
+        if ((changed || instance.owner !== undefined) && !instance.closed) {
+          dirty.delete(instance)
+          render(instance)
         }
         return { _tag: "Child", v: child, inst: instance }
       }
@@ -3213,10 +3468,8 @@ const setup = (
         return closeAll(inst, rendered.inner)
       case "Element": {
         // The element's `onMount` work ends with it.
-        if (rendered.mountScope !== undefined) {
-          removedMounts.add(rendered.mountScope)
-          closeScope(rendered.mountScope)
-        }
+        stopMount(rendered.mountScope)
+        if (rendered.ownedMounts !== undefined) { for (const entry of rendered.ownedMounts) stopMount(entry.scope) }
         for (const child of rendered.children) closeAll(inst, child)
         return
       }

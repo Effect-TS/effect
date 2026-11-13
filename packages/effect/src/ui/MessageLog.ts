@@ -94,6 +94,7 @@ export type FailureSource =
   | "init"
   | "update"
   | "view"
+  | "content"
   | "domEvent"
   | "mount"
   | "command"
