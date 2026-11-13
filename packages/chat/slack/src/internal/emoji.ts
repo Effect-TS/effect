@@ -103,8 +103,9 @@ const SKIN_TONE = /^skin-tone-([2-6])$/
  *
  * Accepts any alias, with or without surrounding colons, followed by at most
  * one `::skin-tone-N` suffix (`+1::skin-tone-3`). The toned emoji is the
- * upstream `skin_variations` entry with that one tone, so `toName` on it
- * gives the name back. A tone the emoji does not have, and a name with two
+ * upstream `skin_variations` entry with that one tone, or, for a multi-person
+ * emoji upstream keys only by two tones (`people_holding_hands`), the entry
+ * with that tone twice. A tone the emoji does not have, and a name with two
  * tones, yield `undefined`: no recording shows what Slack sends for a
  * two-tone reaction.
  *
@@ -118,7 +119,9 @@ export const fromName = (name: string): string | undefined => {
   if (parts.length === 1) return entry.unified
   if (parts.length !== 2) return undefined
   const match = SKIN_TONE.exec(parts[1])
-  return match === null ? undefined : entry.variations.get(match[1])
+  if (match === null) return undefined
+  const tone = match[1]
+  return entry.variations.get(tone) ?? entry.variations.get(tone + tone)
 }
 
 /**
@@ -137,6 +140,10 @@ const COMBINING_ENCLOSING_KEYCAP = 0x20e3
 const ZERO_WIDTH_JOINER_COST = 10
 const COMBINING_ENCLOSING_KEYCAP_COST = 12
 const REGIONAL_INDICATOR_COST = 6
+// Slack charges a lone hair component 1 (the spec's four override rows), but
+// with this split measure 1 would charge seven hair sequences below their
+// names: 🧑‍🦱 would split as :adult: + joiner + 🦱 for 18 against Slack's 21.
+// 4 is the least that keeps every hair sequence at its name.
 const HAIR_COMPONENT_COST = 4
 
 const codePointCost = (codePoint: number, loneSurrogateCost: number): number => {
