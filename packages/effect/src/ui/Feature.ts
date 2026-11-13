@@ -111,8 +111,8 @@ export interface Service<in out Self, in out Props, in out Events, in out Receiv
    * component receives every message the feature receives, and may receive
    * more.
    */
-  readonly toLayer: <R, Rcv = never>(
-    component: Component.Mountable<Props, Events, R, Rcv> & ReceivesAll<Receives, Rcv>
+  readonly toLayer: <R, C = unknown>(
+    component: Component.Mountable<Props, Events, R, any> & C & ReceivesAll<Receives, Component.ReceivedByAll<C>>
   ) => Layer.Layer<Self, never, R>
 }
 

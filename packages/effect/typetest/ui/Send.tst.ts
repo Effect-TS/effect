@@ -48,6 +48,14 @@ class Todos extends Feature.Service<Todos>()("Todos", {
   receives: TodosMessage
 }) {}
 
+declare const condition: boolean
+// Either one of two components, and only Editor receives Clear and Focus.
+const EditorOrPlain = condition ? Editor : Plain
+const EditorOrNote = condition ? Editor : Note
+
+declare const untrusted: unknown
+declare const arbitraryObject: object
+
 const ParentMessage = Schema.TaggedUnion({ Go: {} })
 const ParentDef = Component.define({ name: "Parent", model: Schema.Null, message: ParentMessage })
 
@@ -86,6 +94,10 @@ describe("$.send", () => {
       // A component that receives nothing takes nothing, not even `make`'s result.
       expect($.send).type.not.toBeCallableWith(Plain.ref("P"), EditorMessage.make({ _tag: "Clear" }))
       expect($.send(Todos.ref("Main"), TodosMessage.make({ _tag: "Clear" }))).type.not.toRaiseError()
+      // Wider than the child's Message: nothing says the value is one.
+      expect($.send).type.not.toBeCallableWith(Draft, untrusted)
+      expect($.send).type.not.toBeCallableWith(Draft, arbitraryObject)
+      expect($.send).type.not.toBeCallableWith(Draft, { _tag: "Clear" } as { readonly _tag: string })
       expect($.send).type.not.toBeCallableWith(Draft, { _tag: "Typed", text: "x" })
       expect($.send).type.not.toBeCallableWith(Plain.ref("P"), { _tag: "Clear" })
       expect($.send).type.not.toBeCallableWith(Rows.at(1), { _tag: "Focus" })
@@ -139,6 +151,15 @@ describe("h.child with a ref", () => {
       return h.el("p")
     })
   })
+
+  it("checks a union of components against each member", () => {
+    ParentDef.view((_, h) => {
+      expect(h.child(EditorOrNote, { ref: Rows })).type.not.toRaiseError()
+      expect(h.child).type.not.toBeCallableWith(EditorOrNote, { ref: Draft })
+      expect(h.child).type.not.toBeCallableWith(EditorOrPlain, { ref: Rows })
+      return h.el("p")
+    })
+  })
 })
 
 describe("Feature receives", () => {
@@ -149,6 +170,9 @@ describe("Feature receives", () => {
 
   it("toLayer rejects an implementation that misses a case", () => {
     expect(Todos.toLayer).type.not.toBeCallableWith(Plain)
+    // Each member of a union must receive every case.
+    expect(Todos.toLayer).type.not.toBeCallableWith(EditorOrPlain)
+    expect(Todos.toLayer(EditorOrNote)).type.toBe<Layer.Layer<Todos, never, never>>()
   })
 })
 

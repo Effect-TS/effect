@@ -214,11 +214,14 @@ export const isRef = (u: unknown): u is Ref<unknown> => Predicate.hasProperty(u,
  * What `$.send` takes for a ref `To` that receives `Rcv` from a child whose
  * Message is `Msg`: a received message, or the whole Message as `Message.make` returns
  * it, whose tag is checked when the send is made. A message narrowed to a case
- * the child doesn't receive is rejected.
+ * the child doesn't receive is rejected, and so is a wider type such as
+ * `unknown` or `object`: the fallback takes exactly `Msg`, and only when the
+ * ref knows it.
  */
 type SendMessage<A, To> = To extends Ref<infer Rcv, infer Msg> ? [Rcv] extends [never] ? never
   : [A] extends [Rcv] ? A
-  : [Msg] extends [A] ? A
+  : unknown extends Msg ? Rcv
+  : [A] extends [Msg] ? [Msg] extends [A] ? A : Rcv
   : Rcv
   : never
 
@@ -723,6 +726,29 @@ export type Message<C> = C extends
  * @since 4.1.5
  */
 export type Receives<C> = C extends Mountable<infer _Props, infer _Events, infer _R, infer Rcv> ? Rcv : never
+
+/**
+ * The messages every member of a component union receives.
+ *
+ * **When to use**
+ *
+ * Use when checking a ref against a component that may be one of several,
+ * such as `flag ? Editor : Viewer`.
+ *
+ * **Details**
+ *
+ * `Receives` of a union is the union of what its members receive, which a
+ * member that doesn't receive a message would still pass. This is the
+ * intersection instead: a message is in it only if each member receives it.
+ *
+ * @stability experimental
+ * @category utility types
+ * @since 4.1.5
+ */
+export type ReceivedByAll<C> =
+  (C extends Mountable<infer _Props, infer _Events, infer _R, infer Rcv> ? (rcv: Rcv) => void : never) extends
+    (rcv: infer All) => void ? All
+    : never
 
 /**
  * A `load` entry of `loaders`, as the types see it: one read, or a list
