@@ -462,4 +462,16 @@ describe("ChatTest", () => {
       limits: { messageLength: 10 },
       measure: (markdown) => markdown.length + 3 * (markdown.split("<").length - 1)
     }))))
+
+  it.effect("the native stream holds a trailing high surrogate and stores any other lone one as U+FFFD", () =>
+    Effect.gen(function*() {
+      const test = yield* ChatTest.ChatTest
+      const native = (yield* (yield* ChatAdapter.Registry).get("test")).nativeStream!
+      const thread = yield* test.makeThread()
+      const posted = yield* native.start(thread, { markdown: "x\udc00" })
+      assert.deepStrictEqual(yield* native.append(thread, posted.id, "a\ud83d", undefined), { state: "open", held: 1 })
+      yield* native.append(thread, posted.id, "\ud83d\ude00\ud83d", { flush: true })
+      const [message] = yield* test.messages(thread)
+      assert.strictEqual(message.text, "x\ufffda😀\ufffd")
+    }).pipe(Effect.provide(ChatTest.layer())))
 })

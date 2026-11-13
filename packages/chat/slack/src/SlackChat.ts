@@ -105,7 +105,21 @@ export class SlackChat extends Context.Service<SlackChat, {
  * - That `text` is cut to 16,000 code points on a post and 3,800 UTF-8
  *   bytes on an edit, on a grapheme cluster boundary, ending in `…` with
  *   the allowed tokens the cut left out appended. The cut never fails.
- *   Stream appends still go as `markdown_text`.
+ * - Stream appends go as `markdown_text`, which has no `text` beside it.
+ *   A stream decodes the character references for `<`, `@` and `!`, so
+ *   the adapter finds token shapes (`<@`, and `<!` followed by a letter)
+ *   with those references decoded, in prose and in code alike, and puts a
+ *   zero-width space (U+200B) straight after whatever spells the `<`.
+ *   Allowed tokens are sent as they are. An append holds back an unclosed
+ *   `<`, a trailing character reference that is not finished and a
+ *   trailing high surrogate, and reports them as `held`.
+ * - Once a stream is stopped, a message whose appends differ from what
+ *   `post` would send gets one `chat.update` as blocks plus `text`,
+ *   which takes the zero-width spaces out. It is skipped, leaving them, when
+ *   the block would pass 12,000 code points, when the edit fails, and when
+ *   an append to the message was left unconfirmed, since `ChatMarkdown`
+ *   then rewrites the message itself. A skip fails nothing and sets the
+ *   span attribute `slack.stream.cleanup`.
  * - `post`, `edit` and stream writes fail with `TooLarge` before calling
  *   Slack when the text as sent passes 12,000 code points. Slack's second
  *   limit, 13,200 with every emoji counted as its shortcode, is left to

@@ -96,9 +96,11 @@ describe.skipIf(botToken === undefined || teamId === undefined || channel === un
  * It is a proxy: Slack decides a mention from the stored `text`, which was
  * checked against one client's Activity feed (EFF-3730, EFF-3736). It also
  * makes a file post and a file-only post, and asserts each holds its file
- * after the attach. The stream inputs belong to the stream route and are not
- * here yet. The same assertions run in CI on the request bodies, in
- * `text.test.ts` and `SlackChat.test.ts`.
+ * after the attach. It streams token shapes split at every position across
+ * two appends, and asserts that no token is stored and no U+200B is left once
+ * the stream is stopped. The stream needs a recipient, the identity of
+ * `SLACK_LIVE_USER_TOKEN`. The same assertions run in CI on the request
+ * bodies, in `text.test.ts` and `SlackChat.test.ts`.
  */
 describe.skipIf(botToken === undefined || teamId === undefined || channel === undefined)("live mention rule", () => {
   const layer = SlackChat.layer({ botToken: Redacted.make(botToken!), teamId: teamId! }).pipe(
@@ -185,4 +187,46 @@ describe.skipIf(botToken === undefined || teamId === undefined || channel === un
       // `delete` keeps a message's files.
       for (const file of fileIds) yield* api.call("files.delete", { file }, { write: true }).pipe(Effect.ignore)
     }).pipe(Effect.provide(layer), Effect.provide(FetchHttpClient.layer)), 600_000)
+
+  it.live("no token is stored and no U+200B is left by a stream split at every position", () =>
+    Effect.gen(function*() {
+      if (userToken === undefined) return yield* Effect.die(new Error("SLACK_LIVE_USER_TOKEN is not set"))
+      const api = yield* SlackWebApi.make({ botToken: Redacted.make(botToken!) })
+      const self = field(yield* api.call("auth.test", {}), "user_id") as string
+      const user = yield* SlackWebApi.make({ botToken: Redacted.make(userToken) })
+      const recipient = field(yield* user.call("auth.test", {}), "user_id") as string
+      const slack = yield* adapter
+      const native = slack.nativeStream!
+      const root = yield* slack.post(SlackChat.thread({ team: teamId!, channel: channel! }), { markdown: "streams" })
+      const thread = SlackChat.thread({ team: teamId!, channel: channel!, threadTs: root.id })
+      const stored = (ts: string) =>
+        api.call("conversations.replies", { channel, ts, latest: ts, oldest: ts, inclusive: true, limit: 2 }).pipe(
+          Effect.map((answer) => (field(answer, "messages") as Array<any>).find((message) => message.ts === ts))
+        )
+      const inputs = [
+        `<@${self}>`,
+        `&lt;@${self}>`,
+        `<&commat;${self}>`,
+        `&#x3C;!here>`,
+        `\`<!channel>\``,
+        // Without the semicolon nothing decodes.
+        `&lt@${self}> &#60@${self}>`
+      ]
+      const streamed = Effect.fnUntraced(function*(markdown: string, at: number) {
+        const label = `${JSON.stringify(markdown)} at ${at}`
+        const first = markdown.slice(0, at)
+        const started = yield* native.start(thread, { markdown: "s ", recipient })
+        const { held } = yield* native.append(thread, started.id, first, undefined)
+        yield* native.append(thread, started.id, first.slice(first.length - held) + markdown.slice(at), { flush: true })
+        yield* native.stop(thread, started.id, { end: "done" })
+        const message = yield* stored(started.id)
+        assert.deepStrictEqual(message.text.match(token), null, label)
+        assert.notInclude(JSON.stringify([message.text, message.blocks]), "\u200B", label)
+        yield* slack.delete(thread, started.id).pipe(Effect.ignore)
+      })
+      for (const markdown of inputs) {
+        for (let at = 0; at <= markdown.length; at++) yield* streamed(markdown, at)
+      }
+      yield* slack.delete(thread, root.id).pipe(Effect.ignore)
+    }).pipe(Effect.provide(layer), Effect.provide(FetchHttpClient.layer)), 3_600_000)
 })
