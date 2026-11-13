@@ -255,30 +255,9 @@ Behavior note: `TemplateLiteral` and `TemplateLiteralParser` match parts semanti
 
 ### format
 
-**Migration: manual**
+**Migration: removed**
 
-**New imports:** `SchemaRepresentation`
-
-v3
-
-```ts
-import { Schema } from "effect"
-
-console.log(Schema.format(Schema.String))
-// string
-```
-
-v4
-
-```ts
-import { Schema, SchemaRepresentation } from "effect"
-
-const doc = SchemaRepresentation.toRepresentation(Schema.String.ast)
-const multi = SchemaRepresentation.toMultiDocument(doc)
-const codeDoc = SchemaRepresentation.toCodeDocument(multi)
-console.log(codeDoc.codes[0].Type)
-// string
-```
+`Schema.format` was removed in v4 and has no replacement.
 
 ### ParseResult formatters
 

@@ -2,6 +2,7 @@ import { afterAll, assert, describe, it } from "@effect/vitest"
 import {
   Brand,
   Cause,
+  type Codegen,
   Exit,
   HashMap,
   JsonSchema,
@@ -13,6 +14,7 @@ import {
   SchemaRepresentation
 } from "effect"
 import { checkGeneratedModules, withGeneratedModule } from "../../utils/generatedModule.ts"
+import { declaration, declarationNames, makeModule } from "../../utils/schemaCodegen.ts"
 
 type Generated = Record<string, Schema.Codec<unknown>>
 type Samples = { readonly accepts: ReadonlyArray<unknown>; readonly rejects: ReadonlyArray<unknown> }
@@ -24,45 +26,17 @@ function generate(...schemas: readonly [Schema.Constraint, ...Array<Schema.Const
     schemas[0].ast,
     ...schemas.slice(1).map((schema) => schema.ast)
   ])
-  const document = SchemaRepresentation.toCodeDocument(input)
-  assert.lengthOf(document.codes, schemas.length)
-  assert.strictEqual(
-    document.references.nonRecursives.length + Object.keys(document.references.recursives).length,
-    Object.keys(input.references).length,
-    "Every input definition is emitted"
-  )
-  return document
+  return makeModule(input)
 }
 
-function render(document: SchemaRepresentation.CodeDocument, reverseRecursives = false): string {
-  const names = [
-    ...document.references.nonRecursives.map(({ $ref }) => $ref),
-    ...Object.keys(document.references.recursives)
-  ]
-  assert.strictEqual(new Set(names).size, names.length, "Each definition must be emitted exactly once")
-  const imports = document.artifacts.filter((artifact) => artifact._tag === "Import")
-  assert.strictEqual(new Set(imports.map((artifact) => artifact.importDeclaration)).size, imports.length)
-  const recursives = Object.entries(document.references.recursives)
-  if (reverseRecursives) recursives.reverse()
-  const definitions = [
-    ...document.references.nonRecursives.map(({ $ref, code }) => [$ref, code] as const),
-    ...recursives,
-    ...document.codes.map((code, i) => ["TestRoot" + i, code] as const)
-  ]
-  assert.isFalse(names.some((name) => name.startsWith("TestRoot")), "Fixture names must not shadow test exports")
-  return [
-    "import * as Schema from \"effect/Schema\"",
-    ...document.artifacts.map((artifact) =>
-      artifact._tag === "Import"
-        ? artifact.importDeclaration
-        : artifact._tag === "Enum"
-        ? "export " + artifact.code.runtime
-        : "export const " + artifact.identifier + " = " + artifact.code.runtime
-    ),
-    ...definitions.map(([name, code]) =>
-      "export type " + name + " = " + code.Type + "\nexport const " + name + " = " + code.runtime
-    )
-  ].join("\n")
+function symbolValue(schema: Schema.Codec<unknown>): symbol {
+  assert.strictEqual(schema.ast._tag, "UniqueSymbol")
+  if (schema.ast._tag !== "UniqueSymbol") return assert.fail("Expected a symbol schema")
+  return schema.ast.symbol
+}
+
+function referenceNames(module: Codegen.Module): ReadonlyArray<string> {
+  return declarationNames(module).filter((name) => !name.startsWith("TestRoot"))
 }
 
 function assertSamples(schema: Schema.Codec<unknown>, { accepts, rejects }: Samples): void {
@@ -99,12 +73,11 @@ function register(name: string, source: string, expectedTypes: ReadonlyArray<str
 function example(name: string, schema: Schema.Top, expectedType: string, samples: Samples): void {
   it(name, async () => {
     const document = generate(schema)
-    assert.lengthOf(document.codes, 1)
-    const source = render(document)
+    const source = document.print()
     register(name, source, [expectedType])
     await withGeneratedModule<Generated>(source, ({ TestRoot0 }) => assertSamples(TestRoot0, samples))
     // Exercise annotations on every schema shape without normalizing generated code.
-    const annotated = render(generate(schema.annotate({ description: "generated annotation" })))
+    const annotated = generate(schema.annotate({ description: "generated annotation" })).print()
     await withGeneratedModule<Generated>(annotated, ({ TestRoot0 }) => {
       assert.strictEqual(Schema.resolveAnnotations(TestRoot0)?.description, "generated annotation")
       assertSamples(TestRoot0, samples)
@@ -119,7 +92,7 @@ function fromJson(schema: JsonSchema.JsonSchema): Schema.Top {
   })
 }
 
-describe("toCodeDocument", { concurrent: false }, () => {
+describe("Codegen.Module.addSchemas", { concurrent: false }, () => {
   describe("values and generated types", () => {
     example("Null", Schema.Null, "null", { accepts: [null], rejects: [undefined, 0] })
     example("Undefined", Schema.Undefined, "undefined", { accepts: [undefined], rejects: [null, 0] })
@@ -605,8 +578,11 @@ describe("toCodeDocument", { concurrent: false }, () => {
       const part = Schema.Literals(["a", "b"])
       const document = generate(Schema.TemplateLiteral(Array.from({ length: 20 }, () => part)))
       // Deliberately avoid asking tsc to expand a million-member union.
-      assert.strictEqual(document.codes[0].Type, template(Array.from({ length: 20 }, () => "\"a\" | \"b\"")))
-      assert.isBelow(document.codes[0].Type.length, 500)
+      assert.strictEqual(
+        declaration(document, "TestRoot0")[0],
+        "export type TestRoot0 = " + template(Array.from({ length: 20 }, () => "\"a\" | \"b\""))
+      )
+      assert.isBelow(declaration(document, "TestRoot0")[0].length, 500)
     })
   })
 
@@ -620,7 +596,7 @@ describe("toCodeDocument", { concurrent: false }, () => {
     ) {
       it(name, async () => {
         const schema = Schema.Enum(values).annotate({ description: "enum" })
-        const source = render(generate(schema))
+        const source = generate(schema).print()
         register(
           name,
           source + [
@@ -648,15 +624,14 @@ describe("toCodeDocument", { concurrent: false }, () => {
             Schema.UniqueSymbol(symbol).annotate({ description: "symbol" }),
             Schema.Struct({ [symbol]: Schema.String })
           )
-          const source = render(document)
+          const source = document.print()
           register("symbol " + (Symbol.keyFor(symbol) ?? "local " + symbol.description), source)
           await withGeneratedModule<Record<string, unknown>>(source, (module) => {
             assert.strictEqual(
               Schema.resolveAnnotations(module.TestRoot0 as Schema.Codec<unknown>)?.description,
               "symbol"
             )
-            const artifact = document.artifacts.find((artifact) => artifact._tag === "Symbol")!
-            const value = module[artifact.identifier] as symbol
+            const value = symbolValue(module.TestRoot0 as Schema.Codec<unknown>)
             const propertySchema = module.TestRoot1 as Schema.Codec<unknown>
             assert.strictEqual(propertySchema.ast._tag, "Objects")
             if (propertySchema.ast._tag !== "Objects") return assert.fail("Expected an object schema")
@@ -683,13 +658,11 @@ describe("toCodeDocument", { concurrent: false }, () => {
         Schema.UniqueSymbol(Symbol("same")),
         Schema.UniqueSymbol(Symbol("same"))
       )
-      const symbols = document.artifacts.filter((artifact) => artifact._tag === "Symbol")
-      assert.lengthOf(symbols, 2)
-      const source = render(document)
+      const source = document.print()
       register("distinct symbols with identical descriptions", source)
       await withGeneratedModule<Record<string, unknown>>(source, (module) => {
-        const first = module[symbols[0].identifier]
-        const second = module[symbols[1].identifier]
+        const first = symbolValue(module.TestRoot0 as Schema.Codec<unknown>)
+        const second = symbolValue(module.TestRoot1 as Schema.Codec<unknown>)
         assert.notStrictEqual(first, second)
         assertSamples(module.TestRoot0 as Schema.Codec<unknown>, { accepts: [first], rejects: [second] })
         assertSamples(module.TestRoot1 as Schema.Codec<unknown>, { accepts: [second], rejects: [first] })
@@ -706,8 +679,8 @@ describe("toCodeDocument", { concurrent: false }, () => {
     it("keeps colliding sanitized identifiers distinct", async () => {
       const schemas = ["a-b", "a_b", "A_b", "Schema"].map((identifier, i) => Schema.Literal(i).annotate({ identifier }))
       const document = generate(schemas[0], ...schemas.slice(1))
-      assert.lengthOf(document.references.nonRecursives, schemas.length)
-      const source = render(document)
+      assert.lengthOf(referenceNames(document), schemas.length)
+      const source = document.print()
       register("colliding identifiers", source, ["0", "1", "2", "3"])
       await withGeneratedModule<Generated>(source, (module) => {
         for (let i = 0; i < schemas.length; i++) {
@@ -724,7 +697,7 @@ describe("toCodeDocument", { concurrent: false }, () => {
         Schema.UniqueSymbol(symbol),
         Schema.Enum({ A: "a" })
       )
-      const source = render(document)
+      const source = document.print()
       register("artifact collisions", source)
       await withGeneratedModule<Generated>(source, (module) => {
         assertSamples(module.TestRoot0, { accepts: ["a"], rejects: [1] })
@@ -736,7 +709,7 @@ describe("toCodeDocument", { concurrent: false }, () => {
 
     it("avoids collisions between reference names and declaration imports", async () => {
       const Named = Schema.String.annotate({ identifier: "Option" })
-      const source = render(generate(Named, Schema.Option(Named)))
+      const source = generate(Named, Schema.Option(Named)).print()
       register("declaration import collision", source)
       await withGeneratedModule<Generated>(source, (module) => {
         assertSamples(module.TestRoot0, { accepts: ["a"], rejects: [1] })
@@ -746,7 +719,7 @@ describe("toCodeDocument", { concurrent: false }, () => {
 
     it("propagates renamed imports through nested declaration callbacks", async () => {
       const Named = Schema.String.annotate({ identifier: "Option" })
-      const source = render(generate(Schema.Option(Schema.Option(Named))))
+      const source = generate(Schema.Option(Schema.Option(Named))).print()
       register("nested declaration import collision", source, [
         "import(\"effect/Option\").Option<import(\"effect/Option\").Option<string>>"
       ])
@@ -758,7 +731,7 @@ describe("toCodeDocument", { concurrent: false }, () => {
       })
     })
 
-    it("reuses the predefined Schema import without rerunning callbacks", async () => {
+    it("reuses the Schema import without rerunning callbacks", async () => {
       let calls = 0
       const Named = Schema.String.annotate({ identifier: "Schema" })
       const schema = Schema.Option(Named).annotate({
@@ -774,7 +747,7 @@ describe("toCodeDocument", { concurrent: false }, () => {
           }
         }
       })
-      const source = render(generate(schema))
+      const source = generate(schema).print()
       assert.strictEqual(calls, 1)
       register("predefined Schema import", source, ["Option.Option<string>"])
       await withGeneratedModule<Generated>(source, ({ TestRoot0 }) => {
@@ -785,7 +758,7 @@ describe("toCodeDocument", { concurrent: false }, () => {
     it("resolves named and type-only imports without repeating callbacks", async () => {
       const calls: Array<SchemaRepresentation.Code> = []
       let unaffectedCalls = 0
-      const document = SchemaRepresentation.toCodeDocument({
+      const document = makeModule({
         references: {
           Box: { _tag: "String", checks: [] },
           BoxType: { _tag: "Number", checks: [] }
@@ -824,10 +797,10 @@ describe("toCodeDocument", { concurrent: false }, () => {
         }]
       })
       assert.lengthOf(calls, 1)
-      const name = document.references.nonRecursives[0].$ref
+      const name = referenceNames(document)[0]
       assert.strictEqual(name, "Box")
       assert.strictEqual(unaffectedCalls, 1)
-      const source = render(document)
+      const source = document.print()
       register("named import collision", source, ["import(\"effect/Option\").Option<string>", "string"])
       await withGeneratedModule<Generated>(source, ({ TestRoot0, TestRoot1 }) => {
         assertSamples(TestRoot0, { accepts: [Option.some("a")], rejects: [Option.some(1)] })
@@ -842,7 +815,7 @@ describe("toCodeDocument", { concurrent: false }, () => {
         Schema.UniqueSymbol(symbol).ast,
         Schema.Enum({ A: "a" }).ast
       ])
-      const document = SchemaRepresentation.toCodeDocument({
+      const document = makeModule({
         ...input,
         representations: [{
           _tag: "Declaration",
@@ -860,7 +833,7 @@ describe("toCodeDocument", { concurrent: false }, () => {
           }
         }]
       })
-      const source = render(document)
+      const source = document.print()
       register("artifact import collision", source)
       await withGeneratedModule<Generated>(source, ({ TestRoot0 }) => {
         assertSamples(TestRoot0, {
@@ -871,7 +844,7 @@ describe("toCodeDocument", { concurrent: false }, () => {
     })
 
     it("resolves imports returned by check callbacks", async () => {
-      const document = SchemaRepresentation.toCodeDocument({
+      const document = makeModule({
         references: { Is: { _tag: "String", checks: [] } },
         representations: [{
           _tag: "Unknown",
@@ -888,7 +861,7 @@ describe("toCodeDocument", { concurrent: false }, () => {
           }]
         }]
       })
-      const source = render(document)
+      const source = document.print()
       register("check import collision", source)
       await withGeneratedModule<Generated>(source, ({ TestRoot0 }) => {
         assertSamples(TestRoot0, { accepts: ["a"], rejects: [1] })
@@ -896,7 +869,7 @@ describe("toCodeDocument", { concurrent: false }, () => {
     })
 
     it("resolves callback-local imports while preserving declaration names and literal text", async () => {
-      const document = SchemaRepresentation.toCodeDocument({
+      const document = makeModule({
         references: { Library: { _tag: "String", checks: [] } },
         representations: [{
           _tag: "Declaration",
@@ -925,8 +898,8 @@ describe("toCodeDocument", { concurrent: false }, () => {
           }
         }]
       })
-      assert.strictEqual(document.references.nonRecursives[0].$ref, "Library")
-      const source = render(document)
+      assert.strictEqual(referenceNames(document)[0], "Library")
+      const source = document.print()
       register("callback-local imports", source, ["import(\"effect/Option\").Option<string>", "number"])
       await withGeneratedModule<Generated>(source, ({ TestRoot0, TestRoot1 }) => {
         assertSamples(TestRoot0, { accepts: [Option.some("a")], rejects: [Option.some(1)] })
@@ -942,7 +915,7 @@ describe("toCodeDocument", { concurrent: false }, () => {
         Schema.Array(Schema.Number).annotate({ examples: [[NaN, Infinity]] }),
         ...schemas
       )
-      const source = render(document)
+      const source = document.print()
       register("global name collisions", source, ["globalThis.ReadonlyArray<number>"])
       await withGeneratedModule<Generated>(source, ({ TestRoot0 }) => {
         assertSamples(TestRoot0, { accepts: [[1, 2]], rejects: [["a"]] })
@@ -954,7 +927,7 @@ describe("toCodeDocument", { concurrent: false }, () => {
       const input = SchemaRepresentation.toRepresentations([
         Schema.TupleWithRest(Schema.Tuple([Schema.String]), [Schema.Number]).ast
       ])
-      const document = SchemaRepresentation.toCodeDocument({
+      const document = makeModule({
         ...input,
         representations: [{
           _tag: "Declaration",
@@ -971,7 +944,7 @@ describe("toCodeDocument", { concurrent: false }, () => {
           }
         }, ...input.representations]
       })
-      const source = render(document)
+      const source = document.print()
       register("imports named after globals", source, [
         "string",
         "readonly [string, ...globalThis.Array<number>]"
@@ -985,9 +958,12 @@ describe("toCodeDocument", { concurrent: false }, () => {
     it("deduplicates imports across definitions and roots", async () => {
       const Named = Schema.Option(Schema.String).annotate({ identifier: "Named" })
       const document = generate(Named, Schema.Array(Named), Schema.Option(Schema.Number))
-      const imports = document.artifacts.filter((artifact) => artifact._tag === "Import")
-      assert.lengthOf(imports, 1)
-      const source = render(document)
+      const imports = document.finalize().imports
+      assert.sameMembers([...imports], [
+        "import * as Schema from \"effect/Schema\"",
+        "import * as Option from \"effect/Option\""
+      ])
+      const source = document.print()
       register("shared imports", source, [
         "Option.Option<string>",
         "ReadonlyArray<Option.Option<string>>",
@@ -1026,7 +1002,7 @@ describe("toCodeDocument", { concurrent: false }, () => {
     ) {
       it("self recursion with " + name, async () => {
         const document = generate(schema)
-        const source = render(document, true)
+        const source = document.print()
         assert.lengthOf(source.match(/Schema\.suspend\(/g) ?? [], 1, "Only the original suspension is emitted")
         register(name, source + "\ntype Expected = { readonly a?: Expected }", ["Expected"])
         await withGeneratedModule<Generated>(source, ({ TestRoot0 }) => {
@@ -1045,36 +1021,35 @@ describe("toCodeDocument", { concurrent: false }, () => {
       const Forest = Schema.Struct({ trees: Schema.Array(Tree) }).annotate({ identifier: "Forest" })
       const input = SchemaRepresentation.toRepresentations([Forest.ast, Tree.ast, Outer.ast, Proto.ast, Forest.ast])
       for (const references of [input.references, Object.fromEntries(Object.entries(input.references).reverse())]) {
-        const document = SchemaRepresentation.toCodeDocument({ ...input, references })
-        assert.lengthOf(document.references.nonRecursives, 3)
-        assert.sameMembers(Object.keys(document.references.recursives), ["A", "__proto__"])
-        assert.deepStrictEqual(document.references.nonRecursives.map(({ $ref }) => $ref), ["Meta", "Tree", "Forest"])
-        for (const reverse of [false, true]) {
-          const source = render(document, reverse)
-          assert.lengthOf(source.match(/Schema\.suspend\(/g) ?? [], 3, "Only the original suspensions are emitted")
-          register(
-            "mixed dependencies " + reverse,
-            source +
-              "\ntype ExpectedTree = { readonly meta: { readonly n: number }; readonly children: ReadonlyArray<ExpectedTree> }",
-            [
-              "{ readonly trees: ReadonlyArray<ExpectedTree> }",
-              "ExpectedTree"
-            ]
-          )
-          await withGeneratedModule<Generated>(source, (module) => {
-            const tree = { meta: { n: 1 }, children: [{ meta: { n: 2 }, children: [] }] }
-            assertSamples(module.TestRoot0, {
-              accepts: [{ trees: [tree] }],
-              rejects: [{ trees: [{ ...tree, children: [{ meta: { n: "bad" }, children: [] }] }] }]
-            })
-            assertSamples(module.TestRoot1, { accepts: [tree], rejects: [{ meta: { n: "bad" }, children: [] }] })
-            for (const root of [module.TestRoot2, module.TestRoot3]) {
-              assertSamples(root, { accepts: [{ a: {} }], rejects: [{ a: 1 }] })
-            }
-            assert.strictEqual(module.TestRoot0, module.TestRoot4, "Repeated roots reuse the definition")
-            assert.strictEqual(module.TestRoot1, module.Tree)
+        const document = makeModule({ ...input, references })
+        const names = referenceNames(document)
+        assert.sameMembers([...names], ["Meta", "Tree", "Forest", "A", "__proto__"])
+        assert.isBelow(names.indexOf("Meta"), names.indexOf("Tree"))
+        assert.isBelow(names.indexOf("Tree"), names.indexOf("Forest"))
+        const source = document.print()
+        assert.lengthOf(source.match(/Schema\.suspend\(/g) ?? [], 3, "Only the original suspensions are emitted")
+        register(
+          "mixed dependencies " + (references === input.references),
+          source +
+            "\ntype ExpectedTree = { readonly meta: { readonly n: number }; readonly children: ReadonlyArray<ExpectedTree> }",
+          [
+            "{ readonly trees: ReadonlyArray<ExpectedTree> }",
+            "ExpectedTree"
+          ]
+        )
+        await withGeneratedModule<Generated>(source, (module) => {
+          const tree = { meta: { n: 1 }, children: [{ meta: { n: 2 }, children: [] }] }
+          assertSamples(module.TestRoot0, {
+            accepts: [{ trees: [tree] }],
+            rejects: [{ trees: [{ ...tree, children: [{ meta: { n: "bad" }, children: [] }] }] }]
           })
-        }
+          assertSamples(module.TestRoot1, { accepts: [tree], rejects: [{ meta: { n: "bad" }, children: [] }] })
+          for (const root of [module.TestRoot2, module.TestRoot3]) {
+            assertSamples(root, { accepts: [{ a: {} }], rejects: [{ a: 1 }] })
+          }
+          assert.strictEqual(module.TestRoot0, module.TestRoot4, "Repeated roots reuse the definition")
+          assert.strictEqual(module.TestRoot1, module.Tree)
+        })
       }
     })
 
@@ -1086,9 +1061,8 @@ describe("toCodeDocument", { concurrent: false }, () => {
       const B = Schema.Struct({ a: A }).annotate({ identifier: "B" })
       for (const schemas of [[A, B], [B, A]] as const) {
         const document = generate(schemas[0], ...schemas.slice(1))
-        assert.deepStrictEqual(document.references.nonRecursives.map(({ $ref }) => $ref), ["A"])
-        assert.deepStrictEqual(Object.keys(document.references.recursives), ["B"])
-        const source = render(document)
+        assert.deepStrictEqual(referenceNames(document), ["A", "B"])
+        const source = document.print()
         assert.lengthOf(source.match(/Schema\.suspend\(/g) ?? [], 1, "Only the original suspension is emitted")
         register("mutual cycle " + (schemas[0] === A), source)
         await withGeneratedModule<Generated>(source, (module) => {
@@ -1101,15 +1075,20 @@ describe("toCodeDocument", { concurrent: false }, () => {
       }
     })
 
-    it("keeps numeric identifiers independent of recursive record enumeration", async () => {
+    it("orders numeric identifiers regardless of reference enumeration", async () => {
       type Nested = ReadonlyArray<Nested>
       const Nested = Schema.Array(Schema.suspend((): Schema.Codec<Nested> => Nested).annotate({ identifier: "1" }))
         .annotate({ identifier: "0" })
-      const document = generate(Nested, Outer, Proto)
-      assert.lengthOf(document.references.nonRecursives, 1)
-      assert.lengthOf(Object.keys(document.references.recursives), 3)
+      const input = SchemaRepresentation.toRepresentations([Nested.ast, Outer.ast, Proto.ast])
       for (const reverse of [false, true]) {
-        const source = render(document, reverse)
+        const document = makeModule({
+          ...input,
+          references: Object.fromEntries(
+            reverse ? Object.entries(input.references).reverse() : Object.entries(input.references)
+          )
+        })
+        assert.sameMembers([...referenceNames(document)], ["_0", "_1", "A", "__proto__"])
+        const source = document.print()
         register("numeric references " + reverse, source + "\ntype Nested = ReadonlyArray<Nested>", ["Nested"])
         await withGeneratedModule<Generated>(source, (module) => {
           assertSamples(module.TestRoot0, { accepts: [[], [[], [[]]]], rejects: [[1], [[], ["bad"]]] })
@@ -1126,19 +1105,18 @@ describe("toCodeDocument", { concurrent: false }, () => {
       const Right = Schema.Array(Leaf).annotate({ identifier: "Right" })
       const Root = Schema.Struct({ left: Left, right: Right }).annotate({ identifier: "Root" })
       const input = SchemaRepresentation.toRepresentations([Root.ast, Leaf.ast])
-      const document = SchemaRepresentation.toCodeDocument({
+      const document = makeModule({
         ...input,
         references: Object.fromEntries(Object.entries(input.references).reverse())
       })
-      assert.lengthOf(document.references.nonRecursives, 4)
-      assert.isEmpty(document.references.recursives)
-      const order = document.references.nonRecursives.map(({ $ref }) => $ref)
+      assert.lengthOf(referenceNames(document), 4)
+      const order = referenceNames(document)
       for (
         const [dependency, dependent] of [["Leaf", "Left"], ["Leaf", "Right"], ["Left", "Root"], ["Right", "Root"]]
       ) {
         assert.isBelow(order.indexOf(dependency), order.indexOf(dependent))
       }
-      const source = render(document)
+      const source = document.print()
       register("diamond dependencies", source, [
         "{ readonly left: { readonly value: string }; readonly right: ReadonlyArray<string> }",
         "string"
@@ -1173,12 +1151,12 @@ describe("toCodeDocument", { concurrent: false }, () => {
       it("orders an eager reference in a " + name, async () => {
         const input = SchemaRepresentation.toRepresentations([schema.annotate({ identifier: "Parent" }).ast])
         // Put the dependent first so a test cannot pass by preserving input order.
-        const document = SchemaRepresentation.toCodeDocument({
+        const document = makeModule({
           ...input,
           references: { Parent: input.references.Parent, Child: input.references.Child }
         })
-        assert.deepStrictEqual(document.references.nonRecursives.map(({ $ref }) => $ref), ["Child", "Parent"])
-        const source = render(document)
+        assert.deepStrictEqual(referenceNames(document), ["Child", "Parent"])
+        const source = document.print()
         register("dependency " + name, source)
         await withGeneratedModule<Generated>(source, ({ TestRoot0 }) => assertSamples(TestRoot0, { accepts, rejects }))
       })
@@ -1197,15 +1175,15 @@ describe("toCodeDocument", { concurrent: false }, () => {
             }
           }
         }
-        const document = SchemaRepresentation.toCodeDocument({
+        const document = makeModule({
           representations: [{ _tag: "Reference", $ref: "Parent" }],
           references: {
             Parent: { _tag: "Unknown", checks: group ? [{ _tag: "FilterGroup", checks: [check] }] : [check] },
             Child: { _tag: "String", checks: [] }
           }
         })
-        assert.deepStrictEqual(document.references.nonRecursives.map(({ $ref }) => $ref), ["Child", "Parent"])
-        const source = render(document)
+        assert.deepStrictEqual(referenceNames(document), ["Child", "Parent"])
+        const source = document.print()
         register("check dependency " + group, source)
         await withGeneratedModule<Generated>(
           source,
@@ -1215,11 +1193,11 @@ describe("toCodeDocument", { concurrent: false }, () => {
     }
 
     it("emits unreachable definitions", async () => {
-      const document = SchemaRepresentation.toCodeDocument({
+      const document = makeModule({
         representations: [{ _tag: "String", checks: [] }],
         references: { Unused: { _tag: "Number", checks: [] } }
       })
-      const source = render(document)
+      const source = document.print()
       register("unreachable", source)
       await withGeneratedModule<Generated>(
         source,
@@ -1270,7 +1248,7 @@ describe("toCodeDocument", { concurrent: false }, () => {
 
   describe("metadata and errors", () => {
     it("preserves Void's discarded input behavior", async () => {
-      await withGeneratedModule<Generated>(render(generate(Schema.Void)), ({ TestRoot0 }) => {
+      await withGeneratedModule<Generated>(generate(Schema.Void).print(), ({ TestRoot0 }) => {
         for (const input of [null, 1, "a"]) assert.strictEqual(Schema.decodeUnknownSync(TestRoot0)(input), undefined)
       })
     })
@@ -1291,7 +1269,7 @@ describe("toCodeDocument", { concurrent: false }, () => {
         Schema.ErrorInstance({ excludeCause: true }),
         Schema.Redacted(Schema.String, { label: "password", disallowJsonEncode: true })
       ]
-      const source = render(generate(schemas[0], ...schemas.slice(1)))
+      const source = generate(schemas[0], ...schemas.slice(1)).print()
       register("annotation locations", source)
       await withGeneratedModule<Generated>(source, (module) => {
         // The live AST exposes placement and all serializable annotations; this

@@ -3,12 +3,13 @@ import { Exit, JsonSchema, Schema, SchemaRepresentation } from "effect"
 import { TestSchema } from "effect/testing"
 import { describe, it } from "vitest"
 import { deepStrictEqual, throws } from "../../utils/assert.ts"
+import { assertSchemas, makeModule } from "../../utils/schemaCodegen.ts"
 
-const makeCode = SchemaRepresentation.makeCode
+const makeCode = (runtime: string, Type: string): SchemaRepresentation.Code => ({ runtime, Type })
 
 type Expected = {
   readonly codes: SchemaRepresentation.Code
-  readonly references?: Partial<SchemaRepresentation.CodeDocument["references"]>
+  readonly references?: Readonly<Record<string, SchemaRepresentation.Code>>
 }
 
 function toSchemaFromJsonSchemaDocument(
@@ -46,12 +47,7 @@ describe("fromJsonSchemaDocument", () => {
         `Schema.StructWithRest(Schema.Struct({ "value": Impossible }), [Schema.Record(Schema.String, Schema.Json.annotate({ "expected": "JSON value" }))])`,
         `{ readonly "value": Impossible } & { readonly [x: string]: Schema.Json }`
       ),
-      references: {
-        nonRecursives: [{
-          $ref: `Impossible`,
-          code: makeCode(`Schema.Never.annotate({ "identifier": "Impossible" })`, `never`)
-        }]
-      }
+      references: { "Impossible": makeCode(`Schema.Never.annotate({ "identifier": "Impossible" })`, `never`) }
     })
   })
 
@@ -139,13 +135,9 @@ describe("fromJsonSchemaDocument", () => {
   }
 
   function assertCode(schema: Schema.Top, expected: Expected) {
-    deepStrictEqual(SchemaRepresentation.toCodeDocument(SchemaRepresentation.toRepresentations([schema.ast])), {
-      codes: [expected.codes],
-      references: {
-        nonRecursives: expected.references?.nonRecursives ?? [],
-        recursives: expected.references?.recursives ?? {}
-      },
-      artifacts: []
+    assertSchemas(makeModule(SchemaRepresentation.toRepresentations([schema.ast])), {
+      ...expected.references,
+      TestRoot0: expected.codes
     })
   }
 
@@ -1026,19 +1018,14 @@ describe("fromJsonSchemaDocument", () => {
       }, {
         codes: makeCode(`Schema.Struct({ "values": Values })`, `{ readonly "values": Values }`),
         references: {
-          nonRecursives: [{
-            $ref: `Value`,
-            code: makeCode(
-              `Schema.String.check(Schema.isMinCodePoints(2).annotate({ "expected": "a string with at least 2 code points", "identifier": "Value" }))`,
-              `string`
-            )
-          }, {
-            $ref: `Values`,
-            code: makeCode(
-              `Schema.Record(Schema.String.check(Schema.isPattern(new globalThis.RegExp("a", "u")).annotate({ "expected": "a string matching the RegExp a" })), Value).annotate({ "identifier": "Values" })`,
-              `{ readonly [x: string]: Value }`
-            )
-          }]
+          "Value": makeCode(
+            `Schema.String.check(Schema.isMinCodePoints(2).annotate({ "expected": "a string with at least 2 code points", "identifier": "Value" }))`,
+            `string`
+          ),
+          "Values": makeCode(
+            `Schema.Record(Schema.String.check(Schema.isPattern(new globalThis.RegExp("a", "u")).annotate({ "expected": "a string matching the RegExp a" })), Value).annotate({ "identifier": "Values" })`,
+            `{ readonly [x: string]: Value }`
+          )
         }
       })
     })
@@ -1397,9 +1384,7 @@ describe("fromJsonSchemaDocument", () => {
           `Schema.StructWithRest(Schema.Struct({ "child": Schema.optionalKey(Schema.Finite), "value": Schema.optionalKey(X) }), [Schema.Record(Schema.String, Schema.Json.annotate({ "expected": "JSON value" }))])`,
           `{ readonly "child"?: number, readonly "value"?: X } & { readonly [x: string]: Schema.Json }`
         ),
-        references: {
-          nonRecursives: [{ $ref: `X`, code: makeCode(`Schema.String.annotate({ "identifier": "X" })`, `string`) }]
-        }
+        references: { "X": makeCode(`Schema.String.annotate({ "identifier": "X" })`, `string`) }
       })
     })
 
@@ -1417,9 +1402,7 @@ describe("fromJsonSchemaDocument", () => {
           `Schema.StructWithRest(Schema.Struct({ "child": Schema.optionalKey(X) }), [Schema.Record(Schema.String, Schema.Json.annotate({ "expected": "JSON value" }))])`,
           `{ readonly "child"?: X } & { readonly [x: string]: Schema.Json }`
         ),
-        references: {
-          nonRecursives: [{ $ref: "X", code: makeCode(`Schema.String.annotate({ "identifier": "X" })`, `string`) }]
-        }
+        references: { "X": makeCode(`Schema.String.annotate({ "identifier": "X" })`, `string`) }
       })
 
       throws(
@@ -1948,12 +1931,7 @@ describe("fromJsonSchemaDocument", () => {
         }
       }, {
         codes: makeCode(`A_B_C`, `A_B_C`),
-        references: {
-          nonRecursives: [{
-            $ref: `A_B_C`,
-            code: makeCode(`Schema.String.annotate({ "identifier": "A/B~C" })`, `string`)
-          }]
-        }
+        references: { "A_B_C": makeCode(`Schema.String.annotate({ "identifier": "A/B~C" })`, `string`) }
       })
     })
 
@@ -1967,9 +1945,7 @@ describe("fromJsonSchemaDocument", () => {
         }
       }, {
         codes: makeCode(`A_B`, `A_B`),
-        references: {
-          nonRecursives: [{ $ref: `A_B`, code: makeCode(`Schema.String.annotate({ "identifier": "A B" })`, `string`) }]
-        }
+        references: { "A_B": makeCode(`Schema.String.annotate({ "identifier": "A B" })`, `string`) }
       })
     })
 
@@ -1983,9 +1959,7 @@ describe("fromJsonSchemaDocument", () => {
         }
       }, {
         codes: makeCode(`_`, `_`),
-        references: {
-          nonRecursives: [{ $ref: `_`, code: makeCode(`Schema.String.annotate({ "identifier": "" })`, `string`) }]
-        }
+        references: { "_": makeCode(`Schema.String.annotate({ "identifier": "" })`, `string`) }
       })
     })
 
@@ -2003,9 +1977,7 @@ describe("fromJsonSchemaDocument", () => {
         },
         {
           codes: makeCode(`A`, `A`),
-          references: {
-            nonRecursives: [{ $ref: `A`, code: makeCode(`Schema.String.annotate({ "identifier": "A" })`, `string`) }]
-          }
+          references: { "A": makeCode(`Schema.String.annotate({ "identifier": "A" })`, `string`) }
         }
       )
     })
@@ -2025,9 +1997,7 @@ describe("fromJsonSchemaDocument", () => {
         },
         {
           codes: makeCode(`Schema.suspend((): Schema.Codec<A> => A).annotate({ "description": "a" })`, `A`),
-          references: {
-            nonRecursives: [{ $ref: `A`, code: makeCode(`Schema.String.annotate({ "identifier": "A" })`, `string`) }]
-          }
+          references: { "A": makeCode(`Schema.String.annotate({ "identifier": "A" })`, `string`) }
         }
       )
     })
@@ -2044,13 +2014,10 @@ describe("fromJsonSchemaDocument", () => {
       }, {
         codes: makeCode(`Schema.suspend((): Schema.Codec<A> => A).annotate({ "format": "custom" })`, `A`),
         references: {
-          nonRecursives: [{
-            $ref: `A`,
-            code: makeCode(
-              `Schema.Number.check(Schema.isFinite().annotate({ "expected": "a finite number", "identifier": "A" }))`,
-              `number`
-            )
-          }]
+          "A": makeCode(
+            `Schema.Number.check(Schema.isFinite().annotate({ "expected": "a finite number", "identifier": "A" }))`,
+            `number`
+          )
         }
       })
     })
@@ -2072,9 +2039,7 @@ describe("fromJsonSchemaDocument", () => {
         },
         {
           codes: makeCode(`Schema.suspend((): Schema.Codec<A> => A).annotate({ "description": "a" })`, `A`),
-          references: {
-            nonRecursives: [{ $ref: `A`, code: makeCode(`Schema.String.annotate({ "identifier": "A" })`, `string`) }]
-          }
+          references: { "A": makeCode(`Schema.String.annotate({ "identifier": "A" })`, `string`) }
         }
       )
     })
@@ -2110,12 +2075,10 @@ describe("fromJsonSchemaDocument", () => {
         {
           codes: makeCode(`A`, `A`),
           references: {
-            recursives: {
-              A: makeCode(
-                `Schema.Struct({ "name": Schema.String, "children": Schema.Array(Schema.suspend((): Schema.Codec<A> => A)) }).annotate({ "identifier": "A" })`,
-                `{ readonly "name": string, readonly "children": globalThis.ReadonlyArray<A> }`
-              )
-            }
+            A: makeCode(
+              `Schema.Struct({ "name": Schema.String, "children": Schema.Array(Schema.suspend((): Schema.Codec<A> => A)) }).annotate({ "identifier": "A" })`,
+              `{ readonly "name": string, readonly "children": globalThis.ReadonlyArray<A> }`
+            )
           }
         }
       )
@@ -2144,12 +2107,10 @@ describe("fromJsonSchemaDocument", () => {
         {
           codes: makeCode(`Node`, `Node`),
           references: {
-            recursives: {
-              Node: makeCode(
-                `Schema.Struct({ "child": Schema.suspend((): Schema.Codec<Node> => Node).annotate({ "description": "recursive child" }) }).annotate({ "identifier": "Node" })`,
-                `{ readonly "child": Node }`
-              )
-            }
+            Node: makeCode(
+              `Schema.Struct({ "child": Schema.suspend((): Schema.Codec<Node> => Node).annotate({ "description": "recursive child" }) }).annotate({ "identifier": "Node" })`,
+              `{ readonly "child": Node }`
+            )
           }
         }
       )
@@ -2537,12 +2498,7 @@ describe("fromJsonSchemaDocument", () => {
           `Schema.Union([Schema.StructWithRest(Schema.Struct({ "a": Schema.Json.annotate({ "expected": "JSON value" }), "value": Value }), [Schema.Record(Schema.String, Schema.Json.annotate({ "expected": "JSON value" }))]), Schema.StructWithRest(Schema.Struct({ "b": Schema.Json.annotate({ "expected": "JSON value" }), "value": Value }), [Schema.Record(Schema.String, Schema.Json.annotate({ "expected": "JSON value" }))])])`,
           `{ readonly "a": Schema.Json, readonly "value": Value } & { readonly [x: string]: Schema.Json } | { readonly "b": Schema.Json, readonly "value": Value } & { readonly [x: string]: Schema.Json }`
         ),
-        references: {
-          nonRecursives: [{
-            $ref: `Value`,
-            code: makeCode(`Schema.String.annotate({ "identifier": "Value" })`, `string`)
-          }]
-        }
+        references: { "Value": makeCode(`Schema.String.annotate({ "identifier": "Value" })`, `string`) }
       })
     })
 

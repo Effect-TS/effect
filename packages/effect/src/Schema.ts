@@ -18902,7 +18902,6 @@ interface DeclarationCodeGenerationAnnotations {
   /**
    * Generates runtime and TypeScript source for this declaration.
    *
-   * @see {@link SchemaRepresentation.toCodeDocument}
    * @stability experimental
    * @since 4.0.0
    */
@@ -18913,7 +18912,6 @@ interface FilterCodeGenerationAnnotations {
   /**
    * Generates runtime source for this filter.
    *
-   * @see {@link SchemaRepresentation.toCodeDocument}
    * @stability experimental
    * @since 4.0.0
    */

@@ -7,6 +7,8 @@
 
 Add the experimental `Codegen.Module` builder and fix recursive initialization, name collisions, generated types, and symbol identity in schema and OpenAPI generation.
 
+Remove `SchemaRepresentation.toCodeDocument`, `CodeDocument`, `Artifact`, and `makeCode`. Generate schema source with `Codegen.Module.addSchemas` and `print`; construct `{ runtime, Type }` directly instead of calling `makeCode`.
+
 Custom `toCode` callbacks must interpolate supplied argument strings unchanged and return supported schema/type expressions. Move unsupported code, such as functions with local declarations, into imported helpers.
 
 The `@effect/openapi-generator/OpenApiTransformer` module is removed. Use the `OpenApiGenerator` service to generate from an OpenAPI spec, selecting the output with `format`.

@@ -9,6 +9,7 @@
  * @stability experimental
  * @since 4.1.5
  */
+import * as InternalCodegen from "./internal/codegen.ts"
 import * as SchemaCodegen from "./internal/schema/schemaCodegen.ts"
 import { hasProperty } from "./Predicate.ts"
 import type * as SchemaRepresentation from "./SchemaRepresentation.ts"
@@ -166,12 +167,8 @@ const keywords = new Set([
   "arguments"
 ])
 
-function cannotCoerce(): never {
-  throw new Error("Code fragments must be rendered by their module")
-}
-
 function binding(preferredName: string): Binding {
-  return { _tag: "Binding", preferredName, toString: cannotCoerce }
+  return { _tag: "Binding", preferredName, toString: InternalCodegen.cannotCoerce }
 }
 
 function importKey(input: Import): string {
@@ -248,15 +245,6 @@ export function importDefault(
   })
 }
 
-function append(value: CodeHole, parts: Array<Fragment>): void {
-  if (value === undefined || value === null || value === false || value === "") return
-  if (Array.isArray(value)) {
-    for (const item of value) append(item, parts)
-  } else {
-    parts.push(typeof value === "number" ? String(value) : value as Fragment)
-  }
-}
-
 /**
  * Combines source text and bindings without resolving their names.
  *
@@ -264,14 +252,8 @@ function append(value: CodeHole, parts: Array<Fragment>): void {
  * @category constructors
  * @since 4.1.5
  */
-export function code(strings: TemplateStringsArray, ...values: ReadonlyArray<CodeHole>): Fragment {
-  const parts: Array<Fragment> = []
-  for (let i = 0; i < strings.length; i++) {
-    append(strings[i], parts)
-    append(values[i], parts)
-  }
-  return { _tag: "Parts", parts, toString: cannotCoerce }
-}
+export const code: (strings: TemplateStringsArray, ...values: ReadonlyArray<CodeHole>) => Fragment =
+  InternalCodegen.code
 
 /**
  * Joins code fragments with a source-text separator.
@@ -280,14 +262,7 @@ export function code(strings: TemplateStringsArray, ...values: ReadonlyArray<Cod
  * @category combining
  * @since 4.1.5
  */
-export function join(values: ReadonlyArray<CodeHole>, separator: string): Fragment {
-  const parts: Array<Fragment> = []
-  for (let i = 0; i < values.length; i++) {
-    if (i > 0) parts.push(separator)
-    append(values[i], parts)
-  }
-  return { _tag: "Parts", parts, toString: cannotCoerce }
-}
+export const join: (values: ReadonlyArray<CodeHole>, separator: string) => Fragment = InternalCodegen.join
 
 /**
  * Defers source construction until its bindings can be rendered.
@@ -296,9 +271,7 @@ export function join(values: ReadonlyArray<CodeHole>, separator: string): Fragme
  * @category constructors
  * @since 4.1.5
  */
-export function deferred(render: (render: Render) => string): Fragment {
-  return { _tag: "Deferred", render, toString: cannotCoerce }
-}
+export const deferred: (render: (render: Render) => string) => Fragment = InternalCodegen.deferred
 
 /**
  * Indents nonempty lines after the first line of a fragment by two spaces.
@@ -319,17 +292,7 @@ export function indent(content: CodeHole): Fragment {
  * @category formatting
  * @since 4.1.5
  */
-export function literal(value: string | number | bigint | boolean | null | undefined): string {
-  if (typeof value === "string") return JSON.stringify(value)
-  if (typeof value === "bigint") return `${value}n`
-  if (typeof value === "number") {
-    if (Number.isNaN(value)) return "globalThis.NaN"
-    if (value === Infinity) return "globalThis.Infinity"
-    if (value === -Infinity) return "-globalThis.Infinity"
-    if (Object.is(value, -0)) return "-0"
-  }
-  return String(value)
-}
+export const literal: (value: string | number | bigint | boolean | null | undefined) => string = InternalCodegen.literal
 
 const isIdentifier = (name: string): boolean => /^[$_\p{ID_Start}][$\u200c\u200d\p{ID_Continue}]*$/u.test(name)
 
@@ -550,8 +513,10 @@ export class Module {
    * **Gotchas**
    *
    * Recursive representations must contain explicit suspensions. Custom declarations and checks require supported
-   * `toCode` callbacks, as with `SchemaRepresentation.toCodeDocument`. When another declaration eagerly uses a
-   * returned binding, include it in that declaration's dependencies.
+   * `toCode` callbacks. Each callback is called once and its exceptions pass through unchanged.
+   * Callback output supports imports, qualified names, generic and structural types, API calls,
+   * literal/object/array arguments, and zero-argument arrows. Unsupported syntax throws with its document path.
+   * When another declaration eagerly uses a returned binding, include it in that declaration's dependencies.
    *
    * **Example** (Sharing names with generated schema declarations)
    *

@@ -1,20 +1,10 @@
 import * as Arr from "../../Array.ts"
-import {
-  type Binding,
-  code,
-  type DeclarationBinding,
-  deferred,
-  type Fragment,
-  type Import,
-  join,
-  literal,
-  Module
-} from "../../Codegen.ts"
+import type { Binding, DeclarationBinding, Fragment, Import, Module } from "../../Codegen.ts"
 import { format, formatPropertyKey } from "../../Formatter.ts"
 import type * as Schema from "../../Schema.ts"
 import type * as SchemaRepresentation from "../../SchemaRepresentation.ts"
+import { code, deferred, join, literal } from "../codegen.ts"
 import { errorWithPath } from "../errors.ts"
-import * as InternalRecord from "../record.ts"
 import * as InternalAnnotations from "./annotations.ts"
 import * as CodeExpression from "./codeExpression.ts"
 import * as CodeImports from "./codeImports.ts"
@@ -30,11 +20,6 @@ interface Code {
 }
 
 function makeFragments(runtime: Fragment, Type: Fragment): Code {
-  return { runtime, Type }
-}
-
-/** @internal */
-export function makeCode(runtime: string, Type: string): SchemaRepresentation.Code {
   return { runtime, Type }
 }
 
@@ -121,14 +106,8 @@ function isSimpleLiveLiteral(
     representation.annotations === undefined
 }
 
-interface ReferenceGroups {
-  readonly nonRecursives: ReadonlyArray<string>
-  readonly recursives: ReadonlyArray<string>
-}
-
 function collectRefs(
   root: SchemaRepresentation.Representation,
-  includeSuspended: boolean,
   identifierSet: ReadonlySet<string>
 ): ReadonlySet<string> {
   const refs = new Set<string>()
@@ -164,7 +143,6 @@ function collectRefs(
         stack.push(...representation.typeParameters)
         break
       case "Suspend":
-        if (includeSuspended) stack.push(representation.thunk)
         break
       case "TemplateLiteral":
         stack.push(...representation.parts)
@@ -187,71 +165,6 @@ function collectRefs(
   return refs
 }
 
-function classifyReferences(
-  references: SchemaRepresentation.References
-): ReferenceGroups {
-  const identifiers = Object.keys(references)
-  const identifierSet = new Set(identifiers)
-
-  const dependencies = new Map<string, ReadonlySet<string>>(
-    identifiers.map((identifier) => [identifier, collectRefs(references[identifier], true, identifierSet)])
-  )
-  const eagerDependencies = new Map<string, ReadonlySet<string>>(
-    identifiers.map((identifier) => [identifier, collectRefs(references[identifier], false, identifierSet)])
-  )
-
-  // Recursion describes the full schema graph, including suspended references.
-  const recursive = new Set<string>()
-  const indices = new Map<string, number>()
-  const lowLinks = new Map<string, number>()
-  const stack: Array<string> = []
-  const onStack = new Set<string>()
-
-  function visit(identifier: string): void {
-    const index = indices.size
-    indices.set(identifier, index)
-    lowLinks.set(identifier, index)
-    stack.push(identifier)
-    onStack.add(identifier)
-    for (const dependency of dependencies.get(identifier)!) {
-      if (!indices.has(dependency)) {
-        visit(dependency)
-        lowLinks.set(identifier, Math.min(lowLinks.get(identifier)!, lowLinks.get(dependency)!))
-      } else if (onStack.has(dependency)) {
-        lowLinks.set(identifier, Math.min(lowLinks.get(identifier)!, indices.get(dependency)!))
-      }
-    }
-    if (lowLinks.get(identifier) !== index) return
-    const component: Array<string> = []
-    let member: string
-    do {
-      member = stack.pop()!
-      onStack.delete(member)
-      component.push(member)
-    } while (member !== identifier)
-    if (component.length > 1 || dependencies.get(identifier)!.has(identifier)) {
-      for (const member of component) recursive.add(member)
-    }
-  }
-
-  for (const identifier of identifiers) {
-    if (!indices.has(identifier)) visit(identifier)
-  }
-
-  // Every eager dependency belongs in the ordered group, so the remaining
-  // recursive definitions can be emitted in any order.
-  const firstGroup = new Set<string>()
-  for (const identifier of identifiers) {
-    if (!recursive.has(identifier)) firstGroup.add(identifier)
-    for (const dependency of eagerDependencies.get(identifier)!) firstGroup.add(dependency)
-  }
-
-  return {
-    nonRecursives: identifiers.filter((identifier) => firstGroup.has(identifier)),
-    recursives: identifiers.filter((identifier) => !firstGroup.has(identifier))
-  }
-}
-
 interface CompiledCode extends Code {
   readonly dependencies: ReadonlyArray<Binding>
 }
@@ -267,46 +180,6 @@ interface SymbolArtifact extends Definition {
 }
 
 type Artifact = SymbolArtifact | Definition & { readonly _tag: "Enum" }
-
-/** @internal */
-export function toCodeDocument(
-  document: SchemaRepresentation.MultiDocument
-): SchemaRepresentation.CodeDocument {
-  const module = new Module()
-  const schemaImport = module.provideImport(schemaNamespace)
-  const compiled = compile(document, module, schemaImport)
-  for (const { binding, code } of [...compiled.artifacts, ...compiled.definitions.values()]) {
-    module.define(binding, [code.runtime, code.Type], code.dependencies)
-  }
-  const output = module.finalize(compiled.codes.flatMap((code) => [code.runtime, code.Type]))
-  const definitions = new Map(
-    output.declarations.map(({ binding, fragments }) => [binding, makeCode(fragments[0], fragments[1])] as const)
-  )
-  const firstGroup = new Set<Binding>(
-    compiled.groups.nonRecursives.map(($ref) => compiled.definitions.get($ref)!.binding)
-  )
-  const nonRecursives = output.declarations.filter(({ binding }) => firstGroup.has(binding)).map(({ binding }) => ({
-    $ref: output.names.get(binding)!,
-    code: definitions.get(binding)!
-  }))
-  const recursives: Record<string, SchemaRepresentation.Code> = {}
-  for (const $ref of compiled.groups.recursives) {
-    const binding = compiled.definitions.get($ref)!.binding
-    InternalRecord.assignProperty(recursives, output.names.get(binding)!, definitions.get(binding)!)
-  }
-  return {
-    codes: compiled.codes.map((_, index) => makeCode(output.roots[index * 2], output.roots[index * 2 + 1])),
-    references: { nonRecursives, recursives },
-    artifacts: [
-      ...output.imports.map((importDeclaration) => ({ _tag: "Import" as const, importDeclaration })),
-      ...compiled.artifacts.map(({ _tag, binding }) => ({
-        _tag,
-        identifier: output.names.get(binding)!,
-        code: definitions.get(binding)!
-      }))
-    ]
-  }
-}
 
 const schemaNamespace: Import = {
   module: "effect/Schema",
@@ -383,9 +256,8 @@ function compile(
   schemaImport: Binding,
   typeOnly = false
 ) {
-  const groups = classifyReferences(document.references)
   const references = new Map(
-    [...groups.nonRecursives, ...groups.recursives].map(($ref) => [$ref, freshIdentifier($ref)])
+    Object.keys(document.references).map(($ref) => [$ref, freshIdentifier($ref)])
   )
   const identifierSet = new Set(references.keys())
   const artifacts: Array<Artifact> = []
@@ -402,7 +274,7 @@ function compile(
   const codes = document.representations.map((representation, index) =>
     compileRoot(representation, ["representations", index])
   )
-  return { groups, definitions, artifacts, codes }
+  return { definitions, artifacts, codes }
 
   function compileRoot(representation: SchemaRepresentation.Representation, path: Path): CompiledCode {
     artifactDependencies = new Set()
@@ -410,7 +282,7 @@ function compile(
     return {
       ...fragments,
       dependencies: [
-        ...Array.from(collectRefs(representation, false, identifierSet), ($ref) => references.get($ref)!),
+        ...Array.from(collectRefs(representation, identifierSet), ($ref) => references.get($ref)!),
         ...artifactDependencies
       ]
     }
@@ -440,7 +312,7 @@ function compile(
       const Type = `__effect_codegen_${id}_${index}_Type`
       references.set(runtime, input.runtime)
       references.set(Type, input.Type)
-      return makeCode(runtime, Type)
+      return { runtime, Type }
     })
     const output = callback(parameters)
     const imports = new Map<string, Import>()

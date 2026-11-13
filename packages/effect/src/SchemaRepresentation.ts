@@ -7,7 +7,6 @@
 import * as InternalRecord from "./internal/record.ts"
 import * as InternalFromJsonSchemaDocument from "./internal/schema/fromJsonSchemaDocument.ts"
 import * as InternalFromRepresentation from "./internal/schema/fromRepresentation.ts"
-import * as InternalCodegen from "./internal/schema/schemaCodegen.ts"
 import * as InternalToJsonSchemaDocument from "./internal/schema/toJsonSchemaDocument.ts"
 import * as InternalToRepresentation from "./internal/schema/toRepresentation.ts"
 import type * as JsonSchema from "./JsonSchema.ts"
@@ -2547,65 +2546,6 @@ export interface Code {
 }
 
 /**
- * Creates generated runtime and TypeScript source strings for a schema.
- *
- * @stability experimental
- * @category constructors
- * @since 4.0.0
- */
-export const makeCode: (runtime: string, Type: string) => Code = InternalCodegen.makeCode
-
-/**
- * Auxiliary source artifact emitted while generating schema code.
- *
- * @stability experimental
- * @category models
- * @since 4.0.0
- */
-export type Artifact =
-  | {
-    readonly _tag: "Symbol"
-    readonly identifier: string
-    readonly code: Code
-  }
-  | {
-    readonly _tag: "Enum"
-    readonly identifier: string
-    readonly code: Code
-  }
-  | {
-    readonly _tag: "Import"
-    readonly importDeclaration: string
-  }
-
-/**
- * Generated schema code together with named references and auxiliary artifacts.
- *
- * **Details**
- *
- * Emit artifacts first, then `references.nonRecursives` in array order, then
- * `references.recursives` in any order, and finally `codes`.
- * `nonRecursives` also includes recursive definitions needed eagerly to construct
- * another named definition. `recursives` contains the remaining recursive definitions.
- * `codes[i]` corresponds to the input document's `representations[i]`.
- *
- * @stability experimental
- * @category models
- * @since 4.0.0
- */
-export interface CodeDocument {
-  readonly codes: ReadonlyArray<Code>
-  readonly references: {
-    readonly nonRecursives: ReadonlyArray<{
-      readonly $ref: string
-      readonly code: Code
-    }>
-    readonly recursives: Readonly<Record<string, Code>>
-  }
-  readonly artifacts: ReadonlyArray<Artifact>
-}
-
-/**
  * Information supplied to a reference policy for one representation candidate.
  *
  * @stability stable
@@ -2728,7 +2668,7 @@ export function toRepresentations(
  *
  * **When to use**
  *
- * Use when an API such as `toCodeDocument` requires a `MultiDocument`.
+ * Use when an API requires a `MultiDocument` but you have a single representation document.
  *
  * @stability stable
  * @category transforming
@@ -2826,40 +2766,6 @@ export function toJsonSchemaMultiDocument(
   options?: Schema.ToJsonSchemaOptions
 ): JsonSchema.MultiDocument<"draft-2020-12"> {
   return InternalToJsonSchemaDocument.toJsonSchemaMultiDocument(document, options)
-}
-
-/**
- * Generates TypeScript source for live schema representations and their definitions.
- *
- * **When to use**
- *
- * Use when custom declarations and checks provide `toCode` callbacks and must be emitted without a central handler registry.
- *
- * **Details**
- *
- * Preserves explicit `Suspend` representations and orders definitions by their construction dependencies.
- * Emit the returned definitions in the order described by {@link CodeDocument}.
- *
- * **Gotchas**
- *
- * The input must represent valid schema construction, with suspension explicit wherever needed.
- * The compiler does not introduce suspensions for bare recursive references.
- *
- * Opaque declarations and leaf checks require `toCode` callbacks. Each callback is
- * called once. Imported names in its output are resolved without changing named
- * schema definitions. Exceptions raised by a callback pass through unchanged.
- *
- * Callback output supports imports, qualified names, generic and structural types,
- * API calls, literal/object/array arguments, and zero-argument arrows. Unsupported
- * syntax, including local declarations, parameterized functions, template expressions,
- * and conditional or mapped types, throws with the callback's document path.
- *
- * @stability experimental
- * @category transforming
- * @since 4.0.0
- */
-export function toCodeDocument(document: MultiDocument): CodeDocument {
-  return InternalCodegen.toCodeDocument(document)
 }
 
 const RepresentationSchema = Schema.suspend(
