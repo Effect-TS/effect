@@ -135,17 +135,20 @@ describe("Fiber", () => {
 
   it.effect("keeps a finalizer's defect when a child ignores the interrupt that ends its parent", () =>
     Effect.gen(function*() {
-      // The finalizer forks an uninterruptible child, so the interrupted fiber
-      // has a child to wait for when it ends.
       const finalizer = Effect.forkChild(Effect.void, { uninterruptible: true }).pipe(
         Effect.andThen(Effect.die("boom"))
       )
-      const fiber = yield* Effect.never.pipe(Effect.ensuring(finalizer), Effect.forkChild)
-      yield* Effect.yieldNow
+      const fiber = yield* Effect.never.pipe(
+        Effect.ensuring(finalizer),
+        Effect.forkChild({ startImmediately: true })
+      )
       yield* Fiber.interrupt(fiber)
       const exit = yield* Fiber.await(fiber)
       assert.isTrue(Exit.hasInterrupts(exit))
-      assert.isTrue(Exit.isFailure(exit) && Cause.hasDies(exit.cause))
+      assert.isTrue(
+        Exit.isFailure(exit) &&
+          exit.cause.reasons.some((reason) => Cause.isDieReason(reason) && reason.defect === "boom")
+      )
     }))
 
   it.effect(
