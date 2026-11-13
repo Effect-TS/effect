@@ -670,10 +670,14 @@ describe("BunHttpServer", () => {
               checked,
               Effect.gen(function*() {
                 const activeReader = phase === "with an active reader" ? yield* socket.reader : undefined
+                const writer = yield* socket.writer
                 if (activeReader !== undefined) {
-                  const writer = yield* socket.writer
-                  yield* writer.write("ready")
+                  // pulling a full queue frees its capacity
+                  yield* writer.write("fill")
+                  let drained = 0
+                  while (drained < 2) drained += (yield* activeReader.pull).length
                 }
+                yield* writer.write("overflow")
                 yield* Deferred.await(read)
                 const reader = activeReader ?? (yield* socket.reader)
                 assert.deepStrictEqual(yield* reader.pull, ["first", "second"])
@@ -694,18 +698,11 @@ describe("BunHttpServer", () => {
             Effect.sync(() => new WebSocket(`ws://127.0.0.1:${port}/`)),
             (ws) => Effect.sync(() => ws.close())
           )
-          const send = () => {
+          ws.addEventListener("message", (event) => {
             ws.send("first")
             ws.send("second")
-            ws.send("overflow")
-          }
-          if (phase === "before reader startup") {
-            ws.addEventListener("open", send, { once: true })
-          } else {
-            ws.addEventListener("message", (event) => {
-              if (event.data === "ready") send()
-            }, { once: true })
-          }
+            if (event.data === "overflow") ws.send("third")
+          })
           ws.addEventListener("close", (event) => Deferred.doneUnsafe(closed, Effect.succeed(event)))
           const event = yield* Deferred.await(closed).pipe(
             Effect.timeout("1 second"),

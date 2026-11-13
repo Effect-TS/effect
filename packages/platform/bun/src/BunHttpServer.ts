@@ -213,11 +213,13 @@ export const make = Effect.fnUntraced(
           Deferred.doneUnsafe(ws.data.deferred, Exit.succeed(ws))
         },
         message(ws, message) {
-          if (ws.data.buffer.length >= maxBufferedMessages) {
+          const data = ws.data
+          if (data.buffer.length >= maxBufferedMessages) {
             ws.close(1008, "Inbound message buffer limit exceeded")
             return
           }
-          ws.data.run(message)
+          data.buffer.push(message)
+          data.onMessage()
         },
         close(ws, code, closeReason) {
           code = typeof code === "number" ? code : 1001
@@ -490,12 +492,8 @@ interface WebSocketContext {
   readonly deferred: Deferred.Deferred<ServerWebSocket<WebSocketContext>>
   buffer: Array<Uint8Array | string>
   closeError: Socket.SocketError | undefined
-  run: (_: Uint8Array | string) => void
+  onMessage: () => void
   onClose: (error: Socket.SocketError) => void
-}
-
-function wsDefaultRun(this: WebSocketContext, _: Uint8Array | string) {
-  this.buffer.push(_)
 }
 
 const formDecoder = new TextDecoder("utf-8", { ignoreBOM: true })
@@ -707,7 +705,7 @@ class BunServerRequest extends Inspectable.Class implements ServerRequest.HttpSe
           deferred,
           buffer: [],
           closeError: undefined,
-          run: wsDefaultRun,
+          onMessage: constVoid,
           onClose: constVoid
         }
       })
@@ -783,8 +781,7 @@ class BunServerRequest extends Inspectable.Class implements ServerRequest.HttpSe
             waiter = undefined
             resumeRead(Effect.succeed(takeBuffer()))
           }
-          function push(data: Uint8Array | string) {
-            ws.data.buffer.push(data)
+          function scheduleDeliver() {
             if (waiter !== undefined && !flushScheduled) {
               flushScheduled = true
               dispatcher.scheduleTask(deliver, 0)
@@ -799,7 +796,7 @@ class BunServerRequest extends Inspectable.Class implements ServerRequest.HttpSe
             }
           }
 
-          ws.data.run = push
+          ws.data.onMessage = scheduleDeliver
           ws.data.onClose = fail
           yield* Scope.addFinalizerExit(
             scope,
@@ -811,7 +808,9 @@ class BunServerRequest extends Inspectable.Class implements ServerRequest.HttpSe
                     reason: new Socket.SocketCloseError({ code: 1006 })
                   })
                 )
-                ws.data.run = wsDefaultRun
+                // a later reader does not see messages this one left unread
+                ws.data.buffer = []
+                ws.data.onMessage = constVoid
                 ws.data.onClose = constVoid
                 ws.close(closeCode(exit))
                 return Effect.void
