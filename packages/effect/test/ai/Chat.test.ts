@@ -352,7 +352,7 @@ describe("Chat", () => {
 
       assert.strictEqual(executions, 1)
     }).pipe(
-      withRounds([[finish("stop")], [finish("stop")]]).provide,
+      withRounds([]).provide,
       Effect.provide(toolkit.toLayer({ Counter: () => Effect.sync(() => ++executions) }))
     )
   })
