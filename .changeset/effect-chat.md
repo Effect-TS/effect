@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Add `effect/chat`, an unstable, platform-neutral model and router for chat bots, with `ChatMarkdown` for posting long and streamed Markdown, and `ChatTest`, an in-memory adapter and the conformance suite adapters are tested against.
+Add unstable `effect/chat` APIs for chat bots, long and streamed Markdown with safe refused-file fallback, and in-memory adapter conformance testing.

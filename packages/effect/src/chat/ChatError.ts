@@ -9,7 +9,9 @@
  * **Details**
  *
  * - `detail` is redacted: a platform code such as `channel_not_found`, never
- *   message text, file names or ids.
+ *   message text, file names or ids. `file_refused` is fixed by the core: on
+ *   a `denied` reason it promises a file was refused and nothing is left
+ *   posted. It overrides platform error names; the original code stays on `cause`.
  * - `cause` is the error underneath (an HTTP error, a client library error, a
  *   `SchemaError`). It is unredacted and can hold URLs, ids and payload
  *   values. Schema encoding keeps it and `toJSON` leaves it out, so logging an
@@ -76,6 +78,15 @@ export const Capability = Schema.Literals([
  * @since 4.1.5
  */
 export type Capability = typeof Capability.Type
+
+/**
+ * Detail for a refused file on any `denied` reason: nothing is left posted.
+ *
+ * @stability unstable
+ * @category constants
+ * @since 4.1.5
+ */
+export const fileRefused = "file_refused"
 
 const detail = Schema.optionalKey(Schema.String)
 
@@ -347,7 +358,7 @@ export class NotFound extends Schema.TaggedError<NotFound>("effect/chat/ChatErro
 }
 
 /**
- * Reason for a `ChatError`: the request is past a descriptor limit: message length, file size or `download`'s `maxBytes`.
+ * Reason for a `ChatError`: the request is past a size limit: message length, file size or `download`'s `maxBytes`.
  *
  * **Details**
  *
@@ -355,8 +366,10 @@ export class NotFound extends Schema.TaggedError<NotFound>("effect/chat/ChatErro
  * - `subject` says what was too large, when the adapter can tell: `text` for
  *   the message text, `files` for the files sent with it. An adapter sets it
  *   on every refusal of `post`, `edit` and `NativeStream` it can attribute.
- *   `ChatMarkdown` posts again without the files, ending in the consumer's
- *   note, only for `files`.
+ * - Usually raised before the call. A platform-side size refusal carries
+ *   the platform's error name in `detail`, unless a file was refused: then
+ *   it is `file_refused`. `ChatMarkdown` keys its fallback on that detail,
+ *   not on `subject`.
  *
  * @stability unstable
  * @category errors

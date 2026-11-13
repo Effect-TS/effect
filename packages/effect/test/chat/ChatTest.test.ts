@@ -15,6 +15,7 @@ const rulesFor = (test: ChatTest.ChatTest["Service"], thread: ChatThread.ChatThr
     thread,
     userPosts: (thread, text) => test.userPosts(thread, { text }),
     parseMention,
+    refuseFiles: test.refuseFiles,
     failNext: test.failNext
   })
 
@@ -28,6 +29,7 @@ const ruleNames = Object.keys(ChatTest.conformance({
   thread: ChatThread.make("test", "c0"),
   userPosts: () => Effect.die("unused"),
   parseMention,
+  refuseFiles: () => Effect.void,
   failNext: () => Effect.void
 }))
 
@@ -37,6 +39,34 @@ const runRule = (rule: string, options?: Parameters<typeof ChatTest.layer>[0]) =
   Effect.flatMap(suite, (rules) => rules[rule]).pipe(Effect.provide(ChatTest.layer(options)))
 
 describe("ChatTest", () => {
+  it("omits post/refusedFile without its hook", () => {
+    const rules = ChatTest.conformance({
+      platform: "test",
+      thread: ChatThread.make("test", "c0"),
+      userPosts: () => Effect.die("unused"),
+      parseMention
+    })
+    assert.isUndefined(rules["post/refusedFile"])
+  })
+
+  it.effect("refuseFiles counts only posts with files and leaves nothing posted", () =>
+    Effect.gen(function*() {
+      const test = yield* ChatTest.ChatTest
+      const chat = yield* Chat.Chat
+      const thread = yield* test.makeThread()
+      const files = [{ name: "a.txt", contentType: "text/plain", content: new Uint8Array([1]) }]
+      yield* test.refuseFiles({ times: 2 })
+      yield* chat.post(thread, { markdown: "text only" })
+      for (let i = 0; i < 2; i++) {
+        const error = yield* Effect.flip(chat.post(thread, { markdown: "refused", files }))
+        assert.strictEqual(error.reason.retry, "denied")
+        assert.strictEqual(error.reason.detail, ChatError.fileRefused)
+      }
+      assert.deepStrictEqual((yield* test.messages(thread)).map((message) => message.text), ["text only"])
+      yield* chat.post(thread, { markdown: "accepted", files })
+      assert.strictEqual((yield* test.messages(thread)).length, 2)
+    }).pipe(Effect.provide(ChatTest.layer())))
+
   describe("conformance with every capability", () => {
     for (const rule of ruleNames) {
       it.live(rule, () => runRule(rule))

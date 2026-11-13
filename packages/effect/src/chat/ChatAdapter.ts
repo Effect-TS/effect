@@ -146,11 +146,15 @@ export interface User {
  * - `post` takes standard Markdown that must fit `limits.messageLength`. It
  *   never splits or truncates: the adapter checks the length itself and fails
  *   with `TooLarge` without calling the platform. Mentions in it notify nobody.
+ * - A `post` shows no link preview unless requested through the adapter's
+ *   scoped `withPostOptions`. This rule does not cover edits or native streams.
  * - `fetchMessage` fails with `NotFound` for a message that is gone.
  * - `history` pages lazily. `backward` runs newest to oldest, `forward`
  *   oldest to newest, and `from` is exclusive. A thread's oldest message is its
  *   opener, whose `thread` is the thread's parent: the one message in a
- *   thread's history that is not addressed to that thread.
+ *   thread's history that is not addressed to that thread. Without an opener,
+ *   history starts at the first reply, whether the opener was deleted or the
+ *   platform's thread root is not a message.
  * - `download` fails with `TooLarge` as soon as more than `maxBytes` arrive.
  * - `startThread` returns the thread under `messageId`, created when there is
  *   none. It is get-or-create, and the only way from an opener to its thread.
